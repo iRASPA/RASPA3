@@ -31,7 +31,7 @@ import cbmc_operators;
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growFlexibleMoleculeChainInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::span<Atom> molecule_atoms,
-    const std::vector<std::size_t> beadsAlreadyPlaced, std::make_signed_t<std::size_t> skipBackgroundMolecule)
+    const std::vector<std::size_t> &beadsAlreadyPlaced, std::make_signed_t<std::size_t> skipBackgroundMolecule)
 {
   const ForceField &forceField = context.forceField;
   double beta = context.beta;
@@ -59,7 +59,7 @@ import cbmc_operators;
     std::vector<double> RosenBluthWeightTorsion(forceField.numberOfTrialDirections, 1.0);
     for (std::size_t i = 0; i != forceField.numberOfTrialDirections; ++i)
     {
-      trialPositions[i] = stepTrials[i].positions;
+      trialPositions[i] = std::move(stepTrials[i].positions);
       RosenBluthWeightTorsion[i] = stepTrials[i].torsionWeight;
     }
 
@@ -69,22 +69,20 @@ import cbmc_operators;
 
     if (externalEnergies.empty()) return std::nullopt;
 
-    // add the intramolecular van der Waals and Coulomb energy for the bead selection
-    std::vector<CBMC::ChainTrialTorsion> totalExternalEnergies = externalEnergies;
-    for (auto &[external_positions, external_energy, external_torsion] : totalExternalEnergies)
-    {
-      for (std::size_t k = 0; k != external_positions.size(); ++k)
-      {
-        chain_atoms[nextBeads[k]] = external_positions[k];
-      }
-      external_energy += intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(chain_atoms);
-    }
-
-    // Select based on the external energy plus the intramolecular non-bonded energy
+    // Select based on the external energy plus the intramolecular van der Waals and Coulomb energy of
+    // the next-beads (the trial is placed in the chain for that evaluation; 'externalEnergies' keeps
+    // the external part only, which is what the selected trial contributes to the chain energy).
     std::vector<double> logBoltzmannFactors{};
-    logBoltzmannFactors.reserve(forceField.numberOfTrialDirections);
-    std::transform(totalExternalEnergies.begin(), totalExternalEnergies.end(), std::back_inserter(logBoltzmannFactors),
-                   [&](const CBMC::ChainTrialTorsion &v) { return -beta * v.energy.potentialEnergy(); });
+    logBoltzmannFactors.reserve(externalEnergies.size());
+    for (const CBMC::ChainTrialTorsion &trial : externalEnergies)
+    {
+      for (std::size_t k = 0; k != nextBeads.size(); ++k)
+      {
+        chain_atoms[nextBeads[k]] = trial.positions[k];
+      }
+      RunningEnergy intraEnergy = intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(chain_atoms);
+      logBoltzmannFactors.push_back(-beta * (trial.energy.potentialEnergy() + intraEnergy.potentialEnergy()));
+    }
 
     double rosenbluth_weight = std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
                                                 [](const double &acc, const double &logBoltzmannFactor)

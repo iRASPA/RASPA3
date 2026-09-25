@@ -30,7 +30,7 @@ import cbmc_operators;
 
 [[nodiscard]] ChainRetraceData CBMC::retraceFlexibleMoleculeChainDeletion(
     RandomNumber &random, const GrowContext &context, const Component &component, std::span<Atom> molecule_atoms,
-    const std::vector<std::size_t> beadsAlreadyPlaced)
+    const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
   const ForceField &forceField = context.forceField;
   double beta = context.beta;
@@ -58,27 +58,26 @@ import cbmc_operators;
     std::vector<double> RosenBluthWeightTorsion(forceField.numberOfTrialDirections, 1.0);
     for (std::size_t i = 0; i != forceField.numberOfTrialDirections; ++i)
     {
-      trialPositions[i] = stepTrials[i].positions;
+      trialPositions[i] = std::move(stepTrials[i].positions);
       RosenBluthWeightTorsion[i] = stepTrials[i].torsionWeight;
     }
 
     std::vector<CBMC::ChainTrialTorsion> externalEnergies =
         CBMC::computeExternalNonOverlappingEnergies(context, component, trialPositions, RosenBluthWeightTorsion, -1);
 
-    std::vector<CBMC::ChainTrialTorsion> totalExternalEnergies = externalEnergies;
-    for (auto &[external_positions, external_energy, external_torsion] : totalExternalEnergies)
-    {
-      for (std::size_t k = 0; k != external_positions.size(); ++k)
-      {
-        chain_atoms[nextBeads[k]] = external_positions[k];
-      }
-      external_energy += intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(chain_atoms);
-    }
-
+    // External energy plus the intramolecular van der Waals and Coulomb energy of the next-beads, with
+    // each trial placed in the chain for that evaluation (mirrors the insertion).
     std::vector<double> logBoltzmannFactors{};
-    logBoltzmannFactors.reserve(forceField.numberOfTrialDirections);
-    std::transform(totalExternalEnergies.begin(), totalExternalEnergies.end(), std::back_inserter(logBoltzmannFactors),
-                   [&](const CBMC::ChainTrialTorsion &v) { return -beta * v.energy.potentialEnergy(); });
+    logBoltzmannFactors.reserve(externalEnergies.size());
+    for (const CBMC::ChainTrialTorsion &trial : externalEnergies)
+    {
+      for (std::size_t k = 0; k != nextBeads.size(); ++k)
+      {
+        chain_atoms[nextBeads[k]] = trial.positions[k];
+      }
+      RunningEnergy intraEnergy = intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(chain_atoms);
+      logBoltzmannFactors.push_back(-beta * (trial.energy.potentialEnergy() + intraEnergy.potentialEnergy()));
+    }
 
     // The old configuration is always the first trial direction of the retrace.
     const CBMC::ChainTrialTorsion &selectedTrial = externalEnergies.front();

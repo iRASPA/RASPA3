@@ -54,6 +54,14 @@ bool insideBlockedPockets(const std::optional<Framework> &frameworks, const Comp
     const GrowContext &context, const Component &component, std::vector<Atom> &trialPositions,
     std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
 
+/// External (external-field, framework-molecule, inter-molecular) energy of one trial set of bead
+/// positions at the context's cut-offs; std::nullopt when the set lies in a blocked pocket or
+/// overlaps. The single evaluation the set-wise overloads below and the dual cut-off correction are
+/// built on; recoil growth calls it directly (one trial at a time, no intermediate containers).
+[[nodiscard]] std::optional<RunningEnergy> computeExternalNonOverlappingEnergy(
+    const GrowContext &context, const Component &component, std::span<Atom> trialPositionSet,
+    std::make_signed_t<std::size_t> skip = -1, std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
+
 [[nodiscard]] std::vector<ChainTrial> computeExternalNonOverlappingEnergies(
     const GrowContext &context, const Component &component, std::vector<std::vector<Atom>> &trialPositionSets,
     std::make_signed_t<std::size_t> skip = -1, std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
@@ -61,10 +69,6 @@ bool insideBlockedPockets(const std::optional<Framework> &frameworks, const Comp
 [[nodiscard]] std::vector<ChainTrialTorsion> computeExternalNonOverlappingEnergies(
     const GrowContext &context, const Component &component, std::vector<std::vector<Atom>> &trialPositionSets,
     const std::vector<double> &RosenbluthWeightsTorsion, std::make_signed_t<std::size_t> skip = -1,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
-
-[[nodiscard]] std::optional<RunningEnergy> computeExternalNonOverlappingEnergyDualCutOff(
-    const GrowContext &context, const Component &component, std::vector<Atom> &trialPositionSet,
     std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
 
 /// Dual cut-off correction of a grown or retraced configuration: the external (external-field,

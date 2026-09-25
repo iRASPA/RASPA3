@@ -95,6 +95,35 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
   return energies;
 }
 
+std::optional<RunningEnergy> CBMC::computeExternalNonOverlappingEnergy(
+    const GrowContext &context, const Component &component, std::span<Atom> trialPositionSet,
+    std::make_signed_t<std::size_t> skip, std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
+{
+  if (CBMC::insideBlockedPockets(context.framework, component, trialPositionSet))
+  {
+    return std::nullopt;
+  }
+
+  std::optional<RunningEnergy> externalFieldEnergy =
+      CBMC::computeExternalFieldEnergy(context.hasExternalField, context.forceField, context.simulationBox,
+                                       context.externalFieldInterpolationGrid, context.cutOffFrameworkVDW,
+                                       context.cutOffCoulomb, trialPositionSet, skip);
+  if (!externalFieldEnergy.has_value()) return std::nullopt;
+
+  std::optional<RunningEnergy> frameworkEnergy = CBMC::computeFrameworkMoleculeEnergy(
+      context.forceField, context.simulationBox, context.interpolationGrids, context.framework,
+      context.frameworkAtoms, context.cutOffFrameworkVDW, context.cutOffCoulomb, trialPositionSet, skip);
+  if (!frameworkEnergy.has_value()) return std::nullopt;
+
+  std::optional<RunningEnergy> interEnergy =
+      CBMC::computeInterMolecularEnergy(context.forceField, context.simulationBox, context.moleculeAtoms,
+                                        context.cutOffMoleculeVDW, context.cutOffCoulomb, trialPositionSet, skip,
+                                        skipBackgroundMolecule);
+  if (!interEnergy.has_value()) return std::nullopt;
+
+  return externalFieldEnergy.value() + interEnergy.value() + frameworkEnergy.value();
+}
+
 std::vector<CBMC::ChainTrial> CBMC::computeExternalNonOverlappingEnergies(
     const GrowContext &context, const Component &component, std::vector<std::vector<Atom>> &trialPositionSets,
     std::make_signed_t<std::size_t> skip, std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
@@ -102,31 +131,12 @@ std::vector<CBMC::ChainTrial> CBMC::computeExternalNonOverlappingEnergies(
   std::vector<CBMC::ChainTrial> energies{};
   energies.reserve(trialPositionSets.size());
 
-  for (std::vector<Atom> trialPositionSet : trialPositionSets)
+  for (std::vector<Atom> &trialPositionSet : trialPositionSets)
   {
-    if (CBMC::insideBlockedPockets(context.framework, component, trialPositionSet))
-    {
-      continue;
-    }
-
-    std::optional<RunningEnergy> externalFieldEnergy =
-        CBMC::computeExternalFieldEnergy(context.hasExternalField, context.forceField, context.simulationBox,
-                                         context.externalFieldInterpolationGrid, context.cutOffFrameworkVDW,
-                                         context.cutOffCoulomb, trialPositionSet, skip);
-    if (!externalFieldEnergy.has_value()) continue;
-
-    std::optional<RunningEnergy> frameworkEnergy = CBMC::computeFrameworkMoleculeEnergy(
-        context.forceField, context.simulationBox, context.interpolationGrids, context.framework,
-        context.frameworkAtoms, context.cutOffFrameworkVDW, context.cutOffCoulomb, trialPositionSet, skip);
-    if (!frameworkEnergy.has_value()) continue;
-
-    std::optional<RunningEnergy> interEnergy = CBMC::computeInterMolecularEnergy(
-        context.forceField, context.simulationBox, context.moleculeAtoms, context.cutOffMoleculeVDW,
-        context.cutOffCoulomb, trialPositionSet, skip, skipBackgroundMolecule);
-    if (!interEnergy.has_value()) continue;
-
-    energies.push_back(
-        {trialPositionSet, externalFieldEnergy.value() + interEnergy.value() + frameworkEnergy.value()});
+    std::optional<RunningEnergy> energy =
+        computeExternalNonOverlappingEnergy(context, component, trialPositionSet, skip, skipBackgroundMolecule);
+    if (!energy.has_value()) continue;
+    energies.push_back({trialPositionSet, energy.value()});
   }
   return energies;
 }
@@ -141,70 +151,12 @@ std::vector<CBMC::ChainTrialTorsion> CBMC::computeExternalNonOverlappingEnergies
 
   for (std::size_t i = 0; i != trialPositionSets.size(); ++i)
   {
-    if (CBMC::insideBlockedPockets(context.framework, component, trialPositionSets[i]))
-    {
-      continue;
-    }
-
-    std::optional<RunningEnergy> externalFieldEnergy =
-        CBMC::computeExternalFieldEnergy(context.hasExternalField, context.forceField, context.simulationBox,
-                                         context.externalFieldInterpolationGrid, context.cutOffFrameworkVDW,
-                                         context.cutOffCoulomb, trialPositionSets[i], skip);
-    if (!externalFieldEnergy.has_value())
-    {
-      continue;
-    }
-
-    std::optional<RunningEnergy> frameworkEnergy = CBMC::computeFrameworkMoleculeEnergy(
-        context.forceField, context.simulationBox, context.interpolationGrids, context.framework,
-        context.frameworkAtoms, context.cutOffFrameworkVDW, context.cutOffCoulomb, trialPositionSets[i], skip);
-    if (!frameworkEnergy.has_value())
-    {
-      continue;
-    }
-
-    std::optional<RunningEnergy> interEnergy = CBMC::computeInterMolecularEnergy(
-        context.forceField, context.simulationBox, context.moleculeAtoms, context.cutOffMoleculeVDW,
-        context.cutOffCoulomb, trialPositionSets[i], skip, skipBackgroundMolecule);
-    if (!interEnergy.has_value())
-    {
-      continue;
-    }
-
-    energies.push_back({trialPositionSets[i],
-                        externalFieldEnergy.value() + frameworkEnergy.value() + interEnergy.value(),
-                        RosenbluthWeightsTorsion[i]});
+    std::optional<RunningEnergy> energy =
+        computeExternalNonOverlappingEnergy(context, component, trialPositionSets[i], skip, skipBackgroundMolecule);
+    if (!energy.has_value()) continue;
+    energies.push_back({trialPositionSets[i], energy.value(), RosenbluthWeightsTorsion[i]});
   }
   return energies;
-}
-
-std::optional<RunningEnergy> CBMC::computeExternalNonOverlappingEnergyDualCutOff(
-    const GrowContext &context, const Component &component, std::vector<Atom> &trialPositionSet,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
-{
-  if (CBMC::insideBlockedPockets(context.framework, component, trialPositionSet))
-  {
-    return std::nullopt;
-  }
-
-  std::optional<RunningEnergy> externalFieldEnergy =
-      CBMC::computeExternalFieldEnergy(context.hasExternalField, context.forceField, context.simulationBox,
-                                       context.externalFieldInterpolationGrid, context.cutOffFrameworkVDW,
-                                       context.cutOffCoulomb, trialPositionSet, -1);
-  if (!externalFieldEnergy.has_value()) return std::nullopt;
-
-  std::optional<RunningEnergy> frameworkEnergy = CBMC::computeFrameworkMoleculeEnergy(
-      context.forceField, context.simulationBox, context.interpolationGrids, context.framework,
-      context.frameworkAtoms, context.cutOffFrameworkVDW, context.cutOffCoulomb, trialPositionSet, -1);
-  if (!frameworkEnergy.has_value()) return std::nullopt;
-
-  std::optional<RunningEnergy> interEnergy =
-      CBMC::computeInterMolecularEnergy(context.forceField, context.simulationBox, context.moleculeAtoms,
-                                        context.cutOffMoleculeVDW, context.cutOffCoulomb, trialPositionSet, -1,
-                                        skipBackgroundMolecule);
-  if (!interEnergy.has_value()) return std::nullopt;
-
-  return externalFieldEnergy.value() + interEnergy.value() + frameworkEnergy.value();
 }
 
 std::optional<RunningEnergy> CBMC::computeDualCutOffCorrection(const GrowContext &context, const Component &component,
@@ -215,12 +167,12 @@ std::optional<RunningEnergy> CBMC::computeDualCutOffCorrection(const GrowContext
   const GrowContext fullCutOffContext = context.withFullCutOffs();
   const GrowContext innerCutOffContext = context.withInnerCutOffs();
 
-  std::optional<RunningEnergy> fullCutOffEnergy = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
-      fullCutOffContext, component, trialPositionSet, skipBackgroundMolecule);
+  std::optional<RunningEnergy> fullCutOffEnergy = CBMC::computeExternalNonOverlappingEnergy(
+      fullCutOffContext, component, trialPositionSet, -1, skipBackgroundMolecule);
   if (!fullCutOffEnergy.has_value()) return std::nullopt;
 
-  std::optional<RunningEnergy> innerCutOffEnergy = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
-      innerCutOffContext, component, trialPositionSet, skipBackgroundMolecule);
+  std::optional<RunningEnergy> innerCutOffEnergy = CBMC::computeExternalNonOverlappingEnergy(
+      innerCutOffContext, component, trialPositionSet, -1, skipBackgroundMolecule);
   if (!innerCutOffEnergy.has_value()) return std::nullopt;
 
   return fullCutOffEnergy.value() - innerCutOffEnergy.value();

@@ -79,27 +79,44 @@ struct TrialEnergy
   double potentialEnergy() const { return external.potentialEnergy() + intra.potentialEnergy(); }
 };
 
-// Compute the energy of placing 'trialPositions' for the step's next-beads. Returns nullopt on a
-// hard overlap (a 'closed' direction).
-static std::optional<TrialEnergy> computeTrialEnergy(const RecoilContext &ctx, const Step &step,
-                                                     const std::vector<Atom> &contextAtoms,
-                                                     const std::vector<Atom> &trialPositions)
+// The step's next-beads of 'atoms', saved so a trial placement can be undone. The chain is edited in
+// place throughout the recursion (a few beads per level) rather than copied per trial: for a polymer of
+// N beads with k trial directions and recoil length l, per-trial chain copies made every grow O(N^2).
+struct SavedBeads
 {
-  std::vector<std::vector<Atom>> trialPositionSets{trialPositions};
+  std::vector<Atom> atoms{};
 
-  std::vector<CBMC::ChainTrial> external = CBMC::computeExternalNonOverlappingEnergies(
-      ctx.env, ctx.component, trialPositionSets, -1, ctx.skipBackgroundMolecule);
-
-  if (external.empty()) return std::nullopt;
-
-  std::vector<Atom> candidate(contextAtoms.begin(), contextAtoms.end());
-  for (std::size_t k = 0; k != step.nextBeads.size(); ++k)
+  SavedBeads(const std::vector<Atom> &chain, const Step &step)
   {
-    candidate[step.nextBeads[k]] = trialPositions[k];
+    atoms.reserve(step.nextBeads.size());
+    for (std::size_t bead : step.nextBeads) atoms.push_back(chain[bead]);
   }
-  RunningEnergy intra = step.intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(candidate);
+  void restore(std::vector<Atom> &chain, const Step &step) const
+  {
+    for (std::size_t k = 0; k != step.nextBeads.size(); ++k) chain[step.nextBeads[k]] = atoms[k];
+  }
+};
 
-  return TrialEnergy{external.front().energy, intra};
+static void placeBeads(std::vector<Atom> &chain, const Step &step, std::span<const Atom> positions)
+{
+  for (std::size_t k = 0; k != step.nextBeads.size(); ++k) chain[step.nextBeads[k]] = positions[k];
+}
+
+// Compute the energy of placing 'trialPositions' for the step's next-beads. Returns nullopt on a
+// hard overlap (a 'closed' direction). 'atoms' is used as scratch and left unchanged.
+static std::optional<TrialEnergy> computeTrialEnergy(const RecoilContext &ctx, const Step &step,
+                                                     std::vector<Atom> &atoms, std::vector<Atom> &trialPositions)
+{
+  std::optional<RunningEnergy> external = CBMC::computeExternalNonOverlappingEnergy(
+      ctx.env, ctx.component, trialPositions, -1, ctx.skipBackgroundMolecule);
+  if (!external.has_value()) return std::nullopt;
+
+  const SavedBeads saved(atoms, step);
+  placeBeads(atoms, step, trialPositions);
+  RunningEnergy intra = step.intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(atoms);
+  saved.restore(atoms, step);
+
+  return TrialEnergy{external.value(), intra};
 }
 
 // Test whether an open pathway ('feeler') of 'depth' more steps can be grown starting at step 'seg'.
@@ -115,34 +132,50 @@ static std::optional<TrialEnergy> computeTrialEnergy(const RecoilContext &ctx, c
 // directions with the growth attempt. If the two probes sampled the spin differently, the probability of
 // finding a direction available would differ between the two, and m_i would be biased between grow and
 // retrace.
+//
+// 'atoms' is scratch: the feeler places its trial beads in place and restores them, so the chain is
+// unchanged on return.
 static bool feelerExists(RandomNumber &random, const RecoilContext &ctx, std::size_t seg, std::size_t depth,
-                         const std::vector<Atom> &contextAtoms)
+                         std::vector<Atom> &atoms)
 {
   if (seg >= ctx.steps.size()) return true;
   if (depth == 0) return true;
 
   const Step &step = ctx.steps[seg];
+  const SavedBeads saved(atoms, step);
 
   for (std::size_t j = 0; j != ctx.numberOfTrialDirections; ++j)
   {
-    Trial trial = CBMC::generateRecoilTrial(random, ctx.env.forceField, ctx.env.beta, ctx.component, contextAtoms, step);
+    Trial trial = CBMC::generateRecoilTrial(random, ctx.env.forceField, ctx.env.beta, ctx.component, atoms, step);
 
-    std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, step, contextAtoms, trial.positions);
+    std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, step, atoms, trial.positions);
     if (!energy.has_value()) continue;
 
     double open_probability = openProbability(ctx, seg, energy->potentialEnergy());
     if (random.uniform() < open_probability)
     {
-      std::vector<Atom> next_atoms(contextAtoms.begin(), contextAtoms.end());
-      for (std::size_t k = 0; k != step.nextBeads.size(); ++k)
-      {
-        next_atoms[step.nextBeads[k]] = trial.positions[k];
-      }
-      if (feelerExists(random, ctx, seg + 1, depth - 1, next_atoms)) return true;
+      placeBeads(atoms, step, trial.positions);
+      const bool found = feelerExists(random, ctx, seg + 1, depth - 1, atoms);
+      saved.restore(atoms, step);
+      if (found) return true;
     }
   }
 
   return false;
+}
+
+// Whether a trial direction that tested open at step 'seg' is 'available': a feeler of the remaining
+// recoil length can be grown from it. Places the trial beads in 'atoms' for the feeler and restores
+// them afterwards.
+static bool feelerExistsFrom(RandomNumber &random, const RecoilContext &ctx, std::size_t seg,
+                             std::vector<Atom> &atoms, std::span<const Atom> trialPositions)
+{
+  const Step &step = ctx.steps[seg];
+  const SavedBeads saved(atoms, step);
+  placeBeads(atoms, step, trialPositions);
+  const bool found = feelerExists(random, ctx, seg + 1, ctx.recoilLength - 1, atoms);
+  saved.restore(atoms, step);
+  return found;
 }
 
 enum class GrowResult { Complete, DeadEnd, Discard };
@@ -172,25 +205,18 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
     double open_probability = openProbability(ctx, seg, energy->potentialEnergy());
     if (random.uniform() >= open_probability) continue;
 
-    std::vector<Atom> saved(step.nextBeads.size());
-    for (std::size_t k = 0; k != step.nextBeads.size(); ++k)
-    {
-      saved[k] = atoms[step.nextBeads[k]];
-      atoms[step.nextBeads[k]] = trial.positions[k];
-    }
+    const SavedBeads saved(atoms, step);
+    placeBeads(atoms, step, trial.positions);
     maxHead = std::max(maxHead, seg);
 
     GrowResult result = growRecursive(random, ctx, seg + 1, atoms, maxHead, records);
     if (result == GrowResult::Complete)
     {
-      records[seg] = {trial, energy.value(), open_probability, j + 1};
+      records[seg] = {std::move(trial), energy.value(), open_probability, j + 1};
       return GrowResult::Complete;
     }
 
-    for (std::size_t k = 0; k != step.nextBeads.size(); ++k)
-    {
-      atoms[step.nextBeads[k]] = saved[k];
-    }
+    saved.restore(atoms, step);
 
     if (result == GrowResult::Discard) return GrowResult::Discard;
 
@@ -202,7 +228,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growRecoilGrowthMoleculeChainInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::span<Atom> molecule_atoms,
-    const std::vector<std::size_t> beadsAlreadyPlaced, std::make_signed_t<std::size_t> skipBackgroundMolecule)
+    const std::vector<std::size_t> &beadsAlreadyPlaced, std::make_signed_t<std::size_t> skipBackgroundMolecule)
 {
   const ForceField &forceField = context.forceField;
 
@@ -241,13 +267,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
       double open_probability = openProbability(ctx, seg, energy->potentialEnergy());
       if (random.uniform() >= open_probability) continue;
 
-      std::vector<Atom> feeler_atoms(chain_atoms.begin(), chain_atoms.end());
-      for (std::size_t k = 0; k != step.nextBeads.size(); ++k)
-      {
-        feeler_atoms[step.nextBeads[k]] = alternative.positions[k];
-      }
-
-      if (feelerExists(random, ctx, seg + 1, ctx.recoilLength - 1, feeler_atoms)) ++numberOfFeelers;
+      if (feelerExistsFrom(random, ctx, seg, chain_atoms, alternative.positions)) ++numberOfFeelers;
     }
 
     double step_weight = static_cast<double>(numberOfFeelers) / static_cast<double>(ctx.numberOfTrialDirections) *
@@ -289,7 +309,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
 
 [[nodiscard]] ChainRetraceData CBMC::retraceRecoilGrowthMoleculeChainDeletion(
     RandomNumber &random, const GrowContext &context, const Component &component, std::span<Atom> molecule_atoms,
-    const std::vector<std::size_t> beadsAlreadyPlaced)
+    const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
   const ForceField &forceField = context.forceField;
 
@@ -357,13 +377,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
         double alternative_open_probability = openProbability(ctx, seg, energy->potentialEnergy());
         if (random.uniform() >= alternative_open_probability) continue;
 
-        std::vector<Atom> next_atoms(old_atoms.begin(), old_atoms.end());
-        for (std::size_t k = 0; k != step.nextBeads.size(); ++k)
-        {
-          next_atoms[step.nextBeads[k]] = trial.positions[k];
-        }
-
-        if (feelerExists(random, ctx, seg + 1, ctx.recoilLength - 1, next_atoms)) ++numberOfFeelers;
+        if (feelerExistsFrom(random, ctx, seg, old_atoms, trial.positions)) ++numberOfFeelers;
       }
     }
 
