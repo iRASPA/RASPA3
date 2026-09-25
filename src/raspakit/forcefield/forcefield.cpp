@@ -115,6 +115,13 @@ ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParam
       pseudoAtoms(pseudoAtoms),
       useCharge(useCharge)
 {
+  // The cutoffs were given explicitly; do not let System::initializeAutomaticCutOff replace them
+  // with box-derived values (the JSON reader likewise clears the automatic flags when a numeric
+  // cutoff is specified instead of "auto").
+  cutOffFrameworkVDWAutomatic = false;
+  cutOffMoleculeVDWAutomatic = false;
+  cutOffCoulombAutomatic = false;
+
   //PseudoAtom unitPseudoAtom("unit", false, 1.0, 1.0, 0.0, 0, false);
   //this->pseudoAtoms.push_back(unitPseudoAtom);
 

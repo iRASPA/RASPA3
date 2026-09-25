@@ -1382,10 +1382,6 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
         std::exp(equilibriumTerm + biasNew - biasOld - system.beta * energyDifference.potentialEnergy());
   }
 
-  // TEMP-DEBUG
-  std::cerr << "boundary acc=" << acceptanceProbability << " growLog=" << growData->logRosenbluthWeight
-            << " retraceLog=" << retraceData->logRosenbluthWeight << " eq=" << equilibriumTerm
-            << " bias=" << (biasNew - biasOld) << "\n";
   if (random.uniform() >= acceptanceProbability)
   {
     restoreOldScalings();

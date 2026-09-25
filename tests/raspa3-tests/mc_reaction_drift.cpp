@@ -548,6 +548,7 @@ TEST(MC_REACTION_DRIFT, reaction_cfcmc_boundary)
   systemProbabilities.setProbability(Move::Types::ReactionConventionalCFCMC, 1.0);
 
   System system = makePropaneButaneReactionSystem(systemProbabilities);
+  system.reactions.list[0].currentLambda = 0.85;
   system.createReactionFractionalMolecules();
   setupBoundaryCrossingReaction(system);
   runReactionBoundaryDriftTest({std::move(system)});
@@ -559,6 +560,7 @@ TEST(MC_REACTION_DRIFT, reaction_cfcmc_cbmc_boundary)
   systemProbabilities.setProbability(Move::Types::ReactionConventionalCBCFCMC, 1.0);
 
   System system = makePropaneButaneReactionSystem(systemProbabilities);
+  system.reactions.list[0].currentLambda = 0.85;
   system.createReactionFractionalMolecules();
   setupBoundaryCrossingReaction(system);
   runReactionBoundaryDriftTest({std::move(system)});
@@ -1433,6 +1435,11 @@ void runConventionalBoundaryPerMoveDrift(bool useCBMC)
       useCBMC ? Move::Types::ReactionConventionalCBCFCMC : Move::Types::ReactionConventionalCFCMC, 1.0);
 
   System system = makePropaneButaneReactionSystem(systemProbabilities);
+  // Set the target lambda before creating the fractional molecules: creation grows them at the
+  // effective coupling, so the overlap check during growth is only meaningful at the actual lambda.
+  // Creating ghosts at the default lambda 0 and rescaling to 0.85 afterwards can start the run from
+  // an unresolvable hard overlap (at lambda >= 0.5 the staged schedule fully couples the VDW).
+  system.reactions.list[0].currentLambda = 0.85;
   system.createReactionFractionalMolecules();
   setupBoundaryCrossingReaction(system);
 
