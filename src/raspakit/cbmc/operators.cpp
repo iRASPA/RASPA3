@@ -1413,24 +1413,9 @@ std::vector<CBMC::StepTrial> CBMC::generateRetraceTrials(RandomNumber &random, c
   return trials;
 }
 
-
-// Uniform torsion spin of a recoil base about the previous-current axis (the unbiased feeler path).
-static std::vector<Atom> spinRecoilBase(RandomNumber &random, const std::vector<Atom> &chainAtoms,
-                                        const std::vector<Atom> &base, std::size_t currentBead, double3 lastBondVector)
-{
-  double angle = (2.0 * random.uniform() - 1.0) * std::numbers::pi;
-  std::vector<Atom> rotated = base;
-  for (std::size_t k = 0; k != rotated.size(); ++k)
-  {
-    rotated[k].position = chainAtoms[currentBead].position +
-                          lastBondVector.rotateAroundAxis(base[k].position - chainAtoms[currentBead].position, angle);
-  }
-  return rotated;
-}
-
 CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const ForceField &forceField, double beta,
                                           const Component &component, const std::vector<Atom> &contextAtoms,
-                                          const GrowStep &step, bool biasTorsion)
+                                          const GrowStep &step)
 {
   if (!step.previousBead.has_value())
   {
@@ -1455,21 +1440,12 @@ CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const ForceField
   }
 
   // Every flexible step (single bead or branch) draws its base from the exact bonded sampler; ring
-  // closure and rigid fragments keep their internal Monte Carlo. 'coupled' controls the torsion
-  // handling below: branch, ring, and rigid steps always weight the spin (their invariant internal
-  // terms are sampled or weighted exactly), a single flexible bead may skip the bias for a plain
-  // recoil feeler.
-  const bool coupled = step.rigidBody || step.kind == GrowStep::Kind::CloseRing || step.nextBeads.size() > 1;
+  // closure and rigid fragments keep their internal Monte Carlo. The spin about the junction bond is
+  // then always torsion-selected -- also when the trial is a feeler bead (see the interface note).
   FlexibleBase base = sampleBaseConformation(random, forceField, beta, component, contextAtoms, step);
   double3 last_bond_vector = contextAtoms[step.previousBead.value()].position - contextAtoms[step.currentBead].position;
   if (last_bond_vector.length() < 1e-8) last_bond_vector = double3{0.0, 0.0, 1.0};
   last_bond_vector = last_bond_vector.normalized();
-
-  if (!biasTorsion && !coupled)
-  {
-    return {spinRecoilBase(random, contextAtoms, base.nextBeadAtoms, step.currentBead, last_bond_vector),
-            base.clampWeight};
-  }
 
   Potentials::IntraMolecularPotentials torsionIntra = torsionSelectionPotentials(step);
   TorsionOrientation torsion =

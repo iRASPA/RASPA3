@@ -128,6 +128,18 @@ static std::optional<TrialEnergy> computeTrialEnergy(const RecoilContext &ctx, c
 }
 
 // Test whether an open pathway ('feeler') of 'depth' more steps can be grown starting at step 'seg'.
+//
+// A trial direction is 'available' when it is open and a feeler of 'recoilLength - 1' steps can be
+// grown from it. The growth ('growRecursive') decides the availability of the directions it tries by
+// attempting to grow the chain itself: a direction that is open but whose sub-tree dead-ends before
+// reaching 'recoilLength - 1' steps ahead is unavailable, exactly the negation of this feeler. Both
+// tests are exhaustive depth-first searches over the same 'numberOfTrialDirections' per level with the
+// same openness test, and they MUST draw their trial beads from the same generator ('generateRecoilTrial'
+// with its torsion-selected spin): the number of available directions m_i enters the acceptance ratio,
+// and the retrace decides every alternative with this feeler while the grow decides the tried-and-failed
+// directions with the growth attempt. If the two probes sampled the spin differently, the probability of
+// finding a direction available would differ between the two, and m_i would be biased between grow and
+// retrace.
 static bool feelerExists(RandomNumber &random, const RecoilContext &ctx, std::size_t seg, std::size_t depth,
                          const std::vector<Atom> &contextAtoms)
 {
@@ -138,8 +150,7 @@ static bool feelerExists(RandomNumber &random, const RecoilContext &ctx, std::si
 
   for (std::size_t j = 0; j != ctx.numberOfTrialDirections; ++j)
   {
-    Trial trial =
-        CBMC::generateRecoilTrial(random, ctx.env.forceField, ctx.env.beta, ctx.component, contextAtoms, step, false);
+    Trial trial = CBMC::generateRecoilTrial(random, ctx.env.forceField, ctx.env.beta, ctx.component, contextAtoms, step);
 
     std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, step, contextAtoms, trial.positions);
     if (!energy.has_value()) continue;

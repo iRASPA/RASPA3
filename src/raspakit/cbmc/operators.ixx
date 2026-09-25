@@ -62,14 +62,23 @@ std::vector<StepTrial> generateRetraceTrials(RandomNumber &random, const ForceFi
 /**
  * \brief Generates one independent trial direction of a growth step (recoil growth).
  *
- * Bond lengths and bend angles are drawn once from their Boltzmann distributions. When 'biasTorsion'
- * is true the spin about the preceding bond is chosen with the usual torsion Rosenbluth weight; feeler
- * look-ahead passes false and takes one random spin, because a feeler only tests whether an open path
- * exists and does not enter the chain weight.
+ * Bond lengths and bend angles are drawn once from their Boltzmann distributions and the spin about
+ * the preceding bond is chosen with the usual torsion Rosenbluth selection; the returned
+ * 'torsionWeight' is that selection's weight.
+ *
+ * Recoil growth uses this one generator for every trial it ever draws: the directions of the growth
+ * itself, the alternatives counted after the chain is complete, and every bead of a feeler. That is a
+ * requirement, not a convenience: a trial direction counts as 'available' when it is open and a feeler
+ * can be grown from it, and for the directions tried during growth the growth attempt itself IS the
+ * feeler. The count of available directions m_i enters the acceptance ratio, so the probability that a
+ * direction is found available must be the same random experiment whether it is decided by the growth
+ * attempt or by an explicit feeler (on grow and on retrace). A feeler that took a plain random spin,
+ * while the growth spins were torsion-selected, would probe the openness of a differently distributed
+ * bead and bias m_i between the two directions of the move.
  */
 StepTrial generateRecoilTrial(RandomNumber &random, const ForceField &forceField, double beta,
-                              const Component &component, const std::vector<Atom> &contextAtoms, const GrowStep &step,
-                              bool biasTorsion = true);
+                              const Component &component, const std::vector<Atom> &contextAtoms,
+                              const GrowStep &step);
 
 /**
  * \brief Torsion Rosenbluth weight of the existing (old) orientation of a step (recoil retrace).
