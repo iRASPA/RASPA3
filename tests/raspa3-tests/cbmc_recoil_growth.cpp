@@ -187,8 +187,8 @@ RegrowChainResult runRegrowChain(RandomNumber &random, const ForceField &forceFi
   std::vector<Atom> state{};
   for (;;)
   {
-    std::optional<ChainGrowData> grown =
-        CBMC::growMoleculeSwapInsertion(random, context, component, 0, 0, 1.0, std::uint8_t{0}, false);
+    std::optional<CBMC::GrowResult> grown =
+        CBMC::growNewMolecule(random, context, component, {.componentId = 0, .moleculeId = 0});
     if (grown.has_value())
     {
       state = grown->atoms;
@@ -205,12 +205,12 @@ RegrowChainResult runRegrowChain(RandomNumber &random, const ForceField &forceFi
 
   for (std::size_t i = 0; i != iterations; ++i)
   {
-    std::optional<ChainGrowData> grown =
-        CBMC::growMoleculeSwapInsertion(random, context, component, 0, 0, 1.0, std::uint8_t{0}, false);
+    std::optional<CBMC::GrowResult> grown =
+        CBMC::growNewMolecule(random, context, component, {.componentId = 0, .moleculeId = 0});
     if (grown.has_value())
     {
-      ChainRetraceData retraced =
-          CBMC::retraceMoleculeSwapDeletion(random, context, component, std::span<Atom>(state));
+      CBMC::RetraceResult retraced =
+          CBMC::retraceMolecule(random, context, component, state);
       if (random.uniform() < std::exp(grown->logRosenbluthWeight - retraced.logRosenbluthWeight))
       {
         state = grown->atoms;
@@ -349,8 +349,8 @@ TEST(CBMC_RECOIL_GROWTH, retrace_of_overlapping_old_configuration_throws)
     const CBMC::GrowContext empty = makeContext(std::span<const Atom>{});
     for (;;)
     {
-      std::optional<ChainGrowData> grown =
-          CBMC::growMoleculeSwapInsertion(random, empty, chain, 0, 0, 1.0, std::uint8_t{0}, false);
+      std::optional<CBMC::GrowResult> grown =
+          CBMC::growNewMolecule(random, empty, chain, {.componentId = 0, .moleculeId = 0});
       if (grown.has_value())
       {
         molecule = grown->atoms;
@@ -381,7 +381,7 @@ TEST(CBMC_RECOIL_GROWTH, retrace_of_overlapping_old_configuration_throws)
   // the driver can report it; a 'noexcept' anywhere on that path would turn it into std::terminate.
   try
   {
-    (void)CBMC::retraceMoleculeSwapDeletion(random, overlapping, chain, std::span<Atom>(molecule));
+    (void)CBMC::retraceMolecule(random, overlapping, chain, molecule);
     FAIL() << "the public retrace of an overlapping configuration returned a weight";
   }
   catch (const std::runtime_error &error)

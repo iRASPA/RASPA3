@@ -89,24 +89,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   const CBMC::GrowContext growContextA = system.makeGrowContext();
 
   time_begin = std::chrono::steady_clock::now();
-  std::optional<ChainGrowData> growDataA = CBMC::growMoleculeSwapInsertion(
-      random, growContextA, componentA, selectedComponent, selectedMoleculeA, 1.0, false, false);
+  std::optional<CBMC::GrowResult> growDataA = CBMC::growNewMolecule(
+      random, growContextA, componentA, {.componentId = selectedComponent, .moleculeId = selectedMoleculeA});
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
 
   if (!growDataA) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-  if (system.forceField.useDualCutOff)
-  {
-    // Dual cut-off scheme: correct molecule A from the inner cut-off to the full cut-offs.
-    std::optional<RunningEnergy> correctionA =
-        CBMC::computeDualCutOffCorrection(growContextA, componentA, growDataA->atoms);
-    if (!correctionA.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-    growDataA->energies += correctionA.value();
-    growDataA->multiplyRosenbluthWeight(-system.beta * correctionA->potentialEnergy());
-  }
+  // Dual cut-off scheme: correct molecule A from the inner cut-off to the full cut-offs.
+  if (!CBMC::applyDualCutOffCorrection(growContextA, componentA, *growDataA)) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   const double r = R_max * random.uniform();
   const double3 direction = random.UnitSphere();
@@ -120,26 +112,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   const CBMC::GrowContext growContextB = system.makeGrowContext().withMoleculeAtoms(moleculeAtomDataWithTrialA);
 
   time_begin = std::chrono::steady_clock::now();
-  std::optional<ChainGrowData> growDataB = CBMC::growMoleculePairSecondSwapInsertion(
-      random, growContextB, componentBRef, componentB, selectedMoleculeB,
-      fixedFirstBeadPositionB, 1.0, false, false);
+  std::optional<CBMC::GrowResult> growDataB = CBMC::growNewMolecule(
+      random, growContextB, componentBRef, {.componentId = componentB, .moleculeId = selectedMoleculeB},
+      {.firstBead = CBMC::FirstBeadScheme::Fixed, .firstBeadPosition = fixedFirstBeadPositionB});
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
 
   if (!growDataB) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-  if (system.forceField.useDualCutOff)
-  {
-    // Dual cut-off scheme: correct molecule B from the inner cut-off to the full cut-offs, using
-    // the same background (existing molecules plus trial molecule A) as the growth.
-    std::optional<RunningEnergy> correctionB =
-        CBMC::computeDualCutOffCorrection(growContextB, componentBRef, growDataB->atoms);
-    if (!correctionB.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-    growDataB->energies += correctionB.value();
-    growDataB->multiplyRosenbluthWeight(-system.beta * correctionB->potentialEnergy());
-  }
+  // Dual cut-off scheme: correct molecule B from the inner cut-off to the full cut-offs, using the
+  // same background (existing molecules plus trial molecule A) as the growth.
+  if (!CBMC::applyDualCutOffCorrection(growContextB, componentBRef, *growDataB)) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwapCBMC, 0);
 
@@ -351,24 +335,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   const CBMC::GrowContext growContextA = system.makeGrowContext();
 
   time_begin = std::chrono::steady_clock::now();
-  std::optional<ChainGrowData> growDataA = CBMC::growMoleculeSwapInsertion(
-      random, growContextA, componentA, selectedComponent, selectedMoleculeA, 1.0, false, false);
+  std::optional<CBMC::GrowResult> growDataA = CBMC::growNewMolecule(
+      random, growContextA, componentA, {.componentId = selectedComponent, .moleculeId = selectedMoleculeA});
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
 
   if (!growDataA) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-  if (system.forceField.useDualCutOff)
-  {
-    // Dual cut-off scheme: correct molecule A from the inner cut-off to the full cut-offs.
-    std::optional<RunningEnergy> correctionA =
-        CBMC::computeDualCutOffCorrection(growContextA, componentA, growDataA->atoms);
-    if (!correctionA.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-    growDataA->energies += correctionA.value();
-    growDataA->multiplyRosenbluthWeight(-system.beta * correctionA->potentialEnergy());
-  }
+  // Dual cut-off scheme: correct molecule A from the inner cut-off to the full cut-offs.
+  if (!CBMC::applyDualCutOffCorrection(growContextA, componentA, *growDataA)) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   const double r = R_max * std::cbrt(random.uniform());
   const double3 direction = random.UnitSphere();
@@ -382,26 +358,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   const CBMC::GrowContext growContextB = system.makeGrowContext().withMoleculeAtoms(moleculeAtomDataWithTrialA);
 
   time_begin = std::chrono::steady_clock::now();
-  std::optional<ChainGrowData> growDataB = CBMC::growMoleculePairSecondSwapInsertion(
-      random, growContextB, componentBRef, componentB, selectedMoleculeB,
-      fixedFirstBeadPositionB, 1.0, false, false);
+  std::optional<CBMC::GrowResult> growDataB = CBMC::growNewMolecule(
+      random, growContextB, componentBRef, {.componentId = componentB, .moleculeId = selectedMoleculeB},
+      {.firstBead = CBMC::FirstBeadScheme::Fixed, .firstBeadPosition = fixedFirstBeadPositionB});
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
 
   if (!growDataB) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-  if (system.forceField.useDualCutOff)
-  {
-    // Dual cut-off scheme: correct molecule B from the inner cut-off to the full cut-offs, using
-    // the same background (existing molecules plus trial molecule A) as the growth.
-    std::optional<RunningEnergy> correctionB =
-        CBMC::computeDualCutOffCorrection(growContextB, componentBRef, growDataB->atoms);
-    if (!correctionB.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-    growDataB->energies += correctionB.value();
-    growDataB->multiplyRosenbluthWeight(-system.beta * correctionB->potentialEnergy());
-  }
+  // Dual cut-off scheme: correct molecule B from the inner cut-off to the full cut-offs, using the
+  // same background (existing molecules plus trial molecule A) as the growth.
+  if (!CBMC::applyDualCutOffCorrection(growContextB, componentBRef, *growDataB)) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwap, 0);
 

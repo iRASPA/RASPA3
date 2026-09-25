@@ -27,8 +27,8 @@ namespace
 
 struct BoxIdentityChangeData
 {
-  ChainGrowData growData;
-  ChainRetraceData retraceData;
+  CBMC::GrowResult growData;
+  CBMC::RetraceResult retraceData;
   RunningEnergy energyFourierDifference;
   RunningEnergy tailEnergyDifference;
   RunningEnergy polarizationDifference;
@@ -63,31 +63,21 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
   const CBMC::GrowContext growContext = system.makeGrowContext();
 
   std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
-  std::optional<ChainGrowData> growData = CBMC::growMoleculeIdentityChangeInsertion(
-      random, growContext, newComponentData, newComponent, trialMoleculeId, oldStartingBead, 1.0, false, false,
-      skipBackgroundMolecule);
+  std::optional<CBMC::GrowResult> growData =
+      CBMC::growNewMolecule(random, growContext, newComponentData,
+                            {.componentId = newComponent, .moleculeId = trialMoleculeId},
+                            {.firstBead = CBMC::FirstBeadScheme::Pinned,
+                             .firstBeadPosition = oldStartingBead.position,
+                             .skipBackgroundMolecule = skipBackgroundMolecule});
   std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
-  if (!growData)
+  // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
+  // cut-offs, using the same background (the old molecule excluded) as the growth.
+  if (!growData || !CBMC::applyDualCutOffCorrection(growContext, newComponentData, *growData, skipBackgroundMolecule))
   {
     return false;
-  }
-
-  if (system.forceField.useDualCutOff)
-  {
-    // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
-    // cut-offs, using the same background (the old molecule excluded) as the growth.
-    std::optional<RunningEnergy> correctionNew = CBMC::computeDualCutOffCorrection(
-        growContext, newComponentData, growData->atoms, skipBackgroundMolecule);
-    if (!correctionNew.has_value())
-    {
-      return false;
-    }
-
-    growData->energies += correctionNew.value();
-    growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
   }
 
   data.growData = std::move(*growData);
@@ -100,25 +90,17 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
   oldComponentData.mc_moves_statistics.addConstructed(move);
 
   time_begin = std::chrono::steady_clock::now();
-  data.retraceData =
-      CBMC::retraceMoleculeIdentityChangeDeletion(random, growContext, oldComponentData, data.oldMoleculeAtoms);
+  data.retraceData = CBMC::retraceMolecule(random, growContext, oldComponentData, data.oldMoleculeAtoms,
+                                           {.firstBead = CBMC::FirstBeadScheme::Pinned});
   time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
-  if (system.forceField.useDualCutOff)
+  // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
+  // cut-offs (the old molecule excludes itself from the background through its molecule id).
+  if (!CBMC::applyDualCutOffCorrection(growContext, oldComponentData, data.oldMoleculeCopy, data.retraceData))
   {
-    // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
-    // cut-offs (the old molecule excludes itself from the background through its molecule id).
-    std::optional<RunningEnergy> correctionOld =
-        CBMC::computeDualCutOffCorrection(growContext, oldComponentData, data.oldMoleculeCopy);
-    if (!correctionOld.has_value())
-    {
-      return false;
-    }
-
-    data.retraceData.energies += correctionOld.value();
-    data.retraceData.multiplyRosenbluthWeight(-system.beta * correctionOld->potentialEnergy());
+    return false;
   }
 
   time_begin = std::chrono::steady_clock::now();

@@ -8,7 +8,7 @@ import atom;
 import double3;
 import double3x3;
 import randomnumbers;
-import forcefield;
+import cbmc_growth_context;
 import component;
 import move_statistics;
 import chiral_center;
@@ -35,7 +35,7 @@ std::vector<Atom> CBMC::randomlyOrientRing(RandomNumber &random, const std::vect
   return result;
 }
 
-std::vector<Atom> CBMC::generateRingConformation(RandomNumber &random, const ForceField &forceField, double beta,
+std::vector<Atom> CBMC::generateRingConformation(RandomNumber &random, const GrowthSettings &settings, double beta,
                                                  const Component &component, const std::vector<Atom> &chainAtoms,
                                                  const GrowStep &step)
 {
@@ -154,7 +154,7 @@ std::vector<Atom> CBMC::generateRingConformation(RandomNumber &random, const For
   const double maximumDisplacement = displacementStats.maxChange;
   const double maximumRotationAngle = rotationStats.maxChange;
   const bool haveJunction = previousBead.has_value();
-  std::size_t number_of_trials = 2 * forceField.numberOfTrialMovesPerOpenBead * nextBeads.size();
+  std::size_t number_of_trials = 2 * settings.numberOfTrialMovesPerOpenBead * nextBeads.size();
   std::vector<double3> saved(nextBeads.size());
 
   auto acceptOrReject = [&](MoveStatistics<double> &stats, std::size_t unitSize, auto restore)
@@ -184,7 +184,7 @@ std::vector<Atom> CBMC::generateRingConformation(RandomNumber &random, const For
     // crossings between ring conformers. Tracked in its own statistics: the angle is deliberately
     // full-range and never adapted, and pooling its acceptances into the adaptive rotation statistics
     // would distort that step-size optimization.
-    if (!crankshafts.empty() && random.uniform() < forceField.cbmcRingCrankshaftProbability)
+    if (!crankshafts.empty() && random.uniform() < settings.ringCrankshaftProbability)
     {
       const CBMC::GrowStep::RingCrankshaft &c = crankshafts[random.uniform_integer(0, crankshafts.size() - 1)];
       double3 pivot = chain_atoms[c.axisA].position;
@@ -196,7 +196,7 @@ std::vector<Atom> CBMC::generateRingConformation(RandomNumber &random, const For
       continue;
     }
 
-    if (haveJunction && random.uniform() < forceField.cbmcRingTiltProbability)
+    if (haveJunction && random.uniform() < settings.ringTiltProbability)
     {
       double3 axis = random.randomVectorOnUnitSphere();
       double angle = (2.0 * random.uniform() - 1.0) * maximumRotationAngle;

@@ -9,302 +9,279 @@ import component;
 import atom;
 import molecule;
 import double3;
-import double3x3;
-import simd_quatd;
-import simulationbox;
-import energy_status;
-import forcefield;
+import running_energy;
 import cbmc_results;
+import cbmc_growth_context;
 import cbmc_first_bead;
 import cbmc_chain_cbmc;
 import cbmc_chain_recoil;
-import framework;
-import interpolation_energy_grid;
+import cbmc_external_energy;
 
-// The CBMC entry points share one shape: sample (or retrace) the first bead with the scheme of the
-// move, then grow (or retrace) the remaining beads with the fragment-at-a-time operator engine, and
-// combine the two Rosenbluth weights and energies. The helpers below hold that shared shape; each
-// entry point only supplies its first-bead scheme.
+// The entry points share one shape: place (or retrace) the first bead with the scheme of the request,
+// then grow (or retrace) the remaining beads with the fragment-at-a-time operator engine, and combine
+// the two Rosenbluth weights and energies.
+//
+// Every multi-atom molecule is grown with the operator engine: a fully rigid molecule is a single
+// rigid seed fragment (placed with uniform random orientations), a flexible or semi-flexible molecule
+// is grown fragment by fragment. Single-atom molecules are complete after the first bead. The chain
+// scheme is the context's ('GrowContext::settings.chainScheme'), so a caller that needs a specific
+// scheme (Widom, the ideal-gas reference grows) selects it there rather than by editing the force
+// field.
 
-// Every multi-atom molecule is grown with the fragment-at-a-time operator engine: a fully rigid
-// molecule is a single rigid seed fragment (placed with uniform random orientations), a flexible or
-// semi-flexible molecule is grown fragment by fragment. Single-atom molecules are handled before
-// dispatch. The chain scheme is the context's ('GrowContext::chainScheme'), so a caller that needs a
-// specific scheme (Widom, the ideal-gas reference grows) selects it there rather than by editing the
-// force field.
-static std::optional<ChainGrowData> growChain(RandomNumber &random, const CBMC::GrowContext &context,
-                                              Component &component, std::span<Atom> molecule_atoms,
-                                              const std::vector<std::size_t> &beadsAlreadyPlaced,
-                                              std::optional<std::size_t> skipBackgroundMolecule = std::nullopt)
+namespace
 {
-  return context.chainScheme == CBMC::ChainScheme::RecoilGrowth
-             ? CBMC::growRecoilGrowthMoleculeChainInsertion(random, context, component, molecule_atoms,
-                                                            beadsAlreadyPlaced, skipBackgroundMolecule)
-             : CBMC::growFlexibleMoleculeChainInsertion(random, context, component, molecule_atoms,
-                                                        beadsAlreadyPlaced, skipBackgroundMolecule);
+using namespace CBMC;
+
+std::optional<GrowResult> growChain(RandomNumber &random, const GrowContext &context, const Component &component,
+                                    std::span<const Atom> moleculeAtoms,
+                                    const std::vector<std::size_t> &beadsAlreadyPlaced,
+                                    std::optional<std::size_t> skipBackgroundMolecule)
+{
+  return context.settings.chainScheme == ChainScheme::RecoilGrowth
+             ? growRecoilGrowthMoleculeChainInsertion(random, context, component, moleculeAtoms, beadsAlreadyPlaced,
+                                                      skipBackgroundMolecule)
+             : growFlexibleMoleculeChainInsertion(random, context, component, moleculeAtoms, beadsAlreadyPlaced,
+                                                  skipBackgroundMolecule);
 }
 
-static ChainRetraceData retraceChain(RandomNumber &random, const CBMC::GrowContext &context,
-                                     const Component &component, std::span<Atom> molecule_atoms,
-                                     const std::vector<std::size_t> &beadsAlreadyPlaced)
+RetraceResult retraceChain(RandomNumber &random, const GrowContext &context, const Component &component,
+                           std::span<const Atom> moleculeAtoms, const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
-  return context.chainScheme == CBMC::ChainScheme::RecoilGrowth
-             ? CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, context, component, molecule_atoms,
-                                                              beadsAlreadyPlaced)
-             : CBMC::retraceFlexibleMoleculeChainDeletion(random, context, component, molecule_atoms,
-                                                          beadsAlreadyPlaced);
+  return context.settings.chainScheme == ChainScheme::RecoilGrowth
+             ? retraceRecoilGrowthMoleculeChainDeletion(random, context, component, moleculeAtoms, beadsAlreadyPlaced)
+             : retraceFlexibleMoleculeChainDeletion(random, context, component, moleculeAtoms, beadsAlreadyPlaced);
 }
 
-// First bead of a freshly inserted molecule: the reference starting bead carrying the identity and
-// scaling attributes of the new molecule, optionally pinned at a given position (identity change,
-// distance-biased pair insertion).
-static Atom makeFirstBead(const Component &component, std::size_t selectedMolecule, double scaling,
-                          std::uint8_t groupId, bool isFractional, std::optional<double3> position = std::nullopt)
+std::vector<std::size_t> placedSetOf(std::span<const std::size_t> beadsAlreadyPlaced, const char *entryPoint)
 {
-  Atom firstBead = component.atoms[component.startingBead];
-  if (position.has_value()) firstBead.position = position.value();
-  firstBead.moleculeId = static_cast<std::uint32_t>(selectedMolecule);
-  firstBead.groupId = groupId;
-  firstBead.isFractional = isFractional;
-  firstBead.setScaling(scaling);
-  return firstBead;
+  if (beadsAlreadyPlaced.empty())
+  {
+    throw std::invalid_argument(
+        std::format("CBMC::{}: FirstBeadScheme::AlreadyPlaced requires a non-empty 'beadsAlreadyPlaced'", entryPoint));
+  }
+  return std::vector<std::size_t>(beadsAlreadyPlaced.begin(), beadsAlreadyPlaced.end());
 }
 
-// Combined result of the first-bead stage and the chain stage: energies add, Rosenbluth weights
-// multiply (both stages carry their weight as a logarithm, so the logs add).
-static ChainGrowData combineGrowData(const FirstBeadData &firstBeadData, const ChainGrowData &chainData,
-                                     double storedR)
+double3 requiredPosition(const std::optional<double3> &position, const char *entryPoint)
 {
-  return ChainGrowData(chainData.molecule, chainData.atoms, firstBeadData.energies + chainData.energies,
-                       firstBeadData.logRosenbluthWeight + chainData.logRosenbluthWeight, storedR);
+  if (!position.has_value())
+  {
+    throw std::invalid_argument(
+        std::format("CBMC::{}: FirstBeadScheme::Pinned and ::Fixed require 'firstBeadPosition'", entryPoint));
+  }
+  return position.value();
 }
 
-// Grows the remainder of a freshly inserted molecule after its first bead was sampled: a single-atom
-// molecule is already complete; otherwise the reference geometry is translated so the starting bead
-// sits at the sampled first-bead position, the identity and scaling attributes are applied to every
-// atom, and the remaining beads are grown with the operator engine.
-static std::optional<ChainGrowData> growNewMoleculeAtFirstBead(
-    RandomNumber &random, const CBMC::GrowContext &context, Component &component, std::size_t selectedComponent,
-    std::size_t selectedMolecule, double scaling, std::uint8_t groupId, bool isFractional,
-    const FirstBeadData &firstBeadData, std::optional<std::size_t> skipBackgroundMolecule = std::nullopt)
+/// First-bead stage of a grow; 'firstBead' carries the identity and scaling attributes of the molecule
+/// and, for the pinned and fixed schemes, the position.
+std::optional<FirstBeadData> growFirstBead(RandomNumber &random, const GrowContext &context, const Component &component,
+                                           const Atom &firstBead, FirstBeadScheme scheme,
+                                           std::optional<std::size_t> skipBackgroundMolecule)
+{
+  switch (scheme)
+  {
+    case FirstBeadScheme::MultipleFirstBead:
+      return growMultipleFirstBead(random, context, component, firstBead);
+    case FirstBeadScheme::Reinsertion:
+      return growMultipleFirstBeadReinsertion(random, context, component, firstBead, skipBackgroundMolecule);
+    case FirstBeadScheme::Pinned:
+      return growPinnedFirstBead(context, component, firstBead, skipBackgroundMolecule);
+    case FirstBeadScheme::Fixed:
+      return growFixedFirstBead(context, component, firstBead, skipBackgroundMolecule);
+    case FirstBeadScheme::AlreadyPlaced:
+      break;
+  }
+  throw std::invalid_argument("CBMC: no first-bead stage for FirstBeadScheme::AlreadyPlaced");
+}
+
+FirstBeadData retraceFirstBead(RandomNumber &random, const GrowContext &context, const Component &component,
+                               const Atom &firstBead, const RetraceRequest &request)
+{
+  switch (request.firstBead)
+  {
+    case FirstBeadScheme::MultipleFirstBead:
+      return retraceMultipleFirstBead(random, context, component, firstBead);
+    case FirstBeadScheme::Reinsertion:
+      return retraceMultipleFirstBeadReinsertion(context, component, firstBead, request.storedR,
+                                                 request.skipBackgroundMolecule);
+    case FirstBeadScheme::Pinned:
+      return retracePinnedFirstBead(context, component, firstBead, request.skipBackgroundMolecule);
+    case FirstBeadScheme::Fixed:
+      return retraceFixedFirstBead(context, component, firstBead, request.skipBackgroundMolecule);
+    case FirstBeadScheme::AlreadyPlaced:
+      break;
+  }
+  throw std::invalid_argument("CBMC: no first-bead stage for FirstBeadScheme::AlreadyPlaced");
+}
+
+/// Combined result of the first-bead stage and the chain stage: energies add, Rosenbluth weights
+/// multiply (both stages carry their weight as a logarithm, so the logs add).
+GrowResult combine(const FirstBeadData &firstBeadData, GrowResult chainResult)
+{
+  chainResult.energies += firstBeadData.energies;
+  chainResult.logRosenbluthWeight += firstBeadData.logRosenbluthWeight;
+  chainResult.firstBeadStoredR = firstBeadData.storedR;
+  return chainResult;
+}
+
+/// Grows the remainder of a molecule after its first bead was placed. 'templateAtoms' supplies the
+/// identity, charge, and scaling attributes of every atom (the reference atoms stamped with the new
+/// identity for a new molecule, the old atoms for a regrow); the reference geometry is translated so
+/// the starting bead sits at the sampled first-bead position.
+std::optional<GrowResult> growAfterFirstBead(RandomNumber &random, const GrowContext &context,
+                                             const Component &component, std::span<const Atom> templateAtoms,
+                                             const FirstBeadData &firstBeadData,
+                                             std::optional<std::size_t> skipBackgroundMolecule)
 {
   if (component.atoms.size() == 1)
   {
-    return ChainGrowData(Molecule(double3(firstBeadData.atom.position), simd_quatd(0.0, 0.0, 0.0, 1.0),
-                                  component.totalMass, selectedComponent, component.definedAtoms.size()),
-                         {firstBeadData.atom}, firstBeadData.energies, firstBeadData.logRosenbluthWeight, 0.0);
+    const std::vector<Atom> atoms{firstBeadData.atom};
+    return GrowResult(component.createMoleculeRecord(atoms), atoms, firstBeadData.energies,
+                      firstBeadData.logRosenbluthWeight, firstBeadData.storedR);
   }
 
-  // place the molecule centered around the first bead at 'firstBeadData.atom.position'
-  std::vector<Atom> molecule_atoms = component.atoms;
-  for (Atom &atom : molecule_atoms)
-  {
-    atom.position += firstBeadData.atom.position - component.atoms[component.startingBead].position;
-    atom.moleculeId = static_cast<std::uint32_t>(selectedMolecule);
-    atom.groupId = groupId;
-    atom.isFractional = isFractional;
-    atom.setScaling(scaling);
-  }
-
-  std::optional<ChainGrowData> chainData =
-      growChain(random, context, component, molecule_atoms, {component.startingBead}, skipBackgroundMolecule);
-  if (!chainData) return std::nullopt;
-
-  return combineGrowData(firstBeadData, *chainData, 0.0);
-}
-
-// Retraces the remainder of an existing molecule after its first bead was retraced: a single-atom
-// molecule is already complete; otherwise the remaining beads are retraced with the operator engine.
-static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::GrowContext &context,
-                                              const Component &component, std::span<Atom> molecule_atoms,
-                                              const FirstBeadData &firstBeadData)
-{
-  if (molecule_atoms.size() == 1)
-  {
-    return ChainRetraceData(firstBeadData.energies, firstBeadData.logRosenbluthWeight, 0.0);
-  }
-
-  ChainRetraceData chainData = retraceChain(random, context, component, molecule_atoms, {component.startingBead});
-
-  return ChainRetraceData(firstBeadData.energies + chainData.energies,
-                          firstBeadData.logRosenbluthWeight + chainData.logRosenbluthWeight, 0.0);
-}
-
-// Insertion:
-// Insertion means growing a new molecule, and therefore the attributes of the atoms are
-// taken from 'component.atoms'. The parameters 'scaling', 'groupId',
-// and 'isFractional' are passed to the function and set on the atoms.
-
-[[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculeSwapInsertion(
-    RandomNumber &random, const GrowContext &context, Component &component, std::size_t selectedComponent,
-    std::size_t selectedMolecule, double scaling, std::uint8_t groupId, bool isFractional)
-{
-  Atom firstBead = makeFirstBead(component, selectedMolecule, scaling, groupId, isFractional);
-
-  std::optional<FirstBeadData> const firstBeadData =
-      CBMC::growMoleculeMultipleFirstBeadSwapInsertion(random, context, component, firstBead);
-  if (!firstBeadData) return std::nullopt;
-
-  return growNewMoleculeAtFirstBead(random, context, component, selectedComponent, selectedMolecule, scaling, groupId,
-                                    isFractional, *firstBeadData);
-}
-
-[[nodiscard]] ChainRetraceData CBMC::retraceMoleculeSwapDeletion(RandomNumber &random, const GrowContext &context,
-                                                                 const Component &component,
-                                                                 std::span<Atom> molecule_atoms)
-{
-  const FirstBeadData firstBeadData = CBMC::retraceMultipleFirstBeadSwapDeletion(
-      random, context, component, molecule_atoms[component.startingBead]);
-
-  return retraceAfterFirstBead(random, context, component, molecule_atoms, firstBeadData);
-}
-
-[[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculeReinsertion(RandomNumber &random,
-                                                                         const GrowContext &context,
-                                                                         Component &component,
-                                                                         std::size_t selectedComponent,
-                                                                         Molecule &molecule,
-                                                                         std::span<Atom> molecule_atoms)
-{
-  std::size_t startingBead = component.startingBead;
-  // The molecule is regrown against a background that still contains its old copy: skip it.
-  const std::optional<std::size_t> skipBackgroundMolecule = molecule_atoms[startingBead].moleculeId;
-
-  std::optional<FirstBeadData> const firstBeadData = CBMC::growMultipleFirstBeadReinsertion(
-      random, context, component, molecule_atoms[startingBead], skipBackgroundMolecule);
-
-  if (!firstBeadData) return std::nullopt;
-
-  if (molecule_atoms.size() == 1)
-  {
-    Molecule firstBeadMolecule = Molecule(firstBeadData->atom.position, simd_quatd(), component.totalMass,
-                                          selectedComponent, component.definedAtoms.size());
-    firstBeadMolecule.atomIndex = molecule.atomIndex;
-    firstBeadMolecule.numberOfAtoms = molecule.numberOfAtoms;
-
-    return ChainGrowData(firstBeadMolecule, {firstBeadData->atom}, firstBeadData->energies,
-                         firstBeadData->logRosenbluthWeight, firstBeadData->storedR);
-  }
-
-  // place the molecule centered around the first bead at 'firstBeadData->atom.position'; the
-  // identity and scaling attributes are copied from the old molecule, since we reinsert the same
-  // molecule.
-  std::vector<Atom> atoms = component.atoms;
+  const double3 shift = firstBeadData.atom.position - component.atoms[component.startingBead].position;
+  std::vector<Atom> atoms(component.atoms.size());
   for (std::size_t i = 0; i < atoms.size(); ++i)
   {
-    atoms[i].position += firstBeadData->atom.position - component.atoms[startingBead].position;
-    atoms[i].charge = molecule_atoms[i].charge;
-    atoms[i].scalingVDW = molecule_atoms[i].scalingVDW;
-    atoms[i].scalingCoulomb = molecule_atoms[i].scalingCoulomb;
-    atoms[i].moleculeId = molecule_atoms[i].moleculeId;
-    atoms[i].componentId = molecule_atoms[i].componentId;
-    atoms[i].groupId = molecule_atoms[i].groupId;
-    atoms[i].isFractional = molecule_atoms[i].isFractional;
+    atoms[i] = templateAtoms[i];
+    atoms[i].position = component.atoms[i].position + shift;
   }
 
-  std::optional<ChainGrowData> chainData =
+  std::optional<GrowResult> chainResult =
       growChain(random, context, component, atoms, {component.startingBead}, skipBackgroundMolecule);
-  if (!chainData) return std::nullopt;
+  if (!chainResult) return std::nullopt;
 
-  // Copy data over from old molecule, since we are reinserting the same molecule
-  chainData->molecule.atomIndex = molecule.atomIndex;
-  chainData->molecule.numberOfAtoms = molecule.numberOfAtoms;
-
-  return combineGrowData(*firstBeadData, *chainData, firstBeadData->storedR);
+  return combine(firstBeadData, std::move(*chainResult));
 }
 
-[[nodiscard]] std::optional<ChainRetraceData> CBMC::retraceMoleculeReinsertion(
-    RandomNumber &random, const GrowContext &context, const Component &component, [[maybe_unused]] Molecule &molecule,
-    std::span<Atom> molecule_atoms, double storedR)
+RetraceResult retraceAfterFirstBead(RandomNumber &random, const GrowContext &context, const Component &component,
+                                    std::span<const Atom> moleculeAtoms, const FirstBeadData &firstBeadData)
 {
-  const std::optional<FirstBeadData> firstBeadData = CBMC::retraceMultipleFirstBeadReinsertion(
-      random, context, component, molecule_atoms[component.startingBead], storedR,
-      std::optional<std::size_t>{molecule_atoms[component.startingBead].moleculeId});
+  if (moleculeAtoms.size() == 1)
+  {
+    return RetraceResult(firstBeadData.energies, firstBeadData.logRosenbluthWeight);
+  }
+
+  RetraceResult chainResult = retraceChain(random, context, component, moleculeAtoms, {component.startingBead});
+  chainResult.energies += firstBeadData.energies;
+  chainResult.logRosenbluthWeight += firstBeadData.logRosenbluthWeight;
+  return chainResult;
+}
+}  // namespace
+
+std::optional<CBMC::GrowResult> CBMC::growNewMolecule(RandomNumber &random, const GrowContext &context,
+                                                      const Component &component,
+                                                      const NewMoleculeIdentity &identity, const GrowRequest &request)
+{
+  if (request.firstBead == FirstBeadScheme::AlreadyPlaced)
+  {
+    throw std::invalid_argument(
+        "CBMC::growNewMolecule: a new molecule has no placed beads; use regrowMolecule for AlreadyPlaced");
+  }
+
+  // The reference atoms stamped with the identity of the new molecule.
+  std::vector<Atom> templateAtoms = component.atoms;
+  for (Atom &atom : templateAtoms)
+  {
+    atom.moleculeId = static_cast<std::uint32_t>(identity.moleculeId);
+    atom.groupId = identity.groupId;
+    atom.isFractional = identity.isFractional;
+    atom.setScaling(identity.scaling);
+  }
+
+  Atom firstBead = templateAtoms[component.startingBead];
+  if (request.firstBead == FirstBeadScheme::Pinned || request.firstBead == FirstBeadScheme::Fixed)
+  {
+    firstBead.position = requiredPosition(request.firstBeadPosition, "growNewMolecule");
+  }
+
+  const std::optional<FirstBeadData> firstBeadData =
+      growFirstBead(random, context, component, firstBead, request.firstBead, request.skipBackgroundMolecule);
   if (!firstBeadData) return std::nullopt;
 
-  return retraceAfterFirstBead(random, context, component, molecule_atoms, *firstBeadData);
+  return growAfterFirstBead(random, context, component, templateAtoms, *firstBeadData,
+                            request.skipBackgroundMolecule);
 }
 
-[[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculePartialReinsertion(
-    RandomNumber &random, const GrowContext &context, Component &component,
-    [[maybe_unused]] std::size_t selectedComponent, Molecule &molecule, std::span<Atom> moleculeAtoms,
-    const std::vector<std::size_t> &beadsAlreadyPlaced)
+std::optional<CBMC::GrowResult> CBMC::regrowMolecule(RandomNumber &random, const GrowContext &context,
+                                                     const Component &component, const Molecule &molecule,
+                                                     std::span<const Atom> moleculeAtoms, const GrowRequest &request)
 {
-  const std::optional<std::size_t> skipBackgroundMolecule = moleculeAtoms.front().moleculeId;
+  // The molecule is regrown against a background that still contains its old copy: skip it.
+  const std::optional<std::size_t> skipBackgroundMolecule =
+      request.skipBackgroundMolecule.has_value()
+          ? request.skipBackgroundMolecule
+          : std::optional<std::size_t>{moleculeAtoms[component.startingBead].moleculeId};
 
-  std::optional<ChainGrowData> chainData =
-      growChain(random, context, component, moleculeAtoms, beadsAlreadyPlaced, skipBackgroundMolecule);
+  std::optional<GrowResult> result;
+  if (request.firstBead == FirstBeadScheme::AlreadyPlaced)
+  {
+    result = growChain(random, context, component, moleculeAtoms,
+                       placedSetOf(request.beadsAlreadyPlaced, "regrowMolecule"), skipBackgroundMolecule);
+  }
+  else
+  {
+    Atom firstBead = moleculeAtoms[component.startingBead];
+    if (request.firstBead == FirstBeadScheme::Pinned || request.firstBead == FirstBeadScheme::Fixed)
+    {
+      firstBead.position = requiredPosition(request.firstBeadPosition, "regrowMolecule");
+    }
 
-  if (!chainData) return std::nullopt;
+    const std::optional<FirstBeadData> firstBeadData =
+        growFirstBead(random, context, component, firstBead, request.firstBead, skipBackgroundMolecule);
+    if (!firstBeadData) return std::nullopt;
 
-  // Copy data over from old molecule, since we are reinserting the same molecule
-  chainData->molecule.atomIndex = molecule.atomIndex;
-  chainData->molecule.numberOfAtoms = molecule.numberOfAtoms;
+    result = growAfterFirstBead(random, context, component, moleculeAtoms, *firstBeadData, skipBackgroundMolecule);
+  }
+  if (!result) return std::nullopt;
 
-  return ChainGrowData(chainData->molecule, chainData->atoms, chainData->energies, chainData->logRosenbluthWeight,
-                       0.0);
+  // The same molecule is reinserted: it keeps its record in the system.
+  result->molecule.atomIndex = molecule.atomIndex;
+  result->molecule.numberOfAtoms = molecule.numberOfAtoms;
+  return result;
 }
 
-[[nodiscard]] ChainRetraceData CBMC::retraceMoleculePartialReinsertion(
-    RandomNumber &random, const GrowContext &context, const Component &component, [[maybe_unused]] Molecule &molecule,
-    std::span<Atom> moleculeAtoms, const std::vector<std::size_t> &beadsAlreadyPlaced)
+CBMC::RetraceResult CBMC::retraceMolecule(RandomNumber &random, const GrowContext &context, const Component &component,
+                                          std::span<const Atom> moleculeAtoms, const RetraceRequest &request)
 {
-  ChainRetraceData chainData = retraceChain(random, context, component, moleculeAtoms, beadsAlreadyPlaced);
+  if (request.firstBead == FirstBeadScheme::AlreadyPlaced)
+  {
+    return retraceChain(random, context, component, moleculeAtoms,
+                        placedSetOf(request.beadsAlreadyPlaced, "retraceMolecule"));
+  }
 
-  return ChainRetraceData(chainData.energies, chainData.logRosenbluthWeight, 0.0);
-}
-
-[[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculeIdentityChangeInsertion(
-    RandomNumber &random, const GrowContext &context, Component &component, std::size_t selectedComponent,
-    std::size_t selectedMolecule, const Atom &oldStartingBead, double scaling, std::uint8_t groupId, bool isFractional,
-    std::optional<std::size_t> skipBackgroundMolecule)
-{
-  Atom firstBead =
-      makeFirstBead(component, selectedMolecule, scaling, groupId, isFractional, oldStartingBead.position);
-
-  std::optional<FirstBeadData> const firstBeadData =
-      CBMC::growMultipleFirstBeadPartialInsertion(context, component, firstBead, skipBackgroundMolecule);
-  if (!firstBeadData) return std::nullopt;
-
-  return growNewMoleculeAtFirstBead(random, context, component, selectedComponent, selectedMolecule, scaling, groupId,
-                                    isFractional, *firstBeadData, skipBackgroundMolecule);
-}
-
-[[nodiscard]] ChainRetraceData CBMC::retraceMoleculeIdentityChangeDeletion(
-    RandomNumber &random, const GrowContext &context, const Component &component,
-    std::span<Atom> molecule_atoms)
-{
   const FirstBeadData firstBeadData =
-      CBMC::retraceMultipleFirstBeadPartialDeletion(context, component, molecule_atoms[component.startingBead]);
+      retraceFirstBead(random, context, component, moleculeAtoms[component.startingBead], request);
 
-  return retraceAfterFirstBead(random, context, component, molecule_atoms, firstBeadData);
+  return retraceAfterFirstBead(random, context, component, moleculeAtoms, firstBeadData);
 }
 
-[[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculePairSecondSwapInsertion(
-    RandomNumber &random, const GrowContext &context, Component &component, std::size_t selectedComponent,
-    std::size_t selectedMolecule, double3 fixedFirstBeadPosition, double scaling, std::uint8_t groupId,
-    bool isFractional)
+bool CBMC::applyDualCutOffCorrection(const GrowContext &context, const Component &component, GrowResult &result,
+                                     std::optional<std::size_t> skipBackgroundMolecule)
 {
-  Atom firstBead =
-      makeFirstBead(component, selectedMolecule, scaling, groupId, isFractional, fixedFirstBeadPosition);
+  if (!context.forceField.useDualCutOff) return true;
 
-  std::optional<FirstBeadData> const firstBeadData = CBMC::growFirstBeadAtFixedPosition(context, component, firstBead);
-  if (!firstBeadData) return std::nullopt;
+  const std::optional<RunningEnergy> correction =
+      computeDualCutOffCorrection(context, component, result.atoms, skipBackgroundMolecule);
+  if (!correction.has_value()) return false;
 
-  return growNewMoleculeAtFirstBead(random, context, component, selectedComponent, selectedMolecule, scaling, groupId,
-                                    isFractional, *firstBeadData);
+  result.energies += correction.value();
+  result.multiplyRosenbluthWeight(-context.beta * correction->potentialEnergy());
+  return true;
 }
 
-[[nodiscard]] ChainRetraceData CBMC::retraceMoleculePairSecondSwapDeletion(RandomNumber &random,
-                                                                           const GrowContext &context,
-                                                                           const Component &component,
-                                                                           std::span<Atom> molecule_atoms)
+bool CBMC::applyDualCutOffCorrection(const GrowContext &context, const Component &component,
+                                     std::span<const Atom> moleculeAtoms, RetraceResult &result,
+                                     std::optional<std::size_t> skipBackgroundMolecule)
 {
-  // The first bead is pinned (weight one), but the chain retrace draws the trial directions of the
-  // remaining beads from the caller's generator, like every other retrace: the move stays
-  // reproducible under a fixed seed.
-  const FirstBeadData firstBeadData =
-      CBMC::retraceFirstBeadAtFixedPosition(context, component, molecule_atoms[component.startingBead]);
+  if (!context.forceField.useDualCutOff) return true;
 
-  return retraceAfterFirstBead(random, context, component, molecule_atoms, firstBeadData);
+  const std::optional<RunningEnergy> correction =
+      computeDualCutOffCorrection(context, component, moleculeAtoms, skipBackgroundMolecule);
+  if (!correction.has_value()) return false;
+
+  result.energies += correction.value();
+  result.multiplyRosenbluthWeight(-context.beta * correction->potentialEnergy());
+  return true;
 }

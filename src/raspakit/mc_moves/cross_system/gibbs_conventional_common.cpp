@@ -447,7 +447,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     RunningEnergy energy{};
     double acceptanceFactor{1.0};
     std::pair<Molecule, std::vector<Atom>> conventionalInsert{};
-    std::optional<ChainGrowData> cbmcInsert{};
+    std::optional<CBMC::GrowResult> cbmcInsert{};
     std::size_t selectedInteger{0};
   };
 
@@ -459,7 +459,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     const double integerCount = static_cast<double>(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     const double volume = system.simulationBox.volume;
     const CBMC::GrowContext context = system.makeGrowContext();
-    const bool useDualCutOff = system.forceField.useDualCutOff;
 
     if (moveKind == GibbsMoveKind::LambdaChange)
     {
@@ -470,27 +469,16 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     {
       if (useCBMC)
       {
-        trial.cbmcInsert = CBMC::growMoleculeSwapInsertion(random, context, component, selectedComponent,
-                                                           system.numberOfMolecules(), lambdaNew,
-                                                           component.lambdaGibbs.dUdlambdaGroupId, true);
-        if (!trial.cbmcInsert.has_value())
+        trial.cbmcInsert = CBMC::growNewMolecule(random, context, component,
+                                                 {.componentId = selectedComponent,
+                                                  .moleculeId = system.numberOfMolecules(),
+                                                  .scaling = lambdaNew,
+                                                  .groupId = component.lambdaGibbs.dUdlambdaGroupId,
+                                                  .isFractional = true});
+        // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full cut-offs.
+        if (!trial.cbmcInsert.has_value() || !CBMC::applyDualCutOffCorrection(context, component, *trial.cbmcInsert))
         {
           return false;
-        }
-
-        if (useDualCutOff)
-        {
-          // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
-          // cut-offs, so that Rosenbluth weight and energies behave as if grown at the full cut-offs.
-          std::optional<RunningEnergy> correctionNew =
-              CBMC::computeDualCutOffCorrection(context, component, trial.cbmcInsert->atoms);
-          if (!correctionNew.has_value())
-          {
-            return false;
-          }
-
-          trial.cbmcInsert->energies += correctionNew.value();
-          trial.cbmcInsert->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
         }
 
         RunningEnergy ewaldTail =
@@ -530,22 +518,13 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     if (useCBMC)
     {
       std::vector<Atom> oldSelectedMolecule(selectedMolecule.begin(), selectedMolecule.end());
-      ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(random, context, component, selectedMolecule);
+      CBMC::RetraceResult retraceData = CBMC::retraceMolecule(random, context, component, selectedMolecule);
 
-      if (useDualCutOff)
+      // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full cut-offs.
+      if (!CBMC::applyDualCutOffCorrection(context, component, oldSelectedMolecule, retraceData))
       {
-        // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
-        // cut-offs, so that the Rosenbluth weight behaves as if retraced at the full cut-offs.
-        std::optional<RunningEnergy> correctionOld =
-            CBMC::computeDualCutOffCorrection(context, component, oldSelectedMolecule);
-        if (!correctionOld.has_value())
-        {
-          std::copy(oldSelectedMolecule.begin(), oldSelectedMolecule.end(), selectedMolecule.begin());
-          return false;
-        }
-
-        retraceData.energies += correctionOld.value();
-        retraceData.multiplyRosenbluthWeight(-system.beta * correctionOld->potentialEnergy());
+        std::copy(oldSelectedMolecule.begin(), oldSelectedMolecule.end(), selectedMolecule.begin());
+        return false;
       }
 
       RunningEnergy ewaldTail =

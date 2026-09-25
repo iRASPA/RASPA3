@@ -24,8 +24,8 @@ export namespace CBMC
  * returned molecule has every bead placed. Returns std::nullopt when some step has no non-overlapping
  * trial direction or its factor falls below 'minimumRosenbluthFactor' (an ordinary rejection).
  */
-[[nodiscard]] std::optional<ChainGrowData> growFlexibleMoleculeChainInsertion(
-    RandomNumber &random, const GrowContext &context, Component &component, std::span<Atom> molecule_atoms,
+[[nodiscard]] std::optional<CBMC::GrowResult> growFlexibleMoleculeChainInsertion(
+    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced, std::optional<std::size_t> skipBackgroundMolecule = std::nullopt);
 
 /**
@@ -35,7 +35,7 @@ export namespace CBMC
  * overlap, so this signals an inconsistent simulation state rather than silently assigning a weight
  * (see the error contract in the 'cbmc' module).
  */
-[[nodiscard]] ChainRetraceData retraceFlexibleMoleculeChainDeletion(
-    RandomNumber &random, const GrowContext &context, const Component &component, std::span<Atom> molecule_atoms,
+[[nodiscard]] CBMC::RetraceResult retraceFlexibleMoleculeChainDeletion(
+    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced);
 }  // namespace CBMC

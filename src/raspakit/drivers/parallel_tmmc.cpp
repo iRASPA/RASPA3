@@ -121,14 +121,13 @@ bool growToMacrostate(System& system, RandomNumber& rng, std::size_t target)
   {
     // The grow filters every trial against the blocking pockets, so the returned molecule needs no
     // further pocket check.
-    std::optional<ChainGrowData> growData = std::nullopt;
+    std::optional<CBMC::GrowResult> growData = std::nullopt;
     std::size_t attempts = 0uz;
     do
     {
-      growData = CBMC::growMoleculeSwapInsertion(
-          rng,
-          system.makeGrowContext(CBMC::CutOffMode::Full),
-          system.components[componentId], componentId, system.numberOfMolecules(), 1.0, false, false);
+      growData = CBMC::growNewMolecule(rng, system.makeGrowContext(CBMC::CutOffMode::Full),
+                                       system.components[componentId],
+                                       {.componentId = componentId, .moleculeId = system.numberOfMolecules()});
       ++attempts;
       if (attempts >= maxGrowAttempts) return false;
     } while (!growData || growData->energies.potentialEnergy() > system.forceField.energyOverlapCriteria);

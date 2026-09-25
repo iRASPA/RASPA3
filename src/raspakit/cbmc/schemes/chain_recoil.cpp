@@ -146,7 +146,7 @@ static bool feelerExists(RandomNumber &random, const RecoilContext &ctx, std::si
 
   for (std::size_t j = 0; j != ctx.numberOfTrialDirections; ++j)
   {
-    Trial trial = CBMC::generateRecoilTrial(random, ctx.env.forceField, ctx.env.beta, ctx.component, atoms, step);
+    Trial trial = CBMC::generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
 
     std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, step, atoms, trial.positions);
     if (!energy.has_value()) continue;
@@ -178,7 +178,7 @@ static bool feelerExistsFrom(RandomNumber &random, const RecoilContext &ctx, std
   return found;
 }
 
-enum class GrowResult { Complete, DeadEnd, Discard };
+enum class GrowOutcome { Complete, DeadEnd, Discard };
 
 struct GrowRecord
 {
@@ -188,16 +188,16 @@ struct GrowRecord
   std::size_t triedCount{0};
 };
 
-static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, std::size_t seg,
+static GrowOutcome growRecursive(RandomNumber &random, const RecoilContext &ctx, std::size_t seg,
                                 std::vector<Atom> &atoms, std::size_t &maxHead, std::vector<GrowRecord> &records)
 {
-  if (seg == ctx.steps.size()) return GrowResult::Complete;
+  if (seg == ctx.steps.size()) return GrowOutcome::Complete;
 
   const Step &step = ctx.steps[seg];
 
   for (std::size_t j = 0; j != ctx.numberOfTrialDirections; ++j)
   {
-    Trial trial = CBMC::generateRecoilTrial(random, ctx.env.forceField, ctx.env.beta, ctx.component, atoms, step);
+    Trial trial = CBMC::generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
 
     std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, step, atoms, trial.positions);
     if (!energy.has_value()) continue;
@@ -209,35 +209,35 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
     placeBeads(atoms, step, trial.positions);
     maxHead = std::max(maxHead, seg);
 
-    GrowResult result = growRecursive(random, ctx, seg + 1, atoms, maxHead, records);
-    if (result == GrowResult::Complete)
+    GrowOutcome result = growRecursive(random, ctx, seg + 1, atoms, maxHead, records);
+    if (result == GrowOutcome::Complete)
     {
       records[seg] = {std::move(trial), energy.value(), open_probability, j + 1};
-      return GrowResult::Complete;
+      return GrowOutcome::Complete;
     }
 
     saved.restore(atoms, step);
 
-    if (result == GrowResult::Discard) return GrowResult::Discard;
+    if (result == GrowOutcome::Discard) return GrowOutcome::Discard;
 
-    if (maxHead + 1 >= seg + ctx.recoilLength) return GrowResult::Discard;
+    if (maxHead + 1 >= seg + ctx.recoilLength) return GrowOutcome::Discard;
   }
 
-  return GrowResult::DeadEnd;
+  return GrowOutcome::DeadEnd;
 }
 
-[[nodiscard]] std::optional<ChainGrowData> CBMC::growRecoilGrowthMoleculeChainInsertion(
-    RandomNumber &random, const GrowContext &context, Component &component, std::span<Atom> molecule_atoms,
+[[nodiscard]] std::optional<CBMC::GrowResult> CBMC::growRecoilGrowthMoleculeChainInsertion(
+    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced, std::optional<std::size_t> skipBackgroundMolecule)
 {
-  const ForceField &forceField = context.forceField;
+  const GrowthSettings &settings = context.settings;
 
   const std::vector<Step> &steps = component.growthPlan(beadsAlreadyPlaced);
   RecoilContext ctx{context,
                     component,
                     skipBackgroundMolecule,
-                    std::max<std::size_t>(1, forceField.recoilGrowthNumberOfTrialDirections),
-                    std::max<std::size_t>(1, forceField.recoilGrowthMaximumRecoilLength),
+                    settings.recoilGrowthNumberOfTrialDirections,
+                    settings.recoilGrowthMaximumRecoilLength,
                     steps,
                     component.recoilReferenceStepEnergies(beadsAlreadyPlaced)};
 
@@ -245,7 +245,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
   std::vector<GrowRecord> records(ctx.steps.size());
   std::size_t maxHead = 0;
 
-  if (growRecursive(random, ctx, 0, chain_atoms, maxHead, records) != GrowResult::Complete) return std::nullopt;
+  if (growRecursive(random, ctx, 0, chain_atoms, maxHead, records) != GrowOutcome::Complete) return std::nullopt;
 
   double chain_log_rosenbluth_weight = 0.0;
   RunningEnergy chain_external_energies{};
@@ -259,7 +259,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
     for (std::size_t j = record.triedCount; j < ctx.numberOfTrialDirections; ++j)
     {
       Trial alternative =
-          CBMC::generateRecoilTrial(random, ctx.env.forceField, ctx.env.beta, ctx.component, chain_atoms, step);
+          CBMC::generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, chain_atoms, step);
 
       std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, step, chain_atoms, alternative.positions);
       if (!energy.has_value()) continue;
@@ -291,7 +291,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
     // Per-step overlap guard: the cumulative weight of a long chain is below any fixed absolute
     // threshold (it decays exponentially with chain length), so guarding the running product would
     // reject every grow of a long polymer. Mirrors the CBMC insertion path.
-    if (step_weight < forceField.minimumRosenbluthFactor) return std::nullopt;
+    if (step_weight < settings.minimumRosenbluthFactor) return std::nullopt;
     // The per-step factor is bounded below by the guard, so its log is finite; the log sum stays exact
     // where the raw product of a long chain would underflow to zero.
     chain_log_rosenbluth_weight += std::log(step_weight);
@@ -303,22 +303,22 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
   // grown positions (used downstream to regenerate the atoms of rigid molecules).
   Molecule molecule = component.createMoleculeRecord(chain_atoms);
 
-  return ChainGrowData(molecule, chain_atoms, chain_external_energies + internal_energies,
-                       chain_log_rosenbluth_weight, 0.0);
+  return CBMC::GrowResult(molecule, chain_atoms, chain_external_energies + internal_energies,
+                       chain_log_rosenbluth_weight);
 }
 
-[[nodiscard]] ChainRetraceData CBMC::retraceRecoilGrowthMoleculeChainDeletion(
-    RandomNumber &random, const GrowContext &context, const Component &component, std::span<Atom> molecule_atoms,
+[[nodiscard]] CBMC::RetraceResult CBMC::retraceRecoilGrowthMoleculeChainDeletion(
+    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
-  const ForceField &forceField = context.forceField;
+  const GrowthSettings &settings = context.settings;
 
   const std::vector<Step> &steps = component.growthPlan(beadsAlreadyPlaced);
   RecoilContext ctx{context,
                     component,
                     std::nullopt,
-                    std::max<std::size_t>(1, forceField.recoilGrowthNumberOfTrialDirections),
-                    std::max<std::size_t>(1, forceField.recoilGrowthMaximumRecoilLength),
+                    settings.recoilGrowthNumberOfTrialDirections,
+                    settings.recoilGrowthMaximumRecoilLength,
                     steps,
                     component.recoilReferenceStepEnergies(beadsAlreadyPlaced)};
 
@@ -361,7 +361,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
     double open_probability = openProbability(ctx, seg, selected_potential);
 
     double torsion_weight =
-        CBMC::oldConfigurationTorsionWeight(random, ctx.env.forceField, ctx.env.beta, component, old_atoms, step);
+        CBMC::oldConfigurationTorsionWeight(random, ctx.env.settings, ctx.env.beta, component, old_atoms, step);
 
     std::size_t numberOfFeelers = 1;
     if (ctx.numberOfTrialDirections > 1)
@@ -369,7 +369,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
       for (std::size_t j = 1; j < ctx.numberOfTrialDirections; ++j)
       {
         Trial trial =
-            CBMC::generateRecoilTrial(random, ctx.env.forceField, ctx.env.beta, ctx.component, old_atoms, step);
+            CBMC::generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, old_atoms, step);
 
         std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, step, old_atoms, trial.positions);
         if (!energy.has_value()) continue;
@@ -400,5 +400,5 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
 
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(old_atoms);
 
-  return ChainRetraceData(chain_external_energies + internal_energies, chain_log_rosenbluth_weight, 0.0);
+  return CBMC::RetraceResult(chain_external_energies + internal_energies, chain_log_rosenbluth_weight);
 }

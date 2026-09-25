@@ -376,13 +376,17 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
     {
       numberOfMoleculesPerComponent[componentId] = 0;
 
-      auto growFractionalMolecule = [&](std::uint8_t groupId) -> std::optional<ChainGrowData>
+      auto growFractionalMolecule = [&](std::uint8_t groupId) -> std::optional<CBMC::GrowResult>
       {
-        std::optional<ChainGrowData> growData = std::nullopt;
+        std::optional<CBMC::GrowResult> growData = std::nullopt;
         do
         {
-          growData = CBMC::growMoleculeSwapInsertion(random, creationContext(), components[componentId], componentId,
-                                                     numberOfMolecules(), 0.0, groupId, true);
+          growData = CBMC::growNewMolecule(random, creationContext(), components[componentId],
+                                           {.componentId = componentId,
+                                            .moleculeId = numberOfMolecules(),
+                                            .scaling = 0.0,
+                                            .groupId = groupId,
+                                            .isFractional = true});
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
         return growData;
       };
@@ -390,7 +394,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       if (numberOfGCFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
         const std::size_t slot = indexOfGCFractionalMoleculesPerComponent_CFCMC(componentId);
-        const std::optional<ChainGrowData> growData =
+        const std::optional<CBMC::GrowResult> growData =
             growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
         insertFractionalMolecule(componentId, growData->molecule, growData->atoms, slot);
       }
@@ -398,7 +402,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       if (numberOfPairGCFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
         const std::size_t slot = indexOfPairGCFractionalMoleculesPerComponent_CFCMC(componentId);
-        const std::optional<ChainGrowData> growData =
+        const std::optional<CBMC::GrowResult> growData =
             growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
         insertFractionalMolecule(componentId, growData->molecule, growData->atoms, slot);
       }
@@ -406,7 +410,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       if (numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
         const std::size_t slot = indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(componentId);
-        const std::optional<ChainGrowData> growData =
+        const std::optional<CBMC::GrowResult> growData =
             growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
         insertFractionalMolecule(componentId, growData->molecule, growData->atoms, slot);
       }
@@ -414,7 +418,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       if (numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
         const std::size_t slot = indexOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(componentId);
-        const std::optional<ChainGrowData> growData =
+        const std::optional<CBMC::GrowResult> growData =
             growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
         insertFractionalMolecule(componentId, growData->molecule, growData->atoms, slot);
       }
@@ -423,7 +427,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       for (std::size_t k = 0; k < numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC[componentId]; ++k)
       {
         const std::size_t slot = indexOfGroupSwapFractionalMoleculesPerComponent_CFCMC(componentId) + k;
-        const std::optional<ChainGrowData> growData =
+        const std::optional<CBMC::GrowResult> growData =
             growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
         insertFractionalMolecule(componentId, growData->molecule, growData->atoms, slot);
       }
@@ -431,7 +435,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       for (std::size_t k = 0; k < numberOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC[componentId]; ++k)
       {
         const std::size_t slot = indexOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC(componentId) + k;
-        const std::optional<ChainGrowData> growData =
+        const std::optional<CBMC::GrowResult> growData =
             growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
         insertFractionalMolecule(componentId, growData->molecule, growData->atoms, slot);
       }
@@ -439,7 +443,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       if (numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
         const std::size_t slot = indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(componentId);
-        const std::optional<ChainGrowData> growData =
+        const std::optional<CBMC::GrowResult> growData =
             growFractionalMolecule(fractionalSlotDUdlambdaGroupId(componentId, slot));
         insertFractionalMolecule(componentId, growData->molecule, growData->atoms, slot);
       }
@@ -447,7 +451,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       if (numberOfGibbsFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
         const std::uint8_t groupId = components[componentId].lambdaGibbs.dUdlambdaGroupId;
-        const std::optional<ChainGrowData> growData = growFractionalMolecule(groupId);
+        const std::optional<CBMC::GrowResult> growData = growFractionalMolecule(groupId);
         std::vector<Atom> atoms = growData->atoms;
         for (Atom& atom : atoms)
         {
@@ -544,11 +548,11 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
     {
       // The grow filters every trial against the blocking pockets, so the returned molecule needs no
       // further pocket check.
-      std::optional<ChainGrowData> growData = std::nullopt;
+      std::optional<CBMC::GrowResult> growData = std::nullopt;
       do
       {
-        growData = CBMC::growMoleculeSwapInsertion(random, creationContext(), components[componentId], componentId,
-                                                   numberOfMolecules(), 1.0, false, false);
+        growData = CBMC::growNewMolecule(random, creationContext(), components[componentId],
+                                         {.componentId = componentId, .moleculeId = numberOfMolecules()});
 
       } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
@@ -647,18 +651,20 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
   constexpr std::size_t numberOfReinsertionMoves = 20;
   for (std::size_t move = 0; move != numberOfReinsertionMoves; ++move)
   {
-    std::optional<ChainGrowData> growData =
-        CBMC::growMoleculeReinsertion(random, context, component, selectedComponent, scratchMolecule, scratchAtoms);
+    std::optional<CBMC::GrowResult> growData = CBMC::regrowMolecule(
+        random, context, component, scratchMolecule, scratchAtoms, {.firstBead = CBMC::FirstBeadScheme::Reinsertion});
     if (!growData) continue;
 
-    const std::optional<ChainRetraceData> retraceData = CBMC::retraceMoleculeReinsertion(
-        random, context, component, scratchMolecule, scratchAtoms, growData->storedR);
-    if (!retraceData) continue;
+    const CBMC::RetraceResult retraceData =
+        CBMC::retraceMolecule(random, context, component, scratchAtoms,
+                              {.firstBead = CBMC::FirstBeadScheme::Reinsertion,
+                               .storedR = growData->firstBeadStoredR,
+                               .skipBackgroundMolecule = scratchAtoms[component.startingBead].moleculeId});
 
     // Metropolis acceptance for the reinsertion move in the isolated system (no Ewald/polarization/tail
     // corrections apply): accept with min(1, W_new / W_old), with the ratio evaluated in log space so it
     // stays exact for long chains whose raw Rosenbluth weights underflow to zero.
-    if (random.uniform() < std::exp(growData->logRosenbluthWeight - retraceData->logRosenbluthWeight))
+    if (random.uniform() < std::exp(growData->logRosenbluthWeight - retraceData.logRosenbluthWeight))
     {
       std::copy(growData->atoms.begin(), growData->atoms.end(), scratchAtoms.begin());
       scratchMolecule = growData->molecule;

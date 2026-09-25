@@ -383,32 +383,17 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::size_t newMoleculeIndex = systemA.numberOfMolecules();
     const CBMC::GrowContext growContextA = systemA.makeGrowContext();
     time_begin = std::chrono::steady_clock::now();
-    std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-        random, growContextA, componentA, selectedComponent, newMoleculeIndex, 1.0, false, false);
+    std::optional<CBMC::GrowResult> growData = CBMC::growNewMolecule(
+        random, growContextA, componentA, {.componentId = selectedComponent, .moleculeId = newMoleculeIndex});
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeNonEwald] += (time_end - time_begin);
     systemA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeNonEwald] += (time_end - time_begin);
 
-    if (!growData)
+    // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full cut-offs.
+    if (!growData || !CBMC::applyDualCutOffCorrection(growContextA, componentA, *growData))
     {
       restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
       return std::nullopt;
-    }
-
-    if (systemA.forceField.useDualCutOff)
-    {
-      // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
-      // cut-offs, so that Rosenbluth weight and energies behave as if grown at the full cut-offs.
-      std::optional<RunningEnergy> correctionNew =
-          CBMC::computeDualCutOffCorrection(growContextA, componentA, growData->atoms);
-      if (!correctionNew.has_value())
-      {
-        restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
-        return std::nullopt;
-      }
-
-      growData->energies += correctionNew.value();
-      growData->multiplyRosenbluthWeight(-systemA.beta * correctionNew->potentialEnergy());
     }
 
     time_begin = std::chrono::steady_clock::now();
@@ -439,26 +424,17 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     const CBMC::GrowContext retraceContextB = systemB.makeGrowContext();
     time_begin = std::chrono::steady_clock::now();
-    ChainRetraceData retraceData =
-        CBMC::retraceMoleculeSwapDeletion(random, retraceContextB, componentB, selectedIntegerMoleculeB);
+    CBMC::RetraceResult retraceData =
+        CBMC::retraceMolecule(random, retraceContextB, componentB, selectedIntegerMoleculeB);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeNonEwald] += (time_end - time_begin);
     systemA.mc_moves_cputime[move][Move::Timing::LambdaInterchangeNonEwald] += (time_end - time_begin);
 
-    if (systemB.forceField.useDualCutOff)
+    // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full cut-offs.
+    if (!CBMC::applyDualCutOffCorrection(retraceContextB, componentB, oldSelectedIntegerMoleculeB, retraceData))
     {
-      // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
-      // cut-offs, so that Rosenbluth weight and energies behave as if retraced at the full cut-offs.
-      std::optional<RunningEnergy> correctionOld =
-          CBMC::computeDualCutOffCorrection(retraceContextB, componentB, oldSelectedIntegerMoleculeB);
-      if (!correctionOld.has_value())
-      {
-        restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
-        return std::nullopt;
-      }
-
-      retraceData.energies += correctionOld.value();
-      retraceData.multiplyRosenbluthWeight(-systemB.beta * correctionOld->potentialEnergy());
+      restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
+      return std::nullopt;
     }
 
     time_begin = std::chrono::steady_clock::now();
@@ -719,35 +695,23 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
         systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB);
     const CBMC::GrowContext growContextB = systemB.makeGrowContext();
     time_begin = std::chrono::steady_clock::now();
-    std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-        random, growContextB, componentB, selectedComponent, globalFractionalMoleculeIndexB, oldLambda,
-        componentB.lambdaGC.dUdlambdaGroupId, true);
+    std::optional<CBMC::GrowResult> growData =
+        CBMC::growNewMolecule(random, growContextB, componentB,
+                              {.componentId = selectedComponent,
+                               .moleculeId = globalFractionalMoleculeIndexB,
+                               .scaling = oldLambda,
+                               .groupId = componentB.lambdaGC.dUdlambdaGroupId,
+                               .isFractional = true});
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::LambdaShuffleNonEwald] += (time_end - time_begin);
     systemA.mc_moves_cputime[move][Move::Timing::LambdaShuffleNonEwald] += (time_end - time_begin);
 
-    if (!growData)
+    // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full cut-offs.
+    if (!growData || !CBMC::applyDualCutOffCorrection(growContextB, componentB, *growData))
     {
       restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
       return std::nullopt;
-    }
-
-    if (systemB.forceField.useDualCutOff)
-    {
-      // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
-      // cut-offs, so that Rosenbluth weight and energies behave as if grown at the full cut-offs.
-      std::optional<RunningEnergy> correctionNew =
-          CBMC::computeDualCutOffCorrection(growContextB, componentB, growData->atoms);
-      if (!correctionNew.has_value())
-      {
-        restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
-        std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-        return std::nullopt;
-      }
-
-      growData->energies += correctionNew.value();
-      growData->multiplyRosenbluthWeight(-systemB.beta * correctionNew->potentialEnergy());
     }
 
     std::copy(growData->atoms.begin(), growData->atoms.end(), fractionalMoleculeB.begin());

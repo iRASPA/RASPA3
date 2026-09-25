@@ -5,7 +5,7 @@ module cbmc_operators;
 import std;
 
 import randomnumbers;
-import forcefield;
+import cbmc_growth_context;
 import component;
 import atom;
 import double3;
@@ -36,17 +36,17 @@ Atom placeFlexibleSeedBead(RandomNumber &random, double beta, const std::vector<
 // Base-conformation dispatch shared by grow / retrace / recoil: ring closure and rigid fragments keep
 // their internal Monte-Carlo samplers (no clamp weight), every flexible step draws its base from the
 // exact bonded sampler.
-CBMC::FlexibleBase sampleBaseConformation(RandomNumber &random, const ForceField &forceField, double beta,
+CBMC::FlexibleBase sampleBaseConformation(RandomNumber &random, const CBMC::GrowthSettings &settings, double beta,
                                           const Component &component, std::vector<Atom> &chainAtoms,
                                           const CBMC::GrowStep &step)
 {
   if (step.kind == CBMC::GrowStep::Kind::CloseRing)
   {
-    return {CBMC::generateRingConformation(random, forceField, beta, component, chainAtoms, step), 1.0};
+    return {CBMC::generateRingConformation(random, settings, beta, component, chainAtoms, step), 1.0};
   }
   if (step.rigidBody)
   {
-    return {CBMC::generateRigidTilt(random, forceField.numberOfTrialMovesPerOpenBead, beta, component, chainAtoms,
+    return {CBMC::generateRigidTilt(random, settings.numberOfTrialMovesPerOpenBead, beta, component, chainAtoms,
                                     step),
             1.0};
   }
@@ -67,7 +67,7 @@ double3 junctionAxis(const std::vector<Atom> &chainAtoms, const CBMC::GrowStep &
 
 bool CBMC::stepHandlesUnsampledInternalTerms(const GrowStep &step) { return step.flexibleAttach; }
 
-std::vector<CBMC::StepTrial> CBMC::generateGrowTrials(RandomNumber &random, const ForceField &forceField, double beta,
+std::vector<CBMC::StepTrial> CBMC::generateGrowTrials(RandomNumber &random, const GrowthSettings &settings, double beta,
                                                       const Component &component, std::vector<Atom> &chainAtoms,
                                                       const GrowStep &step, std::size_t numberOfTrialDirections)
 {
@@ -81,7 +81,7 @@ std::vector<CBMC::StepTrial> CBMC::generateGrowTrials(RandomNumber &random, cons
       // Rigid seed: each direction is an independent uniform orientation of the body about the anchor.
       for (std::size_t i = 0; i != numberOfTrialDirections; ++i)
       {
-        trials[i] = {generateRigidTilt(random, forceField.numberOfTrialMovesPerOpenBead, beta, component, chainAtoms,
+        trials[i] = {generateRigidTilt(random, settings.numberOfTrialMovesPerOpenBead, beta, component, chainAtoms,
                                        step),
                      1.0};
       }
@@ -90,7 +90,7 @@ std::vector<CBMC::StepTrial> CBMC::generateGrowTrials(RandomNumber &random, cons
     if (step.kind == GrowStep::Kind::CloseRing)
     {
       // Ring seed: sample one internal conformation and rigidly rotate it for the other directions.
-      std::vector<Atom> base = generateRingConformation(random, forceField, beta, component, chainAtoms, step);
+      std::vector<Atom> base = generateRingConformation(random, settings, beta, component, chainAtoms, step);
       for (std::size_t i = 1; i != numberOfTrialDirections; ++i)
       {
         trials[i] = {randomlyOrientRing(random, base, chainAtoms[step.currentBead].position), 1.0};
@@ -108,20 +108,20 @@ std::vector<CBMC::StepTrial> CBMC::generateGrowTrials(RandomNumber &random, cons
 
   // Attach / ring-closure with a junction: one shared base conformation, one torsion spin per
   // direction about the junction bond. The base's clamp-excess weight is shared by every direction.
-  FlexibleBase base = sampleBaseConformation(random, forceField, beta, component, chainAtoms, step);
+  FlexibleBase base = sampleBaseConformation(random, settings, beta, component, chainAtoms, step);
   const double3 last_bond_vector = junctionAxis(chainAtoms, step);
 
   for (std::size_t i = 0; i != numberOfTrialDirections; ++i)
   {
     TorsionOrientation torsion =
-        selectTorsionOrientation(random, forceField.numberOfTorsionTrialDirections, beta, chainAtoms,
+        selectTorsionOrientation(random, settings.numberOfTorsionTrialDirections, beta, chainAtoms,
                                  base.nextBeadAtoms, step, last_bond_vector, false);
     trials[i] = {std::move(torsion.positions), torsion.rosenbluthWeight * base.clampWeight};
   }
   return trials;
 }
 
-std::vector<CBMC::StepTrial> CBMC::generateRetraceTrials(RandomNumber &random, const ForceField &forceField,
+std::vector<CBMC::StepTrial> CBMC::generateRetraceTrials(RandomNumber &random, const GrowthSettings &settings,
                                                          double beta, const Component &component,
                                                          std::vector<Atom> &chainAtoms, const GrowStep &step,
                                                          std::size_t numberOfTrialDirections)
@@ -138,7 +138,7 @@ std::vector<CBMC::StepTrial> CBMC::generateRetraceTrials(RandomNumber &random, c
     {
       for (std::size_t i = 1; i != numberOfTrialDirections; ++i)
       {
-        trials[i] = {generateRigidTilt(random, forceField.numberOfTrialMovesPerOpenBead, beta, component, chainAtoms,
+        trials[i] = {generateRigidTilt(random, settings.numberOfTrialMovesPerOpenBead, beta, component, chainAtoms,
                                        step),
                      1.0};
       }
@@ -169,7 +169,7 @@ std::vector<CBMC::StepTrial> CBMC::generateRetraceTrials(RandomNumber &random, c
 
   for (std::size_t i = 0; i != numberOfTrialDirections; ++i)
   {
-    TorsionOrientation torsion = selectTorsionOrientation(random, forceField.numberOfTorsionTrialDirections, beta,
+    TorsionOrientation torsion = selectTorsionOrientation(random, settings.numberOfTorsionTrialDirections, beta,
                                                           chainAtoms, old_orientation, step, last_bond_vector, i == 0);
     trials[i] = {i == 0 ? old_orientation : std::move(torsion.positions),
                  torsion.rosenbluthWeight * base_clamp_weight};
@@ -177,7 +177,7 @@ std::vector<CBMC::StepTrial> CBMC::generateRetraceTrials(RandomNumber &random, c
   return trials;
 }
 
-CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const ForceField &forceField, double beta,
+CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const GrowthSettings &settings, double beta,
                                           const Component &component, std::vector<Atom> &contextAtoms,
                                           const GrowStep &step)
 {
@@ -185,13 +185,13 @@ CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const ForceField
   {
     if (step.rigidBody)
     {
-      return {generateRigidTilt(random, forceField.numberOfTrialMovesPerOpenBead, beta, component, contextAtoms,
+      return {generateRigidTilt(random, settings.numberOfTrialMovesPerOpenBead, beta, component, contextAtoms,
                                 step),
               1.0};
     }
     if (step.kind == GrowStep::Kind::CloseRing)
     {
-      return {generateRingConformation(random, forceField, beta, component, contextAtoms, step), 1.0};
+      return {generateRingConformation(random, settings, beta, component, contextAtoms, step), 1.0};
     }
     return {{placeFlexibleSeedBead(random, beta, contextAtoms, step)}, 1.0};
   }
@@ -199,16 +199,16 @@ CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const ForceField
   // Every flexible step (single bead or branch) draws its base from the exact bonded sampler; ring
   // closure and rigid fragments keep their internal Monte Carlo. The spin about the junction bond is
   // then always torsion-selected -- also when the trial is a feeler bead (see the interface note).
-  FlexibleBase base = sampleBaseConformation(random, forceField, beta, component, contextAtoms, step);
+  FlexibleBase base = sampleBaseConformation(random, settings, beta, component, contextAtoms, step);
   const double3 last_bond_vector = junctionAxis(contextAtoms, step);
 
   TorsionOrientation torsion =
-      selectTorsionOrientation(random, forceField.numberOfTorsionTrialDirections, beta, contextAtoms,
+      selectTorsionOrientation(random, settings.numberOfTorsionTrialDirections, beta, contextAtoms,
                                base.nextBeadAtoms, step, last_bond_vector, false);
   return {std::move(torsion.positions), torsion.rosenbluthWeight * base.clampWeight};
 }
 
-double CBMC::oldConfigurationTorsionWeight(RandomNumber &random, const ForceField &forceField, double beta,
+double CBMC::oldConfigurationTorsionWeight(RandomNumber &random, const GrowthSettings &settings, double beta,
                                            const Component &component, std::vector<Atom> &oldAtoms,
                                            const GrowStep &step)
 {
@@ -220,7 +220,7 @@ double CBMC::oldConfigurationTorsionWeight(RandomNumber &random, const ForceFiel
   const double base_clamp_weight = flexibleBaseClampWeight(beta, component, step, oldAtoms);
   const double3 last_bond_vector = junctionAxis(oldAtoms, step);
 
-  TorsionOrientation torsion = selectTorsionOrientation(random, forceField.numberOfTorsionTrialDirections, beta,
+  TorsionOrientation torsion = selectTorsionOrientation(random, settings.numberOfTorsionTrialDirections, beta,
                                                         oldAtoms, old_orientation, step, last_bond_vector, true);
   return torsion.rosenbluthWeight * base_clamp_weight;
 }

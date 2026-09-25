@@ -212,26 +212,22 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
       Component& component = system.components[componentId];
       const std::size_t selectedMolecule = system.numberOfMolecules() + result.molecules.size();
 
-      std::optional<ChainGrowData> growData;
+      std::optional<CBMC::GrowResult> growData;
       if (useCBMC)
       {
         const CBMC::GrowContext growContext = system.makeGrowContext().withMoleculeAtoms(background);
-        growData = CBMC::growMoleculeSwapInsertion(random, growContext, component, componentId, selectedMolecule,
-                                                   scaling, dUdlambdaGroupId, isFractional);
+        growData = CBMC::growNewMolecule(random, growContext, component,
+                                         {.componentId = componentId,
+                                          .moleculeId = selectedMolecule,
+                                          .scaling = scaling,
+                                          .groupId = dUdlambdaGroupId,
+                                          .isFractional = isFractional});
 
-        if (growData && system.forceField.useDualCutOff)
+        // Dual cut-off scheme: correct the grown molecule from the inner cut-off to the full
+        // cut-offs, using the same background (previously grown group members included) as the growth.
+        if (growData && !CBMC::applyDualCutOffCorrection(growContext, component, *growData))
         {
-          // Dual cut-off scheme: correct the grown molecule from the inner cut-off to the full
-          // cut-offs, using the same background (previously grown group members included) as the growth.
-          std::optional<RunningEnergy> correctionNew =
-              CBMC::computeDualCutOffCorrection(growContext, component, growData->atoms);
-          if (!correctionNew.has_value())
-          {
-            return std::nullopt;
-          }
-
-          growData->energies += correctionNew.value();
-          growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
+          return std::nullopt;
         }
       }
       else
@@ -253,7 +249,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
           }
         }
         // Unit Rosenbluth weight (log 0), no stored 'r'.
-        growData.emplace(molecule, std::move(atoms), RunningEnergy{}, 0.0, 0.0);
+        growData.emplace(molecule, std::move(atoms), RunningEnergy{}, 0.0);
       }
 
       if (!growData)
@@ -322,33 +318,25 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
     const Component& component = system.components[componentId];
     std::span<Atom> moleculeAtoms = system.spanOfMolecule(componentId, moleculeId);
 
-    ChainRetraceData retraceData{RunningEnergy{}, 1.0, 0.0};
+    // Unit Rosenbluth weight (log 0) for the non-CBMC path, matching the grow.
+    CBMC::RetraceResult retraceData{RunningEnergy{}, 0.0};
     if (useCBMC)
     {
       const CBMC::GrowContext retraceContext = system.makeGrowContext().withMoleculeAtoms(background);
       try
       {
-        retraceData = CBMC::retraceMoleculeSwapDeletion(random, retraceContext, component, moleculeAtoms);
+        retraceData = CBMC::retraceMolecule(random, retraceContext, component, moleculeAtoms);
       }
       catch (const std::runtime_error&)
       {
         return std::nullopt;
       }
 
-      if (system.forceField.useDualCutOff)
+      // Dual cut-off scheme: correct the retraced molecule from the inner cut-off to the full
+      // cut-offs, using the same nested background as the retrace.
+      if (!CBMC::applyDualCutOffCorrection(retraceContext, component, moleculeAtoms, retraceData))
       {
-        // Dual cut-off scheme: correct the retraced molecule from the inner cut-off to the full
-        // cut-offs, using the same nested background as the retrace.
-        std::vector<Atom> moleculeCopy(moleculeAtoms.begin(), moleculeAtoms.end());
-        std::optional<RunningEnergy> correctionOld =
-            CBMC::computeDualCutOffCorrection(retraceContext, component, moleculeCopy);
-        if (!correctionOld.has_value())
-        {
-          return std::nullopt;
-        }
-
-        retraceData.energies += correctionOld.value();
-        retraceData.multiplyRosenbluthWeight(-system.beta * correctionOld->potentialEnergy());
+        return std::nullopt;
       }
     }
 
@@ -582,7 +570,7 @@ void deleteSelectedMolecules(System& system,
   }
 }
 
-void insertGrownMolecules(System& system, std::span<const ChainGrowData> growData,
+void insertGrownMolecules(System& system, std::span<const CBMC::GrowResult> growData,
                           std::span<const std::size_t> productStoichiometry) noexcept
 {
   std::size_t growIndex = 0;
@@ -590,7 +578,7 @@ void insertGrownMolecules(System& system, std::span<const ChainGrowData> growDat
   {
     for (std::size_t n = 0; n < productStoichiometry[componentId]; ++n)
     {
-      const ChainGrowData& data = growData[growIndex++];
+      const CBMC::GrowResult& data = growData[growIndex++];
       std::vector<Atom> acceptedAtoms(data.atoms.begin(), data.atoms.end());
       for (Atom& atom : acceptedAtoms)
       {
@@ -691,7 +679,7 @@ void deleteReactionSideFractionalMolecules(System& system, Reaction& reaction, b
   system.syncReactionFractionalMoleculeIndices();
 }
 
-void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std::span<const ChainGrowData> growData,
+void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std::span<const CBMC::GrowResult> growData,
                                          std::span<const std::size_t> stoichiometry, double lambda,
                                          std::vector<std::vector<std::size_t>>& targetIds) noexcept
 {
@@ -705,7 +693,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   {
     for (std::size_t n = 0; n < stoichiometry[componentId]; ++n)
     {
-      const ChainGrowData& data = growData[growIndex++];
+      const CBMC::GrowResult& data = growData[growIndex++];
       const std::size_t moleculeIndex = system.serialReactionFractionalMoleculeIndex(reaction.id, componentId, n);
       system.insertSerialReactionFractionalMolecule(componentId, moleculeIndex, data.molecule, data.atoms, lambda,
                                                     reaction.lambda.dUdlambdaGroupId);
@@ -910,7 +898,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     }
 
     std::vector<Atom> newAtoms;
-    for (const ChainGrowData& data : growData->molecules)
+    for (const CBMC::GrowResult& data : growData->molecules)
     {
       newAtoms.insert(newAtoms.end(), data.atoms.begin(), data.atoms.end());
     }
@@ -1130,7 +1118,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   }
 
   // capture the demoted (whole -> fractional) molecules, ordered by component to match the slot layout
-  std::vector<ChainGrowData> demotedMolecules;
+  std::vector<CBMC::GrowResult> demotedMolecules;
   for (const auto& [componentId, moleculeId] : selectedMolecules)
   {
     std::span<Atom> molecule = system.spanOfMolecule(componentId, moleculeId);
@@ -1288,7 +1276,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   }
 
   std::vector<Atom> grownAtoms;
-  for (const ChainGrowData& data : growData->molecules)
+  for (const CBMC::GrowResult& data : growData->molecules)
   {
     grownAtoms.insert(grownAtoms.end(), data.atoms.begin(), data.atoms.end());
   }
@@ -1452,7 +1440,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
       }
       else
       {
-        const ChainGrowData& grown = growData->molecules[grownIndex++];
+        const CBMC::GrowResult& grown = growData->molecules[grownIndex++];
         system.insertReactionFractionalMolecule(componentId, slotIndex, grown.molecule, grown.atoms, true, lambdaNew,
                                                 reaction.dUdlambdaGroup(true));
       }
@@ -1462,7 +1450,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
       const std::size_t slotIndex = system.parallelReactionFractionalMoleculeIndex(reaction.id, componentId, true, k);
       if (forward)
       {
-        const ChainGrowData& grown = growData->molecules[grownIndex++];
+        const CBMC::GrowResult& grown = growData->molecules[grownIndex++];
         system.insertReactionFractionalMolecule(componentId, slotIndex, grown.molecule, grown.atoms, false, lambdaNew,
                                                 reaction.dUdlambdaGroup(false));
       }

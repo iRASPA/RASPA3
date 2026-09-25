@@ -133,8 +133,8 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
     std::vector<Atom> *oldCopy;  // pristine copy of the same molecule
     Atom growStartingBead;       // starting bead of the other molecule: where the new one is grown
     std::size_t trialMoleculeId;
-    std::optional<ChainGrowData> grown;
-    ChainRetraceData retraced;
+    std::optional<CBMC::GrowResult> grown;
+    CBMC::RetraceResult retraced;
   };
 
   Exchange exchangeA{&componentAData, componentA, atomsA, &oldA, startingBeadB, trialIdNewA, std::nullopt, {}};
@@ -162,29 +162,22 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
     Exchange &exchange = *ordered[step];
     const CBMC::GrowContext growContext = makeContext(backgroundWithoutPair);
 
-    exchange.grown = CBMC::growMoleculeIdentityChangeInsertion(random, growContext, *exchange.component,
-                                                               exchange.componentId, exchange.trialMoleculeId,
-                                                               exchange.growStartingBead, 1.0, 0, false);
+    exchange.grown = CBMC::growNewMolecule(
+        random, growContext, *exchange.component,
+        {.componentId = exchange.componentId, .moleculeId = exchange.trialMoleculeId},
+        {.firstBead = CBMC::FirstBeadScheme::Pinned, .firstBeadPosition = exchange.growStartingBead.position});
     if (!exchange.grown)
     {
       constructed = false;
       break;
     }
 
-    if (system.forceField.useDualCutOff)
+    // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
+    // cut-offs, using the same background as the growth.
+    if (!CBMC::applyDualCutOffCorrection(growContext, *exchange.component, *exchange.grown))
     {
-      // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
-      // cut-offs, using the same background as the growth.
-      std::optional<RunningEnergy> correction =
-          CBMC::computeDualCutOffCorrection(growContext, *exchange.component, exchange.grown->atoms);
-      if (!correction.has_value())
-      {
-        constructed = false;
-        break;
-      }
-
-      exchange.grown->energies += correction.value();
-      exchange.grown->multiplyRosenbluthWeight(-system.beta * correction->potentialEnergy());
+      constructed = false;
+      break;
     }
 
     if (step == 0)
@@ -200,24 +193,16 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
     Exchange &exchange = *ordered[step];
     const CBMC::GrowContext retraceContext = makeContext(backgroundWithoutPair);
 
-    exchange.retraced =
-        CBMC::retraceMoleculeIdentityChangeDeletion(random, retraceContext, *exchange.component, exchange.oldAtoms);
+    exchange.retraced = CBMC::retraceMolecule(random, retraceContext, *exchange.component, exchange.oldAtoms,
+                                              {.firstBead = CBMC::FirstBeadScheme::Pinned});
 
-    if (system.forceField.useDualCutOff)
+    // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
+    // cut-offs, using the same background as the retrace.
+    if (!CBMC::applyDualCutOffCorrection(retraceContext, *exchange.component, *exchange.oldCopy, exchange.retraced))
     {
-      // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
-      // cut-offs, using the same background as the retrace.
-      std::optional<RunningEnergy> correction =
-          CBMC::computeDualCutOffCorrection(retraceContext, *exchange.component, *exchange.oldCopy);
-      if (!correction.has_value())
-      {
-        // an existing configuration should never register as an overlap; reject defensively
-        constructed = false;
-        break;
-      }
-
-      exchange.retraced.energies += correction.value();
-      exchange.retraced.multiplyRosenbluthWeight(-system.beta * correction->potentialEnergy());
+      // an existing configuration should never register as an overlap; reject defensively
+      constructed = false;
+      break;
     }
 
     if (step == 0)

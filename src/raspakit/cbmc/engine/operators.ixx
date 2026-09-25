@@ -6,7 +6,7 @@ import std;
 
 import atom;
 import randomnumbers;
-import forcefield;
+import cbmc_growth_context;
 import component;
 import cbmc_growth_plan;
 
@@ -54,7 +54,7 @@ struct StepTrial
  * All trial directions of one step share one freshly sampled base conformation (they differ only by
  * the torsion spin), matching the coupled-decoupled bookkeeping on grow and retrace.
  */
-std::vector<StepTrial> generateGrowTrials(RandomNumber &random, const ForceField &forceField, double beta,
+std::vector<StepTrial> generateGrowTrials(RandomNumber &random, const GrowthSettings &settings, double beta,
                                           const Component &component, std::vector<Atom> &chainAtoms,
                                           const GrowStep &step, std::size_t numberOfTrialDirections);
 
@@ -65,7 +65,7 @@ std::vector<StepTrial> generateGrowTrials(RandomNumber &random, const ForceField
  * trial direction 0, with their torsion Rosenbluth weight computed by a pinned torsion selection;
  * the remaining directions mirror the grow scheme.
  */
-std::vector<StepTrial> generateRetraceTrials(RandomNumber &random, const ForceField &forceField, double beta,
+std::vector<StepTrial> generateRetraceTrials(RandomNumber &random, const GrowthSettings &settings, double beta,
                                              const Component &component, std::vector<Atom> &chainAtoms,
                                              const GrowStep &step, std::size_t numberOfTrialDirections);
 
@@ -86,7 +86,7 @@ std::vector<StepTrial> generateRetraceTrials(RandomNumber &random, const ForceFi
  * while the growth spins were torsion-selected, would probe the openness of a differently distributed
  * bead and bias m_i between the two directions of the move.
  */
-StepTrial generateRecoilTrial(RandomNumber &random, const ForceField &forceField, double beta,
+StepTrial generateRecoilTrial(RandomNumber &random, const GrowthSettings &settings, double beta,
                               const Component &component, std::vector<Atom> &contextAtoms, const GrowStep &step);
 
 /**
@@ -95,7 +95,7 @@ StepTrial generateRecoilTrial(RandomNumber &random, const ForceField &forceField
  * Mirrors the CBMC deletion scheme: the real orientation is trial 0 and the remaining torsion trials
  * are random rotations around the last bond vector.
  */
-double oldConfigurationTorsionWeight(RandomNumber &random, const ForceField &forceField, double beta,
+double oldConfigurationTorsionWeight(RandomNumber &random, const GrowthSettings &settings, double beta,
                                      const Component &component, std::vector<Atom> &oldAtoms, const GrowStep &step);
 
 /**

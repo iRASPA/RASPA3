@@ -330,11 +330,15 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         const CBMC::GrowContext growContext = system.makeGrowContext().withMoleculeAtoms(accumulatedBackground);
 
         time_begin = std::chrono::steady_clock::now();
-        std::optional<ChainGrowData> growData;
+        const CBMC::NewMoleculeIdentity identity{.componentId = componentId,
+                                                 .moleculeId = upcomingMoleculeId,
+                                                 .scaling = newLambda,
+                                                 .groupId = dUdlambdaGroupId,
+                                                 .isFractional = true};
+        std::optional<CBMC::GrowResult> growData;
         if (i == 0)
         {
-          growData = CBMC::growMoleculeSwapInsertion(random, growContext, memberComponent, componentId,
-                                                     upcomingMoleculeId, newLambda, dUdlambdaGroupId, true);
+          growData = CBMC::growNewMolecule(random, growContext, memberComponent, identity);
         }
         else
         {
@@ -344,33 +348,20 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
           const double3 fixedFirstBeadPosition =
               trialAtoms[0][central.startingBead].position + r * random.UnitSphere();
           distanceBiasFactors[i] = 3.0 * r * r / (R_max * R_max);
-          growData = CBMC::growMoleculePairSecondSwapInsertion(random, growContext, memberComponent, componentId,
-                                                               upcomingMoleculeId, fixedFirstBeadPosition, newLambda,
-                                                               dUdlambdaGroupId, true);
+          growData = CBMC::growNewMolecule(
+              random, growContext, memberComponent, identity,
+              {.firstBead = CBMC::FirstBeadScheme::Fixed, .firstBeadPosition = fixedFirstBeadPosition});
         }
         time_end = std::chrono::steady_clock::now();
         central.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
         system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
 
-        if (!growData)
+        // correct the grown molecule from the inner cut-off to the full cut-offs, using the same
+        // background as the growth
+        if (!growData || !CBMC::applyDualCutOffCorrection(growContext, memberComponent, *growData))
         {
           restoreFractionalGroup();
           return {std::nullopt, double3(0.0, 1.0, 0.0)};
-        }
-
-        if (system.forceField.useDualCutOff)
-        {
-          // correct the grown molecule from the inner cut-off to the full cut-offs, using the same
-          // background as the growth
-          std::optional<RunningEnergy> correction =
-              CBMC::computeDualCutOffCorrection(growContext, memberComponent, growData->atoms);
-          if (!correction.has_value())
-          {
-            restoreFractionalGroup();
-            return {std::nullopt, double3(0.0, 1.0, 0.0)};
-          }
-          growData->energies += correction.value();
-          growData->multiplyRosenbluthWeight(-system.beta * correction->potentialEnergy());
         }
 
         logRosenbluthRatio +=
@@ -792,23 +783,14 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         Component& memberComponent = system.components[members[i].componentId];
         // the reverse insertion grows the central molecule with a free first bead and every
         // satellite with its first bead fixed inside the sphere; the retraces mirror this
-        ChainRetraceData retraceData =
-            (i == 0) ? CBMC::retraceMoleculeSwapDeletion(random, retraceContext, memberComponent,
-                                                         fractionalMolecules[i])
-                     : CBMC::retraceMoleculePairSecondSwapDeletion(random, retraceContext, memberComponent,
-                                                                   fractionalMolecules[i]);
+        CBMC::RetraceResult retraceData = CBMC::retraceMolecule(
+            random, retraceContext, memberComponent, fractionalMolecules[i],
+            {.firstBead = (i == 0) ? CBMC::FirstBeadScheme::MultipleFirstBead : CBMC::FirstBeadScheme::Fixed});
 
-        if (system.forceField.useDualCutOff)
+        if (!CBMC::applyDualCutOffCorrection(retraceContext, memberComponent, oldFractionalMolecules[i], retraceData))
         {
-          std::optional<RunningEnergy> correction =
-              CBMC::computeDualCutOffCorrection(retraceContext, memberComponent, oldFractionalMolecules[i]);
-          if (!correction.has_value())
-          {
-            restoreMolecules();
-            return {std::nullopt, double3(0.0, 1.0, 0.0)};
-          }
-          retraceData.energies += correction.value();
-          retraceData.multiplyRosenbluthWeight(-system.beta * correction->potentialEnergy());
+          restoreMolecules();
+          return {std::nullopt, double3(0.0, 1.0, 0.0)};
         }
 
         logRosenbluthRatio +=

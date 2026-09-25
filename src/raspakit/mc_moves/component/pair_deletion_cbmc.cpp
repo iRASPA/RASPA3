@@ -195,35 +195,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   const CBMC::GrowContext retraceContextA = system.makeGrowContext().withMoleculeAtoms(backgroundWithoutPair);
 
   time_begin = std::chrono::steady_clock::now();
-  ChainRetraceData retraceDataB =
-      CBMC::retraceMoleculePairSecondSwapDeletion(random, retraceContextB, componentBRef, moleculeB);
+  CBMC::RetraceResult retraceDataB = CBMC::retraceMolecule(random, retraceContextB, componentBRef, moleculeB,
+                                                           {.firstBead = CBMC::FirstBeadScheme::Fixed});
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
 
   time_begin = std::chrono::steady_clock::now();
-  ChainRetraceData retraceDataA =
-      CBMC::retraceMoleculeSwapDeletion(random, retraceContextA, componentA, moleculeA);
+  CBMC::RetraceResult retraceDataA = CBMC::retraceMolecule(random, retraceContextA, componentA, moleculeA);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
 
-  if (system.forceField.useDualCutOff)
+  // Dual cut-off scheme: correct the retraced configurations from the inner cut-off to the full
+  // cut-offs, using the same backgrounds as the retraces.
+  if (!CBMC::applyDualCutOffCorrection(retraceContextB, componentBRef, moleculeB, retraceDataB) ||
+      !CBMC::applyDualCutOffCorrection(retraceContextA, componentA, moleculeA, retraceDataA))
   {
-    // Dual cut-off scheme: correct the retraced configurations from the inner cut-off to the full
-    // cut-offs, using the same backgrounds as the retraces.
-    std::vector<Atom> moleculeBCopy(moleculeB.begin(), moleculeB.end());
-    std::optional<RunningEnergy> correctionB =
-        CBMC::computeDualCutOffCorrection(retraceContextB, componentBRef, moleculeBCopy);
-    std::vector<Atom> moleculeACopy(moleculeA.begin(), moleculeA.end());
-    std::optional<RunningEnergy> correctionA =
-        CBMC::computeDualCutOffCorrection(retraceContextA, componentA, moleculeACopy);
-    if (!correctionB.has_value() || !correctionA.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-    retraceDataB.energies += correctionB.value();
-    retraceDataB.multiplyRosenbluthWeight(-system.beta * correctionB->potentialEnergy());
-    retraceDataA.energies += correctionA.value();
-    retraceDataA.multiplyRosenbluthWeight(-system.beta * correctionA->potentialEnergy());
+    return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
   const std::span<const Atom> oldMoleculeA = std::span<const Atom>(moleculeA.data(), moleculeA.size());
@@ -441,35 +430,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   const CBMC::GrowContext retraceContextA = system.makeGrowContext().withMoleculeAtoms(backgroundWithoutPair);
 
   time_begin = std::chrono::steady_clock::now();
-  ChainRetraceData retraceDataB =
-      CBMC::retraceMoleculePairSecondSwapDeletion(random, retraceContextB, componentBRef, moleculeB);
+  CBMC::RetraceResult retraceDataB = CBMC::retraceMolecule(random, retraceContextB, componentBRef, moleculeB,
+                                                           {.firstBead = CBMC::FirstBeadScheme::Fixed});
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
 
   time_begin = std::chrono::steady_clock::now();
-  ChainRetraceData retraceDataA =
-      CBMC::retraceMoleculeSwapDeletion(random, retraceContextA, componentA, moleculeA);
+  CBMC::RetraceResult retraceDataA = CBMC::retraceMolecule(random, retraceContextA, componentA, moleculeA);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
 
-  if (system.forceField.useDualCutOff)
+  // Dual cut-off scheme: correct the retraced configurations from the inner cut-off to the full
+  // cut-offs, using the same backgrounds as the retraces.
+  if (!CBMC::applyDualCutOffCorrection(retraceContextB, componentBRef, moleculeB, retraceDataB) ||
+      !CBMC::applyDualCutOffCorrection(retraceContextA, componentA, moleculeA, retraceDataA))
   {
-    // Dual cut-off scheme: correct the retraced configurations from the inner cut-off to the full
-    // cut-offs, using the same backgrounds as the retraces.
-    std::vector<Atom> moleculeBCopy(moleculeB.begin(), moleculeB.end());
-    std::optional<RunningEnergy> correctionB =
-        CBMC::computeDualCutOffCorrection(retraceContextB, componentBRef, moleculeBCopy);
-    std::vector<Atom> moleculeACopy(moleculeA.begin(), moleculeA.end());
-    std::optional<RunningEnergy> correctionA =
-        CBMC::computeDualCutOffCorrection(retraceContextA, componentA, moleculeACopy);
-    if (!correctionB.has_value() || !correctionA.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-    retraceDataB.energies += correctionB.value();
-    retraceDataB.multiplyRosenbluthWeight(-system.beta * correctionB->potentialEnergy());
-    retraceDataA.energies += correctionA.value();
-    retraceDataA.multiplyRosenbluthWeight(-system.beta * correctionA->potentialEnergy());
+    return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
   const std::span<const Atom> oldMoleculeA = std::span<const Atom>(moleculeA.data(), moleculeA.size());

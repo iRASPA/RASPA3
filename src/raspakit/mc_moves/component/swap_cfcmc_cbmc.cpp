@@ -212,37 +212,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     const CBMC::GrowContext growContext = system.makeGrowContext();
 
     time_begin = std::chrono::steady_clock::now();
-    std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-        random, growContext, component, selectedComponent, newMolecule, newLambda,
-        system.components[selectedComponent].lambdaGC.dUdlambdaGroupId, true);
+    std::optional<CBMC::GrowResult> growData =
+        CBMC::growNewMolecule(random, growContext, component,
+                              {.componentId = selectedComponent,
+                               .moleculeId = newMolecule,
+                               .scaling = newLambda,
+                               .groupId = system.components[selectedComponent].lambdaGC.dUdlambdaGroupId,
+                               .isFractional = true});
     time_end = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
 
-    if (!growData)
+    // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full cut-offs.
+    if (!growData || !CBMC::applyDualCutOffCorrection(growContext, component, *growData))
     {
       // Reject move and restore the fractional molecule
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
 
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
-    }
-
-    if (system.forceField.useDualCutOff)
-    {
-      // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
-      // cut-offs, so that Rosenbluth weight and energies behave as if grown at the full cut-offs.
-      std::optional<RunningEnergy> correctionNew =
-          CBMC::computeDualCutOffCorrection(growContext, component, growData->atoms);
-      if (!correctionNew.has_value())
-      {
-        // Reject move and restore the fractional molecule
-        std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-
-        return {std::nullopt, double3(0.0, 1.0, 0.0)};
-      }
-
-      growData->energies += correctionNew.value();
-      growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
     }
 
     component.mc_moves_statistics.addConstructed(move, 0);
@@ -441,25 +428,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
       // Retrace the existing fractional molecule
       time_begin = std::chrono::steady_clock::now();
-      ChainRetraceData retraceData =
-          CBMC::retraceMoleculeSwapDeletion(random, retraceContext, component, fractionalMolecule);
+      CBMC::RetraceResult retraceData = CBMC::retraceMolecule(random, retraceContext, component, fractionalMolecule);
       time_end = std::chrono::steady_clock::now();
       component.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
 
-      if (system.forceField.useDualCutOff)
+      // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full cut-offs.
+      if (!CBMC::applyDualCutOffCorrection(retraceContext, component, oldFractionalMolecule, retraceData))
       {
-        // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
-        // cut-offs, so that Rosenbluth weight and energies behave as if retraced at the full cut-offs.
-        std::optional<RunningEnergy> correctionOld =
-            CBMC::computeDualCutOffCorrection(retraceContext, component, oldFractionalMolecule);
-        if (!correctionOld.has_value())
-        {
-          return {std::nullopt, double3(0.0, 1.0, 0.0)};
-        }
-
-        retraceData.energies += correctionOld.value();
-        retraceData.multiplyRosenbluthWeight(-system.beta * correctionOld->potentialEnergy());
+        return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
 
       // Compute Ewald energy difference for the retraced molecule

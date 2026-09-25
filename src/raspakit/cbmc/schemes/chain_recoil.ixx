@@ -30,7 +30,7 @@ export namespace CBMC
 // direction is only used if, in addition to being open, a feeler of length 'l' (the recoil length)
 // can be grown ahead of it. The recoil-growth weight
 //   W = prod_i [ (m_i / k) * exp(-beta*u_i) / p_open,i * w_torsion_i * exp(-beta*u_unsampled,i) ]
-// is returned as its logarithm in ChainGrowData::logRosenbluthWeight, where m_i is the number of
+// is returned as its logarithm in CBMC::GrowResult::logRosenbluthWeight, where m_i is the number of
 // available (open and feeler-viable) trial directions at segment i and u_i is the non-bonded energy
 // of the selected segment.
 //
@@ -49,8 +49,8 @@ export namespace CBMC
 //
 // The signature matches CBMC::growFlexibleMoleculeChainInsertion so it can be used as a drop-in
 // replacement in the CBMC access routines.
-[[nodiscard]] std::optional<ChainGrowData> growRecoilGrowthMoleculeChainInsertion(
-    RandomNumber &random, const GrowContext &context, Component &component, std::span<Atom> molecule_atoms,
+[[nodiscard]] std::optional<CBMC::GrowResult> growRecoilGrowthMoleculeChainInsertion(
+    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced, std::optional<std::size_t> skipBackgroundMolecule = std::nullopt);
 
 // Recoil growth (RG) retrace of the existing flexible molecule chain.
@@ -62,7 +62,7 @@ export namespace CBMC
 // Throws std::runtime_error when the existing configuration overlaps (hard-core overlap, blocked
 // pocket): an accepted state can not overlap, so this signals an inconsistent simulation state rather
 // than silently assigning the molecule a weight.
-[[nodiscard]] ChainRetraceData retraceRecoilGrowthMoleculeChainDeletion(
-    RandomNumber &random, const GrowContext &context, const Component &component, std::span<Atom> molecule_atoms,
+[[nodiscard]] CBMC::RetraceResult retraceRecoilGrowthMoleculeChainDeletion(
+    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced);
 }  // namespace CBMC

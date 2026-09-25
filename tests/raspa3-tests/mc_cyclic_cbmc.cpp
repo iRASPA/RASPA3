@@ -894,8 +894,8 @@ TEST(MC_CYCLIC_CBMC, grow_retrace_weight_symmetry)
     const CBMC::GrowContext context = system.makeGrowContext(CBMC::CutOffMode::Full);
 
     // Grow a ghost ring (never inserted).
-    std::optional<ChainGrowData> growData =
-        CBMC::growMoleculeSwapInsertion(random, context, system.components[0], 0, 1, 1.0, std::uint8_t{0}, false);
+    std::optional<CBMC::GrowResult> growData =
+        CBMC::growNewMolecule(random, context, system.components[0], {.componentId = 0, .moleculeId = 1});
     if (growData.has_value())
     {
       growSum += growData->rosenbluthWeight();
@@ -903,8 +903,8 @@ TEST(MC_CYCLIC_CBMC, grow_retrace_weight_symmetry)
     }
 
     // Retrace the current (Boltzmann-sampled) configuration.
-    ChainRetraceData retraceData =
-        CBMC::retraceMoleculeSwapDeletion(random, context, system.components[0], system.spanOfMolecule(0, 0));
+    CBMC::RetraceResult retraceData =
+        CBMC::retraceMolecule(random, context, system.components[0], system.spanOfMolecule(0, 0));
     retraceSum += retraceData.rosenbluthWeight();
     ++retraceCount;
   }
@@ -947,8 +947,8 @@ TEST(MC_CYCLIC_CBMC, fused_ring_chirality_preserved_in_fresh_growth)
   constexpr std::size_t samples = 500;
   for (std::size_t i = 0; i != samples; ++i)
   {
-    std::optional<ChainGrowData> growData =
-        CBMC::growMoleculeSwapInsertion(random, context, system.components[0], 0, 1, 1.0, std::uint8_t{0}, false);
+    std::optional<CBMC::GrowResult> growData =
+        CBMC::growNewMolecule(random, context, system.components[0], {.componentId = 0, .moleculeId = 1});
     if (!growData.has_value()) continue;
 
     std::span<const Atom> grown(growData->atoms);

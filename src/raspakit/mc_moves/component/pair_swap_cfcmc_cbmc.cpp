@@ -293,32 +293,22 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     const CBMC::GrowContext growContextA = system.makeGrowContext();
 
     time_begin = std::chrono::steady_clock::now();
-    std::optional<ChainGrowData> growDataA = CBMC::growMoleculeSwapInsertion(
-        random, growContextA, componentA, selectedComponent, newMoleculeA, newLambda,
-        componentA.lambdaPairSwapCB.dUdlambdaGroupId, true);
+    std::optional<CBMC::GrowResult> growDataA =
+        CBMC::growNewMolecule(random, growContextA, componentA,
+                              {.componentId = selectedComponent,
+                               .moleculeId = newMoleculeA,
+                               .scaling = newLambda,
+                               .groupId = componentA.lambdaPairSwapCB.dUdlambdaGroupId,
+                               .isFractional = true});
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
 
-    if (!growDataA)
+    // Dual cut-off scheme: correct the grown molecule A from the inner cut-off to the full cut-offs.
+    if (!growDataA || !CBMC::applyDualCutOffCorrection(growContextA, componentA, *growDataA))
     {
       restoreFractionalPair();
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
-    }
-
-    if (system.forceField.useDualCutOff)
-    {
-      // Dual cut-off scheme: correct the grown molecule A from the inner cut-off to the full cut-offs.
-      std::optional<RunningEnergy> correctionA =
-          CBMC::computeDualCutOffCorrection(growContextA, componentA, growDataA->atoms);
-      if (!correctionA.has_value())
-      {
-        restoreFractionalPair();
-        return {std::nullopt, double3(0.0, 1.0, 0.0)};
-      }
-
-      growDataA->energies += correctionA.value();
-      growDataA->multiplyRosenbluthWeight(-system.beta * correctionA->potentialEnergy());
     }
 
     // (2b) grow a new fractional molecule of component B with lambda_new; its first bead is fixed at
@@ -337,33 +327,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     const CBMC::GrowContext growContextB = system.makeGrowContext().withMoleculeAtoms(moleculeAtomDataWithTrialA);
 
     time_begin = std::chrono::steady_clock::now();
-    std::optional<ChainGrowData> growDataB = CBMC::growMoleculePairSecondSwapInsertion(
-        random, growContextB, componentBRef, componentB, newMoleculeB, fixedFirstBeadPositionB, newLambda,
-        componentA.lambdaPairSwapCB.dUdlambdaGroupId, true);
+    std::optional<CBMC::GrowResult> growDataB = CBMC::growNewMolecule(
+        random, growContextB, componentBRef,
+        {.componentId = componentB,
+         .moleculeId = newMoleculeB,
+         .scaling = newLambda,
+         .groupId = componentA.lambdaPairSwapCB.dUdlambdaGroupId,
+         .isFractional = true},
+        {.firstBead = CBMC::FirstBeadScheme::Fixed, .firstBeadPosition = fixedFirstBeadPositionB});
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
 
-    if (!growDataB)
+    // Dual cut-off scheme: correct the grown molecule B from the inner cut-off to the full cut-offs,
+    // using the same background (existing molecules plus trial molecule A) as the growth.
+    if (!growDataB || !CBMC::applyDualCutOffCorrection(growContextB, componentBRef, *growDataB))
     {
       restoreFractionalPair();
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
-    }
-
-    if (system.forceField.useDualCutOff)
-    {
-      // Dual cut-off scheme: correct the grown molecule B from the inner cut-off to the full cut-offs,
-      // using the same background (existing molecules plus trial molecule A) as the growth.
-      std::optional<RunningEnergy> correctionB =
-          CBMC::computeDualCutOffCorrection(growContextB, componentBRef, growDataB->atoms);
-      if (!correctionB.has_value())
-      {
-        restoreFractionalPair();
-        return {std::nullopt, double3(0.0, 1.0, 0.0)};
-      }
-
-      growDataB->energies += correctionB.value();
-      growDataB->multiplyRosenbluthWeight(-system.beta * correctionB->potentialEnergy());
     }
 
     componentA.mc_moves_statistics.addConstructed(move, 0);
@@ -651,32 +632,20 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     const CBMC::GrowContext retraceContextA = system.makeGrowContext().withMoleculeAtoms(backgroundWithoutFractionalB);
 
     time_begin = std::chrono::steady_clock::now();
-    ChainRetraceData retraceDataB =
-        CBMC::retraceMoleculePairSecondSwapDeletion(random, retraceContextB, componentBRef, fractionalMoleculeB);
-    ChainRetraceData retraceDataA =
-        CBMC::retraceMoleculeSwapDeletion(random, retraceContextA, componentA, fractionalMoleculeA);
+    CBMC::RetraceResult retraceDataB = CBMC::retraceMolecule(random, retraceContextB, componentBRef, fractionalMoleculeB,
+                                                             {.firstBead = CBMC::FirstBeadScheme::Fixed});
+    CBMC::RetraceResult retraceDataA = CBMC::retraceMolecule(random, retraceContextA, componentA, fractionalMoleculeA);
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
 
-    if (system.forceField.useDualCutOff)
+    // Dual cut-off scheme: correct the retraced pair from the inner cut-off to the full cut-offs,
+    // using the same backgrounds as the retraces.
+    if (!CBMC::applyDualCutOffCorrection(retraceContextB, componentBRef, oldFractionalMoleculeB, retraceDataB) ||
+        !CBMC::applyDualCutOffCorrection(retraceContextA, componentA, oldFractionalMoleculeA, retraceDataA))
     {
-      // Dual cut-off scheme: correct the retraced pair from the inner cut-off to the full cut-offs,
-      // using the same backgrounds as the retraces.
-      std::optional<RunningEnergy> correctionB =
-          CBMC::computeDualCutOffCorrection(retraceContextB, componentBRef, oldFractionalMoleculeB);
-      std::optional<RunningEnergy> correctionA =
-          CBMC::computeDualCutOffCorrection(retraceContextA, componentA, oldFractionalMoleculeA);
-      if (!correctionB.has_value() || !correctionA.has_value())
-      {
-        restoreMolecules();
-        return {std::nullopt, double3(0.0, 1.0, 0.0)};
-      }
-
-      retraceDataB.energies += correctionB.value();
-      retraceDataB.multiplyRosenbluthWeight(-system.beta * correctionB->potentialEnergy());
-      retraceDataA.energies += correctionA.value();
-      retraceDataA.multiplyRosenbluthWeight(-system.beta * correctionA->potentialEnergy());
+      restoreMolecules();
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
     double runningNetCharge = system.netCharge;

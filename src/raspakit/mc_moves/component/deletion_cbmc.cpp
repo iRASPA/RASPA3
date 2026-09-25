@@ -53,25 +53,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
 
     // Retrace the molecule for the swap deletion using CBMC algorithm
     time_begin = std::chrono::steady_clock::now();
-    ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
-        random, retraceContext, system.components[selectedComponent], molecule);
+    CBMC::RetraceResult retraceData = CBMC::retraceMolecule(random, retraceContext, component, molecule);
     time_end = std::chrono::steady_clock::now();
 
     // Update the CPU time statistics for the non-Ewald part of the move
     component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
-    if (system.forceField.useDualCutOff)
+    // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full cut-offs.
+    if (!CBMC::applyDualCutOffCorrection(retraceContext, component, molecule, retraceData))
     {
-      // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
-      // cut-offs, so that Rosenbluth weight and energies behave as if retraced at the full cut-offs.
-      std::vector<Atom> oldMolecule = std::vector(molecule.begin(), molecule.end());
-      std::optional<RunningEnergy> correctionOld =
-          CBMC::computeDualCutOffCorrection(retraceContext, component, oldMolecule);
-      if (!correctionOld.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-      retraceData.energies += correctionOld.value();
-      retraceData.multiplyRosenbluthWeight(-system.beta * correctionOld->potentialEnergy());
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
     // Compute the energy difference in Fourier space due to the deletion

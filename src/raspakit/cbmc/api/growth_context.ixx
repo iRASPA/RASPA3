@@ -52,19 +52,67 @@ enum class ChainScheme : std::size_t
 };
 
 /**
+ * \brief The sampling parameters of a CBMC grow or retrace.
+ *
+ * None of these changes the sampled distribution, only the efficiency (and cost) of the sampling.
+ * They are read from the force field file and copied into every 'GrowContext' at construction
+ * ('fromForceField'); a caller that needs different parameters for one grow (a test, the Widom
+ * estimator, the ideal-gas reference grows) derives a context with 'GrowContext::withSettings' or
+ * 'withChainScheme' instead of editing the force field.
+ */
+struct GrowthSettings
+{
+  /// Chain scheme beyond the first bead.
+  ChainScheme chainScheme{ChainScheme::ConfigurationalBias};
+  /// Trial positions of the first bead ('FirstBeadScheme::MultipleFirstBead' and 'Reinsertion').
+  std::size_t numberOfFirstBeadPositions{10};
+  /// Trial directions 'k' per configurational-bias step.
+  std::size_t numberOfTrialDirections{10};
+  /// Trial spins per trial direction among which the torsion orientation is Rosenbluth-selected.
+  std::size_t numberOfTorsionTrialDirections{100};
+  /// Internal Metropolis moves per placed bead of the rigid-body tilt and ring-closure samplers.
+  std::size_t numberOfTrialMovesPerOpenBead{150};
+  /// Attempt probability of the large-angle ring crankshaft per internal ring move.
+  double ringCrankshaftProbability{0.2};
+  /// Attempt probability of the whole-ring junction tilt per internal ring move.
+  double ringTiltProbability{0.25};
+  /// A grow whose weight (of any step) falls below this is reported as failed (std::nullopt).
+  double minimumRosenbluthFactor{1e-150};
+  /// Trial directions 'k' per recoil-growth step.
+  std::size_t recoilGrowthNumberOfTrialDirections{5};
+  /// Recoil (feeler) length 'l' of recoil growth.
+  std::size_t recoilGrowthMaximumRecoilLength{2};
+
+  [[nodiscard]] static GrowthSettings fromForceField(const ForceField &forceField)
+  {
+    return GrowthSettings{
+        .chainScheme = forceField.useRecoilGrowth ? ChainScheme::RecoilGrowth : ChainScheme::ConfigurationalBias,
+        .numberOfFirstBeadPositions = forceField.numberOfFirstBeadPositions,
+        .numberOfTrialDirections = forceField.numberOfTrialDirections,
+        .numberOfTorsionTrialDirections = forceField.numberOfTorsionTrialDirections,
+        .numberOfTrialMovesPerOpenBead = forceField.numberOfTrialMovesPerOpenBead,
+        .ringCrankshaftProbability = forceField.cbmcRingCrankshaftProbability,
+        .ringTiltProbability = forceField.cbmcRingTiltProbability,
+        .minimumRosenbluthFactor = forceField.minimumRosenbluthFactor,
+        .recoilGrowthNumberOfTrialDirections = std::max<std::size_t>(1, forceField.recoilGrowthNumberOfTrialDirections),
+        .recoilGrowthMaximumRecoilLength = std::max<std::size_t>(1, forceField.recoilGrowthMaximumRecoilLength)};
+  }
+};
+
+/**
  * \brief Everything a CBMC grow or retrace needs to know about its environment: the force field,
  * the box, the framework and its atoms, the background molecule atoms, the inverse temperature, the
- * cut-offs to evaluate external energies with, and the chain-growth scheme.
+ * cut-offs to evaluate external energies with, and the sampling parameters ('GrowthSettings').
  *
  * Holds references and spans into the owning system, so it is a cheap value and must not outlive it.
  * Build one with 'System::makeGrowContext' (or the constructor for an environment that is not a
  * system, e.g. the ideal-gas grows), and derive variants with the 'with...' members: a different
  * background ('withMoleculeAtoms', used by moves that grow against an edited copy of the molecule
  * atoms), different cut-offs ('withCutOffs', 'withFullCutOffs', 'withInnerCutOffs', used by the
- * dual cut-off correction), or a different chain scheme ('withChainScheme', used by Widom sampling
- * and the ideal-gas reference grows, which must use configurational bias). Those are the only fields
- * a caller ever varies; every other field is fixed by the system, which is why there is no aggregate
- * initialization to keep in sync.
+ * dual cut-off correction), or different sampling parameters ('withSettings', 'withChainScheme';
+ * Widom sampling and the ideal-gas reference grows must use configurational bias). Those are the
+ * only fields a caller ever varies; every other field is fixed by the system, which is why there is
+ * no aggregate initialization to keep in sync.
  */
 struct GrowContext
 {
@@ -85,7 +133,7 @@ struct GrowContext
         cutOffFrameworkVDW(frameworkVDWCutOff(forceField, cutOffMode)),
         cutOffMoleculeVDW(moleculeVDWCutOff(forceField, cutOffMode)),
         cutOffCoulomb(coulombCutOff(forceField, cutOffMode)),
-        chainScheme(forceField.useRecoilGrowth ? ChainScheme::RecoilGrowth : ChainScheme::ConfigurationalBias)
+        settings(GrowthSettings::fromForceField(forceField))
   {
   }
 
@@ -101,7 +149,7 @@ struct GrowContext
   double cutOffFrameworkVDW;
   double cutOffMoleculeVDW;
   double cutOffCoulomb;
-  ChainScheme chainScheme;
+  GrowthSettings settings;
 
   /// The same environment with the molecule background replaced (e.g. the system's molecule atoms
   /// with a pair removed, or with already grown group members appended).
@@ -112,11 +160,19 @@ struct GrowContext
     return copy;
   }
 
+  /// The same environment grown with the given sampling parameters.
+  [[nodiscard]] GrowContext withSettings(const GrowthSettings &growthSettings) const
+  {
+    GrowContext copy(*this);
+    copy.settings = growthSettings;
+    return copy;
+  }
+
   /// The same environment grown with the given chain scheme (see 'ChainScheme').
   [[nodiscard]] GrowContext withChainScheme(ChainScheme scheme) const
   {
     GrowContext copy(*this);
-    copy.chainScheme = scheme;
+    copy.settings.chainScheme = scheme;
     return copy;
   }
 

@@ -89,9 +89,12 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   const CBMC::GrowContext growContext = system.makeGrowContext();
 
   time_begin = std::chrono::steady_clock::now();
-  std::optional<ChainGrowData> growData = CBMC::growMoleculeIdentityChangeInsertion(
-      random, growContext, newComponentData, newComponent, trialMoleculeId, oldStartingBead, 1.0, false,
-      false, skipBackgroundMolecule);
+  std::optional<CBMC::GrowResult> growData =
+      CBMC::growNewMolecule(random, growContext, newComponentData,
+                            {.componentId = newComponent, .moleculeId = trialMoleculeId},
+                            {.firstBead = CBMC::FirstBeadScheme::Pinned,
+                             .firstBeadPosition = oldStartingBead.position,
+                             .skipBackgroundMolecule = skipBackgroundMolecule});
   time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -101,19 +104,11 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
     return std::nullopt;
   }
 
-  if (system.forceField.useDualCutOff)
+  // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
+  // cut-offs, using the same background (the old molecule excluded) as the growth.
+  if (!CBMC::applyDualCutOffCorrection(growContext, newComponentData, *growData, skipBackgroundMolecule))
   {
-    // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
-    // cut-offs, using the same background (the old molecule excluded) as the growth.
-    std::optional<RunningEnergy> correctionNew = CBMC::computeDualCutOffCorrection(
-        growContext, newComponentData, growData->atoms, skipBackgroundMolecule);
-    if (!correctionNew.has_value())
-    {
-      return std::nullopt;
-    }
-
-    growData->energies += correctionNew.value();
-    growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
+    return std::nullopt;
   }
 
   std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
@@ -124,25 +119,17 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   oldComponentData.mc_moves_statistics.addConstructed(move);
 
   time_begin = std::chrono::steady_clock::now();
-  ChainRetraceData retraceData = CBMC::retraceMoleculeIdentityChangeDeletion(
-      random, growContext, oldComponentData, oldMoleculeAtoms);
+  CBMC::RetraceResult retraceData = CBMC::retraceMolecule(random, growContext, oldComponentData, oldMoleculeAtoms,
+                                                          {.firstBead = CBMC::FirstBeadScheme::Pinned});
   time_end = std::chrono::steady_clock::now();
   oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
-  if (system.forceField.useDualCutOff)
+  // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
+  // cut-offs (the old molecule excludes itself from the background through its molecule id).
+  if (!CBMC::applyDualCutOffCorrection(growContext, oldComponentData, old_molecule, retraceData))
   {
-    // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
-    // cut-offs (the old molecule excludes itself from the background through its molecule id).
-    std::optional<RunningEnergy> correctionOld =
-        CBMC::computeDualCutOffCorrection(growContext, oldComponentData, old_molecule);
-    if (!correctionOld.has_value())
-    {
-      return std::nullopt;
-    }
-
-    retraceData.energies += correctionOld.value();
-    retraceData.multiplyRosenbluthWeight(-system.beta * correctionOld->potentialEnergy());
+    return std::nullopt;
   }
 
   time_begin = std::chrono::steady_clock::now();

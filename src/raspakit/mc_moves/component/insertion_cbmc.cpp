@@ -49,8 +49,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
 
   // Attempt to grow a new molecule using CBMC
   time_begin = std::chrono::steady_clock::now();
-  std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-      random, growContext, component, selectedComponent, selectedMolecule, 1.0, false, false);
+  std::optional<CBMC::GrowResult> growData = CBMC::growNewMolecule(
+      random, growContext, component, {.componentId = selectedComponent, .moleculeId = selectedMolecule});
   time_end = std::chrono::steady_clock::now();
 
   // Update CPU time statistics for the non-Ewald part of the move
@@ -60,17 +60,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   // If growth failed, reject the move
   if (!growData) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-  if (system.forceField.useDualCutOff)
-  {
-    // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
-    // cut-offs, so that Rosenbluth weight and energies behave as if grown at the full cut-offs.
-    std::optional<RunningEnergy> correctionNew =
-        CBMC::computeDualCutOffCorrection(growContext, component, growData->atoms);
-    if (!correctionNew.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-    growData->energies += correctionNew.value();
-    growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
-  }
+  // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full cut-offs.
+  if (!CBMC::applyDualCutOffCorrection(growContext, component, *growData)) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
   std::vector<double3> new_electric_field = std::vector<double3>(newMolecule.size());

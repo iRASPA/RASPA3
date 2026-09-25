@@ -11,185 +11,170 @@ import cbmc_results;
 import cbmc_external_energy;
 import cbmc_growth_context;
 import running_energy;
-import framework;
 import component;
-import forcefield;
-import simulationbox;
-import interpolation_energy_grid;
 
-[[nodiscard]] std::optional<FirstBeadData> CBMC::growMoleculeMultipleFirstBeadSwapInsertion(
-    RandomNumber& random, const GrowContext& context, const Component& component, const Atom& atom) noexcept
+namespace
 {
-  std::vector<Atom> trialPositions(context.forceField.numberOfFirstBeadPositions, atom);
-
-  // create trial positions randomly in the simulation box
-  std::for_each(trialPositions.begin(), trialPositions.end(),
-                [&](Atom& a) { a.position = context.simulationBox.randomPosition(random); });
-
-  const std::vector<FirstBeadTrial> externalEnergies =
-      computeExternalNonOverlappingEnergies(context, component, trialPositions);
-
-  // if all positions over lap return failure
-  if (externalEnergies.empty()) return std::nullopt;
-
-  std::vector<double> logBoltzmannFactors{};
-  std::transform(externalEnergies.begin(), externalEnergies.end(), std::back_inserter(logBoltzmannFactors),
-                 [&](const FirstBeadTrial& v) { return -context.beta * v.energy.potentialEnergy(); });
-
-  std::size_t selected = selectTrialPosition(random, logBoltzmannFactors);
-
-  double RosenbluthWeight = std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
-                                            [&](const double& acc, const double& logBoltzmannFactor)
-                                            { return acc + std::exp(logBoltzmannFactor); });
-
-  if (RosenbluthWeight < context.forceField.minimumRosenbluthFactor) return std::nullopt;
-
-  return FirstBeadData(externalEnergies[selected].position, externalEnergies[selected].energy,
-                       std::log(RosenbluthWeight / double(context.forceField.numberOfFirstBeadPositions)), 0.0);
-}
-
-[[nodiscard]] FirstBeadData CBMC::retraceMultipleFirstBeadSwapDeletion(RandomNumber& random,
-                                                                       const GrowContext& context,
-                                                                       const Component& component,
-                                                                       const Atom atom) noexcept
+/// External energy of the existing first bead; throws when it overlaps (an accepted configuration can
+/// not overlap, so a weight is undefined: see the error contract in the 'cbmc' module).
+RunningEnergy existingFirstBeadEnergy(const CBMC::GrowContext& context, const Component& component, const Atom& atom,
+                                      std::optional<std::size_t> skipBackgroundMolecule)
 {
-  std::vector<Atom> trialPositions(context.forceField.numberOfFirstBeadPositions, atom);
-
-  // set the trial positions of the first bead randomly in the simulation box for the 1..N_trial atomns, but leave the
-  // first as the old
-  std::for_each(trialPositions.begin() + 1, trialPositions.end(),
-                [&](Atom& a) { a.position = context.simulationBox.randomPosition(random); });
-
-  const std::vector<FirstBeadTrial> externalEnergies =
-      computeExternalNonOverlappingEnergies(context, component, trialPositions);
-
-  std::vector<double> logBoltzmannFactors{};
-  std::transform(std::begin(externalEnergies), std::end(externalEnergies), std::back_inserter(logBoltzmannFactors),
-                 [&](const FirstBeadTrial& v) { return -context.beta * v.energy.potentialEnergy(); });
-
-  double RosenbluthWeight = std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
-                                            [](const double& acc, const double& logBoltzmannFactor)
-                                            { return acc + std::exp(logBoltzmannFactor); });
-
-  return FirstBeadData(atom, externalEnergies[0].energy,
-                       std::log(RosenbluthWeight / double(context.forceField.numberOfFirstBeadPositions)), 0.0);
-}
-
-[[nodiscard]] std::optional<FirstBeadData> CBMC::growMultipleFirstBeadReinsertion(
-    RandomNumber& random, const GrowContext& context, const Component& component, const Atom& atom,
-    std::optional<std::size_t> skipBackgroundMolecule) noexcept
-{
-  std::vector<Atom> trialPositions(context.forceField.numberOfFirstBeadPositions, atom);
-  std::for_each(trialPositions.begin(), trialPositions.end(),
-                [&](Atom& a) { a.position = context.simulationBox.randomPosition(random); });
-
-  const std::vector<FirstBeadTrial> externalEnergies =
-      computeExternalNonOverlappingEnergies(context, component, trialPositions, skipBackgroundMolecule);
-
-  if (externalEnergies.empty()) return std::nullopt;
-
-  std::vector<double> logBoltzmannFactors{};
-  std::transform(externalEnergies.begin(), externalEnergies.end(), std::back_inserter(logBoltzmannFactors),
-                 [&](const FirstBeadTrial& v) { return -context.beta * v.energy.potentialEnergy(); });
-
-  std::size_t selected = CBMC::selectTrialPosition(random, logBoltzmannFactors);
-
-  double RosenbluthWeight = std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
-                                            [&](const double& acc, const double& logBoltzmannFactor)
-                                            { return acc + std::exp(logBoltzmannFactor); });
-
-  if (RosenbluthWeight < context.forceField.minimumRosenbluthFactor) return std::nullopt;
-
-  // r=w(n)-exp(-beta U[h_n]) Eq.16 from Esselink et al. (kept linear, see FirstBeadData::storedR)
-  double storedR = RosenbluthWeight - std::exp(logBoltzmannFactors[selected]);
-
-  return FirstBeadData(externalEnergies[selected].position, externalEnergies[selected].energy,
-                       std::log(RosenbluthWeight / double(context.forceField.numberOfFirstBeadPositions)), storedR);
-}
-
-[[nodiscard]] std::optional<FirstBeadData> CBMC::retraceMultipleFirstBeadReinsertion(
-    [[maybe_unused]] RandomNumber& random, const GrowContext& context, const Component& component, const Atom& atom,
-    double storedR, std::optional<std::size_t> skipBackgroundMolecule) noexcept
-{
-  std::vector<Atom> trialPositions({atom});
-
-  const std::vector<FirstBeadTrial> externalEnergies =
-      computeExternalNonOverlappingEnergies(context, component, trialPositions, skipBackgroundMolecule);
-  if (externalEnergies.empty())
+  const std::optional<RunningEnergy> energy =
+      CBMC::computeExternalNonOverlappingEnergy(context, component, std::span<const Atom>(&atom, 1), skipBackgroundMolecule);
+  if (!energy.has_value())
   {
-    return std::nullopt;
+    throw std::runtime_error(
+        std::format("CBMC retrace: the first bead of the existing molecule (component '{}', molecule {}) overlaps "
+                    "with its environment; the configuration is inconsistent and has no Rosenbluth weight",
+                    component.name, atom.moleculeId));
   }
-
-  std::vector<double> logBoltzmannFactors{};
-  std::transform(std::begin(externalEnergies), std::end(externalEnergies), std::back_inserter(logBoltzmannFactors),
-                 [&](const FirstBeadTrial& v) { return -context.beta * v.energy.potentialEnergy(); });
-
-  double RosenbluthWeight = std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
-                                            [](const double& acc, const double& logBoltzmannFactor)
-                                            { return acc + std::exp(logBoltzmannFactor); });
-
-  // w(o)=exp(-beta u(o))+r  Eq. 18 from Esselink et al.
-  return FirstBeadData(atom, externalEnergies[0].energy,
-                       std::log((RosenbluthWeight + storedR) / double(context.forceField.numberOfFirstBeadPositions)),
-                       0.0);
+  return energy.value();
 }
 
-[[nodiscard]] std::optional<FirstBeadData> CBMC::growMultipleFirstBeadPartialInsertion(
-    const GrowContext& context, const Component& component, const Atom& atom,
-    std::optional<std::size_t> skipBackgroundMolecule) noexcept
+/// Sum of the Boltzmann factors of a set of trial positions (overlapping trials contribute zero).
+double sumOfBoltzmannFactors(const CBMC::GrowContext& context, const std::vector<CBMC::FirstBeadTrial>& trials)
 {
-  std::vector<Atom> trialPositions({atom});
-
-  const std::vector<FirstBeadTrial> externalEnergies =
-      computeExternalNonOverlappingEnergies(context, component, trialPositions, skipBackgroundMolecule);
-
-  if (externalEnergies.empty()) return std::nullopt;
-
-  // A single trial: the weight is the Boltzmann factor itself, already available as its logarithm.
-  double logBoltzmannFactor = -context.beta * externalEnergies[0].energy.potentialEnergy();
-
-  if (std::exp(logBoltzmannFactor) < context.forceField.minimumRosenbluthFactor) return std::nullopt;
-
-  return FirstBeadData(externalEnergies[0].position, externalEnergies[0].energy, logBoltzmannFactor, 0.0);
+  return std::accumulate(trials.begin(), trials.end(), 0.0,
+                         [&](double acc, const CBMC::FirstBeadTrial& trial)
+                         { return acc + std::exp(-context.beta * trial.energy.potentialEnergy()); });
 }
 
-[[nodiscard]] FirstBeadData CBMC::retraceMultipleFirstBeadPartialDeletion(const GrowContext& context,
-                                                                          const Component& component,
-                                                                          const Atom& atom) noexcept
+/// Rosenbluth selection among random trial positions: the selected trial, the sum of the Boltzmann
+/// factors, and the Boltzmann factor of the selected trial. std::nullopt when every trial overlaps
+/// or the weight falls below 'minimumRosenbluthFactor'.
+struct MultipleFirstBeadSelection
 {
-  std::vector<Atom> trialPositions({atom});
+  CBMC::FirstBeadTrial selected;
+  double rosenbluthSum;
+  double selectedBoltzmannFactor;
+};
 
-  const std::vector<FirstBeadTrial> externalEnergies =
-      computeExternalNonOverlappingEnergies(context, component, trialPositions);
+std::optional<MultipleFirstBeadSelection> selectAmongRandomPositions(RandomNumber& random,
+                                                                     const CBMC::GrowContext& context,
+                                                                     const Component& component, const Atom& atom,
+                                                                     std::optional<std::size_t> skipBackgroundMolecule)
+{
+  std::vector<Atom> trialPositions(context.settings.numberOfFirstBeadPositions, atom);
+  for (Atom& trial : trialPositions) trial.position = context.simulationBox.randomPosition(random);
 
-  double logBoltzmannFactor = -context.beta * externalEnergies[0].energy.potentialEnergy();
+  const std::vector<CBMC::FirstBeadTrial> trials =
+      CBMC::computeExternalNonOverlappingEnergies(context, component, trialPositions, skipBackgroundMolecule);
+  if (trials.empty()) return std::nullopt;
 
-  return FirstBeadData(atom, externalEnergies[0].energy, logBoltzmannFactor, 0.0);
+  std::vector<double> logBoltzmannFactors(trials.size());
+  std::transform(trials.begin(), trials.end(), logBoltzmannFactors.begin(),
+                 [&](const CBMC::FirstBeadTrial& trial) { return -context.beta * trial.energy.potentialEnergy(); });
+
+  const std::size_t selected = CBMC::selectTrialPosition(random, logBoltzmannFactors);
+
+  const double rosenbluthSum = std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
+                                               [](double acc, double logFactor) { return acc + std::exp(logFactor); });
+  if (rosenbluthSum < context.settings.minimumRosenbluthFactor) return std::nullopt;
+
+  return MultipleFirstBeadSelection{trials[selected], rosenbluthSum, std::exp(logBoltzmannFactors[selected])};
 }
+}  // namespace
 
-[[nodiscard]] std::optional<FirstBeadData> CBMC::growFirstBeadAtFixedPosition(const GrowContext& context,
+[[nodiscard]] std::optional<CBMC::FirstBeadData> CBMC::growMultipleFirstBead(RandomNumber& random,
+                                                                              const GrowContext& context,
                                                                               const Component& component,
                                                                               const Atom& atom) noexcept
 {
-  std::vector<Atom> trialPositions({atom});
+  const std::optional<MultipleFirstBeadSelection> selection =
+      selectAmongRandomPositions(random, context, component, atom, std::nullopt);
+  if (!selection) return std::nullopt;
 
-  const std::vector<FirstBeadTrial> externalEnergies =
-      computeExternalNonOverlappingEnergies(context, component, trialPositions);
-
-  if (externalEnergies.empty()) return std::nullopt;
-
-  // Pinned first bead: weight one, log zero.
-  return FirstBeadData(externalEnergies[0].position, externalEnergies[0].energy, 0.0, 0.0);
+  return FirstBeadData(selection->selected.position, selection->selected.energy,
+                       std::log(selection->rosenbluthSum / double(context.settings.numberOfFirstBeadPositions)), 0.0);
 }
 
-[[nodiscard]] FirstBeadData CBMC::retraceFirstBeadAtFixedPosition(const GrowContext& context,
-                                                                  const Component& component, const Atom atom) noexcept
+[[nodiscard]] CBMC::FirstBeadData CBMC::retraceMultipleFirstBead(RandomNumber& random, const GrowContext& context,
+                                                                 const Component& component, const Atom& atom)
 {
-  std::vector<Atom> trialPositions({atom});
+  // The existing bead is trial 0; the remaining positions are drawn at random.
+  const RunningEnergy oldEnergy = existingFirstBeadEnergy(context, component, atom, std::nullopt);
 
-  const std::vector<FirstBeadTrial> externalEnergies =
-      computeExternalNonOverlappingEnergies(context, component, trialPositions);
+  std::vector<Atom> trialPositions(context.settings.numberOfFirstBeadPositions - 1, atom);
+  for (Atom& trial : trialPositions) trial.position = context.simulationBox.randomPosition(random);
 
-  // Pinned first bead: weight one, log zero.
-  return FirstBeadData(atom, externalEnergies[0].energy, 0.0, 0.0);
+  const std::vector<FirstBeadTrial> trials = computeExternalNonOverlappingEnergies(context, component, trialPositions);
+
+  const double rosenbluthSum =
+      std::exp(-context.beta * oldEnergy.potentialEnergy()) + sumOfBoltzmannFactors(context, trials);
+
+  return FirstBeadData(atom, oldEnergy, std::log(rosenbluthSum / double(context.settings.numberOfFirstBeadPositions)),
+                       0.0);
+}
+
+[[nodiscard]] std::optional<CBMC::FirstBeadData> CBMC::growMultipleFirstBeadReinsertion(
+    RandomNumber& random, const GrowContext& context, const Component& component, const Atom& atom,
+    std::optional<std::size_t> skipBackgroundMolecule) noexcept
+{
+  const std::optional<MultipleFirstBeadSelection> selection =
+      selectAmongRandomPositions(random, context, component, atom, skipBackgroundMolecule);
+  if (!selection) return std::nullopt;
+
+  // r = w(n) - exp(-beta U[h_n]), Eq. 16 of Esselink et al. (kept linear, see FirstBeadData::storedR)
+  const double storedR = selection->rosenbluthSum - selection->selectedBoltzmannFactor;
+
+  return FirstBeadData(selection->selected.position, selection->selected.energy,
+                       std::log(selection->rosenbluthSum / double(context.settings.numberOfFirstBeadPositions)),
+                       storedR);
+}
+
+[[nodiscard]] CBMC::FirstBeadData CBMC::retraceMultipleFirstBeadReinsertion(
+    const GrowContext& context, const Component& component, const Atom& atom, double storedR,
+    std::optional<std::size_t> skipBackgroundMolecule)
+{
+  const RunningEnergy oldEnergy = existingFirstBeadEnergy(context, component, atom, skipBackgroundMolecule);
+
+  // w(o) = exp(-beta u(o)) + r, Eq. 18 of Esselink et al.
+  const double rosenbluthSum = std::exp(-context.beta * oldEnergy.potentialEnergy()) + storedR;
+
+  return FirstBeadData(atom, oldEnergy, std::log(rosenbluthSum / double(context.settings.numberOfFirstBeadPositions)),
+                       0.0);
+}
+
+[[nodiscard]] std::optional<CBMC::FirstBeadData> CBMC::growPinnedFirstBead(
+    const GrowContext& context, const Component& component, const Atom& atom,
+    std::optional<std::size_t> skipBackgroundMolecule) noexcept
+{
+  const std::optional<RunningEnergy> energy =
+      computeExternalNonOverlappingEnergy(context, component, std::span<const Atom>(&atom, 1), skipBackgroundMolecule);
+  if (!energy) return std::nullopt;
+
+  // A single trial: the weight is the Boltzmann factor itself, already available as its logarithm.
+  const double logBoltzmannFactor = -context.beta * energy->potentialEnergy();
+  if (std::exp(logBoltzmannFactor) < context.settings.minimumRosenbluthFactor) return std::nullopt;
+
+  return FirstBeadData(atom, energy.value(), logBoltzmannFactor, 0.0);
+}
+
+[[nodiscard]] CBMC::FirstBeadData CBMC::retracePinnedFirstBead(const GrowContext& context, const Component& component,
+                                                               const Atom& atom,
+                                                               std::optional<std::size_t> skipBackgroundMolecule)
+{
+  const RunningEnergy oldEnergy = existingFirstBeadEnergy(context, component, atom, skipBackgroundMolecule);
+  return FirstBeadData(atom, oldEnergy, -context.beta * oldEnergy.potentialEnergy(), 0.0);
+}
+
+[[nodiscard]] std::optional<CBMC::FirstBeadData> CBMC::growFixedFirstBead(
+    const GrowContext& context, const Component& component, const Atom& atom,
+    std::optional<std::size_t> skipBackgroundMolecule) noexcept
+{
+  const std::optional<RunningEnergy> energy =
+      computeExternalNonOverlappingEnergy(context, component, std::span<const Atom>(&atom, 1), skipBackgroundMolecule);
+  if (!energy) return std::nullopt;
+
+  // Fixed first bead: weight one, log zero.
+  return FirstBeadData(atom, energy.value(), 0.0, 0.0);
+}
+
+[[nodiscard]] CBMC::FirstBeadData CBMC::retraceFixedFirstBead(const GrowContext& context, const Component& component,
+                                                              const Atom& atom,
+                                                              std::optional<std::size_t> skipBackgroundMolecule)
+{
+  const RunningEnergy oldEnergy = existingFirstBeadEnergy(context, component, atom, skipBackgroundMolecule);
+  return FirstBeadData(atom, oldEnergy, 0.0, 0.0);
 }

@@ -50,8 +50,8 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
 
   // Attempt to grow a new molecule using Configurational Bias Monte Carlo (CBMC) insertion.
   t1 = std::chrono::steady_clock::now();
-  std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-      random, growContext, component, selectedComponent, selectedMolecule, 1.0, false, false);
+  std::optional<CBMC::GrowResult> growData = CBMC::growNewMolecule(
+      random, growContext, component, {.componentId = selectedComponent, .moleculeId = selectedMolecule});
   t2 = std::chrono::steady_clock::now();
 
   component.mc_moves_cputime[move][Move::Timing::NonEwald] += (t2 - t1);
@@ -60,17 +60,8 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   // If molecule growth failed, terminate the move.
   if (!growData) return 0.0;
 
-  if (system.forceField.useDualCutOff)
-  {
-    // Dual cut-off scheme: correct the Widom Rosenbluth weight from the inner cut-off to the full
-    // cut-offs.
-    std::optional<RunningEnergy> correctionNew =
-        CBMC::computeDualCutOffCorrection(growContext, component, growData->atoms);
-    if (!correctionNew.has_value()) return 0.0;
-
-    growData->energies += correctionNew.value();
-    growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
-  }
+  // Dual cut-off scheme: correct the Widom Rosenbluth weight from the inner cut-off to the full cut-offs.
+  if (!CBMC::applyDualCutOffCorrection(growContext, component, *growData)) return 0.0;
 
   std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
 

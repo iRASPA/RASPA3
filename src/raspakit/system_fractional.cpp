@@ -1246,16 +1246,17 @@ void System::createParallelReactionFractionalMolecules()
       const double reactantScaling = 1.0 - reaction.currentLambda;
       for (std::size_t k = 0; k < reaction.reactantStoichiometry[componentId]; ++k)
       {
-        std::optional<ChainGrowData> growData = std::nullopt;
+        std::optional<CBMC::GrowResult> growData = std::nullopt;
         do
         {
           if (useCBMC)
           {
-            growData = CBMC::growMoleculeSwapInsertion(
-                random,
-                makeGrowContext(CBMC::CutOffMode::Full),
-                components[componentId], componentId, numberOfMolecules(), reactantScaling,
-                reaction.dUdlambdaGroup(true), true);
+            growData = CBMC::growNewMolecule(random, makeGrowContext(CBMC::CutOffMode::Full), components[componentId],
+                                             {.componentId = componentId,
+                                              .moleculeId = numberOfMolecules(),
+                                              .scaling = reactantScaling,
+                                              .groupId = reaction.dUdlambdaGroup(true),
+                                              .isFractional = true});
           }
           else
           {
@@ -1284,16 +1285,17 @@ void System::createParallelReactionFractionalMolecules()
       const double productScaling = reaction.currentLambda;
       for (std::size_t k = 0; k < reaction.productStoichiometry[componentId]; ++k)
       {
-        std::optional<ChainGrowData> growData = std::nullopt;
+        std::optional<CBMC::GrowResult> growData = std::nullopt;
         do
         {
           if (useCBMC)
           {
-            growData = CBMC::growMoleculeSwapInsertion(
-                random,
-                makeGrowContext(CBMC::CutOffMode::Full),
-                components[componentId], componentId, numberOfMolecules(), productScaling,
-                reaction.dUdlambdaGroup(false), true);
+            growData = CBMC::growNewMolecule(random, makeGrowContext(CBMC::CutOffMode::Full), components[componentId],
+                                             {.componentId = componentId,
+                                              .moleculeId = numberOfMolecules(),
+                                              .scaling = productScaling,
+                                              .groupId = reaction.dUdlambdaGroup(false),
+                                              .isFractional = true});
           }
           else
           {
@@ -1353,7 +1355,7 @@ void System::createSerialReactionFractionalMolecules()
     {
       for (std::size_t k = 0; k < reaction.reactantStoichiometry[componentId]; ++k)
       {
-        std::optional<ChainGrowData> growData = std::nullopt;
+        std::optional<CBMC::GrowResult> growData = std::nullopt;
         do
         {
           // grow at full coupling so that the overlap check below is meaningful: at the actual initial
@@ -1361,11 +1363,12 @@ void System::createSerialReactionFractionalMolecules()
           // molecule, which produces an astronomically high energy as soon as lambda is raised
           if (useCBMC)
           {
-            growData = CBMC::growMoleculeSwapInsertion(
-                random,
-                makeGrowContext(CBMC::CutOffMode::Full),
-                components[componentId], componentId, numberOfMolecules(), 1.0, reaction.lambda.dUdlambdaGroupId,
-                true);
+            growData = CBMC::growNewMolecule(random, makeGrowContext(CBMC::CutOffMode::Full), components[componentId],
+                                             {.componentId = componentId,
+                                              .moleculeId = numberOfMolecules(),
+                                              .scaling = 1.0,
+                                              .groupId = reaction.lambda.dUdlambdaGroupId,
+                                              .isFractional = true});
           }
           else
           {

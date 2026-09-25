@@ -104,11 +104,12 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
   }
 
   // Grow the arriving unit attached to the shifted chain.
+  const CBMC::GrowContext context = system.makeGrowContext();
+
   time_begin = std::chrono::steady_clock::now();
-  std::optional<ChainGrowData> growData = CBMC::growMoleculePartialReinsertion(
-      random,
-      system.makeGrowContext(),
-      component, selectedComponent, molecule, std::span<Atom>(shiftedAtoms), placedForGrow);
+  std::optional<CBMC::GrowResult> growData = CBMC::regrowMolecule(
+      random, context, component, molecule, shiftedAtoms,
+      {.firstBead = CBMC::FirstBeadScheme::AlreadyPlaced, .beadsAlreadyPlaced = placedForGrow});
   time_end = std::chrono::steady_clock::now();
   component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -125,10 +126,9 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
 
   // Retrace the departing unit in the current configuration.
   time_begin = std::chrono::steady_clock::now();
-  ChainRetraceData retraceData = CBMC::retraceMoleculePartialReinsertion(
-      random,
-      system.makeGrowContext(),
-      component, molecule, molecule_atoms, placedForRetrace);
+  CBMC::RetraceResult retraceData = CBMC::retraceMolecule(
+      random, context, component, molecule_atoms,
+      {.firstBead = CBMC::FirstBeadScheme::AlreadyPlaced, .beadsAlreadyPlaced = placedForRetrace});
   time_end = std::chrono::steady_clock::now();
   component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -144,22 +144,12 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
   component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
-  if (system.forceField.useDualCutOff)
+  // Dual cut-off scheme: correct the grown and retraced configurations from the inner cut-off to the
+  // full cut-offs.
+  if (!CBMC::applyDualCutOffCorrection(context, component, *growData) ||
+      !CBMC::applyDualCutOffCorrection(context, component, old_molecule, retraceData))
   {
-    // Dual cut-off scheme: correct the grown and retraced configurations from the inner cut-off to
-    // the full cut-offs, so that Rosenbluth weights and energies behave as if grown at the full
-    // cut-offs.
-    const CBMC::GrowContext context = system.makeGrowContext();
-
-    std::optional<RunningEnergy> correctionNew =
-        CBMC::computeDualCutOffCorrection(context, component, growData->atoms);
-    std::optional<RunningEnergy> correctionOld = CBMC::computeDualCutOffCorrection(context, component, old_molecule);
-    if (!correctionNew.has_value() || !correctionOld.has_value()) return std::nullopt;
-
-    growData->energies += correctionNew.value();
-    growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
-    retraceData.energies += correctionOld.value();
-    retraceData.multiplyRosenbluthWeight(-system.beta * correctionOld->potentialEnergy());
+    return std::nullopt;
   }
 
   std::vector<double3> electricFieldNeighborDelta;

@@ -23,9 +23,9 @@ enum class ReactionMoveKind : std::uint8_t
 
 struct MoleculeGroupGrowData
 {
-  std::vector<ChainGrowData> molecules;
+  std::vector<CBMC::GrowResult> molecules;
   /// Exact log of the product of the members' Rosenbluth weights; the single stored representation
-  /// (the raw product underflows for long chains, see ChainGrowData).
+  /// (the raw product underflows for long chains, see CBMC::GrowResult).
   double logRosenbluthWeight{0.0};
   RunningEnergy energies{};
 
@@ -35,7 +35,7 @@ struct MoleculeGroupGrowData
 
 struct MoleculeGroupRetraceData
 {
-  std::vector<ChainRetraceData> molecules;
+  std::vector<CBMC::RetraceResult> molecules;
   /// Exact log of the product of the members' Rosenbluth weights; the single stored representation.
   double logRosenbluthWeight{0.0};
   RunningEnergy energies{};
@@ -79,7 +79,7 @@ void setReactionFractionalScaling(System& system, Reaction& reaction, double lam
 void deleteSelectedMolecules(System& system,
                              std::span<const std::pair<std::size_t, std::size_t>> selectedMolecules) noexcept;
 
-void insertGrownMolecules(System& system, std::span<const ChainGrowData> growData,
+void insertGrownMolecules(System& system, std::span<const CBMC::GrowResult> growData,
                           std::span<const std::size_t> productStoichiometry) noexcept;
 
 [[nodiscard]] std::optional<RunningEnergy> parallelReactionMove(RandomNumber& random, System& system,

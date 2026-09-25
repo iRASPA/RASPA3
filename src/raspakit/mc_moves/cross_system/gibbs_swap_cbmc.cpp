@@ -100,8 +100,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   // Attempt to grow a new molecule in system A using CBMC insertion
   time_begin = std::chrono::steady_clock::now();
-  std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-      random, growContext, componentA, selectedComponent, newMoleculeIndex, 1.0, false, false);
+  std::optional<CBMC::GrowResult> growData = CBMC::growNewMolecule(
+      random, growContext, componentA, {.componentId = selectedComponent, .moleculeId = newMoleculeIndex});
   time_end = std::chrono::steady_clock::now();
 
   // Update CPU time statistics for CBMC insertion (non-Ewald part)
@@ -110,17 +110,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   if (!growData) return std::nullopt;  // Insertion failed, return
 
-  if (systemA.forceField.useDualCutOff)
-  {
-    // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
-    // cut-offs, so that Rosenbluth weight and energies behave as if grown at the full cut-offs.
-    std::optional<RunningEnergy> correctionNew =
-        CBMC::computeDualCutOffCorrection(growContext, componentA, growData->atoms);
-    if (!correctionNew.has_value()) return std::nullopt;
-
-    growData->energies += correctionNew.value();
-    growData->multiplyRosenbluthWeight(-systemA.beta * correctionNew->potentialEnergy());
-  }
+  // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full cut-offs.
+  if (!CBMC::applyDualCutOffCorrection(growContext, componentA, *growData)) return std::nullopt;
 
   // Get new molecule atoms
   std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
@@ -164,25 +155,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   // Retrace the selected molecule in system B for deletion using CBMC
   time_begin = std::chrono::steady_clock::now();
-  ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(random, retraceContext, componentB, molecule);
+  CBMC::RetraceResult retraceData = CBMC::retraceMolecule(random, retraceContext, componentB, molecule);
   time_end = std::chrono::steady_clock::now();
 
   // Update CPU time statistics for CBMC deletion (non-Ewald part)
   componentA.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   systemA.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
-  if (systemB.forceField.useDualCutOff)
-  {
-    // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
-    // cut-offs, so that Rosenbluth weight and energies behave as if retraced at the full cut-offs.
-    std::vector<Atom> oldMolecule(molecule.begin(), molecule.end());
-    std::optional<RunningEnergy> correctionOld =
-        CBMC::computeDualCutOffCorrection(retraceContext, componentB, oldMolecule);
-    if (!correctionOld.has_value()) return std::nullopt;
-
-    retraceData.energies += correctionOld.value();
-    retraceData.multiplyRosenbluthWeight(-systemB.beta * correctionOld->potentialEnergy());
-  }
+  // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full cut-offs.
+  if (!CBMC::applyDualCutOffCorrection(retraceContext, componentB, molecule, retraceData)) return std::nullopt;
 
   // Compute Ewald Fourier energy difference for system B
   time_begin = std::chrono::steady_clock::now();

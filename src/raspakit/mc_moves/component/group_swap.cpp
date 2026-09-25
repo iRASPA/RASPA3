@@ -134,24 +134,19 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
   const CBMC::GrowContext growContextCentral = system.makeGrowContext();
 
   time_begin = std::chrono::steady_clock::now();
-  std::optional<ChainGrowData> growDataCentral = CBMC::growMoleculeSwapInsertion(
-      random, growContextCentral, centralComponent, selectedComponent, system.numberOfMolecules(), 1.0,
-      std::uint8_t{0}, false);
+  std::optional<CBMC::GrowResult> growDataCentral = CBMC::growNewMolecule(
+      random, growContextCentral, centralComponent,
+      {.componentId = selectedComponent, .moleculeId = system.numberOfMolecules()});
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
   centralComponent.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
   if (!growDataCentral) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-  if (system.forceField.useDualCutOff)
+  // Dual cut-off scheme: correct the central molecule from the inner cut-off to the full cut-offs.
+  if (!CBMC::applyDualCutOffCorrection(growContextCentral, centralComponent, *growDataCentral))
   {
-    // Dual cut-off scheme: correct the central molecule from the inner cut-off to the full cut-offs.
-    std::optional<RunningEnergy> correction =
-        CBMC::computeDualCutOffCorrection(growContextCentral, centralComponent, growDataCentral->atoms);
-    if (!correction.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-    growDataCentral->energies += correction.value();
-    growDataCentral->multiplyRosenbluthWeight(-system.beta * correction->potentialEnergy());
+    return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
   const double3 centralPosition = growDataCentral->atoms[centralComponent.startingBead].position;
@@ -165,7 +160,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
   memberBackgroundSizes.push_back(background.size());
   background.insert(background.end(), growDataCentral->atoms.begin(), growDataCentral->atoms.end());
 
-  std::vector<ChainGrowData> satelliteGrowData;
+  std::vector<CBMC::GrowResult> satelliteGrowData;
   satelliteGrowData.reserve(numberOfSatellites);
   std::vector<double> distanceBiasFactors;
   distanceBiasFactors.reserve(numberOfSatellites);
@@ -184,25 +179,21 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
     const CBMC::GrowContext growContext = system.makeGrowContext().withMoleculeAtoms(background);
 
     time_begin = std::chrono::steady_clock::now();
-    std::optional<ChainGrowData> growData = CBMC::growMoleculePairSecondSwapInsertion(
-        random, growContext, satelliteComponent, satelliteComponentId, system.numberOfMolecules() + 1 + j,
-        fixedFirstBeadPosition, 1.0, std::uint8_t{0}, false);
+    std::optional<CBMC::GrowResult> growData = CBMC::growNewMolecule(
+        random, growContext, satelliteComponent,
+        {.componentId = satelliteComponentId, .moleculeId = system.numberOfMolecules() + 1 + j},
+        {.firstBead = CBMC::FirstBeadScheme::Fixed, .firstBeadPosition = fixedFirstBeadPosition});
     time_end = std::chrono::steady_clock::now();
     system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
     centralComponent.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
     if (!growData) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-    if (system.forceField.useDualCutOff)
+    // Correct the satellite from the inner cut-off to the full cut-offs, using the same background
+    // (existing molecules plus previously grown group members) as the growth.
+    if (!CBMC::applyDualCutOffCorrection(growContext, satelliteComponent, *growData))
     {
-      // Correct the satellite from the inner cut-off to the full cut-offs, using the same
-      // background (existing molecules plus previously grown group members) as the growth.
-      std::optional<RunningEnergy> correction =
-          CBMC::computeDualCutOffCorrection(growContext, satelliteComponent, growData->atoms);
-      if (!correction.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-      growData->energies += correction.value();
-      growData->multiplyRosenbluthWeight(-system.beta * correction->potentialEnergy());
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
     distanceBiasFactors.push_back(distanceBiased ? 3.0 * r * r / (R_max * R_max) : 1.0);
@@ -432,7 +423,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
 
     RunningEnergy totalEnergyDifference =
         growDataCentral->energies + energyFourierDifference + tailEnergyDifference + polarizationDifference;
-    for (const ChainGrowData& growData : satelliteGrowData)
+    for (const CBMC::GrowResult& growData : satelliteGrowData)
     {
       totalEnergyDifference += growData.energies;
     }
@@ -579,7 +570,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
   }
 
   // Retrace the group members, each against the same background prefix it was grown against.
-  std::vector<ChainRetraceData> retraceData;
+  std::vector<CBMC::RetraceResult> retraceData;
   retraceData.reserve(groupSize);
   for (std::size_t i = 0; i < groupSize; ++i)
   {
@@ -590,24 +581,18 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
     std::span<Atom> memberAtoms = system.spanOfMolecule(members[i].componentId, members[i].moleculeId);
 
     time_begin = std::chrono::steady_clock::now();
-    ChainRetraceData retrace =
-        (i == 0) ? CBMC::retraceMoleculeSwapDeletion(random, retraceContext, memberComponent, memberAtoms)
-                 : CBMC::retraceMoleculePairSecondSwapDeletion(random, retraceContext, memberComponent, memberAtoms);
+    CBMC::RetraceResult retrace = CBMC::retraceMolecule(
+        random, retraceContext, memberComponent, memberAtoms,
+        {.firstBead = (i == 0) ? CBMC::FirstBeadScheme::MultipleFirstBead : CBMC::FirstBeadScheme::Fixed});
     time_end = std::chrono::steady_clock::now();
     system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
     centralComponent.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
-    if (system.forceField.useDualCutOff)
+    // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
+    // cut-offs, using the same background as the retrace.
+    if (!CBMC::applyDualCutOffCorrection(retraceContext, memberComponent, memberAtoms, retrace))
     {
-      // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
-      // cut-offs, using the same background as the retrace.
-      std::vector<Atom> memberAtomsCopy(memberAtoms.begin(), memberAtoms.end());
-      std::optional<RunningEnergy> correction =
-          CBMC::computeDualCutOffCorrection(retraceContext, memberComponent, memberAtomsCopy);
-      if (!correction.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-      retrace.energies += correction.value();
-      retrace.multiplyRosenbluthWeight(-system.beta * correction->potentialEnergy());
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
     retraceData.push_back(std::move(retrace));
@@ -790,7 +775,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
     }
 
     RunningEnergy totalEnergyDifference = -energyFourierDifference - tailEnergyDifference - polarizationDifference;
-    for (const ChainRetraceData& retrace : retraceData)
+    for (const CBMC::RetraceResult& retrace : retraceData)
     {
       totalEnergyDifference += retrace.energies;
     }

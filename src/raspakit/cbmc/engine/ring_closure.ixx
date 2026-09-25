@@ -7,7 +7,7 @@ import std;
 import atom;
 import double3;
 import randomnumbers;
-import forcefield;
+import cbmc_growth_context;
 import component;
 import cbmc_growth_plan;
 
@@ -28,7 +28,7 @@ export namespace CBMC
  *
  * Returns the positions of the step's next-beads (in 'step.nextBeads' order).
  */
-std::vector<Atom> generateRingConformation(RandomNumber &random, const ForceField &forceField, double beta,
+std::vector<Atom> generateRingConformation(RandomNumber &random, const GrowthSettings &settings, double beta,
                                            const Component &component, const std::vector<Atom> &chainAtoms,
                                            const GrowStep &step);
 

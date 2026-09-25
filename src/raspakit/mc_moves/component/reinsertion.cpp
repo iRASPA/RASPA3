@@ -51,12 +51,12 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
     return std::nullopt;
   }
 
+  const CBMC::GrowContext context = system.makeGrowContext();
+
   time_begin = std::chrono::steady_clock::now();
   // Attempt to grow the molecule using CBMC reinsertion.
-  std::optional<ChainGrowData> growData = CBMC::growMoleculeReinsertion(
-      random,
-      system.makeGrowContext(),
-      component, selectedComponent, molecule, molecule_atoms);
+  std::optional<CBMC::GrowResult> growData = CBMC::regrowMolecule(
+      random, context, component, molecule, molecule_atoms, {.firstBead = CBMC::FirstBeadScheme::Reinsertion});
   time_end = std::chrono::steady_clock::now();
   // Record CPU time taken for the non-Ewald part of the move.
   component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -77,16 +77,12 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
 
   // Retrace the old molecule configuration using CBMC retracing.
   time_begin = std::chrono::steady_clock::now();
-  std::optional<ChainRetraceData> retraceData = CBMC::retraceMoleculeReinsertion(
-      random,
-      system.makeGrowContext(),
-      component, molecule, molecule_atoms, growData->storedR);
+  CBMC::RetraceResult retraceData = CBMC::retraceMolecule(
+      random, context, component, molecule_atoms,
+      {.firstBead = CBMC::FirstBeadScheme::Reinsertion,
+       .storedR = growData->firstBeadStoredR,
+       .skipBackgroundMolecule = molecule_atoms[component.startingBead].moleculeId});
   time_end = std::chrono::steady_clock::now();
-
-  if (!retraceData)
-  {
-    return std::nullopt;
-  }
 
   // Record CPU time taken for the retracing step.
   component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -102,22 +98,12 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
   system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
-  if (system.forceField.useDualCutOff)
+  // Dual cut-off scheme: correct the grown and retraced configurations from the inner cut-off to the
+  // full cut-offs.
+  if (!CBMC::applyDualCutOffCorrection(context, component, *growData) ||
+      !CBMC::applyDualCutOffCorrection(context, component, old_molecule, retraceData))
   {
-    // Dual cut-off scheme: correct the grown and retraced configurations from the inner cut-off to
-    // the full cut-offs, so that Rosenbluth weights and energies behave as if grown at the full
-    // cut-offs.
-    const CBMC::GrowContext context = system.makeGrowContext();
-
-    std::optional<RunningEnergy> correctionNew =
-        CBMC::computeDualCutOffCorrection(context, component, growData->atoms);
-    std::optional<RunningEnergy> correctionOld = CBMC::computeDualCutOffCorrection(context, component, old_molecule);
-    if (!correctionNew.has_value() || !correctionOld.has_value()) return std::nullopt;
-
-    growData->energies += correctionNew.value();
-    growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
-    retraceData->energies += correctionOld.value();
-    retraceData->multiplyRosenbluthWeight(-system.beta * correctionOld->potentialEnergy());
+    return std::nullopt;
   }
 
   std::vector<double3> electricFieldNeighborDelta;
@@ -163,7 +149,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   // is exact for any chain length.
   double logAcceptance =
       -system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()) +
-      growData->logRosenbluthWeight - retraceData->logRosenbluthWeight;
+      growData->logRosenbluthWeight - retraceData.logRosenbluthWeight;
 
   // Apply Metropolis acceptance criterion.
   if (random.uniform() < std::exp(logAcceptance))
@@ -188,7 +174,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
 
     molecule = growData->molecule;
 
-    return (growData->energies - retraceData->energies) + energyFourierDifference + polarizationDifference;
+    return (growData->energies - retraceData.energies) + energyFourierDifference + polarizationDifference;
   };
 
   // Move is rejected.

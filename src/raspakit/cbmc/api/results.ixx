@@ -8,14 +8,23 @@ import atom;
 import molecule;
 import running_energy;
 
-// The result types of the CBMC growth stages: the first bead (FirstBeadData) and the remaining chain
-// (ChainGrowData / ChainRetraceData). The entry points in the 'cbmc' module return the combination.
+// The result types of the CBMC growth stages: the first bead (FirstBeadData, internal to the schemes)
+// and the whole molecule as returned by the entry points of the 'cbmc' module (GrowResult,
+// RetraceResult).
+//
+// Every weight is stored ONLY as its natural logarithm, accumulated per growth step so it stays exact
+// where the raw product underflows. The weight of a long chain is a product of hundreds of per-step
+// factors of order exp(-beta u); for a polymer it drops below the smallest double (~1e-308) and a
+// raw weight flushes to zero, turning every acceptance ratio W_new/W_old into 0/0 (NaN, silent
+// reject) or x/0 (inf, unconditional accept). Acceptance rules must therefore be written in log
+// space: exp(logRosenbluthWeight_new - logRosenbluthWeight_old), and corrections (dual cut-off,
+// Ewald) are applied with 'multiplyRosenbluthWeight'. The raw weight is available through
+// 'rosenbluthWeight()' for reporting and averaging (Widom) only.
 
+export namespace CBMC
+{
 /// Result of placing (or retracing) the first bead of a molecule with one of the first-bead schemes.
-/// The weight is stored as its natural logarithm, the same convention as the chain types below, so
-/// the entry points combine the two stages by plain addition. (The first-bead weight itself is a
-/// single-bead average of Boltzmann factors, order one, so the log is exact either way.)
-export struct FirstBeadData
+struct FirstBeadData
 {
   Atom atom;
   RunningEnergy energies;
@@ -23,8 +32,9 @@ export struct FirstBeadData
   double logRosenbluthWeight;
   /// Retained partial weight of the multiple-first-bead reinsertion scheme (Esselink et al., 'r' in
   /// Eq. 16-18): the Rosenbluth sum minus the Boltzmann factor of the selected trial. Deliberately
-  /// linear -- the retrace adds it to a Boltzmann factor, w(o) = exp(-beta u(o)) + r. Zero for the
-  /// other schemes.
+  /// linear -- the retrace adds it to a Boltzmann factor, w(o) = exp(-beta u(o)) + r; the first-bead
+  /// weight is a single-bead average of Boltzmann factors, order one, so no underflow is possible.
+  /// Zero for the other schemes.
   double storedR;
 
   FirstBeadData() noexcept = delete;
@@ -38,36 +48,28 @@ export struct FirstBeadData
 };
 
 /// Result of growing a molecule (or the remainder of a molecule) with CBMC or recoil growth.
-///
-/// The Rosenbluth weight is stored ONLY as its natural logarithm, 'logRosenbluthWeight', accumulated
-/// per growth step so it stays exact where the raw product underflows. The weight of a long chain is
-/// a product of hundreds of per-step factors of order exp(-beta u); for a polymer it drops below the
-/// smallest double (~1e-308) and a raw weight flushes to zero, turning every acceptance ratio
-/// W_new/W_old into 0/0 (NaN, silent reject) or x/0 (inf, unconditional accept). Acceptance rules
-/// must therefore be written in log space: exp(logRosenbluthWeight_new - logRosenbluthWeight_old),
-/// and corrections (dual cut-off, Ewald) are applied with 'multiplyRosenbluthWeight'. The raw weight
-/// is available through 'rosenbluthWeight()' for reporting and averaging (Widom) only.
-export struct ChainGrowData
+struct GrowResult
 {
   Molecule molecule;
   std::vector<Atom> atoms;  ///< All atoms of the grown molecule.
   RunningEnergy energies;
-  /// Retained partial Rosenbluth weight for the multiple-first-bead reinsertion scheme (Esselink et
-  /// al., 'r' in Eq. 16-18): the Rosenbluth weight minus the Boltzmann factor of the selected trial,
-  /// carried from grow to retrace. Zero for the moves that do not use it.
-  double storedR;
   /// Natural logarithm of the Rosenbluth weight; the single stored representation (see above).
   double logRosenbluthWeight;
+  /// Retained partial first-bead weight of the multiple-first-bead reinsertion scheme
+  /// ('FirstBeadScheme::Reinsertion'; Esselink et al., 'r' in Eq. 16-18). The caller hands it to the
+  /// retrace of the old configuration through 'RetraceRequest::storedR'. Zero for every other
+  /// first-bead scheme.
+  double firstBeadStoredR;
 
-  ChainGrowData() : molecule(), atoms(), energies(), storedR(), logRosenbluthWeight() {}
+  GrowResult() : molecule(), atoms(), energies(), logRosenbluthWeight(), firstBeadStoredR() {}
 
-  ChainGrowData(const Molecule &molecule, std::vector<Atom> atoms, RunningEnergy energies, double logRosenbluthWeight,
-                double storedR) noexcept
+  GrowResult(const Molecule &molecule, std::vector<Atom> atoms, RunningEnergy energies, double logRosenbluthWeight,
+             double firstBeadStoredR = 0.0) noexcept
       : molecule(molecule),
         atoms(std::move(atoms)),
         energies(energies),
-        storedR(storedR),
-        logRosenbluthWeight(logRosenbluthWeight)
+        logRosenbluthWeight(logRosenbluthWeight),
+        firstBeadStoredR(firstBeadStoredR)
   {
   }
 
@@ -81,18 +83,17 @@ export struct ChainGrowData
 };
 
 /// Result of retracing an existing molecule; the weight is stored as its logarithm exactly as in
-/// 'ChainGrowData'.
-export struct ChainRetraceData
+/// 'GrowResult'.
+struct RetraceResult
 {
   RunningEnergy energies;
-  double storedR;
   /// Natural logarithm of the Rosenbluth weight; the single stored representation.
   double logRosenbluthWeight;
 
-  ChainRetraceData() : energies(), storedR(), logRosenbluthWeight() {}
+  RetraceResult() : energies(), logRosenbluthWeight() {}
 
-  ChainRetraceData(RunningEnergy energies, double logRosenbluthWeight, double storedR) noexcept
-      : energies(energies), storedR(storedR), logRosenbluthWeight(logRosenbluthWeight)
+  RetraceResult(RunningEnergy energies, double logRosenbluthWeight) noexcept
+      : energies(energies), logRosenbluthWeight(logRosenbluthWeight)
   {
   }
 
@@ -102,3 +103,4 @@ export struct ChainRetraceData
   /// Multiplies the Rosenbluth weight by exp(logFactor).
   void multiplyRosenbluthWeight(double logFactor) noexcept { logRosenbluthWeight += logFactor; }
 };
+}  // namespace CBMC

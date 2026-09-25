@@ -14,6 +14,7 @@ import mc_moves_probabilities;
 import bend_bend_potential;
 import bond_bend_potential;
 import cbmc_growth_plan;
+import cbmc_growth_context;
 import cbmc_operators;
 import cbmc_flexible_base;
 
@@ -246,7 +247,7 @@ TEST(CBMC_BASE_SAMPLER, single_bead_bond_and_bend_marginals)
   for (std::size_t i = 0; i != samples; ++i)
   {
     std::vector<CBMC::StepTrial> trials =
-        CBMC::generateGrowTrials(random, forceField, beta, component, chainAtoms, plan.front(), 1);
+        CBMC::generateGrowTrials(random, CBMC::GrowthSettings::fromForceField(forceField), beta, component, chainAtoms, plan.front(), 1);
     const double3 &grown = trials.front().positions.front().position;
 
     double r = (grown - chainAtoms[1].position).length();
@@ -307,7 +308,7 @@ TEST(CBMC_BASE_SAMPLER, branch_step_sibling_bend_coupling)
   for (std::size_t i = 0; i != samples; ++i)
   {
     std::vector<CBMC::StepTrial> trials =
-        CBMC::generateGrowTrials(random, forceField, beta, component, chainAtoms, plan.front(), 1);
+        CBMC::generateGrowTrials(random, CBMC::GrowthSettings::fromForceField(forceField), beta, component, chainAtoms, plan.front(), 1);
     const double3 &grownA = trials.front().positions[0].position;
     const double3 &grownB = trials.front().positions[1].position;
     ASSERT_NEAR(trials.front().torsionWeight, 1.0, 1e-12);
@@ -370,7 +371,7 @@ TEST(CBMC_BASE_SAMPLER, three_branch_step_three_sibling_bends)
   for (std::size_t i = 0; i != samples; ++i)
   {
     std::vector<CBMC::StepTrial> trials =
-        CBMC::generateGrowTrials(random, forceField, beta, component, chainAtoms, plan.front(), 1);
+        CBMC::generateGrowTrials(random, CBMC::GrowthSettings::fromForceField(forceField), beta, component, chainAtoms, plan.front(), 1);
     const double3 &grownA = trials.front().positions[0].position;
     const double3 &grownB = trials.front().positions[1].position;
     ASSERT_NEAR(trials.front().torsionWeight, 1.0, 1e-12);
@@ -536,7 +537,7 @@ TEST(CBMC_BASE_SAMPLER, branch_step_bend_bend_base_coupling)
   for (std::size_t i = 0; i != samples; ++i)
   {
     std::vector<CBMC::StepTrial> trials =
-        CBMC::generateGrowTrials(random, forceField, beta, component, chainAtoms, plan.front(), 1);
+        CBMC::generateGrowTrials(random, CBMC::GrowthSettings::fromForceField(forceField), beta, component, chainAtoms, plan.front(), 1);
     const double3 &grownA = trials.front().positions[0].position;
     const double3 &grownB = trials.front().positions[1].position;
     double weight = trials.front().torsionWeight;
@@ -663,7 +664,7 @@ TEST(CBMC_BASE_SAMPLER, chain_step_bond_bend_spin_promotion)
   for (std::size_t i = 0; i != samples; ++i)
   {
     std::vector<CBMC::StepTrial> trials =
-        CBMC::generateGrowTrials(random, forceField, beta, component, chainAtoms, plan.front(), 1);
+        CBMC::generateGrowTrials(random, CBMC::GrowthSettings::fromForceField(forceField), beta, component, chainAtoms, plan.front(), 1);
     const double3 &grown = trials.front().positions.front().position;
     double r = (grown - chainAtoms[1].position).length();
     double theta = angleBetween(chainAtoms[0].position, chainAtoms[1].position, grown);
@@ -743,7 +744,7 @@ TEST(CBMC_BASE_SAMPLER, mini_mc_detailed_balance_with_cross_terms)
   // Initialize from one grow, then run the Markov chain, recording every 4th state.
   {
     std::vector<CBMC::StepTrial> init =
-        CBMC::generateGrowTrials(random, forceField, beta, component, chainAtoms, step, 1);
+        CBMC::generateGrowTrials(random, CBMC::GrowthSettings::fromForceField(forceField), beta, component, chainAtoms, step, 1);
     chainAtoms[2] = init.front().positions[0];
     chainAtoms[3] = init.front().positions[1];
   }
@@ -764,9 +765,9 @@ TEST(CBMC_BASE_SAMPLER, mini_mc_detailed_balance_with_cross_terms)
   for (std::size_t i = 0; i != iterations; ++i)
   {
     std::vector<CBMC::StepTrial> grow =
-        CBMC::generateGrowTrials(random, forceField, beta, component, chainAtoms, step, 1);
+        CBMC::generateGrowTrials(random, CBMC::GrowthSettings::fromForceField(forceField), beta, component, chainAtoms, step, 1);
     std::vector<CBMC::StepTrial> retrace =
-        CBMC::generateRetraceTrials(random, forceField, beta, component, chainAtoms, step, 1);
+        CBMC::generateRetraceTrials(random, CBMC::GrowthSettings::fromForceField(forceField), beta, component, chainAtoms, step, 1);
     if (random.uniform() < grow.front().torsionWeight / retrace.front().torsionWeight)
     {
       chainAtoms[2] = grow.front().positions[0];
@@ -858,7 +859,7 @@ TEST(CBMC_BASE_SAMPLER, declared_chirality_preserved)
   for (std::size_t i = 0; i != samples; ++i)
   {
     std::vector<CBMC::StepTrial> trials =
-        CBMC::generateGrowTrials(random, forceField, beta, component, chainAtoms, plan.front(), 1);
+        CBMC::generateGrowTrials(random, CBMC::GrowthSettings::fromForceField(forceField), beta, component, chainAtoms, plan.front(), 1);
     double3 d1 = chainAtoms[0].position - chainAtoms[1].position;
     double3 d2 = trials.front().positions[0].position - chainAtoms[1].position;
     double3 d3 = trials.front().positions[1].position - chainAtoms[1].position;

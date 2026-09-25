@@ -114,11 +114,11 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
 }
 }  // namespace
 
-[[nodiscard]] std::optional<ChainGrowData> CBMC::growFlexibleMoleculeChainInsertion(
-    RandomNumber &random, const GrowContext &context, Component &component, std::span<Atom> molecule_atoms,
+[[nodiscard]] std::optional<CBMC::GrowResult> CBMC::growFlexibleMoleculeChainInsertion(
+    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced, std::optional<std::size_t> skipBackgroundMolecule)
 {
-  const ForceField &forceField = context.forceField;
+  const GrowthSettings &settings = context.settings;
   const double beta = context.beta;
 
   std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
@@ -136,14 +136,14 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
     // cases, the rigid-body tilt, and the coupled-decoupled torsion selection).
     std::vector<ChainTrialTorsion> trials =
         externalEnergiesOfTrials(context, component,
-                                 generateGrowTrials(random, forceField, beta, component, chain_atoms, step,
-                                                    forceField.numberOfTrialDirections),
+                                 generateGrowTrials(random, settings, beta, component, chain_atoms, step,
+                                                    settings.numberOfTrialDirections),
                                  skipBackgroundMolecule)
             .trials;
     if (trials.empty()) return std::nullopt;
 
     const StepWeight weight =
-        stepWeight(random, beta, forceField.numberOfTrialDirections, step, chain_atoms, trials, false);
+        stepWeight(random, beta, settings.numberOfTrialDirections, step, chain_atoms, trials, false);
 
     chain_external_energies += trials[weight.selected].energy;
 
@@ -153,7 +153,7 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
     // "dead-end" even though no step overlaps. A genuine overlap still trips the per-step test, since a
     // surviving trial near the 'energyOverlapCriteria' contributes exp(-beta*E) << the threshold. The
     // retrace path carries no guard, so grow and retrace stay symmetric.
-    if (std::exp(weight.logWeight) < forceField.minimumRosenbluthFactor) return std::nullopt;
+    if (std::exp(weight.logWeight) < settings.minimumRosenbluthFactor) return std::nullopt;
     chain_log_rosenbluth_weight += weight.logWeight;
   }
 
@@ -165,15 +165,15 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
   // molecular dynamics to regenerate the atoms).
   Molecule molecule = component.createMoleculeRecord(chain_atoms);
 
-  return ChainGrowData(molecule, std::move(chain_atoms), chain_external_energies + internal_energies,
-                       chain_log_rosenbluth_weight, 0.0);
+  return CBMC::GrowResult(molecule, std::move(chain_atoms), chain_external_energies + internal_energies,
+                       chain_log_rosenbluth_weight);
 }
 
-[[nodiscard]] ChainRetraceData CBMC::retraceFlexibleMoleculeChainDeletion(
-    RandomNumber &random, const GrowContext &context, const Component &component, std::span<Atom> molecule_atoms,
+[[nodiscard]] CBMC::RetraceResult CBMC::retraceFlexibleMoleculeChainDeletion(
+    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
-  const ForceField &forceField = context.forceField;
+  const GrowthSettings &settings = context.settings;
   const double beta = context.beta;
 
   std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
@@ -192,8 +192,8 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
     // 'chain_atoms', which holds the old configuration of every bead at this point).
     EvaluatedTrials evaluated =
         externalEnergiesOfTrials(context, component,
-                                 generateRetraceTrials(random, forceField, beta, component, chain_atoms, step,
-                                                       forceField.numberOfTrialDirections),
+                                 generateRetraceTrials(random, settings, beta, component, chain_atoms, step,
+                                                       settings.numberOfTrialDirections),
                                  std::nullopt);
 
     // The old configuration is an accepted state of the simulation: it can not overlap, so it survives
@@ -213,7 +213,7 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
 
     const std::vector<ChainTrialTorsion> &trials = evaluated.trials;
     const StepWeight weight =
-        stepWeight(random, beta, forceField.numberOfTrialDirections, step, chain_atoms, trials, true);
+        stepWeight(random, beta, settings.numberOfTrialDirections, step, chain_atoms, trials, true);
 
     chain_external_energies += trials.front().energy;
     chain_log_rosenbluth_weight += weight.logWeight;
@@ -221,5 +221,5 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
 
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(molecule_atoms);
 
-  return ChainRetraceData(chain_external_energies + internal_energies, chain_log_rosenbluth_weight, 0.0);
+  return CBMC::RetraceResult(chain_external_energies + internal_energies, chain_log_rosenbluth_weight);
 }
