@@ -26,10 +26,5 @@ export namespace CBMC
     double cutOffFrameworkVDW;
     double cutOffMoleculeVDW;
     double cutOffCoulomb;
-    // Scale factor of the intramolecular non-bonded (intra van der Waals + intra Coulomb) energy in
-    // the trial-selection weights of chain growth and retracing. Used by NCMC reinsertion to grow
-    // and retrace chains with softened intramolecular strain; 1.0 (the default, left untouched by
-    // the aggregate initialization of every other caller) recovers standard CBMC.
-    double intraScaling{1.0};
   };
 }
