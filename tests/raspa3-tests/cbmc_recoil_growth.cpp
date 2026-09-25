@@ -397,6 +397,18 @@ TEST(CBMC_RECOIL_GROWTH, retrace_of_overlapping_old_configuration_throws)
     EXPECT_NE(std::string_view(error.what()).find("overlaps at growth step"), std::string_view::npos) << error.what();
   }
 
+  // The same error must propagate through the public CBMC entry point (the move-level API), so that
+  // the driver can report it; a 'noexcept' anywhere on that path would turn it into std::terminate.
+  try
+  {
+    (void)CBMC::retraceMoleculeSwapDeletion(random, overlapping, chain, std::span<Atom>(molecule));
+    FAIL() << "the public retrace of an overlapping configuration returned a weight";
+  }
+  catch (const std::runtime_error &error)
+  {
+    EXPECT_NE(std::string_view(error.what()).find("overlaps at growth step"), std::string_view::npos) << error.what();
+  }
+
   // The same wall bead moved well away from the molecule is a valid environment: no throw.
   const std::vector<Atom> distant{makeWallBead(molecule[3].position + double3(10.0, 0.0, 0.0))};
   const CBMC::GrowContext valid = makeContext(distant);

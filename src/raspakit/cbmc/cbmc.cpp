@@ -139,7 +139,7 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculeSwapInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::size_t selectedComponent,
-    std::size_t selectedMolecule, double scaling, std::uint8_t groupId, bool isFractional) noexcept
+    std::size_t selectedMolecule, double scaling, std::uint8_t groupId, bool isFractional)
 {
   Atom firstBead = makeFirstBead(component, selectedMolecule, scaling, groupId, isFractional);
 
@@ -153,7 +153,7 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
 
 [[nodiscard]] ChainRetraceData CBMC::retraceMoleculeSwapDeletion(RandomNumber &random, const GrowContext &context,
                                                                  const Component &component,
-                                                                 std::span<Atom> molecule_atoms) noexcept
+                                                                 std::span<Atom> molecule_atoms)
 {
   const FirstBeadData firstBeadData = CBMC::retraceMultipleFirstBeadSwapDeletion(
       random, context, component, molecule_atoms[component.startingBead]);
@@ -166,7 +166,7 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
                                                                          Component &component,
                                                                          std::size_t selectedComponent,
                                                                          Molecule &molecule,
-                                                                         std::span<Atom> molecule_atoms) noexcept
+                                                                         std::span<Atom> molecule_atoms)
 {
   std::size_t startingBead = component.startingBead;
   const std::make_signed_t<std::size_t> skipBackgroundMolecule =
@@ -217,7 +217,7 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
 
 [[nodiscard]] std::optional<ChainRetraceData> CBMC::retraceMoleculeReinsertion(
     RandomNumber &random, const GrowContext &context, const Component &component, [[maybe_unused]] Molecule &molecule,
-    std::span<Atom> molecule_atoms, double storedR) noexcept
+    std::span<Atom> molecule_atoms, double storedR)
 {
   const std::optional<FirstBeadData> firstBeadData = CBMC::retraceMultipleFirstBeadReinsertion(
       random, context, component, molecule_atoms[component.startingBead], storedR,
@@ -230,7 +230,7 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculePartialReinsertion(
     RandomNumber &random, const GrowContext &context, Component &component,
     [[maybe_unused]] std::size_t selectedComponent, Molecule &molecule, std::span<Atom> moleculeAtoms,
-    const std::vector<std::size_t> &beadsAlreadyPlaced) noexcept
+    const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
   const std::make_signed_t<std::size_t> skipBackgroundMolecule =
       static_cast<std::make_signed_t<std::size_t>>(moleculeAtoms.front().moleculeId);
@@ -250,7 +250,7 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
 
 [[nodiscard]] ChainRetraceData CBMC::retraceMoleculePartialReinsertion(
     RandomNumber &random, const GrowContext &context, const Component &component, [[maybe_unused]] Molecule &molecule,
-    std::span<Atom> moleculeAtoms, const std::vector<std::size_t> &beadsAlreadyPlaced) noexcept
+    std::span<Atom> moleculeAtoms, const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
   ChainRetraceData chainData = retraceChain(random, context, component, moleculeAtoms, beadsAlreadyPlaced);
 
@@ -260,7 +260,7 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculeIdentityChangeInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::size_t selectedComponent,
     std::size_t selectedMolecule, const Atom &oldStartingBead, double scaling, std::uint8_t groupId, bool isFractional,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
+    std::make_signed_t<std::size_t> skipBackgroundMolecule)
 {
   Atom firstBead =
       makeFirstBead(component, selectedMolecule, scaling, groupId, isFractional, oldStartingBead.position);
@@ -275,7 +275,7 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
 
 [[nodiscard]] ChainRetraceData CBMC::retraceMoleculeIdentityChangeDeletion(
     RandomNumber &random, const GrowContext &context, const Component &component,
-    std::span<Atom> molecule_atoms) noexcept
+    std::span<Atom> molecule_atoms)
 {
   const FirstBeadData firstBeadData =
       CBMC::retraceMultipleFirstBeadPartialDeletion(context, component, molecule_atoms[component.startingBead]);
@@ -286,7 +286,7 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculePairSecondSwapInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::size_t selectedComponent,
     std::size_t selectedMolecule, double3 fixedFirstBeadPosition, double scaling, std::uint8_t groupId,
-    bool isFractional) noexcept
+    bool isFractional)
 {
   Atom firstBead =
       makeFirstBead(component, selectedMolecule, scaling, groupId, isFractional, fixedFirstBeadPosition);
@@ -300,7 +300,7 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
 
 [[nodiscard]] ChainRetraceData CBMC::retraceMoleculePairSecondSwapDeletion(const GrowContext &context,
                                                                            const Component &component,
-                                                                           std::span<Atom> molecule_atoms) noexcept
+                                                                           std::span<Atom> molecule_atoms)
 {
   const FirstBeadData firstBeadData =
       CBMC::retraceFirstBeadAtFixedPosition(context, component, molecule_atoms[component.startingBead]);

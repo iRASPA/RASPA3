@@ -56,7 +56,7 @@ void appendAllReactionFractionalMoleculeExclusions(const System& system,
 [[nodiscard]] std::optional<MoleculeGroupGrowData> growMoleculeGroupInsertion(
     RandomNumber& random, System& system, std::span<const std::size_t> stoichiometry,
     std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules, double scaling = 1.0,
-    bool isFractional = false, std::uint8_t dUdlambdaGroupId = 0, bool useCBMC = true) noexcept;
+    bool isFractional = false, std::uint8_t dUdlambdaGroupId = 0, bool useCBMC = true);
 
 // Retraces a group of molecules for deletion. To satisfy detailed balance the retrace mirrors the
 // nested environments of the reverse move's sequential growth: molecule k is retraced with the group
@@ -66,7 +66,7 @@ void appendAllReactionFractionalMoleculeExclusions(const System& system,
 // by the corresponding growMoleculeGroupInsertion call of the reverse move.
 [[nodiscard]] std::optional<MoleculeGroupRetraceData> retraceMoleculeGroupDeletion(
     RandomNumber& random, System& system, std::span<const std::pair<std::size_t, std::size_t>> selectedMolecules,
-    std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules = {}, bool useCBMC = true) noexcept;
+    std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules = {}, bool useCBMC = true);
 
 [[nodiscard]] double idealGasRosenbluthWeightProduct(const System& system,
                                                      std::span<const std::size_t> stoichiometry) noexcept;
@@ -83,7 +83,7 @@ void insertGrownMolecules(System& system, std::span<const ChainGrowData> growDat
                           std::span<const std::size_t> productStoichiometry) noexcept;
 
 [[nodiscard]] std::optional<RunningEnergy> parallelReactionMove(RandomNumber& random, System& system,
-                                                                Move::Types move, bool useCBMC) noexcept;
+                                                                Move::Types move, bool useCBMC);
 
 enum class SerialMoveKind : std::uint8_t
 {
@@ -99,6 +99,6 @@ void setSerialReactionFractionalScaling(System& system, Reaction& reaction, doub
 // unless 'forcedKind' selects one deterministically (used by the tests).
 [[nodiscard]] std::optional<RunningEnergy> serialReactionMove(
     RandomNumber& random, System& system, Reaction& reaction, Move::Types move, bool useCBMC,
-    std::optional<SerialMoveKind> forcedKind = std::nullopt) noexcept;
+    std::optional<SerialMoveKind> forcedKind = std::nullopt);
 
 }  // namespace MC_Moves::ReactionCommon

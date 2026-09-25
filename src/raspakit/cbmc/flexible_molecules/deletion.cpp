@@ -30,7 +30,7 @@ import cbmc_operators;
 
 [[nodiscard]] ChainRetraceData CBMC::retraceFlexibleMoleculeChainDeletion(
     RandomNumber &random, const GrowContext &context, const Component &component, std::span<Atom> molecule_atoms,
-    const std::vector<std::size_t> beadsAlreadyPlaced) noexcept
+    const std::vector<std::size_t> beadsAlreadyPlaced)
 {
   const ForceField &forceField = context.forceField;
   double beta = context.beta;

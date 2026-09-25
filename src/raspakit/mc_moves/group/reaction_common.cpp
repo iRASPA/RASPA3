@@ -185,7 +185,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
 [[nodiscard]] std::optional<MoleculeGroupGrowData> growMoleculeGroupInsertion(
     RandomNumber& random, System& system, std::span<const std::size_t> stoichiometry,
     std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules, double scaling, bool isFractional,
-    std::uint8_t dUdlambdaGroupId, bool useCBMC) noexcept
+    std::uint8_t dUdlambdaGroupId, bool useCBMC)
 {
   MoleculeGroupGrowData result;
 
@@ -289,7 +289,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
 
 [[nodiscard]] std::optional<MoleculeGroupRetraceData> retraceMoleculeGroupDeletion(
     RandomNumber& random, System& system, std::span<const std::pair<std::size_t, std::size_t>> selectedMolecules,
-    std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules, bool useCBMC) noexcept
+    std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules, bool useCBMC)
 {
   MoleculeGroupRetraceData result;
 
@@ -790,7 +790,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 // (used by the tests to exercise a specific sub-move deterministically).
 [[nodiscard]] std::optional<RunningEnergy> serialReactionMove(RandomNumber& random, System& system, Reaction& reaction,
                                                               Move::Types move, bool useCBMC,
-                                                              std::optional<SerialMoveKind> forcedKind) noexcept
+                                                              std::optional<SerialMoveKind> forcedKind)
 {
   // the active fractional side must have molecules to operate on
   const std::vector<std::size_t>& activeStoichiometry =
@@ -1507,7 +1507,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 }
 
 [[nodiscard]] std::optional<RunningEnergy> parallelReactionMove(RandomNumber& random, System& system,
-                                                                Move::Types move, bool useCBMC) noexcept
+                                                                Move::Types move, bool useCBMC)
 {
   if (system.reactions.list.empty())
   {
