@@ -316,7 +316,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
 
 [[nodiscard]] ChainRetraceData CBMC::retraceRecoilGrowthMoleculeChainDeletion(
     RandomNumber &random, const GrowContext &context, const Component &component, std::span<Atom> molecule_atoms,
-    const std::vector<std::size_t> beadsAlreadyPlaced) noexcept
+    const std::vector<std::size_t> beadsAlreadyPlaced)
 {
   const ForceField &forceField = context.forceField;
 
@@ -345,8 +345,26 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
       old_positions[k] = old_atoms[step.nextBeads[k]];
     }
 
+    // The old configuration is an accepted state of the simulation: it can not overlap. An overlap
+    // here means the system is inconsistent (a restart or initial configuration with overlapping
+    // molecules, a molecule inside a blocked pocket, or a force field / scaling that changed since the
+    // molecule was placed), and no weight is defined for it: the recoil weight divides by the openness
+    // probability, which is zero. Taking the energy as zero would silently give the molecule the
+    // weight of an unstrained chain and drive the acceptance of its deletion or regrow with a bogus
+    // W_old, so this fails loudly instead.
     std::optional<TrialEnergy> old_energy = computeTrialEnergy(ctx, step, old_atoms, old_positions);
-    TrialEnergy selected_energy = old_energy.value_or(TrialEnergy{});
+    if (!old_energy.has_value())
+    {
+      std::string beads{};
+      for (std::size_t bead : step.nextBeads) beads += std::format(" {}", bead);
+      throw std::runtime_error(std::format(
+          "Recoil growth: the existing configuration of component '{}' overlaps at growth step {} (bead(s){}); "
+          "the retrace of an overlapping molecule has no defined weight. The simulation state is inconsistent "
+          "(overlapping molecules in the initial/restart configuration, a molecule inside a blocked pocket, or a "
+          "force field or scaling changed after placement).\n",
+          component.name, seg, beads));
+    }
+    TrialEnergy selected_energy = old_energy.value();
     double selected_potential = selected_energy.potentialEnergy();
     double open_probability = openProbability(ctx, seg, selected_potential);
 

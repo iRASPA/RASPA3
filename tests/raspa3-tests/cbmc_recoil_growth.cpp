@@ -17,6 +17,7 @@ import mc_moves_probabilities;
 import cbmc;
 import cbmc_chain_data;
 import cbmc_growth_context;
+import cbmc_recoil_growth;
 
 // Detailed-balance tests of recoil growth (RG) as a chain-growth scheme. RG and configurational-bias
 // (CBMC) growth are two proposal schemes for the same regrow move; with their own Rosenbluth-like
@@ -317,4 +318,88 @@ TEST(CBMC_RECOIL_GROWTH, regrow_markov_chain_matches_cbmc_in_tube)
   EXPECT_LT(radiusChi2, 250.0) << "recoil-growth radial distribution deviates from the CBMC reference";
   EXPECT_NEAR(recoil.tubeFraction, cbmc.tubeFraction, 0.05)
       << "recoil growth partitions the chain between tube and bulk differently from CBMC";
+}
+
+// The retrace of an existing molecule that overlaps with its surroundings has no defined recoil
+// weight (the openness probability of the old direction is zero). An accepted state never overlaps,
+// so this is an inconsistent simulation state and must be reported, not silently weighted as if the
+// overlapping bead had zero energy.
+TEST(CBMC_RECOIL_GROWTH, retrace_of_overlapping_old_configuration_throws)
+{
+  ForceField forceField = makeProbeForceField(ProbeParameters{15.0, 6.4, 2.6, 4.0});
+  forceField.useRecoilGrowth = true;
+  forceField.recoilGrowthNumberOfTrialDirections = 3;
+  forceField.recoilGrowthMaximumRecoilLength = 2;
+
+  TemporaryFile file("recoil-probe-chain.json", kProbeChainJson);
+  Component chain(Component::Type::Adsorbate, 0, forceField, "recoil-probe-chain", file.stemPath().string(), 5, 21,
+                  MCMoveProbabilities(), std::nullopt, false);
+
+  const SimulationBox box(30.0, 30.0, 30.0);
+  const double beta = 1.0 / (Units::KB * 300.0);
+  const std::optional<Framework> noFramework{};
+  const std::vector<std::optional<InterpolationEnergyGrid>> noGrids(forceField.pseudoAtoms.size() + 1);
+  const std::optional<InterpolationEnergyGrid> noExternalFieldGrid{};
+
+  auto makeContext = [&](std::span<const Atom> obstacles)
+  {
+    return CBMC::GrowContext{false,
+                             forceField,
+                             box,
+                             noGrids,
+                             noExternalFieldGrid,
+                             noFramework,
+                             std::span<const Atom>{},
+                             obstacles,
+                             beta,
+                             forceField.cutOffFrameworkVDW,
+                             forceField.cutOffMoleculeVDW,
+                             forceField.cutOffCoulomb};
+  };
+  auto makeWallBead = [](double3 position)
+  {
+    return Atom(position, 0.0, 1.0, 1.0, std::uint32_t{1}, kWallType, std::uint8_t{1}, std::uint8_t{0},
+                std::uint8_t{0});
+  };
+
+  // Grow a molecule in an empty box.
+  RandomNumber random(12345);
+  std::vector<Atom> molecule{};
+  {
+    const CBMC::GrowContext empty = makeContext(std::span<const Atom>{});
+    for (;;)
+    {
+      std::optional<ChainGrowData> grown =
+          CBMC::growMoleculeSwapInsertion(random, empty, chain, 0, 0, 1.0, std::uint8_t{0}, false);
+      if (grown.has_value())
+      {
+        molecule = grown->atoms;
+        break;
+      }
+    }
+  }
+
+  // The chain is retraced from its starting bead (already placed).
+  const std::vector<std::size_t> placed{chain.startingBead};
+
+  // A single frozen wall bead (its own molecule, id 1) placed onto the last-grown bead of the molecule:
+  // that bead now overlaps and the retrace has to refuse.
+  const std::vector<Atom> obstacle{makeWallBead(molecule[3].position + double3(0.3, 0.0, 0.0))};
+  const CBMC::GrowContext overlapping = makeContext(obstacle);
+  try
+  {
+    (void)CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, overlapping, chain, std::span<Atom>(molecule),
+                                                         placed);
+    FAIL() << "the retrace of an overlapping configuration returned a weight";
+  }
+  catch (const std::runtime_error &error)
+  {
+    EXPECT_NE(std::string_view(error.what()).find("overlaps at growth step"), std::string_view::npos) << error.what();
+  }
+
+  // The same wall bead moved well away from the molecule is a valid environment: no throw.
+  const std::vector<Atom> distant{makeWallBead(molecule[3].position + double3(10.0, 0.0, 0.0))};
+  const CBMC::GrowContext valid = makeContext(distant);
+  EXPECT_NO_THROW(
+      (void)CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, valid, chain, std::span<Atom>(molecule), placed));
 }

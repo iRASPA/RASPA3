@@ -42,7 +42,11 @@ export namespace CBMC
 // Computes the recoil-growth weight of the current (old) configuration. The existing chain occupies
 // one trial direction per segment (always counted as open), and 'k-1' additional trial directions are
 // generated to count m_i. The signature matches CBMC::retraceFlexibleMoleculeChainDeletion.
+//
+// Throws std::runtime_error when the existing configuration overlaps (hard-core overlap, blocked
+// pocket): an accepted state can not overlap, so this signals an inconsistent simulation state rather
+// than silently assigning the molecule a weight.
 [[nodiscard]] ChainRetraceData retraceRecoilGrowthMoleculeChainDeletion(
     RandomNumber &random, const GrowContext &context, const Component &component, std::span<Atom> molecule_atoms,
-    const std::vector<std::size_t> beadsAlreadyPlaced) noexcept;
+    const std::vector<std::size_t> beadsAlreadyPlaced);
 }  // namespace CBMC
