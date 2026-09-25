@@ -84,8 +84,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   const std::size_t oldGlobalMoleculeId =
       system.moleculeIndexOfComponent(oldComponent, selectedMoleculeOld);
   const std::size_t trialMoleculeId = system.numberOfMolecules();
-  const std::make_signed_t<std::size_t> skipBackgroundMolecule =
-      static_cast<std::make_signed_t<std::size_t>>(oldGlobalMoleculeId);
+  const std::optional<std::size_t> skipBackgroundMolecule = oldGlobalMoleculeId;
 
   const CBMC::GrowContext growContext = system.makeGrowContext();
 

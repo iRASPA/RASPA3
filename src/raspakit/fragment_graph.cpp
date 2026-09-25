@@ -201,7 +201,7 @@ void FragmentGraph::build(const ConnectivityTable &connectivity,
   }
 
   cyclicClusters.clear();
-  fragmentCyclicClusterIds.assign(numberOfFragments, -1);
+  fragmentCyclicClusterIds.assign(numberOfFragments, std::nullopt);
   std::map<std::size_t, std::size_t> rootToCluster{};
   for (std::size_t f = 0; f != numberOfFragments; ++f)
   {
@@ -209,7 +209,7 @@ void FragmentGraph::build(const ConnectivityTable &connectivity,
     std::size_t root = findRoot(f);
     auto [it, inserted] = rootToCluster.insert({root, cyclicClusters.size()});
     if (inserted) cyclicClusters.push_back({});
-    fragmentCyclicClusterIds[f] = static_cast<std::make_signed_t<std::size_t>>(it->second);
+    fragmentCyclicClusterIds[f] = it->second;
     for (std::size_t atom : fragments[f].atoms) cyclicClusters[it->second].push_back(atom);
   }
   for (std::vector<std::size_t> &cluster : cyclicClusters) std::sort(cluster.begin(), cluster.end());

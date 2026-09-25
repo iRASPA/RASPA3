@@ -33,7 +33,7 @@ import interpolation_energy_grid;
 static std::optional<ChainGrowData> growChain(RandomNumber &random, const CBMC::GrowContext &context,
                                               Component &component, std::span<Atom> molecule_atoms,
                                               const std::vector<std::size_t> &beadsAlreadyPlaced,
-                                              std::make_signed_t<std::size_t> skipBackgroundMolecule = -1)
+                                              std::optional<std::size_t> skipBackgroundMolecule = std::nullopt)
 {
   return context.forceField.useRecoilGrowth
              ? CBMC::growRecoilGrowthMoleculeChainInsertion(random, context, component, molecule_atoms,
@@ -84,7 +84,7 @@ static ChainGrowData combineGrowData(const FirstBeadData &firstBeadData, const C
 static std::optional<ChainGrowData> growNewMoleculeAtFirstBead(
     RandomNumber &random, const CBMC::GrowContext &context, Component &component, std::size_t selectedComponent,
     std::size_t selectedMolecule, double scaling, std::uint8_t groupId, bool isFractional,
-    const FirstBeadData &firstBeadData, std::make_signed_t<std::size_t> skipBackgroundMolecule = -1)
+    const FirstBeadData &firstBeadData, std::optional<std::size_t> skipBackgroundMolecule = std::nullopt)
 {
   if (component.atoms.size() == 1)
   {
@@ -165,8 +165,8 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
                                                                          std::span<Atom> molecule_atoms)
 {
   std::size_t startingBead = component.startingBead;
-  const std::make_signed_t<std::size_t> skipBackgroundMolecule =
-      static_cast<std::make_signed_t<std::size_t>>(molecule_atoms[startingBead].moleculeId);
+  // The molecule is regrown against a background that still contains its old copy: skip it.
+  const std::optional<std::size_t> skipBackgroundMolecule = molecule_atoms[startingBead].moleculeId;
 
   std::optional<FirstBeadData> const firstBeadData = CBMC::growMultipleFirstBeadReinsertion(
       random, context, component, molecule_atoms[startingBead], skipBackgroundMolecule);
@@ -217,7 +217,7 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
 {
   const std::optional<FirstBeadData> firstBeadData = CBMC::retraceMultipleFirstBeadReinsertion(
       random, context, component, molecule_atoms[component.startingBead], storedR,
-      static_cast<std::make_signed_t<std::size_t>>(molecule_atoms[component.startingBead].moleculeId));
+      std::optional<std::size_t>{molecule_atoms[component.startingBead].moleculeId});
   if (!firstBeadData) return std::nullopt;
 
   return retraceAfterFirstBead(random, context, component, molecule_atoms, *firstBeadData);
@@ -228,8 +228,7 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
     [[maybe_unused]] std::size_t selectedComponent, Molecule &molecule, std::span<Atom> moleculeAtoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
-  const std::make_signed_t<std::size_t> skipBackgroundMolecule =
-      static_cast<std::make_signed_t<std::size_t>>(moleculeAtoms.front().moleculeId);
+  const std::optional<std::size_t> skipBackgroundMolecule = moleculeAtoms.front().moleculeId;
 
   std::optional<ChainGrowData> chainData =
       growChain(random, context, component, moleculeAtoms, beadsAlreadyPlaced, skipBackgroundMolecule);
@@ -256,7 +255,7 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculeIdentityChangeInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::size_t selectedComponent,
     std::size_t selectedMolecule, const Atom &oldStartingBead, double scaling, std::uint8_t groupId, bool isFractional,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule)
+    std::optional<std::size_t> skipBackgroundMolecule)
 {
   Atom firstBead =
       makeFirstBead(component, selectedMolecule, scaling, groupId, isFractional, oldStartingBead.position);

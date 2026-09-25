@@ -29,7 +29,7 @@ import fragment;
  */
 export struct FragmentGraph
 {
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization.
 
   std::vector<Fragment> fragments{};        ///< Fragments in deterministic order (by lowest atom index).
   std::vector<std::size_t> atomFragmentIds{};  ///< Maps each atom to the index of its fragment.
@@ -51,8 +51,8 @@ export struct FragmentGraph
   /// one cluster with one closure bond; fused and bridged polycyclic systems are one cluster with
   /// several closure bonds. Grown with ring-closure CBMC as a single unit.
   std::vector<std::vector<std::size_t>> cyclicClusters{};
-  /// Maps each fragment to its cyclic cluster (-1 when the fragment is not part of any cycle).
-  std::vector<std::make_signed_t<std::size_t>> fragmentCyclicClusterIds{};
+  /// Maps each fragment to its cyclic cluster (nullopt when the fragment is not part of any cycle).
+  std::vector<std::optional<std::size_t>> fragmentCyclicClusterIds{};
 
   bool semiFlexible{false};      ///< Cached: at least one rigid fragment and more than one fragment.
   std::size_t rigidFragmentCount{0};  ///< Cached: number of multi-atom (rigid-body) fragments.

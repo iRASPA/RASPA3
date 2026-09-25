@@ -44,7 +44,7 @@ TEST(cbmc_interactions, framework_molecule_1)
 
   std::optional<RunningEnergy> frameworkMoleculeEnergy =
       CBMC::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
-                                           system.framework, frameworkAtoms, 12.0, 12.0, atomData, -1);
+                                           system.framework, frameworkAtoms, 12.0, 12.0, atomData);
 
   EXPECT_NEAR(frameworkMoleculeEnergy->frameworkMoleculeVDW * Units::EnergyToKelvin, -337.77056357, 1e-6);
 }
@@ -71,16 +71,16 @@ TEST(cbmc_interactions, framework_molecule_2)
 
   std::optional<RunningEnergy> frameworkMoleculeEnergy =
       CBMC::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
-                                           system.framework, frameworkAtoms, 12.0, 12.0, atomData, -1);
+                                           system.framework, frameworkAtoms, 12.0, 12.0, atomData);
 
   std::optional<RunningEnergy> interMoleculeEnergy1 = CBMC::computeInterMolecularEnergy(
-      system.forceField, system.simulationBox, atomData, 12.0, 12.0, {atomData.begin(), 1}, -1);
+      system.forceField, system.simulationBox, atomData, 12.0, 12.0, {atomData.begin(), 1});
 
   std::optional<RunningEnergy> interMoleculeEnergy2 = CBMC::computeInterMolecularEnergy(
-      system.forceField, system.simulationBox, atomData, 12.0, 12.0, {atomData.begin() + 1, 1}, -1);
+      system.forceField, system.simulationBox, atomData, 12.0, 12.0, {atomData.begin() + 1, 1});
 
   std::optional<RunningEnergy> interMoleculeEnergy3 = CBMC::computeInterMolecularEnergy(
-      system.forceField, system.simulationBox, atomData, 12.0, 12.0, {atomData.begin(), 2}, -1);
+      system.forceField, system.simulationBox, atomData, 12.0, 12.0, {atomData.begin(), 2});
 
   EXPECT_NEAR(frameworkMoleculeEnergy->frameworkMoleculeVDW * Units::EnergyToKelvin, -1599.10322574, 1e-6);
   EXPECT_NEAR(interMoleculeEnergy1->moleculeMoleculeVDW * Units::EnergyToKelvin, 2352.42793591, 1e-6);

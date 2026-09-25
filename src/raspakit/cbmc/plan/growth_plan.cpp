@@ -110,14 +110,13 @@ static CBMC::GrowStep nextGrowthStep(const ConnectivityTable &connectivity, cons
   auto clusterOf = [&](std::size_t bead) { return graph.fragmentCyclicClusterIds[graph.atomFragmentIds[bead]]; };
 
   // The frontier bond leads into a cyclic cluster.
-  std::make_signed_t<std::size_t> cluster = clusterOf(nextBead);
-  if (cluster >= 0)
+  if (std::optional<std::size_t> cluster = clusterOf(nextBead); cluster.has_value())
   {
     if (clusterOf(currentBead) == cluster)
     {
       // The anchor is a placed atom of the cluster: grow the remaining cluster atoms as one
       // ring-closure step (the closure bonds in 'intra' keep every ring of the cluster closed).
-      const std::vector<std::size_t> &clusterAtoms = graph.cyclicClusters[static_cast<std::size_t>(cluster)];
+      const std::vector<std::size_t> &clusterAtoms = graph.cyclicClusters[*cluster];
       std::vector<std::size_t> nextBeads{};
       nextBeads.reserve(clusterAtoms.size());
       for (std::size_t atom : clusterAtoms)
@@ -169,7 +168,7 @@ static CBMC::GrowStep nextGrowthStep(const ConnectivityTable &connectivity, cons
     {
       // Rigid-body or cyclic-cluster neighbors are grown as their own step, never mixed into a
       // flexible branch.
-      if (!graph.fragments[graph.atomFragmentIds[i]].isRigidBody() && clusterOf(i) < 0)
+      if (!graph.fragments[graph.atomFragmentIds[i]].isRigidBody() && !clusterOf(i).has_value())
       {
         nextBeads.push_back(i);
       }

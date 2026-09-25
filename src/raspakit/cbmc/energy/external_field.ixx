@@ -24,5 +24,5 @@ export namespace CBMC
        const SimulationBox &simulationBox,
        const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
        double cutOffVDW, double cutOffCoulomb,
-       std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) noexcept;
+       std::span<const Atom> atoms) noexcept;
 }

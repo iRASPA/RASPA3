@@ -25,15 +25,15 @@ export namespace CBMC
 
 [[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadReinsertion(
     RandomNumber &random, const GrowContext &context, const Component &component, const Atom &atom,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
+    std::optional<std::size_t> skipBackgroundMolecule = std::nullopt) noexcept;
 
 [[nodiscard]] std::optional<FirstBeadData> retraceMultipleFirstBeadReinsertion(
     RandomNumber &random, const GrowContext &context, const Component &component, const Atom &atom, double storedR,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
+    std::optional<std::size_t> skipBackgroundMolecule = std::nullopt) noexcept;
 
 [[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadPartialInsertion(
     const GrowContext &context, const Component &component, const Atom &atom,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
+    std::optional<std::size_t> skipBackgroundMolecule = std::nullopt) noexcept;
 
 [[nodiscard]] FirstBeadData retraceMultipleFirstBeadPartialDeletion(const GrowContext &context,
                                                                     const Component &component,

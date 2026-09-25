@@ -18,8 +18,11 @@ import threadpool;
 
 export namespace CBMC
 {
+/// Inter-molecular energy of the trial atoms 'atoms' against the background 'moleculeAtoms' (pairs
+/// within the same molecule id are skipped, as are all background atoms of 'skipBackgroundMolecule'
+/// when given -- the molecule being regrown). std::nullopt on a hard overlap.
 [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergy(
     const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
-    double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule = -1) noexcept;
+    double cutOffVDW, double cutOffCoulomb, std::span<const Atom> atoms,
+    std::optional<std::size_t> skipBackgroundMolecule = std::nullopt) noexcept;
 }

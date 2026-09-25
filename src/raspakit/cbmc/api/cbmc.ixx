@@ -72,7 +72,7 @@ export namespace CBMC
   [[nodiscard]] std::optional<ChainGrowData> growMoleculeIdentityChangeInsertion(
       RandomNumber &random, const GrowContext &context, Component &component, std::size_t selectedComponent,
       std::size_t selectedMolecule, const Atom &oldStartingBead, double scaling, std::uint8_t groupId,
-      bool isFractional, std::make_signed_t<std::size_t> skipBackgroundMolecule = -1);
+      bool isFractional, std::optional<std::size_t> skipBackgroundMolecule = std::nullopt);
   
   // identity change deletion
   [[nodiscard]] ChainRetraceData retraceMoleculeIdentityChangeDeletion(RandomNumber &random, const GrowContext &context,

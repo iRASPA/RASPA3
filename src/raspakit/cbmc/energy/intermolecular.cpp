@@ -21,8 +21,8 @@ import threadpool;
 
 [[nodiscard]] std::optional<RunningEnergy> CBMC::computeInterMolecularEnergy(
     const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
-    double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
+    double cutOffVDW, double cutOffCoulomb, std::span<const Atom> atoms,
+    std::optional<std::size_t> skipBackgroundMolecule) noexcept
 {
   double3 dr, s, t;
   double rr;
@@ -38,7 +38,7 @@ import threadpool;
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
     std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
-    if (skipBackgroundMolecule >= 0 && molA == static_cast<std::size_t>(skipBackgroundMolecule))
+    if (skipBackgroundMolecule == molA)
     {
       continue;
     }
@@ -49,45 +49,40 @@ import threadpool;
     double scalingCoulombA = it1->scalingCoulomb;
     double chargeA = it1->charge;
 
-    for (int index = 0; const Atom &atom : atoms)
+    for (const Atom &atom : atoms)
     {
-      if (index != skip)
+      std::size_t molB = static_cast<std::size_t>(atom.moleculeId);
+      if (molA == molB) continue;
+
+      double3 posB = atom.position;
+      std::size_t typeB = static_cast<std::size_t>(atom.type);
+      std::uint8_t groupIdB = atom.groupId;
+      double scalingVDWB = atom.scalingVDW;
+      double scalingCoulombB = atom.scalingCoulomb;
+      double chargeB = atom.charge;
+
+      dr = posA - posB;
+      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+      rr = double3::dot(dr, dr);
+
+      if (rr < cutOffVDWSquared)
       {
-        double3 posB = atom.position;
-        std::size_t molB = static_cast<std::size_t>(atom.moleculeId);
-        std::size_t typeB = static_cast<std::size_t>(atom.type);
-        std::uint8_t groupIdB = atom.groupId;
-        double scalingVDWB = atom.scalingVDW;
-        double scalingCoulombB = atom.scalingCoulomb;
-        double chargeB = atom.charge;
+        Potentials::PairDerivatives<0> energyFactor =
+            Potentials::potentialVDW<0>(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+        if (energyFactor.energy > overlapCriteria) return std::nullopt;
 
-        if (molA != molB)
-        {
-          dr = posA - posB;
-          dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-          rr = double3::dot(dr, dr);
-
-          if (rr < cutOffVDWSquared)
-          {
-            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialVDW<0>(
-                forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
-            if (energyFactor.energy > overlapCriteria) return std::nullopt;
-
-            energySum.moleculeMoleculeVDW += energyFactor.energy;
-            energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
-          }
-          if (useCharge && rr < cutOffChargeSquared)
-          {
-            double r = std::sqrt(rr);
-            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialCoulomb<0>(
-                forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
-
-            energySum.moleculeMoleculeCharge += energyFactor.energy;
-            energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, energyFactor.dUdlambda);
-          }
-        }
+        energySum.moleculeMoleculeVDW += energyFactor.energy;
+        energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
       }
-      ++index;
+      if (useCharge && rr < cutOffChargeSquared)
+      {
+        double r = std::sqrt(rr);
+        Potentials::PairDerivatives<0> energyFactor =
+            Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+
+        energySum.moleculeMoleculeCharge += energyFactor.energy;
+        energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, energyFactor.dUdlambda);
+      }
     }
   }
 

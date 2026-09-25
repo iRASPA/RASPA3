@@ -25,7 +25,7 @@ namespace
 std::vector<CBMC::ChainTrialTorsion> externalEnergiesOfTrials(const CBMC::GrowContext &context,
                                                               const Component &component,
                                                               std::vector<CBMC::StepTrial> stepTrials,
-                                                              std::make_signed_t<std::size_t> skipBackgroundMolecule)
+                                                              std::optional<std::size_t> skipBackgroundMolecule)
 {
   std::vector<std::vector<Atom>> trialPositions(stepTrials.size());
   std::vector<double> torsionWeights(stepTrials.size(), 1.0);
@@ -34,7 +34,7 @@ std::vector<CBMC::ChainTrialTorsion> externalEnergiesOfTrials(const CBMC::GrowCo
     trialPositions[i] = std::move(stepTrials[i].positions);
     torsionWeights[i] = stepTrials[i].torsionWeight;
   }
-  return CBMC::computeExternalNonOverlappingEnergies(context, component, trialPositions, torsionWeights, -1,
+  return CBMC::computeExternalNonOverlappingEnergies(context, component, trialPositions, torsionWeights,
                                                      skipBackgroundMolecule);
 }
 
@@ -98,7 +98,7 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growFlexibleMoleculeChainInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::span<Atom> molecule_atoms,
-    const std::vector<std::size_t> &beadsAlreadyPlaced, std::make_signed_t<std::size_t> skipBackgroundMolecule)
+    const std::vector<std::size_t> &beadsAlreadyPlaced, std::optional<std::size_t> skipBackgroundMolecule)
 {
   const ForceField &forceField = context.forceField;
   const double beta = context.beta;
@@ -174,7 +174,7 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
         externalEnergiesOfTrials(context, component,
                                  generateRetraceTrials(random, forceField, beta, component, chain_atoms, step,
                                                        forceField.numberOfTrialDirections),
-                                 -1);
+                                 std::nullopt);
 
     // The old configuration is an accepted state of the simulation: it can not overlap, so it survives
     // the overlap filter as the first trial (its positions are exact copies of the old ones). An overlap

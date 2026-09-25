@@ -35,7 +35,7 @@ export namespace CBMC
 // replacement in the CBMC access routines.
 [[nodiscard]] std::optional<ChainGrowData> growRecoilGrowthMoleculeChainInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::span<Atom> molecule_atoms,
-    const std::vector<std::size_t> &beadsAlreadyPlaced, std::make_signed_t<std::size_t> skipBackgroundMolecule = -1);
+    const std::vector<std::size_t> &beadsAlreadyPlaced, std::optional<std::size_t> skipBackgroundMolecule = std::nullopt);
 
 // Recoil growth (RG) retrace of the existing flexible molecule chain.
 //

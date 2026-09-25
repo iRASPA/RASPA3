@@ -77,7 +77,7 @@ import interpolation_energy_grid;
 
 [[nodiscard]] std::optional<FirstBeadData> CBMC::growMultipleFirstBeadReinsertion(
     RandomNumber& random, const GrowContext& context, const Component& component, const Atom& atom,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
+    std::optional<std::size_t> skipBackgroundMolecule) noexcept
 {
   std::vector<Atom> trialPositions(context.forceField.numberOfFirstBeadPositions, atom);
   std::for_each(trialPositions.begin(), trialPositions.end(),
@@ -109,7 +109,7 @@ import interpolation_energy_grid;
 
 [[nodiscard]] std::optional<FirstBeadData> CBMC::retraceMultipleFirstBeadReinsertion(
     [[maybe_unused]] RandomNumber& random, const GrowContext& context, const Component& component, const Atom& atom,
-    double storedR, std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
+    double storedR, std::optional<std::size_t> skipBackgroundMolecule) noexcept
 {
   std::vector<Atom> trialPositions({atom});
 
@@ -136,7 +136,7 @@ import interpolation_energy_grid;
 
 [[nodiscard]] std::optional<FirstBeadData> CBMC::growMultipleFirstBeadPartialInsertion(
     const GrowContext& context, const Component& component, const Atom& atom,
-    std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
+    std::optional<std::size_t> skipBackgroundMolecule) noexcept
 {
   std::vector<Atom> trialPositions({atom});
 

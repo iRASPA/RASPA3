@@ -429,7 +429,7 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
     endToEndAtoms = determineEndToEndAtoms(parsed_data);
 
     // Whether an atom lies in a cyclic cluster (a flexible ring): its fragment maps to a cluster id.
-    auto cyclicClusterOf = [&](std::size_t atom) -> std::make_signed_t<std::size_t>
+    auto cyclicClusterOf = [&](std::size_t atom) -> std::optional<std::size_t>
     { return fragmentGraph.fragmentCyclicClusterIds[fragmentGraph.atomFragmentIds[atom]]; };
 
     // Parse-time validation: inside a ring, the reference coordinates of a Fixed bond are
@@ -443,7 +443,8 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
       if (bond.type != BondType::Fixed) continue;
       std::size_t atomA = bond.identifiers[0];
       std::size_t atomB = bond.identifiers[1];
-      if (cyclicClusterOf(atomA) < 0 || cyclicClusterOf(atomA) != cyclicClusterOf(atomB)) continue;
+      // Only bonds inside one cyclic cluster matter; two nullopts compare equal, so exclude those first.
+      if (!cyclicClusterOf(atomA).has_value() || cyclicClusterOf(atomA) != cyclicClusterOf(atomB)) continue;
       double referenceLength = (atoms[atomA].position - atoms[atomB].position).length();
       if (std::abs(referenceLength - bond.parameters[0]) > 1e-3)
       {

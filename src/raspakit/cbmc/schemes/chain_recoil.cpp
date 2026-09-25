@@ -39,7 +39,7 @@ struct RecoilContext
 {
   const CBMC::GrowContext &env;
   const Component &component;
-  std::make_signed_t<std::size_t> skipBackgroundMolecule;
+  std::optional<std::size_t> skipBackgroundMolecule;
   std::size_t numberOfTrialDirections;  // k
   std::size_t recoilLength;             // l
   const std::vector<Step> &steps;
@@ -107,8 +107,8 @@ static void placeBeads(std::vector<Atom> &chain, const Step &step, std::span<con
 static std::optional<TrialEnergy> computeTrialEnergy(const RecoilContext &ctx, const Step &step,
                                                      std::vector<Atom> &atoms, std::vector<Atom> &trialPositions)
 {
-  std::optional<RunningEnergy> external = CBMC::computeExternalNonOverlappingEnergy(
-      ctx.env, ctx.component, trialPositions, -1, ctx.skipBackgroundMolecule);
+  std::optional<RunningEnergy> external =
+      CBMC::computeExternalNonOverlappingEnergy(ctx.env, ctx.component, trialPositions, ctx.skipBackgroundMolecule);
   if (!external.has_value()) return std::nullopt;
 
   const SavedBeads saved(atoms, step);
@@ -228,7 +228,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growRecoilGrowthMoleculeChainInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::span<Atom> molecule_atoms,
-    const std::vector<std::size_t> &beadsAlreadyPlaced, std::make_signed_t<std::size_t> skipBackgroundMolecule)
+    const std::vector<std::size_t> &beadsAlreadyPlaced, std::optional<std::size_t> skipBackgroundMolecule)
 {
   const ForceField &forceField = context.forceField;
 
@@ -316,7 +316,7 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
   const std::vector<Step> &steps = component.growthPlan(beadsAlreadyPlaced);
   RecoilContext ctx{context,
                     component,
-                    -1,
+                    std::nullopt,
                     std::max<std::size_t>(1, forceField.recoilGrowthNumberOfTrialDirections),
                     std::max<std::size_t>(1, forceField.recoilGrowthMaximumRecoilLength),
                     steps,

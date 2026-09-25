@@ -24,5 +24,5 @@ export namespace CBMC
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms, double cutOffVDW,
-    double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) noexcept;
+    double cutOffCoulomb, std::span<const Atom> atoms) noexcept;
 }

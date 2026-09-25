@@ -26,7 +26,7 @@ export namespace CBMC
  */
 [[nodiscard]] std::optional<ChainGrowData> growFlexibleMoleculeChainInsertion(
     RandomNumber &random, const GrowContext &context, Component &component, std::span<Atom> molecule_atoms,
-    const std::vector<std::size_t> &beadsAlreadyPlaced, std::make_signed_t<std::size_t> skipBackgroundMolecule = -1);
+    const std::vector<std::size_t> &beadsAlreadyPlaced, std::optional<std::size_t> skipBackgroundMolecule = std::nullopt);
 
 /**
  * \brief The CBMC Rosenbluth weight of an existing molecule beyond its placed beads.
