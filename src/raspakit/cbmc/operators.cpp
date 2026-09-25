@@ -32,6 +32,58 @@ import running_energy;
 
 namespace
 {
+// ---------------------------------------------------------------------------------------------------
+// Numerical constants of the operator engine, gathered in one place. None of them affects the
+// sampled distribution (the samplers are exact or Metropolis-correct for any value); they set
+// fall-backs for under-specified topologies, the resolution of one-off numerical estimates, and the
+// budgets of rejection loops.
+// ---------------------------------------------------------------------------------------------------
+namespace Constants
+{
+/// Bond length (Angstrom) used when a step's bond carries no potential (e.g. a connectivity entry
+/// without a matching 'Bonds' term): a fixed C-C single-bond length. Also the value the normalization
+/// integrates over in that case.
+constexpr double defaultBondLength = 1.54;
+
+/// Junction bend angle used by the rigid tilt when no previous-current-inner bend potential exists:
+/// a trigonal 120 degrees.
+constexpr double defaultRigidJunctionBendAngle = 120.0 * Units::DegreesToRadians;
+
+/// Squared-length threshold below which a previous-current vector is treated as degenerate (the two
+/// beads coincide) and replaced by the z axis.
+constexpr double degenerateAxisLength = 1e-8;
+
+/// Rejection budget of the exact flexible base sampler; exceeding it signals a pathologically stiff
+/// coupling or an unsatisfiable chiral constraint and throws.
+constexpr std::size_t baseSamplerMaximumAttempts = 1'000'000;
+
+/// Random re-orientation attempts of the ring seed geometry to recover the declared parity of a
+/// chiral centre before giving up on that seed.
+constexpr std::size_t ringParityMaximumReorientations = 1000;
+
+/// Grid over [0, pi] for the numerical minimum of a non-harmonic bend potential, and the slack
+/// (Kelvin) subtracted because a grid minimum can only overestimate the true minimum.
+constexpr std::size_t bendMinimumGridPoints = 8192;
+constexpr double bendMinimumSlack = 0.01;
+
+/// Fixed seed of the one-off Monte-Carlo estimate of the base-coupling constants: the estimate must
+/// be one frozen number per step signature so grow and retrace share it.
+constexpr std::size_t baseCouplingEstimateSeed = 1806;
+/// Samples of the minimum search of the coupling energy, and the slack (Kelvin) below that minimum
+/// for the rejection reference (see stepBaseCouplingConstants; exactness does not depend on it).
+constexpr std::size_t baseCouplingMinimumSearchSamples = 1uz << 20;
+constexpr double baseCouplingReferenceSlack = 1.0;
+/// Batching of the clamped-acceptance mean: batches of 'batchSize' samples until the standard error
+/// drops below 'relativeTolerance' of the mean, or 'maximumBatches' is reached.
+constexpr std::size_t baseCouplingBatchSize = 1uz << 20;
+constexpr std::size_t baseCouplingMaximumBatches = 32;
+constexpr double baseCouplingRelativeTolerance = 0.005;
+
+/// Roll angles about the junction bond tried when seating a hinged rigid body (a Rosenbluth selection
+/// over this grid, randomly offset, seeds the tilt Monte-Carlo).
+constexpr std::size_t rigidTiltRollGridPoints = 72;
+}  // namespace Constants
+
 // A bend is 'spin-variant' when it involves a placed atom other than the previous or current bead.
 // Rotating the next-beads about the previous-current axis (the torsion spin) changes such bends,
 // while bends among {previous, current, next-beads} transform rigidly (previous and current lie on
@@ -321,7 +373,7 @@ static double bendMinimumEnergy(const BendPotential &bend)
   auto it = cache.find(key);
   if (it != cache.end()) return it->second;
 
-  constexpr std::size_t numberOfGridPoints = 8192;
+  constexpr std::size_t numberOfGridPoints = Constants::bendMinimumGridPoints;
   const double3 posA{1.0, 0.0, 0.0};
   const double3 posB{0.0, 0.0, 0.0};
   double minimum = std::numeric_limits<double>::max();
@@ -331,7 +383,7 @@ static double bendMinimumEnergy(const BendPotential &bend)
     double3 posC{std::cos(theta), std::sin(theta), 0.0};
     minimum = std::min(minimum, bend.calculateEnergy(posA, posB, posC, std::nullopt));
   }
-  minimum -= 0.01;  // slack in Kelvin, covering the grid's overestimate of the true minimum
+  minimum -= Constants::bendMinimumSlack;  // the grid can only overestimate the true minimum
 
   cache[key] = minimum;
   return minimum;
@@ -471,7 +523,7 @@ static BaseCouplingConstants stepBaseCouplingConstants(double beta, const Compon
   thread_local std::map<std::string, BaseCouplingConstants> cache{};
   if (auto it = cache.find(key); it != cache.end()) return it->second;
 
-  RandomNumber random(1806);  // fixed seed: the estimate must be one frozen constant per signature
+  RandomNumber random(Constants::baseCouplingEstimateSeed);  // frozen: one constant per signature
   const double3 axis{0.0, 0.0, 1.0};
 
   // Evaluation frame: current bead at the origin, previous bead at unit distance along the axis (the
@@ -485,7 +537,8 @@ static BaseCouplingConstants stepBaseCouplingConstants(double beta, const Compon
     for (std::size_t nextBead : step.nextBeads)
     {
       const std::optional<BondPotential> bond = step.intra.findBondPotential(currentBead, nextBead);
-      const double bondLength = bond.has_value() ? bond->generateBondLength(random, beta) : 1.54;
+      const double bondLength =
+          bond.has_value() ? bond->generateBondLength(random, beta) : Constants::defaultBondLength;
       const BendPotential *anchor = findAnchorBend(step.intra, previousBead, currentBead, nextBead);
       const double3 direction = anchor != nullptr
                                     ? random.randomVectorOnCone(axis, anchor->generateBendAngle(random, beta))
@@ -505,17 +558,18 @@ static BaseCouplingConstants stepBaseCouplingConstants(double beta, const Compon
   else
   {
     double minimum = std::numeric_limits<double>::max();
-    constexpr std::size_t numberOfMinimumSearchSamples = 1 << 20;
-    for (std::size_t s = 0; s != numberOfMinimumSearchSamples; ++s) minimum = std::min(minimum, drawIndependentBase());
-    referenceEnergy = minimum - 1.0;  // slack in Kelvin
+    for (std::size_t s = 0; s != Constants::baseCouplingMinimumSearchSamples; ++s)
+    {
+      minimum = std::min(minimum, drawIndependentBase());
+    }
+    referenceEnergy = minimum - Constants::baseCouplingReferenceSlack;
   }
 
   double sum = 0.0;
   double sumOfSquares = 0.0;
   double numberOfSamples = 0.0;
-  constexpr std::size_t batchSize = 1 << 20;
-  constexpr std::size_t maximumNumberOfBatches = 32;
-  for (std::size_t batch = 0; batch != maximumNumberOfBatches; ++batch)
+  constexpr std::size_t batchSize = Constants::baseCouplingBatchSize;
+  for (std::size_t batch = 0; batch != Constants::baseCouplingMaximumBatches; ++batch)
   {
     for (std::size_t s = 0; s != batchSize; ++s)
     {
@@ -526,7 +580,7 @@ static BaseCouplingConstants stepBaseCouplingConstants(double beta, const Compon
     numberOfSamples += static_cast<double>(batchSize);
     const double mean = sum / numberOfSamples;
     const double variance = std::max(0.0, sumOfSquares / numberOfSamples - mean * mean);
-    if (std::sqrt(variance / numberOfSamples) < 0.005 * mean) break;
+    if (std::sqrt(variance / numberOfSamples) < Constants::baseCouplingRelativeTolerance * mean) break;
   }
 
   const BaseCouplingConstants result{referenceEnergy, std::log(sum / numberOfSamples)};
@@ -599,7 +653,7 @@ static FlexibleBase sampleExactFlexibleBase(RandomNumber &random, double beta, c
   std::vector<Atom> chain_atoms(moleculeAtoms.begin(), moleculeAtoms.end());
 
   double3 last_bond_vector = chain_atoms[previousBead].position - chain_atoms[currentBead].position;
-  if (last_bond_vector.length() < 1e-8) last_bond_vector = double3{0.0, 0.0, 1.0};
+  if (last_bond_vector.length() < Constants::degenerateAxisLength) last_bond_vector = double3{0.0, 0.0, 1.0};
   last_bond_vector = last_bond_vector.normalized();
 
   const std::size_t numberOfNextBeads = nextBeads.size();
@@ -649,15 +703,14 @@ static FlexibleBase sampleExactFlexibleBase(RandomNumber &random, double beta, c
     if (determined) chiral_centers.push_back(&center);
   }
 
-  constexpr std::size_t maximumNumberOfAttempts = 1'000'000;
-  for (std::size_t attempt = 0; attempt != maximumNumberOfAttempts; ++attempt)
+  for (std::size_t attempt = 0; attempt != Constants::baseSamplerMaximumAttempts; ++attempt)
   {
     for (std::size_t i = 0; i != numberOfNextBeads; ++i)
     {
       double bond_length =
           bonds[i]
               .transform([&](const BondPotential &b) { return b.generateBondLength(random, beta); })
-              .value_or(1.54);
+              .value_or(Constants::defaultBondLength);
       double3 direction =
           anchor_bends[i] != nullptr
               ? random.randomVectorOnCone(last_bond_vector, anchor_bends[i]->generateBendAngle(random, beta))
@@ -723,8 +776,9 @@ double CBMC::logBaseSamplerNormalization(double beta, const Component &component
     for (std::size_t nextBead : step.nextBeads)
     {
       const std::optional<BondPotential> bond = step.intra.findBondPotential(currentBead, nextBead);
+      // A bond without potential is placed at the fixed default length: r^2 dr integrates to r^2.
       logNormalization += bond.has_value() ? bond->logBoltzmannVolumeNormalization(beta)
-                                           : 2.0 * std::log(1.54);  // the sampler's default fixed bond length
+                                           : 2.0 * std::log(Constants::defaultBondLength);
 
       const BendPotential *anchorBend = findAnchorBend(step.intra, previousBead, currentBead, nextBead);
       logNormalization += anchorBend != nullptr ? anchorBend->logBoltzmannConeNormalization(beta)
@@ -803,7 +857,7 @@ static std::vector<Atom> generateRigidTilt(RandomNumber &random, std::size_t num
     }
   }
 
-  double bend_angle = 120.0 * Units::DegreesToRadians;
+  double bend_angle = Constants::defaultRigidJunctionBendAngle;
   for (const BendPotential &bend : intra.bends)
   {
     if (bend.identifiers[1] != currentBead) continue;
@@ -825,7 +879,7 @@ static std::vector<Atom> generateRigidTilt(RandomNumber &random, std::size_t num
     aligned_offsets[k] = alignment * (component.atoms[nextBeads[k]].position - anchor_reference);
   }
 
-  constexpr std::size_t numberOfRollAngles = 72;
+  constexpr std::size_t numberOfRollAngles = Constants::rigidTiltRollGridPoints;
   std::vector<double> logRollBoltzmannFactors(numberOfRollAngles);
   double roll_offset = 2.0 * std::numbers::pi * random.uniform();
   for (std::size_t r = 0; r != numberOfRollAngles; ++r)
@@ -849,12 +903,22 @@ static std::vector<Atom> generateRigidTilt(RandomNumber &random, std::size_t num
 
   double current_bend_energy = intra.calculateBendSmallMCEnergies(chain_atoms);
 
-  constexpr double maximumRotationAngle = 0.15;
+  // Adaptive step size: the maximum rotation angle is read from the anchor bead's CBMC statistics
+  // and adapted towards the target acceptance ratio between sweeps by 'System::optimizeMCMoves',
+  // exactly like the ring-closure step sizes. The tilt carries no Rosenbluth weight, so the step
+  // size affects only sampling efficiency, not detailed balance.
+  MoveStatistics<double> &rotationStats = component.cbmc_moves_statistics[currentBead].rigidTiltRotationChange;
+  const double maximumRotationAngle = rotationStats.maxChange;
   std::size_t number_of_trials = 2 * numberOfTrialMovesPerOpenBead * nextBeads.size();
   std::vector<double3> saved_positions(nextBeads.size());
 
   for (std::size_t trial = 0; trial != number_of_trials; ++trial)
   {
+    rotationStats.counts += 1.0;
+    rotationStats.totalCounts += 1.0;
+    rotationStats.constructed += 1.0;
+    rotationStats.totalConstructed += 1.0;
+
     double3 axis = random.randomVectorOnUnitSphere();
     double angle = (2.0 * random.uniform() - 1.0) * maximumRotationAngle;
     for (std::size_t k = 0; k != nextBeads.size(); ++k)
@@ -867,6 +931,8 @@ static std::vector<Atom> generateRigidTilt(RandomNumber &random, std::size_t num
     if (random.uniform() < std::exp(-beta * (trial_bend_energy - current_bend_energy)))
     {
       current_bend_energy = trial_bend_energy;
+      rotationStats.accepted += 1.0;
+      rotationStats.totalAccepted += 1.0;
     }
     else
     {
@@ -993,7 +1059,8 @@ static std::vector<Atom> generateRingConformation(RandomNumber &random, const Fo
       for (std::size_t k = 0; k != nextBeads.size(); ++k) chain_atoms[nextBeads[k]].position = beforeReflection[k];
     }
   }
-  for (std::size_t attempt = 0; attempt != 1000 && !parityPreserved(); ++attempt)
+  for (std::size_t attempt = 0; attempt != Constants::ringParityMaximumReorientations && !parityPreserved();
+       ++attempt)
   {
     placeWithRotation(random.randomRotationMatrix());
   }
@@ -1320,7 +1387,7 @@ std::vector<CBMC::StepTrial> CBMC::generateGrowTrials(RandomNumber &random, cons
     const BondPotential *bond = step.intra.bonds.empty() ? nullptr : &step.intra.bonds.front();
     for (std::size_t i = 0; i != numberOfTrialDirections; ++i)
     {
-      double bond_length = bond ? bond->generateBondLength(random, beta) : 1.54;
+      double bond_length = bond ? bond->generateBondLength(random, beta) : Constants::defaultBondLength;
       double3 unit_vector = random.randomVectorOnUnitSphere();
       Atom trial_atom = chainAtoms[step.nextBeads[0]];
       trial_atom.position = chainAtoms[step.currentBead].position + bond_length * unit_vector;
@@ -1385,7 +1452,7 @@ std::vector<CBMC::StepTrial> CBMC::generateRetraceTrials(RandomNumber &random, c
     trials[0] = {old_orientation, 1.0};
     for (std::size_t i = 1; i != numberOfTrialDirections; ++i)
     {
-      double bond_length = bond ? bond->generateBondLength(random, beta) : 1.54;
+      double bond_length = bond ? bond->generateBondLength(random, beta) : Constants::defaultBondLength;
       double3 unit_vector = random.randomVectorOnUnitSphere();
       Atom trial_atom = chainAtoms[step.nextBeads[0]];
       trial_atom.position = chainAtoms[step.currentBead].position + bond_length * unit_vector;
@@ -1432,7 +1499,7 @@ CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const ForceField
               1.0};
     }
     const BondPotential *bond = step.intra.bonds.empty() ? nullptr : &step.intra.bonds.front();
-    double bond_length = bond ? bond->generateBondLength(random, beta) : 1.54;
+    double bond_length = bond ? bond->generateBondLength(random, beta) : Constants::defaultBondLength;
     double3 unit_vector = random.randomVectorOnUnitSphere();
     Atom trial_atom = contextAtoms[step.nextBeads[0]];
     trial_atom.position = contextAtoms[step.currentBead].position + bond_length * unit_vector;
@@ -1444,7 +1511,7 @@ CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const ForceField
   // then always torsion-selected -- also when the trial is a feeler bead (see the interface note).
   FlexibleBase base = sampleBaseConformation(random, forceField, beta, component, contextAtoms, step);
   double3 last_bond_vector = contextAtoms[step.previousBead.value()].position - contextAtoms[step.currentBead].position;
-  if (last_bond_vector.length() < 1e-8) last_bond_vector = double3{0.0, 0.0, 1.0};
+  if (last_bond_vector.length() < Constants::degenerateAxisLength) last_bond_vector = double3{0.0, 0.0, 1.0};
   last_bond_vector = last_bond_vector.normalized();
 
   Potentials::IntraMolecularPotentials torsionIntra = torsionSelectionPotentials(step);

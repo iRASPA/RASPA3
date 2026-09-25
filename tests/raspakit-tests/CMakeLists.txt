@@ -1,5 +1,6 @@
 add_executable(unit_tests_raspakit
   cbmc_interactions.cpp
+  cbmc_move_statistics.cpp
   energy_decomposition.cpp
   gradients.cpp
   translation_smart_mc.cpp

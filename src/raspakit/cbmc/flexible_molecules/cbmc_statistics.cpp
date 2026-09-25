@@ -51,6 +51,11 @@ const std::string CBMCMoveStatistics::writeMCMoveStatistics() const
     std::print(stream, "{}", formatStatistics("CBMC Ring-crankshaft", ringCrankshaftMove));
   }
 
+  if (rigidTiltRotationChange.totalCounts > 0.0)
+  {
+    std::print(stream, "{}", formatStatistics("CBMC Rigid-tilt rotation", rigidTiltRotationChange));
+  }
+
   return stream.str();
 }
 
@@ -64,6 +69,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const CBMCMo
   archive << p.ringDisplacementChange;
   archive << p.ringRotationChange;
   archive << p.ringCrankshaftMove;
+  archive << p.rigidTiltRotationChange;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -90,6 +96,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, CBMCMoveStat
   archive >> p.ringDisplacementChange;
   archive >> p.ringRotationChange;
   archive >> p.ringCrankshaftMove;
+  if (versionNumber >= 2)
+  {
+    archive >> p.rigidTiltRotationChange;
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
