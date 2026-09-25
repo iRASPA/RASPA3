@@ -16,7 +16,11 @@ file(GLOB RASPAKIT_CPP_FILES
   ${PROJECT_SOURCE_DIR}/drivers/*.cpp
   ${PROJECT_SOURCE_DIR}/drivers/internal/*.cpp
   ${PROJECT_SOURCE_DIR}/cbmc/*.cpp
-  ${PROJECT_SOURCE_DIR}/cbmc/flexible_molecules/*.cpp
+  ${PROJECT_SOURCE_DIR}/cbmc/api/*.cpp
+  ${PROJECT_SOURCE_DIR}/cbmc/plan/*.cpp
+  ${PROJECT_SOURCE_DIR}/cbmc/engine/*.cpp
+  ${PROJECT_SOURCE_DIR}/cbmc/schemes/*.cpp
+  ${PROJECT_SOURCE_DIR}/cbmc/energy/*.cpp
   ${PROJECT_SOURCE_DIR}/interactions/*.cpp
   ${PROJECT_SOURCE_DIR}/forcefield/*.cpp
   ${PROJECT_SOURCE_DIR}/minimization/*.cpp
@@ -38,7 +42,11 @@ file(GLOB RASPAKIT_IXX_FILES
   ${PROJECT_SOURCE_DIR}/drivers/*.ixx
   ${PROJECT_SOURCE_DIR}/drivers/internal/*.ixx
   ${PROJECT_SOURCE_DIR}/cbmc/*.ixx
-  ${PROJECT_SOURCE_DIR}/cbmc/flexible_molecules/*.ixx
+  ${PROJECT_SOURCE_DIR}/cbmc/api/*.ixx
+  ${PROJECT_SOURCE_DIR}/cbmc/plan/*.ixx
+  ${PROJECT_SOURCE_DIR}/cbmc/engine/*.ixx
+  ${PROJECT_SOURCE_DIR}/cbmc/schemes/*.ixx
+  ${PROJECT_SOURCE_DIR}/cbmc/energy/*.ixx
   ${PROJECT_SOURCE_DIR}/interactions/*.ixx
   ${PROJECT_SOURCE_DIR}/forcefield/*.ixx
   ${PROJECT_SOURCE_DIR}/minimization/*.ixx

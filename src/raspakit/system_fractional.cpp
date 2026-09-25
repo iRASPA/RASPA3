@@ -17,7 +17,7 @@ import forcefield;
 import simulationbox;
 import framework;
 import cbmc;
-import cbmc_chain_data;
+import cbmc_results;
 import interpolation_energy_grid;
 import interactions_external_field;
 import interactions_framework_molecule;

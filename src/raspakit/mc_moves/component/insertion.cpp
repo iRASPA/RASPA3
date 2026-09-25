@@ -12,7 +12,7 @@ import double3x3;
 import simd_quatd;
 import simulationbox;
 import cbmc;
-import cbmc_chain_data;
+import cbmc_results;
 import randomnumbers;
 import system;
 import energy_status;

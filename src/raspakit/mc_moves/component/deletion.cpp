@@ -11,7 +11,7 @@ import component;
 import atom;
 import simulationbox;
 import cbmc;
-import cbmc_chain_data;
+import cbmc_results;
 import randomnumbers;
 import system;
 import energy_status;

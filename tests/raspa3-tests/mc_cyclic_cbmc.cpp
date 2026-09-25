@@ -23,7 +23,7 @@ import fragment;
 import fragment_graph;
 import cbmc_growth_plan;
 import cbmc;
-import cbmc_chain_data;
+import cbmc_results;
 import randomnumbers;
 import mc_moves_reinsertion;
 import intra_molecular_potentials;

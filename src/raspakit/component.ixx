@@ -44,7 +44,7 @@ export import fragment;
 export import fragment_graph;
 export import cbmc_growth_plan;
 import json;
-import cbmc_move_statistics;
+import cbmc_statistics;
 
 /**
  * \brief Represents a component within the simulation system.

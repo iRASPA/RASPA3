@@ -33,7 +33,7 @@ import mc_moves_widom;
 import mc_moves_cputime;
 import mc_moves_statistics;
 import cbmc;
-import cbmc_chain_data;
+import cbmc_results;
 import json;
 import isotherm_bet;
 import nitrogen_bet_setup;

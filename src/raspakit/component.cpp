@@ -20,7 +20,6 @@ import skposcarparser;
 import characterset;
 import stringutils;
 import skparser;
-import skposcarparser;
 import skstructure;
 import skatom;
 import skcell;
@@ -52,9 +51,8 @@ import coulomb_potential;
 import intra_molecular_potentials;
 import chiral_center;
 import cbmc_growth_plan;
-import cbmc_base_coupling;
+import cbmc_flexible_base;
 import vdwparameters;
-import json;
 import blocking_pockets;
 
 namespace

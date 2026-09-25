@@ -7,7 +7,7 @@ import std;
 import atom;
 import randomnumbers;
 import running_energy;
-import cbmc_chain_data;
+import cbmc_results;
 import reaction;
 import system;
 import mc_moves_move_types;

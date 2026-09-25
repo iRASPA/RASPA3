@@ -11,7 +11,7 @@ import running_energy;
 import reaction;
 import interactions_intermolecular;
 import interactions_ewald;
-import cbmc_chain_data;
+import cbmc_results;
 import mc_moves_move_types;
 import mc_moves_reaction_common;
 

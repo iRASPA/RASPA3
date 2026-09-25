@@ -19,7 +19,7 @@ import forcefield;
 import simulationbox;
 import units;
 import cbmc;
-import cbmc_chain_data;
+import cbmc_results;
 import interpolation_energy_grid;
 
 // System molecules: insertion/deletion, initialization, and geometry helpers.

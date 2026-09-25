@@ -15,6 +15,7 @@ import bend_bend_potential;
 import bond_bend_potential;
 import cbmc_growth_plan;
 import cbmc_operators;
+import cbmc_flexible_base;
 
 // Distribution tests for the exact CBMC base-conformation sampler at FINITE potential strength: the
 // trial base conformation carries no Rosenbluth weight, so its distribution must be the exact bonded

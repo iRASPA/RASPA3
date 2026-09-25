@@ -4,7 +4,7 @@ import std;
 
 import archive;
 import move_statistics;
-import cbmc_move_statistics;
+import cbmc_statistics;
 
 // The CBMC step-size statistics are part of the binary restart file. Version 2 added the adaptive
 // rigid-tilt rotation angle; a round trip must restore every counter and step size, and a version-1

@@ -15,9 +15,9 @@ import interpolation_energy_grid;
 import randomnumbers;
 import mc_moves_probabilities;
 import cbmc;
-import cbmc_chain_data;
+import cbmc_results;
 import cbmc_growth_context;
-import cbmc_recoil_growth;
+import cbmc_chain_recoil;
 
 // Detailed-balance tests of recoil growth (RG) as a chain-growth scheme. RG and configurational-bias
 // (CBMC) growth are two proposal schemes for the same regrow move; with their own Rosenbluth-like
