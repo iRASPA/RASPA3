@@ -56,23 +56,12 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
   data.oldMoleculeAtoms = system.spanOfMolecule(oldComponent, data.selectedMoleculeOld);
   const Atom& oldStartingBead = data.oldMoleculeAtoms[oldComponentData.startingBead];
 
-  // Determine cutoff distances based on whether dual cutoff is used.
-  const double cutOffFrameworkVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-
   const std::size_t oldGlobalMoleculeId = system.moleculeIndexOfComponent(oldComponent, data.selectedMoleculeOld);
   const std::size_t trialMoleculeId = system.numberOfMolecules();
   const std::make_signed_t<std::size_t> skipBackgroundMolecule =
       static_cast<std::make_signed_t<std::size_t>>(oldGlobalMoleculeId);
 
-  const CBMC::GrowContext growContext{system.hasExternalField, system.forceField, system.simulationBox,
-                                      system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                      system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-                                      system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+  const CBMC::GrowContext growContext = system.makeGrowContext();
 
   std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeIdentityChangeInsertion(

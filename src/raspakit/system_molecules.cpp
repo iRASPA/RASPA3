@@ -381,10 +381,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
         {
           growData = CBMC::growMoleculeSwapInsertion(
               random,
-              CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
-                                externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
-                                spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
-                                forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
+              makeGrowContext(CBMC::CutOffMode::Full),
               components[componentId], componentId, numberOfMolecules(), 0.0, groupId, true);
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
         return growData;
@@ -553,10 +550,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
         {
           growData = CBMC::growMoleculeSwapInsertion(
               random,
-              CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
-                                externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
-                                spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
-                                forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
+              makeGrowContext(CBMC::CutOffMode::Full),
               components[componentId], componentId, numberOfMolecules(), 1.0, false, false);
 
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
@@ -666,22 +660,8 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
   const std::vector<std::optional<InterpolationEnergyGrid>> noGrids(forceField.pseudoAtoms.size() + 1);
   const std::optional<InterpolationEnergyGrid> noExternalFieldGrid{};
 
-  double cutOffFrameworkVDW = forceField.useDualCutOff ? forceField.dualCutOff : forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDW = forceField.useDualCutOff ? forceField.dualCutOff : forceField.cutOffMoleculeVDW;
-  double cutOffCoulomb = forceField.useDualCutOff ? forceField.dualCutOff : forceField.cutOffCoulomb;
-
-  const CBMC::GrowContext context{false,
-                                  forceField,
-                                  simulationBox,
-                                  noGrids,
-                                  noExternalFieldGrid,
-                                  noFramework,
-                                  std::span<const Atom>{},
-                                  std::span<const Atom>{},
-                                  beta,
-                                  cutOffFrameworkVDW,
-                                  cutOffMoleculeVDW,
-                                  cutOffCoulomb};
+  const CBMC::GrowContext context(false, forceField, simulationBox, noGrids, noExternalFieldGrid, noFramework,
+                                  std::span<const Atom>{}, std::span<const Atom>{}, beta);
 
   // A handful of full-molecule reinsertion moves decorrelates the conformation from the starting geometry;
   // each accepted move regrows the whole chain from the ideal-gas Boltzmann distribution.

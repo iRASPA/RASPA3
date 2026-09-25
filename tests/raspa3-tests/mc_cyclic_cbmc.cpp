@@ -891,18 +891,7 @@ TEST(MC_CYCLIC_CBMC, grow_retrace_weight_symmetry)
     // Advance the Boltzmann sampler: regrow the molecule with CBMC reinsertion.
     (void)MC_Moves::reinsertionMove(random, system, 0, 0);
 
-    const CBMC::GrowContext context{system.hasExternalField,
-                                    system.forceField,
-                                    system.simulationBox,
-                                    system.interpolationGrids,
-                                    system.externalFieldInterpolationGrid,
-                                    system.framework,
-                                    system.spanOfFrameworkAtoms(),
-                                    system.spanOfMoleculeAtoms(),
-                                    system.beta,
-                                    system.forceField.cutOffFrameworkVDW,
-                                    system.forceField.cutOffMoleculeVDW,
-                                    system.forceField.cutOffCoulomb};
+    const CBMC::GrowContext context = system.makeGrowContext(CBMC::CutOffMode::Full);
 
     // Grow a ghost ring (never inserted).
     std::optional<ChainGrowData> growData =
@@ -950,18 +939,7 @@ TEST(MC_CYCLIC_CBMC, fused_ring_chirality_preserved_in_fresh_growth)
       System(forceField, SimulationBox(200.0, 200.0, 200.0), false, 2000.0, 1e4, 1.0, {}, {decalin}, {}, {1}, 5);
   system.runningEnergies = system.computeTotalEnergies();
 
-  const CBMC::GrowContext context{system.hasExternalField,
-                                  system.forceField,
-                                  system.simulationBox,
-                                  system.interpolationGrids,
-                                  system.externalFieldInterpolationGrid,
-                                  system.framework,
-                                  system.spanOfFrameworkAtoms(),
-                                  system.spanOfMoleculeAtoms(),
-                                  system.beta,
-                                  system.forceField.cutOffFrameworkVDW,
-                                  system.forceField.cutOffMoleculeVDW,
-                                  system.forceField.cutOffCoulomb};
+  const CBMC::GrowContext context = system.makeGrowContext(CBMC::CutOffMode::Full);
 
   RandomNumber random(1848);
   std::span<const Atom> reference(system.components[0].atoms);

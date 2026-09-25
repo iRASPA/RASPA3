@@ -315,20 +315,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   double switchValue = random.uniform();
 
-  // Determine cutoff distances based on whether dual cutoff is used (only used for the CBMC grow/retrace).
-  double cutOffFrameworkVDWA =
-      systemA.forceField.useDualCutOff ? systemA.forceField.dualCutOff : systemA.forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDWA =
-      systemA.forceField.useDualCutOff ? systemA.forceField.dualCutOff : systemA.forceField.cutOffMoleculeVDW;
-  double cutOffCoulombA =
-      systemA.forceField.useDualCutOff ? systemA.forceField.dualCutOff : systemA.forceField.cutOffCoulomb;
-  double cutOffFrameworkVDWB =
-      systemB.forceField.useDualCutOff ? systemB.forceField.dualCutOff : systemB.forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDWB =
-      systemB.forceField.useDualCutOff ? systemB.forceField.dualCutOff : systemB.forceField.cutOffMoleculeVDW;
-  double cutOffCoulombB =
-      systemB.forceField.useDualCutOff ? systemB.forceField.dualCutOff : systemB.forceField.cutOffCoulomb;
-
   if (!systemA.containsTheFractionalMolecule || systemB.containsTheFractionalMolecule)
   {
     return std::nullopt;
@@ -396,11 +382,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // System A: CBMC grow a new integer molecule
     // Trial global molecule id (unique, not yet in the system); insertMolecule assigns the final id.
     std::size_t newMoleculeIndex = systemA.numberOfMolecules();
-    const CBMC::GrowContext growContextA{systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
-                                         systemA.interpolationGrids, systemA.externalFieldInterpolationGrid,
-                                         systemA.framework, systemA.spanOfFrameworkAtoms(),
-                                         systemA.spanOfMoleculeAtoms(), systemA.beta, cutOffFrameworkVDWA,
-                                         cutOffMoleculeVDWA, cutOffCoulombA};
+    const CBMC::GrowContext growContextA = systemA.makeGrowContext();
     time_begin = std::chrono::steady_clock::now();
     std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
         random, growContextA, componentA, selectedComponent, newMoleculeIndex, 1.0, false, false);
@@ -462,11 +444,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::span<Atom> selectedIntegerMoleculeB = systemB.spanOfMolecule(selectedComponent, indexSelectedIntegerMoleculeB);
     std::vector<Atom> oldSelectedIntegerMoleculeB(selectedIntegerMoleculeB.begin(), selectedIntegerMoleculeB.end());
 
-    const CBMC::GrowContext retraceContextB{systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
-                                            systemB.interpolationGrids, systemB.externalFieldInterpolationGrid,
-                                            systemB.framework, systemB.spanOfFrameworkAtoms(),
-                                            systemB.spanOfMoleculeAtoms(), systemB.beta, cutOffFrameworkVDWB,
-                                            cutOffMoleculeVDWB, cutOffCoulombB};
+    const CBMC::GrowContext retraceContextB = systemB.makeGrowContext();
     time_begin = std::chrono::steady_clock::now();
     ChainRetraceData retraceData =
         CBMC::retraceMoleculeSwapDeletion(random, retraceContextB, componentB, selectedIntegerMoleculeB);
@@ -746,11 +724,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     const std::size_t globalFractionalMoleculeIndexB =
         systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB);
-    const CBMC::GrowContext growContextB{systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
-                                         systemB.interpolationGrids, systemB.externalFieldInterpolationGrid,
-                                         systemB.framework, systemB.spanOfFrameworkAtoms(),
-                                         systemB.spanOfMoleculeAtoms(), systemB.beta, cutOffFrameworkVDWB,
-                                         cutOffMoleculeVDWB, cutOffCoulombB};
+    const CBMC::GrowContext growContextB = systemB.makeGrowContext();
     time_begin = std::chrono::steady_clock::now();
     std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
         random, growContextB, componentB, selectedComponent, globalFractionalMoleculeIndexB, oldLambda,

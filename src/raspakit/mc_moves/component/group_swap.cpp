@@ -131,20 +131,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
 
   centralComponent.mc_moves_statistics.addTrial(move, 0);
 
-  // Determine cutoff distances based on whether dual cutoff is used.
-  const double cutOffFrameworkVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-
-  const CBMC::GrowContext growContextCentral{
-      system.hasExternalField,     system.forceField,           system.simulationBox,
-      system.interpolationGrids,   system.externalFieldInterpolationGrid,
-      system.framework,            system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-      system.beta,                 cutOffFrameworkVDW,          cutOffMoleculeVDW,
-      cutOffCoulomb};
+  const CBMC::GrowContext growContextCentral = system.makeGrowContext();
 
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataCentral = CBMC::growMoleculeSwapInsertion(
@@ -199,12 +186,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
 
     memberBackgroundSizes.push_back(background.size());
 
-    const CBMC::GrowContext growContext{
-        system.hasExternalField,   system.forceField,             system.simulationBox,
-        system.interpolationGrids, system.externalFieldInterpolationGrid,
-        system.framework,          system.spanOfFrameworkAtoms(), background,
-        system.beta,               cutOffFrameworkVDW,            cutOffMoleculeVDW,
-        cutOffCoulomb};
+    const CBMC::GrowContext growContext = system.makeGrowContext().withMoleculeAtoms(background);
 
     time_begin = std::chrono::steady_clock::now();
     std::optional<ChainGrowData> growData = CBMC::growMoleculePairSecondSwapInsertion(
@@ -573,14 +555,6 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
                        system.spanOfMolecule(satelliteComponentIds[j], selectedSatelliteMolecules[j])});
   }
 
-  // Determine cutoff distances based on whether dual cutoff is used.
-  const double cutOffFrameworkVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-
   // Background without the group, then cumulative prefixes exactly mirroring the insertion order:
   // member i is retraced against 'backgroundWithoutGroup' plus the group members 0..i-1.
   std::vector<Atom> cumulativeBackground;
@@ -621,12 +595,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
   {
     const Component& memberComponent = system.components[members[i].componentId];
     const std::span<const Atom> backgroundSlice(cumulativeBackground.data(), memberBackgroundSizes[i]);
-    const CBMC::GrowContext retraceContext{
-        system.hasExternalField,   system.forceField,             system.simulationBox,
-        system.interpolationGrids, system.externalFieldInterpolationGrid,
-        system.framework,          system.spanOfFrameworkAtoms(), backgroundSlice,
-        system.beta,               cutOffFrameworkVDW,            cutOffMoleculeVDW,
-        cutOffCoulomb};
+    const CBMC::GrowContext retraceContext = system.makeGrowContext().withMoleculeAtoms(backgroundSlice);
 
     std::span<Atom> memberAtoms = system.spanOfMolecule(members[i].componentId, members[i].moleculeId);
 

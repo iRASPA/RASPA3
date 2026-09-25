@@ -128,11 +128,7 @@ bool growToMacrostate(System& system, RandomNumber& rng, std::size_t target)
       {
         growData = CBMC::growMoleculeSwapInsertion(
             rng,
-            CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox,
-                              system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
-                              system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
-                              system.forceField.cutOffFrameworkVDW, system.forceField.cutOffMoleculeVDW,
-                              system.forceField.cutOffCoulomb},
+            system.makeGrowContext(CBMC::CutOffMode::Full),
             system.components[componentId], componentId, system.numberOfMolecules(), 1.0, false, false);
         ++attempts;
         if (attempts >= maxGrowAttempts) return false;

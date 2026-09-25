@@ -458,21 +458,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   {
     const double integerCount = static_cast<double>(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     const double volume = system.simulationBox.volume;
-    // Cutoff distances are dual-cutoff aware (only used for the CBMC grow/retrace).
+    const CBMC::GrowContext context = system.makeGrowContext();
     const bool useDualCutOff = system.forceField.useDualCutOff;
-    const CBMC::GrowContext context{
-        system.hasExternalField,
-        system.forceField,
-        system.simulationBox,
-        system.interpolationGrids,
-        system.externalFieldInterpolationGrid,
-        system.framework,
-        system.spanOfFrameworkAtoms(),
-        system.spanOfMoleculeAtoms(),
-        system.beta,
-        useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW,
-        useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW,
-        useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb};
 
     if (moveKind == GibbsMoveKind::LambdaChange)
     {

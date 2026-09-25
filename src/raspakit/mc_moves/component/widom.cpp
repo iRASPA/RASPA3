@@ -41,17 +41,7 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   // Update move statistics for Widom insertion move.
   component.mc_moves_statistics.addTrial(move);
 
-  // Determine cutoff distances based on whether dual cutoff is used.
-  double cutOffFrameworkVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
-  double cutOffCoulomb =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-  const CBMC::GrowContext growContext{system.hasExternalField, system.forceField, system.simulationBox,
-                                      system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                      system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-                                      system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+  const CBMC::GrowContext growContext = system.makeGrowContext();
 
   // Attempt to grow a new molecule using Configurational Bias Monte Carlo (CBMC) insertion.
   t1 = std::chrono::steady_clock::now();

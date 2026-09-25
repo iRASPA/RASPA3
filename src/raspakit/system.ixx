@@ -56,6 +56,7 @@ import thermostat;
 import thermobarostat;
 import json;
 import interpolation_energy_grid;
+import cbmc_growth_context;
 import write_lammps_data;
 import minimization_cell_layout;
 
@@ -393,6 +394,18 @@ export struct System
   std::span<const Atom> spanOfFlexibleAtoms() const;
   std::span<const Atom> spanOfMoleculeAtoms() const;
   std::span<Atom> spanOfMoleculeAtoms();
+
+  /**
+   * \brief The CBMC growth context of this system: its environment (force field, box, framework,
+   * grids, all molecule atoms as background, beta) with the cut-offs of 'mode'.
+   *
+   * The default 'Growth' mode makes the dual cut-off decision (inner cut-off when the force field
+   * enables the scheme, full cut-offs otherwise); a caller growing with it must then apply
+   * 'CBMC::computeDualCutOffCorrection' when 'forceField.useDualCutOff' is set. Use
+   * 'CBMC::GrowContext::withMoleculeAtoms' on the result to grow against a different background.
+   */
+  CBMC::GrowContext makeGrowContext(CBMC::CutOffMode mode = CBMC::CutOffMode::Growth) const;
+
   std::span<const AtomDynamics> spanOfFrameworkDynamics() const;
   std::span<AtomDynamics> spanOfFrameworkDynamics();
   std::span<const AtomDynamics> spanOfMoleculeDynamics() const;

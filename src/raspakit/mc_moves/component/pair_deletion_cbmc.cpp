@@ -169,14 +169,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
-  // Determine cutoff distances based on whether dual cutoff is used.
-  const double cutOffFrameworkVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-
   std::vector<Atom> backgroundWithoutPair;
   backgroundWithoutPair.reserve(system.spanOfMoleculeAtoms().size());
 
@@ -198,15 +190,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   std::vector<Atom> backgroundForB = backgroundWithoutPair;
   backgroundForB.insert(backgroundForB.end(), moleculeA.begin(), moleculeA.end());
 
-  const CBMC::GrowContext retraceContextB{system.hasExternalField, system.forceField, system.simulationBox,
-                                          system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                          system.framework, system.spanOfFrameworkAtoms(), backgroundForB,
-                                          system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+  const CBMC::GrowContext retraceContextB = system.makeGrowContext().withMoleculeAtoms(backgroundForB);
 
-  const CBMC::GrowContext retraceContextA{system.hasExternalField, system.forceField, system.simulationBox,
-                                          system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                          system.framework, system.spanOfFrameworkAtoms(), backgroundWithoutPair,
-                                          system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+  const CBMC::GrowContext retraceContextA = system.makeGrowContext().withMoleculeAtoms(backgroundWithoutPair);
 
   time_begin = std::chrono::steady_clock::now();
   ChainRetraceData retraceDataB =
@@ -429,14 +415,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
-  // Determine cutoff distances based on whether dual cutoff is used.
-  const double cutOffFrameworkVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-
   std::vector<Atom> backgroundWithoutPair;
   backgroundWithoutPair.reserve(system.spanOfMoleculeAtoms().size());
 
@@ -458,15 +436,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   std::vector<Atom> backgroundForB = backgroundWithoutPair;
   backgroundForB.insert(backgroundForB.end(), moleculeA.begin(), moleculeA.end());
 
-  const CBMC::GrowContext retraceContextB{system.hasExternalField, system.forceField, system.simulationBox,
-                                          system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                          system.framework, system.spanOfFrameworkAtoms(), backgroundForB,
-                                          system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+  const CBMC::GrowContext retraceContextB = system.makeGrowContext().withMoleculeAtoms(backgroundForB);
 
-  const CBMC::GrowContext retraceContextA{system.hasExternalField, system.forceField, system.simulationBox,
-                                          system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                          system.framework, system.spanOfFrameworkAtoms(), backgroundWithoutPair,
-                                          system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+  const CBMC::GrowContext retraceContextA = system.makeGrowContext().withMoleculeAtoms(backgroundWithoutPair);
 
   time_begin = std::chrono::steady_clock::now();
   ChainRetraceData retraceDataB =

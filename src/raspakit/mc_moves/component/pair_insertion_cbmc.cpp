@@ -83,21 +83,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
 
   componentA.mc_moves_statistics.addTrial(Move::Types::PairSwapCBMC, 0);
 
-  // Determine cutoff distances based on whether dual cutoff is used.
-  const double cutOffFrameworkVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-
   const std::size_t selectedMoleculeA = system.numberOfMolecules();
   const std::size_t selectedMoleculeB = system.numberOfMolecules() + 1;
 
-  const CBMC::GrowContext growContextA{system.hasExternalField, system.forceField, system.simulationBox,
-                                       system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                       system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-                                       system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+  const CBMC::GrowContext growContextA = system.makeGrowContext();
 
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataA = CBMC::growMoleculeSwapInsertion(
@@ -133,10 +122,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
                                                system.spanOfMoleculeAtoms().end());
   moleculeAtomDataWithTrialA.insert(moleculeAtomDataWithTrialA.end(), growDataA->atoms.begin(), growDataA->atoms.end());
 
-  const CBMC::GrowContext growContextB{system.hasExternalField, system.forceField, system.simulationBox,
-                                       system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                       system.framework, system.spanOfFrameworkAtoms(), moleculeAtomDataWithTrialA,
-                                       system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+  const CBMC::GrowContext growContextB = system.makeGrowContext().withMoleculeAtoms(moleculeAtomDataWithTrialA);
 
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataB = CBMC::growMoleculePairSecondSwapInsertion(
@@ -369,21 +355,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
 
   componentA.mc_moves_statistics.addTrial(Move::Types::PairSwap, 0);
 
-  // Determine cutoff distances based on whether dual cutoff is used.
-  const double cutOffFrameworkVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-
   const std::size_t selectedMoleculeA = system.numberOfMolecules();
   const std::size_t selectedMoleculeB = system.numberOfMolecules() + 1;
 
-  const CBMC::GrowContext growContextA{system.hasExternalField, system.forceField, system.simulationBox,
-                                       system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                       system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-                                       system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+  const CBMC::GrowContext growContextA = system.makeGrowContext();
 
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataA = CBMC::growMoleculeSwapInsertion(
@@ -419,10 +394,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
                                                system.spanOfMoleculeAtoms().end());
   moleculeAtomDataWithTrialA.insert(moleculeAtomDataWithTrialA.end(), growDataA->atoms.begin(), growDataA->atoms.end());
 
-  const CBMC::GrowContext growContextB{system.hasExternalField, system.forceField, system.simulationBox,
-                                       system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                       system.framework, system.spanOfFrameworkAtoms(), moleculeAtomDataWithTrialA,
-                                       system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+  const CBMC::GrowContext growContextB = system.makeGrowContext().withMoleculeAtoms(moleculeAtomDataWithTrialA);
 
   time_begin = std::chrono::steady_clock::now();
   std::optional<ChainGrowData> growDataB = CBMC::growMoleculePairSecondSwapInsertion(

@@ -97,18 +97,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   componentA.mc_moves_statistics.addTrial(move);
   componentB.mc_moves_statistics.addTrial(move);
 
-  // Retrieve cutoff distances (dual-cutoff aware) and grow type from system A
-  double cutOffFrameworkVDWA =
-      systemA.forceField.useDualCutOff ? systemA.forceField.dualCutOff : systemA.forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDWA =
-      systemA.forceField.useDualCutOff ? systemA.forceField.dualCutOff : systemA.forceField.cutOffMoleculeVDW;
-  double cutOffCoulombA =
-      systemA.forceField.useDualCutOff ? systemA.forceField.dualCutOff : systemA.forceField.cutOffCoulomb;
-
-  const CBMC::GrowContext growContext{systemA.hasExternalField, systemA.forceField, systemA.simulationBox,
-                                      systemA.interpolationGrids, systemA.externalFieldInterpolationGrid,
-                                      systemA.framework, systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(),
-                                      systemA.beta, cutOffFrameworkVDWA, cutOffMoleculeVDWA, cutOffCoulombA};
+  const CBMC::GrowContext growContext = systemA.makeGrowContext();
 
   // Attempt to grow a new molecule in system A using CBMC insertion
   time_begin = std::chrono::steady_clock::now();
@@ -172,19 +161,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   std::size_t selectedMolecule = systemB.randomIntegerMoleculeOfComponent(random, selectedComponent);
   std::span<Atom> molecule = systemB.spanOfMolecule(selectedComponent, selectedMolecule);
 
-  // Retrieve cutoff distances (dual-cutoff aware) from system B
-  double cutOffFrameworkVDWB =
-      systemB.forceField.useDualCutOff ? systemB.forceField.dualCutOff : systemB.forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDWB =
-      systemB.forceField.useDualCutOff ? systemB.forceField.dualCutOff : systemB.forceField.cutOffMoleculeVDW;
-  double cutOffCoulombB =
-      systemB.forceField.useDualCutOff ? systemB.forceField.dualCutOff : systemB.forceField.cutOffCoulomb;
-
-  const CBMC::GrowContext retraceContext{systemB.hasExternalField, systemB.forceField, systemB.simulationBox,
-                                         systemB.interpolationGrids, systemB.externalFieldInterpolationGrid,
-                                         systemB.framework, systemB.spanOfFrameworkAtoms(),
-                                         systemB.spanOfMoleculeAtoms(), systemB.beta, cutOffFrameworkVDWB,
-                                         cutOffMoleculeVDWB, cutOffCoulombB};
+  const CBMC::GrowContext retraceContext = systemB.makeGrowContext();
 
   // Retrace the selected molecule in system B for deletion using CBMC
   time_begin = std::chrono::steady_clock::now();

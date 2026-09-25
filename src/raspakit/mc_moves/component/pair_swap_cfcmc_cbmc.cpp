@@ -169,14 +169,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
   const double idealGasA = componentA.idealGasRosenbluthWeight.value_or(1.0);
   const double idealGasB = componentBRef.idealGasRosenbluthWeight.value_or(1.0);
 
-  // Determine cutoff distances based on whether dual cutoff is used (only used for the CBMC grow/retrace).
-  const double cutOffFrameworkVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-
   // Snapshot the committed effective type counts; threaded across the sequential tail sub-steps of the move.
   std::vector<double> tailEffectiveCounts = system.effectiveNumberOfPseudoAtomsVDW;
   std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupCounts =
@@ -298,10 +290,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     const std::size_t newMoleculeA = system.numberOfMolecules();
     const std::size_t newMoleculeB = system.numberOfMolecules() + 1;
 
-    const CBMC::GrowContext growContextA{system.hasExternalField, system.forceField, system.simulationBox,
-                                         system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                         system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-                                         system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+    const CBMC::GrowContext growContextA = system.makeGrowContext();
 
     time_begin = std::chrono::steady_clock::now();
     std::optional<ChainGrowData> growDataA = CBMC::growMoleculeSwapInsertion(
@@ -351,10 +340,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     moleculeAtomDataWithTrialA.insert(moleculeAtomDataWithTrialA.end(), growDataA->atoms.begin(),
                                       growDataA->atoms.end());
 
-    const CBMC::GrowContext growContextB{system.hasExternalField, system.forceField, system.simulationBox,
-                                         system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                         system.framework, system.spanOfFrameworkAtoms(), moleculeAtomDataWithTrialA,
-                                         system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+    const CBMC::GrowContext growContextB = system.makeGrowContext().withMoleculeAtoms(moleculeAtomDataWithTrialA);
 
     time_begin = std::chrono::steady_clock::now();
     std::optional<ChainGrowData> growDataB = CBMC::growMoleculePairSecondSwapInsertion(
@@ -672,17 +658,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
       backgroundWithoutFractionalB.push_back(atom);
     }
 
-    const CBMC::GrowContext retraceContextB{system.hasExternalField, system.forceField, system.simulationBox,
-                                            system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                            system.framework, system.spanOfFrameworkAtoms(),
-                                            system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW,
-                                            cutOffMoleculeVDW, cutOffCoulomb};
+    const CBMC::GrowContext retraceContextB = system.makeGrowContext();
 
-    const CBMC::GrowContext retraceContextA{system.hasExternalField, system.forceField, system.simulationBox,
-                                            system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                            system.framework, system.spanOfFrameworkAtoms(),
-                                            backgroundWithoutFractionalB, system.beta, cutOffFrameworkVDW,
-                                            cutOffMoleculeVDW, cutOffCoulomb};
+    const CBMC::GrowContext retraceContextA = system.makeGrowContext().withMoleculeAtoms(backgroundWithoutFractionalB);
 
     time_begin = std::chrono::steady_clock::now();
     ChainRetraceData retraceDataB =

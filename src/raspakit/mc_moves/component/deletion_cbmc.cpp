@@ -49,18 +49,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     std::copy(system.electricField.begin(), system.electricField.end(), system.electricFieldNew.begin());
     // std::span<double3> electricFieldMoleculeNew = system.spanElectricFieldNew(selectedComponent, selectedMolecule);
 
-    // Determine cutoff distances based on whether dual cutoff is used.
-    double cutOffFrameworkVDW =
-        system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
-    double cutOffMoleculeVDW =
-        system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
-    double cutOffCoulomb =
-        system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-    const CBMC::GrowContext retraceContext{system.hasExternalField, system.forceField, system.simulationBox,
-                                           system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                           system.framework, system.spanOfFrameworkAtoms(),
-                                           system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW,
-                                           cutOffMoleculeVDW, cutOffCoulomb};
+    const CBMC::GrowContext retraceContext = system.makeGrowContext();
 
     // Retrace the molecule for the swap deletion using CBMC algorithm
     time_begin = std::chrono::steady_clock::now();

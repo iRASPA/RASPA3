@@ -57,13 +57,6 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
     return std::nullopt;
   }
 
-  // Determine cutoff distances based on whether dual cutoff is used.
-  double cutOffFrameworkVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
-  double cutOffCoulomb =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
   std::size_t selected_configuration = random.uniform_integer(0, component.partialReinsertionFixedAtoms.size() - 1);
 
   const std::vector<std::size_t> beads_already_placed = component.partialReinsertionFixedAtoms[selected_configuration];
@@ -72,10 +65,7 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
   // Attempt to grow the molecule using CBMC reinsertion.
   std::optional<ChainGrowData> growData = CBMC::growMoleculePartialReinsertion(
       random,
-      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
-                        cutOffCoulomb},
+      system.makeGrowContext(),
       component, selectedComponent, molecule, molecule_atoms, beads_already_placed);
   time_end = std::chrono::steady_clock::now();
 
@@ -106,10 +96,7 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
   time_begin = std::chrono::steady_clock::now();
   ChainRetraceData retraceData = CBMC::retraceMoleculePartialReinsertion(
       random,
-      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
-                        cutOffCoulomb},
+      system.makeGrowContext(),
       component, molecule, molecule_atoms, beads_already_placed);
   time_end = std::chrono::steady_clock::now();
 
@@ -133,10 +120,7 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
     // Dual cut-off scheme: correct the grown and retraced configurations from the inner cut-off to
     // the full cut-offs, so that Rosenbluth weights and energies behave as if grown at the full
     // cut-offs.
-    const CBMC::GrowContext context{system.hasExternalField, system.forceField, system.simulationBox,
-                                    system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
-                                    system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
-                                    cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+    const CBMC::GrowContext context = system.makeGrowContext();
 
     std::optional<RunningEnergy> correctionNew =
         CBMC::computeDualCutOffCorrection(context, component, growData->atoms);

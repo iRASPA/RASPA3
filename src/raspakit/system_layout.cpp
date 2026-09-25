@@ -11,6 +11,7 @@ import molecule;
 import component;
 import double3;
 import simd_quatd;
+import cbmc_growth_context;
 
 // System layout: spans, iterators, and molecule indexing over contiguous storage.
 
@@ -96,6 +97,13 @@ std::span<const Atom> System::spanOfMoleculeAtoms() const
 {
   return std::span(atomData.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms),
                    atomData.end());
+}
+
+CBMC::GrowContext System::makeGrowContext(CBMC::CutOffMode mode) const
+{
+  return CBMC::GrowContext(hasExternalField, forceField, simulationBox, interpolationGrids,
+                           externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(),
+                           beta, mode);
 }
 
 std::span<Atom> System::spanOfMoleculeAtoms()

@@ -228,14 +228,6 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     return groupChargeSumOfSpans(spans);
   };
 
-  // Determine cutoff distances based on whether dual cutoff is used (only used for the CBMC grow/retrace).
-  const double cutOffFrameworkVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-
   // Snapshot the committed effective type counts; threaded across the sequential tail sub-steps of the move.
   std::vector<double> tailEffectiveCounts = system.effectiveNumberOfPseudoAtomsVDW;
   std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupCounts =
@@ -335,10 +327,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
 
       if (useCBMC)
       {
-        const CBMC::GrowContext growContext{system.hasExternalField, system.forceField, system.simulationBox,
-                                            system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                            system.framework, system.spanOfFrameworkAtoms(), accumulatedBackground,
-                                            system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+        const CBMC::GrowContext growContext = system.makeGrowContext().withMoleculeAtoms(accumulatedBackground);
 
         time_begin = std::chrono::steady_clock::now();
         std::optional<ChainGrowData> growData;
@@ -798,10 +787,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
           background.push_back(atom);
         }
 
-        const CBMC::GrowContext retraceContext{system.hasExternalField, system.forceField, system.simulationBox,
-                                               system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                               system.framework, system.spanOfFrameworkAtoms(), background,
-                                               system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+        const CBMC::GrowContext retraceContext = system.makeGrowContext().withMoleculeAtoms(background);
 
         Component& memberComponent = system.components[members[i].componentId];
         // the reverse insertion grows the central molecule with a free first bead and every

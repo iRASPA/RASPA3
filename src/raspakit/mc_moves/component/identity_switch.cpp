@@ -75,14 +75,6 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
   const Atom startingBeadA = oldA[componentAData.startingBead];
   const Atom startingBeadB = oldB[componentBData.startingBead];
 
-  // Determine cutoff distances based on whether dual cutoff is used.
-  const double cutOffFrameworkVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-
   // Distinct trial ids that cannot collide with any existing molecule (global ids are 0..N-1), so
   // that the molecule grown second sees the one grown before it in the background.
   const std::size_t trialIdNewB = system.numberOfMolecules();
@@ -128,18 +120,7 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
 
   auto makeContext = [&](std::span<const Atom> background)
   {
-    return CBMC::GrowContext{system.hasExternalField,
-                             system.forceField,
-                             system.simulationBox,
-                             system.interpolationGrids,
-                             system.externalFieldInterpolationGrid,
-                             system.framework,
-                             system.spanOfFrameworkAtoms(),
-                             background,
-                             system.beta,
-                             cutOffFrameworkVDW,
-                             cutOffMoleculeVDW,
-                             cutOffCoulomb};
+    return system.makeGrowContext().withMoleculeAtoms(background);
   };
 
   // One side of the exchange: the existing molecule (retraced at its own site) together with the

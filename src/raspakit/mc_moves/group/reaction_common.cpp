@@ -206,14 +206,6 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
     }
   }
 
-  // Determine cutoff distances based on whether dual cutoff is used (only used for the CBMC growth).
-  const double cutOffFrameworkVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-
   for (std::size_t componentId = 0; componentId < stoichiometry.size(); ++componentId)
   {
     for (std::size_t n = 0; n < stoichiometry[componentId]; ++n)
@@ -224,10 +216,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
       std::optional<ChainGrowData> growData;
       if (useCBMC)
       {
-        const CBMC::GrowContext growContext{system.hasExternalField, system.forceField, system.simulationBox,
-                                            system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                            system.framework, system.spanOfFrameworkAtoms(), background, system.beta,
-                                            cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+        const CBMC::GrowContext growContext = system.makeGrowContext().withMoleculeAtoms(background);
         growData = CBMC::growMoleculeSwapInsertion(random, growContext, component, componentId, selectedMolecule,
                                                    scaling, dUdlambdaGroupId, isFractional);
 
@@ -307,14 +296,6 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
     extraExcludedGlobalMoleculeIds.insert(system.moleculeIndexOfComponent(componentId, moleculeId));
   }
 
-  // Determine cutoff distances based on whether dual cutoff is used (only used for the CBMC retrace).
-  const double cutOffFrameworkVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-
   // Detailed balance: the reverse move grows the group sequentially in the order of 'selectedMolecules'
   // (growMoleculeGroupInsertion), where molecule k only sees the group members 0..k-1. The retrace must
   // reproduce these nested environments: molecule k is retraced with the members k+1..m-1 excluded from
@@ -345,10 +326,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
     ChainRetraceData retraceData{RunningEnergy{}, 1.0, 0.0};
     if (useCBMC)
     {
-      const CBMC::GrowContext retraceContext{system.hasExternalField, system.forceField, system.simulationBox,
-                                             system.interpolationGrids, system.externalFieldInterpolationGrid,
-                                             system.framework, system.spanOfFrameworkAtoms(), background, system.beta,
-                                             cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+      const CBMC::GrowContext retraceContext = system.makeGrowContext().withMoleculeAtoms(background);
       try
       {
         retraceData = CBMC::retraceMoleculeSwapDeletion(random, retraceContext, component, moleculeAtoms);

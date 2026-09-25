@@ -211,33 +211,9 @@ std::optional<RunningEnergy> CBMC::computeDualCutOffCorrection(const GrowContext
                                                                std::vector<Atom> &trialPositionSet,
                                                                std::make_signed_t<std::size_t> skipBackgroundMolecule) noexcept
 {
-  const ForceField &forceField = context.forceField;
-
-  const GrowContext fullCutOffContext{context.hasExternalField,
-                                      forceField,
-                                      context.simulationBox,
-                                      context.interpolationGrids,
-                                      context.externalFieldInterpolationGrid,
-                                      context.framework,
-                                      context.frameworkAtoms,
-                                      context.moleculeAtoms,
-                                      context.beta,
-                                      forceField.cutOffFrameworkVDW,
-                                      forceField.cutOffMoleculeVDW,
-                                      forceField.cutOffCoulomb};
-
-  const GrowContext innerCutOffContext{context.hasExternalField,
-                                       forceField,
-                                       context.simulationBox,
-                                       context.interpolationGrids,
-                                       context.externalFieldInterpolationGrid,
-                                       context.framework,
-                                       context.frameworkAtoms,
-                                       context.moleculeAtoms,
-                                       context.beta,
-                                       forceField.dualCutOff,
-                                       forceField.dualCutOff,
-                                       forceField.dualCutOff};
+  // The same configuration and background evaluated at the full and at the inner cut-offs.
+  const GrowContext fullCutOffContext = context.withFullCutOffs();
+  const GrowContext innerCutOffContext = context.withInnerCutOffs();
 
   std::optional<RunningEnergy> fullCutOffEnergy = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
       fullCutOffContext, component, trialPositionSet, skipBackgroundMolecule);

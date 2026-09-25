@@ -177,18 +177,8 @@ RegrowChainResult runRegrowChain(RandomNumber &random, const ForceField &forceFi
   const std::vector<std::optional<InterpolationEnergyGrid>> noGrids(forceField.pseudoAtoms.size() + 1);
   const std::optional<InterpolationEnergyGrid> noExternalFieldGrid{};
 
-  const CBMC::GrowContext context{false,
-                                  forceField,
-                                  box,
-                                  noGrids,
-                                  noExternalFieldGrid,
-                                  noFramework,
-                                  std::span<const Atom>{},
-                                  obstacles,
-                                  beta,
-                                  forceField.cutOffFrameworkVDW,
-                                  forceField.cutOffMoleculeVDW,
-                                  forceField.cutOffCoulomb};
+  const CBMC::GrowContext context(false, forceField, box, noGrids, noExternalFieldGrid, noFramework,
+                                  std::span<const Atom>{}, obstacles, beta, CBMC::CutOffMode::Full);
 
   const double3 boxLengths(box.lengthA, box.lengthB, box.lengthC);
   const double maximumRadius = 0.5 * std::min(boxLengths.x, boxLengths.z);
@@ -343,18 +333,8 @@ TEST(CBMC_RECOIL_GROWTH, retrace_of_overlapping_old_configuration_throws)
 
   auto makeContext = [&](std::span<const Atom> obstacles)
   {
-    return CBMC::GrowContext{false,
-                             forceField,
-                             box,
-                             noGrids,
-                             noExternalFieldGrid,
-                             noFramework,
-                             std::span<const Atom>{},
-                             obstacles,
-                             beta,
-                             forceField.cutOffFrameworkVDW,
-                             forceField.cutOffMoleculeVDW,
-                             forceField.cutOffCoulomb};
+    return CBMC::GrowContext(false, forceField, box, noGrids, noExternalFieldGrid, noFramework, std::span<const Atom>{},
+                             obstacles, beta, CBMC::CutOffMode::Full);
   };
   auto makeWallBead = [](double3 position)
   {

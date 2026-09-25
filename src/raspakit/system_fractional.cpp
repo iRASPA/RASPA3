@@ -1253,10 +1253,7 @@ void System::createParallelReactionFractionalMolecules()
           {
             growData = CBMC::growMoleculeSwapInsertion(
                 random,
-                CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
-                                  externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
-                                  spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
-                                  forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
+                makeGrowContext(CBMC::CutOffMode::Full),
                 components[componentId], componentId, numberOfMolecules(), reactantScaling,
                 reaction.dUdlambdaGroup(true), true);
           }
@@ -1294,10 +1291,7 @@ void System::createParallelReactionFractionalMolecules()
           {
             growData = CBMC::growMoleculeSwapInsertion(
                 random,
-                CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
-                                  externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
-                                  spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
-                                  forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
+                makeGrowContext(CBMC::CutOffMode::Full),
                 components[componentId], componentId, numberOfMolecules(), productScaling,
                 reaction.dUdlambdaGroup(false), true);
           }
@@ -1369,10 +1363,7 @@ void System::createSerialReactionFractionalMolecules()
           {
             growData = CBMC::growMoleculeSwapInsertion(
                 random,
-                CBMC::GrowContext{hasExternalField, forceField, simulationBox, interpolationGrids,
-                                  externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(),
-                                  spanOfMoleculeAtoms(), beta, forceField.cutOffFrameworkVDW,
-                                  forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb},
+                makeGrowContext(CBMC::CutOffMode::Full),
                 components[componentId], componentId, numberOfMolecules(), 1.0, reaction.lambda.dUdlambdaGroupId,
                 true);
           }
