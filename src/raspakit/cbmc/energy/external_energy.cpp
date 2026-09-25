@@ -20,7 +20,8 @@ import units;
 import cbmc_external_field;
 import cbmc_framework_molecule;
 import cbmc_intermolecular;
-import cbmc_growth_context;
+import cbmc_grow_context;
+import cbmc_results;
 
 bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const Component &component,
                                 std::span<const Atom> molecule_atoms)

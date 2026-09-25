@@ -11,7 +11,7 @@ import running_energy;
 import intra_molecular_potentials;
 import bend_potential;
 import cbmc_util;
-import cbmc_growth_plan;
+import cbmc_grow_step;
 
 CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, std::size_t numberOfTorsionTrials,
                                                         double beta, std::vector<Atom> &chainAtoms,
@@ -21,7 +21,7 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
 {
   const std::size_t currentBead = step.currentBead;
   const std::vector<std::size_t> &nextBeads = step.nextBeads;
-  const Potentials::IntraMolecularPotentials &intra = step.torsionSelectionPotentials;
+  const Potentials::IntraMolecularPotentials &intra = step.spin.potentials;
   const double3 anchor = chainAtoms[currentBead].position;
 
   // The next-beads of the chain are scratch for the trial spins and are restored on return.
@@ -49,7 +49,7 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
     placeSpin(angle);
 
     double torsion_energy = intra.calculateTorsionEnergies(chainAtoms);
-    for (const BendPotential &bend : step.spinVariantBends)
+    for (const BendPotential &bend : step.spin.variantBends)
     {
       torsion_energy += bend.calculateEnergy(chainAtoms[bend.identifiers[0]].position,
                                              chainAtoms[bend.identifiers[1]].position,
@@ -57,7 +57,7 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
     }
     // The step's spin-routed unsampled terms (see the growth plan's term classification): couplings
     // to placed geometry or to the spin angle, steering the spin choice through the selection.
-    if (step.torsionSelectionHasUnsampledTerms)
+    if (step.spin.hasUnsampledTerms)
     {
       torsion_energy += intra.computeInternalEnergiesNotSampledDuringGrowth(chainAtoms).potentialEnergy();
     }

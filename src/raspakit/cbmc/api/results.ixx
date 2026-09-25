@@ -23,6 +23,14 @@ import running_energy;
 
 export namespace CBMC
 {
+/// One non-overlapping trial position of the first bead and its external energy (the candidates the
+/// multiple-first-bead schemes select among).
+struct FirstBeadTrial
+{
+  Atom position;
+  RunningEnergy energy;
+};
+
 /// Result of placing (or retracing) the first bead of a molecule with one of the first-bead schemes.
 struct FirstBeadData
 {

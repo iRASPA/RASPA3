@@ -7,6 +7,19 @@ import std;
 import atom;
 import double3;
 import randomnumbers;
+import cbmc_grow_step;
+
+void CBMC::placeStepBeads(std::vector<Atom> &chainAtoms, const GrowStep &step, std::span<const Atom> positions)
+{
+  for (std::size_t k = 0; k != step.nextBeads.size(); ++k) chainAtoms[step.nextBeads[k]] = positions[k];
+}
+
+std::vector<Atom> CBMC::stepBeadPositions(std::span<const Atom> chainAtoms, const GrowStep &step)
+{
+  std::vector<Atom> positions(step.nextBeads.size());
+  for (std::size_t k = 0; k != step.nextBeads.size(); ++k) positions[k] = chainAtoms[step.nextBeads[k]];
+  return positions;
+}
 
 // logBoltzmannFactors are (-beta U)
 std::size_t CBMC::selectTrialPosition(RandomNumber &random, std::span<const double> logBoltzmannFactors)

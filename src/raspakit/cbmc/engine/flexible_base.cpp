@@ -15,7 +15,7 @@ import intra_molecular_potentials;
 import running_energy;
 import cbmc_util;
 import cbmc_constants;
-import cbmc_growth_plan;
+import cbmc_grow_step;
 
 namespace
 {
@@ -46,26 +46,25 @@ double bendMinimumEnergy(const BendPotential &bend)
   return minimum - Constants::bendMinimumSlack;  // the grid can only overestimate the true minimum
 }
 
-// The frozen base-coupling constants of a flexible attach step at 'beta'. Normally a plain lookup:
-// the component prepared its plans for the system temperature at setup ('Component::prepareGrowthPlans')
-// and every cached step carries its constants. The fall-back covers a component that was never
-// prepared for this 'beta' (e.g. a unit test driving the operators directly): prepare it now, which
-// fills the cached steps in place; a step that is not owned by the component's cache (a copied plan)
-// is estimated directly -- the estimate is deterministic per signature, so it equals the memoised one.
+// The frozen base-coupling constants of a flexible attach step at 'beta': a plain lookup. The
+// component prepared its plans for the system temperature at setup ('Component::prepareGrowthPlans',
+// called by the System on construction and whenever the temperature changes), so every step of a
+// cached plan carries its constants. The sampler is a hot path and must not prepare anything itself
+// (the former fall-back mutated the component's caches from inside a const grow, which is neither
+// thread-safe nor free): an unprepared step is a setup error and is reported as one.
 CBMC::BaseCouplingConstants baseCouplingConstantsOf(double beta, const Component &component,
                                                     const CBMC::GrowStep &step)
 {
-  if (!step.hasBaseCoupling) return {0.0, 0.0};
-  if (step.baseCouplingConstants.has_value() && component.growthPlanBeta == beta)
+  if (!step.base.hasCoupling) return {0.0, 0.0};
+  if (!step.base.couplingConstants.has_value() || component.growthPlanBeta != beta)
   {
-    return step.baseCouplingConstants.value();
+    throw std::logic_error(std::format(
+        "CBMC: growth step of component '{}' (anchor bead {}) has no base-coupling constants for beta = {} "
+        "(prepared for {}); call Component::prepareGrowthPlans(beta) before growing with it\n",
+        component.name, step.currentBead, beta,
+        component.growthPlanBeta.has_value() ? std::format("{}", component.growthPlanBeta.value()) : "nothing"));
   }
-  component.prepareGrowthPlans(beta);
-  if (step.baseCouplingConstants.has_value() && component.growthPlanBeta == beta)
-  {
-    return step.baseCouplingConstants.value();
-  }
-  return CBMC::estimateBaseCouplingConstants(beta, component.atoms.size(), step);
+  return step.base.couplingConstants.value();
 }
 }  // namespace
 
@@ -89,7 +88,7 @@ CBMC::FlexibleBase CBMC::sampleExactFlexibleBase(RandomNumber &random, double be
   if (last_bond_vector.length() < Constants::degenerateAxisLength) last_bond_vector = double3{0.0, 0.0, 1.0};
   last_bond_vector = last_bond_vector.normalized();
 
-  const bool has_coupling = step.hasBaseCoupling;
+  const bool has_coupling = step.base.hasCoupling;
   const BaseCouplingConstants coupling_constants =
       has_coupling ? baseCouplingConstantsOf(beta, component, step) : BaseCouplingConstants{0.0, 0.0};
 
@@ -97,8 +96,8 @@ CBMC::FlexibleBase CBMC::sampleExactFlexibleBase(RandomNumber &random, double be
   {
     for (std::size_t i = 0; i != numberOfNextBeads; ++i)
     {
-      const std::optional<BondPotential> &bond = step.nextBeadBonds[i];
-      const std::optional<BendPotential> &anchor = step.nextBeadAnchorBends[i];
+      const std::optional<BondPotential> &bond = step.base.bonds[i];
+      const std::optional<BendPotential> &anchor = step.base.anchorBends[i];
       double bond_length = bond.has_value() ? bond->generateBondLength(random, beta) : Constants::defaultBondLength;
       double3 direction = anchor.has_value()
                               ? random.randomVectorOnCone(last_bond_vector, anchor->generateBendAngle(random, beta))
@@ -116,7 +115,7 @@ CBMC::FlexibleBase CBMC::sampleExactFlexibleBase(RandomNumber &random, double be
     }
 
     bool parity_ok = true;
-    for (const ChiralCenter &center : step.determinedChiralCenters)
+    for (const ChiralCenter &center : step.base.determinedChiralCenters)
     {
       double reference_sign = center.type == ChiralCenter::Chirality::R_Chiral ? 1.0 : -1.0;
       parity_ok = parity_ok && (reference_sign * chiralSignedVolume(center.ids, chainAtoms) > 0.0);
@@ -135,7 +134,7 @@ CBMC::FlexibleBase CBMC::sampleExactFlexibleBase(RandomNumber &random, double be
 double CBMC::flexibleBaseClampWeight(double beta, const Component &component, const GrowStep &step,
                                      std::span<const Atom> atoms)
 {
-  if (!step.flexibleAttach || !step.hasBaseCoupling) return 1.0;
+  if (!step.flexibleAttach || !step.base.hasCoupling) return 1.0;
 
   const BaseCouplingConstants constants = baseCouplingConstantsOf(beta, component, step);
   const double couplingEnergy = baseCouplingEnergy(step, atoms);
@@ -150,7 +149,7 @@ double CBMC::flexibleBaseClampWeight(double beta, const Component &component, co
 // and each fully determined chiral center restricts the base to a sector of probability exactly one
 // half. See the interface documentation for why reptation needs this.
 // ---------------------------------------------------------------------------------------------------
-double CBMC::logBaseSamplerNormalization(double beta, const Component &component, const std::vector<GrowStep> &plan)
+double CBMC::logFlexibleBaseNormalization(double beta, const Component &component, const std::vector<GrowStep> &plan)
 {
   double logNormalization = 0.0;
 
@@ -163,23 +162,23 @@ double CBMC::logBaseSamplerNormalization(double beta, const Component &component
 
     for (std::size_t i = 0; i != step.nextBeads.size(); ++i)
     {
-      const std::optional<BondPotential> &bond = step.nextBeadBonds[i];
+      const std::optional<BondPotential> &bond = step.base.bonds[i];
       // A bond without potential is placed at the fixed default length: r^2 dr integrates to r^2.
       logNormalization += bond.has_value() ? bond->logBoltzmannVolumeNormalization(beta)
                                            : 2.0 * std::log(Constants::defaultBondLength);
 
-      const std::optional<BendPotential> &anchorBend = step.nextBeadAnchorBends[i];
+      const std::optional<BendPotential> &anchorBend = step.base.anchorBends[i];
       logNormalization += anchorBend.has_value() ? anchorBend->logBoltzmannConeNormalization(beta)
                                                  : std::log(4.0 * std::numbers::pi);  // uniform sphere
     }
 
-    if (step.hasBaseCoupling)
+    if (step.base.hasCoupling)
     {
       const BaseCouplingConstants constants = baseCouplingConstantsOf(beta, component, step);
       logNormalization += constants.logMeanClampedBoltzmann - beta * constants.referenceEnergy;
     }
 
-    logNormalization += static_cast<double>(step.determinedChiralCenters.size()) * std::log(0.5);
+    logNormalization += static_cast<double>(step.base.determinedChiralCenters.size()) * std::log(0.5);
   }
 
   return logNormalization;
@@ -191,14 +190,14 @@ double CBMC::logBaseSamplerNormalization(double beta, const Component &component
 double CBMC::baseCouplingEnergy(const GrowStep &step, std::span<const Atom> atoms)
 {
   double energy = 0.0;
-  for (const BendPotential &bend : step.siblingBends)
+  for (const BendPotential &bend : step.base.siblingBends)
   {
     energy += bend.calculateEnergy(atoms[bend.identifiers[0]].position, atoms[bend.identifiers[1]].position,
                                    atoms[bend.identifiers[2]].position, std::nullopt);
   }
-  if (step.hasBaseCouplingTerms)
+  if (step.base.hasCouplingTerms)
   {
-    energy += step.baseCouplingTerms.computeInternalEnergiesNotSampledDuringGrowth(atoms).potentialEnergy();
+    energy += step.base.couplingTerms.computeInternalEnergiesNotSampledDuringGrowth(atoms).potentialEnergy();
   }
   return energy;
 }
@@ -206,7 +205,7 @@ double CBMC::baseCouplingEnergy(const GrowStep &step, std::span<const Atom> atom
 CBMC::BaseCouplingConstants CBMC::estimateBaseCouplingConstants(double beta, std::size_t numberOfAtoms,
                                                                 const GrowStep &step)
 {
-  if (!step.flexibleAttach || !step.hasBaseCoupling) return {0.0, 0.0};
+  if (!step.flexibleAttach || !step.base.hasCoupling) return {0.0, 0.0};
 
   const std::size_t previousBead = step.previousBead.value();
   const std::size_t currentBead = step.currentBead;
@@ -224,10 +223,10 @@ CBMC::BaseCouplingConstants CBMC::estimateBaseCouplingConstants(double beta, std
   {
     for (std::size_t i = 0; i != step.nextBeads.size(); ++i)
     {
-      const std::optional<BondPotential> &bond = step.nextBeadBonds[i];
+      const std::optional<BondPotential> &bond = step.base.bonds[i];
       const double bondLength =
           bond.has_value() ? bond->generateBondLength(random, beta) : Constants::defaultBondLength;
-      const std::optional<BendPotential> &anchor = step.nextBeadAnchorBends[i];
+      const std::optional<BendPotential> &anchor = step.base.anchorBends[i];
       const double3 direction = anchor.has_value()
                                     ? random.randomVectorOnCone(axis, anchor->generateBendAngle(random, beta))
                                     : random.randomVectorOnUnitSphere();
@@ -239,9 +238,9 @@ CBMC::BaseCouplingConstants CBMC::estimateBaseCouplingConstants(double beta, std
   // Reference energy: rigorous per-bend minima when only sibling bends couple; otherwise the
   // Monte-Carlo minimum with slack (exactness does not depend on it, see BaseCouplingConstants).
   double referenceEnergy = 0.0;
-  if (!step.hasBaseCouplingTerms)
+  if (!step.base.hasCouplingTerms)
   {
-    for (const BendPotential &bend : step.siblingBends) referenceEnergy += bendMinimumEnergy(bend);
+    for (const BendPotential &bend : step.base.siblingBends) referenceEnergy += bendMinimumEnergy(bend);
   }
   else
   {
@@ -279,16 +278,16 @@ void CBMC::prepareBaseCouplingConstants(double beta, std::size_t numberOfAtoms, 
 {
   for (GrowStep &step : plan)
   {
-    if (!step.flexibleAttach || !step.hasBaseCoupling)
+    if (!step.flexibleAttach || !step.base.hasCoupling)
     {
-      step.baseCouplingConstants.reset();
+      step.base.couplingConstants.reset();
       continue;
     }
-    auto it = memo.find(step.baseCouplingSignature);
+    auto it = memo.find(step.base.couplingSignature);
     if (it == memo.end())
     {
-      it = memo.emplace(step.baseCouplingSignature, estimateBaseCouplingConstants(beta, numberOfAtoms, step)).first;
+      it = memo.emplace(step.base.couplingSignature, estimateBaseCouplingConstants(beta, numberOfAtoms, step)).first;
     }
-    step.baseCouplingConstants = it->second;
+    step.base.couplingConstants = it->second;
   }
 }

@@ -27,7 +27,7 @@ static void expectEqualStatistics(const MoveStatistics<double>& a, const MoveSta
 
 TEST(CBMC_MOVE_STATISTICS, archive_round_trip_restores_all_step_sizes)
 {
-  CBMCMoveStatistics original;
+  CBMC::InternalMoveStatistics original;
   original.ringDisplacementChange.maxChange = 0.37;
   original.ringDisplacementChange.counts = 12.0;
   original.ringDisplacementChange.accepted = 5.0;
@@ -46,7 +46,7 @@ TEST(CBMC_MOVE_STATISTICS, archive_round_trip_restores_all_step_sizes)
     Archive<std::ofstream> archive(stream);
     archive << original;
   }
-  CBMCMoveStatistics restored;
+  CBMC::InternalMoveStatistics restored;
   {
     std::ifstream stream(path, std::ios::binary);
     Archive<std::ifstream> archive(stream);
@@ -64,7 +64,7 @@ TEST(CBMC_MOVE_STATISTICS, version_1_archive_reads_with_default_rigid_tilt)
 {
   // Write a version-1 record by hand: the version number, the three legacy flexible-bead entries, and
   // the three ring entries.
-  CBMCMoveStatistics original;
+  CBMC::InternalMoveStatistics original;
   original.ringRotationChange.maxChange = 0.61;
   MoveStatistics<double> legacy{.maxChange = 0.3, .lowerLimit = 0.01, .upperLimit = 0.5};
   legacy.counts = 7.0;
@@ -82,7 +82,7 @@ TEST(CBMC_MOVE_STATISTICS, version_1_archive_reads_with_default_rigid_tilt)
     archive << original.ringRotationChange;
     archive << original.ringCrankshaftMove;
   }
-  CBMCMoveStatistics restored;
+  CBMC::InternalMoveStatistics restored;
   restored.rigidTiltRotationChange.maxChange = 0.99;  // must be left untouched by a version-1 read
   {
     std::ifstream stream(path, std::ios::binary);
@@ -97,7 +97,7 @@ TEST(CBMC_MOVE_STATISTICS, version_1_archive_reads_with_default_rigid_tilt)
 
 TEST(CBMC_MOVE_STATISTICS, optimize_adapts_rigid_tilt_like_ring_step_sizes)
 {
-  CBMCMoveStatistics statistics;
+  CBMC::InternalMoveStatistics statistics;
   const double initial = statistics.rigidTiltRotationChange.maxChange;
 
   // Acceptance far above the target: the step size must grow (clamped scaling 1.5).

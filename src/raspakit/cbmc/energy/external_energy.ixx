@@ -20,17 +20,11 @@ import units;
 import cbmc_intermolecular;
 import cbmc_framework_molecule;
 import interpolation_energy_grid;
-import cbmc_growth_context;
+import cbmc_grow_context;
+import cbmc_results;
 
 export namespace CBMC
 {
-/// External energy of a single first-bead trial position.
-struct FirstBeadTrial
-{
-  Atom position;
-  RunningEnergy energy;
-};
-
 /// Whether any of 'molecule_atoms' lies inside one of the component's blocking pockets (spheres in
 /// fractional framework coordinates, radius scaled by the atom's 'scalingVDW'). Every trial set of a
 /// CBMC grow is filtered with this, so a grown molecule never lies in a pocket; 'System' delegates its

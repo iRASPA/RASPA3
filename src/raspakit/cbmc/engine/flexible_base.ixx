@@ -7,7 +7,7 @@ import std;
 import atom;
 import randomnumbers;
 import component;
-import cbmc_growth_plan;
+import cbmc_grow_step;
 
 // The exact sampler of a flexible attach step's base conformation, and everything that belongs to its
 // normalization: the base-coupling energy, the frozen per-signature coupling constants (estimated at
@@ -40,7 +40,7 @@ struct FlexibleBase
  *
  * The base density is Boltzmann but its NORMALIZATION is plan-dependent (per-bead bond and
  * anchor-bend integrals, the coupling average, and a factor one half per determined chiral center);
- * 'logBaseSamplerNormalization' computes it, and reptation corrects its acceptance by the
+ * 'logFlexibleBaseNormalization' computes it, and reptation corrects its acceptance by the
  * normalization ratio of its two plans. Spin-variant bends (to placed atoms other than the previous
  * bead), all torsions, and the spin-routed unsampled terms must NOT shape the base: they are
  * Rosenbluth-weighted in the torsion-spin stage, identically on growth and retrace. Declared chiral
@@ -89,8 +89,10 @@ double flexibleBaseClampWeight(double beta, const Component &component, const Gr
  * Rigid-body and ring-closure steps are skipped: their internal-MC samplers have no closed-form
  * normalization, which is why reptation requires (at parse time) congruent end plans whenever a
  * repeat unit contains such steps -- congruent steps contribute equal factors that cancel.
+ *
+ * Moves reach this through the entry point 'CBMC::logBaseSamplerNormalization' of the 'cbmc' module.
  */
-double logBaseSamplerNormalization(double beta, const Component &component, const std::vector<GrowStep> &plan);
+double logFlexibleBaseNormalization(double beta, const Component &component, const std::vector<GrowStep> &plan);
 
 /**
  * \brief The total coupling energy imposed on a flexible attach step's base conformation by rejection:
@@ -114,10 +116,10 @@ double baseCouplingEnergy(const GrowStep &step, std::span<const Atom> atoms);
 BaseCouplingConstants estimateBaseCouplingConstants(double beta, std::size_t numberOfAtoms, const GrowStep &step);
 
 /**
- * \brief Fills 'baseCouplingConstants' of every step of 'plan' for inverse temperature 'beta'.
+ * \brief Fills 'base.couplingConstants' of every step of 'plan' for inverse temperature 'beta'.
  *
  * Steps without base coupling are left without constants. Estimates are memoised in 'memo' per
- * 'baseCouplingSignature' so congruent steps -- within one plan and across the plans of one component
+ * 'base.couplingSignature' so congruent steps -- within one plan and across the plans of one component
  * -- share one frozen number (required for their factors to cancel exactly in the reptation
  * acceptance). The memo must belong to one temperature; the caller clears it when 'beta' changes.
  */

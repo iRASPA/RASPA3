@@ -20,7 +20,7 @@ import bend_torsion_potential;
 import connectivity_table;
 import fragment;
 import fragment_graph;
-import cbmc_growth_plan;
+import cbmc_grow_step;
 
 namespace
 {
@@ -231,11 +231,11 @@ std::string baseCouplingSignature(const CBMC::GrowStep &step)
   std::string key{};
   for (std::size_t i = 0; i != step.nextBeads.size(); ++i)
   {
-    const std::optional<BondPotential> &bond = step.nextBeadBonds[i];
+    const std::optional<BondPotential> &bond = step.base.bonds[i];
     key += bond.has_value() ? std::format(";bond{}", static_cast<std::size_t>(bond->type)) : ";bond-none";
     if (bond.has_value())
       for (double p : bond->parameters) key += std::format(",{:.12e}", p);
-    const std::optional<BendPotential> &anchor = step.nextBeadAnchorBends[i];
+    const std::optional<BendPotential> &anchor = step.base.anchorBends[i];
     key += anchor.has_value() ? std::format(";anchor{}", static_cast<std::size_t>(anchor->type)) : ";anchor-none";
     if (anchor.has_value())
       for (double p : anchor->parameters) key += std::format(",{:.12e}", p);
@@ -246,9 +246,9 @@ std::string baseCouplingSignature(const CBMC::GrowStep &step)
     for (std::size_t id : identifiers) key += ":" + roleOf(id);
     for (double p : parameters) key += std::format(",{:.12e}", p);
   };
-  for (const BendPotential &bend : step.siblingBends)
+  for (const BendPotential &bend : step.base.siblingBends)
     appendTerm("sib", static_cast<std::size_t>(bend.type), bend.identifiers, bend.parameters);
-  const Potentials::IntraMolecularPotentials &terms = step.baseCouplingTerms;
+  const Potentials::IntraMolecularPotentials &terms = step.base.couplingTerms;
   for (const auto &t : terms.ureyBradleys)
     appendTerm("ub", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
   for (const auto &t : terms.inversionBends)
@@ -392,39 +392,39 @@ void CBMC::prepareStep(GrowStep &step, const ConnectivityTable &connectivity, co
   {
     // The complement -- bonds and the spin-invariant bends and torsions -- is what the internal
     // conformational MC of the ring samples.
-    step.ringInternalPotentials.bonds = step.intra.bonds;
+    step.ring.internalPotentials.bonds = step.intra.bonds;
     for (const TorsionPotential &torsion : step.intra.torsions)
     {
-      (isSpinVariantRingTorsion(torsion.identifiers, currentBead, nextBeads) ? step.torsionSelectionPotentials
-                                                                             : step.ringInternalPotentials)
+      (isSpinVariantRingTorsion(torsion.identifiers, currentBead, nextBeads) ? step.spin.potentials
+                                                                             : step.ring.internalPotentials)
           .torsions.push_back(torsion);
     }
   }
   else
   {
-    step.torsionSelectionPotentials.torsions = step.intra.torsions;
+    step.spin.potentials.torsions = step.intra.torsions;
   }
   for (const BendPotential &bend : step.intra.bends)
   {
     if (isSpinVariantBend(bend, step.previousBead, currentBead, nextBeads))
     {
-      step.spinVariantBends.push_back(bend);
+      step.spin.variantBends.push_back(bend);
     }
     else if (step.kind == CBMC::GrowStep::Kind::CloseRing)
     {
-      step.ringInternalPotentials.bends.push_back(bend);
+      step.ring.internalPotentials.bends.push_back(bend);
     }
   }
 
   if (!step.previousBead.has_value()) return;
   const std::size_t previousBead = step.previousBead.value();
 
-  step.nextBeadBonds.resize(nextBeads.size());
-  step.nextBeadAnchorBends.resize(nextBeads.size());
+  step.base.bonds.resize(nextBeads.size());
+  step.base.anchorBends.resize(nextBeads.size());
   for (std::size_t i = 0; i != nextBeads.size(); ++i)
   {
-    step.nextBeadBonds[i] = step.intra.findBondPotential(currentBead, nextBeads[i]);
-    step.nextBeadAnchorBends[i] = findAnchorBend(step.intra, previousBead, currentBead, nextBeads[i]);
+    step.base.bonds[i] = step.intra.findBondPotential(currentBead, nextBeads[i]);
+    step.base.anchorBends[i] = findAnchorBend(step.intra, previousBead, currentBead, nextBeads[i]);
   }
 
   if (!step.flexibleAttach) return;
@@ -433,25 +433,25 @@ void CBMC::prepareStep(GrowStep &step, const ConnectivityTable &connectivity, co
   // the spin-routed unsampled terms join the torsion selection.
   for (const BendPotential &bend : step.intra.bends)
   {
-    if (isSiblingBend(bend, currentBead, nextBeads)) step.siblingBends.push_back(bend);
+    if (isSiblingBend(bend, currentBead, nextBeads)) step.base.siblingBends.push_back(bend);
   }
 
   UnsampledStepTerms split = splitUnsampledStepTerms(step);
-  step.baseCouplingTerms = std::move(split.baseCoupling);
-  step.hasBaseCouplingTerms = hasUnsampledTerms(step.baseCouplingTerms);
-  step.hasBaseCoupling = !step.siblingBends.empty() || step.hasBaseCouplingTerms;
+  step.base.couplingTerms = std::move(split.baseCoupling);
+  step.base.hasCouplingTerms = hasUnsampledTerms(step.base.couplingTerms);
+  step.base.hasCoupling = !step.base.siblingBends.empty() || step.base.hasCouplingTerms;
 
-  Potentials::IntraMolecularPotentials &spin = step.torsionSelectionPotentials;
-  spin.ureyBradleys = std::move(split.spinTerms.ureyBradleys);
-  spin.inversionBends = std::move(split.spinTerms.inversionBends);
-  spin.outOfPlaneBends = std::move(split.spinTerms.outOfPlaneBends);
-  spin.improperTorsions = std::move(split.spinTerms.improperTorsions);
-  spin.bondBonds = std::move(split.spinTerms.bondBonds);
-  spin.bondBends = std::move(split.spinTerms.bondBends);
-  spin.bondTorsions = std::move(split.spinTerms.bondTorsions);
-  spin.bendBends = std::move(split.spinTerms.bendBends);
-  spin.bendTorsions = std::move(split.spinTerms.bendTorsions);
-  step.torsionSelectionHasUnsampledTerms = hasUnsampledTerms(spin);
+  Potentials::IntraMolecularPotentials &spinPotentials = step.spin.potentials;
+  spinPotentials.ureyBradleys = std::move(split.spinTerms.ureyBradleys);
+  spinPotentials.inversionBends = std::move(split.spinTerms.inversionBends);
+  spinPotentials.outOfPlaneBends = std::move(split.spinTerms.outOfPlaneBends);
+  spinPotentials.improperTorsions = std::move(split.spinTerms.improperTorsions);
+  spinPotentials.bondBonds = std::move(split.spinTerms.bondBonds);
+  spinPotentials.bondBends = std::move(split.spinTerms.bondBends);
+  spinPotentials.bondTorsions = std::move(split.spinTerms.bondTorsions);
+  spinPotentials.bendBends = std::move(split.spinTerms.bendBends);
+  spinPotentials.bendTorsions = std::move(split.spinTerms.bendTorsions);
+  step.spin.hasUnsampledTerms = hasUnsampledTerms(spinPotentials);
 
   // Declared chiral centres fully determined by this step: centred on the current bead, with every
   // neighbour either the previous bead or grown here.
@@ -464,8 +464,8 @@ void CBMC::prepareStep(GrowStep &step, const ConnectivityTable &connectivity, co
       const std::size_t id = center.ids[k];
       determined = determined && (id == previousBead || contains(nextBeads, id));
     }
-    if (determined) step.determinedChiralCenters.push_back(center);
+    if (determined) step.base.determinedChiralCenters.push_back(center);
   }
 
-  if (step.hasBaseCoupling) step.baseCouplingSignature = baseCouplingSignature(step);
+  if (step.base.hasCoupling) step.base.couplingSignature = baseCouplingSignature(step);
 }

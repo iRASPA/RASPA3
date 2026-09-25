@@ -370,9 +370,10 @@ export struct Component
   MCMoveStatistics mc_moves_statistics;
   MCMoveCpuTime mc_moves_cputime;  ///< CPU time statistics for Monte Carlo moves.
 
-  // CBMC internal-move statistics counters. Marked 'mutable' so that the trial-orientation
-  // Monte-Carlo scheme, which only updates these counters, can run on a 'const Component&'.
-  mutable std::vector<CBMCMoveStatistics> cbmc_moves_statistics;
+  // Per-bead counters and adaptive step sizes of the CBMC internal Monte-Carlo samplers (ring closure,
+  // rigid tilt), indexed by the anchor bead of a growth step. Marked 'mutable' so that the samplers,
+  // which only update these counters, can run on a 'const Component&'.
+  mutable std::vector<CBMC::InternalMoveStatistics> cbmcMoveStatistics;
 
   PropertyWidom averageRosenbluthWeights;            ///< Average Rosenbluth weights for Widom insertion.
   PropertyGibbsWidom averageGibbsRosenbluthWeights;  ///< Average Rosenbluth weights for Widom insertion.
@@ -614,6 +615,12 @@ export struct Component
    * in 'baseCouplingConstantsMemo' so congruent steps share one number (their factors then cancel
    * exactly in the reptation acceptance). A no-op when already prepared for this 'beta'. Const
    * because it only touches derived, mutable caches (retraces hold a 'const Component&').
+   *
+   * This is the ONLY place the constants are produced: the operator engine never prepares on the
+   * fly (the sampler is a hot path and a 'const Component&' shared between threads) and throws
+   * std::logic_error when asked to grow a flexible attach step with base coupling that was not
+   * prepared for the context's 'beta'. Code that drives the engine without a System (unit tests)
+   * must call this itself.
    */
   void prepareGrowthPlans(double beta) const;
 

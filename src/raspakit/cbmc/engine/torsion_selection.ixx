@@ -7,7 +7,7 @@ import std;
 import atom;
 import double3;
 import randomnumbers;
-import cbmc_growth_plan;
+import cbmc_grow_step;
 
 export namespace CBMC
 {

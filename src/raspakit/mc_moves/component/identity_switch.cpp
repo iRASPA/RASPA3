@@ -12,7 +12,7 @@ import simd_quatd;
 import simulationbox;
 import cbmc;
 import cbmc_results;
-import cbmc_growth_context;
+import cbmc_grow_context;
 import cbmc_external_energy;
 import randomnumbers;
 import system;

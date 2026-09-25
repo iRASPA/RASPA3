@@ -11,7 +11,7 @@ import molecule;
 import component;
 import double3;
 import simd_quatd;
-import cbmc_growth_context;
+import cbmc_grow_context;
 
 // System layout: spans, iterators, and molecule indexing over contiguous storage.
 

@@ -7,7 +7,12 @@ import std;
 import archive;
 import move_statistics;
 
-export struct CBMCMoveStatistics
+export namespace CBMC
+{
+/// Acceptance counters and adaptive step sizes of the internal Monte-Carlo samplers of the operator
+/// engine (ring closure and rigid tilt), kept per bead of a component ('Component::cbmcMoveStatistics',
+/// indexed by the anchor bead of the step). Serialized into the restart file.
+struct InternalMoveStatistics
 {
   // Version 2 added 'rigidTiltRotationChange' (version-1 restart files are read with its default).
   // Version 3 dropped the bond-length / bend-angle / cone-position entries of the former internal
@@ -45,6 +50,7 @@ export struct CBMCMoveStatistics
 
   const std::string writeMCMoveStatistics() const;
 
-  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const CBMCMoveStatistics& p);
-  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, CBMCMoveStatistics& p);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const InternalMoveStatistics& p);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, InternalMoveStatistics& p);
 };
+}  // namespace CBMC

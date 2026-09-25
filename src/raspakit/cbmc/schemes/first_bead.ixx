@@ -8,7 +8,7 @@ import atom;
 import randomnumbers;
 import cbmc_results;
 import component;
-import cbmc_growth_context;
+import cbmc_grow_context;
 
 // The first-bead schemes. A grow returns std::nullopt when every trial position overlaps (or the
 // weight falls below 'minimumRosenbluthFactor'); a retrace throws std::runtime_error when the

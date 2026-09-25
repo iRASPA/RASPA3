@@ -5,17 +5,10 @@ export module cbmc_chain_recoil;
 import std;
 
 import atom;
-import double3x3;
-import double3;
 import randomnumbers;
-import forcefield;
-import simulationbox;
-import cbmc_results;
-import cbmc_external_energy;
-import cbmc_growth_context;
-import framework;
 import component;
-import interpolation_energy_grid;
+import cbmc_results;
+import cbmc_grow_context;
 
 export namespace CBMC
 {
@@ -47,9 +40,8 @@ export namespace CBMC
 //    potentials; the per-step reference (the maximum strain of the ideal-gas reference conformations)
 //    removes the molecule's own intrinsic strain from that variance but not the external one.
 //
-// The signature matches CBMC::growFlexibleMoleculeChainInsertion so it can be used as a drop-in
-// replacement in the CBMC access routines.
-[[nodiscard]] std::optional<CBMC::GrowResult> growRecoilGrowthMoleculeChainInsertion(
+// Same signature as CBMC::growChainCBMC; the 'cbmc' module dispatches on the context's chain scheme.
+[[nodiscard]] std::optional<CBMC::GrowResult> growChainRecoil(
     RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced, std::optional<std::size_t> skipBackgroundMolecule = std::nullopt);
 
@@ -57,12 +49,12 @@ export namespace CBMC
 //
 // Computes the recoil-growth weight of the current (old) configuration. The existing chain occupies
 // one trial direction per segment (always counted as open), and 'k-1' additional trial directions are
-// generated to count m_i. The signature matches CBMC::retraceFlexibleMoleculeChainDeletion.
+// generated to count m_i. Same signature as CBMC::retraceChainCBMC.
 //
 // Throws std::runtime_error when the existing configuration overlaps (hard-core overlap, blocked
 // pocket): an accepted state can not overlap, so this signals an inconsistent simulation state rather
 // than silently assigning the molecule a weight.
-[[nodiscard]] CBMC::RetraceResult retraceRecoilGrowthMoleculeChainDeletion(
+[[nodiscard]] CBMC::RetraceResult retraceChainRecoil(
     RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced);
 }  // namespace CBMC

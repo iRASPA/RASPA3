@@ -8,7 +8,7 @@ import atom;
 import randomnumbers;
 import component;
 import cbmc_results;
-import cbmc_growth_context;
+import cbmc_grow_context;
 
 // Configurational-bias Monte Carlo growth of the chain beyond the first bead, and the retrace of an
 // existing chain. Both walk the same deterministic growth plan ('Component::growthPlan') step by
@@ -24,7 +24,7 @@ export namespace CBMC
  * returned molecule has every bead placed. Returns std::nullopt when some step has no non-overlapping
  * trial direction or its factor falls below 'minimumRosenbluthFactor' (an ordinary rejection).
  */
-[[nodiscard]] std::optional<CBMC::GrowResult> growFlexibleMoleculeChainInsertion(
+[[nodiscard]] std::optional<CBMC::GrowResult> growChainCBMC(
     RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced, std::optional<std::size_t> skipBackgroundMolecule = std::nullopt);
 
@@ -35,7 +35,7 @@ export namespace CBMC
  * overlap, so this signals an inconsistent simulation state rather than silently assigning a weight
  * (see the error contract in the 'cbmc' module).
  */
-[[nodiscard]] CBMC::RetraceResult retraceFlexibleMoleculeChainDeletion(
+[[nodiscard]] CBMC::RetraceResult retraceChainCBMC(
     RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced);
 }  // namespace CBMC

@@ -7,7 +7,7 @@ import std;
 import atom;
 import randomnumbers;
 import component;
-import cbmc_growth_plan;
+import cbmc_grow_step;
 
 export namespace CBMC
 {
@@ -22,9 +22,9 @@ export namespace CBMC
  * per bead, adaptive step size from the anchor bead's CBMC statistics). Carries no Rosenbluth weight.
  *
  * Returns the positions of the step's next-beads (in 'step.nextBeads' order); the internal geometry
- * of the body is that of the component's reference atoms, exactly.
+ * of the body is that of the component's reference atoms, exactly. 'chainAtoms' is the chain the step
+ * grows in; its next-beads are used as scratch and restored on return (see CBMC::ScratchBeads).
  */
 std::vector<Atom> generateRigidTilt(RandomNumber &random, std::size_t numberOfTrialMovesPerOpenBead, double beta,
-                                    const Component &component, const std::vector<Atom> &chainAtoms,
-                                    const GrowStep &step);
+                                    const Component &component, std::vector<Atom> &chainAtoms, const GrowStep &step);
 }  // namespace CBMC

@@ -17,7 +17,7 @@ static std::string formatStatistics(const std::string name, const MoveStatistics
   return stream.str();
 }
 
-const std::string CBMCMoveStatistics::writeMCMoveStatistics() const
+const std::string CBMC::InternalMoveStatistics::writeMCMoveStatistics() const
 {
   std::ostringstream stream;
 
@@ -44,7 +44,7 @@ const std::string CBMCMoveStatistics::writeMCMoveStatistics() const
   return stream.str();
 }
 
-Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const CBMCMoveStatistics& p)
+Archive<std::ofstream>& CBMC::operator<<(Archive<std::ofstream>& archive, const CBMC::InternalMoveStatistics& p)
 {
   archive << p.versionNumber;
 
@@ -60,7 +60,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const CBMCMo
   return archive;
 }
 
-Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, CBMCMoveStatistics& p)
+Archive<std::ifstream>& CBMC::operator>>(Archive<std::ifstream>& archive, CBMC::InternalMoveStatistics& p)
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
@@ -68,8 +68,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, CBMCMoveStat
   {
     const std::source_location& location = std::source_location::current();
     throw std::runtime_error(
-        std::format("Invalid version reading 'CBMCMoveProbabilitiesSystem' at line {} in file {}\n", location.line(),
-                    location.file_name()));
+        std::format("Invalid version reading 'CBMC::InternalMoveStatistics' at line {} in file {}\n",
+                    location.line(), location.file_name()));
   }
 
   if (versionNumber < 3)
@@ -94,7 +94,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, CBMCMoveStat
   archive >> magicNumber;
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
-    throw std::runtime_error(std::format("MCMoveStatistics: Error in binary restart\n"));
+    throw std::runtime_error(std::format("CBMC::InternalMoveStatistics: Error in binary restart\n"));
   }
 #endif
 

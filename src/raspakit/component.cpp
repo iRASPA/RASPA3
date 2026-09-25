@@ -125,7 +125,7 @@ Component::Component(Component::Type type, std::size_t componentId, const ForceF
   }
   lambdaGC.computeDUdlambda = thermodynamicIntegration;
 
-  cbmc_moves_statistics = std::vector<CBMCMoveStatistics>(definedAtoms.size());
+  cbmcMoveStatistics = std::vector<CBMC::InternalMoveStatistics>(definedAtoms.size());
 }
 
 // create programmatically an 'adsorbate' component
@@ -150,7 +150,7 @@ Component::Component(const ForceField &forceField, std::string componentName, do
       lambdaGroupSwap(numberOfBlocks, numberOfLambdaBins),
       lambdaGroupSwapCB(numberOfBlocks, numberOfLambdaBins),
       mc_moves_probabilities(particleProbabilities),
-      cbmc_moves_statistics(atomList.size()),
+      cbmcMoveStatistics(atomList.size()),
       averageRosenbluthWeights(numberOfBlocks),
       averageGibbsRosenbluthWeights(numberOfBlocks),
       blockingPockets(blockingPockets)
@@ -498,6 +498,19 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
     for (const std::vector<std::size_t> &fixedAtoms : partialReinsertionFixedAtoms)
     {
       growthPlan(fixedAtoms);
+    }
+
+    // Parse-time diagnostic: growth steps that can only be grown with the engine's default geometry
+    // (a bonded pair without a bond potential, a rigid junction without its bend). Reported once per
+    // distinct message, since the partial plans repeat the steps of the full plan.
+    std::set<std::string> reported{};
+    for (const auto &[placed, plan] : growthPlanCache)
+    {
+      for (const std::string &warning : CBMC::growthPlanDefaultGeometryWarnings(plan))
+      {
+        if (!reported.insert(warning).second) continue;
+        std::print(std::cerr, "[Component reader]: warning: component '{}': {}\n", name, warning);
+      }
     }
   }
 }
@@ -2695,7 +2708,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.mc_moves_statistics;
   archive << c.mc_moves_cputime;
 
-  archive << c.cbmc_moves_statistics;
+  archive << c.cbmcMoveStatistics;
 
   archive << c.averageRosenbluthWeights;
   archive << c.averageGibbsRosenbluthWeights;
@@ -2807,7 +2820,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.mc_moves_statistics;
   archive >> c.mc_moves_cputime;
 
-  archive >> c.cbmc_moves_statistics;
+  archive >> c.cbmcMoveStatistics;
 
   archive >> c.averageRosenbluthWeights;
   archive >> c.averageGibbsRosenbluthWeights;

@@ -1,6 +1,6 @@
 module;
 
-export module cbmc_growth_context;
+export module cbmc_grow_context;
 
 import atom;
 import forcefield;

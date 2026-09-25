@@ -11,11 +11,13 @@ import molecule;
 import double3;
 import running_energy;
 import cbmc_results;
-import cbmc_growth_context;
+import cbmc_grow_context;
 import cbmc_first_bead;
 import cbmc_chain_cbmc;
 import cbmc_chain_recoil;
 import cbmc_external_energy;
+import cbmc_flexible_base;
+import cbmc_grow_step;
 
 // The entry points share one shape: place (or retrace) the first bead with the scheme of the request,
 // then grow (or retrace) the remaining beads with the fragment-at-a-time operator engine, and combine
@@ -38,9 +40,9 @@ std::optional<GrowResult> growChain(RandomNumber &random, const GrowContext &con
                                     std::optional<std::size_t> skipBackgroundMolecule)
 {
   return context.settings.chainScheme == ChainScheme::RecoilGrowth
-             ? growRecoilGrowthMoleculeChainInsertion(random, context, component, moleculeAtoms, beadsAlreadyPlaced,
+             ? growChainRecoil(random, context, component, moleculeAtoms, beadsAlreadyPlaced,
                                                       skipBackgroundMolecule)
-             : growFlexibleMoleculeChainInsertion(random, context, component, moleculeAtoms, beadsAlreadyPlaced,
+             : growChainCBMC(random, context, component, moleculeAtoms, beadsAlreadyPlaced,
                                                   skipBackgroundMolecule);
 }
 
@@ -48,8 +50,8 @@ RetraceResult retraceChain(RandomNumber &random, const GrowContext &context, con
                            std::span<const Atom> moleculeAtoms, const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
   return context.settings.chainScheme == ChainScheme::RecoilGrowth
-             ? retraceRecoilGrowthMoleculeChainDeletion(random, context, component, moleculeAtoms, beadsAlreadyPlaced)
-             : retraceFlexibleMoleculeChainDeletion(random, context, component, moleculeAtoms, beadsAlreadyPlaced);
+             ? retraceChainRecoil(random, context, component, moleculeAtoms, beadsAlreadyPlaced)
+             : retraceChainCBMC(random, context, component, moleculeAtoms, beadsAlreadyPlaced);
 }
 
 std::vector<std::size_t> placedSetOf(std::span<const std::size_t> beadsAlreadyPlaced, const char *entryPoint)
@@ -284,4 +286,9 @@ bool CBMC::applyDualCutOffCorrection(const GrowContext &context, const Component
   result.energies += correction.value();
   result.multiplyRosenbluthWeight(-context.beta * correction->potentialEnergy());
   return true;
+}
+
+double CBMC::logBaseSamplerNormalization(double beta, const Component &component, const std::vector<GrowStep> &plan)
+{
+  return logFlexibleBaseNormalization(beta, component, plan);
 }

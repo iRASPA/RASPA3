@@ -7,9 +7,9 @@ import std;
 import atom;
 import double3;
 import randomnumbers;
-import cbmc_growth_context;
+import cbmc_grow_context;
 import component;
-import cbmc_growth_plan;
+import cbmc_grow_step;
 
 export namespace CBMC
 {
@@ -26,10 +26,11 @@ export namespace CBMC
  * no Rosenbluth weight: the spin about the junction bond and the junction-crossing terms are weighted
  * afterwards in the torsion selection.
  *
- * Returns the positions of the step's next-beads (in 'step.nextBeads' order).
+ * Returns the positions of the step's next-beads (in 'step.nextBeads' order). 'chainAtoms' is the chain
+ * the step grows in; its next-beads are used as scratch and restored on return (see CBMC::ScratchBeads).
  */
 std::vector<Atom> generateRingConformation(RandomNumber &random, const GrowthSettings &settings, double beta,
-                                           const Component &component, const std::vector<Atom> &chainAtoms,
+                                           const Component &component, std::vector<Atom> &chainAtoms,
                                            const GrowStep &step);
 
 /// A uniformly random rigid rotation of 'ringAtoms' about 'anchorPosition' (the other trial

@@ -9,6 +9,8 @@ import connectivity_table;
 import fragment;
 import fragment_graph;
 import intra_molecular_potentials;
+import units;
+import cbmc_constants;
 import cbmc_step_terms;
 
 // First placed neighbor (ascending atom index) of 'anchor' that satisfies 'acceptable'; used as the
@@ -215,4 +217,54 @@ std::vector<CBMC::GrowStep> CBMC::buildGrowthPlan(
   }
 
   return plan;
+}
+
+std::vector<std::string> CBMC::growthPlanDefaultGeometryWarnings(const std::vector<GrowStep> &plan)
+{
+  std::vector<std::string> warnings{};
+
+  for (const GrowStep &step : plan)
+  {
+    if (step.kind == GrowStep::Kind::CloseRing) continue;
+
+    if (step.rigidBody)
+    {
+      // Mirrors the rigid tilt: a junction with bends but without the previous-current-inner bend
+      // draws the tilt at the default angle.
+      if (step.previousBead.has_value() && !step.intra.bends.empty() && !step.rigidTilt.junctionBend.has_value())
+      {
+        warnings.push_back(std::format(
+            "rigid body hinged on atom {} has no bend potential {}-{}-{} for its junction; CBMC tilts it to the "
+            "default angle of {:g} degrees. Declare the junction bend in 'Bends'.",
+            step.currentBead, step.previousBead.value(), step.currentBead, step.rigidTilt.innerBead,
+            Constants::defaultRigidJunctionBendAngle / Units::DegreesToRadians));
+      }
+      continue;
+    }
+
+    // Flexible seed: the single bond current-next is the front of the step's bonds when declared.
+    if (!step.previousBead.has_value())
+    {
+      if (step.intra.bonds.empty())
+      {
+        warnings.push_back(std::format(
+            "bond {}-{} has no bond potential; CBMC places atom {} at the default length of {:g} Angstrom. "
+            "Declare the bond in 'Bonds'.",
+            step.currentBead, step.nextBeads[0], step.nextBeads[0], Constants::defaultBondLength));
+      }
+      continue;
+    }
+
+    // Flexible attach: one bond per grown bead.
+    for (std::size_t i = 0; i != step.nextBeads.size(); ++i)
+    {
+      if (step.base.bonds[i].has_value()) continue;
+      warnings.push_back(std::format(
+          "bond {}-{} has no bond potential; CBMC places atom {} at the default length of {:g} Angstrom. Declare "
+          "the bond in 'Bonds'.",
+          step.currentBead, step.nextBeads[i], step.nextBeads[i], Constants::defaultBondLength));
+    }
+  }
+
+  return warnings;
 }

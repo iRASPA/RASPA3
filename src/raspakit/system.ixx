@@ -56,7 +56,7 @@ import thermostat;
 import thermobarostat;
 import json;
 import interpolation_energy_grid;
-import cbmc_growth_context;
+import cbmc_grow_context;
 import write_lammps_data;
 import minimization_cell_layout;
 

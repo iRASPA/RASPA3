@@ -416,7 +416,7 @@ void System::optimizeMCMoves()
 
     // Adapt the internal CBMC / ring-closure Monte-Carlo step sizes (per bead) towards their target
     // acceptance ratios.
-    for (CBMCMoveStatistics& cbmcStatistics : component.cbmc_moves_statistics)
+    for (CBMC::InternalMoveStatistics& cbmcStatistics : component.cbmcMoveStatistics)
     {
       cbmcStatistics.optimize();
     }

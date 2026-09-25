@@ -6,9 +6,9 @@ import std;
 
 import atom;
 import randomnumbers;
-import cbmc_growth_context;
+import cbmc_grow_context;
 import component;
-import cbmc_growth_plan;
+import cbmc_grow_step;
 
 // The operator engine's dispatch: per step kind it picks the sampler of the base conformation
 // (cbmc_flexible_base, cbmc_rigid_tilt, cbmc_ring_closure) and the torsion-spin selection

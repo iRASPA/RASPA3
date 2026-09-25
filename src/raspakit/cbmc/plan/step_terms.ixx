@@ -7,7 +7,7 @@ import std;
 import chiral_center;
 import connectivity_table;
 import fragment_graph;
-import cbmc_growth_plan;
+import cbmc_grow_step;
 
 export namespace CBMC
 {

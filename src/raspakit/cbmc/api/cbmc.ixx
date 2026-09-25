@@ -11,10 +11,12 @@ import randomnumbers;
 import running_energy;
 import component;
 export import cbmc_results;
-export import cbmc_growth_context;
+export import cbmc_grow_context;
+export import cbmc_grow_step;
 
 // The entry points of the CBMC / recoil-growth machinery: grow a new molecule, regrow (part of) an
-// existing one, retrace an existing one, and correct a result from the inner to the full cut-offs.
+// existing one, retrace an existing one, correct a result from the inner to the full cut-offs, and
+// the base-sampler normalization of a growth plan (for moves that pair the weights of two plans).
 //
 // A grow or retrace has two stages: the first bead is placed with the 'FirstBeadScheme' of the
 // request, the remaining beads are grown fragment by fragment with the operator engine using the
@@ -133,4 +135,13 @@ struct RetraceRequest
 [[nodiscard]] bool applyDualCutOffCorrection(const GrowContext &context, const Component &component,
                                              std::span<const Atom> moleculeAtoms, RetraceResult &result,
                                              std::optional<std::size_t> skipBackgroundMolecule = std::nullopt);
+
+/// The log of the base-sampler normalization of a growth plan ('Component::growthPlan'). The Rosenbluth
+/// weights of a grow and a retrace are comparable only up to the ratio of their plans' normalizations:
+/// one for moves that grow and retrace with the same plan, but a move that pairs two different plans
+/// (reptation: the plan of one chain end against that of the other) must add
+/// logBaseSamplerNormalization(growPlan) - logBaseSamplerNormalization(retracePlan) to its log
+/// acceptance. 'beta' must be the temperature the component's plans were prepared for.
+[[nodiscard]] double logBaseSamplerNormalization(double beta, const Component &component,
+                                                 const std::vector<GrowStep> &plan);
 }  // namespace CBMC

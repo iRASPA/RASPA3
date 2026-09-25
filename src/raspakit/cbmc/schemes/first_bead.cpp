@@ -9,7 +9,7 @@ import atom;
 import randomnumbers;
 import cbmc_results;
 import cbmc_external_energy;
-import cbmc_growth_context;
+import cbmc_grow_context;
 import running_energy;
 import component;
 

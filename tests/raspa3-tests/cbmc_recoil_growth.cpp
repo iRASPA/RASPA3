@@ -16,7 +16,7 @@ import randomnumbers;
 import mc_moves_probabilities;
 import cbmc;
 import cbmc_results;
-import cbmc_growth_context;
+import cbmc_grow_context;
 import cbmc_chain_recoil;
 
 // Detailed-balance tests of recoil growth (RG) as a chain-growth scheme. RG and configurational-bias
@@ -179,6 +179,7 @@ RegrowChainResult runRegrowChain(RandomNumber &random, const ForceField &forceFi
 
   const CBMC::GrowContext context(false, forceField, box, noGrids, noExternalFieldGrid, noFramework,
                                   std::span<const Atom>{}, obstacles, beta, CBMC::CutOffMode::Full);
+  component.prepareGrowthPlans(beta);
 
   const double3 boxLengths(box.lengthA, box.lengthB, box.lengthC);
   const double maximumRadius = 0.5 * std::min(boxLengths.x, boxLengths.z);
@@ -327,6 +328,7 @@ TEST(CBMC_RECOIL_GROWTH, retrace_of_overlapping_old_configuration_throws)
 
   const SimulationBox box(30.0, 30.0, 30.0);
   const double beta = 1.0 / (Units::KB * 300.0);
+  chain.prepareGrowthPlans(beta);
   const std::optional<Framework> noFramework{};
   const std::vector<std::optional<InterpolationEnergyGrid>> noGrids(forceField.pseudoAtoms.size() + 1);
   const std::optional<InterpolationEnergyGrid> noExternalFieldGrid{};
@@ -368,7 +370,7 @@ TEST(CBMC_RECOIL_GROWTH, retrace_of_overlapping_old_configuration_throws)
   const CBMC::GrowContext overlapping = makeContext(obstacle);
   try
   {
-    (void)CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, overlapping, chain, std::span<Atom>(molecule),
+    (void)CBMC::retraceChainRecoil(random, overlapping, chain, std::span<Atom>(molecule),
                                                          placed);
     FAIL() << "the retrace of an overlapping configuration returned a weight";
   }
@@ -393,5 +395,5 @@ TEST(CBMC_RECOIL_GROWTH, retrace_of_overlapping_old_configuration_throws)
   const std::vector<Atom> distant{makeWallBead(molecule[3].position + double3(10.0, 0.0, 0.0))};
   const CBMC::GrowContext valid = makeContext(distant);
   EXPECT_NO_THROW(
-      (void)CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, valid, chain, std::span<Atom>(molecule), placed));
+      (void)CBMC::retraceChainRecoil(random, valid, chain, std::span<Atom>(molecule), placed));
 }

@@ -13,8 +13,9 @@ import randomnumbers;
 import mc_moves_probabilities;
 import bend_bend_potential;
 import bond_bend_potential;
+import cbmc;
 import cbmc_growth_plan;
-import cbmc_growth_context;
+import cbmc_grow_context;
 import cbmc_operators;
 import cbmc_flexible_base;
 
@@ -235,6 +236,7 @@ TEST(CBMC_BASE_SAMPLER, single_bead_bond_and_bend_marginals)
 
   RandomNumber random(9241);
   double beta = 1.0 / (Units::KB * kTemperature);
+  component.prepareGrowthPlans(beta);
 
   constexpr std::size_t samples = 200'000;
   constexpr std::size_t bins = 20;
@@ -293,6 +295,7 @@ TEST(CBMC_BASE_SAMPLER, branch_step_sibling_bend_coupling)
 
   RandomNumber random(70311);
   double beta = 1.0 / (Units::KB * kTemperature);
+  component.prepareGrowthPlans(beta);
 
   constexpr std::size_t samples = 150'000;
   constexpr std::size_t bins = 20;
@@ -359,6 +362,7 @@ TEST(CBMC_BASE_SAMPLER, three_branch_step_three_sibling_bends)
 
   RandomNumber random(41927);
   double beta = 1.0 / (Units::KB * kTemperature);
+  component.prepareGrowthPlans(beta);
 
   constexpr std::size_t samples = 150'000;
   constexpr std::size_t bins = 20;
@@ -484,6 +488,7 @@ TEST(CBMC_BASE_SAMPLER, base_normalization_matches_brute_force)
     TemporaryFile file(c.name + ".json", c.json);
     Component component(Component::Type::Adsorbate, 0, forceField, c.name, file.stemPath().string(), 5, 21,
                         MCMoveProbabilities(), std::nullopt, false);
+    component.prepareGrowthPlans(beta);
     const std::vector<CBMC::GrowStep> &plan = component.growthPlan({0, 1});
     ASSERT_EQ(plan.front().nextBeads.size(), c.branches);
 
@@ -521,6 +526,7 @@ TEST(CBMC_BASE_SAMPLER, branch_step_bend_bend_base_coupling)
 
   RandomNumber random(60177);
   double beta = 1.0 / (Units::KB * kTemperature);
+  component.prepareGrowthPlans(beta);
 
   constexpr std::size_t samples = 150'000;
   constexpr std::size_t bins = 20;
@@ -652,6 +658,7 @@ TEST(CBMC_BASE_SAMPLER, chain_step_bond_bend_spin_promotion)
 
   RandomNumber random(90837);
   double beta = 1.0 / (Units::KB * kTemperature);
+  component.prepareGrowthPlans(beta);
 
   auto bondBendEnergy = [&](double rNew, double theta)
   { return (theta - kBendTheta0) * (kBondBendP * (kPlacedBond - kBondR0) + kBondBendP * (rNew - kBondR0)); };
@@ -735,6 +742,7 @@ TEST(CBMC_BASE_SAMPLER, mini_mc_detailed_balance_with_cross_terms)
 
   RandomNumber random(30529);
   double beta = 1.0 / (Units::KB * kTemperature);
+  component.prepareGrowthPlans(beta);
 
   auto bendBendEnergy = [&](double thetaA, double thetaB)
   { return kBendBendK * (thetaA - kBendTheta0) * (thetaB - kBendTheta0); };
@@ -853,6 +861,7 @@ TEST(CBMC_BASE_SAMPLER, declared_chirality_preserved)
 
   RandomNumber random(551);
   double beta = 1.0 / (Units::KB * kTemperature);
+  component.prepareGrowthPlans(beta);
 
   // The reference geometry declares S parity (signed volume < 0) for center 1 with neighbors 0,2,3.
   constexpr std::size_t samples = 20'000;
