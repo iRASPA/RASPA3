@@ -9,15 +9,12 @@ import move_statistics;
 
 export struct CBMCMoveStatistics
 {
-  // Version 2 adds 'rigidTiltRotationChange'; version-1 restart files are read with its default.
-  std::uint64_t versionNumber{2};
+  // Version 2 added 'rigidTiltRotationChange' (version-1 restart files are read with its default).
+  // Version 3 dropped the bond-length / bend-angle / cone-position entries of the former internal
+  // flexible-bead Monte-Carlo, which the exact base sampler replaced; older files still carry them and
+  // the reader skips them.
+  std::uint64_t versionNumber{3};
 
-  MoveStatistics<double> bondLengthChange{
-      .maxChange = 0.3, .lowerLimit = 0.01, .upperLimit = 0.5};
-  MoveStatistics<double> bendAngleChange{
-      .maxChange = 0.3, .lowerLimit = 0.01, .upperLimit = 0.5};
-  MoveStatistics<double> conePositionChange{
-      .maxChange = 0.3, .lowerLimit = 0.01, .upperLimit = 0.5};
   // Internal ring-closure Monte-Carlo step sizes: 'ringDisplacementChange' is the maximum per-atom
   // and rigid-fragment translation (Angstrom), 'ringRotationChange' the maximum whole-ring tilt and
   // rigid-fragment rotation angle (radians). Adapted towards the target acceptance by 'optimize'.
@@ -37,9 +34,8 @@ export struct CBMCMoveStatistics
 
   // Adapts the ring-closure and rigid-tilt Monte-Carlo step sizes towards their target acceptance
   // ratios from the counters accumulated since the previous call. Invoked from
-  // 'System::optimizeMCMoves'. The flexible-bead step sizes (bond-length / bend-angle /
-  // cone-position) are deliberately left fixed at their defaults, matching the historical behavior of
-  // the flexible-bead sampler, and the ring crankshaft angle is fixed at full range (see above).
+  // 'System::optimizeMCMoves'. The ring crankshaft angle is fixed at full range (see above); the
+  // flexible-bead base is sampled exactly and has no step size.
   void optimize()
   {
     ringDisplacementChange.optimizeAcceptance();

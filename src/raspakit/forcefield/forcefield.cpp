@@ -744,6 +744,33 @@ ForceField::ForceField(std::string filePath)
         parsed_data.value("RecoilGrowthNumberOfTrialDirections", recoilGrowthNumberOfTrialDirections);
   }
 
+  if (recoilGrowthMaximumRecoilLength < 1 || recoilGrowthNumberOfTrialDirections < 1)
+  {
+    throw std::runtime_error(
+        std::format("[ForceField reader]: 'RecoilGrowthMaximumRecoilLength' ({}) and "
+                    "'RecoilGrowthNumberOfTrialDirections' ({}) must both be at least 1\n",
+                    recoilGrowthMaximumRecoilLength, recoilGrowthNumberOfTrialDirections));
+  }
+
+  // The recoil feelers are exhaustive depth-first searches: every direction that tests open at a step
+  // is probed by up to k^(l-1) trial placements, each of which runs the full base sampler and the
+  // torsion selection. The cost per growth step therefore scales as k^l; beyond l = 2 it grows fast and
+  // silently, so say so at parse time.
+  if (useRecoilGrowth && recoilGrowthMaximumRecoilLength >= 3)
+  {
+    double feelerCost = 1.0;
+    for (std::size_t i = 0; i != recoilGrowthMaximumRecoilLength; ++i)
+    {
+      feelerCost *= static_cast<double>(recoilGrowthNumberOfTrialDirections);
+    }
+    std::print(std::cerr,
+               "[ForceField reader]: warning: recoil growth with 'RecoilGrowthMaximumRecoilLength' {} and "
+               "'RecoilGrowthNumberOfTrialDirections' {} probes up to k^l = {:g} trial placements per growth step "
+               "(each a full base-conformation sample plus a torsion selection); the cost grows exponentially "
+               "in the recoil length. l = 2 is usually sufficient.\n",
+               recoilGrowthMaximumRecoilLength, recoilGrowthNumberOfTrialDirections, feelerCost);
+  }
+
   if (parsed_data.contains("NumberOfTrialDirections"))
   {
     numberOfTrialDirections = parsed_data.value("NumberOfTrialDirections", numberOfTrialDirections);
@@ -755,9 +782,49 @@ ForceField::ForceField(std::string filePath)
         parsed_data.value("NumberOfTorsionTrialDirections", numberOfTorsionTrialDirections);
   }
 
+  if (parsed_data.contains("NumberOfFirstBeadPositions"))
+  {
+    numberOfFirstBeadPositions = parsed_data.value("NumberOfFirstBeadPositions", numberOfFirstBeadPositions);
+  }
+
+  if (numberOfTrialDirections < 1 || numberOfTorsionTrialDirections < 1 || numberOfFirstBeadPositions < 1)
+  {
+    throw std::runtime_error(
+        std::format("[ForceField reader]: 'NumberOfTrialDirections' ({}), 'NumberOfTorsionTrialDirections' ({}) "
+                    "and 'NumberOfFirstBeadPositions' ({}) must all be at least 1\n",
+                    numberOfTrialDirections, numberOfTorsionTrialDirections, numberOfFirstBeadPositions));
+  }
+
   if (parsed_data.contains("NumberOfTrialMovesPerOpenBead"))
   {
     numberOfTrialMovesPerOpenBead = parsed_data.value("NumberOfTrialMovesPerOpenBead", numberOfTrialMovesPerOpenBead);
+  }
+
+  if (parsed_data.contains("UseDualCutOff"))
+  {
+    useDualCutOff = parsed_data["UseDualCutOff"].get<bool>();
+  }
+
+  if (parsed_data.contains("DualCutOff"))
+  {
+    dualCutOff = parsed_data.value("DualCutOff", dualCutOff);
+  }
+
+  if (useDualCutOff)
+  {
+    // The inner cut-off must lie strictly inside every explicitly set full cut-off, otherwise the
+    // 'correction' from the inner to the full cut-offs is not a correction at all. Automatic cut-offs are
+    // only known once the system is built and are not checked here.
+    double smallestFullCutOff = std::numeric_limits<double>::max();
+    if (!cutOffFrameworkVDWAutomatic) smallestFullCutOff = std::min(smallestFullCutOff, cutOffFrameworkVDW);
+    if (!cutOffMoleculeVDWAutomatic) smallestFullCutOff = std::min(smallestFullCutOff, cutOffMoleculeVDW);
+    if (!cutOffCoulombAutomatic) smallestFullCutOff = std::min(smallestFullCutOff, cutOffCoulomb);
+    if (dualCutOff <= 0.0 || dualCutOff >= smallestFullCutOff)
+    {
+      throw std::runtime_error(std::format(
+          "[ForceField reader]: 'DualCutOff' {} must be positive and smaller than every full cut-off (smallest: {})\n",
+          dualCutOff, smallestFullCutOff));
+    }
   }
 
   if (parsed_data.contains("CBMCRingCrankshaftProbability"))
@@ -1298,9 +1365,26 @@ std::string ForceField::printForceFieldStatus() const
   std::print(stream, "Overlap-criteria VDW:          {: .6e} [{}]\n\n", energyOverlapCriteria,
              Units::displayedUnitOfEnergyString);
 
+  std::print(stream, "CBMC first-bead trial positions:     {}\n", numberOfFirstBeadPositions);
+  std::print(stream, "CBMC trial directions:               {}\n", numberOfTrialDirections);
+  std::print(stream, "CBMC torsion trial directions:       {}\n", numberOfTorsionTrialDirections);
   std::print(stream, "CBMC trial moves per open bead:      {}\n", numberOfTrialMovesPerOpenBead);
   std::print(stream, "CBMC ring crankshaft probability:    {:g}\n", cbmcRingCrankshaftProbability);
-  std::print(stream, "CBMC ring tilt probability:          {:g}\n\n", cbmcRingTiltProbability);
+  std::print(stream, "CBMC ring tilt probability:          {:g}\n", cbmcRingTiltProbability);
+  std::print(stream, "CBMC dual cut-off:                   {}\n", useDualCutOff ? "yes" : "no");
+  if (useDualCutOff)
+  {
+    std::print(stream, "CBMC inner cut-off:                 {:9.5f} [{}]\n", dualCutOff,
+               Units::displayedUnitOfLengthString);
+  }
+  std::print(stream, "Chain growth scheme:                 {}\n",
+             useRecoilGrowth ? "recoil growth" : "configurational bias");
+  if (useRecoilGrowth)
+  {
+    std::print(stream, "Recoil-growth trial directions (k):  {}\n", recoilGrowthNumberOfTrialDirections);
+    std::print(stream, "Recoil-growth recoil length (l):     {}\n", recoilGrowthMaximumRecoilLength);
+  }
+  std::print(stream, "\n");
 
   switch(mixingRule)
   {

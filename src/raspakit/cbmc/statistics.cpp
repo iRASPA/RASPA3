@@ -21,21 +21,6 @@ const std::string CBMCMoveStatistics::writeMCMoveStatistics() const
 {
   std::ostringstream stream;
 
-  if (bondLengthChange.totalCounts > 0.0)
-  {
-    std::print(stream, "{}", formatStatistics("CBMC Bond-length move", bondLengthChange));
-  }
-
-  if (bendAngleChange.totalCounts > 0.0)
-  {
-    std::print(stream, "{}", formatStatistics("CBMC Bend-angle change", bendAngleChange));
-  }
-
-  if (conePositionChange.totalCounts > 0.0)
-  {
-    std::print(stream, "{}", formatStatistics("CBMC Cone-position change", conePositionChange));
-  }
-
   if (ringDisplacementChange.totalCounts > 0.0)
   {
     std::print(stream, "{}", formatStatistics("CBMC Ring-displacement", ringDisplacementChange));
@@ -63,9 +48,6 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const CBMCMo
 {
   archive << p.versionNumber;
 
-  archive << p.bondLengthChange;
-  archive << p.bendAngleChange;
-  archive << p.conePositionChange;
   archive << p.ringDisplacementChange;
   archive << p.ringRotationChange;
   archive << p.ringCrankshaftMove;
@@ -90,9 +72,15 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, CBMCMoveStat
                     location.file_name()));
   }
 
-  archive >> p.bondLengthChange;
-  archive >> p.bendAngleChange;
-  archive >> p.conePositionChange;
+  if (versionNumber < 3)
+  {
+    // Versions 1 and 2 stored the step sizes of the former internal flexible-bead Monte-Carlo
+    // (bond-length, bend-angle, cone-position); read and discard them.
+    MoveStatistics<double> legacy{};
+    archive >> legacy;
+    archive >> legacy;
+    archive >> legacy;
+  }
   archive >> p.ringDisplacementChange;
   archive >> p.ringRotationChange;
   archive >> p.ringCrankshaftMove;

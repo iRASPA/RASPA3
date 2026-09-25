@@ -16,7 +16,6 @@ import potential_pair_derivatives;
 import energy_status_inter;
 import running_energy;
 import units;
-import threadpool;
 import interpolation_energy_grid;
 
 [[nodiscard]] std::optional<RunningEnergy> CBMC::computeExternalFieldEnergy(

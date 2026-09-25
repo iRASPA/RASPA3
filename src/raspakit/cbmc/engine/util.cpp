@@ -8,37 +8,35 @@ import atom;
 import double3;
 import randomnumbers;
 
-// LogBoltzmannFactors are (-Beta U)
-std::size_t CBMC::selectTrialPosition(RandomNumber &random, std::vector<double> LogBoltzmannFactors)
+// logBoltzmannFactors are (-beta U)
+std::size_t CBMC::selectTrialPosition(RandomNumber &random, std::span<const double> logBoltzmannFactors)
 {
-  std::vector<double> ShiftedBoltzmannFactors(LogBoltzmannFactors.size());
-
   // Energies are always bounded from below [-U_max, infinity>
-  // Find the lowest energy value, i.e. the largest value of (-Beta U)
-  std::vector<double>::iterator match = std::max_element(LogBoltzmannFactors.begin(), LogBoltzmannFactors.end());
+  // Find the lowest energy value, i.e. the largest value of (-beta U)
+  auto match = std::max_element(logBoltzmannFactors.begin(), logBoltzmannFactors.end());
 
-  if (match == LogBoltzmannFactors.end())
+  if (match == logBoltzmannFactors.end())
   {
     throw std::runtime_error("[cbmc-utils]: no maximum value found\n");
   }
-  double largest_value = *match;
+  const double largest_value = *match;
 
   // Standard trick: shift the Boltzmann factors down to avoid numerical problems
-  // The largest value of 'ShiftedBoltzmannFactors' will be 1 (which corresponds to the lowest energy).
-  double SumShiftedBoltzmannFactors = 0.0;
-  for (std::size_t i = 0; i < LogBoltzmannFactors.size(); ++i)
+  // The largest shifted factor is 1 (the lowest energy).
+  double sumShiftedBoltzmannFactors = 0.0;
+  for (double logFactor : logBoltzmannFactors)
   {
-    ShiftedBoltzmannFactors[i] = std::exp(LogBoltzmannFactors[i] - largest_value);
-    SumShiftedBoltzmannFactors += ShiftedBoltzmannFactors[i];
+    sumShiftedBoltzmannFactors += std::exp(logFactor - largest_value);
   }
 
-  // select the Boltzmann factor
+  // select the Boltzmann factor (the shifted factors are recomputed on the fly; the exp is cheaper than
+  // the heap allocation this used to make per selection)
   std::size_t selected = 0;
-  double cumw = ShiftedBoltzmannFactors[0];
-  double ws = random.uniform() * SumShiftedBoltzmannFactors;
-  while (selected + 1 < ShiftedBoltzmannFactors.size() && cumw < ws)
+  double cumw = std::exp(logBoltzmannFactors[0] - largest_value);
+  const double ws = random.uniform() * sumShiftedBoltzmannFactors;
+  while (selected + 1 < logBoltzmannFactors.size() && cumw < ws)
   {
-    cumw += ShiftedBoltzmannFactors[++selected];
+    cumw += std::exp(logBoltzmannFactors[++selected] - largest_value);
   }
 
   return selected;

@@ -98,23 +98,6 @@ std::optional<RunningEnergy> CBMC::computeExternalNonOverlappingEnergy(
   return externalFieldEnergy.value() + interEnergy.value() + frameworkEnergy.value();
 }
 
-std::vector<CBMC::ChainTrialTorsion> CBMC::computeExternalNonOverlappingEnergies(
-    const GrowContext &context, const Component &component, std::vector<std::vector<Atom>> &trialPositionSets,
-    const std::vector<double> &RosenbluthWeightsTorsion, std::optional<std::size_t> skipBackgroundMolecule) noexcept
-{
-  std::vector<CBMC::ChainTrialTorsion> energies{};
-  energies.reserve(trialPositionSets.size());
-
-  for (std::size_t i = 0; i != trialPositionSets.size(); ++i)
-  {
-    std::optional<RunningEnergy> energy =
-        computeExternalNonOverlappingEnergy(context, component, trialPositionSets[i], skipBackgroundMolecule);
-    if (!energy.has_value()) continue;
-    energies.push_back({std::move(trialPositionSets[i]), energy.value(), RosenbluthWeightsTorsion[i]});
-  }
-  return energies;
-}
-
 std::optional<RunningEnergy> CBMC::computeDualCutOffCorrection(const GrowContext &context, const Component &component,
                                                                std::span<const Atom> trialPositionSet,
                                                                std::optional<std::size_t> skipBackgroundMolecule) noexcept

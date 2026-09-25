@@ -55,9 +55,12 @@ struct FlexibleBase
  * frozen coupling constants) is precomputed in the growth plan; this function only samples. Throws
  * std::runtime_error when the rejection budget is exhausted (an inconsistent state, see the error
  * contract in the 'cbmc' module).
+ *
+ * 'chainAtoms' is the chain the step grows in; its next-beads are used as scratch for the draws and
+ * are restored on return (see CBMC::ScratchBeads), so the chain is unchanged for the caller.
  */
 FlexibleBase sampleExactFlexibleBase(RandomNumber &random, double beta, const Component &component,
-                                     const std::vector<Atom> &moleculeAtoms, const GrowStep &step);
+                                     std::vector<Atom> &chainAtoms, const GrowStep &step);
 
 /**
  * \brief The clamp-excess weight of a base conformation, max(1, e^{-beta (u - u_ref)}).

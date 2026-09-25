@@ -73,16 +73,19 @@ CBMC::BaseCouplingConstants baseCouplingConstantsOf(double beta, const Component
 // The sampler (see the interface documentation).
 // ---------------------------------------------------------------------------------------------------
 CBMC::FlexibleBase CBMC::sampleExactFlexibleBase(RandomNumber &random, double beta, const Component &component,
-                                                 const std::vector<Atom> &moleculeAtoms, const GrowStep &step)
+                                                 std::vector<Atom> &chainAtoms, const GrowStep &step)
 {
   const std::size_t previousBead = step.previousBead.value();
   const std::size_t currentBead = step.currentBead;
   const std::vector<std::size_t> &nextBeads = step.nextBeads;
   const std::size_t numberOfNextBeads = nextBeads.size();
 
-  std::vector<Atom> chain_atoms(moleculeAtoms.begin(), moleculeAtoms.end());
+  // The next-beads are drawn in place (every coupling and chirality routine then sees a complete,
+  // correctly indexed chain) and restored on return, including the throwing exit.
+  const ScratchBeads scratch(chainAtoms, nextBeads);
+  const double3 anchor_position = chainAtoms[currentBead].position;
 
-  double3 last_bond_vector = chain_atoms[previousBead].position - chain_atoms[currentBead].position;
+  double3 last_bond_vector = chainAtoms[previousBead].position - anchor_position;
   if (last_bond_vector.length() < Constants::degenerateAxisLength) last_bond_vector = double3{0.0, 0.0, 1.0};
   last_bond_vector = last_bond_vector.normalized();
 
@@ -100,13 +103,13 @@ CBMC::FlexibleBase CBMC::sampleExactFlexibleBase(RandomNumber &random, double be
       double3 direction = anchor.has_value()
                               ? random.randomVectorOnCone(last_bond_vector, anchor->generateBendAngle(random, beta))
                               : random.randomVectorOnUnitSphere();
-      chain_atoms[nextBeads[i]].position = chain_atoms[currentBead].position + bond_length * direction;
+      chainAtoms[nextBeads[i]].position = anchor_position + bond_length * direction;
     }
 
     double clamp_weight = 1.0;
     if (has_coupling)
     {
-      const double coupling_energy = baseCouplingEnergy(step, chain_atoms);
+      const double coupling_energy = baseCouplingEnergy(step, chainAtoms);
       const double boltzmann_excess = std::exp(-beta * (coupling_energy - coupling_constants.referenceEnergy));
       if (random.uniform() > boltzmann_excess) continue;
       clamp_weight = std::max(1.0, boltzmann_excess);
@@ -116,12 +119,12 @@ CBMC::FlexibleBase CBMC::sampleExactFlexibleBase(RandomNumber &random, double be
     for (const ChiralCenter &center : step.determinedChiralCenters)
     {
       double reference_sign = center.type == ChiralCenter::Chirality::R_Chiral ? 1.0 : -1.0;
-      parity_ok = parity_ok && (reference_sign * chiralSignedVolume(center.ids, chain_atoms) > 0.0);
+      parity_ok = parity_ok && (reference_sign * chiralSignedVolume(center.ids, chainAtoms) > 0.0);
     }
     if (!parity_ok) continue;
 
     std::vector<Atom> next_bead_atoms(numberOfNextBeads);
-    for (std::size_t i = 0; i != numberOfNextBeads; ++i) next_bead_atoms[i] = chain_atoms[nextBeads[i]];
+    for (std::size_t i = 0; i != numberOfNextBeads; ++i) next_bead_atoms[i] = chainAtoms[nextBeads[i]];
     return {std::move(next_bead_atoms), clamp_weight};
   }
   throw std::runtime_error(

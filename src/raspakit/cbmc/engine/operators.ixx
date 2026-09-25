@@ -14,6 +14,12 @@ import cbmc_growth_plan;
 // (cbmc_flexible_base, cbmc_rigid_tilt, cbmc_ring_closure) and the torsion-spin selection
 // (cbmc_torsion_selection), and packs the result as trial directions. The growth schemes (CBMC and
 // recoil growth) see only this interface and the 'StepTrial' it returns.
+//
+// Scratch contract: every function below takes the chain it grows in by non-const reference. The
+// step's next-beads are used as scratch for the trial placements (so the energy routines see a
+// complete, correctly indexed molecule without a per-trial copy of the whole chain) and are restored
+// before the function returns, on every exit path; no other atom is touched. The chain is therefore
+// unchanged for the caller.
 export namespace CBMC
 {
 /// One generated trial direction of a growth step: candidate positions of the step's next-beads plus
@@ -49,7 +55,7 @@ struct StepTrial
  * the torsion spin), matching the coupled-decoupled bookkeeping on grow and retrace.
  */
 std::vector<StepTrial> generateGrowTrials(RandomNumber &random, const ForceField &forceField, double beta,
-                                          const Component &component, const std::vector<Atom> &chainAtoms,
+                                          const Component &component, std::vector<Atom> &chainAtoms,
                                           const GrowStep &step, std::size_t numberOfTrialDirections);
 
 /**
@@ -60,7 +66,7 @@ std::vector<StepTrial> generateGrowTrials(RandomNumber &random, const ForceField
  * the remaining directions mirror the grow scheme.
  */
 std::vector<StepTrial> generateRetraceTrials(RandomNumber &random, const ForceField &forceField, double beta,
-                                             const Component &component, const std::vector<Atom> &chainAtoms,
+                                             const Component &component, std::vector<Atom> &chainAtoms,
                                              const GrowStep &step, std::size_t numberOfTrialDirections);
 
 /**
@@ -81,8 +87,7 @@ std::vector<StepTrial> generateRetraceTrials(RandomNumber &random, const ForceFi
  * bead and bias m_i between the two directions of the move.
  */
 StepTrial generateRecoilTrial(RandomNumber &random, const ForceField &forceField, double beta,
-                              const Component &component, const std::vector<Atom> &contextAtoms,
-                              const GrowStep &step);
+                              const Component &component, std::vector<Atom> &contextAtoms, const GrowStep &step);
 
 /**
  * \brief Torsion Rosenbluth weight of the existing (old) orientation of a step (recoil retrace).
@@ -91,8 +96,7 @@ StepTrial generateRecoilTrial(RandomNumber &random, const ForceField &forceField
  * are random rotations around the last bond vector.
  */
 double oldConfigurationTorsionWeight(RandomNumber &random, const ForceField &forceField, double beta,
-                                     const Component &component, const std::vector<Atom> &oldAtoms,
-                                     const GrowStep &step);
+                                     const Component &component, std::vector<Atom> &oldAtoms, const GrowStep &step);
 
 /**
  * \brief Whether a step's growth machinery samples/weights the classically unsampled internal terms

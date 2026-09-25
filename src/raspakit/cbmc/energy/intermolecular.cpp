@@ -17,7 +17,6 @@ import atom;
 import energy_status_inter;
 import running_energy;
 import units;
-import threadpool;
 
 [[nodiscard]] std::optional<RunningEnergy> CBMC::computeInterMolecularEnergy(
     const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,

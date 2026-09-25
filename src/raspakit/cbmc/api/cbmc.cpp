@@ -29,13 +29,15 @@ import interpolation_energy_grid;
 // Every multi-atom molecule is grown with the fragment-at-a-time operator engine: a fully rigid
 // molecule is a single rigid seed fragment (placed with uniform random orientations), a flexible or
 // semi-flexible molecule is grown fragment by fragment. Single-atom molecules are handled before
-// dispatch.
+// dispatch. The chain scheme is the context's ('GrowContext::chainScheme'), so a caller that needs a
+// specific scheme (Widom, the ideal-gas reference grows) selects it there rather than by editing the
+// force field.
 static std::optional<ChainGrowData> growChain(RandomNumber &random, const CBMC::GrowContext &context,
                                               Component &component, std::span<Atom> molecule_atoms,
                                               const std::vector<std::size_t> &beadsAlreadyPlaced,
                                               std::optional<std::size_t> skipBackgroundMolecule = std::nullopt)
 {
-  return context.forceField.useRecoilGrowth
+  return context.chainScheme == CBMC::ChainScheme::RecoilGrowth
              ? CBMC::growRecoilGrowthMoleculeChainInsertion(random, context, component, molecule_atoms,
                                                             beadsAlreadyPlaced, skipBackgroundMolecule)
              : CBMC::growFlexibleMoleculeChainInsertion(random, context, component, molecule_atoms,
@@ -46,7 +48,7 @@ static ChainRetraceData retraceChain(RandomNumber &random, const CBMC::GrowConte
                                      const Component &component, std::span<Atom> molecule_atoms,
                                      const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
-  return context.forceField.useRecoilGrowth
+  return context.chainScheme == CBMC::ChainScheme::RecoilGrowth
              ? CBMC::retraceRecoilGrowthMoleculeChainDeletion(random, context, component, molecule_atoms,
                                                               beadsAlreadyPlaced)
              : CBMC::retraceFlexibleMoleculeChainDeletion(random, context, component, molecule_atoms,

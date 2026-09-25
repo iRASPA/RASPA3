@@ -31,17 +31,40 @@ enum class CutOffMode : std::size_t
 };
 
 /**
+ * \brief Which scheme grows and retraces the chain beyond the first bead.
+ *
+ *  - ConfigurationalBias: the Rosenbluth scheme; the per-step weight is the sum of the Boltzmann
+ *    factors of the trial directions. Its weight is the classic Rosenbluth weight, so its average over
+ *    fresh insertions is the Widom estimator of the excess chemical potential.
+ *  - RecoilGrowth: the recoil-growth scheme (Consta et al. 1999); the per-step weight counts the
+ *    available (open, feeler-viable) directions and divides by the openness probability. Its weight
+ *    is only established as a valid factor in a Metropolis acceptance RATIO; it is not the Rosenbluth
+ *    weight whose average is the Widom estimator. Widom sampling therefore always grows with
+ *    configurational bias, whatever the production moves use.
+ *
+ * The force field's 'useRecoilGrowth' sets the default of a context; a caller that needs a specific
+ * scheme derives it with 'withChainScheme'.
+ */
+enum class ChainScheme : std::size_t
+{
+  ConfigurationalBias = 0,
+  RecoilGrowth = 1,
+};
+
+/**
  * \brief Everything a CBMC grow or retrace needs to know about its environment: the force field,
- * the box, the framework and its atoms, the background molecule atoms, the inverse temperature, and
- * the cut-offs to evaluate external energies with.
+ * the box, the framework and its atoms, the background molecule atoms, the inverse temperature, the
+ * cut-offs to evaluate external energies with, and the chain-growth scheme.
  *
  * Holds references and spans into the owning system, so it is a cheap value and must not outlive it.
  * Build one with 'System::makeGrowContext' (or the constructor for an environment that is not a
  * system, e.g. the ideal-gas grows), and derive variants with the 'with...' members: a different
  * background ('withMoleculeAtoms', used by moves that grow against an edited copy of the molecule
- * atoms) or different cut-offs ('withCutOffs', 'withFullCutOffs', 'withInnerCutOffs', used by the
- * dual cut-off correction). The cut-offs are the only fields a caller ever varies; every other field
- * is fixed by the system, which is why there is no aggregate initialization to keep in sync.
+ * atoms), different cut-offs ('withCutOffs', 'withFullCutOffs', 'withInnerCutOffs', used by the
+ * dual cut-off correction), or a different chain scheme ('withChainScheme', used by Widom sampling
+ * and the ideal-gas reference grows, which must use configurational bias). Those are the only fields
+ * a caller ever varies; every other field is fixed by the system, which is why there is no aggregate
+ * initialization to keep in sync.
  */
 struct GrowContext
 {
@@ -61,7 +84,8 @@ struct GrowContext
         beta(beta),
         cutOffFrameworkVDW(frameworkVDWCutOff(forceField, cutOffMode)),
         cutOffMoleculeVDW(moleculeVDWCutOff(forceField, cutOffMode)),
-        cutOffCoulomb(coulombCutOff(forceField, cutOffMode))
+        cutOffCoulomb(coulombCutOff(forceField, cutOffMode)),
+        chainScheme(forceField.useRecoilGrowth ? ChainScheme::RecoilGrowth : ChainScheme::ConfigurationalBias)
   {
   }
 
@@ -77,6 +101,7 @@ struct GrowContext
   double cutOffFrameworkVDW;
   double cutOffMoleculeVDW;
   double cutOffCoulomb;
+  ChainScheme chainScheme;
 
   /// The same environment with the molecule background replaced (e.g. the system's molecule atoms
   /// with a pair removed, or with already grown group members appended).
@@ -84,6 +109,14 @@ struct GrowContext
   {
     GrowContext copy(*this);
     copy.moleculeAtoms = background;
+    return copy;
+  }
+
+  /// The same environment grown with the given chain scheme (see 'ChainScheme').
+  [[nodiscard]] GrowContext withChainScheme(ChainScheme scheme) const
+  {
+    GrowContext copy(*this);
+    copy.chainScheme = scheme;
     return copy;
   }
 

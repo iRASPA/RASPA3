@@ -24,8 +24,8 @@ constexpr double defaultBondLength = 1.54;
 /// a trigonal 120 degrees.
 constexpr double defaultRigidJunctionBendAngle = 120.0 * Units::DegreesToRadians;
 
-/// Squared-length threshold below which a previous-current vector is treated as degenerate (the two
-/// beads coincide) and replaced by the z axis.
+/// Length (Angstrom) below which a previous-current vector is treated as degenerate (the two beads
+/// coincide) and replaced by the z axis; compared against the vector's length, not its square.
 constexpr double degenerateAxisLength = 1e-8;
 
 /// Rejection budget of the exact flexible base sampler; exceeding it signals a pathologically stiff

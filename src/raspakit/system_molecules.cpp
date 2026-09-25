@@ -366,8 +366,9 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
   // choose. CBMC always completes (a bad step only shrinks the Rosenbluth weight), whereas the
   // absolute open/closed test of recoil growth restarts a long chain indefinitely: per-step attrition
   // compounds over hundreds of beads, and the recoil window aborts the attempt long before the end.
-  const bool recoilGrowth = forceField.useRecoilGrowth;
-  forceField.useRecoilGrowth = false;
+  // (The context is rebuilt per grow: every inserted molecule changes the background it spans.)
+  auto creationContext = [&]()
+  { return makeGrowContext(CBMC::CutOffMode::Full).withChainScheme(CBMC::ChainScheme::ConfigurationalBias); };
 
   for (std::size_t componentId = 0; const Component& component : components)
   {
@@ -380,10 +381,8 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
         std::optional<ChainGrowData> growData = std::nullopt;
         do
         {
-          growData = CBMC::growMoleculeSwapInsertion(
-              random,
-              makeGrowContext(CBMC::CutOffMode::Full),
-              components[componentId], componentId, numberOfMolecules(), 0.0, groupId, true);
+          growData = CBMC::growMoleculeSwapInsertion(random, creationContext(), components[componentId], componentId,
+                                                     numberOfMolecules(), 0.0, groupId, true);
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
         return growData;
       };
@@ -548,10 +547,8 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       std::optional<ChainGrowData> growData = std::nullopt;
       do
       {
-        growData = CBMC::growMoleculeSwapInsertion(
-            random,
-            makeGrowContext(CBMC::CutOffMode::Full),
-            components[componentId], componentId, numberOfMolecules(), 1.0, false, false);
+        growData = CBMC::growMoleculeSwapInsertion(random, creationContext(), components[componentId], componentId,
+                                                   numberOfMolecules(), 1.0, false, false);
 
       } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
@@ -560,8 +557,6 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
 
     componentId++;
   }
-
-  forceField.useRecoilGrowth = recoilGrowth;
 }
 
 void System::computeAutomaticBlockingPockets()
@@ -634,12 +629,18 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
   // Isolated (ideal-gas) growth context: no framework, no interpolation grids, no external field and no
   // other molecules, so CBMC growth feels only the intra-molecular potential and hence samples exp(-beta *
   // U_intra). The grid vector must still be sized like the real one (indexed by pseudo-atom type).
+  //
+  // Always grown with configurational bias, whatever the production moves use: these conformations
+  // seed the conformation reservoir and define the recoil-growth openness reference, and recoil growth
+  // can not run before its own reference exists. CBMC samples the same ideal-gas Boltzmann distribution.
   const std::optional<Framework> noFramework{};
   const std::vector<std::optional<InterpolationEnergyGrid>> noGrids(forceField.pseudoAtoms.size() + 1);
   const std::optional<InterpolationEnergyGrid> noExternalFieldGrid{};
 
-  const CBMC::GrowContext context(false, forceField, simulationBox, noGrids, noExternalFieldGrid, noFramework,
-                                  std::span<const Atom>{}, std::span<const Atom>{}, beta);
+  const CBMC::GrowContext context =
+      CBMC::GrowContext(false, forceField, simulationBox, noGrids, noExternalFieldGrid, noFramework,
+                        std::span<const Atom>{}, std::span<const Atom>{}, beta)
+          .withChainScheme(CBMC::ChainScheme::ConfigurationalBias);
 
   // A handful of full-molecule reinsertion moves decorrelates the conformation from the starting geometry;
   // each accepted move regrows the whole chain from the ideal-gas Boltzmann distribution.
@@ -732,16 +733,14 @@ void System::buildConformationReservoirs()
     // of the seed), avoiding any feedback from a half-filled reservoir.
     //
     // The reservoir is only a warm start for the bond/bend Monte Carlo. It carries no Rosenbluth
-    // weight, so it is grown with configurational bias even when production moves use recoil growth.
-    const bool recoilGrowth = forceField.useRecoilGrowth;
-    forceField.useRecoilGrowth = false;
+    // weight; 'equilibratedIdealGasConformation' grows it with configurational bias even when the
+    // production moves use recoil growth.
     std::vector<std::vector<Atom>> reservoir{};
     reservoir.reserve(reservoirSize);
     for (std::size_t i = 0; i != reservoirSize; ++i)
     {
       reservoir.push_back(equilibratedIdealGasConformation(random, componentId));
     }
-    forceField.useRecoilGrowth = recoilGrowth;
     component.conformationReservoir = std::move(reservoir);
   }
 }
@@ -749,6 +748,10 @@ void System::buildConformationReservoirs()
 void System::buildRecoilReferenceConformations()
 {
   if (!forceField.useRecoilGrowth) return;
+
+  // The reference conformations are Boltzmann samples at the current temperature, grown by plans whose
+  // base-coupling constants must be those of this temperature (a no-op when already prepared).
+  prepareGrowthPlans();
 
   // The openness reference takes, per growth step, the maximum energy over these conformations (any
   // strain a valid equilibrated chain exhibits at a step is acceptable there), so more conformations
@@ -765,18 +768,15 @@ void System::buildRecoilReferenceConformations()
     Component& component = components[componentId];
     if (component.atoms.size() < 2 || component.rigid) continue;
 
-    // Grown with configurational bias (which always completes) rather than recoil growth itself: recoil
-    // growth cannot run before its own reference exists, and CBMC samples the same ideal-gas Boltzmann
-    // distribution.
-    const bool recoilGrowth = forceField.useRecoilGrowth;
-    forceField.useRecoilGrowth = false;
+    // 'equilibratedIdealGasConformation' grows with configurational bias (which always completes)
+    // rather than recoil growth itself: recoil growth cannot run before its own reference exists, and
+    // CBMC samples the same ideal-gas Boltzmann distribution.
     std::vector<std::vector<Atom>> conformations{};
     conformations.reserve(numberOfConformations);
     for (std::size_t i = 0; i != numberOfConformations; ++i)
     {
       conformations.push_back(equilibratedIdealGasConformation(random, componentId));
     }
-    forceField.useRecoilGrowth = recoilGrowth;
     component.setRecoilReferenceConformations(std::move(conformations));
   }
 }

@@ -32,9 +32,11 @@ struct TorsionOrientation
  * With 'pinFirstToBase' the base orientation itself is torsion trial 0 and is the selected one (the
  * retrace of an existing orientation); the remaining trials are random spins that only enter the
  * weight.
+ *
+ * 'chainAtoms' is the chain the step grows in; its next-beads are used as scratch for the trial spins
+ * and are restored on return (see CBMC::ScratchBeads), so the chain is unchanged for the caller.
  */
 TorsionOrientation selectTorsionOrientation(RandomNumber &random, std::size_t numberOfTorsionTrials, double beta,
-                                            const std::vector<Atom> &chainAtoms,
-                                            const std::vector<Atom> &baseOrientation, const GrowStep &step,
-                                            double3 lastBondVector, bool pinFirstToBase);
+                                            std::vector<Atom> &chainAtoms, const std::vector<Atom> &baseOrientation,
+                                            const GrowStep &step, double3 lastBondVector, bool pinFirstToBase);
 }  // namespace CBMC

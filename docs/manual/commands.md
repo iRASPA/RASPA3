@@ -35,6 +35,7 @@ documents the available keywords. Keyword names are matched case-insensitively.
     * [Mean-Squared Displacement (MSD) order-N](#mean-squared-displacement-msd-order-n)
     * [Density grids](#density-grids)
 * [Force field options](#force-field-options)
+  * [Configurational-bias and recoil-growth options](#cbmc-options)
 * [Component options](#component-options)
   * [Component properties](#component-properties)
   * [Component `MC`-moves](#component-mc-moves)
@@ -1354,6 +1355,94 @@ and `"BinaryInteractions"` are read from the force field file
     - `"type" : string`
     - `"parameters" : [floating-point-number]`
     - `"source" : string`
+
+### Configurational-bias and recoil-growth options <a name="cbmc-options"></a>
+
+The following keywords, read from the force field file (`force_field.json`),
+control how molecules are grown in the CBMC-based moves (insertion, deletion,
+reinsertion, partial reinsertion, reptation, identity change, Gibbs and CFCMC
+swaps, Widom insertion). A molecule is grown along a deterministic *growth
+plan* over its fragment graph: the first bead is placed with the
+multiple-first-bead scheme, flexible beads are attached one branch point at a
+time with an exact bond/bend sampler and a Rosenbluth-selected torsion spin,
+rigid bodies (`"RigidBodies"` in the molecule file) are hinged as one unit,
+and rings are closed as one cluster with an internal Monte-Carlo. All options
+affect sampling efficiency only; every value yields the same Boltzmann
+distribution.
+
+-   `"NumberOfFirstBeadPositions" : integer`\
+    Number of trial positions of the first bead, drawn uniformly in the box
+    (default: 10).
+
+-   `"NumberOfTrialDirections" : integer`\
+    Number of trial directions `k` per growth step of the configurational-bias
+    scheme; the Rosenbluth weight of a step is the sum of their Boltzmann
+    factors divided by `k` (default: 10).
+
+-   `"NumberOfTorsionTrialDirections" : integer`\
+    Number of trial spins about the junction bond among which the torsion
+    orientation of a step is Rosenbluth-selected, per trial direction
+    (default: 100). Every trial direction of a step costs this many bonded
+    energy evaluations; 10 to 20 is usually sufficient for a single torsion.
+
+-   `"NumberOfTrialMovesPerOpenBead" : integer`\
+    Number of internal Metropolis moves per placed bead used to relax the
+    orientation of a hinged rigid body and the conformation of a ring cluster
+    (default: 150). These moves carry no Rosenbluth weight.
+
+-   `"CBMCRingCrankshaftProbability" : floating-point-number`\
+    Probability, per internal move of a ring cluster, of attempting a large-angle
+    crankshaft rotation of one ring atom about its two neighbours (the move that
+    hops between ring conformers, e.g. chair and twist-boat) instead of a local
+    displacement (default: 0.2).
+
+-   `"CBMCRingTiltProbability" : floating-point-number`\
+    Probability, per internal move of a ring cluster with a junction, of tilting
+    the whole ring about its anchor instead of moving a single unit
+    (default: 0.25).
+
+-   `"UseDualCutOff" : boolean`\
+    Grow and retrace with a short inner cut-off (`"DualCutOff"`) for all
+    framework-molecule, molecule-molecule, and Coulomb interactions, and correct
+    the Rosenbluth weights and energies of the grown and retraced configurations
+    to the full cut-offs afterwards (Vlugt et al.). The acceptance rule is exact;
+    the gain is that every trial direction is evaluated with the cheap short
+    cut-off and only the selected configuration with the full one
+    (default: `false`).
+
+-   `"DualCutOff" : floating-point-number`\
+    The inner cut-off of the dual cut-off scheme, in Å. Must be smaller than
+    every full cut-off (default: 6.0).
+
+-   `"UseRecoilGrowth" : boolean`\
+    Grow and retrace the chain beyond the first bead with recoil growth
+    (Consta, Vlugt, Wichers Hoeth, Smit, and Frenkel, *Mol. Phys.* **97**, 1243
+    (1999)) instead of configurational bias (default: `false`). At every step
+    `k` trial directions are generated; a direction is *open* with probability
+    `min(1, exp(-β(u - u_ref)))`, with `u_ref` a fixed per-step reference energy
+    measured on ideal-gas conformations of the molecule (so a molecule with
+    intrinsic non-bonded strain is not penalised), and *available* when a
+    *feeler* of `l - 1` further steps can be grown from it. The growth backtracks
+    (recoils) over at most `l` steps when it dead-ends. Recoil growth is more
+    efficient than configurational bias for long chains in dense or strongly
+    confining environments, where a configurational-bias grow commits to a
+    direction that has no future. It applies to every CBMC-based move. Two
+    caveats:
+    - The recoil-growth weight is a valid factor of a Metropolis acceptance
+      ratio but it is not the Rosenbluth weight whose average is the Widom
+      estimator of the excess chemical potential; Widom insertion therefore
+      always uses configurational bias, whatever this option is.
+    - The retrace divides by the openness probability of the existing
+      configuration; in crowded, repulsive environments this gives the weight a
+      larger variance than configurational bias.
+
+-   `"RecoilGrowthNumberOfTrialDirections" : integer`\
+    The number of trial directions `k` per step of recoil growth (default: 5).
+
+-   `"RecoilGrowthMaximumRecoilLength" : integer`\
+    The recoil length `l` (default: 2). The feelers are exhaustive searches, so
+    the cost per step scales as `k^l`; `l = 2` is usually sufficient and a
+    warning is printed for `l ≥ 3`.
 
 ----------------------------------------------------------------------------------
 

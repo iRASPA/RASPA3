@@ -7,8 +7,10 @@ import move_statistics;
 import cbmc_statistics;
 
 // The CBMC step-size statistics are part of the binary restart file. Version 2 added the adaptive
-// rigid-tilt rotation angle; a round trip must restore every counter and step size, and a version-1
-// stream (without the rigid-tilt entry) must still read, leaving the new entry at its default.
+// rigid-tilt rotation angle; version 3 dropped the three flexible-bead entries of the former internal
+// Monte-Carlo. A round trip must restore every counter and step size, and a version-1 stream (with the
+// three legacy entries, without the rigid-tilt entry) must still read, leaving the new entry at its
+// default.
 
 static void expectEqualStatistics(const MoveStatistics<double>& a, const MoveStatistics<double>& b)
 {
@@ -52,9 +54,6 @@ TEST(CBMC_MOVE_STATISTICS, archive_round_trip_restores_all_step_sizes)
   }
   std::filesystem::remove(path);
 
-  expectEqualStatistics(restored.bondLengthChange, original.bondLengthChange);
-  expectEqualStatistics(restored.bendAngleChange, original.bendAngleChange);
-  expectEqualStatistics(restored.conePositionChange, original.conePositionChange);
   expectEqualStatistics(restored.ringDisplacementChange, original.ringDisplacementChange);
   expectEqualStatistics(restored.ringRotationChange, original.ringRotationChange);
   expectEqualStatistics(restored.ringCrankshaftMove, original.ringCrankshaftMove);
@@ -63,9 +62,12 @@ TEST(CBMC_MOVE_STATISTICS, archive_round_trip_restores_all_step_sizes)
 
 TEST(CBMC_MOVE_STATISTICS, version_1_archive_reads_with_default_rigid_tilt)
 {
-  // Write a version-1 record by hand: the version number followed by the six version-1 members.
+  // Write a version-1 record by hand: the version number, the three legacy flexible-bead entries, and
+  // the three ring entries.
   CBMCMoveStatistics original;
   original.ringRotationChange.maxChange = 0.61;
+  MoveStatistics<double> legacy{.maxChange = 0.3, .lowerLimit = 0.01, .upperLimit = 0.5};
+  legacy.counts = 7.0;
 
   const std::filesystem::path path =
       std::filesystem::temp_directory_path() / "raspa3_cbmc_move_statistics_version_1.bin";
@@ -73,9 +75,9 @@ TEST(CBMC_MOVE_STATISTICS, version_1_archive_reads_with_default_rigid_tilt)
     std::ofstream stream(path, std::ios::binary);
     Archive<std::ofstream> archive(stream);
     archive << std::uint64_t{1};
-    archive << original.bondLengthChange;
-    archive << original.bendAngleChange;
-    archive << original.conePositionChange;
+    archive << legacy;
+    archive << legacy;
+    archive << legacy;
     archive << original.ringDisplacementChange;
     archive << original.ringRotationChange;
     archive << original.ringCrankshaftMove;

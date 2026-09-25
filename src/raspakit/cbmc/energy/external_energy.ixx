@@ -31,15 +31,6 @@ struct FirstBeadTrial
   RunningEnergy energy;
 };
 
-/// External energy of a trial set of bead positions, together with the torsion Rosenbluth weight
-/// accumulated while generating that orientation.
-struct ChainTrialTorsion
-{
-  std::vector<Atom> positions;
-  RunningEnergy energy;
-  double torsionWeight;
-};
-
 /// Whether any of 'molecule_atoms' lies inside one of the component's blocking pockets (spheres in
 /// fractional framework coordinates, radius scaled by the atom's 'scalingVDW'). Every trial set of a
 /// CBMC grow is filtered with this, so a grown molecule never lies in a pocket; 'System' delegates its
@@ -59,17 +50,11 @@ bool insideBlockedPockets(const std::optional<Framework> &framework, const Compo
 
 /// External (external-field, framework-molecule, inter-molecular) energy of one trial set of bead
 /// positions at the context's cut-offs; std::nullopt when the set lies in a blocked pocket or
-/// overlaps. The single evaluation the set-wise overload below and the dual cut-off correction are
-/// built on; recoil growth calls it directly (one trial at a time, no intermediate containers).
+/// overlaps. The single evaluation everything else is built on: the first-bead overload above, the
+/// dual cut-off correction, and both chain schemes (one trial set at a time, no intermediate
+/// containers).
 [[nodiscard]] std::optional<RunningEnergy> computeExternalNonOverlappingEnergy(
     const GrowContext &context, const Component &component, std::span<const Atom> trialPositionSet,
-    std::optional<std::size_t> skipBackgroundMolecule = std::nullopt) noexcept;
-
-/// External energies of the trial sets of a growth step, each paired with its torsion Rosenbluth
-/// weight; sets in a blocked pocket or with an overlap are dropped from the result.
-[[nodiscard]] std::vector<ChainTrialTorsion> computeExternalNonOverlappingEnergies(
-    const GrowContext &context, const Component &component, std::vector<std::vector<Atom>> &trialPositionSets,
-    const std::vector<double> &RosenbluthWeightsTorsion,
     std::optional<std::size_t> skipBackgroundMolecule = std::nullopt) noexcept;
 
 /// Dual cut-off correction of a grown or retraced configuration: the external (external-field,

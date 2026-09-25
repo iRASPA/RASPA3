@@ -210,7 +210,7 @@ std::vector<CBMC::GrowStep> CBMC::buildGrowthPlan(
   {
     GrowStep step = nextGrowthStep(connectivity, fragmentGraph, intraMolecularPotentials, placed);
     placed.insert(placed.end(), step.nextBeads.begin(), step.nextBeads.end());
-    CBMC::prepareStep(step, intraMolecularPotentials.chiralCenters);
+    CBMC::prepareStep(step, connectivity, fragmentGraph, intraMolecularPotentials.chiralCenters);
     plan.push_back(std::move(step));
   }
 

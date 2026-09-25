@@ -123,6 +123,42 @@ struct GrowStep
   /// neighbour the previous bead or grown here); enforced by parity rejection in the base sampler.
   std::vector<ChiralCenter> determinedChiralCenters{};
 
+  /// Rigid-body steps with a junction: the body atom bonded to the anchor (the 'inner' atom of the
+  /// junction bend previous-current-inner) and that bend when the topology declares one. Looked up
+  /// once here rather than per trial by the rigid tilt.
+  struct RigidTiltData
+  {
+    std::size_t innerBead{};
+    std::optional<BendPotential> junctionBend{};
+  };
+  RigidTiltData rigidTilt{};
+
+  /// A conformer-hopping move of the ring-closure Monte-Carlo: 'atom' rotated about the line through
+  /// its positioned neighbours 'axisA' and 'axisB'.
+  struct RingCrankshaft
+  {
+    std::size_t atom{};
+    std::size_t axisA{};
+    std::size_t axisB{};
+  };
+
+  /// Ring-closure steps: the step-constant data of the internal conformational Monte-Carlo, derived
+  /// once from the step and the fragment graph instead of per trial.
+  struct RingSamplerData
+  {
+    /// Move units: a flexible ring atom alone, a rigid sub-fragment's atoms together.
+    std::vector<std::vector<std::size_t>> moveUnits{};
+    /// Per atom (indexed by atom id, sized to the molecule): its neighbours through Fixed bonds of the
+    /// step, the pivots any move of that atom must rotate about.
+    std::vector<std::vector<std::size_t>> fixedNeighbors{};
+    /// Crankshaft candidates (flexible atoms with two positioned bonded neighbours, fixed ones first).
+    std::vector<RingCrankshaft> crankshafts{};
+    /// Declared chiral centres whose four atoms are all positioned during this step (ring body, anchor,
+    /// junction neighbour); their parity is kept during the internal MC.
+    std::vector<ChiralCenter> monitoredChiralCenters{};
+  };
+  RingSamplerData ring{};
+
   /// Temperature-independent memo key of the base coupling: the step's per-bead samplers and every
   /// coupling term, with atom identifiers mapped to step-local roles so congruent steps share it.
   /// Empty when the step has no base coupling.

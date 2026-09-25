@@ -55,27 +55,11 @@ std::vector<Atom> CBMC::generateRigidTilt(RandomNumber &random, std::size_t numb
 
   double3 last_bond_vector = (chainAtoms[previousBead.value()].position - anchor_position).normalized();
 
-  std::size_t inner = nextBeads[0];
-  for (std::size_t atom : nextBeads)
-  {
-    if (component.connectivityTable[atom, currentBead])
-    {
-      inner = atom;
-      break;
-    }
-  }
-
-  double bend_angle = Constants::defaultRigidJunctionBendAngle;
-  for (const BendPotential &bend : intra.bends)
-  {
-    if (bend.identifiers[1] != currentBead) continue;
-    if ((bend.identifiers[0] == previousBead.value() && bend.identifiers[2] == inner) ||
-        (bend.identifiers[0] == inner && bend.identifiers[2] == previousBead.value()))
-    {
-      bend_angle = bend.generateBendAngle(random, beta);
-      break;
-    }
-  }
+  // The inner bead and the junction bend are step constants, looked up when the plan was built.
+  const std::size_t inner = step.rigidTilt.innerBead;
+  const double bend_angle = step.rigidTilt.junctionBend.has_value()
+                                ? step.rigidTilt.junctionBend->generateBendAngle(random, beta)
+                                : Constants::defaultRigidJunctionBendAngle;
 
   double3 target_direction = random.randomVectorOnCone(last_bond_vector, bend_angle);
   double3 body_inner = (component.atoms[inner].position - anchor_reference).normalized();

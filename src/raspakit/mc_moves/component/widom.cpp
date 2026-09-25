@@ -41,7 +41,12 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   // Update move statistics for Widom insertion move.
   component.mc_moves_statistics.addTrial(move);
 
-  const CBMC::GrowContext growContext = system.makeGrowContext();
+  // Widom sampling averages the Rosenbluth weight itself, so the chain must be grown with
+  // configurational bias regardless of the production scheme: the recoil-growth weight is a valid
+  // factor in an acceptance ratio, not the Rosenbluth weight whose average is the excess chemical
+  // potential (see 'CBMC::ChainScheme').
+  const CBMC::GrowContext growContext =
+      system.makeGrowContext().withChainScheme(CBMC::ChainScheme::ConfigurationalBias);
 
   // Attempt to grow a new molecule using Configurational Bias Monte Carlo (CBMC) insertion.
   t1 = std::chrono::steady_clock::now();

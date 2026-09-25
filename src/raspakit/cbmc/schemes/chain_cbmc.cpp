@@ -20,22 +20,40 @@ import cbmc_external_energy;
 
 namespace
 {
-// The trial directions of a step against the background: the operator engine's trials, filtered to the
-// non-overlapping ones and paired with their external energies.
-std::vector<CBMC::ChainTrialTorsion> externalEnergiesOfTrials(const CBMC::GrowContext &context,
-                                                              const Component &component,
-                                                              std::vector<CBMC::StepTrial> stepTrials,
-                                                              std::optional<std::size_t> skipBackgroundMolecule)
+/// A non-overlapping trial direction of a step: its positions, its external energy, and the torsion
+/// Rosenbluth weight accumulated while generating it.
+struct ChainTrialTorsion
 {
-  std::vector<std::vector<Atom>> trialPositions(stepTrials.size());
-  std::vector<double> torsionWeights(stepTrials.size(), 1.0);
+  std::vector<Atom> positions;
+  RunningEnergy energy;
+  double torsionWeight;
+};
+
+// The trial directions of a step against the background: the operator engine's trials, filtered to the
+// non-overlapping ones and paired with their external energies. 'firstSurvived' records explicitly
+// whether trial direction 0 passed the filter (the retrace needs to know that its old configuration,
+// which it pins as trial 0, is still among the survivors).
+struct EvaluatedTrials
+{
+  std::vector<ChainTrialTorsion> trials{};
+  bool firstSurvived{false};
+};
+
+EvaluatedTrials externalEnergiesOfTrials(const CBMC::GrowContext &context, const Component &component,
+                                         std::vector<CBMC::StepTrial> stepTrials,
+                                         std::optional<std::size_t> skipBackgroundMolecule)
+{
+  EvaluatedTrials evaluated{};
+  evaluated.trials.reserve(stepTrials.size());
   for (std::size_t i = 0; i != stepTrials.size(); ++i)
   {
-    trialPositions[i] = std::move(stepTrials[i].positions);
-    torsionWeights[i] = stepTrials[i].torsionWeight;
+    std::optional<RunningEnergy> energy = CBMC::computeExternalNonOverlappingEnergy(
+        context, component, stepTrials[i].positions, skipBackgroundMolecule);
+    if (!energy.has_value()) continue;
+    if (i == 0) evaluated.firstSurvived = true;
+    evaluated.trials.push_back({std::move(stepTrials[i].positions), energy.value(), stepTrials[i].torsionWeight});
   }
-  return CBMC::computeExternalNonOverlappingEnergies(context, component, trialPositions, torsionWeights,
-                                                     skipBackgroundMolecule);
+  return evaluated;
 }
 
 struct StepWeight
@@ -61,13 +79,13 @@ struct StepWeight
 // the running product of a long chain would underflow.
 StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTrialDirections,
                       const CBMC::GrowStep &step, std::vector<Atom> &chainAtoms,
-                      const std::vector<CBMC::ChainTrialTorsion> &trials, bool retrace)
+                      const std::vector<ChainTrialTorsion> &trials, bool retrace)
 {
   const std::vector<std::size_t> &nextBeads = step.nextBeads;
 
   std::vector<double> logBoltzmannFactors{};
   logBoltzmannFactors.reserve(trials.size());
-  for (const CBMC::ChainTrialTorsion &trial : trials)
+  for (const ChainTrialTorsion &trial : trials)
   {
     for (std::size_t k = 0; k != nextBeads.size(); ++k) chainAtoms[nextBeads[k]] = trial.positions[k];
     RunningEnergy intraEnergy = step.intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(chainAtoms);
@@ -75,7 +93,7 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
   }
 
   const std::size_t selected = retrace ? 0 : CBMC::selectTrialPosition(random, logBoltzmannFactors);
-  const CBMC::ChainTrialTorsion &selectedTrial = trials[selected];
+  const ChainTrialTorsion &selectedTrial = trials[selected];
   for (std::size_t k = 0; k != nextBeads.size(); ++k) chainAtoms[nextBeads[k]] = selectedTrial.positions[k];
 
   double unsampledEnergy = 0.0;
@@ -116,10 +134,12 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
   {
     // All trial directions of this step (the operator engine handles the seed / attach / ring-closure
     // cases, the rigid-body tilt, and the coupled-decoupled torsion selection).
-    std::vector<ChainTrialTorsion> trials = externalEnergiesOfTrials(
-        context, component,
-        generateGrowTrials(random, forceField, beta, component, chain_atoms, step, forceField.numberOfTrialDirections),
-        skipBackgroundMolecule);
+    std::vector<ChainTrialTorsion> trials =
+        externalEnergiesOfTrials(context, component,
+                                 generateGrowTrials(random, forceField, beta, component, chain_atoms, step,
+                                                    forceField.numberOfTrialDirections),
+                                 skipBackgroundMolecule)
+            .trials;
     if (trials.empty()) return std::nullopt;
 
     const StepWeight weight =
@@ -170,19 +190,16 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
 
     // The old positions of this step's beads are trial direction 0 of the retrace (read from
     // 'chain_atoms', which holds the old configuration of every bead at this point).
-    std::vector<ChainTrialTorsion> trials =
+    EvaluatedTrials evaluated =
         externalEnergiesOfTrials(context, component,
                                  generateRetraceTrials(random, forceField, beta, component, chain_atoms, step,
                                                        forceField.numberOfTrialDirections),
                                  std::nullopt);
 
     // The old configuration is an accepted state of the simulation: it can not overlap, so it survives
-    // the overlap filter as the first trial (its positions are exact copies of the old ones). An overlap
-    // means the system is inconsistent and no weight is defined for it; fail loudly rather than weigh a
-    // bogus W_old.
-    const bool oldConfigurationSurvived =
-        !trials.empty() && trials.front().positions[0].position == chain_atoms[step.nextBeads[0]].position;
-    if (!oldConfigurationSurvived)
+    // the overlap filter as trial direction 0. An overlap means the system is inconsistent and no weight
+    // is defined for it; fail loudly rather than weigh a bogus W_old.
+    if (!evaluated.firstSurvived)
     {
       std::string beads{};
       for (std::size_t bead : step.nextBeads) beads += std::format(" {}", bead);
@@ -194,6 +211,7 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
           component.name, seg, beads));
     }
 
+    const std::vector<ChainTrialTorsion> &trials = evaluated.trials;
     const StepWeight weight =
         stepWeight(random, beta, forceField.numberOfTrialDirections, step, chain_atoms, trials, true);
 

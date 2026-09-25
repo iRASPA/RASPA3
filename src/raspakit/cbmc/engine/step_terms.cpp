@@ -17,6 +17,9 @@ import bond_bend_potential;
 import bend_bend_potential;
 import bond_torsion_potential;
 import bend_torsion_potential;
+import connectivity_table;
+import fragment;
+import fragment_graph;
 import cbmc_growth_plan;
 
 namespace
@@ -261,17 +264,126 @@ std::string baseCouplingSignature(const CBMC::GrowStep &step)
     appendTerm("Bt", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
   return key;
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Step-constant data of the rigid tilt and the ring-closure Monte-Carlo (formerly rebuilt per trial).
+// ---------------------------------------------------------------------------------------------------
+
+// The body atom bonded to the anchor and the junction bend previous-current-inner.
+void prepareRigidTilt(CBMC::GrowStep &step, const ConnectivityTable &connectivity)
+{
+  if (!step.rigidBody || !step.previousBead.has_value()) return;
+
+  const std::size_t currentBead = step.currentBead;
+  const std::size_t previousBead = step.previousBead.value();
+
+  step.rigidTilt.innerBead = step.nextBeads[0];
+  for (std::size_t atom : step.nextBeads)
+  {
+    if (connectivity[atom, currentBead])
+    {
+      step.rigidTilt.innerBead = atom;
+      break;
+    }
+  }
+  step.rigidTilt.junctionBend = findAnchorBend(step.intra, previousBead, currentBead, step.rigidTilt.innerBead);
+}
+
+// Move units, fixed-bond pivots, crankshaft candidates and monitored chiral centres of a ring step.
+void prepareRingSampler(CBMC::GrowStep &step, const ConnectivityTable &connectivity, const FragmentGraph &graph,
+                        const std::vector<ChiralCenter> &chiralCenters)
+{
+  if (step.kind != CBMC::GrowStep::Kind::CloseRing) return;
+
+  const std::size_t numberOfBeads = connectivity.numberOfBeads;
+  const std::size_t currentBead = step.currentBead;
+  const std::vector<std::size_t> &nextBeads = step.nextBeads;
+  CBMC::GrowStep::RingSamplerData &ring = step.ring;
+
+  // Move units: a single-atom (flexible) fragment moves by per-atom displacement, a rigid-body fragment
+  // moves as one unit so its internal geometry is preserved exactly. The growth plan places a rigid
+  // fragment either entirely inside this step or entirely before it, never partially.
+  {
+    std::map<std::size_t, std::size_t> rigidFragmentUnits{};
+    for (std::size_t atom : nextBeads)
+    {
+      std::size_t fragmentIndex = graph.atomFragmentIds[atom];
+      if (!graph.fragments[fragmentIndex].isRigidBody())
+      {
+        ring.moveUnits.push_back({atom});
+        continue;
+      }
+      auto [it, inserted] = rigidFragmentUnits.insert({fragmentIndex, ring.moveUnits.size()});
+      if (inserted) ring.moveUnits.push_back({});
+      ring.moveUnits[it->second].push_back(atom);
+    }
+  }
+
+  // Fixed-bond neighbours of each atom: a Fixed bond is a holonomic distance constraint without energy,
+  // so any move of a flexible ring atom is built as a rotation about its fixed neighbour(s).
+  ring.fixedNeighbors.assign(numberOfBeads, {});
+  for (const BondPotential &bond : step.intra.bonds)
+  {
+    if (bond.type != BondType::Fixed) continue;
+    ring.fixedNeighbors[bond.identifiers[0]].push_back(bond.identifiers[1]);
+    ring.fixedNeighbors[bond.identifiers[1]].push_back(bond.identifiers[0]);
+  }
+
+  // Crankshaft candidates: a flexible ring atom with two positioned bonded neighbours (fixed neighbours
+  // first, so a crankshaft never breaks a Fixed bond; three or more fixed bonds pin the atom).
+  {
+    std::vector<bool> positioned(numberOfBeads, false);
+    positioned[currentBead] = true;
+    if (step.previousBead.has_value()) positioned[step.previousBead.value()] = true;
+    for (std::size_t atom : nextBeads) positioned[atom] = true;
+
+    for (std::size_t atom : nextBeads)
+    {
+      if (graph.fragments[graph.atomFragmentIds[atom]].isRigidBody()) continue;
+      const std::vector<std::size_t> &fixed = ring.fixedNeighbors[atom];
+      if (fixed.size() >= 3) continue;
+
+      std::vector<std::size_t> axisNeighbors = fixed;
+      for (std::size_t other = 0; other != numberOfBeads; ++other)
+      {
+        if (other == atom || !positioned[other]) continue;
+        if (!connectivity[atom, other]) continue;
+        if (contains(fixed, other)) continue;
+        axisNeighbors.push_back(other);
+      }
+      if (axisNeighbors.size() >= 2) ring.crankshafts.push_back({atom, axisNeighbors[0], axisNeighbors[1]});
+    }
+  }
+
+  // Chiral centres whose four atoms all have positions during this step.
+  {
+    auto isKnown = [&](std::size_t id)
+    {
+      if (id == currentBead) return true;
+      if (step.previousBead.has_value() && id == step.previousBead.value()) return true;
+      return contains(nextBeads, id);
+    };
+    for (const ChiralCenter &center : chiralCenters)
+    {
+      if (std::ranges::all_of(center.ids, isKnown)) ring.monitoredChiralCenters.push_back(center);
+    }
+  }
+}
 }  // namespace
 
 // Fills the derived (temperature-independent) sampler data of a step from its topology and filtered
 // potentials; see the field documentation of 'GrowStep'.
-void CBMC::prepareStep(GrowStep &step, const std::vector<ChiralCenter> &chiralCenters)
+void CBMC::prepareStep(GrowStep &step, const ConnectivityTable &connectivity, const FragmentGraph &fragmentGraph,
+                       const std::vector<ChiralCenter> &chiralCenters)
 {
   const std::size_t currentBead = step.currentBead;
   const std::vector<std::size_t> &nextBeads = step.nextBeads;
 
   step.flexibleAttach =
       step.kind == CBMC::GrowStep::Kind::AttachFragment && !step.rigidBody && step.previousBead.has_value();
+
+  prepareRigidTilt(step, connectivity);
+  prepareRingSampler(step, connectivity, fragmentGraph, chiralCenters);
 
   // Torsion-selection potentials: the junction-crossing torsions of a ring-closure step (the internal
   // ring torsions are sampled by the conformational MC and would be double counted), all torsions

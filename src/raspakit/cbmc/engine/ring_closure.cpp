@@ -10,8 +10,6 @@ import double3x3;
 import randomnumbers;
 import forcefield;
 import component;
-import fragment;
-import fragment_graph;
 import move_statistics;
 import chiral_center;
 import bond_potential;
@@ -67,24 +65,15 @@ std::vector<Atom> CBMC::generateRingConformation(RandomNumber &random, const For
   };
 
   // Chiral centers whose four atoms all have known positions during this step (the ring body, the
-  // anchor, and the junction's placed neighbor) keep the parity of the reference geometry: the
-  // bond/bend/torsion model is achiral (a mirror image has the same energy), so without this guard
-  // the internal MC could invert a declared stereocenter, e.g. flip a cis ring fusion to trans.
+  // anchor, and the junction's placed neighbor; listed in the plan) keep the parity of the reference
+  // geometry: the bond/bend/torsion model is achiral (a mirror image has the same energy), so without
+  // this guard the internal MC could invert a declared stereocenter, e.g. flip a cis ring fusion to
+  // trans.
   std::vector<std::pair<const std::array<std::size_t, 4> *, double>> monitored_centers{};
+  monitored_centers.reserve(step.ring.monitoredChiralCenters.size());
+  for (const ChiralCenter &center : step.ring.monitoredChiralCenters)
   {
-    auto isKnown = [&](std::size_t id)
-    {
-      if (id == currentBead) return true;
-      if (previousBead.has_value() && id == previousBead.value()) return true;
-      return std::find(nextBeads.begin(), nextBeads.end(), id) != nextBeads.end();
-    };
-    for (const ChiralCenter &center : component.intraMolecularPotentials.chiralCenters)
-    {
-      if (std::all_of(center.ids.begin(), center.ids.end(), isKnown))
-      {
-        monitored_centers.push_back({&center.ids, chiralSignedVolume(center.ids, component.atoms)});
-      }
-    }
+    monitored_centers.push_back({&center.ids, chiralSignedVolume(center.ids, component.atoms)});
   }
   auto parityPreserved = [&]()
   {
@@ -130,82 +119,18 @@ std::vector<Atom> CBMC::generateRingConformation(RandomNumber &random, const For
     placeWithRotation(random.randomRotationMatrix());
   }
 
-  // Move units of the conformational MC: a single-atom (flexible) fragment moves by per-atom
-  // displacement, a rigid-body fragment moves as one unit (translation or rotation about its
-  // center) so its internal geometry is preserved exactly. The growth plan places a rigid fragment
-  // either entirely inside this step or entirely before it, never partially.
-  const FragmentGraph &graph = component.fragmentGraph;
-  std::vector<std::vector<std::size_t>> moveUnits{};
-  {
-    std::map<std::size_t, std::size_t> rigidFragmentUnits{};
-    for (std::size_t atom : nextBeads)
-    {
-      std::size_t fragmentIndex = graph.atomFragmentIds[atom];
-      if (!graph.fragments[fragmentIndex].isRigidBody())
-      {
-        moveUnits.push_back({atom});
-        continue;
-      }
-      auto [it, inserted] = rigidFragmentUnits.insert({fragmentIndex, moveUnits.size()});
-      if (inserted) moveUnits.push_back({});
-      moveUnits[it->second].push_back(atom);
-    }
-  }
-
-  // Fixed-bond neighbours of each atom. A Fixed bond is a holonomic distance constraint that carries
-  // no energy, so a free Cartesian displacement of a ring atom would stretch it with no penalty and be
-  // accepted. Any move of a flexible ring atom is therefore built as a rotation about its fixed
-  // neighbour(s), which preserves those bond lengths exactly (a rotation about an axis through a point
-  // preserves the distance to it). 'step.intra.bonds' only involves atoms placed in this step, all of
-  // which have positions, so every listed endpoint is usable as a pivot.
-  std::vector<std::vector<std::size_t>> fixedNeighbors(chain_atoms.size());
-  for (const BondPotential &bond : step.intra.bonds)
-  {
-    if (bond.type != BondType::Fixed) continue;
-    fixedNeighbors[bond.identifiers[0]].push_back(bond.identifiers[1]);
-    fixedNeighbors[bond.identifiers[1]].push_back(bond.identifiers[0]);
-  }
-
-  // Conformer-hopping (crankshaft) candidates: a flexible (single-atom fragment) ring atom rotated by
-  // a large angle about the line through two of its positioned bonded neighbours. This preserves both
-  // of those bond lengths exactly while flipping the local pucker (chair <-> twist-boat) and
-  // axial <-> equatorial placement -- the barrier crossing that the small adaptive moves almost never
-  // make on their own. The axis is chosen to include every Fixed-bond neighbour of the atom (fixed
-  // neighbours first), so the crankshaft can never break a Fixed bond; an atom with three or more
-  // Fixed bonds is over-constrained (its position is pinned, e.g. a fused-ring junction with fixed
-  // bond lengths) and is left to a concerted move, not offered here. The proposal is symmetric
-  // (uniform +/- angle), so plain Metropolis on the base energy keeps the sampled distribution exact.
-  struct CrankshaftCandidate
-  {
-    std::size_t atom;
-    std::size_t axisA;
-    std::size_t axisB;
-  };
-  std::vector<CrankshaftCandidate> crankshafts{};
-  {
-    std::vector<bool> positioned(chain_atoms.size(), false);
-    positioned[currentBead] = true;
-    if (previousBead.has_value()) positioned[previousBead.value()] = true;
-    for (std::size_t atom : nextBeads) positioned[atom] = true;
-    for (std::size_t atom : nextBeads)
-    {
-      if (graph.fragments[graph.atomFragmentIds[atom]].isRigidBody()) continue;
-      if (fixedNeighbors[atom].size() >= 3) continue;
-
-      // Fixed neighbours first (they must lie on the axis), then any other positioned bonded
-      // neighbours; the first two form the crankshaft axis.
-      std::vector<std::size_t> axisNeighbors = fixedNeighbors[atom];
-      for (std::size_t other = 0; other != chain_atoms.size(); ++other)
-      {
-        if (other == atom || !positioned[other]) continue;
-        if (!component.connectivityTable[atom, other]) continue;
-        if (std::find(fixedNeighbors[atom].begin(), fixedNeighbors[atom].end(), other) != fixedNeighbors[atom].end())
-          continue;
-        axisNeighbors.push_back(other);
-      }
-      if (axisNeighbors.size() >= 2) crankshafts.push_back({atom, axisNeighbors[0], axisNeighbors[1]});
-    }
-  }
+  // The step-constant data of the internal MC, derived once when the plan was built: the move units
+  // (a flexible ring atom alone, a rigid sub-fragment as one unit so its internal geometry is exact),
+  // the Fixed-bond neighbours every move of an atom must pivot about (a Fixed bond is a holonomic
+  // constraint without energy, so a free displacement would stretch it unpenalized), and the
+  // conformer-hopping crankshaft candidates: a flexible ring atom rotated by a large angle about the
+  // line through two of its positioned bonded neighbours, which preserves both bond lengths exactly
+  // while flipping the local pucker (chair <-> twist-boat) and axial <-> equatorial placement -- the
+  // barrier crossing the small adaptive moves almost never make. The proposal is symmetric (uniform
+  // +/- angle), so plain Metropolis on the base energy keeps the sampled distribution exact.
+  const std::vector<std::vector<std::size_t>> &moveUnits = step.ring.moveUnits;
+  const std::vector<std::vector<std::size_t>> &fixedNeighbors = step.ring.fixedNeighbors;
+  const std::vector<CBMC::GrowStep::RingCrankshaft> &crankshafts = step.ring.crankshafts;
 
   // The bonded terms the internal MC samples (bonds, spin-invariant bends and torsions), precomputed
   // in the plan; the spin-variant terms are weighted in the torsion selection.
@@ -261,7 +186,7 @@ std::vector<Atom> CBMC::generateRingConformation(RandomNumber &random, const For
     // would distort that step-size optimization.
     if (!crankshafts.empty() && random.uniform() < forceField.cbmcRingCrankshaftProbability)
     {
-      const CrankshaftCandidate &c = crankshafts[random.uniform_integer(0, crankshafts.size() - 1)];
+      const CBMC::GrowStep::RingCrankshaft &c = crankshafts[random.uniform_integer(0, crankshafts.size() - 1)];
       double3 pivot = chain_atoms[c.axisA].position;
       double3 axis = (chain_atoms[c.axisB].position - pivot).normalized();
       double angle = (2.0 * random.uniform() - 1.0) * std::numbers::pi;
