@@ -209,8 +209,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
                                           system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
 
   time_begin = std::chrono::steady_clock::now();
-  ChainRetraceData retraceDataB = CBMC::retraceMoleculePairSecondSwapDeletion(
-      retraceContextB, componentBRef, moleculeB);
+  ChainRetraceData retraceDataB =
+      CBMC::retraceMoleculePairSecondSwapDeletion(random, retraceContextB, componentBRef, moleculeB);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
@@ -469,8 +469,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
                                           system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
 
   time_begin = std::chrono::steady_clock::now();
-  ChainRetraceData retraceDataB = CBMC::retraceMoleculePairSecondSwapDeletion(
-      retraceContextB, componentBRef, moleculeB);
+  ChainRetraceData retraceDataB =
+      CBMC::retraceMoleculePairSecondSwapDeletion(random, retraceContextB, componentBRef, moleculeB);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);

@@ -298,13 +298,16 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
                                     isFractional, *firstBeadData);
 }
 
-[[nodiscard]] ChainRetraceData CBMC::retraceMoleculePairSecondSwapDeletion(const GrowContext &context,
+[[nodiscard]] ChainRetraceData CBMC::retraceMoleculePairSecondSwapDeletion(RandomNumber &random,
+                                                                           const GrowContext &context,
                                                                            const Component &component,
                                                                            std::span<Atom> molecule_atoms)
 {
+  // The first bead is pinned (weight one), but the chain retrace draws the trial directions of the
+  // remaining beads from the caller's generator, like every other retrace: the move stays
+  // reproducible under a fixed seed.
   const FirstBeadData firstBeadData =
       CBMC::retraceFirstBeadAtFixedPosition(context, component, molecule_atoms[component.startingBead]);
 
-  RandomNumber random{std::nullopt};
   return retraceAfterFirstBead(random, context, component, molecule_atoms, firstBeadData);
 }

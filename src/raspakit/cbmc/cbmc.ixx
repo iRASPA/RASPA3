@@ -85,7 +85,8 @@ export namespace CBMC
       std::size_t selectedMolecule, double3 fixedFirstBeadPosition, double scaling, std::uint8_t groupId,
       bool isFractional);
   
-  [[nodiscard]] ChainRetraceData retraceMoleculePairSecondSwapDeletion(const GrowContext &context,
+  [[nodiscard]] ChainRetraceData retraceMoleculePairSecondSwapDeletion(RandomNumber &random,
+                                                                       const GrowContext &context,
                                                                        const Component &component,
                                                                        std::span<Atom> molecule_atoms);
 }  // namespace CBMC

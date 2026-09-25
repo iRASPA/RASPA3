@@ -633,7 +633,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
     time_begin = std::chrono::steady_clock::now();
     ChainRetraceData retrace =
         (i == 0) ? CBMC::retraceMoleculeSwapDeletion(random, retraceContext, memberComponent, memberAtoms)
-                 : CBMC::retraceMoleculePairSecondSwapDeletion(retraceContext, memberComponent, memberAtoms);
+                 : CBMC::retraceMoleculePairSecondSwapDeletion(random, retraceContext, memberComponent, memberAtoms);
     time_end = std::chrono::steady_clock::now();
     system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
     centralComponent.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);

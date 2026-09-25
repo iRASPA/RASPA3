@@ -686,7 +686,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     time_begin = std::chrono::steady_clock::now();
     ChainRetraceData retraceDataB =
-        CBMC::retraceMoleculePairSecondSwapDeletion(retraceContextB, componentBRef, fractionalMoleculeB);
+        CBMC::retraceMoleculePairSecondSwapDeletion(random, retraceContextB, componentBRef, fractionalMoleculeB);
     ChainRetraceData retraceDataA =
         CBMC::retraceMoleculeSwapDeletion(random, retraceContextA, componentA, fractionalMoleculeA);
     time_end = std::chrono::steady_clock::now();

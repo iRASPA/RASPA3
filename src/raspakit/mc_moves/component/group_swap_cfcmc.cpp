@@ -809,7 +809,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         ChainRetraceData retraceData =
             (i == 0) ? CBMC::retraceMoleculeSwapDeletion(random, retraceContext, memberComponent,
                                                          fractionalMolecules[i])
-                     : CBMC::retraceMoleculePairSecondSwapDeletion(retraceContext, memberComponent,
+                     : CBMC::retraceMoleculePairSecondSwapDeletion(random, retraceContext, memberComponent,
                                                                    fractionalMolecules[i]);
 
         if (system.forceField.useDualCutOff)
