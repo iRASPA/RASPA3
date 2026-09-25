@@ -433,8 +433,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       }
 
       growData->energies += correctionNew.value();
-      growData->RosenbluthWeight *= std::exp(-systemA.beta * correctionNew->potentialEnergy());
-      growData->logRosenbluthWeight += -systemA.beta * correctionNew->potentialEnergy();
+      growData->multiplyRosenbluthWeight(-systemA.beta * correctionNew->potentialEnergy());
     }
 
     time_begin = std::chrono::steady_clock::now();
@@ -488,8 +487,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       }
 
       retraceData.energies += correctionOld.value();
-      retraceData.RosenbluthWeight *= std::exp(-systemB.beta * correctionOld->potentialEnergy());
-      retraceData.logRosenbluthWeight += -systemB.beta * correctionOld->potentialEnergy();
+      retraceData.multiplyRosenbluthWeight(-systemB.beta * correctionOld->potentialEnergy());
     }
 
     time_begin = std::chrono::steady_clock::now();
@@ -789,8 +787,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       }
 
       growData->energies += correctionNew.value();
-      growData->RosenbluthWeight *= std::exp(-systemB.beta * correctionNew->potentialEnergy());
-      growData->logRosenbluthWeight += -systemB.beta * correctionNew->potentialEnergy();
+      growData->multiplyRosenbluthWeight(-systemB.beta * correctionNew->potentialEnergy());
     }
 
     std::copy(growData->atoms.begin(), growData->atoms.end(), fractionalMoleculeB.begin());

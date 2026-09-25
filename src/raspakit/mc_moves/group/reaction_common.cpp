@@ -243,8 +243,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
           }
 
           growData->energies += correctionNew.value();
-          growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
-          growData->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
+          growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
         }
       }
       else
@@ -265,7 +264,8 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
             atom.setScalingToInteger();
           }
         }
-        growData.emplace(molecule, std::move(atoms), RunningEnergy{}, 1.0, 0.0);
+        // Unit Rosenbluth weight (log 0), no stored 'r'.
+        growData.emplace(molecule, std::move(atoms), RunningEnergy{}, 0.0, 0.0);
       }
 
       if (!growData)
@@ -273,7 +273,6 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
         return std::nullopt;
       }
 
-      result.RosenbluthWeight *= growData->RosenbluthWeight;
       result.logRosenbluthWeight += growData->logRosenbluthWeight;
       result.energies += growData->energies;
 
@@ -372,12 +371,10 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
         }
 
         retraceData.energies += correctionOld.value();
-        retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
-        retraceData.logRosenbluthWeight += -system.beta * correctionOld->potentialEnergy();
+        retraceData.multiplyRosenbluthWeight(-system.beta * correctionOld->potentialEnergy());
       }
     }
 
-    result.RosenbluthWeight *= retraceData.RosenbluthWeight;
     result.logRosenbluthWeight += retraceData.logRosenbluthWeight;
     result.energies += retraceData.energies;
     result.molecules.push_back(std::move(retraceData));

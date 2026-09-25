@@ -235,11 +235,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
     if (!correctionB.has_value() || !correctionA.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     retraceDataB.energies += correctionB.value();
-    retraceDataB.RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
-    retraceDataB.logRosenbluthWeight += -system.beta * correctionB->potentialEnergy();
+    retraceDataB.multiplyRosenbluthWeight(-system.beta * correctionB->potentialEnergy());
     retraceDataA.energies += correctionA.value();
-    retraceDataA.RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
-    retraceDataA.logRosenbluthWeight += -system.beta * correctionA->potentialEnergy();
+    retraceDataA.multiplyRosenbluthWeight(-system.beta * correctionA->potentialEnergy());
   }
 
   const std::span<const Atom> oldMoleculeA = std::span<const Atom>(moleculeA.data(), moleculeA.size());
@@ -497,11 +495,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
     if (!correctionB.has_value() || !correctionA.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     retraceDataB.energies += correctionB.value();
-    retraceDataB.RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
-    retraceDataB.logRosenbluthWeight += -system.beta * correctionB->potentialEnergy();
+    retraceDataB.multiplyRosenbluthWeight(-system.beta * correctionB->potentialEnergy());
     retraceDataA.energies += correctionA.value();
-    retraceDataA.RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
-    retraceDataA.logRosenbluthWeight += -system.beta * correctionA->potentialEnergy();
+    retraceDataA.multiplyRosenbluthWeight(-system.beta * correctionA->potentialEnergy());
   }
 
   const std::span<const Atom> oldMoleculeA = std::span<const Atom>(moleculeA.data(), moleculeA.size());

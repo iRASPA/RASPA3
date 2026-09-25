@@ -82,8 +82,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
       if (!correctionOld.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
       retraceData.energies += correctionOld.value();
-      retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
-      retraceData.logRosenbluthWeight += -system.beta * correctionOld->potentialEnergy();
+      retraceData.multiplyRosenbluthWeight(-system.beta * correctionOld->potentialEnergy());
     }
 
     // Compute the energy difference in Fourier space due to the deletion

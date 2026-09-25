@@ -38,7 +38,6 @@ import cbmc_operators;
 
   std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
 
-  double chain_rosenbluth_weight = 1.0;
   double chain_log_rosenbluth_weight = 0.0;
   RunningEnergy chain_external_energies{};
 
@@ -121,9 +120,8 @@ import cbmc_operators;
     // surviving trial near the 'energyOverlapCriteria' contributes exp(-beta*E) << the threshold. The
     // retrace path carries no guard, so grow and retrace stay symmetric.
     if (step_weight < forceField.minimumRosenbluthFactor) return std::nullopt;
-    chain_rosenbluth_weight *= step_weight;
     // The per-step factor is bounded below by the guard, so its log is finite; the log sum stays exact
-    // where the raw product of a long chain underflows to zero.
+    // where the raw product of a long chain would underflow to zero.
     chain_log_rosenbluth_weight += std::log(step_weight);
   }
 
@@ -135,6 +133,6 @@ import cbmc_operators;
   // molecular dynamics to regenerate the atoms).
   Molecule molecule = component.createMoleculeRecord(chain_atoms);
 
-  return ChainGrowData(molecule, chain_atoms, chain_external_energies + internal_energies, chain_rosenbluth_weight,
-                       0.0, chain_log_rosenbluth_weight);
+  return ChainGrowData(molecule, chain_atoms, chain_external_energies + internal_energies,
+                       chain_log_rosenbluth_weight, 0.0);
 }

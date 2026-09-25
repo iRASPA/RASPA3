@@ -252,8 +252,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       }
 
       growData->energies += correctionNew.value();
-      growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
-      growData->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
+      growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
     }
 
     // Check if the new molecule is inside blocked pockets
@@ -490,8 +489,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
         }
 
         retraceData.energies += correctionOld.value();
-        retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
-        retraceData.logRosenbluthWeight += -system.beta * correctionOld->potentialEnergy();
+        retraceData.multiplyRosenbluthWeight(-system.beta * correctionOld->potentialEnergy());
       }
 
       // Compute Ewald energy difference for the retraced molecule

@@ -169,8 +169,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
     if (!correction.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     growDataCentral->energies += correction.value();
-    growDataCentral->RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
-    growDataCentral->logRosenbluthWeight += -system.beta * correction->potentialEnergy();
+    growDataCentral->multiplyRosenbluthWeight(-system.beta * correction->potentialEnergy());
   }
 
   const double3 centralPosition = growDataCentral->atoms[centralComponent.startingBead].position;
@@ -231,8 +230,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
       if (!correction.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
       growData->energies += correction.value();
-      growData->RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
-      growData->logRosenbluthWeight += -system.beta * correction->potentialEnergy();
+      growData->multiplyRosenbluthWeight(-system.beta * correction->potentialEnergy());
     }
 
     distanceBiasFactors.push_back(distanceBiased ? 3.0 * r * r / (R_max * R_max) : 1.0);
@@ -650,8 +648,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
       if (!correction.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
       retrace.energies += correction.value();
-      retrace.RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
-      retrace.logRosenbluthWeight += -system.beta * correction->potentialEnergy();
+      retrace.multiplyRosenbluthWeight(-system.beta * correction->potentialEnergy());
     }
 
     retraceData.push_back(std::move(retrace));

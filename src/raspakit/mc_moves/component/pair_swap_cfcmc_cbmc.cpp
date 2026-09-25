@@ -335,8 +335,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
       }
 
       growDataA->energies += correctionA.value();
-      growDataA->RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
-      growDataA->logRosenbluthWeight += -system.beta * correctionA->potentialEnergy();
+      growDataA->multiplyRosenbluthWeight(-system.beta * correctionA->potentialEnergy());
     }
 
     // (2b) grow a new fractional molecule of component B with lambda_new; its first bead is fixed at
@@ -390,8 +389,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
       }
 
       growDataB->energies += correctionB.value();
-      growDataB->RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
-      growDataB->logRosenbluthWeight += -system.beta * correctionB->potentialEnergy();
+      growDataB->multiplyRosenbluthWeight(-system.beta * correctionB->potentialEnergy());
     }
 
     componentA.mc_moves_statistics.addConstructed(move, 0);
@@ -710,11 +708,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
       }
 
       retraceDataB.energies += correctionB.value();
-      retraceDataB.RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
-      retraceDataB.logRosenbluthWeight += -system.beta * correctionB->potentialEnergy();
+      retraceDataB.multiplyRosenbluthWeight(-system.beta * correctionB->potentialEnergy());
       retraceDataA.energies += correctionA.value();
-      retraceDataA.RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
-      retraceDataA.logRosenbluthWeight += -system.beta * correctionA->potentialEnergy();
+      retraceDataA.multiplyRosenbluthWeight(-system.beta * correctionA->potentialEnergy());
     }
 
     double runningNetCharge = system.netCharge;

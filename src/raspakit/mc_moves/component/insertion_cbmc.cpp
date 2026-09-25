@@ -79,8 +79,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
     if (!correctionNew.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     growData->energies += correctionNew.value();
-    growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
-    growData->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
+    growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
   }
 
   std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());

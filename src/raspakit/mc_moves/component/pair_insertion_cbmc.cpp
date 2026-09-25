@@ -121,8 +121,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
     if (!correctionA.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     growDataA->energies += correctionA.value();
-    growDataA->RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
-    growDataA->logRosenbluthWeight += -system.beta * correctionA->potentialEnergy();
+    growDataA->multiplyRosenbluthWeight(-system.beta * correctionA->potentialEnergy());
   }
 
   const double r = R_max * random.uniform();
@@ -163,8 +162,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
     if (!correctionB.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     growDataB->energies += correctionB.value();
-    growDataB->RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
-    growDataB->logRosenbluthWeight += -system.beta * correctionB->potentialEnergy();
+    growDataB->multiplyRosenbluthWeight(-system.beta * correctionB->potentialEnergy());
   }
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwapCBMC, 0);
@@ -409,8 +407,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
     if (!correctionA.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     growDataA->energies += correctionA.value();
-    growDataA->RosenbluthWeight *= std::exp(-system.beta * correctionA->potentialEnergy());
-    growDataA->logRosenbluthWeight += -system.beta * correctionA->potentialEnergy();
+    growDataA->multiplyRosenbluthWeight(-system.beta * correctionA->potentialEnergy());
   }
 
   const double r = R_max * std::cbrt(random.uniform());
@@ -451,8 +448,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
     if (!correctionB.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     growDataB->energies += correctionB.value();
-    growDataB->RosenbluthWeight *= std::exp(-system.beta * correctionB->potentialEnergy());
-    growDataB->logRosenbluthWeight += -system.beta * correctionB->potentialEnergy();
+    growDataB->multiplyRosenbluthWeight(-system.beta * correctionB->potentialEnergy());
   }
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwap, 0);

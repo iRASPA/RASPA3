@@ -390,9 +390,10 @@ TEST(MC_REACTION_DRIFT, reaction_flexible_group_growth_allows_conventional_ideal
       cbmcRandom, system, stoichiometry, exclusions, 0.5, true, 1, true);
 
   ASSERT_TRUE(conventional.has_value());
-  EXPECT_EQ(conventional->RosenbluthWeight, 1.0);
+  EXPECT_EQ(conventional->logRosenbluthWeight, 0.0);
+  EXPECT_EQ(conventional->rosenbluthWeight(), 1.0);
   ASSERT_TRUE(cbmc.has_value());
-  EXPECT_NE(cbmc->RosenbluthWeight, 1.0);
+  EXPECT_NE(cbmc->logRosenbluthWeight, 0.0);
 }
 
 TEST(MC_REACTION_DRIFT, reaction_flexible_creates_fractional_slots_for_serial_and_parallel)

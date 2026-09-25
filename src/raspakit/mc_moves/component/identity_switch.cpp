@@ -204,8 +204,7 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
       }
 
       exchange.grown->energies += correction.value();
-      exchange.grown->RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
-      exchange.grown->logRosenbluthWeight += -system.beta * correction->potentialEnergy();
+      exchange.grown->multiplyRosenbluthWeight(-system.beta * correction->potentialEnergy());
     }
 
     if (step == 0)
@@ -238,8 +237,7 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
       }
 
       exchange.retraced.energies += correction.value();
-      exchange.retraced.RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
-      exchange.retraced.logRosenbluthWeight += -system.beta * correction->potentialEnergy();
+      exchange.retraced.multiplyRosenbluthWeight(-system.beta * correction->potentialEnergy());
     }
 
     if (step == 0)

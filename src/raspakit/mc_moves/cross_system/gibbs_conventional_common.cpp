@@ -503,8 +503,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
           }
 
           trial.cbmcInsert->energies += correctionNew.value();
-          trial.cbmcInsert->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
-          trial.cbmcInsert->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
+          trial.cbmcInsert->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
         }
 
         RunningEnergy ewaldTail =
@@ -559,8 +558,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
         }
 
         retraceData.energies += correctionOld.value();
-        retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
-        retraceData.logRosenbluthWeight += -system.beta * correctionOld->potentialEnergy();
+        retraceData.multiplyRosenbluthWeight(-system.beta * correctionOld->potentialEnergy());
       }
 
       RunningEnergy ewaldTail =

@@ -131,8 +131,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     if (!correctionNew.has_value()) return std::nullopt;
 
     growData->energies += correctionNew.value();
-    growData->RosenbluthWeight *= std::exp(-systemA.beta * correctionNew->potentialEnergy());
-    growData->logRosenbluthWeight += -systemA.beta * correctionNew->potentialEnergy();
+    growData->multiplyRosenbluthWeight(-systemA.beta * correctionNew->potentialEnergy());
   }
 
   // Get new molecule atoms
@@ -206,8 +205,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     if (!correctionOld.has_value()) return std::nullopt;
 
     retraceData.energies += correctionOld.value();
-    retraceData.RosenbluthWeight *= std::exp(-systemB.beta * correctionOld->potentialEnergy());
-    retraceData.logRosenbluthWeight += -systemB.beta * correctionOld->potentialEnergy();
+    retraceData.multiplyRosenbluthWeight(-systemB.beta * correctionOld->potentialEnergy());
   }
 
   // Compute Ewald Fourier energy difference for system B

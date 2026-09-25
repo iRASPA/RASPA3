@@ -144,11 +144,9 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
     if (!correctionNew.has_value() || !correctionOld.has_value()) return std::nullopt;
 
     growData->energies += correctionNew.value();
-    growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
-    growData->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
+    growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
     retraceData.energies += correctionOld.value();
-    retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
-    retraceData.logRosenbluthWeight += -system.beta * correctionOld->potentialEnergy();
+    retraceData.multiplyRosenbluthWeight(-system.beta * correctionOld->potentialEnergy());
   }
 
   std::vector<double3> electricFieldNeighborDelta;

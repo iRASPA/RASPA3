@@ -35,7 +35,6 @@ import cbmc_operators;
   const ForceField &forceField = context.forceField;
   double beta = context.beta;
 
-  double chain_rosenbluth_weight = 1.0;
   double chain_log_rosenbluth_weight = 0.0;
   RunningEnergy chain_external_energies{};
 
@@ -81,15 +80,8 @@ import cbmc_operators;
     std::transform(totalExternalEnergies.begin(), totalExternalEnergies.end(), std::back_inserter(logBoltzmannFactors),
                    [&](const CBMC::ChainTrialTorsion &v) { return -beta * v.energy.potentialEnergy(); });
 
-    double rosenbluth_weight = std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
-                                                [](const double &acc, const double &logBoltzmannFactor)
-                                                { return acc + std::exp(logBoltzmannFactor); });
-
     // The old configuration is always the first trial direction of the retrace.
     const CBMC::ChainTrialTorsion &selectedTrial = externalEnergies.front();
-
-    chain_rosenbluth_weight *= selectedTrial.torsionWeight * rosenbluth_weight /
-                                static_cast<double>(forceField.numberOfTrialDirections);
 
     chain_external_energies += selectedTrial.energy;
 
@@ -101,10 +93,10 @@ import cbmc_operators;
     {
       stepUnsampledEnergy = intra.computeInternalEnergiesNotSampledDuringGrowth(chain_atoms).potentialEnergy();
     }
-    chain_rosenbluth_weight *= std::exp(-beta * stepUnsampledEnergy);
 
-    // Log of the same per-step factor, with the Boltzmann sum evaluated as log-sum-exp so the log stays
-    // exact even where the raw factor (retrace has no per-step guard) or the running product underflows.
+    // Log of the per-step factor torsionWeight * sum_j exp(-beta u_j) / k * exp(-beta u_unsampled), with
+    // the Boltzmann sum evaluated as log-sum-exp so the log stays exact even where the raw factor
+    // (the retrace has no per-step guard) or the running product would underflow.
     double maxLogBoltzmannFactor = *std::max_element(logBoltzmannFactors.begin(), logBoltzmannFactors.end());
     double logRosenbluthSum =
         maxLogBoltzmannFactor +
@@ -118,6 +110,5 @@ import cbmc_operators;
 
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(molecule_atoms);
 
-  return ChainRetraceData(chain_external_energies + internal_energies, chain_rosenbluth_weight, 0.0,
-                          chain_log_rosenbluth_weight);
+  return ChainRetraceData(chain_external_energies + internal_energies, chain_log_rosenbluth_weight, 0.0);
 }

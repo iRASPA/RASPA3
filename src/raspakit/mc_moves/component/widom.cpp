@@ -74,8 +74,7 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
     if (!correctionNew.has_value()) return 0.0;
 
     growData->energies += correctionNew.value();
-    growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
-    growData->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
+    growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
   }
 
   [[maybe_unused]] std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());

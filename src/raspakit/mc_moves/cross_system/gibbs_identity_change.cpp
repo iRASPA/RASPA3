@@ -99,8 +99,7 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
     }
 
     growData->energies += correctionNew.value();
-    growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
-    growData->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
+    growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
   }
 
   data.growData = std::move(*growData);
@@ -136,8 +135,7 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
     }
 
     data.retraceData.energies += correctionOld.value();
-    data.retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
-    data.retraceData.logRosenbluthWeight += -system.beta * correctionOld->potentialEnergy();
+    data.retraceData.multiplyRosenbluthWeight(-system.beta * correctionOld->potentialEnergy());
   }
 
   time_begin = std::chrono::steady_clock::now();

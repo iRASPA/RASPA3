@@ -124,8 +124,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
     }
 
     growData->energies += correctionNew.value();
-    growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
-    growData->logRosenbluthWeight += -system.beta * correctionNew->potentialEnergy();
+    growData->multiplyRosenbluthWeight(-system.beta * correctionNew->potentialEnergy());
   }
 
   std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
@@ -159,8 +158,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
     }
 
     retraceData.energies += correctionOld.value();
-    retraceData.RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
-    retraceData.logRosenbluthWeight += -system.beta * correctionOld->potentialEnergy();
+    retraceData.multiplyRosenbluthWeight(-system.beta * correctionOld->potentialEnergy());
   }
 
   time_begin = std::chrono::steady_clock::now();

@@ -24,17 +24,24 @@ enum class ReactionMoveKind : std::uint8_t
 struct MoleculeGroupGrowData
 {
   std::vector<ChainGrowData> molecules;
-  double RosenbluthWeight{1.0};
-  double logRosenbluthWeight{0.0};  ///< exact log of RosenbluthWeight (the raw product underflows for long chains)
+  /// Exact log of the product of the members' Rosenbluth weights; the single stored representation
+  /// (the raw product underflows for long chains, see ChainGrowData).
+  double logRosenbluthWeight{0.0};
   RunningEnergy energies{};
+
+  /// The product of the members' Rosenbluth weights, exp(logRosenbluthWeight); for reporting only.
+  [[nodiscard]] double rosenbluthWeight() const noexcept { return std::exp(logRosenbluthWeight); }
 };
 
 struct MoleculeGroupRetraceData
 {
   std::vector<ChainRetraceData> molecules;
-  double RosenbluthWeight{1.0};
-  double logRosenbluthWeight{0.0};  ///< exact log of RosenbluthWeight (the raw product underflows for long chains)
+  /// Exact log of the product of the members' Rosenbluth weights; the single stored representation.
+  double logRosenbluthWeight{0.0};
   RunningEnergy energies{};
+
+  /// The product of the members' Rosenbluth weights, exp(logRosenbluthWeight); for reporting only.
+  [[nodiscard]] double rosenbluthWeight() const noexcept { return std::exp(logRosenbluthWeight); }
 };
 
 void appendAllReactionFractionalMoleculeExclusions(const System& system,

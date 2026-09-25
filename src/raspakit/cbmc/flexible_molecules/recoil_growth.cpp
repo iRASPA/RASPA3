@@ -246,7 +246,6 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
 
   if (growRecursive(random, ctx, 0, chain_atoms, maxHead, records) != GrowResult::Complete) return std::nullopt;
 
-  double chain_rosenbluth_weight = 1.0;
   double chain_log_rosenbluth_weight = 0.0;
   RunningEnergy chain_external_energies{};
 
@@ -298,9 +297,8 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
     // threshold (it decays exponentially with chain length), so guarding the running product would
     // reject every grow of a long polymer. Mirrors the CBMC insertion path.
     if (step_weight < forceField.minimumRosenbluthFactor) return std::nullopt;
-    chain_rosenbluth_weight *= step_weight;
     // The per-step factor is bounded below by the guard, so its log is finite; the log sum stays exact
-    // where the raw product of a long chain underflows to zero.
+    // where the raw product of a long chain would underflow to zero.
     chain_log_rosenbluth_weight += std::log(step_weight);
   }
 
@@ -310,8 +308,8 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
   // grown positions (used downstream to regenerate the atoms of rigid molecules).
   Molecule molecule = component.createMoleculeRecord(chain_atoms);
 
-  return ChainGrowData(molecule, chain_atoms, chain_external_energies + internal_energies, chain_rosenbluth_weight,
-                       0.0, chain_log_rosenbluth_weight);
+  return ChainGrowData(molecule, chain_atoms, chain_external_energies + internal_energies,
+                       chain_log_rosenbluth_weight, 0.0);
 }
 
 [[nodiscard]] ChainRetraceData CBMC::retraceRecoilGrowthMoleculeChainDeletion(
@@ -331,7 +329,6 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
 
   std::vector<Atom> old_atoms(molecule_atoms.begin(), molecule_atoms.end());
 
-  double chain_rosenbluth_weight = 1.0;
   double chain_log_rosenbluth_weight = 0.0;
   RunningEnergy chain_external_energies{};
 
@@ -395,10 +392,6 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
       }
     }
 
-    chain_rosenbluth_weight *= static_cast<double>(numberOfFeelers) /
-                                static_cast<double>(ctx.numberOfTrialDirections) *
-                                std::exp(-ctx.env.beta * selected_potential) / open_probability * torsion_weight;
-
     chain_external_energies += selected_energy.external;
 
     double stepUnsampledEnergy = 0.0;
@@ -406,10 +399,10 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
     {
       stepUnsampledEnergy = step.intra.computeInternalEnergiesNotSampledDuringGrowth(old_atoms).potentialEnergy();
     }
-    chain_rosenbluth_weight *= std::exp(-ctx.env.beta * stepUnsampledEnergy);
 
-    // Log of the same per-step factor (retrace has no per-step guard, so the raw product of a long
-    // chain underflows; the log sum stays exact).
+    // Log of the per-step factor m_i / k * exp(-beta u_i) / p_open * w_torsion * exp(-beta u_unsampled)
+    // (the retrace has no per-step guard, so the raw product of a long chain would underflow; the log
+    // sum stays exact).
     chain_log_rosenbluth_weight +=
         std::log(static_cast<double>(numberOfFeelers) / static_cast<double>(ctx.numberOfTrialDirections)) -
         ctx.env.beta * selected_potential - std::log(open_probability) + std::log(torsion_weight) -
@@ -418,6 +411,5 @@ static GrowResult growRecursive(RandomNumber &random, const RecoilContext &ctx, 
 
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(old_atoms);
 
-  return ChainRetraceData(chain_external_energies + internal_energies, chain_rosenbluth_weight, 0.0,
-                          chain_log_rosenbluth_weight);
+  return ChainRetraceData(chain_external_energies + internal_energies, chain_log_rosenbluth_weight, 0.0);
 }

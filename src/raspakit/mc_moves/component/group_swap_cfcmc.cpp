@@ -381,8 +381,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
             return {std::nullopt, double3(0.0, 1.0, 0.0)};
           }
           growData->energies += correction.value();
-          growData->RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
-          growData->logRosenbluthWeight += -system.beta * correction->potentialEnergy();
+          growData->multiplyRosenbluthWeight(-system.beta * correction->potentialEnergy());
         }
 
         logRosenbluthRatio +=
@@ -823,8 +822,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
             return {std::nullopt, double3(0.0, 1.0, 0.0)};
           }
           retraceData.energies += correction.value();
-          retraceData.RosenbluthWeight *= std::exp(-system.beta * correction->potentialEnergy());
-          retraceData.logRosenbluthWeight += -system.beta * correction->potentialEnergy();
+          retraceData.multiplyRosenbluthWeight(-system.beta * correction->potentialEnergy());
         }
 
         logRosenbluthRatio +=

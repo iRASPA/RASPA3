@@ -909,14 +909,14 @@ TEST(MC_CYCLIC_CBMC, grow_retrace_weight_symmetry)
         CBMC::growMoleculeSwapInsertion(random, context, system.components[0], 0, 1, 1.0, std::uint8_t{0}, false);
     if (growData.has_value())
     {
-      growSum += growData->RosenbluthWeight;
+      growSum += growData->rosenbluthWeight();
       ++growCount;
     }
 
     // Retrace the current (Boltzmann-sampled) configuration.
     ChainRetraceData retraceData =
         CBMC::retraceMoleculeSwapDeletion(random, context, system.components[0], system.spanOfMolecule(0, 0));
-    retraceSum += retraceData.RosenbluthWeight;
+    retraceSum += retraceData.rosenbluthWeight();
     ++retraceCount;
   }
 
