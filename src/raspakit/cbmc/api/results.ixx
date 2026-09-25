@@ -12,20 +12,29 @@ import running_energy;
 // (ChainGrowData / ChainRetraceData). The entry points in the 'cbmc' module return the combination.
 
 /// Result of placing (or retracing) the first bead of a molecule with one of the first-bead schemes.
-/// The first-bead weight is a single-bead average of Boltzmann factors (order one), so it is stored
-/// as the plain weight; the chain weight below is stored as a logarithm.
+/// The weight is stored as its natural logarithm, the same convention as the chain types below, so
+/// the entry points combine the two stages by plain addition. (The first-bead weight itself is a
+/// single-bead average of Boltzmann factors, order one, so the log is exact either way.)
 export struct FirstBeadData
 {
   Atom atom;
   RunningEnergy energies;
-  double RosenbluthWeight;
+  /// Natural logarithm of the first-bead Rosenbluth weight.
+  double logRosenbluthWeight;
+  /// Retained partial weight of the multiple-first-bead reinsertion scheme (Esselink et al., 'r' in
+  /// Eq. 16-18): the Rosenbluth sum minus the Boltzmann factor of the selected trial. Deliberately
+  /// linear -- the retrace adds it to a Boltzmann factor, w(o) = exp(-beta u(o)) + r. Zero for the
+  /// other schemes.
   double storedR;
 
   FirstBeadData() noexcept = delete;
-  FirstBeadData(Atom atom, RunningEnergy energies, double RosenbluthWeight, double storedR) noexcept
-      : atom(atom), energies(energies), RosenbluthWeight(RosenbluthWeight), storedR(storedR)
+  FirstBeadData(Atom atom, RunningEnergy energies, double logRosenbluthWeight, double storedR) noexcept
+      : atom(atom), energies(energies), logRosenbluthWeight(logRosenbluthWeight), storedR(storedR)
   {
   }
+
+  /// The first-bead Rosenbluth weight itself, exp(logRosenbluthWeight); for reporting only.
+  [[nodiscard]] double rosenbluthWeight() const noexcept { return std::exp(logRosenbluthWeight); }
 };
 
 /// Result of growing a molecule (or the remainder of a molecule) with CBMC or recoil growth.

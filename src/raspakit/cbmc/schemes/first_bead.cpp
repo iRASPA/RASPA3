@@ -45,7 +45,7 @@ import interpolation_energy_grid;
   if (RosenbluthWeight < context.forceField.minimumRosenbluthFactor) return std::nullopt;
 
   return FirstBeadData(externalEnergies[selected].position, externalEnergies[selected].energy,
-                       RosenbluthWeight / double(context.forceField.numberOfFirstBeadPositions), 0.0);
+                       std::log(RosenbluthWeight / double(context.forceField.numberOfFirstBeadPositions)), 0.0);
 }
 
 [[nodiscard]] FirstBeadData CBMC::retraceMultipleFirstBeadSwapDeletion(RandomNumber& random,
@@ -72,7 +72,7 @@ import interpolation_energy_grid;
                                             { return acc + std::exp(logBoltzmannFactor); });
 
   return FirstBeadData(atom, externalEnergies[0].energy,
-                       RosenbluthWeight / double(context.forceField.numberOfFirstBeadPositions), 0.0);
+                       std::log(RosenbluthWeight / double(context.forceField.numberOfFirstBeadPositions)), 0.0);
 }
 
 [[nodiscard]] std::optional<FirstBeadData> CBMC::growMultipleFirstBeadReinsertion(
@@ -100,11 +100,11 @@ import interpolation_energy_grid;
 
   if (RosenbluthWeight < context.forceField.minimumRosenbluthFactor) return std::nullopt;
 
-  // r=w(n)-exp(-beta U[h_n]) Eq.16 from Esselink et al.
+  // r=w(n)-exp(-beta U[h_n]) Eq.16 from Esselink et al. (kept linear, see FirstBeadData::storedR)
   double storedR = RosenbluthWeight - std::exp(logBoltzmannFactors[selected]);
 
   return FirstBeadData(externalEnergies[selected].position, externalEnergies[selected].energy,
-                       RosenbluthWeight / double(context.forceField.numberOfFirstBeadPositions), storedR);
+                       std::log(RosenbluthWeight / double(context.forceField.numberOfFirstBeadPositions)), storedR);
 }
 
 [[nodiscard]] std::optional<FirstBeadData> CBMC::retraceMultipleFirstBeadReinsertion(
@@ -130,7 +130,8 @@ import interpolation_energy_grid;
 
   // w(o)=exp(-beta u(o))+r  Eq. 18 from Esselink et al.
   return FirstBeadData(atom, externalEnergies[0].energy,
-                       (RosenbluthWeight + storedR) / double(context.forceField.numberOfFirstBeadPositions), 0.0);
+                       std::log((RosenbluthWeight + storedR) / double(context.forceField.numberOfFirstBeadPositions)),
+                       0.0);
 }
 
 [[nodiscard]] std::optional<FirstBeadData> CBMC::growMultipleFirstBeadPartialInsertion(
@@ -144,12 +145,12 @@ import interpolation_energy_grid;
 
   if (externalEnergies.empty()) return std::nullopt;
 
+  // A single trial: the weight is the Boltzmann factor itself, already available as its logarithm.
   double logBoltzmannFactor = -context.beta * externalEnergies[0].energy.potentialEnergy();
-  double RosenbluthWeight = std::exp(logBoltzmannFactor);
 
-  if (RosenbluthWeight < context.forceField.minimumRosenbluthFactor) return std::nullopt;
+  if (std::exp(logBoltzmannFactor) < context.forceField.minimumRosenbluthFactor) return std::nullopt;
 
-  return FirstBeadData(externalEnergies[0].position, externalEnergies[0].energy, RosenbluthWeight, 0.0);
+  return FirstBeadData(externalEnergies[0].position, externalEnergies[0].energy, logBoltzmannFactor, 0.0);
 }
 
 [[nodiscard]] FirstBeadData CBMC::retraceMultipleFirstBeadPartialDeletion(const GrowContext& context,
@@ -162,9 +163,8 @@ import interpolation_energy_grid;
       computeExternalNonOverlappingEnergies(context, component, trialPositions);
 
   double logBoltzmannFactor = -context.beta * externalEnergies[0].energy.potentialEnergy();
-  double RosenbluthWeight = std::exp(logBoltzmannFactor);
 
-  return FirstBeadData(atom, externalEnergies[0].energy, RosenbluthWeight, 0.0);
+  return FirstBeadData(atom, externalEnergies[0].energy, logBoltzmannFactor, 0.0);
 }
 
 [[nodiscard]] std::optional<FirstBeadData> CBMC::growFirstBeadAtFixedPosition(const GrowContext& context,
@@ -178,7 +178,8 @@ import interpolation_energy_grid;
 
   if (externalEnergies.empty()) return std::nullopt;
 
-  return FirstBeadData(externalEnergies[0].position, externalEnergies[0].energy, 1.0, 0.0);
+  // Pinned first bead: weight one, log zero.
+  return FirstBeadData(externalEnergies[0].position, externalEnergies[0].energy, 0.0, 0.0);
 }
 
 [[nodiscard]] FirstBeadData CBMC::retraceFirstBeadAtFixedPosition(const GrowContext& context,
@@ -189,5 +190,6 @@ import interpolation_energy_grid;
   const std::vector<FirstBeadTrial> externalEnergies =
       computeExternalNonOverlappingEnergies(context, component, trialPositions);
 
-  return FirstBeadData(atom, externalEnergies[0].energy, 1.0, 0.0);
+  // Pinned first bead: weight one, log zero.
+  return FirstBeadData(atom, externalEnergies[0].energy, 0.0, 0.0);
 }

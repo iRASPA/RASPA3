@@ -69,14 +69,12 @@ static Atom makeFirstBead(const Component &component, std::size_t selectedMolecu
 }
 
 // Combined result of the first-bead stage and the chain stage: energies add, Rosenbluth weights
-// multiply.
+// multiply (both stages carry their weight as a logarithm, so the logs add).
 static ChainGrowData combineGrowData(const FirstBeadData &firstBeadData, const ChainGrowData &chainData,
                                      double storedR)
 {
-  // The first-bead weight is a single-bead average of Boltzmann factors (order one), so its plain log
-  // is exact; the chain log is accumulated per step and stays exact where the raw product underflows.
   return ChainGrowData(chainData.molecule, chainData.atoms, firstBeadData.energies + chainData.energies,
-                       std::log(firstBeadData.RosenbluthWeight) + chainData.logRosenbluthWeight, storedR);
+                       firstBeadData.logRosenbluthWeight + chainData.logRosenbluthWeight, storedR);
 }
 
 // Grows the remainder of a freshly inserted molecule after its first bead was sampled: a single-atom
@@ -92,7 +90,7 @@ static std::optional<ChainGrowData> growNewMoleculeAtFirstBead(
   {
     return ChainGrowData(Molecule(double3(firstBeadData.atom.position), simd_quatd(0.0, 0.0, 0.0, 1.0),
                                   component.totalMass, selectedComponent, component.definedAtoms.size()),
-                         {firstBeadData.atom}, firstBeadData.energies, std::log(firstBeadData.RosenbluthWeight), 0.0);
+                         {firstBeadData.atom}, firstBeadData.energies, firstBeadData.logRosenbluthWeight, 0.0);
   }
 
   // place the molecule centered around the first bead at 'firstBeadData.atom.position'
@@ -121,13 +119,13 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
 {
   if (molecule_atoms.size() == 1)
   {
-    return ChainRetraceData(firstBeadData.energies, std::log(firstBeadData.RosenbluthWeight), 0.0);
+    return ChainRetraceData(firstBeadData.energies, firstBeadData.logRosenbluthWeight, 0.0);
   }
 
   ChainRetraceData chainData = retraceChain(random, context, component, molecule_atoms, {component.startingBead});
 
   return ChainRetraceData(firstBeadData.energies + chainData.energies,
-                          std::log(firstBeadData.RosenbluthWeight) + chainData.logRosenbluthWeight, 0.0);
+                          firstBeadData.logRosenbluthWeight + chainData.logRosenbluthWeight, 0.0);
 }
 
 // Insertion:
@@ -183,7 +181,7 @@ static ChainRetraceData retraceAfterFirstBead(RandomNumber &random, const CBMC::
     firstBeadMolecule.numberOfAtoms = molecule.numberOfAtoms;
 
     return ChainGrowData(firstBeadMolecule, {firstBeadData->atom}, firstBeadData->energies,
-                         std::log(firstBeadData->RosenbluthWeight), firstBeadData->storedR);
+                         firstBeadData->logRosenbluthWeight, firstBeadData->storedR);
   }
 
   // place the molecule centered around the first bead at 'firstBeadData->atom.position'; the
