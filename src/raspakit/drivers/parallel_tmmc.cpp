@@ -33,7 +33,6 @@ import mc_moves_widom;
 import mc_moves_cputime;
 import mc_moves_statistics;
 import cbmc;
-import cbmc_results;
 import json;
 import isotherm_bet;
 import nitrogen_bet_setup;
@@ -377,6 +376,8 @@ void ParallelTMMC::initializeWalkers(System templateSystem)
 
       // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature
       system.buildConformationReservoirs();
+      // so is the recoil-growth openness reference (a no-op when recoil growth is off)
+      system.buildRecoilReferenceConformations();
 
       // the walker is confined to its (overlapped) window; the collection matrix is kept across
       // the stages, see pinWalkerWindow

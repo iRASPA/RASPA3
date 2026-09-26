@@ -12,9 +12,6 @@ import double3x3;
 import simd_quatd;
 import simulationbox;
 import cbmc;
-import cbmc_results;
-import cbmc_external_energy;
-import cbmc_grow_context;
 import randomnumbers;
 import system;
 import energy_status;
@@ -30,6 +27,7 @@ import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
+import mc_moves_cputime;
 
 std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, System &system,
                                                        std::size_t selectedComponent, std::size_t selectedMolecule)
@@ -37,8 +35,6 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   std::span<Atom> molecule_atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
   Molecule &molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
 
-  // Variables to record timing for performance measurement.
-  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::ReinsertionCBMC;
   Component &component = system.components[selectedComponent];
 
@@ -53,14 +49,14 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
 
   const CBMC::GrowContext context = system.makeGrowContext();
 
-  time_begin = std::chrono::steady_clock::now();
   // Attempt to grow the molecule using CBMC reinsertion.
-  std::optional<CBMC::GrowResult> growData = CBMC::regrowMolecule(
-      random, context, component, molecule, molecule_atoms, {.firstBead = CBMC::FirstBeadScheme::Reinsertion});
-  time_end = std::chrono::steady_clock::now();
-  // Record CPU time taken for the non-Ewald part of the move.
-  component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  std::optional<CBMC::GrowResult> growData =
+      timed(system, component, move, Move::Timing::NonEwald,
+            [&]
+            {
+              return CBMC::regrowMolecule(random, context, component, molecule, molecule_atoms,
+                                          {.firstBead = CBMC::FirstBeadScheme::Reinsertion});
+            });
 
   // If growth was unsuccessful, exit the move.
   if (!growData) return std::nullopt;
@@ -76,27 +72,24 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   component.mc_moves_statistics.addConstructed(move);
 
   // Retrace the old molecule configuration using CBMC retracing.
-  time_begin = std::chrono::steady_clock::now();
-  CBMC::RetraceResult retraceData = CBMC::retraceMolecule(
-      random, context, component, molecule_atoms,
-      {.firstBead = CBMC::FirstBeadScheme::Reinsertion,
-       .storedR = growData->firstBeadStoredR,
-       .skipBackgroundMolecule = molecule_atoms[component.startingBead].moleculeId});
-  time_end = std::chrono::steady_clock::now();
-
-  // Record CPU time taken for the retracing step.
-  component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  CBMC::RetraceResult retraceData =
+      timed(system, component, move, Move::Timing::NonEwald,
+            [&]
+            {
+              return CBMC::retraceMolecule(
+                  random, context, component, molecule_atoms,
+                  {.firstBead = CBMC::FirstBeadScheme::Reinsertion, .storedR = growData->firstBeadStoredR});
+            });
 
   // Compute the energy difference in the Fourier space due to Ewald summation.
-  time_begin = std::chrono::steady_clock::now();
-  RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, newMolecule, molecule_atoms);
-  time_end = std::chrono::steady_clock::now();
-  // Record CPU time taken for the Ewald Fourier part of the move.
-  component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  RunningEnergy energyFourierDifference =
+      timed(system, component, move, Move::Timing::Ewald,
+            [&]
+            {
+              return Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                                                system.storedEik, system.trialEik, system.forceField,
+                                                                system.simulationBox, newMolecule, molecule_atoms);
+            });
 
   // Dual cut-off scheme: correct the grown and retraced configurations from the inner cut-off to the
   // full cut-offs.

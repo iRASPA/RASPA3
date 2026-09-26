@@ -26,10 +26,10 @@ import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import mc_moves_move_types;
+import mc_moves_cputime;
 
 std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &system)
 {
-  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::VolumeChange;
 
   // Update volume move counts
@@ -60,29 +60,31 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
   system.forceField.initializeAutomaticCutOff(newBox);
 
-  time_begin = std::chrono::steady_clock::now();
   // Compute new intermolecular energy
   RunningEnergy newTotalInterEnergy =
-      Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions.second);
-  time_end = std::chrono::steady_clock::now();
-  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+      timed(system, move, Move::Timing::NonEwald,
+            [&] { return Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions.second); });
 
-  time_begin = std::chrono::steady_clock::now();
   // Compute new tail corrections. The tail energy is position-independent, so a volume change only rescales it
   // through the box volume; reuse the maintained effective pseudo-atom-type counts (O(nType^2)).
-  RunningEnergy newTotalTailEnergy = Interactions::computeInterMolecularTailEnergyAggregated(
-      system.forceField, newBox, system.effectiveNumberOfPseudoAtomsVDW, system.fractionalPseudoAtomCountsPerGroup);
-  time_end = std::chrono::steady_clock::now();
-  system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
+  RunningEnergy newTotalTailEnergy = timed(system, move, Move::Timing::Tail,
+                                           [&]
+                                           {
+                                             return Interactions::computeInterMolecularTailEnergyAggregated(
+                                                 system.forceField, newBox, system.effectiveNumberOfPseudoAtomsVDW,
+                                                 system.fractionalPseudoAtomCountsPerGroup);
+                                           });
 
-  time_begin = std::chrono::steady_clock::now();
   // Compute new Ewald Fourier energy
-  RunningEnergy newTotalEwaldEnergy = Interactions::computeEwaldFourierEnergy(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.trialEik,
-      system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent, newPositions.second,
-      system.netChargeFramework);
-  time_end = std::chrono::steady_clock::now();
-  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  RunningEnergy newTotalEwaldEnergy =
+      timed(system, move, Move::Timing::Ewald,
+            [&]
+            {
+              return Interactions::computeEwaldFourierEnergy(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik,
+                  system.trialEik, system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent,
+                  newPositions.second, system.netChargeFramework);
+            });
 
   // Sum up all energy contributions
   RunningEnergy newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
@@ -136,7 +138,6 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
 std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& random, System& system)
 {
-  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::AnisotropicVolumeChange;
 
   system.mc_moves_statistics.addTrial(move);
@@ -172,26 +173,28 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
 
   system.forceField.initializeAutomaticCutOff(newBox);
 
-  time_begin = std::chrono::steady_clock::now();
   RunningEnergy newTotalInterEnergy =
-      Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions.second);
-  time_end = std::chrono::steady_clock::now();
-  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+      timed(system, move, Move::Timing::NonEwald,
+            [&] { return Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions.second); });
 
-  time_begin = std::chrono::steady_clock::now();
   // Tail energy is position-independent; reuse the maintained effective pseudo-atom-type counts (O(nType^2)).
-  RunningEnergy newTotalTailEnergy = Interactions::computeInterMolecularTailEnergyAggregated(
-      system.forceField, newBox, system.effectiveNumberOfPseudoAtomsVDW, system.fractionalPseudoAtomCountsPerGroup);
-  time_end = std::chrono::steady_clock::now();
-  system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
+  RunningEnergy newTotalTailEnergy = timed(system, move, Move::Timing::Tail,
+                                           [&]
+                                           {
+                                             return Interactions::computeInterMolecularTailEnergyAggregated(
+                                                 system.forceField, newBox, system.effectiveNumberOfPseudoAtomsVDW,
+                                                 system.fractionalPseudoAtomCountsPerGroup);
+                                           });
 
-  time_begin = std::chrono::steady_clock::now();
-  RunningEnergy newTotalEwaldEnergy = Interactions::computeEwaldFourierEnergy(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.trialEik,
-      system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent, newPositions.second,
-      system.netChargeFramework);
-  time_end = std::chrono::steady_clock::now();
-  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  RunningEnergy newTotalEwaldEnergy =
+      timed(system, move, Move::Timing::Ewald,
+            [&]
+            {
+              return Interactions::computeEwaldFourierEnergy(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik,
+                  system.trialEik, system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent,
+                  newPositions.second, system.netChargeFramework);
+            });
 
   RunningEnergy newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
 

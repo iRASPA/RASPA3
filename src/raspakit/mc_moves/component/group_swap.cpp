@@ -10,8 +10,6 @@ import molecule;
 import atom;
 import simulationbox;
 import cbmc;
-import cbmc_results;
-import cbmc_external_energy;
 import randomnumbers;
 import system;
 import energy_status;
@@ -24,6 +22,7 @@ import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
+import mc_moves_cputime;
 
 // Group insertion/deletion move for overall-neutral groups of charged molecules (a generalization
 // of the Orkoulas-Panagiotopoulos ion-pair swap to an arbitrary number of satellite molecules).
@@ -133,13 +132,13 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
 
   const CBMC::GrowContext growContextCentral = system.makeGrowContext();
 
-  time_begin = std::chrono::steady_clock::now();
-  std::optional<CBMC::GrowResult> growDataCentral = CBMC::growNewMolecule(
-      random, growContextCentral, centralComponent,
-      {.componentId = selectedComponent, .moleculeId = system.numberOfMolecules()});
-  time_end = std::chrono::steady_clock::now();
-  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
-  centralComponent.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  std::optional<CBMC::GrowResult> growDataCentral = MC_Moves::timed(
+      system, centralComponent, move, Move::Timing::NonEwald,
+      [&]
+      {
+        return CBMC::growNewMolecule(random, growContextCentral, centralComponent,
+                                     {.componentId = selectedComponent, .moleculeId = system.numberOfMolecules()});
+      });
 
   if (!growDataCentral) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
@@ -178,14 +177,15 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
 
     const CBMC::GrowContext growContext = system.makeGrowContext().withMoleculeAtoms(background);
 
-    time_begin = std::chrono::steady_clock::now();
-    std::optional<CBMC::GrowResult> growData = CBMC::growNewMolecule(
-        random, growContext, satelliteComponent,
-        {.componentId = satelliteComponentId, .moleculeId = system.numberOfMolecules() + 1 + j},
-        {.firstBead = CBMC::FirstBeadScheme::Fixed, .firstBeadPosition = fixedFirstBeadPosition});
-    time_end = std::chrono::steady_clock::now();
-    system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
-    centralComponent.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+    std::optional<CBMC::GrowResult> growData =
+        MC_Moves::timed(system, centralComponent, move, Move::Timing::NonEwald,
+              [&]
+              {
+                return CBMC::growNewMolecule(
+                    random, growContext, satelliteComponent,
+                    {.componentId = satelliteComponentId, .moleculeId = system.numberOfMolecules() + 1 + j},
+                    {.firstBead = CBMC::FirstBeadScheme::Fixed, .firstBeadPosition = fixedFirstBeadPosition});
+              });
 
     if (!growData) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
@@ -580,13 +580,14 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
 
     std::span<Atom> memberAtoms = system.spanOfMolecule(members[i].componentId, members[i].moleculeId);
 
-    time_begin = std::chrono::steady_clock::now();
-    CBMC::RetraceResult retrace = CBMC::retraceMolecule(
-        random, retraceContext, memberComponent, memberAtoms,
-        {.firstBead = (i == 0) ? CBMC::FirstBeadScheme::MultipleFirstBead : CBMC::FirstBeadScheme::Fixed});
-    time_end = std::chrono::steady_clock::now();
-    system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
-    centralComponent.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+    CBMC::RetraceResult retrace =
+        MC_Moves::timed(system, centralComponent, move, Move::Timing::NonEwald,
+              [&]
+              {
+                return CBMC::retraceMolecule(
+                    random, retraceContext, memberComponent, memberAtoms,
+                    {.firstBead = (i == 0) ? CBMC::FirstBeadScheme::MultipleFirstBead : CBMC::FirstBeadScheme::Fixed});
+              });
 
     // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
     // cut-offs, using the same background as the retrace.

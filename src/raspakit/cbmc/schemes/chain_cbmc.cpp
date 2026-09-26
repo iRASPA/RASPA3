@@ -41,15 +41,14 @@ struct EvaluatedTrials
 
 EvaluatedTrials evaluateTrials(const CBMC::GrowContext &context, const Component &component,
                                const CBMC::GrowStep &step, std::vector<Atom> &chainAtoms,
-                               std::vector<CBMC::StepTrial> stepTrials,
-                               std::optional<std::size_t> skipBackgroundMolecule)
+                               std::vector<CBMC::StepTrial> stepTrials)
 {
   EvaluatedTrials evaluated{};
   evaluated.trials.reserve(stepTrials.size());
   for (std::size_t i = 0; i != stepTrials.size(); ++i)
   {
-    std::optional<CBMC::StepTrialEnergy> energy = CBMC::evaluateStepTrial(
-        context, component, step, chainAtoms, stepTrials[i].positions, skipBackgroundMolecule);
+    std::optional<CBMC::StepTrialEnergy> energy =
+        CBMC::evaluateStepTrial(context, component, step, chainAtoms, stepTrials[i].positions);
     if (!energy.has_value()) continue;
     if (i == 0) evaluated.firstSurvived = true;
     evaluated.trials.push_back({std::move(stepTrials[i].positions), energy.value(), stepTrials[i].torsionWeight});
@@ -102,9 +101,10 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
 }
 }  // namespace
 
-[[nodiscard]] std::optional<CBMC::GrowResult> CBMC::growChainCBMC(
-    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
-    const std::vector<std::size_t> &beadsAlreadyPlaced, std::optional<std::size_t> skipBackgroundMolecule)
+[[nodiscard]] std::optional<CBMC::GrowResult> CBMC::growChainCBMC(RandomNumber &random, const GrowContext &context,
+                                                                  const Component &component,
+                                                                  std::span<const Atom> molecule_atoms,
+                                                                  const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
   const GrowthSettings &settings = context.settings;
   const double beta = context.beta;
@@ -123,8 +123,7 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
     std::vector<EvaluatedTrial> trials =
         evaluateTrials(context, component, step, chain_atoms,
                        generateGrowTrials(random, settings, beta, component, chain_atoms, step,
-                                          settings.numberOfTrialDirections),
-                       skipBackgroundMolecule)
+                                          settings.numberOfTrialDirections))
             .trials;
     if (trials.empty()) return std::nullopt;
 
@@ -162,8 +161,7 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
     EvaluatedTrials evaluated =
         evaluateTrials(context, component, step, chain_atoms,
                        generateRetraceTrials(random, settings, beta, component, chain_atoms, step,
-                                             settings.numberOfTrialDirections),
-                       std::nullopt);
+                                             settings.numberOfTrialDirections));
 
     // The old configuration must survive the overlap filter as trial direction 0.
     if (!evaluated.firstSurvived) throwExistingConfigurationOverlaps("CBMC", component, seg, step);

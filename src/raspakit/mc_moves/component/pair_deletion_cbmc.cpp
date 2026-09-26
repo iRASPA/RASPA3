@@ -8,8 +8,6 @@ import double3;
 import component;
 import atom;
 import cbmc;
-import cbmc_results;
-import cbmc_external_energy;
 import randomnumbers;
 import system;
 import running_energy;
@@ -21,6 +19,7 @@ import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
+import mc_moves_cputime;
 
 // Polarization energy change when the pair (molecule A, molecule B) is removed. The two removed molecules lose their
 // own polarization energy (evaluated with their full stored field, which already contains the framework, reciprocal
@@ -194,18 +193,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
 
   const CBMC::GrowContext retraceContextA = system.makeGrowContext().withMoleculeAtoms(backgroundWithoutPair);
 
-  time_begin = std::chrono::steady_clock::now();
-  CBMC::RetraceResult retraceDataB = CBMC::retraceMolecule(random, retraceContextB, componentBRef, moleculeB,
-                                                           {.firstBead = CBMC::FirstBeadScheme::Fixed});
-  time_end = std::chrono::steady_clock::now();
-  system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
-  componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
+  CBMC::RetraceResult retraceDataB =
+      timed(system, componentA, Move::Types::PairSwapCBMC, Move::Timing::NonEwald,
+            [&]
+            {
+              return CBMC::retraceMolecule(random, retraceContextB, componentBRef, moleculeB,
+                                           {.firstBead = CBMC::FirstBeadScheme::Fixed});
+            });
 
-  time_begin = std::chrono::steady_clock::now();
-  CBMC::RetraceResult retraceDataA = CBMC::retraceMolecule(random, retraceContextA, componentA, moleculeA);
-  time_end = std::chrono::steady_clock::now();
-  system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
-  componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::NonEwald] += (time_end - time_begin);
+  CBMC::RetraceResult retraceDataA =
+      timed(system, componentA, Move::Types::PairSwapCBMC, Move::Timing::NonEwald,
+            [&] { return CBMC::retraceMolecule(random, retraceContextA, componentA, moleculeA); });
 
   // Dual cut-off scheme: correct the retraced configurations from the inner cut-off to the full
   // cut-offs, using the same backgrounds as the retraces.
@@ -236,19 +234,19 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Ewald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Ewald] += (time_end - time_begin);
 
-  time_begin = std::chrono::steady_clock::now();
   RunningEnergy tailEnergyDifference =
-      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                              system.spanOfMoleculeAtoms(), {}, oldMoleculeA) +
-      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                              system.spanOfMoleculeAtoms(), {}, oldMoleculeB) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                 system.spanOfFrameworkAtoms(), {}, oldMoleculeA) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                 system.spanOfFrameworkAtoms(), {}, oldMoleculeB);
-  time_end = std::chrono::steady_clock::now();
-  system.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Tail] += (time_end - time_begin);
-  componentA.mc_moves_cputime[Move::Types::PairSwapCBMC][Move::Timing::Tail] += (time_end - time_begin);
+      timed(system, componentA, Move::Types::PairSwapCBMC, Move::Timing::Tail,
+            [&]
+            {
+              return Interactions::computeInterMolecularTailEnergyDifference(
+                         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), {}, oldMoleculeA) +
+                     Interactions::computeInterMolecularTailEnergyDifference(
+                         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), {}, oldMoleculeB) +
+                     Interactions::computeFrameworkMoleculeTailEnergyDifference(
+                         system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), {}, oldMoleculeA) +
+                     Interactions::computeFrameworkMoleculeTailEnergyDifference(
+                         system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), {}, oldMoleculeB);
+            });
 
   std::vector<double3> electricFieldNeighborDelta;
   RunningEnergy polarizationDifference =
@@ -429,18 +427,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
 
   const CBMC::GrowContext retraceContextA = system.makeGrowContext().withMoleculeAtoms(backgroundWithoutPair);
 
-  time_begin = std::chrono::steady_clock::now();
-  CBMC::RetraceResult retraceDataB = CBMC::retraceMolecule(random, retraceContextB, componentBRef, moleculeB,
-                                                           {.firstBead = CBMC::FirstBeadScheme::Fixed});
-  time_end = std::chrono::steady_clock::now();
-  system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
-  componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
+  CBMC::RetraceResult retraceDataB =
+      timed(system, componentA, Move::Types::PairSwap, Move::Timing::NonEwald,
+            [&]
+            {
+              return CBMC::retraceMolecule(random, retraceContextB, componentBRef, moleculeB,
+                                           {.firstBead = CBMC::FirstBeadScheme::Fixed});
+            });
 
-  time_begin = std::chrono::steady_clock::now();
-  CBMC::RetraceResult retraceDataA = CBMC::retraceMolecule(random, retraceContextA, componentA, moleculeA);
-  time_end = std::chrono::steady_clock::now();
-  system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
-  componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::NonEwald] += (time_end - time_begin);
+  CBMC::RetraceResult retraceDataA =
+      timed(system, componentA, Move::Types::PairSwap, Move::Timing::NonEwald,
+            [&] { return CBMC::retraceMolecule(random, retraceContextA, componentA, moleculeA); });
 
   // Dual cut-off scheme: correct the retraced configurations from the inner cut-off to the full
   // cut-offs, using the same backgrounds as the retraces.
@@ -471,19 +468,19 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Ewald] += (time_end - time_begin);
   componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Ewald] += (time_end - time_begin);
 
-  time_begin = std::chrono::steady_clock::now();
   RunningEnergy tailEnergyDifference =
-      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                              system.spanOfMoleculeAtoms(), {}, oldMoleculeA) +
-      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                              system.spanOfMoleculeAtoms(), {}, oldMoleculeB) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                 system.spanOfFrameworkAtoms(), {}, oldMoleculeA) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                 system.spanOfFrameworkAtoms(), {}, oldMoleculeB);
-  time_end = std::chrono::steady_clock::now();
-  system.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Tail] += (time_end - time_begin);
-  componentA.mc_moves_cputime[Move::Types::PairSwap][Move::Timing::Tail] += (time_end - time_begin);
+      timed(system, componentA, Move::Types::PairSwap, Move::Timing::Tail,
+            [&]
+            {
+              return Interactions::computeInterMolecularTailEnergyDifference(
+                         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), {}, oldMoleculeA) +
+                     Interactions::computeInterMolecularTailEnergyDifference(
+                         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), {}, oldMoleculeB) +
+                     Interactions::computeFrameworkMoleculeTailEnergyDifference(
+                         system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), {}, oldMoleculeA) +
+                     Interactions::computeFrameworkMoleculeTailEnergyDifference(
+                         system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), {}, oldMoleculeB);
+            });
 
   std::vector<double3> electricFieldNeighborDelta;
   RunningEnergy polarizationDifference =

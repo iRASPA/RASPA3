@@ -19,8 +19,6 @@ import interactions_ewald;
 import interactions_external_field;
 import mc_moves_move_types;
 import cbmc;
-import cbmc_results;
-import cbmc_external_energy;
 
 namespace
 {

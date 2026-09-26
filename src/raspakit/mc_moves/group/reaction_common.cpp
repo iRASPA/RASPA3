@@ -10,8 +10,6 @@ import molecule;
 import double3;
 import simulationbox;
 import cbmc;
-import cbmc_results;
-import cbmc_external_energy;
 import randomnumbers;
 import system;
 import forcefield;

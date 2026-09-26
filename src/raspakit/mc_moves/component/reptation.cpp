@@ -20,6 +20,7 @@ import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
+import mc_moves_cputime;
 
 std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, System &system,
                                                      std::size_t selectedComponent, std::size_t selectedMolecule)
@@ -27,7 +28,6 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
   std::span<Atom> molecule_atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
   Molecule &molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
 
-  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::Reptation;
   Component &component = system.components[selectedComponent];
 
@@ -41,7 +41,6 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
   }
 
   component.mc_moves_statistics.addTrial(move);
-
 
   const std::size_t numberOfUnits = units.size();
   const std::size_t numberOfBeads = molecule_atoms.size();
@@ -100,13 +99,14 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
   // Grow the arriving unit attached to the shifted chain.
   const CBMC::GrowContext context = system.makeGrowContext();
 
-  time_begin = std::chrono::steady_clock::now();
-  std::optional<CBMC::GrowResult> growData = CBMC::regrowMolecule(
-      random, context, component, molecule, shiftedAtoms,
-      {.firstBead = CBMC::FirstBeadScheme::AlreadyPlaced, .beadsAlreadyPlaced = placedForGrow});
-  time_end = std::chrono::steady_clock::now();
-  component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  std::optional<CBMC::GrowResult> growData =
+      timed(system, component, move, Move::Timing::NonEwald,
+            [&]
+            {
+              return CBMC::regrowMolecule(
+                  random, context, component, molecule, shiftedAtoms,
+                  {.firstBead = CBMC::FirstBeadScheme::AlreadyPlaced, .beadsAlreadyPlaced = placedForGrow});
+            });
 
   if (!growData) return std::nullopt;
 
@@ -119,24 +119,26 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
   component.mc_moves_statistics.addConstructed(move);
 
   // Retrace the departing unit in the current configuration.
-  time_begin = std::chrono::steady_clock::now();
-  CBMC::RetraceResult retraceData = CBMC::retraceMolecule(
-      random, context, component, molecule_atoms,
-      {.firstBead = CBMC::FirstBeadScheme::AlreadyPlaced, .beadsAlreadyPlaced = placedForRetrace});
-  time_end = std::chrono::steady_clock::now();
-  component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  CBMC::RetraceResult retraceData =
+      timed(system, component, move, Move::Timing::NonEwald,
+            [&]
+            {
+              return CBMC::retraceMolecule(
+                  random, context, component, molecule_atoms,
+                  {.firstBead = CBMC::FirstBeadScheme::AlreadyPlaced, .beadsAlreadyPlaced = placedForRetrace});
+            });
 
   // Compute the energy difference in the Fourier space due to Ewald summation. The relabeling of
   // the surviving units does not change the structure factors (identical types and charges per
   // slot), so the difference stems from the vacated and the grown unit only.
-  time_begin = std::chrono::steady_clock::now();
-  RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, newMolecule, molecule_atoms);
-  time_end = std::chrono::steady_clock::now();
-  component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  RunningEnergy energyFourierDifference =
+      timed(system, component, move, Move::Timing::Ewald,
+            [&]
+            {
+              return Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                                                system.storedEik, system.trialEik, system.forceField,
+                                                                system.simulationBox, newMolecule, molecule_atoms);
+            });
 
   // Dual cut-off scheme: correct the grown and retraced configurations from the inner cut-off to the
   // full cut-offs.

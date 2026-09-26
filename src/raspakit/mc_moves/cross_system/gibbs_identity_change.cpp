@@ -12,8 +12,6 @@ import molecule;
 import component;
 import double3;
 import cbmc;
-import cbmc_results;
-import cbmc_external_energy;
 import forcefield;
 import simulationbox;
 import interactions_framework_molecule;
@@ -21,6 +19,7 @@ import interactions_intermolecular;
 import interactions_ewald;
 import interactions_polarization;
 import mc_moves_move_types;
+import mc_moves_cputime;
 
 namespace
 {
@@ -58,24 +57,22 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
 
   const std::size_t oldGlobalMoleculeId = system.moleculeIndexOfComponent(oldComponent, data.selectedMoleculeOld);
   const std::size_t trialMoleculeId = system.numberOfMolecules();
-  const std::optional<std::size_t> skipBackgroundMolecule = oldGlobalMoleculeId;
 
-  const CBMC::GrowContext growContext = system.makeGrowContext();
+  // The new molecule carries a fresh id while the old one is still in the background: exclude it.
+  const CBMC::GrowContext growContext = system.makeGrowContext().withSkippedMolecule(oldGlobalMoleculeId);
 
-  std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
   std::optional<CBMC::GrowResult> growData =
-      CBMC::growNewMolecule(random, growContext, newComponentData,
-                            {.componentId = newComponent, .moleculeId = trialMoleculeId},
-                            {.firstBead = CBMC::FirstBeadScheme::Pinned,
-                             .firstBeadPosition = oldStartingBead.position,
-                             .skipBackgroundMolecule = skipBackgroundMolecule});
-  std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
-  oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+      MC_Moves::timed(system, oldComponentData, move, Move::Timing::NonEwald,
+            [&]
+            {
+              return CBMC::growNewMolecule(
+                  random, growContext, newComponentData, {.componentId = newComponent, .moleculeId = trialMoleculeId},
+                  {.firstBead = CBMC::FirstBeadScheme::Pinned, .firstBeadPosition = oldStartingBead.position});
+            });
 
   // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
   // cut-offs, using the same background (the old molecule excluded) as the growth.
-  if (!growData || !CBMC::applyDualCutOffCorrection(growContext, newComponentData, *growData, skipBackgroundMolecule))
+  if (!growData || !CBMC::applyDualCutOffCorrection(growContext, newComponentData, *growData))
   {
     return false;
   }
@@ -89,12 +86,12 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
 
   oldComponentData.mc_moves_statistics.addConstructed(move);
 
-  time_begin = std::chrono::steady_clock::now();
-  data.retraceData = CBMC::retraceMolecule(random, growContext, oldComponentData, data.oldMoleculeAtoms,
-                                           {.firstBead = CBMC::FirstBeadScheme::Pinned});
-  time_end = std::chrono::steady_clock::now();
-  oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  data.retraceData = MC_Moves::timed(system, oldComponentData, move, Move::Timing::NonEwald,
+                           [&]
+                           {
+                             return CBMC::retraceMolecule(random, growContext, oldComponentData, data.oldMoleculeAtoms,
+                                                          {.firstBead = CBMC::FirstBeadScheme::Pinned});
+                           });
 
   // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
   // cut-offs (the old molecule excludes itself from the background through its molecule id).
@@ -103,25 +100,26 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
     return false;
   }
 
-  time_begin = std::chrono::steady_clock::now();
-  data.energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, newMolecule, data.oldMoleculeAtoms, system.netCharge);
-  time_end = std::chrono::steady_clock::now();
-  oldComponentData.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  data.energyFourierDifference =
+      MC_Moves::timed(system, oldComponentData, move, Move::Timing::Ewald,
+            [&]
+            {
+              return Interactions::energyDifferenceEwaldFourier(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                  system.forceField, system.simulationBox, newMolecule, data.oldMoleculeAtoms, system.netCharge);
+            });
 
-  time_begin = std::chrono::steady_clock::now();
   data.tailEnergyDifference =
-      Interactions::computeInterMolecularTailEnergyDifferenceAddRemove(
-          system.forceField, system.simulationBox, system.totalNumberOfPseudoAtoms,
-          system.components[newComponent], system.components[oldComponent]) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                 system.spanOfFrameworkAtoms(), newMolecule,
-                                                                 data.oldMoleculeAtoms);
-  time_end = std::chrono::steady_clock::now();
-  oldComponentData.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
+      MC_Moves::timed(system, oldComponentData, move, Move::Timing::Tail,
+            [&]
+            {
+              return Interactions::computeInterMolecularTailEnergyDifferenceAddRemove(
+                         system.forceField, system.simulationBox, system.totalNumberOfPseudoAtoms,
+                         system.components[newComponent], system.components[oldComponent]) +
+                     Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
+                                                                                system.spanOfFrameworkAtoms(),
+                                                                                newMolecule, data.oldMoleculeAtoms);
+            });
 
   if (system.forceField.computePolarization)
   {

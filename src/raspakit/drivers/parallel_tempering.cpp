@@ -113,6 +113,8 @@ ParallelTempering::ParallelTempering(InputReader& reader)
 
     // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature
     system.buildConformationReservoirs();
+    // so is the recoil-growth openness reference (a no-op when recoil growth is off)
+    system.buildRecoilReferenceConformations();
 
     randoms.emplace_back(random.seed + replicaId + 1);
   }

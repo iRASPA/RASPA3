@@ -78,10 +78,6 @@ struct GrowRequest
   /// Indices (into the component's atoms) of the beads that keep their positions; required for
   /// 'AlreadyPlaced'. Must be a valid placed set of the component's fragment graph.
   std::span<const std::size_t> beadsAlreadyPlaced{};
-  /// Molecule id whose atoms in the context's background are ignored: the molecule being regrown,
-  /// which is still present in the background but must not interact with its own trial positions.
-  /// 'regrowMolecule' sets this to the molecule itself when left empty.
-  std::optional<std::size_t> skipBackgroundMolecule{};
 };
 
 /// What to retrace; mirrors 'GrowRequest'.
@@ -93,12 +89,15 @@ struct RetraceRequest
   double storedR{0.0};
   /// See 'GrowRequest::beadsAlreadyPlaced'; 'AlreadyPlaced' only.
   std::span<const std::size_t> beadsAlreadyPlaced{};
-  /// See 'GrowRequest::skipBackgroundMolecule'.
-  std::optional<std::size_t> skipBackgroundMolecule{};
 };
 
+// The background a molecule is grown or retraced against is the context's (see GrowContext): atoms
+// with the molecule's own id are never paired with it, and 'GrowContext::withSkippedMolecule'
+// excludes one more molecule (identity change). The dual cut-off correction uses the same context,
+// so the exclusion is applied consistently to grow, retrace, and correction.
+
 /// Grows a new molecule of 'component' from its reference geometry with the attributes of 'identity'.
-/// First-bead schemes: MultipleFirstBead, Pinned, Fixed.
+/// First-bead schemes: MultipleFirstBead, Pinned, Fixed; any other throws std::invalid_argument.
 [[nodiscard]] std::optional<GrowResult> growNewMolecule(RandomNumber &random, const GrowContext &context,
                                                         const Component &component,
                                                         const NewMoleculeIdentity &identity,
@@ -107,7 +106,7 @@ struct RetraceRequest
 /// Regrows an existing molecule: the identity, charge, and scaling attributes are those of
 /// 'moleculeAtoms' and the molecule record ('atomIndex', 'numberOfAtoms') is that of 'molecule'.
 /// First-bead schemes: Reinsertion (the whole molecule at a new position), AlreadyPlaced (part of
-/// the molecule, the placed beads keep their positions).
+/// the molecule, the placed beads keep their positions); any other throws std::invalid_argument.
 [[nodiscard]] std::optional<GrowResult> regrowMolecule(RandomNumber &random, const GrowContext &context,
                                                        const Component &component, const Molecule &molecule,
                                                        std::span<const Atom> moleculeAtoms,
@@ -126,15 +125,13 @@ struct RetraceRequest
 /// to the full cut-offs and the Rosenbluth weight is multiplied by exp(-beta dU), so the result
 /// behaves as if grown at the full cut-offs. Returns false when the molecule overlaps at the full
 /// cut-offs (the caller rejects the move). A no-op returning true when the scheme is off. The
-/// context supplies the background; 'skipBackgroundMolecule' as for the grow.
+/// context supplies the background and must be the one the molecule was grown with.
 [[nodiscard]] bool applyDualCutOffCorrection(const GrowContext &context, const Component &component,
-                                             GrowResult &result,
-                                             std::optional<std::size_t> skipBackgroundMolecule = std::nullopt);
+                                             GrowResult &result);
 
 /// The same for a retraced molecule, whose atoms are 'moleculeAtoms'.
 [[nodiscard]] bool applyDualCutOffCorrection(const GrowContext &context, const Component &component,
-                                             std::span<const Atom> moleculeAtoms, RetraceResult &result,
-                                             std::optional<std::size_t> skipBackgroundMolecule = std::nullopt);
+                                             std::span<const Atom> moleculeAtoms, RetraceResult &result);
 
 /// The log of the base-sampler normalization of a growth plan ('Component::growthPlan'). The Rosenbluth
 /// weights of a grow and a retrace are comparable only up to the ratio of their plans' normalizations:

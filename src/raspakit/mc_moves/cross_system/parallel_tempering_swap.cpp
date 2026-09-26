@@ -27,6 +27,7 @@ import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
 import mc_moves_move_types;
+import mc_moves_cputime;
 
 namespace
 {
@@ -286,15 +287,12 @@ std::optional<double> MC_Moves::ParallelTemperingLogAcceptance(const System& sys
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperingSwap(RandomNumber &random,
                                                                                        System &systemA, System &systemB)
 {
-  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::ParallelTempering;
 
   systemA.mc_moves_statistics.addTrial(move);
 
-  time_begin = std::chrono::steady_clock::now();
-  const std::optional<double> logAcceptance = ParallelTemperingLogAcceptance(systemA, systemB);
-  time_end = std::chrono::steady_clock::now();
-  systemA.mc_moves_cputime[move][Move::Timing::Fugacity] += (time_end - time_begin);
+  const std::optional<double> logAcceptance =
+      timed(systemA, move, Move::Timing::Fugacity, [&] { return ParallelTemperingLogAcceptance(systemA, systemB); });
 
   if (!logAcceptance.has_value())
   {

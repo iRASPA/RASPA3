@@ -24,9 +24,10 @@ export namespace CBMC
  * returned molecule has every bead placed. Returns std::nullopt when some step has no non-overlapping
  * trial direction or its factor falls below 'minimumRosenbluthFactor' (an ordinary rejection).
  */
-[[nodiscard]] std::optional<CBMC::GrowResult> growChainCBMC(
-    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
-    const std::vector<std::size_t> &beadsAlreadyPlaced, std::optional<std::size_t> skipBackgroundMolecule = std::nullopt);
+[[nodiscard]] std::optional<CBMC::GrowResult> growChainCBMC(RandomNumber &random, const GrowContext &context,
+                                                            const Component &component,
+                                                            std::span<const Atom> molecule_atoms,
+                                                            const std::vector<std::size_t> &beadsAlreadyPlaced);
 
 /**
  * \brief The CBMC Rosenbluth weight of an existing molecule beyond its placed beads.

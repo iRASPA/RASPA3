@@ -108,11 +108,20 @@ struct GrowthSettings
  * Build one with 'System::makeGrowContext' (or the constructor for an environment that is not a
  * system, e.g. the ideal-gas grows), and derive variants with the 'with...' members: a different
  * background ('withMoleculeAtoms', used by moves that grow against an edited copy of the molecule
- * atoms), different cut-offs ('withCutOffs', 'withFullCutOffs', 'withInnerCutOffs', used by the
- * dual cut-off correction), or different sampling parameters ('withSettings', 'withChainScheme';
- * Widom sampling and the ideal-gas reference grows must use configurational bias). Those are the
- * only fields a caller ever varies; every other field is fixed by the system, which is why there is
- * no aggregate initialization to keep in sync.
+ * atoms; 'withSkippedMolecule', used by moves whose trial molecule carries a different id than the
+ * molecule it replaces), different cut-offs ('withCutOffs', 'withFullCutOffs', 'withInnerCutOffs',
+ * used by the dual cut-off correction), or different sampling parameters ('withSettings',
+ * 'withChainScheme'; Widom sampling and the ideal-gas reference grows must use configurational
+ * bias). Those are the only fields a caller ever varies; every other field is fixed by the system,
+ * which is why there is no aggregate initialization to keep in sync.
+ *
+ * Background exclusion: the inter-molecular energy never pairs a trial atom with a background atom
+ * of the same molecule id, so a molecule regrown under its own id (reinsertion, partial
+ * reinsertion, reptation) is automatically excluded from its own background. Only when the trial
+ * atoms carry a NEW id while the old molecule is still in the background (identity change) must
+ * the old molecule be excluded explicitly, with 'withSkippedMolecule'. The exclusion is part of the
+ * environment, so every evaluation through the context (grow, retrace, dual cut-off correction)
+ * applies it consistently.
  */
 struct GrowContext
 {
@@ -145,6 +154,9 @@ struct GrowContext
   const std::optional<Framework> &framework;
   std::span<const Atom> frameworkAtoms;
   std::span<const Atom> moleculeAtoms;
+  /// Molecule id whose atoms in 'moleculeAtoms' are ignored by every energy evaluation (see the
+  /// class comment); std::nullopt skips nothing beyond the same-id rule.
+  std::optional<std::size_t> skipBackgroundMolecule{};
   double beta;
   double cutOffFrameworkVDW;
   double cutOffMoleculeVDW;
@@ -157,6 +169,15 @@ struct GrowContext
   {
     GrowContext copy(*this);
     copy.moleculeAtoms = background;
+    return copy;
+  }
+
+  /// The same environment with the atoms of background molecule 'moleculeId' ignored (identity
+  /// change: the trial molecule has a new id, the old molecule is still in the background).
+  [[nodiscard]] GrowContext withSkippedMolecule(std::size_t moleculeId) const
+  {
+    GrowContext copy(*this);
+    copy.skipBackgroundMolecule = moleculeId;
     return copy;
   }
 

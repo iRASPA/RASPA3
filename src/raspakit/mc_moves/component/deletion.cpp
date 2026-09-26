@@ -11,7 +11,6 @@ import component;
 import atom;
 import simulationbox;
 import cbmc;
-import cbmc_results;
 import randomnumbers;
 import system;
 import energy_status;
@@ -28,6 +27,7 @@ import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
+import mc_moves_cputime;
 import intra_molecular_potentials;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNumber& random, System& system,
@@ -111,17 +111,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
     // Compute tail correction energy difference
-    time_begin = std::chrono::steady_clock::now();
     [[maybe_unused]] RunningEnergy tailEnergyDifference =
-        Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                system.spanOfMoleculeAtoms(), {}, molecule) +
-        Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                   system.spanOfFrameworkAtoms(), {}, molecule);
-    time_end = std::chrono::steady_clock::now();
-
-    // Update CPU time statistics for tail corrections
-    component.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
-    system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
+        timed(system, component, move, Move::Timing::Tail,
+              [&]
+              {
+                return Interactions::computeInterMolecularTailEnergyDifference(
+                           system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), {}, molecule) +
+                       Interactions::computeFrameworkMoleculeTailEnergyDifference(
+                           system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), {}, molecule);
+              });
 
     RunningEnergy polarizationDifference;
     if (system.forceField.computePolarization)

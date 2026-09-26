@@ -18,11 +18,9 @@ import cbmc_external_energy;
 
 std::optional<CBMC::StepTrialEnergy> CBMC::evaluateStepTrial(const GrowContext &context, const Component &component,
                                                              const GrowStep &step, std::vector<Atom> &chainAtoms,
-                                                             std::span<const Atom> positions,
-                                                             std::optional<std::size_t> skipBackgroundMolecule)
+                                                             std::span<const Atom> positions)
 {
-  const std::optional<RunningEnergy> external =
-      computeExternalNonOverlappingEnergy(context, component, positions, skipBackgroundMolecule);
+  const std::optional<RunningEnergy> external = computeExternalNonOverlappingEnergy(context, component, positions);
   if (!external.has_value()) return std::nullopt;
 
   const ScratchBeads scratch(chainAtoms, step);

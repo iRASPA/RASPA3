@@ -41,8 +41,7 @@ struct StepTrialEnergy
  */
 [[nodiscard]] std::optional<StepTrialEnergy> evaluateStepTrial(const GrowContext &context, const Component &component,
                                                                const GrowStep &step, std::vector<Atom> &chainAtoms,
-                                                               std::span<const Atom> positions,
-                                                               std::optional<std::size_t> skipBackgroundMolecule);
+                                                               std::span<const Atom> positions);
 
 /**
  * \brief The log factor -beta u_unsampled of a step's classically not-sampled internal terms

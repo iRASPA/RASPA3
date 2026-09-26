@@ -11,9 +11,6 @@ import double3;
 import simd_quatd;
 import simulationbox;
 import cbmc;
-import cbmc_results;
-import cbmc_grow_context;
-import cbmc_external_energy;
 import randomnumbers;
 import system;
 import running_energy;
@@ -23,6 +20,7 @@ import interactions_intermolecular;
 import interactions_ewald;
 import interactions_polarization;
 import mc_moves_move_types;
+import mc_moves_cputime;
 
 std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, System &system,
                                                           std::size_t selectedComponent)
@@ -235,13 +233,14 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
   oldAtoms.insert(oldAtoms.end(), oldA.begin(), oldA.end());
   oldAtoms.insert(oldAtoms.end(), oldB.begin(), oldB.end());
 
-  time_begin = std::chrono::steady_clock::now();
-  RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, newAtoms, oldAtoms, system.netCharge);
-  time_end = std::chrono::steady_clock::now();
-  componentAData.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  RunningEnergy energyFourierDifference =
+      timed(system, componentAData, move, Move::Timing::Ewald,
+            [&]
+            {
+              return Interactions::energyDifferenceEwaldFourier(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                  system.forceField, system.simulationBox, newAtoms, oldAtoms, system.netCharge);
+            });
 
   // Tail corrections cancel exactly: the multiset of atom types in the box is unchanged
   // (one A and one B on both sides of the move), for both molecule-molecule and

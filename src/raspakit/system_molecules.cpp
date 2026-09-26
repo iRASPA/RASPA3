@@ -19,7 +19,6 @@ import forcefield;
 import simulationbox;
 import units;
 import cbmc;
-import cbmc_results;
 import cbmc_external_energy;
 import interpolation_energy_grid;
 
@@ -657,9 +656,7 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
 
     const CBMC::RetraceResult retraceData =
         CBMC::retraceMolecule(random, context, component, scratchAtoms,
-                              {.firstBead = CBMC::FirstBeadScheme::Reinsertion,
-                               .storedR = growData->firstBeadStoredR,
-                               .skipBackgroundMolecule = scratchAtoms[component.startingBead].moleculeId});
+                              {.firstBead = CBMC::FirstBeadScheme::Reinsertion, .storedR = growData->firstBeadStoredR});
 
     // Metropolis acceptance for the reinsertion move in the isolated system (no Ewald/polarization/tail
     // corrections apply): accept with min(1, W_new / W_old), with the ratio evaluated in log space so it

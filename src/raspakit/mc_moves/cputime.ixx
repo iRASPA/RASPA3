@@ -157,6 +157,63 @@ export struct MCMoveCpuTime
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MCMoveCpuTime& t);
 };
 
+export namespace MC_Moves
+{
+/**
+ * \brief Runs 'callable' and adds its wall-clock duration to the 'timing' entry of 'move' in the
+ * CPU-time tables of 'first' and 'second' (a system and a component, in either order); returns the
+ * callable's result. Replaces the begin/end/accumulate boilerplate around every timed stage of a move:
+ *
+ *   auto growData = timed(system, component, move, Move::Timing::NonEwald,
+ *                         [&] { return CBMC::growNewMolecule(random, context, component, identity); });
+ */
+template <typename First, typename Second, typename Callable>
+  requires requires(First& f, Second& s) {
+    { f.mc_moves_cputime } -> std::convertible_to<MCMoveCpuTime&>;
+    { s.mc_moves_cputime } -> std::convertible_to<MCMoveCpuTime&>;
+  }
+decltype(auto) timed(First& first, Second& second, Move::Types move, Move::Timing timing, Callable&& callable)
+{
+  const std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+  if constexpr (std::is_void_v<std::invoke_result_t<Callable&>>)
+  {
+    std::invoke(callable);
+    const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - begin;
+    first.mc_moves_cputime[move][timing] += elapsed;
+    second.mc_moves_cputime[move][timing] += elapsed;
+  }
+  else
+  {
+    decltype(auto) result = std::invoke(callable);
+    const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - begin;
+    first.mc_moves_cputime[move][timing] += elapsed;
+    second.mc_moves_cputime[move][timing] += elapsed;
+    return result;
+  }
+}
+
+/// The same for a stage charged to one table only (system-level moves).
+template <typename Owner, typename Callable>
+  requires requires(Owner& o) {
+    { o.mc_moves_cputime } -> std::convertible_to<MCMoveCpuTime&>;
+  }
+decltype(auto) timed(Owner& owner, Move::Types move, Move::Timing timing, Callable&& callable)
+{
+  const std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+  if constexpr (std::is_void_v<std::invoke_result_t<Callable&>>)
+  {
+    std::invoke(callable);
+    owner.mc_moves_cputime[move][timing] += std::chrono::steady_clock::now() - begin;
+  }
+  else
+  {
+    decltype(auto) result = std::invoke(callable);
+    owner.mc_moves_cputime[move][timing] += std::chrono::steady_clock::now() - begin;
+    return result;
+  }
+}
+}  // namespace MC_Moves
+
 export inline MCMoveCpuTime operator+(const MCMoveCpuTime& a, const MCMoveCpuTime& b)
 {
   MCMoveCpuTime m;

@@ -12,7 +12,6 @@ import double3x3;
 import simd_quatd;
 import simulationbox;
 import cbmc;
-import cbmc_results;
 import randomnumbers;
 import system;
 import energy_status;
@@ -29,6 +28,7 @@ import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
+import mc_moves_cputime;
 import intra_molecular_potentials;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomNumber& random, System& system,
@@ -132,16 +132,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
   // Compute tail energy difference and update CPU time statistics.
-  time_begin = std::chrono::steady_clock::now();
-  RunningEnergy tailEnergyDifference =
-      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                              system.spanOfMoleculeAtoms(), trialMolecule.second, {}) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(
-          system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), trialMolecule.second, {});
-  time_end = std::chrono::steady_clock::now();
-
-  component.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
+  RunningEnergy tailEnergyDifference = timed(
+      system, component, move, Move::Timing::Tail,
+      [&]
+      {
+        return Interactions::computeInterMolecularTailEnergyDifference(
+                   system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, {}) +
+               Interactions::computeFrameworkMoleculeTailEnergyDifference(
+                   system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), trialMolecule.second, {});
+      });
 
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)

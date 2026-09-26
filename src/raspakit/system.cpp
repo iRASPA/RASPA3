@@ -56,7 +56,6 @@ import mc_moves_cputime;
 import reaction;
 import reactions;
 import cbmc;
-import cbmc_results;
 import interactions_framework_molecule;
 import interactions_framework_molecule_grid;
 import interactions_intermolecular;

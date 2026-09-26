@@ -12,8 +12,6 @@ import double3x3;
 import simd_quatd;
 import simulationbox;
 import cbmc;
-import cbmc_results;
-import cbmc_external_energy;
 import randomnumbers;
 import system;
 import energy_status;
@@ -30,11 +28,11 @@ import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
+import mc_moves_cputime;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(RandomNumber& random, System& system,
                                                                              std::size_t selectedComponent)
 {
-  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::SwapCBMC;
   Component& component = system.components[selectedComponent];
 
@@ -48,14 +46,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   const CBMC::GrowContext growContext = system.makeGrowContext();
 
   // Attempt to grow a new molecule using CBMC
-  time_begin = std::chrono::steady_clock::now();
-  std::optional<CBMC::GrowResult> growData = CBMC::growNewMolecule(
-      random, growContext, component, {.componentId = selectedComponent, .moleculeId = selectedMolecule});
-  time_end = std::chrono::steady_clock::now();
-
-  // Update CPU time statistics for the non-Ewald part of the move
-  component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  std::optional<CBMC::GrowResult> growData =
+      timed(system, component, move, Move::Timing::NonEwald,
+            [&]
+            {
+              return CBMC::growNewMolecule(random, growContext, component,
+                                           {.componentId = selectedComponent, .moleculeId = selectedMolecule});
+            });
 
   // If growth failed, reject the move
   if (!growData) return {std::nullopt, double3(0.0, 1.0, 0.0)};
@@ -70,28 +67,25 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   system.components[selectedComponent].mc_moves_statistics.addConstructed(move, 0);
 
   // Compute energy difference due to Ewald Fourier components
-  time_begin = std::chrono::steady_clock::now();
-  RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, newMolecule, {}, system.netCharge);
-  time_end = std::chrono::steady_clock::now();
-
-  // Update CPU time statistics for the Ewald part of the move
-  component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  RunningEnergy energyFourierDifference =
+      timed(system, component, move, Move::Timing::Ewald,
+            [&]
+            {
+              return Interactions::energyDifferenceEwaldFourier(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                  system.forceField, system.simulationBox, newMolecule, {}, system.netCharge);
+            });
 
   // Compute tail energy difference due to long-range corrections
-  time_begin = std::chrono::steady_clock::now();
   RunningEnergy tailEnergyDifference =
-      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                              system.spanOfMoleculeAtoms(), newMolecule, {}) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                 system.spanOfFrameworkAtoms(), newMolecule, {});
-  time_end = std::chrono::steady_clock::now();
-
-  // Update CPU time statistics for the tail corrections
-  component.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
+      timed(system, component, move, Move::Timing::Tail,
+            [&]
+            {
+              return Interactions::computeInterMolecularTailEnergyDifference(
+                         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), newMolecule, {}) +
+                     Interactions::computeFrameworkMoleculeTailEnergyDifference(
+                         system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), newMolecule, {});
+            });
 
   std::vector<double3> electricFieldNeighborDelta;
   RunningEnergy polarizationDifference;

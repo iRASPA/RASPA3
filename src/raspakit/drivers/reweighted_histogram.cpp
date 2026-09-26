@@ -254,7 +254,10 @@ void ReweightedHistogram::initializeReplicas(System templateSystem)
 
       pinSystemPengRobinsonPressure(system, P);
 
+      // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature,
+      // and so is the recoil-growth openness reference (a no-op when recoil growth is off)
       system.buildConformationReservoirs();
+      system.buildRecoilReferenceConformations();
 
       randoms.emplace_back(random.seed + replicaId + 1);
     }

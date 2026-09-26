@@ -12,8 +12,6 @@ import double3x3;
 import simd_quatd;
 import simulationbox;
 import cbmc;
-import cbmc_results;
-import cbmc_external_energy;
 import randomnumbers;
 import system;
 import energy_status;
@@ -29,11 +27,11 @@ import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
+import mc_moves_cputime;
 
 std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, System &system,
                                                           std::size_t selectedComponent)
 {
-  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::IdentityChangeCBMC;
   Component &startComponent = system.components[selectedComponent];
 
@@ -84,20 +82,18 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   const std::size_t oldGlobalMoleculeId =
       system.moleculeIndexOfComponent(oldComponent, selectedMoleculeOld);
   const std::size_t trialMoleculeId = system.numberOfMolecules();
-  const std::optional<std::size_t> skipBackgroundMolecule = oldGlobalMoleculeId;
 
-  const CBMC::GrowContext growContext = system.makeGrowContext();
+  // The new molecule carries a fresh id while the old one is still in the background: exclude it.
+  const CBMC::GrowContext growContext = system.makeGrowContext().withSkippedMolecule(oldGlobalMoleculeId);
 
-  time_begin = std::chrono::steady_clock::now();
   std::optional<CBMC::GrowResult> growData =
-      CBMC::growNewMolecule(random, growContext, newComponentData,
-                            {.componentId = newComponent, .moleculeId = trialMoleculeId},
-                            {.firstBead = CBMC::FirstBeadScheme::Pinned,
-                             .firstBeadPosition = oldStartingBead.position,
-                             .skipBackgroundMolecule = skipBackgroundMolecule});
-  time_end = std::chrono::steady_clock::now();
-  oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+      timed(system, oldComponentData, move, Move::Timing::NonEwald,
+            [&]
+            {
+              return CBMC::growNewMolecule(
+                  random, growContext, newComponentData, {.componentId = newComponent, .moleculeId = trialMoleculeId},
+                  {.firstBead = CBMC::FirstBeadScheme::Pinned, .firstBeadPosition = oldStartingBead.position});
+            });
 
   if (!growData)
   {
@@ -106,7 +102,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
   // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
   // cut-offs, using the same background (the old molecule excluded) as the growth.
-  if (!CBMC::applyDualCutOffCorrection(growContext, newComponentData, *growData, skipBackgroundMolecule))
+  if (!CBMC::applyDualCutOffCorrection(growContext, newComponentData, *growData))
   {
     return std::nullopt;
   }
@@ -118,12 +114,13 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
   oldComponentData.mc_moves_statistics.addConstructed(move);
 
-  time_begin = std::chrono::steady_clock::now();
-  CBMC::RetraceResult retraceData = CBMC::retraceMolecule(random, growContext, oldComponentData, oldMoleculeAtoms,
-                                                          {.firstBead = CBMC::FirstBeadScheme::Pinned});
-  time_end = std::chrono::steady_clock::now();
-  oldComponentData.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  CBMC::RetraceResult retraceData =
+      timed(system, oldComponentData, move, Move::Timing::NonEwald,
+            [&]
+            {
+              return CBMC::retraceMolecule(random, growContext, oldComponentData, oldMoleculeAtoms,
+                                           {.firstBead = CBMC::FirstBeadScheme::Pinned});
+            });
 
   // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
   // cut-offs (the old molecule excludes itself from the background through its molecule id).
@@ -132,25 +129,26 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
     return std::nullopt;
   }
 
-  time_begin = std::chrono::steady_clock::now();
-  RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, newMolecule, oldMoleculeAtoms, system.netCharge);
-  time_end = std::chrono::steady_clock::now();
-  oldComponentData.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  RunningEnergy energyFourierDifference =
+      timed(system, oldComponentData, move, Move::Timing::Ewald,
+            [&]
+            {
+              return Interactions::energyDifferenceEwaldFourier(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                  system.forceField, system.simulationBox, newMolecule, oldMoleculeAtoms, system.netCharge);
+            });
 
-  time_begin = std::chrono::steady_clock::now();
   RunningEnergy tailEnergyDifference =
-      Interactions::computeInterMolecularTailEnergyDifferenceAddRemove(
-          system.forceField, system.simulationBox, system.totalNumberOfPseudoAtoms, newComponentData,
-          oldComponentData) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                 system.spanOfFrameworkAtoms(), newMolecule,
-                                                                 oldMoleculeAtoms);
-  time_end = std::chrono::steady_clock::now();
-  oldComponentData.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
+      timed(system, oldComponentData, move, Move::Timing::Tail,
+            [&]
+            {
+              return Interactions::computeInterMolecularTailEnergyDifferenceAddRemove(
+                         system.forceField, system.simulationBox, system.totalNumberOfPseudoAtoms, newComponentData,
+                         oldComponentData) +
+                     Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
+                                                                                system.spanOfFrameworkAtoms(),
+                                                                                newMolecule, oldMoleculeAtoms);
+            });
 
   std::vector<double3> electricFieldNeighborDelta;
   RunningEnergy polarizationDifference;

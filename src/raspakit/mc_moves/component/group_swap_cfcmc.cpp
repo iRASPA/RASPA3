@@ -10,8 +10,6 @@ import atom;
 import double3;
 import simulationbox;
 import cbmc;
-import cbmc_results;
-import cbmc_external_energy;
 import randomnumbers;
 import system;
 import property_lambda_probability_histogram;
@@ -24,6 +22,7 @@ import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
+import mc_moves_cputime;
 import scaling;
 
 // The group CFCMC move generalizes the ion-pair CFCMC move to K = 1 + #satellites molecules that
@@ -270,12 +269,13 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
 
-      time_begin = std::chrono::steady_clock::now();
-      std::optional<RunningEnergy> nonEwaldDifference = computeNonEwaldEnergyDifference(
-          system, fractionalMolecules[i], oldFractionalMolecules[i], system.spanOfMoleculeAtoms());
-      time_end = std::chrono::steady_clock::now();
-      central.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
-      system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
+      std::optional<RunningEnergy> nonEwaldDifference =
+          MC_Moves::timed(central, system, move, Move::Timing::InsertionNonEwald,
+                [&]
+                {
+                  return computeNonEwaldEnergyDifference(system, fractionalMolecules[i], oldFractionalMolecules[i],
+                                                         system.spanOfMoleculeAtoms());
+                });
       if (!nonEwaldDifference.has_value())
       {
         restoreFractionalGroup();
@@ -283,24 +283,24 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
       }
       energyDifference += nonEwaldDifference.value();
 
-      time_begin = std::chrono::steady_clock::now();
-      energyDifference += Interactions::energyDifferenceEwaldFourier(
-          system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-          firstEwaldCall ? system.storedEik : system.trialEik, system.trialEik, system.forceField,
-          system.simulationBox, fractionalMolecules[i], oldFractionalMolecules[i], runningNetCharge,
-          groupChargeSumOfOthers(i));
-      time_end = std::chrono::steady_clock::now();
-      central.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
-      system.mc_moves_cputime[move][Move::Timing::InsertionEwald] += (time_end - time_begin);
+      MC_Moves::timed(central, system, move, Move::Timing::InsertionEwald,
+            [&]
+            {
+              energyDifference += Interactions::energyDifferenceEwaldFourier(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                  firstEwaldCall ? system.storedEik : system.trialEik, system.trialEik, system.forceField,
+                  system.simulationBox, fractionalMolecules[i], oldFractionalMolecules[i], runningNetCharge,
+                  groupChargeSumOfOthers(i));
+            });
       firstEwaldCall = false;
       runningNetCharge += scaledChargeDifference(fractionalMolecules[i], oldFractionalMolecules[i]);
 
-      time_begin = std::chrono::steady_clock::now();
-      energyDifference += computeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts,
-                                                      fractionalMolecules[i], oldFractionalMolecules[i]);
-      time_end = std::chrono::steady_clock::now();
-      central.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
-      system.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
+      MC_Moves::timed(central, system, move, Move::Timing::InsertionTail,
+            [&]
+            {
+              energyDifference += computeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts,
+                                                              fractionalMolecules[i], oldFractionalMolecules[i]);
+            });
     }
 
     // (2) create the new fractional group with lambda_new
@@ -399,12 +399,9 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
           return {std::nullopt, double3(0.0, 1.0, 0.0)};
         }
 
-        time_begin = std::chrono::steady_clock::now();
         std::optional<RunningEnergy> nonEwaldDifference =
-            computeNonEwaldEnergyDifference(system, trialMolecule.second, {}, accumulatedBackground);
-        time_end = std::chrono::steady_clock::now();
-        central.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
-        system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
+            MC_Moves::timed(central, system, move, Move::Timing::InsertionNonEwald, [&]
+                  { return computeNonEwaldEnergyDifference(system, trialMolecule.second, {}, accumulatedBackground); });
         if (!nonEwaldDifference.has_value())
         {
           restoreFractionalGroup();
@@ -841,12 +838,13 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
 
       if (!useCBMC)
       {
-        time_begin = std::chrono::steady_clock::now();
-        std::optional<RunningEnergy> nonEwaldDifference = computeNonEwaldEnergyDifference(
-            system, fractionalMolecules[i], oldFractionalMolecules[i], system.spanOfMoleculeAtoms());
-        time_end = std::chrono::steady_clock::now();
-        central.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
-        system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
+        std::optional<RunningEnergy> nonEwaldDifference =
+            MC_Moves::timed(central, system, move, Move::Timing::DeletionNonEwald,
+                  [&]
+                  {
+                    return computeNonEwaldEnergyDifference(system, fractionalMolecules[i], oldFractionalMolecules[i],
+                                                           system.spanOfMoleculeAtoms());
+                  });
         if (!nonEwaldDifference.has_value())
         {
           restoreMolecules();
@@ -871,12 +869,13 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
 
-      time_begin = std::chrono::steady_clock::now();
-      std::optional<RunningEnergy> nonEwaldDifference = computeNonEwaldEnergyDifference(
-          system, newFractionalMolecules[i], oldNewFractionalMolecules[i], system.spanOfMoleculeAtoms());
-      time_end = std::chrono::steady_clock::now();
-      central.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
-      system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
+      std::optional<RunningEnergy> nonEwaldDifference =
+          MC_Moves::timed(central, system, move, Move::Timing::DeletionNonEwald,
+                [&]
+                {
+                  return computeNonEwaldEnergyDifference(system, newFractionalMolecules[i],
+                                                         oldNewFractionalMolecules[i], system.spanOfMoleculeAtoms());
+                });
       if (!nonEwaldDifference.has_value())
       {
         restoreMolecules();
@@ -887,22 +886,22 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
       std::vector<std::span<const Atom>> earlierMembers;
       for (std::size_t j = 0; j < i; ++j) earlierMembers.push_back(newFractionalMolecules[j]);
 
-      time_begin = std::chrono::steady_clock::now();
-      energyDifference += Interactions::energyDifferenceEwaldFourier(
-          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
-          system.simulationBox, newFractionalMolecules[i], oldNewFractionalMolecules[i], runningNetCharge,
-          groupChargeSumOfSpans(earlierMembers));
-      time_end = std::chrono::steady_clock::now();
-      central.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
-      system.mc_moves_cputime[move][Move::Timing::DeletionEwald] += (time_end - time_begin);
+      MC_Moves::timed(central, system, move, Move::Timing::DeletionEwald,
+            [&]
+            {
+              energyDifference += Interactions::energyDifferenceEwaldFourier(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
+                  system.forceField, system.simulationBox, newFractionalMolecules[i], oldNewFractionalMolecules[i],
+                  runningNetCharge, groupChargeSumOfSpans(earlierMembers));
+            });
       runningNetCharge += scaledChargeDifference(newFractionalMolecules[i], oldNewFractionalMolecules[i]);
 
-      time_begin = std::chrono::steady_clock::now();
-      energyDifference += computeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts,
-                                                      newFractionalMolecules[i], oldNewFractionalMolecules[i]);
-      time_end = std::chrono::steady_clock::now();
-      central.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
-      system.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
+      MC_Moves::timed(central, system, move, Move::Timing::DeletionTail,
+            [&]
+            {
+              energyDifference += computeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts,
+                                                              newFractionalMolecules[i], oldNewFractionalMolecules[i]);
+            });
     }
 
     central.mc_moves_statistics.addConstructed(move, 1);
@@ -1075,12 +1074,13 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
 
-      time_begin = std::chrono::steady_clock::now();
-      std::optional<RunningEnergy> nonEwaldDifference = computeNonEwaldEnergyDifference(
-          system, fractionalMolecules[i], oldFractionalMolecules[i], system.spanOfMoleculeAtoms());
-      time_end = std::chrono::steady_clock::now();
-      central.mc_moves_cputime[move][Move::Timing::LambdaNonEwald] += (time_end - time_begin);
-      system.mc_moves_cputime[move][Move::Timing::LambdaNonEwald] += (time_end - time_begin);
+      std::optional<RunningEnergy> nonEwaldDifference =
+          MC_Moves::timed(central, system, move, Move::Timing::LambdaNonEwald,
+                [&]
+                {
+                  return computeNonEwaldEnergyDifference(system, fractionalMolecules[i], oldFractionalMolecules[i],
+                                                         system.spanOfMoleculeAtoms());
+                });
       if (!nonEwaldDifference.has_value())
       {
         restoreFractionalGroup();
@@ -1088,24 +1088,24 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
       }
       energyDifference += nonEwaldDifference.value();
 
-      time_begin = std::chrono::steady_clock::now();
-      energyDifference += Interactions::energyDifferenceEwaldFourier(
-          system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-          firstEwaldCall ? system.storedEik : system.trialEik, system.trialEik, system.forceField,
-          system.simulationBox, fractionalMolecules[i], oldFractionalMolecules[i], runningNetCharge,
-          groupChargeSumOfOthers(i));
-      time_end = std::chrono::steady_clock::now();
-      central.mc_moves_cputime[move][Move::Timing::LambdaEwald] += (time_end - time_begin);
-      system.mc_moves_cputime[move][Move::Timing::LambdaEwald] += (time_end - time_begin);
+      MC_Moves::timed(central, system, move, Move::Timing::LambdaEwald,
+            [&]
+            {
+              energyDifference += Interactions::energyDifferenceEwaldFourier(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                  firstEwaldCall ? system.storedEik : system.trialEik, system.trialEik, system.forceField,
+                  system.simulationBox, fractionalMolecules[i], oldFractionalMolecules[i], runningNetCharge,
+                  groupChargeSumOfOthers(i));
+            });
       firstEwaldCall = false;
       runningNetCharge += scaledChargeDifference(fractionalMolecules[i], oldFractionalMolecules[i]);
 
-      time_begin = std::chrono::steady_clock::now();
-      energyDifference += computeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts,
-                                                      fractionalMolecules[i], oldFractionalMolecules[i]);
-      time_end = std::chrono::steady_clock::now();
-      central.mc_moves_cputime[move][Move::Timing::LambdaTail] += (time_end - time_begin);
-      system.mc_moves_cputime[move][Move::Timing::LambdaTail] += (time_end - time_begin);
+      MC_Moves::timed(central, system, move, Move::Timing::LambdaTail,
+            [&]
+            {
+              energyDifference += computeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts,
+                                                              fractionalMolecules[i], oldFractionalMolecules[i]);
+            });
     }
 
     central.mc_moves_statistics.addConstructed(move, 2);

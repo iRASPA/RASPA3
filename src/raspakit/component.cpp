@@ -1111,6 +1111,20 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
 
   std::print(stream, "    Number Of Atoms:              {}\n", atoms.size());
   std::print(stream, "    CBMC starting bead:           {}\n", startingBead);
+  if (forceField.useRecoilGrowth && atoms.size() >= 2 && !rigid)
+  {
+    // Which openness reference the recoil-growth open/closed test measures against (see
+    // 'recoilReferenceStepEnergies'); the fallback is valid but loses the strain compensation.
+    if (recoilReferenceConformations.empty())
+    {
+      std::print(stream, "    Recoil-growth reference:      declared geometry (no ideal-gas reference conformations)\n");
+    }
+    else
+    {
+      std::print(stream, "    Recoil-growth reference:      {} ideal-gas conformations\n",
+                 recoilReferenceConformations.size());
+    }
+  }
   if (idealGasRosenbluthWeight.has_value())
   {
     std::print(stream, "    Ideal gas Rosenbluth weight:  {:10.8f}\n", idealGasRosenbluthWeight.value());

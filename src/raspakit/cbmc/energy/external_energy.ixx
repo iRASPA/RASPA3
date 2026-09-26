@@ -32,15 +32,13 @@ export namespace CBMC
 bool insideBlockedPockets(const std::optional<Framework> &framework, const Component &component,
                           std::span<const Atom> molecule_atoms);
 
-// 'skipBackgroundMolecule', where present, is the molecule id whose atoms in the context's background
-// are ignored: the molecule being regrown (reinsertion, identity change), which is still present in
-// the background but must not interact with its own trial positions. std::nullopt skips nothing.
+// The background a trial set is evaluated against is the context's: its molecule atoms minus those
+// with the trial atoms' own molecule id and minus 'context.skipBackgroundMolecule' (see GrowContext).
 
 /// External energies of single first-bead trial positions; positions in a blocked pocket or with an
 /// overlap are dropped from the result.
 [[nodiscard]] std::vector<FirstBeadTrial> computeExternalNonOverlappingEnergies(
-    const GrowContext &context, const Component &component, std::span<const Atom> trialPositions,
-    std::optional<std::size_t> skipBackgroundMolecule = std::nullopt) noexcept;
+    const GrowContext &context, const Component &component, std::span<const Atom> trialPositions) noexcept;
 
 /// External (external-field, framework-molecule, inter-molecular) energy of one trial set of bead
 /// positions at the context's cut-offs; std::nullopt when the set lies in a blocked pocket or
@@ -48,8 +46,7 @@ bool insideBlockedPockets(const std::optional<Framework> &framework, const Compo
 /// dual cut-off correction, and both chain schemes (one trial set at a time, no intermediate
 /// containers).
 [[nodiscard]] std::optional<RunningEnergy> computeExternalNonOverlappingEnergy(
-    const GrowContext &context, const Component &component, std::span<const Atom> trialPositionSet,
-    std::optional<std::size_t> skipBackgroundMolecule = std::nullopt) noexcept;
+    const GrowContext &context, const Component &component, std::span<const Atom> trialPositionSet) noexcept;
 
 /// Dual cut-off correction of a grown or retraced configuration: the external (external-field,
 /// framework-molecule, and inter-molecular) energy of 'trialPositionSet' evaluated at the full
@@ -60,6 +57,5 @@ bool insideBlockedPockets(const std::optional<Framework> &framework, const Compo
 /// grown at the full cut-offs. Returns std::nullopt when the configuration overlaps at the full
 /// cut-offs.
 [[nodiscard]] std::optional<RunningEnergy> computeDualCutOffCorrection(
-    const GrowContext &context, const Component &component, std::span<const Atom> trialPositionSet,
-    std::optional<std::size_t> skipBackgroundMolecule = std::nullopt) noexcept;
+    const GrowContext &context, const Component &component, std::span<const Atom> trialPositionSet) noexcept;
 }  // namespace CBMC

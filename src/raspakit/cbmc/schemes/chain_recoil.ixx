@@ -41,9 +41,10 @@ export namespace CBMC
 //    removes the molecule's own intrinsic strain from that variance but not the external one.
 //
 // Same signature as CBMC::growChainCBMC; the 'cbmc' module dispatches on the context's chain scheme.
-[[nodiscard]] std::optional<CBMC::GrowResult> growChainRecoil(
-    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
-    const std::vector<std::size_t> &beadsAlreadyPlaced, std::optional<std::size_t> skipBackgroundMolecule = std::nullopt);
+[[nodiscard]] std::optional<CBMC::GrowResult> growChainRecoil(RandomNumber &random, const GrowContext &context,
+                                                              const Component &component,
+                                                              std::span<const Atom> molecule_atoms,
+                                                              const std::vector<std::size_t> &beadsAlreadyPlaced);
 
 // Recoil growth (RG) retrace of the existing flexible molecule chain.
 //

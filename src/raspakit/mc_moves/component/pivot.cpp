@@ -19,11 +19,11 @@ import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
 import mc_moves_move_types;
+import mc_moves_cputime;
 
 std::optional<RunningEnergy> MC_Moves::pivotMove(RandomNumber &random, System &system, std::size_t selectedComponent,
                                                  std::size_t selectedMolecule)
 {
-  std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::Pivot;
   Component &component = system.components[selectedComponent];
 
@@ -77,42 +77,46 @@ std::optional<RunningEnergy> MC_Moves::pivotMove(RandomNumber &random, System &s
   }
 
   // Compute external field energy contribution
-  time_begin = std::chrono::steady_clock::now();
-  std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
-      system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
-      trialAtoms, molecule_atoms);
-  time_end = std::chrono::steady_clock::now();
-  component.mc_moves_cputime[move][Move::Timing::ExternalFieldMolecule] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::ExternalFieldMolecule] += (time_end - time_begin);
+  std::optional<RunningEnergy> externalFieldMolecule =
+      timed(system, component, move, Move::Timing::ExternalFieldMolecule,
+            [&]
+            {
+              return Interactions::computeExternalFieldEnergyDifference(
+                  system.hasExternalField, system.forceField, system.simulationBox,
+                  system.externalFieldInterpolationGrid, trialAtoms, molecule_atoms);
+            });
   if (!externalFieldMolecule.has_value()) return std::nullopt;
 
   // Compute framework-molecule energy contribution
-  time_begin = std::chrono::steady_clock::now();
-  std::optional<RunningEnergy> frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
-      system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-      system.spanOfFrameworkAtoms(), trialAtoms, molecule_atoms);
-  time_end = std::chrono::steady_clock::now();
-  component.mc_moves_cputime[move][Move::Timing::FrameworkMolecule] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::FrameworkMolecule] += (time_end - time_begin);
+  std::optional<RunningEnergy> frameworkMolecule =
+      timed(system, component, move, Move::Timing::FrameworkMolecule,
+            [&]
+            {
+              return Interactions::computeFrameworkMoleculeEnergyDifference(
+                  system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+                  system.spanOfFrameworkAtoms(), trialAtoms, molecule_atoms);
+            });
   if (!frameworkMolecule.has_value()) return std::nullopt;
 
   // Compute molecule-molecule energy contribution
-  time_begin = std::chrono::steady_clock::now();
-  std::optional<RunningEnergy> interMolecule = Interactions::computeInterMolecularEnergyDifference(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialAtoms, molecule_atoms);
-  time_end = std::chrono::steady_clock::now();
-  component.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
+  std::optional<RunningEnergy> interMolecule =
+      timed(system, component, move, Move::Timing::MoleculeMolecule,
+            [&]
+            {
+              return Interactions::computeInterMolecularEnergyDifference(
+                  system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialAtoms, molecule_atoms);
+            });
   if (!interMolecule.has_value()) return std::nullopt;
 
   // Compute Ewald energy contribution
-  time_begin = std::chrono::steady_clock::now();
-  RunningEnergy ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, trialAtoms, molecule_atoms);
-  time_end = std::chrono::steady_clock::now();
-  component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  RunningEnergy ewaldFourierEnergy =
+      timed(system, component, move, Move::Timing::Ewald,
+            [&]
+            {
+              return Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                                                system.storedEik, system.trialEik, system.forceField,
+                                                                system.simulationBox, trialAtoms, molecule_atoms);
+            });
 
   // Intramolecular energy contribution: bond lengths and bend angles are invariant under the pivot
   // rotation, but the torsions through the pivot bond and the intramolecular non-bonded energy

@@ -36,14 +36,11 @@ using namespace CBMC;
 
 std::optional<GrowResult> growChain(RandomNumber &random, const GrowContext &context, const Component &component,
                                     std::span<const Atom> moleculeAtoms,
-                                    const std::vector<std::size_t> &beadsAlreadyPlaced,
-                                    std::optional<std::size_t> skipBackgroundMolecule)
+                                    const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
   return context.settings.chainScheme == ChainScheme::RecoilGrowth
-             ? growChainRecoil(random, context, component, moleculeAtoms, beadsAlreadyPlaced,
-                                                      skipBackgroundMolecule)
-             : growChainCBMC(random, context, component, moleculeAtoms, beadsAlreadyPlaced,
-                                                  skipBackgroundMolecule);
+             ? growChainRecoil(random, context, component, moleculeAtoms, beadsAlreadyPlaced)
+             : growChainCBMC(random, context, component, moleculeAtoms, beadsAlreadyPlaced);
 }
 
 RetraceResult retraceChain(RandomNumber &random, const GrowContext &context, const Component &component,
@@ -77,19 +74,18 @@ double3 requiredPosition(const std::optional<double3> &position, const char *ent
 /// First-bead stage of a grow; 'firstBead' carries the identity and scaling attributes of the molecule
 /// and, for the pinned and fixed schemes, the position.
 std::optional<FirstBeadData> growFirstBead(RandomNumber &random, const GrowContext &context, const Component &component,
-                                           const Atom &firstBead, FirstBeadScheme scheme,
-                                           std::optional<std::size_t> skipBackgroundMolecule)
+                                           const Atom &firstBead, FirstBeadScheme scheme)
 {
   switch (scheme)
   {
     case FirstBeadScheme::MultipleFirstBead:
       return growMultipleFirstBead(random, context, component, firstBead);
     case FirstBeadScheme::Reinsertion:
-      return growMultipleFirstBeadReinsertion(random, context, component, firstBead, skipBackgroundMolecule);
+      return growMultipleFirstBeadReinsertion(random, context, component, firstBead);
     case FirstBeadScheme::Pinned:
-      return growPinnedFirstBead(context, component, firstBead, skipBackgroundMolecule);
+      return growPinnedFirstBead(context, component, firstBead);
     case FirstBeadScheme::Fixed:
-      return growFixedFirstBead(context, component, firstBead, skipBackgroundMolecule);
+      return growFixedFirstBead(context, component, firstBead);
     case FirstBeadScheme::AlreadyPlaced:
       break;
   }
@@ -104,16 +100,43 @@ FirstBeadData retraceFirstBead(RandomNumber &random, const GrowContext &context,
     case FirstBeadScheme::MultipleFirstBead:
       return retraceMultipleFirstBead(random, context, component, firstBead);
     case FirstBeadScheme::Reinsertion:
-      return retraceMultipleFirstBeadReinsertion(context, component, firstBead, request.storedR,
-                                                 request.skipBackgroundMolecule);
+      return retraceMultipleFirstBeadReinsertion(context, component, firstBead, request.storedR);
     case FirstBeadScheme::Pinned:
-      return retracePinnedFirstBead(context, component, firstBead, request.skipBackgroundMolecule);
+      return retracePinnedFirstBead(context, component, firstBead);
     case FirstBeadScheme::Fixed:
-      return retraceFixedFirstBead(context, component, firstBead, request.skipBackgroundMolecule);
+      return retraceFixedFirstBead(context, component, firstBead);
     case FirstBeadScheme::AlreadyPlaced:
       break;
   }
   throw std::invalid_argument("CBMC: no first-bead stage for FirstBeadScheme::AlreadyPlaced");
+}
+
+/// The name of a scheme for the error messages of the entry points.
+const char *schemeName(FirstBeadScheme scheme)
+{
+  switch (scheme)
+  {
+    case FirstBeadScheme::MultipleFirstBead:
+      return "MultipleFirstBead";
+    case FirstBeadScheme::Reinsertion:
+      return "Reinsertion";
+    case FirstBeadScheme::Pinned:
+      return "Pinned";
+    case FirstBeadScheme::Fixed:
+      return "Fixed";
+    case FirstBeadScheme::AlreadyPlaced:
+      return "AlreadyPlaced";
+  }
+  return "?";
+}
+
+/// Rejects a first-bead scheme an entry point does not support.
+void requireScheme(FirstBeadScheme scheme, std::initializer_list<FirstBeadScheme> allowed, const char *entryPoint,
+                   const char *allowedText)
+{
+  if (std::find(allowed.begin(), allowed.end(), scheme) != allowed.end()) return;
+  throw std::invalid_argument(std::format("CBMC::{}: FirstBeadScheme::{} is not supported here (allowed: {})",
+                                          entryPoint, schemeName(scheme), allowedText));
 }
 
 /// Combined result of the first-bead stage and the chain stage: energies add, Rosenbluth weights
@@ -132,8 +155,7 @@ GrowResult combine(const FirstBeadData &firstBeadData, GrowResult chainResult)
 /// the starting bead sits at the sampled first-bead position.
 std::optional<GrowResult> growAfterFirstBead(RandomNumber &random, const GrowContext &context,
                                              const Component &component, std::span<const Atom> templateAtoms,
-                                             const FirstBeadData &firstBeadData,
-                                             std::optional<std::size_t> skipBackgroundMolecule)
+                                             const FirstBeadData &firstBeadData)
 {
   if (component.atoms.size() == 1)
   {
@@ -150,8 +172,7 @@ std::optional<GrowResult> growAfterFirstBead(RandomNumber &random, const GrowCon
     atoms[i].position = component.atoms[i].position + shift;
   }
 
-  std::optional<GrowResult> chainResult =
-      growChain(random, context, component, atoms, {component.startingBead}, skipBackgroundMolecule);
+  std::optional<GrowResult> chainResult = growChain(random, context, component, atoms, {component.startingBead});
   if (!chainResult) return std::nullopt;
 
   return combine(firstBeadData, std::move(*chainResult));
@@ -176,11 +197,9 @@ std::optional<CBMC::GrowResult> CBMC::growNewMolecule(RandomNumber &random, cons
                                                       const Component &component,
                                                       const NewMoleculeIdentity &identity, const GrowRequest &request)
 {
-  if (request.firstBead == FirstBeadScheme::AlreadyPlaced)
-  {
-    throw std::invalid_argument(
-        "CBMC::growNewMolecule: a new molecule has no placed beads; use regrowMolecule for AlreadyPlaced");
-  }
+  // A new molecule has no placed beads (AlreadyPlaced) and no old copy to reinsert (Reinsertion).
+  requireScheme(request.firstBead, {FirstBeadScheme::MultipleFirstBead, FirstBeadScheme::Pinned, FirstBeadScheme::Fixed},
+                "growNewMolecule", "MultipleFirstBead, Pinned, Fixed");
 
   // The reference atoms stamped with the identity of the new molecule.
   std::vector<Atom> templateAtoms = component.atoms;
@@ -199,42 +218,34 @@ std::optional<CBMC::GrowResult> CBMC::growNewMolecule(RandomNumber &random, cons
   }
 
   const std::optional<FirstBeadData> firstBeadData =
-      growFirstBead(random, context, component, firstBead, request.firstBead, request.skipBackgroundMolecule);
+      growFirstBead(random, context, component, firstBead, request.firstBead);
   if (!firstBeadData) return std::nullopt;
 
-  return growAfterFirstBead(random, context, component, templateAtoms, *firstBeadData,
-                            request.skipBackgroundMolecule);
+  return growAfterFirstBead(random, context, component, templateAtoms, *firstBeadData);
 }
 
 std::optional<CBMC::GrowResult> CBMC::regrowMolecule(RandomNumber &random, const GrowContext &context,
                                                      const Component &component, const Molecule &molecule,
                                                      std::span<const Atom> moleculeAtoms, const GrowRequest &request)
 {
-  // The molecule is regrown against a background that still contains its old copy: skip it.
-  const std::optional<std::size_t> skipBackgroundMolecule =
-      request.skipBackgroundMolecule.has_value()
-          ? request.skipBackgroundMolecule
-          : std::optional<std::size_t>{moleculeAtoms[component.startingBead].moleculeId};
+  // The old copy of the molecule is still in the background; it is excluded through its molecule id,
+  // which the regrown atoms share (see GrowContext).
+  requireScheme(request.firstBead, {FirstBeadScheme::Reinsertion, FirstBeadScheme::AlreadyPlaced}, "regrowMolecule",
+                "Reinsertion, AlreadyPlaced");
 
   std::optional<GrowResult> result;
   if (request.firstBead == FirstBeadScheme::AlreadyPlaced)
   {
     result = growChain(random, context, component, moleculeAtoms,
-                       placedSetOf(request.beadsAlreadyPlaced, "regrowMolecule"), skipBackgroundMolecule);
+                       placedSetOf(request.beadsAlreadyPlaced, "regrowMolecule"));
   }
   else
   {
-    Atom firstBead = moleculeAtoms[component.startingBead];
-    if (request.firstBead == FirstBeadScheme::Pinned || request.firstBead == FirstBeadScheme::Fixed)
-    {
-      firstBead.position = requiredPosition(request.firstBeadPosition, "regrowMolecule");
-    }
-
     const std::optional<FirstBeadData> firstBeadData =
-        growFirstBead(random, context, component, firstBead, request.firstBead, skipBackgroundMolecule);
+        growFirstBead(random, context, component, moleculeAtoms[component.startingBead], request.firstBead);
     if (!firstBeadData) return std::nullopt;
 
-    result = growAfterFirstBead(random, context, component, moleculeAtoms, *firstBeadData, skipBackgroundMolecule);
+    result = growAfterFirstBead(random, context, component, moleculeAtoms, *firstBeadData);
   }
   if (!result) return std::nullopt;
 
@@ -259,33 +270,34 @@ CBMC::RetraceResult CBMC::retraceMolecule(RandomNumber &random, const GrowContex
   return retraceAfterFirstBead(random, context, component, moleculeAtoms, firstBeadData);
 }
 
-bool CBMC::applyDualCutOffCorrection(const GrowContext &context, const Component &component, GrowResult &result,
-                                     std::optional<std::size_t> skipBackgroundMolecule)
+namespace
+{
+/// The dual cut-off correction folded into a result's energies and log weight (grow and retrace
+/// results carry both under the same names).
+template <typename Result>
+bool applyCorrection(const CBMC::GrowContext &context, const Component &component, std::span<const Atom> atoms,
+                     Result &result)
 {
   if (!context.forceField.useDualCutOff) return true;
 
-  const std::optional<RunningEnergy> correction =
-      computeDualCutOffCorrection(context, component, result.atoms, skipBackgroundMolecule);
+  const std::optional<RunningEnergy> correction = CBMC::computeDualCutOffCorrection(context, component, atoms);
   if (!correction.has_value()) return false;
 
   result.energies += correction.value();
   result.multiplyRosenbluthWeight(-context.beta * correction->potentialEnergy());
   return true;
 }
+}  // namespace
+
+bool CBMC::applyDualCutOffCorrection(const GrowContext &context, const Component &component, GrowResult &result)
+{
+  return applyCorrection(context, component, result.atoms, result);
+}
 
 bool CBMC::applyDualCutOffCorrection(const GrowContext &context, const Component &component,
-                                     std::span<const Atom> moleculeAtoms, RetraceResult &result,
-                                     std::optional<std::size_t> skipBackgroundMolecule)
+                                     std::span<const Atom> moleculeAtoms, RetraceResult &result)
 {
-  if (!context.forceField.useDualCutOff) return true;
-
-  const std::optional<RunningEnergy> correction =
-      computeDualCutOffCorrection(context, component, moleculeAtoms, skipBackgroundMolecule);
-  if (!correction.has_value()) return false;
-
-  result.energies += correction.value();
-  result.multiplyRosenbluthWeight(-context.beta * correction->potentialEnergy());
-  return true;
+  return applyCorrection(context, component, moleculeAtoms, result);
 }
 
 double CBMC::logBaseSamplerNormalization(double beta, const Component &component, const std::vector<GrowStep> &plan)

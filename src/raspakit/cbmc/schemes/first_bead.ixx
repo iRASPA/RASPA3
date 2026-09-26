@@ -27,29 +27,27 @@ export namespace CBMC
 
 /// Multiple-first-bead reinsertion (Esselink et al.): as above against a background without the
 /// molecule itself, retaining the partial weight 'storedR' that the retrace needs.
-[[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadReinsertion(
-    RandomNumber &random, const GrowContext &context, const Component &component, const Atom &atom,
-    std::optional<std::size_t> skipBackgroundMolecule) noexcept;
+[[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadReinsertion(RandomNumber &random,
+                                                                            const GrowContext &context,
+                                                                            const Component &component,
+                                                                            const Atom &atom) noexcept;
 
 [[nodiscard]] FirstBeadData retraceMultipleFirstBeadReinsertion(const GrowContext &context, const Component &component,
-                                                                const Atom &atom, double storedR,
-                                                                std::optional<std::size_t> skipBackgroundMolecule);
+                                                                const Atom &atom, double storedR);
 
 /// Pinned first bead: a single trial at the given position, its Boltzmann factor as weight (identity
 /// change: the new molecule takes the position of the old one).
 [[nodiscard]] std::optional<FirstBeadData> growPinnedFirstBead(const GrowContext &context, const Component &component,
-                                                               const Atom &atom,
-                                                               std::optional<std::size_t> skipBackgroundMolecule) noexcept;
+                                                               const Atom &atom) noexcept;
 
 [[nodiscard]] FirstBeadData retracePinnedFirstBead(const GrowContext &context, const Component &component,
-                                                   const Atom &atom, std::optional<std::size_t> skipBackgroundMolecule);
+                                                   const Atom &atom);
 
 /// Fixed first bead: a single trial at the given position with weight one (the caller sampled the
 /// position and accounts for its bias, e.g. the distance-biased pair insertion).
 [[nodiscard]] std::optional<FirstBeadData> growFixedFirstBead(const GrowContext &context, const Component &component,
-                                                              const Atom &atom,
-                                                              std::optional<std::size_t> skipBackgroundMolecule) noexcept;
+                                                              const Atom &atom) noexcept;
 
 [[nodiscard]] FirstBeadData retraceFixedFirstBead(const GrowContext &context, const Component &component,
-                                                  const Atom &atom, std::optional<std::size_t> skipBackgroundMolecule);
+                                                  const Atom &atom);
 }  // namespace CBMC

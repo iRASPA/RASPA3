@@ -11,8 +11,6 @@ import double3x3;
 import simd_quatd;
 import simulationbox;
 import cbmc;
-import cbmc_results;
-import cbmc_external_energy;
 import randomnumbers;
 import system;
 import energy_status;
@@ -28,6 +26,7 @@ import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
+import mc_moves_cputime;
 
 double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t selectedComponent)
 {
@@ -36,7 +35,6 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
 
   Move::Types move = Move::Types::Widom;
   Component& component = system.components[selectedComponent];
-  std::chrono::steady_clock::time_point t1, t2;
 
   // Update move statistics for Widom insertion move.
   component.mc_moves_statistics.addTrial(move);
@@ -49,13 +47,13 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
       system.makeGrowContext().withChainScheme(CBMC::ChainScheme::ConfigurationalBias);
 
   // Attempt to grow a new molecule using Configurational Bias Monte Carlo (CBMC) insertion.
-  t1 = std::chrono::steady_clock::now();
-  std::optional<CBMC::GrowResult> growData = CBMC::growNewMolecule(
-      random, growContext, component, {.componentId = selectedComponent, .moleculeId = selectedMolecule});
-  t2 = std::chrono::steady_clock::now();
-
-  component.mc_moves_cputime[move][Move::Timing::NonEwald] += (t2 - t1);
-  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (t2 - t1);
+  std::optional<CBMC::GrowResult> growData =
+      timed(system, component, move, Move::Timing::NonEwald,
+            [&]
+            {
+              return CBMC::growNewMolecule(random, growContext, component,
+                                           {.componentId = selectedComponent, .moleculeId = selectedMolecule});
+            });
 
   // If molecule growth failed, terminate the move.
   if (!growData) return 0.0;
@@ -69,26 +67,25 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   component.mc_moves_statistics.addConstructed(move);
 
   // Compute the energy difference in Ewald Fourier space due to the new molecule.
-  t1 = std::chrono::steady_clock::now();
-  RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, newMolecule, {}, system.netCharge);
-  t2 = std::chrono::steady_clock::now();
-
-  component.mc_moves_cputime[move][Move::Timing::Ewald] += (t2 - t1);
-  system.mc_moves_cputime[move][Move::Timing::Ewald] += (t2 - t1);
+  RunningEnergy energyFourierDifference =
+      timed(system, component, move, Move::Timing::Ewald,
+            [&]
+            {
+              return Interactions::energyDifferenceEwaldFourier(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                  system.forceField, system.simulationBox, newMolecule, {}, system.netCharge);
+            });
 
   // Compute the tail corrections for the energy due to the new molecule.
-  t1 = std::chrono::steady_clock::now();
   RunningEnergy tailEnergyDifference =
-      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                              system.spanOfMoleculeAtoms(), newMolecule, {}) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                 system.spanOfFrameworkAtoms(), newMolecule, {});
-  t2 = std::chrono::steady_clock::now();
-
-  component.mc_moves_cputime[move][Move::Timing::Tail] += (t2 - t1);
-  system.mc_moves_cputime[move][Move::Timing::Tail] += (t2 - t1);
+      timed(system, component, move, Move::Timing::Tail,
+            [&]
+            {
+              return Interactions::computeInterMolecularTailEnergyDifference(
+                         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), newMolecule, {}) +
+                     Interactions::computeFrameworkMoleculeTailEnergyDifference(
+                         system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), newMolecule, {});
+            });
 
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)

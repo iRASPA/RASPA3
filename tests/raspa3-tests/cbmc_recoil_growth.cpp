@@ -86,6 +86,50 @@ R"({
 }
 )";
 
+// A branched five-bead chain: bead 1 carries the bulky beads 0 and 4 and the small bead 2, bead 3
+// hangs off bead 2. Grown from bead 0 the plan is: seed (bead 1), a two-bead branch step placing
+// beads 2 and 4 together (sibling bend imposed on the base conformation), and a torsion step (bead 3)
+// with two torsions 0-1-2-3 and 4-1-2-3. The 1-4 van der Waals pairs 0-3 and 4-3 (bulky against
+// medium, enabled by 'Intra14VanDerWaalsScalingValue') give every conformation a positive
+// intramolecular strain, so the recoil openness test only works against a reference measured on
+// equilibrated conformations of the molecule itself.
+constexpr std::string_view kBranchedChainJson =
+R"({
+  "CriticalTemperature" : 460.4,
+  "CriticalPressure" : 3380000.0,
+  "AcentricFactor" : 0.227,
+  "StartingBead" : 0,
+  "pseudoAtoms" :
+    [
+      ["B", [0.0, 0.0, 0.0]],
+      ["S", [1.54, 0.0, 0.0]],
+      ["S", [2.17, 1.41, 0.0]],
+      ["M", [3.71, 1.41, 0.0]],
+      ["B", [2.17, -1.41, 0.0]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [1, 4]
+  ],
+  "Bonds" : [
+    [["B", "S"], "FIXED", [1.54]],
+    [["S", "S"], "FIXED", [1.54]],
+    [["S", "M"], "FIXED", [1.54]]
+  ],
+  "Bends" : [
+    [["B", "S", "S"], "HARMONIC", [62500.0, 114]],
+    [["B", "S", "B"], "HARMONIC", [62500.0, 112]],
+    [["S", "S", "M"], "HARMONIC", [62500.0, 114]]
+  ],
+  "Torsions" : [
+    [["B", "S", "S", "M"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
+  ],
+  "Intra14VanDerWaalsScalingValue" : 1.0
+}
+)";
+
 // A narrow tube of frozen W beads (their own 'molecule', id 1) along y through the center of the
 // x-z plane: rings of 'beadsPerRing' beads of radius 'tubeRadius', every 'ringSpacing' along y. The
 // rest of the box is empty bulk.
@@ -309,6 +353,108 @@ TEST(CBMC_RECOIL_GROWTH, regrow_markov_chain_matches_cbmc_in_tube)
   EXPECT_LT(radiusChi2, 250.0) << "recoil-growth radial distribution deviates from the CBMC reference";
   EXPECT_NEAR(recoil.tubeFraction, cbmc.tubeFraction, 0.05)
       << "recoil growth partitions the chain between tube and bulk differently from CBMC";
+}
+
+// The same comparison for the branched chain with a recoil length of three, and with the openness
+// reference built from equilibrated ideal-gas conformations the way the system does it at setup.
+// This exercises what the linear-chain test does not: a multi-bead branch step (sibling bend on the
+// base conformation, two torsions on the following step), the recoil length l = 3 (feelers of two
+// steps, and the 'recoil beyond an available direction' abort of the growth), and a molecule whose
+// every conformation carries positive intramolecular 1-4 strain -- against a zero reference nearly
+// every correct placement would test closed. Since the reference is a fixed constant used identically
+// by grow and retrace, the stationary distribution must again be the CBMC one.
+TEST(CBMC_RECOIL_GROWTH, branched_chain_recoil_length_three_with_reference_matches_cbmc)
+{
+  constexpr double kTemperature = 300.0;                // [K]
+  const double3 kBoxLengths(24.0, 16.0, 24.0);          // [A]
+  constexpr double kTubeRadius = 5.5;                   // [A]
+  constexpr std::size_t kBeadsPerRing = 16;
+  constexpr double kRingSpacing = 2.0;                  // [A]
+
+  // Milder than the linear-chain probe: the two bulky beads of the branch must both fit near the
+  // axis (sigma_BW = 4.1 A against a 5.5 A radius), and the 1-4 strain (sigma_BM = 3.8 A at 3-4 A)
+  // is a few hundred kelvin per pair -- enough that a zero openness reference would cripple recoil
+  // growth, not so much that the regrow acceptance collapses for either scheme.
+  const ProbeParameters parameters{8.0, 4.6, 2.6, 3.0};
+
+  ForceField cbmcForceField = makeProbeForceField(parameters);
+  cbmcForceField.numberOfTrialDirections = 8;
+  cbmcForceField.numberOfTorsionTrialDirections = 10;
+  cbmcForceField.numberOfFirstBeadPositions = 25;
+
+  ForceField recoilForceField = cbmcForceField;
+  recoilForceField.useRecoilGrowth = true;
+  recoilForceField.recoilGrowthNumberOfTrialDirections = 3;
+  recoilForceField.recoilGrowthMaximumRecoilLength = 3;
+
+  TemporaryFile file("recoil-branched-chain.json", kBranchedChainJson);
+  Component cbmcChain(Component::Type::Adsorbate, 0, cbmcForceField, "recoil-branched-chain",
+                      file.stemPath().string(), 5, 21, MCMoveProbabilities(), std::nullopt, false);
+  Component recoilChain(Component::Type::Adsorbate, 0, recoilForceField, "recoil-branched-chain",
+                        file.stemPath().string(), 5, 21, MCMoveProbabilities(), std::nullopt, false);
+
+  const SimulationBox box(kBoxLengths.x, kBoxLengths.y, kBoxLengths.z);
+  const std::vector<Atom> tube = makeTube(kBoxLengths, kTubeRadius, kBeadsPerRing, kRingSpacing);
+  const double beta = 1.0 / (Units::KB * kTemperature);
+
+  // The openness reference: ideal-gas conformations grown with configurational bias in an empty box
+  // (recoil growth can not run before its own reference exists), as 'System' builds them at setup.
+  {
+    const std::optional<Framework> noFramework{};
+    const std::vector<std::optional<InterpolationEnergyGrid>> noGrids(recoilForceField.pseudoAtoms.size() + 1);
+    const std::optional<InterpolationEnergyGrid> noExternalFieldGrid{};
+    const CBMC::GrowContext empty =
+        CBMC::GrowContext(false, recoilForceField, box, noGrids, noExternalFieldGrid, noFramework,
+                          std::span<const Atom>{}, std::span<const Atom>{}, beta, CBMC::CutOffMode::Full)
+            .withChainScheme(CBMC::ChainScheme::ConfigurationalBias);
+    recoilChain.prepareGrowthPlans(beta);
+
+    RandomNumber random(31);
+    std::vector<std::vector<Atom>> conformations{};
+    while (conformations.size() < 20)
+    {
+      std::optional<CBMC::GrowResult> grown =
+          CBMC::growNewMolecule(random, empty, recoilChain, {.componentId = 0, .moleculeId = 0});
+      if (grown.has_value()) conformations.push_back(grown->atoms);
+    }
+    recoilChain.setRecoilReferenceConformations(std::move(conformations));
+  }
+
+  // The 1-4 strain shows up as a positive reference at the torsion step; without it the reference
+  // path would not be exercised.
+  const std::vector<double> &reference = recoilChain.recoilReferenceStepEnergies({recoilChain.startingBead});
+  ASSERT_EQ(reference.size(), 3uz);
+  EXPECT_GT(*std::max_element(reference.begin(), reference.end()), 100.0)
+      << "the branched chain carries no intramolecular strain; the reference path is not tested";
+
+  // Calibration (60k regrow moves per chain, ~20% acceptance for both schemes): the tube fractions
+  // agree to within 0.01 (0.386 vs 0.382) and both chi-squared values stay near 100; the thresholds
+  // below are those of the linear-chain test.
+  constexpr std::size_t iterations = 60'000;
+  constexpr std::size_t thinning = 5;
+  constexpr std::size_t bins = 20;
+
+  RandomNumber randomCBMC(8080);
+  RegrowChainResult cbmc = runRegrowChain(randomCBMC, cbmcForceField, cbmcChain, box, tube, beta, kTubeRadius,
+                                          iterations, thinning, bins);
+  RandomNumber randomRecoil(9091);
+  RegrowChainResult recoil = runRegrowChain(randomRecoil, recoilForceField, recoilChain, box, tube, beta,
+                                            kTubeRadius, iterations, thinning, bins);
+
+  ASSERT_EQ(cbmc.recorded, recoil.recorded);
+  EXPECT_GT(cbmc.accepted, iterations / 20) << "CBMC regrow acceptance collapsed";
+  EXPECT_GT(recoil.accepted, iterations / 20) << "recoil-growth regrow acceptance collapsed";
+
+  EXPECT_GT(cbmc.tubeFraction, 0.10) << "the tube is hardly populated; the test has lost its sensitivity";
+  EXPECT_LT(cbmc.tubeFraction, 0.70) << "the bulk is hardly populated; the test has lost its sensitivity";
+
+  const double torsionChi2 = chiSquaredTwoSample(cbmc.torsionCounts, recoil.torsionCounts);
+  const double radiusChi2 = chiSquaredTwoSample(cbmc.radiusCounts, recoil.radiusCounts);
+
+  EXPECT_LT(torsionChi2, 250.0) << "recoil-growth torsion distribution deviates from the CBMC reference";
+  EXPECT_LT(radiusChi2, 250.0) << "recoil-growth radial distribution deviates from the CBMC reference";
+  EXPECT_NEAR(recoil.tubeFraction, cbmc.tubeFraction, 0.05)
+      << "recoil growth partitions the branched chain between tube and bulk differently from CBMC";
 }
 
 // The retrace of an existing molecule that overlaps with its surroundings has no defined recoil

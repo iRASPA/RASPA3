@@ -18,6 +18,7 @@ import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
+import mc_moves_cputime;
 
 std::optional<RunningEnergy> MC_Moves::tetheredProtonHopMove(RandomNumber& random, System& system,
                                                              std::size_t selectedComponent,
@@ -83,34 +84,32 @@ std::optional<RunningEnergy> MC_Moves::tetheredProtonHopMove(RandomNumber& rando
   std::vector<double3> electricFieldMoleculeOld(molecule_atoms.size());
 
   // External-field contribution.
-  time_begin = std::chrono::steady_clock::now();
-  std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
-      system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
-      trialMolecule.second, molecule_atoms);
-  time_end = std::chrono::steady_clock::now();
-  component.mc_moves_cputime[move][Move::Timing::ExternalFieldMolecule] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::ExternalFieldMolecule] += (time_end - time_begin);
+  std::optional<RunningEnergy> externalFieldMolecule =
+      timed(system, component, move, Move::Timing::ExternalFieldMolecule,
+            [&]
+            {
+              return Interactions::computeExternalFieldEnergyDifference(
+                  system.hasExternalField, system.forceField, system.simulationBox,
+                  system.externalFieldInterpolationGrid, trialMolecule.second, molecule_atoms);
+            });
   if (!externalFieldMolecule.has_value()) return std::nullopt;
 
   // Framework-molecule contribution.
-  time_begin = std::chrono::steady_clock::now();
-  std::optional<RunningEnergy> frameworkMolecule;
-  if (system.forceField.computePolarization)
-  {
-    frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
-        system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-        system.spanOfFrameworkAtoms(), electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second,
-        molecule_atoms);
-  }
-  else
-  {
-    frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
-        system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-        system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
-  }
-  time_end = std::chrono::steady_clock::now();
-  component.mc_moves_cputime[move][Move::Timing::FrameworkMolecule] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::FrameworkMolecule] += (time_end - time_begin);
+  std::optional<RunningEnergy> frameworkMolecule =
+      timed(system, component, move, Move::Timing::FrameworkMolecule,
+            [&]() -> std::optional<RunningEnergy>
+            {
+              if (system.forceField.computePolarization)
+              {
+                return Interactions::computeFrameworkMoleculeEnergyDifference(
+                    system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+                    system.spanOfFrameworkAtoms(), electricFieldMoleculeNew, electricFieldMoleculeOld,
+                    trialMolecule.second, molecule_atoms);
+              }
+              return Interactions::computeFrameworkMoleculeEnergyDifference(
+                  system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+                  system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
+            });
   if (!frameworkMolecule.has_value()) return std::nullopt;
 
   // Molecule-molecule contribution.
@@ -135,24 +134,21 @@ std::optional<RunningEnergy> MC_Moves::tetheredProtonHopMove(RandomNumber& rando
   if (!interMolecule.has_value()) return std::nullopt;
 
   // Ewald reciprocal contribution.
-  time_begin = std::chrono::steady_clock::now();
-  RunningEnergy ewaldFourierEnergy;
-  if (system.forceField.computePolarization)
-  {
-    ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.trialEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, electricFieldMoleculeOld,
-        trialMolecule.second, molecule_atoms);
-  }
-  else
-  {
-    ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, trialMolecule.second, molecule_atoms);
-  }
-  time_end = std::chrono::steady_clock::now();
-  component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
-  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  RunningEnergy ewaldFourierEnergy =
+      timed(system, component, move, Move::Timing::Ewald,
+            [&]() -> RunningEnergy
+            {
+              if (system.forceField.computePolarization)
+              {
+                return Interactions::energyDifferenceEwaldFourier(
+                    system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik,
+                    system.storedEik, system.trialEik, system.forceField, system.simulationBox,
+                    electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second, molecule_atoms);
+              }
+              return Interactions::energyDifferenceEwaldFourier(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                  system.forceField, system.simulationBox, trialMolecule.second, molecule_atoms);
+            });
 
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)
