@@ -951,6 +951,18 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      for (const char *key : {"ConcertedRotationProbability", "ConRotProbability"})
+      {
+        if (item.contains(key) && item[key].is_number_float())
+        {
+          double concertedRotationProbability = item[key].get<double>();
+          for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+          {
+            move_probabilities[i].setProbability(Move::Types::ConcertedRotation, concertedRotationProbability);
+          }
+        }
+      }
+
       if (item.contains("RandomRotationProbability") && item["RandomRotationProbability"].is_number_float())
       {
         double randomRotationProbability = item["RandomRotationProbability"].get<double>();
@@ -1260,6 +1272,21 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].crankshaftRandomizationFraction = crankshaftRandomizationFraction;
+        }
+      }
+
+      if (item.contains("ConcertedRotationRandomizationFraction") &&
+          item["ConcertedRotationRandomizationFraction"].is_number_float())
+      {
+        double fraction = item["ConcertedRotationRandomizationFraction"].get<double>();
+        if (fraction < 0.0 || fraction > 1.0)
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: ConcertedRotationRandomizationFraction must be in [0, 1]\n"));
+        }
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].concertedRotationRandomizationFraction = fraction;
         }
       }
 
@@ -3820,6 +3847,9 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "CrankshaftRandomizationFraction",
     "CrankshaftMaxSegmentSize",
     "ReptationProbability",
+    "ConcertedRotationProbability",
+    "ConRotProbability",
+    "ConcertedRotationRandomizationFraction",
     "RandomRotationProbability",
     "ReinsertionProbability",
     "PartialReinsertionProbability",

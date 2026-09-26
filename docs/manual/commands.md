@@ -1667,6 +1667,68 @@ distribution.
     include the closing bead. Long or stiff bridged segments close with low
     acceptance; keep bridged segments short.
 
+-   `"PivotProbability" : floating-point-number`\
+    The relative probability of a pivot move for flexible molecules. A bond
+    that is not part of a ring or interior to a rigid fragment is chosen at
+    random and the smaller of the two chain parts hanging off it is rotated
+    rigidly about the bond axis by a random angle. All bond lengths and bend
+    angles are preserved; only the torsions through the pivot bond and the
+    non-bonded energies change. A fraction `"PivotRandomizationFraction"`
+    (default 0.2) of the attempts draws the angle uniformly from
+    $[-\pi, \pi]$; the remainder uses an adaptive window tuned towards a 50%
+    acceptance ratio. Not available with polarization.
+
+-   `"CrankshaftProbability" : floating-point-number`\
+    The relative probability of a crankshaft move for flexible molecules. A
+    small connected segment (at most `"CrankshaftMaxSegmentSize"` atoms,
+    default 4) attached to exactly two anchor atoms is rotated rigidly about
+    the axis through the anchors. All bond lengths are preserved; the bend
+    angles and torsions at the two junctions change. The move relaxes the
+    chain interior locally without moving the chain ends and can also rotate
+    segments of flexible rings. A fraction `"CrankshaftRandomizationFraction"`
+    (default 0.2) of the attempts draws the angle uniformly from
+    $[-\pi, \pi]$. Not available with polarization.
+
+-   `"ConcertedRotationProbability" : floating-point-number`\
+    The relative probability of a concerted-rotation (ConRot) move (Dodd,
+    Boone and Theodorou, Mol. Phys. 78, 961 (1993)) for flexible chain
+    molecules. Alias: `"ConRotProbability"`. A window of eight consecutive
+    backbone atoms $a_0 \ldots a_7$ is chosen at random; atom $a_2$ is
+    rotated about the $a_0 a_1$ bond by a random driver angle and the
+    trimer $a_3, a_4, a_5$ is rebridged onto the fixed atoms $a_6, a_7$
+    such that all bond lengths and bend angles of the window are conserved
+    exactly (the trimer positions are the discrete solutions of a loop-closure
+    problem, found by a one-dimensional scan). Only the seven torsions of the
+    window, the bends and torsions to side groups at $a_1$ and $a_6$, and
+    the non-bonded energies change, and everything outside the window stays in
+    place. The move is therefore strictly local, which makes it the move of
+    choice for long chains and for dense melts, where the pivot move fails.
+    The acceptance rule contains, besides the Metropolis factor, the ratio of
+    the numbers of closure solutions and the ratio of the closure Jacobians of
+    the old and new window; it is exact for `FIXED` and for harmonic bonds
+    and bends. Side groups hanging off $a_2 \ldots a_5$ are carried rigidly
+    with their backbone atom. A window is only valid if no ring passes through
+    it, rigid fragments do not straddle its moving groups, and there is no
+    `FIXED` or `RIGID` bend at $a_1$ or $a_6$ that would be violated. The
+    first and last two backbone atoms of a linear chain are never moved, so
+    the move must be combined with a move that samples the chain ends (pivot,
+    reptation or (partial) reinsertion). A fraction
+    `"ConcertedRotationRandomizationFraction"` (default 0.2) of the attempts
+    draws the driver angle uniformly from $[-\pi, \pi]$; the remainder uses
+    an adaptive window. Not available with polarization.
+
+-   `"ReptationProbability" : floating-point-number`\
+    The relative probability of a reptation (slithering-snake) move for chain
+    molecules that declare their repeat units in the molecule file as
+    `"RepeatUnits" : [[atoms of unit 1], [atoms of unit 2], ...]`, an ordered
+    partition of the atoms into monomer blocks that is checked at read time to
+    be shift-periodic (identical types, charges, connectivity, potential terms
+    and rigid fragments under the one-unit shift). The move removes the repeat
+    unit at one chain end (chosen with 50% probability) and grows a new unit
+    at the opposite end with `CBMC`, translating the chain by one monomer along
+    its own contour; the acceptance rule is the usual ratio of the grow and
+    retrace Rosenbluth weights.
+
 -   `"SwapConventionalProbability" : floating-point-number`\
     The relative probability of a conventional (non-CBMC) insertion or deletion
     move, each chosen with 50% probability. The swap move imposes chemical

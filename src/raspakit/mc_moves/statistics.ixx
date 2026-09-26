@@ -74,6 +74,11 @@ export struct MCMoveStatistics
         MoveStatistics<double3>{.maxChange = double3(0.5, 3.14159265358979323846, 0.0),
                                 .lowerLimit = double3(0.01, 3.14159265358979323846, 0.0),
                                 .upperLimit = double3(3.14159265358979323846, 3.14159265358979323846, 1.0)};
+    // Concerted rotation: the same two-channel layout for the driver angle.
+    stats[std::to_underlying(Move::Types::ConcertedRotation)] =
+        MoveStatistics<double3>{.maxChange = double3(0.5, 3.14159265358979323846, 0.0),
+                                .lowerLimit = double3(0.01, 3.14159265358979323846, 0.0),
+                                .upperLimit = double3(3.14159265358979323846, 3.14159265358979323846, 1.0)};
     stats[std::to_underlying(Move::Types::VolumeChange)] =
         MoveStatistics<double>{.maxChange = 0.1, .lowerLimit = 0.01, .upperLimit = 1.5};
     stats[std::to_underlying(Move::Types::AnisotropicVolumeChange)] =

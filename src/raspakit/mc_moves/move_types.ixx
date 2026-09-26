@@ -56,7 +56,8 @@ export struct Move
     Pivot = 45,                       // rotation of a chain part about a randomly selected non-ring bond
     Crankshaft = 46,                  // rotation of a small chain segment about the axis through its two anchors
     Reptation = 47,                   // slithering-snake move: one repeat unit removed at one chain end, regrown at the other
-    Count = 48
+    ConcertedRotation = 48,           // ConRot: driver torsion change with re-bridging of the following trimer (Dodd, Boone, Theodorou)
+    Count = 49
   };
 
   /**
@@ -132,6 +133,7 @@ export inline std::unordered_set<Move::Types> componentMoves = {Move::Types::Tra
                                                                 Move::Types::Pivot,
                                                                 Move::Types::Crankshaft,
                                                                 Move::Types::Reptation,
+                                                                Move::Types::ConcertedRotation,
                                                                 Move::Types::IdentityChangeCBMC,
                                                                 Move::Types::IdentitySwitchCBMC, Move::Types::Swap,
                                                                 Move::Types::SwapCBMC,           Move::Types::PairSwapCBMC,

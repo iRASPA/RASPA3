@@ -855,6 +855,160 @@ const std::vector<Component::CrankshaftUnit> &Component::crankshaftUnits() const
   return crankshaftUnitsCache.value();
 }
 
+const std::vector<Component::ConcertedRotationWindow> &Component::concertedRotationWindows() const
+{
+  if (concertedRotationWindowsCache.has_value()) return concertedRotationWindowsCache.value();
+
+  std::vector<ConcertedRotationWindow> result;
+  const std::size_t numberOfBeads = connectivityTable.numberOfBeads;
+  const std::vector<std::size_t> &atomFragmentIds = fragmentGraph.atomFragmentIds;
+
+  // Bends that the move cannot change: FIXED and RIGID types are holonomic constraints. The move
+  // preserves every bend along the backbone and every bend inside a rigidly carried side group, but
+  // a bend at a1 between a2 and a side group of a1 (or at a6 between a5 and a side group of a6)
+  // changes, since only a2 (a5) moves.
+  auto holonomicBend = [&](std::size_t center, std::size_t moving, std::size_t keptNeighbor)
+  {
+    for (const BendPotential &bend : intraMolecularPotentials.bends)
+    {
+      if (bend.type != BendType::Fixed && bend.type != BendType::Rigid) continue;
+      if (bend.identifiers[1] != center) continue;
+      const std::size_t x = bend.identifiers[0], y = bend.identifiers[2];
+      const std::size_t other = (x == moving) ? y : (y == moving ? x : center);
+      if (other != center && other != keptNeighbor) return true;
+    }
+    return false;
+  };
+
+  // Every simple backbone path a1 ... a7 (both directions are distinct windows: the driver sits at
+  // the a0-a1 end), extended by a0 (any neighbour of a1 off the path) and a8 (the lowest-index
+  // neighbour of a7 off the path, if any).
+  std::array<std::size_t, 7> path{};
+  std::vector<bool> onPath(numberOfBeads, false);
+
+  auto tryWindow = [&](std::size_t a0, std::optional<std::size_t> a8)
+  {
+    ConcertedRotationWindow window{};
+    window.backbone[0] = a0;
+    for (std::size_t i = 0; i != 7; ++i) window.backbone[i + 1] = path[i];
+    window.a8 = a8;
+    const std::array<std::size_t, 8> &b = window.backbone;
+
+    // group[atom]: 0 = fixed, i = moves rigidly with backbone atom b[i] (i = 2 .. 5), unassigned = max.
+    constexpr std::size_t unassigned = std::numeric_limits<std::size_t>::max();
+    std::vector<std::size_t> group(numberOfBeads, unassigned);
+    for (std::size_t atom : b) group[atom] = 0;
+    if (a8.has_value()) group[a8.value()] = 0;
+    for (std::size_t i = 2; i <= 5; ++i) group[b[i]] = i;
+
+    // Side groups of a2 ... a5: everything reachable from a non-backbone neighbour without passing
+    // through another window atom. Reaching a second window atom means a ring through the window
+    // (the side group would have to deform), reaching a side group of another backbone atom the same.
+    for (std::size_t i = 2; i <= 5; ++i)
+    {
+      std::vector<std::size_t> stack{};
+      for (std::size_t neighbor : connectivityTable.findAllNeighbors(b[i]))
+      {
+        if (neighbor == b[i - 1] || neighbor == b[i + 1]) continue;  // the backbone bonds
+        if (group[neighbor] == unassigned)
+        {
+          group[neighbor] = i;
+          stack.push_back(neighbor);
+          window.substituents[i - 2].push_back(neighbor);
+        }
+        else if (group[neighbor] != i)
+        {
+          // A bond to another window atom or to the side group of another backbone atom: a ring
+          // through the window, which the move would deform.
+          return;
+        }
+      }
+      while (!stack.empty())
+      {
+        const std::size_t current = stack.back();
+        stack.pop_back();
+        for (std::size_t neighbor : connectivityTable.findAllNeighbors(current))
+        {
+          if (group[neighbor] == unassigned)
+          {
+            group[neighbor] = i;
+            stack.push_back(neighbor);
+            window.substituents[i - 2].push_back(neighbor);
+          }
+          else if (group[neighbor] != i)
+          {
+            return;  // the side group closes onto a fixed atom or another moving group
+          }
+        }
+      }
+    }
+
+    // Rigid fragments must lie entirely in one group (fixed, or one rigidly carried backbone atom
+    // with its side group); a fragment spanning two groups would deform.
+    if (!atomFragmentIds.empty())
+    {
+      for (const auto &fragment : fragmentGraph.fragments)
+      {
+        if (!fragment.isRigidBody() || fragment.atoms.empty()) continue;
+        std::size_t fragmentGroup = group[fragment.atoms.front()];
+        if (fragmentGroup == unassigned) fragmentGroup = 0;
+        for (std::size_t atom : fragment.atoms)
+        {
+          const std::size_t atomGroup = group[atom] == unassigned ? 0 : group[atom];
+          if (atomGroup != fragmentGroup) return;
+        }
+      }
+    }
+
+    // Holonomic bends at the window ends that the move would violate.
+    if (holonomicBend(b[1], b[2], b[0]) || holonomicBend(b[6], b[5], b[7])) return;
+
+    for (std::vector<std::size_t> &substituent : window.substituents)
+    {
+      std::sort(substituent.begin(), substituent.end());
+    }
+    result.push_back(std::move(window));
+  };
+
+  auto extend = [&](auto &self, std::size_t depth) -> void
+  {
+    if (depth == 7)
+    {
+      const std::size_t a1 = path[0], a7 = path[6];
+      std::optional<std::size_t> a8{};
+      for (std::size_t neighbor : connectivityTable.findAllNeighbors(a7))
+      {
+        if (!onPath[neighbor] && (!a8.has_value() || neighbor < a8.value())) a8 = neighbor;
+      }
+      for (std::size_t a0 : connectivityTable.findAllNeighbors(a1))
+      {
+        if (onPath[a0]) continue;
+        tryWindow(a0, a8);
+      }
+      return;
+    }
+    for (std::size_t neighbor : connectivityTable.findAllNeighbors(path[depth - 1]))
+    {
+      if (onPath[neighbor]) continue;
+      onPath[neighbor] = true;
+      path[depth] = neighbor;
+      self(self, depth + 1);
+      onPath[neighbor] = false;
+    }
+  };
+
+  for (std::size_t a1 = 0; a1 < numberOfBeads; ++a1)
+  {
+    std::fill(onPath.begin(), onPath.end(), false);
+    onPath[a1] = true;
+    path[0] = a1;
+    extend(extend, 1);
+  }
+
+  concertedRotationWindowsCache = std::move(result);
+  return concertedRotationWindowsCache.value();
+}
+
 bool Component::isInsideRigidFragment(std::span<const std::size_t> ids) const
 {
   return fragmentGraph.isInsideRigidFragment(ids);
@@ -2722,6 +2876,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.pivotRandomizationFraction;
   archive << c.crankshaftRandomizationFraction;
   archive << c.crankshaftMaxSegmentSize;
+  archive << c.concertedRotationRandomizationFraction;
   archive << c.repeatUnits;
   archive << c.endToEndAtoms;
   archive << c.definedAtoms;
@@ -2830,6 +2985,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.pivotRandomizationFraction;
   archive >> c.crankshaftRandomizationFraction;
   archive >> c.crankshaftMaxSegmentSize;
+  archive >> c.concertedRotationRandomizationFraction;
   archive >> c.repeatUnits;
   archive >> c.endToEndAtoms;
   archive >> c.definedAtoms;

@@ -218,6 +218,10 @@ export struct Component
   // dominated by large segments with poor acceptance, which would also drag the shared adaptive
   // angle window down for the useful small segments.
   std::size_t crankshaftMaxSegmentSize{4};  ///< Maximum size of the rotated segment of a crankshaft unit.
+  // Fraction of concerted-rotation attempts that randomize the driver angle completely (uniform in
+  // [-pi, pi]) instead of perturbing it within the adaptive window; same rationale as
+  // 'pivotRandomizationFraction'.
+  double concertedRotationRandomizationFraction{0.2};  ///< Fraction of ConRot attempts with a fully random driver.
   std::vector<std::pair<Atom, double>> definedAtoms{};  ///< List of defined atoms and their masses.
 
   double3 inertiaVector{};         ///< Inertia vector of the component.
@@ -322,6 +326,22 @@ export struct Component
   // demand from the connectivity table and the fragment graph, never serialized. Marked 'mutable'
   // so the crankshaft move can populate it on a 'const Component&'.
   mutable std::optional<std::vector<CrankshaftUnit>> crankshaftUnitsCache{};
+
+  /// A concerted-rotation window (Dodd, Boone and Theodorou, Mol. Phys. 78, 961 (1993)): a backbone
+  /// path a0-a1-a2-a3-a4-a5-a6-a7 of the bond graph, optionally continued by a8 (any further
+  /// neighbour of a7). The driver rotates a2 about the a0-a1 axis, the trimer a3, a4, a5 is
+  /// re-bridged onto the fixed a6, a7; a0, a1, a6, a7, a8 and everything outside the window keep
+  /// their positions. Side groups hanging off a2 ... a5 move rigidly with the local frame of their
+  /// backbone atom.
+  struct ConcertedRotationWindow
+  {
+    std::array<std::size_t, 8> backbone{};                  ///< a0 ... a7.
+    std::optional<std::size_t> a8{};                        ///< A neighbour of a7 other than a6, if any.
+    std::array<std::vector<std::size_t>, 4> substituents{};  ///< Side-group atoms carried by a2 ... a5.
+  };
+  // Cache of the valid concerted-rotation windows. Derived data, never serialized; 'mutable' so the
+  // move can populate it on a 'const Component&'.
+  mutable std::optional<std::vector<ConcertedRotationWindow>> concertedRotationWindowsCache{};
   std::vector<std::size_t> identityChanges{};
   std::vector<std::size_t> gibbsIdentityChanges{};
   std::vector<std::size_t> identitySwitches{};  ///< Partner components for the canonical identity-switch move.
@@ -656,6 +676,11 @@ export struct Component
   /// Returns the valid crankshaft units of the molecule (see CrankshaftUnit); computed on first use
   /// and cached.
   const std::vector<CrankshaftUnit> &crankshaftUnits() const;
+
+  /// Returns the valid concerted-rotation windows of the molecule (see ConcertedRotationWindow);
+  /// computed on first use and cached. Empty for molecules without a flexible backbone path of
+  /// eight atoms.
+  const std::vector<ConcertedRotationWindow> &concertedRotationWindows() const;
 
   /**
    * \brief Returns whether all given atom indices lie inside one and the same rigid-body fragment.
