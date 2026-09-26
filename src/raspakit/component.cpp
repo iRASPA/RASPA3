@@ -52,6 +52,7 @@ import intra_molecular_potentials;
 import chiral_center;
 import cbmc_growth_plan;
 import cbmc_flexible_base;
+import cbmc_bridge_closure;
 import vdwparameters;
 import blocking_pockets;
 
@@ -577,6 +578,7 @@ void Component::buildFragmentGraph(const std::vector<std::vector<std::size_t>> &
   // The topology changes, so any cached growth plans and the data derived from them are stale.
   growthPlanCache.clear();
   baseCouplingConstantsMemo.clear();
+  closureGuideMemo.clear();
   recoilReferenceStepEnergiesCache.clear();
 
   std::size_t numberOfBeads = definedAtoms.size();
@@ -627,6 +629,7 @@ const std::vector<CBMC::GrowStep> &Component::growthPlan(const std::vector<std::
     if (growthPlanBeta.has_value())
     {
       CBMC::prepareBaseCouplingConstants(growthPlanBeta.value(), atoms.size(), it->second, baseCouplingConstantsMemo);
+      CBMC::prepareClosureGuides(growthPlanBeta.value(), it->second, closureGuideMemo);
     }
   }
   return it->second;
@@ -638,9 +641,11 @@ void Component::prepareGrowthPlans(double beta) const
 
   growthPlanBeta = beta;
   baseCouplingConstantsMemo.clear();
+  closureGuideMemo.clear();
   for (auto &[beadsAlreadyPlaced, plan] : growthPlanCache)
   {
     CBMC::prepareBaseCouplingConstants(beta, atoms.size(), plan, baseCouplingConstantsMemo);
+    CBMC::prepareClosureGuides(beta, plan, closureGuideMemo);
   }
 }
 
@@ -2536,15 +2541,39 @@ std::vector<std::vector<std::size_t>> Component::readPartialReinsertionFixedAtom
     }
   }
 
+  // A fixed set need not be connected: fixed atoms on both sides of a regrown part make it a
+  // fixed-endpoint regrowth (the interior segment is grown from one side and closed onto the other,
+  // see cbmc_bridge_closure). It must be a proper, non-empty set of valid atoms that leaves something
+  // to regrow; whether the regrown part can be grown (no rigid body or ring closed onto a second
+  // fixed atom, no bead bonded to three fixed atoms) is decided when its growth plan is built below.
   for (const std::vector<std::size_t> &config_move : config_moves)
   {
-    if (!connectivityTable.checkIsConnectedSubgraph(config_move))
+    std::stringstream result{};
+    std::copy(config_move.begin(), config_move.end(), std::ostream_iterator<std::size_t>(result, " "));
+
+    if (config_move.empty())
     {
-      std::stringstream result{};
-      std::copy(config_move.begin(), config_move.end(), 
-                  std::ostream_iterator<std::size_t>(result, " "));
+      throw std::runtime_error("Error in defined partial reinsertion (an empty fixed set)\n");
+    }
+    for (std::size_t atom : config_move)
+    {
+      if (atom >= connectivityTable.numberOfBeads)
+      {
+        throw std::runtime_error(std::format(
+            "Error in defined partial reinsertion ({}): atom index {} out of range (molecule has {} atoms)\n",
+            result.str(), atom, connectivityTable.numberOfBeads));
+      }
+    }
+    if (std::set<std::size_t>(config_move.begin(), config_move.end()).size() != config_move.size())
+    {
       throw std::runtime_error(
-          std::format("Error in defined partial reinsertion ({} is not connected)\n", result.str()));
+          std::format("Error in defined partial reinsertion ({}): an atom is listed twice\n", result.str()));
+    }
+    if (config_move.size() >= connectivityTable.numberOfBeads)
+    {
+      throw std::runtime_error(
+          std::format("Error in defined partial reinsertion ({}): every atom is fixed, nothing to regrow\n",
+                      result.str()));
     }
   }
 

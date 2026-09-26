@@ -17,17 +17,23 @@ import cbmc_torsion_selection;
 import cbmc_flexible_base;
 import cbmc_rigid_tilt;
 import cbmc_ring_closure;
+import cbmc_bridge_closure;
 
-// The dispatch is written once, as two primitives that grow, retrace, and recoil growth share:
+// The dispatch is written once, as three primitives that grow, retrace, and recoil growth share:
 //
 //   seedTrials(pinnedOld)   -- a seed step (no orientational reference): n independent uniformly
 //                              oriented placements, or the old one pinned as trial 0 plus n-1 fresh.
 //   spinTrials(base, pinOld) -- a step with a junction: one shared base conformation spun about the
 //                              previous-current axis, one torsion selection per trial; on the retrace
 //                              the old positions ARE the base and are pinned as spin 0 of trial 0.
+//   bridgeTrials(pinOld)    -- a bridge-closure step: one independently drawn bipolar base per trial
+//                              direction (an infeasible draw is a dead direction), each spun about the
+//                              anchor-closure axis by a torsion selection; on the retrace the old
+//                              position is trial 0. The direction's 'torsionWeight' carries the base
+//                              weight times the spin weight.
 //
-// grow    = seedTrials(none)      | spinTrials(sampleBase(),   pin = false)
-// retrace = seedTrials(old)       | spinTrials(oldBase(),      pin = true)
+// grow    = seedTrials(none)      | spinTrials(sampleBase(),   pin = false) | bridgeTrials(false)
+// retrace = seedTrials(old)       | spinTrials(oldBase(),      pin = true)  | bridgeTrials(true)
 // recoil  = the grow with n = 1;  the old torsion weight of recoil = the retrace with n = 1.
 //
 // The random-number draw order of every primitive equals that of the former per-operator ladders, so
@@ -86,6 +92,46 @@ double3 junctionAxis(const std::vector<Atom> &chainAtoms, const CBMC::GrowStep &
   return last_bond_vector.normalized();
 }
 
+// A flexible seed bead that carries closure guides (fixed-endpoint regrowth started from a fixed bead
+// without a placed neighbour, e.g. a fixed chain end): there is no junction to spin about, so the
+// guide bias is applied to the direction itself. Of m independent seed positions one is selected
+// with probability g / sum g, and the trial's torsion weight is sum g / (m g_selected): the guide
+// cancels exactly (the same construction as in the torsion selection), the seed is merely steered
+// towards positions from which the segment can still close. With 'pinnedOld' the old position is
+// candidate 0 and is the one selected (retrace).
+CBMC::StepTrial guidedFlexibleSeedTrial(RandomNumber &random, const CBMC::GrowthSettings &settings, double beta,
+                                        const std::vector<Atom> &chainAtoms, const CBMC::GrowStep &step,
+                                        std::optional<Atom> pinnedOld)
+{
+  const std::size_t m = settings.numberOfTorsionTrialDirections;
+  std::vector<Atom> candidates(m);
+  std::vector<double> logGuides(m, 0.0);
+  for (std::size_t s = 0; s != m; ++s)
+  {
+    candidates[s] = (pinnedOld.has_value() && s == 0) ? pinnedOld.value()
+                                                      : placeFlexibleSeedBead(random, beta, chainAtoms, step);
+    for (const CBMC::GrowStep::SpinSelectionData::ClosureGuide &guide : step.spin.guides)
+    {
+      if (!guide.table)
+      {
+        throw std::logic_error(std::format(
+            "CBMC: seed step at bead {} carries a closure guide (bead {} -> {}) without a prepared table; "
+            "call Component::prepareGrowthPlans(beta) before growing with it\n",
+            step.currentBead, step.nextBeads[guide.nextBeadIndex], guide.targetBead));
+      }
+      logGuides[s] +=
+          guide.table->logGuideAt((candidates[s].position - chainAtoms[guide.targetBead].position).length());
+    }
+  }
+
+  const std::size_t selected = pinnedOld.has_value() ? 0 : CBMC::selectTrialPosition(random, logGuides);
+  const double maxLogGuide = *std::max_element(logGuides.begin(), logGuides.end());
+  const double logSum = maxLogGuide + std::log(std::accumulate(logGuides.begin(), logGuides.end(), 0.0,
+                                                               [&](const double &acc, const double &logGuide)
+                                                               { return acc + std::exp(logGuide - maxLogGuide); }));
+  return {{candidates[selected]}, std::exp(logSum - logGuides[selected]) / static_cast<double>(m)};
+}
+
 // Seed step: no orientational reference exists yet, every orientation is equally likely and every
 // torsion weight is one. With 'pinnedOld' the old orientation is trial 0 and only n-1 are generated.
 //  - rigid seed: each direction an independent uniform orientation of the body about the anchor;
@@ -125,6 +171,17 @@ std::vector<CBMC::StepTrial> seedTrials(RandomNumber &random, const CBMC::Growth
     return trials;
   }
 
+  if (!step.spin.guides.empty())
+  {
+    for (std::size_t i = 0; i != numberOfTrialDirections; ++i)
+    {
+      trials[i] = guidedFlexibleSeedTrial(random, settings, beta, chainAtoms, step,
+                                          (pinnedOld.has_value() && i == 0) ? std::optional<Atom>(pinnedOld->front())
+                                                                            : std::nullopt);
+    }
+    return trials;
+  }
+
   for (std::size_t i = first; i != numberOfTrialDirections; ++i)
   {
     trials[i] = {{placeFlexibleSeedBead(random, beta, chainAtoms, step)}, 1.0};
@@ -154,14 +211,58 @@ std::vector<CBMC::StepTrial> spinTrials(RandomNumber &random, const CBMC::Growth
   }
   return trials;
 }
+
+// Bridge-closure step: every trial direction draws its own bipolar base (the two bond lengths), so a
+// draw that cannot span the anchor-closure distance costs one direction, not the step, and the
+// directions differ in more than their spin. Each feasible base is spun about the anchor-closure axis
+// by the torsion selection (all bends but the mid bend, all torsions, and the unsampled terms are
+// spin-variant here, see cbmc_step_terms); the direction's weight is base weight x spin weight. Dead
+// directions are simply left out: the schemes normalise by the requested number of directions, and
+// the pinned old position (retrace) is always trial 0.
+std::vector<CBMC::StepTrial> bridgeTrials(RandomNumber &random, const CBMC::GrowthSettings &settings, double beta,
+                                          std::vector<Atom> &chainAtoms, const CBMC::GrowStep &step,
+                                          std::size_t numberOfTrialDirections, bool pinOld)
+{
+  std::vector<CBMC::StepTrial> trials{};
+  trials.reserve(numberOfTrialDirections);
+  const double3 axis = CBMC::bridgeClosureAxis(chainAtoms, step);
+
+  std::size_t first = 0;
+  if (pinOld)
+  {
+    const std::vector<Atom> old = CBMC::stepBeadPositions(chainAtoms, step);
+    const double baseWeight = CBMC::bridgeClosureBaseWeight(beta, chainAtoms, step);
+    CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
+        random, settings.numberOfTorsionTrialDirections, beta, chainAtoms, old, step, axis, true);
+    trials.push_back({old, torsion.rosenbluthWeight * baseWeight});
+    first = 1;
+  }
+
+  for (std::size_t i = first; i != numberOfTrialDirections; ++i)
+  {
+    const std::optional<CBMC::BridgeClosureBase> base = CBMC::sampleBridgeClosureBase(random, beta, chainAtoms, step);
+    if (!base.has_value() || !(base->weight > 0.0)) continue;
+    CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
+        random, settings.numberOfTorsionTrialDirections, beta, chainAtoms, {base->atom}, step, axis, false);
+    trials.push_back({std::move(torsion.positions), torsion.rosenbluthWeight * base->weight});
+  }
+  return trials;
+}
 }  // namespace
 
-bool CBMC::stepHandlesUnsampledInternalTerms(const GrowStep &step) { return step.flexibleAttach; }
+bool CBMC::stepHandlesUnsampledInternalTerms(const GrowStep &step)
+{
+  return step.flexibleAttach || step.kind == GrowStep::Kind::CloseBridge;
+}
 
 std::vector<CBMC::StepTrial> CBMC::generateGrowTrials(RandomNumber &random, const GrowthSettings &settings, double beta,
                                                       const Component &component, std::vector<Atom> &chainAtoms,
                                                       const GrowStep &step, std::size_t numberOfTrialDirections)
 {
+  if (step.kind == GrowStep::Kind::CloseBridge)
+  {
+    return bridgeTrials(random, settings, beta, chainAtoms, step, numberOfTrialDirections, false);
+  }
   if (!step.previousBead.has_value())
   {
     return seedTrials(random, settings, beta, component, chainAtoms, step, numberOfTrialDirections, std::nullopt);
@@ -175,6 +276,10 @@ std::vector<CBMC::StepTrial> CBMC::generateRetraceTrials(RandomNumber &random, c
                                                          std::vector<Atom> &chainAtoms, const GrowStep &step,
                                                          std::size_t numberOfTrialDirections)
 {
+  if (step.kind == GrowStep::Kind::CloseBridge)
+  {
+    return bridgeTrials(random, settings, beta, chainAtoms, step, numberOfTrialDirections, true);
+  }
   if (!step.previousBead.has_value())
   {
     return seedTrials(random, settings, beta, component, chainAtoms, step, numberOfTrialDirections,
@@ -188,7 +293,11 @@ CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const GrowthSett
                                           const Component &component, std::vector<Atom> &contextAtoms,
                                           const GrowStep &step)
 {
-  return std::move(generateGrowTrials(random, settings, beta, component, contextAtoms, step, 1).front());
+  std::vector<StepTrial> trials = generateGrowTrials(random, settings, beta, component, contextAtoms, step, 1);
+  // A bridge closure whose single base draw was infeasible has no direction: report a dead trial (zero
+  // weight, the current positions), which recoil growth treats as closed.
+  if (trials.empty()) return {stepBeadPositions(contextAtoms, step), 0.0};
+  return std::move(trials.front());
 }
 
 double CBMC::oldConfigurationTorsionWeight(RandomNumber &random, const GrowthSettings &settings, double beta,

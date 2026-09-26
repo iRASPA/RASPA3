@@ -71,17 +71,27 @@ struct StepWeight
 // exp(-beta u_j) / sum; on the retrace it is trial 0, the old configuration. The selected trial's
 // positions are left in 'chainAtoms'.
 //
+// A bridge-closure step (fixed-endpoint regrowth) couples the two stages instead: its directions carry
+// individual base weights (each drew its own bond lengths, and an infeasible draw is missing from the
+// list), so the direction is selected with probability w_j exp(-beta u_j) / sum and the factor is
+// sum_j w_j exp(-beta u_j) / k, which is the same target/proposal ratio (see cbmc_bridge_closure).
+// With a shared base the two forms coincide up to the common factor, so the coupled form is used only
+// where it matters.
+//
 // The Boltzmann sum is evaluated as log-sum-exp so the log stays exact even where the raw factor or
 // the running product of a long chain would underflow.
 StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTrialDirections,
                       const CBMC::GrowStep &step, std::vector<Atom> &chainAtoms,
                       const std::vector<EvaluatedTrial> &trials, bool retrace)
 {
+  const bool coupled = step.kind == CBMC::GrowStep::Kind::CloseBridge;
+
   std::vector<double> logBoltzmannFactors{};
   logBoltzmannFactors.reserve(trials.size());
   for (const EvaluatedTrial &trial : trials)
   {
-    logBoltzmannFactors.push_back(-beta * trial.energy.potentialEnergy());
+    logBoltzmannFactors.push_back(-beta * trial.energy.potentialEnergy() +
+                                  (coupled ? std::log(trial.torsionWeight) : 0.0));
   }
 
   const std::size_t selected = retrace ? 0 : CBMC::selectTrialPosition(random, logBoltzmannFactors);
@@ -95,7 +105,7 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
                                [&](const double &acc, const double &logBoltzmannFactor)
                                { return acc + std::exp(logBoltzmannFactor - maxLogBoltzmannFactor); }));
 
-  return {selected, std::log(selectedTrial.torsionWeight) + logRosenbluthSum -
+  return {selected, (coupled ? 0.0 : std::log(selectedTrial.torsionWeight)) + logRosenbluthSum -
                         std::log(static_cast<double>(numberOfTrialDirections)) +
                         CBMC::unsampledInternalLogFactor(beta, step, chainAtoms)};
 }

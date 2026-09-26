@@ -8,6 +8,7 @@ import intra_molecular_potentials;
 import chiral_center;
 import bond_potential;
 import bend_potential;
+import cbmc_closure_guide;
 
 // One operator of the deterministic growth plan: its topology (what is grown from where) and the
 // derived, step-constant data every sampler of the operator engine reads. Building the topology is
@@ -55,6 +56,12 @@ struct BaseCouplingConstants
  *    conformation is sampled from its Boltzmann distribution by an internal Monte-Carlo (the closure
  *    bonds keep every ring closed -- simple, fused, and bridged rings alike), and the placement is
  *    biased by the junction-crossing terms through the torsion selection.
+ *  - CloseBridge: the last bead of a regrown interior segment (fixed-endpoint regrowth). The single
+ *    next bead is bonded to the anchor 'currentBead' AND to a second placed bead 'closureBead'; it is
+ *    sampled exactly in bipolar coordinates about the anchor-closure axis (both bond lengths from
+ *    their Boltzmann densities, the position on the resulting circle spun by the torsion selection),
+ *    see cbmc_bridge_closure. The attach steps that lead up to it carry closure guides
+ *    ('spin.guides') that steer their spin towards closable geometries.
  *
  * The plan is deterministic (it only depends on the fragment graph and the set of already-placed
  * beads), so grow and retrace generate exactly the same sequence, as required for detailed balance.
@@ -74,6 +81,7 @@ struct GrowStep
     PlaceSeedFragment = 0,  ///< No previous bead: the seed of the growth.
     AttachFragment = 1,     ///< Grown from a placed anchor with a bend/torsion reference.
     CloseRing = 2,          ///< A cyclic cluster grown with ring-closure CBMC.
+    CloseBridge = 3,        ///< The closing bead of an interior segment, bonded to two placed beads.
   };
 
   // ----------------------------------------------------------------------------------------------
@@ -85,6 +93,8 @@ struct GrowStep
   std::vector<std::size_t> nextBeads{};       ///< The beads placed by this step.
   bool rigidBody{false};                      ///< Whether 'nextBeads' are hinged as one rigid body.
   Potentials::IntraMolecularPotentials intra{};  ///< Interactions affecting the placement of 'nextBeads'.
+  /// CloseBridge only: the second placed bead the single next bead is bonded to.
+  std::optional<std::size_t> closureBead{};
 
   // ----------------------------------------------------------------------------------------------
   // Derived sampler data.
@@ -142,8 +152,34 @@ struct GrowStep
     /// Bends of the step that change under the spin (they involve a placed atom other than the
     /// previous bead); weighted alongside the torsions.
     std::vector<BendPotential> variantBends{};
+
+    /// Closure guides of an attach step of a fixed-endpoint regrowth (see cbmc_closure_guide): per
+    /// guided next bead, the placed bead it must eventually reach and the tabulated bias g(D) of
+    /// their distance. The bias steers the spin selection and is divided out of its weight again.
+    /// The table depends on the temperature and is filled by 'Component::prepareGrowthPlans'.
+    struct ClosureGuide
+    {
+      std::size_t nextBeadIndex{};  ///< Index into 'nextBeads' of the guided bead.
+      std::size_t targetBead{};     ///< The placed bead the guided bead's segment closes onto.
+      ClosureGuidePath path{};      ///< The bonded terms along the shortest path bead -> target.
+      std::string signature{};      ///< Memo key of 'path' (congruent paths share one table).
+      std::shared_ptr<const ClosureGuideTable> table{};  ///< Absent until prepared.
+    };
+    std::vector<ClosureGuide> guides{};
   };
   SpinSelectionData spin{};
+
+  /// CloseBridge steps: the two bonds of the closing bead (to the anchor and to the closure bead) and
+  /// the bend centred on it (anchor - next - closure), which is invariant under the closure spin and
+  /// enters the base weight; every other bonded term of the step is spin-variant and weighted in the
+  /// torsion selection.
+  struct BridgeClosureData
+  {
+    std::optional<BondPotential> anchorBond{};
+    std::optional<BondPotential> closureBond{};
+    std::optional<BendPotential> midBend{};
+  };
+  BridgeClosureData bridge{};
 
   /// Rigid-body steps with a junction: the body atom bonded to the anchor (the 'inner' atom of the
   /// junction bend previous-current-inner) and that bend when the topology declares one.

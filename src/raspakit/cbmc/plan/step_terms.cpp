@@ -212,6 +212,47 @@ bool isSpinVariantRingTorsion(const std::array<std::size_t, 4> &identifiers, std
   return hasRingAtom && hasOutsideAtom;
 }
 
+// ---------------------------------------------------------------------------------------------------
+// Bridge closure: the closing bead n is sampled on the circle spanned by its bonds to the anchor c
+// and to the closure bead B, and spun about the c-B axis. Only c, n and B keep their mutual
+// distances under that spin, so the one spin-invariant bonded term is the bend c-n-B (the base
+// weight); every other bend, every torsion and every classically unsampled term of the step changes
+// with the spin and is Rosenbluth-weighted in the torsion selection.
+// ---------------------------------------------------------------------------------------------------
+void prepareBridgeClosure(CBMC::GrowStep &step)
+{
+  if (step.kind != CBMC::GrowStep::Kind::CloseBridge) return;
+
+  const std::size_t currentBead = step.currentBead;
+  const std::size_t nextBead = step.nextBeads.front();
+  const std::size_t closureBead = step.closureBead.value();
+
+  step.bridge.anchorBond = step.intra.findBondPotential(currentBead, nextBead);
+  step.bridge.closureBond = step.intra.findBondPotential(nextBead, closureBead);
+  step.bridge.midBend = findAnchorBend(step.intra, currentBead, nextBead, closureBead);
+
+  step.spin.potentials.torsions = step.intra.torsions;
+  for (const BendPotential &bend : step.intra.bends)
+  {
+    const bool isMidBend = bend.identifiers[1] == nextBead &&
+                           ((bend.identifiers[0] == currentBead && bend.identifiers[2] == closureBead) ||
+                            (bend.identifiers[2] == currentBead && bend.identifiers[0] == closureBead));
+    if (!isMidBend) step.spin.variantBends.push_back(bend);
+  }
+
+  Potentials::IntraMolecularPotentials &spin = step.spin.potentials;
+  spin.ureyBradleys = step.intra.ureyBradleys;
+  spin.inversionBends = step.intra.inversionBends;
+  spin.outOfPlaneBends = step.intra.outOfPlaneBends;
+  spin.improperTorsions = step.intra.improperTorsions;
+  spin.bondBonds = step.intra.bondBonds;
+  spin.bondBends = step.intra.bondBends;
+  spin.bondTorsions = step.intra.bondTorsions;
+  spin.bendBends = step.intra.bendBends;
+  spin.bendTorsions = step.intra.bendTorsions;
+  step.spin.hasUnsampledTerms = hasUnsampledTerms(spin);
+}
+
 // The temperature-independent memo key of a step's base coupling: the per-bead samplers plus every
 // coupling term, with atom identifiers mapped to their step-local roles so congruent steps share
 // one entry (and thus one frozen estimate, which is what makes their factors cancel in reptation).
@@ -381,6 +422,13 @@ void CBMC::prepareStep(GrowStep &step, const ConnectivityTable &connectivity, co
 
   step.flexibleAttach =
       step.kind == CBMC::GrowStep::Kind::AttachFragment && !step.rigidBody && step.previousBead.has_value();
+
+  // A bridge closure classifies its terms by its own spin axis (anchor-closure), not the junction.
+  if (step.kind == CBMC::GrowStep::Kind::CloseBridge)
+  {
+    prepareBridgeClosure(step);
+    return;
+  }
 
   prepareRigidTilt(step, connectivity);
   prepareRingSampler(step, connectivity, fragmentGraph, chiralCenters);

@@ -43,6 +43,7 @@ import connectivity_table;
 export import fragment;
 export import fragment_graph;
 export import cbmc_growth_plan;
+import cbmc_closure_guide;
 import json;
 import cbmc_statistics;
 
@@ -287,6 +288,9 @@ export struct Component
   // serialized: a restart re-prepares at setup.
   mutable std::optional<double> growthPlanBeta{};
   mutable std::map<std::string, CBMC::BaseCouplingConstants> baseCouplingConstantsMemo{};
+  // The closure-guide tables of fixed-endpoint regrowth (see cbmc_closure_guide), memoised per path
+  // signature for the same 'growthPlanBeta'; shared by every plan of the component. Not serialized.
+  mutable std::map<std::string, std::shared_ptr<const CBMC::ClosureGuideTable>> closureGuideMemo{};
   // Per-plan recoil-growth openness reference (see 'recoilReferenceStepEnergies'), keyed like the
   // plan cache. Derived from 'recoilReferenceConformations' and the plan; dropped when either
   // changes. Not serialized.

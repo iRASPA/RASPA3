@@ -96,6 +96,7 @@ bool feelerExists(RandomNumber &random, const RecoilContext &ctx, std::size_t se
   for (std::size_t j = 0; j != ctx.numberOfTrialDirections(); ++j)
   {
     StepTrial trial = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
+    if (!(trial.torsionWeight > 0.0)) continue;  // a dead bridge-closure draw: closed
 
     std::optional<StepTrialEnergy> energy = evaluateStepTrial(ctx.env, ctx.component, step, atoms, trial.positions);
     if (!energy.has_value()) continue;
@@ -139,6 +140,7 @@ std::size_t countAvailableDirections(RandomNumber &random, const RecoilContext &
   for (std::size_t j = firstAlternative; j < ctx.numberOfTrialDirections(); ++j)
   {
     StepTrial alternative = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
+    if (!(alternative.torsionWeight > 0.0)) continue;  // a dead bridge-closure draw: closed
 
     std::optional<StepTrialEnergy> energy = evaluateStepTrial(ctx.env, ctx.component, step, atoms, alternative.positions);
     if (!energy.has_value()) continue;
@@ -187,6 +189,7 @@ GrowOutcome growRecursive(RandomNumber &random, const RecoilContext &ctx, std::s
   for (std::size_t j = 0; j != ctx.numberOfTrialDirections(); ++j)
   {
     StepTrial trial = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
+    if (!(trial.torsionWeight > 0.0)) continue;  // a dead bridge-closure draw: closed
 
     std::optional<StepTrialEnergy> energy = evaluateStepTrial(ctx.env, ctx.component, step, atoms, trial.positions);
     if (!energy.has_value()) continue;

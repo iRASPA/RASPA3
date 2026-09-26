@@ -65,4 +65,23 @@ constexpr std::size_t rigidTiltRollGridPoints = 72;
 /// deterministic and independent of the simulation's random stream.
 constexpr std::size_t recoilReferenceConformations = 50;
 constexpr std::size_t recoilReferenceSeed = 1867;
+
+/// The closure-guide tables of fixed-endpoint regrowth ('cbmc_closure_guide'): the grid spacing
+/// (Angstrom) of the bead-target distance, the fixed seed of the one-off tabulation (one frozen table
+/// per path signature, shared by grow and retrace), the number of bond-length pairs the two-bond
+/// table integrates over, the number of ideal sub-chains sampled for a longer path, the floor of the
+/// guide relative to its maximum (as a log; e^-14 ~ 1e-6), the rejection budget of the torsion
+/// sampler of the ideal sub-chain, and the grid of the numerical torsion minimum that sampler needs.
+/// None affects the sampled distribution: the guide is divided out of the Rosenbluth weight again.
+constexpr double closureGuideSpacing = 0.01;
+constexpr std::size_t closureGuideSeed = 1901;
+constexpr std::size_t closureGuideBondPairs = 4096;
+constexpr std::size_t closureGuideChainSamples = 400'000;
+constexpr double closureGuideLogFloor = 14.0;
+constexpr std::size_t closureGuideTorsionAttempts = 10'000;
+constexpr std::size_t torsionMinimumGridPoints = 3600;
+/// Margin (Angstrom) added to the sampled maximum reach of a path when sizing its table, and the
+/// number of draws per bond used to estimate that reach.
+constexpr double closureGuideReachMargin = 0.2;
+constexpr std::size_t closureGuideReachSamples = 4096;
 }  // namespace CBMC::Constants

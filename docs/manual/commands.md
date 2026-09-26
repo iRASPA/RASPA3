@@ -1647,7 +1647,25 @@ distribution.
 
 -   `"PartialReinsertionProbability" : floating-point-number`\
     The relative probability of a partial `CBMC` reinsertion move, which regrows
-    only part of the molecule.
+    only part of the molecule. The parts are declared in the molecule file as
+    `"Partial-reinsertion" : [[fixed atoms], [fixed atoms], ...]`, a list of
+    sets of atom indices; each move picks one set at random, keeps those atoms
+    where they are, and regrows all other atoms with `CBMC`.
+    A fixed set may be disconnected in the bond graph. Fixed atoms on both sides
+    of the regrown part make the move a fixed-endpoint (bridging) regrowth: the
+    interior segment is grown from one fixed side and its last bead is closed
+    onto the other, e.g. `[0, 1, 4, 5]` for a six-bead chain regrows beads 2
+    and 3 between them, `[0, 5]` regrows the whole interior. The closure is
+    exact (the closing bead is drawn from its two bond-length distributions in
+    bipolar coordinates, `FIXED` bonds are satisfied exactly, and the beads
+    before it are steered towards closable geometries by a bias that cancels
+    from the acceptance rule), so the acceptance rule is the usual
+    `W_new / W_old`. Limits: the regrown part between fixed atoms must be
+    flexible single-atom beads (a rigid body or ring bonded to fixed atoms on
+    more than one side is rejected when the molecule is read), a bead may not be
+    bonded to more than two fixed atoms, and declared chiral centres may not
+    include the closing bead. Long or stiff bridged segments close with low
+    acceptance; keep bridged segments short.
 
 -   `"SwapConventionalProbability" : floating-point-number`\
     The relative probability of a conventional (non-CBMC) insertion or deletion
