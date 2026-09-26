@@ -55,7 +55,9 @@ std::array<std::string, std::to_underlying(Move::Types::Count)> Move::moveNames 
   "Reptation",
   "Concerted rotation",
   "Bead displacement",
-  "Bead flip"
+  "Bead flip",
+  "Double bridging",
+  "Intramolecular double rebridging"
 };
 
 std::array<std::string, std::to_underlying(Move::Timing::Count)> Move::timingNames =
@@ -253,6 +255,12 @@ std::array<std::vector<Move::Timing>, std::to_underlying(Move::Types::Count)> Mo
   std::vector<Move::Timing>{Move::Timing::ExternalFieldMolecule, Move::Timing::FrameworkMolecule,
                             Move::Timing::MoleculeMolecule, Move::Timing::Ewald},
   // BeadFlip
+  std::vector<Move::Timing>{Move::Timing::ExternalFieldMolecule, Move::Timing::FrameworkMolecule,
+                            Move::Timing::MoleculeMolecule, Move::Timing::Ewald},
+  // DoubleBridging
+  std::vector<Move::Timing>{Move::Timing::ExternalFieldMolecule, Move::Timing::FrameworkMolecule,
+                            Move::Timing::MoleculeMolecule, Move::Timing::Ewald},
+  // IntramolecularDoubleRebridging
   std::vector<Move::Timing>{Move::Timing::ExternalFieldMolecule, Move::Timing::FrameworkMolecule,
                             Move::Timing::MoleculeMolecule, Move::Timing::Ewald}
 };

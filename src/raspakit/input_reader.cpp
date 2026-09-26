@@ -981,6 +981,28 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("DoubleBridgingProbability") && item["DoubleBridgingProbability"].is_number_float())
+      {
+        double doubleBridgingProbability = item["DoubleBridgingProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::DoubleBridging, doubleBridgingProbability);
+        }
+      }
+
+      for (const char *key : {"IntramolecularDoubleRebridgingProbability", "DoubleRebridgingProbability"})
+      {
+        if (item.contains(key) && item[key].is_number_float())
+        {
+          double doubleRebridgingProbability = item[key].get<double>();
+          for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+          {
+            move_probabilities[i].setProbability(Move::Types::IntramolecularDoubleRebridging,
+                                                 doubleRebridgingProbability);
+          }
+        }
+      }
+
       if (item.contains("RandomRotationProbability") && item["RandomRotationProbability"].is_number_float())
       {
         double randomRotationProbability = item["RandomRotationProbability"].get<double>();
@@ -3884,6 +3906,9 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "BeadDisplacementProbability",
     "BeadFlipProbability",
     "BeadFlipRandomizationFraction",
+    "DoubleBridgingProbability",
+    "IntramolecularDoubleRebridgingProbability",
+    "DoubleRebridgingProbability",
     "RandomRotationProbability",
     "ReinsertionProbability",
     "PartialReinsertionProbability",

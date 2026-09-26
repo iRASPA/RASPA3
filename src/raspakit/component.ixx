@@ -347,6 +347,40 @@ export struct Component
   // move can populate it on a 'const Component&'.
   mutable std::optional<std::vector<ConcertedRotationWindow>> concertedRotationWindowsCache{};
 
+  /// The backbone decomposition used by the connectivity-altering bridging moves (double bridging
+  /// and intramolecular double rebridging; Karayiannis, Mavrantzas and Theodorou, Phys. Rev. Lett.
+  /// 88, 105503 (2002), J. Chem. Phys. 117, 5465 (2002)). The molecule is viewed as an ordered
+  /// sequence of backbone units, each a backbone atom together with the side-group atoms hanging off
+  /// it. A bridging site 's' denotes the trimer of units s+1, s+2, s+3, anchored on the dimer
+  /// (s-1, s) upstream and the dimer (s+4, s+5) downstream (unit s+6, when present, is the third
+  /// downstream atom of the closure chart). Only acyclic molecules with a backbone of at least seven
+  /// units have sites.
+  struct BridgingTopology
+  {
+    struct Unit
+    {
+      std::size_t backboneAtom{};            ///< The backbone atom of the unit.
+      std::vector<std::size_t> sideAtoms{};  ///< Side-group atoms in breadth-first order from the backbone atom.
+    };
+    std::vector<Unit> units{};            ///< The units in backbone order.
+    std::vector<std::size_t> unitOfAtom{};  ///< Maps each atom to its unit.
+    /// Valid trimer sites 's' of the double-bridging move (the same site is used on both chains,
+    /// which keeps every chain length unchanged).
+    std::vector<std::size_t> sites{};
+    /// Valid site pairs (a, b), b >= a + 5, of the intramolecular double rebridging: the trimers at
+    /// a and b are excised and the segment of units a+4 ... b between them is reversed, which
+    /// requires unit k and unit a+4+b-k to be congruent (same types, charges and side-group
+    /// structure).
+    std::vector<std::array<std::size_t, 2>> sitePairs{};
+    /// Upper bound [Angstrom] on the distance a trimer can bridge (the sum of its four backbone bond
+    /// lengths in the reference geometry). Used as the deterministic, symmetric criterion that
+    /// selects bridging partners.
+    double maximumBridgeDistance{};
+  };
+  // Cache of the bridging topology (see bridgingTopology()). Derived data, never serialized;
+  // 'mutable' so the moves can populate it on a 'const Component&'.
+  mutable std::optional<BridgingTopology> bridgingTopologyCache{};
+
   // Cache of the beads that may be displaced individually (see displaceableBeads()). Derived data,
   // never serialized; 'mutable' so the move can populate it on a 'const Component&'.
   mutable std::optional<std::vector<std::size_t>> displaceableBeadsCache{};
@@ -700,6 +734,10 @@ export struct Component
   /// computed on first use and cached. Empty for molecules without a flexible backbone path of
   /// eight atoms.
   const std::vector<ConcertedRotationWindow> &concertedRotationWindows() const;
+
+  /// Returns the bridging topology of the molecule (see BridgingTopology); computed on first use
+  /// and cached. The site lists are empty for cyclic, rigid, or short molecules.
+  const BridgingTopology &bridgingTopology() const;
 
   /// Returns the beads that the single-bead displacement move may move: beads that are not part of
   /// a rigid fragment and do not take part in any FIXED or RIGID bond, bend or torsion (a random

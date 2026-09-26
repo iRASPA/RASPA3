@@ -1092,6 +1092,172 @@ const std::vector<Component::ConcertedRotationWindow> &Component::concertedRotat
   return concertedRotationWindowsCache.value();
 }
 
+const Component::BridgingTopology &Component::bridgingTopology() const
+{
+  if (bridgingTopologyCache.has_value()) return bridgingTopologyCache.value();
+
+  BridgingTopology result{};
+  const std::size_t numberOfBeads = connectivityTable.numberOfBeads;
+  constexpr std::size_t unassigned = std::numeric_limits<std::size_t>::max();
+
+  auto finish = [&]() -> const BridgingTopology &
+  {
+    bridgingTopologyCache = std::move(result);
+    return bridgingTopologyCache.value();
+  };
+
+  // The moves relabel whole chain parts, which needs an unambiguous backbone with side groups that
+  // hang off a single backbone atom each: the bond graph must be a tree. A connected graph is a tree
+  // when it has one bond less than atoms; connectivity is verified below (every atom gets a unit).
+  if (numberOfBeads < 7 || !endToEndAtoms.has_value()) return finish();
+  if (connectivityTable.findAllBonds().size() + 1 != numberOfBeads) return finish();
+
+  const std::vector<std::size_t> backbone =
+      connectivityTable.shortestPath(endToEndAtoms.value()[0], endToEndAtoms.value()[1]);
+  if (backbone.size() < 7) return finish();
+  const std::size_t numberOfUnits = backbone.size();
+
+  // Units: each backbone atom with everything reachable from it without passing through another
+  // backbone atom, in breadth-first order (neighbours in ascending index order) so that congruent
+  // side groups list their atoms in the same order.
+  std::vector<std::size_t> unitOfAtom(numberOfBeads, unassigned);
+  for (std::size_t k = 0; k != numberOfUnits; ++k) unitOfAtom[backbone[k]] = k;
+  result.units.resize(numberOfUnits);
+  for (std::size_t k = 0; k != numberOfUnits; ++k)
+  {
+    BridgingTopology::Unit &unit = result.units[k];
+    unit.backboneAtom = backbone[k];
+    std::deque<std::size_t> queue{backbone[k]};
+    while (!queue.empty())
+    {
+      const std::size_t current = queue.front();
+      queue.pop_front();
+      for (std::size_t neighbor : connectivityTable.findAllNeighbors(current))
+      {
+        if (unitOfAtom[neighbor] != unassigned) continue;
+        unitOfAtom[neighbor] = k;
+        unit.sideAtoms.push_back(neighbor);
+        queue.push_back(neighbor);
+      }
+    }
+  }
+  if (std::ranges::any_of(unitOfAtom, [](std::size_t unit) { return unit == unassigned; })) return finish();
+  result.unitOfAtom = unitOfAtom;
+
+  auto backboneAtom = [&](std::size_t unit) { return result.units[unit].backboneAtom; };
+
+  // FIXED and RIGID bends are holonomic constraints. A closure preserves every backbone bend and the
+  // bends inside a rigidly carried trimer unit, but a bend at the anchor a2 between the new a3 and a
+  // side group of a2 (or at a6 between a5 and a side group of a6) changes.
+  auto holonomicBend = [&](std::size_t center, std::size_t moving, std::size_t keptNeighbor)
+  {
+    for (const BendPotential &bend : intraMolecularPotentials.bends)
+    {
+      if (bend.type != BendType::Fixed && bend.type != BendType::Rigid) continue;
+      if (bend.identifiers[1] != center) continue;
+      const std::size_t x = bend.identifiers[0], y = bend.identifiers[2];
+      const std::size_t other = (x == moving) ? y : (y == moving ? x : center);
+      if (other != center && other != keptNeighbor) return true;
+    }
+    return false;
+  };
+
+  // A site is valid when the anchors exist, when no rigid fragment would deform (a fragment must lie
+  // inside the head, inside one trimer unit, or inside the tail: the trimer units move rigidly and
+  // independently, and head and tail are relabelled to different chain parts), and when no
+  // holonomic bend at the anchors is violated.
+  auto siteIsValid = [&](std::size_t s) -> bool
+  {
+    if (s < 1 || s + 5 >= numberOfUnits) return false;
+    auto group = [&](std::size_t atom) -> std::size_t
+    {
+      const std::size_t k = unitOfAtom[atom];
+      if (k <= s) return 0;
+      if (k >= s + 4) return 4;
+      return k - s;
+    };
+    for (const auto &fragment : fragmentGraph.fragments)
+    {
+      if (!fragment.isRigidBody() || fragment.atoms.empty()) continue;
+      const std::size_t fragmentGroup = group(fragment.atoms.front());
+      for (std::size_t atom : fragment.atoms)
+      {
+        if (group(atom) != fragmentGroup) return false;
+      }
+    }
+    if (holonomicBend(backboneAtom(s), backboneAtom(s + 1), backboneAtom(s - 1))) return false;
+    if (holonomicBend(backboneAtom(s + 4), backboneAtom(s + 3), backboneAtom(s + 5))) return false;
+    return true;
+  };
+  for (std::size_t s = 0; s != numberOfUnits; ++s)
+  {
+    if (siteIsValid(s)) result.sites.push_back(s);
+  }
+
+  // Two units are congruent when their atoms (backbone atom first, then the side atoms in
+  // breadth-first order) agree in pseudo-atom type and charge, and are bonded identically. The
+  // intramolecular double rebridging copies the positions of one unit into the slots of the other.
+  auto unitAtoms = [&](std::size_t k)
+  {
+    std::vector<std::size_t> atoms{backboneAtom(k)};
+    atoms.insert(atoms.end(), result.units[k].sideAtoms.begin(), result.units[k].sideAtoms.end());
+    return atoms;
+  };
+  auto unitsCongruent = [&](std::size_t k, std::size_t l) -> bool
+  {
+    const std::vector<std::size_t> atomsK = unitAtoms(k), atomsL = unitAtoms(l);
+    if (atomsK.size() != atomsL.size()) return false;
+    for (std::size_t p = 0; p != atomsK.size(); ++p)
+    {
+      const Atom &atomK = definedAtoms[atomsK[p]].first;
+      const Atom &atomL = definedAtoms[atomsL[p]].first;
+      if (atomK.type != atomL.type || atomK.charge != atomL.charge) return false;
+      for (std::size_t q = p + 1; q != atomsK.size(); ++q)
+      {
+        if (connectivityTable[atomsK[p], atomsK[q]] != connectivityTable[atomsL[p], atomsL[q]]) return false;
+      }
+    }
+    return true;
+  };
+  for (std::size_t a : result.sites)
+  {
+    for (std::size_t b : result.sites)
+    {
+      if (b < a + 5) continue;
+      bool congruent = true;
+      for (std::size_t k = a + 4; congruent && k <= b; ++k)
+      {
+        congruent = unitsCongruent(k, a + 4 + b - k);
+      }
+      if (congruent) result.sitePairs.push_back({a, b});
+    }
+  }
+
+  // The reach of a trimer: the sum of its four backbone bond lengths (the fixed or equilibrium
+  // length of the bond potential when it has one, otherwise the reference geometry). Bond lengths
+  // are preserved by the closure, so no bridge can span more than the sum of the actual lengths.
+  auto bondLength = [&](std::size_t A, std::size_t B) -> double
+  {
+    double length = (definedAtoms[A].first.position - definedAtoms[B].first.position).length();
+    if (const std::optional<BondPotential> bond = intraMolecularPotentials.findBondPotential(A, B))
+    {
+      if (bond->type == BondType::Fixed) length = std::max(length, bond->parameters[0]);
+      if (bond->type == BondType::Harmonic) length = std::max(length, bond->parameters[1]);
+    }
+    return length;
+  };
+  double maximumBridgeDistance = 0.0;
+  for (std::size_t s : result.sites)
+  {
+    double reach = 0.0;
+    for (std::size_t k = s; k != s + 4; ++k) reach += bondLength(backboneAtom(k), backboneAtom(k + 1));
+    maximumBridgeDistance = std::max(maximumBridgeDistance, reach);
+  }
+  result.maximumBridgeDistance = maximumBridgeDistance;
+
+  return finish();
+}
+
 bool Component::isInsideRigidFragment(std::span<const std::size_t> ids) const
 {
   return fragmentGraph.isInsideRigidFragment(ids);

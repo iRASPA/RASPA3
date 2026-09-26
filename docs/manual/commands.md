@@ -1749,6 +1749,52 @@ distribution.
     for a terminal bead); the remainder uses an adaptive angle window. Not
     available with polarization.
 
+-   `"DoubleBridgingProbability" : floating-point-number`\
+    The relative probability of a double-bridging (DB) move (Karayiannis,
+    Mavrantzas and Theodorou, Phys. Rev. Lett. 88, 105503 (2002); J. Chem.
+    Phys. 117, 5465 (2002)) for acyclic chain molecules of the same
+    component: a connectivity-altering move that exchanges the tails of two
+    chains. A backbone site $s$ is chosen at random; on both chains the trimer
+    of backbone units $s+1, s+2, s+3$ is excised and the head of each chain
+    (units up to $s$) is bridged onto the tail of the other (units from $s+4$)
+    with a new trimer that keeps all bond lengths and bend angles (the same
+    loop-closure problem as the concerted rotation). Using the same site on
+    both chains keeps every chain length unchanged, so the move samples the
+    same monodisperse ensemble as the other moves; the large-scale
+    conformations of two chains change at once while every atom outside the
+    two trimers stays in place, which decorrelates the end-to-end vectors
+    orders of magnitude faster than local moves. The partner chain is chosen
+    uniformly among the chains whose anchor atoms are within bridging reach
+    (the sum of the four backbone bond lengths); the acceptance rule contains
+    the Metropolis factor, the solution-count and closure-Jacobian ratios of
+    both bridges, and the ratio of the partner-selection probabilities. Side
+    groups travel with their backbone atom (those of the re-bridged trimers
+    rigidly with its local frame). The backbone is the path between the
+    `"EndToEndAtoms"` (by default the graph diameter); a site is valid when no
+    rigid fragment straddles the moving groups and no `FIXED`/`RIGID` bend at
+    the anchors would be violated. Requires at least two whole (non-fractional)
+    molecules of the component and a backbone of at least seven units. Not
+    available with polarization.
+
+-   `"IntramolecularDoubleRebridgingProbability" : floating-point-number`\
+    The relative probability of an intramolecular double rebridging (IDR)
+    move (Karayiannis et al., J. Chem. Phys. 117, 5465 (2002)), the
+    single-chain analogue of double bridging. Alias:
+    `"DoubleRebridgingProbability"`. Two sites $a < b$ ($b \ge a + 5$) are
+    chosen on the same chain; the trimers at both sites are excised and the
+    segment of units $a+4 \ldots b$ between them is reversed by bridging the
+    chain head onto its far end and its near end onto the chain tail, again
+    with bond lengths and bend angles preserved. Chain length and
+    connectivity are unchanged; the whole segment changes conformation while
+    every atom outside the two trimers stays in place. The segment must be
+    congruent under reversal (unit $k$ and unit $a+4+b-k$ have the same
+    pseudo-atom types, charges and side-group structure; a homopolymer
+    backbone qualifies). The acceptance rule contains the Metropolis factor,
+    the closure factors of both bridges and the ratio of the chart volume
+    elements of the reversed segment (unity for uniform fixed bonds and
+    bends). Requires a backbone of at least twelve units. Not available with
+    polarization.
+
 -   `"ReptationProbability" : floating-point-number`\
     The relative probability of a reptation (slithering-snake) move for chain
     molecules that declare their repeat units in the molecule file as

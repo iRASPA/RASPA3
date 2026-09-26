@@ -42,6 +42,8 @@ import mc_moves_reptation;
 import mc_moves_concerted_rotation;
 import mc_moves_bead_displacement;
 import mc_moves_bead_flip;
+import mc_moves_double_bridging;
+import mc_moves_double_rebridging;
 import mc_moves_partial_reinsertion;
 import mc_moves_insertion;
 import mc_moves_deletion;
@@ -118,6 +120,8 @@ bool isGuardedTMMCNeutralMove(Move::Types moveType)
     case Move::Types::ConcertedRotation:
     case Move::Types::BeadDisplacement:
     case Move::Types::BeadFlip:
+    case Move::Types::DoubleBridging:
+    case Move::Types::IntramolecularDoubleRebridging:
       return true;
     default:
       return false;
@@ -364,6 +368,42 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
 
         std::optional<RunningEnergy> energyDifference =
             MC_Moves::beadFlipMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      break;
+    }
+    case Move::Types::DoubleBridging:
+    {
+      // Two whole molecules exchange tails: the first is drawn among the integer molecules here, the
+      // partner inside the move (from the chains within bridging reach).
+      if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 1)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::doubleBridgingMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      break;
+    }
+    case Move::Types::IntramolecularDoubleRebridging:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::intramolecularDoubleRebridgingMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         if (energyDifference)
         {
@@ -686,6 +726,42 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
 
         std::optional<RunningEnergy> energyDifference =
             MC_Moves::beadFlipMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      break;
+    }
+    case Move::Types::DoubleBridging:
+    {
+      // Two whole molecules exchange tails: the first is drawn among the integer molecules here, the
+      // partner inside the move (from the chains within bridging reach).
+      if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 1)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::doubleBridgingMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      break;
+    }
+    case Move::Types::IntramolecularDoubleRebridging:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::intramolecularDoubleRebridgingMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         if (energyDifference)
         {
@@ -1532,6 +1608,42 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
+    case Move::Types::DoubleBridging:
+    {
+      // Two whole molecules exchange tails: the first is drawn among the integer molecules here, the
+      // partner inside the move (from the chains within bridging reach).
+      if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 1)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::doubleBridgingMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      break;
+    }
+    case Move::Types::IntramolecularDoubleRebridging:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::intramolecularDoubleRebridgingMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      break;
+    }
     case Move::Types::PartialReinsertionCBMC:
     {
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
@@ -2339,6 +2451,42 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
 
         std::optional<RunningEnergy> energyDifference =
             MC_Moves::beadFlipMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      break;
+    }
+    case Move::Types::DoubleBridging:
+    {
+      // Two whole molecules exchange tails: the first is drawn among the integer molecules here, the
+      // partner inside the move (from the chains within bridging reach).
+      if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 1)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::doubleBridgingMove(random, selectedSystem, selectedComponent, selectedMolecule);
+
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
+      }
+      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+      break;
+    }
+    case Move::Types::IntramolecularDoubleRebridging:
+    {
+      if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+      {
+        std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
+
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::intramolecularDoubleRebridgingMove(random, selectedSystem, selectedComponent, selectedMolecule);
 
         if (energyDifference)
         {

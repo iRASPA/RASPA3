@@ -59,7 +59,9 @@ export struct Move
     ConcertedRotation = 48,           // ConRot: driver torsion change with re-bridging of the following trimer (Dodd, Boone, Theodorou)
     BeadDisplacement = 49,            // Random displacement of a single flexible bead
     BeadFlip = 50,                    // Bond-length-preserving rotation of a single bead (kink jump / end rotation)
-    Count = 51
+    DoubleBridging = 51,              // Connectivity-altering exchange of chain tails between two chains (Karayiannis, Mavrantzas, Theodorou)
+    IntramolecularDoubleRebridging = 52,  // Connectivity-altering reversal of a chain segment via two closures (IDR)
+    Count = 53
   };
 
   /**
@@ -138,6 +140,8 @@ export inline std::unordered_set<Move::Types> componentMoves = {Move::Types::Tra
                                                                 Move::Types::ConcertedRotation,
                                                                 Move::Types::BeadDisplacement,
                                                                 Move::Types::BeadFlip,
+                                                                Move::Types::DoubleBridging,
+                                                                Move::Types::IntramolecularDoubleRebridging,
                                                                 Move::Types::IdentityChangeCBMC,
                                                                 Move::Types::IdentitySwitchCBMC, Move::Types::Swap,
                                                                 Move::Types::SwapCBMC,           Move::Types::PairSwapCBMC,
