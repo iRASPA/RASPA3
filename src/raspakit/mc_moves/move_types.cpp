@@ -53,7 +53,9 @@ std::array<std::string, std::to_underlying(Move::Types::Count)> Move::moveNames 
   "Pivot",
   "Crankshaft",
   "Reptation",
-  "Concerted rotation"
+  "Concerted rotation",
+  "Bead displacement",
+  "Bead flip"
 };
 
 std::array<std::string, std::to_underlying(Move::Timing::Count)> Move::timingNames =
@@ -245,6 +247,12 @@ std::array<std::vector<Move::Timing>, std::to_underlying(Move::Types::Count)> Mo
   // Reptation
   std::vector<Move::Timing>{Move::Timing::NonEwald, Move::Timing::Ewald},
   // ConcertedRotation
+  std::vector<Move::Timing>{Move::Timing::ExternalFieldMolecule, Move::Timing::FrameworkMolecule,
+                            Move::Timing::MoleculeMolecule, Move::Timing::Ewald},
+  // BeadDisplacement
+  std::vector<Move::Timing>{Move::Timing::ExternalFieldMolecule, Move::Timing::FrameworkMolecule,
+                            Move::Timing::MoleculeMolecule, Move::Timing::Ewald},
+  // BeadFlip
   std::vector<Move::Timing>{Move::Timing::ExternalFieldMolecule, Move::Timing::FrameworkMolecule,
                             Move::Timing::MoleculeMolecule, Move::Timing::Ewald}
 };

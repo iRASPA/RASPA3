@@ -222,6 +222,10 @@ export struct Component
   // [-pi, pi]) instead of perturbing it within the adaptive window; same rationale as
   // 'pivotRandomizationFraction'.
   double concertedRotationRandomizationFraction{0.2};  ///< Fraction of ConRot attempts with a fully random driver.
+  // Fraction of bead-flip attempts that randomize the rotation completely (uniform angle in
+  // [-pi, pi] about the neighbour axis, or a uniform bond direction for a terminal bead) instead of
+  // perturbing it within the adaptive window; same rationale as 'pivotRandomizationFraction'.
+  double beadFlipRandomizationFraction{0.2};  ///< Fraction of bead-flip attempts with a full randomization.
   std::vector<std::pair<Atom, double>> definedAtoms{};  ///< List of defined atoms and their masses.
 
   double3 inertiaVector{};         ///< Inertia vector of the component.
@@ -342,6 +346,21 @@ export struct Component
   // Cache of the valid concerted-rotation windows. Derived data, never serialized; 'mutable' so the
   // move can populate it on a 'const Component&'.
   mutable std::optional<std::vector<ConcertedRotationWindow>> concertedRotationWindowsCache{};
+
+  // Cache of the beads that may be displaced individually (see displaceableBeads()). Derived data,
+  // never serialized; 'mutable' so the move can populate it on a 'const Component&'.
+  mutable std::optional<std::vector<std::size_t>> displaceableBeadsCache{};
+
+  /// A bead that can be rotated on its own while keeping every bond length: a terminal bead (one
+  /// bonded neighbour) rotates on the sphere about its neighbour, a bead with two bonded neighbours
+  /// rotates about the axis through them (kink jump).
+  struct FlipBead
+  {
+    std::size_t atom{};                     ///< The rotated bead.
+    std::vector<std::size_t> neighbours{};  ///< Its one or two bonded neighbours (the rotation anchors).
+  };
+  // Cache of the valid flip beads (see flipBeads()). Derived data, never serialized.
+  mutable std::optional<std::vector<FlipBead>> flipBeadsCache{};
   std::vector<std::size_t> identityChanges{};
   std::vector<std::size_t> gibbsIdentityChanges{};
   std::vector<std::size_t> identitySwitches{};  ///< Partner components for the canonical identity-switch move.
@@ -681,6 +700,17 @@ export struct Component
   /// computed on first use and cached. Empty for molecules without a flexible backbone path of
   /// eight atoms.
   const std::vector<ConcertedRotationWindow> &concertedRotationWindows() const;
+
+  /// Returns the beads that the single-bead displacement move may move: beads that are not part of
+  /// a rigid fragment and do not take part in any FIXED or RIGID bond, bend or torsion (a random
+  /// displacement would violate such a holonomic constraint). Computed on first use and cached.
+  const std::vector<std::size_t> &displaceableBeads() const;
+
+  /// Returns the beads that the bead-flip move may rotate (see FlipBead): beads with one or two
+  /// bonded neighbours that are not part of a rigid fragment and whose rotation does not change a
+  /// FIXED or RIGID bend or torsion (all bond lengths are preserved by construction). Computed on
+  /// first use and cached.
+  const std::vector<FlipBead> &flipBeads() const;
 
   /**
    * \brief Returns whether all given atom indices lie inside one and the same rigid-body fragment.

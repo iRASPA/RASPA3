@@ -855,6 +855,89 @@ const std::vector<Component::CrankshaftUnit> &Component::crankshaftUnits() const
   return crankshaftUnitsCache.value();
 }
 
+namespace
+{
+// Whether 'atom' takes part in a holonomic (FIXED or RIGID) bond, bend or torsion that a move of
+// the atom would change. With 'skipBonds' set, bonds are not counted (a rotation about an axis
+// through the neighbours keeps every bond of the atom); with 'skipCentralBends' set, a bend whose
+// central atom is 'atom' is not counted (a rotation about the axis through the two neighbours keeps
+// that bend).
+bool inHolonomicConstraint(const Potentials::IntraMolecularPotentials &potentials, std::size_t atom, bool skipBonds,
+                           bool skipCentralBends)
+{
+  if (!skipBonds)
+  {
+    for (const BondPotential &bond : potentials.bonds)
+    {
+      if (bond.type != BondType::Fixed) continue;
+      if (bond.identifiers[0] == atom || bond.identifiers[1] == atom) return true;
+    }
+  }
+  for (const BendPotential &bend : potentials.bends)
+  {
+    if (bend.type != BendType::Fixed && bend.type != BendType::Rigid) continue;
+    if (bend.identifiers[0] == atom || bend.identifiers[2] == atom) return true;
+    if (bend.identifiers[1] == atom && !skipCentralBends) return true;
+  }
+  for (const TorsionPotential &torsion : potentials.torsions)
+  {
+    if (torsion.type != TorsionType::Fixed) continue;
+    if (std::find(torsion.identifiers.begin(), torsion.identifiers.end(), atom) != torsion.identifiers.end()) return true;
+  }
+  return false;
+}
+}  // namespace
+
+const std::vector<std::size_t> &Component::displaceableBeads() const
+{
+  if (displaceableBeadsCache.has_value()) return displaceableBeadsCache.value();
+
+  std::vector<std::size_t> result;
+  const std::size_t numberOfBeads = connectivityTable.numberOfBeads;
+  for (std::size_t atom = 0; atom < numberOfBeads; ++atom)
+  {
+    // A bead inside a rigid fragment of more than one atom cannot move on its own.
+    if (!fragmentGraph.atomFragmentIds.empty())
+    {
+      const auto &fragment = fragmentGraph.fragments[fragmentGraph.atomFragmentIds[atom]];
+      if (fragment.isRigidBody() && fragment.atoms.size() > 1) continue;
+    }
+    // A displacement changes every bond, bend and torsion the bead takes part in.
+    if (inHolonomicConstraint(intraMolecularPotentials, atom, false, false)) continue;
+    result.push_back(atom);
+  }
+
+  displaceableBeadsCache = std::move(result);
+  return displaceableBeadsCache.value();
+}
+
+const std::vector<Component::FlipBead> &Component::flipBeads() const
+{
+  if (flipBeadsCache.has_value()) return flipBeadsCache.value();
+
+  std::vector<FlipBead> result;
+  const std::size_t numberOfBeads = connectivityTable.numberOfBeads;
+  for (std::size_t atom = 0; atom < numberOfBeads; ++atom)
+  {
+    std::vector<std::size_t> neighbours = connectivityTable.findAllNeighbors(atom);
+    // Only beads with one or two neighbours have a bond-length-preserving rotation.
+    if (neighbours.empty() || neighbours.size() > 2) continue;
+    if (!fragmentGraph.atomFragmentIds.empty())
+    {
+      const auto &fragment = fragmentGraph.fragments[fragmentGraph.atomFragmentIds[atom]];
+      if (fragment.isRigidBody() && fragment.atoms.size() > 1) continue;
+    }
+    // The rotation keeps the bonds of the bead and, for two neighbours, the bend centred on it;
+    // every other bend and every torsion containing the bead changes.
+    if (inHolonomicConstraint(intraMolecularPotentials, atom, true, neighbours.size() == 2)) continue;
+    std::sort(neighbours.begin(), neighbours.end());
+    result.push_back(FlipBead{atom, std::move(neighbours)});
+  }
+
+  flipBeadsCache = std::move(result);
+  return flipBeadsCache.value();
+}
+
 const std::vector<Component::ConcertedRotationWindow> &Component::concertedRotationWindows() const
 {
   if (concertedRotationWindowsCache.has_value()) return concertedRotationWindowsCache.value();
@@ -2877,6 +2960,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.crankshaftRandomizationFraction;
   archive << c.crankshaftMaxSegmentSize;
   archive << c.concertedRotationRandomizationFraction;
+  archive << c.beadFlipRandomizationFraction;
   archive << c.repeatUnits;
   archive << c.endToEndAtoms;
   archive << c.definedAtoms;
@@ -2986,6 +3070,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.crankshaftRandomizationFraction;
   archive >> c.crankshaftMaxSegmentSize;
   archive >> c.concertedRotationRandomizationFraction;
+  archive >> c.beadFlipRandomizationFraction;
   archive >> c.repeatUnits;
   archive >> c.endToEndAtoms;
   archive >> c.definedAtoms;

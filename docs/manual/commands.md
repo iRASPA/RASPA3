@@ -1717,6 +1717,38 @@ distribution.
     draws the driver angle uniformly from $[-\pi, \pi]$; the remainder uses
     an adaptive window. Not available with polarization.
 
+-   `"BeadDisplacementProbability" : floating-point-number`\
+    The relative probability of a single-bead displacement for flexible
+    molecules. One bead is chosen at random and displaced along one random
+    Cartesian direction by a random amount within an adaptive maximum
+    displacement (one per direction, tuned towards a 50% acceptance ratio,
+    initial value 0.3 Å); all other atoms stay in place. Every bond, bend and
+    torsion the bead takes part in changes, so the move relaxes flexible bond
+    lengths and bend angles locally, which none of the rotation moves (pivot,
+    crankshaft, concerted rotation, bead flip) can do. Beads inside a rigid
+    fragment of more than one atom and beads that take part in a `FIXED` bond
+    or a `FIXED`/`RIGID` bend or torsion are never chosen; a molecule without a
+    displaceable bead rejects the move. Not available with polarization.
+
+-   `"BeadFlipProbability" : floating-point-number`\
+    The relative probability of a bead flip for flexible molecules: a
+    bond-length-preserving rotation of a single bead. An interior bead with
+    two neighbours is rotated about the axis through its neighbours (kink
+    jump), which keeps both bonds and the bend centred on the bead and changes
+    the bends and torsions at the neighbours. A terminal bead is rotated about
+    a random axis through its neighbour (end rotation), so its bond direction
+    moves over the sphere and the bend and torsions at the neighbour change.
+    Beads with three or more neighbours, beads inside a rigid fragment, and
+    beads whose rotation would violate a `FIXED`/`RIGID` bend or torsion are
+    never chosen; `FIXED` bonds are allowed. The move is the smallest local
+    move that respects fixed bond lengths, moves the chain ends (which the
+    pivot cannot) and is cheap; the interior flip coincides with a crankshaft
+    of a one-atom segment. A fraction `"BeadFlipRandomizationFraction"`
+    (default 0.2) of the attempts randomizes the rotation completely (angle
+    uniform on $[-\pi, \pi]$, or a uniformly random direction on the sphere
+    for a terminal bead); the remainder uses an adaptive angle window. Not
+    available with polarization.
+
 -   `"ReptationProbability" : floating-point-number`\
     The relative probability of a reptation (slithering-snake) move for chain
     molecules that declare their repeat units in the molecule file as

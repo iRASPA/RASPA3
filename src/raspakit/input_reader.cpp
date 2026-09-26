@@ -963,6 +963,24 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("BeadDisplacementProbability") && item["BeadDisplacementProbability"].is_number_float())
+      {
+        double beadDisplacementProbability = item["BeadDisplacementProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::BeadDisplacement, beadDisplacementProbability);
+        }
+      }
+
+      if (item.contains("BeadFlipProbability") && item["BeadFlipProbability"].is_number_float())
+      {
+        double beadFlipProbability = item["BeadFlipProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::BeadFlip, beadFlipProbability);
+        }
+      }
+
       if (item.contains("RandomRotationProbability") && item["RandomRotationProbability"].is_number_float())
       {
         double randomRotationProbability = item["RandomRotationProbability"].get<double>();
@@ -1287,6 +1305,19 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].concertedRotationRandomizationFraction = fraction;
+        }
+      }
+
+      if (item.contains("BeadFlipRandomizationFraction") && item["BeadFlipRandomizationFraction"].is_number_float())
+      {
+        double fraction = item["BeadFlipRandomizationFraction"].get<double>();
+        if (fraction < 0.0 || fraction > 1.0)
+        {
+          throw std::runtime_error(std::format("[Input reader]: BeadFlipRandomizationFraction must be in [0, 1]\n"));
+        }
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].beadFlipRandomizationFraction = fraction;
         }
       }
 
@@ -3850,6 +3881,9 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "ConcertedRotationProbability",
     "ConRotProbability",
     "ConcertedRotationRandomizationFraction",
+    "BeadDisplacementProbability",
+    "BeadFlipProbability",
+    "BeadFlipRandomizationFraction",
     "RandomRotationProbability",
     "ReinsertionProbability",
     "PartialReinsertionProbability",
