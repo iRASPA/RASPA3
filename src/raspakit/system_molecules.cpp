@@ -19,6 +19,7 @@ import forcefield;
 import simulationbox;
 import units;
 import cbmc;
+import cbmc_constants;
 import cbmc_external_energy;
 import interpolation_energy_grid;
 
@@ -629,21 +630,11 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
 
   if (component.atoms.size() < 2) return scratchAtoms;
 
-  // Isolated (ideal-gas) growth context: no framework, no interpolation grids, no external field and no
-  // other molecules, so CBMC growth feels only the intra-molecular potential and hence samples exp(-beta *
-  // U_intra). The grid vector must still be sized like the real one (indexed by pseudo-atom type).
-  //
-  // Always grown with configurational bias, whatever the production moves use: these conformations
-  // seed the conformation reservoir and define the recoil-growth openness reference, and recoil growth
-  // can not run before its own reference exists. CBMC samples the same ideal-gas Boltzmann distribution.
-  const std::optional<Framework> noFramework{};
-  const std::vector<std::optional<InterpolationEnergyGrid>> noGrids(forceField.pseudoAtoms.size() + 1);
-  const std::optional<InterpolationEnergyGrid> noExternalFieldGrid{};
-
-  const CBMC::GrowContext context =
-      CBMC::GrowContext(false, forceField, simulationBox, noGrids, noExternalFieldGrid, noFramework,
-                        std::span<const Atom>{}, std::span<const Atom>{}, beta)
-          .withChainScheme(CBMC::ChainScheme::ConfigurationalBias);
+  // Isolated (ideal-gas) growth context: CBMC growth feels only the intra-molecular potential and hence
+  // samples exp(-beta * U_intra). Always configurational bias (see 'makeIdealGasGrowContext'): these
+  // conformations seed the conformation reservoir and define the recoil-growth openness reference, and
+  // recoil growth can not run before its own reference exists.
+  const CBMC::GrowContext context = makeIdealGasGrowContext();
 
   // A handful of full-molecule reinsertion moves decorrelates the conformation from the starting geometry;
   // each accepted move regrows the whole chain from the ideal-gas Boltzmann distribution.
@@ -758,13 +749,10 @@ void System::buildRecoilReferenceConformations()
 
   // The openness reference takes, per growth step, the maximum energy over these conformations (any
   // strain a valid equilibrated chain exhibits at a step is acceptable there), so more conformations
-  // widen the accepted strain range toward its Boltzmann-typical upper edge.
-  constexpr std::size_t numberOfConformations = 50;
-
-  // A fixed local generator keeps the reference reproducible and independent of the simulation's random
-  // stream. The reference must be a fixed constant of the run (grow and its reverse-move retrace both
-  // divide by the same openness probabilities), which a one-time deterministic build guarantees.
-  RandomNumber random(1867);
+  // widen the accepted strain range toward its Boltzmann-typical upper edge. Count and seed are the
+  // CBMC constants (see 'CBMC::Constants::recoilReferenceConformations' for why the build is fixed).
+  constexpr std::size_t numberOfConformations = CBMC::Constants::recoilReferenceConformations;
+  RandomNumber random(CBMC::Constants::recoilReferenceSeed);
 
   for (std::size_t componentId = 0; componentId != components.size(); ++componentId)
   {

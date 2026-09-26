@@ -226,8 +226,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                                               .isFractional = true});
               });
 
-    // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full cut-offs.
-    if (!growData || !CBMC::applyDualCutOffCorrection(growContext, component, *growData))
+    if (!growData)
     {
       // Reject move and restore the fractional molecule
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
@@ -435,13 +434,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       CBMC::RetraceResult retraceData =
           timed(system, component, move, Move::Timing::DeletionNonEwald,
                 [&] { return CBMC::retraceMolecule(random, retraceContext, component, fractionalMolecule); });
-
-      // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full cut-offs.
-      if (!CBMC::applyDualCutOffCorrection(retraceContext, component, oldFractionalMolecule, retraceData))
-      {
-        return {std::nullopt, double3(0.0, 1.0, 0.0)};
-      }
-
       // Compute Ewald energy difference for the retraced molecule
       RunningEnergy energyFourierDifference =
           timed(system, component, move, Move::Timing::DeletionEwald,

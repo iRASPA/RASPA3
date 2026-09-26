@@ -44,6 +44,21 @@ const std::string CBMC::InternalMoveStatistics::writeMCMoveStatistics() const
   return stream.str();
 }
 
+const std::string CBMC::RecoilGrowthStatistics::writeStatistics(std::size_t numberOfTrialDirections) const
+{
+  std::ostringstream stream;
+  if (grows <= 0.0) return stream.str();
+
+  std::print(stream, "    {:20} grows:        {:10}\n", "CBMC Recoil growth", grows);
+  std::print(stream, "    {:20} completed:    {:10} ({:.4f})\n", "CBMC Recoil growth", completed, completed / grows);
+  std::print(stream, "    {:20} dead ends:    {:10} ({:.4f})\n", "CBMC Recoil growth", deadEnds, deadEnds / grows);
+  std::print(stream, "    {:20} discarded:    {:10} ({:.4f})\n", "CBMC Recoil growth", discarded, discarded / grows);
+  std::print(stream, "    {:20} mean m_i/k:   {:10.4f} (k = {})\n\n", "CBMC Recoil growth",
+             availableDirectionsSum / std::max(1.0, growSteps) / static_cast<double>(numberOfTrialDirections),
+             numberOfTrialDirections);
+  return stream.str();
+}
+
 Archive<std::ofstream>& CBMC::operator<<(Archive<std::ofstream>& archive, const CBMC::InternalMoveStatistics& p)
 {
   archive << p.versionNumber;

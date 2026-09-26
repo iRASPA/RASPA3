@@ -20,9 +20,6 @@ import cbmc_external_energy;
 import interactions_intermolecular;
 import interactions_framework_molecule;
 import interactions_ewald;
-import cbmc_external_field;
-import cbmc_framework_molecule;
-import cbmc_intermolecular;
 
 TEST(cbmc_interactions, framework_molecule_1)
 {

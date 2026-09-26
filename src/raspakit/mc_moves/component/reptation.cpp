@@ -140,14 +140,6 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
                                                                 system.simulationBox, newMolecule, molecule_atoms);
             });
 
-  // Dual cut-off scheme: correct the grown and retraced configurations from the inner cut-off to the
-  // full cut-offs.
-  if (!CBMC::applyDualCutOffCorrection(context, component, *growData) ||
-      !CBMC::applyDualCutOffCorrection(context, component, old_molecule, retraceData))
-  {
-    return std::nullopt;
-  }
-
   std::vector<double3> electricFieldNeighborDelta;
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)

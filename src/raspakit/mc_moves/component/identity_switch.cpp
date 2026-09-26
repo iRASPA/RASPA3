@@ -170,14 +170,6 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
       break;
     }
 
-    // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
-    // cut-offs, using the same background as the growth.
-    if (!CBMC::applyDualCutOffCorrection(growContext, *exchange.component, *exchange.grown))
-    {
-      constructed = false;
-      break;
-    }
-
     if (step == 0)
     {
       backgroundWithoutPair.insert(backgroundWithoutPair.end(), exchange.grown->atoms.begin(),
@@ -193,15 +185,6 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
 
     exchange.retraced = CBMC::retraceMolecule(random, retraceContext, *exchange.component, exchange.oldAtoms,
                                               {.firstBead = CBMC::FirstBeadScheme::Pinned});
-
-    // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
-    // cut-offs, using the same background as the retrace.
-    if (!CBMC::applyDualCutOffCorrection(retraceContext, *exchange.component, *exchange.oldCopy, exchange.retraced))
-    {
-      // an existing configuration should never register as an overlap; reject defensively
-      constructed = false;
-      break;
-    }
 
     if (step == 0)
     {

@@ -473,11 +473,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
                                                   .scaling = lambdaNew,
                                                   .groupId = component.lambdaGibbs.dUdlambdaGroupId,
                                                   .isFractional = true});
-        // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full cut-offs.
-        if (!trial.cbmcInsert.has_value() || !CBMC::applyDualCutOffCorrection(context, component, *trial.cbmcInsert))
-        {
-          return false;
-        }
+        if (!trial.cbmcInsert.has_value()) return false;
 
         RunningEnergy ewaldTail =
             growEwaldTailDifference(system, tailEffectiveCounts, tailGroupCounts, trial.cbmcInsert->atoms);
@@ -517,13 +513,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     {
       std::vector<Atom> oldSelectedMolecule(selectedMolecule.begin(), selectedMolecule.end());
       CBMC::RetraceResult retraceData = CBMC::retraceMolecule(random, context, component, selectedMolecule);
-
-      // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full cut-offs.
-      if (!CBMC::applyDualCutOffCorrection(context, component, oldSelectedMolecule, retraceData))
-      {
-        std::copy(oldSelectedMolecule.begin(), oldSelectedMolecule.end(), selectedMolecule.begin());
-        return false;
-      }
 
       RunningEnergy ewaldTail =
           retraceEwaldTailDifference(system, tailEffectiveCounts, tailGroupCounts, selectedMolecule);

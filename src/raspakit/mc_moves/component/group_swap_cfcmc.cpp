@@ -356,9 +356,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         central.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
         system.mc_moves_cputime[move][Move::Timing::InsertionNonEwald] += (time_end - time_begin);
 
-        // correct the grown molecule from the inner cut-off to the full cut-offs, using the same
-        // background as the growth
-        if (!growData || !CBMC::applyDualCutOffCorrection(growContext, memberComponent, *growData))
+        if (!growData)
         {
           restoreFractionalGroup();
           return {std::nullopt, double3(0.0, 1.0, 0.0)};
@@ -783,12 +781,6 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         CBMC::RetraceResult retraceData = CBMC::retraceMolecule(
             random, retraceContext, memberComponent, fractionalMolecules[i],
             {.firstBead = (i == 0) ? CBMC::FirstBeadScheme::MultipleFirstBead : CBMC::FirstBeadScheme::Fixed});
-
-        if (!CBMC::applyDualCutOffCorrection(retraceContext, memberComponent, oldFractionalMolecules[i], retraceData))
-        {
-          restoreMolecules();
-          return {std::nullopt, double3(0.0, 1.0, 0.0)};
-        }
 
         logRosenbluthRatio +=
             std::log(memberComponent.idealGasRosenbluthWeight.value_or(1.0)) - retraceData.logRosenbluthWeight;

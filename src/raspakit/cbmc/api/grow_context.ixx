@@ -17,10 +17,11 @@ export namespace CBMC
  *
  *  - Growth: the cut-offs the CBMC grow/retrace itself uses -- the inner 'dualCutOff' for all three
  *    when the force field enables the dual cut-off scheme, the full cut-offs otherwise. The dual
- *    cut-off decision is made here, once; a caller that grows with this mode must apply
- *    'computeDualCutOffCorrection' afterwards when 'forceField.useDualCutOff' is set.
+ *    cut-off decision is made here, once; the entry points of the 'cbmc' module correct their results
+ *    to the full cut-offs before returning them whenever the context actually grew at the inner
+ *    cut-off ('GrowContext::growsAtInnerCutOff').
  *  - Full: the force field's full cut-offs regardless of the dual cut-off setting (e.g. the initial
- *    configuration and the reference grows, which never apply a correction).
+ *    configuration and the reference grows). No correction is applied for such a context.
  *  - Inner: the inner 'dualCutOff' for all three (the other side of the dual cut-off correction).
  */
 enum class CutOffMode : std::size_t
@@ -109,7 +110,7 @@ struct GrowthSettings
  * system, e.g. the ideal-gas grows), and derive variants with the 'with...' members: a different
  * background ('withMoleculeAtoms', used by moves that grow against an edited copy of the molecule
  * atoms; 'withSkippedMolecule', used by moves whose trial molecule carries a different id than the
- * molecule it replaces), different cut-offs ('withCutOffs', 'withFullCutOffs', 'withInnerCutOffs',
+ * molecule it replaces), different cut-offs ('withCutOffMode', 'withFullCutOffs', 'withInnerCutOffs',
  * used by the dual cut-off correction), or different sampling parameters ('withSettings',
  * 'withChainScheme'; Widom sampling and the ideal-gas reference grows must use configurational
  * bias). Those are the only fields a caller ever varies; every other field is fixed by the system,
@@ -139,6 +140,7 @@ struct GrowContext
         frameworkAtoms(frameworkAtoms),
         moleculeAtoms(moleculeAtoms),
         beta(beta),
+        cutOffMode(cutOffMode),
         cutOffFrameworkVDW(frameworkVDWCutOff(forceField, cutOffMode)),
         cutOffMoleculeVDW(moleculeVDWCutOff(forceField, cutOffMode)),
         cutOffCoulomb(coulombCutOff(forceField, cutOffMode)),
@@ -158,10 +160,20 @@ struct GrowContext
   /// class comment); std::nullopt skips nothing beyond the same-id rule.
   std::optional<std::size_t> skipBackgroundMolecule{};
   double beta;
+  /// Which cut-offs the three values below hold (see 'CutOffMode'); decides whether the dual cut-off
+  /// correction applies to a result grown with this context.
+  CutOffMode cutOffMode;
   double cutOffFrameworkVDW;
   double cutOffMoleculeVDW;
   double cutOffCoulomb;
   GrowthSettings settings;
+
+  /// Whether a grow or retrace with this context evaluates its external energies at the inner cut-off
+  /// of the dual cut-off scheme, i.e. whether the entry points correct their results to the full cut-offs.
+  [[nodiscard]] bool growsAtInnerCutOff() const
+  {
+    return cutOffMode == CutOffMode::Growth && forceField.useDualCutOff;
+  }
 
   /// The same environment with the molecule background replaced (e.g. the system's molecule atoms
   /// with a pair removed, or with already grown group members appended).
@@ -197,21 +209,15 @@ struct GrowContext
     return copy;
   }
 
-  /// The same environment evaluated with the given cut-offs.
-  [[nodiscard]] GrowContext withCutOffs(double frameworkVDW, double moleculeVDW, double coulomb) const
-  {
-    GrowContext copy(*this);
-    copy.cutOffFrameworkVDW = frameworkVDW;
-    copy.cutOffMoleculeVDW = moleculeVDW;
-    copy.cutOffCoulomb = coulomb;
-    return copy;
-  }
-
   /// The same environment evaluated with the cut-offs of 'mode'.
   [[nodiscard]] GrowContext withCutOffMode(CutOffMode mode) const
   {
-    return withCutOffs(frameworkVDWCutOff(forceField, mode), moleculeVDWCutOff(forceField, mode),
-                       coulombCutOff(forceField, mode));
+    GrowContext copy(*this);
+    copy.cutOffMode = mode;
+    copy.cutOffFrameworkVDW = frameworkVDWCutOff(forceField, mode);
+    copy.cutOffMoleculeVDW = moleculeVDWCutOff(forceField, mode);
+    copy.cutOffCoulomb = coulombCutOff(forceField, mode);
+    return copy;
   }
   [[nodiscard]] GrowContext withFullCutOffs() const { return withCutOffMode(CutOffMode::Full); }
   [[nodiscard]] GrowContext withInnerCutOffs() const { return withCutOffMode(CutOffMode::Inner); }

@@ -53,4 +53,28 @@ struct InternalMoveStatistics
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const InternalMoveStatistics& p);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, InternalMoveStatistics& p);
 };
+
+/// Diagnostic counters of the recoil-growth chain scheme, kept per component
+/// ('Component::recoilGrowthStatistics') and reported with the CBMC statistics. They tell a user tuning
+/// the trial count 'k' and recoil length 'l' what the constructed/trial ratio of the move can not: how
+/// the failed grows fail, and how many directions were available per step.
+///  - A 'dead end' grow exhausted every direction within the recoil length and recoiled all the way
+///    back to the start (more directions or a longer recoil helps).
+///  - A 'discarded' grow committed to a direction (the chain got 'l' steps past it) and dead-ended
+///    later, where recoiling is no longer allowed (a longer recoil length helps).
+///  - The mean available directions m_i per step (grow side) measures how crowded the environment is
+///    for this k: close to k means almost every direction is open, close to 1 means the weight is
+///    dominated by single available directions and has a large variance.
+/// Not serialized: the counters restart from zero after a restart, like the CPU timings.
+struct RecoilGrowthStatistics
+{
+  double grows{0.0};
+  double completed{0.0};
+  double deadEnds{0.0};
+  double discarded{0.0};
+  double availableDirectionsSum{0.0};
+  double growSteps{0.0};
+
+  const std::string writeStatistics(std::size_t numberOfTrialDirections) const;
+};
 }  // namespace CBMC

@@ -103,13 +103,13 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
 
 [[nodiscard]] std::optional<CBMC::GrowResult> CBMC::growChainCBMC(RandomNumber &random, const GrowContext &context,
                                                                   const Component &component,
-                                                                  std::span<const Atom> molecule_atoms,
+                                                                  std::span<const Atom> moleculeAtoms,
                                                                   const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
   const GrowthSettings &settings = context.settings;
   const double beta = context.beta;
 
-  std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
+  std::vector<Atom> chainAtoms(moleculeAtoms.begin(), moleculeAtoms.end());
   ChainAccumulator chain{};
 
   // Deterministic growth plan over the fragment graph (flexible beads, hinged rigid bodies, and
@@ -121,14 +121,14 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
     // All trial directions of this step (the operator engine handles the seed / attach / ring-closure
     // cases, the rigid-body tilt, and the coupled-decoupled torsion selection).
     std::vector<EvaluatedTrial> trials =
-        evaluateTrials(context, component, step, chain_atoms,
-                       generateGrowTrials(random, settings, beta, component, chain_atoms, step,
+        evaluateTrials(context, component, step, chainAtoms,
+                       generateGrowTrials(random, settings, beta, component, chainAtoms, step,
                                           settings.numberOfTrialDirections))
             .trials;
     if (trials.empty()) return std::nullopt;
 
     const StepWeight weight =
-        stepWeight(random, beta, settings.numberOfTrialDirections, step, chain_atoms, trials, false);
+        stepWeight(random, beta, settings.numberOfTrialDirections, step, chainAtoms, trials, false);
     if (!chain.addGrownStep(weight.logWeight, trials[weight.selected].energy.external,
                             settings.minimumRosenbluthFactor))
     {
@@ -136,17 +136,17 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
     }
   }
 
-  return finishGrownChain(component, std::move(chain_atoms), chain);
+  return finishGrownChain(component, std::move(chainAtoms), chain);
 }
 
 [[nodiscard]] CBMC::RetraceResult CBMC::retraceChainCBMC(
-    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
+    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> moleculeAtoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
   const GrowthSettings &settings = context.settings;
   const double beta = context.beta;
 
-  std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
+  std::vector<Atom> chainAtoms(moleculeAtoms.begin(), moleculeAtoms.end());
   ChainAccumulator chain{};
 
   // Same deterministic growth plan as the insertion so grow and retrace are exactly reversible.
@@ -157,10 +157,10 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
     const GrowStep &step = plan[seg];
 
     // The old positions of this step's beads are trial direction 0 of the retrace (read from
-    // 'chain_atoms', which holds the old configuration of every bead at this point).
+    // 'chainAtoms', which holds the old configuration of every bead at this point).
     EvaluatedTrials evaluated =
-        evaluateTrials(context, component, step, chain_atoms,
-                       generateRetraceTrials(random, settings, beta, component, chain_atoms, step,
+        evaluateTrials(context, component, step, chainAtoms,
+                       generateRetraceTrials(random, settings, beta, component, chainAtoms, step,
                                              settings.numberOfTrialDirections));
 
     // The old configuration must survive the overlap filter as trial direction 0.
@@ -168,9 +168,9 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
 
     const std::vector<EvaluatedTrial> &trials = evaluated.trials;
     const StepWeight weight =
-        stepWeight(random, beta, settings.numberOfTrialDirections, step, chain_atoms, trials, true);
+        stepWeight(random, beta, settings.numberOfTrialDirections, step, chainAtoms, trials, true);
     chain.addRetracedStep(weight.logWeight, trials.front().energy.external);
   }
 
-  return finishRetracedChain(component, molecule_atoms, chain);
+  return finishRetracedChain(component, moleculeAtoms, chain);
 }

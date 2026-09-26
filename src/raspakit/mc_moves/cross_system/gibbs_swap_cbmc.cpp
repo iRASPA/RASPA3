@@ -107,9 +107,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   if (!growData) return std::nullopt;  // Insertion failed, return
 
-  // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full cut-offs.
-  if (!CBMC::applyDualCutOffCorrection(growContext, componentA, *growData)) return std::nullopt;
-
   // Get new molecule atoms
   std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
 
@@ -151,9 +148,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   CBMC::RetraceResult retraceData =
       timed(systemA, componentA, move, Move::Timing::NonEwald,
             [&] { return CBMC::retraceMolecule(random, retraceContext, componentB, molecule); });
-
-  // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full cut-offs.
-  if (!CBMC::applyDualCutOffCorrection(retraceContext, componentB, molecule, retraceData)) return std::nullopt;
 
   // Compute Ewald Fourier energy difference for system B
   RunningEnergy energyFourierDifferenceB =

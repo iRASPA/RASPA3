@@ -400,11 +400,23 @@ export struct System
    * grids, all molecule atoms as background, beta) with the cut-offs of 'mode'.
    *
    * The default 'Growth' mode makes the dual cut-off decision (inner cut-off when the force field
-   * enables the scheme, full cut-offs otherwise); a caller growing with it must then apply
-   * 'CBMC::computeDualCutOffCorrection' when 'forceField.useDualCutOff' is set. Use
+   * enables the scheme, full cut-offs otherwise); the CBMC entry points correct their results to the
+   * full cut-offs themselves whenever the context grew at the inner cut-off. Use
    * 'CBMC::GrowContext::withMoleculeAtoms' on the result to grow against a different background.
    */
   CBMC::GrowContext makeGrowContext(CBMC::CutOffMode mode = CBMC::CutOffMode::Growth) const;
+
+  /**
+   * \brief The growth context of an isolated molecule: no framework, no interpolation grids, no
+   * external field, and no background molecules, evaluated at the full cut-offs and always grown with
+   * configurational bias.
+   *
+   * For the ideal-gas grows (the conformation reservoirs and the recoil-growth reference
+   * conformations): the external energies are identically zero, only the intramolecular terms act.
+   * Configurational bias is forced because these conformations seed recoil growth's own reference
+   * and Widom sampling, which must not depend on the production chain scheme.
+   */
+  CBMC::GrowContext makeIdealGasGrowContext() const;
 
   std::span<const AtomDynamics> spanOfFrameworkDynamics() const;
   std::span<AtomDynamics> spanOfFrameworkDynamics();

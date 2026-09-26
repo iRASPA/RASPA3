@@ -106,6 +106,20 @@ CBMC::GrowContext System::makeGrowContext(CBMC::CutOffMode mode) const
                            beta, mode);
 }
 
+CBMC::GrowContext System::makeIdealGasGrowContext() const
+{
+  // The context holds references, so the empty environment must outlive it: shared immutable empties.
+  // The framework kernel returns zero for an empty framework before touching the grids, so the grid
+  // vector need not be sized to the pseudo-atom count.
+  static const std::vector<std::optional<InterpolationEnergyGrid>> noGrids{};
+  static const std::optional<InterpolationEnergyGrid> noExternalFieldGrid{};
+  static const std::optional<Framework> noFramework{};
+
+  return CBMC::GrowContext(false, forceField, simulationBox, noGrids, noExternalFieldGrid, noFramework,
+                           std::span<const Atom>{}, std::span<const Atom>{}, beta, CBMC::CutOffMode::Full)
+      .withChainScheme(CBMC::ChainScheme::ConfigurationalBias);
+}
+
 std::span<Atom> System::spanOfMoleculeAtoms()
 {
   return std::span(atomData.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms),

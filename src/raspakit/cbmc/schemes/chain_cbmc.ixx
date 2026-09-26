@@ -20,13 +20,13 @@ export namespace CBMC
 /**
  * \brief Grows the remaining beads of a molecule with CBMC.
  *
- * 'molecule_atoms' carries the placed beads ('beadsAlreadyPlaced', at least the first bead); the
+ * 'moleculeAtoms' carries the placed beads ('beadsAlreadyPlaced', at least the first bead); the
  * returned molecule has every bead placed. Returns std::nullopt when some step has no non-overlapping
  * trial direction or its factor falls below 'minimumRosenbluthFactor' (an ordinary rejection).
  */
 [[nodiscard]] std::optional<CBMC::GrowResult> growChainCBMC(RandomNumber &random, const GrowContext &context,
                                                             const Component &component,
-                                                            std::span<const Atom> molecule_atoms,
+                                                            std::span<const Atom> moleculeAtoms,
                                                             const std::vector<std::size_t> &beadsAlreadyPlaced);
 
 /**
@@ -37,6 +37,6 @@ export namespace CBMC
  * (see the error contract in the 'cbmc' module).
  */
 [[nodiscard]] CBMC::RetraceResult retraceChainCBMC(
-    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
+    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> moleculeAtoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced);
 }  // namespace CBMC

@@ -956,6 +956,8 @@ std::string System::writeMCMoveStatistics() const
     {
       std::print(stream, "{}", component.cbmcMoveStatistics[i].writeMCMoveStatistics());
     }
+    std::print(stream, "{}",
+               component.recoilGrowthStatistics.writeStatistics(forceField.recoilGrowthNumberOfTrialDirections));
 
     ++componentId;
   }

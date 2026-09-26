@@ -57,9 +57,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   // If growth failed, reject the move
   if (!growData) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-  // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full cut-offs.
-  if (!CBMC::applyDualCutOffCorrection(growContext, component, *growData)) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
   std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
   std::vector<double3> new_electric_field = std::vector<double3>(newMolecule.size());
 

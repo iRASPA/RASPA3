@@ -1419,14 +1419,22 @@ distribution.
     (Consta, Vlugt, Wichers Hoeth, Smit, and Frenkel, *Mol. Phys.* **97**, 1243
     (1999)) instead of configurational bias (default: `false`). At every step
     `k` trial directions are generated; a direction is *open* with probability
-    `min(1, exp(-β(u - u_ref)))`, with `u_ref` a fixed per-step reference energy
-    measured on ideal-gas conformations of the molecule (so a molecule with
-    intrinsic non-bonded strain is not penalised), and *available* when a
+    `min(1, exp(-β(u - u_ref)))`, with `u_ref` a fixed per-step reference energy:
+    the maximum intramolecular strain of that step over 50 equilibrated
+    ideal-gas conformations of the molecule, grown once at setup with a fixed
+    seed (so a molecule with intrinsic non-bonded strain is not penalised, and
+    the reference is a constant of the run). A direction is *available* when a
     *feeler* of `l - 1` further steps can be grown from it. The growth backtracks
     (recoils) over at most `l` steps when it dead-ends. Recoil growth is more
     efficient than configurational bias for long chains in dense or strongly
     confining environments, where a configurational-bias grow commits to a
-    direction that has no future. It applies to every CBMC-based move. Two
+    direction that has no future. It applies to every CBMC-based move. The
+    component statistics report, per component, how many recoil grows
+    completed, dead-ended (recoiled all the way back; more directions or a
+    longer recoil helps), or were discarded (dead-ended past a committed
+    direction; a longer recoil helps), and the mean fraction `m_i/k` of
+    available directions per step (close to 1: an open environment, close to
+    `1/k`: the weight is dominated by single available directions). Two
     caveats:
     - The recoil-growth weight is a valid factor of a Metropolis acceptance
       ratio but it is not the Rosenbluth weight whose average is the Widom

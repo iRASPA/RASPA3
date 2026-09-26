@@ -97,9 +97,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
 
   if (!growDataA) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-  // Dual cut-off scheme: correct molecule A from the inner cut-off to the full cut-offs.
-  if (!CBMC::applyDualCutOffCorrection(growContextA, componentA, *growDataA)) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
   const double r = R_max * random.uniform();
   const double3 direction = random.UnitSphere();
   const double3 firstBeadPositionA = growDataA->atoms[componentA.startingBead].position;
@@ -121,11 +118,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
             });
 
   if (!growDataB) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-  // Dual cut-off scheme: correct molecule B from the inner cut-off to the full cut-offs, using the
-  // same background (existing molecules plus trial molecule A) as the growth.
-  if (!CBMC::applyDualCutOffCorrection(growContextB, componentBRef, *growDataB)) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwapCBMC, 0);
 
   const std::span<const Atom> newMoleculeA = std::span(growDataA->atoms.begin(), growDataA->atoms.end());
@@ -345,9 +337,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
 
   if (!growDataA) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-  // Dual cut-off scheme: correct molecule A from the inner cut-off to the full cut-offs.
-  if (!CBMC::applyDualCutOffCorrection(growContextA, componentA, *growDataA)) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
   const double r = R_max * std::cbrt(random.uniform());
   const double3 direction = random.UnitSphere();
   const double3 firstBeadPositionA = growDataA->atoms[componentA.startingBead].position;
@@ -369,11 +358,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
             });
 
   if (!growDataB) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-  // Dual cut-off scheme: correct molecule B from the inner cut-off to the full cut-offs, using the
-  // same background (existing molecules plus trial molecule A) as the growth.
-  if (!CBMC::applyDualCutOffCorrection(growContextB, componentBRef, *growDataB)) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwap, 0);
 
   const std::span<const Atom> newMoleculeA = std::span(growDataA->atoms.begin(), growDataA->atoms.end());

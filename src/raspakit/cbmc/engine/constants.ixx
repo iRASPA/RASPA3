@@ -57,4 +57,12 @@ constexpr double baseCouplingRelativeTolerance = 0.005;
 /// Roll angles about the junction bond tried when seating a hinged rigid body (a Rosenbluth selection
 /// over this grid, randomly offset, seeds the tilt Monte-Carlo).
 constexpr std::size_t rigidTiltRollGridPoints = 72;
+
+/// The recoil-growth openness reference ('System::buildRecoilReferenceConformations'): per growth step
+/// the maximum intramolecular strain over this many equilibrated ideal-gas conformations of the
+/// component, grown once at setup from a generator with this fixed seed. The reference is a constant
+/// of the run (grow and retrace divide by the same openness probabilities), so the build must be
+/// deterministic and independent of the simulation's random stream.
+constexpr std::size_t recoilReferenceConformations = 50;
+constexpr std::size_t recoilReferenceSeed = 1867;
 }  // namespace CBMC::Constants

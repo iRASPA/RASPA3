@@ -43,7 +43,7 @@ export namespace CBMC
 // Same signature as CBMC::growChainCBMC; the 'cbmc' module dispatches on the context's chain scheme.
 [[nodiscard]] std::optional<CBMC::GrowResult> growChainRecoil(RandomNumber &random, const GrowContext &context,
                                                               const Component &component,
-                                                              std::span<const Atom> molecule_atoms,
+                                                              std::span<const Atom> moleculeAtoms,
                                                               const std::vector<std::size_t> &beadsAlreadyPlaced);
 
 // Recoil growth (RG) retrace of the existing flexible molecule chain.
@@ -56,6 +56,6 @@ export namespace CBMC
 // pocket): an accepted state can not overlap, so this signals an inconsistent simulation state rather
 // than silently assigning the molecule a weight.
 [[nodiscard]] CBMC::RetraceResult retraceChainRecoil(
-    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> molecule_atoms,
+    RandomNumber &random, const GrowContext &context, const Component &component, std::span<const Atom> moleculeAtoms,
     const std::vector<std::size_t> &beadsAlreadyPlaced);
 }  // namespace CBMC

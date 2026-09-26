@@ -204,15 +204,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   CBMC::RetraceResult retraceDataA =
       timed(system, componentA, Move::Types::PairSwapCBMC, Move::Timing::NonEwald,
             [&] { return CBMC::retraceMolecule(random, retraceContextA, componentA, moleculeA); });
-
-  // Dual cut-off scheme: correct the retraced configurations from the inner cut-off to the full
-  // cut-offs, using the same backgrounds as the retraces.
-  if (!CBMC::applyDualCutOffCorrection(retraceContextB, componentBRef, moleculeB, retraceDataB) ||
-      !CBMC::applyDualCutOffCorrection(retraceContextA, componentA, moleculeA, retraceDataA))
-  {
-    return {std::nullopt, double3(0.0, 1.0, 0.0)};
-  }
-
   const std::span<const Atom> oldMoleculeA = std::span<const Atom>(moleculeA.data(), moleculeA.size());
   const std::span<const Atom> oldMoleculeB = std::span<const Atom>(moleculeB.data(), moleculeB.size());
 
@@ -438,15 +429,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   CBMC::RetraceResult retraceDataA =
       timed(system, componentA, Move::Types::PairSwap, Move::Timing::NonEwald,
             [&] { return CBMC::retraceMolecule(random, retraceContextA, componentA, moleculeA); });
-
-  // Dual cut-off scheme: correct the retraced configurations from the inner cut-off to the full
-  // cut-offs, using the same backgrounds as the retraces.
-  if (!CBMC::applyDualCutOffCorrection(retraceContextB, componentBRef, moleculeB, retraceDataB) ||
-      !CBMC::applyDualCutOffCorrection(retraceContextA, componentA, moleculeA, retraceDataA))
-  {
-    return {std::nullopt, double3(0.0, 1.0, 0.0)};
-  }
-
   const std::span<const Atom> oldMoleculeA = std::span<const Atom>(moleculeA.data(), moleculeA.size());
   const std::span<const Atom> oldMoleculeB = std::span<const Atom>(moleculeB.data(), moleculeB.size());
 

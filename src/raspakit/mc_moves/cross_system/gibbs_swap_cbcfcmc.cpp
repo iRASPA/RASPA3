@@ -389,8 +389,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                              {.componentId = selectedComponent, .moleculeId = newMoleculeIndex});
               });
 
-    // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full cut-offs.
-    if (!growData || !CBMC::applyDualCutOffCorrection(growContextA, componentA, *growData))
+    if (!growData)
     {
       restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
       return std::nullopt;
@@ -428,14 +427,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     CBMC::RetraceResult retraceData =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
               [&] { return CBMC::retraceMolecule(random, retraceContextB, componentB, selectedIntegerMoleculeB); });
-
-    // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full cut-offs.
-    if (!CBMC::applyDualCutOffCorrection(retraceContextB, componentB, oldSelectedIntegerMoleculeB, retraceData))
-    {
-      restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
-      return std::nullopt;
-    }
-
     RunningEnergy EwaldFourierDifferenceRetraceB =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeEwald,
               [&]
@@ -709,8 +700,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                               .isFractional = true});
               });
 
-    // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full cut-offs.
-    if (!growData || !CBMC::applyDualCutOffCorrection(growContextB, componentB, *growData))
+    if (!growData)
     {
       restoreGibbsSwapFractionalMolecules(systemA, snapshotA);
       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());

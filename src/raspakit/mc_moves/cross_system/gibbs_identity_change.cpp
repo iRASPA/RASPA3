@@ -70,12 +70,7 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
                   {.firstBead = CBMC::FirstBeadScheme::Pinned, .firstBeadPosition = oldStartingBead.position});
             });
 
-  // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
-  // cut-offs, using the same background (the old molecule excluded) as the growth.
-  if (!growData || !CBMC::applyDualCutOffCorrection(growContext, newComponentData, *growData))
-  {
-    return false;
-  }
+  if (!growData) return false;
 
   data.growData = std::move(*growData);
   const std::span<const Atom> newMolecule(data.growData.atoms.begin(), data.growData.atoms.end());
@@ -92,14 +87,6 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
                              return CBMC::retraceMolecule(random, growContext, oldComponentData, data.oldMoleculeAtoms,
                                                           {.firstBead = CBMC::FirstBeadScheme::Pinned});
                            });
-
-  // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
-  // cut-offs (the old molecule excludes itself from the background through its molecule id).
-  if (!CBMC::applyDualCutOffCorrection(growContext, oldComponentData, data.oldMoleculeCopy, data.retraceData))
-  {
-    return false;
-  }
-
   data.energyFourierDifference =
       MC_Moves::timed(system, oldComponentData, move, Move::Timing::Ewald,
             [&]

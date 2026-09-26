@@ -15,24 +15,34 @@ import cbmc_grow_context;
 import cbmc_grow_step;
 import cbmc_operators;
 import cbmc_chain_common;
+import cbmc_statistics;
 
-// A generated trial direction: candidate positions of the step's next-beads plus the torsion
-// Rosenbluth weight accumulated while selecting the torsion rotation.
-using Trial = CBMC::StepTrial;
-using Step = CBMC::GrowStep;
-using TrialEnergy = CBMC::StepTrialEnergy;
+namespace
+{
+using namespace CBMC;
 
-// Bundles the (mostly constant) data needed to evaluate energies and grow feelers.
+// What every level of the recoil search reads: the growth environment, the component, the plan, and
+// the per-step openness reference. The trial count 'k' and recoil length 'l' are the context's
+// settings ('recoilGrowthNumberOfTrialDirections', 'recoilGrowthMaximumRecoilLength').
+//
+// Trial energies are 'evaluateStepTrial' of the chain schemes (nullopt on a hard overlap: a 'closed'
+// direction). The chain is edited in place throughout the recursion (a few beads per level, guarded
+// by CBMC::ScratchBeads) rather than copied per trial: for a polymer of N beads with k trial directions
+// and recoil length l, per-trial chain copies made every grow O(N^2).
 struct RecoilContext
 {
-  const CBMC::GrowContext &env;
+  const GrowContext &env;
   const Component &component;
-  std::size_t numberOfTrialDirections;  // k
-  std::size_t recoilLength;             // l
-  const std::vector<Step> &steps;
+  const std::vector<GrowStep> &steps;
   // Per-step openness reference energy (see 'openProbability' below); cached per plan by the
   // component, alongside the plan itself.
   const std::vector<double> &referenceStepEnergies;
+
+  [[nodiscard]] std::size_t numberOfTrialDirections() const noexcept
+  {
+    return env.settings.recoilGrowthNumberOfTrialDirections;
+  }
+  [[nodiscard]] std::size_t recoilLength() const noexcept { return env.settings.recoilGrowthMaximumRecoilLength; }
 };
 
 // The open/closed test of recoil growth is an absolute Boltzmann filter, and the weight divides by the
@@ -53,20 +63,9 @@ struct RecoilContext
 // is ~0 and the standard test is recovered; no per-molecule tuning is needed. The reference is a pure
 // function of the plan and the reference conformations, so the component computes and caches it per
 // plan ('Component::recoilReferenceStepEnergies').
-static double openProbability(const RecoilContext &ctx, std::size_t seg, double potentialEnergy)
+double openProbability(const RecoilContext &ctx, std::size_t seg, double potentialEnergy)
 {
   return std::min(1.0, std::exp(-ctx.env.beta * (potentialEnergy - ctx.referenceStepEnergies[seg])));
-}
-
-// Energy of placing 'trialPositions' for the step's next-beads: the shared trial evaluation of the
-// chain schemes. Returns nullopt on a hard overlap (a 'closed' direction). 'atoms' is used as scratch
-// and left unchanged. The chain is edited in place throughout the recursion (a few beads per level,
-// guarded by CBMC::ScratchBeads) rather than copied per trial: for a polymer of N beads with k trial
-// directions and recoil length l, per-trial chain copies made every grow O(N^2).
-static std::optional<TrialEnergy> computeTrialEnergy(const RecoilContext &ctx, const Step &step,
-                                                     std::vector<Atom> &atoms, std::span<const Atom> trialPositions)
-{
-  return CBMC::evaluateStepTrial(ctx.env, ctx.component, step, atoms, trialPositions);
 }
 
 // Test whether an open pathway ('feeler') of 'depth' more steps can be grown starting at step 'seg'.
@@ -85,26 +84,25 @@ static std::optional<TrialEnergy> computeTrialEnergy(const RecoilContext &ctx, c
 //
 // 'atoms' is scratch: the feeler places its trial beads in place and restores them, so the chain is
 // unchanged on return.
-static bool feelerExists(RandomNumber &random, const RecoilContext &ctx, std::size_t seg, std::size_t depth,
-                         std::vector<Atom> &atoms)
+bool feelerExists(RandomNumber &random, const RecoilContext &ctx, std::size_t seg, std::size_t depth,
+                  std::vector<Atom> &atoms)
 {
   if (seg >= ctx.steps.size()) return true;
   if (depth == 0) return true;
 
-  const Step &step = ctx.steps[seg];
-  const CBMC::ScratchBeads scratch(atoms, step);
+  const GrowStep &step = ctx.steps[seg];
+  const ScratchBeads scratch(atoms, step);
 
-  for (std::size_t j = 0; j != ctx.numberOfTrialDirections; ++j)
+  for (std::size_t j = 0; j != ctx.numberOfTrialDirections(); ++j)
   {
-    Trial trial = CBMC::generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
+    StepTrial trial = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
 
-    std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, step, atoms, trial.positions);
+    std::optional<StepTrialEnergy> energy = evaluateStepTrial(ctx.env, ctx.component, step, atoms, trial.positions);
     if (!energy.has_value()) continue;
 
-    double open_probability = openProbability(ctx, seg, energy->potentialEnergy());
-    if (random.uniform() < open_probability)
+    if (random.uniform() < openProbability(ctx, seg, energy->potentialEnergy()))
     {
-      CBMC::placeStepBeads(atoms, step, trial.positions);
+      placeStepBeads(atoms, step, trial.positions);
       const bool found = feelerExists(random, ctx, seg + 1, depth - 1, atoms);
       scratch.restore();
       if (found) return true;
@@ -117,13 +115,13 @@ static bool feelerExists(RandomNumber &random, const RecoilContext &ctx, std::si
 // Whether a trial direction that tested open at step 'seg' is 'available': a feeler of the remaining
 // recoil length can be grown from it. Places the trial beads in 'atoms' for the feeler and restores
 // them afterwards.
-static bool feelerExistsFrom(RandomNumber &random, const RecoilContext &ctx, std::size_t seg,
-                             std::vector<Atom> &atoms, std::span<const Atom> trialPositions)
+bool feelerExistsFrom(RandomNumber &random, const RecoilContext &ctx, std::size_t seg, std::vector<Atom> &atoms,
+                      std::span<const Atom> trialPositions)
 {
-  const Step &step = ctx.steps[seg];
-  const CBMC::ScratchBeads scratch(atoms, step);
-  CBMC::placeStepBeads(atoms, step, trialPositions);
-  return feelerExists(random, ctx, seg + 1, ctx.recoilLength - 1, atoms);
+  const GrowStep &step = ctx.steps[seg];
+  const ScratchBeads scratch(atoms, step);
+  placeStepBeads(atoms, step, trialPositions);
+  return feelerExists(random, ctx, seg + 1, ctx.recoilLength() - 1, atoms);
 }
 
 // The number of available directions m_i of step 'seg': the selected direction (always counted) plus
@@ -133,16 +131,16 @@ static bool feelerExistsFrom(RandomNumber &random, const RecoilContext &ctx, std
 // probe with the same generator and feeler, so m_i is the same random experiment in either direction.
 // 'atoms' holds the chain with the selected direction in place at 'seg'; the feelers use the beads
 // beyond it as scratch and restore them.
-static std::size_t countAvailableDirections(RandomNumber &random, const RecoilContext &ctx, std::size_t seg,
-                                            std::vector<Atom> &atoms, std::size_t firstAlternative)
+std::size_t countAvailableDirections(RandomNumber &random, const RecoilContext &ctx, std::size_t seg,
+                                     std::vector<Atom> &atoms, std::size_t firstAlternative)
 {
-  const Step &step = ctx.steps[seg];
+  const GrowStep &step = ctx.steps[seg];
   std::size_t available = 1;
-  for (std::size_t j = firstAlternative; j < ctx.numberOfTrialDirections; ++j)
+  for (std::size_t j = firstAlternative; j < ctx.numberOfTrialDirections(); ++j)
   {
-    Trial alternative = CBMC::generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
+    StepTrial alternative = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
 
-    std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, step, atoms, alternative.positions);
+    std::optional<StepTrialEnergy> energy = evaluateStepTrial(ctx.env, ctx.component, step, atoms, alternative.positions);
     if (!energy.has_value()) continue;
 
     if (random.uniform() >= openProbability(ctx, seg, energy->potentialEnergy())) continue;
@@ -154,52 +152,59 @@ static std::size_t countAvailableDirections(RandomNumber &random, const RecoilCo
 
 // Log of the per-step recoil factor m_i / k * exp(-beta u_i) / p_open * w_torsion * exp(-beta u_unsampled),
 // evaluated with the step's beads in place in 'atoms' for the not-sampled internal terms.
-static double stepLogWeight(const RecoilContext &ctx, std::size_t seg, std::size_t available, double potentialEnergy,
-                            double open_probability, double torsionWeight, const std::vector<Atom> &atoms)
+double stepLogWeight(const RecoilContext &ctx, std::size_t seg, std::size_t available, double potentialEnergy,
+                     double openProbabilityOfSelected, double torsionWeight, const std::vector<Atom> &atoms)
 {
-  return std::log(static_cast<double>(available) / static_cast<double>(ctx.numberOfTrialDirections)) -
-         ctx.env.beta * potentialEnergy - std::log(open_probability) + std::log(torsionWeight) +
-         CBMC::unsampledInternalLogFactor(ctx.env.beta, ctx.steps[seg], atoms);
+  return std::log(static_cast<double>(available) / static_cast<double>(ctx.numberOfTrialDirections())) -
+         ctx.env.beta * potentialEnergy - std::log(openProbabilityOfSelected) + std::log(torsionWeight) +
+         unsampledInternalLogFactor(ctx.env.beta, ctx.steps[seg], atoms);
 }
 
-enum class GrowOutcome { Complete, DeadEnd, Discard };
+enum class GrowOutcome
+{
+  Complete,
+  DeadEnd,
+  Discard
+};
 
+// What the growth records per step once the chain is complete: the selected direction, its energy and
+// openness probability, and how many directions were tried at that step (the last one is the selected).
 struct GrowRecord
 {
-  Trial selected{};
-  TrialEnergy energy{};
+  StepTrial selected{};
+  StepTrialEnergy energy{};
   double openProbability{1.0};
   std::size_t triedCount{0};
 };
 
-static GrowOutcome growRecursive(RandomNumber &random, const RecoilContext &ctx, std::size_t seg,
-                                std::vector<Atom> &atoms, std::size_t &maxHead, std::vector<GrowRecord> &records)
+GrowOutcome growRecursive(RandomNumber &random, const RecoilContext &ctx, std::size_t seg, std::vector<Atom> &atoms,
+                          std::size_t &maxHead, std::vector<GrowRecord> &records)
 {
   if (seg == ctx.steps.size()) return GrowOutcome::Complete;
 
-  const Step &step = ctx.steps[seg];
+  const GrowStep &step = ctx.steps[seg];
 
-  for (std::size_t j = 0; j != ctx.numberOfTrialDirections; ++j)
+  for (std::size_t j = 0; j != ctx.numberOfTrialDirections(); ++j)
   {
-    Trial trial = CBMC::generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
+    StepTrial trial = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
 
-    std::optional<TrialEnergy> energy = computeTrialEnergy(ctx, step, atoms, trial.positions);
+    std::optional<StepTrialEnergy> energy = evaluateStepTrial(ctx.env, ctx.component, step, atoms, trial.positions);
     if (!energy.has_value()) continue;
 
-    double open_probability = openProbability(ctx, seg, energy->potentialEnergy());
-    if (random.uniform() >= open_probability) continue;
+    const double open = openProbability(ctx, seg, energy->potentialEnergy());
+    if (random.uniform() >= open) continue;
 
     // The placed beads stay in the chain when the growth below completes (the chain then holds the
     // complete grown molecule); otherwise the guard restores them for the next direction.
-    CBMC::ScratchBeads scratch(atoms, step);
-    CBMC::placeStepBeads(atoms, step, trial.positions);
+    ScratchBeads scratch(atoms, step);
+    placeStepBeads(atoms, step, trial.positions);
     maxHead = std::max(maxHead, seg);
 
-    GrowOutcome result = growRecursive(random, ctx, seg + 1, atoms, maxHead, records);
+    const GrowOutcome result = growRecursive(random, ctx, seg + 1, atoms, maxHead, records);
     if (result == GrowOutcome::Complete)
     {
       scratch.keep();
-      records[seg] = {std::move(trial), energy.value(), open_probability, j + 1};
+      records[seg] = {std::move(trial), energy.value(), open, j + 1};
       return GrowOutcome::Complete;
     }
 
@@ -207,38 +212,50 @@ static GrowOutcome growRecursive(RandomNumber &random, const RecoilContext &ctx,
 
     if (result == GrowOutcome::Discard) return GrowOutcome::Discard;
 
-    if (maxHead + 1 >= seg + ctx.recoilLength) return GrowOutcome::Discard;
+    // The sub-tree reached 'recoilLength - 1' steps ahead, so this direction was available and the
+    // growth committed to it; recoiling past a committed direction would break the scheme.
+    if (maxHead + 1 >= seg + ctx.recoilLength()) return GrowOutcome::Discard;
   }
 
   return GrowOutcome::DeadEnd;
 }
 
-static RecoilContext makeRecoilContext(const CBMC::GrowContext &context, const Component &component,
-                                       const std::vector<std::size_t> &beadsAlreadyPlaced)
+RecoilContext makeRecoilContext(const GrowContext &context, const Component &component,
+                                const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
-  const CBMC::GrowthSettings &settings = context.settings;
-  return RecoilContext{context,
-                       component,
-                       settings.recoilGrowthNumberOfTrialDirections,
-                       settings.recoilGrowthMaximumRecoilLength,
-                       component.growthPlan(beadsAlreadyPlaced),
+  return RecoilContext{context, component, component.growthPlan(beadsAlreadyPlaced),
                        component.recoilReferenceStepEnergies(beadsAlreadyPlaced)};
 }
+}  // namespace
 
 [[nodiscard]] std::optional<CBMC::GrowResult> CBMC::growChainRecoil(RandomNumber &random, const GrowContext &context,
                                                                     const Component &component,
-                                                                    std::span<const Atom> molecule_atoms,
+                                                                    std::span<const Atom> moleculeAtoms,
                                                                     const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
   const RecoilContext ctx = makeRecoilContext(context, component, beadsAlreadyPlaced);
 
-  std::vector<Atom> chain_atoms(molecule_atoms.begin(), molecule_atoms.end());
+  std::vector<Atom> chainAtoms(moleculeAtoms.begin(), moleculeAtoms.end());
   std::vector<GrowRecord> records(ctx.steps.size());
   std::size_t maxHead = 0;
 
-  if (growRecursive(random, ctx, 0, chain_atoms, maxHead, records) != GrowOutcome::Complete) return std::nullopt;
+  RecoilGrowthStatistics &statistics = component.recoilGrowthStatistics;
+  statistics.grows += 1.0;
 
-  // 'chain_atoms' now holds the complete grown molecule; the alternatives of every step are probed
+  switch (growRecursive(random, ctx, 0, chainAtoms, maxHead, records))
+  {
+    case GrowOutcome::DeadEnd:
+      statistics.deadEnds += 1.0;
+      return std::nullopt;
+    case GrowOutcome::Discard:
+      statistics.discarded += 1.0;
+      return std::nullopt;
+    case GrowOutcome::Complete:
+      statistics.completed += 1.0;
+      break;
+  }
+
+  // 'chainAtoms' now holds the complete grown molecule; the alternatives of every step are probed
   // a posteriori against it (the feelers use the beads beyond the step as scratch).
   ChainAccumulator chain{};
   for (std::size_t seg = 0; seg != ctx.steps.size(); ++seg)
@@ -247,51 +264,53 @@ static RecoilContext makeRecoilContext(const CBMC::GrowContext &context, const C
 
     // The directions tried and failed by the growth are unavailable by construction; only the
     // untried ones are probed.
-    const std::size_t available = countAvailableDirections(random, ctx, seg, chain_atoms, record.triedCount);
+    const std::size_t available = countAvailableDirections(random, ctx, seg, chainAtoms, record.triedCount);
+    statistics.availableDirectionsSum += static_cast<double>(available);
+    statistics.growSteps += 1.0;
 
-    const double step_log_weight = stepLogWeight(ctx, seg, available, record.energy.potentialEnergy(),
-                                                 record.openProbability, record.selected.torsionWeight, chain_atoms);
-    if (!chain.addGrownStep(step_log_weight, record.energy.external, context.settings.minimumRosenbluthFactor))
+    const double logWeight = stepLogWeight(ctx, seg, available, record.energy.potentialEnergy(),
+                                           record.openProbability, record.selected.torsionWeight, chainAtoms);
+    if (!chain.addGrownStep(logWeight, record.energy.external, context.settings.minimumRosenbluthFactor))
     {
       return std::nullopt;
     }
   }
 
-  return finishGrownChain(component, std::move(chain_atoms), chain);
+  return finishGrownChain(component, std::move(chainAtoms), chain);
 }
 
 [[nodiscard]] CBMC::RetraceResult CBMC::retraceChainRecoil(RandomNumber &random, const GrowContext &context,
                                                            const Component &component,
-                                                           std::span<const Atom> molecule_atoms,
+                                                           std::span<const Atom> moleculeAtoms,
                                                            const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
   const RecoilContext ctx = makeRecoilContext(context, component, beadsAlreadyPlaced);
 
-  std::vector<Atom> old_atoms(molecule_atoms.begin(), molecule_atoms.end());
+  std::vector<Atom> oldAtoms(moleculeAtoms.begin(), moleculeAtoms.end());
   ChainAccumulator chain{};
 
   for (std::size_t seg = 0; seg != ctx.steps.size(); ++seg)
   {
-    const Step &step = ctx.steps[seg];
+    const GrowStep &step = ctx.steps[seg];
 
     // The old configuration must not overlap: the recoil weight divides by its openness probability,
     // which would be zero, so no weight is defined for it.
-    const std::optional<TrialEnergy> old_energy =
-        computeTrialEnergy(ctx, step, old_atoms, CBMC::stepBeadPositions(old_atoms, step));
-    if (!old_energy.has_value()) throwExistingConfigurationOverlaps("Recoil growth", component, seg, step);
-    const double old_potential = old_energy->potentialEnergy();
+    const std::optional<StepTrialEnergy> oldEnergy =
+        evaluateStepTrial(ctx.env, ctx.component, step, oldAtoms, stepBeadPositions(oldAtoms, step));
+    if (!oldEnergy.has_value()) throwExistingConfigurationOverlaps("Recoil growth", component, seg, step);
+    const double oldPotential = oldEnergy->potentialEnergy();
 
-    const double torsion_weight =
-        CBMC::oldConfigurationTorsionWeight(random, ctx.env.settings, ctx.env.beta, component, old_atoms, step);
+    const double torsionWeight =
+        oldConfigurationTorsionWeight(random, ctx.env.settings, ctx.env.beta, component, oldAtoms, step);
 
     // The old configuration is trial direction 0 (always counted available); the remaining k - 1
     // directions are generated and probed exactly as on the grow. No per-step guard on the retrace.
-    const std::size_t available = countAvailableDirections(random, ctx, seg, old_atoms, 1);
+    const std::size_t available = countAvailableDirections(random, ctx, seg, oldAtoms, 1);
 
-    chain.addRetracedStep(stepLogWeight(ctx, seg, available, old_potential, openProbability(ctx, seg, old_potential),
-                                        torsion_weight, old_atoms),
-                          old_energy->external);
+    chain.addRetracedStep(stepLogWeight(ctx, seg, available, oldPotential, openProbability(ctx, seg, oldPotential),
+                                        torsionWeight, oldAtoms),
+                          oldEnergy->external);
   }
 
-  return finishRetracedChain(component, molecule_atoms, chain);
+  return finishRetracedChain(component, moleculeAtoms, chain);
 }

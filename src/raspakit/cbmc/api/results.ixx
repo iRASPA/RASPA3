@@ -8,9 +8,9 @@ import atom;
 import molecule;
 import running_energy;
 
-// The result types of the CBMC growth stages: the first bead (FirstBeadData, internal to the schemes)
-// and the whole molecule as returned by the entry points of the 'cbmc' module (GrowResult,
-// RetraceResult).
+// The vocabulary shared by the entry points of the 'cbmc' module and the growth stages behind them:
+// the first-bead scheme enumeration (part of every request) and the result types -- the first bead
+// (FirstBeadData, internal to the schemes) and the whole molecule (GrowResult, RetraceResult).
 //
 // Every weight is stored ONLY as its natural logarithm, accumulated per growth step so it stays exact
 // where the raw product underflows. The weight of a long chain is a product of hundreds of per-step
@@ -23,6 +23,46 @@ import running_energy;
 
 export namespace CBMC
 {
+/// How the first bead of a molecule is placed (grow) or weighted (retrace).
+enum class FirstBeadScheme : std::size_t
+{
+  /// 'numberOfFirstBeadPositions' uniformly random positions in the box; weight = sum of Boltzmann
+  /// factors / number of positions. Insertion and deletion.
+  MultipleFirstBead = 0,
+  /// The multiple-first-bead reinsertion of Esselink et al.: as above against a background without
+  /// the molecule itself; the grow retains the partial weight 'GrowResult::firstBeadStoredR', which
+  /// the retrace of the old configuration needs ('RetraceRequest::storedR').
+  Reinsertion = 1,
+  /// A single trial at 'GrowRequest::firstBeadPosition', its Boltzmann factor as weight. Identity
+  /// change: the new molecule takes the position of the old one.
+  Pinned = 2,
+  /// A single trial at 'GrowRequest::firstBeadPosition' with weight one: the caller sampled the
+  /// position and accounts for its bias (distance-biased pair and group insertion).
+  Fixed = 3,
+  /// No first-bead stage: the beads in 'GrowRequest::beadsAlreadyPlaced' keep their positions from
+  /// the given molecule and only the remaining beads are (re)grown. Partial reinsertion.
+  AlreadyPlaced = 4,
+};
+
+/// The name of a scheme, for error messages.
+[[nodiscard]] constexpr const char *firstBeadSchemeName(FirstBeadScheme scheme) noexcept
+{
+  switch (scheme)
+  {
+    case FirstBeadScheme::MultipleFirstBead:
+      return "MultipleFirstBead";
+    case FirstBeadScheme::Reinsertion:
+      return "Reinsertion";
+    case FirstBeadScheme::Pinned:
+      return "Pinned";
+    case FirstBeadScheme::Fixed:
+      return "Fixed";
+    case FirstBeadScheme::AlreadyPlaced:
+      return "AlreadyPlaced";
+  }
+  return "?";
+}
+
 /// One non-overlapping trial position of the first bead and its external energy (the candidates the
 /// multiple-first-bead schemes select among).
 struct FirstBeadTrial

@@ -142,12 +142,6 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
 
   if (!growDataCentral) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
-  // Dual cut-off scheme: correct the central molecule from the inner cut-off to the full cut-offs.
-  if (!CBMC::applyDualCutOffCorrection(growContextCentral, centralComponent, *growDataCentral))
-  {
-    return {std::nullopt, double3(0.0, 1.0, 0.0)};
-  }
-
   const double3 centralPosition = growDataCentral->atoms[centralComponent.startingBead].position;
 
   // Background used to grow the satellites: existing molecules plus the already grown group
@@ -188,13 +182,6 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
               });
 
     if (!growData) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-    // Correct the satellite from the inner cut-off to the full cut-offs, using the same background
-    // (existing molecules plus previously grown group members) as the growth.
-    if (!CBMC::applyDualCutOffCorrection(growContext, satelliteComponent, *growData))
-    {
-      return {std::nullopt, double3(0.0, 1.0, 0.0)};
-    }
 
     distanceBiasFactors.push_back(distanceBiased ? 3.0 * r * r / (R_max * R_max) : 1.0);
     background.insert(background.end(), growData->atoms.begin(), growData->atoms.end());
@@ -588,13 +575,6 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
                     random, retraceContext, memberComponent, memberAtoms,
                     {.firstBead = (i == 0) ? CBMC::FirstBeadScheme::MultipleFirstBead : CBMC::FirstBeadScheme::Fixed});
               });
-
-    // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
-    // cut-offs, using the same background as the retrace.
-    if (!CBMC::applyDualCutOffCorrection(retraceContext, memberComponent, memberAtoms, retrace))
-    {
-      return {std::nullopt, double3(0.0, 1.0, 0.0)};
-    }
 
     retraceData.push_back(std::move(retrace));
   }

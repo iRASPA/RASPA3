@@ -375,6 +375,10 @@ export struct Component
   // which only update these counters, can run on a 'const Component&'.
   mutable std::vector<CBMC::InternalMoveStatistics> cbmcMoveStatistics;
 
+  // Diagnostic counters of the recoil-growth chain scheme (grow outcomes, available directions per
+  // step); 'mutable' for the same reason, updated from the recoil grow on a 'const Component&'.
+  mutable CBMC::RecoilGrowthStatistics recoilGrowthStatistics{};
+
   PropertyWidom averageRosenbluthWeights;            ///< Average Rosenbluth weights for Widom insertion.
   PropertyGibbsWidom averageGibbsRosenbluthWeights;  ///< Average Rosenbluth weights for Widom insertion.
   

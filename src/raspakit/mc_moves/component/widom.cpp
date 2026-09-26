@@ -58,9 +58,6 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   // If molecule growth failed, terminate the move.
   if (!growData) return 0.0;
 
-  // Dual cut-off scheme: correct the Widom Rosenbluth weight from the inner cut-off to the full cut-offs.
-  if (!CBMC::applyDualCutOffCorrection(growContext, component, *growData)) return 0.0;
-
   std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
 
   // Update statistics for successfully constructed molecules.

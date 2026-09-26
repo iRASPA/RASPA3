@@ -100,13 +100,6 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
     return std::nullopt;
   }
 
-  // Dual cut-off scheme: correct the grown configuration from the inner cut-off to the full
-  // cut-offs, using the same background (the old molecule excluded) as the growth.
-  if (!CBMC::applyDualCutOffCorrection(growContext, newComponentData, *growData))
-  {
-    return std::nullopt;
-  }
-
   std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
   std::vector<Atom> old_molecule(oldMoleculeAtoms.begin(), oldMoleculeAtoms.end());
   std::vector<double3> old_electric_field(old_molecule.size());
@@ -121,13 +114,6 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
               return CBMC::retraceMolecule(random, growContext, oldComponentData, oldMoleculeAtoms,
                                            {.firstBead = CBMC::FirstBeadScheme::Pinned});
             });
-
-  // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full
-  // cut-offs (the old molecule excludes itself from the background through its molecule id).
-  if (!CBMC::applyDualCutOffCorrection(growContext, oldComponentData, old_molecule, retraceData))
-  {
-    return std::nullopt;
-  }
 
   RunningEnergy energyFourierDifference =
       timed(system, oldComponentData, move, Move::Timing::Ewald,

@@ -220,13 +220,6 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
                                           .scaling = scaling,
                                           .groupId = dUdlambdaGroupId,
                                           .isFractional = isFractional});
-
-        // Dual cut-off scheme: correct the grown molecule from the inner cut-off to the full
-        // cut-offs, using the same background (previously grown group members included) as the growth.
-        if (growData && !CBMC::applyDualCutOffCorrection(growContext, component, *growData))
-        {
-          return std::nullopt;
-        }
       }
       else
       {
@@ -326,13 +319,6 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
         retraceData = CBMC::retraceMolecule(random, retraceContext, component, moleculeAtoms);
       }
       catch (const std::runtime_error&)
-      {
-        return std::nullopt;
-      }
-
-      // Dual cut-off scheme: correct the retraced molecule from the inner cut-off to the full
-      // cut-offs, using the same nested background as the retrace.
-      if (!CBMC::applyDualCutOffCorrection(retraceContext, component, moleculeAtoms, retraceData))
       {
         return std::nullopt;
       }

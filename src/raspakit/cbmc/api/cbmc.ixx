@@ -10,31 +10,39 @@ import double3;
 import randomnumbers;
 import running_energy;
 import component;
-export import cbmc_results;
+export import cbmc_results;  // FirstBeadScheme, GrowResult, RetraceResult
 export import cbmc_grow_context;
 export import cbmc_grow_step;
 
 // The entry points of the CBMC / recoil-growth machinery: grow a new molecule, regrow (part of) an
-// existing one, retrace an existing one, correct a result from the inner to the full cut-offs, and
-// the base-sampler normalization of a growth plan (for moves that pair the weights of two plans).
+// existing one, retrace an existing one, and the base-sampler normalization of a growth plan (for
+// moves that pair the weights of two plans).
 //
 // A grow or retrace has two stages: the first bead is placed with the 'FirstBeadScheme' of the
 // request, the remaining beads are grown fragment by fragment with the operator engine using the
 // chain scheme of the context ('GrowContext::settings.chainScheme'). The two Rosenbluth weights
 // multiply (their logarithms add) and the energies add.
 //
+// Dual cut-off scheme: when the context grows at the inner cut-off ('GrowContext::growsAtInnerCutOff':
+// mode 'Growth' with the scheme enabled in the force field) every entry point corrects its result from
+// the inner cut-off to the full cut-offs before returning it -- the external energy is re-evaluated at
+// the full cut-offs and the Rosenbluth weight is multiplied by exp(-beta dU) -- so a returned result
+// always behaves as if grown or retraced at the full cut-offs. Callers never apply a correction
+// themselves.
+//
 // Error contract:
 //  - A grow returns std::nullopt when the trial molecule can not be constructed (every trial of some
-//    step overlaps or falls below 'minimumRosenbluthFactor', a recoil-growth dead end, ...). This is
-//    an ordinary outcome of the move -- the caller counts it as a rejection.
+//    step overlaps or falls below 'minimumRosenbluthFactor', a recoil-growth dead end, an overlap at
+//    the full cut-offs of the dual cut-off scheme, ...). This is an ordinary outcome of the move -- the
+//    caller counts it as a rejection.
 //  - A retrace has no such outcome: the old configuration is an accepted state and always has a
 //    weight.
 //  - The functions throw std::runtime_error when the simulation state itself is inconsistent: no
 //    growth step can be built for the requested placed set, the exact base sampler exhausts its
-//    rejection budget, or the existing molecule overlaps with its environment. No weight is defined
-//    in these cases and silently continuing would corrupt the acceptance rule, so the error
-//    propagates to the driver, which reports the message and stops. The entry points are therefore
-//    deliberately NOT noexcept.
+//    rejection budget, or the existing molecule overlaps with its environment (at the growth or at the
+//    full cut-offs). No weight is defined in these cases and silently continuing would corrupt the
+//    acceptance rule, so the error propagates to the driver, which reports the message and stops. The
+//    entry points are therefore deliberately NOT noexcept.
 export namespace CBMC
 {
 /// Identity and scaling attributes stamped on every atom of a freshly grown molecule.
@@ -47,26 +55,9 @@ struct NewMoleculeIdentity
   bool isFractional{false};
 };
 
-/// How the first bead of a molecule is placed (grow) or weighted (retrace).
-enum class FirstBeadScheme : std::size_t
-{
-  /// 'numberOfFirstBeadPositions' uniformly random positions in the box; weight = sum of Boltzmann
-  /// factors / number of positions. Insertion and deletion.
-  MultipleFirstBead = 0,
-  /// The multiple-first-bead reinsertion of Esselink et al.: as above against a background without
-  /// the molecule itself; the grow retains the partial weight 'GrowResult::firstBeadStoredR', which
-  /// the retrace of the old configuration needs ('RetraceRequest::storedR').
-  Reinsertion = 1,
-  /// A single trial at 'GrowRequest::firstBeadPosition', its Boltzmann factor as weight. Identity
-  /// change: the new molecule takes the position of the old one.
-  Pinned = 2,
-  /// A single trial at 'GrowRequest::firstBeadPosition' with weight one: the caller sampled the
-  /// position and accounts for its bias (distance-biased pair and group insertion).
-  Fixed = 3,
-  /// No first-bead stage: the beads in 'GrowRequest::beadsAlreadyPlaced' keep their positions from
-  /// the given molecule and only the remaining beads are (re)grown. Partial reinsertion.
-  AlreadyPlaced = 4,
-};
+/// The empty placed set: the default of 'GrowRequest::beadsAlreadyPlaced' and
+/// 'RetraceRequest::beadsAlreadyPlaced' for every scheme but 'AlreadyPlaced'.
+inline const std::vector<std::size_t> noBeadsAlreadyPlaced{};
 
 /// What to grow. Designated initializers keep call sites readable:
 ///   CBMC::GrowRequest{.firstBead = CBMC::FirstBeadScheme::Pinned, .firstBeadPosition = old.position}
@@ -76,8 +67,9 @@ struct GrowRequest
   /// Position of the first bead; required for 'Pinned' and 'Fixed'.
   std::optional<double3> firstBeadPosition{};
   /// Indices (into the component's atoms) of the beads that keep their positions; required for
-  /// 'AlreadyPlaced'. Must be a valid placed set of the component's fragment graph.
-  std::span<const std::size_t> beadsAlreadyPlaced{};
+  /// 'AlreadyPlaced'. Must be a valid placed set of the component's fragment graph. A reference: the
+  /// component's growth plans are cached by placed set, so the caller's vector is looked up directly.
+  const std::vector<std::size_t> &beadsAlreadyPlaced{noBeadsAlreadyPlaced};
 };
 
 /// What to retrace; mirrors 'GrowRequest'.
@@ -88,7 +80,7 @@ struct RetraceRequest
   /// 'Reinsertion' only.
   double storedR{0.0};
   /// See 'GrowRequest::beadsAlreadyPlaced'; 'AlreadyPlaced' only.
-  std::span<const std::size_t> beadsAlreadyPlaced{};
+  const std::vector<std::size_t> &beadsAlreadyPlaced{noBeadsAlreadyPlaced};
 };
 
 // The background a molecule is grown or retraced against is the context's (see GrowContext): atoms
@@ -119,19 +111,6 @@ struct RetraceRequest
 [[nodiscard]] RetraceResult retraceMolecule(RandomNumber &random, const GrowContext &context,
                                             const Component &component, std::span<const Atom> moleculeAtoms,
                                             const RetraceRequest &request = {});
-
-/// Dual cut-off correction of a grown molecule: when the force field enables the dual cut-off
-/// scheme, the external energy of the result is corrected from the inner cut-off it was grown with
-/// to the full cut-offs and the Rosenbluth weight is multiplied by exp(-beta dU), so the result
-/// behaves as if grown at the full cut-offs. Returns false when the molecule overlaps at the full
-/// cut-offs (the caller rejects the move). A no-op returning true when the scheme is off. The
-/// context supplies the background and must be the one the molecule was grown with.
-[[nodiscard]] bool applyDualCutOffCorrection(const GrowContext &context, const Component &component,
-                                             GrowResult &result);
-
-/// The same for a retraced molecule, whose atoms are 'moleculeAtoms'.
-[[nodiscard]] bool applyDualCutOffCorrection(const GrowContext &context, const Component &component,
-                                             std::span<const Atom> moleculeAtoms, RetraceResult &result);
 
 /// The log of the base-sampler normalization of a growth plan ('Component::growthPlan'). The Rosenbluth
 /// weights of a grow and a retrace are comparable only up to the ratio of their plans' normalizations:

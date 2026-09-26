@@ -1919,6 +1919,8 @@ const std::set<std::string, ForceField::InsensitiveCompare> ForceField::options 
     "ExternalPotentialEnergySurfaceOrigin",
     "WriteExternalFieldInterpolationGrid",
     "InterpolationScheme",
+    "UseDualCutOff",
+    "DualCutOff",
     "UseRecoilGrowth",
     "RecoilGrowthMaximumRecoilLength",
     "RecoilGrowthNumberOfTrialDirections",

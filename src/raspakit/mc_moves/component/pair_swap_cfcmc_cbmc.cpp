@@ -305,8 +305,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
                                               .isFractional = true});
               });
 
-    // Dual cut-off scheme: correct the grown molecule A from the inner cut-off to the full cut-offs.
-    if (!growDataA || !CBMC::applyDualCutOffCorrection(growContextA, componentA, *growDataA))
+    if (!growDataA)
     {
       restoreFractionalPair();
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
@@ -341,9 +340,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
                     {.firstBead = CBMC::FirstBeadScheme::Fixed, .firstBeadPosition = fixedFirstBeadPositionB});
               });
 
-    // Dual cut-off scheme: correct the grown molecule B from the inner cut-off to the full cut-offs,
-    // using the same background (existing molecules plus trial molecule A) as the growth.
-    if (!growDataB || !CBMC::applyDualCutOffCorrection(growContextB, componentBRef, *growDataB))
+    if (!growDataB)
     {
       restoreFractionalPair();
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
@@ -640,16 +637,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
-
-    // Dual cut-off scheme: correct the retraced pair from the inner cut-off to the full cut-offs,
-    // using the same backgrounds as the retraces.
-    if (!CBMC::applyDualCutOffCorrection(retraceContextB, componentBRef, oldFractionalMoleculeB, retraceDataB) ||
-        !CBMC::applyDualCutOffCorrection(retraceContextA, componentA, oldFractionalMoleculeA, retraceDataA))
-    {
-      restoreMolecules();
-      return {std::nullopt, double3(0.0, 1.0, 0.0)};
-    }
-
     double runningNetCharge = system.netCharge;
 
     // Ewald and tail-correction energy contributions of removing the fractional pair

@@ -54,12 +54,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
         timed(system, component, move, Move::Timing::NonEwald,
               [&] { return CBMC::retraceMolecule(random, retraceContext, component, molecule); });
 
-    // Dual cut-off scheme: correct the retraced configuration from the inner cut-off to the full cut-offs.
-    if (!CBMC::applyDualCutOffCorrection(retraceContext, component, molecule, retraceData))
-    {
-      return {std::nullopt, double3(0.0, 1.0, 0.0)};
-    }
-
     // Compute the energy difference in Fourier space due to the deletion
     RunningEnergy energyFourierDifference =
         timed(system, component, move, Move::Timing::Ewald,
