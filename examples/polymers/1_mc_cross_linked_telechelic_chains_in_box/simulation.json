@@ -13,6 +13,7 @@
       "ChargeMethod" : "None",
       "CrossLinkSwapProbability" : 0.5,
       "CrossLinkFormationProbability" : 1.0,
+      "CrossLinkExchangeProbability" : 0.5,
       "CrossLinkBonds" : [
         {
           "Sites" : ["X", "X"],

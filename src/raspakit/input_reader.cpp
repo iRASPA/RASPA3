@@ -246,7 +246,8 @@ void readCrossLinks(const nlohmann::basic_json<nlohmann::raspa_map>& value, Syst
 
   const bool usesCrossLinkMoves =
       system.mc_moves_probabilities.getProbability(Move::Types::CrossLinkSwap) > 0.0 ||
-      system.mc_moves_probabilities.getProbability(Move::Types::CrossLinkFormationScission) > 0.0;
+      system.mc_moves_probabilities.getProbability(Move::Types::CrossLinkFormationScission) > 0.0 ||
+      system.mc_moves_probabilities.getProbability(Move::Types::CrossLinkExchange) > 0.0;
   if (usesCrossLinkMoves && table.bondTypes.empty())
   {
     throw std::runtime_error(
@@ -2316,6 +2317,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         mc_moves_probabilities.setProbability(Move::Types::CrossLinkFormationScission,
                                               value["CrossLinkFormationProbability"].get<double>());
       }
+      if (value.contains("CrossLinkExchangeProbability") && value["CrossLinkExchangeProbability"].is_number_float())
+      {
+        mc_moves_probabilities.setProbability(Move::Types::CrossLinkExchange,
+                                              value["CrossLinkExchangeProbability"].get<double>());
+      }
 
       if (value.contains("TranslationSmartMCAllProbability") &&
           value["TranslationSmartMCAllProbability"].is_number_float())
@@ -4133,6 +4139,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "HybridMCMoveNumberOfSteps",
     "CrossLinkSwapProbability",
     "CrossLinkFormationProbability",
+    "CrossLinkExchangeProbability",
     "CrossLinkBonds",
     "InitialCrossLinks",
     "TranslationSmartMCAllProbability",

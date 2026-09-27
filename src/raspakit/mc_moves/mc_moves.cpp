@@ -80,6 +80,7 @@ import mc_moves_widom;
 import mc_moves_parallel_tempering_swap;
 import mc_moves_hybridmc;
 import mc_moves_cross_link_swap;
+import mc_moves_cross_link_exchange;
 import mc_moves_cross_link_formation;
 
 namespace
@@ -99,6 +100,7 @@ bool isAlwaysTMMCNeutralLocalMove(Move::Types moveType)
     case Move::Types::HybridMC:
     case Move::Types::CrossLinkSwap:
     case Move::Types::CrossLinkFormationScission:
+    case Move::Types::CrossLinkExchange:
       return true;
     default:
       return false;
@@ -1251,6 +1253,15 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
       }
       break;
     }
+    case Move::Types::CrossLinkExchange:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::crossLinkExchangeMove(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies += energy.value();
+      }
+      break;
+    }
     case Move::Types::CrossLinkFormationScission:
     {
       std::optional<RunningEnergy> energy = MC_Moves::crossLinkFormationScissionMove(random, selectedSystem);
@@ -2136,6 +2147,15 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
     case Move::Types::CrossLinkSwap:
     {
       std::optional<RunningEnergy> energy = MC_Moves::crossLinkSwapMove(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies += energy.value();
+      }
+      break;
+    }
+    case Move::Types::CrossLinkExchange:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::crossLinkExchangeMove(random, selectedSystem);
       if (energy)
       {
         selectedSystem.runningEnergies += energy.value();
@@ -3083,6 +3103,15 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
     case Move::Types::CrossLinkSwap:
     {
       std::optional<RunningEnergy> energy = MC_Moves::crossLinkSwapMove(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies += energy.value();
+      }
+      break;
+    }
+    case Move::Types::CrossLinkExchange:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::crossLinkExchangeMove(random, selectedSystem);
       if (energy)
       {
         selectedSystem.runningEnergies += energy.value();

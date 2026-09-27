@@ -22,6 +22,7 @@ import mc_moves_probabilities;
 import mc_moves_move_types;
 import move_statistics;
 import mc_moves_cross_link_swap;
+import mc_moves_cross_link_exchange;
 import mc_moves_cross_link_formation;
 import mc_moves_reinsertion;
 import mc_moves_partial_reinsertion;
@@ -523,6 +524,159 @@ TEST(MC_CROSS_LINKS, valence_limits_are_respected)
   EXPECT_LE(maximumLinks, 6uz);
 }
 
+// The bond-exchange move (a,b)+(c,d) -> (a,c)+(b,d) conserves the number of links of every site. At
+// frozen positions it must therefore sample the exact Boltzmann distribution over all link topologies
+// with the degree sequence of the initial state. Two cases: four valence-1 sites (the three perfect
+// matchings) and one valence-2 site with four valence-1 sites (six graphs of degree sequence
+// 2,1,1,1,1), where the n_links(c)/n_links(b) proposal factor of the move is exercised.
+TEST(MC_CROSS_LINKS, exchange_move_samples_exact_distribution_over_fixed_degree_topologies)
+{
+  const ForceField forceField = makeForceField(0.0, 0.0, 0.0, false);
+  const std::string valence2Json = R"({
+  "CriticalTemperature" : 190.6,
+  "CriticalPressure" : 4599200.0,
+  "AcentricFactor" : 0.011,
+  "pseudoAtoms" : [["A", [0.0, 0.0, 0.0]]],
+  "ReactiveSites" : [[0, "X", 2]]
+}
+)";
+
+  // Global site index g -> (component, molecule).
+  struct SiteRef
+  {
+    std::size_t component;
+    std::size_t molecule;
+  };
+  using Edge = std::pair<std::size_t, std::size_t>;
+  using Graph = std::vector<Edge>;
+
+  auto run = [&](std::vector<Component> components, std::vector<std::vector<double3>> positions,
+                 std::vector<SiteRef> sites, Graph initial, unsigned seed, std::size_t expectedGraphs,
+                 double bondK, double bondLength, double captureRadius)
+  {
+    System system = makeSystem(forceField, std::move(components), std::move(positions));
+    system.crossLinks.bondTypes.push_back(harmonicBondType("X", "X", bondK, bondLength, captureRadius, -250.0));
+    auto siteOf = [&](std::size_t g) { return site(sites[g].component, sites[g].molecule, 0); };
+    auto indexOf = [&](const CrossLinkSite& cs)
+    {
+      for (std::size_t g = 0; g < sites.size(); ++g)
+      {
+        if (sites[g].component == cs.componentId && sites[g].molecule == cs.moleculeIndex) return g;
+      }
+      throw std::runtime_error("unknown site");
+    };
+    for (const Edge& e : initial) system.crossLinks.addLink(CrossLink{siteOf(e.first), siteOf(e.second), 0});
+
+    // Degree sequence of the initial state, and all simple graphs on the sites with that sequence.
+    const std::size_t n = sites.size();
+    std::vector<std::size_t> degree(n, 0);
+    for (const Edge& e : initial)
+    {
+      ++degree[e.first];
+      ++degree[e.second];
+    }
+    std::vector<Edge> allEdges;
+    for (std::size_t i = 0; i < n; ++i)
+      for (std::size_t j = i + 1; j < n; ++j) allEdges.emplace_back(i, j);
+    std::vector<Graph> graphs;
+    for (std::size_t mask = 0; mask < (1uz << allEdges.size()); ++mask)
+    {
+      if (static_cast<std::size_t>(std::popcount(mask)) != initial.size()) continue;
+      std::vector<std::size_t> d(n, 0);
+      Graph g;
+      for (std::size_t k = 0; k < allEdges.size(); ++k)
+      {
+        if (!(mask & (1uz << k))) continue;
+        g.push_back(allEdges[k]);
+        ++d[allEdges[k].first];
+        ++d[allEdges[k].second];
+      }
+      if (d == degree) graphs.push_back(g);
+    }
+    ASSERT_EQ(graphs.size(), expectedGraphs);
+
+    std::vector<double> logWeights;
+    for (const Graph& g : graphs)
+    {
+      std::vector<CrossLink> links;
+      for (const Edge& e : g) links.push_back(CrossLink{siteOf(e.first), siteOf(e.second), 0});
+      const RunningEnergy energy = Interactions::computeCrossLinkEnergyOfLinks(
+          forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
+          system.spanOfMoleculeAtoms(), system.crossLinks, links);
+      logWeights.push_back(-system.beta * energy.potentialEnergy());
+    }
+    const double maxLog = *std::ranges::max_element(logWeights);
+    double normalization = 0.0;
+    for (double lw : logWeights) normalization += std::exp(lw - maxLog);
+    std::vector<double> exact;
+    for (double lw : logWeights) exact.push_back(std::exp(lw - maxLog) / normalization);
+    EXPECT_LT(*std::ranges::max_element(exact), 0.7);
+
+    // Sample with the exchange move only.
+    RandomNumber random(seed);
+    std::map<Graph, std::size_t> counts;
+    const std::size_t numberOfMoves = 400000;
+    RunningEnergy running = system.computeCrossLinkEnergy(system.simulationBox, system.spanOfMoleculeAtoms());
+    for (std::size_t step = 0; step < numberOfMoves; ++step)
+    {
+      std::optional<RunningEnergy> difference = MC_Moves::crossLinkExchangeMove(random, system);
+      if (difference) running += difference.value();
+
+      Graph current;
+      for (const CrossLink& link : system.crossLinks.links)
+      {
+        const std::size_t i = indexOf(link.a), j = indexOf(link.b);
+        current.emplace_back(std::min(i, j), std::max(i, j));
+      }
+      std::ranges::sort(current);
+      counts[current] += 1;
+
+      // Invariants: the degree of every site is conserved, no duplicate or intramolecular links.
+      std::vector<std::size_t> d(n, 0);
+      for (const Edge& e : current)
+      {
+        ASSERT_NE(e.first, e.second);
+        ++d[e.first];
+        ++d[e.second];
+      }
+      ASSERT_EQ(d, degree);
+      ASSERT_EQ(std::ranges::adjacent_find(current), current.end()) << "duplicate link";
+    }
+    const RunningEnergy recomputed = system.computeCrossLinkEnergy(system.simulationBox, system.spanOfMoleculeAtoms());
+    EXPECT_NEAR(running.potentialEnergy(), recomputed.potentialEnergy(),
+                1e-8 * std::max(1.0, std::abs(recomputed.potentialEnergy())));
+
+    for (std::size_t t = 0; t < graphs.size(); ++t)
+    {
+      const double sampled = static_cast<double>(counts[graphs[t]]) / static_cast<double>(numberOfMoves);
+      EXPECT_NEAR(sampled, exact[t], 0.012) << "graph " << t << " (seed " << seed << ")";
+    }
+    EXPECT_GT(std::get<MoveStatistics<double>>(system.mc_moves_statistics[Move::Types::CrossLinkExchange]).totalAccepted,
+              1000.0);
+  };
+
+  // Four valence-1 monomers: perfect matchings.
+  {
+    Component monomer = makeComponent(forceField, 0, "xl-monomer-exchange", monomerJson("A", "X"));
+    run({monomer},
+        {{double3(10.0, 10.0, 10.0), double3(11.9, 10.3, 10.1), double3(10.4, 11.7, 10.6), double3(11.2, 11.0, 12.0)}},
+        {{0, 0}, {0, 1}, {0, 2}, {0, 3}}, {{0, 1}, {2, 3}}, 5, 3uz, 800.0, 1.8, 6.0);
+  }
+  // One valence-2 site (component 0) and four valence-1 sites (component 1): degree sequence 2,1,1,1,1.
+  // The capture radius leaves some pairs out of reach of each other (while every graph stays reachable),
+  // so that the candidate sets of the four routes to the same exchange differ in size and the total
+  // proposal probability is NOT symmetric: only the per-route n_links(c)/n_links(b) factor makes the
+  // move exact here (a plain Metropolis rule is off by up to 0.028 in these probabilities).
+  {
+    Component hub = makeComponent(forceField, 0, "xl-hub-exchange", valence2Json);
+    Component monomer = makeComponent(forceField, 1, "xl-monomer-exchange-b", monomerJson("A", "X"));
+    run({hub, monomer},
+        {{double3(10.0, 10.0, 10.0)},
+         {double3(11.9, 10.3, 10.1), double3(10.4, 11.7, 10.6), double3(11.2, 11.0, 12.0), double3(8.7, 9.2, 11.1)}},
+        {{0, 0}, {1, 0}, {1, 1}, {1, 2}, {1, 3}}, {{0, 1}, {0, 2}, {3, 4}}, 9, 6uz, 200.0, 2.5, 3.0);
+  }
+}
+
 // Deleting a molecule renumbers the sites of the molecules above it; a linked molecule can not be deleted.
 TEST(MC_CROSS_LINKS, table_renumbering_on_deletion_and_insertion)
 {
@@ -596,6 +750,7 @@ TEST(MC_CROSS_LINKS, monte_carlo_drift_with_cross_links)
   MCMoveProbabilities systemMoveProbabilities;
   systemMoveProbabilities.setProbability(Move::Types::CrossLinkSwap, 0.5);
   systemMoveProbabilities.setProbability(Move::Types::CrossLinkFormationScission, 1.0);
+  systemMoveProbabilities.setProbability(Move::Types::CrossLinkExchange, 0.5);
   systemMoveProbabilities.setProbability(Move::Types::VolumeChange, 0.05);
 
   System system = System(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 5e5, 1.0, {}, {dimer}, {}, {30}, 5,
@@ -628,6 +783,8 @@ TEST(MC_CROSS_LINKS, monte_carlo_drift_with_cross_links)
         std::get<MoveStatistics<double3>>(s.mc_moves_statistics[Move::Types::CrossLinkFormationScission]);
     const MoveStatistics<double>& swap =
         std::get<MoveStatistics<double>>(s.mc_moves_statistics[Move::Types::CrossLinkSwap]);
+    const MoveStatistics<double>& exchange =
+        std::get<MoveStatistics<double>>(s.mc_moves_statistics[Move::Types::CrossLinkExchange]);
     const MoveStatistics<double3>& translation =
         std::get<MoveStatistics<double3>>(s.components[0].mc_moves_statistics[Move::Types::Translation]);
     EXPECT_GT(translation.totalCounts.x + translation.totalCounts.y + translation.totalCounts.z, 100.0);
@@ -635,6 +792,7 @@ TEST(MC_CROSS_LINKS, monte_carlo_drift_with_cross_links)
     EXPECT_GT(formation.totalAccepted.x, 5.0);
     EXPECT_GT(formation.totalAccepted.y, 5.0);
     EXPECT_GT(swap.totalAccepted, 0.0);
+    EXPECT_GT(exchange.totalAccepted, 0.0);
     for (const CrossLink& link : s.crossLinks.links)
     {
       EXPECT_FALSE(link.a.sameMolecule(link.b));

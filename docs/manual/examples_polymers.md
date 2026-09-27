@@ -32,10 +32,13 @@ The bond that can form between two `"X"` sites is declared per system with
 distance, a junction bend on the angles CH2–CH3···CH3' across the link, the
 capture radius within which the formation move proposes a link (a proposal
 parameter only) and a formation energy that sets the association constant
-and thereby the degree of cross-linking. The two topology moves are enabled
-per system with `"CrossLinkFormationProbability"` (formation/scission) and
-`"CrossLinkSwapProbability"` (rewiring two links, keeping the number of links
-constant). Linked molecules are still translated, rotated and regrown: the
+and thereby the degree of cross-linking. The three topology moves are enabled
+per system with `"CrossLinkFormationProbability"` (formation/scission),
+`"CrossLinkSwapProbability"` (one end of a link moves to a free site, keeping
+the number of links constant) and `"CrossLinkExchangeProbability"` (two links
+trade partners, (a,b)+(c,d) → (a,c)+(b,d), keeping every site's number of
+links constant; the move that keeps a saturated network mobile). Linked
+molecules are still translated, rotated and regrown: the
 reinsertion and partial-reinsertion moves keep the linked end beads fixed and
 regrow the rest of the chain with the link's bond, junction bends and
 exclusion corrections entering the Rosenbluth weights (a fixed-endpoint
@@ -57,6 +60,7 @@ regrowth when both ends are linked).
       "ChargeMethod" : "None",
       "CrossLinkSwapProbability" : 0.5,
       "CrossLinkFormationProbability" : 1.0,
+      "CrossLinkExchangeProbability" : 0.5,
       "CrossLinkBonds" : [
         {
           "Sites" : ["X", "X"],
@@ -87,8 +91,13 @@ The status reports list the current `Number of cross-links` next to the
 number of molecules (here about 28 of the 40 possible links, fluctuating
 between roughly 24 and 31), the energy breakdown carries the bonded link
 terms in the `cross-link` slot, and the move statistics report the
-acceptance of the formation/scission and swap moves alongside the ordinary
-moves. Making `"FormationEnergy"` more negative drives the system towards a
-fully linked network; setting it to zero leaves the association to the bond
-well alone. The links are stored in the restart file, so a run can be
+acceptance of the formation/scission, swap and exchange moves alongside the
+ordinary moves. Making `"FormationEnergy"` more negative drives the system
+towards a fully linked network (at `-2500` K essentially all 40 links are
+present); there the swap move finds hardly any free site to relocate to,
+while the exchange move needs none and keeps rewiring the network (its
+acceptance is modest, a few percent, because the second new bond joins two
+sites whose separation is not controlled by the capture radius, but the move
+costs only four bonded-energy evaluations). Setting it to zero leaves
+the association to the bond well alone. The links are stored in the restart file, so a run can be
 continued from a linked state.

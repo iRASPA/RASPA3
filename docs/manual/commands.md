@@ -976,13 +976,31 @@ reported separately at the end of the simulation.
     of a link. A link is never formed when it would exceed the valence of one
     of its sites.
 
+-   `"CrossLinkExchangeProbability" : floating-point-number`\
+    The probability per cycle of attempting a cross-link exchange move, in
+    which two links trade partners: $(a,b) + (c,d) \rightarrow (a,c) + (b,d)$.
+    A link and one of its ends $a$ (the pivot) are picked at random; the
+    exchange partner $c$ is drawn uniformly among the *linked* reactive sites of
+    a compatible type on other molecules within the `"CaptureRadius"` of $a$
+    that are not linked to $a$, and the link $(c,d)$ that $c$ gives up uniformly
+    among the links of $c$. Neither the number of links nor the number of
+    links of any site changes, so the valences are automatically respected and
+    the move rewires a network whose sites are all saturated (where the swap
+    move finds no free partner): the metathesis / transesterification-type
+    exchange of vitrimers. Accepted with the Metropolis rule on the energy
+    difference of the four bonded terms times the proposal factor
+    $n_\mathrm{links}(c)/n_\mathrm{links}(b)$ (equal to one for valence-1
+    sites). Rejected when $b$ lies outside the capture radius of $a$ or when
+    the new link $(b,d)$ is not admissible (same molecule, no bond type, or
+    already present).
+
 ### Cross-links between molecules <a name="cross-links"></a>
 
 Cross-links are bonds *between* molecules. They are the building blocks for
 reversibly cross-linked networks, associating polymers, vitrimers and gels:
 the molecules keep their own (immutable) intra-molecular force field, and the
-system owns a table of inter-molecular bonds that the two topology moves above
-create, remove and rewire. Each molecule that can take part declares its
+system owns a table of inter-molecular bonds that the three topology moves
+above (swap, formation/scission, exchange) create, remove and rewire. Each molecule that can take part declares its
 reactive atoms with `"ReactiveSites"` in its molecule definition file (see
 [Component properties](#component-properties)); the bond potentials between
 site types are declared per system with `"CrossLinkBonds"`.

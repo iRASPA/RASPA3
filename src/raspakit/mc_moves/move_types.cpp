@@ -59,7 +59,8 @@ std::array<std::string, std::to_underlying(Move::Types::Count)> Move::moveNames 
   "Double bridging",
   "Intramolecular double rebridging",
   "Cross-link swap",
-  "Cross-link formation/scission"
+  "Cross-link formation/scission",
+  "Cross-link exchange"
 };
 
 std::array<std::string, std::to_underlying(Move::Timing::Count)> Move::timingNames =
@@ -268,6 +269,8 @@ std::array<std::vector<Move::Timing>, std::to_underlying(Move::Types::Count)> Mo
   // CrossLinkSwap
   std::vector<Move::Timing>{Move::Timing::MoleculeMolecule},
   // CrossLinkFormationScission
+  std::vector<Move::Timing>{Move::Timing::MoleculeMolecule},
+  // CrossLinkExchange
   std::vector<Move::Timing>{Move::Timing::MoleculeMolecule}
 };
 

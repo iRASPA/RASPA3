@@ -63,7 +63,8 @@ export struct Move
     IntramolecularDoubleRebridging = 52,  // Connectivity-altering reversal of a chain segment via two closures (IDR)
     CrossLinkSwap = 53,                   // Bond-count-conserving relocation of one end of a cross-link (system move)
     CrossLinkFormationScission = 54,      // Formation or scission of a cross-link between two reactive sites (system move)
-    Count = 55
+    CrossLinkExchange = 55,               // Two cross-links trade partners, (a,b)+(c,d) -> (a,c)+(b,d) (system move)
+    Count = 56
   };
 
   /**
@@ -159,7 +160,8 @@ export inline std::unordered_set<Move::Types> componentMoves = {Move::Types::Tra
 export inline std::unordered_set<Move::Types> systemMoves = {Move::Types::VolumeChange, Move::Types::AnisotropicVolumeChange,
                                                            Move::Types::HybridMC, Move::Types::TranslationSmartMCAll,
                                                            Move::Types::RotationSmartMCAll, Move::Types::CrossLinkSwap,
-                                                           Move::Types::CrossLinkFormationScission};
+                                                           Move::Types::CrossLinkFormationScission,
+                                                           Move::Types::CrossLinkExchange};
 
 export inline std::unordered_set<Move::Types> crossSystemMoves = {Move::Types::GibbsVolume, Move::Types::GibbsSwapCBMC,
                                                                   Move::Types::GibbsSwapCFCMC,

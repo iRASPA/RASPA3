@@ -75,12 +75,18 @@ bool MC_Moves::CrossLinkCommon::withinCaptureRadius(const System &system, const 
   return double3::dot(dr, dr) <= captureRadius * captureRadius;
 }
 
-std::vector<MC_Moves::CrossLinkCommon::Candidate> MC_Moves::CrossLinkCommon::partnerCandidates(
-    const System &system, const CrossLinkSite &pivot)
+namespace
 {
+// The sites that could be linked to 'pivot' (different molecule, matching bond type, within the capture
+// radius, not linked to it), restricted to free sites ('wantLinked' false: the partners of a new link)
+// or to linked sites ('wantLinked' true: the partners of a bond exchange).
+std::vector<MC_Moves::CrossLinkCommon::Candidate> candidatesOf(const System &system, const CrossLinkSite &pivot,
+                                                               bool wantLinked)
+{
+  using MC_Moves::CrossLinkCommon::Candidate;
   std::vector<Candidate> candidates;
-  const std::string &pivotType = reactiveSiteOf(system, pivot).siteType;
-  const double3 pivotPosition = positionOf(system, pivot);
+  const std::string &pivotType = MC_Moves::CrossLinkCommon::reactiveSiteOf(system, pivot).siteType;
+  const double3 pivotPosition = MC_Moves::CrossLinkCommon::positionOf(system, pivot);
 
   for (std::size_t c = 0; c < system.components.size(); ++c)
   {
@@ -107,7 +113,8 @@ std::vector<MC_Moves::CrossLinkCommon::Candidate> MC_Moves::CrossLinkCommon::par
         const ReactiveSite &reactiveSite = component.reactiveSites[s];
         const CrossLinkSite site{static_cast<std::uint32_t>(c), static_cast<std::uint32_t>(m),
                                  static_cast<std::uint32_t>(reactiveSite.atom)};
-        if (system.crossLinks.linkCount(site) >= reactiveSite.valence) continue;
+        const std::uint32_t linkCount = system.crossLinks.linkCount(site);
+        if (wantLinked ? (linkCount == 0) : (linkCount >= reactiveSite.valence)) continue;
         if (system.crossLinks.isLinked(pivot, site)) continue;
 
         const double captureRadius = system.crossLinks.bondTypes[bondTypeOfSite[s].value()].captureRadius;
@@ -120,6 +127,30 @@ std::vector<MC_Moves::CrossLinkCommon::Candidate> MC_Moves::CrossLinkCommon::par
     }
   }
   return candidates;
+}
+}  // namespace
+
+std::vector<MC_Moves::CrossLinkCommon::Candidate> MC_Moves::CrossLinkCommon::partnerCandidates(
+    const System &system, const CrossLinkSite &pivot)
+{
+  return candidatesOf(system, pivot, false);
+}
+
+std::vector<MC_Moves::CrossLinkCommon::Candidate> MC_Moves::CrossLinkCommon::linkedCandidates(
+    const System &system, const CrossLinkSite &pivot)
+{
+  return candidatesOf(system, pivot, true);
+}
+
+std::vector<std::size_t> MC_Moves::CrossLinkCommon::linksOfSite(const System &system, const CrossLinkSite &site)
+{
+  std::vector<std::size_t> ids;
+  for (std::size_t id : system.crossLinks.linksOfMolecule(site.componentId, site.moleculeIndex))
+  {
+    const CrossLink &link = system.crossLinks.links[id];
+    if (link.a == site || link.b == site) ids.push_back(id);
+  }
+  return ids;
 }
 
 RunningEnergy MC_Moves::CrossLinkCommon::linkEnergy(const System &system, const CrossLink &link)
