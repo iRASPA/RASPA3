@@ -12,6 +12,7 @@ import simulationbox;
 import forcefield;
 import component;
 import lammps_io;
+import lammps_topology;
 import framework;
 import molecule;
 
@@ -30,11 +31,25 @@ void WriteLammpsData::update(std::size_t currentCycle, std::span<const Component
                              std::optional<Framework> framework)
 {
   if (currentCycle % sampleEvery != 0) return;
-  ;
-  std::ofstream stream(std::format("lammps/s{}.data", systemId), std::ios_base::out);
-  stream << IO::WriteLAMMPSDataFile(components, atomData, atomDynamics, moleculeData, simulationBox, forceField,
-                                    numberOfIntegerMoleculesPerComponent, framework)
-         << std::endl;
+
+  LAMMPS::ExportOptions options{};
+  options.dataFile = std::format("s{}.data", systemId);
+  options.tableFile = std::format("s{}.table", systemId);
+  options.pairListFile = std::format("s{}.pairs", systemId);
+  LAMMPS::ExportFiles files =
+      LAMMPS::exportSystem(components, atomData, atomDynamics, moleculeData, simulationBox, forceField,
+                           numberOfIntegerMoleculesPerComponent, framework, options);
+
+  std::ofstream(std::format("lammps/{}", options.dataFile), std::ios_base::out) << files.data;
+  std::ofstream(std::format("lammps/s{}.in", systemId), std::ios_base::out) << files.input;
+  if (!files.table.empty())
+  {
+    std::ofstream(std::format("lammps/{}", options.tableFile), std::ios_base::out) << files.table;
+  }
+  if (!files.pairList.empty())
+  {
+    std::ofstream(std::format("lammps/{}", options.pairListFile), std::ios_base::out) << files.pairList;
+  }
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const WriteLammpsData &m)

@@ -19,6 +19,7 @@ add_executable(unit_tests_raspakit
   pressure.cpp
   static_energy.cpp
   component_explicit_intra_pairs.cpp
+  lammps_export.cpp
   forcefield_options.cpp
   framework_intramolecular_reader.cpp
   framework_vdw_replicas.cpp

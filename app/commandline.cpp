@@ -43,6 +43,7 @@ import integration_surface_area;
 import integration_opencl_surface_area;
 import getopt;
 import interpolation_energy_grid;
+import lammps_reader;
 import pore_size_distribution_ban_vlugt;
 import opencl_clearance_grid;
 import grid_connected_components;
@@ -138,6 +139,9 @@ void CommandLine::run(int argc, char *argv[])
   ForceField::InterpolationGridType gridType{ForceField::InterpolationGridType::LennardJones};
   std::optional<ForceField> forceField{};
   Framework framework{};
+  std::optional<std::string> from_lammps_data{};
+  std::optional<std::string> from_lammps_input{};
+  std::string from_lammps_output{"raspa-from-lammps"};
 
 
   // definition of command-line switches
@@ -404,6 +408,17 @@ void CommandLine::run(int argc, char *argv[])
            [&gridType](std::string const &) { gridType = ForceField::InterpolationGridType::LennardJones; })
       .reg({"--Ewald"}, argparser::no_argument, "Set interpolation energy grid to Ewald",
            [&gridType](std::string const &) { gridType = ForceField::InterpolationGridType::EwaldReal; })
+      .reg({"--from-lammps"}, argparser::required_argument,
+           "Convert a LAMMPS 'read_data' file to RASPA input (force_field.json, component JSON files, "
+           "simulation.json) and exit. Combine with --lammps-input for the styles and --output-dir",
+           [&from_lammps_data](std::string const &arg) { from_lammps_data = arg; })
+      .reg({"--lammps-input"}, argparser::required_argument,
+           "LAMMPS input script that defines bond/angle/dihedral/pair styles, special_bonds and pair_modify for "
+           "--from-lammps (without it harmonic/harmonic/nharmonic/lj-cut are assumed)",
+           [&from_lammps_input](std::string const &arg) { from_lammps_input = arg; })
+      .reg({"--output-dir"}, argparser::required_argument,
+           "Directory for the files written by --from-lammps (default 'raspa-from-lammps')",
+           [&from_lammps_output](std::string const &arg) { from_lammps_output = arg; })
       .reg({"--cpu"}, argparser::no_argument, "Compute on the gpu", [&use_cpu](std::string const &) { use_cpu = true; })
       .reg({"--gpu"}, argparser::no_argument, "Compute on the gpu", [&use_gpu](std::string const &) { use_gpu = true; })
       // register positional arguments
@@ -440,6 +455,29 @@ void CommandLine::run(int argc, char *argv[])
   {
     std::cerr << "\u001b[31;1mERROR: " << e.what() << "\u001b[0m\n";
     std::exit(-3);
+  }
+
+  if (from_lammps_data)
+  {
+    try
+    {
+      std::optional<std::filesystem::path> inputScript{};
+      if (from_lammps_input) inputScript = std::filesystem::path(*from_lammps_input);
+      LAMMPS::ReadResult converted = LAMMPS::readDataFile(std::filesystem::path(*from_lammps_data), inputScript);
+      LAMMPS::writeRaspaInput(converted, std::filesystem::path(from_lammps_output));
+      std::cout << std::format("Converted '{}': {} atoms, {} component template(s) -> '{}'\n", *from_lammps_data,
+                               converted.positions.size(), converted.components.size(), from_lammps_output);
+      for (const LAMMPS::ReadComponent &component : converted.components)
+        std::cout << std::format("  {:<12} {} atoms x {} molecules\n", component.name, component.atomsPerMolecule,
+                                 component.count);
+      for (const std::string &warning : converted.warnings) std::cout << "  " << warning << '\n';
+    }
+    catch (std::exception const &e)
+    {
+      std::cerr << "\u001b[31;1mERROR: " << e.what() << "\u001b[0m\n";
+      std::exit(-4);
+    }
+    std::exit(0);
   }
 
   // The surface areas answer for the nitrogen experiment, so with no temperature given they default to its

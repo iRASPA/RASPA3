@@ -14,6 +14,7 @@ TorsionPotential::TorsionPotential(std::array<std::size_t, 4> identifiers, Torsi
                                    std::vector<double> vector_parameters)
     : identifiers(identifiers), type(type)
 {
+  parameters.fill(0.0);
   for (std::size_t i = 0; i < std::min(vector_parameters.size(), maximumNumberOfTorsionParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
@@ -200,6 +201,15 @@ TorsionPotential::TorsionPotential(std::array<std::size_t, 4> identifiers, Torsi
       // p_4     [rad]
       parameters[1] *= Units::KelvinToEnergy;
       break;
+    case TorsionType::Polynomial:
+      // sum_{i=0}^{5} p_i cos^i(phi)   (LAMMPS 'dihedral_style nharmonic' with n <= 6)
+      // ==================================================================================
+      // p_i/k_B [K]
+      for (std::size_t i = 0; i < maximumNumberOfTorsionParameters; ++i)
+      {
+        parameters[i] *= Units::KelvinToEnergy;
+      }
+      break;
   }
 }
 
@@ -342,7 +352,7 @@ std::string TorsionPotential::print() const
           parameters[1] * Units::EnergyToKCalPerMol, parameters[2] * Units::EnergyToKCalPerMol);
     case TorsionType::FourierSeries:
       // (1/2)p_0*(1+cos(phi))+(1/2)p_1(1-cos(2*phi))+(1/2)*p2_2*(1+cos(3*phi))+
-      // (1/2)p_3*(1-cos(4*phi))+(1/2)p_4*(1+cos(5*phi))+(1/2)p_5*(1+cos(6*phi))
+      // (1/2)p_3*(1-cos(4*phi))+(1/2)p_4*(1+cos(5*phi))+(1/2)p_5*(1-cos(6*phi))
       // =======================================================================
       // p_0/k_B [K]
       // p_1/k_B [K]
@@ -385,6 +395,16 @@ std::string TorsionPotential::print() const
           "p_4={:g} [rad]\n",
           identifiers[0], identifiers[1], identifiers[2], identifiers[3], parameters[0],
           parameters[1] * Units::EnergyToKelvin, parameters[2], parameters[3], parameters[4]);
+    case TorsionType::Polynomial:
+      // sum_{i=0}^{5} p_i cos^i(phi)
+      // p_i/k_B [K]
+      return std::format(
+          "{} - {} - {} - {} : POLYNOMIAL p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K], "
+          "p_4/k_B={:g} [K], p_5/k_B={:g} [K]\n",
+          identifiers[0], identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
+          parameters[1] * Units::EnergyToKelvin, parameters[2] * Units::EnergyToKelvin,
+          parameters[3] * Units::EnergyToKelvin, parameters[4] * Units::EnergyToKelvin,
+          parameters[5] * Units::EnergyToKelvin);
     default:
       std::unreachable();
   }
@@ -577,6 +597,14 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
     case TorsionType::CVFFBlocked:
       // Blocked pocket detection; the energy contribution is defined as zero (as in RASPA2).
       return 0.0;
+    case TorsionType::Polynomial:
+      // sum_{i=0}^{5} p_i cos^i(phi), evaluated by Horner's rule
+      temp = parameters[5];
+      for (std::size_t i = 5; i-- > 0;)
+      {
+        temp = temp * cos_phi + parameters[i];
+      }
+      return temp;
     default:
       std::unreachable();
   }
@@ -739,6 +767,16 @@ std::tuple<double, std::array<double3, 4>, double3x3> TorsionPotential::potentia
     case TorsionType::CVFFBlocked:
       U = 0.0;
       DF = 0.0;
+      break;
+    case TorsionType::Polynomial:
+      // U = sum_i p_i c^i, DF = dU/dc = sum_i i p_i c^(i-1)
+      U = parameters[5];
+      DF = 0.0;
+      for (std::size_t i = 5; i-- > 0;)
+      {
+        DF = DF * cos_phi + U;
+        U = U * cos_phi + parameters[i];
+      }
       break;
     default:
       std::unreachable();

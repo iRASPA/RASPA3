@@ -11,33 +11,49 @@ import simulationbox;
 import forcefield;
 import framework;
 import molecule;
+import lammps_topology;
+
+/**
+ * \brief LAMMPS export: data file, companion input script, and table files.
+ *
+ * Everything is derived from a LAMMPS::Topology (see lammps_topology). The data file ('units real',
+ * 'atom_style full') carries the box, masses, deduplicated coefficient sections, atoms with image flags,
+ * velocities, topology lists and, when rigid fragments exist, a custom 'Fragments' section for
+ * 'fix property/atom'. The input script carries what a data file cannot: styles (hybrid where needed),
+ * pair_style/pair_coeff, kspace, special_bonds, class2 cross coefficients, table references,
+ * fix shake / fix rigid/small / frozen framework atoms, and a 'run 0' so the exported energy can be
+ * compared with RASPA's.
+ */
+export namespace LAMMPS
+{
+struct ExportFiles
+{
+  std::string data{};
+  std::string input{};
+  std::string table{};     ///< empty when no potential had to be tabulated
+  std::string pairList{};  ///< empty unless 1-4 pairs need 'pair_style list'
+  std::vector<std::string> warnings{};
+};
+
+std::string writeDataFile(const Topology &topology);
+std::string writeInputScript(const Topology &topology);
+std::string writeTableFile(const Topology &topology);
+std::string writePairListFile(const Topology &topology);
+
+ExportFiles exportSystem(std::span<const Component> components, std::span<const Atom> atomData,
+                         std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,
+                         const SimulationBox &simulationBox, const ForceField &forceField,
+                         std::span<const std::size_t> numberOfIntegerMoleculesPerComponent,
+                         const std::optional<Framework> &framework, ExportOptions options = {});
+}  // namespace LAMMPS
 
 export namespace IO
 {
-void ReadLAMMPSDataFile();
-
 /**
- * \brief Writes output for a LAMMPS data file.
+ * \brief Writes the LAMMPS data file of a system (kept for the WriteLammpsData property).
  *
- * Takes system information and writes it in a LAMMPS data file format ('units real': Angstrom, kcal/mol, fs;
- * 'atom_style full'), such that a simulation can be continued on a LAMMPS engine.
- *
- * Bonded terms are mapped exactly onto stock LAMMPS styles where one exists (RASPA's (1/2)k conventions become
- * LAMMPS's K without the 1/2; every cosine-series torsion is expanded into 'dihedral_style nharmonic'); terms
- * without a LAMMPS equivalent are written with the 'zero' style and flagged in a comment, so the type numbering of
- * the Bonds/Angles/Dihedrals sections always matches the coefficient sections. When a class needs more than one
- * LAMMPS style the lines carry the style name for 'hybrid'. Pair interactions are listed as 'PairIJ Coeffs' for
- * every i <= j, so no mixing-rule assumption is needed on the LAMMPS side.
- *
- * Settings a data file cannot carry (styles, cut-offs, kspace, special_bonds derived from the components'
- * 1-4 scaling) are written as a comment block at the top, ready to paste into the input script.
- *
- * \param components system component information
- * \param atomData holds all information on all atoms in the system.
- * \param simulationBox system simulation box (not unit cell).
- * \param forceField contains parameters for the pair interactions.
- * \param numberOfIntegerMoleculesPerComponent amount of molecules per component, necessary for accounting.
- * \param framework meta info on the framework.
+ * Equivalent to LAMMPS::exportSystem(...).data; the companion input script is written by the property
+ * next to it.
  */
 std::string WriteLAMMPSDataFile(std::span<const Component> components, std::span<const Atom> atomData,
                                 std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,

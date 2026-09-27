@@ -40,7 +40,8 @@ export enum class TorsionType : std::size_t {
   MM3 = 12,
   FourierSeries = 13,
   FourierSeries2 = 14,
-  CVFFBlocked = 15
+  CVFFBlocked = 15,
+  Polynomial = 16
 };
 
 /**
@@ -94,7 +95,8 @@ export struct TorsionPotential
    *
    * A static vector indicating the number of parameters needed for each torsion type.
    */
-  static inline std::array<std::size_t, 16> numberOfTorsionParameters{1, 2, 2, 3, 6, 4, 5, 5, 3, 3, 3, 4, 3, 6, 6, 5};
+  static inline std::array<std::size_t, 17> numberOfTorsionParameters{1, 2, 2, 3, 6, 4, 5, 5, 3, 3, 3, 4, 3, 6, 6, 5,
+                                                                      6};
 
   /**
    * \brief Mapping of torsion type strings to TorsionType enums.
@@ -118,7 +120,9 @@ export struct TorsionPotential
       {"OPLS", TorsionType::OPLS},
       {"MM3", TorsionType::MM3},
       {"FOURIER_SERIES", TorsionType::FourierSeries},
-      {"FOURIER_SERIES2", TorsionType::FourierSeries2}};
+      {"FOURIER_SERIES2", TorsionType::FourierSeries2},
+      {"POLYNOMIAL", TorsionType::Polynomial},
+      {"NHARMONIC", TorsionType::Polynomial}};
 
   double calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posc, const double3 &posD) const;
 

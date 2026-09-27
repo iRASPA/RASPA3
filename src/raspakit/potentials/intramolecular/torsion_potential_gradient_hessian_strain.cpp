@@ -201,6 +201,18 @@ Potentials::Internal::torsionPotentialEnergyGradientHessianStrain(
             parameters[4] * cos_phi * (160.0 * cos_phi2 - 60.0) +
             parameters[5] * (18.0 - 288.0 * cos_phi2 + 480.0 * cos_phi2 * cos_phi2);
       break;
+    case TorsionType::Polynomial:
+      // U = sum_i p_i c^i; DF = U'(c); DDF = U''(c), all by Horner's rule
+      U = parameters[5];
+      DF = 0.0;
+      DDF = 0.0;
+      for (std::size_t i = 5; i-- > 0;)
+      {
+        DDF = DDF * cos_phi + 2.0 * DF;
+        DF = DF * cos_phi + U;
+        U = U * cos_phi + parameters[i];
+      }
+      break;
     default:
       std::unreachable();
   }
