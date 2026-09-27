@@ -46,6 +46,17 @@ export std::vector<BlockingSphere> exactBlockingSpheres(const ExactVoidSplit& sp
 // puts in a channel, which is a centre no radius makes safe.
 export std::string measuredSpheresRefused(const ExactVoidSplit& split);
 
+// The balls with nothing of their own to block, dropped. In a sealed, highly symmetric structure a pocket's
+// centroid lands on a special position, and that is exactly where the centroid of the small pocket it wraps
+// around, or a framework atom, may also sit: a shell-shaped pocket has its centroid at its symmetry centre.
+// The contained ball then adds nothing to the union of balls, which is all the blocked geometry is, and carried
+// further as a site of a diagram it is refused for coinciding with the ball that holds it. The hybrid pore-size
+// routes therefore run the combined list of framework atoms and blocking spheres through this. In the
+// additively weighted metric a ball is hidden by another exactly when it is geometrically contained
+// (|c₁−c₂| + r₁ ≤ r₂, at the nearest periodic image), so nothing a diagram would have kept is dropped.
+export std::vector<BlockingSphere> withoutContainedSpheres(const UnitCell& unitCell,
+                                                           std::vector<BlockingSphere> spheres);
+
 // The sampled route, kept for the structures a measured split has to refuse and for the comparison.
 //
 // Points of the void that a probe cannot reach are grouped by pocket and each pocket covered by spheres taking

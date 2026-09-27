@@ -365,15 +365,28 @@ void VoronoiPoreSizeDistribution::run(const PairInteractions& interactions, cons
     {
       spheres = computeBlockingSpheres(he, static_cast<std::size_t>(200.0 * cellVolume));
     }
-
-    std::vector<double3> blockedPositions = fractionalPositions;
-    std::vector<double> blockedRadii = radii;
-    blockedPositions.reserve(fractionalPositions.size() + spheres.size());
-    blockedRadii.reserve(radii.size() + spheres.size());
-    for (const BlockingSphere& sphere : spheres)
+    // A ball wholly inside another adds nothing to the union the blocked diagram measures, and its centre can
+    // coincide exactly with the centre of the ball holding it: sealed symmetric structures put pocket centroids
+    // on special positions, which is where another pocket's centroid, or a framework atom, may sit to machine
+    // precision, and the diagram below refuses coinciding sites. Filter the combined list of atoms and spheres
+    // down to the balls with surface of their own.
+    std::vector<BlockingSphere> blockedBalls;
+    blockedBalls.reserve(fractionalPositions.size() + spheres.size());
+    for (std::size_t i = 0; i < fractionalPositions.size(); ++i)
     {
-      blockedPositions.push_back(sphere.centerFractional);
-      blockedRadii.push_back(sphere.radius);
+      blockedBalls.push_back(BlockingSphere{fractionalPositions[i], radii[i]});
+    }
+    blockedBalls.insert(blockedBalls.end(), spheres.begin(), spheres.end());
+    blockedBalls = withoutContainedSpheres(framework.unitCell, std::move(blockedBalls));
+
+    std::vector<double3> blockedPositions;
+    std::vector<double> blockedRadii;
+    blockedPositions.reserve(blockedBalls.size());
+    blockedRadii.reserve(blockedBalls.size());
+    for (const BlockingSphere& ball : blockedBalls)
+    {
+      blockedPositions.push_back(ball.centerFractional);
+      blockedRadii.push_back(ball.radius);
     }
 
     auto buildBlocked = [&](double inflation)

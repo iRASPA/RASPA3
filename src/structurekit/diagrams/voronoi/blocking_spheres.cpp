@@ -46,6 +46,32 @@ double periodicDistance(const UnitCell& unitCell, const double3& a, const double
   return delta.length();
 }
 
+std::vector<BlockingSphere> withoutContainedSpheres(const UnitCell& unitCell, std::vector<BlockingSphere> spheres)
+{
+  // Widest first, so a sphere only ever needs to be checked against ones already kept.
+  std::ranges::stable_sort(spheres,
+                           [](const BlockingSphere& a, const BlockingSphere& b) { return a.radius > b.radius; });
+
+  std::vector<BlockingSphere> kept;
+  kept.reserve(spheres.size());
+  for (const BlockingSphere& sphere : spheres)
+  {
+    const double3 centre = unitCell.cell * sphere.centerFractional;
+    bool contained = false;
+    for (const BlockingSphere& wider : kept)
+    {
+      double separation = periodicDistance(unitCell, centre, unitCell.cell * wider.centerFractional);
+      if (separation + sphere.radius <= wider.radius + 1.0e-9)
+      {
+        contained = true;
+        break;
+      }
+    }
+    if (!contained) kept.push_back(sphere);
+  }
+  return kept;
+}
+
 std::vector<BlockingSphere> computeBlockingSpheres(const PoreAccessibility& accessibility,
                                                    std::size_t numberOfSamples)
 {
