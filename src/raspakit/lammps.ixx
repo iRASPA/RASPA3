@@ -19,10 +19,18 @@ void ReadLAMMPSDataFile();
 /**
  * \brief Writes output for a LAMMPS data file.
  *
- * Takes system information and writes it in a LAMMPS data file format, such that a simulation can be restarted on a
- * LAMMPS engine. Assumes LAMMPS units real unit system (Angstrom, kcal/mol).
+ * Takes system information and writes it in a LAMMPS data file format ('units real': Angstrom, kcal/mol, fs;
+ * 'atom_style full'), such that a simulation can be continued on a LAMMPS engine.
  *
- * \note Currently does not support writing of bonded information.
+ * Bonded terms are mapped exactly onto stock LAMMPS styles where one exists (RASPA's (1/2)k conventions become
+ * LAMMPS's K without the 1/2; every cosine-series torsion is expanded into 'dihedral_style nharmonic'); terms
+ * without a LAMMPS equivalent are written with the 'zero' style and flagged in a comment, so the type numbering of
+ * the Bonds/Angles/Dihedrals sections always matches the coefficient sections. When a class needs more than one
+ * LAMMPS style the lines carry the style name for 'hybrid'. Pair interactions are listed as 'PairIJ Coeffs' for
+ * every i <= j, so no mixing-rule assumption is needed on the LAMMPS side.
+ *
+ * Settings a data file cannot carry (styles, cut-offs, kspace, special_bonds derived from the components'
+ * 1-4 scaling) are written as a comment block at the top, ready to paste into the input script.
  *
  * \param components system component information
  * \param atomData holds all information on all atoms in the system.
