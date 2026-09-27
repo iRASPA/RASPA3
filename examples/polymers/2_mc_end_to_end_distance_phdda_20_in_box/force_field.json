@@ -1,0 +1,157 @@
+{
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "truncated",
+  "TailCorrections" : true,
+  "CutOffVDW" : 14.0,
+  "CutOffCoulomb" : "auto",
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "CH2_sp2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 14.02658,
+      "charge" : 0.0,
+      "source" : "vinyl CH2=, K. A. Maerzke, N. E. Schultz, R. B. Ross, J. I. Siepmann, J. Phys. Chem. B 2009, 113, 6415-6425"
+    },
+    {
+      "name" : "CH_sp2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 13.01864,
+      "charge" : 0.0,
+      "source" : "vinyl =CH-, K. A. Maerzke, N. E. Schultz, R. B. Ross, J. I. Siepmann, J. Phys. Chem. B 2009, 113, 6415-6425"
+    },
+    {
+      "name" : "C_CO",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.0,
+      "charge" : 0.4,
+      "source" : "ester carbonyl C, K. A. Maerzke, N. E. Schultz, R. B. Ross, J. I. Siepmann, J. Phys. Chem. B 2009, 113, 6415-6425"
+    },
+    {
+      "name" : "O_CO",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -0.4,
+      "source" : "ester carbonyl O, K. A. Maerzke, N. E. Schultz, R. B. Ross, J. I. Siepmann, J. Phys. Chem. B 2009, 113, 6415-6425"
+    },
+    {
+      "name" : "O_es",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -0.25,
+      "source" : "ester ether O, K. A. Maerzke, N. E. Schultz, R. B. Ross, J. I. Siepmann, J. Phys. Chem. B 2009, 113, 6415-6425"
+    },
+    {
+      "name" : "CH2_O",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 14.02658,
+      "charge" : 0.25,
+      "source" : "CH2 bonded to the ester O, K. A. Maerzke, N. E. Schultz, R. B. Ross, J. I. Siepmann, J. Phys. Chem. B 2009, 113, 6415-6425"
+    },
+    {
+      "name" : "CH2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 14.02658,
+      "charge" : 0.0,
+      "source" : "M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1998, 102, 2569-2577"
+    },
+    {
+      "name" : "CH2_bb",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 14.02658,
+      "charge" : 0.0,
+      "source" : "reacted (saturated) backbone CH2, A. Torres-Knoop, I. Kryven, V. Schamboeck, P. D. Iedema, Soft Matter 2018, 14, 3404-3414"
+    },
+    {
+      "name" : "CH_bb",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 13.01864,
+      "charge" : 0.0,
+      "source" : "reacted (saturated) backbone CH, TraPPE-UA CH, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1999, 103, 4508-4517"
+    }
+  ],
+  "SelfInteractions" :
+  [
+    {
+      "name" : "CH2_sp2",
+      "type" : "lennard-jones",
+      "parameters" : [85.0, 3.675],
+      "source" : "K. A. Maerzke, N. E. Schultz, R. B. Ross, J. I. Siepmann, J. Phys. Chem. B 2009, 113, 6415-6425"
+    },
+    {
+      "name" : "CH_sp2",
+      "type" : "lennard-jones",
+      "parameters" : [52.0, 3.71],
+      "source" : "K. A. Maerzke, N. E. Schultz, R. B. Ross, J. I. Siepmann, J. Phys. Chem. B 2009, 113, 6415-6425"
+    },
+    {
+      "name" : "C_CO",
+      "type" : "lennard-jones",
+      "parameters" : [40.0, 3.82],
+      "source" : "K. A. Maerzke, N. E. Schultz, R. B. Ross, J. I. Siepmann, J. Phys. Chem. B 2009, 113, 6415-6425"
+    },
+    {
+      "name" : "O_CO",
+      "type" : "lennard-jones",
+      "parameters" : [79.0, 3.05],
+      "source" : "K. A. Maerzke, N. E. Schultz, R. B. Ross, J. I. Siepmann, J. Phys. Chem. B 2009, 113, 6415-6425"
+    },
+    {
+      "name" : "O_es",
+      "type" : "lennard-jones",
+      "parameters" : [55.0, 2.8],
+      "source" : "K. A. Maerzke, N. E. Schultz, R. B. Ross, J. I. Siepmann, J. Phys. Chem. B 2009, 113, 6415-6425"
+    },
+    {
+      "name" : "CH2_O",
+      "type" : "lennard-jones",
+      "parameters" : [46.0, 3.95],
+      "source" : "K. A. Maerzke, N. E. Schultz, R. B. Ross, J. I. Siepmann, J. Phys. Chem. B 2009, 113, 6415-6425"
+    },
+    {
+      "name" : "CH2",
+      "type" : "lennard-jones",
+      "parameters" : [46.0, 3.95],
+      "source" : "M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1998, 102, 2569-2577"
+    },
+    {
+      "name" : "CH2_bb",
+      "type" : "lennard-jones",
+      "parameters" : [46.0, 3.95],
+      "source" : "M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1998, 102, 2569-2577"
+    },
+    {
+      "name" : "CH_bb",
+      "type" : "lennard-jones",
+      "parameters" : [10.0, 4.68],
+      "source" : "M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1999, 103, 4508-4517"
+    }
+  ]
+}

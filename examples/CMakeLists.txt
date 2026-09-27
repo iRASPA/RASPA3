@@ -78,6 +78,8 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_D
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/external_fields/3_mc_water_in_cylinder_channel_grids/run)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/polymers/1_mc_cross_linked_telechelic_chains_in_box/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/polymers/2_mc_end_to_end_distance_phdda_20_in_box/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/polymers/3_md_end_to_end_distance_phdda_20_in_box/run)
 
 install(DIRECTORY basic DESTINATION share/raspa3/examples 
         COMPONENT examples

@@ -1,0 +1,33 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfProductionCycles" : 20000,
+  "NumberOfInitializationCycles" : 2000,
+  "PrintEvery" : 1000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [60.0, 60.0, 60.0],
+      "ExternalTemperature" : 300.0,
+      "ChargeMethod" : "Ewald",
+      "ComputeMoleculeProperties" : true,
+      "SampleMoleculePropertiesEvery" : 1,
+      "WriteMoleculePropertiesEvery" : 5000,
+      "NumberOfBinsMoleculeProperties" : 128
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "pHDDA-20",
+      "PivotProbability" : 1.0,
+      "CrankshaftProbability" : 1.0,
+      "BeadFlipProbability" : 1.0,
+      "BeadDisplacementProbability" : 1.0,
+      "ConcertedRotationProbability" : 0.5,
+      "CreateNumberOfMolecules" : 1
+    }
+  ]
+}

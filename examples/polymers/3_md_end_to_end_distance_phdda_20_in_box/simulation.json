@@ -1,0 +1,35 @@
+{
+  "SimulationType" : "MolecularDynamics",
+  "NumberOfProductionCycles" : 1000000,
+  "NumberOfInitializationCycles" : 2000,
+  "NumberOfEquilibrationCycles" : 20000,
+  "PrintEvery" : 10000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [60.0, 60.0, 60.0],
+      "ExternalTemperature" : 300.0,
+      "Ensemble" : "NVT",
+      "TimeStep" : 0.001,
+      "ChargeMethod" : "Ewald",
+      "ComputeMoleculeProperties" : true,
+      "SampleMoleculePropertiesEvery" : 10,
+      "WriteMoleculePropertiesEvery" : 100000,
+      "NumberOfBinsMoleculeProperties" : 128
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "pHDDA-20",
+      "PivotProbability" : 1.0,
+      "CrankshaftProbability" : 1.0,
+      "BeadFlipProbability" : 1.0,
+      "BeadDisplacementProbability" : 1.0,
+      "CreateNumberOfMolecules" : 1
+    }
+  ]
+}
