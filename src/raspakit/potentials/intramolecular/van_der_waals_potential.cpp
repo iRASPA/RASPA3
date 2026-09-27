@@ -78,7 +78,9 @@ std::tuple<double, std::array<double3, 2>, double3x3> VanDerWaalsPotential::pote
   switch (type)
   {
     case VanDerWaalsType::LennardJones:
-      temp = (parameters[1] / rr) * (parameters[1] / rr) * (parameters[1] / rr);
+      // 4*p_0*((p_1/r)^12-(p_1/r)^6) with temp = (p_1/r)^6 = (p_1^2/r^2)^3, as in calculateEnergy
+      temp = (parameters[1] * parameters[1] / rr) * (parameters[1] * parameters[1] / rr) *
+             (parameters[1] * parameters[1] / rr);
       U = scaling * 4.0 * parameters[0] * (temp * (temp - 1.0));
       if (r > 0.0)
       {
