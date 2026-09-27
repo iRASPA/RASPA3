@@ -1,5 +1,7 @@
 module;
 
+#include "build_info.h"
+
 module commandline;
 
 import std;
@@ -144,13 +146,25 @@ void CommandLine::run(int argc, char *argv[])
   std::string from_lammps_output{"raspa-from-lammps"};
 
 
+  // Which build this is: the commit it was made from and when it was compiled, so that a result can be
+  // traced back to the source that produced it.
+  const std::string versionText =
+      std::format("raspa3 {}\n  commit:   {} ({}){}\n  compiled: {}", BuildInfo::version, BuildInfo::commit,
+                  BuildInfo::commitDate, BuildInfo::treeState, BuildInfo::compileDate);
+
   // definition of command-line switches
   using argparser = argparser::argparser;
   argparser opt(argc, argv);
-  opt.info("raspa3", argv[0])
+  opt.info(versionText, argv[0])
       // register command-line switches that execute
       // the built-in help display
       .help({"-h", "--help"}, "Display this help")
+      .reg({"--version"}, argparser::no_argument, "Show the version, the git commit and the compilation date",
+           [&versionText](std::string const &)
+           {
+             std::cout << versionText << std::endl;
+             std::exit(0);
+           })
       // register command-line switches that modify
       // a variable according to the argument given
       .reg({"-N", "--number-of-iterations"},
