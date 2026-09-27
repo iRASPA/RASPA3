@@ -58,6 +58,14 @@ constexpr double baseCouplingRelativeTolerance = 0.005;
 /// over this grid, randomly offset, seeds the tilt Monte-Carlo).
 constexpr std::size_t rigidTiltRollGridPoints = 72;
 
+/// Intramolecular van der Waals / Coulomb pairs between a grown bead and a placed bead at most this
+/// many bonds apart are weighted in the torsion-spin selection instead of the external stage (see
+/// 'GrowStep::NonBondedData'). Five bonds covers the 1-4 (scaled Coulomb), 1-5 and 1-6 pairs, whose
+/// distances are set by the spin angle and the placed geometry; a bare torsion potential fitted with
+/// these pairs present (TraPPE-UA esters, ethers) can otherwise steer the spin into a 1-5 overlap on
+/// nearly every trial. The partition does not change the sampled distribution, only the efficiency.
+constexpr std::size_t spinRoutedNonBondedMaximumBondSeparation = 5;
+
 /// The recoil-growth openness reference ('System::buildRecoilReferenceConformations'): per growth step
 /// the maximum intramolecular strain over this many equilibrated ideal-gas conformations of the
 /// component, grown once at setup from a generator with this fixed seed. The reference is a constant

@@ -144,10 +144,13 @@ struct GrowStep
   struct SpinSelectionData
   {
     /// The potentials evaluated per spin trial: the step's torsions (for a ring-closure step only the
-    /// junction-crossing ones) plus, for a flexible attach step, the spin-routed share of the
-    /// unsampled terms. 'hasUnsampledTerms' tells whether that share is non-empty.
+    /// junction-crossing ones), for a flexible attach step the spin-routed share of the unsampled
+    /// terms ('hasUnsampledTerms' tells whether that share is non-empty), and the spin-routed share of
+    /// the step's intramolecular van der Waals / Coulomb pairs ('hasNonBondedTerms'; see
+    /// 'NonBondedData').
     Potentials::IntraMolecularPotentials potentials{};
     bool hasUnsampledTerms{false};
+    bool hasNonBondedTerms{false};
 
     /// Bends of the step that change under the spin (they involve a placed atom other than the
     /// previous bead); weighted alongside the torsions.
@@ -168,6 +171,22 @@ struct GrowStep
     std::vector<ClosureGuide> guides{};
   };
   SpinSelectionData spin{};
+
+  /// The step's intramolecular van der Waals and Coulomb pairs ('intra.vanDerWaals', 'intra.coulombs')
+  /// are split between the two Rosenbluth stages. A pair between a grown bead and a placed bead at
+  /// most 'Constants::spinRoutedNonBondedMaximumBondSeparation' bonds apart is weighted in the
+  /// torsion-spin selection ('spin.potentials'): its distance is a function of the spin angle and the
+  /// placed geometry, so the spin is steered away from a 1-5 clash the same way a torsion steers it.
+  /// Every other pair -- longer-range ones, pairs among the grown beads themselves (spin-invariant),
+  /// and all pairs of a seed step (no spin) -- is 'external': evaluated once per trial direction with
+  /// the external energy. Both stages are Rosenbluth-weighted identically on grow and retrace, so the
+  /// sampled distribution is the same for any split; the split only sets which stage resolves which
+  /// interaction, and at what cost (the spin stage evaluates its terms per torsion trial).
+  struct NonBondedData
+  {
+    Potentials::IntraMolecularPotentials external{};
+  };
+  NonBondedData nonBonded{};
 
   /// CloseBridge steps: the two bonds of the closing bead (to the anchor and to the closure bead) and
   /// the bend centred on it (anchor - next - closure), which is invariant under the closure spin and

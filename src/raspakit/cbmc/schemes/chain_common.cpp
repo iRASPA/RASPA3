@@ -58,9 +58,11 @@ std::optional<CBMC::StepTrialEnergy> CBMC::evaluateStepTrial(const GrowContext &
   std::optional<RunningEnergy> external = computeExternalNonOverlappingEnergy(context, component, positions);
   if (!external.has_value()) return std::nullopt;
 
+  // Only the external-stage share of the step's intramolecular non-bonded pairs; the short-range
+  // pairs were weighted in the torsion-spin selection that generated 'positions' (GrowStep::NonBondedData).
   const ScratchBeads scratch(chainAtoms, step);
   placeStepBeads(chainAtoms, step, positions);
-  const RunningEnergy intra = step.intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(chainAtoms);
+  const RunningEnergy intra = step.nonBonded.external.computeInternalIntraVanDerWaalsAndCoulombEnergies(chainAtoms);
 
   // The cross-link terms that become evaluable at this step (every atom they need is now in place).
   if (!tethersOfStep.empty())

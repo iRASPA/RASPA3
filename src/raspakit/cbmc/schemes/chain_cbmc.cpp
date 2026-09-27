@@ -66,10 +66,11 @@ struct StepWeight
 //
 //   w_torsion(selected) * sum_j exp(-beta u_j) / k * exp(-beta u_unsampled),
 //
-// with u_j the external plus the intramolecular van der Waals and Coulomb energy of trial j and k the
-// number of trial directions. On the grow the selected trial is drawn with probability
-// exp(-beta u_j) / sum; on the retrace it is trial 0, the old configuration. The selected trial's
-// positions are left in 'chainAtoms'.
+// with u_j the external energy of trial j plus the external-stage share of the step's intramolecular
+// van der Waals and Coulomb pairs (the short-range pairs are weighted inside w_torsion, see
+// GrowStep::NonBondedData) and k the number of trial directions. On the grow the selected trial is
+// drawn with probability exp(-beta u_j) / sum; on the retrace it is trial 0, the old configuration.
+// The selected trial's positions are left in 'chainAtoms'.
 //
 // A bridge-closure step (fixed-endpoint regrowth) couples the two stages instead: its directions carry
 // individual base weights (each drew its own bond lengths, and an infeasible draw is missing from the

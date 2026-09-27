@@ -17,10 +17,13 @@ import bond_bend_potential;
 import bend_bend_potential;
 import bond_torsion_potential;
 import bend_torsion_potential;
+import van_der_waals_potential;
+import coulomb_potential;
 import connectivity_table;
 import fragment;
 import fragment_graph;
 import cbmc_grow_step;
+import cbmc_constants;
 
 namespace
 {
@@ -410,6 +413,70 @@ void prepareRingSampler(CBMC::GrowStep &step, const ConnectivityTable &connectiv
     }
   }
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Intramolecular van der Waals / Coulomb pairs: which Rosenbluth stage weights them (see
+// 'GrowStep::NonBondedData'). A pair goes to the torsion-spin selection when exactly one of its beads
+// is grown by the step, the step has a spin (a junction, or a bridge closure), and the placed bead is
+// within 'Constants::spinRoutedNonBondedMaximumBondSeparation' bonds of a grown bead of the step (for
+// a branch point placing several beads this is measured to the nearest of them, a slight and harmless
+// over-inclusion); every other pair stays with the external energy. The bond separation is a bounded
+// breadth-first search over the connectivity from the grown beads, so the classification costs O(1)
+// per step.
+// ---------------------------------------------------------------------------------------------------
+void routeNonBondedTerms(CBMC::GrowStep &step, const ConnectivityTable &connectivity)
+{
+  Potentials::IntraMolecularPotentials &external = step.nonBonded.external;
+  Potentials::IntraMolecularPotentials &spin = step.spin.potentials;
+
+  const bool hasSpin = step.previousBead.has_value() || step.kind == CBMC::GrowStep::Kind::CloseBridge;
+  if (!hasSpin)
+  {
+    external.vanDerWaals = step.intra.vanDerWaals;
+    external.coulombs = step.intra.coulombs;
+    step.spin.hasNonBondedTerms = false;
+    return;
+  }
+
+  // Beads within the routing separation of any grown bead (the grown beads themselves included).
+  const std::size_t numberOfBeads = connectivity.numberOfBeads;
+  std::vector<bool> within(numberOfBeads, false);
+  std::vector<std::size_t> frontier{};
+  for (std::size_t bead : step.nextBeads)
+  {
+    within[bead] = true;
+    frontier.push_back(bead);
+  }
+  for (std::size_t depth = 0; depth != CBMC::Constants::spinRoutedNonBondedMaximumBondSeparation; ++depth)
+  {
+    std::vector<std::size_t> next{};
+    for (std::size_t bead : frontier)
+    {
+      for (std::size_t neighbour : connectivity.findAllNeighbors(bead))
+      {
+        if (within[neighbour]) continue;
+        within[neighbour] = true;
+        next.push_back(neighbour);
+      }
+    }
+    frontier = std::move(next);
+    if (frontier.empty()) break;
+  }
+
+  auto isGrown = [&](std::size_t id) { return contains(step.nextBeads, id); };
+  auto spinRouted = [&](std::size_t A, std::size_t B)
+  { return (isGrown(A) != isGrown(B)) && within[A] && within[B]; };
+
+  for (const VanDerWaalsPotential &term : step.intra.vanDerWaals)
+  {
+    (spinRouted(term.identifiers[0], term.identifiers[1]) ? spin : external).vanDerWaals.push_back(term);
+  }
+  for (const CoulombPotential &term : step.intra.coulombs)
+  {
+    (spinRouted(term.identifiers[0], term.identifiers[1]) ? spin : external).coulombs.push_back(term);
+  }
+  step.spin.hasNonBondedTerms = !(spin.vanDerWaals.empty() && spin.coulombs.empty());
+}
 }  // namespace
 
 // Fills the derived (temperature-independent) sampler data of a step from its topology and filtered
@@ -422,6 +489,10 @@ void CBMC::prepareStep(GrowStep &step, const ConnectivityTable &connectivity, co
 
   step.flexibleAttach =
       step.kind == CBMC::GrowStep::Kind::AttachFragment && !step.rigidBody && step.previousBead.has_value();
+
+  // The intramolecular non-bonded pairs of the step: short-range ones to the spin selection, the rest
+  // to the external stage (a seed step has no spin and keeps them all external).
+  routeNonBondedTerms(step, connectivity);
 
   // A bridge closure classifies its terms by its own spin axis (anchor-closure), not the junction.
   if (step.kind == CBMC::GrowStep::Kind::CloseBridge)

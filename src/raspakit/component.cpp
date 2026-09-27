@@ -668,7 +668,10 @@ const std::vector<double> &Component::recoilReferenceStepEnergies(
   std::vector<double> reference(plan.size());
   for (std::size_t seg = 0; seg != plan.size(); ++seg)
   {
-    const Potentials::IntraMolecularPotentials &intra = plan[seg].intra;
+    // The openness test sees only the external-stage share of the step's intramolecular non-bonded
+    // pairs (the short-range ones are weighted in the torsion-spin selection), so the reference is
+    // built from that same share.
+    const Potentials::IntraMolecularPotentials &intra = plan[seg].nonBonded.external;
     double referenceEnergy = 0.0;
     if (recoilReferenceConformations.empty())
     {

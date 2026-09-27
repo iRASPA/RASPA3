@@ -92,6 +92,13 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
     {
       torsion_energy += intra.computeInternalEnergiesNotSampledDuringGrowth(chainAtoms).potentialEnergy();
     }
+    // The spin-routed intramolecular van der Waals / Coulomb pairs (grown bead to a placed bead a few
+    // bonds away, see 'GrowStep::NonBondedData'): their distances are set by the spin, so a 1-5 clash
+    // is resolved here rather than after the spin has been chosen on the bare torsion.
+    if (step.spin.hasNonBondedTerms)
+    {
+      torsion_energy += intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(chainAtoms).potentialEnergy();
+    }
 
     angles[j] = angle;
     logTorsionBoltzmannFactors[j] = -beta * torsion_energy;

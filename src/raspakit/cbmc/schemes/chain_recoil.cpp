@@ -51,9 +51,11 @@ struct RecoilContext
 // openness probability of the selected direction, so any fixed per-step energy reference is formally
 // valid (grow and retrace use the same function). The reference matters in practice: a molecule whose
 // correctly grown chains carry systematic positive non-bonded strain per placed bead — crowded
-// united-atom beads at branch points, 1-4/1-5 intramolecular Coulomb between partial charges; a few
-// hundred to a few thousand kelvin — has most correctly-placed beads test 'closed' against a zero
-// reference, and the recoil search backtracks essentially forever. Measuring each step against the same
+// united-atom beads at branch points, longer-range intramolecular Coulomb between partial charges; a
+// few hundred to a few thousand kelvin — has most correctly-placed beads test 'closed' against a zero
+// reference, and the recoil search backtracks essentially forever. (The short-range 1-4/1-5/1-6 pairs
+// are weighted in the torsion-spin selection that generates the trial, see GrowStep::NonBondedData,
+// and never reach this test.) Measuring each step against the same
 // step evaluated in the component's recoil reference conformations (equilibrated ideal-gas conformations
 // built once at setup) removes exactly the molecule's own intrinsic strain, while a genuine overlap
 // (1e6 K) still tests closed. Per step, the reference is the MAXIMUM energy over the conformations:
