@@ -39,6 +39,7 @@ add_executable(unit_tests_raspakit
   triquintic_derivative_inter_real_ewald.cpp
   intramolecular_energy_gradient_strain_bonds.cpp
   intramolecular_energy_gradient_strain_bends.cpp
+  intramolecular_energy_gradient_strain_pairs.cpp
   minimization_hessian_bond.cpp
   minimization_hessian_bend.cpp
   minimization_hessian_torsion.cpp
