@@ -66,7 +66,8 @@ std::tuple<double, std::array<double3, 2>, double3x3> CoulombPotential::potentia
       U = scaling * Units::CoulombicConversionFactor * chargeA * chargeB / r;
       if (r > 0.0)
       {
-        DF = scaling * Units::CoulombicConversionFactor * chargeA * chargeB / (rr * r);
+        // DF = (dU/dr) / r with dU/dr = -q_A q_B / r^2
+        DF = -scaling * Units::CoulombicConversionFactor * chargeA * chargeB / (rr * r);
       }
       break;
     default:
