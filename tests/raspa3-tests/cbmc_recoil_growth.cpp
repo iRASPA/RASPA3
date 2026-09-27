@@ -17,6 +17,7 @@ import mc_moves_probabilities;
 import cbmc;
 import cbmc_results;
 import cbmc_grow_context;
+import cbmc_grow_step;
 import cbmc_chain_recoil;
 
 // Detailed-balance tests of recoil growth (RG) as a chain-growth scheme. RG and configurational-bias
@@ -360,10 +361,12 @@ TEST(CBMC_RECOIL_GROWTH, regrow_markov_chain_matches_cbmc_in_tube)
 // This exercises what the linear-chain test does not: a multi-bead branch step (sibling bend on the
 // base conformation, two torsions on the following step), the recoil length l = 3 (feelers of two
 // steps, and the 'recoil beyond an available direction' abort of the growth), and a molecule whose
-// every conformation carries positive intramolecular 1-4 strain -- against a zero reference nearly
-// every correct placement would test closed. Since the reference is a fixed constant used identically
-// by grow and retrace, the stationary distribution must again be the CBMC one.
-TEST(CBMC_RECOIL_GROWTH, branched_chain_recoil_length_three_with_reference_matches_cbmc)
+// every conformation carries positive intramolecular 1-4 strain. That strain is weighted in the
+// torsion-spin selection that generates the trial (see 'GrowStep::NonBondedData'), not in the openness
+// test, so the reference the openness test is measured against is zero for this molecule and the
+// spin has to keep the 1-4 pairs from testing closed. Since the partition is the same on grow and
+// retrace, the stationary distribution must again be the CBMC one.
+TEST(CBMC_RECOIL_GROWTH, branched_chain_recoil_length_three_with_spin_routed_strain_matches_cbmc)
 {
   constexpr double kTemperature = 300.0;                // [K]
   const double3 kBoxLengths(24.0, 16.0, 24.0);          // [A]
@@ -373,8 +376,9 @@ TEST(CBMC_RECOIL_GROWTH, branched_chain_recoil_length_three_with_reference_match
 
   // Milder than the linear-chain probe: the two bulky beads of the branch must both fit near the
   // axis (sigma_BW = 4.1 A against a 5.5 A radius), and the 1-4 strain (sigma_BM = 3.8 A at 3-4 A)
-  // is a few hundred kelvin per pair -- enough that a zero openness reference would cripple recoil
-  // growth, not so much that the regrow acceptance collapses for either scheme.
+  // is a few hundred kelvin per pair -- enough that it would cripple recoil growth if it reached the
+  // openness test with its zero reference, not so much that the regrow acceptance collapses for
+  // either scheme.
   const ProbeParameters parameters{8.0, 4.6, 2.6, 3.0};
 
   ForceField cbmcForceField = makeProbeForceField(parameters);
@@ -420,12 +424,24 @@ TEST(CBMC_RECOIL_GROWTH, branched_chain_recoil_length_three_with_reference_match
     recoilChain.setRecoilReferenceConformations(std::move(conformations));
   }
 
-  // The 1-4 strain shows up as a positive reference at the torsion step; without it the reference
-  // path would not be exercised.
+  // Every intramolecular pair of this five-bead molecule is within the spin-routing separation, so the
+  // 1-4 strain is weighted in the torsion-spin selection of the steps that have a spin, the external
+  // share is empty, and the openness reference is zero at every step. If either changes, the test no
+  // longer probes what its comment says.
+  const std::vector<CBMC::GrowStep> &plan = recoilChain.growthPlan({recoilChain.startingBead});
+  ASSERT_EQ(plan.size(), 3uz);
+  bool anySpinRouted = false;
+  for (const CBMC::GrowStep &step : plan)
+  {
+    EXPECT_TRUE(step.nonBonded.external.vanDerWaals.empty())
+        << "an intramolecular pair of the branched chain is weighted in the openness test";
+    anySpinRouted |= step.spin.hasNonBondedTerms;
+  }
+  EXPECT_TRUE(anySpinRouted) << "no step weights the 1-4 strain in its spin selection";
   const std::vector<double> &reference = recoilChain.recoilReferenceStepEnergies({recoilChain.startingBead});
   ASSERT_EQ(reference.size(), 3uz);
-  EXPECT_GT(*std::max_element(reference.begin(), reference.end()), 100.0)
-      << "the branched chain carries no intramolecular strain; the reference path is not tested";
+  EXPECT_DOUBLE_EQ(*std::max_element(reference.begin(), reference.end()), 0.0)
+      << "the openness reference carries strain that the spin selection should have absorbed";
 
   // Calibration (60k regrow moves per chain, ~20% acceptance for both schemes): the tube fractions
   // agree to within 0.01 (0.386 vs 0.382) and both chi-squared values stay near 100; the thresholds
