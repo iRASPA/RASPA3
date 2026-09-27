@@ -107,15 +107,34 @@ LineEffect lineEffect(const CutLine& line, double discRadius)
 
 // The polygon kept on one side of a line, by the usual convex clip: vertices on the near side are kept
 // and an edge that changes side contributes the point where it crosses.
-void clipToLine(std::vector<double2>& polygon, std::vector<double2>& scratch, const CutLine& line)
+//
+// Which side a vertex is on is decided once, in `sides`, and that one answer serves both edges the vertex
+// belongs to. A vertex is asked about twice --- as the end of one edge and the start of the next --- and
+// where a line runs along an edge of the polygon, which is the ordinary case for a lattice with its own
+// symmetry, every vertex on that edge sits within rounding of the line. Two evaluations of the same inner
+// product are then two chances at the sign, and the build is entitled to make them differently: with
+// -ffast-math the compiler may associate or contract the two spellings of the same expression in two ways.
+// A vertex judged outside by one edge and inside by the other is dropped without the crossing that would
+// stand in for it, and the polygon loses a corner. With one answer per vertex the two edges agree, and the
+// worst a coincident line can then do is add a vertex somewhere along the edge it runs along.
+void clipToLine(std::vector<double2>& polygon, std::vector<double2>& scratch, std::vector<double>& sides,
+                const CutLine& line)
 {
-  scratch.clear();
-  for (std::size_t i = 0; i < polygon.size(); ++i)
+  const std::size_t count = polygon.size();
+  sides.resize(count);
+  for (std::size_t i = 0; i < count; ++i)
   {
+    sides[i] = double2::dot(line.normal, polygon[i]) - line.offset;
+  }
+
+  scratch.clear();
+  for (std::size_t i = 0; i < count; ++i)
+  {
+    const std::size_t j = (i + 1) % count;
     const double2& current = polygon[i];
-    const double2& next = polygon[(i + 1) % polygon.size()];
-    double here = double2::dot(line.normal, current) - line.offset;
-    double there = double2::dot(line.normal, next) - line.offset;
+    const double2& next = polygon[j];
+    const double here = sides[i];
+    const double there = sides[j];
 
     if (here <= 0.0) scratch.push_back(current);
     if ((here < 0.0 && there > 0.0) || (here > 0.0 && there < 0.0))
@@ -130,14 +149,14 @@ void clipToLine(std::vector<double2>& polygon, std::vector<double2>& scratch, co
 // cell. The disc is approached from outside, by cutting a square that contains it, so that a face no
 // line touches comes out as the whole disc.
 double faceArea(double discRadius, const std::vector<CutLine>& lines, std::vector<double2>& polygon,
-                std::vector<double2>& scratch)
+                std::vector<double2>& scratch, std::vector<double>& sides)
 {
   const double corner = 2.0 * discRadius;
   polygon.assign({double2(-corner, -corner), double2(corner, -corner), double2(corner, corner),
                   double2(-corner, corner)});
   for (const CutLine& line : lines)
   {
-    clipToLine(polygon, scratch, line);
+    clipToLine(polygon, scratch, sides, line);
     if (polygon.size() < 3) return 0.0;
   }
 
@@ -172,7 +191,8 @@ double clippedDiscArea(double radius, const std::vector<double2>& normals, const
 
   std::vector<double2> polygon;
   std::vector<double2> scratch;
-  return faceArea(radius, lines, polygon, scratch);
+  std::vector<double> sides;
+  return faceArea(radius, lines, polygon, scratch, sides);
 }
 
 double unionOfBallsVolume(const PoreAccessibility& accessibility, std::size_t subdivisions)
@@ -196,6 +216,7 @@ double sumOverCells(const PoreAccessibility& accessibility, const MeasuredPatche
   std::vector<CutLine> lines;
   std::vector<double2> polygon;
   std::vector<double2> scratch;
+  std::vector<double> sides;
 
   for (std::size_t i = 0; i < accessibility.atomPositions.size(); ++i)
   {
@@ -239,7 +260,7 @@ double sumOverCells(const PoreAccessibility& accessibility, const MeasuredPatche
       }
       if (empty) continue;
 
-      total += face.distance * faceArea(discRadius, lines, polygon, scratch);
+      total += face.distance * faceArea(discRadius, lines, polygon, scratch, sides);
     }
   }
 

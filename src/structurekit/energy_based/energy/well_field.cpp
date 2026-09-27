@@ -937,7 +937,16 @@ WellField WellFieldCPU::compute(const PairInteractions &interactions, const Crys
                                                      : field.orientationEnergy.data() + voxel * nOrient;
                          value = neighbourhood.reduce<true>(nearby, fractional, double3{}, double3{}, bestClearance,
                                                             bestOrientation, orientationOut);
-                         if (bestClearance < 1.0e9)
+                         // The same rule as `sampleSpherical`, so that a single-site probe answers the same
+                         // whichever route it takes: no neighbour, or deep inside a wall, is not a medial or
+                         // filament voxel and the softmin is not consulted. A voxel on top of an atom would
+                         // otherwise see its one image skipped as too close and come out with no weight and a
+                         // reliability of zero, which is the mark of a tight channel, not of solid.
+                         if (!(bestClearance < 1.0e9) || bestClearance < -0.5)
+                         {
+                           reliability = bestClearance < -0.5 ? 1.0 : 0.0;
+                         }
+                         else
                          {
                            neighbourhood.softminDirection(nearby, bestOrientation, bestClearance, reliability);
                          }

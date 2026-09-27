@@ -135,7 +135,10 @@ TEST(grid_pore_size, a_sphere_gives_back_its_own_distance_to_within_the_spacing)
       {
         const std::size_t voxel = (k * gridSize.y + j) * gridSize.x + i;
         const double expected = sphere(positionOf(box, gridSize, i, j, k));
-        if (expected < 0.0) continue;
+        // Judge the voxel by the field the transform was given, not by a recomputation of it: a voxel
+        // that sits on the sphere to round-off can be marked outside in the float field (and then is
+        // given -1) while the double comes out at exactly zero.
+        if (expected < 0.0 || openness[voxel] < 0.0f) continue;
 
         const double error = static_cast<double>(distance[voxel]) - expected;
         worstAbove = std::max(worstAbove, error);

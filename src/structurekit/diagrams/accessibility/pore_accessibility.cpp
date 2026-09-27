@@ -527,7 +527,17 @@ std::vector<NeighbourImage> PoreAccessibility::neighbourAtomImages(const double3
 
 bool PoreAccessibility::overlapsAtom(const double3& point, std::size_t excludedAtom) const
 {
-  double3 fractional = double3::fract(unitCell.inverseCell * point);
+  // The point is drawn on the home-cell image of `excludedAtom` and may spill over a face of the cell.
+  // Once it is wrapped back by the lattice translation `wrap`, that image is no longer the one at lattice
+  // shift zero but the one at `-wrap`, and that is the image to leave out. Leaving out shift zero instead
+  // lets a sphere bury the points on its own surface that lie outside the cell, half of them by
+  // round-off, and a sampled area comes out short by the part of every boundary-crossing sphere that
+  // pokes out.
+  double3 unwrappedFractional = unitCell.inverseCell * point;
+  const int3 excludedImage(-static_cast<int>(std::floor(unwrappedFractional.x)),
+                           -static_cast<int>(std::floor(unwrappedFractional.y)),
+                           -static_cast<int>(std::floor(unwrappedFractional.z)));
+  double3 fractional = double3::fract(unwrappedFractional);
   double3 wrappedPoint = unitCell.cell * fractional;
   const int3 pointBin = binOfFractional(fractional, gridSize);
 
@@ -555,9 +565,9 @@ bool PoreAccessibility::overlapsAtom(const double3& point, std::size_t excludedA
 
           for (std::size_t j : bins[static_cast<std::size_t>((bz * gridSize.y + by) * gridSize.x + bx)])
           {
-            // Ignore only the primary image of the atom whose sphere was sampled; other images of that
-            // atom must still be tested when 2r exceeds a cell edge.
-            if (j == excludedAtom && lx == 0 && ly == 0 && lz == 0) continue;
+            // Ignore only the image of the atom the point was drawn on; other images of that atom must
+            // still be tested when 2r exceeds a cell edge.
+            if (j == excludedAtom && lx == excludedImage.x && ly == excludedImage.y && lz == excludedImage.z) continue;
             double3 delta = atomPositions[j] + imageShift;
             if (double3::dot(delta, delta) < atomRadii[j] * atomRadii[j]) return true;
           }
