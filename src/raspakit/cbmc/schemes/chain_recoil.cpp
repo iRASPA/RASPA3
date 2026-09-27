@@ -37,6 +37,8 @@ struct RecoilContext
   // Per-step openness reference energy (see 'openProbability' below); cached per plan by the
   // component, alongside the plan itself.
   const std::vector<double> &referenceStepEnergies;
+  // Which cross-link tethers of the environment are evaluated at which step (see cbmc_chain_common).
+  TetherSchedule tethers;
 
   [[nodiscard]] std::size_t numberOfTrialDirections() const noexcept
   {
@@ -98,7 +100,8 @@ bool feelerExists(RandomNumber &random, const RecoilContext &ctx, std::size_t se
     StepTrial trial = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
     if (!(trial.torsionWeight > 0.0)) continue;  // a dead bridge-closure draw: closed
 
-    std::optional<StepTrialEnergy> energy = evaluateStepTrial(ctx.env, ctx.component, step, atoms, trial.positions);
+    std::optional<StepTrialEnergy> energy =
+        evaluateStepTrial(ctx.env, ctx.component, step, atoms, trial.positions, ctx.tethers.at(seg));
     if (!energy.has_value()) continue;
 
     if (random.uniform() < openProbability(ctx, seg, energy->potentialEnergy()))
@@ -142,7 +145,8 @@ std::size_t countAvailableDirections(RandomNumber &random, const RecoilContext &
     StepTrial alternative = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
     if (!(alternative.torsionWeight > 0.0)) continue;  // a dead bridge-closure draw: closed
 
-    std::optional<StepTrialEnergy> energy = evaluateStepTrial(ctx.env, ctx.component, step, atoms, alternative.positions);
+    std::optional<StepTrialEnergy> energy =
+        evaluateStepTrial(ctx.env, ctx.component, step, atoms, alternative.positions, ctx.tethers.at(seg));
     if (!energy.has_value()) continue;
 
     if (random.uniform() >= openProbability(ctx, seg, energy->potentialEnergy())) continue;
@@ -191,7 +195,8 @@ GrowOutcome growRecursive(RandomNumber &random, const RecoilContext &ctx, std::s
     StepTrial trial = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
     if (!(trial.torsionWeight > 0.0)) continue;  // a dead bridge-closure draw: closed
 
-    std::optional<StepTrialEnergy> energy = evaluateStepTrial(ctx.env, ctx.component, step, atoms, trial.positions);
+    std::optional<StepTrialEnergy> energy =
+        evaluateStepTrial(ctx.env, ctx.component, step, atoms, trial.positions, ctx.tethers.at(seg));
     if (!energy.has_value()) continue;
 
     const double open = openProbability(ctx, seg, energy->potentialEnergy());
@@ -226,8 +231,9 @@ GrowOutcome growRecursive(RandomNumber &random, const RecoilContext &ctx, std::s
 RecoilContext makeRecoilContext(const GrowContext &context, const Component &component,
                                 const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
-  return RecoilContext{context, component, component.growthPlan(beadsAlreadyPlaced),
-                       component.recoilReferenceStepEnergies(beadsAlreadyPlaced)};
+  const std::vector<GrowStep> &plan = component.growthPlan(beadsAlreadyPlaced);
+  return RecoilContext{context, component, plan, component.recoilReferenceStepEnergies(beadsAlreadyPlaced),
+                       scheduleTethers(context, component, plan)};
 }
 }  // namespace
 
@@ -299,7 +305,8 @@ RecoilContext makeRecoilContext(const GrowContext &context, const Component &com
     // The old configuration must not overlap: the recoil weight divides by its openness probability,
     // which would be zero, so no weight is defined for it.
     const std::optional<StepTrialEnergy> oldEnergy =
-        evaluateStepTrial(ctx.env, ctx.component, step, oldAtoms, stepBeadPositions(oldAtoms, step));
+        evaluateStepTrial(ctx.env, ctx.component, step, oldAtoms, stepBeadPositions(oldAtoms, step),
+                          ctx.tethers.at(seg));
     if (!oldEnergy.has_value()) throwExistingConfigurationOverlaps("Recoil growth", component, seg, step);
     const double oldPotential = oldEnergy->potentialEnergy();
 

@@ -92,6 +92,10 @@ export struct MCMoveStatistics
     // closure solutions.
     stats[std::to_underlying(Move::Types::DoubleBridging)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::IntramolecularDoubleRebridging)] = MoveStatistics<double>{};
+    // Cross-link topology moves: discrete proposals, no adaptive step. The formation/scission move
+    // records formation in the first and scission in the second direction.
+    stats[std::to_underlying(Move::Types::CrossLinkSwap)] = MoveStatistics<double>{};
+    stats[std::to_underlying(Move::Types::CrossLinkFormationScission)] = MoveStatistics<double3>{};
     stats[std::to_underlying(Move::Types::VolumeChange)] =
         MoveStatistics<double>{.maxChange = 0.1, .lowerLimit = 0.01, .upperLimit = 1.5};
     stats[std::to_underlying(Move::Types::AnisotropicVolumeChange)] =

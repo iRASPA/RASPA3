@@ -57,6 +57,7 @@ export struct RunningEnergy
         bendTorsion(0.0),
         intraVDW(0.0),
         intraCoul(0.0),
+        crossLink(0.0),
         tail(0.0),
         polarization(0.0),
         dudlambdaVDW{},
@@ -170,7 +171,7 @@ export struct RunningEnergy
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + externalFieldCharge +
            frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + bond +
            ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion + bondBond + bondBend +
-           bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + tail + polarization;
+           bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + crossLink + tail + polarization;
   }
 
   /**
@@ -227,7 +228,7 @@ export struct RunningEnergy
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + externalFieldCharge +
            frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + bond +
            ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion + bondBond + bondBend +
-           bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + tail + polarization +
+           bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + crossLink + tail + polarization +
            translationalKineticEnergy + rotationalKineticEnergy + NoseHooverEnergy + thermobarostatEnergy;
   }
 
@@ -322,6 +323,7 @@ export struct RunningEnergy
     improperTorsion = 0.0, bondBond = 0.0, bondBend = 0.0, bondTorsion = 0.0, bendBend = 0.0, bendTorsion = 0.0,
     intraVDW = 0.0;
     intraCoul = 0.0;
+    crossLink = 0.0;
     tail = 0.0;
     polarization = 0.0;
     dudlambdaVDW.fill(0.0);
@@ -358,6 +360,7 @@ export struct RunningEnergy
     bendTorsion += b.bendTorsion;
     intraVDW += b.intraVDW;
     intraCoul += b.intraCoul;
+    crossLink += b.crossLink;
     tail += b.tail;
     polarization += b.polarization;
     for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
@@ -399,6 +402,7 @@ export struct RunningEnergy
     bendTorsion -= b.bendTorsion;
     intraVDW -= b.intraVDW;
     intraCoul -= b.intraCoul;
+    crossLink -= b.crossLink;
     tail -= b.tail;
     polarization -= b.polarization;
     for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
@@ -441,6 +445,7 @@ export struct RunningEnergy
     v.bendTorsion = -bendTorsion;
     v.intraVDW = -intraVDW;
     v.intraCoul = -intraCoul;
+    v.crossLink = -crossLink;
     v.tail = -tail;
     v.polarization = -polarization;
     for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
@@ -482,6 +487,7 @@ export struct RunningEnergy
     bendTorsion *= b;
     intraVDW *= b;
     intraCoul *= b;
+    crossLink *= b;
     tail *= b;
     polarization *= b;
     for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
@@ -499,7 +505,7 @@ export struct RunningEnergy
   }
 
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization.
 
   double externalFieldVDW;         ///< Energy from van der Waals interactions with external field.
   double frameworkMoleculeVDW;     ///< Energy from van der Waals interactions between framework and molecules.
@@ -524,6 +530,7 @@ export struct RunningEnergy
   double bendTorsion;
   double intraVDW;                    ///< Intramolecular van der Waals energy.
   double intraCoul;                   ///< Intramolecular Coulomb energy.
+  double crossLink;                   ///< Cross-link bonded energy (inter-molecular bonds, junction bends, formation energies).
   double tail;                        ///< Tail correction energy for van der Waals interactions.
   double polarization;                ///< Energy contribution from polarization effects.
   std::array<double, maximumNumberOfDUDlambdaGroups>
@@ -575,6 +582,7 @@ export inline RunningEnergy operator+(const RunningEnergy& a, const RunningEnerg
   m.bendTorsion = a.bendTorsion + b.bendTorsion;
   m.intraVDW = a.intraVDW + b.intraVDW;
   m.intraCoul = a.intraCoul + b.intraCoul;
+  m.crossLink = a.crossLink + b.crossLink;
   m.tail = a.tail + b.tail;
   m.polarization = a.polarization + b.polarization;
   for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
@@ -617,6 +625,7 @@ export inline RunningEnergy operator-(const RunningEnergy& a, const RunningEnerg
   m.bendTorsion = a.bendTorsion - b.bendTorsion;
   m.intraVDW = a.intraVDW - b.intraVDW;
   m.intraCoul = a.intraCoul - b.intraCoul;
+  m.crossLink = a.crossLink - b.crossLink;
   m.tail = a.tail - b.tail;
   m.polarization = a.polarization - b.polarization;
   for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
@@ -658,6 +667,7 @@ export inline RunningEnergy operator*(double a, const RunningEnergy b)
   m.bendTorsion = a * b.bendTorsion;
   m.intraVDW = a * b.intraVDW;
   m.intraCoul = a * b.intraCoul;
+  m.crossLink = a * b.crossLink;
   m.tail = a * b.tail;
   m.polarization = a * b.polarization;
   for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
@@ -700,6 +710,7 @@ export inline RunningEnergy operator*(const RunningEnergy a, double b)
   m.bendTorsion = b * a.bendTorsion;
   m.intraVDW = b * a.intraVDW;
   m.intraCoul = b * a.intraCoul;
+  m.crossLink = b * a.crossLink;
   m.tail = b * a.tail;
   m.polarization = b * a.polarization;
   for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)

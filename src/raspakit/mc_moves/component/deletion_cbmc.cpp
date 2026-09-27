@@ -42,6 +42,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
   // Proceed only if there is at least one molecule of the selected component
   if (system.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
   {
+    // A cross-linked molecule can not leave the system while it is bonded to another molecule.
+    if (system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule))
+    {
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    }
+
     // Get a reference to the molecule being deleted
     std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
     std::copy(system.electricField.begin(), system.electricField.end(), system.electricFieldNew.begin());

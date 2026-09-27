@@ -100,6 +100,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
   // Update energy and statistics for systemA
   RunningEnergy newTotalEnergyA = newTotalInterEnergyA + newTotalTailEnergyA + newTotalEwaldEnergyA;
+  newTotalEnergyA += systemA.computeCrossLinkEnergy(newBoxA, newPositionsA.second);
 
   // The intra-molecular energies have not changed by the com-scaling
   newTotalEnergyA.bond = oldTotalEnergyA.bond;
@@ -169,6 +170,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
   // Update energy and statistics for systemB
   RunningEnergy newTotalEnergyB = newTotalInterEnergyB + newTotalTailEnergyB + newTotalEwaldEnergyB;
+  newTotalEnergyB += systemB.computeCrossLinkEnergy(newBoxB, newPositionsB.second);
 
   // The intra-molecular energies have not changed by the com-scaling
   newTotalEnergyB.bond = oldTotalEnergyB.bond;

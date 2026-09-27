@@ -9,3 +9,4 @@
 - \subpage examples_reduced_units
 - \subpage examples_density_grids
 - \subpage examples_external_fields
+- \subpage examples_polymers

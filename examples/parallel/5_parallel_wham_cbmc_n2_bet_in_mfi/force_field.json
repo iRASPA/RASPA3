@@ -1,0 +1,91 @@
+{
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "shifted",
+  "TailCorrections" : false,
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "O",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.999,
+      "charge" : -1.025,
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "Si",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "Si",
+      "print_as" : "Si",
+      "mass" : 28.0855,
+      "charge" :  2.05,
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "N_n2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "N",
+      "print_as" : "N",
+      "mass" : 14.00674,
+      "charge" : -0.405,
+      "source" : "A. Martin-Calvo et al., Phys. Chem. Chem. Phys. 2011, 13, 11165-11174"
+    },
+    {
+      "name" : "N_com",
+      "framework" : false,
+      "print_to_output" : false,
+      "element" : "N",
+      "print_as" : "-",
+      "mass" : 0.0,
+      "charge" :  0.810,
+      "source" : "A. Martin-Calvo et al., Phys. Chem. Chem. Phys. 2011, 13, 11165-11174"
+    },
+    {
+      "name" : "probe-N2",
+      "framework" : false,
+      "print_to_output" : false,
+      "element" : "N",
+      "print_as" : "N",
+      "mass" : 14.00674,
+      "charge" :  0.0,
+      "source" : "iRASPA nitrogen probe (ε/k = 36 K, σ = 3.31 Å)"
+    }
+  ],
+  "SelfInteractions" :
+  [
+    {
+      "name" : "O",
+      "type" : "lennard-jones",
+      "parameters" : [53.0, 3.30],
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "Si",
+      "type" : "lennard-jones",
+      "parameters" : [22.0, 2.30],
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "N_n2",
+      "type" : "lennard-jones",
+      "parameters" : [38.298, 3.306],
+      "source" : "A. Martin-Calvo et al., Phys. Chem. Chem. Phys. 2011, 13, 11165-11174"
+    },
+    {
+      "name" : "N_com",
+      "type" : "none",
+      "parameters" : [0.0, 1.0],
+      "source" : "A. Martin-Calvo et al., Phys. Chem. Chem. Phys. 2011, 13, 11165-11174"
+    },
+    {
+      "name" : "probe-N2",
+      "type" : "lennard-jones",
+      "parameters" : [36.0, 3.31],
+      "source" : "iRASPA nitrogen probe mixed with TraPPE-zeo oxygen"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "truncated",
+  "TailCorrections" : true,
+  "CutOff" : 12.0,
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "CH3",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 15.04,
+      "charge" :  0.0,
+      "source" : "M. G. Martin and J. I. Siepmann, J. Phys. Chem. B 1998, 102(14), 2569–2577."
+    },
+    {
+      "name" : "CH2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 14.03,
+      "charge" :  0.0,
+      "source" : "M. G. Martin and J. I. Siepmann, J. Phys. Chem. B 1998, 102(14), 2569–2577."
+    }
+  ],
+  "SelfInteractions" :
+  [
+    {
+      "name" : "CH3",
+      "type" : "lennard-jones",
+      "parameters" : [98.0, 3.75],
+      "source" : "M. G. Martin and J. I. Siepmann, J. Phys. Chem. B 1998, 102(14), 2569–2577."
+    },
+    {
+      "name" : "CH2",
+      "type" : "lennard-jones",
+      "parameters" : [46.0, 3.95],
+      "source" : "M. G. Martin and J. I. Siepmann, J. Phys. Chem. B 1998, 102(14), 2569–2577."
+    }
+  ]
+}

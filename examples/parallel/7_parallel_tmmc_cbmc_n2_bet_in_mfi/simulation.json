@@ -1,0 +1,41 @@
+{
+  "SimulationType" : "ParallelTMMC",
+  "NumberOfInitializationCycles" : 5000,
+  "NumberOfEquilibrationCycles" : 20000,
+  "NumberOfProductionCycles" : 50000,
+  "PrintEvery" : 5000,
+  "NumberOfWindows" : 16,
+  "NumberOfThreads" : 16,
+  "TMMCUpdateEvery" : 10000,
+  "ReweightingPressureRange" : "auto",
+  "ComputeBET" : true,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "NumberOfUnitCells" : "auto",
+      "ExternalTemperature" : 77.355,
+      "ExternalPressure" : 101325.0,
+      "ChargeMethod" : "Ewald",
+      "MacroStateMinimumNumberOfMolecules" : 0,
+      "MacroStateMaximumNumberOfMolecules" : "auto"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "N2",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "CrossSection" : 16.2,
+      "LiquidVolume" : 57.7,
+      "SaturationPressure" : 101325.0,
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 2.0,
+      "SwapProbability" : 2.0,
+      "BlockingPockets" : "auto",
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}

@@ -79,6 +79,8 @@ import mc_moves_reaction_cbcfcmc;
 import mc_moves_widom;
 import mc_moves_parallel_tempering_swap;
 import mc_moves_hybridmc;
+import mc_moves_cross_link_swap;
+import mc_moves_cross_link_formation;
 
 namespace
 {
@@ -95,6 +97,8 @@ bool isAlwaysTMMCNeutralLocalMove(Move::Types moveType)
     case Move::Types::TranslationSmartMCAll:
     case Move::Types::RotationSmartMCAll:
     case Move::Types::HybridMC:
+    case Move::Types::CrossLinkSwap:
+    case Move::Types::CrossLinkFormationScission:
       return true;
     default:
       return false;
@@ -1238,6 +1242,24 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
       }
       break;
     }
+    case Move::Types::CrossLinkSwap:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::crossLinkSwapMove(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies += energy.value();
+      }
+      break;
+    }
+    case Move::Types::CrossLinkFormationScission:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::crossLinkFormationScissionMove(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies += energy.value();
+      }
+      break;
+    }
     case Move::Types::ReactionCBMC:
     {
       if (!selectedSystem.reactions.list.empty())
@@ -2108,6 +2130,24 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       if (energy)
       {
         selectedSystem.runningEnergies = energy.value();
+      }
+      break;
+    }
+    case Move::Types::CrossLinkSwap:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::crossLinkSwapMove(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies += energy.value();
+      }
+      break;
+    }
+    case Move::Types::CrossLinkFormationScission:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::crossLinkFormationScissionMove(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies += energy.value();
       }
       break;
     }
@@ -3037,6 +3077,24 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
       if (energy)
       {
         selectedSystem.runningEnergies = energy.value();
+      }
+      break;
+    }
+    case Move::Types::CrossLinkSwap:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::crossLinkSwapMove(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies += energy.value();
+      }
+      break;
+    }
+    case Move::Types::CrossLinkFormationScission:
+    {
+      std::optional<RunningEnergy> energy = MC_Moves::crossLinkFormationScissionMove(random, selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies += energy.value();
       }
       break;
     }

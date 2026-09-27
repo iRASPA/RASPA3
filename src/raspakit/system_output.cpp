@@ -117,6 +117,7 @@ std::string System::writePreInitializationStatusReport(std::size_t currentCycle,
                                     framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
     ++componentId;
   }
+  if (crossLinks.enabled()) std::print(stream, "Number of cross-links: {}\n", crossLinks.links.size());
   std::print(stream, "\n");
 
   stream << runningEnergies.printMC();
@@ -196,6 +197,7 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
                                     framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
     ++componentId;
   }
+  if (crossLinks.enabled()) std::print(stream, "Number of cross-links: {}\n", crossLinks.links.size());
   std::print(stream, "\n");
 
   stream << runningEnergies.printMC();
@@ -275,6 +277,7 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
                                     framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
     ++componentId;
   }
+  if (crossLinks.enabled()) std::print(stream, "Number of cross-links: {}\n", crossLinks.links.size());
   std::print(stream, "\n");
 
   stream << runningEnergies.printMC();
@@ -401,6 +404,7 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
                                     framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
     ++componentId;
   }
+  if (crossLinks.enabled()) std::print(stream, "Number of cross-links: {}\n", crossLinks.links.size());
   std::print(stream, "\n");
 
   return stream.str();
@@ -480,6 +484,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
                                     framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
     ++componentId;
   }
+  if (crossLinks.enabled()) std::print(stream, "Number of cross-links: {}\n", crossLinks.links.size());
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
 
@@ -764,6 +769,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
                                     framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
     ++componentId;
   }
+  if (crossLinks.enabled()) std::print(stream, "Number of cross-links: {}\n", crossLinks.links.size());
   std::print(stream, "\n");
 
   std::pair<PressureData, PressureData> average_pressure = averagePressure.average();

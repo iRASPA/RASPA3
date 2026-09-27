@@ -24,6 +24,7 @@ documents the available keywords. Keyword names are matched case-insensitively.
   * [Box/Framework options](#boxframework-options)
   * [Force field definition](#force-field-definition)
   * [System `MC`-moves](#system-mc-moves)
+  * [Cross-links between molecules](#cross-links)
   * [Molecular dynamics parameters](#molecular-dynamics-parameters)
   * [Options to measure properties](#options-to-measure-properties)
     * [Output pdb-movies](#output-pdb-movies)
@@ -952,6 +953,129 @@ reported separately at the end of the simulation.
     rotates all rigid multi-atomic molecules simultaneously along the torques
     acting on them (quaternion update).
 
+-   `"CrossLinkSwapProbability" : floating-point-number`\
+    The probability per cycle of attempting a cross-link swap move (see
+    [Cross-links between molecules](#cross-links)). An existing cross-link is
+    picked at random together with one of its two ends as the pivot; the other
+    end is detached and reattached to a free reactive site of a compatible type
+    on a different molecule within the `"CaptureRadius"` of the pivot. The
+    number of cross-links is conserved, so the move samples the topology of a
+    network at fixed connectivity. Accepted with the Metropolis rule on the
+    energy difference of the two bonded terms (the candidate set is state
+    independent once the link is removed, so no extra bias factor is needed).
+
+-   `"CrossLinkFormationProbability" : floating-point-number`\
+    The probability per cycle of attempting a cross-link formation or scission
+    move (each chosen with 50% probability). Formation picks a free reactive
+    site and a free partner site of a compatible type within the
+    `"CaptureRadius"`, and adds the link; scission removes a randomly chosen
+    link. The acceptance rules contain the ratio of the number of free sites,
+    the number of links and the number of partner candidates of both ends, so
+    that the two moves are each other's reverse and sample the Boltzmann
+    distribution over topologies, including the constant `"FormationEnergy"`
+    of a link. A link is never formed when it would exceed the valence of one
+    of its sites.
+
+### Cross-links between molecules <a name="cross-links"></a>
+
+Cross-links are bonds *between* molecules. They are the building blocks for
+reversibly cross-linked networks, associating polymers, vitrimers and gels:
+the molecules keep their own (immutable) intra-molecular force field, and the
+system owns a table of inter-molecular bonds that the two topology moves above
+create, remove and rewire. Each molecule that can take part declares its
+reactive atoms with `"ReactiveSites"` in its molecule definition file (see
+[Component properties](#component-properties)); the bond potentials between
+site types are declared per system with `"CrossLinkBonds"`.
+
+The energy of a cross-linked state is the ordinary inter-molecular energy of
+all molecules, corrected for the bonded pairs, plus the bonded terms:
+
+$$U = U_\mathrm{inter} - \sum_{\mathrm{links}} u_\mathrm{pair}(r_{ij})
+    + \sum_{\mathrm{links}} \left[ u_\mathrm{bond}(r_{ij}) + \epsilon_\mathrm{form}
+    + \sum u_\mathrm{junction}(\theta) \right]$$
+
+The van der Waals and real-space Coulomb interaction of the two bonded atoms is
+subtracted (their exclusion is booked in the molecule-molecule VDW and Coulomb
+slots and, for Ewald summation, in the Ewald exclusion slot, exactly as an
+intra-molecular 1-2 exclusion would be), so that two linked monomers have the
+same energy as one molecule with that bond. The bonded terms are reported in a
+separate `cross-link` energy slot. The optional junction bends run over every
+angle *neighbour–site–partner* formed by the link with the intra-molecular
+neighbours of each site. Cross-links contribute to the gradients and the
+virial, so they can be used with molecular dynamics, hybrid MC, volume moves
+and Gibbs volume moves.
+
+Linked molecules may be moved by all displacement moves (translation,
+rotation, bead displacement, bead flip, crankshaft, pivot, concerted rotation,
+smart MC, hybrid MC); the cross-link energy difference is included in the
+acceptance. Reinsertion and partial reinsertion regrow a linked molecule with
+its linked site atoms kept in place (a fixed-endpoint regrowth: the parts of
+the molecule between two fixed sites are closed with the bridge-closure steps
+of the CBMC engine); the link's bond, junction bends and exclusion corrections
+enter the Rosenbluth weights as tethers to the frozen partner molecule, so the
+regrowth samples the junction geometry exactly. Both the CBMC and the
+recoil-growth chain scheme support these tethers. A rigid-body molecule with
+two linked sites in one rigid fragment can not be regrown and is rejected when
+the input is read; the regrowth plans of a reactive component with a
+reinsertion move are built when the input is read (for up to twelve reactive
+sites per molecule), so an impossible plan is reported before the simulation
+starts. Moves that remove a molecule as a whole (deletion, tethered proton
+hop) are skipped for molecules that currently carry a link; a molecule can
+only leave the system after its links have been broken. Reactive components
+can not use CFCMC-type moves,
+identity changes, pair or group swaps, reptation, double bridging, the Gibbs
+swap moves or reactions. Cross-links are written to and read from the restart
+and crash-recovery files, and are swapped along with the configurations in
+parallel tempering.
+
+-   `"CrossLinkBonds" : list of objects`\
+    The bond types that can be formed between reactive sites. Each object has
+
+    -   `"Sites" : [string, string]`, the two reactive-site type names the bond
+        connects (they may be equal, e.g. `["X", "X"]`);
+    -   `"Bond" : ["POTENTIAL", [parameters...]]`, the bond potential and its
+        parameters in the same form and units as the `"Bonds"` of a molecule
+        definition file, e.g. `["HARMONIC", [100000.0, 1.54]]` (force constant
+        in K/Å², equilibrium distance in Å). `"FIXED"` and `"NONE"` are not
+        allowed;
+    -   `"JunctionBend" : ["POTENTIAL", [parameters...]]` (optional), a bend
+        potential applied to every angle formed by an intra-molecular neighbour
+        of a site, the site, and its partner across the link, in the same form
+        and units as the `"Bends"` of a molecule definition file, e.g.
+        `["HARMONIC", [62500.0, 114.0]]` (K/rad², degrees);
+    -   `"CaptureRadius" : floating-point-number` (default `2.0` Å), the
+        maximum site–site distance at which the topology moves propose a new
+        link. It only affects the proposal distribution (and therefore the
+        efficiency), not the sampled distribution, but the bond potential should
+        be able to bring pairs from the capture radius to the equilibrium
+        distance within reasonable energies;
+    -   `"FormationEnergy" : floating-point-number` (default `0.0`, in K), a
+        constant energy added per link. A negative value favours bonded states
+        and controls the degree of cross-linking (association constant) at
+        equilibrium.
+
+    Example:
+
+        "CrossLinkBonds" : [
+          {
+            "Sites" : ["X", "X"],
+            "Bond" : ["HARMONIC", [100.0, 3.8]],
+            "JunctionBend" : ["HARMONIC", [100.0, 120.0]],
+            "CaptureRadius" : 6.5,
+            "FormationEnergy" : -2500.0
+          }
+        ]
+
+-   `"InitialCrossLinks" : list of [[c, m, a], [c, m, a]]`\
+    Links present at the start of the simulation, each given as two
+    `[component, molecule, atom]` triples. The molecule indices refer to the
+    molecules present at the start (those read from `"RestartFileName"`
+    followed by those created with `"CreateNumberOfMolecules"`), the atoms must be
+    reactive sites of a type for which a bond type exists, the two sites must
+    belong to different molecules, and the valence of every site is respected.
+    Without this key the simulation starts without cross-links and the
+    formation/scission move builds them up.
+
 ### Molecular dynamics parameters <a name="molecular-dynamics-parameters"></a>
 
 -   `"TimeStep" : floating-point-number`\
@@ -1597,6 +1721,26 @@ distribution.
     written to the text and JSON output
     (`"properties" > "thermodynamicIntegration"`), giving one point of the
     ⟨∂U/∂λ⟩(λ) curve.
+
+-   `"ReactiveSites" : list` (molecule definition file)\
+    Declares which atoms of the molecule can form cross-links with atoms of
+    other molecules (see [Cross-links between molecules](#cross-links)). Each
+    entry is `[atom, "type"]` or `[atom, "type", valence]`, or equivalently an
+    object `{"Atom" : atom, "Type" : "type", "Valence" : valence}`. The atom
+    index refers to the `"pseudoAtoms"` list of the molecule, the type is a
+    free name matched against the `"Sites"` of the system's
+    `"CrossLinkBonds"`, and the valence (default `1`) is the maximum number of
+    simultaneous cross-links the site can carry. An atom may be listed once.
+    Example for a telechelic chain whose two end beads can each form one bond:
+
+        "ReactiveSites" : [
+          [0, "X"],
+          [3, "X"]
+        ]
+
+    A component with reactive sites can not have a fractional molecule and
+    can not use identity-change, pair-swap, group-swap, reptation, double
+    bridging or Gibbs swap moves.
 
 -   `"LnPartitionFunction" : number or string`\
     The natural logarithm of the (reduced) partition function used for reactions.

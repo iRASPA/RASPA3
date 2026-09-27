@@ -127,8 +127,9 @@ std::optional<RunningEnergy> MC_Moves::crankshaftMove(RandomNumber &random, Syst
                                      component.intraMolecularPotentials.computeInternalEnergies(molecule_atoms);
 
   // Calculate the total energy difference
-  RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
-                                   ewaldFourierEnergy + internalDifference;
+  RunningEnergy energyDifference =
+      externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy +
+      internalDifference + system.crossLinkEnergyDifference(selectedComponent, selectedMolecule, trialAtoms, molecule_atoms);
 
   component.mc_moves_statistics.addConstructed(move, channel);
 

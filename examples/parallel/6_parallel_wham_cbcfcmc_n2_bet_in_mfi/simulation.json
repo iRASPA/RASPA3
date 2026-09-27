@@ -1,0 +1,42 @@
+{
+  "SimulationType" : "ReweightedHistogram",
+  "NumberOfInitializationCycles" : 10000,
+  "NumberOfEquilibrationCycles" : 20000,
+  "NumberOfProductionCycles" : 50000,
+  "PrintEvery" : 5000,
+  "ParallelTemperingSwapEvery" : 10,
+  "SampleReweightingEvery" : 5,
+  "ReweightingTemperatures" : [77.355],
+  "ReweightingPressureRange" : "auto",
+  "NumberOfThreads" : 16,
+  "ComputeBET" : true,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "NumberOfUnitCells" : "auto",
+      "ExternalTemperatures" : [77.355],
+      "ExternalPressures" : "auto",
+      "ChargeMethod" : "Ewald",
+      "MacroStateMinimumNumberOfMolecules" : 0,
+      "MacroStateMaximumNumberOfMolecules" : "auto"
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "N2",
+      "IdealGasRosenbluthWeight" : 1.0,
+      "CrossSection" : 16.2,
+      "LiquidVolume" : 57.7,
+      "SaturationPressure" : 101325.0,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "CFCMC_CBMC_SwapProbability" : 1.0,
+      "BlockingPockets" : "auto",
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}

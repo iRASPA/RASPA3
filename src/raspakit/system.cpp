@@ -55,6 +55,7 @@ import mc_moves_move_types;
 import mc_moves_cputime;
 import reaction;
 import reactions;
+import cross_links;
 import cbmc;
 import interactions_framework_molecule;
 import interactions_framework_molecule_grid;
@@ -62,6 +63,7 @@ import interactions_intermolecular;
 import interactions_pair_kernel;
 import interactions_ewald;
 import interactions_internal;
+import interactions_cross_link;
 import interactions_external_field;
 import interactions_external_field_grid;
 import interactions_polarization_derivatives;
@@ -702,7 +704,7 @@ void System::precomputeTotalGradients() noexcept
   runningEnergies = Integrators::updateGradients(
       moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), spanOfFrameworkAtoms(), forceField, simulationBox,
       components, eik_x, eik_y, eik_z, eik_xy, trialEik, fixedFrameworkStoredEik, interpolationGrids,
-      numberOfMoleculesPerComponent, framework, spanOfFrameworkDynamics());
+      numberOfMoleculesPerComponent, framework, spanOfFrameworkDynamics(), &crossLinks);
 }
 
 RunningEnergy System::computeTotalEnergies() noexcept
@@ -733,6 +735,10 @@ RunningEnergy System::computeTotalEnergies() noexcept
     runningIntraEnergy += Interactions::computeFrameworkIntraMolecularEnergy(forceField, *framework, simulationBox,
                                                                              frameworkAtomPositions);
   }
+
+  // Cross-links: inter-molecular bonds plus the corrections that turn the linked pairs, already counted
+  // by the inter-molecular sums above, into bonded (excluded) pairs.
+  runningIntraEnergy += computeCrossLinkEnergy(simulationBox, moleculeAtomPositions);
 
   if (forceField.computePolarization)
   {
@@ -800,6 +806,61 @@ RunningEnergy System::computeTotalEnergies() noexcept
     return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
            ewaldEnergy + runningIntraEnergy + externalFieldEnergy;
   }
+}
+
+RunningEnergy System::computeCrossLinkEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtoms) const
+{
+  if (crossLinks.empty()) return {};
+  return Interactions::computeCrossLinkEnergy(forceField, box, components, numberOfMoleculesPerComponent,
+                                              moleculeAtoms, crossLinks);
+}
+
+RunningEnergy System::crossLinkEnergyDifference(std::size_t selectedComponent, std::size_t selectedMolecule,
+                                                std::span<const Atom> newAtoms, std::span<const Atom> oldAtoms) const
+{
+  if (crossLinks.empty()) return {};
+  return Interactions::computeCrossLinkEnergyDifference(forceField, simulationBox, components,
+                                                        numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
+                                                        crossLinks, selectedComponent, selectedMolecule, newAtoms,
+                                                        oldAtoms);
+}
+
+std::vector<std::size_t> System::crossLinkedSiteAtoms(std::size_t selectedComponent, std::size_t selectedMolecule) const
+{
+  std::vector<std::size_t> atoms{};
+  if (crossLinks.empty()) return atoms;
+  for (std::size_t id : crossLinks.linksOfMolecule(selectedComponent, selectedMolecule))
+  {
+    const CrossLink &link = crossLinks.links[id];
+    for (const CrossLinkSite &site : {link.a, link.b})
+    {
+      if (site.componentId == selectedComponent && site.moleculeIndex == selectedMolecule)
+      {
+        atoms.push_back(site.atomIndex);
+      }
+    }
+  }
+  std::ranges::sort(atoms);
+  atoms.erase(std::ranges::unique(atoms).begin(), atoms.end());
+  return atoms;
+}
+
+std::vector<CrossLinkTether> System::crossLinkTethers(std::size_t selectedComponent, std::size_t selectedMolecule) const
+{
+  if (crossLinks.empty()) return {};
+  return Interactions::makeCrossLinkTethers(components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
+                                            crossLinks, selectedComponent, selectedMolecule);
+}
+
+std::optional<std::vector<std::size_t>> System::crossLinkRegrowthPlacedSet(
+    std::size_t selectedComponent, std::size_t selectedMolecule, std::span<const std::size_t> fixedAtoms) const
+{
+  std::vector<std::size_t> placed = crossLinkedSiteAtoms(selectedComponent, selectedMolecule);
+  placed.insert(placed.end(), fixedAtoms.begin(), fixedAtoms.end());
+  std::ranges::sort(placed);
+  placed.erase(std::ranges::unique(placed).begin(), placed.end());
+  if (placed.size() >= components[selectedComponent].atoms.size()) return std::nullopt;
+  return placed;
 }
 
 RunningEnergy System::computePolarizationEnergy() noexcept
@@ -958,6 +1019,17 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
                              eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
                              framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
                              pressureDynamics, netChargeFramework, netChargePerComponent));
+
+  // Cross-links act between molecules, so unlike the intramolecular potentials their forces do not cancel
+  // in the molecular virial: their strain derivative and site gradients enter like the inter-molecular
+  // terms (the gradients feed the atomic-to-molecular correction below).
+  if (!crossLinks.empty())
+  {
+    const auto [crossLinkEnergy, crossLinkStrain] = Interactions::computeCrossLinkEnergyStrainDerivative(
+        forceField, simulationBox, components, numberOfMoleculesPerComponent, moleculeAtoms, pressureDynamics,
+        crossLinks);
+    pressureInfo.second += crossLinkStrain;
+  }
 
   std::size_t molecule_index = 0;
   for (std::size_t i = 0; i < components.size(); ++i)
@@ -1368,6 +1440,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
 
   archive << s.reactions;
   archive << s.tmmc;
+  archive << s.crossLinks;
 
   archive << s.averageEnergies;
   archive << s.averageLoadings;
@@ -1528,6 +1601,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
 
   archive >> s.reactions;
   archive >> s.tmmc;
+  if (versionNumber >= 2)
+  {
+    archive >> s.crossLinks;
+  }
 
   archive >> s.averageEnergies;
   archive >> s.averageLoadings;

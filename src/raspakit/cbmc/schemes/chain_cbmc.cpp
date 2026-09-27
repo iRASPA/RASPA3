@@ -41,14 +41,14 @@ struct EvaluatedTrials
 
 EvaluatedTrials evaluateTrials(const CBMC::GrowContext &context, const Component &component,
                                const CBMC::GrowStep &step, std::vector<Atom> &chainAtoms,
-                               std::vector<CBMC::StepTrial> stepTrials)
+                               std::vector<CBMC::StepTrial> stepTrials, std::span<const std::size_t> tethersOfStep)
 {
   EvaluatedTrials evaluated{};
   evaluated.trials.reserve(stepTrials.size());
   for (std::size_t i = 0; i != stepTrials.size(); ++i)
   {
     std::optional<CBMC::StepTrialEnergy> energy =
-        CBMC::evaluateStepTrial(context, component, step, chainAtoms, stepTrials[i].positions);
+        CBMC::evaluateStepTrial(context, component, step, chainAtoms, stepTrials[i].positions, tethersOfStep);
     if (!energy.has_value()) continue;
     if (i == 0) evaluated.firstSurvived = true;
     evaluated.trials.push_back({std::move(stepTrials[i].positions), energy.value(), stepTrials[i].torsionWeight});
@@ -125,15 +125,19 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
   // Deterministic growth plan over the fragment graph (flexible beads, hinged rigid bodies, and
   // ring-closure of cyclic clusters), shared with the retrace so grow and retrace are reversible.
   const std::vector<GrowStep> &plan = component.growthPlan(beadsAlreadyPlaced);
+  const TetherSchedule tethers = scheduleTethers(context, component, plan);
 
-  for (const GrowStep &step : plan)
+  for (std::size_t seg = 0; seg != plan.size(); ++seg)
   {
+    const GrowStep &step = plan[seg];
+
     // All trial directions of this step (the operator engine handles the seed / attach / ring-closure
     // cases, the rigid-body tilt, and the coupled-decoupled torsion selection).
     std::vector<EvaluatedTrial> trials =
         evaluateTrials(context, component, step, chainAtoms,
                        generateGrowTrials(random, settings, beta, component, chainAtoms, step,
-                                          settings.numberOfTrialDirections))
+                                          settings.numberOfTrialDirections),
+                       tethers.at(seg))
             .trials;
     if (trials.empty()) return std::nullopt;
 
@@ -161,6 +165,7 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
 
   // Same deterministic growth plan as the insertion so grow and retrace are exactly reversible.
   const std::vector<GrowStep> &plan = component.growthPlan(beadsAlreadyPlaced);
+  const TetherSchedule tethers = scheduleTethers(context, component, plan);
 
   for (std::size_t seg = 0; seg != plan.size(); ++seg)
   {
@@ -171,7 +176,8 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
     EvaluatedTrials evaluated =
         evaluateTrials(context, component, step, chainAtoms,
                        generateRetraceTrials(random, settings, beta, component, chainAtoms, step,
-                                             settings.numberOfTrialDirections));
+                                             settings.numberOfTrialDirections),
+                       tethers.at(seg));
 
     // The old configuration must survive the overlap filter as trial direction 0.
     if (!evaluated.firstSurvived) throwExistingConfigurationOverlaps("CBMC", component, seg, step);

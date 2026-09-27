@@ -40,6 +40,7 @@ import coulomb_potential;
 import intra_molecular_potentials;
 import chiral_center;
 import connectivity_table;
+import cross_links;
 export import fragment;
 export import fragment_graph;
 export import cbmc_growth_plan;
@@ -143,7 +144,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{4};  ///< Version number for serialization.
+  std::uint64_t versionNumber{5};  ///< Version number for serialization.
 
   Type type{0};  ///< Type of the component (Adsorbate or Cation).
 
@@ -235,6 +236,10 @@ export struct Component
 
   ConnectivityTable connectivityTable{};                            ///< Connectivity table for the component.
   Potentials::IntraMolecularPotentials intraMolecularPotentials{};  ///< List of internal potentials.
+
+  /// Atoms of this molecule that can form cross-links (inter-molecular bonds owned by the system's
+  /// CrossLinkTable). Read from the component's 'ReactiveSites'. Empty for ordinary components.
+  std::vector<ReactiveSite> reactiveSites{};
 
   /// The fragment decomposition of the molecule and its deterministic CBMC growth structure. Every
   /// molecule has one: a fully flexible molecule is all single-atom fragments, a fully rigid molecule
@@ -642,6 +647,15 @@ export struct Component
 
   std::vector<std::vector<std::size_t>> readPartialReinsertionFixedAtoms(
       const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+
+  /**
+   * \brief Reads the optional 'ReactiveSites' of a molecule: the atoms that can carry cross-links.
+   *
+   * Each entry is an object {"Atom": index, "Type": "name", "Valence": n} (Valence optional, default 1)
+   * or the shorthand [index, "name"]. The type names are matched against the 'CrossLinkBonds' of the
+   * system. Throws for indices out of range, duplicates, or a zero valence.
+   */
+  std::vector<ReactiveSite> readReactiveSites(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data) const;
 
   /**
    * \brief Reads the optional 'ChiralCenters' of a molecule: a list of atom-index quadruples

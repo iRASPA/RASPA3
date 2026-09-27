@@ -241,6 +241,7 @@ void MonteCarlo::writeOutputHeader()
       std::print(stream, "{}", system.writeComponentStatus());
       std::print(stream, "{}", system.writeNumberOfPseudoAtoms());
       std::print(stream, "{}", system.reactions.printStatus());
+      std::print(stream, "{}", system.crossLinks.printStatus());
 
 #ifdef VERSION
 #define QUOTE(str) #str
@@ -257,6 +258,7 @@ void MonteCarlo::writeOutputHeader()
           system.forceField.jsonPseudoAtomStatus();
       outputJsons[system_id]["initialization"]["components"] = system.jsonComponentStatus();
       outputJsons[system_id]["initialization"]["reactions"] = system.reactions.jsonStatus();
+      outputJsons[system_id]["initialization"]["crossLinks"] = system.crossLinks.jsonStatus();
 
       std::ofstream json(outputJsonFileNames[system_id]);
       json << outputJsons[system_id].dump(4);

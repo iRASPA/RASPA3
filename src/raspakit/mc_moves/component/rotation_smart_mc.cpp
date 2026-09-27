@@ -194,8 +194,10 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMove(RandomNumber &random,
     }
   }
 
-  RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
-                                   ewaldFourierEnergy + polarizationDifference;
+  RunningEnergy energyDifference =
+      externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy +
+      polarizationDifference +
+      system.crossLinkEnergyDifference(selectedComponent, selectedMolecule, trialMolecule.second, molecule_atoms);
 
   time_begin = std::chrono::steady_clock::now();
   std::vector<AtomDynamics> dynamicsNew;

@@ -1,0 +1,39 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfProductionCycles" : 10000,
+  "NumberOfInitializationCycles" : 2000,
+  "PrintEvery" : 1000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [25.0, 25.0, 25.0],
+      "ExternalTemperature" : 400.0,
+      "ChargeMethod" : "None",
+      "CrossLinkSwapProbability" : 0.5,
+      "CrossLinkFormationProbability" : 1.0,
+      "CrossLinkBonds" : [
+        {
+          "Sites" : ["X", "X"],
+          "Bond" : ["HARMONIC", [1000.0, 3.8]],
+          "JunctionBend" : ["HARMONIC", [500.0, 120.0]],
+          "CaptureRadius" : 6.5,
+          "FormationEnergy" : -1000.0
+        }
+      ]
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "telechelic",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "PartialReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 40
+    }
+  ]
+}

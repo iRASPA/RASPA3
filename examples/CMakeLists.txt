@@ -77,6 +77,8 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_D
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/external_fields/2_mc_water_in_square_channel/run)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/external_fields/3_mc_water_in_cylinder_channel_grids/run)
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/polymers/1_mc_cross_linked_telechelic_chains_in_box/run)
+
 install(DIRECTORY basic DESTINATION share/raspa3/examples 
         COMPONENT examples
         PATTERN "run" EXCLUDE
@@ -153,6 +155,16 @@ install(DIRECTORY external_fields DESTINATION share/raspa3/examples
         PERMISSIONS OWNER_READ GROUP_READ)
 
 install(DIRECTORY external_fields DESTINATION share/raspa3/examples 
+        COMPONENT examples
+        PATTERN "run" 
+        PERMISSIONS  OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
+
+install(DIRECTORY polymers DESTINATION share/raspa3/examples 
+        COMPONENT examples
+        PATTERN "run" EXCLUDE
+        PERMISSIONS OWNER_READ GROUP_READ)
+
+install(DIRECTORY polymers DESTINATION share/raspa3/examples 
         COMPONENT examples
         PATTERN "run" 
         PERMISSIONS  OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)

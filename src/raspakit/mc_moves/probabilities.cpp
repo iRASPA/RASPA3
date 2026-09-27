@@ -135,6 +135,8 @@ std::string MCMoveProbabilities::repr()
   std::print(stream, "widomCBCFCMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::WidomCBCFCMC)]);
   std::print(stream, "parallelTemperingProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::ParallelTempering)]);
   std::print(stream, "hybridMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::HybridMC)]);
+  std::print(stream, "crossLinkSwapProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::CrossLinkSwap)]);
+  std::print(stream, "crossLinkFormationProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::CrossLinkFormationScission)]);
   std::print(stream, "reactionCBMCProbability: {}\n",
              normalized_probabilities[std::to_underlying(Move::Types::ReactionCBMC)]);
   std::print(stream, "reactionConventionalCFCMCProbability: {}\n",

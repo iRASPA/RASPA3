@@ -12,6 +12,7 @@ import double3x3;
 import simd_quatd;
 import simulationbox;
 import cbmc;
+import cross_links;
 import randomnumbers;
 import system;
 import energy_status;
@@ -55,9 +56,22 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
 
   std::size_t selected_configuration = random.uniform_integer(0, component.partialReinsertionFixedAtoms.size() - 1);
 
-  const std::vector<std::size_t> beads_already_placed = component.partialReinsertionFixedAtoms[selected_configuration];
+  std::vector<std::size_t> beads_already_placed = component.partialReinsertionFixedAtoms[selected_configuration];
 
-  const CBMC::GrowContext context = system.makeGrowContext();
+  // A cross-linked molecule keeps its linked sites in place as well (added to the fixed atoms), and the
+  // links' terms enter the Rosenbluth weights through the tethers of the grow context. Nothing to
+  // regrow when every atom is fixed or a linked site.
+  std::vector<CrossLinkTether> tethers{};
+  if (system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule))
+  {
+    std::optional<std::vector<std::size_t>> placedSet =
+        system.crossLinkRegrowthPlacedSet(selectedComponent, selectedMolecule, beads_already_placed);
+    if (!placedSet.has_value()) return std::nullopt;
+    beads_already_placed = std::move(placedSet.value());
+    tethers = system.crossLinkTethers(selectedComponent, selectedMolecule);
+  }
+
+  const CBMC::GrowContext context = system.makeGrowContext().withCrossLinkTethers(tethers);
 
   // Attempt to grow the molecule using CBMC reinsertion.
   std::optional<CBMC::GrowResult> growData =

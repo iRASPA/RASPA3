@@ -50,6 +50,7 @@ import mc_moves_statistics;
 import mc_moves_cputime;
 import reaction;
 import reactions;
+import cross_links;
 import transition_matrix;
 import equation_of_states;
 import thermostat;
@@ -102,7 +103,7 @@ export struct System
          std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -253,6 +254,10 @@ export struct System
   Reactions reactions;
   TransitionMatrix tmmc;
 
+  /// Cross-links: inter-molecular bonds between the reactive sites of the components, with their
+  /// bond types. Owned and mutated by the system (topology moves, renumbering on molecule deletion).
+  CrossLinkTable crossLinks;
+
   // property measurements
   PropertyEnergy averageEnergies;
   PropertyLoading averageLoadings;
@@ -364,6 +369,37 @@ export struct System
   RunningEnergy computePolarizationEnergy() noexcept;
   RunningEnergy computeTotalGradients() noexcept;
   void computeTotalElectrostaticPotential() noexcept;
+
+  /**
+   * \brief Change of the cross-link energy when molecule 'selectedMolecule' of 'selectedComponent'
+   *        takes the positions 'newAtoms' instead of its current positions 'oldAtoms'.
+   *
+   * Returns zero when the system has no cross-links or the molecule carries none, so coordinate
+   * moves can add it unconditionally to their energy difference before the acceptance test.
+   */
+  RunningEnergy crossLinkEnergyDifference(std::size_t selectedComponent, std::size_t selectedMolecule,
+                                          std::span<const Atom> newAtoms, std::span<const Atom> oldAtoms) const;
+
+  /// Cross-link energy of the current configuration (all links), in the given box.
+  RunningEnergy computeCrossLinkEnergy(const SimulationBox& box, std::span<const Atom> moleculeAtoms) const;
+
+  /// The atoms of the molecule that currently carry a cross-link (sorted, unique); empty when unlinked.
+  std::vector<std::size_t> crossLinkedSiteAtoms(std::size_t selectedComponent, std::size_t selectedMolecule) const;
+
+  /// The cross-links of the molecule as tethers for a CBMC regrowth (see CrossLinkTether); empty when
+  /// unlinked. The tethers freeze the partner positions, so they are valid for one move only.
+  std::vector<CrossLinkTether> crossLinkTethers(std::size_t selectedComponent, std::size_t selectedMolecule) const;
+
+  /**
+   * \brief The placed set of a CBMC regrowth of a cross-linked molecule: its linked sites plus the
+   *        given fixed atoms (sorted, unique). The linked sites stay in place, so the links are kept
+   *        and only the rest of the molecule is regrown ('CBMC::FirstBeadScheme::AlreadyPlaced').
+   *
+   * std::nullopt when nothing would be regrown (every atom is a linked site or fixed).
+   */
+  std::optional<std::vector<std::size_t>> crossLinkRegrowthPlacedSet(std::size_t selectedComponent,
+                                                                     std::size_t selectedMolecule,
+                                                                     std::span<const std::size_t> fixedAtoms = {}) const;
   void computeTotalElectricField() noexcept;
 
   std::size_t randomFramework(RandomNumber& random)

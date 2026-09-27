@@ -114,7 +114,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
       moleculeData, moleculeAtomPositions, moleculeDynamics, trialFrameworkAtoms, system.forceField,
       system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik,
       system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent, system.framework,
-      trialFrameworkDynamics);
+      trialFrameworkDynamics, &system.crossLinks);
   Integrators::updateCenterOfMassAndQuaternionGradients(moleculeData, moleculeAtomPositions, moleculeDynamics,
                                                         system.components, groupDataSpan);
   referenceEnergy.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
@@ -132,7 +132,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
         moleculeData, moleculeAtomPositions, moleculeDynamics, system.components, dt, thermostat, trialFrameworkAtoms,
         system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik,
         system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent,
-        system.framework, trialFrameworkDynamics, groupDataSpan);
+        system.framework, trialFrameworkDynamics, groupDataSpan, {}, &system.crossLinks);
   }
   time_end = std::chrono::steady_clock::now();
 

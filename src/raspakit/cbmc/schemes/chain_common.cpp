@@ -15,17 +15,59 @@ import cbmc_grow_context;
 import cbmc_grow_step;
 import cbmc_operators;
 import cbmc_external_energy;
+import interactions_cross_link;
+
+CBMC::TetherSchedule CBMC::scheduleTethers(const GrowContext &context, const Component &component,
+                                           const std::vector<GrowStep> &plan)
+{
+  TetherSchedule schedule{};
+  if (context.crossLinkTethers.empty()) return schedule;
+  schedule.perStep.resize(plan.size());
+
+  // The step that places each atom; atoms placed by no step are the pre-placed set.
+  std::vector<std::optional<std::size_t>> stepOfAtom(component.atoms.size());
+  for (std::size_t seg = 0; seg != plan.size(); ++seg)
+  {
+    for (std::size_t bead : plan[seg].nextBeads) stepOfAtom[bead] = seg;
+  }
+
+  for (std::size_t index = 0; index != context.crossLinkTethers.size(); ++index)
+  {
+    const std::size_t site = context.crossLinkTethers[index].siteAtom;
+    std::optional<std::size_t> lastStep = stepOfAtom[site];
+    if (site < component.connectivityTable.numberOfBeads)
+    {
+      for (std::size_t neighbour : component.connectivityTable.findAllNeighbors(site))
+      {
+        if (stepOfAtom[neighbour].has_value() && (!lastStep.has_value() || stepOfAtom[neighbour] > lastStep))
+        {
+          lastStep = stepOfAtom[neighbour];
+        }
+      }
+    }
+    if (lastStep.has_value()) schedule.perStep[lastStep.value()].push_back(index);
+  }
+  return schedule;
+}
 
 std::optional<CBMC::StepTrialEnergy> CBMC::evaluateStepTrial(const GrowContext &context, const Component &component,
                                                              const GrowStep &step, std::vector<Atom> &chainAtoms,
-                                                             std::span<const Atom> positions)
+                                                             std::span<const Atom> positions,
+                                                             std::span<const std::size_t> tethersOfStep)
 {
-  const std::optional<RunningEnergy> external = computeExternalNonOverlappingEnergy(context, component, positions);
+  std::optional<RunningEnergy> external = computeExternalNonOverlappingEnergy(context, component, positions);
   if (!external.has_value()) return std::nullopt;
 
   const ScratchBeads scratch(chainAtoms, step);
   placeStepBeads(chainAtoms, step, positions);
   const RunningEnergy intra = step.intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(chainAtoms);
+
+  // The cross-link terms that become evaluable at this step (every atom they need is now in place).
+  if (!tethersOfStep.empty())
+  {
+    external.value() += Interactions::computeCrossLinkTetherEnergy(
+        context.forceField, context.simulationBox, component, chainAtoms, context.crossLinkTethers, tethersOfStep);
+  }
 
   return StepTrialEnergy{external.value(), intra};
 }

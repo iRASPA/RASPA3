@@ -25,6 +25,9 @@ import mc_moves_probabilities;
 import mc_moves_move_types;
 import reaction;
 import reactions;
+import cross_links;
+import bond_potential;
+import bend_potential;
 import partition_function;
 import transition_matrix;
 import property_conventional_rdf;
@@ -155,6 +158,340 @@ std::string deriveNameFromFileName(const std::string& owner, const std::string& 
   }
   return stem;
 }
+
+namespace
+{
+// Cross-links (see CrossLinkTable): the bond types of the system ('CrossLinkBonds'), the links present
+// at the start ('InitialCrossLinks'), and the restrictions on the moves of the reactive components.
+void readCrossLinks(const nlohmann::basic_json<nlohmann::raspa_map>& value, System& system)
+{
+  CrossLinkTable& table = system.crossLinks;
+
+  if (value.contains("CrossLinkBonds"))
+  {
+    const auto& list = value["CrossLinkBonds"];
+    if (!list.is_array())
+    {
+      throw std::runtime_error("[Input reader]: 'CrossLinkBonds' must be an array of objects\n");
+    }
+    for (const auto& item : list)
+    {
+      if (!item.is_object())
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: 'CrossLinkBonds' entry {} must be an object\n", item.dump()));
+      }
+      try
+      {
+        CrossLinkBondType bondType{};
+        const auto sites = item.at("Sites").get<std::vector<std::string>>();
+        if (sites.size() != 2)
+        {
+          throw std::runtime_error("'Sites' must list exactly two reactive-site type names");
+        }
+        bondType.siteTypeA = sites[0];
+        bondType.siteTypeB = sites[1];
+
+        const auto& bond = item.at("Bond");
+        if (!bond.is_array() || bond.size() != 2)
+        {
+          throw std::runtime_error("'Bond' must be [\"POTENTIAL\", [parameters...]]");
+        }
+        std::string bondName = bond[0].get<std::string>();
+        std::ranges::transform(bondName, bondName.begin(), [](unsigned char c) { return std::toupper(c); });
+        if (!BondPotential::definitionForString.contains(bondName))
+        {
+          throw std::runtime_error(std::format("unknown bond potential '{}'", bond[0].get<std::string>()));
+        }
+        bondType.bond = BondPotential({0, 1}, BondPotential::definitionForString.at(bondName),
+                                      bond[1].get<std::vector<double>>());
+        if (bondType.bond.type == BondType::Fixed || bondType.bond.type == BondType::None)
+        {
+          throw std::runtime_error("a cross-link bond needs a proper (non-fixed) bond potential");
+        }
+
+        if (item.contains("JunctionBend"))
+        {
+          const auto& bend = item["JunctionBend"];
+          if (!bend.is_array() || bend.size() != 2)
+          {
+            throw std::runtime_error("'JunctionBend' must be [\"POTENTIAL\", [parameters...]]");
+          }
+          std::string bendName = bend[0].get<std::string>();
+          std::ranges::transform(bendName, bendName.begin(), [](unsigned char c) { return std::toupper(c); });
+          if (!BendPotential::definitionForString.contains(bendName))
+          {
+            throw std::runtime_error(std::format("unknown bend potential '{}'", bend[0].get<std::string>()));
+          }
+          bondType.junctionBend = BendPotential({0, 1, 2}, BendPotential::definitionForString.at(bendName),
+                                                bend[1].get<std::vector<double>>());
+        }
+
+        if (item.contains("CaptureRadius")) bondType.captureRadius = item["CaptureRadius"].get<double>();
+        if (bondType.captureRadius <= 0.0) throw std::runtime_error("'CaptureRadius' must be positive");
+        if (item.contains("FormationEnergy"))
+        {
+          bondType.formationEnergy = item["FormationEnergy"].get<double>() * Units::KelvinToEnergy;
+        }
+
+        table.bondTypes.push_back(bondType);
+      }
+      catch (std::exception const& e)
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: error in 'CrossLinkBonds' entry {}: {}\n", item.dump(), e.what()));
+      }
+    }
+  }
+
+  const bool usesCrossLinkMoves =
+      system.mc_moves_probabilities.getProbability(Move::Types::CrossLinkSwap) > 0.0 ||
+      system.mc_moves_probabilities.getProbability(Move::Types::CrossLinkFormationScission) > 0.0;
+  if (usesCrossLinkMoves && table.bondTypes.empty())
+  {
+    throw std::runtime_error(
+        "[Input reader]: the cross-link moves need at least one bond type in 'CrossLinkBonds'\n");
+  }
+
+  // Every site type of the bond types must exist on some component, and reactive components must
+  // not use moves that move, regrow, replace or remove molecules as a whole in ways the cross-link
+  // bookkeeping does not follow.
+  bool anyReactiveComponent = false;
+  for (const Component& component : system.components)
+  {
+    if (component.reactiveSites.empty()) continue;
+    anyReactiveComponent = true;
+
+    if (component.hasFractionalMolecule)
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: component '{}' has reactive sites and a fractional molecule; the cross-link moves "
+          "do not support CFCMC-type moves for reactive components\n",
+          component.name));
+    }
+    const std::array prohibited{Move::Types::IdentityChangeCBMC, Move::Types::IdentitySwitchCBMC,
+                                Move::Types::PairSwapCBMC,       Move::Types::PairSwap,
+                                Move::Types::GroupSwap,          Move::Types::GroupSwapCBMC,
+                                Move::Types::GroupSwapCFCMC,     Move::Types::GroupSwapCBCFCMC,
+                                Move::Types::PairSwapCFCMC,      Move::Types::PairSwapCBCFCMC,
+                                Move::Types::SwapCFCMC,          Move::Types::SwapCBCFCMC,
+                                Move::Types::Reptation,          Move::Types::DoubleBridging,
+                                Move::Types::IntramolecularDoubleRebridging};
+    for (const Move::Types moveType : prohibited)
+    {
+      if (component.mc_moves_probabilities.getProbability(moveType) > 0.0)
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: component '{}' has reactive sites (cross-links) and enables the '{}' move, which "
+            "is not supported for reactive components\n",
+            component.name, Move::moveNames[std::to_underlying(moveType)]));
+      }
+    }
+  }
+  if (!table.bondTypes.empty() && !anyReactiveComponent)
+  {
+    throw std::runtime_error(
+        "[Input reader]: 'CrossLinkBonds' are defined but no component declares 'ReactiveSites'\n");
+  }
+  for (const CrossLinkBondType& bondType : table.bondTypes)
+  {
+    for (const std::string& siteType : {bondType.siteTypeA, bondType.siteTypeB})
+    {
+      const bool found = std::ranges::any_of(system.components,
+                                             [&](const Component& component)
+                                             {
+                                               return std::ranges::any_of(component.reactiveSites,
+                                                                          [&](const ReactiveSite& site)
+                                                                          { return site.siteType == siteType; });
+                                             });
+      if (!found)
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: 'CrossLinkBonds' refers to reactive-site type '{}' that no component declares\n",
+            siteType));
+      }
+    }
+  }
+  const std::array crossSystemProhibited{Move::Types::GibbsSwapCBMC, Move::Types::GibbsSwapCFCMC,
+                                         Move::Types::GibbsSwapCBCFCMC, Move::Types::GibbsConventionalCFCMC,
+                                         Move::Types::GibbsConventionalCBCFCMC,
+                                         Move::Types::GibbsIdentityChangeCBMC};
+  if (anyReactiveComponent)
+  {
+    for (const Component& component : system.components)
+    {
+      for (const Move::Types moveType : crossSystemProhibited)
+      {
+        if (component.mc_moves_probabilities.getProbability(moveType) > 0.0)
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: cross-links (reactive sites) can not be combined with the '{}' move\n",
+              Move::moveNames[std::to_underlying(moveType)]));
+        }
+      }
+    }
+    if (!system.reactions.list.empty())
+    {
+      throw std::runtime_error("[Input reader]: cross-links (reactive sites) can not be combined with reactions\n");
+    }
+  }
+
+  if (value.contains("InitialCrossLinks"))
+  {
+    const auto& list = value["InitialCrossLinks"];
+    if (!list.is_array())
+    {
+      throw std::runtime_error("[Input reader]: 'InitialCrossLinks' must be an array of [[c, m, a], [c, m, a]]\n");
+    }
+    for (const auto& item : list)
+    {
+      try
+      {
+        const auto pair = item.get<std::vector<std::vector<std::size_t>>>();
+        if (pair.size() != 2 || pair[0].size() != 3 || pair[1].size() != 3)
+        {
+          throw std::runtime_error("expected two [component, molecule, atom] triples");
+        }
+        auto makeSite = [&](const std::vector<std::size_t>& t)
+        {
+          if (t[0] >= system.components.size())
+          {
+            throw std::runtime_error(std::format("component index {} out of range", t[0]));
+          }
+          const Component& component = system.components[t[0]];
+          if (t[1] >= system.numberOfIntegerMoleculesPerComponent[t[0]])
+          {
+            throw std::runtime_error(
+                std::format("molecule index {} of component '{}' exceeds the {} initial molecules", t[1],
+                            component.name, system.numberOfIntegerMoleculesPerComponent[t[0]]));
+          }
+          if (!std::ranges::any_of(component.reactiveSites, [&](const ReactiveSite& s) { return s.atom == t[2]; }))
+          {
+            throw std::runtime_error(
+                std::format("atom {} of component '{}' is not a reactive site", t[2], component.name));
+          }
+          return CrossLinkSite{static_cast<std::uint32_t>(t[0]), static_cast<std::uint32_t>(t[1]),
+                               static_cast<std::uint32_t>(t[2])};
+        };
+        const CrossLinkSite a = makeSite(pair[0]);
+        const CrossLinkSite b = makeSite(pair[1]);
+        if (a.sameMolecule(b)) throw std::runtime_error("a cross-link must connect two different molecules");
+        if (table.isLinked(a, b)) throw std::runtime_error("the same pair of sites is linked twice");
+
+        auto siteTypeOf = [&](const CrossLinkSite& site) -> const std::string&
+        {
+          const Component& component = system.components[site.componentId];
+          return std::ranges::find_if(component.reactiveSites,
+                                      [&](const ReactiveSite& s) { return s.atom == site.atomIndex; })
+              ->siteType;
+        };
+        const std::optional<std::size_t> bondTypeId = table.findBondType(siteTypeOf(a), siteTypeOf(b));
+        if (!bondTypeId.has_value())
+        {
+          throw std::runtime_error(
+              std::format("no bond type in 'CrossLinkBonds' for site types '{}' and '{}'", siteTypeOf(a), siteTypeOf(b)));
+        }
+        table.addLink(CrossLink{a, b, bondTypeId.value()});
+      }
+      catch (std::exception const& e)
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: error in 'InitialCrossLinks' entry {}: {}\n", item.dump(), e.what()));
+      }
+    }
+
+    // The valences must hold for the initial topology as well.
+    for (const CrossLink& link : table.links)
+    {
+      for (const CrossLinkSite& site : {link.a, link.b})
+      {
+        const Component& component = system.components[site.componentId];
+        const ReactiveSite& reactiveSite = *std::ranges::find_if(
+            component.reactiveSites, [&](const ReactiveSite& s) { return s.atom == site.atomIndex; });
+        if (table.linkCount(site) > reactiveSite.valence)
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: 'InitialCrossLinks': atom {} of molecule {} of component '{}' carries {} links, "
+              "more than its valence {}\n",
+              site.atomIndex, site.moleculeIndex, component.name, table.linkCount(site), reactiveSite.valence));
+        }
+      }
+    }
+  }
+
+  // The CBMC regrowth of a linked molecule keeps its linked sites in place. The growth plans for every
+  // possible set of linked sites (and their unions with the partial-reinsertion fixed sets) are built
+  // now, so an unsupported topology is reported at read time rather than in the middle of a run.
+  for (const Component& component : system.components)
+  {
+    if (component.reactiveSites.empty() || component.atoms.size() < 2) continue;
+    const bool regrows = component.mc_moves_probabilities.getProbability(Move::Types::ReinsertionCBMC) > 0.0 ||
+                         component.mc_moves_probabilities.getProbability(Move::Types::PartialReinsertionCBMC) > 0.0;
+    if (!regrows) continue;
+
+    std::vector<std::size_t> siteAtoms{};
+    for (const ReactiveSite& site : component.reactiveSites) siteAtoms.push_back(site.atom);
+    std::ranges::sort(siteAtoms);
+    if (siteAtoms.size() > 12) continue;  // too many subsets to prepare; the plans are built on first use
+
+    auto checkPlacedSet = [&](std::vector<std::size_t> placed)
+    {
+      std::ranges::sort(placed);
+      placed.erase(std::ranges::unique(placed).begin(), placed.end());
+      if (placed.size() >= component.atoms.size()) return;
+
+      // Two fixed atoms inside one rigid body over-determine its placement.
+      for (const Fragment& fragment : component.fragmentGraph.fragments)
+      {
+        if (!fragment.isRigidBody()) continue;
+        std::vector<std::size_t> fixedInFragment{};
+        for (std::size_t atom : fragment.atoms)
+        {
+          if (std::ranges::binary_search(placed, atom)) fixedInFragment.push_back(atom);
+        }
+        if (fixedInFragment.size() >= 2)
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: component '{}': atoms {} and {} are reactive sites (or fixed atoms) inside the same "
+              "rigid body; a rigid body held in place by two of its atoms cannot be regrown. Disable the reinsertion "
+              "moves for this component, make the body flexible, or use a single reactive site per rigid body\n",
+              component.name, fixedInFragment[0], fixedInFragment[1]));
+        }
+      }
+
+      try
+      {
+        component.growthPlan(placed);
+      }
+      catch (std::exception const& e)
+      {
+        std::string atoms{};
+        for (std::size_t atom : placed) atoms += std::format("{} ", atom);
+        throw std::runtime_error(
+            std::format("[Input reader]: component '{}' cannot be regrown with its cross-linked sites (atoms {}) kept "
+                        "in place: {}",
+                        component.name, atoms, e.what()));
+      }
+    };
+
+    for (std::size_t mask = 1; mask < (std::size_t{1} << siteAtoms.size()); ++mask)
+    {
+      std::vector<std::size_t> linkedSites{};
+      for (std::size_t i = 0; i < siteAtoms.size(); ++i)
+      {
+        if (mask & (std::size_t{1} << i)) linkedSites.push_back(siteAtoms[i]);
+      }
+      checkPlacedSet(linkedSites);
+      for (const std::vector<std::size_t>& fixedAtoms : component.partialReinsertionFixedAtoms)
+      {
+        std::vector<std::size_t> placed = linkedSites;
+        placed.insert(placed.end(), fixedAtoms.begin(), fixedAtoms.end());
+        checkPlacedSet(std::move(placed));
+      }
+    }
+  }
+}
+}  // namespace
 
 InputReader::InputReader(const std::string inputFile)
 {
@@ -1969,6 +2306,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       {
         mc_moves_probabilities.setProbability(Move::Types::HybridMC, value["HybridMCProbability"].get<double>());
       }
+      if (value.contains("CrossLinkSwapProbability") && value["CrossLinkSwapProbability"].is_number_float())
+      {
+        mc_moves_probabilities.setProbability(Move::Types::CrossLinkSwap,
+                                              value["CrossLinkSwapProbability"].get<double>());
+      }
+      if (value.contains("CrossLinkFormationProbability") && value["CrossLinkFormationProbability"].is_number_float())
+      {
+        mc_moves_probabilities.setProbability(Move::Types::CrossLinkFormationScission,
+                                              value["CrossLinkFormationProbability"].get<double>());
+      }
 
       if (value.contains("TranslationSmartMCAllProbability") &&
           value["TranslationSmartMCAllProbability"].is_number_float())
@@ -2664,6 +3011,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       {
         systems[systemId].createReactionFractionalMolecules();
       }
+
+      readCrossLinks(value, systems[systemId]);
 
       if (value.contains("ComputeEnergyHistogram") && value["ComputeEnergyHistogram"].is_boolean())
       {
@@ -3782,6 +4131,10 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "ParallelTemperingSwapProbability",
     "HybridMCProbability",
     "HybridMCMoveNumberOfSteps",
+    "CrossLinkSwapProbability",
+    "CrossLinkFormationProbability",
+    "CrossLinkBonds",
+    "InitialCrossLinks",
     "TranslationSmartMCAllProbability",
     "ForceBiasTranslationAllProbability",
     "RotationSmartMCAllProbability",

@@ -171,8 +171,10 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMove(RandomNumber &rand
     }
   }
 
-  RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
-                                   ewaldFourierEnergy + polarizationDifference;
+  RunningEnergy energyDifference =
+      externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy +
+      polarizationDifference +
+      system.crossLinkEnergyDifference(selectedComponent, selectedMolecule, trialMolecule.second, molecule_atoms);
 
   // Force on the selected molecule in the trial configuration (uses the updated structure factor S_new). The
   // other molecules are unchanged, so the current 'spanOfMoleculeAtoms()' (still holding the old positions of

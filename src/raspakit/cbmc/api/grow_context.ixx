@@ -7,6 +7,7 @@ import forcefield;
 import framework;
 import simulationbox;
 import interpolation_energy_grid;
+import cross_links;
 
 import std;
 
@@ -167,6 +168,11 @@ struct GrowContext
   double cutOffMoleculeVDW;
   double cutOffCoulomb;
   GrowthSettings settings;
+  /// The cross-links of the molecule being regrown, with the partner side frozen (see CrossLinkTether).
+  /// Their terms are added to the external energy of the growth step that places the last atom they
+  /// depend on, so the Rosenbluth weights and the returned energies include them. Empty for a molecule
+  /// without links (and for every grow of a new molecule). Set with 'withCrossLinkTethers'.
+  std::span<const CrossLinkTether> crossLinkTethers{};
 
   /// Whether a grow or retrace with this context evaluates its external energies at the inner cut-off
   /// of the dual cut-off scheme, i.e. whether the entry points correct their results to the full cut-offs.
@@ -190,6 +196,15 @@ struct GrowContext
   {
     GrowContext copy(*this);
     copy.skipBackgroundMolecule = moleculeId;
+    return copy;
+  }
+
+  /// The same environment with the cross-link tethers of the molecule being regrown (the caller keeps
+  /// the tethers alive for the duration of the grow and retrace).
+  [[nodiscard]] GrowContext withCrossLinkTethers(std::span<const CrossLinkTether> tethers) const
+  {
+    GrowContext copy(*this);
+    copy.crossLinkTethers = tethers;
     return copy;
   }
 

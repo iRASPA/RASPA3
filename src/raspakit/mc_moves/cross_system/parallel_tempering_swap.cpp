@@ -106,7 +106,8 @@ bool compatibleMobileTopology(const System& systemA, const System& systemB)
       systemA.numberOfFrameworkAtoms != systemB.numberOfFrameworkAtoms ||
       !systemA.reactions.list.empty() || !systemB.reactions.list.empty() ||
       hasUnsupportedFractionalSlots(systemA) || hasUnsupportedFractionalSlots(systemB) ||
-      !matchingGCFractionalLayout(systemA, systemB) || !matchingLambdaGrids(systemA, systemB))
+      !matchingGCFractionalLayout(systemA, systemB) || !matchingLambdaGrids(systemA, systemB) ||
+      systemA.crossLinks.bondTypes.size() != systemB.crossLinks.bondTypes.size())
   {
     return false;
   }
@@ -330,6 +331,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
     std::swap(systemA.translationalDegreesOfFreedom, systemB.translationalDegreesOfFreedom);
     std::swap(systemA.rotationalDegreesOfFreedom, systemB.rotationalDegreesOfFreedom);
     std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
+    // The cross-link topology belongs to the configuration; the bond types (Hamiltonian) stay.
+    systemA.crossLinks.swapTopology(systemB.crossLinks);
     for (std::size_t componentId = 0; componentId < systemA.components.size(); ++componentId)
     {
       std::swap(systemA.components[componentId].lambdaGC.currentBin,

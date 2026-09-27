@@ -35,6 +35,7 @@ std::optional<RunningEnergy> MC_Moves::tetheredProtonHopMove(RandomNumber& rando
   if (selectedMolecule >= component.tetheredProtonHopSiteGroups.size()) return std::nullopt;
   const std::vector<double3>& fractionalSites = component.tetheredProtonHopSiteGroups[selectedMolecule];
   if (fractionalSites.size() < 2) return std::nullopt;
+  if (system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule)) return std::nullopt;
 
   std::span<Atom> molecule_atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
   Molecule& molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];

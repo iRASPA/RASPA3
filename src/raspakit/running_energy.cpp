@@ -108,6 +108,11 @@ std::string RunningEnergy::printMC() const
     std::print(stream, "    intra Coulombic{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
                conv * intraCoul, Units::displayedUnitOfEnergyString);
   }
+  if (std::fabs(crossLink) > 1e-10)
+  {
+    std::print(stream, "    cross-link{}               {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * crossLink, Units::displayedUnitOfEnergyString);
+  }
 
   std::print(stream, "    polarization{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * polarization, Units::displayedUnitOfEnergyString);
@@ -204,6 +209,9 @@ std::string RunningEnergy::printMCDiff(RunningEnergy &other) const
   std::print(stream, "    intra Coulombic{}        | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
              Units::displayedUnitOfEnergyConversionString, conv * intraCoul, conv * other.intraCoul,
              conv * drift.intraCoul);
+  std::print(stream, "    cross-link{}             | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
+             Units::displayedUnitOfEnergyConversionString, conv * crossLink, conv * other.crossLink,
+             conv * drift.crossLink);
   std::print(stream, "    polarization{}           | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
              Units::displayedUnitOfEnergyConversionString, conv * polarization, conv * other.polarization,
              conv * drift.polarization);
@@ -276,6 +284,8 @@ std::string RunningEnergy::printMD() const
              conv * intraVDW, Units::displayedUnitOfEnergyString);
   std::print(stream, "    intra Coulombic{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * intraCoul, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    cross-link{}               {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * crossLink, Units::displayedUnitOfEnergyString);
   std::print(stream, "    polarization{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * polarization, Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda VDW{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
@@ -355,6 +365,8 @@ std::string RunningEnergy::printMC(const std::string &label) const
              conv * intraVDW, Units::displayedUnitOfEnergyString);
   std::print(stream, "    intra Coulombic{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * intraCoul, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    cross-link{}               {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * crossLink, Units::displayedUnitOfEnergyString);
   std::print(stream, "    polarization{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * polarization, Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda VDW{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
@@ -429,6 +441,8 @@ std::string RunningEnergy::printMD(const std::string &label, double referenceEne
              conv * intraVDW, Units::displayedUnitOfEnergyString);
   std::print(stream, "    intra Coulombic{}        {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * intraCoul, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    cross-link{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * crossLink, Units::displayedUnitOfEnergyString);
   std::print(stream, "    polarization{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * polarization, Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda VDW{}         {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
@@ -482,6 +496,7 @@ nlohmann::json RunningEnergy::jsonMC() const
   status["bendTorsion [K]"] = conv * bendTorsion;
   status["intra VDW [K]"] = conv * intraVDW;
   status["intra Coulombic [K]"] = conv * intraCoul;
+  status["cross-link [K]"] = conv * crossLink;
   status["polarization [K]"] = conv * polarization;
   status["dU/dlambda VDW [K]"] = conv * totalDudlambdaVDW();
   status["dU/dlambda Real [K]"] = conv * totalDudlambdaCharge();
@@ -560,6 +575,8 @@ std::string RunningEnergy::repr() const
              conv * intraVDW, Units::displayedUnitOfEnergyString);
   std::print(stream, "    intra Coulombic{}        {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * intraCoul, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    cross-link{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * crossLink, Units::displayedUnitOfEnergyString);
   std::print(stream, "    polarization{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * polarization, Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda VDW{}         {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
@@ -608,6 +625,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Runnin
   archive << e.bendTorsion;
   archive << e.intraVDW;
   archive << e.intraCoul;
+  archive << e.crossLink;
   archive << e.tail;
   archive << e.polarization;
   archive << e.dudlambdaVDW;
@@ -659,6 +677,14 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RunningEnerg
   archive >> e.bendTorsion;
   archive >> e.intraVDW;
   archive >> e.intraCoul;
+  if (versionNumber >= 2)
+  {
+    archive >> e.crossLink;
+  }
+  else
+  {
+    e.crossLink = 0.0;
+  }
   archive >> e.tail;
   archive >> e.polarization;
   archive >> e.dudlambdaVDW;

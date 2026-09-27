@@ -12,6 +12,7 @@ import double3x3;
 import simd_quatd;
 import simulationbox;
 import cbmc;
+import cross_links;
 import randomnumbers;
 import system;
 import energy_status;
@@ -47,7 +48,23 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
     return std::nullopt;
   }
 
-  const CBMC::GrowContext context = system.makeGrowContext();
+  // A cross-linked molecule is held by its links: it is regrown in place with its linked sites kept
+  // fixed (a partial regrowth whose placed set is the linked sites), with the links' terms entering
+  // the Rosenbluth weights through the tethers of the grow context. Nothing to regrow when every atom
+  // is a linked site.
+  std::optional<std::vector<std::size_t>> linkedPlacedSet{};
+  std::vector<CrossLinkTether> tethers{};
+  if (system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule))
+  {
+    linkedPlacedSet = system.crossLinkRegrowthPlacedSet(selectedComponent, selectedMolecule);
+    if (!linkedPlacedSet.has_value()) return std::nullopt;
+    tethers = system.crossLinkTethers(selectedComponent, selectedMolecule);
+  }
+  const CBMC::GrowContext context = system.makeGrowContext().withCrossLinkTethers(tethers);
+  const CBMC::FirstBeadScheme scheme =
+      linkedPlacedSet.has_value() ? CBMC::FirstBeadScheme::AlreadyPlaced : CBMC::FirstBeadScheme::Reinsertion;
+  const std::vector<std::size_t> &beadsAlreadyPlaced =
+      linkedPlacedSet.has_value() ? linkedPlacedSet.value() : CBMC::noBeadsAlreadyPlaced;
 
   // Attempt to grow the molecule using CBMC reinsertion.
   std::optional<CBMC::GrowResult> growData =
@@ -55,7 +72,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
             [&]
             {
               return CBMC::regrowMolecule(random, context, component, molecule, molecule_atoms,
-                                          {.firstBead = CBMC::FirstBeadScheme::Reinsertion});
+                                          {.firstBead = scheme, .beadsAlreadyPlaced = beadsAlreadyPlaced});
             });
 
   // If growth was unsuccessful, exit the move.
@@ -76,9 +93,10 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
       timed(system, component, move, Move::Timing::NonEwald,
             [&]
             {
-              return CBMC::retraceMolecule(
-                  random, context, component, molecule_atoms,
-                  {.firstBead = CBMC::FirstBeadScheme::Reinsertion, .storedR = growData->firstBeadStoredR});
+              return CBMC::retraceMolecule(random, context, component, molecule_atoms,
+                                           {.firstBead = scheme,
+                                            .storedR = growData->firstBeadStoredR,
+                                            .beadsAlreadyPlaced = beadsAlreadyPlaced});
             });
 
   // Compute the energy difference in the Fourier space due to Ewald summation.

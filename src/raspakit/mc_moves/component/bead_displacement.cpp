@@ -107,8 +107,9 @@ std::optional<RunningEnergy> MC_Moves::beadDisplacementMove(RandomNumber &random
   RunningEnergy internalDifference = component.intraMolecularPotentials.computeInternalEnergies(trialAtoms) -
                                      component.intraMolecularPotentials.computeInternalEnergies(molecule_atoms);
 
-  RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
-                                   ewaldFourierEnergy + internalDifference;
+  RunningEnergy energyDifference =
+      externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy +
+      internalDifference + system.crossLinkEnergyDifference(selectedComponent, selectedMolecule, trialAtoms, molecule_atoms);
 
   component.mc_moves_statistics.addConstructed(move, selectedDirection);
 

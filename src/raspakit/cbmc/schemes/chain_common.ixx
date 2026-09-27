@@ -32,8 +32,35 @@ struct StepTrialEnergy
 };
 
 /**
+ * \brief Which cross-link tethers of the context are evaluated at which step of a plan.
+ *
+ * A tether's terms depend on the positions of its site and of the site's intramolecular neighbours;
+ * they are evaluated (once) at the step that places the last of these atoms, when every position they
+ * need is known. A tether none of whose atoms is regrown is constant over the regrowth and is left out
+ * (its energy cancels between grow and retrace). The schedule is a pure function of the plan, the
+ * placed set, and the tethers, so grow and retrace evaluate every tether at the same step, as the
+ * Rosenbluth scheme requires (any partition of the energy over the steps is valid as long as it is the
+ * same for both).
+ */
+struct TetherSchedule
+{
+  /// Per step of the plan: indices into 'GrowContext::crossLinkTethers'.
+  std::vector<std::vector<std::size_t>> perStep{};
+
+  [[nodiscard]] std::span<const std::size_t> at(std::size_t step) const noexcept
+  {
+    return step < perStep.size() ? std::span<const std::size_t>(perStep[step]) : std::span<const std::size_t>{};
+  }
+};
+
+[[nodiscard]] TetherSchedule scheduleTethers(const GrowContext &context, const Component &component,
+                                             const std::vector<GrowStep> &plan);
+
+/**
  * \brief Evaluates one trial direction of a step: 'positions' (in 'step.nextBeads' order) against the
- * context's background and against the placed part of the chain.
+ * context's background and against the placed part of the chain, plus the cross-link tethers
+ * 'tethersOfStep' scheduled for this step (their energy is external: it is booked in the chain's
+ * external energies).
  *
  * std::nullopt when the trial lies in a blocked pocket or overlaps (a closed direction). The step's
  * next-beads of 'chainAtoms' are used as scratch for the intramolecular evaluation and are restored
@@ -41,7 +68,8 @@ struct StepTrialEnergy
  */
 [[nodiscard]] std::optional<StepTrialEnergy> evaluateStepTrial(const GrowContext &context, const Component &component,
                                                                const GrowStep &step, std::vector<Atom> &chainAtoms,
-                                                               std::span<const Atom> positions);
+                                                               std::span<const Atom> positions,
+                                                               std::span<const std::size_t> tethersOfStep = {});
 
 /**
  * \brief The log factor -beta u_unsampled of a step's classically not-sampled internal terms

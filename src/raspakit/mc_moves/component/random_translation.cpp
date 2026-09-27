@@ -148,8 +148,10 @@ std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &rando
   }
 
   // Get the total difference in energy
-  RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
-                                   ewaldFourierEnergy + polarizationDifference;
+  RunningEnergy energyDifference =
+      externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy +
+      polarizationDifference +
+      system.crossLinkEnergyDifference(selectedComponent, selectedMolecule, trialMolecule.second, molecule_atoms);
 
   // Update constructed move counts for the selected direction
   component.mc_moves_statistics.addConstructed(move, selectedDirection);

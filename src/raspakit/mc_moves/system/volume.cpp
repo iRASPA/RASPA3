@@ -88,6 +88,8 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
   // Sum up all energy contributions
   RunningEnergy newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
+  // Cross-links act between molecules and change with the box scaling.
+  newTotalEnergy += system.computeCrossLinkEnergy(newBox, newPositions.second);
 
   // The intra-molecular energies have not changed by the com-scaling
   newTotalEnergy.bond = oldTotalEnergy.bond;
@@ -197,6 +199,8 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
             });
 
   RunningEnergy newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
+  // Cross-links act between molecules and change with the box scaling.
+  newTotalEnergy += system.computeCrossLinkEnergy(newBox, newPositions.second);
 
   newTotalEnergy.bond = oldTotalEnergy.bond;
   newTotalEnergy.ureyBradley = oldTotalEnergy.ureyBradley;

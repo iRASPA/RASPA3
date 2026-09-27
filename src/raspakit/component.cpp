@@ -15,6 +15,7 @@ import double3x3;
 import randomnumbers;
 import archive;
 import json;
+import cross_links;
 import units;
 import skposcarparser;
 import characterset;
@@ -401,6 +402,8 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
   rigid = partition.size() == 1;
 
   computeRigidProperties();
+
+  reactiveSites = readReactiveSites(parsed_data);
 
   if (!rigid)
   {
@@ -2921,6 +2924,73 @@ std::optional<std::array<std::size_t, 2>> Component::determineEndToEndAtoms(
   return connectivityTable.graphDiameterEndpoints();
 }
 
+std::vector<ReactiveSite> Component::readReactiveSites(
+    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data) const
+{
+  std::vector<ReactiveSite> sites{};
+  if (!parsed_data.contains("ReactiveSites")) return sites;
+
+  const auto &list = parsed_data["ReactiveSites"];
+  if (!list.is_array())
+  {
+    throw std::runtime_error(
+        std::format("[Component reader]: 'ReactiveSites' must be an array, got {}\n", list.dump()));
+  }
+
+  for (const auto &item : list)
+  {
+    ReactiveSite site{};
+    try
+    {
+      if (item.is_array())
+      {
+        if (item.size() < 2 || item.size() > 3)
+        {
+          throw std::runtime_error("expected [atom, \"type\"] or [atom, \"type\", valence]");
+        }
+        site.atom = item[0].get<std::size_t>();
+        site.siteType = item[1].get<std::string>();
+        if (item.size() == 3) site.valence = item[2].get<std::size_t>();
+      }
+      else if (item.is_object())
+      {
+        site.atom = item.at("Atom").get<std::size_t>();
+        site.siteType = item.at("Type").get<std::string>();
+        if (item.contains("Valence")) site.valence = item["Valence"].get<std::size_t>();
+      }
+      else
+      {
+        throw std::runtime_error("expected an array or an object");
+      }
+    }
+    catch (std::exception const &e)
+    {
+      throw std::runtime_error(
+          std::format("[Component reader]: error in 'ReactiveSites' entry {}: {}\n", item.dump(), e.what()));
+    }
+
+    if (site.atom >= definedAtoms.size())
+    {
+      throw std::runtime_error(
+          std::format("[Component reader]: 'ReactiveSites' entry {}: atom index {} out of range (molecule has {} "
+                      "atoms)\n",
+                      item.dump(), site.atom, definedAtoms.size()));
+    }
+    if (site.valence == 0)
+    {
+      throw std::runtime_error(
+          std::format("[Component reader]: 'ReactiveSites' entry {}: the valence must be at least 1\n", item.dump()));
+    }
+    if (std::ranges::any_of(sites, [&](const ReactiveSite &other) { return other.atom == site.atom; }))
+    {
+      throw std::runtime_error(std::format(
+          "[Component reader]: 'ReactiveSites' entry {}: atom {} is listed twice\n", item.dump(), site.atom));
+    }
+    sites.push_back(site);
+  }
+  return sites;
+}
+
 std::vector<std::vector<std::size_t>> Component::readPartialReinsertionFixedAtoms(
     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
@@ -3177,6 +3247,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.lambdaGroupSwap;
   archive << c.lambdaGroupSwapCB;
 
+  archive << c.reactiveSites;
+
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
@@ -3290,6 +3362,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 
   archive >> c.lambdaGroupSwap;
   archive >> c.lambdaGroupSwapCB;
+
+  archive >> c.reactiveSites;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

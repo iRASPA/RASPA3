@@ -149,8 +149,10 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   }
 
   // get the total difference in energy
-  RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
-                                   ewaldFourierEnergy + polarizationDifference;
+  RunningEnergy energyDifference =
+      externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy +
+      polarizationDifference +
+      system.crossLinkEnergyDifference(selectedComponent, selectedMolecule, trialMolecule.second, molecule_atoms);
 
   component.mc_moves_statistics.addConstructed(move, selectedDirection);
 

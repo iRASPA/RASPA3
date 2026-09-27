@@ -436,7 +436,7 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
       system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.spanOfFrameworkAtoms(),
       system.forceField, system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z,
       system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
-      system.numberOfMoleculesPerComponent, system.framework, system.spanOfFrameworkDynamics());
+      system.numberOfMoleculesPerComponent, system.framework, system.spanOfFrameworkDynamics(), &system.crossLinks);
   Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
                                                         system.spanOfMoleculeDynamics(), system.components,
                                                         system.spanOfGroupData(), system.framework,
@@ -513,7 +513,8 @@ RunningEnergy molecularDynamicsStep(System& system)
       system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
       system.interpolationGrids, system.numberOfMoleculesPerComponent, system.framework,
-      system.spanOfFrameworkDynamics(), system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+      system.spanOfFrameworkDynamics(), system.spanOfGroupData(), system.spanOfFrameworkGroupData(),
+      &system.crossLinks);
 }
 
 MolecularDynamics::MolecularDynamics() : random(std::nullopt) {};
@@ -696,6 +697,7 @@ void MolecularDynamics::setup()
       std::print(stream, "{}", system.forceField.printForceFieldStatus());
       std::print(stream, "{}", system.writeComponentStatus());
       std::print(stream, "{}", system.reactions.printStatus());
+      std::print(stream, "{}", system.crossLinks.printStatus());
 
       ++system_id;
     }

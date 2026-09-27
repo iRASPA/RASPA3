@@ -43,6 +43,9 @@ std::optional<double> System::frameworkMass() const
 void System::insertFractionalMoleculeAtIndex(std::size_t selectedComponent, std::size_t moleculeIndex,
                                              [[maybe_unused]] const Molecule& molecule, std::vector<Atom> atoms)
 {
+  // Keep the cross-link sites of the molecules that shift up by one index consistent.
+  crossLinks.moleculeInserted(selectedComponent, moleculeIndex);
+
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, moleculeIndex);
   std::vector<Atom>::difference_type atomOffset = iterator - atomData.cbegin();
   atomData.insert(iterator, atoms.begin(), atoms.end());
@@ -211,6 +214,9 @@ void System::deleteFractionalMolecule(std::size_t selectedComponent, std::size_t
     removeAtomFromTailCorrectionCounts(atom);
   }
 
+  // A linked molecule can not be removed (the moves guard against it); renumber the sites above it.
+  crossLinks.moleculeDeleted(selectedComponent, selectedMolecule);
+
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, selectedMolecule);
   std::vector<Atom>::difference_type atomOffset = iterator - atomData.cbegin();
   atomData.erase(iterator, iterator + static_cast<std::vector<Atom>::difference_type>(molecule.size()));
@@ -248,6 +254,9 @@ void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedM
     totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] -= 1;
     removeAtomFromTailCorrectionCounts(atom);
   }
+
+  // A linked molecule can not be removed (the moves guard against it); renumber the sites above it.
+  crossLinks.moleculeDeleted(selectedComponent, selectedMolecule);
 
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, selectedMolecule);
   std::vector<Atom>::difference_type atomOffset = iterator - atomData.cbegin();
