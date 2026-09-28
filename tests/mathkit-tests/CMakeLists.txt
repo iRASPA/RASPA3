@@ -3,6 +3,7 @@ add_executable(unit_tests_mathkit
   double3.cpp
   symmetric_eigensolver.cpp
   random.cpp
+  random_archive.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_mathkit)

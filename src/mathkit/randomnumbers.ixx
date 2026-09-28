@@ -28,11 +28,22 @@ export struct RandomNumber
     return (mt == rhs.mt) && (seed == rhs.seed) && (count == rhs.count);
   }
 
+  /// Marker that starts the versioned archive format (distinguishes it from the legacy 'seed, count' format).
+  static constexpr std::uint64_t archiveMarker{0x52414E444F4D2121};  // "RANDOM!!"
+  /// Archive format version (1: seed, count, and the engine state as its standard textual representation).
+  static constexpr std::uint64_t versionNumber{1};
+
   std::mt19937_64 mt;
   std::size_t seed{1400};
-  std::size_t count{0};
+  std::size_t count{0};  ///< Number of draws since seeding (diagnostic; the restart no longer replays it).
   std::uniform_real_distribution<double> uniformDistribution;
-  std::normal_distribution<double> normalDistribution;
+  /// mutable: writing a restart file resets the cached Box-Muller value (see the archive operator).
+  mutable std::normal_distribution<double> normalDistribution;
+
+  /// Standard textual representation of the engine state (portable across standard libraries and platforms).
+  std::string engineState() const;
+  /// Restores the engine from its textual representation.
+  void setEngineState(const std::string &state);
 
   inline double uniform()
   {

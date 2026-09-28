@@ -111,18 +111,76 @@ simd_quatd RandomNumber::smallRandomQuaternion(double angleRange)
   return simd_quatd::fromAxisAngle(angle, randomDirection).normalized();
 }
 
+std::string RandomNumber::engineState() const
+{
+  // The textual representation of std::mt19937_64 is fixed by the standard ([rand.eng.mers]): the 312 state words
+  // X_{i-n}..X_{i-1} as decimal integers separated by white space. It is therefore portable across standard
+  // libraries, compilers and platforms, unlike the raw memory layout of the engine.
+  std::ostringstream stream;
+  stream << mt;
+  return stream.str();
+}
+
+void RandomNumber::setEngineState(const std::string& state)
+{
+  std::istringstream stream(state);
+  stream >> mt;
+  if (stream.fail())
+  {
+    throw std::runtime_error("[RandomNumber]: malformed random-number engine state in restart file\n");
+  }
+}
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RandomNumber &r)
 {
+  // The pre-version format wrote 'seed, count' and was restored by replaying 'count' draws with discard(),
+  // which is O(count) and took tens of minutes for long runs. The versioned format stores the engine state
+  // itself. The marker is a value no seed can plausibly take (seeds come from std::random_device, 32 bits,
+  // or from the input file), so a reader can tell both formats apart without a version field in the
+  // enclosing objects.
+  archive << RandomNumber::archiveMarker;
+  archive << RandomNumber::versionNumber;
   archive << r.seed;
   archive << r.count;
+  archive << r.engineState();
+
+  // The normal distribution caches the second value of each Box-Muller pair. That cached value cannot be
+  // stored portably; dropping it here in the live run as well keeps an uninterrupted run and a restarted
+  // run on the same random sequence from this point onwards.
+  r.normalDistribution.reset();
   return archive;
 }
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RandomNumber &r)
 {
+  std::uint64_t first;
+  archive >> first;
+
+  if (first != RandomNumber::archiveMarker)
+  {
+    // legacy format: 'first' is the seed, followed by the draw count; replay the sequence
+    r.seed = first;
+    archive >> r.count;
+    r.mt = std::mt19937_64(r.seed);
+    r.mt.discard(r.count);
+    r.normalDistribution.reset();
+    return archive;
+  }
+
+  std::uint64_t versionNumber;
+  archive >> versionNumber;
+  if (versionNumber > RandomNumber::versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'RandomNumber' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
   archive >> r.seed;
   archive >> r.count;
-  r.mt = std::mt19937_64(r.seed);
-  r.mt.discard(r.count);
+  std::string state;
+  archive >> state;
+  r.setEngineState(state);
+  r.normalDistribution.reset();
   return archive;
 }
