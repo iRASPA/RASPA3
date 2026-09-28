@@ -943,7 +943,9 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
         {
           std::ostream stream(streams[system_id].rdbuf());
           std::string status_line{std::format("Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles)};
-          std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
+          std::print(stream, "{}",
+                     system.writeProductionStatusReportMC(status_line,
+                                                          std::make_pair(currentCycle, numberOfProductionCycles)));
           std::flush(stream);
         }
 

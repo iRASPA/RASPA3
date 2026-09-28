@@ -18,7 +18,7 @@ export template <typename T>
  */
 struct MoveStatistics
 {
-  std::uint64_t versionNumber{1};  ///< Version number for serialization purposes.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization purposes (2: reported snapshot).
 
   bool operator==(MoveStatistics<T> const &) const = default;
 
@@ -35,6 +35,13 @@ struct MoveStatistics
   T upperLimit{};
   bool optimize{true};
 
+  // Snapshot of the cumulative counters at the previous periodic status report; the difference with
+  // the current totals is the acceptance 'since the last report'. Marking a report is bookkeeping about
+  // the output, not a change of the statistics, hence mutable so the const report writers can update it.
+  mutable T reportedCounts{};       ///< totalCounts at the previous status report.
+  mutable T reportedConstructed{};  ///< totalConstructed at the previous status report.
+  mutable T reportedAccepted{};     ///< totalAccepted at the previous status report.
+
   /**
    * \brief Resets the statistical counters.
    *
@@ -49,7 +56,25 @@ struct MoveStatistics
     totalCounts = T{};
     totalConstructed = T{};
     totalAccepted = T{};
+    reportedCounts = T{};
+    reportedConstructed = T{};
+    reportedAccepted = T{};
   }
+
+  /// Records the current cumulative counters as the reference of the next 'since last report' window.
+  void markReported() const
+  {
+    reportedCounts = totalCounts;
+    reportedConstructed = totalConstructed;
+    reportedAccepted = totalAccepted;
+  }
+
+  /// Move attempts since the previous status report.
+  T windowCounts() const { return totalCounts - reportedCounts; }
+  /// Constructed moves since the previous status report.
+  T windowConstructed() const { return totalConstructed - reportedConstructed; }
+  /// Accepted moves since the previous status report.
+  T windowAccepted() const { return totalAccepted - reportedAccepted; }
 
   /**
    * \brief Optimizes the acceptance rate of moves.
@@ -90,6 +115,9 @@ struct MoveStatistics
     totalCounts += b.totalCounts;
     totalConstructed += b.totalConstructed;
     totalAccepted += b.totalAccepted;
+    reportedCounts += b.reportedCounts;
+    reportedConstructed += b.reportedConstructed;
+    reportedAccepted += b.reportedAccepted;
     maxChange = 0.5 * (maxChange + b.maxChange);
     targetAcceptance = 0.5 * (targetAcceptance + b.targetAcceptance);
     lowerLimit = 0.5 * (lowerLimit + b.lowerLimit);
@@ -116,6 +144,9 @@ inline MoveStatistics<T> operator+(const MoveStatistics<T> &a, const MoveStatist
   c.totalCounts = a.totalCounts + b.totalCounts;
   c.totalConstructed = a.totalConstructed + b.totalConstructed;
   c.totalAccepted = a.totalAccepted + b.totalAccepted;
+  c.reportedCounts = a.reportedCounts + b.reportedCounts;
+  c.reportedConstructed = a.reportedConstructed + b.reportedConstructed;
+  c.reportedAccepted = a.reportedAccepted + b.reportedAccepted;
   c.maxChange = 0.5 * (a.maxChange + b.maxChange);
   c.targetAcceptance = 0.5 * (a.targetAcceptance + b.targetAcceptance);
   c.lowerLimit = 0.5 * (a.lowerLimit + b.lowerLimit);
@@ -141,6 +172,10 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoveSt
   archive << m.lowerLimit;
   archive << m.upperLimit;
   archive << m.optimize;
+
+  archive << m.reportedCounts;
+  archive << m.reportedConstructed;
+  archive << m.reportedAccepted;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -173,6 +208,20 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoveStatisti
   archive >> m.lowerLimit;
   archive >> m.upperLimit;
   archive >> m.optimize;
+
+  if (versionNumber >= 2)
+  {
+    archive >> m.reportedCounts;
+    archive >> m.reportedConstructed;
+    archive >> m.reportedAccepted;
+  }
+  else
+  {
+    // older restart file: the first report after the restart covers the whole history so far
+    m.reportedCounts = T{};
+    m.reportedConstructed = T{};
+    m.reportedAccepted = T{};
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

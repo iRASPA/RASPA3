@@ -352,7 +352,9 @@ void ThermodynamicIntegration::production()
 
         std::ostream stream(streams[system_id].rdbuf());
         std::string status_line{std::format("Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles)};
-        std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
+        std::print(
+            stream, "{}",
+            system.writeProductionStatusReportMC(status_line, std::make_pair(currentCycle, numberOfProductionCycles)));
         std::flush(stream);
 
         ++system_id;

@@ -638,7 +638,9 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
                   case SimulationStage::Production:
                   {
                     std::string status_line = std::format("Current cycle: {} out of {}\n", cycle, numberOfCycles);
-                    std::print(replicaStream, "{}", system.writeProductionStatusReportMC(status_line));
+                    std::print(
+                        replicaStream, "{}",
+                        system.writeProductionStatusReportMC(status_line, std::make_pair(cycle, numberOfCycles)));
                     break;
                   }
                   default:

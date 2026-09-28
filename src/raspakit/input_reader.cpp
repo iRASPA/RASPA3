@@ -847,6 +847,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   }
   minimizationOptions.printEvery = printEvery;
 
+  if (parsed_data.contains("PrintMoveStatistics"))
+  {
+    if (!parsed_data["PrintMoveStatistics"].is_boolean())
+    {
+      throw std::runtime_error("[Input reader]: PrintMoveStatistics must be a boolean (true/false)\n");
+    }
+    printMoveStatistics = parsed_data["PrintMoveStatistics"].get<bool>();
+  }
+
   if (parsed_data.contains("MaximumNumberOfMinimizationSteps"))
   {
     if (!parsed_data["MaximumNumberOfMinimizationSteps"].is_number_unsigned())
@@ -3569,6 +3578,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   // Post-compute
   // ========================================================
 
+  for (System& system : systems)
+  {
+    system.printMoveStatistics = printMoveStatistics;
+  }
+
   // for (std::size_t i = 0uz; i < systems.size(); ++i)
   //{
   //   systems[i].maxIsothermTerms = 0uz;
@@ -4115,6 +4129,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "NumberOfInitializationCycles",
     "NumberOfEquilibrationCycles",
     "PrintEvery",
+    "PrintMoveStatistics",
     "MaximumNumberOfMinimizationSteps",
     "MaximumStepLength",
     "MaximumCellStepLength",

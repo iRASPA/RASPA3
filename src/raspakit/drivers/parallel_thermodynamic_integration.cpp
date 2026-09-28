@@ -463,7 +463,9 @@ void ParallelThermodynamicIntegration::runStage(SimulationStage stage, std::size
                     std::string status_line =
                         std::format("Current cycle: {} out of {} (currently at lambda-bin {})\n", cycle,
                                     numberOfCycles, system.components[tiComponentId].fixedLambdaBin.value());
-                    std::print(replicaStream, "{}", system.writeProductionStatusReportMC(status_line));
+                    std::print(
+                        replicaStream, "{}",
+                        system.writeProductionStatusReportMC(status_line, std::make_pair(cycle, numberOfCycles)));
                     break;
                   }
                   default:

@@ -601,11 +601,32 @@ export struct System
   std::string writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
   std::string writeEquilibrationStatusReportMC(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
   std::string writeEquilibrationStatusReportMD(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
-  std::string writeProductionStatusReportMC(const std::string& statusLine) const;
+  /// Production status report; 'progress' = (current cycle, number of cycles) enables the rate/ETA line.
+  std::string writeProductionStatusReportMC(
+      const std::string& statusLine, std::optional<std::pair<std::size_t, std::size_t>> progress = std::nullopt) const;
   std::string writeProductionStatusReportMD(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
   std::string writeSystemStatus() const;
   std::string writeComponentStatus() const;
   std::string writeMCMoveStatistics() const;
+
+  /// Whether the periodic status reports include the compact move-statistics table ('PrintMoveStatistics').
+  bool printMoveStatistics{true};
+
+  /// Cycle and wall-clock time of the previous periodic status report (for the rate/ETA line).
+  mutable std::optional<std::pair<std::size_t, std::chrono::steady_clock::time_point>> previousStatusReport;
+
+  /**
+   * \brief Compact move-statistics table for the periodic status reports.
+   *
+   * One line per Monte Carlo move (per component and for the system moves) with the attempts and
+   * acceptance since the previous report and cumulative, the current maximum change, and the share of
+   * the move CPU time. Moves with at least 1000 attempts and no acceptance are flagged. Marks the
+   * statistics as reported (start of the next window). Empty when there are no moves.
+   */
+  std::string writeMoveStatisticsSummary() const;
+
+  /// Elapsed time since the previous report, cycle rate, and estimated time to the end of the stage.
+  std::string writeProgressLine(std::size_t currentCycle, std::size_t numberOfCycles) const;
 
   nlohmann::json jsonSystemStatus() const;
   nlohmann::json jsonComponentStatus() const;

@@ -680,7 +680,24 @@ reported separately at the end of the simulation.
 -   `"PrintEvery" : integer`\
     Prints the loadings (when a framework is present) and energies every `int`
     cycles. For Molecular Dynamics, quantities such as energy conservation and
-    the stress are also reported. Default: `5000`.
+    the stress are also reported. Every status report starts with a progress
+    line (wall time since the previous report, cycles per second, and the
+    estimated time to the end of the current stage). Default: `5000`.
+
+-   `"PrintMoveStatistics" : boolean`\
+    Whether the periodic Monte Carlo status reports include a compact table of
+    the move statistics: one line per move and component with the number of
+    attempts and the acceptance since the previous report and cumulative, the
+    current maximum change of the adaptive moves, and the share of the CPU
+    time (the remainder, property sampling and energy/pressure computation, is
+    listed as the last line). Widom insertions have no acceptance and show `-`.
+    A move with at least 1000 attempts and no acceptance is flagged
+    (`<-- never accepted`); a CBMC-type move whose trial growth fails for a
+    large fraction of the attempts shows the constructed fraction. The
+    acceptance since the previous report reveals a change of regime (a
+    collapsing chain, a filling pore) that the cumulative acceptance averages
+    out; the CPU share exposes moves that cost much and contribute nothing.
+    Default: `true`.
 
 ### Parameter tuning <a name="parameter-tuning"></a>
 

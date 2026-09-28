@@ -95,6 +95,11 @@ std::string System::writePreInitializationStatusReport(std::size_t currentCycle,
 
   std::print(stream, "Pre-initialization: Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
   std::print(stream, "===============================================================================\n\n");
+  {
+    const std::string progressLine = writeProgressLine(currentCycle, numberOfProductionCycles);
+    if (!progressLine.empty()) std::print(stream, "{}\n", progressLine);
+  }
+  std::print(stream, "{}", writeMoveStatisticsSummary());
 
   std::print(stream, "{}\n", simulationBox.printStatus());
   std::print(stream, "Net charge: {:12.8f}\n", netCharge);
@@ -133,6 +138,11 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
 
   std::print(stream, "Initialization: Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
   std::print(stream, "===============================================================================\n\n");
+  {
+    const std::string progressLine = writeProgressLine(currentCycle, numberOfProductionCycles);
+    if (!progressLine.empty()) std::print(stream, "{}\n", progressLine);
+  }
+  std::print(stream, "{}", writeMoveStatisticsSummary());
 
   std::print(stream, "{}\n", simulationBox.printStatus());
   std::print(stream, "Net charge: {:12.8f}\n", netCharge);
@@ -213,6 +223,11 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
 
   std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
   std::print(stream, "===============================================================================\n\n");
+  {
+    const std::string progressLine = writeProgressLine(currentCycle, numberOfProductionCycles);
+    if (!progressLine.empty()) std::print(stream, "{}\n", progressLine);
+  }
+  std::print(stream, "{}", writeMoveStatisticsSummary());
 
   std::print(stream, "{}\n", simulationBox.printStatus());
   std::print(stream, "Net charge: {:12.8f}\n", netCharge);
@@ -295,6 +310,10 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
 
   std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
   std::print(stream, "===============================================================================\n\n");
+  {
+    const std::string progressLine = writeProgressLine(currentCycle, numberOfProductionCycles);
+    if (!progressLine.empty()) std::print(stream, "{}\n", progressLine);
+  }
 
   std::print(stream, "{}\n", simulationBox.printStatus());
   double3 linear_momentum = Integrators::computeLinearMomentum(moleculeData);
@@ -410,12 +429,197 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   return stream.str();
 }
 
-std::string System::writeProductionStatusReportMC(const std::string& statusLine) const
+namespace
+{
+// one row of the compact move-statistics table, summed over the directions of a move
+struct MoveSummaryRow
+{
+  double windowAttempts{};
+  double windowAccepted{};
+  double totalAttempts{};
+  double totalAccepted{};
+  double totalConstructed{};
+  std::size_t allCounts{};
+  std::string maxChange;
+};
+
+double sumDirections(double value) { return value; }
+double sumDirections(const double3& value) { return value.x + value.y + value.z; }
+
+std::string formatMaxChange(const MoveStatistics<double>& s, bool hasStep)
+{
+  return hasStep ? std::format("{:.4g}", s.maxChange) : std::string("-");
+}
+
+std::string formatMaxChange(const MoveStatistics<double3>& s, bool hasStep)
+{
+  if (!hasStep) return "-";
+  // show only the directions that are in use (pinned or unused channels have no attempts)
+  std::string text;
+  for (std::size_t direction = 0; direction < 3; ++direction)
+  {
+    if (s.totalCounts[direction] > 0.0 || (text.empty() && direction == 2))
+    {
+      if (!text.empty()) text += ' ';
+      text += std::format("{:.4g}", s.maxChange[direction]);
+    }
+  }
+  return text.empty() ? std::format("{:.4g}", s.maxChange.x) : text;
+}
+
+template <typename T>
+MoveSummaryRow makeRow(const MoveStatistics<T>& s)
+{
+  MoveSummaryRow row;
+  row.windowAttempts = sumDirections(s.windowCounts());
+  row.windowAccepted = sumDirections(s.windowAccepted());
+  row.totalAttempts = sumDirections(s.totalCounts);
+  row.totalAccepted = sumDirections(s.totalAccepted);
+  row.totalConstructed = sumDirections(s.totalConstructed);
+  row.allCounts = s.allCounts;
+  const bool hasStep = s.optimize && sumDirections(s.lowerLimit) != sumDirections(s.upperLimit);
+  row.maxChange = formatMaxChange(s, hasStep);
+  return row;
+}
+
+void appendMoveRows(std::ostringstream& stream, const std::string& owner, const MCMoveStatistics& statistics,
+                    const MCMoveCpuTime& cputime, std::chrono::duration<double> totalCpuTime)
+{
+  constexpr std::size_t warnAfterAttempts = 1000;
+  for (std::size_t i = 0; i != statistics.stats.size(); ++i)
+  {
+    const MoveSummaryRow row = std::visit([](auto&& s) { return makeRow(s); }, statistics.stats[i]);
+    if (row.allCounts == 0uz && row.totalAttempts == 0.0) continue;
+
+    // Widom insertions are sampled, not accepted or rejected: no acceptance ratio exists
+    const Move::Types moveType = static_cast<Move::Types>(i);
+    const bool hasAcceptance =
+        moveType != Move::Types::Widom && moveType != Move::Types::WidomCFCMC && moveType != Move::Types::WidomCBCFCMC;
+
+    // (no NaN sentinel: the code is compiled with -ffast-math, which makes std::isnan unreliable)
+    const auto acceptanceText = [hasAcceptance](double attempts, double accepted) -> std::string
+    {
+      if (!hasAcceptance || attempts <= 0.0) return "     -";
+      return std::format("{:6.1f}", 100.0 * accepted / attempts);
+    };
+    const double cpuShare =
+        totalCpuTime.count() > 0.0
+            ? 100.0 * cputime.timingMap[i][std::to_underlying(Move::Timing::Total)].count() / totalCpuTime.count()
+            : 0.0;
+
+    const std::string windowAcceptanceText = acceptanceText(row.windowAttempts, row.windowAccepted);
+    const std::string totalAcceptanceText = acceptanceText(row.totalAttempts, row.totalAccepted);
+
+    std::print(stream, "    {:<26} {:<14} {:10.0f} {} | {:11.0f} {} | {:<20} | {:6.1f}", Move::moveNames[i], owner,
+               row.windowAttempts, windowAcceptanceText, row.totalAttempts, totalAcceptanceText, row.maxChange,
+               cpuShare);
+
+    if (hasAcceptance && row.totalAttempts >= static_cast<double>(warnAfterAttempts) && row.totalAccepted == 0.0)
+    {
+      std::print(stream, "  <-- never accepted");
+    }
+    else if (row.totalAttempts >= static_cast<double>(warnAfterAttempts) && row.totalConstructed > 0.0 &&
+             row.totalConstructed < 0.9 * row.totalAttempts)
+    {
+      // CBMC-type moves: trial growth failed for the missing fraction (never reached the Metropolis test)
+      std::print(stream, "  ({:.0f} % constructed)", 100.0 * row.totalConstructed / row.totalAttempts);
+    }
+    std::print(stream, "\n");
+  }
+}
+}  // namespace
+
+std::string System::writeMoveStatisticsSummary() const
+{
+  if (!printMoveStatistics) return {};
+
+  // denominator of the CPU share: the system timings already aggregate the component moves (every component move
+  // is booked in both), plus the time spent on property sampling and energy/pressure computation, which is
+  // reported as one 'other' line below the table
+  const std::chrono::duration<double> totalCpuTime = mc_moves_cputime.total();
+  const std::chrono::duration<double> otherCpuTime =
+      mc_moves_cputime.propertySampling + mc_moves_cputime.energyPressureComputation;
+
+  std::ostringstream body;
+  appendMoveRows(body, "system", mc_moves_statistics, mc_moves_cputime, totalCpuTime);
+  for (const Component& component : components)
+  {
+    appendMoveRows(body, component.name, component.mc_moves_statistics, component.mc_moves_cputime, totalCpuTime);
+  }
+
+  // start the next 'since last report' window
+  for (const auto& stat : mc_moves_statistics.stats)
+  {
+    std::visit([](auto&& s) { s.markReported(); }, stat);
+  }
+  for (const Component& component : components)
+  {
+    for (const auto& stat : component.mc_moves_statistics.stats)
+    {
+      std::visit([](auto&& s) { s.markReported(); }, stat);
+    }
+  }
+
+  if (body.str().empty()) return {};
+
+  std::ostringstream stream;
+  std::print(stream, "{:<46}{:>17} | {:^18} | {:20} | {:>6}\n", "Move statistics", "since last report", "cumulative",
+             "", "CPU");
+  std::print(stream, "    {:<26} {:<14} {:>10} {:>6} | {:>11} {:>6} | {:<20} | {:>6}\n", "move", "component",
+             "attempts", "acc.%", "attempts", "acc.%", "max-change", "[%]");
+  std::print(stream, "    {:-<112}\n", "");
+  std::print(stream, "{}", body.str());
+  if (totalCpuTime.count() > 0.0)
+  {
+    std::print(stream, "    {:<41} {:>10} {:>6} | {:>11} {:>6} | {:<20} | {:6.1f}\n",
+               "property sampling, energy/pressure", "", "", "", "", "",
+               100.0 * otherCpuTime.count() / totalCpuTime.count());
+  }
+  std::print(stream, "\n");
+  return stream.str();
+}
+
+std::string System::writeProgressLine(std::size_t currentCycle, std::size_t numberOfCycles) const
+{
+  const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+  std::string text;
+
+  if (previousStatusReport.has_value() && currentCycle > previousStatusReport->first)
+  {
+    const double elapsedSeconds = std::chrono::duration<double>(now - previousStatusReport->second).count();
+    const double cycles = static_cast<double>(currentCycle - previousStatusReport->first);
+    if (elapsedSeconds > 0.0)
+    {
+      const double rate = cycles / elapsedSeconds;
+      const double remainingSeconds =
+          currentCycle < numberOfCycles ? static_cast<double>(numberOfCycles - currentCycle) / rate : 0.0;
+      const auto hms = [](double seconds)
+      {
+        const std::size_t total = static_cast<std::size_t>(std::llround(seconds));
+        return std::format("{:02d}:{:02d}:{:02d}", total / 3600uz, (total / 60uz) % 60uz, total % 60uz);
+      };
+      text = std::format("Progress: {:.2f} s since last report, {:.3g} cycles/s, estimated time to end of stage {}\n",
+                         elapsedSeconds, rate, hms(remainingSeconds));
+    }
+  }
+
+  previousStatusReport = std::make_pair(currentCycle, now);
+  return text;
+}
+
+std::string System::writeProductionStatusReportMC(const std::string& statusLine,
+                                                  std::optional<std::pair<std::size_t, std::size_t>> progress) const
 {
   std::ostringstream stream;
 
   std::print(stream, "{}", statusLine);
   std::print(stream, "===============================================================================\n\n");
+  if (progress.has_value())
+  {
+    const std::string progressLine = writeProgressLine(progress->first, progress->second);
+    if (!progressLine.empty()) std::print(stream, "{}\n", progressLine);
+  }
+  std::print(stream, "{}", writeMoveStatisticsSummary());
 
   auto [simulation_box, average_simulation_box] = averageSimulationBox.average();
   std::print(stream, "{}\n", simulationBox.printStatus(simulation_box, average_simulation_box));
@@ -624,6 +828,10 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
 
   std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
   std::print(stream, "===============================================================================\n\n");
+  {
+    const std::string progressLine = writeProgressLine(currentCycle, numberOfProductionCycles);
+    if (!progressLine.empty()) std::print(stream, "{}\n", progressLine);
+  }
 
   std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.average();
   std::print(stream, "{}", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
