@@ -1035,20 +1035,48 @@ TEST(MC_GIBBS_DRIFT, parallel_tempering_keeps_framework_bundle_fixed)
   expectNoEnergyDrift(systemB);
 }
 
-TEST(MC_GIBBS_DRIFT, parallel_tempering_rejects_flexible_components_before_random_draw)
+// Flexible molecules travel with the configuration: their conformation is in the atom positions and
+// their topology is in the component, the same in every replica. Equal temperatures and pressures
+// make the log-acceptance zero (the activities cancel in the molecule-count term), so the swap is
+// certain and can be verified outright.
+TEST(MC_GIBBS_DRIFT, parallel_tempering_swaps_flexible_components)
 {
   const ForceField forceField = makeAlkaneForceField();
   const Component propane = makeAlkaneFromExample(forceField, 0, "propane", MCMoveProbabilities{});
   ASSERT_FALSE(propane.rigid);
   System systemA(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {propane}, {}, {2}, 5);
-  System systemB(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {propane}, {}, {2}, 5);
+  System systemB(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {propane}, {}, {3}, 5);
+  systemA.runningEnergies = systemA.computeTotalEnergies();
+  systemA.trialEik = systemA.storedEik;
+  systemB.runningEnergies = systemB.computeTotalEnergies();
+  systemB.trialEik = systemB.storedEik;
+
+  const std::vector<Atom> atomsA = systemA.atomData;
+  const std::vector<Atom> atomsB = systemB.atomData;
+  ASSERT_EQ(atomsA.size(), 2uz * propane.atoms.size());
+  ASSERT_EQ(atomsB.size(), 3uz * propane.atoms.size());
 
   RandomNumber random(15);
-  const std::size_t drawsBefore = random.count;
-  EXPECT_FALSE(MC_Moves::ParallelTemperingSwap(random, systemA, systemB).has_value());
-  EXPECT_EQ(random.count, drawsBefore);
-  EXPECT_EQ(systemA.numberOfIntegerMoleculesPerComponent[0], 2u);
+  const auto energies = MC_Moves::ParallelTemperingSwap(random, systemA, systemB);
+  ASSERT_TRUE(energies.has_value());
+
+  ASSERT_EQ(systemA.atomData.size(), atomsB.size());
+  ASSERT_EQ(systemB.atomData.size(), atomsA.size());
+  for (std::size_t i = 0; i < atomsB.size(); ++i)
+  {
+    EXPECT_EQ(systemA.atomData[i].position, atomsB[i].position);
+  }
+  for (std::size_t i = 0; i < atomsA.size(); ++i)
+  {
+    EXPECT_EQ(systemB.atomData[i].position, atomsA[i].position);
+  }
+  EXPECT_EQ(systemA.numberOfIntegerMoleculesPerComponent[0], 3u);
   EXPECT_EQ(systemB.numberOfIntegerMoleculesPerComponent[0], 2u);
+  // the intramolecular terms are in the running energies and must follow the conformations
+  EXPECT_NEAR(systemA.runningEnergies.potentialEnergy(), energies->first.potentialEnergy(), 1e-9);
+  EXPECT_NEAR(systemB.runningEnergies.potentialEnergy(), energies->second.potentialEnergy(), 1e-9);
+  expectNoEnergyDrift(systemA);
+  expectNoEnergyDrift(systemB);
 }
 
 TEST(MC_GIBBS_DRIFT, parallel_tempering_rejects_fractional_state_before_random_draw)

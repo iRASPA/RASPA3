@@ -17,8 +17,10 @@ export namespace MC_Moves
  *
  * Attempts to swap the configurations of two systems in a parallel tempering Monte Carlo simulation.
  * The swap is accepted or rejected based on the Metropolis criterion, taking into account differences
- * in temperature, pressure, potential energy, and, for matching rigid CFCMC replicas, the replica-local
- * lambda (and TMMC) biases at the incoming lambda coordinates.
+ * in temperature, pressure, potential energy, and, for matching CFCMC replicas, the replica-local
+ * lambda (and TMMC) biases at the incoming lambda coordinates. Rigid, flexible and semi-flexible
+ * components all travel with the configuration (positions, rigid-body state and cross-links), the
+ * topology being the same component definition in every replica.
  *
  * Reference: "Hyper-parallel tempering Monte Carlo: Application to the Lennard-Jones fluid and the
  * restricted primitive model", G. Yan and J.J. de Pablo, JCP, 111(21): 9509-9516, 1999.

@@ -135,12 +135,18 @@ bool compatibleMobileTopology(const System& systemA, const System& systemB)
     }
   }
 
+  // Flexible components travel with the configuration like rigid ones: their conformation is in the
+  // atom positions, their topology (connectivity, bonded terms, rigid fragments) is in the component,
+  // which is the same definition in every replica, and their cross-links are swapped alongside. What
+  // stays with the replica is only what the replica derived for its own temperature (growth plans,
+  // recoil references, ideal-gas reservoirs), which is bias, not state.
   for (std::size_t componentId = 0; componentId < systemA.components.size(); ++componentId)
   {
     const Component& componentA = systemA.components[componentId];
     const Component& componentB = systemB.components[componentId];
-    if (!componentA.rigid || !componentB.rigid || componentA.name != componentB.name ||
-        componentA.atoms.size() != componentB.atoms.size())
+    if (componentA.rigid != componentB.rigid || componentA.name != componentB.name ||
+        componentA.atoms.size() != componentB.atoms.size() ||
+        componentA.numberOfRigidFragments() != componentB.numberOfRigidFragments())
     {
       return false;
     }
@@ -313,6 +319,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
     swapMobileTail(systemA.atomDynamics, systemA.numberOfFrameworkAtoms, systemB.atomDynamics,
                    systemB.numberOfFrameworkAtoms);
     std::swap(systemA.moleculeData, systemB.moleculeData);
+    // rigid-body state of semi-flexible molecules: derived from the positions, so it moves with them
+    std::swap(systemA.groupData, systemB.groupData);
     if (!systemA.framework.has_value())
     {
       std::swap(systemA.simulationBox, systemB.simulationBox);
