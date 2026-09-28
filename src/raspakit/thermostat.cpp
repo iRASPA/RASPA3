@@ -297,6 +297,12 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Thermo
   archive << t.numberOfYoshidaSuzukiSteps;
   archive << t.timeScaleParameterThermostat;
 
+  // version 2: the particle degrees of freedom the chain acts on (NoseHooverNVT and getEnergy are
+  // gated on them; without these a resumed thermostat is silently inactive)
+  archive << t.translationalDegreesOfFreedom;
+  archive << t.rotationalDegreesOfFreedom;
+  archive << t.translationalCenterOfMassConstraint;
+
   archive << t.thermostatForceTranslation;
   archive << t.thermostatVelocityTranslation;
   archive << t.thermostatPositionTranslation;
@@ -323,7 +329,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Thermostat &
   if (versionNumber > t.versionNumber)
   {
     const std::source_location &location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'EquationOfState' at line {} in file {}\n",
+    throw std::runtime_error(std::format("Invalid version reading 'Thermostat' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }
 
@@ -335,6 +341,28 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Thermostat &
   archive >> t.numberOfRespaSteps;
   archive >> t.numberOfYoshidaSuzukiSteps;
   archive >> t.timeScaleParameterThermostat;
+
+  if (versionNumber >= 2)
+  {
+    archive >> t.translationalDegreesOfFreedom;
+    archive >> t.rotationalDegreesOfFreedom;
+    archive >> t.translationalCenterOfMassConstraint;
+  }
+  else
+  {
+    // version-1 files did not store the particle degrees of freedom; recover them from the archived
+    // chain targets (k_B T (N_f - N_c) and k_B T N_rot; the center-of-mass constraint is folded in)
+    const double kT = Units::KB * t.temperature;
+    t.translationalCenterOfMassConstraint = 0;
+    t.translationalDegreesOfFreedom =
+        (kT > 0.0 && !t.thermostatDegreesOfFreedomTranslation.empty())
+            ? static_cast<std::size_t>(std::llround(t.thermostatDegreesOfFreedomTranslation.front() / kT))
+            : 0;
+    t.rotationalDegreesOfFreedom =
+        (kT > 0.0 && !t.thermostatDegreesOfFreedomRotation.empty())
+            ? static_cast<std::size_t>(std::llround(t.thermostatDegreesOfFreedomRotation.front() / kT))
+            : 0;
+  }
 
   archive >> t.thermostatForceTranslation;
   archive >> t.thermostatVelocityTranslation;

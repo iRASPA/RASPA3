@@ -187,7 +187,14 @@ reported separately at the end of the simulation.
     `output/output.parallel_tempering.txt` (and `.json`) holds the swap
     statistics, including a per-pair acceptance table (low acceptance for a
     particular pair marks a bottleneck in the ladder; use a denser ladder
-    there). The optional property files (RDFs, density grids, energy and
+    there) and the replica round-trip statistics: the number of round trips
+    (a configuration returning to the coldest replica after having visited the
+    hottest one), the mean round-trip time, the round trips of every
+    individual configuration, and the up-moving fraction \f$f(T)\f$ per
+    temperature (Katzgraber et al. 2006; linear from 1 to 0 for an optimal
+    ladder, a plateau marks a bottleneck). The round-trip count, not the swap
+    acceptance, is the measure of how well the configurations actually mix
+    through the ladder. The optional property files (RDFs, density grids, energy and
     molecule-count histograms, molecule properties, movies, and the
     number-of-molecules/volume evolution files) are written per replica, keyed
     by the replica index (`.s{k}`). Restart files (JSON and binary) are not
@@ -199,6 +206,64 @@ reported separately at the end of the simulation.
     oversubscribed. Note that the swap move requires rigid, whole-molecule
     replicas: systems with fractional (CFCMC) molecules, flexible components,
     or reactions reject all swap attempts.
+
+-   `"SimulationType" : "ParallelTemperingMolecularDynamics"`\
+    (aliases `"ReplicaExchangeMolecularDynamics"`, `"ParallelTemperingMD"`)\
+    Runs a multithreaded replica-exchange molecular-dynamics (REMD) simulation
+    (Sugita & Okamoto, Chem. Phys. Lett. 314, 141-151, 1999). Exactly one
+    system is declared in the input, with a temperature ladder given by the
+    system key `"ExternalTemperatures"` (a sorted list of at least two
+    temperatures) and an `"Ensemble"` of `"NVE"` or `"NVT"` (the swap
+    exchanges configurations and momenta only; the cell and the number of
+    molecules of every replica are fixed, so the barostat and
+    particle-exchange ensembles are rejected). The system is replicated
+    internally into one replica per temperature, and every replica is
+    integrated in its own thread with its own random-number stream and its
+    own Nosé–Hoover chain at its own temperature.
+
+    As in `"MolecularDynamics"`, the pre-initialization and initialization
+    stages are Monte Carlo cycles that relax the initial configuration; the
+    equilibration and production stages integrate the equations of motion,
+    one time step per cycle (Maxwell–Boltzmann velocities at the replica
+    temperature are drawn at the start of the equilibration stage). Every
+    `"ParallelTemperingSwapEvery"` cycles (default `10`, `0` disables; for
+    MD a cycle is one time step, so a larger value such as `100`–`1000` is
+    usually appropriate) the threads synchronize on a barrier and
+    configuration swaps between replicas at neighboring temperatures are
+    attempted with acceptance rule min(1, exp[(β_B − β_A)(U_B − U_A)]) on the
+    potential energies. After an accepted swap the momenta that travelled
+    with the configuration are rescaled by sqrt(T_new/T_old), so the kinetic
+    parts of the Boltzmann factors cancel and the kinetic temperature of each
+    replica is unchanged by the exchange; the thermostat chain is a property
+    of the heat bath and stays with the replica; the conserved-energy
+    reference used for the drift bookkeeping is reset (the extended-system
+    energy jumps at a swap by construction). The pairing offset alternates
+    between sweeps, so a configuration can traverse the whole ladder.
+
+    Every replica writes its own output file
+    `output/output_{T_k}_{P}.parallel_tempering_md.r{k}.txt` (and `.json`)
+    with the MD status reports (kinetic temperatures, conserved-energy drift)
+    and final averages; the combined file
+    `output/output.parallel_tempering_md.txt` (and `.json`) holds the swap
+    statistics, including a per-pair acceptance table (low acceptance for a
+    particular pair marks a bottleneck in the ladder; use a denser ladder
+    there), the replica round-trip statistics (round trips, mean round-trip
+    time, up-moving fraction \f$f(T)\f$ per temperature; see
+    `ParallelTempering`), and the potential- and conserved-energy drift of
+    every replica.
+    The optional property files (RDFs, density grids, MSD, VACF, energy and
+    molecule-count histograms, molecule properties, and the
+    number-of-molecules/volume evolution files) are written per replica,
+    keyed by the replica index (`.s{k}`). Binary restart files are written
+    at the barrier synchronization points (`"WriteBinaryRestartEvery"`, on a
+    shutdown signal) and resumed with `"RestartFromBinaryFile"`.
+
+    The driver spawns one worker thread per temperature (plain C++ threads);
+    leave `"NumberOfThreads"` at its default of `1` so the
+    per-energy-evaluation thread pool stays serial and the machine is not
+    oversubscribed. The swap has the same compatibility requirements as the
+    Monte Carlo variant (same Hamiltonian and topology in all replicas; no
+    reactions or pair/group/Gibbs fractional molecules).
 
 -   `"SimulationType" : "HyperParallelTempering"`\
     Runs a multithreaded hyper-parallel-tempering (replica-exchange) Monte
@@ -631,10 +696,12 @@ reported separately at the end of the simulation.
     move its time step, and so on. Default: `5000`.
 
 -   `"ParallelTemperingSwapEvery" : integer`\
-    For `"SimulationType" : "ParallelTempering"`, `"HyperParallelTempering"`
+    For `"SimulationType" : "ParallelTempering"`,
+    `"ParallelTemperingMolecularDynamics"`, `"HyperParallelTempering"`
     and `"ReweightedHistogram"`: how often (in cycles) a sweep of
     configuration swaps between replicas at neighboring state points is
-    attempted (`0` disables the swaps). Default: `10`.
+    attempted (`0` disables the swaps). For the molecular-dynamics variant a
+    cycle is one time step. Default: `10`.
 
 -   `"SampleReweightingEvery" : integer`\
     For `"SimulationType" : "ReweightedHistogram"`: every this many production
@@ -767,8 +834,9 @@ reported separately at the end of the simulation.
     required for every system. Default: `300`.
 
 -   `"ExternalTemperatures" : [T_0, T_1, ...]`\
-    The temperature ladder for `"SimulationType" : "ParallelTempering"` (a
-    sorted list of at least two temperatures in Kelvin),
+    The temperature ladder for `"SimulationType" : "ParallelTempering"` and
+    `"ParallelTemperingMolecularDynamics"` (a sorted list of at least two
+    temperatures in Kelvin),
     `"HyperParallelTempering"`, `"ReweightedHistogram"` or `"ParallelTMMC"`
     (at least one). The single declared system is replicated into one replica
     per temperature (per (temperature, pressure) grid point for the
@@ -939,9 +1007,9 @@ reported separately at the end of the simulation.
 -   `"ParallelTemperingSwapProbability" : floating-point-number`\
     The probability per cycle of attempting a parallel-tempering swap between two
     systems. Ignored with `"SimulationType" : "ParallelTempering"`,
-    `"HyperParallelTempering"` and `"ReweightedHistogram"`, where the swaps
-    are performed by the driver at the barrier synchronization points (see
-    `"ParallelTemperingSwapEvery"`).
+    `"ParallelTemperingMolecularDynamics"`, `"HyperParallelTempering"` and
+    `"ReweightedHistogram"`, where the swaps are performed by the driver at
+    the barrier synchronization points (see `"ParallelTemperingSwapEvery"`).
 
 -   `"TranslationSmartMCAllProbability" : floating-point-number`\
     The probability per cycle of attempting a translation smart-MC move that

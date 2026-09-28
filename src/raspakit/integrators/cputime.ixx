@@ -149,7 +149,11 @@ export inline IntegratorsCPUTime operator+(const IntegratorsCPUTime& a, const In
 }
 
 /**
- * \brief NOTE: integratorsCPUTime is now defined as global and therefore defined "program-wide".
- * In its current implementation it can not be tracked per system, which might be necessary in the future.
+ * \brief NOTE: integratorsCPUTime is a global accumulator (it can not be tracked per system).
+ *
+ * It is thread-local: the integrator routines are called concurrently from the worker threads of
+ * the multithreaded replica-exchange drivers, and every thread accumulates its own timings without
+ * synchronization. Single-threaded drivers read the accumulator from the thread that performed the
+ * integration; the multithreaded drivers gather the per-thread values at the end of each stage.
  */
-export IntegratorsCPUTime integratorsCPUTime;
+export extern thread_local IntegratorsCPUTime integratorsCPUTime;

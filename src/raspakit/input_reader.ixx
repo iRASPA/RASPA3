@@ -88,7 +88,8 @@ export struct InputReader
     HyperParallelTempering = 7,  ///< Multithreaded replica-exchange over a temperature x pressure grid.
     ReweightedHistogram = 8,  ///< Replica grid + multiple-histogram reweighting (continuous isotherm surface).
     ParallelTMMC = 9,  ///< Multithreaded transition-matrix Monte Carlo: windowed macrostate walkers.
-    NLDFT = 10  ///< Classical nonlocal DFT isotherm on the framework energy grid (structurekit solver).
+    NLDFT = 10,  ///< Classical nonlocal DFT isotherm on the framework energy grid (structurekit solver).
+    ParallelTemperingMolecularDynamics = 11  ///< Multithreaded replica-exchange molecular dynamics (REMD).
   };
 
   /**

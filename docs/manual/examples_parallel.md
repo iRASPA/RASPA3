@@ -14,6 +14,7 @@ a single system; RASPA replicates it internally onto a temperature, pressure, or
 6. [WHAM-CBCFCMC: nitrogen BET in MFI](#Example_parallel_6)
 7. [TMMC-CBMC: nitrogen BET in MFI](#Example_parallel_7)
 8. [TMMC-CBCFCMC: nitrogen BET in MFI](#Example_parallel_8)
+9. [Replica-exchange molecular dynamics: pHDDA-20 end-to-end distance](#Example_parallel_9)
 
 ----------------------------------------------------------------------------------
 
@@ -424,3 +425,74 @@ Run from `examples/parallel/8_parallel_tmmc_cbcfcmc_n2_bet_in_mfi`:
   ]
 }
 ```
+
+#### Replica-exchange molecular dynamics: pHDDA-20 end-to-end distance <a name="Example_parallel_9"></a>
+
+Replica-exchange molecular dynamics (REMD, Sugita & Okamoto 1999) of a single
+flexible pHDDA-20 chain in a \f$60 \times 60 \times 60\f$ &Aring; box, the MD
+counterpart of the parallel-tempering Monte Carlo run in
+`examples/polymers/4_mc_parallel_tempering_end_to_end_distance_phdda_20_in_box`
+and of the plain NVT MD run in
+`examples/polymers/3_md_end_to_end_distance_phdda_20_in_box`. The chain is
+replicated onto a geometric ladder of 16 temperatures from 300 K to 500 K; each
+replica is integrated with its own Nosé–Hoover chain, and every 500 time steps
+neighbouring replicas attempt to exchange their configurations. After an
+accepted exchange the momenta are rescaled by \f$\sqrt{T_\text{new}/T_\text{old}}\f$,
+so every replica stays canonical at its own temperature while the chain
+conformations diffuse through the ladder and the low-temperature replicas
+escape the collapsed states that trap a single MD trajectory. The MC moves of
+the component are used only in the initialization stage to relax the chain
+before the dynamics starts; the molecule-property histograms (end-to-end
+distance, radius of gyration) are written per replica.
+
+Run from `examples/polymers/5_md_parallel_tempering_end_to_end_distance_phdda_20_in_box`:
+
+```json
+{
+  "SimulationType" : "ParallelTemperingMolecularDynamics",
+  "ParallelTemperingSwapEvery" : 500,
+  "NumberOfInitializationCycles" : 2000,
+  "NumberOfEquilibrationCycles" : 20000,
+  "NumberOfProductionCycles" : 1000000,
+  "NumberOfThreads" : 1,
+  "PrintEvery" : 10000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [60.0, 60.0, 60.0],
+      "ExternalTemperatures" : [300.0, 310.4, 321.1, 332.3, 343.8, 355.7, 368.0, 380.8,
+                                393.9, 407.6, 421.7, 436.3, 451.4, 467.1, 483.3, 500.0],
+      "Ensemble" : "NVT",
+      "TimeStep" : 0.001,
+      "ChargeMethod" : "Ewald",
+      "ComputeMoleculeProperties" : true,
+      "SampleMoleculePropertiesEvery" : 10,
+      "WriteMoleculePropertiesEvery" : 100000,
+      "NumberOfBinsMoleculeProperties" : 128
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "pHDDA-20",
+      "PivotProbability" : 1.0,
+      "CrankshaftProbability" : 1.0,
+      "BeadFlipProbability" : 1.0,
+      "BeadDisplacementProbability" : 1.0,
+      "CreateNumberOfMolecules" : 1
+    }
+  ]
+}
+```
+
+For MD a cycle is one time step, so `"ParallelTemperingSwapEvery"` is set
+well above the default of 10. The combined output file
+`output/output.parallel_tempering_md.txt` reports the exchange acceptance per
+neighbouring pair (a pair with a low acceptance marks a gap in the ladder) and
+the potential- and conserved-energy drift of every replica; the per-replica
+files `output/output_{T}_0.parallel_tempering_md.r{k}.txt` carry the usual MD
+status reports with the kinetic temperatures, which should average to the
+ladder temperature of the replica.

@@ -14,6 +14,7 @@ import minimization;
 import thermodynamic_integration;
 import parallel_thermodynamic_integration;
 import parallel_tempering;
+import parallel_tempering_molecular_dynamics;
 import hyper_parallel_tempering;
 import reweighted_histogram;
 import parallel_tmmc;
@@ -101,6 +102,16 @@ void runSimulation(InputReader& inputReader)
         readBinaryRestartFile(parallel_tempering, inputReader.restartFromBinaryFileName);
       }
       parallel_tempering.run();
+      break;
+    }
+    case InputReader::SimulationType::ParallelTemperingMolecularDynamics:
+    {
+      ParallelTemperingMolecularDynamics parallel_tempering_md(inputReader);
+      if (inputReader.restartFromBinary)
+      {
+        readBinaryRestartFile(parallel_tempering_md, inputReader.restartFromBinaryFileName);
+      }
+      parallel_tempering_md.run();
       break;
     }
     case InputReader::SimulationType::HyperParallelTempering:

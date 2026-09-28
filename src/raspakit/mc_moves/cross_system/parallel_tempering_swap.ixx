@@ -36,4 +36,26 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> ParallelTemperingSwap(Ran
 /// Log acceptance ratio for X_A ↔ X_B. Empty when the pair is incompatible
 /// (no RNG should be consumed). Exposed so tests can check the ratio.
 std::optional<double> ParallelTemperingLogAcceptance(const System &systemA, const System &systemB);
+
+/**
+ * \brief Replica-exchange swap between two molecular-dynamics replicas.
+ *
+ * Performs the configuration swap of ParallelTemperingSwap (same acceptance rule, based on the
+ * potential energies) and then brings the molecular-dynamics state of both replicas in line with
+ * their (unchanged) temperatures: the momenta that travelled with the configuration are rescaled
+ * by sqrt(T_new / T_old) (Sugita & Okamoto, Chem. Phys. Lett. 314, 141-151, 1999), so the kinetic
+ * energy remains canonical at the replica temperature and the momentum part of the acceptance
+ * rule cancels; the gradients, kinetic energies and thermostat bookkeeping are recomputed and the
+ * conserved-energy reference of both replicas is reset (the extended-system energy jumps at a
+ * swap by construction). The thermostat chain is a property of the heat bath and stays with the
+ * replica.
+ *
+ * \param random   Random number generator used for the acceptance test.
+ * \param systemA  First replica.
+ * \param systemB  Second replica.
+ * \return         The running energies of both replicas after the swap if accepted; std::nullopt otherwise.
+ */
+std::optional<std::pair<RunningEnergy, RunningEnergy>> ParallelTemperingSwapMolecularDynamics(RandomNumber &random,
+                                                                                              System &systemA,
+                                                                                              System &systemB);
 }  // namespace MC_Moves

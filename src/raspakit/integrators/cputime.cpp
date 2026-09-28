@@ -9,6 +9,8 @@ import stringutils;
 import archive;
 import json;
 
+thread_local IntegratorsCPUTime integratorsCPUTime;
+
 const std::string IntegratorsCPUTime::writeIntegratorsCPUTimeStatistics() const
 {
   std::ostringstream stream;

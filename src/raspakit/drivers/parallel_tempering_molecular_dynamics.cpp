@@ -1,6 +1,6 @@
 module;
 
-module parallel_tempering;
+module parallel_tempering_molecular_dynamics;
 
 import std;
 
@@ -28,10 +28,16 @@ import mc_moves;
 import mc_moves_cputime;
 import mc_moves_statistics;
 import mc_moves_parallel_tempering_swap;
+import integrators;
+import integrators_compute;
+import integrators_update;
+import integrators_cputime;
+import molecular_dynamics;
+import thermobarostat;
 import json;
 
-// The analysis-property writers (RDFs, density grid, histograms, molecule properties) gate
-// themselves on their own 'writeEvery'; a cycle argument of 0 forces the write (used for the
+// The analysis-property writers (RDFs, density grid, MSD, VACF, histograms, molecule properties)
+// gate themselves on their own 'writeEvery'; a cycle argument of 0 forces the write (used for the
 // final flush at the end of the run). The replica id keys the output filenames, so every replica
 // writes its own set of files.
 static void writeReplicaAnalysisOutputs(System& system, std::size_t replicaId, std::size_t cycle)
@@ -51,6 +57,14 @@ static void writeReplicaAnalysisOutputs(System& system, std::size_t replicaId, s
     system.propertyDensityGrid->writeOutput(replicaId, system.simulationBox, system.forceField, system.framework,
                                             system.components, cycle);
   }
+  if (system.propertyMSD.has_value())
+  {
+    system.propertyMSD->writeOutput(replicaId, system.components, cycle);
+  }
+  if (system.propertyVACF.has_value())
+  {
+    system.propertyVACF->writeOutput(replicaId, system.components, cycle);
+  }
   if (system.averageEnergyHistogram.has_value())
   {
     system.averageEnergyHistogram->writeOutput(replicaId, cycle);
@@ -65,7 +79,28 @@ static void writeReplicaAnalysisOutputs(System& system, std::size_t replicaId, s
   }
 }
 
-ParallelTempering::ParallelTempering(InputReader& reader)
+// Kinetic and extended-system contributions of the current state, added to the potential-energy
+// terms already in 'runningEnergies' (which the caller has just recomputed from the gradients).
+static void refreshKineticAndExtendedEnergies(System& system)
+{
+  system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+      system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
+      system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+  system.runningEnergies.rotationalKineticEnergy =
+      Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
+                                                  system.framework, system.spanOfFrameworkGroupData());
+  if (system.thermostat.has_value())
+  {
+    system.runningEnergies.NoseHooverEnergy = system.thermostat->getEnergy();
+  }
+  if (system.thermobarostat.has_value())
+  {
+    system.runningEnergies.thermobarostatEnergy = system.thermobarostat->energy(system.simulationBox.volume);
+  }
+}
+
+ParallelTemperingMolecularDynamics::ParallelTemperingMolecularDynamics(InputReader& reader)
     : random(reader.randomSeed),
       numberOfProductionCycles(reader.numberOfProductionCycles),
       numberOfPreInitializationCycles(reader.numberOfPreInitializationCycles),
@@ -73,7 +108,6 @@ ParallelTempering::ParallelTempering(InputReader& reader)
       numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
       printEvery(reader.printEvery),
       optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
-      rescaleWangLandauEvery(reader.rescaleWangLandauEvery),
       writeBinaryRestartEvery(reader.writeBinaryRestartEvery),
       numberOfBlocks(reader.numberOfBlocks),
       parallelTemperingSwapEvery(reader.parallelTemperingSwapEvery),
@@ -101,6 +135,17 @@ ParallelTempering::ParallelTempering(InputReader& reader)
     system.temperature = T;
     system.beta = 1.0 / (Units::KB * T);
 
+    // the heat bath of the replica: the thermostat masses are derived from the temperature when
+    // the chain is initialized at the start of the equilibration stage
+    if (system.thermostat.has_value())
+    {
+      system.thermostat->temperature = T;
+    }
+    if (system.thermobarostat.has_value())
+    {
+      system.thermobarostat->temperature = T;
+    }
+
     // temperature-dependent potentials (Feynman-Hibbs) derive pair coefficients, shifts and
     // tail-corrections from the temperature
     if (system.forceField.temperature != T)
@@ -111,21 +156,22 @@ ParallelTempering::ParallelTempering(InputReader& reader)
       system.forceField.preComputeTailCorrection();
     }
 
-    // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature
+    // the CBMC ideal-gas conformation reservoirs (used by the MC stages) are Boltzmann samples at
+    // the system temperature
     system.buildConformationReservoirs();
-    // so is the recoil-growth openness reference (a no-op when recoil growth is off)
     system.buildRecoilReferenceConformations();
 
     randoms.emplace_back(random.seed + replicaId + 1);
   }
 
   stepsPerReplica.assign(numberOfReplicas, 0uz);
+  integratorsCPUTimePerReplica.assign(numberOfReplicas, IntegratorsCPUTime{});
   swapAttemptsPerPair.assign(numberOfReplicas - 1uz, 0uz);
   swapAcceptedPerPair.assign(numberOfReplicas - 1uz, 0uz);
   roundTrips.initialize(numberOfReplicas);
 }
 
-void ParallelTempering::run()
+void ParallelTemperingMolecularDynamics::run()
 {
   setup();
   runStage(SimulationStage::PreInitialization, numberOfPreInitializationCycles);
@@ -135,12 +181,18 @@ void ParallelTempering::run()
   output();
 }
 
-void ParallelTempering::setup()
+void ParallelTemperingMolecularDynamics::setup()
 {
   for (System& system : systems)
   {
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
+
+    // the integrator needs gradients: a polynomial interpolation grid does not provide them
+    if (system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)
+    {
+      system.forceField.interpolationScheme = ForceField::InterpolationScheme::Tricubic;
+    }
   }
 
   std::filesystem::create_directories("output");
@@ -148,8 +200,8 @@ void ParallelTempering::setup()
   // on a binary-restart resume append to the existing output files (and skip re-printing the
   // headers) so each log continues where the interrupted run left off
   const bool resumedFromBinaryRestart = simulationStage != SimulationStage::Uninitialized;
-  stream.open("output/output.parallel_tempering.txt", resumedFromBinaryRestart ? std::ios::app : std::ios::out);
-  outputJsonFileName = "output/output.parallel_tempering.json";
+  stream.open("output/output.parallel_tempering_md.txt", resumedFromBinaryRestart ? std::ios::app : std::ios::out);
+  outputJsonFileName = "output/output.parallel_tempering_md.json";
 
   const System& front = systems.front();
   if (!resumedFromBinaryRestart)
@@ -159,7 +211,7 @@ void ParallelTempering::setup()
     std::print(stream, "{}\n", HardwareInfo::writeInfo());
     std::print(stream, "{}", Units::printStatus());
 
-    std::print(stream, "Parallel tempering\n");
+    std::print(stream, "Replica-exchange molecular dynamics (parallel tempering)\n");
     std::print(stream, "===============================================================================\n\n");
     std::print(stream, "Number of temperatures / replicas / threads: {}\n", numberOfReplicas);
     std::print(stream, "Temperature ladder:                         ");
@@ -168,13 +220,17 @@ void ParallelTempering::setup()
       std::print(stream, " {}", T);
     }
     std::print(stream, " [K]\n");
+    std::print(stream, "Ensemble:                                    {}\n",
+               molecularDynamicsEnsembleName(front.molecularDynamicsEnsemble));
+    std::print(stream, "Time step:                                   {} [ps]\n", front.timeStep);
     if (parallelTemperingSwapEvery == 0uz)
     {
       std::print(stream, "Configuration swaps:                         disabled\n\n");
     }
     else
     {
-      std::print(stream, "Configuration-swap sweep every:              {} cycles\n\n", parallelTemperingSwapEvery);
+      std::print(stream, "Configuration-swap sweep every:              {} cycles (MD steps)\n\n",
+                 parallelTemperingSwapEvery);
     }
   }
 
@@ -188,6 +244,8 @@ void ParallelTempering::setup()
   outputJson["initialization"]["units"] = Units::jsonStatus();
   outputJson["initialization"]["temperatures"] = temperatures;
   outputJson["initialization"]["parallelTemperingSwapEvery"] = parallelTemperingSwapEvery;
+  outputJson["initialization"]["ensemble"] = molecularDynamicsEnsembleName(front.molecularDynamicsEnsemble);
+  outputJson["initialization"]["timeStep"] = front.timeStep;
 
   std::ofstream json(outputJsonFileName);
   json << outputJson.dump(4);
@@ -199,18 +257,18 @@ void ParallelTempering::setup()
   for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
   {
     const System& system = systems[replicaId];
-    replicaStreams.emplace_back(std::format("output/output_{}_{}.parallel_tempering.r{}.txt", system.temperature,
+    replicaStreams.emplace_back(std::format("output/output_{}_{}.parallel_tempering_md.r{}.txt", system.temperature,
                                             system.input_pressure, replicaId),
                                 resumedFromBinaryRestart ? std::ios::app : std::ios::out);
-    replicaJsonFileNames.emplace_back(std::format("output/output_{}_{}.parallel_tempering.r{}.json",
+    replicaJsonFileNames.emplace_back(std::format("output/output_{}_{}.parallel_tempering_md.r{}.json",
                                                   system.temperature, system.input_pressure, replicaId));
 
     if (!resumedFromBinaryRestart)
     {
       std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
       std::print(replicaStream, "{}", system.writeOutputHeader());
-      std::print(replicaStream, "Parallel tempering: replica {} of {} (temperature {} [K])\n", replicaId,
-                 numberOfReplicas, system.temperature);
+      std::print(replicaStream, "Replica-exchange molecular dynamics: replica {} of {} (temperature {} [K])\n",
+                 replicaId, numberOfReplicas, system.temperature);
       std::print(replicaStream, "Random seed of this replica: {}\n\n", randoms[replicaId].seed);
       std::print(replicaStream, "{}\n", HardwareInfo::writeInfo());
       std::print(replicaStream, "{}", Units::printStatus());
@@ -218,6 +276,7 @@ void ParallelTempering::setup()
       std::print(replicaStream, "{}", system.forceField.printPseudoAtomStatus());
       std::print(replicaStream, "{}", system.forceField.printForceFieldStatus());
       std::print(replicaStream, "{}", system.writeComponentStatus());
+      std::print(replicaStream, "{}", system.crossLinks.printStatus());
       std::print(replicaStream, "{}", system.writeNumberOfPseudoAtoms());
     }
 
@@ -244,7 +303,7 @@ void ParallelTempering::setup()
   }
 }
 
-void ParallelTempering::performReplicaCycle(std::size_t replicaId, SimulationStage stage, std::size_t currentBlock)
+void ParallelTemperingMolecularDynamics::performReplicaMonteCarloCycle(std::size_t replicaId, SimulationStage stage)
 {
   System& system = systems[replicaId];
   RandomNumber& rng = randoms[replicaId];
@@ -262,39 +321,79 @@ void ParallelTempering::performReplicaCycle(std::size_t replicaId, SimulationSta
 
     switch (stage)
     {
-      case SimulationStage::Uninitialized:
-        break;
       case SimulationStage::PreInitialization:
         MC_Moves::performRandomMovePreInitialization(rng, system, system, selectedComponent, fractionalMoleculeSystem);
         break;
       case SimulationStage::Initialization:
         MC_Moves::performRandomMoveInitialization(rng, system, system, selectedComponent, fractionalMoleculeSystem);
         break;
-      case SimulationStage::Equilibration:
-        MC_Moves::performRandomMoveEquilibration(rng, system, system, selectedComponent, fractionalMoleculeSystem);
-
-        // Wang-Landau biasing of the CFCMC lambda moves (all state is owned by this replica)
-        system.components[selectedComponent].lambdaGC.WangLandauIteration(
-            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
-            system.lambdaWangLandauIsActive(selectedComponent));
-        system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
-        system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
-        break;
-      case SimulationStage::Production:
-        MC_Moves::performRandomMoveProduction(rng, system, system, selectedComponent, fractionalMoleculeSystem,
-                                              currentBlock);
-        ++stepsPerReplica[replicaId];
+      default:
         break;
     }
 
     system.components[selectedComponent].lambdaGC.sampleOccupancy(system.containsTheFractionalMolecule);
-    system.pairSwapLambdaSampleOccupancy();
-    system.reactionLambdaSampleOccupancy();
   }
 }
 
-void ParallelTempering::performSwapSweep(SimulationStage stage, std::size_t numberOfCycles) noexcept
+void ParallelTemperingMolecularDynamics::prepareReplicaMolecularDynamicsStage(std::size_t replicaId,
+                                                                             SimulationStage stage)
 {
+  System& system = systems[replicaId];
+  RandomNumber& rng = randoms[replicaId];
+
+  // the rigid-body state of the (semi-)rigid molecules is derived from the MC-generated positions
+  system.initializeGroupData();
+  system.initializeFrameworkGroupData();
+  Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components,
+                                        system.spanOfGroupData(), system.framework, system.spanOfFrameworkAtoms(),
+                                        system.spanOfFrameworkGroupData());
+
+  if (stage == SimulationStage::Equilibration)
+  {
+    // Maxwell-Boltzmann velocities at the replica temperature, drawn from the replica's own stream
+    Integrators::initializeVelocities(rng, system.moleculeData, system.spanOfMoleculeAtoms(),
+                                      system.spanOfMoleculeDynamics(), system.components, system.temperature,
+                                      system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(),
+                                      &system.forceField, system.spanOfGroupData(),
+                                      system.spanOfFrameworkGroupData());
+    Integrators::removeCenterOfMassVelocityDrift(
+        system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+        system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
+        system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+
+    if (system.thermostat.has_value())
+    {
+      const bool flexibleFrameworkConstraint =
+          system.framework && system.framework->hasMobileAtoms() &&
+          system.numberOfFrameworkAtoms + system.spanOfMoleculeAtoms().size() > 1uz;
+      if (flexibleFrameworkConstraint || (!system.framework.has_value() && system.numberOfMolecules() > 1uz))
+      {
+        system.translationalCenterOfMassConstraint = 3;
+        system.thermostat->translationalCenterOfMassConstraint = 3;
+      }
+      system.thermostat->initialize(rng);
+    }
+  }
+
+  system.precomputeTotalGradients();
+  refreshKineticAndExtendedEnergies(system);
+  system.conservedEnergy = system.runningEnergies.conservedEnergy();
+  system.referenceEnergy = system.conservedEnergy;
+
+  std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
+  replicaStream << system.runningEnergies.printMD("Recomputed from scratch", system.referenceEnergy);
+  std::print(replicaStream, "\n\n\n\n");
+  std::flush(replicaStream);
+}
+
+void ParallelTemperingMolecularDynamics::performSwapSweep(SimulationStage stage, std::size_t numberOfCycles) noexcept
+{
+  // in the MD stages the momenta travel with the configuration and are rescaled to the replica
+  // temperature; in the MC stages there are no meaningful momenta yet (they are drawn at the start
+  // of the equilibration stage)
+  const bool molecularDynamicsStage =
+      (stage == SimulationStage::Equilibration) || (stage == SimulationStage::Production);
+
   // the replicas keep their temperatures; the configurations migrate through the ladder.
   // alternate the pairing offset between sweeps so configurations can traverse the whole ladder
   const std::size_t offset = swapSweeps % 2uz;
@@ -302,7 +401,12 @@ void ParallelTempering::performSwapSweep(SimulationStage stage, std::size_t numb
   {
     ++swapAttempts;
     ++swapAttemptsPerPair[replicaId];
-    if (MC_Moves::ParallelTemperingSwap(random, systems[replicaId], systems[replicaId + 1]).has_value())
+    const bool accepted =
+        molecularDynamicsStage
+            ? MC_Moves::ParallelTemperingSwapMolecularDynamics(random, systems[replicaId], systems[replicaId + 1])
+                  .has_value()
+            : MC_Moves::ParallelTemperingSwap(random, systems[replicaId], systems[replicaId + 1]).has_value();
+    if (accepted)
     {
       ++swapAccepted;
       ++swapAcceptedPerPair[replicaId];
@@ -323,7 +427,7 @@ void ParallelTempering::performSwapSweep(SimulationStage stage, std::size_t numb
                                                                                       : "production";
     const std::size_t cycle = std::min(sweepsThisStage * parallelTemperingSwapEvery, numberOfCycles);
     std::scoped_lock lock(outputMutex);
-    std::print(stream, "Parallel-tempering sweep {} ({}, cycle {} of {}): accepted {}/{} ({:.2f}%), round trips {}\n",
+    std::print(stream, "Replica-exchange sweep {} ({}, cycle {} of {}): accepted {}/{} ({:.2f}%), round trips {}\n",
                swapSweeps, stageName, cycle, numberOfCycles, swapAccepted, swapAttempts,
                100.0 * static_cast<double>(swapAccepted) / static_cast<double>(std::max(1uz, swapAttempts)),
                roundTrips.roundTrips);
@@ -331,7 +435,7 @@ void ParallelTempering::performSwapSweep(SimulationStage stage, std::size_t numb
   }
 }
 
-void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycles)
+void ParallelTemperingMolecularDynamics::runStage(SimulationStage stage, std::size_t numberOfCycles)
 {
   std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
@@ -346,6 +450,9 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
 
   simulationStage = stage;
 
+  const bool molecularDynamicsStage =
+      (stage == SimulationStage::Equilibration) || (stage == SimulationStage::Production);
+
   if (startCycle == 0uz)
   {
     // serial per-stage preparation
@@ -359,10 +466,6 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
                                                  system.containsTheFractionalMolecule);
           component.lambdaGC.clear();
         }
-        system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
-        system.pairSwapLambdaClearBookkeeping();
-        system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
-        system.reactionLambdaClearBookkeeping();
       }
     }
     if (stage == SimulationStage::Production)
@@ -371,6 +474,7 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
       {
         system.mc_moves_statistics.clearMoveStatistics();
         system.mc_moves_cputime.clearTimingStatistics();
+        system.accumulatedDrift = 0.0;
 
         for (Component& component : system.components)
         {
@@ -381,12 +485,9 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
                                                  system.containsTheFractionalMolecule);
           component.lambdaGC.clear();
         }
-        system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
-        system.pairSwapLambdaClearBookkeeping();
-        system.reactionLambdaFinalize();
-        system.reactionLambdaClearBookkeeping();
       }
       std::fill(stepsPerReplica.begin(), stepsPerReplica.end(), 0uz);
+      std::fill(integratorsCPUTimePerReplica.begin(), integratorsCPUTimePerReplica.end(), IntegratorsCPUTime{});
     }
     sweepsThisStage = 0uz;
   }
@@ -397,15 +498,16 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
                                        : (stage == SimulationStage::Initialization)   ? "Initialization"
                                        : (stage == SimulationStage::Equilibration)    ? "Equilibration"
                                                                                       : "Production";
+    const std::string_view method = molecularDynamicsStage ? "MD steps" : "MC cycles";
     if (startCycle == 0uz)
     {
-      std::print(stream, "\n{} stage: {} cycles on {} replicas/threads\n", stageName, numberOfCycles,
+      std::print(stream, "\n{} stage: {} {} on {} replicas/threads\n", stageName, numberOfCycles, method,
                  numberOfReplicas);
     }
     else
     {
-      std::print(stream, "\n{} stage: resumed from binary restart at cycle {} of {} on {} replicas/threads\n",
-                 stageName, startCycle, numberOfCycles, numberOfReplicas);
+      std::print(stream, "\n{} stage: resumed from binary restart at cycle {} of {} ({}) on {} replicas/threads\n",
+                 stageName, startCycle, numberOfCycles, method, numberOfReplicas);
     }
     std::flush(stream);
   }
@@ -447,16 +549,37 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
     for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
     {
       threads.emplace_back(
-          [this, replicaId, stage, numberOfCycles, stageCycleOffset, startCycle, &synchronizationPoint]()
+          [this, replicaId, stage, numberOfCycles, stageCycleOffset, startCycle, molecularDynamicsStage,
+           &synchronizationPoint]()
           {
             System& system = systems[replicaId];
 
-            // each thread computes the total energies of its own replica
-            if (stage == SimulationStage::PreInitialization || stage == SimulationStage::Initialization)
+            // each thread prepares its own replica: total energies for the MC stages, the full
+            // dynamical state (velocities, thermostat, gradients) for the MD stages
+            if (molecularDynamicsStage)
+            {
+              if (startCycle == 0uz)
+              {
+                prepareReplicaMolecularDynamicsStage(replicaId, stage);
+              }
+              else
+              {
+                // resumed mid-stage: the checkpoint holds positions, momenta and thermostat state;
+                // only the gradients (not serialized) have to be rebuilt
+                system.precomputeTotalRigidEnergy();
+                system.precomputeTotalGradients();
+                Integrators::updateCenterOfMassAndQuaternionGradients(
+                    system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                    system.components, system.spanOfGroupData(), system.framework, system.spanOfFrameworkDynamics(),
+                    system.spanOfFrameworkGroupData());
+                refreshKineticAndExtendedEnergies(system);
+              }
+            }
+            else
             {
               system.precomputeTotalRigidEnergy();
+              system.runningEnergies = system.computeTotalEnergies();
             }
-            system.runningEnergies = system.computeTotalEnergies();
 
             BlockErrorEstimation estimation(numberOfBlocks, std::max(1uz, numberOfProductionCycles));
 
@@ -465,9 +588,38 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
               if (stage == SimulationStage::Production)
               {
                 estimation.setCurrentSample(cycle);
+
+                // energy/pressure averages for the per-replica final report (sampled before the
+                // step, as in the plain MD driver)
+                if (cycle % 10uz == 0uz || cycle % printEvery == 0uz)
+                {
+                  std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
+                  std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
+                  system.currentEnergyStatus = molecularPressure.first;
+                  system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
+                  std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
+
+                  system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
+                  system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
+                }
               }
 
-              performReplicaCycle(replicaId, stage, estimation.currentBin);
+              if (molecularDynamicsStage)
+              {
+                // one time step per cycle
+                system.runningEnergies = molecularDynamicsStep(system);
+                system.conservedEnergy = system.runningEnergies.conservedEnergy();
+                system.accumulatedDrift +=
+                    std::abs((system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
+                if (stage == SimulationStage::Production)
+                {
+                  ++stepsPerReplica[replicaId];
+                }
+              }
+              else
+              {
+                performReplicaMonteCarloCycle(replicaId, stage);
+              }
 
               // time-evolution properties (number of molecules, volume): sampled over all stages,
               // indexed by the absolute cycle number; the writers gate on their own 'writeEvery'
@@ -485,43 +637,20 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
               if (stage == SimulationStage::Production)
               {
                 system.sampleProperties(replicaId, estimation.currentBin, cycle);
-
-                // analysis-property files (RDFs, density grid, histograms, molecule properties);
-                // the writers gate on their own 'writeEvery'
-                writeReplicaAnalysisOutputs(system, replicaId, cycle);
-
-                // energy/pressure averages for the per-replica final report
-                if (cycle % 10uz == 0uz || cycle % printEvery == 0uz)
+                // the gradients of the integrator step are current; reuse them for the force-based RDF
+                if (system.forceBasedRDFSampleDue(cycle))
                 {
-                  std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
-                  std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
-                  system.currentEnergyStatus = molecularPressure.first;
-                  system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
-                  std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
-
-                  system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
-                  system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
+                  system.sampleForceBasedRDFFromCurrentGradients(cycle, estimation.currentBin);
                 }
+
+                // analysis-property files (RDFs, density grid, MSD, VACF, histograms, molecule
+                // properties); the writers gate on their own 'writeEvery'
+                writeReplicaAnalysisOutputs(system, replicaId, cycle);
               }
 
-              if (cycle % optimizeMCMovesEvery == 0uz)
+              if (!molecularDynamicsStage && cycle % optimizeMCMovesEvery == 0uz)
               {
                 system.optimizeMCMoves();
-              }
-
-              // Wang-Landau biasing-factor adjustment (all state is owned by this replica)
-              if (stage == SimulationStage::Equilibration && cycle % rescaleWangLandauEvery == 0uz)
-              {
-                for (Component& component : system.components)
-                {
-                  component.lambdaGC.WangLandauIteration(
-                      PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
-                      system.containsTheFractionalMolecule);
-                }
-                system.pairSwapLambdaWangLandauIteration(
-                    PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
-                system.reactionLambdaWangLandauIteration(
-                    PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
               }
 
               if (cycle % printEvery == 0uz)
@@ -535,19 +664,18 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
                 {
                   case SimulationStage::PreInitialization:
                     std::print(replicaStream, "{}", system.writePreInitializationStatusReport(cycle, numberOfCycles));
+                    std::print(replicaStream, "{}\n\n\n\n", system.runningEnergies.printMC(""));
                     break;
                   case SimulationStage::Initialization:
                     std::print(replicaStream, "{}", system.writeInitializationStatusReport(cycle, numberOfCycles));
+                    std::print(replicaStream, "{}\n\n\n\n", system.runningEnergies.printMC(""));
                     break;
                   case SimulationStage::Equilibration:
-                    std::print(replicaStream, "{}", system.writeEquilibrationStatusReportMC(cycle, numberOfCycles));
+                    std::print(replicaStream, "{}", system.writeEquilibrationStatusReportMD(cycle, numberOfCycles));
                     break;
                   case SimulationStage::Production:
-                  {
-                    std::string status_line = std::format("Current cycle: {} out of {}\n", cycle, numberOfCycles);
-                    std::print(replicaStream, "{}", system.writeProductionStatusReportMC(status_line));
+                    std::print(replicaStream, "{}", system.writeProductionStatusReportMD(cycle, numberOfCycles));
                     break;
-                  }
                   default:
                     break;
                 }
@@ -569,6 +697,13 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
                 }
                 synchronizationPoint.arrive_and_wait();
               }
+            }
+
+            // the integrator timings are accumulated thread-locally; gather them per replica
+            // (production only: the accumulators are reset at the start of that stage)
+            if (stage == SimulationStage::Production)
+            {
+              integratorsCPUTimePerReplica[replicaId] += integratorsCPUTime;
             }
           });
     }
@@ -598,20 +733,16 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
   totalSimulationTime += (t2 - t1);
 }
 
-void ParallelTempering::output()
+void ParallelTemperingMolecularDynamics::output()
 {
   std::size_t numberOfSteps = std::accumulate(stepsPerReplica.begin(), stepsPerReplica.end(), 0uz);
 
   MCMoveCpuTime total;
-  MCMoveStatistics countTotal;
-  for (const System& system : systems)
+  IntegratorsCPUTime integratorsTotal;
+  for (std::size_t replicaId = 0; replicaId < systems.size(); ++replicaId)
   {
-    total += system.mc_moves_cputime;
-    countTotal += system.mc_moves_statistics;
-    for (const Component& component : system.components)
-    {
-      countTotal += component.mc_moves_statistics;
-    }
+    total += systems[replicaId].mc_moves_cputime;
+    integratorsTotal += integratorsCPUTimePerReplica[replicaId];
   }
 
   std::print(stream, "\n");
@@ -620,18 +751,29 @@ void ParallelTempering::output()
   std::print(stream, "===============================================================================\n");
   std::print(stream, "\n");
 
-  // energy drift check of every replica (energies recomputed in parallel, one thread per replica);
-  // the final state used by the per-replica reports is refreshed in the same pass
+  // potential-energy drift check of every replica (energies recomputed in parallel, one thread per
+  // replica); the final state used by the per-replica reports is refreshed in the same pass
   std::vector<RunningEnergy> recomputed(systems.size());
+  std::vector<double> potentialDrift(systems.size());
   {
     std::vector<std::jthread> threads;
     threads.reserve(systems.size());
     for (std::size_t replicaId = 0; replicaId < systems.size(); ++replicaId)
     {
       threads.emplace_back(
-          [this, replicaId, &recomputed]()
+          [this, replicaId, &recomputed, &potentialDrift]()
           {
             System& system = systems[replicaId];
+
+            // the running energies come from the integrator energy path (which, like the MD driver, omits the
+            // tail corrections), so the drift has to be measured against that same path and not against the
+            // Monte Carlo-style computeTotalEnergies()
+            const RunningEnergy running = system.runningEnergies;
+            system.precomputeTotalGradients();
+            potentialDrift[replicaId] =
+                Units::EnergyToKelvin * (running.potentialEnergy() - system.runningEnergies.potentialEnergy());
+            system.runningEnergies = running;
+
             recomputed[replicaId] = system.computeTotalEnergies();
 
             std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
@@ -647,20 +789,22 @@ void ParallelTempering::output()
 
   std::print(stream, "Energy drift per replica\n");
   std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "    (potential: running minus recomputed; conserved: accumulated relative drift of the\n");
+  std::print(stream, "     conserved energy over the production steps, reset at every accepted swap)\n\n");
   for (std::size_t replicaId = 0; replicaId < systems.size(); ++replicaId)
   {
-    const RunningEnergy drift = systems[replicaId].runningEnergies - recomputed[replicaId];
-    std::print(stream, "    replica {:4d} (temperature {:10.4f} [K]): drift {: .6e} [K]\n", replicaId,
-               systems[replicaId].temperature, Units::EnergyToKelvin * drift.potentialEnergy());
+    std::print(stream,
+               "    replica {:4d} (temperature {:10.4f} [K]): potential {: .6e} [K]   conserved {: .6e}\n",
+               replicaId, systems[replicaId].temperature, potentialDrift[replicaId],
+               systems[replicaId].accumulatedDrift /
+                   static_cast<double>(std::max(1uz, stepsPerReplica[replicaId])));
   }
   std::print(stream, "\n\n");
 
-  std::print(stream, "Production run counting of the MC moves summed over replicas and components\n");
+  std::print(stream, "Production run: {} MD steps summed over the replicas\n", numberOfSteps);
   std::print(stream, "===============================================================================\n\n");
-  std::print(stream, "{}", countTotal.writeMCMoveStatistics(numberOfSteps));
-  std::print(stream, "\n\n");
 
-  std::print(stream, "Parallel-tempering swap statistics\n");
+  std::print(stream, "Replica-exchange swap statistics\n");
   std::print(stream, "===============================================================================\n\n");
   std::print(stream, "    sweeps:    {}\n", swapSweeps);
   std::print(stream, "    attempts:  {}\n", swapAttempts);
@@ -683,9 +827,11 @@ void ParallelTempering::output()
 
   std::print(stream, "{}", roundTrips.writeStatistics(temperatures, parallelTemperingSwapEvery));
 
-  std::print(stream, "Production run CPU timings of the MC moves summed over replicas and components\n");
+  std::print(stream, "Production run CPU timings summed over replicas\n");
   std::print(stream, "===============================================================================\n\n");
-  std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalProductionSimulationTime));
+  std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics());
+  std::print(stream, "{}", integratorsTotal.writeIntegratorsCPUTimeStatistics(totalProductionSimulationTime));
+  std::print(stream, "\n");
   std::print(stream, "Pre-initialization simulation time: {:14f} [s]\n", totalPreInitializationSimulationTime.count());
   std::print(stream, "Initalization simulation time:  {:14f} [s]\n", totalInitializationSimulationTime.count());
   std::print(stream, "Equilibration simulation time:  {:14f} [s]\n", totalEquilibrationSimulationTime.count());
@@ -711,7 +857,7 @@ void ParallelTempering::output()
   json << outputJson.dump(4);
 }
 
-void ParallelTempering::writeReplicaFinalReports(std::vector<RunningEnergy>& recomputed)
+void ParallelTemperingMolecularDynamics::writeReplicaFinalReports(std::vector<RunningEnergy>& recomputed)
 {
   for (std::size_t replicaId = 0; replicaId < systems.size(); ++replicaId)
   {
@@ -724,18 +870,17 @@ void ParallelTempering::writeReplicaFinalReports(std::vector<RunningEnergy>& rec
     std::print(replicaStream, "===============================================================================\n");
     std::print(replicaStream, "\n");
 
-    std::string status_line = std::format("Final state after {} cycles\n", numberOfProductionCycles);
-    std::print(replicaStream, "{}", system.writeProductionStatusReportMC(status_line));
+    std::print(replicaStream, "{}",
+               system.writeProductionStatusReportMD(numberOfProductionCycles, numberOfProductionCycles));
 
     const RunningEnergy drift = system.runningEnergies - recomputed[replicaId];
-    replicaStream << system.runningEnergies.printMCDiff(recomputed[replicaId]);
+    std::print(replicaStream, "Potential energy drift (running minus recomputed): {: .6e} [K]\n",
+               Units::EnergyToKelvin * drift.potentialEnergy());
+    std::print(replicaStream, "Accumulated relative drift of the conserved energy: {: .6e} (per step, reset at swaps)\n",
+               system.accumulatedDrift / static_cast<double>(std::max(1uz, stepsPerReplica[replicaId])));
     std::print(replicaStream, "\n\n");
 
-    std::print(replicaStream, "Monte-Carlo moves statistics\n");
-    std::print(replicaStream, "===============================================================================\n\n");
-    std::print(replicaStream, "{}", system.writeMCMoveStatistics());
-
-    std::print(replicaStream, "Production run CPU timings of the MC moves of this replica\n");
+    std::print(replicaStream, "Production run CPU timings of the MD simulation of this replica\n");
     std::print(replicaStream, "===============================================================================\n\n");
     for (std::size_t componentId{0}; const Component& component : system.components)
     {
@@ -744,15 +889,31 @@ void ParallelTempering::writeReplicaFinalReports(std::vector<RunningEnergy>& rec
       ++componentId;
     }
     std::print(replicaStream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
+    std::print(replicaStream, "{}",
+               integratorsCPUTimePerReplica[replicaId].writeIntegratorsCPUTimeStatistics(
+                   totalProductionSimulationTime));
     std::print(replicaStream, "\n\n");
 
     std::print(replicaStream, "{}",
                system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework,
                                                               system.components));
+
+    std::print(replicaStream, "Temperature averages and statistics:\n");
+    std::print(replicaStream, "===============================================================================\n\n");
+    std::print(replicaStream, "{}", system.averageTemperature.writeAveragesStatistics("Total"));
+    std::print(replicaStream, "{}", system.averageTranslationalTemperature.writeAveragesStatistics("Translational"));
+    std::print(replicaStream, "{}", system.averageRotationalTemperature.writeAveragesStatistics("Rotational"));
+
     if (!(system.framework.has_value() && system.framework->rigid))
     {
       std::print(replicaStream, "{}", system.averagePressure.writeAveragesStatistics());
     }
+    std::print(replicaStream, "{}",
+               system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swappableComponents,
+                                                                            system.components));
+    std::print(replicaStream, "{}",
+               system.averagePartialMolarProperties.writeAveragesStatistics(system.swappableComponents,
+                                                                            system.components));
     std::print(replicaStream, "{}",
                system.averageLoadings.writeAveragesStatistics(
                    system.components, system.frameworkMass(),
@@ -782,7 +943,7 @@ void ParallelTempering::writeReplicaFinalReports(std::vector<RunningEnergy>& rec
     replicaJsons[replicaId]["output"]["runningEnergies"] = system.runningEnergies.jsonMC();
     replicaJsons[replicaId]["output"]["recomputedEnergies"] = recomputed[replicaId].jsonMC();
     replicaJsons[replicaId]["output"]["drift"] = drift.jsonMC();
-    replicaJsons[replicaId]["output"]["MCMoveStatistics"]["system"] = system.jsonMCMoveStatistics();
+    replicaJsons[replicaId]["output"]["accumulatedConservedEnergyDrift"] = system.accumulatedDrift;
     replicaJsons[replicaId]["output"]["cpuTimings"]["system"] =
         system.mc_moves_cputime.jsonSystemMCMoveCPUTimeStatistics();
     for (const Component& component : system.components)
@@ -799,14 +960,14 @@ void ParallelTempering::writeReplicaFinalReports(std::vector<RunningEnergy>& rec
   }
 }
 
-void ParallelTempering::writeBinaryRestartFile(std::size_t cyclesCompleted) noexcept
+void ParallelTemperingMolecularDynamics::writeBinaryRestartFile(std::size_t cyclesCompleted) noexcept
 {
   cyclesCompletedThisStage = cyclesCompleted;
 
   ::writeBinaryRestartFile(*this);
 }
 
-Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ParallelTempering& pt)
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ParallelTemperingMolecularDynamics& pt)
 {
   archive << pt.versionNumber;
 
@@ -819,7 +980,6 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Parall
 
   archive << pt.printEvery;
   archive << pt.optimizeMCMovesEvery;
-  archive << pt.rescaleWangLandauEvery;
   archive << pt.writeBinaryRestartEvery;
 
   archive << pt.numberOfBlocks;
@@ -834,6 +994,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Parall
   archive << pt.randoms;
 
   archive << pt.stepsPerReplica;
+  archive << pt.integratorsCPUTimePerReplica;
   archive << pt.absoluteCycleOffset;
 
   archive << pt.swapSweeps;
@@ -855,15 +1016,16 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Parall
   return archive;
 }
 
-Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTempering& pt)
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTemperingMolecularDynamics& pt)
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > pt.versionNumber)
   {
     const std::source_location& location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'ParallelTempering' at line {} in file {}\n",
-                                         location.line(), location.file_name()));
+    throw std::runtime_error(
+        std::format("Invalid version reading 'ParallelTemperingMolecularDynamics' at line {} in file {}\n",
+                    location.line(), location.file_name()));
   }
 
   archive >> pt.random;
@@ -875,7 +1037,6 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTemp
 
   archive >> pt.printEvery;
   archive >> pt.optimizeMCMovesEvery;
-  archive >> pt.rescaleWangLandauEvery;
   archive >> pt.writeBinaryRestartEvery;
 
   archive >> pt.numberOfBlocks;
@@ -890,6 +1051,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTemp
   archive >> pt.randoms;
 
   archive >> pt.stepsPerReplica;
+  archive >> pt.integratorsCPUTimePerReplica;
   archive >> pt.absoluteCycleOffset;
 
   archive >> pt.swapSweeps;
@@ -898,15 +1060,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTemp
   archive >> pt.swapAccepted;
   archive >> pt.swapAttemptsPerPair;
   archive >> pt.swapAcceptedPerPair;
-  if (versionNumber >= 2)
-  {
-    archive >> pt.roundTrips;
-  }
-  else
-  {
-    // restart file predates the round-trip diagnostic: start counting from the current arrangement
-    pt.roundTrips.initialize(pt.numberOfReplicas);
-  }
+  archive >> pt.roundTrips;
 
   archive >> pt.totalPreInitializationSimulationTime;
   archive >> pt.totalInitializationSimulationTime;
@@ -918,7 +1072,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTemp
   archive >> magicNumber;
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
-    throw std::runtime_error("ParallelTempering: error in binary restart\n");
+    throw std::runtime_error("ParallelTemperingMolecularDynamics: error in binary restart\n");
   }
 
   return archive;

@@ -28,6 +28,8 @@ import interactions_ewald;
 import interactions_external_field;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import integrators_compute;
+import integrators_update;
 
 namespace
 {
@@ -217,6 +219,53 @@ void rebuildConfigurationDerivedState(System& system)
   }
 }
 
+// After a swap the replica holds momenta sampled at the temperature of the partner replica:
+// rescale them to the replica's own temperature and recompute everything the integrator derives
+// from the configuration (gradients, kinetic energies, extended-system energies).
+void rebuildMolecularDynamicsState(System& system, double velocityScaling)
+{
+  Integrators::scaleVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                               system.components, {velocityScaling, velocityScaling}, system.framework,
+                               system.spanOfFrameworkDynamics(), system.spanOfGroupData(),
+                               system.spanOfFrameworkGroupData());
+
+  // the degrees of freedom travelled with the configuration (equal for equal molecule counts, but
+  // the swap also supports differing counts); the chain state of the heat bath is kept
+  if (system.thermostat.has_value())
+  {
+    system.thermostat->refreshDegreesOfFreedom(system.translationalDegreesOfFreedom,
+                                               system.rotationalDegreesOfFreedom,
+                                               system.translationalCenterOfMassConstraint);
+  }
+
+  system.precomputeTotalGradients();
+  Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
+                                                        system.spanOfMoleculeDynamics(), system.components,
+                                                        system.spanOfGroupData(), system.framework,
+                                                        system.spanOfFrameworkDynamics(),
+                                                        system.spanOfFrameworkGroupData());
+  system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+      system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
+      system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+  system.runningEnergies.rotationalKineticEnergy =
+      Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
+                                                  system.framework, system.spanOfFrameworkGroupData());
+  if (system.thermostat.has_value())
+  {
+    system.runningEnergies.NoseHooverEnergy = system.thermostat->getEnergy();
+  }
+  if (system.thermobarostat.has_value())
+  {
+    system.runningEnergies.thermobarostatEnergy = system.thermobarostat->energy(system.simulationBox.volume);
+  }
+
+  // the conserved (extended-system) energy is discontinuous across a swap: restart the drift
+  // bookkeeping from the post-swap state
+  system.conservedEnergy = system.runningEnergies.conservedEnergy();
+  system.referenceEnergy = system.conservedEnergy;
+}
+
 }  // namespace
 
 std::optional<double> MC_Moves::ParallelTemperingLogAcceptance(const System& systemA, const System& systemB)
@@ -354,4 +403,24 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
   }
 
   return std::nullopt;
+}
+
+std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperingSwapMolecularDynamics(
+    RandomNumber &random, System &systemA, System &systemB)
+{
+  const double temperatureA = systemA.temperature;
+  const double temperatureB = systemB.temperature;
+
+  // the configurational acceptance rule is the same as for Monte Carlo: with the momenta rescaled
+  // below, the kinetic parts of the Boltzmann factors cancel exactly
+  if (!ParallelTemperingSwap(random, systemA, systemB).has_value())
+  {
+    return std::nullopt;
+  }
+
+  // replica A now holds the momenta generated at T_B (and vice versa)
+  rebuildMolecularDynamicsState(systemA, std::sqrt(temperatureA / temperatureB));
+  rebuildMolecularDynamicsState(systemB, std::sqrt(temperatureB / temperatureA));
+
+  return std::make_pair(systemA.runningEnergies, systemB.runningEnergies);
 }

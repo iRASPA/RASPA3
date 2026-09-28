@@ -18,6 +18,7 @@ add_executable(unit_tests_raspa3
   mc_double_bridging.cpp
   mc_bead_moves.cpp
   mc_cross_links.cpp
+  md_parallel_tempering.cpp
   cbmc_api.cpp
   cbmc_base_sampler.cpp
   cbmc_fixed_endpoint.cpp

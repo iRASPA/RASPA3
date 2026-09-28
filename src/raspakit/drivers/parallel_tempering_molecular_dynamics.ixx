@@ -1,6 +1,6 @@
 module;
 
-export module parallel_tempering;
+export module parallel_tempering_molecular_dynamics;
 
 import std;
 
@@ -9,63 +9,69 @@ import averages;
 import system;
 import input_reader;
 import running_energy;
+import integrators_cputime;
 import archive;
 import json;
 import replica_round_trips;
 
 /**
- * \brief Multithreaded parallel-tempering driver for Monte Carlo.
+ * \brief Multithreaded replica-exchange (parallel-tempering) driver for molecular dynamics.
  *
  * The single declared system is replicated into one replica per temperature of the ladder
- * ('ExternalTemperatures'); replica k runs at temperature T_k. Every replica runs in its own
- * thread with its own random-number stream (plain std::jthread worker threads). The
- * threads only synchronize on a std::barrier every 'ParallelTemperingSwapEvery' cycles, where
+ * ('ExternalTemperatures'); replica k is integrated at temperature T_k. Every replica runs in its
+ * own thread with its own random-number stream (plain std::jthread worker threads). The
+ * pre-initialization and initialization stages are Monte Carlo (as in the plain MD driver); the
+ * equilibration and production stages integrate the equations of motion, one time step per cycle.
+ *
+ * The threads only synchronize on a std::barrier every 'ParallelTemperingSwapEvery' cycles, where
  * configuration swaps between replicas at neighboring temperatures are attempted with the standard
- * parallel-tempering acceptance rule
+ * parallel-tempering acceptance rule on the potential energies
  *
  *     acc = min(1, exp[(beta_B - beta_A) (U_B - U_A)])
  *
- * (extended with the Yan & de Pablo factor when the pressures differ). The replicas keep their
- * temperatures; only the configurations migrate through the ladder. Swaps alternate between the
- * (0,1),(2,3),... and (1,2),(3,4),... pairings so a configuration can traverse the whole ladder.
+ * After an accepted swap the momenta that travelled with the configuration are rescaled by
+ * sqrt(T_new / T_old) (Sugita & Okamoto, Chem. Phys. Lett. 314, 141-151, 1999), which makes the
+ * kinetic contributions to the acceptance rule cancel; the thermostat chain is a heat-bath property
+ * and stays with the replica. The replicas keep their temperatures; only the configurations migrate
+ * through the ladder. Swaps alternate between the (0,1),(2,3),... and (1,2),(3,4),... pairings so a
+ * configuration can traverse the whole ladder.
  *
  * Each replica writes its own output file with the standard status reports and final averages;
  * a combined output file holds the swap statistics.
  */
-export struct ParallelTempering
+export struct ParallelTemperingMolecularDynamics
 {
   enum class SimulationStage : std::size_t
   {
     Uninitialized = 0,      ///< Simulation not initialized.
-    PreInitialization = 1,  ///< Pre-initialization stage (translation/rotation only).
-    Initialization = 2,     ///< Initialization stage.
-    Equilibration = 3,      ///< Equilibration stage (Wang-Landau biasing for CFCMC moves).
-    Production = 4          ///< Production stage.
+    PreInitialization = 1,  ///< Pre-initialization stage (Monte Carlo: translation/rotation/reinsertion).
+    Initialization = 2,     ///< Initialization stage (Monte Carlo).
+    Equilibration = 3,      ///< Equilibration stage (molecular dynamics).
+    Production = 4          ///< Production stage (molecular dynamics).
   };
 
-  ParallelTempering() = delete;
-  ParallelTempering(const ParallelTempering&) = delete;
-  ParallelTempering& operator=(const ParallelTempering&) = delete;
+  ParallelTemperingMolecularDynamics() = delete;
+  ParallelTemperingMolecularDynamics(const ParallelTemperingMolecularDynamics&) = delete;
+  ParallelTemperingMolecularDynamics& operator=(const ParallelTemperingMolecularDynamics&) = delete;
 
   /**
    * \brief Constructs the driver and replicates the single declared system into one replica per
-   *        temperature of the ladder (replica k pinned at temperature k).
+   *        temperature of the ladder (replica k pinned at temperature k, thermostat included).
    */
-  ParallelTempering(InputReader& reader);
+  ParallelTemperingMolecularDynamics(InputReader& reader);
 
-  std::uint64_t versionNumber{2};  ///< Version number for serialization (2: round-trip statistics added).
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   RandomNumber random;  ///< Random number generator (seeding + swap acceptance).
 
-  std::size_t numberOfProductionCycles;         ///< Number of production cycles.
-  std::size_t numberOfPreInitializationCycles;  ///< Number of pre-initialization cycles.
-  std::size_t numberOfInitializationCycles;     ///< Number of initialization cycles.
-  std::size_t numberOfEquilibrationCycles;      ///< Number of equilibration cycles.
+  std::size_t numberOfProductionCycles;         ///< Number of production cycles (MD steps).
+  std::size_t numberOfPreInitializationCycles;  ///< Number of pre-initialization cycles (MC).
+  std::size_t numberOfInitializationCycles;     ///< Number of initialization cycles (MC).
+  std::size_t numberOfEquilibrationCycles;      ///< Number of equilibration cycles (MD steps).
 
-  std::size_t printEvery;              ///< Frequency of printing status reports.
-  std::size_t optimizeMCMovesEvery;    ///< Frequency of optimizing MC moves.
-  std::size_t rescaleWangLandauEvery;  ///< Frequency of adjusting the Wang-Landau biasing factors.
-  std::size_t writeBinaryRestartEvery; ///< Frequency of writing the binary restart file (0 disables).
+  std::size_t printEvery;               ///< Frequency of printing status reports.
+  std::size_t optimizeMCMovesEvery;     ///< Frequency of optimizing the MC moves (MC stages).
+  std::size_t writeBinaryRestartEvery;  ///< Frequency of writing the binary restart file (0 disables).
 
   std::size_t numberOfBlocks;              ///< Number of blocks for the block-error estimation.
   std::size_t parallelTemperingSwapEvery;  ///< Attempt a swap sweep every this many cycles (0 disables).
@@ -85,7 +91,11 @@ export struct ParallelTempering
   std::vector<System> systems;        ///< One replica per temperature.
   std::vector<RandomNumber> randoms;  ///< Independent random-number stream per replica.
 
-  std::vector<std::size_t> stepsPerReplica;  ///< Production MC steps performed per replica.
+  std::vector<std::size_t> stepsPerReplica;  ///< Production MD steps performed per replica.
+
+  /// Production-stage integrator timings per replica (gathered from the thread-local accumulators
+  /// of the worker threads at the end of the stage).
+  std::vector<IntegratorsCPUTime> integratorsCPUTimePerReplica;
 
   /// Cycles completed in the previous stages; the time-evolution properties (number of molecules,
   /// volume) are indexed by the absolute cycle number counted over all stages.
@@ -103,10 +113,10 @@ export struct ParallelTempering
   std::vector<std::string> replicaJsonFileNames;  ///< Filename of the JSON output file per replica.
   std::vector<nlohmann::json> replicaJsons;       ///< JSON output data per replica.
 
-  std::size_t swapSweeps{0};      ///< Number of swap sweeps performed (all stages).
+  std::size_t swapSweeps{0};       ///< Number of swap sweeps performed (all stages).
   std::size_t sweepsThisStage{0};  ///< Number of swap sweeps in the current stage.
-  std::size_t swapAttempts{0};    ///< Number of pairwise swap attempts.
-  std::size_t swapAccepted{0};    ///< Number of accepted pairwise swaps.
+  std::size_t swapAttempts{0};     ///< Number of pairwise swap attempts.
+  std::size_t swapAccepted{0};     ///< Number of accepted pairwise swaps.
 
   std::vector<std::size_t> swapAttemptsPerPair;  ///< Attempts per neighboring temperature-pair (k, k+1).
   std::vector<std::size_t> swapAcceptedPerPair;  ///< Acceptances per neighboring temperature-pair (k, k+1).
@@ -120,7 +130,7 @@ export struct ParallelTempering
   std::chrono::duration<double> totalSimulationTime{0};                  ///< Total simulation time.
 
   /**
-   * \brief Runs the parallel-tempering simulation.
+   * \brief Runs the replica-exchange molecular-dynamics simulation.
    */
   void run();
 
@@ -136,9 +146,15 @@ export struct ParallelTempering
   void runStage(SimulationStage stage, std::size_t numberOfCycles);
 
   /**
-   * \brief One Monte Carlo cycle of a single replica.
+   * \brief One Monte Carlo cycle of a single replica (pre-initialization and initialization stages).
    */
-  void performReplicaCycle(std::size_t replicaId, SimulationStage stage, std::size_t currentBlock);
+  void performReplicaMonteCarloCycle(std::size_t replicaId, SimulationStage stage);
+
+  /**
+   * \brief Per-replica preparation of a molecular-dynamics stage (velocities, thermostat, gradients,
+   *        conserved-energy reference). Runs inside the replica's worker thread.
+   */
+  void prepareReplicaMolecularDynamicsStage(std::size_t replicaId, SimulationStage stage);
 
   /**
    * \brief One sweep of configuration-swap attempts between replicas at neighboring temperatures.
@@ -152,8 +168,8 @@ export struct ParallelTempering
   void output();
 
   /**
-   * \brief Writes the final per-replica reports (energy drift, move statistics and averages) to
-   *        the per-replica output files.
+   * \brief Writes the final per-replica reports (energy drift, timings and averages) to the
+   *        per-replica output files.
    */
   void writeReplicaFinalReports(std::vector<RunningEnergy>& recomputed);
 
@@ -163,6 +179,7 @@ export struct ParallelTempering
    */
   void writeBinaryRestartFile(std::size_t cyclesCompleted) noexcept;
 
-  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ParallelTempering& pt);
-  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTempering& pt);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive,
+                                            const ParallelTemperingMolecularDynamics& pt);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTemperingMolecularDynamics& pt);
 };

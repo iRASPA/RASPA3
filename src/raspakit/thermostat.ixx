@@ -53,15 +53,15 @@ export struct Thermostat
              std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps,
              double timeScaleParameterThermostat);
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization (2: degrees of freedom are archived).
 
-  double temperature;                         ///< The target temperature for the thermostat.
+  double temperature{};                       ///< The target temperature for the thermostat.
   double timeStep{};                          ///< The simulation time step.
   std::size_t
       translationalCenterOfMassConstraint{};  ///< Constraint on translational center of mass degrees of freedom.
-  std::size_t translationalDegreesOfFreedom;  ///< Number of translational degrees of freedom.
-  std::size_t rotationalDegreesOfFreedom;     ///< Number of rotational degrees of freedom.
-  std::size_t thermostatChainLength;          ///< The length of the thermostat chain.
+  std::size_t translationalDegreesOfFreedom{};  ///< Number of translational degrees of freedom.
+  std::size_t rotationalDegreesOfFreedom{};     ///< Number of rotational degrees of freedom.
+  std::size_t thermostatChainLength{};          ///< The length of the thermostat chain.
   std::size_t numberOfRespaSteps{5};          ///< Number of RESPA steps.
   std::size_t numberOfYoshidaSuzukiSteps{5};  ///< Number of Yoshida-Suzuki steps for integration.
   double timeScaleParameterThermostat{0.15};   ///< Time scale parameter for the thermostat.

@@ -546,6 +546,13 @@ InputReader::InputReader(const std::string inputFile)
       simulationType = SimulationType::ParallelTempering;
       parseMolecularSimulations(parsed_data);
     }
+    else if (caseInSensStringCompare(simulationTypeString, "ParallelTemperingMolecularDynamics") ||
+             caseInSensStringCompare(simulationTypeString, "ReplicaExchangeMolecularDynamics") ||
+             caseInSensStringCompare(simulationTypeString, "ParallelTemperingMD"))
+    {
+      simulationType = SimulationType::ParallelTemperingMolecularDynamics;
+      parseMolecularSimulations(parsed_data);
+    }
     else if (caseInSensStringCompare(simulationTypeString, "ThermodynamicIntegration"))
     {
       simulationType = SimulationType::ThermodynamicIntegration;
@@ -2297,6 +2304,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (value.contains("ParallelTemperingSwapProbability") &&
           value["ParallelTemperingSwapProbability"].is_number_float() &&
           simulationType != SimulationType::ParallelTempering &&
+          simulationType != SimulationType::ParallelTemperingMolecularDynamics &&
           simulationType != SimulationType::HyperParallelTempering &&
           simulationType != SimulationType::ReweightedHistogram)
       {
@@ -2530,16 +2538,20 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (value.contains("ExternalTemperatures") && value["ExternalTemperatures"].is_array())
       {
         if (simulationType != SimulationType::ParallelTempering &&
+            simulationType != SimulationType::ParallelTemperingMolecularDynamics &&
             simulationType != SimulationType::HyperParallelTempering &&
             simulationType != SimulationType::ReweightedHistogram && simulationType != SimulationType::ParallelTMMC)
         {
           throw std::runtime_error(
               std::format("[Input reader]: 'ExternalTemperatures' (a temperature ladder) is only valid for "
-                          "'SimulationType': 'ParallelTempering', 'HyperParallelTempering', "
-                          "'ReweightedHistogram' or 'ParallelTMMC'; use 'ExternalTemperature' instead\n"));
+                          "'SimulationType': 'ParallelTempering', 'ParallelTemperingMolecularDynamics', "
+                          "'HyperParallelTempering', 'ReweightedHistogram' or 'ParallelTMMC'; use "
+                          "'ExternalTemperature' instead\n"));
         }
         parallelTemperingTemperatures = value["ExternalTemperatures"].get<std::vector<double>>();
-        if (simulationType == SimulationType::ParallelTempering && parallelTemperingTemperatures.size() < 2)
+        if ((simulationType == SimulationType::ParallelTempering ||
+             simulationType == SimulationType::ParallelTemperingMolecularDynamics) &&
+            parallelTemperingTemperatures.size() < 2)
         {
           throw std::runtime_error(
               std::format("[Input reader]: 'ExternalTemperatures' must contain at least two temperatures\n"));
@@ -3827,6 +3839,35 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       throw std::runtime_error(
           std::format("[Input reader]: 'ParallelTempering' requires a temperature ladder: give the system a key "
                       "'ExternalTemperatures' with a sorted list of at least two temperatures\n"));
+    }
+  }
+
+  // Replica-exchange molecular dynamics: a single declared system is replicated by the driver into one
+  // replica per temperature (each integrated in its own thread); only the fixed-cell, fixed-N ensembles
+  // are supported (the swap exchanges configurations and momenta, the cell and molecule counts stay)
+  if (simulationType == SimulationType::ParallelTemperingMolecularDynamics)
+  {
+    if (systems.size() != 1)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ParallelTemperingMolecularDynamics' requires exactly one declared system "
+                      "(it is replicated internally into one replica per temperature), {} systems were declared\n",
+                      systems.size()));
+    }
+    if (parallelTemperingTemperatures.size() < 2)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ParallelTemperingMolecularDynamics' requires a temperature ladder: give "
+                      "the system a key 'ExternalTemperatures' with a sorted list of at least two temperatures\n"));
+    }
+    const MolecularDynamicsEnsemble ensemble = systems.front().molecularDynamicsEnsemble;
+    if (ensemble != MolecularDynamicsEnsemble::NVE && ensemble != MolecularDynamicsEnsemble::NVT)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'ParallelTemperingMolecularDynamics' supports the 'Ensemble' values 'NVE' "
+                      "and 'NVT' only (the configuration swap keeps the cell and the number of molecules of every "
+                      "replica), '{}' was given\n",
+                      molecularDynamicsEnsembleName(ensemble)));
     }
   }
 
