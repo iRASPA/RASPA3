@@ -1118,8 +1118,7 @@ const Component::BridgingTopology &Component::bridgingTopology() const
   if (numberOfBeads < 7 || !endToEndAtoms.has_value()) return finish();
   if (connectivityTable.findAllBonds().size() + 1 != numberOfBeads) return finish();
 
-  const std::vector<std::size_t> backbone =
-      connectivityTable.shortestPath(endToEndAtoms.value()[0], endToEndAtoms.value()[1]);
+  const std::vector<std::size_t> backbone = backboneAtoms();
   if (backbone.size() < 7) return finish();
   const std::size_t numberOfUnits = backbone.size();
 
@@ -2868,6 +2867,12 @@ std::vector<std::vector<std::size_t>> Component::readRepeatUnits(
   }
 
   return units;
+}
+
+std::vector<std::size_t> Component::backboneAtoms() const
+{
+  if (!endToEndAtoms.has_value()) return {};
+  return connectivityTable.shortestPath(endToEndAtoms.value()[0], endToEndAtoms.value()[1]);
 }
 
 std::optional<std::array<std::size_t, 2>> Component::determineEndToEndAtoms(

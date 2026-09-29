@@ -288,6 +288,12 @@ export struct Component
   // endpoints of the topological diameter of the bond graph (the chain termini of a linear
   // molecule). Nullopt for rigid or single-bead molecules.
   std::optional<std::array<std::size_t, 2>> endToEndAtoms{};
+
+  /// The backbone of the molecule: the atoms on the shortest topological path between the
+  /// 'endToEndAtoms', in order from the first end to the second. Empty when the molecule has no
+  /// end-to-end atoms (rigid or single-bead molecules). Shared by the bridging moves and the
+  /// backbone-statistics sampling.
+  std::vector<std::size_t> backboneAtoms() const;
   // Cache of CBMC growth plans keyed by the set of already-placed beads. A plan is deterministic
   // (it depends only on the molecule's topology and the placed set), and building one filters the
   // intramolecular potentials per step, so the plans for the common placed sets (the starting bead

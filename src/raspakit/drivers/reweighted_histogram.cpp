@@ -68,6 +68,14 @@ static void writeReplicaAnalysisOutputs(System& system, std::size_t replicaId, s
   {
     system.propertyMoleculeProperties->writeOutput(replicaId, system.components, cycle);
   }
+  if (system.propertyPolymerShape.has_value())
+  {
+    system.propertyPolymerShape->writeOutput(replicaId, system.components, cycle);
+  }
+  if (system.propertyPolymerBackbone.has_value())
+  {
+    system.propertyPolymerBackbone->writeOutput(replicaId, system.components, cycle);
+  }
 }
 
 ReweightedHistogram::ReweightedHistogram(InputReader& reader)

@@ -641,6 +641,18 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
                                        currentBlock);
   }
 
+  if (propertyPolymerShape.has_value())
+  {
+    propertyPolymerShape->sample(components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(), currentCycle,
+                                 currentBlock);
+  }
+
+  if (propertyPolymerBackbone.has_value())
+  {
+    propertyPolymerBackbone->sample(components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(), currentCycle,
+                                    currentBlock);
+  }
+
   if (averageEnergyHistogram.has_value())
   {
     averageEnergyHistogram->addSample(
@@ -1462,6 +1474,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.averageEnergyHistogram;
   archive << s.averageNumberOfMoleculesHistogram;
   archive << s.propertyMoleculeProperties;
+  archive << s.propertyPolymerShape;
+  archive << s.propertyPolymerBackbone;
   archive << s.propertyMSD;
   archive << s.propertyVACF;
   archive << s.writeLammpsData;
@@ -1626,6 +1640,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.averageEnergyHistogram;
   archive >> s.averageNumberOfMoleculesHistogram;
   archive >> s.propertyMoleculeProperties;
+  if (versionNumber >= 3)
+  {
+    archive >> s.propertyPolymerShape;
+    archive >> s.propertyPolymerBackbone;
+  }
   archive >> s.propertyMSD;
   archive >> s.propertyVACF;
   archive >> s.writeLammpsData;

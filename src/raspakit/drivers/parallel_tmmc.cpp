@@ -104,6 +104,14 @@ static void writeWalkerAnalysisOutputs(System& system, std::size_t walkerId, std
   {
     system.propertyMoleculeProperties->writeOutput(walkerId, system.components, cycle);
   }
+  if (system.propertyPolymerShape.has_value())
+  {
+    system.propertyPolymerShape->writeOutput(walkerId, system.components, cycle);
+  }
+  if (system.propertyPolymerBackbone.has_value())
+  {
+    system.propertyPolymerBackbone->writeOutput(walkerId, system.components, cycle);
+  }
 }
 
 namespace

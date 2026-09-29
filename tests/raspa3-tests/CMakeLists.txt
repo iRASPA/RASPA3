@@ -24,6 +24,8 @@ add_executable(unit_tests_raspa3
   cbmc_fixed_endpoint.cpp
   cbmc_recoil_growth.cpp
   end_to_end_histogram.cpp
+  polymer_shape.cpp
+  polymer_backbone.cpp
   transition_matrix.cpp
   input_reader_tmmc.cpp
   reweighted_histogram_wham.cpp

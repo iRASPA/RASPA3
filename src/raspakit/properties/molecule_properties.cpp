@@ -38,9 +38,8 @@ double bondEquilibriumLength(const BondPotential &bond)
   return bestLength;
 }
 
-// Contour length between the end-to-end atoms: the sum of equilibrium bond lengths along the
-// shortest topological path. Bonds without a potential (e.g. inside a rigid fragment) use the
-// reference geometry, falling back to a generic 1.54 Angstrom when that is degenerate.
+}  // namespace
+
 double contourLength(const Component &component, const std::array<std::size_t, 2> &ends)
 {
   std::vector<std::size_t> path = component.connectivityTable.shortestPath(ends[0], ends[1]);
@@ -68,8 +67,6 @@ double contourLength(const Component &component, const std::array<std::size_t, 2
   }
   return length;
 }
-
-}  // namespace
 
 PropertyMoleculeProperties::PropertyMoleculeProperties(std::size_t numberOfBlocks,
                                                        const std::vector<Component> &components,

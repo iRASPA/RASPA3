@@ -36,6 +36,8 @@ import property_temperature;
 import property_energy_histogram;
 import property_number_of_molecules_histogram;
 import property_molecule_properties;
+import property_polymer_shape;
+import property_polymer_backbone;
 import property_msd;
 import property_vacf;
 import property_number_of_molecules_evolution;
@@ -103,7 +105,7 @@ export struct System
          std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{3};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -279,6 +281,8 @@ export struct System
   std::optional<PropertyEnergyHistogram> averageEnergyHistogram;
   std::optional<PropertyNumberOfMoleculesHistogram> averageNumberOfMoleculesHistogram;
   std::optional<PropertyMoleculeProperties> propertyMoleculeProperties;
+  std::optional<PropertyPolymerShape> propertyPolymerShape;
+  std::optional<PropertyPolymerBackbone> propertyPolymerBackbone;
   std::optional<PropertyMeanSquaredDisplacement> propertyMSD;
   std::optional<PropertyVelocityAutoCorrelationFunction> propertyVACF;
   std::optional<WriteLammpsData> writeLammpsData;

@@ -20,6 +20,11 @@ import component;
 // histogram range defaults to the contour length between the two ends and can be
 // overridden with 'EndToEndRangeMoleculeProperties'.
 
+// Contour length between two atoms of a component: the sum of equilibrium bond lengths along the
+// shortest topological path. Bonds without a potential (e.g. inside a rigid fragment) use the
+// reference geometry, falling back to a generic 1.54 Angstrom when that is degenerate.
+export double contourLength(const Component &component, const std::array<std::size_t, 2> &ends);
+
 export struct PropertyMoleculeProperties
 {
   PropertyMoleculeProperties() {};
