@@ -525,7 +525,7 @@ std::string CellList::status() const
 {
   std::string result;
   result += std::format("    cutoff {:.4f} A, skin {:.4f} A, list cutoff {:.4f} A\n", cutoff, skin, listCutoff);
-  result += std::format("    cell grid {} x {} x {} ({} cells, {} per list cutoff, stencil {} x {} x {}), {}\n",
+  result += std::format("    cell grid {} x {} x {} ({} cells, {} per list cutoff, stencil {} x {} x {})\n    {}\n",
                         numberOfCells.x, numberOfCells.y, numberOfCells.z,
                         static_cast<std::size_t>(numberOfCells.x) * static_cast<std::size_t>(numberOfCells.y) *
                             static_cast<std::size_t>(numberOfCells.z),

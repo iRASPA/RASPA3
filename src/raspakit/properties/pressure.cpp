@@ -18,7 +18,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
   double conv = Units::PressureConversionFactor;
 
   std::print(stream, "Pressure averages and statistics:\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
 
   std::pair<PressureData, PressureData> average_pressure = average();
 
@@ -29,7 +29,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
       double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * average_pressure.first.totalPressureTensor;
       double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * average_pressure.second.totalPressureTensor;
       std::print(stream, "Average pressure tensor: \n");
-      std::print(stream, "-------------------------------------------------------------------------------\n");
+      std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax,
                  pressureTensor.bx, pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx,
                  pressureTensorError.cx);
@@ -45,7 +45,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
         double blockAverage = averaged(i).idealGasPressure;
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Ideal gas pressure  {: .6e} +/- {: .6e} [Pa]\n", conv * average_pressure.first.idealGasPressure,
                  average_pressure.second.idealGasPressure);
       std::print(stream, "                        {: .6e} +/- {: .6e} [bar]\n",
@@ -57,7 +57,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
         double blockAverage = averaged(i).excessPressure;
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Excess pressure  {: .6e} +/- {: .6e} [Pa]\n", conv * average_pressure.first.excessPressure,
                  conv * average_pressure.second.excessPressure);
       std::print(stream, "                     {: .6e} +/- {: .6e} [bar]\n", 1e-5 * conv * average_pressure.first.excessPressure,
@@ -69,7 +69,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
         double blockAverage = averaged(i).totalPressure;
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Pressure average  {: .6e} +/- {: .6e} [Pa]\n", conv * average_pressure.first.totalPressure,
                  conv * average_pressure.second.totalPressure);
       std::print(stream, "                      {: .6e} +/- {: .6e} [bar]\n", 1e-5 * conv * average_pressure.first.totalPressure,
@@ -82,7 +82,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
       double3x3 pressureTensor = Units::PressureConversionFactor * average_pressure.first.totalPressureTensor;
       double3x3 pressureTensorError = Units::PressureConversionFactor * average_pressure.second.totalPressureTensor;
       std::print(stream, "Average pressure tensor: \n");
-      std::print(stream, "-------------------------------------------------------------------------------\n");
+      std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.ax,
                  pressureTensor.bx, pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx,
                  pressureTensorError.cx, Units::unitOfPressureString);
@@ -98,7 +98,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
         double blockAverage = averaged(i).idealGasPressure;
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Ideal gas pressure  {: .6e} +/- {: .6e} [{}]\n", conv * average_pressure.first.idealGasPressure,
                  average_pressure.second.idealGasPressure, Units::unitOfPressureString);
       std::print(stream, "\n\n");
@@ -108,7 +108,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
         double blockAverage = averaged(i).excessPressure;
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Excess pressure  {: .6e} +/- {: .6e} [{}]\n", conv * average_pressure.first.excessPressure,
                  conv * average_pressure.second.excessPressure, Units::unitOfPressureString);
       std::print(stream, "\n\n");
@@ -118,7 +118,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
         double blockAverage = averaged(i).totalPressure;
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Pressure average  {: .6e} +/- {: .6e} [{}]\n", conv * average_pressure.first.totalPressure,
                  conv * average_pressure.second.totalPressure, Units::unitOfPressureString);
       std::print(stream, "\n\n");

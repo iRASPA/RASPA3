@@ -122,7 +122,7 @@ void placeNitrogenBETPressureLadderFromHenryAndSaturation(
   }
 
   std::print(stream, "Pressure-ladder re-placement (pre-isotherm Type I fit, Fisher overlap)\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "    Henry coefficient:                     {:.6e} [molecules/cell/Pa]\n", henry);
   std::print(stream, "    n_sat:                                 {:.4f} [molecules / cell] ({})\n", nSatPerCell,
              nSatSource);

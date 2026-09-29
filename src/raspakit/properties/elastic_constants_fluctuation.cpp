@@ -200,7 +200,7 @@ std::string PropertyElasticConstantsFluctuation::writeAveragesStatistics(double 
                                              [](double count, const auto& block) { return count + block.second; });
   std::string output = std::format(
       "\nIsothermal elastic constants from NVT stress fluctuations\n"
-      "===============================================================================\n"
+      "========================================================================================================================\n"
       "Voigt order: xx yy zz yz xz xy; shear strains use engineering convention.\n"
       "Samples: {:.0f}; blocks: {}\n\n"
       "Mean configurational stress [{}]: {: .7e} {: .7e} {: .7e} {: .7e} {: .7e} {: .7e}\n"

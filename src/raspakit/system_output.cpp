@@ -44,7 +44,7 @@ std::string System::writeOutputHeader() const
   std::ostringstream stream;
 
   std::print(stream, "Compiler and run-time data\n");
-  std::print(stream, "===============================================================================\n");
+  std::print(stream, "========================================================================================================================\n");
 
   // The same build identification as 'raspa3 --version', so that a result can be traced back to the commit
   // that produced it.
@@ -61,12 +61,12 @@ std::string System::writeNumberOfPseudoAtoms() const
   std::ostringstream stream;
 
   std::print(stream, "Number of pseudo-atoms\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
 
   for (std::size_t componentId = 0; const Component& c : components)
   {
     std::print(stream, "Component {:3d} ({})\n", componentId, c.name);
-    std::print(stream, "-------------------------------------------------------------------------------\n");
+    std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
     for (std::size_t index = 0; const std::size_t number_of_pseudo_atoms : numberOfPseudoAtoms[componentId])
     {
       std::print(stream, "    index {:3d} ({}): {} atoms\n", index, forceField.pseudoAtoms[index].name,
@@ -78,7 +78,7 @@ std::string System::writeNumberOfPseudoAtoms() const
   }
 
   std::print(stream, "Total number of pseudo-atoms:\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
   for (std::size_t index = 0; const std::size_t number_of_pseudo_atoms : totalNumberOfPseudoAtoms)
   {
     std::print(stream, "    index {:3d} ({}): {} atoms\n", index, forceField.pseudoAtoms[index].name,
@@ -96,7 +96,7 @@ std::string System::writePreInitializationStatusReport(std::size_t currentCycle,
   std::ostringstream stream;
 
   std::print(stream, "Pre-initialization: Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   {
     const std::string progressLine = writeProgressLine(currentCycle, numberOfProductionCycles);
     if (!progressLine.empty()) std::print(stream, "{}\n", progressLine);
@@ -116,7 +116,7 @@ std::string System::writePreInitializationStatusReport(std::size_t currentCycle,
   }
 
   std::print(stream, "Amount of molecules per component:\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
   for (std::size_t componentId{0}; const Component& c : components)
   {
     std::print(stream, "{}",
@@ -139,7 +139,7 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
   std::ostringstream stream;
 
   std::print(stream, "Initialization: Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   {
     const std::string progressLine = writeProgressLine(currentCycle, numberOfProductionCycles);
     if (!progressLine.empty()) std::print(stream, "{}\n", progressLine);
@@ -201,7 +201,7 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
   }
 
   std::print(stream, "Amount of molecules per component:\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
   for (std::size_t componentId{0}; const Component& c : components)
   {
     std::print(stream, "{}",
@@ -224,7 +224,7 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
   std::ostringstream stream;
 
   std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   {
     const std::string progressLine = writeProgressLine(currentCycle, numberOfProductionCycles);
     if (!progressLine.empty()) std::print(stream, "{}\n", progressLine);
@@ -286,7 +286,7 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
   }
 
   std::print(stream, "Amount of molecules per component:\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
   for (std::size_t componentId{0}; const Component& c : components)
   {
     std::print(stream, "{}",
@@ -311,7 +311,7 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   double conv = Units::EnergyToKelvin;
 
   std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   {
     const std::string progressLine = writeProgressLine(currentCycle, numberOfProductionCycles);
     if (!progressLine.empty()) std::print(stream, "{}\n", progressLine);
@@ -417,7 +417,7 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   }
 
   std::print(stream, "Amount of molecules per component:\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
   for (std::size_t componentId{0}; const Component& c : components)
   {
     std::print(stream, "{}",
@@ -615,7 +615,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine,
   std::ostringstream stream;
 
   std::print(stream, "{}", statusLine);
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   if (progress.has_value())
   {
     const std::string progressLine = writeProgressLine(progress->first, progress->second);
@@ -680,7 +680,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine,
   }
 
   std::print(stream, "Amount of molecules per component:\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
   std::pair<LoadingData, LoadingData> loadingData = averageLoadings.average();
   for (std::size_t componentId{0}; const Component& c : components)
   {
@@ -705,7 +705,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine,
         double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * average_pressure.first.totalPressureTensor;
         double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * average_pressure.second.totalPressureTensor;
         std::print(stream, "Average pressure tensor: \n");
-        std::print(stream, "-------------------------------------------------------------------------------\n");
+        std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
         std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax,
                    pressureTensor.bx, pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx,
                    pressureTensorError.cx);
@@ -731,7 +731,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine,
         double3x3 pressureTensor = average_pressure.first.totalPressureTensor;
         double3x3 pressureTensorError = average_pressure.second.totalPressureTensor;
         std::print(stream, "Average pressure tensor: \n");
-        std::print(stream, "-------------------------------------------------------------------------------\n");
+        std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
         std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.ax,
                    pressureTensor.bx, pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx,
                    pressureTensorError.cx, Units::unitOfPressureString);
@@ -758,7 +758,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine,
              Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.totalEnergy.energy,
              conv * energyData.first.totalEnergy.energy, conv * energyData.second.totalEnergy.energy,
              Units::displayedUnitOfEnergyString);
-  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
   std::print(stream, "ExternalField-molecule\n");
   std::print(stream, "    Van der Waals{}       {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
              Units::displayedUnitOfEnergyConversionString,
@@ -829,7 +829,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   double conv = Units::EnergyToKelvin;
 
   std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles);
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   {
     const std::string progressLine = writeProgressLine(currentCycle, numberOfProductionCycles);
     if (!progressLine.empty()) std::print(stream, "{}\n", progressLine);
@@ -898,7 +898,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   std::print(stream, "Total potential energy:   {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
              conv * currentEnergyStatus.totalEnergy.energy, conv * energyData.first.totalEnergy.energy,
              conv * energyData.second.totalEnergy.energy);
-  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
   std::print(stream, "ExternalField-molecule\n");
   std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
              conv * currentEnergyStatus.externalFieldMoleculeEnergy.VanDerWaals.energy,
@@ -969,7 +969,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   std::print(stream, "\n");
 
   std::print(stream, "Amount of molecules per component :\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
   std::pair<LoadingData, LoadingData> loadingData = averageLoadings.average();
   for (std::size_t componentId{0}; const Component& c : components)
   {
@@ -988,7 +988,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * average_pressure.second.totalPressureTensor;
 
   std::print(stream, "Average pressure tensor: \n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
   std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax, pressureTensor.bx,
              pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
   std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ay, pressureTensor.by,
@@ -1014,7 +1014,7 @@ std::string System::writeSystemStatus() const
   std::ostringstream stream;
 
   std::print(stream, "System definitions\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
 
   std::print(stream, "Temperature:          {} [{}]\n", temperature, Units::unitOfTemperatureString);
   std::print(stream, "Beta:                 {} [-]\n", beta);
@@ -1040,7 +1040,7 @@ std::string System::writeSystemStatus() const
   std::print(stream, "\n\n\n");
 
   std::print(stream, "Property measurement settings\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   if (averageEnergyHistogram.has_value())
   {
     stream << averageEnergyHistogram->printSettings();
@@ -1080,7 +1080,7 @@ std::string System::writeComponentStatus() const
   std::ostringstream stream;
 
   std::print(stream, "Component definitions\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   if (framework.has_value())
   {
     std::print(stream, "{}", framework->printStatus(forceField));

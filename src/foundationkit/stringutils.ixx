@@ -57,6 +57,78 @@ export inline std::string trim(const std::string& s)
   return std::string(start, end + 1);
 }
 
+/// Maximum number of columns of a line in the output file.
+export inline constexpr std::size_t outputLineWidth = 120;
+
+/// Number of display columns of a UTF-8 string (counts code points, not bytes).
+export inline std::size_t displayWidth(std::string_view s)
+{
+  std::size_t width = 0;
+  for (unsigned char c : s)
+  {
+    if ((c & 0xC0) != 0x80) ++width;
+  }
+  return width;
+}
+
+/// Word-wraps `text` so that every emitted line, including its indent, fits within `width` columns.
+/// The first line is prefixed with `firstIndent`, subsequent lines with `continuationIndent`.
+/// Words are separated on white space, except that a bracketed unit such as "[K]" stays attached to the
+/// value preceding it. A single word longer than the available width is emitted on its own line.
+/// Every emitted line is terminated with a newline.
+export inline std::string wrapText(std::string_view text, std::string_view firstIndent,
+                                   std::string_view continuationIndent, std::size_t width = outputLineWidth)
+{
+  std::vector<std::string> words;
+  std::size_t position = 0;
+  while (position < text.size())
+  {
+    std::size_t begin = text.find_first_not_of(" \t\n\r", position);
+    if (begin == std::string_view::npos) break;
+    std::size_t end = text.find_first_of(" \t\n\r", begin);
+    if (end == std::string_view::npos) end = text.size();
+    std::string_view word = text.substr(begin, end - begin);
+    if (!words.empty() && word.starts_with('['))
+    {
+      words.back() += ' ';
+      words.back() += word;
+    }
+    else
+    {
+      words.emplace_back(word);
+    }
+    position = end;
+  }
+
+  std::string result;
+  std::string line(firstIndent);
+  std::size_t lineWidth = displayWidth(firstIndent);
+  bool lineHasWord = false;
+  for (const std::string& word : words)
+  {
+    std::size_t wordWidth = displayWidth(word);
+    if (lineHasWord && lineWidth + 1 + wordWidth > width)
+    {
+      result += line;
+      result += '\n';
+      line = std::string(continuationIndent);
+      lineWidth = displayWidth(continuationIndent);
+      lineHasWord = false;
+    }
+    if (lineHasWord)
+    {
+      line += ' ';
+      ++lineWidth;
+    }
+    line += word;
+    lineWidth += wordWidth;
+    lineHasWord = true;
+  }
+  result += line;
+  result += '\n';
+  return result;
+}
+
 export inline std::string addExtension(const std::string& fileName, const std::string& extension)
 {
   if (fileName.length() >= extension.length() &&

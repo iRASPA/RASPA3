@@ -17,13 +17,13 @@ std::string PropertyWidom::writeAveragesRosenbluthWeightStatistics(double temper
   std::pair<double, double> average_rosenbluth_weight = result();
 
   std::print(stream, "    Widom insertion Rosenbluth weight statistics:\n");
-  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
   for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
   {
     double blockAverage = averagedRosenbluthWeight(blockIndex);
     std::print(stream, "        Block[ {:2d}] {: .6e}\n", blockIndex, blockAverage);
   }
-  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
   std::print(stream, "    Average Rosenbluth weight:   {: .6e} +/- {: .6e} [-]\n", 
       average_rosenbluth_weight.first, average_rosenbluth_weight.second);
   std::print(stream, "\n\n");
@@ -36,13 +36,13 @@ std::string PropertyWidom::writeAveragesRosenbluthWeightStatistics(double temper
     double conversion_factor_mol_per_kg = 1.0 / (Units::MolarGasConstant * temperature * frameworkDensity);
 
     std::print(stream, "    Henry coefficient based on Rosenbluth weight:\n");
-    std::print(stream, "    ---------------------------------------------------------------------------\n");
+    std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
     for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
     {
       double blockAverage = conversion_factor_mol_per_kg * averagedRosenbluthWeight(blockIndex);
       std::print(stream, "        Block[ {:2d}] {: .6e}\n", blockIndex, blockAverage);
     }
-    std::print(stream, "    ---------------------------------------------------------------------------\n");
+    std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
     std::print(stream, "    Average Henry coefficient:   {: .6e} +/- {: .6e} [mol/kg/Pa]\n",
                average_rosenbluth_weight.first * conversion_factor_mol_per_kg,
                average_rosenbluth_weight.second * conversion_factor_mol_per_kg);
@@ -79,13 +79,13 @@ std::string PropertyWidom::writeAveragesChemicalPotentialStatistics(double beta,
     case Units::System::RASPA:
     {
       std::print(stream, "    Widom insertion chemical potential statistics:\n");
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
       {
         double blockAverage = averagedChemicalPotential(blockIndex, beta).excess;
         std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, conv * blockAverage);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
 
       std::print(stream, "    Excess chemical potential:          {: .6e} +/- {: .6e} [K]\n",
                  Units::EnergyToKelvin * average_chemical_potential.first.excess,
@@ -101,7 +101,7 @@ std::string PropertyWidom::writeAveragesChemicalPotentialStatistics(double beta,
         std::print(stream, "    Imposed chemical potential:         {: .6e} [K]\n",
                    Units::EnergyToKelvin * imposedChemicalPotential.value());
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Excess chemical potential:          {: .6e} +/- {: .6e} [kJ/mol]\n",
                  Units::EnergyToKJPerMol * average_chemical_potential.first.excess,
                  Units::EnergyToKJPerMol * average_chemical_potential.second.excess);
@@ -119,13 +119,13 @@ std::string PropertyWidom::writeAveragesChemicalPotentialStatistics(double beta,
       std::print(stream, "\n");
 
       std::print(stream, "    Widom insertion fugacity statistics:\n");
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
       {
         double blockAverage = averagedFugacity(blockIndex, beta);
         std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, Units::PressureConversionFactor * blockAverage);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Measured fugacity:          {: .6e} +/- {: .6e} [Pa]\n",
                  Units::PressureConversionFactor * average_fugacity.first,
                  Units::PressureConversionFactor * average_fugacity.second);
@@ -139,13 +139,13 @@ std::string PropertyWidom::writeAveragesChemicalPotentialStatistics(double beta,
     case Units::System::ReducedUnits:
     {
       std::print(stream, "    Widom insertion chemical potential statistics:\n");
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
       {
         double blockAverage = averagedChemicalPotential(blockIndex, beta).excess;
         std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, beta * blockAverage);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Beta * Excess chemical potential:          {: .6e} +/- {: .6e} [-]\n",
                  beta * average_chemical_potential.first.excess,
                  beta * average_chemical_potential.second.excess);
@@ -160,7 +160,7 @@ std::string PropertyWidom::writeAveragesChemicalPotentialStatistics(double beta,
         std::print(stream, "    Beta * Imposed chemical potential:  {: .6e} [-]\n",
                    beta * imposedChemicalPotential.value());
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Excess chemical potential:          {: .6e} +/- {: .6e} [{}]\n",
                  average_chemical_potential.first.excess, average_chemical_potential.second.excess,
                  Units::unitOfEnergyString);
@@ -178,13 +178,13 @@ std::string PropertyWidom::writeAveragesChemicalPotentialStatistics(double beta,
       std::print(stream, "\n");
 
       std::print(stream, "    Widom insertion fugacity statistics:\n");
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
       {
         double blockAverage = averagedFugacity(blockIndex, beta);
         std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, blockAverage);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Total fugacity:           {: .6e} +/- {: .6e} [{}]\n",
                  Units::PressureConversionFactor * average_fugacity.first, 
                  Units::PressureConversionFactor * average_fugacity.second,

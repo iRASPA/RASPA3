@@ -95,7 +95,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
   std::size_t lastBin = numberOfSamplePoints - 1;
 
   std::print(stream, "    Lambda histogram and bias:\n");
-  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
   std::pair<std::vector<double>, std::vector<double>> histogram_avg = averageProbabilityHistogram();
 
   double totalHistogram = std::accumulate(histogram_avg.first.begin(), histogram_avg.first.end(), 0.0);
@@ -118,7 +118,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
   std::pair<double, double> measuredFugacity = averageFugacity(beta, excessChemicalPotentialBias);
 
   std::print(stream, "    Lambda statistics:\n");
-  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
 
   double minimum_free_energy = 0.0;
   auto minimum_iterator = std::ranges::min_element(freeEnergy.first);
@@ -137,7 +137,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
                    static_cast<double>(i) * delta, conv * freeEnergy.first[i] - minimum_free_energy,
                    conv * freeEnergy.second[i]);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Excess chemical potential: (ln(P(lambda=1))-ln(P(lambda=0)))/Beta\n");
       for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
       {
@@ -145,7 +145,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
         std::print(stream, "        Block[ {:2d}] {}\n", blockIndex,
                    conv * (blockAverage + excessChemicalPotentialBias));
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Excess chemical potential:    {: .6e} +/- {: .6e} [K]\n",
                  Units::EnergyToKelvin * (excessChemicalPotential.first + excessChemicalPotentialBias),
                  Units::EnergyToKelvin * excessChemicalPotential.second);
@@ -160,7 +160,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
         std::print(stream, "    Imposed chemical potential:   {: .6e} [K]\n",
                    Units::EnergyToKelvin * imposedChemicalPotential.value());
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Excess chemical potential:    {: .6e} +/- {: .6e} [kJ/mol]\n",
                  Units::EnergyToKJPerMol * (excessChemicalPotential.first + excessChemicalPotentialBias),
                  Units::EnergyToKJPerMol * excessChemicalPotential.second);
@@ -175,7 +175,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
         std::print(stream, "    Imposed chemical potential:   {: .6e} [kJ/mol]\n",
                    Units::EnergyToKJPerMol * imposedChemicalPotential.value());
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       if (imposedFugacity)
       {
         std::print(stream, "    Imposed fugacity:             {: .6e} [Pa]\n",
@@ -194,7 +194,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
                    static_cast<double>(i) * delta, beta * (freeEnergy.first[i] - minimum_free_energy),
                    beta * freeEnergy.second[i]);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Excess chemical potential: (ln(P(lambda=1))-ln(P(lambda=0)))\n");
       for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
       {
@@ -202,7 +202,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
         std::print(stream, "        Block[ {:2d}] {}\n", blockIndex,
                    beta * (blockAverage + excessChemicalPotentialBias));
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Beta * Excess chemical potential:    {: .6e} +/- {: .6e} [-]\n",
                  beta * (excessChemicalPotential.first + excessChemicalPotentialBias),
                  beta * excessChemicalPotential.second);
@@ -215,7 +215,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
         std::print(stream, "    Beta * Imposed chemical potential:   {: .6e} [-]\n",
                    beta * imposedChemicalPotential.value());
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Excess chemical potential:    {: .6e} +/- {: .6e} [{}]\n",
                  (excessChemicalPotential.first + excessChemicalPotentialBias), excessChemicalPotential.second,
                  Units::unitOfEnergyString);
@@ -228,7 +228,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
         std::print(stream, "    Imposed chemical potential:   {: .6e} [{}]\n", imposedChemicalPotential.value(),
                    Units::unitOfEnergyString);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       if (imposedFugacity)
       {
         std::print(stream, "    Imposed fugacity:             {: .6e} [{}]\n",
@@ -254,7 +254,7 @@ std::string PropertyLambdaProbabilityHistogram::writeDUdLambdaStatistics(double 
   if (computeDUdlambda)
   {
     std::print(stream, "    Thermodynamic integration (dU/dlambda)\n");
-    std::print(stream, "    ===========================================================================\n\n");
+    std::print(stream, "    ====================================================================================================================\n\n");
 
     double conv = Units::EnergyToKelvin;
     std::pair<std::vector<double>, std::vector<double>> dudlambda = averageDuDlambda();
@@ -264,14 +264,14 @@ std::string PropertyLambdaProbabilityHistogram::writeDUdLambdaStatistics(double 
                  static_cast<double>(binIndex) * delta, conv * dudlambda.first[binIndex],
                  conv * dudlambda.second[binIndex]);
     }
-    std::print(stream, "    ---------------------------------------------------------------------------\n");
+    std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
     std::print(stream, "    Excess chemical potential: integral du/dlambda over lambda (Simpson's rule)\n");
     for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
     {
       double blockAverage = averagedExcessChemicalPotentialDUdlambda(blockIndex);
       std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, Units::EnergyToKelvin * blockAverage);
     }
-    std::print(stream, "    ---------------------------------------------------------------------------\n");
+    std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
     std::pair<double, double> averageExcessChemicalPotentialDUDlambda = averageExcessChemicalPotentialDUdlambda();
     std::pair<double, double> averageIdealGasChemicalPotentialDUDlambda = averageIdealGasChemicalPotential(beta);
     std::pair<double, double> averageTotalChemicalPotentialDUDlambda = averageTotalChemicalPotential(beta);
@@ -291,7 +291,7 @@ std::string PropertyLambdaProbabilityHistogram::writeDUdLambdaStatistics(double 
       std::print(stream, "    Imposed chemical potential:  {: .6e} [K]\n",
                  Units::EnergyToKelvin * imposedChemicalPotential.value());
     }
-    std::print(stream, "    ---------------------------------------------------------------------------\n");
+    std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
     std::print(stream, "    Excess chemical potential:   {: .6e} +/- {: .6e} [kJ/mol]\n",
                Units::EnergyToKJPerMol * averageExcessChemicalPotentialDUDlambda.first,
                Units::EnergyToKJPerMol * averageExcessChemicalPotentialDUDlambda.second);
@@ -306,7 +306,7 @@ std::string PropertyLambdaProbabilityHistogram::writeDUdLambdaStatistics(double 
       std::print(stream, "    Imposed chemical potential:  {: .6e} [kJ/mol]\n",
                  Units::EnergyToKJPerMol * imposedChemicalPotential.value());
     }
-    std::print(stream, "    ---------------------------------------------------------------------------\n");
+    std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
     if (imposedFugacity)
     {
       std::print(stream, "    Imposed fugacity:            {: .6e} [Pa]\n",
@@ -391,7 +391,7 @@ nlohmann::json PropertyLambdaProbabilityHistogram::jsonAveragesStatistics(
 
   /*
   std::print(stream, "    Lambda statistics:\n");
-  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
   for (std::size_t i = 0; i < numberOfSamplePoints; ++i)
   {
     std::print(stream, "{}{:2d}-{:4f} (lambda) Free energy: {:.6e} +/- {:.6e} [K]\n", "    ", i,

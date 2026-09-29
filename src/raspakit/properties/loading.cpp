@@ -27,7 +27,7 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
         1.0 / (static_cast<double>(number_of_unit_cells.x * number_of_unit_cells.y * number_of_unit_cells.z));
 
     std::print(stream, "LoadingData\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
 
     for (std::size_t i = 0; i < components.size(); ++i)
     {
@@ -40,7 +40,7 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
         LoadingData blockAverage = averaged(j);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", j, blockAverage.numberOfMolecules[i]);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
 
       switch (Units::unitSystem)
       {
@@ -71,7 +71,7 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", j,
                    blockAverage.numberOfMolecules[i] - components[i].amountOfExcessMolecules);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
 
       switch (Units::unitSystem)
       {
@@ -108,7 +108,7 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
     std::pair<LoadingData, LoadingData> loadingAverage = average();
 
     std::print(stream, "Densities\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
 
     for (std::size_t i = 0; i < components.size(); ++i)
     {

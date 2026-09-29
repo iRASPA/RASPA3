@@ -392,9 +392,9 @@ void ThermodynamicIntegration::production()
     std::ostream stream(streams[system_id].rdbuf());
 
     std::print(stream, "\n");
-    std::print(stream, "===============================================================================\n");
+    std::print(stream, "========================================================================================================================\n");
     std::print(stream, "                             Simulation finished!\n");
-    std::print(stream, "===============================================================================\n");
+    std::print(stream, "========================================================================================================================\n");
     std::print(stream, "\n");
 
     std::string status_line{std::format("Final state after {} cycles\n", numberOfProductionCycles)};
@@ -430,19 +430,19 @@ void ThermodynamicIntegration::output()
     std::print(stream, "\n\n");
 
     std::print(stream, "Monte-Carlo moves statistics\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
 
     std::print(stream, "{}", system.writeMCMoveStatistics());
 
     std::print(stream, "Production run counting of the MC moves summed over systems and components\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
 
     std::print(stream, "{}", countTotal.writeMCMoveStatistics(numberOfSteps));
 
     std::print(stream, "\n\n");
 
     std::print(stream, "Production run CPU timings of the MC moves\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
 
     for (std::size_t componentId{0}; const Component& component : system.components)
     {
@@ -453,7 +453,7 @@ void ThermodynamicIntegration::output()
     std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
 
     std::print(stream, "Production run CPU timings of the MC moves summed over systems and components\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
 
     std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalProductionSimulationTime));
     std::print(stream, "Initalization simulation time:  {:14f} [s]\n", totalInitializationSimulationTime.count());
@@ -519,7 +519,7 @@ std::string ThermodynamicIntegration::writeThermodynamicIntegrationPoint(const S
   std::ostringstream stream;
 
   std::print(stream, "Thermodynamic integration at fixed lambda\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
 
   for (std::size_t componentId{0}; const Component& component : system.components)
   {
@@ -539,7 +539,7 @@ std::string ThermodynamicIntegration::writeThermodynamicIntegrationPoint(const S
         std::print(stream, "        Block[ {:2d}] <dU/dlambda>: {: .6e} [K]\n", blockIndex,
                    Units::EnergyToKelvin * lambda.averagedDUdlambda(blockIndex)[binIndex]);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    <dU/dlambda>: {: .6e} +/- {: .6e} [K]\n",
                  Units::EnergyToKelvin * dudlambda.first[binIndex], Units::EnergyToKelvin * dudlambda.second[binIndex]);
       std::print(stream, "    <dU/dlambda>: {: .6e} +/- {: .6e} [kJ/mol]\n",

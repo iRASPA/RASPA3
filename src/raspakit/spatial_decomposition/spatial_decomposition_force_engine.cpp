@@ -764,7 +764,7 @@ std::string SpatialDecompositionForceEngine::writeStatus() const
 {
   std::string result;
   result += std::format("Spatial-decomposition force engine\n");
-  result += std::format("===============================================================================\n");
+  result += std::format("========================================================================================================================\n");
   result += std::format("    threads: {}\n", settings.numberOfThreads);
   result += std::format("    pair kernel: {}\n",
                         fastKernel ? (fastCoulomb ? "specialised Lennard-Jones + tabulated Ewald real space"
@@ -787,7 +787,7 @@ std::string SpatialDecompositionForceEngine::writeTimings() const
 {
   std::string result;
   result += std::format("Spatial-decomposition force engine timings\n");
-  result += std::format("===============================================================================\n");
+  result += std::format("========================================================================================================================\n");
   result += std::format("    force evaluations:        {}\n", timing.steps);
   result +=
       std::format("    neighbour-list rebuilds:  {} ({:.2f} steps per rebuild)\n", timing.rebuilds,

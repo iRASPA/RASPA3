@@ -1386,15 +1386,15 @@ void MolecularDynamics::output()
     std::ostream stream(streams[system_id].rdbuf());
 
     std::print(stream, "\n");
-    std::print(stream, "===============================================================================\n");
+    std::print(stream, "========================================================================================================================\n");
     std::print(stream, "                             Simulation finished!\n");
-    std::print(stream, "===============================================================================\n");
+    std::print(stream, "========================================================================================================================\n");
     std::print(stream, "\n");
 
     std::string status_line{std::format("Final state after {} cycles\n\n", numberOfProductionCycles)};
 
     std::print(stream, "Production run CPU timings of the MD simulation\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
 
     for (std::size_t componentId{0}; const Component& component : system.components)
     {
@@ -1410,7 +1410,7 @@ void MolecularDynamics::output()
         system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework, system.components));
 
     std::print(stream, "Temperature averages and statistics:\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
     std::print(stream, "{}", system.averageTemperature.writeAveragesStatistics("Total"));
     std::print(stream, "{}", system.averageTranslationalTemperature.writeAveragesStatistics("Translational"));
     std::print(stream, "{}", system.averageRotationalTemperature.writeAveragesStatistics("Rotational"));

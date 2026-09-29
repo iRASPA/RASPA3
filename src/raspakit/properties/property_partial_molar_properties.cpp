@@ -20,7 +20,7 @@ std::string PropertyPartialMolarProperties::writeAveragesStatistics(std::vector<
   const double volumeToCm3PerMol = Units::VolumeConversionFactor * Units::AvogadroConstant * 1.0e6;
 
   std::print(stream, "Partial molar properties\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
 
   if (swappableComponents.empty())
   {
@@ -33,7 +33,7 @@ std::string PropertyPartialMolarProperties::writeAveragesStatistics(std::vector<
     {
       std::size_t index = swappableComponents[k];
       std::print(stream, "Component {} [{}]\n", index, components[index].name);
-      std::print(stream, "-------------------------------------------------------------------------------\n");
+      std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
 
       std::print(stream, "  Partial molar internal energy:\n");
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
@@ -41,7 +41,7 @@ std::string PropertyPartialMolarProperties::writeAveragesStatistics(std::vector<
         PartialMolarPropertiesData average = averaged(i);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, Units::EnergyToKelvin * average.partialMolarEnergy[k]);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Partial molar energy:   {: .6e} +/- {: .6e} [K]\n",
                  Units::EnergyToKelvin * properties.first.partialMolarEnergy[k],
                  Units::EnergyToKelvin * properties.second.partialMolarEnergy[k]);
@@ -55,7 +55,7 @@ std::string PropertyPartialMolarProperties::writeAveragesStatistics(std::vector<
         PartialMolarPropertiesData average = averaged(i);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, average.partialMolarVolume[k]);
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Partial molar volume:   {: .6e} +/- {: .6e} [A^3]\n",
                  properties.first.partialMolarVolume[k], properties.second.partialMolarVolume[k]);
       std::print(stream, "                            {: .6e} +/- {: .6e} [cm^3/mol]\n",

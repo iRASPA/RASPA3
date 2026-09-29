@@ -18,7 +18,7 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
   std::ostringstream stream;
 
   std::print(stream, "Enthalpy of adsorption\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
 
   if (swappableComponents.empty())
   {
@@ -32,14 +32,14 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
       std::size_t index = swappableComponents[k];
       double idealGasTerm = components[index].idealGasEnergy.value_or(0.0);
       std::print(stream, "Component {} [{}]\n", index, components[index].name);
-      std::print(stream, "-------------------------------------------------------------------------------\n");
+      std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
         EnthalpyOfAdsorptionData average = averaged(i);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i,
                    Units::EnergyToKelvin * (average.values[k] - idealGasTerm));
       }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Enthalpy of adsorption: {: .6e} +/- {: .6e} [K]\n",
                  Units::EnergyToKelvin * (enthalpy.first.values[k] - idealGasTerm),
                  Units::EnergyToKelvin * enthalpy.second.values[k]);
@@ -55,7 +55,7 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
     if (swappableComponents.size() > 1)
     {
       std::print(stream, "Total enthalpy of adsorption\n");
-      std::print(stream, "-------------------------------------------------------------------------------\n");
+      std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
 
       std::vector<double> totalEnthalpyBlocks(numberOfBlocks);
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
@@ -72,7 +72,7 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
         std::print(stream, "    Block[ {:2d}] {}\n", i, Units::EnergyToKelvin * totalEnthalpyOfAdsorption);
       }
       std::pair<double, double> totalEnthalpy = meanConfidence(totalEnthalpyBlocks);
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Enthalpy of adsorption: {: .6e} +/- {: .6e} [K]\n",
                  Units::EnergyToKelvin * totalEnthalpy.first, Units::EnergyToKelvin * totalEnthalpy.second);
       std::print(stream, "                            {: .6e} +/- {: .6e} [kJ/mol]\n",

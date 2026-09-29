@@ -519,7 +519,7 @@ void MolecularDynamicsSpatialDecomposition::setup()
       std::print(stream, "{}", system.reactions.printStatus());
 
       std::print(stream, "Spatial-decomposition settings\n");
-      std::print(stream, "===============================================================================\n");
+      std::print(stream, "========================================================================================================================\n");
       std::print(stream, "    number of threads (sub-domains): {}\n", engineSettings.numberOfThreads);
       std::print(stream, "    Verlet skin:                     {} [A]\n", engineSettings.verletSkin);
       std::print(stream, "    PPPM mesh spacing:               {} [A]\n", engineSettings.meshSpacing);
@@ -744,7 +744,7 @@ void MolecularDynamicsSpatialDecomposition::startEngines(std::string_view stageN
       std::ostream stream(streams[system_id].rdbuf());
       std::print(stream, "{}", engine.writeStatus());
       std::print(stream, "Spatial-decomposition force engine check at the start of the {} stage\n", stageName);
-      std::print(stream, "===============================================================================\n");
+      std::print(stream, "========================================================================================================================\n");
       std::print(stream, "    potential energy      engine {:20.10f} exact {:20.10f} [K]  difference {:.3e}\n",
                  validation.engineEnergy, validation.referenceEnergy,
                  validation.engineEnergy - validation.referenceEnergy);
@@ -1179,13 +1179,13 @@ void MolecularDynamicsSpatialDecomposition::output()
     std::ostream stream(streams[system_id].rdbuf());
 
     std::print(stream, "\n");
-    std::print(stream, "===============================================================================\n");
+    std::print(stream, "========================================================================================================================\n");
     std::print(stream, "                             Simulation finished!\n");
-    std::print(stream, "===============================================================================\n");
+    std::print(stream, "========================================================================================================================\n");
     std::print(stream, "\n");
 
     std::print(stream, "Production run CPU timings of the MD simulation\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
 
     for (std::size_t componentId{0}; const Component& component : system.components)
     {
@@ -1206,7 +1206,7 @@ void MolecularDynamicsSpatialDecomposition::output()
         system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework, system.components));
 
     std::print(stream, "Temperature averages and statistics:\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
     std::print(stream, "{}", system.averageTemperature.writeAveragesStatistics("Total"));
     std::print(stream, "{}", system.averageTranslationalTemperature.writeAveragesStatistics("Translational"));
     std::print(stream, "{}", system.averageRotationalTemperature.writeAveragesStatistics("Rotational"));

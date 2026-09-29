@@ -16,7 +16,7 @@ std::string Reactions::printStatus() const
   if (list.empty()) return stream.str();
 
   std::print(stream, "Reactions:\n");
-  std::print(stream, "===============================================================================\n");
+  std::print(stream, "========================================================================================================================\n");
 
   std::print(stream, "{} reactions\n", list.size());
   for (const Reaction &reaction : list)

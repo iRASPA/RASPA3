@@ -1520,7 +1520,7 @@ std::string Framework::repr() const
   std::print(stream, "    number of bonds: {}\n", intraMolecularPotentials.bonds.size());
   for (std::size_t i = 0; i < intraMolecularPotentials.bonds.size(); ++i)
   {
-    std::print(stream, "        {}", intraMolecularPotentials.bonds[i].print());
+    std::print(stream, "{}", wrapText(intraMolecularPotentials.bonds[i].print(), "        ", "            "));
   }
   std::print(stream, "\n");
 

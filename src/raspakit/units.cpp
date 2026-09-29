@@ -320,7 +320,7 @@ std::string Units::printStatus()
   {
     case System::RASPA:
       std::print(stream, "Mutual consistent basic set of units:\n");
-      std::print(stream, "===============================================================================\n\n");
+      std::print(stream, "========================================================================================================================\n\n");
       std::print(stream, "Unit of temperature: {} [{}]\n", 1, unitOfTemperatureString);
       std::print(stream, "Unit of length:      {} [{}]\n", Units::LengthUnit, unitOfLengthString);
       std::print(stream, "Unit of time:        {} [{}]\n", Units::TimeUnit, unitOfTimeString);
@@ -332,7 +332,7 @@ std::string Units::printStatus()
       std::print(stream, "represents conversion from energy (internal units) to temperature (in Kelvin)\n\n");
 
       std::print(stream, "Derived units and their conversion factors:\n");
-      std::print(stream, "===============================================================================\n\n");
+      std::print(stream, "========================================================================================================================\n\n");
       std::print(stream, "Unit of energy:                           {} [{}]\n", Units::EnergyConversionFactor,
                  unitOfEnergyString);
       std::print(stream, "Unit of energy:                           {} [{}]\n",
@@ -380,14 +380,14 @@ std::string Units::printStatus()
       std::print(stream, "\n\n");
 
       std::print(stream, "Internal conversion factors:\n");
-      std::print(stream, "===============================================================================\n\n");
+      std::print(stream, "========================================================================================================================\n\n");
       std::print(stream, "Energy (internal units) to Kelvin:      {} [-]\n", Units::EnergyToKelvin);
       std::print(stream, "Kelvin to energy (internal units):      {} [-]\n", Units::KelvinToEnergy);
       std::print(stream, "\n\n");
       break;
     case System::ReducedUnits:
       std::print(stream, "Mutual consistent basic set of units:\n");
-      std::print(stream, "===============================================================================\n\n");
+      std::print(stream, "========================================================================================================================\n\n");
       std::print(stream, "Unit of temperature: {} [{}]\n", 1, unitOfTemperatureString);
       std::print(stream, "Unit of energy:      {} [{}]\n", Units::EnergyConversionFactor, unitOfEnergyString);
       std::print(stream, "Unit of length:      {} [{}]\n", Units::LengthUnit, unitOfLengthString);
@@ -399,7 +399,7 @@ std::string Units::printStatus()
       std::print(stream, "represents conversion from energy (internal units) to temperature (in Kelvin)\n\n");
 
       std::print(stream, "Derived units and their conversion factors:\n");
-      std::print(stream, "===============================================================================\n\n");
+      std::print(stream, "========================================================================================================================\n\n");
       std::print(stream, "Unit of time:                             {} [{}]\n", Units::TimeUnit, unitOfTimeString);
       std::print(stream, "Unit of velocity:                         {} [{}]\n", Units::VelocityConversionFactor,
                  unitOfVelocityString);

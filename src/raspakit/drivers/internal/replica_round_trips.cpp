@@ -88,7 +88,7 @@ std::string ReplicaRoundTrips::writeStatistics(const std::vector<double>& temper
   std::ostringstream stream;
 
   std::print(stream, "Replica round-trip statistics (configuration diffusion through the ladder)\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "    a round trip is completed when a configuration returns to the coldest replica\n");
   std::print(stream, "    after having visited the hottest one; f(T) is the fraction of configurations at T\n");
   std::print(stream, "    that last visited the coldest replica (ideal ladder: linear from 1 to 0)\n\n");

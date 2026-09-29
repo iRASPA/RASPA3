@@ -540,18 +540,17 @@ void ParallelTMMC::setup()
   if (!resumedFromBinaryRestart)
   {
     std::print(stream, "Parallel transition-matrix Monte Carlo (TMMC)\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
     std::print(stream, "Number of temperatures:                      {}\n", numberOfTemperatures);
     std::print(stream, "Number of macrostate windows:                {}\n", numberOfWindows);
     std::print(stream, "Number of walkers / threads:                 {}\n", numberOfWalkers);
     std::print(stream, "MC steps per cycle:                          {} (global macrostate ceiling N_max)\n",
                numberOfStepsPerCycle);
-    std::print(stream, "Temperature ladder:                         ");
-    for (double T : temperatures)
-    {
-      std::print(stream, " {}", T);
-    }
-    std::print(stream, " [K]\n");
+    std::string temperatureLadder;
+    for (double T : temperatures) temperatureLadder += std::format("{} ", T);
+    std::print(stream, "{}",
+               wrapText(temperatureLadder + "[K]", "Temperature ladder:                          ",
+                        std::string(45, ' ')));
     std::print(stream, "Reference pressure:                          {:.5e} [Pa]\n", referencePressure);
     std::print(stream, "Macrostate range:                            [{}, {}] molecules\n", minMacrostate, maxMacrostate);
     if (systems.front().tmmc.lambdaChain())
@@ -1132,9 +1131,9 @@ void ParallelTMMC::output()
   }
 
   std::print(stream, "\n");
-  std::print(stream, "===============================================================================\n");
+  std::print(stream, "========================================================================================================================\n");
   std::print(stream, "                             Simulation finished!\n");
-  std::print(stream, "===============================================================================\n");
+  std::print(stream, "========================================================================================================================\n");
   std::print(stream, "\n");
 
   // energy drift check of every walker (energies recomputed in parallel, one thread per walker);
@@ -1166,7 +1165,7 @@ void ParallelTMMC::output()
   writeWalkerFinalReports(recomputed);
 
   std::print(stream, "Energy drift per walker\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   for (std::size_t walkerId = 0; walkerId < systems.size(); ++walkerId)
   {
     const RunningEnergy drift = systems[walkerId].runningEnergies - recomputed[walkerId];
@@ -1177,16 +1176,16 @@ void ParallelTMMC::output()
   std::print(stream, "\n\n");
 
   std::print(stream, "Production run counting of the MC moves summed over walkers and components\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "{}", countTotal.writeMCMoveStatistics(numberOfSteps));
   std::print(stream, "\n\n");
 
   // macrostate coverage per walker: every state of the window must be visited for the stitched
   // ln Pi(N) to be reliable; the min/max visit counts diagnose the flatness of the biased walk
   std::print(stream, "Macrostate coverage per walker (production)\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "    walker    temperature [K]    window            visited    min visits    max visits\n");
-  std::print(stream, "    -------------------------------------------------------------------------------\n");
+  std::print(stream, "    ------------------------------------------------------------------------------------------------------------------------\n");
   for (std::size_t walkerId = 0; walkerId < systems.size(); ++walkerId)
   {
     const System& system = systems[walkerId];
@@ -1224,7 +1223,7 @@ void ParallelTMMC::output()
   performTransitionMatrixAnalysis();
 
   std::print(stream, "Production run CPU timings of the MC moves summed over walkers and components\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalProductionSimulationTime));
   std::print(stream, "Pre-initialization simulation time: {:14f} [s]\n", totalPreInitializationSimulationTime.count());
   std::print(stream, "Initalization simulation time:  {:14f} [s]\n", totalInitializationSimulationTime.count());
@@ -1254,7 +1253,7 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
   std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
   std::print(stream, "Transition-matrix analysis\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
 
   const std::size_t numberOfMacrostates = maxMacrostate - minMacrostate + 1uz;
   const std::size_t nLambda = std::max(1uz, systems.front().tmmc.lambdaBinCount());
@@ -2381,9 +2380,9 @@ void ParallelTMMC::writeWalkerFinalReports(std::vector<RunningEnergy>& recompute
     std::ostream walkerStream(walkerStreams[walkerId].rdbuf());
 
     std::print(walkerStream, "\n");
-    std::print(walkerStream, "===============================================================================\n");
+    std::print(walkerStream, "========================================================================================================================\n");
     std::print(walkerStream, "                             Simulation finished!\n");
-    std::print(walkerStream, "===============================================================================\n");
+    std::print(walkerStream, "========================================================================================================================\n");
     std::print(walkerStream, "\n");
 
     std::string status_line = std::format("Final state after {} cycles\n", numberOfProductionCycles);
@@ -2394,11 +2393,11 @@ void ParallelTMMC::writeWalkerFinalReports(std::vector<RunningEnergy>& recompute
     std::print(walkerStream, "\n\n");
 
     std::print(walkerStream, "Monte-Carlo moves statistics\n");
-    std::print(walkerStream, "===============================================================================\n\n");
+    std::print(walkerStream, "========================================================================================================================\n\n");
     std::print(walkerStream, "{}", system.writeMCMoveStatistics());
 
     std::print(walkerStream, "Production run CPU timings of the MC moves of this walker\n");
-    std::print(walkerStream, "===============================================================================\n\n");
+    std::print(walkerStream, "========================================================================================================================\n\n");
     for (std::size_t componentId{0}; const Component& component : system.components)
     {
       std::print(walkerStream, "{}",

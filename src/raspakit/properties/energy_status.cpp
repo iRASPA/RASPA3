@@ -19,7 +19,7 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &compon
 
   double conv = Units::EnergyToKelvin;
   std::print(stream, "Energy status {}\n", label);
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "Total potential energy:  {: .6e}\n", conv * totalEnergy.energy);
   std::print(stream, "    framework-molecule Van der Waals:        {: .6e} [{}]\n",
              conv * frameworkMoleculeEnergy.VanDerWaals.energy, Units::displayedUnitOfEnergyString);
@@ -51,7 +51,7 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &compon
   for (std::size_t i = 0; i < components.size(); ++i)
   {
     std::print(stream, "    Component: {} [{}]\n", i, components[i].name);
-    std::print(stream, "    ---------------------------------------------------------------------------\n\n");
+    std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n\n");
     std::print(stream, "    Molecule bond:              {: .6e} [{}]\n", conv * intraComponentEnergies[i].bond,
                Units::displayedUnitOfEnergyString);
     std::print(stream, "    Molecule bend:              {: .6e} [{}]\n", conv * intraComponentEnergies[i].bend,
@@ -94,7 +94,7 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &compon
       std::print(stream, "        Coulombic Fourier:    {: .6e} [{}]\n",
                  conv * interComponentEnergies[i * numberOfComponents + j].CoulombicFourier.energy,
                  Units::displayedUnitOfEnergyString);
-      std::print(stream, "        -----------------------------------------------------------------------\n");
+      std::print(stream, "        ----------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "        Sum                   {: .6e} [{}]\n\n",
                  conv * interComponentEnergies[i * numberOfComponents + j].totalInter.energy,
                  Units::displayedUnitOfEnergyString);
@@ -111,7 +111,7 @@ std::string EnergyStatus::repr() const
 
   double conv = Units::EnergyToKelvin;
   std::print(stream, "Energy status\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "Total potential energy:  {: .6e}\n", conv * totalEnergy.energy);
   std::print(stream, "    framework-molecule Van der Waals:        {: .6e} [{}]\n",
              conv * frameworkMoleculeEnergy.VanDerWaals.energy, Units::displayedUnitOfEnergyString);

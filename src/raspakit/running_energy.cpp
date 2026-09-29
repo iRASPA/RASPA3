@@ -16,7 +16,7 @@ std::string RunningEnergy::printMC() const
   double conv = Units::EnergyToKelvin;
   std::print(stream, "Total potential energy{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * potentialEnergy(), Units::displayedUnitOfEnergyString);
-  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
   std::print(stream, "    external field VDW{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * externalFieldVDW, Units::displayedUnitOfEnergyString);
   std::print(stream, "    external field Real{}      {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
@@ -137,7 +137,7 @@ std::string RunningEnergy::printMCDiff(RunningEnergy &other) const
   std::print(stream, "Energy statistics             |  Energy [{}]   | Recomputed [{}]|  Drift [{}]    |\n",
              Units::displayedUnitOfEnergyString, Units::displayedUnitOfEnergyString,
              Units::displayedUnitOfEnergyString);
-  std::print(stream, "===============================================================================\n");
+  std::print(stream, "========================================================================================================================\n");
   std::print(stream, "Total potential energy{}     | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
              Units::displayedUnitOfEnergyConversionString, conv * potentialEnergy(), conv * other.potentialEnergy(),
              conv * drift.potentialEnergy());
@@ -224,7 +224,7 @@ std::string RunningEnergy::printMCDiff(RunningEnergy &other) const
   std::print(stream, "    dU/dlambda Ewald{}       | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
              Units::displayedUnitOfEnergyConversionString, conv * totalDudlambdaEwald(), conv * other.totalDudlambdaEwald(),
              conv * drift.totalDudlambdaEwald());
-  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
 
   return stream.str();
 }
@@ -314,7 +314,7 @@ std::string RunningEnergy::printMC(const std::string &label) const
 
   double conv = Units::EnergyToKelvin;
   std::print(stream, "Energy status {}\n", label);
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "Total potential energy{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * potentialEnergy(), Units::displayedUnitOfEnergyString);
   std::print(stream, "    external field VDW{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
@@ -386,7 +386,7 @@ std::string RunningEnergy::printMD(const std::string &label, double referenceEne
 
   double conv = Units::EnergyToKelvin;
   std::print(stream, "Energy status {}\n", label);
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "Conserved energy{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * conservedEnergy(), Units::displayedUnitOfEnergyString);
   std::print(stream, "Drift                          {: .6e} [-]\n\n",
@@ -522,7 +522,7 @@ std::string RunningEnergy::repr() const
 
   double conv = Units::EnergyToKelvin;
   std::print(stream, "Energy status\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "Conserved energy{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * conservedEnergy(), Units::displayedUnitOfEnergyString);
   std::print(stream, "Total potential energy{}     {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,

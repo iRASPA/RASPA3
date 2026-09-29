@@ -196,22 +196,20 @@ void HyperParallelTempering::setup()
     std::print(stream, "{}", Units::printStatus());
 
     std::print(stream, "Hyper-parallel tempering\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
     std::print(stream, "Number of temperatures:                      {}\n", numberOfTemperatures);
     std::print(stream, "Number of pressures:                         {}\n", numberOfPressures);
     std::print(stream, "Number of replicas / threads:                {}\n", numberOfReplicas);
-    std::print(stream, "Temperature ladder:                         ");
-    for (double T : temperatures)
-    {
-      std::print(stream, " {}", T);
-    }
-    std::print(stream, " [K]\n");
-    std::print(stream, "Pressure ladder:                            ");
-    for (double P : pressures)
-    {
-      std::print(stream, " {}", P);
-    }
-    std::print(stream, " [Pa]\n");
+    std::string temperatureLadder;
+    for (double T : temperatures) temperatureLadder += std::format("{} ", T);
+    std::print(stream, "{}",
+               wrapText(temperatureLadder + "[K]", "Temperature ladder:                          ",
+                        std::string(45, ' ')));
+    std::string pressureLadder;
+    for (double P : pressures) pressureLadder += std::format("{} ", P);
+    std::print(stream, "{}",
+               wrapText(pressureLadder + "[Pa]", "Pressure ladder:                             ",
+                        std::string(45, ' ')));
     if (parallelTemperingSwapEvery == 0uz)
     {
       std::print(stream, "Configuration swaps:                         disabled\n\n");
@@ -718,9 +716,9 @@ void HyperParallelTempering::output()
   }
 
   std::print(stream, "\n");
-  std::print(stream, "===============================================================================\n");
+  std::print(stream, "========================================================================================================================\n");
   std::print(stream, "                             Simulation finished!\n");
-  std::print(stream, "===============================================================================\n");
+  std::print(stream, "========================================================================================================================\n");
   std::print(stream, "\n");
 
   // energy drift check of every replica (energies recomputed in parallel, one thread per replica);
@@ -752,7 +750,7 @@ void HyperParallelTempering::output()
   writeIsothermSnapshot();
 
   std::print(stream, "Energy drift per replica\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   for (std::size_t replicaId = 0; replicaId < systems.size(); ++replicaId)
   {
     const RunningEnergy drift = systems[replicaId].runningEnergies - recomputed[replicaId];
@@ -763,12 +761,12 @@ void HyperParallelTempering::output()
   std::print(stream, "\n\n");
 
   std::print(stream, "Production run counting of the MC moves summed over replicas and components\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "{}", countTotal.writeMCMoveStatistics(numberOfSteps));
   std::print(stream, "\n\n");
 
   std::print(stream, "Hyper-parallel-tempering swap statistics\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "    sweeps:    {}\n", swapSweeps);
   std::print(stream, "    attempts:  {}\n", swapAttempts);
   std::print(stream, "    accepted:  {} ({:.4f} %)\n\n", swapAccepted,
@@ -780,7 +778,7 @@ void HyperParallelTempering::output()
   {
     std::print(stream, "    temperature direction (aggregated over the pressures)\n");
     std::print(stream, "    pair (indices)     temperature [K]           attempts    accepted    acceptance\n");
-    std::print(stream, "    ---------------------------------------------------------------------------\n");
+    std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
     for (std::size_t temperatureIndex = 0; temperatureIndex + 1 < numberOfTemperatures; ++temperatureIndex)
     {
       std::print(stream, "    {:4d} - {:<4d}   {:10.4f} - {:<10.4f}   {:9d}   {:9d}    {:8.4f} %\n", temperatureIndex,
@@ -795,7 +793,7 @@ void HyperParallelTempering::output()
   {
     std::print(stream, "    pressure direction (aggregated over the temperatures)\n");
     std::print(stream, "    pair (indices)     pressure [Pa]                 attempts    accepted    acceptance\n");
-    std::print(stream, "    ---------------------------------------------------------------------------\n");
+    std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
     for (std::size_t pressureIndex = 0; pressureIndex + 1 < numberOfPressures; ++pressureIndex)
     {
       std::print(stream, "    {:4d} - {:<4d}   {:12.5e} - {:<12.5e}   {:9d}   {:9d}    {:8.4f} %\n", pressureIndex,
@@ -809,7 +807,7 @@ void HyperParallelTempering::output()
   std::print(stream, "\n");
 
   std::print(stream, "Production run CPU timings of the MC moves summed over replicas and components\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalProductionSimulationTime));
   std::print(stream, "Pre-initialization simulation time: {:14f} [s]\n", totalPreInitializationSimulationTime.count());
   std::print(stream, "Initalization simulation time:  {:14f} [s]\n", totalInitializationSimulationTime.count());
@@ -908,9 +906,9 @@ void HyperParallelTempering::writeReplicaFinalReports(std::vector<RunningEnergy>
     std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
 
     std::print(replicaStream, "\n");
-    std::print(replicaStream, "===============================================================================\n");
+    std::print(replicaStream, "========================================================================================================================\n");
     std::print(replicaStream, "                             Simulation finished!\n");
-    std::print(replicaStream, "===============================================================================\n");
+    std::print(replicaStream, "========================================================================================================================\n");
     std::print(replicaStream, "\n");
 
     std::string status_line = std::format("Final state after {} cycles\n", numberOfProductionCycles);
@@ -921,11 +919,11 @@ void HyperParallelTempering::writeReplicaFinalReports(std::vector<RunningEnergy>
     std::print(replicaStream, "\n\n");
 
     std::print(replicaStream, "Monte-Carlo moves statistics\n");
-    std::print(replicaStream, "===============================================================================\n\n");
+    std::print(replicaStream, "========================================================================================================================\n\n");
     std::print(replicaStream, "{}", system.writeMCMoveStatistics());
 
     std::print(replicaStream, "Production run CPU timings of the MC moves of this replica\n");
-    std::print(replicaStream, "===============================================================================\n\n");
+    std::print(replicaStream, "========================================================================================================================\n\n");
     for (std::size_t componentId{0}; const Component& component : system.components)
     {
       std::print(replicaStream, "{}",

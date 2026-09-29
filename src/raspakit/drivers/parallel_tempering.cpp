@@ -168,14 +168,13 @@ void ParallelTempering::setup()
     std::print(stream, "{}", Units::printStatus());
 
     std::print(stream, "Parallel tempering\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
     std::print(stream, "Number of temperatures / replicas / threads: {}\n", numberOfReplicas);
-    std::print(stream, "Temperature ladder:                         ");
-    for (double T : temperatures)
-    {
-      std::print(stream, " {}", T);
-    }
-    std::print(stream, " [K]\n");
+    std::string temperatureLadder;
+    for (double T : temperatures) temperatureLadder += std::format("{} ", T);
+    std::print(stream, "{}",
+               wrapText(temperatureLadder + "[K]", "Temperature ladder:                          ",
+                        std::string(45, ' ')));
     if (parallelTemperingSwapEvery == 0uz)
     {
       std::print(stream, "Configuration swaps:                         disabled\n\n");
@@ -625,9 +624,9 @@ void ParallelTempering::output()
   }
 
   std::print(stream, "\n");
-  std::print(stream, "===============================================================================\n");
+  std::print(stream, "========================================================================================================================\n");
   std::print(stream, "                             Simulation finished!\n");
-  std::print(stream, "===============================================================================\n");
+  std::print(stream, "========================================================================================================================\n");
   std::print(stream, "\n");
 
   // energy drift check of every replica (energies recomputed in parallel, one thread per replica);
@@ -656,7 +655,7 @@ void ParallelTempering::output()
   writeReplicaFinalReports(recomputed);
 
   std::print(stream, "Energy drift per replica\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   for (std::size_t replicaId = 0; replicaId < systems.size(); ++replicaId)
   {
     const RunningEnergy drift = systems[replicaId].runningEnergies - recomputed[replicaId];
@@ -666,12 +665,12 @@ void ParallelTempering::output()
   std::print(stream, "\n\n");
 
   std::print(stream, "Production run counting of the MC moves summed over replicas and components\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "{}", countTotal.writeMCMoveStatistics(numberOfSteps));
   std::print(stream, "\n\n");
 
   std::print(stream, "Parallel-tempering swap statistics\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "    sweeps:    {}\n", swapSweeps);
   std::print(stream, "    attempts:  {}\n", swapAttempts);
   std::print(stream, "    accepted:  {} ({:.4f} %)\n\n", swapAccepted,
@@ -680,7 +679,7 @@ void ParallelTempering::output()
   // low acceptance for a particular pair marks a bottleneck in the temperature ladder
   // (configurations cannot migrate past it); consider a denser ladder around such a pair
   std::print(stream, "    pair (replicas)    temperature [K]           attempts    accepted    acceptance\n");
-  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
   for (std::size_t replicaId = 0; replicaId + 1 < numberOfReplicas; ++replicaId)
   {
     std::print(stream, "    {:4d} - {:<4d}   {:10.4f} - {:<10.4f}   {:9d}   {:9d}    {:8.4f} %\n", replicaId,
@@ -694,7 +693,7 @@ void ParallelTempering::output()
   std::print(stream, "{}", roundTrips.writeStatistics(temperatures, parallelTemperingSwapEvery));
 
   std::print(stream, "Production run CPU timings of the MC moves summed over replicas and components\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalProductionSimulationTime));
   std::print(stream, "Pre-initialization simulation time: {:14f} [s]\n", totalPreInitializationSimulationTime.count());
   std::print(stream, "Initalization simulation time:  {:14f} [s]\n", totalInitializationSimulationTime.count());
@@ -729,9 +728,9 @@ void ParallelTempering::writeReplicaFinalReports(std::vector<RunningEnergy>& rec
     std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
 
     std::print(replicaStream, "\n");
-    std::print(replicaStream, "===============================================================================\n");
+    std::print(replicaStream, "========================================================================================================================\n");
     std::print(replicaStream, "                             Simulation finished!\n");
-    std::print(replicaStream, "===============================================================================\n");
+    std::print(replicaStream, "========================================================================================================================\n");
     std::print(replicaStream, "\n");
 
     std::string status_line = std::format("Final state after {} cycles\n", numberOfProductionCycles);
@@ -742,11 +741,11 @@ void ParallelTempering::writeReplicaFinalReports(std::vector<RunningEnergy>& rec
     std::print(replicaStream, "\n\n");
 
     std::print(replicaStream, "Monte-Carlo moves statistics\n");
-    std::print(replicaStream, "===============================================================================\n\n");
+    std::print(replicaStream, "========================================================================================================================\n\n");
     std::print(replicaStream, "{}", system.writeMCMoveStatistics());
 
     std::print(replicaStream, "Production run CPU timings of the MC moves of this replica\n");
-    std::print(replicaStream, "===============================================================================\n\n");
+    std::print(replicaStream, "========================================================================================================================\n\n");
     for (std::size_t componentId{0}; const Component& component : system.components)
     {
       std::print(replicaStream, "{}",

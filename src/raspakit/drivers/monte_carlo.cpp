@@ -1076,9 +1076,9 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       std::ostream stream(streams[system_id].rdbuf());
 
       std::print(stream, "\n");
-      std::print(stream, "===============================================================================\n");
+      std::print(stream, "========================================================================================================================\n");
       std::print(stream, "                             Simulation finished!\n");
-      std::print(stream, "===============================================================================\n");
+      std::print(stream, "========================================================================================================================\n");
       std::print(stream, "\n");
 
       std::string status_line{std::format("Final state after {} cycles\n", numberOfProductionCycles)};
@@ -1154,19 +1154,19 @@ void MonteCarlo::output()
     std::print(stream, "\n\n");
 
     std::print(stream, "Monte-Carlo moves statistics\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
 
     std::print(stream, "{}", system.writeMCMoveStatistics());
 
     std::print(stream, "Production run counting of the MC moves summed over systems and components\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
 
     std::print(stream, "{}", countTotal.writeMCMoveStatistics(numberOfSteps));
 
     std::print(stream, "\n\n");
 
     std::print(stream, "Production run CPU timings of the MC moves\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
 
     for (std::size_t componentId{0}; const Component& component : system.components)
     {
@@ -1178,7 +1178,7 @@ void MonteCarlo::output()
     std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
 
     std::print(stream, "Production run CPU timings of the MC moves summed over systems and components\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
 
     std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalProductionSimulationTime));
     if (totalGridCreationTime.count() > 1e-4)

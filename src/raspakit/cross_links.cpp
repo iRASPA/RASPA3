@@ -173,7 +173,7 @@ std::string CrossLinkTable::printStatus() const
 
   std::ostringstream stream;
   std::print(stream, "Cross-links\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "Number of cross-link bond types: {}\n", bondTypes.size());
   for (std::size_t i = 0; i < bondTypes.size(); ++i)
   {

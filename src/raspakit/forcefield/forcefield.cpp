@@ -1250,7 +1250,7 @@ std::string ForceField::printPseudoAtomStatus() const
   std::ostringstream stream;
 
   std::print(stream, "Pseudo-atoms\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
 
   for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
@@ -1273,7 +1273,7 @@ std::string ForceField::printPseudoAtomStatus() const
   {
     if (!pseudoAtoms[i].source.empty())
     {
-      std::print(stream, "{:3d} - {}\n", i, pseudoAtoms[i].source);
+      std::print(stream, "{}", wrapText(pseudoAtoms[i].source, std::format("{:3d} - ", i), "      "));
     }
   }
   std::print(stream, "\n");
@@ -1334,7 +1334,7 @@ std::string ForceField::printForceFieldStatus() const
   std::ostringstream stream;
 
   std::print(stream, "Force field status\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
 
   if (cutOffFrameworkVDWAutomatic)
   {

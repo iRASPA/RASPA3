@@ -45,7 +45,7 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream, std::siz
                  externalFieldInterpolationGrid->numberOfGridPoints.x, 
                  externalFieldInterpolationGrid->numberOfGridPoints.y, 
                  externalFieldInterpolationGrid->numberOfGridPoints.z);
-      std::print(stream, "===============================================================================\n");
+      std::print(stream, "========================================================================================================================\n");
       externalFieldInterpolationGrid->makeExternalFieldInterpolationGrid(stream, forceField, simulationBox);
 
       double count{};
@@ -157,7 +157,7 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream, std::siz
 
       std::print(stream, "Testing external-field interpolation grid ({}x{}x{})\n", numberOfExternalFieldGridPoints.x,
                  numberOfExternalFieldGridPoints.y, numberOfExternalFieldGridPoints.z);
-      std::print(stream, "-------------------------------------------------------------------------------\n");
+      std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "(Using {} points for testing)\n\n", numberOfGridTestPoints);
 
       std::print(stream, "Absolute error energy:                  {}\n\n", summed_errors / count);
@@ -203,7 +203,7 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
     {
       std::print(stream, "Generating an Ewald Real interpolation grid ({}x{}x{}) for a unit charge\n",
                  numberOfCoulombGridPoints.x, numberOfCoulombGridPoints.y, numberOfCoulombGridPoints.z);
-      std::print(stream, "===============================================================================\n");
+      std::print(stream, "========================================================================================================================\n");
 
       interpolationGrids.back() =
           InterpolationEnergyGrid(framework->simulationBox, forceField.potentialEnergySurfaceOrigin,
@@ -229,7 +229,7 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
     {
       std::print(stream, "Generating an VDW interpolation grid ({}x{}x{}) for {}\n", numberOfVDWGridPoints.x,
                  numberOfVDWGridPoints.y, numberOfVDWGridPoints.z, forceField.pseudoAtoms[index].name);
-      std::print(stream, "===============================================================================\n");
+      std::print(stream, "========================================================================================================================\n");
 
       interpolationGrids[index] =
           InterpolationEnergyGrid(framework->simulationBox, forceField.potentialEnergySurfaceOrigin, numberOfVDWGridPoints, forceField.interpolationScheme);
@@ -652,7 +652,7 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
 
       std::print(stream, "Testing VDW interpolation grid ({}x{}x{}) for {}\n", numberOfVDWGridPoints.x,
                  numberOfVDWGridPoints.y, numberOfVDWGridPoints.z, forceField.pseudoAtoms[index].name);
-      std::print(stream, "-------------------------------------------------------------------------------\n");
+      std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "(Using {} points for testing)\n\n", numberOfGridTestPoints);
 
       std::print(stream, "Boltzmann average energy VDW (table):      {}\n",
@@ -744,7 +744,7 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
 
       std::print(stream, "Testing Coulomb interpolation grid ({}x{}x{}) for {}\n", numberOfCoulombGridPoints.x,
                  numberOfCoulombGridPoints.y, numberOfCoulombGridPoints.z, forceField.pseudoAtoms[index].name);
-      std::print(stream, "-------------------------------------------------------------------------------\n");
+      std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "(Using {} points for testing)\n\n", numberOfGridTestPoints);
 
       std::print(stream, "Boltzmann average energy Real Ewald (table):      {}\n",

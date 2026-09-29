@@ -124,7 +124,7 @@ void ParallelThermodynamicIntegration::setup()
     std::print(stream, "{}", Units::printStatus());
 
     std::print(stream, "Parallel thermodynamic integration\n");
-    std::print(stream, "===============================================================================\n\n");
+    std::print(stream, "========================================================================================================================\n\n");
     std::print(stream, "Number of lambda-bins / replicas / threads: {}\n", numberOfLambdaBins);
     std::print(stream, "Pinned component:                           {} ({})\n", tiComponentId,
                front.components[tiComponentId].name);
@@ -583,9 +583,9 @@ void ParallelThermodynamicIntegration::output()
   }
 
   std::print(stream, "\n");
-  std::print(stream, "===============================================================================\n");
+  std::print(stream, "========================================================================================================================\n");
   std::print(stream, "                             Simulation finished!\n");
-  std::print(stream, "===============================================================================\n");
+  std::print(stream, "========================================================================================================================\n");
   std::print(stream, "\n");
 
   // energy drift check of every replica (energies recomputed in parallel, one thread per replica);
@@ -616,7 +616,7 @@ void ParallelThermodynamicIntegration::output()
   stream << systems.front().runningEnergies.printMCDiff(recomputed.front());
   std::print(stream, "\n");
   std::print(stream, "Energy drift per replica\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   for (std::size_t replicaId = 0; replicaId < systems.size(); ++replicaId)
   {
     const RunningEnergy drift = systems[replicaId].runningEnergies - recomputed[replicaId];
@@ -627,12 +627,12 @@ void ParallelThermodynamicIntegration::output()
   std::print(stream, "\n\n");
 
   std::print(stream, "Production run counting of the MC moves summed over replicas and components\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "{}", countTotal.writeMCMoveStatistics(numberOfSteps));
   std::print(stream, "\n\n");
 
   std::print(stream, "Lambda-exchange statistics\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "    sweeps:    {}\n", exchangeSweeps);
   std::print(stream, "    attempts:  {}\n", exchangeAttempts);
   std::print(stream, "    accepted:  {} ({:.4f} %)\n\n", exchangeAccepted,
@@ -642,7 +642,7 @@ void ParallelThermodynamicIntegration::output()
   // migrate past it); consider more lambda-bins if a pair falls well below its neighbors
   const double deltaLambda = 1.0 / static_cast<double>(numberOfLambdaBins - 1);
   std::print(stream, "    pair (bins)      lambda            attempts    accepted    acceptance\n");
-  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
   for (std::size_t bin = 0; bin + 1 < numberOfLambdaBins; ++bin)
   {
     std::print(stream, "    {:4d} - {:<4d}   {:.5f} - {:.5f}   {:9d}   {:9d}    {:8.4f} %\n", bin, bin + 1,
@@ -654,7 +654,7 @@ void ParallelThermodynamicIntegration::output()
   std::print(stream, "\n\n");
 
   std::print(stream, "Production run CPU timings of the MC moves summed over replicas and components\n");
-  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "========================================================================================================================\n\n");
   std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalProductionSimulationTime));
   std::print(stream, "Initalization simulation time:  {:14f} [s]\n", totalInitializationSimulationTime.count());
   std::print(stream, "Equilibration simulation time:  {:14f} [s]\n", totalEquilibrationSimulationTime.count());
@@ -692,9 +692,9 @@ void ParallelThermodynamicIntegration::writeReplicaFinalReports(std::vector<Runn
     std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
 
     std::print(replicaStream, "\n");
-    std::print(replicaStream, "===============================================================================\n");
+    std::print(replicaStream, "========================================================================================================================\n");
     std::print(replicaStream, "                             Simulation finished!\n");
-    std::print(replicaStream, "===============================================================================\n");
+    std::print(replicaStream, "========================================================================================================================\n");
     std::print(replicaStream, "\n");
 
     std::string status_line =
@@ -707,11 +707,11 @@ void ParallelThermodynamicIntegration::writeReplicaFinalReports(std::vector<Runn
     std::print(replicaStream, "\n\n");
 
     std::print(replicaStream, "Monte-Carlo moves statistics\n");
-    std::print(replicaStream, "===============================================================================\n\n");
+    std::print(replicaStream, "========================================================================================================================\n\n");
     std::print(replicaStream, "{}", system.writeMCMoveStatistics());
 
     std::print(replicaStream, "Production run CPU timings of the MC moves of this replica\n");
-    std::print(replicaStream, "===============================================================================\n\n");
+    std::print(replicaStream, "========================================================================================================================\n\n");
     for (std::size_t componentId{0}; const Component& component : system.components)
     {
       std::print(replicaStream, "{}",
@@ -788,11 +788,11 @@ std::string ParallelThermodynamicIntegration::writeReplicaThermodynamicIntegrati
   std::pair<std::vector<double>, std::vector<double>> dudlambda = histogram.averageDuDlambda();
 
   std::print(outStream, "Thermodynamic-integration book-keeping of this replica\n");
-  std::print(outStream, "===============================================================================\n\n");
+  std::print(outStream, "========================================================================================================================\n\n");
   std::print(outStream, "component {} ({})\n", tiComponentId, component.name);
   std::print(outStream, "current lambda-bin: {}\n\n", component.fixedLambdaBin.value());
   std::print(outStream, "    bin   lambda     samples        <dU/dlambda> [K]\n");
-  std::print(outStream, "    ---------------------------------------------------------------------------\n");
+  std::print(outStream, "    --------------------------------------------------------------------------------------------------------------------\n");
   for (std::size_t bin = 0; bin < numberOfLambdaBins; ++bin)
   {
     double sampleCount = 0.0;
@@ -901,14 +901,14 @@ std::string ParallelThermodynamicIntegration::writeStitchedThermodynamicIntegrat
   const Component& component = systems.front().components[tiComponentId];
 
   std::print(outStream, "Parallel thermodynamic integration: stitched <dU/dlambda>(lambda) curve\n");
-  std::print(outStream, "===============================================================================\n\n");
+  std::print(outStream, "========================================================================================================================\n\n");
 
   std::print(outStream, "component {} ({})\n\n", tiComponentId, component.name);
 
   std::pair<std::vector<double>, std::vector<double>> dudlambda = stitched.averageDuDlambda();
 
   std::print(outStream, "    bin   lambda     <dU/dlambda> [K]       +/-    [K]\n");
-  std::print(outStream, "    ---------------------------------------------------------------------------\n");
+  std::print(outStream, "    --------------------------------------------------------------------------------------------------------------------\n");
   for (std::size_t bin = 0; bin < numberOfLambdaBins; ++bin)
   {
     std::print(outStream, "    {:3d}   {:.5f}   {: .8e}   {: .8e}\n", bin,
@@ -941,7 +941,7 @@ std::string ParallelThermodynamicIntegration::writeStitchedThermodynamicIntegrat
   const double trapezoidalIntegral = trapezoidIntegral(dudlambda.first, stitched.delta);
   const double trapezoidError = blockErrorEstimate<double>(blockTrapezoidIntegrals, trapezoidalIntegral);
 
-  std::print(outStream, "    ---------------------------------------------------------------------------\n");
+  std::print(outStream, "    --------------------------------------------------------------------------------------------------------------------\n");
   std::print(outStream, "    excess chemical potential\n");
   std::print(outStream, "        spline:     {: .6e} +/- {: .6e} [K]\n", Units::EnergyToKelvin * splineIntegral,
              Units::EnergyToKelvin * splineError);
