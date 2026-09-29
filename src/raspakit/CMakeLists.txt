@@ -71,6 +71,23 @@ add_library(${PROJECT_NAME} STATIC ${PCH_HEADER} ${PCH_SOURCE})
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 target_sources(${PROJECT_NAME} PRIVATE ${RASPAKIT_CPP_FILES})
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES ${RASPAKIT_IXX_FILES})
+
+# The commit and compile date behind the 'build_info' module, shown by --help / --version and written at the
+# top of every output file. The script runs on every build (a git call) and rewrites the file only when the
+# commit or the dirty state changes, so it costs a recompile of this one file and a relink only then.
+set(BUILD_INFO_CPP ${CMAKE_CURRENT_BINARY_DIR}/build_info.cpp)
+add_custom_target(${PROJECT_NAME}_build_info
+        COMMAND ${CMAKE_COMMAND}
+                -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+                -DOUTPUT=${BUILD_INFO_CPP}
+                -DVERSION=${CMAKE_PROJECT_VERSION}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/build_info.cmake
+        BYPRODUCTS ${BUILD_INFO_CPP}
+        COMMENT "Recording git commit for ${PROJECT_NAME}"
+        VERBATIM)
+add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_build_info)
+target_sources(${PROJECT_NAME} PRIVATE ${BUILD_INFO_CPP})
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_options(${PROJECT_NAME} PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 target_link_libraries(${PROJECT_NAME} PUBLIC structurekit symmetrykit mathkit foundationkit)
 

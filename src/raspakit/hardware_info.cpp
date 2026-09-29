@@ -24,6 +24,7 @@ module hardware_info;
 
 import std;
 
+import build_info;
 import stringutils;
 import json;
 
@@ -426,6 +427,12 @@ nlohmann::json HardwareInfo::jsonInfo()
   info["compiler"] = std::format("{}", COMPILER_STRING);
   info["compile_date"] = std::format("{}", __DATE__);
   info["compile_time"] = std::format("{}", __TIME__);
+
+  // The build the result came from (the same data as 'raspa3 --version' and the text-output header).
+  info["raspa_version"] = std::string(BuildInfo::version());
+  info["commit"] = std::string(BuildInfo::commit());
+  info["commit_date"] = std::string(BuildInfo::commitDate());
+  info["uncommitted_changes"] = !BuildInfo::treeState().empty();
 
   // Get a local time_point with system_clock::duration precision
   //  FIX

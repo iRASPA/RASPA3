@@ -4,6 +4,7 @@ module system;
 
 import std;
 
+import build_info;
 import double3;
 import double3x3;
 import atom;
@@ -45,11 +46,12 @@ std::string System::writeOutputHeader() const
   std::print(stream, "Compiler and run-time data\n");
   std::print(stream, "===============================================================================\n");
 
-#ifdef VERSION
-#define QUOTE(str) #str
-#define EXPAND_AND_QUOTE(str) QUOTE(str)
-  std::print(stream, "RASPA {}\n\n", EXPAND_AND_QUOTE(VERSION));
-#endif
+  // The same build identification as 'raspa3 --version', so that a result can be traced back to the commit
+  // that produced it.
+  std::print(stream, "RASPA {}\n", BuildInfo::version());
+  std::print(stream, "  commit:   {} ({}){}\n", BuildInfo::commit(), BuildInfo::commitDate(),
+             BuildInfo::treeState());
+  std::print(stream, "  compiled: {}\n\n", BuildInfo::compileDate());
 
   return stream.str();
 }

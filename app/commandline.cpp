@@ -1,10 +1,10 @@
 module;
 
-#include "build_info.h"
-
 module commandline;
 
 import std;
+
+import build_info;
 
 import archive;
 import int3;
@@ -147,10 +147,8 @@ void CommandLine::run(int argc, char *argv[])
 
 
   // Which build this is: the commit it was made from and when it was compiled, so that a result can be
-  // traced back to the source that produced it.
-  const std::string versionText =
-      std::format("raspa3 {}\n  commit:   {} ({}){}\n  compiled: {}", BuildInfo::version, BuildInfo::commit,
-                  BuildInfo::commitDate, BuildInfo::treeState, BuildInfo::compileDate);
+  // traced back to the source that produced it. The same text heads every output file.
+  const std::string versionText = BuildInfo::summary();
 
   // definition of command-line switches
   using argparser = argparser::argparser;
