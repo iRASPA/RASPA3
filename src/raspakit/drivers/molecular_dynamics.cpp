@@ -507,14 +507,21 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
 
 RunningEnergy molecularDynamicsStep(System& system)
 {
-  if (system.thermobarostat) return thermobarostatVelocityVerlet(system);
-  return Integrators::velocityVerlet(
-      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
-      system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
-      system.interpolationGrids, system.numberOfMoleculesPerComponent, system.framework,
-      system.spanOfFrameworkDynamics(), system.spanOfGroupData(), system.spanOfFrameworkGroupData(),
-      &system.crossLinks);
+  RunningEnergy energies =
+      system.thermobarostat
+          ? thermobarostatVelocityVerlet(system)
+          : Integrators::velocityVerlet(
+                system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+                system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), system.forceField,
+                system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik,
+                system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent,
+                system.framework, system.spanOfFrameworkDynamics(), system.spanOfGroupData(),
+                system.spanOfFrameworkGroupData(), &system.crossLinks);
+
+  // The integrator returns the gradient-based energies, which exclude the VDW tail corrections. They do not affect
+  // the forces, but they are part of the potential energy (and, in NPT, of the conserved quantity through their
+  // volume dependence); add them after the step so the volume used is the updated one.
+  return energies + system.computeTailCorrectionEnergies();
 }
 
 MolecularDynamics::MolecularDynamics() : random(std::nullopt) {};

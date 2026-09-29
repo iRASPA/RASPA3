@@ -711,12 +711,36 @@ void System::precomputeTotalRigidEnergy() noexcept
                                             simulationBox, spanOfRigidFrameworkAtoms());
 }
 
+RunningEnergy System::computeTailCorrectionEnergies() const noexcept
+{
+  const std::size_t numberOfPseudoAtomTypes = forceField.numberOfPseudoAtoms;
+
+  // Counts are rebuilt from the atoms rather than taken from the maintained effectiveNumberOfPseudoAtomsVDW so the
+  // result is correct regardless of which code path (MC move, MD swap, restart) last changed the configuration.
+  std::vector<double> effectiveTypeCounts(numberOfPseudoAtomTypes, 0.0);
+  std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> groupCounts;
+  for (std::size_t group = 0; group < maximumNumberOfDUDlambdaGroups; ++group)
+  {
+    groupCounts[group].assign(numberOfPseudoAtomTypes, 0.0);
+  }
+  Interactions::updateEffectiveTypeCounts(effectiveTypeCounts, groupCounts, spanOfMoleculeAtoms(), {});
+
+  return Interactions::computeFrameworkMoleculeTailEnergyAggregated(forceField, simulationBox, spanOfFrameworkAtoms(),
+                                                                    effectiveTypeCounts, groupCounts) +
+         Interactions::computeInterMolecularTailEnergyAggregated(forceField, simulationBox, effectiveTypeCounts,
+                                                                 groupCounts);
+}
+
 void System::precomputeTotalGradients() noexcept
 {
-  runningEnergies = Integrators::updateGradients(
-      moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), spanOfFrameworkAtoms(), forceField, simulationBox,
-      components, eik_x, eik_y, eik_z, eik_xy, trialEik, fixedFrameworkStoredEik, interpolationGrids,
-      numberOfMoleculesPerComponent, framework, spanOfFrameworkDynamics(), &crossLinks);
+  // The gradient routines return the pair, Ewald, and intra-molecular energies only; add the (position-independent)
+  // tail corrections so that 'runningEnergies' is consistent with computeTotalEnergies().
+  runningEnergies = Integrators::updateGradients(moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
+                                                 spanOfFrameworkAtoms(), forceField, simulationBox, components, eik_x,
+                                                 eik_y, eik_z, eik_xy, trialEik, fixedFrameworkStoredEik,
+                                                 interpolationGrids, numberOfMoleculesPerComponent, framework,
+                                                 spanOfFrameworkDynamics(), &crossLinks) +
+                    computeTailCorrectionEnergies();
 }
 
 RunningEnergy System::computeTotalEnergies() noexcept
@@ -1327,7 +1351,15 @@ void System::sampleForceBasedRDFFromCurrentGradients(std::size_t currentCycle, s
 void System::sampleForceBasedRDFWithFullGradients(std::size_t currentCycle, std::size_t currentBlock)
 {
   if (!forceBasedRDFSampleDue(currentCycle)) return;
+
+  // Only the gradients are needed here. precomputeTotalGradients() also overwrites 'runningEnergies' with the
+  // gradient-based energies, which do not contain the external-field and polarization terms. In Monte Carlo the
+  // running energies are maintained incrementally by the moves, so preserve them: otherwise every RDF sample
+  // silently drops these terms and the final energy drift check reports a spurious drift.
+  const RunningEnergy savedRunningEnergies = runningEnergies;
   precomputeTotalGradients();
+  runningEnergies = savedRunningEnergies;
+
   sampleForceBasedRDFFromCurrentGradients(currentCycle, currentBlock);
 }
 

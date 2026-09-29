@@ -142,7 +142,7 @@ std::array<std::vector<Move::Timing>, std::to_underlying(Move::Types::Count)> Mo
   // PartialReinsertionCBMC
   std::vector<Move::Timing>{Move::Timing::NonEwald, Move::Timing::Ewald},
   // IdentityChangeCBMC
-  std::vector<Move::Timing>{},
+  std::vector<Move::Timing>{Move::Timing::NonEwald, Move::Timing::Tail, Move::Timing::Ewald},
   // IdentitySwitchCBMC
   std::vector<Move::Timing>{Move::Timing::NonEwald, Move::Timing::Ewald},
   // Swap
@@ -189,7 +189,7 @@ std::array<std::vector<Move::Timing>, std::to_underlying(Move::Types::Count)> Mo
                             Move::Timing::LambdaShuffleNonEwald, Move::Timing::LambdaShuffleEwald,
                             Move::Timing::LambdaShuffleTail},
   // GibbsIdentityChangeCBMC
-  std::vector<Move::Timing>{},
+  std::vector<Move::Timing>{Move::Timing::NonEwald, Move::Timing::Tail, Move::Timing::Ewald},
   // Widom
   std::vector<Move::Timing>{Move::Timing::NonEwald, Move::Timing::Tail, Move::Timing::Ewald},
   // WidomCFCMC

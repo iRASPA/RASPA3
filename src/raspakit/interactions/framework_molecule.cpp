@@ -111,6 +111,50 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField&
   return energySum;
 }
 
+RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> frameworkAtoms,
+    std::span<const double> effectiveTypeCounts,
+    const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& groupCounts) noexcept
+{
+  RunningEnergy energySum{};
+
+  if (frameworkAtoms.empty()) return energySum;
+
+  const std::size_t numberOfPseudoAtoms = forceField.numberOfPseudoAtoms;
+  const double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
+
+  // Effective per-type counts of the framework (framework atoms carry no dU/dlambda group).
+  std::vector<double> frameworkTypeCounts(numberOfPseudoAtoms, 0.0);
+  for (const Atom& atom : frameworkAtoms)
+  {
+    frameworkTypeCounts[static_cast<std::size_t>(atom.type)] += atom.scalingVDW;
+  }
+
+  for (std::size_t typeB = 0; typeB < numberOfPseudoAtoms; ++typeB)
+  {
+    // w_b = 2 * (2 pi / V) * sum_a N_framework[a] * C_ab
+    double wB = 0.0;
+    for (std::size_t typeA = 0; typeA < numberOfPseudoAtoms; ++typeA)
+    {
+      wB += frameworkTypeCounts[typeA] * forceField(typeA, typeB).tailCorrectionEnergy;
+    }
+    wB *= 2.0 * preFactor;
+
+    energySum.tail += effectiveTypeCounts[typeB] * wB;
+
+    for (std::size_t group = 0; group < maximumNumberOfDUDlambdaGroups; ++group)
+    {
+      const double nBg = groupCounts[group][typeB];
+      if (nBg != 0.0)
+      {
+        energySum.dudlambdaVDW[group] += nBg * wB;
+      }
+    }
+  }
+
+  return energySum;
+}
+
 // Used in Translation and Rotation
 //
 

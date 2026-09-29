@@ -369,6 +369,9 @@ export struct System
 
   void precomputeTotalRigidEnergy() noexcept;
   void precomputeTotalGradients() noexcept;
+  /// Framework-molecule and molecule-molecule VDW tail corrections (energy and dU/dlambda) of the current
+  /// configuration, evaluated from aggregated per-type counts (O(N)). The gradient routines do not include them.
+  RunningEnergy computeTailCorrectionEnergies() const noexcept;
   RunningEnergy computeTotalEnergies() noexcept;
   RunningEnergy computePolarizationEnergy() noexcept;
   RunningEnergy computeTotalGradients() noexcept;

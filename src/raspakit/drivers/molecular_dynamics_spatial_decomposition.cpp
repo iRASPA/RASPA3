@@ -736,7 +736,7 @@ void MolecularDynamicsSpatialDecomposition::startEngines(std::string_view stageN
 
     // the exact code as the reference for this configuration; the engine leaves its own forces in the system
     const SpatialDecompositionForceEngine::Validation validation = engine.validate(system);
-    system.runningEnergies = engine.computeGradients(system, true);
+    system.runningEnergies = engine.computeGradients(system, true) + system.computeTailCorrectionEnergies();
     system.currentExcessPressureTensor = engine.molecularPressureTensor() / system.simulationBox.volume;
 
     if (outputToFiles)
@@ -794,7 +794,7 @@ void MolecularDynamicsSpatialDecomposition::recomputeGradients(std::size_t syste
 {
   System& system = systems[systemId];
   SpatialDecompositionForceEngine& engine = *engines[systemId];
-  system.runningEnergies = engine.computeGradients(system, true);
+  system.runningEnergies = engine.computeGradients(system, true) + system.computeTailCorrectionEnergies();
   Integrators::updateCenterOfMassAndQuaternionGradients(
       system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
       system.spanOfGroupData(), system.framework, system.spanOfFrameworkDynamics(), system.spanOfFrameworkGroupData());
@@ -808,7 +808,8 @@ RunningEnergy MolecularDynamicsSpatialDecomposition::molecularDynamicsStep(std::
   RunningEnergy energies =
       system.thermobarostat ? engineThermobarostatVelocityVerlet(system, engine) : engineVelocityVerlet(system, engine);
   system.currentExcessPressureTensor = engine.molecularPressureTensor() / system.simulationBox.volume;
-  return energies;
+  // the engine returns the gradient-based energies; the tail corrections are added for the updated volume
+  return energies + system.computeTailCorrectionEnergies();
 }
 
 void MolecularDynamicsSpatialDecomposition::equilibrate()

@@ -55,6 +55,21 @@ RunningEnergy computeFrameworkMoleculeTailEnergy(const ForceField &forceField, c
                                                  std::span<const Atom> moleculeAtoms) noexcept;
 
 /**
+ * \brief Framework-molecule tail correction from aggregated per-type molecule counts.
+ *
+ * Same result as computeFrameworkMoleculeTailEnergy (energy and dU/dlambda per group), but evaluated from the
+ * effective (VDW-scaling weighted) per-type counts of the molecule atoms and the per-group fractional counts,
+ * so the cost is O(N_framework + N_types^2) instead of O(N_framework * N_molecule).
+ *
+ * \param effectiveTypeCounts Sum of scalingVDW over the molecule atoms, per pseudo-atom type.
+ * \param groupCounts Number of fractional molecule atoms per dU/dlambda group and pseudo-atom type.
+ */
+RunningEnergy computeFrameworkMoleculeTailEnergyAggregated(
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    std::span<const double> effectiveTypeCounts,
+    const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> &groupCounts) noexcept;
+
+/**
  * \brief Computes the difference in interaction energy between the framework and molecule atoms.
  *
  * Calculates the difference in van der Waals and Coulombic interaction energy between the framework
