@@ -134,6 +134,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   system.forceField.cutOffCoulomb = cutOffCoulomb_stored;
   system.forceField.EwaldAlpha = ewald_alpha_stored;
   system.forceField.numberOfWaveVectors = ewald_k_stored;
+  system.forceField.updateEwaldRealSpaceTable();
 
   return std::nullopt;
 }
@@ -246,6 +247,7 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
   system.forceField.cutOffCoulomb = cutOffCoulomb_stored;
   system.forceField.EwaldAlpha = ewald_alpha_stored;
   system.forceField.numberOfWaveVectors = ewald_k_stored;
+  system.forceField.updateEwaldRealSpaceTable();
 
   return std::nullopt;
 }

@@ -247,7 +247,7 @@ RunningEnergy Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
           energySum.moleculeMoleculeVDW += energyFactor.energy;
           energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
         }
-        if (useCharge && rr < cutOffChargeSquared)
+        if (useCharge && rr < cutOffChargeSquared && chargeA * chargeB != 0.0)
         {
           double r = std::sqrt(rr);
           Potentials::PairDerivatives<0> energyFactor =
@@ -284,7 +284,7 @@ RunningEnergy Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
           energySum.moleculeMoleculeVDW -= energyFactor.energy;
           energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, -energyFactor.dUdlambda);
         }
-        if (useCharge && rr < cutOffChargeSquared)
+        if (useCharge && rr < cutOffChargeSquared && chargeA * chargeB != 0.0)
         {
           double r = std::sqrt(rr);
           Potentials::PairDerivatives<0> energyFactor =
@@ -628,9 +628,10 @@ std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStra
         }
         else
         {
-          // Fused polarization path: evaluate the Coulomb factors once at unit charge (order 2) so the
-          // same pair walk yields both the pair energy/virial (scaled by the charge product) and the
-          // polarization field with its strain response (scaled by the source charge only).
+          // Fused polarization path: the same pair walk yields both the pair energy/virial and the
+          // polarization field with its strain response (scaled by the source charge only). The pair term
+          // is taken at order 1 so it is identical to the non-polarization branch above (the order-1 Ewald
+          // term is tabulated, the order-2 field factors are closed-form).
           double3 dr = it1->position - it2->position;
           dr = simulationBox.applyPeriodicBoundaryConditions(dr);
           const double rr = double3::dot(dr, dr);
@@ -646,15 +647,16 @@ std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStra
           if (useCharge && rr < cutOffChargeSquared)
           {
             const double r = std::sqrt(rr);
+            const Potentials::PairDerivatives<1> pairFactors = Potentials::potentialCoulomb<1>(
+                forceField, it1->scalingCoulomb, it2->scalingCoulomb, r, it1->charge, it2->charge);
+            energy.componentEnergy(compA, compB).CoulombicReal += 0.5 * EnergyDuDlambda(pairFactors.energy, 0.0);
+            energy.componentEnergy(compB, compA).CoulombicReal += 0.5 * EnergyDuDlambda(pairFactors.energy, 0.0);
+            accumulateGradientAndStrain(pairFactors.firstDerivativeFactor * dr, dr);
+
             const Potentials::PairDerivatives<2> unitFactors =
                 Potentials::potentialCoulomb<2>(forceField, 1.0, 1.0, r, 1.0, 1.0);
             const double scaledChargeA = it1->scalingCoulomb * it1->charge;
             const double scaledChargeB = it2->scalingCoulomb * it2->charge;
-            const double pairEnergy = scaledChargeA * scaledChargeB * unitFactors.energy;
-
-            energy.componentEnergy(compA, compB).CoulombicReal += 0.5 * EnergyDuDlambda(pairEnergy, 0.0);
-            energy.componentEnergy(compB, compA).CoulombicReal += 0.5 * EnergyDuDlambda(pairEnergy, 0.0);
-            accumulateGradientAndStrain(scaledChargeA * scaledChargeB * unitFactors.firstDerivativeFactor * dr, dr);
 
             const double3 delta =
                 dr - polarizationGather->centerOfMassOffset[indexA] + polarizationGather->centerOfMassOffset[indexB];

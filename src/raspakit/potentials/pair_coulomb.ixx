@@ -10,6 +10,7 @@ import units;
 import forcefield;
 import potential_pair_derivatives;
 import potential_coulomb_real_space;
+import potential_ewald_real_space_table;
 
 namespace Potentials
 {
@@ -21,6 +22,16 @@ namespace Potentials
  * damped/modified shifted force, and zero-dipole summation. The Ewald real-space erfc terms
  * are computed inline (only up to the requested order); the remaining charge methods share
  * coulombRealSpaceFactors.
+ *
+ * For a fully coupled Ewald pair (scaling 1) at Order 0 or 1 the erfc(alpha r)/r term and its
+ * derivative are read from the force field's cubic-Hermite table in r^2 (ForceField::ewaldRealSpaceTable),
+ * which replaces erfc, exp, and two divisions per pair by an interpolation (relative error below
+ * 1e-9 at r = 1 Angstrom, far smaller beyond). Pairs closer than the table's lower bound, pairs beyond
+ * its range, and a table that is out of date with respect to the current alpha fall back to the exact
+ * library functions. The Hessian orders (2 and 3) are closed-form throughout, so a routine that needs
+ * a gradient consistent with its second derivatives to better than the table error should take both
+ * from Order 2; a routine whose pair energy/gradient must match the Order 0/1 pair loops should take
+ * them from Order 1 (see the fused polarization pressure paths).
  *
  * The scaling is linear: it first switches the VDW interaction on in the range 0-0.5 and
  * then the electrostatics from 0.5 to 1.0.
@@ -58,6 +69,35 @@ export template <std::size_t Order>
       // (Q constant), so d^n U/dr^n = lambda_t * C q q * phi^(n)(s) with phi(s) = erfc(alpha s)/s.
       double alpha = forcefield.EwaldAlpha;
       double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+
+      if constexpr (Order <= 1)
+      {
+        // Fully coupled pair: Q = 0, s = r, and phi(r) = erfc(alpha r)/r is read from the table in r^2. The table
+        // derivative is dphi/d(r^2) = phi'(r) / (2 r), so phi'(r) = 2 r dphi/d(r^2) and the gradient factor
+        // phi'(r) / r = 2 dphi/d(r^2) needs no division. The Hessian orders stay closed-form throughout so that
+        // their gradient and second derivative are derivatives of one and the same function.
+        if (scaling == 1.0) [[likely]]
+        {
+          const EwaldRealSpaceTable& table = forcefield.ewaldRealSpaceTable;
+          const double rr = r * r;
+          if (table.covers(alpha, rr)) [[likely]]
+          {
+            double phi, dphidrr;
+            table.interpolate(rr, phi, dphidrr);
+            double phiPrime = 2.0 * r * dphidrr;
+            double dUdlambda = prefactor * (phi - EwaldChargeOffsetDelta * phiPrime);
+            if constexpr (Order == 0)
+            {
+              return {prefactor * phi, dUdlambda};
+            }
+            else
+            {
+              return {prefactor * phi, dUdlambda, 2.0 * prefactor * dphidrr};
+            }
+          }
+        }
+      }
+
       double s = r + EwaldChargeOffsetDelta * (1.0 - scaling);
       double inverseS = 1.0 / s;
       double inverseSS = inverseS * inverseS;

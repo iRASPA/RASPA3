@@ -15,6 +15,7 @@ import pseudo_atom;
 import vdwparameters;
 import json;
 import simulationbox;
+import potential_ewald_real_space_table;
 
 /**
  * \brief Represents the force field used in simulations.
@@ -115,6 +116,18 @@ export struct ForceField
   double reciprocalCutOffSquared{
       std::numeric_limits<double>::max()};  ///< Squared cut-off distance in reciprocal space.
   bool automaticEwald{true};                ///< Indicates if Ewald parameters are computed automatically.
+
+  /// Tabulated erfc(alpha r)/r for the Ewald real-space energy and gradient of fully coupled pairs (see
+  /// Potentials::potentialCoulomb). Derived from 'EwaldAlpha' and 'cutOffCoulomb': rebuilt by
+  /// updateEwaldRealSpaceTable, which every routine that changes either of them calls. Not serialized and not part
+  /// of operator==. A stale table (alpha differs) is never used; the pair potential then falls back to the exact
+  /// library functions.
+  EwaldRealSpaceTable ewaldRealSpaceTable{};
+  /// Set to false (before the table is (re)built) to evaluate the Ewald real-space term with the library erfc
+  /// everywhere. The tabulated energy and gradient are accurate to 1e-9 relative, but their second derivative is
+  /// only accurate to about 1e-6, so tests that finite-difference the energy against a closed-form Hessian through
+  /// heavy cancellation need the exact evaluation. Not serialized.
+  bool useEwaldRealSpaceTable{true};
 
   bool useCharge{true};          ///< Indicates if charges are used in calculations.
   bool omitEwaldFourier{false};  ///< If true, omits the Fourier component in Ewald summation.
@@ -347,6 +360,14 @@ export struct ForceField
   void initializeEwaldParameters(const SimulationBox &simulationBox);
 
   void initializeAutomaticCutOff(const SimulationBox &simulationBox);
+
+  /**
+   * \brief Rebuilds 'ewaldRealSpaceTable' for the current 'EwaldAlpha' and 'cutOffCoulomb' when it is out of date.
+   *
+   * Must be called after any direct assignment to 'EwaldAlpha' or 'cutOffCoulomb' (the initialize routines and
+   * the JSON reader do so themselves). Cheap when the table already matches.
+   */
+  void updateEwaldRealSpaceTable();
 
   static ChargeMethod chargeMethodFromString(const std::string &value);
   static std::string_view chargeMethodName(ChargeMethod method);

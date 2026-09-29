@@ -208,6 +208,10 @@ TEST(minimization_hessian_framework, rigid_co2_in_itq29_vdw_matches_finite_diffe
 
   ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
   useSecondOrderTaylorShiftedLennardJones(forceField);
+  // The finite-difference reference differentiates the (order-0) energy twice; the rotational Hessian entries of
+  // the rigid molecule are a heavy cancellation of pair terms, which amplifies the second-derivative error of the
+  // tabulated Ewald real-space term above this test's tolerance. Compare against the closed-form energy.
+  forceField.useEwaldRealSpaceTable = false;
   // 2x2x2 unit cells so the box exceeds twice the cutoff (minimum image stays consistent).
   Framework framework = Framework::makeITQ29(forceField, int3(2, 2, 2));
   Component co2 = Component::makeCO2(forceField, 0, true);

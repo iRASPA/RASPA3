@@ -54,7 +54,8 @@ template <std::size_t Order>
  * evaluation. Only the squared distance (rr) is required; the square root is avoided on the
  * Lennard-Jones hot path.
  *
- * The Lennard-Jones potential is dispatched with a single compare-and-branch. For gradient and
+ * The Lennard-Jones potential is dispatched with a single compare-and-branch, and a pair without
+ * van der Waals interaction (Type::None) returns zeros immediately. For gradient and
  * Hessian evaluation the two shifted Lennard-Jones variants keep an inlined fast path (used in
  * minimization hot loops). All other potential types are handled by the non-inlined
  * evaluateRareVDWDerivatives so that the hot code path stays free of code bloat; that function
@@ -108,6 +109,14 @@ export template <std::size_t Order>
       return {scaling * term, term + dlambda_term, 12.0 * scaling * arg1 * (rri6 * temp3 * (0.5 - rri3)) / rr,
               24.0 * arg1 * scaling * rri6 * temp3 * (1.0 + rri3 * (temp3 * (-3.0 + 9.0 * rri3) - 2.0)) / (rr * rr)};
     }
+  }
+
+  // No van der Waals interaction between these pseudo-atom types (for example the charged, massless sites of
+  // multi-site water models against everything): the pair loops still reach this point for every pair within
+  // the cutoff, so return before the non-inlined dispatch of the rare potentials.
+  if (potentialType == VDWParameters::Type::None)
+  {
+    return {};
   }
 
   if constexpr (Order >= 1)

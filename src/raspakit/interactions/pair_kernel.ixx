@@ -20,7 +20,10 @@ export namespace Interactions
  *
  * Shared pair kernel for the energy (Order 0), gradient (Order 1), and Hessian (Order 2) routines:
  * computes the minimum-image separation, applies the cutoffs, dispatches to the unified pair
- * potentials, and hands the resulting factors to the caller-supplied sinks. Each sink is invoked
+ * potentials, and hands the resulting factors to the caller-supplied sinks. Pairs with a zero
+ * charge product skip the Coulomb evaluation (the sink is not invoked), so this kernel is not
+ * suitable for electric-field loops, where an uncharged field point still sees its sources.
+ * Each sink is invoked
  * with (const Potentials::PairDerivatives<Order>&, const double3& dr), where dr = posA - posB
  * after periodic boundary conditions; the Cartesian force on atom A is firstDerivativeFactor * dr.
  */
@@ -41,7 +44,8 @@ template <std::size_t Order, typename VDWSink, typename CoulombSink>
                                         static_cast<std::size_t>(atomA.type), static_cast<std::size_t>(atomB.type));
     vdwSink(factors, dr);
   }
-  if (useCharge && rr < cutOffChargeSquared)
+  // every Coulomb factor is proportional to q_A q_B: a pair with an uncharged site contributes nothing
+  if (useCharge && rr < cutOffChargeSquared && atomA.charge * atomB.charge != 0.0)
   {
     const double r = std::sqrt(rr);
     const Potentials::PairDerivatives<Order> factors = Potentials::potentialCoulomb<Order>(

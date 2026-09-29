@@ -166,10 +166,10 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
     {
       cellList.setup(system.simulationBox, cutoff, settings.verletSkin, settings.numberOfThreads, settings.domainGrid);
     }
-    if (fastCoulomb && (forceField.EwaldAlpha != ewaldTable.alpha ||
-                        forceField.cutOffCoulomb * forceField.cutOffCoulomb * 1.001 > ewaldTable.rrMax))
+    if (fastCoulomb && (forceField.EwaldAlpha != ewaldTable.alpha || !ewaldTable.spans(forceField.cutOffCoulomb)))
     {
-      ewaldTable.build(forceField.EwaldAlpha, forceField.cutOffCoulomb);
+      // the kernel choice depends on whether the table can span the (new) cutoff
+      prepareKernel(system);
     }
   }
 
@@ -427,8 +427,18 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
   {
     if (forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
-      ewaldTable.build(forceField.EwaldAlpha, forceField.cutOffCoulomb);
-      fastCoulomb = true;
+      if (!ewaldTable.matches(forceField.EwaldAlpha, forceField.cutOffCoulomb))
+      {
+        ewaldTable.build(forceField.EwaldAlpha, forceField.cutOffCoulomb);
+      }
+      if (ewaldTable.spans(forceField.cutOffCoulomb))
+      {
+        fastCoulomb = true;
+      }
+      else
+      {
+        lennardJonesOnly = false;  // cutoff beyond the table cap: the generic kernel handles the tail exactly
+      }
     }
     else
     {

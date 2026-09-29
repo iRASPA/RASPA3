@@ -229,12 +229,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   systemA.forceField.cutOffCoulomb = cutOffCoulomb_stored_A;
   systemA.forceField.EwaldAlpha = ewald_alpha_stored_A;
   systemA.forceField.numberOfWaveVectors = ewald_k_stored_A;
+  systemA.forceField.updateEwaldRealSpaceTable();
 
   systemB.forceField.cutOffFrameworkVDW = cutOffFrameworkVDW_stored_B;
   systemB.forceField.cutOffMoleculeVDW = cutOffMoleculeVDW_stored_B;
   systemB.forceField.cutOffCoulomb = cutOffCoulomb_stored_B;
   systemB.forceField.EwaldAlpha = ewald_alpha_stored_B;
   systemB.forceField.numberOfWaveVectors = ewald_k_stored_B;
+  systemB.forceField.updateEwaldRealSpaceTable();
 
   return std::nullopt;
 }

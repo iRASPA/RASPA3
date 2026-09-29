@@ -137,6 +137,7 @@ ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParam
   preComputeDerivedParameters();
   preComputePotentialShift();
   preComputeTailCorrection();
+  updateEwaldRealSpaceTable();
 }
 
 ForceField::ForceField(std::string filePath)
@@ -707,6 +708,7 @@ ForceField::ForceField(std::string filePath)
   preComputeDerivedParameters();
   preComputePotentialShift();
   preComputeTailCorrection();
+  updateEwaldRealSpaceTable();
 
   std::vector<std::string> pseudoAtomStringGrids =
       parsed_data.value("UseInterpolationGrids", std::vector<std::string>{});
@@ -1598,6 +1600,19 @@ void ForceField::initializeEwaldParameters(const SimulationBox& simulationBox)
         static_cast<std::size_t>(std::max({numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z}));
     reciprocalIntegerCutOffSquared = maxNumberOfWaveVector * maxNumberOfWaveVector;
   }
+
+  updateEwaldRealSpaceTable();
+}
+
+void ForceField::updateEwaldRealSpaceTable()
+{
+  if (!useEwaldRealSpaceTable || !(EwaldAlpha > 0.0) || !(cutOffCoulomb > 0.0) || !std::isfinite(cutOffCoulomb))
+  {
+    ewaldRealSpaceTable = EwaldRealSpaceTable{};
+    return;
+  }
+  if (ewaldRealSpaceTable.matches(EwaldAlpha, cutOffCoulomb)) return;
+  ewaldRealSpaceTable.build(EwaldAlpha, cutOffCoulomb);
 }
 
 void ForceField::initializeAutomaticCutOff(const SimulationBox& simulationBox)
@@ -1638,6 +1653,8 @@ void ForceField::initializeAutomaticCutOff(const SimulationBox& simulationBox)
         static_cast<std::size_t>(std::max({numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z}));
     reciprocalIntegerCutOffSquared = maxNumberOfWaveVector * maxNumberOfWaveVector;
   }
+
+  updateEwaldRealSpaceTable();
 }
 
 ForceField::ChargeMethod ForceField::chargeMethodFromString(const std::string& value)
@@ -1844,6 +1861,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
     throw std::runtime_error(std::format("ForceField: Error in binary restart\n"));
   }
 #endif
+
+  // derived from EwaldAlpha and cutOffCoulomb, not stored
+  f.updateEwaldRealSpaceTable();
 
   return archive;
 }

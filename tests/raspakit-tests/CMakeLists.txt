@@ -14,6 +14,7 @@ add_executable(unit_tests_raspakit
   dudlambda.cpp
   coulomb_real_space_methods.cpp
   ewald.cpp
+  ewald_real_space_table.cpp
   ewald_exclusion_multi_molecule.cpp
   wolf_exclusion.cpp
   wolf_strain_polarization.cpp
