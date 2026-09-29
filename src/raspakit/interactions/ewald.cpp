@@ -93,7 +93,8 @@ void addRealSpaceExclusionEnergy(RunningEnergy& energy, const ForceField& forceF
 // bare -1/r term adds +1/r^3 to the shifted-potential first-derivative factor.
 void addRealSpaceExclusionGradient(RunningEnergy& energy, const ForceField& forceField,
                                    const SimulationBox& simulationBox, std::span<const Atom> atoms,
-                                   std::span<AtomDynamics> dynamics, double sign = 1.0)
+                                   std::span<AtomDynamics> dynamics, double sign = 1.0,
+                                   double3x3* strainDerivative = nullptr)
 {
   const double cutOffSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
   for (std::size_t i = 0; i + 1 < atoms.size(); ++i)
@@ -121,10 +122,131 @@ void addRealSpaceExclusionGradient(RunningEnergy& energy, const ForceField& forc
       double3 f = gradientFactor * dr;
       dynamics[i].gradient += f;
       dynamics[j].gradient -= f;
+      if (strainDerivative)
+      {
+        strainDerivative->ax += f.x * dr.x;
+        strainDerivative->bx += f.y * dr.x;
+        strainDerivative->cx += f.z * dr.x;
+        strainDerivative->ay += f.x * dr.y;
+        strainDerivative->by += f.y * dr.y;
+        strainDerivative->cy += f.z * dr.y;
+        strainDerivative->az += f.x * dr.z;
+        strainDerivative->bz += f.y * dr.z;
+        strainDerivative->cz += f.z * dr.z;
+      }
     }
   }
 }
 }  // namespace
+
+void Interactions::addChargeSelfEnergy(RunningEnergy& energy, const ForceField& forceField, std::span<const Atom> atoms)
+{
+  if (!forceField.useCharge || forceField.omitInterInteractions) return;
+  if (forceField.usesEwaldFourier())
+  {
+    const double prefactor_self =
+        Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
+    for (const Atom& atom : atoms)
+    {
+      const double charge = atom.charge;
+      const double scaling = atom.scalingCoulomb;
+      const std::uint8_t groupIdA = atom.groupId;
+      energy.ewald_self -= prefactor_self * scaling * charge * scaling * charge;
+      if (groupIdA != 0) energy.dudlambdaEwald[groupIdA - 1] -= 2.0 * prefactor_self * scaling * charge * charge;
+    }
+  }
+  else if (forceField.usesRealSpaceChargeCorrections())
+  {
+    addRealSpaceSelfEnergy(energy, forceField, atoms);
+  }
+}
+
+void Interactions::addIntraMolecularChargeExclusionGradient(RunningEnergy& energy, const ForceField& forceField,
+                                                            const SimulationBox& simulationBox,
+                                                            std::span<const Atom> moleculeAtoms,
+                                                            std::span<AtomDynamics> moleculeDynamics,
+                                                            double3x3* strainDerivative)
+{
+  const auto accumulateStrain = [&](const double3& f, const double3& dr)
+  {
+    if (!strainDerivative) return;
+    strainDerivative->ax += f.x * dr.x;
+    strainDerivative->bx += f.y * dr.x;
+    strainDerivative->cx += f.z * dr.x;
+    strainDerivative->ay += f.x * dr.y;
+    strainDerivative->by += f.y * dr.y;
+    strainDerivative->cy += f.z * dr.y;
+    strainDerivative->az += f.x * dr.z;
+    strainDerivative->bz += f.y * dr.z;
+    strainDerivative->cz += f.z * dr.z;
+  };
+
+  if (!forceField.useCharge || forceField.omitInterInteractions) return;
+  if (forceField.usesEwaldFourier())
+  {
+    const double alpha = forceField.EwaldAlpha;
+    for (std::size_t i = 0; i + 1 < moleculeAtoms.size(); i++)
+    {
+      double chargeA = moleculeAtoms[i].charge;
+      double scalingA = moleculeAtoms[i].scalingCoulomb;
+      std::uint8_t groupIdA = moleculeAtoms[i].groupId;
+      double3 posA = moleculeAtoms[i].position;
+      for (std::size_t j = i + 1; j != moleculeAtoms.size(); j++)
+      {
+        double chargeB = moleculeAtoms[j].charge;
+        double scalingB = moleculeAtoms[j].scalingCoulomb;
+        std::uint8_t groupIdB = moleculeAtoms[j].groupId;
+        double3 posB = moleculeAtoms[j].position;
+
+        double3 dr = posA - posB;
+        dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+        double rr = double3::dot(dr, dr);
+        double r = std::sqrt(rr);
+
+        const Potentials::EwaldExclusionFactors exclusion =
+            Potentials::ewaldExclusionFactors(alpha, scalingA * scalingB, r);
+        double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+        energy.ewald_exclusion -= scalingA * scalingB * prefactor * exclusion.potential;
+        energy.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, -prefactor * exclusion.dUdlambda);
+
+        double gradientFactor = scalingA * scalingB * prefactor * exclusion.firstDerivativeFactor;
+        moleculeDynamics[i].gradient -= gradientFactor * dr;
+        moleculeDynamics[j].gradient += gradientFactor * dr;
+        accumulateStrain(-gradientFactor * dr, dr);
+      }
+    }
+  }
+  else if (forceField.usesRealSpaceChargeCorrections())
+  {
+    addRealSpaceExclusionGradient(energy, forceField, simulationBox, moleculeAtoms, moleculeDynamics, 1.0,
+                                  strainDerivative);
+  }
+}
+
+RunningEnergy Interactions::computeChargeSelfAndExclusionGradient(
+    const ForceField& forceField, const SimulationBox& simulationBox, const std::vector<Component>& components,
+    const std::vector<std::size_t>& numberOfMoleculesPerComponent, std::span<const Atom> atomData,
+    std::span<AtomDynamics> atomDynamics)
+{
+  RunningEnergy energy{};
+  if (!forceField.useCharge || forceField.omitInterInteractions) return energy;
+  if (!forceField.usesEwaldFourier() && !forceField.usesRealSpaceChargeCorrections()) return energy;
+
+  addChargeSelfEnergy(energy, forceField, atomData);
+
+  std::size_t index{0};
+  for (std::size_t l = 0; l != components.size(); ++l)
+  {
+    std::size_t size = components[l].atoms.size();
+    for (std::size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    {
+      addIntraMolecularChargeExclusionGradient(energy, forceField, simulationBox, atomData.subspan(index, size),
+                                               atomDynamics.subspan(index, size));
+      index += size;
+    }
+  }
+  return energy;
+}
 
 // Removal of pressure and free energy artifacts in charged periodic systems via net charge corrections
 // to the Ewald potential
@@ -805,55 +927,18 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
 
   if (!omitInterInteractions)
   {
-    // Subtract self-energy
-    double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
-    for (std::size_t i = 0; i != numberOfAtoms; ++i)
-    {
-      double charge = atoms[i].charge;
-      double scaling = atoms[i].scalingCoulomb;
-      std::uint8_t groupIdA = atoms[i].groupId;
-      energySum.ewald_self -= prefactor_self * scaling * charge * scaling * charge;
-      if (groupIdA != 0) energySum.dudlambdaEwald[groupIdA - 1] -= 2.0 * prefactor_self * scaling * charge * charge;
-    }
+    // Subtract self-energy (of the molecule atoms and, for a live framework, its mobile atoms)
+    addChargeSelfEnergy(energySum, forceField, atoms);
 
-    // Subtract exclusion-energy
+    // Subtract exclusion-energy of every molecule
     std::size_t index{0};
     for (std::size_t l = 0; l != components.size(); ++l)
     {
       std::size_t size = components[l].atoms.size();
       for (std::size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
       {
-        std::span<const Atom> span = std::span(&atomData[index], size);
-        std::span<AtomDynamics> spanDynamics = std::span(&atomDynamics[index], size);
-        for (std::size_t i = 0; i != span.size() - 1; i++)
-        {
-          double chargeA = span[i].charge;
-          double scalingA = span[i].scalingCoulomb;
-          std::uint8_t groupIdA = span[i].groupId;
-          double3 posA = span[i].position;
-          for (std::size_t j = i + 1; j != span.size(); j++)
-          {
-            double chargeB = span[j].charge;
-            double scalingB = span[j].scalingCoulomb;
-            std::uint8_t groupIdB = span[j].groupId;
-            double3 posB = span[j].position;
-
-            double3 dr = posA - posB;
-            dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-            double rr = double3::dot(dr, dr);
-            double r = std::sqrt(rr);
-
-            const Potentials::EwaldExclusionFactors exclusion =
-                Potentials::ewaldExclusionFactors(alpha, scalingA * scalingB, r);
-            double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
-            energySum.ewald_exclusion -= scalingA * scalingB * prefactor * exclusion.potential;
-            energySum.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, -prefactor * exclusion.dUdlambda);
-
-            double gradientFactor = scalingA * scalingB * prefactor * exclusion.firstDerivativeFactor;
-            spanDynamics[i].gradient -= gradientFactor * dr;
-            spanDynamics[j].gradient += gradientFactor * dr;
-          }
-        }
+        addIntraMolecularChargeExclusionGradient(energySum, forceField, simulationBox, atomData.subspan(index, size),
+                                                 atomDynamics.subspan(index, size));
         index += size;
       }
     }

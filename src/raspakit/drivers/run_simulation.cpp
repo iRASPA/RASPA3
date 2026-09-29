@@ -15,6 +15,7 @@ import thermodynamic_integration;
 import parallel_thermodynamic_integration;
 import parallel_tempering;
 import parallel_tempering_molecular_dynamics;
+import molecular_dynamics_spatial_decomposition;
 import hyper_parallel_tempering;
 import reweighted_histogram;
 import parallel_tmmc;
@@ -112,6 +113,18 @@ void runSimulation(InputReader& inputReader)
         readBinaryRestartFile(parallel_tempering_md, inputReader.restartFromBinaryFileName);
       }
       parallel_tempering_md.run();
+      break;
+    }
+    case InputReader::SimulationType::MolecularDynamicsSpatialDecomposition:
+    {
+      MolecularDynamicsSpatialDecomposition md(inputReader);
+      if (inputReader.restartFromBinary)
+      {
+        readBinaryRestartFile(md, inputReader.restartFromBinaryFileName);
+        md.createOutputFiles();
+        // the force engines are not stored in the restart file; the resumed stage rebuilds them
+      }
+      md.run();
       break;
     }
     case InputReader::SimulationType::HyperParallelTempering:

@@ -157,6 +157,94 @@ reported separately at the end of the simulation.
     Runs the Molecular Dynamics engine. The ensemble must be specified
     explicitly through the `"Ensemble"` key.
 
+-   `"SimulationType" : "MolecularDynamicsSpatialDecomposition"`\
+    (aliases `"SpatialDecompositionMolecularDynamics"`, `"MolecularDynamicsSD"`)\
+    Molecular dynamics of molecules in a box with a multithreaded
+    spatial-decomposition force engine, for large systems (tens of thousands
+    of atoms and more). The pre-initialization and initialization stages are
+    the ordinary serial Monte Carlo cycles of `"MolecularDynamics"`; the
+    equilibration and production stages integrate the equations of motion
+    with forces from a domain-decomposed engine that replaces the
+    all-pairs and direct k-space code:
+
+    -   the box is divided into `"NumberOfThreads"` sub-domains (a
+        \f$p_x \times p_y \times p_z\f$ grid of staggered slabs with the
+        smallest surface, or the grid given by `"DomainGrid"`) whose cut
+        planes are placed on the atom positions at every neighbour-list
+        rebuild so that all threads own the same number of atoms; each
+        thread works on a compact private copy of its atoms and of the
+        *ghost images* it interacts with (atoms of other sub-domains, or
+        periodic images, with the periodic shift resolved when the Verlet
+        list is built, so the pair kernel needs no minimum-image
+        operation). Every pair of the system is evaluated once with
+        Newton's third law; the forces on the ghost images are collected
+        by the owning threads after the pair phase. The neighbour search
+        uses cells of a third of the cutoff plus skin and tests the
+        candidates per cell pair on wrapped positions with the box
+        translation of the cell pair applied once, and the lists are
+        rebuilt only when an atom has moved more than half the skin;
+    -   for a force field of plain 12-6 Lennard-Jones pairs (truncated or
+        shifted) with Ewald or no electrostatics and fully coupled atoms, a
+        specialised pair kernel is used with the Ewald real-space term
+        \f$\mathrm{erfc}(\alpha r)/r\f$ tabulated as a cubic Hermite spline
+        in \f$r^2\f$ (no square root or division per pair; relative error
+        below \f$10^{-9}\f$, force consistent with the interpolated energy);
+        other pair potentials, charge methods or scaled (fractional) atoms
+        use the generic kernels of the rest of the code (the status output
+        names the kernel);
+    -   the Ewald reciprocal sum is replaced by a particle-mesh (SPME/PPPM)
+        solver: B-spline charge assignment of order
+        `"PPPMInterpolationOrder"` on a mesh of spacing `"PPPMMeshSpacing"`,
+        FFTs by FFTW, with the same \f$\alpha\f$ as the Ewald summation of
+        the force field, so the real-space, self and exclusion terms are
+        unchanged and the result converges to the exact Ewald energy and
+        forces as the mesh is refined;
+    -   bonded terms, the Ewald self and intra-molecular exclusion
+        corrections and the molecular pressure tensor (pair, reciprocal,
+        exclusion and tail contributions, corrected to the molecular
+        center-of-mass virial) are computed by the same threads, so the
+        NPT and NPT-PR barostats work without the \f$O(N^2)\f$ pressure
+        evaluation.
+
+    The threads form a persistent team (one worker per sub-domain, the
+    calling thread included) synchronized by barriers; `"NumberOfThreads" :
+    1` is a valid serial cell-list/particle-mesh run through the same code
+    path. Every sub-domain must be at least one cell wide along every
+    axis, so the number of threads must fit the box: with
+    \f$c_i = \lfloor 4 L_i^{\perp} / (r_c + \text{skin}) \rfloor\f$
+    cells along axis \f$i\f$ at the finest subdivision, at most
+    \f$c_x c_y c_z\f$ sub-domains are possible and each sub-domain axis
+    needs \f$p_i \le c_i\f$; the input is rejected with a message when
+    they do not. The minimum-image neighbour lists require
+    \f$r_c + \text{skin} \le L^{\perp}_{\min} / 2\f$: since the automatic
+    Coulomb cutoff (`"CutOffCoulomb" : "auto"`) is exactly half the box,
+    set an explicit `"CutOffCoulomb"` (and `"CutOffVDW"`) in the force
+    field.
+
+    At the start of the equilibration and of the production stage the
+    engine's energy and forces are compared against the exact code once and
+    the differences are reported in the output (`Spatial-decomposition
+    force engine check`), together with the cell grid, the sub-domain
+    layout, the number of atoms and pairs per sub-domain and the mesh size.
+    Timings per phase (neighbour-list rebuilds, pairs, mesh, bonded terms)
+    are printed at the end.
+
+    Scope: molecules in a box only (rigid, semi-flexible and flexible
+    components, Lennard-Jones plus Coulomb with the Ewald, damped
+    shifted-force, Wolf, modified shifted-force or zero-dipole methods,
+    bonded potentials), ensembles `"NVE"`, `"NVT"`, `"NPT"` and `"NPTPR"`.
+    Frameworks, external fields, polarization, cross-link bonds,
+    CFCMC/fractional molecules, `"OmitInterInteractions"`,
+    `"UseDualCutOff"`, the stress-fluctuation elastic constants and the
+    particle-exchange ensembles (`"MuVT"`, `"MuPT"`, `"MuPTPR"`) are rejected
+    at input time with a message that points to `"SimulationType" :
+    "MolecularDynamics"`. The per-component energy decomposition
+    (`Energy averages and statistics`) is sampled with the exact
+    \f$O(N^2)\f$ code every `"PrintEvery"` cycles only; the total energies,
+    the conserved-energy drift, the pressure tensor and all property samplers
+    use the engine every step. Binary restarts continue with the engine
+    settings of the (new) input file, not of the restart file.
+
 -   `"SimulationType" : "MonteCarloTransitionMatrix"`\
     Runs Monte Carlo with transition-matrix (TMMC) biasing enabled for every
     system. See the macro-state keywords in the system options.
@@ -818,6 +906,43 @@ reported separately at the end of the simulation.
 -   `"ThreadingType" : string`\
     Selects the threading backend explicitly. Either `"Serial"` or
     `"ThreadPool"`.
+
+    For `"SimulationType" : "MolecularDynamicsSpatialDecomposition"`,
+    `"NumberOfThreads"` is the number of sub-domains of the force engine
+    (one persistent thread each); the thread pool is not used. The following
+    keys tune that engine:
+
+-   `"VerletSkin" : number`\
+    For `"MolecularDynamicsSpatialDecomposition"`: the Verlet skin in
+    &Aring; added to the largest cutoff when the neighbour lists are built.
+    Lists are rebuilt when an atom has moved more than half the skin. A
+    larger skin means fewer rebuilds but more pairs per force evaluation;
+    values of 1–3 &Aring; are typical for a 1 fs time step. Default: `2.0`.
+
+-   `"PPPMMeshSpacing" : number`\
+    For `"MolecularDynamicsSpatialDecomposition"` with `"ChargeMethod" :
+    "Ewald"`: the target spacing in &Aring; of the particle-mesh grid; the
+    number of mesh points per cell vector is the smallest FFT-friendly
+    integer (factors 2, 3, 5, 7) of at least the cell length divided by the
+    spacing and at least twice the interpolation order. With the default
+    order the relative error of the reciprocal energy and forces is about
+    \f$10^{-4}\f$ at 1 &Aring; and \f$10^{-6}\f$ at 0.5 &Aring; (for
+    \f$\alpha \approx 0.3\f$ &Aring;\f$^{-1}\f$). Default: `1.0`.
+
+-   `"PPPMInterpolationOrder" : integer`\
+    For `"MolecularDynamicsSpatialDecomposition"`: the order of the cardinal
+    B-spline used to assign charges to the mesh and to interpolate the
+    potential back (3–7; higher is more accurate per mesh point and costs
+    order\f$^3\f$ mesh operations per atom). Default: `5`.
+
+-   `"DomainGrid" : [integer, integer, integer]`\
+    For `"MolecularDynamicsSpatialDecomposition"`: the sub-domain grid
+    \f$p_x \times p_y \times p_z\f$ used by the threads; the product must
+    equal `"NumberOfThreads"` and each \f$p_i\f$ must not exceed the number
+    of neighbour-search cells along that axis (three per cutoff plus skin).
+    The cut positions along each axis are balanced on the atom count at
+    every list rebuild. Default: chosen automatically (the factorization
+    with the smallest sub-domain surface).
 
 -   `"RandomSeed" : integer`\
     Seeds the random-number generator for reproducible runs. When omitted a

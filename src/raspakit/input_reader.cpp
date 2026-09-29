@@ -48,6 +48,7 @@ import cif_reader;
 import running_energy;
 import minimization_cell_layout;
 import phonon_kpath;
+import spatial_decomposition_settings;
 
 int3 parseInt3(const std::string& item, auto json)
 {
@@ -551,6 +552,13 @@ InputReader::InputReader(const std::string inputFile)
              caseInSensStringCompare(simulationTypeString, "ParallelTemperingMD"))
     {
       simulationType = SimulationType::ParallelTemperingMolecularDynamics;
+      parseMolecularSimulations(parsed_data);
+    }
+    else if (caseInSensStringCompare(simulationTypeString, "MolecularDynamicsSpatialDecomposition") ||
+             caseInSensStringCompare(simulationTypeString, "SpatialDecompositionMolecularDynamics") ||
+             caseInSensStringCompare(simulationTypeString, "MolecularDynamicsSD"))
+    {
+      simulationType = SimulationType::MolecularDynamicsSpatialDecomposition;
       parseMolecularSimulations(parsed_data);
     }
     else if (caseInSensStringCompare(simulationTypeString, "ThermodynamicIntegration"))
@@ -1121,6 +1129,72 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       threadingType = ThreadPool::ThreadingType::ThreadPool;
     else
       threadingType = ThreadPool::ThreadingType::Serial;
+  }
+
+  // Spatial-decomposition MD engine ('SimulationType': 'MolecularDynamicsSpatialDecomposition'): the thread count
+  // is the number of sub-domains, the remaining keys tune the neighbour lists and the particle-mesh Ewald sum
+  spatialDecompositionSettings.numberOfThreads = std::max<std::size_t>(1, numberOfThreads);
+  if (parsed_data.contains("VerletSkin"))
+  {
+    if (!parsed_data["VerletSkin"].is_number())
+    {
+      throw std::runtime_error(std::format("[Input reader]: 'VerletSkin' must be a number [Angstrom]\n"));
+    }
+    spatialDecompositionSettings.verletSkin = parsed_data["VerletSkin"].get<double>();
+    if (spatialDecompositionSettings.verletSkin < 0.0)
+    {
+      throw std::runtime_error(std::format("[Input reader]: 'VerletSkin' must be non-negative, {} was given\n",
+                                           spatialDecompositionSettings.verletSkin));
+    }
+  }
+  if (parsed_data.contains("PPPMMeshSpacing"))
+  {
+    if (!parsed_data["PPPMMeshSpacing"].is_number())
+    {
+      throw std::runtime_error(std::format("[Input reader]: 'PPPMMeshSpacing' must be a number [Angstrom]\n"));
+    }
+    spatialDecompositionSettings.meshSpacing = parsed_data["PPPMMeshSpacing"].get<double>();
+    if (!(spatialDecompositionSettings.meshSpacing > 0.0))
+    {
+      throw std::runtime_error(std::format("[Input reader]: 'PPPMMeshSpacing' must be positive, {} was given\n",
+                                           spatialDecompositionSettings.meshSpacing));
+    }
+  }
+  if (parsed_data.contains("PPPMInterpolationOrder"))
+  {
+    if (!parsed_data["PPPMInterpolationOrder"].is_number_unsigned())
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'PPPMInterpolationOrder' must be an unsigned integer (3 to 7)\n"));
+    }
+    spatialDecompositionSettings.interpolationOrder = parsed_data["PPPMInterpolationOrder"].get<std::size_t>();
+    if (spatialDecompositionSettings.interpolationOrder < 3 || spatialDecompositionSettings.interpolationOrder > 7)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'PPPMInterpolationOrder' must be between 3 and 7, {} was given\n",
+                      spatialDecompositionSettings.interpolationOrder));
+    }
+  }
+  if (parsed_data.contains("DomainGrid"))
+  {
+    const nlohmann::json& grid = parsed_data["DomainGrid"];
+    if (!grid.is_array() || grid.size() != 3 || !grid[0].is_number_unsigned() || !grid[1].is_number_unsigned() ||
+        !grid[2].is_number_unsigned())
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'DomainGrid' must be an array of three positive integers [nx, ny, nz]\n"));
+    }
+    int3 domainGrid(grid[0].get<std::int32_t>(), grid[1].get<std::int32_t>(), grid[2].get<std::int32_t>());
+    if (domainGrid.x < 1 || domainGrid.y < 1 || domainGrid.z < 1 ||
+        static_cast<std::size_t>(domainGrid.x) * static_cast<std::size_t>(domainGrid.y) *
+                static_cast<std::size_t>(domainGrid.z) !=
+            spatialDecompositionSettings.numberOfThreads)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: the product of 'DomainGrid' [{}, {}, {}] must equal 'NumberOfThreads' ({})\n",
+                      domainGrid.x, domainGrid.y, domainGrid.z, spatialDecompositionSettings.numberOfThreads));
+    }
+    spatialDecompositionSettings.domainGrid = domainGrid;
   }
 
   // count number of components
@@ -3885,6 +3959,41 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
   }
 
+  // Spatial-decomposition MD: the force engine covers molecules in a periodic box (rigid, semi-flexible and
+  // flexible; Lennard-Jones + Coulomb; bonded terms) in the NVE, NVT and NPT ensembles. Anything outside that
+  // is refused here, naming the feature, rather than silently falling back to the O(N^2) code.
+  if (simulationType == SimulationType::MolecularDynamicsSpatialDecomposition)
+  {
+    for (std::size_t systemId = 0; systemId < systems.size(); ++systemId)
+    {
+      const System& system = systems[systemId];
+      auto reject = [&](std::string_view feature)
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: 'MolecularDynamicsSpatialDecomposition' does not support {} (system {}); "
+                        "use 'SimulationType': 'MolecularDynamics' instead\n",
+                        feature, systemId));
+      };
+      if (system.framework.has_value() || system.numberOfFrameworkAtoms > 0) reject("a framework");
+      if (system.hasExternalField) reject("an external field");
+      if (system.forceField.computePolarization) reject("polarization");
+      if (!system.crossLinks.empty()) reject("cross-link bonds");
+      if (molecularDynamicsHasParticleExchange(system.molecularDynamicsEnsemble))
+      {
+        reject(std::format("the '{}' ensemble (particle exchange during the MD stages)",
+                           molecularDynamicsEnsembleName(system.molecularDynamicsEnsemble)));
+      }
+      for (const Component& component : system.components)
+      {
+        if (component.hasFractionalMolecule)
+        {
+          reject(std::format("fractional (CFCMC) molecules (component '{}')", component.name));
+        }
+      }
+      if (system.forceField.useDualCutOff) reject("'UseDualCutOff'");
+    }
+  }
+
   // Hyper-parallel tempering: a single declared system is replicated by the driver into one replica
   // per (temperature, pressure) grid point (each replica running in its own thread)
   if (simulationType == SimulationType::HyperParallelTempering)
@@ -4175,6 +4284,10 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "OptimizeMCMovesEvery",
     "ThreadingType",
     "NumberOfThreads",
+    "VerletSkin",
+    "PPPMMeshSpacing",
+    "PPPMInterpolationOrder",
+    "DomainGrid",
     "Components",
     "Systems"};
 

@@ -25,6 +25,7 @@ import property_enthalpy;
 import energy_status;
 import averages;
 import minimization_options;
+import spatial_decomposition_settings;
 
 /**
  * \struct InputDataSystem
@@ -89,7 +90,8 @@ export struct InputReader
     ReweightedHistogram = 8,  ///< Replica grid + multiple-histogram reweighting (continuous isotherm surface).
     ParallelTMMC = 9,  ///< Multithreaded transition-matrix Monte Carlo: windowed macrostate walkers.
     NLDFT = 10,  ///< Classical nonlocal DFT isotherm on the framework energy grid (structurekit solver).
-    ParallelTemperingMolecularDynamics = 11  ///< Multithreaded replica-exchange molecular dynamics (REMD).
+    ParallelTemperingMolecularDynamics = 11,  ///< Multithreaded replica-exchange molecular dynamics (REMD).
+    MolecularDynamicsSpatialDecomposition = 12  ///< MD with the multithreaded spatial-decomposition force engine.
   };
 
   /**
@@ -198,6 +200,7 @@ export struct InputReader
   std::size_t numberOfThreads{1};  ///< Number of threads to be used in the simulation.
   ThreadPool::ThreadingType threadingType{ThreadPool::ThreadingType::Serial};  ///< Type of threading to be used.
   MinimizationOptions minimizationOptions{};
+  SpatialDecompositionSettings spatialDecompositionSettings{};  ///< Settings of the spatial-decomposition MD engine.
 
   ForceField forceField;          ///< Force field used for defining interactions in the simulation.
   std::vector<System> systems{};  ///< Vector of simulation systems configured for the simulation.

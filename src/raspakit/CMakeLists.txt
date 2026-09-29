@@ -35,6 +35,7 @@ file(GLOB RASPAKIT_CPP_FILES
   ${PROJECT_SOURCE_DIR}/properties/*.cpp
   ${PROJECT_SOURCE_DIR}/properties_time_evolution/*.cpp
   ${PROJECT_SOURCE_DIR}/integrators/*.cpp
+  ${PROJECT_SOURCE_DIR}/spatial_decomposition/*.cpp
   ${PROJECT_SOURCE_DIR}/utilities/*.cpp)
 
 file(GLOB RASPAKIT_IXX_FILES
@@ -61,6 +62,7 @@ file(GLOB RASPAKIT_IXX_FILES
   ${PROJECT_SOURCE_DIR}/properties/*.ixx
   ${PROJECT_SOURCE_DIR}/properties_time_evolution/*.ixx
   ${PROJECT_SOURCE_DIR}/integrators/*.ixx
+  ${PROJECT_SOURCE_DIR}/spatial_decomposition/*.ixx
   ${PROJECT_SOURCE_DIR}/utilities/*.ixx)
 
 # One library, and no -march anywhere below it: the released packages have to run on any processor of the
@@ -71,3 +73,9 @@ target_sources(${PROJECT_NAME} PRIVATE ${RASPAKIT_CPP_FILES})
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES ${RASPAKIT_IXX_FILES})
 target_compile_options(${PROJECT_NAME} PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 target_link_libraries(${PROJECT_NAME} PUBLIC structurekit symmetrykit mathkit foundationkit)
+
+# FFTW carries the mesh part of the particle-mesh Ewald sum of the spatial-decomposition MD engine
+# (spatial_decomposition/pppm.cpp). The libraries themselves arrive through structurekit, which links them
+# PUBLIC; only the header location has to be repeated here.
+find_path(FFTW3_INCLUDE_DIR fftw3.h PATHS /opt/homebrew/include /usr/local/include REQUIRED)
+target_include_directories(${PROJECT_NAME} PRIVATE ${FFTW3_INCLUDE_DIR})

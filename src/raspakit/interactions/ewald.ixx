@@ -197,6 +197,43 @@ void computeEwaldFourierElectricFieldDifference(
  *                           (Bogusz et al., J. Chem. Phys. 108, 7070 (1998)).
  * \return The running energy containing the Ewald Fourier energy contributions.
  */
+/**
+ * \brief Adds the per-atom self-energy of the active charge method to \p energy.ewald_self.
+ *
+ * Ewald: -alpha/sqrt(pi) sum_i (s_i q_i)^2; the finite-cutoff shifted schemes (Wolf, damped-shifted-force,
+ * modified-shifted-force, zero-dipole): their per-atom completion term. No-op for other charge methods and when
+ * 'omitInterInteractions' is set.
+ */
+void addChargeSelfEnergy(RunningEnergy &energy, const ForceField &forceField, std::span<const Atom> atoms);
+
+/**
+ * \brief Adds the intramolecular exclusion (and its atomic gradients) of one molecule to \p energy.
+ *
+ * Ewald: every atom pair of the molecule subtracts q_i q_j erf(alpha r)/r (all pairs, no cutoff), which is the
+ * intramolecular part of the reciprocal sum that the pair potentials do not evaluate. The finite-cutoff shifted
+ * schemes: the completion q_i q_j (V(r) - 1/r) inside the Coulomb cutoff. No-op for other charge methods and
+ * when 'omitInterInteractions' is set. \p moleculeAtoms and \p moleculeDynamics span exactly one molecule. When
+ * \p strainDerivative is given the pair contributions gradient (x) dr are accumulated into it as well, in the
+ * convention of the strain-derivative (molecular pressure) routines.
+ */
+void addIntraMolecularChargeExclusionGradient(RunningEnergy &energy, const ForceField &forceField,
+                                              const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
+                                              std::span<AtomDynamics> moleculeDynamics,
+                                              double3x3 *strainDerivative = nullptr);
+
+/**
+ * \brief Self-energy plus the intramolecular exclusion gradient of all molecules (the position-dependent part of
+ * the Ewald sum that is neither the real-space pair sum nor the reciprocal sum).
+ *
+ * The particle-mesh engine evaluates the reciprocal sum on a mesh and adds this function's result to it; the
+ * exact reciprocal gradient below includes the same two terms itself.
+ */
+RunningEnergy computeChargeSelfAndExclusionGradient(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                    const std::vector<Component> &components,
+                                                    const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+                                                    std::span<const Atom> atomData,
+                                                    std::span<AtomDynamics> atomDynamics);
+
 RunningEnergy computeEwaldFourierGradient(
     std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,

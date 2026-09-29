@@ -5,6 +5,7 @@ add_executable(unit_tests_raspakit
   move_statistics_window.cpp
   energy_decomposition.cpp
   gradients.cpp
+  spatial_decomposition.cpp
   translation_smart_mc.cpp
   translation_rotation_smart_mc.cpp
   integrators.cpp
