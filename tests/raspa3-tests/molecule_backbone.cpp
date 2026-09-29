@@ -9,7 +9,7 @@ import atom;
 import forcefield;
 import component;
 import mc_moves_probabilities;
-import property_polymer_backbone;
+import property_molecule_backbone;
 
 // Tests for the backbone chain statistics: internal distances, bond-vector correlation, form
 // factor and the derived chain descriptors on analytic conformations, plus the sampling and
@@ -92,7 +92,7 @@ std::vector<Atom> makeRod(std::size_t n, double l)
 }  // namespace
 
 // Rod: every bond parallel, C(k) = 1, <r^2(k)> = (k l)^2, projection equals the full length.
-TEST(POLYMER_BACKBONE, rod_internal_distances_correlation_and_moments)
+TEST(MOLECULE_BACKBONE, rod_internal_distances_correlation_and_moments)
 {
   constexpr std::size_t n = 7;
   constexpr double l = 1.3;
@@ -100,31 +100,31 @@ TEST(POLYMER_BACKBONE, rod_internal_distances_correlation_and_moments)
   std::vector<std::size_t> backbone = identityBackbone(n);
 
   std::vector<double> r2(n - 1), corr(n - 1);
-  PropertyPolymerBackbone::accumulateInternalDistances(rod, backbone, r2);
-  PropertyPolymerBackbone::accumulateBondCorrelation(rod, backbone, corr);
+  PropertyMoleculeBackbone::accumulateInternalDistances(rod, backbone, r2);
+  PropertyMoleculeBackbone::accumulateBondCorrelation(rod, backbone, corr);
   for (std::size_t k = 1; k < n; ++k)
   {
     EXPECT_NEAR(r2[k - 1], static_cast<double>(k * k) * l * l, 1e-10);
     EXPECT_NEAR(corr[k - 1], 1.0, 1e-12);
   }
 
-  auto m = PropertyPolymerBackbone::computeMoments(rod, backbone);
-  EXPECT_NEAR(m[PropertyPolymerBackbone::BondLength], l, 1e-12);
-  EXPECT_NEAR(m[PropertyPolymerBackbone::BondLengthSquared], l * l, 1e-12);
-  EXPECT_NEAR(m[PropertyPolymerBackbone::EndToEndSquared], 36.0 * l * l, 1e-10);
-  EXPECT_NEAR(m[PropertyPolymerBackbone::Projection], 6.0 * l, 1e-10);
+  auto m = PropertyMoleculeBackbone::computeMoments(rod, backbone);
+  EXPECT_NEAR(m[PropertyMoleculeBackbone::BondLength], l, 1e-12);
+  EXPECT_NEAR(m[PropertyMoleculeBackbone::BondLengthSquared], l * l, 1e-12);
+  EXPECT_NEAR(m[PropertyMoleculeBackbone::EndToEndSquared], 36.0 * l * l, 1e-10);
+  EXPECT_NEAR(m[PropertyMoleculeBackbone::Projection], 6.0 * l, 1e-10);
   // Rg^2 of n equally spaced points: l^2 (n^2 - 1) / 12.
-  EXPECT_NEAR(m[PropertyPolymerBackbone::RadiusOfGyrationSquared], l * l * (n * n - 1.0) / 12.0, 1e-10);
+  EXPECT_NEAR(m[PropertyMoleculeBackbone::RadiusOfGyrationSquared], l * l * (n * n - 1.0) / 12.0, 1e-10);
 }
 
 // Planar zig-zag with 90-degree bends: successive bonds orthogonal, C(k) alternates 1, 0, -1, 0, ...
-TEST(POLYMER_BACKBONE, zigzag_bond_correlation)
+TEST(MOLECULE_BACKBONE, zigzag_bond_correlation)
 {
   std::vector<Atom> zigzag = atomsAt({double3(0, 0, 0), double3(1, 0, 0), double3(1, 1, 0), double3(0, 1, 0),
                                       double3(0, 2, 0), double3(1, 2, 0)});
   // Bonds: +x, +y, -x, +y, +x  ->  C(1) = 0, C(2) = mean(-1, 1, -1) = -1/3, C(3) = mean(0, 0) = 0, C(4) = 1.
   std::vector<double> corr(5);
-  PropertyPolymerBackbone::accumulateBondCorrelation(zigzag, identityBackbone(6), corr);
+  PropertyMoleculeBackbone::accumulateBondCorrelation(zigzag, identityBackbone(6), corr);
   EXPECT_NEAR(corr[0], 1.0, 1e-12);
   EXPECT_NEAR(corr[1], 0.0, 1e-12);
   EXPECT_NEAR(corr[2], -1.0 / 3.0, 1e-12);
@@ -132,18 +132,18 @@ TEST(POLYMER_BACKBONE, zigzag_bond_correlation)
   EXPECT_NEAR(corr[4], 1.0, 1e-12);
 
   // Projection onto the first bond (+x): R = (1, 2, 0) -> 1; onto the last bond (+x) -> 1.
-  auto m = PropertyPolymerBackbone::computeMoments(zigzag, identityBackbone(6));
-  EXPECT_NEAR(m[PropertyPolymerBackbone::Projection], 1.0, 1e-12);
-  EXPECT_NEAR(m[PropertyPolymerBackbone::EndToEndSquared], 5.0, 1e-12);
+  auto m = PropertyMoleculeBackbone::computeMoments(zigzag, identityBackbone(6));
+  EXPECT_NEAR(m[PropertyMoleculeBackbone::Projection], 1.0, 1e-12);
+  EXPECT_NEAR(m[PropertyMoleculeBackbone::EndToEndSquared], 5.0, 1e-12);
 }
 
 // Form factor: P(q -> 0) = 1 exactly, and the two-bead value is (1 + sinc(q d)) / 2.
-TEST(POLYMER_BACKBONE, form_factor_limits)
+TEST(MOLECULE_BACKBONE, form_factor_limits)
 {
   std::vector<Atom> dumbbell = atomsAt({double3(0, 0, 0), double3(2.0, 0, 0)});
   std::vector<double> q{1e-9, 0.5, 2.0};
   std::vector<double> p(3);
-  PropertyPolymerBackbone::accumulateFormFactor(dumbbell, q, p);
+  PropertyMoleculeBackbone::accumulateFormFactor(dumbbell, q, p);
   EXPECT_NEAR(p[0], 1.0, 1e-9);
   EXPECT_NEAR(p[1], 0.5 * (1.0 + std::sin(1.0) / 1.0), 1e-12);
   EXPECT_NEAR(p[2], 0.5 * (1.0 + std::sin(4.0) / 4.0), 1e-12);
@@ -154,31 +154,31 @@ TEST(POLYMER_BACKBONE, form_factor_limits)
   double rg2 = (n * n - 1.0) / 12.0;
   std::vector<double> qSmall{0.01};
   std::vector<double> pSmall(1);
-  PropertyPolymerBackbone::accumulateFormFactor(rod, qSmall, pSmall);
+  PropertyMoleculeBackbone::accumulateFormFactor(rod, qSmall, pSmall);
   // The next term of the expansion is O(q^4 <r^4>) ~ 5e-7 here.
   EXPECT_NEAR(pSmall[0], 1.0 - 0.01 * 0.01 * rg2 / 3.0, 2e-6);
 }
 
-TEST(POLYMER_BACKBONE, debye_function)
+TEST(MOLECULE_BACKBONE, debye_function)
 {
-  EXPECT_NEAR(PropertyPolymerBackbone::debyeFunction(0.0), 1.0, 1e-12);
-  EXPECT_NEAR(PropertyPolymerBackbone::debyeFunction(1e-8), 1.0, 1e-8);
+  EXPECT_NEAR(PropertyMoleculeBackbone::debyeFunction(0.0), 1.0, 1e-12);
+  EXPECT_NEAR(PropertyMoleculeBackbone::debyeFunction(1e-8), 1.0, 1e-8);
   // x = 2: 2 (e^-2 - 1 + 2) / 4 = (1 + e^-2) / 2.
-  EXPECT_NEAR(PropertyPolymerBackbone::debyeFunction(2.0), 0.5 * (1.0 + std::exp(-2.0)), 1e-12);
+  EXPECT_NEAR(PropertyMoleculeBackbone::debyeFunction(2.0), 0.5 * (1.0 + std::exp(-2.0)), 1e-12);
   // Large x: -> 2 / x.
-  EXPECT_NEAR(PropertyPolymerBackbone::debyeFunction(1000.0), 2.0 * 999.0 / 1e6, 1e-12);
+  EXPECT_NEAR(PropertyMoleculeBackbone::debyeFunction(1000.0), 2.0 * 999.0 / 1e6, 1e-12);
 }
 
 // Derived descriptors on synthetic averages: an exactly exponential C(k) recovers l_p, an exact
 // power law recovers nu, and the undetermined cases return zero.
-TEST(POLYMER_BACKBONE, fits_recover_exponential_and_power_law)
+TEST(MOLECULE_BACKBONE, fits_recover_exponential_and_power_law)
 {
-  PropertyPolymerBackbone::Averages a{};
+  PropertyMoleculeBackbone::Averages a{};
   constexpr std::size_t numberOfBeads = 64;
   constexpr double l = 1.5;
   constexpr double lp = 6.0;
   constexpr double nu = 0.588;
-  a.moments[PropertyPolymerBackbone::BondLength] = l;
+  a.moments[PropertyMoleculeBackbone::BondLength] = l;
   a.bondCorrelation.resize(numberOfBeads - 1);
   for (std::size_t k = 0; k < a.bondCorrelation.size(); ++k)
   {
@@ -189,32 +189,32 @@ TEST(POLYMER_BACKBONE, fits_recover_exponential_and_power_law)
   {
     a.internalDistanceSquared[k - 1] = 2.3 * std::pow(static_cast<double>(k), 2.0 * nu);
   }
-  a.moments[PropertyPolymerBackbone::Projection] = 4.2;
+  a.moments[PropertyMoleculeBackbone::Projection] = 4.2;
 
-  EXPECT_NEAR(PropertyPolymerBackbone::persistenceLengthFromFit(a), lp, 1e-9);
-  EXPECT_NEAR(PropertyPolymerBackbone::floryExponent(a), nu, 1e-9);
-  EXPECT_NEAR(PropertyPolymerBackbone::persistenceLengthFromProjection(a), 4.2, 1e-12);
+  EXPECT_NEAR(PropertyMoleculeBackbone::persistenceLengthFromFit(a), lp, 1e-9);
+  EXPECT_NEAR(PropertyMoleculeBackbone::floryExponent(a), nu, 1e-9);
+  EXPECT_NEAR(PropertyMoleculeBackbone::persistenceLengthFromProjection(a), 4.2, 1e-12);
 
   // Too few points: a five-bead chain has no fit window; a correlation at the noise floor after one
   // step leaves fewer than three fit points.
-  PropertyPolymerBackbone::Averages b{};
-  b.moments[PropertyPolymerBackbone::BondLength] = l;
+  PropertyMoleculeBackbone::Averages b{};
+  b.moments[PropertyMoleculeBackbone::BondLength] = l;
   b.bondCorrelation = {1.0, 0.02, 0.01, 0.001};
   b.internalDistanceSquared = {1.0, 2.0, 3.0, 4.0};
-  EXPECT_EQ(PropertyPolymerBackbone::persistenceLengthFromFit(b), 0.0);
-  EXPECT_EQ(PropertyPolymerBackbone::floryExponent(b), 0.0);
+  EXPECT_EQ(PropertyMoleculeBackbone::persistenceLengthFromFit(b), 0.0);
+  EXPECT_EQ(PropertyMoleculeBackbone::floryExponent(b), 0.0);
 }
 
 // Sampling through a component: backbone inference, normalization of the per-k averages over
 // molecules and blocks, ratio statistics and error bars, and the wave-vector grid.
-TEST(POLYMER_BACKBONE, sampling_through_component)
+TEST(MOLECULE_BACKBONE, sampling_through_component)
 {
   ForceField forceField = makeZeroForceField();
   std::vector<Component> components{};
   components.push_back(makeComponent(forceField, "linear-backbone", kLinearChainJson));
 
   constexpr std::size_t numberOfBlocks = 4;
-  PropertyPolymerBackbone property(numberOfBlocks, components, 5, 0.1, 10.0, 1, 1);
+  PropertyMoleculeBackbone property(numberOfBlocks, components, 5, 0.1, 10.0, 1, 1);
 
   ASSERT_TRUE(property.isSampled(0));
   EXPECT_EQ(property.numberOfBackboneBeads(0), 6);
@@ -245,23 +245,23 @@ TEST(POLYMER_BACKBONE, sampling_through_component)
   for (std::size_t k = 1; k < 6; ++k)
   {
     auto [value, error] = property.statistics(
-        0, [k](const PropertyPolymerBackbone::Averages &a) { return a.internalDistanceSquared[k - 1]; });
+        0, [k](const PropertyMoleculeBackbone::Averages &a) { return a.internalDistanceSquared[k - 1]; });
     EXPECT_NEAR(value, 2.5 * static_cast<double>(k * k), 1e-10);
     EXPECT_EQ(error, 0.0);
   }
   auto [corr3, errorCorr3] =
-      property.statistics(0, [](const PropertyPolymerBackbone::Averages &a) { return a.bondCorrelation[3]; });
+      property.statistics(0, [](const PropertyMoleculeBackbone::Averages &a) { return a.bondCorrelation[3]; });
   EXPECT_NEAR(corr3, 1.0, 1e-12);
 
   // <l> = 1.5, <R^2> = (25 + 100) / 2 = 62.5, C_N = <R^2> / (5 <l>^2) = 62.5 / 11.25.
   auto [meanL, errorL] = property.statistics(
-      0, [](const PropertyPolymerBackbone::Averages &a) { return a.moments[PropertyPolymerBackbone::BondLength]; });
+      0, [](const PropertyMoleculeBackbone::Averages &a) { return a.moments[PropertyMoleculeBackbone::BondLength]; });
   EXPECT_NEAR(meanL, 1.5, 1e-12);
   auto [cn, errorCn] = property.statistics(
-      0, [](const PropertyPolymerBackbone::Averages &a)
+      0, [](const PropertyMoleculeBackbone::Averages &a)
       {
-        double l = a.moments[PropertyPolymerBackbone::BondLength];
-        return a.moments[PropertyPolymerBackbone::EndToEndSquared] / (5.0 * l * l);
+        double l = a.moments[PropertyMoleculeBackbone::BondLength];
+        return a.moments[PropertyMoleculeBackbone::EndToEndSquared] / (5.0 * l * l);
       });
   EXPECT_NEAR(cn, 62.5 / 11.25, 1e-12);
   EXPECT_EQ(errorCn, 0.0);
@@ -269,7 +269,7 @@ TEST(POLYMER_BACKBONE, sampling_through_component)
   // Skewing one block with an extra molecule makes the block scatter, and so the error, positive.
   property.sample(components, {1}, std::span<const Atom>(pair).subspan(0, 6), 0, 0);
   auto [meanLSkewed, errorLSkewed] = property.statistics(
-      0, [](const PropertyPolymerBackbone::Averages &a) { return a.moments[PropertyPolymerBackbone::BondLength]; });
+      0, [](const PropertyMoleculeBackbone::Averages &a) { return a.moments[PropertyMoleculeBackbone::BondLength]; });
   EXPECT_GT(errorLSkewed, 0.0);
   EXPECT_LT(meanLSkewed, 1.5);
 }

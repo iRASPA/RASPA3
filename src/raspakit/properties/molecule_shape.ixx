@@ -1,6 +1,6 @@
 module;
 
-export module property_polymer_shape;
+export module property_molecule_shape;
 
 import std;
 
@@ -19,7 +19,7 @@ import component;
 //   S_ab = sum_i w_i (r_ia - r_cm,a) (r_ib - r_cm,b),     sum_i w_i = 1,
 //
 // is formed from the (unwrapped) atom positions with either uniform bead weights (the polymer-physics
-// convention) or mass weights ('MassWeightedPolymerShape'), and diagonalised. With the eigenvalues
+// convention) or mass weights ('MassWeightedMoleculeShape'), and diagonalised. With the eigenvalues
 // ordered l1 >= l2 >= l3 the descriptors are
 //
 //   radius of gyration            Rg^2 = l1 + l2 + l3
@@ -44,14 +44,14 @@ import component;
 //
 // Histograms of Rg, k^2 and S are accumulated per block; the Rg range defaults to 0.6 times the
 // contour length of the bond-graph diameter (a bound on the Euclidean extent of the molecule) and can
-// be overridden with 'RadiusOfGyrationRangePolymerShape'. Output is written to 'polymer_shape/'.
+// be overridden with 'RadiusOfGyrationRangeMoleculeShape'. Output is written to 'molecule_shape/'.
 //
 // For components that declare 'RepeatUnits' the same descriptors are also sampled per monomer: the
 // gyration tensor of the atoms of each repeat unit (with the same weighting convention, renormalized
 // within the unit), reported per unit index along the chain and pooled over all units. Units of
 // fewer than two atoms are skipped.
 
-export struct PropertyPolymerShape
+export struct PropertyMoleculeShape
 {
   // Per-molecule moments accumulated per [block][component]; 'numberOfCounts' is their normalization.
   enum Moment : std::size_t
@@ -94,9 +94,9 @@ export struct PropertyPolymerShape
     double prolateness{0.0};
   };
 
-  PropertyPolymerShape() {};
+  PropertyMoleculeShape() {};
 
-  PropertyPolymerShape(std::size_t numberOfBlocks, const ForceField &forceField,
+  PropertyMoleculeShape(std::size_t numberOfBlocks, const ForceField &forceField,
                        const std::vector<Component> &components, std::size_t numberOfBins, bool massWeighted,
                        std::size_t sampleEvery, std::optional<std::size_t> writeEvery,
                        std::optional<double> radiusOfGyrationRangeOverride = std::nullopt);
@@ -193,6 +193,6 @@ export struct PropertyPolymerShape
 
   std::string printSettings() const;
 
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyPolymerShape &p);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyPolymerShape &p);
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyMoleculeShape &p);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyMoleculeShape &p);
 };

@@ -1,6 +1,6 @@
 module;
 
-module property_polymer_backbone;
+module property_molecule_backbone;
 
 import std;
 
@@ -42,7 +42,7 @@ std::optional<double> slope(std::span<const double> x, std::span<const double> y
 
 }  // namespace
 
-PropertyPolymerBackbone::PropertyPolymerBackbone(std::size_t numberOfBlocks, const std::vector<Component> &components,
+PropertyMoleculeBackbone::PropertyMoleculeBackbone(std::size_t numberOfBlocks, const std::vector<Component> &components,
                                                  std::size_t numberOfWaveVectors, double waveVectorLowerLimit,
                                                  double waveVectorUpperLimit, std::size_t sampleEvery,
                                                  std::optional<std::size_t> writeEvery)
@@ -89,7 +89,7 @@ PropertyPolymerBackbone::PropertyPolymerBackbone(std::size_t numberOfBlocks, con
   }
 }
 
-void PropertyPolymerBackbone::accumulateInternalDistances(std::span<const Atom> molecule,
+void PropertyMoleculeBackbone::accumulateInternalDistances(std::span<const Atom> molecule,
                                                           std::span<const std::size_t> backbone,
                                                           std::span<double> internalDistanceSquared)
 {
@@ -106,7 +106,7 @@ void PropertyPolymerBackbone::accumulateInternalDistances(std::span<const Atom> 
   }
 }
 
-void PropertyPolymerBackbone::accumulateBondCorrelation(std::span<const Atom> molecule,
+void PropertyMoleculeBackbone::accumulateBondCorrelation(std::span<const Atom> molecule,
                                                         std::span<const std::size_t> backbone,
                                                         std::span<double> bondCorrelation)
 {
@@ -127,7 +127,7 @@ void PropertyPolymerBackbone::accumulateBondCorrelation(std::span<const Atom> mo
   }
 }
 
-void PropertyPolymerBackbone::accumulateFormFactor(std::span<const Atom> molecule, std::span<const double> waveVectors,
+void PropertyMoleculeBackbone::accumulateFormFactor(std::span<const Atom> molecule, std::span<const double> waveVectors,
                                                    std::span<double> formFactor)
 {
   std::size_t n = molecule.size();
@@ -157,7 +157,7 @@ void PropertyPolymerBackbone::accumulateFormFactor(std::span<const Atom> molecul
   }
 }
 
-PropertyPolymerBackbone::Moments PropertyPolymerBackbone::computeMoments(std::span<const Atom> molecule,
+PropertyMoleculeBackbone::Moments PropertyMoleculeBackbone::computeMoments(std::span<const Atom> molecule,
                                                                          std::span<const std::size_t> backbone)
 {
   Moments moments{};
@@ -198,7 +198,7 @@ PropertyPolymerBackbone::Moments PropertyPolymerBackbone::computeMoments(std::sp
   return moments;
 }
 
-void PropertyPolymerBackbone::sample(const std::vector<Component> &components,
+void PropertyMoleculeBackbone::sample(const std::vector<Component> &components,
                                      const std::vector<std::size_t> &numberOfMoleculesPerComponent,
                                      std::span<const Atom> moleculeAtoms, std::size_t currentCycle, std::size_t block)
 {
@@ -239,7 +239,7 @@ void PropertyPolymerBackbone::sample(const std::vector<Component> &components,
   totalNumberOfCounts += 1.0;
 }
 
-PropertyPolymerBackbone::Averages PropertyPolymerBackbone::blockAverages(std::size_t block,
+PropertyMoleculeBackbone::Averages PropertyMoleculeBackbone::blockAverages(std::size_t block,
                                                                          std::size_t component) const
 {
   Averages averages{};
@@ -259,7 +259,7 @@ PropertyPolymerBackbone::Averages PropertyPolymerBackbone::blockAverages(std::si
   return averages;
 }
 
-PropertyPolymerBackbone::Averages PropertyPolymerBackbone::overallAverages(std::size_t component) const
+PropertyMoleculeBackbone::Averages PropertyMoleculeBackbone::overallAverages(std::size_t component) const
 {
   Averages averages{};
   averages.internalDistanceSquared = std::vector<double>(internalDistanceSquaredSum[0][component].size());
@@ -288,7 +288,7 @@ PropertyPolymerBackbone::Averages PropertyPolymerBackbone::overallAverages(std::
   return averages;
 }
 
-std::pair<double, double> PropertyPolymerBackbone::statistics(
+std::pair<double, double> PropertyMoleculeBackbone::statistics(
     std::size_t component, const std::function<double(const Averages &)> &function) const
 {
   double totalSamples{0.0};
@@ -321,7 +321,7 @@ std::pair<double, double> PropertyPolymerBackbone::statistics(
   return {mean, confidenceIntervalError};
 }
 
-double PropertyPolymerBackbone::persistenceLengthFromProjection(const Averages &averages)
+double PropertyMoleculeBackbone::persistenceLengthFromProjection(const Averages &averages)
 {
   return averages.moments[Projection];
 }
@@ -331,7 +331,7 @@ double PropertyPolymerBackbone::persistenceLengthFromProjection(const Averages &
 // of C(k) itself and the log of a small anticorrelation dip (a chain whose backbone alternates bond
 // angles has C(k) oscillating with the repeat period) does not dominate. Requires at least three
 // points and a decaying slope; otherwise zero is returned.
-double PropertyPolymerBackbone::persistenceLengthFromFit(const Averages &averages)
+double PropertyMoleculeBackbone::persistenceLengthFromFit(const Averages &averages)
 {
   std::vector<double> x{}, y{}, w{};
   for (std::size_t k = 0; k < averages.bondCorrelation.size(); ++k)
@@ -351,7 +351,7 @@ double PropertyPolymerBackbone::persistenceLengthFromFit(const Averages &average
 // Log-log slope of <r^2(k)> against k over Nb/8 <= k <= Nb/2 divided by two; the window skips the
 // stiff short-range regime and the finite-size roll-off near the full chain. Requires at least four
 // points (Nb >= 16); otherwise zero is returned.
-double PropertyPolymerBackbone::floryExponent(const Averages &averages)
+double PropertyMoleculeBackbone::floryExponent(const Averages &averages)
 {
   std::size_t numberOfBeads = averages.internalDistanceSquared.size() + 1;
   std::size_t kMin = std::max<std::size_t>(2, numberOfBeads / 8);
@@ -371,13 +371,13 @@ double PropertyPolymerBackbone::floryExponent(const Averages &averages)
   return s.has_value() ? 0.5 * s.value() : 0.0;
 }
 
-double PropertyPolymerBackbone::debyeFunction(double x)
+double PropertyMoleculeBackbone::debyeFunction(double x)
 {
   if (x < 1e-6) return 1.0 - x / 3.0;
   return 2.0 * (std::exp(-x) - 1.0 + x) / (x * x);
 }
 
-void PropertyPolymerBackbone::writeOutput(std::size_t systemId, const std::vector<Component> &components,
+void PropertyMoleculeBackbone::writeOutput(std::size_t systemId, const std::vector<Component> &components,
                                           std::size_t currentCycle)
 {
   if (!writeEvery.has_value()) return;
@@ -387,7 +387,7 @@ void PropertyPolymerBackbone::writeOutput(std::size_t systemId, const std::vecto
   for (std::size_t c = 0; c < numberOfComponents; ++c) anything = anything || isSampled(c);
   if (!anything) return;
 
-  std::filesystem::create_directory("polymer_backbone");
+  std::filesystem::create_directory("molecule_backbone");
 
   for (std::size_t c = 0; c < components.size() && c < numberOfComponents; ++c)
   {
@@ -427,7 +427,7 @@ void PropertyPolymerBackbone::writeOutput(std::size_t systemId, const std::vecto
     std::size_t kMax = numberOfBeads / 2;
 
     {
-      std::ofstream summary(std::format("polymer_backbone/polymer_backbone_{}.s{}.txt", name, systemId));
+      std::ofstream summary(std::format("molecule_backbone/molecule_backbone_{}.s{}.txt", name, systemId));
       summary << std::format("# backbone chain statistics, component: {}, number of counts: {}\n", name,
                              totalNumberOfCounts);
       summary << std::format("# backbone: {} beads, {} bonds, atoms {} .. {}; errors are 95% confidence intervals\n",
@@ -457,7 +457,7 @@ void PropertyPolymerBackbone::writeOutput(std::size_t systemId, const std::vecto
     }
 
     {
-      std::ofstream stream(std::format("polymer_backbone/internal_distances_{}.s{}.txt", name, systemId));
+      std::ofstream stream(std::format("molecule_backbone/internal_distances_{}.s{}.txt", name, systemId));
       stream << std::format("# mean squared internal distances along the backbone, component: {}, number of counts: {}\n",
                             name, totalNumberOfCounts);
       stream << std::format("# <l> = {:g} [Angstrom]\n", meanL);
@@ -475,7 +475,7 @@ void PropertyPolymerBackbone::writeOutput(std::size_t systemId, const std::vecto
     }
 
     {
-      std::ofstream stream(std::format("polymer_backbone/bond_correlation_{}.s{}.txt", name, systemId));
+      std::ofstream stream(std::format("molecule_backbone/bond_correlation_{}.s{}.txt", name, systemId));
       stream << std::format("# bond-vector correlation along the backbone, component: {}, number of counts: {}\n",
                             name, totalNumberOfCounts);
       stream << std::format("# l_p (projection) = {:g} [Angstrom], l_p (fit) = {:g} [Angstrom]\n",
@@ -491,7 +491,7 @@ void PropertyPolymerBackbone::writeOutput(std::size_t systemId, const std::vecto
     }
 
     {
-      std::ofstream stream(std::format("polymer_backbone/form_factor_{}.s{}.txt", name, systemId));
+      std::ofstream stream(std::format("molecule_backbone/form_factor_{}.s{}.txt", name, systemId));
       stream << std::format("# single-chain form factor (all atoms, uniform weights), component: {}, number of counts: {}\n",
                             name, totalNumberOfCounts);
       stream << std::format("# <Rg^2> = {:g} [Angstrom^2]; Debye function evaluated at x = q^2 <Rg^2>\n", meanRg2);
@@ -511,11 +511,11 @@ void PropertyPolymerBackbone::writeOutput(std::size_t systemId, const std::vecto
   }
 }
 
-std::string PropertyPolymerBackbone::printSettings() const
+std::string PropertyMoleculeBackbone::printSettings() const
 {
   std::ostringstream stream;
 
-  std::print(stream, "Polymer-backbone chain statistics:\n");
+  std::print(stream, "Molecule-backbone chain statistics:\n");
   std::print(stream, "    sample every: {}\n", sampleEvery);
   if (writeEvery.has_value())
   {
@@ -537,7 +537,7 @@ std::string PropertyPolymerBackbone::printSettings() const
   return stream.str();
 }
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyPolymerBackbone &p)
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyMoleculeBackbone &p)
 {
   archive << p.versionNumber;
 
@@ -565,14 +565,14 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyPolymerBackbone &p)
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyMoleculeBackbone &p)
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > p.versionNumber)
   {
     const std::source_location &location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'PropertyPolymerBackbone' at line {} in file {}\n",
+    throw std::runtime_error(std::format("Invalid version reading 'PropertyMoleculeBackbone' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }
 
@@ -598,7 +598,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyPoly
   archive >> magicNumber;
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
-    throw std::runtime_error(std::format("PropertyPolymerBackbone: Error in binary restart\n"));
+    throw std::runtime_error(std::format("PropertyMoleculeBackbone: Error in binary restart\n"));
   }
 #endif
 

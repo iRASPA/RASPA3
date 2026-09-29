@@ -993,13 +993,13 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       {
         system.propertyMoleculeProperties->writeOutput(system_id, system.components, currentCycle);
       }
-      if (system.propertyPolymerShape.has_value())
+      if (system.propertyMoleculeShape.has_value())
       {
-        system.propertyPolymerShape->writeOutput(system_id, system.components, currentCycle);
+        system.propertyMoleculeShape->writeOutput(system_id, system.components, currentCycle);
       }
-      if (system.propertyPolymerBackbone.has_value())
+      if (system.propertyMoleculeBackbone.has_value())
       {
-        system.propertyPolymerBackbone->writeOutput(system_id, system.components, currentCycle);
+        system.propertyMoleculeBackbone->writeOutput(system_id, system.components, currentCycle);
       }
 
       ++system_id;
@@ -1115,13 +1115,13 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       {
         system.propertyMoleculeProperties->writeOutput(system_id, system.components, currentCycle);
       }
-      if (system.propertyPolymerShape.has_value())
+      if (system.propertyMoleculeShape.has_value())
       {
-        system.propertyPolymerShape->writeOutput(system_id, system.components, currentCycle);
+        system.propertyMoleculeShape->writeOutput(system_id, system.components, currentCycle);
       }
-      if (system.propertyPolymerBackbone.has_value())
+      if (system.propertyMoleculeBackbone.has_value())
       {
-        system.propertyPolymerBackbone->writeOutput(system_id, system.components, currentCycle);
+        system.propertyMoleculeBackbone->writeOutput(system_id, system.components, currentCycle);
       }
 
       ++system_id;

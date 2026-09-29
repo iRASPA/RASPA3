@@ -1,6 +1,6 @@
 module;
 
-export module property_polymer_backbone;
+export module property_molecule_backbone;
 
 import std;
 
@@ -30,9 +30,9 @@ import component;
 //
 // The form factor is compared against the Debye function P_D(x) = 2 (e^-x - 1 + x) / x^2,
 // x = q^2 <Rg^2>, evaluated with the sampled <Rg^2> of the molecule. All averages carry 95%
-// confidence intervals from block averaging. Output is written to 'polymer_backbone/'.
+// confidence intervals from block averaging. Output is written to 'molecule_backbone/'.
 
-export struct PropertyPolymerBackbone
+export struct PropertyMoleculeBackbone
 {
   // Per-molecule scalar moments accumulated per [block][component]; 'numberOfCounts' normalizes.
   enum Moment : std::size_t
@@ -55,9 +55,9 @@ export struct PropertyPolymerBackbone
     Moments moments{};
   };
 
-  PropertyPolymerBackbone() {};
+  PropertyMoleculeBackbone() {};
 
-  PropertyPolymerBackbone(std::size_t numberOfBlocks, const std::vector<Component> &components,
+  PropertyMoleculeBackbone(std::size_t numberOfBlocks, const std::vector<Component> &components,
                           std::size_t numberOfWaveVectors, double waveVectorLowerLimit, double waveVectorUpperLimit,
                           std::size_t sampleEvery, std::optional<std::size_t> writeEvery);
 
@@ -122,6 +122,6 @@ export struct PropertyPolymerBackbone
 
   std::string printSettings() const;
 
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyPolymerBackbone &p);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyPolymerBackbone &p);
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyMoleculeBackbone &p);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyMoleculeBackbone &p);
 };

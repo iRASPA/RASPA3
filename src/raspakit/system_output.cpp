@@ -1047,13 +1047,13 @@ std::string System::writeSystemStatus() const
   {
     stream << propertyMoleculeProperties->printSettings();
   }
-  if (propertyPolymerShape.has_value())
+  if (propertyMoleculeShape.has_value())
   {
-    stream << propertyPolymerShape->printSettings();
+    stream << propertyMoleculeShape->printSettings();
   }
-  if (propertyPolymerBackbone.has_value())
+  if (propertyMoleculeBackbone.has_value())
   {
-    stream << propertyPolymerBackbone->printSettings();
+    stream << propertyMoleculeBackbone->printSettings();
   }
   std::print(stream, "\n\n\n");
 

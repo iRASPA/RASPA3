@@ -36,8 +36,8 @@ import property_density_grid;
 import property_energy_histogram;
 import property_number_of_molecules_histogram;
 import property_molecule_properties;
-import property_polymer_shape;
-import property_polymer_backbone;
+import property_molecule_shape;
+import property_molecule_backbone;
 import property_volume_evolution;
 import property_number_of_molecules_evolution;
 import property_msd;
@@ -3245,102 +3245,102 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      if (value.contains("ComputePolymerShape") && value["ComputePolymerShape"].is_boolean())
+      if (value.contains("ComputeMoleculeShape") && value["ComputeMoleculeShape"].is_boolean())
       {
-        if (value["ComputePolymerShape"].get<bool>())
+        if (value["ComputeMoleculeShape"].get<bool>())
         {
-          std::size_t samplePolymerShapeEvery{10};
-          if (value.contains("SamplePolymerShapeEvery") && value["SamplePolymerShapeEvery"].is_number_unsigned())
+          std::size_t sampleMoleculeShapeEvery{10};
+          if (value.contains("SampleMoleculeShapeEvery") && value["SampleMoleculeShapeEvery"].is_number_unsigned())
           {
-            samplePolymerShapeEvery = value["SamplePolymerShapeEvery"].get<std::size_t>();
+            sampleMoleculeShapeEvery = value["SampleMoleculeShapeEvery"].get<std::size_t>();
           }
 
-          std::size_t writePolymerShapeEvery{5000};
-          if (value.contains("WritePolymerShapeEvery") && value["WritePolymerShapeEvery"].is_number_unsigned())
+          std::size_t writeMoleculeShapeEvery{5000};
+          if (value.contains("WriteMoleculeShapeEvery") && value["WriteMoleculeShapeEvery"].is_number_unsigned())
           {
-            writePolymerShapeEvery = value["WritePolymerShapeEvery"].get<std::size_t>();
+            writeMoleculeShapeEvery = value["WriteMoleculeShapeEvery"].get<std::size_t>();
           }
 
-          std::size_t numberOfBinsPolymerShape{128};
-          if (value.contains("NumberOfBinsPolymerShape") && value["NumberOfBinsPolymerShape"].is_number_unsigned())
+          std::size_t numberOfBinsMoleculeShape{128};
+          if (value.contains("NumberOfBinsMoleculeShape") && value["NumberOfBinsMoleculeShape"].is_number_unsigned())
           {
-            numberOfBinsPolymerShape = value["NumberOfBinsPolymerShape"].get<std::size_t>();
+            numberOfBinsMoleculeShape = value["NumberOfBinsMoleculeShape"].get<std::size_t>();
           }
 
           // Uniform bead weights by default (the polymer-physics convention); optionally mass-weighted.
-          bool massWeightedPolymerShape{false};
-          if (value.contains("MassWeightedPolymerShape") && value["MassWeightedPolymerShape"].is_boolean())
+          bool massWeightedMoleculeShape{false};
+          if (value.contains("MassWeightedMoleculeShape") && value["MassWeightedMoleculeShape"].is_boolean())
           {
-            massWeightedPolymerShape = value["MassWeightedPolymerShape"].get<bool>();
+            massWeightedMoleculeShape = value["MassWeightedMoleculeShape"].get<bool>();
           }
 
           // Upper limit of the radius-of-gyration histogram; defaults to 0.6 times the contour length of
           // the bond-graph diameter of each component.
-          std::optional<double> radiusOfGyrationRangePolymerShape{};
-          if (value.contains("RadiusOfGyrationRangePolymerShape") &&
-              value["RadiusOfGyrationRangePolymerShape"].is_number())
+          std::optional<double> radiusOfGyrationRangeMoleculeShape{};
+          if (value.contains("RadiusOfGyrationRangeMoleculeShape") &&
+              value["RadiusOfGyrationRangeMoleculeShape"].is_number())
           {
-            radiusOfGyrationRangePolymerShape = value["RadiusOfGyrationRangePolymerShape"].get<double>();
+            radiusOfGyrationRangeMoleculeShape = value["RadiusOfGyrationRangeMoleculeShape"].get<double>();
           }
 
-          systems[systemId].propertyPolymerShape = PropertyPolymerShape(
+          systems[systemId].propertyMoleculeShape = PropertyMoleculeShape(
               jsonNumberOfBlocks, systems[systemId].forceField, systems[systemId].components,
-              numberOfBinsPolymerShape, massWeightedPolymerShape, samplePolymerShapeEvery, writePolymerShapeEvery,
-              radiusOfGyrationRangePolymerShape);
+              numberOfBinsMoleculeShape, massWeightedMoleculeShape, sampleMoleculeShapeEvery, writeMoleculeShapeEvery,
+              radiusOfGyrationRangeMoleculeShape);
         }
       }
 
-      if (value.contains("ComputePolymerBackbone") && value["ComputePolymerBackbone"].is_boolean())
+      if (value.contains("ComputeMoleculeBackbone") && value["ComputeMoleculeBackbone"].is_boolean())
       {
-        if (value["ComputePolymerBackbone"].get<bool>())
+        if (value["ComputeMoleculeBackbone"].get<bool>())
         {
-          std::size_t samplePolymerBackboneEvery{10};
-          if (value.contains("SamplePolymerBackboneEvery") && value["SamplePolymerBackboneEvery"].is_number_unsigned())
+          std::size_t sampleMoleculeBackboneEvery{10};
+          if (value.contains("SampleMoleculeBackboneEvery") && value["SampleMoleculeBackboneEvery"].is_number_unsigned())
           {
-            samplePolymerBackboneEvery = value["SamplePolymerBackboneEvery"].get<std::size_t>();
+            sampleMoleculeBackboneEvery = value["SampleMoleculeBackboneEvery"].get<std::size_t>();
           }
 
-          std::size_t writePolymerBackboneEvery{5000};
-          if (value.contains("WritePolymerBackboneEvery") && value["WritePolymerBackboneEvery"].is_number_unsigned())
+          std::size_t writeMoleculeBackboneEvery{5000};
+          if (value.contains("WriteMoleculeBackboneEvery") && value["WriteMoleculeBackboneEvery"].is_number_unsigned())
           {
-            writePolymerBackboneEvery = value["WritePolymerBackboneEvery"].get<std::size_t>();
+            writeMoleculeBackboneEvery = value["WriteMoleculeBackboneEvery"].get<std::size_t>();
           }
 
           // Logarithmic wave-vector grid of the single-chain form factor [1/Angstrom].
-          std::size_t numberOfWaveVectorsPolymerBackbone{64};
-          if (value.contains("NumberOfWaveVectorsPolymerBackbone") &&
-              value["NumberOfWaveVectorsPolymerBackbone"].is_number_unsigned())
+          std::size_t numberOfWaveVectorsMoleculeBackbone{64};
+          if (value.contains("NumberOfWaveVectorsMoleculeBackbone") &&
+              value["NumberOfWaveVectorsMoleculeBackbone"].is_number_unsigned())
           {
-            numberOfWaveVectorsPolymerBackbone = value["NumberOfWaveVectorsPolymerBackbone"].get<std::size_t>();
+            numberOfWaveVectorsMoleculeBackbone = value["NumberOfWaveVectorsMoleculeBackbone"].get<std::size_t>();
           }
 
-          double lowerLimitWaveVectorPolymerBackbone{0.01};
-          if (value.contains("LowerLimitWaveVectorPolymerBackbone") &&
-              value["LowerLimitWaveVectorPolymerBackbone"].is_number())
+          double lowerLimitWaveVectorMoleculeBackbone{0.01};
+          if (value.contains("LowerLimitWaveVectorMoleculeBackbone") &&
+              value["LowerLimitWaveVectorMoleculeBackbone"].is_number())
           {
-            lowerLimitWaveVectorPolymerBackbone = value["LowerLimitWaveVectorPolymerBackbone"].get<double>();
+            lowerLimitWaveVectorMoleculeBackbone = value["LowerLimitWaveVectorMoleculeBackbone"].get<double>();
           }
 
-          double upperLimitWaveVectorPolymerBackbone{5.0};
-          if (value.contains("UpperLimitWaveVectorPolymerBackbone") &&
-              value["UpperLimitWaveVectorPolymerBackbone"].is_number())
+          double upperLimitWaveVectorMoleculeBackbone{5.0};
+          if (value.contains("UpperLimitWaveVectorMoleculeBackbone") &&
+              value["UpperLimitWaveVectorMoleculeBackbone"].is_number())
           {
-            upperLimitWaveVectorPolymerBackbone = value["UpperLimitWaveVectorPolymerBackbone"].get<double>();
+            upperLimitWaveVectorMoleculeBackbone = value["UpperLimitWaveVectorMoleculeBackbone"].get<double>();
           }
 
-          if (lowerLimitWaveVectorPolymerBackbone <= 0.0 ||
-              upperLimitWaveVectorPolymerBackbone <= lowerLimitWaveVectorPolymerBackbone)
+          if (lowerLimitWaveVectorMoleculeBackbone <= 0.0 ||
+              upperLimitWaveVectorMoleculeBackbone <= lowerLimitWaveVectorMoleculeBackbone)
           {
             throw std::runtime_error(std::format(
-                "[Input reader]: 'LowerLimitWaveVectorPolymerBackbone' ({}) must be positive and below "
-                "'UpperLimitWaveVectorPolymerBackbone' ({})\n",
-                lowerLimitWaveVectorPolymerBackbone, upperLimitWaveVectorPolymerBackbone));
+                "[Input reader]: 'LowerLimitWaveVectorMoleculeBackbone' ({}) must be positive and below "
+                "'UpperLimitWaveVectorMoleculeBackbone' ({})\n",
+                lowerLimitWaveVectorMoleculeBackbone, upperLimitWaveVectorMoleculeBackbone));
           }
 
-          systems[systemId].propertyPolymerBackbone = PropertyPolymerBackbone(
-              jsonNumberOfBlocks, systems[systemId].components, numberOfWaveVectorsPolymerBackbone,
-              lowerLimitWaveVectorPolymerBackbone, upperLimitWaveVectorPolymerBackbone, samplePolymerBackboneEvery,
-              writePolymerBackboneEvery);
+          systems[systemId].propertyMoleculeBackbone = PropertyMoleculeBackbone(
+              jsonNumberOfBlocks, systems[systemId].components, numberOfWaveVectorsMoleculeBackbone,
+              lowerLimitWaveVectorMoleculeBackbone, upperLimitWaveVectorMoleculeBackbone, sampleMoleculeBackboneEvery,
+              writeMoleculeBackboneEvery);
         }
       }
 
@@ -4454,18 +4454,18 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "NumberOfBinsMoleculeProperties",
     "BondRangeMoleculeProperties",
     "EndToEndRangeMoleculeProperties",
-    "ComputePolymerShape",
-    "SamplePolymerShapeEvery",
-    "WritePolymerShapeEvery",
-    "NumberOfBinsPolymerShape",
-    "MassWeightedPolymerShape",
-    "RadiusOfGyrationRangePolymerShape",
-    "ComputePolymerBackbone",
-    "SamplePolymerBackboneEvery",
-    "WritePolymerBackboneEvery",
-    "NumberOfWaveVectorsPolymerBackbone",
-    "LowerLimitWaveVectorPolymerBackbone",
-    "UpperLimitWaveVectorPolymerBackbone",
+    "ComputeMoleculeShape",
+    "SampleMoleculeShapeEvery",
+    "WriteMoleculeShapeEvery",
+    "NumberOfBinsMoleculeShape",
+    "MassWeightedMoleculeShape",
+    "RadiusOfGyrationRangeMoleculeShape",
+    "ComputeMoleculeBackbone",
+    "SampleMoleculeBackboneEvery",
+    "WriteMoleculeBackboneEvery",
+    "NumberOfWaveVectorsMoleculeBackbone",
+    "LowerLimitWaveVectorMoleculeBackbone",
+    "UpperLimitWaveVectorMoleculeBackbone",
     "ComputeElasticConstantsFromFluctuations",
     "ElasticConstantsSampleEvery",
     "ComputeRDF",

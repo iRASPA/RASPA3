@@ -1,6 +1,6 @@
 module;
 
-module property_polymer_shape;
+module property_molecule_shape;
 
 import std;
 
@@ -70,9 +70,9 @@ std::vector<double> normalizedWeights(const ForceField &forceField, const Compon
 
 // Gyration-tensor descriptors of n weighted points; 'positionAt(i)' yields the i-th position.
 template <typename PositionAt>
-PropertyPolymerShape::Descriptors descriptorsOf(std::size_t n, PositionAt positionAt, std::span<const double> weights)
+PropertyMoleculeShape::Descriptors descriptorsOf(std::size_t n, PositionAt positionAt, std::span<const double> weights)
 {
-  PropertyPolymerShape::Descriptors descriptors{};
+  PropertyMoleculeShape::Descriptors descriptors{};
 
   double3 center{};
   for (std::size_t i = 0; i < n; ++i) center += weights[i] * positionAt(i);
@@ -152,7 +152,7 @@ double referenceRadiusOfGyration(const Component &component, std::span<const dou
 
 }  // namespace
 
-PropertyPolymerShape::PropertyPolymerShape(std::size_t numberOfBlocks, const ForceField &forceField,
+PropertyMoleculeShape::PropertyMoleculeShape(std::size_t numberOfBlocks, const ForceField &forceField,
                                            const std::vector<Component> &components, std::size_t numberOfBins,
                                            bool massWeighted, std::size_t sampleEvery,
                                            std::optional<std::size_t> writeEvery,
@@ -238,20 +238,20 @@ PropertyPolymerShape::PropertyPolymerShape(std::size_t numberOfBlocks, const For
   }
 }
 
-PropertyPolymerShape::Descriptors PropertyPolymerShape::computeDescriptors(std::span<const Atom> molecule,
+PropertyMoleculeShape::Descriptors PropertyMoleculeShape::computeDescriptors(std::span<const Atom> molecule,
                                                                            std::span<const double> weights)
 {
   return descriptorsOf(molecule.size(), [&](std::size_t i) { return molecule[i].position; }, weights);
 }
 
-PropertyPolymerShape::Descriptors PropertyPolymerShape::computeDescriptors(std::span<const Atom> molecule,
+PropertyMoleculeShape::Descriptors PropertyMoleculeShape::computeDescriptors(std::span<const Atom> molecule,
                                                                            std::span<const std::size_t> atoms,
                                                                            std::span<const double> weights)
 {
   return descriptorsOf(atoms.size(), [&](std::size_t i) { return molecule[atoms[i]].position; }, weights);
 }
 
-void PropertyPolymerShape::accumulateShapeMoments(Moments &moments, const Descriptors &d)
+void PropertyMoleculeShape::accumulateShapeMoments(Moments &moments, const Descriptors &d)
 {
   double rg2 = d.radiusOfGyrationSquared;
   moments[RadiusOfGyration] += std::sqrt(rg2);
@@ -274,7 +274,7 @@ void PropertyPolymerShape::accumulateShapeMoments(Moments &moments, const Descri
   moments[TensorYZ] += d.tensor.bz;
 }
 
-double PropertyPolymerShape::computeInverseHydrodynamicRadius(std::span<const Atom> molecule)
+double PropertyMoleculeShape::computeInverseHydrodynamicRadius(std::span<const Atom> molecule)
 {
   std::size_t n = molecule.size();
   if (n < 2) return 0.0;
@@ -292,7 +292,7 @@ double PropertyPolymerShape::computeInverseHydrodynamicRadius(std::span<const At
   return 2.0 * sum / (static_cast<double>(n) * static_cast<double>(n));
 }
 
-void PropertyPolymerShape::sample(const std::vector<Component> &components,
+void PropertyMoleculeShape::sample(const std::vector<Component> &components,
                                   const std::vector<std::size_t> &numberOfMoleculesPerComponent,
                                   std::span<const Atom> moleculeAtoms, std::size_t currentCycle, std::size_t block)
 {
@@ -358,14 +358,14 @@ void PropertyPolymerShape::sample(const std::vector<Component> &components,
   totalNumberOfCounts += 1.0;
 }
 
-std::pair<double, double> PropertyPolymerShape::statistics(
+std::pair<double, double> PropertyMoleculeShape::statistics(
     std::size_t component, const std::function<double(const Moments &)> &function) const
 {
   return blockStatistics([&](std::size_t block) { return sums[block][component]; },
                          [&](std::size_t block) { return numberOfCounts[block][component]; }, function);
 }
 
-std::pair<double, double> PropertyPolymerShape::unitStatistics(
+std::pair<double, double> PropertyMoleculeShape::unitStatistics(
     std::size_t component, std::optional<std::size_t> unit,
     const std::function<double(const Moments &)> &function) const
 {
@@ -391,7 +391,7 @@ std::pair<double, double> PropertyPolymerShape::unitStatistics(
       function);
 }
 
-std::pair<double, double> PropertyPolymerShape::blockStatistics(
+std::pair<double, double> PropertyMoleculeShape::blockStatistics(
     const std::function<Moments(std::size_t)> &sumOf, const std::function<double(std::size_t)> &countOf,
     const std::function<double(const Moments &)> &function) const
 {
@@ -437,12 +437,12 @@ std::pair<double, double> PropertyPolymerShape::blockStatistics(
   return {mean, confidenceIntervalError};
 }
 
-std::pair<double, double> PropertyPolymerShape::momentStatistics(std::size_t component, Moment moment) const
+std::pair<double, double> PropertyMoleculeShape::momentStatistics(std::size_t component, Moment moment) const
 {
   return statistics(component, [moment](const Moments &m) { return m[moment]; });
 }
 
-std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> PropertyPolymerShape::result(
+std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> PropertyMoleculeShape::result(
     const std::vector<std::vector<std::vector<double>>> &histogram, std::size_t component, double delta,
     double rangeStart) const
 {
@@ -505,7 +505,7 @@ std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> Proper
   return {bins, average, confidenceIntervalError};
 }
 
-void PropertyPolymerShape::writeOutput(std::size_t systemId, const std::vector<Component> &components,
+void PropertyMoleculeShape::writeOutput(std::size_t systemId, const std::vector<Component> &components,
                                        std::size_t currentCycle)
 {
   if (!writeEvery.has_value()) return;
@@ -515,7 +515,7 @@ void PropertyPolymerShape::writeOutput(std::size_t systemId, const std::vector<C
   for (std::size_t c = 0; c < numberOfComponents; ++c) anything = anything || isSampled(c);
   if (!anything) return;
 
-  std::filesystem::create_directory("polymer_shape");
+  std::filesystem::create_directory("molecule_shape");
 
   for (std::size_t c = 0; c < components.size() && c < numberOfComponents; ++c)
   {
@@ -550,7 +550,7 @@ void PropertyPolymerShape::writeOutput(std::size_t systemId, const std::vector<C
         c, [](const Moments &m)
         { return std::sqrt(std::max(m[RadiusOfGyrationSquared], 0.0)) * m[InverseHydrodynamicRadius]; });
 
-    std::ofstream summary(std::format("polymer_shape/polymer_shape_{}.s{}.txt", name, systemId));
+    std::ofstream summary(std::format("molecule_shape/molecule_shape_{}.s{}.txt", name, systemId));
     summary << std::format("# gyration-tensor shape descriptors, component: {}, number of counts: {}\n", name,
                            totalNumberOfCounts);
     summary << std::format("# weights: {}\n", massWeighted ? "pseudo-atom masses" : "uniform per bead");
@@ -642,7 +642,7 @@ void PropertyPolymerShape::writeOutput(std::size_t systemId, const std::vector<C
 
     if (numberOfUnits(c) > 0)
     {
-      std::ofstream stream(std::format("polymer_shape/monomer_shape_{}.s{}.txt", name, systemId));
+      std::ofstream stream(std::format("molecule_shape/monomer_shape_{}.s{}.txt", name, systemId));
       stream << std::format(
           "# per-repeat-unit gyration-tensor shape descriptors, component: {}, units: {}, number of counts: {}\n", name,
           numberOfUnits(c), totalNumberOfCounts);
@@ -690,7 +690,7 @@ void PropertyPolymerShape::writeOutput(std::size_t systemId, const std::vector<C
     }
 
     {
-      std::ofstream stream(std::format("polymer_shape/radius_of_gyration_{}.s{}.txt", name, systemId));
+      std::ofstream stream(std::format("molecule_shape/radius_of_gyration_{}.s{}.txt", name, systemId));
       stream << std::format("# radius-of-gyration histogram, component: {}, number of counts: {}\n", name,
                             totalNumberOfCounts);
       stream << std::format("# <Rg> = {:g} +/- {:g} [Angstrom], sqrt(<Rg^2>) = {:g} [Angstrom]\n", meanRg, errorRg,
@@ -707,7 +707,7 @@ void PropertyPolymerShape::writeOutput(std::size_t systemId, const std::vector<C
     }
 
     {
-      std::ofstream stream(std::format("polymer_shape/shape_anisotropy_{}.s{}.txt", name, systemId));
+      std::ofstream stream(std::format("molecule_shape/shape_anisotropy_{}.s{}.txt", name, systemId));
       stream << std::format("# relative-shape-anisotropy histogram, component: {}, number of counts: {}\n", name,
                             totalNumberOfCounts);
       stream << std::format("# <k^2> = {:g} +/- {:g} [-]\n", meanKappa2, errorKappa2);
@@ -722,7 +722,7 @@ void PropertyPolymerShape::writeOutput(std::size_t systemId, const std::vector<C
     }
 
     {
-      std::ofstream stream(std::format("polymer_shape/prolateness_{}.s{}.txt", name, systemId));
+      std::ofstream stream(std::format("molecule_shape/prolateness_{}.s{}.txt", name, systemId));
       stream << std::format("# prolateness histogram, component: {}, number of counts: {}\n", name,
                             totalNumberOfCounts);
       stream << std::format("# <S> = {:g} +/- {:g} [-]\n", meanS, errorS);
@@ -738,11 +738,11 @@ void PropertyPolymerShape::writeOutput(std::size_t systemId, const std::vector<C
   }
 }
 
-std::string PropertyPolymerShape::printSettings() const
+std::string PropertyMoleculeShape::printSettings() const
 {
   std::ostringstream stream;
 
-  std::print(stream, "Polymer-shape (gyration tensor) sampling:\n");
+  std::print(stream, "Molecule-shape (gyration tensor) sampling:\n");
   std::print(stream, "    sample every: {}\n", sampleEvery);
   if (writeEvery.has_value())
   {
@@ -766,7 +766,7 @@ std::string PropertyPolymerShape::printSettings() const
   return stream.str();
 }
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyPolymerShape &p)
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyMoleculeShape &p)
 {
   archive << p.versionNumber;
 
@@ -803,14 +803,14 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyPolymerShape &p)
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyMoleculeShape &p)
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > p.versionNumber)
   {
     const std::source_location &location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'PropertyPolymerShape' at line {} in file {}\n",
+    throw std::runtime_error(std::format("Invalid version reading 'PropertyMoleculeShape' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }
 
@@ -845,7 +845,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyPoly
   archive >> magicNumber;
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
-    throw std::runtime_error(std::format("PropertyPolymerShape: Error in binary restart\n"));
+    throw std::runtime_error(std::format("PropertyMoleculeShape: Error in binary restart\n"));
   }
 #endif
 

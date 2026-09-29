@@ -9,7 +9,7 @@ import atom;
 import forcefield;
 import component;
 import mc_moves_probabilities;
-import property_polymer_shape;
+import property_molecule_shape;
 
 // Tests for the gyration-tensor shape descriptors: analytic conformations (rod, square, tetrahedron)
 // pin down Rg, the eigenvalues, asphericity, acylindricity, shape anisotropy and prolateness, and
@@ -121,11 +121,11 @@ std::vector<double> uniformWeights(std::size_t n) { return std::vector<double>(n
 }  // namespace
 
 // Four beads on a line at spacing 1: Rg^2 = variance of {0,1,2,3} = 1.25, l2 = l3 = 0, k^2 = 1, S = 2.
-TEST(POLYMER_SHAPE, rod_is_maximally_anisotropic_and_prolate)
+TEST(MOLECULE_SHAPE, rod_is_maximally_anisotropic_and_prolate)
 {
   std::vector<Atom> rod = atomsAt({double3(0.0, 0.0, 0.0), double3(1.0, 0.0, 0.0), double3(2.0, 0.0, 0.0),
                                    double3(3.0, 0.0, 0.0)});
-  auto d = PropertyPolymerShape::computeDescriptors(rod, uniformWeights(4));
+  auto d = PropertyMoleculeShape::computeDescriptors(rod, uniformWeights(4));
 
   EXPECT_NEAR(d.radiusOfGyrationSquared, 1.25, 1e-12);
   EXPECT_NEAR(d.eigenvalues.x, 1.25, 1e-12);
@@ -138,12 +138,12 @@ TEST(POLYMER_SHAPE, rod_is_maximally_anisotropic_and_prolate)
 }
 
 // The descriptors are rotation invariant: the same rod along a skew direction.
-TEST(POLYMER_SHAPE, rotation_invariance)
+TEST(MOLECULE_SHAPE, rotation_invariance)
 {
   double3 direction = double3(1.0, 2.0, -0.5).normalized();
   std::vector<double3> positions;
   for (int i = 0; i < 4; ++i) positions.push_back(static_cast<double>(i) * direction + double3(7.0, -3.0, 2.0));
-  auto d = PropertyPolymerShape::computeDescriptors(atomsAt(positions), uniformWeights(4));
+  auto d = PropertyMoleculeShape::computeDescriptors(atomsAt(positions), uniformWeights(4));
 
   EXPECT_NEAR(d.radiusOfGyrationSquared, 1.25, 1e-10);
   EXPECT_NEAR(d.eigenvalues.x, 1.25, 1e-10);
@@ -164,13 +164,13 @@ TEST(POLYMER_SHAPE, rotation_invariance)
 
 // Four beads at the corners of a unit square in a tilted plane: l1 = l2 = 0.25, l3 = 0 (an oblate
 // disk): b = 0.125, c = 0.25, k^2 = 1/4, S = -1/4.
-TEST(POLYMER_SHAPE, square_is_an_oblate_disk)
+TEST(MOLECULE_SHAPE, square_is_an_oblate_disk)
 {
   // Orthonormal in-plane axes so the eigenvalues are unchanged by the tilt.
   double3 u = double3(1.0, 1.0, 0.0).normalized();
   double3 v = double3(-1.0, 1.0, 1.0).normalized();
   std::vector<Atom> square = atomsAt({-0.5 * u - 0.5 * v, 0.5 * u - 0.5 * v, 0.5 * u + 0.5 * v, -0.5 * u + 0.5 * v});
-  auto d = PropertyPolymerShape::computeDescriptors(square, uniformWeights(4));
+  auto d = PropertyMoleculeShape::computeDescriptors(square, uniformWeights(4));
 
   EXPECT_NEAR(d.radiusOfGyrationSquared, 0.5, 1e-12);
   EXPECT_NEAR(d.eigenvalues.x, 0.25, 1e-12);
@@ -183,11 +183,11 @@ TEST(POLYMER_SHAPE, square_is_an_oblate_disk)
 }
 
 // A regular tetrahedron is isotropic: all eigenvalues equal, b = c = k^2 = S = 0.
-TEST(POLYMER_SHAPE, tetrahedron_is_spherical)
+TEST(MOLECULE_SHAPE, tetrahedron_is_spherical)
 {
   std::vector<Atom> tetrahedron = atomsAt(
       {double3(1.0, 1.0, 1.0), double3(1.0, -1.0, -1.0), double3(-1.0, 1.0, -1.0), double3(-1.0, -1.0, 1.0)});
-  auto d = PropertyPolymerShape::computeDescriptors(tetrahedron, uniformWeights(4));
+  auto d = PropertyMoleculeShape::computeDescriptors(tetrahedron, uniformWeights(4));
 
   EXPECT_NEAR(d.radiusOfGyrationSquared, 3.0, 1e-12);
   EXPECT_NEAR(d.eigenvalues.x, 1.0, 1e-12);
@@ -201,31 +201,31 @@ TEST(POLYMER_SHAPE, tetrahedron_is_spherical)
 
 // Mass weights move the center and reweight the tensor: two beads with masses 1 and 3 at distance 4
 // have the center at 3 from the light bead and Rg^2 = (1/4) 9 + (3/4) 1 = 3.
-TEST(POLYMER_SHAPE, mass_weighting)
+TEST(MOLECULE_SHAPE, mass_weighting)
 {
   std::vector<Atom> dumbbell = atomsAt({double3(0.0, 0.0, 0.0), double3(4.0, 0.0, 0.0)});
-  auto uniform = PropertyPolymerShape::computeDescriptors(dumbbell, uniformWeights(2));
+  auto uniform = PropertyMoleculeShape::computeDescriptors(dumbbell, uniformWeights(2));
   EXPECT_NEAR(uniform.radiusOfGyrationSquared, 4.0, 1e-12);
 
   std::vector<double> weights{0.25, 0.75};
-  auto weighted = PropertyPolymerShape::computeDescriptors(dumbbell, weights);
+  auto weighted = PropertyMoleculeShape::computeDescriptors(dumbbell, weights);
   EXPECT_NEAR(weighted.radiusOfGyrationSquared, 3.0, 1e-12);
   EXPECT_NEAR(weighted.shapeAnisotropy, 1.0, 1e-12);
 }
 
 // Kirkwood sum for the four-bead rod: pairs at distance 1 (x3), 2 (x2), 3 (x1); ordered double sum
 // is twice that, divided by N^2 = 16.
-TEST(POLYMER_SHAPE, kirkwood_inverse_hydrodynamic_radius)
+TEST(MOLECULE_SHAPE, kirkwood_inverse_hydrodynamic_radius)
 {
   std::vector<Atom> rod = atomsAt({double3(0.0, 0.0, 0.0), double3(1.0, 0.0, 0.0), double3(2.0, 0.0, 0.0),
                                    double3(3.0, 0.0, 0.0)});
   double expected = 2.0 * (3.0 / 1.0 + 2.0 / 2.0 + 1.0 / 3.0) / 16.0;
-  EXPECT_NEAR(PropertyPolymerShape::computeInverseHydrodynamicRadius(rod), expected, 1e-12);
+  EXPECT_NEAR(PropertyMoleculeShape::computeInverseHydrodynamicRadius(rod), expected, 1e-12);
 }
 
 // Sampling through a component: the moments, the derived ratio statistics, the histogram
 // normalization and the block error bars.
-TEST(POLYMER_SHAPE, sampling_moments_ratios_and_histograms)
+TEST(MOLECULE_SHAPE, sampling_moments_ratios_and_histograms)
 {
   ForceField forceField = makeZeroForceField();
   std::vector<Component> components{};
@@ -235,7 +235,7 @@ TEST(POLYMER_SHAPE, sampling_moments_ratios_and_histograms)
   constexpr std::size_t numberOfBins = 50;
   constexpr double rgRange = 5.0;
   constexpr double deltaRg = rgRange / static_cast<double>(numberOfBins);
-  PropertyPolymerShape property(numberOfBlocks, forceField, components, numberOfBins, false, 1, 1, rgRange);
+  PropertyMoleculeShape property(numberOfBlocks, forceField, components, numberOfBins, false, 1, 1, rgRange);
 
   ASSERT_TRUE(property.isSampled(0));
   ASSERT_EQ(property.weightsPerComponent[0].size(), 4);
@@ -258,43 +258,43 @@ TEST(POLYMER_SHAPE, sampling_moments_ratios_and_histograms)
     property.sample(components, {1}, std::span<const Atom>(tetrahedron), 0, block);
   }
 
-  auto [meanRg2, errorRg2] = property.momentStatistics(0, PropertyPolymerShape::RadiusOfGyrationSquared);
+  auto [meanRg2, errorRg2] = property.momentStatistics(0, PropertyMoleculeShape::RadiusOfGyrationSquared);
   EXPECT_NEAR(meanRg2, 0.5 * (1.25 + 3.0), 1e-12);
   EXPECT_EQ(errorRg2, 0.0);
 
   // Total tensor: trace equals <Rg^2>; the rod (along x) contributes 1.25 to S_xx only, the
   // tetrahedron is isotropic with 1 on each diagonal entry and zero off-diagonal.
-  auto [sxx, eSxx] = property.momentStatistics(0, PropertyPolymerShape::TensorXX);
-  auto [syy, eSyy] = property.momentStatistics(0, PropertyPolymerShape::TensorYY);
-  auto [szz, eSzz] = property.momentStatistics(0, PropertyPolymerShape::TensorZZ);
-  auto [sxy, eSxy] = property.momentStatistics(0, PropertyPolymerShape::TensorXY);
+  auto [sxx, eSxx] = property.momentStatistics(0, PropertyMoleculeShape::TensorXX);
+  auto [syy, eSyy] = property.momentStatistics(0, PropertyMoleculeShape::TensorYY);
+  auto [szz, eSzz] = property.momentStatistics(0, PropertyMoleculeShape::TensorZZ);
+  auto [sxy, eSxy] = property.momentStatistics(0, PropertyMoleculeShape::TensorXY);
   EXPECT_NEAR(sxx, 0.5 * (1.25 + 1.0), 1e-12);
   EXPECT_NEAR(syy, 0.5, 1e-12);
   EXPECT_NEAR(szz, 0.5, 1e-12);
   EXPECT_NEAR(sxy, 0.0, 1e-12);
   EXPECT_NEAR(sxx + syy + szz, meanRg2, 1e-12);
 
-  auto [meanKappa2, errorKappa2] = property.momentStatistics(0, PropertyPolymerShape::ShapeAnisotropy);
+  auto [meanKappa2, errorKappa2] = property.momentStatistics(0, PropertyMoleculeShape::ShapeAnisotropy);
   EXPECT_NEAR(meanKappa2, 0.5 * (1.0 + 0.0), 1e-12);
 
-  auto [meanS, errorS] = property.momentStatistics(0, PropertyPolymerShape::Prolateness);
+  auto [meanS, errorS] = property.momentStatistics(0, PropertyMoleculeShape::Prolateness);
   EXPECT_NEAR(meanS, 0.5 * (2.0 + 0.0), 1e-12);
 
-  auto [meanR2, errorR2] = property.momentStatistics(0, PropertyPolymerShape::EndToEndSquared);
+  auto [meanR2, errorR2] = property.momentStatistics(0, PropertyMoleculeShape::EndToEndSquared);
   EXPECT_NEAR(meanR2, 0.5 * (9.0 + 8.0), 1e-12);
 
   // Ratio of block-combined means.
   auto [ratio, errorRatio] = property.statistics(
-      0, [](const PropertyPolymerShape::Moments &m)
-      { return m[PropertyPolymerShape::EndToEndSquared] / m[PropertyPolymerShape::RadiusOfGyrationSquared]; });
+      0, [](const PropertyMoleculeShape::Moments &m)
+      { return m[PropertyMoleculeShape::EndToEndSquared] / m[PropertyMoleculeShape::RadiusOfGyrationSquared]; });
   EXPECT_NEAR(ratio, 8.5 / 2.125, 1e-12);
   EXPECT_EQ(errorRatio, 0.0);
 
   // Ensemble-form anisotropy: rod has I2 = 0, Rg^4 = 1.5625; tetrahedron I2 = 3, Rg^4 = 9.
   auto [ensembleKappa2, errorEnsembleKappa2] = property.statistics(
-      0, [](const PropertyPolymerShape::Moments &m)
+      0, [](const PropertyMoleculeShape::Moments &m)
       {
-        return 1.0 - 3.0 * m[PropertyPolymerShape::SecondInvariant] / m[PropertyPolymerShape::RadiusOfGyrationFourth];
+        return 1.0 - 3.0 * m[PropertyMoleculeShape::SecondInvariant] / m[PropertyMoleculeShape::RadiusOfGyrationFourth];
       });
   EXPECT_NEAR(ensembleKappa2, 1.0 - 3.0 * 1.5 / 5.28125, 1e-12);
 
@@ -324,7 +324,7 @@ TEST(POLYMER_SHAPE, sampling_moments_ratios_and_histograms)
 
   // Skew one block; the errors become positive.
   property.sample(components, {1}, std::span<const Atom>(rod), 0, 0);
-  auto [meanRg2Skewed, errorRg2Skewed] = property.momentStatistics(0, PropertyPolymerShape::RadiusOfGyrationSquared);
+  auto [meanRg2Skewed, errorRg2Skewed] = property.momentStatistics(0, PropertyMoleculeShape::RadiusOfGyrationSquared);
   EXPECT_GT(errorRg2Skewed, 0.0);
   auto [valuesSkewed, averageSkewed, errorSkewed] =
       property.result(property.radiusOfGyrationHistogram, 0, property.deltaRadiusOfGyrationPerComponent[0], 0.0);
@@ -334,14 +334,14 @@ TEST(POLYMER_SHAPE, sampling_moments_ratios_and_histograms)
 // Per-monomer descriptors for a chain with repeat units: each unit's own gyration tensor, reported
 // per unit index and pooled over units. Units 0 and 2 are placed collinear (k^2 = 1, S = 2), unit 1
 // as an equilateral triangle (l1 = l2 = a^2/6, l3 = 0: k^2 = 1/4, S = -1/4).
-TEST(POLYMER_SHAPE, per_monomer_descriptors)
+TEST(MOLECULE_SHAPE, per_monomer_descriptors)
 {
   ForceField forceField = makeZeroForceField();
   std::vector<Component> components{};
   components.push_back(makeComponent(forceField, "comb-monomers", kCombPolymerJson));
 
   constexpr std::size_t numberOfBlocks = 3;
-  PropertyPolymerShape property(numberOfBlocks, forceField, components, 16, false, 1, 1, 10.0);
+  PropertyMoleculeShape property(numberOfBlocks, forceField, components, 16, false, 1, 1, 10.0);
   ASSERT_EQ(property.numberOfUnits(0), 3);
   ASSERT_EQ(property.unitAtomsPerComponent[0][1], (std::vector<std::size_t>{3, 4, 5}));
   for (double w : property.unitWeightsPerComponent[0][0]) EXPECT_NEAR(w, 1.0 / 3.0, 1e-12);
@@ -364,10 +364,10 @@ TEST(POLYMER_SHAPE, per_monomer_descriptors)
     property.sample(components, {1}, std::span<const Atom>(molecule), 0, block);
   }
 
-  auto rg2 = [](const PropertyPolymerShape::Moments &m) { return m[PropertyPolymerShape::RadiusOfGyrationSquared]; };
-  auto kappa2 = [](const PropertyPolymerShape::Moments &m) { return m[PropertyPolymerShape::ShapeAnisotropy]; };
-  auto prolateness = [](const PropertyPolymerShape::Moments &m) { return m[PropertyPolymerShape::Prolateness]; };
-  auto lambda3 = [](const PropertyPolymerShape::Moments &m) { return m[PropertyPolymerShape::Lambda3]; };
+  auto rg2 = [](const PropertyMoleculeShape::Moments &m) { return m[PropertyMoleculeShape::RadiusOfGyrationSquared]; };
+  auto kappa2 = [](const PropertyMoleculeShape::Moments &m) { return m[PropertyMoleculeShape::ShapeAnisotropy]; };
+  auto prolateness = [](const PropertyMoleculeShape::Moments &m) { return m[PropertyMoleculeShape::Prolateness]; };
+  auto lambda3 = [](const PropertyMoleculeShape::Moments &m) { return m[PropertyMoleculeShape::Lambda3]; };
 
   // Collinear three points at spacing d: Rg^2 = 2 d^2 / 3.
   EXPECT_NEAR(property.unitStatistics(0, 0, rg2).first, 2.0 * d * d / 3.0, 1e-12);
@@ -389,20 +389,20 @@ TEST(POLYMER_SHAPE, per_monomer_descriptors)
               1e-12);
 
   // The whole-molecule descriptors are unaffected by the per-unit bookkeeping.
-  auto whole = PropertyPolymerShape::computeDescriptors(molecule, property.weightsPerComponent[0]);
-  EXPECT_NEAR(property.momentStatistics(0, PropertyPolymerShape::RadiusOfGyrationSquared).first,
+  auto whole = PropertyMoleculeShape::computeDescriptors(molecule, property.weightsPerComponent[0]);
+  EXPECT_NEAR(property.momentStatistics(0, PropertyMoleculeShape::RadiusOfGyrationSquared).first,
               whole.radiusOfGyrationSquared, 1e-12);
 }
 
 // The default Rg range is derived from the contour length of the bond-graph diameter (3 x 1.54 for
 // the linear chain) and components with fewer than two atoms are skipped.
-TEST(POLYMER_SHAPE, default_range_from_contour_length)
+TEST(MOLECULE_SHAPE, default_range_from_contour_length)
 {
   ForceField forceField = makeZeroForceField();
   std::vector<Component> components{};
   components.push_back(makeComponent(forceField, "linear-range", kLinearChainJson));
 
-  PropertyPolymerShape property(3, forceField, components, 64, true, 1, 1);
+  PropertyMoleculeShape property(3, forceField, components, 64, true, 1, 1);
   ASSERT_TRUE(property.isSampled(0));
   // The harmonic equilibrium length is located on a 5 Angstrom / 1024-point grid (0.005 resolution).
   EXPECT_NEAR(property.radiusOfGyrationRangePerComponent[0], 0.6 * 3.0 * 1.54, 0.6 * 3.0 * 0.005);

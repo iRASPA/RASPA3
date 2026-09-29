@@ -65,13 +65,13 @@ static void writeReplicaAnalysisOutputs(System& system, std::size_t replicaId, s
   {
     system.propertyMoleculeProperties->writeOutput(replicaId, system.components, cycle);
   }
-  if (system.propertyPolymerShape.has_value())
+  if (system.propertyMoleculeShape.has_value())
   {
-    system.propertyPolymerShape->writeOutput(replicaId, system.components, cycle);
+    system.propertyMoleculeShape->writeOutput(replicaId, system.components, cycle);
   }
-  if (system.propertyPolymerBackbone.has_value())
+  if (system.propertyMoleculeBackbone.has_value())
   {
-    system.propertyPolymerBackbone->writeOutput(replicaId, system.components, cycle);
+    system.propertyMoleculeBackbone->writeOutput(replicaId, system.components, cycle);
   }
 }
 

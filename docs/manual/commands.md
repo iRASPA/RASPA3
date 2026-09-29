@@ -1473,9 +1473,9 @@ is written to the directory `molecule_properties`.
     fixed to `[0, 180]` degrees and the torsion range to `[-180, 180]` degrees.
     Default: `4.0`.
 
-#### Polymer shape: the gyration-tensor family <a name="polymer-shape"></a>
+#### Molecule shape: the gyration-tensor family <a name="molecule-shape"></a>
 
-`"ComputePolymerShape" : boolean`
+`"ComputeMoleculeShape" : boolean`
 
 Whether to sample the gyration tensor
 \f$S_{\alpha\beta} = \sum_i w_i (r_{i\alpha}-r_{\mathrm{cm},\alpha})(r_{i\beta}-r_{\mathrm{cm},\beta})\f$
@@ -1505,7 +1505,7 @@ along which box direction the chains are aligned. When the component has end-to-
 atoms (see `EndToEndAtoms`) the end-to-end distance is sampled as well so the ratio
 \f$\langle R^2\rangle/\langle R_g^2\rangle\f$ (6 for an ideal chain) appears in the same summary.
 All averages carry 95% confidence intervals from block averaging. Output is written
-to the directory `polymer_shape`: a summary `polymer_shape_<component>.s<system>.txt`
+to the directory `molecule_shape`: a summary `molecule_shape_<component>.s<system>.txt`
 and probability-density histograms of \f$R_g\f$, \f$\kappa^2\f$ and \f$S\f$.
 
 For components that declare `RepeatUnits` the descriptors are also sampled per
@@ -1517,28 +1517,28 @@ pooled over all units, \f$\langle R_g\rangle\f$, \f$\langle R_g^2\rangle\f$, the
 \f$\langle\kappa^2\rangle\f$ and \f$\langle S\rangle\f$ with their errors; it shows, for
 instance, whether end monomers are more extended than interior ones.
 
--   `"SamplePolymerShapeEvery" : integer`\
+-   `"SampleMoleculeShapeEvery" : integer`\
     Sample the shape descriptors every `int` cycles. Default: `10`.
 
--   `"WritePolymerShapeEvery" : integer`\
+-   `"WriteMoleculeShapeEvery" : integer`\
     Write the output every `int` cycles. Default: `5000`.
 
--   `"NumberOfBinsPolymerShape" : integer`\
+-   `"NumberOfBinsMoleculeShape" : integer`\
     The number of bins in each histogram. Default: `128`.
 
--   `"MassWeightedPolymerShape" : boolean`\
+-   `"MassWeightedMoleculeShape" : boolean`\
     Weight the atoms by their pseudo-atom masses (\f$w_i = m_i/M\f$) instead of
     uniformly (\f$w_i = 1/N\f$, the polymer-physics convention). Default: `false`.
 
--   `"RadiusOfGyrationRangePolymerShape" : floating-point-number`\
+-   `"RadiusOfGyrationRangeMoleculeShape" : floating-point-number`\
     The upper bound of the radius-of-gyration histogram, in Ångström. By default
     0.6 times the contour length of the bond-graph diameter of the component, which
     bounds every reachable conformation; values beyond the range are dropped from
     the histogram but not from the averages.
 
-#### Polymer backbone: chain statistics <a name="polymer-backbone"></a>
+#### Molecule backbone: chain statistics <a name="molecule-backbone"></a>
 
-`"ComputePolymerBackbone" : boolean`
+`"ComputeMoleculeBackbone" : boolean`
 
 Whether to sample chain statistics along the backbone of every component that has
 one: the shortest topological path between the end-to-end atoms (see
@@ -1554,7 +1554,7 @@ backbone beads and bond vectors \f$\mathbf b_i = \mathbf r_{i+1}-\mathbf r_i\f$:
     over all atoms, on a logarithmic \f$q\f$ grid, next to the Debye function of a Gaussian
     chain with the same \f$\langle R_g^2\rangle\f$.
 
-The summary `polymer_backbone_<component>.s<system>.txt` reports the contour length
+The summary `molecule_backbone_<component>.s<system>.txt` reports the contour length
 \f$R_{\max}\f$, \f$\langle l\rangle\f$, \f$\langle R^2\rangle\f$, \f$\langle R_g^2\rangle\f$,
 the characteristic ratio \f$C_N = \langle R^2\rangle/((N_b-1)\langle l\rangle^2)\f$, the Kuhn
 length \f$b_K = \langle R^2\rangle/R_{\max}\f$ and number of Kuhn segments, the persistence
@@ -1563,22 +1563,22 @@ and from a fit of \f$\ln C(k) = -k\langle l\rangle/l_p\f$ over the initial decay
 Flory exponent from the log-log slope of \f$\langle r^2(k)\rangle\f$ over
 \f$N_b/8 \le k \le N_b/2\f$ (zero when the chain is too short to fit). All carry 95%
 confidence intervals from block averaging. Output is written to the directory
-`polymer_backbone`.
+`molecule_backbone`.
 
--   `"SamplePolymerBackboneEvery" : integer`\
+-   `"SampleMoleculeBackboneEvery" : integer`\
     Sample every `int` cycles. The internal distances and the form factor are
     \f$O(N^2)\f$ per molecule. Default: `10`.
 
--   `"WritePolymerBackboneEvery" : integer`\
+-   `"WriteMoleculeBackboneEvery" : integer`\
     Write the output every `int` cycles. Default: `5000`.
 
--   `"NumberOfWaveVectorsPolymerBackbone" : integer`\
+-   `"NumberOfWaveVectorsMoleculeBackbone" : integer`\
     The number of logarithmically spaced wave vectors of the form factor. Default: `64`.
 
--   `"LowerLimitWaveVectorPolymerBackbone" : floating-point-number`\
+-   `"LowerLimitWaveVectorMoleculeBackbone" : floating-point-number`\
     The smallest wave vector, in 1/Ångström. Default: `0.01`.
 
--   `"UpperLimitWaveVectorPolymerBackbone" : floating-point-number`\
+-   `"UpperLimitWaveVectorMoleculeBackbone" : floating-point-number`\
     The largest wave vector, in 1/Ångström. Default: `5.0`.
 
 #### Radial Distribution Function (RDF) force-based <a name="radial-distribution-function-rdf-force-based"></a>
