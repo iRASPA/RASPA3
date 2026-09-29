@@ -96,11 +96,16 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
 set(BUILD_STATIC_LIBS ON CACHE BOOL "Build static libraries" FORCE)
 set(HDF5_BUILD_CPP_LIB ON CACHE BOOL "Build static libraries" FORCE)
 set(HDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16 OFF CACHE BOOL "Build static libraries" FORCE)
+set(HDF5_BUILD_EXAMPLES OFF CACHE BOOL "Do not build HDF5 examples" FORCE)
 FetchContent_Declare(hdf5
   GIT_REPOSITORY https://github.com/HDFGroup/hdf5.git
   GIT_TAG 2.1.1
   EXCLUDE_FROM_ALL)
+# Shadow BUILD_TESTING with a normal variable so HDF5 does not register its own
+# tools/HL/C++ tests; the cache value is restored for our tests by the unset below.
+set(BUILD_TESTING OFF)
 FetchContent_MakeAvailable(hdf5)
+unset(BUILD_TESTING)
 set(HDF5_INCLUDE_DIRS "$<BUILD_INTERFACE:${hdf5_SOURCE_DIR}/src/;${hdf5_SOURCE_DIR}/src/H5FDsubfiling;${hdf5_SOURCE_DIR}/c++/src;${hdf5_BINARY_DIR};${hdf5_BINARY_DIR}/src>")
 include_directories(${HDF5_INCLUDE_DIRS})
 
