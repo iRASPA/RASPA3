@@ -1328,6 +1328,13 @@ parallel tempering.
     -   `"NPT"`\
         Isothermal-isobaric molecular dynamics with isotropic log-volume
         coupling. The cell shape is fixed and all three lengths scale together.
+        The barostat couples to the centres of mass of rigid molecules and
+        rigid groups and to every atom of a flexible molecule individually, and
+        is driven by the virial and kinetic energy of exactly those points (for
+        a flexible fluid: the atomic virial, bonded forces included, with
+        $N_{\text{atoms}} k_B T$). The pressure reported in the output remains
+        the molecular (centre-of-mass) pressure that the Monte Carlo volume
+        move uses; the two are different estimators of the same average.
 
     -   `"NPTPR"`\
         Martyna-Parrinello-Rahman isothermal-isobaric dynamics with a flexible

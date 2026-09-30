@@ -231,11 +231,14 @@ RunningEnergy engineVelocityVerlet(System& system, SpatialDecompositionForceEngi
   return runningEnergies;
 }
 
-// Thermobarostat step (NPT / NPT-PR) with the engine forces and the engine's molecular pressure tensor
+// Thermobarostat step (NPT / NPT-PR) with the engine forces. The barostat is driven by the virial of the
+// points it couples to (centers of mass of rigid molecules and rigid groups, flexible atoms individually),
+// obtained from the engine's molecular pressure tensor with 'computeBarostatVirial'; its kinetic partner is
+// 'computeMolecularKineticVirial'. The molecular tensor itself stays what the reported pressure uses.
 RunningEnergy engineThermobarostatVelocityVerlet(System& system, SpatialDecompositionForceEngine& engine)
 {
   Thermobarostat& barostat = *system.thermobarostat;
-  const double3x3 pressureBefore = engine.molecularPressureTensor();
+  const double3x3 pressureBefore = computeBarostatVirial(system, engine.molecularPressureTensor());
   const double3x3 kineticBefore = computeMolecularKineticVirial(system);
 
   const double barostatKinetic =
@@ -324,7 +327,7 @@ RunningEnergy engineThermobarostatVelocityVerlet(System& system, SpatialDecompos
   energies.rotationalKineticEnergy =
       Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
                                                   system.framework, system.spanOfFrameworkGroupData());
-  const double3x3 pressureAfter = engine.molecularPressureTensor();
+  const double3x3 pressureAfter = computeBarostatVirial(system, engine.molecularPressureTensor());
   const double3x3 kineticAfter = computeMolecularKineticVirial(system);
   if (molecularDynamicsUsesIsotropicBarostat(barostat.ensemble))
   {

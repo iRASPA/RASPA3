@@ -172,6 +172,92 @@ double3x3 computeMolecularKineticVirial(const System& system)
   return stress;
 }
 
+double3x3 computeBarostatVirial(const System& system, const double3x3& molecularVirial)
+{
+  // sum_k (R_k - R_com) outer G_k over the coupled points k of every non-rigid molecule, G the total
+  // gradient (minus the force) on the point; the virial is the molecular one minus this sum. Rows are the
+  // arm, columns the gradient, the convention of the atomic-to-molecular correction of the pressure code.
+  double3x3 armGradient{};
+  const auto add = [&armGradient](const double3& arm, const double3& gradient)
+  {
+    armGradient.ax += arm.x * gradient.x;
+    armGradient.ay += arm.x * gradient.y;
+    armGradient.az += arm.x * gradient.z;
+    armGradient.bx += arm.y * gradient.x;
+    armGradient.by += arm.y * gradient.y;
+    armGradient.bz += arm.y * gradient.z;
+    armGradient.cx += arm.z * gradient.x;
+    armGradient.cy += arm.z * gradient.y;
+    armGradient.cz += arm.z * gradient.z;
+  };
+
+  const std::span<const Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
+  const std::span<const AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
+  const std::span<const GroupState> groupData = system.spanOfGroupData();
+  std::vector<double> masses;
+  for (const Molecule& molecule : system.moleculeData)
+  {
+    const Component& component = system.components[molecule.componentId];
+    if (component.rigid) continue;  // one coupled point, the center of mass itself
+
+    const std::span<const Atom> atoms = moleculeAtoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+    const std::span<const AtomDynamics> dynamics = moleculeDynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+
+    // The mass-weighted center of mass of the molecule as the pressure code defines it (positions are
+    // stored unwrapped per molecule, so no minimum image is needed).
+    masses.resize(atoms.size());
+    double totalMass = 0.0;
+    double3 com(0.0, 0.0, 0.0);
+    for (std::size_t i = 0; i < atoms.size(); ++i)
+    {
+      masses[i] = system.forceField.pseudoAtoms[static_cast<std::size_t>(atoms[i].type)].mass;
+      com += masses[i] * atoms[i].position;
+      totalMass += masses[i];
+    }
+    com = com / totalMass;
+
+    if (component.isSemiFlexible() && !groupData.empty())
+    {
+      // Rigid groups: coupled at their center of mass with the total gradient on the group.
+      for (const Fragment& group : component.fragmentGraph.fragments)
+      {
+        if (!group.isRigidBody()) continue;
+        double groupMass = 0.0;
+        double3 groupCom(0.0, 0.0, 0.0);
+        double3 groupGradient(0.0, 0.0, 0.0);
+        for (const std::size_t i : group.atoms)
+        {
+          groupMass += masses[i];
+          groupCom += masses[i] * atoms[i].position;
+          groupGradient += dynamics[i].gradient;
+        }
+        add(groupCom / groupMass - com, groupGradient);
+      }
+      // Flexible atoms: coupled individually.
+      for (std::size_t i = 0; i < atoms.size(); ++i)
+      {
+        if (!component.rigidFragmentContaining(i).has_value()) add(atoms[i].position - com, dynamics[i].gradient);
+      }
+    }
+    else
+    {
+      for (std::size_t i = 0; i < atoms.size(); ++i) add(atoms[i].position - com, dynamics[i].gradient);
+    }
+  }
+
+  // The virial of a rotation-invariant energy is symmetric; the molecular virial is handed over symmetrized
+  // (its antisymmetric part, the torques on the molecules, is what the conversion term also carries), so
+  // the result is symmetrized as well.
+  double3x3 virial = molecularVirial - armGradient;
+  double temp = 0.5 * (virial.ay + virial.bx);
+  virial.ay = virial.bx = temp;
+  temp = 0.5 * (virial.az + virial.cx);
+  virial.az = virial.cx = temp;
+  temp = 0.5 * (virial.bz + virial.cy);
+  virial.bz = virial.cy = temp;
+  return virial;
+}
+
 ElasticConstantsResult computeElasticConstants(const System& system, double relativeEigenvalueTolerance)
 {
   if (!(relativeEigenvalueTolerance > 0.0) || !std::isfinite(relativeEigenvalueTolerance))

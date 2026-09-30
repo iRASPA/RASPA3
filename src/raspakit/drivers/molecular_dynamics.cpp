@@ -359,10 +359,13 @@ void attemptParticleExchange(RandomNumber& random, System& system)
   refreshParticleNumberDependentState(random, system, selectedComponent, result, exchangedMolecule);
 }
 
+// The barostat is driven by the virial of the points it couples to (centers of mass of rigid molecules
+// and rigid groups, flexible atoms individually), not by the molecular virial of the Monte Carlo and
+// reported pressure: see 'computeBarostatVirial'. Its kinetic partner is 'computeMolecularKineticVirial'.
 RunningEnergy thermobarostatVelocityVerlet(System& system)
 {
   Thermobarostat& barostat = *system.thermobarostat;
-  const auto pressureBefore = system.computeMolecularPressure();
+  const double3x3 pressureBefore = computeBarostatVirial(system, system.computeMolecularPressure().second);
   const double3x3 kineticBefore = computeMolecularKineticVirial(system);
 
   const double barostatKinetic =
@@ -394,7 +397,7 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
   {
     const double mtkFactor =
         1.0 + 3.0 / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
-    const double scalarForce = (pressureBefore.second.trace() + mtkFactor * kineticBefore.trace() -
+    const double scalarForce = (pressureBefore.trace() + mtkFactor * kineticBefore.trace() -
                                 3.0 * barostat.pressure * system.simulationBox.volume) /
                                barostat.logVolumeMass;
     barostat.logVolumeVelocity += 0.5 * system.timeStep * scalarForce;
@@ -410,7 +413,7 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
     correctedKinetic.by += mtkCorrection;
     correctedKinetic.cz += mtkCorrection;
     const double3x3 acceleration =
-        cellForce(pressureBefore.second, correctedKinetic, system.simulationBox.volume, barostat.pressure,
+        cellForce(pressureBefore, correctedKinetic, system.simulationBox.volume, barostat.pressure,
                   barostat.cellMass, barostat.cellType, barostat.monoclinicAngle);
     barostat.cellVelocity += 0.5 * system.timeStep * acceleration;
     barostat.cellVelocity = projectCellTensor(barostat.cellVelocity, barostat.cellType, barostat.monoclinicAngle);
@@ -456,13 +459,13 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
   energies.rotationalKineticEnergy =
       Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
                                                   system.framework, system.spanOfFrameworkGroupData());
-  const auto pressureAfter = system.computeMolecularPressure();
+  const double3x3 pressureAfter = computeBarostatVirial(system, system.computeMolecularPressure().second);
   const double3x3 kineticAfter = computeMolecularKineticVirial(system);
   if (molecularDynamicsUsesIsotropicBarostat(barostat.ensemble))
   {
     const double mtkFactor =
         1.0 + 3.0 / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
-    const double scalarForce = (pressureAfter.second.trace() + mtkFactor * kineticAfter.trace() -
+    const double scalarForce = (pressureAfter.trace() + mtkFactor * kineticAfter.trace() -
                                 3.0 * barostat.pressure * system.simulationBox.volume) /
                                barostat.logVolumeMass;
     barostat.logVolumeVelocity += 0.5 * system.timeStep * scalarForce;
@@ -477,7 +480,7 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
     correctedKinetic.cz += mtkCorrection;
     barostat.cellVelocity +=
         0.5 * system.timeStep *
-        cellForce(pressureAfter.second, correctedKinetic, system.simulationBox.volume, barostat.pressure,
+        cellForce(pressureAfter, correctedKinetic, system.simulationBox.volume, barostat.pressure,
                   barostat.cellMass, barostat.cellType, barostat.monoclinicAngle);
     barostat.cellVelocity = projectCellTensor(barostat.cellVelocity, barostat.cellType, barostat.monoclinicAngle);
   }

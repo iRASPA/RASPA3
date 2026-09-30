@@ -51,8 +51,28 @@ export ElasticConstantsResult computeElasticConstants(const System& system,
 export std::array<double, 36> computeAffineBornTensor(const System& system);
 
 /**
- * Return the instantaneous molecular kinetic virial, sum(m v outer v), before volume normalization.
+ * Return the instantaneous kinetic virial of the barostat's coupling points, sum(m v outer v), before
+ * volume normalization: rigid molecules and rigid groups contribute their center-of-mass momentum flux,
+ * flexible atoms contribute individually. This is the kinetic partner of 'computeBarostatVirial'.
  */
 export double3x3 computeMolecularKineticVirial(const System& system);
+
+/**
+ * Convert the molecular virial (sum over molecules of R_com outer F_molecule, the quantity behind the
+ * Monte Carlo and the reported pressure) into the virial conjugate to the coupling the molecular-dynamics
+ * barostat actually applies: the cell drives the centers of mass of rigid molecules and rigid groups and
+ * every flexible atom individually ('propagateCell'). For a coupled point k of a molecule at R_k with
+ * total force F_k (non-bonded and bonded) the virial is sum_k R_k outer F_k, so
+ *
+ *     V_barostat = V_molecular + sum_molecules sum_k (R_k - R_com) outer F_k .
+ *
+ * The extra term vanishes for a rigid molecule (one coupled point, its center of mass) and is what makes
+ * the flexible atoms' kinetic term N_atoms k T the right partner of the virial; feeding the molecular
+ * virial with the atomic kinetic energy over-estimates the pressure by (N_atoms - N_molecules) k T / V,
+ * which for a liquid of flexible molecules is of the order of a thousand bar and blows the cell up.
+ * Framework atoms are left as they enter the molecular virial (atomically); a flexible framework with
+ * rigid groups is not corrected. Uses the current atom positions and the stored total atom gradients.
+ */
+export double3x3 computeBarostatVirial(const System& system, const double3x3& molecularVirial);
 
 export std::string writeElasticConstants(const ElasticConstantsResult& result);
