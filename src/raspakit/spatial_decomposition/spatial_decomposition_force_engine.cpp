@@ -552,8 +552,10 @@ void SpatialDecompositionForceEngine::pairLoop(std::size_t thread, const System&
             energyCharge += prefactor * u;
             factor += 2.0 * prefactor * dudrr;
           }
-          else
+          else if (scalingCoulombI * scalingCoulomb[j] != 0.0)
           {
+            // a Coulomb-decoupled pair (fractional molecule at lambda <= 0.5) contributes neither energy nor
+            // force; skipping it keeps soft-core overlaps away from the 1/r singularity of the non-Ewald methods
             const double r = std::sqrt(rr);
             const Potentials::PairDerivatives<1> factors = Potentials::potentialCoulomb<1>(
                 forceField, scalingCoulombI, scalingCoulomb[j], r, chargeI, atomJ.charge);

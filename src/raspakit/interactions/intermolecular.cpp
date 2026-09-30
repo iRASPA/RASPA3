@@ -247,7 +247,8 @@ RunningEnergy Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
           energySum.moleculeMoleculeVDW += energyFactor.energy;
           energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
         }
-        if (useCharge && rr < cutOffChargeSquared && chargeA * chargeB != 0.0)
+        if (useCharge && rr < cutOffChargeSquared && chargeA * chargeB != 0.0 &&
+            scalingCoulombA * scalingCoulombB != 0.0)
         {
           double r = std::sqrt(rr);
           Potentials::PairDerivatives<0> energyFactor =
@@ -284,7 +285,8 @@ RunningEnergy Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
           energySum.moleculeMoleculeVDW -= energyFactor.energy;
           energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, -energyFactor.dUdlambda);
         }
-        if (useCharge && rr < cutOffChargeSquared && chargeA * chargeB != 0.0)
+        if (useCharge && rr < cutOffChargeSquared && chargeA * chargeB != 0.0 &&
+            scalingCoulombA * scalingCoulombB != 0.0)
         {
           double r = std::sqrt(rr);
           Potentials::PairDerivatives<0> energyFactor =

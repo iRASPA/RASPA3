@@ -44,8 +44,13 @@ template <std::size_t Order, typename VDWSink, typename CoulombSink>
                                         static_cast<std::size_t>(atomA.type), static_cast<std::size_t>(atomB.type));
     vdwSink(factors, dr);
   }
-  // every Coulomb factor is proportional to q_A q_B: a pair with an uncharged site contributes nothing
-  if (useCharge && rr < cutOffChargeSquared && atomA.charge * atomB.charge != 0.0)
+  // every Coulomb factor is proportional to q_A q_B: a pair with an uncharged site contributes nothing.
+  // A pair with a Coulomb-decoupled site (fractional molecule at lambda <= 0.5) contributes nothing either:
+  // the energy is scaled by scalingA * scalingB, and its dU/dlambda term is multiplied by the derivative of
+  // the Coulomb scaling, which vanishes there. Skipping it also keeps r -> 0 overlaps (permitted by the
+  // soft-core VDW) away from the 1/r singularity of the non-Ewald charge methods.
+  if (useCharge && rr < cutOffChargeSquared && atomA.charge * atomB.charge != 0.0 &&
+      atomA.scalingCoulomb * atomB.scalingCoulomb != 0.0)
   {
     const double r = std::sqrt(rr);
     const Potentials::PairDerivatives<Order> factors = Potentials::potentialCoulomb<Order>(
