@@ -159,6 +159,62 @@ TEST(MOLECULE_BACKBONE, form_factor_limits)
   EXPECT_NEAR(pSmall[0], 1.0 - 0.01 * 0.01 * rg2 / 3.0, 2e-6);
 }
 
+// The histogram route reproduces the direct evaluation: pair distances binned at 0.005 Angstrom and
+// transformed with sin(q r_b)/(q r_b) at the bin centres agree with the per-pair sum to the
+// discretization error ~ (q dr)^2 / 24, and the histogram grows on demand.
+TEST(MOLECULE_BACKBONE, form_factor_from_histogram_matches_direct)
+{
+  // Two irregular 16-bead conformations (deterministic pseudo-random walk).
+  std::vector<std::vector<Atom>> molecules{};
+  std::uint64_t state = 12345;
+  auto next = [&state]()
+  {
+    state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+    return static_cast<double>(state >> 11) / 9007199254740992.0;
+  };
+  for (std::size_t m = 0; m < 2; ++m)
+  {
+    std::vector<double3> positions{double3(0.0, 0.0, 0.0)};
+    for (std::size_t i = 1; i < 16; ++i)
+    {
+      double3 step(next() - 0.5, next() - 0.5, next() - 0.5);
+      positions.push_back(positions.back() + 1.54 * step.normalized());
+    }
+    molecules.push_back(atomsAt(positions));
+  }
+
+  std::vector<double> q{0.01, 0.3, 1.0, 2.5, 5.0};
+  constexpr double binWidth = 0.005;
+
+  std::vector<double> direct(q.size());
+  std::vector<double> histogram(10);  // deliberately too short: must grow
+  for (const std::vector<Atom> &molecule : molecules)
+  {
+    PropertyMoleculeBackbone::accumulateFormFactor(molecule, q, direct);
+    PropertyMoleculeBackbone::accumulatePairDistances(molecule, binWidth, histogram);
+  }
+  for (double &v : direct) v /= 2.0;
+
+  EXPECT_GT(histogram.size(), 10);
+  double pairs = std::accumulate(histogram.begin(), histogram.end(), 0.0);
+  EXPECT_EQ(pairs, 2.0 * 16 * 15 / 2);
+
+  std::vector<double> fromHistogram = PropertyMoleculeBackbone::formFactorFromHistogram(histogram, binWidth, 16, 2.0, q);
+  ASSERT_EQ(fromHistogram.size(), q.size());
+  // Rigorous bound: a pair displaced by at most dr/2 within its bin changes sin(x)/x by at most
+  // q dr/4 (|d/dx sin(x)/x| <= 1/2), and the pair sum carries weight (N-1)/N < 1.
+  for (std::size_t iq = 0; iq < q.size(); ++iq)
+  {
+    double tolerance = 1e-9 + 0.25 * q[iq] * binWidth;
+    EXPECT_NEAR(fromHistogram[iq], direct[iq], tolerance) << "q = " << q[iq];
+  }
+  EXPECT_NEAR(fromHistogram[0], 1.0, 1e-3);
+
+  // No molecules: zero, not NaN.
+  std::vector<double> empty = PropertyMoleculeBackbone::formFactorFromHistogram(histogram, binWidth, 16, 0.0, q);
+  for (double v : empty) EXPECT_EQ(v, 0.0);
+}
+
 TEST(MOLECULE_BACKBONE, debye_function)
 {
   EXPECT_NEAR(PropertyMoleculeBackbone::debyeFunction(0.0), 1.0, 1e-12);
@@ -265,6 +321,24 @@ TEST(MOLECULE_BACKBONE, sampling_through_component)
       });
   EXPECT_NEAR(cn, 62.5 / 11.25, 1e-12);
   EXPECT_EQ(errorCn, 0.0);
+
+  // Form factor through the sampling path (pair-distance histogram): the average of the two rods'
+  // direct evaluations, identical in every block so the error is zero.
+  {
+    std::vector<double> direct(property.waveVectors.size());
+    PropertyMoleculeBackbone::accumulateFormFactor(std::span<const Atom>(pair).subspan(0, 6), property.waveVectors,
+                                                   direct);
+    PropertyMoleculeBackbone::accumulateFormFactor(std::span<const Atom>(pair).subspan(6, 6), property.waveVectors,
+                                                   direct);
+    for (std::size_t iq = 0; iq < property.waveVectors.size(); ++iq)
+    {
+      auto [value, error] =
+          property.statistics(0, [iq](const PropertyMoleculeBackbone::Averages &a) { return a.formFactor[iq]; });
+      double q = property.waveVectors[iq];
+      EXPECT_NEAR(value, 0.5 * direct[iq], 1e-9 + 0.25 * q * property.pairDistanceBinWidth);
+      EXPECT_EQ(error, 0.0);
+    }
+  }
 
   // Skewing one block with an extra molecule makes the block scatter, and so the error, positive.
   property.sample(components, {1}, std::span<const Atom>(pair).subspan(0, 6), 0, 0);

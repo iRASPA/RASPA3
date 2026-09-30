@@ -66,6 +66,30 @@ constexpr std::size_t rigidTiltRollGridPoints = 72;
 /// nearly every trial. The partition does not change the sampled distribution, only the efficiency.
 constexpr std::size_t spinRoutedNonBondedMaximumBondSeparation = 5;
 
+/// The lookahead guide of the torsion-spin selection ('cbmc_lookahead_guide'): how many bonds beyond
+/// the grown beads the ideal sub-molecule extends (two covers the next torsion and the 1-5 and 1-6
+/// pairs, the range over which a fitted torsion is coupled to its neighbours), the number of points
+/// of the periodic dihedral table (5 degrees), the number of sub-molecule samples averaged per table,
+/// the fixed seed of the one-off tabulation (one frozen table per model signature, shared by grow and
+/// retrace), the rejection budget of a sampled bead, and the floor of log g below its maximum.
+constexpr std::size_t lookaheadGuideDepth = 2;
+constexpr std::size_t lookaheadGuideGridPoints = 72;
+constexpr std::size_t lookaheadGuideSamples = 32'768;
+constexpr std::size_t lookaheadGuideSeed = 1931;
+constexpr std::size_t lookaheadGuideRejectionAttempts = 10'000;
+constexpr double lookaheadGuideLogFloor = 14.0;
+
+/// CBMC growths per created flexible molecule ('System::createInitialMolecules'): the first valid one
+/// starts a short Markov chain in which each further growth replaces the current conformation with
+/// probability min(1, W_new / W_old). A single growth samples a conformation with probability
+/// prod_i exp(-beta u_i) / w_i, not the Boltzmann distribution: the missing factor is W = prod_i w_i,
+/// and it is far from uniform whenever a step's outcome is judged by terms that only enter later (a
+/// torsion chosen before its 1-5 partners exist, the branch step that then has to squeeze them in).
+/// Those conformations carry a W orders of magnitude below the rest, so the chain discards them at
+/// its first ordinary candidate. Sixteen keeps the creation cost of a large flexible system within a
+/// minute while making the survival of such a conformation negligible.
+constexpr std::size_t creationCandidateGrowths = 16;
+
 /// The recoil-growth openness reference ('System::buildRecoilReferenceConformations'): per growth step
 /// the maximum intramolecular strain over this many equilibrated ideal-gas conformations of the
 /// component, grown once at setup from a generator with this fixed seed. The reference is a constant

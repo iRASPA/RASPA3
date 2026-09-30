@@ -13,6 +13,7 @@ import bend_potential;
 import cbmc_util;
 import cbmc_grow_step;
 import cbmc_closure_guide;
+import cbmc_lookahead_guide;
 
 CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, std::size_t numberOfTorsionTrials,
                                                         double beta, std::vector<Atom> &chainAtoms,
@@ -56,6 +57,18 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
           currentBead, nextBeads[guide.nextBeadIndex], guide.targetBead));
     }
   }
+  // The lookahead guide (cbmc_lookahead_guide): the same construction, a bias log g on the dihedral of
+  // the first grown bead against the reference neighbour of the previous bead, averaging the terms that
+  // couple the spin to the beads of the following steps.
+  const std::optional<GrowStep::SpinSelectionData::LookaheadGuide> &lookahead = step.spin.lookahead;
+  if (lookahead.has_value() && !lookahead->table)
+  {
+    throw std::logic_error(std::format(
+        "CBMC: growth step at anchor bead {} carries a lookahead guide without a prepared table; "
+        "call Component::prepareGrowthPlans(beta) before growing with it\n",
+        currentBead));
+  }
+  const bool hasGuides = step.spin.hasGuides();
   auto logGuideOfPlacedSpin = [&]() -> double
   {
     double logGuide = 0.0;
@@ -65,6 +78,13 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
           (chainAtoms[nextBeads[guide.nextBeadIndex]].position - chainAtoms[guide.targetBead].position).length();
       logGuide += guide.table->logGuideAt(distance);
     }
+    if (lookahead.has_value())
+    {
+      const double dihedral =
+          dihedralAngle(chainAtoms[lookahead->referenceBead].position, chainAtoms[step.previousBead.value()].position,
+                        anchor, chainAtoms[nextBeads[0]].position);
+      logGuide += lookahead->table->logGuideAt(dihedral);
+    }
     return logGuide;
   };
 
@@ -72,7 +92,7 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
   // are regenerated afterwards (one placement instead of one vector per trial).
   std::vector<double> angles(numberOfTorsionTrials);
   std::vector<double> logTorsionBoltzmannFactors(numberOfTorsionTrials);
-  std::vector<double> logGuides(guides.empty() ? 0 : numberOfTorsionTrials, 0.0);
+  std::vector<double> logGuides(hasGuides ? numberOfTorsionTrials : 0, 0.0);
 
   for (std::size_t j = 0; j != numberOfTorsionTrials; ++j)
   {
@@ -102,7 +122,7 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
 
     angles[j] = angle;
     logTorsionBoltzmannFactors[j] = -beta * torsion_energy;
-    if (!guides.empty())
+    if (hasGuides)
     {
       logGuides[j] = logGuideOfPlacedSpin();
       logTorsionBoltzmannFactors[j] += logGuides[j];
@@ -117,7 +137,7 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
   for (std::size_t k = 0; k != nextBeads.size(); ++k) positions[k] = chainAtoms[nextBeads[k]];
 
   double rosenbluth_weight_torsion;
-  if (guides.empty())
+  if (!hasGuides)
   {
     rosenbluth_weight_torsion =
         std::accumulate(logTorsionBoltzmannFactors.begin(), logTorsionBoltzmannFactors.end(), 0.0,
@@ -137,4 +157,22 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
   }
 
   return {std::move(positions), rosenbluth_weight_torsion / static_cast<double>(numberOfTorsionTrials)};
+}
+
+void CBMC::prepareLookaheadGuides(double beta, std::span<GrowStep> plan,
+                                  std::map<std::string, std::shared_ptr<const LookaheadGuideTable>> &memo)
+{
+  for (GrowStep &step : plan)
+  {
+    if (!step.spin.lookahead.has_value()) continue;
+    GrowStep::SpinSelectionData::LookaheadGuide &guide = step.spin.lookahead.value();
+    auto it = memo.find(guide.signature);
+    if (it == memo.end())
+    {
+      it = memo.emplace(guide.signature,
+                        std::make_shared<const LookaheadGuideTable>(buildLookaheadGuideTable(beta, guide.model)))
+               .first;
+    }
+    guide.table = it->second;
+  }
 }

@@ -28,6 +28,17 @@ import component;
 //                         l_p (fit)        from ln C(k) = -k <l> / l_p on the initial decay,
 //   Flory exponent        nu from the log-log slope of <r^2(k)> over the window Nb/8 <= k <= Nb/2.
 //
+// The form factor is not evaluated per molecule (that would cost a sin() per pair per wave vector
+// per sample and dominates the sampling time for a dense liquid). It depends only on the
+// distribution of intramolecular pair distances, so a histogram h(r) of the pair distances is
+// accumulated per block (one bin increment per pair) and transformed once when averages are formed:
+//
+//   P(q) = (1/N^2) [ N + (2/count) sum_bins h(r_b) sin(q r_b) / (q r_b) ]
+//
+// with r_b the bin centres and 'count' the number of sampled molecules. The bin width (0.005
+// Angstrom) makes the discretization error of order (q dr)^2 / 24, below 1e-4 at q = 5 1/Angstrom.
+// The histogram grows on demand, so no upper limit on the pair distance is needed.
+//
 // The form factor is compared against the Debye function P_D(x) = 2 (e^-x - 1 + x) / x^2,
 // x = q^2 <Rg^2>, evaluated with the sampled <Rg^2> of the molecule. All averages carry 95%
 // confidence intervals from block averaging. Output is written to 'molecule_backbone/'.
@@ -61,7 +72,7 @@ export struct PropertyMoleculeBackbone
                           std::size_t numberOfWaveVectors, double waveVectorLowerLimit, double waveVectorUpperLimit,
                           std::size_t sampleEvery, std::optional<std::size_t> writeEvery);
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   std::size_t numberOfBlocks{0};
   std::size_t numberOfComponents{0};
@@ -74,15 +85,21 @@ export struct PropertyMoleculeBackbone
   double waveVectorUpperLimit{5.0};
   std::vector<double> waveVectors{};
 
+  // Bin width [Angstrom] of the intramolecular pair-distance histogram behind the form factor.
+  double pairDistanceBinWidth{0.005};
+
   // Per component: the backbone atom indices (empty when not sampled: fewer than three backbone
-  // beads) and its contour length R_max [Angstrom].
+  // beads), its contour length R_max [Angstrom], and the number of atoms of the molecule.
   std::vector<std::vector<std::size_t>> backbonePerComponent{};
   std::vector<double> contourLengthPerComponent{};
+  std::vector<std::size_t> numberOfAtomsPerComponent{};
 
-  // Accumulators indexed as [block][component][k], [block][component][q], [block][component].
+  // Accumulators indexed as [block][component][k], [block][component][bin], [block][component].
+  // 'pairDistanceHistogram' counts intramolecular pairs (i < j, all atoms) per distance bin; it is
+  // resized on demand when a pair falls beyond the current range.
   std::vector<std::vector<std::vector<double>>> internalDistanceSquaredSum{};
   std::vector<std::vector<std::vector<double>>> bondCorrelationSum{};
-  std::vector<std::vector<std::vector<double>>> formFactorSum{};
+  std::vector<std::vector<std::vector<double>>> pairDistanceHistogram{};
   std::vector<std::vector<Moments>> sums{};
   std::vector<std::vector<double>> numberOfCounts{};
   double totalNumberOfCounts{0.0};
@@ -95,9 +112,17 @@ export struct PropertyMoleculeBackbone
                                           std::span<double> internalDistanceSquared);
   static void accumulateBondCorrelation(std::span<const Atom> molecule, std::span<const std::size_t> backbone,
                                         std::span<double> bondCorrelation);
+  static void accumulatePairDistances(std::span<const Atom> molecule, double binWidth, std::vector<double> &histogram);
+  static Moments computeMoments(std::span<const Atom> molecule, std::span<const std::size_t> backbone);
+
+  // Direct per-molecule evaluation of the form factor (reference implementation, used in tests).
   static void accumulateFormFactor(std::span<const Atom> molecule, std::span<const double> waveVectors,
                                    std::span<double> formFactor);
-  static Moments computeMoments(std::span<const Atom> molecule, std::span<const std::size_t> backbone);
+
+  // Form factor from a pair-distance histogram of 'count' molecules of 'numberOfAtoms' atoms each.
+  static std::vector<double> formFactorFromHistogram(std::span<const double> histogram, double binWidth,
+                                                     std::size_t numberOfAtoms, double count,
+                                                     std::span<const double> waveVectors);
 
   void sample(const std::vector<Component> &components,
               const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtoms,
@@ -110,6 +135,10 @@ export struct PropertyMoleculeBackbone
   // Block-combined mean and 95% confidence-interval error of a function of the averages: the mean is
   // evaluated on the all-block averages, the error from the scatter of the per-block evaluations.
   std::pair<double, double> statistics(std::size_t component,
+                                       const std::function<double(const Averages &)> &function) const;
+  // Same, on precomputed averages ('blocks' holds one entry per block; empty blocks have zero counts).
+  std::pair<double, double> statistics(std::size_t component, const Averages &overall,
+                                       std::span<const Averages> blocks,
                                        const std::function<double(const Averages &)> &function) const;
 
   // Derived chain descriptors of a set of averages (exposed for testing).

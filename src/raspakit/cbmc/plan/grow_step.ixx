@@ -9,6 +9,7 @@ import chiral_center;
 import bond_potential;
 import bend_potential;
 import cbmc_closure_guide;
+import cbmc_lookahead_guide;
 
 // One operator of the deterministic growth plan: its topology (what is grown from where) and the
 // derived, step-constant data every sampler of the operator engine reads. Building the topology is
@@ -169,6 +170,23 @@ struct GrowStep
       std::shared_ptr<const ClosureGuideTable> table{};  ///< Absent until prepared.
     };
     std::vector<ClosureGuide> guides{};
+
+    /// Lookahead guide of a flexible attach step (see cbmc_lookahead_guide): the tabulated bias g of
+    /// the dihedral referenceBead - previous - current - nextBeads[0], averaging the terms that couple
+    /// the spin to the beads grown in the following steps. Multiplies the spin selection and is divided
+    /// out of its weight again. Present only when the step has a placed reference neighbour of the
+    /// previous bead and at least one such coupling term; the table depends on the temperature and is
+    /// filled by 'Component::prepareGrowthPlans'.
+    struct LookaheadGuide
+    {
+      std::size_t referenceBead{};
+      LookaheadGuideModel model{};
+      std::string signature{};  ///< Memo key of 'model' (congruent steps share one table).
+      std::shared_ptr<const LookaheadGuideTable> table{};  ///< Absent until prepared.
+    };
+    std::optional<LookaheadGuide> lookahead{};
+
+    [[nodiscard]] bool hasGuides() const noexcept { return !guides.empty() || lookahead.has_value(); }
   };
   SpinSelectionData spin{};
 

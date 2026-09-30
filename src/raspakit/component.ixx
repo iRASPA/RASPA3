@@ -45,6 +45,7 @@ export import fragment;
 export import fragment_graph;
 export import cbmc_growth_plan;
 import cbmc_closure_guide;
+import cbmc_lookahead_guide;
 import json;
 import cbmc_statistics;
 
@@ -310,6 +311,9 @@ export struct Component
   // The closure-guide tables of fixed-endpoint regrowth (see cbmc_closure_guide), memoised per path
   // signature for the same 'growthPlanBeta'; shared by every plan of the component. Not serialized.
   mutable std::map<std::string, std::shared_ptr<const CBMC::ClosureGuideTable>> closureGuideMemo{};
+  // The lookahead-guide tables of the torsion-spin selection (see cbmc_lookahead_guide), memoised per
+  // model signature for the same 'growthPlanBeta'; shared by every plan of the component. Not serialized.
+  mutable std::map<std::string, std::shared_ptr<const CBMC::LookaheadGuideTable>> lookaheadGuideMemo{};
   // Per-plan recoil-growth openness reference (see 'recoilReferenceStepEnergies'), keyed like the
   // plan cache. Derived from 'recoilReferenceConformations' and the plan; dropped when either
   // changes. Not serialized.

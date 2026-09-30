@@ -369,15 +369,67 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
   // keep a fixed seed
   RandomNumber random(1200);
 
-  // Initial configurations are grown with CBMC even when the production moves use recoil growth.
-  // Creation only needs one valid (non-overlapping) configuration -- the do/while below retries until
-  // it has one, and the Markov chain equilibrates away from it -- so the growth scheme is free to
-  // choose. CBMC always completes (a bad step only shrinks the Rosenbluth weight), whereas the
-  // absolute open/closed test of recoil growth restarts a long chain indefinitely: per-step attrition
-  // compounds over hundreds of beads, and the recoil window aborts the attempt long before the end.
+  // Initial configurations are grown with CBMC even when the production moves use recoil growth: CBMC
+  // always completes (a bad step only shrinks the Rosenbluth weight), whereas the absolute open/closed
+  // test of recoil growth restarts a long chain indefinitely -- per-step attrition compounds over
+  // hundreds of beads, and the recoil window aborts the attempt long before the end.
   // (The context is rebuilt per grow: every inserted molecule changes the background it spans.)
   auto creationContext = [&]()
   { return makeGrowContext(CBMC::CutOffMode::Full).withChainScheme(CBMC::ChainScheme::ConfigurationalBias); };
+
+  // A grown molecule is valid when it exists and does not overlap with its environment.
+  auto isValid = [&](const std::optional<CBMC::GrowResult>& growData)
+  { return growData.has_value() && growData->energies.potentialEnergy() <= forceField.energyOverlapCriteria; };
+
+  // The configuration a component is created with. A growth alone samples a conformation with
+  // probability prod_i exp(-beta u_i) / w_i, not the Boltzmann distribution: the missing factor is its
+  // Rosenbluth weight W = prod_i w_i. The first valid growth is therefore taken as the start of a short
+  // Markov chain of 'creationCandidateGrowths' - 1 further growths, each accepted over the current one
+  // with min(1, W_new / W_old) -- the reinsertion acceptance with the stored weights, whose stationary
+  // distribution is exactly Boltzmann (detailed balance holds in the joint space of conformation and
+  // trial set). Without it, every conformation whose growth was judged by terms that only enter at a
+  // later step is over-represented: the ester torsion of a diacrylate chosen before its 1-5 partners
+  // exist leaves a twisted or E ester that the subsequent Markov chain (or, worse, molecular dynamics)
+  // may take microseconds to undo. Such a conformation carries a W orders of magnitude below the rest,
+  // so the next ordinary candidate replaces it with probability close to one, while an ordinary
+  // conformation is kept unless a better-weighted one comes along. (A single draw with probability
+  // proportional to W among the candidates is not used: the spread of log W over the growths of a
+  // flexible chain spans several units, which turns that draw into 'the largest weight wins' and
+  // over-corrects towards the hardest-to-generate conformations.) A rigid molecule is grown once: its
+  // one placement step has no conformation to bias. The Markov chain of the simulation still
+  // equilibrates away from the created state; the creation chain just starts it far closer.
+  auto growCreationCandidate = [&](const CBMC::NewMoleculeIdentity& identity) -> CBMC::GrowResult
+  {
+    const Component& component = components[identity.componentId];
+
+    // The grow filters every trial against the blocking pockets, so the returned molecule needs no
+    // further pocket check.
+    std::optional<CBMC::GrowResult> current = std::nullopt;
+    do
+    {
+      current = CBMC::growNewMolecule(random, creationContext(), component, identity);
+    } while (!isValid(current));
+
+    // An overlapping proposal has no weight and counts as rejected. In a dense background that is the
+    // fate of most growths, and there the weight of a valid candidate is dominated by its fit into the
+    // fluid rather than by its conformation, so the chain is deliberately not extended until it has a
+    // fixed number of valid proposals (measured: 7x the creation time for a marginal gain). A dense
+    // system of flexible molecules still relies on its initialization cycles -- partial reinsertion
+    // with fixed endpoints regrows such a defect in place -- to finish the job.
+    const std::size_t numberOfGrowths = component.rigid ? 1 : CBMC::Constants::creationCandidateGrowths;
+    for (std::size_t attempt = 1; attempt < numberOfGrowths; ++attempt)
+    {
+      std::optional<CBMC::GrowResult> candidate = CBMC::growNewMolecule(random, creationContext(), component, identity);
+      if (!isValid(candidate)) continue;
+
+      const double logAcceptance = candidate->logRosenbluthWeight - current->logRosenbluthWeight;
+      if (logAcceptance >= 0.0 || random.uniform() < std::exp(logAcceptance))
+      {
+        current = std::move(candidate);
+      }
+    }
+    return std::move(current.value());
+  };
 
   for (std::size_t componentId = 0; const Component& component : components)
   {
@@ -387,17 +439,11 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
 
       auto growFractionalMolecule = [&](std::uint8_t groupId) -> std::optional<CBMC::GrowResult>
       {
-        std::optional<CBMC::GrowResult> growData = std::nullopt;
-        do
-        {
-          growData = CBMC::growNewMolecule(random, creationContext(), components[componentId],
-                                           {.componentId = componentId,
-                                            .moleculeId = numberOfMolecules(),
-                                            .scaling = 0.0,
-                                            .groupId = groupId,
-                                            .isFractional = true});
-        } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
-        return growData;
+        return growCreationCandidate({.componentId = componentId,
+                                      .moleculeId = numberOfMolecules(),
+                                      .scaling = 0.0,
+                                      .groupId = groupId,
+                                      .isFractional = true});
       };
 
       if (numberOfGCFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
@@ -555,17 +601,10 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
 
     for (std::size_t i = 0; i < initialNumberOfMolecules[componentId]; ++i)
     {
-      // The grow filters every trial against the blocking pockets, so the returned molecule needs no
-      // further pocket check.
-      std::optional<CBMC::GrowResult> growData = std::nullopt;
-      do
-      {
-        growData = CBMC::growNewMolecule(random, creationContext(), components[componentId],
-                                         {.componentId = componentId, .moleculeId = numberOfMolecules()});
+      const CBMC::GrowResult growData =
+          growCreationCandidate({.componentId = componentId, .moleculeId = numberOfMolecules()});
 
-      } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
-
-      insertMolecule(componentId, growData->molecule, growData->atoms);
+      insertMolecule(componentId, growData.molecule, growData.atoms);
     }
 
     componentId++;

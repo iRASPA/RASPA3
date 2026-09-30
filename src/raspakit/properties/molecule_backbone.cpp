@@ -56,9 +56,10 @@ PropertyMoleculeBackbone::PropertyMoleculeBackbone(std::size_t numberOfBlocks, c
       waveVectors(numberOfWaveVectors),
       backbonePerComponent(components.size()),
       contourLengthPerComponent(components.size()),
+      numberOfAtomsPerComponent(components.size()),
       internalDistanceSquaredSum(numberOfBlocks, std::vector<std::vector<double>>(components.size())),
       bondCorrelationSum(numberOfBlocks, std::vector<std::vector<double>>(components.size())),
-      formFactorSum(numberOfBlocks, std::vector<std::vector<double>>(components.size())),
+      pairDistanceHistogram(numberOfBlocks, std::vector<std::vector<double>>(components.size())),
       sums(numberOfBlocks, std::vector<Moments>(components.size(), Moments{})),
       numberOfCounts(numberOfBlocks, std::vector<double>(components.size()))
 {
@@ -78,13 +79,20 @@ PropertyMoleculeBackbone::PropertyMoleculeBackbone(std::size_t numberOfBlocks, c
 
     backbonePerComponent[c] = backbone;
     contourLengthPerComponent[c] = contourLength(components[c], {backbone.front(), backbone.back()});
+    numberOfAtomsPerComponent[c] = components[c].atoms.size();
+
+    // Initial range of the pair-distance histogram: no intramolecular distance exceeds the contour
+    // length of the path between the atoms; the backbone contour with a margin for side groups and
+    // bond stretching covers nearly all pairs, the rest grow the histogram on demand.
+    std::size_t initialBins =
+        static_cast<std::size_t>(std::ceil((1.5 * contourLengthPerComponent[c] + 10.0) / pairDistanceBinWidth));
 
     std::size_t numberOfBeads = backbone.size();
     for (std::size_t b = 0; b < numberOfBlocks; ++b)
     {
       internalDistanceSquaredSum[b][c] = std::vector<double>(numberOfBeads - 1);
       bondCorrelationSum[b][c] = std::vector<double>(numberOfBeads - 1);
-      formFactorSum[b][c] = std::vector<double>(numberOfWaveVectors);
+      pairDistanceHistogram[b][c] = std::vector<double>(initialBins);
     }
   }
 }
@@ -157,6 +165,50 @@ void PropertyMoleculeBackbone::accumulateFormFactor(std::span<const Atom> molecu
   }
 }
 
+void PropertyMoleculeBackbone::accumulatePairDistances(std::span<const Atom> molecule, double binWidth,
+                                                       std::vector<double> &histogram)
+{
+  std::size_t n = molecule.size();
+  double inverseBinWidth = 1.0 / binWidth;
+  for (std::size_t i = 0; i + 1 < n; ++i)
+  {
+    for (std::size_t j = i + 1; j < n; ++j)
+    {
+      double r = (molecule[i].position - molecule[j].position).length();
+      std::size_t bin = static_cast<std::size_t>(r * inverseBinWidth);
+      if (bin >= histogram.size()) histogram.resize(bin + 1);
+      histogram[bin] += 1.0;
+    }
+  }
+}
+
+// P(q) = (1/N^2) [ N + (2/count) sum_b h_b sin(q r_b) / (q r_b) ], r_b the bin centres. Bins without
+// pairs are skipped, so the cost is set by the occupied range of the histogram.
+std::vector<double> PropertyMoleculeBackbone::formFactorFromHistogram(std::span<const double> histogram,
+                                                                      double binWidth, std::size_t numberOfAtoms,
+                                                                      double count, std::span<const double> waveVectors)
+{
+  std::vector<double> formFactor(waveVectors.size());
+  if (numberOfAtoms == 0 || count <= 0.0) return formFactor;
+
+  double n = static_cast<double>(numberOfAtoms);
+  double inverseN2 = 1.0 / (n * n);
+  for (std::size_t iq = 0; iq < waveVectors.size(); ++iq)
+  {
+    double q = waveVectors[iq];
+    double sum = 0.0;
+    for (std::size_t bin = 0; bin < histogram.size(); ++bin)
+    {
+      double h = histogram[bin];
+      if (h == 0.0) continue;
+      double qr = q * (static_cast<double>(bin) + 0.5) * binWidth;
+      sum += h * (qr > 1e-12 ? std::sin(qr) / qr : 1.0);
+    }
+    formFactor[iq] = (n + 2.0 * sum / count) * inverseN2;
+  }
+  return formFactor;
+}
+
 PropertyMoleculeBackbone::Moments PropertyMoleculeBackbone::computeMoments(std::span<const Atom> molecule,
                                                                          std::span<const std::size_t> backbone)
 {
@@ -218,6 +270,7 @@ void PropertyMoleculeBackbone::sample(const std::vector<Component> &components,
     }
 
     const std::vector<std::size_t> &backbone = backbonePerComponent[c];
+    numberOfAtomsPerComponent[c] = numberOfAtoms;
 
     for (std::size_t m = 0; m < numberOfMolecules; ++m)
     {
@@ -227,7 +280,7 @@ void PropertyMoleculeBackbone::sample(const std::vector<Component> &components,
 
       accumulateInternalDistances(molecule, backbone, internalDistanceSquaredSum[block][c]);
       accumulateBondCorrelation(molecule, backbone, bondCorrelationSum[block][c]);
-      accumulateFormFactor(molecule, waveVectors, formFactorSum[block][c]);
+      accumulatePairDistances(molecule, pairDistanceBinWidth, pairDistanceHistogram[block][c]);
 
       Moments moments = computeMoments(molecule, backbone);
       for (std::size_t i = 0; i < NumberOfMoments; ++i) sums[block][c][i] += moments[i];
@@ -245,15 +298,15 @@ PropertyMoleculeBackbone::Averages PropertyMoleculeBackbone::blockAverages(std::
   Averages averages{};
   averages.internalDistanceSquared = internalDistanceSquaredSum[block][component];
   averages.bondCorrelation = bondCorrelationSum[block][component];
-  averages.formFactor = formFactorSum[block][component];
   averages.moments = sums[block][component];
 
   double count = numberOfCounts[block][component];
+  averages.formFactor = formFactorFromHistogram(pairDistanceHistogram[block][component], pairDistanceBinWidth,
+                                                numberOfAtomsPerComponent[component], count, waveVectors);
   if (count > 0.0)
   {
     for (double &v : averages.internalDistanceSquared) v /= count;
     for (double &v : averages.bondCorrelation) v /= count;
-    for (double &v : averages.formFactor) v /= count;
     for (double &v : averages.moments) v /= count;
   }
   return averages;
@@ -264,7 +317,12 @@ PropertyMoleculeBackbone::Averages PropertyMoleculeBackbone::overallAverages(std
   Averages averages{};
   averages.internalDistanceSquared = std::vector<double>(internalDistanceSquaredSum[0][component].size());
   averages.bondCorrelation = std::vector<double>(bondCorrelationSum[0][component].size());
-  averages.formFactor = std::vector<double>(formFactorSum[0][component].size());
+
+  // The block histograms may have grown to different lengths.
+  std::size_t numberOfBins{0};
+  for (std::size_t block = 0; block < numberOfBlocks; ++block)
+    numberOfBins = std::max(numberOfBins, pairDistanceHistogram[block][component].size());
+  std::vector<double> histogram(numberOfBins);
 
   double total{0.0};
   for (std::size_t block = 0; block < numberOfBlocks; ++block)
@@ -274,15 +332,16 @@ PropertyMoleculeBackbone::Averages PropertyMoleculeBackbone::overallAverages(std
       averages.internalDistanceSquared[i] += internalDistanceSquaredSum[block][component][i];
     for (std::size_t i = 0; i < averages.bondCorrelation.size(); ++i)
       averages.bondCorrelation[i] += bondCorrelationSum[block][component][i];
-    for (std::size_t i = 0; i < averages.formFactor.size(); ++i)
-      averages.formFactor[i] += formFactorSum[block][component][i];
+    for (std::size_t i = 0; i < pairDistanceHistogram[block][component].size(); ++i)
+      histogram[i] += pairDistanceHistogram[block][component][i];
     for (std::size_t i = 0; i < NumberOfMoments; ++i) averages.moments[i] += sums[block][component][i];
   }
+  averages.formFactor = formFactorFromHistogram(histogram, pairDistanceBinWidth, numberOfAtomsPerComponent[component],
+                                                total, waveVectors);
   if (total > 0.0)
   {
     for (double &v : averages.internalDistanceSquared) v /= total;
     for (double &v : averages.bondCorrelation) v /= total;
-    for (double &v : averages.formFactor) v /= total;
     for (double &v : averages.moments) v /= total;
   }
   return averages;
@@ -291,11 +350,20 @@ PropertyMoleculeBackbone::Averages PropertyMoleculeBackbone::overallAverages(std
 std::pair<double, double> PropertyMoleculeBackbone::statistics(
     std::size_t component, const std::function<double(const Averages &)> &function) const
 {
+  std::vector<Averages> blocks(numberOfBlocks);
+  for (std::size_t block = 0; block < numberOfBlocks; ++block) blocks[block] = blockAverages(block, component);
+  return statistics(component, overallAverages(component), blocks, function);
+}
+
+std::pair<double, double> PropertyMoleculeBackbone::statistics(
+    std::size_t component, const Averages &overall, std::span<const Averages> blocks,
+    const std::function<double(const Averages &)> &function) const
+{
   double totalSamples{0.0};
   for (std::size_t block = 0; block < numberOfBlocks; ++block) totalSamples += numberOfCounts[block][component];
   if (totalSamples <= 0.0) return {0.0, 0.0};
 
-  double mean = function(overallAverages(component));
+  double mean = function(overall);
 
   std::size_t degreesOfFreedom = numberOfBlocks - 1;
   double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
@@ -305,7 +373,7 @@ std::pair<double, double> PropertyMoleculeBackbone::statistics(
   {
     if (numberOfCounts[block][component] > 0.0)
     {
-      double value = function(blockAverages(block, component)) - mean;
+      double value = function(blocks[block]) - mean;
       sumOfSquares += value * value;
       ++numberOfSamples;
     }
@@ -398,30 +466,38 @@ void PropertyMoleculeBackbone::writeOutput(std::size_t systemId, const std::vect
     std::size_t numberOfBonds = numberOfBeads - 1;
     double rMax = contourLengthPerComponent[c];
 
-    auto [meanL, errorL] = statistics(c, [](const Averages &a) { return a.moments[BondLength]; });
-    auto [meanL2, errorL2] = statistics(c, [](const Averages &a) { return a.moments[BondLengthSquared]; });
-    auto [meanR2, errorR2] = statistics(c, [](const Averages &a) { return a.moments[EndToEndSquared]; });
-    auto [meanRg2, errorRg2] = statistics(c, [](const Averages &a) { return a.moments[RadiusOfGyrationSquared]; });
+    // The averages (including the form-factor transform of the pair-distance histograms) once per
+    // component; every statistic below is a function of these.
+    const Averages overall = overallAverages(c);
+    std::vector<Averages> blocks(numberOfBlocks);
+    for (std::size_t block = 0; block < numberOfBlocks; ++block) blocks[block] = blockAverages(block, c);
+    auto statistics = [&](const std::function<double(const Averages &)> &function)
+    { return this->statistics(c, overall, blocks, function); };
+
+    auto [meanL, errorL] = statistics([](const Averages &a) { return a.moments[BondLength]; });
+    auto [meanL2, errorL2] = statistics([](const Averages &a) { return a.moments[BondLengthSquared]; });
+    auto [meanR2, errorR2] = statistics([](const Averages &a) { return a.moments[EndToEndSquared]; });
+    auto [meanRg2, errorRg2] = statistics([](const Averages &a) { return a.moments[RadiusOfGyrationSquared]; });
     auto [ratioR2Rg2, errorRatioR2Rg2] = statistics(
-        c, [](const Averages &a)
+        [](const Averages &a)
         {
           return a.moments[RadiusOfGyrationSquared] > 0.0 ? a.moments[EndToEndSquared] / a.moments[RadiusOfGyrationSquared]
                                                           : 0.0;
         });
     auto [characteristicRatio, errorCharacteristicRatio] = statistics(
-        c, [numberOfBonds](const Averages &a)
+        [numberOfBonds](const Averages &a)
         {
           double l = a.moments[BondLength];
           return l > 0.0 ? a.moments[EndToEndSquared] / (static_cast<double>(numberOfBonds) * l * l) : 0.0;
         });
     auto [kuhnLength, errorKuhnLength] =
-        statistics(c, [rMax](const Averages &a) { return rMax > 0.0 ? a.moments[EndToEndSquared] / rMax : 0.0; });
+        statistics([rMax](const Averages &a) { return rMax > 0.0 ? a.moments[EndToEndSquared] / rMax : 0.0; });
     auto [kuhnSegments, errorKuhnSegments] = statistics(
-        c, [rMax](const Averages &a)
+        [rMax](const Averages &a)
         { return a.moments[EndToEndSquared] > 0.0 ? rMax * rMax / a.moments[EndToEndSquared] : 0.0; });
-    auto [persistenceProjection, errorPersistenceProjection] = statistics(c, persistenceLengthFromProjection);
-    auto [persistenceFit, errorPersistenceFit] = statistics(c, persistenceLengthFromFit);
-    auto [nu, errorNu] = statistics(c, floryExponent);
+    auto [persistenceProjection, errorPersistenceProjection] = statistics(persistenceLengthFromProjection);
+    auto [persistenceFit, errorPersistenceFit] = statistics(persistenceLengthFromFit);
+    auto [nu, errorNu] = statistics(floryExponent);
 
     std::size_t kMin = std::max<std::size_t>(2, numberOfBeads / 8);
     std::size_t kMax = numberOfBeads / 2;
@@ -468,7 +544,7 @@ void PropertyMoleculeBackbone::writeOutput(std::size_t systemId, const std::vect
       stream << "# column 5: <r^2(k)> / (k <l>^2) [-]  (flat for an ideal chain)\n";
       for (std::size_t k = 1; k < numberOfBeads; ++k)
       {
-        auto [value, error] = statistics(c, [k](const Averages &a) { return a.internalDistanceSquared[k - 1]; });
+        auto [value, error] = statistics([k](const Averages &a) { return a.internalDistanceSquared[k - 1]; });
         double reduced = meanL > 0.0 ? value / (static_cast<double>(k) * meanL * meanL) : 0.0;
         stream << std::format("{} {} {} {} {}\n", k, static_cast<double>(k) * meanL, value, error, reduced);
       }
@@ -485,7 +561,7 @@ void PropertyMoleculeBackbone::writeOutput(std::size_t systemId, const std::vect
       stream << "# column 3: C(k) error (95% confidence) [-]\n";
       for (std::size_t k = 0; k < numberOfBonds; ++k)
       {
-        auto [value, error] = statistics(c, [k](const Averages &a) { return a.bondCorrelation[k]; });
+        auto [value, error] = statistics([k](const Averages &a) { return a.bondCorrelation[k]; });
         stream << std::format("{} {} {}\n", k, value, error);
       }
     }
@@ -495,6 +571,8 @@ void PropertyMoleculeBackbone::writeOutput(std::size_t systemId, const std::vect
       stream << std::format("# single-chain form factor (all atoms, uniform weights), component: {}, number of counts: {}\n",
                             name, totalNumberOfCounts);
       stream << std::format("# <Rg^2> = {:g} [Angstrom^2]; Debye function evaluated at x = q^2 <Rg^2>\n", meanRg2);
+      stream << std::format("# from the intramolecular pair-distance histogram, bin width {:g} [Angstrom]\n",
+                            pairDistanceBinWidth);
       stream << "# column 1: q [1/Angstrom]\n";
       stream << "# column 2: q sqrt(<Rg^2>) [-]\n";
       stream << "# column 3: P(q) [-]\n";
@@ -503,7 +581,7 @@ void PropertyMoleculeBackbone::writeOutput(std::size_t systemId, const std::vect
       double rg = std::sqrt(std::max(meanRg2, 0.0));
       for (std::size_t iq = 0; iq < numberOfWaveVectors; ++iq)
       {
-        auto [value, error] = statistics(c, [iq](const Averages &a) { return a.formFactor[iq]; });
+        auto [value, error] = statistics([iq](const Averages &a) { return a.formFactor[iq]; });
         double q = waveVectors[iq];
         stream << std::format("{} {} {} {} {}\n", q, q * rg, value, error, debyeFunction(q * q * meanRg2));
       }
@@ -523,6 +601,8 @@ std::string PropertyMoleculeBackbone::printSettings() const
   }
   std::print(stream, "    wave vectors: {} log-spaced in {:g} - {:g} [1/Angstrom]\n", numberOfWaveVectors,
              waveVectorLowerLimit, waveVectorUpperLimit);
+  std::print(stream, "    form factor from the pair-distance histogram, bin width {:g} [Angstrom]\n",
+             pairDistanceBinWidth);
   for (std::size_t c = 0; c < backbonePerComponent.size(); ++c)
   {
     if (isSampled(c))
@@ -549,11 +629,13 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << p.waveVectorLowerLimit;
   archive << p.waveVectorUpperLimit;
   archive << p.waveVectors;
+  archive << p.pairDistanceBinWidth;
   archive << p.backbonePerComponent;
   archive << p.contourLengthPerComponent;
+  archive << p.numberOfAtomsPerComponent;
   archive << p.internalDistanceSquaredSum;
   archive << p.bondCorrelationSum;
-  archive << p.formFactorSum;
+  archive << p.pairDistanceHistogram;
   archive << p.sums;
   archive << p.numberOfCounts;
   archive << p.totalNumberOfCounts;
@@ -584,11 +666,27 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyMole
   archive >> p.waveVectorLowerLimit;
   archive >> p.waveVectorUpperLimit;
   archive >> p.waveVectors;
+  if (versionNumber >= 2) archive >> p.pairDistanceBinWidth;
   archive >> p.backbonePerComponent;
   archive >> p.contourLengthPerComponent;
+  if (versionNumber >= 2) archive >> p.numberOfAtomsPerComponent;
   archive >> p.internalDistanceSquaredSum;
   archive >> p.bondCorrelationSum;
-  archive >> p.formFactorSum;
+  if (versionNumber >= 2)
+  {
+    archive >> p.pairDistanceHistogram;
+  }
+  else
+  {
+    // Version 1 stored the per-wave-vector form-factor sums; these cannot be converted into a
+    // pair-distance histogram. Discard them and continue with empty histograms (the number of
+    // atoms per component is unknown as well, so the restarted form factor is left at zero).
+    std::vector<std::vector<std::vector<double>>> formFactorSum{};
+    archive >> formFactorSum;
+    p.pairDistanceHistogram =
+        std::vector<std::vector<std::vector<double>>>(p.numberOfBlocks, std::vector<std::vector<double>>(p.numberOfComponents));
+    p.numberOfAtomsPerComponent = std::vector<std::size_t>(p.numberOfComponents);
+  }
   archive >> p.sums;
   archive >> p.numberOfCounts;
   archive >> p.totalNumberOfCounts;

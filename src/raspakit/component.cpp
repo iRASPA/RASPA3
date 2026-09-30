@@ -54,6 +54,7 @@ import chiral_center;
 import cbmc_growth_plan;
 import cbmc_flexible_base;
 import cbmc_bridge_closure;
+import cbmc_torsion_selection;
 import vdwparameters;
 import blocking_pockets;
 
@@ -582,6 +583,7 @@ void Component::buildFragmentGraph(const std::vector<std::vector<std::size_t>> &
   growthPlanCache.clear();
   baseCouplingConstantsMemo.clear();
   closureGuideMemo.clear();
+  lookaheadGuideMemo.clear();
   recoilReferenceStepEnergiesCache.clear();
 
   std::size_t numberOfBeads = definedAtoms.size();
@@ -633,6 +635,7 @@ const std::vector<CBMC::GrowStep> &Component::growthPlan(const std::vector<std::
     {
       CBMC::prepareBaseCouplingConstants(growthPlanBeta.value(), atoms.size(), it->second, baseCouplingConstantsMemo);
       CBMC::prepareClosureGuides(growthPlanBeta.value(), it->second, closureGuideMemo);
+      CBMC::prepareLookaheadGuides(growthPlanBeta.value(), it->second, lookaheadGuideMemo);
     }
   }
   return it->second;
@@ -645,10 +648,12 @@ void Component::prepareGrowthPlans(double beta) const
   growthPlanBeta = beta;
   baseCouplingConstantsMemo.clear();
   closureGuideMemo.clear();
+  lookaheadGuideMemo.clear();
   for (auto &[beadsAlreadyPlaced, plan] : growthPlanCache)
   {
     CBMC::prepareBaseCouplingConstants(beta, atoms.size(), plan, baseCouplingConstantsMemo);
     CBMC::prepareClosureGuides(beta, plan, closureGuideMemo);
+    CBMC::prepareLookaheadGuides(beta, plan, lookaheadGuideMemo);
   }
 }
 

@@ -8,6 +8,7 @@ import atom;
 import double3;
 import randomnumbers;
 import cbmc_grow_step;
+import cbmc_lookahead_guide;
 
 export namespace CBMC
 {
@@ -39,4 +40,9 @@ struct TorsionOrientation
 TorsionOrientation selectTorsionOrientation(RandomNumber &random, std::size_t numberOfTorsionTrials, double beta,
                                             std::vector<Atom> &chainAtoms, const std::vector<Atom> &baseOrientation,
                                             const GrowStep &step, double3 lastBondVector, bool pinFirstToBase);
+
+/// Fills the lookahead-guide tables of a plan for inverse temperature 'beta' (see cbmc_lookahead_guide),
+/// sharing one table per model signature through 'memo'.
+void prepareLookaheadGuides(double beta, std::span<GrowStep> plan,
+                            std::map<std::string, std::shared_ptr<const LookaheadGuideTable>> &memo);
 }  // namespace CBMC

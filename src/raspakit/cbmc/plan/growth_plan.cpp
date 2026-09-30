@@ -14,9 +14,12 @@ import chiral_center;
 import bond_potential;
 import bend_potential;
 import torsion_potential;
+import van_der_waals_potential;
+import coulomb_potential;
 import cbmc_constants;
 import cbmc_step_terms;
 import cbmc_closure_guide;
+import cbmc_lookahead_guide;
 
 // First placed neighbor (ascending atom index) of 'anchor' that satisfies 'acceptable'; used as the
 // deterministic bend/torsion reference of a step.
@@ -188,6 +191,211 @@ static void attachClosureGuides(CBMC::GrowStep &step, const ConnectivityTable &c
     guide.signature = guide.path.signature();
     step.spin.guides.push_back(std::move(guide));
   }
+}
+
+// The bend a-b-c (centred on b, ends in either order) and the torsion a-b-c-d (either direction) of the
+// full potential.
+static std::optional<BendPotential> findBend(const Potentials::IntraMolecularPotentials &intra, std::size_t a,
+                                             std::size_t b, std::size_t c)
+{
+  for (const BendPotential &bend : intra.bends)
+  {
+    const auto &ids = bend.identifiers;
+    if (ids[1] != b) continue;
+    if ((ids[0] == a && ids[2] == c) || (ids[2] == a && ids[0] == c)) return bend;
+  }
+  return std::nullopt;
+}
+
+static std::optional<TorsionPotential> findTorsion(const Potentials::IntraMolecularPotentials &intra, std::size_t a,
+                                                   std::size_t b, std::size_t c, std::size_t d)
+{
+  for (const TorsionPotential &torsion : intra.torsions)
+  {
+    const auto &ids = torsion.identifiers;
+    if ((ids[0] == a && ids[1] == b && ids[2] == c && ids[3] == d) ||
+        (ids[3] == a && ids[2] == b && ids[1] == c && ids[0] == d))
+    {
+      return torsion;
+    }
+  }
+  return std::nullopt;
+}
+
+// Builds the lookahead model of a flexible attach step (see cbmc_lookahead_guide) and attaches it as
+// the step's lookahead guide when the model has a term that depends on the spin. The tables need the
+// temperature and are filled later ('prepareLookaheadGuides').
+static void attachLookaheadGuide(CBMC::GrowStep &step, const ConnectivityTable &connectivity,
+                                 const FragmentGraph &graph, const std::vector<bool> &placed,
+                                 const Potentials::IntraMolecularPotentials &intra)
+{
+  if (!step.flexibleAttach) return;
+
+  const std::size_t numberOfBeads = connectivity.numberOfBeads;
+  const std::size_t previousBead = step.previousBead.value();
+  const std::size_t currentBead = step.currentBead;
+
+  // The reference of the dihedral: a placed neighbour of the previous bead other than the current bead.
+  // Without one every spin is equivalent and no future term can depend on it.
+  const std::vector<std::size_t> backward = placedNeighborsExcept(connectivity, previousBead, placed, currentBead);
+  if (backward.empty()) return;
+
+  CBMC::LookaheadGuideModel model{};
+  model.numberOfAtoms = numberOfBeads;
+  model.previousBead = previousBead;
+  model.currentBead = currentBead;
+  model.axisBond = intra.findBondPotential(previousBead, currentBead);
+  model.referenceBead = backward.front();
+  model.firstNextBead = step.nextBeads.front();
+
+  std::vector<bool> positioned(numberOfBeads, false);
+  std::vector<bool> isBackward(numberOfBeads, false);
+  std::vector<bool> isFuture(numberOfBeads, false);
+  std::vector<std::optional<std::size_t>> parentOf(numberOfBeads);
+  positioned[previousBead] = true;
+  positioned[currentBead] = true;
+  parentOf[currentBead] = previousBead;
+
+  // The bonded terms consumed as samplers of the model, excluded from the cross terms.
+  std::set<std::array<std::size_t, 3>> samplerBends{};
+  std::set<std::array<std::size_t, 4>> samplerTorsions{};
+  auto bendKey = [](std::size_t a, std::size_t b, std::size_t c)
+  { return std::array<std::size_t, 3>{std::min(a, c), b, std::max(a, c)}; };
+  auto torsionKey = [](std::size_t a, std::size_t b, std::size_t c, std::size_t d)
+  {
+    const std::array<std::size_t, 4> forward{a, b, c, d};
+    const std::array<std::size_t, 4> backwardKey{d, c, b, a};
+    return std::min(forward, backwardKey);
+  };
+
+  // A modelled bead: bond to its parent, bend towards its bend reference, torsion towards its torsion
+  // reference, and the sibling bends to the beads of the same parent already in the model.
+  auto makeBead = [&](std::size_t bead, std::size_t parent, std::optional<std::size_t> bendReference,
+                      std::optional<std::size_t> torsionReference, std::span<const std::size_t> earlierSiblings)
+  {
+    CBMC::LookaheadBead result{};
+    result.bead = bead;
+    result.parent = parent;
+    result.bendReference = bendReference;
+    result.torsionReference = torsionReference;
+    result.bond = intra.findBondPotential(parent, bead);
+    if (bendReference.has_value())
+    {
+      result.bend = findBend(intra, bendReference.value(), parent, bead);
+      samplerBends.insert(bendKey(bendReference.value(), parent, bead));
+      if (torsionReference.has_value())
+      {
+        result.torsion = findTorsion(intra, torsionReference.value(), bendReference.value(), parent, bead);
+        samplerTorsions.insert(torsionKey(torsionReference.value(), bendReference.value(), parent, bead));
+      }
+    }
+    for (std::size_t sibling : earlierSiblings)
+    {
+      if (std::optional<BendPotential> bend = findBend(intra, sibling, parent, bead); bend.has_value())
+      {
+        result.siblingBends.push_back(bend.value());
+        samplerBends.insert(bendKey(sibling, parent, bead));
+      }
+    }
+    positioned[bead] = true;
+    parentOf[bead] = parent;
+    return result;
+  };
+
+  // Backward beads: from the previous bead, bent towards the current bead.
+  for (std::size_t i = 0; i != backward.size(); ++i)
+  {
+    isBackward[backward[i]] = true;
+    model.backwardBeads.push_back(
+        makeBead(backward[i], previousBead, currentBead, std::nullopt, std::span(backward).first(i)));
+  }
+
+  // Grown beads: from the current bead, bent towards the previous bead (the spin is free).
+  for (std::size_t i = 0; i != step.nextBeads.size(); ++i)
+  {
+    model.nextBeads.push_back(
+        makeBead(step.nextBeads[i], currentBead, previousBead, std::nullopt, std::span(step.nextBeads).first(i)));
+  }
+
+  // Future beads: breadth first through the unplaced flexible beads beyond the grown ones. A rigid body
+  // or a ring is not an ideal sub-chain and ends the model there.
+  auto clusterOf = [&](std::size_t bead) { return graph.fragmentCyclicClusterIds[graph.atomFragmentIds[bead]]; };
+  std::vector<std::size_t> frontier = step.nextBeads;
+  for (std::size_t depth = 0; depth != CBMC::Constants::lookaheadGuideDepth && !frontier.empty(); ++depth)
+  {
+    std::vector<std::size_t> next{};
+    for (std::size_t parent : frontier)
+    {
+      std::vector<std::size_t> children{};
+      for (std::size_t child : connectivity.findAllNeighbors(parent))
+      {
+        if (placed[child] || positioned[child]) continue;
+        if (graph.fragments[graph.atomFragmentIds[child]].isRigidBody() || clusterOf(child).has_value()) continue;
+        const std::optional<std::size_t> bendReference = parentOf[parent];
+        const std::optional<std::size_t> torsionReference =
+            bendReference.has_value() ? parentOf[bendReference.value()] : std::nullopt;
+        isFuture[child] = true;
+        model.futureBeads.push_back(makeBead(child, parent, bendReference, torsionReference, children));
+        children.push_back(child);
+        next.push_back(child);
+      }
+    }
+    frontier = std::move(next);
+  }
+  if (model.futureBeads.empty()) return;
+
+  // Cross terms: every remaining term among positioned beads that involves a future bead, split by
+  // whether it involves a backward bead (and thus depends on the spin).
+  auto classify = [&](const auto &identifiers) -> std::optional<bool>
+  {
+    bool future = false;
+    bool spin = false;
+    for (std::size_t id : identifiers)
+    {
+      if (!positioned[id]) return std::nullopt;
+      future = future || isFuture[id];
+      spin = spin || isBackward[id];
+    }
+    if (!future) return std::nullopt;
+    return spin;
+  };
+  for (const BendPotential &bend : intra.bends)
+  {
+    const auto &ids = bend.identifiers;
+    if (samplerBends.contains(bendKey(ids[0], ids[1], ids[2]))) continue;
+    if (std::optional<bool> spin = classify(ids); spin.has_value())
+      (spin.value() ? model.spinTerms : model.invariantTerms).bends.push_back(bend);
+  }
+  for (const TorsionPotential &torsion : intra.torsions)
+  {
+    const auto &ids = torsion.identifiers;
+    if (samplerTorsions.contains(torsionKey(ids[0], ids[1], ids[2], ids[3]))) continue;
+    if (std::optional<bool> spin = classify(ids); spin.has_value())
+      (spin.value() ? model.spinTerms : model.invariantTerms).torsions.push_back(torsion);
+  }
+  for (const VanDerWaalsPotential &pair : intra.vanDerWaals)
+  {
+    if (std::optional<bool> spin = classify(pair.identifiers); spin.has_value())
+      (spin.value() ? model.spinTerms : model.invariantTerms).vanDerWaals.push_back(pair);
+  }
+  for (const CoulombPotential &pair : intra.coulombs)
+  {
+    if (std::optional<bool> spin = classify(pair.identifiers); spin.has_value())
+      (spin.value() ? model.spinTerms : model.invariantTerms).coulombs.push_back(pair);
+  }
+
+  // Without a spin-dependent term the guide would be flat.
+  if (model.spinTerms.bends.empty() && model.spinTerms.torsions.empty() && model.spinTerms.vanDerWaals.empty() &&
+      model.spinTerms.coulombs.empty())
+  {
+    return;
+  }
+
+  CBMC::GrowStep::SpinSelectionData::LookaheadGuide guide{};
+  guide.referenceBead = model.referenceBead;
+  guide.signature = model.signature();
+  guide.model = std::move(model);
+  step.spin.lookahead = std::move(guide);
 }
 
 // Determine the next growth step given the set of already-placed beads.
@@ -426,8 +634,13 @@ std::vector<CBMC::GrowStep> CBMC::buildGrowthPlan(
   while (placed.size() < numberOfBeads)
   {
     GrowStep step = nextGrowthStep(connectivity, fragmentGraph, intraMolecularPotentials, placed);
-    placed.insert(placed.end(), step.nextBeads.begin(), step.nextBeads.end());
     CBMC::prepareStep(step, connectivity, fragmentGraph, intraMolecularPotentials.chiralCenters);
+
+    std::vector<bool> placedFlags(numberOfBeads, false);
+    for (std::size_t bead : placed) placedFlags[bead] = true;
+    attachLookaheadGuide(step, connectivity, fragmentGraph, placedFlags, intraMolecularPotentials);
+
+    placed.insert(placed.end(), step.nextBeads.begin(), step.nextBeads.end());
     plan.push_back(std::move(step));
   }
 

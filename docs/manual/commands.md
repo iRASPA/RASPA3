@@ -1552,7 +1552,9 @@ backbone beads and bond vectors \f$\mathbf b_i = \mathbf r_{i+1}-\mathbf r_i\f$:
 -   the bond-vector correlation \f$C(k) = \langle\hat{\mathbf b}_i\cdot\hat{\mathbf b}_{i+k}\rangle\f$;
 -   the single-chain form factor \f$P(q) = \langle N^{-2}\sum_{ij}\sin(qr_{ij})/(qr_{ij})\rangle\f$
     over all atoms, on a logarithmic \f$q\f$ grid, next to the Debye function of a Gaussian
-    chain with the same \f$\langle R_g^2\rangle\f$.
+    chain with the same \f$\langle R_g^2\rangle\f$. It is accumulated as a histogram of the
+    intramolecular pair distances (bin width 0.005 Å) and transformed when the output is
+    written, so its cost is independent of the number of wave vectors.
 
 The summary `molecule_backbone_<component>.s<system>.txt` reports the contour length
 \f$R_{\max}\f$, \f$\langle l\rangle\f$, \f$\langle R^2\rangle\f$, \f$\langle R_g^2\rangle\f$,
@@ -1566,8 +1568,8 @@ confidence intervals from block averaging. Output is written to the directory
 `molecule_backbone`.
 
 -   `"SampleMoleculeBackboneEvery" : integer`\
-    Sample every `int` cycles. The internal distances and the form factor are
-    \f$O(N^2)\f$ per molecule. Default: `10`.
+    Sample every `int` cycles. The internal distances and the pair-distance histogram
+    of the form factor are \f$O(N^2)\f$ per molecule. Default: `10`.
 
 -   `"WriteMoleculeBackboneEvery" : integer`\
     Write the output every `int` cycles. Default: `5000`.
@@ -1830,6 +1832,26 @@ and rings are closed as one cluster with an internal Monte-Carlo. All options
 affect sampling efficiency only; every value yields the same Boltzmann
 distribution.
 
+The torsion-spin selection of a flexible attach step is *guided*: the trial
+spins are weighted not only by the bonded and short-range intramolecular terms
+that are known at that step, but also by a tabulated *lookahead* factor
+`g(φ)`, the Boltzmann average over the ideal-chain conformations of the beads
+of the next two bonds of the interactions that couple those future beads to
+the already placed ones (the 1-5 van der Waals and Coulomb pairs across the
+junction). This steers the spin away from torsion states that the bare torsion
+potential favours but that a bead placed two steps later cannot accommodate
+(e.g. the cis state of an alkyl-ester C-C-O-C(=O) dihedral, whose carbonyl
+oxygen would then clash with the chain). The guide is divided out of the
+Rosenbluth weight of the selected spin, so the sampled distribution is exact
+for any `g`; only the variance of the growth weights (and hence the acceptance
+of the CBMC moves and the quality of `"CreateNumberOfMolecules"` growths)
+improves. The tables are built once per distinct junction environment and
+temperature at start-up (typically a few seconds for a molecule with tens of
+beads) and require no input. The guide is local: it does not know about
+interactions between distant parts of the same molecule, so the acceptance of
+regrowing a molecule that is collapsed on itself (a long chain in vacuum) is
+not improved by it.
+
 -   `"NumberOfFirstBeadPositions" : integer`\
     Number of trial positions of the first bead, drawn uniformly in the box
     (default: 10).
@@ -1975,9 +1997,17 @@ distribution.
     when restarting this value is usually set back to zero. Setting it
     unreasonably high can cause an infinite loop: the routine only accepts
     molecules whose growth causes no overlap (energy below the overlap
-    criterion). The starting configurations are far from optimal, so substantial
-    equilibration is needed to relax the energy; the `CBMC` growth can, however,
-    reach very high densities.
+    criterion). A flexible molecule is not taken from a single growth: the first
+    valid growth starts a short chain of further growths, each replacing the
+    current one with the reinsertion acceptance min(1, W_new/W_old), which
+    removes the conformations a single growth over-represents (a torsion chosen
+    before its 1-5 partners exist, such as a twisted or E ester at the end of a
+    diacrylate that molecular dynamics could not undo). In a dense fluid the
+    weights are dominated by the fit into the surroundings, so there the
+    initialization cycles (partial reinsertion with fixed endpoints) remain
+    necessary to finish the job. The starting configurations are far from
+    optimal, so substantial equilibration is needed to relax the energy; the
+    `CBMC` growth can, however, reach very high densities.
 
 -   `"StartingBead" : integer`\
     The index of the bead from which `CBMC` growth starts. Must be smaller than
