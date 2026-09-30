@@ -142,6 +142,7 @@ void SpatialDecompositionForceEngine::initialize(System& system)
   localForce.assign(settings.numberOfThreads, {});
   prepareKernel(system);
   rebuildRequested.assign(settings.numberOfThreads, 1);
+  influenceUpdateRequested = 0;
   threadEnergies.assign(settings.numberOfThreads, RunningEnergy{});
   threadStrain.assign(settings.numberOfThreads, double3x3{});
   threadCorrection.assign(settings.numberOfThreads, double3x3{});
@@ -277,7 +278,8 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
   // phase 0: refresh positions of the owned atoms, decide whether the lists must be rebuilt. A change of the box
   // (barostat) by itself does not invalidate the lists: the atoms move with the cell and the displacement check
   // covers that motion, and the pair distances are always taken with the minimum image of the current box. The
-  // box must only stay large enough for the minimum-image lists.
+  // box must only stay large enough for the minimum-image lists. The mesh influence function does depend on the
+  // cell: thread 0 decides here whether it must be recomputed (a flag read by all threads after the barrier).
   const bool boxChanged = cellList.boxChanged(box);
   workers.phase(
       [&]
@@ -294,11 +296,34 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
                             cellList.listCutoff, halfWidth));
           }
         }
-        if (thread == 0 && useMesh) pppm.updateBox(box, system.forceField.EwaldAlpha);
+        if (thread == 0)
+        {
+          influenceUpdateRequested =
+              useMesh && pppm.influenceFunctionOutdated(box, system.forceField.EwaldAlpha) ? 1 : 0;
+          if (influenceUpdateRequested != 0)
+          {
+            pppm.beginInfluenceFunction(box, system.forceField.EwaldAlpha, threads);
+          }
+        }
         bool request = cellList.numberOfBuilds == 0 || cellList.numberOfAtoms != atoms.size();
         if (!request) request = cellList.refreshPositionsAndCheck(thread, atoms);
         rebuildRequested[thread] = request ? 1 : 0;
       });
+
+  // phase 0b (only after a cell change, NPT): the influence function G(m) over the half spectrum is expensive on
+  // a fine mesh (~K^3 / 2 wave vectors with an exponential each), so its x-slabs are computed by all threads and
+  // the single-ion sums are reduced by thread 0. Only thread 0 reads the reduced values later in the step.
+  if (influenceUpdateRequested != 0)
+  {
+    lap(timing.rebuild);
+    workers.phase([&] { pppm.computeInfluenceSlab(thread, threads); });
+    if (thread == 0)
+    {
+      pppm.finishInfluenceFunction();
+      ++timing.influenceUpdates;
+    }
+    lap(timing.influence);
+  }
 
   bool rebuild = false;
   for (std::size_t t = 0; t < threads; ++t) rebuild = rebuild || (rebuildRequested[t] != 0);
@@ -794,8 +819,16 @@ std::string SpatialDecompositionForceEngine::writeTimings() const
   result +=
       std::format("    neighbour-list rebuilds:  {} ({:.2f} steps per rebuild)\n", timing.rebuilds,
                   timing.rebuilds > 0 ? static_cast<double>(timing.steps) / static_cast<double>(timing.rebuilds) : 0.0);
+  if (timing.influenceUpdates > 0)
+  {
+    result += std::format("    influence-function updates: {} (cell changes)\n", timing.influenceUpdates);
+  }
   result += std::format("    total:                    {:14.4f} [s]\n", timing.total.count());
   result += std::format("    rebuilds:                 {:14.4f} [s]\n", timing.rebuild.count());
+  if (timing.influenceUpdates > 0)
+  {
+    result += std::format("    influence function:       {:14.4f} [s]\n", timing.influence.count());
+  }
   result += std::format("    pairs + spreading:        {:14.4f} [s]\n", timing.pairs.count());
   result += std::format("    reduction, mesh, scatter: {:14.4f} [s]\n", timing.mesh.count());
   result += std::format("    bonded + exclusions:      {:14.4f} [s]\n", timing.bonded.count());

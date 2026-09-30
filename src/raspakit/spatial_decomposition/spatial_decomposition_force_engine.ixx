@@ -68,11 +68,13 @@ export class SpatialDecompositionForceEngine
   {
     std::chrono::duration<double> total{};
     std::chrono::duration<double> rebuild{};
+    std::chrono::duration<double> influence{};  ///< influence-function recomputation after a cell change (NPT)
     std::chrono::duration<double> pairs{};
     std::chrono::duration<double> mesh{};
     std::chrono::duration<double> bonded{};
     std::size_t steps{};
     std::size_t rebuilds{};
+    std::size_t influenceUpdates{};
   };
 
   /// Returns whether the engine covers the system; on false, `reason` names the unsupported feature.
@@ -131,6 +133,7 @@ export class SpatialDecompositionForceEngine
   std::vector<LennardJonesPair> lennardJones{};
   EwaldRealSpaceTable ewaldTable{};
   std::vector<std::uint8_t> rebuildRequested{};
+  std::uint8_t influenceUpdateRequested{0};  ///< set by thread 0 in phase 0, read by all after the barrier
   std::vector<RunningEnergy> threadEnergies{};
   std::vector<double3x3> threadStrain{};      ///< pair + exclusion strain derivatives per thread
   std::vector<double3x3> threadCorrection{};  ///< atomic-to-molecular virial correction per thread

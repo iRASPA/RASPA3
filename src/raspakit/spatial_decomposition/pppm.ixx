@@ -49,8 +49,20 @@ export class PPPM
   std::size_t interpolationOrder() const { return order; }
   std::size_t numberOfMeshCopies() const { return meshCopies.size(); }
 
-  /// Recomputes the influence function when the cell or alpha differ from what it was built for. Thread 0 only.
+  /// Recomputes the influence function serially when the cell or alpha differ from what it was built for.
+  /// Thread 0 only.
   void updateBox(const SimulationBox& box, double alphaValue);
+
+  /// Whether the influence function was built for a different cell or alpha (NPT: after every cell update).
+  bool influenceFunctionOutdated(const SimulationBox& box, double alphaValue) const;
+
+  /// Parallel recomputation of the influence function, in three steps separated by team barriers: thread 0
+  /// calls `beginInfluenceFunction` (sets cell, alpha and the per-thread partial sums), every thread computes
+  /// its x-slab of the half spectrum with `computeInfluenceSlab`, and thread 0 reduces the single-ion sum and
+  /// strain tensor of the slabs with `finishInfluenceFunction`.
+  void beginInfluenceFunction(const SimulationBox& box, double alphaValue, std::size_t numberOfThreads);
+  void computeInfluenceSlab(std::size_t thread, std::size_t numberOfThreads);
+  void finishInfluenceFunction();
 
   void clearMesh(std::size_t thread);
 
@@ -109,6 +121,8 @@ export class PPPM
   double singleIonSum{0.0};
   double3x3 ionStrain{};
   double3x3 reciprocalStrain{};
+  std::vector<double> partialIonSum{};        ///< Per-thread single-ion sums of the influence-function slabs.
+  std::vector<double3x3> partialIonStrain{};  ///< Per-thread single-ion strain tensors of the slabs.
 
   std::size_t realSize() const;
   std::size_t complexSize() const;

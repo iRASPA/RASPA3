@@ -191,11 +191,29 @@ void PPPM::computeBsplineModuli()
   bsplineModulusZ = moduli(mesh.z);
 }
 
-void PPPM::computeInfluenceFunction(const SimulationBox& box)
+bool PPPM::influenceFunctionOutdated(const SimulationBox& box, double alphaValue) const
 {
+  return !sameMatrix(box.inverseCell, inverseCellAtBuild) || box.volume != volume || alphaValue != alpha;
+}
+
+void PPPM::beginInfluenceFunction(const SimulationBox& box, double alphaValue, std::size_t numberOfThreads)
+{
+  alpha = alphaValue;
   inverseCell = box.inverseCell;
-  inverseCellAtBuild = box.inverseCell;
   volume = box.volume;
+  if (influence.size() != complexSize()) influence.assign(complexSize(), 0.0);
+  const std::size_t threads = std::max<std::size_t>(1, numberOfThreads);
+  partialIonSum.assign(threads, 0.0);
+  partialIonStrain.assign(threads, double3x3{});
+}
+
+void PPPM::computeInfluenceSlab(std::size_t thread, std::size_t numberOfThreads)
+{
+  const std::size_t threads = std::max<std::size_t>(1, numberOfThreads);
+  if (thread >= threads) return;
+  const std::int32_t planes = mesh.x;
+  const std::int32_t first = static_cast<std::int32_t>((static_cast<std::size_t>(planes) * thread) / threads);
+  const std::int32_t last = static_cast<std::int32_t>((static_cast<std::size_t>(planes) * (thread + 1)) / threads);
 
   const double3 rowX(inverseCell.ax, inverseCell.bx, inverseCell.cx);
   const double3 rowY(inverseCell.ay, inverseCell.by, inverseCell.cy);
@@ -204,10 +222,9 @@ void PPPM::computeInfluenceFunction(const SimulationBox& box)
   const double alphaFactor = -0.25 / (alpha * alpha);
   const std::size_t halfZ = static_cast<std::size_t>(mesh.z) / 2 + 1;
 
-  influence.assign(complexSize(), 0.0);
   double ionSum = 0.0;
   double3x3 ionTensor{};
-  for (std::int32_t mx = 0; mx < mesh.x; ++mx)
+  for (std::int32_t mx = first; mx < last; ++mx)
   {
     const std::int32_t sx = (mx > mesh.x / 2) ? mx - mesh.x : mx;
     const double3 kx = 2.0 * std::numbers::pi * static_cast<double>(sx) * rowX;
@@ -248,13 +265,32 @@ void PPPM::computeInfluenceFunction(const SimulationBox& box)
       }
     }
   }
-  singleIonSum = ionSum;
-  ionStrain = ionTensor;
+  partialIonSum[thread] = ionSum;
+  partialIonStrain[thread] = ionTensor;
+}
+
+void PPPM::finishInfluenceFunction()
+{
+  singleIonSum = 0.0;
+  ionStrain = double3x3{};
+  for (std::size_t t = 0; t < partialIonSum.size(); ++t)
+  {
+    singleIonSum += partialIonSum[t];
+    ionStrain += partialIonStrain[t];
+  }
+  inverseCellAtBuild = inverseCell;
+}
+
+void PPPM::computeInfluenceFunction(const SimulationBox& box)
+{
+  beginInfluenceFunction(box, alpha, 1);
+  computeInfluenceSlab(0, 1);
+  finishInfluenceFunction();
 }
 
 void PPPM::updateBox(const SimulationBox& box, double alphaValue)
 {
-  if (!sameMatrix(box.inverseCell, inverseCellAtBuild) || box.volume != volume || alphaValue != alpha)
+  if (influenceFunctionOutdated(box, alphaValue))
   {
     alpha = alphaValue;
     computeInfluenceFunction(box);

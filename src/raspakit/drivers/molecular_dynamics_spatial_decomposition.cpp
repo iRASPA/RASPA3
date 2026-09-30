@@ -80,12 +80,22 @@ void applyVelocityMatrix(System& system, const double3x3& matrix)
 
 void propagateCell(System& system, const double3x3& cellVelocity)
 {
-  std::vector<double3> positions;
-  std::vector<double3> velocities;
-  std::vector<double3*> targets;
   std::span<Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
   std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
   std::span<GroupState> groupData = system.spanOfGroupData();
+
+  // the coupled points are at most one per atom (plus the rigid groups); the buffers persist between steps so
+  // that the NPT step does not reallocate them every time
+  static thread_local std::vector<double3> positions;
+  static thread_local std::vector<double3> velocities;
+  static thread_local std::vector<double3*> targets;
+  const std::size_t capacity = moleculeAtoms.size() + groupData.size() + system.moleculeData.size();
+  positions.clear();
+  velocities.clear();
+  targets.clear();
+  positions.reserve(capacity);
+  velocities.reserve(capacity);
+  targets.reserve(capacity);
   std::size_t atomIndex{};
   std::size_t groupIndex{};
   for (Molecule& molecule : system.moleculeData)
