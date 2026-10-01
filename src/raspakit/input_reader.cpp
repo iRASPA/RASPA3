@@ -1177,6 +1177,42 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       spatialDecompositionSettings.interpolationOrder));
     }
   }
+  if (parsed_data.contains("PruneSkin"))
+  {
+    if (!parsed_data["PruneSkin"].is_number())
+    {
+      throw std::runtime_error(std::format("[Input reader]: 'PruneSkin' must be a number [Angstrom]\n"));
+    }
+    spatialDecompositionSettings.pruneSkin = parsed_data["PruneSkin"].get<double>();
+    if (spatialDecompositionSettings.pruneSkin < 0.0)
+    {
+      throw std::runtime_error(std::format("[Input reader]: 'PruneSkin' must be non-negative\n"));
+    }
+  }
+  if (parsed_data.contains("PairPrecision"))
+  {
+    if (!parsed_data["PairPrecision"].is_string())
+    {
+      throw std::runtime_error(std::format("[Input reader]: 'PairPrecision' must be a string ('Double' or 'Mixed')\n"));
+    }
+    std::string precision = parsed_data["PairPrecision"].get<std::string>();
+    std::transform(precision.begin(), precision.end(), precision.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    if (precision == "double")
+    {
+      spatialDecompositionSettings.pairPrecision = PairPrecision::Double;
+    }
+    else if (precision == "mixed" || precision == "single" || precision == "float")
+    {
+      spatialDecompositionSettings.pairPrecision = PairPrecision::Mixed;
+    }
+    else
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'PairPrecision' must be 'Double' or 'Mixed', '{}' was given\n",
+                      parsed_data["PairPrecision"].get<std::string>()));
+    }
+  }
   if (parsed_data.contains("DomainGrid"))
   {
     const nlohmann::json& grid = parsed_data["DomainGrid"];
@@ -4429,6 +4465,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "VerletSkin",
     "PPPMMeshSpacing",
     "PPPMInterpolationOrder",
+    "PairPrecision",
+    "PruneSkin",
     "DomainGrid",
     "Components",
     "Systems"};

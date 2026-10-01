@@ -485,6 +485,131 @@ TEST(spatial_decomposition, engine_threads_agree_with_serial_rigid_water)
   }
 }
 
+namespace
+{
+struct KernelTolerances
+{
+  double vdw;       ///< relative, molecule-molecule Lennard-Jones energy
+  double charge;    ///< relative, real-space Coulomb energy
+  double total;     ///< relative, potential energy
+  double gradient;  ///< relative rms
+  double pressure;  ///< relative max-abs
+};
+
+/// Compares the engine with \p candidate settings against the engine with the default (scalar double) kernel on
+/// a water box, at 1 and 4 threads, including a second evaluation after small displacements (lists reused).
+void expectKernelAgreesWithScalar(const SpatialDecompositionSettings& candidate, const KernelTolerances& tolerance)
+{
+  ForceField forceField = makeWaterForceField();
+  Component water = makeWater(forceField);
+  System system =
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {water}, {}, {343}, 5);
+  RandomNumber random(13);
+  randomizeConfiguration(system, random);
+
+  std::vector<double3> originalPositions;
+  for (const Atom& atom : system.spanOfMoleculeAtoms()) originalPositions.push_back(atom.position);
+
+  for (std::size_t threads : {1uz, 4uz})
+  {
+    {
+      std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+      for (std::size_t i = 0; i < atoms.size(); ++i) atoms[i].position = originalPositions[i];
+    }
+    SpatialDecompositionForceEngine reference(settingsFor(threads));
+    reference.initialize(system);
+    EXPECT_TRUE(reference.usesFastKernel());
+    const RunningEnergy referenceEnergy = reference.computeGradients(system, true);
+    const std::vector<double3> referenceGradient = gradientsOf(system);
+    const double3x3 referencePressure = reference.molecularPressureTensor();
+    const double rms = rmsNorm(referenceGradient);
+
+    SpatialDecompositionSettings settings = candidate;
+    settings.numberOfThreads = threads;
+    SpatialDecompositionForceEngine engine(settings);
+    engine.initialize(system);
+    EXPECT_TRUE(engine.usesFastKernel());
+    const RunningEnergy energy = engine.computeGradients(system, true);
+    const std::vector<double3> gradient = gradientsOf(system);
+
+    EXPECT_NEAR(energy.moleculeMoleculeVDW, referenceEnergy.moleculeMoleculeVDW,
+                tolerance.vdw * std::abs(referenceEnergy.moleculeMoleculeVDW))
+        << "threads " << threads;
+    EXPECT_NEAR(energy.moleculeMoleculeCharge, referenceEnergy.moleculeMoleculeCharge,
+                tolerance.charge * std::abs(referenceEnergy.moleculeMoleculeCharge))
+        << "threads " << threads;
+    // the mesh, self and exclusion terms are evaluated in double by the same code in both engines
+    EXPECT_NEAR(energy.ewald_fourier, referenceEnergy.ewald_fourier, 1e-10 * std::abs(referenceEnergy.ewald_fourier));
+    EXPECT_NEAR(energy.ewald_exclusion, referenceEnergy.ewald_exclusion,
+                1e-10 * std::abs(referenceEnergy.ewald_exclusion));
+    EXPECT_NEAR(energy.potentialEnergy(), referenceEnergy.potentialEnergy(),
+                tolerance.total * std::abs(referenceEnergy.potentialEnergy()))
+        << "threads " << threads;
+    EXPECT_LT(rmsDifference(gradient, referenceGradient), tolerance.gradient * rms) << "threads " << threads;
+    EXPECT_LT(maxAbsDifference(engine.molecularPressureTensor(), referencePressure),
+              tolerance.pressure * maxAbs(referencePressure))
+        << "threads " << threads;
+
+    // after small displacements (lists reused, positions refreshed relative to the sub-domain origin)
+    std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+    for (Atom& atom : atoms)
+    {
+      atom.position += 0.05 * double3(random.uniform() - 0.5, random.uniform() - 0.5, random.uniform() - 0.5);
+    }
+    const RunningEnergy movedEngine = engine.computeGradients(system, false);
+    const std::vector<double3> movedGradient = gradientsOf(system);
+    const RunningEnergy movedReference = reference.computeGradients(system, false);
+    const std::vector<double3> movedReferenceGradient = gradientsOf(system);
+    EXPECT_NEAR(movedEngine.potentialEnergy(), movedReference.potentialEnergy(),
+                tolerance.total * std::abs(movedReference.potentialEnergy()))
+        << "threads " << threads;
+    EXPECT_LT(rmsDifference(movedGradient, movedReferenceGradient),
+              tolerance.gradient * rmsNorm(movedReferenceGradient))
+        << "threads " << threads;
+    EXPECT_GT(engine.timings().steps, engine.timings().rebuilds);
+
+    // larger displacements: beyond half the prune skin (the pruned list is rebuilt from the Verlet list) but
+    // within half the Verlet skin (no rebuild)
+    for (Atom& atom : atoms)
+    {
+      atom.position += 0.4 * double3(random.uniform() - 0.5, random.uniform() - 0.5, random.uniform() - 0.5);
+    }
+    const RunningEnergy prunedEngine = engine.computeGradients(system, false);
+    const std::vector<double3> prunedGradient = gradientsOf(system);
+    const RunningEnergy prunedReference = reference.computeGradients(system, false);
+    const std::vector<double3> prunedReferenceGradient = gradientsOf(system);
+    EXPECT_NEAR(prunedEngine.potentialEnergy(), prunedReference.potentialEnergy(),
+                tolerance.total * std::abs(prunedReference.potentialEnergy()))
+        << "threads " << threads;
+    EXPECT_LT(rmsDifference(prunedGradient, prunedReferenceGradient),
+              tolerance.gradient * rmsNorm(prunedReferenceGradient))
+        << "threads " << threads;
+    EXPECT_EQ(engine.timings().rebuilds, 1uz);
+  }
+}
+}  // namespace
+
+TEST(spatial_decomposition, engine_cluster_kernel_double_matches_scalar_rigid_water)
+{
+  // the same arithmetic in a different order: agreement to rounding
+  SpatialDecompositionSettings settings = settingsFor(1);
+  settings.clusterKernelForDouble = true;
+  expectKernelAgreesWithScalar(settings,
+                               {.vdw = 1e-10, .charge = 1e-9, .total = 1e-9, .gradient = 1e-9, .pressure = 1e-9});
+}
+
+TEST(spatial_decomposition, engine_mixed_precision_agrees_with_double_rigid_water)
+{
+  // Single-precision pair geometry (positions within ~25 Angstrom of the sub-domain origin, so about 2e-6
+  // Angstrom) and closed-form erfc (absolute error 1.5e-7), double accumulation. Measured: Lennard-Jones energy
+  // 2e-8, real-space Coulomb energy 3e-5 (the erfc error is systematic and the water charges cancel strongly),
+  // total energy 3e-6, gradient rms 8e-7, pressure 1.4e-6 relative.
+  SpatialDecompositionSettings settings = settingsFor(1);
+  settings.pairPrecision = PairPrecision::Mixed;
+  expectKernelAgreesWithScalar(settings,
+                               {.vdw = 1e-6, .charge = 1e-4, .total = 1e-5, .gradient = 1e-5, .pressure = 1e-5});
+}
+
 TEST(spatial_decomposition, engine_matches_exact_ewald_flexible_chains_triclinic)
 {
   ForceField forceField = ForceField(

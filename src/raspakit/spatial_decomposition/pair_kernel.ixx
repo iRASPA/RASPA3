@@ -15,3 +15,11 @@ export struct LennardJonesPair
   double inverseSigma2{1.0};  ///< 1 / sigma^2.
   double shift{0.0};          ///< Energy shift at the cutoff (0 for truncated potentials).
 };
+
+/// Force on one atom of the compact local (owned + ghost image) array of a sub-domain; always double.
+export struct LocalForce
+{
+  double x{0.0};
+  double y{0.0};
+  double z{0.0};
+};

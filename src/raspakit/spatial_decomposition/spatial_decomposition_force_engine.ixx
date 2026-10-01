@@ -12,6 +12,7 @@ import spatial_decomposition_settings;
 import spatial_decomposition_cell_list;
 import spatial_decomposition_pppm;
 import spatial_decomposition_pair_kernel;
+import spatial_decomposition_cluster_kernel;
 import spatial_decomposition_worker_team;
 
 /**
@@ -27,9 +28,12 @@ import spatial_decomposition_worker_team;
  *    of its atoms and their ghost images (periodic shifts resolved at list build, so the kernel has no
  *    minimum-image operation); the forces on the images are collected by the owners in a reduction phase, so no
  *    two threads ever write the same force;
- *  - a specialised Lennard-Jones + tabulated Ewald real-space kernel (EwaldRealSpaceTable, in r^2) when the force field
- *    is plain 12-6 Lennard-Jones with Ewald (or no) electrostatics and all atoms are fully coupled; otherwise the
- *    generic Potentials::potentialVDW / potentialCoulomb kernels of the rest of the code;
+ *  - specialised pair kernels (Lennard-Jones + Ewald real space) when the force field is plain 12-6
+ *    Lennard-Jones with Ewald (or no) electrostatics and all atoms are fully coupled: a scalar kernel over the
+ *    half lists in double with the tabulated erfc (PairPrecision::Double) or the SIMD cluster kernel
+ *    (ClusterPairKernel: spatially sorted clusters, a pruned dual list, closed-form erfc) in mixed precision
+ *    (PairPrecision::Mixed); otherwise the generic Potentials::potentialVDW / potentialCoulomb kernels of the
+ *    rest of the code;
  *  - a smooth particle-mesh Ewald sum (PPPM) for the reciprocal-space Coulomb energy with the force field's
  *    Ewald alpha, so the self and intramolecular exclusion terms of the exact Ewald code apply unchanged;
  *  - the bonded terms and the self / exclusion corrections per molecule, handed out to the threads in chunks;
@@ -117,22 +121,22 @@ export class SpatialDecompositionForceEngine
 
   // shared force accumulators in sorted order; every slot is written by the owner of the atom only
   std::vector<double> fx{}, fy{}, fz{};
-  // per-thread private force buffers over the compact local atoms (owned atoms, then ghost images); the image
-  // part is collected by the owners of the atoms after the pair phase
-  struct LocalForce
-  {
-    double x{0.0};
-    double y{0.0};
-    double z{0.0};
-  };
+  // per-thread private force buffers over the compact local atoms (owned atoms, then ghost images, padded to the
+  // clusters of the cluster kernel); the image part is collected by the owners of the atoms after the pair phase
   std::vector<std::vector<LocalForce>> localForce{};
 
-  // specialised pair kernel: per pair-type Lennard-Jones table and the tabulated Ewald real-space term
+  // specialised pair kernels: per pair-type Lennard-Jones table and the tabulated Ewald real-space term, evaluated
+  // by the scalar kernel (double) or on clusters (ClusterPairKernel, mixed precision; the double instantiation
+  // on request for validation)
   bool fastKernel{false};
   bool fastCoulomb{false};
   std::size_t numberOfPseudoAtomTypes{0};
   std::vector<LennardJonesPair> lennardJones{};
   EwaldRealSpaceTable ewaldTable{};
+  ClusterPairKernel<double> clusterKernelDouble{};
+  ClusterPairKernel<float> clusterKernelMixed{};
+  bool mixedPrecision() const { return settings.pairPrecision == PairPrecision::Mixed; }
+  bool usesClusterKernel() const { return mixedPrecision() || settings.clusterKernelForDouble; }
   std::vector<std::uint8_t> rebuildRequested{};
   std::uint8_t influenceUpdateRequested{0};  ///< set by thread 0 in phase 0, read by all after the barrier
   std::vector<RunningEnergy> threadEnergies{};
@@ -158,6 +162,8 @@ export class SpatialDecompositionForceEngine
   void pairPhase(std::size_t thread, const System& system, RunningEnergy& energy);
   template <bool Fast>
   void pairLoop(std::size_t thread, const System& system, RunningEnergy& energy);
+  void clusterPairLoop(std::size_t thread, RunningEnergy& energy);
+  void buildClusterLists(std::size_t thread);
   void collectGhostForces(std::size_t thread);
   void prepareKernel(const System& system);
   void bondedWork(std::size_t thread, System& system, RunningEnergy& energy);

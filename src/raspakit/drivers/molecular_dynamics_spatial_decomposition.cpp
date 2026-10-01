@@ -682,6 +682,11 @@ void MolecularDynamicsSpatialDecomposition::setup()
       std::print(stream, "    Verlet skin:                     {} [A]\n", engineSettings.verletSkin);
       std::print(stream, "    PPPM mesh spacing:               {} [A]\n", engineSettings.meshSpacing);
       std::print(stream, "    PPPM interpolation order:        {}\n", engineSettings.interpolationOrder);
+      std::print(stream, "    pair kernel precision:           {}\n", pairPrecisionName(engineSettings.pairPrecision));
+      if (engineSettings.pairPrecision == PairPrecision::Mixed)
+      {
+        std::print(stream, "    prune skin:                      {} [A]\n", engineSettings.pruneSkin);
+      }
       if (engineSettings.domainGrid.has_value())
       {
         std::print(stream, "    domain grid:                     {} x {} x {}\n", engineSettings.domainGrid->x,

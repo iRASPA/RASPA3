@@ -27,6 +27,7 @@ import spatial_decomposition_settings;
 import spatial_decomposition_cell_list;
 import spatial_decomposition_pppm;
 import spatial_decomposition_pair_kernel;
+import spatial_decomposition_cluster_kernel;
 import spatial_decomposition_worker_team;
 
 SpatialDecompositionForceEngine::SpatialDecompositionForceEngine(const SpatialDecompositionSettings& s) : settings(s)
@@ -123,6 +124,8 @@ void SpatialDecompositionForceEngine::initialize(System& system)
   fy.assign(numberOfAtoms, 0.0);
   fz.assign(numberOfAtoms, 0.0);
   localForce.assign(settings.numberOfThreads, {});
+  clusterKernelDouble.resize(settings.numberOfThreads);
+  clusterKernelMixed.resize(settings.numberOfThreads);
   prepareKernel(system);
   rebuildRequested.assign(settings.numberOfThreads, 1);
   influenceUpdateRequested = 0;
@@ -152,8 +155,10 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
     }
     if (fastCoulomb && (forceField.EwaldAlpha != ewaldTable.alpha || !ewaldTable.spans(forceField.cutOffCoulomb)))
     {
-      // the kernel choice depends on whether the table can span the (new) cutoff
+      // the kernel choice depends on whether the table can span the (new) cutoff; the cluster lists of the
+      // specialised kernel follow the choice at the next build
       prepareKernel(system);
+      cellList.numberOfBuilds = 0;
     }
   }
 
@@ -328,7 +333,12 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
             ++timing.rebuilds;
           }
         });
-    workers.phase([&] { cellList.buildLists(thread, box); });
+    workers.phase(
+        [&]
+        {
+          cellList.buildLists(thread, box);
+          if (fastKernel && usesClusterKernel()) buildClusterLists(thread);
+        });
   }
   lap(timing.rebuild);
 
@@ -458,18 +468,105 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
     }
   }
   fastKernel = lennardJonesOnly && unitScaling;
+
+  if (fastKernel && usesClusterKernel())
+  {
+    const bool charge = forceField.useCharge && fastCoulomb;
+    const EwaldRealSpaceTable* table = charge ? &ewaldTable : nullptr;
+    if (mixedPrecision())
+    {
+      clusterKernelMixed.setParameters(lennardJones, numberOfPseudoAtomTypes, charge, forceField.cutOffMoleculeVDW,
+                                       forceField.cutOffCoulomb, Units::CoulombicConversionFactor, table,
+                                       forceField.EwaldAlpha, settings.verletSkin, settings.pruneSkin);
+    }
+    else
+    {
+      clusterKernelDouble.setParameters(lennardJones, numberOfPseudoAtomTypes, charge, forceField.cutOffMoleculeVDW,
+                                        forceField.cutOffCoulomb, Units::CoulombicConversionFactor, table,
+                                        forceField.EwaldAlpha, settings.verletSkin, settings.pruneSkin);
+    }
+  }
+}
+
+void SpatialDecompositionForceEngine::buildClusterLists(std::size_t thread)
+{
+  const CellList::DomainLists& domain = cellList.domains[thread];
+  if (mixedPrecision())
+  {
+    clusterKernelMixed.buildLists(thread, domain);
+  }
+  else
+  {
+    clusterKernelDouble.buildLists(thread, domain);
+  }
 }
 
 void SpatialDecompositionForceEngine::pairPhase(std::size_t thread, const System& system, RunningEnergy& energy)
 {
-  if (fastKernel)
-  {
-    pairLoop<true>(thread, system, energy);
-  }
-  else
+  if (!fastKernel)
   {
     pairLoop<false>(thread, system, energy);
   }
+  else if (usesClusterKernel())
+  {
+    clusterPairLoop(thread, energy);
+  }
+  else
+  {
+    pairLoop<true>(thread, system, energy);
+  }
+}
+
+void SpatialDecompositionForceEngine::clusterPairLoop(std::size_t thread, RunningEnergy& energy)
+{
+  const CellList::DomainLists& domain = cellList.domains[thread];
+  const std::size_t owned = domain.ownedAtoms.size();
+  const bool withVirial = virialRequested;
+  double energyVDW = 0.0;
+  double energyCharge = 0.0;
+  double3x3 strain{};
+  std::vector<LocalForce>& forces = localForce[thread];
+
+  if (mixedPrecision())
+  {
+    forces.assign(clusterKernelMixed.paddedLocalAtoms(thread), LocalForce{});
+    clusterKernelMixed.refreshPositions(thread, domain);
+    clusterKernelMixed.pruneIfNeeded(thread, domain);
+    clusterKernelMixed.compute(thread, forces.data(), withVirial, energyVDW, energyCharge, strain);
+  }
+  else
+  {
+    forces.assign(clusterKernelDouble.paddedLocalAtoms(thread), LocalForce{});
+    clusterKernelDouble.refreshPositions(thread, domain);
+    clusterKernelDouble.pruneIfNeeded(thread, domain);
+    clusterKernelDouble.compute(thread, forces.data(), withVirial, energyVDW, energyCharge, strain);
+  }
+
+  // owned forces into the shared arrays (this thread is the only writer of its atoms), plus this thread's own
+  // images (an owned atom seen through a periodic shift)
+  const LocalForce* force = forces.data();
+  for (std::size_t k = 0; k < owned; ++k)
+  {
+    const std::uint32_t i = domain.ownedAtoms[k];
+    fx[i] = force[k].x;
+    fy[i] = force[k].y;
+    fz[i] = force[k].z;
+  }
+  if (domain.imagesByOwner.size() > thread)
+  {
+    for (const std::uint32_t slot : domain.imagesByOwner[thread])
+    {
+      const std::uint32_t i = domain.imageAtom[slot];
+      const LocalForce& f = force[owned + slot];
+      fx[i] += f.x;
+      fy[i] += f.y;
+      fz[i] += f.z;
+    }
+  }
+
+  energy.moleculeMoleculeVDW += energyVDW;
+  energy.moleculeMoleculeCharge += energyCharge;
+  if (withVirial) threadStrain[thread] += strain;
 }
 
 template <bool Fast>
@@ -830,10 +927,39 @@ std::string SpatialDecompositionForceEngine::writeStatus() const
       "================================================================================================================"
       "========\n");
   result += std::format("    threads: {}\n", settings.numberOfThreads);
-  result += std::format("    pair kernel: {}\n",
-                        fastKernel ? (fastCoulomb ? "specialised Lennard-Jones + tabulated Ewald real space"
-                                                  : "specialised Lennard-Jones")
-                                   : "generic (Potentials::potentialVDW / potentialCoulomb)");
+  if (fastKernel && usesClusterKernel())
+  {
+    auto describe = [&](const auto& kernel)
+    {
+      using Kernel = std::remove_cvref_t<decltype(kernel)>;
+      std::string text = std::format(
+          "    pair kernel: cluster {} x {} ({} precision) Lennard-Jones{}\n", Kernel::clusterI, Kernel::clusterJ,
+          mixedPrecision() ? "mixed" : "double",
+          fastCoulomb ? (Kernel::analyticEwald ? " + analytic Ewald real space" : " + tabulated Ewald real space")
+                      : "");
+      if (kernel.pruning())
+      {
+        text += std::format("    blocks: {} in the Verlet list, {} after pruning (skin {:.3f} A, {} prunes)\n",
+                            kernel.numberOfBlocks(), kernel.numberOfPrunedBlocks(), settings.pruneSkin,
+                            kernel.numberOfPrunes());
+      }
+      else
+      {
+        text += std::format("    blocks: {} (no pruning)\n", kernel.numberOfBlocks());
+      }
+      return text;
+    };
+    result += mixedPrecision() ? describe(clusterKernelMixed) : describe(clusterKernelDouble);
+  }
+  else if (fastKernel)
+  {
+    result += std::format("    pair kernel: scalar (double precision) Lennard-Jones{}\n",
+                          fastCoulomb ? " + tabulated Ewald real space" : "");
+  }
+  else
+  {
+    result += std::format("    pair kernel: generic (Potentials::potentialVDW / potentialCoulomb)\n");
+  }
   result += cellList.status();
   if (useMesh)
   {
