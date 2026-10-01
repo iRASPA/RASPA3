@@ -10,6 +10,7 @@ import system;
 import input_reader;
 import archive;
 import json;
+import double3x3;
 import running_energy;
 import spatial_decomposition_settings;
 import spatial_decomposition_force_engine;
@@ -25,9 +26,11 @@ import spatial_decomposition_force_engine;
  * neighbour lists over `NumberOfThreads` sub-domains and a particle-mesh Ewald sum. With one thread it is the
  * serial O(N) cell-list + PPPM variant.
  *
- * The pressure is sampled every cycle from the engine's virial; the per-component energy decomposition
- * (energy averages, status report) is recomputed with the exact code every 'PrintEvery' cycles. The engine is
- * not archived: after a binary restart the neighbour lists and the mesh are rebuilt from the settings.
+ * The pressure is sampled every cycle from the engine's virial; with a thermobarostat the reported tensor is the
+ * estimator of the barostat's coupling ('BarostatCoupling', molecular by default), so its average is the external
+ * pressure. The per-component energy decomposition comes from the engine's running energies for single-component
+ * systems and from the exact code every 'PrintEvery' cycles otherwise. The engine is not archived: after a binary
+ * restart the neighbour lists and the mesh are rebuilt from the settings.
  */
 export struct MolecularDynamicsSpatialDecomposition
 {
@@ -73,6 +76,11 @@ export struct MolecularDynamicsSpatialDecomposition
   SpatialDecompositionSettings engineSettings{};
   std::vector<std::unique_ptr<SpatialDecompositionForceEngine>> engines;  ///< One per system, built lazily.
 
+  /// Running sum and count (per system) of the pressure tensor the barostat drives to the external pressure,
+  /// over the steps since the last status report (printed with every report, then reset). Not part of the restart.
+  std::vector<double3x3> barostatPressureWindowSum;
+  std::vector<std::size_t> barostatPressureWindowCount;
+
   std::vector<std::ofstream> streams;
   std::vector<nlohmann::json> outputJsons;
 
@@ -106,6 +114,13 @@ export struct MolecularDynamicsSpatialDecomposition
 
   /// Recomputes forces, energies and the pressure tensor of a system through its engine.
   void recomputeGradients(std::size_t systemId);
+
+  /// Sets 'currentExcessPressureTensor' of a system from the engine's molecular virial; with a thermobarostat the
+  /// tensor is the one conjugate to the barostat coupling, and it is accumulated into the status-report window.
+  void updateReportedPressure(std::size_t systemId, bool accumulate);
+
+  /// The window-averaged barostat pressure tensor block of the status report (empty without a thermobarostat).
+  std::string writeBarostatPressureWindow(std::size_t systemId);
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive,
                                             const MolecularDynamicsSpatialDecomposition& md);

@@ -9,6 +9,7 @@ import component;
 import double3;
 import double3x3;
 import elastic_constants;
+import thermobarostat;
 import forcefield;
 import framework;
 import generalized_hessian;
@@ -261,7 +262,7 @@ TEST(elastic_constants_fluctuation, kinetic_virial_uses_flexible_framework_veloc
   system.forceField.pseudoAtoms[0].mass = 1.0;
   system.spanOfFrameworkDynamics()[0].velocity = {1.0, 2.0, 3.0};
   system.spanOfFrameworkDynamics()[1].velocity = {};
-  const double3x3 kinetic = computeMolecularKineticVirial(system);
+  const double3x3 kinetic = computeMolecularKineticVirial(system, BarostatCoupling::Atomic);
   EXPECT_DOUBLE_EQ(kinetic.ax, 1.0);
   EXPECT_DOUBLE_EQ(kinetic.by, 4.0);
   EXPECT_DOUBLE_EQ(kinetic.cz, 9.0);

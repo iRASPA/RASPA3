@@ -20,12 +20,23 @@ export bool molecularDynamicsUsesIsotropicBarostat(MolecularDynamicsEnsemble ens
 export bool molecularDynamicsUsesFlexibleBarostat(MolecularDynamicsEnsemble ensemble);
 export bool molecularDynamicsHasParticleExchange(MolecularDynamicsEnsemble ensemble);
 
+// How the barostat couples the cell to the particles. 'Molecular' drives every molecule through its centre of
+// mass (the molecular virial and the centre-of-mass kinetic energy enter the cell equation of motion), so the
+// pressure the barostat drives to the set point is the molecular pressure that the code reports. 'Atomic' couples
+// every flexible atom individually (atomic virial and atomic kinetic energy); the corresponding estimator is then
+// the atomic pressure. Rigid molecules and rigid groups are always coupled through their centre of mass.
+export enum class BarostatCoupling : std::uint8_t { Molecular, Atomic };
+
+export std::optional<BarostatCoupling> barostatCouplingFromString(std::string_view value);
+export std::string barostatCouplingName(BarostatCoupling coupling);
+
 export struct Thermobarostat
 {
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
   MolecularDynamicsEnsemble ensemble{MolecularDynamicsEnsemble::NVE};
   CellMinimizationType cellType{CellMinimizationType::Isotropic};
   MonoclinicAngleType monoclinicAngle{MonoclinicAngleType::Beta};
+  BarostatCoupling coupling{BarostatCoupling::Molecular};
   double temperature{300.0};
   double pressure{};
   double timeStep{0.0005};

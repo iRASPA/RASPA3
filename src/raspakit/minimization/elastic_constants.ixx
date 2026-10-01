@@ -5,8 +5,11 @@ export module elastic_constants;
 import std;
 
 import system;
+import molecule;
+import double3;
 import double3x3;
 import archive;
+import thermobarostat;
 
 export struct ElasticConstantsResult
 {
@@ -51,18 +54,36 @@ export ElasticConstantsResult computeElasticConstants(const System& system,
 export std::array<double, 36> computeAffineBornTensor(const System& system);
 
 /**
- * Return the instantaneous kinetic virial of the barostat's coupling points, sum(m v outer v), before
- * volume normalization: rigid molecules and rigid groups contribute their center-of-mass momentum flux,
- * flexible atoms contribute individually. This is the kinetic partner of 'computeBarostatVirial'.
+ * Mass, centre-of-mass position and centre-of-mass velocity of one molecule. A rigid molecule returns its
+ * stored centre-of-mass state; a flexible molecule is reduced over its atoms, a semi-flexible one over its
+ * flexible atoms and rigid-group states ('groupIndex' is the index of the molecule's first group state).
  */
-export double3x3 computeMolecularKineticVirial(const System& system);
+export struct MoleculeCenterOfMass
+{
+  double mass{};
+  double3 position{};
+  double3 velocity{};
+};
+export MoleculeCenterOfMass moleculeCenterOfMass(const System& system, const Molecule& molecule,
+                                                 std::size_t groupIndex);
+
+/**
+ * Return the instantaneous kinetic virial of the barostat's coupling points, sum(m v outer v), before
+ * volume normalization. With 'BarostatCoupling::Molecular' every molecule contributes its centre-of-mass
+ * momentum flux M V outer V; with 'BarostatCoupling::Atomic' rigid molecules and rigid groups contribute
+ * their center-of-mass momentum flux and flexible atoms contribute individually. This is the kinetic partner
+ * of 'computeBarostatVirial'.
+ */
+export double3x3 computeMolecularKineticVirial(const System& system, BarostatCoupling coupling);
 
 /**
  * Convert the molecular virial (sum over molecules of R_com outer F_molecule, the quantity behind the
  * Monte Carlo and the reported pressure) into the virial conjugate to the coupling the molecular-dynamics
- * barostat actually applies: the cell drives the centers of mass of rigid molecules and rigid groups and
- * every flexible atom individually ('propagateCell'). For a coupled point k of a molecule at R_k with
- * total force F_k (non-bonded and bonded) the virial is sum_k R_k outer F_k, so
+ * barostat actually applies. With 'BarostatCoupling::Molecular' the cell drives every molecule through its
+ * centre of mass and the molecular virial is returned (symmetrized). With 'BarostatCoupling::Atomic' the cell
+ * drives the centers of mass of rigid molecules and rigid groups and every flexible atom individually
+ * ('propagateCell'). For a coupled point k of a molecule at R_k with total force F_k (non-bonded and bonded)
+ * the virial is sum_k R_k outer F_k, so
  *
  *     V_barostat = V_molecular + sum_molecules sum_k (R_k - R_com) outer F_k .
  *
@@ -73,6 +94,23 @@ export double3x3 computeMolecularKineticVirial(const System& system);
  * Framework atoms are left as they enter the molecular virial (atomically); a flexible framework with
  * rigid groups is not corrected. Uses the current atom positions and the stored total atom gradients.
  */
-export double3x3 computeBarostatVirial(const System& system, const double3x3& molecularVirial);
+export double3x3 computeBarostatVirial(const System& system, const double3x3& molecularVirial,
+                                       BarostatCoupling coupling);
+
+/**
+ * Number of translational degrees of freedom the barostat couples to (the 'N_f' of the MTK equations), the
+ * centre-of-mass constraint removed: 3 N_molecules - 3 with molecular coupling, the system's translational
+ * degrees of freedom - 3 with atomic coupling.
+ */
+export std::size_t barostatTranslationalDegreesOfFreedom(const System& system, BarostatCoupling coupling);
+
+/**
+ * The pressure tensor whose time average the barostat drives to the external pressure: the virial of the
+ * coupled points ('computeBarostatVirial') plus the ideal-gas part of those points, (N_f + 3) / 3 k T / V
+ * on the diagonal (N_molecules k T / V with molecular coupling, the atom count of the coupled atoms with atomic
+ * coupling). With molecular coupling this is the molecular pressure tensor the code reports everywhere else.
+ */
+export double3x3 barostatPressureTensor(const System& system, const double3x3& molecularVirial,
+                                        BarostatCoupling coupling, std::size_t translationalDegreesOfFreedom);
 
 export std::string writeElasticConstants(const ElasticConstantsResult& result);

@@ -26,6 +26,7 @@ import molecule;
 import randomnumbers;
 import integrators_update;
 import elastic_constants;
+import thermobarostat;
 
 // The molecular-dynamics barostat couples to the centers of mass of rigid molecules and to every atom
 // of a flexible molecule individually. Its driving virial must therefore be the derivative of the total
@@ -186,7 +187,7 @@ TEST(BAROSTAT_VIRIAL, flexible_heptane_matches_atomic_scaling_finite_difference)
 
   const double volume = system.simulationBox.volume;
   const double3x3 molecularVirial = system.computeMolecularPressure().second;
-  const double3x3 barostatVirial = computeBarostatVirial(system, molecularVirial);
+  const double3x3 barostatVirial = computeBarostatVirial(system, molecularVirial, BarostatCoupling::Atomic);
 
   const double molecularExcessPressure = molecularVirial.trace() / (3.0 * volume);
   const double barostatExcessPressure = barostatVirial.trace() / (3.0 * volume);
@@ -206,6 +207,12 @@ TEST(BAROSTAT_VIRIAL, flexible_heptane_matches_atomic_scaling_finite_difference)
   EXPECT_NEAR(barostatVirial.ay, barostatVirial.bx, 1e-8 * std::abs(barostatVirial.trace()));
   EXPECT_NEAR(barostatVirial.az, barostatVirial.cx, 1e-8 * std::abs(barostatVirial.trace()));
   EXPECT_NEAR(barostatVirial.bz, barostatVirial.cy, 1e-8 * std::abs(barostatVirial.trace()));
+
+  // Molecular coupling drives the centres of mass: its virial is the molecular one (symmetrized).
+  const double3x3 molecularCoupling = computeBarostatVirial(system, molecularVirial, BarostatCoupling::Molecular);
+  EXPECT_NEAR(molecularCoupling.trace(), molecularVirial.trace(), 1e-10 * std::abs(molecularVirial.trace()));
+  EXPECT_NEAR(molecularCoupling.ay, 0.5 * (molecularVirial.ay + molecularVirial.bx),
+              1e-10 * std::abs(molecularVirial.trace()));
 }
 
 // The kinetic partner of the barostat virial counts every flexible atom, so for a flexible liquid the
@@ -226,7 +233,25 @@ TEST(BAROSTAT_VIRIAL, kinetic_virial_of_flexible_molecules_is_atomic)
     const double mass = system.forceField.pseudoAtoms[atoms[i].type].mass;
     expected += mass * double3::dot(dynamics[i].velocity, dynamics[i].velocity);
   }
-  EXPECT_NEAR(computeMolecularKineticVirial(system).trace(), expected, 1e-10 * expected);
+  EXPECT_NEAR(computeMolecularKineticVirial(system, BarostatCoupling::Atomic).trace(), expected, 1e-10 * expected);
+
+  // Molecular coupling: the centre-of-mass momentum flux sum_I M_I V_I outer V_I, smaller than the atomic one.
+  double expectedMolecular = 0.0;
+  for (const Molecule &molecule : system.moleculeData)
+  {
+    double mass = 0.0;
+    double3 momentum{};
+    for (std::size_t k = 0; k < molecule.numberOfAtoms; ++k)
+    {
+      const double atomMass = system.forceField.pseudoAtoms[atoms[molecule.atomIndex + k].type].mass;
+      mass += atomMass;
+      momentum += atomMass * dynamics[molecule.atomIndex + k].velocity;
+    }
+    expectedMolecular += double3::dot(momentum, momentum) / mass;
+  }
+  EXPECT_NEAR(computeMolecularKineticVirial(system, BarostatCoupling::Molecular).trace(), expectedMolecular,
+              1e-10 * expectedMolecular);
+  EXPECT_LT(expectedMolecular, expected);
 }
 
 // A rigid molecule has a single coupled point, its center of mass: the barostat virial is the molecular one.
@@ -253,7 +278,7 @@ TEST(BAROSTAT_VIRIAL, rigid_molecules_leave_the_molecular_virial_unchanged)
   computeGradients(system);
 
   const double3x3 molecularVirial = system.computeMolecularPressure().second;
-  const double3x3 barostatVirial = computeBarostatVirial(system, molecularVirial);
+  const double3x3 barostatVirial = computeBarostatVirial(system, molecularVirial, BarostatCoupling::Atomic);
   EXPECT_DOUBLE_EQ(barostatVirial.ax, molecularVirial.ax);
   EXPECT_DOUBLE_EQ(barostatVirial.by, molecularVirial.by);
   EXPECT_DOUBLE_EQ(barostatVirial.cz, molecularVirial.cz);

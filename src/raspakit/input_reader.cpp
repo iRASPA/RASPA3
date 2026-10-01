@@ -3656,6 +3656,18 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           timeScaleParameterThermostat = value["TimeScaleParameterThermostat"].get<double>();
         if (value.contains("TimeScaleParameterBarostat") && value["TimeScaleParameterBarostat"].is_number())
           timeScaleParameterBarostat = value["TimeScaleParameterBarostat"].get<double>();
+        BarostatCoupling barostatCoupling{BarostatCoupling::Molecular};
+        if (value.contains("BarostatCoupling"))
+        {
+          if (!value["BarostatCoupling"].is_string())
+            throw std::runtime_error("[Input reader]: BarostatCoupling must be a string ('Molecular' or 'Atomic')");
+          const std::string couplingString = value["BarostatCoupling"].get<std::string>();
+          const std::optional<BarostatCoupling> parsedCoupling = barostatCouplingFromString(couplingString);
+          if (!parsedCoupling.has_value())
+            throw std::runtime_error(std::format(
+                "[Input reader]: unknown 'BarostatCoupling' '{}'; expected 'Molecular' or 'Atomic'", couplingString));
+          barostatCoupling = parsedCoupling.value();
+        }
         if (thermostatChainLength == 0 || barostatChainLength == 0 || numberOfRespaSteps == 0)
           throw std::runtime_error(
               "[Input reader]: thermostat/barostat chain lengths and NumberOfRespaSteps must be positive");
@@ -3703,6 +3715,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
               systems[systemId].pressure, systems[systemId].timeStep, systems[systemId].translationalDegreesOfFreedom,
               barostatChainLength, numberOfYoshidaSuzukiSteps, timeScaleParameterBarostat);
           systems[systemId].thermobarostat->numberOfRespaSteps = numberOfRespaSteps;
+          systems[systemId].thermobarostat->coupling = barostatCoupling;
         }
       }
 
@@ -4508,6 +4521,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "NumberOfYoshidaSuzukiSteps",
     "TimeScaleParameterThermostat",
     "TimeScaleParameterBarostat",
+    "BarostatCoupling",
     "TimeStep",
     "MacroStateUseBias",
     "MacroStateMinimumNumberOfMolecules",

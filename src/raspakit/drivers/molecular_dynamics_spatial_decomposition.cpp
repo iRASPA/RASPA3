@@ -17,6 +17,9 @@ import units;
 import simulationbox;
 import forcefield;
 import energy_status;
+import energy_status_inter;
+import energy_status_intra;
+import energy_dudlambda;
 import running_energy;
 import atom;
 import atom_dynamics;
@@ -39,8 +42,11 @@ import spatial_decomposition_force_engine;
 
 namespace
 {
-// Barostat coupling of the velocities (molecules only; the driver rejects frameworks)
-void applyVelocityMatrix(System& system, const double3x3& matrix)
+// Barostat coupling of the velocities (molecules only; the driver rejects frameworks). With molecular coupling the
+// cell acts on the centre-of-mass velocity V of every molecule only: each atom (or rigid group) of a non-rigid
+// molecule receives the same increment (S - 1) V, so the velocities relative to the centre of mass are untouched.
+// With atomic coupling every flexible atom is scaled individually.
+void applyVelocityMatrix(System& system, const double3x3& matrix, BarostatCoupling coupling)
 {
   std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
   std::span<GroupState> groupData = system.spanOfGroupData();
@@ -50,7 +56,33 @@ void applyVelocityMatrix(System& system, const double3x3& matrix)
   {
     const Component& component = system.components[molecule.componentId];
     molecule.velocity = matrix * molecule.velocity;
-    if (component.isSemiFlexible())
+    if (!component.rigid && coupling == BarostatCoupling::Molecular)
+    {
+      const double3 comVelocity = moleculeCenterOfMass(system, molecule, groupIndex).velocity;
+      const double3 increment = matrix * comVelocity - comVelocity;
+      if (component.isSemiFlexible())
+      {
+        std::size_t rigidRank{};
+        for (const Fragment& group : component.fragmentGraph.fragments)
+        {
+          if (group.isRigidBody())
+          {
+            groupData[groupIndex + rigidRank].velocity += increment;
+            ++rigidRank;
+          }
+        }
+        for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
+        {
+          if (!component.rigidFragmentContaining(i).has_value()) moleculeDynamics[atomIndex + i].velocity += increment;
+        }
+        groupIndex += component.numberOfRigidFragments();
+      }
+      else
+      {
+        for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i) moleculeDynamics[atomIndex + i].velocity += increment;
+      }
+    }
+    else if (component.isSemiFlexible())
     {
       std::size_t rigidRank{};
       for (const Fragment& group : component.fragmentGraph.fragments)
@@ -78,7 +110,12 @@ void applyVelocityMatrix(System& system, const double3x3& matrix)
   }
 }
 
-void propagateCell(System& system, const double3x3& cellVelocity)
+// Cell and position propagation. The coupled points (centres of mass of rigid molecules; with molecular coupling the
+// centres of mass of all molecules, with atomic coupling the rigid groups and the flexible atoms individually) are
+// propagated with the cell by 'propagateCellAndPosition'. With molecular coupling the atoms and rigid groups of a
+// non-rigid molecule then follow their centre of mass, R_com' - R_com, plus the plain drift of their velocity
+// relative to the centre of mass, dt (v - V): the internal geometry is not strained by the cell.
+void propagateCell(System& system, const double3x3& cellVelocity, BarostatCoupling coupling)
 {
   std::span<Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
   std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
@@ -89,15 +126,19 @@ void propagateCell(System& system, const double3x3& cellVelocity)
   static thread_local std::vector<double3> positions;
   static thread_local std::vector<double3> velocities;
   static thread_local std::vector<double3*> targets;
+  static thread_local std::vector<double3> centerOfMassPositions;  // molecular coupling: R_com of every molecule
   const std::size_t capacity = moleculeAtoms.size() + groupData.size() + system.moleculeData.size();
   positions.clear();
   velocities.clear();
   targets.clear();
+  centerOfMassPositions.clear();
   positions.reserve(capacity);
   velocities.reserve(capacity);
   targets.reserve(capacity);
   std::size_t atomIndex{};
   std::size_t groupIndex{};
+  const bool molecular = coupling == BarostatCoupling::Molecular;
+  if (molecular) centerOfMassPositions.reserve(system.moleculeData.size());
   for (Molecule& molecule : system.moleculeData)
   {
     const Component& component = system.components[molecule.componentId];
@@ -106,6 +147,15 @@ void propagateCell(System& system, const double3x3& cellVelocity)
       positions.push_back(molecule.centerOfMassPosition);
       velocities.push_back(molecule.velocity);
       targets.push_back(&molecule.centerOfMassPosition);
+    }
+    else if (molecular)
+    {
+      const MoleculeCenterOfMass com = moleculeCenterOfMass(system, molecule, groupIndex);
+      positions.push_back(com.position);
+      velocities.push_back(com.velocity);
+      centerOfMassPositions.push_back(com.position);
+      targets.push_back(nullptr);
+      if (component.isSemiFlexible()) groupIndex += component.numberOfRigidFragments();
     }
     else if (component.isSemiFlexible())
     {
@@ -150,7 +200,57 @@ void propagateCell(System& system, const double3x3& cellVelocity)
   propagateCellAndPosition(cell, positions, velocities, cellVelocity, system.timeStep, upper);
   if (!std::isfinite(cell.determinant()) || cell.determinant() <= 1.0e-10)
     throw std::runtime_error("Thermobarostat produced an invalid or singular cell");
-  for (std::size_t i = 0; i != targets.size(); ++i) *targets[i] = positions[i];
+  for (std::size_t i = 0; i != targets.size(); ++i)
+  {
+    if (targets[i] != nullptr) *targets[i] = positions[i];
+  }
+  if (molecular)
+  {
+    // distribute the centre-of-mass displacement over the atoms and rigid groups of the non-rigid molecules
+    const double dt = system.timeStep;
+    std::size_t point{};
+    std::size_t comIndex{};
+    atomIndex = 0;
+    groupIndex = 0;
+    for (Molecule& molecule : system.moleculeData)
+    {
+      const Component& component = system.components[molecule.componentId];
+      if (!component.rigid)
+      {
+        const double3 comDisplacement = positions[point] - centerOfMassPositions[comIndex];
+        const double3 comVelocity = velocities[point];
+        ++comIndex;
+        if (component.isSemiFlexible())
+        {
+          std::size_t rigidRank{};
+          for (const Fragment& group : component.fragmentGraph.fragments)
+          {
+            if (group.isRigidBody())
+            {
+              GroupState& state = groupData[groupIndex + rigidRank];
+              state.centerOfMassPosition += comDisplacement + dt * (state.velocity - comVelocity);
+              ++rigidRank;
+            }
+          }
+          for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
+          {
+            if (!component.rigidFragmentContaining(i).has_value())
+              moleculeAtoms[atomIndex + i].position +=
+                  comDisplacement + dt * (moleculeDynamics[atomIndex + i].velocity - comVelocity);
+          }
+          groupIndex += component.numberOfRigidFragments();
+        }
+        else
+        {
+          for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
+            moleculeAtoms[atomIndex + i].position +=
+                comDisplacement + dt * (moleculeDynamics[atomIndex + i].velocity - comVelocity);
+        }
+      }
+      ++point;
+      atomIndex += molecule.numberOfAtoms;
+    }
+  }
   system.simulationBox = SimulationBox(cell);
   const double3 widths = system.simulationBox.perpendicularWidths();
   const double requiredWidth =
@@ -163,6 +263,48 @@ void propagateCell(System& system, const double3x3& cellVelocity)
         widths.x, widths.y, widths.z, requiredWidth));
   system.forceField.initializeAutomaticCutOff(system.simulationBox);
   system.forceField.initializeEwaldParameters(system.simulationBox);
+}
+
+// Whether the per-component energy decomposition can be taken from the engine's running energies instead of the
+// exact O(N^2) code. The engine rejects frameworks, external fields, polarization and cross-links, so the status is
+// the intra-molecular terms per component plus the inter-molecular VDW, real-space Coulomb and reciprocal terms;
+// with a single component those all belong to the (0, 0) pair. The reciprocal (mesh) sum cannot be attributed to
+// component pairs, so mixtures keep the exact decomposition.
+bool engineProvidesEnergyStatus(const System& system) { return system.components.size() == 1; }
+
+EnergyStatus energyStatusFromRunningEnergies(const System& system)
+{
+  const RunningEnergy& e = system.runningEnergies;
+  EnergyStatus status(1, system.framework.has_value() ? 1 : 0, system.components.size());
+
+  EnergyIntra& intra = status.intraComponentEnergies[0];
+  intra.bond = e.bond;
+  intra.ureyBradley = e.ureyBradley;
+  intra.bend = e.bend;
+  intra.inversionBend = e.inversionBend;
+  intra.outOfPlaneBend = e.outOfPlaneBend;
+  intra.torsion = e.torsion;
+  intra.improperTorsion = e.improperTorsion;
+  intra.bondBond = e.bondBond;
+  intra.bondBend = e.bondBend;
+  intra.bondTorsion = e.bondTorsion;
+  intra.bendBend = e.bendBend;
+  intra.bendTorsion = e.bendTorsion;
+  intra.vanDerWaals = e.intraVDW;
+  intra.coulomb = e.intraCoul;
+
+  // same convention as the exact code: self and exclusion terms are part of the Fourier entry
+  EnergyInter& inter = status.componentEnergy(0, 0);
+  inter.VanDerWaals = EnergyDuDlambda(e.moleculeMoleculeVDW, 0.0);
+  inter.VanDerWaalsTailCorrection = EnergyDuDlambda(e.tail, 0.0);
+  inter.CoulombicReal = EnergyDuDlambda(e.moleculeMoleculeCharge, 0.0);
+  inter.CoulombicFourier = EnergyDuDlambda(e.ewald_fourier + e.ewald_self + e.ewald_exclusion, 0.0);
+
+  status.translationalKineticEnergy = e.translationalKineticEnergy;
+  status.rotationalKineticEnergy = e.rotationalKineticEnergy;
+  status.noseHooverEnergy = e.NoseHooverEnergy;
+  status.sumTotal();
+  return status;
 }
 
 // Velocity Verlet with the engine forces (Integrators::velocityVerlet with updateGradients replaced)
@@ -242,14 +384,15 @@ RunningEnergy engineVelocityVerlet(System& system, SpatialDecompositionForceEngi
 }
 
 // Thermobarostat step (NPT / NPT-PR) with the engine forces. The barostat is driven by the virial of the
-// points it couples to (centers of mass of rigid molecules and rigid groups, flexible atoms individually),
-// obtained from the engine's molecular pressure tensor with 'computeBarostatVirial'; its kinetic partner is
-// 'computeMolecularKineticVirial'. The molecular tensor itself stays what the reported pressure uses.
+// points it couples to (molecular coupling: the centres of mass of all molecules; atomic coupling: centers of
+// rigid molecules and rigid groups, flexible atoms individually), obtained from the engine's molecular pressure
+// tensor with 'computeBarostatVirial'; its kinetic partner is 'computeMolecularKineticVirial'. The reported
+// pressure is the estimator of the same coupling (see 'barostatPressureTensor'), so its average is the set point.
 RunningEnergy engineThermobarostatVelocityVerlet(System& system, SpatialDecompositionForceEngine& engine)
 {
   Thermobarostat& barostat = *system.thermobarostat;
-  const double3x3 pressureBefore = computeBarostatVirial(system, engine.molecularPressureTensor());
-  const double3x3 kineticBefore = computeMolecularKineticVirial(system);
+  const double3x3 pressureBefore = computeBarostatVirial(system, engine.molecularPressureTensor(), barostat.coupling);
+  const double3x3 kineticBefore = computeMolecularKineticVirial(system, barostat.coupling);
 
   const double barostatKinetic =
       molecularDynamicsUsesIsotropicBarostat(barostat.ensemble)
@@ -304,12 +447,13 @@ RunningEnergy engineThermobarostatVelocityVerlet(System& system, SpatialDecompos
   }
 
   applyVelocityMatrix(system,
-                      velocityPropagator(cellRate, 0.5 * system.timeStep, system.translationalDegreesOfFreedom));
+                      velocityPropagator(cellRate, 0.5 * system.timeStep, barostat.translationalDegreesOfFreedom),
+                      barostat.coupling);
   Integrators::updateVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
                                 system.components, system.timeStep, system.framework, system.spanOfFrameworkAtoms(),
                                 system.spanOfFrameworkDynamics(), &system.forceField, system.spanOfGroupData(),
                                 system.spanOfFrameworkGroupData());
-  propagateCell(system, cellRate);
+  propagateCell(system, cellRate, barostat.coupling);
   if (molecularDynamicsUsesIsotropicBarostat(barostat.ensemble))
     barostat.logVolumePosition += system.timeStep * barostat.logVolumeVelocity;
   Integrators::noSquishFreeRotorOrderTwo(system.moleculeData, system.components, system.timeStep,
@@ -328,7 +472,8 @@ RunningEnergy engineThermobarostatVelocityVerlet(System& system, SpatialDecompos
                                 system.spanOfFrameworkDynamics(), &system.forceField, system.spanOfGroupData(),
                                 system.spanOfFrameworkGroupData());
   applyVelocityMatrix(system,
-                      velocityPropagator(cellRate, 0.5 * system.timeStep, system.translationalDegreesOfFreedom));
+                      velocityPropagator(cellRate, 0.5 * system.timeStep, barostat.translationalDegreesOfFreedom),
+                      barostat.coupling);
 
   energies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
       system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
@@ -337,8 +482,8 @@ RunningEnergy engineThermobarostatVelocityVerlet(System& system, SpatialDecompos
   energies.rotationalKineticEnergy =
       Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
                                                   system.framework, system.spanOfFrameworkGroupData());
-  const double3x3 pressureAfter = computeBarostatVirial(system, engine.molecularPressureTensor());
-  const double3x3 kineticAfter = computeMolecularKineticVirial(system);
+  const double3x3 pressureAfter = computeBarostatVirial(system, engine.molecularPressureTensor(), barostat.coupling);
+  const double3x3 kineticAfter = computeMolecularKineticVirial(system, barostat.coupling);
   if (molecularDynamicsUsesIsotropicBarostat(barostat.ensemble))
   {
     const double mtkFactor =
@@ -541,6 +686,14 @@ void MolecularDynamicsSpatialDecomposition::setup()
       {
         std::print(stream, "    domain grid:                     {} x {} x {}\n", engineSettings.domainGrid->x,
                    engineSettings.domainGrid->y, engineSettings.domainGrid->z);
+      }
+      std::print(stream, "    MD ensemble:                     {}\n",
+                 molecularDynamicsEnsembleName(system.molecularDynamicsEnsemble));
+      if (system.thermobarostat.has_value())
+      {
+        std::print(stream, "    barostat coupling:               {} (the reported pressure is the {} estimator)\n",
+                   barostatCouplingName(system.thermobarostat->coupling),
+                   system.thermobarostat->coupling == BarostatCoupling::Molecular ? "molecular" : "atomic");
       }
       std::print(stream, "\n\n");
 
@@ -750,7 +903,7 @@ void MolecularDynamicsSpatialDecomposition::startEngines(std::string_view stageN
     // the exact code as the reference for this configuration; the engine leaves its own forces in the system
     const SpatialDecompositionForceEngine::Validation validation = engine.validate(system);
     system.runningEnergies = engine.computeGradients(system, true) + system.computeTailCorrectionEnergies();
-    system.currentExcessPressureTensor = engine.molecularPressureTensor() / system.simulationBox.volume;
+    updateReportedPressure(system_id, false);
 
     if (outputToFiles)
     {
@@ -811,7 +964,71 @@ void MolecularDynamicsSpatialDecomposition::recomputeGradients(std::size_t syste
   Integrators::updateCenterOfMassAndQuaternionGradients(
       system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
       system.spanOfGroupData(), system.framework, system.spanOfFrameworkDynamics(), system.spanOfFrameworkGroupData());
-  system.currentExcessPressureTensor = engine.molecularPressureTensor() / system.simulationBox.volume;
+  updateReportedPressure(systemId, false);
+}
+
+void MolecularDynamicsSpatialDecomposition::updateReportedPressure(std::size_t systemId, bool accumulate)
+{
+  System& system = systems[systemId];
+  SpatialDecompositionForceEngine& engine = *engines[systemId];
+  const double volume = system.simulationBox.volume;
+  if (!system.thermobarostat.has_value())
+  {
+    system.currentExcessPressureTensor = engine.molecularPressureTensor() / volume;
+    return;
+  }
+
+  // The reported pressure is the estimator the barostat drives to the external pressure. 'sampleProperties' adds
+  // the molecular ideal-gas part N_molecules k T / V to the excess tensor, so the excess tensor stored here is the
+  // barostat tensor minus that part: with molecular coupling simply the molecular virial over the volume, with
+  // atomic coupling the atomic virial plus the ideal-gas part of the extra coupled atoms.
+  const Thermobarostat& barostat = *system.thermobarostat;
+  const double3x3 pressure = barostatPressureTensor(system, engine.molecularPressureTensor(), barostat.coupling,
+                                                    barostat.translationalDegreesOfFreedom);
+  const double molecularIdeal = static_cast<double>(system.numberOfMolecules()) / (system.beta * volume);
+  system.currentExcessPressureTensor = pressure;
+  system.currentExcessPressureTensor.ax -= molecularIdeal;
+  system.currentExcessPressureTensor.by -= molecularIdeal;
+  system.currentExcessPressureTensor.cz -= molecularIdeal;
+
+  if (accumulate)
+  {
+    if (barostatPressureWindowSum.size() != systems.size())
+    {
+      barostatPressureWindowSum.assign(systems.size(), double3x3{});
+      barostatPressureWindowCount.assign(systems.size(), 0uz);
+    }
+    barostatPressureWindowSum[systemId] += pressure;
+    ++barostatPressureWindowCount[systemId];
+  }
+}
+
+std::string MolecularDynamicsSpatialDecomposition::writeBarostatPressureWindow(std::size_t systemId)
+{
+  const System& system = systems[systemId];
+  if (!system.thermobarostat.has_value() || systemId >= barostatPressureWindowCount.size() ||
+      barostatPressureWindowCount[systemId] == 0)
+    return {};
+
+  const Thermobarostat& barostat = *system.thermobarostat;
+  const double conversion = 1e-5 * Units::PressureConversionFactor;
+  const double3x3 tensor =
+      conversion * barostatPressureWindowSum[systemId] / static_cast<double>(barostatPressureWindowCount[systemId]);
+  std::ostringstream stream;
+  std::print(stream,
+             "Barostat pressure tensor ({} coupling, average over the last {} steps; the estimator whose "
+             "average is the external pressure):\n",
+             barostatCouplingName(barostat.coupling), barostatPressureWindowCount[systemId]);
+  std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
+  std::print(stream, "{: .4e} {: .4e} {: .4e} [bar]\n", tensor.ax, tensor.bx, tensor.cx);
+  std::print(stream, "{: .4e} {: .4e} {: .4e} [bar]\n", tensor.ay, tensor.by, tensor.cy);
+  std::print(stream, "{: .4e} {: .4e} {: .4e} [bar]\n", tensor.az, tensor.bz, tensor.cz);
+  std::print(stream, "Barostat pressure:   {: .6e} [bar]   (external pressure {: .6e} [bar])\n\n", tensor.trace() / 3.0,
+             conversion * barostat.pressure);
+
+  barostatPressureWindowSum[systemId] = double3x3{};
+  barostatPressureWindowCount[systemId] = 0;
+  return stream.str();
 }
 
 RunningEnergy MolecularDynamicsSpatialDecomposition::molecularDynamicsStep(std::size_t systemId)
@@ -820,7 +1037,7 @@ RunningEnergy MolecularDynamicsSpatialDecomposition::molecularDynamicsStep(std::
   SpatialDecompositionForceEngine& engine = *engines[systemId];
   RunningEnergy energies =
       system.thermobarostat ? engineThermobarostatVelocityVerlet(system, engine) : engineVelocityVerlet(system, engine);
-  system.currentExcessPressureTensor = engine.molecularPressureTensor() / system.simulationBox.volume;
+  updateReportedPressure(systemId, true);
   // the engine returns the gradient-based energies; the tail corrections are added for the updated volume
   return energies + system.computeTailCorrectionEnergies();
 }
@@ -862,7 +1079,7 @@ void MolecularDynamicsSpatialDecomposition::equilibrate()
     if (system.thermobarostat.has_value())
     {
       system.thermobarostat->translationalDegreesOfFreedom =
-          system.translationalDegreesOfFreedom - system.translationalCenterOfMassConstraint;
+          barostatTranslationalDegreesOfFreedom(system, system.thermobarostat->coupling);
       system.thermobarostat->logVolumePosition = std::log(system.simulationBox.volume);
       system.thermobarostat->initialize(random);
     }
@@ -933,6 +1150,7 @@ void MolecularDynamicsSpatialDecomposition::equilibrate()
         {
           std::ostream stream(streams[system_id].rdbuf());
           std::print(stream, "{}", system.writeEquilibrationStatusReportMD(currentCycle, numberOfEquilibrationCycles));
+          std::print(stream, "{}", writeBarostatPressureWindow(system_id));
           std::flush(stream);
         }
 
@@ -1031,21 +1249,6 @@ void MolecularDynamicsSpatialDecomposition::production()
 
     estimation.setCurrentSample(currentCycle);
 
-    // The per-component energy decomposition needs the exact O(N^2) code: sample it every 'PrintEvery' cycles
-    // only. The pressure tensor comes from the engine's virial every cycle (see molecularDynamicsStep).
-    if (currentCycle % printEvery == 0uz)
-    {
-      for (System& system : systems)
-      {
-        std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
-        std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
-        system.currentEnergyStatus = molecularPressure.first;
-        std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
-        system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
-        system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
-      }
-    }
-
     for (std::size_t system_id{0}; System& system : systems)
     {
       system.runningEnergies = molecularDynamicsStep(system_id);
@@ -1053,6 +1256,27 @@ void MolecularDynamicsSpatialDecomposition::production()
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift += std::abs((system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
       ++system_id;
+    }
+
+    // Energy decomposition for the averages. The engine's running energies are exact totals and, for a single
+    // component, the complete decomposition: sampled every cycle at no cost. Only a mixture needs the exact
+    // O(N^2) code for the per-pair split; that is sampled every 'PrintEvery' cycles. The pressure tensor comes
+    // from the engine's virial every cycle in both cases (see molecularDynamicsStep).
+    for (System& system : systems)
+    {
+      if (engineProvidesEnergyStatus(system))
+      {
+        system.currentEnergyStatus = energyStatusFromRunningEnergies(system);
+        system.averageEnergies.addSample(estimation.currentBin, system.currentEnergyStatus, system.weight());
+      }
+      else if (currentCycle % printEvery == 0uz)
+      {
+        std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
+        system.currentEnergyStatus = system.computeMolecularPressure().first;
+        std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
+        system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
+        system.averageEnergies.addSample(estimation.currentBin, system.currentEnergyStatus, system.weight());
+      }
     }
 
     for (System& system : systems)
@@ -1078,6 +1302,7 @@ void MolecularDynamicsSpatialDecomposition::production()
         {
           std::ostream stream(streams[system_id].rdbuf());
           std::print(stream, "{}", system.writeProductionStatusReportMD(currentCycle, numberOfProductionCycles));
+          std::print(stream, "{}", writeBarostatPressureWindow(system_id));
           std::flush(stream);
         }
         ++system_id;

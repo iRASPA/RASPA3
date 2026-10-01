@@ -105,6 +105,27 @@ std::string molecularDynamicsEnsembleName(MolecularDynamicsEnsemble ensemble)
   std::unreachable();
 }
 
+std::optional<BarostatCoupling> barostatCouplingFromString(std::string_view value)
+{
+  for (BarostatCoupling coupling : {BarostatCoupling::Molecular, BarostatCoupling::Atomic})
+  {
+    if (equalCaseInsensitive(value, barostatCouplingName(coupling))) return coupling;
+  }
+  return std::nullopt;
+}
+
+std::string barostatCouplingName(BarostatCoupling coupling)
+{
+  switch (coupling)
+  {
+    case BarostatCoupling::Molecular:
+      return "Molecular";
+    case BarostatCoupling::Atomic:
+      return "Atomic";
+  }
+  std::unreachable();
+}
+
 bool molecularDynamicsUsesThermostat(MolecularDynamicsEnsemble ensemble)
 {
   return ensemble != MolecularDynamicsEnsemble::NVE;
@@ -406,6 +427,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Thermo
   archive << static_cast<std::uint8_t>(value.ensemble);
   archive << static_cast<std::uint8_t>(value.cellType);
   archive << static_cast<std::uint8_t>(value.monoclinicAngle);
+  archive << static_cast<std::uint8_t>(value.coupling);
   archive << value.temperature << value.pressure << value.timeStep << value.timeScaleParameterBarostat;
   archive << value.translationalDegreesOfFreedom << value.cellDegreesOfFreedom << value.chainLength;
   archive << value.numberOfRespaSteps << value.numberOfYoshidaSuzukiSteps;
@@ -426,6 +448,19 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Thermobarost
   value.ensemble = static_cast<MolecularDynamicsEnsemble>(ensemble);
   value.cellType = static_cast<CellMinimizationType>(cellType);
   value.monoclinicAngle = static_cast<MonoclinicAngleType>(angle);
+  if (version >= 2)
+  {
+    std::uint8_t coupling{};
+    archive >> coupling;
+    if (coupling > static_cast<std::uint8_t>(BarostatCoupling::Atomic))
+      throw std::runtime_error("Invalid Thermobarostat coupling in restart");
+    value.coupling = static_cast<BarostatCoupling>(coupling);
+  }
+  else
+  {
+    // Version-1 restarts were produced with per-atom coupling of flexible molecules.
+    value.coupling = BarostatCoupling::Atomic;
+  }
   archive >> value.temperature >> value.pressure >> value.timeStep >> value.timeScaleParameterBarostat;
   archive >> value.translationalDegreesOfFreedom >> value.cellDegreesOfFreedom >> value.chainLength;
   archive >> value.numberOfRespaSteps >> value.numberOfYoshidaSuzukiSteps;

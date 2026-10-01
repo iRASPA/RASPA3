@@ -67,7 +67,11 @@ std::array<double, 6> stressVoigt(const double3x3& stress)
           0.5 * (stress.ay + stress.bx)};
 }
 
-void applyVelocityMatrix(System& system, const double3x3& matrix)
+// Barostat coupling of the velocities. With molecular coupling the cell acts on the centre-of-mass velocity V of
+// every molecule only: each atom (or rigid group) of a non-rigid molecule receives the same increment (S - 1) V, so
+// the velocities relative to the centre of mass are untouched. With atomic coupling every flexible atom is scaled
+// individually. Framework atoms are always coupled atomically (rigid groups through their centre of mass).
+void applyVelocityMatrix(System& system, const double3x3& matrix, BarostatCoupling coupling)
 {
   std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
   std::span<GroupState> groupData = system.spanOfGroupData();
@@ -77,7 +81,33 @@ void applyVelocityMatrix(System& system, const double3x3& matrix)
   {
     const Component& component = system.components[molecule.componentId];
     molecule.velocity = matrix * molecule.velocity;
-    if (component.isSemiFlexible())
+    if (!component.rigid && coupling == BarostatCoupling::Molecular)
+    {
+      const double3 comVelocity = moleculeCenterOfMass(system, molecule, groupIndex).velocity;
+      const double3 increment = matrix * comVelocity - comVelocity;
+      if (component.isSemiFlexible())
+      {
+        std::size_t rigidRank{};
+        for (const Fragment& group : component.fragmentGraph.fragments)
+        {
+          if (group.isRigidBody())
+          {
+            groupData[groupIndex + rigidRank].velocity += increment;
+            ++rigidRank;
+          }
+        }
+        for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
+        {
+          if (!component.rigidFragmentContaining(i).has_value()) moleculeDynamics[atomIndex + i].velocity += increment;
+        }
+        groupIndex += component.numberOfRigidFragments();
+      }
+      else
+      {
+        for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i) moleculeDynamics[atomIndex + i].velocity += increment;
+      }
+    }
+    else if (component.isSemiFlexible())
     {
       // Semi-flexible molecule: the barostat couples to the rigid-group center-of-mass velocities and
       // to the flexible-atom velocities; orientation momenta are not coupled to the cell.
@@ -124,16 +154,23 @@ void applyVelocityMatrix(System& system, const double3x3& matrix)
   }
 }
 
-void propagateCell(System& system, const double3x3& cellVelocity)
+// Cell and position propagation. The coupled points (centres of mass of rigid molecules; with molecular coupling the
+// centres of mass of all molecules, with atomic coupling the rigid groups and the flexible atoms individually; the
+// mobile framework atoms) are propagated with the cell by 'propagateCellAndPosition'. With molecular coupling the
+// atoms and rigid groups of a non-rigid molecule then follow their centre of mass, R_com' - R_com, plus the plain
+// drift of their velocity relative to the centre of mass, dt (v - V): the internal geometry is not strained.
+void propagateCell(System& system, const double3x3& cellVelocity, BarostatCoupling coupling)
 {
   std::vector<double3> positions;
   std::vector<double3> velocities;
   std::vector<double3*> targets;
+  std::vector<double3> centerOfMassPositions;  // molecular coupling: R_com of every non-rigid molecule
   std::span<Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
   std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
   std::span<GroupState> groupData = system.spanOfGroupData();
   std::size_t atomIndex{};
   std::size_t groupIndex{};
+  const bool molecular = coupling == BarostatCoupling::Molecular;
   for (Molecule& molecule : system.moleculeData)
   {
     const Component& component = system.components[molecule.componentId];
@@ -142,6 +179,15 @@ void propagateCell(System& system, const double3x3& cellVelocity)
       positions.push_back(molecule.centerOfMassPosition);
       velocities.push_back(molecule.velocity);
       targets.push_back(&molecule.centerOfMassPosition);
+    }
+    else if (molecular)
+    {
+      const MoleculeCenterOfMass com = moleculeCenterOfMass(system, molecule, groupIndex);
+      positions.push_back(com.position);
+      velocities.push_back(com.velocity);
+      centerOfMassPositions.push_back(com.position);
+      targets.push_back(nullptr);
+      if (component.isSemiFlexible()) groupIndex += component.numberOfRigidFragments();
     }
     else if (component.isSemiFlexible())
     {
@@ -226,7 +272,58 @@ void propagateCell(System& system, const double3x3& cellVelocity)
   propagateCellAndPosition(cell, positions, velocities, cellVelocity, system.timeStep, upper);
   if (!std::isfinite(cell.determinant()) || cell.determinant() <= 1.0e-10)
     throw std::runtime_error("Thermobarostat produced an invalid or singular cell");
-  for (std::size_t i = 0; i != targets.size(); ++i) *targets[i] = positions[i];
+  for (std::size_t i = 0; i != targets.size(); ++i)
+  {
+    if (targets[i] != nullptr) *targets[i] = positions[i];
+  }
+  if (molecular)
+  {
+    // distribute the centre-of-mass displacement over the atoms and rigid groups of the non-rigid molecules (the
+    // molecules are the first entries of the coupled points, one per molecule)
+    const double dt = system.timeStep;
+    std::size_t point{};
+    std::size_t comIndex{};
+    atomIndex = 0;
+    groupIndex = 0;
+    for (Molecule& molecule : system.moleculeData)
+    {
+      const Component& component = system.components[molecule.componentId];
+      if (!component.rigid)
+      {
+        const double3 comDisplacement = positions[point] - centerOfMassPositions[comIndex];
+        const double3 comVelocity = velocities[point];
+        ++comIndex;
+        if (component.isSemiFlexible())
+        {
+          std::size_t rigidRank{};
+          for (const Fragment& group : component.fragmentGraph.fragments)
+          {
+            if (group.isRigidBody())
+            {
+              GroupState& state = groupData[groupIndex + rigidRank];
+              state.centerOfMassPosition += comDisplacement + dt * (state.velocity - comVelocity);
+              ++rigidRank;
+            }
+          }
+          for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
+          {
+            if (!component.rigidFragmentContaining(i).has_value())
+              moleculeAtoms[atomIndex + i].position +=
+                  comDisplacement + dt * (moleculeDynamics[atomIndex + i].velocity - comVelocity);
+          }
+          groupIndex += component.numberOfRigidFragments();
+        }
+        else
+        {
+          for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
+            moleculeAtoms[atomIndex + i].position +=
+                comDisplacement + dt * (moleculeDynamics[atomIndex + i].velocity - comVelocity);
+        }
+      }
+      ++point;
+      atomIndex += molecule.numberOfAtoms;
+    }
+  }
   system.simulationBox = SimulationBox(cell);
   const double3 widths = system.simulationBox.perpendicularWidths();
   const double requiredWidth =
@@ -359,14 +456,15 @@ void attemptParticleExchange(RandomNumber& random, System& system)
   refreshParticleNumberDependentState(random, system, selectedComponent, result, exchangedMolecule);
 }
 
-// The barostat is driven by the virial of the points it couples to (centers of mass of rigid molecules
-// and rigid groups, flexible atoms individually), not by the molecular virial of the Monte Carlo and
-// reported pressure: see 'computeBarostatVirial'. Its kinetic partner is 'computeMolecularKineticVirial'.
+// The barostat is driven by the virial of the points it couples to (molecular coupling: the centres of mass of
+// all molecules; atomic coupling: centers of mass of rigid molecules and rigid groups, flexible atoms
+// individually): see 'computeBarostatVirial'. Its kinetic partner is 'computeMolecularKineticVirial'.
 RunningEnergy thermobarostatVelocityVerlet(System& system)
 {
   Thermobarostat& barostat = *system.thermobarostat;
-  const double3x3 pressureBefore = computeBarostatVirial(system, system.computeMolecularPressure().second);
-  const double3x3 kineticBefore = computeMolecularKineticVirial(system);
+  const double3x3 pressureBefore =
+      computeBarostatVirial(system, system.computeMolecularPressure().second, barostat.coupling);
+  const double3x3 kineticBefore = computeMolecularKineticVirial(system, barostat.coupling);
 
   const double barostatKinetic =
       molecularDynamicsUsesIsotropicBarostat(barostat.ensemble)
@@ -421,12 +519,13 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
   }
 
   applyVelocityMatrix(system,
-                      velocityPropagator(cellRate, 0.5 * system.timeStep, system.translationalDegreesOfFreedom));
+                      velocityPropagator(cellRate, 0.5 * system.timeStep, barostat.translationalDegreesOfFreedom),
+                      barostat.coupling);
   Integrators::updateVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
                                 system.components, system.timeStep, system.framework, system.spanOfFrameworkAtoms(),
                                 system.spanOfFrameworkDynamics(), &system.forceField, system.spanOfGroupData(),
                                 system.spanOfFrameworkGroupData());
-  propagateCell(system, cellRate);
+  propagateCell(system, cellRate, barostat.coupling);
   if (molecularDynamicsUsesIsotropicBarostat(barostat.ensemble))
     barostat.logVolumePosition += system.timeStep * barostat.logVolumeVelocity;
   Integrators::noSquishFreeRotorOrderTwo(system.moleculeData, system.components, system.timeStep,
@@ -450,7 +549,8 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
                                 system.spanOfFrameworkDynamics(), &system.forceField, system.spanOfGroupData(),
                                 system.spanOfFrameworkGroupData());
   applyVelocityMatrix(system,
-                      velocityPropagator(cellRate, 0.5 * system.timeStep, system.translationalDegreesOfFreedom));
+                      velocityPropagator(cellRate, 0.5 * system.timeStep, barostat.translationalDegreesOfFreedom),
+                      barostat.coupling);
 
   energies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
       system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
@@ -459,8 +559,9 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
   energies.rotationalKineticEnergy =
       Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
                                                   system.framework, system.spanOfFrameworkGroupData());
-  const double3x3 pressureAfter = computeBarostatVirial(system, system.computeMolecularPressure().second);
-  const double3x3 kineticAfter = computeMolecularKineticVirial(system);
+  const double3x3 pressureAfter =
+      computeBarostatVirial(system, system.computeMolecularPressure().second, barostat.coupling);
+  const double3x3 kineticAfter = computeMolecularKineticVirial(system, barostat.coupling);
   if (molecularDynamicsUsesIsotropicBarostat(barostat.ensemble))
   {
     const double mtkFactor =
@@ -973,7 +1074,7 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
     if (system.thermobarostat.has_value())
     {
       system.thermobarostat->translationalDegreesOfFreedom =
-          system.translationalDegreesOfFreedom - system.translationalCenterOfMassConstraint;
+          barostatTranslationalDegreesOfFreedom(system, system.thermobarostat->coupling);
       system.thermobarostat->logVolumePosition = std::log(system.simulationBox.volume);
       system.thermobarostat->initialize(random);
     }
@@ -1028,7 +1129,8 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
         const auto molecularPressure = samplingSystem.computeMolecularPressure();
         system.currentEnergyStatus = molecularPressure.first;
         system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
-        const double3x3 kineticPressure = computeMolecularKineticVirial(system) / system.simulationBox.volume;
+        const double3x3 kineticPressure =
+            computeMolecularKineticVirial(system, BarostatCoupling::Atomic) / system.simulationBox.volume;
         const double effectiveKineticEntities =
             static_cast<double>(system.translationalDegreesOfFreedom - system.translationalCenterOfMassConstraint) /
             3.0;

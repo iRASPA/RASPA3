@@ -1248,6 +1248,7 @@ void System::setThermobarostat(const std::optional<Thermobarostat>& barostat)
                                   pressure, timeStep, translationalDegreesOfFreedom, barostat->chainLength,
                                   barostat->numberOfYoshidaSuzukiSteps, barostat->timeScaleParameterBarostat);
   thermobarostat->numberOfRespaSteps = barostat->numberOfRespaSteps;
+  thermobarostat->coupling = barostat->coupling;
 }
 
 void System::setSamplePDBMovie(const std::optional<SampleMovie>& movie)

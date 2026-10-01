@@ -18,6 +18,8 @@ import atom;
 import atom_dynamics;
 import molecule;
 import component;
+import framework;
+import thermobarostat;
 
 namespace
 {
@@ -106,7 +108,43 @@ std::array<double, 36> computeAffineBornTensor(const System& system)
   return born;
 }
 
-double3x3 computeMolecularKineticVirial(const System& system)
+MoleculeCenterOfMass moleculeCenterOfMass(const System& system, const Molecule& molecule, std::size_t groupIndex)
+{
+  const Component& component = system.components[molecule.componentId];
+  if (component.rigid) return {molecule.mass, molecule.centerOfMassPosition, molecule.velocity};
+
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms().subspan(molecule.atomIndex, molecule.numberOfAtoms);
+  const std::span<const AtomDynamics> dynamics =
+      system.spanOfMoleculeDynamics().subspan(molecule.atomIndex, molecule.numberOfAtoms);
+  const std::span<const GroupState> groupData = system.spanOfGroupData();
+  const bool semiFlexible = component.isSemiFlexible() && !groupData.empty();
+
+  // positions are stored unwrapped per molecule, so no minimum image is needed
+  double mass{};
+  double3 weightedPosition{};
+  double3 momentum{};
+  for (std::size_t i = 0; i < atoms.size(); ++i)
+  {
+    const double atomMass = system.forceField.pseudoAtoms[static_cast<std::size_t>(atoms[i].type)].mass;
+    mass += atomMass;
+    weightedPosition += atomMass * atoms[i].position;
+    if (!semiFlexible || !component.rigidFragmentContaining(i).has_value()) momentum += atomMass * dynamics[i].velocity;
+  }
+  if (semiFlexible)
+  {
+    // the atoms of a rigid group carry no velocities of their own; the group state does
+    std::size_t rigidRank{};
+    for (const Fragment& group : component.fragmentGraph.fragments)
+    {
+      if (!group.isRigidBody()) continue;
+      momentum += group.mass * groupData[groupIndex + rigidRank].velocity;
+      ++rigidRank;
+    }
+  }
+  return {mass, weightedPosition / mass, momentum / mass};
+}
+
+double3x3 computeMolecularKineticVirial(const System& system, BarostatCoupling coupling)
 {
   double3x3 stress{};
   const auto add = [&stress](double mass, const double3& velocity)
@@ -132,6 +170,13 @@ double3x3 computeMolecularKineticVirial(const System& system)
     if (component.rigid)
     {
       add(molecule.mass, molecule.velocity);
+    }
+    else if (coupling == BarostatCoupling::Molecular)
+    {
+      // Molecular coupling: the whole molecule is one coupled point, its centre of mass.
+      const MoleculeCenterOfMass com = moleculeCenterOfMass(system, molecule, groupIndex);
+      add(com.mass, com.velocity);
+      if (component.isSemiFlexible() && !groupData.empty()) groupIndex += component.numberOfRigidFragments();
     }
     else if (component.isSemiFlexible() && !groupData.empty())
     {
@@ -172,11 +217,12 @@ double3x3 computeMolecularKineticVirial(const System& system)
   return stress;
 }
 
-double3x3 computeBarostatVirial(const System& system, const double3x3& molecularVirial)
+double3x3 computeBarostatVirial(const System& system, const double3x3& molecularVirial, BarostatCoupling coupling)
 {
   // sum_k (R_k - R_com) outer G_k over the coupled points k of every non-rigid molecule, G the total
   // gradient (minus the force) on the point; the virial is the molecular one minus this sum. Rows are the
   // arm, columns the gradient, the convention of the atomic-to-molecular correction of the pressure code.
+  // With molecular coupling every molecule is coupled at its centre of mass and the sum is empty.
   double3x3 armGradient{};
   const auto add = [&armGradient](const double3& arm, const double3& gradient)
   {
@@ -197,6 +243,7 @@ double3x3 computeBarostatVirial(const System& system, const double3x3& molecular
   std::vector<double> masses;
   for (const Molecule& molecule : system.moleculeData)
   {
+    if (coupling == BarostatCoupling::Molecular) break;
     const Component& component = system.components[molecule.componentId];
     if (component.rigid) continue;  // one coupled point, the center of mass itself
 
@@ -256,6 +303,36 @@ double3x3 computeBarostatVirial(const System& system, const double3x3& molecular
   temp = 0.5 * (virial.bz + virial.cy);
   virial.bz = virial.cy = temp;
   return virial;
+}
+
+std::size_t barostatTranslationalDegreesOfFreedom(const System& system, BarostatCoupling coupling)
+{
+  if (coupling == BarostatCoupling::Molecular)
+  {
+    std::size_t degreesOfFreedom = 3 * system.moleculeData.size();
+    if (system.framework && system.framework->hasMobileAtoms())
+    {
+      // framework atoms are coupled as they enter the molecular virial: atomically (rigid groups as a whole)
+      degreesOfFreedom += system.framework->isMixed()
+                              ? 3 * system.framework->flexibleAtomCount + 3 * system.framework->numberOfRigidGroups()
+                              : 3 * system.numberOfFrameworkAtoms;
+    }
+    return degreesOfFreedom - std::min(degreesOfFreedom, system.translationalCenterOfMassConstraint);
+  }
+  return system.translationalDegreesOfFreedom -
+         std::min(system.translationalDegreesOfFreedom, system.translationalCenterOfMassConstraint);
+}
+
+double3x3 barostatPressureTensor(const System& system, const double3x3& molecularVirial, BarostatCoupling coupling,
+                                 std::size_t translationalDegreesOfFreedom)
+{
+  const double volume = system.simulationBox.volume;
+  double3x3 pressure = computeBarostatVirial(system, molecularVirial, coupling) / volume;
+  const double ideal = static_cast<double>(translationalDegreesOfFreedom + 3) / (3.0 * system.beta * volume);
+  pressure.ax += ideal;
+  pressure.by += ideal;
+  pressure.cz += ideal;
+  return pressure;
 }
 
 ElasticConstantsResult computeElasticConstants(const System& system, double relativeEigenvalueTolerance)
