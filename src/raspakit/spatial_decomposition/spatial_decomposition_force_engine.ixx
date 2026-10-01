@@ -32,13 +32,14 @@ import spatial_decomposition_worker_team;
  *    generic Potentials::potentialVDW / potentialCoulomb kernels of the rest of the code;
  *  - a smooth particle-mesh Ewald sum (PPPM) for the reciprocal-space Coulomb energy with the force field's
  *    Ewald alpha, so the self and intramolecular exclusion terms of the exact Ewald code apply unchanged;
- *  - the bonded terms and the self / exclusion corrections per molecule, distributed over the threads by
- *    molecule.
+ *  - the bonded terms and the self / exclusion corrections per molecule, handed out to the threads in chunks;
+ *    with the mesh this work overlaps with the FFTs, which only thread 0 drives.
  *
  * The threads form a persistent WorkerTeam; one call of computeGradients is one task in which the phases
  * (position refresh and rebuild check, optional rebuild, pairs + mesh spreading, ghost-force and mesh reduction,
- * FFT solve, interpolation + scatter, bonded) are separated by barriers. With one thread the same phases run inline on
- * the calling thread, which makes the serial cell-list + PPPM run the reference for the parallel ones.
+ * forward FFT || bonded, influence function, backward FFT || bonded, interpolation + scatter) are separated by
+ * barriers. With one thread the same phases run inline on the calling thread, which makes the serial cell-list +
+ * PPPM run the reference for the parallel ones.
  *
  * Scope (checked by supports()): no framework, external field, polarization, cross-links or fractional molecules,
  * no MD-stage particle exchange, no 'OmitInterInteractions' or dual cutoff.
@@ -140,19 +141,25 @@ export class SpatialDecompositionForceEngine
   bool virialRequested{false};
   double3x3 pressureTensor{};
 
-  // molecule partition for the bonded / exclusion phase: molecule index ranges per thread
-  std::vector<std::size_t> moleculeRangeStart{};
+  // bonded / exclusion work by molecule, handed out in chunks through an atomic counter so that it can be done by
+  // whichever threads are free (it overlaps with the FFTs of thread 0 when the mesh is in use)
+  std::atomic<std::size_t> nextBondedChunk{0};
+  std::size_t bondedChunkSize{1};
   std::size_t partitionedMolecules{0};
+  /// Mass-weighted center of mass of the molecule of every atom (original atom order), set in the bonded work and
+  /// used for the atomic-to-molecular virial correction of the pair + mesh gradients in the scatter phase.
+  std::vector<double3> atomCenterOfMass{};
 
   double reciprocalEnergy{0.0};
   Timings timing{};
 
-  void partitionMolecules(const System& system);
+  void prepareBondedWork(const System& system);
   void step(std::size_t thread, System& system);
   void pairPhase(std::size_t thread, const System& system, RunningEnergy& energy);
   template <bool Fast>
   void pairLoop(std::size_t thread, const System& system, RunningEnergy& energy);
   void collectGhostForces(std::size_t thread);
   void prepareKernel(const System& system);
-  void bondedPhase(std::size_t thread, System& system, RunningEnergy& energy);
+  void bondedWork(std::size_t thread, System& system, RunningEnergy& energy);
+  void scatterPhase(std::size_t thread, System& system);
 };

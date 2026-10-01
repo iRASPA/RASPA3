@@ -85,31 +85,14 @@ bool SpatialDecompositionForceEngine::supports(const System& system, std::string
   return true;
 }
 
-void SpatialDecompositionForceEngine::partitionMolecules(const System& system)
+void SpatialDecompositionForceEngine::prepareBondedWork(const System& system)
 {
   const std::size_t threads = settings.numberOfThreads;
   const std::size_t numberOfMolecules = system.moleculeData.size();
-  std::size_t totalAtoms = 0;
-  for (const Molecule& molecule : system.moleculeData) totalAtoms += molecule.numberOfAtoms;
-
-  moleculeRangeStart.assign(threads + 1, numberOfMolecules);
-  moleculeRangeStart[0] = 0;
-  std::size_t cumulative = 0;
-  std::size_t thread = 1;
-  for (std::size_t m = 0; m < numberOfMolecules && thread < threads; ++m)
-  {
-    cumulative += system.moleculeData[m].numberOfAtoms;
-    while (thread < threads && cumulative * threads >= thread * totalAtoms)
-    {
-      moleculeRangeStart[thread] = m + 1;
-      ++thread;
-    }
-  }
-  for (std::size_t t = 1; t <= threads; ++t)
-  {
-    moleculeRangeStart[t] = std::max(moleculeRangeStart[t], moleculeRangeStart[t - 1]);
-  }
-  moleculeRangeStart[threads] = numberOfMolecules;
+  // about eight chunks per thread: fine enough to balance the threads that are free next to the FFTs of thread 0,
+  // coarse enough to keep the atomic counter out of the way
+  bondedChunkSize = std::max<std::size_t>(1, numberOfMolecules / (8 * threads));
+  atomCenterOfMass.resize(system.spanOfMoleculeAtoms().size());
   partitionedMolecules = numberOfMolecules;
 }
 
@@ -146,7 +129,7 @@ void SpatialDecompositionForceEngine::initialize(System& system)
   threadEnergies.assign(settings.numberOfThreads, RunningEnergy{});
   threadStrain.assign(settings.numberOfThreads, double3x3{});
   threadCorrection.assign(settings.numberOfThreads, double3x3{});
-  partitionMolecules(system);
+  prepareBondedWork(system);
   timing = Timings{};
   initializedFlag = true;
 }
@@ -182,7 +165,11 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
     fz.assign(numberOfAtoms, 0.0);
     cellList.numberOfBuilds = 0;  // forces a rebuild
   }
-  if (system.moleculeData.size() != partitionedMolecules) partitionMolecules(system);
+  if (system.moleculeData.size() != partitionedMolecules || atomCenterOfMass.size() != numberOfAtoms)
+  {
+    prepareBondedWork(system);
+  }
+  nextBondedChunk.store(0, std::memory_order_relaxed);
 
   for (RunningEnergy& energy : threadEnergies) energy = RunningEnergy{};
   for (double3x3& strain : threadStrain) strain = double3x3{};
@@ -373,37 +360,38 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
           if (useMesh) pppm.reduceMeshes(thread, threads);
         });
   }
+  lap(timing.mesh);
+
+  // phase 4: the bonded terms and the charge self / exclusion corrections, by molecule, in chunks from a shared
+  // counter. They start from zeroed gradients (the pair + mesh gradients are added in phase 5) and need nothing
+  // from the mesh, so with the mesh they run on the free threads while thread 0 drives the FFTs: forward
+  // transform || bonded, influence function on all threads, backward transform || bonded (thread 0 joins the
+  // remaining chunks after each transform).
   if (useMesh)
   {
-    // phase 4: transforms on thread 0
     workers.phase(
         [&]
         {
-          if (thread == 0) reciprocalEnergy = pppm.solve(virialRequested);
+          if (thread == 0) pppm.forwardTransform();
+          bondedWork(thread, system, energy);
+        });
+    workers.phase([&] { pppm.applyInfluence(thread, threads, virialRequested); });
+    workers.phase(
+        [&]
+        {
+          if (thread == 0) reciprocalEnergy = pppm.backwardTransform(threads);
+          bondedWork(thread, system, energy);
         });
   }
-
-  // phase 5: mesh gradients of the owned atoms, then scatter the pair + mesh gradients into the system
-  workers.phase(
-      [&]
-      {
-        const CellList::DomainLists& domain = cellList.domains[thread];
-        if (useMesh)
-        {
-          pppm.interpolate(domain.ownedAtoms, cellList.x.data(), cellList.y.data(), cellList.z.data(),
-                           cellList.charge.data(), cellList.scalingCoulomb.data(), fx.data(), fy.data(), fz.data());
-        }
-        std::span<AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
-        for (const std::uint32_t i : domain.ownedAtoms)
-        {
-          dynamics[cellList.sortedToOriginal[i]].gradient = double3(fx[i], fy[i], fz[i]);
-        }
-      });
-  lap(timing.mesh);
-
-  // phase 6: bonded terms and the charge self / exclusion corrections, by molecule
-  workers.phase([&] { bondedPhase(thread, system, energy); });
+  else
+  {
+    workers.phase([&] { bondedWork(thread, system, energy); });
+  }
   lap(timing.bonded);
+
+  // phase 5: mesh gradients of the owned atoms, then add the pair + mesh gradients into the system
+  workers.phase([&] { scatterPhase(thread, system); });
+  lap(timing.mesh);
 }
 
 void SpatialDecompositionForceEngine::prepareKernel(const System& system)
@@ -678,66 +666,114 @@ void SpatialDecompositionForceEngine::collectGhostForces(std::size_t thread)
   }
 }
 
-void SpatialDecompositionForceEngine::bondedPhase(std::size_t thread, System& system, RunningEnergy& energy)
+namespace
+{
+inline void addOuterProduct(double3x3& tensor, const double3& arm, const double3& gradient)
+{
+  tensor.ax += arm.x * gradient.x;
+  tensor.ay += arm.x * gradient.y;
+  tensor.az += arm.x * gradient.z;
+  tensor.bx += arm.y * gradient.x;
+  tensor.by += arm.y * gradient.y;
+  tensor.bz += arm.y * gradient.z;
+  tensor.cx += arm.z * gradient.x;
+  tensor.cy += arm.z * gradient.y;
+  tensor.cz += arm.z * gradient.z;
+}
+}  // namespace
+
+void SpatialDecompositionForceEngine::bondedWork(std::size_t thread, System& system, RunningEnergy& energy)
 {
   const ForceField& forceField = system.forceField;
   const SimulationBox& box = system.simulationBox;
   std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
   std::span<AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
-  const std::size_t begin = moleculeRangeStart[thread];
-  const std::size_t end = moleculeRangeStart[thread + 1];
+  const std::size_t numberOfMolecules = system.moleculeData.size();
+  const std::size_t chunk = bondedChunkSize;
 
   const bool withVirial = virialRequested;
   double3x3 strain{};
   double3x3 correction{};
 
-  for (std::size_t m = begin; m < end; ++m)
+  for (std::size_t begin = nextBondedChunk.fetch_add(chunk, std::memory_order_relaxed); begin < numberOfMolecules;
+       begin = nextBondedChunk.fetch_add(chunk, std::memory_order_relaxed))
   {
-    const Molecule& molecule = system.moleculeData[m];
-    const Component& component = system.components[molecule.componentId];
-    std::span<const Atom> moleculeAtoms = atoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
-    std::span<AtomDynamics> moleculeDynamics = dynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms);
-
-    Interactions::addChargeSelfEnergy(energy, forceField, moleculeAtoms);
-    Interactions::addIntraMolecularChargeExclusionGradient(energy, forceField, box, moleculeAtoms, moleculeDynamics,
-                                                           withVirial ? &strain : nullptr);
-
-    if (withVirial)
+    const std::size_t end = std::min(begin + chunk, numberOfMolecules);
+    for (std::size_t m = begin; m < end; ++m)
     {
-      // atomic-to-molecular virial correction from the non-bonded gradients (pairs, mesh, exclusions) about the
-      // mass-weighted center of mass; the bonded gradients added below cancel in the molecular virial
-      double totalMass = 0.0;
-      double3 com(0.0, 0.0, 0.0);
-      for (const Atom& atom : moleculeAtoms)
-      {
-        const double mass = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
-        com += mass * atom.position;
-        totalMass += mass;
-      }
-      com = com / totalMass;
-      for (std::size_t k = 0; k < moleculeAtoms.size(); ++k)
-      {
-        const double3 arm = moleculeAtoms[k].position - com;
-        const double3 gradient = moleculeDynamics[k].gradient;
-        correction.ax += arm.x * gradient.x;
-        correction.ay += arm.x * gradient.y;
-        correction.az += arm.x * gradient.z;
-        correction.bx += arm.y * gradient.x;
-        correction.by += arm.y * gradient.y;
-        correction.bz += arm.y * gradient.z;
-        correction.cx += arm.z * gradient.x;
-        correction.cy += arm.z * gradient.y;
-        correction.cz += arm.z * gradient.z;
-      }
-    }
+      const Molecule& molecule = system.moleculeData[m];
+      const Component& component = system.components[molecule.componentId];
+      std::span<const Atom> moleculeAtoms = atoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+      std::span<AtomDynamics> moleculeDynamics = dynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms);
 
-    energy += component.intraMolecularPotentials.computeInternalGradient(moleculeAtoms, moleculeDynamics);
+      // the gradients of the system are assembled here first (the pair + mesh gradients are added in the
+      // scatter phase, after this work is complete)
+      for (AtomDynamics& atomDynamics : moleculeDynamics) atomDynamics.gradient = double3(0.0, 0.0, 0.0);
+
+      Interactions::addChargeSelfEnergy(energy, forceField, moleculeAtoms);
+      Interactions::addIntraMolecularChargeExclusionGradient(energy, forceField, box, moleculeAtoms, moleculeDynamics,
+                                                             withVirial ? &strain : nullptr);
+
+      if (withVirial)
+      {
+        // atomic-to-molecular virial correction of the non-bonded gradients about the mass-weighted center of
+        // mass: the exclusion part here, the pair + mesh part in the scatter phase (which reads the center of
+        // mass stored per atom); the bonded gradients added below cancel in the molecular virial
+        double totalMass = 0.0;
+        double3 com(0.0, 0.0, 0.0);
+        for (const Atom& atom : moleculeAtoms)
+        {
+          const double mass = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
+          com += mass * atom.position;
+          totalMass += mass;
+        }
+        com = com / totalMass;
+        for (std::size_t k = 0; k < moleculeAtoms.size(); ++k)
+        {
+          atomCenterOfMass[molecule.atomIndex + k] = com;
+          addOuterProduct(correction, moleculeAtoms[k].position - com, moleculeDynamics[k].gradient);
+        }
+      }
+
+      energy += component.intraMolecularPotentials.computeInternalGradient(moleculeAtoms, moleculeDynamics);
+    }
   }
 
   if (withVirial)
   {
     threadStrain[thread] += strain;
     threadCorrection[thread] += correction;
+  }
+}
+
+void SpatialDecompositionForceEngine::scatterPhase(std::size_t thread, System& system)
+{
+  const CellList::DomainLists& domain = cellList.domains[thread];
+  if (useMesh)
+  {
+    pppm.interpolate(domain.ownedAtoms, cellList.x.data(), cellList.y.data(), cellList.z.data(), cellList.charge.data(),
+                     cellList.scalingCoulomb.data(), fx.data(), fy.data(), fz.data());
+  }
+  std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
+  if (virialRequested)
+  {
+    double3x3 correction{};
+    for (const std::uint32_t i : domain.ownedAtoms)
+    {
+      const std::uint32_t original = cellList.sortedToOriginal[i];
+      const double3 gradient(fx[i], fy[i], fz[i]);
+      dynamics[original].gradient += gradient;
+      addOuterProduct(correction, atoms[original].position - atomCenterOfMass[original], gradient);
+    }
+    threadCorrection[thread] += correction;
+  }
+  else
+  {
+    for (const std::uint32_t i : domain.ownedAtoms)
+    {
+      dynamics[cellList.sortedToOriginal[i]].gradient += double3(fx[i], fy[i], fz[i]);
+    }
   }
 }
 
@@ -790,7 +826,9 @@ std::string SpatialDecompositionForceEngine::writeStatus() const
 {
   std::string result;
   result += std::format("Spatial-decomposition force engine\n");
-  result += std::format("========================================================================================================================\n");
+  result += std::format(
+      "================================================================================================================"
+      "========\n");
   result += std::format("    threads: {}\n", settings.numberOfThreads);
   result += std::format("    pair kernel: {}\n",
                         fastKernel ? (fastCoulomb ? "specialised Lennard-Jones + tabulated Ewald real space"
@@ -813,7 +851,9 @@ std::string SpatialDecompositionForceEngine::writeTimings() const
 {
   std::string result;
   result += std::format("Spatial-decomposition force engine timings\n");
-  result += std::format("========================================================================================================================\n");
+  result += std::format(
+      "================================================================================================================"
+      "========\n");
   result += std::format("    force evaluations:        {}\n", timing.steps);
   result +=
       std::format("    neighbour-list rebuilds:  {} ({:.2f} steps per rebuild)\n", timing.rebuilds,
@@ -829,8 +869,15 @@ std::string SpatialDecompositionForceEngine::writeTimings() const
     result += std::format("    influence function:       {:14.4f} [s]\n", timing.influence.count());
   }
   result += std::format("    pairs + spreading:        {:14.4f} [s]\n", timing.pairs.count());
-  result += std::format("    reduction, mesh, scatter: {:14.4f} [s]\n", timing.mesh.count());
-  result += std::format("    bonded + exclusions:      {:14.4f} [s]\n", timing.bonded.count());
+  result += std::format("    reduction, interpolation, scatter: {:5.4f} [s]\n", timing.mesh.count());
+  if (useMesh)
+  {
+    result += std::format("    FFTs || bonded + exclusions: {:11.4f} [s]\n", timing.bonded.count());
+  }
+  else
+  {
+    result += std::format("    bonded + exclusions:      {:14.4f} [s]\n", timing.bonded.count());
+  }
   if (timing.steps > 0)
   {
     result += std::format("    per force evaluation:     {:14.4f} [ms]\n",

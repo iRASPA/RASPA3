@@ -138,6 +138,8 @@ void PPPM::initialize(const SimulationBox& box, double alphaValue, double meshSp
   spectrum = fftw_alloc_complex(complexSize());
 
   threadBuffers.assign(threads, ThreadBuffer{});
+  partialEnergy.assign(threads, 0.0);
+  partialStrain.assign(threads, double3x3{});
   for (ThreadBuffer& buffer : threadBuffers)
   {
     buffer.histogramX.assign(static_cast<std::size_t>(mesh.x), 0u);
@@ -512,23 +514,37 @@ void PPPM::reduceMeshes(std::size_t thread, std::size_t numberOfThreads)
 
 double PPPM::solve(bool withVirial)
 {
-  fftw_execute(static_cast<fftw_plan>(forwardPlan));
+  forwardTransform();
+  applyInfluence(0, 1, withVirial);
+  return backwardTransform(1);
+}
+
+void PPPM::forwardTransform() { fftw_execute(static_cast<fftw_plan>(forwardPlan)); }
+
+void PPPM::applyInfluence(std::size_t thread, std::size_t numberOfThreads, bool withVirial)
+{
+  const std::size_t threads = std::min(std::max<std::size_t>(1, numberOfThreads), partialEnergy.size());
+  if (thread >= threads) return;
+  const std::int32_t first = static_cast<std::int32_t>((static_cast<std::size_t>(mesh.x) * thread) / threads);
+  const std::int32_t last = static_cast<std::int32_t>((static_cast<std::size_t>(mesh.x) * (thread + 1)) / threads);
 
   fftw_complex* F = static_cast<fftw_complex*>(spectrum);
   const std::size_t halfZ = static_cast<std::size_t>(mesh.z) / 2 + 1;
-  const std::size_t n = complexSize();
+  const std::size_t nyquistZ = (mesh.z % 2 == 0) ? static_cast<std::size_t>(mesh.z) / 2 : halfZ;  // never hit if odd
   double energy = 0.0;
-  reciprocalStrain = double3x3{};
+  double3x3 tensor{};
 
   if (!withVirial)
   {
-    for (std::size_t index = 0; index < n; ++index)
+    const std::size_t begin = static_cast<std::size_t>(first) * static_cast<std::size_t>(mesh.y) * halfZ;
+    const std::size_t end = static_cast<std::size_t>(last) * static_cast<std::size_t>(mesh.y) * halfZ;
+    for (std::size_t index = begin; index < end; ++index)
     {
       const std::size_t mz = index % halfZ;
       const double g = influence[index];
       const double re = F[index][0];
       const double im = F[index][1];
-      const double weight = (mz == 0 || (mesh.z % 2 == 0 && mz == static_cast<std::size_t>(mesh.z) / 2)) ? 1.0 : 2.0;
+      const double weight = (mz == 0 || mz == nyquistZ) ? 1.0 : 2.0;
       energy += weight * g * (re * re + im * im);
       F[index][0] = g * re;
       F[index][1] = g * im;
@@ -540,9 +556,8 @@ double PPPM::solve(bool withVirial)
     const double3 rowY(inverseCell.ay, inverseCell.by, inverseCell.cy);
     const double3 rowZ(inverseCell.az, inverseCell.bz, inverseCell.cz);
     const double inverseFourAlphaSquared = 0.25 / (alpha * alpha);
-    double3x3 tensor{};
-    std::size_t index = 0;
-    for (std::int32_t mx = 0; mx < mesh.x; ++mx)
+    std::size_t index = static_cast<std::size_t>(first) * static_cast<std::size_t>(mesh.y) * halfZ;
+    for (std::int32_t mx = first; mx < last; ++mx)
     {
       const std::int32_t sx = (mx > mesh.x / 2) ? mx - mesh.x : mx;
       const double3 kx = 2.0 * std::numbers::pi * static_cast<double>(sx) * rowX;
@@ -550,7 +565,7 @@ double PPPM::solve(bool withVirial)
       {
         const std::int32_t sy = (my > mesh.y / 2) ? my - mesh.y : my;
         const double3 kxy = kx + 2.0 * std::numbers::pi * static_cast<double>(sy) * rowY;
-        for (std::int32_t mz = 0; mz < static_cast<std::int32_t>(halfZ); ++mz, ++index)
+        for (std::size_t mz = 0; mz < halfZ; ++mz, ++index)
         {
           const double g = influence[index];
           const double re = F[index][0];
@@ -558,7 +573,7 @@ double PPPM::solve(bool withVirial)
           F[index][0] = g * re;
           F[index][1] = g * im;
           if (g == 0.0) continue;
-          const double weight = (mz == 0 || (mesh.z % 2 == 0 && mz == mesh.z / 2)) ? 1.0 : 2.0;
+          const double weight = (mz == 0 || mz == nyquistZ) ? 1.0 : 2.0;
           const double e = weight * g * (re * re + im * im);
           energy += e;
           const double3 k = kxy + 2.0 * std::numbers::pi * static_cast<double>(mz) * rowZ;
@@ -576,9 +591,21 @@ double PPPM::solve(bool withVirial)
         }
       }
     }
-    reciprocalStrain = tensor;
   }
+  partialEnergy[thread] = energy;
+  partialStrain[thread] = tensor;
+}
 
+double PPPM::backwardTransform(std::size_t numberOfThreads)
+{
+  double energy = 0.0;
+  reciprocalStrain = double3x3{};
+  const std::size_t threads = std::min(std::max<std::size_t>(1, numberOfThreads), partialEnergy.size());
+  for (std::size_t t = 0; t < threads; ++t)
+  {
+    energy += partialEnergy[t];
+    reciprocalStrain += partialStrain[t];
+  }
   fftw_execute(static_cast<fftw_plan>(backwardPlan));
   return energy;
 }

@@ -81,8 +81,17 @@ export class PPPM
 
   /// Forward transform of the FFT input, influence-function multiplication and inverse transform into the potential
   /// mesh. Returns the reciprocal energy (energy units of the force field). With `withVirial` the strain
-  /// derivative of the reciprocal energy is accumulated as well (see reciprocalStrainDerivative). Thread 0 only.
+  /// derivative of the reciprocal energy is accumulated as well (see reciprocalStrainDerivative). Serial
+  /// convenience for the three steps below.
   double solve(bool withVirial);
+
+  /// The solve in three steps separated by team barriers: thread 0 transforms the charge mesh
+  /// (forwardTransform), every thread multiplies its x-slab of the half spectrum with the influence function and
+  /// accumulates its share of the energy and strain derivative (applyInfluence), and thread 0 reduces the shares
+  /// and transforms back into the potential mesh (backwardTransform, returning the reciprocal energy).
+  void forwardTransform();
+  void applyInfluence(std::size_t thread, std::size_t numberOfThreads, bool withVirial);
+  double backwardTransform(std::size_t numberOfThreads);
 
   /// Strain derivative sum_m G(m) |F(Q)(m)|^2 [I - 2 (1/k^2 + 1/(4 alpha^2)) k k^T] of the last solve(true).
   const double3x3& reciprocalStrainTensor() const { return reciprocalStrain; }
@@ -142,6 +151,8 @@ export class PPPM
   double3x3 reciprocalStrain{};
   std::vector<double> partialIonSum{};        ///< Per-thread single-ion sums of the influence-function slabs.
   std::vector<double3x3> partialIonStrain{};  ///< Per-thread single-ion strain tensors of the slabs.
+  std::vector<double> partialEnergy{};        ///< Per-thread reciprocal energies of the applyInfluence slabs.
+  std::vector<double3x3> partialStrain{};     ///< Per-thread reciprocal strain tensors of the slabs.
 
   std::size_t realSize() const;
   std::size_t complexSize() const;
