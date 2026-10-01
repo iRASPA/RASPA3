@@ -37,8 +37,12 @@ void PPPM::release()
     fftw_destroy_plan(static_cast<fftw_plan>(backwardPlan));
     backwardPlan = nullptr;
   }
-  for (double* copy : meshCopies) fftw_free(copy);
-  meshCopies.clear();
+  if (chargeMesh)
+  {
+    fftw_free(chargeMesh);
+    chargeMesh = nullptr;
+  }
+  threadBuffers.clear();
   if (potential)
   {
     fftw_free(potential);
@@ -127,26 +131,30 @@ void PPPM::initialize(const SimulationBox& box, double alphaValue, double meshSp
 
   const std::size_t threads = std::max<std::size_t>(1, numberOfThreads);
   const std::size_t n = realSize();
-  meshCopies.resize(threads, nullptr);
-  for (std::size_t t = 0; t < threads; ++t)
-  {
-    meshCopies[t] = fftw_alloc_real(n);
-    std::fill_n(meshCopies[t], n, 0.0);
-  }
+  chargeMesh = fftw_alloc_real(n);
+  std::fill_n(chargeMesh, n, 0.0);
   potential = fftw_alloc_real(n);
   std::fill_n(potential, n, 0.0);
   spectrum = fftw_alloc_complex(complexSize());
+
+  threadBuffers.assign(threads, ThreadBuffer{});
+  for (ThreadBuffer& buffer : threadBuffers)
+  {
+    buffer.histogramX.assign(static_cast<std::size_t>(mesh.x), 0u);
+    buffer.histogramY.assign(static_cast<std::size_t>(mesh.y), 0u);
+    buffer.histogramZ.assign(static_cast<std::size_t>(mesh.z), 0u);
+  }
 
   {
     std::scoped_lock lock(fftwPlannerMutex);
     std::call_once(fftwThreadsOnce, [] { fftw_init_threads(); });
     fftw_plan_with_nthreads(static_cast<int>(threads));
     forwardPlan =
-        fftw_plan_dft_r2c_3d(mesh.x, mesh.y, mesh.z, meshCopies[0], static_cast<fftw_complex*>(spectrum), FFTW_MEASURE);
+        fftw_plan_dft_r2c_3d(mesh.x, mesh.y, mesh.z, chargeMesh, static_cast<fftw_complex*>(spectrum), FFTW_MEASURE);
     backwardPlan =
         fftw_plan_dft_c2r_3d(mesh.x, mesh.y, mesh.z, static_cast<fftw_complex*>(spectrum), potential, FFTW_MEASURE);
   }
-  std::fill_n(meshCopies[0], n, 0.0);
+  std::fill_n(chargeMesh, n, 0.0);
 
   computeBsplineModuli();
   computeInfluenceFunction(box);
@@ -297,19 +305,72 @@ void PPPM::updateBox(const SimulationBox& box, double alphaValue)
   }
 }
 
-void PPPM::clearMesh(std::size_t thread) { std::fill_n(meshCopies[thread], realSize(), 0.0); }
+namespace
+{
+// The smallest periodic arc of mesh planes (start, length) that holds every plane with a non-zero count, extended
+// by `halo` planes below the first one (the B-spline support of an anchor reaches the planes anchor - order + 1
+// .. anchor). The arc is the complement of the largest circular run of empty planes; it degenerates to the whole
+// axis when the extended arc would cover it. Returns length 0 when no plane is occupied.
+std::pair<std::int32_t, std::int32_t> coveringArc(std::span<const std::uint32_t> histogram, std::int32_t halo)
+{
+  const std::int32_t K = static_cast<std::int32_t>(histogram.size());
+  std::int32_t first = -1;
+  for (std::int32_t k = 0; k < K; ++k)
+  {
+    if (histogram[static_cast<std::size_t>(k)] != 0)
+    {
+      first = k;
+      break;
+    }
+  }
+  if (first < 0) return {0, 0};
+
+  // longest run of empty planes, scanned circularly from an occupied plane so that no run is split
+  std::int32_t longestGap = 0;
+  std::int32_t longestGapEnd = first;  // the occupied plane that follows the longest gap
+  std::int32_t gap = 0;
+  for (std::int32_t step = 1; step <= K; ++step)
+  {
+    const std::int32_t k = (first + step) % K;
+    if (histogram[static_cast<std::size_t>(k)] == 0)
+    {
+      ++gap;
+    }
+    else
+    {
+      if (gap > longestGap)
+      {
+        longestGap = gap;
+        longestGapEnd = k;
+      }
+      gap = 0;
+    }
+  }
+  std::int32_t start = longestGapEnd;
+  std::int32_t length = K - longestGap;
+
+  length += halo;
+  if (length >= K) return {0, K};
+  start = ((start - halo) % K + K) % K;
+  return {start, length};
+}
+}  // namespace
 
 void PPPM::spread(std::size_t thread, std::span<const std::uint32_t> atoms, const double* x, const double* y,
                   const double* z, const double* charge, const double* scalingCoulomb)
 {
-  double* grid = meshCopies[thread];
+  ThreadBuffer& buffer = threadBuffers[thread];
   const std::size_t p = order;
-  const std::size_t Kx = static_cast<std::size_t>(mesh.x);
-  const std::size_t Ky = static_cast<std::size_t>(mesh.y);
-  const std::size_t Kz = static_cast<std::size_t>(mesh.z);
-  std::array<double, 8> wx{}, wy{}, wz{}, dummy{};
-  std::array<std::size_t, 8> ix{}, iy{}, iz{};
+  const std::int32_t Kx = mesh.x;
+  const std::int32_t Ky = mesh.y;
+  const std::int32_t Kz = mesh.z;
+  const bool direct = (threadBuffers.size() == 1);
 
+  // pass 1: anchors (the mesh point at or below the atom along every axis) and their counts per plane
+  buffer.anchors.clear();
+  std::fill(buffer.histogramX.begin(), buffer.histogramX.end(), 0u);
+  std::fill(buffer.histogramY.begin(), buffer.histogramY.end(), 0u);
+  std::fill(buffer.histogramZ.begin(), buffer.histogramZ.end(), 0u);
   for (const std::uint32_t i : atoms)
   {
     const double q = scalingCoulomb[i] * charge[i];
@@ -319,12 +380,63 @@ void PPPM::spread(std::size_t thread, std::span<const std::uint32_t> atoms, cons
     s.x -= std::floor(s.x);
     s.y -= std::floor(s.y);
     s.z -= std::floor(s.z);
-    const double ux = s.x * static_cast<double>(Kx);
-    const double uy = s.y * static_cast<double>(Ky);
-    const double uz = s.z * static_cast<double>(Kz);
-    const std::size_t kx0 = std::min(static_cast<std::size_t>(ux), Kx - 1);
-    const std::size_t ky0 = std::min(static_cast<std::size_t>(uy), Ky - 1);
-    const std::size_t kz0 = std::min(static_cast<std::size_t>(uz), Kz - 1);
+    const double ux = std::min(s.x * static_cast<double>(Kx), std::nextafter(static_cast<double>(Kx), 0.0));
+    const double uy = std::min(s.y * static_cast<double>(Ky), std::nextafter(static_cast<double>(Ky), 0.0));
+    const double uz = std::min(s.z * static_cast<double>(Kz), std::nextafter(static_cast<double>(Kz), 0.0));
+    buffer.anchors.insert(buffer.anchors.end(), {q, ux, uy, uz});
+    ++buffer.histogramX[static_cast<std::size_t>(ux)];
+    ++buffer.histogramY[static_cast<std::size_t>(uy)];
+    ++buffer.histogramZ[static_cast<std::size_t>(uz)];
+  }
+
+  // the sub-box of the mesh touched by these atoms: the anchors' arcs plus the order - 1 planes of the spline
+  // support below them; with one thread the FFT input itself is the target
+  double* grid = nullptr;
+  if (direct)
+  {
+    buffer.start = int3(0, 0, 0);
+    buffer.length = mesh;
+    grid = chargeMesh;
+    std::fill_n(chargeMesh, realSize(), 0.0);
+  }
+  else
+  {
+    const std::int32_t halo = static_cast<std::int32_t>(p) - 1;
+    const auto [sx, lx] = coveringArc(buffer.histogramX, halo);
+    const auto [sy, ly] = coveringArc(buffer.histogramY, halo);
+    const auto [sz, lz] = coveringArc(buffer.histogramZ, halo);
+    buffer.start = int3(sx, sy, sz);
+    buffer.length = int3(lx, ly, lz);
+    if (buffer.anchors.empty())
+    {
+      buffer.length = int3(0, 0, 0);
+      return;
+    }
+    const std::size_t size = static_cast<std::size_t>(lx) * static_cast<std::size_t>(ly) * static_cast<std::size_t>(lz);
+    buffer.values.assign(size, 0.0);
+    grid = buffer.values.data();
+  }
+
+  const std::int32_t Ly = buffer.length.y;
+  const std::int32_t Lz = buffer.length.z;
+  const std::int32_t startX = buffer.start.x;
+  const std::int32_t startY = buffer.start.y;
+  const std::int32_t startZ = buffer.start.z;
+
+  // pass 2: spread into the buffer with local (sub-box) indices
+  std::array<double, 8> wx{}, wy{}, wz{}, dummy{};
+  std::array<std::size_t, 8> ix{}, iy{}, iz{};
+  const double* anchor = buffer.anchors.data();
+  const std::size_t count = buffer.anchors.size() / 4;
+  for (std::size_t n = 0; n < count; ++n, anchor += 4)
+  {
+    const double q = anchor[0];
+    const double ux = anchor[1];
+    const double uy = anchor[2];
+    const double uz = anchor[3];
+    const std::int32_t kx0 = static_cast<std::int32_t>(ux);
+    const std::int32_t ky0 = static_cast<std::int32_t>(uy);
+    const std::int32_t kz0 = static_cast<std::int32_t>(uz);
     bsplineWeights(p, ux - static_cast<double>(kx0), std::span<double>(wx.data(), p),
                    std::span<double>(dummy.data(), p));
     bsplineWeights(p, uy - static_cast<double>(ky0), std::span<double>(wy.data(), p),
@@ -333,18 +445,20 @@ void PPPM::spread(std::size_t thread, std::span<const std::uint32_t> atoms, cons
                    std::span<double>(dummy.data(), p));
     for (std::size_t j = 0; j < p; ++j)
     {
-      ix[j] = (kx0 + Kx - j) % Kx;
-      iy[j] = (ky0 + Ky - j) % Ky;
-      iz[j] = (kz0 + Kz - j) % Kz;
+      // mesh index (k0 - j) mod K, relative to the start of the arc; inside the arc by construction
+      const std::int32_t dj = static_cast<std::int32_t>(j);
+      ix[j] = static_cast<std::size_t>(((kx0 - dj - startX) % Kx + Kx) % Kx);
+      iy[j] = static_cast<std::size_t>(((ky0 - dj - startY) % Ky + Ky) % Ky);
+      iz[j] = static_cast<std::size_t>(((kz0 - dj - startZ) % Kz + Kz) % Kz);
     }
     for (std::size_t a = 0; a < p; ++a)
     {
       const double qx = q * wx[a];
-      const std::size_t offsetX = ix[a] * Ky;
+      const std::size_t offsetX = ix[a] * static_cast<std::size_t>(Ly);
       for (std::size_t b = 0; b < p; ++b)
       {
         const double qxy = qx * wy[b];
-        double* row = grid + (offsetX + iy[b]) * Kz;
+        double* row = grid + (offsetX + iy[b]) * static_cast<std::size_t>(Lz);
         for (std::size_t c = 0; c < p; ++c)
         {
           row[iz[c]] += qxy * wz[c];
@@ -356,16 +470,43 @@ void PPPM::spread(std::size_t thread, std::span<const std::uint32_t> atoms, cons
 
 void PPPM::reduceMeshes(std::size_t thread, std::size_t numberOfThreads)
 {
-  const std::size_t copies = meshCopies.size();
-  if (copies <= 1) return;
-  const std::size_t n = realSize();
-  const std::size_t begin = (thread * n) / numberOfThreads;
-  const std::size_t end = ((thread + 1) * n) / numberOfThreads;
-  double* target = meshCopies[0];
-  for (std::size_t c = 1; c < copies; ++c)
+  if (threadBuffers.size() <= 1) return;
+  const std::int32_t Kx = mesh.x;
+  const std::int32_t Ky = mesh.y;
+  const std::int32_t Kz = mesh.z;
+  const std::size_t planeSize = static_cast<std::size_t>(Ky) * static_cast<std::size_t>(Kz);
+  const std::int32_t firstPlane = static_cast<std::int32_t>((static_cast<std::size_t>(Kx) * thread) / numberOfThreads);
+  const std::int32_t lastPlane =
+      static_cast<std::int32_t>((static_cast<std::size_t>(Kx) * (thread + 1)) / numberOfThreads);
+
+  for (std::int32_t kx = firstPlane; kx < lastPlane; ++kx)
   {
-    const double* source = meshCopies[c];
-    for (std::size_t index = begin; index < end; ++index) target[index] += source[index];
+    double* plane = chargeMesh + static_cast<std::size_t>(kx) * planeSize;
+    std::fill_n(plane, planeSize, 0.0);
+
+    for (const ThreadBuffer& buffer : threadBuffers)
+    {
+      if (buffer.length.x == 0) continue;
+      const std::int32_t lx = ((kx - buffer.start.x) % Kx + Kx) % Kx;
+      if (lx >= buffer.length.x) continue;
+      const std::int32_t Ly = buffer.length.y;
+      const std::int32_t Lz = buffer.length.z;
+      // the z-arc of the buffer as at most two contiguous runs of the mesh axis
+      const std::int32_t firstRun = std::min(Lz, Kz - buffer.start.z);
+      const std::int32_t secondRun = Lz - firstRun;
+      const double* slab = buffer.values.data() +
+                           static_cast<std::size_t>(lx) * static_cast<std::size_t>(Ly) * static_cast<std::size_t>(Lz);
+      for (std::int32_t ly = 0; ly < Ly; ++ly)
+      {
+        const std::int32_t ky = (buffer.start.y + ly) % Ky;
+        double* destination = plane + static_cast<std::size_t>(ky) * static_cast<std::size_t>(Kz);
+        const double* source = slab + static_cast<std::size_t>(ly) * static_cast<std::size_t>(Lz);
+        double* firstDestination = destination + buffer.start.z;
+        for (std::int32_t lz = 0; lz < firstRun; ++lz) firstDestination[lz] += source[lz];
+        const double* wrapped = source + firstRun;
+        for (std::int32_t lz = 0; lz < secondRun; ++lz) destination[lz] += wrapped[lz];
+      }
+    }
   }
 }
 
@@ -513,7 +654,19 @@ void PPPM::interpolate(std::span<const std::uint32_t> atoms, const double* x, co
 
 std::string PPPM::status() const
 {
-  return std::format(
-      "    particle-mesh Ewald: mesh {} x {} x {}, B-spline order {}, alpha {:.6f} A^-1, {} mesh copies\n", mesh.x,
-      mesh.y, mesh.z, order, alpha, meshCopies.size());
+  std::string result = std::format("    particle-mesh Ewald: mesh {} x {} x {}, B-spline order {}, alpha {:.6f} A^-1\n",
+                                   mesh.x, mesh.y, mesh.z, order, alpha);
+  if (threadBuffers.size() > 1)
+  {
+    std::size_t bufferPoints = 0;
+    for (const ThreadBuffer& buffer : threadBuffers)
+    {
+      bufferPoints += static_cast<std::size_t>(buffer.length.x) * static_cast<std::size_t>(buffer.length.y) *
+                      static_cast<std::size_t>(buffer.length.z);
+    }
+    result += std::format("    charge assignment: {} per-thread sub-box buffers, together {:.2f} x the mesh\n",
+                          threadBuffers.size(),
+                          realSize() > 0 ? static_cast<double>(bufferPoints) / static_cast<double>(realSize()) : 0.0);
+  }
+  return result;
 }

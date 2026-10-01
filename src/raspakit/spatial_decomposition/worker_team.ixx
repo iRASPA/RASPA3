@@ -10,7 +10,7 @@ import std;
  * The team owns `size() - 1` background `std::jthread`s; the calling thread takes part as member 0. `run(task)`
  * executes `task(member)` once on every member and returns when all of them are done; inside the task the members
  * separate their phases with `sync()`, a `std::barrier` over the whole team. Each member keeps the same index for
- * the lifetime of the team, so per-thread state (sub-domain, neighbour lists, mesh copy) stays attached to the
+ * the lifetime of the team, so per-thread state (sub-domain, neighbour lists, mesh buffer) stays attached to the
  * same core and cache from step to step.
  *
  * A team of one has no background threads: `run` calls the task inline and `sync` is a no-op, so a serial run goes

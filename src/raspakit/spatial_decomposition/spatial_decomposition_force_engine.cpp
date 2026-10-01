@@ -346,7 +346,7 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
   lap(timing.rebuild);
 
   // phase 2: gather the compact positions (owned atoms and shifted ghost images), short-range pairs of the owned
-  // atoms and, with the mesh, charge spreading into the private copy
+  // atoms and, with the mesh, charge spreading into the private sub-box buffer of the thread
   RunningEnergy& energy = threadEnergies[thread];
   workers.phase(
       [&]
@@ -356,15 +356,14 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
         if (useMesh)
         {
           const CellList::DomainLists& domain = cellList.domains[thread];
-          pppm.clearMesh(thread);
           pppm.spread(thread, domain.ownedAtoms, cellList.x.data(), cellList.y.data(), cellList.z.data(),
                       cellList.charge.data(), cellList.scalingCoulomb.data());
         }
       });
   lap(timing.pairs);
 
-  // phase 3: the owners collect the ghost forces of the other threads; with the mesh, sum the mesh copies
-  // (parallel slabs)
+  // phase 3: the owners collect the ghost forces of the other threads; with the mesh, assemble the charge mesh
+  // from the sub-box buffers (parallel x-slabs)
   if (threads > 1)
   {
     workers.phase(

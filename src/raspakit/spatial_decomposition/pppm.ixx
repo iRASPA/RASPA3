@@ -25,11 +25,16 @@ import simulationbox;
  * addIntraMolecularChargeExclusionGradient), as does the net-charge correction, for which
  * singleIonFourierSum() provides the mesh analogue of the direct sum's single-ion term.
  *
- * The mesh is shared work: every thread spreads the atoms it owns into a private mesh copy (clearMesh, spread),
- * the copies are summed in parallel slabs (reduceMeshes), thread 0 performs the transforms (solve, using FFTW's
- * own threads), and every thread interpolates the gradients of its own atoms (interpolate). Triclinic cells are
- * handled in fractional coordinates. The mesh dimensions are fixed at initialization; the influence function is
- * recomputed when the cell changes (NPT).
+ * The mesh is shared work: every thread spreads the atoms it owns into a private buffer that covers only the
+ * sub-box of the mesh its atoms touch (spread: the B-spline support of the owned atoms, which are spatially
+ * compact because the sub-domains are spatial; the sub-box is found per step and per axis as the smallest
+ * periodic arc of mesh planes holding the atoms' anchor points, extended by the order - 1 planes of the spline
+ * support), the buffers are summed into the FFT input in parallel x-slabs (reduceMeshes: every mesh plane is
+ * zeroed and receives the buffers that cover it, so the memory traffic is a small multiple of one mesh instead of
+ * one full mesh per thread), thread 0 performs the transforms (solve, using FFTW's own threads), and every thread
+ * interpolates the gradients of its own atoms (interpolate). With one thread the atoms are spread directly into
+ * the FFT input. Triclinic cells are handled in fractional coordinates. The mesh dimensions are fixed at
+ * initialization; the influence function is recomputed when the cell changes (NPT).
  */
 export class PPPM
 {
@@ -47,7 +52,7 @@ export class PPPM
   bool initialized() const { return forwardPlan != nullptr; }
   int3 meshSize() const { return mesh; }
   std::size_t interpolationOrder() const { return order; }
-  std::size_t numberOfMeshCopies() const { return meshCopies.size(); }
+  std::size_t numberOfThreads() const { return threadBuffers.size(); }
 
   /// Recomputes the influence function serially when the cell or alpha differ from what it was built for.
   /// Thread 0 only.
@@ -64,16 +69,17 @@ export class PPPM
   void computeInfluenceSlab(std::size_t thread, std::size_t numberOfThreads);
   void finishInfluenceFunction();
 
-  void clearMesh(std::size_t thread);
-
-  /// Spreads the charges of the given atoms (sorted-order indices into the SoA arrays) into mesh copy `thread`.
+  /// Spreads the charges of the given atoms (sorted-order indices into the SoA arrays) into the private buffer
+  /// of `thread`, sized to the mesh sub-box the atoms touch; with a single thread directly into the FFT input
+  /// (which is cleared first). Must be followed by reduceMeshes on every thread when there is more than one.
   void spread(std::size_t thread, std::span<const std::uint32_t> atoms, const double* x, const double* y,
               const double* z, const double* charge, const double* scalingCoulomb);
 
-  /// Sums all mesh copies into copy 0 for the x-slab of this thread out of `numberOfThreads`.
+  /// Assembles the FFT input for the x-slab of this thread out of `numberOfThreads`: the planes are zeroed and
+  /// the buffers of all threads whose sub-box covers them are added (after all threads finished spreading).
   void reduceMeshes(std::size_t thread, std::size_t numberOfThreads);
 
-  /// Forward transform of copy 0, influence-function multiplication and inverse transform into the potential
+  /// Forward transform of the FFT input, influence-function multiplication and inverse transform into the potential
   /// mesh. Returns the reciprocal energy (energy units of the force field). With `withVirial` the strain
   /// derivative of the reciprocal energy is accumulated as well (see reciprocalStrainDerivative). Thread 0 only.
   double solve(bool withVirial);
@@ -110,9 +116,22 @@ export class PPPM
   double3x3 inverseCell{};
   double volume{0.0};
 
-  std::vector<double*> meshCopies{};  ///< fftw_malloc'ed real meshes, one per thread; copy 0 is the FFT input.
-  double* potential{nullptr};         ///< Real output of the inverse transform.
-  void* spectrum{nullptr};            ///< fftw_complex half spectrum.
+  double* chargeMesh{nullptr};  ///< fftw_malloc'ed real mesh: the assembled charge mesh, input of the forward FFT.
+  double* potential{nullptr};   ///< Real output of the inverse transform.
+
+  /// Private charge-assignment state of one thread: the buffer over the mesh sub-box its atoms touch.
+  struct ThreadBuffer
+  {
+    /// First mesh index (0 <= start < K) and number of planes (0: no charged atoms) covered along each axis; the
+    /// covered indices are start, start + 1, ..., start + length - 1 modulo K (a periodic arc).
+    int3 start{0, 0, 0};
+    int3 length{0, 0, 0};
+    std::vector<double> values{};   ///< length.x * length.y * length.z, x-major.
+    std::vector<double> anchors{};  ///< Per charged atom: q, u_x, u_y, u_z (mesh units).
+    std::vector<std::uint32_t> histogramX{}, histogramY{}, histogramZ{};  ///< Anchor counts per mesh plane.
+  };
+  std::vector<ThreadBuffer> threadBuffers{};
+  void* spectrum{nullptr};  ///< fftw_complex half spectrum.
   void* forwardPlan{nullptr};
   void* backwardPlan{nullptr};
 
