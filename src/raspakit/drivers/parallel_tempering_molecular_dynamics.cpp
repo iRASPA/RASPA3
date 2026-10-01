@@ -65,6 +65,10 @@ static void writeReplicaAnalysisOutputs(System& system, std::size_t replicaId, s
   {
     system.propertyVACF->writeOutput(replicaId, system.components, cycle);
   }
+  if (system.propertyEndToEndACF.has_value())
+  {
+    system.propertyEndToEndACF->writeOutput(replicaId, system.components, cycle);
+  }
   if (system.averageEnergyHistogram.has_value())
   {
     system.averageEnergyHistogram->writeOutput(replicaId, cycle);

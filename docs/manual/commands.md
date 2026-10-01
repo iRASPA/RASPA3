@@ -1684,6 +1684,43 @@ molecules; do not combine it with insertion/deletion moves.
     The length of each buffer, i.e. the number of correlation times.
     Default: `1000`.
 
+#### End-to-end vector autocorrelation function and relaxation time <a name="end-to-end-autocorrelation-function"></a>
+
+`"ComputeEndToEndACF" : boolean`
+
+Whether to compute the autocorrelation function of the end-to-end vector
+\(\mathbf{R}\) of chain molecules,
+\(C(t) = \langle \mathbf{R}(0) \cdot \mathbf{R}(t) \rangle\), for every
+component with end-to-end atoms (`"EndToEndAtoms"` in the molecule definition,
+or the two ends of a linear chain). The function is accumulated with the order-N
+blocking scheme of the MSD, so a single run covers lags from one sampling
+interval up to \(\text{sample interval} \times n^{\text{blocks}}\) with a
+logarithmic density of points. Output is written to the directory
+`end_to_end_acf`, one file per component with the lag, \(C(t)\), the normalized
+function \(C(t)/\langle R^2 \rangle\) and the number of samples per lag. The
+header of the file reports \(\langle R^2 \rangle\) and three estimates of the
+end-to-end relaxation time \(\tau_R\), the spacing of statistically independent
+samples of the end-to-end distance: the integral of \(C(t)/C(0)\) up to its
+first zero crossing (flagged as a lower bound when the function has not yet
+crossed zero), the time at which \(C(t)/C(0)\) falls to \(1/e\), and the decay
+time of a single exponential fitted to \(0.05 < C(t)/C(0) \le 0.5\) (the range
+dominated by the slowest Rouse mode). A production run of length \(T\) yields
+roughly \(T / (2 \tau_R)\) independent samples of \(R\) per chain.
+
+In molecular dynamics the lag is in picoseconds; in Monte Carlo (no time step)
+the lag is in cycles and measures how fast the Monte Carlo moves decorrelate the
+chain conformations. Computing the function requires a fixed number of
+molecules; do not combine it with insertion/deletion moves.
+
+-   `"SampleEndToEndACFEvery" : integer`\
+    Sample the end-to-end vectors every `int` cycles. Default: `10`.
+
+-   `"WriteEndToEndACFEvery" : integer`\
+    Write the autocorrelation function every `int` cycles. Default: `5000`.
+
+-   `"NumberOfBlockElementsEndToEndACF" : integer`\
+    The number of elements \(n\) per block in the order-N scheme. Default: `25`.
+
 #### Density grids <a name="density-grids"></a>
 
 `"ComputeDensityGrid" : boolean`

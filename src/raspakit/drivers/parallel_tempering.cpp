@@ -63,6 +63,10 @@ static void writeReplicaAnalysisOutputs(System& system, std::size_t replicaId, s
   {
     system.propertyMoleculeProperties->writeOutput(replicaId, system.components, cycle);
   }
+  if (system.propertyEndToEndACF.has_value())
+  {
+    system.propertyEndToEndACF->writeOutput(replicaId, system.components, cycle);
+  }
   if (system.propertyMoleculeShape.has_value())
   {
     system.propertyMoleculeShape->writeOutput(replicaId, system.components, cycle);

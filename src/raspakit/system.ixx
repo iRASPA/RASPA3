@@ -40,6 +40,7 @@ import property_molecule_shape;
 import property_molecule_backbone;
 import property_msd;
 import property_vacf;
+import property_end_to_end_acf;
 import property_number_of_molecules_evolution;
 import property_volume_evolution;
 import property_conserved_energy_evolution;
@@ -105,7 +106,7 @@ export struct System
          std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{3};
+  std::uint64_t versionNumber{4};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -285,6 +286,7 @@ export struct System
   std::optional<PropertyMoleculeBackbone> propertyMoleculeBackbone;
   std::optional<PropertyMeanSquaredDisplacement> propertyMSD;
   std::optional<PropertyVelocityAutoCorrelationFunction> propertyVACF;
+  std::optional<PropertyEndToEndAutoCorrelationFunction> propertyEndToEndACF;
   std::optional<WriteLammpsData> writeLammpsData;
 
   std::optional<PropertyNumberOfMoleculesEvolution> propertyNumberOfMoleculesEvolution;
@@ -804,6 +806,11 @@ export struct System
   void setPropertyRDF(const std::optional<PropertyRadialDistributionFunction>& rdf);
   void setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement>& msd);
   void setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelationFunction>& vacf);
+
+  /// Enables the end-to-end vector autocorrelation function (tau_R) for the components with end-to-end atoms;
+  /// throws when no component has them.
+  void setPropertyEndToEndACF(std::size_t numberOfBlockElements, std::size_t sampleEvery,
+                              std::optional<std::size_t> writeEvery);
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System& s);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s);

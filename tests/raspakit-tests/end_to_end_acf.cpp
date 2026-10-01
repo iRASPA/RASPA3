@@ -1,0 +1,225 @@
+#include <gtest/gtest.h>
+
+import std;
+
+import archive;
+import double3;
+import simd_quatd;
+import atom;
+import molecule;
+import property_end_to_end_acf;
+
+namespace
+{
+// Ornstein-Uhlenbeck process for the end-to-end vector: R(t + dt) = R(t) e^{-dt/tau} + sigma sqrt(1 - e^{-2 dt/tau}) xi
+// with xi standard normal per Cartesian component, so that <R(0).R(t)> = 3 sigma^2 e^{-t/tau}.
+struct OrnsteinUhlenbeck
+{
+  double tau;
+  double sigma;
+  double dt;
+  std::mt19937_64 generator{12345};
+  std::normal_distribution<double> normal{0.0, 1.0};
+
+  double3 initial() { return sigma * double3(normal(generator), normal(generator), normal(generator)); }
+
+  double3 step(const double3 &r)
+  {
+    const double decay = std::exp(-dt / tau);
+    const double noise = sigma * std::sqrt(1.0 - decay * decay);
+    return decay * r + noise * double3(normal(generator), normal(generator), normal(generator));
+  }
+};
+
+std::optional<double> interpolateNormalized(const std::vector<EndToEndAutoCorrelationFunctionData> &data, double time)
+{
+  for (std::size_t i = 1; i < data.size(); ++i)
+  {
+    if (data[i].time >= time)
+    {
+      const double f = (time - data[i - 1].time) / (data[i].time - data[i - 1].time);
+      return data[i - 1].normalized + f * (data[i].normalized - data[i - 1].normalized);
+    }
+  }
+  return std::nullopt;
+}
+}  // namespace
+
+TEST(end_to_end_acf, lags_follow_the_order_n_blocking_scheme)
+{
+  // one component of one molecule, n = 4 block elements, sampled every cycle with a 0.5 ps step
+  PropertyEndToEndAutoCorrelationFunction property({1}, {std::array<std::size_t, 2>{0, 1}}, 1, 0.5, 4, 1, std::nullopt);
+
+  // constant vector: C(t) = |R|^2 at every lag
+  const double3 r(1.0, 2.0, 2.0);
+  for (std::size_t i = 0; i < 70; ++i) property.addSampleVectors(std::span<const double3>(&r, 1));
+
+  const std::vector<EndToEndAutoCorrelationFunctionData> data = property.result(0);
+  ASSERT_FALSE(data.empty());
+
+  // in samples: block 0 holds lags 0, 1, 2, 3; block 1: 4, 8, 12; block 2: 16, 32, 48; block 3 (lag 64) needs
+  // 128 samples before its first non-zero lag has data
+  std::vector<double> expectedLags{0.0, 0.5, 1.0, 1.5, 2.0, 4.0, 6.0, 8.0, 16.0, 24.0};
+  ASSERT_GE(data.size(), expectedLags.size());
+  for (std::size_t i = 0; i < expectedLags.size(); ++i)
+  {
+    EXPECT_DOUBLE_EQ(data[i].time, expectedLags[i]);
+    EXPECT_NEAR(data[i].acf, 9.0, 1e-12);
+    EXPECT_NEAR(data[i].normalized, 1.0, 1e-12);
+  }
+  // the lags are strictly increasing, no duplicates across blocks
+  for (std::size_t i = 1; i < data.size(); ++i) EXPECT_GT(data[i].time, data[i - 1].time);
+  EXPECT_EQ(static_cast<std::size_t>(data[0].numberOfSamples), 70uz);
+}
+
+TEST(end_to_end_acf, recovers_the_relaxation_time_of_an_exponentially_decorrelating_vector)
+{
+  const std::size_t numberOfMolecules = 64;
+  const double tau = 20.0;   // ps
+  const double sigma = 3.0;  // Angstrom per component
+  const double dt = 1.0;     // ps between samples (time step 0.1 ps, sampled every 10 cycles)
+
+  PropertyEndToEndAutoCorrelationFunction property({numberOfMolecules}, {std::array<std::size_t, 2>{0, 1}},
+                                                   numberOfMolecules, 0.1, 25, 10, std::nullopt);
+
+  OrnsteinUhlenbeck process{tau, sigma, dt};
+  std::vector<double3> vectors(numberOfMolecules);
+  for (double3 &r : vectors) r = process.initial();
+
+  const std::size_t numberOfSamples = 40000;
+  for (std::size_t s = 0; s < numberOfSamples; ++s)
+  {
+    property.addSampleVectors(vectors);
+    for (double3 &r : vectors) r = process.step(r);
+  }
+
+  const std::vector<EndToEndAutoCorrelationFunctionData> data = property.result(0);
+  ASSERT_GT(data.size(), 10uz);
+
+  // C(0) = <R^2> = 3 sigma^2
+  EXPECT_NEAR(data[0].acf, 3.0 * sigma * sigma, 0.05 * 3.0 * sigma * sigma);
+
+  // C(tau)/C(0) = 1/e, C(2 tau)/C(0) = 1/e^2
+  const std::optional<double> atTau = interpolateNormalized(data, tau);
+  const std::optional<double> atTwoTau = interpolateNormalized(data, 2.0 * tau);
+  ASSERT_TRUE(atTau.has_value());
+  ASSERT_TRUE(atTwoTau.has_value());
+  EXPECT_NEAR(atTau.value(), std::exp(-1.0), 0.04);
+  EXPECT_NEAR(atTwoTau.value(), std::exp(-2.0), 0.04);
+
+  // the three tau_R estimates agree with the input relaxation time
+  const EndToEndRelaxationTimes times = property.relaxationTimes(0);
+  EXPECT_NEAR(times.meanSquaredEndToEnd, 3.0 * sigma * sigma, 0.05 * 3.0 * sigma * sigma);
+  ASSERT_TRUE(times.oneOverE.has_value());
+  EXPECT_NEAR(times.oneOverE.value(), tau, 0.12 * tau);
+  ASSERT_TRUE(times.exponentialFit.has_value());
+  EXPECT_NEAR(times.exponentialFit.value(), tau, 0.12 * tau);
+  ASSERT_TRUE(times.integrated.has_value());
+  EXPECT_NEAR(times.integrated.value(), tau, 0.20 * tau);
+}
+
+TEST(end_to_end_acf, end_to_end_vectors_are_taken_from_the_molecule_atoms)
+{
+  // component 0: two molecules of three atoms, ends (0, 2); component 1: one molecule without end-to-end atoms
+  std::vector<std::size_t> numberOfMoleculesPerComponent{2, 1};
+  std::vector<std::optional<std::array<std::size_t, 2>>> ends{std::array<std::size_t, 2>{0, 2}, std::nullopt};
+
+  std::vector<Molecule> molecules;
+  std::vector<Atom> atoms;
+  auto addMolecule = [&](std::size_t componentId, std::vector<double3> positions)
+  {
+    Molecule molecule(double3(0.0, 0.0, 0.0), simd_quatd(0.0, 0.0, 0.0, 1.0), 1.0, componentId, positions.size());
+    molecule.atomIndex = atoms.size();
+    for (const double3 &p : positions)
+    {
+      Atom atom;
+      atom.position = p;
+      atoms.push_back(atom);
+    }
+    molecules.push_back(molecule);
+  };
+  addMolecule(0, {double3(0.0, 0.0, 0.0), double3(1.0, 0.0, 0.0), double3(3.0, 4.0, 0.0)});  // |R| = 5
+  addMolecule(0, {double3(1.0, 1.0, 1.0), double3(0.0, 0.0, 0.0), double3(1.0, 1.0, 3.0)});  // |R| = 2
+  addMolecule(1, {double3(0.0, 0.0, 0.0), double3(9.0, 9.0, 9.0)});
+
+  PropertyEndToEndAutoCorrelationFunction property(numberOfMoleculesPerComponent, ends, molecules.size(), 0.001, 25, 5,
+                                                   std::nullopt);
+
+  property.addSample(0, molecules, atoms);  // sampled (0 % 5 == 0)
+  property.addSample(1, molecules, atoms);  // skipped
+  property.addSample(5, molecules, atoms);  // sampled
+
+  EXPECT_TRUE(property.hasData(0));
+  EXPECT_FALSE(property.hasData(1));
+  EXPECT_EQ(property.count, 2uz);
+
+  const std::vector<EndToEndAutoCorrelationFunctionData> data = property.result(0);
+  ASSERT_GE(data.size(), 2uz);
+  EXPECT_DOUBLE_EQ(data[0].time, 0.0);
+  EXPECT_NEAR(data[0].acf, 0.5 * (25.0 + 4.0), 1e-12);  // average over the two molecules
+  EXPECT_NEAR(data[1].acf, 0.5 * (25.0 + 4.0), 1e-12);  // static configuration: no decay
+  EXPECT_DOUBLE_EQ(data[1].time, 5.0 * 0.001);
+  EXPECT_TRUE(property.result(1).empty());
+
+  // a changed number of molecules is refused
+  molecules.pop_back();
+  EXPECT_THROW(property.addSample(10, molecules, atoms), std::runtime_error);
+}
+
+TEST(end_to_end_acf, binary_archive_round_trip_continues_the_accumulation)
+{
+  const std::size_t numberOfMolecules = 8;
+  PropertyEndToEndAutoCorrelationFunction original({numberOfMolecules, 3}, {std::array<std::size_t, 2>{0, 1}, std::nullopt},
+                                                   numberOfMolecules + 3, 0.002, 5, 10, 5000);
+
+  // a trajectory of 137 + 61 samples, generated once
+  OrnsteinUhlenbeck process{5.0, 2.0, 0.02};
+  std::vector<std::vector<double3>> trajectory;
+  {
+    std::vector<double3> vectors(numberOfMolecules + 3);
+    for (double3 &r : vectors) r = process.initial();
+    for (std::size_t s = 0; s < 137 + 61; ++s)
+    {
+      trajectory.push_back(vectors);
+      for (double3 &r : vectors) r = process.step(r);
+    }
+  }
+  for (std::size_t s = 0; s < 137; ++s) original.addSampleVectors(trajectory[s]);
+
+  const std::filesystem::path path = std::filesystem::temp_directory_path() / "raspa3_end_to_end_acf_round_trip.bin";
+  {
+    std::ofstream stream(path, std::ios::binary);
+    Archive<std::ofstream> archive(stream);
+    archive << original;
+  }
+  PropertyEndToEndAutoCorrelationFunction restored;
+  {
+    std::ifstream stream(path, std::ios::binary);
+    Archive<std::ifstream> archive(stream);
+    archive >> restored;
+  }
+  std::filesystem::remove(path);
+
+  EXPECT_EQ(restored.count, original.count);
+  EXPECT_EQ(restored.numberOfBlocks, original.numberOfBlocks);
+  EXPECT_EQ(restored.sampleEvery, 10uz);
+  EXPECT_EQ(restored.writeEvery, std::optional<std::size_t>{5000});
+  EXPECT_FALSE(restored.hasData(1));
+
+  // continuing both copies with the same samples gives bit-identical functions
+  for (std::size_t s = 137; s < 137 + 61; ++s)
+  {
+    original.addSampleVectors(trajectory[s]);
+    restored.addSampleVectors(trajectory[s]);
+  }
+
+  const std::vector<EndToEndAutoCorrelationFunctionData> a = original.result(0);
+  const std::vector<EndToEndAutoCorrelationFunctionData> b = restored.result(0);
+  ASSERT_EQ(a.size(), b.size());
+  for (std::size_t i = 0; i < a.size(); ++i)
+  {
+    EXPECT_DOUBLE_EQ(a[i].time, b[i].time);
+    EXPECT_DOUBLE_EQ(a[i].acf, b[i].acf);
+    EXPECT_DOUBLE_EQ(a[i].numberOfSamples, b[i].numberOfSamples);
+  }
+}

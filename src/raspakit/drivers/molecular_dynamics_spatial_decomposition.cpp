@@ -1342,6 +1342,10 @@ void MolecularDynamicsSpatialDecomposition::production()
       {
         system.propertyVACF->writeOutput(system_id, system.components, currentCycle);
       }
+      if (system.propertyEndToEndACF.has_value())
+      {
+        system.propertyEndToEndACF->writeOutput(system_id, system.components, currentCycle);
+      }
       if (system.propertyMoleculeProperties.has_value())
       {
         system.propertyMoleculeProperties->writeOutput(system_id, system.components, currentCycle);
@@ -1393,6 +1397,10 @@ void MolecularDynamicsSpatialDecomposition::production()
     if (system.propertyVACF.has_value())
     {
       system.propertyVACF->writeOutput(system_id, system.components, currentCycle);
+    }
+    if (system.propertyEndToEndACF.has_value())
+    {
+      system.propertyEndToEndACF->writeOutput(system_id, system.components, currentCycle);
     }
     if (system.propertyMoleculeProperties.has_value())
     {

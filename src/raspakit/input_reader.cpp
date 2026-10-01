@@ -3531,6 +3531,34 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (value.contains("ComputeEndToEndACF") && value["ComputeEndToEndACF"].is_boolean())
+      {
+        if (value["ComputeEndToEndACF"].get<bool>())
+        {
+          std::size_t sampleEndToEndACFEvery{10};
+          if (value.contains("SampleEndToEndACFEvery") && value["SampleEndToEndACFEvery"].is_number_unsigned())
+          {
+            sampleEndToEndACFEvery = value["SampleEndToEndACFEvery"].get<std::size_t>();
+          }
+
+          std::size_t writeEndToEndACFEvery{5000};
+          if (value.contains("WriteEndToEndACFEvery") && value["WriteEndToEndACFEvery"].is_number_unsigned())
+          {
+            writeEndToEndACFEvery = value["WriteEndToEndACFEvery"].get<std::size_t>();
+          }
+
+          std::size_t numberOfBlockElementsEndToEndACF{25};
+          if (value.contains("NumberOfBlockElementsEndToEndACF") &&
+              value["NumberOfBlockElementsEndToEndACF"].is_number_unsigned())
+          {
+            numberOfBlockElementsEndToEndACF = value["NumberOfBlockElementsEndToEndACF"].get<std::size_t>();
+          }
+
+          systems[systemId].setPropertyEndToEndACF(numberOfBlockElementsEndToEndACF, sampleEndToEndACFEvery,
+                                                   writeEndToEndACFEvery);
+        }
+      }
+
       if (value.contains("ComputeDensityGrid") && value["ComputeDensityGrid"].is_boolean())
       {
         if (value["ComputeDensityGrid"].get<bool>())
@@ -4500,6 +4528,10 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "WriteVACFEvery",
     "NumberOfBuffersVACF",
     "BufferLengthVACF",
+    "ComputeEndToEndACF",
+    "SampleEndToEndACFEvery",
+    "WriteEndToEndACFEvery",
+    "NumberOfBlockElementsEndToEndACF",
     "ComputeDensityGrid",
     "SampleDensityGridEvery",
     "WriteDensityGridEvery",

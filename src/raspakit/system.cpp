@@ -43,6 +43,7 @@ import property_lambda_probability_histogram;
 import property_widom;
 import property_temperature;
 import property_msd;
+import property_end_to_end_acf;
 import running_energy;
 import threadpool;
 // import isotherm;
@@ -677,6 +678,11 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
   if (propertyVACF.has_value())
   {
     propertyVACF->addSample(currentCycle, moleculeData);
+  }
+
+  if (propertyEndToEndACF.has_value())
+  {
+    propertyEndToEndACF->addSample(currentCycle, moleculeData, spanOfMoleculeAtoms());
   }
 
   if (propertyDensityGrid.has_value())
@@ -1383,6 +1389,28 @@ void System::setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelation
   }
 }
 
+void System::setPropertyEndToEndACF(std::size_t numberOfBlockElements, std::size_t sampleEvery,
+                                    std::optional<std::size_t> writeEvery)
+{
+  std::vector<std::optional<std::array<std::size_t, 2>>> endToEndAtomsPerComponent;
+  endToEndAtomsPerComponent.reserve(components.size());
+  bool any = false;
+  for (const Component& component : components)
+  {
+    endToEndAtomsPerComponent.push_back(component.endToEndAtoms);
+    any = any || component.endToEndAtoms.has_value();
+  }
+  if (!any)
+  {
+    throw std::runtime_error(
+        "[Input reader]: 'ComputeEndToEndACF' requires at least one component with end-to-end atoms (set "
+        "'EndToEndAtoms' in the molecule definition, or use a chain molecule with two ends)\n");
+  }
+  propertyEndToEndACF = PropertyEndToEndAutoCorrelationFunction(numberOfMoleculesPerComponent, endToEndAtomsPerComponent,
+                                                                moleculeData.size(), timeStep, numberOfBlockElements,
+                                                                sampleEvery, writeEvery);
+}
+
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System& s)
 {
   archive << s.versionNumber;
@@ -1511,6 +1539,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.propertyMoleculeBackbone;
   archive << s.propertyMSD;
   archive << s.propertyVACF;
+  archive << s.propertyEndToEndACF;
   archive << s.writeLammpsData;
 
   archive << s.propertyNumberOfMoleculesEvolution;
@@ -1680,6 +1709,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   }
   archive >> s.propertyMSD;
   archive >> s.propertyVACF;
+  if (versionNumber >= 4)
+  {
+    archive >> s.propertyEndToEndACF;
+  }
   archive >> s.writeLammpsData;
 
   archive >> s.propertyNumberOfMoleculesEvolution;

@@ -993,6 +993,10 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       {
         system.propertyMoleculeProperties->writeOutput(system_id, system.components, currentCycle);
       }
+      if (system.propertyEndToEndACF.has_value())
+      {
+        system.propertyEndToEndACF->writeOutput(system_id, system.components, currentCycle);
+      }
       if (system.propertyMoleculeShape.has_value())
       {
         system.propertyMoleculeShape->writeOutput(system_id, system.components, currentCycle);
@@ -1114,6 +1118,10 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       if (system.propertyMoleculeProperties.has_value())
       {
         system.propertyMoleculeProperties->writeOutput(system_id, system.components, currentCycle);
+      }
+      if (system.propertyEndToEndACF.has_value())
+      {
+        system.propertyEndToEndACF->writeOutput(system_id, system.components, currentCycle);
       }
       if (system.propertyMoleculeShape.has_value())
       {
