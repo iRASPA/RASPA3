@@ -40,16 +40,18 @@ export class PPPM
 {
  public:
   PPPM() = default;
-  ~PPPM();
+  ~PPPM() = default;
   PPPM(const PPPM&) = delete;
   PPPM& operator=(const PPPM&) = delete;
+  PPPM(PPPM&&) noexcept = default;
+  PPPM& operator=(PPPM&&) noexcept = default;
 
   /// Chooses the mesh (smallest 2^a 3^b 5^c sizes at or below `meshSpacing` along each cell vector), plans the
   /// FFTs and computes the B-spline moduli and the influence function for `box`.
   void initialize(const SimulationBox& box, double alpha, double meshSpacing, std::size_t order,
                   std::size_t numberOfThreads, double coulombConversionFactor);
 
-  bool initialized() const { return forwardPlan != nullptr; }
+  bool initialized() const { return fft.forwardPlan != nullptr; }
   int3 meshSize() const { return mesh; }
   std::size_t interpolationOrder() const { return order; }
   std::size_t numberOfThreads() const { return threadBuffers.size(); }
@@ -113,6 +115,14 @@ export class PPPM
   /// Smallest integer >= n whose only prime factors are 2, 3 and 5 (FFT-friendly).
   static std::size_t nextFFTFriendly(std::size_t n);
 
+  /// The mesh for a box: along each cell vector the smallest FFT-friendly size at or below `meshSpacing`, and at
+  /// least twice the B-spline order.
+  static int3 chooseMesh(const SimulationBox& box, double meshSpacing, std::size_t order);
+
+  /// |b(m)|^-2 of the B-spline charge assignment of the given order on K mesh points, m = 0..K-1, with the
+  /// modulus at the Nyquist zero of the odd orders interpolated from its neighbours.
+  static std::vector<double> bsplineModuli(std::size_t order, std::int32_t K);
+
   /// Cardinal B-spline weights M_p(w + j), j = 0..p-1, and their derivatives for the fractional offset w in [0, 1).
   static void bsplineWeights(std::size_t order, double w, std::span<double> weights, std::span<double> derivatives);
 
@@ -125,8 +135,44 @@ export class PPPM
   double3x3 inverseCell{};
   double volume{0.0};
 
-  double* chargeMesh{nullptr};  ///< fftw_malloc'ed real mesh: the assembled charge mesh, input of the forward FFT.
-  double* potential{nullptr};   ///< Real output of the inverse transform.
+  /// The FFTW-owned resources: the meshes, the half spectrum and the plans. Released by the destructor, handed
+  /// over by the move operations, so PPPM is a movable value.
+  struct FftwState
+  {
+    double* chargeMesh{nullptr};  ///< fftw_malloc'ed real mesh: the assembled charge mesh, input of the forward FFT.
+    double* potential{nullptr};   ///< Real output of the inverse transform.
+    void* spectrum{nullptr};      ///< fftw_complex half spectrum.
+    void* forwardPlan{nullptr};
+    void* backwardPlan{nullptr};
+
+    FftwState() = default;
+    ~FftwState() { release(); }
+    FftwState(const FftwState&) = delete;
+    FftwState& operator=(const FftwState&) = delete;
+    FftwState(FftwState&& other) noexcept
+        : chargeMesh(std::exchange(other.chargeMesh, nullptr)),
+          potential(std::exchange(other.potential, nullptr)),
+          spectrum(std::exchange(other.spectrum, nullptr)),
+          forwardPlan(std::exchange(other.forwardPlan, nullptr)),
+          backwardPlan(std::exchange(other.backwardPlan, nullptr))
+    {
+    }
+    FftwState& operator=(FftwState&& other) noexcept
+    {
+      if (this != &other)
+      {
+        release();
+        chargeMesh = std::exchange(other.chargeMesh, nullptr);
+        potential = std::exchange(other.potential, nullptr);
+        spectrum = std::exchange(other.spectrum, nullptr);
+        forwardPlan = std::exchange(other.forwardPlan, nullptr);
+        backwardPlan = std::exchange(other.backwardPlan, nullptr);
+      }
+      return *this;
+    }
+    void release();
+  };
+  FftwState fft{};
 
   /// Private charge-assignment state of one thread: the buffer over the mesh sub-box its atoms touch.
   struct ThreadBuffer
@@ -140,9 +186,6 @@ export class PPPM
     std::vector<std::uint32_t> histogramX{}, histogramY{}, histogramZ{};  ///< Anchor counts per mesh plane.
   };
   std::vector<ThreadBuffer> threadBuffers{};
-  void* spectrum{nullptr};  ///< fftw_complex half spectrum.
-  void* forwardPlan{nullptr};
-  void* backwardPlan{nullptr};
 
   std::vector<double> influence{};  ///< G(m) on the half spectrum.
   std::vector<double> bsplineModulusX{}, bsplineModulusY{}, bsplineModulusZ{};
@@ -158,5 +201,4 @@ export class PPPM
   std::size_t complexSize() const;
   void computeBsplineModuli();
   void computeInfluenceFunction(const SimulationBox& box);
-  void release();
 };

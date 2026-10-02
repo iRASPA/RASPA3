@@ -38,7 +38,7 @@ import thermobarostat;
 import minimization_cell_layout;
 import elastic_constants;
 import spatial_decomposition_settings;
-import spatial_decomposition_force_engine;
+import force_engine;
 
 namespace
 {
@@ -308,7 +308,7 @@ EnergyStatus energyStatusFromRunningEnergies(const System& system)
 }
 
 // Velocity Verlet with the engine forces (Integrators::velocityVerlet with updateGradients replaced)
-RunningEnergy engineVelocityVerlet(System& system, SpatialDecompositionForceEngine& engine)
+RunningEnergy engineVelocityVerlet(System& system, ForceEngine& engine)
 {
   if (system.thermostat.has_value())
   {
@@ -388,7 +388,7 @@ RunningEnergy engineVelocityVerlet(System& system, SpatialDecompositionForceEngi
 // rigid molecules and rigid groups, flexible atoms individually), obtained from the engine's molecular pressure
 // tensor with 'computeBarostatVirial'; its kinetic partner is 'computeMolecularKineticVirial'. The reported
 // pressure is the estimator of the same coupling (see 'barostatPressureTensor'), so its average is the set point.
-RunningEnergy engineThermobarostatVelocityVerlet(System& system, SpatialDecompositionForceEngine& engine)
+RunningEnergy engineThermobarostatVelocityVerlet(System& system, ForceEngine& engine)
 {
   Thermobarostat& barostat = *system.thermobarostat;
   const double3x3 pressureBefore = computeBarostatVirial(system, engine.molecularPressureTensor(), barostat.coupling);
@@ -615,7 +615,7 @@ void MolecularDynamicsSpatialDecomposition::setup()
   for (std::size_t system_id{0}; System& system : systems)
   {
     std::string reason;
-    if (!SpatialDecompositionForceEngine::supports(system, reason))
+    if (!ForceEngine::supports(system, reason))
     {
       throw std::runtime_error(
           std::format("MolecularDynamicsSpatialDecomposition: system {} uses {}, which the spatial-decomposition "
@@ -653,8 +653,8 @@ void MolecularDynamicsSpatialDecomposition::setup()
     engines.clear();
     for (System& system : systems)
     {
-      engines.push_back(std::make_unique<SpatialDecompositionForceEngine>(engineSettings));
-      engines.back()->initialize(system);
+      engines.emplace_back(engineSettings);
+      engines.back().initialize(system);
     }
   }
 
@@ -682,8 +682,13 @@ void MolecularDynamicsSpatialDecomposition::setup()
       std::print(stream, "    Verlet skin:                     {} [A]\n", engineSettings.verletSkin);
       std::print(stream, "    PPPM mesh spacing:               {} [A]\n", engineSettings.meshSpacing);
       std::print(stream, "    PPPM interpolation order:        {}\n", engineSettings.interpolationOrder);
-      std::print(stream, "    pair kernel precision:           {}\n", pairPrecisionName(engineSettings.pairPrecision));
-      if (engineSettings.pairPrecision == PairPrecision::Mixed)
+      std::print(stream, "    pair kernel device:              {}\n", pairDeviceName(engineSettings.pairDevice));
+      if (engineSettings.pairDevice == PairDevice::CPU)
+      {
+        std::print(stream, "    pair kernel precision:           {}\n",
+                   pairPrecisionName(engineSettings.pairPrecision));
+      }
+      if (engineSettings.pairDevice == PairDevice::OpenCL || engineSettings.pairPrecision == PairPrecision::Mixed)
       {
         std::print(stream, "    prune skin:                      {} [A]\n", engineSettings.pruneSkin);
       }
@@ -896,17 +901,17 @@ void MolecularDynamicsSpatialDecomposition::startEngines(std::string_view stageN
     engines.clear();
     for (std::size_t i = 0; i < systems.size(); ++i)
     {
-      engines.push_back(std::make_unique<SpatialDecompositionForceEngine>(engineSettings));
+      engines.emplace_back(engineSettings);
     }
   }
 
   for (std::size_t system_id{0}; System& system : systems)
   {
-    SpatialDecompositionForceEngine& engine = *engines[system_id];
+    ForceEngine& engine = engines[system_id];
     if (!engine.initialized()) engine.initialize(system);
 
     // the exact code as the reference for this configuration; the engine leaves its own forces in the system
-    const SpatialDecompositionForceEngine::Validation validation = engine.validate(system);
+    const ForceEngine::Validation validation = engine.validate(system);
     system.runningEnergies = engine.computeGradients(system, true) + system.computeTailCorrectionEnergies();
     updateReportedPressure(system_id, false);
 
@@ -941,21 +946,21 @@ void MolecularDynamicsSpatialDecomposition::startEngines(std::string_view stageN
 void MolecularDynamicsSpatialDecomposition::ensureEngines()
 {
   if (engines.size() == systems.size() &&
-      std::all_of(engines.begin(), engines.end(), [](const auto& engine) { return engine && engine->initialized(); }))
+      std::all_of(engines.begin(), engines.end(), [](const ForceEngine& engine) { return engine.initialized(); }))
   {
     return;
   }
   engines.clear();
   for (std::size_t system_id{0}; system_id < systems.size(); ++system_id)
   {
-    engines.push_back(std::make_unique<SpatialDecompositionForceEngine>(engineSettings));
-    engines.back()->initialize(systems[system_id]);
+    engines.emplace_back(engineSettings);
+    engines.back().initialize(systems[system_id]);
     recomputeGradients(system_id);
 
     if (outputToFiles && system_id < streams.size())
     {
       std::ostream stream(streams[system_id].rdbuf());
-      std::print(stream, "{}    (rebuilt after the binary restart)\n\n", engines.back()->writeStatus());
+      std::print(stream, "{}    (rebuilt after the binary restart)\n\n", engines.back().writeStatus());
       std::flush(stream);
     }
   }
@@ -964,7 +969,7 @@ void MolecularDynamicsSpatialDecomposition::ensureEngines()
 void MolecularDynamicsSpatialDecomposition::recomputeGradients(std::size_t systemId)
 {
   System& system = systems[systemId];
-  SpatialDecompositionForceEngine& engine = *engines[systemId];
+  ForceEngine& engine = engines[systemId];
   system.runningEnergies = engine.computeGradients(system, true) + system.computeTailCorrectionEnergies();
   Integrators::updateCenterOfMassAndQuaternionGradients(
       system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
@@ -975,7 +980,7 @@ void MolecularDynamicsSpatialDecomposition::recomputeGradients(std::size_t syste
 void MolecularDynamicsSpatialDecomposition::updateReportedPressure(std::size_t systemId, bool accumulate)
 {
   System& system = systems[systemId];
-  SpatialDecompositionForceEngine& engine = *engines[systemId];
+  ForceEngine& engine = engines[systemId];
   const double volume = system.simulationBox.volume;
   if (!system.thermobarostat.has_value())
   {
@@ -1039,7 +1044,7 @@ std::string MolecularDynamicsSpatialDecomposition::writeBarostatPressureWindow(s
 RunningEnergy MolecularDynamicsSpatialDecomposition::molecularDynamicsStep(std::size_t systemId)
 {
   System& system = systems[systemId];
-  SpatialDecompositionForceEngine& engine = *engines[systemId];
+  ForceEngine& engine = engines[systemId];
   RunningEnergy energies =
       system.thermobarostat ? engineThermobarostatVelocityVerlet(system, engine) : engineVelocityVerlet(system, engine);
   updateReportedPressure(systemId, true);
@@ -1446,9 +1451,9 @@ void MolecularDynamicsSpatialDecomposition::output()
     std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
     std::print(stream, "{}", integratorsCPUTime.writeIntegratorsCPUTimeStatistics(totalSimulationTime));
     std::print(stream, "\n");
-    if (system_id < engines.size() && engines[system_id])
+    if (system_id < engines.size())
     {
-      std::print(stream, "{}", engines[system_id]->writeTimings());
+      std::print(stream, "{}", engines[system_id].writeTimings());
     }
     std::print(stream, "\n");
 

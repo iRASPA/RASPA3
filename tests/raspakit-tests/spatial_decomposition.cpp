@@ -22,6 +22,10 @@ import connectivity_table;
 import intra_molecular_potentials;
 import bond_potential;
 import bend_potential;
+import torsion_potential;
+import van_der_waals_potential;
+import coulomb_potential;
+import bond_bond_potential;
 import integrators_update;
 import randomnumbers;
 import spatial_decomposition_settings;
@@ -30,6 +34,8 @@ import spatial_decomposition_pppm;
 import spatial_decomposition_pair_kernel;
 import spatial_decomposition_worker_team;
 import spatial_decomposition_force_engine;
+import force_engine;
+import spatial_decomposition_opencl_pair_kernel;
 
 namespace
 {
@@ -428,6 +434,45 @@ TEST(spatial_decomposition, engine_matches_exact_ewald_rigid_water)
   EXPECT_LT(maxAbsDifference(enginePressure, referencePressure), 1e-4 * maxAbs(referencePressure));
 }
 
+TEST(spatial_decomposition, force_engine_is_a_movable_value)
+{
+  static_assert(std::is_nothrow_move_constructible_v<ForceEngine> && std::is_nothrow_move_assignable_v<ForceEngine>);
+  static_assert(!std::is_copy_constructible_v<ForceEngine>);
+
+  ForceField forceField = makeWaterForceField();
+  Component water = makeWater(forceField);
+  System system =
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {water}, {}, {343}, 5);
+  RandomNumber random(7);
+  randomizeConfiguration(system, random);
+
+  // an initialized engine (worker threads, FFTW plans and meshes, cell list) is moved into a vector that
+  // reallocates, as the driver's std::vector<ForceEngine> does; the moved engine must give the same results
+  ForceEngine original(settingsFor(4));
+  original.initialize(system);
+  const RunningEnergy before = original.computeGradients(system, true);
+  const std::vector<double3> gradientBefore = gradientsOf(system);
+  const double3x3 pressureBefore = original.molecularPressureTensor();
+
+  std::vector<ForceEngine> engines;
+  engines.push_back(std::move(original));
+  engines.emplace_back(settingsFor(1));  // reallocation moves the first engine again
+  ForceEngine& moved = engines.front();
+  EXPECT_TRUE(moved.initialized());
+  EXPECT_EQ(moved.numberOfThreads(), 4uz);
+
+  const RunningEnergy after = moved.computeGradients(system, true);
+  EXPECT_EQ(after.potentialEnergy(), before.potentialEnergy());
+  EXPECT_EQ(after.ewald_fourier, before.ewald_fourier);
+  EXPECT_LT(rmsDifference(gradientsOf(system), gradientBefore), 1e-12 * rmsNorm(gradientBefore));
+  EXPECT_LT(maxAbsDifference(moved.molecularPressureTensor(), pressureBefore), 1e-12 * maxAbs(pressureBefore));
+  EXPECT_EQ(moved.timings().steps, 2uz);
+
+  ForceEngine assigned(settingsFor(1));
+  assigned = std::move(engines.front());
+  EXPECT_EQ(assigned.computeGradients(system, true).potentialEnergy(), before.potentialEnergy());
+}
+
 TEST(spatial_decomposition, engine_threads_agree_with_serial_rigid_water)
 {
   ForceField forceField = makeWaterForceField();
@@ -494,6 +539,10 @@ struct KernelTolerances
   double total;     ///< relative, potential energy
   double gradient;  ///< relative rms
   double pressure;  ///< relative max-abs
+  /// relative, Ewald Fourier energy and self + exclusion correction (1e-10 unless the mesh / the molecular terms
+  /// are evaluated on the device)
+  double fourier{1e-10};
+  double correction{1e-10};
 };
 
 /// Compares the engine with \p candidate settings against the engine with the default (scalar double) kernel on
@@ -538,10 +587,15 @@ void expectKernelAgreesWithScalar(const SpatialDecompositionSettings& candidate,
     EXPECT_NEAR(energy.moleculeMoleculeCharge, referenceEnergy.moleculeMoleculeCharge,
                 tolerance.charge * std::abs(referenceEnergy.moleculeMoleculeCharge))
         << "threads " << threads;
-    // the mesh, self and exclusion terms are evaluated in double by the same code in both engines
-    EXPECT_NEAR(energy.ewald_fourier, referenceEnergy.ewald_fourier, 1e-10 * std::abs(referenceEnergy.ewald_fourier));
-    EXPECT_NEAR(energy.ewald_exclusion, referenceEnergy.ewald_exclusion,
-                1e-10 * std::abs(referenceEnergy.ewald_exclusion));
+    // the mesh, self and exclusion terms are evaluated in double by the same code in both engines, unless on the
+    // device (the self and exclusion energies cancel strongly: their sum is compared)
+    EXPECT_NEAR(energy.ewald_fourier, referenceEnergy.ewald_fourier,
+                tolerance.fourier * std::abs(referenceEnergy.ewald_fourier))
+        << "threads " << threads;
+    EXPECT_NEAR(energy.ewald_self + energy.ewald_exclusion,
+                referenceEnergy.ewald_self + referenceEnergy.ewald_exclusion,
+                tolerance.correction * std::abs(referenceEnergy.ewald_self + referenceEnergy.ewald_exclusion))
+        << "threads " << threads;
     EXPECT_NEAR(energy.potentialEnergy(), referenceEnergy.potentialEnergy(),
                 tolerance.total * std::abs(referenceEnergy.potentialEnergy()))
         << "threads " << threads;
@@ -608,6 +662,66 @@ TEST(spatial_decomposition, engine_mixed_precision_agrees_with_double_rigid_wate
   settings.pairPrecision = PairPrecision::Mixed;
   expectKernelAgreesWithScalar(settings,
                                {.vdw = 1e-6, .charge = 1e-4, .total = 1e-5, .gradient = 1e-5, .pressure = 1e-5});
+}
+
+TEST(spatial_decomposition, engine_opencl_pair_kernel_agrees_with_double_rigid_water)
+{
+  if (!OpenCLPairKernel::available()) GTEST_SKIP() << "no OpenCL device";
+  // the device kernel: single-precision pair geometry with the minimum image of wrapped positions, closed-form
+  // erfc, single-precision accumulation of the per-atom forces and per-cluster partial sums
+  SpatialDecompositionSettings settings = settingsFor(1);
+  settings.pairDevice = PairDevice::OpenCL;
+  settings.deviceMesh = false;
+  settings.deviceBonded = false;
+  expectKernelAgreesWithScalar(settings,
+                               {.vdw = 1e-6, .charge = 1e-4, .total = 1e-5, .gradient = 1e-5, .pressure = 1e-5});
+}
+
+TEST(spatial_decomposition, engine_opencl_pair_kernel_without_pruning_rigid_water)
+{
+  if (!OpenCLPairKernel::available()) GTEST_SKIP() << "no OpenCL device";
+  // no pruning: the lane lists hold the whole outer list (cutoff + Verlet skin), compacted once per build
+  SpatialDecompositionSettings settings = settingsFor(1);
+  settings.pairDevice = PairDevice::OpenCL;
+  settings.pruneSkin = 0.0;
+  settings.deviceMesh = false;
+  settings.deviceBonded = false;
+  expectKernelAgreesWithScalar(settings,
+                               {.vdw = 1e-6, .charge = 1e-4, .total = 1e-5, .gradient = 1e-5, .pressure = 1e-5});
+}
+
+TEST(spatial_decomposition, engine_opencl_mesh_and_molecular_terms_agree_with_double_rigid_water)
+{
+  if (!OpenCLPairKernel::available()) GTEST_SKIP() << "no OpenCL device";
+  // the complete device step: pairs, PPPM (fixed-point spreading, single-precision FFT and influence function,
+  // gather interpolation) and the molecular terms (self + exclusion without their cancellation, virial correction).
+  // Measured: Fourier energy 1e-6, self + exclusion sum 2e-7, total energy 3.4e-6, gradient rms 2.5e-6, pressure
+  // 1e-6 relative.
+  SpatialDecompositionSettings settings = settingsFor(1);
+  settings.pairDevice = PairDevice::OpenCL;
+  expectKernelAgreesWithScalar(settings, {.vdw = 1e-6,
+                                          .charge = 1e-4,
+                                          .total = 1e-5,
+                                          .gradient = 1e-5,
+                                          .pressure = 1e-5,
+                                          .fourier = 1e-5,
+                                          .correction = 1e-5});
+}
+
+TEST(spatial_decomposition, engine_opencl_pair_kernel_small_grid_rigid_water)
+{
+  if (!OpenCLPairKernel::available()) GTEST_SKIP() << "no OpenCL device";
+  // cutoff + skin = half the box: the device grid has 2 cells per axis, every neighbour cell is reached through
+  // several stencil offsets and the list build takes the minimum image (the outer list then holds every pair)
+  SpatialDecompositionSettings settings = settingsFor(1, 6.0);
+  settings.pairDevice = PairDevice::OpenCL;
+  expectKernelAgreesWithScalar(settings, {.vdw = 1e-6,
+                                          .charge = 1e-4,
+                                          .total = 1e-5,
+                                          .gradient = 1e-5,
+                                          .pressure = 1e-5,
+                                          .fourier = 1e-5,
+                                          .correction = 1e-5});
 }
 
 TEST(spatial_decomposition, engine_matches_exact_ewald_flexible_chains_triclinic)
@@ -678,6 +792,161 @@ TEST(spatial_decomposition, engine_matches_exact_ewald_flexible_chains_triclinic
     EXPECT_LT(maxAbsDifference(parallel.molecularPressureTensor(), serial.molecularPressureTensor()),
               1e-9 * maxAbs(serial.molecularPressureTensor()));
   }
+
+  // the device pairs in the triclinic cell (general minimum image in the list build, pruning and pair kernel)
+  if (OpenCLPairKernel::available())
+  {
+    SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+    settings.pairDevice = PairDevice::OpenCL;
+    SpatialDecompositionForceEngine device(settings);
+    device.initialize(system);
+    const RunningEnergy deviceEnergy = device.computeGradients(system, true);
+    const std::vector<double3> gradient = gradientsOf(system);
+    EXPECT_NEAR(deviceEnergy.moleculeMoleculeVDW, energy.moleculeMoleculeVDW,
+                1e-6 * std::abs(energy.moleculeMoleculeVDW));
+    EXPECT_NEAR(deviceEnergy.potentialEnergy(), energy.potentialEnergy(), 1e-5 * std::abs(energy.potentialEnergy()));
+    // the stiff bonds on the device: single precision of the positions relative to the molecule
+    EXPECT_NEAR(deviceEnergy.bond, energy.bond, 1e-5 * std::abs(energy.bond));
+    EXPECT_NEAR(deviceEnergy.bend, energy.bend, 1e-5 * std::abs(energy.bend));
+    EXPECT_LT(rmsDifference(gradient, serialGradient), 1e-5 * rmsNorm(serialGradient));
+    EXPECT_LT(maxAbsDifference(device.molecularPressureTensor(), serial.molecularPressureTensor()),
+              1e-5 * maxAbs(serial.molecularPressureTensor()));
+  }
+}
+
+namespace
+{
+/// A charged four-bead chain with harmonic bonds and bends, a TraPPE torsion, intramolecular 1-4 Lennard-Jones and
+/// Coulomb pairs and, optionally, a bond-bond cross term (which the device kernels do not cover).
+System makeChainSystem(bool withBondBond, RandomNumber& random)
+{
+  ForceField forceField = ForceField(
+      {{"CH3", false, 15.03452, 0.0, 0.0, 6, false}, {"CH2", false, 14.02658, 0.0, 0.0, 6, false}},
+      {{98.0, 3.75}, {46.0, 3.95}}, ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0, 9.0, false, false, true);
+  forceField.automaticEwald = false;
+  forceField.EwaldAlpha = 0.32;
+  forceField.numberOfWaveVectors = int3(14, 14, 14);
+  forceField.reciprocalCutOffSquared = std::numeric_limits<double>::max();
+  forceField.reciprocalIntegerCutOffSquared = 196;
+
+  ConnectivityTable connectivityTable(4);
+  for (std::size_t i = 0; i + 1 < 4; ++i)
+  {
+    connectivityTable[i, i + 1] = true;
+    connectivityTable[i + 1, i] = true;
+  }
+  Potentials::IntraMolecularPotentials potentials{};
+  potentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {96500.0, 1.54}),
+                      BondPotential({1, 2}, BondType::Harmonic, {96500.0, 1.54}),
+                      BondPotential({2, 3}, BondType::Harmonic, {96500.0, 1.54})};
+  potentials.bends = {BendPotential({0, 1, 2}, BendType::Harmonic, {62500.0, 114.0}),
+                      BendPotential({1, 2, 3}, BendType::Harmonic, {62500.0, 114.0})};
+  potentials.torsions = {TorsionPotential({0, 1, 2, 3}, TorsionType::TraPPE, {0.0, 355.03, -68.19, 791.32})};
+  potentials.vanDerWaals = {VanDerWaalsPotential({0, 3}, VanDerWaalsType::LennardJones, {98.0, 3.75}, 0.5)};
+  potentials.coulombs = {CoulombPotential({0, 3}, CoulombType::Coulomb, 0.25, 0.25, 0.5)};
+  if (withBondBond)
+  {
+    potentials.bondBonds = {BondBondPotential({0, 1, 2}, BondBondType::CFF, {5000.0, 1.54, 1.54})};
+  }
+
+  Component chain = Component(forceField, "butane", 425.0, 3796000.0, 0.199,
+                              {Atom({-1.85, -0.7, -0.15}, 0.25, 1.0, 0, 0, 0, false, false),
+                               Atom({-0.31, -0.7, -0.15}, -0.25, 1.0, 0, 1, 0, false, false),
+                               Atom({0.32, 0.71, -0.15}, -0.25, 1.0, 0, 1, 0, false, false),
+                               Atom({1.86, 0.71, 0.15}, 0.25, 1.0, 0, 0, 0, false, false)},
+                              connectivityTable, potentials, 5, 21);
+  // 4 x 4 x 4 molecules on a lattice of about 10 Angstrom: no close contacts (the fallback test compares the
+  // device pairs with the host pairs, so the pair energies must not be dominated by overlaps)
+  System system = System(forceField, SimulationBox(40.0, 39.0, 41.0), false, 300.0, 1e5, 1.0, {}, {chain}, {}, {64}, 5);
+  randomizeConfiguration(system, random);
+  return system;
+}
+}  // namespace
+
+TEST(spatial_decomposition, engine_opencl_molecular_terms_with_torsions)
+{
+  if (!OpenCLPairKernel::available()) GTEST_SKIP() << "no OpenCL device";
+  RandomNumber random(11);
+  System system = makeChainSystem(false, random);
+
+  // the same device pair kernel and mesh, with the molecular terms (bonds, bends, torsions, exclusions, virial
+  // correction) on the host (double) and on the device (single precision, positions relative to the molecule)
+  SpatialDecompositionSettings hostSettings = settingsFor(4, 1.5, 0.5);
+  hostSettings.pairDevice = PairDevice::OpenCL;
+  hostSettings.deviceBonded = false;
+  SpatialDecompositionForceEngine host(hostSettings);
+  host.initialize(system);
+  EXPECT_TRUE(host.usesDeviceMesh());
+  EXPECT_FALSE(host.usesDeviceBonded());
+  const RunningEnergy hostEnergy = host.computeGradients(system, true);
+  const std::vector<double3> hostGradient = gradientsOf(system);
+  EXPECT_NE(hostEnergy.torsion, 0.0);
+
+  SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+  settings.pairDevice = PairDevice::OpenCL;
+  SpatialDecompositionForceEngine device(settings);
+  device.initialize(system);
+  EXPECT_TRUE(device.usesDeviceMesh());
+  EXPECT_TRUE(device.usesDeviceBonded());
+  const RunningEnergy energy = device.computeGradients(system, true);
+  const std::vector<double3> gradient = gradientsOf(system);
+
+  EXPECT_NEAR(energy.bond, hostEnergy.bond, 1e-5 * std::abs(hostEnergy.bond));
+  EXPECT_NEAR(energy.bend, hostEnergy.bend, 1e-5 * std::abs(hostEnergy.bend));
+  EXPECT_NEAR(energy.torsion, hostEnergy.torsion, 1e-5 * std::abs(hostEnergy.torsion));
+  EXPECT_NE(hostEnergy.intraVDW, 0.0);
+  EXPECT_NE(hostEnergy.intraCoul, 0.0);
+  EXPECT_NEAR(energy.intraVDW, hostEnergy.intraVDW, 1e-5 * std::abs(hostEnergy.intraVDW));
+  EXPECT_NEAR(energy.intraCoul, hostEnergy.intraCoul, 1e-5 * std::abs(hostEnergy.intraCoul));
+  EXPECT_NEAR(energy.ewald_self + energy.ewald_exclusion, hostEnergy.ewald_self + hostEnergy.ewald_exclusion,
+              1e-5 * std::abs(hostEnergy.ewald_self + hostEnergy.ewald_exclusion));
+  EXPECT_NEAR(energy.potentialEnergy(), hostEnergy.potentialEnergy(), 1e-5 * std::abs(hostEnergy.potentialEnergy()));
+  EXPECT_LT(rmsDifference(gradient, hostGradient), 1e-5 * rmsNorm(hostGradient));
+  EXPECT_LT(maxAbsDifference(device.molecularPressureTensor(), host.molecularPressureTensor()),
+            1e-5 * maxAbs(host.molecularPressureTensor()));
+
+  // deterministic: the same configuration evaluates to the same bits (fixed-point spreading, fixed reductions)
+  const double3x3 pressure = device.molecularPressureTensor();
+  const RunningEnergy again = device.computeGradients(system, true);
+  EXPECT_EQ(again.potentialEnergy(), energy.potentialEnergy());
+  EXPECT_EQ(again.ewald_fourier, energy.ewald_fourier);
+  EXPECT_EQ(again.torsion, energy.torsion);
+  EXPECT_EQ(rmsDifference(gradientsOf(system), gradient), 0.0);
+  EXPECT_EQ(maxAbsDifference(device.molecularPressureTensor(), pressure), 0.0);
+}
+
+TEST(spatial_decomposition, engine_opencl_molecular_terms_fall_back_to_the_host)
+{
+  if (!OpenCLPairKernel::available()) GTEST_SKIP() << "no OpenCL device";
+  RandomNumber random(11);
+  System system = makeChainSystem(true, random);
+
+  SpatialDecompositionForceEngine reference(settingsFor(4, 1.5, 0.5));
+  reference.initialize(system);
+  const RunningEnergy referenceEnergy = reference.computeGradients(system, true);
+  const std::vector<double3> referenceGradient = gradientsOf(system);
+
+  // the bond-bond cross term keeps the molecular terms on the host; the pairs and the mesh stay on the device
+  SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+  settings.pairDevice = PairDevice::OpenCL;
+  SpatialDecompositionForceEngine device(settings);
+  device.initialize(system);
+  EXPECT_TRUE(device.usesDeviceMesh());
+  EXPECT_FALSE(device.usesDeviceBonded());
+  const RunningEnergy energy = device.computeGradients(system, true);
+  const std::vector<double3> gradient = gradientsOf(system);
+
+  EXPECT_EQ(energy.bond, referenceEnergy.bond);
+  EXPECT_EQ(energy.bend, referenceEnergy.bend);
+  EXPECT_EQ(energy.torsion, referenceEnergy.torsion);
+  EXPECT_EQ(energy.intraVDW, referenceEnergy.intraVDW);
+  EXPECT_EQ(energy.bondBond, referenceEnergy.bondBond);
+  EXPECT_NE(energy.bondBond, 0.0);
+  EXPECT_NEAR(energy.potentialEnergy(), referenceEnergy.potentialEnergy(),
+              1e-5 * std::abs(referenceEnergy.potentialEnergy()));
+  EXPECT_LT(rmsDifference(gradient, referenceGradient), 1e-5 * rmsNorm(referenceGradient));
+  EXPECT_LT(maxAbsDifference(device.molecularPressureTensor(), reference.molecularPressureTensor()),
+            1e-5 * maxAbs(reference.molecularPressureTensor()));
 }
 
 TEST(spatial_decomposition, engine_matches_exact_damped_shifted_force)

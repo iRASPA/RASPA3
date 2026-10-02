@@ -349,8 +349,8 @@ class ClusterPairKernel
     cutOffChargeSquared = static_cast<Real>(cutOffCharge * cutOffCharge);
     coulombFactor = static_cast<Real>(conversionFactor);
     useCharge = charge;
-    ewaldTable = table;
     ewaldAlpha = static_cast<Real>(alpha);
+    ewaldAlphaExact = alpha;
     if (useCharge && table)
     {
       const std::size_t n = table->value.size();
@@ -686,7 +686,7 @@ class ClusterPairKernel
                 {
                   if (below.v[n] == Real(0)) continue;
                   double exactU, exactD;
-                  ewaldTable->exact(static_cast<double>(rr.v[n]), exactU, exactD);
+                  exactEwald(static_cast<double>(rr.v[n]), exactU, exactD);
                   u.v[n] = static_cast<Real>(exactU);
                   dudrr.v[n] = static_cast<Real>(exactD);
                 }
@@ -821,6 +821,17 @@ class ClusterPairKernel
     domain.innerStart[domain.iClusters] = static_cast<std::uint32_t>(domain.innerCluster.size());
   }
 
+  /// erfc(alpha r) / r and its derivative to r^2 from the library functions (EwaldRealSpaceTable::exact).
+  void exactEwald(double rr, double& u, double& dudrr) const
+  {
+    const double r = std::sqrt(rr);
+    const double inverseR = 1.0 / r;
+    const double erfcTerm = std::erfc(ewaldAlphaExact * r);
+    const double gaussian = std::exp(-ewaldAlphaExact * ewaldAlphaExact * rr) * std::numbers::inv_sqrtpi_v<double>;
+    u = erfcTerm * inverseR;
+    dudrr = -0.5 * (erfcTerm * inverseR * inverseR + 2.0 * ewaldAlphaExact * gaussian * inverseR) * inverseR;
+  }
+
   std::size_t numberOfTypes{0};
   std::vector<Real> epsilon4{}, sigma6{}, shift{};  ///< Per pair of types (row = type_i * numberOfTypes).
   Real cutOffVDWSquared{0};
@@ -828,7 +839,7 @@ class ClusterPairKernel
   Real coulombFactor{1};
   bool useCharge{false};
   Real ewaldAlpha{0};
-  const EwaldRealSpaceTable* ewaldTable{nullptr};
+  double ewaldAlphaExact{0.0};
   std::vector<Real> tableValue{}, tableSlope{};  ///< u and du/d(r^2) * spacing at the nodes.
   Real tableRRMin{1};
   Real tableInverseSpacing{1};

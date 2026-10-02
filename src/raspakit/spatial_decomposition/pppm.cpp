@@ -23,9 +23,7 @@ inline bool sameMatrix(const double3x3& a, const double3x3& b)
 }
 }  // namespace
 
-PPPM::~PPPM() { release(); }
-
-void PPPM::release()
+void PPPM::FftwState::release()
 {
   if (forwardPlan)
   {
@@ -42,7 +40,6 @@ void PPPM::release()
     fftw_free(chargeMesh);
     chargeMesh = nullptr;
   }
-  threadBuffers.clear();
   if (potential)
   {
     fftw_free(potential);
@@ -112,30 +109,22 @@ void PPPM::bsplineWeights(std::size_t p, double w, std::span<double> weights, st
 void PPPM::initialize(const SimulationBox& box, double alphaValue, double meshSpacing, std::size_t orderValue,
                       std::size_t numberOfThreads, double coulombConversionFactor)
 {
-  release();
+  fft.release();
+  threadBuffers.clear();
 
   alpha = alphaValue;
   order = std::clamp<std::size_t>(orderValue, 3, 7);
   conversionFactor = coulombConversionFactor;
 
-  const double lengthA = box.cell[0].length();
-  const double lengthB = box.cell[1].length();
-  const double lengthC = box.cell[2].length();
-  auto size = [&](double length) -> std::int32_t
-  {
-    const std::size_t minimum =
-        std::max<std::size_t>(2 * order, static_cast<std::size_t>(std::ceil(length / meshSpacing)));
-    return static_cast<std::int32_t>(nextFFTFriendly(minimum));
-  };
-  mesh = int3(size(lengthA), size(lengthB), size(lengthC));
+  mesh = chooseMesh(box, meshSpacing, order);
 
   const std::size_t threads = std::max<std::size_t>(1, numberOfThreads);
   const std::size_t n = realSize();
-  chargeMesh = fftw_alloc_real(n);
-  std::fill_n(chargeMesh, n, 0.0);
-  potential = fftw_alloc_real(n);
-  std::fill_n(potential, n, 0.0);
-  spectrum = fftw_alloc_complex(complexSize());
+  fft.chargeMesh = fftw_alloc_real(n);
+  std::fill_n(fft.chargeMesh, n, 0.0);
+  fft.potential = fftw_alloc_real(n);
+  std::fill_n(fft.potential, n, 0.0);
+  fft.spectrum = fftw_alloc_complex(complexSize());
 
   threadBuffers.assign(threads, ThreadBuffer{});
   partialEnergy.assign(threads, 0.0);
@@ -151,54 +140,66 @@ void PPPM::initialize(const SimulationBox& box, double alphaValue, double meshSp
     std::scoped_lock lock(fftwPlannerMutex);
     std::call_once(fftwThreadsOnce, [] { fftw_init_threads(); });
     fftw_plan_with_nthreads(static_cast<int>(threads));
-    forwardPlan =
-        fftw_plan_dft_r2c_3d(mesh.x, mesh.y, mesh.z, chargeMesh, static_cast<fftw_complex*>(spectrum), FFTW_MEASURE);
-    backwardPlan =
-        fftw_plan_dft_c2r_3d(mesh.x, mesh.y, mesh.z, static_cast<fftw_complex*>(spectrum), potential, FFTW_MEASURE);
+    fft.forwardPlan = fftw_plan_dft_r2c_3d(mesh.x, mesh.y, mesh.z, fft.chargeMesh,
+                                           static_cast<fftw_complex*>(fft.spectrum), FFTW_MEASURE);
+    fft.backwardPlan = fftw_plan_dft_c2r_3d(mesh.x, mesh.y, mesh.z, static_cast<fftw_complex*>(fft.spectrum),
+                                            fft.potential, FFTW_MEASURE);
   }
-  std::fill_n(chargeMesh, n, 0.0);
+  std::fill_n(fft.chargeMesh, n, 0.0);
 
   computeBsplineModuli();
   computeInfluenceFunction(box);
 }
 
-void PPPM::computeBsplineModuli()
+int3 PPPM::chooseMesh(const SimulationBox& box, double meshSpacing, std::size_t order)
+{
+  const std::size_t p = std::clamp<std::size_t>(order, 3, 7);
+  auto size = [&](double length) -> std::int32_t
+  {
+    const std::size_t minimum = std::max<std::size_t>(2 * p, static_cast<std::size_t>(std::ceil(length / meshSpacing)));
+    return static_cast<std::int32_t>(nextFFTFriendly(minimum));
+  };
+  return int3(size(box.cell[0].length()), size(box.cell[1].length()), size(box.cell[2].length()));
+}
+
+std::vector<double> PPPM::bsplineModuli(std::size_t order, std::int32_t K)
 {
   std::array<double, 8> weights{};
   std::array<double, 8> derivatives{};
   bsplineWeights(order, 0.0, std::span<double>(weights.data(), order), std::span<double>(derivatives.data(), order));
   // weights[j] = M_p(j); the denominator uses M_p(k + 1), k = 0..p-2
 
-  auto moduli = [&](std::int32_t K) -> std::vector<double>
+  std::vector<double> result(static_cast<std::size_t>(K));
+  for (std::int32_t m = 0; m < K; ++m)
   {
-    std::vector<double> result(static_cast<std::size_t>(K));
-    for (std::int32_t m = 0; m < K; ++m)
+    std::complex<double> denominator{0.0, 0.0};
+    for (std::size_t k = 0; k + 2 <= order; ++k)
     {
-      std::complex<double> denominator{0.0, 0.0};
-      for (std::size_t k = 0; k + 2 <= order; ++k)
-      {
-        const double angle =
-            2.0 * std::numbers::pi * static_cast<double>(m) * static_cast<double>(k) / static_cast<double>(K);
-        denominator += weights[k + 1] * std::complex<double>(std::cos(angle), std::sin(angle));
-      }
-      const double normSquared = std::norm(denominator);
-      result[static_cast<std::size_t>(m)] = normSquared > 1e-14 ? 1.0 / normSquared : 0.0;
+      const double angle =
+          2.0 * std::numbers::pi * static_cast<double>(m) * static_cast<double>(k) / static_cast<double>(K);
+      denominator += weights[k + 1] * std::complex<double>(std::cos(angle), std::sin(angle));
     }
-    // odd orders have a zero at the Nyquist frequency; interpolate the modulus from the neighbours there
-    for (std::int32_t m = 0; m < K; ++m)
+    const double normSquared = std::norm(denominator);
+    result[static_cast<std::size_t>(m)] = normSquared > 1e-14 ? 1.0 / normSquared : 0.0;
+  }
+  // odd orders have a zero at the Nyquist frequency; interpolate the modulus from the neighbours there
+  for (std::int32_t m = 0; m < K; ++m)
+  {
+    if (result[static_cast<std::size_t>(m)] == 0.0)
     {
-      if (result[static_cast<std::size_t>(m)] == 0.0)
-      {
-        const std::size_t previous = static_cast<std::size_t>((m - 1 + K) % K);
-        const std::size_t next = static_cast<std::size_t>((m + 1) % K);
-        result[static_cast<std::size_t>(m)] = 0.5 * (result[previous] + result[next]);
-      }
+      const std::size_t previous = static_cast<std::size_t>((m - 1 + K) % K);
+      const std::size_t next = static_cast<std::size_t>((m + 1) % K);
+      result[static_cast<std::size_t>(m)] = 0.5 * (result[previous] + result[next]);
     }
-    return result;
-  };
-  bsplineModulusX = moduli(mesh.x);
-  bsplineModulusY = moduli(mesh.y);
-  bsplineModulusZ = moduli(mesh.z);
+  }
+  return result;
+}
+
+void PPPM::computeBsplineModuli()
+{
+  bsplineModulusX = bsplineModuli(order, mesh.x);
+  bsplineModulusY = bsplineModuli(order, mesh.y);
+  bsplineModulusZ = bsplineModuli(order, mesh.z);
 }
 
 bool PPPM::influenceFunctionOutdated(const SimulationBox& box, double alphaValue) const
@@ -398,8 +399,8 @@ void PPPM::spread(std::size_t thread, std::span<const std::uint32_t> atoms, cons
   {
     buffer.start = int3(0, 0, 0);
     buffer.length = mesh;
-    grid = chargeMesh;
-    std::fill_n(chargeMesh, realSize(), 0.0);
+    grid = fft.chargeMesh;
+    std::fill_n(fft.chargeMesh, realSize(), 0.0);
   }
   else
   {
@@ -483,7 +484,7 @@ void PPPM::reduceMeshes(std::size_t thread, std::size_t numberOfThreads)
 
   for (std::int32_t kx = firstPlane; kx < lastPlane; ++kx)
   {
-    double* plane = chargeMesh + static_cast<std::size_t>(kx) * planeSize;
+    double* plane = fft.chargeMesh + static_cast<std::size_t>(kx) * planeSize;
     std::fill_n(plane, planeSize, 0.0);
 
     for (const ThreadBuffer& buffer : threadBuffers)
@@ -519,7 +520,7 @@ double PPPM::solve(bool withVirial)
   return backwardTransform(1);
 }
 
-void PPPM::forwardTransform() { fftw_execute(static_cast<fftw_plan>(forwardPlan)); }
+void PPPM::forwardTransform() { fftw_execute(static_cast<fftw_plan>(fft.forwardPlan)); }
 
 void PPPM::applyInfluence(std::size_t thread, std::size_t numberOfThreads, bool withVirial)
 {
@@ -528,7 +529,7 @@ void PPPM::applyInfluence(std::size_t thread, std::size_t numberOfThreads, bool 
   const std::int32_t first = static_cast<std::int32_t>((static_cast<std::size_t>(mesh.x) * thread) / threads);
   const std::int32_t last = static_cast<std::int32_t>((static_cast<std::size_t>(mesh.x) * (thread + 1)) / threads);
 
-  fftw_complex* F = static_cast<fftw_complex*>(spectrum);
+  fftw_complex* F = static_cast<fftw_complex*>(fft.spectrum);
   const std::size_t halfZ = static_cast<std::size_t>(mesh.z) / 2 + 1;
   const std::size_t nyquistZ = (mesh.z % 2 == 0) ? static_cast<std::size_t>(mesh.z) / 2 : halfZ;  // never hit if odd
   double energy = 0.0;
@@ -606,7 +607,7 @@ double PPPM::backwardTransform(std::size_t numberOfThreads)
     energy += partialEnergy[t];
     reciprocalStrain += partialStrain[t];
   }
-  fftw_execute(static_cast<fftw_plan>(backwardPlan));
+  fftw_execute(static_cast<fftw_plan>(fft.backwardPlan));
   return energy;
 }
 
@@ -658,7 +659,7 @@ void PPPM::interpolate(std::span<const std::uint32_t> atoms, const double* x, co
       const std::size_t offsetX = ix[a] * Ky;
       for (std::size_t b = 0; b < p; ++b)
       {
-        const double* row = potential + (offsetX + iy[b]) * Kz;
+        const double* row = fft.potential + (offsetX + iy[b]) * Kz;
         double sumW = 0.0, sumD = 0.0;
         for (std::size_t c = 0; c < p; ++c)
         {

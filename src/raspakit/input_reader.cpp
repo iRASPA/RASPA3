@@ -1213,6 +1213,29 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       parsed_data["PairPrecision"].get<std::string>()));
     }
   }
+  if (parsed_data.contains("PairDevice"))
+  {
+    if (!parsed_data["PairDevice"].is_string())
+    {
+      throw std::runtime_error(std::format("[Input reader]: 'PairDevice' must be a string ('CPU' or 'OpenCL')\n"));
+    }
+    std::string device = parsed_data["PairDevice"].get<std::string>();
+    std::transform(device.begin(), device.end(), device.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    if (device == "cpu")
+    {
+      spatialDecompositionSettings.pairDevice = PairDevice::CPU;
+    }
+    else if (device == "opencl" || device == "gpu")
+    {
+      spatialDecompositionSettings.pairDevice = PairDevice::OpenCL;
+    }
+    else
+    {
+      throw std::runtime_error(std::format("[Input reader]: 'PairDevice' must be 'CPU' or 'OpenCL', '{}' was given\n",
+                                           parsed_data["PairDevice"].get<std::string>()));
+    }
+  }
   if (parsed_data.contains("DomainGrid"))
   {
     const nlohmann::json& grid = parsed_data["DomainGrid"];
@@ -4467,6 +4490,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "PPPMInterpolationOrder",
     "PairPrecision",
     "PruneSkin",
+    "PairDevice",
     "DomainGrid",
     "Components",
     "Systems"};

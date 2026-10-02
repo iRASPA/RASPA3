@@ -13,6 +13,8 @@ import spatial_decomposition_cell_list;
 import spatial_decomposition_pppm;
 import spatial_decomposition_pair_kernel;
 import spatial_decomposition_cluster_kernel;
+import spatial_decomposition_opencl_pair_kernel;
+import spatial_decomposition_opencl_bonded;
 import spatial_decomposition_worker_team;
 
 /**
@@ -55,6 +57,10 @@ export class SpatialDecompositionForceEngine
   ~SpatialDecompositionForceEngine();
   SpatialDecompositionForceEngine(const SpatialDecompositionForceEngine&) = delete;
   SpatialDecompositionForceEngine& operator=(const SpatialDecompositionForceEngine&) = delete;
+  /// Movable (the worker team and the FFTW resources are owned through handles), so the engine is a value that
+  /// can live in a container or a ForceEngine variant.
+  SpatialDecompositionForceEngine(SpatialDecompositionForceEngine&&) noexcept;
+  SpatialDecompositionForceEngine& operator=(SpatialDecompositionForceEngine&&) noexcept;
 
   struct Validation
   {
@@ -77,6 +83,12 @@ export class SpatialDecompositionForceEngine
     std::chrono::duration<double> pairs{};
     std::chrono::duration<double> mesh{};
     std::chrono::duration<double> bonded{};
+    std::chrono::duration<double> device{};        ///< execution time of the OpenCL pair kernel on the device
+    std::chrono::duration<double> devicePrune{};   ///< execution time of the OpenCL list compaction kernel
+    std::chrono::duration<double> deviceMesh{};    ///< execution time of the OpenCL mesh chain (spread, FFTs, ...)
+    std::chrono::duration<double> deviceBonded{};  ///< execution time of the OpenCL bonded / exclusion kernel
+    std::chrono::duration<double> deviceBuild{};   ///< wall time of the device list builds (layout, upload, build)
+    std::chrono::duration<double> deviceWait{};    ///< time thread 0 waited for the device results
     std::size_t steps{};
     std::size_t rebuilds{};
     std::size_t influenceUpdates{};
@@ -110,6 +122,12 @@ export class SpatialDecompositionForceEngine
 
   /// Whether the specialised Lennard-Jones + tabulated Ewald kernel is in use (else the generic kernels).
   bool usesFastKernel() const { return fastKernel; }
+  /// Whether the pairs are evaluated on the OpenCL device.
+  bool usesDevice() const { return deviceKernel; }
+  /// Whether the particle-mesh Ewald sum runs on the OpenCL device.
+  bool usesDeviceMesh() const { return deviceMesh; }
+  /// Whether the bonded terms and the self / exclusion corrections run on the OpenCL device.
+  bool usesDeviceBonded() const { return deviceBonded; }
 
  private:
   SpatialDecompositionSettings settings;
@@ -135,6 +153,20 @@ export class SpatialDecompositionForceEngine
   EwaldRealSpaceTable ewaldTable{};
   ClusterPairKernel<double> clusterKernelDouble{};
   ClusterPairKernel<float> clusterKernelMixed{};
+  // the pairs on the OpenCL device (settings.pairDevice == OpenCL): the device builds its own list from the cell
+  // binning, the per-domain Verlet lists and ghost images are not built, and the device work overlaps with the
+  // mesh and bonded phases of the threads
+  bool deviceKernel{false};
+  OpenCLPairKernel devicePairs{};
+  // with the device pairs: the mesh (settings.deviceMesh) and the per-molecule terms (settings.deviceBonded, when
+  // OpenCLBonded covers the system's intramolecular potentials) run on the device as well; the device results of
+  // the mesh that computeGradients needs after the step
+  bool deviceMesh{false};
+  bool deviceBonded{false};
+  std::string deviceBondedFallback{};  ///< why the bonded work stayed on the host (status line)
+  double deviceSingleIonSum{0.0};
+  double3x3 deviceReciprocalStrain{};
+  double3x3 deviceSingleIonStrain{};
   bool mixedPrecision() const { return settings.pairPrecision == PairPrecision::Mixed; }
   bool usesClusterKernel() const { return mixedPrecision() || settings.clusterKernelForDouble; }
   std::vector<std::uint8_t> rebuildRequested{};
@@ -145,11 +177,14 @@ export class SpatialDecompositionForceEngine
   bool virialRequested{false};
   double3x3 pressureTensor{};
 
-  // bonded / exclusion work by molecule, handed out in chunks through an atomic counter so that it can be done by
-  // whichever threads are free (it overlaps with the FFTs of thread 0 when the mesh is in use)
-  std::atomic<std::size_t> nextBondedChunk{0};
+  // bonded / exclusion work by molecule, handed out in chunks through the team's work counter so that it can be
+  // done by whichever threads are free (it overlaps with the FFTs of thread 0 when the mesh is in use)
   std::size_t bondedChunkSize{1};
   std::size_t partitionedMolecules{0};
+  /// Energies, strain derivatives and virial corrections per chunk: whichever thread takes a chunk, the sums are
+  /// reduced in chunk order, so that the results do not depend on the scheduling (bit-reproducible runs).
+  std::vector<RunningEnergy> chunkEnergies{};
+  std::vector<double3x3> chunkStrain{}, chunkCorrection{};
   /// Mass-weighted center of mass of the molecule of every atom (original atom order), set in the bonded work and
   /// used for the atomic-to-molecular virial correction of the pair + mesh gradients in the scatter phase.
   std::vector<double3> atomCenterOfMass{};
@@ -166,6 +201,6 @@ export class SpatialDecompositionForceEngine
   void buildClusterLists(std::size_t thread);
   void collectGhostForces(std::size_t thread);
   void prepareKernel(const System& system);
-  void bondedWork(std::size_t thread, System& system, RunningEnergy& energy);
+  void bondedWork(System& system);
   void scatterPhase(std::size_t thread, System& system);
 };

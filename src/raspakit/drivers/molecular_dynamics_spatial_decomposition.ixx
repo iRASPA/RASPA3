@@ -13,7 +13,7 @@ import json;
 import double3x3;
 import running_energy;
 import spatial_decomposition_settings;
-import spatial_decomposition_force_engine;
+import force_engine;
 
 /**
  * \brief Molecular dynamics with the multithreaded spatial-decomposition force engine.
@@ -74,7 +74,7 @@ export struct MolecularDynamicsSpatialDecomposition
   std::size_t fractionalMoleculeSystem{0};
 
   SpatialDecompositionSettings engineSettings{};
-  std::vector<std::unique_ptr<SpatialDecompositionForceEngine>> engines;  ///< One per system, built lazily.
+  std::vector<ForceEngine> engines;  ///< One per system, built lazily.
 
   /// Running sum and count (per system) of the pressure tensor the barostat drives to the external pressure,
   /// over the steps since the last status report (printed with every report, then reset). Not part of the restart.

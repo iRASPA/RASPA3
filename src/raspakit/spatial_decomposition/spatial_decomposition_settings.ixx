@@ -30,9 +30,21 @@ export inline std::string pairPrecisionName(PairPrecision precision)
   return precision == PairPrecision::Mixed ? "Mixed" : "Double";
 }
 
+/// Where the specialised pair kernel runs. `CPU`: the SIMD cluster kernel (or the scalar kernel) on the worker
+/// threads. `OpenCL`: the cluster pair kernel on the OpenCL device (GPU) in single precision, overlapped with the
+/// mesh, bonded and exclusion work of the worker threads; requires an OpenCL device and the specialised kernel
+/// (Lennard-Jones with Ewald or no electrostatics, fully coupled atoms).
+export enum class PairDevice : std::uint8_t
+{
+  CPU = 0,
+  OpenCL = 1
+};
+
+export inline std::string pairDeviceName(PairDevice device) { return device == PairDevice::OpenCL ? "OpenCL" : "CPU"; }
+
 export struct SpatialDecompositionSettings
 {
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{4};
 
   /// Number of worker threads (1: every phase runs on the calling thread through the same code path).
   std::size_t numberOfThreads{1};
@@ -65,6 +77,19 @@ export struct SpatialDecompositionSettings
   /// the cluster code path), and on 128-bit SIMD (NEON) the scalar kernel is the faster of the two.
   bool clusterKernelForDouble{false};
 
+  /// Device of the specialised pair kernel (see PairDevice).
+  PairDevice pairDevice{PairDevice::CPU};
+
+  /// With `PairDevice::OpenCL`: the particle-mesh Ewald sum runs on the device as well (charge spreading, FFTs,
+  /// influence function, interpolation). Not an input option (the tests and benchmarks switch it off to compare
+  /// the device pairs with the host mesh).
+  bool deviceMesh{true};
+
+  /// With `PairDevice::OpenCL`: the bonded terms and the self / exclusion corrections run on the device when
+  /// the device kernels cover the intramolecular potentials of the system (else they stay on the host). Not an
+  /// input option.
+  bool deviceBonded{true};
+
   bool operator==(const SpatialDecompositionSettings&) const = default;
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const SpatialDecompositionSettings& s);
@@ -88,6 +113,9 @@ export Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const
   archive << static_cast<std::uint8_t>(s.pairPrecision);
   archive << s.pruneSkin;
   archive << s.clusterKernelForDouble;
+  archive << static_cast<std::uint8_t>(s.pairDevice);
+  archive << s.deviceMesh;
+  archive << s.deviceBonded;
   return archive;
 }
 
@@ -130,6 +158,20 @@ export Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Spati
     s.pairPrecision = precision == 1 ? PairPrecision::Mixed : PairPrecision::Double;
     archive >> s.pruneSkin;
     archive >> s.clusterKernelForDouble;
+  }
+  s.pairDevice = PairDevice::CPU;
+  if (versionNumber >= 3)
+  {
+    std::uint8_t device;
+    archive >> device;
+    s.pairDevice = device == 1 ? PairDevice::OpenCL : PairDevice::CPU;
+  }
+  s.deviceMesh = true;
+  s.deviceBonded = true;
+  if (versionNumber >= 4)
+  {
+    archive >> s.deviceMesh;
+    archive >> s.deviceBonded;
   }
   return archive;
 }

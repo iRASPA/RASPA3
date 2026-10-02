@@ -47,6 +47,12 @@ export class WorkerTeam
 
   std::size_t size() const { return members; }
 
+  /// Shared counter for handing out the work items of a task dynamically among the members: member 0 calls
+  /// resetWork() before the task, and every member claims the first index of its next `count` items with
+  /// claimWork(count) until the result reaches the number of items.
+  void resetWork() { workCounter.store(0, std::memory_order_relaxed); }
+  std::size_t claimWork(std::size_t count) { return workCounter.fetch_add(count, std::memory_order_relaxed); }
+
   /// Executes task(member) on every member (the caller is member 0) and waits for all of them.
   void run(std::function<void(std::size_t)> task)
   {
@@ -181,5 +187,6 @@ export class WorkerTeam
 
   std::mutex errorMutex;
   std::exception_ptr firstError;
+  std::atomic<std::size_t> workCounter{0};
   std::atomic<std::size_t> errorCount{0};
 };

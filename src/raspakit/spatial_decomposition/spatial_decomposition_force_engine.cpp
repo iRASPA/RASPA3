@@ -28,6 +28,8 @@ import spatial_decomposition_cell_list;
 import spatial_decomposition_pppm;
 import spatial_decomposition_pair_kernel;
 import spatial_decomposition_cluster_kernel;
+import spatial_decomposition_opencl_pair_kernel;
+import spatial_decomposition_opencl_bonded;
 import spatial_decomposition_worker_team;
 
 SpatialDecompositionForceEngine::SpatialDecompositionForceEngine(const SpatialDecompositionSettings& s) : settings(s)
@@ -36,6 +38,9 @@ SpatialDecompositionForceEngine::SpatialDecompositionForceEngine(const SpatialDe
 }
 
 SpatialDecompositionForceEngine::~SpatialDecompositionForceEngine() = default;
+SpatialDecompositionForceEngine::SpatialDecompositionForceEngine(SpatialDecompositionForceEngine&&) noexcept = default;
+SpatialDecompositionForceEngine& SpatialDecompositionForceEngine::operator=(
+    SpatialDecompositionForceEngine&&) noexcept = default;
 
 bool SpatialDecompositionForceEngine::supports(const System& system, std::string& reason)
 {
@@ -93,6 +98,10 @@ void SpatialDecompositionForceEngine::prepareBondedWork(const System& system)
   // about eight chunks per thread: fine enough to balance the threads that are free next to the FFTs of thread 0,
   // coarse enough to keep the atomic counter out of the way
   bondedChunkSize = std::max<std::size_t>(1, numberOfMolecules / (8 * threads));
+  const std::size_t chunks = (numberOfMolecules + bondedChunkSize - 1) / bondedChunkSize;
+  chunkEnergies.assign(chunks, RunningEnergy{});
+  chunkStrain.assign(chunks, double3x3{});
+  chunkCorrection.assign(chunks, double3x3{});
   atomCenterOfMass.resize(system.spanOfMoleculeAtoms().size());
   partitionedMolecules = numberOfMolecules;
 }
@@ -112,8 +121,10 @@ void SpatialDecompositionForceEngine::initialize(System& system)
   cellList.setup(system.simulationBox, cutoff, settings.verletSkin, settings.numberOfThreads, settings.domainGrid);
   team = std::make_unique<WorkerTeam>(settings.numberOfThreads);
 
+  deviceKernel = settings.pairDevice == PairDevice::OpenCL;
   useMesh = forceField.usesEwaldFourier();
-  if (useMesh)
+  deviceMesh = deviceKernel && useMesh && settings.deviceMesh;
+  if (useMesh && !deviceMesh)
   {
     pppm.initialize(system.simulationBox, forceField.EwaldAlpha, settings.meshSpacing, settings.interpolationOrder,
                     settings.numberOfThreads, Units::CoulombicConversionFactor);
@@ -126,7 +137,38 @@ void SpatialDecompositionForceEngine::initialize(System& system)
   localForce.assign(settings.numberOfThreads, {});
   clusterKernelDouble.resize(settings.numberOfThreads);
   clusterKernelMixed.resize(settings.numberOfThreads);
+  deviceBonded = false;
+  deviceBondedFallback.clear();
+  if (deviceKernel)
+  {
+    if (!OpenCLPairKernel::available())
+    {
+      throw std::runtime_error(
+          "[Spatial decomposition]: 'PairDevice' is 'OpenCL' but no OpenCL device is available on this machine\n");
+    }
+    devicePairs.initialize();
+  }
   prepareKernel(system);
+  if (deviceKernel && !fastKernel)
+  {
+    throw std::runtime_error(
+        "[Spatial decomposition]: the OpenCL pair kernel covers plain Lennard-Jones (truncated or shifted) between "
+        "fully coupled atoms with Ewald or no electrostatics; use 'PairDevice' : 'CPU' for this system\n");
+  }
+  if (deviceMesh)
+  {
+    devicePairs.enableMesh(PPPM::chooseMesh(system.simulationBox, settings.meshSpacing, settings.interpolationOrder),
+                           settings.interpolationOrder, forceField.EwaldAlpha, Units::CoulombicConversionFactor);
+  }
+  if (deviceKernel && settings.deviceBonded)
+  {
+    if (OpenCLBonded::supports(system, deviceBondedFallback))
+    {
+      devicePairs.enableBonded(system, forceField.EwaldAlpha, Units::CoulombicConversionFactor,
+                               forceField.useCharge && useMesh);
+      deviceBonded = true;
+    }
+  }
   rebuildRequested.assign(settings.numberOfThreads, 1);
   influenceUpdateRequested = 0;
   threadEnergies.assign(settings.numberOfThreads, RunningEnergy{});
@@ -174,17 +216,25 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
   {
     prepareBondedWork(system);
   }
-  nextBondedChunk.store(0, std::memory_order_relaxed);
+  team->resetWork();
 
   for (RunningEnergy& energy : threadEnergies) energy = RunningEnergy{};
   for (double3x3& strain : threadStrain) strain = double3x3{};
   for (double3x3& correction : threadCorrection) correction = double3x3{};
+  if (deviceBonded)
+  {
+    // the chunk accumulators are not written when the device does the bonded work
+    for (RunningEnergy& energy : chunkEnergies) energy = RunningEnergy{};
+    for (double3x3& strain : chunkStrain) strain = double3x3{};
+    for (double3x3& correction : chunkCorrection) correction = double3x3{};
+  }
   reciprocalEnergy = 0.0;
 
   team->run([&](std::size_t thread) { step(thread, system); });
 
   RunningEnergy total{};
   for (const RunningEnergy& energy : threadEnergies) total += energy;
+  for (const RunningEnergy& energy : chunkEnergies) total += energy;
 
   double netCharge = 0.0;
   if (useMesh)
@@ -193,8 +243,9 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
 
     // Net-charge correction (Bogusz et al., J. Chem. Phys. 108, 7070 (1998)), position independent
     for (const Atom& atom : system.spanOfMoleculeAtoms()) netCharge += atom.scalingCoulomb * atom.charge;
-    const double uIon = -(pppm.singleIonFourierSum() - Units::CoulombicConversionFactor * system.forceField.EwaldAlpha /
-                                                           std::sqrt(std::numbers::pi));
+    const double singleIonSum = deviceMesh ? deviceSingleIonSum : pppm.singleIonFourierSum();
+    const double uIon =
+        -(singleIonSum - Units::CoulombicConversionFactor * system.forceField.EwaldAlpha / std::sqrt(std::numbers::pi));
     total.ewald_fourier += uIon * netCharge * netCharge;
   }
 
@@ -211,7 +262,16 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
       strain += threadStrain[t];
       correction += threadCorrection[t];
     }
-    if (useMesh)
+    for (std::size_t c = 0; c < chunkStrain.size(); ++c)
+    {
+      strain += chunkStrain[c];
+      correction += chunkCorrection[c];
+    }
+    if (deviceMesh)
+    {
+      strain += -(deviceReciprocalStrain - (netCharge * netCharge) * deviceSingleIonStrain);
+    }
+    else if (useMesh)
     {
       strain += -(pppm.reciprocalStrainTensor() - (netCharge * netCharge) * pppm.singleIonStrainTensor());
     }
@@ -248,6 +308,14 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
 
   ++timing.steps;
   timing.total += std::chrono::steady_clock::now() - begin;
+  if (deviceKernel)
+  {
+    timing.device = devicePairs.deviceTime();
+    timing.devicePrune = devicePairs.pruneTime();
+    timing.deviceMesh = devicePairs.meshTime();
+    timing.deviceBonded = devicePairs.bondedTime();
+    timing.deviceBuild = devicePairs.buildTime();
+  }
   return total;
 }
 
@@ -291,7 +359,7 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
         if (thread == 0)
         {
           influenceUpdateRequested =
-              useMesh && pppm.influenceFunctionOutdated(box, system.forceField.EwaldAlpha) ? 1 : 0;
+              useMesh && !deviceMesh && pppm.influenceFunctionOutdated(box, system.forceField.EwaldAlpha) ? 1 : 0;
           if (influenceUpdateRequested != 0)
           {
             pppm.beginInfluenceFunction(box, system.forceField.EwaldAlpha, threads);
@@ -320,7 +388,8 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
   bool rebuild = false;
   for (std::size_t t = 0; t < threads; ++t) rebuild = rebuild || (rebuildRequested[t] != 0);
 
-  // phase 1 (only when needed): serial binning, then parallel list construction
+  // phase 1 (only when needed): serial binning, then parallel list construction. With the device pairs, thread 0
+  // lays out the device slots and starts the list build on the device instead.
   if (rebuild)
   {
     workers.phase(
@@ -331,13 +400,28 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
             cellList.updateCellGrid(box);
             cellList.bin(box, atoms);
             ++timing.rebuilds;
+            if (deviceKernel) devicePairs.beginBuild(cellList, box, threads);
           }
         });
+    if (!deviceKernel)
+    {
+      workers.phase(
+          [&]
+          {
+            cellList.buildLists(thread, box);
+            if (fastKernel && usesClusterKernel()) buildClusterLists(thread);
+          });
+    }
+  }
+  // phase 1b (device pairs): thread 0 waits for a new list on the device while every thread stages the wrapped
+  // positions of its owned atoms for the device
+  if (deviceKernel)
+  {
     workers.phase(
         [&]
         {
-          cellList.buildLists(thread, box);
-          if (fastKernel && usesClusterKernel()) buildClusterLists(thread);
+          if (thread == 0 && rebuild) devicePairs.finishBuild();
+          devicePairs.packPositions(thread, cellList.domains[thread].ownedAtoms, cellList, box);
         });
   }
   lap(timing.rebuild);
@@ -348,9 +432,18 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
   workers.phase(
       [&]
       {
-        cellList.gatherPositions(thread, box);
-        pairPhase(thread, system, energy);
-        if (useMesh)
+        if (deviceKernel)
+        {
+          // the device evaluates all pairs (and, when enabled, the mesh and the bonded terms) while the threads
+          // continue with whatever stayed on the host
+          if (thread == 0) devicePairs.enqueue(box);
+        }
+        else
+        {
+          cellList.gatherPositions(thread, box);
+          pairPhase(thread, system, energy);
+        }
+        if (useMesh && !deviceMesh)
         {
           const CellList::DomainLists& domain = cellList.domains[thread];
           pppm.spread(thread, domain.ownedAtoms, cellList.x.data(), cellList.y.data(), cellList.z.data(),
@@ -361,13 +454,13 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
 
   // phase 3: the owners collect the ghost forces of the other threads; with the mesh, assemble the charge mesh
   // from the sub-box buffers (parallel x-slabs)
-  if (threads > 1)
+  if (threads > 1 && (!deviceKernel || (useMesh && !deviceMesh)))
   {
     workers.phase(
         [&]
         {
-          collectGhostForces(thread);
-          if (useMesh) pppm.reduceMeshes(thread, threads);
+          if (!deviceKernel) collectGhostForces(thread);
+          if (useMesh && !deviceMesh) pppm.reduceMeshes(thread, threads);
         });
   }
   lap(timing.mesh);
@@ -377,25 +470,66 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
   // from the mesh, so with the mesh they run on the free threads while thread 0 drives the FFTs: forward
   // transform || bonded, influence function on all threads, backward transform || bonded (thread 0 joins the
   // remaining chunks after each transform).
-  if (useMesh)
+  // With the device pairs, thread 0 collects the device results after its share of the bonded work (the wait
+  // is idle time only when the device is slower than the mesh and bonded phases together).
+  auto collectDeviceResults = [&]
+  {
+    if (!deviceKernel || thread != 0) return;
+    const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    const OpenCLPairKernel::Results results = devicePairs.wait();
+    energy.moleculeMoleculeVDW += results.energyVDW;
+    energy.moleculeMoleculeCharge += results.energyCharge;
+    if (virialRequested) threadStrain[0] += results.pairStrain;
+    if (deviceMesh)
+    {
+      reciprocalEnergy = results.reciprocalEnergy;
+      deviceReciprocalStrain = results.reciprocalStrain;
+      deviceSingleIonSum = results.singleIonSum;
+      deviceSingleIonStrain = results.singleIonStrain;
+    }
+    if (deviceBonded)
+    {
+      energy.ewald_self += results.bonded.self;
+      energy.ewald_exclusion += results.bonded.exclusion;
+      energy.bond += results.bonded.bond;
+      energy.bend += results.bonded.bend;
+      energy.torsion += results.bonded.torsion;
+      energy.improperTorsion += results.bonded.improperTorsion;
+      energy.intraVDW += results.bonded.intraVDW;
+      energy.intraCoul += results.bonded.intraCoulomb;
+      if (virialRequested)
+      {
+        threadStrain[0] += results.bonded.exclusionStrain;
+        threadCorrection[0] += results.bonded.correction;
+      }
+    }
+    timing.deviceWait += std::chrono::steady_clock::now() - start;
+  };
+  if (useMesh && !deviceMesh)
   {
     workers.phase(
         [&]
         {
           if (thread == 0) pppm.forwardTransform();
-          bondedWork(thread, system, energy);
+          if (!deviceBonded) bondedWork(system);
         });
     workers.phase([&] { pppm.applyInfluence(thread, threads, virialRequested); });
     workers.phase(
         [&]
         {
           if (thread == 0) reciprocalEnergy = pppm.backwardTransform(threads);
-          bondedWork(thread, system, energy);
+          if (!deviceBonded) bondedWork(system);
+          collectDeviceResults();
         });
   }
   else
   {
-    workers.phase([&] { bondedWork(thread, system, energy); });
+    workers.phase(
+        [&]
+        {
+          if (!deviceBonded) bondedWork(system);
+          collectDeviceResults();
+        });
   }
   lap(timing.bonded);
 
@@ -469,7 +603,14 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
   }
   fastKernel = lennardJonesOnly && unitScaling;
 
-  if (fastKernel && usesClusterKernel())
+  if (fastKernel && deviceKernel)
+  {
+    devicePairs.setParameters(lennardJones, numberOfPseudoAtomTypes, forceField.useCharge && fastCoulomb,
+                              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, Units::CoulombicConversionFactor,
+                              forceField.EwaldAlpha, settings.verletSkin, settings.pruneSkin);
+    devicePairs.setEwaldAlpha(forceField.EwaldAlpha);
+  }
+  else if (fastKernel && usesClusterKernel())
   {
     const bool charge = forceField.useCharge && fastCoulomb;
     const EwaldRealSpaceTable* table = charge ? &ewaldTable : nullptr;
@@ -779,7 +920,7 @@ inline void addOuterProduct(double3x3& tensor, const double3& arm, const double3
 }
 }  // namespace
 
-void SpatialDecompositionForceEngine::bondedWork(std::size_t thread, System& system, RunningEnergy& energy)
+void SpatialDecompositionForceEngine::bondedWork(System& system)
 {
   const ForceField& forceField = system.forceField;
   const SimulationBox& box = system.simulationBox;
@@ -787,15 +928,16 @@ void SpatialDecompositionForceEngine::bondedWork(std::size_t thread, System& sys
   std::span<AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
   const std::size_t numberOfMolecules = system.moleculeData.size();
   const std::size_t chunk = bondedChunkSize;
-
   const bool withVirial = virialRequested;
-  double3x3 strain{};
-  double3x3 correction{};
 
-  for (std::size_t begin = nextBondedChunk.fetch_add(chunk, std::memory_order_relaxed); begin < numberOfMolecules;
-       begin = nextBondedChunk.fetch_add(chunk, std::memory_order_relaxed))
+  // every chunk is taken by exactly one thread per step; its sums go to the chunk's own slots
+  WorkerTeam& workers = *team;
+  for (std::size_t begin = workers.claimWork(chunk); begin < numberOfMolecules; begin = workers.claimWork(chunk))
   {
     const std::size_t end = std::min(begin + chunk, numberOfMolecules);
+    RunningEnergy energy{};
+    double3x3 strain{};
+    double3x3 correction{};
     for (std::size_t m = begin; m < end; ++m)
     {
       const Molecule& molecule = system.moleculeData[m];
@@ -834,26 +976,44 @@ void SpatialDecompositionForceEngine::bondedWork(std::size_t thread, System& sys
 
       energy += component.intraMolecularPotentials.computeInternalGradient(moleculeAtoms, moleculeDynamics);
     }
-  }
-
-  if (withVirial)
-  {
-    threadStrain[thread] += strain;
-    threadCorrection[thread] += correction;
+    const std::size_t index = begin / chunk;
+    chunkEnergies[index] = energy;
+    chunkStrain[index] = strain;
+    chunkCorrection[index] = correction;
   }
 }
 
 void SpatialDecompositionForceEngine::scatterPhase(std::size_t thread, System& system)
 {
   const CellList::DomainLists& domain = cellList.domains[thread];
-  if (useMesh)
+  if (deviceKernel)
+  {
+    // the pair gradients of the owned atoms from the device (the mesh gradients are added below)
+    for (const std::uint32_t i : domain.ownedAtoms)
+    {
+      const double3 gradient = devicePairs.force(i);
+      fx[i] = gradient.x;
+      fy[i] = gradient.y;
+      fz[i] = gradient.z;
+    }
+  }
+  if (useMesh && !deviceMesh)
   {
     pppm.interpolate(domain.ownedAtoms, cellList.x.data(), cellList.y.data(), cellList.z.data(), cellList.charge.data(),
                      cellList.scalingCoulomb.data(), fx.data(), fy.data(), fz.data());
   }
   std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
   std::span<AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
-  if (virialRequested)
+  if (deviceBonded)
+  {
+    // the device forces are the complete gradients (pairs, mesh, exclusions, bonded terms) and the device did
+    // the virial correction
+    for (const std::uint32_t i : domain.ownedAtoms)
+    {
+      dynamics[cellList.sortedToOriginal[i]].gradient = double3(fx[i], fy[i], fz[i]);
+    }
+  }
+  else if (virialRequested)
   {
     double3x3 correction{};
     for (const std::uint32_t i : domain.ownedAtoms)
@@ -927,7 +1087,11 @@ std::string SpatialDecompositionForceEngine::writeStatus() const
       "================================================================================================================"
       "========\n");
   result += std::format("    threads: {}\n", settings.numberOfThreads);
-  if (fastKernel && usesClusterKernel())
+  if (deviceKernel)
+  {
+    result += devicePairs.status();
+  }
+  else if (fastKernel && usesClusterKernel())
   {
     auto describe = [&](const auto& kernel)
     {
@@ -961,13 +1125,20 @@ std::string SpatialDecompositionForceEngine::writeStatus() const
     result += std::format("    pair kernel: generic (Potentials::potentialVDW / potentialCoulomb)\n");
   }
   result += cellList.status();
-  if (useMesh)
+  if (useMesh && !deviceMesh)
   {
     result += pppm.status();
   }
-  else
+  else if (!useMesh)
   {
     result += std::format("    no reciprocal-space sum (charge method without Ewald Fourier part)\n");
+  }
+  if (deviceKernel && !deviceBonded)
+  {
+    result += std::format("    bonded terms on the host{}\n",
+                          deviceBondedFallback.empty()
+                              ? std::string{}
+                              : std::format(" (the device kernels do not cover {})", deviceBondedFallback));
   }
   result += "\n";
   return result;
@@ -994,11 +1165,46 @@ std::string SpatialDecompositionForceEngine::writeTimings() const
   {
     result += std::format("    influence function:       {:14.4f} [s]\n", timing.influence.count());
   }
-  result += std::format("    pairs + spreading:        {:14.4f} [s]\n", timing.pairs.count());
+  if (deviceKernel)
+  {
+    result += std::format("    device list builds:       {:14.4f} [s] (layout, upload and build; in 'rebuilds')\n",
+                          timing.deviceBuild.count());
+    result += std::format("    device pair kernel:       {:14.4f} [s] (kernel time, sampled after the list builds)\n",
+                          timing.device.count());
+    if (devicePairs.pruning())
+    {
+      result += std::format("    device list compaction:   {:14.4f} [s] (kernel time, sampled after the list builds)\n",
+                            timing.devicePrune.count());
+    }
+    if (deviceMesh)
+    {
+      result += std::format("    device mesh (PPPM):       {:14.4f} [s] (spreading, FFTs, influence, interpolation)\n",
+                            timing.deviceMesh.count());
+    }
+    if (deviceBonded)
+    {
+      result +=
+          std::format("    device bonded + exclusions: {:12.4f} [s] (kernel time, sampled after the list builds)\n",
+                      timing.deviceBonded.count());
+    }
+    result += std::format("    wait for the device:      {:14.4f} [s] (idle time of thread 0 after the host work)\n",
+                          timing.deviceWait.count());
+    result +=
+        std::format("    {:<30}{:14.4f} [s]\n",
+                    (useMesh && !deviceMesh) ? "list staging + spreading:" : "list staging:", timing.pairs.count());
+  }
+  else
+  {
+    result += std::format("    pairs + spreading:        {:14.4f} [s]\n", timing.pairs.count());
+  }
   result += std::format("    reduction, interpolation, scatter: {:5.4f} [s]\n", timing.mesh.count());
-  if (useMesh)
+  if (useMesh && !deviceMesh)
   {
     result += std::format("    FFTs || bonded + exclusions: {:11.4f} [s]\n", timing.bonded.count());
+  }
+  else if (deviceBonded)
+  {
+    result += std::format("    device wait phase:        {:14.4f} [s]\n", timing.bonded.count());
   }
   else
   {

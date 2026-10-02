@@ -36,6 +36,7 @@ file(GLOB RASPAKIT_CPP_FILES
   ${PROJECT_SOURCE_DIR}/properties_time_evolution/*.cpp
   ${PROJECT_SOURCE_DIR}/integrators/*.cpp
   ${PROJECT_SOURCE_DIR}/spatial_decomposition/*.cpp
+  ${PROJECT_SOURCE_DIR}/spatial_decomposition/opencl/*.cpp
   ${PROJECT_SOURCE_DIR}/utilities/*.cpp)
 
 file(GLOB RASPAKIT_IXX_FILES
@@ -63,6 +64,7 @@ file(GLOB RASPAKIT_IXX_FILES
   ${PROJECT_SOURCE_DIR}/properties_time_evolution/*.ixx
   ${PROJECT_SOURCE_DIR}/integrators/*.ixx
   ${PROJECT_SOURCE_DIR}/spatial_decomposition/*.ixx
+  ${PROJECT_SOURCE_DIR}/spatial_decomposition/opencl/*.ixx
   ${PROJECT_SOURCE_DIR}/utilities/*.ixx)
 
 # One library, and no -march anywhere below it: the released packages have to run on any processor of the
