@@ -8,6 +8,7 @@ import double3;
 import atom;
 import forcefield;
 import component;
+import molecule_property_settings;
 import mc_moves_probabilities;
 import property_molecule_backbone;
 
@@ -270,9 +271,15 @@ TEST(MOLECULE_BACKBONE, sampling_through_component)
   components.push_back(makeComponent(forceField, "linear-backbone", kLinearChainJson));
 
   constexpr std::size_t numberOfBlocks = 4;
-  PropertyMoleculeBackbone property(numberOfBlocks, components, 5, 0.1, 10.0, 1, 1);
+  components[0].moleculeBackboneSettings = MoleculeBackboneSettings{.sampleEvery = 1,
+                                                                    .writeEvery = 1,
+                                                                    .numberOfWaveVectors = 5,
+                                                                    .waveVectorLowerLimit = 0.1,
+                                                                    .waveVectorUpperLimit = 10.0};
+  PropertyMoleculeBackbone property(numberOfBlocks, components);
 
   ASSERT_TRUE(property.isSampled(0));
+  const std::vector<double> &waveVectors = property.waveVectorsPerComponent[0];
   EXPECT_EQ(property.numberOfBackboneBeads(0), 6);
   EXPECT_EQ(property.backbonePerComponent[0].front(), 0);
   EXPECT_EQ(property.backbonePerComponent[0].back(), 5);
@@ -280,10 +287,10 @@ TEST(MOLECULE_BACKBONE, sampling_through_component)
   EXPECT_NEAR(property.contourLengthPerComponent[0], 5.0 * 1.54, 5.0 * 0.005);
 
   // Log-spaced wave vectors from 0.1 to 10 in five points: 0.1, 0.316, 1, 3.16, 10.
-  ASSERT_EQ(property.waveVectors.size(), 5);
-  EXPECT_NEAR(property.waveVectors[0], 0.1, 1e-12);
-  EXPECT_NEAR(property.waveVectors[2], 1.0, 1e-12);
-  EXPECT_NEAR(property.waveVectors[4], 10.0, 1e-12);
+  ASSERT_EQ(waveVectors.size(), 5);
+  EXPECT_NEAR(waveVectors[0], 0.1, 1e-12);
+  EXPECT_NEAR(waveVectors[2], 1.0, 1e-12);
+  EXPECT_NEAR(waveVectors[4], 10.0, 1e-12);
 
   // Two molecules per sample: a rod with spacing 1 and a rod with spacing 2 (both along x).
   std::vector<Atom> pair(12);
@@ -325,16 +332,16 @@ TEST(MOLECULE_BACKBONE, sampling_through_component)
   // Form factor through the sampling path (pair-distance histogram): the average of the two rods'
   // direct evaluations, identical in every block so the error is zero.
   {
-    std::vector<double> direct(property.waveVectors.size());
-    PropertyMoleculeBackbone::accumulateFormFactor(std::span<const Atom>(pair).subspan(0, 6), property.waveVectors,
+    std::vector<double> direct(waveVectors.size());
+    PropertyMoleculeBackbone::accumulateFormFactor(std::span<const Atom>(pair).subspan(0, 6), waveVectors,
                                                    direct);
-    PropertyMoleculeBackbone::accumulateFormFactor(std::span<const Atom>(pair).subspan(6, 6), property.waveVectors,
+    PropertyMoleculeBackbone::accumulateFormFactor(std::span<const Atom>(pair).subspan(6, 6), waveVectors,
                                                    direct);
-    for (std::size_t iq = 0; iq < property.waveVectors.size(); ++iq)
+    for (std::size_t iq = 0; iq < waveVectors.size(); ++iq)
     {
       auto [value, error] =
           property.statistics(0, [iq](const PropertyMoleculeBackbone::Averages &a) { return a.formFactor[iq]; });
-      double q = property.waveVectors[iq];
+      double q = waveVectors[iq];
       EXPECT_NEAR(value, 0.5 * direct[iq], 1e-9 + 0.25 * q * property.pairDistanceBinWidth);
       EXPECT_EQ(error, 0.0);
     }

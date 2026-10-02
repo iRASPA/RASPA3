@@ -1389,26 +1389,39 @@ void System::setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelation
   }
 }
 
-void System::setPropertyEndToEndACF(std::size_t numberOfBlockElements, std::size_t sampleEvery,
-                                    std::optional<std::size_t> writeEvery)
+void System::initializeMoleculeProperties(std::size_t numberOfBlocks)
 {
-  std::vector<std::optional<std::array<std::size_t, 2>>> endToEndAtomsPerComponent;
-  endToEndAtomsPerComponent.reserve(components.size());
-  bool any = false;
-  for (const Component& component : components)
+  const bool anyProperties = std::ranges::any_of(
+      components, [](const Component& component) { return component.moleculePropertiesSettings.has_value(); });
+  const bool anyShape = std::ranges::any_of(
+      components, [](const Component& component) { return component.moleculeShapeSettings.has_value(); });
+  const bool anyBackbone = std::ranges::any_of(
+      components, [](const Component& component) { return component.moleculeBackboneSettings.has_value(); });
+  const bool anyEndToEndACF = std::ranges::any_of(
+      components, [](const Component& component) { return component.endToEndACFSettings.has_value(); });
+
+  propertyMoleculeProperties.reset();
+  propertyMoleculeShape.reset();
+  propertyMoleculeBackbone.reset();
+  propertyEndToEndACF.reset();
+
+  if (anyProperties)
   {
-    endToEndAtomsPerComponent.push_back(component.endToEndAtoms);
-    any = any || component.endToEndAtoms.has_value();
+    propertyMoleculeProperties = PropertyMoleculeProperties(numberOfBlocks, components);
   }
-  if (!any)
+  if (anyShape)
   {
-    throw std::runtime_error(
-        "[Input reader]: 'ComputeEndToEndACF' requires at least one component with end-to-end atoms (set "
-        "'EndToEndAtoms' in the molecule definition, or use a chain molecule with two ends)\n");
+    propertyMoleculeShape = PropertyMoleculeShape(numberOfBlocks, forceField, components);
   }
-  propertyEndToEndACF = PropertyEndToEndAutoCorrelationFunction(numberOfMoleculesPerComponent, endToEndAtomsPerComponent,
-                                                                moleculeData.size(), timeStep, numberOfBlockElements,
-                                                                sampleEvery, writeEvery);
+  if (anyBackbone)
+  {
+    propertyMoleculeBackbone = PropertyMoleculeBackbone(numberOfBlocks, components);
+  }
+  if (anyEndToEndACF)
+  {
+    propertyEndToEndACF = PropertyEndToEndAutoCorrelationFunction(components, numberOfMoleculesPerComponent,
+                                                                  moleculeData.size(), timeStep);
+  }
 }
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System& s)

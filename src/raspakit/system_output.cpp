@@ -1057,6 +1057,10 @@ std::string System::writeSystemStatus() const
   {
     stream << propertyMoleculeBackbone->printSettings();
   }
+  if (propertyEndToEndACF.has_value())
+  {
+    stream << propertyEndToEndACF->printSettings();
+  }
   std::print(stream, "\n\n\n");
 
   return stream.str();

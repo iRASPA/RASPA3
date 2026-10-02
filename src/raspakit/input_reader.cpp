@@ -35,9 +35,7 @@ import property_rdf;
 import property_density_grid;
 import property_energy_histogram;
 import property_number_of_molecules_histogram;
-import property_molecule_properties;
-import property_molecule_shape;
-import property_molecule_backbone;
+import molecule_property_settings;
 import property_volume_evolution;
 import property_number_of_molecules_evolution;
 import property_msd;
@@ -2210,6 +2208,132 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      // Intra-molecular analyses of this component. These are component options: the molecule-properties
+      // histograms, the gyration-tensor shape descriptors, the backbone chain statistics and the end-to-end
+      // autocorrelation function each have a 'Compute...' switch with its own sampling schedule and sizing. The
+      // settings are stored on the component (identical for every system); the System creates the accumulators
+      // from them in 'initializeMoleculeProperties'.
+      // ========================================================================================================
+
+      auto readUnsigned = [&](const char* key, std::size_t& target)
+      {
+        if (item.contains(key) && item[key].is_number_unsigned())
+        {
+          target = item[key].get<std::size_t>();
+        }
+      };
+      auto readNumber = [&](const char* key, double& target)
+      {
+        if (item.contains(key) && item[key].is_number())
+        {
+          target = item[key].get<double>();
+        }
+      };
+      auto readOptionalNumber = [&](const char* key, std::optional<double>& target)
+      {
+        if (item.contains(key) && item[key].is_number())
+        {
+          target = item[key].get<double>();
+        }
+      };
+      auto readWriteEvery = [&](const char* key, std::optional<std::size_t>& target)
+      {
+        if (item.contains(key) && item[key].is_number_unsigned())
+        {
+          std::size_t every = item[key].get<std::size_t>();
+          target = every > 0 ? std::optional<std::size_t>{every} : std::nullopt;
+        }
+      };
+
+      if (item.contains("ComputeMoleculeProperties") && item["ComputeMoleculeProperties"].is_boolean() &&
+          item["ComputeMoleculeProperties"].get<bool>())
+      {
+        MoleculePropertiesSettings settings{};
+        readUnsigned("SampleMoleculePropertiesEvery", settings.sampleEvery);
+        readWriteEvery("WriteMoleculePropertiesEvery", settings.writeEvery);
+        readUnsigned("NumberOfBinsMoleculeProperties", settings.numberOfBins);
+        readNumber("BondRangeMoleculeProperties", settings.bondRange);
+        // Upper limit of the end-to-end distance histogram; defaults to the contour length between the
+        // component's end-to-end atoms. Its bin count follows from the bin width (the range grows with
+        // the chain length).
+        readOptionalNumber("EndToEndRangeMoleculeProperties", settings.endToEndRange);
+        readNumber("BinWidthEndToEndMoleculeProperties", settings.endToEndBinWidth);
+        if (!(settings.endToEndBinWidth > 0.0))
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: component '{}': 'BinWidthEndToEndMoleculeProperties' ({}) must be positive\n",
+                          jsonComponentName, settings.endToEndBinWidth));
+        }
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].moleculePropertiesSettings = settings;
+        }
+      }
+
+      if (item.contains("ComputeMoleculeShape") && item["ComputeMoleculeShape"].is_boolean() &&
+          item["ComputeMoleculeShape"].get<bool>())
+      {
+        MoleculeShapeSettings settings{};
+        readUnsigned("SampleMoleculeShapeEvery", settings.sampleEvery);
+        readWriteEvery("WriteMoleculeShapeEvery", settings.writeEvery);
+        readUnsigned("NumberOfBinsMoleculeShape", settings.numberOfBins);
+        // Uniform bead weights by default (the polymer-physics convention); optionally mass-weighted.
+        if (item.contains("MassWeightedMoleculeShape") && item["MassWeightedMoleculeShape"].is_boolean())
+        {
+          settings.massWeighted = item["MassWeightedMoleculeShape"].get<bool>();
+        }
+        // Upper limit of the radius-of-gyration histogram; defaults to 0.6 times the contour length of
+        // the bond-graph diameter of the component. Its bin count follows from the bin width.
+        readOptionalNumber("RadiusOfGyrationRangeMoleculeShape", settings.radiusOfGyrationRange);
+        readNumber("BinWidthRadiusOfGyrationMoleculeShape", settings.radiusOfGyrationBinWidth);
+        if (!(settings.radiusOfGyrationBinWidth > 0.0))
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: component '{}': 'BinWidthRadiusOfGyrationMoleculeShape' ({}) must be positive\n",
+              jsonComponentName, settings.radiusOfGyrationBinWidth));
+        }
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].moleculeShapeSettings = settings;
+        }
+      }
+
+      if (item.contains("ComputeMoleculeBackbone") && item["ComputeMoleculeBackbone"].is_boolean() &&
+          item["ComputeMoleculeBackbone"].get<bool>())
+      {
+        MoleculeBackboneSettings settings{};
+        readUnsigned("SampleMoleculeBackboneEvery", settings.sampleEvery);
+        readWriteEvery("WriteMoleculeBackboneEvery", settings.writeEvery);
+        // Logarithmic wave-vector grid of the single-chain form factor [1/Angstrom].
+        readUnsigned("NumberOfWaveVectorsMoleculeBackbone", settings.numberOfWaveVectors);
+        readNumber("LowerLimitWaveVectorMoleculeBackbone", settings.waveVectorLowerLimit);
+        readNumber("UpperLimitWaveVectorMoleculeBackbone", settings.waveVectorUpperLimit);
+        if (settings.waveVectorLowerLimit <= 0.0 || settings.waveVectorUpperLimit <= settings.waveVectorLowerLimit)
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: component '{}': 'LowerLimitWaveVectorMoleculeBackbone' ({}) must be positive and "
+              "below 'UpperLimitWaveVectorMoleculeBackbone' ({})\n",
+              jsonComponentName, settings.waveVectorLowerLimit, settings.waveVectorUpperLimit));
+        }
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].moleculeBackboneSettings = settings;
+        }
+      }
+
+      if (item.contains("ComputeEndToEndACF") && item["ComputeEndToEndACF"].is_boolean() &&
+          item["ComputeEndToEndACF"].get<bool>())
+      {
+        EndToEndACFSettings settings{};
+        readUnsigned("SampleEndToEndACFEvery", settings.sampleEvery);
+        readWriteEvery("WriteEndToEndACFEvery", settings.writeEvery);
+        readUnsigned("NumberOfBlockElementsEndToEndACF", settings.numberOfBlockElements);
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].endToEndACFSettings = settings;
+        }
+      }
+
       // Explicit notation listing the properties as an array of the values for the particular systems
       // ========================================================================================================
 
@@ -3280,152 +3404,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      if (value.contains("ComputeMoleculeProperties") && value["ComputeMoleculeProperties"].is_boolean())
-      {
-        if (value["ComputeMoleculeProperties"].get<bool>())
-        {
-          std::size_t sampleMoleculePropertiesEvery{10};
-          if (value.contains("SampleMoleculePropertiesEvery") &&
-              value["SampleMoleculePropertiesEvery"].is_number_unsigned())
-          {
-            sampleMoleculePropertiesEvery = value["SampleMoleculePropertiesEvery"].get<std::size_t>();
-          }
-
-          std::size_t writeMoleculePropertiesEvery{5000};
-          if (value.contains("WriteMoleculePropertiesEvery") &&
-              value["WriteMoleculePropertiesEvery"].is_number_unsigned())
-          {
-            writeMoleculePropertiesEvery = value["WriteMoleculePropertiesEvery"].get<std::size_t>();
-          }
-
-          std::size_t numberOfBinsMoleculeProperties{128};
-          if (value.contains("NumberOfBinsMoleculeProperties") &&
-              value["NumberOfBinsMoleculeProperties"].is_number_unsigned())
-          {
-            numberOfBinsMoleculeProperties = value["NumberOfBinsMoleculeProperties"].get<std::size_t>();
-          }
-
-          double bondRangeMoleculeProperties{4.0};
-          if (value.contains("BondRangeMoleculeProperties") && value["BondRangeMoleculeProperties"].is_number_float())
-          {
-            bondRangeMoleculeProperties = value["BondRangeMoleculeProperties"].get<double>();
-          }
-
-          // Upper limit of the end-to-end distance histogram; defaults to the contour length
-          // between the component's end-to-end atoms.
-          std::optional<double> endToEndRangeMoleculeProperties{};
-          if (value.contains("EndToEndRangeMoleculeProperties") &&
-              value["EndToEndRangeMoleculeProperties"].is_number())
-          {
-            endToEndRangeMoleculeProperties = value["EndToEndRangeMoleculeProperties"].get<double>();
-          }
-
-          systems[systemId].propertyMoleculeProperties = PropertyMoleculeProperties(
-              jsonNumberOfBlocks, systems[systemId].components, numberOfBinsMoleculeProperties,
-              bondRangeMoleculeProperties, sampleMoleculePropertiesEvery, writeMoleculePropertiesEvery,
-              endToEndRangeMoleculeProperties);
-        }
-      }
-
-      if (value.contains("ComputeMoleculeShape") && value["ComputeMoleculeShape"].is_boolean())
-      {
-        if (value["ComputeMoleculeShape"].get<bool>())
-        {
-          std::size_t sampleMoleculeShapeEvery{10};
-          if (value.contains("SampleMoleculeShapeEvery") && value["SampleMoleculeShapeEvery"].is_number_unsigned())
-          {
-            sampleMoleculeShapeEvery = value["SampleMoleculeShapeEvery"].get<std::size_t>();
-          }
-
-          std::size_t writeMoleculeShapeEvery{5000};
-          if (value.contains("WriteMoleculeShapeEvery") && value["WriteMoleculeShapeEvery"].is_number_unsigned())
-          {
-            writeMoleculeShapeEvery = value["WriteMoleculeShapeEvery"].get<std::size_t>();
-          }
-
-          std::size_t numberOfBinsMoleculeShape{128};
-          if (value.contains("NumberOfBinsMoleculeShape") && value["NumberOfBinsMoleculeShape"].is_number_unsigned())
-          {
-            numberOfBinsMoleculeShape = value["NumberOfBinsMoleculeShape"].get<std::size_t>();
-          }
-
-          // Uniform bead weights by default (the polymer-physics convention); optionally mass-weighted.
-          bool massWeightedMoleculeShape{false};
-          if (value.contains("MassWeightedMoleculeShape") && value["MassWeightedMoleculeShape"].is_boolean())
-          {
-            massWeightedMoleculeShape = value["MassWeightedMoleculeShape"].get<bool>();
-          }
-
-          // Upper limit of the radius-of-gyration histogram; defaults to 0.6 times the contour length of
-          // the bond-graph diameter of each component.
-          std::optional<double> radiusOfGyrationRangeMoleculeShape{};
-          if (value.contains("RadiusOfGyrationRangeMoleculeShape") &&
-              value["RadiusOfGyrationRangeMoleculeShape"].is_number())
-          {
-            radiusOfGyrationRangeMoleculeShape = value["RadiusOfGyrationRangeMoleculeShape"].get<double>();
-          }
-
-          systems[systemId].propertyMoleculeShape = PropertyMoleculeShape(
-              jsonNumberOfBlocks, systems[systemId].forceField, systems[systemId].components,
-              numberOfBinsMoleculeShape, massWeightedMoleculeShape, sampleMoleculeShapeEvery, writeMoleculeShapeEvery,
-              radiusOfGyrationRangeMoleculeShape);
-        }
-      }
-
-      if (value.contains("ComputeMoleculeBackbone") && value["ComputeMoleculeBackbone"].is_boolean())
-      {
-        if (value["ComputeMoleculeBackbone"].get<bool>())
-        {
-          std::size_t sampleMoleculeBackboneEvery{10};
-          if (value.contains("SampleMoleculeBackboneEvery") && value["SampleMoleculeBackboneEvery"].is_number_unsigned())
-          {
-            sampleMoleculeBackboneEvery = value["SampleMoleculeBackboneEvery"].get<std::size_t>();
-          }
-
-          std::size_t writeMoleculeBackboneEvery{5000};
-          if (value.contains("WriteMoleculeBackboneEvery") && value["WriteMoleculeBackboneEvery"].is_number_unsigned())
-          {
-            writeMoleculeBackboneEvery = value["WriteMoleculeBackboneEvery"].get<std::size_t>();
-          }
-
-          // Logarithmic wave-vector grid of the single-chain form factor [1/Angstrom].
-          std::size_t numberOfWaveVectorsMoleculeBackbone{64};
-          if (value.contains("NumberOfWaveVectorsMoleculeBackbone") &&
-              value["NumberOfWaveVectorsMoleculeBackbone"].is_number_unsigned())
-          {
-            numberOfWaveVectorsMoleculeBackbone = value["NumberOfWaveVectorsMoleculeBackbone"].get<std::size_t>();
-          }
-
-          double lowerLimitWaveVectorMoleculeBackbone{0.01};
-          if (value.contains("LowerLimitWaveVectorMoleculeBackbone") &&
-              value["LowerLimitWaveVectorMoleculeBackbone"].is_number())
-          {
-            lowerLimitWaveVectorMoleculeBackbone = value["LowerLimitWaveVectorMoleculeBackbone"].get<double>();
-          }
-
-          double upperLimitWaveVectorMoleculeBackbone{5.0};
-          if (value.contains("UpperLimitWaveVectorMoleculeBackbone") &&
-              value["UpperLimitWaveVectorMoleculeBackbone"].is_number())
-          {
-            upperLimitWaveVectorMoleculeBackbone = value["UpperLimitWaveVectorMoleculeBackbone"].get<double>();
-          }
-
-          if (lowerLimitWaveVectorMoleculeBackbone <= 0.0 ||
-              upperLimitWaveVectorMoleculeBackbone <= lowerLimitWaveVectorMoleculeBackbone)
-          {
-            throw std::runtime_error(std::format(
-                "[Input reader]: 'LowerLimitWaveVectorMoleculeBackbone' ({}) must be positive and below "
-                "'UpperLimitWaveVectorMoleculeBackbone' ({})\n",
-                lowerLimitWaveVectorMoleculeBackbone, upperLimitWaveVectorMoleculeBackbone));
-          }
-
-          systems[systemId].propertyMoleculeBackbone = PropertyMoleculeBackbone(
-              jsonNumberOfBlocks, systems[systemId].components, numberOfWaveVectorsMoleculeBackbone,
-              lowerLimitWaveVectorMoleculeBackbone, upperLimitWaveVectorMoleculeBackbone, sampleMoleculeBackboneEvery,
-              writeMoleculeBackboneEvery);
-        }
-      }
-
       if (value.contains("ComputeNumberOfMoleculesEvolution") &&
           value["ComputeNumberOfMoleculesEvolution"].is_boolean())
       {
@@ -3613,33 +3591,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      if (value.contains("ComputeEndToEndACF") && value["ComputeEndToEndACF"].is_boolean())
-      {
-        if (value["ComputeEndToEndACF"].get<bool>())
-        {
-          std::size_t sampleEndToEndACFEvery{10};
-          if (value.contains("SampleEndToEndACFEvery") && value["SampleEndToEndACFEvery"].is_number_unsigned())
-          {
-            sampleEndToEndACFEvery = value["SampleEndToEndACFEvery"].get<std::size_t>();
-          }
-
-          std::size_t writeEndToEndACFEvery{5000};
-          if (value.contains("WriteEndToEndACFEvery") && value["WriteEndToEndACFEvery"].is_number_unsigned())
-          {
-            writeEndToEndACFEvery = value["WriteEndToEndACFEvery"].get<std::size_t>();
-          }
-
-          std::size_t numberOfBlockElementsEndToEndACF{25};
-          if (value.contains("NumberOfBlockElementsEndToEndACF") &&
-              value["NumberOfBlockElementsEndToEndACF"].is_number_unsigned())
-          {
-            numberOfBlockElementsEndToEndACF = value["NumberOfBlockElementsEndToEndACF"].get<std::size_t>();
-          }
-
-          systems[systemId].setPropertyEndToEndACF(numberOfBlockElementsEndToEndACF, sampleEndToEndACFEvery,
-                                                   writeEndToEndACFEvery);
-        }
-      }
+      // The intra-molecular analyses (molecule properties, shape, backbone, end-to-end autocorrelation
+      // function) are component options, parsed in the 'Components' block above; the time step must be
+      // known for the autocorrelation function.
+      systems[systemId].initializeMoleculeProperties(jsonNumberOfBlocks);
 
       if (value.contains("ComputeDensityGrid") && value["ComputeDensityGrid"].is_boolean())
       {
@@ -4575,24 +4530,6 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "WriteNumberOfMoleculesHistogramEvery",
     "LowerLimitNumberOfMoleculesHistogram",
     "UpperLimitNumberOfMoleculesHistogram",
-    "ComputeMoleculeProperties",
-    "SampleMoleculePropertiesEvery",
-    "WriteMoleculePropertiesEvery",
-    "NumberOfBinsMoleculeProperties",
-    "BondRangeMoleculeProperties",
-    "EndToEndRangeMoleculeProperties",
-    "ComputeMoleculeShape",
-    "SampleMoleculeShapeEvery",
-    "WriteMoleculeShapeEvery",
-    "NumberOfBinsMoleculeShape",
-    "MassWeightedMoleculeShape",
-    "RadiusOfGyrationRangeMoleculeShape",
-    "ComputeMoleculeBackbone",
-    "SampleMoleculeBackboneEvery",
-    "WriteMoleculeBackboneEvery",
-    "NumberOfWaveVectorsMoleculeBackbone",
-    "LowerLimitWaveVectorMoleculeBackbone",
-    "UpperLimitWaveVectorMoleculeBackbone",
     "ComputeElasticConstantsFromFluctuations",
     "ElasticConstantsSampleEvery",
     "ComputeRDF",
@@ -4614,10 +4551,6 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "WriteVACFEvery",
     "NumberOfBuffersVACF",
     "BufferLengthVACF",
-    "ComputeEndToEndACF",
-    "SampleEndToEndACFEvery",
-    "WriteEndToEndACFEvery",
-    "NumberOfBlockElementsEndToEndACF",
     "ComputeDensityGrid",
     "SampleDensityGridEvery",
     "WriteDensityGridEvery",
@@ -4730,7 +4663,31 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "LambdaBinIndex",
     "LambdaBiasFileName",
     "BlockingPockets",
-    "LnPartitionFunction"};
+    "LnPartitionFunction",
+    "ComputeMoleculeProperties",
+    "SampleMoleculePropertiesEvery",
+    "WriteMoleculePropertiesEvery",
+    "NumberOfBinsMoleculeProperties",
+    "BondRangeMoleculeProperties",
+    "EndToEndRangeMoleculeProperties",
+    "BinWidthEndToEndMoleculeProperties",
+    "ComputeMoleculeShape",
+    "SampleMoleculeShapeEvery",
+    "WriteMoleculeShapeEvery",
+    "NumberOfBinsMoleculeShape",
+    "MassWeightedMoleculeShape",
+    "RadiusOfGyrationRangeMoleculeShape",
+    "BinWidthRadiusOfGyrationMoleculeShape",
+    "ComputeMoleculeBackbone",
+    "SampleMoleculeBackboneEvery",
+    "WriteMoleculeBackboneEvery",
+    "NumberOfWaveVectorsMoleculeBackbone",
+    "LowerLimitWaveVectorMoleculeBackbone",
+    "UpperLimitWaveVectorMoleculeBackbone",
+    "ComputeEndToEndACF",
+    "SampleEndToEndACFEvery",
+    "WriteEndToEndACFEvery",
+    "NumberOfBlockElementsEndToEndACF"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::reactionOptions = {
     "Reactants",        "Products", "Move", "MaximumReactionLambdaChange", "MaximumReactionLambdaChangeProducts",

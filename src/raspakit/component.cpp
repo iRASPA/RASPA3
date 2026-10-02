@@ -3268,6 +3268,11 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
 
   archive << c.reactiveSites;
 
+  archive << c.moleculePropertiesSettings;
+  archive << c.moleculeShapeSettings;
+  archive << c.moleculeBackboneSettings;
+  archive << c.endToEndACFSettings;
+
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
@@ -3383,6 +3388,11 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.lambdaGroupSwapCB;
 
   archive >> c.reactiveSites;
+
+  archive >> c.moleculePropertiesSettings;
+  archive >> c.moleculeShapeSettings;
+  archive >> c.moleculeBackboneSettings;
+  archive >> c.endToEndACFSettings;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

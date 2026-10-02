@@ -40,6 +40,15 @@ export class WorkerTeam
     }
     wakeUp.notify_all();
     for (std::jthread& worker : workers) worker.request_stop();
+
+    // Join here, in the destructor body, while `mutex` and `wakeUp` are still alive. The members are destroyed
+    // in reverse declaration order, so the implicit join in `~jthread` would run after the mutex and the
+    // condition variable the workers are blocked on have already been destroyed; a worker that has been
+    // notified but has not yet left `wait` then touches a dead object, which can hang the exit of the program.
+    for (std::jthread& worker : workers)
+    {
+      if (worker.joinable()) worker.join();
+    }
   }
 
   WorkerTeam(const WorkerTeam&) = delete;

@@ -10,9 +10,11 @@ import double3x3;
 import atom;
 import forcefield;
 import component;
+import molecule_property_settings;
 
-// Samples the gyration-tensor family of single-chain shape descriptors for every component with at
-// least two atoms.
+// Samples the gyration-tensor family of single-chain shape descriptors for every component that
+// asks for them ('Component::moleculeShapeSettings', 'ComputeMoleculeShape' in the 'Components'
+// block); such a component needs at least two atoms.
 //
 // For each molecule the gyration tensor
 //
@@ -96,34 +98,33 @@ export struct PropertyMoleculeShape
 
   PropertyMoleculeShape() {};
 
+  /// Builds the accumulators for every component with 'moleculeShapeSettings'. Throws when such a
+  /// component has fewer than two atoms.
   PropertyMoleculeShape(std::size_t numberOfBlocks, const ForceField &forceField,
-                       const std::vector<Component> &components, std::size_t numberOfBins, bool massWeighted,
-                       std::size_t sampleEvery, std::optional<std::size_t> writeEvery,
-                       std::optional<double> radiusOfGyrationRangeOverride = std::nullopt);
+                       const std::vector<Component> &components);
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{3};
 
   std::size_t numberOfBlocks{0};
-  std::size_t numberOfBins{0};
   std::size_t numberOfComponents{0};
-  bool massWeighted{false};
 
-  std::size_t sampleEvery{10};
-  std::optional<std::size_t> writeEvery{5000};
+  // Per component: the settings (nullopt when the component is not sampled).
+  std::vector<std::optional<MoleculeShapeSettings>> settingsPerComponent{};
 
   // Per component: the normalized atom weights used for the center and the gyration tensor (empty for
-  // components that are not sampled, i.e. with fewer than two atoms).
+  // components that are not sampled).
   std::vector<std::vector<double>> weightsPerComponent{};
   std::vector<std::optional<std::array<std::size_t, 2>>> endToEndAtomsPerComponent{};
 
-  std::vector<double> radiusOfGyrationRangePerComponent{};  ///< Histogram upper limit [Angstrom].
+  std::vector<double> radiusOfGyrationRangePerComponent{};  ///< Histogram upper limit [Angstrom] (= bins * width).
   std::vector<double> deltaRadiusOfGyrationPerComponent{};  ///< Bin width [Angstrom].
+  std::vector<std::size_t> numberOfRadiusOfGyrationBinsPerComponent{};  ///< ceil(range / bin width).
 
   double shapeAnisotropyRange{1.0};      ///< k^2 in [0, 1].
   double prolatenessLowerLimit{-0.25};   ///< S in [-1/4, 2].
   double prolatenessRange{2.25};
-  double deltaShapeAnisotropy{0.0};
-  double deltaProlateness{0.0};
+  std::vector<double> deltaShapeAnisotropyPerComponent{};
+  std::vector<double> deltaProlatenessPerComponent{};
 
   // Histograms indexed as [block][component][bin].
   std::vector<std::vector<std::vector<double>>> radiusOfGyrationHistogram{};
@@ -133,7 +134,7 @@ export struct PropertyMoleculeShape
   // Moment accumulators [block][component] and their normalization.
   std::vector<std::vector<Moments>> sums{};
   std::vector<std::vector<double>> numberOfCounts{};
-  double totalNumberOfCounts{0.0};
+  std::vector<double> totalNumberOfCounts{};  ///< Sampling events per component.
 
   // Per-monomer sampling for components with repeat units: the atom indices of each unit (all units,
   // in chain order; units of fewer than two atoms are skipped when sampling), the normalized weights
@@ -158,7 +159,14 @@ export struct PropertyMoleculeShape
   // Kirkwood sum (1/N^2) sum_{i != j} 1/r_ij of one molecule [1/Angstrom].
   static double computeInverseHydrodynamicRadius(std::span<const Atom> molecule);
 
-  bool isSampled(std::size_t component) const { return !weightsPerComponent[component].empty(); }
+  bool isSampled(std::size_t component) const { return settingsPerComponent[component].has_value(); }
+  std::size_t numberOfBins(std::size_t component) const { return settingsPerComponent[component]->numberOfBins; }
+  bool massWeighted(std::size_t component) const { return settingsPerComponent[component]->massWeighted; }
+  std::size_t sampleEvery(std::size_t component) const { return settingsPerComponent[component]->sampleEvery; }
+  std::optional<std::size_t> writeEvery(std::size_t component) const
+  {
+    return settingsPerComponent[component]->writeEvery;
+  }
   std::size_t numberOfUnits(std::size_t component) const { return unitAtomsPerComponent[component].size(); }
 
   void sample(const std::vector<Component> &components,

@@ -9,6 +9,7 @@ import double3;
 import atom;
 import molecule;
 import component;
+import molecule_property_settings;
 
 namespace
 {
@@ -22,51 +23,116 @@ std::size_t integerPower(std::size_t base, std::size_t exponent)
 }  // namespace
 
 PropertyEndToEndAutoCorrelationFunction::PropertyEndToEndAutoCorrelationFunction(
+    const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+    std::size_t numberOfParticles, double timeStep)
+    : PropertyEndToEndAutoCorrelationFunction(
+          numberOfMoleculesPerComponent,
+          [&]
+          {
+            std::vector<std::optional<std::array<std::size_t, 2>>> ends;
+            ends.reserve(components.size());
+            for (const Component &component : components) ends.push_back(component.endToEndAtoms);
+            return ends;
+          }(),
+          [&]
+          {
+            std::vector<std::optional<EndToEndACFSettings>> settings;
+            settings.reserve(components.size());
+            for (const Component &component : components) settings.push_back(component.endToEndACFSettings);
+            return settings;
+          }(),
+          numberOfParticles, timeStep)
+{
+  for (std::size_t c = 0; c < components.size(); ++c)
+  {
+    if (components[c].endToEndACFSettings.has_value() && !components[c].endToEndAtoms.has_value())
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'ComputeEndToEndACF' is set for component '{}', which has no end-to-end atoms (set "
+          "'EndToEndAtoms' in the molecule definition, or use a chain molecule with two ends)\n",
+          components[c].name));
+    }
+  }
+}
+
+PropertyEndToEndAutoCorrelationFunction::PropertyEndToEndAutoCorrelationFunction(
     const std::vector<std::size_t> &numberOfMoleculesPerComponent,
     const std::vector<std::optional<std::array<std::size_t, 2>>> &endToEndAtomsPerComponent,
-    std::size_t numberOfParticles, double timeStep, std::size_t numberOfBlockElements, std::size_t sampleEvery,
-    std::optional<std::size_t> writeEvery)
+    const std::vector<std::optional<EndToEndACFSettings>> &settingsPerComponent, std::size_t numberOfParticles,
+    double timeStep)
     : numberOfMoleculesPerComponent(numberOfMoleculesPerComponent),
+      moleculeOffsetPerComponent(numberOfMoleculesPerComponent.size()),
       endToEndAtomsPerComponent(endToEndAtomsPerComponent),
+      settingsPerComponent(settingsPerComponent),
       numberOfComponents(numberOfMoleculesPerComponent.size()),
       numberOfParticles(numberOfParticles),
       timeStep(timeStep),
-      numberOfBlockElements(std::max<std::size_t>(2, numberOfBlockElements)),
-      sampleEvery(std::max<std::size_t>(1, sampleEvery)),
-      writeEvery(writeEvery),
-      maxNumberOfBlocks(1),
-      blockLength(1, 0uz),
-      acfCount(1, std::vector<std::vector<std::size_t>>(
-                      numberOfComponents, std::vector<std::size_t>(this->numberOfBlockElements, 0uz))),
-      blockData(1, std::vector<std::vector<double3>>(numberOfParticles,
-                                                     std::vector<double3>(this->numberOfBlockElements, double3()))),
-      acf(1, std::vector<std::vector<double>>(numberOfComponents, std::vector<double>(this->numberOfBlockElements, 0.0)))
+      dataPerComponent(numberOfMoleculesPerComponent.size())
 {
-  if (endToEndAtomsPerComponent.size() != numberOfComponents)
+  if (endToEndAtomsPerComponent.size() != numberOfComponents || settingsPerComponent.size() != numberOfComponents)
   {
     throw std::runtime_error(
-        "PropertyEndToEndAutoCorrelationFunction: one end-to-end atom pair per component is required\n");
+        "PropertyEndToEndAutoCorrelationFunction: one end-to-end atom pair and one settings entry per component are "
+        "required\n");
+  }
+
+  std::size_t offset{0};
+  for (std::size_t c = 0; c < numberOfComponents; ++c)
+  {
+    moleculeOffsetPerComponent[c] = offset;
+    offset += numberOfMoleculesPerComponent[c];
+
+    if (!this->settingsPerComponent[c].has_value()) continue;
+    // a component without end-to-end atoms has nothing to correlate
+    if (!endToEndAtomsPerComponent[c].has_value())
+    {
+      this->settingsPerComponent[c].reset();
+      continue;
+    }
+
+    EndToEndACFSettings &settings = this->settingsPerComponent[c].value();
+    settings.sampleEvery = std::max<std::size_t>(1, settings.sampleEvery);
+    settings.numberOfBlockElements = std::max<std::size_t>(2, settings.numberOfBlockElements);
+
+    const std::size_t n = settings.numberOfBlockElements;
+    ComponentData &data = dataPerComponent[c];
+    data.maxNumberOfBlocks = 1;
+    data.blockLength.assign(1, 0uz);
+    data.acfCount.assign(1, std::vector<std::size_t>(n, 0uz));
+    data.blockData.assign(1, std::vector<std::vector<double3>>(numberOfMoleculesPerComponent[c],
+                                                               std::vector<double3>(n, double3())));
+    data.acf.assign(1, std::vector<double>(n, 0.0));
+  }
+  if (offset != numberOfParticles)
+  {
+    throw std::runtime_error(std::format(
+        "PropertyEndToEndAutoCorrelationFunction: the numbers of molecules per component sum to {}, not {}\n", offset,
+        numberOfParticles));
   }
 }
 
 bool PropertyEndToEndAutoCorrelationFunction::hasData(std::size_t component) const
 {
-  return component < numberOfComponents && endToEndAtomsPerComponent[component].has_value() &&
-         numberOfMoleculesPerComponent[component] > 0;
+  return isSampled(component) && numberOfMoleculesPerComponent[component] > 0;
 }
 
-double PropertyEndToEndAutoCorrelationFunction::lagOf(std::size_t block, std::size_t k) const
+double PropertyEndToEndAutoCorrelationFunction::lagOf(std::size_t component, std::size_t block, std::size_t k) const
 {
   const double unit = usesCycles() ? 1.0 : timeStep;
-  return static_cast<double>(k) * static_cast<double>(sampleEvery) * unit *
-         static_cast<double>(integerPower(numberOfBlockElements, block));
+  return static_cast<double>(k) * static_cast<double>(sampleEvery(component)) * unit *
+         static_cast<double>(integerPower(numberOfBlockElements(component), block));
 }
 
 void PropertyEndToEndAutoCorrelationFunction::addSample(std::size_t currentCycle,
                                                         const std::vector<Molecule> &molecules,
                                                         std::span<const Atom> atoms)
 {
-  if (currentCycle % sampleEvery != 0uz) return;
+  std::vector<std::size_t> due;
+  for (std::size_t c = 0; c < numberOfComponents; ++c)
+  {
+    if (isSampled(c) && currentCycle % sampleEvery(c) == 0uz) due.push_back(c);
+  }
+  if (due.empty()) return;
 
   // the molecules are tracked by index and the number of molecules must stay fixed
   if (molecules.size() != numberOfParticles)
@@ -79,30 +145,38 @@ void PropertyEndToEndAutoCorrelationFunction::addSample(std::size_t currentCycle
   }
 
   std::vector<double3> vectors(numberOfParticles, double3(0.0, 0.0, 0.0));
-  std::size_t moleculeIndex{0};
-  for (std::size_t c = 0; c < numberOfComponents; ++c)
+  for (std::size_t c : due)
   {
-    const std::optional<std::array<std::size_t, 2>> &ends = endToEndAtomsPerComponent[c];
-    for (std::size_t m = 0; m < numberOfMoleculesPerComponent[c]; ++m, ++moleculeIndex)
+    const std::array<std::size_t, 2> &ends = endToEndAtomsPerComponent[c].value();
+    for (std::size_t m = 0; m < numberOfMoleculesPerComponent[c]; ++m)
     {
-      if (!ends.has_value()) continue;
+      const std::size_t moleculeIndex = moleculeOffsetPerComponent[c] + m;
       const Molecule &molecule = molecules[moleculeIndex];
-      if (ends->at(0) >= molecule.numberOfAtoms || ends->at(1) >= molecule.numberOfAtoms)
+      if (ends[0] >= molecule.numberOfAtoms || ends[1] >= molecule.numberOfAtoms)
       {
         throw std::runtime_error(std::format(
             "PropertyEndToEndAutoCorrelationFunction: end-to-end atoms ({}, {}) out of range for a molecule of {} "
             "atoms\n",
-            ends->at(0), ends->at(1), molecule.numberOfAtoms));
+            ends[0], ends[1], molecule.numberOfAtoms));
       }
       // positions are stored unwrapped, so the plain difference is the physical end-to-end vector
       vectors[moleculeIndex] =
-          atoms[molecule.atomIndex + ends->at(1)].position - atoms[molecule.atomIndex + ends->at(0)].position;
+          atoms[molecule.atomIndex + ends[1]].position - atoms[molecule.atomIndex + ends[0]].position;
     }
   }
-  addSampleVectors(vectors);
+  for (std::size_t c : due) addSampleVectors(c, vectors);
 }
 
 void PropertyEndToEndAutoCorrelationFunction::addSampleVectors(std::span<const double3> endToEndVectors)
+{
+  for (std::size_t c = 0; c < numberOfComponents; ++c)
+  {
+    if (isSampled(c)) addSampleVectors(c, endToEndVectors);
+  }
+}
+
+void PropertyEndToEndAutoCorrelationFunction::addSampleVectors(std::size_t component,
+                                                               std::span<const double3> endToEndVectors)
 {
   if (endToEndVectors.size() != numberOfParticles)
   {
@@ -110,82 +184,81 @@ void PropertyEndToEndAutoCorrelationFunction::addSampleVectors(std::span<const d
         "PropertyEndToEndAutoCorrelationFunction: {} end-to-end vectors given for {} molecules\n",
         endToEndVectors.size(), numberOfParticles));
   }
+  if (!isSampled(component)) return;
+
+  const std::size_t n = numberOfBlockElements(component);
+  const std::size_t numberOfMolecules = numberOfMoleculesPerComponent[component];
+  const std::size_t offset = moleculeOffsetPerComponent[component];
+  ComponentData &data = dataPerComponent[component];
 
   // number of blocks needed for the current count
-  numberOfBlocks = 1;
-  std::size_t p = count / numberOfBlockElements;
+  data.numberOfBlocks = 1;
+  std::size_t p = data.count / n;
   while (p != 0)
   {
-    ++numberOfBlocks;
-    p /= numberOfBlockElements;
+    ++data.numberOfBlocks;
+    p /= n;
   }
 
-  if (numberOfBlocks > maxNumberOfBlocks)
+  if (data.numberOfBlocks > data.maxNumberOfBlocks)
   {
-    blockLength.resize(numberOfBlocks, 0uz);
-    acfCount.resize(numberOfBlocks, std::vector<std::vector<std::size_t>>(
-                                        numberOfComponents, std::vector<std::size_t>(numberOfBlockElements, 0uz)));
-    blockData.resize(numberOfBlocks, std::vector<std::vector<double3>>(
-                                         numberOfParticles, std::vector<double3>(numberOfBlockElements, double3())));
-    acf.resize(numberOfBlocks,
-               std::vector<std::vector<double>>(numberOfComponents, std::vector<double>(numberOfBlockElements, 0.0)));
-    maxNumberOfBlocks = numberOfBlocks;
+    data.blockLength.resize(data.numberOfBlocks, 0uz);
+    data.acfCount.resize(data.numberOfBlocks, std::vector<std::size_t>(n, 0uz));
+    data.blockData.resize(data.numberOfBlocks,
+                          std::vector<std::vector<double3>>(numberOfMolecules, std::vector<double3>(n, double3())));
+    data.acf.resize(data.numberOfBlocks, std::vector<double>(n, 0.0));
+    data.maxNumberOfBlocks = data.numberOfBlocks;
   }
 
-  for (std::size_t block = 0; block < numberOfBlocks; ++block)
+  for (std::size_t block = 0; block < data.numberOfBlocks; ++block)
   {
     // block 'block' takes a sample when the count is a multiple of n^block
-    if (count % integerPower(numberOfBlockElements, block) != 0) continue;
+    if (data.count % integerPower(n, block) != 0) continue;
 
-    ++blockLength[block];
-    const std::size_t currentBlockLength = std::min(blockLength[block], numberOfBlockElements);
+    ++data.blockLength[block];
+    const std::size_t currentBlockLength = std::min(data.blockLength[block], n);
 
-    std::size_t moleculeIndex{0};
-    for (std::size_t c = 0; c < numberOfComponents; ++c)
+    for (std::size_t m = 0; m < numberOfMolecules; ++m)
     {
-      const bool active = endToEndAtomsPerComponent[c].has_value();
-      for (std::size_t m = 0; m < numberOfMoleculesPerComponent[c]; ++m, ++moleculeIndex)
-      {
-        if (!active) continue;
-        const double3 value = endToEndVectors[moleculeIndex];
-        std::vector<double3> &history = blockData[block][moleculeIndex];
-        std::shift_right(history.begin(), history.end(), 1);
-        history[0] = value;
+      const double3 value = endToEndVectors[offset + m];
+      std::vector<double3> &history = data.blockData[block][m];
+      std::shift_right(history.begin(), history.end(), 1);
+      history[0] = value;
 
-        // k = 0 is the zero lag, <R^2>; it is kept (needed for the normalization) but only reported from block 0
-        for (std::size_t k = 0; k < currentBlockLength; ++k)
-        {
-          ++acfCount[block][c][k];
-          acf[block][c][k] += double3::dot(history[k], value);
-        }
+      // k = 0 is the zero lag, <R^2>; it is kept (needed for the normalization) but only reported from block 0
+      for (std::size_t k = 0; k < currentBlockLength; ++k)
+      {
+        ++data.acfCount[block][k];
+        data.acf[block][k] += double3::dot(history[k], value);
       }
     }
   }
 
-  ++count;
+  ++data.count;
 }
 
 std::vector<EndToEndAutoCorrelationFunctionData> PropertyEndToEndAutoCorrelationFunction::result(
     std::size_t component) const
 {
   std::vector<EndToEndAutoCorrelationFunctionData> data;
-  if (!hasData(component) || count == 0) return data;
+  if (!hasData(component)) return data;
 
-  const std::size_t c = component;
-  if (acfCount[0][c][0] == 0) return data;
-  const double meanSquared = acf[0][c][0] / static_cast<double>(acfCount[0][c][0]);
+  const ComponentData &d = dataPerComponent[component];
+  if (d.count == 0 || d.acfCount[0][0] == 0) return data;
+  const std::size_t n = numberOfBlockElements(component);
+  const double meanSquared = d.acf[0][0] / static_cast<double>(d.acfCount[0][0]);
   const double inverseMeanSquared = meanSquared > 0.0 ? 1.0 / meanSquared : 0.0;
 
-  for (std::size_t block = 0; block < numberOfBlocks; ++block)
+  for (std::size_t block = 0; block < d.numberOfBlocks; ++block)
   {
-    const std::size_t currentBlockLength = std::min(blockLength[block], numberOfBlockElements);
+    const std::size_t currentBlockLength = std::min(d.blockLength[block], n);
     for (std::size_t k = (block == 0 ? 0 : 1); k < currentBlockLength; ++k)
     {
-      const std::size_t n = acfCount[block][c][k];
-      if (n == 0) continue;
-      const double value = acf[block][c][k] / static_cast<double>(n);
-      data.push_back(EndToEndAutoCorrelationFunctionData{lagOf(block, k), value, value * inverseMeanSquared,
-                                                         static_cast<double>(n)});
+      const std::size_t count = d.acfCount[block][k];
+      if (count == 0) continue;
+      const double value = d.acf[block][k] / static_cast<double>(count);
+      data.push_back(EndToEndAutoCorrelationFunctionData{lagOf(component, block, k), value,
+                                                         value * inverseMeanSquared, static_cast<double>(count)});
     }
   }
   // the blocks are already in increasing order of lag (block b+1 starts at n^(b+1) > (n-1) n^b)
@@ -279,9 +352,13 @@ EndToEndRelaxationTimes PropertyEndToEndAutoCorrelationFunction::relaxationTimes
 void PropertyEndToEndAutoCorrelationFunction::writeOutput(std::size_t systemId, const std::vector<Component> &components,
                                                           std::size_t currentCycle) const
 {
-  if (!writeEvery.has_value()) return;
-  if (currentCycle % writeEvery.value() != 0uz) return;
-  if (count == 0uz) return;
+  bool anything = false;
+  for (std::size_t c = 0; c < numberOfComponents; ++c)
+  {
+    anything = anything || (hasData(c) && writeEvery(c).has_value() && currentCycle % writeEvery(c).value() == 0uz &&
+                            dataPerComponent[c].count > 0uz);
+  }
+  if (!anything) return;
 
   std::filesystem::create_directory("end_to_end_acf");
 
@@ -289,6 +366,7 @@ void PropertyEndToEndAutoCorrelationFunction::writeOutput(std::size_t systemId, 
   for (std::size_t c = 0; c < numberOfComponents; ++c)
   {
     if (!hasData(c)) continue;
+    if (!writeEvery(c).has_value() || currentCycle % writeEvery(c).value() != 0uz) continue;
     const std::vector<EndToEndAutoCorrelationFunctionData> data = result(c);
     if (data.empty()) continue;
     const EndToEndRelaxationTimes times = relaxationTimes(data);
@@ -299,7 +377,9 @@ void PropertyEndToEndAutoCorrelationFunction::writeOutput(std::size_t systemId, 
     stream << std::format("# end-to-end vector autocorrelation function <R(0).R(t)> of component '{}'\n",
                           components[c].name);
     stream << std::format("# end-to-end atoms: {} and {}; {} molecules; {} time origins sampled every {} cycles\n",
-                          ends[0], ends[1], numberOfMoleculesPerComponent[c], count, sampleEvery);
+                          ends[0], ends[1], numberOfMoleculesPerComponent[c], dataPerComponent[c].count,
+                          sampleEvery(c));
+    stream << std::format("# order-N blocking with {} elements per block\n", numberOfBlockElements(c));
     stream << std::format("# <R^2> = C(0) = {:.6f} [A^2], <R^2>^(1/2) = {:.6f} [A]\n", times.meanSquaredEndToEnd,
                           std::sqrt(std::max(0.0, times.meanSquaredEndToEnd)));
     stream << std::format("# longest lag: {} [{}]\n", times.longestLag, unit);
@@ -347,26 +427,65 @@ void PropertyEndToEndAutoCorrelationFunction::writeOutput(std::size_t systemId, 
   }
 }
 
+std::string PropertyEndToEndAutoCorrelationFunction::printSettings() const
+{
+  std::ostringstream stream;
+
+  std::print(stream, "End-to-end vector autocorrelation function (order-N):\n");
+  for (std::size_t c = 0; c < numberOfComponents; ++c)
+  {
+    if (!isSampled(c)) continue;
+    const EndToEndACFSettings &settings = settingsPerComponent[c].value();
+    std::print(stream, "    component {}: sample every {}", c, settings.sampleEvery);
+    if (settings.writeEvery.has_value())
+    {
+      std::print(stream, ", write every {}", settings.writeEvery.value());
+    }
+    std::print(stream, ", {} elements per block, end-to-end atoms ({}, {})\n", settings.numberOfBlockElements,
+               endToEndAtomsPerComponent[c]->at(0), endToEndAtomsPerComponent[c]->at(1));
+  }
+  std::print(stream, "\n");
+
+  return stream.str();
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
+                                   const PropertyEndToEndAutoCorrelationFunction::ComponentData &d)
+{
+  archive << d.count;
+  archive << d.numberOfBlocks;
+  archive << d.maxNumberOfBlocks;
+  archive << d.blockLength;
+  archive << d.acfCount;
+  archive << d.blockData;
+  archive << d.acf;
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEndToEndAutoCorrelationFunction::ComponentData &d)
+{
+  archive >> d.count;
+  archive >> d.numberOfBlocks;
+  archive >> d.maxNumberOfBlocks;
+  archive >> d.blockLength;
+  archive >> d.acfCount;
+  archive >> d.blockData;
+  archive >> d.acf;
+  return archive;
+}
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyEndToEndAutoCorrelationFunction &p)
 {
   archive << p.versionNumber;
 
   archive << p.numberOfMoleculesPerComponent;
+  archive << p.moleculeOffsetPerComponent;
   archive << p.endToEndAtomsPerComponent;
+  archive << p.settingsPerComponent;
   archive << p.numberOfComponents;
   archive << p.numberOfParticles;
   archive << p.timeStep;
-  archive << p.numberOfBlockElements;
-  archive << p.sampleEvery;
-  archive << p.writeEvery;
-
-  archive << p.count;
-  archive << p.numberOfBlocks;
-  archive << p.maxNumberOfBlocks;
-  archive << p.blockLength;
-  archive << p.acfCount;
-  archive << p.blockData;
-  archive << p.acf;
+  archive << p.dataPerComponent;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -379,30 +498,23 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEndT
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
-  if (versionNumber > p.versionNumber)
+  if (versionNumber != p.versionNumber)
   {
+    // version 1 held one system-wide schedule and block structure; it cannot be split per component
     const std::source_location &location = std::source_location::current();
-    throw std::runtime_error(
-        std::format("Invalid version reading 'PropertyEndToEndAutoCorrelationFunction' at line {} in file {}\n",
-                    location.line(), location.file_name()));
+    throw std::runtime_error(std::format(
+        "Invalid version {} reading 'PropertyEndToEndAutoCorrelationFunction' (expected {}) at line {} in file {}\n",
+        versionNumber, p.versionNumber, location.line(), location.file_name()));
   }
 
   archive >> p.numberOfMoleculesPerComponent;
+  archive >> p.moleculeOffsetPerComponent;
   archive >> p.endToEndAtomsPerComponent;
+  archive >> p.settingsPerComponent;
   archive >> p.numberOfComponents;
   archive >> p.numberOfParticles;
   archive >> p.timeStep;
-  archive >> p.numberOfBlockElements;
-  archive >> p.sampleEvery;
-  archive >> p.writeEvery;
-
-  archive >> p.count;
-  archive >> p.numberOfBlocks;
-  archive >> p.maxNumberOfBlocks;
-  archive >> p.blockLength;
-  archive >> p.acfCount;
-  archive >> p.blockData;
-  archive >> p.acf;
+  archive >> p.dataPerComponent;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

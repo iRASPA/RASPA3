@@ -30,7 +30,6 @@ documents the available keywords. Keyword names are matched case-insensitively.
     * [Output pdb-movies](#output-pdb-movies)
     * [Histogram of the energy](#histogram-of-the-energy)
     * [Histogram of the number of molecules](#histogram-of-the-number-of-molecules)
-    * [Histograms of the intra-molecular geometry](#histograms-of-the-intra-molecular-geometry)
     * [Radial Distribution Function (RDF) force-based](#radial-distribution-function-rdf-force-based)
     * [Radial Distribution Function (RDF) conventional](#radial-distribution-function-rdf-conventional)
     * [Mean-Squared Displacement (MSD) order-N](#mean-squared-displacement-msd-order-n)
@@ -39,6 +38,11 @@ documents the available keywords. Keyword names are matched case-insensitively.
   * [Configurational-bias and recoil-growth options](#cbmc-options)
 * [Component options](#component-options)
   * [Component properties](#component-properties)
+  * [Component analyses](#component-analyses)
+    * [Histograms of the intra-molecular geometry](#histograms-of-the-intra-molecular-geometry)
+    * [Molecule shape: the gyration-tensor family](#molecule-shape)
+    * [Molecule backbone: chain statistics](#molecule-backbone)
+    * [End-to-end vector autocorrelation function and relaxation time](#end-to-end-autocorrelation-function)
   * [Component `MC`-moves](#component-mc-moves)
 <!-- TOC -->
 
@@ -1463,139 +1467,6 @@ directory `number_of_molecules_histogram`.
 -   `"UpperLimitNumberOfMoleculesHistogram" : integer`\
     The upper bound of the histograms. Default: `200`.
 
-#### Histograms of the intra-molecular geometry <a name="histograms-of-the-intra-molecular-geometry"></a>
-
-`"ComputeMoleculeProperties" : boolean`
-
-Whether to accumulate probability histograms of the intra-molecular geometry
-(bond lengths, bend angles, and torsion/dihedral angles) for every flexible
-component. This mirrors the "molecule properties" analysis from RASPA2. Output
-is written to the directory `molecule_properties`.
-
--   `"SampleMoleculePropertiesEvery" : integer`\
-    Sample the histograms every `int` cycles. Default: `10`.
-
--   `"WriteMoleculePropertiesEvery" : integer`\
-    Write the histograms every `int` cycles. Default: `5000`.
-
--   `"NumberOfBinsMoleculeProperties" : integer`\
-    The number of bins in each histogram. Default: `128`.
-
--   `"BondRangeMoleculeProperties" : floating-point-number`\
-    The upper bound of the bond-length histogram, in Ångström. The bend range is
-    fixed to `[0, 180]` degrees and the torsion range to `[-180, 180]` degrees.
-    Default: `4.0`.
-
-#### Molecule shape: the gyration-tensor family <a name="molecule-shape"></a>
-
-`"ComputeMoleculeShape" : boolean`
-
-Whether to sample the gyration tensor
-\f$S_{\alpha\beta} = \sum_i w_i (r_{i\alpha}-r_{\mathrm{cm},\alpha})(r_{i\beta}-r_{\mathrm{cm},\beta})\f$
-of every molecule of every component with at least two atoms, and the shape
-descriptors that follow from its eigenvalues \f$\lambda_1 \ge \lambda_2 \ge \lambda_3\f$:
-
--   the radius of gyration \f$R_g^2 = \lambda_1+\lambda_2+\lambda_3\f$,
--   the asphericity \f$b = \lambda_1 - \tfrac{1}{2}(\lambda_2+\lambda_3)\f$ and the
-    acylindricity \f$c = \lambda_2-\lambda_3\f$,
--   the relative shape anisotropy \f$\kappa^2 = (b^2 + \tfrac{3}{4}c^2)/R_g^4\f$
-    (0 for a sphere, 1 for a rod),
--   the prolateness \f$S = 27\prod_i(\lambda_i-\bar\lambda)/R_g^6\f$ with
-    \f$\bar\lambda = R_g^2/3\f$ (\f$-1/4\f$ for an oblate disk, 0 for a sphere, 2 for a
-    prolate rod),
--   the hydrodynamic radius in the Kirkwood approximation
-    \f$R_h^{-1} = \langle N^{-2}\sum_{i\ne j} 1/r_{ij}\rangle\f$ and the ratio
-    \f$\sqrt{\langle R_g^2\rangle}/R_h\f$ (1.5 for a Gaussian chain, 0.78 for a hard sphere).
-
-Both the per-molecule averages (\f$\langle\kappa^2\rangle\f$, \f$\langle S\rangle\f$) and the
-ensemble-ratio forms of Theodorou and Suter (\f$\langle\lambda_1\rangle:\langle\lambda_2\rangle:\langle\lambda_3\rangle\f$,
-\f$\langle b\rangle/\langle R_g^2\rangle\f$, \f$\kappa^2 = 1 - 3\langle\lambda_1\lambda_2+\lambda_2\lambda_3+\lambda_3\lambda_1\rangle/\langle R_g^4\rangle\f$)
-are reported. The total (ensemble-averaged, lab-frame) tensor
-\f$\langle S_{\alpha\beta}\rangle\f$ is written as well, with its eigenvalues, their
-fractions of the trace (1/3 each when isotropic), the lab-frame anisotropy
-\f$(\lambda_1-\lambda_3)/\mathrm{tr}\f$ and the principal axes; in a framework these show
-along which box direction the chains are aligned. When the component has end-to-end
-atoms (see `EndToEndAtoms`) the end-to-end distance is sampled as well so the ratio
-\f$\langle R^2\rangle/\langle R_g^2\rangle\f$ (6 for an ideal chain) appears in the same summary.
-All averages carry 95% confidence intervals from block averaging. Output is written
-to the directory `molecule_shape`: a summary `molecule_shape_<component>.s<system>.txt`
-and probability-density histograms of \f$R_g\f$, \f$\kappa^2\f$ and \f$S\f$.
-
-For components that declare `RepeatUnits` the descriptors are also sampled per
-monomer, from the gyration tensor of the atoms of each repeat unit (same weighting
-convention, renormalized within the unit). The table
-`monomer_shape_<component>.s<system>.txt` lists, per unit index along the chain and
-pooled over all units, \f$\langle R_g\rangle\f$, \f$\langle R_g^2\rangle\f$, the eigenvalues,
-\f$\langle b\rangle/\langle R_g^2\rangle\f$, \f$\langle c\rangle/\langle R_g^2\rangle\f$,
-\f$\langle\kappa^2\rangle\f$ and \f$\langle S\rangle\f$ with their errors; it shows, for
-instance, whether end monomers are more extended than interior ones.
-
--   `"SampleMoleculeShapeEvery" : integer`\
-    Sample the shape descriptors every `int` cycles. Default: `10`.
-
--   `"WriteMoleculeShapeEvery" : integer`\
-    Write the output every `int` cycles. Default: `5000`.
-
--   `"NumberOfBinsMoleculeShape" : integer`\
-    The number of bins in each histogram. Default: `128`.
-
--   `"MassWeightedMoleculeShape" : boolean`\
-    Weight the atoms by their pseudo-atom masses (\f$w_i = m_i/M\f$) instead of
-    uniformly (\f$w_i = 1/N\f$, the polymer-physics convention). Default: `false`.
-
--   `"RadiusOfGyrationRangeMoleculeShape" : floating-point-number`\
-    The upper bound of the radius-of-gyration histogram, in Ångström. By default
-    0.6 times the contour length of the bond-graph diameter of the component, which
-    bounds every reachable conformation; values beyond the range are dropped from
-    the histogram but not from the averages.
-
-#### Molecule backbone: chain statistics <a name="molecule-backbone"></a>
-
-`"ComputeMoleculeBackbone" : boolean`
-
-Whether to sample chain statistics along the backbone of every component that has
-one: the shortest topological path between the end-to-end atoms (see
-`EndToEndAtoms`; inferred from `RepeatUnits` or the bond-graph diameter otherwise).
-Components whose backbone has fewer than three beads are skipped. With \f$N_b\f$
-backbone beads and bond vectors \f$\mathbf b_i = \mathbf r_{i+1}-\mathbf r_i\f$:
-
--   mean squared internal distances \f$\langle r^2(k)\rangle\f$ for \f$k = 1\ldots N_b-1\f$
-    bonds apart, written with \f$\langle r^2(k)\rangle/(k\langle l\rangle^2)\f$, which is flat
-    for an ideal chain;
--   the bond-vector correlation \f$C(k) = \langle\hat{\mathbf b}_i\cdot\hat{\mathbf b}_{i+k}\rangle\f$;
--   the single-chain form factor \f$P(q) = \langle N^{-2}\sum_{ij}\sin(qr_{ij})/(qr_{ij})\rangle\f$
-    over all atoms, on a logarithmic \f$q\f$ grid, next to the Debye function of a Gaussian
-    chain with the same \f$\langle R_g^2\rangle\f$. It is accumulated as a histogram of the
-    intramolecular pair distances (bin width 0.005 Å) and transformed when the output is
-    written, so its cost is independent of the number of wave vectors.
-
-The summary `molecule_backbone_<component>.s<system>.txt` reports the contour length
-\f$R_{\max}\f$, \f$\langle l\rangle\f$, \f$\langle R^2\rangle\f$, \f$\langle R_g^2\rangle\f$,
-the characteristic ratio \f$C_N = \langle R^2\rangle/((N_b-1)\langle l\rangle^2)\f$, the Kuhn
-length \f$b_K = \langle R^2\rangle/R_{\max}\f$ and number of Kuhn segments, the persistence
-length both from the projection \f$\langle\sum_j\hat{\mathbf b}_{\mathrm{end}}\cdot\mathbf b_j\rangle\f$
-and from a fit of \f$\ln C(k) = -k\langle l\rangle/l_p\f$ over the initial decay, and the
-Flory exponent from the log-log slope of \f$\langle r^2(k)\rangle\f$ over
-\f$N_b/8 \le k \le N_b/2\f$ (zero when the chain is too short to fit). All carry 95%
-confidence intervals from block averaging. Output is written to the directory
-`molecule_backbone`.
-
--   `"SampleMoleculeBackboneEvery" : integer`\
-    Sample every `int` cycles. The internal distances and the pair-distance histogram
-    of the form factor are \f$O(N^2)\f$ per molecule. Default: `10`.
-
--   `"WriteMoleculeBackboneEvery" : integer`\
-    Write the output every `int` cycles. Default: `5000`.
-
--   `"NumberOfWaveVectorsMoleculeBackbone" : integer`\
-    The number of logarithmically spaced wave vectors of the form factor. Default: `64`.
-
--   `"LowerLimitWaveVectorMoleculeBackbone" : floating-point-number`\
-    The smallest wave vector, in 1/Ångström. Default: `0.01`.
-
--   `"UpperLimitWaveVectorMoleculeBackbone" : floating-point-number`\
-    The largest wave vector, in 1/Ångström. Default: `5.0`.
-
 #### Radial Distribution Function (RDF) force-based <a name="radial-distribution-function-rdf-force-based"></a>
 
 `"ComputeRDF" : boolean`
@@ -1689,43 +1560,6 @@ molecules; do not combine it with insertion/deletion moves.
 -   `"BufferLengthVACF" : integer`\
     The length of each buffer, i.e. the number of correlation times.
     Default: `1000`.
-
-#### End-to-end vector autocorrelation function and relaxation time <a name="end-to-end-autocorrelation-function"></a>
-
-`"ComputeEndToEndACF" : boolean`
-
-Whether to compute the autocorrelation function of the end-to-end vector
-\(\mathbf{R}\) of chain molecules,
-\(C(t) = \langle \mathbf{R}(0) \cdot \mathbf{R}(t) \rangle\), for every
-component with end-to-end atoms (`"EndToEndAtoms"` in the molecule definition,
-or the two ends of a linear chain). The function is accumulated with the order-N
-blocking scheme of the MSD, so a single run covers lags from one sampling
-interval up to \(\text{sample interval} \times n^{\text{blocks}}\) with a
-logarithmic density of points. Output is written to the directory
-`end_to_end_acf`, one file per component with the lag, \(C(t)\), the normalized
-function \(C(t)/\langle R^2 \rangle\) and the number of samples per lag. The
-header of the file reports \(\langle R^2 \rangle\) and three estimates of the
-end-to-end relaxation time \(\tau_R\), the spacing of statistically independent
-samples of the end-to-end distance: the integral of \(C(t)/C(0)\) up to its
-first zero crossing (flagged as a lower bound when the function has not yet
-crossed zero), the time at which \(C(t)/C(0)\) falls to \(1/e\), and the decay
-time of a single exponential fitted to \(0.05 < C(t)/C(0) \le 0.5\) (the range
-dominated by the slowest Rouse mode). A production run of length \(T\) yields
-roughly \(T / (2 \tau_R)\) independent samples of \(R\) per chain.
-
-In molecular dynamics the lag is in picoseconds; in Monte Carlo (no time step)
-the lag is in cycles and measures how fast the Monte Carlo moves decorrelate the
-chain conformations. Computing the function requires a fixed number of
-molecules; do not combine it with insertion/deletion moves.
-
--   `"SampleEndToEndACFEvery" : integer`\
-    Sample the end-to-end vectors every `int` cycles. Default: `10`.
-
--   `"WriteEndToEndACFEvery" : integer`\
-    Write the autocorrelation function every `int` cycles. Default: `5000`.
-
--   `"NumberOfBlockElementsEndToEndACF" : integer`\
-    The number of elements \(n\) per block in the order-N scheme. Default: `25`.
 
 #### Density grids <a name="density-grids"></a>
 
@@ -2164,6 +1998,202 @@ not improved by it.
     the component name) to look it up in the embedded thermochemical database.
     The lookup is evaluated at each system's `"ExternalTemperature"` and uses the
     database selected by `"ThermochemicalDatabase"`.
+
+### Component analyses <a name="component-analyses"></a>
+
+The intra-molecular analyses below are switched on per component in its entry of
+the `"Components"` list. Each has its own sampling and writing schedule and is
+accumulated in every system that contains the component. The accumulated data of
+these analyses is included in the binary restart files, so a continued run picks
+up where it left off.
+
+#### Histograms of the intra-molecular geometry <a name="histograms-of-the-intra-molecular-geometry"></a>
+
+`"ComputeMoleculeProperties" : boolean`
+
+Whether to accumulate probability histograms of the intra-molecular geometry
+(bond lengths, bend angles, and torsion/dihedral angles) of this
+component. This mirrors the "molecule properties" analysis from RASPA2. Output
+is written to the directory `molecule_properties`.
+
+-   `"SampleMoleculePropertiesEvery" : integer`\
+    Sample the histograms every `int` cycles. Default: `10`.
+
+-   `"WriteMoleculePropertiesEvery" : integer`\
+    Write the histograms every `int` cycles. Default: `5000`.
+
+-   `"NumberOfBinsMoleculeProperties" : integer`\
+    The number of bins of the bond, bend and torsion histograms (fixed ranges).
+    Default: `128`.
+
+-   `"BondRangeMoleculeProperties" : floating-point-number`\
+    The upper bound of the bond-length histogram, in Ångström. The bend range is
+    fixed to `[0, 180]` degrees and the torsion range to `[-180, 180]` degrees.
+    Default: `4.0`.
+
+-   `"EndToEndRangeMoleculeProperties" : floating-point-number`\
+    The upper bound of the end-to-end distance histogram, in Ångström (sampled
+    when the component has end-to-end atoms, see `EndToEndAtoms`). By default
+    1.05 times the contour length between the two ends, so every reachable
+    conformation fits.
+
+-   `"BinWidthEndToEndMoleculeProperties" : floating-point-number`\
+    The bin width of the end-to-end distance histogram, in Ångström. Because the
+    range grows with the chain length, this histogram is sized by its bin width
+    rather than a bin count: the number of bins is the range divided by the width,
+    rounded up (the last bin closes at or just beyond the range). Default: `0.25`.
+
+#### Molecule shape: the gyration-tensor family <a name="molecule-shape"></a>
+
+`"ComputeMoleculeShape" : boolean`
+
+Whether to sample the gyration tensor
+\f$S_{\alpha\beta} = \sum_i w_i (r_{i\alpha}-r_{\mathrm{cm},\alpha})(r_{i\beta}-r_{\mathrm{cm},\beta})\f$
+of every molecule of this component (which needs at least two atoms), and the shape
+descriptors that follow from its eigenvalues \f$\lambda_1 \ge \lambda_2 \ge \lambda_3\f$:
+
+-   the radius of gyration \f$R_g^2 = \lambda_1+\lambda_2+\lambda_3\f$,
+-   the asphericity \f$b = \lambda_1 - \tfrac{1}{2}(\lambda_2+\lambda_3)\f$ and the
+    acylindricity \f$c = \lambda_2-\lambda_3\f$,
+-   the relative shape anisotropy \f$\kappa^2 = (b^2 + \tfrac{3}{4}c^2)/R_g^4\f$
+    (0 for a sphere, 1 for a rod),
+-   the prolateness \f$S = 27\prod_i(\lambda_i-\bar\lambda)/R_g^6\f$ with
+    \f$\bar\lambda = R_g^2/3\f$ (\f$-1/4\f$ for an oblate disk, 0 for a sphere, 2 for a
+    prolate rod),
+-   the hydrodynamic radius in the Kirkwood approximation
+    \f$R_h^{-1} = \langle N^{-2}\sum_{i\ne j} 1/r_{ij}\rangle\f$ and the ratio
+    \f$\sqrt{\langle R_g^2\rangle}/R_h\f$ (1.5 for a Gaussian chain, 0.78 for a hard sphere).
+
+Both the per-molecule averages (\f$\langle\kappa^2\rangle\f$, \f$\langle S\rangle\f$) and the
+ensemble-ratio forms of Theodorou and Suter (\f$\langle\lambda_1\rangle:\langle\lambda_2\rangle:\langle\lambda_3\rangle\f$,
+\f$\langle b\rangle/\langle R_g^2\rangle\f$, \f$\kappa^2 = 1 - 3\langle\lambda_1\lambda_2+\lambda_2\lambda_3+\lambda_3\lambda_1\rangle/\langle R_g^4\rangle\f$)
+are reported. The total (ensemble-averaged, lab-frame) tensor
+\f$\langle S_{\alpha\beta}\rangle\f$ is written as well, with its eigenvalues, their
+fractions of the trace (1/3 each when isotropic), the lab-frame anisotropy
+\f$(\lambda_1-\lambda_3)/\mathrm{tr}\f$ and the principal axes; in a framework these show
+along which box direction the chains are aligned. When the component has end-to-end
+atoms (see `EndToEndAtoms`) the end-to-end distance is sampled as well so the ratio
+\f$\langle R^2\rangle/\langle R_g^2\rangle\f$ (6 for an ideal chain) appears in the same summary.
+All averages carry 95% confidence intervals from block averaging. Output is written
+to the directory `molecule_shape`: a summary `molecule_shape_<component>.s<system>.txt`
+and probability-density histograms of \f$R_g\f$, \f$\kappa^2\f$ and \f$S\f$.
+
+For components that declare `RepeatUnits` the descriptors are also sampled per
+monomer, from the gyration tensor of the atoms of each repeat unit (same weighting
+convention, renormalized within the unit). The table
+`monomer_shape_<component>.s<system>.txt` lists, per unit index along the chain and
+pooled over all units, \f$\langle R_g\rangle\f$, \f$\langle R_g^2\rangle\f$, the eigenvalues,
+\f$\langle b\rangle/\langle R_g^2\rangle\f$, \f$\langle c\rangle/\langle R_g^2\rangle\f$,
+\f$\langle\kappa^2\rangle\f$ and \f$\langle S\rangle\f$ with their errors; it shows, for
+instance, whether end monomers are more extended than interior ones.
+
+-   `"SampleMoleculeShapeEvery" : integer`\
+    Sample the shape descriptors every `int` cycles. Default: `10`.
+
+-   `"WriteMoleculeShapeEvery" : integer`\
+    Write the output every `int` cycles. Default: `5000`.
+
+-   `"NumberOfBinsMoleculeShape" : integer`\
+    The number of bins of the \f$\kappa^2\f$ and \f$S\f$ histograms (fixed ranges).
+    Default: `128`.
+
+-   `"MassWeightedMoleculeShape" : boolean`\
+    Weight the atoms by their pseudo-atom masses (\f$w_i = m_i/M\f$) instead of
+    uniformly (\f$w_i = 1/N\f$, the polymer-physics convention). Default: `false`.
+
+-   `"RadiusOfGyrationRangeMoleculeShape" : floating-point-number`\
+    The upper bound of the radius-of-gyration histogram, in Ångström. By default
+    0.6 times the contour length of the bond-graph diameter of the component, which
+    bounds every reachable conformation; values beyond the range are dropped from
+    the histogram but not from the averages.
+
+-   `"BinWidthRadiusOfGyrationMoleculeShape" : floating-point-number`\
+    The bin width of the radius-of-gyration histogram, in Ångström. The range
+    grows with the chain length, so this histogram is sized by its bin width: the
+    number of bins is the range divided by the width, rounded up. Default: `0.1`.
+
+#### Molecule backbone: chain statistics <a name="molecule-backbone"></a>
+
+`"ComputeMoleculeBackbone" : boolean`
+
+Whether to sample chain statistics along the backbone of this component: the shortest topological path between the end-to-end atoms (see
+`EndToEndAtoms`; inferred from `RepeatUnits` or the bond-graph diameter otherwise).
+The backbone needs at least three beads. With \f$N_b\f$
+backbone beads and bond vectors \f$\mathbf b_i = \mathbf r_{i+1}-\mathbf r_i\f$:
+
+-   mean squared internal distances \f$\langle r^2(k)\rangle\f$ for \f$k = 1\ldots N_b-1\f$
+    bonds apart, written with \f$\langle r^2(k)\rangle/(k\langle l\rangle^2)\f$, which is flat
+    for an ideal chain;
+-   the bond-vector correlation \f$C(k) = \langle\hat{\mathbf b}_i\cdot\hat{\mathbf b}_{i+k}\rangle\f$;
+-   the single-chain form factor \f$P(q) = \langle N^{-2}\sum_{ij}\sin(qr_{ij})/(qr_{ij})\rangle\f$
+    over all atoms, on a logarithmic \f$q\f$ grid, next to the Debye function of a Gaussian
+    chain with the same \f$\langle R_g^2\rangle\f$. It is accumulated as a histogram of the
+    intramolecular pair distances (bin width 0.005 Å) and transformed when the output is
+    written, so its cost is independent of the number of wave vectors.
+
+The summary `molecule_backbone_<component>.s<system>.txt` reports the contour length
+\f$R_{\max}\f$, \f$\langle l\rangle\f$, \f$\langle R^2\rangle\f$, \f$\langle R_g^2\rangle\f$,
+the characteristic ratio \f$C_N = \langle R^2\rangle/((N_b-1)\langle l\rangle^2)\f$, the Kuhn
+length \f$b_K = \langle R^2\rangle/R_{\max}\f$ and number of Kuhn segments, the persistence
+length both from the projection \f$\langle\sum_j\hat{\mathbf b}_{\mathrm{end}}\cdot\mathbf b_j\rangle\f$
+and from a fit of \f$\ln C(k) = -k\langle l\rangle/l_p\f$ over the initial decay, and the
+Flory exponent from the log-log slope of \f$\langle r^2(k)\rangle\f$ over
+\f$N_b/8 \le k \le N_b/2\f$ (zero when the chain is too short to fit). All carry 95%
+confidence intervals from block averaging. Output is written to the directory
+`molecule_backbone`.
+
+-   `"SampleMoleculeBackboneEvery" : integer`\
+    Sample every `int` cycles. The internal distances and the pair-distance histogram
+    of the form factor are \f$O(N^2)\f$ per molecule. Default: `10`.
+
+-   `"WriteMoleculeBackboneEvery" : integer`\
+    Write the output every `int` cycles. Default: `5000`.
+
+-   `"NumberOfWaveVectorsMoleculeBackbone" : integer`\
+    The number of logarithmically spaced wave vectors of the form factor. Default: `64`.
+
+-   `"LowerLimitWaveVectorMoleculeBackbone" : floating-point-number`\
+    The smallest wave vector, in 1/Ångström. Default: `0.01`.
+
+-   `"UpperLimitWaveVectorMoleculeBackbone" : floating-point-number`\
+    The largest wave vector, in 1/Ångström. Default: `5.0`.
+
+#### End-to-end vector autocorrelation function and relaxation time <a name="end-to-end-autocorrelation-function"></a>
+
+`"ComputeEndToEndACF" : boolean`
+
+Whether to compute the autocorrelation function of the end-to-end vector
+\(\mathbf{R}\) of the molecules of this
+component, \(C(t) = \langle \mathbf{R}(0) \cdot \mathbf{R}(t) \rangle\). The
+component needs end-to-end atoms (`"EndToEndAtoms"` in the molecule definition,
+or the two ends of a linear chain). The function is accumulated with the order-N
+blocking scheme of the MSD, so a single run covers lags from one sampling
+interval up to \(\text{sample interval} \times n^{\text{blocks}}\) with a
+logarithmic density of points. Output is written to the directory
+`end_to_end_acf`, one file per component with the lag, \(C(t)\), the normalized
+function \(C(t)/\langle R^2 \rangle\) and the number of samples per lag. The
+header of the file reports \(\langle R^2 \rangle\) and three estimates of the
+end-to-end relaxation time \(\tau_R\), the spacing of statistically independent
+samples of the end-to-end distance: the integral of \(C(t)/C(0)\) up to its
+first zero crossing (flagged as a lower bound when the function has not yet
+crossed zero), the time at which \(C(t)/C(0)\) falls to \(1/e\), and the decay
+time of a single exponential fitted to \(0.05 < C(t)/C(0) \le 0.5\) (the range
+dominated by the slowest Rouse mode). A production run of length \(T\) yields
+roughly \(T / (2 \tau_R)\) independent samples of \(R\) per chain.
+
+In molecular dynamics the lag is in picoseconds; in Monte Carlo (no time step)
+the lag is in cycles and measures how fast the Monte Carlo moves decorrelate the
+chain conformations. Computing the function requires a fixed number of
+molecules; do not combine it with insertion/deletion moves.
+
+-   `"SampleEndToEndACFEvery" : integer`\
+    Sample the end-to-end vectors every `int` cycles. Default: `10`.
+
+-   `"WriteEndToEndACFEvery" : integer`\
+    Write the autocorrelation function every `int` cycles. Default: `5000`.
+
+-   `"NumberOfBlockElementsEndToEndACF" : integer`\
+    The number of elements \(n\) per block in the order-N scheme. Default: `25`.
 
 ### Component `MC`-moves <a name="component-mc-moves"></a>
 

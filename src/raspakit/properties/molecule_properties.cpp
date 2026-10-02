@@ -8,6 +8,7 @@ import archive;
 import double3;
 import atom;
 import component;
+import molecule_property_settings;
 import bond_potential;
 import averages;
 
@@ -69,61 +70,89 @@ double contourLength(const Component &component, const std::array<std::size_t, 2
 }
 
 PropertyMoleculeProperties::PropertyMoleculeProperties(std::size_t numberOfBlocks,
-                                                       const std::vector<Component> &components,
-                                                       std::size_t numberOfBins, double bondRange,
-                                                       std::size_t sampleEvery, std::optional<std::size_t> writeEvery,
-                                                       std::optional<double> endToEndRangeOverride)
+                                                       const std::vector<Component> &components)
     : numberOfBlocks(numberOfBlocks),
-      numberOfBins(numberOfBins),
       numberOfComponents(components.size()),
-      bondRange(bondRange),
-      deltaBond(bondRange / static_cast<double>(numberOfBins)),
-      deltaBend(bendRange / static_cast<double>(numberOfBins)),
-      deltaTorsion(torsionRange / static_cast<double>(numberOfBins)),
-      sampleEvery(sampleEvery),
-      writeEvery(writeEvery),
+      settingsPerComponent(components.size()),
+      deltaBondPerComponent(components.size()),
+      deltaBendPerComponent(components.size()),
+      deltaTorsionPerComponent(components.size()),
       numberOfBondsPerComponent(components.size()),
       numberOfBendsPerComponent(components.size()),
       numberOfTorsionsPerComponent(components.size()),
       endToEndAtomsPerComponent(components.size()),
       endToEndRangePerComponent(components.size()),
       deltaEndToEndPerComponent(components.size()),
+      numberOfEndToEndBinsPerComponent(components.size()),
       bondHistogram(numberOfBlocks, std::vector<std::vector<std::vector<double>>>(components.size())),
       bendHistogram(numberOfBlocks, std::vector<std::vector<std::vector<double>>>(components.size())),
       torsionHistogram(numberOfBlocks, std::vector<std::vector<std::vector<double>>>(components.size())),
       endToEndHistogram(numberOfBlocks, std::vector<std::vector<std::vector<double>>>(components.size())),
       endToEndSum(numberOfBlocks, std::vector<double>(components.size())),
       endToEndSquaredSum(numberOfBlocks, std::vector<double>(components.size())),
-      numberOfCounts(numberOfBlocks, std::vector<double>(components.size()))
+      numberOfCounts(numberOfBlocks, std::vector<double>(components.size())),
+      totalNumberOfCounts(components.size())
 {
   for (std::size_t c = 0; c < components.size(); ++c)
   {
-    numberOfBondsPerComponent[c] = components[c].intraMolecularPotentials.bonds.size();
-    numberOfBendsPerComponent[c] = components[c].intraMolecularPotentials.bends.size();
-    numberOfTorsionsPerComponent[c] = components[c].intraMolecularPotentials.torsions.size();
+    const Component &component = components[c];
+    if (!component.moleculePropertiesSettings.has_value()) continue;
 
-    endToEndAtomsPerComponent[c] = components[c].endToEndAtoms;
+    MoleculePropertiesSettings settings = component.moleculePropertiesSettings.value();
+    settings.sampleEvery = std::max<std::size_t>(1, settings.sampleEvery);
+    settings.numberOfBins = std::max<std::size_t>(1, settings.numberOfBins);
+    settingsPerComponent[c] = settings;
+
+    const std::size_t bins = settings.numberOfBins;
+    deltaBondPerComponent[c] = settings.bondRange / static_cast<double>(bins);
+    deltaBendPerComponent[c] = bendRange / static_cast<double>(bins);
+    deltaTorsionPerComponent[c] = torsionRange / static_cast<double>(bins);
+
+    numberOfBondsPerComponent[c] = component.intraMolecularPotentials.bonds.size();
+    numberOfBendsPerComponent[c] = component.intraMolecularPotentials.bends.size();
+    numberOfTorsionsPerComponent[c] = component.intraMolecularPotentials.torsions.size();
+
+    endToEndAtomsPerComponent[c] = component.endToEndAtoms;
     if (endToEndAtomsPerComponent[c].has_value())
     {
       // Default range: the contour length between the ends (every reachable distance fits; bonds
       // stretching beyond their summed equilibria are astronomically rare and land in the last bin's
-      // out-of-range discard, exactly like the other histograms).
-      endToEndRangePerComponent[c] = endToEndRangeOverride.has_value()
-                                         ? endToEndRangeOverride.value()
-                                         : 1.05 * contourLength(components[c], endToEndAtomsPerComponent[c].value());
-      deltaEndToEndPerComponent[c] = endToEndRangePerComponent[c] / static_cast<double>(numberOfBins);
+      // out-of-range discard, exactly like the other histograms). The range grows with the chain
+      // length, so the histogram is sized by a bin width: ceil(range / width) bins of exactly that
+      // width, the last one closing at or just beyond the requested range.
+      if (!(settings.endToEndBinWidth > 0.0))
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: component '{}': 'BinWidthEndToEndMoleculeProperties' ({}) must be positive\n",
+                        component.name, settings.endToEndBinWidth));
+      }
+      const double requestedRange = settings.endToEndRange.has_value()
+                                        ? settings.endToEndRange.value()
+                                        : 1.05 * contourLength(component, endToEndAtomsPerComponent[c].value());
+      deltaEndToEndPerComponent[c] = settings.endToEndBinWidth;
+      numberOfEndToEndBinsPerComponent[c] =
+          std::max<std::size_t>(1, static_cast<std::size_t>(std::ceil(requestedRange / settings.endToEndBinWidth)));
+      endToEndRangePerComponent[c] =
+          static_cast<double>(numberOfEndToEndBinsPerComponent[c]) * deltaEndToEndPerComponent[c];
+    }
+
+    if (numberOfBondsPerComponent[c] == 0 && numberOfBendsPerComponent[c] == 0 &&
+        numberOfTorsionsPerComponent[c] == 0 && !endToEndAtomsPerComponent[c].has_value())
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'ComputeMoleculeProperties' is set for component '{}', which has no flexible bonds, "
+          "bends or torsions and no end-to-end atoms to sample\n",
+          component.name));
     }
 
     for (std::size_t b = 0; b < numberOfBlocks; ++b)
     {
-      bondHistogram[b][c] =
-          std::vector<std::vector<double>>(numberOfBondsPerComponent[c], std::vector<double>(numberOfBins));
-      bendHistogram[b][c] =
-          std::vector<std::vector<double>>(numberOfBendsPerComponent[c], std::vector<double>(numberOfBins));
+      bondHistogram[b][c] = std::vector<std::vector<double>>(numberOfBondsPerComponent[c], std::vector<double>(bins));
+      bendHistogram[b][c] = std::vector<std::vector<double>>(numberOfBendsPerComponent[c], std::vector<double>(bins));
       torsionHistogram[b][c] =
-          std::vector<std::vector<double>>(numberOfTorsionsPerComponent[c], std::vector<double>(numberOfBins));
-      endToEndHistogram[b][c] = std::vector<std::vector<double>>(endToEndAtomsPerComponent[c].has_value() ? 1 : 0,
-                                                                 std::vector<double>(numberOfBins));
+          std::vector<std::vector<double>>(numberOfTorsionsPerComponent[c], std::vector<double>(bins));
+      endToEndHistogram[b][c] = std::vector<std::vector<double>>(
+          endToEndAtomsPerComponent[c].has_value() ? 1 : 0, std::vector<double>(numberOfEndToEndBinsPerComponent[c]));
     }
   }
 }
@@ -133,7 +162,6 @@ void PropertyMoleculeProperties::sample(const std::vector<Component> &components
                                         std::span<const Atom> moleculeAtoms, std::size_t currentCycle,
                                         std::size_t block)
 {
-  if (currentCycle % sampleEvery != 0uz) return;
   if (moleculeAtoms.empty()) return;
 
   std::size_t offset{0};
@@ -141,6 +169,17 @@ void PropertyMoleculeProperties::sample(const std::vector<Component> &components
   {
     std::size_t numberOfAtoms = components[c].atoms.size();
     std::size_t numberOfMolecules = numberOfMoleculesPerComponent[c];
+
+    if (!isSampled(c) || currentCycle % sampleEvery(c) != 0uz)
+    {
+      offset += numberOfAtoms * numberOfMolecules;
+      continue;
+    }
+
+    const std::size_t bins = numberOfBins(c);
+    const double deltaBond = deltaBondPerComponent[c];
+    const double deltaBend = deltaBendPerComponent[c];
+    const double deltaTorsion = deltaTorsionPerComponent[c];
 
     const auto &bonds = components[c].intraMolecularPotentials.bonds;
     const auto &bends = components[c].intraMolecularPotentials.bends;
@@ -157,7 +196,7 @@ void PropertyMoleculeProperties::sample(const std::vector<Component> &components
         double3 dr = molecule[bonds[i].identifiers[0]].position - molecule[bonds[i].identifiers[1]].position;
         double r = dr.length();
         std::size_t bin = static_cast<std::size_t>(r / deltaBond);
-        if (bin < numberOfBins)
+        if (bin < bins)
         {
           bondHistogram[block][c][i][bin] += 1.0;
         }
@@ -172,7 +211,7 @@ void PropertyMoleculeProperties::sample(const std::vector<Component> &components
         cos_theta = std::clamp(cos_theta, -1.0, 1.0);
         double theta = std::acos(cos_theta) * (180.0 / std::numbers::pi);
         std::size_t bin = static_cast<std::size_t>(theta / deltaBend);
-        if (bin < numberOfBins)
+        if (bin < bins)
         {
           bendHistogram[block][c][i][bin] += 1.0;
         }
@@ -201,7 +240,7 @@ void PropertyMoleculeProperties::sample(const std::vector<Component> &components
         double phi = std::copysign(std::acos(cos_phi), sign) * (180.0 / std::numbers::pi);
 
         std::size_t bin = static_cast<std::size_t>((phi + 0.5 * torsionRange) / deltaTorsion);
-        if (bin < numberOfBins)
+        if (bin < bins)
         {
           torsionHistogram[block][c][i][bin] += 1.0;
         }
@@ -214,7 +253,7 @@ void PropertyMoleculeProperties::sample(const std::vector<Component> &components
         const std::array<std::size_t, 2> &ends = endToEndAtomsPerComponent[c].value();
         double r = (molecule[ends[0]].position - molecule[ends[1]].position).length();
         std::size_t bin = static_cast<std::size_t>(r / deltaEndToEndPerComponent[c]);
-        if (bin < numberOfBins)
+        if (bin < numberOfEndToEndBinsPerComponent[c])
         {
           endToEndHistogram[block][c][0][bin] += 1.0;
         }
@@ -224,15 +263,16 @@ void PropertyMoleculeProperties::sample(const std::vector<Component> &components
 
       numberOfCounts[block][c] += 1.0;
     }
-  }
 
-  totalNumberOfCounts += 1.0;
+    totalNumberOfCounts[c] += 1.0;
+  }
 }
 
 std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> PropertyMoleculeProperties::result(
     const std::vector<std::vector<std::vector<std::vector<double>>>> &histogram, std::size_t component,
     std::size_t index, double delta, double rangeStart) const
 {
+  const std::size_t numberOfBins = histogram[0][component][index].size();
   std::vector<double> bins(numberOfBins);
   for (std::size_t bin = 0; bin != numberOfBins; ++bin)
   {
@@ -298,30 +338,32 @@ std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> Proper
 void PropertyMoleculeProperties::writeOutput(std::size_t systemId, const std::vector<Component> &components,
                                              std::size_t currentCycle)
 {
-  if (!writeEvery.has_value()) return;
-  if (currentCycle % writeEvery.value() != 0uz) return;
-
-  bool anything = std::any_of(numberOfBondsPerComponent.begin(), numberOfBondsPerComponent.end(),
-                              [](std::size_t n) { return n > 0; }) ||
-                  std::any_of(numberOfBendsPerComponent.begin(), numberOfBendsPerComponent.end(),
-                              [](std::size_t n) { return n > 0; }) ||
-                  std::any_of(numberOfTorsionsPerComponent.begin(), numberOfTorsionsPerComponent.end(),
-                              [](std::size_t n) { return n > 0; }) ||
-                  std::any_of(endToEndAtomsPerComponent.begin(), endToEndAtomsPerComponent.end(),
-                              [](const auto &pair) { return pair.has_value(); });
+  bool anything = false;
+  for (std::size_t c = 0; c < numberOfComponents; ++c)
+  {
+    anything = anything || (isSampled(c) && writeEvery(c).has_value() && currentCycle % writeEvery(c).value() == 0uz);
+  }
   if (!anything) return;
 
   std::filesystem::create_directory("molecule_properties");
 
   for (std::size_t c = 0; c < components.size() && c < numberOfComponents; ++c)
   {
+    if (!isSampled(c)) continue;
+    if (!writeEvery(c).has_value() || currentCycle % writeEvery(c).value() != 0uz) continue;
+
+    const std::size_t numberOfBins = this->numberOfBins(c);
+    const double deltaBond = deltaBondPerComponent[c];
+    const double deltaBend = deltaBendPerComponent[c];
+    const double deltaTorsion = deltaTorsionPerComponent[c];
+
     const auto &bonds = components[c].intraMolecularPotentials.bonds;
     for (std::size_t i = 0; i < bonds.size(); ++i)
     {
       std::ofstream stream(std::format("molecule_properties/bond_{}_{}_{}.s{}.txt", components[c].name,
                                        bonds[i].identifiers[0], bonds[i].identifiers[1], systemId));
       stream << std::format("# bond-length histogram, component: {}, number of counts: {}\n", components[c].name,
-                            totalNumberOfCounts);
+                            totalNumberOfCounts[c]);
       stream << "# column 1: bond length [Angstrom]\n";
       stream << "# column 2: probability density [1/Angstrom]\n";
       stream << "# column 3: probability density error [1/Angstrom]\n";
@@ -340,7 +382,7 @@ void PropertyMoleculeProperties::writeOutput(std::size_t systemId, const std::ve
                                        bends[i].identifiers[0], bends[i].identifiers[1], bends[i].identifiers[2],
                                        systemId));
       stream << std::format("# bend-angle histogram, component: {}, number of counts: {}\n", components[c].name,
-                            totalNumberOfCounts);
+                            totalNumberOfCounts[c]);
       stream << "# column 1: bend angle [degrees]\n";
       stream << "# column 2: probability density [1/degrees]\n";
       stream << "# column 3: probability density error [1/degrees]\n";
@@ -359,7 +401,7 @@ void PropertyMoleculeProperties::writeOutput(std::size_t systemId, const std::ve
                                        torsions[i].identifiers[0], torsions[i].identifiers[1],
                                        torsions[i].identifiers[2], torsions[i].identifiers[3], systemId));
       stream << std::format("# torsion-angle histogram, component: {}, number of counts: {}\n", components[c].name,
-                            totalNumberOfCounts);
+                            totalNumberOfCounts[c]);
       stream << "# column 1: torsion angle [degrees]\n";
       stream << "# column 2: probability density [1/degrees]\n";
       stream << "# column 3: probability density error [1/degrees]\n";
@@ -414,7 +456,7 @@ void PropertyMoleculeProperties::writeOutput(std::size_t systemId, const std::ve
       std::ofstream stream(std::format("molecule_properties/end_to_end_{}_{}_{}.s{}.txt", components[c].name, ends[0],
                                        ends[1], systemId));
       stream << std::format("# end-to-end distance histogram, component: {}, atoms: ({}, {}), number of counts: {}\n",
-                            components[c].name, ends[0], ends[1], totalNumberOfCounts);
+                            components[c].name, ends[0], ends[1], totalNumberOfCounts[c]);
       stream << std::format("# <R>    = {:g} +/- {:g} [Angstrom]\n", meanR, errorR);
       stream << std::format("# <R^2>  = {:g} +/- {:g} [Angstrom^2]\n", meanR2, errorR2);
       stream << std::format("# sqrt(<R^2>) = {:g} [Angstrom]\n", meanR2 > 0.0 ? std::sqrt(meanR2) : 0.0);
@@ -423,7 +465,7 @@ void PropertyMoleculeProperties::writeOutput(std::size_t systemId, const std::ve
       stream << "# column 3: probability density error (95% confidence) [1/Angstrom]\n";
 
       auto [values, average, error] = result(endToEndHistogram, c, 0, deltaEndToEndPerComponent[c], 0.0);
-      for (std::size_t bin = 0; bin != numberOfBins; ++bin)
+      for (std::size_t bin = 0; bin != values.size(); ++bin)
       {
         stream << std::format("{} {} {}\n", values[bin], average[bin], error[bin]);
       }
@@ -436,22 +478,26 @@ std::string PropertyMoleculeProperties::printSettings() const
   std::ostringstream stream;
 
   std::print(stream, "Molecule-properties histograms:\n");
-  std::print(stream, "    sample every: {}\n", sampleEvery);
-  if (writeEvery.has_value())
-  {
-    std::print(stream, "    write every: {}\n", writeEvery.value());
-  }
-  std::print(stream, "    number of bins: {}\n", numberOfBins);
-  std::print(stream, "    bond range: 0 - {} [Angstrom]\n", bondRange);
   std::print(stream, "    bend range: 0 - {} [degrees]\n", bendRange);
   std::print(stream, "    torsion range: {} - {} [degrees]\n", -0.5 * torsionRange, 0.5 * torsionRange);
-  for (std::size_t c = 0; c < endToEndAtomsPerComponent.size(); ++c)
+  for (std::size_t c = 0; c < numberOfComponents; ++c)
   {
+    if (!isSampled(c)) continue;
+    const MoleculePropertiesSettings &settings = settingsPerComponent[c].value();
+    std::print(stream, "    component {}: sample every {}", c, settings.sampleEvery);
+    if (settings.writeEvery.has_value())
+    {
+      std::print(stream, ", write every {}", settings.writeEvery.value());
+    }
+    std::print(stream, ", {} bins, bond range: 0 - {} [Angstrom]\n", settings.numberOfBins, settings.bondRange);
+    std::print(stream, "    component {}: {} bonds, {} bends, {} torsions\n", c, numberOfBondsPerComponent[c],
+               numberOfBendsPerComponent[c], numberOfTorsionsPerComponent[c]);
     if (endToEndAtomsPerComponent[c].has_value())
     {
-      std::print(stream, "    end-to-end component {}: atoms ({}, {}), range: 0 - {:g} [Angstrom]\n", c,
-                 endToEndAtomsPerComponent[c]->at(0), endToEndAtomsPerComponent[c]->at(1),
-                 endToEndRangePerComponent[c]);
+      std::print(stream,
+                 "    component {}: end-to-end atoms ({}, {}), range: 0 - {:g} [Angstrom], {} bins of {:g} [Angstrom]\n",
+                 c, endToEndAtomsPerComponent[c]->at(0), endToEndAtomsPerComponent[c]->at(1),
+                 endToEndRangePerComponent[c], numberOfEndToEndBinsPerComponent[c], deltaEndToEndPerComponent[c]);
     }
   }
   std::print(stream, "\n");
@@ -464,22 +510,20 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << p.versionNumber;
 
   archive << p.numberOfBlocks;
-  archive << p.numberOfBins;
   archive << p.numberOfComponents;
-  archive << p.bondRange;
   archive << p.bendRange;
   archive << p.torsionRange;
-  archive << p.deltaBond;
-  archive << p.deltaBend;
-  archive << p.deltaTorsion;
-  archive << p.sampleEvery;
-  archive << p.writeEvery;
+  archive << p.settingsPerComponent;
+  archive << p.deltaBondPerComponent;
+  archive << p.deltaBendPerComponent;
+  archive << p.deltaTorsionPerComponent;
   archive << p.numberOfBondsPerComponent;
   archive << p.numberOfBendsPerComponent;
   archive << p.numberOfTorsionsPerComponent;
   archive << p.endToEndAtomsPerComponent;
   archive << p.endToEndRangePerComponent;
   archive << p.deltaEndToEndPerComponent;
+  archive << p.numberOfEndToEndBinsPerComponent;
   archive << p.bondHistogram;
   archive << p.bendHistogram;
   archive << p.torsionHistogram;
@@ -500,7 +544,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyMole
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
-  if (versionNumber > p.versionNumber)
+  if (versionNumber != p.versionNumber)
   {
     const std::source_location &location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'PropertyMoleculeProperties' at line {} in file {}\n",
@@ -508,22 +552,20 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyMole
   }
 
   archive >> p.numberOfBlocks;
-  archive >> p.numberOfBins;
   archive >> p.numberOfComponents;
-  archive >> p.bondRange;
   archive >> p.bendRange;
   archive >> p.torsionRange;
-  archive >> p.deltaBond;
-  archive >> p.deltaBend;
-  archive >> p.deltaTorsion;
-  archive >> p.sampleEvery;
-  archive >> p.writeEvery;
+  archive >> p.settingsPerComponent;
+  archive >> p.deltaBondPerComponent;
+  archive >> p.deltaBendPerComponent;
+  archive >> p.deltaTorsionPerComponent;
   archive >> p.numberOfBondsPerComponent;
   archive >> p.numberOfBendsPerComponent;
   archive >> p.numberOfTorsionsPerComponent;
   archive >> p.endToEndAtomsPerComponent;
   archive >> p.endToEndRangePerComponent;
   archive >> p.deltaEndToEndPerComponent;
+  archive >> p.numberOfEndToEndBinsPerComponent;
   archive >> p.bondHistogram;
   archive >> p.bendHistogram;
   archive >> p.torsionHistogram;

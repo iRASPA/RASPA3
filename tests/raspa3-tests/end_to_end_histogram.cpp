@@ -8,6 +8,7 @@ import double3;
 import atom;
 import forcefield;
 import component;
+import molecule_property_settings;
 import mc_moves_probabilities;
 import property_molecule_properties;
 
@@ -186,13 +187,26 @@ TEST(END_TO_END_HISTOGRAM, histogram_normalization_and_error_bars)
   components.push_back(makeComponent(forceField, "linear-hist", kLinearChainJson));
 
   constexpr std::size_t numberOfBlocks = 5;
-  constexpr std::size_t numberOfBins = 50;
-  constexpr double range = 5.0;
-  constexpr double delta = range / static_cast<double>(numberOfBins);
-  PropertyMoleculeProperties properties(numberOfBlocks, components, numberOfBins, 4.0, 1, 1, range);
+  // The end-to-end histogram is sized by its bin width: ceil(4.9 / 0.1) = 49 bins; the range is
+  // rounded up to 49 x 0.1 = 4.9 (bond/bend/torsion histograms keep the fixed 'numberOfBins' = 32).
+  constexpr double delta = 0.1;
+  constexpr std::size_t numberOfBins = 49;
+  components[0].moleculePropertiesSettings = MoleculePropertiesSettings{.sampleEvery = 1,
+                                                                        .writeEvery = 1,
+                                                                        .numberOfBins = 32,
+                                                                        .bondRange = 4.0,
+                                                                        .endToEndRange = 4.85,
+                                                                        .endToEndBinWidth = delta};
+  PropertyMoleculeProperties properties(numberOfBlocks, components);
+
+  ASSERT_TRUE(properties.isSampled(0));
 
   ASSERT_TRUE(properties.endToEndAtomsPerComponent[0].has_value());
   ASSERT_NEAR(properties.deltaEndToEndPerComponent[0], delta, 1e-12);
+  ASSERT_EQ(properties.numberOfEndToEndBinsPerComponent[0], numberOfBins);
+  ASSERT_NEAR(properties.endToEndRangePerComponent[0], 4.9, 1e-12);
+  ASSERT_EQ(properties.endToEndHistogram[0][0][0].size(), numberOfBins);
+  ASSERT_EQ(properties.bondHistogram[0][0][0].size(), 32uz);
 
   // One molecule, end beads 0 and 3 (as inferred): place the ends at a chosen distance.
   std::vector<Atom> moleculeAtoms = components[0].atoms;
@@ -211,6 +225,7 @@ TEST(END_TO_END_HISTOGRAM, histogram_normalization_and_error_bars)
   }
 
   auto [values, average, error] = properties.result(properties.endToEndHistogram, 0, 0, delta, 0.0);
+  ASSERT_EQ(values.size(), numberOfBins);
 
   // Normalization: the density integrates to one.
   double integral = 0.0;

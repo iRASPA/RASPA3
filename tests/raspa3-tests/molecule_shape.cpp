@@ -8,6 +8,7 @@ import double3;
 import atom;
 import forcefield;
 import component;
+import molecule_property_settings;
 import mc_moves_probabilities;
 import property_molecule_shape;
 
@@ -232,14 +233,25 @@ TEST(MOLECULE_SHAPE, sampling_moments_ratios_and_histograms)
   components.push_back(makeComponent(forceField, "linear-shape", kLinearChainJson));
 
   constexpr std::size_t numberOfBlocks = 5;
+  // The Rg histogram is sized by its bin width: ceil(5.0 / 0.1) = 50 bins; the k^2 and S histograms
+  // keep the fixed 'numberOfBins'.
   constexpr std::size_t numberOfBins = 50;
   constexpr double rgRange = 5.0;
-  constexpr double deltaRg = rgRange / static_cast<double>(numberOfBins);
-  PropertyMoleculeShape property(numberOfBlocks, forceField, components, numberOfBins, false, 1, 1, rgRange);
+  constexpr double deltaRg = 0.1;
+  components[0].moleculeShapeSettings = MoleculeShapeSettings{.sampleEvery = 1,
+                                                              .writeEvery = 1,
+                                                              .numberOfBins = 40,
+                                                              .massWeighted = false,
+                                                              .radiusOfGyrationRange = rgRange,
+                                                              .radiusOfGyrationBinWidth = deltaRg};
+  PropertyMoleculeShape property(numberOfBlocks, forceField, components);
 
   ASSERT_TRUE(property.isSampled(0));
   ASSERT_EQ(property.weightsPerComponent[0].size(), 4);
   ASSERT_NEAR(property.deltaRadiusOfGyrationPerComponent[0], deltaRg, 1e-12);
+  ASSERT_EQ(property.numberOfRadiusOfGyrationBinsPerComponent[0], numberOfBins);
+  ASSERT_EQ(property.radiusOfGyrationHistogram[0][0].size(), numberOfBins);
+  ASSERT_EQ(property.shapeAnisotropyHistogram[0][0].size(), 40uz);
   ASSERT_TRUE(property.endToEndAtomsPerComponent[0].has_value());
 
   std::vector<Atom> rod = components[0].atoms;
@@ -312,15 +324,16 @@ TEST(MOLECULE_SHAPE, sampling_moments_ratios_and_histograms)
 
   // Anisotropy histogram: k^2 = 1 sits on the upper edge of the [0, 1] range and is discarded from the
   // histogram (the moments keep it); k^2 = 0 lands in the first bin.
-  auto [kValues, kAverage, kError] =
-      property.result(property.shapeAnisotropyHistogram, 0, property.deltaShapeAnisotropy, 0.0);
-  EXPECT_NEAR(kAverage[0], 0.5 / property.deltaShapeAnisotropy, 1e-12);
+  const double deltaShapeAnisotropy = property.deltaShapeAnisotropyPerComponent[0];
+  const double deltaProlateness = property.deltaProlatenessPerComponent[0];
+  auto [kValues, kAverage, kError] = property.result(property.shapeAnisotropyHistogram, 0, deltaShapeAnisotropy, 0.0);
+  EXPECT_NEAR(kAverage[0], 0.5 / deltaShapeAnisotropy, 1e-12);
 
   // Prolateness histogram: S = 0 and S = 2 (the upper edge, discarded).
   auto [sValues, sAverage, sError] =
-      property.result(property.prolatenessHistogram, 0, property.deltaProlateness, property.prolatenessLowerLimit);
-  std::size_t binZero = static_cast<std::size_t>((0.0 - property.prolatenessLowerLimit) / property.deltaProlateness);
-  EXPECT_NEAR(sAverage[binZero], 0.5 / property.deltaProlateness, 1e-12);
+      property.result(property.prolatenessHistogram, 0, deltaProlateness, property.prolatenessLowerLimit);
+  std::size_t binZero = static_cast<std::size_t>((0.0 - property.prolatenessLowerLimit) / deltaProlateness);
+  EXPECT_NEAR(sAverage[binZero], 0.5 / deltaProlateness, 1e-12);
 
   // Skew one block; the errors become positive.
   property.sample(components, {1}, std::span<const Atom>(rod), 0, 0);
@@ -341,7 +354,9 @@ TEST(MOLECULE_SHAPE, per_monomer_descriptors)
   components.push_back(makeComponent(forceField, "comb-monomers", kCombPolymerJson));
 
   constexpr std::size_t numberOfBlocks = 3;
-  PropertyMoleculeShape property(numberOfBlocks, forceField, components, 16, false, 1, 1, 10.0);
+  components[0].moleculeShapeSettings = MoleculeShapeSettings{
+      .sampleEvery = 1, .writeEvery = 1, .numberOfBins = 16, .massWeighted = false, .radiusOfGyrationRange = 10.0};
+  PropertyMoleculeShape property(numberOfBlocks, forceField, components);
   ASSERT_EQ(property.numberOfUnits(0), 3);
   ASSERT_EQ(property.unitAtomsPerComponent[0][1], (std::vector<std::size_t>{3, 4, 5}));
   for (double w : property.unitWeightsPerComponent[0][0]) EXPECT_NEAR(w, 1.0 / 3.0, 1e-12);
@@ -395,17 +410,28 @@ TEST(MOLECULE_SHAPE, per_monomer_descriptors)
 }
 
 // The default Rg range is derived from the contour length of the bond-graph diameter (3 x 1.54 for
-// the linear chain) and components with fewer than two atoms are skipped.
+// the linear chain); components without settings are not sampled.
 TEST(MOLECULE_SHAPE, default_range_from_contour_length)
 {
   ForceField forceField = makeZeroForceField();
   std::vector<Component> components{};
   components.push_back(makeComponent(forceField, "linear-range", kLinearChainJson));
+  components.push_back(makeComponent(forceField, "linear-unsampled", kLinearChainJson));
 
-  PropertyMoleculeShape property(3, forceField, components, 64, true, 1, 1);
+  components[0].moleculeShapeSettings =
+      MoleculeShapeSettings{.sampleEvery = 1, .writeEvery = 1, .numberOfBins = 64, .massWeighted = true};
+  PropertyMoleculeShape property(3, forceField, components);
   ASSERT_TRUE(property.isSampled(0));
-  // The harmonic equilibrium length is located on a 5 Angstrom / 1024-point grid (0.005 resolution).
-  EXPECT_NEAR(property.radiusOfGyrationRangePerComponent[0], 0.6 * 3.0 * 1.54, 0.6 * 3.0 * 0.005);
+  EXPECT_FALSE(property.isSampled(1));
+  EXPECT_TRUE(property.weightsPerComponent[1].empty());
+  // The harmonic equilibrium length is located on a 5 Angstrom / 1024-point grid (0.005 resolution);
+  // the range is then rounded up to a whole number of 0.1 Angstrom bins (default width).
+  const double requested = 0.6 * 3.0 * 1.54;
+  EXPECT_EQ(property.numberOfRadiusOfGyrationBinsPerComponent[0], static_cast<std::size_t>(std::ceil(requested / 0.1)));
+  EXPECT_NEAR(property.radiusOfGyrationRangePerComponent[0],
+              0.1 * static_cast<double>(property.numberOfRadiusOfGyrationBinsPerComponent[0]), 1e-12);
+  EXPECT_GE(property.radiusOfGyrationRangePerComponent[0], requested - 0.6 * 3.0 * 0.005);
+  EXPECT_LT(property.radiusOfGyrationRangePerComponent[0], requested + 0.1 + 0.6 * 3.0 * 0.005);
 
   // Mass weights of identical beads are uniform.
   for (double w : property.weightsPerComponent[0]) EXPECT_NEAR(w, 0.25, 1e-12);

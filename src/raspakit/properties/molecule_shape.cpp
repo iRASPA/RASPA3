@@ -10,6 +10,7 @@ import double3x3;
 import atom;
 import forcefield;
 import component;
+import molecule_property_settings;
 import averages;
 import property_molecule_properties;
 
@@ -153,27 +154,23 @@ double referenceRadiusOfGyration(const Component &component, std::span<const dou
 }  // namespace
 
 PropertyMoleculeShape::PropertyMoleculeShape(std::size_t numberOfBlocks, const ForceField &forceField,
-                                           const std::vector<Component> &components, std::size_t numberOfBins,
-                                           bool massWeighted, std::size_t sampleEvery,
-                                           std::optional<std::size_t> writeEvery,
-                                           std::optional<double> radiusOfGyrationRangeOverride)
+                                           const std::vector<Component> &components)
     : numberOfBlocks(numberOfBlocks),
-      numberOfBins(numberOfBins),
       numberOfComponents(components.size()),
-      massWeighted(massWeighted),
-      sampleEvery(sampleEvery),
-      writeEvery(writeEvery),
+      settingsPerComponent(components.size()),
       weightsPerComponent(components.size()),
       endToEndAtomsPerComponent(components.size()),
       radiusOfGyrationRangePerComponent(components.size()),
       deltaRadiusOfGyrationPerComponent(components.size()),
-      deltaShapeAnisotropy(shapeAnisotropyRange / static_cast<double>(numberOfBins)),
-      deltaProlateness(prolatenessRange / static_cast<double>(numberOfBins)),
+      numberOfRadiusOfGyrationBinsPerComponent(components.size()),
+      deltaShapeAnisotropyPerComponent(components.size()),
+      deltaProlatenessPerComponent(components.size()),
       radiusOfGyrationHistogram(numberOfBlocks, std::vector<std::vector<double>>(components.size())),
       shapeAnisotropyHistogram(numberOfBlocks, std::vector<std::vector<double>>(components.size())),
       prolatenessHistogram(numberOfBlocks, std::vector<std::vector<double>>(components.size())),
       sums(numberOfBlocks, std::vector<Moments>(components.size(), Moments{})),
       numberOfCounts(numberOfBlocks, std::vector<double>(components.size())),
+      totalNumberOfCounts(components.size()),
       unitAtomsPerComponent(components.size()),
       unitWeightsPerComponent(components.size()),
       unitSums(numberOfBlocks, std::vector<std::vector<Moments>>(components.size())),
@@ -182,8 +179,24 @@ PropertyMoleculeShape::PropertyMoleculeShape(std::size_t numberOfBlocks, const F
   for (std::size_t c = 0; c < components.size(); ++c)
   {
     const Component &component = components[c];
+    if (!component.moleculeShapeSettings.has_value()) continue;
+
     std::size_t numberOfAtoms = component.atoms.size();
-    if (numberOfAtoms < 2) continue;
+    if (numberOfAtoms < 2)
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'ComputeMoleculeShape' is set for component '{}', which has fewer than two atoms\n",
+          component.name));
+    }
+
+    MoleculeShapeSettings settings = component.moleculeShapeSettings.value();
+    settings.sampleEvery = std::max<std::size_t>(1, settings.sampleEvery);
+    settings.numberOfBins = std::max<std::size_t>(1, settings.numberOfBins);
+    settingsPerComponent[c] = settings;
+    const std::size_t numberOfBins = settings.numberOfBins;
+    const bool massWeighted = settings.massWeighted;
+    deltaShapeAnisotropyPerComponent[c] = shapeAnisotropyRange / static_cast<double>(numberOfBins);
+    deltaProlatenessPerComponent[c] = prolatenessRange / static_cast<double>(numberOfBins);
 
     std::vector<std::size_t> allAtoms(numberOfAtoms);
     std::iota(allAtoms.begin(), allAtoms.end(), 0uz);
@@ -209,9 +222,10 @@ PropertyMoleculeShape::PropertyMoleculeShape(std::size_t numberOfBlocks, const F
     // within that path length of every other, so the Euclidean extent of the molecule is bounded by
     // it and Rg by 0.61 of it (Jung's theorem); the rod value Rg = L/sqrt(12) sits well inside. When
     // there is no bond graph (a rigid molecule) Rg is constant and twice the reference value is used.
-    if (radiusOfGyrationRangeOverride.has_value())
+    double requestedRange;
+    if (settings.radiusOfGyrationRange.has_value())
     {
-      radiusOfGyrationRangePerComponent[c] = radiusOfGyrationRangeOverride.value();
+      requestedRange = settings.radiusOfGyrationRange.value();
     }
     else
     {
@@ -225,13 +239,25 @@ PropertyMoleculeShape::PropertyMoleculeShape(std::size_t numberOfBlocks, const F
       {
         range = 2.0 * referenceRadiusOfGyration(component, weights);
       }
-      radiusOfGyrationRangePerComponent[c] = std::max(range, 1.0);
+      requestedRange = std::max(range, 1.0);
     }
-    deltaRadiusOfGyrationPerComponent[c] = radiusOfGyrationRangePerComponent[c] / static_cast<double>(numberOfBins);
+    // The range grows with the chain length, so the Rg histogram is sized by a bin width:
+    // ceil(range / width) bins of exactly that width.
+    if (!(settings.radiusOfGyrationBinWidth > 0.0))
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: component '{}': 'BinWidthRadiusOfGyrationMoleculeShape' ({}) must be positive\n",
+                      component.name, settings.radiusOfGyrationBinWidth));
+    }
+    deltaRadiusOfGyrationPerComponent[c] = settings.radiusOfGyrationBinWidth;
+    numberOfRadiusOfGyrationBinsPerComponent[c] = std::max<std::size_t>(
+        1, static_cast<std::size_t>(std::ceil(requestedRange / settings.radiusOfGyrationBinWidth)));
+    radiusOfGyrationRangePerComponent[c] =
+        static_cast<double>(numberOfRadiusOfGyrationBinsPerComponent[c]) * deltaRadiusOfGyrationPerComponent[c];
 
     for (std::size_t b = 0; b < numberOfBlocks; ++b)
     {
-      radiusOfGyrationHistogram[b][c] = std::vector<double>(numberOfBins);
+      radiusOfGyrationHistogram[b][c] = std::vector<double>(numberOfRadiusOfGyrationBinsPerComponent[c]);
       shapeAnisotropyHistogram[b][c] = std::vector<double>(numberOfBins);
       prolatenessHistogram[b][c] = std::vector<double>(numberOfBins);
     }
@@ -296,7 +322,6 @@ void PropertyMoleculeShape::sample(const std::vector<Component> &components,
                                   const std::vector<std::size_t> &numberOfMoleculesPerComponent,
                                   std::span<const Atom> moleculeAtoms, std::size_t currentCycle, std::size_t block)
 {
-  if (currentCycle % sampleEvery != 0uz) return;
   if (moleculeAtoms.empty()) return;
 
   std::size_t offset{0};
@@ -305,12 +330,15 @@ void PropertyMoleculeShape::sample(const std::vector<Component> &components,
     std::size_t numberOfAtoms = components[c].atoms.size();
     std::size_t numberOfMolecules = numberOfMoleculesPerComponent[c];
 
-    if (!isSampled(c))
+    if (!isSampled(c) || currentCycle % sampleEvery(c) != 0uz)
     {
       offset += numberOfAtoms * numberOfMolecules;
       continue;
     }
 
+    const std::size_t numberOfBins = this->numberOfBins(c);
+    const double deltaShapeAnisotropy = deltaShapeAnisotropyPerComponent[c];
+    const double deltaProlateness = deltaProlatenessPerComponent[c];
     const std::vector<double> &weights = weightsPerComponent[c];
     Moments &moments = sums[block][c];
 
@@ -343,7 +371,7 @@ void PropertyMoleculeShape::sample(const std::vector<Component> &components,
       }
 
       std::size_t binRg = static_cast<std::size_t>(rg / deltaRadiusOfGyrationPerComponent[c]);
-      if (binRg < numberOfBins) radiusOfGyrationHistogram[block][c][binRg] += 1.0;
+      if (binRg < numberOfRadiusOfGyrationBinsPerComponent[c]) radiusOfGyrationHistogram[block][c][binRg] += 1.0;
 
       std::size_t binKappa = static_cast<std::size_t>(d.shapeAnisotropy / deltaShapeAnisotropy);
       if (binKappa < numberOfBins) shapeAnisotropyHistogram[block][c][binKappa] += 1.0;
@@ -353,9 +381,9 @@ void PropertyMoleculeShape::sample(const std::vector<Component> &components,
 
       numberOfCounts[block][c] += 1.0;
     }
-  }
 
-  totalNumberOfCounts += 1.0;
+    totalNumberOfCounts[c] += 1.0;
+  }
 }
 
 std::pair<double, double> PropertyMoleculeShape::statistics(
@@ -446,6 +474,7 @@ std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> Proper
     const std::vector<std::vector<std::vector<double>>> &histogram, std::size_t component, double delta,
     double rangeStart) const
 {
+  const std::size_t numberOfBins = histogram[0][component].size();
   std::vector<double> bins(numberOfBins);
   for (std::size_t bin = 0; bin != numberOfBins; ++bin)
   {
@@ -508,11 +537,11 @@ std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> Proper
 void PropertyMoleculeShape::writeOutput(std::size_t systemId, const std::vector<Component> &components,
                                        std::size_t currentCycle)
 {
-  if (!writeEvery.has_value()) return;
-  if (currentCycle % writeEvery.value() != 0uz) return;
-
   bool anything = false;
-  for (std::size_t c = 0; c < numberOfComponents; ++c) anything = anything || isSampled(c);
+  for (std::size_t c = 0; c < numberOfComponents; ++c)
+  {
+    anything = anything || (isSampled(c) && writeEvery(c).has_value() && currentCycle % writeEvery(c).value() == 0uz);
+  }
   if (!anything) return;
 
   std::filesystem::create_directory("molecule_shape");
@@ -520,7 +549,12 @@ void PropertyMoleculeShape::writeOutput(std::size_t systemId, const std::vector<
   for (std::size_t c = 0; c < components.size() && c < numberOfComponents; ++c)
   {
     if (!isSampled(c)) continue;
+    if (!writeEvery(c).has_value() || currentCycle % writeEvery(c).value() != 0uz) continue;
     const std::string &name = components[c].name;
+    const std::size_t numberOfBins = this->numberOfBins(c);
+    const bool massWeighted = this->massWeighted(c);
+    const double deltaShapeAnisotropy = deltaShapeAnisotropyPerComponent[c];
+    const double deltaProlateness = deltaProlatenessPerComponent[c];
 
     auto [meanRg, errorRg] = momentStatistics(c, RadiusOfGyration);
     auto [meanRg2, errorRg2] = momentStatistics(c, RadiusOfGyrationSquared);
@@ -552,7 +586,7 @@ void PropertyMoleculeShape::writeOutput(std::size_t systemId, const std::vector<
 
     std::ofstream summary(std::format("molecule_shape/molecule_shape_{}.s{}.txt", name, systemId));
     summary << std::format("# gyration-tensor shape descriptors, component: {}, number of counts: {}\n", name,
-                           totalNumberOfCounts);
+                           totalNumberOfCounts[c]);
     summary << std::format("# weights: {}\n", massWeighted ? "pseudo-atom masses" : "uniform per bead");
     summary << "# eigenvalues of the gyration tensor ordered l1 >= l2 >= l3; errors are 95% confidence intervals\n";
     summary << "#\n";
@@ -645,7 +679,7 @@ void PropertyMoleculeShape::writeOutput(std::size_t systemId, const std::vector<
       std::ofstream stream(std::format("molecule_shape/monomer_shape_{}.s{}.txt", name, systemId));
       stream << std::format(
           "# per-repeat-unit gyration-tensor shape descriptors, component: {}, units: {}, number of counts: {}\n", name,
-          numberOfUnits(c), totalNumberOfCounts);
+          numberOfUnits(c), totalNumberOfCounts[c]);
       stream << std::format("# weights: {} (renormalized within each unit); errors are 95% confidence intervals\n",
                             massWeighted ? "pseudo-atom masses" : "uniform per bead");
       stream << "# column 1: unit index along the chain ('all' = pooled over units)\n";
@@ -692,7 +726,7 @@ void PropertyMoleculeShape::writeOutput(std::size_t systemId, const std::vector<
     {
       std::ofstream stream(std::format("molecule_shape/radius_of_gyration_{}.s{}.txt", name, systemId));
       stream << std::format("# radius-of-gyration histogram, component: {}, number of counts: {}\n", name,
-                            totalNumberOfCounts);
+                            totalNumberOfCounts[c]);
       stream << std::format("# <Rg> = {:g} +/- {:g} [Angstrom], sqrt(<Rg^2>) = {:g} [Angstrom]\n", meanRg, errorRg,
                             rmsRg);
       stream << "# column 1: radius of gyration [Angstrom]\n";
@@ -700,7 +734,7 @@ void PropertyMoleculeShape::writeOutput(std::size_t systemId, const std::vector<
       stream << "# column 3: probability density error (95% confidence) [1/Angstrom]\n";
       auto [values, average, error] =
           result(radiusOfGyrationHistogram, c, deltaRadiusOfGyrationPerComponent[c], 0.0);
-      for (std::size_t bin = 0; bin != numberOfBins; ++bin)
+      for (std::size_t bin = 0; bin != values.size(); ++bin)
       {
         stream << std::format("{} {} {}\n", values[bin], average[bin], error[bin]);
       }
@@ -709,7 +743,7 @@ void PropertyMoleculeShape::writeOutput(std::size_t systemId, const std::vector<
     {
       std::ofstream stream(std::format("molecule_shape/shape_anisotropy_{}.s{}.txt", name, systemId));
       stream << std::format("# relative-shape-anisotropy histogram, component: {}, number of counts: {}\n", name,
-                            totalNumberOfCounts);
+                            totalNumberOfCounts[c]);
       stream << std::format("# <k^2> = {:g} +/- {:g} [-]\n", meanKappa2, errorKappa2);
       stream << "# column 1: relative shape anisotropy k^2 [-]\n";
       stream << "# column 2: probability density [-]\n";
@@ -724,7 +758,7 @@ void PropertyMoleculeShape::writeOutput(std::size_t systemId, const std::vector<
     {
       std::ofstream stream(std::format("molecule_shape/prolateness_{}.s{}.txt", name, systemId));
       stream << std::format("# prolateness histogram, component: {}, number of counts: {}\n", name,
-                            totalNumberOfCounts);
+                            totalNumberOfCounts[c]);
       stream << std::format("# <S> = {:g} +/- {:g} [-]\n", meanS, errorS);
       stream << "# column 1: prolateness S [-]\n";
       stream << "# column 2: probability density [-]\n";
@@ -743,22 +777,23 @@ std::string PropertyMoleculeShape::printSettings() const
   std::ostringstream stream;
 
   std::print(stream, "Molecule-shape (gyration tensor) sampling:\n");
-  std::print(stream, "    sample every: {}\n", sampleEvery);
-  if (writeEvery.has_value())
+  for (std::size_t c = 0; c < numberOfComponents; ++c)
   {
-    std::print(stream, "    write every: {}\n", writeEvery.value());
-  }
-  std::print(stream, "    number of bins: {}\n", numberOfBins);
-  std::print(stream, "    weights: {}\n", massWeighted ? "pseudo-atom masses" : "uniform per bead");
-  for (std::size_t c = 0; c < weightsPerComponent.size(); ++c)
-  {
-    if (isSampled(c))
+    if (!isSampled(c)) continue;
+    const MoleculeShapeSettings &settings = settingsPerComponent[c].value();
+    std::print(stream, "    component {}: sample every {}", c, settings.sampleEvery);
+    if (settings.writeEvery.has_value())
     {
-      std::print(stream, "    component {}: Rg range: 0 - {:g} [Angstrom]\n", c, radiusOfGyrationRangePerComponent[c]);
-      if (numberOfUnits(c) > 0)
-      {
-        std::print(stream, "    component {}: per-monomer shape over {} repeat units\n", c, numberOfUnits(c));
-      }
+      std::print(stream, ", write every {}", settings.writeEvery.value());
+    }
+    std::print(stream, ", {} bins, weights: {}\n", settings.numberOfBins,
+               settings.massWeighted ? "pseudo-atom masses" : "uniform per bead");
+    std::print(stream, "    component {}: Rg range: 0 - {:g} [Angstrom], {} bins of {:g} [Angstrom]\n", c,
+               radiusOfGyrationRangePerComponent[c], numberOfRadiusOfGyrationBinsPerComponent[c],
+               deltaRadiusOfGyrationPerComponent[c]);
+    if (numberOfUnits(c) > 0)
+    {
+      std::print(stream, "    component {}: per-monomer shape over {} repeat units\n", c, numberOfUnits(c));
     }
   }
   std::print(stream, "\n");
@@ -771,20 +806,18 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << p.versionNumber;
 
   archive << p.numberOfBlocks;
-  archive << p.numberOfBins;
   archive << p.numberOfComponents;
-  archive << p.massWeighted;
-  archive << p.sampleEvery;
-  archive << p.writeEvery;
+  archive << p.settingsPerComponent;
   archive << p.weightsPerComponent;
   archive << p.endToEndAtomsPerComponent;
   archive << p.radiusOfGyrationRangePerComponent;
   archive << p.deltaRadiusOfGyrationPerComponent;
+  archive << p.numberOfRadiusOfGyrationBinsPerComponent;
   archive << p.shapeAnisotropyRange;
   archive << p.prolatenessLowerLimit;
   archive << p.prolatenessRange;
-  archive << p.deltaShapeAnisotropy;
-  archive << p.deltaProlateness;
+  archive << p.deltaShapeAnisotropyPerComponent;
+  archive << p.deltaProlatenessPerComponent;
   archive << p.radiusOfGyrationHistogram;
   archive << p.shapeAnisotropyHistogram;
   archive << p.prolatenessHistogram;
@@ -807,7 +840,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyMole
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
-  if (versionNumber > p.versionNumber)
+  if (versionNumber != p.versionNumber)
   {
     const std::source_location &location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'PropertyMoleculeShape' at line {} in file {}\n",
@@ -815,20 +848,18 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyMole
   }
 
   archive >> p.numberOfBlocks;
-  archive >> p.numberOfBins;
   archive >> p.numberOfComponents;
-  archive >> p.massWeighted;
-  archive >> p.sampleEvery;
-  archive >> p.writeEvery;
+  archive >> p.settingsPerComponent;
   archive >> p.weightsPerComponent;
   archive >> p.endToEndAtomsPerComponent;
   archive >> p.radiusOfGyrationRangePerComponent;
   archive >> p.deltaRadiusOfGyrationPerComponent;
+  archive >> p.numberOfRadiusOfGyrationBinsPerComponent;
   archive >> p.shapeAnisotropyRange;
   archive >> p.prolatenessLowerLimit;
   archive >> p.prolatenessRange;
-  archive >> p.deltaShapeAnisotropy;
-  archive >> p.deltaProlateness;
+  archive >> p.deltaShapeAnisotropyPerComponent;
+  archive >> p.deltaProlatenessPerComponent;
   archive >> p.radiusOfGyrationHistogram;
   archive >> p.shapeAnisotropyHistogram;
   archive >> p.prolatenessHistogram;

@@ -48,6 +48,7 @@ import cbmc_closure_guide;
 import cbmc_lookahead_guide;
 import json;
 import cbmc_statistics;
+export import molecule_property_settings;
 
 /**
  * \brief Represents a component within the simulation system.
@@ -145,7 +146,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{5};  ///< Version number for serialization.
+  std::uint64_t versionNumber{6};  ///< Version number for serialization.
 
   Type type{0};  ///< Type of the component (Adsorbate or Cation).
 
@@ -482,6 +483,13 @@ export struct Component
   bool automaticBlockingPockets{false};
 
   double lnPartitionFunction{0};  ///< Natural logarithm of the partition function [-].
+
+  // Intra-molecular analyses requested for this component ('Compute...' keys of the 'Components'
+  // block). Nullopt: not sampled. The accumulators are the 'Property...' members of the System.
+  std::optional<MoleculePropertiesSettings> moleculePropertiesSettings{};
+  std::optional<MoleculeShapeSettings> moleculeShapeSettings{};
+  std::optional<MoleculeBackboneSettings> moleculeBackboneSettings{};
+  std::optional<EndToEndACFSettings> endToEndACFSettings{};
 
   //MultiSiteIsotherm isotherm{};            ///< Isotherm information for the component.
   //double massTransferCoefficient{0.0};     ///< Mass transfer coefficient [1/s].

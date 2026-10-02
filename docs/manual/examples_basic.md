@@ -1728,8 +1728,7 @@ The partial-reinsertion move regrows either an ethyl tail or a whole ring plus t
       "Type" : "Box",
       "BoxLengths" : [30.0, 30.0, 30.0],
       "ExternalTemperature" : 298.0,
-      "ChargeMethod" : "None",
-      "ComputeMoleculeProperties" : true
+      "ChargeMethod" : "None"
     }
   ],
 
@@ -1737,6 +1736,7 @@ The partial-reinsertion move regrows either an ethyl tail or a whole ring plus t
   [
     {
       "Name" : "diethyl-biphenyl",
+      "ComputeMoleculeProperties" : true,
       "TranslationProbability" : 1.0,
       "RotationProbability" : 1.0,
       "ReinsertionProbability" : 1.0,
@@ -1777,8 +1777,7 @@ The molecule definition is identical to example 16: the two aromatic 6-rings are
       "BoxLengths" : [30.0, 30.0, 30.0],
       "ExternalTemperature" : 298.0,
       "Ensemble" : "NVT",
-      "ChargeMethod" : "None",
-      "ComputeMoleculeProperties" : true
+      "ChargeMethod" : "None"
     }
   ],
 
@@ -1786,6 +1785,7 @@ The molecule definition is identical to example 16: the two aromatic 6-rings are
   [
     {
       "Name" : "diethyl-biphenyl",
+      "ComputeMoleculeProperties" : true,
       "TranslationProbability" : 1.0,
       "RotationProbability" : 1.0,
       "ReinsertionProbability" : 1.0,
@@ -1909,7 +1909,6 @@ raspa3
       "BoxLengths" : [30.0, 30.0, 30.0],
       "ExternalTemperature" : 300.0,
       "ChargeMethod" : "None",
-      "ComputeMoleculeProperties" : true,
       "OutputPDBMovie" : true,
       "SampleMovieEvery" : 10
     }
@@ -1919,6 +1918,7 @@ raspa3
   [
     {
       "Name" : "cyclohexane",
+      "ComputeMoleculeProperties" : true,
       "TranslationProbability" : 1.0,
       "RotationProbability" : 1.0,
       "ReinsertionProbability" : 1.0,
@@ -1947,8 +1947,7 @@ This example is the molecular-dynamics counterpart of example 20: 30 fully flexi
       "BoxLengths" : [30.0, 30.0, 30.0],
       "ExternalTemperature" : 300.0,
       "Ensemble" : "NVT",
-      "ChargeMethod" : "None",
-      "ComputeMoleculeProperties" : true
+      "ChargeMethod" : "None"
     }
   ],
 
@@ -1956,6 +1955,7 @@ This example is the molecular-dynamics counterpart of example 20: 30 fully flexi
   [
     {
       "Name" : "cyclohexane",
+      "ComputeMoleculeProperties" : true,
       "TranslationProbability" : 1.0,
       "RotationProbability" : 1.0,
       "ReinsertionProbability" : 1.0,

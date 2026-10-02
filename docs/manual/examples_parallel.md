@@ -470,11 +470,7 @@ Run from `examples/polymers/5_md_parallel_tempering_end_to_end_distance_phdda_20
                                 393.9, 407.6, 421.7, 436.3, 451.4, 467.1, 483.3, 500.0],
       "Ensemble" : "NVT",
       "TimeStep" : 0.001,
-      "ChargeMethod" : "Ewald",
-      "ComputeMoleculeProperties" : true,
-      "SampleMoleculePropertiesEvery" : 10,
-      "WriteMoleculePropertiesEvery" : 100000,
-      "NumberOfBinsMoleculeProperties" : 128
+      "ChargeMethod" : "Ewald"
     }
   ],
 
@@ -482,6 +478,10 @@ Run from `examples/polymers/5_md_parallel_tempering_end_to_end_distance_phdda_20
   [
     {
       "Name" : "pHDDA-20",
+      "ComputeMoleculeProperties" : true,
+      "SampleMoleculePropertiesEvery" : 10,
+      "WriteMoleculePropertiesEvery" : 100000,
+      "NumberOfBinsMoleculeProperties" : 128,
       "PivotProbability" : 1.0,
       "CrankshaftProbability" : 1.0,
       "BeadFlipProbability" : 1.0,
@@ -555,12 +555,7 @@ Run from `examples/polymers/6_md_parallel_tempering_end_to_end_distance_hdda_liq
                                 372.4, 382.6, 393.1, 403.9, 414.9, 426.3, 438.0, 450.0],
       "Ensemble" : "NVT",
       "TimeStep" : 0.001,
-      "ChargeMethod" : "Ewald",
-      "ComputeMoleculeProperties" : true,
-      "SampleMoleculePropertiesEvery" : 10,
-      "WriteMoleculePropertiesEvery" : 1000000,
-      "NumberOfBinsMoleculeProperties" : 80,
-      "EndToEndRangeMoleculeProperties" : 20.0
+      "ChargeMethod" : "Ewald"
     }
   ],
 
@@ -568,6 +563,11 @@ Run from `examples/polymers/6_md_parallel_tempering_end_to_end_distance_hdda_liq
   [
     {
       "Name" : "HDDA",
+      "ComputeMoleculeProperties" : true,
+      "SampleMoleculePropertiesEvery" : 10,
+      "WriteMoleculePropertiesEvery" : 1000000,
+      "NumberOfBinsMoleculeProperties" : 80,
+      "EndToEndRangeMoleculeProperties" : 20.0,
       "TranslationProbability" : 1.0,
       "RotationProbability" : 1.0,
       "ReinsertionProbability" : 0.5,
@@ -661,12 +661,7 @@ Run from `examples/polymers/7_md_spatial_decomposition_end_to_end_distance_hdda_
       "ExternalTemperature" : 300.0,
       "Ensemble" : "NVT",
       "TimeStep" : 0.001,
-      "ChargeMethod" : "Ewald",
-      "ComputeMoleculeProperties" : true,
-      "SampleMoleculePropertiesEvery" : 10,
-      "WriteMoleculePropertiesEvery" : 100000,
-      "NumberOfBinsMoleculeProperties" : 80,
-      "EndToEndRangeMoleculeProperties" : 20.0
+      "ChargeMethod" : "Ewald"
     }
   ],
 
@@ -674,6 +669,11 @@ Run from `examples/polymers/7_md_spatial_decomposition_end_to_end_distance_hdda_
   [
     {
       "Name" : "HDDA",
+      "ComputeMoleculeProperties" : true,
+      "SampleMoleculePropertiesEvery" : 10,
+      "WriteMoleculePropertiesEvery" : 100000,
+      "NumberOfBinsMoleculeProperties" : 80,
+      "EndToEndRangeMoleculeProperties" : 20.0,
       "TranslationProbability" : 1.0,
       "RotationProbability" : 1.0,
       "ReinsertionProbability" : 0.5,

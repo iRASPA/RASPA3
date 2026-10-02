@@ -7,10 +7,18 @@ import double3;
 import simd_quatd;
 import atom;
 import molecule;
+import molecule_property_settings;
 import property_end_to_end_acf;
 
 namespace
 {
+EndToEndACFSettings acfSettings(std::size_t numberOfBlockElements, std::size_t sampleEvery,
+                                std::optional<std::size_t> writeEvery)
+{
+  return EndToEndACFSettings{
+      .sampleEvery = sampleEvery, .writeEvery = writeEvery, .numberOfBlockElements = numberOfBlockElements};
+}
+
 // Ornstein-Uhlenbeck process for the end-to-end vector: R(t + dt) = R(t) e^{-dt/tau} + sigma sqrt(1 - e^{-2 dt/tau}) xi
 // with xi standard normal per Cartesian component, so that <R(0).R(t)> = 3 sigma^2 e^{-t/tau}.
 struct OrnsteinUhlenbeck
@@ -48,7 +56,8 @@ std::optional<double> interpolateNormalized(const std::vector<EndToEndAutoCorrel
 TEST(end_to_end_acf, lags_follow_the_order_n_blocking_scheme)
 {
   // one component of one molecule, n = 4 block elements, sampled every cycle with a 0.5 ps step
-  PropertyEndToEndAutoCorrelationFunction property({1}, {std::array<std::size_t, 2>{0, 1}}, 1, 0.5, 4, 1, std::nullopt);
+  PropertyEndToEndAutoCorrelationFunction property({1}, {std::array<std::size_t, 2>{0, 1}},
+                                                   {acfSettings(4, 1, std::nullopt)}, 1, 0.5);
 
   // constant vector: C(t) = |R|^2 at every lag
   const double3 r(1.0, 2.0, 2.0);
@@ -80,7 +89,7 @@ TEST(end_to_end_acf, recovers_the_relaxation_time_of_an_exponentially_decorrelat
   const double dt = 1.0;     // ps between samples (time step 0.1 ps, sampled every 10 cycles)
 
   PropertyEndToEndAutoCorrelationFunction property({numberOfMolecules}, {std::array<std::size_t, 2>{0, 1}},
-                                                   numberOfMolecules, 0.1, 25, 10, std::nullopt);
+                                                   {acfSettings(25, 10, std::nullopt)}, numberOfMolecules, 0.1);
 
   OrnsteinUhlenbeck process{tau, sigma, dt};
   std::vector<double3> vectors(numberOfMolecules);
@@ -142,8 +151,10 @@ TEST(end_to_end_acf, end_to_end_vectors_are_taken_from_the_molecule_atoms)
   addMolecule(0, {double3(1.0, 1.0, 1.0), double3(0.0, 0.0, 0.0), double3(1.0, 1.0, 3.0)});  // |R| = 2
   addMolecule(1, {double3(0.0, 0.0, 0.0), double3(9.0, 9.0, 9.0)});
 
-  PropertyEndToEndAutoCorrelationFunction property(numberOfMoleculesPerComponent, ends, molecules.size(), 0.001, 25, 5,
-                                                   std::nullopt);
+  // component 1 is not sampled (no settings)
+  PropertyEndToEndAutoCorrelationFunction property(numberOfMoleculesPerComponent, ends,
+                                                   {acfSettings(25, 5, std::nullopt), std::nullopt}, molecules.size(),
+                                                   0.001);
 
   property.addSample(0, molecules, atoms);  // sampled (0 % 5 == 0)
   property.addSample(1, molecules, atoms);  // skipped
@@ -151,7 +162,8 @@ TEST(end_to_end_acf, end_to_end_vectors_are_taken_from_the_molecule_atoms)
 
   EXPECT_TRUE(property.hasData(0));
   EXPECT_FALSE(property.hasData(1));
-  EXPECT_EQ(property.count, 2uz);
+  EXPECT_EQ(property.dataPerComponent[0].count, 2uz);
+  EXPECT_EQ(property.dataPerComponent[1].count, 0uz);
 
   const std::vector<EndToEndAutoCorrelationFunctionData> data = property.result(0);
   ASSERT_GE(data.size(), 2uz);
@@ -169,8 +181,9 @@ TEST(end_to_end_acf, end_to_end_vectors_are_taken_from_the_molecule_atoms)
 TEST(end_to_end_acf, binary_archive_round_trip_continues_the_accumulation)
 {
   const std::size_t numberOfMolecules = 8;
-  PropertyEndToEndAutoCorrelationFunction original({numberOfMolecules, 3}, {std::array<std::size_t, 2>{0, 1}, std::nullopt},
-                                                   numberOfMolecules + 3, 0.002, 5, 10, 5000);
+  PropertyEndToEndAutoCorrelationFunction original({numberOfMolecules, 3},
+                                                   {std::array<std::size_t, 2>{0, 1}, std::nullopt},
+                                                   {acfSettings(5, 10, 5000), std::nullopt}, numberOfMolecules + 3, 0.002);
 
   // a trajectory of 137 + 61 samples, generated once
   OrnsteinUhlenbeck process{5.0, 2.0, 0.02};
@@ -200,10 +213,12 @@ TEST(end_to_end_acf, binary_archive_round_trip_continues_the_accumulation)
   }
   std::filesystem::remove(path);
 
-  EXPECT_EQ(restored.count, original.count);
-  EXPECT_EQ(restored.numberOfBlocks, original.numberOfBlocks);
-  EXPECT_EQ(restored.sampleEvery, 10uz);
-  EXPECT_EQ(restored.writeEvery, std::optional<std::size_t>{5000});
+  EXPECT_EQ(restored.dataPerComponent[0].count, original.dataPerComponent[0].count);
+  EXPECT_EQ(restored.dataPerComponent[0].numberOfBlocks, original.dataPerComponent[0].numberOfBlocks);
+  EXPECT_EQ(restored.sampleEvery(0), 10uz);
+  EXPECT_EQ(restored.writeEvery(0), std::optional<std::size_t>{5000});
+  EXPECT_EQ(restored.numberOfBlockElements(0), 5uz);
+  EXPECT_FALSE(restored.isSampled(1));
   EXPECT_FALSE(restored.hasData(1));
 
   // continuing both copies with the same samples gives bit-identical functions

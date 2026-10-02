@@ -807,10 +807,12 @@ export struct System
   void setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement>& msd);
   void setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelationFunction>& vacf);
 
-  /// Enables the end-to-end vector autocorrelation function (tau_R) for the components with end-to-end atoms;
-  /// throws when no component has them.
-  void setPropertyEndToEndACF(std::size_t numberOfBlockElements, std::size_t sampleEvery,
-                              std::optional<std::size_t> writeEvery);
+  /// Creates the intra-molecular analyses requested by the components (their 'moleculePropertiesSettings',
+  /// 'moleculeShapeSettings', 'moleculeBackboneSettings' and 'endToEndACFSettings'): the molecule-properties
+  /// histograms, the shape descriptors, the backbone statistics and the end-to-end autocorrelation function.
+  /// Call once the components, the molecules and the time step are known; throws when a component asks for an
+  /// analysis it cannot support (e.g. the autocorrelation function without end-to-end atoms).
+  void initializeMoleculeProperties(std::size_t numberOfBlocks);
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System& s);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s);

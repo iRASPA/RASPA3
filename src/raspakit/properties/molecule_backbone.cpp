@@ -8,6 +8,7 @@ import archive;
 import double3;
 import atom;
 import component;
+import molecule_property_settings;
 import averages;
 import property_molecule_properties;
 
@@ -42,18 +43,11 @@ std::optional<double> slope(std::span<const double> x, std::span<const double> y
 
 }  // namespace
 
-PropertyMoleculeBackbone::PropertyMoleculeBackbone(std::size_t numberOfBlocks, const std::vector<Component> &components,
-                                                 std::size_t numberOfWaveVectors, double waveVectorLowerLimit,
-                                                 double waveVectorUpperLimit, std::size_t sampleEvery,
-                                                 std::optional<std::size_t> writeEvery)
+PropertyMoleculeBackbone::PropertyMoleculeBackbone(std::size_t numberOfBlocks, const std::vector<Component> &components)
     : numberOfBlocks(numberOfBlocks),
       numberOfComponents(components.size()),
-      sampleEvery(sampleEvery),
-      writeEvery(writeEvery),
-      numberOfWaveVectors(numberOfWaveVectors),
-      waveVectorLowerLimit(waveVectorLowerLimit),
-      waveVectorUpperLimit(waveVectorUpperLimit),
-      waveVectors(numberOfWaveVectors),
+      settingsPerComponent(components.size()),
+      waveVectorsPerComponent(components.size()),
       backbonePerComponent(components.size()),
       contourLengthPerComponent(components.size()),
       numberOfAtomsPerComponent(components.size()),
@@ -61,21 +55,49 @@ PropertyMoleculeBackbone::PropertyMoleculeBackbone(std::size_t numberOfBlocks, c
       bondCorrelationSum(numberOfBlocks, std::vector<std::vector<double>>(components.size())),
       pairDistanceHistogram(numberOfBlocks, std::vector<std::vector<double>>(components.size())),
       sums(numberOfBlocks, std::vector<Moments>(components.size(), Moments{})),
-      numberOfCounts(numberOfBlocks, std::vector<double>(components.size()))
+      numberOfCounts(numberOfBlocks, std::vector<double>(components.size())),
+      totalNumberOfCounts(components.size())
 {
-  // Logarithmic grid; a single point sits at the lower limit.
-  for (std::size_t i = 0; i < numberOfWaveVectors; ++i)
-  {
-    double fraction = numberOfWaveVectors > 1 ? static_cast<double>(i) / static_cast<double>(numberOfWaveVectors - 1)
-                                              : 0.0;
-    waveVectors[i] = waveVectorLowerLimit * std::pow(waveVectorUpperLimit / waveVectorLowerLimit, fraction);
-  }
-
   for (std::size_t c = 0; c < components.size(); ++c)
   {
-    std::vector<std::size_t> backbone = components[c].backboneAtoms();
+    const Component &component = components[c];
+    if (!component.moleculeBackboneSettings.has_value()) continue;
+
+    MoleculeBackboneSettings settings = component.moleculeBackboneSettings.value();
+    settings.sampleEvery = std::max<std::size_t>(1, settings.sampleEvery);
+    settings.numberOfWaveVectors = std::max<std::size_t>(1, settings.numberOfWaveVectors);
+    if (settings.waveVectorLowerLimit <= 0.0 || settings.waveVectorUpperLimit <= settings.waveVectorLowerLimit)
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: component '{}': 'LowerLimitWaveVectorMoleculeBackbone' ({}) must be positive and below "
+          "'UpperLimitWaveVectorMoleculeBackbone' ({})\n",
+          component.name, settings.waveVectorLowerLimit, settings.waveVectorUpperLimit));
+    }
+
+    std::vector<std::size_t> backbone = component.backboneAtoms();
     // Two backbone beads give a single bond: no internal structure to speak of.
-    if (backbone.size() < 3) continue;
+    if (backbone.size() < 3)
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'ComputeMoleculeBackbone' is set for component '{}', which has no backbone of at least "
+          "three beads (set 'EndToEndAtoms' in the molecule definition, or use a chain molecule)\n",
+          component.name));
+    }
+
+    settingsPerComponent[c] = settings;
+
+    // Logarithmic grid; a single point sits at the lower limit.
+    const std::size_t numberOfWaveVectors = settings.numberOfWaveVectors;
+    std::vector<double> &waveVectors = waveVectorsPerComponent[c];
+    waveVectors.resize(numberOfWaveVectors);
+    for (std::size_t i = 0; i < numberOfWaveVectors; ++i)
+    {
+      double fraction = numberOfWaveVectors > 1
+                            ? static_cast<double>(i) / static_cast<double>(numberOfWaveVectors - 1)
+                            : 0.0;
+      waveVectors[i] = settings.waveVectorLowerLimit *
+                       std::pow(settings.waveVectorUpperLimit / settings.waveVectorLowerLimit, fraction);
+    }
 
     backbonePerComponent[c] = backbone;
     contourLengthPerComponent[c] = contourLength(components[c], {backbone.front(), backbone.back()});
@@ -254,7 +276,6 @@ void PropertyMoleculeBackbone::sample(const std::vector<Component> &components,
                                      const std::vector<std::size_t> &numberOfMoleculesPerComponent,
                                      std::span<const Atom> moleculeAtoms, std::size_t currentCycle, std::size_t block)
 {
-  if (currentCycle % sampleEvery != 0uz) return;
   if (moleculeAtoms.empty()) return;
 
   std::size_t offset{0};
@@ -263,7 +284,7 @@ void PropertyMoleculeBackbone::sample(const std::vector<Component> &components,
     std::size_t numberOfAtoms = components[c].atoms.size();
     std::size_t numberOfMolecules = numberOfMoleculesPerComponent[c];
 
-    if (!isSampled(c))
+    if (!isSampled(c) || currentCycle % sampleEvery(c) != 0uz)
     {
       offset += numberOfAtoms * numberOfMolecules;
       continue;
@@ -287,9 +308,9 @@ void PropertyMoleculeBackbone::sample(const std::vector<Component> &components,
 
       numberOfCounts[block][c] += 1.0;
     }
-  }
 
-  totalNumberOfCounts += 1.0;
+    totalNumberOfCounts[c] += 1.0;
+  }
 }
 
 PropertyMoleculeBackbone::Averages PropertyMoleculeBackbone::blockAverages(std::size_t block,
@@ -302,7 +323,8 @@ PropertyMoleculeBackbone::Averages PropertyMoleculeBackbone::blockAverages(std::
 
   double count = numberOfCounts[block][component];
   averages.formFactor = formFactorFromHistogram(pairDistanceHistogram[block][component], pairDistanceBinWidth,
-                                                numberOfAtomsPerComponent[component], count, waveVectors);
+                                                numberOfAtomsPerComponent[component], count,
+                                                waveVectorsPerComponent[component]);
   if (count > 0.0)
   {
     for (double &v : averages.internalDistanceSquared) v /= count;
@@ -337,7 +359,7 @@ PropertyMoleculeBackbone::Averages PropertyMoleculeBackbone::overallAverages(std
     for (std::size_t i = 0; i < NumberOfMoments; ++i) averages.moments[i] += sums[block][component][i];
   }
   averages.formFactor = formFactorFromHistogram(histogram, pairDistanceBinWidth, numberOfAtomsPerComponent[component],
-                                                total, waveVectors);
+                                                total, waveVectorsPerComponent[component]);
   if (total > 0.0)
   {
     for (double &v : averages.internalDistanceSquared) v /= total;
@@ -448,11 +470,11 @@ double PropertyMoleculeBackbone::debyeFunction(double x)
 void PropertyMoleculeBackbone::writeOutput(std::size_t systemId, const std::vector<Component> &components,
                                           std::size_t currentCycle)
 {
-  if (!writeEvery.has_value()) return;
-  if (currentCycle % writeEvery.value() != 0uz) return;
-
   bool anything = false;
-  for (std::size_t c = 0; c < numberOfComponents; ++c) anything = anything || isSampled(c);
+  for (std::size_t c = 0; c < numberOfComponents; ++c)
+  {
+    anything = anything || (isSampled(c) && writeEvery(c).has_value() && currentCycle % writeEvery(c).value() == 0uz);
+  }
   if (!anything) return;
 
   std::filesystem::create_directory("molecule_backbone");
@@ -460,7 +482,10 @@ void PropertyMoleculeBackbone::writeOutput(std::size_t systemId, const std::vect
   for (std::size_t c = 0; c < components.size() && c < numberOfComponents; ++c)
   {
     if (!isSampled(c)) continue;
+    if (!writeEvery(c).has_value() || currentCycle % writeEvery(c).value() != 0uz) continue;
     const std::string &name = components[c].name;
+    const std::vector<double> &waveVectors = waveVectorsPerComponent[c];
+    const std::size_t numberOfWaveVectors = waveVectors.size();
     const std::vector<std::size_t> &backbone = backbonePerComponent[c];
     std::size_t numberOfBeads = backbone.size();
     std::size_t numberOfBonds = numberOfBeads - 1;
@@ -505,7 +530,7 @@ void PropertyMoleculeBackbone::writeOutput(std::size_t systemId, const std::vect
     {
       std::ofstream summary(std::format("molecule_backbone/molecule_backbone_{}.s{}.txt", name, systemId));
       summary << std::format("# backbone chain statistics, component: {}, number of counts: {}\n", name,
-                             totalNumberOfCounts);
+                             totalNumberOfCounts[c]);
       summary << std::format("# backbone: {} beads, {} bonds, atoms {} .. {}; errors are 95% confidence intervals\n",
                              numberOfBeads, numberOfBonds, backbone.front(), backbone.back());
       summary << "#\n";
@@ -535,7 +560,7 @@ void PropertyMoleculeBackbone::writeOutput(std::size_t systemId, const std::vect
     {
       std::ofstream stream(std::format("molecule_backbone/internal_distances_{}.s{}.txt", name, systemId));
       stream << std::format("# mean squared internal distances along the backbone, component: {}, number of counts: {}\n",
-                            name, totalNumberOfCounts);
+                            name, totalNumberOfCounts[c]);
       stream << std::format("# <l> = {:g} [Angstrom]\n", meanL);
       stream << "# column 1: separation k [bonds]\n";
       stream << "# column 2: contour separation k <l> [Angstrom]\n";
@@ -553,7 +578,7 @@ void PropertyMoleculeBackbone::writeOutput(std::size_t systemId, const std::vect
     {
       std::ofstream stream(std::format("molecule_backbone/bond_correlation_{}.s{}.txt", name, systemId));
       stream << std::format("# bond-vector correlation along the backbone, component: {}, number of counts: {}\n",
-                            name, totalNumberOfCounts);
+                            name, totalNumberOfCounts[c]);
       stream << std::format("# l_p (projection) = {:g} [Angstrom], l_p (fit) = {:g} [Angstrom]\n",
                             persistenceProjection, persistenceFit);
       stream << "# column 1: separation k [bonds]\n";
@@ -569,7 +594,7 @@ void PropertyMoleculeBackbone::writeOutput(std::size_t systemId, const std::vect
     {
       std::ofstream stream(std::format("molecule_backbone/form_factor_{}.s{}.txt", name, systemId));
       stream << std::format("# single-chain form factor (all atoms, uniform weights), component: {}, number of counts: {}\n",
-                            name, totalNumberOfCounts);
+                            name, totalNumberOfCounts[c]);
       stream << std::format("# <Rg^2> = {:g} [Angstrom^2]; Debye function evaluated at x = q^2 <Rg^2>\n", meanRg2);
       stream << std::format("# from the intramolecular pair-distance histogram, bin width {:g} [Angstrom]\n",
                             pairDistanceBinWidth);
@@ -594,23 +619,22 @@ std::string PropertyMoleculeBackbone::printSettings() const
   std::ostringstream stream;
 
   std::print(stream, "Molecule-backbone chain statistics:\n");
-  std::print(stream, "    sample every: {}\n", sampleEvery);
-  if (writeEvery.has_value())
-  {
-    std::print(stream, "    write every: {}\n", writeEvery.value());
-  }
-  std::print(stream, "    wave vectors: {} log-spaced in {:g} - {:g} [1/Angstrom]\n", numberOfWaveVectors,
-             waveVectorLowerLimit, waveVectorUpperLimit);
   std::print(stream, "    form factor from the pair-distance histogram, bin width {:g} [Angstrom]\n",
              pairDistanceBinWidth);
-  for (std::size_t c = 0; c < backbonePerComponent.size(); ++c)
+  for (std::size_t c = 0; c < numberOfComponents; ++c)
   {
-    if (isSampled(c))
+    if (!isSampled(c)) continue;
+    const MoleculeBackboneSettings &settings = settingsPerComponent[c].value();
+    std::print(stream, "    component {}: sample every {}", c, settings.sampleEvery);
+    if (settings.writeEvery.has_value())
     {
-      std::print(stream, "    component {}: backbone of {} beads (atoms {} .. {}), contour length {:g} [Angstrom]\n", c,
-                 backbonePerComponent[c].size(), backbonePerComponent[c].front(), backbonePerComponent[c].back(),
-                 contourLengthPerComponent[c]);
+      std::print(stream, ", write every {}", settings.writeEvery.value());
     }
+    std::print(stream, ", wave vectors: {} log-spaced in {:g} - {:g} [1/Angstrom]\n", settings.numberOfWaveVectors,
+               settings.waveVectorLowerLimit, settings.waveVectorUpperLimit);
+    std::print(stream, "    component {}: backbone of {} beads (atoms {} .. {}), contour length {:g} [Angstrom]\n", c,
+               backbonePerComponent[c].size(), backbonePerComponent[c].front(), backbonePerComponent[c].back(),
+               contourLengthPerComponent[c]);
   }
   std::print(stream, "\n");
 
@@ -623,12 +647,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 
   archive << p.numberOfBlocks;
   archive << p.numberOfComponents;
-  archive << p.sampleEvery;
-  archive << p.writeEvery;
-  archive << p.numberOfWaveVectors;
-  archive << p.waveVectorLowerLimit;
-  archive << p.waveVectorUpperLimit;
-  archive << p.waveVectors;
+  archive << p.settingsPerComponent;
+  archive << p.waveVectorsPerComponent;
   archive << p.pairDistanceBinWidth;
   archive << p.backbonePerComponent;
   archive << p.contourLengthPerComponent;
@@ -658,35 +678,27 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyMole
                                          location.line(), location.file_name()));
   }
 
+  if (versionNumber < 3)
+  {
+    // Versions 1 and 2 held system-wide settings and a single wave-vector grid; the per-component
+    // layout cannot be reconstructed from them.
+    const std::source_location &location = std::source_location::current();
+    throw std::runtime_error(std::format(
+        "Invalid version {} reading 'PropertyMoleculeBackbone' (expected {}) at line {} in file {}\n", versionNumber,
+        p.versionNumber, location.line(), location.file_name()));
+  }
+
   archive >> p.numberOfBlocks;
   archive >> p.numberOfComponents;
-  archive >> p.sampleEvery;
-  archive >> p.writeEvery;
-  archive >> p.numberOfWaveVectors;
-  archive >> p.waveVectorLowerLimit;
-  archive >> p.waveVectorUpperLimit;
-  archive >> p.waveVectors;
-  if (versionNumber >= 2) archive >> p.pairDistanceBinWidth;
+  archive >> p.settingsPerComponent;
+  archive >> p.waveVectorsPerComponent;
+  archive >> p.pairDistanceBinWidth;
   archive >> p.backbonePerComponent;
   archive >> p.contourLengthPerComponent;
-  if (versionNumber >= 2) archive >> p.numberOfAtomsPerComponent;
+  archive >> p.numberOfAtomsPerComponent;
   archive >> p.internalDistanceSquaredSum;
   archive >> p.bondCorrelationSum;
-  if (versionNumber >= 2)
-  {
-    archive >> p.pairDistanceHistogram;
-  }
-  else
-  {
-    // Version 1 stored the per-wave-vector form-factor sums; these cannot be converted into a
-    // pair-distance histogram. Discard them and continue with empty histograms (the number of
-    // atoms per component is unknown as well, so the restarted form factor is left at zero).
-    std::vector<std::vector<std::vector<double>>> formFactorSum{};
-    archive >> formFactorSum;
-    p.pairDistanceHistogram =
-        std::vector<std::vector<std::vector<double>>>(p.numberOfBlocks, std::vector<std::vector<double>>(p.numberOfComponents));
-    p.numberOfAtomsPerComponent = std::vector<std::size_t>(p.numberOfComponents);
-  }
+  archive >> p.pairDistanceHistogram;
   archive >> p.sums;
   archive >> p.numberOfCounts;
   archive >> p.totalNumberOfCounts;

@@ -8,8 +8,10 @@ import archive;
 import double3;
 import atom;
 import component;
+import molecule_property_settings;
 
-// Samples chain statistics along the backbone of every component that has one (see
+// Samples chain statistics along the backbone of every component that asks for them
+// ('Component::moleculeBackboneSettings', 'ComputeMoleculeBackbone' in the 'Components' block; see
 // Component::backboneAtoms: the shortest topological path between the end-to-end atoms), as
 // functions of the separation k in backbone bonds, plus the single-chain form factor.
 //
@@ -68,22 +70,19 @@ export struct PropertyMoleculeBackbone
 
   PropertyMoleculeBackbone() {};
 
-  PropertyMoleculeBackbone(std::size_t numberOfBlocks, const std::vector<Component> &components,
-                          std::size_t numberOfWaveVectors, double waveVectorLowerLimit, double waveVectorUpperLimit,
-                          std::size_t sampleEvery, std::optional<std::size_t> writeEvery);
+  /// Builds the accumulators for every component with 'moleculeBackboneSettings'. Throws when such a
+  /// component has a backbone of fewer than three beads or an invalid wave-vector range.
+  PropertyMoleculeBackbone(std::size_t numberOfBlocks, const std::vector<Component> &components);
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{3};
 
   std::size_t numberOfBlocks{0};
   std::size_t numberOfComponents{0};
-  std::size_t sampleEvery{10};
-  std::optional<std::size_t> writeEvery{5000};
 
-  // Logarithmically spaced wave vectors [1/Angstrom] shared by all components.
-  std::size_t numberOfWaveVectors{64};
-  double waveVectorLowerLimit{0.01};
-  double waveVectorUpperLimit{5.0};
-  std::vector<double> waveVectors{};
+  // Per component: the settings (nullopt when the component is not sampled) and the logarithmically
+  // spaced wave vectors [1/Angstrom] of its form factor.
+  std::vector<std::optional<MoleculeBackboneSettings>> settingsPerComponent{};
+  std::vector<std::vector<double>> waveVectorsPerComponent{};
 
   // Bin width [Angstrom] of the intramolecular pair-distance histogram behind the form factor.
   double pairDistanceBinWidth{0.005};
@@ -102,9 +101,14 @@ export struct PropertyMoleculeBackbone
   std::vector<std::vector<std::vector<double>>> pairDistanceHistogram{};
   std::vector<std::vector<Moments>> sums{};
   std::vector<std::vector<double>> numberOfCounts{};
-  double totalNumberOfCounts{0.0};
+  std::vector<double> totalNumberOfCounts{};  ///< Sampling events per component.
 
-  bool isSampled(std::size_t component) const { return !backbonePerComponent[component].empty(); }
+  bool isSampled(std::size_t component) const { return settingsPerComponent[component].has_value(); }
+  std::size_t sampleEvery(std::size_t component) const { return settingsPerComponent[component]->sampleEvery; }
+  std::optional<std::size_t> writeEvery(std::size_t component) const
+  {
+    return settingsPerComponent[component]->writeEvery;
+  }
   std::size_t numberOfBackboneBeads(std::size_t component) const { return backbonePerComponent[component].size(); }
 
   // Contributions of a single molecule (exposed for testing). 'backbone' indexes into 'molecule'.
