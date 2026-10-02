@@ -15,30 +15,20 @@ import std;
 
 import double3;
 import double3x3;
-import atom;
-import molecule;
-import component;
-import forcefield;
-import system;
-import bond_potential;
-import bend_potential;
-import torsion_potential;
-import van_der_waals_potential;
-import coulomb_potential;
-import units;
-import intra_molecular_potentials;
 import opencl;
 import spatial_decomposition_opencl_handles;
+import spatial_decomposition_device_kernels;
+import spatial_decomposition_device_backend;
+import spatial_decomposition_device_bonded_topology;
 
 using OpenCLDevice::check;
 using OpenCLDevice::roundUp;
 
 namespace
 {
-constexpr std::size_t groupSize = 64;
-constexpr std::size_t partialsPerGroup = 26;
-constexpr std::uint32_t noAtom = std::numeric_limits<std::uint32_t>::max();
-constexpr std::size_t maximumAtomsPerMolecule = 256;
+constexpr std::size_t groupSize = 64;     // BONDED_GROUP and TERM_GROUP of the kernel source
+constexpr std::size_t atomPartials = 20;  // ATOM_PARTIALS
+constexpr std::size_t termPartials = 8;   // TERM_PARTIALS
 
 template <typename Buffer>
 void ensureCapacity(Buffer& buffer, std::size_t& capacity, std::size_t required, std::size_t elementBytes,
@@ -48,159 +38,46 @@ void ensureCapacity(Buffer& buffer, std::size_t& capacity, std::size_t required,
   capacity = required + required / 4 + 1;
   buffer.reset(OpenCL::createBuffer(flags, capacity * elementBytes));
 }
-}  // namespace
 
-bool OpenCLBonded::supports(const System& system, std::string& reason)
+// blocking upload of a static table (the shared queue; complete before the step's queue uses it)
+template <typename Value>
+void uploadTable(OpenCLDevice::MemHandle& buffer, const std::vector<Value>& values)
 {
-  for (const Component& component : system.components)
-  {
-    const Potentials::IntraMolecularPotentials& potentials = component.intraMolecularPotentials;
-    const char* unsupported = nullptr;
-    if (!potentials.ureyBradleys.empty())
-      unsupported = "Urey-Bradley";
-    else if (!potentials.inversionBends.empty())
-      unsupported = "inversion-bend";
-    else if (!potentials.outOfPlaneBends.empty())
-      unsupported = "out-of-plane-bend";
-    else if (!potentials.bondBonds.empty())
-      unsupported = "bond-bond";
-    else if (!potentials.bondBends.empty())
-      unsupported = "bond-bend";
-    else if (!potentials.bondTorsions.empty())
-      unsupported = "bond-torsion";
-    else if (!potentials.bendBends.empty())
-      unsupported = "bend-bend";
-    else if (!potentials.bendTorsions.empty())
-      unsupported = "bend-torsion";
-    if (unsupported)
-    {
-      reason = std::format("{} terms (component '{}')", unsupported, component.name);
-      return false;
-    }
-    if (component.atoms.size() > maximumAtomsPerMolecule)
-    {
-      reason =
-          std::format("molecules with more than {} atoms (component '{}')", maximumAtomsPerMolecule, component.name);
-      return false;
-    }
-  }
-  for (const Atom& atom : system.spanOfMoleculeAtoms())
-  {
-    if (atom.groupId != 0)
-    {
-      reason = "dU/dlambda group atoms";
-      return false;
-    }
-  }
-  return true;
+  const std::size_t bytes = std::max<std::size_t>(1, values.size()) * sizeof(Value);
+  buffer.reset(OpenCL::createBuffer(CL_MEM_READ_ONLY, bytes));
+  if (!values.empty()) OpenCL::writeBuffer(buffer.get(), values.size() * sizeof(Value), values.data());
 }
+}  // namespace
 
 void OpenCLBonded::initialize(cl_context clContext, cl_device_id clDevice)
 {
   context = clContext;
   device = clDevice;
-  program = OpenCLDevice::buildProgram(context, device, openclBondedKernelSource, "-cl-mad-enable -cl-no-signed-zeros",
-                                       "OpenCL bonded");
-  kernel = OpenCLDevice::createKernel(program.get(), "bondedAtoms");
+  program = OpenCLDevice::buildDeviceProgram(context, device, deviceKernelBondedSource,
+                                             "-cl-mad-enable -cl-no-signed-zeros", "OpenCL bonded");
+  termKernel = OpenCLDevice::createKernel(program.get(), "bondedTerms");
+  atomKernel = OpenCLDevice::createKernel(program.get(), "bondedAtoms");
   parameterBuffer.reset(OpenCL::createBuffer(CL_MEM_READ_ONLY, sizeof(Parameters)));
 }
 
-void OpenCLBonded::setTopology(const System& system)
+void OpenCLBonded::setTopology(const BondedTopology& topology)
 {
-  terms.clear();
-  atomTermStart.clear();
-  atomTerms.clear();
-  molecules.clear();
-  masses.clear();
+  numberOfMolecules = topology.molecules.size();
+  numberOfTerms = topology.terms.size();
+  chargeSquaredSum = topology.chargeSquaredSum;
+  parameters.numberOfInstances = static_cast<std::uint32_t>(topology.numberOfInstances);
+  parametersChanged = true;
+  termGroups = roundUp(std::max<std::size_t>(topology.numberOfInstances, 1), groupSize) / groupSize;
 
-  // the terms of every component, flattened, with the references per component atom (CSR)
-  std::vector<std::uint32_t> componentAtomOffset(system.components.size(), 0);
-  std::vector<std::vector<std::uint32_t>> referencesPerAtom;
-  for (std::size_t c = 0; c < system.components.size(); ++c)
-  {
-    const Component& component = system.components[c];
-    const Potentials::IntraMolecularPotentials& potentials = component.intraMolecularPotentials;
-    componentAtomOffset[c] = static_cast<std::uint32_t>(referencesPerAtom.size());
-    const std::size_t atomsInComponent = component.atoms.size();
-    referencesPerAtom.resize(referencesPerAtom.size() + atomsInComponent);
-    auto addTerm = [&](std::uint32_t kind, std::size_t type, std::span<const std::size_t> identifiers,
-                       std::span<const double> values)
-    {
-      Term term{};
-      term.kind = kind;
-      term.type = static_cast<std::uint32_t>(type);
-      for (std::size_t k = 0; k < identifiers.size(); ++k) term.atoms[k] = static_cast<std::uint32_t>(identifiers[k]);
-      for (std::size_t k = 0; k < std::min<std::size_t>(values.size(), 6); ++k)
-      {
-        term.parameters[k] = static_cast<float>(values[k]);
-      }
-      const std::uint32_t index = static_cast<std::uint32_t>(terms.size());
-      terms.push_back(term);
-      for (std::uint32_t role = 0; role < identifiers.size(); ++role)
-      {
-        referencesPerAtom[componentAtomOffset[c] + identifiers[role]].push_back((index << 2) | role);
-      }
-    };
-    for (const BondPotential& bond : potentials.bonds)
-    {
-      addTerm(0, std::to_underlying(bond.type), bond.identifiers, bond.parameters);
-    }
-    for (const BendPotential& bend : potentials.bends)
-    {
-      addTerm(1, std::to_underlying(bend.type), bend.identifiers, bend.parameters);
-    }
-    for (const TorsionPotential& torsion : potentials.torsions)
-    {
-      addTerm(2, std::to_underlying(torsion.type), torsion.identifiers, torsion.parameters);
-    }
-    for (const TorsionPotential& torsion : potentials.improperTorsions)
-    {
-      addTerm(3, std::to_underlying(torsion.type), torsion.identifiers, torsion.parameters);
-    }
-    for (const VanDerWaalsPotential& pair : potentials.vanDerWaals)
-    {
-      const double values[2] = {pair.scaling * 4.0 * pair.parameters[0], pair.parameters[1] * pair.parameters[1]};
-      addTerm(4, std::to_underlying(pair.type), pair.identifiers, values);
-    }
-    for (const CoulombPotential& pair : potentials.coulombs)
-    {
-      const double values[1] = {pair.scaling * Units::CoulombicConversionFactor * pair.chargeA * pair.chargeB};
-      addTerm(5, std::to_underlying(pair.type), pair.identifiers, values);
-    }
-  }
-  atomTermStart.reserve(referencesPerAtom.size() + 1);
-  atomTermStart.push_back(0);
-  for (const std::vector<std::uint32_t>& references : referencesPerAtom)
-  {
-    atomTerms.insert(atomTerms.end(), references.begin(), references.end());
-    atomTermStart.push_back(static_cast<std::uint32_t>(atomTerms.size()));
-  }
-
-  molecules.reserve(system.moleculeData.size());
-  for (const Molecule& molecule : system.moleculeData)
-  {
-    molecules.push_back(MoleculeInfo{static_cast<std::uint32_t>(molecule.atomIndex),
-                                     static_cast<std::uint32_t>(molecule.numberOfAtoms),
-                                     componentAtomOffset[molecule.componentId], 0u});
-  }
-  masses.reserve(system.forceField.pseudoAtoms.size());
-  for (const auto& pseudoAtom : system.forceField.pseudoAtoms) masses.push_back(static_cast<float>(pseudoAtom.mass));
-  chargeSquaredSum = 0.0;
-  for (const Atom& atom : system.spanOfMoleculeAtoms()) chargeSquaredSum += atom.charge * atom.charge;
-
-  // blocking uploads (the shared queue; complete before the step's queue uses them)
-  auto upload = [&](OpenCLDevice::MemHandle& buffer, const auto& values)
-  {
-    using Value = typename std::remove_cvref_t<decltype(values)>::value_type;
-    const std::size_t bytes = std::max<std::size_t>(1, values.size()) * sizeof(Value);
-    buffer.reset(OpenCL::createBuffer(CL_MEM_READ_ONLY, bytes));
-    if (!values.empty()) OpenCL::writeBuffer(buffer.get(), values.size() * sizeof(Value), values.data());
-  };
-  upload(termsBuffer, terms);
-  upload(atomTermStartBuffer, atomTermStart);
-  upload(atomTermsBuffer, atomTerms);
-  upload(moleculeInfoBuffer, molecules);
-  upload(massBuffer, masses);
+  uploadTable(termsBuffer, topology.terms);
+  uploadTable(gradientOffsetBuffer, topology.gradientOffset);
+  uploadTable(atomGradientStartBuffer, topology.atomGradientStart);
+  uploadTable(atomGradientsBuffer, topology.atomGradients);
+  uploadTable(instanceMoleculeBuffer, topology.instanceMolecule);
+  uploadTable(moleculeInfoBuffer, topology.molecules);
+  uploadTable(massBuffer, topology.massOfAtom);
+  termGradientBuffer.reset(OpenCL::createBuffer(
+      CL_MEM_READ_WRITE, std::max<std::size_t>(1, topology.numberOfGradients) * 4 * sizeof(float)));
 }
 
 void OpenCLBonded::setParameters(double alpha, double factor, bool useCharge)
@@ -226,54 +103,35 @@ void OpenCLBonded::setAlpha(double alpha)
   parametersChanged = true;
 }
 
-void OpenCLBonded::setLayout(cl_command_queue queue, std::span<const std::uint32_t> slotOfSorted,
-                             std::span<const std::uint32_t> originalToSorted, std::size_t slots)
+void OpenCLBonded::setLayout(cl_command_queue queue, std::span<const std::uint32_t> slotMolecule)
 {
-  const std::size_t numberOfAtoms = originalToSorted.size();
-  slotMolecule.assign(slots, noAtom);
-  slotOfOriginal.assign(numberOfAtoms, noAtom);
-  referenceOfSorted.assign(numberOfAtoms, 0);
-  for (std::size_t m = 0; m < molecules.size(); ++m)
-  {
-    const MoleculeInfo& molecule = molecules[m];
-    const std::uint32_t reference = originalToSorted[molecule.firstAtom];
-    for (std::uint32_t b = 0; b < molecule.numberOfAtoms; ++b)
-    {
-      const std::uint32_t sorted = originalToSorted[molecule.firstAtom + b];
-      const std::uint32_t slot = slotOfSorted[sorted];
-      slotMolecule[slot] = (static_cast<std::uint32_t>(m) << 8) | b;
-      slotOfOriginal[molecule.firstAtom + b] = slot;
-      referenceOfSorted[sorted] = reference;
-    }
-  }
-  if (parameters.numberOfSlots != static_cast<std::uint32_t>(slots))
+  const std::size_t slots = slotMolecule.size();
+  atomGroups = roundUp(std::max<std::size_t>(slots, 1), groupSize) / groupSize;
+  const std::uint32_t atomPartialOffset = static_cast<std::uint32_t>(termGroups * termPartials);
+  if (parameters.numberOfSlots != static_cast<std::uint32_t>(slots) ||
+      parameters.atomPartialOffset != atomPartialOffset)
   {
     parameters.numberOfSlots = static_cast<std::uint32_t>(slots);
+    parameters.atomPartialOffset = atomPartialOffset;
     parametersChanged = true;
   }
 
   ensureCapacity(slotMoleculeBuffer, slotCapacity, slots, sizeof(std::uint32_t), CL_MEM_READ_ONLY);
-  ensureCapacity(slotOfOriginalBuffer, atomCapacity, numberOfAtoms, sizeof(std::uint32_t), CL_MEM_READ_ONLY);
-  groups = roundUp(std::max<std::size_t>(slots, 1), groupSize) / groupSize;
-  if (groups > partialCapacity)
+  // one buffer (one read-back) for the partials of both kernels
+  const std::size_t partials = termGroups * termPartials + atomGroups * atomPartials;
+  if (partials > partialCapacity)
   {
-    partialCapacity = groups + groups / 4 + 1;
-    partialBuffer.reset(OpenCL::createBuffer(CL_MEM_WRITE_ONLY, partialCapacity * partialsPerGroup * sizeof(float)));
+    partialCapacity = partials + partials / 4 + 1;
+    partialBuffer.reset(OpenCL::createBuffer(CL_MEM_WRITE_ONLY, partialCapacity * sizeof(float)));
   }
-  hostPartials.assign(groups * partialsPerGroup, 0.0f);
+  hostPartials.assign(partials, 0.0f);
 
   check(clEnqueueWriteBuffer(queue, slotMoleculeBuffer.get(), CL_FALSE, 0, slots * sizeof(std::uint32_t),
                              slotMolecule.data(), 0, nullptr, nullptr),
         "clEnqueueWriteBuffer (slot molecules)");
-  if (numberOfAtoms > 0)
-  {
-    check(clEnqueueWriteBuffer(queue, slotOfOriginalBuffer.get(), CL_FALSE, 0, numberOfAtoms * sizeof(std::uint32_t),
-                               slotOfOriginal.data(), 0, nullptr, nullptr),
-          "clEnqueueWriteBuffer (slot of atom)");
-  }
 }
 
-void OpenCLBonded::enqueue(cl_command_queue queue, cl_mem position, cl_mem relative, cl_mem typeOf, cl_mem force)
+void OpenCLBonded::enqueue(cl_command_queue queue, cl_mem relative, cl_mem force)
 {
   if (parametersChanged)
   {
@@ -282,23 +140,35 @@ void OpenCLBonded::enqueue(cl_command_queue queue, cl_mem position, cl_mem relat
                                nullptr),
           "clEnqueueWriteBuffer (bonded parameters)");
   }
-  const cl_mem buffers[13] = {position,
-                              relative,
-                              typeOf,
-                              slotMoleculeBuffer.get(),
-                              moleculeInfoBuffer.get(),
-                              slotOfOriginalBuffer.get(),
-                              atomTermStartBuffer.get(),
-                              atomTermsBuffer.get(),
-                              termsBuffer.get(),
-                              massBuffer.get(),
-                              parameterBuffer.get(),
-                              force,
-                              partialBuffer.get()};
-  OpenCLDevice::setBufferArguments(kernel.get(), buffers, "clSetKernelArg (bondedAtoms)");
-  const std::size_t global = groups * groupSize;
   const std::size_t local = groupSize;
-  check(clEnqueueNDRangeKernel(queue, kernel.get(), 1, nullptr, &global, &local, 0, nullptr, nullptr),
+  if (parameters.numberOfInstances > 0)
+  {
+    const cl_mem termBuffers[8] = {relative,
+                                   instanceMoleculeBuffer.get(),
+                                   moleculeInfoBuffer.get(),
+                                   termsBuffer.get(),
+                                   gradientOffsetBuffer.get(),
+                                   parameterBuffer.get(),
+                                   termGradientBuffer.get(),
+                                   partialBuffer.get()};
+    OpenCLDevice::setBufferArguments(termKernel.get(), termBuffers, "clSetKernelArg (bondedTerms)");
+    const std::size_t termGlobal = termGroups * groupSize;
+    check(clEnqueueNDRangeKernel(queue, termKernel.get(), 1, nullptr, &termGlobal, &local, 0, nullptr, nullptr),
+          "clEnqueueNDRangeKernel (bondedTerms)");
+  }
+  const cl_mem atomBuffers[10] = {relative,
+                                  slotMoleculeBuffer.get(),
+                                  moleculeInfoBuffer.get(),
+                                  massBuffer.get(),
+                                  atomGradientStartBuffer.get(),
+                                  atomGradientsBuffer.get(),
+                                  termGradientBuffer.get(),
+                                  parameterBuffer.get(),
+                                  force,
+                                  partialBuffer.get()};
+  OpenCLDevice::setBufferArguments(atomKernel.get(), atomBuffers, "clSetKernelArg (bondedAtoms)");
+  const std::size_t atomGlobal = atomGroups * groupSize;
+  check(clEnqueueNDRangeKernel(queue, atomKernel.get(), 1, nullptr, &atomGlobal, &local, 0, nullptr, nullptr),
         "clEnqueueNDRangeKernel (bondedAtoms)");
 }
 
@@ -309,13 +179,24 @@ void OpenCLBonded::enqueueRead(cl_command_queue queue, cl_event* event)
         "clEnqueueReadBuffer (bonded partials)");
 }
 
-OpenCLBonded::Results OpenCLBonded::collect() const
+DeviceBondedResults OpenCLBonded::collect() const
 {
-  double sums[partialsPerGroup] = {};
-  for (std::size_t g = 0; g < groups; ++g)
+  // the term partials (per kind) followed by the atom partials
+  double termSums[termPartials] = {};
+  if (parameters.numberOfInstances > 0)
   {
-    const float* partial = hostPartials.data() + g * partialsPerGroup;
-    for (std::size_t q = 0; q < partialsPerGroup; ++q) sums[q] += static_cast<double>(partial[q]);
+    for (std::size_t g = 0; g < termGroups; ++g)
+    {
+      const float* partial = hostPartials.data() + g * termPartials;
+      for (std::size_t q = 0; q < termPartials; ++q) termSums[q] += static_cast<double>(partial[q]);
+    }
+  }
+  double sums[atomPartials] = {};
+  const float* atomBase = hostPartials.data() + parameters.atomPartialOffset;
+  for (std::size_t g = 0; g < atomGroups; ++g)
+  {
+    const float* partial = atomBase + g * atomPartials;
+    for (std::size_t q = 0; q < atomPartials; ++q) sums[q] += static_cast<double>(partial[q]);
   }
   auto tensor = [&](std::size_t first) -> double3x3
   {
@@ -331,27 +212,28 @@ OpenCLBonded::Results OpenCLBonded::collect() const
     t.cz = sums[first + 8];
     return t;
   };
-  Results results{};
+  DeviceBondedResults results{};
   if (parameters.useCharge != 0)
   {
     results.self = -conversionFactor * alphaValue * std::numbers::inv_sqrtpi * chargeSquaredSum;
     results.exclusion = (sums[0] + sums[1]) - results.self;
   }
-  results.bond = sums[2];
-  results.bend = sums[3];
-  results.torsion = sums[4];
-  results.improperTorsion = sums[5];
-  results.exclusionStrain = tensor(6);
-  results.correction = tensor(15);
-  results.intraVDW = sums[24];
-  results.intraCoulomb = sums[25];
+  results.exclusionStrain = tensor(2);
+  results.correction = tensor(11);
+  results.bond = termSums[0];
+  results.bend = termSums[1];
+  results.torsion = termSums[2];
+  results.improperTorsion = termSums[3];
+  results.intraVDW = termSums[4];
+  results.intraCoulomb = termSums[5];
   return results;
 }
 
 std::string OpenCLBonded::status() const
 {
   return std::format(
-      "    bonded terms on the device: {} molecules, {} bonded and intramolecular pair terms over the components, "
-      "self and exclusion corrections, virial correction (single precision, positions relative to the molecule)\n",
-      molecules.size(), terms.size());
+      "    bonded terms on the device: {} molecules, {} bonded and intramolecular pair terms over the components "
+      "({} instances), self and exclusion corrections, virial correction (single precision, positions relative to "
+      "the molecule)\n",
+      numberOfMolecules, numberOfTerms, parameters.numberOfInstances);
 }

@@ -1,9 +1,11 @@
 module;
 
-module spatial_decomposition_opencl_pair_kernel;
+module spatial_decomposition_device_kernels;
 
-// OpenCL C (1.2) source of the device side of the cluster pair kernel: the list build, the pruning and the pair
-// evaluation. The pair kernel is the device transcription of the lane loop of ClusterPairKernel<float>::compute
+// Device source of the cluster pair kernel: the list build, the pruning and the pair evaluation. Written in the
+// kernel dialect of kernel_sources.ixx (the GLOBAL / LOCAL / KERNEL_GROUP_SIZE / FLOAT3 ... macros, defined by
+// the backend that compiles the source; OpenCL C 1.2 today), so that the physics has one source per backend
+// family. The pair kernel is the device transcription of the lane loop of ClusterPairKernel<float>::compute
 // (cluster_kernel.ixx), so that the two stay comparable line by line.
 //
 // Slots: the atoms in coarse-cell order (cells at least the list cutoff wide), Morton-sorted within a cell and
@@ -24,7 +26,7 @@ module spatial_decomposition_opencl_pair_kernel;
 // with the minimum image of the current cell (valid while cutoff + skin <= half the smallest perpendicular width,
 // which the cell list checks). The list build uses the translation of the stencil offset, and the minimum image
 // where the stencil wraps around a small axis.
-const char* const openclPairKernelSource = R"CLC(
+const char* const deviceKernelPairSource = R"CLC(
 #define CLUSTER_I 8
 #define CLUSTER_J 4
 #define GROUP_SIZE 32
@@ -63,7 +65,7 @@ typedef struct
   uint orthorhombic;
 } BuildParameters;
 
-inline float3 minimumImage(float3 dr, __constant const float* cell, __constant const float* inverseCell,
+DEVICE_FUNCTION float3 minimumImage(float3 dr, CONSTANT const float* cell, CONSTANT const float* inverseCell,
                            uint orthorhombic)
 {
   if (orthorhombic)
@@ -86,37 +88,37 @@ inline float3 minimumImage(float3 dr, __constant const float* cell, __constant c
 }
 
 // Bounding box of every j-cluster over its real atoms; w of the minimum is 1 when the cluster has real atoms.
-__kernel void clusterBounds(__global const float4* restrict buildPosition,  // x, y, z, molecule bits per slot
+KERNEL void clusterBounds(GLOBAL const float4* RESTRICT buildPosition,  // x, y, z, molecule bits per slot
                             const uint numberOfJClusters,
-                            __global float4* restrict clusterMin,
-                            __global float4* restrict clusterMax)
+                            GLOBAL float4* RESTRICT clusterMin,
+                            GLOBAL float4* RESTRICT clusterMax)
 {
-  const uint J = get_global_id(0);
+  const uint J = GLOBAL_ID();
   if (J >= numberOfJClusters) return;
-  float3 lo = (float3)(FLT_MAX, FLT_MAX, FLT_MAX);
-  float3 hi = (float3)(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+  float3 lo = FLOAT3(FLT_MAX, FLT_MAX, FLT_MAX);
+  float3 hi = FLOAT3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
   float real = 0.0f;
   for (uint b = 0; b < CLUSTER_J; ++b)
   {
     const float4 p = buildPosition[J * CLUSTER_J + b];
-    if (as_uint(p.w) != NO_ATOM)
+    if (AS_UINT(p.w) != NO_ATOM)
     {
       lo = fmin(lo, p.xyz);
       hi = fmax(hi, p.xyz);
       real = 1.0f;
     }
   }
-  clusterMin[J] = (float4)(lo, real);
-  clusterMax[J] = (float4)(hi, 0.0f);
+  clusterMin[J] = FLOAT4(lo, real);
+  clusterMax[J] = FLOAT4(hi, 0.0f);
 }
 
 // Writes the blocks found by the work-items of a round in order into the row of the work-group (the row keeps
 // its true count; blocks beyond the capacity are dropped, the host grows the rows and rebuilds).
-inline uint appendBlocks(__local uint* flags, uint id, uint J, uint mask, uint count, uint capacity,
-                         __global uint* restrict rowCluster, __global uint* restrict rowMask)
+DEVICE_FUNCTION uint appendBlocks(LOCAL uint* flags, uint id, uint J, uint mask, uint count, uint capacity,
+                         GLOBAL uint* RESTRICT rowCluster, GLOBAL uint* RESTRICT rowMask)
 {
   flags[id] = (mask != 0u) ? 1u : 0u;
-  barrier(CLK_LOCAL_MEM_FENCE);
+  LOCAL_BARRIER();
   uint before = 0u;
   uint all = 0u;
   for (uint k = 0; k < GROUP_SIZE; ++k)
@@ -130,7 +132,7 @@ inline uint appendBlocks(__local uint* flags, uint id, uint J, uint mask, uint c
     rowCluster[count + before] = J;
     rowMask[count + before] = mask;
   }
-  barrier(CLK_LOCAL_MEM_FENCE);
+  LOCAL_BARRIER();
   return count + all;
 }
 
@@ -138,29 +140,29 @@ inline uint appendBlocks(__local uint* flags, uint id, uint J, uint mask, uint c
 // cluster's cell (each neighbour cell once, also when the stencil wraps around a small axis); a work-item takes
 // one candidate per round, tests its bounding box and builds the 32-bit mask of the pairs within the list cutoff
 // between different molecules.
-__kernel __attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1)))
-void buildList(__global const float4* restrict buildPosition,
-               __global const uint* restrict cellSlotStart,     // first slot per coarse cell (cells + 1)
-               __global const uint* restrict cellOfCluster,     // coarse cell per i-cluster
-               __global const float4* restrict clusterMin,
-               __global const float4* restrict clusterMax,
-               __constant const BuildParameters* bp,
-               __global uint* restrict outerCluster,            // rows of blocksPerCluster
-               __global uint* restrict outerMask,
-               __global uint* restrict outerCount)
+KERNEL_GROUP_SIZE(GROUP_SIZE)
+void buildList(GLOBAL const float4* RESTRICT buildPosition,
+               GLOBAL const uint* RESTRICT cellSlotStart,     // first slot per coarse cell (cells + 1)
+               GLOBAL const uint* RESTRICT cellOfCluster,     // coarse cell per i-cluster
+               GLOBAL const float4* RESTRICT clusterMin,
+               GLOBAL const float4* RESTRICT clusterMax,
+               CONSTANT const BuildParameters* bp,
+               GLOBAL uint* RESTRICT outerCluster,            // rows of blocksPerCluster
+               GLOBAL uint* RESTRICT outerMask,
+               GLOBAL uint* RESTRICT outerCount)
 {
-  const uint I = get_group_id(0);
-  const uint id = get_local_id(0);
+  const uint I = GROUP_ID();
+  const uint id = LOCAL_ID();
   const uint capacity = bp->blocksPerCluster;
-  __global uint* restrict rowCluster = outerCluster + I * capacity;
-  __global uint* restrict rowMask = outerMask + I * capacity;
+  GLOBAL uint* RESTRICT rowCluster = outerCluster + I * capacity;
+  GLOBAL uint* RESTRICT rowMask = outerMask + I * capacity;
 
-  __local float4 pi[CLUSTER_I];
-  __local uint stencilCell[STENCIL];
-  __local float4 stencilShift[STENCIL];  // translation of the neighbour cell; w != 0: image not fixed (minimum image)
-  __local uint stencilFirst[STENCIL];    // first candidate index of the neighbour cell
-  __local uint totalCandidates;
-  __local uint flags[GROUP_SIZE];
+  LOCAL float4 pi[CLUSTER_I];
+  LOCAL uint stencilCell[STENCIL];
+  LOCAL float4 stencilShift[STENCIL];  // translation of the neighbour cell; w != 0: image not fixed (minimum image)
+  LOCAL uint stencilFirst[STENCIL];    // first candidate index of the neighbour cell
+  LOCAL uint totalCandidates;
+  LOCAL uint flags[GROUP_SIZE];
 
   const float4 min0 = clusterMin[2 * I];
   const float4 min1 = clusterMin[2 * I + 1];
@@ -209,7 +211,7 @@ void buildList(__global const float4* restrict buildPosition,
     stencilShift[id] = shift;
     stencilFirst[id] = first ? (cellSlotStart[n + 1] - cellSlotStart[n]) / CLUSTER_J : 0u;
   }
-  barrier(CLK_LOCAL_MEM_FENCE);
+  LOCAL_BARRIER();
   if (id == 0)
   {
     uint sum = 0u;
@@ -221,7 +223,7 @@ void buildList(__global const float4* restrict buildPosition,
     }
     totalCandidates = sum;
   }
-  barrier(CLK_LOCAL_MEM_FENCE);
+  LOCAL_BARRIER();
   const uint total = totalCandidates;
 
   uint count = 0u;
@@ -244,7 +246,7 @@ void buildList(__global const float4* restrict buildPosition,
         // distance between the bounding boxes, with the translation applied to the j box
         const float3 minJ = lo.xyz + shift.xyz;
         const float3 maxJ = clusterMax[J].xyz + shift.xyz;
-        const float3 gap = fmax(fmax((float3)(0.0f, 0.0f, 0.0f), minI - maxJ), minJ - maxI);
+        const float3 gap = fmax(fmax(FLOAT3(0.0f, 0.0f, 0.0f), minI - maxJ), minJ - maxI);
         candidate = dot(gap, gap) < listCutoffSquared;
       }
       if (candidate)
@@ -252,12 +254,12 @@ void buildList(__global const float4* restrict buildPosition,
         for (uint b = 0; b < CLUSTER_J; ++b)
         {
           const float4 pj = buildPosition[J * CLUSTER_J + b];
-          const uint moleculeJ = as_uint(pj.w);
+          const uint moleculeJ = AS_UINT(pj.w);
           if (moleculeJ == NO_ATOM) continue;
           for (uint a = 0; a < CLUSTER_I; ++a)
           {
             const float4 pa = pi[a];
-            const uint moleculeI = as_uint(pa.w);
+            const uint moleculeI = AS_UINT(pa.w);
             if (moleculeI == NO_ATOM || moleculeI == moleculeJ) continue;
             float3 dr = pa.xyz - pj.xyz - shift.xyz;
             if (ambiguous) dr = minimumImage(dr, bp->cell, bp->inverseCell, bp->orthorhombic);
@@ -275,27 +277,30 @@ void buildList(__global const float4* restrict buildPosition,
 // a = id / 4, b = id % 4, collects the j-clusters J of the listed pairs (8 I + a, 4 J + b) within the inner cutoff
 // into its own lane list (layout [I][k][lane], so that the 32 lanes read consecutive words). The count is exact;
 // entries beyond the lane capacity are dropped and the host grows the lists and compacts again.
-__kernel __attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1)))
-void compactList(__global const float4* restrict position,
-                 __global const uint* restrict outerCluster,
-                 __global const uint* restrict outerMask,
-                 __global const uint* restrict outerCount,
-                 __constant const Parameters* p,
-                 __global uint* restrict pairList,
-                 __global uint* restrict laneCount)
+KERNEL_GROUP_SIZE(GROUP_SIZE)
+void compactList(GLOBAL const float4* RESTRICT position,
+                 GLOBAL const uint* RESTRICT outerCluster,
+                 GLOBAL const uint* RESTRICT outerMask,
+                 GLOBAL const uint* RESTRICT outerCount,
+                 CONSTANT const Parameters* p,
+                 GLOBAL uint* RESTRICT pairList,
+                 GLOBAL uint* RESTRICT laneCount)
 {
-  const uint I = get_group_id(0);
-  const uint id = get_local_id(0);
+  const uint I = GROUP_ID();
+  const uint id = LOCAL_ID();
   const uint a = id >> 2;
   const uint b = id & 3u;
   const uint capacity = p->blocksPerCluster;
   const uint laneCapacity = p->pairsPerLane;
-  __global const uint* restrict rowCluster = outerCluster + I * capacity;
-  __global const uint* restrict rowMask = outerMask + I * capacity;
-  __global uint* restrict lane = pairList + (size_t)I * laneCapacity * GROUP_SIZE + id;
+  GLOBAL const uint* RESTRICT rowCluster = outerCluster + I * capacity;
+  GLOBAL const uint* RESTRICT rowMask = outerMask + I * capacity;
+  GLOBAL uint* RESTRICT lane = pairList + (size_t)I * laneCapacity * GROUP_SIZE + id;
   const float3 pi = position[I * CLUSTER_I + a].xyz;
   const uint laneBit = 1u << id;
   const float innerCutoffSquared = p->innerCutoffSquared;
+  const uint orthorhombic = p->orthorhombic;
+  const float ax = p->cell[0], ay = p->cell[4], az = p->cell[8];
+  const float iax = p->inverseCell[0], iay = p->inverseCell[4], iaz = p->inverseCell[8];
 
   const uint total = outerCount[I];
   uint count = 0u;
@@ -304,7 +309,17 @@ void compactList(__global const float4* restrict position,
     const uint mask = rowMask[q];
     if ((mask & laneBit) == 0u) continue;
     const uint J = rowCluster[q];
-    const float3 dr = minimumImage(pi - position[J * CLUSTER_J + b].xyz, p->cell, p->inverseCell, p->orthorhombic);
+    float3 dr = pi - position[J * CLUSTER_J + b].xyz;
+    if (orthorhombic)
+    {
+      dr.x -= ax * rint(dr.x * iax);
+      dr.y -= ay * rint(dr.y * iay);
+      dr.z -= az * rint(dr.z * iaz);
+    }
+    else
+    {
+      dr = minimumImage(dr, p->cell, p->inverseCell, 0u);
+    }
     if (dot(dr, dr) < innerCutoffSquared)
     {
       if (count < laneCapacity) lane[count * GROUP_SIZE] = J;
@@ -318,30 +333,30 @@ void compactList(__global const float4* restrict position,
 // (8 I + a, 4 J + b) of its lane list. Every trip of the loop evaluates a listed pair (the lanes idle only beyond
 // their own count, up to the longest lane of the group). Energies and the strain derivative sum
 // g_ij (x) (x_i - x_j) are accumulated per work-item and reduced per work-group.
-__kernel __attribute__((reqd_work_group_size(GROUP_SIZE, 1, 1)))
-void clusterPairs(__global const float4* restrict position,      // x, y, z, q per slot (wrapped positions)
-                  __global const uint* restrict typeOf,          // pseudo-atom type per slot
-                  __global const uint* restrict pairList,        // lane lists [I][k][lane] of j-clusters
-                  __global const uint* restrict laneCount,       // entries per lane
-                  __global const float* restrict lennardJones,   // per type pair: 4 epsilon, sigma^6, shift
-                  __constant const Parameters* p,
-                  __global float4* restrict force,               // gradient per slot
-                  __global float* restrict partials)             // per i-cluster: eVDW, eCharge, 9 strain terms
+KERNEL_GROUP_SIZE(GROUP_SIZE)
+void clusterPairs(GLOBAL const float4* RESTRICT position,      // x, y, z, q per slot (wrapped positions)
+                  GLOBAL const uint* RESTRICT typeOf,          // pseudo-atom type per slot
+                  GLOBAL const uint* RESTRICT pairList,        // lane lists [I][k][lane] of j-clusters
+                  GLOBAL const uint* RESTRICT laneCount,       // entries per lane
+                  GLOBAL const float4* RESTRICT lennardJones,  // per type pair: 4 epsilon, sigma^6, shift, 0
+                  CONSTANT const Parameters* p,
+                  GLOBAL float4* RESTRICT force,               // gradient per slot
+                  GLOBAL float* RESTRICT partials)             // per i-cluster: eVDW, eCharge, 9 strain terms
 {
-  const uint I = get_group_id(0);
-  const uint id = get_local_id(0);
+  const uint I = GROUP_ID();
+  const uint id = LOCAL_ID();
   const uint a = id >> 2;
   const uint b = id & 3u;
   const uint i = I * CLUSTER_I + a;
   const float4 pi = position[i];
   const uint rowOffset = typeOf[i] * p->numberOfTypes;
   const uint laneCapacity = p->pairsPerLane;
-  __global const uint* restrict lane = pairList + (size_t)I * laneCapacity * GROUP_SIZE + id;
+  GLOBAL const uint* RESTRICT lane = pairList + (size_t)I * laneCapacity * GROUP_SIZE + id;
 
-  __local uint counts[GROUP_SIZE];
+  LOCAL uint counts[GROUP_SIZE];
   const uint n = min(laneCount[I * GROUP_SIZE + id], laneCapacity);
   counts[id] = n;
-  barrier(CLK_LOCAL_MEM_FENCE);
+  LOCAL_BARRIER();
   uint end = 0u;
   for (uint k = 0; k < GROUP_SIZE; ++k) end = max(end, counts[k]);
 
@@ -352,6 +367,9 @@ void clusterPairs(__global const float4* restrict position,      // x, y, z, q p
   const float alphaOverSqrtPi = p->alphaOverSqrtPi;
   const float coulombFactor = p->coulombFactor;
   const uint useCharge = p->useCharge;
+  const uint orthorhombic = p->orthorhombic;
+  const float ax = p->cell[0], ay = p->cell[4], az = p->cell[8];
+  const float iax = p->inverseCell[0], iay = p->inverseCell[4], iaz = p->inverseCell[8];
 
   // Abramowitz-Stegun 7.1.26: erfc(x) = t (a1 + t (a2 + t (a3 + t (a4 + t a5)))) exp(-x^2), t = 1 / (1 + p x)
   const float asP = 0.3275911f;
@@ -362,68 +380,94 @@ void clusterPairs(__global const float4* restrict position,      // x, y, z, q p
   const float asA5 = 1.061405429f;
   const float minimumRR = 1e-4f;
 
-  float3 fi = (float3)(0.0f, 0.0f, 0.0f);
+  float3 fi = FLOAT3(0.0f, 0.0f, 0.0f);
   float eVDW = 0.0f;
   float eCharge = 0.0f;
   float sxx = 0.0f, syx = 0.0f, szx = 0.0f, sxy = 0.0f, syy = 0.0f, szy = 0.0f, sxz = 0.0f, syz = 0.0f, szz = 0.0f;
 
-  for (uint k = 0; k < end; ++k)
-  {
-    const bool active = k < n;
-    const uint J = active ? lane[k * GROUP_SIZE] : 0u;
-    const uint j = J * CLUSTER_J + b;
-    const float4 pj = position[j];
-    const float inList = active ? 1.0f : 0.0f;
-
-    float3 dr = pi.xyz - pj.xyz;
-    dr = minimumImage(dr, p->cell, p->inverseCell, p->orthorhombic);
-    const float rr = dot(dr, dr);
-    const float rrSafe = fmax(rr, minimumRR);
-    const float invRR = 1.0f / rrSafe;
-
-    const uint t = 3u * (rowOffset + typeOf[j]);
-    const float e4 = lennardJones[t];
-    const float s6 = lennardJones[t + 1];
-    const float sh = lennardJones[t + 2];
-    const float maskVDW = (rr < cutOffVDWSquared) ? inList : 0.0f;
-    const float invRR3 = invRR * invRR * invRR;
-    const float rri3 = s6 * invRR3;
-    const float rri6 = rri3 * rri3;
-    eVDW += maskVDW * (e4 * (rri6 - rri3) - sh);
-    float factor = maskVDW * (12.0f * e4 * rri3 * (0.5f - rri3) * invRR);
-
-    if (useCharge)
-    {
-      const float qq = pi.w * pj.w;
-      const float maskCharge = (rr < cutOffChargeSquared && qq != 0.0f) ? inList : 0.0f;
-      const float r = sqrt(rrSafe);
-      const float invR = r * invRR;
-      const float tt = 1.0f / (1.0f + asP * alpha * r);
-      const float gauss = exp(-(alphaSquared * rrSafe));
-      const float erfcValue = tt * (asA1 + tt * (asA2 + tt * (asA3 + tt * (asA4 + tt * asA5)))) * gauss;
-      const float u = erfcValue * invR;
-      const float dudrr = -((alphaOverSqrtPi * gauss + 0.5f * erfcValue * invR) * invRR);
-      const float prefactor = coulombFactor * (maskCharge * qq);
-      eCharge += prefactor * u;
-      factor += 2.0f * (prefactor * dudrr);
-    }
-
-    const float3 g = factor * dr;
-    fi += g;
-    sxx += g.x * dr.x;
-    syx += g.y * dr.x;
-    szx += g.z * dr.x;
-    sxy += g.x * dr.y;
-    syy += g.y * dr.y;
-    szy += g.z * dr.y;
-    sxz += g.x * dr.z;
-    syz += g.y * dr.z;
-    szz += g.z * dr.z;
+  // one listed pair: the Lennard-Jones and real-space Ewald terms with the i-side gradient and the strain
+  // derivative accumulated; `inList` is 0 when this lane is past its own count (padded to the longest lane)
+#define PAIR_TERM(pj, lj, inList)                                                                             \
+  {                                                                                                           \
+    float3 dr = pi.xyz - (pj).xyz;                                                                            \
+    if (orthorhombic)                                                                                         \
+    {                                                                                                         \
+      dr.x -= ax * rint(dr.x * iax);                                                                          \
+      dr.y -= ay * rint(dr.y * iay);                                                                          \
+      dr.z -= az * rint(dr.z * iaz);                                                                          \
+    }                                                                                                         \
+    else                                                                                                      \
+    {                                                                                                         \
+      dr = minimumImage(dr, p->cell, p->inverseCell, 0u);                                                     \
+    }                                                                                                         \
+    const float rr = dot(dr, dr);                                                                             \
+    const float rrSafe = fmax(rr, minimumRR);                                                                 \
+    const float invRR = 1.0f / rrSafe;                                                                        \
+    const float maskVDW = (rr < cutOffVDWSquared) ? (inList) : 0.0f;                                          \
+    const float invRR3 = invRR * invRR * invRR;                                                               \
+    const float rri3 = (lj).y * invRR3;                                                                       \
+    const float rri6 = rri3 * rri3;                                                                           \
+    eVDW += maskVDW * ((lj).x * (rri6 - rri3) - (lj).z);                                                      \
+    float factor = maskVDW * (12.0f * (lj).x * rri3 * (0.5f - rri3) * invRR);                                 \
+    if (useCharge)                                                                                            \
+    {                                                                                                         \
+      const float qq = pi.w * (pj).w;                                                                         \
+      const float maskCharge = (rr < cutOffChargeSquared && qq != 0.0f) ? (inList) : 0.0f;                    \
+      const float r = sqrt(rrSafe);                                                                           \
+      const float invR = r * invRR;                                                                           \
+      const float tt = 1.0f / (1.0f + asP * alpha * r);                                                       \
+      const float gauss = exp(-(alphaSquared * rrSafe));                                                      \
+      const float erfcValue = tt * (asA1 + tt * (asA2 + tt * (asA3 + tt * (asA4 + tt * asA5)))) * gauss;      \
+      const float u = erfcValue * invR;                                                                       \
+      const float dudrr = -((alphaOverSqrtPi * gauss + 0.5f * erfcValue * invR) * invRR);                     \
+      const float prefactor = coulombFactor * (maskCharge * qq);                                              \
+      eCharge += prefactor * u;                                                                               \
+      factor += 2.0f * (prefactor * dudrr);                                                                   \
+    }                                                                                                         \
+    const float3 g = factor * dr;                                                                             \
+    fi += g;                                                                                                  \
+    sxx += g.x * dr.x;                                                                                        \
+    syx += g.y * dr.x;                                                                                        \
+    szx += g.z * dr.x;                                                                                        \
+    sxy += g.x * dr.y;                                                                                        \
+    syy += g.y * dr.y;                                                                                        \
+    szy += g.z * dr.y;                                                                                        \
+    sxz += g.x * dr.z;                                                                                        \
+    syz += g.y * dr.z;                                                                                        \
+    szz += g.z * dr.z;                                                                                        \
   }
 
+  // two listed pairs per iteration: the j-slot loads of the second are in flight while the first is evaluated
+  const uint endPairs = end & ~1u;
+  for (uint k = 0; k < endPairs; k += 2)
+  {
+    const bool active0 = k < n;
+    const bool active1 = (k + 1u) < n;
+    const uint J0 = active0 ? lane[k * GROUP_SIZE] : 0u;
+    const uint J1 = active1 ? lane[(k + 1u) * GROUP_SIZE] : 0u;
+    const uint j0 = J0 * CLUSTER_J + b;
+    const uint j1 = J1 * CLUSTER_J + b;
+    const float4 pj0 = position[j0];
+    const float4 pj1 = position[j1];
+    const float4 lj0 = lennardJones[rowOffset + typeOf[j0]];
+    const float4 lj1 = lennardJones[rowOffset + typeOf[j1]];
+    PAIR_TERM(pj0, lj0, active0 ? 1.0f : 0.0f)
+    PAIR_TERM(pj1, lj1, active1 ? 1.0f : 0.0f)
+  }
+  if (endPairs < end)
+  {
+    const bool active = endPairs < n;
+    const uint J = active ? lane[endPairs * GROUP_SIZE] : 0u;
+    const uint j = J * CLUSTER_J + b;
+    const float4 pj = position[j];
+    const float4 lj = lennardJones[rowOffset + typeOf[j]];
+    PAIR_TERM(pj, lj, active ? 1.0f : 0.0f)
+  }
+#undef PAIR_TERM
+
   // the force on atom i: the four j-lane partial sums of its row
-  __local float3 rowForce[GROUP_SIZE];
-  __local float acc[PARTIALS][GROUP_SIZE];
+  LOCAL float3 rowForce[GROUP_SIZE];
+  LOCAL float acc[PARTIALS][GROUP_SIZE];
   rowForce[id] = fi;
   acc[0][id] = eVDW;
   acc[1][id] = eCharge;
@@ -436,11 +480,11 @@ void clusterPairs(__global const float4* restrict position,      // x, y, z, q p
   acc[8][id] = sxz;
   acc[9][id] = syz;
   acc[10][id] = szz;
-  barrier(CLK_LOCAL_MEM_FENCE);
+  LOCAL_BARRIER();
   if (b == 0)
   {
     const float3 f = rowForce[id] + rowForce[id + 1] + rowForce[id + 2] + rowForce[id + 3];
-    force[i] = (float4)(f.x, f.y, f.z, 0.0f);
+    force[i] = FLOAT4(f.x, f.y, f.z, 0.0f);
   }
   if (id < PARTIALS)
   {

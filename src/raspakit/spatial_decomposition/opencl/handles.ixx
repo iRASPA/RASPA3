@@ -92,6 +92,19 @@ inline ProgramHandle buildProgram(cl_context context, cl_device_id device, const
   return program;
 }
 
+/// The OpenCL C definitions of the kernel dialect (see spatial_decomposition_device_kernels), prepended to the
+/// shared kernel sources (dialect_source.cpp).
+extern const char* const openclKernelDialect;
+
+/// Compiles a shared kernel source (spatial_decomposition_device_kernels) for `device`: the dialect header
+/// followed by `kernelSource`.
+inline ProgramHandle buildDeviceProgram(cl_context context, cl_device_id device, const char* kernelSource,
+                                        const char* options, std::string_view who)
+{
+  const std::string source = std::string(openclKernelDialect) + kernelSource;
+  return buildProgram(context, device, source.c_str(), options, who);
+}
+
 inline KernelHandle createKernel(cl_program program, const char* name)
 {
   cl_int error = CL_SUCCESS;

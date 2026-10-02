@@ -18,9 +18,7 @@ import double3x3;
 import int3;
 import simulationbox;
 import spatial_decomposition_opencl_handles;
-
-/// The OpenCL C source of the mesh kernels (mesh_kernel_source.cpp).
-extern const char* const openclMeshKernelSource;
+import spatial_decomposition_device_kernels;
 
 /**
  * \brief The particle-mesh Ewald sum (PPPM) on the OpenCL device, over the slots of the pair kernel.
@@ -35,7 +33,8 @@ extern const char* const openclMeshKernelSource;
  * strain derivative and the single-ion sums of the net-charge correction are reduced per work-group on the device
  * and summed in double on the host.
  *
- * Owned by OpenCLPairKernel, which provides the queue and the position / force buffers; the chain is enqueued
+ * The kernels are the shared mesh_kernel_source.cpp (device/) compiled with the OpenCL dialect header. Owned by
+ * OpenCLBackend, which provides the queue and the position / force buffers; the chain is enqueued
  * after the pair kernel of the step (the interpolation adds to the pair forces).
  */
 export class OpenCLMesh
@@ -100,7 +99,8 @@ export class OpenCLMesh
   struct AxisPlan
   {
     std::uint32_t N{0}, localLength{0}, radixCode{0}, stages{0};
-    std::uint32_t axisStride{0}, lineStride{0}, innerCount{0}, outerStride{0}, tile{1}, tilesPerOuter{1};
+    std::uint32_t axisStride{0}, lineStride{0}, innerCount{0}, outerStride{0}, tile{1}, tileShift{0};
+    std::uint32_t tilesPerOuter{1};  // the tile (lines per work-group) is 2^tileShift
     std::size_t groups{0}, groupSize{64};
     OpenCLDevice::MemHandle twiddle{};
   };

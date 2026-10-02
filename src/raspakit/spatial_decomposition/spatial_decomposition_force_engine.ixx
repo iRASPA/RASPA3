@@ -13,8 +13,7 @@ import spatial_decomposition_cell_list;
 import spatial_decomposition_pppm;
 import spatial_decomposition_pair_kernel;
 import spatial_decomposition_cluster_kernel;
-import spatial_decomposition_opencl_pair_kernel;
-import spatial_decomposition_opencl_bonded;
+import spatial_decomposition_device_step;
 import spatial_decomposition_worker_team;
 
 /**
@@ -80,6 +79,7 @@ export class SpatialDecompositionForceEngine
     std::chrono::duration<double> total{};
     std::chrono::duration<double> rebuild{};
     std::chrono::duration<double> influence{};  ///< influence-function recomputation after a cell change (NPT)
+    std::chrono::duration<double> pack{};       ///< device pairs: staging of the positions for the device (all threads)
     std::chrono::duration<double> pairs{};
     std::chrono::duration<double> mesh{};
     std::chrono::duration<double> bonded{};
@@ -153,13 +153,13 @@ export class SpatialDecompositionForceEngine
   EwaldRealSpaceTable ewaldTable{};
   ClusterPairKernel<double> clusterKernelDouble{};
   ClusterPairKernel<float> clusterKernelMixed{};
-  // the pairs on the OpenCL device (settings.pairDevice == OpenCL): the device builds its own list from the cell
-  // binning, the per-domain Verlet lists and ghost images are not built, and the device work overlaps with the
-  // mesh and bonded phases of the threads
+  // the pairs on a device (settings.pairDevice != CPU): the device builds its own list from the cell binning, the
+  // per-domain Verlet lists and ghost images are not built, and the device work overlaps with the mesh and bonded
+  // phases of the threads
   bool deviceKernel{false};
-  OpenCLPairKernel devicePairs{};
+  DeviceStep devicePairs{};
   // with the device pairs: the mesh (settings.deviceMesh) and the per-molecule terms (settings.deviceBonded, when
-  // OpenCLBonded covers the system's intramolecular potentials) run on the device as well; the device results of
+  // the device bonded kernels cover the system's intramolecular potentials) run on the device as well; the device results of
   // the mesh that computeGradients needs after the step
   bool deviceMesh{false};
   bool deviceBonded{false};

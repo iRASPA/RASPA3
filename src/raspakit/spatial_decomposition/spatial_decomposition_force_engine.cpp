@@ -28,8 +28,7 @@ import spatial_decomposition_cell_list;
 import spatial_decomposition_pppm;
 import spatial_decomposition_pair_kernel;
 import spatial_decomposition_cluster_kernel;
-import spatial_decomposition_opencl_pair_kernel;
-import spatial_decomposition_opencl_bonded;
+import spatial_decomposition_device_step;
 import spatial_decomposition_worker_team;
 
 SpatialDecompositionForceEngine::SpatialDecompositionForceEngine(const SpatialDecompositionSettings& s) : settings(s)
@@ -121,7 +120,7 @@ void SpatialDecompositionForceEngine::initialize(System& system)
   cellList.setup(system.simulationBox, cutoff, settings.verletSkin, settings.numberOfThreads, settings.domainGrid);
   team = std::make_unique<WorkerTeam>(settings.numberOfThreads);
 
-  deviceKernel = settings.pairDevice == PairDevice::OpenCL;
+  deviceKernel = settings.pairDevice != PairDevice::CPU;
   useMesh = forceField.usesEwaldFourier();
   deviceMesh = deviceKernel && useMesh && settings.deviceMesh;
   if (useMesh && !deviceMesh)
@@ -141,12 +140,13 @@ void SpatialDecompositionForceEngine::initialize(System& system)
   deviceBondedFallback.clear();
   if (deviceKernel)
   {
-    if (!OpenCLPairKernel::available())
+    if (!DeviceStep::available(settings.pairDevice))
     {
-      throw std::runtime_error(
-          "[Spatial decomposition]: 'PairDevice' is 'OpenCL' but no OpenCL device is available on this machine\n");
+      throw std::runtime_error(std::format(
+          "[Spatial decomposition]: 'PairDevice' is '{}' but no {} device is available on this machine\n",
+          pairDeviceName(settings.pairDevice), pairDeviceName(settings.pairDevice)));
     }
-    devicePairs.initialize();
+    devicePairs.initialize(settings.pairDevice);
   }
   prepareKernel(system);
   if (deviceKernel && !fastKernel)
@@ -162,7 +162,7 @@ void SpatialDecompositionForceEngine::initialize(System& system)
   }
   if (deviceKernel && settings.deviceBonded)
   {
-    if (OpenCLBonded::supports(system, deviceBondedFallback))
+    if (DeviceStep::supportsBonded(system, deviceBondedFallback))
     {
       devicePairs.enableBonded(system, forceField.EwaldAlpha, Units::CoulombicConversionFactor,
                                forceField.useCharge && useMesh);
@@ -413,6 +413,7 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
           });
     }
   }
+  lap(timing.rebuild);
   // phase 1b (device pairs): thread 0 waits for a new list on the device while every thread stages the wrapped
   // positions of its owned atoms for the device
   if (deviceKernel)
@@ -423,8 +424,8 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
           if (thread == 0 && rebuild) devicePairs.finishBuild();
           devicePairs.packPositions(thread, cellList.domains[thread].ownedAtoms, cellList, box);
         });
+    lap(timing.pack);
   }
-  lap(timing.rebuild);
 
   // phase 2: gather the compact positions (owned atoms and shifted ghost images), short-range pairs of the owned
   // atoms and, with the mesh, charge spreading into the private sub-box buffer of the thread
@@ -476,7 +477,7 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
   {
     if (!deviceKernel || thread != 0) return;
     const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-    const OpenCLPairKernel::Results results = devicePairs.wait();
+    const DeviceStep::Results results = devicePairs.wait();
     energy.moleculeMoleculeVDW += results.energyVDW;
     energy.moleculeMoleculeCharge += results.energyCharge;
     if (virialRequested) threadStrain[0] += results.pairStrain;
@@ -986,6 +987,17 @@ void SpatialDecompositionForceEngine::bondedWork(System& system)
 void SpatialDecompositionForceEngine::scatterPhase(std::size_t thread, System& system)
 {
   const CellList::DomainLists& domain = cellList.domains[thread];
+  std::span<AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
+  if (deviceKernel && deviceBonded)
+  {
+    // the device forces are the complete gradients (pairs, mesh, exclusions, bonded terms) and the device did
+    // the virial correction
+    for (const std::uint32_t i : domain.ownedAtoms)
+    {
+      dynamics[cellList.sortedToOriginal[i]].gradient = devicePairs.force(i);
+    }
+    return;
+  }
   if (deviceKernel)
   {
     // the pair gradients of the owned atoms from the device (the mesh gradients are added below)
@@ -1003,17 +1015,7 @@ void SpatialDecompositionForceEngine::scatterPhase(std::size_t thread, System& s
                      cellList.scalingCoulomb.data(), fx.data(), fy.data(), fz.data());
   }
   std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
-  std::span<AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
-  if (deviceBonded)
-  {
-    // the device forces are the complete gradients (pairs, mesh, exclusions, bonded terms) and the device did
-    // the virial correction
-    for (const std::uint32_t i : domain.ownedAtoms)
-    {
-      dynamics[cellList.sortedToOriginal[i]].gradient = double3(fx[i], fy[i], fz[i]);
-    }
-  }
-  else if (virialRequested)
+  if (virialRequested)
   {
     double3x3 correction{};
     for (const std::uint32_t i : domain.ownedAtoms)
@@ -1189,9 +1191,11 @@ std::string SpatialDecompositionForceEngine::writeTimings() const
     }
     result += std::format("    wait for the device:      {:14.4f} [s] (idle time of thread 0 after the host work)\n",
                           timing.deviceWait.count());
-    result +=
-        std::format("    {:<30}{:14.4f} [s]\n",
-                    (useMesh && !deviceMesh) ? "list staging + spreading:" : "list staging:", timing.pairs.count());
+    result += std::format("    position staging:         {:14.4f} [s] (packing by all threads, wait for a new list)\n",
+                          timing.pack.count());
+    result += std::format("    {:<30}{:14.4f} [s] (thread 0; includes the timing samples)\n",
+                          (useMesh && !deviceMesh) ? "device enqueue + spreading:" : "device enqueue:",
+                          timing.pairs.count());
   }
   else
   {

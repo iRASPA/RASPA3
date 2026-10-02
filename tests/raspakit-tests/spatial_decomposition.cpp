@@ -35,7 +35,7 @@ import spatial_decomposition_pair_kernel;
 import spatial_decomposition_worker_team;
 import spatial_decomposition_force_engine;
 import force_engine;
-import spatial_decomposition_opencl_pair_kernel;
+import spatial_decomposition_device_step;
 
 namespace
 {
@@ -666,7 +666,7 @@ TEST(spatial_decomposition, engine_mixed_precision_agrees_with_double_rigid_wate
 
 TEST(spatial_decomposition, engine_opencl_pair_kernel_agrees_with_double_rigid_water)
 {
-  if (!OpenCLPairKernel::available()) GTEST_SKIP() << "no OpenCL device";
+  if (!DeviceStep::available(PairDevice::OpenCL)) GTEST_SKIP() << "no OpenCL device";
   // the device kernel: single-precision pair geometry with the minimum image of wrapped positions, closed-form
   // erfc, single-precision accumulation of the per-atom forces and per-cluster partial sums
   SpatialDecompositionSettings settings = settingsFor(1);
@@ -679,7 +679,7 @@ TEST(spatial_decomposition, engine_opencl_pair_kernel_agrees_with_double_rigid_w
 
 TEST(spatial_decomposition, engine_opencl_pair_kernel_without_pruning_rigid_water)
 {
-  if (!OpenCLPairKernel::available()) GTEST_SKIP() << "no OpenCL device";
+  if (!DeviceStep::available(PairDevice::OpenCL)) GTEST_SKIP() << "no OpenCL device";
   // no pruning: the lane lists hold the whole outer list (cutoff + Verlet skin), compacted once per build
   SpatialDecompositionSettings settings = settingsFor(1);
   settings.pairDevice = PairDevice::OpenCL;
@@ -692,7 +692,7 @@ TEST(spatial_decomposition, engine_opencl_pair_kernel_without_pruning_rigid_wate
 
 TEST(spatial_decomposition, engine_opencl_mesh_and_molecular_terms_agree_with_double_rigid_water)
 {
-  if (!OpenCLPairKernel::available()) GTEST_SKIP() << "no OpenCL device";
+  if (!DeviceStep::available(PairDevice::OpenCL)) GTEST_SKIP() << "no OpenCL device";
   // the complete device step: pairs, PPPM (fixed-point spreading, single-precision FFT and influence function,
   // gather interpolation) and the molecular terms (self + exclusion without their cancellation, virial correction).
   // Measured: Fourier energy 1e-6, self + exclusion sum 2e-7, total energy 3.4e-6, gradient rms 2.5e-6, pressure
@@ -710,7 +710,7 @@ TEST(spatial_decomposition, engine_opencl_mesh_and_molecular_terms_agree_with_do
 
 TEST(spatial_decomposition, engine_opencl_pair_kernel_small_grid_rigid_water)
 {
-  if (!OpenCLPairKernel::available()) GTEST_SKIP() << "no OpenCL device";
+  if (!DeviceStep::available(PairDevice::OpenCL)) GTEST_SKIP() << "no OpenCL device";
   // cutoff + skin = half the box: the device grid has 2 cells per axis, every neighbour cell is reached through
   // several stencil offsets and the list build takes the minimum image (the outer list then holds every pair)
   SpatialDecompositionSettings settings = settingsFor(1, 6.0);
@@ -794,7 +794,7 @@ TEST(spatial_decomposition, engine_matches_exact_ewald_flexible_chains_triclinic
   }
 
   // the device pairs in the triclinic cell (general minimum image in the list build, pruning and pair kernel)
-  if (OpenCLPairKernel::available())
+  if (DeviceStep::available(PairDevice::OpenCL))
   {
     SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
     settings.pairDevice = PairDevice::OpenCL;
@@ -865,7 +865,7 @@ System makeChainSystem(bool withBondBond, RandomNumber& random)
 
 TEST(spatial_decomposition, engine_opencl_molecular_terms_with_torsions)
 {
-  if (!OpenCLPairKernel::available()) GTEST_SKIP() << "no OpenCL device";
+  if (!DeviceStep::available(PairDevice::OpenCL)) GTEST_SKIP() << "no OpenCL device";
   RandomNumber random(11);
   System system = makeChainSystem(false, random);
 
@@ -917,7 +917,7 @@ TEST(spatial_decomposition, engine_opencl_molecular_terms_with_torsions)
 
 TEST(spatial_decomposition, engine_opencl_molecular_terms_fall_back_to_the_host)
 {
-  if (!OpenCLPairKernel::available()) GTEST_SKIP() << "no OpenCL device";
+  if (!DeviceStep::available(PairDevice::OpenCL)) GTEST_SKIP() << "no OpenCL device";
   RandomNumber random(11);
   System system = makeChainSystem(true, random);
 

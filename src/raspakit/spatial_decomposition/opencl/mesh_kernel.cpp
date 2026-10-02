@@ -20,6 +20,7 @@ import simulationbox;
 import opencl;
 import spatial_decomposition_pppm;
 import spatial_decomposition_opencl_handles;
+import spatial_decomposition_device_kernels;
 
 using OpenCLDevice::check;
 using OpenCLDevice::roundUp;
@@ -30,7 +31,7 @@ constexpr std::size_t influenceGroup = 128;
 constexpr std::size_t influencePartials = 14;
 constexpr std::size_t influencePointsPerItem = 8;  // INFLUENCE_POINTS of the kernel source
 constexpr std::size_t pointGroup = 64;
-constexpr std::size_t maximumTile = 16;
+constexpr std::size_t maximumTile = 16;  // lines per FFT work-group (a power of two); see planAxis
 constexpr double fixedPointScale = 16777216.0;  // 2^24: 6e-8 e resolution, +-128 e range per mesh point
 
 std::size_t divideRoundUp(std::size_t a, std::size_t b) { return (a + b - 1) / b; }
@@ -42,7 +43,7 @@ void OpenCLMesh::initialize(cl_context clContext, cl_device_id clDevice, std::si
   device = clDevice;
   order = std::clamp<std::size_t>(orderValue, 3, 7);
   const std::string options = std::format("-cl-mad-enable -cl-no-signed-zeros -D MESH_ORDER={}", order);
-  program = OpenCLDevice::buildProgram(context, device, openclMeshKernelSource, options.c_str(), "OpenCL mesh");
+  program = OpenCLDevice::buildDeviceProgram(context, device, deviceKernelMeshSource, options.c_str(), "OpenCL mesh");
   spreadKernel = OpenCLDevice::createKernel(program.get(), "spreadCharges");
   realForwardKernel = OpenCLDevice::createKernel(program.get(), "fftRealForward");
   realBackwardKernel = OpenCLDevice::createKernel(program.get(), "fftRealBackward");
@@ -120,8 +121,13 @@ void OpenCLMesh::planAxis(AxisPlan& plan, std::uint32_t N, std::uint32_t localLe
         std::format("[OpenCL mesh]: a mesh axis of {} points does not fit the local memory of the device ({} bytes)\n",
                     N, localMemory));
   }
-  plan.tile = static_cast<std::uint32_t>(std::clamp<std::size_t>(budget / perLine, 1, maximumTile));
-  plan.tile = std::min(plan.tile, innerCount);
+  // a power of two (the kernels index the tile with shifts), at most maximumTile: smaller tiles let several
+  // work-groups share a compute unit's local memory
+  std::size_t tile = std::clamp<std::size_t>(budget / perLine, 1, maximumTile);
+  tile = std::min<std::size_t>(tile, innerCount);
+  plan.tileShift = 0;
+  while ((std::size_t{2} << plan.tileShift) <= tile) ++plan.tileShift;
+  plan.tile = std::uint32_t{1} << plan.tileShift;
   plan.tilesPerOuter = static_cast<std::uint32_t>(divideRoundUp(innerCount, plan.tile));
   plan.groups = static_cast<std::size_t>(plan.tilesPerOuter) * outerCount;
   plan.groupSize = std::clamp<std::size_t>(roundUp(static_cast<std::size_t>(N) * plan.tile / 2, 32), 32, maxGroupSize);
@@ -233,7 +239,7 @@ void OpenCLMesh::setup(int3 meshSize, double alphaValue, double conversionFactor
     check(clSetKernelArg(kernel, 5, sizeof(cl_uint), &planZ.radixCode), name);
     check(clSetKernelArg(kernel, 6, sizeof(cl_uint), &planZ.stages), name);
     check(clSetKernelArg(kernel, 7, sizeof(cl_uint), &lines), name);
-    check(clSetKernelArg(kernel, 8, sizeof(cl_uint), &planZ.tile), name);
+    check(clSetKernelArg(kernel, 8, sizeof(cl_uint), &planZ.tileShift), name);
   };
   setRealArguments(realForwardKernel.get(), meshMem, dataBuffer.get(), "clSetKernelArg (fftRealForward)");
   check(clSetKernelArg(realForwardKernel.get(), 9, sizeof(float), &parameters.inverseScale),
@@ -292,7 +298,7 @@ void OpenCLMesh::enqueueTransform(cl_command_queue queue, const AxisPlan& plan, 
   check(clSetKernelArg(kernel, 6, sizeof(cl_uint), &plan.lineStride), "clSetKernelArg (fftLines)");
   check(clSetKernelArg(kernel, 7, sizeof(cl_uint), &plan.innerCount), "clSetKernelArg (fftLines)");
   check(clSetKernelArg(kernel, 8, sizeof(cl_uint), &plan.outerStride), "clSetKernelArg (fftLines)");
-  check(clSetKernelArg(kernel, 9, sizeof(cl_uint), &plan.tile), "clSetKernelArg (fftLines)");
+  check(clSetKernelArg(kernel, 9, sizeof(cl_uint), &plan.tileShift), "clSetKernelArg (fftLines)");
   check(clSetKernelArg(kernel, 10, sizeof(cl_uint), &plan.tilesPerOuter), "clSetKernelArg (fftLines)");
   check(clSetKernelArg(kernel, 11, sizeof(float), &sign), "clSetKernelArg (fftLines)");
   check(clSetKernelArg(kernel, 12, localBytes, nullptr), "clSetKernelArg (fftLines, local A)");

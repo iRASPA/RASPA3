@@ -1,23 +1,29 @@
 module;
 
-module spatial_decomposition_opencl_bonded;
+module spatial_decomposition_device_kernels;
 
-// OpenCL C (1.2) source of the per-molecule terms on the device: the Ewald self and intramolecular exclusion
+// Device source (kernel dialect of kernel_sources.ixx) of the per-molecule terms: the Ewald self and intramolecular exclusion
 // corrections (Interactions::addChargeSelfEnergy / addIntraMolecularChargeExclusionGradient), the bonds, bends,
 // torsions and improper torsions (the potentialEnergyGradientStrain functions of the intramolecular potentials,
 // transcribed case by case), the intramolecular Lennard-Jones and Coulomb pairs (VanDerWaalsPotential,
 // CoulombPotential), and the atomic-to-molecular virial correction of the non-bonded gradients.
 //
-// One work-item per slot (atom). It gathers everything that acts on its atom: the exclusion pairs with the other
-// atoms of its molecule, and the bonded terms it takes part in, listed per atom of the component (a term is thus
-// evaluated once per atom it involves; the energy and the exclusion strain are counted by one of them). No
-// atomics and no reduction across work-items; the gradient is added to the force of the slot, which at this point
-// holds the pair + mesh gradient (the kernel runs after the pair kernel and the mesh interpolation). The positions
-// are the float positions relative to the first atom of the molecule, packed by the host in double, so that the
-// stiff bonded terms do not see the rounding of the absolute positions.
-const char* const openclBondedKernelSource = R"CLC(
+// Two kernels. bondedTerms: one work-item per term instance (a term of a component in one of its molecules; the
+// instances of a molecule are consecutive and ordered by kind, so that the work-items of a SIMD group mostly run
+// the same code), which evaluates the term once and writes the gradient on each of its atoms to a per-instance
+// slot of `termGradient`, with the energies reduced per work-group. bondedAtoms: one work-item per slot (atom),
+// which evaluates the exclusion pairs with the other atoms of its molecule, the virial correction, and gathers
+// the gradients of the terms its atom takes part in (listed per atom of the component). No atomics; the gradient
+// is added to the force of the slot, which at this point holds the pair + mesh gradient (the kernels run after the
+// pair kernel and the mesh interpolation). The positions are the float positions relative to the first atom of
+// the molecule, indexed by the atom's index in the system (so the atoms of a molecule are consecutive), packed by
+// the host in double so that the stiff bonded terms do not see the rounding of the absolute positions; the w
+// component carries the charge.
+const char* const deviceKernelBondedSource = R"CLC(
 #define BONDED_GROUP 64
-#define BONDED_PARTIALS 26
+#define ATOM_PARTIALS 20
+#define TERM_GROUP 64
+#define TERM_PARTIALS 8
 #define NO_ATOM 0xFFFFFFFFu
 #define TWO_PI 6.283185307179586f
 #define TWO_OVER_SQRT_PI 1.1283791670955126f
@@ -39,12 +45,24 @@ typedef struct
   float coulombFactor;
   uint useCharge;
   uint numberOfSlots;
-  uint padding[2];
+  uint numberOfInstances;  // term instances over all molecules
+  uint atomPartialOffset;  // first float of the per-atom partials in the partial buffer (after the term partials)
 } BondedParameters;
+
+typedef struct
+{
+  uint firstAtom;      // index in the system of the first atom of the molecule
+  uint numberOfAtoms;
+  uint atomOffset;     // offset of the component's atoms in the per-atom tables
+  uint termOffset;     // offset of the component's terms in the term table
+  uint instanceBase;   // first term instance of the molecule
+  uint gradientBase;   // first gradient slot of the molecule
+  uint padding[2];
+} MoleculeInfo;
 
 // erf(x)/x - 2/sqrt(pi) without cancellation: the Taylor series for small x (x <= 0.5: the omitted terms are
 // below 1e-8 relative), the difference otherwise (at most a factor 12 of cancellation at x = 0.5)
-inline float erfOverXMinusLimit(float x)
+DEVICE_FUNCTION float erfOverXMinusLimit(float x)
 {
   const float x2 = x * x;
   if (x2 <= 0.25f)
@@ -58,7 +76,7 @@ inline float erfOverXMinusLimit(float x)
 }
 
 // BondPotential (distancePotentialEnergyGradientStrain): energy and DF with gradient_A = DF dr, dr = posA - posB
-inline float bondTerm(uint type, const float* P, float3 posA, float3 posB, float3* gA, float3* gB)
+DEVICE_FUNCTION float bondTerm(uint type, const float* P, float3 posA, float3 posB, float3* gA, float3* gB)
 {
   const float3 dr = posA - posB;
   const float rr = dot(dr, dr);
@@ -131,7 +149,7 @@ inline float bondTerm(uint type, const float* P, float3 posA, float3 posB, float
 }
 
 // BendPotential::potentialEnergyGradientStrain
-inline float bendTerm(uint type, const float* P, float3 posA, float3 posB, float3 posC, float3* gA, float3* gB,
+DEVICE_FUNCTION float bendTerm(uint type, const float* P, float3 posA, float3 posB, float3 posC, float3* gA, float3* gB,
                       float3* gC)
 {
   float3 dr_ab = posA - posB;
@@ -198,7 +216,7 @@ inline float bendTerm(uint type, const float* P, float3 posA, float3 posB, float
 }
 
 // TorsionPotential::potentialEnergyGradientStrain
-inline float torsionTerm(uint type, const float* P, float3 posA, float3 posB, float3 posC, float3 posD, float3* gA,
+DEVICE_FUNCTION float torsionTerm(uint type, const float* P, float3 posA, float3 posB, float3 posC, float3 posD, float3* gA,
                          float3* gB, float3* gC, float3* gD)
 {
   const float3 Dab = posA - posB;
@@ -333,25 +351,25 @@ inline float torsionTerm(uint type, const float* P, float3 posA, float3 posB, fl
   return U;
 }
 
-inline void reducePartials(__local float* scratch, uint count, __global float* restrict partials)
+DEVICE_FUNCTION void reducePartials(LOCAL float* scratch, uint count, GLOBAL float* RESTRICT partials)
 {
-  const uint lid = get_local_id(0);
-  const uint groupSize = get_local_size(0);
+  const uint lid = LOCAL_ID();
+  const uint groupSize = LOCAL_SIZE();
   for (uint stride = groupSize / 2; stride > 0; stride >>= 1)
   {
-    barrier(CLK_LOCAL_MEM_FENCE);
+    LOCAL_BARRIER();
     if (lid < stride)
     {
       for (uint q = 0; q < count; ++q) scratch[q * groupSize + lid] += scratch[q * groupSize + lid + stride];
     }
   }
-  barrier(CLK_LOCAL_MEM_FENCE);
-  if (lid < count) partials[get_group_id(0) * count + lid] = scratch[lid * groupSize];
+  LOCAL_BARRIER();
+  if (lid < count) partials[GROUP_ID() * count + lid] = scratch[lid * groupSize];
 }
 
 // Intramolecular pairs: kind 4 Lennard-Jones with P[0] = scaling 4 epsilon, P[1] = sigma^2; kind 5 Coulomb with
 // P[0] = scaling C qA qB (VanDerWaalsPotential / CoulombPotential::potentialEnergyGradientStrain)
-inline float pairTerm(uint kind, const float* P, float3 posA, float3 posB, float3* gA, float3* gB)
+DEVICE_FUNCTION float pairTerm(uint kind, const float* P, float3 posA, float3 posB, float3* gA, float3* gB)
 {
   const float3 dr = posA - posB;
   const float rr = dot(dr, dr);
@@ -374,42 +392,105 @@ inline float pairTerm(uint kind, const float* P, float3 posA, float3 posB, float
   return U;
 }
 
-// Partials per work-group: net-charge self term, reduced exclusion term (see the kernel), bond, bend, torsion,
-// improper torsion energies; the exclusion strain
-// derivative and the virial correction (ax ay az bx by bz cx cy cz each); intramolecular Lennard-Jones and Coulomb
-// energies.
-__kernel __attribute__((reqd_work_group_size(BONDED_GROUP, 1, 1)))
-void bondedAtoms(__global const float4* restrict position,         // x, y, z, charge per slot
-                 __global const float4* restrict relative,         // position relative to the molecule's first atom
-                 __global const uint* restrict typeOf,             // pseudo-atom type per slot
-                 __global const uint* restrict slotMolecule,       // (molecule << 8) | index in the molecule, or NO_ATOM
-                 __global const uint4* restrict moleculeInfo,      // first original atom, atoms, atom offset of the component
-                 __global const uint* restrict slotOfOriginal,     // slot of every atom in the original order
-                 __global const uint* restrict atomTermStart,      // CSR offsets of the terms per component atom
-                 __global const uint* restrict atomTerms,          // (term << 2) | role
-                 __global const Term* restrict terms,
-                 __global const float* restrict massOfType,
-                 __constant const BondedParameters* p,
-                 __global float4* restrict force,
-                 __global float* restrict partials)
+// One work-item per term instance: evaluates the term once and writes the gradient on each of its atoms to the
+// gradient slots of the instance (gradientBase of the molecule + the term's offset within the component's block,
+// one float4 per participating atom). Partials per work-group: bond, bend, torsion, improper torsion,
+// intramolecular Lennard-Jones and Coulomb energies (indexed by kind).
+KERNEL_GROUP_SIZE(TERM_GROUP)
+void bondedTerms(GLOBAL const float4* RESTRICT relative,            // per atom (system order): x, y, z relative to
+                                                                      // the first atom of the molecule, charge
+                 GLOBAL const uint* RESTRICT instanceMolecule,      // molecule of every term instance
+                 GLOBAL const MoleculeInfo* RESTRICT moleculeInfo,
+                 GLOBAL const Term* RESTRICT terms,                 // the terms of the components
+                 GLOBAL const uint* RESTRICT gradientOffset,        // per term: offset of its gradient slots
+                 CONSTANT const BondedParameters* p,
+                 GLOBAL float4* RESTRICT termGradient,
+                 GLOBAL float* RESTRICT partials)
 {
-  __local float scratch[BONDED_PARTIALS * BONDED_GROUP];
-  const uint lid = get_local_id(0);
-  const uint slot = get_global_id(0);
-  float acc[BONDED_PARTIALS];
-  for (uint q = 0; q < BONDED_PARTIALS; ++q) acc[q] = 0.0f;
+  LOCAL float scratch[TERM_PARTIALS * TERM_GROUP];
+  const uint lid = LOCAL_ID();
+  const uint g = GLOBAL_ID();
+  float acc[TERM_PARTIALS];
+  for (uint q = 0; q < TERM_PARTIALS; ++q) acc[q] = 0.0f;
+
+  if (g < p->numberOfInstances)
+  {
+    const uint m = instanceMolecule[g];
+    const MoleculeInfo info = moleculeInfo[m];
+    const uint t = info.termOffset + (g - info.instanceBase);
+    const Term term = terms[t];
+    GLOBAL const float4* RESTRICT pos = relative + info.firstAtom;
+    GLOBAL float4* RESTRICT out = termGradient + info.gradientBase + gradientOffset[t];
+    const float3 posA = pos[term.atoms[0]].xyz;
+    const float3 posB = pos[term.atoms[1]].xyz;
+    float3 gA = FLOAT3(0.0f, 0.0f, 0.0f), gB = gA, gC = gA, gD = gA;
+    float U;
+    if (term.kind == 0)
+    {
+      U = bondTerm(term.type, term.parameters, posA, posB, &gA, &gB);
+    }
+    else if (term.kind == 1)
+    {
+      const float3 posC = pos[term.atoms[2]].xyz;
+      U = bendTerm(term.type, term.parameters, posA, posB, posC, &gA, &gB, &gC);
+      out[2] = FLOAT4(gC, 0.0f);
+    }
+    else if (term.kind <= 3)
+    {
+      const float3 posC = pos[term.atoms[2]].xyz;
+      const float3 posD = pos[term.atoms[3]].xyz;
+      U = torsionTerm(term.type, term.parameters, posA, posB, posC, posD, &gA, &gB, &gC, &gD);
+      out[2] = FLOAT4(gC, 0.0f);
+      out[3] = FLOAT4(gD, 0.0f);
+    }
+    else
+    {
+      U = pairTerm(term.kind, term.parameters, posA, posB, &gA, &gB);
+    }
+    out[0] = FLOAT4(gA, 0.0f);
+    out[1] = FLOAT4(gB, 0.0f);
+    acc[min(term.kind, (uint)(TERM_PARTIALS - 1))] = U;
+  }
+
+  for (uint q = 0; q < TERM_PARTIALS; ++q) scratch[q * TERM_GROUP + lid] = acc[q];
+  reducePartials(scratch, TERM_PARTIALS, partials);
+}
+
+// One work-item per slot (atom): the Ewald self and exclusion corrections with the other atoms of its molecule,
+// the virial correction of the non-bonded gradient, and the gradients of the term instances it takes part in,
+// gathered from the slots the term kernel wrote. Partials per work-group: net-charge self term, reduced exclusion
+// term (see below), the exclusion strain derivative and the virial correction (ax ay az bx by bz cx cy cz each).
+KERNEL_GROUP_SIZE(BONDED_GROUP)
+void bondedAtoms(GLOBAL const float4* RESTRICT relative,          // per atom (system order), see bondedTerms
+                 GLOBAL const uint* RESTRICT slotMolecule,        // (molecule << 8) | index in the molecule, or NO_ATOM
+                 GLOBAL const MoleculeInfo* RESTRICT moleculeInfo,
+                 GLOBAL const float* RESTRICT massOfAtom,         // per atom (system order)
+                 GLOBAL const uint* RESTRICT atomGradientStart,   // CSR offsets of the gradient slots per component atom
+                 GLOBAL const uint* RESTRICT atomGradients,       // gradient slot (within the molecule's block)
+                 GLOBAL const float4* RESTRICT termGradient,
+                 CONSTANT const BondedParameters* p,
+                 GLOBAL float4* RESTRICT force,
+                 GLOBAL float* RESTRICT partials)
+{
+  LOCAL float scratch[ATOM_PARTIALS * BONDED_GROUP];
+  const uint lid = LOCAL_ID();
+  const uint slot = GLOBAL_ID();
+  float acc[ATOM_PARTIALS];
+  for (uint q = 0; q < ATOM_PARTIALS; ++q) acc[q] = 0.0f;
 
   const uint packed = (slot < p->numberOfSlots) ? slotMolecule[slot] : NO_ATOM;
   if (packed != NO_ATOM)
   {
     const uint m = packed >> 8;
     const uint a = packed & 0xFFu;
-    const uint4 info = moleculeInfo[m];
-    const uint first = info.x;
-    const uint n = info.y;
-    const uint atomOffset = info.z;
-    const float3 ra = relative[slot].xyz;
-    const float qa = position[slot].w;
+    const MoleculeInfo info = moleculeInfo[m];
+    const uint first = info.firstAtom;
+    const uint n = info.numberOfAtoms;
+    GLOBAL const float4* RESTRICT pos = relative + first;
+    GLOBAL const float* RESTRICT mass = massOfAtom + first;
+    const float4 pa = pos[a];
+    const float3 ra = pa.xyz;
+    const float qa = pa.w;
     const bool charged = p->useCharge != 0;
 
     // Self energy and exclusion pairs with the other atoms of the molecule, center of mass. The self energy
@@ -418,44 +499,42 @@ void bondedAtoms(__global const float4* restrict position,         // x, y, z, c
     //   -C sum_{a<b} qa qb [erf(alpha r)/r - 2 alpha/sqrt(pi)] - C alpha/sqrt(pi) (sum_a qa)^2
     // (exact identity): partial 0 holds the net-charge term, partial 1 the reduced pair term. The host
     // separates the self energy (evaluated in double) from the sum.
-    float3 exclusionGradient = (float3)(0.0f, 0.0f, 0.0f);
-    float3 com = (float3)(0.0f, 0.0f, 0.0f);
+    float3 exclusionGradient = FLOAT3(0.0f, 0.0f, 0.0f);
+    float3 com = FLOAT3(0.0f, 0.0f, 0.0f);
     float totalMass = 0.0f;
     float moleculeCharge = 0.0f;
     for (uint b = 0; b < n; ++b)
     {
-      const uint sb = slotOfOriginal[first + b];
-      const float3 rb = relative[sb].xyz;
-      const float mass = massOfType[typeOf[sb]];
-      com += mass * rb;
-      totalMass += mass;
+      const float4 pb = pos[b];
+      const float mb = mass[b];
+      com += mb * pb.xyz;
+      totalMass += mb;
       if (!charged) continue;
-      const float qb = position[sb].w;
-      moleculeCharge += qb;
+      moleculeCharge += pb.w;
       if (b == a) continue;
-      const float3 dr = ra - rb;
+      const float3 dr = ra - pb.xyz;
       const float rr = dot(dr, dr);
       const float r = sqrt(rr);
       const float x = p->alpha * r;
       const float potential = erf(x) / r;
       const float gaussian = p->twoAlphaOverSqrtPi * exp(-x * x);
       const float firstDerivativeFactor = (gaussian - potential) / rr;
-      const float prefactor = p->coulombFactor * qa * qb;
+      const float prefactor = p->coulombFactor * qa * pb.w;
       const float gradientFactor = prefactor * firstDerivativeFactor;
       exclusionGradient -= gradientFactor * dr;
       if (b > a)
       {
         acc[1] -= prefactor * p->alpha * erfOverXMinusLimit(x);
         const float3 f = -gradientFactor * dr;
-        acc[6] += f.x * dr.x;
-        acc[7] += f.x * dr.y;
-        acc[8] += f.x * dr.z;
-        acc[9] += f.y * dr.x;
-        acc[10] += f.y * dr.y;
-        acc[11] += f.y * dr.z;
-        acc[12] += f.z * dr.x;
-        acc[13] += f.z * dr.y;
-        acc[14] += f.z * dr.z;
+        acc[2] += f.x * dr.x;
+        acc[3] += f.x * dr.y;
+        acc[4] += f.x * dr.z;
+        acc[5] += f.y * dr.x;
+        acc[6] += f.y * dr.y;
+        acc[7] += f.y * dr.z;
+        acc[8] += f.z * dr.x;
+        acc[9] += f.z * dr.y;
+        acc[10] += f.z * dr.z;
       }
     }
     com /= totalMass;
@@ -465,51 +544,22 @@ void bondedAtoms(__global const float4* restrict position,         // x, y, z, c
     float4 f = force[slot];
     const float3 nonbonded = f.xyz + exclusionGradient;
     const float3 arm = ra - com;
-    acc[15] = arm.x * nonbonded.x;
-    acc[16] = arm.x * nonbonded.y;
-    acc[17] = arm.x * nonbonded.z;
-    acc[18] = arm.y * nonbonded.x;
-    acc[19] = arm.y * nonbonded.y;
-    acc[20] = arm.y * nonbonded.z;
-    acc[21] = arm.z * nonbonded.x;
-    acc[22] = arm.z * nonbonded.y;
-    acc[23] = arm.z * nonbonded.z;
+    acc[11] = arm.x * nonbonded.x;
+    acc[12] = arm.x * nonbonded.y;
+    acc[13] = arm.x * nonbonded.z;
+    acc[14] = arm.y * nonbonded.x;
+    acc[15] = arm.y * nonbonded.y;
+    acc[16] = arm.y * nonbonded.z;
+    acc[17] = arm.z * nonbonded.x;
+    acc[18] = arm.z * nonbonded.y;
+    acc[19] = arm.z * nonbonded.z;
 
-    // bonded terms of this atom
-    float3 bonded = (float3)(0.0f, 0.0f, 0.0f);
-    const uint begin = atomTermStart[atomOffset + a];
-    const uint end = atomTermStart[atomOffset + a + 1];
-    for (uint t = begin; t < end; ++t)
-    {
-      const uint reference = atomTerms[t];
-      const uint role = reference & 3u;
-      const Term term = terms[reference >> 2];
-      const float3 posA = relative[slotOfOriginal[first + term.atoms[0]]].xyz;
-      const float3 posB = relative[slotOfOriginal[first + term.atoms[1]]].xyz;
-      float3 gA = (float3)(0.0f, 0.0f, 0.0f), gB = gA, gC = gA, gD = gA;
-      float U;
-      if (term.kind == 0)
-      {
-        U = bondTerm(term.type, term.parameters, posA, posB, &gA, &gB);
-      }
-      else if (term.kind == 1)
-      {
-        const float3 posC = relative[slotOfOriginal[first + term.atoms[2]]].xyz;
-        U = bendTerm(term.type, term.parameters, posA, posB, posC, &gA, &gB, &gC);
-      }
-      else if (term.kind <= 3)
-      {
-        const float3 posC = relative[slotOfOriginal[first + term.atoms[2]]].xyz;
-        const float3 posD = relative[slotOfOriginal[first + term.atoms[3]]].xyz;
-        U = torsionTerm(term.type, term.parameters, posA, posB, posC, posD, &gA, &gB, &gC, &gD);
-      }
-      else
-      {
-        U = pairTerm(term.kind, term.parameters, posA, posB, &gA, &gB);
-      }
-      bonded += (role == 0) ? gA : (role == 1) ? gB : (role == 2) ? gC : gD;
-      if (role == 0) acc[(term.kind <= 3) ? 2 + term.kind : 20 + term.kind] += U;
-    }
+    // the gradients of the terms of this atom
+    float3 bonded = FLOAT3(0.0f, 0.0f, 0.0f);
+    GLOBAL const float4* RESTRICT gradients = termGradient + info.gradientBase;
+    const uint begin = atomGradientStart[info.atomOffset + a];
+    const uint end = atomGradientStart[info.atomOffset + a + 1];
+    for (uint t = begin; t < end; ++t) bonded += gradients[atomGradients[t]].xyz;
 
     f.x = nonbonded.x + bonded.x;
     f.y = nonbonded.y + bonded.y;
@@ -517,7 +567,7 @@ void bondedAtoms(__global const float4* restrict position,         // x, y, z, c
     force[slot] = f;
   }
 
-  for (uint q = 0; q < BONDED_PARTIALS; ++q) scratch[q * BONDED_GROUP + lid] = acc[q];
-  reducePartials(scratch, BONDED_PARTIALS, partials);
+  for (uint q = 0; q < ATOM_PARTIALS; ++q) scratch[q * BONDED_GROUP + lid] = acc[q];
+  reducePartials(scratch, ATOM_PARTIALS, partials + p->atomPartialOffset);
 }
 )CLC";
