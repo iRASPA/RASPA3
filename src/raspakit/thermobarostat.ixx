@@ -47,7 +47,10 @@ export struct Thermobarostat
   std::size_t numberOfRespaSteps{5};
   std::size_t numberOfYoshidaSuzukiSteps{5};
 
-  // NPT uses eta=ln(V); NPTPR uses the logarithmic cell-rate matrix.
+  // NPT uses x=ln(V) with velocity xdot=d ln(V)/dt; NPTPR uses the logarithmic cell-rate matrix.
+  // 'logVolumeMass' is the Martyna-Tobias-Klein mass W=(N_f+3) k_B T tau_b^2 of the strain
+  // epsilon=ln(V)/3, so the variable x=3 epsilon has mass W/9: its kinetic energy is W xdot^2/18 and its
+  // equation of motion is xddot = 3 G_epsilon / W (see 'logVolumeKineticEnergy' and the NPT drivers).
   double logVolumePosition{};
   double logVolumeVelocity{};
   double logVolumeMass{1.0};
@@ -70,6 +73,8 @@ export struct Thermobarostat
   void initialize(RandomNumber& random);
   void refreshDegreesOfFreedom(RandomNumber& random, std::size_t translationalDegreesOfFreedom, double volume);
   double chainStep(double kineticEnergy);
+  // kinetic energy of the barostat (isotropic: of x=ln(V) with mass W/9; flexible: of the cell-rate matrix)
+  double barostatKineticEnergy() const;
   double energy(double volume) const;
   void reverseMomenta();
 

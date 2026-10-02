@@ -232,7 +232,7 @@ void Thermobarostat::initialize(RandomNumber& random)
   if (numberOfRespaSteps == 0) throw std::runtime_error("NumberOfRespaSteps must be positive");
   refreshDegreesOfFreedom(random, translationalDegreesOfFreedom, std::exp(logVolumePosition));
   if (molecularDynamicsUsesIsotropicBarostat(ensemble))
-    logVolumeVelocity = random.Gaussian() * std::sqrt(Units::KB * temperature / logVolumeMass);
+    logVolumeVelocity = random.Gaussian() * std::sqrt(Units::KB * temperature / (logVolumeMass / 9.0));
 
   chainDegreesOfFreedom[0] = static_cast<double>(cellDegreesOfFreedom) * Units::KB * temperature;
   for (std::size_t i = 1; i != chainLength; ++i) chainDegreesOfFreedom[i] = Units::KB * temperature;
@@ -279,19 +279,24 @@ double Thermobarostat::chainStep(double kineticEnergy)
   return scale;
 }
 
+double Thermobarostat::barostatKineticEnergy() const
+{
+  if (molecularDynamicsUsesIsotropicBarostat(ensemble))
+  {
+    // x = ln(V) = 3 epsilon carries the mass W/9 (W is the MTK mass of epsilon), so that the kinetic energy
+    // W/9 xdot^2 / 2 equals W epsdot^2 / 2 and is consistent with the equation of motion xddot = 3 G_eps / W
+    return 0.5 * (logVolumeMass / 9.0) * logVolumeVelocity * logVolumeVelocity;
+  }
+  double normSquared{};
+  for (std::size_t column = 0; column != 3; ++column)
+    for (std::size_t row = 0; row != 3; ++row)
+      normSquared += cellVelocity.mm[column][row] * cellVelocity.mm[column][row];
+  return 0.5 * cellMass * normSquared;
+}
+
 double Thermobarostat::energy(double volume) const
 {
-  double result = pressure * volume;
-  if (molecularDynamicsUsesIsotropicBarostat(ensemble))
-    result += 0.5 * logVolumeMass * logVolumeVelocity * logVolumeVelocity;
-  else
-  {
-    double normSquared{};
-    for (std::size_t column = 0; column != 3; ++column)
-      for (std::size_t row = 0; row != 3; ++row)
-        normSquared += cellVelocity.mm[column][row] * cellVelocity.mm[column][row];
-    result += 0.5 * cellMass * normSquared;
-  }
+  double result = pressure * volume + barostatKineticEnergy();
   for (std::size_t i = 0; i != chainLength; ++i)
     result += 0.5 * chainMass[i] * chainVelocity[i] * chainVelocity[i] +
               chainDegreesOfFreedom[i] * chainPosition[i];

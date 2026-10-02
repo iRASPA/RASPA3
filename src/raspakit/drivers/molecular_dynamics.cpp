@@ -466,12 +466,7 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
       computeBarostatVirial(system, system.computeMolecularPressure().second, barostat.coupling);
   const double3x3 kineticBefore = computeMolecularKineticVirial(system, barostat.coupling);
 
-  const double barostatKinetic =
-      molecularDynamicsUsesIsotropicBarostat(barostat.ensemble)
-          ? 0.5 * barostat.logVolumeMass * barostat.logVolumeVelocity * barostat.logVolumeVelocity
-          : 0.5 * barostat.cellMass *
-                std::transform_reduce(&barostat.cellVelocity.m[0], &barostat.cellVelocity.m[16], 0.0, std::plus<>(),
-                                      [](double value) { return value * value; });
+  const double barostatKinetic = barostat.barostatKineticEnergy();
   const double chainScale = barostat.chainStep(barostatKinetic);
   barostat.logVolumeVelocity *= chainScale;
   barostat.cellVelocity = barostat.cellVelocity * chainScale;
@@ -495,7 +490,9 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
   {
     const double mtkFactor =
         1.0 + 3.0 / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
-    const double scalarForce = (pressureBefore.trace() + mtkFactor * kineticBefore.trace() -
+    // x = ln(V) = 3 epsilon: xddot = 3 G_epsilon / W with G_epsilon = virial + alpha 2K - 3 P V (MTK)
+    const double scalarForce = 3.0 *
+                               (pressureBefore.trace() + mtkFactor * kineticBefore.trace() -
                                 3.0 * barostat.pressure * system.simulationBox.volume) /
                                barostat.logVolumeMass;
     barostat.logVolumeVelocity += 0.5 * system.timeStep * scalarForce;
@@ -566,7 +563,9 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
   {
     const double mtkFactor =
         1.0 + 3.0 / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
-    const double scalarForce = (pressureAfter.trace() + mtkFactor * kineticAfter.trace() -
+    // x = ln(V) = 3 epsilon: xddot = 3 G_epsilon / W with G_epsilon = virial + alpha 2K - 3 P V (MTK)
+    const double scalarForce = 3.0 *
+                               (pressureAfter.trace() + mtkFactor * kineticAfter.trace() -
                                 3.0 * barostat.pressure * system.simulationBox.volume) /
                                barostat.logVolumeMass;
     barostat.logVolumeVelocity += 0.5 * system.timeStep * scalarForce;
@@ -595,12 +594,7 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
                                  system.spanOfGroupData(), system.spanOfFrameworkGroupData());
     energies.NoseHooverEnergy = system.thermostat->getEnergy();
   }
-  const double finalBarostatKinetic =
-      molecularDynamicsUsesIsotropicBarostat(barostat.ensemble)
-          ? 0.5 * barostat.logVolumeMass * barostat.logVolumeVelocity * barostat.logVolumeVelocity
-          : 0.5 * barostat.cellMass *
-                std::transform_reduce(&barostat.cellVelocity.m[0], &barostat.cellVelocity.m[16], 0.0, std::plus<>(),
-                                      [](double value) { return value * value; });
+  const double finalBarostatKinetic = barostat.barostatKineticEnergy();
   const double finalScale = barostat.chainStep(finalBarostatKinetic);
   barostat.logVolumeVelocity *= finalScale;
   barostat.cellVelocity = barostat.cellVelocity * finalScale;

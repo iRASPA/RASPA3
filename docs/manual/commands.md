@@ -1051,7 +1051,13 @@ reported separately at the end of the simulation.
     barostat. Default: `5`.
 
 -   `"TimeScaleParameterBarostat" : floating-point-number`\
-    The pressure-coupling time scale in picoseconds. Default: `1.0`.
+    The pressure-coupling time scale $\tau_b$ in picoseconds. Default: `1.0`.
+    The barostat mass follows Martyna, Tobias and Klein,
+    $W = (N_f + 3)\,k_B T\,\tau_b^2$ for the strain $\epsilon = \ln(V)/3$
+    (the cell-matrix mass of `NPTPR` is $W/3$), and the barostat chain masses
+    are $k_B T\,\tau_b^2$. The integrator is the measure-preserving scheme of
+    Tuckerman et al., J. Phys. A 39, 5629 (2006); the reported conserved
+    quantity includes $W\dot\epsilon^2/2 + PV$ and the two chain energies.
 
 ### Box/Framework options <a name="boxframework-options"></a>
 

@@ -169,6 +169,38 @@ TEST(thermobarostat, initialization_recomputes_mass_after_dof_constraint)
   EXPECT_NEAR(state.cellMass, state.logVolumeMass / 3.0, 1.0e-14);
 }
 
+// The isotropic barostat integrates x = ln(V) = 3 epsilon; its kinetic energy must be that of the MTK strain,
+// W epsdot^2 / 2 = (W/9) xdot^2 / 2, and the sampled initial velocity must have the matching variance
+// k_B T / (W/9). Using W for x instead holds the barostat at T/3 and produces a steady drift of the
+// conserved quantity through the barostat chain.
+TEST(thermobarostat, isotropic_kinetic_energy_uses_the_mass_of_ln_volume)
+{
+  const double temperature = 320.0;
+  Thermobarostat state(MolecularDynamicsEnsemble::NPT, CellMinimizationType::Isotropic, MonoclinicAngleType::Beta,
+                       temperature, 0.0, 0.002, 12, 3, 1, 0.4);
+  RandomNumber random(913);
+  state.initialize(random);
+  state.logVolumeVelocity = 0.3;
+  const double epsilonDot = state.logVolumeVelocity / 3.0;
+  EXPECT_NEAR(state.barostatKineticEnergy(), 0.5 * state.logVolumeMass * epsilonDot * epsilonDot, 1.0e-14);
+  double chainEnergy = 0.0;
+  for (std::size_t i = 0; i != state.chainLength; ++i)
+    chainEnergy += 0.5 * state.chainMass[i] * state.chainVelocity[i] * state.chainVelocity[i] +
+                   state.chainDegreesOfFreedom[i] * state.chainPosition[i];
+  EXPECT_NEAR(state.energy(100.0), state.barostatKineticEnergy() + state.pressure * 100.0 + chainEnergy, 1.0e-10);
+
+  double sumSquared = 0.0;
+  const std::size_t samples = 20000;
+  for (std::size_t i = 0; i != samples; ++i)
+  {
+    state.initialize(random);
+    sumSquared += state.logVolumeVelocity * state.logVolumeVelocity;
+  }
+  const double variance = sumSquared / static_cast<double>(samples);
+  const double expected = Units::KB * temperature / (state.logVolumeMass / 9.0);
+  EXPECT_NEAR(variance / expected, 1.0, 0.05);
+}
+
 TEST(thermostat, refreshes_variable_particle_degrees_of_freedom_without_resetting_chain_state)
 {
   Thermostat state(300.0, 0.0005, 6, 3, 3, 1, 0.15);
