@@ -1,15 +1,6 @@
 module;
 
-#define CL_TARGET_OPENCL_VERSION 120
-#ifdef __APPLE__
-#include <OpenCL/cl.h>
-#elif _WIN32
-#include <CL/cl.h>
-#else
-#include <CL/opencl.h>
-#endif
-
-export module spatial_decomposition_opencl_mesh;
+export module spatial_decomposition_device_mesh;
 
 import std;
 
@@ -17,14 +8,13 @@ import double3;
 import double3x3;
 import int3;
 import simulationbox;
-import spatial_decomposition_opencl_handles;
-import spatial_decomposition_device_kernels;
+import spatial_decomposition_device_context;
 
 /**
- * \brief The particle-mesh Ewald sum (PPPM) on the OpenCL device, over the slots of the pair kernel.
+ * \brief The particle-mesh Ewald sum (PPPM) on the device, over the slots of the pair kernel.
  *
  * The device transcription of PPPM in single precision: charge spreading with cardinal B-splines into a
- * fixed-point mesh (integer atomics: the device has no floating-point atomics, and the integer sum is order
+ * fixed-point mesh (integer atomics: not every device has floating-point atomics, and the integer sum is order
  * independent), a real-to-complex 3D FFT of the mesh (own Stockham radix 2/3/4/5 kernels over tiles of lines in
  * local memory; the real z lines are packed into half-length complex transforms, so only the half spectrum
  * kz = 0..Kz/2 is computed; the mesh sizes are 2^a 3^b 5^c by construction and Kz is made even), the influence
@@ -33,23 +23,23 @@ import spatial_decomposition_device_kernels;
  * strain derivative and the single-ion sums of the net-charge correction are reduced per work-group on the device
  * and summed in double on the host.
  *
- * The kernels are the shared mesh_kernel_source.cpp (device/) compiled with the OpenCL dialect header. Owned by
- * OpenCLBackend, which provides the queue and the position / force buffers; the chain is enqueued
- * after the pair kernel of the step (the interpolation adds to the pair forces).
+ * The kernels are the shared mesh_kernel_source.cpp, compiled by the DeviceContext of DeviceStep, which owns this
+ * object and provides the position / force buffers; the chain is enqueued after the pair kernel of the step (the
+ * interpolation adds to the pair forces).
  */
-export class OpenCLMesh
+export class DeviceMesh
 {
  public:
-  OpenCLMesh() = default;
-  ~OpenCLMesh() = default;
-  OpenCLMesh(const OpenCLMesh&) = delete;
-  OpenCLMesh& operator=(const OpenCLMesh&) = delete;
-  OpenCLMesh(OpenCLMesh&&) noexcept = default;
-  OpenCLMesh& operator=(OpenCLMesh&&) noexcept = default;
+  DeviceMesh() = default;
+  ~DeviceMesh() = default;
+  DeviceMesh(const DeviceMesh&) = delete;
+  DeviceMesh& operator=(const DeviceMesh&) = delete;
+  DeviceMesh(DeviceMesh&&) noexcept = default;
+  DeviceMesh& operator=(DeviceMesh&&) noexcept = default;
 
   /// Builds the kernels for the given B-spline order (3 to 7).
-  void initialize(cl_context context, cl_device_id device, std::size_t order);
-  bool initialized() const { return spreadKernel.get() != nullptr; }
+  void initialize(DeviceContext& context, std::size_t order);
+  bool initialized() const { return static_cast<bool>(spreadKernel); }
 
   /// Fixes the mesh, alpha and the Coulomb conversion factor: allocates the mesh buffers, plans the FFTs
   /// (twiddle tables) and computes the B-spline moduli. An odd z size is raised to the next even FFT-friendly size
@@ -65,12 +55,12 @@ export class OpenCLMesh
 
   /// Enqueues the step: spreading, forward FFT, influence function, inverse FFT and (with `interpolate`) the
   /// interpolation of the gradients into `force`. Non-blocking.
-  void enqueue(cl_command_queue queue, cl_mem position, cl_mem force, bool interpolate);
-  /// Enqueues the read-back of the per-group partial sums; `event` receives the read's event.
-  void enqueueRead(cl_command_queue queue, cl_event* event);
+  void enqueue(DeviceBuffer position, DeviceBuffer force, bool interpolate);
+  /// Enqueues the read-back of the per-group partial sums (complete with a mark / finish of the context).
+  void enqueueRead();
   /// Times the stages of one step synchronously (the fastest of a few runs each; the mesh and `force` are left
   /// modified) and keeps the result for the status report.
-  void profile(cl_command_queue queue, cl_mem position, cl_mem force);
+  void profile(DeviceBuffer position, DeviceBuffer force);
   /// After the read completed: the reciprocal energy, its strain derivative, the single-ion sum and tensor.
   void collect(double& energy, double3x3& strain, double& singleIonSum, double3x3& singleIonStrain) const;
 
@@ -102,19 +92,17 @@ export class OpenCLMesh
     std::uint32_t axisStride{0}, lineStride{0}, innerCount{0}, outerStride{0}, tile{1}, tileShift{0};
     std::uint32_t tilesPerOuter{1};  // the tile (lines per work-group) is 2^tileShift
     std::size_t groups{0}, groupSize{64};
-    OpenCLDevice::MemHandle twiddle{};
+    DeviceBufferOwner twiddle{};
   };
 
-  cl_context context{nullptr};
-  cl_device_id device{nullptr};
-  OpenCLDevice::ProgramHandle program{};
-  OpenCLDevice::KernelHandle spreadKernel{}, realForwardKernel{}, realBackwardKernel{}, fftKernel{}, influenceKernel{},
+  DeviceContext* context{nullptr};
+  DeviceKernel spreadKernel{}, realForwardKernel{}, realBackwardKernel{}, fftKernel{}, influenceKernel{},
       interpolateKernel{};
   /// Fixed-point charge mesh, the half spectrum (complex), the real potential mesh.
-  OpenCLDevice::MemHandle meshBuffer{}, dataBuffer{}, potentialBuffer{}, parameterBuffer{}, partialBuffer{};
-  OpenCLDevice::MemHandle moduliX{}, moduliY{}, moduliZ{};
+  DeviceBufferOwner meshBuffer{}, dataBuffer{}, potentialBuffer{}, parameterBuffer{}, partialBuffer{};
+  DeviceBufferOwner moduliX{}, moduliY{}, moduliZ{};
   /// exp(-2 pi i k / Kz), k = 0..Kz/2: the twiddles of the real-to-complex unpacking.
-  OpenCLDevice::MemHandle halfTwiddle{};
+  DeviceBufferOwner halfTwiddle{};
   AxisPlan planX{}, planY{}, planZ{};
   std::size_t localMemory{32768};
   std::size_t maxGroupSize{256};
@@ -126,23 +114,25 @@ export class OpenCLMesh
   Parameters parameters{};
   bool parametersChanged{true};
   std::size_t influenceGroups{0};
+  std::uint32_t lines{0};  ///< z lines of the real transforms (Kx Ky)
   std::vector<float> hostPartials{};
   /// Sampled stage times (seconds): spreading, forward FFTs (with the conversion), influence, backward FFTs,
   /// interpolation.
   std::array<double, 5> stageTimes{};
   bool profiled{false};
 
-  void enqueueSpread(cl_command_queue queue, cl_mem position);
-  void enqueueForwardTransforms(cl_command_queue queue);
-  void enqueueInfluence(cl_command_queue queue);
-  void enqueueBackwardTransforms(cl_command_queue queue);
-  void enqueueInterpolate(cl_command_queue queue, cl_mem position, cl_mem force);
+  void writeParameters(bool blocking);
+  void enqueueSpread(DeviceBuffer position);
+  void enqueueForwardTransforms();
+  void enqueueInfluence();
+  void enqueueBackwardTransforms();
+  void enqueueInterpolate(DeviceBuffer position, DeviceBuffer force);
 
   void planAxis(AxisPlan& plan, std::uint32_t N, std::uint32_t localLength, std::uint32_t axisStride,
                 std::uint32_t lineStride, std::uint32_t innerCount, std::uint32_t outerStride,
                 std::uint32_t outerCount);
-  void enqueueTransform(cl_command_queue queue, const AxisPlan& plan, float sign);
-  void enqueueRealTransform(cl_command_queue queue, bool forward);
+  void enqueueTransform(const AxisPlan& plan, float sign);
+  void enqueueRealTransform(bool forward);
   std::size_t meshPoints() const
   {
     return static_cast<std::size_t>(mesh.x) * static_cast<std::size_t>(mesh.y) * static_cast<std::size_t>(mesh.z);

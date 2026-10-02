@@ -89,9 +89,9 @@ DEVICE_FUNCTION float3 minimumImage(float3 dr, CONSTANT const float* cell, CONST
 
 // Bounding box of every j-cluster over its real atoms; w of the minimum is 1 when the cluster has real atoms.
 KERNEL void clusterBounds(GLOBAL const float4* RESTRICT buildPosition,  // x, y, z, molecule bits per slot
-                            const uint numberOfJClusters,
+                            VALUE_ARG(uint, numberOfJClusters),
                             GLOBAL float4* RESTRICT clusterMin,
-                            GLOBAL float4* RESTRICT clusterMax)
+                            GLOBAL float4* RESTRICT clusterMax KERNEL_INDEX_ARGS)
 {
   const uint J = GLOBAL_ID();
   if (J >= numberOfJClusters) return;
@@ -149,7 +149,7 @@ void buildList(GLOBAL const float4* RESTRICT buildPosition,
                CONSTANT const BuildParameters* bp,
                GLOBAL uint* RESTRICT outerCluster,            // rows of blocksPerCluster
                GLOBAL uint* RESTRICT outerMask,
-               GLOBAL uint* RESTRICT outerCount)
+               GLOBAL uint* RESTRICT outerCount KERNEL_INDEX_ARGS)
 {
   const uint I = GROUP_ID();
   const uint id = LOCAL_ID();
@@ -284,7 +284,7 @@ void compactList(GLOBAL const float4* RESTRICT position,
                  GLOBAL const uint* RESTRICT outerCount,
                  CONSTANT const Parameters* p,
                  GLOBAL uint* RESTRICT pairList,
-                 GLOBAL uint* RESTRICT laneCount)
+                 GLOBAL uint* RESTRICT laneCount KERNEL_INDEX_ARGS)
 {
   const uint I = GROUP_ID();
   const uint id = LOCAL_ID();
@@ -341,7 +341,8 @@ void clusterPairs(GLOBAL const float4* RESTRICT position,      // x, y, z, q per
                   GLOBAL const float4* RESTRICT lennardJones,  // per type pair: 4 epsilon, sigma^6, shift, 0
                   CONSTANT const Parameters* p,
                   GLOBAL float4* RESTRICT force,               // gradient per slot
-                  GLOBAL float* RESTRICT partials)             // per i-cluster: eVDW, eCharge, 9 strain terms
+                  GLOBAL float* RESTRICT partials              // per i-cluster: eVDW, eCharge, 9 strain terms
+                  KERNEL_INDEX_ARGS)
 {
   const uint I = GROUP_ID();
   const uint id = LOCAL_ID();

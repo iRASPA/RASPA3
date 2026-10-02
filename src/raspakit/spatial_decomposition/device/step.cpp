@@ -12,16 +12,24 @@ import system;
 import spatial_decomposition_cell_list;
 import spatial_decomposition_pair_kernel;
 import spatial_decomposition_settings;
-import spatial_decomposition_device_backend;
+import spatial_decomposition_device_context;
+import spatial_decomposition_device_kernels;
+import spatial_decomposition_device_mesh;
+import spatial_decomposition_device_bonded;
 import spatial_decomposition_device_bonded_topology;
-import spatial_decomposition_opencl_backend;
+import spatial_decomposition_opencl_context;
+#ifdef RASPA_DEVICE_METAL
+import spatial_decomposition_metal_context;
+#endif
 
+using DeviceKernelLayout::clusterJ;
 using DeviceKernelLayout::pairGroupSize;
 using DeviceKernelLayout::pairPartials;
 
 namespace
 {
 constexpr std::size_t sampleInterval = 8;  // list builds between two synchronous timing samples of the kernels
+constexpr std::size_t boundsGroupSize = 64;
 constexpr float farAway = 1e30f;         // build position of a dummy slot: never within the list cutoff of a real atom
 constexpr std::uint32_t mortonBits = 3;  // 8 x 8 x 8 sub-cells order the atoms within a cell
 
@@ -63,34 +71,68 @@ std::uint32_t isOrthorhombic(const double3x3& cell)
 }
 }  // namespace
 
-DeviceStep::~DeviceStep()
+std::unique_ptr<DeviceContext> createDeviceContext(PairDevice device)
 {
-  if (backend) unmapHost();
+  switch (device)
+  {
+    case PairDevice::OpenCL:
+      return createOpenCLContext();
+    case PairDevice::Metal:
+#ifdef RASPA_DEVICE_METAL
+      return createMetalContext();
+#else
+      throw std::runtime_error("[Device pair kernel]: this build has no Metal backend\n");
+#endif
+    case PairDevice::CPU:
+      break;
+  }
+  throw std::runtime_error("[Device pair kernel]: 'PairDevice' CPU has no device backend\n");
 }
 
-bool DeviceStep::available(PairDevice device)
+bool deviceAvailable(PairDevice device)
 {
   switch (device)
   {
     case PairDevice::OpenCL:
       return openclAvailable();
+    case PairDevice::Metal:
+#ifdef RASPA_DEVICE_METAL
+      return metalAvailable();
+#else
+      return false;
+#endif
     case PairDevice::CPU:
       return false;
   }
   return false;
 }
 
-std::string DeviceStep::deviceName(PairDevice device)
+std::string deviceNameOf(PairDevice device)
 {
   switch (device)
   {
     case PairDevice::OpenCL:
       return openclDeviceName();
+    case PairDevice::Metal:
+#ifdef RASPA_DEVICE_METAL
+      return metalDeviceName();
+#else
+      return {};
+#endif
     case PairDevice::CPU:
       return {};
   }
   return {};
 }
+
+DeviceStep::~DeviceStep()
+{
+  if (context) unmapHost();
+}
+
+bool DeviceStep::available(PairDevice device) { return deviceAvailable(device); }
+
+std::string DeviceStep::deviceName(PairDevice device) { return deviceNameOf(device); }
 
 bool DeviceStep::supportsBonded(const System& system, std::string& reason)
 {
@@ -99,20 +141,35 @@ bool DeviceStep::supportsBonded(const System& system, std::string& reason)
 
 void DeviceStep::initialize(PairDevice device)
 {
-  if (backend) unmapHost();
-  backend.reset();
+  if (context) unmapHost();
+  // the buffers and kernels belong to the old context: release them first
+  mesh = DeviceMesh{};
+  bonded = DeviceBonded{};
+  for (DeviceBufferOwner* buffer :
+       {&parameterBuffer, &buildParameterBuffer, &lennardJonesBuffer, &positionBuffer, &buildPositionBuffer,
+        &typeBuffer, &forceBuffer, &relativeBuffer, &clusterMinBuffer, &clusterMaxBuffer, &compactReferenceBuffer,
+        &cellOfClusterBuffer, &outerCountBuffer, &laneCountBuffer, &partialBuffer, &cellSlotStartBuffer,
+        &outerClusterBuffer, &outerMaskBuffer, &pairListBuffer})
+  {
+    buffer->reset();
+  }
+  context.reset();
   mappedPositions = nullptr;
   mappedRelative = nullptr;
   mappedForces = nullptr;
+  mappedPositionFloats = mappedRelativeFloats = mappedForceFloats = 0;
   deviceKind = device;
-  switch (device)
-  {
-    case PairDevice::OpenCL:
-      backend = createOpenCLBackend();
-      break;
-    case PairDevice::CPU:
-      throw std::runtime_error("[Device pair kernel]: 'PairDevice' CPU has no device backend\n");
-  }
+  context = createDeviceContext(device);
+
+  const std::string_view program = "pair";
+  boundsKernel = context->compileKernel(program, deviceKernelPairSource, DeviceMath::Fast, "clusterBounds");
+  buildKernel = context->compileKernel(program, deviceKernelPairSource, DeviceMath::Fast, "buildList");
+  compactKernel = context->compileKernel(program, deviceKernelPairSource, DeviceMath::Fast, "compactList");
+  pairKernel = context->compileKernel(program, deviceKernelPairSource, DeviceMath::Fast, "clusterPairs");
+  parameterBuffer.allocate(*context, sizeof(DevicePairParameters), DeviceMemory::Device);
+  buildParameterBuffer.allocate(*context, sizeof(DeviceBuildParameters), DeviceMemory::Device);
+  lennardJonesCapacity = 0;
+
   // the device buffers are new: the capacities start over
   slotCapacity = 0;
   iClusterCapacity = 0;
@@ -138,21 +195,38 @@ void DeviceStep::initialize(PairDevice device)
 
 void DeviceStep::enableMesh(int3 meshSize, std::size_t interpolationOrder, double alpha, double conversionFactor)
 {
-  backend->enableMesh(meshSize, interpolationOrder, alpha, conversionFactor, padded);
+  if (!mesh.initialized() || mesh.interpolationOrder() != std::clamp<std::size_t>(interpolationOrder, 3, 7))
+  {
+    mesh.initialize(*context, interpolationOrder);
+  }
+  mesh.setup(meshSize, alpha, conversionFactor);
+  mesh.setSlots(padded);
   useMesh = true;
 }
 
 void DeviceStep::enableBonded(const System& system, double alpha, double conversionFactor, bool useCharge)
 {
   bondedTopology.build(system);
-  backend->enableBonded(bondedTopology, alpha, conversionFactor, useCharge);
+  if (!bonded.initialized()) bonded.initialize(*context);
+  bonded.setTopology(bondedTopology);
+  bonded.setParameters(alpha, conversionFactor, useCharge);
   useBonded = true;
 }
 
 void DeviceStep::setEwaldAlpha(double alpha)
 {
-  if (useMesh) backend->setMeshAlpha(alpha);
-  if (useBonded) backend->setBondedAlpha(alpha);
+  if (useMesh) mesh.setAlpha(alpha);
+  if (useBonded) bonded.setAlpha(alpha);
+}
+
+void DeviceStep::writeParameters(bool blocking)
+{
+  context->write(parameterBuffer.get(), 0, sizeof(DevicePairParameters), &parameters, blocking);
+}
+
+void DeviceStep::writeBuildParameters(bool blocking)
+{
+  context->write(buildParameterBuffer.get(), 0, sizeof(DeviceBuildParameters), &buildParameters, blocking);
 }
 
 void DeviceStep::setParameters(std::span<const LennardJonesPair> lennardJones, std::size_t types, bool useCharge,
@@ -190,7 +264,16 @@ void DeviceStep::setParameters(std::span<const LennardJonesPair> lennardJones, s
   pruneDisplacementSquared = 0.25 * pruneSkin * pruneSkin;
   parametersChanged = true;
 
-  backend->setLennardJones(lennardJonesTable);
+  if (lennardJonesTable.size() > lennardJonesCapacity)
+  {
+    lennardJonesCapacity = lennardJonesTable.size();
+    lennardJonesBuffer.allocate(*context, lennardJonesCapacity * sizeof(float), DeviceMemory::Device);
+  }
+  if (!lennardJonesTable.empty())
+  {
+    context->write(lennardJonesBuffer.get(), 0, lennardJonesTable.size() * sizeof(float), lennardJonesTable.data(),
+                   true);
+  }
 }
 
 void DeviceStep::beginBuild(const CellList& cells, const SimulationBox& box, std::size_t parts)
@@ -322,32 +405,62 @@ void DeviceStep::beginBuild(const CellList& cells, const SimulationBox& box, std
   ensureBuffers();
   ensureBlockBuffers();
   ensureLaneBuffers();
-  mapInputs();
-  std::fill(mappedPositions, mappedPositions + 4 * padded, 0.0f);
-  backend->uploadLayout(DeviceLayoutUpload{
-      .buildPositions = std::span<const float>(buildPosition.data(), 4 * padded),
-      .types = std::span<const std::uint32_t>(typeOfSlot.data(), padded),
-      .cellSlotStart = std::span<const std::uint32_t>(cellSlotStart.data(), numberOfCells + 1),
-      .cellOfCluster = std::span<const std::uint32_t>(cellOfCluster.data(), iClusters),
-  });
-  backend->writeBuildParameters(buildParameters, false);
+  if (residentMode)
+  {
+    // the dummy slots must read as 0 (the integrator's pack kernel writes the real slots only)
+    zeroPositions.assign(4 * padded, 0.0f);
+    context->write(positionBuffer.get(), 0, 4 * padded * sizeof(float), zeroPositions.data(), false);
+  }
+  else
+  {
+    mapInputs();
+    std::fill(mappedPositions, mappedPositions + 4 * padded, 0.0f);
+  }
+  context->write(buildPositionBuffer.get(), 0, 4 * padded * sizeof(float), buildPosition.data(), false);
+  context->write(typeBuffer.get(), 0, padded * sizeof(std::uint32_t), typeOfSlot.data(), false);
+  context->write(cellSlotStartBuffer.get(), 0, (numberOfCells + 1) * sizeof(std::uint32_t), cellSlotStart.data(),
+                 false);
+  context->write(cellOfClusterBuffer.get(), 0, iClusters * sizeof(std::uint32_t), cellOfCluster.data(), false);
+  writeBuildParameters(false);
   enqueueBuild();
-  if (useMesh) backend->setMeshSlots(padded);
+  if (useMesh) mesh.setSlots(padded);
   if (useBonded)
   {
     bondedTopology.layout(slotOfSorted, cells.originalToSorted, padded, slotMolecule, referenceOfSorted);
-    backend->setBondedLayout(slotMolecule);
+    bonded.setLayout(slotMolecule);
   }
-  backend->flush();
+  context->flush();
 }
 
-void DeviceStep::enqueueBuild() { backend->enqueueBuild(padded / clusterI, padded / clusterJ, outerCount); }
+void DeviceStep::enqueueBuild()
+{
+  const std::size_t iClusters = padded / clusterI;
+  const std::size_t jClusters = padded / clusterJ;
+  const std::uint32_t numberOfJClusters = static_cast<std::uint32_t>(jClusters);
+  {
+    const DeviceArg arguments[] = {DeviceArg::of(buildPositionBuffer.get()), DeviceArg::value(numberOfJClusters),
+                                   DeviceArg::of(clusterMinBuffer.get()), DeviceArg::of(clusterMaxBuffer.get())};
+    context->launch(boundsKernel, arguments, roundUp(std::max<std::size_t>(jClusters, 1), boundsGroupSize) / boundsGroupSize,
+                    boundsGroupSize);
+  }
+  {
+    const DeviceArg arguments[] = {
+        DeviceArg::of(buildPositionBuffer.get()),  DeviceArg::of(cellSlotStartBuffer.get()),
+        DeviceArg::of(cellOfClusterBuffer.get()),  DeviceArg::of(clusterMinBuffer.get()),
+        DeviceArg::of(clusterMaxBuffer.get()),     DeviceArg::of(buildParameterBuffer.get()),
+        DeviceArg::of(outerClusterBuffer.get()),   DeviceArg::of(outerMaskBuffer.get()),
+        DeviceArg::of(outerCountBuffer.get())};
+    context->launch(buildKernel, arguments, std::max<std::size_t>(iClusters, 1), pairGroupSize);
+  }
+  context->read(outerCountBuffer.get(), 0, outerCount.size() * sizeof(std::uint32_t), outerCount.data());
+  buildEvent = context->mark();
+}
 
 void DeviceStep::finishBuild()
 {
   for (;;)
   {
-    backend->waitBuild();
+    context->wait(buildEvent);
     maximumRow = 0;
     outerBlocks = 0;
     for (const std::uint32_t count : outerCount)
@@ -359,7 +472,7 @@ void DeviceStep::finishBuild()
     // a row overflowed: grow the rows and build again
     blocksPerCluster = roundUp(maximumRow + maximumRow / 4, 32);
     buildParameters.blocksPerCluster = static_cast<std::uint32_t>(blocksPerCluster);
-    backend->writeBuildParameters(buildParameters, true);
+    writeBuildParameters(true);
     ensureBlockBuffers();
     enqueueBuild();
   }
@@ -378,33 +491,43 @@ void DeviceStep::ensureBuffers()
   bool blocksAffected = false;
   if (padded > slotCapacity)
   {
-    // the backend unmaps the host pointers of the slot buffers before it replaces them
-    mappedPositions = nullptr;
-    mappedRelative = nullptr;
-    mappedForces = nullptr;
+    // the host pointers into the slot buffers end with them
+    unmapHost();
     slotCapacity = roundUp(padded + padded / 4, clusterI);
-    backend->allocateSlots(slotCapacity);
+    positionBuffer.allocate(*context, slotCapacity * 4 * sizeof(float), DeviceMemory::Shared);
+    buildPositionBuffer.allocate(*context, slotCapacity * 4 * sizeof(float), DeviceMemory::Device);
+    typeBuffer.allocate(*context, slotCapacity * sizeof(std::uint32_t), DeviceMemory::Device);
+    forceBuffer.allocate(*context, slotCapacity * 4 * sizeof(float), DeviceMemory::Shared);
+    clusterMinBuffer.allocate(*context, (slotCapacity / clusterJ) * 4 * sizeof(float), DeviceMemory::Device);
+    clusterMaxBuffer.allocate(*context, (slotCapacity / clusterJ) * 4 * sizeof(float), DeviceMemory::Device);
+    compactReferenceBuffer.allocate(*context, slotCapacity * 4 * sizeof(float), DeviceMemory::Device);
   }
   if (useBonded)
   {
     const std::size_t needed = 4 * numberOfAtoms;
     if (needed > relativeCapacity)
     {
+      if (mappedRelative != nullptr) context->unmap(relativeBuffer.get());
       mappedRelative = nullptr;
+      mappedRelativeFloats = 0;
       relativeCapacity = needed + needed / 4;
-      backend->allocateRelative(relativeCapacity);
+      relativeBuffer.allocate(*context, relativeCapacity * sizeof(float), DeviceMemory::Shared);
     }
   }
   if (iClusters > iClusterCapacity)
   {
     iClusterCapacity = iClusters + iClusters / 4 + 1;
-    backend->allocateClusters(iClusterCapacity);
+    cellOfClusterBuffer.allocate(*context, iClusterCapacity * sizeof(std::uint32_t), DeviceMemory::Device);
+    outerCountBuffer.allocate(*context, iClusterCapacity * sizeof(std::uint32_t), DeviceMemory::Device);
+    laneCountBuffer.allocate(*context, iClusterCapacity * pairGroupSize * sizeof(std::uint32_t),
+                             DeviceMemory::Device);
+    partialBuffer.allocate(*context, iClusterCapacity * pairPartials * sizeof(float), DeviceMemory::Device);
     blocksAffected = true;
   }
   if (cellEntries > cellCapacity)
   {
     cellCapacity = cellEntries + cellEntries / 4;
-    backend->allocateCells(cellCapacity);
+    cellSlotStartBuffer.allocate(*context, cellCapacity * sizeof(std::uint32_t), DeviceMemory::Device);
   }
   if (blocksAffected)
   {
@@ -419,7 +542,8 @@ void DeviceStep::ensureBlockBuffers()
   const std::size_t required = iClusterCapacity * blocksPerCluster;
   if (required <= blockWords) return;
   blockWords = required;
-  backend->allocateBlocks(blockWords);
+  outerClusterBuffer.allocate(*context, blockWords * sizeof(std::uint32_t), DeviceMemory::Device);
+  outerMaskBuffer.allocate(*context, blockWords * sizeof(std::uint32_t), DeviceMemory::Device);
 }
 
 void DeviceStep::ensureLaneBuffers()
@@ -427,8 +551,30 @@ void DeviceStep::ensureLaneBuffers()
   const std::size_t required = iClusterCapacity * pairGroupSize * pairsPerLane;
   if (required <= laneWords) return;
   laneWords = required;
-  backend->allocateLanes(laneWords);
+  pairListBuffer.allocate(*context, laneWords * sizeof(std::uint32_t), DeviceMemory::Device);
 }
+
+void DeviceStep::enqueueCompaction()
+{
+  const DeviceArg arguments[] = {DeviceArg::of(positionBuffer.get()),   DeviceArg::of(outerClusterBuffer.get()),
+                                 DeviceArg::of(outerMaskBuffer.get()),  DeviceArg::of(outerCountBuffer.get()),
+                                 DeviceArg::of(parameterBuffer.get()),  DeviceArg::of(pairListBuffer.get()),
+                                 DeviceArg::of(laneCountBuffer.get())};
+  context->launch(compactKernel, arguments, std::max<std::size_t>(padded / clusterI, 1), pairGroupSize);
+}
+
+void DeviceStep::enqueuePairs()
+{
+  const DeviceArg arguments[] = {DeviceArg::of(positionBuffer.get()),  DeviceArg::of(typeBuffer.get()),
+                                 DeviceArg::of(pairListBuffer.get()),  DeviceArg::of(laneCountBuffer.get()),
+                                 DeviceArg::of(lennardJonesBuffer.get()), DeviceArg::of(parameterBuffer.get()),
+                                 DeviceArg::of(forceBuffer.get()),     DeviceArg::of(partialBuffer.get())};
+  context->launch(pairKernel, arguments, std::max<std::size_t>(padded / clusterI, 1), pairGroupSize);
+}
+
+void DeviceStep::enqueueMesh() { mesh.enqueue(positionBuffer.get(), forceBuffer.get(), true); }
+
+void DeviceStep::enqueueBonded() { bonded.enqueue(relativeBuffer.get(), forceBuffer.get()); }
 
 void DeviceStep::packPositions(std::size_t part, std::span<const std::uint32_t> sortedAtoms, const CellList& cells,
                                const SimulationBox& box)
@@ -495,29 +641,31 @@ void DeviceStep::updateParameters(const SimulationBox& box)
   std::copy(std::begin(inverseValues), std::end(inverseValues), std::begin(parameters.inverseCell));
   parameters.orthorhombic = orthorhombic;
   parametersChanged = false;
-  backend->writeParameters(parameters, false);
+  writeParameters(false);
 }
 
 // the pair kernel, the mesh and bonded chains and the read-back of the partial sums
 void DeviceStep::enqueueChain()
 {
-  const std::size_t iClusters = padded / clusterI;
-  backend->enqueuePairs(iClusters);
+  enqueuePairs();
   // start the device on the pair kernel now: the host-side cost of enqueueing the mesh and bonded chains (a dozen
   // launches) then overlaps with its execution
-  backend->flush();
-  if (compactedThisStep) backend->enqueueReadLaneCounts(laneCount);
-  if (useMesh) backend->enqueueMesh();
-  if (useBonded) backend->enqueueBonded();
-  backend->enqueueReadPartials(hostPartials);
-  backend->flush();
+  context->flush();
+  if (compactedThisStep)
+  {
+    context->read(laneCountBuffer.get(), 0, laneCount.size() * sizeof(std::uint32_t), laneCount.data());
+  }
+  if (useMesh) enqueueMesh();
+  if (useBonded) enqueueBonded();
+  context->read(partialBuffer.get(), 0, hostPartials.size() * sizeof(float), hostPartials.data());
+  if (useMesh) mesh.enqueueRead();
+  if (useBonded) bonded.enqueueRead();
+  stepEvent = context->mark();
+  context->flush();
 }
 
 void DeviceStep::enqueue(const SimulationBox& box)
 {
-  updateParameters(box);
-  if (useMesh) backend->updateMeshBox(box);
-
   // compact the lane lists when the outer list is new or (with pruning) an atom moved more than prune skin / 2
   // since the last compaction
   bool compact = !laneListsValid;
@@ -525,17 +673,64 @@ void DeviceStep::enqueue(const SimulationBox& box)
   {
     for (const double displacement : partDisplacement) compact = compact || displacement > pruneDisplacementSquared;
   }
+  if (compact) listPositions.assign(mappedPositions, mappedPositions + 4 * padded);
+  // the mapped host pointers must not be live while the device uses the buffers
+  unmapHost();
+  enqueueStep(box, compact);
+}
+
+void DeviceStep::setResident(bool resident)
+{
+  if (resident == residentMode) return;
+  residentMode = resident;
+  // the reference positions of the compaction live on the other side after a switch: compact at the next step
+  laneListsValid = false;
+  if (resident)
+  {
+    unmapHost();
+  }
+  else if (padded > 0)
+  {
+    mapForces();
+    mapInputs();
+  }
+}
+
+DeviceStep::ResidentTargets DeviceStep::residentTargets() const
+{
+  ResidentTargets targets{};
+  targets.positions = positionBuffer.get();
+  targets.forces = forceBuffer.get();
+  targets.relative = relativeBuffer.get();
+  targets.buildPositions = buildPositionBuffer.get();
+  targets.compactReference = compactReferenceBuffer.get();
+  targets.relativeEnabled = useBonded;
+  return targets;
+}
+
+void DeviceStep::enqueueResident(const SimulationBox& box, bool compactionDue)
+{
+  const bool compact = !laneListsValid || (pruning() && compactionDue);
+  if (compact)
+  {
+    // the reference positions of the compaction stay on the device
+    context->copy(positionBuffer.get(), 0, compactReferenceBuffer.get(), 0, 4 * padded * sizeof(float));
+  }
+  enqueueStep(box, compact);
+}
+
+void DeviceStep::enqueueStep(const SimulationBox& box, bool compact)
+{
+  updateParameters(box);
+  if (useMesh) mesh.updateBox(box);
+
   compactedThisStep = compact;
   if (compact)
   {
-    listPositions.assign(mappedPositions, mappedPositions + 4 * padded);
     laneListsValid = true;
     ++compactions;
   }
-  // the mapped host pointers must not be live while the device uses the buffers
-  unmapHost();
 
-  const std::size_t iClusters = padded / clusterI;
   // the fastest of a few back-to-back synchronous runs: the first run after an idle period also pays for the
   // clock ramp-up of the device
   auto timedChain = [&](auto&& enqueueWork) -> std::chrono::duration<double>
@@ -543,10 +738,10 @@ void DeviceStep::enqueue(const SimulationBox& box)
     std::chrono::duration<double> best = std::chrono::duration<double>::max();
     for (std::size_t run = 0; run < 3; ++run)
     {
-      backend->finish();
+      context->finish();
       const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
       enqueueWork();
-      backend->finish();
+      context->finish();
       best = std::min(best, std::chrono::duration<double>(std::chrono::steady_clock::now() - start));
     }
     return best;
@@ -559,21 +754,21 @@ void DeviceStep::enqueue(const SimulationBox& box)
     if (useMesh && !meshProfiled)
     {
       meshProfiled = true;
-      backend->profileMesh();
+      mesh.profile(positionBuffer.get(), forceBuffer.get());
     }
-    if (useMesh) sampledMeshTime = timedChain([&] { backend->enqueueMesh(); });
-    if (useBonded) sampledBondedTime = timedChain([&] { backend->enqueueBonded(); });
+    if (useMesh) sampledMeshTime = timedChain([&] { enqueueMesh(); });
+    if (useBonded) sampledBondedTime = timedChain([&] { enqueueBonded(); });
   }
 
   if (compact)
   {
     if (sampleRequested)
     {
-      sampledPruneTime = timedChain([&] { backend->enqueueCompaction(iClusters); });
+      sampledPruneTime = timedChain([&] { enqueueCompaction(); });
     }
     else
     {
-      backend->enqueueCompaction(iClusters);
+      enqueueCompaction();
     }
     prunedTime += sampledPruneTime;
   }
@@ -582,7 +777,7 @@ void DeviceStep::enqueue(const SimulationBox& box)
   // build
   if (sampleRequested)
   {
-    sampledKernelTime = timedChain([&] { backend->enqueuePairs(iClusters); });
+    sampledKernelTime = timedChain([&] { enqueuePairs(); });
     sampleRequested = false;
   }
   if (useMesh) meshedTime += sampledMeshTime;
@@ -590,11 +785,11 @@ void DeviceStep::enqueue(const SimulationBox& box)
   enqueueChain();
 }
 
-DeviceStep::Results DeviceStep::wait()
+DeviceStep::Results DeviceStep::wait(const std::function<void()>& afterRetry)
 {
   for (;;)
   {
-    backend->waitStep();
+    context->wait(stepEvent);
     if (!compactedThisStep) break;
     // the lane counts of the compaction: the statistics, and the overflow check (a lane beyond its capacity:
     // grow the lists, compact again and evaluate the step again)
@@ -609,16 +804,20 @@ DeviceStep::Results DeviceStep::wait()
     if (maximumLane <= pairsPerLane) break;
     pairsPerLane = roundUp(maximumLane + maximumLane / 4, 32);
     parameters.pairsPerLane = static_cast<std::uint32_t>(pairsPerLane);
-    backend->writeParameters(parameters, true);
+    writeParameters(true);
     ensureLaneBuffers();
-    backend->enqueueCompaction(padded / clusterI);
+    enqueueCompaction();
     enqueueChain();
+    if (afterRetry) afterRetry();
   }
   compactedThisStep = false;
   kernelTime += sampledKernelTime;
   ++steps;
-  mapForces();
-  mapInputs();
+  if (!residentMode)
+  {
+    mapForces();
+    mapInputs();
+  }
 
   // every pair is counted from both clusters: half the sums
   Results results{};
@@ -642,10 +841,9 @@ DeviceStep::Results DeviceStep::wait()
   results.pairStrain.cz = 0.5 * sums[10];
   if (useMesh)
   {
-    backend->collectMesh(results.reciprocalEnergy, results.reciprocalStrain, results.singleIonSum,
-                         results.singleIonStrain);
+    mesh.collect(results.reciprocalEnergy, results.reciprocalStrain, results.singleIonSum, results.singleIonStrain);
   }
-  if (useBonded) results.bonded = backend->collectBonded();
+  if (useBonded) results.bonded = bonded.collect();
   return results;
 }
 
@@ -654,7 +852,7 @@ std::string DeviceStep::status() const
   std::string result;
   result += std::format("    pair kernel: {} cluster {} x {} (single precision) Lennard-Jones{} on {}\n",
                         pairDeviceName(deviceKind), clusterI, clusterJ,
-                        parameters.useCharge ? " + analytic Ewald real space" : "", backend->deviceName());
+                        parameters.useCharge ? " + analytic Ewald real space" : "", context->deviceName());
   const std::size_t iClusters = padded / clusterI;
   result += std::format(
       "    device list: {} atoms in {} slots ({} i-clusters in {} x {} x {} cells), rows of {} "
@@ -672,26 +870,48 @@ std::string DeviceStep::status() const
   {
     result += " (no pruning: compacted once per build)\n";
   }
-  if (useMesh) result += backend->meshStatus();
-  if (useBonded) result += backend->bondedStatus();
+  if (useMesh) result += mesh.status();
+  if (useBonded) result += bonded.status();
   return result;
 }
 
 void DeviceStep::unmapHost()
 {
-  backend->unmapAll();
+  if (mappedPositions != nullptr) context->unmap(positionBuffer.get());
+  if (mappedRelative != nullptr) context->unmap(relativeBuffer.get());
+  if (mappedForces != nullptr) context->unmap(forceBuffer.get());
   mappedPositions = nullptr;
   mappedRelative = nullptr;
   mappedForces = nullptr;
+  mappedPositionFloats = mappedRelativeFloats = mappedForceFloats = 0;
 }
 
 void DeviceStep::mapInputs()
 {
-  if (padded > 0) mappedPositions = backend->mapPositions(4 * padded);
-  if (useBonded && !slotOfSorted.empty()) mappedRelative = backend->mapRelative(4 * slotOfSorted.size());
+  if (padded > 0 && (mappedPositions == nullptr || mappedPositionFloats < 4 * padded))
+  {
+    if (mappedPositions != nullptr) context->unmap(positionBuffer.get());
+    mappedPositionFloats = 4 * padded;
+    mappedPositions = static_cast<float*>(context->map(positionBuffer.get(), 4 * padded * sizeof(float), true));
+  }
+  if (useBonded && !slotOfSorted.empty())
+  {
+    const std::size_t floats = 4 * slotOfSorted.size();
+    if (mappedRelative == nullptr || mappedRelativeFloats < floats)
+    {
+      if (mappedRelative != nullptr) context->unmap(relativeBuffer.get());
+      mappedRelativeFloats = floats;
+      mappedRelative = static_cast<float*>(context->map(relativeBuffer.get(), floats * sizeof(float), true));
+    }
+  }
 }
 
 void DeviceStep::mapForces()
 {
-  if (padded > 0) mappedForces = backend->mapForces(4 * padded);
+  if (padded > 0 && (mappedForces == nullptr || mappedForceFloats < 4 * padded))
+  {
+    if (mappedForces != nullptr) context->unmap(forceBuffer.get());
+    mappedForceFloats = 4 * padded;
+    mappedForces = static_cast<const float*>(context->map(forceBuffer.get(), 4 * padded * sizeof(float), false));
+  }
 }

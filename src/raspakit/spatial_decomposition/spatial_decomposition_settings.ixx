@@ -31,20 +31,35 @@ export inline std::string pairPrecisionName(PairPrecision precision)
 }
 
 /// Where the specialised pair kernel runs. `CPU`: the SIMD cluster kernel (or the scalar kernel) on the worker
-/// threads. `OpenCL`: the cluster pair kernel on the OpenCL device (GPU) in single precision, overlapped with the
-/// mesh, bonded and exclusion work of the worker threads; requires an OpenCL device and the specialised kernel
-/// (Lennard-Jones with Ewald or no electrostatics, fully coupled atoms).
+/// threads. `OpenCL` / `Metal`: the cluster pair kernel on the device (GPU) in single precision, overlapped with
+/// the mesh, bonded and exclusion work of the worker threads; requires a device of the kind (Metal: macOS builds)
+/// and the specialised kernel (Lennard-Jones with Ewald or no electrostatics, fully coupled atoms).
 export enum class PairDevice : std::uint8_t
 {
   CPU = 0,
-  OpenCL = 1
+  OpenCL = 1,
+  Metal = 2
 };
 
-export inline std::string pairDeviceName(PairDevice device) { return device == PairDevice::OpenCL ? "OpenCL" : "CPU"; }
+export inline std::string pairDeviceName(PairDevice device)
+{
+  switch (device)
+  {
+    case PairDevice::OpenCL:
+      return "OpenCL";
+    case PairDevice::Metal:
+      return "Metal";
+    case PairDevice::CPU:
+      break;
+  }
+  return "CPU";
+}
+/// Whether the device is a GPU backend (the device step), not the CPU.
+export inline bool isDevice(PairDevice device) { return device != PairDevice::CPU; }
 
 export struct SpatialDecompositionSettings
 {
-  std::uint64_t versionNumber{4};
+  std::uint64_t versionNumber{5};
 
   /// Number of worker threads (1: every phase runs on the calling thread through the same code path).
   std::size_t numberOfThreads{1};
@@ -80,15 +95,22 @@ export struct SpatialDecompositionSettings
   /// Device of the specialised pair kernel (see PairDevice).
   PairDevice pairDevice{PairDevice::CPU};
 
-  /// With `PairDevice::OpenCL`: the particle-mesh Ewald sum runs on the device as well (charge spreading, FFTs,
+  /// With a device pair kernel: the particle-mesh Ewald sum runs on the device as well (charge spreading, FFTs,
   /// influence function, interpolation). Not an input option (the tests and benchmarks switch it off to compare
   /// the device pairs with the host mesh).
   bool deviceMesh{true};
 
-  /// With `PairDevice::OpenCL`: the bonded terms and the self / exclusion corrections run on the device when
+  /// With a device pair kernel: the bonded terms and the self / exclusion corrections run on the device when
   /// the device kernels cover the intramolecular potentials of the system (else they stay on the host). Not an
   /// input option.
   bool deviceBonded{true};
+
+  /// With a device pair kernel, mesh and bonded terms: the MD state (positions, velocities, molecule records)
+  /// stays on the device and the velocity-Verlet integrator runs there in double-float arithmetic (hi + lo
+  /// floats, "emulated double"); the host keeps the thermostat and the list rebuilds and downloads the state
+  /// only when it samples properties or writes a restart file. Falls back to the host integrator when the system
+  /// is not covered (semi-flexible molecules, barostats, bonded terms on the host). Input option 'Resident'.
+  bool resident{true};
 
   bool operator==(const SpatialDecompositionSettings&) const = default;
 
@@ -116,6 +138,7 @@ export Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const
   archive << static_cast<std::uint8_t>(s.pairDevice);
   archive << s.deviceMesh;
   archive << s.deviceBonded;
+  archive << s.resident;
   return archive;
 }
 
@@ -164,7 +187,7 @@ export Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Spati
   {
     std::uint8_t device;
     archive >> device;
-    s.pairDevice = device == 1 ? PairDevice::OpenCL : PairDevice::CPU;
+    s.pairDevice = device == 1 ? PairDevice::OpenCL : device == 2 ? PairDevice::Metal : PairDevice::CPU;
   }
   s.deviceMesh = true;
   s.deviceBonded = true;
@@ -172,6 +195,11 @@ export Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Spati
   {
     archive >> s.deviceMesh;
     archive >> s.deviceBonded;
+  }
+  s.resident = true;
+  if (versionNumber >= 5)
+  {
+    archive >> s.resident;
   }
   return archive;
 }

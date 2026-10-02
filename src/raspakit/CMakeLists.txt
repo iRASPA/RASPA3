@@ -76,6 +76,30 @@ set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 target_sources(${PROJECT_NAME} PRIVATE ${RASPAKIT_CPP_FILES})
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES ${RASPAKIT_IXX_FILES})
 
+# The Metal backend of the spatial-decomposition device step (macOS only): the C++ module files of
+# spatial_decomposition/metal and the Objective-C++ bridge (bridge.mm), compiled as OBJCXX with the project
+# compiler against a plain C interface (no C++ types cross it, so the bridge is independent of the C++ runtime
+# the rest of the library is linked against). RASPA_DEVICE_METAL marks the C++ side.
+if(APPLE)
+  option(RASPA_DEVICE_METAL "Build the Metal backend of the device pair kernel" ON)
+endif()
+if(APPLE AND RASPA_DEVICE_METAL)
+  if(NOT DEFINED CMAKE_OBJCXX_COMPILER)
+    set(CMAKE_OBJCXX_COMPILER ${CMAKE_CXX_COMPILER} CACHE FILEPATH "Objective-C++ compiler")
+  endif()
+  enable_language(OBJCXX)
+  file(GLOB RASPAKIT_METAL_CPP_FILES ${PROJECT_SOURCE_DIR}/spatial_decomposition/metal/*.cpp)
+  file(GLOB RASPAKIT_METAL_IXX_FILES ${PROJECT_SOURCE_DIR}/spatial_decomposition/metal/*.ixx)
+  file(GLOB RASPAKIT_METAL_MM_FILES ${PROJECT_SOURCE_DIR}/spatial_decomposition/metal/*.mm)
+  target_sources(${PROJECT_NAME} PRIVATE ${RASPAKIT_METAL_CPP_FILES} ${RASPAKIT_METAL_MM_FILES})
+  target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES ${RASPAKIT_METAL_IXX_FILES})
+  # no objc_msgSend selector stubs: lld does not synthesize them for the deployment target of the executables
+  set_source_files_properties(${RASPAKIT_METAL_MM_FILES} PROPERTIES COMPILE_OPTIONS
+                              "-fobjc-arc;-fno-objc-msgsend-selector-stubs;-fno-objc-msgsend-class-selector-stubs")
+  target_compile_definitions(${PROJECT_NAME} PUBLIC RASPA_DEVICE_METAL)
+  target_link_libraries(${PROJECT_NAME} PUBLIC "-framework Metal" "-framework Foundation")
+endif()
+
 # The commit and compile date behind the 'build_info' module, shown by --help / --version and written at the
 # top of every output file. The script runs on every build (a git call) and rewrites the file only when the
 # commit or the dirty state changes, so it costs a recompile of this one file and a relink only then.

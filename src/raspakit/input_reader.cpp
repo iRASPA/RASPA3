@@ -1217,7 +1217,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   {
     if (!parsed_data["PairDevice"].is_string())
     {
-      throw std::runtime_error(std::format("[Input reader]: 'PairDevice' must be a string ('CPU' or 'OpenCL')\n"));
+      throw std::runtime_error(
+          std::format("[Input reader]: 'PairDevice' must be a string ('CPU', 'OpenCL', 'Metal' or 'GPU')\n"));
     }
     std::string device = parsed_data["PairDevice"].get<std::string>();
     std::transform(device.begin(), device.end(), device.begin(),
@@ -1226,15 +1227,37 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     {
       spatialDecompositionSettings.pairDevice = PairDevice::CPU;
     }
-    else if (device == "opencl" || device == "gpu")
+    else if (device == "opencl")
     {
       spatialDecompositionSettings.pairDevice = PairDevice::OpenCL;
     }
+    else if (device == "metal")
+    {
+      spatialDecompositionSettings.pairDevice = PairDevice::Metal;
+    }
+    else if (device == "gpu")
+    {
+      // the native backend of the platform: Metal on macOS, OpenCL elsewhere
+#ifdef __APPLE__
+      spatialDecompositionSettings.pairDevice = PairDevice::Metal;
+#else
+      spatialDecompositionSettings.pairDevice = PairDevice::OpenCL;
+#endif
+    }
     else
     {
-      throw std::runtime_error(std::format("[Input reader]: 'PairDevice' must be 'CPU' or 'OpenCL', '{}' was given\n",
-                                           parsed_data["PairDevice"].get<std::string>()));
+      throw std::runtime_error(
+          std::format("[Input reader]: 'PairDevice' must be 'CPU', 'OpenCL', 'Metal' or 'GPU', '{}' was given\n",
+                      parsed_data["PairDevice"].get<std::string>()));
     }
+  }
+  if (parsed_data.contains("Resident"))
+  {
+    if (!parsed_data["Resident"].is_boolean())
+    {
+      throw std::runtime_error(std::format("[Input reader]: 'Resident' must be a boolean\n"));
+    }
+    spatialDecompositionSettings.resident = parsed_data["Resident"].get<bool>();
   }
   if (parsed_data.contains("DomainGrid"))
   {
@@ -4491,6 +4514,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "PairPrecision",
     "PruneSkin",
     "PairDevice",
+    "Resident",
     "DomainGrid",
     "Components",
     "Systems"};

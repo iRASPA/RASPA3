@@ -76,7 +76,8 @@ DEVICE_FUNCTION float erfOverXMinusLimit(float x)
 }
 
 // BondPotential (distancePotentialEnergyGradientStrain): energy and DF with gradient_A = DF dr, dr = posA - posB
-DEVICE_FUNCTION float bondTerm(uint type, const float* P, float3 posA, float3 posB, float3* gA, float3* gB)
+DEVICE_FUNCTION float bondTerm(uint type, PRIVATE const float* P, float3 posA, float3 posB, PRIVATE float3* gA,
+                               PRIVATE float3* gB)
 {
   const float3 dr = posA - posB;
   const float rr = dot(dr, dr);
@@ -149,8 +150,8 @@ DEVICE_FUNCTION float bondTerm(uint type, const float* P, float3 posA, float3 po
 }
 
 // BendPotential::potentialEnergyGradientStrain
-DEVICE_FUNCTION float bendTerm(uint type, const float* P, float3 posA, float3 posB, float3 posC, float3* gA, float3* gB,
-                      float3* gC)
+DEVICE_FUNCTION float bendTerm(uint type, PRIVATE const float* P, float3 posA, float3 posB, float3 posC,
+                               PRIVATE float3* gA, PRIVATE float3* gB, PRIVATE float3* gC)
 {
   float3 dr_ab = posA - posB;
   const float r_ab = length(dr_ab);
@@ -216,8 +217,9 @@ DEVICE_FUNCTION float bendTerm(uint type, const float* P, float3 posA, float3 po
 }
 
 // TorsionPotential::potentialEnergyGradientStrain
-DEVICE_FUNCTION float torsionTerm(uint type, const float* P, float3 posA, float3 posB, float3 posC, float3 posD, float3* gA,
-                         float3* gB, float3* gC, float3* gD)
+DEVICE_FUNCTION float torsionTerm(uint type, PRIVATE const float* P, float3 posA, float3 posB, float3 posC,
+                                  float3 posD, PRIVATE float3* gA, PRIVATE float3* gB, PRIVATE float3* gC,
+                                  PRIVATE float3* gD)
 {
   const float3 Dab = posA - posB;
   const float3 Dcb = posC - posB;
@@ -351,10 +353,9 @@ DEVICE_FUNCTION float torsionTerm(uint type, const float* P, float3 posA, float3
   return U;
 }
 
-DEVICE_FUNCTION void reducePartials(LOCAL float* scratch, uint count, GLOBAL float* RESTRICT partials)
+DEVICE_FUNCTION void reducePartials(LOCAL float* scratch, uint count, GLOBAL float* RESTRICT partials, uint lid,
+                                    uint groupSize, uint group)
 {
-  const uint lid = LOCAL_ID();
-  const uint groupSize = LOCAL_SIZE();
   for (uint stride = groupSize / 2; stride > 0; stride >>= 1)
   {
     LOCAL_BARRIER();
@@ -364,12 +365,13 @@ DEVICE_FUNCTION void reducePartials(LOCAL float* scratch, uint count, GLOBAL flo
     }
   }
   LOCAL_BARRIER();
-  if (lid < count) partials[GROUP_ID() * count + lid] = scratch[lid * groupSize];
+  if (lid < count) partials[group * count + lid] = scratch[lid * groupSize];
 }
 
 // Intramolecular pairs: kind 4 Lennard-Jones with P[0] = scaling 4 epsilon, P[1] = sigma^2; kind 5 Coulomb with
 // P[0] = scaling C qA qB (VanDerWaalsPotential / CoulombPotential::potentialEnergyGradientStrain)
-DEVICE_FUNCTION float pairTerm(uint kind, const float* P, float3 posA, float3 posB, float3* gA, float3* gB)
+DEVICE_FUNCTION float pairTerm(uint kind, PRIVATE const float* P, float3 posA, float3 posB, PRIVATE float3* gA,
+                               PRIVATE float3* gB)
 {
   const float3 dr = posA - posB;
   const float rr = dot(dr, dr);
@@ -405,7 +407,7 @@ void bondedTerms(GLOBAL const float4* RESTRICT relative,            // per atom 
                  GLOBAL const uint* RESTRICT gradientOffset,        // per term: offset of its gradient slots
                  CONSTANT const BondedParameters* p,
                  GLOBAL float4* RESTRICT termGradient,
-                 GLOBAL float* RESTRICT partials)
+                 GLOBAL float* RESTRICT partials KERNEL_INDEX_ARGS)
 {
   LOCAL float scratch[TERM_PARTIALS * TERM_GROUP];
   const uint lid = LOCAL_ID();
@@ -453,7 +455,7 @@ void bondedTerms(GLOBAL const float4* RESTRICT relative,            // per atom 
   }
 
   for (uint q = 0; q < TERM_PARTIALS; ++q) scratch[q * TERM_GROUP + lid] = acc[q];
-  reducePartials(scratch, TERM_PARTIALS, partials);
+  reducePartials(scratch, TERM_PARTIALS, partials, lid, TERM_GROUP, GROUP_ID());
 }
 
 // One work-item per slot (atom): the Ewald self and exclusion corrections with the other atoms of its molecule,
@@ -470,7 +472,7 @@ void bondedAtoms(GLOBAL const float4* RESTRICT relative,          // per atom (s
                  GLOBAL const float4* RESTRICT termGradient,
                  CONSTANT const BondedParameters* p,
                  GLOBAL float4* RESTRICT force,
-                 GLOBAL float* RESTRICT partials)
+                 GLOBAL float* RESTRICT partials KERNEL_INDEX_ARGS)
 {
   LOCAL float scratch[ATOM_PARTIALS * BONDED_GROUP];
   const uint lid = LOCAL_ID();
@@ -568,6 +570,6 @@ void bondedAtoms(GLOBAL const float4* RESTRICT relative,          // per atom (s
   }
 
   for (uint q = 0; q < ATOM_PARTIALS; ++q) scratch[q * BONDED_GROUP + lid] = acc[q];
-  reducePartials(scratch, ATOM_PARTIALS, partials + p->atomPartialOffset);
+  reducePartials(scratch, ATOM_PARTIALS, partials + p->atomPartialOffset, lid, BONDED_GROUP, GROUP_ID());
 }
 )CLC";

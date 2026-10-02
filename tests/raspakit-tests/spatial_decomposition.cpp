@@ -27,6 +27,8 @@ import van_der_waals_potential;
 import coulomb_potential;
 import bond_bond_potential;
 import integrators_update;
+import integrators_compute;
+import thermostat;
 import randomnumbers;
 import spatial_decomposition_settings;
 import spatial_decomposition_cell_list;
@@ -664,25 +666,35 @@ TEST(spatial_decomposition, engine_mixed_precision_agrees_with_double_rigid_wate
                                {.vdw = 1e-6, .charge = 1e-4, .total = 1e-5, .gradient = 1e-5, .pressure = 1e-5});
 }
 
-TEST(spatial_decomposition, engine_opencl_pair_kernel_agrees_with_double_rigid_water)
+/// The device backends: every device test runs on each available one (skipped where the device is missing).
+class SpatialDecompositionDevice : public testing::TestWithParam<PairDevice>
 {
-  if (!DeviceStep::available(PairDevice::OpenCL)) GTEST_SKIP() << "no OpenCL device";
+};
+INSTANTIATE_TEST_SUITE_P(spatial_decomposition, SpatialDecompositionDevice,
+                         testing::Values(PairDevice::OpenCL, PairDevice::Metal),
+                         [](const testing::TestParamInfo<PairDevice>& info) { return pairDeviceName(info.param); });
+
+TEST_P(SpatialDecompositionDevice, engine_device_pair_kernel_agrees_with_double_rigid_water)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
   // the device kernel: single-precision pair geometry with the minimum image of wrapped positions, closed-form
   // erfc, single-precision accumulation of the per-atom forces and per-cluster partial sums
   SpatialDecompositionSettings settings = settingsFor(1);
-  settings.pairDevice = PairDevice::OpenCL;
+  settings.pairDevice = pairDevice;
   settings.deviceMesh = false;
   settings.deviceBonded = false;
   expectKernelAgreesWithScalar(settings,
                                {.vdw = 1e-6, .charge = 1e-4, .total = 1e-5, .gradient = 1e-5, .pressure = 1e-5});
 }
 
-TEST(spatial_decomposition, engine_opencl_pair_kernel_without_pruning_rigid_water)
+TEST_P(SpatialDecompositionDevice, engine_device_pair_kernel_without_pruning_rigid_water)
 {
-  if (!DeviceStep::available(PairDevice::OpenCL)) GTEST_SKIP() << "no OpenCL device";
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
   // no pruning: the lane lists hold the whole outer list (cutoff + Verlet skin), compacted once per build
   SpatialDecompositionSettings settings = settingsFor(1);
-  settings.pairDevice = PairDevice::OpenCL;
+  settings.pairDevice = pairDevice;
   settings.pruneSkin = 0.0;
   settings.deviceMesh = false;
   settings.deviceBonded = false;
@@ -690,15 +702,16 @@ TEST(spatial_decomposition, engine_opencl_pair_kernel_without_pruning_rigid_wate
                                {.vdw = 1e-6, .charge = 1e-4, .total = 1e-5, .gradient = 1e-5, .pressure = 1e-5});
 }
 
-TEST(spatial_decomposition, engine_opencl_mesh_and_molecular_terms_agree_with_double_rigid_water)
+TEST_P(SpatialDecompositionDevice, engine_device_mesh_and_molecular_terms_agree_with_double_rigid_water)
 {
-  if (!DeviceStep::available(PairDevice::OpenCL)) GTEST_SKIP() << "no OpenCL device";
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
   // the complete device step: pairs, PPPM (fixed-point spreading, single-precision FFT and influence function,
   // gather interpolation) and the molecular terms (self + exclusion without their cancellation, virial correction).
   // Measured: Fourier energy 1e-6, self + exclusion sum 2e-7, total energy 3.4e-6, gradient rms 2.5e-6, pressure
   // 1e-6 relative.
   SpatialDecompositionSettings settings = settingsFor(1);
-  settings.pairDevice = PairDevice::OpenCL;
+  settings.pairDevice = pairDevice;
   expectKernelAgreesWithScalar(settings, {.vdw = 1e-6,
                                           .charge = 1e-4,
                                           .total = 1e-5,
@@ -708,13 +721,14 @@ TEST(spatial_decomposition, engine_opencl_mesh_and_molecular_terms_agree_with_do
                                           .correction = 1e-5});
 }
 
-TEST(spatial_decomposition, engine_opencl_pair_kernel_small_grid_rigid_water)
+TEST_P(SpatialDecompositionDevice, engine_device_pair_kernel_small_grid_rigid_water)
 {
-  if (!DeviceStep::available(PairDevice::OpenCL)) GTEST_SKIP() << "no OpenCL device";
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
   // cutoff + skin = half the box: the device grid has 2 cells per axis, every neighbour cell is reached through
   // several stencil offsets and the list build takes the minimum image (the outer list then holds every pair)
   SpatialDecompositionSettings settings = settingsFor(1, 6.0);
-  settings.pairDevice = PairDevice::OpenCL;
+  settings.pairDevice = pairDevice;
   expectKernelAgreesWithScalar(settings, {.vdw = 1e-6,
                                           .charge = 1e-4,
                                           .total = 1e-5,
@@ -794,10 +808,11 @@ TEST(spatial_decomposition, engine_matches_exact_ewald_flexible_chains_triclinic
   }
 
   // the device pairs in the triclinic cell (general minimum image in the list build, pruning and pair kernel)
-  if (DeviceStep::available(PairDevice::OpenCL))
+  for (const PairDevice pairDevice : {PairDevice::OpenCL, PairDevice::Metal})
   {
+    if (!DeviceStep::available(pairDevice)) continue;
     SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
-    settings.pairDevice = PairDevice::OpenCL;
+    settings.pairDevice = pairDevice;
     SpatialDecompositionForceEngine device(settings);
     device.initialize(system);
     const RunningEnergy deviceEnergy = device.computeGradients(system, true);
@@ -863,16 +878,17 @@ System makeChainSystem(bool withBondBond, RandomNumber& random)
 }
 }  // namespace
 
-TEST(spatial_decomposition, engine_opencl_molecular_terms_with_torsions)
+TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_with_torsions)
 {
-  if (!DeviceStep::available(PairDevice::OpenCL)) GTEST_SKIP() << "no OpenCL device";
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
   RandomNumber random(11);
   System system = makeChainSystem(false, random);
 
   // the same device pair kernel and mesh, with the molecular terms (bonds, bends, torsions, exclusions, virial
   // correction) on the host (double) and on the device (single precision, positions relative to the molecule)
   SpatialDecompositionSettings hostSettings = settingsFor(4, 1.5, 0.5);
-  hostSettings.pairDevice = PairDevice::OpenCL;
+  hostSettings.pairDevice = pairDevice;
   hostSettings.deviceBonded = false;
   SpatialDecompositionForceEngine host(hostSettings);
   host.initialize(system);
@@ -883,7 +899,7 @@ TEST(spatial_decomposition, engine_opencl_molecular_terms_with_torsions)
   EXPECT_NE(hostEnergy.torsion, 0.0);
 
   SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
-  settings.pairDevice = PairDevice::OpenCL;
+  settings.pairDevice = pairDevice;
   SpatialDecompositionForceEngine device(settings);
   device.initialize(system);
   EXPECT_TRUE(device.usesDeviceMesh());
@@ -915,9 +931,10 @@ TEST(spatial_decomposition, engine_opencl_molecular_terms_with_torsions)
   EXPECT_EQ(maxAbsDifference(device.molecularPressureTensor(), pressure), 0.0);
 }
 
-TEST(spatial_decomposition, engine_opencl_molecular_terms_fall_back_to_the_host)
+TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_fall_back_to_the_host)
 {
-  if (!DeviceStep::available(PairDevice::OpenCL)) GTEST_SKIP() << "no OpenCL device";
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
   RandomNumber random(11);
   System system = makeChainSystem(true, random);
 
@@ -928,7 +945,7 @@ TEST(spatial_decomposition, engine_opencl_molecular_terms_fall_back_to_the_host)
 
   // the bond-bond cross term keeps the molecular terms on the host; the pairs and the mesh stay on the device
   SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
-  settings.pairDevice = PairDevice::OpenCL;
+  settings.pairDevice = pairDevice;
   SpatialDecompositionForceEngine device(settings);
   device.initialize(system);
   EXPECT_TRUE(device.usesDeviceMesh());
@@ -1005,4 +1022,349 @@ TEST(spatial_decomposition, engine_rejects_unsupported_systems)
   // skin too large for the minimum-image lists
   SpatialDecompositionForceEngine wide(settingsFor(1, 7.0));
   EXPECT_THROW(wide.initialize(system), std::runtime_error);
+}
+
+namespace
+{
+/// The host velocity-Verlet step of the MD driver with the engine forces (Nosé–Hoover at both ends when the
+/// system has a thermostat).
+RunningEnergy hostVelocityVerlet(System& system, SpatialDecompositionForceEngine& engine)
+{
+  const auto thermostat = [&]
+  {
+    if (!system.thermostat.has_value()) return;
+    const double translational = Integrators::computeTranslationalKineticEnergy(
+        system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+        system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
+        system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+    const double rotational = Integrators::computeRotationalKineticEnergy(
+        system.moleculeData, system.components, system.spanOfGroupData(), system.framework,
+        system.spanOfFrameworkGroupData());
+    const std::pair<double, double> scaling = system.thermostat->NoseHooverNVT(translational, rotational);
+    Integrators::scaleVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                                 system.components, scaling, system.framework, system.spanOfFrameworkDynamics(),
+                                 system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+  };
+  thermostat();
+  Integrators::updateVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                                system.components, system.timeStep, system.framework, system.spanOfFrameworkAtoms(),
+                                system.spanOfFrameworkDynamics(), &system.forceField, system.spanOfGroupData(),
+                                system.spanOfFrameworkGroupData());
+  Integrators::updatePositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                               system.components, system.timeStep, system.framework, system.spanOfFrameworkAtoms(),
+                               system.spanOfFrameworkDynamics(), system.spanOfGroupData(),
+                               system.spanOfFrameworkGroupData());
+  Integrators::noSquishFreeRotorOrderTwo(system.moleculeData, system.components, system.timeStep,
+                                         system.spanOfGroupData(), system.framework, system.spanOfFrameworkGroupData());
+  Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components,
+                                        system.spanOfGroupData(), system.framework, system.spanOfFrameworkAtoms(),
+                                        system.spanOfFrameworkGroupData());
+  RunningEnergy energies = engine.computeGradients(system, true);
+  Integrators::updateCenterOfMassAndQuaternionGradients(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+      system.spanOfGroupData(), system.framework, system.spanOfFrameworkDynamics(), system.spanOfFrameworkGroupData());
+  Integrators::updateVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                                system.components, system.timeStep, system.framework, system.spanOfFrameworkAtoms(),
+                                system.spanOfFrameworkDynamics(), &system.forceField, system.spanOfGroupData(),
+                                system.spanOfFrameworkGroupData());
+  thermostat();
+  energies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+      system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
+      system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+  energies.rotationalKineticEnergy =
+      Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
+                                                  system.framework, system.spanOfFrameworkGroupData());
+  if (system.thermostat.has_value()) energies.NoseHooverEnergy = system.thermostat->getEnergy();
+  return energies;
+}
+
+/// Forces and molecular gradients of the start of an MD stage (the driver's recomputeGradients).
+void startState(System& system, SpatialDecompositionForceEngine& engine)
+{
+  engine.computeGradients(system, true);
+  Integrators::updateCenterOfMassAndQuaternionGradients(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+      system.spanOfGroupData(), system.framework, system.spanOfFrameworkDynamics(), system.spanOfFrameworkGroupData());
+}
+
+void giveVelocities(System& system, std::size_t seed, bool thermostat)
+{
+  RandomNumber random(seed);
+  Integrators::initializeVelocities(random, system.moleculeData, system.spanOfMoleculeAtoms(),
+                                    system.spanOfMoleculeDynamics(), system.components, system.temperature);
+  Integrators::removeCenterOfMassVelocityDrift(system.moleculeData, system.spanOfMoleculeAtoms(),
+                                               system.spanOfMoleculeDynamics(), system.components);
+  if (thermostat)
+  {
+    system.setThermostat(Thermostat(3, 1, 0.15));
+    system.thermostat->initialize(random);
+  }
+}
+
+struct ResidentTolerances
+{
+  double position;  ///< absolute, Angstrom, max over atoms
+  double velocity;  ///< relative to the rms velocity, max over atoms (flexible) / molecules (rigid)
+  double energy;    ///< relative, kinetic and potential energies of every step
+  double drift;     ///< relative, conserved-energy drift of the resident run (NVE)
+};
+
+/// Runs `steps` steps with the host integrator (device forces, double integration) and with the resident
+/// integrator (device forces, df64 integration on the device) from the same start and compares the trajectories,
+/// the reported energies and, without thermostat, the conserved-energy drift. The resident state is downloaded
+/// to the host every `downloadEvery` steps (the download must not perturb the trajectory).
+void expectResidentMatchesHost(const std::function<System(std::size_t)>& makeSystem, PairDevice pairDevice,
+                               bool thermostat, std::size_t steps, double timeStep, double skin,
+                               const ResidentTolerances& tolerance, std::size_t downloadEvery = 10)
+{
+  System hostSystem = makeSystem(7);
+  System deviceSystem = makeSystem(7);
+  hostSystem.timeStep = timeStep;
+  deviceSystem.timeStep = timeStep;
+  giveVelocities(hostSystem, 21, thermostat);
+  giveVelocities(deviceSystem, 21, thermostat);
+
+  SpatialDecompositionSettings hostSettings = settingsFor(4, skin, 0.5);
+  hostSettings.pairDevice = pairDevice;
+  hostSettings.resident = false;
+  SpatialDecompositionForceEngine host(hostSettings);
+  host.initialize(hostSystem);
+  EXPECT_FALSE(host.usesResident());
+  startState(hostSystem, host);
+
+  SpatialDecompositionSettings deviceSettings = settingsFor(4, skin, 0.5);
+  deviceSettings.pairDevice = pairDevice;
+  deviceSettings.resident = true;
+  SpatialDecompositionForceEngine device(deviceSettings);
+  device.initialize(deviceSystem);
+  ASSERT_TRUE(device.usesResident()) << device.writeStatus();
+  startState(deviceSystem, device);
+
+  const bool rigid = hostSystem.components[0].rigid;
+  double rmsVelocity = 0.0;
+  {
+    std::size_t count = 0;
+    if (rigid)
+    {
+      for (const Molecule& molecule : hostSystem.moleculeData)
+      {
+        rmsVelocity += double3::dot(molecule.velocity, molecule.velocity);
+        ++count;
+      }
+    }
+    else
+    {
+      for (const AtomDynamics& dynamics : hostSystem.spanOfMoleculeDynamics())
+      {
+        rmsVelocity += double3::dot(dynamics.velocity, dynamics.velocity);
+        ++count;
+      }
+    }
+    rmsVelocity = std::sqrt(rmsVelocity / static_cast<double>(count));
+  }
+
+  double hostReference = 0.0;
+  double deviceReference = 0.0;
+  double hostDrift = 0.0;
+  double deviceDrift = 0.0;
+  double maxPositionError = 0.0;
+  double maxVelocityError = 0.0;
+  for (std::size_t step = 1; step <= steps; ++step)
+  {
+    const RunningEnergy hostEnergy = hostVelocityVerlet(hostSystem, host);
+    const RunningEnergy deviceEnergy = device.residentVelocityVerlet(deviceSystem);
+
+    EXPECT_NEAR(deviceEnergy.potentialEnergy(), hostEnergy.potentialEnergy(),
+                tolerance.energy * std::abs(hostEnergy.potentialEnergy()))
+        << "step " << step;
+    EXPECT_NEAR(deviceEnergy.translationalKineticEnergy, hostEnergy.translationalKineticEnergy,
+                tolerance.energy * std::abs(hostEnergy.translationalKineticEnergy))
+        << "step " << step;
+    if (rigid)
+    {
+      EXPECT_NEAR(deviceEnergy.rotationalKineticEnergy, hostEnergy.rotationalKineticEnergy,
+                  tolerance.energy * std::abs(hostEnergy.rotationalKineticEnergy))
+          << "step " << step;
+    }
+    else
+    {
+      EXPECT_EQ(deviceEnergy.rotationalKineticEnergy, 0.0);
+    }
+    if (thermostat)
+    {
+      EXPECT_NEAR(deviceEnergy.NoseHooverEnergy, hostEnergy.NoseHooverEnergy,
+                  tolerance.energy * std::max(1.0, std::abs(hostEnergy.NoseHooverEnergy)))
+          << "step " << step;
+    }
+
+    if (step == 1)
+    {
+      hostReference = hostEnergy.conservedEnergy();
+      deviceReference = deviceEnergy.conservedEnergy();
+    }
+    hostDrift = std::max(hostDrift, std::abs((hostEnergy.conservedEnergy() - hostReference) / hostReference));
+    deviceDrift = std::max(deviceDrift, std::abs((deviceEnergy.conservedEnergy() - deviceReference) / deviceReference));
+
+    if (step % downloadEvery == 0 || step == steps)
+    {
+      device.downloadResidentState(deviceSystem);
+      std::span<const Atom> hostAtoms = hostSystem.spanOfMoleculeAtoms();
+      std::span<const Atom> deviceAtoms = deviceSystem.spanOfMoleculeAtoms();
+      for (std::size_t i = 0; i < hostAtoms.size(); ++i)
+      {
+        const double3 difference = deviceAtoms[i].position - hostAtoms[i].position;
+        maxPositionError = std::max(maxPositionError, std::sqrt(double3::dot(difference, difference)));
+      }
+      if (rigid)
+      {
+        for (std::size_t m = 0; m < hostSystem.moleculeData.size(); ++m)
+        {
+          const double3 difference =
+              deviceSystem.moleculeData[m].velocity - hostSystem.moleculeData[m].velocity;
+          maxVelocityError = std::max(maxVelocityError, std::sqrt(double3::dot(difference, difference)));
+        }
+      }
+      else
+      {
+        std::span<const AtomDynamics> hostDynamics = hostSystem.spanOfMoleculeDynamics();
+        std::span<const AtomDynamics> deviceDynamics = deviceSystem.spanOfMoleculeDynamics();
+        for (std::size_t i = 0; i < hostDynamics.size(); ++i)
+        {
+          const double3 difference = deviceDynamics[i].velocity - hostDynamics[i].velocity;
+          maxVelocityError = std::max(maxVelocityError, std::sqrt(double3::dot(difference, difference)));
+        }
+      }
+    }
+  }
+  EXPECT_LT(maxPositionError, tolerance.position);
+  EXPECT_LT(maxVelocityError, tolerance.velocity * rmsVelocity);
+  if (!thermostat)
+  {
+    // the resident integrator conserves the energy as well as the host integrator does (the drift of the host
+    // run is that of the single-precision forces and the time step, not of the integration arithmetic)
+    EXPECT_LE(deviceDrift, 1.1 * hostDrift + tolerance.drift) << "host drift " << hostDrift;
+  }
+  // the resident path integrates on the device: a single host force evaluation at the start, and the rebuild
+  // decisions from the device displacement check agree with the host's
+  EXPECT_EQ(device.timings().steps, steps + 1);
+  EXPECT_GE(device.timings().rebuilds, 2uz);
+  EXPECT_NEAR(static_cast<double>(device.timings().rebuilds), static_cast<double>(host.timings().rebuilds), 1.0);
+}
+
+System makeWaterSystem(std::size_t seed)
+{
+  ForceField forceField = makeWaterForceField();
+  Component water = makeWater(forceField);
+  System system =
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {water}, {}, {343}, 5);
+  RandomNumber random(seed);
+  randomizeConfiguration(system, random);
+  return system;
+}
+}  // namespace
+
+TEST_P(SpatialDecompositionDevice, resident_integrator_matches_host_rigid_water_nve)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  // 100 steps of 1 fs with a 0.5 A skin: several neighbour-list rebuilds from the device displacement check (the
+  // trajectories of the two integrators separate exponentially from the rounding of the single-precision
+  // positions; the per-step energies agree to the force precision)
+  expectResidentMatchesHost(makeWaterSystem, pairDevice, false, 100, 0.001, 0.5,
+                            {.position = 1e-3, .velocity = 1e-3, .energy = 1e-4, .drift = 1e-5});
+}
+
+TEST_P(SpatialDecompositionDevice, resident_integrator_matches_host_rigid_water_nvt)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  expectResidentMatchesHost(makeWaterSystem, pairDevice, true, 60, 0.002, 0.3,
+                            {.position = 1e-3, .velocity = 1e-3, .energy = 1e-4, .drift = 1e-5});
+}
+
+TEST_P(SpatialDecompositionDevice, resident_integrator_matches_host_flexible_chains_nve)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  const auto makeSystem = [](std::size_t seed)
+  {
+    RandomNumber random(seed);
+    return makeChainSystem(false, random);
+  };
+  expectResidentMatchesHost(makeSystem, pairDevice, false, 100, 0.001, 0.3,
+                            {.position = 1e-4, .velocity = 1e-4, .energy = 1e-4, .drift = 1e-5});
+}
+
+TEST_P(SpatialDecompositionDevice, resident_integrator_matches_host_flexible_chains_nvt)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  const auto makeSystem = [](std::size_t seed)
+  {
+    RandomNumber random(seed);
+    return makeChainSystem(false, random);
+  };
+  expectResidentMatchesHost(makeSystem, pairDevice, true, 60, 0.001, 0.3,
+                            {.position = 1e-4, .velocity = 1e-4, .energy = 1e-4, .drift = 1e-5});
+}
+
+TEST_P(SpatialDecompositionDevice, resident_integrator_resumes_after_host_evaluation)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  // a host force evaluation in between (status report, restart) invalidates the device copy: the next resident
+  // step re-uploads the host state and continues the same trajectory
+  System uninterrupted = makeWaterSystem(3);
+  System interrupted = makeWaterSystem(3);
+  uninterrupted.timeStep = 0.002;
+  interrupted.timeStep = 0.002;
+  giveVelocities(uninterrupted, 5, true);
+  giveVelocities(interrupted, 5, true);
+
+  SpatialDecompositionSettings settings = settingsFor(4, 1.0, 0.5);
+  settings.pairDevice = pairDevice;
+  SpatialDecompositionForceEngine first(settings);
+  first.initialize(uninterrupted);
+  startState(uninterrupted, first);
+  SpatialDecompositionForceEngine second(settings);
+  second.initialize(interrupted);
+  startState(interrupted, second);
+  ASSERT_TRUE(first.usesResident());
+  ASSERT_TRUE(second.usesResident());
+
+  for (std::size_t step = 0; step < 10; ++step)
+  {
+    first.residentVelocityVerlet(uninterrupted);
+    second.residentVelocityVerlet(interrupted);
+  }
+  second.downloadResidentState(interrupted);
+  const RunningEnergy hostEvaluation = second.computeGradients(interrupted, true);
+  Integrators::updateCenterOfMassAndQuaternionGradients(
+      interrupted.moleculeData, interrupted.spanOfMoleculeAtoms(), interrupted.spanOfMoleculeDynamics(),
+      interrupted.components, interrupted.spanOfGroupData(), interrupted.framework,
+      interrupted.spanOfFrameworkDynamics(), interrupted.spanOfFrameworkGroupData());
+  for (std::size_t step = 0; step < 10; ++step)
+  {
+    const RunningEnergy a = first.residentVelocityVerlet(uninterrupted);
+    const RunningEnergy b = second.residentVelocityVerlet(interrupted);
+    EXPECT_NEAR(a.potentialEnergy(), b.potentialEnergy(), 1e-5 * std::abs(a.potentialEnergy())) << "step " << step;
+    EXPECT_NEAR(a.translationalKineticEnergy, b.translationalKineticEnergy, 1e-5 * a.translationalKineticEnergy)
+        << "step " << step;
+    EXPECT_NEAR(a.rotationalKineticEnergy, b.rotationalKineticEnergy, 1e-5 * a.rotationalKineticEnergy)
+        << "step " << step;
+  }
+  // the host evaluation saw the state of step 10
+  EXPECT_NE(hostEvaluation.potentialEnergy(), 0.0);
+  first.downloadResidentState(uninterrupted);
+  second.downloadResidentState(interrupted);
+  std::span<const Atom> a = uninterrupted.spanOfMoleculeAtoms();
+  std::span<const Atom> b = interrupted.spanOfMoleculeAtoms();
+  double maxDifference = 0.0;
+  for (std::size_t i = 0; i < a.size(); ++i)
+  {
+    const double3 difference = a[i].position - b[i].position;
+    maxDifference = std::max(maxDifference, std::sqrt(double3::dot(difference, difference)));
+  }
+  EXPECT_LT(maxDifference, 1e-5);
 }

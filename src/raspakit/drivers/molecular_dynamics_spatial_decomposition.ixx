@@ -115,6 +115,11 @@ export struct MolecularDynamicsSpatialDecomposition
   /// Recomputes forces, energies and the pressure tensor of a system through its engine.
   void recomputeGradients(std::size_t systemId);
 
+  /// With the resident integrator: copies the device state into the system when the host needs it this cycle
+  /// (status report and restart file at 'PrintEvery', the property samplers of the production stage) or when
+  /// `always` (end of a stage).
+  void refreshHostState(std::size_t systemId, bool production, bool always = false);
+
   /// Sets 'currentExcessPressureTensor' of a system from the engine's molecular virial; with a thermobarostat the
   /// tensor is the one conjugate to the barostat coupling, and it is accumulated into the status-report window.
   void updateReportedPressure(std::size_t systemId, bool accumulate);

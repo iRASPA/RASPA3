@@ -12,13 +12,65 @@ import system;
 import spatial_decomposition_cell_list;
 import spatial_decomposition_pair_kernel;
 import spatial_decomposition_settings;
-import spatial_decomposition_device_backend;
+import spatial_decomposition_device_context;
+import spatial_decomposition_device_mesh;
+import spatial_decomposition_device_bonded;
 import spatial_decomposition_device_bonded_topology;
+
+/// Launch geometry fixed by the pair kernel source (CLUSTER_I, CLUSTER_J, GROUP_SIZE, the partial sums per group).
+export namespace DeviceKernelLayout
+{
+constexpr std::size_t clusterI = 8;
+constexpr std::size_t clusterJ = 4;
+constexpr std::size_t pairGroupSize = 32;  ///< work-items (lanes) per i-cluster: one per (a, b) of 8 x 4
+constexpr std::size_t pairPartials = 11;   ///< partial sums per i-cluster: 2 energies + 9 strain components
+constexpr std::uint32_t noAtom = std::numeric_limits<std::uint32_t>::max();
+}  // namespace DeviceKernelLayout
+
+/// Mirrors the Parameters struct of the pair kernel source (4-byte members only, so the layouts agree).
+export struct DevicePairParameters
+{
+  float cell[9];
+  float inverseCell[9];
+  float cutOffVDWSquared{0.0f};
+  float cutOffChargeSquared{0.0f};
+  float alpha{0.0f};
+  float alphaSquared{0.0f};
+  float alphaOverSqrtPi{0.0f};
+  float coulombFactor{0.0f};
+  float innerCutoffSquared{0.0f};
+  std::uint32_t useCharge{0};
+  std::uint32_t orthorhombic{0};
+  std::uint32_t numberOfTypes{0};
+  std::uint32_t blocksPerCluster{0};
+  std::uint32_t pairsPerLane{0};
+  std::uint32_t padding[2]{};
+};
+static_assert(sizeof(DevicePairParameters) == 128);
+
+/// Mirrors the BuildParameters struct of the pair kernel source.
+export struct DeviceBuildParameters
+{
+  float cell[9];
+  float inverseCell[9];
+  float listCutoffSquared{0.0f};
+  std::uint32_t gridX{1}, gridY{1}, gridZ{1};
+  std::uint32_t blocksPerCluster{0};
+  std::uint32_t orthorhombic{0};
+};
+static_assert(sizeof(DeviceBuildParameters) == 96);
+
+/// Creates the context of a device kind; throws when none is available. Defined by the backends
+/// (spatial_decomposition_opencl_context, spatial_decomposition_metal_context) and dispatched by DeviceStep.
+export std::unique_ptr<DeviceContext> createDeviceContext(PairDevice device);
+/// Whether a device of the kind is available, and its name (empty when none).
+export bool deviceAvailable(PairDevice device);
+export std::string deviceNameOf(PairDevice device);
 
 /**
  * \brief The specialised pair kernel (Lennard-Jones + Ewald real space) on a device, and the façade of the other
  * device work of a step (the particle-mesh Ewald sum and the per-molecule terms). Backend-neutral: the device API
- * is behind DeviceBackend (device/backend.ixx), the kernels are the shared sources of
+ * is DeviceContext (device/context.ixx), the kernels are the shared sources of
  * spatial_decomposition_device_kernels.
  *
  * The device evaluates the short-range pairs of the whole system in single precision: the engine packs the
@@ -75,9 +127,11 @@ export class DeviceStep
   DeviceStep(DeviceStep&&) noexcept = default;
   DeviceStep& operator=(DeviceStep&&) noexcept = default;
 
-  /// Creates the backend of the given kind (queue, programs); throws when no device is available or a build fails.
+  /// Creates the context of the given kind (queue, programs); throws when no device is available or a build fails.
   void initialize(PairDevice device);
-  bool initialized() const { return backend != nullptr; }
+  bool initialized() const { return context != nullptr; }
+  /// The device context (for the resident integrator, which shares the position and force buffers).
+  DeviceContext& deviceContext() { return *context; }
 
   /// Fixes the pair-type tables, the cutoffs, the Ewald parameters (`useCharge`: Ewald real space on) and the
   /// pruning skin (0 or at least the Verlet skin: no pruning, the lane lists hold the whole outer list).
@@ -111,6 +165,31 @@ export class DeviceStep
   /// enabled, read-back of forces and partial sums (one thread, non-blocking).
   void enqueue(const SimulationBox& box);
 
+  /// Resident mode (the resident integrator, DeviceResident): the slot positions and the relative positions are
+  /// written by device kernels, the host staging pointers are not mapped, the forces are read from the device
+  /// buffer by the integrator and the reference positions of the list compaction are kept on the device.
+  void setResident(bool resident);
+  bool resident() const { return residentMode; }
+  /// The device buffers of the step that the resident kernels read and write (valid after beginBuild; the
+  /// buffers may be reallocated by a build, so query them after every build).
+  struct ResidentTargets
+  {
+    DeviceBuffer positions{};         ///< float4 per slot: wrapped position, charge (written by the integrator)
+    DeviceBuffer forces{};            ///< float4 per slot: the complete gradients after the step
+    DeviceBuffer relative{};          ///< float4 per atom (system order): position relative to the first atom
+    DeviceBuffer buildPositions{};    ///< float4 per slot: the wrapped positions at the list build
+    DeviceBuffer compactReference{};  ///< float4 per slot: the positions at the last list compaction
+    bool relativeEnabled{false};      ///< the bonded kernels are enabled (the relative positions are needed)
+  };
+  ResidentTargets residentTargets() const;
+  /// Slot of every sorted atom of the current layout.
+  std::span<const std::uint32_t> slotsOfSorted() const { return slotOfSorted; }
+  /// Squared displacement since the last compaction above which the lane lists must be compacted again.
+  double pruneDisplacementThreshold() const { return pruneDisplacementSquared; }
+  /// Enqueues the step in resident mode: compaction when the lane lists are new or when `compactionDue` (an atom
+  /// moved more than prune skin / 2 since the last compaction, measured on the device), then the chain.
+  void enqueueResident(const SimulationBox& box, bool compactionDue);
+
   /// Results of a device step (the strain derivatives are the sums g (x) dr; the pair energies and strain are
   /// already halved for the full lists).
   struct Results
@@ -126,8 +205,10 @@ export class DeviceStep
     // bonded
     DeviceBondedResults bonded{};
   };
-  /// Waits for the step and returns its energies and strain derivatives; the forces are then readable.
-  Results wait();
+  /// Waits for the step and returns its energies and strain derivatives; the forces are then readable. When a
+  /// lane list overflowed, the chain is enqueued again and `afterRetry` is called (the resident integrator
+  /// re-enqueues the work that follows the chain).
+  Results wait(const std::function<void()>& afterRetry = {});
 
   /// Gradient on a sorted atom from the last completed step.
   double3 force(std::uint32_t sorted) const
@@ -156,10 +237,22 @@ export class DeviceStep
   std::string status() const;
 
  private:
-  std::unique_ptr<DeviceBackend> backend{};
+  std::unique_ptr<DeviceContext> context{};
   PairDevice deviceKind{PairDevice::CPU};
 
-  // device capacities (the backend holds the buffers)
+  // kernels and device buffers of the pair step
+  DeviceKernel boundsKernel{}, buildKernel{}, compactKernel{}, pairKernel{};
+  DeviceBufferOwner parameterBuffer{}, buildParameterBuffer{}, lennardJonesBuffer{};
+  DeviceBufferOwner positionBuffer{}, buildPositionBuffer{}, typeBuffer{}, forceBuffer{}, relativeBuffer{};
+  DeviceBufferOwner clusterMinBuffer{}, clusterMaxBuffer{}, compactReferenceBuffer{};
+  DeviceBufferOwner cellOfClusterBuffer{}, outerCountBuffer{}, laneCountBuffer{}, partialBuffer{};
+  DeviceBufferOwner cellSlotStartBuffer{}, outerClusterBuffer{}, outerMaskBuffer{}, pairListBuffer{};
+  std::size_t lennardJonesCapacity{0};
+  DeviceEvent buildEvent{}, stepEvent{};
+  DeviceMesh mesh{};
+  DeviceBonded bonded{};
+
+  // device capacities
   std::size_t slotCapacity{0}, iClusterCapacity{0}, cellCapacity{0}, relativeCapacity{0};
   std::size_t blocksPerCluster{0};  ///< Row capacity of the outer list on the device.
   std::size_t blockWords{0};        ///< Allocated words per outer list array (iClusterCapacity rows).
@@ -193,12 +286,14 @@ export class DeviceStep
   std::vector<std::uint32_t> outerCount{}, laneCount{};
   std::size_t outerBlocks{0}, listedPairs{0}, maximumRow{0};
 
-  // host staging: positions, relative positions and forces live in host-visible device buffers of the backend
+  // host staging: positions, relative positions and forces live in host-visible (Shared) device buffers
   float* mappedPositions{nullptr};
   float* mappedRelative{nullptr};
   const float* mappedForces{nullptr};
-  std::vector<float> listPositions{}, hostPartials{};
+  std::size_t mappedPositionFloats{0}, mappedRelativeFloats{0}, mappedForceFloats{0};
+  std::vector<float> listPositions{}, hostPartials{}, zeroPositions{};
   std::vector<double> partDisplacement{};  ///< Per packing thread: largest squared move since the last compaction.
+  bool residentMode{false};                ///< see setResident
   bool laneListsValid{false};              ///< the lane lists (and listPositions) refer to the current slot layout.
   bool compactedThisStep{false};           ///< the enqueued step compacts the lists (lane counts are read back).
   bool sampleRequested{false};             ///< Time the kernels synchronously at the next step (after a build).
@@ -210,8 +305,15 @@ export class DeviceStep
   void ensureBuffers();
   void ensureBlockBuffers();
   void ensureLaneBuffers();
+  void writeParameters(bool blocking);
+  void writeBuildParameters(bool blocking);
   void enqueueBuild();
+  void enqueueCompaction();
+  void enqueuePairs();
+  void enqueueMesh();
+  void enqueueBonded();
   void enqueueChain();
+  void enqueueStep(const SimulationBox& box, bool compact);
   void updateParameters(const SimulationBox& box);
   void mapInputs();
   void mapForces();

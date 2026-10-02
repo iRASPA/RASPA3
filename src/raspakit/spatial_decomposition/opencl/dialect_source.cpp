@@ -7,10 +7,13 @@ module spatial_decomposition_opencl_handles;
 const char* const OpenCLDevice::openclKernelDialect = R"CLC(
 #define KERNEL __kernel
 #define KERNEL_GROUP_SIZE(n) __kernel __attribute__((reqd_work_group_size(n, 1, 1)))
+#define KERNEL_INDEX_ARGS
+#define VALUE_ARG(type, name) const type name
 #define DEVICE_FUNCTION inline
 #define GLOBAL __global
 #define CONSTANT __constant
 #define LOCAL __local
+#define PRIVATE __private
 #define RESTRICT restrict
 #define GLOBAL_ID() ((uint)get_global_id(0))
 #define LOCAL_ID() ((uint)get_local_id(0))

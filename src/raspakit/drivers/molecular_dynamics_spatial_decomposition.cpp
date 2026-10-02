@@ -310,6 +310,15 @@ EnergyStatus energyStatusFromRunningEnergies(const System& system)
 // Velocity Verlet with the engine forces (Integrators::velocityVerlet with updateGradients replaced)
 RunningEnergy engineVelocityVerlet(System& system, ForceEngine& engine)
 {
+  if (engine.usesResident())
+  {
+    // the whole step on the device (the host state is refreshed by the driver when it needs it)
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    RunningEnergy energies = engine.residentVelocityVerlet(system);
+    integratorsCPUTime.velocityVerlet += std::chrono::steady_clock::now() - start;
+    return energies;
+  }
+
   if (system.thermostat.has_value())
   {
     double UKineticTranslation = Integrators::computeTranslationalKineticEnergy(
@@ -688,7 +697,7 @@ void MolecularDynamicsSpatialDecomposition::setup()
         std::print(stream, "    pair kernel precision:           {}\n",
                    pairPrecisionName(engineSettings.pairPrecision));
       }
-      if (engineSettings.pairDevice == PairDevice::OpenCL || engineSettings.pairPrecision == PairPrecision::Mixed)
+      if (isDevice(engineSettings.pairDevice) || engineSettings.pairPrecision == PairPrecision::Mixed)
       {
         std::print(stream, "    prune skin:                      {} [A]\n", engineSettings.pruneSkin);
       }
@@ -977,6 +986,24 @@ void MolecularDynamicsSpatialDecomposition::recomputeGradients(std::size_t syste
   updateReportedPressure(systemId, false);
 }
 
+void MolecularDynamicsSpatialDecomposition::refreshHostState(std::size_t systemId, bool production, bool always)
+{
+  System& system = systems[systemId];
+  ForceEngine& engine = engines[systemId];
+  if (!engine.usesResident()) return;
+  bool needed = always || (currentCycle % printEvery == 0uz);
+  if (!needed && production)
+  {
+    needed = system.samplePDBMovie.has_value() || system.writeLammpsData.has_value() ||
+             system.propertyConventionalRadialDistributionFunction.has_value() ||
+             system.propertyMoleculeProperties.has_value() || system.propertyMoleculeShape.has_value() ||
+             system.propertyMoleculeBackbone.has_value() || system.propertyMSD.has_value() ||
+             system.propertyVACF.has_value() || system.propertyEndToEndACF.has_value() ||
+             system.propertyDensityGrid.has_value() || system.forceBasedRDFSampleDue(currentCycle);
+  }
+  if (needed) engine.downloadResidentState(system);
+}
+
 void MolecularDynamicsSpatialDecomposition::updateReportedPressure(std::size_t systemId, bool accumulate)
 {
   System& system = systems[systemId];
@@ -1141,6 +1168,7 @@ void MolecularDynamicsSpatialDecomposition::equilibrate()
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift += std::abs((system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
+      refreshHostState(system_id, false);
       ++system_id;
     }
 
@@ -1185,6 +1213,8 @@ void MolecularDynamicsSpatialDecomposition::equilibrate()
     }
   continueEquilibrationStage:;
   }
+  // the host state of the stage end (the production stage starts from it)
+  for (std::size_t system_id{0}; system_id < systems.size(); ++system_id) refreshHostState(system_id, false, true);
 }
 
 void MolecularDynamicsSpatialDecomposition::production()
@@ -1265,6 +1295,7 @@ void MolecularDynamicsSpatialDecomposition::production()
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift += std::abs((system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
+      refreshHostState(system_id, true);
       ++system_id;
     }
 
@@ -1382,6 +1413,7 @@ void MolecularDynamicsSpatialDecomposition::production()
     totalSimulationTime += (t2 - t1);
   continueProductionStage:;
   }
+  for (std::size_t system_id{0}; system_id < systems.size(); ++system_id) refreshHostState(system_id, true, true);
 
   for (std::size_t system_id{0}; System& system : systems)
   {

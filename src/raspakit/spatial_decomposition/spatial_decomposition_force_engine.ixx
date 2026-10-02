@@ -14,6 +14,7 @@ import spatial_decomposition_pppm;
 import spatial_decomposition_pair_kernel;
 import spatial_decomposition_cluster_kernel;
 import spatial_decomposition_device_step;
+import spatial_decomposition_device_resident;
 import spatial_decomposition_worker_team;
 
 /**
@@ -109,6 +110,19 @@ export class SpatialDecompositionForceEngine
   /// derivative of the potential energy, molecular center-of-mass convention, tail correction included).
   const double3x3& molecularPressureTensor() const { return pressureTensor; }
 
+  /// Whether the MD state is resident on the device (DeviceResident): the driver then integrates with
+  /// residentVelocityVerlet and refreshes the host state with downloadResidentState when it needs it.
+  bool usesResident() const { return residentEnabled; }
+  /// One velocity-Verlet step with the Nose-Hoover thermostat of the system (Integrators::velocityVerlet with
+  /// the engine forces), entirely on the device: positions, velocities and molecule records stay there in
+  /// double-float arithmetic. The first call after a host-side evaluation (computeGradients) uploads the host
+  /// state. Returns the energies of the step (potential terms, kinetic energies, thermostat energy); the
+  /// molecular pressure tensor is available as after computeGradients(system, true).
+  RunningEnergy residentVelocityVerlet(System& system);
+  /// Copies the device state (positions, velocities, molecule records, gradients) into the system; no-op when
+  /// the host copy is current.
+  void downloadResidentState(System& system);
+
   /// Compares the engine against Integrators::updateGradients on the system's current configuration; the
   /// system's gradients are left as computed by the engine.
   Validation validate(System& system);
@@ -167,6 +181,15 @@ export class SpatialDecompositionForceEngine
   double deviceSingleIonSum{0.0};
   double3x3 deviceReciprocalStrain{};
   double3x3 deviceSingleIonStrain{};
+  // the resident integrator (settings.resident, with the complete step on the device)
+  bool residentEnabled{false};
+  bool residentValid{false};  ///< the device holds the authoritative state (else the host does)
+  bool residentHostCurrent{true};  ///< the host copy equals the device state
+  std::string residentFallback{};  ///< why the integration stayed on the host (status line)
+  DeviceResident resident{};
+  DeviceResident::Scaling residentPendingScale{};  ///< thermostat factor of the last step, not yet applied
+  DeviceResident::Kinetic residentKinetic{};       ///< kinetic energies of the current (scaled) velocities
+  std::size_t residentSteps{0};
   bool mixedPrecision() const { return settings.pairPrecision == PairPrecision::Mixed; }
   bool usesClusterKernel() const { return mixedPrecision() || settings.clusterKernelForDouble; }
   std::vector<std::uint8_t> rebuildRequested{};
@@ -193,6 +216,9 @@ export class SpatialDecompositionForceEngine
   Timings timing{};
 
   void prepareBondedWork(const System& system);
+  void refreshCutoffs(System& system);
+  RunningEnergy finishStep(const System& system, RunningEnergy total, double3x3 strain, double3x3 correction);
+  void residentRebuild(System& system);
   void step(std::size_t thread, System& system);
   void pairPhase(std::size_t thread, const System& system, RunningEnergy& energy);
   template <bool Fast>

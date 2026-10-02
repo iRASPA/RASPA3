@@ -21,6 +21,8 @@ import potential_pair_vdw;
 import potential_pair_coulomb;
 import interactions_ewald;
 import integrators_update;
+import integrators_compute;
+import thermostat;
 import thermobarostat;
 import system;
 import spatial_decomposition_settings;
@@ -28,7 +30,9 @@ import spatial_decomposition_cell_list;
 import spatial_decomposition_pppm;
 import spatial_decomposition_pair_kernel;
 import spatial_decomposition_cluster_kernel;
+import spatial_decomposition_device_context;
 import spatial_decomposition_device_step;
+import spatial_decomposition_device_resident;
 import spatial_decomposition_worker_team;
 
 SpatialDecompositionForceEngine::SpatialDecompositionForceEngine(const SpatialDecompositionSettings& s) : settings(s)
@@ -169,6 +173,34 @@ void SpatialDecompositionForceEngine::initialize(System& system)
       deviceBonded = true;
     }
   }
+  // the resident integrator needs the complete forces on the device
+  residentEnabled = false;
+  residentValid = false;
+  residentHostCurrent = true;
+  residentFallback.clear();
+  resident = DeviceResident{};
+  residentPendingScale = {};
+  residentKinetic = {};
+  residentSteps = 0;
+  if (deviceKernel && settings.resident)
+  {
+    if (useMesh && !deviceMesh)
+    {
+      residentFallback = "the mesh on the host";
+    }
+    else if (!deviceBonded)
+    {
+      residentFallback = deviceBondedFallback.empty()
+                             ? std::string("the bonded terms on the host")
+                             : std::format("the bonded terms on the host (the device kernels do not cover {})",
+                                           deviceBondedFallback);
+    }
+    else if (DeviceResident::supports(system, residentFallback))
+    {
+      resident.initialize(devicePairs.deviceContext());
+      residentEnabled = true;
+    }
+  }
   rebuildRequested.assign(settings.numberOfThreads, 1);
   influenceUpdateRequested = 0;
   threadEnergies.assign(settings.numberOfThreads, RunningEnergy{});
@@ -179,30 +211,37 @@ void SpatialDecompositionForceEngine::initialize(System& system)
   initializedFlag = true;
 }
 
+void SpatialDecompositionForceEngine::refreshCutoffs(System& system)
+{
+  // the cutoffs may have been re-derived (automatic cutoffs after a cell change): the lists follow them
+  const ForceField& forceField = system.forceField;
+  double cutoff = forceField.cutOffMoleculeVDW;
+  if (forceField.useCharge) cutoff = std::max(cutoff, forceField.cutOffCoulomb);
+  if (cutoff != cellList.cutoff)
+  {
+    cellList.setup(system.simulationBox, cutoff, settings.verletSkin, settings.numberOfThreads, settings.domainGrid);
+  }
+  if (fastCoulomb && (forceField.EwaldAlpha != ewaldTable.alpha || !ewaldTable.spans(forceField.cutOffCoulomb)))
+  {
+    // the kernel choice depends on whether the table can span the (new) cutoff; the cluster lists of the
+    // specialised kernel follow the choice at the next build
+    prepareKernel(system);
+    cellList.numberOfBuilds = 0;
+  }
+}
+
 RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, bool withVirial)
 {
   if (!initializedFlag) initialize(system);
 
   const std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   virialRequested = withVirial;
+  // the host state is the authoritative one again (the resident integrator uploads it at its next step)
+  residentValid = false;
+  residentHostCurrent = true;
+  if (residentEnabled) devicePairs.setResident(false);
 
-  // the cutoffs may have been re-derived (automatic cutoffs after a cell change): the lists follow them
-  {
-    const ForceField& forceField = system.forceField;
-    double cutoff = forceField.cutOffMoleculeVDW;
-    if (forceField.useCharge) cutoff = std::max(cutoff, forceField.cutOffCoulomb);
-    if (cutoff != cellList.cutoff)
-    {
-      cellList.setup(system.simulationBox, cutoff, settings.verletSkin, settings.numberOfThreads, settings.domainGrid);
-    }
-    if (fastCoulomb && (forceField.EwaldAlpha != ewaldTable.alpha || !ewaldTable.spans(forceField.cutOffCoulomb)))
-    {
-      // the kernel choice depends on whether the table can span the (new) cutoff; the cluster lists of the
-      // specialised kernel follow the choice at the next build
-      prepareKernel(system);
-      cellList.numberOfBuilds = 0;
-    }
-  }
+  refreshCutoffs(system);
 
   const std::size_t numberOfAtoms = system.spanOfMoleculeAtoms().size();
   if (numberOfAtoms != fx.size())
@@ -235,7 +274,41 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
   RunningEnergy total{};
   for (const RunningEnergy& energy : threadEnergies) total += energy;
   for (const RunningEnergy& energy : chunkEnergies) total += energy;
+  double3x3 strain{};
+  double3x3 correction{};
+  if (withVirial)
+  {
+    for (std::size_t t = 0; t < settings.numberOfThreads; ++t)
+    {
+      strain += threadStrain[t];
+      correction += threadCorrection[t];
+    }
+    for (std::size_t c = 0; c < chunkStrain.size(); ++c)
+    {
+      strain += chunkStrain[c];
+      correction += chunkCorrection[c];
+    }
+  }
+  total = finishStep(system, total, strain, correction);
 
+  ++timing.steps;
+  timing.total += std::chrono::steady_clock::now() - begin;
+  if (deviceKernel)
+  {
+    timing.device = devicePairs.deviceTime();
+    timing.devicePrune = devicePairs.pruneTime();
+    timing.deviceMesh = devicePairs.meshTime();
+    timing.deviceBonded = devicePairs.bondedTime();
+    timing.deviceBuild = devicePairs.buildTime();
+  }
+  return total;
+}
+
+// the mesh energy with the net-charge correction and, when requested, the molecular pressure tensor from the
+// strain derivatives (pairs, exclusions, the mesh) and the atomic-to-molecular virial correction of the step
+RunningEnergy SpatialDecompositionForceEngine::finishStep(const System& system, RunningEnergy total, double3x3 strain,
+                                                           double3x3 correction)
+{
   double netCharge = 0.0;
   if (useMesh)
   {
@@ -249,24 +322,12 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
     total.ewald_fourier += uIon * netCharge * netCharge;
   }
 
-  if (withVirial)
+  if (virialRequested)
   {
     // Assemble the molecular pressure tensor exactly like System::computeMolecularPressure: the strain
     // derivatives of the inter-molecular pairs, the reciprocal sum (including the net-charge correction) and the
     // exclusions, minus the tail correction on the diagonal, corrected from the atomic to the molecular
     // (center-of-mass) virial, negated and symmetrized.
-    double3x3 strain{};
-    double3x3 correction{};
-    for (std::size_t t = 0; t < settings.numberOfThreads; ++t)
-    {
-      strain += threadStrain[t];
-      correction += threadCorrection[t];
-    }
-    for (std::size_t c = 0; c < chunkStrain.size(); ++c)
-    {
-      strain += chunkStrain[c];
-      correction += chunkCorrection[c];
-    }
     if (deviceMesh)
     {
       strain += -(deviceReciprocalStrain - (netCharge * netCharge) * deviceSingleIonStrain);
@@ -305,18 +366,182 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
     tensor.bz = tensor.cy = temp;
     pressureTensor = tensor;
   }
+  return total;
+}
+
+// list rebuild of the resident step from the host positions (the binning and the slot layout are host work):
+// the device lists, the slot layout of the integrator and the slot positions of the new layout
+void SpatialDecompositionForceEngine::residentRebuild(System& system)
+{
+  const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+  const SimulationBox& box = system.simulationBox;
+  const double3 widths = box.perpendicularWidths();
+  const double halfWidth = 0.5 * std::min({widths.x, widths.y, widths.z});
+  if (cellList.listCutoff > halfWidth)
+  {
+    throw std::runtime_error(
+        std::format("[Spatial decomposition]: cutoff + skin ({:.3f} A) exceeds half the smallest perpendicular "
+                    "width of the box ({:.3f} A); use a smaller cutoff or 'VerletSkin'\n",
+                    cellList.listCutoff, halfWidth));
+  }
+  cellList.updateCellGrid(box);
+  cellList.bin(box, system.spanOfMoleculeAtoms());
+  ++timing.rebuilds;
+  devicePairs.beginBuild(cellList, box, 1);
+  resident.setLayout(devicePairs, cellList, box);
+  resident.enqueuePack();
+  devicePairs.finishBuild();
+  timing.rebuild += std::chrono::steady_clock::now() - start;
+}
+
+RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& system)
+{
+  if (!initializedFlag) initialize(system);
+  if (!residentEnabled)
+  {
+    throw std::runtime_error("[Spatial decomposition]: the resident integrator is not enabled for this system\n");
+  }
+  const std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+  virialRequested = true;
+  DeviceContext& context = devicePairs.deviceContext();
+  const double dt = system.timeStep;
+  const SimulationBox& box = system.simulationBox;
+  refreshCutoffs(system);
+
+  const std::size_t numberOfAtoms = system.spanOfMoleculeAtoms().size();
+  if (numberOfAtoms != fx.size())
+  {
+    fx.assign(numberOfAtoms, 0.0);
+    fy.assign(numberOfAtoms, 0.0);
+    fz.assign(numberOfAtoms, 0.0);
+    cellList.numberOfBuilds = 0;
+  }
+  if (system.moleculeData.size() != partitionedMolecules || atomCenterOfMass.size() != numberOfAtoms)
+  {
+    prepareBondedWork(system);
+  }
+  bool rebuild = cellList.numberOfBuilds == 0 || cellList.numberOfAtoms != numberOfAtoms;
+
+  // the host state becomes the device state after a host-side evaluation (stage start, restart)
+  if (!residentValid)
+  {
+    devicePairs.setResident(true);
+    if (rebuild)
+    {
+      // bin the host positions and lay out the device lists; the slot positions follow with the upload
+      const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+      cellList.updateCellGrid(box);
+      cellList.bin(box, system.spanOfMoleculeAtoms());
+      ++timing.rebuilds;
+      devicePairs.beginBuild(cellList, box, 1);
+      devicePairs.finishBuild();
+      timing.rebuild += std::chrono::steady_clock::now() - start;
+      rebuild = false;
+    }
+    resident.upload(system, devicePairs, cellList);
+    context.wait(resident.enqueuePack());
+    residentValid = true;
+    residentHostCurrent = true;
+    residentPendingScale = {};
+    residentKinetic.translational = Integrators::computeTranslationalKineticEnergy(
+        system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+        system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
+        system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+    residentKinetic.rotational =
+        Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
+                                                    system.framework, system.spanOfFrameworkGroupData());
+  }
+
+  // first half: the thermostat factor of the end of the last step (deferred) times the one of this step, kick,
+  // drift, free rotor, cartesian positions, slot positions and the displacement check
+  DeviceResident::Scaling scaling = residentPendingScale;
+  residentPendingScale = {};
+  if (system.thermostat.has_value())
+  {
+    const std::pair<double, double> factor =
+        system.thermostat->NoseHooverNVT(residentKinetic.translational, residentKinetic.rotational);
+    scaling.translational *= factor.first;
+    scaling.rotational *= factor.second;
+  }
+  std::chrono::steady_clock::time_point waitStart = std::chrono::steady_clock::now();
+  context.wait(resident.enqueueFirstHalf(scaling, dt));
+  timing.deviceWait += std::chrono::steady_clock::now() - waitStart;
+  DeviceResident::Displacement displacement = resident.collectDisplacement();
+  if (displacement.sinceBuild > 0.25 * cellList.skin * cellList.skin) rebuild = true;
+  if (rebuild)
+  {
+    resident.downloadPositions(system);
+    residentRebuild(system);
+    displacement.sinceCompaction = 0.0;
+  }
+
+  // forces, then the second half: molecular gradients and torques, kick, kinetic energies
+  devicePairs.enqueueResident(box, displacement.sinceCompaction > devicePairs.pruneDisplacementThreshold());
+  DeviceEvent secondHalf = resident.enqueueSecondHalf(dt);
+  waitStart = std::chrono::steady_clock::now();
+  const DeviceStep::Results results = devicePairs.wait([&] { secondHalf = resident.enqueueSecondHalf(dt); });
+  context.wait(secondHalf);
+  timing.deviceWait += std::chrono::steady_clock::now() - waitStart;
+  const DeviceResident::Kinetic kinetic = resident.collectKinetic();
+  resident.acceptVelocities();
+  residentHostCurrent = false;
+
+  // the thermostat at the end of the step: the factor is applied with the first half of the next step, the
+  // reported kinetic energies are those of the scaled velocities
+  if (system.thermostat.has_value())
+  {
+    const std::pair<double, double> factor = system.thermostat->NoseHooverNVT(kinetic.translational, kinetic.rotational);
+    residentPendingScale.translational = factor.first;
+    residentPendingScale.rotational = factor.second;
+  }
+  residentKinetic.translational =
+      residentPendingScale.translational * residentPendingScale.translational * kinetic.translational;
+  residentKinetic.rotational = residentPendingScale.rotational * residentPendingScale.rotational * kinetic.rotational;
+
+  // energies and the pressure tensor of the step
+  RunningEnergy total{};
+  total.moleculeMoleculeVDW = results.energyVDW;
+  total.moleculeMoleculeCharge = results.energyCharge;
+  total.ewald_self = results.bonded.self;
+  total.ewald_exclusion = results.bonded.exclusion;
+  total.bond = results.bonded.bond;
+  total.bend = results.bonded.bend;
+  total.torsion = results.bonded.torsion;
+  total.improperTorsion = results.bonded.improperTorsion;
+  total.intraVDW = results.bonded.intraVDW;
+  total.intraCoul = results.bonded.intraCoulomb;
+  reciprocalEnergy = 0.0;
+  if (deviceMesh)
+  {
+    reciprocalEnergy = results.reciprocalEnergy;
+    deviceReciprocalStrain = results.reciprocalStrain;
+    deviceSingleIonSum = results.singleIonSum;
+    deviceSingleIonStrain = results.singleIonStrain;
+  }
+  total = finishStep(system, total, results.pairStrain + results.bonded.exclusionStrain, results.bonded.correction);
+  total.translationalKineticEnergy = residentKinetic.translational;
+  total.rotationalKineticEnergy = residentKinetic.rotational;
+  if (system.thermostat.has_value()) total.NoseHooverEnergy = system.thermostat->getEnergy();
 
   ++timing.steps;
+  ++residentSteps;
   timing.total += std::chrono::steady_clock::now() - begin;
-  if (deviceKernel)
-  {
-    timing.device = devicePairs.deviceTime();
-    timing.devicePrune = devicePairs.pruneTime();
-    timing.deviceMesh = devicePairs.meshTime();
-    timing.deviceBonded = devicePairs.bondedTime();
-    timing.deviceBuild = devicePairs.buildTime();
-  }
+  timing.device = devicePairs.deviceTime();
+  timing.devicePrune = devicePairs.pruneTime();
+  timing.deviceMesh = devicePairs.meshTime();
+  timing.deviceBonded = devicePairs.bondedTime();
+  timing.deviceBuild = devicePairs.buildTime();
   return total;
+}
+
+void SpatialDecompositionForceEngine::downloadResidentState(System& system)
+{
+  if (!residentEnabled || !residentValid || residentHostCurrent) return;
+  // the deferred thermostat factor belongs to the state
+  resident.enqueueScale(residentPendingScale);
+  residentPendingScale = {};
+  resident.download(system, devicePairs, cellList);
+  residentHostCurrent = true;
 }
 
 void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
@@ -1142,6 +1367,16 @@ std::string SpatialDecompositionForceEngine::writeStatus() const
                               ? std::string{}
                               : std::format(" (the device kernels do not cover {})", deviceBondedFallback));
   }
+  if (residentEnabled)
+  {
+    result +=
+        "    resident integrator: positions, velocities and molecule records on the device in double-float "
+        "(emulated double), forces and torques in single precision; the host keeps the thermostat chain\n";
+  }
+  else if (deviceKernel && settings.resident)
+  {
+    result += std::format("    integration on the host ({})\n", residentFallback);
+  }
   result += "\n";
   return result;
 }
@@ -1154,6 +1389,11 @@ std::string SpatialDecompositionForceEngine::writeTimings() const
       "================================================================================================================"
       "========\n");
   result += std::format("    force evaluations:        {}\n", timing.steps);
+  if (residentSteps > 0)
+  {
+    result += std::format("    resident MD steps:        {} (integrator on the device, two synchronizations per step)\n",
+                          residentSteps);
+  }
   result +=
       std::format("    neighbour-list rebuilds:  {} ({:.2f} steps per rebuild)\n", timing.rebuilds,
                   timing.rebuilds > 0 ? static_cast<double>(timing.steps) / static_cast<double>(timing.rebuilds) : 0.0);

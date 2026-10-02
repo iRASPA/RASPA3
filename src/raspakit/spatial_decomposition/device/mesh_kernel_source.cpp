@@ -56,7 +56,7 @@ DEVICE_FUNCTION float3 fractional(float3 r, CONSTANT const float* ic)
 }
 
 // M_p(w + j), j = 0..p-1, and the derivatives M_{p-1}(w + j) - M_{p-1}(w + j - 1) (PPPM::bsplineWeights)
-DEVICE_FUNCTION void bsplineWeights(float w, float* weights, float* derivatives)
+DEVICE_FUNCTION void bsplineWeights(float w, PRIVATE float* weights, PRIVATE float* derivatives)
 {
 #pragma unroll
   for (uint j = 0; j < MESH_ORDER; ++j)
@@ -87,7 +87,7 @@ DEVICE_FUNCTION void bsplineWeights(float w, float* weights, float* derivatives)
 }
 
 // anchor (mesh point at or below the atom) and the fractional offset along one axis
-DEVICE_FUNCTION int anchor(float s, uint K, float* w)
+DEVICE_FUNCTION int anchor(float s, uint K, PRIVATE float* w)
 {
   const float u = min(s * (float)K, nextafter((float)K, 0.0f));
   const int k0 = min((int)u, (int)K - 1);
@@ -97,7 +97,7 @@ DEVICE_FUNCTION int anchor(float s, uint K, float* w)
 
 KERNEL void spreadCharges(GLOBAL const float4* RESTRICT position,  // x, y, z, charge per slot
                             CONSTANT const MeshParameters* p,
-                            GLOBAL int* RESTRICT mesh)
+                            GLOBAL int* RESTRICT mesh KERNEL_INDEX_ARGS)
 {
   const uint slot = GLOBAL_ID();
   if (slot >= p->numberOfSlots) return;
@@ -145,7 +145,7 @@ DEVICE_FUNCTION float2 conjugate(float2 a) { return FLOAT2(a.x, -a.y); }
 
 // Quotient and remainder of a / d for a small a (below 2^20) through the single-precision reciprocal of d, with
 // a correction of the rounding: cheaper than the integer division on the device.
-DEVICE_FUNCTION uint divideBy(uint a, uint d, float inverse, uint* remainder)
+DEVICE_FUNCTION uint divideBy(uint a, uint d, float inverse, PRIVATE uint* remainder)
 {
   uint q = (uint)((float)a * inverse);
   int r = (int)a - (int)(q * d);
@@ -165,13 +165,14 @@ DEVICE_FUNCTION uint divideBy(uint a, uint d, float inverse, uint* remainder)
 
 // One Stockham stage of radix R over the tile: j-th butterfly of the t-th line (Govindaraju et al., 2008).
 // `sign` is -1 for the forward and +1 for the backward transform. The tile is a power of two (tileShift lines).
+// The work-items of the group (lid of groupSize) stride over the butterflies.
 #define STAGE_HEAD(R)                                                                 \
   const uint NR = N / R;                                                              \
   const uint work = NR << tileShift;                                                  \
   const uint twiddleStride = NR / Ns;                                                 \
   const float inverseNs = 1.0f / (float)Ns;                                           \
   const uint tileMask = (1u << tileShift) - 1u;                                       \
-  for (uint idx = LOCAL_ID(); idx < work; idx += LOCAL_SIZE())              \
+  for (uint idx = lid; idx < work; idx += groupSize)                                  \
   {                                                                                   \
     const uint t = idx & tileMask;                                                    \
     const uint j = idx >> tileShift;                                                  \
@@ -192,7 +193,7 @@ DEVICE_FUNCTION uint divideBy(uint a, uint d, float inverse, uint* remainder)
   }
 
 DEVICE_FUNCTION void stageRadix2(LOCAL const float2* in, LOCAL float2* out, GLOBAL const float2* twiddle, uint N,
-                        uint Ns, uint tileShift, float sign)
+                        uint Ns, uint tileShift, float sign, uint lid, uint groupSize)
 {
   STAGE_HEAD(2)
   const float2 a = v[0], b = v[1];
@@ -202,7 +203,7 @@ DEVICE_FUNCTION void stageRadix2(LOCAL const float2* in, LOCAL float2* out, GLOB
 }
 
 DEVICE_FUNCTION void stageRadix3(LOCAL const float2* in, LOCAL float2* out, GLOBAL const float2* twiddle, uint N,
-                        uint Ns, uint tileShift, float sign)
+                        uint Ns, uint tileShift, float sign, uint lid, uint groupSize)
 {
   STAGE_HEAD(3)
   const float2 t1 = v[1] + v[2];
@@ -215,7 +216,7 @@ DEVICE_FUNCTION void stageRadix3(LOCAL const float2* in, LOCAL float2* out, GLOB
 }
 
 DEVICE_FUNCTION void stageRadix4(LOCAL const float2* in, LOCAL float2* out, GLOBAL const float2* twiddle, uint N,
-                        uint Ns, uint tileShift, float sign)
+                        uint Ns, uint tileShift, float sign, uint lid, uint groupSize)
 {
   STAGE_HEAD(4)
   const float2 a0 = v[0] + v[2], a1 = v[0] - v[2];
@@ -228,7 +229,7 @@ DEVICE_FUNCTION void stageRadix4(LOCAL const float2* in, LOCAL float2* out, GLOB
 }
 
 DEVICE_FUNCTION void stageRadix5(LOCAL const float2* in, LOCAL float2* out, GLOBAL const float2* twiddle, uint N,
-                        uint Ns, uint tileShift, float sign)
+                        uint Ns, uint tileShift, float sign, uint lid, uint groupSize)
 {
   STAGE_HEAD(5)
   const float c1 = 0.30901699437494745f, c2 = -0.8090169943749473f;
@@ -250,7 +251,7 @@ DEVICE_FUNCTION void stageRadix5(LOCAL const float2* in, LOCAL float2* out, GLOB
 // bits 2s..2s+1 (0: 2, 1: 3, 2: 4, 3: 5). Returns the buffer holding the result (bufferA or bufferB).
 DEVICE_FUNCTION LOCAL float2* runStages(LOCAL float2* bufferA, LOCAL float2* bufferB,
                                  GLOBAL const float2* RESTRICT twiddle, uint N, uint radixCode, uint stages,
-                                 uint tileShift, float sign)
+                                 uint tileShift, float sign, uint lid, uint groupSize)
 {
   LOCAL float2* in = bufferA;
   LOCAL float2* out = bufferB;
@@ -260,10 +261,10 @@ DEVICE_FUNCTION LOCAL float2* runStages(LOCAL float2* bufferA, LOCAL float2* buf
     const uint R = 2 + ((radixCode >> (2 * s)) & 3u);
     switch (R)
     {
-      case 2: stageRadix2(in, out, twiddle, N, Ns, tileShift, sign); break;
-      case 3: stageRadix3(in, out, twiddle, N, Ns, tileShift, sign); break;
-      case 4: stageRadix4(in, out, twiddle, N, Ns, tileShift, sign); break;
-      default: stageRadix5(in, out, twiddle, N, Ns, tileShift, sign); break;
+      case 2: stageRadix2(in, out, twiddle, N, Ns, tileShift, sign, lid, groupSize); break;
+      case 3: stageRadix3(in, out, twiddle, N, Ns, tileShift, sign, lid, groupSize); break;
+      case 4: stageRadix4(in, out, twiddle, N, Ns, tileShift, sign, lid, groupSize); break;
+      default: stageRadix5(in, out, twiddle, N, Ns, tileShift, sign, lid, groupSize); break;
     }
     LOCAL_BARRIER();
     LOCAL float2* swap = in;
@@ -280,9 +281,9 @@ DEVICE_FUNCTION LOCAL float2* runStages(LOCAL float2* bufferA, LOCAL float2* buf
 // O = -i (Z[k] - conj Z[M-k]) / 2 the spectrum is X[k] = E + W^k O, W = exp(-2 pi i / 2M) (`halfTwiddle`, k = 0..M).
 KERNEL void fftRealForward(GLOBAL int2* RESTRICT fixedPoint, GLOBAL float2* RESTRICT data,
                              GLOBAL const float2* RESTRICT twiddle, GLOBAL const float2* RESTRICT halfTwiddle,
-                             const uint M, const uint radixCode, const uint stages, const uint lineCount,
-                             const uint tileShift, const float inverseScale, LOCAL float2* bufferA,
-                             LOCAL float2* bufferB)
+                             VALUE_ARG(uint, M), VALUE_ARG(uint, radixCode), VALUE_ARG(uint, stages),
+                             VALUE_ARG(uint, lineCount), VALUE_ARG(uint, tileShift), VALUE_ARG(float, inverseScale),
+                             LOCAL float2* bufferA, LOCAL float2* bufferB KERNEL_INDEX_ARGS)
 {
   const uint lid = LOCAL_ID();
   const uint groupSize = LOCAL_SIZE();
@@ -305,7 +306,7 @@ KERNEL void fftRealForward(GLOBAL int2* RESTRICT fixedPoint, GLOBAL float2* REST
     bufferA[(j << tileShift) + t] = value;
   }
   LOCAL_BARRIER();
-  LOCAL const float2* Z = runStages(bufferA, bufferB, twiddle, M, radixCode, stages, tileShift, -1.0f);
+  LOCAL const float2* Z = runStages(bufferA, bufferB, twiddle, M, radixCode, stages, tileShift, -1.0f, lid, groupSize);
   const uint H = M + 1;
   const float inverseH = 1.0f / (float)H;
   for (uint e = lid; e < H * tile; e += groupSize)
@@ -328,8 +329,9 @@ KERNEL void fftRealForward(GLOBAL int2* RESTRICT fixedPoint, GLOBAL float2* REST
 // M-point inverse transform z[2j] + i z[2j+1] = 2 Z[j].
 KERNEL void fftRealBackward(GLOBAL const float2* RESTRICT data, GLOBAL float2* RESTRICT potential,
                               GLOBAL const float2* RESTRICT twiddle, GLOBAL const float2* RESTRICT halfTwiddle,
-                              const uint M, const uint radixCode, const uint stages, const uint lineCount,
-                              const uint tileShift, LOCAL float2* bufferA, LOCAL float2* bufferB)
+                              VALUE_ARG(uint, M), VALUE_ARG(uint, radixCode), VALUE_ARG(uint, stages),
+                              VALUE_ARG(uint, lineCount), VALUE_ARG(uint, tileShift), LOCAL float2* bufferA,
+                              LOCAL float2* bufferB KERNEL_INDEX_ARGS)
 {
   const uint lid = LOCAL_ID();
   const uint groupSize = LOCAL_SIZE();
@@ -357,7 +359,7 @@ KERNEL void fftRealBackward(GLOBAL const float2* RESTRICT data, GLOBAL float2* R
     bufferA[(k << tileShift) + t] = FLOAT2(even.x - odd.y, even.y + odd.x);
   }
   LOCAL_BARRIER();
-  LOCAL const float2* z = runStages(bufferA, bufferB, twiddle, M, radixCode, stages, tileShift, 1.0f);
+  LOCAL const float2* z = runStages(bufferA, bufferB, twiddle, M, radixCode, stages, tileShift, 1.0f, lid, groupSize);
   for (uint e = lid; e < M * tile; e += groupSize)
   {
     uint j;
@@ -369,10 +371,11 @@ KERNEL void fftRealBackward(GLOBAL const float2* RESTRICT data, GLOBAL float2* R
 // Complex lines of length N along one axis of the half spectrum: element j of line (outer, inner) is at
 // outer * outerStride + inner * lineStride + j * axisStride. A work-group transforms `tile` consecutive inner
 // lines.
-KERNEL void fftLines(GLOBAL float2* RESTRICT data, GLOBAL const float2* RESTRICT twiddle, const uint N,
-                       const uint radixCode, const uint stages, const uint axisStride, const uint lineStride,
-                       const uint innerCount, const uint outerStride, const uint tileShift, const uint tilesPerOuter,
-                       const float sign, LOCAL float2* bufferA, LOCAL float2* bufferB)
+KERNEL void fftLines(GLOBAL float2* RESTRICT data, GLOBAL const float2* RESTRICT twiddle, VALUE_ARG(uint, N),
+                       VALUE_ARG(uint, radixCode), VALUE_ARG(uint, stages), VALUE_ARG(uint, axisStride),
+                       VALUE_ARG(uint, lineStride), VALUE_ARG(uint, innerCount), VALUE_ARG(uint, outerStride),
+                       VALUE_ARG(uint, tileShift), VALUE_ARG(uint, tilesPerOuter), VALUE_ARG(float, sign),
+                       LOCAL float2* bufferA, LOCAL float2* bufferB KERNEL_INDEX_ARGS)
 {
   const uint lid = LOCAL_ID();
   const uint groupSize = LOCAL_SIZE();
@@ -405,7 +408,7 @@ KERNEL void fftLines(GLOBAL float2* RESTRICT data, GLOBAL const float2* RESTRICT
     }
   }
   LOCAL_BARRIER();
-  LOCAL const float2* in = runStages(bufferA, bufferB, twiddle, N, radixCode, stages, tileShift, sign);
+  LOCAL const float2* in = runStages(bufferA, bufferB, twiddle, N, radixCode, stages, tileShift, sign, lid, groupSize);
 
   if (axisStride == 1)
   {
@@ -428,10 +431,9 @@ KERNEL void fftLines(GLOBAL float2* RESTRICT data, GLOBAL const float2* RESTRICT
 }
 
 // Tree reduction of `count` per-item values held in scratch[q * groupSize + lid] into partials[group * count + q].
-DEVICE_FUNCTION void reducePartials(LOCAL float* scratch, uint count, GLOBAL float* RESTRICT partials)
+DEVICE_FUNCTION void reducePartials(LOCAL float* scratch, uint count, GLOBAL float* RESTRICT partials, uint lid,
+                                    uint groupSize, uint group)
 {
-  const uint lid = LOCAL_ID();
-  const uint groupSize = LOCAL_SIZE();
   for (uint stride = groupSize / 2; stride > 0; stride >>= 1)
   {
     LOCAL_BARRIER();
@@ -441,7 +443,7 @@ DEVICE_FUNCTION void reducePartials(LOCAL float* scratch, uint count, GLOBAL flo
     }
   }
   LOCAL_BARRIER();
-  if (lid < count) partials[GROUP_ID() * count + lid] = scratch[lid * groupSize];
+  if (lid < count) partials[group * count + lid] = scratch[lid * groupSize];
 }
 
 // G(m) F(m) over the half spectrum kz = 0..Kz/2, with the per-group sums of: the reciprocal energy sum_m G |F|^2,
@@ -453,7 +455,7 @@ DEVICE_FUNCTION void reducePartials(LOCAL float* scratch, uint count, GLOBAL flo
 KERNEL_GROUP_SIZE(INFLUENCE_GROUP)
 void applyInfluence(GLOBAL float2* RESTRICT data, GLOBAL const float* RESTRICT moduliX,
                     GLOBAL const float* RESTRICT moduliY, GLOBAL const float* RESTRICT moduliZ,
-                    CONSTANT const MeshParameters* p, GLOBAL float* RESTRICT partials)
+                    CONSTANT const MeshParameters* p, GLOBAL float* RESTRICT partials KERNEL_INDEX_ARGS)
 {
   LOCAL float scratch[INFLUENCE_PARTIALS * INFLUENCE_GROUP];
   const uint lid = LOCAL_ID();
@@ -529,12 +531,12 @@ void applyInfluence(GLOBAL float2* RESTRICT data, GLOBAL const float* RESTRICT m
     acc[13] += bare - ionFac * k.z * k.z;
   }
   for (uint q = 0; q < INFLUENCE_PARTIALS; ++q) scratch[q * INFLUENCE_GROUP + lid] = acc[q];
-  reducePartials(scratch, INFLUENCE_PARTIALS, partials);
+  reducePartials(scratch, INFLUENCE_PARTIALS, partials, lid, INFLUENCE_GROUP, GROUP_ID());
 }
 
 // dE/dr_i = 2 q_i sum_nodes phi(node) d(Mx My Mz)/dr_i, added to the force of the slot
 KERNEL void interpolateForces(GLOBAL const float4* RESTRICT position, GLOBAL const float* RESTRICT potential,
-                                CONSTANT const MeshParameters* p, GLOBAL float4* RESTRICT force)
+                                CONSTANT const MeshParameters* p, GLOBAL float4* RESTRICT force KERNEL_INDEX_ARGS)
 {
   const uint slot = GLOBAL_ID();
   if (slot >= p->numberOfSlots) return;

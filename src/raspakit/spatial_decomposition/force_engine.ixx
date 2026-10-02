@@ -63,6 +63,23 @@ export class ForceEngine
                       implementation);
   }
 
+  /// Whether the engine integrates on the device with the MD state resident there (see
+  /// SpatialDecompositionForceEngine::usesResident).
+  bool usesResident() const
+  {
+    return std::visit([](const auto& engine) { return engine.usesResident(); }, implementation);
+  }
+  /// One velocity-Verlet step on the device (usesResident() must hold).
+  RunningEnergy residentVelocityVerlet(System& system)
+  {
+    return std::visit([&](auto& engine) { return engine.residentVelocityVerlet(system); }, implementation);
+  }
+  /// Refreshes the host state of the system from the device (no-op when the host copy is current).
+  void downloadResidentState(System& system)
+  {
+    std::visit([&](auto& engine) { engine.downloadResidentState(system); }, implementation);
+  }
+
   /// Compares the engine against Integrators::updateGradients on the system's current configuration.
   Validation validate(System& system)
   {
