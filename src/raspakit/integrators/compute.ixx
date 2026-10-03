@@ -52,7 +52,7 @@ double computeTranslationalKineticEnergy(std::span<const Molecule> moleculeData,
  * \param components A vector of components containing inertia information.
  * \return The total rotational kinetic energy.
  */
-double computeRotationalKineticEnergy(std::span<const Molecule> moleculeData, const std::vector<Component> components,
+double computeRotationalKineticEnergy(std::span<const Molecule> moleculeData, const std::vector<Component>& components,
                                       std::span<const GroupState> groupData = {},
                                       const std::optional<Framework>& framework = std::nullopt,
                                       std::span<const GroupState> frameworkGroupData = {});

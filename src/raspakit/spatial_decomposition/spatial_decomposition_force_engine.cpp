@@ -109,6 +109,32 @@ void SpatialDecompositionForceEngine::prepareBondedWork(const System& system)
   partitionedMolecules = numberOfMolecules;
 }
 
+void SpatialDecompositionForceEngine::runOnTeam(const std::function<void(std::size_t, std::size_t)>& body)
+{
+  if (!team || team->size() == 1)
+  {
+    body(0, 1);
+    return;
+  }
+  const std::size_t members = team->size();
+  team->run([&](std::size_t member) { body(member, members); });
+}
+
+void SpatialDecompositionForceEngine::refreshStaticSums(const System& system)
+{
+  // position-independent sums over the atoms (the MD drivers keep the molecules fixed): recomputed only when
+  // the number of atoms changes
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  staticNetCharge = 0.0;
+  staticScaledCountPerType.assign(system.forceField.pseudoAtoms.size(), 0.0);
+  for (const Atom& atom : atoms)
+  {
+    staticNetCharge += atom.scalingCoulomb * atom.charge;
+    staticScaledCountPerType[atom.type] += atom.scalingVDW;
+  }
+  staticSumsAtoms = atoms.size();
+}
+
 void SpatialDecompositionForceEngine::initialize(System& system)
 {
   std::string reason;
@@ -137,6 +163,7 @@ void SpatialDecompositionForceEngine::initialize(System& system)
   fx.assign(numberOfAtoms, 0.0);
   fy.assign(numberOfAtoms, 0.0);
   fz.assign(numberOfAtoms, 0.0);
+  refreshStaticSums(system);
   localForce.assign(settings.numberOfThreads, {});
   clusterKernelDouble.resize(settings.numberOfThreads);
   clusterKernelMixed.resize(settings.numberOfThreads);
@@ -309,13 +336,13 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
 RunningEnergy SpatialDecompositionForceEngine::finishStep(const System& system, RunningEnergy total, double3x3 strain,
                                                            double3x3 correction)
 {
-  double netCharge = 0.0;
+  if (staticSumsAtoms != system.spanOfMoleculeAtoms().size()) refreshStaticSums(system);
+  const double netCharge = staticNetCharge;
   if (useMesh)
   {
     total.ewald_fourier += reciprocalEnergy;
 
     // Net-charge correction (Bogusz et al., J. Chem. Phys. 108, 7070 (1998)), position independent
-    for (const Atom& atom : system.spanOfMoleculeAtoms()) netCharge += atom.scalingCoulomb * atom.charge;
     const double singleIonSum = deviceMesh ? deviceSingleIonSum : pppm.singleIonFourierSum();
     const double uIon =
         -(singleIonSum - Units::CoulombicConversionFactor * system.forceField.EwaldAlpha / std::sqrt(std::numbers::pi));
@@ -339,8 +366,7 @@ RunningEnergy SpatialDecompositionForceEngine::finishStep(const System& system, 
 
     // tail correction to the pressure virial, summed over pseudo-atom types instead of atom pairs
     const ForceField& forceField = system.forceField;
-    std::vector<double> scaledCountPerType(forceField.pseudoAtoms.size(), 0.0);
-    for (const Atom& atom : system.spanOfMoleculeAtoms()) scaledCountPerType[atom.type] += atom.scalingVDW;
+    const std::vector<double>& scaledCountPerType = staticScaledCountPerType;
     const double preFactor = -2.0 * std::numbers::pi / (3.0 * system.simulationBox.volume);
     double tailCorrection = 0.0;
     for (std::size_t typeA = 0; typeA < scaledCountPerType.size(); ++typeA)
@@ -450,12 +476,43 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
     residentKinetic.rotational =
         Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
                                                     system.framework, system.spanOfFrameworkGroupData());
+    // the kinetic virial of the barostat (molecular coupling): sum_k M_k |V_k|^2 of the centres of mass
+    residentKinetic.virialTrace = 0.0;
+    if (system.thermobarostat.has_value())
+    {
+      const std::span<const AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
+      for (const Molecule& molecule : system.moleculeData)
+      {
+        const Component& component = system.components[molecule.componentId];
+        double3 momentum{};
+        if (component.rigid)
+        {
+          momentum = molecule.mass * molecule.velocity;
+        }
+        else
+        {
+          for (std::size_t b = 0; b < molecule.numberOfAtoms; ++b)
+            momentum += component.definedAtoms[b].second * dynamics[molecule.atomIndex + b].velocity;
+        }
+        residentKinetic.virialTrace += double3::dot(momentum, momentum) * molecule.invMass;
+      }
+    }
   }
 
-  // first half: the thermostat factor of the end of the last step (deferred) times the one of this step, kick,
-  // drift, free rotor, cartesian positions, slot positions and the displacement check
+  // first half: the barostat chain and the first half-kick of the cell velocity (from the virial of the current
+  // configuration and the kinetic virial of the current velocities), the thermostat factor of the end of the
+  // last step (deferred) times the one of this step, the barostat coupling of the velocities, kick, drift (of
+  // the cell and the centres of mass), free rotor, cartesian positions, slot positions and the displacement check
   DeviceResident::Scaling scaling = residentPendingScale;
   residentPendingScale = {};
+  DeviceResident::Coupling coupling{};
+  Thermobarostat* barostat = system.thermobarostat.has_value() ? &*system.thermobarostat : nullptr;
+  if (barostat != nullptr)
+  {
+    const double chainScale = barostat->chainStep(barostat->barostatKineticEnergy());
+    barostat->logVolumeVelocity *= chainScale;
+    barostat->cellVelocity = barostat->cellVelocity * chainScale;
+  }
   if (system.thermostat.has_value())
   {
     const std::pair<double, double> factor =
@@ -463,8 +520,13 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
     scaling.translational *= factor.first;
     scaling.rotational *= factor.second;
   }
+  if (barostat != nullptr)
+  {
+    coupling = residentBarostatFirstHalf(system, pressureTensor.trace());
+    resident.setBox(box);
+  }
   std::chrono::steady_clock::time_point waitStart = std::chrono::steady_clock::now();
-  context.wait(resident.enqueueFirstHalf(scaling, dt));
+  context.wait(resident.enqueueFirstHalf(scaling, dt, coupling));
   timing.deviceWait += std::chrono::steady_clock::now() - waitStart;
   DeviceResident::Displacement displacement = resident.collectDisplacement();
   if (displacement.sinceBuild > 0.25 * cellList.skin * cellList.skin) rebuild = true;
@@ -475,11 +537,13 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
     displacement.sinceCompaction = 0.0;
   }
 
-  // forces, then the second half: molecular gradients and torques, kick, kinetic energies
+  // forces, then the second half: molecular gradients and torques, kick, barostat coupling of the velocities,
+  // kinetic energies and the kinetic virial
   devicePairs.enqueueResident(box, displacement.sinceCompaction > devicePairs.pruneDisplacementThreshold());
-  DeviceEvent secondHalf = resident.enqueueSecondHalf(dt);
+  DeviceEvent secondHalf = resident.enqueueSecondHalf(dt, coupling);
   waitStart = std::chrono::steady_clock::now();
-  const DeviceStep::Results results = devicePairs.wait([&] { secondHalf = resident.enqueueSecondHalf(dt); });
+  const DeviceStep::Results results =
+      devicePairs.wait([&] { secondHalf = resident.enqueueSecondHalf(dt, coupling); });
   context.wait(secondHalf);
   timing.deviceWait += std::chrono::steady_clock::now() - waitStart;
   const DeviceResident::Kinetic kinetic = resident.collectKinetic();
@@ -487,7 +551,7 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
   residentHostCurrent = false;
 
   // the thermostat at the end of the step: the factor is applied with the first half of the next step, the
-  // reported kinetic energies are those of the scaled velocities
+  // reported kinetic energies (and the kinetic virial of the next step) are those of the scaled velocities
   if (system.thermostat.has_value())
   {
     const std::pair<double, double> factor = system.thermostat->NoseHooverNVT(kinetic.translational, kinetic.rotational);
@@ -497,6 +561,8 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
   residentKinetic.translational =
       residentPendingScale.translational * residentPendingScale.translational * kinetic.translational;
   residentKinetic.rotational = residentPendingScale.rotational * residentPendingScale.rotational * kinetic.rotational;
+  residentKinetic.virialTrace =
+      residentPendingScale.translational * residentPendingScale.translational * kinetic.virialTrace;
 
   // energies and the pressure tensor of the step
   RunningEnergy total{};
@@ -523,6 +589,23 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
   total.rotationalKineticEnergy = residentKinetic.rotational;
   if (system.thermostat.has_value()) total.NoseHooverEnergy = system.thermostat->getEnergy();
 
+  // the barostat at the end of the step: the second half-kick of the cell velocity from the virial of the new
+  // configuration and the kinetic virial of the propagated (unscaled) velocities, then the chain
+  if (barostat != nullptr)
+  {
+    const double mtkFactor =
+        1.0 + 3.0 / static_cast<double>(std::max<std::size_t>(1, barostat->translationalDegreesOfFreedom));
+    const double scalarForce =
+        3.0 *
+        (pressureTensor.trace() + mtkFactor * kinetic.virialTrace - 3.0 * barostat->pressure * box.volume) /
+        barostat->logVolumeMass;
+    barostat->logVolumeVelocity += 0.5 * dt * scalarForce;
+    const double finalScale = barostat->chainStep(barostat->barostatKineticEnergy());
+    barostat->logVolumeVelocity *= finalScale;
+    barostat->cellVelocity = barostat->cellVelocity * finalScale;
+    total.thermobarostatEnergy = barostat->energy(box.volume);
+  }
+
   ++timing.steps;
   ++residentSteps;
   timing.total += std::chrono::steady_clock::now() - begin;
@@ -532,6 +615,66 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
   timing.deviceBonded = devicePairs.bondedTime();
   timing.deviceBuild = devicePairs.buildTime();
   return total;
+}
+
+// The isotropic Martyna-Tobias-Klein barostat of the resident step (molecular coupling), the host part of the
+// first half: x = ln V, xddot = 3 G_epsilon / W with G_epsilon = virial + alpha 2K - 3 P V, the velocity
+// propagator S = exp(-dt/2 (xdot/3 + xdot/N_f)) of the centre-of-mass velocities, the cell propagation
+// cell' = exp(dt xdot/3) cell with the drift factor dt phi_1(dt xdot/3) of the centres of mass, and the
+// force-field parameters that follow the cell (the same sequence as the NPT step of the driver on the host).
+DeviceResident::Coupling SpatialDecompositionForceEngine::residentBarostatFirstHalf(System& system,
+                                                                                    double pressureVirialTrace)
+{
+  Thermobarostat& barostat = *system.thermobarostat;
+  const double dt = system.timeStep;
+  const double mtkFactor =
+      1.0 + 3.0 / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
+  const double scalarForce = 3.0 *
+                             (pressureVirialTrace + mtkFactor * residentKinetic.virialTrace -
+                              3.0 * barostat.pressure * system.simulationBox.volume) /
+                             barostat.logVolumeMass;
+  barostat.logVolumeVelocity += 0.5 * dt * scalarForce;
+  const double rate = barostat.logVolumeVelocity / 3.0;
+  const double3x3 cellRate(rate, rate, rate);
+
+  DeviceResident::Coupling coupling{};
+  coupling.enabled = true;
+  coupling.propagator = velocityPropagator(cellRate, 0.5 * dt, barostat.translationalDegreesOfFreedom).ax;
+  const double argument = dt * rate;
+  coupling.cellFactor = std::exp(argument);
+  coupling.driftFactor = dt * (argument != 0.0 ? std::expm1(argument) / argument : 1.0);
+
+  const double3x3 cell = coupling.cellFactor * system.simulationBox.cell;
+  if (!std::isfinite(cell.determinant()) || cell.determinant() <= 1.0e-10)
+  {
+    throw std::runtime_error("[Spatial decomposition]: the barostat produced an invalid or singular cell\n");
+  }
+  system.simulationBox = SimulationBox(cell);
+  const ForceField& forceField = system.forceField;
+  const double3 widths = system.simulationBox.perpendicularWidths();
+  const double halfWidth = 0.5 * std::min({widths.x, widths.y, widths.z});
+  const double requiredWidth =
+      2.0 * std::max({forceField.cutOffFrameworkVDWAutomatic ? 0.0 : forceField.cutOffFrameworkVDW,
+                      forceField.cutOffMoleculeVDWAutomatic ? 0.0 : forceField.cutOffMoleculeVDW,
+                      forceField.cutOffCoulombAutomatic ? 0.0 : forceField.cutOffCoulomb});
+  if (2.0 * halfWidth <= requiredWidth)
+  {
+    throw std::runtime_error(
+        std::format("[Spatial decomposition]: the barostat cell violates the minimum-image cutoff requirement "
+                    "(widths: {}, {}, {}; required > {})\n",
+                    widths.x, widths.y, widths.z, requiredWidth));
+  }
+  if (cellList.listCutoff > halfWidth)
+  {
+    throw std::runtime_error(
+        std::format("[Spatial decomposition]: the box shrank so that cutoff + skin ({:.3f} A) exceeds half the "
+                    "smallest perpendicular width ({:.3f} A); use a smaller cutoff or 'VerletSkin'\n",
+                    cellList.listCutoff, halfWidth));
+  }
+  system.forceField.initializeAutomaticCutOff(system.simulationBox);
+  system.forceField.initializeEwaldParameters(system.simulationBox);
+  barostat.logVolumePosition += dt * barostat.logVolumeVelocity;
+  return coupling;
 }
 
 void SpatialDecompositionForceEngine::downloadResidentState(System& system)
@@ -1371,7 +1514,8 @@ std::string SpatialDecompositionForceEngine::writeStatus() const
   {
     result +=
         "    resident integrator: positions, velocities and molecule records on the device in double-float "
-        "(emulated double), forces and torques in single precision; the host keeps the thermostat chain\n";
+        "(emulated double), forces and torques in single precision; the host keeps the thermostat and barostat "
+        "chains\n";
   }
   else if (deviceKernel && settings.resident)
   {

@@ -90,6 +90,12 @@ export class ForceEngine
   {
     return std::visit([](const auto& engine) { return engine.numberOfThreads(); }, implementation);
   }
+  /// Runs body(member, numberOfMembers) on every thread of the engine's worker team (see
+  /// SpatialDecompositionForceEngine::runOnTeam).
+  void runOnTeam(const std::function<void(std::size_t, std::size_t)>& body)
+  {
+    std::visit([&](auto& engine) { engine.runOnTeam(body); }, implementation);
+  }
   const Timings& timings() const
   {
     return std::visit([](const auto& engine) -> const Timings& { return engine.timings(); }, implementation);

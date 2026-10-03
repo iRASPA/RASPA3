@@ -592,6 +592,10 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
     Integrators::scaleVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
                                  system.components, scaling, system.framework, system.spanOfFrameworkDynamics(),
                                  system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+    // the reported kinetic energies are those of the scaled velocities, the state the chain energy belongs to
+    // (as in Integrators::velocityVerlet)
+    energies.translationalKineticEnergy *= scaling.first * scaling.first;
+    energies.rotationalKineticEnergy *= scaling.second * scaling.second;
     energies.NoseHooverEnergy = system.thermostat->getEnergy();
   }
   const double finalBarostatKinetic = barostat.barostatKineticEnergy();

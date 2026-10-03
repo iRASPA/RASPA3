@@ -107,9 +107,11 @@ export struct SpatialDecompositionSettings
 
   /// With a device pair kernel, mesh and bonded terms: the MD state (positions, velocities, molecule records)
   /// stays on the device and the velocity-Verlet integrator runs there in double-float arithmetic (hi + lo
-  /// floats, "emulated double"); the host keeps the thermostat and the list rebuilds and downloads the state
-  /// only when it samples properties or writes a restart file. Falls back to the host integrator when the system
-  /// is not covered (semi-flexible molecules, barostats, bonded terms on the host). Input option 'Resident'.
+  /// floats, "emulated double"); the host keeps the thermostat and barostat chains and the list rebuilds and
+  /// downloads the state only when it samples properties or writes a restart file. Covers the NVE, NVT and
+  /// isotropic NPT (molecular coupling) ensembles; falls back to the host integrator when the system is not
+  /// covered (semi-flexible molecules, flexible-cell or atomically coupled barostats, automatic cutoffs with a
+  /// barostat, bonded terms on the host). Input option 'Resident'.
   bool resident{true};
 
   bool operator==(const SpatialDecompositionSettings&) const = default;

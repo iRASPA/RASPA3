@@ -10,14 +10,23 @@ module spatial_decomposition_device_kernels;
 // need every operation as written (explicit fma, no reassociation).
 //
 // Per step the host launches, in order:
-//   residentAtomsA, residentMoleculesA, residentPack          first half: scale + kick, drift, free rotor,
+//   [residentCoupleA, residentAtomsCoupledA | residentAtomsA], residentMoleculesA, residentPack
+//                                                              first half: scale + kick, drift, free rotor,
 //                                                              cartesian positions, slot positions + displacements
 //   (the device pair / mesh / bonded chain of DeviceStep)
-//   residentTorques, residentAtomsB, residentMoleculesB       second half: molecular gradients and torques, kick
+//   residentTorques, residentMoleculesB, residentAtomsB       second half: molecular gradients and torques, kick
 //                                                              into the other velocity buffers, kinetic energies
 // The thermostat scaling of the host (Nose-Hoover chain) enters as the factors (scaleT, scaleR) of the first
 // half; the second half writes the kicked velocities to separate buffers so that the host can repeat it with the
 // corrected forces when a list overflowed, without undoing a kick.
+//
+// With an isotropic barostat (molecular coupling, `coupled` = 1) the host also passes the velocity propagator S
+// (a scalar: exp(-dt/2 (v_cell + tr v_cell / N_f))), the cell factor e = exp(dt v_cell) and the drift factor
+// d = dt phi_1(dt v_cell) of the step. The cell acts on the centre-of-mass velocity V of every molecule only:
+// rigid molecules get V -> S V and COM -> e COM + d V; every atom of a flexible molecule gets the increment
+// (S - 1) V and follows its centre of mass, R' - R + dt (v - V'), so that the internal geometry is not strained
+// (the molecular-coupling step of the host driver). The second half reduces the kinetic virial sum M |V|^2 of
+// the barostat with the kinetic energies.
 const char* const deviceKernelResidentSource = R"KERNEL(
 #ifdef __OPENCL_VERSION__
 #pragma OPENCL FP_CONTRACT OFF
@@ -411,8 +420,85 @@ void residentAtomsA(GLOBAL float4* RESTRICT positionHi, GLOBAL float4* RESTRICT 
   df3Store(positionHi, positionLo, i, r, charge);
 }
 
-// molecules: V = scaleT V - dt/2 G / M, COM += dt V; rigid: P = scaleR P - dt/2 T, free rotor, atom positions
-// COM + q ref; flexible: COM = mass-weighted mean of the (drifted) atoms
+// molecular barostat coupling, flexible molecules: the centre of mass R and its velocity V from the current atoms
+// (before the thermostat scaling), the increment (S - 1) scaleT V of every atom velocity, the kicked
+// centre-of-mass velocity V' = S scaleT V - dt/2 G / M and the shift R' - R of the cell propagation
+// R' = e R + d V'; residentAtomsCoupledA applies them to the atoms
+KERNEL_GROUP_SIZE(MOLECULE_GROUP)
+void residentCoupleA(GLOBAL const float4* RESTRICT positionHi, GLOBAL const float4* RESTRICT positionLo,
+                     GLOBAL const float4* RESTRICT velocityHi, GLOBAL const float4* RESTRICT velocityLo,
+                     GLOBAL const float4* RESTRICT atomMass, GLOBAL const float4* RESTRICT moleculeGradient,
+                     GLOBAL const float4* RESTRICT moleculeMass, GLOBAL const uint4* RESTRICT moleculeInfo,
+                     GLOBAL float4* RESTRICT comShiftHi, GLOBAL float4* RESTRICT comShiftLo,
+                     GLOBAL float4* RESTRICT comKickedHi, GLOBAL float4* RESTRICT comKickedLo,
+                     GLOBAL float4* RESTRICT comIncrementHi, GLOBAL float4* RESTRICT comIncrementLo,
+                     VALUE_ARG(uint, numberOfMolecules), VALUE_ARG(float2, scaleT), VALUE_ARG(float2, propagator),
+                     VALUE_ARG(float2, propagatorMinusOne), VALUE_ARG(float2, halfDt),
+                     VALUE_ARG(float2, cellFactor), VALUE_ARG(float2, driftFactor) KERNEL_INDEX_ARGS)
+{
+  const uint m = GLOBAL_ID();
+  if (m >= numberOfMolecules) return;
+  const uint4 info = moleculeInfo[m];
+  if (info.w != 0u) return;
+  DF3 weighted, momentum;
+  weighted.x = weighted.y = weighted.z = dfOf(0.0f);
+  momentum.x = momentum.y = momentum.z = dfOf(0.0f);
+  for (uint b = 0; b < info.y; ++b)
+  {
+    const uint atom = info.x + b;
+    const float4 am = atomMass[atom];
+    const float2 atomMassValue = FLOAT2(am.x, am.y);
+    weighted = df3Add(weighted, df3Scale(df3Load(positionHi, positionLo, atom), atomMassValue));
+    momentum = df3Add(momentum, df3Scale(df3Load(velocityHi, velocityLo, atom), atomMassValue));
+  }
+  const float4 mass = moleculeMass[m];
+  const float2 invMass = FLOAT2(mass.z, mass.w);
+  const DF3 com = df3Scale(weighted, invMass);
+  const DF3 scaledVelocity = df3Scale(df3Scale(momentum, invMass), scaleT);
+  const DF3 increment = df3Scale(scaledVelocity, propagatorMinusOne);
+  const DF3 kicked = df3KickScaled(scaledVelocity, propagator, dfMul(halfDt, invMass), moleculeGradient[m].xyz);
+  const DF3 propagated = df3Add(df3Scale(com, cellFactor), df3Scale(kicked, driftFactor));
+  df3Store(comShiftHi, comShiftLo, m, df3Sub(propagated, com), 0.0f);
+  df3Store(comKickedHi, comKickedLo, m, kicked, 0.0f);
+  df3Store(comIncrementHi, comIncrementLo, m, increment, 0.0f);
+}
+
+// flexible atoms with the barostat coupling: v = scaleT v + (S - 1) scaleT V - dt/2 g / m, then the atom follows
+// its centre of mass, r += R' - R + dt (v - V')
+KERNEL_GROUP_SIZE(ATOM_GROUP)
+void residentAtomsCoupledA(GLOBAL float4* RESTRICT positionHi, GLOBAL float4* RESTRICT positionLo,
+                           GLOBAL float4* RESTRICT velocityHi, GLOBAL float4* RESTRICT velocityLo,
+                           GLOBAL const float4* RESTRICT atomMass, GLOBAL const uint4* RESTRICT atomInfo,
+                           GLOBAL const uint* RESTRICT slotOfAtom, GLOBAL const float4* RESTRICT force,
+                           GLOBAL const float4* RESTRICT comShiftHi, GLOBAL const float4* RESTRICT comShiftLo,
+                           GLOBAL const float4* RESTRICT comKickedHi, GLOBAL const float4* RESTRICT comKickedLo,
+                           GLOBAL const float4* RESTRICT comIncrementHi,
+                           GLOBAL const float4* RESTRICT comIncrementLo, VALUE_ARG(uint, numberOfAtoms),
+                           VALUE_ARG(float2, scaleT), VALUE_ARG(float2, halfDt),
+                           VALUE_ARG(float2, dt) KERNEL_INDEX_ARGS)
+{
+  const uint i = GLOBAL_ID();
+  if (i >= numberOfAtoms) return;
+  const uint4 info = atomInfo[i];
+  if (info.w == 0u) return;
+  const uint m = info.x;
+  const float4 g = force[slotOfAtom[i]];
+  const float4 am = atomMass[i];
+  const float2 factor = dfMul(halfDt, FLOAT2(am.z, am.w));
+  DF3 v = df3Load(velocityHi, velocityLo, i);
+  v = df3Add(df3Scale(v, scaleT), df3Load(comIncrementHi, comIncrementLo, m));
+  v = df3KickScaled(v, dfOf(1.0f), factor, g.xyz);
+  const float charge = positionHi[i].w;
+  DF3 r = df3Load(positionHi, positionLo, i);
+  const DF3 relative = df3Sub(v, df3Load(comKickedHi, comKickedLo, m));
+  r = df3Add(r, df3Add(df3Load(comShiftHi, comShiftLo, m), df3Scale(relative, dt)));
+  df3Store(velocityHi, velocityLo, i, v, 0.0f);
+  df3Store(positionHi, positionLo, i, r, charge);
+}
+
+// molecules: V = scaleT V - dt/2 G / M, COM += dt V (coupled: COM = e COM + d V); rigid: P = scaleR P - dt/2 T,
+// free rotor, atom positions COM + q ref; flexible: COM = mass-weighted mean of the (drifted) atoms. With the
+// coupling the host folds the propagator S into scaleT.
 KERNEL_GROUP_SIZE(MOLECULE_GROUP)
 void residentMoleculesA(GLOBAL float4* RESTRICT positionHi, GLOBAL float4* RESTRICT positionLo,
                         GLOBAL const float4* RESTRICT atomMass, GLOBAL float4* RESTRICT comHi,
@@ -426,7 +512,8 @@ void residentMoleculesA(GLOBAL float4* RESTRICT positionHi, GLOBAL float4* RESTR
                         GLOBAL const float4* RESTRICT referenceHi, GLOBAL const float4* RESTRICT referenceLo,
                         VALUE_ARG(uint, numberOfMolecules), VALUE_ARG(float2, scaleT), VALUE_ARG(float2, scaleR),
                         VALUE_ARG(float2, halfDt), VALUE_ARG(float2, dt), VALUE_ARG(float2, dtTenth),
-                        VALUE_ARG(float2, dtFifth) KERNEL_INDEX_ARGS)
+                        VALUE_ARG(float2, dtFifth), VALUE_ARG(uint, coupled), VALUE_ARG(float2, cellFactor),
+                        VALUE_ARG(float2, driftFactor) KERNEL_INDEX_ARGS)
 {
   const uint m = GLOBAL_ID();
   if (m >= numberOfMolecules) return;
@@ -438,7 +525,14 @@ void residentMoleculesA(GLOBAL float4* RESTRICT positionHi, GLOBAL float4* RESTR
   DF3 velocity = df3Load(velocityHi, velocityLo, m);
   velocity = df3KickScaled(velocity, scaleT, dfMul(halfDt, invMass), g.xyz);
   DF3 com = df3Load(comHi, comLo, m);
-  com = df3Add(com, df3Scale(velocity, dt));
+  if (coupled != 0u)
+  {
+    com = df3Add(df3Scale(com, cellFactor), df3Scale(velocity, driftFactor));
+  }
+  else
+  {
+    com = df3Add(com, df3Scale(velocity, dt));
+  }
   df3Store(velocityHi, velocityLo, m, velocity, 0.0f);
 
   if (info.w != 0u)
@@ -480,12 +574,28 @@ void residentMoleculesA(GLOBAL float4* RESTRICT positionHi, GLOBAL float4* RESTR
   df3Store(comHi, comLo, m, com, 0.0f);
 }
 
+// the box translation of the binning of an atom, cell . wrap, from the integer wrap counts and the current cell
+// (cellTable: the three columns of the cell, hi parts then lo parts; the cell follows the barostat)
+DEVICE_FUNCTION DF3 wrapTranslation(GLOBAL const float4* cellTable, int4 w)
+{
+  const float wx = (float)w.x;
+  const float wy = (float)w.y;
+  const float wz = (float)w.z;
+  const float4 ah = cellTable[0], bh = cellTable[1], ch = cellTable[2];
+  const float4 al = cellTable[3], bl = cellTable[4], cl = cellTable[5];
+  DF3 t;
+  t.x = dfAdd(dfAdd(dfMulF(FLOAT2(ah.x, al.x), wx), dfMulF(FLOAT2(bh.x, bl.x), wy)), dfMulF(FLOAT2(ch.x, cl.x), wz));
+  t.y = dfAdd(dfAdd(dfMulF(FLOAT2(ah.y, al.y), wx), dfMulF(FLOAT2(bh.y, bl.y), wy)), dfMulF(FLOAT2(ch.y, cl.y), wz));
+  t.z = dfAdd(dfAdd(dfMulF(FLOAT2(ah.z, al.z), wx), dfMulF(FLOAT2(bh.z, bl.z), wy)), dfMulF(FLOAT2(ch.z, cl.z), wz));
+  return t;
+}
+
 // slot positions (wrapped: position minus the box translation of the binning) and charges for the pair, mesh and
 // bonded kernels, the positions relative to the first atom of the molecule for the bonded kernel, and per group
 // the largest squared displacement since the list build and since the list compaction
 KERNEL_GROUP_SIZE(ATOM_GROUP)
 void residentPack(GLOBAL const float4* RESTRICT positionHi, GLOBAL const float4* RESTRICT positionLo,
-                  GLOBAL const float4* RESTRICT translationHi, GLOBAL const float4* RESTRICT translationLo,
+                  GLOBAL const int4* RESTRICT wrapOfAtom, GLOBAL const float4* RESTRICT cellTable,
                   GLOBAL const uint* RESTRICT slotOfAtom, GLOBAL const uint4* RESTRICT atomInfo,
                   GLOBAL const float4* RESTRICT buildPosition, GLOBAL const float4* RESTRICT compactReference,
                   GLOBAL float4* RESTRICT slotPosition, GLOBAL float4* RESTRICT relative,
@@ -498,7 +608,7 @@ void residentPack(GLOBAL const float4* RESTRICT positionHi, GLOBAL const float4*
   if (i < numberOfAtoms)
   {
     const DF3 r = df3Load(positionHi, positionLo, i);
-    const DF3 t = df3Load(translationHi, translationLo, i);
+    const DF3 t = wrapTranslation(cellTable, wrapOfAtom[i]);
     const float3 p = df3Value(df3Sub(r, t));
     const uint slot = slotOfAtom[i];
     const float charge = positionHi[i].w;
@@ -563,32 +673,12 @@ void residentTorques(GLOBAL const float4* RESTRICT force, GLOBAL const uint* RES
   moleculeTorque[m] = -2.0f * FLOAT4(r * torque.x + uxt.x, r * torque.y + uxt.y, r * torque.z + uxt.z, -dot(u, torque));
 }
 
-// flexible atoms: v_out = v_in - dt/2 g / m; per group the translational kinetic energy sum m v^2 / 2
-KERNEL_GROUP_SIZE(ATOM_GROUP)
-void residentAtomsB(GLOBAL const float4* RESTRICT velocityInHi, GLOBAL const float4* RESTRICT velocityInLo,
-                    GLOBAL float4* RESTRICT velocityOutHi, GLOBAL float4* RESTRICT velocityOutLo,
-                    GLOBAL const float4* RESTRICT atomMass, GLOBAL const uint4* RESTRICT atomInfo,
-                    GLOBAL const uint* RESTRICT slotOfAtom, GLOBAL const float4* RESTRICT force,
-                    GLOBAL float2* RESTRICT partials, VALUE_ARG(uint, numberOfAtoms),
-                    VALUE_ARG(float2, halfDt) KERNEL_INDEX_ARGS)
-{
-  LOCAL float2 scratch[ATOM_GROUP];
-  const uint i = GLOBAL_ID();
-  float2 kinetic = FLOAT2(0.0f, 0.0f);
-  if (i < numberOfAtoms && atomInfo[i].w != 0u)
-  {
-    const float4 g = force[slotOfAtom[i]];
-    const float4 m = atomMass[i];
-    DF3 v = df3Load(velocityInHi, velocityInLo, i);
-    v = df3KickScaled(v, dfOf(1.0f), dfMul(halfDt, FLOAT2(m.z, m.w)), g.xyz);
-    df3Store(velocityOutHi, velocityOutLo, i, v, 0.0f);
-    kinetic = dfHalf(dfMul(FLOAT2(m.x, m.y), df3Dot(v, v)));
-  }
-  reduceSum(scratch, kinetic, LOCAL_ID(), ATOM_GROUP, partials, GROUP_ID());
-}
-
 // molecules: V_out = V_in - dt/2 G / M; rigid: P_out = P_in - dt/2 T; per group the translational kinetic energy
-// of the rigid molecules (M V^2 / 2) and the rotational kinetic energy (partials[2 group], partials[2 group + 1])
+// of the rigid molecules (M V^2 / 2), the rotational kinetic energy and the kinetic virial sum M |V|^2 of the
+// barostat (partials[4 group], [4 group + 1], [4 group + 2]). With the coupling the kicked velocity is
+// propagated, V_out = S (V_in - dt/2 G / M); for a flexible molecule the kicked centre-of-mass velocity
+// V' = sum m v_in / M - dt/2 G / M is taken from the atoms and stored (comKicked) for residentAtomsB, the
+// molecule velocity follows the centre of mass, V_out = S V'.
 KERNEL_GROUP_SIZE(MOLECULE_GROUP)
 void residentMoleculesB(GLOBAL const float4* RESTRICT velocityInHi, GLOBAL const float4* RESTRICT velocityInLo,
                         GLOBAL float4* RESTRICT velocityOutHi, GLOBAL float4* RESTRICT velocityOutLo,
@@ -598,20 +688,50 @@ void residentMoleculesB(GLOBAL const float4* RESTRICT velocityInHi, GLOBAL const
                         GLOBAL const float4* RESTRICT moleculeGradient,
                         GLOBAL const float4* RESTRICT moleculeTorque, GLOBAL const float4* RESTRICT moleculeMass,
                         GLOBAL const uint4* RESTRICT moleculeInfo, GLOBAL const float4* RESTRICT componentInertia,
-                        GLOBAL float2* RESTRICT partials, VALUE_ARG(uint, numberOfMolecules),
-                        VALUE_ARG(float2, halfDt) KERNEL_INDEX_ARGS)
+                        GLOBAL const float4* RESTRICT atomVelocityHi, GLOBAL const float4* RESTRICT atomVelocityLo,
+                        GLOBAL const float4* RESTRICT atomMass, GLOBAL float4* RESTRICT comKickedHi,
+                        GLOBAL float4* RESTRICT comKickedLo, GLOBAL float2* RESTRICT partials,
+                        VALUE_ARG(uint, numberOfMolecules), VALUE_ARG(float2, halfDt), VALUE_ARG(uint, coupled),
+                        VALUE_ARG(float2, propagator) KERNEL_INDEX_ARGS)
 {
   LOCAL float2 scratchT[MOLECULE_GROUP];
   LOCAL float2 scratchR[MOLECULE_GROUP];
+  LOCAL float2 scratchV[MOLECULE_GROUP];
   const uint m = GLOBAL_ID();
   float2 kineticT = FLOAT2(0.0f, 0.0f);
   float2 kineticR = FLOAT2(0.0f, 0.0f);
+  float2 virial = FLOAT2(0.0f, 0.0f);
   if (m < numberOfMolecules)
   {
     const uint4 info = moleculeInfo[m];
     const float4 mass = moleculeMass[m];
+    const float2 invMass = FLOAT2(mass.z, mass.w);
+    const float2 factor = dfMul(halfDt, invMass);
+    const float3 g = moleculeGradient[m].xyz;
     DF3 velocity = df3Load(velocityInHi, velocityInLo, m);
-    velocity = df3KickScaled(velocity, dfOf(1.0f), dfMul(halfDt, FLOAT2(mass.z, mass.w)), moleculeGradient[m].xyz);
+    velocity = df3KickScaled(velocity, dfOf(1.0f), factor, g);
+    if (coupled != 0u)
+    {
+      if (info.w == 0u)
+      {
+        DF3 momentum;
+        momentum.x = momentum.y = momentum.z = dfOf(0.0f);
+        for (uint b = 0; b < info.y; ++b)
+        {
+          const uint atom = info.x + b;
+          const float4 am = atomMass[atom];
+          momentum = df3Add(momentum, df3Scale(df3Load(atomVelocityHi, atomVelocityLo, atom), FLOAT2(am.x, am.y)));
+        }
+        const DF3 kicked = df3KickScaled(df3Scale(momentum, invMass), dfOf(1.0f), factor, g);
+        df3Store(comKickedHi, comKickedLo, m, kicked, 0.0f);
+        velocity = df3Scale(kicked, propagator);
+      }
+      else
+      {
+        velocity = df3Scale(velocity, propagator);
+      }
+      virial = dfMul(FLOAT2(mass.x, mass.y), df3Dot(velocity, velocity));
+    }
     df3Store(velocityOutHi, velocityOutLo, m, velocity, 0.0f);
     DF4 p = df4Load(momentumInHi, momentumInLo, m);
     if (info.w != 0u)
@@ -625,8 +745,43 @@ void residentMoleculesB(GLOBAL const float4* RESTRICT velocityInHi, GLOBAL const
     }
     df4Store(momentumOutHi, momentumOutLo, m, p);
   }
-  reduceSum(scratchT, kineticT, LOCAL_ID(), MOLECULE_GROUP, partials, 2u * GROUP_ID());
-  reduceSum(scratchR, kineticR, LOCAL_ID(), MOLECULE_GROUP, partials, 2u * GROUP_ID() + 1u);
+  reduceSum(scratchT, kineticT, LOCAL_ID(), MOLECULE_GROUP, partials, 4u * GROUP_ID());
+  reduceSum(scratchR, kineticR, LOCAL_ID(), MOLECULE_GROUP, partials, 4u * GROUP_ID() + 1u);
+  reduceSum(scratchV, virial, LOCAL_ID(), MOLECULE_GROUP, partials, 4u * GROUP_ID() + 2u);
+}
+
+// flexible atoms: v_out = v_in - dt/2 g / m (coupled: plus the increment (S - 1) V' of the centre of mass); per
+// group the translational kinetic energy sum m v^2 / 2
+KERNEL_GROUP_SIZE(ATOM_GROUP)
+void residentAtomsB(GLOBAL const float4* RESTRICT velocityInHi, GLOBAL const float4* RESTRICT velocityInLo,
+                    GLOBAL float4* RESTRICT velocityOutHi, GLOBAL float4* RESTRICT velocityOutLo,
+                    GLOBAL const float4* RESTRICT atomMass, GLOBAL const uint4* RESTRICT atomInfo,
+                    GLOBAL const uint* RESTRICT slotOfAtom, GLOBAL const float4* RESTRICT force,
+                    GLOBAL const float4* RESTRICT comKickedHi, GLOBAL const float4* RESTRICT comKickedLo,
+                    GLOBAL float2* RESTRICT partials, VALUE_ARG(uint, numberOfAtoms), VALUE_ARG(float2, halfDt),
+                    VALUE_ARG(uint, coupled), VALUE_ARG(float2, incrementScale) KERNEL_INDEX_ARGS)
+{
+  LOCAL float2 scratch[ATOM_GROUP];
+  const uint i = GLOBAL_ID();
+  float2 kinetic = FLOAT2(0.0f, 0.0f);
+  if (i < numberOfAtoms)
+  {
+    const uint4 info = atomInfo[i];
+    if (info.w != 0u)
+    {
+      const float4 g = force[slotOfAtom[i]];
+      const float4 m = atomMass[i];
+      DF3 v = df3Load(velocityInHi, velocityInLo, i);
+      v = df3KickScaled(v, dfOf(1.0f), dfMul(halfDt, FLOAT2(m.z, m.w)), g.xyz);
+      if (coupled != 0u)
+      {
+        v = df3Add(v, df3Scale(df3Load(comKickedHi, comKickedLo, info.x), incrementScale));
+      }
+      df3Store(velocityOutHi, velocityOutLo, i, v, 0.0f);
+      kinetic = dfHalf(dfMul(FLOAT2(m.x, m.y), df3Dot(v, v)));
+    }
+  }
+  reduceSum(scratch, kinetic, LOCAL_ID(), ATOM_GROUP, partials, GROUP_ID());
 }
 
 // ---------------------------------------------------------------------------------------------------------------

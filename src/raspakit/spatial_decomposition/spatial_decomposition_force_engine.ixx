@@ -113,11 +113,13 @@ export class SpatialDecompositionForceEngine
   /// Whether the MD state is resident on the device (DeviceResident): the driver then integrates with
   /// residentVelocityVerlet and refreshes the host state with downloadResidentState when it needs it.
   bool usesResident() const { return residentEnabled; }
-  /// One velocity-Verlet step with the Nose-Hoover thermostat of the system (Integrators::velocityVerlet with
-  /// the engine forces), entirely on the device: positions, velocities and molecule records stay there in
-  /// double-float arithmetic. The first call after a host-side evaluation (computeGradients) uploads the host
-  /// state. Returns the energies of the step (potential terms, kinetic energies, thermostat energy); the
-  /// molecular pressure tensor is available as after computeGradients(system, true).
+  /// One velocity-Verlet step with the Nose-Hoover thermostat and, when the system has one, the isotropic
+  /// barostat of the system (the NVT / NPT steps of the driver with the engine forces), entirely on the device:
+  /// positions, velocities and molecule records stay there in double-float arithmetic; the thermostat and
+  /// barostat chains run on the host from the device reductions. The first call after a host-side evaluation
+  /// (computeGradients) uploads the host state. Returns the energies of the step (potential terms, kinetic
+  /// energies, thermostat and barostat energies); the molecular pressure tensor is available as after
+  /// computeGradients(system, true), and the simulation box of the system follows the barostat.
   RunningEnergy residentVelocityVerlet(System& system);
   /// Copies the device state (positions, velocities, molecule records, gradients) into the system; no-op when
   /// the host copy is current.
@@ -130,6 +132,12 @@ export class SpatialDecompositionForceEngine
   std::size_t numberOfThreads() const { return settings.numberOfThreads; }
   const Timings& timings() const { return timing; }
   bool initialized() const { return initializedFlag; }
+
+  /// Runs `body(member, numberOfMembers)` once on every member of the engine's worker team (the caller is
+  /// member 0) and returns when all have finished: the driver uses it to run the host-side integrator passes
+  /// over disjoint molecule ranges in parallel between two force evaluations. Before the team exists the body
+  /// runs inline as a team of one.
+  void runOnTeam(const std::function<void(std::size_t, std::size_t)>& body);
 
   std::string writeStatus() const;
   std::string writeTimings() const;
@@ -188,8 +196,11 @@ export class SpatialDecompositionForceEngine
   std::string residentFallback{};  ///< why the integration stayed on the host (status line)
   DeviceResident resident{};
   DeviceResident::Scaling residentPendingScale{};  ///< thermostat factor of the last step, not yet applied
-  DeviceResident::Kinetic residentKinetic{};       ///< kinetic energies of the current (scaled) velocities
+  DeviceResident::Kinetic residentKinetic{};       ///< kinetic energies and virial of the current (scaled) velocities
   std::size_t residentSteps{0};
+  /// The isotropic barostat of the resident step: the chain and the first half-kick of the cell velocity, the
+  /// propagation of the cell (and the force-field parameters that follow it); returns the coupling of the step.
+  DeviceResident::Coupling residentBarostatFirstHalf(System& system, double pressureVirialTrace);
   bool mixedPrecision() const { return settings.pairPrecision == PairPrecision::Mixed; }
   bool usesClusterKernel() const { return mixedPrecision() || settings.clusterKernelForDouble; }
   std::vector<std::uint8_t> rebuildRequested{};
@@ -214,6 +225,13 @@ export class SpatialDecompositionForceEngine
 
   double reciprocalEnergy{0.0};
   Timings timing{};
+
+  /// Position-independent sums over the atoms used by finishStep every step (net charge for the Bogusz
+  /// correction, scaled atom count per type for the tail virial), valid for `staticSumsAtoms` atoms.
+  double staticNetCharge{0.0};
+  std::vector<double> staticScaledCountPerType{};
+  std::size_t staticSumsAtoms{std::numeric_limits<std::size_t>::max()};
+  void refreshStaticSums(const System& system);
 
   void prepareBondedWork(const System& system);
   void refreshCutoffs(System& system);

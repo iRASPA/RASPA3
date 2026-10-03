@@ -13,6 +13,8 @@ import atom_dynamics;
 import molecule;
 import component;
 import simulationbox;
+import forcefield;
+import thermobarostat;
 import system;
 import spatial_decomposition_cell_list;
 import spatial_decomposition_device_context;
@@ -85,8 +87,24 @@ bool DeviceResident::supports(const System& system, std::string& reason)
 {
   if (system.thermobarostat.has_value())
   {
-    reason = "a barostat (NPT ensembles)";
-    return false;
+    const Thermobarostat& barostat = *system.thermobarostat;
+    if (!molecularDynamicsUsesIsotropicBarostat(barostat.ensemble))
+    {
+      reason = "a flexible-cell barostat (only the isotropic NPT ensemble is integrated on the device)";
+      return false;
+    }
+    if (barostat.coupling != BarostatCoupling::Molecular)
+    {
+      reason = "atomic barostat coupling (only molecular coupling is integrated on the device)";
+      return false;
+    }
+    const ForceField& forceField = system.forceField;
+    if (forceField.cutOffMoleculeVDWAutomatic || forceField.cutOffFrameworkVDWAutomatic ||
+        (forceField.useCharge && forceField.cutOffCoulombAutomatic && forceField.automaticEwald))
+    {
+      reason = "automatic cutoffs with a barostat (the cutoffs would follow the cell every step)";
+      return false;
+    }
   }
   for (const Component& component : system.components)
   {
@@ -109,6 +127,8 @@ void DeviceResident::initialize(DeviceContext& c)
   context = &c;
   const std::string_view program = "resident";
   atomsA = c.compileKernel(program, deviceKernelResidentSource, DeviceMath::Strict, "residentAtomsA");
+  coupleA = c.compileKernel(program, deviceKernelResidentSource, DeviceMath::Strict, "residentCoupleA");
+  atomsCoupledA = c.compileKernel(program, deviceKernelResidentSource, DeviceMath::Strict, "residentAtomsCoupledA");
   moleculesA = c.compileKernel(program, deviceKernelResidentSource, DeviceMath::Strict, "residentMoleculesA");
   pack = c.compileKernel(program, deviceKernelResidentSource, DeviceMath::Strict, "residentPack");
   torques = c.compileKernel(program, deviceKernelResidentSource, DeviceMath::Strict, "residentTorques");
@@ -155,10 +175,16 @@ void DeviceResident::ensureBuffers(const System& system)
   atomMass.allocate(c, atomBytes, DeviceMemory::Device);
   atomInfo.allocate(c, atoms * 4 * sizeof(std::uint32_t), DeviceMemory::Device);
   slotOfAtom.allocate(c, atoms * sizeof(std::uint32_t), DeviceMemory::Device);
-  translationHi.allocate(c, atomBytes, DeviceMemory::Device);
-  translationLo.allocate(c, atomBytes, DeviceMemory::Device);
+  wrapOfAtom.allocate(c, atoms * 4 * sizeof(std::int32_t), DeviceMemory::Device);
+  cellTable.allocate(c, 6 * 4 * sizeof(float), DeviceMemory::Device);
   comHi.allocate(c, moleculeBytes, DeviceMemory::Device);
   comLo.allocate(c, moleculeBytes, DeviceMemory::Device);
+  comShiftHi.allocate(c, moleculeBytes, DeviceMemory::Device);
+  comShiftLo.allocate(c, moleculeBytes, DeviceMemory::Device);
+  comKickedHi.allocate(c, moleculeBytes, DeviceMemory::Device);
+  comKickedLo.allocate(c, moleculeBytes, DeviceMemory::Device);
+  comIncrementHi.allocate(c, moleculeBytes, DeviceMemory::Device);
+  comIncrementLo.allocate(c, moleculeBytes, DeviceMemory::Device);
   orientationHi.allocate(c, moleculeBytes, DeviceMemory::Device);
   orientationLo.allocate(c, moleculeBytes, DeviceMemory::Device);
   moleculeGradient.allocate(c, moleculeBytes, DeviceMemory::Device);
@@ -171,9 +197,9 @@ void DeviceResident::ensureBuffers(const System& system)
   referenceLo.allocate(c, references * 4 * sizeof(float), DeviceMemory::Device);
   packPartials.allocate(c, atomGroups * 2 * sizeof(float), DeviceMemory::Device);
   kineticPartials.allocate(c, atomGroups * 2 * sizeof(float), DeviceMemory::Device);
-  moleculePartials.allocate(c, moleculeGroups * 4 * sizeof(float), DeviceMemory::Device);
+  moleculePartials.allocate(c, moleculeGroups * 8 * sizeof(float), DeviceMemory::Device);
   packHost.assign(atomGroups * 2, 0.0f);
-  kineticHost.assign(atomGroups * 2 + moleculeGroups * 4, 0.0f);
+  kineticHost.assign(atomGroups * 2 + moleculeGroups * 8, 0.0f);
   current = 0;
 }
 
@@ -366,19 +392,35 @@ void DeviceResident::setLayout(DeviceStep& step, const CellList& cells, const Si
   targets = step.residentTargets();
   const std::span<const std::uint32_t> slots = step.slotsOfSorted();
   stageU.assign(atoms, 0);
-  std::vector<float> hi(4 * atoms, 0.0f), lo(4 * atoms, 0.0f);
+  std::vector<std::int32_t> wraps(4 * atoms, 0);
   for (std::size_t i = 0; i < atoms; ++i)
   {
     const std::uint32_t sorted = cells.originalToSorted[i];
     stageU[i] = slots[sorted];
     const int3 w = cells.wrap[sorted];
-    const double3 translation =
-        box.cell * double3(static_cast<double>(w.x), static_cast<double>(w.y), static_cast<double>(w.z));
-    put3(hi, lo, i, translation);
+    wraps[4 * i] = w.x;
+    wraps[4 * i + 1] = w.y;
+    wraps[4 * i + 2] = w.z;
   }
-  if (atoms > 0) context->write(slotOfAtom.get(), 0, stageU.size() * sizeof(std::uint32_t), stageU.data(), true);
-  writeFloat4(translationHi, hi);
-  writeFloat4(translationLo, lo);
+  if (atoms > 0)
+  {
+    context->write(slotOfAtom.get(), 0, stageU.size() * sizeof(std::uint32_t), stageU.data(), true);
+    context->write(wrapOfAtom.get(), 0, wraps.size() * sizeof(std::int32_t), wraps.data(), true);
+  }
+  setBox(box);
+}
+
+void DeviceResident::setBox(const SimulationBox& box)
+{
+  // the three columns of the cell (the images of the lattice vectors), hi parts then lo parts
+  std::vector<float> hi(4 * 3, 0.0f), lo(4 * 3, 0.0f);
+  const double3x3& cell = box.cell;
+  put3(hi, lo, 0, double3(cell.ax, cell.ay, cell.az));
+  put3(hi, lo, 1, double3(cell.bx, cell.by, cell.bz));
+  put3(hi, lo, 2, double3(cell.cx, cell.cy, cell.cz));
+  std::vector<float> table(hi);
+  table.insert(table.end(), lo.begin(), lo.end());
+  writeFloat4(cellTable, table);
 }
 
 DeviceEvent DeviceResident::enqueuePack()
@@ -387,8 +429,8 @@ DeviceEvent DeviceResident::enqueuePack()
   const std::uint32_t writeRelative = targets.relativeEnabled ? 1u : 0u;
   const DeviceArg arguments[] = {DeviceArg::of(positionHi.get()),
                                  DeviceArg::of(positionLo.get()),
-                                 DeviceArg::of(translationHi.get()),
-                                 DeviceArg::of(translationLo.get()),
+                                 DeviceArg::of(wrapOfAtom.get()),
+                                 DeviceArg::of(cellTable.get()),
                                  DeviceArg::of(slotOfAtom.get()),
                                  DeviceArg::of(atomInfo.get()),
                                  DeviceArg::of(targets.buildPositions),
@@ -405,16 +447,74 @@ DeviceEvent DeviceResident::enqueuePack()
   return event;
 }
 
-DeviceEvent DeviceResident::enqueueFirstHalf(const Scaling& scaling, double timeStep)
+DeviceEvent DeviceResident::enqueueFirstHalf(const Scaling& scaling, double timeStep, const Coupling& coupling)
 {
   const std::uint32_t atomCount = static_cast<std::uint32_t>(atoms);
   const std::uint32_t moleculeCount = static_cast<std::uint32_t>(molecules);
+  const std::uint32_t coupled = coupling.enabled ? 1u : 0u;
   const Float2 scaleT = split(scaling.translational);
+  // the propagator acts on the centre-of-mass velocities after the thermostat scaling: for the molecule records
+  // (rigid molecules) the two are one factor
+  const Float2 scaleTMolecules =
+      split(coupling.enabled ? scaling.translational * coupling.propagator : scaling.translational);
   const Float2 scaleR = split(scaling.rotational);
   const Float2 halfDt = split(0.5 * timeStep);
   const Float2 dt = split(timeStep);
   const Float2 dtTenth = split(0.5 * timeStep / 5.0);
   const Float2 dtFifth = split(timeStep / 5.0);
+  const Float2 propagator = split(coupling.propagator);
+  const Float2 propagatorMinusOne = split(coupling.propagator - 1.0);
+  const Float2 cellFactor = split(coupling.cellFactor);
+  const Float2 driftFactor = split(coupling.driftFactor);
+  if (coupling.enabled)
+  {
+    {
+      const DeviceArg arguments[] = {DeviceArg::of(positionHi.get()),
+                                     DeviceArg::of(positionLo.get()),
+                                     DeviceArg::of(velocityHi[current].get()),
+                                     DeviceArg::of(velocityLo[current].get()),
+                                     DeviceArg::of(atomMass.get()),
+                                     DeviceArg::of(moleculeGradient.get()),
+                                     DeviceArg::of(moleculeMass.get()),
+                                     DeviceArg::of(moleculeInfo.get()),
+                                     DeviceArg::of(comShiftHi.get()),
+                                     DeviceArg::of(comShiftLo.get()),
+                                     DeviceArg::of(comKickedHi.get()),
+                                     DeviceArg::of(comKickedLo.get()),
+                                     DeviceArg::of(comIncrementHi.get()),
+                                     DeviceArg::of(comIncrementLo.get()),
+                                     DeviceArg::value(moleculeCount),
+                                     DeviceArg::value(scaleT),
+                                     DeviceArg::value(propagator),
+                                     DeviceArg::value(propagatorMinusOne),
+                                     DeviceArg::value(halfDt),
+                                     DeviceArg::value(cellFactor),
+                                     DeviceArg::value(driftFactor)};
+      context->launch(coupleA, arguments, moleculeGroups, moleculeGroup);
+    }
+    {
+      const DeviceArg arguments[] = {DeviceArg::of(positionHi.get()),
+                                     DeviceArg::of(positionLo.get()),
+                                     DeviceArg::of(velocityHi[current].get()),
+                                     DeviceArg::of(velocityLo[current].get()),
+                                     DeviceArg::of(atomMass.get()),
+                                     DeviceArg::of(atomInfo.get()),
+                                     DeviceArg::of(slotOfAtom.get()),
+                                     DeviceArg::of(targets.forces),
+                                     DeviceArg::of(comShiftHi.get()),
+                                     DeviceArg::of(comShiftLo.get()),
+                                     DeviceArg::of(comKickedHi.get()),
+                                     DeviceArg::of(comKickedLo.get()),
+                                     DeviceArg::of(comIncrementHi.get()),
+                                     DeviceArg::of(comIncrementLo.get()),
+                                     DeviceArg::value(atomCount),
+                                     DeviceArg::value(scaleT),
+                                     DeviceArg::value(halfDt),
+                                     DeviceArg::value(dt)};
+      context->launch(atomsCoupledA, arguments, atomGroups, atomGroup);
+    }
+  }
+  else
   {
     const DeviceArg arguments[] = {DeviceArg::of(positionHi.get()),
                                    DeviceArg::of(positionLo.get()),
@@ -451,12 +551,15 @@ DeviceEvent DeviceResident::enqueueFirstHalf(const Scaling& scaling, double time
                                    DeviceArg::of(referenceHi.get()),
                                    DeviceArg::of(referenceLo.get()),
                                    DeviceArg::value(moleculeCount),
-                                   DeviceArg::value(scaleT),
+                                   DeviceArg::value(scaleTMolecules),
                                    DeviceArg::value(scaleR),
                                    DeviceArg::value(halfDt),
                                    DeviceArg::value(dt),
                                    DeviceArg::value(dtTenth),
-                                   DeviceArg::value(dtFifth)};
+                                   DeviceArg::value(dtFifth),
+                                   DeviceArg::value(coupled),
+                                   DeviceArg::value(cellFactor),
+                                   DeviceArg::value(driftFactor)};
     context->launch(moleculesA, arguments, moleculeGroups, moleculeGroup);
   }
   return enqueuePack();
@@ -473,11 +576,14 @@ DeviceResident::Displacement DeviceResident::collectDisplacement() const
   return result;
 }
 
-DeviceEvent DeviceResident::enqueueSecondHalf(double timeStep)
+DeviceEvent DeviceResident::enqueueSecondHalf(double timeStep, const Coupling& coupling)
 {
   const std::uint32_t atomCount = static_cast<std::uint32_t>(atoms);
   const std::uint32_t moleculeCount = static_cast<std::uint32_t>(molecules);
+  const std::uint32_t coupled = coupling.enabled ? 1u : 0u;
   const Float2 halfDt = split(0.5 * timeStep);
+  const Float2 propagator = split(coupling.propagator);
+  const Float2 propagatorMinusOne = split(coupling.propagator - 1.0);
   const std::size_t pending = 1 - current;
   {
     const DeviceArg arguments[] = {DeviceArg::of(targets.forces),
@@ -493,20 +599,7 @@ DeviceEvent DeviceResident::enqueueSecondHalf(double timeStep)
                                    DeviceArg::value(moleculeCount)};
     context->launch(torques, arguments, moleculeGroups, moleculeGroup);
   }
-  {
-    const DeviceArg arguments[] = {DeviceArg::of(velocityHi[current].get()),
-                                   DeviceArg::of(velocityLo[current].get()),
-                                   DeviceArg::of(velocityHi[pending].get()),
-                                   DeviceArg::of(velocityLo[pending].get()),
-                                   DeviceArg::of(atomMass.get()),
-                                   DeviceArg::of(atomInfo.get()),
-                                   DeviceArg::of(slotOfAtom.get()),
-                                   DeviceArg::of(targets.forces),
-                                   DeviceArg::of(kineticPartials.get()),
-                                   DeviceArg::value(atomCount),
-                                   DeviceArg::value(halfDt)};
-    context->launch(atomsB, arguments, atomGroups, atomGroup);
-  }
+  // the molecules first: with the coupling the atoms need the kicked centre-of-mass velocities
   {
     const DeviceArg arguments[] = {DeviceArg::of(moleculeVelocityHi[current].get()),
                                    DeviceArg::of(moleculeVelocityLo[current].get()),
@@ -523,13 +616,38 @@ DeviceEvent DeviceResident::enqueueSecondHalf(double timeStep)
                                    DeviceArg::of(moleculeMass.get()),
                                    DeviceArg::of(moleculeInfo.get()),
                                    DeviceArg::of(componentInertia.get()),
+                                   DeviceArg::of(velocityHi[current].get()),
+                                   DeviceArg::of(velocityLo[current].get()),
+                                   DeviceArg::of(atomMass.get()),
+                                   DeviceArg::of(comKickedHi.get()),
+                                   DeviceArg::of(comKickedLo.get()),
                                    DeviceArg::of(moleculePartials.get()),
                                    DeviceArg::value(moleculeCount),
-                                   DeviceArg::value(halfDt)};
+                                   DeviceArg::value(halfDt),
+                                   DeviceArg::value(coupled),
+                                   DeviceArg::value(propagator)};
     context->launch(moleculesB, arguments, moleculeGroups, moleculeGroup);
   }
+  {
+    const DeviceArg arguments[] = {DeviceArg::of(velocityHi[current].get()),
+                                   DeviceArg::of(velocityLo[current].get()),
+                                   DeviceArg::of(velocityHi[pending].get()),
+                                   DeviceArg::of(velocityLo[pending].get()),
+                                   DeviceArg::of(atomMass.get()),
+                                   DeviceArg::of(atomInfo.get()),
+                                   DeviceArg::of(slotOfAtom.get()),
+                                   DeviceArg::of(targets.forces),
+                                   DeviceArg::of(comKickedHi.get()),
+                                   DeviceArg::of(comKickedLo.get()),
+                                   DeviceArg::of(kineticPartials.get()),
+                                   DeviceArg::value(atomCount),
+                                   DeviceArg::value(halfDt),
+                                   DeviceArg::value(coupled),
+                                   DeviceArg::value(propagatorMinusOne)};
+    context->launch(atomsB, arguments, atomGroups, atomGroup);
+  }
   context->read(kineticPartials.get(), 0, atomGroups * 2 * sizeof(float), kineticHost.data());
-  context->read(moleculePartials.get(), 0, moleculeGroups * 4 * sizeof(float), kineticHost.data() + 2 * atomGroups);
+  context->read(moleculePartials.get(), 0, moleculeGroups * 8 * sizeof(float), kineticHost.data() + 2 * atomGroups);
   const DeviceEvent event = context->mark();
   context->flush();
   return event;
@@ -545,8 +663,9 @@ DeviceResident::Kinetic DeviceResident::collectKinetic() const
   const float* moleculeSums = kineticHost.data() + 2 * atomGroups;
   for (std::size_t g = 0; g < moleculeGroups; ++g)
   {
-    result.translational += join(moleculeSums[4 * g], moleculeSums[4 * g + 1]);
-    result.rotational += join(moleculeSums[4 * g + 2], moleculeSums[4 * g + 3]);
+    result.translational += join(moleculeSums[8 * g], moleculeSums[8 * g + 1]);
+    result.rotational += join(moleculeSums[8 * g + 2], moleculeSums[8 * g + 3]);
+    result.virialTrace += join(moleculeSums[8 * g + 4], moleculeSums[8 * g + 5]);
   }
   return result;
 }

@@ -499,7 +499,7 @@ void Integrators::initializeFrameworkGroupVelocity(RandomNumber& random, GroupSt
 void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData,
                                        [[maybe_unused]] std::span<Atom> moleculeAtomPositions,
                                        std::span<AtomDynamics> moleculeDynamics,
-                                       const std::vector<Component> components, double temperature,
+                                       const std::vector<Component>& components, double temperature,
                                        const std::optional<Framework>& framework,
                                        std::span<const Atom> frameworkAtomPositions,
                                        std::span<AtomDynamics> frameworkDynamics, const ForceField* forceField,
@@ -572,7 +572,7 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
 }
 
 void Integrators::createCartesianPositions(std::span<Molecule> moleculeData,
-                                           std::span<Atom> moleculeAtomPositions, std::vector<Component> components,
+                                           std::span<Atom> moleculeAtomPositions, const std::vector<Component>& components,
                                            std::span<const GroupState> groupData,
                                            const std::optional<Framework>& framework,
                                            std::span<Atom> frameworkAtomPositions,
@@ -654,7 +654,7 @@ void Integrators::createCartesianPositions(std::span<Molecule> moleculeData,
   integratorsCPUTime.createCartesianPositions += end - begin;
 }
 
-void Integrators::noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, const std::vector<Component> components,
+void Integrators::noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, const std::vector<Component>& components,
                                             double dt, std::span<GroupState> groupData,
                                             const std::optional<Framework>& framework,
                                             std::span<GroupState> frameworkGroupData)
@@ -713,7 +713,7 @@ void Integrators::noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, co
 void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> moleculeData,
                                                             std::span<Atom> moleculeAtomPositions,
                                                             std::span<const AtomDynamics> moleculeDynamics,
-                                                            std::vector<Component> components,
+                                                            const std::vector<Component>& components,
                                                             [[maybe_unused]] std::span<GroupState> groupData)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -758,7 +758,7 @@ void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> 
 void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> moleculeData,
                                                            std::span<Atom> moleculeAtomPositions,
                                                            std::span<const AtomDynamics> moleculeDynamics,
-                                                           std::vector<Component> components,
+                                                           const std::vector<Component>& components,
                                                            std::span<GroupState> groupData,
                                                            const std::optional<Framework>& framework,
                                                            std::span<const AtomDynamics> frameworkDynamics,
@@ -887,7 +887,7 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
 RunningEnergy Integrators::updateGradients(
     std::span<const Molecule> moleculeData, std::span<const Atom> moleculeAtomPositions,
     std::span<AtomDynamics> moleculeDynamics, std::span<const Atom> frameworkAtomPositions, const ForceField& forceField,
-    const SimulationBox& simulationBox, const std::vector<Component> components,
+    const SimulationBox& simulationBox, const std::vector<Component>& components,
     std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& trialEik,

@@ -81,6 +81,18 @@ export struct MolecularDynamicsSpatialDecomposition
   std::vector<double3x3> barostatPressureWindowSum;
   std::vector<std::size_t> barostatPressureWindowCount;
 
+  /// Per system, the per-type atom counts of the tail corrections (position independent; the volume enters the
+  /// tail energy as a factor): rebuilt only when the number of atoms changes. Not part of the restart.
+  struct TailCorrectionCounts
+  {
+    std::size_t numberOfAtoms{std::numeric_limits<std::size_t>::max()};
+    std::vector<double> effectiveTypeCounts;
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> groupCounts;
+  };
+  std::vector<TailCorrectionCounts> tailCorrectionCounts;
+  /// System::computeTailCorrectionEnergies with the cached counts.
+  RunningEnergy tailCorrectionEnergies(std::size_t systemId);
+
   std::vector<std::ofstream> streams;
   std::vector<nlohmann::json> outputJsons;
 

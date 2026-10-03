@@ -107,7 +107,7 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
 }
 
 double Integrators::computeRotationalKineticEnergy(std::span<const Molecule> moleculeData,
-                                                   const std::vector<Component> components,
+                                                   const std::vector<Component>& components,
                                                    std::span<const GroupState> groupData,
                                                    const std::optional<Framework>& framework,
                                                    std::span<const GroupState> frameworkGroupData)

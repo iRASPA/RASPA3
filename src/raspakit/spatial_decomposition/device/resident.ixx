@@ -32,14 +32,20 @@ import spatial_decomposition_device_step;
  *    chain and the second half with the corrected forces.
  *  - The Nose-Hoover chain stays on the host: it needs the two kinetic-energy sums of the step, which are
  *    reduced on the device in double-float, and returns the scale factors that enter the next first half.
+ *  - The isotropic barostat (Martyna-Tobias-Klein, molecular coupling) stays on the host as well: it needs the
+ *    molecular virial of the forces and the kinetic virial sum M |V|^2 of the centre-of-mass velocities (reduced
+ *    on the device with the kinetic energies), and returns the scalar velocity propagator and the cell and drift
+ *    factors of the step (Coupling), which the kernels apply to the centres of mass; the atoms of a flexible
+ *    molecule follow their centre of mass. The slot positions are wrapped with the integer wrap counts of the
+ *    binning and the current cell (setBox), so that the box may change between the list builds.
  *
  * The host state of the System is refreshed by download() (positions, velocities, molecule records, gradients)
  * when the driver needs it (property sampling, restart files); upload() makes the device state from the host
  * state. The slot layout follows the list builds of DeviceStep through setLayout(); the constant tables (masses,
  * molecule and component records, body-fixed reference positions) are written by upload().
  *
- * Covers rigid and flexible molecules (no semi-flexible components, no framework, no particle exchange) in an
- * NVE or NVT ensemble. Movable value type.
+ * Covers rigid and flexible molecules (no semi-flexible components, no framework, no particle exchange) in the
+ * NVE and NVT ensembles and the isotropic NPT ensemble with molecular coupling. Movable value type.
  */
 export class DeviceResident
 {
@@ -60,8 +66,12 @@ export class DeviceResident
   /// Host -> device: the constant tables and the dynamic state of the system (positions, velocities, molecule
   /// records), the current gradients into the force buffer of the step, and the slot layout of the step.
   void upload(const System& system, DeviceStep& step, const CellList& cells);
-  /// The slot layout and the box translations of the atoms after a list build (the device state is unchanged).
+  /// The slot layout and the wrap counts of the atoms after a list build (the device state is unchanged); sets
+  /// the box as well.
   void setLayout(DeviceStep& step, const CellList& cells, const SimulationBox& box);
+  /// The cell of the box translations of the slot positions (after a cell change of the barostat; before the
+  /// first half of the step that packs with the new cell).
+  void setBox(const SimulationBox& box);
 
   /// Scale factors of the velocities (translational, rotational) applied at the start of the next first half.
   struct Scaling
@@ -70,10 +80,22 @@ export class DeviceResident
     double rotational{1.0};
   };
 
+  /// The isotropic barostat coupling of a step (molecular coupling; see the class comment): the scalar velocity
+  /// propagator S applied to the centre-of-mass velocities in both halves, the cell factor e = exp(dt v_cell) and
+  /// the drift factor d = dt phi_1(dt v_cell) of the centres of mass in the first half, R' = e R + d V.
+  struct Coupling
+  {
+    bool enabled{false};
+    double propagator{1.0};
+    double cellFactor{1.0};
+    double driftFactor{0.0};
+  };
+
   /// First half of the step: scaling and kick with the forces in the step's force buffer, drift, free rotor,
   /// cartesian positions, slot positions and the displacement reduction (read back; complete after the wait on
-  /// the returned event).
-  DeviceEvent enqueueFirstHalf(const Scaling& scaling, double timeStep);
+  /// the returned event). With `coupling.enabled` the barostat coupling of the velocities and the cell
+  /// propagation of the centres of mass are applied as well (setBox must hold the propagated cell).
+  DeviceEvent enqueueFirstHalf(const Scaling& scaling, double timeStep, const Coupling& coupling);
   /// Largest squared displacements since the list build and since the list compaction, after the wait.
   struct Displacement
   {
@@ -85,13 +107,16 @@ export class DeviceResident
   DeviceEvent enqueuePack();
 
   /// Second half of the step with the forces in the step's force buffer: molecular gradients and torques, kick
-  /// into the pending velocity buffers, kinetic energies (read back; complete after the wait).
-  DeviceEvent enqueueSecondHalf(double timeStep);
-  /// Kinetic energies of the pending velocities, after the wait.
+  /// into the pending velocity buffers (with the barostat coupling of the velocities when enabled), kinetic
+  /// energies (read back; complete after the wait).
+  DeviceEvent enqueueSecondHalf(double timeStep, const Coupling& coupling);
+  /// Kinetic energies of the pending velocities, after the wait; with the coupling also the kinetic virial
+  /// sum_k M_k |V_k|^2 of the centre-of-mass velocities (the trace of the kinetic virial of the barostat).
   struct Kinetic
   {
     double translational{0.0};
     double rotational{0.0};
+    double virialTrace{0.0};
   };
   Kinetic collectKinetic() const;
   /// Makes the pending velocities the current ones (the second half is accepted).
@@ -111,7 +136,8 @@ export class DeviceResident
 
  private:
   DeviceContext* context{nullptr};
-  DeviceKernel atomsA{}, moleculesA{}, pack{}, torques{}, atomsB{}, moleculesB{}, scaleAtoms{}, scaleMolecules{};
+  DeviceKernel atomsA{}, coupleA{}, atomsCoupledA{}, moleculesA{}, pack{}, torques{}, atomsB{}, moleculesB{},
+      scaleAtoms{}, scaleMolecules{};
   DeviceStep::ResidentTargets targets{};
 
   std::size_t atoms{0}, molecules{0}, components{0}, references{0};
@@ -120,13 +146,16 @@ export class DeviceResident
   // atoms (system order); the velocities in two sets (current and pending, see acceptVelocities)
   DeviceBufferOwner positionHi{}, positionLo{};
   std::array<DeviceBufferOwner, 2> velocityHi{}, velocityLo{};
-  DeviceBufferOwner atomMass{}, atomInfo{}, slotOfAtom{}, translationHi{}, translationLo{};
+  DeviceBufferOwner atomMass{}, atomInfo{}, slotOfAtom{}, wrapOfAtom{}, cellTable{};
   // molecules
   DeviceBufferOwner comHi{}, comLo{};
   std::array<DeviceBufferOwner, 2> moleculeVelocityHi{}, moleculeVelocityLo{};
   DeviceBufferOwner orientationHi{}, orientationLo{};
   std::array<DeviceBufferOwner, 2> momentumHi{}, momentumLo{};
   DeviceBufferOwner moleculeGradient{}, moleculeTorque{}, moleculeMass{}, moleculeInfo{};
+  // the barostat coupling of the flexible molecules (per molecule: the shift of the centre of mass, its kicked
+  // velocity and the velocity increment of its atoms)
+  DeviceBufferOwner comShiftHi{}, comShiftLo{}, comKickedHi{}, comKickedLo{}, comIncrementHi{}, comIncrementLo{};
   // components
   DeviceBufferOwner componentInertia{}, componentReferenceOffset{}, referenceHi{}, referenceLo{};
   // reductions (float2 per work-group)

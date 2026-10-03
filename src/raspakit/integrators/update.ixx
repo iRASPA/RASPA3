@@ -132,7 +132,7 @@ void initializeFrameworkGroupVelocity(RandomNumber& random, GroupState& state, c
 
 void initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData,
                           std::span<Atom> moleculeAtomPositions, std::span<AtomDynamics> moleculeDynamics,
-                          const std::vector<Component> components, double temperature,
+                          const std::vector<Component>& components, double temperature,
                           const std::optional<Framework>& framework = std::nullopt,
                           std::span<const Atom> frameworkAtomPositions = {},
                           std::span<AtomDynamics> frameworkDynamics = {}, const ForceField* forceField = nullptr,
@@ -150,7 +150,7 @@ void initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData
  * \param components Vector of component definitions.
  */
 void createCartesianPositions(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
-                              std::vector<Component> components, std::span<const GroupState> groupData = {},
+                              const std::vector<Component>& components, std::span<const GroupState> groupData = {},
                               const std::optional<Framework>& framework = std::nullopt,
                               std::span<Atom> frameworkAtomPositions = {},
                               std::span<const GroupState> frameworkGroupData = {});
@@ -162,7 +162,7 @@ void createCartesianPositions(std::span<Molecule> moleculeData, std::span<Atom> 
  * \param components Vector of component definitions.
  * \param dt Time step for the integration.
  */
-void noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, const std::vector<Component> components, double dt,
+void noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, const std::vector<Component>& components, double dt,
                                std::span<GroupState> groupData = {}, const std::optional<Framework>& framework = std::nullopt,
                                std::span<GroupState> frameworkGroupData = {});
 
@@ -175,7 +175,7 @@ void noSquishFreeRotorOrderTwo(std::span<Molecule> moleculeData, const std::vect
  */
 void updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                                                std::span<const AtomDynamics> moleculeDynamics,
-                                               std::vector<Component> components,
+                                               const std::vector<Component>& components,
                                                std::span<GroupState> groupData = {});
 
 /**
@@ -187,7 +187,7 @@ void updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> moleculeData,
  */
 void updateCenterOfMassAndQuaternionGradients(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                                               std::span<const AtomDynamics> moleculeDynamics,
-                                              std::vector<Component> components,
+                                              const std::vector<Component>& components,
                                               std::span<GroupState> groupData = {},
                                               const std::optional<Framework>& framework = std::nullopt,
                                               std::span<const AtomDynamics> frameworkDynamics = {},
@@ -212,7 +212,7 @@ void updateCenterOfMassAndQuaternionGradients(std::span<Molecule> moleculeData, 
 RunningEnergy updateGradients(
     std::span<const Molecule> moleculeData, std::span<const Atom> moleculeAtomPositions,
     std::span<AtomDynamics> moleculeDynamics, std::span<const Atom> frameworkAtomPositions, const ForceField& forceField,
-    const SimulationBox& simulationBox, const std::vector<Component> components,
+    const SimulationBox& simulationBox, const std::vector<Component>& components,
     std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& trialEik,
