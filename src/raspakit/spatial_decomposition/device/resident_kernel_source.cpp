@@ -602,7 +602,7 @@ void residentPack(GLOBAL const float4* RESTRICT positionHi, GLOBAL const float4*
                   GLOBAL float2* RESTRICT partials, VALUE_ARG(uint, numberOfAtoms),
                   VALUE_ARG(uint, writeRelative) KERNEL_INDEX_ARGS)
 {
-  LOCAL float2 scratch[ATOM_GROUP];
+  LOCAL_DECL(float2 scratch[ATOM_GROUP]);
   const uint i = GLOBAL_ID();
   float2 displacement = FLOAT2(0.0f, 0.0f);
   if (i < numberOfAtoms)
@@ -694,9 +694,9 @@ void residentMoleculesB(GLOBAL const float4* RESTRICT velocityInHi, GLOBAL const
                         VALUE_ARG(uint, numberOfMolecules), VALUE_ARG(float2, halfDt), VALUE_ARG(uint, coupled),
                         VALUE_ARG(float2, propagator) KERNEL_INDEX_ARGS)
 {
-  LOCAL float2 scratchT[MOLECULE_GROUP];
-  LOCAL float2 scratchR[MOLECULE_GROUP];
-  LOCAL float2 scratchV[MOLECULE_GROUP];
+  LOCAL_DECL(float2 scratchT[MOLECULE_GROUP]);
+  LOCAL_DECL(float2 scratchR[MOLECULE_GROUP]);
+  LOCAL_DECL(float2 scratchV[MOLECULE_GROUP]);
   const uint m = GLOBAL_ID();
   float2 kineticT = FLOAT2(0.0f, 0.0f);
   float2 kineticR = FLOAT2(0.0f, 0.0f);
@@ -761,7 +761,7 @@ void residentAtomsB(GLOBAL const float4* RESTRICT velocityInHi, GLOBAL const flo
                     GLOBAL float2* RESTRICT partials, VALUE_ARG(uint, numberOfAtoms), VALUE_ARG(float2, halfDt),
                     VALUE_ARG(uint, coupled), VALUE_ARG(float2, incrementScale) KERNEL_INDEX_ARGS)
 {
-  LOCAL float2 scratch[ATOM_GROUP];
+  LOCAL_DECL(float2 scratch[ATOM_GROUP]);
   const uint i = GLOBAL_ID();
   float2 kinetic = FLOAT2(0.0f, 0.0f);
   if (i < numberOfAtoms)

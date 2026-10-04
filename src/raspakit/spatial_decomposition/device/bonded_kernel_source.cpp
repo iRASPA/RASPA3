@@ -409,7 +409,7 @@ void bondedTerms(GLOBAL const float4* RESTRICT relative,            // per atom 
                  GLOBAL float4* RESTRICT termGradient,
                  GLOBAL float* RESTRICT partials KERNEL_INDEX_ARGS)
 {
-  LOCAL float scratch[TERM_PARTIALS * TERM_GROUP];
+  LOCAL_DECL(float scratch[TERM_PARTIALS * TERM_GROUP]);
   const uint lid = LOCAL_ID();
   const uint g = GLOBAL_ID();
   float acc[TERM_PARTIALS];
@@ -474,7 +474,7 @@ void bondedAtoms(GLOBAL const float4* RESTRICT relative,          // per atom (s
                  GLOBAL float4* RESTRICT force,
                  GLOBAL float* RESTRICT partials KERNEL_INDEX_ARGS)
 {
-  LOCAL float scratch[ATOM_PARTIALS * BONDED_GROUP];
+  LOCAL_DECL(float scratch[ATOM_PARTIALS * BONDED_GROUP]);
   const uint lid = LOCAL_ID();
   const uint slot = GLOBAL_ID();
   float acc[ATOM_PARTIALS];

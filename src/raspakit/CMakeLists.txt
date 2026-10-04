@@ -100,6 +100,22 @@ if(APPLE AND RASPA_DEVICE_METAL)
   target_link_libraries(${PROJECT_NAME} PUBLIC "-framework Metal" "-framework Foundation")
 endif()
 
+# The CUDA backend of the spatial-decomposition device step (Linux and Windows): the driver API and NVRTC are
+# declared in spatial_decomposition/cuda/api.h and loaded at run time (dlopen), so the build needs no CUDA toolkit
+# and the executables run without one; the backend reports no device where the libraries are missing.
+# RASPA_DEVICE_CUDA marks the C++ side.
+if(NOT APPLE)
+  option(RASPA_DEVICE_CUDA "Build the CUDA backend of the device pair kernel" ON)
+endif()
+if(NOT APPLE AND RASPA_DEVICE_CUDA)
+  file(GLOB RASPAKIT_CUDA_CPP_FILES ${PROJECT_SOURCE_DIR}/spatial_decomposition/cuda/*.cpp)
+  file(GLOB RASPAKIT_CUDA_IXX_FILES ${PROJECT_SOURCE_DIR}/spatial_decomposition/cuda/*.ixx)
+  target_sources(${PROJECT_NAME} PRIVATE ${RASPAKIT_CUDA_CPP_FILES})
+  target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES ${RASPAKIT_CUDA_IXX_FILES})
+  target_compile_definitions(${PROJECT_NAME} PUBLIC RASPA_DEVICE_CUDA)
+  target_link_libraries(${PROJECT_NAME} PUBLIC ${CMAKE_DL_LIBS})
+endif()
+
 # The commit and compile date behind the 'build_info' module, shown by --help / --version and written at the
 # top of every output file. The script runs on every build (a git call) and rewrites the file only when the
 # commit or the dirty state changes, so it costs a recompile of this one file and a relink only then.

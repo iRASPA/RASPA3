@@ -21,6 +21,9 @@ import spatial_decomposition_opencl_context;
 #ifdef RASPA_DEVICE_METAL
 import spatial_decomposition_metal_context;
 #endif
+#ifdef RASPA_DEVICE_CUDA
+import spatial_decomposition_cuda_context;
+#endif
 
 using DeviceKernelLayout::clusterJ;
 using DeviceKernelLayout::pairGroupSize;
@@ -83,6 +86,12 @@ std::unique_ptr<DeviceContext> createDeviceContext(PairDevice device)
 #else
       throw std::runtime_error("[Device pair kernel]: this build has no Metal backend\n");
 #endif
+    case PairDevice::CUDA:
+#ifdef RASPA_DEVICE_CUDA
+      return createCUDAContext();
+#else
+      throw std::runtime_error("[Device pair kernel]: this build has no CUDA backend\n");
+#endif
     case PairDevice::CPU:
       break;
   }
@@ -98,6 +107,12 @@ bool deviceAvailable(PairDevice device)
     case PairDevice::Metal:
 #ifdef RASPA_DEVICE_METAL
       return metalAvailable();
+#else
+      return false;
+#endif
+    case PairDevice::CUDA:
+#ifdef RASPA_DEVICE_CUDA
+      return cudaAvailable();
 #else
       return false;
 #endif
@@ -119,8 +134,39 @@ std::string deviceNameOf(PairDevice device)
 #else
       return {};
 #endif
+    case PairDevice::CUDA:
+#ifdef RASPA_DEVICE_CUDA
+      return cudaDeviceName();
+#else
+      return {};
+#endif
     case PairDevice::CPU:
       return {};
+  }
+  return {};
+}
+
+std::string deviceUnavailableReason(PairDevice device)
+{
+  if (deviceAvailable(device)) return {};
+  switch (device)
+  {
+    case PairDevice::OpenCL:
+      return "no OpenCL platform with a device was found";
+    case PairDevice::Metal:
+#ifdef RASPA_DEVICE_METAL
+      return "no Metal device was found";
+#else
+      return "this build has no Metal backend (macOS only)";
+#endif
+    case PairDevice::CUDA:
+#ifdef RASPA_DEVICE_CUDA
+      return cudaUnavailableReason();
+#else
+      return "this build has no CUDA backend";
+#endif
+    case PairDevice::CPU:
+      return "the CPU is not a device";
   }
   return {};
 }
@@ -133,6 +179,8 @@ DeviceStep::~DeviceStep()
 bool DeviceStep::available(PairDevice device) { return deviceAvailable(device); }
 
 std::string DeviceStep::deviceName(PairDevice device) { return deviceNameOf(device); }
+
+std::string DeviceStep::unavailableReason(PairDevice device) { return deviceUnavailableReason(device); }
 
 bool DeviceStep::supportsBonded(const System& system, std::string& reason)
 {
@@ -413,7 +461,9 @@ void DeviceStep::beginBuild(const CellList& cells, const SimulationBox& box, std
   }
   else
   {
-    mapInputs();
+    // discard: the host fills the whole position range here and packs every atom's relative position before the
+    // device reads either buffer
+    mapInputs(true);
     std::fill(mappedPositions, mappedPositions + 4 * padded, 0.0f);
   }
   context->write(buildPositionBuffer.get(), 0, 4 * padded * sizeof(float), buildPosition.data(), false);
@@ -657,6 +707,10 @@ void DeviceStep::enqueueChain()
   }
   if (useMesh) enqueueMesh();
   if (useBonded) enqueueBonded();
+  // the forces are complete here: download them into the host copy in stream order, so that mapping them after
+  // the wait for the step needs no further transfer or synchronization (the resident integrator keeps them on
+  // the device)
+  if (!residentMode) context->readback(forceBuffer.get(), 4 * padded * sizeof(float));
   context->read(partialBuffer.get(), 0, hostPartials.size() * sizeof(float), hostPartials.data());
   if (useMesh) mesh.enqueueRead();
   if (useBonded) bonded.enqueueRead();
@@ -691,8 +745,9 @@ void DeviceStep::setResident(bool resident)
   }
   else if (padded > 0)
   {
+    // the resident integrator wrote the positions on the device: fetch them into the host copies
     mapForces();
-    mapInputs();
+    mapInputs(false);
   }
 }
 
@@ -815,8 +870,9 @@ DeviceStep::Results DeviceStep::wait(const std::function<void()>& afterRetry)
   ++steps;
   if (!residentMode)
   {
+    // the forces were read back at the end of the chain (waited for above); the inputs were last written by the host
     mapForces();
-    mapInputs();
+    mapInputs(true);
   }
 
   // every pair is counted from both clusters: half the sums
@@ -886,13 +942,14 @@ void DeviceStep::unmapHost()
   mappedPositionFloats = mappedRelativeFloats = mappedForceFloats = 0;
 }
 
-void DeviceStep::mapInputs()
+void DeviceStep::mapInputs(bool discard)
 {
   if (padded > 0 && (mappedPositions == nullptr || mappedPositionFloats < 4 * padded))
   {
     if (mappedPositions != nullptr) context->unmap(positionBuffer.get());
     mappedPositionFloats = 4 * padded;
-    mappedPositions = static_cast<float*>(context->map(positionBuffer.get(), 4 * padded * sizeof(float), true));
+    mappedPositions =
+        static_cast<float*>(context->map(positionBuffer.get(), 4 * padded * sizeof(float), true, discard));
   }
   if (useBonded && !slotOfSorted.empty())
   {
@@ -901,7 +958,8 @@ void DeviceStep::mapInputs()
     {
       if (mappedRelative != nullptr) context->unmap(relativeBuffer.get());
       mappedRelativeFloats = floats;
-      mappedRelative = static_cast<float*>(context->map(relativeBuffer.get(), floats * sizeof(float), true));
+      mappedRelative =
+          static_cast<float*>(context->map(relativeBuffer.get(), floats * sizeof(float), true, discard));
     }
   }
 }
@@ -912,6 +970,7 @@ void DeviceStep::mapForces()
   {
     if (mappedForces != nullptr) context->unmap(forceBuffer.get());
     mappedForceFloats = 4 * padded;
-    mappedForces = static_cast<const float*>(context->map(forceBuffer.get(), 4 * padded * sizeof(float), false));
+    mappedForces =
+        static_cast<const float*>(context->map(forceBuffer.get(), 4 * padded * sizeof(float), false, false));
   }
 }

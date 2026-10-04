@@ -671,7 +671,7 @@ class SpatialDecompositionDevice : public testing::TestWithParam<PairDevice>
 {
 };
 INSTANTIATE_TEST_SUITE_P(spatial_decomposition, SpatialDecompositionDevice,
-                         testing::Values(PairDevice::OpenCL, PairDevice::Metal),
+                         testing::Values(PairDevice::OpenCL, PairDevice::Metal, PairDevice::CUDA),
                          [](const testing::TestParamInfo<PairDevice>& info) { return pairDeviceName(info.param); });
 
 TEST_P(SpatialDecompositionDevice, engine_device_pair_kernel_agrees_with_double_rigid_water)
@@ -808,7 +808,7 @@ TEST(spatial_decomposition, engine_matches_exact_ewald_flexible_chains_triclinic
   }
 
   // the device pairs in the triclinic cell (general minimum image in the list build, pruning and pair kernel)
-  for (const PairDevice pairDevice : {PairDevice::OpenCL, PairDevice::Metal})
+  for (const PairDevice pairDevice : {PairDevice::OpenCL, PairDevice::Metal, PairDevice::CUDA})
   {
     if (!DeviceStep::available(pairDevice)) continue;
     SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
@@ -817,8 +817,11 @@ TEST(spatial_decomposition, engine_matches_exact_ewald_flexible_chains_triclinic
     device.initialize(system);
     const RunningEnergy deviceEnergy = device.computeGradients(system, true);
     const std::vector<double3> gradient = gradientsOf(system);
+    // the random configuration overlaps: the VDW energy is ~1e9 and the per-lane single-precision accumulators
+    // of the pair kernel round at ~100 per addition, so the backends differ from the host (and from each other,
+    // by their contraction patterns) at the 1e-6 level
     EXPECT_NEAR(deviceEnergy.moleculeMoleculeVDW, energy.moleculeMoleculeVDW,
-                1e-6 * std::abs(energy.moleculeMoleculeVDW));
+                5e-6 * std::abs(energy.moleculeMoleculeVDW));
     EXPECT_NEAR(deviceEnergy.potentialEnergy(), energy.potentialEnergy(), 1e-5 * std::abs(energy.potentialEnergy()));
     // the stiff bonds on the device: single precision of the positions relative to the molecule
     EXPECT_NEAR(deviceEnergy.bond, energy.bond, 1e-5 * std::abs(energy.bond));

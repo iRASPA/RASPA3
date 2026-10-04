@@ -37,8 +37,9 @@ class OpenCLContext final : public DeviceContext
 
   DeviceBuffer createBuffer(std::size_t bytes, DeviceMemory memory) override;
   void releaseBuffer(DeviceBuffer& buffer) override;
-  void* map(DeviceBuffer buffer, std::size_t bytes, bool forWriting) override;
+  void* map(DeviceBuffer buffer, std::size_t bytes, bool forWriting, bool discard) override;
   void unmap(DeviceBuffer buffer) override;
+  void readback(DeviceBuffer, std::size_t) override {}  // the mapping of the host-allocated buffer is the download
   void write(DeviceBuffer buffer, std::size_t offset, std::size_t bytes, const void* data, bool blocking) override;
   void read(DeviceBuffer buffer, std::size_t offset, std::size_t bytes, void* data) override;
   void copy(DeviceBuffer source, std::size_t sourceOffset, DeviceBuffer destination, std::size_t destinationOffset,
@@ -166,8 +167,10 @@ void OpenCLContext::releaseBuffer(DeviceBuffer& handle)
   handle = DeviceBuffer{};
 }
 
-void* OpenCLContext::map(DeviceBuffer handle, std::size_t bytes, bool forWriting)
+void* OpenCLContext::map(DeviceBuffer handle, std::size_t bytes, bool forWriting, bool /*discard*/)
 {
+  // no CL_MAP_WRITE_INVALIDATE_REGION for `discard`: that leaves the mapped contents undefined, while the
+  // callers rely on what they wrote earlier (the dummy slots) staying in place
   Buffer& buffer = at(handle);
   if (buffer.mapped != nullptr) unmap(handle);
   cl_int error = CL_SUCCESS;

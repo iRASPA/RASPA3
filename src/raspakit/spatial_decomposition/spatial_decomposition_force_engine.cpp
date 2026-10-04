@@ -174,8 +174,9 @@ void SpatialDecompositionForceEngine::initialize(System& system)
     if (!DeviceStep::available(settings.pairDevice))
     {
       throw std::runtime_error(std::format(
-          "[Spatial decomposition]: 'PairDevice' is '{}' but no {} device is available on this machine\n",
-          pairDeviceName(settings.pairDevice), pairDeviceName(settings.pairDevice)));
+          "[Spatial decomposition]: 'PairDevice' is '{}' but no {} device is available on this machine ({})\n",
+          pairDeviceName(settings.pairDevice), pairDeviceName(settings.pairDevice),
+          DeviceStep::unavailableReason(settings.pairDevice)));
     }
     devicePairs.initialize(settings.pairDevice);
   }
@@ -183,7 +184,7 @@ void SpatialDecompositionForceEngine::initialize(System& system)
   if (deviceKernel && !fastKernel)
   {
     throw std::runtime_error(
-        "[Spatial decomposition]: the OpenCL pair kernel covers plain Lennard-Jones (truncated or shifted) between "
+        "[Spatial decomposition]: the device pair kernel covers plain Lennard-Jones (truncated or shifted) between "
         "fully coupled atoms with Ewald or no electrostatics; use 'PairDevice' : 'CPU' for this system\n");
   }
   if (deviceMesh)

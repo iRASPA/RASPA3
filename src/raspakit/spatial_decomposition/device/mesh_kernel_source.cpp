@@ -283,8 +283,10 @@ KERNEL void fftRealForward(GLOBAL int2* RESTRICT fixedPoint, GLOBAL float2* REST
                              GLOBAL const float2* RESTRICT twiddle, GLOBAL const float2* RESTRICT halfTwiddle,
                              VALUE_ARG(uint, M), VALUE_ARG(uint, radixCode), VALUE_ARG(uint, stages),
                              VALUE_ARG(uint, lineCount), VALUE_ARG(uint, tileShift), VALUE_ARG(float, inverseScale),
-                             LOCAL float2* bufferA, LOCAL float2* bufferB KERNEL_INDEX_ARGS)
+                             LOCAL_ARG(float2, bufferA), LOCAL_ARG(float2, bufferB) KERNEL_INDEX_ARGS)
 {
+  LOCAL_ARG_BIND(float2, bufferA);
+  LOCAL_ARG_BIND(float2, bufferB);
   const uint lid = LOCAL_ID();
   const uint groupSize = LOCAL_SIZE();
   const uint tile = 1u << tileShift;
@@ -330,9 +332,11 @@ KERNEL void fftRealForward(GLOBAL int2* RESTRICT fixedPoint, GLOBAL float2* REST
 KERNEL void fftRealBackward(GLOBAL const float2* RESTRICT data, GLOBAL float2* RESTRICT potential,
                               GLOBAL const float2* RESTRICT twiddle, GLOBAL const float2* RESTRICT halfTwiddle,
                               VALUE_ARG(uint, M), VALUE_ARG(uint, radixCode), VALUE_ARG(uint, stages),
-                              VALUE_ARG(uint, lineCount), VALUE_ARG(uint, tileShift), LOCAL float2* bufferA,
-                              LOCAL float2* bufferB KERNEL_INDEX_ARGS)
+                              VALUE_ARG(uint, lineCount), VALUE_ARG(uint, tileShift), LOCAL_ARG(float2, bufferA),
+                              LOCAL_ARG(float2, bufferB) KERNEL_INDEX_ARGS)
 {
+  LOCAL_ARG_BIND(float2, bufferA);
+  LOCAL_ARG_BIND(float2, bufferB);
   const uint lid = LOCAL_ID();
   const uint groupSize = LOCAL_SIZE();
   const uint tile = 1u << tileShift;
@@ -375,8 +379,10 @@ KERNEL void fftLines(GLOBAL float2* RESTRICT data, GLOBAL const float2* RESTRICT
                        VALUE_ARG(uint, radixCode), VALUE_ARG(uint, stages), VALUE_ARG(uint, axisStride),
                        VALUE_ARG(uint, lineStride), VALUE_ARG(uint, innerCount), VALUE_ARG(uint, outerStride),
                        VALUE_ARG(uint, tileShift), VALUE_ARG(uint, tilesPerOuter), VALUE_ARG(float, sign),
-                       LOCAL float2* bufferA, LOCAL float2* bufferB KERNEL_INDEX_ARGS)
+                       LOCAL_ARG(float2, bufferA), LOCAL_ARG(float2, bufferB) KERNEL_INDEX_ARGS)
 {
+  LOCAL_ARG_BIND(float2, bufferA);
+  LOCAL_ARG_BIND(float2, bufferB);
   const uint lid = LOCAL_ID();
   const uint groupSize = LOCAL_SIZE();
   const uint tile = 1u << tileShift;
@@ -457,7 +463,7 @@ void applyInfluence(GLOBAL float2* RESTRICT data, GLOBAL const float* RESTRICT m
                     GLOBAL const float* RESTRICT moduliY, GLOBAL const float* RESTRICT moduliZ,
                     CONSTANT const MeshParameters* p, GLOBAL float* RESTRICT partials KERNEL_INDEX_ARGS)
 {
-  LOCAL float scratch[INFLUENCE_PARTIALS * INFLUENCE_GROUP];
+  LOCAL_DECL(float scratch[INFLUENCE_PARTIALS * INFLUENCE_GROUP]);
   const uint lid = LOCAL_ID();
   const uint Kx = p->meshX, Ky = p->meshY, Kz = p->meshZ;
   const uint Hz = Kz / 2 + 1;

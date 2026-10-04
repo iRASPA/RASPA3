@@ -61,11 +61,14 @@ export struct DeviceBuildParameters
 static_assert(sizeof(DeviceBuildParameters) == 96);
 
 /// Creates the context of a device kind; throws when none is available. Defined by the backends
-/// (spatial_decomposition_opencl_context, spatial_decomposition_metal_context) and dispatched by DeviceStep.
+/// (spatial_decomposition_opencl_context, spatial_decomposition_metal_context, spatial_decomposition_cuda_context)
+/// and dispatched by DeviceStep.
 export std::unique_ptr<DeviceContext> createDeviceContext(PairDevice device);
 /// Whether a device of the kind is available, and its name (empty when none).
 export bool deviceAvailable(PairDevice device);
 export std::string deviceNameOf(PairDevice device);
+/// Why no device of the kind is available (empty when one is, or when the backend gives no reason).
+export std::string deviceUnavailableReason(PairDevice device);
 
 /**
  * \brief The specialised pair kernel (Lennard-Jones + Ewald real space) on a device, and the façade of the other
@@ -117,6 +120,8 @@ export class DeviceStep
   static bool available(PairDevice device);
   /// Name of the device of the given kind (empty when none).
   static std::string deviceName(PairDevice device);
+  /// Why no device of the given kind is available (empty when one is).
+  static std::string unavailableReason(PairDevice device);
   /// Whether the device bonded kernels cover the intramolecular terms of the system (else `reason`).
   static bool supportsBonded(const System& system, std::string& reason);
 
@@ -315,7 +320,10 @@ export class DeviceStep
   void enqueueChain();
   void enqueueStep(const SimulationBox& box, bool compact);
   void updateParameters(const SimulationBox& box);
-  void mapInputs();
+  /// Maps the position (and relative-position) buffers for the host packing; `discard` when the device has not
+  /// written them since the host last unmapped them (the host-integrator steps), not after the resident
+  /// integrator wrote them on the device.
+  void mapInputs(bool discard);
   void mapForces();
   void unmapHost();
 };

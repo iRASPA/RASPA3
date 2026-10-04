@@ -948,6 +948,21 @@ reported separately at the end of the simulation.
     every list rebuild. Default: chosen automatically (the factorization
     with the smallest sub-domain surface).
 
+-   `"PairDevice" : string`\
+    For `"MolecularDynamicsSpatialDecomposition"`: where the short-range
+    pair kernel (and, with it, the particle-mesh Ewald sum, the bonded terms
+    and the resident integrator) runs. `"CPU"` uses the worker threads;
+    `"OpenCL"`, `"Metal"` (macOS) and `"CUDA"` (Linux and Windows with an
+    NVIDIA GPU) run on the GPU in single precision, overlapped with the
+    host work of the worker threads; `"GPU"` selects the native backend of
+    the platform (Metal on macOS, elsewhere CUDA when it is available and
+    OpenCL otherwise). The CUDA backend needs no CUDA installation at build
+    time: at run time it loads the NVIDIA driver (`libcuda`) and the CUDA
+    run-time compiler (`libnvrtc`, from the CUDA toolkit or the
+    `nvidia-cuda-nvrtc-cu12` Python package; `RASPA_NVRTC_LIBRARY` may point
+    at the library), and reports the missing piece when either is absent.
+    Default: `"CPU"`.
+
 -   `"RandomSeed" : integer`\
     Seeds the random-number generator for reproducible runs. When omitted a
     non-deterministic seed is used.

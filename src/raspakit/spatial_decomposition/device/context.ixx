@@ -99,8 +99,16 @@ export class DeviceContext
   virtual DeviceBuffer createBuffer(std::size_t bytes, DeviceMemory memory) = 0;
   virtual void releaseBuffer(DeviceBuffer& buffer) = 0;
   /// Host pointer to the first `bytes` of a Shared buffer (blocking: completes the enqueued device work on it).
-  virtual void* map(DeviceBuffer buffer, std::size_t bytes, bool forWriting) = 0;
+  /// With `discard` the host does not need the device's contents of the range: either it rewrites everything it
+  /// will read, or the device has not written the buffer since the host last unmapped it. A backend with separate
+  /// host and device memories then skips the download; the mapped memory still holds what the host last wrote
+  /// into it (it is not invalidated).
+  virtual void* map(DeviceBuffer buffer, std::size_t bytes, bool forWriting, bool discard) = 0;
   virtual void unmap(DeviceBuffer buffer) = 0;
+  /// Enqueues, in stream order, the download of the first `bytes` of a Shared buffer into its host copy, so that a
+  /// map for reading after a wait for a later mark finds the contents there without synchronizing. A no-op with
+  /// unified memory. A kernel launch, copy or write after it invalidates the download (the buffer may have changed).
+  virtual void readback(DeviceBuffer buffer, std::size_t bytes) = 0;
   virtual void write(DeviceBuffer buffer, std::size_t offset, std::size_t bytes, const void* data, bool blocking) = 0;
   virtual void read(DeviceBuffer buffer, std::size_t offset, std::size_t bytes, void* data) = 0;
   /// Device-to-device copy, in stream order (asynchronous).

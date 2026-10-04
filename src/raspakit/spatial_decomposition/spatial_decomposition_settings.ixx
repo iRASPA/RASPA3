@@ -31,14 +31,16 @@ export inline std::string pairPrecisionName(PairPrecision precision)
 }
 
 /// Where the specialised pair kernel runs. `CPU`: the SIMD cluster kernel (or the scalar kernel) on the worker
-/// threads. `OpenCL` / `Metal`: the cluster pair kernel on the device (GPU) in single precision, overlapped with
-/// the mesh, bonded and exclusion work of the worker threads; requires a device of the kind (Metal: macOS builds)
-/// and the specialised kernel (Lennard-Jones with Ewald or no electrostatics, fully coupled atoms).
+/// threads. `OpenCL` / `Metal` / `CUDA`: the cluster pair kernel on the device (GPU) in single precision,
+/// overlapped with the mesh, bonded and exclusion work of the worker threads; requires a device of the kind
+/// (Metal: macOS builds; CUDA: an NVIDIA driver and the NVRTC library at run time) and the specialised kernel
+/// (Lennard-Jones with Ewald or no electrostatics, fully coupled atoms).
 export enum class PairDevice : std::uint8_t
 {
   CPU = 0,
   OpenCL = 1,
-  Metal = 2
+  Metal = 2,
+  CUDA = 3
 };
 
 export inline std::string pairDeviceName(PairDevice device)
@@ -49,6 +51,8 @@ export inline std::string pairDeviceName(PairDevice device)
       return "OpenCL";
     case PairDevice::Metal:
       return "Metal";
+    case PairDevice::CUDA:
+      return "CUDA";
     case PairDevice::CPU:
       break;
   }
@@ -189,7 +193,10 @@ export Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Spati
   {
     std::uint8_t device;
     archive >> device;
-    s.pairDevice = device == 1 ? PairDevice::OpenCL : device == 2 ? PairDevice::Metal : PairDevice::CPU;
+    s.pairDevice = device == 1   ? PairDevice::OpenCL
+                   : device == 2 ? PairDevice::Metal
+                   : device == 3 ? PairDevice::CUDA
+                                 : PairDevice::CPU;
   }
   s.deviceMesh = true;
   s.deviceBonded = true;

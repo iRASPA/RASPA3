@@ -49,6 +49,7 @@ import running_energy;
 import minimization_cell_layout;
 import phonon_kpath;
 import spatial_decomposition_settings;
+import spatial_decomposition_device_step;
 
 int3 parseInt3(const std::string& item, auto json)
 {
@@ -1215,8 +1216,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   {
     if (!parsed_data["PairDevice"].is_string())
     {
-      throw std::runtime_error(
-          std::format("[Input reader]: 'PairDevice' must be a string ('CPU', 'OpenCL', 'Metal' or 'GPU')\n"));
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'PairDevice' must be a string ('CPU', 'OpenCL', 'Metal', 'CUDA' or 'GPU')\n"));
     }
     std::string device = parsed_data["PairDevice"].get<std::string>();
     std::transform(device.begin(), device.end(), device.begin(),
@@ -1233,20 +1234,26 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     {
       spatialDecompositionSettings.pairDevice = PairDevice::Metal;
     }
+    else if (device == "cuda")
+    {
+      spatialDecompositionSettings.pairDevice = PairDevice::CUDA;
+    }
     else if (device == "gpu")
     {
-      // the native backend of the platform: Metal on macOS, OpenCL elsewhere
+      // the native backend of the platform: Metal on macOS; elsewhere CUDA when an NVIDIA device with the CUDA
+      // libraries is present, OpenCL otherwise
 #ifdef __APPLE__
       spatialDecompositionSettings.pairDevice = PairDevice::Metal;
 #else
-      spatialDecompositionSettings.pairDevice = PairDevice::OpenCL;
+      spatialDecompositionSettings.pairDevice =
+          DeviceStep::available(PairDevice::CUDA) ? PairDevice::CUDA : PairDevice::OpenCL;
 #endif
     }
     else
     {
-      throw std::runtime_error(
-          std::format("[Input reader]: 'PairDevice' must be 'CPU', 'OpenCL', 'Metal' or 'GPU', '{}' was given\n",
-                      parsed_data["PairDevice"].get<std::string>()));
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'PairDevice' must be 'CPU', 'OpenCL', 'Metal', 'CUDA' or 'GPU', '{}' was given\n",
+          parsed_data["PairDevice"].get<std::string>()));
     }
   }
   if (parsed_data.contains("Resident"))

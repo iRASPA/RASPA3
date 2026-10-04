@@ -157,12 +157,12 @@ void buildList(GLOBAL const float4* RESTRICT buildPosition,
   GLOBAL uint* RESTRICT rowCluster = outerCluster + I * capacity;
   GLOBAL uint* RESTRICT rowMask = outerMask + I * capacity;
 
-  LOCAL float4 pi[CLUSTER_I];
-  LOCAL uint stencilCell[STENCIL];
-  LOCAL float4 stencilShift[STENCIL];  // translation of the neighbour cell; w != 0: image not fixed (minimum image)
-  LOCAL uint stencilFirst[STENCIL];    // first candidate index of the neighbour cell
-  LOCAL uint totalCandidates;
-  LOCAL uint flags[GROUP_SIZE];
+  LOCAL_DECL(float4 pi[CLUSTER_I]);
+  LOCAL_DECL(uint stencilCell[STENCIL]);
+  LOCAL_DECL(float4 stencilShift[STENCIL]);  // translation of the neighbour cell; w != 0: image not fixed (minimum image)
+  LOCAL_DECL(uint stencilFirst[STENCIL]);    // first candidate index of the neighbour cell
+  LOCAL_DECL(uint totalCandidates);
+  LOCAL_DECL(uint flags[GROUP_SIZE]);
 
   const float4 min0 = clusterMin[2 * I];
   const float4 min1 = clusterMin[2 * I + 1];
@@ -354,7 +354,7 @@ void clusterPairs(GLOBAL const float4* RESTRICT position,      // x, y, z, q per
   const uint laneCapacity = p->pairsPerLane;
   GLOBAL const uint* RESTRICT lane = pairList + (size_t)I * laneCapacity * GROUP_SIZE + id;
 
-  LOCAL uint counts[GROUP_SIZE];
+  LOCAL_DECL(uint counts[GROUP_SIZE]);
   const uint n = min(laneCount[I * GROUP_SIZE + id], laneCapacity);
   counts[id] = n;
   LOCAL_BARRIER();
@@ -467,8 +467,8 @@ void clusterPairs(GLOBAL const float4* RESTRICT position,      // x, y, z, q per
 #undef PAIR_TERM
 
   // the force on atom i: the four j-lane partial sums of its row
-  LOCAL float3 rowForce[GROUP_SIZE];
-  LOCAL float acc[PARTIALS][GROUP_SIZE];
+  LOCAL_DECL(float3 rowForce[GROUP_SIZE]);
+  LOCAL_DECL(float acc[PARTIALS][GROUP_SIZE]);
   rowForce[id] = fi;
   acc[0][id] = eVDW;
   acc[1][id] = eCharge;

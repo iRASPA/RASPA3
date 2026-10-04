@@ -21,6 +21,9 @@ using namespace metal;
 #define GLOBAL device
 #define CONSTANT constant
 #define LOCAL threadgroup
+#define LOCAL_DECL(declaration) threadgroup declaration
+#define LOCAL_ARG(type, name) threadgroup type* name
+#define LOCAL_ARG_BIND(type, name)
 #define PRIVATE thread
 #define RESTRICT
 #define GLOBAL_ID() (_raspa_gid)

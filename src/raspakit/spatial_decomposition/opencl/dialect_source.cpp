@@ -13,6 +13,9 @@ const char* const OpenCLDevice::openclKernelDialect = R"CLC(
 #define GLOBAL __global
 #define CONSTANT __constant
 #define LOCAL __local
+#define LOCAL_DECL(declaration) __local declaration
+#define LOCAL_ARG(type, name) __local type* name
+#define LOCAL_ARG_BIND(type, name)
 #define PRIVATE __private
 #define RESTRICT restrict
 #define GLOBAL_ID() ((uint)get_global_id(0))

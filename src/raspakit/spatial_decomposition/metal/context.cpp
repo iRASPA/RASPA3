@@ -39,8 +39,9 @@ class MetalContext final : public DeviceContext
 
   DeviceBuffer createBuffer(std::size_t bytes, DeviceMemory memory) override;
   void releaseBuffer(DeviceBuffer& buffer) override;
-  void* map(DeviceBuffer buffer, std::size_t bytes, bool forWriting) override;
+  void* map(DeviceBuffer buffer, std::size_t bytes, bool forWriting, bool discard) override;
   void unmap(DeviceBuffer buffer) override;
+  void readback(DeviceBuffer, std::size_t) override {}  // unified memory: the contents are already shared
   void write(DeviceBuffer buffer, std::size_t offset, std::size_t bytes, const void* data, bool blocking) override;
   void read(DeviceBuffer buffer, std::size_t offset, std::size_t bytes, void* data) override;
   void copy(DeviceBuffer source, std::size_t sourceOffset, DeviceBuffer destination, std::size_t destinationOffset,
@@ -271,7 +272,7 @@ void MetalContext::releaseBuffer(DeviceBuffer& handle)
   handle = DeviceBuffer{};
 }
 
-void* MetalContext::map(DeviceBuffer handle, std::size_t, bool)
+void* MetalContext::map(DeviceBuffer handle, std::size_t, bool, bool)
 {
   Buffer& buffer = at(handle);
   finish();
