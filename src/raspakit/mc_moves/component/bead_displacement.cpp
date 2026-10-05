@@ -59,6 +59,14 @@ std::optional<RunningEnergy> MC_Moves::beadDisplacementMove(RandomNumber &random
     return std::nullopt;
   }
 
+  // Only the displaced bead interacts differently with its surroundings: the external-field, framework,
+  // inter-molecular and Ewald differences are evaluated for that atom alone (every other atom contributes
+  // identically to the new and the old configuration, so its terms cancel exactly). The cost of the move
+  // is then independent of the chain length. The intramolecular terms below still use the whole molecule.
+  const std::array<std::size_t, 1> movedIndices{bead};
+  const std::span<const Atom> movedNew(&trialAtoms[bead], 1);
+  const std::span<const Atom> movedOld(&molecule_atoms[bead], 1);
+
   // Compute external field energy contribution
   std::optional<RunningEnergy> externalFieldMolecule =
       timed(system, component, move, Move::Timing::ExternalFieldMolecule,
@@ -66,7 +74,7 @@ std::optional<RunningEnergy> MC_Moves::beadDisplacementMove(RandomNumber &random
             {
               return Interactions::computeExternalFieldEnergyDifference(
                   system.hasExternalField, system.forceField, system.simulationBox,
-                  system.externalFieldInterpolationGrid, trialAtoms, molecule_atoms);
+                  system.externalFieldInterpolationGrid, movedNew, movedOld);
             });
   if (!externalFieldMolecule.has_value()) return std::nullopt;
 
@@ -77,7 +85,7 @@ std::optional<RunningEnergy> MC_Moves::beadDisplacementMove(RandomNumber &random
             {
               return Interactions::computeFrameworkMoleculeEnergyDifference(
                   system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-                  system.spanOfFrameworkAtoms(), trialAtoms, molecule_atoms);
+                  system.spanOfFrameworkAtoms(), movedNew, movedOld);
             });
   if (!frameworkMolecule.has_value()) return std::nullopt;
 
@@ -87,7 +95,8 @@ std::optional<RunningEnergy> MC_Moves::beadDisplacementMove(RandomNumber &random
             [&]
             {
               return Interactions::computeInterMolecularEnergyDifference(
-                  system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialAtoms, molecule_atoms);
+                  system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), movedNew,
+                  movedOld);
             });
   if (!interMolecule.has_value()) return std::nullopt;
 
@@ -96,9 +105,9 @@ std::optional<RunningEnergy> MC_Moves::beadDisplacementMove(RandomNumber &random
       timed(system, component, move, Move::Timing::Ewald,
             [&]
             {
-              return Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                                system.storedEik, system.trialEik, system.forceField,
-                                                                system.simulationBox, trialAtoms, molecule_atoms);
+              return Interactions::energyDifferenceEwaldFourierMovedAtoms(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                  system.forceField, system.simulationBox, trialAtoms, molecule_atoms, movedIndices);
             });
 
   // Intramolecular energy contribution: every bonded term containing the bead and the
@@ -121,6 +130,7 @@ std::optional<RunningEnergy> MC_Moves::beadDisplacementMove(RandomNumber &random
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     std::copy(trialAtoms.cbegin(), trialAtoms.cend(), molecule_atoms.begin());
+    system.cellListAtomsMoved(molecule_atoms);
     molecule.centerOfMassPosition = component.computeCenterOfMass(molecule_atoms);
 
     return energyDifference;

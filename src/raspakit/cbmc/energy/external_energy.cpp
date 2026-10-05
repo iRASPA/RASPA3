@@ -16,6 +16,9 @@ import threadpool;
 import interpolation_energy_grid;
 import interactions_pair_kernel;
 import potential_pair_derivatives;
+import potential_pair_vdw;
+import potential_pair_coulomb;
+import mc_cell_list;
 import cbmc_grow_context;
 import cbmc_results;
 
@@ -387,6 +390,81 @@ bool accumulateGridEnergy(const ForceField &forceField,
   return energySum;
 }
 
+[[nodiscard]] std::optional<RunningEnergy> CBMC::computeInterMolecularEnergy(
+    const ForceField &forceField, const SimulationBox &simulationBox, const MCCellList &cellList,
+    std::span<const Atom> moleculeAtoms, double cutOffVDW, double cutOffCoulomb, std::span<const Atom> atoms,
+    std::optional<std::size_t> skipBackgroundMolecule) noexcept
+{
+  if (!cellList.enabled || !cellList.valid || cutOffVDW > cellList.cutOff || cutOffCoulomb > cellList.cutOff)
+  {
+    return computeInterMolecularEnergy(forceField, simulationBox, moleculeAtoms, cutOffVDW, cutOffCoulomb, atoms,
+                                       skipBackgroundMolecule);
+  }
+
+  const bool useCharge = forceField.useCharge;
+  const double overlapCriteria = forceField.energyOverlapCriteria;
+  const double cutOffVDWSquared = cutOffVDW * cutOffVDW;
+  const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
+  const std::uint32_t skippedMolecule = skipBackgroundMolecule.has_value()
+                                            ? static_cast<std::uint32_t>(skipBackgroundMolecule.value())
+                                            : std::numeric_limits<std::uint32_t>::max();
+
+  RunningEnergy energySum;
+  bool overlap = false;
+
+  // Same pair arithmetic as 'Interactions::evaluatePair' with the background atom as 'atomA'
+  // (dr = posA - posB); the background atom is only fetched for pairs inside a cut-off.
+  for (const Atom &atom : atoms)
+  {
+    const std::uint32_t molB = atom.moleculeId;
+    const double3 posB = atom.position;
+
+    cellList.forEachNeighbourRecord(
+        posB,
+        [&](const MCCellList::Record &record)
+        {
+          if (overlap || record.moleculeId == molB || record.moleculeId == skippedMolecule) return;
+
+          double3 dr = simulationBox.applyPeriodicBoundaryConditions(record.position() - posB);
+          const double rr = double3::dot(dr, dr);
+
+          if (rr < cutOffVDWSquared)
+          {
+            const Atom &backgroundAtom = moleculeAtoms[record.atomIndex];
+            const Potentials::PairDerivatives<0> factors = Potentials::potentialVDW<0>(
+                forceField, backgroundAtom.scalingVDW, atom.scalingVDW, rr,
+                static_cast<std::size_t>(backgroundAtom.type), static_cast<std::size_t>(atom.type));
+            if (factors.energy > overlapCriteria)
+            {
+              overlap = true;
+              return;
+            }
+            energySum.moleculeMoleculeVDW += factors.energy;
+            energySum.addDudlambdaVDW(backgroundAtom.groupId, atom.groupId, backgroundAtom.scalingVDW, atom.scalingVDW,
+                                      factors.dUdlambda);
+          }
+          if (useCharge && rr < cutOffChargeSquared)
+          {
+            const Atom &backgroundAtom = moleculeAtoms[record.atomIndex];
+            if (backgroundAtom.charge * atom.charge != 0.0 &&
+                backgroundAtom.scalingCoulomb * atom.scalingCoulomb != 0.0)
+            {
+              const double r = std::sqrt(rr);
+              const Potentials::PairDerivatives<0> factors = Potentials::potentialCoulomb<0>(
+                  forceField, backgroundAtom.scalingCoulomb, atom.scalingCoulomb, r, backgroundAtom.charge,
+                  atom.charge);
+              energySum.moleculeMoleculeCharge += factors.energy;
+              energySum.addDudlambdaCharge(backgroundAtom.groupId, atom.groupId, backgroundAtom.scalingCoulomb,
+                                           atom.scalingCoulomb, factors.dUdlambda);
+            }
+          }
+        });
+    if (overlap) return std::nullopt;
+  }
+
+  return energySum;
+}
+
 // ---------------------------------------------------------------------------------------------------
 // The combined evaluation and the dual cut-off correction.
 // ---------------------------------------------------------------------------------------------------
@@ -428,9 +506,13 @@ std::optional<RunningEnergy> CBMC::computeExternalNonOverlappingEnergy(const Gro
   if (!frameworkEnergy.has_value()) return std::nullopt;
 
   std::optional<RunningEnergy> interEnergy =
-      CBMC::computeInterMolecularEnergy(context.forceField, context.simulationBox, context.moleculeAtoms,
-                                        context.cutOffMoleculeVDW, context.cutOffCoulomb, trialPositionSet,
-                                        context.skipBackgroundMolecule);
+      context.cellList
+          ? CBMC::computeInterMolecularEnergy(context.forceField, context.simulationBox, *context.cellList,
+                                              context.moleculeAtoms, context.cutOffMoleculeVDW,
+                                              context.cutOffCoulomb, trialPositionSet, context.skipBackgroundMolecule)
+          : CBMC::computeInterMolecularEnergy(context.forceField, context.simulationBox, context.moleculeAtoms,
+                                              context.cutOffMoleculeVDW, context.cutOffCoulomb, trialPositionSet,
+                                              context.skipBackgroundMolecule);
   if (!interEnergy.has_value()) return std::nullopt;
 
   return externalFieldEnergy.value() + interEnergy.value() + frameworkEnergy.value();

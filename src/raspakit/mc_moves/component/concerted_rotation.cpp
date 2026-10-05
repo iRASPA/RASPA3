@@ -140,6 +140,21 @@ std::optional<RunningEnergy> MC_Moves::concertedRotationMove(RandomNumber &rando
     return std::nullopt;
   }
 
+  // Only the displaced backbone atoms and their side groups interact differently with the surroundings: the
+  // external-field, framework, inter-molecular and Ewald differences are evaluated for those atoms alone
+  // (every other atom contributes identically to the new and the old configuration, so its terms cancel
+  // exactly). The intramolecular terms below still use the whole molecule.
+  const std::vector<std::size_t> movedIndices = Interactions::movedAtomIndices(trialAtoms, molecule_atoms);
+  std::vector<Atom> movedNew;
+  std::vector<Atom> movedOld;
+  movedNew.reserve(movedIndices.size());
+  movedOld.reserve(movedIndices.size());
+  for (std::size_t index : movedIndices)
+  {
+    movedNew.push_back(trialAtoms[index]);
+    movedOld.push_back(molecule_atoms[index]);
+  }
+
   // Compute external field energy contribution
   std::optional<RunningEnergy> externalFieldMolecule =
       timed(system, component, move, Move::Timing::ExternalFieldMolecule,
@@ -147,7 +162,7 @@ std::optional<RunningEnergy> MC_Moves::concertedRotationMove(RandomNumber &rando
             {
               return Interactions::computeExternalFieldEnergyDifference(
                   system.hasExternalField, system.forceField, system.simulationBox,
-                  system.externalFieldInterpolationGrid, trialAtoms, molecule_atoms);
+                  system.externalFieldInterpolationGrid, movedNew, movedOld);
             });
   if (!externalFieldMolecule.has_value()) return std::nullopt;
 
@@ -158,7 +173,7 @@ std::optional<RunningEnergy> MC_Moves::concertedRotationMove(RandomNumber &rando
             {
               return Interactions::computeFrameworkMoleculeEnergyDifference(
                   system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-                  system.spanOfFrameworkAtoms(), trialAtoms, molecule_atoms);
+                  system.spanOfFrameworkAtoms(), movedNew, movedOld);
             });
   if (!frameworkMolecule.has_value()) return std::nullopt;
 
@@ -168,7 +183,8 @@ std::optional<RunningEnergy> MC_Moves::concertedRotationMove(RandomNumber &rando
             [&]
             {
               return Interactions::computeInterMolecularEnergyDifference(
-                  system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialAtoms, molecule_atoms);
+                  system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), movedNew,
+                  movedOld);
             });
   if (!interMolecule.has_value()) return std::nullopt;
 
@@ -177,9 +193,9 @@ std::optional<RunningEnergy> MC_Moves::concertedRotationMove(RandomNumber &rando
       timed(system, component, move, Move::Timing::Ewald,
             [&]
             {
-              return Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                                system.storedEik, system.trialEik, system.forceField,
-                                                                system.simulationBox, trialAtoms, molecule_atoms);
+              return Interactions::energyDifferenceEwaldFourierMovedAtoms(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                  system.forceField, system.simulationBox, trialAtoms, molecule_atoms, movedIndices);
             });
 
   // Intramolecular energy contribution: the window's bond lengths and backbone bends are invariant,
@@ -207,6 +223,7 @@ std::optional<RunningEnergy> MC_Moves::concertedRotationMove(RandomNumber &rando
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     std::copy(trialAtoms.cbegin(), trialAtoms.cend(), molecule_atoms.begin());
+    system.cellListAtomsMoved(molecule_atoms);
     molecule.centerOfMassPosition = component.computeCenterOfMass(molecule_atoms);
 
     return energyDifference;

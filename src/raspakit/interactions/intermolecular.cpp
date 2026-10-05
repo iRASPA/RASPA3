@@ -22,6 +22,7 @@ import running_energy;
 import component;
 import units;
 import threadpool;
+import mc_cell_list;
 
 // used in volume moves for computing the state at a new box and new, scaled atom positions
 RunningEnergy Interactions::computeInterMolecularEnergy(const ForceField& forceField, const SimulationBox& box,
@@ -33,6 +34,33 @@ RunningEnergy Interactions::computeInterMolecularEnergy(const ForceField& forceF
 
   forEachMoleculeMoleculePair<0>(
       forceField, box, moleculeAtoms,
+      [&energySum](std::size_t, std::size_t, const Atom& atomA, const Atom& atomB,
+                   const Potentials::PairDerivatives<0>& factors, const double3&)
+      {
+        energySum.moleculeMoleculeVDW += factors.energy;
+        energySum.addDudlambdaVDW(atomA.groupId, atomB.groupId, atomA.scalingVDW, atomB.scalingVDW, factors.dUdlambda);
+      },
+      [&energySum](std::size_t, std::size_t, const Atom& atomA, const Atom& atomB,
+                   const Potentials::PairDerivatives<0>& factors, const double3&)
+      {
+        energySum.moleculeMoleculeCharge += factors.energy;
+        energySum.addDudlambdaCharge(atomA.groupId, atomB.groupId, atomA.scalingCoulomb, atomB.scalingCoulomb,
+                                     factors.dUdlambda);
+      });
+
+  return energySum;
+}
+
+RunningEnergy Interactions::computeInterMolecularEnergy(const ForceField& forceField, const SimulationBox& box,
+                                                        const MCCellList& cellList,
+                                                        std::span<const Atom> moleculeAtoms) noexcept
+{
+  RunningEnergy energySum{};
+
+  if (forceField.omitInterInteractions) return energySum;
+
+  forEachMoleculeMoleculePair<0>(
+      forceField, box, cellList, moleculeAtoms,
       [&energySum](std::size_t, std::size_t, const Atom& atomA, const Atom& atomB,
                    const Potentials::PairDerivatives<0>& factors, const double3&)
       {
@@ -297,6 +325,122 @@ RunningEnergy Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
         }
       }
     }
+  }
+
+  return std::optional{energySum};
+}
+
+[[nodiscard]] std::optional<RunningEnergy> Interactions::computeInterMolecularEnergyDifference(
+    const ForceField& forceField, const SimulationBox& simulationBox, const MCCellList& cellList,
+    std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
+{
+  if (!cellList.enabled || !cellList.valid)
+  {
+    return computeInterMolecularEnergyDifference(forceField, simulationBox, moleculeAtoms, newatoms, oldatoms);
+  }
+
+  RunningEnergy energySum{};
+
+  if (forceField.omitInterInteractions) return energySum;
+
+  const bool useCharge = forceField.useCharge;
+  const double overlapCriteria = forceField.energyOverlapCriteria;
+  const double cutOffMoleculeVDWSquared = forceField.cutOffMoleculeVDW * forceField.cutOffMoleculeVDW;
+  const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+
+  // Same pair arithmetic as the brute-force loop above (dr = posA - posB, A the background atom), so the
+  // two agree to the summation order. The background atom is only fetched for pairs inside a cut-off.
+  for (const Atom& atom : newatoms)
+  {
+    const std::uint32_t molB = atom.moleculeId;
+    const double3 posB = atom.position;
+    const std::size_t typeB = static_cast<std::size_t>(atom.type);
+    const std::uint8_t groupIdB = atom.groupId;
+    const double scalingVDWB = atom.scalingVDW;
+    const double scalingCoulombB = atom.scalingCoulomb;
+    const double chargeB = atom.charge;
+
+    bool overlap = false;
+    cellList.forEachNeighbourRecord(
+        posB,
+        [&](const MCCellList::Record& record)
+        {
+          if (overlap || record.moleculeId == molB) return;
+
+          double3 dr = simulationBox.applyPeriodicBoundaryConditions(record.position() - posB);
+          const double rr = double3::dot(dr, dr);
+
+          if (rr < cutOffMoleculeVDWSquared)
+          {
+            const Atom& atomA = moleculeAtoms[record.atomIndex];
+            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialVDW<0>(
+                forceField, atomA.scalingVDW, scalingVDWB, rr, static_cast<std::size_t>(atomA.type), typeB);
+            if (energyFactor.energy > overlapCriteria)
+            {
+              overlap = true;
+              return;
+            }
+            energySum.moleculeMoleculeVDW += energyFactor.energy;
+            energySum.addDudlambdaVDW(atomA.groupId, groupIdB, atomA.scalingVDW, scalingVDWB, energyFactor.dUdlambda);
+          }
+          if (useCharge && rr < cutOffChargeSquared)
+          {
+            const Atom& atomA = moleculeAtoms[record.atomIndex];
+            if (atomA.charge * chargeB != 0.0 && atomA.scalingCoulomb * scalingCoulombB != 0.0)
+            {
+              const double r = std::sqrt(rr);
+              Potentials::PairDerivatives<0> energyFactor = Potentials::potentialCoulomb<0>(
+                  forceField, atomA.scalingCoulomb, scalingCoulombB, r, atomA.charge, chargeB);
+              energySum.moleculeMoleculeCharge += energyFactor.energy;
+              energySum.addDudlambdaCharge(atomA.groupId, groupIdB, atomA.scalingCoulomb, scalingCoulombB,
+                                           energyFactor.dUdlambda);
+            }
+          }
+        });
+    if (overlap) return std::nullopt;
+  }
+
+  for (const Atom& atom : oldatoms)
+  {
+    const std::uint32_t molB = atom.moleculeId;
+    const double3 posB = atom.position;
+    const std::size_t typeB = static_cast<std::size_t>(atom.type);
+    const std::uint8_t groupIdB = atom.groupId;
+    const double scalingVDWB = atom.scalingVDW;
+    const double scalingCoulombB = atom.scalingCoulomb;
+    const double chargeB = atom.charge;
+
+    cellList.forEachNeighbourRecord(
+        posB,
+        [&](const MCCellList::Record& record)
+        {
+          if (record.moleculeId == molB) return;
+
+          double3 dr = simulationBox.applyPeriodicBoundaryConditions(record.position() - posB);
+          const double rr = double3::dot(dr, dr);
+
+          if (rr < cutOffMoleculeVDWSquared)
+          {
+            const Atom& atomA = moleculeAtoms[record.atomIndex];
+            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialVDW<0>(
+                forceField, atomA.scalingVDW, scalingVDWB, rr, static_cast<std::size_t>(atomA.type), typeB);
+            energySum.moleculeMoleculeVDW -= energyFactor.energy;
+            energySum.addDudlambdaVDW(atomA.groupId, groupIdB, atomA.scalingVDW, scalingVDWB, -energyFactor.dUdlambda);
+          }
+          if (useCharge && rr < cutOffChargeSquared)
+          {
+            const Atom& atomA = moleculeAtoms[record.atomIndex];
+            if (atomA.charge * chargeB != 0.0 && atomA.scalingCoulomb * scalingCoulombB != 0.0)
+            {
+              const double r = std::sqrt(rr);
+              Potentials::PairDerivatives<0> energyFactor = Potentials::potentialCoulomb<0>(
+                  forceField, atomA.scalingCoulomb, scalingCoulombB, r, atomA.charge, chargeB);
+              energySum.moleculeMoleculeCharge -= energyFactor.energy;
+              energySum.addDudlambdaCharge(atomA.groupId, groupIdB, atomA.scalingCoulomb, scalingCoulombB,
+                                           -energyFactor.dUdlambda);
+            }
+          }
+        });
   }
 
   return std::optional{energySum};
@@ -668,6 +812,165 @@ std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStra
                                               unitFactors.firstDerivativeFactor, unitFactors.secondDerivativeFactor);
           }
         }
+      }
+    }
+  }
+
+  return {energy, strainDerivativeTensor};
+}
+
+std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStrainDerivative(
+    const ForceField& forceField, const std::vector<Component>& components, const SimulationBox& simulationBox,
+    const MCCellList& cellList, std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
+    const PolarizationFieldStrain* polarizationGather) noexcept
+{
+  const bool useCharge = forceField.useCharge;
+  const double cutOffMoleculeVDWSquared = forceField.cutOffMoleculeVDW * forceField.cutOffMoleculeVDW;
+  const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+  const double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
+
+  EnergyStatus energy(1, 1, components.size());
+  double3x3 strainDerivativeTensor{};
+
+  if (forceField.omitInterInteractions) return {energy, strainDerivativeTensor};
+  if (moleculeAtoms.empty()) return {energy, strainDerivativeTensor};
+
+  // Tail correction, aggregated. The brute-force routine books, for every atom pair i < j (same molecule or
+  // not), 2 * preFactor * s_i s_j C(t_i, t_j) on the component pair (c_i, c_j) and the self term once on
+  // (c_i, c_i). Molecules are stored grouped by component, so c_i <= c_j there; the same booking follows
+  // from scaling-weighted type counts per component: (c, c) receives preFactor * sum_{t,t'} n_c,t n_c,t' C,
+  // (c, c') with c < c' receives 2 * preFactor * sum_{t,t'} n_c,t n_c',t' C.
+  {
+    const std::size_t numberOfTypes = forceField.numberOfPseudoAtoms;
+    const std::size_t numberOfComponents = components.size();
+    std::vector<double> typeCounts(numberOfComponents * numberOfTypes, 0.0);
+    for (const Atom& atom : moleculeAtoms)
+    {
+      typeCounts[static_cast<std::size_t>(atom.componentId) * numberOfTypes + static_cast<std::size_t>(atom.type)] +=
+          atom.scalingVDW;
+    }
+    for (std::size_t compA = 0; compA < numberOfComponents; ++compA)
+    {
+      for (std::size_t compB = compA; compB < numberOfComponents; ++compB)
+      {
+        double sum = 0.0;
+        for (std::size_t typeA = 0; typeA < numberOfTypes; ++typeA)
+        {
+          const double countA = typeCounts[compA * numberOfTypes + typeA];
+          if (countA == 0.0) continue;
+          for (std::size_t typeB = 0; typeB < numberOfTypes; ++typeB)
+          {
+            sum += countA * typeCounts[compB * numberOfTypes + typeB] * forceField(typeA, typeB).tailCorrectionEnergy;
+          }
+        }
+        const double factor = compA == compB ? 1.0 : 2.0;
+        energy.componentEnergy(compA, compB).VanDerWaalsTailCorrection +=
+            EnergyDuDlambda(factor * preFactor * sum, 0.0);
+      }
+    }
+  }
+
+  const auto accumulateGradientAndStrain = [&](std::size_t indexA, std::size_t indexB, const double3& g,
+                                               const double3& dr)
+  {
+    moleculeDynamics[indexA].gradient += g;
+    moleculeDynamics[indexB].gradient -= g;
+    accumulateStrainDerivative(strainDerivativeTensor, g, dr);
+  };
+
+  if (polarizationGather == nullptr)
+  {
+    forEachMoleculeMoleculePair<1>(
+        forceField, simulationBox, cellList, moleculeAtoms,
+        [&](std::size_t indexA, std::size_t indexB, const Atom& atomA, const Atom& atomB,
+            const Potentials::PairDerivatives<1>& factors, const double3& dr)
+        {
+          const std::size_t compA = static_cast<std::size_t>(atomA.componentId);
+          const std::size_t compB = static_cast<std::size_t>(atomB.componentId);
+          energy.componentEnergy(compA, compB).VanDerWaals += 0.5 * EnergyDuDlambda(factors.energy, 0.0);
+          energy.componentEnergy(compB, compA).VanDerWaals += 0.5 * EnergyDuDlambda(factors.energy, 0.0);
+          accumulateGradientAndStrain(indexA, indexB, factors.firstDerivativeFactor * dr, dr);
+        },
+        [&](std::size_t indexA, std::size_t indexB, const Atom& atomA, const Atom& atomB,
+            const Potentials::PairDerivatives<1>& factors, const double3& dr)
+        {
+          const std::size_t compA = static_cast<std::size_t>(atomA.componentId);
+          const std::size_t compB = static_cast<std::size_t>(atomB.componentId);
+          energy.componentEnergy(compA, compB).CoulombicReal += 0.5 * EnergyDuDlambda(factors.energy, 0.0);
+          energy.componentEnergy(compB, compA).CoulombicReal += 0.5 * EnergyDuDlambda(factors.energy, 0.0);
+          accumulateGradientAndStrain(indexA, indexB, factors.firstDerivativeFactor * dr, dr);
+        });
+    return {energy, strainDerivativeTensor};
+  }
+
+  // Fused polarization path (see the brute-force routine): the pair walk also gathers the polarization field
+  // and its strain response. Done directly on the cell pairs because the Coulomb part must not skip the
+  // uncharged-pair early-out of 'evaluatePair' (an uncharged field point still sees its sources).
+  const double cutOffSquared = std::max(cutOffMoleculeVDWSquared, useCharge ? cutOffChargeSquared : 0.0);
+  const auto processPair = [&](std::size_t indexA, std::size_t indexB, const double3& dr, double rr)
+  {
+    const Atom& atomA = moleculeAtoms[indexA];
+    const Atom& atomB = moleculeAtoms[indexB];
+    const std::size_t compA = static_cast<std::size_t>(atomA.componentId);
+    const std::size_t compB = static_cast<std::size_t>(atomB.componentId);
+
+    if (rr < cutOffMoleculeVDWSquared)
+    {
+      const Potentials::PairDerivatives<1> factors =
+          Potentials::potentialVDW<1>(forceField, atomA.scalingVDW, atomB.scalingVDW, rr,
+                                      static_cast<std::size_t>(atomA.type), static_cast<std::size_t>(atomB.type));
+      energy.componentEnergy(compA, compB).VanDerWaals += 0.5 * EnergyDuDlambda(factors.energy, 0.0);
+      energy.componentEnergy(compB, compA).VanDerWaals += 0.5 * EnergyDuDlambda(factors.energy, 0.0);
+      accumulateGradientAndStrain(indexA, indexB, factors.firstDerivativeFactor * dr, dr);
+    }
+    if (useCharge && rr < cutOffChargeSquared)
+    {
+      const double r = std::sqrt(rr);
+      const Potentials::PairDerivatives<1> pairFactors = Potentials::potentialCoulomb<1>(
+          forceField, atomA.scalingCoulomb, atomB.scalingCoulomb, r, atomA.charge, atomB.charge);
+      energy.componentEnergy(compA, compB).CoulombicReal += 0.5 * EnergyDuDlambda(pairFactors.energy, 0.0);
+      energy.componentEnergy(compB, compA).CoulombicReal += 0.5 * EnergyDuDlambda(pairFactors.energy, 0.0);
+      accumulateGradientAndStrain(indexA, indexB, pairFactors.firstDerivativeFactor * dr, dr);
+
+      const Potentials::PairDerivatives<2> unitFactors =
+          Potentials::potentialCoulomb<2>(forceField, 1.0, 1.0, r, 1.0, 1.0);
+      const double scaledChargeA = atomA.scalingCoulomb * atomA.charge;
+      const double scaledChargeB = atomB.scalingCoulomb * atomB.charge;
+
+      const double3 delta =
+          dr - polarizationGather->centerOfMassOffset[indexA] + polarizationGather->centerOfMassOffset[indexB];
+      accumulatePolarizationFieldStrain(*polarizationGather, indexA, scaledChargeB, dr, delta,
+                                        unitFactors.firstDerivativeFactor, unitFactors.secondDerivativeFactor);
+      accumulatePolarizationFieldStrain(*polarizationGather, indexB, scaledChargeA, -dr, -delta,
+                                        unitFactors.firstDerivativeFactor, unitFactors.secondDerivativeFactor);
+    }
+  };
+
+  if (cellList.enabled && cellList.valid && cellList.numberOfAtoms == moleculeAtoms.size())
+  {
+    cellList.forEachPairOnce(
+        [&](const MCCellList::Record& recordA, const MCCellList::Record& recordB)
+        {
+          if (recordA.moleculeId == recordB.moleculeId) return;
+          double3 dr = recordA.position() - recordB.position();
+          dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+          const double rr = double3::dot(dr, dr);
+          if (rr >= cutOffSquared) return;
+          processPair(recordA.atomIndex, recordB.atomIndex, dr, rr);
+        });
+  }
+  else
+  {
+    for (std::size_t indexA = 0; indexA + 1 < moleculeAtoms.size(); ++indexA)
+    {
+      for (std::size_t indexB = indexA + 1; indexB < moleculeAtoms.size(); ++indexB)
+      {
+        if (moleculeAtoms[indexA].moleculeId == moleculeAtoms[indexB].moleculeId) continue;
+        double3 dr = moleculeAtoms[indexA].position - moleculeAtoms[indexB].position;
+        dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+        const double rr = double3::dot(dr, dr);
+        if (rr >= cutOffSquared) continue;
+        processPair(indexA, indexB, dr, rr);
       }
     }
   }

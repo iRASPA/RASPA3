@@ -76,6 +76,21 @@ std::optional<RunningEnergy> MC_Moves::pivotMove(RandomNumber &random, System &s
     return std::nullopt;
   }
 
+  // Only the rotated part interacts differently with its surroundings: the external-field, framework,
+  // inter-molecular and Ewald differences are evaluated for those atoms alone (every other atom contributes
+  // identically to the new and the old configuration, so its terms cancel exactly). The intramolecular
+  // terms below still use the whole molecule.
+  const std::span<const std::size_t> movedIndices(rotatedAtoms);
+  std::vector<Atom> movedNew;
+  std::vector<Atom> movedOld;
+  movedNew.reserve(movedIndices.size());
+  movedOld.reserve(movedIndices.size());
+  for (std::size_t index : movedIndices)
+  {
+    movedNew.push_back(trialAtoms[index]);
+    movedOld.push_back(molecule_atoms[index]);
+  }
+
   // Compute external field energy contribution
   std::optional<RunningEnergy> externalFieldMolecule =
       timed(system, component, move, Move::Timing::ExternalFieldMolecule,
@@ -83,7 +98,7 @@ std::optional<RunningEnergy> MC_Moves::pivotMove(RandomNumber &random, System &s
             {
               return Interactions::computeExternalFieldEnergyDifference(
                   system.hasExternalField, system.forceField, system.simulationBox,
-                  system.externalFieldInterpolationGrid, trialAtoms, molecule_atoms);
+                  system.externalFieldInterpolationGrid, movedNew, movedOld);
             });
   if (!externalFieldMolecule.has_value()) return std::nullopt;
 
@@ -94,7 +109,7 @@ std::optional<RunningEnergy> MC_Moves::pivotMove(RandomNumber &random, System &s
             {
               return Interactions::computeFrameworkMoleculeEnergyDifference(
                   system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-                  system.spanOfFrameworkAtoms(), trialAtoms, molecule_atoms);
+                  system.spanOfFrameworkAtoms(), movedNew, movedOld);
             });
   if (!frameworkMolecule.has_value()) return std::nullopt;
 
@@ -104,7 +119,8 @@ std::optional<RunningEnergy> MC_Moves::pivotMove(RandomNumber &random, System &s
             [&]
             {
               return Interactions::computeInterMolecularEnergyDifference(
-                  system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialAtoms, molecule_atoms);
+                  system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), movedNew,
+                  movedOld);
             });
   if (!interMolecule.has_value()) return std::nullopt;
 
@@ -113,9 +129,9 @@ std::optional<RunningEnergy> MC_Moves::pivotMove(RandomNumber &random, System &s
       timed(system, component, move, Move::Timing::Ewald,
             [&]
             {
-              return Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                                system.storedEik, system.trialEik, system.forceField,
-                                                                system.simulationBox, trialAtoms, molecule_atoms);
+              return Interactions::energyDifferenceEwaldFourierMovedAtoms(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                  system.forceField, system.simulationBox, trialAtoms, molecule_atoms, movedIndices);
             });
 
   // Intramolecular energy contribution: bond lengths and bend angles are invariant under the pivot
@@ -139,6 +155,7 @@ std::optional<RunningEnergy> MC_Moves::pivotMove(RandomNumber &random, System &s
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     std::copy(trialAtoms.cbegin(), trialAtoms.cend(), molecule_atoms.begin());
+    system.cellListAtomsMoved(molecule_atoms);
     molecule.centerOfMassPosition = component.computeCenterOfMass(molecule_atoms);
 
     return energyDifference;

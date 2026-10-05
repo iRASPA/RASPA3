@@ -11,6 +11,8 @@ import molecule;
 import component;
 import double3;
 import simd_quatd;
+import simulationbox;
+import mc_cell_list;
 import cbmc_grow_context;
 
 // System layout: spans, iterators, and molecule indexing over contiguous storage.
@@ -103,7 +105,51 @@ CBMC::GrowContext System::makeGrowContext(CBMC::CutOffMode mode) const
 {
   return CBMC::GrowContext(hasExternalField, forceField, simulationBox, interpolationGrids,
                            externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(),
-                           beta, mode);
+                           beta, mode)
+      .withCellList(&cellList());
+}
+
+double System::cellListCutOff() const
+{
+  // The largest pair cut-off any molecule-molecule query uses (the dual cut-off inner value is smaller).
+  return std::max(forceField.cutOffMoleculeVDW, forceField.useCharge ? forceField.cutOffCoulomb : 0.0);
+}
+
+const MCCellList &System::cellList() const
+{
+  const std::span<const Atom> atoms = spanOfMoleculeAtoms();
+  const double cutOff = cellListCutOff();
+  if (!moleculeCellList.isCurrent(atoms, simulationBox, cutOff))
+  {
+    moleculeCellList.build(atoms, simulationBox, cutOff);
+  }
+  return moleculeCellList;
+}
+
+const MCCellList &System::rebuiltCellList() const
+{
+  moleculeCellList.invalidate();
+  return cellList();
+}
+
+void System::cellListAtomsMoved(std::span<const Atom> movedAtoms) const
+{
+  if (!moleculeCellList.valid || !moleculeCellList.enabled || movedAtoms.empty()) return;
+  const std::span<const Atom> atoms = spanOfMoleculeAtoms();
+  if (movedAtoms.data() < atoms.data() || movedAtoms.data() + movedAtoms.size() > atoms.data() + atoms.size())
+  {
+    // not a sub-span of the molecule atoms: cannot be applied incrementally
+    moleculeCellList.invalidate();
+    return;
+  }
+  const std::size_t first = static_cast<std::size_t>(movedAtoms.data() - atoms.data());
+  moleculeCellList.updateAtoms(atoms, first, movedAtoms.size());
+}
+
+bool System::verifyCellList() const
+{
+  const MCCellList &list = cellList();
+  return list.verify(spanOfMoleculeAtoms(), simulationBox);
 }
 
 CBMC::GrowContext System::makeIdealGasGrowContext() const

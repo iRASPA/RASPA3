@@ -106,14 +106,18 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
                   {.firstBead = CBMC::FirstBeadScheme::AlreadyPlaced, .beadsAlreadyPlaced = beads_already_placed});
             });
 
-  // Compute the energy difference in the Fourier space due to Ewald summation.
+  // Compute the energy difference in the Fourier space due to Ewald summation. Only the regrown beads
+  // changed position: the beads kept in place contribute identically to the new and the old structure
+  // factor, so the difference is evaluated for the moved beads alone (plus the exclusion corrections of
+  // the moved/kept pairs), instead of for the whole molecule.
+  const std::vector<std::size_t> movedIndices = Interactions::movedAtomIndices(newMolecule, molecule_atoms);
   RunningEnergy energyFourierDifference =
       timed(system, component, move, Move::Timing::Ewald,
             [&]
             {
-              return Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                                system.storedEik, system.trialEik, system.forceField,
-                                                                system.simulationBox, newMolecule, molecule_atoms);
+              return Interactions::energyDifferenceEwaldFourierMovedAtoms(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                  system.forceField, system.simulationBox, newMolecule, molecule_atoms, movedIndices);
             });
 
   std::vector<double3> electricFieldNeighborDelta;
@@ -166,6 +170,7 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     std::copy(newMolecule.begin(), newMolecule.end(), molecule_atoms.begin());
+    system.cellListAtomsMoved(molecule_atoms);
 
     if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
     {

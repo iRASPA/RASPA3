@@ -198,6 +198,7 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     std::copy(newMolecule.begin(), newMolecule.end(), molecule_atoms.begin());
+    system.cellListAtomsMoved(molecule_atoms);
 
     if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
     {

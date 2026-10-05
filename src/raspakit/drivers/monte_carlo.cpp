@@ -540,6 +540,13 @@ void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_
         if (outputToFiles)
         {
           std::ostream stream(streams[system_id].rdbuf());
+          // Consistency guard of the incrementally maintained Monte Carlo cell list (O(N), once per report).
+          if (!system.verifyCellList())
+          {
+            throw std::runtime_error(
+                std::format("Initialization: Monte Carlo cell list inconsistent with the atom positions at cycle {}",
+                            currentCycle));
+          }
           std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
           std::flush(stream);
         }
@@ -655,6 +662,12 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
         if (outputToFiles)
         {
           std::ostream stream(streams[system_id].rdbuf());
+          // Consistency guard of the incrementally maintained Monte Carlo cell list (O(N), once per report).
+          if (!system.verifyCellList())
+          {
+            throw std::runtime_error(std::format(
+                "Equilibration: Monte Carlo cell list inconsistent with the atom positions at cycle {}", currentCycle));
+          }
           std::print(stream, "{}", system.writeEquilibrationStatusReportMC(currentCycle, numberOfEquilibrationCycles));
           std::flush(stream);
         }
@@ -942,6 +955,12 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
         if (outputToFiles)
         {
           std::ostream stream(streams[system_id].rdbuf());
+          // Consistency guard of the incrementally maintained Monte Carlo cell list (O(N), once per report).
+          if (!system.verifyCellList())
+          {
+            throw std::runtime_error(std::format(
+                "Production: Monte Carlo cell list inconsistent with the atom positions at cycle {}", currentCycle));
+          }
           std::string status_line{std::format("Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles)};
           std::print(stream, "{}",
                      system.writeProductionStatusReportMC(status_line,

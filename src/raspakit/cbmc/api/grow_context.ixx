@@ -8,6 +8,7 @@ import framework;
 import simulationbox;
 import interpolation_energy_grid;
 import cross_links;
+export import mc_cell_list;
 
 import std;
 
@@ -157,6 +158,10 @@ struct GrowContext
   const std::optional<Framework> &framework;
   std::span<const Atom> frameworkAtoms;
   std::span<const Atom> moleculeAtoms;
+  /// Cell list built over exactly 'moleculeAtoms' (the system's, see 'System::cellList'), or nullptr for the
+  /// brute-force background loop. Reset by 'withMoleculeAtoms' since the list no longer describes the
+  /// background; set with 'withCellList'.
+  const MCCellList *cellList{nullptr};
   /// Molecule id whose atoms in 'moleculeAtoms' are ignored by every energy evaluation (see the
   /// class comment); std::nullopt skips nothing beyond the same-id rule.
   std::optional<std::size_t> skipBackgroundMolecule{};
@@ -187,6 +192,16 @@ struct GrowContext
   {
     GrowContext copy(*this);
     copy.moleculeAtoms = background;
+    copy.cellList = nullptr;
+    return copy;
+  }
+
+  /// The same environment with the inter-molecular background queried through 'list' (built over this
+  /// context's 'moleculeAtoms'); nullptr restores the brute-force loop.
+  [[nodiscard]] GrowContext withCellList(const MCCellList *list) const
+  {
+    GrowContext copy(*this);
+    copy.cellList = list;
     return copy;
   }
 

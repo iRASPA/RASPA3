@@ -11,6 +11,7 @@ import component;
 import forcefield;
 import simulationbox;
 import interpolation_energy_grid;
+import mc_cell_list;
 import cbmc_grow_context;
 import cbmc_results;
 
@@ -51,6 +52,14 @@ bool insideBlockedPockets(const std::optional<Framework> &framework, const Compo
 [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergy(
     const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
     double cutOffVDW, double cutOffCoulomb, std::span<const Atom> atoms,
+    std::optional<std::size_t> skipBackgroundMolecule = std::nullopt) noexcept;
+
+/// Cell-list variant of 'computeInterMolecularEnergy': the same result (to the summation order) visiting
+/// only the 27-cell neighbourhood of every trial atom. 'cellList' must be built over 'moleculeAtoms'; a
+/// disabled or stale list falls back to the brute-force loop. Both cut-offs must not exceed the list's.
+[[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergy(
+    const ForceField &forceField, const SimulationBox &simulationBox, const MCCellList &cellList,
+    std::span<const Atom> moleculeAtoms, double cutOffVDW, double cutOffCoulomb, std::span<const Atom> atoms,
     std::optional<std::size_t> skipBackgroundMolecule = std::nullopt) noexcept;
 
 // The background a trial set is evaluated against is the context's: its molecule atoms minus those

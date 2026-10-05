@@ -110,7 +110,8 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   else
   {
     interMolecule = Interactions::computeInterMolecularEnergyDifference(
-        system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
+        system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), trialMolecule.second,
+        molecule_atoms);
   }
   time_end = std::chrono::steady_clock::now();
   component.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
@@ -170,6 +171,7 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
 
     // Update the molecule atoms with the trial positions
     std::copy(trialMolecule.second.cbegin(), trialMolecule.second.cend(), molecule_atoms.begin());
+    system.cellListAtomsMoved(molecule_atoms);
     molecule = trialMolecule.first;
 
     // Commit the electric field to the stored (committed) field so that the running polarization energy stays

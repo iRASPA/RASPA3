@@ -160,6 +160,47 @@ void captureTMMCLambdaBin(System& system, std::size_t componentId)
 
 }  // namespace
 
+bool MC_Moves::maintainsCellList(Move::Types moveType)
+{
+  switch (moveType)
+  {
+    // in-place single-molecule moves: they call 'System::cellListAtomsMoved' on acceptance
+    case Move::Types::Translation:
+    case Move::Types::RandomTranslation:
+    case Move::Types::Rotation:
+    case Move::Types::RandomRotation:
+    case Move::Types::TranslationSmartMC:
+    case Move::Types::RotationSmartMC:
+    case Move::Types::TranslationRotationSmartMC:
+    case Move::Types::ReinsertionCBMC:
+    case Move::Types::PartialReinsertionCBMC:
+    case Move::Types::Pivot:
+    case Move::Types::Crankshaft:
+    case Move::Types::Reptation:
+    case Move::Types::ConcertedRotation:
+    case Move::Types::BeadDisplacement:
+    case Move::Types::BeadFlip:
+    // insertions and deletions go through 'System::insertMolecule'/'deleteMolecule', which invalidate
+    case Move::Types::Swap:
+    case Move::Types::SwapCBMC:
+    // test-particle insertions change nothing
+    case Move::Types::Widom:
+      return true;
+    default:
+      return false;
+  }
+}
+
+namespace
+{
+void settleCellLists(Move::Types moveType, System& selectedSystem, System& selectedSecondSystem)
+{
+  if (MC_Moves::maintainsCellList(moveType)) return;
+  selectedSystem.invalidateCellList();
+  selectedSecondSystem.invalidateCellList();
+}
+}  // namespace
+
 MC_Moves::ParticleExchangeResult MC_Moves::performMolecularDynamicsSwap(RandomNumber& random, System& system,
                                                                         std::size_t selectedComponent,
                                                                         std::size_t& exchangedMolecule)
@@ -167,6 +208,9 @@ MC_Moves::ParticleExchangeResult MC_Moves::performMolecularDynamicsSwap(RandomNu
   const Move::Types move = Move::Types::SwapCBMC;
   const std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   ParticleExchangeResult result = ParticleExchangeResult::Rejected;
+
+  // The integrator moved every atom since the previous exchange attempt; the cell list is rebuilt on first use.
+  system.invalidateCellList();
 
   if (random.uniform() < 0.5)
   {
@@ -443,6 +487,7 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
       break;
     }
   }
+  settleCellLists(moveType, selectedSystem, selectedSecondSystem);
   return moveType;
 }
 
@@ -1343,6 +1388,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
     }
   }
   recordOtherwiseMissingNeutralTMMCTrial(moveType, selectedSystem, selectedComponent, oldN);
+  settleCellLists(moveType, selectedSystem, selectedSecondSystem);
   return moveType;
 }
 
@@ -2243,6 +2289,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
     }
   }
   recordOtherwiseMissingNeutralTMMCTrial(moveType, selectedSystem, selectedComponent, oldN);
+  settleCellLists(moveType, selectedSystem, selectedSecondSystem);
   return moveType;
 }
 
@@ -3217,5 +3264,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
       selectedSystem.mc_moves_statistics.addAllCounts(moveType);
     }
   }
+  settleCellLists(moveType, selectedSystem, selectedSecondSystem);
   return moveType;
 }

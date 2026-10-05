@@ -130,6 +130,30 @@ RunningEnergy energyDifferenceEwaldFourier(
     const SimulationBox &simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms,
     double netCharge = 0.0, const std::array<double, maximumNumberOfDUDlambdaGroups> &netChargeDerivativeExternal = {});
 
+/**
+ * \brief The Ewald (or real-space charge method) energy difference of a move that displaces only some atoms
+ * of a molecule: 'newMolecule' and 'oldMolecule' are the complete molecule, 'movedIndices' the atoms whose
+ * positions differ between the two.
+ *
+ * Equivalent to 'energyDifferenceEwaldFourier(.., newMolecule, oldMolecule)' but with a cost proportional
+ * to the number of moved atoms instead of the molecule size: the Fourier, self and net-charge terms are
+ * evaluated for the moved atoms only (the unmoved atoms contribute identically to the new and the old
+ * configuration and cancel exactly), and the intramolecular exclusion correction only for the pairs that
+ * contain a moved atom. Used by the bead displacement, bead flip and crankshaft moves of long chains.
+ */
+RunningEnergy energyDifferenceEwaldFourierMovedAtoms(
+    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
+    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &storedEik,
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &trialEik, const ForceField &forceField,
+    const SimulationBox &simulationBox, std::span<const Atom> newMolecule, std::span<const Atom> oldMolecule,
+    std::span<const std::size_t> movedIndices, double netCharge = 0.0,
+    const std::array<double, maximumNumberOfDUDlambdaGroups> &netChargeDerivativeExternal = {});
+
+/// The indices at which the positions of 'newMolecule' and 'oldMolecule' differ (helper for the partial moves).
+[[nodiscard]] std::vector<std::size_t> movedAtomIndices(std::span<const Atom> newMolecule,
+                                                        std::span<const Atom> oldMolecule);
+
 RunningEnergy energyDifferenceEwaldFourier(
     std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,

@@ -61,6 +61,7 @@ import cbmc;
 import interactions_framework_molecule;
 import interactions_framework_molecule_grid;
 import interactions_intermolecular;
+import mc_cell_list;
 import interactions_pair_kernel;
 import interactions_ewald;
 import interactions_internal;
@@ -759,6 +760,11 @@ RunningEnergy System::computeTotalEnergies() noexcept
   std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
 
+  // The inter-molecular pair sum walks the cell pairs of the Monte Carlo cell list. The list is rebuilt here
+  // (O(N), negligible next to the pair sum) rather than trusted: a full recomputation is also requested after
+  // phases that move atoms without maintaining it (integration, restarts, minimization).
+  const MCCellList& pairCellList = rebuiltCellList();
+
   RunningEnergy runningIntraEnergy{};
   std::size_t index = 0;
   for (std::size_t i = 0; i < components.size(); ++i)
@@ -799,7 +805,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
     if (forceField.omitInterPolarization)
     {
       intermolecularEnergy =
-          Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions);
+          Interactions::computeInterMolecularEnergy(forceField, simulationBox, pairCellList, moleculeAtomPositions);
     }
     else
     {
@@ -830,7 +836,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
     RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeEnergy(
         forceField, simulationBox, interpolationGrids, framework, frameworkAtomPositions, moleculeAtomPositions);
     RunningEnergy intermolecularEnergy =
-        Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions);
+        Interactions::computeInterMolecularEnergy(forceField, simulationBox, pairCellList, moleculeAtomPositions);
 
     RunningEnergy frameworkMoleculeTailEnergy = Interactions::computeFrameworkMoleculeTailEnergy(
         forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
@@ -1051,10 +1057,10 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo.first.rotationalKineticEnergy = runningEnergies.rotationalKineticEnergy;
   pressureInfo.first.noseHooverEnergy = runningEnergies.NoseHooverEnergy;
 
-  pressureInfo = pairSum(pressureInfo,
-                         Interactions::computeInterMolecularEnergyStrainDerivative(
-                             forceField, components, simulationBox, spanOfMoleculeAtoms(), pressureDynamics,
-                             interGather));
+  // cell-pair walk (list rebuilt first, see computeTotalEnergies) instead of the O(N^2) pair loop
+  pressureInfo = pairSum(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
+                                           forceField, components, simulationBox, rebuiltCellList(),
+                                           spanOfMoleculeAtoms(), pressureDynamics, interGather));
 
   pressureInfo = pairSum(pressureInfo,
                          Interactions::computeEwaldFourierEnergyStrainDerivative(
@@ -1127,21 +1133,20 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   // (see RASPA2 CalculateTailCorrection). The overall minus sign and the 1/3 are essential: the van der Waals tail is
   // attractive and must LOWER the pressure. The extra global negation of 'pressureInfo.second' below turns the
   // '-= pressureTailCorrection' into the correct negative diagonal contribution.
+  // The pair sum depends on the atom types only: sum_i sum_j s_i s_j P(t_i, t_j) over all ordered pairs
+  // (self terms once, i != j twice) equals sum_{t,t'} n_t n_t' P(t, t') with the scaling-weighted type counts.
   double preFactor = -2.0 * std::numbers::pi / (3.0 * simulationBox.volume);
-  for (std::vector<Atom>::iterator it1 = atomData.begin(); it1 != atomData.end(); ++it1)
   {
-    std::size_t typeA = static_cast<std::size_t>(it1->type);
-    double scalingVDWA = it1->scalingVDW;
-
-    pressureTailCorrection += scalingVDWA * scalingVDWA * preFactor * forceField(typeA, typeA).tailCorrectionPressure;
-
-    for (std::vector<Atom>::iterator it2 = it1 + 1; it2 != atomData.end(); ++it2)
+    std::vector<double> typeCounts(forceField.numberOfPseudoAtoms, 0.0);
+    for (const Atom& atom : atomData) typeCounts[static_cast<std::size_t>(atom.type)] += atom.scalingVDW;
+    for (std::size_t typeA = 0; typeA < typeCounts.size(); ++typeA)
     {
-      std::size_t typeB = static_cast<std::size_t>(it2->type);
-      double scalingVDWB = it2->scalingVDW;
-
-      pressureTailCorrection +=
-          scalingVDWA * scalingVDWB * 2.0 * preFactor * forceField(typeA, typeB).tailCorrectionPressure;
+      if (typeCounts[typeA] == 0.0) continue;
+      for (std::size_t typeB = 0; typeB < typeCounts.size(); ++typeB)
+      {
+        pressureTailCorrection +=
+            typeCounts[typeA] * typeCounts[typeB] * preFactor * forceField(typeA, typeB).tailCorrectionPressure;
+      }
     }
   }
 

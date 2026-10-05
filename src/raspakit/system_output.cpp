@@ -19,6 +19,7 @@ import property_enthalpy;
 import property_pressure;
 import energy_status;
 import energy_status_inter;
+import mc_cell_list;
 import property_simulationbox;
 import average_energy_type;
 import property_energy;
@@ -134,6 +135,22 @@ std::string System::writePreInitializationStatusReport(std::size_t currentCycle,
   return stream.str();
 }
 
+std::string System::writeCellListStatus() const
+{
+  const MCCellList& list = cellList();
+  if (!list.enabled)
+  {
+    return std::format("MC cell list: disabled (fewer than 4 cells of the {:.2f} A cut-off in every box direction)\n",
+                       cellListCutOff());
+  }
+  const double neighbourhood = list.averageNeighbourhoodSize();
+  const double fraction = list.numberOfAtoms > 0 ? neighbourhood / static_cast<double>(list.numberOfAtoms) : 1.0;
+  return std::format(
+      "MC cell list: {}x{}x{} cells ({:.2f} A cut-off), {} atoms, a query visits {:.0f} atoms ({:.1f}%), {} rebuilds\n",
+      list.numberOfCells.x, list.numberOfCells.y, list.numberOfCells.z, list.cutOff, list.numberOfAtoms, neighbourhood,
+      100.0 * fraction, list.numberOfBuilds);
+}
+
 std::string System::writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfProductionCycles) const
 {
   std::ostringstream stream;
@@ -149,6 +166,7 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
   std::print(stream, "{}\n", simulationBox.printStatus());
   std::print(stream, "Net charge: {:12.8f}\n", netCharge);
   std::print(stream, "{}", forceField.printCutOffAutoStatus());
+  std::print(stream, "{}", writeCellListStatus());
   std::print(stream, "\n");
 
   for (std::size_t componentId{0}; const Component& c : components)
@@ -234,6 +252,7 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
   std::print(stream, "{}\n", simulationBox.printStatus());
   std::print(stream, "Net charge: {:12.8f}\n", netCharge);
   std::print(stream, "{}", forceField.printCutOffAutoStatus());
+  std::print(stream, "{}", writeCellListStatus());
   std::print(stream, "\n");
 
   for (std::size_t componentId = 0; const Component& c : components)
@@ -628,6 +647,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine,
 
   std::print(stream, "Net charge: {:12.8f}\n", netCharge);
   std::print(stream, "{}", forceField.printCutOffAutoStatus());
+  std::print(stream, "{}", writeCellListStatus());
   std::print(stream, "\n");
 
   for (std::size_t componentId{0}; const Component& c : components)

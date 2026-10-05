@@ -157,7 +157,8 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMove(RandomNumber &random,
   else
   {
     interMolecule = Interactions::computeInterMolecularEnergyDifference(
-        system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
+        system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), trialMolecule.second,
+        molecule_atoms);
   }
   time_end = std::chrono::steady_clock::now();
   component.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
@@ -221,6 +222,7 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMove(RandomNumber &random,
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     std::copy(trialMolecule.second.cbegin(), trialMolecule.second.cend(), molecule_atoms.begin());
+    system.cellListAtomsMoved(molecule_atoms);
     molecule = trialMolecule.first;
 
     if (system.forceField.computePolarization)

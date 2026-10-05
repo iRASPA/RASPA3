@@ -1328,6 +1328,137 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
   return energy;
 }
 
+std::vector<std::size_t> Interactions::movedAtomIndices(std::span<const Atom> newMolecule,
+                                                        std::span<const Atom> oldMolecule)
+{
+  std::vector<std::size_t> moved;
+  const std::size_t common = std::min(newMolecule.size(), oldMolecule.size());
+  for (std::size_t i = 0; i != common; ++i)
+  {
+    const double3& a = newMolecule[i].position;
+    const double3& b = oldMolecule[i].position;
+    if (a.x != b.x || a.y != b.y || a.z != b.z) moved.push_back(i);
+  }
+  for (std::size_t i = common; i != std::max(newMolecule.size(), oldMolecule.size()); ++i) moved.push_back(i);
+  return moved;
+}
+
+RunningEnergy Interactions::energyDifferenceEwaldFourierMovedAtoms(
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& storedEik,
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& trialEik,
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> newMolecule,
+    std::span<const Atom> oldMolecule, std::span<const std::size_t> movedIndices, double netCharge,
+    const std::array<double, maximumNumberOfDUDlambdaGroups>& netChargeDerivativeExternal)
+{
+  RunningEnergy energy;
+  if (!forceField.useCharge) return energy;
+
+  // Nothing moved: no change (the structure factor stays as stored). The caller's 'acceptEwaldMove' copies
+  // 'trialEik' into 'storedEik', so keep the two consistent.
+  if (movedIndices.empty())
+  {
+    trialEik = storedEik;
+    return energy;
+  }
+
+  // Everything moved, or no common indexing between the two spans: the general routine.
+  if (newMolecule.size() != oldMolecule.size() || movedIndices.size() >= newMolecule.size())
+  {
+    return energyDifferenceEwaldFourier(eik_x, eik_y, eik_z, eik_xy, storedEik, trialEik, forceField, simulationBox,
+                                        newMolecule, oldMolecule, netCharge, netChargeDerivativeExternal);
+  }
+
+  std::vector<Atom> movedNew;
+  std::vector<Atom> movedOld;
+  movedNew.reserve(movedIndices.size());
+  movedOld.reserve(movedIndices.size());
+  for (std::size_t index : movedIndices)
+  {
+    movedNew.push_back(newMolecule[index]);
+    movedOld.push_back(oldMolecule[index]);
+  }
+
+  // Fourier sum (and the structure-factor update into 'trialEik'), self energy, net-charge correction, and the
+  // intramolecular exclusion among the moved atoms themselves: all of these only involve the moved atoms,
+  // because an unmoved atom contributes identically to the new and the old configuration.
+  energy = energyDifferenceEwaldFourier(eik_x, eik_y, eik_z, eik_xy, storedEik, trialEik, forceField, simulationBox,
+                                        movedNew, movedOld, netCharge, netChargeDerivativeExternal);
+
+  // The intramolecular exclusion pairs with exactly one moved atom, with the per-pair formulas of the general
+  // routine for each charge method.
+  const bool fourier = forceField.usesEwaldFourier();
+  if (!fourier && (!forceField.usesRealSpaceChargeCorrections() || forceField.omitInterInteractions)) return energy;
+
+  std::vector<bool> isMoved(newMolecule.size(), false);
+  for (std::size_t index : movedIndices) isMoved[index] = true;
+
+  const double alpha = forceField.EwaldAlpha;
+  const double cutOffSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+
+  for (std::size_t i : movedIndices)
+  {
+    for (std::size_t j = 0; j != newMolecule.size(); ++j)
+    {
+      if (isMoved[j]) continue;
+      if (newMolecule[i].moleculeId != newMolecule[j].moleculeId) continue;
+
+      // the unmoved partner is the same atom in both configurations
+      const Atom& partner = newMolecule[j];
+      const double chargeA = newMolecule[i].charge;
+      const double chargeB = partner.charge;
+      if (chargeA * chargeB == 0.0) continue;
+      const double scalingA = newMolecule[i].scalingCoulomb;
+      const double scalingB = partner.scalingCoulomb;
+      const std::uint8_t groupIdA = newMolecule[i].groupId;
+      const std::uint8_t groupIdB = partner.groupId;
+      const double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+
+      const double3 drNew = simulationBox.applyPeriodicBoundaryConditions(newMolecule[i].position - partner.position);
+      const double3 drOld = simulationBox.applyPeriodicBoundaryConditions(oldMolecule[i].position - partner.position);
+      const double rrNew = double3::dot(drNew, drNew);
+      const double rrOld = double3::dot(drOld, drOld);
+
+      if (fourier)
+      {
+        // general routine: old pairs add, new pairs subtract
+        const Potentials::EwaldExclusionFactors exclusionOld =
+            Potentials::ewaldExclusionFactors(alpha, scalingA * scalingB, std::sqrt(rrOld));
+        energy.ewald_exclusion += scalingA * scalingB * prefactor * exclusionOld.potential;
+        energy.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, prefactor * exclusionOld.dUdlambda);
+
+        const Potentials::EwaldExclusionFactors exclusionNew =
+            Potentials::ewaldExclusionFactors(alpha, scalingA * scalingB, std::sqrt(rrNew));
+        energy.ewald_exclusion -= scalingA * scalingB * prefactor * exclusionNew.potential;
+        energy.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, -prefactor * exclusionNew.dUdlambda);
+      }
+      else
+      {
+        // 'addRealSpaceExclusionEnergy': new configuration with sign +1, old configuration with sign -1
+        if (rrNew < cutOffSquared)
+        {
+          const double r = std::sqrt(rrNew);
+          const Potentials::CoulombRealSpaceFactors factors = Potentials::coulombRealSpaceFactors(forceField, r);
+          const double temp = prefactor * (factors.potential - 1.0 / r);
+          energy.ewald_exclusion += scalingA * scalingB * temp;
+          energy.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, temp);
+        }
+        if (rrOld < cutOffSquared)
+        {
+          const double r = std::sqrt(rrOld);
+          const Potentials::CoulombRealSpaceFactors factors = Potentials::coulombRealSpaceFactors(forceField, r);
+          const double temp = -prefactor * (factors.potential - 1.0 / r);
+          energy.ewald_exclusion += scalingA * scalingB * temp;
+          energy.addDudlambdaEwald(groupIdA, groupIdB, scalingA, scalingB, temp);
+        }
+      }
+    }
+  }
+
+  return energy;
+}
+
 RunningEnergy Interactions::energyDifferenceEwaldFourier(
     std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,

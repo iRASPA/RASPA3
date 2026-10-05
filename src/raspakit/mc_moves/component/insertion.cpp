@@ -106,7 +106,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   else
   {
     interMolecule = Interactions::computeInterMolecularEnergyDifference(
-        system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, {});
+        system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), trialMolecule.second,
+        {});
   }
   if (!interMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 

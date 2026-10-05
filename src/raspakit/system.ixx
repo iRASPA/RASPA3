@@ -60,6 +60,7 @@ import thermostat;
 import thermobarostat;
 import json;
 import interpolation_energy_grid;
+import mc_cell_list;
 import cbmc_grow_context;
 import write_lammps_data;
 import minimization_cell_layout;
@@ -452,6 +453,28 @@ export struct System
   CBMC::GrowContext makeGrowContext(CBMC::CutOffMode mode = CBMC::CutOffMode::Growth) const;
 
   /**
+   * \brief Persistent cell list over 'spanOfMoleculeAtoms()' for the Monte Carlo energy differences.
+   *
+   * A cache, hence mutable and not archived: 'cellList()' returns it current (rebuilt when the atom
+   * array, box or cut-off changed, or after 'invalidateCellList'). Accepted single-molecule moves apply
+   * their new positions with 'cellListAtomsMoved'; moves that change positions in any other way are
+   * followed by 'invalidateCellList' (see 'MC_Moves::maintainsCellList'), as are molecule insertions
+   * and deletions ('updateMoleculeAtomInformation'). The list is disabled (and the queries use their
+   * brute-force loops) when the box holds fewer than four cells of the cut-off in every direction.
+   */
+  mutable MCCellList moleculeCellList;
+  [[nodiscard]] const MCCellList &cellList() const;
+  /// The cell list rebuilt from the current positions (for full recomputations that must not trust the
+  /// incremental maintenance); O(N).
+  [[nodiscard]] const MCCellList &rebuiltCellList() const;
+  [[nodiscard]] double cellListCutOff() const;
+  void invalidateCellList() const { moleculeCellList.invalidate(); }
+  /// 'movedAtoms' must be a sub-span of 'spanOfMoleculeAtoms()' whose positions were just updated.
+  void cellListAtomsMoved(std::span<const Atom> movedAtoms) const;
+  /// Rebuilds a reference list and compares it with the maintained one (consistency check).
+  [[nodiscard]] bool verifyCellList() const;
+
+  /**
    * \brief The growth context of an isolated molecule: no framework, no interpolation grids, no
    * external field, and no background molecules, evaluated at the full cut-offs and always grown with
    * configurational bias.
@@ -609,6 +632,8 @@ export struct System
   std::string writePreInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
   std::string writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
   std::string writeEquilibrationStatusReportMC(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
+  /// One line describing the Monte Carlo cell list (grid, neighbourhood size, rebuild count), or that it is disabled.
+  std::string writeCellListStatus() const;
   std::string writeEquilibrationStatusReportMD(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
   /// Production status report; 'progress' = (current cycle, number of cycles) enables the rate/ETA line.
   std::string writeProductionStatusReportMC(

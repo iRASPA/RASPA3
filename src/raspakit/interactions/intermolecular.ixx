@@ -14,6 +14,7 @@ import simulationbox;
 import forcefield;
 import component;
 import interactions_pair_kernel;
+export import mc_cell_list;
 
 export namespace Interactions
 {
@@ -30,6 +31,15 @@ export namespace Interactions
  */
 RunningEnergy computeInterMolecularEnergy(const ForceField& forceField, const SimulationBox& simulationBox,
                                           std::span<const Atom> moleculeAtoms) noexcept;
+
+/**
+ * \brief Cell-list variant of 'computeInterMolecularEnergy' (same result to the summation order).
+ *
+ * Each pair is visited once through the cell pairs of \p cellList, which must have been built over exactly
+ * \p moleculeAtoms (a disabled or stale list falls back to the brute-force loop).
+ */
+RunningEnergy computeInterMolecularEnergy(const ForceField& forceField, const SimulationBox& simulationBox,
+                                          const MCCellList& cellList, std::span<const Atom> moleculeAtoms) noexcept;
 
 /**
  * \brief Computes the tail correction for inter-molecular van der Waals energy.
@@ -108,6 +118,17 @@ void updateEffectiveTypeCounts(std::vector<double>& effectiveTypeCounts,
 [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyDifference(
     const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> moleculeAtoms,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
+
+/**
+ * \brief Cell-list variant of 'computeInterMolecularEnergyDifference'.
+ *
+ * Same result (to the summation order), but each trial atom only visits the atoms in the 27-cell
+ * neighbourhood of its position. \p cellList must have been built over exactly \p moleculeAtoms in
+ * \p simulationBox (see 'System::cellList'); a disabled or stale list falls back to the brute-force loop.
+ */
+[[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyDifference(
+    const ForceField& forceField, const SimulationBox& simulationBox, const MCCellList& cellList,
+    std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
 
 /**
  * \brief Computes the difference in inter-molecular tail energy due to atom changes.
@@ -209,6 +230,19 @@ void computeInterMolecularGradientMolecule(const ForceField& forceField, const S
 std::pair<EnergyStatus, double3x3> computeInterMolecularEnergyStrainDerivative(
     const ForceField& forceField, const std::vector<Component>& components, const SimulationBox& simulationBox,
     std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
+    const PolarizationFieldStrain* polarizationGather = nullptr) noexcept;
+
+/**
+ * \brief Cell-list variant of 'computeInterMolecularEnergyStrainDerivative' (same result to the summation order).
+ *
+ * The pair terms are visited once per pair through the cell pairs of \p cellList (built over exactly
+ * \p moleculeAtoms; a disabled or stale list falls back to the brute-force pair loop). The tail correction,
+ * which depends on the atom types only, is aggregated from per-component type counts instead of the O(N^2)
+ * pair loop of the brute-force routine.
+ */
+std::pair<EnergyStatus, double3x3> computeInterMolecularEnergyStrainDerivative(
+    const ForceField& forceField, const std::vector<Component>& components, const SimulationBox& simulationBox,
+    const MCCellList& cellList, std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
     const PolarizationFieldStrain* polarizationGather = nullptr) noexcept;
 
 /**

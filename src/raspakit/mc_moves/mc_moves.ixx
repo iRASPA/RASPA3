@@ -65,6 +65,17 @@ Move::Types performRandomMovePreInitialization(RandomNumber& random, System& sel
                                                System& selectedSecondSystem, std::size_t selectedComponent,
                                                std::size_t& fractionalMoleculeSystem);
 
+/**
+ * \brief Whether a move type keeps the system's Monte Carlo cell list ('System::cellList') up to date itself.
+ *
+ * The single-molecule moves (translation, rotation, reinsertion, the chain moves, ...) apply their accepted
+ * positions with 'System::cellListAtomsMoved', and insertions/deletions invalidate the list through
+ * 'System::updateMoleculeAtomInformation'. After any other move type the dispatcher invalidates the lists
+ * of both systems, so a move that changes positions in some other way (volume, Gibbs, CFCMC fractional
+ * molecule relocation, hybrid MC, ...) can never leave a stale list behind.
+ */
+[[nodiscard]] bool maintainsCellList(Move::Types moveType);
+
 Move::Types performRandomMoveInitialization(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
                                             std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
 

@@ -370,6 +370,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
     std::swap(systemA.moleculeData, systemB.moleculeData);
     // rigid-body state of semi-flexible molecules: derived from the positions, so it moves with them
     std::swap(systemA.groupData, systemB.groupData);
+    // the Monte Carlo cell lists describe the previous configurations; rebuilt lazily on first use
+    systemA.invalidateCellList();
+    systemB.invalidateCellList();
     if (!systemA.framework.has_value())
     {
       std::swap(systemA.simulationBox, systemB.simulationBox);

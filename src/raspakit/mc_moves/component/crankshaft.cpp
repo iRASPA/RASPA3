@@ -78,6 +78,21 @@ std::optional<RunningEnergy> MC_Moves::crankshaftMove(RandomNumber &random, Syst
     return std::nullopt;
   }
 
+  // Only the rotated segment interacts differently with its surroundings: the external-field, framework,
+  // inter-molecular and Ewald differences are evaluated for those atoms alone (every other atom contributes
+  // identically to the new and the old configuration, so its terms cancel exactly). The cost of the move
+  // then scales with the segment, not with the chain length. The intramolecular terms below still use the
+  // whole molecule.
+  std::vector<Atom> movedNew;
+  std::vector<Atom> movedOld;
+  movedNew.reserve(rotatedAtoms.size());
+  movedOld.reserve(rotatedAtoms.size());
+  for (std::size_t index : rotatedAtoms)
+  {
+    movedNew.push_back(trialAtoms[index]);
+    movedOld.push_back(molecule_atoms[index]);
+  }
+
   // Compute external field energy contribution
   std::optional<RunningEnergy> externalFieldMolecule =
       timed(system, component, move, Move::Timing::ExternalFieldMolecule,
@@ -85,7 +100,7 @@ std::optional<RunningEnergy> MC_Moves::crankshaftMove(RandomNumber &random, Syst
             {
               return Interactions::computeExternalFieldEnergyDifference(
                   system.hasExternalField, system.forceField, system.simulationBox,
-                  system.externalFieldInterpolationGrid, trialAtoms, molecule_atoms);
+                  system.externalFieldInterpolationGrid, movedNew, movedOld);
             });
   if (!externalFieldMolecule.has_value()) return std::nullopt;
 
@@ -96,7 +111,7 @@ std::optional<RunningEnergy> MC_Moves::crankshaftMove(RandomNumber &random, Syst
             {
               return Interactions::computeFrameworkMoleculeEnergyDifference(
                   system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-                  system.spanOfFrameworkAtoms(), trialAtoms, molecule_atoms);
+                  system.spanOfFrameworkAtoms(), movedNew, movedOld);
             });
   if (!frameworkMolecule.has_value()) return std::nullopt;
 
@@ -106,7 +121,8 @@ std::optional<RunningEnergy> MC_Moves::crankshaftMove(RandomNumber &random, Syst
             [&]
             {
               return Interactions::computeInterMolecularEnergyDifference(
-                  system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialAtoms, molecule_atoms);
+                  system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), movedNew,
+                  movedOld);
             });
   if (!interMolecule.has_value()) return std::nullopt;
 
@@ -115,9 +131,9 @@ std::optional<RunningEnergy> MC_Moves::crankshaftMove(RandomNumber &random, Syst
       timed(system, component, move, Move::Timing::Ewald,
             [&]
             {
-              return Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                                system.storedEik, system.trialEik, system.forceField,
-                                                                system.simulationBox, trialAtoms, molecule_atoms);
+              return Interactions::energyDifferenceEwaldFourierMovedAtoms(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                  system.forceField, system.simulationBox, trialAtoms, molecule_atoms, rotatedAtoms);
             });
 
   // Intramolecular energy contribution: bond lengths are invariant under the crankshaft rotation,
@@ -141,6 +157,7 @@ std::optional<RunningEnergy> MC_Moves::crankshaftMove(RandomNumber &random, Syst
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     std::copy(trialAtoms.cbegin(), trialAtoms.cend(), molecule_atoms.begin());
+    system.cellListAtomsMoved(molecule_atoms);
     molecule.centerOfMassPosition = component.computeCenterOfMass(molecule_atoms);
 
     return energyDifference;

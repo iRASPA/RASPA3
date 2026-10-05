@@ -291,6 +291,9 @@ void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedM
 
 void System::updateMoleculeAtomInformation()
 {
+  // The atom array changed size or order: the cell list indices and molecule ids are stale.
+  moleculeCellList.invalidate();
+
   std::size_t atom_index = numberOfFrameworkAtoms;
   std::size_t molecule_index{};
 

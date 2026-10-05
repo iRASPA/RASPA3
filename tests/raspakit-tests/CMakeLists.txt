@@ -6,6 +6,7 @@ add_executable(unit_tests_raspakit
   energy_decomposition.cpp
   gradients.cpp
   spatial_decomposition.cpp
+  mc_cell_list.cpp
   end_to_end_acf.cpp
   translation_smart_mc.cpp
   translation_rotation_smart_mc.cpp

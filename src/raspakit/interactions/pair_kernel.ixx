@@ -9,6 +9,7 @@ import double3x3;
 import atom;
 import simulationbox;
 import forcefield;
+import mc_cell_list;
 export import potential_pair_derivatives;
 import potential_pair_vdw;
 import potential_pair_coulomb;
@@ -28,15 +29,12 @@ export namespace Interactions
  * after periodic boundary conditions; the Cartesian force on atom A is firstDerivativeFactor * dr.
  */
 template <std::size_t Order, typename VDWSink, typename CoulombSink>
-[[clang::always_inline]] inline void evaluatePair(const ForceField& forceField, const SimulationBox& simulationBox,
-                                                  const Atom& atomA, const Atom& atomB, double cutOffVDWSquared,
-                                                  double cutOffChargeSquared, bool useCharge, VDWSink&& vdwSink,
-                                                  CoulombSink&& coulombSink)
+[[clang::always_inline]] inline void evaluatePairAtSeparation(const ForceField& forceField, const Atom& atomA,
+                                                              const Atom& atomB, const double3& dr, double rr,
+                                                              double cutOffVDWSquared, double cutOffChargeSquared,
+                                                              bool useCharge, VDWSink&& vdwSink,
+                                                              CoulombSink&& coulombSink)
 {
-  double3 dr = atomA.position - atomB.position;
-  dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-  const double rr = double3::dot(dr, dr);
-
   if (rr < cutOffVDWSquared)
   {
     const Potentials::PairDerivatives<Order> factors =
@@ -57,6 +55,20 @@ template <std::size_t Order, typename VDWSink, typename CoulombSink>
         forceField, atomA.scalingCoulomb, atomB.scalingCoulomb, r, atomA.charge, atomB.charge);
     coulombSink(factors, dr);
   }
+}
+
+/// 'evaluatePairAtSeparation' with the minimum-image separation computed from the atom positions.
+template <std::size_t Order, typename VDWSink, typename CoulombSink>
+[[clang::always_inline]] inline void evaluatePair(const ForceField& forceField, const SimulationBox& simulationBox,
+                                                  const Atom& atomA, const Atom& atomB, double cutOffVDWSquared,
+                                                  double cutOffChargeSquared, bool useCharge, VDWSink&& vdwSink,
+                                                  CoulombSink&& coulombSink)
+{
+  double3 dr = atomA.position - atomB.position;
+  dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+  const double rr = double3::dot(dr, dr);
+  evaluatePairAtSeparation<Order>(forceField, atomA, atomB, dr, rr, cutOffVDWSquared, cutOffChargeSquared, useCharge,
+                                  std::forward<VDWSink>(vdwSink), std::forward<CoulombSink>(coulombSink));
 }
 
 /**
@@ -96,6 +108,56 @@ inline void forEachMoleculeMoleculePair(const ForceField& forceField, const Simu
           { coulombSink(indexA, indexB, atomA, atomB, factors, dr); });
     }
   }
+}
+
+/**
+ * \brief Cell-list variant of 'forEachMoleculeMoleculePair': same pairs, same sink signature, each pair once.
+ *
+ * Walks the cell pairs of \p cellList ('MCCellList::forEachPairOnce'), does the distance test on the compact
+ * records and only gathers the two 'Atom's of a pair inside the largest cut-off. \p cellList must be built
+ * over exactly \p moleculeAtoms; a disabled or stale list falls back to the brute-force loop. The order in
+ * which a pair's two atoms are handed to the sinks (indexA, indexB) is arbitrary, 'dr = posA - posB' is
+ * consistent with it.
+ */
+template <std::size_t Order, typename VDWSink, typename CoulombSink>
+inline void forEachMoleculeMoleculePair(const ForceField& forceField, const SimulationBox& simulationBox,
+                                        const MCCellList& cellList, std::span<const Atom> moleculeAtoms,
+                                        VDWSink&& vdwSink, CoulombSink&& coulombSink)
+{
+  if (!cellList.enabled || !cellList.valid || cellList.numberOfAtoms != moleculeAtoms.size())
+  {
+    forEachMoleculeMoleculePair<Order>(forceField, simulationBox, moleculeAtoms, std::forward<VDWSink>(vdwSink),
+                                       std::forward<CoulombSink>(coulombSink));
+    return;
+  }
+
+  const bool useCharge = forceField.useCharge;
+  const double cutOffVDWSquared = forceField.cutOffMoleculeVDW * forceField.cutOffMoleculeVDW;
+  const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+  const double cutOffSquared = std::max(cutOffVDWSquared, useCharge ? cutOffChargeSquared : 0.0);
+
+  cellList.forEachPairOnce(
+      [&](const MCCellList::Record& recordA, const MCCellList::Record& recordB)
+      {
+        // skip interactions within the same molecule
+        if (recordA.moleculeId == recordB.moleculeId) return;
+
+        double3 dr = recordA.position() - recordB.position();
+        dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+        const double rr = double3::dot(dr, dr);
+        if (rr >= cutOffSquared) return;
+
+        const std::size_t indexA = recordA.atomIndex;
+        const std::size_t indexB = recordB.atomIndex;
+        const Atom& atomA = moleculeAtoms[indexA];
+        const Atom& atomB = moleculeAtoms[indexB];
+        evaluatePairAtSeparation<Order>(
+            forceField, atomA, atomB, dr, rr, cutOffVDWSquared, cutOffChargeSquared, useCharge,
+            [&](const Potentials::PairDerivatives<Order>& factors, const double3& separation)
+            { vdwSink(indexA, indexB, atomA, atomB, factors, separation); },
+            [&](const Potentials::PairDerivatives<Order>& factors, const double3& separation)
+            { coulombSink(indexA, indexB, atomA, atomB, factors, separation); });
+      });
 }
 
 /**
