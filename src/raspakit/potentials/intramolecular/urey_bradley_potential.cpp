@@ -64,6 +64,37 @@ UreyBradleyPotential::UreyBradleyPotential(std::array<std::size_t, 2> identifier
   }
 }
 
+void UreyBradleyPotential::scaleEnergy(double factor)
+{
+  switch (type)
+  {
+    case UreyBradleyType::Fixed:
+      break;
+    case UreyBradleyType::Harmonic:
+    case UreyBradleyType::CoreShellSpring:
+    case UreyBradleyType::Morse:
+    case UreyBradleyType::LennardJones:
+    case UreyBradleyType::RestrainedHarmonic:
+    case UreyBradleyType::MM3:
+      parameters[0] *= factor;
+      break;
+    case UreyBradleyType::LJ_12_6:
+      parameters[0] *= factor;
+      parameters[1] *= factor;
+      break;
+    case UreyBradleyType::Buckingham:
+      parameters[0] *= factor;
+      parameters[2] *= factor;
+      break;
+    case UreyBradleyType::Quartic:
+    case UreyBradleyType::CFF_Quartic:
+      parameters[0] *= factor;
+      parameters[2] *= factor;
+      parameters[3] *= factor;
+      break;
+  }
+}
+
 std::string UreyBradleyPotential::print() const
 {
   switch (type)

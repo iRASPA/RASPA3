@@ -109,6 +109,15 @@ export struct BondPotential
   double generateBondLength(RandomNumber &random, double beta) const;
 
   /**
+   * \brief Multiplies every parameter with units of energy by 'factor'.
+   *
+   * The potential energy is homogeneous of degree one in these parameters, so the energy, its
+   * derivatives and the CBMC sampling of the term are all scaled by the same factor (used by
+   * solute tempering, which scales the intramolecular Hamiltonian of one component).
+   */
+  void scaleEnergy(double factor);
+
+  /**
    * \brief The log of the normalization of the bond-length density sampled by generateBondLength.
    *
    * Returns log Int r^2 exp(-beta u(r)) dr over the support of the sampled density;

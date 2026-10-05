@@ -69,6 +69,16 @@ struct IntraMolecularPotentials
    */
   RunningEnergy computeInternalEnergiesNotSampledDuringGrowth(const std::span<const Atom> atoms) const;
 
+  /**
+   * \brief Scales the complete intramolecular Hamiltonian by 'lambda' (solute tempering).
+   *
+   * The bonded terms (bond, bend, torsion, ... and the cross terms) have their energy parameters
+   * multiplied by lambda, the intramolecular van der Waals pairs their scaling factor, and the
+   * intramolecular Coulomb pairs their two charges by sqrt(lambda), consistent with the scaled
+   * partial charges of the atoms.
+   */
+  void scaleEnergy(double lambda);
+
   RunningEnergy computeInternalBondEnergies(const std::span<const Atom> atoms) const;
   RunningEnergy computeInternalUreyBradleyEnergies(const std::span<const Atom> atoms) const;
   RunningEnergy computeInternalBendEnergies(const std::span<const Atom> atoms) const;

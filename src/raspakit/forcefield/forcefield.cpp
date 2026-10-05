@@ -1216,6 +1216,37 @@ void ForceField::preComputeTailCorrection()
   }
 }
 
+void ForceField::scaleSoluteInteractions(const std::vector<bool> &soluteType, double lambda)
+{
+  if (soluteType.size() != numberOfPseudoAtoms)
+  {
+    throw std::runtime_error("[ForceField]: scaleSoluteInteractions: the solute mask must have one entry per pseudo-atom\n");
+  }
+  if (!(lambda > 0.0))
+  {
+    throw std::runtime_error("[ForceField]: scaleSoluteInteractions: lambda must be positive\n");
+  }
+
+  const double sqrtLambda = std::sqrt(lambda);
+  for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  {
+    for (std::size_t j = 0; j < numberOfPseudoAtoms; ++j)
+    {
+      const std::size_t soluteCount = (soluteType[i] ? 1uz : 0uz) + (soluteType[j] ? 1uz : 0uz);
+      if (soluteCount == 0uz) continue;
+      data[i * numberOfPseudoAtoms + j].scaleEnergy(soluteCount == 2uz ? lambda : sqrtLambda);
+    }
+    if (soluteType[i])
+    {
+      pseudoAtoms[i].charge *= sqrtLambda;
+    }
+  }
+
+  preComputeDerivedParameters();
+  preComputePotentialShift();
+  preComputeTailCorrection();
+}
+
 std::optional<ForceField> ForceField::readForceField(std::optional<std::string> directoryName,
                                                      std::string forceFieldFileName) noexcept(false)
 {

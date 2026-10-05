@@ -36,6 +36,18 @@ BondTorsionPotential::BondTorsionPotential(std::array<std::size_t, 4> identifier
   }
 }
 
+void BondTorsionPotential::scaleEnergy(double factor)
+{
+  switch (type)
+  {
+    case BondTorsionType::MM3:
+      parameters[0] *= factor;
+      parameters[1] *= factor;
+      parameters[2] *= factor;
+      break;
+  }
+}
+
 std::string BondTorsionPotential::print() const
 {
   switch (type)

@@ -93,6 +93,15 @@ export struct UreyBradleyPotential
   static inline std::array<std::size_t, 11> numberOfUreyBradleyParameters{1, 2, 1, 3, 2, 2, 3, 3, 4, 4, 2};
 
   /**
+   * \brief Multiplies every parameter with units of energy by 'factor'.
+   *
+   * The potential energy is homogeneous of degree one in these parameters, so the energy, its
+   * derivatives and the CBMC sampling of the term are all scaled by the same factor (used by
+   * solute tempering, which scales the intramolecular Hamiltonian of one component).
+   */
+  void scaleEnergy(double factor);
+
+  /**
    * \brief Mapping of ureyBradley type strings to UreyBradleyType enums.
    *
    * A static map that associates ureyBradley type names with their corresponding UreyBradleyType enumeration values.

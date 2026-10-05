@@ -123,6 +123,29 @@ double Potentials::IntraMolecularPotentials::calculateVanDerWaalsEnergies(const 
   return energy;
 }
 
+void Potentials::IntraMolecularPotentials::scaleEnergy(double lambda)
+{
+  const double sqrtLambda = std::sqrt(lambda);
+  for (BondPotential &potential : bonds) potential.scaleEnergy(lambda);
+  for (UreyBradleyPotential &potential : ureyBradleys) potential.scaleEnergy(lambda);
+  for (BendPotential &potential : bends) potential.scaleEnergy(lambda);
+  for (InversionBendPotential &potential : inversionBends) potential.scaleEnergy(lambda);
+  for (OutOfPlaneBendPotential &potential : outOfPlaneBends) potential.scaleEnergy(lambda);
+  for (TorsionPotential &potential : torsions) potential.scaleEnergy(lambda);
+  for (TorsionPotential &potential : improperTorsions) potential.scaleEnergy(lambda);
+  for (BondBondPotential &potential : bondBonds) potential.scaleEnergy(lambda);
+  for (BondBendPotential &potential : bondBends) potential.scaleEnergy(lambda);
+  for (BondTorsionPotential &potential : bondTorsions) potential.scaleEnergy(lambda);
+  for (BendBendPotential &potential : bendBends) potential.scaleEnergy(lambda);
+  for (BendTorsionPotential &potential : bendTorsions) potential.scaleEnergy(lambda);
+  for (VanDerWaalsPotential &potential : vanDerWaals) potential.scaling *= lambda;
+  for (CoulombPotential &potential : coulombs)
+  {
+    potential.chargeA *= sqrtLambda;
+    potential.chargeB *= sqrtLambda;
+  }
+}
+
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalEnergies(const std::span<const Atom> atoms) const
 {
   RunningEnergy energies{};

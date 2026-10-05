@@ -37,6 +37,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> ParallelTemperingSwap(Ran
 /// (no RNG should be consumed). Exposed so tests can check the ratio.
 std::optional<double> ParallelTemperingLogAcceptance(const System &systemA, const System &systemB);
 
+/// Solute tempering: E_target(X) - E_holder(X) for the configuration X held by 'holder' (the energy change
+/// of switching the solute Hamiltonian at fixed positions). Zero when the replicas share the same solute
+/// scaling; empty when an energy routine reports an overlap. Exposed so tests can check it.
+std::optional<double> ParallelTemperingSoluteHamiltonianChange(const System &holder, const System &target);
+
 /**
  * \brief Replica-exchange swap between two molecular-dynamics replicas.
  *

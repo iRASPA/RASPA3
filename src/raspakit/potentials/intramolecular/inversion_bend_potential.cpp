@@ -58,6 +58,22 @@ InversionBendPotential::InversionBendPotential(std::array<std::size_t, 4> identi
   }
 }
 
+void InversionBendPotential::scaleEnergy(double factor)
+{
+  switch (type)
+  {
+    case InversionBendType::Harmonic:
+    case InversionBendType::Harmonic2:
+    case InversionBendType::HarmonicCosine:
+    case InversionBendType::HarmonicCosine2:
+    case InversionBendType::Planar:
+    case InversionBendType::Planar2:
+    case InversionBendType::MM3:
+      parameters[0] *= factor;
+      break;
+  }
+}
+
 std::string InversionBendPotential::print() const
 {
   switch (type)

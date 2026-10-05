@@ -533,6 +533,15 @@ export struct Component
    */
   std::string printStatus(std::size_t componentId, const ForceField &forceField, double inputPressure) const;
 
+  /**
+   * \brief Scales the component's own Hamiltonian by 'lambda' (solute tempering, REST2).
+   *
+   * The partial charges of the atom definitions are scaled by sqrt(lambda) and the complete
+   * intramolecular potential (bonded terms, intramolecular van der Waals and Coulomb) by lambda.
+   * The scaling of the inter-molecular pair parameters of the component's pseudo-atom types is
+   * the force field's task (ForceField::scaleSoluteInteractions).
+   */
+  void scaleSoluteHamiltonian(double lambda);
 
   /**
    * \brief Serializes the component's status to JSON.

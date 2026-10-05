@@ -280,6 +280,16 @@ export struct ForceField
   void preComputeTailCorrection();
 
   /**
+   * \brief Scales the interactions of a set of pseudo-atom types (solute tempering, REST2).
+   *
+   * Pair interactions between two solute types are scaled by lambda, between a solute type and
+   * any other type by sqrt(lambda); the partial charges of the solute types by sqrt(lambda), so
+   * that the Coulomb interactions follow the same pattern. The derived constants, potential
+   * shifts and tail corrections are recomputed. 'soluteType' has one entry per pseudo-atom.
+   */
+  void scaleSoluteInteractions(const std::vector<bool> &soluteType, double lambda);
+
+  /**
    * \brief Reads a ForceField from a file.
    *
    * Attempts to read the force field parameters from the specified file.

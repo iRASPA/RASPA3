@@ -520,6 +520,21 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
   }
 }
 
+void Component::scaleSoluteHamiltonian(double lambda)
+{
+  const double sqrtLambda = std::sqrt(lambda);
+  for (Atom &atom : atoms)
+  {
+    atom.charge *= sqrtLambda;
+  }
+  for (auto &[atom, mass] : definedAtoms)
+  {
+    atom.charge *= sqrtLambda;
+  }
+  netCharge *= sqrtLambda;
+  intraMolecularPotentials.scaleEnergy(lambda);
+}
+
 std::vector<std::vector<std::size_t>> Component::readRigidBodies(
     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {

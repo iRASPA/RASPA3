@@ -101,6 +101,31 @@ BendPotential::BendPotential(std::array<std::size_t, 3> identifiers, BendType ty
   }
 }
 
+void BendPotential::scaleEnergy(double factor)
+{
+  switch (type)
+  {
+    case BendType::Fixed:
+    case BendType::Rigid:
+      break;
+    case BendType::Harmonic:
+    case BendType::CoreShell:
+    case BendType::HarmonicCosine:
+    case BendType::Cosine:
+    case BendType::Tafipolsky:
+    case BendType::MM3:
+    case BendType::MM3_inplane:
+      parameters[0] *= factor;
+      break;
+    case BendType::Quartic:
+    case BendType::CFF_Quartic:
+      parameters[0] *= factor;
+      parameters[2] *= factor;
+      parameters[3] *= factor;
+      break;
+  }
+}
+
 std::string BendPotential::print() const
 {
   switch (type)

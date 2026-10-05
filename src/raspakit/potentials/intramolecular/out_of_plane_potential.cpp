@@ -29,6 +29,16 @@ OutOfPlaneBendPotential::OutOfPlaneBendPotential(std::array<std::size_t, 4> iden
   }
 }
 
+void OutOfPlaneBendPotential::scaleEnergy(double factor)
+{
+  switch (type)
+  {
+    case OutOfPlaneBendType::Harmonic:
+      parameters[0] *= factor;
+      break;
+  }
+}
+
 std::string OutOfPlaneBendPotential::print() const
 {
   switch (type)

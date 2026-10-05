@@ -65,6 +65,38 @@ BondPotential::BondPotential(std::array<std::size_t, 2> identifiers, BondType ty
   }
 }
 
+void BondPotential::scaleEnergy(double factor)
+{
+  switch (type)
+  {
+    case BondType::None:
+    case BondType::Fixed:
+      break;
+    case BondType::Harmonic:
+    case BondType::CoreShellSpring:
+    case BondType::Morse:
+    case BondType::LennardJones:
+    case BondType::RestrainedHarmonic:
+    case BondType::MM3:
+      parameters[0] *= factor;
+      break;
+    case BondType::LJ_12_6:
+      parameters[0] *= factor;
+      parameters[1] *= factor;
+      break;
+    case BondType::Buckingham:
+      parameters[0] *= factor;
+      parameters[2] *= factor;
+      break;
+    case BondType::Quartic:
+    case BondType::CFF_Quartic:
+      parameters[0] *= factor;
+      parameters[2] *= factor;
+      parameters[3] *= factor;
+      break;
+  }
+}
+
 std::string BondPotential::print() const
 {
   switch (type)

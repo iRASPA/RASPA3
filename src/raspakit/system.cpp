@@ -1564,6 +1564,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.propertyVolumeEvolution;
   archive << s.propertyConservedEnergyEvolution;
 
+  archive << s.soluteTemperingComponent;
+  archive << s.soluteTemperingLambda;
+
   // 'interpolationGrids' and 'externalFieldInterpolationGrid' are intentionally not serialized:
   // they are derived data that can dominate the checkpoint size and are rebuilt deterministically
   // on restart (MonteCarlo/MolecularDynamics::createInterpolationGrids).
@@ -1736,6 +1739,12 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.propertyNumberOfMoleculesEvolution;
   archive >> s.propertyVolumeEvolution;
   archive >> s.propertyConservedEnergyEvolution;
+
+  if (versionNumber >= 5)
+  {
+    archive >> s.soluteTemperingComponent;
+    archive >> s.soluteTemperingLambda;
+  }
 
   // archive >> s.columnNumberOfGridPoints;
   // archive >> s.columnTotalPressure;

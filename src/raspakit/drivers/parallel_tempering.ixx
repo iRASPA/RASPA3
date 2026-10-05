@@ -53,7 +53,7 @@ export struct ParallelTempering
    */
   ParallelTempering(InputReader& reader);
 
-  std::uint64_t versionNumber{2};  ///< Version number for serialization (2: round-trip statistics added).
+  std::uint64_t versionNumber{3};  ///< Version number for serialization (2: round-trips, 3: solute tempering).
 
   RandomNumber random;  ///< Random number generator (seeding + swap acceptance).
 
@@ -81,6 +81,11 @@ export struct ParallelTempering
   std::atomic<std::size_t> checkpointCycle{0};
 
   std::vector<double> temperatures;   ///< The temperature ladder (one replica per entry).
+  /// Solute tempering (REST2): the name of the tempered component (empty when not used).
+  std::string soluteTemperingComponent;
+  /// Solute tempering (REST2): the effective solute temperature per replica (empty when not used);
+  /// replica k scales the solute Hamiltonian by lambda_k = temperatures[k] / soluteTemperatures[k].
+  std::vector<double> soluteTemperatures;
   std::size_t numberOfReplicas;       ///< Number of replicas == number of temperatures == number of threads.
   std::vector<System> systems;        ///< One replica per temperature.
   std::vector<RandomNumber> randoms;  ///< Independent random-number stream per replica.

@@ -57,6 +57,27 @@ BendTorsionPotential::BendTorsionPotential(std::array<std::size_t, 4> identifier
   }
 }
 
+void BendTorsionPotential::scaleEnergy(double factor)
+{
+  switch (type)
+  {
+    case BendTorsionType::Smoothed:
+    case BendTorsionType::CVFF:
+    case BendTorsionType::CFF:
+    case BendTorsionType::SmoothedCFF3:
+      parameters[0] *= factor;
+      break;
+    case BendTorsionType::SmoothedThreeCosine:
+    case BendTorsionType::Nicholas:
+    case BendTorsionType::SmoothedCFF:
+    case BendTorsionType::SmoothedCFF2:
+      parameters[0] *= factor;
+      parameters[1] *= factor;
+      parameters[2] *= factor;
+      break;
+  }
+}
+
 std::string BendTorsionPotential::print() const
 {
   switch (type)

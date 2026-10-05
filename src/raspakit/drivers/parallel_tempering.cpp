@@ -90,11 +90,53 @@ ParallelTempering::ParallelTempering(InputReader& reader)
       numberOfBlocks(reader.numberOfBlocks),
       parallelTemperingSwapEvery(reader.parallelTemperingSwapEvery),
       temperatures(reader.parallelTemperingTemperatures),
-      numberOfReplicas(temperatures.size())
+      soluteTemperingComponent(reader.soluteTemperingComponent),
+      soluteTemperatures(reader.soluteTemperingTemperatures),
+      numberOfReplicas(std::max(temperatures.size(), soluteTemperatures.size()))
 {
   // the single declared system is replicated into one replica per temperature of the ladder
   System templateSystem = std::move(reader.systems.front());
   reader.systems.clear();
+
+  // solute tempering without a temperature ladder: all replicas share the thermostat temperature,
+  // only the solute Hamiltonian differs between them
+  if (temperatures.empty())
+  {
+    temperatures.assign(numberOfReplicas, templateSystem.temperature);
+  }
+
+  std::optional<std::size_t> soluteComponentId{};
+  if (!soluteTemperingComponent.empty())
+  {
+    auto it = std::ranges::find_if(templateSystem.components, [this](const Component& component)
+                                   { return component.name == soluteTemperingComponent; });
+    if (it == templateSystem.components.end())
+    {
+      throw std::runtime_error(std::format("[ParallelTempering]: solute-tempering component '{}' not found\n",
+                                           soluteTemperingComponent));
+    }
+    soluteComponentId = static_cast<std::size_t>(std::distance(templateSystem.components.begin(), it));
+
+    // the per-replica Hamiltonians are realized by scaling the pair parameters of the solute pseudo-atom
+    // types; the replicas can not share framework interpolation grids for those types, and the
+    // polarization energy does not decompose into the scaled solute/solvent terms
+    const std::vector<bool> soluteTypes = templateSystem.pseudoAtomTypesOfComponent(soluteComponentId.value());
+    for (std::size_t type : templateSystem.forceField.gridPseudoAtomIndices)
+    {
+      if (type < soluteTypes.size() && soluteTypes[type])
+      {
+        throw std::runtime_error(
+            std::format("[ParallelTempering]: solute tempering is incompatible with framework interpolation grids "
+                        "for the solute pseudo-atom type '{}'; remove it from 'UseInterpolationGrids'\n",
+                        templateSystem.forceField.pseudoAtoms[type].name));
+      }
+    }
+    if (templateSystem.forceField.computePolarization)
+    {
+      throw std::runtime_error(
+          std::format("[ParallelTempering]: solute tempering is incompatible with 'ComputePolarization'\n"));
+    }
+  }
 
   systems.reserve(numberOfReplicas);
   for (std::size_t replicaId = 0; replicaId + 1 < numberOfReplicas; ++replicaId)
@@ -121,6 +163,14 @@ ParallelTempering::ParallelTempering(InputReader& reader)
       system.forceField.preComputeDerivedParameters();
       system.forceField.preComputePotentialShift();
       system.forceField.preComputeTailCorrection();
+    }
+
+    // solute tempering: scale the solute Hamiltonian of this replica, lambda_k = T_k / T_eff,k
+    // (before the conformation reservoirs are built, these sample the scaled intramolecular potentials)
+    if (soluteComponentId.has_value())
+    {
+      const double lambda = T / soluteTemperatures[replicaId];
+      system.scaleSoluteHamiltonian(soluteComponentId.value(), lambda);
     }
 
     // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature
@@ -179,6 +229,24 @@ void ParallelTempering::setup()
     std::print(stream, "{}",
                wrapText(temperatureLadder + "[K]", "Temperature ladder:                          ",
                         std::string(45, ' ')));
+    if (!soluteTemperatures.empty())
+    {
+      std::print(stream, "Solute tempering (REST2) component:          {}\n", soluteTemperingComponent);
+      std::string soluteLadder;
+      for (double T : soluteTemperatures) soluteLadder += std::format("{} ", T);
+      std::print(stream, "{}",
+                 wrapText(soluteLadder + "[K]", "Effective solute temperatures:               ",
+                          std::string(45, ' ')));
+      std::string lambdaLadder;
+      for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
+      {
+        lambdaLadder += std::format("{:.5f} ", temperatures[replicaId] / soluteTemperatures[replicaId]);
+      }
+      std::print(stream, "{}",
+                 wrapText(lambdaLadder, "Solute scaling lambda = T / T_eff:           ", std::string(45, ' ')));
+      std::print(stream, "  (solute-solute and intramolecular interactions scaled by lambda, solute-solvent by "
+                         "sqrt(lambda))\n");
+    }
     if (parallelTemperingSwapEvery == 0uz)
     {
       std::print(stream, "Configuration swaps:                         disabled\n\n");
@@ -198,6 +266,11 @@ void ParallelTempering::setup()
   outputJson["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
   outputJson["initialization"]["units"] = Units::jsonStatus();
   outputJson["initialization"]["temperatures"] = temperatures;
+  if (!soluteTemperatures.empty())
+  {
+    outputJson["initialization"]["soluteTemperingComponent"] = soluteTemperingComponent;
+    outputJson["initialization"]["soluteTemperatures"] = soluteTemperatures;
+  }
   outputJson["initialization"]["parallelTemperingSwapEvery"] = parallelTemperingSwapEvery;
 
   std::ofstream json(outputJsonFileName);
@@ -682,19 +755,37 @@ void ParallelTempering::output()
 
   // low acceptance for a particular pair marks a bottleneck in the temperature ladder
   // (configurations cannot migrate past it); consider a denser ladder around such a pair
-  std::print(stream, "    pair (replicas)    temperature [K]           attempts    accepted    acceptance\n");
-  std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
-  for (std::size_t replicaId = 0; replicaId + 1 < numberOfReplicas; ++replicaId)
+  if (soluteTemperatures.empty())
   {
-    std::print(stream, "    {:4d} - {:<4d}   {:10.4f} - {:<10.4f}   {:9d}   {:9d}    {:8.4f} %\n", replicaId,
-               replicaId + 1, temperatures[replicaId], temperatures[replicaId + 1], swapAttemptsPerPair[replicaId],
-               swapAcceptedPerPair[replicaId],
-               100.0 * static_cast<double>(swapAcceptedPerPair[replicaId]) /
-                   static_cast<double>(std::max(1uz, swapAttemptsPerPair[replicaId])));
+    std::print(stream, "    pair (replicas)    temperature [K]           attempts    accepted    acceptance\n");
+    std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
+    for (std::size_t replicaId = 0; replicaId + 1 < numberOfReplicas; ++replicaId)
+    {
+      std::print(stream, "    {:4d} - {:<4d}   {:10.4f} - {:<10.4f}   {:9d}   {:9d}    {:8.4f} %\n", replicaId,
+                 replicaId + 1, temperatures[replicaId], temperatures[replicaId + 1], swapAttemptsPerPair[replicaId],
+                 swapAcceptedPerPair[replicaId],
+                 100.0 * static_cast<double>(swapAcceptedPerPair[replicaId]) /
+                     static_cast<double>(std::max(1uz, swapAttemptsPerPair[replicaId])));
+    }
+  }
+  else
+  {
+    std::print(stream, "    pair (replicas)    temperature [K]           effective solute T [K]    attempts    accepted    acceptance\n");
+    std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
+    for (std::size_t replicaId = 0; replicaId + 1 < numberOfReplicas; ++replicaId)
+    {
+      std::print(stream, "    {:4d} - {:<4d}   {:10.4f} - {:<10.4f}   {:10.4f} - {:<10.4f}   {:9d}   {:9d}    {:8.4f} %\n",
+                 replicaId, replicaId + 1, temperatures[replicaId], temperatures[replicaId + 1],
+                 soluteTemperatures[replicaId], soluteTemperatures[replicaId + 1], swapAttemptsPerPair[replicaId],
+                 swapAcceptedPerPair[replicaId],
+                 100.0 * static_cast<double>(swapAcceptedPerPair[replicaId]) /
+                     static_cast<double>(std::max(1uz, swapAttemptsPerPair[replicaId])));
+    }
   }
   std::print(stream, "\n\n");
 
-  std::print(stream, "{}", roundTrips.writeStatistics(temperatures, parallelTemperingSwapEvery));
+  std::print(stream, "{}", roundTrips.writeStatistics(soluteTemperatures.empty() ? temperatures : soluteTemperatures,
+                                                      parallelTemperingSwapEvery));
 
   std::print(stream, "Production run CPU timings of the MC moves summed over replicas and components\n");
   std::print(stream, "========================================================================================================================\n\n");
@@ -856,6 +947,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Parall
   archive << pt.swapAttemptsPerPair;
   archive << pt.swapAcceptedPerPair;
   archive << pt.roundTrips;
+  archive << pt.soluteTemperingComponent;
+  archive << pt.soluteTemperatures;
 
   archive << pt.totalPreInitializationSimulationTime;
   archive << pt.totalInitializationSimulationTime;
@@ -919,6 +1012,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTemp
   {
     // restart file predates the round-trip diagnostic: start counting from the current arrangement
     pt.roundTrips.initialize(pt.numberOfReplicas);
+  }
+  if (versionNumber >= 3)
+  {
+    archive >> pt.soluteTemperingComponent;
+    archive >> pt.soluteTemperatures;
   }
 
   archive >> pt.totalPreInitializationSimulationTime;

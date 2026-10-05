@@ -46,6 +46,18 @@ BendBendPotential::BendBendPotential(std::array<std::size_t, 4> identifiers, Ben
   }
 }
 
+void BendBendPotential::scaleEnergy(double factor)
+{
+  switch (type)
+  {
+    case BendBendType::CVFF:
+    case BendBendType::CFF:
+    case BendBendType::MM3:
+      parameters[0] *= factor;
+      break;
+  }
+}
+
 std::string BendBendPotential::print() const
 {
   switch (type)

@@ -82,6 +82,15 @@ export struct OutOfPlaneBendPotential
   static inline std::array<std::size_t, 1> numberOfOutOfPlaneBendParameters{2};
 
   /**
+   * \brief Multiplies every parameter with units of energy by 'factor'.
+   *
+   * The potential energy is homogeneous of degree one in these parameters, so the energy, its
+   * derivatives and the CBMC sampling of the term are all scaled by the same factor (used by
+   * solute tempering, which scales the intramolecular Hamiltonian of one component).
+   */
+  void scaleEnergy(double factor);
+
+  /**
    * \brief Mapping of out_of_plane_bend type strings to OutOfPlaneBendType enums.
    *
    * A static map that associates out_of_plane_bend type names with their corresponding OutOfPlaneBendType enumeration

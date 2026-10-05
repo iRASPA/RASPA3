@@ -213,6 +213,57 @@ TorsionPotential::TorsionPotential(std::array<std::size_t, 4> identifiers, Torsi
   }
 }
 
+void TorsionPotential::scaleEnergy(double factor)
+{
+  switch (type)
+  {
+    case TorsionType::Fixed:
+      break;
+    case TorsionType::Harmonic:
+    case TorsionType::HarmonicCosine:
+    case TorsionType::CVFF:
+      parameters[0] *= factor;
+      break;
+    case TorsionType::ThreeCosine:
+    case TorsionType::CFF:
+    case TorsionType::CFF2:
+    case TorsionType::MM3:
+      parameters[0] *= factor;
+      parameters[1] *= factor;
+      parameters[2] *= factor;
+      break;
+    case TorsionType::RyckaertBellemans:
+    case TorsionType::FourierSeries:
+    case TorsionType::FourierSeries2:
+    case TorsionType::Polynomial:
+      parameters[0] *= factor;
+      parameters[1] *= factor;
+      parameters[2] *= factor;
+      parameters[3] *= factor;
+      parameters[4] *= factor;
+      parameters[5] *= factor;
+      break;
+    case TorsionType::TraPPE:
+    case TorsionType::ModifiedTraPPE:
+    case TorsionType::OPLS:
+      parameters[0] *= factor;
+      parameters[1] *= factor;
+      parameters[2] *= factor;
+      parameters[3] *= factor;
+      break;
+    case TorsionType::TraPPE_Extended:
+      parameters[0] *= factor;
+      parameters[1] *= factor;
+      parameters[2] *= factor;
+      parameters[3] *= factor;
+      parameters[4] *= factor;
+      break;
+    case TorsionType::CVFFBlocked:
+      parameters[1] *= factor;
+      break;
+  }
+}
+
 std::string TorsionPotential::print() const
 {
   switch (type)

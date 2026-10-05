@@ -81,6 +81,15 @@ export struct BondTorsionPotential
   static inline std::array<std::size_t, 1> numberOfBondTorsionParameters{4};
 
   /**
+   * \brief Multiplies every parameter with units of energy by 'factor'.
+   *
+   * The potential energy is homogeneous of degree one in these parameters, so the energy, its
+   * derivatives and the CBMC sampling of the term are all scaled by the same factor (used by
+   * solute tempering, which scales the intramolecular Hamiltonian of one component).
+   */
+  void scaleEnergy(double factor);
+
+  /**
    * \brief Mapping of bond_torsion type strings to BondTorsionType enums.
    *
    * A static map that associates bond_torsion type names with their corresponding BondTorsionType enumeration values.

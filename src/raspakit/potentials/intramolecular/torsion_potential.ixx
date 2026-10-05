@@ -99,6 +99,15 @@ export struct TorsionPotential
                                                                       6};
 
   /**
+   * \brief Multiplies every parameter with units of energy by 'factor'.
+   *
+   * The potential energy is homogeneous of degree one in these parameters, so the energy, its
+   * derivatives and the CBMC sampling of the term are all scaled by the same factor (used by
+   * solute tempering, which scales the intramolecular Hamiltonian of one component).
+   */
+  void scaleEnergy(double factor);
+
+  /**
    * \brief Mapping of torsion type strings to TorsionType enums.
    *
    * A static map that associates torsion type names with their corresponding TorsionType enumeration values.

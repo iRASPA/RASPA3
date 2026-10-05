@@ -106,6 +106,15 @@ export struct BendPotential
   double generateBendAngle(RandomNumber &random, double beta) const;
 
   /**
+   * \brief Multiplies every parameter with units of energy by 'factor'.
+   *
+   * The potential energy is homogeneous of degree one in these parameters, so the energy, its
+   * derivatives and the CBMC sampling of the term are all scaled by the same factor (used by
+   * solute tempering, which scales the intramolecular Hamiltonian of one component).
+   */
+  void scaleEnergy(double factor);
+
+  /**
    * \brief The log of the solid-angle normalization of the cone direction shaped by this bend.
    *
    * Returns log(2 pi Int_0^pi sin(theta) exp(-beta u(theta)) dtheta), the normalization of the

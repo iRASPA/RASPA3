@@ -107,7 +107,7 @@ export struct System
          std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{4};
+  std::uint64_t versionNumber{5};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -473,6 +473,46 @@ export struct System
   void cellListAtomsMoved(std::span<const Atom> movedAtoms) const;
   /// Rebuilds a reference list and compares it with the maintained one (consistency check).
   [[nodiscard]] bool verifyCellList() const;
+
+  /**
+   * \brief Solute tempering (replica exchange with solute scaling, REST2).
+   *
+   * The Hamiltonian of one component (the 'solute') is scaled: its intramolecular energy and the
+   * pair interactions among its atoms by lambda, its interactions with everything else by
+   * sqrt(lambda), realized through the pair parameters of its pseudo-atom types, which therefore
+   * must not be shared with any other component or the framework, and its partial charges (scaled
+   * by sqrt(lambda)). lambda = T / T_effective: the solute samples as if at a higher temperature
+   * while the solvent stays at the system temperature, and the exchange acceptance between replicas
+   * depends on the solute-involving energies only (see MC_Moves::ParallelTemperingLogAcceptance).
+   */
+  std::optional<std::size_t> soluteTemperingComponent{};
+  double soluteTemperingLambda{1.0};
+
+  /// The pseudo-atom types used by 'componentId' (one flag per pseudo-atom of the force field).
+  [[nodiscard]] std::vector<bool> pseudoAtomTypesOfComponent(std::size_t componentId) const;
+
+  /**
+   * \brief Scales the Hamiltonian of 'componentId' by 'lambda' (see 'soluteTemperingComponent').
+   *
+   * Applies the scaling to the force field, the component definition and the charges of the present
+   * molecules, and recomputes the derived state (Ewald structure factors, running energies). Throws
+   * when the component shares a pseudo-atom type with another component or the framework. Cumulative:
+   * the stored lambda is multiplied, so this is normally called once on a freshly constructed system.
+   */
+  void scaleSoluteHamiltonian(std::size_t componentId, double lambda);
+
+  /// Multiplies the partial charges of the solute molecules present in the system by 'factor' and
+  /// updates the per-component net charges (used after a configuration exchange between replicas
+  /// with different lambda: the atoms travel, the Hamiltonian stays).
+  void rescaleSoluteCharges(double factor);
+
+  /**
+   * \brief Recomputes everything derived from the configuration after the atoms/molecules were
+   * replaced wholesale (configuration exchange between replicas, restart): Ewald parameters and
+   * structure factors, running energies, loadings, per-molecule bookkeeping, pseudo-atom and
+   * tail-correction counts, net charge.
+   */
+  void rebuildConfigurationDerivedState();
 
   /**
    * \brief The growth context of an isolated molecule: no framework, no interpolation grids, no

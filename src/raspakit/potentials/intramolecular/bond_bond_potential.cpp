@@ -33,6 +33,17 @@ BondBondPotential::BondBondPotential(std::array<std::size_t, 3> identifiers, Bon
   }
 }
 
+void BondBondPotential::scaleEnergy(double factor)
+{
+  switch (type)
+  {
+    case BondBondType::CVFF:
+    case BondBondType::CFF:
+      parameters[0] *= factor;
+      break;
+  }
+}
+
 std::string BondBondPotential::print() const
 {
   switch (type)

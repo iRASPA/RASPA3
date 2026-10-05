@@ -2867,6 +2867,64 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      // Solute tempering (REST2-style Hamiltonian replica exchange): the solute component and the
+      // ladder of effective solute temperatures; replica k scales the solute-solute (and intramolecular)
+      // interactions by lambda_k = T_k / T_eff,k and the solute-solvent interactions by sqrt(lambda_k)
+      if (value.contains("SoluteTemperingComponent") || value.contains("SoluteTemperingTemperatures"))
+      {
+        if (simulationType != SimulationType::ParallelTempering)
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'SoluteTemperingComponent' and 'SoluteTemperingTemperatures' (solute "
+                          "tempering, REST2) are only valid for 'SimulationType': 'ParallelTempering'\n"));
+        }
+        if (!value.contains("SoluteTemperingComponent") || !value["SoluteTemperingComponent"].is_string())
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: solute tempering requires the key 'SoluteTemperingComponent' with the "
+                          "name of the solute component\n"));
+        }
+        if (!value.contains("SoluteTemperingTemperatures") || !value["SoluteTemperingTemperatures"].is_array())
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: solute tempering requires the key 'SoluteTemperingTemperatures' with a "
+                          "sorted list of at least two effective solute temperatures\n"));
+        }
+        soluteTemperingComponent = value["SoluteTemperingComponent"].get<std::string>();
+        soluteTemperingTemperatures = value["SoluteTemperingTemperatures"].get<std::vector<double>>();
+        if (soluteTemperingTemperatures.size() < 2)
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'SoluteTemperingTemperatures' must contain at least two temperatures\n"));
+        }
+        if (!std::ranges::is_sorted(soluteTemperingTemperatures))
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'SoluteTemperingTemperatures' must be sorted in increasing order (swaps "
+                          "are attempted between neighboring replicas)\n"));
+        }
+        if (std::ranges::any_of(soluteTemperingTemperatures, [](double T) { return T <= 0.0; }))
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'SoluteTemperingTemperatures' must be positive\n"));
+        }
+        if (!parallelTemperingTemperatures.empty() &&
+            parallelTemperingTemperatures.size() != soluteTemperingTemperatures.size())
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'SoluteTemperingTemperatures' ({} entries) and 'ExternalTemperatures' "
+                          "({} entries) must have the same length (one replica per entry); omit "
+                          "'ExternalTemperatures' to run all replicas at 'ExternalTemperature'\n",
+                          soluteTemperingTemperatures.size(), parallelTemperingTemperatures.size()));
+        }
+        if (parallelTemperingTemperatures.empty() && !value.contains("ExternalTemperature"))
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: solute tempering without 'ExternalTemperatures' requires "
+                          "'ExternalTemperature' (the common thermostat temperature of all replicas)\n"));
+        }
+      }
+
       // Hyper-parallel tempering / WHAM: the pressure ladder (in Pa, converted to per-component fugacities
       // internally through the Peng-Robinson equation of state); combined with the temperature ladder
       // the single declared system is replicated into one replica per (temperature, pressure) point.
@@ -4108,11 +4166,37 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       "(it is replicated internally into one replica per temperature), {} systems were declared\n",
                       systems.size()));
     }
-    if (parallelTemperingTemperatures.size() < 2)
+    if (parallelTemperingTemperatures.size() < 2 && soluteTemperingTemperatures.size() < 2)
     {
       throw std::runtime_error(
           std::format("[Input reader]: 'ParallelTempering' requires a temperature ladder: give the system a key "
-                      "'ExternalTemperatures' with a sorted list of at least two temperatures\n"));
+                      "'ExternalTemperatures' with a sorted list of at least two temperatures (or, for solute "
+                      "tempering, 'SoluteTemperingComponent' and 'SoluteTemperingTemperatures')\n"));
+    }
+    if (!soluteTemperingComponent.empty())
+    {
+      const std::vector<Component>& components = systems.front().components;
+      auto it = std::ranges::find_if(components, [this](const Component& component)
+                                     { return component.name == soluteTemperingComponent; });
+      if (it == components.end())
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: 'SoluteTemperingComponent' '{}' is not a declared component\n",
+                        soluteTemperingComponent));
+      }
+      // the effective solute temperature can not be below the thermostat temperature (lambda <= 1)
+      for (std::size_t k = 0; k < soluteTemperingTemperatures.size(); ++k)
+      {
+        const double T = parallelTemperingTemperatures.empty() ? systems.front().temperature
+                                                               : parallelTemperingTemperatures[k];
+        if (soluteTemperingTemperatures[k] < T)
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'SoluteTemperingTemperatures'[{}] = {} K is below the thermostat "
+                          "temperature {} K of that replica (the scaling lambda = T / T_eff must be <= 1)\n",
+                          k, soluteTemperingTemperatures[k], T));
+        }
+      }
     }
   }
 
@@ -4507,6 +4591,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "Type",
     "ExternalTemperature",
     "ExternalTemperatures",
+    "SoluteTemperingComponent",
+    "SoluteTemperingTemperatures",
     "ExternalPressures",
     "ExternalPressure",
     "ExternalPressureX",

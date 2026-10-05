@@ -77,6 +77,7 @@ add_executable(unit_tests_raspakit
   apollonius_pore_analysis.cpp
   exact_regression.cpp
   cif_reader.cpp
+  solute_tempering.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspakit)

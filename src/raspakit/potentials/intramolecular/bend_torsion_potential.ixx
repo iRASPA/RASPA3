@@ -90,6 +90,15 @@ export struct BendTorsionPotential
   static inline std::array<std::size_t, 8> numberOfBendTorsionParameters{3, 3, 3, 3, 3, 3, 3, 3};
 
   /**
+   * \brief Multiplies every parameter with units of energy by 'factor'.
+   *
+   * The potential energy is homogeneous of degree one in these parameters, so the energy, its
+   * derivatives and the CBMC sampling of the term are all scaled by the same factor (used by
+   * solute tempering, which scales the intramolecular Hamiltonian of one component).
+   */
+  void scaleEnergy(double factor);
+
+  /**
    * \brief Mapping of bend_torsion type strings to BendTorsionType enums.
    *
    * A static map that associates bend_torsion type names with their corresponding BendTorsionType enumeration values.

@@ -123,6 +123,12 @@ export struct InputReader
   /// Parallel tempering: the temperature ladder ('ExternalTemperatures' in the system block); the
   /// single declared system is replicated into one replica per temperature.
   std::vector<double> parallelTemperingTemperatures;
+  /// Solute tempering (REST2): the name of the component whose interactions are scaled per replica
+  /// ('SoluteTemperingComponent' in the system block); empty when solute tempering is not used.
+  std::string soluteTemperingComponent;
+  /// Solute tempering (REST2): the ladder of effective solute temperatures ('SoluteTemperingTemperatures'
+  /// in the system block); replica k scales the solute Hamiltonian by lambda_k = T_k / T_eff,k.
+  std::vector<double> soluteTemperingTemperatures;
   /// Hyper-parallel tempering: the pressure ladder ('ExternalPressures' in the system block, in Pa);
   /// combined with the temperature ladder the single declared system is replicated into one replica
   /// per (temperature, pressure) grid point.

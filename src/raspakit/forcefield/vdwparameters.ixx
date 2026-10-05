@@ -170,6 +170,31 @@ export struct VDWParameters
   static ParameterMetadata parameterMetadata(Type type);
 
   /**
+   * \brief Multiplies every parameter with units of energy by 'factor' (solute tempering).
+   *
+   * All supported forms are homogeneous of degree one in their energy parameters, so the pair
+   * energy is scaled by 'factor'. The derived constants, shift and tail corrections are not
+   * updated here: call computeDerivedParameters(), computeShiftAtCutOff() and the force-field tail
+   * correction afterwards.
+   */
+  void scaleEnergy(double factor)
+  {
+    const ParameterMetadata metadata = parameterMetadata(type);
+    for (std::size_t i = 0; i < metadata.count; ++i)
+    {
+      if (!metadata.isEnergy[i]) continue;
+      if (i < 4)
+      {
+        parameters[i] *= factor;
+      }
+      else
+      {
+        parameters2[i - 4] *= factor;
+      }
+    }
+  }
+
+  /**
    * \brief The unshifted potential energy at full coupling (lambda = 1).
    *
    * Evaluates the plain potential (no shift applied) at squared distance rr. Derived

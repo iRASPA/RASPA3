@@ -86,6 +86,25 @@ BondBendPotential::BondBendPotential(std::array<std::size_t, 4> identifiers, Bon
   }
 }
 
+void BondBendPotential::scaleEnergy(double factor)
+{
+  switch (type)
+  {
+    case BondBendType::CVFF:
+    case BondBendType::CFF:
+      parameters[1] *= factor;
+      parameters[3] *= factor;
+      break;
+    case BondBendType::MM3:
+    case BondBendType::TruncatedHarmonic:
+    case BondBendType::ScreenedHarmonic:
+    case BondBendType::ScreenedVessal:
+    case BondBendType::TruncatedVessal:
+      parameters[0] *= factor;
+      break;
+  }
+}
+
 std::string BondBendPotential::print() const
 {
   switch (type)

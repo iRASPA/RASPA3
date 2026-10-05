@@ -89,6 +89,15 @@ export struct InversionBendPotential
   static inline std::array<std::size_t, 7> numberOfInversionBendParameters{2, 2, 1, 2, 2, 1, 2};
 
   /**
+   * \brief Multiplies every parameter with units of energy by 'factor'.
+   *
+   * The potential energy is homogeneous of degree one in these parameters, so the energy, its
+   * derivatives and the CBMC sampling of the term are all scaled by the same factor (used by
+   * solute tempering, which scales the intramolecular Hamiltonian of one component).
+   */
+  void scaleEnergy(double factor);
+
+  /**
    * \brief Mapping of inversion_bend type strings to InversionBendType enums.
    *
    * A static map that associates inversion_bend type names with their corresponding InversionBendType enumeration
