@@ -1768,8 +1768,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
       std::vector<std::optional<InterpolationEnergyGrid>>(s.forceField.pseudoAtoms.size() + 1, std::nullopt);
   s.externalFieldInterpolationGrid = std::nullopt;
 
-  // Derived quantities: rebuild the aggregated tail-correction counts from the restored atoms.
+  // Derived quantities: rebuild the aggregated tail-correction counts from the restored atoms, and
+  // the temperature-dependent constants of the CBMC growth plans (lookahead-guide tables, base-coupling
+  // estimates), which are not stored in the archive.
   s.computeTailCorrectionCounts();
+  s.prepareGrowthPlans();
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

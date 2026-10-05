@@ -5,6 +5,7 @@ module mc_moves_statistics;
 import std;
 
 import archive;
+import json;
 import mc_moves_move_types;
 
 void MCMoveStatistics::clearMoveStatistics()
@@ -13,6 +14,42 @@ void MCMoveStatistics::clearMoveStatistics()
   {
     std::visit([](auto&& s){ s.clear(); }, stat);
   }
+  for (SubMoveStatistics& sub : subMoves) sub.clear();
+}
+
+std::string SubMoveStatistics::write(std::string_view title, std::span<const std::string> labels) const
+{
+  std::ostringstream stream;
+  if (trials.empty()) return stream.str();
+
+  std::print(stream, "\n    {} per sub-move\n", title);
+  std::print(stream, "    {:>5} {:>12} {:>12} {:>12} {:>10}   {}\n", "index", "trials", "constructed", "accepted",
+             "fraction", "description");
+  for (std::size_t i = 0; i != trials.size(); ++i)
+  {
+    const double fraction =
+        static_cast<double>(accepted[i]) / std::max(1.0, static_cast<double>(trials[i]));
+    std::print(stream, "    {:>5} {:>12} {:>12} {:>12} {:>10.6f}   {}\n", i, trials[i], constructed[i], accepted[i],
+               fraction, i < labels.size() ? labels[i] : std::string{});
+  }
+  return stream.str();
+}
+
+nlohmann::json SubMoveStatistics::json(std::span<const std::string> labels) const
+{
+  nlohmann::json status = nlohmann::json::array();
+  for (std::size_t i = 0; i != trials.size(); ++i)
+  {
+    nlohmann::json entry;
+    entry["index"] = i;
+    entry["trials"] = trials[i];
+    entry["constructed"] = constructed[i];
+    entry["accepted"] = accepted[i];
+    entry["fraction"] = static_cast<double>(accepted[i]) / std::max(1.0, static_cast<double>(trials[i]));
+    if (i < labels.size()) entry["description"] = labels[i];
+    status.push_back(entry);
+  }
+  return status;
 }
 
 void MCMoveStatistics::optimizeMCMoves()
@@ -203,6 +240,12 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MCMove
 {
   archive << p.versionNumber;
   archive << p.stats;
+  for (const SubMoveStatistics& sub : p.subMoves)
+  {
+    archive << sub.trials;
+    archive << sub.constructed;
+    archive << sub.accepted;
+  }
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -222,6 +265,12 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MCMoveStatis
                                          location.line(), location.file_name()));
   }
   archive >> p.stats;
+  for (SubMoveStatistics& sub : p.subMoves)
+  {
+    archive >> sub.trials;
+    archive >> sub.constructed;
+    archive >> sub.accepted;
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

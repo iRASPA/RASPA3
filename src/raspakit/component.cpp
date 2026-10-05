@@ -1847,6 +1847,90 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
   return stream.str();
 }
 
+namespace
+{
+// Compact "a-b, c, d-e" rendering of a sorted index list.
+std::string formatIndexRanges(std::span<const std::size_t> indices)
+{
+  std::string result;
+  for (std::size_t i = 0; i < indices.size();)
+  {
+    std::size_t j = i;
+    while (j + 1 < indices.size() && indices[j + 1] == indices[j] + 1) ++j;
+    if (!result.empty()) result += ", ";
+    result += (j > i) ? std::format("{}-{}", indices[i], indices[j]) : std::format("{}", indices[i]);
+    i = j + 1;
+  }
+  return result;
+}
+
+const std::array<Move::Types, 4> kSubMoveReportingMoves{Move::Types::PartialReinsertionCBMC, Move::Types::Reptation,
+                                                        Move::Types::Pivot, Move::Types::PivotCBMC};
+}  // namespace
+
+std::vector<std::string> Component::subMoveLabels(Move::Types move) const
+{
+  std::vector<std::string> labels;
+  switch (move)
+  {
+    case Move::Types::PartialReinsertionCBMC:
+      for (const std::vector<std::size_t> &fixedAtoms : partialReinsertionFixedAtoms)
+      {
+        std::vector<bool> isFixed(atoms.size(), false);
+        for (std::size_t atom : fixedAtoms)
+        {
+          if (atom < atoms.size()) isFixed[atom] = true;
+        }
+        std::vector<std::size_t> regrown;
+        for (std::size_t atom = 0; atom != atoms.size(); ++atom)
+        {
+          if (!isFixed[atom]) regrown.push_back(atom);
+        }
+        labels.push_back(std::format("regrows {} atoms: {}", regrown.size(), formatIndexRanges(regrown)));
+      }
+      break;
+    case Move::Types::Reptation:
+      labels.push_back("forward (head unit removed, regrown at the tail)");
+      labels.push_back("backward (tail unit removed, regrown at the head)");
+      break;
+    case Move::Types::Pivot:
+    case Move::Types::PivotCBMC:
+      for (const PivotBond &pivotBond : pivotBonds())
+      {
+        labels.push_back(std::format("bond {}-{}, rotates {} atoms", pivotBond.bond[0], pivotBond.bond[1],
+                                     pivotBond.rotatedAtoms.size()));
+      }
+      break;
+    default:
+      break;
+  }
+  return labels;
+}
+
+std::string Component::writeSubMoveStatistics() const
+{
+  std::ostringstream stream;
+  for (Move::Types move : kSubMoveReportingMoves)
+  {
+    const SubMoveStatistics &sub = mc_moves_statistics.subMoveStatistics(move);
+    if (sub.empty()) continue;
+    std::print(stream, "{}", sub.write(Move::moveNames[std::to_underlying(move)], subMoveLabels(move)));
+  }
+  return stream.str();
+}
+
+nlohmann::json Component::jsonSubMoveStatistics() const
+{
+  nlohmann::json status;
+  for (Move::Types move : kSubMoveReportingMoves)
+  {
+    const SubMoveStatistics &sub = mc_moves_statistics.subMoveStatistics(move);
+    if (sub.empty()) continue;
+    status[Move::moveNames[std::to_underlying(move)]] = sub.json(subMoveLabels(move));
+  }
+  return status;
+}
+
 nlohmann::json Component::jsonStatus() const
 {
   nlohmann::json status;

@@ -558,6 +558,13 @@ export struct Component
    */
   nlohmann::json jsonStatus() const;
 
+  /// Per-sub-move acceptance tables (partial-reinsertion fixed sets, reptation directions, pivot
+  /// bonds); empty when none of these moves was attempted.
+  std::string writeSubMoveStatistics() const;
+  nlohmann::json jsonSubMoveStatistics() const;
+  /// Human-readable description of each sub-choice of 'move' (same order as the statistics index).
+  std::vector<std::string> subMoveLabels(Move::Types move) const;
+
   /**
    * \brief Computes rigid body properties of the component.
    *

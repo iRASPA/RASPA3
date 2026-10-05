@@ -55,6 +55,8 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
   }
 
   std::size_t selected_configuration = random.uniform_integer(0, component.partialReinsertionFixedAtoms.size() - 1);
+  component.mc_moves_statistics.addSubTrial(move, selected_configuration,
+                                            component.partialReinsertionFixedAtoms.size());
 
   std::vector<std::size_t> beads_already_placed = component.partialReinsertionFixedAtoms[selected_configuration];
 
@@ -95,6 +97,7 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
 
   // Increment the constructed moves count.
   component.mc_moves_statistics.addConstructed(move);
+  component.mc_moves_statistics.addSubConstructed(move, selected_configuration);
 
   // Retrace the old molecule configuration using CBMC retracing.
   CBMC::RetraceResult retraceData =
@@ -167,6 +170,7 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
   {
     // Move is accepted; update statistics and state.
     component.mc_moves_statistics.addAccepted(move);
+    component.mc_moves_statistics.addSubAccepted(move, selected_configuration);
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     std::copy(newMolecule.begin(), newMolecule.end(), molecule_atoms.begin());

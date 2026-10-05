@@ -1173,6 +1173,7 @@ std::string System::writeMCMoveStatistics() const
     std::print(stream, "Component {} [{}]\n", componentId, component.name);
 
     std::print(stream, "{}", component.mc_moves_statistics.writeMCMoveStatistics());
+    std::print(stream, "{}", component.writeSubMoveStatistics());
 
     if (component.hasFractionalMolecule)
     {
@@ -1248,6 +1249,8 @@ nlohmann::json System::jsonMCMoveStatistics() const
   for (const Component& component : components)
   {
     status[component.name] = component.mc_moves_statistics.jsonMCMoveStatistics();
+    nlohmann::json subMoves = component.jsonSubMoveStatistics();
+    if (!subMoves.empty()) status[component.name]["subMoves"] = subMoves;
 
     if (component.hasFractionalMolecule)
     {

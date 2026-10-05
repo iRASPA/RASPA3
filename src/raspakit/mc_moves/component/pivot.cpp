@@ -52,8 +52,9 @@ std::optional<RunningEnergy> MC_Moves::pivotMove(RandomNumber &random, System &s
   // interior to a rigid fragment, with a non-empty part to rotate). The rotated part is the
   // smaller side of the molecule, chosen deterministically, so the proposal stays symmetric (the
   // reverse move selects the same bond, the same part and the negated angle).
-  const Component::PivotBond &pivotBond =
-      pivotBonds[static_cast<std::size_t>(random.uniform() * static_cast<double>(pivotBonds.size()))];
+  const std::size_t bondIndex = static_cast<std::size_t>(random.uniform() * static_cast<double>(pivotBonds.size()));
+  component.mc_moves_statistics.addSubTrial(move, bondIndex, pivotBonds.size());
+  const Component::PivotBond &pivotBond = pivotBonds[bondIndex];
   const std::array<std::size_t, 2> &bond = pivotBond.bond;
   const std::vector<std::size_t> &rotatedAtoms = pivotBond.rotatedAtoms;
 
@@ -146,11 +147,13 @@ std::optional<RunningEnergy> MC_Moves::pivotMove(RandomNumber &random, System &s
       internalDifference + system.crossLinkEnergyDifference(selectedComponent, selectedMolecule, trialAtoms, molecule_atoms);
 
   component.mc_moves_statistics.addConstructed(move, channel);
+  component.mc_moves_statistics.addSubConstructed(move, bondIndex);
 
   // Apply acceptance/rejection rule based on Metropolis criterion
   if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
   {
     component.mc_moves_statistics.addAccepted(move, channel);
+    component.mc_moves_statistics.addSubAccepted(move, bondIndex);
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 

@@ -49,6 +49,8 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
   // (units[0]) and grows a new unit at the tail, backward is the mirror image. The reverse of a
   // forward step is a backward step, so the direction choice keeps the proposal symmetric.
   bool forward = random.uniform() < 0.5;
+  const std::size_t direction = forward ? 0uz : 1uz;
+  component.mc_moves_statistics.addSubTrial(move, direction, 2);
   const std::vector<std::size_t> &vacatedUnit = forward ? units.front() : units.back();
   const std::vector<std::size_t> &grownUnit = forward ? units.back() : units.front();
 
@@ -117,6 +119,7 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
   std::vector<double3> new_electric_field = std::vector<double3>(old_molecule.size());
 
   component.mc_moves_statistics.addConstructed(move);
+  component.mc_moves_statistics.addSubConstructed(move, direction);
 
   // Retrace the departing unit in the current configuration.
   CBMC::RetraceResult retraceData =
@@ -195,6 +198,7 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
   if (random.uniform() < std::exp(logAcceptance))
   {
     component.mc_moves_statistics.addAccepted(move);
+    component.mc_moves_statistics.addSubAccepted(move, direction);
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     std::copy(newMolecule.begin(), newMolecule.end(), molecule_atoms.begin());

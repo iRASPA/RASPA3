@@ -50,8 +50,9 @@ std::optional<RunningEnergy> MC_Moves::pivotCBMCMove(RandomNumber &random, Syste
   // Select a pivot axis uniformly from the precomputed valid bonds. The rotated part is the
   // smaller side of the molecule, chosen deterministically, so the reverse move selects the same
   // bond and the same part.
-  const Component::PivotBond &pivotBond =
-      pivotBonds[static_cast<std::size_t>(random.uniform() * static_cast<double>(pivotBonds.size()))];
+  const std::size_t bondIndex = static_cast<std::size_t>(random.uniform() * static_cast<double>(pivotBonds.size()));
+  component.mc_moves_statistics.addSubTrial(move, bondIndex, pivotBonds.size());
+  const Component::PivotBond &pivotBond = pivotBonds[bondIndex];
   const std::array<std::size_t, 2> &bond = pivotBond.bond;
   const std::vector<std::size_t> &rotatedAtoms = pivotBond.rotatedAtoms;
   const std::span<const std::size_t> movedIndices(rotatedAtoms);
@@ -211,6 +212,7 @@ std::optional<RunningEnergy> MC_Moves::pivotCBMCMove(RandomNumber &random, Syste
   RunningEnergy energyDifference = biasDifference + ewaldFourierEnergy;
 
   component.mc_moves_statistics.addConstructed(move, channel);
+  component.mc_moves_statistics.addSubConstructed(move, bondIndex);
 
   // Acceptance: the Rosenbluth ratio times the Metropolis factor of the part not in the bias.
   const double logAcceptance =
@@ -218,6 +220,7 @@ std::optional<RunningEnergy> MC_Moves::pivotCBMCMove(RandomNumber &random, Syste
   if (logAcceptance >= 0.0 || random.uniform() < std::exp(logAcceptance))
   {
     component.mc_moves_statistics.addAccepted(move, channel);
+    component.mc_moves_statistics.addSubAccepted(move, bondIndex);
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 

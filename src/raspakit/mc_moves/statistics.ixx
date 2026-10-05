@@ -11,14 +11,70 @@ import move_statistics;
 import mc_moves_move_types;
 
 
+/**
+ * \brief Trial/constructed/accepted counters resolved to the discrete sub-choices of a move.
+ *
+ * Several chain moves pick one of a finite set of proposals uniformly (a partial-reinsertion fixed
+ * set, a reptation direction, a pivot bond) whose acceptance can differ by orders of magnitude; the
+ * pooled statistics of the move hide which of them do the work. The vectors grow on first use to
+ * the number of sub-choices and are indexed by the choice. Cleared, serialized and summed together
+ * with the move statistics that own them.
+ */
+export struct SubMoveStatistics
+{
+  std::vector<std::uint64_t> trials{};
+  std::vector<std::uint64_t> constructed{};
+  std::vector<std::uint64_t> accepted{};
+
+  bool operator==(SubMoveStatistics const&) const = default;
+
+  void ensureSize(std::size_t count)
+  {
+    if (trials.size() < count)
+    {
+      trials.resize(count, 0);
+      constructed.resize(count, 0);
+      accepted.resize(count, 0);
+    }
+  }
+  void addTrial(std::size_t index, std::size_t count) { ensureSize(count); ++trials[index]; }
+  void addConstructed(std::size_t index) { ++constructed[index]; }
+  void addAccepted(std::size_t index) { ++accepted[index]; }
+  bool empty() const { return trials.empty(); }
+  void clear()
+  {
+    std::ranges::fill(trials, 0);
+    std::ranges::fill(constructed, 0);
+    std::ranges::fill(accepted, 0);
+  }
+  SubMoveStatistics& operator+=(const SubMoveStatistics& b)
+  {
+    ensureSize(b.trials.size());
+    for (std::size_t i = 0; i != b.trials.size(); ++i)
+    {
+      trials[i] += b.trials[i];
+      constructed[i] += b.constructed[i];
+      accepted[i] += b.accepted[i];
+    }
+    return *this;
+  }
+
+  /// Text table with one row per sub-choice; 'labels[i]' describes choice i.
+  std::string write(std::string_view title, std::span<const std::string> labels) const;
+  nlohmann::json json(std::span<const std::string> labels) const;
+};
+
 export struct MCMoveStatistics
 {
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   bool operator==(MCMoveStatistics const&) const = default;
 
   std::array<std::variant<MoveStatistics<double>, MoveStatistics<double3>>, 
              std::to_underlying(Move::Types::Count)> stats{};
+
+  /// Per-sub-choice counters of the moves that report them (see SubMoveStatistics), indexed by move.
+  std::array<SubMoveStatistics, std::to_underlying(Move::Types::Count)> subMoves{};
 
   const std::variant<MoveStatistics<double>, MoveStatistics<double3>> &operator[](Move::Types i) const
   {
@@ -157,6 +213,24 @@ export struct MCMoveStatistics
   void addAccepted(const Move::Types& move);
   void addAccepted(const Move::Types& move, std::size_t direction);
 
+  // Sub-choice bookkeeping (in addition to, not instead of, the calls above).
+  void addSubTrial(const Move::Types& move, std::size_t index, std::size_t count)
+  {
+    subMoves[std::to_underlying(move)].addTrial(index, count);
+  }
+  void addSubConstructed(const Move::Types& move, std::size_t index)
+  {
+    subMoves[std::to_underlying(move)].addConstructed(index);
+  }
+  void addSubAccepted(const Move::Types& move, std::size_t index)
+  {
+    subMoves[std::to_underlying(move)].addAccepted(index);
+  }
+  const SubMoveStatistics& subMoveStatistics(const Move::Types& move) const
+  {
+    return subMoves[std::to_underlying(move)];
+  }
+
   double getMaxChange(const Move::Types& move)
   {
     return std::get<MoveStatistics<double>>(stats[std::to_underlying(move)]).maxChange;
@@ -188,6 +262,7 @@ export struct MCMoveStatistics
       {
         std::get<MoveStatistics<double3>>(this->stats[i]) += std::get<MoveStatistics<double3>>(b.stats[i]);
       }
+      subMoves[i] += b.subMoves[i];
     }
     return *this;
   }
@@ -212,6 +287,8 @@ export inline MCMoveStatistics operator+(const MCMoveStatistics& a, const MCMove
     {
       std::get<MoveStatistics<double3>>(c.stats[i]) = std::get<MoveStatistics<double3>>(a.stats[i]) + std::get<MoveStatistics<double3>>(b.stats[i]);
     }
+    c.subMoves[i] = a.subMoves[i];
+    c.subMoves[i] += b.subMoves[i];
   }
   return c;
 }
