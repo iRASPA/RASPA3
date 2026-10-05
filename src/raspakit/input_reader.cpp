@@ -1450,6 +1450,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("PivotCBMCProbability") && item["PivotCBMCProbability"].is_number_float())
+      {
+        double pivotCBMCProbability = item["PivotCBMCProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::PivotCBMC, pivotCBMCProbability);
+        }
+      }
+
       if (item.contains("CrankshaftProbability") && item["CrankshaftProbability"].is_number_float())
       {
         double crankshaftProbability = item["CrankshaftProbability"].get<double>();
@@ -1815,6 +1824,32 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].pivotRandomizationFraction = pivotRandomizationFraction;
+        }
+      }
+
+      if (item.contains("PivotCBMCNumberOfTrialAngles") && item["PivotCBMCNumberOfTrialAngles"].is_number_integer())
+      {
+        std::int64_t numberOfTrialAngles = item["PivotCBMCNumberOfTrialAngles"].get<std::int64_t>();
+        if (numberOfTrialAngles < 1)
+        {
+          throw std::runtime_error(std::format("[Input reader]: PivotCBMCNumberOfTrialAngles must be at least 1\n"));
+        }
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].pivotCBMCNumberOfTrialAngles = static_cast<std::size_t>(numberOfTrialAngles);
+        }
+      }
+
+      if (item.contains("PivotCBMCRandomizationFraction") && item["PivotCBMCRandomizationFraction"].is_number_float())
+      {
+        double fraction = item["PivotCBMCRandomizationFraction"].get<double>();
+        if (fraction < 0.0 || fraction > 1.0)
+        {
+          throw std::runtime_error(std::format("[Input reader]: PivotCBMCRandomizationFraction must be in [0, 1]\n"));
+        }
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].pivotCBMCRandomizationFraction = fraction;
         }
       }
 
@@ -4696,6 +4731,9 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "RotationProbability",
     "PivotProbability",
     "PivotRandomizationFraction",
+    "PivotCBMCProbability",
+    "PivotCBMCNumberOfTrialAngles",
+    "PivotCBMCRandomizationFraction",
     "CrankshaftProbability",
     "CrankshaftRandomizationFraction",
     "CrankshaftMaxSegmentSize",

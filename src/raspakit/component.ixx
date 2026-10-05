@@ -146,7 +146,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{6};  ///< Version number for serialization.
+  std::uint64_t versionNumber{7};  ///< Version number for serialization.
 
   Type type{0};  ///< Type of the component (Adsorbate or Cation).
 
@@ -212,6 +212,12 @@ export struct Component
   // 2009). The two channels have separate acceptance statistics, so the randomizations do not bias
   // the adaptive maximum angle.
   double pivotRandomizationFraction{0.2};  ///< Fraction of pivot attempts with a fully random angle.
+  // Configurational-bias pivot: number of trial angles 'k' among which the rotation angle is
+  // selected with Rosenbluth weights (k = 1 is the plain pivot), and the fraction of attempts that
+  // draw the trial angles from the full circle instead of the adaptive window. The bias pays off
+  // for the large rotations, so the randomization fraction defaults higher than for the plain pivot.
+  std::size_t pivotCBMCNumberOfTrialAngles{10};  ///< Number of trial angles of the CBMC pivot.
+  double pivotCBMCRandomizationFraction{0.5};    ///< Fraction of CBMC-pivot attempts with trial angles in [-pi, pi].
   // Fraction of crankshaft-move attempts that randomize the rotation angle completely (uniform in
   // [-pi, pi]) instead of perturbing it within the adaptive window; same rationale as
   // 'pivotRandomizationFraction'.

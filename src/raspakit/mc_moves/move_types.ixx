@@ -64,7 +64,8 @@ export struct Move
     CrossLinkSwap = 53,                   // Bond-count-conserving relocation of one end of a cross-link (system move)
     CrossLinkFormationScission = 54,      // Formation or scission of a cross-link between two reactive sites (system move)
     CrossLinkExchange = 55,               // Two cross-links trade partners, (a,b)+(c,d) -> (a,c)+(b,d) (system move)
-    Count = 56
+    PivotCBMC = 56,                       // Pivot with Rosenbluth selection of the rotation angle among k trial angles
+    Count = 57
   };
 
   /**
@@ -138,6 +139,7 @@ export inline std::unordered_set<Move::Types> componentMoves = {Move::Types::Tra
                                                                 Move::Types::TranslationRotationSmartMC,
                                                                 Move::Types::ReinsertionCBMC,    Move::Types::PartialReinsertionCBMC,
                                                                 Move::Types::Pivot,
+                                                                Move::Types::PivotCBMC,
                                                                 Move::Types::Crankshaft,
                                                                 Move::Types::Reptation,
                                                                 Move::Types::ConcertedRotation,

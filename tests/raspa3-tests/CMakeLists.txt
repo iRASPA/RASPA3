@@ -15,6 +15,7 @@ add_executable(unit_tests_raspa3
   mc_cyclic_cbmc.cpp
   mc_u0_sanity.cpp
   mc_concerted_rotation.cpp
+  mc_pivot_cbmc.cpp
   mc_double_bridging.cpp
   mc_bead_moves.cpp
   mc_cross_links.cpp

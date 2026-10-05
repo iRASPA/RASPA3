@@ -2283,6 +2283,30 @@ molecules; do not combine it with insertion/deletion moves.
     $[-\pi, \pi]$; the remainder uses an adaptive window tuned towards a 50%
     acceptance ratio. Not available with polarization.
 
+-   `"PivotCBMCProbability" : floating-point-number`\
+    The relative probability of a configurational-bias pivot move for
+    flexible molecules. The geometry is that of the pivot move (a random valid
+    bond, rigid rotation of the smaller part about the bond axis), but instead
+    of one random angle, `"PivotCBMCNumberOfTrialAngles"` (default 10) trial
+    angles are drawn and one is selected with probability proportional to its
+    Boltzmann factor (Rosenbluth selection, as in CBMC). The weight of a trial
+    contains the framework, intermolecular, external-field, cross-link and
+    full intramolecular energies; the Ewald Fourier part is evaluated for the
+    selected trial only and enters the acceptance rule as a correction,
+    $\mathrm{acc} = \min(1, (W_\mathrm{new}/W_\mathrm{old})
+    \exp(-\beta \Delta U_\mathrm{Fourier}))$, where $W_\mathrm{old}$ sums
+    the Boltzmann factors of the old configuration and $k-1$ trial angles
+    drawn about the new one. In dense phases, where almost every random pivot
+    angle sweeps the rotated part through neighbouring molecules, the biased
+    selection finds the angles that fit and raises the acceptance of large
+    rotations (and with it the decorrelation of the end-to-end vector) by up
+    to an order of magnitude at $k$ times the cost of a plain pivot. A
+    fraction `"PivotCBMCRandomizationFraction"` (default 0.5) of the attempts
+    draws the trial angles uniformly from $[-\pi, \pi]$; the remainder draws
+    them from an adaptive window tuned towards a 50% acceptance ratio. With
+    one trial angle the move is identical to the plain pivot. Not available
+    with polarization.
+
 -   `"CrankshaftProbability" : floating-point-number`\
     The relative probability of a crankshaft move for flexible molecules. A
     small connected segment (at most `"CrankshaftMaxSegmentSize"` atoms,

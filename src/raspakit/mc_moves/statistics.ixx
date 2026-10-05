@@ -68,6 +68,12 @@ export struct MCMoveStatistics
         MoveStatistics<double3>{.maxChange = double3(0.5, 3.14159265358979323846, 0.0),
                                 .lowerLimit = double3(0.01, 3.14159265358979323846, 0.0),
                                 .upperLimit = double3(3.14159265358979323846, 3.14159265358979323846, 1.0)};
+    // The configurational-bias pivot uses the same two-channel layout as Pivot for its trial-angle
+    // window.
+    stats[std::to_underlying(Move::Types::PivotCBMC)] =
+        MoveStatistics<double3>{.maxChange = double3(0.5, 3.14159265358979323846, 0.0),
+                                .lowerLimit = double3(0.01, 3.14159265358979323846, 0.0),
+                                .upperLimit = double3(3.14159265358979323846, 3.14159265358979323846, 1.0)};
     // Crankshaft uses the same two-channel layout as Pivot: direction 0 is the adaptive small-step
     // channel, direction 1 the full-randomization channel pinned at pi by its limits.
     stats[std::to_underlying(Move::Types::Crankshaft)] =
