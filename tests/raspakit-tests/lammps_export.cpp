@@ -590,6 +590,115 @@ TEST(lammps_export, chain_system_export_and_read_back)
   EXPECT_EQ(reread.intraMolecularPotentials.torsions.size(), 2u);
 }
 
+TEST(lammps_export, reader_keeps_one_pseudo_atom_per_type_with_per_atom_charges)
+{
+  // one LAMMPS type (1) with two different charges in a 3-atom chain, and a type (2) with one charge
+  const std::string data = R"(LAMMPS data file
+
+3 atoms
+2 bonds
+1 angles
+2 atom types
+1 bond types
+1 angle types
+
+0.0 20.0 xlo xhi
+0.0 20.0 ylo yhi
+0.0 20.0 zlo zhi
+
+Masses
+
+1 12.0
+2 16.0
+
+Pair Coeffs # lj/cut/coul/long
+
+1 0.1 3.4
+2 0.2 3.0
+
+Bond Coeffs # harmonic
+
+1 300.0 1.5
+
+Angle Coeffs # harmonic
+
+1 60.0 110.0
+
+Atoms # full
+
+1 1 1 -0.3 5.0 5.0 5.0
+2 1 2  0.6 6.5 5.0 5.0
+3 1 1 -0.3 8.0 5.0 5.0
+
+Bonds
+
+1 1 1 2
+2 1 2 3
+
+Angles
+
+1 1 1 2 3
+)";
+  const std::string input = R"(units real
+atom_style full
+pair_style lj/cut/coul/long 12.0
+bond_style harmonic
+angle_style harmonic
+kspace_style pppm 1e-5
+read_data mixed.data
+)";
+  TemporaryDirectory directory;
+  std::filesystem::path dataPath = directory.path / "mixed.data";
+  std::filesystem::path inputPath = directory.path / "mixed.in";
+  std::ofstream(dataPath) << data;
+  std::ofstream(inputPath) << input;
+
+  // first: every atom of a type carries the same charge -> pseudo-atom charge, no per-atom entries
+  {
+    LAMMPS::ReadResult read = LAMMPS::readDataFile(dataPath, inputPath);
+    ASSERT_EQ(read.forceField["PseudoAtoms"].size(), 2u);
+    EXPECT_NEAR(read.forceField["PseudoAtoms"][0]["charge"].get<double>(), -0.3, 1e-9);
+    EXPECT_NEAR(read.forceField["PseudoAtoms"][1]["charge"].get<double>(), 0.6, 1e-9);
+    ASSERT_EQ(read.components.size(), 1u);
+    for (const auto &atom : read.components[0].definition["PseudoAtoms"]) EXPECT_EQ(atom.size(), 2u);
+  }
+
+  // second: the two type-1 atoms carry different charges -> still one pseudo-atom (charge 0), charges per atom
+  std::string mixed = data;
+  mixed.replace(mixed.find("3 1 1 -0.3"), std::string("3 1 1 -0.3").size(), "3 1 1 -0.1");
+  std::ofstream(dataPath, std::ios::trunc) << mixed;
+  LAMMPS::ReadResult read = LAMMPS::readDataFile(dataPath, inputPath);
+
+  ASSERT_EQ(read.forceField["PseudoAtoms"].size(), 2u);
+  EXPECT_NEAR(read.forceField["PseudoAtoms"][0]["charge"].get<double>(), 0.0, 1e-12);
+  EXPECT_NEAR(read.forceField["PseudoAtoms"][1]["charge"].get<double>(), 0.6, 1e-9);
+  EXPECT_TRUE(std::any_of(read.warnings.begin(), read.warnings.end(),
+                          [](const std::string &w) { return w.contains("different charges"); }));
+
+  ASSERT_EQ(read.components.size(), 1u);
+  const nlohmann::json &definition = read.components[0].definition;
+  ASSERT_EQ(definition["PseudoAtoms"].size(), 3u);
+  ASSERT_EQ(definition["PseudoAtoms"][0].size(), 3u);
+  EXPECT_NEAR(definition["PseudoAtoms"][0][2].get<double>(), -0.3, 1e-9);
+  EXPECT_EQ(definition["PseudoAtoms"][1].size(), 2u);  // equals the pseudo-atom charge
+  ASSERT_EQ(definition["PseudoAtoms"][2].size(), 3u);
+  EXPECT_NEAR(definition["PseudoAtoms"][2][2].get<double>(), -0.1, 1e-9);
+
+  // the converted input reads back into RASPA with the per-atom charges
+  EXPECT_EQ(read.forceField["PseudoAtoms"][0]["name"], "T1");
+  EXPECT_EQ(read.forceField["PseudoAtoms"][1]["name"], "T2");
+  ForceField forceField({{"T1", false, 12.0, 0.0, 0.0, 6, true}, {"T2", false, 16.0, 0.6, 0.0, 8, true}},
+                        {{50.0, 3.4}, {100.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0,
+                        false, false, true);
+  Component reread = readComponent(forceField, definition, "mixed-reread");
+  ASSERT_EQ(reread.atoms.size(), 3u);
+  EXPECT_NEAR(reread.atoms[0].charge, -0.3, 1e-9);
+  EXPECT_NEAR(reread.atoms[1].charge, 0.6, 1e-9);
+  EXPECT_NEAR(reread.atoms[2].charge, -0.1, 1e-9);
+  EXPECT_EQ(reread.atoms[0].type, reread.atoms[2].type);
+  EXPECT_NEAR(reread.netCharge, 0.2, 1e-9);
+}
+
 TEST(lammps_export, rigid_molecule_gets_fragment_ids_and_rigid_small)
 {
   ForceField forceField = chainForceField();

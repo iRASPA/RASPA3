@@ -1987,6 +1987,22 @@ not improved by it.
     (`"properties" > "thermodynamicIntegration"`), giving one point of the
     ⟨∂U/∂λ⟩(λ) curve.
 
+-   `"PseudoAtoms" : list` (molecule definition file)\
+    The atoms of the molecule. Each entry is `[name, [x, y, z]]` or
+    `[name, [x, y, z], charge]`: the name of a pseudo-atom of the force field,
+    its position in the reference geometry [Å], and optionally its partial
+    charge [e]. Without the third element the atom takes the `"charge"` of the
+    pseudo-atom from `force_field.json`; with it, the given charge is used for
+    this atom only. This allows atoms that share one pseudo-atom type (mass and
+    van der Waals parameters) to carry different partial charges, as in protein
+    and nucleic-acid force fields:
+
+        "PseudoAtoms" : [
+          ["CT", [ 0.000,  0.000, 0.000], -0.1825],
+          ["HC", [ 1.090,  0.000, 0.000],  0.0603],
+          ["CT", [-0.513,  1.449, 0.000],  0.0337]
+        ]
+
 -   `"ReactiveSites" : list` (molecule definition file)\
     Declares which atoms of the molecule can form cross-links with atoms of
     other molecules (see [Cross-links between molecules](#cross-links)). Each

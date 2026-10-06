@@ -567,6 +567,8 @@ std::string styleFor(const StyleSpec &spec, const CoefficientLine &line)
 struct Template
 {
   std::vector<std::size_t> pseudoAtomIndex{};  // per local atom
+  std::vector<double> charges{};               // per local atom
+  std::vector<long> chargeKeys{};              // per local atom, the charge rounded to 1e-6 (for the key)
   std::vector<std::array<std::size_t, 3>> bonds{};        // local a, local b, type
   std::vector<std::array<std::size_t, 4>> angles{};
   std::vector<std::array<std::size_t, 5>> dihedrals{};
@@ -575,7 +577,7 @@ struct Template
   std::size_t count{};
   std::vector<std::size_t> firstAtomIds{};  // global id of the first atom of every instance
 
-  auto key() const { return std::tie(pseudoAtomIndex, bonds, angles, dihedrals, impropers); }
+  auto key() const { return std::tie(pseudoAtomIndex, chargeKeys, bonds, angles, dihedrals, impropers); }
 };
 
 std::string sanitizeName(std::string name)
@@ -651,7 +653,10 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
     }
   }
 
-  // pseudo-atoms: (type, charge) pairs
+  // pseudo-atoms: one per LAMMPS atom type. The charge of the pseudo-atom is the charge shared by all atoms
+  // of the type; when the atoms of a type carry different charges the pseudo-atom gets charge zero and the
+  // charges are written per atom in the component definitions (RASPA's per-atom charge overrides the
+  // pseudo-atom default).
   struct PseudoAtomDefinition
   {
     std::size_t type;
@@ -659,41 +664,43 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
     std::string name;
   };
   std::vector<PseudoAtomDefinition> pseudoAtoms;
-  std::map<std::pair<std::size_t, long>, std::size_t> pseudoAtomIndexOf;
+  std::map<std::size_t, std::size_t> pseudoAtomIndexOf;
   auto chargeKey = [](double q) { return std::lround(q * 1.0e6); };
   std::vector<std::size_t> pseudoAtomOfAtom(data.atoms.size());
-  std::map<std::size_t, std::size_t> chargeVariantsOfType;
+  std::map<std::size_t, std::set<long>> chargeVariantsOfType;
   for (std::size_t i = 0; i < data.atoms.size(); ++i)
   {
     const DataAtom &atom = data.atoms[i];
-    std::pair<std::size_t, long> key{atom.type, chargeKey(atom.charge)};
-    auto it = pseudoAtomIndexOf.find(key);
+    auto it = pseudoAtomIndexOf.find(atom.type);
     if (it == pseudoAtomIndexOf.end())
     {
       std::string base = data.typeNames.contains(atom.type) ? data.typeNames.at(atom.type)
                                                              : std::format("T{}", atom.type);
-      std::size_t variant = chargeVariantsOfType[atom.type]++;
-      std::string name = variant == 0 ? base : std::format("{}_q{}", base, variant);
-      pseudoAtoms.push_back({atom.type, atom.charge, sanitizeName(name)});
-      it = pseudoAtomIndexOf.emplace(key, pseudoAtoms.size() - 1).first;
+      pseudoAtoms.push_back({atom.type, atom.charge, sanitizeName(base)});
+      it = pseudoAtomIndexOf.emplace(atom.type, pseudoAtoms.size() - 1).first;
     }
+    chargeVariantsOfType[atom.type].insert(chargeKey(atom.charge));
     pseudoAtomOfAtom[i] = it->second;
   }
   for (const auto &[type, variants] : chargeVariantsOfType)
   {
-    if (variants > 1)
+    if (variants.size() > 1)
+    {
+      pseudoAtoms[pseudoAtomIndexOf.at(type)].charge = 0.0;
       result.warnings.push_back(std::format(
-          "[LAMMPS reader] atom type {} carries {} different charges; split into {} RASPA pseudo-atoms", type,
-          variants, variants));
+          "[LAMMPS reader] atom type {} carries {} different charges; the pseudo-atom charge is set to zero and "
+          "the charges are listed per atom in the component definitions",
+          type, variants.size()));
+    }
   }
   // pair coefficients for types that appear only in the coefficient tables (no atoms)
   for (const auto &[type, mass] : data.masses)
   {
-    if (!chargeVariantsOfType.contains(type))
+    if (!pseudoAtomIndexOf.contains(type))
     {
       std::string base = data.typeNames.contains(type) ? data.typeNames.at(type) : std::format("T{}", type);
       pseudoAtoms.push_back({type, 0.0, sanitizeName(base)});
-      pseudoAtomIndexOf.emplace(std::pair{type, 0L}, pseudoAtoms.size() - 1);
+      pseudoAtomIndexOf.emplace(type, pseudoAtoms.size() - 1);
     }
   }
   // ensure unique names
@@ -905,6 +912,8 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
     {
       local[data.atoms[atomIndices[n]].id] = n;
       candidate.pseudoAtomIndex.push_back(pseudoAtomOfAtom[atomIndices[n]]);
+      candidate.charges.push_back(data.atoms[atomIndices[n]].charge);
+      candidate.chargeKeys.push_back(chargeKey(data.atoms[atomIndices[n]].charge));
       candidate.positions.push_back(result.positions[atomIndices[n]]);
     }
     auto localOf = [&](std::size_t id) { return local.at(id); };
@@ -966,6 +975,7 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
         "[LAMMPS reader] non-zero 1-2 / 1-3 special_bonds factors cannot be represented in RASPA and are ignored");
 
   std::size_t componentCounter = 0;
+  std::map<std::string, std::size_t> componentNamesSeen;
   for (const Template &tpl : templates)
   {
     ReadComponent component;
@@ -973,6 +983,9 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
     component.atomsPerMolecule = tpl.pseudoAtomIndex.size();
     component.name = templates.size() == 1 ? "molecule" : std::format("molecule{}", componentCounter + 1);
     if (tpl.pseudoAtomIndex.size() == 1) component.name = pseudoAtoms[tpl.pseudoAtomIndex[0]].name;
+    // single-atom templates of one type but different charges would share a name
+    if (std::size_t n = componentNamesSeen[component.name]++; n > 0)
+      component.name = std::format("{}_{}", component.name, n);
     ++componentCounter;
 
     nlohmann::json definition;
@@ -990,9 +1003,13 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
     definition["PseudoAtoms"] = nlohmann::json::array();
     for (std::size_t n = 0; n < tpl.pseudoAtomIndex.size(); ++n)
     {
-      definition["PseudoAtoms"].push_back(
-          {pseudoAtoms[tpl.pseudoAtomIndex[n]].name,
-           {tpl.positions[n][0] - centre[0], tpl.positions[n][1] - centre[1], tpl.positions[n][2] - centre[2]}});
+      const PseudoAtomDefinition &pseudoAtom = pseudoAtoms[tpl.pseudoAtomIndex[n]];
+      nlohmann::json entry = {
+          pseudoAtom.name,
+          {tpl.positions[n][0] - centre[0], tpl.positions[n][1] - centre[1], tpl.positions[n][2] - centre[2]}};
+      // the per-atom charge overrides the pseudo-atom default; written only when it differs
+      if (tpl.chargeKeys[n] != chargeKey(pseudoAtom.charge)) entry.push_back(tpl.charges[n]);
+      definition["PseudoAtoms"].push_back(entry);
     }
 
     if (!tpl.bonds.empty())

@@ -296,11 +296,14 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
       throw std::runtime_error(std::format("[Component reader]: item {} must be an array\n", item.dump()));
     }
 
-    if (item.size() != 2)
+    // Each atom is [name, [x, y, z]] or [name, [x, y, z], charge]. The charge of the pseudo-atom in the
+    // force field is the default; a third element overrides it for this atom only, so that atoms of one
+    // Lennard-Jones type can carry different partial charges (as in protein and DNA force fields).
+    if (item.size() != 2 && item.size() != 3)
     {
       throw std::runtime_error(
-          std::format("[Component reader]: item {} must be an array with two elements, "
-                      "the pseudo-atom-name and an array with the x,y,z positions\n",
+          std::format("[Component reader]: item {} must be an array with two or three elements, "
+                      "the pseudo-atom-name, an array with the x,y,z positions, and optionally the charge\n",
                       item.dump()));
     }
 
@@ -349,6 +352,15 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
 
     double mass = forceField.pseudoAtoms[pseudoAtomType].mass;
     double charge = forceField.pseudoAtoms[pseudoAtomType].charge;
+    if (item.size() == 3)
+    {
+      if (!item[2].is_number())
+      {
+        throw std::runtime_error(
+            std::format("[Component reader]: item {} must be a number (the charge of the atom)\n", item[2].dump()));
+      }
+      charge = item[2].get<double>();
+    }
     double scaling = 1.0;
 
     definedAtoms.push_back(

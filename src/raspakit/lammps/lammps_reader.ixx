@@ -13,8 +13,9 @@ import json;
  *
  * What is converted:
  *   - Masses, 'Pair Coeffs' / 'PairIJ Coeffs' (or pair_coeff lines of the script) -> pseudo-atoms and
- *     Lennard-Jones self / binary interactions. Atoms of one LAMMPS type that carry different charges
- *     become distinct RASPA pseudo-atoms (RASPA charges live on the pseudo-atom).
+ *     Lennard-Jones self / binary interactions, one pseudo-atom per LAMMPS type. The pseudo-atom carries
+ *     the charge shared by all atoms of the type; when the atoms of a type carry different charges the
+ *     pseudo-atom charge is zero and every atom lists its own charge in the component definition.
  *   - Bond / Angle / Dihedral Coeffs -> RASPA bond, bend and torsion definitions (index based), through
  *     LAMMPS::bondFromLammps etc. Styles come from the input script, from 'hybrid' prefixes in the
  *     coefficient lines, or default to harmonic / harmonic / nharmonic.
