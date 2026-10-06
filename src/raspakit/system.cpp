@@ -1394,7 +1394,7 @@ void System::setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelation
   }
 }
 
-void System::initializeMoleculeProperties(std::size_t numberOfBlocks)
+void System::initializeMoleculeProperties(std::size_t numberOfBlocks, bool timeAxisInPicoseconds)
 {
   const bool anyProperties = std::ranges::any_of(
       components, [](const Component& component) { return component.moleculePropertiesSettings.has_value(); });
@@ -1424,8 +1424,10 @@ void System::initializeMoleculeProperties(std::size_t numberOfBlocks)
   }
   if (anyEndToEndACF)
   {
+    // a non-positive time step makes the autocorrelation function report its lags in cycles
     propertyEndToEndACF = PropertyEndToEndAutoCorrelationFunction(components, numberOfMoleculesPerComponent,
-                                                                  moleculeData.size(), timeStep);
+                                                                  moleculeData.size(),
+                                                                  timeAxisInPicoseconds ? timeStep : 0.0);
   }
 }
 

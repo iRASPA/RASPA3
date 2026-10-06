@@ -877,7 +877,9 @@ export struct System
   /// histograms, the shape descriptors, the backbone statistics and the end-to-end autocorrelation function.
   /// Call once the components, the molecules and the time step are known; throws when a component asks for an
   /// analysis it cannot support (e.g. the autocorrelation function without end-to-end atoms).
-  void initializeMoleculeProperties(std::size_t numberOfBlocks);
+  /// 'timeAxisInPicoseconds' selects the lag axis of the autocorrelation function: the MD time step for the
+  /// molecular-dynamics drivers, cycles for the Monte Carlo drivers (where 'timeStep' is meaningless).
+  void initializeMoleculeProperties(std::size_t numberOfBlocks, bool timeAxisInPicoseconds);
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System& s);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s);

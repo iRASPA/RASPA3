@@ -3693,8 +3693,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
       // The intra-molecular analyses (molecule properties, shape, backbone, end-to-end autocorrelation
       // function) are component options, parsed in the 'Components' block above; the time step must be
-      // known for the autocorrelation function.
-      systems[systemId].initializeMoleculeProperties(jsonNumberOfBlocks);
+      // known for the autocorrelation function (its lag axis is in picoseconds for the molecular-dynamics
+      // drivers and in cycles for the Monte Carlo drivers).
+      const bool timeAxisInPicoseconds = simulationType == SimulationType::MolecularDynamics ||
+                                         simulationType == SimulationType::ParallelTemperingMolecularDynamics ||
+                                         simulationType == SimulationType::MolecularDynamicsSpatialDecomposition;
+      systems[systemId].initializeMoleculeProperties(jsonNumberOfBlocks, timeAxisInPicoseconds);
 
       if (value.contains("ComputeDensityGrid") && value["ComputeDensityGrid"].is_boolean())
       {
