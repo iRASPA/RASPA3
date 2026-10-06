@@ -29,17 +29,17 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream, std::siz
   // use local random-number generator (so that it does not interfere with a binary-restart)
   RandomNumber random{std::nullopt};
 
-  std::size_t numberOfGridTestPoints = forceField.numberOfGridTestPoints;
+  std::size_t numberOfGridTestPoints = forceField.settings.numberOfGridTestPoints;
 
   if(hasExternalField)
   {
-    if(forceField.useExternalFieldGrid)
+    if(forceField.settings.useExternalFieldGrid)
     {
-      // int3 numberOfExternalFieldGridPoints  = forceField.numberOfExternalFieldGridPoints;
+      // int3 numberOfExternalFieldGridPoints  = forceField.settings.numberOfExternalFieldGridPoints;
       uint3 numberOfExternalFieldGridPoints = InterpolationEnergyGrid::parseExternalFieldGridDimensions(forceField.externalFieldGridFileName);
 
       externalFieldInterpolationGrid = InterpolationEnergyGrid(simulationBox, forceField.potentialEnergySurfaceOrigin,
-                                                      numberOfExternalFieldGridPoints, forceField.interpolationScheme);
+                                                      numberOfExternalFieldGridPoints, forceField.settings.interpolationScheme);
 
       std::print(stream, "Generating an external field interpolation grid ({}x{}x{})\n",
                  externalFieldInterpolationGrid->numberOfGridPoints.x, 
@@ -82,9 +82,9 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream, std::siz
         double analytical_energy{};
         double3 analytical_gradient{};
         double3x3 analytical_hessian{};
-        switch (forceField.interpolationScheme)
+        switch (forceField.settings.interpolationScheme)
         {
-          case ForceField::InterpolationScheme::Polynomial:
+          case ForceFieldSettings::InterpolationScheme::Polynomial:
           {
             std::array<double, 8> analytical_polynomial = Interactions::calculateTricubicFractionalAtPositionExternalField(
                  forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
@@ -92,7 +92,7 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream, std::siz
             analytical_energy = analytical_polynomial[0] * Units::EnergyToKelvin;
           }
           break;
-          case ForceField::InterpolationScheme::Tricubic:
+          case ForceFieldSettings::InterpolationScheme::Tricubic:
           {
             std::array<double, 8> analytical_tricubic = Interactions::calculateTricubicFractionalAtPositionExternalField(
                  forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
@@ -109,7 +109,7 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream, std::siz
             analytical_gradient.z *= Units::EnergyToKelvin;
           }
           break;
-          case ForceField::InterpolationScheme::Triquintic:
+          case ForceFieldSettings::InterpolationScheme::Triquintic:
           {
             std::array<double, 27> analytical_triquintic = Interactions::calculateTriquinticFractionalAtPositionExternalField(
                  forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
@@ -167,7 +167,7 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream, std::siz
     }
   }
 
-  if(forceField.writeExternalFieldInterpolationGrid)
+  if(forceField.settings.writeExternalFieldInterpolationGrid)
   {
     externalFieldInterpolationGrid->writeOutput(systemId, simulationBox, forceField);
   }
@@ -178,28 +178,28 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
   // use local random-number generator (so that it does not interfere with a binary-restart)
   RandomNumber random{std::nullopt};
 
-  std::size_t numberOfGridTestPoints = forceField.numberOfGridTestPoints;
+  std::size_t numberOfGridTestPoints = forceField.settings.numberOfGridTestPoints;
 
   if (framework.has_value())
   {
     uint3 numberOfCoulombGridPoints{};
-    if (forceField.numberOfVDWGridPoints.has_value())
+    if (forceField.settings.numberOfVDWGridPoints.has_value())
     {
-      numberOfCoulombGridPoints = forceField.numberOfCoulombGridPoints.value();
+      numberOfCoulombGridPoints = forceField.settings.numberOfCoulombGridPoints.value();
     }
     else
     {
       const double3 perpendicular_widths = framework->simulationBox.perpendicularWidths();
       numberOfCoulombGridPoints.x =
-          static_cast<std::size_t>(perpendicular_widths.x / forceField.spacingCoulombGrid + 0.5);
+          static_cast<std::size_t>(perpendicular_widths.x / forceField.settings.spacingCoulombGrid + 0.5);
       numberOfCoulombGridPoints.y =
-          static_cast<std::size_t>(perpendicular_widths.y / forceField.spacingCoulombGrid + 0.5);
+          static_cast<std::size_t>(perpendicular_widths.y / forceField.settings.spacingCoulombGrid + 0.5);
       numberOfCoulombGridPoints.z =
-          static_cast<std::size_t>(perpendicular_widths.z / forceField.spacingCoulombGrid + 0.5);
+          static_cast<std::size_t>(perpendicular_widths.z / forceField.settings.spacingCoulombGrid + 0.5);
     }
 
     // also create a Charge grid when needed
-    if (!forceField.gridPseudoAtomIndices.empty())
+    if (!forceField.settings.gridPseudoAtomIndices.empty())
     {
       std::print(stream, "Generating an Ewald Real interpolation grid ({}x{}x{}) for a unit charge\n",
                  numberOfCoulombGridPoints.x, numberOfCoulombGridPoints.y, numberOfCoulombGridPoints.z);
@@ -207,33 +207,33 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
 
       interpolationGrids.back() =
           InterpolationEnergyGrid(framework->simulationBox, forceField.potentialEnergySurfaceOrigin,
-                                  numberOfCoulombGridPoints, forceField.interpolationScheme);
-      interpolationGrids.back()->makeFrameworkInterpolationGrid(stream, ForceField::InterpolationGridType::EwaldReal, forceField,
+                                  numberOfCoulombGridPoints, forceField.settings.interpolationScheme);
+      interpolationGrids.back()->makeFrameworkInterpolationGrid(stream, ForceFieldSettings::InterpolationGridType::EwaldReal, forceField,
                                                        framework.value(), forceField.cutOffCoulomb, 0);
     }
 
     uint3 numberOfVDWGridPoints{};
-    if (forceField.numberOfVDWGridPoints.has_value())
+    if (forceField.settings.numberOfVDWGridPoints.has_value())
     {
-      numberOfVDWGridPoints = forceField.numberOfVDWGridPoints.value();
+      numberOfVDWGridPoints = forceField.settings.numberOfVDWGridPoints.value();
     }
     else
     {
       const double3 perpendicular_widths = framework->simulationBox.perpendicularWidths();
-      numberOfVDWGridPoints.x = static_cast<std::size_t>(perpendicular_widths.x / forceField.spacingVDWGrid + 0.5);
-      numberOfVDWGridPoints.y = static_cast<std::size_t>(perpendicular_widths.y / forceField.spacingVDWGrid + 0.5);
-      numberOfVDWGridPoints.z = static_cast<std::size_t>(perpendicular_widths.z / forceField.spacingVDWGrid + 0.5);
+      numberOfVDWGridPoints.x = static_cast<std::size_t>(perpendicular_widths.x / forceField.settings.spacingVDWGrid + 0.5);
+      numberOfVDWGridPoints.y = static_cast<std::size_t>(perpendicular_widths.y / forceField.settings.spacingVDWGrid + 0.5);
+      numberOfVDWGridPoints.z = static_cast<std::size_t>(perpendicular_widths.z / forceField.settings.spacingVDWGrid + 0.5);
     }
 
-    for (const std::size_t& index : forceField.gridPseudoAtomIndices)
+    for (const std::size_t& index : forceField.settings.gridPseudoAtomIndices)
     {
       std::print(stream, "Generating an VDW interpolation grid ({}x{}x{}) for {}\n", numberOfVDWGridPoints.x,
                  numberOfVDWGridPoints.y, numberOfVDWGridPoints.z, forceField.pseudoAtoms[index].name);
       std::print(stream, "========================================================================================================================\n");
 
       interpolationGrids[index] =
-          InterpolationEnergyGrid(framework->simulationBox, forceField.potentialEnergySurfaceOrigin, numberOfVDWGridPoints, forceField.interpolationScheme);
-      interpolationGrids[index]->makeFrameworkInterpolationGrid(stream, ForceField::InterpolationGridType::LennardJones,
+          InterpolationEnergyGrid(framework->simulationBox, forceField.potentialEnergySurfaceOrigin, numberOfVDWGridPoints, forceField.settings.interpolationScheme);
+      interpolationGrids[index]->makeFrameworkInterpolationGrid(stream, ForceFieldSettings::InterpolationGridType::LennardJones,
                                                        forceField, framework.value(), forceField.cutOffFrameworkVDW,
                                                        index);
 
@@ -296,21 +296,21 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
         double analytical_vdw_energy{};
         double3 analytical_vdw_gradient{};
         double3x3 analytical_vdw_hessian{};
-        switch (forceField.interpolationScheme)
+        switch (forceField.settings.interpolationScheme)
         {
-          case ForceField::InterpolationScheme::Polynomial:
+          case ForceFieldSettings::InterpolationScheme::Polynomial:
           {
             double analytical_vdw_quintic =
-                Interactions::calculateEnergyAtPosition(ForceField::InterpolationGridType::LennardJones, forceField,
+                Interactions::calculateEnergyAtPosition(ForceFieldSettings::InterpolationGridType::LennardJones, forceField,
                                                         simulationBox, pos, index, spanOfFrameworkAtoms());
 
             analytical_vdw_energy = analytical_vdw_quintic * Units::EnergyToKelvin;
           }
           break;
-          case ForceField::InterpolationScheme::Tricubic:
+          case ForceFieldSettings::InterpolationScheme::Tricubic:
           {
             std::array<double, 8> analytical_vdw_tricubic = Interactions::calculateTricubicFractionalAtPosition(
-                ForceField::InterpolationGridType::LennardJones, forceField, simulationBox, pos, index,
+                ForceFieldSettings::InterpolationGridType::LennardJones, forceField, simulationBox, pos, index,
                 framework->simulationBox, spanOfFrameworkAtoms());
 
             analytical_vdw_energy = analytical_vdw_tricubic[0] * Units::EnergyToKelvin;
@@ -325,10 +325,10 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
             analytical_vdw_gradient.z *= Units::EnergyToKelvin;
           }
           break;
-          case ForceField::InterpolationScheme::Triquintic:
+          case ForceFieldSettings::InterpolationScheme::Triquintic:
           {
             std::array<double, 27> analytical_vdw_triquintic = Interactions::calculateTriquinticFractionalAtPosition(
-                ForceField::InterpolationGridType::LennardJones, forceField, simulationBox, pos, index,
+                ForceFieldSettings::InterpolationGridType::LennardJones, forceField, simulationBox, pos, index,
                 framework->simulationBox, spanOfFrameworkAtoms());
 
             analytical_vdw_energy = analytical_vdw_triquintic[0] * Units::EnergyToKelvin;
@@ -472,21 +472,21 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
           double analytical_real_ewald_energy{};
           double3 analytical_real_ewald_gradient{};
           double3x3 analytical_real_ewald_hessian{};
-          switch (forceField.interpolationScheme)
+          switch (forceField.settings.interpolationScheme)
           {
-            case ForceField::InterpolationScheme::Polynomial:
+            case ForceFieldSettings::InterpolationScheme::Polynomial:
             {
               double analytical_real_ewald_tricubic =
-                  Interactions::calculateEnergyAtPosition(ForceField::InterpolationGridType::EwaldReal, forceField,
+                  Interactions::calculateEnergyAtPosition(ForceFieldSettings::InterpolationGridType::EwaldReal, forceField,
                                                           simulationBox, pos, index, spanOfFrameworkAtoms());
 
               analytical_real_ewald_energy = charge * analytical_real_ewald_tricubic * Units::EnergyToKelvin;
             }
             break;
-            case ForceField::InterpolationScheme::Tricubic:
+            case ForceFieldSettings::InterpolationScheme::Tricubic:
             {
               std::array<double, 8> analytical_real_ewald_tricubic =
-                  Interactions::calculateTricubicFractionalAtPosition(ForceField::InterpolationGridType::EwaldReal,
+                  Interactions::calculateTricubicFractionalAtPosition(ForceFieldSettings::InterpolationGridType::EwaldReal,
                                                                       forceField, simulationBox, pos, index,
                                                                       framework->simulationBox, spanOfFrameworkAtoms());
 
@@ -502,11 +502,11 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
               analytical_real_ewald_gradient.z *= (charge * Units::EnergyToKelvin);
             }
             break;
-            case ForceField::InterpolationScheme::Triquintic:
+            case ForceFieldSettings::InterpolationScheme::Triquintic:
             {
               std::array<double, 27> analytical_real_ewald_triquintic =
                   Interactions::calculateTriquinticFractionalAtPosition(
-                      ForceField::InterpolationGridType::EwaldReal, forceField, simulationBox, pos, index,
+                      ForceFieldSettings::InterpolationGridType::EwaldReal, forceField, simulationBox, pos, index,
                       framework->simulationBox, spanOfFrameworkAtoms());
 
               analytical_real_ewald_energy = charge * analytical_real_ewald_triquintic[0] * Units::EnergyToKelvin;
@@ -663,8 +663,8 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
           stream, "Boltzmann relative error:                  {}\n\n",
           std::sqrt(boltzmann_weighted_difference_squared_summed_vdw / boltzmann_weighted_full_squared_summed_vdw));
 
-      if (forceField.interpolationScheme == ForceField::InterpolationScheme::Tricubic ||
-          forceField.interpolationScheme == ForceField::InterpolationScheme::Triquintic)
+      if (forceField.settings.interpolationScheme == ForceFieldSettings::InterpolationScheme::Tricubic ||
+          forceField.settings.interpolationScheme == ForceFieldSettings::InterpolationScheme::Triquintic)
       {
         std::print(stream, "Boltzmann average gradient(x) VDW (table): {}\n",
                    boltzmann_weighted_gradient_interpolated_summed_vdw.x / boltzmann_weight_summed_vdw);
@@ -691,7 +691,7 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
                              boltzmann_weighted_full_squared_summed_vdw_gradient.z));
       }
 
-      if (forceField.interpolationScheme == ForceField::InterpolationScheme::Triquintic)
+      if (forceField.settings.interpolationScheme == ForceFieldSettings::InterpolationScheme::Triquintic)
       {
         std::print(stream, "Boltzmann average hessian(ax) VDW (table): {}\n",
                    boltzmann_weighted_hessian_interpolated_summed_vdw.ax / boltzmann_weight_summed_vdw);
@@ -755,8 +755,8 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
                  std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald /
                            boltzmann_weighted_full_squared_summed_real_ewald));
 
-      if (forceField.interpolationScheme == ForceField::InterpolationScheme::Tricubic ||
-          forceField.interpolationScheme == ForceField::InterpolationScheme::Triquintic)
+      if (forceField.settings.interpolationScheme == ForceFieldSettings::InterpolationScheme::Tricubic ||
+          forceField.settings.interpolationScheme == ForceFieldSettings::InterpolationScheme::Triquintic)
       {
         std::print(stream, "Boltzmann average gradient(x) Real Ewald (table): {}\n",
                    boltzmann_weighted_gradient_interpolated_summed_real_ewald.x / boltzmann_weight_summed_real_ewald);
@@ -783,7 +783,7 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
                              boltzmann_weighted_full_squared_summed_real_ewald_gradient.z));
       }
 
-      if (forceField.interpolationScheme == ForceField::InterpolationScheme::Triquintic)
+      if (forceField.settings.interpolationScheme == ForceFieldSettings::InterpolationScheme::Triquintic)
       {
         std::print(stream, "Boltzmann average Hessian(ax) Real Ewald (table): {}\n",
                    boltzmann_weighted_hessian_interpolated_summed_real_ewald.ax / boltzmann_weight_summed_real_ewald);

@@ -21,6 +21,7 @@ import fragment;
 import fragment_graph;
 import connectivity_table;
 import intra_molecular_potentials;
+import intra_molecular_exclusions;
 import bond_potential;
 import urey_bradley_potential;
 import bend_potential;
@@ -353,10 +354,15 @@ struct ComponentSpecial
   bool present{false};
   bool standard{true};
   double vdw14{0.0}, coul14{0.0};
-  std::vector<const VanDerWaalsPotential *> nonStandard14{};
+  std::vector<IntraMolecularExclusions::ScaledPair> nonStandard14{};  ///< 1-4 pairs with a non-uniform VDW scaling
 };
 
-/// Compares a component's intramolecular pair lists with LAMMPS's special_bonds pattern.
+/// Compares a component's intramolecular non-bonded model with LAMMPS's special_bonds pattern.
+///
+/// RASPA excludes 1-2, 1-3 and same-rigid-fragment pairs, scales the 1-4 pairs with the component's 1-4 scaling
+/// (or a per-pair override) and computes every other pair at full strength. LAMMPS excludes 1-2 and 1-3 via
+/// special_bonds, scales 1-4 with a single global factor and computes everything else at full strength. The
+/// deviations are all in the scaled pairs of the exclusion topology.
 ComponentSpecial analyseSpecial(const Component &component, std::vector<std::string> &warnings)
 {
   ComponentSpecial result{};
@@ -369,102 +375,73 @@ ComponentSpecial analyseSpecial(const Component &component, std::vector<std::str
   const bool charged =
       std::any_of(component.atoms.begin(), component.atoms.end(), [](const Atom &a) { return std::abs(a.charge) > 0.0; });
 
-  std::optional<double> vdw14{}, coul14{};
-  std::set<std::pair<std::size_t, std::size_t>> listedVDW{}, listedCoulomb{};
+  // every 1-4 pair carries the component's 1-4 scaling unless overridden (an override equal to (1, 1) is not a
+  // scaled pair: then the 1-4 scaling is non-uniform as well)
+  const std::vector<std::array<std::size_t, 2>> pairs14 = IntraMolecularExclusions::pairs14(component.connectivityTable);
+  const double vdw14 = component.intra14VanDerWaalsScaling;
+  const double coul14 = component.intra14ChargeChargeScaling;
   bool inconsistent = false;
 
-  for (const VanDerWaalsPotential &pair : intra.vanDerWaals)
+  for (const IntraMolecularExclusions::ScaledPair &pair : intra.exclusions.scaledPairs)
   {
-    const std::size_t A = std::min(pair.identifiers[0], pair.identifiers[1]);
-    const std::size_t B = std::max(pair.identifiers[0], pair.identifiers[1]);
-    listedVDW.insert({A, B});
+    const std::size_t A = pair.atomA;
+    const std::size_t B = pair.atomB;
     const std::size_t s = separation[A][B];
-    if (s <= 2)
+    if (s == 3)
     {
-      inconsistent = true;
-      warnings.push_back(std::format("{}: intramolecular VDW pair {}-{} at bond separation {} cannot be expressed "
-                                     "with special_bonds (LAMMPS excludes 1-2 and 1-3)",
-                                     component.name, A, B, s));
-    }
-    else if (s == 3)
-    {
-      if (!vdw14.has_value())
-        vdw14 = pair.scaling;
-      else if (std::abs(*vdw14 - pair.scaling) > 1e-12)
-        result.standard = false;
-    }
-    else if (std::abs(pair.scaling - 1.0) > 1e-12)
-    {
-      inconsistent = true;
-      warnings.push_back(std::format("{}: VDW pair {}-{} beyond 1-4 has scaling {}; LAMMPS applies the full pair",
-                                     component.name, A, B, pair.scaling));
-    }
-  }
-  for (const CoulombPotential &pair : intra.coulombs)
-  {
-    const std::size_t A = std::min(pair.identifiers[0], pair.identifiers[1]);
-    const std::size_t B = std::max(pair.identifiers[0], pair.identifiers[1]);
-    listedCoulomb.insert({A, B});
-    const std::size_t s = separation[A][B];
-    if (s <= 2)
-    {
-      inconsistent = true;
-      warnings.push_back(std::format("{}: intramolecular Coulomb pair {}-{} at bond separation {} cannot be "
-                                     "expressed with special_bonds",
-                                     component.name, A, B, s));
-    }
-    else if (s == 3)
-    {
-      if (!coul14.has_value())
-        coul14 = pair.scaling;
-      else if (std::abs(*coul14 - pair.scaling) > 1e-12)
+      if (std::abs(vdw14 - pair.scalingVDW) > 1e-12) result.standard = false;
+      if (charged && std::abs(coul14 - pair.scalingCoulomb) > 1e-12)
       {
         inconsistent = true;
         warnings.push_back(std::format("{}: non-uniform 1-4 Coulomb scaling; special_bonds is global", component.name));
       }
     }
-    else if (std::abs(pair.scaling - 1.0) > 1e-12)
+    else
     {
-      inconsistent = true;
+      if (std::abs(pair.scalingVDW - 1.0) > 1e-12)
+      {
+        inconsistent = true;
+        warnings.push_back(std::format("{}: VDW pair {}-{} beyond 1-4 has scaling {}; LAMMPS applies the full pair",
+                                       component.name, A, B, pair.scalingVDW));
+      }
+      if (charged && std::abs(pair.scalingCoulomb - 1.0) > 1e-12) inconsistent = true;
     }
+  }
+  // 1-4 pairs that are not scaled pairs interact at full strength: non-uniform unless the 1-4 scaling is one
+  std::size_t unscaled14 = 0;
+  for (const std::array<std::size_t, 2> &pair : pairs14)
+  {
+    if (intra.exclusions.isExcluded(pair[0], pair[1])) continue;
+    const auto [scalingVDW, scalingCoulomb] = intra.exclusions.scalingOf(pair[0], pair[1]);
+    if (scalingVDW == 1.0 && scalingCoulomb == 1.0) ++unscaled14;
+  }
+  if (unscaled14 > 0 && (std::abs(vdw14 - 1.0) > 1e-12 || (charged && std::abs(coul14 - 1.0) > 1e-12)))
+  {
+    result.standard = false;
   }
 
-  // pairs RASPA leaves out that LAMMPS will compute (beyond 1-4, not inside one rigid fragment)
-  std::size_t missingVDW = 0, missingCoulomb = 0, missing14VDW = 0;
-  for (std::size_t A = 0; A < n; ++A)
+  // pairs RASPA excludes because they sit inside one rigid fragment but that LAMMPS will compute
+  std::size_t rigidExcluded = 0;
+  for (const std::array<std::uint32_t, 2> &pair : component.intraMolecularPotentials.exclusions.pairs)
   {
-    for (std::size_t B = A + 1; B < n; ++B)
-    {
-      const std::size_t s = separation[A][B];
-      if (s < 3) continue;
-      if (component.isInsideRigidFragment(std::array<std::size_t, 2>{A, B})) continue;
-      if (!listedVDW.contains({A, B}))
-      {
-        if (s == 3)
-          ++missing14VDW;
-        else
-          ++missingVDW;
-      }
-      if (charged && !listedCoulomb.contains({A, B}) && s >= 4) ++missingCoulomb;
-    }
+    if (separation[pair[0]][pair[1]] >= 3) ++rigidExcluded;
   }
-  if (missing14VDW > 0 && vdw14.has_value() && std::abs(*vdw14) > 0.0) result.standard = false;
-  if (missingVDW > 0 || missingCoulomb > 0)
+  if (rigidExcluded > 0)
   {
-    warnings.push_back(std::format("{}: {} VDW and {} Coulomb intramolecular pairs beyond 1-4 are absent in RASPA "
-                                   "but will be computed by LAMMPS",
-                                   component.name, missingVDW, missingCoulomb));
+    warnings.push_back(std::format("{}: {} intramolecular pairs beyond 1-3 are excluded in RASPA (same rigid "
+                                   "fragment) but will be computed by LAMMPS{}",
+                                   component.name, rigidExcluded,
+                                   charged ? " (VDW and Coulomb)" : ""));
   }
   if (inconsistent) result.standard = false;
 
-  result.vdw14 = vdw14.value_or(0.0);
-  result.coul14 = coul14.value_or(0.0);
+  result.vdw14 = vdw14;
+  result.coul14 = coul14;
   if (!result.standard)
   {
-    for (const VanDerWaalsPotential &pair : intra.vanDerWaals)
+    for (const IntraMolecularExclusions::ScaledPair &pair : intra.exclusions.scaledPairs)
     {
-      const std::size_t A = pair.identifiers[0], B = pair.identifiers[1];
-      if (separation[A][B] == 3) result.nonStandard14.push_back(&pair);
+      if (separation[pair.atomA][pair.atomB] == 3) result.nonStandard14.push_back(pair);
     }
   }
   return result;
@@ -817,10 +794,10 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
       for (const auto &[c, firstId] : exportedMolecules)
       {
         const Component &component = components[c];
-        for (const VanDerWaalsPotential *pair : specials[c].nonStandard14)
+        for (const IntraMolecularExclusions::ScaledPair &pair : specials[c].nonStandard14)
         {
-          const std::size_t typeA = component.atoms[pair->identifiers[0]].type;
-          const std::size_t typeB = component.atoms[pair->identifiers[1]].type;
+          const std::size_t typeA = component.atoms[pair.atomA].type;
+          const std::size_t typeB = component.atoms[pair.atomB].type;
           const VDWParameters &vdw = forceField(typeA, typeB);
           if (vdw.type != VDWParameters::Type::LennardJones)
           {
@@ -832,8 +809,8 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
             continue;
           }
           topology.pairList.push_back(std::format(
-              "{} {} lj126 {} {} {}", firstId + pair->identifiers[0], firstId + pair->identifiers[1],
-              formatValue(pair->scaling * vdw.parameters.x * Units::EnergyToKCalPerMol),
+              "{} {} lj126 {} {} {}", firstId + pair.atomA, firstId + pair.atomB,
+              formatValue(pair.scalingVDW * vdw.parameters.x * Units::EnergyToKCalPerMol),
               formatValue(vdw.parameters.y), formatValue(forceField.cutOffMoleculeVDW)));
         }
       }

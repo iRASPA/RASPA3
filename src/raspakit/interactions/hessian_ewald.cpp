@@ -243,9 +243,13 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
     std::span<const Atom> span = moleculeAtoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
     std::span<AtomDynamics> dynamicsSpan = moleculeDynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms);
 
-    for (std::size_t i = 0; i != span.size() - 1; ++i)
+    // the excluded pairs of the molecule (IntraMolecularExclusions); the other intramolecular pairs are regular
+    // pairs evaluated by the intramolecular pair terms of the component
+    for (const std::array<std::uint32_t, 2>& excludedPair :
+         components[molecule.componentId].intraMolecularPotentials.exclusions.pairs)
     {
-      for (std::size_t j = i + 1; j != span.size(); ++j)
+      const std::size_t i = excludedPair[0];
+      const std::size_t j = excludedPair[1];
       {
         double3 dr = simulationBox.applyPeriodicBoundaryConditions(span[i].position - span[j].position);
         const double rr = double3::dot(dr, dr);
@@ -970,9 +974,13 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
       std::span<const Atom> span = atoms.subspan(frameworkOffset + molecule.atomIndex, molecule.numberOfAtoms);
       std::span<AtomDynamics> dynamicsSpan = moleculeDynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms);
 
-      for (std::size_t i = 0; i != span.size() - 1; ++i)
+      // the excluded pairs of the molecule (IntraMolecularExclusions); the other intramolecular pairs are regular
+      // pairs evaluated by the intramolecular pair terms of the component
+      for (const std::array<std::uint32_t, 2>& excludedPair :
+           components[molecule.componentId].intraMolecularPotentials.exclusions.pairs)
       {
-        for (std::size_t j = i + 1; j != span.size(); ++j)
+        const std::size_t i = excludedPair[0];
+        const std::size_t j = excludedPair[1];
         {
           double3 dr = span[i].position - span[j].position;
           dr = simulationBox.applyPeriodicBoundaryConditions(dr);

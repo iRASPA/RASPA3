@@ -17,7 +17,7 @@ import energy_shared_nldft;
  */
 export struct NLDFTParameters
 {
-  /// Energy / density grid size. Zero means use `ForceField::numberOfVDWGridPoints` when set, else 128³.
+  /// Energy / density grid size. Zero means use `ForceFieldSettings::numberOfVDWGridPoints` when set, else 128³.
   uint3 gridSize{0, 0, 0};
 
   /// Orientations for ρ(r, ω). Zero means auto: 128 for a multi-site (linear) probe, 1 for a sphere.

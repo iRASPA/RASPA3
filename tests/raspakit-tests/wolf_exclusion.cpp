@@ -112,7 +112,7 @@ TEST(wolf_exclusion, rigid_translation_leaves_self_and_exclusion_unchanged)
 
   RunningEnergy difference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, std::span<const Atom>(newatoms), std::span<const Atom>(oldatoms));
+      system.simulationBox, system.components, std::span<const Atom>(newatoms), std::span<const Atom>(oldatoms));
 
   // A rigid translation changes neither the self energy nor the intramolecular exclusion.
   EXPECT_NEAR(difference.ewald_self, 0.0, 1e-10);

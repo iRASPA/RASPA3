@@ -24,18 +24,18 @@ export struct InterpolationEnergyGrid
   double3 origin;
   uint3 numberOfGridPoints;
   uint3 numberOfCells;
-  ForceField::InterpolationScheme order;
+  ForceFieldSettings::InterpolationScheme order;
   std::vector<double> data;
 
   InterpolationEnergyGrid() {}
 
-  InterpolationEnergyGrid(const SimulationBox unitCellBox, double3 origin, uint3 numberOfGridPoints, ForceField::InterpolationScheme order);
+  InterpolationEnergyGrid(const SimulationBox unitCellBox, double3 origin, uint3 numberOfGridPoints, ForceFieldSettings::InterpolationScheme order);
 
   constexpr static std::make_signed_t<std::size_t> num_points_interpolation{6};
 
   void makeExternalFieldInterpolationGrid(std::ostream& stream, const ForceField& forceField, const SimulationBox &simulationBox);
 
-  void makeFrameworkInterpolationGrid(std::ostream &stream, ForceField::InterpolationGridType interpolationGridType,
+  void makeFrameworkInterpolationGrid(std::ostream &stream, ForceFieldSettings::InterpolationGridType interpolationGridType,
                              const ForceField &forceField, const Framework &framework, double cutOff,
                              std::size_t pseudo_atom_index);
 

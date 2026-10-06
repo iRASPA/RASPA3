@@ -44,9 +44,9 @@ TEST(forcefield_options, ring_mc_knobs_have_defaults)
 {
   std::optional<ForceField> forceField = parse("");
   ASSERT_TRUE(forceField.has_value());
-  EXPECT_EQ(forceField->numberOfTrialMovesPerOpenBead, 150uz);
-  EXPECT_DOUBLE_EQ(forceField->cbmcRingCrankshaftProbability, 0.2);
-  EXPECT_DOUBLE_EQ(forceField->cbmcRingTiltProbability, 0.25);
+  EXPECT_EQ(forceField->settings.numberOfTrialMovesPerOpenBead, 150uz);
+  EXPECT_DOUBLE_EQ(forceField->settings.cbmcRingCrankshaftProbability, 0.2);
+  EXPECT_DOUBLE_EQ(forceField->settings.cbmcRingTiltProbability, 0.25);
 }
 
 TEST(forcefield_options, ring_mc_knobs_are_parsed)
@@ -56,9 +56,9 @@ TEST(forcefield_options, ring_mc_knobs_are_parsed)
   "CBMCRingCrankshaftProbability": 0.35,
   "CBMCRingTiltProbability": 0.1)");
   ASSERT_TRUE(forceField.has_value());
-  EXPECT_EQ(forceField->numberOfTrialMovesPerOpenBead, 60uz);
-  EXPECT_DOUBLE_EQ(forceField->cbmcRingCrankshaftProbability, 0.35);
-  EXPECT_DOUBLE_EQ(forceField->cbmcRingTiltProbability, 0.1);
+  EXPECT_EQ(forceField->settings.numberOfTrialMovesPerOpenBead, 60uz);
+  EXPECT_DOUBLE_EQ(forceField->settings.cbmcRingCrankshaftProbability, 0.35);
+  EXPECT_DOUBLE_EQ(forceField->settings.cbmcRingTiltProbability, 0.1);
 }
 
 TEST(forcefield_options, ring_mc_probabilities_outside_unit_interval_throw)

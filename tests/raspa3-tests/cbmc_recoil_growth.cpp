@@ -306,14 +306,14 @@ TEST(CBMC_RECOIL_GROWTH, regrow_markov_chain_matches_cbmc_in_tube)
   const ProbeParameters parameters{15.0, 6.4, 2.6, 4.0};
 
   ForceField cbmcForceField = makeProbeForceField(parameters);
-  cbmcForceField.numberOfTrialDirections = 8;
-  cbmcForceField.numberOfTorsionTrialDirections = 10;
-  cbmcForceField.numberOfFirstBeadPositions = 25;
+  cbmcForceField.settings.numberOfTrialDirections = 8;
+  cbmcForceField.settings.numberOfTorsionTrialDirections = 10;
+  cbmcForceField.settings.numberOfFirstBeadPositions = 25;
 
   ForceField recoilForceField = cbmcForceField;
-  recoilForceField.useRecoilGrowth = true;
-  recoilForceField.recoilGrowthNumberOfTrialDirections = 3;
-  recoilForceField.recoilGrowthMaximumRecoilLength = 2;
+  recoilForceField.settings.useRecoilGrowth = true;
+  recoilForceField.settings.recoilGrowthNumberOfTrialDirections = 3;
+  recoilForceField.settings.recoilGrowthMaximumRecoilLength = 2;
 
   TemporaryFile file("recoil-probe-chain.json", kProbeChainJson);
   Component cbmcChain(Component::Type::Adsorbate, 0, cbmcForceField, "recoil-probe-chain", file.stemPath().string(),
@@ -382,14 +382,14 @@ TEST(CBMC_RECOIL_GROWTH, branched_chain_recoil_length_three_with_spin_routed_str
   const ProbeParameters parameters{8.0, 4.6, 2.6, 3.0};
 
   ForceField cbmcForceField = makeProbeForceField(parameters);
-  cbmcForceField.numberOfTrialDirections = 8;
-  cbmcForceField.numberOfTorsionTrialDirections = 10;
-  cbmcForceField.numberOfFirstBeadPositions = 25;
+  cbmcForceField.settings.numberOfTrialDirections = 8;
+  cbmcForceField.settings.numberOfTorsionTrialDirections = 10;
+  cbmcForceField.settings.numberOfFirstBeadPositions = 25;
 
   ForceField recoilForceField = cbmcForceField;
-  recoilForceField.useRecoilGrowth = true;
-  recoilForceField.recoilGrowthNumberOfTrialDirections = 3;
-  recoilForceField.recoilGrowthMaximumRecoilLength = 3;
+  recoilForceField.settings.useRecoilGrowth = true;
+  recoilForceField.settings.recoilGrowthNumberOfTrialDirections = 3;
+  recoilForceField.settings.recoilGrowthMaximumRecoilLength = 3;
 
   TemporaryFile file("recoil-branched-chain.json", kBranchedChainJson);
   Component cbmcChain(Component::Type::Adsorbate, 0, cbmcForceField, "recoil-branched-chain",
@@ -438,7 +438,7 @@ TEST(CBMC_RECOIL_GROWTH, branched_chain_recoil_length_three_with_spin_routed_str
     anySpinRouted |= step.spin.hasNonBondedTerms;
   }
   EXPECT_TRUE(anySpinRouted) << "no step weights the 1-4 strain in its spin selection";
-  const std::vector<double> &reference = recoilChain.recoilReferenceStepEnergies({recoilChain.startingBead});
+  const std::vector<double> &reference = recoilChain.recoilReferenceStepEnergies(recoilForceField, box, {recoilChain.startingBead});
   ASSERT_EQ(reference.size(), 3uz);
   EXPECT_DOUBLE_EQ(*std::max_element(reference.begin(), reference.end()), 0.0)
       << "the openness reference carries strain that the spin selection should have absorbed";
@@ -480,9 +480,9 @@ TEST(CBMC_RECOIL_GROWTH, branched_chain_recoil_length_three_with_spin_routed_str
 TEST(CBMC_RECOIL_GROWTH, retrace_of_overlapping_old_configuration_throws)
 {
   ForceField forceField = makeProbeForceField(ProbeParameters{15.0, 6.4, 2.6, 4.0});
-  forceField.useRecoilGrowth = true;
-  forceField.recoilGrowthNumberOfTrialDirections = 3;
-  forceField.recoilGrowthMaximumRecoilLength = 2;
+  forceField.settings.useRecoilGrowth = true;
+  forceField.settings.recoilGrowthNumberOfTrialDirections = 3;
+  forceField.settings.recoilGrowthMaximumRecoilLength = 2;
 
   TemporaryFile file("recoil-probe-chain.json", kProbeChainJson);
   Component chain(Component::Type::Adsorbate, 0, forceField, "recoil-probe-chain", file.stemPath().string(), 5, 21,

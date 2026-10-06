@@ -17,22 +17,22 @@ import component;
 
 export namespace Interactions
 {
-double calculateEnergyAtPosition(ForceField::InterpolationGridType interpolationGridType, const ForceField &forceField,
+double calculateEnergyAtPosition(ForceFieldSettings::InterpolationGridType interpolationGridType, const ForceField &forceField,
                                  const SimulationBox &simulationBox, double3 posB, std::size_t typeB,
                                  std::span<const Atom> frameworkAtoms);
 
 std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<double, 3>, 3>, 3>>
-calculateTricubicDerivativeAtPosition(ForceField::InterpolationGridType interpolationGridType,
+calculateTricubicDerivativeAtPosition(ForceFieldSettings::InterpolationGridType interpolationGridType,
                                       const ForceField &forceField, const SimulationBox &simulationBox, double3 posB,
                                       std::size_t typeB, std::span<const Atom> frameworkAtoms);
 
-std::array<double, 8> calculateTricubicCartesianAtPosition(ForceField::InterpolationGridType interpolationGridType,
+std::array<double, 8> calculateTricubicCartesianAtPosition(ForceFieldSettings::InterpolationGridType interpolationGridType,
                                                            const ForceField &forceField,
                                                            const SimulationBox &simulationBox, double3 posA,
                                                            std::size_t typeA, std::span<const Atom> frameworkAtoms);
 
-std::array<double, 8> calculateTricubicFractionalAtPosition(ForceField::InterpolationGridType interpolationGridType,
+std::array<double, 8> calculateTricubicFractionalAtPosition(ForceFieldSettings::InterpolationGridType interpolationGridType,
                                                             const ForceField &forceField,
                                                             const SimulationBox &simulationBox, double3 posA,
                                                             std::size_t typeA, const SimulationBox &frameworkBox,
@@ -43,16 +43,16 @@ std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>,
            std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>,
            std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>>
-calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType interpolationGridType,
+calculateTriquinticDerivativeAtPosition(ForceFieldSettings::InterpolationGridType interpolationGridType,
                                         const ForceField &forceField, const SimulationBox &simulationBox, double3 posA,
                                         std::size_t typeA, std::span<const Atom> frameworkAtoms);
 
-std::array<double, 27> calculateTriquinticCartesianAtPosition(ForceField::InterpolationGridType interpolationGridType,
+std::array<double, 27> calculateTriquinticCartesianAtPosition(ForceFieldSettings::InterpolationGridType interpolationGridType,
                                                               const ForceField &forceField,
                                                               const SimulationBox &simulationBox, double3 posA,
                                                               std::size_t typeA, std::span<const Atom> frameworkAtoms);
 
-std::array<double, 27> calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType interpolationGridType,
+std::array<double, 27> calculateTriquinticFractionalAtPosition(ForceFieldSettings::InterpolationGridType interpolationGridType,
                                                                const ForceField &forceField,
                                                                const SimulationBox &simulationBox, double3 posA,
                                                                std::size_t typeA, const SimulationBox &frameworkBox,

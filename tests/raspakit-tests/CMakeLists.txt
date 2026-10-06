@@ -25,7 +25,6 @@ add_executable(unit_tests_raspakit
   pressure.cpp
   barostat_virial.cpp
   static_energy.cpp
-  component_explicit_intra_pairs.cpp
   component_per_atom_charges.cpp
   lammps_export.cpp
   forcefield_options.cpp

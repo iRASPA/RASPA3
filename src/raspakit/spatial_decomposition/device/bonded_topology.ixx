@@ -10,10 +10,13 @@ import system;
  * \brief The per-molecule terms of a system in the flattened form the device bonded kernels read, built on the
  * host once per system and uploaded by the backend.
  *
- * The terms of every component (bonds, bends, torsions, improper torsions, intramolecular Lennard-Jones and
- * Coulomb pairs) are flattened and grouped by kind, with the gradient slots per component atom in CSR form; the
- * molecules refer to the block of their component and get consecutive term instances and gradient slots. The
- * struct layouts mirror the Term and MoleculeInfo structs of bonded_kernel_source.cpp.
+ * The terms of every component (bonds, bends, torsions, improper torsions, and the scaled (1-4) intramolecular
+ * Lennard-Jones and Coulomb pairs with their pair scaling; the unscaled non-excluded pairs are in the pair lists)
+ * are flattened and grouped by kind, with the gradient
+ * slots per component atom in CSR form; the excluded pairs (IntraMolecularExclusions, for the Ewald exclusion
+ * correction) are the CSR table of the excluded partners per component atom. The molecules refer to the block of
+ * their component and get consecutive term instances and gradient slots. The struct layouts mirror the Term and
+ * MoleculeInfo structs of bonded_kernel_source.cpp.
  *
  * `supports` reports the components that use other intramolecular terms (Urey-Bradley, inversion bends, cross
  * terms), molecules with more than 256 atoms and lambda-group atoms, for which the engine keeps the bonded work
@@ -61,10 +64,13 @@ export struct BondedTopology
   std::vector<std::uint32_t> gradientOffset{};      ///< per term: offset of its gradient slots in the component block
   std::vector<std::uint32_t> atomGradientStart{};   ///< CSR offsets of the gradient slots per component atom
   std::vector<std::uint32_t> atomGradients{};       ///< gradient slot (within the molecule's block)
+  std::vector<std::uint32_t> exclusionStart{};      ///< CSR offsets of the excluded partners per component atom
+  std::vector<std::uint32_t> exclusionPartners{};   ///< excluded partner (index in the molecule)
   std::vector<std::uint32_t> instanceMolecule{};    ///< molecule of every term instance
   std::vector<MoleculeInfo> molecules{};
   std::vector<float> massOfAtom{};                  ///< per atom in the system order
   std::size_t numberOfInstances{0};                 ///< term instances over all molecules
   std::size_t numberOfGradients{0};                 ///< gradient slots over all molecules
   double chargeSquaredSum{0.0};                     ///< sum q^2 over the atoms (the self energy on the host)
+  double exclusionChargeProductSum{0.0};            ///< sum q_a q_b over the excluded pairs of all molecules
 };

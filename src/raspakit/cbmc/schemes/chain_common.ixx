@@ -115,13 +115,13 @@ struct ChainAccumulator
  * and a valid molecule record (centre of mass, and for a fully rigid component the orientation
  * quaternion recovered from the grown positions).
  */
-GrowResult finishGrownChain(const Component &component, std::vector<Atom> chainAtoms,
+GrowResult finishGrownChain(const GrowContext &context, const Component &component, std::vector<Atom> chainAtoms,
                             const ChainAccumulator &accumulated);
 
 /// The result of a completed retrace: the accumulated external energies plus the internal energies
 /// of the existing chain.
-RetraceResult finishRetracedChain(const Component &component, std::span<const Atom> chainAtoms,
-                                  const ChainAccumulator &accumulated);
+RetraceResult finishRetracedChain(const GrowContext &context, const Component &component,
+                                  std::span<const Atom> chainAtoms, const ChainAccumulator &accumulated);
 
 /**
  * \brief Throws the error for an existing configuration that overlaps during a retrace.

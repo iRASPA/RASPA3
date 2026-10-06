@@ -20,60 +20,6 @@ import potential_correction_pressure;
 import simulationbox;
 import json;
 
-int3 parseInt3(const std::string& item, auto json)
-{
-  if (json.is_array())
-  {
-    if (json.size() != 3)
-    {
-      throw std::runtime_error(
-          std::format("[Input reader]: key '{}', value {} should be array of 3 integer numbers\n", item, json.dump()));
-    }
-    int3 value{};
-    try
-    {
-      value.x = json[0].template get<std::int32_t>();
-      value.y = json[1].template get<std::int32_t>();
-      value.z = json[2].template get<std::int32_t>();
-      return value;
-    }
-    catch (nlohmann::json::exception& ex)
-    {
-      throw std::runtime_error(
-          std::format("[Input reader]: key '{}', value {} should be array of 3 integer numbers\n", item, json.dump()));
-    }
-  }
-  throw std::runtime_error(
-      std::format("[Input reader]: key '{}', value {} should be array of 3 integer  numbers\n", item, json.dump()));
-}
-
-uint3 parseUint3(const std::string& item, auto json)
-{
-  if (json.is_array())
-  {
-    if (json.size() != 3)
-    {
-      throw std::runtime_error(
-          std::format("[Input reader]: key '{}', value {} should be array of 3 integer numbers\n", item, json.dump()));
-    }
-    uint3 value{};
-    try
-    {
-      value.x = json[0].template get<std::size_t>();
-      value.y = json[1].template get<std::size_t>();
-      value.z = json[2].template get<std::size_t>();
-      return value;
-    }
-    catch (nlohmann::json::exception& ex)
-    {
-      throw std::runtime_error(
-          std::format("[Input reader]: key '{}', value {} should be array of 3 integer numbers\n", item, json.dump()));
-    }
-  }
-  throw std::runtime_error(
-      std::format("[Input reader]: key '{}', value {} should be array of 3 integer  numbers\n", item, json.dump()));
-}
-
 double3 parseDouble3(const std::string& item, auto json)
 {
   if (json.is_array())
@@ -710,187 +656,9 @@ ForceField::ForceField(std::string filePath)
   preComputeTailCorrection();
   updateEwaldRealSpaceTable();
 
-  std::vector<std::string> pseudoAtomStringGrids =
-      parsed_data.value("UseInterpolationGrids", std::vector<std::string>{});
-
-  for (const std::string& pseudo_atom_name : pseudoAtomStringGrids)
-  {
-    std::optional<std::size_t> index = findPseudoAtom(pseudo_atom_name);
-
-    if (!index.has_value())
-    {
-      throw std::runtime_error(std::format("[ReadForceFieldSelfInteractions]: unknown pseudo atom {} in {}\n",
-                                           pseudo_atom_name, parsed_data["UseInterpolationGrids"].dump()));
-    }
-
-    if (index.has_value())
-    {
-      gridPseudoAtomIndices.push_back(index.value());
-    }
-  }
-
-  if (parsed_data.contains("UseRecoilGrowth"))
-  {
-    useRecoilGrowth = parsed_data["UseRecoilGrowth"].get<bool>();
-  }
-
-  if (parsed_data.contains("RecoilGrowthMaximumRecoilLength"))
-  {
-    recoilGrowthMaximumRecoilLength =
-        parsed_data.value("RecoilGrowthMaximumRecoilLength", recoilGrowthMaximumRecoilLength);
-  }
-
-  if (parsed_data.contains("RecoilGrowthNumberOfTrialDirections"))
-  {
-    recoilGrowthNumberOfTrialDirections =
-        parsed_data.value("RecoilGrowthNumberOfTrialDirections", recoilGrowthNumberOfTrialDirections);
-  }
-
-  if (recoilGrowthMaximumRecoilLength < 1 || recoilGrowthNumberOfTrialDirections < 1)
-  {
-    throw std::runtime_error(
-        std::format("[ForceField reader]: 'RecoilGrowthMaximumRecoilLength' ({}) and "
-                    "'RecoilGrowthNumberOfTrialDirections' ({}) must both be at least 1\n",
-                    recoilGrowthMaximumRecoilLength, recoilGrowthNumberOfTrialDirections));
-  }
-
-  // The recoil feelers are exhaustive depth-first searches: every direction that tests open at a step
-  // is probed by up to k^(l-1) trial placements, each of which runs the full base sampler and the
-  // torsion selection. The cost per growth step therefore scales as k^l; beyond l = 2 it grows fast and
-  // silently, so say so at parse time.
-  if (useRecoilGrowth && recoilGrowthMaximumRecoilLength >= 3)
-  {
-    double feelerCost = 1.0;
-    for (std::size_t i = 0; i != recoilGrowthMaximumRecoilLength; ++i)
-    {
-      feelerCost *= static_cast<double>(recoilGrowthNumberOfTrialDirections);
-    }
-    std::print(std::cerr,
-               "[ForceField reader]: warning: recoil growth with 'RecoilGrowthMaximumRecoilLength' {} and "
-               "'RecoilGrowthNumberOfTrialDirections' {} probes up to k^l = {:g} trial placements per growth step "
-               "(each a full base-conformation sample plus a torsion selection); the cost grows exponentially "
-               "in the recoil length. l = 2 is usually sufficient.\n",
-               recoilGrowthMaximumRecoilLength, recoilGrowthNumberOfTrialDirections, feelerCost);
-  }
-
-  if (parsed_data.contains("NumberOfTrialDirections"))
-  {
-    numberOfTrialDirections = parsed_data.value("NumberOfTrialDirections", numberOfTrialDirections);
-  }
-
-  if (parsed_data.contains("NumberOfTorsionTrialDirections"))
-  {
-    numberOfTorsionTrialDirections =
-        parsed_data.value("NumberOfTorsionTrialDirections", numberOfTorsionTrialDirections);
-  }
-
-  if (parsed_data.contains("NumberOfFirstBeadPositions"))
-  {
-    numberOfFirstBeadPositions = parsed_data.value("NumberOfFirstBeadPositions", numberOfFirstBeadPositions);
-  }
-
-  if (numberOfTrialDirections < 1 || numberOfTorsionTrialDirections < 1 || numberOfFirstBeadPositions < 1)
-  {
-    throw std::runtime_error(
-        std::format("[ForceField reader]: 'NumberOfTrialDirections' ({}), 'NumberOfTorsionTrialDirections' ({}) "
-                    "and 'NumberOfFirstBeadPositions' ({}) must all be at least 1\n",
-                    numberOfTrialDirections, numberOfTorsionTrialDirections, numberOfFirstBeadPositions));
-  }
-
-  if (parsed_data.contains("NumberOfTrialMovesPerOpenBead"))
-  {
-    numberOfTrialMovesPerOpenBead = parsed_data.value("NumberOfTrialMovesPerOpenBead", numberOfTrialMovesPerOpenBead);
-  }
-
-  if (parsed_data.contains("UseDualCutOff"))
-  {
-    useDualCutOff = parsed_data["UseDualCutOff"].get<bool>();
-  }
-
-  if (parsed_data.contains("DualCutOff"))
-  {
-    dualCutOff = parsed_data.value("DualCutOff", dualCutOff);
-  }
-
-  if (useDualCutOff)
-  {
-    // The inner cut-off must lie strictly inside every explicitly set full cut-off, otherwise the
-    // 'correction' from the inner to the full cut-offs is not a correction at all. Automatic cut-offs are
-    // only known once the system is built and are not checked here.
-    double smallestFullCutOff = std::numeric_limits<double>::max();
-    if (!cutOffFrameworkVDWAutomatic) smallestFullCutOff = std::min(smallestFullCutOff, cutOffFrameworkVDW);
-    if (!cutOffMoleculeVDWAutomatic) smallestFullCutOff = std::min(smallestFullCutOff, cutOffMoleculeVDW);
-    if (!cutOffCoulombAutomatic) smallestFullCutOff = std::min(smallestFullCutOff, cutOffCoulomb);
-    if (dualCutOff <= 0.0 || dualCutOff >= smallestFullCutOff)
-    {
-      throw std::runtime_error(std::format(
-          "[ForceField reader]: 'DualCutOff' {} must be positive and smaller than every full cut-off (smallest: {})\n",
-          dualCutOff, smallestFullCutOff));
-    }
-  }
-
-  if (parsed_data.contains("CBMCRingCrankshaftProbability"))
-  {
-    cbmcRingCrankshaftProbability = parsed_data.value("CBMCRingCrankshaftProbability", cbmcRingCrankshaftProbability);
-    if (cbmcRingCrankshaftProbability < 0.0 || cbmcRingCrankshaftProbability > 1.0)
-    {
-      throw std::runtime_error(std::format("[ForceField reader]: 'CBMCRingCrankshaftProbability' {} not in [0, 1]\n",
-                                           cbmcRingCrankshaftProbability));
-    }
-  }
-
-  if (parsed_data.contains("CBMCRingTiltProbability"))
-  {
-    cbmcRingTiltProbability = parsed_data.value("CBMCRingTiltProbability", cbmcRingTiltProbability);
-    if (cbmcRingTiltProbability < 0.0 || cbmcRingTiltProbability > 1.0)
-    {
-      throw std::runtime_error(
-          std::format("[ForceField reader]: 'CBMCRingTiltProbability' {} not in [0, 1]\n", cbmcRingTiltProbability));
-    }
-  }
-
-  if (parsed_data.contains("UseExternalFieldGrid"))
-  {
-    useExternalFieldGrid = parsed_data.value("UseExternalFieldGrid", parsed_data["UseExternalFieldGrid"]);
-  }
-
-  if (parsed_data.contains("SpacingVDWGrid"))
-  {
-    spacingVDWGrid = parsed_data.value("SpacingVDWGrid", parsed_data["SpacingVDWGrid"]);
-  }
-
-  if (parsed_data.contains("SpacingCoulombGrid"))
-  {
-    spacingCoulombGrid = parsed_data.value("SpacingCoulombGrid", parsed_data["SpacingCoulombGrid"]);
-  }
-
-  if (parsed_data.contains("NumberOfVDWGridPoints"))
-  {
-    numberOfVDWGridPoints = parseUint3("NumberOfVDWGridPoints", parsed_data["NumberOfVDWGridPoints"]);
-  }
-  if (parsed_data.contains("NumberOfCoulombGridPoints"))
-  {
-    numberOfCoulombGridPoints = parseUint3("NumberOfCoulombGridPoints", parsed_data["NumberOfCoulombGridPoints"]);
-  }
-  if (parsed_data.contains("NumberOfExternalFieldGridPoints"))
-  {
-    numberOfExternalFieldGridPoints =
-        parseUint3("NumberOfExternalFieldGridPoints", parsed_data["NumberOfExternalFieldGridPoints"]);
-  }
-
-  if (parsed_data.contains("NumberOfGridTestPoints"))
-  {
-    numberOfGridTestPoints = parsed_data.value("NumberOfGridTestPoints", parsed_data["NumberOfGridTestPoints"]);
-  }
-
   if (parsed_data.contains("ExternalFieldGridFileName"))
   {
     externalFieldGridFileName = parsed_data["ExternalFieldGridFileName"].get<std::string>();
-  }
-
-  if (parsed_data.contains("WriteExternalFieldInterpolationGrid"))
-  {
-    writeExternalFieldInterpolationGrid = parsed_data["WriteExternalFieldInterpolationGrid"].get<bool>();
   }
 
   if (parsed_data.contains("ExternalFieldPotentialEnergySurface"))
@@ -989,30 +757,14 @@ ForceField::ForceField(std::string filePath)
         parseDouble3("ExternalPotentialEnergySurfaceOrigin", parsed_data["ExternalPotentialEnergySurfaceOrigin"]);
   }
 
-  if (parsed_data.contains("InterpolationScheme"))
-  {
-    std::size_t scheme = parsed_data.value("InterpolationScheme", parsed_data["InterpolationScheme"]);
-    switch (scheme)
-    {
-      case 1:
-        interpolationSchemeAuto = false;
-        interpolationScheme = InterpolationScheme::Polynomial;
-        break;
-      case 3:
-        interpolationSchemeAuto = false;
-        interpolationScheme = InterpolationScheme::Tricubic;
-        break;
-      case 5:
-        interpolationSchemeAuto = false;
-        interpolationScheme = InterpolationScheme::Triquintic;
-        break;
-      default:
-        throw std::runtime_error(std::format(
-            "[ReadForceFieldSelfInteractions]: unknown grid interpolation scheme {} in {} (options: 3 or 5)\n", scheme,
-            parsed_data["InterpolationScheme"].dump()));
-        break;
-    }
-  }
+  // The sampling and numerical settings are read from the same file. The inner cut-off of the dual cut-off
+  // scheme must lie inside every explicitly given full cut-off; automatic cut-offs are only known once the
+  // system is built and are not checked here.
+  double smallestExplicitCutOff = std::numeric_limits<double>::max();
+  if (!cutOffFrameworkVDWAutomatic) smallestExplicitCutOff = std::min(smallestExplicitCutOff, cutOffFrameworkVDW);
+  if (!cutOffMoleculeVDWAutomatic) smallestExplicitCutOff = std::min(smallestExplicitCutOff, cutOffMoleculeVDW);
+  if (!cutOffCoulombAutomatic) smallestExplicitCutOff = std::min(smallestExplicitCutOff, cutOffCoulomb);
+  settings.readFromJSON(parsed_data, pseudoAtoms, smallestExplicitCutOff);
 }
 
 void ForceField::applyMixingRule()
@@ -1398,26 +1150,7 @@ std::string ForceField::printForceFieldStatus() const
   std::print(stream, "Overlap-criteria VDW:          {: .6e} [{}]\n\n", energyOverlapCriteria,
              Units::displayedUnitOfEnergyString);
 
-  std::print(stream, "CBMC first-bead trial positions:     {}\n", numberOfFirstBeadPositions);
-  std::print(stream, "CBMC trial directions:               {}\n", numberOfTrialDirections);
-  std::print(stream, "CBMC torsion trial directions:       {}\n", numberOfTorsionTrialDirections);
-  std::print(stream, "CBMC trial moves per open bead:      {}\n", numberOfTrialMovesPerOpenBead);
-  std::print(stream, "CBMC ring crankshaft probability:    {:g}\n", cbmcRingCrankshaftProbability);
-  std::print(stream, "CBMC ring tilt probability:          {:g}\n", cbmcRingTiltProbability);
-  std::print(stream, "CBMC dual cut-off:                   {}\n", useDualCutOff ? "yes" : "no");
-  if (useDualCutOff)
-  {
-    std::print(stream, "CBMC inner cut-off:                 {:9.5f} [{}]\n", dualCutOff,
-               Units::displayedUnitOfLengthString);
-  }
-  std::print(stream, "Chain growth scheme:                 {}\n",
-             useRecoilGrowth ? "recoil growth" : "configurational bias");
-  if (useRecoilGrowth)
-  {
-    std::print(stream, "Recoil-growth trial directions (k):  {}\n", recoilGrowthNumberOfTrialDirections);
-    std::print(stream, "Recoil-growth recoil length (l):     {}\n", recoilGrowthMaximumRecoilLength);
-  }
-  std::print(stream, "\n");
+  std::print(stream, "{}", settings.printSamplingStatus());
 
   switch(mixingRule)
   {
@@ -1490,40 +1223,7 @@ std::string ForceField::printForceFieldStatus() const
   }
   std::print(stream, "\n");
 
-  if (!gridPseudoAtomIndices.empty())
-  {
-    if (numberOfVDWGridPoints.has_value())
-    {
-      std::print(stream, "Number of Van Der Waals grid points: {}x{}x{}\n", numberOfVDWGridPoints->x,
-                 numberOfVDWGridPoints->y, numberOfVDWGridPoints->z);
-    }
-    else
-    {
-      std::print(stream, "Spacing of the Van Der Waals grid: {}\n", spacingVDWGrid);
-    }
-    if (numberOfCoulombGridPoints.has_value())
-    {
-      std::print(stream, "Number of Coulomb grid points: {}x{}x{}\n", numberOfCoulombGridPoints->x,
-                 numberOfCoulombGridPoints->y, numberOfCoulombGridPoints->z);
-    }
-    else
-    {
-      std::print(stream, "Spacing of the Coulomb grid: {}\n", spacingCoulombGrid);
-    }
-    switch (interpolationScheme)
-    {
-      case InterpolationScheme::Polynomial:
-        std::print(stream, "Interpolation-scheme: quintic\n");
-        break;
-      case InterpolationScheme::Tricubic:
-        std::print(stream, "Interpolation-scheme: tricubic\n");
-        break;
-      case InterpolationScheme::Triquintic:
-        std::print(stream, "Interpolation-scheme: triquintic\n");
-        break;
-    }
-    std::print(stream, "\n");
-  }
+  std::print(stream, "{}", settings.printInterpolationGridStatus());
 
   if (automaticEwald)
   {
@@ -1745,7 +1445,6 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
   archive << f.cutOffMoleculeVDW;
   archive << f.cutOffCoulombAutomatic;
   archive << f.cutOffCoulomb;
-  archive << f.dualCutOff;
   archive << f.temperature;
 
   archive << f.numberOfPseudoAtoms;
@@ -1765,19 +1464,6 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
 
   archive << f.energyOverlapCriteria;
 
-  archive << f.numberOfTrialDirections;
-  archive << f.numberOfTorsionTrialDirections;
-  archive << f.numberOfFirstBeadPositions;
-  archive << f.numberOfTrialMovesPerOpenBead;
-  archive << f.minimumRosenbluthFactor;
-  archive << f.cbmcRingCrankshaftProbability;
-  archive << f.cbmcRingTiltProbability;
-
-  archive << f.useRecoilGrowth;
-  archive << f.recoilGrowthMaximumRecoilLength;
-  archive << f.recoilGrowthNumberOfTrialDirections;
-
-  archive << f.useDualCutOff;
   archive << f.omitInterInteractions;
 
   archive << f.computePolarization;
@@ -1785,21 +1471,10 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
 
   archive << f.potentialEnergySurfaceType;
   archive << f.potentialEnergySurfaceOrigin;
-
-  archive << f.gridPseudoAtomIndices;
-  archive << f.spacingVDWGrid;
-  archive << f.spacingCoulombGrid;
-  archive << f.numberOfVDWGridPoints;
-  archive << f.numberOfCoulombGridPoints;
-  archive << f.numberOfGridTestPoints;
-  archive << f.interpolationScheme;
-  archive << f.writeFrameworkInterpolationGrids;
-
-  archive << f.useExternalFieldGrid;
   archive << f.externalFieldGridFileName;
-  archive << f.numberOfExternalFieldGridPoints;
-  archive << f.writeExternalFieldInterpolationGrid;
   archive << f.externalFieldGeometryParameters;
+
+  archive << f.settings;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -1828,7 +1503,6 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
   archive >> f.cutOffMoleculeVDW;
   archive >> f.cutOffCoulombAutomatic;
   archive >> f.cutOffCoulomb;
-  archive >> f.dualCutOff;
   archive >> f.temperature;
 
   archive >> f.numberOfPseudoAtoms;
@@ -1848,19 +1522,6 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
 
   archive >> f.energyOverlapCriteria;
 
-  archive >> f.numberOfTrialDirections;
-  archive >> f.numberOfTorsionTrialDirections;
-  archive >> f.numberOfFirstBeadPositions;
-  archive >> f.numberOfTrialMovesPerOpenBead;
-  archive >> f.minimumRosenbluthFactor;
-  archive >> f.cbmcRingCrankshaftProbability;
-  archive >> f.cbmcRingTiltProbability;
-
-  archive >> f.useRecoilGrowth;
-  archive >> f.recoilGrowthMaximumRecoilLength;
-  archive >> f.recoilGrowthNumberOfTrialDirections;
-
-  archive >> f.useDualCutOff;
   archive >> f.omitInterInteractions;
 
   archive >> f.computePolarization;
@@ -1868,21 +1529,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
 
   archive >> f.potentialEnergySurfaceType;
   archive >> f.potentialEnergySurfaceOrigin;
-
-  archive >> f.gridPseudoAtomIndices;
-  archive >> f.spacingVDWGrid;
-  archive >> f.spacingCoulombGrid;
-  archive >> f.numberOfVDWGridPoints;
-  archive >> f.numberOfCoulombGridPoints;
-  archive >> f.numberOfGridTestPoints;
-  archive >> f.interpolationScheme;
-  archive >> f.writeFrameworkInterpolationGrids;
-
-  archive >> f.useExternalFieldGrid;
   archive >> f.externalFieldGridFileName;
-  archive >> f.numberOfExternalFieldGridPoints;
-  archive >> f.writeExternalFieldInterpolationGrid;
   archive >> f.externalFieldGeometryParameters;
+
+  archive >> f.settings;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
@@ -1903,15 +1553,13 @@ bool ForceField::operator==(const ForceField& other) const
 {
   // first the cheap ones
   if (cutOffFrameworkVDW != other.cutOffFrameworkVDW || cutOffMoleculeVDW != other.cutOffMoleculeVDW ||
-      cutOffCoulomb != other.cutOffCoulomb || dualCutOff != other.dualCutOff ||
+      cutOffCoulomb != other.cutOffCoulomb ||
       numberOfPseudoAtoms != other.numberOfPseudoAtoms || energyOverlapCriteria != other.energyOverlapCriteria ||
       EwaldPrecision != other.EwaldPrecision || EwaldAlpha != other.EwaldAlpha ||
       modifiedShiftedForceBeta != other.modifiedShiftedForceBeta ||
       numberOfWaveVectors != other.numberOfWaveVectors || automaticEwald != other.automaticEwald ||
       useCharge != other.useCharge || omitEwaldFourier != other.omitEwaldFourier ||
-      minimumRosenbluthFactor != other.minimumRosenbluthFactor ||
-      energyOverlapCriteria != other.energyOverlapCriteria || useDualCutOff != other.useDualCutOff ||
-      chargeMethod != other.chargeMethod)
+      chargeMethod != other.chargeMethod || !(settings == other.settings))
   {
     return false;
   }
@@ -1955,37 +1603,18 @@ const std::set<std::string, ForceField::InsensitiveCompare> ForceField::options 
     "EwaldParameters",
     "ReciprocalCutOff",
     "ReciprocalIntegerCutOff",
-    "UseInterpolationGrids",
-    "SpacingVDWGrid",
-    "SpacingCoulombGrid",
-    "NumberOfVDWGridPoints",
-    "NumberOfGridTestPoints",
     "ExternalFieldGridFileName",
-    "NumberOfExternalFieldGridPoints",
-    "UseExternalFieldGrid",
     "ExternalFieldPotentialEnergySurface",
     "ExternalFieldCylinderRadius",
     "ExternalFieldRectangularChannelWidth",
     "ExternalFieldRectangularChannelHeight",
-    "ExternalPotentialEnergySurfaceOrigin",
-    "WriteExternalFieldInterpolationGrid",
-    "InterpolationScheme",
-    "UseDualCutOff",
-    "DualCutOff",
-    "UseRecoilGrowth",
-    "RecoilGrowthMaximumRecoilLength",
-    "RecoilGrowthNumberOfTrialDirections",
-    "NumberOfTrialDirections",
-    "NumberOfTorsionTrialDirections",
-    "NumberOfTrialMovesPerOpenBead",
-    "CBMCRingCrankshaftProbability",
-    "CBMCRingTiltProbability"};
+    "ExternalPotentialEnergySurfaceOrigin"};
 
 void ForceField::validateInput(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {
   for (auto& [key, _] : parsed_data.items())
   {
-    if (!options.contains(key))
+    if (!options.contains(key) && !ForceFieldSettings::isOption(key))
     {
       throw std::runtime_error(std::format("[ForceField Error] : Unknown input '{}'\n", key));
     }

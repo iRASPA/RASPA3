@@ -190,8 +190,8 @@ TEST(MC_IDENTITY_SWITCH_DRIFT, charged_multisite_components_energy_drift)
 TEST(MC_IDENTITY_SWITCH_DRIFT, charged_multisite_components_dual_cut_off_energy_drift)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.useDualCutOff = true;
-  forceField.dualCutOff = 6.0;
+  forceField.settings.useDualCutOff = true;
+  forceField.settings.dualCutOff = 6.0;
 
   expectNoDriftForChargedMultisiteSwitch(forceField);
 }

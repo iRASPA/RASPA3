@@ -40,13 +40,19 @@ RunningEnergy computeIntraMolecularUreyBradleyHessian(std::span<const Molecule> 
                                                       const MinimizationDofLayout& layout, GeneralizedHessian& hessian,
                                                       std::span<AtomDynamics> dynamics);
 
-RunningEnergy computeIntraMolecularVanDerWaalsHessian(std::span<const Molecule> moleculeData,
+/// The non-excluded intramolecular van der Waals pairs (Potentials::intraMolecularVDW: the regular force-field
+/// pair potential inside its cutoff times the pair scaling, minimum image).
+RunningEnergy computeIntraMolecularVanDerWaalsHessian(const ForceField& forceField, const SimulationBox& simulationBox,
+                                                      std::span<const Molecule> moleculeData,
                                                       std::span<const Atom> atoms,
                                                       std::span<const Component> components,
                                                       const MinimizationDofLayout& layout, GeneralizedHessian& hessian,
                                                       std::span<AtomDynamics> dynamics);
 
-RunningEnergy computeIntraMolecularCoulombHessian(std::span<const Molecule> moleculeData, std::span<const Atom> atoms,
+/// The non-excluded intramolecular Coulomb pairs (Potentials::intraMolecularCoulomb, including the Ewald or
+/// shifted-potential completion of the pair).
+RunningEnergy computeIntraMolecularCoulombHessian(const ForceField& forceField, const SimulationBox& simulationBox,
+                                                  std::span<const Molecule> moleculeData, std::span<const Atom> atoms,
                                                   std::span<const Component> components,
                                                   const MinimizationDofLayout& layout, GeneralizedHessian& hessian,
                                                   std::span<AtomDynamics> dynamics);

@@ -24,6 +24,12 @@ import van_der_waals_potential;
 import coulomb_potential;
 import running_energy;
 import double3;
+import forcefield;
+import vdwparameters;
+import simulationbox;
+import potential_pair_derivatives;
+import potential_intra_pair;
+import intra_molecular_exclusions;
 
 std::optional<BondPotential> Potentials::IntraMolecularPotentials::findBondPotential(std::size_t A, std::size_t B) const
 {
@@ -109,20 +115,6 @@ double Potentials::IntraMolecularPotentials::calculateTorsionEnergies(const std:
   return energy;
 }
 
-double Potentials::IntraMolecularPotentials::calculateVanDerWaalsEnergies(const std::span<Atom> atoms) const
-{
-  double energy{};
-
-  for (const VanDerWaalsPotential &vanDerWaal : vanDerWaals)
-  {
-    std::size_t A = vanDerWaal.identifiers[0];
-    std::size_t B = vanDerWaal.identifiers[1];
-    energy += vanDerWaal.calculateEnergy(atoms[A].position, atoms[B].position);
-  }
-
-  return energy;
-}
-
 void Potentials::IntraMolecularPotentials::scaleEnergy(double lambda)
 {
   const double sqrtLambda = std::sqrt(lambda);
@@ -138,15 +130,21 @@ void Potentials::IntraMolecularPotentials::scaleEnergy(double lambda)
   for (BondTorsionPotential &potential : bondTorsions) potential.scaleEnergy(lambda);
   for (BendBendPotential &potential : bendBends) potential.scaleEnergy(lambda);
   for (BendTorsionPotential &potential : bendTorsions) potential.scaleEnergy(lambda);
-  for (VanDerWaalsPotential &potential : vanDerWaals) potential.scaling *= lambda;
+  // The pair lists are evaluated with the (already scaled) force field and atomic charges; only the copies kept
+  // for the CBMC lookahead guide follow here.
+  for (VanDerWaalsPotential &potential : vanDerWaals) potential.scaleEnergy(lambda);
   for (CoulombPotential &potential : coulombs)
   {
     potential.chargeA *= sqrtLambda;
     potential.chargeB *= sqrtLambda;
   }
+  for (VDWParameters &parameters : implicitParameters.parameters) parameters.scaleEnergy(lambda);
+  for (double &charge : implicitParameters.charge) charge *= sqrtLambda;
 }
 
-RunningEnergy Potentials::IntraMolecularPotentials::computeInternalEnergies(const std::span<const Atom> atoms) const
+RunningEnergy Potentials::IntraMolecularPotentials::computeInternalEnergies(const ForceField &forceField,
+                                                                            const SimulationBox &simulationBox,
+                                                                            const std::span<const Atom> atoms) const
 {
   RunningEnergy energies{};
 
@@ -260,19 +258,8 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalEnergies(cons
         bendTorsion.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
   }
 
-  for (const VanDerWaalsPotential &vanDerWaal : vanDerWaals)
-  {
-    std::size_t A = vanDerWaal.identifiers[0];
-    std::size_t B = vanDerWaal.identifiers[1];
-    energies.intraVDW += vanDerWaal.calculateEnergy(atoms[A].position, atoms[B].position);
-  }
-
-  for (const CoulombPotential &coulomb : coulombs)
-  {
-    std::size_t A = coulomb.identifiers[0];
-    std::size_t B = coulomb.identifiers[1];
-    energies.intraCoul += coulomb.calculateEnergy(atoms[A].position, atoms[B].position);
-  }
+  energies += computeInternalIntraVanDerWaalsEnergies(forceField, simulationBox, atoms);
+  energies += computeInternalIntraCoulombEnergies(forceField, simulationBox, atoms);
 
   return energies;
 }
@@ -572,49 +559,139 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBendTorsionEn
 }
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalIntraVanDerWaalsEnergies(
-    const std::span<const Atom> atoms) const
+    const ForceField &forceField, const SimulationBox &simulationBox, const std::span<const Atom> atoms) const
 {
   RunningEnergy energies{};
 
-  for (const VanDerWaalsPotential &vanDerWaal : vanDerWaals)
-  {
-    std::size_t A = vanDerWaal.identifiers[0];
-    std::size_t B = vanDerWaal.identifiers[1];
-    energies.intraVDW += vanDerWaal.calculateEnergy(atoms[A].position, atoms[B].position);
-  }
+  forEachVanDerWaalsPair(
+      [&](std::size_t A, std::size_t B, double scaling)
+      {
+        const double3 dr = simulationBox.applyPeriodicBoundaryConditions(atoms[A].position - atoms[B].position);
+        const double rr = double3::dot(dr, dr);
+        energies.intraVDW += Potentials::intraMolecularVDW<0>(forceField, scaling, rr,
+                                                              static_cast<std::size_t>(atoms[A].type),
+                                                              static_cast<std::size_t>(atoms[B].type))
+                                 .energy;
+      });
 
   return energies;
 }
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalIntraCoulombEnergies(
-    const std::span<const Atom> atoms) const
+    const ForceField &forceField, const SimulationBox &simulationBox, const std::span<const Atom> atoms) const
 {
   RunningEnergy energies;
+  if (!forceField.useCharge) return energies;
 
-  for (const CoulombPotential &coulomb : coulombs)
-  {
-    std::size_t A = coulomb.identifiers[0];
-    std::size_t B = coulomb.identifiers[1];
-    energies.intraCoul += coulomb.calculateEnergy(atoms[A].position, atoms[B].position);
-  }
+  forEachCoulombPair(
+      [&](std::size_t A, std::size_t B, double scaling)
+      {
+        const double3 dr = simulationBox.applyPeriodicBoundaryConditions(atoms[A].position - atoms[B].position);
+        const double r = std::sqrt(double3::dot(dr, dr));
+        const Potentials::PairDerivatives<0> factors =
+            Potentials::intraMolecularCoulomb<0>(forceField, scaling, atoms[A].scalingCoulomb, atoms[B].scalingCoulomb,
+                                                 r, atoms[A].charge, atoms[B].charge);
+        energies.intraCoul += factors.energy;
+        energies.addDudlambdaEwald(atoms[A].groupId, atoms[B].groupId, atoms[A].scalingCoulomb,
+                                   atoms[B].scalingCoulomb, factors.dUdlambda);
+      });
 
   return energies;
 }
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalIntraVanDerWaalsAndCoulombEnergies(
-    const std::span<const Atom> atoms) const
+    const ForceField &forceField, const SimulationBox &simulationBox, const std::span<const Atom> atoms) const
 {
-  return computeInternalIntraVanDerWaalsEnergies(atoms) + computeInternalIntraCoulombEnergies(atoms);
+  return computeInternalIntraVanDerWaalsEnergies(forceField, simulationBox, atoms) +
+         computeInternalIntraCoulombEnergies(forceField, simulationBox, atoms);
 }
 
-RunningEnergy Potentials::IntraMolecularPotentials::computeInternalGradient(std::span<const Atom> atoms,
+RunningEnergy Potentials::IntraMolecularPotentials::computeInternalGradient(const ForceField &forceField,
+                                                                            const SimulationBox &simulationBox,
+                                                                            std::span<const Atom> atoms,
                                                                             std::span<AtomDynamics> dynamics) const
 {
-  return computeInternalStrainDerivative(atoms, dynamics).first;
+  return computeInternalStrainDerivative(forceField, simulationBox, atoms, dynamics).first;
 }
 
 std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::computeInternalStrainDerivative(
-    std::span<const Atom> atoms, std::span<AtomDynamics> dynamics) const
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> atoms,
+    std::span<AtomDynamics> dynamics) const
+{
+  std::pair<RunningEnergy, double3x3> result = computeInternalBondedStrainDerivative(simulationBox, atoms, dynamics);
+  const std::pair<RunningEnergy, double3x3> pairs =
+      computeInternalNonBondedStrainDerivative(forceField, simulationBox, atoms, dynamics);
+  result.first += pairs.first;
+  result.second += pairs.second;
+  return result;
+}
+
+RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBondedGradient(const SimulationBox &simulationBox,
+                                                                                  std::span<const Atom> atoms,
+                                                                                  std::span<AtomDynamics> dynamics) const
+{
+  return computeInternalBondedStrainDerivative(simulationBox, atoms, dynamics).first;
+}
+
+std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::computeInternalNonBondedStrainDerivative(
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> atoms,
+    std::span<AtomDynamics> dynamics) const
+{
+  RunningEnergy energies{};
+  double3x3 strain_derivative{};
+
+  // The non-bonded pairs: force-field pair potentials under the minimum-image convention. The strain derivative
+  // of a radial pair is the outer product of the gradient on A and the separation.
+  const auto accumulatePair = [&](std::size_t A, std::size_t B, const double3 &dr, double firstDerivativeFactor)
+  {
+    const double3 gradientA = firstDerivativeFactor * dr;
+    dynamics[A].gradient += gradientA;
+    dynamics[B].gradient -= gradientA;
+    strain_derivative.ax += dr.x * gradientA.x;
+    strain_derivative.bx += dr.y * gradientA.x;
+    strain_derivative.cx += dr.z * gradientA.x;
+    strain_derivative.ay += dr.x * gradientA.y;
+    strain_derivative.by += dr.y * gradientA.y;
+    strain_derivative.cy += dr.z * gradientA.y;
+    strain_derivative.az += dr.x * gradientA.z;
+    strain_derivative.bz += dr.y * gradientA.z;
+    strain_derivative.cz += dr.z * gradientA.z;
+  };
+
+  forEachVanDerWaalsPair(
+      [&](std::size_t A, std::size_t B, double scaling)
+      {
+        const double3 dr = simulationBox.applyPeriodicBoundaryConditions(atoms[A].position - atoms[B].position);
+        const double rr = double3::dot(dr, dr);
+        const Potentials::PairDerivatives<1> factors = Potentials::intraMolecularVDW<1>(
+            forceField, scaling, rr, static_cast<std::size_t>(atoms[A].type), static_cast<std::size_t>(atoms[B].type));
+        energies.intraVDW += factors.energy;
+        accumulatePair(A, B, dr, factors.firstDerivativeFactor);
+      });
+
+  if (forceField.useCharge)
+  {
+    forEachCoulombPair(
+        [&](std::size_t A, std::size_t B, double scaling)
+        {
+          const double3 dr = simulationBox.applyPeriodicBoundaryConditions(atoms[A].position - atoms[B].position);
+          const double r = std::sqrt(double3::dot(dr, dr));
+          const Potentials::PairDerivatives<1> factors =
+              Potentials::intraMolecularCoulomb<1>(forceField, scaling, atoms[A].scalingCoulomb,
+                                                   atoms[B].scalingCoulomb, r, atoms[A].charge, atoms[B].charge);
+          energies.intraCoul += factors.energy;
+          energies.addDudlambdaEwald(atoms[A].groupId, atoms[B].groupId, atoms[A].scalingCoulomb,
+                                     atoms[B].scalingCoulomb, factors.dUdlambda);
+          accumulatePair(A, B, dr, factors.firstDerivativeFactor);
+        });
+  }
+
+  return {energies, strain_derivative};
+}
+
+std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::computeInternalBondedStrainDerivative(
+    [[maybe_unused]] const SimulationBox &simulationBox, std::span<const Atom> atoms,
+    std::span<AtomDynamics> dynamics) const
 {
   RunningEnergy energies{};
   double3x3 strain_derivative{};
@@ -686,29 +763,6 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
     dynamics[B].gradient += gradient[1];
     dynamics[C].gradient += gradient[2];
     dynamics[D].gradient += gradient[3];
-    strain_derivative += strain;
-  }
-
-  for (const VanDerWaalsPotential &vanDerWaal : vanDerWaals)
-  {
-    std::size_t A = vanDerWaal.identifiers[0];
-    std::size_t B = vanDerWaal.identifiers[1];
-    auto [energy, gradient, strain] =
-        vanDerWaal.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position);
-    energies.intraVDW += energy;
-    dynamics[A].gradient += gradient[0];
-    dynamics[B].gradient += gradient[1];
-    strain_derivative += strain;
-  }
-
-  for (const CoulombPotential &coulomb : coulombs)
-  {
-    std::size_t A = coulomb.identifiers[0];
-    std::size_t B = coulomb.identifiers[1];
-    auto [energy, gradient, strain] = coulomb.potentialEnergyGradientStrain(atoms[A].position, atoms[B].position);
-    energies.intraCoul += energy;
-    dynamics[A].gradient += gradient[0];
-    dynamics[B].gradient += gradient[1];
     strain_derivative += strain;
   }
 
@@ -1026,12 +1080,16 @@ Potentials::IntraMolecularPotentials Potentials::IntraMolecularPotentials::filte
     }
   }
 
+  // The explicit pair terms of the step: the pairs of the beads to be placed with the placed beads (and among
+  // themselves). The explicit terms of this object are filtered, the implicit pairs are materialised; each pair of
+  // the step is visited once (for a bead to be placed only the partners above it among the beads to be placed).
+  const auto inStep = [&](std::size_t A, std::size_t B)
+  { return boolAlreadyPlacedToBePlaced[A] && boolAlreadyPlacedToBePlaced[B] && (boolToBePlaced[A] || boolToBePlaced[B]); };
+
   filteredPotentials.vanDerWaals.reserve(vanDerWaals.size());
   for (const VanDerWaalsPotential &vanDerWaal : vanDerWaals)
   {
-    std::size_t A = vanDerWaal.identifiers[0];
-    std::size_t B = vanDerWaal.identifiers[1];
-    if (boolAlreadyPlacedToBePlaced[A] && boolAlreadyPlacedToBePlaced[B] && (boolToBePlaced[A] || boolToBePlaced[B]))
+    if (inStep(vanDerWaal.identifiers[0], vanDerWaal.identifiers[1]))
     {
       filteredPotentials.vanDerWaals.push_back(vanDerWaal);
     }
@@ -1040,12 +1098,35 @@ Potentials::IntraMolecularPotentials Potentials::IntraMolecularPotentials::filte
   filteredPotentials.coulombs.reserve(coulombs.size());
   for (const CoulombPotential &coulomb : coulombs)
   {
-    std::size_t A = coulomb.identifiers[0];
-    std::size_t B = coulomb.identifiers[1];
-    if (boolAlreadyPlacedToBePlaced[A] && boolAlreadyPlacedToBePlaced[B] && (boolToBePlaced[A] || boolToBePlaced[B]))
+    if (inStep(coulomb.identifiers[0], coulomb.identifiers[1]))
     {
       filteredPotentials.coulombs.push_back(coulomb);
     }
+  }
+
+  if (exclusions.numberOfAtoms > 0 && !exclusions.allExcluded)
+  {
+    for (std::size_t const bead : beadsToBePlaced)
+    {
+      for (std::size_t partner = 0; partner < numberOfBeads; ++partner)
+      {
+        if (partner == bead || !boolAlreadyPlacedToBePlaced[partner]) continue;
+        if (boolToBePlaced[partner] && partner < bead) continue;  // counted from the other bead
+        if (exclusions.isExcluded(bead, partner)) continue;
+        const std::size_t A = std::min(bead, partner);
+        const std::size_t B = std::max(bead, partner);
+        const auto [scalingVDW, scalingCoulomb] = exclusions.scalingOf(A, B);
+        filteredPotentials.vanDerWaals.push_back(implicitParameters.vanDerWaalsTerm(A, B, scalingVDW));
+        if (implicitParameters.useCharge)
+        {
+          filteredPotentials.coulombs.push_back(implicitParameters.coulombTerm(A, B, scalingCoulomb));
+        }
+      }
+    }
+    // the deterministic order of the enumeration (A, then B) of the former explicit lists
+    std::ranges::sort(filteredPotentials.vanDerWaals, {},
+                      [](const VanDerWaalsPotential &p) { return p.identifiers; });
+    std::ranges::sort(filteredPotentials.coulombs, {}, [](const CoulombPotential &p) { return p.identifiers; });
   }
 
   return filteredPotentials;
@@ -1096,6 +1177,8 @@ Archive<std::ofstream> &Potentials::operator<<(Archive<std::ofstream> &archive,
   archive << p.bendTorsions;
   archive << p.vanDerWaals;
   archive << p.coulombs;
+  archive << p.exclusions;
+  archive << p.implicitParameters;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -1131,6 +1214,8 @@ Archive<std::ifstream> &Potentials::operator>>(Archive<std::ifstream> &archive, 
   archive >> p.bendTorsions;
   archive >> p.vanDerWaals;
   archive >> p.coulombs;
+  archive >> p.exclusions;
+  archive >> p.implicitParameters;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
@@ -1141,5 +1226,47 @@ Archive<std::ifstream> &Potentials::operator>>(Archive<std::ifstream> &archive, 
   }
 #endif
 
+  return archive;
+}
+
+VanDerWaalsPotential Potentials::ImplicitPairParameters::vanDerWaalsTerm(std::size_t A, std::size_t B,
+                                                                          double scaling) const
+{
+  return VanDerWaalsPotential(std::array<std::size_t, 2>{A, B}, parameters[typeIndex[A] * numberOfTypes + typeIndex[B]],
+                              scaling);
+}
+
+CoulombPotential Potentials::ImplicitPairParameters::coulombTerm(std::size_t A, std::size_t B, double scaling) const
+{
+  return CoulombPotential(std::array<std::size_t, 2>{A, B}, CoulombType::Coulomb, charge[A], charge[B], scaling);
+}
+
+Archive<std::ofstream> &Potentials::operator<<(Archive<std::ofstream> &archive,
+                                               const Potentials::ImplicitPairParameters &p)
+{
+  archive << p.versionNumber;
+  archive << p.typeIndex;
+  archive << p.charge;
+  archive << p.numberOfTypes;
+  archive << p.parameters;
+  archive << p.useCharge;
+  return archive;
+}
+
+Archive<std::ifstream> &Potentials::operator>>(Archive<std::ifstream> &archive, Potentials::ImplicitPairParameters &p)
+{
+  std::uint64_t versionNumber;
+  archive >> versionNumber;
+  if (versionNumber > p.versionNumber)
+  {
+    const std::source_location &location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'ImplicitPairParameters' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+  archive >> p.typeIndex;
+  archive >> p.charge;
+  archive >> p.numberOfTypes;
+  archive >> p.parameters;
+  archive >> p.useCharge;
   return archive;
 }

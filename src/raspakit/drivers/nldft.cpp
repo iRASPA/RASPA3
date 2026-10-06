@@ -37,9 +37,9 @@ uint3 resolveGridSize(const System& system, const NLDFTParameters& parameters)
   {
     return parameters.gridSize;
   }
-  if (system.forceField.numberOfVDWGridPoints.has_value())
+  if (system.forceField.settings.numberOfVDWGridPoints.has_value())
   {
-    return system.forceField.numberOfVDWGridPoints.value();
+    return system.forceField.settings.numberOfVDWGridPoints.value();
   }
   return uint3(defaultGridExtent, defaultGridExtent, defaultGridExtent);
 }

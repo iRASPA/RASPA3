@@ -7,6 +7,8 @@ import std;
 import atom;
 import double3;
 import randomnumbers;
+import forcefield;
+import simulationbox;
 import cbmc_grow_step;
 import cbmc_lookahead_guide;
 
@@ -38,6 +40,7 @@ struct TorsionOrientation
  * and are restored on return (see CBMC::ScratchBeads), so the chain is unchanged for the caller.
  */
 TorsionOrientation selectTorsionOrientation(RandomNumber &random, std::size_t numberOfTorsionTrials, double beta,
+                                            const ForceField &forceField, const SimulationBox &simulationBox,
                                             std::vector<Atom> &chainAtoms, const std::vector<Atom> &baseOrientation,
                                             const GrowStep &step, double3 lastBondVector, bool pinFirstToBase);
 

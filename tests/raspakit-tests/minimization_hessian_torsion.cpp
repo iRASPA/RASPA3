@@ -15,6 +15,7 @@ import bond_potential;
 import torsion_potential;
 import urey_bradley_potential;
 import van_der_waals_potential;
+import vdwparameters;
 import coulomb_potential;
 import generalized_hessian;
 import minimization_dof_layout;
@@ -205,7 +206,7 @@ TEST(minimization_hessian_intramolecular_pairs, urey_bradley_vdw_coulomb_match_f
   Potentials::IntraMolecularPotentials intraMolecularPotentials{};
   intraMolecularPotentials.ureyBradleys = {UreyBradleyPotential({0, 2}, UreyBradleyType::Harmonic, {40000.0, 2.6})};
   intraMolecularPotentials.vanDerWaals = {
-      VanDerWaalsPotential({0, 2}, VanDerWaalsType::LennardJones, {120.0, 2.5}, 1.0)};
+      VanDerWaalsPotential({0, 2}, VDWParameters::Type::LennardJones, {120.0, 2.5}, 1.0)};
   intraMolecularPotentials.coulombs = {CoulombPotential({0, 2}, CoulombType::Coulomb, 0.4, -0.35, 1.0)};
 
   Component component = Component(forceField, "triatomic", 369.825, 4247660.0, 0.1524,
@@ -227,10 +228,10 @@ TEST(minimization_hessian_intramolecular_pairs, urey_bradley_vdw_coulomb_match_f
 
   Interactions::computeIntraMolecularUreyBradleyHessian(system.moleculeData, atoms, system.components, layout, hessian,
                                                         dynamics);
-  Interactions::computeIntraMolecularVanDerWaalsHessian(system.moleculeData, atoms, system.components, layout, hessian,
-                                                        dynamics);
-  Interactions::computeIntraMolecularCoulombHessian(system.moleculeData, atoms, system.components, layout, hessian,
-                                                    dynamics);
+  Interactions::computeIntraMolecularVanDerWaalsHessian(system.forceField, system.simulationBox, system.moleculeData,
+                                                        atoms, system.components, layout, hessian, dynamics);
+  Interactions::computeIntraMolecularCoulombHessian(system.forceField, system.simulationBox, system.moleculeData, atoms,
+                                                    system.components, layout, hessian, dynamics);
 
   const Potentials::IntraMolecularPotentials &potentials = system.components[0].intraMolecularPotentials;
   auto energyFunction = [&]() -> double

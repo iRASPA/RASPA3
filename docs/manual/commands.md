@@ -231,7 +231,12 @@ reported separately at the end of the simulation.
     force engine check`), together with the cell grid, the sub-domain
     layout, the number of atoms and pairs per sub-domain and the mesh size.
     Timings per phase (neighbour-list rebuilds, pairs, mesh, bonded terms)
-    are printed at the end.
+    are printed at the end. The engine evaluates the unscaled same-molecule
+    pairs (1-5 and beyond) through its neighbour lists together with the
+    molecule-molecule pairs, so they are reported with the molecule-molecule
+    energies; only the scaled 1-4 pairs appear as intramolecular
+    van der Waals / Coulomb energy. The totals equal those of the exact
+    code.
 
     Scope: molecules in a box only (rigid, semi-flexible and flexible
     components, Lennard-Jones plus Coulomb with the Ewald, damped
@@ -2022,6 +2027,22 @@ not improved by it.
     A component with reactive sites can not have a fractional molecule and
     can not use identity-change, pair-swap, group-swap, reptation, double
     bridging or Gibbs swap moves.
+
+-   `"Intra14VanDerWaalsScalingValue" : floating-point-number` (molecule definition file)\
+    `"Intra14ChargeChargeScalingValue" : floating-point-number` (molecule definition file)\
+    The factors applied to the intra-molecular Van der Waals and Coulomb
+    interaction of 1-4 pairs (atoms separated by three bonds); the default `0`
+    excludes them (TraPPE-style), AMBER/CHARMM-style force fields use e.g.
+    `0.5` and `0.8333`. The intra-molecular non-bonded model of a flexible
+    molecule follows the usual protein/DNA force-field convention: 1-2 pairs,
+    1-3 pairs, and pairs inside the same rigid body are *excluded*; 1-4 pairs are
+    scaled by these factors; every other pair of the molecule interacts at full
+    strength with the force field's Van der Waals parameters and the partial
+    charges of its pseudo-atoms (Van der Waals truncated at the molecule cut-off,
+    Coulomb with the same Ewald, Wolf or truncated method as the inter-molecular
+    interactions). The excluded pairs are the ones for which the Ewald/Wolf
+    exclusion corrections are made. Rigid molecules have no intra-molecular
+    non-bonded interactions.
 
 -   `"LnPartitionFunction" : number or string`\
     The natural logarithm of the (reduced) partition function used for reactions.

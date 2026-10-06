@@ -10,6 +10,7 @@ import bond_potential;
 import bend_potential;
 import torsion_potential;
 import van_der_waals_potential;
+import vdwparameters;
 import coulomb_potential;
 import intra_molecular_potentials;
 import cbmc_constants;
@@ -242,7 +243,11 @@ std::string CBMC::LookaheadGuideModel::signature() const
       appendTerm(key, "T", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
     for (const VanDerWaalsPotential &t : terms.vanDerWaals)
     {
-      appendTerm(key, "V", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
+      // The pair potential's form and every parameter that enters 'calculateEnergy' (the shift does not).
+      const VDWParameters &p = t.parameters;
+      appendTerm(key, "V", static_cast<std::size_t>(p.type), t.identifiers,
+                 std::array<double, 8>{p.parameters.x, p.parameters.y, p.parameters.z, p.parameters.w,
+                                       p.parameters2.x, p.parameters2.y, p.parameters2.z, p.parameters2.w});
       key += std::format(",s{:.12e}", t.scaling);
     }
     for (const CoulombPotential &t : terms.coulombs)

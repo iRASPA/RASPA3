@@ -3502,7 +3502,7 @@ import mdspan;
   return X;
 }
 
-InterpolationEnergyGrid::InterpolationEnergyGrid(const SimulationBox unitCellBox, double3 origin, uint3 numberOfGridPoints, ForceField::InterpolationScheme order)
+InterpolationEnergyGrid::InterpolationEnergyGrid(const SimulationBox unitCellBox, double3 origin, uint3 numberOfGridPoints, ForceFieldSettings::InterpolationScheme order)
       : unitCellBox(unitCellBox),
         origin(origin),
         numberOfGridPoints(numberOfGridPoints),
@@ -3649,7 +3649,7 @@ void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& s
 
           switch (order)
           {
-            case ForceField::InterpolationScheme::Polynomial:
+            case ForceFieldSettings::InterpolationScheme::Polynomial:
             {
               std::array<double, 8> values = Interactions::calculateTricubicFractionalAtPositionExternalField(
                   forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
@@ -3658,7 +3658,7 @@ void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& s
                   (values[0] > forceField.energyOverlapCriteria) ? 2.0 * forceField.energyOverlapCriteria : values[0];
             }
             break;
-            case ForceField::InterpolationScheme::Tricubic:
+            case ForceFieldSettings::InterpolationScheme::Tricubic:
             {
               std::array<double, 8> values = Interactions::calculateTricubicFractionalAtPositionExternalField(
                   forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
@@ -3696,7 +3696,7 @@ void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& s
               }
             }
             break;
-            case ForceField::InterpolationScheme::Triquintic:
+            case ForceFieldSettings::InterpolationScheme::Triquintic:
               std::array<double, 27> values = Interactions::calculateTriquinticFractionalAtPositionExternalField(
                   forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
 
@@ -3796,9 +3796,9 @@ void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& s
 
 // The grid files are stored row-order (std::layout_right)
 // The grid is arranged with the x axis as the outer loop and the z axis as the inner loop
-// calculateEnergyAtPosition using ForceField::InterpolationGridType::EwaldReal calcalulates energy for a unit-charge
+// calculateEnergyAtPosition using ForceFieldSettings::InterpolationGridType::EwaldReal calcalulates energy for a unit-charge
 void InterpolationEnergyGrid::makeFrameworkInterpolationGrid(std::ostream& stream,
-                                                    ForceField::InterpolationGridType interpolationGridType,
+                                                    ForceFieldSettings::InterpolationGridType interpolationGridType,
                                                     const ForceField& forceField, const Framework& framework,
                                                     double cutOff, std::size_t pseudo_atom_index)
 {
@@ -3832,7 +3832,7 @@ void InterpolationEnergyGrid::makeFrameworkInterpolationGrid(std::ostream& strea
 
         switch (order)
         {
-          case ForceField::InterpolationScheme::Polynomial:
+          case ForceFieldSettings::InterpolationScheme::Polynomial:
           {
             double value = Interactions::calculateEnergyAtPosition(interpolationGridType, forceField, super_cell_box,
                                                                    pos, pseudo_atom_index, framework_atoms);
@@ -3840,7 +3840,7 @@ void InterpolationEnergyGrid::makeFrameworkInterpolationGrid(std::ostream& strea
                 (value > forceField.energyOverlapCriteria) ? 2.0 * forceField.energyOverlapCriteria : value;
           }
           break;
-          case ForceField::InterpolationScheme::Tricubic:
+          case ForceFieldSettings::InterpolationScheme::Tricubic:
           {
             std::array<double, 8> values = Interactions::calculateTricubicFractionalAtPosition(
                 interpolationGridType, forceField, super_cell_box, pos, pseudo_atom_index, unit_cell_box,
@@ -3879,7 +3879,7 @@ void InterpolationEnergyGrid::makeFrameworkInterpolationGrid(std::ostream& strea
             }
           }
           break;
-          case ForceField::InterpolationScheme::Triquintic:
+          case ForceFieldSettings::InterpolationScheme::Triquintic:
             std::array<double, 27> values = Interactions::calculateTriquinticFractionalAtPosition(
                 interpolationGridType, forceField, super_cell_box, pos, pseudo_atom_index, unit_cell_box,
                 framework_atoms);
@@ -3983,7 +3983,7 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
 
   switch (order)
   {
-    case ForceField::InterpolationScheme::Polynomial:
+    case ForceFieldSettings::InterpolationScheme::Polynomial:
     {
       double energy, dummy;
       std::array<double, num_points_interpolation> yjtmp, yktmp, yltmp;
@@ -4051,7 +4051,7 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
 
       return energy;
     }
-    case ForceField::InterpolationScheme::Tricubic:
+    case ForceFieldSettings::InterpolationScheme::Tricubic:
     {
       std::array<double, 64> X{};
       std::array<double, 64> a{};
@@ -4116,7 +4116,7 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
 
       return value;
     }
-    case ForceField::InterpolationScheme::Triquintic:
+    case ForceFieldSettings::InterpolationScheme::Triquintic:
     {
       std::array<double, 216> X{};
       std::array<double, 216> a{};
@@ -4192,7 +4192,7 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
 
   switch (order)
   {
-    case ForceField::InterpolationScheme::Polynomial:
+    case ForceFieldSettings::InterpolationScheme::Polynomial:
     {
       double energy, dummy;
       std::array<double, num_points_interpolation> yjtmp, yktmp, yltmp;
@@ -4260,7 +4260,7 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
 
       return {energy, {0.0, 0.0, 0.0}};
     }
-    case ForceField::InterpolationScheme::Tricubic:
+    case ForceFieldSettings::InterpolationScheme::Tricubic:
     {
       std::array<double, 64> X{};
       std::array<double, 64> a{};
@@ -4345,7 +4345,7 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
       // convert gradient from fractional to Cartesian
       return {value, unitCellBox.inverseCell.transpose() * gradient};
     }
-    case ForceField::InterpolationScheme::Triquintic:
+    case ForceFieldSettings::InterpolationScheme::Triquintic:
     {
       std::array<double, 216> X{};
       std::array<double, 216> a{};
@@ -4446,7 +4446,7 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
 
   switch (order)
   {
-    case ForceField::InterpolationScheme::Polynomial:
+    case ForceFieldSettings::InterpolationScheme::Polynomial:
     {
       double energy, dummy;
       std::array<double, num_points_interpolation> yjtmp, yktmp, yltmp;
@@ -4514,7 +4514,7 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
 
       return {energy, {0.0, 0.0, 0.0}, double3x3{}};
     }
-    case ForceField::InterpolationScheme::Tricubic:
+    case ForceFieldSettings::InterpolationScheme::Tricubic:
     {
       std::array<double, 64> X{};
       std::array<double, 64> a{};
@@ -4599,7 +4599,7 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
       // convert gradient from fractional to Cartesian
       return {value, unitCellBox.inverseCell.transpose() * gradient, double3x3{}};
     }
-    case ForceField::InterpolationScheme::Triquintic:
+    case ForceFieldSettings::InterpolationScheme::Triquintic:
     {
       std::array<double, 216> X{};
       std::array<double, 216> a{};

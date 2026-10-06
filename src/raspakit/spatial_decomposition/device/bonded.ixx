@@ -12,8 +12,9 @@ import spatial_decomposition_device_bonded_topology;
 /// The per-molecule results of a step (bonded chain), summed over all molecules.
 export struct DeviceBondedResults
 {
-  /// The self energy is evaluated in double on the host (it depends on the charges and alpha only); the
-  /// device evaluates self + exclusion without their mutual cancellation and `exclusion` is the difference.
+  /// The self energy is evaluated in double on the host (it depends on the charges and alpha only); the device
+  /// evaluates the exclusion of the excluded pairs in a reduced form (the pair term minus its small-r limit) and
+  /// the host adds the constant that completes it.
   double self{0.0}, exclusion{0.0}, bond{0.0}, bend{0.0}, torsion{0.0}, improperTorsion{0.0};
   double intraVDW{0.0}, intraCoulomb{0.0};
   double3x3 exclusionStrain{};
@@ -49,8 +50,9 @@ export class DeviceBonded
 
   /// Uploads the terms of the components (per atom), the molecule table and the masses (blocking).
   void setTopology(const BondedTopology& topology);
-  /// The Ewald parameters (`useCharge`: self and exclusion corrections on).
-  void setParameters(double alpha, double conversionFactor, bool useCharge);
+  /// The Ewald parameters (`useCharge`: self and exclusion corrections and the intramolecular Coulomb pairs on)
+  /// and the cutoffs of the scaled intramolecular pairs.
+  void setParameters(double alpha, double conversionFactor, bool useCharge, double cutOffVDW, double cutOffCharge);
   /// Follows a change of the Ewald alpha.
   void setAlpha(double alpha);
 
@@ -81,19 +83,23 @@ export class DeviceBonded
     std::uint32_t numberOfSlots{0};
     std::uint32_t numberOfInstances{0};
     std::uint32_t atomPartialOffset{0};
+    float cutOffVDWSquared{0.0f};
+    float cutOffChargeSquared{0.0f};
+    std::uint32_t padding[2]{};
   };
-  static_assert(sizeof(Parameters) == 32);
+  static_assert(sizeof(Parameters) == 48);
 
   DeviceContext* context{nullptr};
   DeviceKernel termKernel{}, atomKernel{};
   DeviceBufferOwner slotMoleculeBuffer{}, moleculeInfoBuffer{}, instanceMoleculeBuffer{}, massBuffer{};
   DeviceBufferOwner termsBuffer{}, gradientOffsetBuffer{}, atomGradientStartBuffer{}, atomGradientsBuffer{};
+  DeviceBufferOwner exclusionStartBuffer{}, exclusionPartnersBuffer{};
   DeviceBufferOwner termGradientBuffer{}, parameterBuffer{}, partialBuffer{};
   std::size_t slotCapacity{0}, partialCapacity{0};
 
   Parameters parameters{};
   bool parametersChanged{true};
-  double alphaValue{0.0}, conversionFactor{0.0}, chargeSquaredSum{0.0};
+  double alphaValue{0.0}, conversionFactor{0.0}, chargeSquaredSum{0.0}, exclusionChargeProductSum{0.0};
   std::size_t numberOfMolecules{0}, numberOfTerms{0}, termGroups{0};
 
   std::vector<float> hostPartials{};

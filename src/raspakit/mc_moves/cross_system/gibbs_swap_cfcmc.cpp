@@ -200,7 +200,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
-                    systemA.forceField, systemA.simulationBox, fractionalMoleculeA, oldFractionalMoleculeA,
+                    systemA.forceField, systemA.simulationBox, systemA.components, fractionalMoleculeA, oldFractionalMoleculeA,
                     systemA.netCharge);
               });
 
@@ -258,7 +258,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.trialEik, systemA.trialEik,
-                    systemA.forceField, systemA.simulationBox, newMolecule, {}, systemA.netCharge);
+                    systemA.forceField, systemA.simulationBox, systemA.components, newMolecule, {}, systemA.netCharge);
               });
 
     RunningEnergy tailEnergyDifferenceA2 =
@@ -327,7 +327,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.trialEik,
-                    systemB.forceField, systemB.simulationBox, selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB,
+                    systemB.forceField, systemB.simulationBox, systemB.components, selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB,
                     systemB.netCharge);
               });
 
@@ -395,7 +395,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.trialEik, systemB.trialEik,
-                    systemB.forceField, systemB.simulationBox, fractionalMoleculeB, oldFractionalMoleculeB,
+                    systemB.forceField, systemB.simulationBox, systemB.components, fractionalMoleculeB, oldFractionalMoleculeB,
                     systemB.netCharge);
               });
 
@@ -581,7 +581,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
-                    systemA.forceField, systemA.simulationBox, fractionalMoleculeA, oldFractionalMoleculeA,
+                    systemA.forceField, systemA.simulationBox, systemA.components, fractionalMoleculeA, oldFractionalMoleculeA,
                     systemA.netCharge);
               });
 
@@ -636,7 +636,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.trialEik,
-                    systemB.forceField, systemB.simulationBox, fractionalMoleculeB, oldFractionalMoleculeB,
+                    systemB.forceField, systemB.simulationBox, systemB.components, fractionalMoleculeB, oldFractionalMoleculeB,
                     systemB.netCharge);
               });
 
@@ -745,7 +745,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
-                    systemA.forceField, systemA.simulationBox, trialPositions, fractionalMoleculeA, systemA.netCharge);
+                    systemA.forceField, systemA.simulationBox, systemA.components, trialPositions, fractionalMoleculeA, systemA.netCharge);
               });
 
     RunningEnergy tailEnergyDifference = timed(

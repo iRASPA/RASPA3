@@ -38,8 +38,18 @@ import spatial_decomposition_worker_team;
  *    rest of the code;
  *  - a smooth particle-mesh Ewald sum (PPPM) for the reciprocal-space Coulomb energy with the force field's
  *    Ewald alpha, so the self and intramolecular exclusion terms of the exact Ewald code apply unchanged;
- *  - the bonded terms and the self / exclusion corrections per molecule, handed out to the threads in chunks;
- *    with the mesh this work overlaps with the FFTs, which only thread 0 drives.
+ *  - the bonded terms, the scaled (1-4) pairs and the self / exclusion corrections per molecule, handed out to
+ *    the threads in chunks; with the mesh this work overlaps with the FFTs, which only thread 0 drives.
+ *
+ * Same-molecule non-bonded pairs follow the IntraMolecularExclusions of the component: the excluded pairs (1-2,
+ * 1-3, same rigid fragment) and the scaled pairs are left out of the cell lists (and the device lists); every
+ * other same-molecule pair is a plain pair of the lists, evaluated by the pair kernels alongside the
+ * molecule-molecule pairs and booked with them in `moleculeMoleculeVDW` / `moleculeMoleculeCharge`. Only the
+ * scaled pairs (their f q q / r - q q erf(alpha r) / r form has no equivalent in the kernels) are evaluated per
+ * molecule and reported in `intraVDW` / `intraCoul`. The totals equal those of the exact code; the split
+ * between the molecule-molecule and intramolecular slots differs for molecules with unscaled same-molecule
+ * pairs (1-5 and beyond), which the exact code reports as intramolecular. This keeps the memory per molecule
+ * at the excluded + scaled pairs instead of all non-bonded pairs, and the hot pair loops unchanged.
  *
  * The threads form a persistent WorkerTeam; one call of computeGradients is one task in which the phases
  * (position refresh and rebuild check, optional rebuild, pairs + mesh spreading, ghost-force and mesh reduction,

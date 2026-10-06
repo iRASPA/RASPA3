@@ -208,7 +208,7 @@ static std::optional<LambdaRescaleTrial> rescaleToLambda(System &system, std::si
     // chain the Ewald state: the first molecule starts from storedEik, later ones from trialEik
     trial.energyDifference += Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-        (i == 0) ? system.storedEik : system.trialEik, system.trialEik, system.forceField, system.simulationBox,
+        (i == 0) ? system.storedEik : system.trialEik, system.trialEik, system.forceField, system.simulationBox, system.components,
         molecule, oldMolecule, runningNetCharge, externalGroupCharge);
     runningNetCharge += scaledChargeDifference(molecule, oldMolecule);
 

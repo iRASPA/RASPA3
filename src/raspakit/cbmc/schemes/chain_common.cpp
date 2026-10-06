@@ -62,7 +62,8 @@ std::optional<CBMC::StepTrialEnergy> CBMC::evaluateStepTrial(const GrowContext &
   // pairs were weighted in the torsion-spin selection that generated 'positions' (GrowStep::NonBondedData).
   const ScratchBeads scratch(chainAtoms, step);
   placeStepBeads(chainAtoms, step, positions);
-  const RunningEnergy intra = step.nonBonded.external.computeInternalIntraVanDerWaalsAndCoulombEnergies(chainAtoms);
+  const RunningEnergy intra = step.nonBonded.external.computeInternalIntraVanDerWaalsAndCoulombEnergies(
+      context.forceField, context.simulationBox, chainAtoms);
 
   // The cross-link terms that become evaluable at this step (every atom they need is now in place).
   if (!tethersOfStep.empty())
@@ -95,19 +96,21 @@ void CBMC::ChainAccumulator::addRetracedStep(double stepLogWeight, const Running
   externalEnergies += stepExternalEnergy;
 }
 
-CBMC::GrowResult CBMC::finishGrownChain(const Component &component, std::vector<Atom> chainAtoms,
-                                        const ChainAccumulator &accumulated)
+CBMC::GrowResult CBMC::finishGrownChain(const GrowContext &context, const Component &component,
+                                        std::vector<Atom> chainAtoms, const ChainAccumulator &accumulated)
 {
-  const RunningEnergy internalEnergies = component.intraMolecularPotentials.computeInternalEnergies(chainAtoms);
+  const RunningEnergy internalEnergies = component.intraMolecularPotentials.computeInternalEnergies(
+      context.forceField, context.simulationBox, chainAtoms);
   const Molecule molecule = component.createMoleculeRecord(chainAtoms);
   return GrowResult(molecule, std::move(chainAtoms), accumulated.externalEnergies + internalEnergies,
                     accumulated.logRosenbluthWeight);
 }
 
-CBMC::RetraceResult CBMC::finishRetracedChain(const Component &component, std::span<const Atom> chainAtoms,
-                                              const ChainAccumulator &accumulated)
+CBMC::RetraceResult CBMC::finishRetracedChain(const GrowContext &context, const Component &component,
+                                              std::span<const Atom> chainAtoms, const ChainAccumulator &accumulated)
 {
-  const RunningEnergy internalEnergies = component.intraMolecularPotentials.computeInternalEnergies(chainAtoms);
+  const RunningEnergy internalEnergies = component.intraMolecularPotentials.computeInternalEnergies(
+      context.forceField, context.simulationBox, chainAtoms);
   return RetraceResult(accumulated.externalEnergies + internalEnergies, accumulated.logRosenbluthWeight);
 }
 

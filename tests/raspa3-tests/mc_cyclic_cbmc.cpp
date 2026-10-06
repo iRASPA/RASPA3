@@ -524,7 +524,7 @@ R"({
 TEST(MC_CYCLIC_CBMC, nvt_drift_and_ring_geometry_recoil_growth)
 {
   ForceField forceField = makeCyclohexaneForceField();
-  forceField.useRecoilGrowth = true;
+  forceField.settings.useRecoilGrowth = true;
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(Move::Types::Translation, 1.0);

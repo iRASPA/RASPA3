@@ -8,7 +8,10 @@ import double3;
 import double3x3;
 import int3;
 import simulationbox;
+import atom;
+import molecule;
 import system;
+import intra_molecular_exclusions;
 import spatial_decomposition_cell_list;
 import spatial_decomposition_pair_kernel;
 import spatial_decomposition_settings;
@@ -197,7 +200,8 @@ void DeviceStep::initialize(PairDevice device)
        {&parameterBuffer, &buildParameterBuffer, &lennardJonesBuffer, &positionBuffer, &buildPositionBuffer,
         &typeBuffer, &forceBuffer, &relativeBuffer, &clusterMinBuffer, &clusterMaxBuffer, &compactReferenceBuffer,
         &cellOfClusterBuffer, &outerCountBuffer, &laneCountBuffer, &partialBuffer, &cellSlotStartBuffer,
-        &outerClusterBuffer, &outerMaskBuffer, &pairListBuffer})
+        &outerClusterBuffer, &outerMaskBuffer, &pairListBuffer, &slotAtomBuffer, &exclusionStartBuffer,
+        &exclusionPartnerBuffer})
   {
     buffer->reset();
   }
@@ -217,6 +221,10 @@ void DeviceStep::initialize(PairDevice device)
   parameterBuffer.allocate(*context, sizeof(DevicePairParameters), DeviceMemory::Device);
   buildParameterBuffer.allocate(*context, sizeof(DeviceBuildParameters), DeviceMemory::Device);
   lennardJonesCapacity = 0;
+  exclusionStartCapacity = 0;
+  exclusionPartnerCapacity = 0;
+  atomExclusionStart.clear();
+  atomExclusionPartner.clear();
 
   // the device buffers are new: the capacities start over
   slotCapacity = 0;
@@ -257,7 +265,8 @@ void DeviceStep::enableBonded(const System& system, double alpha, double convers
   bondedTopology.build(system);
   if (!bonded.initialized()) bonded.initialize(*context);
   bonded.setTopology(bondedTopology);
-  bonded.setParameters(alpha, conversionFactor, useCharge);
+  bonded.setParameters(alpha, conversionFactor, useCharge, system.forceField.cutOffMoleculeVDW,
+                       system.forceField.cutOffCoulomb);
   useBonded = true;
 }
 
@@ -275,6 +284,52 @@ void DeviceStep::writeParameters(bool blocking)
 void DeviceStep::writeBuildParameters(bool blocking)
 {
   context->write(buildParameterBuffer.get(), 0, sizeof(DeviceBuildParameters), &buildParameters, blocking);
+}
+
+void DeviceStep::setExclusions(const System& system)
+{
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  atomExclusionStart.assign(atoms.size() + 1, 0);
+  atomExclusionPartner.clear();
+  for (const Molecule& molecule : system.moleculeData)
+  {
+    const IntraMolecularExclusions& exclusions = system.components[molecule.componentId].intraMolecularPotentials.exclusions;
+    const std::uint32_t first = static_cast<std::uint32_t>(molecule.atomIndex);
+    for (std::uint32_t a = 0; a < molecule.numberOfAtoms; ++a)
+    {
+      std::uint32_t start = static_cast<std::uint32_t>(atomExclusionPartner.size());
+      if (exclusions.allExcluded)
+      {
+        start |= DeviceKernelLayout::allExcludedBit;
+      }
+      else
+      {
+        for (const std::uint32_t b : exclusions.pairListPartnersOf(a)) atomExclusionPartner.push_back(first + b);
+      }
+      atomExclusionStart[first + a] = start;
+    }
+  }
+  atomExclusionStart[atoms.size()] = static_cast<std::uint32_t>(atomExclusionPartner.size());
+  if (atomExclusionPartner.size() >= DeviceKernelLayout::allExcludedBit)
+  {
+    throw std::runtime_error("[Device pair kernel]: too many intramolecular exclusions for 31-bit offsets\n");
+  }
+  if (atomExclusionPartner.empty()) atomExclusionPartner.push_back(noAtom);
+
+  if (atomExclusionStart.size() > exclusionStartCapacity)
+  {
+    exclusionStartCapacity = atomExclusionStart.size() + atomExclusionStart.size() / 4;
+    exclusionStartBuffer.allocate(*context, exclusionStartCapacity * sizeof(std::uint32_t), DeviceMemory::Device);
+  }
+  if (atomExclusionPartner.size() > exclusionPartnerCapacity)
+  {
+    exclusionPartnerCapacity = atomExclusionPartner.size() + atomExclusionPartner.size() / 4;
+    exclusionPartnerBuffer.allocate(*context, exclusionPartnerCapacity * sizeof(std::uint32_t), DeviceMemory::Device);
+  }
+  context->write(exclusionStartBuffer.get(), 0, atomExclusionStart.size() * sizeof(std::uint32_t),
+                 atomExclusionStart.data(), true);
+  context->write(exclusionPartnerBuffer.get(), 0, atomExclusionPartner.size() * sizeof(std::uint32_t),
+                 atomExclusionPartner.data(), true);
 }
 
 void DeviceStep::setParameters(std::span<const LennardJonesPair> lennardJones, std::size_t types, bool useCharge,
@@ -387,6 +442,7 @@ void DeviceStep::beginBuild(const CellList& cells, const SimulationBox& box, std
   // the slot layout and the build data per slot (dummy slots: far away, molecule noAtom)
   slotOfSorted.resize(numberOfAtoms);
   sortedOfSlot.assign(padded, noAtom);
+  slotAtom.assign(padded, noAtom);
   typeOfSlot.assign(padded, 0);
   buildPosition.assign(4 * padded, farAway);
   for (std::size_t slot = 0; slot < padded; ++slot) buildPosition[4 * slot + 3] = bitsAsFloat(noAtom);
@@ -401,6 +457,7 @@ void DeviceStep::beginBuild(const CellList& cells, const SimulationBox& box, std
       const std::size_t slot = cellSlotStart[c] + (m - begin);
       slotOfSorted[k] = static_cast<std::uint32_t>(slot);
       sortedOfSlot[slot] = k;
+      slotAtom[slot] = cells.sortedToOriginal[k];
       typeOfSlot[slot] = cells.type[k];
       buildPosition[4 * slot] = static_cast<float>(cells.wrappedX[k]);
       buildPosition[4 * slot + 1] = static_cast<float>(cells.wrappedY[k]);
@@ -466,7 +523,13 @@ void DeviceStep::beginBuild(const CellList& cells, const SimulationBox& box, std
     mapInputs(true);
     std::fill(mappedPositions, mappedPositions + 4 * padded, 0.0f);
   }
+  if (atomExclusionStart.size() != numberOfAtoms + 1)
+  {
+    throw std::runtime_error(
+        "[Device pair kernel]: the intramolecular exclusions do not match the atoms (setExclusions not called)\n");
+  }
   context->write(buildPositionBuffer.get(), 0, 4 * padded * sizeof(float), buildPosition.data(), false);
+  context->write(slotAtomBuffer.get(), 0, padded * sizeof(std::uint32_t), slotAtom.data(), false);
   context->write(typeBuffer.get(), 0, padded * sizeof(std::uint32_t), typeOfSlot.data(), false);
   context->write(cellSlotStartBuffer.get(), 0, (numberOfCells + 1) * sizeof(std::uint32_t), cellSlotStart.data(),
                  false);
@@ -495,11 +558,12 @@ void DeviceStep::enqueueBuild()
   }
   {
     const DeviceArg arguments[] = {
-        DeviceArg::of(buildPositionBuffer.get()),  DeviceArg::of(cellSlotStartBuffer.get()),
-        DeviceArg::of(cellOfClusterBuffer.get()),  DeviceArg::of(clusterMinBuffer.get()),
-        DeviceArg::of(clusterMaxBuffer.get()),     DeviceArg::of(buildParameterBuffer.get()),
-        DeviceArg::of(outerClusterBuffer.get()),   DeviceArg::of(outerMaskBuffer.get()),
-        DeviceArg::of(outerCountBuffer.get())};
+        DeviceArg::of(buildPositionBuffer.get()),  DeviceArg::of(slotAtomBuffer.get()),
+        DeviceArg::of(exclusionStartBuffer.get()), DeviceArg::of(exclusionPartnerBuffer.get()),
+        DeviceArg::of(cellSlotStartBuffer.get()),  DeviceArg::of(cellOfClusterBuffer.get()),
+        DeviceArg::of(clusterMinBuffer.get()),     DeviceArg::of(clusterMaxBuffer.get()),
+        DeviceArg::of(buildParameterBuffer.get()), DeviceArg::of(outerClusterBuffer.get()),
+        DeviceArg::of(outerMaskBuffer.get()),      DeviceArg::of(outerCountBuffer.get())};
     context->launch(buildKernel, arguments, std::max<std::size_t>(iClusters, 1), pairGroupSize);
   }
   context->read(outerCountBuffer.get(), 0, outerCount.size() * sizeof(std::uint32_t), outerCount.data());
@@ -546,6 +610,7 @@ void DeviceStep::ensureBuffers()
     slotCapacity = roundUp(padded + padded / 4, clusterI);
     positionBuffer.allocate(*context, slotCapacity * 4 * sizeof(float), DeviceMemory::Shared);
     buildPositionBuffer.allocate(*context, slotCapacity * 4 * sizeof(float), DeviceMemory::Device);
+    slotAtomBuffer.allocate(*context, slotCapacity * sizeof(std::uint32_t), DeviceMemory::Device);
     typeBuffer.allocate(*context, slotCapacity * sizeof(std::uint32_t), DeviceMemory::Device);
     forceBuffer.allocate(*context, slotCapacity * 4 * sizeof(float), DeviceMemory::Shared);
     clusterMinBuffer.allocate(*context, (slotCapacity / clusterJ) * 4 * sizeof(float), DeviceMemory::Device);

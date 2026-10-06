@@ -27,7 +27,7 @@ import triquintic_derivative_factor;
 import framework;
 import component;
 
-double Interactions::calculateEnergyAtPosition(ForceField::InterpolationGridType interpolationGridType,
+double Interactions::calculateEnergyAtPosition(ForceFieldSettings::InterpolationGridType interpolationGridType,
                                                const ForceField &forceField, const SimulationBox &simulationBox,
                                                double3 posA, std::size_t typeA, std::span<const Atom> frameworkAtoms)
 {
@@ -50,18 +50,18 @@ double Interactions::calculateEnergyAtPosition(ForceField::InterpolationGridType
     {
       switch (interpolationGridType)
       {
-        case ForceField::InterpolationGridType::LennardJones:
+        case ForceFieldSettings::InterpolationGridType::LennardJones:
           v = Potentials::potentialLennardJonesTricubicDerivative(forceField, rr, typeA, typeB);
           break;
-        case ForceField::InterpolationGridType::LennardJonesRepulsion:
+        case ForceFieldSettings::InterpolationGridType::LennardJonesRepulsion:
           v = Potentials::potentialLennardJonesRepulsionTricubicDerivative(forceField, rr, cutOffFrameworkVDWSquared,
                                                                            typeA, typeB);
           break;
-        case ForceField::InterpolationGridType::LennardJonesAttraction:
+        case ForceFieldSettings::InterpolationGridType::LennardJonesAttraction:
           v = Potentials::potentialLennardJonesAttractionTricubicDerivative(forceField, rr, cutOffFrameworkVDWSquared,
                                                                             typeA, typeB);
           break;
-        case ForceField::InterpolationGridType::EwaldReal:
+        case ForceFieldSettings::InterpolationGridType::EwaldReal:
           v = Potentials::potentialRealEwaldTricubicDerivative(forceField, rr, std::sqrt(rr), 1.0, chargeB);
           break;
       }
@@ -75,7 +75,7 @@ double Interactions::calculateEnergyAtPosition(ForceField::InterpolationGridType
 
 std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<double, 3>, 3>, 3>>
-Interactions::calculateTricubicDerivativeAtPosition(ForceField::InterpolationGridType interpolationGridType,
+Interactions::calculateTricubicDerivativeAtPosition(ForceFieldSettings::InterpolationGridType interpolationGridType,
                                                     const ForceField &forceField, const SimulationBox &simulationBox,
                                                     double3 posA, std::size_t typeA,
                                                     std::span<const Atom> frameworkAtoms)
@@ -102,18 +102,18 @@ Interactions::calculateTricubicDerivativeAtPosition(ForceField::InterpolationGri
     {
       switch (interpolationGridType)
       {
-        case ForceField::InterpolationGridType::LennardJones:
+        case ForceFieldSettings::InterpolationGridType::LennardJones:
           v = Potentials::potentialLennardJonesTricubicDerivative(forceField, rr, typeA, typeB);
           break;
-        case ForceField::InterpolationGridType::LennardJonesRepulsion:
+        case ForceFieldSettings::InterpolationGridType::LennardJonesRepulsion:
           v = Potentials::potentialLennardJonesRepulsionTricubicDerivative(forceField, rr, cutOffFrameworkVDWSquared,
                                                                            typeA, typeB);
           break;
-        case ForceField::InterpolationGridType::LennardJonesAttraction:
+        case ForceFieldSettings::InterpolationGridType::LennardJonesAttraction:
           v = Potentials::potentialLennardJonesAttractionTricubicDerivative(forceField, rr, cutOffFrameworkVDWSquared,
                                                                             typeA, typeB);
           break;
-        case ForceField::InterpolationGridType::EwaldReal:
+        case ForceFieldSettings::InterpolationGridType::EwaldReal:
           v = Potentials::potentialRealEwaldTricubicDerivative(forceField, rr, std::sqrt(rr), 1.0, chargeB);
           break;
       }
@@ -144,7 +144,7 @@ Interactions::calculateTricubicDerivativeAtPosition(ForceField::InterpolationGri
 }
 
 std::array<double, 8> Interactions::calculateTricubicCartesianAtPosition(
-    ForceField::InterpolationGridType interpolationGridType, const ForceField &forceField,
+    ForceFieldSettings::InterpolationGridType interpolationGridType, const ForceField &forceField,
     const SimulationBox &simulationBox, double3 posA, std::size_t typeA, std::span<const Atom> frameworkAtoms)
 {
   auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, firth_derivative,
@@ -166,7 +166,7 @@ std::array<double, 8> Interactions::calculateTricubicCartesianAtPosition(
 }
 
 std::array<double, 8> Interactions::calculateTricubicFractionalAtPosition(
-    ForceField::InterpolationGridType interpolationGridType, const ForceField &forceField,
+    ForceFieldSettings::InterpolationGridType interpolationGridType, const ForceField &forceField,
     const SimulationBox &simulationBox, double3 posA, std::size_t typeA, const SimulationBox &frameworkBox,
     std::span<const Atom> frameworkAtoms)
 {
@@ -203,18 +203,18 @@ std::array<double, 8> Interactions::calculateTricubicFractionalAtPosition(
         {
           switch (interpolationGridType)
           {
-            case ForceField::InterpolationGridType::LennardJones:
+            case ForceFieldSettings::InterpolationGridType::LennardJones:
               v = Potentials::potentialLennardJonesTricubicDerivative(forceField, rr, typeA, typeB);
               break;
-            case ForceField::InterpolationGridType::LennardJonesRepulsion:
+            case ForceFieldSettings::InterpolationGridType::LennardJonesRepulsion:
               v = Potentials::potentialLennardJonesRepulsionTricubicDerivative(forceField, rr,
                                                                                cutOffFrameworkVDWSquared, typeA, typeB);
               break;
-            case ForceField::InterpolationGridType::LennardJonesAttraction:
+            case ForceFieldSettings::InterpolationGridType::LennardJonesAttraction:
               v = Potentials::potentialLennardJonesAttractionTricubicDerivative(
                   forceField, rr, cutOffFrameworkVDWSquared, typeA, typeB);
               break;
-            case ForceField::InterpolationGridType::EwaldReal:
+            case ForceFieldSettings::InterpolationGridType::EwaldReal:
               v = Potentials::potentialRealEwaldTricubicDerivative(forceField, rr, std::sqrt(rr), 1.0, chargeB);
               break;
           }
@@ -286,7 +286,7 @@ std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>,
            std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>,
            std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>>
-Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType interpolationGridType,
+Interactions::calculateTriquinticDerivativeAtPosition(ForceFieldSettings::InterpolationGridType interpolationGridType,
                                                       const ForceField &forceField, const SimulationBox &simulationBox,
                                                       double3 posA, std::size_t typeA,
                                                       std::span<const Atom> frameworkAtoms)
@@ -316,16 +316,16 @@ Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationG
     {
       switch (interpolationGridType)
       {
-        case ForceField::InterpolationGridType::LennardJones:
+        case ForceFieldSettings::InterpolationGridType::LennardJones:
           v = Potentials::potentialLennardJonesTriquinticDerivative(forceField, rr, typeA, typeB);
           break;
-        case ForceField::InterpolationGridType::LennardJonesRepulsion:
+        case ForceFieldSettings::InterpolationGridType::LennardJonesRepulsion:
           v = Potentials::potentialLennardJonesTriquinticDerivative(forceField, rr, typeA, typeB);
           break;
-        case ForceField::InterpolationGridType::LennardJonesAttraction:
+        case ForceFieldSettings::InterpolationGridType::LennardJonesAttraction:
           v = Potentials::potentialLennardJonesTriquinticDerivative(forceField, rr, typeA, typeB);
           break;
-        case ForceField::InterpolationGridType::EwaldReal:
+        case ForceFieldSettings::InterpolationGridType::EwaldReal:
           v = Potentials::potentialRealEwaldTriquinticDerivative(forceField, rr, std::sqrt(rr), 1.0, chargeB);
           break;
       }
@@ -503,7 +503,7 @@ Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationG
 }
 
 std::array<double, 27> Interactions::calculateTriquinticCartesianAtPosition(
-    ForceField::InterpolationGridType interpolationGridType, const ForceField &forceField,
+    ForceFieldSettings::InterpolationGridType interpolationGridType, const ForceField &forceField,
     const SimulationBox &simulationBox, double3 posA, std::size_t typeA, std::span<const Atom> frameworkAtoms)
 {
   auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, fifth_derivative,
@@ -547,7 +547,7 @@ std::array<double, 27> Interactions::calculateTriquinticCartesianAtPosition(
 }
 
 std::array<double, 27> Interactions::calculateTriquinticFractionalAtPosition(
-    ForceField::InterpolationGridType interpolationGridType, const ForceField &forceField,
+    ForceFieldSettings::InterpolationGridType interpolationGridType, const ForceField &forceField,
     const SimulationBox &simulationBox, double3 posA, std::size_t typeA, const SimulationBox &frameworkBox,
     std::span<const Atom> frameworkAtoms)
 {
@@ -581,16 +581,16 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPosition(
         {
           switch (interpolationGridType)
           {
-            case ForceField::InterpolationGridType::LennardJones:
+            case ForceFieldSettings::InterpolationGridType::LennardJones:
               v = Potentials::potentialLennardJonesTriquinticDerivative(forceField, rr, typeA, typeB);
               break;
-            case ForceField::InterpolationGridType::LennardJonesRepulsion:
+            case ForceFieldSettings::InterpolationGridType::LennardJonesRepulsion:
               v = Potentials::potentialLennardJonesTriquinticDerivative(forceField, rr, typeA, typeB);
               break;
-            case ForceField::InterpolationGridType::LennardJonesAttraction:
+            case ForceFieldSettings::InterpolationGridType::LennardJonesAttraction:
               v = Potentials::potentialLennardJonesTriquinticDerivative(forceField, rr, typeA, typeB);
               break;
-            case ForceField::InterpolationGridType::EwaldReal:
+            case ForceFieldSettings::InterpolationGridType::EwaldReal:
               v = Potentials::potentialRealEwaldTriquinticDerivative(forceField, rr, std::sqrt(rr), 1.0, chargeB);
               break;
           }

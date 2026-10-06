@@ -164,7 +164,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
         {
           return Interactions::energyDifferenceEwaldFourier(
               system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-              system.forceField, system.simulationBox, fractionalMolecule, oldFractionalMolecule, system.netCharge);
+              system.forceField, system.simulationBox, system.components, fractionalMolecule, oldFractionalMolecule, system.netCharge);
         });
 
     // Compute tail-correction energy contribution (Brick-CFCMC-style aggregated accounting).
@@ -276,7 +276,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
-                    system.forceField, system.simulationBox, trialMolecule.second, {}, system.netCharge);
+                    system.forceField, system.simulationBox, system.components, trialMolecule.second, {}, system.netCharge);
               });
 
     // Compute tail-correction energy contribution (threaded effective counts already include the step-1 change).
@@ -301,7 +301,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     // acceptance rule: the conformation is drawn from the ideal-gas Boltzmann distribution
     // exp(-beta * U_intra), so its intra energy cancels against the generation probability (zero for
     // rigid molecules).
-    RunningEnergy internalEnergyNew = component.intraMolecularPotentials.computeInternalEnergies(trialMolecule.second);
+    RunningEnergy internalEnergyNew = component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, trialMolecule.second);
 
     // Polarization: (step 1) making the fractional molecule integer changes the field it produces on the other
     // molecules and rescales its own polarization coupling from scalingCoulomb(lambda_old) to 1 (its own field is
@@ -527,7 +527,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
           {
             return Interactions::energyDifferenceEwaldFourier(
                 system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                system.forceField, system.simulationBox, fractionalMolecule, oldFractionalMolecule, system.netCharge);
+                system.forceField, system.simulationBox, system.components, fractionalMolecule, oldFractionalMolecule, system.netCharge);
           });
 
       // Compute tail-correction energy contribution (Brick-CFCMC-style aggregated accounting).
@@ -628,7 +628,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                 {
                   return Interactions::energyDifferenceEwaldFourier(
                       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
-                      system.forceField, system.simulationBox, newFractionalMolecule, savedFractionalMolecule,
+                      system.forceField, system.simulationBox, system.components, newFractionalMolecule, savedFractionalMolecule,
                       system.netCharge);
                 });
 
@@ -654,7 +654,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       // rule: the reverse (insertion) move draws the conformation from the ideal-gas Boltzmann
       // distribution, so the intra energy cancels against that generation probability.
       RunningEnergy internalEnergyOld =
-          component.intraMolecularPotentials.computeInternalEnergies(oldFractionalMolecule);
+          component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, oldFractionalMolecule);
 
       component.mc_moves_statistics.addConstructed(move, 1);
 
@@ -866,7 +866,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     time_begin = std::chrono::steady_clock::now();
     RunningEnergy EwaldFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, trialPositions, molecule, system.netCharge);
+        system.simulationBox, system.components, trialPositions, molecule, system.netCharge);
     time_end = std::chrono::steady_clock::now();
     if (insertionDisabled || deletionDisabled)
     {

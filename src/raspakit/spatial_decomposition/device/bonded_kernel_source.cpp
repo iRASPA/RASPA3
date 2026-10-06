@@ -3,16 +3,18 @@ module;
 module spatial_decomposition_device_kernels;
 
 // Device source (kernel dialect of kernel_sources.ixx) of the per-molecule terms: the Ewald self and intramolecular exclusion
-// corrections (Interactions::addChargeSelfEnergy / addIntraMolecularChargeExclusionGradient), the bonds, bends,
-// torsions and improper torsions (the potentialEnergyGradientStrain functions of the intramolecular potentials,
-// transcribed case by case), the intramolecular Lennard-Jones and Coulomb pairs (VanDerWaalsPotential,
-// CoulombPotential), and the atomic-to-molecular virial correction of the non-bonded gradients.
+// corrections of the excluded pairs (Interactions::addChargeSelfEnergy / addIntraMolecularChargeExclusionGradient,
+// IntraMolecularExclusions), the bonds, bends, torsions and improper torsions (the potentialEnergyGradientStrain
+// functions of the intramolecular potentials, transcribed case by case), the scaled (1-4) intramolecular pairs
+// (Potentials::intraMolecularVDW / intraMolecularCoulomb: the regular truncated or shifted Lennard-Jones and the
+// Ewald-completed Coulomb pair potential times the pair scaling; the unscaled non-excluded pairs are in the pair
+// lists), and the atomic-to-molecular virial correction of the non-bonded gradients.
 //
 // Two kernels. bondedTerms: one work-item per term instance (a term of a component in one of its molecules; the
 // instances of a molecule are consecutive and ordered by kind, so that the work-items of a SIMD group mostly run
 // the same code), which evaluates the term once and writes the gradient on each of its atoms to a per-instance
 // slot of `termGradient`, with the energies reduced per work-group. bondedAtoms: one work-item per slot (atom),
-// which evaluates the exclusion pairs with the other atoms of its molecule, the virial correction, and gathers
+// which evaluates the exclusion pairs with its excluded partners, the virial correction, and gathers
 // the gradients of the terms its atom takes part in (listed per atom of the component). No atomics; the gradient
 // is added to the force of the slot, which at this point holds the pair + mesh gradient (the kernels run after the
 // pair kernel and the mesh interpolation). The positions are the float positions relative to the first atom of
@@ -47,6 +49,9 @@ typedef struct
   uint numberOfSlots;
   uint numberOfInstances;  // term instances over all molecules
   uint atomPartialOffset;  // first float of the per-atom partials in the partial buffer (after the term partials)
+  float cutOffVDWSquared;     // cutoff of the intramolecular Lennard-Jones pairs (cutOffMoleculeVDW)
+  float cutOffChargeSquared;  // cutoff of the intramolecular Coulomb pairs (cutOffCoulomb)
+  uint padding[2];
 } BondedParameters;
 
 typedef struct
@@ -368,26 +373,37 @@ DEVICE_FUNCTION void reducePartials(LOCAL float* scratch, uint count, GLOBAL flo
   if (lid < count) partials[group * count + lid] = scratch[lid * groupSize];
 }
 
-// Intramolecular pairs: kind 4 Lennard-Jones with P[0] = scaling 4 epsilon, P[1] = sigma^2; kind 5 Coulomb with
-// P[0] = scaling C qA qB (VanDerWaalsPotential / CoulombPotential::potentialEnergyGradientStrain)
-DEVICE_FUNCTION float pairTerm(uint kind, PRIVATE const float* P, float3 posA, float3 posB, PRIVATE float3* gA,
-                               PRIVATE float3* gB)
+// Scaled (1-4) intramolecular pairs (Potentials::intraMolecularVDW / intraMolecularCoulomb, fully coupled atoms);
+// the other non-excluded pairs of a molecule are in the pair lists and evaluated by the pair kernel.
+// Kind 4: the regular Lennard-Jones pair potential times the pair scaling f, inside cutOffMoleculeVDW, with
+// P[0] = f 4 epsilon, P[1] = sigma^2, P[2] = f shift. Kind 5: inside cutOffCoulomb the bare Coulomb f C qA qB / r
+// minus the Ewald long-range part C qA qB erf(alpha r)/r that the Fourier sum counted for the pair, with P[0] = f
+// and the charges qA, qB from the relative positions.
+DEVICE_FUNCTION float pairTerm(uint kind, PRIVATE const float* P, float4 posA, float4 posB,
+                               CONSTANT const BondedParameters* p, PRIVATE float3* gA, PRIVATE float3* gB)
 {
-  const float3 dr = posA - posB;
+  const float3 dr = posA.xyz - posB.xyz;
   const float rr = dot(dr, dr);
-  float U, DF;
+  float U = 0.0f, DF = 0.0f;
   if (kind == 4)
   {
-    const float s = P[1] / rr;
-    const float t = s * s * s;
-    U = P[0] * (t * (t - 1.0f));
-    DF = 6.0f * P[0] * (t * (1.0f - 2.0f * t)) / rr;
+    if (rr < p->cutOffVDWSquared)
+    {
+      const float s = P[1] / rr;
+      const float t = s * s * s;
+      U = P[0] * (t * (t - 1.0f)) - P[2];
+      DF = 6.0f * P[0] * (t * (1.0f - 2.0f * t)) / rr;
+    }
   }
-  else
+  else if (p->useCharge != 0 && rr < p->cutOffChargeSquared)
   {
     const float r = sqrt(rr);
-    U = P[0] / r;
-    DF = -P[0] / (rr * r);
+    const float x = p->alpha * r;
+    const float potential = erf(x) / r;
+    const float gaussian = p->twoAlphaOverSqrtPi * exp(-x * x);
+    const float prefactor = p->coulombFactor * posA.w * posB.w;
+    U = prefactor * (P[0] / r - potential);
+    DF = -prefactor * (P[0] / (rr * r) + (gaussian - potential) / rr);
   }
   *gA = DF * dr;
   *gB = -DF * dr;
@@ -423,8 +439,10 @@ void bondedTerms(GLOBAL const float4* RESTRICT relative,            // per atom 
     const Term term = terms[t];
     GLOBAL const float4* RESTRICT pos = relative + info.firstAtom;
     GLOBAL float4* RESTRICT out = termGradient + info.gradientBase + gradientOffset[t];
-    const float3 posA = pos[term.atoms[0]].xyz;
-    const float3 posB = pos[term.atoms[1]].xyz;
+    const float4 pA = pos[term.atoms[0]];
+    const float4 pB = pos[term.atoms[1]];
+    const float3 posA = pA.xyz;
+    const float3 posB = pB.xyz;
     float3 gA = FLOAT3(0.0f, 0.0f, 0.0f), gB = gA, gC = gA, gD = gA;
     float U;
     if (term.kind == 0)
@@ -447,7 +465,7 @@ void bondedTerms(GLOBAL const float4* RESTRICT relative,            // per atom 
     }
     else
     {
-      U = pairTerm(term.kind, term.parameters, posA, posB, &gA, &gB);
+      U = pairTerm(term.kind, term.parameters, pA, pB, p, &gA, &gB);
     }
     out[0] = FLOAT4(gA, 0.0f);
     out[1] = FLOAT4(gB, 0.0f);
@@ -458,10 +476,11 @@ void bondedTerms(GLOBAL const float4* RESTRICT relative,            // per atom 
   reducePartials(scratch, TERM_PARTIALS, partials, lid, TERM_GROUP, GROUP_ID());
 }
 
-// One work-item per slot (atom): the Ewald self and exclusion corrections with the other atoms of its molecule,
-// the virial correction of the non-bonded gradient, and the gradients of the term instances it takes part in,
-// gathered from the slots the term kernel wrote. Partials per work-group: net-charge self term, reduced exclusion
-// term (see below), the exclusion strain derivative and the virial correction (ax ay az bx by bz cx cy cz each).
+// One work-item per slot (atom): the Ewald exclusion corrections with its excluded partners (the 1-2, 1-3 and
+// rigid-fragment pairs of the component), the virial correction of the non-bonded gradient, and the gradients of
+// the term instances it takes part in, gathered from the slots the term kernel wrote. Partials per work-group:
+// (unused), reduced exclusion term (see below), the exclusion strain derivative and the virial correction
+// (ax ay az bx by bz cx cy cz each).
 KERNEL_GROUP_SIZE(BONDED_GROUP)
 void bondedAtoms(GLOBAL const float4* RESTRICT relative,          // per atom (system order), see bondedTerms
                  GLOBAL const uint* RESTRICT slotMolecule,        // (molecule << 8) | index in the molecule, or NO_ATOM
@@ -469,6 +488,8 @@ void bondedAtoms(GLOBAL const float4* RESTRICT relative,          // per atom (s
                  GLOBAL const float* RESTRICT massOfAtom,         // per atom (system order)
                  GLOBAL const uint* RESTRICT atomGradientStart,   // CSR offsets of the gradient slots per component atom
                  GLOBAL const uint* RESTRICT atomGradients,       // gradient slot (within the molecule's block)
+                 GLOBAL const uint* RESTRICT exclusionStart,      // CSR offsets of the excluded partners per component atom
+                 GLOBAL const uint* RESTRICT exclusionPartners,   // excluded partner (index in the molecule)
                  GLOBAL const float4* RESTRICT termGradient,
                  CONSTANT const BondedParameters* p,
                  GLOBAL float4* RESTRICT force,
@@ -495,52 +516,57 @@ void bondedAtoms(GLOBAL const float4* RESTRICT relative,          // per atom (s
     const float qa = pa.w;
     const bool charged = p->useCharge != 0;
 
-    // Self energy and exclusion pairs with the other atoms of the molecule, center of mass. The self energy
-    // (-C alpha/sqrt(pi) sum q^2) and the exclusion energy (-C sum_{a<b} qa qb erf(alpha r)/r) cancel almost
-    // completely for a neutral molecule; their sum is evaluated without the cancellation as
-    //   -C sum_{a<b} qa qb [erf(alpha r)/r - 2 alpha/sqrt(pi)] - C alpha/sqrt(pi) (sum_a qa)^2
-    // (exact identity): partial 0 holds the net-charge term, partial 1 the reduced pair term. The host
-    // separates the self energy (evaluated in double) from the sum.
-    float3 exclusionGradient = FLOAT3(0.0f, 0.0f, 0.0f);
+    // Center of mass of the molecule.
     float3 com = FLOAT3(0.0f, 0.0f, 0.0f);
     float totalMass = 0.0f;
-    float moleculeCharge = 0.0f;
     for (uint b = 0; b < n; ++b)
     {
-      const float4 pb = pos[b];
       const float mb = mass[b];
-      com += mb * pb.xyz;
+      com += mb * pos[b].xyz;
       totalMass += mb;
-      if (!charged) continue;
-      moleculeCharge += pb.w;
-      if (b == a) continue;
-      const float3 dr = ra - pb.xyz;
-      const float rr = dot(dr, dr);
-      const float r = sqrt(rr);
-      const float x = p->alpha * r;
-      const float potential = erf(x) / r;
-      const float gaussian = p->twoAlphaOverSqrtPi * exp(-x * x);
-      const float firstDerivativeFactor = (gaussian - potential) / rr;
-      const float prefactor = p->coulombFactor * qa * pb.w;
-      const float gradientFactor = prefactor * firstDerivativeFactor;
-      exclusionGradient -= gradientFactor * dr;
-      if (b > a)
-      {
-        acc[1] -= prefactor * p->alpha * erfOverXMinusLimit(x);
-        const float3 f = -gradientFactor * dr;
-        acc[2] += f.x * dr.x;
-        acc[3] += f.x * dr.y;
-        acc[4] += f.x * dr.z;
-        acc[5] += f.y * dr.x;
-        acc[6] += f.y * dr.y;
-        acc[7] += f.y * dr.z;
-        acc[8] += f.z * dr.x;
-        acc[9] += f.z * dr.y;
-        acc[10] += f.z * dr.z;
-      }
     }
     com /= totalMass;
-    if (charged) acc[0] = -p->selfPrefactor * qa * moleculeCharge;
+
+    // Exclusion pairs with the excluded partners of the atom: -C qa qb erf(alpha r)/r. The sum is evaluated
+    // without the cancellation against the self energy as
+    //   -C sum_{a<b in E} qa qb [erf(alpha r)/r - 2 alpha/sqrt(pi)] - C (2 alpha/sqrt(pi)) sum_{a<b in E} qa qb
+    // (exact identity); partial 1 holds the first sum, the host adds the second (a constant of the charges, in
+    // double) and separates the self energy.
+    float3 exclusionGradient = FLOAT3(0.0f, 0.0f, 0.0f);
+    if (charged)
+    {
+      const uint beginE = exclusionStart[info.atomOffset + a];
+      const uint endE = exclusionStart[info.atomOffset + a + 1];
+      for (uint e = beginE; e < endE; ++e)
+      {
+        const uint b = exclusionPartners[e];
+        const float4 pb = pos[b];
+        const float3 dr = ra - pb.xyz;
+        const float rr = dot(dr, dr);
+        const float r = sqrt(rr);
+        const float x = p->alpha * r;
+        const float potential = erf(x) / r;
+        const float gaussian = p->twoAlphaOverSqrtPi * exp(-x * x);
+        const float firstDerivativeFactor = (gaussian - potential) / rr;
+        const float prefactor = p->coulombFactor * qa * pb.w;
+        const float gradientFactor = prefactor * firstDerivativeFactor;
+        exclusionGradient -= gradientFactor * dr;
+        if (b > a)
+        {
+          acc[1] -= prefactor * p->alpha * erfOverXMinusLimit(x);
+          const float3 f = -gradientFactor * dr;
+          acc[2] += f.x * dr.x;
+          acc[3] += f.x * dr.y;
+          acc[4] += f.x * dr.z;
+          acc[5] += f.y * dr.x;
+          acc[6] += f.y * dr.y;
+          acc[7] += f.y * dr.z;
+          acc[8] += f.z * dr.x;
+          acc[9] += f.z * dr.y;
+          acc[10] += f.z * dr.z;
+        }
+      }
+    }
 
     // virial correction of the non-bonded gradient (pairs + mesh from the force buffer, plus the exclusions)
     float4 f = force[slot];

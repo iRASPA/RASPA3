@@ -843,7 +843,7 @@ TEST(MC_CROSS_LINKS, tethered_regrowth_samples_junction_angle_distribution)
   for (const bool useRecoilGrowth : {false, true})
   {
     ForceField forceField = makeForceField(0.0, 0.0, 0.0, false);
-    forceField.useRecoilGrowth = useRecoilGrowth;
+    forceField.settings.useRecoilGrowth = useRecoilGrowth;
 
     MCMoveProbabilities componentMoves;
     componentMoves.setProbability(Move::Types::ReinsertionCBMC, 1.0);

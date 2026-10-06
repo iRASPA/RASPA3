@@ -772,8 +772,8 @@ RunningEnergy System::computeTotalEnergies() noexcept
     if (numberOfMoleculesPerComponent[i] > 0)
     {
       std::span<const Molecule> span_molecules = {&moleculeData[index], numberOfMoleculesPerComponent[i]};
-      runningIntraEnergy += Interactions::computeIntraMolecularEnergy(components[i].intraMolecularPotentials,
-                                                                      span_molecules, spanOfMoleculeAtoms());
+      runningIntraEnergy += Interactions::computeIntraMolecularEnergy(
+          forceField, simulationBox, components[i].intraMolecularPotentials, span_molecules, spanOfMoleculeAtoms());
     }
 
     index += numberOfMoleculesPerComponent[i];
@@ -1086,7 +1086,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
     {
       std::span<const Molecule> span_molecules = {&moleculeData[molecule_index], numberOfMoleculesPerComponent[i]};
       RunningEnergy runningIntraEnergy = Interactions::computeIntraMolecularEnergy(
-          components[i].intraMolecularPotentials, span_molecules, spanOfMoleculeAtoms());
+          forceField, simulationBox, components[i].intraMolecularPotentials, span_molecules, spanOfMoleculeAtoms());
 
       pressureInfo.first.intraComponentEnergies[i].bond += runningIntraEnergy.bond;
       pressureInfo.first.intraComponentEnergies[i].ureyBradley += runningIntraEnergy.ureyBradley;

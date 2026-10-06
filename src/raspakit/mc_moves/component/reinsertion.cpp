@@ -106,7 +106,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
             {
               return Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                                 system.storedEik, system.trialEik, system.forceField,
-                                                                system.simulationBox, newMolecule, molecule_atoms);
+                                                                system.simulationBox, system.components, newMolecule, molecule_atoms);
             });
 
   std::vector<double3> electricFieldNeighborDelta;

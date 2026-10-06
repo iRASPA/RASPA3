@@ -121,7 +121,7 @@ ParallelTempering::ParallelTempering(InputReader& reader)
     // types; the replicas can not share framework interpolation grids for those types, and the
     // polarization energy does not decompose into the scaled solute/solvent terms
     const std::vector<bool> soluteTypes = templateSystem.pseudoAtomTypesOfComponent(soluteComponentId.value());
-    for (std::size_t type : templateSystem.forceField.gridPseudoAtomIndices)
+    for (std::size_t type : templateSystem.forceField.settings.gridPseudoAtomIndices)
     {
       if (type < soluteTypes.size() && soluteTypes[type])
       {

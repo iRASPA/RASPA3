@@ -50,6 +50,7 @@ import bend_torsion_potential;
 import van_der_waals_potential;
 import coulomb_potential;
 import intra_molecular_potentials;
+import intra_molecular_exclusions;
 import chiral_center;
 import cbmc_growth_plan;
 import cbmc_flexible_base;
@@ -58,46 +59,6 @@ import cbmc_torsion_selection;
 import vdwparameters;
 import blocking_pockets;
 
-namespace
-{
-std::vector<std::array<std::size_t, 2>> readExplicitIntraPairs(
-    const nlohmann::basic_json<nlohmann::raspa_map>& parsedData, std::string_view key,
-    std::size_t numberOfAtoms)
-{
-  const auto& value = parsedData.at(std::string{key});
-  if (!value.is_array())
-  {
-    throw std::runtime_error(std::format("[Component reader]: {} must be an array of atom-index pairs\n", key));
-  }
-
-  std::vector<std::array<std::size_t, 2>> pairs{};
-  pairs.reserve(value.size());
-  for (const auto& item : value)
-  {
-    if (!item.is_array() || item.size() != 2 || !item[0].is_number_unsigned() ||
-        !item[1].is_number_unsigned())
-    {
-      throw std::runtime_error(
-          std::format("[Component reader]: {} item {} must contain two unsigned atom indices\n", key, item.dump()));
-    }
-
-    std::array<std::size_t, 2> pair{item[0].get<std::size_t>(), item[1].get<std::size_t>()};
-    if (pair[0] >= numberOfAtoms || pair[1] >= numberOfAtoms || pair[0] == pair[1])
-    {
-      throw std::runtime_error(
-          std::format("[Component reader]: {} item {} contains an invalid atom index\n", key, item.dump()));
-    }
-    if (pair[1] < pair[0]) std::swap(pair[0], pair[1]);
-    if (std::ranges::find(pairs, pair) != pairs.end())
-    {
-      throw std::runtime_error(
-          std::format("[Component reader]: {} contains duplicate pair [{}, {}]\n", key, pair[0], pair[1]));
-    }
-    pairs.push_back(pair);
-  }
-  return pairs;
-}
-}  // namespace
 
 // default constructor, needed for binary restart-file
 Component::Component() {}
@@ -191,6 +152,10 @@ Component::Component(const ForceField &forceField, std::string componentName, do
     rigidBodies.push_back(std::move(wholeMolecule));
   }
   buildFragmentGraph(rigidBodies);
+
+  // The non-bonded pairs: the supplied pair lists fix the scaling of the pairs they name (a 1-4 pair they omit is
+  // excluded by scaling zero, every other omitted pair interacts fully); the exclusions follow from the bond graph.
+  buildIntraMolecularNonBondedPairs(forceField);
 }
 
 // read the component from the molecule-file
@@ -437,8 +402,9 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
     intraMolecularPotentials.bondTorsions = readBondTorsionPotentials(parsed_data);
     intraMolecularPotentials.bendBends = readBendBendPotentials(parsed_data);
     intraMolecularPotentials.bendTorsions = readBendTorsionPotentials(parsed_data);
-    intraMolecularPotentials.vanDerWaals = readVanDerWaalsPotentials(forceField, parsed_data);
-    intraMolecularPotentials.coulombs = readCoulombPotentials(forceField, parsed_data);
+    intra14VanDerWaalsScaling = readIntra14Scaling(parsed_data, "Intra14VanDerWaalsScalingValue");
+    intra14ChargeChargeScaling = readIntra14Scaling(parsed_data, "Intra14ChargeChargeScalingValue");
+    buildIntraMolecularNonBondedPairs(forceField);
     intraMolecularPotentials.chiralCenters = readChiralCenters(parsed_data);
 
     partialReinsertionFixedAtoms = readPartialReinsertionFixedAtoms(parsed_data);
@@ -505,11 +471,14 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
   else
   {
     buildFragmentGraph(rigidBodies);
+    buildIntraMolecularNonBondedPairs(forceField);
   }
 
   // Warm the growth-plan cache for the placed sets used during the simulation: full growth from the
-  // starting bead and every partial-reinsertion fixed set.
-  if (definedAtoms.size() > 1)
+  // starting bead and every partial-reinsertion fixed set. A plan lists the non-bonded pairs of every growth
+  // step (their number grows with the square of the molecule size), so a component whose moves cannot grow it
+  // builds its plans on first use only (an MD-only protein never pays for them).
+  if (definedAtoms.size() > 1 && mayUseGrowthPlans())
   {
     growthPlan({startingBead});
     for (const std::vector<std::size_t> &fixedAtoms : partialReinsertionFixedAtoms)
@@ -649,6 +618,28 @@ void Component::buildFragmentGraph(const std::vector<std::vector<std::size_t>> &
   }
 }
 
+bool Component::mayUseGrowthPlans() const
+{
+  if (!partialReinsertionFixedAtoms.empty() || !reactiveSites.empty()) return true;
+  // the moves that never grow a molecule through a plan; every other configured move may
+  static constexpr std::array<Move::Types, 16> nonGrowthMoves{
+      Move::Types::Translation,          Move::Types::RandomTranslation,
+      Move::Types::Rotation,             Move::Types::RandomRotation,
+      Move::Types::TranslationSmartMC,   Move::Types::TranslationSmartMCAll,
+      Move::Types::RotationSmartMC,      Move::Types::RotationSmartMCAll,
+      Move::Types::TranslationRotationSmartMC,
+      Move::Types::VolumeChange,         Move::Types::AnisotropicVolumeChange,
+      Move::Types::GibbsVolume,          Move::Types::ParallelTempering,
+      Move::Types::HybridMC,             Move::Types::TetheredProtonHop,
+      Move::Types::BeadDisplacement};
+  for (std::size_t move = 0; move < std::to_underlying(Move::Types::Count); ++move)
+  {
+    if (mc_moves_probabilities.getProbability(static_cast<Move::Types>(move)) <= 0.0) continue;
+    if (std::ranges::find(nonGrowthMoves, static_cast<Move::Types>(move)) == nonGrowthMoves.end()) return true;
+  }
+  return false;
+}
+
 const std::vector<CBMC::GrowStep> &Component::growthPlan(const std::vector<std::size_t> &beadsAlreadyPlaced) const
 {
   auto it = growthPlanCache.find(beadsAlreadyPlaced);
@@ -691,6 +682,7 @@ void Component::setRecoilReferenceConformations(std::vector<std::vector<Atom>> c
 }
 
 const std::vector<double> &Component::recoilReferenceStepEnergies(
+    const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::size_t> &beadsAlreadyPlaced) const
 {
   auto it = recoilReferenceStepEnergiesCache.find(beadsAlreadyPlaced);
@@ -708,7 +700,8 @@ const std::vector<double> &Component::recoilReferenceStepEnergies(
     if (recoilReferenceConformations.empty())
     {
       // No reference conformations built: fall back to the component's declared geometry.
-      referenceEnergy = intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(atoms).potentialEnergy();
+      referenceEnergy =
+          intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(forceField, simulationBox, atoms).potentialEnergy();
     }
     else
     {
@@ -716,8 +709,10 @@ const std::vector<double> &Component::recoilReferenceStepEnergies(
       // step is acceptable there (see the recoil-growth openness test for the rationale).
       for (const std::vector<Atom> &conformation : recoilReferenceConformations)
       {
-        referenceEnergy = std::max(
-            referenceEnergy, intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(conformation).potentialEnergy());
+        referenceEnergy = std::max(referenceEnergy,
+                                   intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(forceField, simulationBox,
+                                                                                            conformation)
+                                       .potentialEnergy());
       }
     }
     reference[seg] = std::max(0.0, referenceEnergy);
@@ -1556,7 +1551,7 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
 
   std::print(stream, "    Number Of Atoms:              {}\n", atoms.size());
   std::print(stream, "    CBMC starting bead:           {}\n", startingBead);
-  if (forceField.useRecoilGrowth && atoms.size() >= 2 && !rigid)
+  if (forceField.settings.useRecoilGrowth && atoms.size() >= 2 && !rigid)
   {
     // Which openness reference the recoil-growth open/closed test measures against (see
     // 'recoilReferenceStepEnergies'); the fallback is valid but loses the strain compensation.
@@ -1809,25 +1804,14 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
       std::print(stream, "\n");
     }
 
-    if (!intraMolecularPotentials.vanDerWaals.empty())
-    {
-      std::print(stream, "    number of Van der Waals potentials: {}\n", intraMolecularPotentials.vanDerWaals.size());
-      for (std::size_t i = 0; i < intraMolecularPotentials.vanDerWaals.size(); ++i)
-      {
-        std::print(stream, "{}", wrapText(intraMolecularPotentials.vanDerWaals[i].print(), "        ", "            "));
-      }
-      std::print(stream, "\n");
-    }
-
-    if (!intraMolecularPotentials.coulombs.empty())
-    {
-      std::print(stream, "    number of coulomb potentials: {}\n", intraMolecularPotentials.coulombs.size());
-      for (std::size_t i = 0; i < intraMolecularPotentials.coulombs.size(); ++i)
-      {
-        std::print(stream, "{}", wrapText(intraMolecularPotentials.coulombs[i].print(), "        ", "            "));
-      }
-      std::print(stream, "\n");
-    }
+    std::print(stream, "{}", intraMolecularPotentials.exclusions.printStatus());
+    std::print(stream, "    1-4 scaling: Van der Waals {:g}, Coulomb {:g}\n", intra14VanDerWaalsScaling,
+               intra14ChargeChargeScaling);
+    std::print(stream, "    number of intramolecular Van der Waals pairs: {}\n",
+               intraMolecularPotentials.numberOfVanDerWaalsPairs());
+    std::print(stream, "    number of intramolecular Coulomb pairs: {}\n",
+               intraMolecularPotentials.numberOfCoulombPairs());
+    std::print(stream, "\n");
 
     if (!partialReinsertionFixedAtoms.empty())
     {
@@ -2605,145 +2589,128 @@ std::vector<BendTorsionPotential> Component::readBendTorsionPotentials(
                                                                  BendTorsionPotential::definitionForString);
 }
 
-std::vector<VanDerWaalsPotential> Component::readVanDerWaalsPotentials(
-    const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+double Component::readIntra14Scaling(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data,
+                                     std::string_view key)
 {
-  std::vector<VanDerWaalsPotential> van_der_waals_potentials{};
-
-  if (parsed_data.contains("IntraVanDerWaalsPairs") &&
-      parsed_data.contains("Intra14VanDerWaalsScalingValue"))
+  const std::string name{key};
+  if (!parsed_data.contains(name)) return 0.0;
+  if (!parsed_data[name].is_number())
   {
-    throw std::runtime_error(
-        "[Component reader]: IntraVanDerWaalsPairs and Intra14VanDerWaalsScalingValue are mutually exclusive\n");
+    throw std::runtime_error(std::format("[Component reader]: '{}' must be a number\n", key));
   }
-
-  if (parsed_data.contains("Intra14VanDerWaalsScalingValue"))
+  const double scaling = parsed_data[name].get<double>();
+  if (scaling < 0.0)
   {
-    if(parsed_data["Intra14VanDerWaalsScalingValue"].is_number_float())
-    {
-      double scaling = parsed_data["Intra14VanDerWaalsScalingValue"].get<double>();
-
-      if(scaling > 0.0)
-      {
-        std::vector<std::array<std::size_t, 4>> found_14_van_der_waals = connectivityTable.findAllTorsions();
-        for (std::array<std::size_t, 4> &found_14_van_der_waal : found_14_van_der_waals)
-        {
-          std::size_t A = found_14_van_der_waal[0];
-          std::size_t B = found_14_van_der_waal[3];
-
-          // pairs inside the same rigid group have a fixed distance; their energy is a constant
-          if (isInsideRigidFragment(std::array<std::size_t, 2>{A, B})) continue;
-
-          std::size_t typeA = static_cast<std::size_t>(atoms[A].type);
-          std::size_t typeB = static_cast<std::size_t>(atoms[B].type);
-          
-          [[maybe_unused]] VDWParameters::Type potentialType = forceField(typeA, typeB).type;
-          double4 parameters = forceField(typeA, typeB).parameters;
-          //double shift = forceField(typeA, typeB).shift;
-
-          // FIX: unit conversion
-          VanDerWaalsPotential potential = VanDerWaalsPotential(
-              {A, B}, VanDerWaalsType::LennardJones,
-              {parameters.x * Units::EnergyToKelvin, parameters.y, parameters.z, parameters.w}, scaling);
-
-          van_der_waals_potentials.push_back(potential);
-        }
-      }
-    }
+    throw std::runtime_error(std::format("[Component reader]: '{}' must be non-negative\n", key));
   }
-
-  std::vector<std::array<std::size_t, 2>> found_van_der_waals =
-      parsed_data.contains("IntraVanDerWaalsPairs")
-          ? readExplicitIntraPairs(parsed_data, "IntraVanDerWaalsPairs", atoms.size())
-          : connectivityTable.findAllVanDerWaals();
-
-  for (std::array<std::size_t, 2> &found_van_der_waal : found_van_der_waals)
-  {
-    std::size_t A = found_van_der_waal[0];
-    std::size_t B = found_van_der_waal[1];
-
-    // pairs inside the same rigid group have a fixed distance; their energy is a constant
-    if (isInsideRigidFragment(found_van_der_waal)) continue;
-
-    std::size_t typeA = static_cast<std::size_t>(atoms[A].type);
-    std::size_t typeB = static_cast<std::size_t>(atoms[B].type);
-
-    [[maybe_unused]] VDWParameters::Type potentialType = forceField(typeA, typeB).type;
-    double4 parameters = forceField(typeA, typeB).parameters;
-
-    // FIX: unit conversion
-    VanDerWaalsPotential potential = VanDerWaalsPotential(
-        {A, B}, VanDerWaalsType::LennardJones,
-        {parameters.x * Units::EnergyToKelvin, parameters.y, parameters.z, parameters.w}, 1.0);
-
-    van_der_waals_potentials.push_back(potential);
-  }
-
-  return van_der_waals_potentials;
+  return scaling;
 }
 
-std::vector<CoulombPotential> Component::readCoulombPotentials(
-    const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+void Component::buildIntraMolecularNonBondedPairs(const ForceField &forceField)
 {
-  std::vector<CoulombPotential> coulomb_potentials{};
+  const std::size_t numberOfAtoms = atoms.size();
 
-  if(!forceField.useCharge) return coulomb_potentials;
+  IntraMolecularExclusions &exclusions = intraMolecularPotentials.exclusions;
+  Potentials::ImplicitPairParameters &implicit = intraMolecularPotentials.implicitParameters;
 
-  if (parsed_data.contains("IntraCoulombPairs") &&
-      parsed_data.contains("Intra14ChargeChargeScalingValue"))
+  // Explicit pair terms (programmatic components) are scaling overrides of their pairs; a component keeps no
+  // explicit pair terms.
+  std::map<std::array<std::size_t, 2>, double> listedVanDerWaals{};
+  for (const VanDerWaalsPotential &pair : intraMolecularPotentials.vanDerWaals)
   {
-    throw std::runtime_error(
-        "[Component reader]: IntraCoulombPairs and Intra14ChargeChargeScalingValue are mutually exclusive\n");
+    listedVanDerWaals[{std::min(pair.identifiers[0], pair.identifiers[1]),
+                       std::max(pair.identifiers[0], pair.identifiers[1])}] = pair.scaling;
+  }
+  std::map<std::array<std::size_t, 2>, double> listedCoulombs{};
+  for (const CoulombPotential &pair : intraMolecularPotentials.coulombs)
+  {
+    listedCoulombs[{std::min(pair.identifiers[0], pair.identifiers[1]),
+                    std::max(pair.identifiers[0], pair.identifiers[1])}] = pair.scaling;
+  }
+  intraMolecularPotentials.vanDerWaals.clear();
+  intraMolecularPotentials.coulombs.clear();
+
+  if (rigid || numberOfAtoms < 2)
+  {
+    exclusions = IntraMolecularExclusions::allPairs(numberOfAtoms);
+    implicit = Potentials::ImplicitPairParameters{};
+    return;
   }
 
-  if (parsed_data.contains("Intra14ChargeChargeScalingValue"))
+  // The excluded pairs: 1-2, 1-3 and the pairs inside one rigid fragment (fixed separation).
+  std::vector<std::array<std::size_t, 2>> excluded =
+      connectivityTable.numberOfBeads == numberOfAtoms ? IntraMolecularExclusions::topologicalPairs(connectivityTable)
+                                                       : std::vector<std::array<std::size_t, 2>>{};
+  for (const Fragment &fragment : fragmentGraph.fragments)
   {
-    if(parsed_data["Intra14ChargeChargeScalingValue"].is_number_float())
+    if (!fragment.isRigidBody()) continue;
+    for (std::size_t a = 0; a < fragment.atoms.size(); ++a)
     {
-      double scaling = parsed_data["Intra14ChargeChargeScalingValue"].get<double>();
-
-      if(scaling > 0.0)
+      for (std::size_t b = a + 1; b < fragment.atoms.size(); ++b)
       {
-        std::vector<std::array<std::size_t, 4>> found_14_coulombs = connectivityTable.findAllTorsions();
-        for (std::array<std::size_t, 4> &found_14_coulomb : found_14_coulombs)
-        {
-          std::size_t A = found_14_coulomb[0];
-          std::size_t B = found_14_coulomb[3];
-
-          if (isInsideRigidFragment(std::array<std::size_t, 2>{A, B})) continue;
-
-          double chargeA = atoms[A].charge;
-          double chargeB = atoms[B].charge;
-          
-          CoulombPotential potential = CoulombPotential({A, B}, CoulombType::Coulomb, chargeA, chargeB, scaling);
-
-          coulomb_potentials.push_back(potential);
-        }
+        excluded.push_back({std::min(fragment.atoms[a], fragment.atoms[b]), std::max(fragment.atoms[a], fragment.atoms[b])});
       }
     }
   }
+  exclusions = IntraMolecularExclusions::fromPairs(numberOfAtoms, std::move(excluded));
 
-  std::vector<std::array<std::size_t, 2>> found_coulombs =
-      parsed_data.contains("IntraCoulombPairs")
-          ? readExplicitIntraPairs(parsed_data, "IntraCoulombPairs", atoms.size())
-          : connectivityTable.findAllVanDerWaals();
-
-  for (std::array<std::size_t, 2> &found_coulomb : found_coulombs)
+  // The scaled pairs: the 1-4 pairs with the component's 1-4 scalings and the overrides, when not (1, 1).
+  std::vector<std::array<std::size_t, 2>> pairs14 = connectivityTable.numberOfBeads == numberOfAtoms
+                                                        ? IntraMolecularExclusions::pairs14(connectivityTable)
+                                                        : std::vector<std::array<std::size_t, 2>>{};
+  std::map<std::array<std::size_t, 2>, std::pair<double, double>> scaling{};
+  for (const std::array<std::size_t, 2> &pair : pairs14)
   {
-    std::size_t A = found_coulomb[0];
-    std::size_t B = found_coulomb[1];
-
-    if (isInsideRigidFragment(found_coulomb)) continue;
-
-    double chargeA = atoms[A].charge;
-    double chargeB = atoms[B].charge;
-
-    CoulombPotential potential = CoulombPotential({A, B}, CoulombType::Coulomb, chargeA, chargeB, 1.0);
-
-    coulomb_potentials.push_back(potential);
+    scaling[pair] = {intra14VanDerWaalsScaling, intra14ChargeChargeScaling};
   }
+  for (const auto &[pair, value] : listedVanDerWaals)
+  {
+    auto it = scaling.try_emplace(pair, std::pair<double, double>{1.0, 1.0}).first;
+    it->second.first = value;
+  }
+  for (const auto &[pair, value] : listedCoulombs)
+  {
+    auto it = scaling.try_emplace(pair, std::pair<double, double>{1.0, 1.0}).first;
+    it->second.second = value;
+  }
+  std::vector<IntraMolecularExclusions::ScaledPair> scaledPairs{};
+  for (const auto &[pair, value] : scaling)
+  {
+    if (pair[0] >= numberOfAtoms || pair[1] >= numberOfAtoms || exclusions.isExcluded(pair[0], pair[1])) continue;
+    const double scalingVDW = value.first;
+    const double scalingCoulomb = forceField.useCharge ? value.second : 1.0;
+    if (scalingVDW == 1.0 && scalingCoulomb == 1.0) continue;
+    scaledPairs.push_back(
+        {static_cast<std::uint32_t>(pair[0]), static_cast<std::uint32_t>(pair[1]), scalingVDW, scalingCoulomb});
+  }
+  exclusions.setScaledPairs(std::move(scaledPairs));
 
-  return coulomb_potentials;
+  // The parameters to materialise the implicit pairs (CBMC growth plans): the force-field pair potential per pair
+  // of atom types of the molecule and the charges. The energies use the force field.
+  std::vector<std::size_t> types{};
+  for (const Atom &atom : atoms) types.push_back(static_cast<std::size_t>(atom.type));
+  std::ranges::sort(types);
+  const auto duplicateTypes = std::ranges::unique(types);
+  types.erase(duplicateTypes.begin(), duplicateTypes.end());
+  implicit = Potentials::ImplicitPairParameters{};
+  implicit.numberOfTypes = types.size();
+  implicit.useCharge = forceField.useCharge;
+  implicit.typeIndex.reserve(numberOfAtoms);
+  implicit.charge.reserve(numberOfAtoms);
+  for (const Atom &atom : atoms)
+  {
+    implicit.typeIndex.push_back(static_cast<std::uint32_t>(
+        std::ranges::lower_bound(types, static_cast<std::size_t>(atom.type)) - types.begin()));
+    implicit.charge.push_back(atom.charge);
+  }
+  implicit.parameters.resize(types.size() * types.size());
+  for (std::size_t a = 0; a < types.size(); ++a)
+  {
+    for (std::size_t b = 0; b < types.size(); ++b)
+    {
+      implicit.parameters[a * types.size() + b] = forceField(types[a], types[b]);
+    }
+  }
 }
 
 std::vector<std::vector<std::size_t>> Component::readRepeatUnits(
@@ -2875,12 +2842,7 @@ std::vector<std::vector<std::size_t>> Component::readRepeatUnits(
   checkPeriodicTerms(intraMolecularPotentials.torsions |
                          std::views::transform([](const TorsionPotential &p) { return p.identifiers; }),
                      "torsion");
-  checkPeriodicTerms(intraMolecularPotentials.vanDerWaals |
-                         std::views::transform([](const VanDerWaalsPotential &p) { return p.identifiers; }),
-                     "intramolecular van-der-Waals");
-  checkPeriodicTerms(intraMolecularPotentials.coulombs |
-                         std::views::transform([](const CoulombPotential &p) { return p.identifiers; }),
-                     "intramolecular Coulomb");
+  // (the non-bonded pairs follow from the connectivity and the rigid fragments, checked above and below)
 
   // Rigid fragments must lie inside a single repeat unit, map onto rigid fragments under the shift,
   // and be congruent to their shifted counterparts (the relabeled body must fit the slot's rigid
@@ -3340,6 +3302,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
 
   archive << c.connectivityTable;
   archive << c.intraMolecularPotentials;
+  archive << c.intra14VanDerWaalsScaling;
+  archive << c.intra14ChargeChargeScaling;
   archive << c.fragmentGraph;
   archive << c.partialReinsertionFixedAtoms;
   archive << c.identityChanges;
@@ -3459,6 +3423,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 
   archive >> c.connectivityTable;
   archive >> c.intraMolecularPotentials;
+  archive >> c.intra14VanDerWaalsScaling;
+  archive >> c.intra14ChargeChargeScaling;
   archive >> c.fragmentGraph;
   archive >> c.partialReinsertionFixedAtoms;
   archive >> c.identityChanges;

@@ -957,9 +957,9 @@ void MolecularDynamicsSpatialDecomposition::setup()
       system.containsTheFractionalMolecule = false;
     system.initializeGibbsSwapFractionalMoleculeGroupIds();
 
-    if (system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)
+    if (system.forceField.settings.interpolationScheme == ForceFieldSettings::InterpolationScheme::Polynomial)
     {
-      system.forceField.interpolationScheme = ForceField::InterpolationScheme::Tricubic;
+      system.forceField.settings.interpolationScheme = ForceFieldSettings::InterpolationScheme::Tricubic;
     }
 
     ++system_id;

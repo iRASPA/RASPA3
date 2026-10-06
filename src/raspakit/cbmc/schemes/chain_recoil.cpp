@@ -99,7 +99,7 @@ bool feelerExists(RandomNumber &random, const RecoilContext &ctx, std::size_t se
 
   for (std::size_t j = 0; j != ctx.numberOfTrialDirections(); ++j)
   {
-    StepTrial trial = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
+    StepTrial trial = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.env.forceField, ctx.env.simulationBox, ctx.component, atoms, step);
     if (!(trial.torsionWeight > 0.0)) continue;  // a dead bridge-closure draw: closed
 
     std::optional<StepTrialEnergy> energy =
@@ -144,7 +144,7 @@ std::size_t countAvailableDirections(RandomNumber &random, const RecoilContext &
   std::size_t available = 1;
   for (std::size_t j = firstAlternative; j < ctx.numberOfTrialDirections(); ++j)
   {
-    StepTrial alternative = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
+    StepTrial alternative = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.env.forceField, ctx.env.simulationBox, ctx.component, atoms, step);
     if (!(alternative.torsionWeight > 0.0)) continue;  // a dead bridge-closure draw: closed
 
     std::optional<StepTrialEnergy> energy =
@@ -194,7 +194,7 @@ GrowOutcome growRecursive(RandomNumber &random, const RecoilContext &ctx, std::s
 
   for (std::size_t j = 0; j != ctx.numberOfTrialDirections(); ++j)
   {
-    StepTrial trial = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.component, atoms, step);
+    StepTrial trial = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.env.forceField, ctx.env.simulationBox, ctx.component, atoms, step);
     if (!(trial.torsionWeight > 0.0)) continue;  // a dead bridge-closure draw: closed
 
     std::optional<StepTrialEnergy> energy =
@@ -234,7 +234,7 @@ RecoilContext makeRecoilContext(const GrowContext &context, const Component &com
                                 const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
   const std::vector<GrowStep> &plan = component.growthPlan(beadsAlreadyPlaced);
-  return RecoilContext{context, component, plan, component.recoilReferenceStepEnergies(beadsAlreadyPlaced),
+  return RecoilContext{context, component, plan, component.recoilReferenceStepEnergies(context.forceField, context.simulationBox, beadsAlreadyPlaced),
                        scheduleTethers(context, component, plan)};
 }
 }  // namespace
@@ -287,7 +287,7 @@ RecoilContext makeRecoilContext(const GrowContext &context, const Component &com
     }
   }
 
-  return finishGrownChain(component, std::move(chainAtoms), chain);
+  return finishGrownChain(context, component, std::move(chainAtoms), chain);
 }
 
 [[nodiscard]] CBMC::RetraceResult CBMC::retraceChainRecoil(RandomNumber &random, const GrowContext &context,
@@ -313,7 +313,7 @@ RecoilContext makeRecoilContext(const GrowContext &context, const Component &com
     const double oldPotential = oldEnergy->potentialEnergy();
 
     const double torsionWeight =
-        oldConfigurationTorsionWeight(random, ctx.env.settings, ctx.env.beta, component, oldAtoms, step);
+        oldConfigurationTorsionWeight(random, ctx.env.settings, ctx.env.beta, ctx.env.forceField, ctx.env.simulationBox, component, oldAtoms, step);
 
     // The old configuration is trial direction 0 (always counted available); the remaining k - 1
     // directions are generated and probed exactly as on the grow. No per-step guard on the retrace.
@@ -324,5 +324,5 @@ RecoilContext makeRecoilContext(const GrowContext &context, const Component &com
                           oldEnergy->external);
   }
 
-  return finishRetracedChain(component, moleculeAtoms, chain);
+  return finishRetracedChain(context, component, moleculeAtoms, chain);
 }

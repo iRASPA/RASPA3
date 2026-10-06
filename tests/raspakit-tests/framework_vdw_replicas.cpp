@@ -11,6 +11,7 @@ import forcefield;
 import simulationbox;
 import framework;
 import van_der_waals_potential;
+import vdwparameters;
 import intra_molecular_potentials;
 import potential_pair_vdw;
 import potential_pair_derivatives;
@@ -34,7 +35,7 @@ void seedMinimumImageVanDerWaals(Framework& framework, const ForceField& forceFi
       const std::size_t typeB = static_cast<std::size_t>(atoms[j].type);
       const double4 parameters = forceField(typeA, typeB).parameters;
       framework.intraMolecularPotentials.vanDerWaals.emplace_back(
-          std::array<std::size_t, 2>{i, j}, VanDerWaalsType::LennardJones,
+          std::array<std::size_t, 2>{i, j}, VDWParameters::Type::LennardJones,
           std::vector<double>{parameters.x * Units::EnergyToKelvin, parameters.y, parameters.z, parameters.w}, 1.0);
 
       const double3 raw = atoms[i].position - atoms[j].position;

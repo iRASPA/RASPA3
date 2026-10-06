@@ -93,7 +93,7 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
             {
               return Interactions::energyDifferenceEwaldFourier(
                   system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                  system.forceField, system.simulationBox, newMolecule, data.oldMoleculeAtoms, system.netCharge);
+                  system.forceField, system.simulationBox, system.components, newMolecule, data.oldMoleculeAtoms, system.netCharge);
             });
 
   data.tailEnergyDifference =

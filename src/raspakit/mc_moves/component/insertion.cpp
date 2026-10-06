@@ -118,14 +118,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   {
     energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.trialEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, {}, trialMolecule.second,
+        system.trialEik, system.forceField, system.simulationBox, system.components, electricFieldMoleculeNew, {}, trialMolecule.second,
         {}, system.netCharge);
   }
   else
   {
     energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, trialMolecule.second, {}, system.netCharge);
+        system.simulationBox, system.components, trialMolecule.second, {}, system.netCharge);
   }
   time_end = std::chrono::steady_clock::now();
 
@@ -167,7 +167,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   // acceptance rule: the conformation is drawn from the ideal-gas Boltzmann distribution
   // exp(-beta * U_intra), so its intra energy cancels against the generation probability (zero for
   // rigid molecules).
-  RunningEnergy internalEnergyNew = component.intraMolecularPotentials.computeInternalEnergies(trialMolecule.second);
+  RunningEnergy internalEnergyNew = component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, trialMolecule.second);
 
   double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
   double preFactor = system.beta * fugacity * system.simulationBox.volume /

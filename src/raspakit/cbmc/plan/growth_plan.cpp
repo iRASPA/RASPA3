@@ -373,16 +373,19 @@ static void attachLookaheadGuide(CBMC::GrowStep &step, const ConnectivityTable &
     if (std::optional<bool> spin = classify(ids); spin.has_value())
       (spin.value() ? model.spinTerms : model.invariantTerms).torsions.push_back(torsion);
   }
-  for (const VanDerWaalsPotential &pair : intra.vanDerWaals)
-  {
-    if (std::optional<bool> spin = classify(pair.identifiers); spin.has_value())
-      (spin.value() ? model.spinTerms : model.invariantTerms).vanDerWaals.push_back(pair);
-  }
-  for (const CoulombPotential &pair : intra.coulombs)
-  {
-    if (std::optional<bool> spin = classify(pair.identifiers); spin.has_value())
-      (spin.value() ? model.spinTerms : model.invariantTerms).coulombs.push_back(pair);
-  }
+  // (the non-bonded pairs of the molecule are implicit; the terms are materialised for the pairs of the model)
+  intra.forEachVanDerWaalsTerm(
+      [&](const VanDerWaalsPotential &pair)
+      {
+        if (std::optional<bool> spin = classify(pair.identifiers); spin.has_value())
+          (spin.value() ? model.spinTerms : model.invariantTerms).vanDerWaals.push_back(pair);
+      });
+  intra.forEachCoulombTerm(
+      [&](const CoulombPotential &pair)
+      {
+        if (std::optional<bool> spin = classify(pair.identifiers); spin.has_value())
+          (spin.value() ? model.spinTerms : model.invariantTerms).coulombs.push_back(pair);
+      });
 
   // Without a spin-dependent term the guide would be flat.
   if (model.spinTerms.bends.empty() && model.spinTerms.torsions.empty() && model.spinTerms.vanDerWaals.empty() &&

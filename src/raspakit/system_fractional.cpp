@@ -42,7 +42,7 @@ import scaling;
     return std::nullopt;
   }
   return external.value() + framework.value() + intermolecular.value() +
-         system.components[componentId].intraMolecularPotentials.computeInternalEnergies(atoms);
+         system.components[componentId].intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, atoms);
 }
 
 // Whether the component pins the given lambda coordinate at a fixed bin (fixed-lambda

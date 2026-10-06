@@ -112,8 +112,9 @@ RunningEnergy computeEwaldFourierEnergy(
  * \param trialEik Updated Fourier components after the move.
  * \param forceField The force field parameters.
  * \param simulationBox The simulation box parameters.
- * \param newatoms The new positions and properties of the atoms.
- * \param oldatoms The old positions and properties of the atoms.
+ * \param components The components (indexed by Atom::componentId), for the intramolecular exclusion topology.
+ * \param newatoms The new positions and properties of the atoms (whole molecules).
+ * \param oldatoms The old positions and properties of the atoms (whole molecules).
  * \param netCharge The current total net charge of the system (framework plus adsorbates) before the
  *                  move; used for the net-charge correction when the move changes the net charge
  *                  (Bogusz et al., J. Chem. Phys. 108, 7070 (1998)).
@@ -127,8 +128,9 @@ RunningEnergy energyDifferenceEwaldFourier(
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &storedEik,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &trialEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms,
-    double netCharge = 0.0, const std::array<double, maximumNumberOfDUDlambdaGroups> &netChargeDerivativeExternal = {});
+    const SimulationBox &simulationBox, std::span<const Component> components, std::span<const Atom> newatoms,
+    std::span<const Atom> oldatoms, double netCharge = 0.0,
+    const std::array<double, maximumNumberOfDUDlambdaGroups> &netChargeDerivativeExternal = {});
 
 /**
  * \brief The Ewald (or real-space charge method) energy difference of a move that displaces only some atoms
@@ -146,8 +148,8 @@ RunningEnergy energyDifferenceEwaldFourierMovedAtoms(
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &storedEik,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &trialEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<const Atom> newMolecule, std::span<const Atom> oldMolecule,
-    std::span<const std::size_t> movedIndices, double netCharge = 0.0,
+    const SimulationBox &simulationBox, std::span<const Component> components, std::span<const Atom> newMolecule,
+    std::span<const Atom> oldMolecule, std::span<const std::size_t> movedIndices, double netCharge = 0.0,
     const std::array<double, maximumNumberOfDUDlambdaGroups> &netChargeDerivativeExternal = {});
 
 /// The indices at which the positions of 'newMolecule' and 'oldMolecule' differ (helper for the partial moves).
@@ -160,9 +162,9 @@ RunningEnergy energyDifferenceEwaldFourier(
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &fixedFrameworkStoredEik,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &storedEik,
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &trialEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
-    std::span<const Atom> newatoms, std::span<const Atom> oldatoms, double netCharge = 0.0,
-    const std::array<double, maximumNumberOfDUDlambdaGroups> &netChargeDerivativeExternal = {});
+    const SimulationBox &simulationBox, std::span<const Component> components, std::span<double3> electricFieldNew,
+    std::span<double3> electricFieldOld, std::span<const Atom> newatoms, std::span<const Atom> oldatoms,
+    double netCharge = 0.0, const std::array<double, maximumNumberOfDUDlambdaGroups> &netChargeDerivativeExternal = {});
 
 /**
  * \brief Computes the difference in electric field due to atom position changes in the Ewald Fourier summation.
@@ -184,15 +186,6 @@ RunningEnergy energyDifferenceEwaldFourier(
  * \param oldatoms The old positions and properties of the atoms.
  * \return The running energy containing the Ewald Fourier energy difference.
  */
-RunningEnergy eletricFieldEwaldFourierEnergyDifference(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &fixedFrameworkStoredEik,
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &storedEik,
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &trialEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
-    std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
-
 void computeEwaldFourierElectricFieldDifference(
     std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
@@ -231,17 +224,21 @@ void computeEwaldFourierElectricFieldDifference(
 void addChargeSelfEnergy(RunningEnergy &energy, const ForceField &forceField, std::span<const Atom> atoms);
 
 /**
- * \brief Adds the intramolecular exclusion (and its atomic gradients) of one molecule to \p energy.
+ * \brief Adds the intramolecular charge exclusion (and its atomic gradients) of whole molecules to \p energy.
  *
- * Ewald: every atom pair of the molecule subtracts q_i q_j erf(alpha r)/r (all pairs, no cutoff), which is the
- * intramolecular part of the reciprocal sum that the pair potentials do not evaluate. The finite-cutoff shifted
- * schemes: the completion q_i q_j (V(r) - 1/r) inside the Coulomb cutoff. No-op for other charge methods and
- * when 'omitInterInteractions' is set. \p moleculeAtoms and \p moleculeDynamics span exactly one molecule. When
+ * Only the excluded pairs of the molecules (IntraMolecularExclusions: 1-2, 1-3 and rigid-fragment pairs; every
+ * pair of a rigid molecule) are corrected; the other intramolecular pairs are regular force-field pairs evaluated
+ * by the component's intramolecular pair terms. Ewald: an excluded pair subtracts q_i q_j erf(alpha r)/r (no
+ * cutoff), the intramolecular part of the reciprocal sum. The finite-cutoff shifted schemes: the completion
+ * q_i q_j (V(r) - 1/r) inside the Coulomb cutoff. No-op for other charge methods. \p moleculeAtoms and
+ * \p moleculeDynamics hold whole molecules (contiguous runs of equal componentId/moleculeId). When
  * \p strainDerivative is given the pair contributions gradient (x) dr are accumulated into it as well, in the
  * convention of the strain-derivative (molecular pressure) routines.
  */
 void addIntraMolecularChargeExclusionGradient(RunningEnergy &energy, const ForceField &forceField,
-                                              const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
+                                              const SimulationBox &simulationBox,
+                                              std::span<const Component> components,
+                                              std::span<const Atom> moleculeAtoms,
                                               std::span<AtomDynamics> moleculeDynamics,
                                               double3x3 *strainDerivative = nullptr);
 

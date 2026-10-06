@@ -236,7 +236,7 @@ void runMuvtDrift(Move::Types swapMove, bool co2Ti, bool methaneTi)
 ForceField makeZeoliteForceFieldWithGrids()
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
+  forceField.settings.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
   return forceField;
 }
 

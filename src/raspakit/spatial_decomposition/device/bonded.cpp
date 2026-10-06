@@ -40,6 +40,7 @@ void DeviceBonded::setTopology(const BondedTopology& topology)
   numberOfMolecules = topology.molecules.size();
   numberOfTerms = topology.terms.size();
   chargeSquaredSum = topology.chargeSquaredSum;
+  exclusionChargeProductSum = topology.exclusionChargeProductSum;
   parameters.numberOfInstances = static_cast<std::uint32_t>(topology.numberOfInstances);
   parametersChanged = true;
   termGroups = roundUp(std::max<std::size_t>(topology.numberOfInstances, 1), groupSize) / groupSize;
@@ -48,16 +49,20 @@ void DeviceBonded::setTopology(const BondedTopology& topology)
   uploadTable(*context, gradientOffsetBuffer, topology.gradientOffset);
   uploadTable(*context, atomGradientStartBuffer, topology.atomGradientStart);
   uploadTable(*context, atomGradientsBuffer, topology.atomGradients);
+  uploadTable(*context, exclusionStartBuffer, topology.exclusionStart);
+  uploadTable(*context, exclusionPartnersBuffer, topology.exclusionPartners);
   uploadTable(*context, instanceMoleculeBuffer, topology.instanceMolecule);
   uploadTable(*context, moleculeInfoBuffer, topology.molecules);
   uploadTable(*context, massBuffer, topology.massOfAtom);
   termGradientBuffer.allocate(*context, topology.numberOfGradients * 4 * sizeof(float), DeviceMemory::Device);
 }
 
-void DeviceBonded::setParameters(double alpha, double factor, bool useCharge)
+void DeviceBonded::setParameters(double alpha, double factor, bool useCharge, double cutOffVDW, double cutOffCharge)
 {
   alphaValue = alpha;
   conversionFactor = factor;
+  parameters.cutOffVDWSquared = static_cast<float>(cutOffVDW * cutOffVDW);
+  parameters.cutOffChargeSquared = static_cast<float>(cutOffCharge * cutOffCharge);
   parameters.alpha = static_cast<float>(alpha);
   parameters.twoAlphaOverSqrtPi = static_cast<float>(2.0 * alpha * std::numbers::inv_sqrtpi);
   parameters.selfPrefactor = static_cast<float>(conversionFactor * alpha * std::numbers::inv_sqrtpi);
@@ -132,6 +137,8 @@ void DeviceBonded::enqueue(DeviceBuffer relative, DeviceBuffer force)
                                  DeviceArg::of(massBuffer.get()),
                                  DeviceArg::of(atomGradientStartBuffer.get()),
                                  DeviceArg::of(atomGradientsBuffer.get()),
+                                 DeviceArg::of(exclusionStartBuffer.get()),
+                                 DeviceArg::of(exclusionPartnersBuffer.get()),
                                  DeviceArg::of(termGradientBuffer.get()),
                                  DeviceArg::of(parameterBuffer.get()),
                                  DeviceArg::of(force),
@@ -181,7 +188,9 @@ DeviceBondedResults DeviceBonded::collect() const
   if (parameters.useCharge != 0)
   {
     results.self = -conversionFactor * alphaValue * std::numbers::inv_sqrtpi * chargeSquaredSum;
-    results.exclusion = (sums[0] + sums[1]) - results.self;
+    // the reduced pair sum of the kernel plus the constant it leaves out (see bondedAtoms)
+    results.exclusion =
+        sums[1] - conversionFactor * 2.0 * alphaValue * std::numbers::inv_sqrtpi * exclusionChargeProductSum;
   }
   results.exclusionStrain = tensor(2);
   results.correction = tensor(11);
@@ -197,8 +206,8 @@ DeviceBondedResults DeviceBonded::collect() const
 std::string DeviceBonded::status() const
 {
   return std::format(
-      "    bonded terms on the device: {} molecules, {} bonded and intramolecular pair terms over the components "
-      "({} instances), self and exclusion corrections, virial correction (single precision, positions relative to "
-      "the molecule)\n",
+      "    bonded terms on the device: {} molecules, {} bonded and non-excluded intramolecular pair terms over the "
+      "components ({} instances), self and exclusion corrections of the excluded pairs, virial correction (single "
+      "precision, positions relative to the molecule)\n",
       numberOfMolecules, numberOfTerms, parameters.numberOfInstances);
 }

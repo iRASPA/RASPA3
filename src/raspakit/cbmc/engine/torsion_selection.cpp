@@ -7,6 +7,8 @@ import std;
 import atom;
 import double3;
 import randomnumbers;
+import forcefield;
+import simulationbox;
 import running_energy;
 import intra_molecular_potentials;
 import bend_potential;
@@ -16,7 +18,9 @@ import cbmc_closure_guide;
 import cbmc_lookahead_guide;
 
 CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, std::size_t numberOfTorsionTrials,
-                                                        double beta, std::vector<Atom> &chainAtoms,
+                                                        double beta, const ForceField &forceField,
+                                                        const SimulationBox &simulationBox,
+                                                        std::vector<Atom> &chainAtoms,
                                                         const std::vector<Atom> &baseOrientation,
                                                         const GrowStep &step, double3 lastBondVector,
                                                         bool pinFirstToBase)
@@ -117,7 +121,7 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
     // is resolved here rather than after the spin has been chosen on the bare torsion.
     if (step.spin.hasNonBondedTerms)
     {
-      torsion_energy += intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(chainAtoms).potentialEnergy();
+      torsion_energy += intra.computeInternalIntraVanDerWaalsAndCoulombEnergies(forceField, simulationBox, chainAtoms).potentialEnergy();
     }
 
     angles[j] = angle;

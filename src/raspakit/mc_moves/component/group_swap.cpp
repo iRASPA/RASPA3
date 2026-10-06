@@ -211,7 +211,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
   {
     energyFourierDifference += Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, member.atoms, {}, runningNetCharge);
+        system.simulationBox, system.components, member.atoms, {}, runningNetCharge);
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     runningNetCharge += system.components[member.componentId].netCharge;
   }
@@ -393,7 +393,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                system.storedEik, system.trialEik, system.forceField,
-                                               system.simulationBox, members[0].atoms, {});
+                                               system.simulationBox, system.components, members[0].atoms, {});
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     system.insertMoleculePolarization(selectedComponent, growDataCentral->molecule, growDataCentral->atoms,
                                       newElectricFields[0]);
@@ -402,7 +402,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
     {
       Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                  system.storedEik, system.trialEik, system.forceField,
-                                                 system.simulationBox, members[1 + j].atoms, {});
+                                                 system.simulationBox, system.components, members[1 + j].atoms, {});
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
       system.insertMoleculePolarization(satelliteComponentIds[j], satelliteGrowData[j].molecule,
                                         satelliteGrowData[j].atoms, newElectricFields[1 + j]);
@@ -591,7 +591,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
   {
     energyFourierDifference += Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, {}, members[i].atoms, runningNetCharge);
+        system.simulationBox, system.components, {}, members[i].atoms, runningNetCharge);
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     runningNetCharge -= system.components[members[i].componentId].netCharge;
   }
@@ -750,7 +750,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
       std::span<Atom> atoms = system.spanOfMolecule(componentId, moleculeId);
       Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                  system.storedEik, system.trialEik, system.forceField,
-                                                 system.simulationBox, {}, std::span<const Atom>(atoms));
+                                                 system.simulationBox, system.components, {}, std::span<const Atom>(atoms));
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
       system.deleteMolecule(componentId, moleculeId, atoms);
     }

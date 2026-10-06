@@ -77,7 +77,7 @@ std::optional<RunningEnergy> MC_Moves::pivotCBMCMove(RandomNumber &random, Syste
   std::vector<Atom> movedOld;
   movedOld.reserve(rotatedAtoms.size());
   for (std::size_t index : rotatedAtoms) movedOld.push_back(molecule_atoms[index]);
-  const RunningEnergy internalOld = component.intraMolecularPotentials.computeInternalEnergies(molecule_atoms);
+  const RunningEnergy internalOld = component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, molecule_atoms);
 
   // The bias energy of a trial relative to the current configuration: everything except the Ewald
   // Fourier part. Only the rotated part interacts differently with its surroundings, so the
@@ -124,7 +124,7 @@ std::optional<RunningEnergy> MC_Moves::pivotCBMCMove(RandomNumber &random, Syste
     if (!interMolecule.has_value()) return std::nullopt;
 
     RunningEnergy internalDifference =
-        component.intraMolecularPotentials.computeInternalEnergies(trialAtoms) - internalOld;
+        component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, trialAtoms) - internalOld;
 
     return externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + internalDifference +
            system.crossLinkEnergyDifference(selectedComponent, selectedMolecule, trialAtoms, molecule_atoms);
@@ -206,7 +206,7 @@ std::optional<RunningEnergy> MC_Moves::pivotCBMCMove(RandomNumber &random, Syste
             {
               return Interactions::energyDifferenceEwaldFourierMovedAtoms(
                   system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                  system.forceField, system.simulationBox, trialAtoms, molecule_atoms, movedIndices);
+                  system.forceField, system.simulationBox, system.components, trialAtoms, molecule_atoms, movedIndices);
             });
 
   RunningEnergy energyDifference = biasDifference + ewaldFourierEnergy;

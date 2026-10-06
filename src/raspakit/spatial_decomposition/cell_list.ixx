@@ -8,6 +8,8 @@ import int3;
 import double3;
 import double3x3;
 import atom;
+import component;
+import intra_molecular_exclusions;
 import simulationbox;
 import spatial_decomposition_domain_decomposition;
 
@@ -41,6 +43,12 @@ export struct LocalAtom
  * The shift of a pair stays valid until the next rebuild: with `cutoff + skin` at most half the smallest
  * perpendicular width of the box (checked in `setup`) no other image of the neighbour can come within the cutoff
  * before an atom has moved more than `skin / 2`, which is the rebuild criterion (`refreshPositionsAndCheck`).
+ *
+ * Same-molecule pairs: the lists hold the pairs of a molecule that interact with the regular full-strength pair
+ * potential, i.e. all but the excluded pairs (1-2, 1-3, same rigid fragment; every pair of a rigid molecule) and
+ * the scaled (1-4) pairs, which the engine evaluates per molecule with their scaling
+ * (IntraMolecularExclusions::isExcludedFromPairList). Without components (`bin` called without them) every
+ * same-molecule pair is left out.
  */
 export struct CellList
 {
@@ -92,6 +100,9 @@ export struct CellList
   std::vector<double> charge{}, scalingVDW{}, scalingCoulomb{};
   std::vector<std::uint16_t> type{};
   std::vector<std::uint32_t> moleculeId{};
+  std::vector<std::uint32_t> atomInMolecule{};  ///< Index of the atom within its molecule.
+  std::vector<std::uint8_t> componentOfAtom{};
+  std::span<const Component> components{};  ///< The components of the last `bin` (exclusion topology per component).
   std::vector<std::uint32_t> cellOfAtom{};
   std::vector<std::uint32_t> ownerOfAtom{};
   std::vector<double> wrappedX{}, wrappedY{}, wrappedZ{};  ///< Positions at the last build, wrapped into the box.
@@ -132,8 +143,12 @@ export struct CellList
    *
    * Serial; O(N log N). Fills the sorted atom data, the cell offsets, the ownership and the per-domain owned-atom
    * lists, and records the box and the reference positions. Must be followed by buildLists for every domain.
+   *
+   * 'atoms' holds whole molecules as contiguous runs of equal componentId and moleculeId. With 'components' (indexed
+   * by componentId) the same-molecule pairs that are neither excluded nor scaled enter the lists; without, every
+   * same-molecule pair is skipped. Throws when a run does not match the atom count of its component.
    */
-  void bin(const SimulationBox& box, std::span<const Atom> atoms);
+  void bin(const SimulationBox& box, std::span<const Atom> atoms, std::span<const Component> components = {});
 
   /**
    * \brief Builds the neighbour list, the ghost images and the compact atom data of one sub-domain from the current

@@ -136,7 +136,7 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
     // cases, the rigid-body tilt, and the coupled-decoupled torsion selection).
     std::vector<EvaluatedTrial> trials =
         evaluateTrials(context, component, step, chainAtoms,
-                       generateGrowTrials(random, settings, beta, component, chainAtoms, step,
+                       generateGrowTrials(random, settings, beta, context.forceField, context.simulationBox, component, chainAtoms, step,
                                           settings.numberOfTrialDirections),
                        tethers.at(seg))
             .trials;
@@ -151,7 +151,7 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
     }
   }
 
-  return finishGrownChain(component, std::move(chainAtoms), chain);
+  return finishGrownChain(context, component, std::move(chainAtoms), chain);
 }
 
 [[nodiscard]] CBMC::RetraceResult CBMC::retraceChainCBMC(
@@ -176,7 +176,7 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
     // 'chainAtoms', which holds the old configuration of every bead at this point).
     EvaluatedTrials evaluated =
         evaluateTrials(context, component, step, chainAtoms,
-                       generateRetraceTrials(random, settings, beta, component, chainAtoms, step,
+                       generateRetraceTrials(random, settings, beta, context.forceField, context.simulationBox, component, chainAtoms, step,
                                              settings.numberOfTrialDirections),
                        tethers.at(seg));
 
@@ -189,5 +189,5 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
     chain.addRetracedStep(weight.logWeight, trials.front().energy.external);
   }
 
-  return finishRetracedChain(component, moleculeAtoms, chain);
+  return finishRetracedChain(context, component, moleculeAtoms, chain);
 }

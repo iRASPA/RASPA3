@@ -30,7 +30,8 @@ RunningEnergy computeFrameworkIntraMolecularGradient(const ForceField& forceFiel
                                                      std::span<const Atom> frameworkAtoms,
                                                      std::span<AtomDynamics> frameworkDynamics);
 
-RunningEnergy computeIntraMolecularEnergy(const Potentials::IntraMolecularPotentials& intraMolecularPotentials,
+RunningEnergy computeIntraMolecularEnergy(const ForceField& forceField, const SimulationBox& simulationBox,
+                                          const Potentials::IntraMolecularPotentials& intraMolecularPotentials,
                                           std::span<const Molecule> moleculeData,
                                           std::span<const Atom> moleculeAtoms) noexcept;
 
@@ -58,15 +59,18 @@ std::pair<double, double3x3> computeIntraMolecularBendStrainDerivative(
     const Potentials::IntraMolecularPotentials& intraMolecularPotentials, std::span<const Atom> atoms,
     std::span<AtomDynamics> dynamics);
 
-RunningEnergy computeIntraMolecularGradient(const Potentials::IntraMolecularPotentials& intraMolecularPotentials,
+RunningEnergy computeIntraMolecularGradient(const ForceField& forceField, const SimulationBox& simulationBox,
+                                            const Potentials::IntraMolecularPotentials& intraMolecularPotentials,
                                             std::span<const Molecule> moleculeData, std::span<const Atom> moleculeAtoms,
                                             std::span<AtomDynamics> moleculeDynamics) noexcept;
 
 std::pair<double, double3x3> computeIntraMolecularStrainDerivative(
+    const ForceField& forceField, const SimulationBox& simulationBox,
     const Potentials::IntraMolecularPotentials& intraMolecularPotentials, std::span<const Molecule> moleculeData,
     std::span<const Atom> atoms, std::span<AtomDynamics> dynamics);
 
 std::pair<double, double3x3> computeIntraMolecularStrainDerivative(
+    const ForceField& forceField, const SimulationBox& simulationBox,
     const Potentials::IntraMolecularPotentials& intraMolecularPotentials, std::span<const Atom> atoms,
     std::span<AtomDynamics> dynamics);
 

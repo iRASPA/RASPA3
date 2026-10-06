@@ -31,7 +31,7 @@ import mc_moves_move_types;
 TEST(MC_MUVT_GRIDS_DRIFT, insertion)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
+  forceField.settings.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
@@ -118,7 +118,7 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertion)
 TEST(MC_MUVT_GRIDS_DRIFT, insertionCBMC)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
+  forceField.settings.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
@@ -205,7 +205,7 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBMC)
 TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
+  forceField.settings.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
@@ -292,7 +292,7 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC)
 TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
+  forceField.settings.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 

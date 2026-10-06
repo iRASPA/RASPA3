@@ -941,8 +941,10 @@ RunningEnergy Integrators::updateGradients(
     if (numberOfMoleculesPerComponent[i] > 0)
     {
       std::span<const Molecule> span_molecules = {&moleculeData[molecule_index], numberOfMoleculesPerComponent[i]};
-      internal_energies += Interactions::computeIntraMolecularGradient(
-          components[i].intraMolecularPotentials, span_molecules, moleculeAtomPositions, moleculeDynamics);
+      internal_energies += Interactions::computeIntraMolecularGradient(forceField, simulationBox,
+                                                                       components[i].intraMolecularPotentials,
+                                                                       span_molecules, moleculeAtomPositions,
+                                                                       moleculeDynamics);
     }
     molecule_index += numberOfMoleculesPerComponent[i];
   }

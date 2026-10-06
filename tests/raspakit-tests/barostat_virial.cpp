@@ -130,7 +130,7 @@ double totalEnergy(const System &system, const SimulationBox &box, std::span<con
   {
     const Component &component = system.components[molecule.componentId];
     energy += component.intraMolecularPotentials
-                  .computeInternalEnergies(atoms.subspan(molecule.atomIndex, molecule.numberOfAtoms))
+                  .computeInternalEnergies(system.forceField, box, atoms.subspan(molecule.atomIndex, molecule.numberOfAtoms))
                   .potentialEnergy();
   }
   return energy;

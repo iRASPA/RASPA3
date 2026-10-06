@@ -8,6 +8,8 @@ import int3;
 import double3;
 import double3x3;
 import atom;
+import component;
+import intra_molecular_exclusions;
 import simulationbox;
 import spatial_decomposition_domain_decomposition;
 
@@ -209,8 +211,9 @@ void CellList::updateCellGrid(const SimulationBox& box)
   buildStencil(box);
 }
 
-void CellList::bin(const SimulationBox& box, std::span<const Atom> atoms)
+void CellList::bin(const SimulationBox& box, std::span<const Atom> atoms, std::span<const Component> componentList)
 {
+  components = componentList;
   numberOfAtoms = atoms.size();
   const std::size_t numberOfCellsTotal = static_cast<std::size_t>(numberOfCells.x) *
                                          static_cast<std::size_t>(numberOfCells.y) *
@@ -229,6 +232,8 @@ void CellList::bin(const SimulationBox& box, std::span<const Atom> atoms)
   scalingCoulomb.resize(numberOfAtoms);
   type.resize(numberOfAtoms);
   moleculeId.resize(numberOfAtoms);
+  atomInMolecule.resize(numberOfAtoms);
+  componentOfAtom.resize(numberOfAtoms);
   cellOfAtom.resize(numberOfAtoms);
   ownerOfAtom.resize(numberOfAtoms);
   wrappedX.resize(numberOfAtoms);
@@ -236,6 +241,32 @@ void CellList::bin(const SimulationBox& box, std::span<const Atom> atoms)
   wrappedZ.resize(numberOfAtoms);
   wrap.resize(numberOfAtoms);
   cellStart.assign(numberOfCellsTotal + 1, 0);
+
+  // the index of every atom within its molecule (the atoms of a molecule are consecutive)
+  std::vector<std::uint32_t> inMolecule(numberOfAtoms);
+  for (std::size_t start = 0; start < numberOfAtoms;)
+  {
+    std::size_t end = start + 1;
+    while (end < numberOfAtoms && atoms[end].componentId == atoms[start].componentId &&
+           atoms[end].moleculeId == atoms[start].moleculeId)
+    {
+      ++end;
+    }
+    if (!components.empty())
+    {
+      const std::size_t componentId = static_cast<std::size_t>(atoms[start].componentId);
+      if (componentId >= components.size() ||
+          components[componentId].intraMolecularPotentials.exclusions.numberOfAtoms != end - start)
+      {
+        throw std::runtime_error(std::format(
+            "[Spatial decomposition]: molecule {} of component {} has {} atoms in the system but {} in the component\n",
+            atoms[start].moleculeId, componentId, end - start,
+            componentId < components.size() ? components[componentId].intraMolecularPotentials.exclusions.numberOfAtoms : 0));
+      }
+    }
+    for (std::size_t k = start; k < end; ++k) inMolecule[k] = static_cast<std::uint32_t>(k - start);
+    start = end;
+  }
 
   // wrapped fractional positions: cell binning and the balanced sub-domain cuts
   std::vector<double3> fractional(numberOfAtoms);
@@ -285,6 +316,8 @@ void CellList::bin(const SimulationBox& box, std::span<const Atom> atoms)
     scalingCoulomb[sorted] = atom.scalingCoulomb;
     type[sorted] = atom.type;
     moleculeId[sorted] = atom.moleculeId;
+    atomInMolecule[sorted] = inMolecule[original];
+    componentOfAtom[sorted] = atom.componentId;
     cellOfAtom[sorted] = cellOfOriginal[original];
     // wrapped position and the integer translation removed: position = wrapped + cell * wrap
     const double3 s = box.inverseCell * atom.position;
@@ -366,6 +399,15 @@ void CellList::buildLists(std::size_t domainIndex, const SimulationBox& box)
     const double zi = wz[i];
     const int3 wrapI = wrap[i];
     const std::uint32_t moleculeI = moleculeId[i];
+    const std::uint32_t inMoleculeI = atomInMolecule[i];
+    const IntraMolecularExclusions* exclusions =
+        components.empty() ? nullptr : &components[componentOfAtom[i]].intraMolecularPotentials.exclusions;
+    // a same-molecule candidate is left out when it is excluded or scaled (or always, without components)
+    auto skipped = [&](std::uint32_t j)
+    {
+      return moleculeId[j] == moleculeI &&
+             (exclusions == nullptr || exclusions->isExcludedFromPairList(inMoleculeI, atomInMolecule[j]));
+    };
     domain.neighbourStart[k] = static_cast<std::uint32_t>(domain.neighbourList.size());
 
     if (cellI != currentCell)
@@ -386,7 +428,7 @@ void CellList::buildLists(std::size_t domainIndex, const SimulationBox& box)
       const double dx = xi - wx[j];
       const double dy = yi - wy[j];
       const double dz = zi - wz[j];
-      if (dx * dx + dy * dy + dz * dz >= listCutoffSquared || moleculeId[j] == moleculeI) continue;
+      if (dx * dx + dy * dy + dz * dz >= listCutoffSquared || skipped(j)) continue;
       add(j, wrapI.x - wrap[j].x, wrapI.y - wrap[j].y, wrapI.z - wrap[j].z);
     }
 
@@ -409,7 +451,7 @@ void CellList::buildLists(std::size_t domainIndex, const SimulationBox& box)
           const double dx = xs - wx[j];
           const double dy = ys - wy[j];
           const double dz = zs - wz[j];
-          if (dx * dx + dy * dy + dz * dz >= listCutoffSquared || moleculeId[j] == moleculeI) continue;
+          if (dx * dx + dy * dy + dz * dz >= listCutoffSquared || skipped(j)) continue;
           // unwrapped: r_i - (r_j + cell n) with n = w + wrap_i - wrap_j
           add(j, entry.wrapX + wrapI.x - wrap[j].x, entry.wrapY + wrapI.y - wrap[j].y,
               entry.wrapZ + wrapI.z - wrap[j].z);
@@ -421,7 +463,7 @@ void CellList::buildLists(std::size_t domainIndex, const SimulationBox& box)
         const double3 ri(x[i], y[i], z[i]);
         for (std::uint32_t j = begin; j < end; ++j)
         {
-          if (moleculeId[j] == moleculeI) continue;
+          if (skipped(j)) continue;
           const double3 sv = box.inverseCell * (ri - double3(x[j], y[j], z[j]));
           const double3 nv(std::round(sv.x), std::round(sv.y), std::round(sv.z));
           const double3 dr = cell * (sv - nv);

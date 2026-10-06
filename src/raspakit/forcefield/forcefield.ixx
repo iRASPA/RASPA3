@@ -10,19 +10,22 @@ import archive;
 import double4;
 import double3;
 import int3;
-import uint3;
 import pseudo_atom;
 import vdwparameters;
 import json;
 import simulationbox;
 import potential_ewald_real_space_table;
+export import forcefield_settings;
 
 /**
  * \brief Represents the force field used in simulations.
  *
- * The ForceField struct contains all parameters and methods related to force field calculations,
- * including van der Waals interactions, electrostatics, Ewald summation parameters,
- * mixing rules, and methods to initialize and compute these parameters.
+ * The ForceField struct holds the parameters that define the Hamiltonian: the pseudo-atoms, the pair potentials
+ * between them (with mixing rule, truncation and tail corrections), the cut-offs, the charge method with its
+ * Ewald parameters, and the external field. These are the only fields the energy, gradient and Hessian kernels
+ * read. Everything that only steers how a simulation samples or evaluates this Hamiltonian (the CBMC sampling
+ * parameters, the dual cut-off scheme, the interpolation grids) is kept apart in 'settings' (ForceFieldSettings)
+ * and is read from the same force-field file.
  */
 export struct ForceField
 {
@@ -70,22 +73,7 @@ export struct ForceField
     RectangleZ = 16
   };
 
-  enum class InterpolationGridType : std::size_t
-  {
-    LennardJones = 0,
-    LennardJonesRepulsion = 1,
-    LennardJonesAttraction = 2,
-    EwaldReal = 3
-  };
-
-  enum class InterpolationScheme : std::size_t
-  {
-    Polynomial = 1,
-    Tricubic = 8,
-    Triquintic = 27
-  };
-
-  std::uint64_t versionNumber{1};  ///< Version number of the force field format.
+  std::uint64_t versionNumber{2};  ///< Version number of the force field format.
 
   std::vector<VDWParameters>
       data{};  ///< Interaction parameters between pseudo-atoms; size is numberOfPseudoAtoms squared.
@@ -98,7 +86,6 @@ export struct ForceField
   double cutOffMoleculeVDW{12.0};  ///< Cut-off distance for VDW interactions between molecules.
   bool cutOffCoulombAutomatic{true};
   double cutOffCoulomb{12.0};  ///< Cut-off distance for Coulomb interactions.
-  double dualCutOff{6.0};      ///< Inner cut-off distance when using dual cut-off scheme.
 
   double temperature{300.0};  ///< External temperature, used by temperature-dependent potentials (Feynman-Hibbs).
 
@@ -150,51 +137,21 @@ export struct ForceField
 
   double energyOverlapCriteria{1e6};  ///< Energy criteria for considering overlaps.
 
-  std::size_t numberOfTrialDirections{ 10 };
-  std::size_t numberOfTorsionTrialDirections{ 100 };
-  std::size_t numberOfFirstBeadPositions{ 10 };
-  std::size_t numberOfTrialMovesPerOpenBead{ 150 };
-  double minimumRosenbluthFactor{ 1e-150 };  ///< Minimum allowed Rosenbluth factor.
-
-  // Internal ring-closure Monte-Carlo tuning (CBMC growth of cyclic clusters). Per internal-MC trial,
-  // the conformer-hopping crankshaft is attempted with probability 'cbmcRingCrankshaftProbability';
-  // otherwise a whole-ring junction tilt is attempted with probability 'cbmcRingTiltProbability' and a
-  // local displacement/rotation with the remainder. These affect sampling efficiency only (the moves
-  // carry no Rosenbluth weight), so any value in [0, 1] is valid.
-  double cbmcRingCrankshaftProbability{0.2};  ///< Attempt probability of the large-angle ring crankshaft.
-  double cbmcRingTiltProbability{0.25};       ///< Attempt probability of the whole-ring junction tilt.
-
-  // Recoil-growth (RG) options for flexible molecules (Consta et al., Mol. Phys. 97, 1243 (1999)).
-  // When 'useRecoilGrowth' is true, the flexible-molecule chain is grown/retraced with the recoil
-  // growth algorithm instead of configurational-bias Monte Carlo (CBMC).
-  bool useRecoilGrowth{false};                        ///< Use recoil growth instead of CBMC for flexible molecules.
-  std::size_t recoilGrowthMaximumRecoilLength{2};     ///< Feeler / recoil length 'l' (look-ahead depth).
-  std::size_t recoilGrowthNumberOfTrialDirections{5}; ///< Number of trial directions 'k' per segment in RG.
-
-  bool useDualCutOff{false};          ///< Indicates if dual cut-off scheme is used.
   bool omitInterInteractions{false};  ///< If true, omits interactions between molecules.
 
   bool computePolarization{false};   ///< Indicates if polarization effects are computed.
   bool omitInterPolarization{true};  ///< If true, omits polarization between molecules.
 
-
-  std::vector<std::size_t> gridPseudoAtomIndices;
-  double spacingVDWGrid{0.15};
-  double spacingCoulombGrid{0.15};
-  std::optional<uint3> numberOfVDWGridPoints{};
-  std::optional<uint3> numberOfCoulombGridPoints{};
-  std::size_t numberOfGridTestPoints{100000};
-  bool interpolationSchemeAuto{true};
-  InterpolationScheme interpolationScheme{InterpolationScheme::Polynomial};
-  bool writeFrameworkInterpolationGrids{ false };
-
+  // The external field: an analytic test surface or a potential read from a cube file. Which one and where it
+  // sits are parameters of the Hamiltonian; whether it is evaluated through an interpolation grid is a setting.
   PotentialEnergySurfaceType potentialEnergySurfaceType{PotentialEnergySurfaceType::ExponentialNonPolynomialTestFunction};
   double3 potentialEnergySurfaceOrigin{0.0, 0.0, 0.0};
-  bool useExternalFieldGrid{ true };
   std::string externalFieldGridFileName{ "external_field.cube" };
-  uint3 numberOfExternalFieldGridPoints{8, 8, 8};
-  bool writeExternalFieldInterpolationGrid{ false };
   double4 externalFieldGeometryParameters{5.0, 5.0, 0.0, 0.0};
+
+  /// The sampling and numerical settings read from the force-field file (CBMC trial counts, recoil growth,
+  /// dual cut-off, interpolation grids). No energy kernel reads these; see ForceFieldSettings.
+  ForceFieldSettings settings{};
 
   /**
    * \brief Default constructor for the ForceField struct.
@@ -443,9 +400,9 @@ inline int SGA_stricmp(const char *a, const char *b) const {
   /**
    * \brief Set of general option keys accepted in the input data.
    *
-   * This set contains all the general configuration keys that are recognized
-   * at the top level of the input JSON. It is used to validate the presence
-   * of only known keys.
+   * This set contains the parameter keys that are recognized at the top level of the
+   * force-field JSON; the keys of the sampling and numerical settings are listed in
+   * 'ForceFieldSettings::options'. 'validateInput' accepts the union of both.
    */
   static const std::set<std::string, InsensitiveCompare> options;
 

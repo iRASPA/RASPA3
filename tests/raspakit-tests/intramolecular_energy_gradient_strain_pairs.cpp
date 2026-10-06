@@ -16,6 +16,7 @@ import bond_potential;
 import bend_potential;
 import torsion_potential;
 import van_der_waals_potential;
+import vdwparameters;
 import coulomb_potential;
 import integrators;
 import integrators_update;
@@ -71,7 +72,7 @@ Component makeChargedChain(const ForceField& forceField)
     const double epsilonB = (b % 2 == 0) ? 80.0 : 50.0;
     const double sigmaA = (a % 2 == 0) ? 3.5 : 3.0;
     const double sigmaB = (b % 2 == 0) ? 3.5 : 3.0;
-    return VanDerWaalsPotential({a, b}, VanDerWaalsType::LennardJones,
+    return VanDerWaalsPotential({a, b}, VDWParameters::Type::LennardJones,
                                 {std::sqrt(epsilonA * epsilonB), 0.5 * (sigmaA + sigmaB)}, 1.0);
   };
   potentials.vanDerWaals = {lennardJones(0, 4), lennardJones(1, 5), lennardJones(0, 5)};
@@ -102,7 +103,8 @@ std::vector<double3> strainedConformation()
           origin + double3(3.50, 1.55, 0.35), origin + double3(4.05, 2.85, -0.40), origin + double3(5.40, 3.10, 0.25)};
 }
 
-double3 finiteDifferenceGradient(const Potentials::IntraMolecularPotentials& potentials, std::span<Atom> atoms,
+double3 finiteDifferenceGradient(const ForceField& forceField, const SimulationBox& box,
+                                 const Potentials::IntraMolecularPotentials& potentials, std::span<Atom> atoms,
                                  std::size_t index, double delta)
 {
   const double3 saved = atoms[index].position;
@@ -112,24 +114,25 @@ double3 finiteDifferenceGradient(const Potentials::IntraMolecularPotentials& pot
     double3 step{};
     (k == 0 ? step.x : k == 1 ? step.y : step.z) = delta;
     atoms[index].position = saved + step;
-    const double plus = potentials.computeInternalEnergies(atoms).potentialEnergy();
+    const double plus = potentials.computeInternalEnergies(forceField, box, atoms).potentialEnergy();
     atoms[index].position = saved - step;
-    const double minus = potentials.computeInternalEnergies(atoms).potentialEnergy();
+    const double minus = potentials.computeInternalEnergies(forceField, box, atoms).potentialEnergy();
     atoms[index].position = saved;
     (k == 0 ? gradient.x : k == 1 ? gradient.y : gradient.z) = (plus - minus) / (2.0 * delta);
   }
   return gradient;
 }
 
-void expectGradientMatchesFiniteDifference(const Potentials::IntraMolecularPotentials& potentials,
+void expectGradientMatchesFiniteDifference(const ForceField& forceField, const SimulationBox& box,
+                                           const Potentials::IntraMolecularPotentials& potentials,
                                            std::span<Atom> atoms, std::span<AtomDynamics> dynamics,
                                            std::string_view term)
 {
   const double delta = 1.0e-5;
 
   for (AtomDynamics& dynamic : dynamics) dynamic.gradient = double3(0.0, 0.0, 0.0);
-  const RunningEnergy gradientPathEnergy = potentials.computeInternalGradient(atoms, dynamics);
-  const RunningEnergy energyPathEnergy = potentials.computeInternalEnergies(atoms);
+  const RunningEnergy gradientPathEnergy = potentials.computeInternalGradient(forceField, box, atoms, dynamics);
+  const RunningEnergy energyPathEnergy = potentials.computeInternalEnergies(forceField, box, atoms);
 
   EXPECT_NEAR(gradientPathEnergy.potentialEnergy(), energyPathEnergy.potentialEnergy(),
               1.0e-9 * std::max(1.0, std::abs(energyPathEnergy.potentialEnergy())))
@@ -146,7 +149,7 @@ void expectGradientMatchesFiniteDifference(const Potentials::IntraMolecularPoten
   const double tolerance = 1.0e-5 * (1.0 + maximumGradient);
   for (std::size_t i = 0; i < atoms.size(); ++i)
   {
-    const double3 numerical = finiteDifferenceGradient(potentials, atoms, i, delta);
+    const double3 numerical = finiteDifferenceGradient(forceField, box, potentials, atoms, i, delta);
     EXPECT_NEAR(dynamics[i].gradient.x, numerical.x, tolerance) << term << ": atom " << i << " x";
     EXPECT_NEAR(dynamics[i].gradient.y, numerical.y, tolerance) << term << ": atom " << i << " y";
     EXPECT_NEAR(dynamics[i].gradient.z, numerical.z, tolerance) << term << ": atom " << i << " z";
@@ -165,30 +168,46 @@ TEST(MC_intramolecular_gradient, flexible_charged_chain_per_term_matches_finite_
   std::span<AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
   ASSERT_EQ(atoms.size(), 6uz);
   const Potentials::IntraMolecularPotentials& full = system.components[0].intraMolecularPotentials;
-  ASSERT_EQ(full.vanDerWaals.size(), 3uz);
-  ASSERT_EQ(full.coulombs.size(), 6uz);
+  // Every non-excluded pair (three 1-4, two 1-5, one 1-6) interacts (implicitly, through the exclusions); the
+  // 1-4 Lennard-Jones pairs omitted from the supplied list carry a pair scaling of zero.
+  ASSERT_EQ(full.numberOfVanDerWaalsPairs(), 6uz);
+  ASSERT_EQ(full.numberOfCoulombPairs(), 6uz);
+  ASSERT_TRUE(full.vanDerWaals.empty());
+  ASSERT_EQ(full.exclusions.scaledPairs.size(), 3uz);
+  EXPECT_EQ(full.exclusions.scalingOf(1, 4), (std::pair<double, double>{0.0, 0.5}));
+  EXPECT_EQ(full.exclusions.scalingOf(0, 4), (std::pair<double, double>{1.0, 1.0}));
+  const ForceField& ff = system.forceField;
+  const SimulationBox& box = system.simulationBox;
 
   Potentials::IntraMolecularPotentials bonds{};
   bonds.bonds = full.bonds;
-  expectGradientMatchesFiniteDifference(bonds, atoms, dynamics, "bonds");
+  expectGradientMatchesFiniteDifference(ff, box, bonds, atoms, dynamics, "bonds");
 
   Potentials::IntraMolecularPotentials bends{};
   bends.bends = full.bends;
-  expectGradientMatchesFiniteDifference(bends, atoms, dynamics, "bends");
+  expectGradientMatchesFiniteDifference(ff, box, bends, atoms, dynamics, "bends");
 
   Potentials::IntraMolecularPotentials torsions{};
   torsions.torsions = full.torsions;
-  expectGradientMatchesFiniteDifference(torsions, atoms, dynamics, "torsions");
+  expectGradientMatchesFiniteDifference(ff, box, torsions, atoms, dynamics, "torsions");
 
+  // the implicit pairs as explicit terms, per kind
   Potentials::IntraMolecularPotentials vanDerWaals{};
-  vanDerWaals.vanDerWaals = full.vanDerWaals;
-  expectGradientMatchesFiniteDifference(vanDerWaals, atoms, dynamics, "intramolecular van der Waals");
+  full.forEachVanDerWaalsTerm([&](const VanDerWaalsPotential& pair) { vanDerWaals.vanDerWaals.push_back(pair); });
+  ASSERT_EQ(vanDerWaals.vanDerWaals.size(), 6uz);
+  expectGradientMatchesFiniteDifference(ff, box, vanDerWaals, atoms, dynamics, "intramolecular van der Waals");
 
   Potentials::IntraMolecularPotentials coulombs{};
-  coulombs.coulombs = full.coulombs;
-  expectGradientMatchesFiniteDifference(coulombs, atoms, dynamics, "intramolecular Coulomb");
+  full.forEachCoulombTerm([&](const CoulombPotential& pair) { coulombs.coulombs.push_back(pair); });
+  ASSERT_EQ(coulombs.coulombs.size(), 6uz);
+  expectGradientMatchesFiniteDifference(ff, box, coulombs, atoms, dynamics, "intramolecular Coulomb");
 
-  expectGradientMatchesFiniteDifference(full, atoms, dynamics, "all terms");
+  // the explicit terms and the implicit pairs give the same energy
+  EXPECT_NEAR((vanDerWaals.computeInternalEnergies(ff, box, atoms) + coulombs.computeInternalEnergies(ff, box, atoms))
+                  .potentialEnergy(),
+              full.computeInternalIntraVanDerWaalsAndCoulombEnergies(ff, box, atoms).potentialEnergy(), 1e-10);
+
+  expectGradientMatchesFiniteDifference(ff, box, full, atoms, dynamics, "all terms");
 }
 
 TEST(integrators_flexible_adsorbate, charged_flexible_chain_nve_conserves_energy)

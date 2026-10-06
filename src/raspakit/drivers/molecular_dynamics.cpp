@@ -781,9 +781,9 @@ void MolecularDynamics::setup()
     system.initializeGibbsSwapFractionalMoleculeGroupIds();
 
     // if the MC/MD hybrid move is on, make sure that interpolation-method include gradients
-    if (system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)
+    if (system.forceField.settings.interpolationScheme == ForceFieldSettings::InterpolationScheme::Polynomial)
     {
-      system.forceField.interpolationScheme = ForceField::InterpolationScheme::Tricubic;
+      system.forceField.settings.interpolationScheme = ForceFieldSettings::InterpolationScheme::Tricubic;
     }
 
     ++system_id;

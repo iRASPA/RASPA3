@@ -120,7 +120,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
             {
               return Interactions::energyDifferenceEwaldFourier(
                   systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
-                  systemA.forceField, systemA.simulationBox, newMolecule, {}, systemA.netCharge);
+                  systemA.forceField, systemA.simulationBox, systemA.components, newMolecule, {}, systemA.netCharge);
             });
 
   // Compute tail energy difference for system A
@@ -156,7 +156,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
             {
               return Interactions::energyDifferenceEwaldFourier(
                   systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.trialEik,
-                  systemB.forceField, systemB.simulationBox, {}, molecule, systemB.netCharge);
+                  systemB.forceField, systemB.simulationBox, systemB.components, {}, molecule, systemB.netCharge);
             });
 
   // Compute tail energy difference for system B

@@ -25,7 +25,7 @@ import mc_moves_move_types;
 TEST(MC_NVT_GRIDS_DRIFT, translation)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
+  forceField.settings.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
@@ -98,7 +98,7 @@ TEST(MC_NVT_GRIDS_DRIFT, translation)
 TEST(MC_NVT_GRIDS_DRIFT, random_translation)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
+  forceField.settings.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
@@ -171,7 +171,7 @@ TEST(MC_NVT_GRIDS_DRIFT, random_translation)
 TEST(MC_NVT_GRIDS_DRIFT, rotation)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
+  forceField.settings.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
@@ -244,7 +244,7 @@ TEST(MC_NVT_GRIDS_DRIFT, rotation)
 TEST(MC_NVT_GRIDS_DRIFT, random_rotation)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
+  forceField.settings.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
@@ -317,7 +317,7 @@ TEST(MC_NVT_GRIDS_DRIFT, random_rotation)
 TEST(MC_NVT_GRIDS_DRIFT, reinsertion)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
+  forceField.settings.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
@@ -390,7 +390,7 @@ TEST(MC_NVT_GRIDS_DRIFT, reinsertion)
 TEST(MC_NVT_GRIDS_DRIFT, translation_rotation_reinsertion)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
+  forceField.settings.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
@@ -465,7 +465,7 @@ TEST(MC_NVT_GRIDS_DRIFT, translation_rotation_reinsertion)
 TEST(MC_NVT_GRIDS_DRIFT, random_translation_random_rotation_reinsertion)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
-  forceField.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
+  forceField.settings.gridPseudoAtomIndices = {3, 4, 5, 6, 7, 8, 9};
 
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 

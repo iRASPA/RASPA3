@@ -101,14 +101,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     {
       energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-          system.trialEik, system.forceField, system.simulationBox, {}, electricFieldMoleculeOld, {}, molecule,
+          system.trialEik, system.forceField, system.simulationBox, system.components, {}, electricFieldMoleculeOld, {}, molecule,
           system.netCharge);
     }
     else
     {
       energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-          system.simulationBox, {}, molecule, system.netCharge);
+          system.simulationBox, system.components, {}, molecule, system.netCharge);
     }
     time_end = std::chrono::steady_clock::now();
 
@@ -151,7 +151,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     // energy is removed from the running energies. It does not enter the acceptance rule: the reverse
     // (insertion) move draws the conformation from the ideal-gas Boltzmann distribution, so the intra
     // energy cancels against that generation probability (zero for rigid molecules).
-    RunningEnergy internalEnergyOld = component.intraMolecularPotentials.computeInternalEnergies(molecule);
+    RunningEnergy internalEnergyOld = component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, molecule);
 
     // Increment constructed swap deletion move counts
     component.mc_moves_statistics.addConstructed(move, 1);

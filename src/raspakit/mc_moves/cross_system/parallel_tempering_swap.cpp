@@ -337,7 +337,7 @@ std::optional<double> soluteHamiltonianChange(const System& holder, const System
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> storedEik = holder.storedEik;
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> trialEik{};
     change += Interactions::energyDifferenceEwaldFourier(eik_x, eik_y, eik_z, eik_xy, storedEik, trialEik,
-                                                        holder.forceField, holder.simulationBox, soluteTarget,
+                                                        holder.forceField, holder.simulationBox, holder.components, soluteTarget,
                                                         soluteHolder, holder.netCharge)
                   .potentialEnergy();
   }
@@ -346,10 +346,12 @@ std::optional<double> soluteHamiltonianChange(const System& holder, const System
   std::size_t firstMolecule = 0uz;
   for (std::size_t i = 0; i < componentId; ++i) firstMolecule += holder.numberOfMoleculesPerComponent[i];
   std::span<const Molecule> soluteMolecules{&holder.moleculeData[firstMolecule], numberOfSoluteMolecules};
-  change += Interactions::computeIntraMolecularEnergy(target.components[componentId].intraMolecularPotentials,
-                                                      soluteMolecules, atoms)
+  change += Interactions::computeIntraMolecularEnergy(target.forceField, holder.simulationBox,
+                                                      target.components[componentId].intraMolecularPotentials,
+                                                      soluteMolecules, atomsTarget)
                 .potentialEnergy() -
-            Interactions::computeIntraMolecularEnergy(holder.components[componentId].intraMolecularPotentials,
+            Interactions::computeIntraMolecularEnergy(holder.forceField, holder.simulationBox,
+                                                      holder.components[componentId].intraMolecularPotentials,
                                                       soluteMolecules, atoms)
                 .potentialEnergy();
 

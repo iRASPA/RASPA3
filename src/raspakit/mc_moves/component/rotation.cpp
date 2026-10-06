@@ -125,12 +125,12 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik,
-                    system.storedEik, system.trialEik, system.forceField, system.simulationBox,
+                    system.storedEik, system.trialEik, system.forceField, system.simulationBox, system.components,
                     electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second, molecule_atoms);
               }
               return Interactions::energyDifferenceEwaldFourier(
                   system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                  system.forceField, system.simulationBox, trialMolecule.second, molecule_atoms);
+                  system.forceField, system.simulationBox, system.components, trialMolecule.second, molecule_atoms);
             });
 
   RunningEnergy polarizationDifference;

@@ -168,13 +168,13 @@ std::optional<RunningEnergy> MC_Moves::intramolecularDoubleRebridgingMove(Random
             {
               return Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                                 system.storedEik, system.trialEik, system.forceField,
-                                                                system.simulationBox, trialAtoms, molecule_atoms);
+                                                                system.simulationBox, system.components, trialAtoms, molecule_atoms);
             });
 
   // Intramolecular: the bonded terms across the four seams and the intramolecular non-bonded terms
   // change. Recomputing all internal terms keeps the bookkeeping exact.
-  RunningEnergy internalDifference = component.intraMolecularPotentials.computeInternalEnergies(trialAtoms) -
-                                     component.intraMolecularPotentials.computeInternalEnergies(molecule_atoms);
+  RunningEnergy internalDifference = component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, trialAtoms) -
+                                     component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, molecule_atoms);
 
   RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
                                    ewaldFourierEnergy + internalDifference;

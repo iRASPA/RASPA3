@@ -251,15 +251,15 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
             {
               return Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                                 system.storedEik, system.trialEik, system.forceField,
-                                                                system.simulationBox, allNew, allOld);
+                                                                system.simulationBox, system.components, allNew, allOld);
             });
 
   // Intramolecular: bonded terms across the seams and the intramolecular non-bonded terms of the
   // relabelled chains. Recomputing all internal terms of both chains keeps the bookkeeping exact.
-  RunningEnergy internalDifference = component.intraMolecularPotentials.computeInternalEnergies(trialI) +
-                                     component.intraMolecularPotentials.computeInternalEnergies(trialJ) -
-                                     component.intraMolecularPotentials.computeInternalEnergies(oldI) -
-                                     component.intraMolecularPotentials.computeInternalEnergies(oldJ);
+  RunningEnergy internalDifference = component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, trialI) +
+                                     component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, trialJ) -
+                                     component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, oldI) -
+                                     component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, oldJ);
 
   // Tail corrections cancel exactly: the multiset of pseudo-atom types in the box is unchanged.
   RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +

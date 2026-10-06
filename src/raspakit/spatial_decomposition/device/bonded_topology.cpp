@@ -8,6 +8,7 @@ import atom;
 import molecule;
 import component;
 import forcefield;
+import vdwparameters;
 import system;
 import bond_potential;
 import bend_potential;
@@ -16,6 +17,7 @@ import van_der_waals_potential;
 import coulomb_potential;
 import units;
 import intra_molecular_potentials;
+import intra_molecular_exclusions;
 
 bool BondedTopology::supports(const System& system, std::string& reason)
 {
@@ -68,6 +70,8 @@ void BondedTopology::build(const System& system)
   gradientOffset.clear();
   atomGradientStart.clear();
   atomGradients.clear();
+  exclusionStart.clear();
+  exclusionPartners.clear();
   instanceMolecule.clear();
   molecules.clear();
   massOfAtom.clear();
@@ -78,6 +82,8 @@ void BondedTopology::build(const System& system)
   std::vector<std::uint32_t> componentTerms(system.components.size(), 0);
   std::vector<std::uint32_t> componentGradients(system.components.size(), 0);
   std::vector<std::vector<std::uint32_t>> referencesPerAtom;
+  const ForceField& forceField = system.forceField;
+  exclusionStart.push_back(0);
   for (std::size_t c = 0; c < system.components.size(); ++c)
   {
     const Component& component = system.components[c];
@@ -86,6 +92,12 @@ void BondedTopology::build(const System& system)
     componentTermOffset[c] = static_cast<std::uint32_t>(terms.size());
     const std::size_t atomsInComponent = component.atoms.size();
     referencesPerAtom.resize(referencesPerAtom.size() + atomsInComponent);
+    for (std::size_t a = 0; a < atomsInComponent; ++a)
+    {
+      const std::span<const std::uint32_t> partners = component.intraMolecularPotentials.exclusions.partnersOf(a);
+      exclusionPartners.insert(exclusionPartners.end(), partners.begin(), partners.end());
+      exclusionStart.push_back(static_cast<std::uint32_t>(exclusionPartners.size()));
+    }
     std::uint32_t gradients = 0;
     auto addTerm = [&](std::uint32_t kind, std::size_t type, std::span<const std::size_t> identifiers,
                        std::span<const double> values)
@@ -122,15 +134,26 @@ void BondedTopology::build(const System& system)
     {
       addTerm(3, std::to_underlying(torsion.type), torsion.identifiers, torsion.parameters);
     }
-    for (const VanDerWaalsPotential& pair : potentials.vanDerWaals)
+    // The scaled (1-4) pairs: the regular force-field pair potential of the two pseudo-atom types times the pair
+    // scaling (Potentials::intraMolecularVDW / intraMolecularCoulomb). The other non-excluded pairs of the
+    // molecule are in the pair lists (DeviceStep::setExclusions); terms without interaction are left out.
+    for (const IntraMolecularExclusions::ScaledPair& pair : component.intraMolecularPotentials.exclusions.scaledPairs)
     {
-      const double values[2] = {pair.scaling * 4.0 * pair.parameters[0], pair.parameters[1] * pair.parameters[1]};
-      addTerm(4, std::to_underlying(pair.type), pair.identifiers, values);
-    }
-    for (const CoulombPotential& pair : potentials.coulombs)
-    {
-      const double values[1] = {pair.scaling * Units::CoulombicConversionFactor * pair.chargeA * pair.chargeB};
-      addTerm(5, std::to_underlying(pair.type), pair.identifiers, values);
+      const std::size_t identifiers[2] = {pair.atomA, pair.atomB};
+      const VDWParameters& parameters = forceField(component.atoms[pair.atomA].type, component.atoms[pair.atomB].type);
+      if (pair.scalingVDW != 0.0 && parameters.type == VDWParameters::Type::LennardJones)
+      {
+        const double values[3] = {pair.scalingVDW * 4.0 * parameters.parameters.x,
+                                  parameters.parameters.y * parameters.parameters.y,
+                                  pair.scalingVDW * parameters.shift};
+        addTerm(4, 0, identifiers, values);
+      }
+      if (forceField.useCharge && component.atoms[pair.atomA].charge != 0.0 &&
+          component.atoms[pair.atomB].charge != 0.0)
+      {
+        const double values[1] = {pair.scalingCoulomb};
+        addTerm(5, 0, identifiers, values);
+      }
     }
     componentTerms[c] = static_cast<std::uint32_t>(terms.size()) - componentTermOffset[c];
     componentGradients[c] = gradients;
@@ -177,6 +200,15 @@ void BondedTopology::build(const System& system)
   {
     massOfAtom.push_back(static_cast<float>(system.forceField.pseudoAtoms[atom.type].mass));
     chargeSquaredSum += atom.charge * atom.charge;
+  }
+  exclusionChargeProductSum = 0.0;
+  for (const Molecule& molecule : system.moleculeData)
+  {
+    const std::span<const Atom> moleculeAtoms = atoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+    for (const std::array<std::uint32_t, 2>& pair : system.components[molecule.componentId].intraMolecularPotentials.exclusions.pairs)
+    {
+      exclusionChargeProductSum += moleculeAtoms[pair[0]].charge * moleculeAtoms[pair[1]].charge;
+    }
   }
 }
 

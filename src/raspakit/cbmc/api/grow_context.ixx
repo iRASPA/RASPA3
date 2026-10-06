@@ -58,8 +58,8 @@ enum class ChainScheme : std::size_t
  * \brief The sampling parameters of a CBMC grow or retrace.
  *
  * None of these changes the sampled distribution, only the efficiency (and cost) of the sampling.
- * They are read from the force field file and copied into every 'GrowContext' at construction
- * ('fromForceField'); a caller that needs different parameters for one grow (a test, the Widom
+ * They are read from the force field file into 'ForceField::settings' and copied into every 'GrowContext'
+ * at construction ('fromForceField'); a caller that needs different parameters for one grow (a test, the Widom
  * estimator, the ideal-gas reference grows) derives a context with 'GrowContext::withSettings' or
  * 'withChainScheme' instead of editing the force field.
  */
@@ -89,16 +89,16 @@ struct GrowthSettings
   [[nodiscard]] static GrowthSettings fromForceField(const ForceField &forceField)
   {
     return GrowthSettings{
-        .chainScheme = forceField.useRecoilGrowth ? ChainScheme::RecoilGrowth : ChainScheme::ConfigurationalBias,
-        .numberOfFirstBeadPositions = forceField.numberOfFirstBeadPositions,
-        .numberOfTrialDirections = forceField.numberOfTrialDirections,
-        .numberOfTorsionTrialDirections = forceField.numberOfTorsionTrialDirections,
-        .numberOfTrialMovesPerOpenBead = forceField.numberOfTrialMovesPerOpenBead,
-        .ringCrankshaftProbability = forceField.cbmcRingCrankshaftProbability,
-        .ringTiltProbability = forceField.cbmcRingTiltProbability,
-        .minimumRosenbluthFactor = forceField.minimumRosenbluthFactor,
-        .recoilGrowthNumberOfTrialDirections = std::max<std::size_t>(1, forceField.recoilGrowthNumberOfTrialDirections),
-        .recoilGrowthMaximumRecoilLength = std::max<std::size_t>(1, forceField.recoilGrowthMaximumRecoilLength)};
+        .chainScheme = forceField.settings.useRecoilGrowth ? ChainScheme::RecoilGrowth : ChainScheme::ConfigurationalBias,
+        .numberOfFirstBeadPositions = forceField.settings.numberOfFirstBeadPositions,
+        .numberOfTrialDirections = forceField.settings.numberOfTrialDirections,
+        .numberOfTorsionTrialDirections = forceField.settings.numberOfTorsionTrialDirections,
+        .numberOfTrialMovesPerOpenBead = forceField.settings.numberOfTrialMovesPerOpenBead,
+        .ringCrankshaftProbability = forceField.settings.cbmcRingCrankshaftProbability,
+        .ringTiltProbability = forceField.settings.cbmcRingTiltProbability,
+        .minimumRosenbluthFactor = forceField.settings.minimumRosenbluthFactor,
+        .recoilGrowthNumberOfTrialDirections = std::max<std::size_t>(1, forceField.settings.recoilGrowthNumberOfTrialDirections),
+        .recoilGrowthMaximumRecoilLength = std::max<std::size_t>(1, forceField.settings.recoilGrowthMaximumRecoilLength)};
   }
 };
 
@@ -183,7 +183,7 @@ struct GrowContext
   /// of the dual cut-off scheme, i.e. whether the entry points correct their results to the full cut-offs.
   [[nodiscard]] bool growsAtInnerCutOff() const
   {
-    return cutOffMode == CutOffMode::Growth && forceField.useDualCutOff;
+    return cutOffMode == CutOffMode::Growth && forceField.settings.useDualCutOff;
   }
 
   /// The same environment with the molecule background replaced (e.g. the system's molecule atoms
@@ -255,19 +255,19 @@ struct GrowContext
  private:
   static bool usesInner(const ForceField &forceField, CutOffMode mode)
   {
-    return mode == CutOffMode::Inner || (mode == CutOffMode::Growth && forceField.useDualCutOff);
+    return mode == CutOffMode::Inner || (mode == CutOffMode::Growth && forceField.settings.useDualCutOff);
   }
   static double frameworkVDWCutOff(const ForceField &forceField, CutOffMode mode)
   {
-    return usesInner(forceField, mode) ? forceField.dualCutOff : forceField.cutOffFrameworkVDW;
+    return usesInner(forceField, mode) ? forceField.settings.dualCutOff : forceField.cutOffFrameworkVDW;
   }
   static double moleculeVDWCutOff(const ForceField &forceField, CutOffMode mode)
   {
-    return usesInner(forceField, mode) ? forceField.dualCutOff : forceField.cutOffMoleculeVDW;
+    return usesInner(forceField, mode) ? forceField.settings.dualCutOff : forceField.cutOffMoleculeVDW;
   }
   static double coulombCutOff(const ForceField &forceField, CutOffMode mode)
   {
-    return usesInner(forceField, mode) ? forceField.dualCutOff : forceField.cutOffCoulomb;
+    return usesInner(forceField, mode) ? forceField.settings.dualCutOff : forceField.cutOffCoulomb;
   }
 };
 }  // namespace CBMC

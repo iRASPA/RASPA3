@@ -5,6 +5,8 @@ module cbmc_operators;
 import std;
 
 import randomnumbers;
+import forcefield;
+import simulationbox;
 import cbmc_grow_context;
 import component;
 import atom;
@@ -194,6 +196,7 @@ std::vector<CBMC::StepTrial> seedTrials(RandomNumber &random, const CBMC::Growth
 // base's clamp-excess weight rides on every direction. With 'pinOld' the base positions themselves are
 // spin 0 of trial direction 0 (the retrace's old configuration).
 std::vector<CBMC::StepTrial> spinTrials(RandomNumber &random, const CBMC::GrowthSettings &settings, double beta,
+                                        const ForceField &forceField, const SimulationBox &simulationBox,
                                         std::vector<Atom> &chainAtoms, const CBMC::GrowStep &step,
                                         const CBMC::FlexibleBase &base, std::size_t numberOfTrialDirections,
                                         bool pinOld)
@@ -205,7 +208,8 @@ std::vector<CBMC::StepTrial> spinTrials(RandomNumber &random, const CBMC::Growth
   {
     const bool pinned = pinOld && i == 0;
     CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
-        random, settings.numberOfTorsionTrialDirections, beta, chainAtoms, base.nextBeadAtoms, step, axis, pinned);
+        random, settings.numberOfTorsionTrialDirections, beta, forceField, simulationBox, chainAtoms, base.nextBeadAtoms,
+        step, axis, pinned);
     trials[i] = {pinned ? base.nextBeadAtoms : std::move(torsion.positions),
                  torsion.rosenbluthWeight * base.clampWeight};
   }
@@ -220,6 +224,7 @@ std::vector<CBMC::StepTrial> spinTrials(RandomNumber &random, const CBMC::Growth
 // directions are simply left out: the schemes normalise by the requested number of directions, and
 // the pinned old position (retrace) is always trial 0.
 std::vector<CBMC::StepTrial> bridgeTrials(RandomNumber &random, const CBMC::GrowthSettings &settings, double beta,
+                                          const ForceField &forceField, const SimulationBox &simulationBox,
                                           std::vector<Atom> &chainAtoms, const CBMC::GrowStep &step,
                                           std::size_t numberOfTrialDirections, bool pinOld)
 {
@@ -233,7 +238,7 @@ std::vector<CBMC::StepTrial> bridgeTrials(RandomNumber &random, const CBMC::Grow
     const std::vector<Atom> old = CBMC::stepBeadPositions(chainAtoms, step);
     const double baseWeight = CBMC::bridgeClosureBaseWeight(beta, chainAtoms, step);
     CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
-        random, settings.numberOfTorsionTrialDirections, beta, chainAtoms, old, step, axis, true);
+        random, settings.numberOfTorsionTrialDirections, beta, forceField, simulationBox, chainAtoms, old, step, axis, true);
     trials.push_back({old, torsion.rosenbluthWeight * baseWeight});
     first = 1;
   }
@@ -243,7 +248,8 @@ std::vector<CBMC::StepTrial> bridgeTrials(RandomNumber &random, const CBMC::Grow
     const std::optional<CBMC::BridgeClosureBase> base = CBMC::sampleBridgeClosureBase(random, beta, chainAtoms, step);
     if (!base.has_value() || !(base->weight > 0.0)) continue;
     CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
-        random, settings.numberOfTorsionTrialDirections, beta, chainAtoms, {base->atom}, step, axis, false);
+        random, settings.numberOfTorsionTrialDirections, beta, forceField, simulationBox, chainAtoms, {base->atom}, step,
+        axis, false);
     trials.push_back({std::move(torsion.positions), torsion.rosenbluthWeight * base->weight});
   }
   return trials;
@@ -256,29 +262,34 @@ bool CBMC::stepHandlesUnsampledInternalTerms(const GrowStep &step)
 }
 
 std::vector<CBMC::StepTrial> CBMC::generateGrowTrials(RandomNumber &random, const GrowthSettings &settings, double beta,
-                                                      const Component &component, std::vector<Atom> &chainAtoms,
+                                                      const ForceField &forceField,
+                                                      const SimulationBox &simulationBox, const Component &component, std::vector<Atom> &chainAtoms,
                                                       const GrowStep &step, std::size_t numberOfTrialDirections)
 {
   if (step.kind == GrowStep::Kind::CloseBridge)
   {
-    return bridgeTrials(random, settings, beta, chainAtoms, step, numberOfTrialDirections, false);
+    return bridgeTrials(random, settings, beta, forceField, simulationBox, chainAtoms, step, numberOfTrialDirections,
+                        false);
   }
   if (!step.previousBead.has_value())
   {
     return seedTrials(random, settings, beta, component, chainAtoms, step, numberOfTrialDirections, std::nullopt);
   }
   const FlexibleBase base = sampleBase(random, settings, beta, component, chainAtoms, step);
-  return spinTrials(random, settings, beta, chainAtoms, step, base, numberOfTrialDirections, false);
+  return spinTrials(random, settings, beta, forceField, simulationBox, chainAtoms, step, base, numberOfTrialDirections,
+                    false);
 }
 
 std::vector<CBMC::StepTrial> CBMC::generateRetraceTrials(RandomNumber &random, const GrowthSettings &settings,
-                                                         double beta, const Component &component,
-                                                         std::vector<Atom> &chainAtoms, const GrowStep &step,
-                                                         std::size_t numberOfTrialDirections)
+                                                         double beta, const ForceField &forceField,
+                                                         const SimulationBox &simulationBox,
+                                                         const Component &component, std::vector<Atom> &chainAtoms,
+                                                         const GrowStep &step, std::size_t numberOfTrialDirections)
 {
   if (step.kind == GrowStep::Kind::CloseBridge)
   {
-    return bridgeTrials(random, settings, beta, chainAtoms, step, numberOfTrialDirections, true);
+    return bridgeTrials(random, settings, beta, forceField, simulationBox, chainAtoms, step, numberOfTrialDirections,
+                        true);
   }
   if (!step.previousBead.has_value())
   {
@@ -286,14 +297,17 @@ std::vector<CBMC::StepTrial> CBMC::generateRetraceTrials(RandomNumber &random, c
                       CBMC::stepBeadPositions(chainAtoms, step));
   }
   const FlexibleBase base = oldBase(beta, component, chainAtoms, step);
-  return spinTrials(random, settings, beta, chainAtoms, step, base, numberOfTrialDirections, true);
+  return spinTrials(random, settings, beta, forceField, simulationBox, chainAtoms, step, base, numberOfTrialDirections,
+                    true);
 }
 
 CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const GrowthSettings &settings, double beta,
+                                          const ForceField &forceField, const SimulationBox &simulationBox,
                                           const Component &component, std::vector<Atom> &contextAtoms,
                                           const GrowStep &step)
 {
-  std::vector<StepTrial> trials = generateGrowTrials(random, settings, beta, component, contextAtoms, step, 1);
+  std::vector<StepTrial> trials =
+      generateGrowTrials(random, settings, beta, forceField, simulationBox, component, contextAtoms, step, 1);
   // A bridge closure whose single base draw was infeasible has no direction: report a dead trial (zero
   // weight, the current positions), which recoil growth treats as closed.
   if (trials.empty()) return {stepBeadPositions(contextAtoms, step), 0.0};
@@ -301,8 +315,11 @@ CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const GrowthSett
 }
 
 double CBMC::oldConfigurationTorsionWeight(RandomNumber &random, const GrowthSettings &settings, double beta,
+                                           const ForceField &forceField, const SimulationBox &simulationBox,
                                            const Component &component, std::vector<Atom> &oldAtoms,
                                            const GrowStep &step)
 {
-  return generateRetraceTrials(random, settings, beta, component, oldAtoms, step, 1).front().torsionWeight;
+  return generateRetraceTrials(random, settings, beta, forceField, simulationBox, component, oldAtoms, step, 1)
+      .front()
+      .torsionWeight;
 }

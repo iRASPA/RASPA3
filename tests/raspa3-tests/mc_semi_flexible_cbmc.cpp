@@ -415,7 +415,7 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, biphenyl_nvt_drift_and_ring_geometry_cbmc)
 TEST(MC_SEMI_FLEXIBLE_CBMC, biphenyl_nvt_drift_and_ring_geometry_recoil_growth)
 {
   ForceField forceField = makeBiphenylForceField();
-  forceField.useRecoilGrowth = true;
+  forceField.settings.useRecoilGrowth = true;
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(Move::Types::Translation, 1.0);
@@ -486,7 +486,7 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, basic_example_biphenyl_nvt_partial_reinsertion_cbmc)
 TEST(MC_SEMI_FLEXIBLE_CBMC, basic_example_biphenyl_nvt_partial_reinsertion_recoil_growth)
 {
   ForceField forceField = makeBiphenylForceField();
-  forceField.useRecoilGrowth = true;
+  forceField.settings.useRecoilGrowth = true;
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(Move::Types::Translation, 1.0);
@@ -512,7 +512,7 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, basic_example_biphenyl_nvt_partial_reinsertion_recoi
 TEST(MC_SEMI_FLEXIBLE_CBMC, nvt_drift_and_rigid_geometry_recoil_growth)
 {
   ForceField forceField = makeAlkaneForceField();
-  forceField.useRecoilGrowth = true;
+  forceField.settings.useRecoilGrowth = true;
 
   MCMoveProbabilities probabilities = MCMoveProbabilities();
   probabilities.setProbability(Move::Types::Translation, 1.0);

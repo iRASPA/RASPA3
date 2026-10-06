@@ -138,7 +138,7 @@ Component makeChain(const ForceField& forceField, const MCMoveProbabilities& pro
   potentials.bends = {BendPotential({0, 1, 2}, BendType::Harmonic, {62500.0, 114.0}),
                       BendPotential({1, 2, 3}, BendType::Harmonic, {62500.0, 114.0})};
   potentials.torsions = {TorsionPotential({0, 1, 2, 3}, TorsionType::TraPPE, {0.0, 355.03, -68.19, 791.32})};
-  potentials.vanDerWaals = {VanDerWaalsPotential({0, 3}, VanDerWaalsType::LennardJones, {98.0, 3.75}, 0.5)};
+  potentials.vanDerWaals = {VanDerWaalsPotential({0, 3}, VDWParameters::Type::LennardJones, {98.0, 3.75}, 0.5)};
   potentials.coulombs = {CoulombPotential({0, 3}, CoulombType::Coulomb, 0.25, 0.25, 0.5)};
 
   return Component(forceField, "butane", 425.0, 3796000.0, 0.199,
@@ -396,10 +396,10 @@ TEST(mc_cell_list, ewald_difference_of_moved_atoms_matches_full_molecule)
 
       const RunningEnergy full = Interactions::energyDifferenceEwaldFourier(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-          system.simulationBox, trialAtoms, oldAtoms);
+          system.simulationBox, system.components, trialAtoms, oldAtoms);
       const RunningEnergy partial = Interactions::energyDifferenceEwaldFourierMovedAtoms(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-          system.simulationBox, trialAtoms, oldAtoms, moved);
+          system.simulationBox, system.components, trialAtoms, oldAtoms, moved);
 
       const double scale = std::max(1.0, std::abs(full.potentialEnergy()));
       EXPECT_NEAR(partial.ewald_fourier, full.ewald_fourier, 1e-9 * scale);

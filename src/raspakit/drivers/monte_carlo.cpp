@@ -160,9 +160,9 @@ void MonteCarlo::setup()
           component.mc_moves_probabilities.getProbability(Move::Types::TranslationRotationSmartMC) > 0.0;
     }
     if (usesGradientMove &&
-        system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)
+        system.forceField.settings.interpolationScheme == ForceFieldSettings::InterpolationScheme::Polynomial)
     {
-      system.forceField.interpolationScheme = ForceField::InterpolationScheme::Tricubic;
+      system.forceField.settings.interpolationScheme = ForceFieldSettings::InterpolationScheme::Tricubic;
     }
 
     ++system_id;

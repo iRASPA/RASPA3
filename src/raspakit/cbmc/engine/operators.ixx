@@ -6,6 +6,8 @@ import std;
 
 import atom;
 import randomnumbers;
+import forcefield;
+import simulationbox;
 import cbmc_grow_context;
 import component;
 import cbmc_grow_step;
@@ -55,6 +57,7 @@ struct StepTrial
  * the torsion spin), matching the coupled-decoupled bookkeeping on grow and retrace.
  */
 std::vector<StepTrial> generateGrowTrials(RandomNumber &random, const GrowthSettings &settings, double beta,
+                                          const ForceField &forceField, const SimulationBox &simulationBox,
                                           const Component &component, std::vector<Atom> &chainAtoms,
                                           const GrowStep &step, std::size_t numberOfTrialDirections);
 
@@ -66,6 +69,7 @@ std::vector<StepTrial> generateGrowTrials(RandomNumber &random, const GrowthSett
  * the remaining directions mirror the grow scheme.
  */
 std::vector<StepTrial> generateRetraceTrials(RandomNumber &random, const GrowthSettings &settings, double beta,
+                                             const ForceField &forceField, const SimulationBox &simulationBox,
                                              const Component &component, std::vector<Atom> &chainAtoms,
                                              const GrowStep &step, std::size_t numberOfTrialDirections);
 
@@ -87,6 +91,7 @@ std::vector<StepTrial> generateRetraceTrials(RandomNumber &random, const GrowthS
  * bead and bias m_i between the two directions of the move.
  */
 StepTrial generateRecoilTrial(RandomNumber &random, const GrowthSettings &settings, double beta,
+                              const ForceField &forceField, const SimulationBox &simulationBox,
                               const Component &component, std::vector<Atom> &contextAtoms, const GrowStep &step);
 
 /**
@@ -96,6 +101,7 @@ StepTrial generateRecoilTrial(RandomNumber &random, const GrowthSettings &settin
  * are random rotations around the last bond vector.
  */
 double oldConfigurationTorsionWeight(RandomNumber &random, const GrowthSettings &settings, double beta,
+                                     const ForceField &forceField, const SimulationBox &simulationBox,
                                      const Component &component, std::vector<Atom> &oldAtoms, const GrowStep &step);
 
 /**

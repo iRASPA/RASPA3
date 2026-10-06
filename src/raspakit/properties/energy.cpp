@@ -690,7 +690,7 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       std::print(stream, "\n");
     }
 
-    if (!components[k].intraMolecularPotentials.vanDerWaals.empty())
+    if (components[k].intraMolecularPotentials.numberOfVanDerWaalsPairs() > 0)
     {
       std::print(stream, "    Intra Van Der Waals energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
                  components[k].name);
@@ -710,9 +710,9 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       std::print(stream, "\n");
     }
 
-    if (!components[k].intraMolecularPotentials.coulombs.empty())
+    if (components[k].intraMolecularPotentials.numberOfCoulombPairs() > 0)
     {
-      std::print(stream, "    Intra Van Der Waals energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+      std::print(stream, "    Intra Coulomb energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
                  components[k].name);
       std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       double prefactor = Units::EnergyToKelvin;

@@ -66,7 +66,7 @@ RunningEnergy chainedDifference(System& system, const std::vector<std::vector<At
   for (std::size_t k = 0; k != oldMolecules.size(); ++k)
   {
     total += Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                        working, trial, system.forceField, system.simulationBox,
+                                                        working, trial, system.forceField, system.simulationBox, system.components,
                                                         newMolecules[k], oldMolecules[k]);
     working = trial;
   }
@@ -145,7 +145,7 @@ void expectCombinedMatchesChained(ForceField::ChargeMethod chargeMethod)
 
   const RunningEnergy combined = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, newAtoms, oldAtoms);
+      system.simulationBox, system.components, newAtoms, oldAtoms);
 
   const RunningEnergy chained = chainedDifference(system, newMolecules, oldMolecules);
 

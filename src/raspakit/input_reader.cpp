@@ -4299,7 +4299,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           reject(std::format("fractional (CFCMC) molecules (component '{}')", component.name));
         }
       }
-      if (system.forceField.useDualCutOff) reject("'UseDualCutOff'");
+      if (system.forceField.settings.useDualCutOff) reject("'UseDualCutOff'");
     }
   }
 

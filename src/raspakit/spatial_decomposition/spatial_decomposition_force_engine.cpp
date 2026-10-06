@@ -19,6 +19,8 @@ import running_energy;
 import potential_pair_derivatives;
 import potential_pair_vdw;
 import potential_pair_coulomb;
+import potential_intra_pair;
+import intra_molecular_exclusions;
 import interactions_ewald;
 import integrators_update;
 import integrators_compute;
@@ -86,7 +88,7 @@ bool SpatialDecompositionForceEngine::supports(const System& system, std::string
     reason = "'OmitInterInteractions'";
     return false;
   }
-  if (system.forceField.useDualCutOff)
+  if (system.forceField.settings.useDualCutOff)
   {
     reason = "'UseDualCutOff'";
     return false;
@@ -278,6 +280,7 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
     fy.assign(numberOfAtoms, 0.0);
     fz.assign(numberOfAtoms, 0.0);
     cellList.numberOfBuilds = 0;  // forces a rebuild
+    if (deviceKernel) devicePairs.setExclusions(system);
   }
   if (system.moleculeData.size() != partitionedMolecules || atomCenterOfMass.size() != numberOfAtoms)
   {
@@ -412,7 +415,7 @@ void SpatialDecompositionForceEngine::residentRebuild(System& system)
                     cellList.listCutoff, halfWidth));
   }
   cellList.updateCellGrid(box);
-  cellList.bin(box, system.spanOfMoleculeAtoms());
+  cellList.bin(box, system.spanOfMoleculeAtoms(), system.components);
   ++timing.rebuilds;
   devicePairs.beginBuild(cellList, box, 1);
   resident.setLayout(devicePairs, cellList, box);
@@ -442,6 +445,7 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
     fy.assign(numberOfAtoms, 0.0);
     fz.assign(numberOfAtoms, 0.0);
     cellList.numberOfBuilds = 0;
+    devicePairs.setExclusions(system);
   }
   if (system.moleculeData.size() != partitionedMolecules || atomCenterOfMass.size() != numberOfAtoms)
   {
@@ -458,7 +462,7 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
       // bin the host positions and lay out the device lists; the slot positions follow with the upload
       const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
       cellList.updateCellGrid(box);
-      cellList.bin(box, system.spanOfMoleculeAtoms());
+      cellList.bin(box, system.spanOfMoleculeAtoms(), system.components);
       ++timing.rebuilds;
       devicePairs.beginBuild(cellList, box, 1);
       devicePairs.finishBuild();
@@ -767,7 +771,7 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
           if (thread == 0)
           {
             cellList.updateCellGrid(box);
-            cellList.bin(box, atoms);
+            cellList.bin(box, atoms, system.components);
             ++timing.rebuilds;
             if (deviceKernel) devicePairs.beginBuild(cellList, box, threads);
           }
@@ -979,6 +983,7 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
                               forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, Units::CoulombicConversionFactor,
                               forceField.EwaldAlpha, settings.verletSkin, settings.pruneSkin);
     devicePairs.setEwaldAlpha(forceField.EwaldAlpha);
+    devicePairs.setExclusions(system);
   }
   else if (fastKernel && usesClusterKernel())
   {
@@ -1288,6 +1293,40 @@ inline void addOuterProduct(double3x3& tensor, const double3& arm, const double3
   tensor.cy += arm.z * gradient.y;
   tensor.cz += arm.z * gradient.z;
 }
+
+/// The scaled (1-4) pairs of one molecule with the intramolecular pair model (Potentials::intraMolecularVDW /
+/// intraMolecularCoulomb at the pair's scaling). The cell lists leave these pairs out together with the excluded
+/// ones; every other pair of the molecule is evaluated by the pair kernels like a pair of two molecules.
+void addScaledPairGradient(RunningEnergy& energy, const ForceField& forceField, const SimulationBox& box,
+                           const IntraMolecularExclusions& exclusions, std::span<const Atom> atoms,
+                           std::span<AtomDynamics> dynamics)
+{
+  for (const IntraMolecularExclusions::ScaledPair& pair : exclusions.scaledPairs)
+  {
+    const Atom& atomA = atoms[pair.atomA];
+    const Atom& atomB = atoms[pair.atomB];
+    const double3 dr = box.applyPeriodicBoundaryConditions(atomA.position - atomB.position);
+    const double rr = double3::dot(dr, dr);
+
+    double factor = 0.0;
+    const Potentials::PairDerivatives<1> vdw = Potentials::intraMolecularVDW<1>(
+        forceField, pair.scalingVDW, rr, static_cast<std::size_t>(atomA.type), static_cast<std::size_t>(atomB.type));
+    energy.intraVDW += vdw.energy;
+    factor += vdw.firstDerivativeFactor;
+    if (forceField.useCharge)
+    {
+      const Potentials::PairDerivatives<1> coulomb =
+          Potentials::intraMolecularCoulomb<1>(forceField, pair.scalingCoulomb, atomA.scalingCoulomb,
+                                               atomB.scalingCoulomb, std::sqrt(rr), atomA.charge, atomB.charge);
+      energy.intraCoul += coulomb.energy;
+      factor += coulomb.firstDerivativeFactor;
+    }
+    if (factor == 0.0) continue;
+    const double3 gradient = factor * dr;
+    dynamics[pair.atomA].gradient += gradient;
+    dynamics[pair.atomB].gradient -= gradient;
+  }
+}
 }  // namespace
 
 void SpatialDecompositionForceEngine::bondedWork(System& system)
@@ -1320,8 +1359,8 @@ void SpatialDecompositionForceEngine::bondedWork(System& system)
       for (AtomDynamics& atomDynamics : moleculeDynamics) atomDynamics.gradient = double3(0.0, 0.0, 0.0);
 
       Interactions::addChargeSelfEnergy(energy, forceField, moleculeAtoms);
-      Interactions::addIntraMolecularChargeExclusionGradient(energy, forceField, box, moleculeAtoms, moleculeDynamics,
-                                                             withVirial ? &strain : nullptr);
+      Interactions::addIntraMolecularChargeExclusionGradient(energy, forceField, box, system.components, moleculeAtoms,
+                                                             moleculeDynamics, withVirial ? &strain : nullptr);
 
       if (withVirial)
       {
@@ -1344,7 +1383,11 @@ void SpatialDecompositionForceEngine::bondedWork(System& system)
         }
       }
 
-      energy += component.intraMolecularPotentials.computeInternalGradient(moleculeAtoms, moleculeDynamics);
+      // the bonded terms and the scaled pairs (the non-excluded, unscaled pairs of the molecule are in the cell
+      // lists and evaluated by the pair kernels with the molecule-molecule pairs)
+      energy += component.intraMolecularPotentials.computeInternalBondedGradient(box, moleculeAtoms, moleculeDynamics);
+      addScaledPairGradient(energy, forceField, box, component.intraMolecularPotentials.exclusions, moleculeAtoms,
+                            moleculeDynamics);
     }
     const std::size_t index = begin / chunk;
     chunkEnergies[index] = energy;

@@ -96,7 +96,7 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
 
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, newAtoms, oldAtoms, system.netCharge);
+      system.simulationBox, system.components, newAtoms, oldAtoms, system.netCharge);
 
   RunningEnergy tailEnergyDifference = Interactions::computeInterMolecularTailEnergyDifferenceReaction(
       system.forceField, system.simulationBox, system.totalNumberOfPseudoAtoms, reaction.reactantStoichiometry,

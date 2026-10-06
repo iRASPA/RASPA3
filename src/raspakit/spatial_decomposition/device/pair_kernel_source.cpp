@@ -26,6 +26,12 @@ module spatial_decomposition_device_kernels;
 // with the minimum image of the current cell (valid while cutoff + skin <= half the smallest perpendicular width,
 // which the cell list checks). The list build uses the translation of the stencil offset, and the minimum image
 // where the stencil wraps around a small axis.
+//
+// Same-molecule pairs: the list build leaves out the excluded and the scaled (1-4) pairs of a molecule
+// (IntraMolecularExclusions::isExcludedFromPairList; the bonded kernel evaluates the scaled pairs), given as a
+// CSR table over the atoms in system order (`exclusionStart` per atom, bit 31 set when every pair of the
+// molecule is excluded, i.e. a rigid molecule; `exclusionPartner` the partner atoms) with the system atom of
+// every slot (`slotAtom`). Every other same-molecule pair is listed and evaluated like a pair of two molecules.
 const char* const deviceKernelPairSource = R"CLC(
 #define CLUSTER_I 8
 #define CLUSTER_J 4
@@ -33,6 +39,7 @@ const char* const deviceKernelPairSource = R"CLC(
 #define PARTIALS 11
 #define STENCIL 27
 #define NO_ATOM 0xFFFFFFFFu
+#define ALL_EXCLUDED_BIT 0x80000000u
 
 typedef struct
 {
@@ -136,12 +143,31 @@ DEVICE_FUNCTION uint appendBlocks(LOCAL uint* flags, uint id, uint J, uint mask,
   return count + all;
 }
 
+// Whether the same-molecule pair (atomI, atomJ) (system atom indices) is left out of the lists: excluded or
+// scaled. A linear scan of the short partner list of atomI (1-2, 1-3 and 1-4 partners; a rigid molecule is
+// flagged instead of listed).
+DEVICE_FUNCTION bool excludedFromList(uint atomI, uint atomJ, GLOBAL const uint* RESTRICT exclusionStart,
+                                      GLOBAL const uint* RESTRICT exclusionPartner)
+{
+  const uint start = exclusionStart[atomI];
+  if (start & ALL_EXCLUDED_BIT) return true;
+  const uint end = exclusionStart[atomI + 1] & ~ALL_EXCLUDED_BIT;
+  for (uint k = start; k < end; ++k)
+  {
+    if (exclusionPartner[k] == atomJ) return true;
+  }
+  return false;
+}
+
 // The outer list of one i-cluster per work-group: the candidates are the j-clusters of the 27 cells around the
 // cluster's cell (each neighbour cell once, also when the stencil wraps around a small axis); a work-item takes
 // one candidate per round, tests its bounding box and builds the 32-bit mask of the pairs within the list cutoff
-// between different molecules.
+// (all pairs of two molecules, and the same-molecule pairs that are neither excluded nor scaled).
 KERNEL_GROUP_SIZE(GROUP_SIZE)
 void buildList(GLOBAL const float4* RESTRICT buildPosition,
+               GLOBAL const uint* RESTRICT slotAtom,          // system atom per slot (NO_ATOM for a dummy slot)
+               GLOBAL const uint* RESTRICT exclusionStart,    // per system atom: CSR start of its left-out partners
+               GLOBAL const uint* RESTRICT exclusionPartner,  // the left-out partners (system atoms)
                GLOBAL const uint* RESTRICT cellSlotStart,     // first slot per coarse cell (cells + 1)
                GLOBAL const uint* RESTRICT cellOfCluster,     // coarse cell per i-cluster
                GLOBAL const float4* RESTRICT clusterMin,
@@ -158,6 +184,7 @@ void buildList(GLOBAL const float4* RESTRICT buildPosition,
   GLOBAL uint* RESTRICT rowMask = outerMask + I * capacity;
 
   LOCAL_DECL(float4 pi[CLUSTER_I]);
+  LOCAL_DECL(uint atomI[CLUSTER_I]);
   LOCAL_DECL(uint stencilCell[STENCIL]);
   LOCAL_DECL(float4 stencilShift[STENCIL]);  // translation of the neighbour cell; w != 0: image not fixed (minimum image)
   LOCAL_DECL(uint stencilFirst[STENCIL]);    // first candidate index of the neighbour cell
@@ -177,7 +204,11 @@ void buildList(GLOBAL const float4* RESTRICT buildPosition,
   const float3 maxI = fmax(max0.xyz, max1.xyz);
   const float listCutoffSquared = bp->listCutoffSquared;
 
-  if (id < CLUSTER_I) pi[id] = buildPosition[I * CLUSTER_I + id];
+  if (id < CLUSTER_I)
+  {
+    pi[id] = buildPosition[I * CLUSTER_I + id];
+    atomI[id] = slotAtom[I * CLUSTER_I + id];
+  }
   if (id < STENCIL)
   {
     const uint c = cellOfCluster[I];
@@ -256,11 +287,18 @@ void buildList(GLOBAL const float4* RESTRICT buildPosition,
           const float4 pj = buildPosition[J * CLUSTER_J + b];
           const uint moleculeJ = AS_UINT(pj.w);
           if (moleculeJ == NO_ATOM) continue;
+          const uint atomJ = slotAtom[J * CLUSTER_J + b];
           for (uint a = 0; a < CLUSTER_I; ++a)
           {
             const float4 pa = pi[a];
             const uint moleculeI = AS_UINT(pa.w);
-            if (moleculeI == NO_ATOM || moleculeI == moleculeJ) continue;
+            if (moleculeI == NO_ATOM) continue;
+            if (moleculeI == moleculeJ)
+            {
+              // the same atom (the clusters of one cell overlap) or a left-out same-molecule pair
+              const uint ai = atomI[a];
+              if (ai == atomJ || excludedFromList(ai, atomJ, exclusionStart, exclusionPartner)) continue;
+            }
             float3 dr = pa.xyz - pj.xyz - shift.xyz;
             if (ambiguous) dr = minimumImage(dr, bp->cell, bp->inverseCell, bp->orthorhombic);
             if (dot(dr, dr) < listCutoffSquared) mask |= 1u << (a * CLUSTER_J + b);

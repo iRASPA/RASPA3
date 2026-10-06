@@ -40,6 +40,7 @@ import coulomb_potential;
 import intra_molecular_potentials;
 import chiral_center;
 import connectivity_table;
+import intra_molecular_exclusions;
 import cross_links;
 export import fragment;
 export import fragment_graph;
@@ -146,7 +147,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{7};  ///< Version number for serialization.
+  std::uint64_t versionNumber{9};  ///< Version number for serialization.
 
   Type type{0};  ///< Type of the component (Adsorbate or Cation).
 
@@ -243,7 +244,14 @@ export struct Component
   std::vector<Atom> atoms{};       ///< List of atoms in the component.
 
   ConnectivityTable connectivityTable{};                            ///< Connectivity table for the component.
-  Potentials::IntraMolecularPotentials intraMolecularPotentials{};  ///< List of internal potentials.
+  /// The internal potentials: the bonded terms and, as 'intraMolecularPotentials.exclusions', the non-bonded
+  /// exclusion topology (the 1-2, 1-3 and same-rigid-fragment pairs that do not interact through the pair
+  /// potentials, every pair for a rigid molecule, and the 1-4 pairs with their scaling). The non-excluded pairs are
+  /// implicit (enumerated, not stored); the explicit pair lists of the potentials are empty for a component.
+  Potentials::IntraMolecularPotentials intraMolecularPotentials{};
+
+  double intra14VanDerWaalsScaling{0.0};   ///< Scaling of the van der Waals interaction of the 1-4 pairs.
+  double intra14ChargeChargeScaling{0.0};  ///< Scaling of the Coulomb interaction of the 1-4 pairs.
 
   /// Atoms of this molecule that can form cross-links (inter-molecular bonds owned by the system's
   /// CrossLinkTable). Read from the component's 'ReactiveSites'. Empty for ordinary components.
@@ -670,10 +678,19 @@ export struct Component
   std::vector<BendTorsionPotential> readBendTorsionPotentials(
       const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 
-  std::vector<VanDerWaalsPotential> readVanDerWaalsPotentials(
-      const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
-  std::vector<CoulombPotential> readCoulombPotentials(
-      const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  /// Reads 'Intra14VanDerWaalsScalingValue' / 'Intra14ChargeChargeScalingValue' (zero when absent).
+  static double readIntra14Scaling(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data, std::string_view key);
+
+  /**
+   * \brief Builds the exclusion topology of the molecule ('intraMolecularPotentials.exclusions').
+   *
+   * The excluded pairs are the 1-2 and 1-3 pairs of the bond graph and the pairs inside one rigid fragment (every
+   * pair for a rigid molecule). Every other pair interacts implicitly at full strength, the 1-4 pairs with the 1-4
+   * scalings. Explicit pair terms present in 'intraMolecularPotentials.vanDerWaals' / '.coulombs' (programmatic
+   * components) are taken as scaling overrides of their pairs and removed: a component has no explicit pair terms.
+   * The parameters to materialise the implicit pairs for the CBMC growth plans are captured from the force field.
+   */
+  void buildIntraMolecularNonBondedPairs(const ForceField &forceField);
 
   /// Reads and validates the 'RepeatUnits' of a periodic chain molecule (see 'repeatUnits'); throws
   /// with a descriptive message when the units do not form a shift-periodic partition.
@@ -741,6 +758,10 @@ export struct Component
    */
   const std::vector<CBMC::GrowStep> &growthPlan(const std::vector<std::size_t> &beadsAlreadyPlaced) const;
 
+  /// Whether a configured Monte Carlo move of the component (or its partial-reinsertion sets / reactive sites)
+  /// may grow the molecule through a growth plan; decides whether the plans are built when the component is read.
+  bool mayUseGrowthPlans() const;
+
   /**
    * \brief Prepares the cached growth plans for inverse temperature 'beta': fills the frozen
    * base-coupling constants of every flexible attach step (see 'CBMC::BaseCouplingConstants').
@@ -774,7 +795,9 @@ export struct Component
    * constructs the context directly) the component's declared geometry is used instead. The returned
    * reference stays valid for the lifetime of the component (the cache never erases entries).
    */
-  const std::vector<double> &recoilReferenceStepEnergies(const std::vector<std::size_t> &beadsAlreadyPlaced) const;
+  const std::vector<double> &recoilReferenceStepEnergies(const ForceField &forceField,
+                                                         const SimulationBox &simulationBox,
+                                                         const std::vector<std::size_t> &beadsAlreadyPlaced) const;
 
   /// Returns the valid pivot bonds of the molecule (see PivotBond); computed on first use and
   /// cached, since the topology of a component does not change during a simulation.

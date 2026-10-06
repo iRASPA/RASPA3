@@ -86,7 +86,7 @@ TEST(grids, Test_CHA_grid)
   double3 pos = double3(11, 12, 13);
 
   std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPosition(
-      ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, pos, 7,
+      ForceFieldSettings::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, pos, 7,
       framework.simulationBox, frameworkAtoms);
 
   double3 cartesian_force =
@@ -120,11 +120,11 @@ TEST(grids, Test_CHA_grid)
 
   int3 numberOfGridPoints{32, 32, 32};
   InterpolationEnergyGrid grid =
-      InterpolationEnergyGrid(framework.simulationBox, numberOfGridPoints, ForceField::InterpolationScheme::Triquintic);
+      InterpolationEnergyGrid(framework.simulationBox, numberOfGridPoints, ForceFieldSettings::InterpolationScheme::Triquintic);
   // InterpolationEnergyGrid grid = InterpolationEnergyGrid(numberOfGridPoints,
   // InterpolationEnergyGrid::InterpolationOrder::Triquintic);
   std::stringstream stream;
-  grid.makeInterpolationGrid(stream, ForceField::InterpolationGridType::EwaldReal, system.forceField,
+  grid.makeInterpolationGrid(stream, ForceFieldSettings::InterpolationGridType::EwaldReal, system.forceField,
                              system.framework.value(), 7);
 
   // RunningEnergy energy =
@@ -143,14 +143,14 @@ TEST(grids, Test_CHA_grid)
   // InterpolationEnergyGrid::InterpolationOrder::Tricubic);
   ////InterpolationEnergyGrid grid_repulsion = InterpolationEnergyGrid(numberOfGridPoints,
   /// InterpolationEnergyGrid::InterpolationOrder::Triquintic);
-  // grid_repulsion.makeInterpolationGrid(ForceField::InterpolationGridType::LennardJonesRepulsion, system.forceField,
+  // grid_repulsion.makeInterpolationGrid(ForceFieldSettings::InterpolationGridType::LennardJonesRepulsion, system.forceField,
   // system.framework.value(), typeB);
 
   // InterpolationEnergyGrid grid_attraction = InterpolationEnergyGrid(numberOfGridPoints,
   // InterpolationEnergyGrid::InterpolationOrder::Tricubic);
   ////InterpolationEnergyGrid grid_attraction = InterpolationEnergyGrid(numberOfGridPoints,
   /// InterpolationEnergyGrid::InterpolationOrder::Triquintic);
-  // grid_attraction.makeInterpolationGrid(ForceField::InterpolationGridType::LennardJonesAttraction, system.forceField,
+  // grid_attraction.makeInterpolationGrid(ForceFieldSettings::InterpolationGridType::LennardJonesAttraction, system.forceField,
   // system.framework.value(), typeB);
 
   // double interpolated_repulsion_value = grid_repulsion.interpolateVDWGrid(s);

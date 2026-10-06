@@ -120,7 +120,7 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
             {
               return Interactions::energyDifferenceEwaldFourierMovedAtoms(
                   system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                  system.forceField, system.simulationBox, newMolecule, molecule_atoms, movedIndices);
+                  system.forceField, system.simulationBox, system.components, newMolecule, molecule_atoms, movedIndices);
             });
 
   std::vector<double3> electricFieldNeighborDelta;

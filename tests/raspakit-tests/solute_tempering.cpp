@@ -203,7 +203,7 @@ TEST(solute_tempering, intramolecular_pair_lists_scale_as_lambda)
 {
   const double lambda = 0.37;
   Potentials::IntraMolecularPotentials potentials{};
-  potentials.vanDerWaals = {VanDerWaalsPotential({0, 3}, VanDerWaalsType::LennardJones, {98.0, 3.75}, 0.5)};
+  potentials.vanDerWaals = {VanDerWaalsPotential({0, 3}, VDWParameters::Type::LennardJones, {98.0, 3.75}, 0.5)};
   potentials.coulombs = {CoulombPotential({0, 3}, CoulombType::Coulomb, 0.3, -0.3, 0.5)};
 
   Potentials::IntraMolecularPotentials scaled = potentials;
@@ -305,7 +305,7 @@ Component makeChain(const ForceField& forceField, std::size_t componentId, std::
   potentials.bends = {BendPotential({0, 1, 2}, BendType::Harmonic, {62500.0, 114.0}),
                       BendPotential({1, 2, 3}, BendType::Harmonic, {62500.0, 114.0})};
   potentials.torsions = {TorsionPotential({0, 1, 2, 3}, TorsionType::TraPPE, {0.0, 355.03, -68.19, 791.32})};
-  potentials.vanDerWaals = {VanDerWaalsPotential({0, 3}, VanDerWaalsType::LennardJones, {98.0, 3.75}, 0.5)};
+  potentials.vanDerWaals = {VanDerWaalsPotential({0, 3}, VDWParameters::Type::LennardJones, {98.0, 3.75}, 0.5)};
   potentials.coulombs = {CoulombPotential({0, 3}, CoulombType::Coulomb, 0.3, -0.3, 0.5)};
 
   const std::uint8_t c = static_cast<std::uint8_t>(componentId);

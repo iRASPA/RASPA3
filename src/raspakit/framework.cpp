@@ -820,10 +820,7 @@ void Framework::generateIntraMolecularPotentials(const ForceField& forceField)
   {
     const std::size_t typeA = static_cast<std::size_t>(atoms[indices[0]].type);
     const std::size_t typeB = static_cast<std::size_t>(atoms[indices[1]].type);
-    const double4 parameters = forceField(typeA, typeB).parameters;
-    potentials.vanDerWaals.emplace_back(
-        indices, VanDerWaalsType::LennardJones,
-        std::vector<double>{parameters.x * Units::EnergyToKelvin, parameters.y, parameters.z, parameters.w}, scaling);
+    potentials.vanDerWaals.emplace_back(indices, forceField(typeA, typeB), scaling);
   };
 
   const auto addCoulomb = [&](const std::array<std::size_t, 2>& indices, double scaling)
@@ -1008,10 +1005,7 @@ void Framework::regenerateVanDerWaalsImageList(const ForceField& forceField, con
   {
     const std::size_t typeA = static_cast<std::size_t>(atoms[i].type);
     const std::size_t typeB = static_cast<std::size_t>(atoms[j].type);
-    const double4 parameters = forceField(typeA, typeB).parameters;
-    vanDerWaals.emplace_back(
-        std::array<std::size_t, 2>{i, j}, VanDerWaalsType::LennardJones,
-        std::vector<double>{parameters.x * Units::EnergyToKelvin, parameters.y, parameters.z, parameters.w}, scaling);
+    vanDerWaals.emplace_back(std::array<std::size_t, 2>{i, j}, forceField(typeA, typeB), scaling);
     vanDerWaalsImages.push_back({int3{}, shift});
   };
 

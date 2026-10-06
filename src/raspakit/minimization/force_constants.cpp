@@ -227,9 +227,9 @@ void addFrameworkIntramolecular(const System& system, ForceConstants& forceConst
   }
 }
 
-// Molecule intramolecular terms (bonds, bends, urey-bradley, torsions, cross terms and the intra
-// van der Waals / Coulomb pairs). These are evaluated from the direct atom positions without periodic
-// image shifts, so every contribution lands in the home image Phi(0). Assembled by reusing the analytic
+// Molecule intramolecular terms (bonds, bends, urey-bradley, torsions, cross terms and the non-excluded
+// intra van der Waals / Coulomb pairs). These are evaluated from the atom positions of the (whole) molecule,
+// so every contribution lands in the home image Phi(0). Assembled by reusing the analytic
 // intramolecular Hessian routines with a full-system DOF layout, whose position-position block indexes
 // atoms exactly as the force-constant sites (flexible framework atoms first, then molecule atoms).
 void addMoleculeIntramolecular(const System& system, ForceConstants& forceConstants,
@@ -248,6 +248,8 @@ void addMoleculeIntramolecular(const System& system, ForceConstants& forceConsta
 
   GeneralizedHessian local(dimension, 0);
   std::vector<AtomDynamics> dynamicsStorage(moleculeAtoms.size());
+  const ForceField& forceField = system.forceField;
+  const SimulationBox& box = system.simulationBox;
   const std::span<const Molecule> moleculeData = system.moleculeData;
   const std::span<const Component> components = system.components;
   const std::span<AtomDynamics> dynamics = dynamicsStorage;
@@ -257,9 +259,10 @@ void addMoleculeIntramolecular(const System& system, ForceConstants& forceConsta
   Interactions::computeIntraMolecularUreyBradleyHessian(moleculeData, moleculeAtoms, components, layout, local,
                                                         dynamics);
   Interactions::computeIntraMolecularTorsionHessian(moleculeData, moleculeAtoms, components, layout, local, dynamics);
-  Interactions::computeIntraMolecularVanDerWaalsHessian(moleculeData, moleculeAtoms, components, layout, local,
-                                                        dynamics);
-  Interactions::computeIntraMolecularCoulombHessian(moleculeData, moleculeAtoms, components, layout, local, dynamics);
+  Interactions::computeIntraMolecularVanDerWaalsHessian(forceField, box, moleculeData, moleculeAtoms, components, layout,
+                                                        local, dynamics);
+  Interactions::computeIntraMolecularCoulombHessian(forceField, box, moleculeData, moleculeAtoms, components, layout,
+                                                    local, dynamics);
   Interactions::computeIntraMolecularBondBondHessian(moleculeData, moleculeAtoms, components, layout, local, dynamics);
   Interactions::computeIntraMolecularBondBendHessian(moleculeData, moleculeAtoms, components, layout, local, dynamics);
   Interactions::computeIntraMolecularBendBendHessian(moleculeData, moleculeAtoms, components, layout, local, dynamics);
@@ -276,10 +279,11 @@ void addMoleculeIntramolecular(const System& system, ForceConstants& forceConsta
 }
 
 // Ewald intramolecular exclusion correction. The reciprocal Fourier sum counts every intramolecular
-// charge pair; to obtain the intended electrostatics that spurious contribution is removed by the
-// pairwise term U(r) = -C q_i q_j erf(alpha r) / r for all pairs within a molecule. This mirrors the
-// molecule branch of Interactions::computeEwaldFourierHessian exactly, but records each pair's
-// Cartesian block against the lattice vector between the two atoms instead of folding to Gamma.
+// charge pair; for the excluded pairs (IntraMolecularExclusions: 1-2, 1-3 and rigid-fragment pairs) that
+// spurious contribution is removed by the pairwise term U(r) = -C q_i q_j erf(alpha r) / r; the other
+// pairs carry their completion in the intramolecular Coulomb pair term. This mirrors the molecule branch
+// of Interactions::computeEwaldFourierHessian exactly, but records each pair's Cartesian block against
+// the lattice vector between the two atoms instead of folding to Gamma.
 void addMoleculeEwaldExclusion(const System& system, ForceConstants& forceConstants,
                                std::size_t numberOfFrameworkSites)
 {
@@ -294,9 +298,11 @@ void addMoleculeEwaldExclusion(const System& system, ForceConstants& forceConsta
   {
     if (molecule.numberOfAtoms < 2) continue;
     const std::span<const Atom> atoms = moleculeAtoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
-    for (std::size_t i = 0; i + 1 < atoms.size(); ++i)
+    for (const std::array<std::uint32_t, 2>& excludedPair :
+         system.components[molecule.componentId].intraMolecularPotentials.exclusions.pairs)
     {
-      for (std::size_t j = i + 1; j < atoms.size(); ++j)
+      const std::size_t i = excludedPair[0];
+      const std::size_t j = excludedPair[1];
       {
         const double3 rawSeparation = atoms[i].position - atoms[j].position;
         const double3 dr = box.applyPeriodicBoundaryConditions(rawSeparation);

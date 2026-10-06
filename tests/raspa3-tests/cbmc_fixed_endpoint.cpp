@@ -306,7 +306,7 @@ void runDisplacementChain(RandomNumber &random, const Fixture &f, std::vector<At
     atoms[bead].position = from + axis.rotateAroundAxis(atoms[bead].position - from, angle);
   };
   std::vector<double3> oldPositions(atoms.size());
-  double energy = f.component.intraMolecularPotentials.computeInternalEnergies(atoms).potentialEnergy();
+  double energy = f.component.intraMolecularPotentials.computeInternalEnergies(f.forceField, f.box, atoms).potentialEnergy();
   for (std::size_t i = 0; i != iterations; ++i)
   {
     for (std::size_t k : movable) oldPositions[k] = atoms[k].position;
@@ -329,7 +329,7 @@ void runDisplacementChain(RandomNumber &random, const Fixture &f, std::vector<At
       double3 from = atoms[movable.front() - 1].position, to = atoms[movable.back() + 1].position;
       for (std::size_t k : movable) rotateAbout(k, from, to, angle);
     }
-    double newEnergy = f.component.intraMolecularPotentials.computeInternalEnergies(atoms).potentialEnergy();
+    double newEnergy = f.component.intraMolecularPotentials.computeInternalEnergies(f.forceField, f.box, atoms).potentialEnergy();
     if (random.uniform() < std::exp(-f.beta * (newEnergy - energy)))
     {
       energy = newEnergy;

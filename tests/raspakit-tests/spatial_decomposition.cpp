@@ -12,6 +12,7 @@ import pseudo_atom;
 import vdwparameters;
 import forcefield;
 import component;
+import intra_molecular_exclusions;
 import molecule;
 import simd_quatd;
 import system;
@@ -834,45 +835,60 @@ TEST(spatial_decomposition, engine_matches_exact_ewald_flexible_chains_triclinic
 
 namespace
 {
-/// A charged four-bead chain with harmonic bonds and bends, a TraPPE torsion, intramolecular 1-4 Lennard-Jones and
-/// Coulomb pairs and, optionally, a bond-bond cross term (which the device kernels do not cover).
-System makeChainSystem(bool withBondBond, RandomNumber& random)
+/// A charged chain of 'numberOfBeads' beads with harmonic bonds and bends, TraPPE torsions, intramolecular
+/// Lennard-Jones and Coulomb pairs (the first 1-4 pair scaled by 0.5, the other 1-4 pairs excluded, everything
+/// beyond 1-4 at full strength) and, optionally, a bond-bond cross term (which the device kernels do not cover).
+System makeChainSystem(bool withBondBond, RandomNumber& random, std::size_t numberOfBeads = 4)
 {
   ForceField forceField = ForceField(
       {{"CH3", false, 15.03452, 0.0, 0.0, 6, false}, {"CH2", false, 14.02658, 0.0, 0.0, 6, false}},
       {{98.0, 3.75}, {46.0, 3.95}}, ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0, 9.0, false, false, true);
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.32;
-  forceField.numberOfWaveVectors = int3(14, 14, 14);
+  // the 40 Angstrom box needs more wave vectors than the 30 Angstrom boxes above for a converged reference
+  // (exp(-k^2 / 4 alpha^2) ~ 1e-5 at k = 2 pi 14 / 40 with alpha = 0.32, ~1e-10 at 20 wave vectors)
+  forceField.numberOfWaveVectors = int3(20, 20, 20);
   forceField.reciprocalCutOffSquared = std::numeric_limits<double>::max();
-  forceField.reciprocalIntegerCutOffSquared = 196;
+  forceField.reciprocalIntegerCutOffSquared = 400;
 
-  ConnectivityTable connectivityTable(4);
-  for (std::size_t i = 0; i + 1 < 4; ++i)
+  ConnectivityTable connectivityTable(numberOfBeads);
+  for (std::size_t i = 0; i + 1 < numberOfBeads; ++i)
   {
     connectivityTable[i, i + 1] = true;
     connectivityTable[i + 1, i] = true;
   }
   Potentials::IntraMolecularPotentials potentials{};
-  potentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {96500.0, 1.54}),
-                      BondPotential({1, 2}, BondType::Harmonic, {96500.0, 1.54}),
-                      BondPotential({2, 3}, BondType::Harmonic, {96500.0, 1.54})};
-  potentials.bends = {BendPotential({0, 1, 2}, BendType::Harmonic, {62500.0, 114.0}),
-                      BendPotential({1, 2, 3}, BendType::Harmonic, {62500.0, 114.0})};
-  potentials.torsions = {TorsionPotential({0, 1, 2, 3}, TorsionType::TraPPE, {0.0, 355.03, -68.19, 791.32})};
-  potentials.vanDerWaals = {VanDerWaalsPotential({0, 3}, VanDerWaalsType::LennardJones, {98.0, 3.75}, 0.5)};
+  for (std::size_t i = 0; i + 1 < numberOfBeads; ++i)
+  {
+    potentials.bonds.push_back(BondPotential({i, i + 1}, BondType::Harmonic, {96500.0, 1.54}));
+  }
+  for (std::size_t i = 0; i + 2 < numberOfBeads; ++i)
+  {
+    potentials.bends.push_back(BendPotential({i, i + 1, i + 2}, BendType::Harmonic, {62500.0, 114.0}));
+  }
+  for (std::size_t i = 0; i + 3 < numberOfBeads; ++i)
+  {
+    potentials.torsions.push_back(
+        TorsionPotential({i, i + 1, i + 2, i + 3}, TorsionType::TraPPE, {0.0, 355.03, -68.19, 791.32}));
+  }
+  potentials.vanDerWaals = {VanDerWaalsPotential({0, 3}, VDWParameters::Type::LennardJones, {98.0, 3.75}, 0.5)};
   potentials.coulombs = {CoulombPotential({0, 3}, CoulombType::Coulomb, 0.25, 0.25, 0.5)};
   if (withBondBond)
   {
     potentials.bondBonds = {BondBondPotential({0, 1, 2}, BondBondType::CFF, {5000.0, 1.54, 1.54})};
   }
 
-  Component chain = Component(forceField, "butane", 425.0, 3796000.0, 0.199,
-                              {Atom({-1.85, -0.7, -0.15}, 0.25, 1.0, 0, 0, 0, false, false),
-                               Atom({-0.31, -0.7, -0.15}, -0.25, 1.0, 0, 1, 0, false, false),
-                               Atom({0.32, 0.71, -0.15}, -0.25, 1.0, 0, 1, 0, false, false),
-                               Atom({1.86, 0.71, 0.15}, 0.25, 1.0, 0, 0, 0, false, false)},
-                              connectivityTable, potentials, 5, 21);
+  // an all-trans zig-zag in the xy-plane; the end beads are CH3 (+0.25), the inner beads CH2 (-0.25)
+  std::vector<Atom> beads{};
+  for (std::size_t i = 0; i < numberOfBeads; ++i)
+  {
+    const bool end = (i == 0 || i + 1 == numberOfBeads);
+    const double x = 1.29 * static_cast<double>(i) - 0.645 * static_cast<double>(numberOfBeads - 1);
+    const double y = (i % 2 == 0) ? -0.42 : 0.42;
+    beads.push_back(Atom({x, y, 0.0}, end ? 0.25 : -0.25, 1.0, 0, end ? 0 : 1, 0, false, false));
+  }
+  Component chain =
+      Component(forceField, "chain", 425.0, 3796000.0, 0.199, beads, connectivityTable, potentials, 5, 21);
   // 4 x 4 x 4 molecules on a lattice of about 10 Angstrom: no close contacts (the fallback test compares the
   // device pairs with the host pairs, so the pair energies must not be dominated by overlaps)
   System system = System(forceField, SimulationBox(40.0, 39.0, 41.0), false, 300.0, 1e5, 1.0, {}, {chain}, {}, {64}, 5);
@@ -880,6 +896,136 @@ System makeChainSystem(bool withBondBond, RandomNumber& random)
   return system;
 }
 }  // namespace
+
+// The same-molecule pairs of a flexible chain in the cell lists: a six-bead chain has excluded 1-2 / 1-3 pairs, a
+// scaled 1-4 pair, excluded (scaling 0) 1-4 pairs and full-strength 1-5 / 1-6 pairs. The lists must hold exactly
+// the full-strength same-molecule pairs within the list cutoff, and the engine (all host kernels) must reproduce
+// the exact (all-pairs Ewald) energies, gradients and molecular pressure.
+TEST(spatial_decomposition, cell_list_lists_the_non_excluded_same_molecule_pairs)
+{
+  RandomNumber random(17);
+  System system = makeChainSystem(false, random, 6);
+  const Component& chain = system.components[0];
+  ASSERT_EQ(chain.intraMolecularPotentials.exclusions.pairs.size(), 9uz);       // 5 bonds + 4 bends
+  ASSERT_EQ(chain.intraMolecularPotentials.exclusions.scaledPairs.size(), 3uz);  // the 1-4 pairs
+  EXPECT_TRUE(chain.intraMolecularPotentials.exclusions.isExcludedFromPairList(0, 3));
+  EXPECT_TRUE(chain.intraMolecularPotentials.exclusions.isExcludedFromPairList(1, 4));
+  EXPECT_FALSE(chain.intraMolecularPotentials.exclusions.isExcludedFromPairList(0, 4));
+  EXPECT_FALSE(chain.intraMolecularPotentials.exclusions.isExcludedFromPairList(0, 5));
+  EXPECT_FALSE(chain.intraMolecularPotentials.exclusions.isExcluded(0, 3));
+
+  const SimulationBox& box = system.simulationBox;
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  const double cutoff = 9.0, skin = 1.5;
+  const double listCutoffSquared = (cutoff + skin) * (cutoff + skin);
+  for (std::size_t threads : {1uz, 4uz})
+  {
+    CellList cellList;
+    cellList.setup(box, cutoff, skin, threads, std::nullopt);
+    cellList.bin(box, atoms, system.components);
+    for (std::size_t d = 0; d < threads; ++d) cellList.buildLists(d, box);
+
+    std::set<std::pair<std::uint32_t, std::uint32_t>> sameMolecule;
+    for (std::size_t d = 0; d < threads; ++d)
+    {
+      const CellList::DomainLists& domain = cellList.domains[d];
+      const std::size_t owned = domain.ownedAtoms.size();
+      for (std::size_t k = 0; k < owned; ++k)
+      {
+        const std::uint32_t i = cellList.sortedToOriginal[domain.ownedAtoms[k]];
+        for (std::uint32_t n = domain.neighbourStart[k]; n < domain.neighbourStart[k + 1]; ++n)
+        {
+          const std::uint32_t local = domain.neighbourList[n];
+          const std::uint32_t sortedJ = local < owned ? domain.ownedAtoms[local] : domain.imageAtom[local - owned];
+          const std::uint32_t j = cellList.sortedToOriginal[sortedJ];
+          if (atoms[i].moleculeId != atoms[j].moleculeId) continue;
+          EXPECT_TRUE(sameMolecule.insert({std::min(i, j), std::max(i, j)}).second);
+        }
+      }
+    }
+
+    std::set<std::pair<std::uint32_t, std::uint32_t>> expected;
+    for (const Molecule& molecule : system.moleculeData)
+    {
+      for (std::uint32_t a = 0; a < molecule.numberOfAtoms; ++a)
+      {
+        for (std::uint32_t b = a + 1; b < molecule.numberOfAtoms; ++b)
+        {
+          if (chain.intraMolecularPotentials.exclusions.isExcludedFromPairList(a, b)) continue;
+          const std::uint32_t i = static_cast<std::uint32_t>(molecule.atomIndex) + a;
+          const std::uint32_t j = static_cast<std::uint32_t>(molecule.atomIndex) + b;
+          const double3 dr = box.applyPeriodicBoundaryConditions(atoms[i].position - atoms[j].position);
+          if (double3::dot(dr, dr) < listCutoffSquared) expected.insert({i, j});
+        }
+      }
+    }
+    EXPECT_EQ(expected.size(), 3uz * system.moleculeData.size());  // (0,4), (1,5), (0,5) per chain
+    EXPECT_EQ(sameMolecule, expected) << "threads " << threads;
+
+    // without components: no same-molecule pair at all
+    CellList plain;
+    plain.setup(box, cutoff, skin, threads, std::nullopt);
+    plain.bin(box, atoms);
+    for (std::size_t d = 0; d < threads; ++d) plain.buildLists(d, box);
+    EXPECT_EQ(plain.totalPairs() + expected.size(), cellList.totalPairs());
+  }
+}
+
+TEST(spatial_decomposition, engine_matches_exact_ewald_long_flexible_chains)
+{
+  RandomNumber random(19);
+  System system = makeChainSystem(false, random, 6);
+
+  const RunningEnergy reference = referenceGradients(system);
+  const std::vector<double3> referenceGradient = gradientsOf(system);
+  const double3x3 referencePressure = system.computeMolecularPressure().second;
+  EXPECT_NE(reference.intraVDW, 0.0);
+  EXPECT_NE(reference.intraCoul, 0.0);
+  EXPECT_NE(reference.torsion, 0.0);
+
+  // scalar double, cluster double, cluster mixed
+  std::vector<SpatialDecompositionSettings> candidates;
+  for (std::size_t threads : {1uz, 4uz})
+  {
+    candidates.push_back(settingsFor(threads, 1.5, 0.5));
+    SpatialDecompositionSettings cluster = settingsFor(threads, 1.5, 0.5);
+    cluster.clusterKernelForDouble = true;
+    candidates.push_back(cluster);
+    SpatialDecompositionSettings mixed = settingsFor(threads, 1.5, 0.5);
+    mixed.pairPrecision = PairPrecision::Mixed;
+    candidates.push_back(mixed);
+  }
+  for (const SpatialDecompositionSettings& settings : candidates)
+  {
+    const bool mixed = settings.pairPrecision == PairPrecision::Mixed;
+    const double tolerance = mixed ? 1e-5 : 1e-8;
+    SpatialDecompositionForceEngine engine(settings);
+    engine.initialize(system);
+    const RunningEnergy energy = engine.computeGradients(system, true);
+    const std::vector<double3> gradient = gradientsOf(system);
+    const std::string label = std::format("threads {} cluster {} mixed {}", settings.numberOfThreads,
+                                          settings.clusterKernelForDouble, mixed);
+
+    // the engine evaluates the unscaled same-molecule pairs in its pair loops (booked with the molecule-molecule
+    // pairs); only the scaled 1-4 pairs stay in the intramolecular slots
+    EXPECT_NEAR(energy.intraVDW + energy.moleculeMoleculeVDW, reference.intraVDW + reference.moleculeMoleculeVDW,
+                tolerance * std::abs(reference.intraVDW + reference.moleculeMoleculeVDW))
+        << label;
+    EXPECT_NEAR(energy.intraCoul + energy.moleculeMoleculeCharge,
+                reference.intraCoul + reference.moleculeMoleculeCharge,
+                tolerance * std::abs(reference.intraCoul + reference.moleculeMoleculeCharge))
+        << label;
+    EXPECT_NE(energy.intraVDW, 0.0) << label;
+    EXPECT_NE(energy.intraVDW, reference.intraVDW) << label;
+    EXPECT_NEAR(energy.bond, reference.bond, 1e-10 * std::abs(reference.bond)) << label;
+    EXPECT_NEAR(energy.torsion, reference.torsion, 1e-10 * std::abs(reference.torsion)) << label;
+    EXPECT_NEAR(energy.potentialEnergy(), reference.potentialEnergy(), 2e-5 * std::abs(reference.potentialEnergy()))
+        << label;
+    EXPECT_LT(rmsDifference(gradient, referenceGradient), 1e-4 * rmsNorm(referenceGradient)) << label;
+    EXPECT_LT(maxAbsDifference(engine.molecularPressureTensor(), referencePressure), 1e-4 * maxAbs(referencePressure))
+        << label;
+  }
+}
 
 TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_with_torsions)
 {
@@ -932,6 +1078,58 @@ TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_with_torsions)
   EXPECT_EQ(again.torsion, energy.torsion);
   EXPECT_EQ(rmsDifference(gradientsOf(system), gradient), 0.0);
   EXPECT_EQ(maxAbsDifference(device.molecularPressureTensor(), pressure), 0.0);
+}
+
+TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_long_chain)
+{
+  // six beads: the device exclusion lists (1-2, 1-3), a scaled 1-4 pair, excluded 1-4 pairs (scaling 0) and
+  // full-strength 1-5 / 1-6 Lennard-Jones and Coulomb pairs
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  RandomNumber random(13);
+  System system = makeChainSystem(false, random, 6);
+  ASSERT_EQ(system.components[0].intraMolecularPotentials.exclusions.pairs.size(), 9uz);
+  ASSERT_EQ(system.components[0].intraMolecularPotentials.numberOfVanDerWaalsPairs(), 6uz);
+
+  SpatialDecompositionSettings hostSettings = settingsFor(4, 1.5, 0.5);
+  hostSettings.pairDevice = pairDevice;
+  hostSettings.deviceBonded = false;
+  SpatialDecompositionForceEngine host(hostSettings);
+  host.initialize(system);
+  EXPECT_FALSE(host.usesDeviceBonded());
+  const RunningEnergy hostEnergy = host.computeGradients(system, true);
+  const std::vector<double3> hostGradient = gradientsOf(system);
+
+  SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+  settings.pairDevice = pairDevice;
+  SpatialDecompositionForceEngine device(settings);
+  device.initialize(system);
+  EXPECT_TRUE(device.usesDeviceBonded());
+  const RunningEnergy energy = device.computeGradients(system, true);
+  const std::vector<double3> gradient = gradientsOf(system);
+
+  // the scaled 1-4 pairs in the intramolecular slots, the full-strength same-molecule pairs with the
+  // molecule-molecule pairs (device lists and host lists alike)
+  EXPECT_NE(hostEnergy.intraVDW, 0.0);
+  EXPECT_NE(hostEnergy.intraCoul, 0.0);
+  EXPECT_NEAR(energy.intraVDW, hostEnergy.intraVDW, 1e-5 * std::abs(hostEnergy.intraVDW));
+  EXPECT_NEAR(energy.intraCoul, hostEnergy.intraCoul, 1e-5 * std::abs(hostEnergy.intraCoul));
+  EXPECT_NEAR(energy.moleculeMoleculeVDW, hostEnergy.moleculeMoleculeVDW,
+              1e-5 * std::abs(hostEnergy.moleculeMoleculeVDW));
+  EXPECT_NEAR(energy.moleculeMoleculeCharge, hostEnergy.moleculeMoleculeCharge,
+              1e-5 * std::abs(hostEnergy.moleculeMoleculeCharge));
+  EXPECT_NEAR(energy.ewald_self + energy.ewald_exclusion, hostEnergy.ewald_self + hostEnergy.ewald_exclusion,
+              1e-5 * std::abs(hostEnergy.ewald_self + hostEnergy.ewald_exclusion));
+  EXPECT_NEAR(energy.potentialEnergy(), hostEnergy.potentialEnergy(), 1e-5 * std::abs(hostEnergy.potentialEnergy()));
+  EXPECT_LT(rmsDifference(gradient, hostGradient), 1e-5 * rmsNorm(hostGradient));
+  EXPECT_LT(maxAbsDifference(device.molecularPressureTensor(), host.molecularPressureTensor()),
+            1e-5 * maxAbs(host.molecularPressureTensor()));
+
+  // and against the exact all-pairs Ewald evaluation
+  const RunningEnergy reference = referenceGradients(system);
+  const std::vector<double3> referenceGradient = gradientsOf(system);
+  EXPECT_NEAR(energy.potentialEnergy(), reference.potentialEnergy(), 2e-5 * std::abs(reference.potentialEnergy()));
+  EXPECT_LT(rmsDifference(gradient, referenceGradient), 1e-4 * rmsNorm(referenceGradient));
 }
 
 TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_fall_back_to_the_host)

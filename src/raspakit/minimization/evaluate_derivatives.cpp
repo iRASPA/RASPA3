@@ -590,11 +590,13 @@ void evaluateDerivatives(System& system, const MinimizationDofLayout& layout, De
     results.energy += torsionEnergy.torsion + torsionEnergy.improperTorsion;
 
     RunningEnergy intraVDWEnergy = Interactions::computeIntraMolecularVanDerWaalsHessian(
-        system.moleculeData, moleculeAtomPositions, system.components, layout, results.hessian, moleculeDynamics);
+        system.forceField, system.simulationBox, system.moleculeData, moleculeAtomPositions, system.components, layout,
+        results.hessian, moleculeDynamics);
     results.energy += intraVDWEnergy.intraVDW;
 
     RunningEnergy intraCoulombEnergy = Interactions::computeIntraMolecularCoulombHessian(
-        system.moleculeData, moleculeAtomPositions, system.components, layout, results.hessian, moleculeDynamics);
+        system.forceField, system.simulationBox, system.moleculeData, moleculeAtomPositions, system.components, layout,
+        results.hessian, moleculeDynamics);
     results.energy += intraCoulombEnergy.intraCoul;
 
     RunningEnergy bondBondEnergy = Interactions::computeIntraMolecularBondBondHessian(

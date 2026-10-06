@@ -25,6 +25,8 @@ constexpr std::size_t clusterJ = 4;
 constexpr std::size_t pairGroupSize = 32;  ///< work-items (lanes) per i-cluster: one per (a, b) of 8 x 4
 constexpr std::size_t pairPartials = 11;   ///< partial sums per i-cluster: 2 energies + 9 strain components
 constexpr std::uint32_t noAtom = std::numeric_limits<std::uint32_t>::max();
+/// Bit of an atom's exclusion start marking that every pair of its molecule is excluded (ALL_EXCLUDED_BIT).
+constexpr std::uint32_t allExcludedBit = 0x80000000u;
 }  // namespace DeviceKernelLayout
 
 /// Mirrors the Parameters struct of the pair kernel source (4-byte members only, so the layouts agree).
@@ -137,6 +139,12 @@ export class DeviceStep
   bool initialized() const { return context != nullptr; }
   /// The device context (for the resident integrator, which shares the position and force buffers).
   DeviceContext& deviceContext() { return *context; }
+
+  /// Fixes the same-molecule pairs the list build leaves out: the excluded pairs and the scaled (1-4) pairs of
+  /// every molecule (IntraMolecularExclusions::isExcludedFromPairList), as a CSR table over the atoms in system
+  /// order. Every other same-molecule pair is listed and evaluated by the pair kernel at full strength. Must be
+  /// called before the first build and whenever the molecules of the system change.
+  void setExclusions(const System& system);
 
   /// Fixes the pair-type tables, the cutoffs, the Ewald parameters (`useCharge`: Ewald real space on) and the
   /// pruning skin (0 or at least the Verlet skin: no pruning, the lane lists hold the whole outer list).
@@ -252,7 +260,9 @@ export class DeviceStep
   DeviceBufferOwner clusterMinBuffer{}, clusterMaxBuffer{}, compactReferenceBuffer{};
   DeviceBufferOwner cellOfClusterBuffer{}, outerCountBuffer{}, laneCountBuffer{}, partialBuffer{};
   DeviceBufferOwner cellSlotStartBuffer{}, outerClusterBuffer{}, outerMaskBuffer{}, pairListBuffer{};
+  DeviceBufferOwner slotAtomBuffer{}, exclusionStartBuffer{}, exclusionPartnerBuffer{};
   std::size_t lennardJonesCapacity{0};
+  std::size_t exclusionStartCapacity{0}, exclusionPartnerCapacity{0};
   DeviceEvent buildEvent{}, stepEvent{};
   DeviceMesh mesh{};
   DeviceBonded bonded{};
@@ -287,6 +297,10 @@ export class DeviceStep
   std::vector<std::uint32_t> sortedOfSlot{};
   std::vector<std::uint32_t> typeOfSlot{};
   std::vector<float> buildPosition{};                          ///< x, y, z, molecule bits per slot at the binning.
+  std::vector<std::uint32_t> slotAtom{};                       ///< System atom index per slot (noAtom for dummies).
+  /// Per atom (system order): CSR start of its excluded + scaled same-molecule partners (bit 31: every pair of
+  /// its molecule is excluded, rigid molecule), and the partner atoms (system order).
+  std::vector<std::uint32_t> atomExclusionStart{}, atomExclusionPartner{};
   std::vector<std::uint32_t> sortKey{}, order{}, cellCount{};  ///< Layout scratch.
   std::vector<std::uint32_t> outerCount{}, laneCount{};
   std::size_t outerBlocks{0}, listedPairs{0}, maximumRow{0};

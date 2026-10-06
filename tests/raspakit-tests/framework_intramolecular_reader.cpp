@@ -195,7 +195,7 @@ TEST(framework_intramolecular_reader, framework_vdw_respects_framework_cutoff)
   Framework framework = makePeriodicPairFramework(forceField);
   framework.rigid = false;
   framework.intraMolecularPotentials.vanDerWaals = {
-      VanDerWaalsPotential({0, 1}, VanDerWaalsType::LennardJones, {1.0, 1.0}, 1.0)};
+      VanDerWaalsPotential({0, 1}, VDWParameters::Type::LennardJones, {1.0, 1.0}, 1.0)};
   framework.intraMolecularImageShifts.vanDerWaals = {{{int3{}, int3{}}}};
 
   const SimulationBox box(10.0, 10.0, 10.0);

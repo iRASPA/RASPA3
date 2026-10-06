@@ -4,95 +4,77 @@ export module van_der_waals_potential;
 
 import std;
 
-import stringutils;
 import archive;
-import randomnumbers;
 import double3;
-import double3x3;
-import units;
+import vdwparameters;
 
 /**
- * \brief Maximum number of parameters allowed for vanDerWaals potentials.
+ * \brief An explicit intramolecular van der Waals pair term.
  *
- * Defines the maximum number of parameters that can be associated with a vanDerWaals potential.
- */
-export const std::size_t maximumNumberOfVanDerWaalsParameters{4};
-
-/**
- * \brief Enumeration of different vanDerWaals types.
+ * Pairs the two atoms with a copy of the force field's pair potential between their pseudo-atom types
+ * ('VDWParameters': the functional form, its parameters, the shift at the cut-off and the soft-core
+ * constants) times the pair 'scaling' (one for an ordinary pair, the 1-4 scaling for a 1-4 pair).
  *
- * Specifies the type of vanDerWaals potential to be used in simulations.
- */
-export enum class VanDerWaalsType : std::size_t { LennardJones = 0 };
-
-/**
- * \brief Represents a vanDerWaals potential between two particles.
- *
- * The vanDerWaalsPotential struct encapsulates the type of vanDerWaals and associated parameters between two particles.
- * It includes versioning for serialization, vanDerWaals type, identifiers of vanDerWaalsed particles, and vanDerWaals
- * parameters.
+ * The energy, gradient and Hessian routines evaluate these pairs through the force field itself
+ * (Potentials::intraMolecularVDW with the atom types), so for them only 'identifiers' and 'scaling'
+ * matter. The self-contained 'calculateEnergy' is the force-field-free evaluation used where no force
+ * field is at hand (the CBMC lookahead guide): the untruncated, unshifted potential at full coupling,
+ * dispatched on 'parameters.type' like every other evaluation.
  */
 export struct VanDerWaalsPotential
 {
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization.
 
-  std::array<std::size_t, 2> identifiers;  ///< Identifiers of the two particles forming the vanDerWaals.
-  VanDerWaalsType type;                    ///< The type of vanDerWaals potential.
-  double scaling;
-  std::array<double, maximumNumberOfVanDerWaalsParameters>
-      parameters;  ///< Parameters associated with the vanDerWaals potential.
+  std::array<std::size_t, 2> identifiers{0, 0};  ///< Identifiers of the two atoms forming the pair.
+  double scaling{1.0};                           ///< The pair scaling (1-4 scaling, 1 for ordinary pairs).
+  VDWParameters parameters{};                    ///< The force-field pair potential between the two atom types.
 
-  /**
-   * \brief Default constructor for vanDerWaalsPotential.
-   *
-   * Initializes a vanDerWaalsPotential object with Undefined vanDerWaals type and zeroed vanDerWaals IDs.
-   */
-  VanDerWaalsPotential() : identifiers({0, 0}), type(VanDerWaalsType::LennardJones), scaling(1.0) {}
-
-  VanDerWaalsPotential(std::array<std::size_t, 2> identifiers, VanDerWaalsType type,
-                       std::vector<double> vector_parameters, double scaling);
+  VanDerWaalsPotential() = default;
 
   /**
-   * \brief Constructs a vanDerWaalsPotential with specified type and vanDerWaals IDs.
+   * \brief Constructs a pair term from the force field's pair potential.
    *
-   * \param type The type of vanDerWaals potential.
-   * \param identifiers A pair of particle identifiers forming the vanDerWaals.
+   * \param identifiers The two atoms.
+   * \param parameters The force field's pair potential between their types (ForceField::operator()).
+   * \param scaling The pair scaling.
    */
-  VanDerWaalsPotential(std::array<std::size_t, 2> identifiers, const VanDerWaalsType type)
-      : identifiers(identifiers), type(type)
+  VanDerWaalsPotential(std::array<std::size_t, 2> identifiers, const VDWParameters &parameters, double scaling)
+      : identifiers(identifiers), scaling(scaling), parameters(parameters)
+  {
+  }
+
+  /**
+   * \brief Constructs a pair term from raw parameters in force-field file units.
+   *
+   * \param identifiers The two atoms.
+   * \param type The functional form.
+   * \param vector_parameters The parameters in the force-field file conventions of 'type' (energies in Kelvin).
+   * \param scaling The pair scaling.
+   */
+  VanDerWaalsPotential(std::array<std::size_t, 2> identifiers, VDWParameters::Type type,
+                       const std::vector<double> &vector_parameters, double scaling)
+      : identifiers(identifiers), scaling(scaling), parameters(type, vector_parameters)
   {
   }
 
   bool operator==(VanDerWaalsPotential const &) const = default;
 
+  /// Multiplies the energy parameters of the pair potential by 'factor' (solute tempering).
+  void scaleEnergy(double factor) { parameters.scaleEnergy(factor); }
+
   /**
-   * \brief Generates a string representation of the vanDerWaals potential.
+   * \brief Generates a string representation of the pair term.
    *
-   * Provides a formatted string containing vanDerWaals type, particle IDs, and parameters.
-   *
-   * \return A string describing the vanDerWaals potential.
+   * \return "A - B : <form> p0: ..., scaling: ...".
    */
   std::string print() const;
 
   /**
-   * \brief Number of parameters required for each vanDerWaals type.
+   * \brief The scaled, untruncated and unshifted pair energy at full coupling.
    *
-   * A static vector indicating the number of parameters needed for each vanDerWaals type.
+   * Dispatches on the functional form of 'parameters' (VDWParameters::potentialEnergyAtFullCoupling).
    */
-  static inline std::array<std::size_t, 2> numberOfVanDerWaalsParameters{2};
-
-  /**
-   * \brief Mapping of vanDerWaals type strings to type enums.
-   *
-   * A static map that associates vanDerWaals type names with their corresponding type enumeration values.
-   */
-  static inline std::map<std::string, VanDerWaalsType, caseInsensitiveComparator> definitionForString{
-      {"LENNARD_JONES", VanDerWaalsType::LennardJones}};
-
   double calculateEnergy(const double3 &posA, const double3 &posB) const;
-
-  std::tuple<double, std::array<double3, 2>, double3x3> potentialEnergyGradientStrain(const double3 &posA,
-                                                                                      const double3 &posB) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VanDerWaalsPotential &b);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, VanDerWaalsPotential &b);

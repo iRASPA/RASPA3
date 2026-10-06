@@ -135,14 +135,14 @@ std::optional<RunningEnergy> MC_Moves::beadFlipMove(RandomNumber &random, System
             {
               return Interactions::energyDifferenceEwaldFourierMovedAtoms(
                   system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                  system.forceField, system.simulationBox, trialAtoms, molecule_atoms, movedIndices);
+                  system.forceField, system.simulationBox, system.components, trialAtoms, molecule_atoms, movedIndices);
             });
 
   // Intramolecular energy contribution: the bond lengths of the bead are invariant, the bends and
   // torsions at the junctions and the intramolecular non-bonded energy change. Recomputing all
   // internal terms keeps the bookkeeping exact for any force field.
-  RunningEnergy internalDifference = component.intraMolecularPotentials.computeInternalEnergies(trialAtoms) -
-                                     component.intraMolecularPotentials.computeInternalEnergies(molecule_atoms);
+  RunningEnergy internalDifference = component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, trialAtoms) -
+                                     component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, molecule_atoms);
 
   RunningEnergy energyDifference =
       externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy +

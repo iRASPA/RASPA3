@@ -183,7 +183,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
         {
           return Interactions::energyDifferenceEwaldFourier(
               system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-              system.forceField, system.simulationBox, fractionalMolecule, oldFractionalMolecule, system.netCharge);
+              system.forceField, system.simulationBox, system.components, fractionalMolecule, oldFractionalMolecule, system.netCharge);
         });
 
     // Compute tail-correction energy contribution (Brick-CFCMC-style aggregated accounting).
@@ -243,7 +243,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
-                    system.forceField, system.simulationBox, std::span(growData->atoms.begin(), growData->atoms.end()),
+                    system.forceField, system.simulationBox, system.components, std::span(growData->atoms.begin(), growData->atoms.end()),
                     {}, system.netCharge);
               });
 
@@ -441,7 +441,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                 {
                   return Interactions::energyDifferenceEwaldFourier(
                       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                      system.forceField, system.simulationBox, {}, fractionalMolecule, system.netCharge);
+                      system.forceField, system.simulationBox, system.components, {}, fractionalMolecule, system.netCharge);
                 });
 
       // Compute tail-correction energy difference for the retraced molecule (Brick-CFCMC-style aggregated accounting).
@@ -558,7 +558,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                 {
                   return Interactions::energyDifferenceEwaldFourier(
                       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
-                      system.forceField, system.simulationBox, newFractionalMolecule, savedFractionalMolecule,
+                      system.forceField, system.simulationBox, system.components, newFractionalMolecule, savedFractionalMolecule,
                       system.netCharge);
                 });
 
@@ -806,7 +806,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     time_begin = std::chrono::steady_clock::now();
     RunningEnergy EwaldFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, trialPositions, molecule, system.netCharge);
+        system.simulationBox, system.components, trialPositions, molecule, system.netCharge);
     time_end = std::chrono::steady_clock::now();
     if (insertionDisabled || deletionDisabled)
     {

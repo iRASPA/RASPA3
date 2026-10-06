@@ -195,14 +195,14 @@ std::optional<RunningEnergy> MC_Moves::concertedRotationMove(RandomNumber &rando
             {
               return Interactions::energyDifferenceEwaldFourierMovedAtoms(
                   system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                  system.forceField, system.simulationBox, trialAtoms, molecule_atoms, movedIndices);
+                  system.forceField, system.simulationBox, system.components, trialAtoms, molecule_atoms, movedIndices);
             });
 
   // Intramolecular energy contribution: the window's bond lengths and backbone bends are invariant,
   // but seven torsions, the bends and torsions to side groups at a1 and a6, and the intramolecular
   // non-bonded energy change. Recomputing all internal terms keeps the bookkeeping exact.
-  RunningEnergy internalDifference = component.intraMolecularPotentials.computeInternalEnergies(trialAtoms) -
-                                     component.intraMolecularPotentials.computeInternalEnergies(molecule_atoms);
+  RunningEnergy internalDifference = component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, trialAtoms) -
+                                     component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, molecule_atoms);
 
   RunningEnergy energyDifference =
       externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy +

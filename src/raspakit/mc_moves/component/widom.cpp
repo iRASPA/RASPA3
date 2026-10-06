@@ -70,7 +70,7 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
             {
               return Interactions::energyDifferenceEwaldFourier(
                   system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                  system.forceField, system.simulationBox, newMolecule, {}, system.netCharge);
+                  system.forceField, system.simulationBox, system.components, newMolecule, {}, system.netCharge);
             });
 
   // Compute the tail corrections for the energy due to the new molecule.

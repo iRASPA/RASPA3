@@ -792,7 +792,7 @@ void System::buildConformationReservoirs()
 
 void System::buildRecoilReferenceConformations()
 {
-  if (!forceField.useRecoilGrowth) return;
+  if (!forceField.settings.useRecoilGrowth) return;
 
   // The reference conformations are Boltzmann samples at the current temperature, grown by plans whose
   // base-coupling constants must be those of this temperature (a no-op when already prepared).

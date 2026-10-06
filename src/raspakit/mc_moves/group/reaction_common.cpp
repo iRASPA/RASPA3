@@ -67,7 +67,7 @@ void acceptChargedEwaldMove(System& system) noexcept
 
   RunningEnergy ewaldCombined = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, newAtoms, oldAtoms, system.netCharge);
+      system.simulationBox, system.components, newAtoms, oldAtoms, system.netCharge);
 
   // The combined difference matches exclusion pairs on moleculeId, so multi-molecule spans yield
   // the intra-molecular exclusion terms directly and need no correction here.
@@ -79,14 +79,14 @@ void acceptChargedEwaldMove(System& system) noexcept
   {
     (void)Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                      workingStoredEik, system.trialEik, system.forceField,
-                                                     system.simulationBox, std::span<const Atom>{}, oldMolecule);
+                                                     system.simulationBox, system.components, std::span<const Atom>{}, oldMolecule);
     workingStoredEik = system.trialEik;
   }
   for (const std::vector<Atom>& newMolecule : newMolecules)
   {
     (void)Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                      workingStoredEik, system.trialEik, system.forceField,
-                                                     system.simulationBox, newMolecule, std::span<const Atom>{});
+                                                     system.simulationBox, system.components, newMolecule, std::span<const Atom>{});
     workingStoredEik = system.trialEik;
   }
   system.storedEik = storedEikSnapshot;
@@ -481,7 +481,7 @@ void setReactionFractionalScaling(System& system, Reaction& reaction, double lam
   {
     RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, newAtoms, oldAtoms, system.netCharge);
+        system.simulationBox, system.components, newAtoms, oldAtoms, system.netCharge);
     energyDifference += ewaldDifference;
   }
 
@@ -729,7 +729,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   for (const std::vector<Atom>& molecule : splitAtomsByMoleculeId(atoms))
   {
     const std::size_t componentId = static_cast<std::size_t>(molecule.front().componentId);
-    internal += system.components[componentId].intraMolecularPotentials.computeInternalEnergies(molecule);
+    internal += system.components[componentId].intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, molecule);
   }
   return internal;
 }

@@ -28,6 +28,7 @@ import minimization_cell_layout;
 import potential_pair_derivatives;
 import potential_pair_vdw;
 import potential_pair_coulomb;
+import potential_intra_pair;
 
 namespace
 {
@@ -557,8 +558,9 @@ RunningEnergy Interactions::computeIntraMolecularUreyBradleyHessian(
 }
 
 RunningEnergy Interactions::computeIntraMolecularVanDerWaalsHessian(
-    std::span<const Molecule> moleculeData, std::span<const Atom> atoms, std::span<const Component> components,
-    const MinimizationDofLayout& layout, GeneralizedHessian& hessian, std::span<AtomDynamics> dynamics)
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Molecule> moleculeData,
+    std::span<const Atom> atoms, std::span<const Component> components, const MinimizationDofLayout& layout,
+    GeneralizedHessian& hessian, std::span<AtomDynamics> dynamics)
 {
   RunningEnergy energies{};
 
@@ -578,22 +580,21 @@ RunningEnergy Interactions::computeIntraMolecularVanDerWaalsHessian(
     std::span<const Atom> atom_molecule_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
     std::span<AtomDynamics> dynamics_molecule_span = {&dynamics[molecule.atomIndex], molecule.numberOfAtoms};
 
-    for (const VanDerWaalsPotential& vanDerWaals : potentials.vanDerWaals)
+    potentials.forEachVanDerWaalsPair(
+        [&](std::size_t A, std::size_t B, double scaling)
     {
-      const std::size_t A = vanDerWaals.identifiers[0];
-      const std::size_t B = vanDerWaals.identifiers[1];
-      const double3 dr = atom_molecule_span[A].position - atom_molecule_span[B].position;
+      const double3 dr = simulationBox.applyPeriodicBoundaryConditions(atom_molecule_span[A].position -
+                                                                       atom_molecule_span[B].position);
       const double rr = double3::dot(dr, dr);
 
-      // Lennard-Jones: 4*eps*((sigma/r)^12 - (sigma/r)^6), parameters = {eps, sigma}.
-      const double sigmaOverR2 = (vanDerWaals.parameters[1] * vanDerWaals.parameters[1]) / rr;
-      const double t = sigmaOverR2 * sigmaOverR2 * sigmaOverR2;
-      const double prefactor = vanDerWaals.scaling * vanDerWaals.parameters[0];
-      const double energy = 4.0 * prefactor * t * (t - 1.0);
-      const double f1 = 24.0 * prefactor * t * (1.0 - 2.0 * t) / rr;
-      const double f2 = 96.0 * prefactor * t * (7.0 * t - 2.0) / (rr * rr);
+      const Potentials::PairDerivatives<2> pair = Potentials::intraMolecularVDW<2>(
+          forceField, scaling, rr, static_cast<std::size_t>(atom_molecule_span[A].type),
+          static_cast<std::size_t>(atom_molecule_span[B].type));
+      if (pair.energy == 0.0 && pair.firstDerivativeFactor == 0.0 && pair.secondDerivativeFactor == 0.0) return;
+      const double f1 = pair.firstDerivativeFactor;
+      const double f2 = pair.secondDerivativeFactor;
 
-      energies.intraVDW += energy;
+      energies.intraVDW += pair.energy;
       const double3 gradientA = f1 * dr;
       dynamics_molecule_span[A].gradient += gradientA;
       dynamics_molecule_span[B].gradient -= gradientA;
@@ -618,7 +619,7 @@ RunningEnergy Interactions::computeIntraMolecularVanDerWaalsHessian(
             hessian, {Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, A),
                       Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, B)},
             {gradientA, -1.0 * gradientA}, f1, f2, dr);
-        continue;
+        return;
       }
       Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, A, moleculeIndex, B, f1, f2, dr);
       if (hessian.numStrain() == 1)
@@ -629,17 +630,19 @@ RunningEnergy Interactions::computeIntraMolecularVanDerWaalsHessian(
                                                          atom_molecule_span[A].position, atom_molecule_span[B].position,
                                                          atom_molecule_span[B].position, false, false);
       }
-    }
+    });
   }
 
   return energies;
 }
 
 RunningEnergy Interactions::computeIntraMolecularCoulombHessian(
-    std::span<const Molecule> moleculeData, std::span<const Atom> atoms, std::span<const Component> components,
-    const MinimizationDofLayout& layout, GeneralizedHessian& hessian, std::span<AtomDynamics> dynamics)
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Molecule> moleculeData,
+    std::span<const Atom> atoms, std::span<const Component> components, const MinimizationDofLayout& layout,
+    GeneralizedHessian& hessian, std::span<AtomDynamics> dynamics)
 {
   RunningEnergy energies{};
+  if (!forceField.useCharge) return energies;
 
   const Minimization::RigidDerivativeCache rigidCache =
       Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
@@ -657,21 +660,21 @@ RunningEnergy Interactions::computeIntraMolecularCoulombHessian(
     std::span<const Atom> atom_molecule_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
     std::span<AtomDynamics> dynamics_molecule_span = {&dynamics[molecule.atomIndex], molecule.numberOfAtoms};
 
-    for (const CoulombPotential& coulomb : potentials.coulombs)
+    potentials.forEachCoulombPair(
+        [&](std::size_t A, std::size_t B, double scaling)
     {
-      const std::size_t A = coulomb.identifiers[0];
-      const std::size_t B = coulomb.identifiers[1];
-      const double3 dr = atom_molecule_span[A].position - atom_molecule_span[B].position;
-      const double rr = double3::dot(dr, dr);
-      const double r = std::sqrt(rr);
+      const double3 dr = simulationBox.applyPeriodicBoundaryConditions(atom_molecule_span[A].position -
+                                                                       atom_molecule_span[B].position);
+      const double r = std::sqrt(double3::dot(dr, dr));
 
-      // U = k/r with k = scaling * conversion * qA * qB.
-      const double k = coulomb.scaling * Units::CoulombicConversionFactor * coulomb.chargeA * coulomb.chargeB;
-      const double energy = k / r;
-      const double f1 = -k / (r * rr);
-      const double f2 = 3.0 * k / (r * rr * rr);
+      const Potentials::PairDerivatives<2> pair = Potentials::intraMolecularCoulomb<2>(
+          forceField, scaling, atom_molecule_span[A].scalingCoulomb, atom_molecule_span[B].scalingCoulomb, r,
+          atom_molecule_span[A].charge, atom_molecule_span[B].charge);
+      if (pair.energy == 0.0 && pair.firstDerivativeFactor == 0.0 && pair.secondDerivativeFactor == 0.0) return;
+      const double f1 = pair.firstDerivativeFactor;
+      const double f2 = pair.secondDerivativeFactor;
 
-      energies.intraCoul += energy;
+      energies.intraCoul += pair.energy;
       const double3 gradientA = f1 * dr;
       dynamics_molecule_span[A].gradient += gradientA;
       dynamics_molecule_span[B].gradient -= gradientA;
@@ -696,7 +699,7 @@ RunningEnergy Interactions::computeIntraMolecularCoulombHessian(
             hessian, {Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, A),
                       Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, B)},
             {gradientA, -1.0 * gradientA}, f1, f2, dr);
-        continue;
+        return;
       }
       Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, A, moleculeIndex, B, f1, f2, dr);
       if (hessian.numStrain() == 1)
@@ -707,7 +710,7 @@ RunningEnergy Interactions::computeIntraMolecularCoulombHessian(
                                                          atom_molecule_span[A].position, atom_molecule_span[B].position,
                                                          atom_molecule_span[B].position, false, false);
       }
-    }
+    });
   }
 
   return energies;

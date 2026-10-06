@@ -133,14 +133,14 @@ std::optional<RunningEnergy> MC_Moves::crankshaftMove(RandomNumber &random, Syst
             {
               return Interactions::energyDifferenceEwaldFourierMovedAtoms(
                   system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                  system.forceField, system.simulationBox, trialAtoms, molecule_atoms, rotatedAtoms);
+                  system.forceField, system.simulationBox, system.components, trialAtoms, molecule_atoms, rotatedAtoms);
             });
 
   // Intramolecular energy contribution: bond lengths are invariant under the crankshaft rotation,
   // but the bend angles and torsions at the junctions and the intramolecular non-bonded energy
   // change. Recomputing all internal terms keeps the bookkeeping exact for any force field.
-  RunningEnergy internalDifference = component.intraMolecularPotentials.computeInternalEnergies(trialAtoms) -
-                                     component.intraMolecularPotentials.computeInternalEnergies(molecule_atoms);
+  RunningEnergy internalDifference = component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, trialAtoms) -
+                                     component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, molecule_atoms);
 
   // Calculate the total energy difference
   RunningEnergy energyDifference =

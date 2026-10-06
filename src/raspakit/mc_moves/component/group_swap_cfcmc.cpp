@@ -289,7 +289,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
               energyDifference += Interactions::energyDifferenceEwaldFourier(
                   system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                   firstEwaldCall ? system.storedEik : system.trialEik, system.trialEik, system.forceField,
-                  system.simulationBox, fractionalMolecules[i], oldFractionalMolecules[i], runningNetCharge,
+                  system.simulationBox, system.components, fractionalMolecules[i], oldFractionalMolecules[i], runningNetCharge,
                   groupChargeSumOfOthers(i));
             });
       firstEwaldCall = false;
@@ -425,7 +425,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
 
       trialExtraDifference += Interactions::energyDifferenceEwaldFourier(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
-          system.simulationBox, trialAtoms[i], {}, runningNetCharge, groupChargeSumOfSpans(earlierTrials));
+          system.simulationBox, system.components, trialAtoms[i], {}, runningNetCharge, groupChargeSumOfSpans(earlierTrials));
       runningNetCharge += scaledChargeDifference(trialAtoms[i], {});
     }
     time_end = std::chrono::steady_clock::now();
@@ -803,7 +803,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
 
       removalExtraDifference += Interactions::energyDifferenceEwaldFourier(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-          firstEwaldCall ? system.storedEik : system.trialEik, system.trialEik, system.forceField, system.simulationBox,
+          firstEwaldCall ? system.storedEik : system.trialEik, system.trialEik, system.forceField, system.simulationBox, system.components,
           {}, oldFractionalMolecules[i], runningNetCharge, groupChargeSumOfSpans(laterMembers));
       firstEwaldCall = false;
       runningNetCharge += scaledChargeDifference({}, oldFractionalMolecules[i]);
@@ -883,7 +883,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
             {
               energyDifference += Interactions::energyDifferenceEwaldFourier(
                   system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
-                  system.forceField, system.simulationBox, newFractionalMolecules[i], oldNewFractionalMolecules[i],
+                  system.forceField, system.simulationBox, system.components, newFractionalMolecules[i], oldNewFractionalMolecules[i],
                   runningNetCharge, groupChargeSumOfSpans(earlierMembers));
             });
       runningNetCharge += scaledChargeDifference(newFractionalMolecules[i], oldNewFractionalMolecules[i]);
@@ -1086,7 +1086,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
               energyDifference += Interactions::energyDifferenceEwaldFourier(
                   system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                   firstEwaldCall ? system.storedEik : system.trialEik, system.trialEik, system.forceField,
-                  system.simulationBox, fractionalMolecules[i], oldFractionalMolecules[i], runningNetCharge,
+                  system.simulationBox, system.components, fractionalMolecules[i], oldFractionalMolecules[i], runningNetCharge,
                   groupChargeSumOfOthers(i));
             });
       firstEwaldCall = false;

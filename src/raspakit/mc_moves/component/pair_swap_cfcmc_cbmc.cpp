@@ -235,7 +235,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
           {
             energyDifference += Interactions::energyDifferenceEwaldFourier(
                 system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                system.forceField, system.simulationBox, fractionalMoleculeA, oldFractionalMoleculeA, runningNetCharge,
+                system.forceField, system.simulationBox, system.components, fractionalMoleculeA, oldFractionalMoleculeA, runningNetCharge,
                 groupChargeSum(fractionalMoleculeB));
           });
     runningNetCharge += scaledChargeDifference(fractionalMoleculeA, oldFractionalMoleculeA);
@@ -275,7 +275,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
           {
             energyDifference += Interactions::energyDifferenceEwaldFourier(
                 system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
-                system.forceField, system.simulationBox, fractionalMoleculeB, oldFractionalMoleculeB, runningNetCharge,
+                system.forceField, system.simulationBox, system.components, fractionalMoleculeB, oldFractionalMoleculeB, runningNetCharge,
                 groupChargeSum(fractionalMoleculeA));
           });
     runningNetCharge += scaledChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
@@ -433,11 +433,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     time_begin = std::chrono::steady_clock::now();
     RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
-        system.simulationBox, std::span(growDataA->atoms.begin(), growDataA->atoms.end()), {}, runningNetCharge);
+        system.simulationBox, system.components, std::span(growDataA->atoms.begin(), growDataA->atoms.end()), {}, runningNetCharge);
     runningNetCharge += scaledChargeDifference(growDataA->atoms, {});
     RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
-        system.simulationBox, std::span(growDataB->atoms.begin(), growDataB->atoms.end()), {}, runningNetCharge,
+        system.simulationBox, system.components, std::span(growDataB->atoms.begin(), growDataB->atoms.end()), {}, runningNetCharge,
         groupChargeSum(growDataA->atoms));
     RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
     time_end = std::chrono::steady_clock::now();
@@ -643,11 +643,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     time_begin = std::chrono::steady_clock::now();
     RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, {}, fractionalMoleculeA, runningNetCharge, groupChargeSum(fractionalMoleculeB));
+        system.simulationBox, system.components, {}, fractionalMoleculeA, runningNetCharge, groupChargeSum(fractionalMoleculeB));
     runningNetCharge += scaledChargeDifference({}, fractionalMoleculeA);
     RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
-        system.simulationBox, {}, fractionalMoleculeB, runningNetCharge);
+        system.simulationBox, system.components, {}, fractionalMoleculeB, runningNetCharge);
     runningNetCharge += scaledChargeDifference({}, fractionalMoleculeB);
     RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
     time_end = std::chrono::steady_clock::now();
@@ -709,7 +709,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
           {
             energyDifference += Interactions::energyDifferenceEwaldFourier(
                 system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
-                system.forceField, system.simulationBox, newFractionalMoleculeA, oldNewFractionalMoleculeA,
+                system.forceField, system.simulationBox, system.components, newFractionalMoleculeA, oldNewFractionalMoleculeA,
                 runningNetCharge);
           });
     runningNetCharge += scaledChargeDifference(newFractionalMoleculeA, oldNewFractionalMoleculeA);
@@ -753,7 +753,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
           {
             energyDifference += Interactions::energyDifferenceEwaldFourier(
                 system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
-                system.forceField, system.simulationBox, newFractionalMoleculeB, oldNewFractionalMoleculeB,
+                system.forceField, system.simulationBox, system.components, newFractionalMoleculeB, oldNewFractionalMoleculeB,
                 runningNetCharge, groupChargeSum(newFractionalMoleculeA));
           });
 
@@ -946,7 +946,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
           {
             energyDifference += Interactions::energyDifferenceEwaldFourier(
                 system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                system.forceField, system.simulationBox, fractionalMoleculeA, oldFractionalMoleculeA, runningNetCharge,
+                system.forceField, system.simulationBox, system.components, fractionalMoleculeA, oldFractionalMoleculeA, runningNetCharge,
                 groupChargeSum(fractionalMoleculeB));
           });
     runningNetCharge += scaledChargeDifference(fractionalMoleculeA, oldFractionalMoleculeA);
@@ -986,7 +986,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
           {
             energyDifference += Interactions::energyDifferenceEwaldFourier(
                 system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
-                system.forceField, system.simulationBox, fractionalMoleculeB, oldFractionalMoleculeB, runningNetCharge,
+                system.forceField, system.simulationBox, system.components, fractionalMoleculeB, oldFractionalMoleculeB, runningNetCharge,
                 groupChargeSum(fractionalMoleculeA));
           });
 
