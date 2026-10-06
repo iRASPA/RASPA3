@@ -2186,7 +2186,8 @@ blocking scheme of the MSD, so a single run covers lags from one sampling
 interval up to \(\text{sample interval} \times n^{\text{blocks}}\) with a
 logarithmic density of points. Output is written to the directory
 `end_to_end_acf`, one file per component with the lag, \(C(t)\), the normalized
-function \(C(t)/\langle R^2 \rangle\) and the number of samples per lag. The
+function \(C(t)/\langle R^2 \rangle\), the two conformational functions
+described below, and the number of samples per lag. The
 header of the file reports \(\langle R^2 \rangle\) and three estimates of the
 end-to-end relaxation time \(\tau_R\), the spacing of statistically independent
 samples of the end-to-end distance: the integral of \(C(t)/C(0)\) up to its
@@ -2195,6 +2196,28 @@ crossed zero), the time at which \(C(t)/C(0)\) falls to \(1/e\), and the decay
 time of a single exponential fitted to \(0.05 < C(t)/C(0) \le 0.5\) (the range
 dominated by the slowest Rouse mode). A production run of length \(T\) yields
 roughly \(T / (2 \tau_R)\) independent samples of \(R\) per chain.
+
+The vector function also decays when a chain of *unchanged* shape merely
+tumbles as a rigid body, so by itself it cannot tell whether a folded
+conformation (e.g. a hairpin) actually opens. The same file therefore also
+contains two rotation-invariant, conformational autocorrelation functions,
+accumulated on the same lags: the normalized fluctuation autocorrelation of the
+squared end-to-end distance,
+\(C_{R^2}(t) = \langle \delta R^2(0)\,\delta R^2(t) \rangle / \langle (\delta R^2)^2 \rangle\)
+with \(\delta R^2 = R^2 - \langle R^2 \rangle\), and the same function for the
+squared radius of gyration \(R_g^2\) (uniform weights over all atoms of the
+molecule). Both are one at zero lag and stay at one as long as the conformation
+does not change; they only decay when the chain changes shape. The header
+reports \(\langle R^2 \rangle\), \(\langle R_g^2 \rangle\), their standard
+deviations, and the same three relaxation-time estimates for each of them.
+Comparing them with \(\tau_R\) of the vector function separates the two
+mechanisms: a vector \(\tau_R\) much shorter than the conformational times means
+the chain tumbles but its fold persists (the samples of \(R\) are *not*
+independent on the time scale of \(\tau_R\)); comparable times mean the
+conformation itself relaxes. For a Gaussian chain in the Rouse model
+\(C_{R^2}(t)\) decays roughly as \(e^{-2t/\tau_R}\), i.e. twice as fast as the
+vector function. The channel is reported as `n/a` when the scalar does not
+fluctuate (a frozen conformation).
 
 In molecular dynamics the lag is in picoseconds; in Monte Carlo (no time step)
 the lag is in cycles and measures how fast the Monte Carlo moves decorrelate the
