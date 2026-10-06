@@ -20,6 +20,7 @@ import bond_bend_potential;
 import bond_torsion_potential;
 import bend_bend_potential;
 import bend_torsion_potential;
+import cmap_potential;
 import van_der_waals_potential;
 import coulomb_potential;
 import running_energy;
@@ -130,6 +131,7 @@ void Potentials::IntraMolecularPotentials::scaleEnergy(double lambda)
   for (BondTorsionPotential &potential : bondTorsions) potential.scaleEnergy(lambda);
   for (BendBendPotential &potential : bendBends) potential.scaleEnergy(lambda);
   for (BendTorsionPotential &potential : bendTorsions) potential.scaleEnergy(lambda);
+  for (CMAPMap &map : cmapMaps) map.scaleEnergy(lambda);
   // The pair lists are evaluated with the (already scaled) force field and atomic charges; only the copies kept
   // for the CBMC lookahead guide follow here.
   for (VanDerWaalsPotential &potential : vanDerWaals) potential.scaleEnergy(lambda);
@@ -139,6 +141,7 @@ void Potentials::IntraMolecularPotentials::scaleEnergy(double lambda)
     potential.chargeB *= sqrtLambda;
   }
   for (VDWParameters &parameters : implicitParameters.parameters) parameters.scaleEnergy(lambda);
+  for (VDWParameters &parameters : implicitParameters.parameters14) parameters.scaleEnergy(lambda);
   for (double &charge : implicitParameters.charge) charge *= sqrtLambda;
 }
 
@@ -258,6 +261,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalEnergies(cons
         bendTorsion.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
   }
 
+  energies += computeInternalCMAPEnergies(atoms);
   energies += computeInternalIntraVanDerWaalsEnergies(forceField, simulationBox, atoms);
   energies += computeInternalIntraCoulombEnergies(forceField, simulationBox, atoms);
 
@@ -354,7 +358,35 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalEnergiesNotSa
         bendTorsion.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
   }
 
+  energies += computeInternalCMAPEnergies(atoms);
+
   return energies;
+}
+
+RunningEnergy Potentials::IntraMolecularPotentials::computeInternalCMAPEnergies(const std::span<const Atom> atoms) const
+{
+  RunningEnergy energies{};
+
+  for (const CMAPPotential &cmap : cmaps)
+  {
+    const std::array<std::size_t, 5> &ids = cmap.identifiers;
+    energies.cmap += cmap.calculateEnergy(cmapMaps[cmap.mapIndex], atoms[ids[0]].position, atoms[ids[1]].position,
+                                          atoms[ids[2]].position, atoms[ids[3]].position, atoms[ids[4]].position);
+  }
+  return energies;
+}
+
+void Potentials::IntraMolecularPotentials::addCMAP(const std::array<std::size_t, 5> &identifiers,
+                                                   const std::string &mapName)
+{
+  const auto it = std::ranges::find(cmapMaps, mapName, &CMAPMap::name);
+  if (it == cmapMaps.end())
+  {
+    throw std::runtime_error(std::format("[CMAP]: unknown map '{}' for the CMAP term ({}, {}, {}, {}, {})\n", mapName,
+                                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
+                                         identifiers[4]));
+  }
+  cmaps.emplace_back(identifiers, static_cast<std::size_t>(std::distance(cmapMaps.begin(), it)));
 }
 
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBondEnergies(const std::span<const Atom> atoms) const
@@ -564,13 +596,13 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalIntraVanDerWa
   RunningEnergy energies{};
 
   forEachVanDerWaalsPair(
-      [&](std::size_t A, std::size_t B, double scaling)
+      [&](std::size_t A, std::size_t B, double scaling, bool pair14)
       {
         const double3 dr = simulationBox.applyPeriodicBoundaryConditions(atoms[A].position - atoms[B].position);
         const double rr = double3::dot(dr, dr);
         energies.intraVDW += Potentials::intraMolecularVDW<0>(forceField, scaling, rr,
                                                               static_cast<std::size_t>(atoms[A].type),
-                                                              static_cast<std::size_t>(atoms[B].type))
+                                                              static_cast<std::size_t>(atoms[B].type), pair14)
                                  .energy;
       });
 
@@ -659,12 +691,13 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
   };
 
   forEachVanDerWaalsPair(
-      [&](std::size_t A, std::size_t B, double scaling)
+      [&](std::size_t A, std::size_t B, double scaling, bool pair14)
       {
         const double3 dr = simulationBox.applyPeriodicBoundaryConditions(atoms[A].position - atoms[B].position);
         const double rr = double3::dot(dr, dr);
-        const Potentials::PairDerivatives<1> factors = Potentials::intraMolecularVDW<1>(
-            forceField, scaling, rr, static_cast<std::size_t>(atoms[A].type), static_cast<std::size_t>(atoms[B].type));
+        const Potentials::PairDerivatives<1> factors =
+            Potentials::intraMolecularVDW<1>(forceField, scaling, rr, static_cast<std::size_t>(atoms[A].type),
+                                             static_cast<std::size_t>(atoms[B].type), pair14);
         energies.intraVDW += factors.energy;
         accumulatePair(A, B, dr, factors.firstDerivativeFactor);
       });
@@ -874,6 +907,17 @@ std::pair<RunningEnergy, double3x3> Potentials::IntraMolecularPotentials::comput
     strain_derivative += strain;
   }
 
+  for (const CMAPPotential &cmap : cmaps)
+  {
+    const std::array<std::size_t, 5> &ids = cmap.identifiers;
+    auto [energy, gradient, strain] = cmap.potentialEnergyGradientStrain(
+        cmapMaps[cmap.mapIndex], atoms[ids[0]].position, atoms[ids[1]].position, atoms[ids[2]].position,
+        atoms[ids[3]].position, atoms[ids[4]].position);
+    energies.cmap += energy;
+    for (std::size_t k = 0; k < 5; ++k) dynamics[ids[k]].gradient += gradient[k];
+    strain_derivative += strain;
+  }
+
   return {energies, strain_derivative};
 }
 
@@ -1080,6 +1124,20 @@ Potentials::IntraMolecularPotentials Potentials::IntraMolecularPotentials::filte
     }
   }
 
+  // the CMAP terms keep the map table of the molecule (the terms refer to it by index)
+  filteredPotentials.cmapMaps = cmapMaps;
+  filteredPotentials.cmaps.reserve(cmaps.size());
+  for (const CMAPPotential &cmap : cmaps)
+  {
+    const std::array<std::size_t, 5> &ids = cmap.identifiers;
+    if (std::ranges::all_of(ids, [&](std::size_t atom) { return boolAlreadyPlacedToBePlaced[atom]; }) &&
+        std::ranges::any_of(ids, [&](std::size_t atom) { return boolToBePlaced[atom]; }))
+    {
+      filteredPotentials.cmaps.push_back(cmap);
+    }
+  }
+  if (filteredPotentials.cmaps.empty()) filteredPotentials.cmapMaps.clear();
+
   // The explicit pair terms of the step: the pairs of the beads to be placed with the placed beads (and among
   // themselves). The explicit terms of this object are filtered, the implicit pairs are materialised; each pair of
   // the step is visited once (for a bead to be placed only the partners above it among the beads to be placed).
@@ -1115,11 +1173,12 @@ Potentials::IntraMolecularPotentials Potentials::IntraMolecularPotentials::filte
         if (exclusions.isExcluded(bead, partner)) continue;
         const std::size_t A = std::min(bead, partner);
         const std::size_t B = std::max(bead, partner);
-        const auto [scalingVDW, scalingCoulomb] = exclusions.scalingOf(A, B);
-        filteredPotentials.vanDerWaals.push_back(implicitParameters.vanDerWaalsTerm(A, B, scalingVDW));
+        const IntraMolecularExclusions::ScaledPair scaling = exclusions.scalingOf(A, B);
+        filteredPotentials.vanDerWaals.push_back(
+            implicitParameters.vanDerWaalsTerm(A, B, scaling.scalingVDW, scaling.pair14));
         if (implicitParameters.useCharge)
         {
-          filteredPotentials.coulombs.push_back(implicitParameters.coulombTerm(A, B, scalingCoulomb));
+          filteredPotentials.coulombs.push_back(implicitParameters.coulombTerm(A, B, scaling.scalingCoulomb));
         }
       }
     }
@@ -1179,6 +1238,8 @@ Archive<std::ofstream> &Potentials::operator<<(Archive<std::ofstream> &archive,
   archive << p.coulombs;
   archive << p.exclusions;
   archive << p.implicitParameters;
+  archive << p.cmapMaps;
+  archive << p.cmaps;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -1216,6 +1277,11 @@ Archive<std::ifstream> &Potentials::operator>>(Archive<std::ifstream> &archive, 
   archive >> p.coulombs;
   archive >> p.exclusions;
   archive >> p.implicitParameters;
+  if (versionNumber >= 3)
+  {
+    archive >> p.cmapMaps;
+    archive >> p.cmaps;
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
@@ -1230,10 +1296,13 @@ Archive<std::ifstream> &Potentials::operator>>(Archive<std::ifstream> &archive, 
 }
 
 VanDerWaalsPotential Potentials::ImplicitPairParameters::vanDerWaalsTerm(std::size_t A, std::size_t B,
-                                                                          double scaling) const
+                                                                          double scaling, bool pair14) const
 {
-  return VanDerWaalsPotential(std::array<std::size_t, 2>{A, B}, parameters[typeIndex[A] * numberOfTypes + typeIndex[B]],
-                              scaling);
+  const std::size_t index = typeIndex[A] * numberOfTypes + typeIndex[B];
+  VanDerWaalsPotential term(std::array<std::size_t, 2>{A, B},
+                            pair14 && !parameters14.empty() ? parameters14[index] : parameters[index], scaling);
+  term.pair14 = pair14;
+  return term;
 }
 
 CoulombPotential Potentials::ImplicitPairParameters::coulombTerm(std::size_t A, std::size_t B, double scaling) const
@@ -1249,6 +1318,7 @@ Archive<std::ofstream> &Potentials::operator<<(Archive<std::ofstream> &archive,
   archive << p.charge;
   archive << p.numberOfTypes;
   archive << p.parameters;
+  archive << p.parameters14;
   archive << p.useCharge;
   return archive;
 }
@@ -1267,6 +1337,7 @@ Archive<std::ifstream> &Potentials::operator>>(Archive<std::ifstream> &archive, 
   archive >> p.charge;
   archive >> p.numberOfTypes;
   archive >> p.parameters;
+  if (versionNumber >= 3) archive >> p.parameters14;
   archive >> p.useCharge;
   return archive;
 }

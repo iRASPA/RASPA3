@@ -155,8 +155,8 @@ std::string IntraMolecularExclusions::printStatus() const
              pairs.size(), numberOfNonExcludedPairs(), scaledPairs.size());
   for (const ScaledPair &pair : scaledPairs)
   {
-    std::print(stream, "        scaled pair ({}, {}): vdW {:g}, Coulomb {:g}\n", pair.atomA, pair.atomB, pair.scalingVDW,
-               pair.scalingCoulomb);
+    std::print(stream, "        scaled pair ({}, {}): vdW {:g}, Coulomb {:g}{}\n", pair.atomA, pair.atomB,
+               pair.scalingVDW, pair.scalingCoulomb, pair.pair14 ? ", 1-4 parameters" : "");
   }
   return stream.str();
 }
@@ -180,6 +180,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const IntraM
     archive << pair.atomB;
     archive << pair.scalingVDW;
     archive << pair.scalingCoulomb;
+    archive << pair.pair14;
   }
 
 #if DEBUG_ARCHIVE
@@ -217,6 +218,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, IntraMolecul
     archive >> pair.atomB;
     archive >> pair.scalingVDW;
     archive >> pair.scalingCoulomb;
+    if (versionNumber >= 3) archive >> pair.pair14;
   }
 
 #if DEBUG_ARCHIVE

@@ -367,6 +367,14 @@ void DeviceStep::setParameters(std::span<const LennardJonesPair> lennardJones, s
   pruneDisplacementSquared = 0.25 * pruneSkin * pruneSkin;
   parametersChanged = true;
 
+  parameters.switchMode = 0;
+  parameters.switchDistanceSquared = 0.0f;
+  parameters.switchDistance = 0.0f;
+  parameters.switchInverseWidth = 0.0f;
+  parameters.switchInverseCutOff3 = 0.0f;
+  parameters.switchA12 = 1.0f;
+  parameters.switchA6 = 1.0f;
+
   if (lennardJonesTable.size() > lennardJonesCapacity)
   {
     lennardJonesCapacity = lennardJonesTable.size();
@@ -377,6 +385,18 @@ void DeviceStep::setParameters(std::span<const LennardJonesPair> lennardJones, s
     context->write(lennardJonesBuffer.get(), 0, lennardJonesTable.size() * sizeof(float), lennardJonesTable.data(),
                    true);
   }
+}
+
+void DeviceStep::setSwitching(const LennardJonesSwitching& switching)
+{
+  parameters.switchMode = switching.mode;
+  parameters.switchDistanceSquared = static_cast<float>(switching.distanceSquared);
+  parameters.switchDistance = static_cast<float>(switching.distance);
+  parameters.switchInverseWidth = static_cast<float>(switching.inverseWidth);
+  parameters.switchInverseCutOff3 = static_cast<float>(switching.inverseCutOff3);
+  parameters.switchA12 = static_cast<float>(switching.a12);
+  parameters.switchA6 = static_cast<float>(switching.a6);
+  parametersChanged = true;
 }
 
 void DeviceStep::beginBuild(const CellList& cells, const SimulationBox& box, std::size_t parts)
@@ -539,8 +559,8 @@ void DeviceStep::beginBuild(const CellList& cells, const SimulationBox& box, std
   if (useMesh) mesh.setSlots(padded);
   if (useBonded)
   {
-    bondedTopology.layout(slotOfSorted, cells.originalToSorted, padded, slotMolecule, referenceOfSorted);
-    bonded.setLayout(slotMolecule);
+    bondedTopology.layout(cells.originalToSorted, referenceOfSorted);
+    bonded.setLayout(padded);
   }
   context->flush();
 }
@@ -689,7 +709,7 @@ void DeviceStep::enqueuePairs()
 
 void DeviceStep::enqueueMesh() { mesh.enqueue(positionBuffer.get(), forceBuffer.get(), true); }
 
-void DeviceStep::enqueueBonded() { bonded.enqueue(relativeBuffer.get(), forceBuffer.get()); }
+void DeviceStep::enqueueBonded() { bonded.enqueue(relativeBuffer.get(), slotAtomBuffer.get(), forceBuffer.get()); }
 
 void DeviceStep::packPositions(std::size_t part, std::span<const std::uint32_t> sortedAtoms, const CellList& cells,
                                const SimulationBox& box)

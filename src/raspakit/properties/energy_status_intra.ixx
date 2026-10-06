@@ -10,7 +10,7 @@ import energy_dudlambda;
 
 export struct EnergyIntra
 {
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   double bond;
   double ureyBradley;
@@ -24,6 +24,7 @@ export struct EnergyIntra
   double bondTorsion;
   double bendBend;
   double bendTorsion;
+  double cmap;
   double vanDerWaals;
   double coulomb;
 
@@ -40,6 +41,7 @@ export struct EnergyIntra
         bondTorsion(0.0),
         bendBend(0.0),
         bendTorsion(0.0),
+        cmap(0.0),
         vanDerWaals(0.0),
         coulomb(0.0)
   {
@@ -50,7 +52,7 @@ export struct EnergyIntra
   inline EnergyDuDlambda total() const
   {
     return EnergyDuDlambda(bond + ureyBradley + bend + inversionBend + outOfPlaneBend + torsion +
-                                        improperTorsion + bondBond + bondBend + bondTorsion + bendBend + bendTorsion +
+                                        improperTorsion + bondBond + bondBend + bondTorsion + bendBend + bendTorsion + cmap +
                                         vanDerWaals + coulomb,
                                     0.0);
   }
@@ -69,6 +71,7 @@ export struct EnergyIntra
     this->bondTorsion = 0.0;
     this->bendBend = 0.0;
     this->bendTorsion = 0.0;
+    this->cmap = 0.0;
     this->vanDerWaals = 0.0;
     this->coulomb = 0.0;
   }
@@ -87,6 +90,7 @@ export struct EnergyIntra
     this->bondTorsion += b.bondTorsion;
     this->bendBend += b.bendBend;
     this->bendTorsion += b.bendTorsion;
+    this->cmap += b.cmap;
     this->vanDerWaals += b.vanDerWaals;
     this->coulomb += b.coulomb;
     return *this;
@@ -106,6 +110,7 @@ export struct EnergyIntra
     this->bondTorsion -= b.bondTorsion;
     this->bendBend -= b.bendBend;
     this->bendTorsion -= b.bendTorsion;
+    this->cmap -= b.cmap;
     this->vanDerWaals -= b.vanDerWaals;
     this->coulomb -= b.coulomb;
     return *this;
@@ -126,6 +131,7 @@ export struct EnergyIntra
     v.bondTorsion = -bondTorsion;
     v.bendBend = -bendBend;
     v.bendTorsion = -bendTorsion;
+    v.cmap = -cmap;
     v.vanDerWaals = -vanDerWaals;
     v.coulomb = -coulomb;
     return v;
@@ -159,6 +165,7 @@ export inline EnergyIntra operator+(const EnergyIntra& a, const EnergyIntra& b)
   m.bondTorsion = a.bondTorsion + b.bondTorsion;
   m.bendBend = a.bendBend + b.bendBend;
   m.bendTorsion = a.bendTorsion + b.bendTorsion;
+  m.cmap = a.cmap + b.cmap;
   m.vanDerWaals = a.vanDerWaals + b.vanDerWaals;
   m.coulomb = a.coulomb + b.coulomb;
   return m;
@@ -179,6 +186,7 @@ export inline EnergyIntra operator-(const EnergyIntra& a, const EnergyIntra& b)
   m.bondTorsion = a.bondTorsion - b.bondTorsion;
   m.bendBend = a.bendBend - b.bendBend;
   m.bendTorsion = a.bendTorsion - b.bendTorsion;
+  m.cmap = a.cmap - b.cmap;
   m.vanDerWaals = a.vanDerWaals - b.vanDerWaals;
   m.coulomb = a.coulomb - b.coulomb;
   return m;
@@ -199,6 +207,7 @@ export inline EnergyIntra operator*(const EnergyIntra& a, const EnergyIntra& b)
   m.bondTorsion = a.bondTorsion * b.bondTorsion;
   m.bendBend = a.bendBend * b.bendBend;
   m.bendTorsion = a.bendTorsion * b.bendTorsion;
+  m.cmap = a.cmap * b.cmap;
   m.vanDerWaals = a.vanDerWaals * b.vanDerWaals;
   m.coulomb = a.coulomb * b.coulomb;
   return m;
@@ -219,6 +228,7 @@ export inline EnergyIntra operator*(const double& a, const EnergyIntra& b)
   m.bondTorsion = a * b.bondTorsion;
   m.bendBend = a * b.bendBend;
   m.bendTorsion = a * b.bendTorsion;
+  m.cmap = a * b.cmap;
   m.vanDerWaals = a * b.vanDerWaals;
   m.coulomb = a * b.coulomb;
   return m;
@@ -239,6 +249,7 @@ export inline EnergyIntra operator/(const EnergyIntra& a, const double& b)
   m.bondTorsion = a.bondTorsion / b;
   m.bendBend = a.bendBend / b;
   m.bendTorsion = a.bendTorsion / b;
+  m.cmap = a.cmap / b;
   m.vanDerWaals = a.vanDerWaals / b;
   m.coulomb = a.coulomb / b;
   return m;
@@ -259,6 +270,7 @@ export inline EnergyIntra sqrt(const EnergyIntra& a)
   m.bondTorsion = std::sqrt(a.bondTorsion);
   m.bendBend = std::sqrt(a.bendBend);
   m.bendTorsion = std::sqrt(a.bendTorsion);
+  m.cmap = std::sqrt(a.cmap);
   m.vanDerWaals = std::sqrt(a.vanDerWaals);
   m.coulomb = std::sqrt(a.coulomb);
   return m;

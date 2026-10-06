@@ -895,6 +895,77 @@ System makeChainSystem(bool withBondBond, RandomNumber& random, std::size_t numb
   randomizeConfiguration(system, random);
   return system;
 }
+
+// A compact chain of n^3 beads on a boustrophedon path through an n x n x n lattice (3.8 Angstrom spacing, like a
+// coarse-grained protein backbone), with harmonic bonds and bends, TraPPE torsions, alternating charges and the
+// 1-4 pairs scaled by one half: a single molecule with far more atoms than the 256 of the old device slot packing.
+System makeLatticeChainSystem(RandomNumber& random, std::size_t n, std::size_t numberOfMolecules)
+{
+  ForceField forceField = ForceField(
+      {{"CH3", false, 15.03452, 0.0, 0.0, 6, false}, {"CH2", false, 14.02658, 0.0, 0.0, 6, false}},
+      {{98.0, 3.75}, {46.0, 3.95}}, ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0, 9.0, false, false, true);
+  forceField.automaticEwald = false;
+  forceField.EwaldAlpha = 0.32;
+  forceField.numberOfWaveVectors = int3(20, 20, 20);
+  forceField.reciprocalCutOffSquared = std::numeric_limits<double>::max();
+  forceField.reciprocalIntegerCutOffSquared = 400;
+
+  const std::size_t numberOfBeads = n * n * n;
+  ConnectivityTable connectivityTable(numberOfBeads);
+  Potentials::IntraMolecularPotentials potentials{};
+  for (std::size_t i = 0; i + 1 < numberOfBeads; ++i)
+  {
+    connectivityTable[i, i + 1] = true;
+    connectivityTable[i + 1, i] = true;
+    potentials.bonds.push_back(BondPotential({i, i + 1}, BondType::Harmonic, {96500.0, 3.8}));
+  }
+  for (std::size_t i = 0; i + 2 < numberOfBeads; ++i)
+  {
+    potentials.bends.push_back(BendPotential({i, i + 1, i + 2}, BendType::Harmonic, {62500.0, 100.0}));
+  }
+  for (std::size_t i = 0; i + 3 < numberOfBeads; ++i)
+  {
+    potentials.torsions.push_back(
+        TorsionPotential({i, i + 1, i + 2, i + 3}, TorsionType::TraPPE, {0.0, 355.03, -68.19, 791.32}));
+    // the 1-4 pairs at half strength (the component's default 1-4 scaling is zero)
+    potentials.vanDerWaals.push_back(
+        VanDerWaalsPotential({i, i + 3}, VDWParameters::Type::LennardJones, {46.0, 3.95}, 0.5));
+    potentials.coulombs.push_back(CoulombPotential({i, i + 3}, CoulombType::Coulomb, 0.25, 0.25, 0.5));
+  }
+
+  std::vector<Atom> beads{};
+  const double spacing = 3.8;
+  const double offset = 0.5 * spacing * static_cast<double>(n - 1);
+  for (std::size_t z = 0; z < n; ++z)
+  {
+    for (std::size_t row = 0; row < n; ++row)
+    {
+      const std::size_t y = (z % 2 == 0) ? row : n - 1 - row;
+      for (std::size_t column = 0; column < n; ++column)
+      {
+        const std::size_t x = ((z * n + row) % 2 == 0) ? column : n - 1 - column;
+        const std::size_t i = beads.size();
+        const bool end = (i == 0 || i + 1 == numberOfBeads);
+        beads.push_back(Atom({spacing * static_cast<double>(x) - offset, spacing * static_cast<double>(y) - offset,
+                              spacing * static_cast<double>(z) - offset},
+                             (i % 2 == 0) ? 0.25 : -0.25, 1.0, 0, end ? 0 : 1, 0, false, false));
+      }
+    }
+  }
+  Component chain =
+      Component(forceField, "lattice-chain", 425.0, 3796000.0, 0.199, beads, connectivityTable, potentials, 5, 21);
+  // the molecules are inserted at the component geometry (a CBMC growth of a 343-bead chain would take minutes)
+  // and placed by randomizeConfiguration
+  std::vector<double3> positions{};
+  for (std::size_t m = 0; m < numberOfMolecules; ++m)
+  {
+    for (const Atom& bead : beads) positions.push_back(bead.position);
+  }
+  System system = System(forceField, SimulationBox(40.0, 39.0, 41.0), false, 300.0, 1e5, 1.0, {}, {chain},
+                         {positions}, {0}, 5);
+  randomizeConfiguration(system, random);
+  return system;
+}
 }  // namespace
 
 // The same-molecule pairs of a flexible chain in the cell lists: a six-bead chain has excluded 1-2 / 1-3 pairs, a
@@ -1130,6 +1201,122 @@ TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_long_chain)
   const std::vector<double3> referenceGradient = gradientsOf(system);
   EXPECT_NEAR(energy.potentialEnergy(), reference.potentialEnergy(), 2e-5 * std::abs(reference.potentialEnergy()));
   EXPECT_LT(rmsDifference(gradient, referenceGradient), 1e-4 * rmsNorm(referenceGradient));
+}
+
+TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_large_molecules)
+{
+  // two 343-atom chains: the device bonded path has no molecule-size limit (slots find their molecule through
+  // the slot's system atom), and the virial correction uses the per-molecule centers of the center kernel
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  RandomNumber random(23);
+  System system = makeLatticeChainSystem(random, 7, 2);
+  ASSERT_EQ(system.components[0].atoms.size(), 343uz);
+  ASSERT_EQ(system.components[0].intraMolecularPotentials.exclusions.scaledPairs.size(), 340uz);
+
+  SpatialDecompositionSettings hostSettings = settingsFor(4, 1.5, 0.5);
+  hostSettings.pairDevice = pairDevice;
+  hostSettings.deviceBonded = false;
+  SpatialDecompositionForceEngine host(hostSettings);
+  host.initialize(system);
+  EXPECT_FALSE(host.usesDeviceBonded());
+  const RunningEnergy hostEnergy = host.computeGradients(system, true);
+  const std::vector<double3> hostGradient = gradientsOf(system);
+
+  SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+  settings.pairDevice = pairDevice;
+  SpatialDecompositionForceEngine device(settings);
+  device.initialize(system);
+  EXPECT_TRUE(device.usesDeviceBonded());
+  const RunningEnergy energy = device.computeGradients(system, true);
+  const std::vector<double3> gradient = gradientsOf(system);
+
+  EXPECT_NE(hostEnergy.torsion, 0.0);
+  EXPECT_NE(hostEnergy.intraVDW, 0.0);
+  EXPECT_NE(hostEnergy.intraCoul, 0.0);
+  EXPECT_NEAR(energy.bond, hostEnergy.bond, 1e-5 * std::abs(hostEnergy.bond));
+  EXPECT_NEAR(energy.bend, hostEnergy.bend, 1e-5 * std::abs(hostEnergy.bend));
+  EXPECT_NEAR(energy.torsion, hostEnergy.torsion, 1e-5 * std::abs(hostEnergy.torsion));
+  EXPECT_NEAR(energy.intraVDW, hostEnergy.intraVDW, 1e-5 * std::abs(hostEnergy.intraVDW));
+  EXPECT_NEAR(energy.intraCoul, hostEnergy.intraCoul, 1e-5 * std::abs(hostEnergy.intraCoul));
+  EXPECT_NEAR(energy.ewald_self + energy.ewald_exclusion, hostEnergy.ewald_self + hostEnergy.ewald_exclusion,
+              1e-5 * std::abs(hostEnergy.ewald_self + hostEnergy.ewald_exclusion));
+  EXPECT_NEAR(energy.potentialEnergy(), hostEnergy.potentialEnergy(), 1e-5 * std::abs(hostEnergy.potentialEnergy()));
+  EXPECT_LT(rmsDifference(gradient, hostGradient), 1e-5 * rmsNorm(hostGradient));
+  EXPECT_LT(maxAbsDifference(device.molecularPressureTensor(), host.molecularPressureTensor()),
+            1e-5 * maxAbs(host.molecularPressureTensor()));
+
+  const RunningEnergy reference = referenceGradients(system);
+  const std::vector<double3> referenceGradient = gradientsOf(system);
+  EXPECT_NEAR(energy.potentialEnergy(), reference.potentialEnergy(), 2e-5 * std::abs(reference.potentialEnergy()));
+  EXPECT_LT(rmsDifference(gradient, referenceGradient), 1e-4 * rmsNorm(referenceGradient));
+}
+
+TEST(spatial_decomposition, engine_splits_large_molecules_over_threads)
+{
+  // two 343-atom chains (1700 atoms + terms each): the host bonded work slices them into atom ranges and term
+  // ranges per kind, so that the energies, gradients and the molecular pressure come out the same for any
+  // number of threads, and the same as the whole-molecule reference
+  RandomNumber random(29);
+  System system = makeLatticeChainSystem(random, 7, 2);
+  ASSERT_EQ(system.components[0].atoms.size(), 343uz);
+
+  const RunningEnergy reference = referenceGradients(system);
+  const std::vector<double3> referenceGradient = gradientsOf(system);
+  const double3x3 referencePressure = system.computeMolecularPressure().second;
+  EXPECT_NE(reference.torsion, 0.0);
+  EXPECT_NE(reference.intraVDW, 0.0);
+  EXPECT_NE(reference.intraCoul, 0.0);
+  EXPECT_NE(reference.ewald_exclusion, 0.0);
+
+  std::optional<RunningEnergy> firstEnergy;
+  std::vector<double3> firstGradient;
+  double3x3 firstPressure{};
+  for (std::size_t threads : {1uz, 3uz, 8uz})
+  {
+    SpatialDecompositionForceEngine engine(settingsFor(threads, 1.5, 0.5));
+    engine.initialize(system);
+    const RunningEnergy energy = engine.computeGradients(system, true);
+    const std::vector<double3> gradient = gradientsOf(system);
+    const double3x3 pressure = engine.molecularPressureTensor();
+    const std::string label = std::format("threads {}", threads);
+
+    EXPECT_NEAR(energy.bond, reference.bond, 1e-10 * std::abs(reference.bond)) << label;
+    EXPECT_NEAR(energy.bend, reference.bend, 1e-10 * std::abs(reference.bend)) << label;
+    EXPECT_NEAR(energy.torsion, reference.torsion, 1e-10 * std::abs(reference.torsion)) << label;
+    // the unscaled same-molecule pairs are booked with the molecule-molecule pairs by the engine
+    EXPECT_NEAR(energy.intraVDW + energy.moleculeMoleculeVDW, reference.intraVDW + reference.moleculeMoleculeVDW,
+                1e-8 * std::abs(reference.intraVDW + reference.moleculeMoleculeVDW))
+        << label;
+    EXPECT_NEAR(energy.intraCoul + energy.moleculeMoleculeCharge,
+                reference.intraCoul + reference.moleculeMoleculeCharge,
+                1e-8 * std::abs(reference.intraCoul + reference.moleculeMoleculeCharge))
+        << label;
+    EXPECT_NE(energy.intraVDW, 0.0) << label;
+    EXPECT_NEAR(energy.ewald_self + energy.ewald_exclusion, reference.ewald_self + reference.ewald_exclusion,
+                1e-10 * std::abs(reference.ewald_self + reference.ewald_exclusion))
+        << label;
+    EXPECT_NEAR(energy.potentialEnergy(), reference.potentialEnergy(), 2e-5 * std::abs(reference.potentialEnergy()))
+        << label;
+    EXPECT_LT(rmsDifference(gradient, referenceGradient), 1e-4 * rmsNorm(referenceGradient)) << label;
+    EXPECT_LT(maxAbsDifference(pressure, referencePressure), 1e-4 * maxAbs(referencePressure)) << label;
+
+    // the same answer for every thread count (up to the summation order of the pair domains)
+    if (!firstEnergy)
+    {
+      firstEnergy = energy;
+      firstGradient = gradient;
+      firstPressure = pressure;
+    }
+    else
+    {
+      EXPECT_NEAR(energy.potentialEnergy(), firstEnergy->potentialEnergy(),
+                  1e-9 * std::abs(firstEnergy->potentialEnergy()))
+          << label;
+      EXPECT_LT(rmsDifference(gradient, firstGradient), 1e-9 * rmsNorm(firstGradient)) << label;
+      EXPECT_LT(maxAbsDifference(pressure, firstPressure), 1e-9 * maxAbs(firstPressure)) << label;
+    }
+  }
 }
 
 TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_fall_back_to_the_host)

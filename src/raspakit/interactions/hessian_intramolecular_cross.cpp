@@ -15,6 +15,7 @@ import bond_bend_potential;
 import bend_bend_potential;
 import bond_torsion_potential;
 import bend_torsion_potential;
+import cmap_potential;
 import inversion_bend_potential;
 import out_of_plane_bend_potential;
 import generalized_hessian;
@@ -35,11 +36,12 @@ namespace
 // gradient-curvature term on rigid orientations), and the strain gradient is corrected to the
 // molecular (rigid-body) convention by removing the non-scaling internal-offset virial of every
 // rigid-group atom.
+template <std::size_t N = 4>
 void scatterSemiFlexibleCrossTerm(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
                                   const Minimization::RigidDerivativeCache& rigidCache, std::size_t moleculeIndex,
                                   std::span<const std::size_t> termAtoms, std::span<const double3> positions,
                                   std::span<const double3> gradients,
-                                  const std::array<std::array<CoordinateBlock, 4>, 4>& full)
+                                  const std::array<std::array<CoordinateBlock, N>, N>& full)
 {
   const std::size_t M = termAtoms.size();
 
@@ -784,6 +786,84 @@ RunningEnergy Interactions::computeIntraMolecularOutOfPlaneBendHessian(
 
       scatterCartesianFourBody(hessian, layout, moleculeIndex, {A, B, C, D}, positions, analyticGradient,
                                analyticHessian);
+    }
+  }
+
+  return energies;
+}
+
+RunningEnergy Interactions::computeIntraMolecularCMAPHessian(
+    std::span<const Molecule> moleculeData, std::span<const Atom> atoms, std::span<const Component> components,
+    const MinimizationDofLayout& layout, GeneralizedHessian& hessian, std::span<AtomDynamics> dynamics)
+{
+  RunningEnergy energies{};
+
+  const Minimization::RigidDerivativeCache rigidCache =
+      Minimization::RigidDerivativeCache::build(moleculeData, components, atoms);
+
+  for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
+  {
+    const Molecule& molecule = moleculeData[moleculeIndex];
+    if (components[molecule.componentId].rigid)
+    {
+      continue;
+    }
+    const bool semiFlexible = components[molecule.componentId].isSemiFlexible();
+
+    const Potentials::IntraMolecularPotentials& potentials = components[molecule.componentId].intraMolecularPotentials;
+    std::span<const Atom> atom_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
+    std::span<AtomDynamics> dynamics_span = {&dynamics[molecule.atomIndex], molecule.numberOfAtoms};
+
+    for (const CMAPPotential& term : potentials.cmaps)
+    {
+      const std::array<std::size_t, 5>& ids = term.identifiers;
+      const CMAPMap& map = potentials.cmapMaps[term.mapIndex];
+      const std::array<double3, 5> positions{atom_span[ids[0]].position, atom_span[ids[1]].position,
+                                             atom_span[ids[2]].position, atom_span[ids[3]].position,
+                                             atom_span[ids[4]].position};
+
+      auto [energy, gradient, strain] = term.potentialEnergyGradientStrain(map, positions[0], positions[1],
+                                                                           positions[2], positions[3], positions[4]);
+      energies.cmap += energy;
+      for (std::size_t k = 0; k < 5; ++k) dynamics_span[ids[k]].gradient += gradient[k];
+      hessian.strainGradient() += strain;
+
+      // The signed dihedral coordinates of the minimizer follow the opposite sign convention of the
+      // IUPAC angles the map is defined on: phi_IUPAC = -phi_RASPA (gradient and Hessian flip sign).
+      const auto negated = [](InternalCoordinate coordinate)
+      {
+        coordinate.value = -coordinate.value;
+        for (std::size_t i = 0; i < 4; ++i)
+        {
+          coordinate.gradient[i] = -1.0 * coordinate.gradient[i];
+          for (std::size_t j = 0; j < 4; ++j)
+            for (std::size_t a = 0; a < 3; ++a)
+              for (std::size_t b = 0; b < 3; ++b) coordinate.hessian[i][j][a][b] = -coordinate.hessian[i][j][a][b];
+        }
+        return coordinate;
+      };
+      const InternalCoordinate phi = negated(
+          Minimization::dihedralAngleInternalCoordinate(positions[0], positions[1], positions[2], positions[3]));
+      const InternalCoordinate psi = negated(
+          Minimization::dihedralAngleInternalCoordinate(positions[1], positions[2], positions[3], positions[4]));
+
+      const CMAPMap::Evaluation value = map.evaluate(phi.value, psi.value);
+      const std::array<double, 3> dUdq{value.dPhi, value.dPsi, 0.0};
+      const std::array<std::array<double, 3>, 3> d2{{{value.dPhiPhi, value.dPhiPsi, 0.0},
+                                                     {value.dPhiPsi, value.dPsiPsi, 0.0},
+                                                     {0.0, 0.0, 0.0}}};
+      const std::vector<InternalCoordinate> coords{phi, psi};
+      const std::vector<std::array<std::size_t, 4>> slotMaps{{{0, 1, 2, 3}}, {{1, 2, 3, 4}}};
+
+      if (semiFlexible)
+      {
+        const auto full = assembleCrossCartesianHessian<5>(coords, slotMaps, dUdq, d2);
+        scatterSemiFlexibleCrossTerm<5>(hessian, layout, rigidCache, moleculeIndex, ids, positions, gradient, full);
+        continue;
+      }
+
+      scatterCrossHessian<5>(hessian, layout, moleculeIndex, {ids[0], ids[1], ids[2], ids[3], ids[4]}, coords,
+                             slotMaps, positions, dUdq, d2);
     }
   }
 

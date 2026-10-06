@@ -35,6 +35,7 @@ import bond_bend_potential;
 import bond_torsion_potential;
 import bend_bend_potential;
 import bend_torsion_potential;
+import cmap_potential;
 import van_der_waals_potential;
 import coulomb_potential;
 import intra_molecular_potentials;
@@ -677,6 +678,16 @@ export struct Component
   std::vector<BendBendPotential> readBendBendPotentials(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
   std::vector<BendTorsionPotential> readBendTorsionPotentials(
       const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+
+  /**
+   * \brief Reads the CMAP correction terms into 'intraMolecularPotentials' ('cmapMaps' and 'cmaps').
+   *
+   * 'CMAPs' lists the maps of the component ({"Name", "Resolution", "Energies"}, energies in K with the first angle as
+   * the slow index, angles from -180 degrees); the maps of the force field ('CMAPs' in force_field.json) are
+   * available as well. 'CMAPTorsions' lists the terms as [[A, B, C, D, E], "MapName"]: phi = (A, B, C, D) and
+   * psi = (B, C, D, E).
+   */
+  void readCMAPPotentials(const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 
   /// Reads 'Intra14VanDerWaalsScalingValue' / 'Intra14ChargeChargeScalingValue' (zero when absent).
   static double readIntra14Scaling(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data, std::string_view key);

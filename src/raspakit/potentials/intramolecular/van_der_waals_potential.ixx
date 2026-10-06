@@ -16,18 +16,19 @@ import vdwparameters;
  * constants) times the pair 'scaling' (one for an ordinary pair, the 1-4 scaling for a 1-4 pair).
  *
  * The energy, gradient and Hessian routines evaluate these pairs through the force field itself
- * (Potentials::intraMolecularVDW with the atom types), so for them only 'identifiers' and 'scaling'
- * matter. The self-contained 'calculateEnergy' is the force-field-free evaluation used where no force
+ * (Potentials::intraMolecularVDW with the atom types), so for them only 'identifiers', 'scaling' and
+ * 'pair14' matter. The self-contained 'calculateEnergy' is the force-field-free evaluation used where no force
  * field is at hand (the CBMC lookahead guide): the untruncated, unshifted potential at full coupling,
  * dispatched on 'parameters.type' like every other evaluation.
  */
 export struct VanDerWaalsPotential
 {
-  std::uint64_t versionNumber{2};  ///< Version number for serialization.
+  std::uint64_t versionNumber{3};  ///< Version number for serialization.
 
   std::array<std::size_t, 2> identifiers{0, 0};  ///< Identifiers of the two atoms forming the pair.
   double scaling{1.0};                           ///< The pair scaling (1-4 scaling, 1 for ordinary pairs).
   VDWParameters parameters{};                    ///< The force-field pair potential between the two atom types.
+  bool pair14{false};                            ///< Whether the pair uses the 1-4 pair parameters (ForceField::pair14).
 
   VanDerWaalsPotential() = default;
 

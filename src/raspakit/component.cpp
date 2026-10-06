@@ -47,6 +47,7 @@ import bond_bend_potential;
 import bond_torsion_potential;
 import bend_bend_potential;
 import bend_torsion_potential;
+import cmap_potential;
 import van_der_waals_potential;
 import coulomb_potential;
 import intra_molecular_potentials;
@@ -402,6 +403,7 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
     intraMolecularPotentials.bondTorsions = readBondTorsionPotentials(parsed_data);
     intraMolecularPotentials.bendBends = readBendBendPotentials(parsed_data);
     intraMolecularPotentials.bendTorsions = readBendTorsionPotentials(parsed_data);
+    readCMAPPotentials(forceField, parsed_data);
     intra14VanDerWaalsScaling = readIntra14Scaling(parsed_data, "Intra14VanDerWaalsScalingValue");
     intra14ChargeChargeScaling = readIntra14Scaling(parsed_data, "Intra14ChargeChargeScalingValue");
     buildIntraMolecularNonBondedPairs(forceField);
@@ -1804,6 +1806,21 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
       std::print(stream, "\n");
     }
 
+    if (!intraMolecularPotentials.cmaps.empty())
+    {
+      std::print(stream, "    number of CMAP maps: {}\n", intraMolecularPotentials.cmapMaps.size());
+      for (const CMAPMap &map : intraMolecularPotentials.cmapMaps)
+      {
+        std::print(stream, "{}", wrapText(map.print(), "        ", "            "));
+      }
+      std::print(stream, "    number of CMAP potentials: {}\n", intraMolecularPotentials.cmaps.size());
+      for (std::size_t i = 0; i < intraMolecularPotentials.cmaps.size(); ++i)
+      {
+        std::print(stream, "{}", wrapText(intraMolecularPotentials.cmaps[i].print(), "        ", "            "));
+      }
+      std::print(stream, "\n");
+    }
+
     std::print(stream, "{}", intraMolecularPotentials.exclusions.printStatus());
     std::print(stream, "    1-4 scaling: Van der Waals {:g}, Coulomb {:g}\n", intra14VanDerWaalsScaling,
                intra14ChargeChargeScaling);
@@ -2589,6 +2606,95 @@ std::vector<BendTorsionPotential> Component::readBendTorsionPotentials(
                                                                  BendTorsionPotential::definitionForString);
 }
 
+void Component::readCMAPPotentials(const ForceField &forceField,
+                                   const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
+{
+  intraMolecularPotentials.cmapMaps.clear();
+  intraMolecularPotentials.cmaps.clear();
+
+  // the maps of the component, then those of the force field (a component map shadows a force-field map)
+  std::vector<CMAPMap> maps{};
+  if (parsed_data.contains("CMAPs"))
+  {
+    for (auto &[_, item] : parsed_data["CMAPs"].items())
+    {
+      try
+      {
+        if (!item.is_object() || !item.contains("Name") || !item.contains("Resolution") || !item.contains("Energies"))
+        {
+          throw std::runtime_error("a CMAP map is an object with 'Name', 'Resolution' and 'Energies'");
+        }
+        std::vector<double> energies = item["Energies"].get<std::vector<double>>();
+        for (double &energy : energies) energy *= Units::KelvinToEnergy;
+        maps.emplace_back(item["Name"].get<std::string>(), item["Resolution"].get<std::size_t>(),
+                          std::move(energies));
+      }
+      catch (std::exception const &e)
+      {
+        throw std::runtime_error(std::format("[Component reader]: error in CMAP map: {}\n", e.what()));
+      }
+    }
+  }
+  for (const CMAPMap &map : forceField.cmapMaps)
+  {
+    if (std::ranges::find(maps, map.name, &CMAPMap::name) == maps.end()) maps.push_back(map);
+  }
+
+  if (!parsed_data.contains("CMAPTorsions")) return;
+
+  // only the maps in use are kept
+  for (auto &[_, item] : parsed_data["CMAPTorsions"].items())
+  {
+    try
+    {
+      if (!item.is_array() || item.size() != 2 || !item[0].is_array())
+      {
+        throw std::runtime_error("a CMAP term is [[A, B, C, D, E], \"MapName\"]");
+      }
+      const std::vector<std::size_t> identifiers = item[0].get<std::vector<std::size_t>>();
+      if (identifiers.size() != 5)
+      {
+        throw std::runtime_error(std::format("expected 5 identifiers, got {}", identifiers.size()));
+      }
+      for (std::size_t atom : identifiers)
+      {
+        if (atom >= definedAtoms.size())
+        {
+          throw std::runtime_error(std::format("atom index {} out of range ({} atoms)", atom, definedAtoms.size()));
+        }
+      }
+      std::string mapName{};
+      if (item[1].is_string())
+      {
+        mapName = item[1].get<std::string>();
+      }
+      else if (item[1].is_number_unsigned())
+      {
+        const std::size_t index = item[1].get<std::size_t>();
+        if (index >= maps.size()) throw std::runtime_error(std::format("map index {} out of range", index));
+        mapName = maps[index].name;
+      }
+      else
+      {
+        throw std::runtime_error("the map must be given by name (string) or index");
+      }
+      auto source = std::ranges::find(maps, mapName, &CMAPMap::name);
+      if (source == maps.end()) throw std::runtime_error(std::format("unknown CMAP map '{}'", mapName));
+      if (std::ranges::find(intraMolecularPotentials.cmapMaps, mapName, &CMAPMap::name) ==
+          intraMolecularPotentials.cmapMaps.end())
+      {
+        intraMolecularPotentials.cmapMaps.push_back(*source);
+      }
+      intraMolecularPotentials.addCMAP(
+          {identifiers[0], identifiers[1], identifiers[2], identifiers[3], identifiers[4]}, mapName);
+    }
+    catch (std::exception const &e)
+    {
+      throw std::runtime_error(std::format("Error in CMAPTorsions ({}): {}\n", item.dump(), e.what()));
+    }
+  }
+}
+
 double Component::readIntra14Scaling(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data,
                                      std::string_view key)
 {
@@ -2605,6 +2711,16 @@ double Component::readIntra14Scaling(const nlohmann::basic_json<nlohmann::raspa_
   }
   return scaling;
 }
+
+namespace
+{
+// the scaling of a non-excluded pair while the scaled pairs of a component are collected
+struct PairScaling
+{
+  double vdw{1.0}, coulomb{1.0};
+  bool pair14{false};
+};
+}  // namespace
 
 void Component::buildIntraMolecularNonBondedPairs(const ForceField &forceField)
 {
@@ -2658,30 +2774,31 @@ void Component::buildIntraMolecularNonBondedPairs(const ForceField &forceField)
   std::vector<std::array<std::size_t, 2>> pairs14 = connectivityTable.numberOfBeads == numberOfAtoms
                                                         ? IntraMolecularExclusions::pairs14(connectivityTable)
                                                         : std::vector<std::array<std::size_t, 2>>{};
-  std::map<std::array<std::size_t, 2>, std::pair<double, double>> scaling{};
+  // A 1-4 pair of a force field with separate 1-4 pair parameters is kept apart from the generic pair loops even
+  // at scaling (1, 1): its van der Waals interaction uses the 1-4 table.
+  const bool pair14Parameters = forceField.hasPair14Parameters();
+  std::map<std::array<std::size_t, 2>, PairScaling> scaling{};
   for (const std::array<std::size_t, 2> &pair : pairs14)
   {
-    scaling[pair] = {intra14VanDerWaalsScaling, intra14ChargeChargeScaling};
+    scaling[pair] = {intra14VanDerWaalsScaling, intra14ChargeChargeScaling, pair14Parameters};
   }
   for (const auto &[pair, value] : listedVanDerWaals)
   {
-    auto it = scaling.try_emplace(pair, std::pair<double, double>{1.0, 1.0}).first;
-    it->second.first = value;
+    scaling.try_emplace(pair, PairScaling{}).first->second.vdw = value;
   }
   for (const auto &[pair, value] : listedCoulombs)
   {
-    auto it = scaling.try_emplace(pair, std::pair<double, double>{1.0, 1.0}).first;
-    it->second.second = value;
+    scaling.try_emplace(pair, PairScaling{}).first->second.coulomb = value;
   }
   std::vector<IntraMolecularExclusions::ScaledPair> scaledPairs{};
   for (const auto &[pair, value] : scaling)
   {
     if (pair[0] >= numberOfAtoms || pair[1] >= numberOfAtoms || exclusions.isExcluded(pair[0], pair[1])) continue;
-    const double scalingVDW = value.first;
-    const double scalingCoulomb = forceField.useCharge ? value.second : 1.0;
-    if (scalingVDW == 1.0 && scalingCoulomb == 1.0) continue;
-    scaledPairs.push_back(
-        {static_cast<std::uint32_t>(pair[0]), static_cast<std::uint32_t>(pair[1]), scalingVDW, scalingCoulomb});
+    const double scalingVDW = value.vdw;
+    const double scalingCoulomb = forceField.useCharge ? value.coulomb : 1.0;
+    if (scalingVDW == 1.0 && scalingCoulomb == 1.0 && !value.pair14) continue;
+    scaledPairs.push_back({static_cast<std::uint32_t>(pair[0]), static_cast<std::uint32_t>(pair[1]), scalingVDW,
+                           scalingCoulomb, value.pair14});
   }
   exclusions.setScaledPairs(std::move(scaledPairs));
 
@@ -2704,11 +2821,13 @@ void Component::buildIntraMolecularNonBondedPairs(const ForceField &forceField)
     implicit.charge.push_back(atom.charge);
   }
   implicit.parameters.resize(types.size() * types.size());
+  implicit.parameters14.resize(types.size() * types.size());
   for (std::size_t a = 0; a < types.size(); ++a)
   {
     for (std::size_t b = 0; b < types.size(); ++b)
     {
       implicit.parameters[a * types.size() + b] = forceField(types[a], types[b]);
+      implicit.parameters14[a * types.size() + b] = forceField.pair14(types[a], types[b]);
     }
   }
 }

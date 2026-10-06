@@ -21,6 +21,19 @@ import potential_pair_vdw;
 import potential_pair_coulomb;
 import potential_intra_pair;
 import intra_molecular_exclusions;
+import intra_molecular_potentials;
+import bond_potential;
+import urey_bradley_potential;
+import bend_potential;
+import inversion_bend_potential;
+import out_of_plane_bend_potential;
+import torsion_potential;
+import bond_bond_potential;
+import bond_bend_potential;
+import bond_torsion_potential;
+import bend_bend_potential;
+import bend_torsion_potential;
+import cmap_potential;
 import interactions_ewald;
 import integrators_update;
 import integrators_compute;
@@ -96,19 +109,242 @@ bool SpatialDecompositionForceEngine::supports(const System& system, std::string
   return true;
 }
 
+namespace
+{
+// The term lists of a component the host bonded units slice (the kinds of BondedUnit::termKind); the scaled
+// (1-4) pairs are the last kind.
+constexpr std::size_t numberOfHostTermKinds = 14;
+constexpr std::uint8_t cmapKind = 12;
+constexpr std::uint8_t scaledPairKind = 13;
+
+std::size_t hostTermCount(const Potentials::IntraMolecularPotentials& potentials, std::size_t kind)
+{
+  switch (kind)
+  {
+    case 0:
+      return potentials.bonds.size();
+    case 1:
+      return potentials.ureyBradleys.size();
+    case 2:
+      return potentials.bends.size();
+    case 3:
+      return potentials.inversionBends.size();
+    case 4:
+      return potentials.outOfPlaneBends.size();
+    case 5:
+      return potentials.torsions.size();
+    case 6:
+      return potentials.improperTorsions.size();
+    case 7:
+      return potentials.bondBonds.size();
+    case 8:
+      return potentials.bondBends.size();
+    case 9:
+      return potentials.bondTorsions.size();
+    case 10:
+      return potentials.bendBends.size();
+    case 11:
+      return potentials.bendTorsions.size();
+    case cmapKind:
+      return potentials.cmaps.size();
+    case scaledPairKind:
+      return potentials.exclusions.scaledPairs.size();
+    default:
+      return 0;
+  }
+}
+
+// the atoms (indices in the molecule) of term `index` of `kind`; returns their number
+std::size_t hostTermAtoms(const Potentials::IntraMolecularPotentials& potentials, std::size_t kind, std::size_t index,
+                          std::size_t atoms[5])
+{
+  auto copy = [&](const auto& identifiers)
+  {
+    for (std::size_t k = 0; k < identifiers.size(); ++k) atoms[k] = identifiers[k];
+    return identifiers.size();
+  };
+  switch (kind)
+  {
+    case 0:
+      return copy(potentials.bonds[index].identifiers);
+    case 1:
+      return copy(potentials.ureyBradleys[index].identifiers);
+    case 2:
+      return copy(potentials.bends[index].identifiers);
+    case 3:
+      return copy(potentials.inversionBends[index].identifiers);
+    case 4:
+      return copy(potentials.outOfPlaneBends[index].identifiers);
+    case 5:
+      return copy(potentials.torsions[index].identifiers);
+    case 6:
+      return copy(potentials.improperTorsions[index].identifiers);
+    case 7:
+      return copy(potentials.bondBonds[index].identifiers);
+    case 8:
+      return copy(potentials.bondBends[index].identifiers);
+    case 9:
+      return copy(potentials.bondTorsions[index].identifiers);
+    case 10:
+      return copy(potentials.bendBends[index].identifiers);
+    case 11:
+      return copy(potentials.bendTorsions[index].identifiers);
+    case cmapKind:
+      return copy(potentials.cmaps[index].identifiers);
+    case scaledPairKind:
+      atoms[0] = potentials.exclusions.scaledPairs[index].atomA;
+      atoms[1] = potentials.exclusions.scaledPairs[index].atomB;
+      return 2;
+    default:
+      return 0;
+  }
+}
+
+// a molecule whose work (atoms plus terms) exceeds this is sliced into units of about `bondedUnitSize` items
+constexpr std::size_t bondedUnitSize = 256;
+constexpr std::size_t bondedSplitThreshold = 4 * bondedUnitSize;
+}  // namespace
+
+void SpatialDecompositionForceEngine::buildSplitLayout(const System& system, std::size_t componentId)
+{
+  SplitTermLayout& layout = splitLayouts[componentId];
+  const Component& component = system.components[componentId];
+  const Potentials::IntraMolecularPotentials& potentials = component.intraMolecularPotentials;
+  std::vector<std::vector<std::uint32_t>> referencesPerAtom(component.atoms.size());
+  layout.kindOffset.assign(numberOfHostTermKinds + 1, 0);
+  std::uint32_t slots = 0;
+  for (std::size_t kind = 0; kind < numberOfHostTermKinds; ++kind)
+  {
+    layout.kindOffset[kind] = slots;
+    const std::size_t count = hostTermCount(potentials, kind);
+    for (std::size_t i = 0; i < count; ++i)
+    {
+      std::size_t atoms[5];
+      const std::size_t arity = hostTermAtoms(potentials, kind, i, atoms);
+      for (std::size_t role = 0; role < arity; ++role)
+      {
+        referencesPerAtom[atoms[role]].push_back(slots + static_cast<std::uint32_t>(role));
+      }
+      slots += static_cast<std::uint32_t>(arity);
+    }
+  }
+  layout.kindOffset[numberOfHostTermKinds] = slots;
+  layout.gradients = slots;
+  layout.atomGradientStart.assign(1, 0);
+  layout.atomGradients.clear();
+  for (const std::vector<std::uint32_t>& references : referencesPerAtom)
+  {
+    layout.atomGradients.insert(layout.atomGradients.end(), references.begin(), references.end());
+    layout.atomGradientStart.push_back(static_cast<std::uint32_t>(layout.atomGradients.size()));
+  }
+  layout.built = true;
+}
+
 void SpatialDecompositionForceEngine::prepareBondedWork(const System& system)
 {
   const std::size_t threads = settings.numberOfThreads;
   const std::size_t numberOfMolecules = system.moleculeData.size();
-  // about eight chunks per thread: fine enough to balance the threads that are free next to the FFTs of thread 0,
-  // coarse enough to keep the atomic counter out of the way
-  bondedChunkSize = std::max<std::size_t>(1, numberOfMolecules / (8 * threads));
-  const std::size_t chunks = (numberOfMolecules + bondedChunkSize - 1) / bondedChunkSize;
-  chunkEnergies.assign(chunks, RunningEnergy{});
-  chunkStrain.assign(chunks, double3x3{});
-  chunkCorrection.assign(chunks, double3x3{});
-  atomCenterOfMass.resize(system.spanOfMoleculeAtoms().size());
+  const std::size_t numberOfAtoms = system.spanOfMoleculeAtoms().size();
+  bondedUnits.clear();
+  splitMolecules.clear();
+  splitLayouts.assign(system.components.size(), SplitTermLayout{});
+  atomSplit.assign(numberOfAtoms, notSplit);
+
+  // the work of every molecule; the large ones are split
+  std::vector<std::size_t> work(numberOfMolecules, 0);
+  std::size_t wholeMolecules = 0;
+  for (std::size_t m = 0; m < numberOfMolecules; ++m)
+  {
+    const Molecule& molecule = system.moleculeData[m];
+    const Potentials::IntraMolecularPotentials& potentials =
+        system.components[molecule.componentId].intraMolecularPotentials;
+    std::size_t terms = 0;
+    for (std::size_t kind = 0; kind < numberOfHostTermKinds; ++kind) terms += hostTermCount(potentials, kind);
+    work[m] = molecule.numberOfAtoms + terms;
+    if (work[m] <= bondedSplitThreshold) ++wholeMolecules;
+  }
+
+  // runs of whole molecules: about eight runs per thread (fine enough to balance the threads that are free next
+  // to the FFTs of thread 0, coarse enough to keep the atomic counter out of the way)
+  const std::size_t run = std::max<std::size_t>(1, wholeMolecules / (8 * threads));
+  std::size_t m = 0;
+  while (m < numberOfMolecules)
+  {
+    if (work[m] > bondedSplitThreshold)
+    {
+      ++m;
+      continue;
+    }
+    std::size_t end = m;
+    std::size_t count = 0;
+    while (end < numberOfMolecules && count < run)
+    {
+      if (work[end] <= bondedSplitThreshold) ++count;
+      ++end;
+    }
+    // the run may enclose split molecules: they are skipped by the unit
+    bondedUnits.push_back({BondedUnit::Kind::Molecules, 0, 0, static_cast<std::uint32_t>(m),
+                           static_cast<std::uint32_t>(end)});
+    m = end;
+  }
+
+  // the split molecules: atom units, then term units per kind
+  std::uint32_t slotBase = 0;
+  for (std::size_t s = 0; s < numberOfMolecules; ++s)
+  {
+    if (work[s] <= bondedSplitThreshold) continue;
+    const Molecule& molecule = system.moleculeData[s];
+    const std::size_t componentId = molecule.componentId;
+    if (!splitLayouts[componentId].built) buildSplitLayout(system, componentId);
+    const Potentials::IntraMolecularPotentials& potentials = system.components[componentId].intraMolecularPotentials;
+    SplitMolecule split{};
+    split.molecule = static_cast<std::uint32_t>(s);
+    split.slotBase = slotBase;
+    split.firstUnit = static_cast<std::uint32_t>(bondedUnits.size());
+    for (std::size_t a = 0; a < molecule.numberOfAtoms; a += bondedUnitSize)
+    {
+      bondedUnits.push_back({BondedUnit::Kind::Atoms, 0, split.molecule, static_cast<std::uint32_t>(a),
+                             static_cast<std::uint32_t>(std::min(a + bondedUnitSize, molecule.numberOfAtoms))});
+    }
+    split.endUnit = static_cast<std::uint32_t>(bondedUnits.size());
+    for (std::size_t kind = 0; kind < numberOfHostTermKinds; ++kind)
+    {
+      const std::size_t count = hostTermCount(potentials, kind);
+      for (std::size_t i = 0; i < count; i += bondedUnitSize)
+      {
+        bondedUnits.push_back({BondedUnit::Kind::Terms, static_cast<std::uint8_t>(kind), split.molecule,
+                               static_cast<std::uint32_t>(i),
+                               static_cast<std::uint32_t>(std::min(i + bondedUnitSize, count))});
+      }
+    }
+    for (std::size_t a = 0; a < molecule.numberOfAtoms; ++a)
+    {
+      atomSplit[molecule.atomIndex + a] = static_cast<std::uint32_t>(splitMolecules.size());
+    }
+    splitMolecules.push_back(split);
+    slotBase += splitLayouts[componentId].gradients;
+  }
+  termGradient.assign(slotBase, double3{});
+
+  const std::size_t units = bondedUnits.size();
+  unitEnergies.assign(units, RunningEnergy{});
+  unitStrain.assign(units, double3x3{});
+  unitCorrection.assign(units, double3x3{});
+  unitExclusionOuter.assign(units, double3x3{});
+  unitMassPosition.assign(units, double3{});
+  unitExclusionGradient.assign(units, double3{});
+  unitMass.assign(units, 0.0);
+  splitCenterOfMass.assign(threads * splitMolecules.size(), double3{});
+  atomCenterOfMass.resize(numberOfAtoms);
   partitionedMolecules = numberOfMolecules;
+  partitionedPerComponent = system.numberOfMoleculesPerComponent;
+}
+
+bool SpatialDecompositionForceEngine::bondedWorkOutdated(const System& system) const
+{
+  return system.moleculeData.size() != partitionedMolecules ||
+         atomCenterOfMass.size() != system.spanOfMoleculeAtoms().size() ||
+         partitionedPerComponent != system.numberOfMoleculesPerComponent;
 }
 
 void SpatialDecompositionForceEngine::runOnTeam(const std::function<void(std::size_t, std::size_t)>& body)
@@ -186,8 +422,9 @@ void SpatialDecompositionForceEngine::initialize(System& system)
   if (deviceKernel && !fastKernel)
   {
     throw std::runtime_error(
-        "[Spatial decomposition]: the device pair kernel covers plain Lennard-Jones (truncated or shifted) between "
-        "fully coupled atoms with Ewald or no electrostatics; use 'PairDevice' : 'CPU' for this system\n");
+        "[Spatial decomposition]: the device pair kernel covers plain Lennard-Jones (truncated, shifted, or "
+        "switched) between fully coupled atoms with Ewald or no electrostatics; use 'PairDevice' : 'CPU' for this "
+        "system\n");
   }
   if (deviceMesh)
   {
@@ -282,10 +519,7 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
     cellList.numberOfBuilds = 0;  // forces a rebuild
     if (deviceKernel) devicePairs.setExclusions(system);
   }
-  if (system.moleculeData.size() != partitionedMolecules || atomCenterOfMass.size() != numberOfAtoms)
-  {
-    prepareBondedWork(system);
-  }
+  if (bondedWorkOutdated(system)) prepareBondedWork(system);
   team->resetWork();
 
   for (RunningEnergy& energy : threadEnergies) energy = RunningEnergy{};
@@ -293,10 +527,10 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
   for (double3x3& correction : threadCorrection) correction = double3x3{};
   if (deviceBonded)
   {
-    // the chunk accumulators are not written when the device does the bonded work
-    for (RunningEnergy& energy : chunkEnergies) energy = RunningEnergy{};
-    for (double3x3& strain : chunkStrain) strain = double3x3{};
-    for (double3x3& correction : chunkCorrection) correction = double3x3{};
+    // the unit accumulators are not written when the device does the bonded work
+    for (RunningEnergy& energy : unitEnergies) energy = RunningEnergy{};
+    for (double3x3& strain : unitStrain) strain = double3x3{};
+    for (double3x3& correction : unitCorrection) correction = double3x3{};
   }
   reciprocalEnergy = 0.0;
 
@@ -304,7 +538,7 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
 
   RunningEnergy total{};
   for (const RunningEnergy& energy : threadEnergies) total += energy;
-  for (const RunningEnergy& energy : chunkEnergies) total += energy;
+  for (const RunningEnergy& energy : unitEnergies) total += energy;
   double3x3 strain{};
   double3x3 correction{};
   if (withVirial)
@@ -314,10 +548,10 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
       strain += threadStrain[t];
       correction += threadCorrection[t];
     }
-    for (std::size_t c = 0; c < chunkStrain.size(); ++c)
+    for (std::size_t u = 0; u < unitStrain.size(); ++u)
     {
-      strain += chunkStrain[c];
-      correction += chunkCorrection[c];
+      strain += unitStrain[u];
+      correction += unitCorrection[u];
     }
   }
   total = finishStep(system, total, strain, correction);
@@ -447,10 +681,7 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
     cellList.numberOfBuilds = 0;
     devicePairs.setExclusions(system);
   }
-  if (system.moleculeData.size() != partitionedMolecules || atomCenterOfMass.size() != numberOfAtoms)
-  {
-    prepareBondedWork(system);
-  }
+  if (bondedWorkOutdated(system)) prepareBondedWork(system);
   bool rebuild = cellList.numberOfBuilds == 0 || cellList.numberOfAtoms != numberOfAtoms;
 
   // the host state becomes the device state after a host-side evaluation (stage start, restart)
@@ -918,8 +1149,8 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
   std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
   numberOfPseudoAtomTypes = forceField.pseudoAtoms.size();
 
-  // The specialised kernel covers plain 12-6 Lennard-Jones (truncated or shifted) between all pseudo-atom types
-  // present, fully coupled atoms (no lambda scaling), and Ewald or no electrostatics.
+  // The specialised kernel covers plain 12-6 Lennard-Jones (truncated, shifted, or switched) between all
+  // pseudo-atom types present, fully coupled atoms (no lambda scaling), and Ewald or no electrostatics.
   std::vector<std::uint8_t> present(numberOfPseudoAtomTypes, 0);
   bool unitScaling = true;
   for (const Atom& atom : atoms)
@@ -927,7 +1158,13 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
     present[atom.type] = 1;
     if (atom.scalingVDW != 1.0 || atom.scalingCoulomb != 1.0) unitScaling = false;
   }
+  // The switched Lennard-Jones forms (ForceField::TruncationMethod Switched / ForceSwitched) are covered as
+  // well: the switching is global (one switching distance, the molecule cutoff), the per-pair table keeps
+  // epsilon and sigma. The force switch adds a constant to the energy below the switching distance, carried in
+  // the 'shift' slot.
   bool lennardJonesOnly = true;
+  std::optional<std::uint32_t> switchMode{};
+  std::optional<double> switchDistance{};
   lennardJones.assign(numberOfPseudoAtomTypes * numberOfPseudoAtomTypes, LennardJonesPair{});
   for (std::size_t a = 0; a < numberOfPseudoAtomTypes; ++a)
   {
@@ -935,11 +1172,35 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
     {
       const VDWParameters& parameters = forceField(a, b);
       LennardJonesPair& pair = lennardJones[a * numberOfPseudoAtomTypes + b];
-      if (parameters.type == VDWParameters::Type::LennardJones)
+      const std::uint32_t mode = parameters.type == VDWParameters::Type::LennardJones               ? 0u
+                                 : parameters.type == VDWParameters::Type::LennardJonesSwitched      ? 1u
+                                 : parameters.type == VDWParameters::Type::LennardJonesForceSwitched ? 2u
+                                                                                                     : 3u;
+      if (mode < 3u)
       {
         pair.epsilon4 = 4.0 * parameters.parameters.x;
         pair.inverseSigma2 = 1.0 / (parameters.parameters.y * parameters.parameters.y);
         pair.shift = parameters.shift;
+        if (mode == 2u)
+        {
+          // the constant energy offset below the switching distance (potentialVDW: switchedLennardJones)
+          const double rc = parameters.parameters2.x;
+          const double invRc3 = 1.0 / (rc * rc * rc);
+          const double invRs3 = invRc3 / parameters.parameters2.z;
+          const double sigma2 = parameters.parameters.y * parameters.parameters.y;
+          const double sigma6 = sigma2 * sigma2 * sigma2;
+          pair.shift = pair.epsilon4 * sigma6 * (sigma6 * invRc3 * invRc3 * invRs3 * invRs3 - invRc3 * invRs3);
+        }
+        if (!present[a] || !present[b]) continue;
+        // one truncation scheme over the present types, switched at the molecule cutoff with one distance
+        if (switchMode.has_value() && *switchMode != mode) lennardJonesOnly = false;
+        switchMode = mode;
+        if (mode != 0u)
+        {
+          if (parameters.parameters2.x != forceField.cutOffMoleculeVDW) lennardJonesOnly = false;
+          if (switchDistance.has_value() && *switchDistance != parameters.parameters2.y) lennardJonesOnly = false;
+          switchDistance = parameters.parameters2.y;
+        }
       }
       else if (parameters.type == VDWParameters::Type::None)
       {
@@ -951,6 +1212,8 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
       }
     }
   }
+  lennardJonesSwitching = LennardJonesSwitching::make(switchMode.value_or(0u), switchDistance.value_or(0.0),
+                                                      forceField.cutOffMoleculeVDW);
 
   fastCoulomb = false;
   if (forceField.useCharge)
@@ -982,6 +1245,7 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
     devicePairs.setParameters(lennardJones, numberOfPseudoAtomTypes, forceField.useCharge && fastCoulomb,
                               forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, Units::CoulombicConversionFactor,
                               forceField.EwaldAlpha, settings.verletSkin, settings.pruneSkin);
+    devicePairs.setSwitching(lennardJonesSwitching);
     devicePairs.setEwaldAlpha(forceField.EwaldAlpha);
     devicePairs.setExclusions(system);
   }
@@ -994,12 +1258,14 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
       clusterKernelMixed.setParameters(lennardJones, numberOfPseudoAtomTypes, charge, forceField.cutOffMoleculeVDW,
                                        forceField.cutOffCoulomb, Units::CoulombicConversionFactor, table,
                                        forceField.EwaldAlpha, settings.verletSkin, settings.pruneSkin);
+      clusterKernelMixed.setSwitching(lennardJonesSwitching);
     }
     else
     {
       clusterKernelDouble.setParameters(lennardJones, numberOfPseudoAtomTypes, charge, forceField.cutOffMoleculeVDW,
                                         forceField.cutOffCoulomb, Units::CoulombicConversionFactor, table,
                                         forceField.EwaldAlpha, settings.verletSkin, settings.pruneSkin);
+      clusterKernelDouble.setSwitching(lennardJonesSwitching);
     }
   }
 }
@@ -1104,6 +1370,7 @@ void SpatialDecompositionForceEngine::pairLoop(std::size_t thread, const System&
   const std::uint32_t* neighbourStart = domain.neighbourStart.data();
   const std::uint32_t* neighbourList = domain.neighbourList.data();
   const LennardJonesPair* lj = lennardJones.data();
+  const LennardJonesSwitching& switching = lennardJonesSwitching;
   const std::size_t numberOfTypes = numberOfPseudoAtomTypes;
   const EwaldRealSpaceTable& table = ewaldTable;
 
@@ -1152,8 +1419,18 @@ void SpatialDecompositionForceEngine::pairLoop(std::size_t thread, const System&
           const double s6 = s2 * s2 * s2;
           const double rri3 = 1.0 / s6;
           const double rri6 = rri3 * rri3;
-          energyVDW += p.epsilon4 * (rri6 - rri3) - p.shift;
-          factor += 12.0 * p.epsilon4 * rri3 * (0.5 - rri3) / rr;
+          double u = p.epsilon4 * (rri6 - rri3);
+          double f = 12.0 * p.epsilon4 * rri3 * (0.5 - rri3) / rr;
+          if (switching.mode != 0 && rr > switching.distanceSquared) [[unlikely]]
+          {
+            applyLennardJonesSwitch(switching, p.epsilon4, rr * rr * rr / s6, rr, u, f);
+            energyVDW += u;
+          }
+          else
+          {
+            energyVDW += u - p.shift;
+          }
+          factor += f;
         }
         else
         {
@@ -1309,8 +1586,9 @@ void addScaledPairGradient(RunningEnergy& energy, const ForceField& forceField, 
     const double rr = double3::dot(dr, dr);
 
     double factor = 0.0;
-    const Potentials::PairDerivatives<1> vdw = Potentials::intraMolecularVDW<1>(
-        forceField, pair.scalingVDW, rr, static_cast<std::size_t>(atomA.type), static_cast<std::size_t>(atomB.type));
+    const Potentials::PairDerivatives<1> vdw =
+        Potentials::intraMolecularVDW<1>(forceField, pair.scalingVDW, rr, static_cast<std::size_t>(atomA.type),
+                                         static_cast<std::size_t>(atomB.type), pair.pair14);
     energy.intraVDW += vdw.energy;
     factor += vdw.firstDerivativeFactor;
     if (forceField.useCharge)
@@ -1331,69 +1609,350 @@ void addScaledPairGradient(RunningEnergy& energy, const ForceField& forceField, 
 
 void SpatialDecompositionForceEngine::bondedWork(System& system)
 {
+  // every unit is taken by exactly one thread per step; its sums go to the unit's own slots
+  WorkerTeam& workers = *team;
+  const std::size_t units = bondedUnits.size();
+  for (std::size_t u = workers.claimWork(1); u < units; u = workers.claimWork(1))
+  {
+    const BondedUnit& unit = bondedUnits[u];
+    switch (unit.kind)
+    {
+      case BondedUnit::Kind::Molecules:
+        bondedMoleculesUnit(system, unit, u);
+        break;
+      case BondedUnit::Kind::Atoms:
+        bondedAtomsUnit(system, unit, u);
+        break;
+      case BondedUnit::Kind::Terms:
+        bondedTermsUnit(system, unit, u);
+        break;
+    }
+  }
+}
+
+// A run of whole molecules (the split molecules inside the run are left to their own units).
+void SpatialDecompositionForceEngine::bondedMoleculesUnit(System& system, const BondedUnit& unit, std::size_t index)
+{
   const ForceField& forceField = system.forceField;
   const SimulationBox& box = system.simulationBox;
   std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
   std::span<AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
-  const std::size_t numberOfMolecules = system.moleculeData.size();
-  const std::size_t chunk = bondedChunkSize;
   const bool withVirial = virialRequested;
 
-  // every chunk is taken by exactly one thread per step; its sums go to the chunk's own slots
-  WorkerTeam& workers = *team;
-  for (std::size_t begin = workers.claimWork(chunk); begin < numberOfMolecules; begin = workers.claimWork(chunk))
+  RunningEnergy energy{};
+  double3x3 strain{};
+  double3x3 correction{};
+  for (std::size_t m = unit.begin; m < unit.end; ++m)
   {
-    const std::size_t end = std::min(begin + chunk, numberOfMolecules);
-    RunningEnergy energy{};
-    double3x3 strain{};
-    double3x3 correction{};
-    for (std::size_t m = begin; m < end; ++m)
+    const Molecule& molecule = system.moleculeData[m];
+    if (atomSplit[molecule.atomIndex] != notSplit) continue;
+    const Component& component = system.components[molecule.componentId];
+    std::span<const Atom> moleculeAtoms = atoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+    std::span<AtomDynamics> moleculeDynamics = dynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+
+    // the gradients of the system are assembled here first (the pair + mesh gradients are added in the
+    // scatter phase, after this work is complete)
+    for (AtomDynamics& atomDynamics : moleculeDynamics) atomDynamics.gradient = double3(0.0, 0.0, 0.0);
+
+    Interactions::addChargeSelfEnergy(energy, forceField, moleculeAtoms);
+    Interactions::addIntraMolecularChargeExclusionGradient(energy, forceField, box, system.components, moleculeAtoms,
+                                                           moleculeDynamics, withVirial ? &strain : nullptr);
+
+    if (withVirial)
     {
-      const Molecule& molecule = system.moleculeData[m];
-      const Component& component = system.components[molecule.componentId];
-      std::span<const Atom> moleculeAtoms = atoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
-      std::span<AtomDynamics> moleculeDynamics = dynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms);
-
-      // the gradients of the system are assembled here first (the pair + mesh gradients are added in the
-      // scatter phase, after this work is complete)
-      for (AtomDynamics& atomDynamics : moleculeDynamics) atomDynamics.gradient = double3(0.0, 0.0, 0.0);
-
-      Interactions::addChargeSelfEnergy(energy, forceField, moleculeAtoms);
-      Interactions::addIntraMolecularChargeExclusionGradient(energy, forceField, box, system.components, moleculeAtoms,
-                                                             moleculeDynamics, withVirial ? &strain : nullptr);
-
-      if (withVirial)
+      // atomic-to-molecular virial correction of the non-bonded gradients about the mass-weighted center of
+      // mass: the exclusion part here, the pair + mesh part in the scatter phase (which reads the center of
+      // mass stored per atom); the bonded gradients added below cancel in the molecular virial
+      double totalMass = 0.0;
+      double3 com(0.0, 0.0, 0.0);
+      for (const Atom& atom : moleculeAtoms)
       {
-        // atomic-to-molecular virial correction of the non-bonded gradients about the mass-weighted center of
-        // mass: the exclusion part here, the pair + mesh part in the scatter phase (which reads the center of
-        // mass stored per atom); the bonded gradients added below cancel in the molecular virial
-        double totalMass = 0.0;
-        double3 com(0.0, 0.0, 0.0);
-        for (const Atom& atom : moleculeAtoms)
+        const double mass = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
+        com += mass * atom.position;
+        totalMass += mass;
+      }
+      com = com / totalMass;
+      for (std::size_t k = 0; k < moleculeAtoms.size(); ++k)
+      {
+        atomCenterOfMass[molecule.atomIndex + k] = com;
+        addOuterProduct(correction, moleculeAtoms[k].position - com, moleculeDynamics[k].gradient);
+      }
+    }
+
+    // the bonded terms and the scaled pairs (the non-excluded, unscaled pairs of the molecule are in the cell
+    // lists and evaluated by the pair kernels with the molecule-molecule pairs)
+    energy += component.intraMolecularPotentials.computeInternalBondedGradient(box, moleculeAtoms, moleculeDynamics);
+    addScaledPairGradient(energy, forceField, box, component.intraMolecularPotentials.exclusions, moleculeAtoms,
+                          moleculeDynamics);
+  }
+  unitEnergies[index] = energy;
+  unitStrain[index] = strain;
+  unitCorrection[index] = correction;
+}
+
+// A range of atoms of a split molecule: the gradients of these atoms start from zero here, with the exclusion
+// corrections of the atom with its excluded partners (both directions, so that each atom's gradient is complete
+// without touching the partner's; the energy and strain once per pair). The virial correction of the exclusion
+// gradients about the center of mass is left as sum r (x) g and sum g (the center of mass of the molecule is
+// known after all its atom units are done); the mass-weighted position sum and the mass of the range go with it.
+void SpatialDecompositionForceEngine::bondedAtomsUnit(System& system, const BondedUnit& unit, std::size_t index)
+{
+  const ForceField& forceField = system.forceField;
+  const SimulationBox& box = system.simulationBox;
+  const Molecule& molecule = system.moleculeData[unit.molecule];
+  const IntraMolecularExclusions& exclusions =
+      system.components[molecule.componentId].intraMolecularPotentials.exclusions;
+  std::span<const Atom> moleculeAtoms = system.spanOfMoleculeAtoms().subspan(molecule.atomIndex, molecule.numberOfAtoms);
+  std::span<AtomDynamics> moleculeDynamics =
+      system.spanOfMoleculeDynamics().subspan(molecule.atomIndex, molecule.numberOfAtoms);
+  const bool withVirial = virialRequested;
+  const bool corrections =
+      forceField.useCharge && (forceField.usesEwaldFourier() || forceField.usesRealSpaceChargeCorrections());
+
+  RunningEnergy energy{};
+  double3x3 strain{};
+  double3x3 exclusionOuter{};
+  double3 exclusionGradient{};
+  double3 massPosition{};
+  double totalMass = 0.0;
+  Interactions::addChargeSelfEnergy(energy, forceField, moleculeAtoms.subspan(unit.begin, unit.end - unit.begin));
+  for (std::size_t a = unit.begin; a < unit.end; ++a)
+  {
+    const Atom& atomA = moleculeAtoms[a];
+    double3 gradient{};
+    if (corrections)
+    {
+      for (const std::uint32_t b : exclusions.partnersOf(a))
+      {
+        const Atom& atomB = moleculeAtoms[b];
+        const double3 dr = box.applyPeriodicBoundaryConditions(atomA.position - atomB.position);
+        const Interactions::ChargeExclusionPairTerm term =
+            Interactions::chargeExclusionPairTerm(forceField, atomA, atomB, double3::dot(dr, dr));
+        if (!term.active) continue;
+        const double3 f = term.firstDerivativeFactor * dr;
+        gradient += f;
+        if (b > a)
         {
-          const double mass = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
-          com += mass * atom.position;
-          totalMass += mass;
-        }
-        com = com / totalMass;
-        for (std::size_t k = 0; k < moleculeAtoms.size(); ++k)
-        {
-          atomCenterOfMass[molecule.atomIndex + k] = com;
-          addOuterProduct(correction, moleculeAtoms[k].position - com, moleculeDynamics[k].gradient);
+          energy.ewald_exclusion += term.energy;
+          energy.addDudlambdaEwald(atomA.groupId, atomB.groupId, atomA.scalingCoulomb, atomB.scalingCoulomb,
+                                   term.dUdlambda);
+          if (withVirial) addOuterProduct(strain, dr, f);
         }
       }
-
-      // the bonded terms and the scaled pairs (the non-excluded, unscaled pairs of the molecule are in the cell
-      // lists and evaluated by the pair kernels with the molecule-molecule pairs)
-      energy += component.intraMolecularPotentials.computeInternalBondedGradient(box, moleculeAtoms, moleculeDynamics);
-      addScaledPairGradient(energy, forceField, box, component.intraMolecularPotentials.exclusions, moleculeAtoms,
-                            moleculeDynamics);
     }
-    const std::size_t index = begin / chunk;
-    chunkEnergies[index] = energy;
-    chunkStrain[index] = strain;
-    chunkCorrection[index] = correction;
+    moleculeDynamics[a].gradient = gradient;
+    if (withVirial)
+    {
+      const double mass = forceField.pseudoAtoms[static_cast<std::size_t>(atomA.type)].mass;
+      massPosition += mass * atomA.position;
+      totalMass += mass;
+      addOuterProduct(exclusionOuter, atomA.position, gradient);
+      exclusionGradient += gradient;
+    }
   }
+  unitEnergies[index] = energy;
+  unitStrain[index] = strain;
+  unitCorrection[index] = double3x3{};
+  unitExclusionOuter[index] = exclusionOuter;
+  unitExclusionGradient[index] = exclusionGradient;
+  unitMassPosition[index] = massPosition;
+  unitMass[index] = totalMass;
+}
+
+// A range of terms of one kind of a split molecule: the energies, and the gradient on every atom of a term to the
+// term's slots (gathered per atom in the scatter phase).
+void SpatialDecompositionForceEngine::bondedTermsUnit(System& system, const BondedUnit& unit, std::size_t index)
+{
+  const ForceField& forceField = system.forceField;
+  const SimulationBox& box = system.simulationBox;
+  const Molecule& molecule = system.moleculeData[unit.molecule];
+  const Potentials::IntraMolecularPotentials& potentials =
+      system.components[molecule.componentId].intraMolecularPotentials;
+  const SplitTermLayout& layout = splitLayouts[molecule.componentId];
+  const SplitMolecule& split = splitMolecules[atomSplit[molecule.atomIndex]];
+  std::span<const Atom> atoms = system.spanOfMoleculeAtoms().subspan(molecule.atomIndex, molecule.numberOfAtoms);
+  double3* slots = termGradient.data() + split.slotBase + layout.kindOffset[unit.termKind];
+
+  RunningEnergy energy{};
+  auto store = [&](std::size_t slot, const auto& gradient)
+  {
+    for (std::size_t k = 0; k < gradient.size(); ++k) slots[slot + k] = gradient[k];
+  };
+  auto position = [&](std::size_t i) -> const double3& { return atoms[i].position; };
+  switch (unit.termKind)
+  {
+    case 0:
+      for (std::size_t i = unit.begin; i < unit.end; ++i)
+      {
+        const BondPotential& term = potentials.bonds[i];
+        auto [u, gradient, strain] =
+            term.potentialEnergyGradientStrain(position(term.identifiers[0]), position(term.identifiers[1]));
+        energy.bond += u;
+        store(2 * i, gradient);
+      }
+      break;
+    case 1:
+      for (std::size_t i = unit.begin; i < unit.end; ++i)
+      {
+        const UreyBradleyPotential& term = potentials.ureyBradleys[i];
+        auto [u, gradient, strain] =
+            term.potentialEnergyGradientStrain(position(term.identifiers[0]), position(term.identifiers[1]));
+        energy.ureyBradley += u;
+        store(2 * i, gradient);
+      }
+      break;
+    case 2:
+      for (std::size_t i = unit.begin; i < unit.end; ++i)
+      {
+        const BendPotential& term = potentials.bends[i];
+        auto [u, gradient, strain] = term.potentialEnergyGradientStrain(
+            position(term.identifiers[0]), position(term.identifiers[1]), position(term.identifiers[2]));
+        energy.bend += u;
+        store(3 * i, gradient);
+      }
+      break;
+    case 3:
+      for (std::size_t i = unit.begin; i < unit.end; ++i)
+      {
+        const InversionBendPotential& term = potentials.inversionBends[i];
+        auto [u, gradient, strain] =
+            term.potentialEnergyGradientStrain(position(term.identifiers[0]), position(term.identifiers[1]),
+                                               position(term.identifiers[2]), position(term.identifiers[3]));
+        energy.inversionBend += u;
+        store(4 * i, gradient);
+      }
+      break;
+    case 4:
+      for (std::size_t i = unit.begin; i < unit.end; ++i)
+      {
+        const OutOfPlaneBendPotential& term = potentials.outOfPlaneBends[i];
+        auto [u, gradient, strain] =
+            term.potentialEnergyGradientStrain(position(term.identifiers[0]), position(term.identifiers[1]),
+                                               position(term.identifiers[2]), position(term.identifiers[3]));
+        energy.outOfPlaneBend += u;
+        store(4 * i, gradient);
+      }
+      break;
+    case 5:
+      for (std::size_t i = unit.begin; i < unit.end; ++i)
+      {
+        const TorsionPotential& term = potentials.torsions[i];
+        auto [u, gradient, strain] =
+            term.potentialEnergyGradientStrain(position(term.identifiers[0]), position(term.identifiers[1]),
+                                               position(term.identifiers[2]), position(term.identifiers[3]));
+        energy.torsion += u;
+        store(4 * i, gradient);
+      }
+      break;
+    case 6:
+      for (std::size_t i = unit.begin; i < unit.end; ++i)
+      {
+        const TorsionPotential& term = potentials.improperTorsions[i];
+        auto [u, gradient, strain] =
+            term.potentialEnergyGradientStrain(position(term.identifiers[0]), position(term.identifiers[1]),
+                                               position(term.identifiers[2]), position(term.identifiers[3]));
+        energy.improperTorsion += u;
+        store(4 * i, gradient);
+      }
+      break;
+    case 7:
+      for (std::size_t i = unit.begin; i < unit.end; ++i)
+      {
+        const BondBondPotential& term = potentials.bondBonds[i];
+        auto [u, gradient, strain] = term.potentialEnergyGradientStrain(
+            position(term.identifiers[0]), position(term.identifiers[1]), position(term.identifiers[2]));
+        energy.bondBond += u;
+        store(3 * i, gradient);
+      }
+      break;
+    case 8:
+      for (std::size_t i = unit.begin; i < unit.end; ++i)
+      {
+        const BondBendPotential& term = potentials.bondBends[i];
+        auto [u, gradient, strain] = term.potentialEnergyGradientStrain(
+            position(term.identifiers[0]), position(term.identifiers[1]), position(term.identifiers[2]));
+        energy.bondBend += u;
+        store(3 * i, gradient);
+      }
+      break;
+    case 9:
+      for (std::size_t i = unit.begin; i < unit.end; ++i)
+      {
+        const BondTorsionPotential& term = potentials.bondTorsions[i];
+        auto [u, gradient, strain] =
+            term.potentialEnergyGradientStrain(position(term.identifiers[0]), position(term.identifiers[1]),
+                                               position(term.identifiers[2]), position(term.identifiers[3]));
+        energy.bondTorsion += u;
+        store(4 * i, gradient);
+      }
+      break;
+    case 10:
+      for (std::size_t i = unit.begin; i < unit.end; ++i)
+      {
+        const BendBendPotential& term = potentials.bendBends[i];
+        auto [u, gradient, strain] =
+            term.potentialEnergyGradientStrain(position(term.identifiers[0]), position(term.identifiers[1]),
+                                               position(term.identifiers[2]), position(term.identifiers[3]));
+        energy.bendBend += u;
+        store(4 * i, gradient);
+      }
+      break;
+    case 11:
+      for (std::size_t i = unit.begin; i < unit.end; ++i)
+      {
+        const BendTorsionPotential& term = potentials.bendTorsions[i];
+        auto [u, gradient, strain] =
+            term.potentialEnergyGradientStrain(position(term.identifiers[0]), position(term.identifiers[1]),
+                                               position(term.identifiers[2]), position(term.identifiers[3]));
+        energy.bendTorsion += u;
+        store(4 * i, gradient);
+      }
+      break;
+    case cmapKind:
+      for (std::size_t i = unit.begin; i < unit.end; ++i)
+      {
+        const CMAPPotential& term = potentials.cmaps[i];
+        auto [u, gradient, strain] = term.potentialEnergyGradientStrain(
+            potentials.cmapMaps[term.mapIndex], position(term.identifiers[0]), position(term.identifiers[1]),
+            position(term.identifiers[2]), position(term.identifiers[3]), position(term.identifiers[4]));
+        energy.cmap += u;
+        store(5 * i, gradient);
+      }
+      break;
+    case scaledPairKind:
+      // the scaled (1-4) pairs: see addScaledPairGradient
+      for (std::size_t i = unit.begin; i < unit.end; ++i)
+      {
+        const IntraMolecularExclusions::ScaledPair& pair = potentials.exclusions.scaledPairs[i];
+        const Atom& atomA = atoms[pair.atomA];
+        const Atom& atomB = atoms[pair.atomB];
+        const double3 dr = box.applyPeriodicBoundaryConditions(atomA.position - atomB.position);
+        const double rr = double3::dot(dr, dr);
+        double factor = 0.0;
+        const Potentials::PairDerivatives<1> vdw =
+            Potentials::intraMolecularVDW<1>(forceField, pair.scalingVDW, rr, static_cast<std::size_t>(atomA.type),
+                                             static_cast<std::size_t>(atomB.type), pair.pair14);
+        energy.intraVDW += vdw.energy;
+        factor += vdw.firstDerivativeFactor;
+        if (forceField.useCharge)
+        {
+          const Potentials::PairDerivatives<1> coulomb =
+              Potentials::intraMolecularCoulomb<1>(forceField, pair.scalingCoulomb, atomA.scalingCoulomb,
+                                                   atomB.scalingCoulomb, std::sqrt(rr), atomA.charge, atomB.charge);
+          energy.intraCoul += coulomb.energy;
+          factor += coulomb.firstDerivativeFactor;
+        }
+        const double3 gradient = factor * dr;
+        slots[2 * i] = gradient;
+        slots[2 * i + 1] = -gradient;
+      }
+      break;
+    default:
+      break;
+  }
+  unitEnergies[index] = energy;
+  unitStrain[index] = double3x3{};
+  unitCorrection[index] = double3x3{};
 }
 
 void SpatialDecompositionForceEngine::scatterPhase(std::size_t thread, System& system)
@@ -1427,6 +1986,76 @@ void SpatialDecompositionForceEngine::scatterPhase(std::size_t thread, System& s
                      cellList.scalingCoulomb.data(), fx.data(), fy.data(), fz.data());
   }
   std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  if (splitMolecules.empty())
+  {
+    if (virialRequested)
+    {
+      double3x3 correction{};
+      for (const std::uint32_t i : domain.ownedAtoms)
+      {
+        const std::uint32_t original = cellList.sortedToOriginal[i];
+        const double3 gradient(fx[i], fy[i], fz[i]);
+        dynamics[original].gradient += gradient;
+        addOuterProduct(correction, atoms[original].position - atomCenterOfMass[original], gradient);
+      }
+      threadCorrection[thread] += correction;
+    }
+    else
+    {
+      for (const std::uint32_t i : domain.ownedAtoms)
+      {
+        dynamics[cellList.sortedToOriginal[i]].gradient += double3(fx[i], fy[i], fz[i]);
+      }
+    }
+    return;
+  }
+
+  // the centers of mass of the split molecules from their atom units (every thread for itself); thread 0
+  // finishes the virial correction of their exclusion gradients
+  std::span<double3> splitCenter =
+      std::span<double3>(splitCenterOfMass).subspan(thread * splitMolecules.size(), splitMolecules.size());
+  if (virialRequested)
+  {
+    double3x3 exclusionCorrection{};
+    for (std::size_t s = 0; s < splitMolecules.size(); ++s)
+    {
+      const SplitMolecule& split = splitMolecules[s];
+      double3 massPosition{};
+      double mass = 0.0;
+      for (std::uint32_t u = split.firstUnit; u < split.endUnit; ++u)
+      {
+        massPosition += unitMassPosition[u];
+        mass += unitMass[u];
+      }
+      const double3 com = massPosition / mass;
+      splitCenter[s] = com;
+      if (thread == 0)
+      {
+        for (std::uint32_t u = split.firstUnit; u < split.endUnit; ++u)
+        {
+          exclusionCorrection += unitExclusionOuter[u];
+          addOuterProduct(exclusionCorrection, -com, unitExclusionGradient[u]);
+        }
+      }
+    }
+    if (thread == 0) threadCorrection[0] += exclusionCorrection;
+  }
+
+  // the gradient of an atom of a split molecule from the slots of the terms it takes part in
+  auto gatherTermGradient = [&](std::uint32_t original, std::uint32_t s) -> double3
+  {
+    const SplitMolecule& split = splitMolecules[s];
+    const Molecule& molecule = system.moleculeData[split.molecule];
+    const SplitTermLayout& layout = splitLayouts[molecule.componentId];
+    const std::size_t a = original - molecule.atomIndex;
+    double3 gradient{};
+    for (std::uint32_t k = layout.atomGradientStart[a]; k < layout.atomGradientStart[a + 1]; ++k)
+    {
+      gradient += termGradient[split.slotBase + layout.atomGradients[k]];
+    }
+    return gradient;
+  };
+
   if (virialRequested)
   {
     double3x3 correction{};
@@ -1434,8 +2063,17 @@ void SpatialDecompositionForceEngine::scatterPhase(std::size_t thread, System& s
     {
       const std::uint32_t original = cellList.sortedToOriginal[i];
       const double3 gradient(fx[i], fy[i], fz[i]);
-      dynamics[original].gradient += gradient;
-      addOuterProduct(correction, atoms[original].position - atomCenterOfMass[original], gradient);
+      const std::uint32_t s = atomSplit[original];
+      if (s == notSplit)
+      {
+        dynamics[original].gradient += gradient;
+        addOuterProduct(correction, atoms[original].position - atomCenterOfMass[original], gradient);
+      }
+      else
+      {
+        dynamics[original].gradient += gradient + gatherTermGradient(original, s);
+        addOuterProduct(correction, atoms[original].position - splitCenter[s], gradient);
+      }
     }
     threadCorrection[thread] += correction;
   }
@@ -1443,7 +2081,10 @@ void SpatialDecompositionForceEngine::scatterPhase(std::size_t thread, System& s
   {
     for (const std::uint32_t i : domain.ownedAtoms)
     {
-      dynamics[cellList.sortedToOriginal[i]].gradient += double3(fx[i], fy[i], fz[i]);
+      const std::uint32_t original = cellList.sortedToOriginal[i];
+      const std::uint32_t s = atomSplit[original];
+      dynamics[original].gradient += double3(fx[i], fy[i], fz[i]);
+      if (s != notSplit) dynamics[original].gradient += gatherTermGradient(original, s);
     }
   }
 }

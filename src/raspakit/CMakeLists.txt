@@ -32,6 +32,7 @@ file(GLOB RASPAKIT_CPP_FILES
   ${PROJECT_SOURCE_DIR}/potentials/intramolecular/*.cpp
   ${PROJECT_SOURCE_DIR}/potentials/interpolation/*.cpp
   ${PROJECT_SOURCE_DIR}/lammps/*.cpp
+  ${PROJECT_SOURCE_DIR}/amber/*.cpp
   ${PROJECT_SOURCE_DIR}/properties/*.cpp
   ${PROJECT_SOURCE_DIR}/properties_time_evolution/*.cpp
   ${PROJECT_SOURCE_DIR}/integrators/*.cpp
@@ -61,6 +62,7 @@ file(GLOB RASPAKIT_IXX_FILES
   ${PROJECT_SOURCE_DIR}/potentials/intramolecular/*.ixx
   ${PROJECT_SOURCE_DIR}/potentials/interpolation/*.ixx
   ${PROJECT_SOURCE_DIR}/lammps/*.ixx
+  ${PROJECT_SOURCE_DIR}/amber/*.ixx
   ${PROJECT_SOURCE_DIR}/properties/*.ixx
   ${PROJECT_SOURCE_DIR}/properties_time_evolution/*.ixx
   ${PROJECT_SOURCE_DIR}/integrators/*.ixx

@@ -20,8 +20,9 @@ std::string VanDerWaalsPotential::print() const
     std::format_to(std::back_inserter(parameterString), "p_{}{}={:g}{}", k, metadata.isEnergy[k] ? "/k_B" : "",
                    value, k + 1 < metadata.count ? ", " : "");
   }
-  return std::format("{} - {} : {} {}, scaling={:g}\n", identifiers[0], identifiers[1],
-                     VDWParameters::nameOfType(parameters.type), parameterString, scaling);
+  return std::format("{} - {} : {} {}, scaling={:g}{}\n", identifiers[0], identifiers[1],
+                     VDWParameters::nameOfType(parameters.type), parameterString, scaling,
+                     pair14 ? ", 1-4 parameters" : "");
 }
 
 double VanDerWaalsPotential::calculateEnergy(const double3 &posA, const double3 &posB) const
@@ -38,6 +39,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VanDer
   archive << b.identifiers;
   archive << b.scaling;
   archive << b.parameters;
+  archive << b.pair14;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -60,6 +62,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, VanDerWaalsP
   archive >> b.identifiers;
   archive >> b.scaling;
   archive >> b.parameters;
+  if (versionNumber >= 3) archive >> b.pair14;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

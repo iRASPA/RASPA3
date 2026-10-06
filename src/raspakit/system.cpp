@@ -1100,6 +1100,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
       pressureInfo.first.intraComponentEnergies[i].bondTorsion += runningIntraEnergy.bondTorsion;
       pressureInfo.first.intraComponentEnergies[i].bendBend += runningIntraEnergy.bendBend;
       pressureInfo.first.intraComponentEnergies[i].bendTorsion += runningIntraEnergy.bendTorsion;
+      pressureInfo.first.intraComponentEnergies[i].cmap += runningIntraEnergy.cmap;
       pressureInfo.first.intraComponentEnergies[i].vanDerWaals += runningIntraEnergy.intraVDW;
       pressureInfo.first.intraComponentEnergies[i].coulomb += runningIntraEnergy.intraCoul;
 

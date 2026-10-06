@@ -15,6 +15,7 @@ import double3x3;
 import stringutils;
 import pseudo_atom;
 import vdwparameters;
+import cmap_potential;
 import potential_correction_vdw;
 import potential_correction_pressure;
 import simulationbox;
@@ -158,17 +159,78 @@ ForceField::ForceField(std::string filePath)
   // Read and set truncation methods
   bool shiftPotential = false;
   bool tailCorrection = false;
-  if (parsed_data.value("TruncationMethod", "") == "shifted")
   {
-    shiftPotential = true;
+    const std::string truncationString = parsed_data.value("TruncationMethod", "truncated");
+    if (caseInSensStringCompare(truncationString, "truncated"))
+    {
+      truncationMethod = TruncationMethod::Truncated;
+    }
+    else if (caseInSensStringCompare(truncationString, "shifted"))
+    {
+      truncationMethod = TruncationMethod::Shifted;
+      shiftPotential = true;
+    }
+    else if (caseInSensStringCompare(truncationString, "switched") ||
+             caseInSensStringCompare(truncationString, "potential-switched"))
+    {
+      truncationMethod = TruncationMethod::Switched;
+    }
+    else if (caseInSensStringCompare(truncationString, "force-switched") ||
+             caseInSensStringCompare(truncationString, "forceswitched"))
+    {
+      truncationMethod = TruncationMethod::ForceSwitched;
+    }
+    else
+    {
+      throw std::runtime_error(
+          std::format("[ForceField reader]: unknown 'TruncationMethod' '{}' (use 'truncated', 'shifted', "
+                      "'switched', or 'force-switched')\n",
+                      truncationString));
+    }
+  }
+  if (parsed_data.contains("SwitchingDistance"))
+  {
+    switchingDistance = parsed_data["SwitchingDistance"].get<double>();
+    if (switchingDistance <= 0.0)
+    {
+      throw std::runtime_error("[ForceField reader]: 'SwitchingDistance' must be positive\n");
+    }
   }
   tailCorrection = parsed_data.value("TailCorrections", false);
+
+  if (parsed_data.contains("CMAPs"))
+  {
+    for (const auto& [_, item] : parsed_data["CMAPs"].items())
+    {
+      try
+      {
+        if (!item.is_object() || !item.contains("Name") || !item.contains("Resolution") || !item.contains("Energies"))
+        {
+          throw std::runtime_error("a CMAP map is an object with 'Name', 'Resolution' and 'Energies'");
+        }
+        const std::string name = item["Name"].get<std::string>();
+        if (std::ranges::find(cmapMaps, name, &CMAPMap::name) != cmapMaps.end())
+        {
+          throw std::runtime_error(std::format("duplicate CMAP map '{}'", name));
+        }
+        std::vector<double> energies = item["Energies"].get<std::vector<double>>();
+        for (double& energy : energies) energy *= Units::KelvinToEnergy;
+        cmapMaps.emplace_back(name, item["Resolution"].get<std::size_t>(), std::move(energies));
+      }
+      catch (std::exception const& e)
+      {
+        throw std::runtime_error(std::format("[ForceField reader]: error in 'CMAPs': {}\n", e.what()));
+      }
+    }
+  }
 
   data.resize(numberOfPseudoAtoms * numberOfPseudoAtoms, VDWParameters());
   shiftPotentials.resize(numberOfPseudoAtoms * numberOfPseudoAtoms, shiftPotential);
   tailCorrections.resize(numberOfPseudoAtoms * numberOfPseudoAtoms, tailCorrection);
 
-  // Read self-interactions
+  // Read self-interactions (the 1-4 self interactions are applied after all regular ones: the 1-4 table starts as
+  // a copy of the regular table)
+  std::vector<std::pair<std::size_t, VDWParameters>> selfInteractions14{};
   for (const auto& [_, item] : parsed_data["SelfInteractions"].items())
   {
     std::string jsonName = item.value("name", "");
@@ -205,7 +267,26 @@ ForceField::ForceField(std::string filePath)
       throw std::runtime_error(std::format("[ReadForceFieldSelfInteractions]: incorrect vdw parameters {}\n{}\n",
                                            item["parameters"].dump(), ex.what()));
     }
+
+    // the separate parameters of the 1-4 pairs of this pseudo-atom (the same functional form)
+    if (item.contains("parameters14"))
+    {
+      std::vector<double> scannedJsonParameters14;
+      try
+      {
+        scannedJsonParameters14 = item["parameters14"].get<std::vector<double>>();
+        selfInteractions14.emplace_back(index.value(), VDWParameters(type, scannedJsonParameters14));
+      }
+      catch (const std::exception& ex)
+      {
+        throw std::runtime_error(
+            std::format("[ReadForceFieldSelfInteractions]: incorrect 1-4 vdw parameters {} of '{}'\n{}\n",
+                        item["parameters14"].dump(), jsonName, ex.what()));
+      }
+    }
   }
+
+  for (const auto& [index, parameters] : selfInteractions14) setPair14SelfInteraction(index, parameters);
 
   // Set mixing rule and cut-off values
   if (parsed_data.value("MixingRule", "") == "Lorentz-Berthelot")
@@ -282,14 +363,35 @@ ForceField::ForceField(std::string filePath)
 
     try
     {
-      VDWParameters binaryInteraction = VDWParameters(type, scannedJsonParameters);
-      data[indexA.value() * numberOfPseudoAtoms + indexB.value()] = binaryInteraction;
-      data[indexB.value() * numberOfPseudoAtoms + indexA.value()] = binaryInteraction;
+      if (item.contains("parameters"))
+      {
+        VDWParameters binaryInteraction = VDWParameters(type, scannedJsonParameters);
+        data[indexA.value() * numberOfPseudoAtoms + indexB.value()] = binaryInteraction;
+        data[indexB.value() * numberOfPseudoAtoms + indexA.value()] = binaryInteraction;
+      }
     }
     catch (const std::exception& ex)
     {
       throw std::runtime_error(std::format("[ReadForceFieldBinaryInteractions]: incorrect vdw parameters {}\n{}\n",
                                            item["parameters"].dump(), ex.what()));
+    }
+
+    // the separate parameters of the 1-4 pairs of these two pseudo-atoms
+    if (item.contains("parameters14"))
+    {
+      try
+      {
+        VDWParameters binaryInteraction14 = VDWParameters(type, item["parameters14"].get<std::vector<double>>());
+        ensurePair14Table();
+        data14[indexA.value() * numberOfPseudoAtoms + indexB.value()] = binaryInteraction14;
+        data14[indexB.value() * numberOfPseudoAtoms + indexA.value()] = binaryInteraction14;
+      }
+      catch (const std::exception& ex)
+      {
+        throw std::runtime_error(
+            std::format("[ReadForceFieldBinaryInteractions]: incorrect 1-4 vdw parameters {}\n{}\n",
+                        item["parameters14"].dump(), ex.what()));
+      }
     }
   }
 
@@ -651,6 +753,7 @@ ForceField::ForceField(std::string filePath)
 
   // after knowing the tail-correction settings and the cutoff, compute the derived parameters,
   // shifts, and tail-corrections for each pair
+  applySwitching();
   preComputeDerivedParameters();
   preComputePotentialShift();
   preComputeTailCorrection();
@@ -767,7 +870,24 @@ ForceField::ForceField(std::string filePath)
   settings.readFromJSON(parsed_data, pseudoAtoms, smallestExplicitCutOff);
 }
 
+void ForceField::ensurePair14Table()
+{
+  if (data14.empty()) data14 = data;
+}
+
+void ForceField::setPair14SelfInteraction(std::size_t type, const VDWParameters& parameters)
+{
+  ensurePair14Table();
+  data14[type * numberOfPseudoAtoms + type] = parameters;
+}
+
 void ForceField::applyMixingRule()
+{
+  mixTable(data);
+  if (!data14.empty()) mixTable(data14);
+}
+
+void ForceField::mixTable(std::vector<VDWParameters>& table) const
 {
   switch (mixingRule)
   {
@@ -776,30 +896,30 @@ void ForceField::applyMixingRule()
       {
         for (std::size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
         {
-          if (data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
-              data[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::LennardJones)
+          if (table[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
+              table[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::LennardJones)
           {
-            double mix0 = std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x *
-                                    data[j * numberOfPseudoAtoms + j].parameters.x);
+            double mix0 = std::sqrt(table[i * numberOfPseudoAtoms + i].parameters.x *
+                                    table[j * numberOfPseudoAtoms + j].parameters.x);
             double mix1 =
-                0.5 * (data[i * numberOfPseudoAtoms + i].parameters.y + data[j * numberOfPseudoAtoms + j].parameters.y);
+                0.5 * (table[i * numberOfPseudoAtoms + i].parameters.y + table[j * numberOfPseudoAtoms + j].parameters.y);
 
-            data[i * numberOfPseudoAtoms + j].parameters.x = mix0;
-            data[i * numberOfPseudoAtoms + j].parameters.y = mix1;
-            data[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::LennardJones;
-            data[j * numberOfPseudoAtoms + i].parameters.x = mix0;
-            data[j * numberOfPseudoAtoms + i].parameters.y = mix1;
-            data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::LennardJones;
+            table[i * numberOfPseudoAtoms + j].parameters.x = mix0;
+            table[i * numberOfPseudoAtoms + j].parameters.y = mix1;
+            table[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::LennardJones;
+            table[j * numberOfPseudoAtoms + i].parameters.x = mix0;
+            table[j * numberOfPseudoAtoms + i].parameters.y = mix1;
+            table[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::LennardJones;
           }
-          if ((data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::None) ||
-              (data[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::None))
+          if ((table[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::None) ||
+              (table[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::None))
           {
-            data[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
-            data[i * numberOfPseudoAtoms + j].parameters.x = 0.0;
-            data[i * numberOfPseudoAtoms + j].parameters.y = 1.0;
-            data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
-            data[j * numberOfPseudoAtoms + i].parameters.x = 0.0;
-            data[j * numberOfPseudoAtoms + i].parameters.y = 1.0;
+            table[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
+            table[i * numberOfPseudoAtoms + j].parameters.x = 0.0;
+            table[i * numberOfPseudoAtoms + j].parameters.y = 1.0;
+            table[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
+            table[j * numberOfPseudoAtoms + i].parameters.x = 0.0;
+            table[j * numberOfPseudoAtoms + i].parameters.y = 1.0;
           }
         }
       }
@@ -809,31 +929,31 @@ void ForceField::applyMixingRule()
       {
         for (std::size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
         {
-          if (data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
-              data[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::LennardJones)
+          if (table[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
+              table[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::LennardJones)
           {
-            double mix0 = std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x *
-                                    data[j * numberOfPseudoAtoms + j].parameters.x);
-            double mix1 = std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.y *
-                                    data[j * numberOfPseudoAtoms + j].parameters.y);
+            double mix0 = std::sqrt(table[i * numberOfPseudoAtoms + i].parameters.x *
+                                    table[j * numberOfPseudoAtoms + j].parameters.x);
+            double mix1 = std::sqrt(table[i * numberOfPseudoAtoms + i].parameters.y *
+                                    table[j * numberOfPseudoAtoms + j].parameters.y);
 
-            data[i * numberOfPseudoAtoms + j].parameters.x = mix0;
-            data[i * numberOfPseudoAtoms + j].parameters.y = mix1;
-            data[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::LennardJones;
+            table[i * numberOfPseudoAtoms + j].parameters.x = mix0;
+            table[i * numberOfPseudoAtoms + j].parameters.y = mix1;
+            table[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::LennardJones;
 
-            data[j * numberOfPseudoAtoms + i].parameters.x = mix0;
-            data[j * numberOfPseudoAtoms + i].parameters.y = mix1;
-            data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::LennardJones;
+            table[j * numberOfPseudoAtoms + i].parameters.x = mix0;
+            table[j * numberOfPseudoAtoms + i].parameters.y = mix1;
+            table[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::LennardJones;
           }
-          if ((data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::None) ||
-              (data[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::None))
+          if ((table[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::None) ||
+              (table[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::None))
           {
-            data[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
-            data[i * numberOfPseudoAtoms + j].parameters.x = 0.0;
-            data[i * numberOfPseudoAtoms + j].parameters.y = 1.0;
-            data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
-            data[j * numberOfPseudoAtoms + i].parameters.x = 0.0;
-            data[j * numberOfPseudoAtoms + i].parameters.y = 1.0;
+            table[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
+            table[i * numberOfPseudoAtoms + j].parameters.x = 0.0;
+            table[i * numberOfPseudoAtoms + j].parameters.y = 1.0;
+            table[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
+            table[j * numberOfPseudoAtoms + i].parameters.x = 0.0;
+            table[j * numberOfPseudoAtoms + i].parameters.y = 1.0;
           }
         }
       }
@@ -843,16 +963,16 @@ void ForceField::applyMixingRule()
       {
         for (std::size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
         {
-          VDWParameters::Type typeI = data[i * numberOfPseudoAtoms + i].type;
-          VDWParameters::Type typeJ = data[j * numberOfPseudoAtoms + j].type;
+          VDWParameters::Type typeI = table[i * numberOfPseudoAtoms + i].type;
+          VDWParameters::Type typeJ = table[j * numberOfPseudoAtoms + j].type;
 
           if ((typeI == VDWParameters::Type::CFFEpsilonSigma && typeJ == VDWParameters::Type::CFFEpsilonSigma) ||
               (typeI == VDWParameters::Type::LennardJones && typeJ == VDWParameters::Type::LennardJones))
           {
-            double epsI = data[i * numberOfPseudoAtoms + i].parameters.x;
-            double sigI = data[i * numberOfPseudoAtoms + i].parameters.y;
-            double epsJ = data[j * numberOfPseudoAtoms + j].parameters.x;
-            double sigJ = data[j * numberOfPseudoAtoms + j].parameters.y;
+            double epsI = table[i * numberOfPseudoAtoms + i].parameters.x;
+            double sigI = table[i * numberOfPseudoAtoms + i].parameters.y;
+            double epsJ = table[j * numberOfPseudoAtoms + j].parameters.x;
+            double sigJ = table[j * numberOfPseudoAtoms + j].parameters.y;
 
             double s6I = std::pow(sigI, 6.0);
             double s6J = std::pow(sigJ, 6.0);
@@ -867,22 +987,22 @@ void ForceField::applyMixingRule()
                                                 ? VDWParameters::Type::CFFEpsilonSigma
                                                 : VDWParameters::Type::LennardJones;
 
-            data[i * numberOfPseudoAtoms + j].parameters.x = mixEps;
-            data[i * numberOfPseudoAtoms + j].parameters.y = mixSigma;
-            data[i * numberOfPseudoAtoms + j].type = crossType;
+            table[i * numberOfPseudoAtoms + j].parameters.x = mixEps;
+            table[i * numberOfPseudoAtoms + j].parameters.y = mixSigma;
+            table[i * numberOfPseudoAtoms + j].type = crossType;
 
-            data[j * numberOfPseudoAtoms + i].parameters.x = mixEps;
-            data[j * numberOfPseudoAtoms + i].parameters.y = mixSigma;
-            data[j * numberOfPseudoAtoms + i].type = crossType;
+            table[j * numberOfPseudoAtoms + i].parameters.x = mixEps;
+            table[j * numberOfPseudoAtoms + i].parameters.y = mixSigma;
+            table[j * numberOfPseudoAtoms + i].type = crossType;
           }
           if ((typeI == VDWParameters::Type::None) || (typeJ == VDWParameters::Type::None))
           {
-            data[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
-            data[i * numberOfPseudoAtoms + j].parameters.x = 0.0;
-            data[i * numberOfPseudoAtoms + j].parameters.y = 1.0;
-            data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
-            data[j * numberOfPseudoAtoms + i].parameters.x = 0.0;
-            data[j * numberOfPseudoAtoms + i].parameters.y = 1.0;
+            table[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
+            table[i * numberOfPseudoAtoms + j].parameters.x = 0.0;
+            table[i * numberOfPseudoAtoms + j].parameters.y = 1.0;
+            table[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
+            table[j * numberOfPseudoAtoms + i].parameters.x = 0.0;
+            table[j * numberOfPseudoAtoms + i].parameters.y = 1.0;
           }
         }
       }
@@ -894,20 +1014,85 @@ void ForceField::applyMixingRule()
   {
     for (std::size_t j = i; j < numberOfPseudoAtoms; ++j)
     {
-      if (((data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones ||
-            data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::CFFEpsilonSigma) &&
-           (data[i * numberOfPseudoAtoms + i].parameters.x == 0.0 ||
-            data[i * numberOfPseudoAtoms + i].parameters.y == 0.0)) ||
-          ((data[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::LennardJones ||
-            data[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::CFFEpsilonSigma) &&
-           (data[j * numberOfPseudoAtoms + j].parameters.x == 0.0 ||
-            data[j * numberOfPseudoAtoms + j].parameters.y == 0.0)))
+      if (((table[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones ||
+            table[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::CFFEpsilonSigma) &&
+           (table[i * numberOfPseudoAtoms + i].parameters.x == 0.0 ||
+            table[i * numberOfPseudoAtoms + i].parameters.y == 0.0)) ||
+          ((table[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::LennardJones ||
+            table[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::CFFEpsilonSigma) &&
+           (table[j * numberOfPseudoAtoms + j].parameters.x == 0.0 ||
+            table[j * numberOfPseudoAtoms + j].parameters.y == 0.0)))
       {
-        data[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
-        data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
+        table[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
+        table[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
       }
     }
   }
+}
+
+void ForceField::applySwitching()
+{
+  const bool switched =
+      truncationMethod == TruncationMethod::Switched || truncationMethod == TruncationMethod::ForceSwitched;
+  const VDWParameters::Type switchedType = truncationMethod == TruncationMethod::ForceSwitched
+                                               ? VDWParameters::Type::LennardJonesForceSwitched
+                                               : VDWParameters::Type::LennardJonesSwitched;
+  auto convert = [&](std::vector<VDWParameters>& table)
+  {
+    for (VDWParameters& parameters : table)
+    {
+      const bool plainOrSwitched = parameters.type == VDWParameters::Type::LennardJones ||
+                                   parameters.type == VDWParameters::Type::LennardJonesSwitched ||
+                                   parameters.type == VDWParameters::Type::LennardJonesForceSwitched;
+      if (plainOrSwitched)
+      {
+        parameters.type = switched ? switchedType : VDWParameters::Type::LennardJones;
+      }
+    }
+  };
+  convert(data);
+  convert(data14);
+  if (switched)
+  {
+    // the switched forms are zero at the cutoff: nothing to shift
+    for (std::size_t i = 0; i < numberOfPseudoAtoms * numberOfPseudoAtoms; ++i)
+    {
+      if (VDWParameters::isLennardJonesForm(data[i].type)) shiftPotentials[i] = false;
+      data[i].shift = 0.0;
+      if (!data14.empty()) data14[i].shift = 0.0;
+    }
+  }
+}
+
+void ForceField::setTruncationMethod(TruncationMethod method, double switchingDistanceVDW)
+{
+  truncationMethod = method;
+  switchingDistance = switchingDistanceVDW;
+  const bool shifted = method == TruncationMethod::Shifted;
+  for (std::size_t i = 0; i < shiftPotentials.size(); ++i)
+  {
+    shiftPotentials[i] = shifted;
+  }
+  applySwitching();
+  preComputeDerivedParameters();
+  preComputePotentialShift();
+  preComputeTailCorrection();
+}
+
+std::string ForceField::truncationMethodName(TruncationMethod method)
+{
+  switch (method)
+  {
+    case TruncationMethod::Truncated:
+      return "truncated";
+    case TruncationMethod::Shifted:
+      return "shifted";
+    case TruncationMethod::Switched:
+      return "switched";
+    case TruncationMethod::ForceSwitched:
+      return "force-switched";
+  }
+  return "unknown";
 }
 
 double ForceField::cutOffVDW(std::size_t i, std::size_t j) const
@@ -927,7 +1112,11 @@ void ForceField::preComputeDerivedParameters()
     for (std::size_t j = 0; j < numberOfPseudoAtoms; ++j)
     {
       double cut_off_vdw = cutOffVDW(i, j);
-      data[i * numberOfPseudoAtoms + j].computeDerivedParameters(cut_off_vdw, temperature);
+      data[i * numberOfPseudoAtoms + j].computeDerivedParameters(cut_off_vdw, temperature, switchingDistance);
+      if (!data14.empty())
+      {
+        data14[i * numberOfPseudoAtoms + j].computeDerivedParameters(cut_off_vdw, temperature, switchingDistance);
+      }
     }
   }
 }
@@ -942,6 +1131,7 @@ void ForceField::preComputePotentialShift()
       {
         double cut_off_vdw = cutOffVDW(i, j);
         data[i * numberOfPseudoAtoms + j].computeShiftAtCutOff(cut_off_vdw);
+        if (!data14.empty()) data14[i * numberOfPseudoAtoms + j].computeShiftAtCutOff(cut_off_vdw);
       }
     }
   }
@@ -987,6 +1177,7 @@ void ForceField::scaleSoluteInteractions(const std::vector<bool> &soluteType, do
       const std::size_t soluteCount = (soluteType[i] ? 1uz : 0uz) + (soluteType[j] ? 1uz : 0uz);
       if (soluteCount == 0uz) continue;
       data[i * numberOfPseudoAtoms + j].scaleEnergy(soluteCount == 2uz ? lambda : sqrtLambda);
+      if (!data14.empty()) data14[i * numberOfPseudoAtoms + j].scaleEnergy(soluteCount == 2uz ? lambda : sqrtLambda);
     }
     if (soluteType[i])
     {
@@ -1166,6 +1357,18 @@ std::string ForceField::printForceFieldStatus() const
     default:
       std::unreachable();
   }
+  std::print(stream, "Truncation method: {}\n", truncationMethodName(truncationMethod));
+  if (truncationMethod == TruncationMethod::Switched || truncationMethod == TruncationMethod::ForceSwitched)
+  {
+    if (switchingDistance > 0.0)
+    {
+      std::print(stream, "Switching distance: {:9.5f} [{}]\n", switchingDistance, Units::displayedUnitOfLengthString);
+    }
+    else
+    {
+      std::print(stream, "Switching distance: 2 [{}] below the cutoff\n", Units::displayedUnitOfLengthString);
+    }
+  }
 
   for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
@@ -1222,6 +1425,36 @@ std::string ForceField::printForceFieldStatus() const
     }
   }
   std::print(stream, "\n");
+
+  if (!data14.empty())
+  {
+    std::print(stream, "Pair parameters of the intramolecular 1-4 pairs (where they differ from the pair table)\n");
+    for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
+    {
+      for (std::size_t j = i; j < numberOfPseudoAtoms; ++j)
+      {
+        const VDWParameters& vdw = data14[i * numberOfPseudoAtoms + j];
+        if (vdw == data[i * numberOfPseudoAtoms + j]) continue;
+        if (vdw.type == VDWParameters::Type::None)
+        {
+          std::print(stream, "{:8} - {:8} None\n", pseudoAtoms[i].name, pseudoAtoms[j].name);
+          continue;
+        }
+        VDWParameters::ParameterMetadata metadata = VDWParameters::parameterMetadata(vdw.type);
+        std::string parameterString{};
+        for (std::size_t k = 0; k < metadata.count; ++k)
+        {
+          double value = k < 4 ? vdw.parameters[k] : vdw.parameters2[k - 4];
+          if (metadata.isEnergy[k]) value *= Units::EnergyToKelvin;
+          std::format_to(std::back_inserter(parameterString), "p{}: {:9.5f}{}", k, value,
+                         k + 1 < metadata.count ? ", " : "");
+        }
+        std::print(stream, "{:8} - {:8} {} {}\n", pseudoAtoms[i].name, pseudoAtoms[j].name,
+                   VDWParameters::nameOfType(vdw.type), parameterString);
+      }
+    }
+    std::print(stream, "\n");
+  }
 
   std::print(stream, "{}", settings.printInterpolationGridStatus());
 
@@ -1437,6 +1670,10 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
   archive << f.versionNumber;
 
   archive << f.data;
+  archive << f.data14;
+  archive << f.truncationMethod;
+  archive << f.switchingDistance;
+  archive << f.cmapMaps;
   archive << f.shiftPotentials;
   archive << f.tailCorrections;
   archive << f.cutOffFrameworkVDWAutomatic;
@@ -1495,6 +1732,16 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
   }
 
   archive >> f.data;
+  if (versionNumber >= 3)
+  {
+    archive >> f.data14;
+    archive >> f.truncationMethod;
+    archive >> f.switchingDistance;
+  }
+  if (versionNumber >= 4)
+  {
+    archive >> f.cmapMaps;
+  }
   archive >> f.shiftPotentials;
   archive >> f.tailCorrections;
   archive >> f.cutOffFrameworkVDWAutomatic;
@@ -1559,9 +1806,15 @@ bool ForceField::operator==(const ForceField& other) const
       modifiedShiftedForceBeta != other.modifiedShiftedForceBeta ||
       numberOfWaveVectors != other.numberOfWaveVectors || automaticEwald != other.automaticEwald ||
       useCharge != other.useCharge || omitEwaldFourier != other.omitEwaldFourier ||
-      chargeMethod != other.chargeMethod || !(settings == other.settings))
+      chargeMethod != other.chargeMethod || !(settings == other.settings) || data14.size() != other.data14.size() ||
+      truncationMethod != other.truncationMethod || switchingDistance != other.switchingDistance ||
+      cmapMaps != other.cmapMaps)
   {
     return false;
+  }
+  for (std::size_t idx = 0; idx < data14.size(); idx++)
+  {
+    if (data14[idx] != other.data14[idx]) return false;
   }
   for (std::size_t idx = 0; idx < shiftPotentials.size(); idx++)
   {
@@ -1584,6 +1837,8 @@ bool ForceField::operator==(const ForceField& other) const
 const std::set<std::string, ForceField::InsensitiveCompare> ForceField::options = {
     "MixingRule",
     "TruncationMethod",
+    "SwitchingDistance",
+    "CMAPs",
     "TailCorrections",
     "TruncatedPotentialPairs",
     "ShiftedPotentialPairs",

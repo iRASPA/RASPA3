@@ -12,6 +12,7 @@ import double3;
 import int3;
 import pseudo_atom;
 import vdwparameters;
+import cmap_potential;
 import json;
 import simulationbox;
 import potential_ewald_real_space_table;
@@ -52,6 +53,22 @@ export struct ForceField
     SixthPower = 2          ///< Sixth-power (Waldman-Hagler) mixing rule for Class-II/CFF.
   };
 
+  /**
+   * \brief The global van der Waals truncation scheme of the force-field file ("TruncationMethod").
+   *
+   * 'Shifted' sets the per-pair 'shiftPotentials' flags; 'Switched' and 'ForceSwitched' convert every
+   * Lennard-Jones pair of the tables to VDWParameters::Type::LennardJonesSwitched (the quintic potential switch of
+   * OpenMM and GROMACS) or LennardJonesForceSwitched (the CHARMM force switch) in applySwitching(). The switching
+   * starts at 'switchingDistance' ("SwitchingDistance", default: 2 Angstrom below the cutoff).
+   */
+  enum class TruncationMethod : int
+  {
+    Truncated = 0,
+    Shifted = 1,
+    Switched = 2,
+    ForceSwitched = 3
+  };
+
   enum class PotentialEnergySurfaceType : std::size_t
   {
     None = 0,
@@ -73,13 +90,27 @@ export struct ForceField
     RectangleZ = 16
   };
 
-  std::uint64_t versionNumber{2};  ///< Version number of the force field format.
+  std::uint64_t versionNumber{4};  ///< Version number of the force field format.
 
   std::vector<VDWParameters>
       data{};  ///< Interaction parameters between pseudo-atoms; size is numberOfPseudoAtoms squared.
+  /// The pair parameters of the intramolecular 1-4 pairs (CHARMM-style force fields give a pseudo-atom separate
+  /// Lennard-Jones parameters for its 1-4 interactions). Empty when the 1-4 pairs use the regular table 'data';
+  /// otherwise a full table of numberOfPseudoAtoms squared, mixed, shifted and solute-scaled like 'data' (no tail
+  /// corrections: the 1-4 pairs are counted explicitly). Read from "parameters14" of the self and binary
+  /// interactions of the force-field file.
+  std::vector<VDWParameters> data14{};
   std::vector<bool> shiftPotentials{};  ///< Indicates if potential shift is applied between pairs of atoms.
   std::vector<bool> tailCorrections{};  ///< Indicates if tail corrections are applied between pairs of atoms.
   MixingRule mixingRule{MixingRule::Lorentz_Berthelot};  ///< Mixing rule used for cross interactions.
+  TruncationMethod truncationMethod{TruncationMethod::Truncated};  ///< The global truncation scheme.
+  /// Where the switching function of the switched truncation methods starts [Angstrom]; 0 selects the default of
+  /// 2 Angstrom below the (pair) cutoff.
+  double switchingDistance{0.0};
+
+  /// The CMAP correction maps defined in the force field ('CMAPs'); components refer to them by name.
+  std::vector<CMAPMap> cmapMaps{};
+
   bool cutOffFrameworkVDWAutomatic{false};
   double cutOffFrameworkVDW{12.0};  ///< Cut-off distance for VDW interactions between framework and molecules.
   bool cutOffMoleculeVDWAutomatic{false};
@@ -195,6 +226,31 @@ export struct ForceField
   }
   bool operator==(const ForceField &other) const;
 
+  /// Whether the 1-4 pairs have their own pair parameters ('data14').
+  [[nodiscard]] bool hasPair14Parameters() const { return !data14.empty(); }
+
+  /// The pair parameters of a 1-4 pair of the pseudo-atom types 'row' and 'col': the 1-4 table when the force
+  /// field has one, the regular table otherwise.
+  [[nodiscard]] const VDWParameters &pair14(std::size_t row, std::size_t col) const
+  {
+    return data14.empty() ? data[row * numberOfPseudoAtoms + col] : data14[row * numberOfPseudoAtoms + col];
+  }
+
+  /// The pair parameters of the pair of types (row, col): the 1-4 table for a 1-4 pair, the regular table
+  /// otherwise.
+  [[nodiscard]] const VDWParameters &pair(std::size_t row, std::size_t col, bool is14) const
+  {
+    return is14 ? pair14(row, col) : data[row * numberOfPseudoAtoms + col];
+  }
+
+  /// Creates the 1-4 table as a copy of the regular table when there is none yet (the entries are then
+  /// overwritten by the 1-4 self interactions, and mixed by applyMixingRule).
+  void ensurePair14Table();
+
+  /// Sets the 1-4 self interaction of pseudo-atom 'type' (creating the 1-4 table when needed). The cross terms
+  /// follow from the mixing rule: call applyMixingRule (and the pre-computations) afterwards.
+  void setPair14SelfInteraction(std::size_t type, const VDWParameters &parameters);
+
   /**
    * \brief Applies the mixing rule to compute cross-interaction parameters.
    *
@@ -202,6 +258,19 @@ export struct ForceField
    * using the specified mixing rule.
    */
   void applyMixingRule();
+
+  /// Applies the mixing rule to the cross terms of one pair table (the regular table or the 1-4 table).
+  void mixTable(std::vector<VDWParameters> &table) const;
+
+  /// Converts the Lennard-Jones pairs of both tables to the switched form of 'truncationMethod' (Switched,
+  /// ForceSwitched) and clears their potential shift; the other truncation methods convert the switched forms back
+  /// to plain Lennard-Jones. Called after mixing; the pre-computations must follow.
+  void applySwitching();
+
+  /// Sets the truncation method and the switching distance (0: default) and redoes the pre-computations.
+  void setTruncationMethod(TruncationMethod method, double switchingDistanceVDW = 0.0);
+
+  static std::string truncationMethodName(TruncationMethod method);
 
   /**
    * \brief Returns the cut-off distance for van der Waals interactions between two pseudo-atoms.

@@ -243,6 +243,24 @@ void addIntraMolecularChargeExclusionGradient(RunningEnergy &energy, const Force
                                               double3x3 *strainDerivative = nullptr);
 
 /**
+ * \brief The charge exclusion correction of one excluded pair at squared distance \p rr (the per-pair term of
+ * addIntraMolecularChargeExclusionGradient), for engines that visit the excluded pairs themselves.
+ *
+ * Ewald: -q_i q_j erf(alpha r)/r; the finite-cutoff shifted schemes: q_i q_j (V(r) - 1/r) inside the Coulomb
+ * cutoff (inactive outside). The gradient on atom i is firstDerivativeFactor * (r_i - r_j); dUdlambda is the
+ * argument of RunningEnergy::addDudlambdaEwald.
+ */
+struct ChargeExclusionPairTerm
+{
+  double energy{0.0};
+  double dUdlambda{0.0};
+  double firstDerivativeFactor{0.0};
+  bool active{false};
+};
+ChargeExclusionPairTerm chargeExclusionPairTerm(const ForceField &forceField, const Atom &atomA, const Atom &atomB,
+                                                double rr);
+
+/**
  * \brief Self-energy plus the intramolecular exclusion gradient of all molecules (the position-dependent part of
  * the Ewald sum that is neither the real-space pair sum nor the reciprocal sum).
  *

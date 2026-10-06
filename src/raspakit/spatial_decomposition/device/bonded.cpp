@@ -31,6 +31,7 @@ void DeviceBonded::initialize(DeviceContext& deviceContext)
 {
   context = &deviceContext;
   termKernel = context->compileKernel("bonded", deviceKernelBondedSource, DeviceMath::Relaxed, "bondedTerms");
+  centerKernel = context->compileKernel("bonded", deviceKernelBondedSource, DeviceMath::Relaxed, "bondedCenters");
   atomKernel = context->compileKernel("bonded", deviceKernelBondedSource, DeviceMath::Relaxed, "bondedAtoms");
   parameterBuffer.allocate(*context, sizeof(Parameters), DeviceMemory::Device);
 }
@@ -44,6 +45,7 @@ void DeviceBonded::setTopology(const BondedTopology& topology)
   parameters.numberOfInstances = static_cast<std::uint32_t>(topology.numberOfInstances);
   parametersChanged = true;
   termGroups = roundUp(std::max<std::size_t>(topology.numberOfInstances, 1), groupSize) / groupSize;
+  centerGroups = roundUp(std::max<std::size_t>(numberOfMolecules, 1), groupSize) / groupSize;
 
   uploadTable(*context, termsBuffer, topology.terms);
   uploadTable(*context, gradientOffsetBuffer, topology.gradientOffset);
@@ -53,7 +55,10 @@ void DeviceBonded::setTopology(const BondedTopology& topology)
   uploadTable(*context, exclusionPartnersBuffer, topology.exclusionPartners);
   uploadTable(*context, instanceMoleculeBuffer, topology.instanceMolecule);
   uploadTable(*context, moleculeInfoBuffer, topology.molecules);
+  uploadTable(*context, moleculeOfAtomBuffer, topology.moleculeOfAtom);
   uploadTable(*context, massBuffer, topology.massOfAtom);
+  moleculeCenterBuffer.allocate(*context, std::max<std::size_t>(numberOfMolecules, 1) * 4 * sizeof(float),
+                                DeviceMemory::Device);
   termGradientBuffer.allocate(*context, topology.numberOfGradients * 4 * sizeof(float), DeviceMemory::Device);
 }
 
@@ -82,9 +87,8 @@ void DeviceBonded::setAlpha(double alpha)
   parametersChanged = true;
 }
 
-void DeviceBonded::setLayout(std::span<const std::uint32_t> slotMolecule)
+void DeviceBonded::setLayout(std::size_t slots)
 {
-  const std::size_t slots = slotMolecule.size();
   atomGroups = roundUp(std::max<std::size_t>(slots, 1), groupSize) / groupSize;
   const std::uint32_t atomPartialOffset = static_cast<std::uint32_t>(termGroups * termPartials);
   if (parameters.numberOfSlots != static_cast<std::uint32_t>(slots) ||
@@ -95,11 +99,6 @@ void DeviceBonded::setLayout(std::span<const std::uint32_t> slotMolecule)
     parametersChanged = true;
   }
 
-  if (slots > slotCapacity)
-  {
-    slotCapacity = slots + slots / 4 + 1;
-    slotMoleculeBuffer.allocate(*context, slotCapacity * sizeof(std::uint32_t), DeviceMemory::Device);
-  }
   // one buffer (one read-back) for the partials of both kernels
   const std::size_t partials = termGroups * termPartials + atomGroups * atomPartials;
   if (partials > partialCapacity)
@@ -108,11 +107,9 @@ void DeviceBonded::setLayout(std::span<const std::uint32_t> slotMolecule)
     partialBuffer.allocate(*context, partialCapacity * sizeof(float), DeviceMemory::Device);
   }
   hostPartials.assign(partials, 0.0f);
-
-  if (slots > 0) context->write(slotMoleculeBuffer.get(), 0, slots * sizeof(std::uint32_t), slotMolecule.data(), false);
 }
 
-void DeviceBonded::enqueue(DeviceBuffer relative, DeviceBuffer force)
+void DeviceBonded::enqueue(DeviceBuffer relative, DeviceBuffer slotAtom, DeviceBuffer force)
 {
   if (parametersChanged)
   {
@@ -131,10 +128,18 @@ void DeviceBonded::enqueue(DeviceBuffer relative, DeviceBuffer force)
                                    DeviceArg::of(partialBuffer.get())};
     context->launch(termKernel, arguments, termGroups, groupSize);
   }
+  {
+    const std::uint32_t molecules = static_cast<std::uint32_t>(numberOfMolecules);
+    const DeviceArg arguments[] = {DeviceArg::of(relative), DeviceArg::of(moleculeInfoBuffer.get()),
+                                   DeviceArg::of(massBuffer.get()), DeviceArg::of(moleculeCenterBuffer.get()),
+                                   DeviceArg::value(molecules)};
+    context->launch(centerKernel, arguments, centerGroups, groupSize);
+  }
   const DeviceArg arguments[] = {DeviceArg::of(relative),
-                                 DeviceArg::of(slotMoleculeBuffer.get()),
+                                 DeviceArg::of(slotAtom),
+                                 DeviceArg::of(moleculeOfAtomBuffer.get()),
                                  DeviceArg::of(moleculeInfoBuffer.get()),
-                                 DeviceArg::of(massBuffer.get()),
+                                 DeviceArg::of(moleculeCenterBuffer.get()),
                                  DeviceArg::of(atomGradientStartBuffer.get()),
                                  DeviceArg::of(atomGradientsBuffer.get()),
                                  DeviceArg::of(exclusionStartBuffer.get()),

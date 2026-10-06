@@ -197,6 +197,32 @@ inline double potentialCorrectionVDW(const VDWParameters &parameters, double cut
       double m = parameters.parameters.w;
       return p0 * std::pow(rc, 3.0 - n) / (n - 3.0) - p2 * std::pow(rc, 3.0 - m) / (m - 3.0);
     }
+    case VDWParameters::Type::LennardJonesSwitched:
+    case VDWParameters::Type::LennardJonesForceSwitched:
+    {
+      // the plain Lennard-Jones tail beyond the cutoff plus the part of the potential removed by the switching
+      // function on [r_s, rc] (Simpson quadrature; the integrand is smooth)
+      double arg1 = parameters.parameters.x;
+      double arg2 = parameters.parameters.y;
+      double term3 = (arg2 / rc) * (arg2 / rc) * (arg2 / rc);
+      double term6 = term3 * term3;
+      double tail = (4.0 / 3.0) * arg1 * arg2 * arg2 * arg2 * ((1.0 / 3.0) * term6 * term3 - term3);
+      double rs = parameters.parameters2.y;
+      if (!(rs < rc)) return tail;
+      constexpr std::size_t intervals = 512;
+      double h = (rc - rs) / static_cast<double>(intervals);
+      auto removed = [&](double r)
+      {
+        double rr = r * r;
+        return (parameters.lennardJonesEnergy(rr) - parameters.potentialEnergyAtFullCoupling(rr)) * rr;
+      };
+      double sum = removed(rs) + removed(rc);
+      for (std::size_t i = 1; i < intervals; ++i)
+      {
+        sum += (i % 2 == 1 ? 4.0 : 2.0) * removed(rs + static_cast<double>(i) * h);
+      }
+      return tail + sum * h / 3.0;
+    }
     case VDWParameters::Type::LennardJonesShiftedForce:
     case VDWParameters::Type::LennardJonesSecondOrderTaylorShifted:
     case VDWParameters::Type::WeeksChandlerAndersen:

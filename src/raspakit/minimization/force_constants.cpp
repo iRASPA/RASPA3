@@ -270,6 +270,7 @@ void addMoleculeIntramolecular(const System& system, ForceConstants& forceConsta
                                                         dynamics);
   Interactions::computeIntraMolecularBendTorsionHessian(moleculeData, moleculeAtoms, components, layout, local,
                                                         dynamics);
+  Interactions::computeIntraMolecularCMAPHessian(moleculeData, moleculeAtoms, components, layout, local, dynamics);
   Interactions::computeIntraMolecularInversionBendHessian(moleculeData, moleculeAtoms, components, layout, local,
                                                           dynamics);
   Interactions::computeIntraMolecularOutOfPlaneBendHessian(moleculeData, moleculeAtoms, components, layout, local,

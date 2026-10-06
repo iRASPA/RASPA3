@@ -26,17 +26,20 @@ export namespace Potentials
  * \param rr The squared distance between the atoms.
  * \param typeA The pseudo-atom type of atom A.
  * \param typeB The pseudo-atom type of atom B.
+ * \param pair14 Whether the pair uses the 1-4 pair parameters of the force field (ForceField::pair14) instead of
+ *               the regular pair table.
  */
 template <std::size_t Order>
 [[clang::always_inline]] inline PairDerivatives<Order> intraMolecularVDW(const ForceField &forceField,
                                                                          double pairScaling, double rr,
-                                                                         std::size_t typeA, std::size_t typeB)
+                                                                         std::size_t typeA, std::size_t typeB,
+                                                                         bool pair14 = false)
 {
   static_assert(Order <= 2, "intraMolecularVDW supports derivative orders 0, 1, and 2");
 
   if (pairScaling == 0.0 || rr >= forceField.cutOffMoleculeVDW * forceField.cutOffMoleculeVDW) return {};
 
-  PairDerivatives<Order> derivatives = potentialVDW<Order>(forceField, 1.0, 1.0, rr, typeA, typeB);
+  PairDerivatives<Order> derivatives = potentialVDW<Order>(forceField.pair(typeA, typeB, pair14), 1.0, 1.0, rr);
   derivatives.energy *= pairScaling;
   derivatives.dUdlambda = 0.0;
   if constexpr (Order >= 1) derivatives.firstDerivativeFactor *= pairScaling;

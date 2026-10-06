@@ -237,6 +237,21 @@ void Interactions::addIntraMolecularChargeExclusionGradient(RunningEnergy& energ
                              strainDerivative);
 }
 
+Interactions::ChargeExclusionPairTerm Interactions::chargeExclusionPairTerm(const ForceField& forceField,
+                                                                            const Atom& atomA, const Atom& atomB,
+                                                                            double rr)
+{
+  ChargeExclusionPairTerm result{};
+  if (!forceField.useCharge) return result;
+  if (!forceField.usesEwaldFourier() && !forceField.usesRealSpaceChargeCorrections()) return result;
+  const ExclusionPairTerm term = ::chargeExclusionPairTerm(forceField, atomA, atomB, rr, 1.0);
+  result.energy = term.energy;
+  result.dUdlambda = term.dUdlambda;
+  result.firstDerivativeFactor = term.firstDerivativeFactor;
+  result.active = term.active;
+  return result;
+}
+
 RunningEnergy Interactions::computeChargeSelfAndExclusionGradient(
     const ForceField& forceField, const SimulationBox& simulationBox, const std::vector<Component>& components,
     [[maybe_unused]] const std::vector<std::size_t>& numberOfMoleculesPerComponent, std::span<const Atom> atomData,

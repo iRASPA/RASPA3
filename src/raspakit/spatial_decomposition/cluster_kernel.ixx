@@ -376,6 +376,18 @@ class ClusterPairKernel
     for (Domain& domain : domains) domain.pruned = false;
   }
 
+  /// Sets the global Lennard-Jones switching (after setParameters).
+  void setSwitching(const LennardJonesSwitching& switching)
+  {
+    switchMode = switching.mode;
+    switchDistance = static_cast<Real>(switching.distance);
+    switchDistanceSquared = static_cast<Real>(switching.distanceSquared);
+    switchInverseWidth = static_cast<Real>(switching.inverseWidth);
+    switchInverseCutOff3 = static_cast<Real>(switching.inverseCutOff3);
+    switchA12 = static_cast<Real>(switching.a12);
+    switchA6 = static_cast<Real>(switching.a6);
+  }
+
   void resize(std::size_t numberOfDomains) { domains.resize(numberOfDomains); }
 
   std::size_t paddedLocalAtoms(std::size_t d) const { return domains[d].padded; }
@@ -637,8 +649,45 @@ class ClusterPairKernel
           const Vec invRR3 = invRR * invRR * invRR;
           const Vec rri3 = s6 * invRR3;
           const Vec rri6 = rri3 * rri3;
-          eVDW += maskVDW * (e4 * (rri6 - rri3) - sh);
-          Vec factor = maskVDW * (Real(12) * e4 * rri3 * (Real(0.5) - rri3) * invRR);
+          Vec uVDW = e4 * (rri6 - rri3) - sh;
+          Vec fVDW = Real(12) * e4 * rri3 * (Real(0.5) - rri3) * invRR;
+          if (switchMode != 0)
+          {
+            // the lanes in the switching region [r_s, rc]: blend in the switched energy and gradient factor
+            const Vec inRegion = maskVDW * (Real(1) - less(rr, switchDistanceSquared));
+            if (inRegion.sum() != Real(0))
+            {
+              const Vec r = sqrt(rrSafe);
+              Vec uSwitched, fSwitched;
+              if (switchMode == 1)
+              {
+                const Vec xs = (r - switchDistance) * switchInverseWidth;
+                const Vec xs2 = xs * xs;
+                const Vec oneMinusX = Real(1) - xs;
+                const Vec sw = Real(1) + xs2 * xs * (Real(-10) + xs * (Real(15) - Real(6) * xs));
+                const Vec dsw = Real(-30) * switchInverseWidth * xs2 * oneMinusX * oneMinusX;
+                const Vec uPlain = e4 * (rri6 - rri3);
+                uSwitched = uPlain * sw;
+                fSwitched = fVDW * sw + uPlain * dsw * reciprocal(r);
+              }
+              else
+              {
+                const Vec c6 = e4 * s6;
+                const Vec c12 = c6 * s6;
+                const Vec invR3 = reciprocal(r * rrSafe);
+                const Vec invR4 = invR3 * reciprocal(r);
+                const Vec d3 = invR3 - switchInverseCutOff3;
+                const Vec d6 = invR3 * invR3 - switchInverseCutOff3 * switchInverseCutOff3;
+                uSwitched = switchA12 * c12 * d6 * d6 - switchA6 * c6 * d3 * d3;
+                fSwitched = (Real(-12) * switchA12 * c12 * d6 * invR3 * invR4 + Real(6) * switchA6 * c6 * d3 * invR4) *
+                            reciprocal(r);
+              }
+              uVDW = uVDW + inRegion * (uSwitched - uVDW);
+              fVDW = fVDW + inRegion * (fSwitched - fVDW);
+            }
+          }
+          eVDW += maskVDW * uVDW;
+          Vec factor = maskVDW * fVDW;
 
           if (useCharge)
           {
@@ -834,6 +883,10 @@ class ClusterPairKernel
 
   std::size_t numberOfTypes{0};
   std::vector<Real> epsilon4{}, sigma6{}, shift{};  ///< Per pair of types (row = type_i * numberOfTypes).
+  // the global Lennard-Jones switching (LennardJonesSwitching; 0: none)
+  std::uint32_t switchMode{0};
+  Real switchDistance{0}, switchDistanceSquared{0}, switchInverseWidth{0}, switchInverseCutOff3{0}, switchA12{1},
+      switchA6{1};
   Real cutOffVDWSquared{0};
   Real cutOffChargeSquared{0};
   Real coulombFactor{1};

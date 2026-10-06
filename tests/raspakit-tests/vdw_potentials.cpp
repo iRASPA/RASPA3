@@ -37,6 +37,9 @@ std::vector<PotentialTestCase> testCases()
       {VDWParameters::Type::BornHugginsMeyer, {6.0e4, 3.15, 2.34, 1.0e6, 2.0e6}, {3.0, 4.0, 4.5, 6.0}},
       {VDWParameters::Type::LennardJonesShiftedForce, {119.8, 3.405}, {3.0, 3.405, 3.8, 5.0}},
       {VDWParameters::Type::LennardJonesSecondOrderTaylorShifted, {119.8, 3.405}, {3.0, 3.405, 3.8, 5.0}},
+      // switched on [10, 12] (the default switching distance of 2 below the cutoff)
+      {VDWParameters::Type::LennardJonesSwitched, {119.8, 3.405}, {3.0, 3.405, 5.0, 10.7, 11.5}},
+      {VDWParameters::Type::LennardJonesForceSwitched, {119.8, 3.405}, {3.0, 3.405, 5.0, 10.7, 11.5}},
       {VDWParameters::Type::Potential12_6, {6.0e7, 2.5e4}, {3.2, 3.66, 4.0, 5.0}},
       {VDWParameters::Type::Potential12_6_2_0, {6.0e7, -2.5e4, -100.0, 0.0}, {3.2, 3.66, 4.0, 5.0}},
       {VDWParameters::Type::CFF9_6, {1.0e6, 2.0e4}, {3.2, 3.68, 4.0, 5.0}},
@@ -122,6 +125,34 @@ double referenceEnergyInKelvin(const PotentialTestCase &testCase, double r)
       return 4.0 * p[0] *
              (u6 * u6 - u6 - (c6 * c6 - c6) + linearCoefficient * displacement -
               0.5 * quadraticCoefficient * displacement * displacement);
+    }
+    case VDWParameters::Type::LennardJonesSwitched:
+    {
+      // OpenMM / GROMACS potential switch: U(r) S(r), S = 1 - 10 x^3 + 15 x^4 - 6 x^5, x = (r - rs) / (rc - rs)
+      double rc = 12.0, rs = 10.0;
+      double u6 = std::pow(p[1] / r, 6);
+      double energy = 4.0 * p[0] * (u6 * u6 - u6);
+      if (r <= rs) return energy;
+      if (r >= rc) return 0.0;
+      double x = (r - rs) / (rc - rs);
+      return energy * (1.0 - 10.0 * std::pow(x, 3) + 15.0 * std::pow(x, 4) - 6.0 * std::pow(x, 5));
+    }
+    case VDWParameters::Type::LennardJonesForceSwitched:
+    {
+      // CHARMM force switch (Steinbach and Brooks 1994), C12 = 4 eps sigma^12, C6 = 4 eps sigma^6
+      double rc = 12.0, rs = 10.0;
+      double c6 = 4.0 * p[0] * std::pow(p[1], 6);
+      double c12 = c6 * std::pow(p[1], 6);
+      if (r >= rc) return 0.0;
+      if (r <= rs)
+      {
+        return c12 * (std::pow(r, -12) - 1.0 / (std::pow(rc, 6) * std::pow(rs, 6))) -
+               c6 * (std::pow(r, -6) - 1.0 / (std::pow(rc, 3) * std::pow(rs, 3)));
+      }
+      double d6 = std::pow(r, -6) - std::pow(rc, -6);
+      double d3 = std::pow(r, -3) - std::pow(rc, -3);
+      return c12 * std::pow(rc, 6) / (std::pow(rc, 6) - std::pow(rs, 6)) * d6 * d6 -
+             c6 * std::pow(rc, 3) / (std::pow(rc, 3) - std::pow(rs, 3)) * d3 * d3;
     }
     case VDWParameters::Type::Potential12_6:
       return p[0] / std::pow(r, 12) - p[1] / std::pow(r, 6);

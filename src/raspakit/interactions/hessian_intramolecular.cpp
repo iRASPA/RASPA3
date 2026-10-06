@@ -581,7 +581,7 @@ RunningEnergy Interactions::computeIntraMolecularVanDerWaalsHessian(
     std::span<AtomDynamics> dynamics_molecule_span = {&dynamics[molecule.atomIndex], molecule.numberOfAtoms};
 
     potentials.forEachVanDerWaalsPair(
-        [&](std::size_t A, std::size_t B, double scaling)
+        [&](std::size_t A, std::size_t B, double scaling, bool pair14)
     {
       const double3 dr = simulationBox.applyPeriodicBoundaryConditions(atom_molecule_span[A].position -
                                                                        atom_molecule_span[B].position);
@@ -589,7 +589,7 @@ RunningEnergy Interactions::computeIntraMolecularVanDerWaalsHessian(
 
       const Potentials::PairDerivatives<2> pair = Potentials::intraMolecularVDW<2>(
           forceField, scaling, rr, static_cast<std::size_t>(atom_molecule_span[A].type),
-          static_cast<std::size_t>(atom_molecule_span[B].type));
+          static_cast<std::size_t>(atom_molecule_span[B].type), pair14);
       if (pair.energy == 0.0 && pair.firstDerivativeFactor == 0.0 && pair.secondDerivativeFactor == 0.0) return;
       const double f1 = pair.firstDerivativeFactor;
       const double f2 = pair.secondDerivativeFactor;

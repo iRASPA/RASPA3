@@ -98,6 +98,11 @@ std::string RunningEnergy::printMC() const
     std::print(stream, "    intra bend-torsion{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
                conv * bendTorsion, Units::displayedUnitOfEnergyString);
   }
+  if (std::fabs(cmap) > 1e-10)
+  {
+    std::print(stream, "    intra CMAP{}               {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * cmap, Units::displayedUnitOfEnergyString);
+  }
   if (std::fabs(intraVDW) > 1e-10)
   {
     std::print(stream, "    intra VDW{}                {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
@@ -203,6 +208,8 @@ std::string RunningEnergy::printMCDiff(RunningEnergy &other) const
   std::print(stream, "    bend-torsion{}           | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
              Units::displayedUnitOfEnergyConversionString, conv * bendTorsion, conv * other.bendTorsion,
              conv * drift.bendTorsion);
+  std::print(stream, "    CMAP{}                   | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
+             Units::displayedUnitOfEnergyConversionString, conv * cmap, conv * other.cmap, conv * drift.cmap);
   std::print(stream, "    intra VDW{}              | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
              Units::displayedUnitOfEnergyConversionString, conv * intraVDW, conv * other.intraVDW,
              conv * drift.intraVDW);
@@ -280,6 +287,8 @@ std::string RunningEnergy::printMD() const
              conv * bendBend, Units::displayedUnitOfEnergyString);
   std::print(stream, "    bend-torsion{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * bendTorsion, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    CMAP{}                     {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * cmap, Units::displayedUnitOfEnergyString);
   std::print(stream, "    intra VDW{}                {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * intraVDW, Units::displayedUnitOfEnergyString);
   std::print(stream, "    intra Coulombic{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
@@ -361,6 +370,8 @@ std::string RunningEnergy::printMC(const std::string &label) const
              conv * bendBend, Units::displayedUnitOfEnergyString);
   std::print(stream, "    bend-torsion{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * bendTorsion, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    CMAP{}                     {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * cmap, Units::displayedUnitOfEnergyString);
   std::print(stream, "    intra VDW{}                {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * intraVDW, Units::displayedUnitOfEnergyString);
   std::print(stream, "    intra Coulombic{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
@@ -437,6 +448,8 @@ std::string RunningEnergy::printMD(const std::string &label, double referenceEne
              conv * bendBend, Units::displayedUnitOfEnergyString);
   std::print(stream, "    bend-torsion{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * bendTorsion, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    CMAP{}                   {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * cmap, Units::displayedUnitOfEnergyString);
   std::print(stream, "    intra VDW{}              {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * intraVDW, Units::displayedUnitOfEnergyString);
   std::print(stream, "    intra Coulombic{}        {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
@@ -494,6 +507,7 @@ nlohmann::json RunningEnergy::jsonMC() const
   status["bondTorsion [K]"] = conv * bondTorsion;
   status["bendBend [K]"] = conv * bendBend;
   status["bendTorsion [K]"] = conv * bendTorsion;
+  status["cmap [K]"] = conv * cmap;
   status["intra VDW [K]"] = conv * intraVDW;
   status["intra Coulombic [K]"] = conv * intraCoul;
   status["cross-link [K]"] = conv * crossLink;
@@ -571,6 +585,8 @@ std::string RunningEnergy::repr() const
              conv * bendBend, Units::displayedUnitOfEnergyString);
   std::print(stream, "    bend-torsion{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * bendTorsion, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    CMAP{}                   {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * cmap, Units::displayedUnitOfEnergyString);
   std::print(stream, "    intra VDW{}              {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * intraVDW, Units::displayedUnitOfEnergyString);
   std::print(stream, "    intra Coulombic{}        {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
@@ -635,6 +651,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Runnin
   archive << e.rotationalKineticEnergy;
   archive << e.NoseHooverEnergy;
   archive << e.thermobarostatEnergy;
+  archive << e.cmap;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -694,6 +711,14 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RunningEnerg
   archive >> e.rotationalKineticEnergy;
   archive >> e.NoseHooverEnergy;
   archive >> e.thermobarostatEnergy;
+  if (versionNumber >= 3)
+  {
+    archive >> e.cmap;
+  }
+  else
+  {
+    e.cmap = 0.0;
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

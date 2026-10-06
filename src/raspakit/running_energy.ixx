@@ -55,6 +55,7 @@ export struct RunningEnergy
         bondTorsion(0.0),
         bendBend(0.0),
         bendTorsion(0.0),
+        cmap(0.0),
         intraVDW(0.0),
         intraCoul(0.0),
         crossLink(0.0),
@@ -171,7 +172,7 @@ export struct RunningEnergy
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + externalFieldCharge +
            frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + bond +
            ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion + bondBond + bondBend +
-           bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + crossLink + tail + polarization;
+           bondTorsion + bendBend + bendTorsion + cmap + intraVDW + intraCoul + crossLink + tail + polarization;
   }
 
   /**
@@ -228,7 +229,7 @@ export struct RunningEnergy
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + externalFieldCharge +
            frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + bond +
            ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion + bondBond + bondBend +
-           bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + crossLink + tail + polarization +
+           bondTorsion + bendBend + bendTorsion + cmap + intraVDW + intraCoul + crossLink + tail + polarization +
            translationalKineticEnergy + rotationalKineticEnergy + NoseHooverEnergy + thermobarostatEnergy;
   }
 
@@ -321,7 +322,7 @@ export struct RunningEnergy
     ewald_exclusion = 0.0;
     bond = 0.0, ureyBradley = 0.0, bend = 0.0, inversionBend = 0.0, outOfPlaneBend = 0.0, torsion = 0.0,
     improperTorsion = 0.0, bondBond = 0.0, bondBend = 0.0, bondTorsion = 0.0, bendBend = 0.0, bendTorsion = 0.0,
-    intraVDW = 0.0;
+    cmap = 0.0, intraVDW = 0.0;
     intraCoul = 0.0;
     crossLink = 0.0;
     tail = 0.0;
@@ -358,6 +359,7 @@ export struct RunningEnergy
     bondTorsion += b.bondTorsion;
     bendBend += b.bendBend;
     bendTorsion += b.bendTorsion;
+    cmap += b.cmap;
     intraVDW += b.intraVDW;
     intraCoul += b.intraCoul;
     crossLink += b.crossLink;
@@ -400,6 +402,7 @@ export struct RunningEnergy
     bondTorsion -= b.bondTorsion;
     bendBend -= b.bendBend;
     bendTorsion -= b.bendTorsion;
+    cmap -= b.cmap;
     intraVDW -= b.intraVDW;
     intraCoul -= b.intraCoul;
     crossLink -= b.crossLink;
@@ -443,6 +446,7 @@ export struct RunningEnergy
     v.bondTorsion = -bondTorsion;
     v.bendBend = -bendBend;
     v.bendTorsion = -bendTorsion;
+    v.cmap = -cmap;
     v.intraVDW = -intraVDW;
     v.intraCoul = -intraCoul;
     v.crossLink = -crossLink;
@@ -485,6 +489,7 @@ export struct RunningEnergy
     bondTorsion *= b;
     bendBend *= b;
     bendTorsion *= b;
+    cmap *= b;
     intraVDW *= b;
     intraCoul *= b;
     crossLink *= b;
@@ -505,7 +510,7 @@ export struct RunningEnergy
   }
 
 
-  std::uint64_t versionNumber{2};  ///< Version number for serialization.
+  std::uint64_t versionNumber{3};  ///< Version number for serialization.
 
   double externalFieldVDW;         ///< Energy from van der Waals interactions with external field.
   double frameworkMoleculeVDW;     ///< Energy from van der Waals interactions between framework and molecules.
@@ -528,6 +533,7 @@ export struct RunningEnergy
   double bondTorsion;
   double bendBend;
   double bendTorsion;
+  double cmap;                        ///< CMAP (phi, psi) correction energy.
   double intraVDW;                    ///< Intramolecular van der Waals energy.
   double intraCoul;                   ///< Intramolecular Coulomb energy.
   double crossLink;                   ///< Cross-link bonded energy (inter-molecular bonds, junction bends, formation energies).
@@ -580,6 +586,7 @@ export inline RunningEnergy operator+(const RunningEnergy& a, const RunningEnerg
   m.bondTorsion = a.bondTorsion + b.bondTorsion;
   m.bendBend = a.bendBend + b.bendBend;
   m.bendTorsion = a.bendTorsion + b.bendTorsion;
+  m.cmap = a.cmap + b.cmap;
   m.intraVDW = a.intraVDW + b.intraVDW;
   m.intraCoul = a.intraCoul + b.intraCoul;
   m.crossLink = a.crossLink + b.crossLink;
@@ -623,6 +630,7 @@ export inline RunningEnergy operator-(const RunningEnergy& a, const RunningEnerg
   m.bondTorsion = a.bondTorsion - b.bondTorsion;
   m.bendBend = a.bendBend - b.bendBend;
   m.bendTorsion = a.bendTorsion - b.bendTorsion;
+  m.cmap = a.cmap - b.cmap;
   m.intraVDW = a.intraVDW - b.intraVDW;
   m.intraCoul = a.intraCoul - b.intraCoul;
   m.crossLink = a.crossLink - b.crossLink;
@@ -665,6 +673,7 @@ export inline RunningEnergy operator*(double a, const RunningEnergy b)
   m.bondTorsion = a * b.bondTorsion;
   m.bendBend = a * b.bendBend;
   m.bendTorsion = a * b.bendTorsion;
+  m.cmap = a * b.cmap;
   m.intraVDW = a * b.intraVDW;
   m.intraCoul = a * b.intraCoul;
   m.crossLink = a * b.crossLink;
@@ -708,6 +717,7 @@ export inline RunningEnergy operator*(const RunningEnergy a, double b)
   m.bondTorsion = b * a.bondTorsion;
   m.bendBend = b * a.bendBend;
   m.bendTorsion = b * a.bendTorsion;
+  m.cmap = b * a.cmap;
   m.intraVDW = b * a.intraVDW;
   m.intraCoul = b * a.intraCoul;
   m.crossLink = b * a.crossLink;

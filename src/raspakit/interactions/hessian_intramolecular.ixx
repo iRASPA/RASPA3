@@ -89,6 +89,13 @@ RunningEnergy computeIntraMolecularBendTorsionHessian(std::span<const Molecule> 
                                                       const MinimizationDofLayout& layout, GeneralizedHessian& hessian,
                                                       std::span<AtomDynamics> dynamics);
 
+/// The CMAP (phi, psi) correction terms: the map derivatives in the two dihedral coordinates assembled with the
+/// analytic Cartesian derivatives of the dihedral angles.
+RunningEnergy computeIntraMolecularCMAPHessian(std::span<const Molecule> moleculeData, std::span<const Atom> atoms,
+                                               std::span<const Component> components,
+                                               const MinimizationDofLayout& layout, GeneralizedHessian& hessian,
+                                               std::span<AtomDynamics> dynamics);
+
 RunningEnergy computeIntraMolecularInversionBendHessian(std::span<const Molecule> moleculeData,
                                                         std::span<const Atom> atoms,
                                                         std::span<const Component> components,

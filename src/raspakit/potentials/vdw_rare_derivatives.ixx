@@ -123,12 +123,10 @@ inline RadialJet tangToennies(std::size_t order, const RadialJet& br)
 }  // namespace Internal
 
 export [[clang::noinline]] [[clang::preserve_most]] inline RareVDWDerivatives evaluateRareVDWDerivatives(
-    const ForceField& forcefield, double scalingA, double scalingB, double rr, std::size_t typeA,
-    std::size_t typeB, VDWParameters::Type potentialType)
+    const VDWParameters& p, double scalingA, double scalingB, double rr, VDWParameters::Type potentialType)
 {
   using namespace Internal;
 
-  const VDWParameters& p = forcefield(typeA, typeB);
   double scaling = scalingA * scalingB;
   double inverseScaling = 1.0 - scaling;
   RadialJet radius = RadialJet::variable(std::sqrt(rr));
@@ -231,6 +229,47 @@ export [[clang::noinline]] [[clang::preserve_most]] inline RareVDWDerivatives ev
       RadialJet u6 = std::pow(p.parameters.y, 6) / power(r, 6.0);
       term = eps4 * (u6 * u6 - u6 - c6 * (c6 - 1.0) + linearCoefficient * displacement -
                      0.5 * quadraticCoefficient * displacement * displacement);
+      break;
+    }
+    case VDWParameters::Type::LennardJonesSwitched:
+    {
+      double eps4 = 4.0 * p.parameters.x;
+      double rc = p.parameters2.x;
+      double rs = p.parameters2.y;
+      if (r.value >= rc) return RareVDWDerivatives{0.0, 0.0, 0.0, 0.0};
+      RadialJet u6 = std::pow(p.parameters.y, 6) / power(r, 6.0);
+      term = eps4 * (u6 * u6 - u6);
+      if (r.value > rs)
+      {
+        RadialJet x = (r - rs) * p.parameters2.z;
+        RadialJet x3 = x * x * x;
+        term = term * (1.0 + x3 * (-10.0 + x * (15.0 - 6.0 * x)));
+      }
+      break;
+    }
+    case VDWParameters::Type::LennardJonesForceSwitched:
+    {
+      double eps4 = 4.0 * p.parameters.x;
+      double rc = p.parameters2.x;
+      double rs = p.parameters2.y;
+      double q = p.parameters2.z;
+      if (r.value >= rc) return RareVDWDerivatives{0.0, 0.0, 0.0, 0.0};
+      double sigma6 = std::pow(p.parameters.y, 6);
+      double c6 = eps4 * sigma6;
+      double c12 = c6 * sigma6;
+      double invRc3 = 1.0 / (rc * rc * rc);
+      if (r.value <= rs)
+      {
+        double invRs3 = invRc3 / q;
+        term = c12 * (1.0 / power(r, 12.0) - invRc3 * invRc3 * invRs3 * invRs3) -
+               c6 * (1.0 / power(r, 6.0) - invRc3 * invRs3);
+      }
+      else
+      {
+        RadialJet d3 = power(r, -3.0) - invRc3;
+        RadialJet d6 = power(r, -6.0) - invRc3 * invRc3;
+        term = c12 * d6 * d6 / (1.0 - q * q) - c6 * d3 * d3 / (1.0 - q);
+      }
       break;
     }
     case VDWParameters::Type::Potential12_6:

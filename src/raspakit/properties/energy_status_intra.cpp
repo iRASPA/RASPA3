@@ -24,6 +24,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Energy
   archive << e.bendTorsion;
   archive << e.vanDerWaals;
   archive << e.coulomb;
+  archive << e.cmap;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -57,6 +58,14 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyIntra 
   archive >> e.bendTorsion;
   archive >> e.vanDerWaals;
   archive >> e.coulomb;
+  if (versionNumber >= 2)
+  {
+    archive >> e.cmap;
+  }
+  else
+  {
+    e.cmap = 0.0;
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

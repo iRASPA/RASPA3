@@ -10,17 +10,19 @@ module spatial_decomposition_device_kernels;
 // Ewald-completed Coulomb pair potential times the pair scaling; the unscaled non-excluded pairs are in the pair
 // lists), and the atomic-to-molecular virial correction of the non-bonded gradients.
 //
-// Two kernels. bondedTerms: one work-item per term instance (a term of a component in one of its molecules; the
+// Three kernels. bondedTerms: one work-item per term instance (a term of a component in one of its molecules; the
 // instances of a molecule are consecutive and ordered by kind, so that the work-items of a SIMD group mostly run
 // the same code), which evaluates the term once and writes the gradient on each of its atoms to a per-instance
-// slot of `termGradient`, with the energies reduced per work-group. bondedAtoms: one work-item per slot (atom),
-// which evaluates the exclusion pairs with its excluded partners, the virial correction, and gathers
-// the gradients of the terms its atom takes part in (listed per atom of the component). No atomics; the gradient
-// is added to the force of the slot, which at this point holds the pair + mesh gradient (the kernels run after the
-// pair kernel and the mesh interpolation). The positions are the float positions relative to the first atom of
-// the molecule, indexed by the atom's index in the system (so the atoms of a molecule are consecutive), packed by
-// the host in double so that the stiff bonded terms do not see the rounding of the absolute positions; the w
-// component carries the charge.
+// slot of `termGradient`, with the energies reduced per work-group. bondedCenters: one work-item per molecule,
+// the mass-weighted center of the molecule (in the relative positions) for the virial correction. bondedAtoms:
+// one work-item per slot (atom), which evaluates the exclusion pairs with its excluded partners, the virial
+// correction, and gathers the gradients of the terms its atom takes part in (listed per atom of the component).
+// No atomics; the gradient is added to the force of the slot, which at this point holds the pair + mesh gradient
+// (the kernels run after the pair kernel and the mesh interpolation). A slot finds its atom through the slot
+// table of the pair lists and its molecule through the per-atom molecule table, so the molecule size is not
+// limited. The positions are the float positions relative to the first atom of the molecule, indexed by the
+// atom's index in the system (so the atoms of a molecule are consecutive), packed by the host in double so that
+// the stiff bonded terms do not see the rounding of the absolute positions; the w component carries the charge.
 const char* const deviceKernelBondedSource = R"CLC(
 #define BONDED_GROUP 64
 #define ATOM_PARTIALS 20
@@ -476,6 +478,33 @@ void bondedTerms(GLOBAL const float4* RESTRICT relative,            // per atom 
   reducePartials(scratch, TERM_PARTIALS, partials, lid, TERM_GROUP, GROUP_ID());
 }
 
+// One work-item per molecule: the mass-weighted center of the molecule in the relative positions (x, y, z) and
+// the total mass (w), for the virial correction of bondedAtoms (a per-atom loop over the molecule there would
+// make the kernel quadratic in the molecule size).
+KERNEL_GROUP_SIZE(BONDED_GROUP)
+void bondedCenters(GLOBAL const float4* RESTRICT relative,          // per atom (system order), see bondedTerms
+                   GLOBAL const MoleculeInfo* RESTRICT moleculeInfo,
+                   GLOBAL const float* RESTRICT massOfAtom,         // per atom (system order)
+                   GLOBAL float4* RESTRICT moleculeCenter,
+                   VALUE_ARG(uint, numberOfMolecules) KERNEL_INDEX_ARGS)
+{
+  const uint m = GLOBAL_ID();
+  if (m >= numberOfMolecules) return;
+  const MoleculeInfo info = moleculeInfo[m];
+  GLOBAL const float4* RESTRICT pos = relative + info.firstAtom;
+  GLOBAL const float* RESTRICT mass = massOfAtom + info.firstAtom;
+  float3 com = FLOAT3(0.0f, 0.0f, 0.0f);
+  float totalMass = 0.0f;
+  for (uint b = 0; b < info.numberOfAtoms; ++b)
+  {
+    const float mb = mass[b];
+    com += mb * pos[b].xyz;
+    totalMass += mb;
+  }
+  com /= totalMass;
+  moleculeCenter[m] = FLOAT4(com.x, com.y, com.z, totalMass);
+}
+
 // One work-item per slot (atom): the Ewald exclusion corrections with its excluded partners (the 1-2, 1-3 and
 // rigid-fragment pairs of the component), the virial correction of the non-bonded gradient, and the gradients of
 // the term instances it takes part in, gathered from the slots the term kernel wrote. Partials per work-group:
@@ -483,9 +512,10 @@ void bondedTerms(GLOBAL const float4* RESTRICT relative,            // per atom 
 // (ax ay az bx by bz cx cy cz each).
 KERNEL_GROUP_SIZE(BONDED_GROUP)
 void bondedAtoms(GLOBAL const float4* RESTRICT relative,          // per atom (system order), see bondedTerms
-                 GLOBAL const uint* RESTRICT slotMolecule,        // (molecule << 8) | index in the molecule, or NO_ATOM
+                 GLOBAL const uint* RESTRICT slotAtom,            // system atom of the slot, or NO_ATOM (dummy slot)
+                 GLOBAL const uint* RESTRICT moleculeOfAtom,      // per atom (system order): its molecule
                  GLOBAL const MoleculeInfo* RESTRICT moleculeInfo,
-                 GLOBAL const float* RESTRICT massOfAtom,         // per atom (system order)
+                 GLOBAL const float4* RESTRICT moleculeCenter,    // per molecule, see bondedCenters
                  GLOBAL const uint* RESTRICT atomGradientStart,   // CSR offsets of the gradient slots per component atom
                  GLOBAL const uint* RESTRICT atomGradients,       // gradient slot (within the molecule's block)
                  GLOBAL const uint* RESTRICT exclusionStart,      // CSR offsets of the excluded partners per component atom
@@ -501,31 +531,19 @@ void bondedAtoms(GLOBAL const float4* RESTRICT relative,          // per atom (s
   float acc[ATOM_PARTIALS];
   for (uint q = 0; q < ATOM_PARTIALS; ++q) acc[q] = 0.0f;
 
-  const uint packed = (slot < p->numberOfSlots) ? slotMolecule[slot] : NO_ATOM;
-  if (packed != NO_ATOM)
+  const uint atom = (slot < p->numberOfSlots) ? slotAtom[slot] : NO_ATOM;
+  if (atom != NO_ATOM)
   {
-    const uint m = packed >> 8;
-    const uint a = packed & 0xFFu;
+    const uint m = moleculeOfAtom[atom];
     const MoleculeInfo info = moleculeInfo[m];
     const uint first = info.firstAtom;
-    const uint n = info.numberOfAtoms;
+    const uint a = atom - first;
     GLOBAL const float4* RESTRICT pos = relative + first;
-    GLOBAL const float* RESTRICT mass = massOfAtom + first;
     const float4 pa = pos[a];
     const float3 ra = pa.xyz;
     const float qa = pa.w;
     const bool charged = p->useCharge != 0;
-
-    // Center of mass of the molecule.
-    float3 com = FLOAT3(0.0f, 0.0f, 0.0f);
-    float totalMass = 0.0f;
-    for (uint b = 0; b < n; ++b)
-    {
-      const float mb = mass[b];
-      com += mb * pos[b].xyz;
-      totalMass += mb;
-    }
-    com /= totalMass;
+    const float3 com = moleculeCenter[m].xyz;
 
     // Exclusion pairs with the excluded partners of the atom: -C qa qb erf(alpha r)/r. The sum is evaluated
     // without the cancellation against the self energy as

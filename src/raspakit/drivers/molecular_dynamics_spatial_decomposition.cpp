@@ -548,6 +548,7 @@ EnergyStatus energyStatusFromRunningEnergies(const System& system)
   intra.bondTorsion = e.bondTorsion;
   intra.bendBend = e.bendBend;
   intra.bendTorsion = e.bendTorsion;
+  intra.cmap = e.cmap;
   intra.vanDerWaals = e.intraVDW;
   intra.coulomb = e.intraCoul;
 

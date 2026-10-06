@@ -57,7 +57,14 @@ typedef struct
   uint numberOfTypes;
   uint blocksPerCluster;     // stride of the outer list rows
   uint pairsPerLane;         // capacity of a lane list
-  uint padding[2];
+  uint switchMode;           // Lennard-Jones switching on [r_s, rc]: 0 none, 1 potential switch, 2 force switch
+  float switchDistanceSquared;
+  float switchDistance;
+  float switchInverseWidth;  // 1 / (rc - r_s)
+  float switchInverseCutOff3;  // rc^-3
+  float switchA12;           // rc^6 / (rc^6 - r_s^6)
+  float switchA6;            // rc^3 / (rc^3 - r_s^3)
+  uint padding[3];
 } Parameters;
 
 typedef struct
@@ -407,6 +414,13 @@ void clusterPairs(GLOBAL const float4* RESTRICT position,      // x, y, z, q per
   const float coulombFactor = p->coulombFactor;
   const uint useCharge = p->useCharge;
   const uint orthorhombic = p->orthorhombic;
+  const uint switchMode = p->switchMode;
+  const float switchDistanceSquared = p->switchDistanceSquared;
+  const float switchDistance = p->switchDistance;
+  const float switchInverseWidth = p->switchInverseWidth;
+  const float switchInverseCutOff3 = p->switchInverseCutOff3;
+  const float switchA12 = p->switchA12;
+  const float switchA6 = p->switchA6;
   const float ax = p->cell[0], ay = p->cell[4], az = p->cell[8];
   const float iax = p->inverseCell[0], iay = p->inverseCell[4], iaz = p->inverseCell[8];
 
@@ -446,8 +460,37 @@ void clusterPairs(GLOBAL const float4* RESTRICT position,      // x, y, z, q per
     const float invRR3 = invRR * invRR * invRR;                                                               \
     const float rri3 = (lj).y * invRR3;                                                                       \
     const float rri6 = rri3 * rri3;                                                                           \
-    eVDW += maskVDW * ((lj).x * (rri6 - rri3) - (lj).z);                                                      \
-    float factor = maskVDW * (12.0f * (lj).x * rri3 * (0.5f - rri3) * invRR);                                 \
+    float uVDW = (lj).x * (rri6 - rri3) - (lj).z;                                                             \
+    float fVDW = 12.0f * (lj).x * rri3 * (0.5f - rri3) * invRR;                                               \
+    if (switchMode != 0u && rr > switchDistanceSquared)                                                       \
+    {                                                                                                         \
+      const float rSw = sqrt(rrSafe);                                                                         \
+      const float invRSw = rSw * invRR;                                                                       \
+      if (switchMode == 1u)                                                                                   \
+      {                                                                                                       \
+        const float x = (rSw - switchDistance) * switchInverseWidth;                                          \
+        const float x2 = x * x;                                                                               \
+        const float oneMinusX = 1.0f - x;                                                                     \
+        const float sw = 1.0f + x2 * x * (-10.0f + x * (15.0f - 6.0f * x));                                   \
+        const float dsw = -30.0f * switchInverseWidth * x2 * oneMinusX * oneMinusX;                           \
+        const float uPlain = (lj).x * (rri6 - rri3);                                                          \
+        fVDW = fVDW * sw + uPlain * dsw * invRSw;                                                             \
+        uVDW = uPlain * sw;                                                                                   \
+      }                                                                                                       \
+      else                                                                                                    \
+      {                                                                                                       \
+        const float c6 = (lj).x * (lj).y;                                                                     \
+        const float c12 = c6 * (lj).y;                                                                        \
+        const float invR3 = invRSw * invRR;                                                                   \
+        const float invR4 = invR3 * invRSw;                                                                   \
+        const float d3 = invR3 - switchInverseCutOff3;                                                        \
+        const float d6 = invR3 * invR3 - switchInverseCutOff3 * switchInverseCutOff3;                         \
+        uVDW = switchA12 * c12 * d6 * d6 - switchA6 * c6 * d3 * d3;                                           \
+        fVDW = (-12.0f * switchA12 * c12 * d6 * invR3 * invR4 + 6.0f * switchA6 * c6 * d3 * invR4) * invRSw;  \
+      }                                                                                                       \
+    }                                                                                                         \
+    eVDW += maskVDW * uVDW;                                                                                   \
+    float factor = maskVDW * fVDW;                                                                            \
     if (useCharge)                                                                                            \
     {                                                                                                         \
       const float qq = pi.w * (pj).w;                                                                         \

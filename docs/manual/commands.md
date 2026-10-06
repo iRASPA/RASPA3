@@ -1656,6 +1656,21 @@ and `"BinaryInteractions"` are read from the force field file
     -   `"shifted"`
         Truncates the potential at the cutoff and shifts it so that the potential
         energy is zero at the cutoff radius.
+    -   `"switched"`
+        Multiplies the Lennard-Jones potential by the quintic switching function
+        of OpenMM and GROMACS between `"SwitchingDistance"` $r_s$ and the cutoff
+        $r_c$: $S(x) = 1 - 10x^3 + 15x^4 - 6x^5$ with $x = (r - r_s)/(r_c - r_s)$.
+        Energy and force go smoothly to zero at the cutoff.
+    -   `"force-switched"`
+        The CHARMM force switch (`vfswitch`): the force is switched smoothly to
+        zero between $r_s$ and $r_c$, and the potential is the integral of the
+        switched force (shifted so that it is zero at the cutoff). Both
+        switched forms apply to the Lennard-Jones interactions (including the
+        1-4 table); the tail corrections, when enabled, use the switched forms.
+
+-   `"SwitchingDistance" : floating-point-number`\
+    Where the switching of `"switched"` and `"force-switched"` starts, in Å.
+    Default: 2 Å below the Van der Waals cutoff.
 
 -   `"TailCorrections" : boolean`\
     Whether to apply analytic tail corrections for the truncated Van der Waals
@@ -1713,6 +1728,7 @@ and `"BinaryInteractions"` are read from the force field file
     - `"name" : string`
     - `"type" : string`
     - `"parameters" : [floating-point-number]`
+    - `"parameters14" : [floating-point-number]` (optional)
     - `"source" : string`
 
 -   `"BinaryInteractions" : []` <br>
@@ -1720,7 +1736,32 @@ and `"BinaryInteractions"` are read from the force field file
     - `"names" : [string, string]`
     - `"type" : string`
     - `"parameters" : [floating-point-number]`
+    - `"parameters14" : [floating-point-number]` (optional)
     - `"source" : string`
+
+    `"parameters14"` gives separate Lennard-Jones parameters for the
+    intramolecular 1-4 pairs, as in the CHARMM force fields. When any
+    interaction defines them, a second table is built (mixed with the same
+    mixing rule from the self 1-4 parameters, falling back to the regular
+    parameters of a pseudo-atom without them) and used for the scaled 1-4 pairs
+    of every component, multiplied by `"Intra14VanDerWaalsScalingValue"`.
+
+-   `"CMAPs" : list` <br>
+    Correction maps for pairs of consecutive dihedral angles (the CMAP terms of
+    CHARMM and ff19SB), each with
+    - `"Name" : string`
+    - `"Resolution" : integer`, the number of grid points per angle $n$
+    - `"Energies" : [floating-point-number]`, $n \times n$ values in K, in the
+      AMBER/CHARMM order: the first angle $\phi$ is the slow index, the second
+      $\psi$ the fast one, both starting at $-180^\circ$ with a spacing of
+      $360^\circ/n$
+
+    The map is interpolated with a periodic bicubic spline (as in OpenMM and
+    CHARMM): the first derivatives at the nodes come from periodic cubic
+    splines along each angle, the cross derivative from a spline through
+    $\partial E/\partial\phi$ along $\psi$. The maps are referenced by name
+    from the `"CMAPTorsions"` of the component files; a component may also
+    define its own maps under `"CMAPs"`.
 
 ### Configurational-bias and recoil-growth options <a name="cbmc-options"></a>
 
@@ -2042,7 +2083,30 @@ not improved by it.
     Coulomb with the same Ewald, Wolf or truncated method as the inter-molecular
     interactions). The excluded pairs are the ones for which the Ewald/Wolf
     exclusion corrections are made. Rigid molecules have no intra-molecular
-    non-bonded interactions.
+    non-bonded interactions. When the force field defines `"parameters14"`, the
+    1-4 pairs use that separate Lennard-Jones table (CHARMM-style) instead of
+    the regular one, still multiplied by `"Intra14VanDerWaalsScalingValue"`.
+
+-   `"CMAPTorsions" : list` (molecule definition file)\
+    `"CMAPs" : list` (molecule definition file)\
+    The CMAP corrections of CHARMM and ff19SB: a two-dimensional energy map
+    over two consecutive dihedral angles, $\phi$ over the atoms A-B-C-D and
+    $\psi$ over B-C-D-E. Each entry of `"CMAPTorsions"` is
+    `[[A, B, C, D, E], "MapName"]` (or an index into the available maps); the
+    dihedral angles follow the IUPAC sign convention (trans $= 180^\circ$). The
+    maps come from `"CMAPs"` of `force_field.json` or from a `"CMAPs"` list in
+    the molecule file itself (same format: `"Name"`, `"Resolution"`,
+    `"Energies"` in K); a map of the molecule file shadows a force-field map
+    of the same name. The CMAP energy is listed separately in the output
+    (`"CMAP"`) and is part of the intra-molecular energy in Monte Carlo (CBMC
+    growth includes the terms whose five atoms are placed), molecular dynamics
+    (energies, forces and the pressure tensor) and the analytic Hessian used by
+    the minimisation and normal-mode analyses. Example for the backbone of a
+    residue (N, Cα, C of the residue and the C and N of its neighbours):
+
+        "CMAPTorsions" : [
+          [[4, 6, 8, 14, 16], "CMAP_2"]
+        ]
 
 -   `"LnPartitionFunction" : number or string`\
     The natural logarithm of the (reduced) partition function used for reactions.

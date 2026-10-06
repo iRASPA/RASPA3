@@ -27,6 +27,7 @@ add_executable(unit_tests_raspakit
   static_energy.cpp
   component_per_atom_charges.cpp
   lammps_export.cpp
+  amber_prmtop.cpp
   forcefield_options.cpp
   framework_intramolecular_reader.cpp
   framework_vdw_replicas.cpp
@@ -47,6 +48,7 @@ add_executable(unit_tests_raspakit
   intramolecular_energy_gradient_strain_bonds.cpp
   intramolecular_energy_gradient_strain_bends.cpp
   intramolecular_energy_gradient_strain_pairs.cpp
+  pair14_parameters.cpp
   minimization_hessian_bond.cpp
   minimization_hessian_bend.cpp
   minimization_hessian_torsion.cpp
@@ -66,6 +68,8 @@ add_executable(unit_tests_raspakit
   polarization_phonon.cpp
   rotation_matrix.cpp
   vdw_potentials.cpp
+  vdw_switching.cpp
+  cmap.cpp
   cff_cross_mixing.cpp
   internal_potentials.cpp
   janaf.cpp

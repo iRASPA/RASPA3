@@ -619,6 +619,10 @@ void evaluateDerivatives(System& system, const MinimizationDofLayout& layout, De
         system.moleculeData, moleculeAtomPositions, system.components, layout, results.hessian, moleculeDynamics);
     results.energy += bendTorsionEnergy.bendTorsion;
 
+    RunningEnergy cmapEnergy = Interactions::computeIntraMolecularCMAPHessian(
+        system.moleculeData, moleculeAtomPositions, system.components, layout, results.hessian, moleculeDynamics);
+    results.energy += cmapEnergy.cmap;
+
     RunningEnergy inversionBendEnergy = Interactions::computeIntraMolecularInversionBendHessian(
         system.moleculeData, moleculeAtomPositions, system.components, layout, results.hessian, moleculeDynamics);
     results.energy += inversionBendEnergy.inversionBend;

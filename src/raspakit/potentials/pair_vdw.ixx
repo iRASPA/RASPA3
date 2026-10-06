@@ -45,6 +45,116 @@ template <std::size_t Order>
     }
   }
 }
+
+/**
+ * \brief Builds the caller-facing derivative struct from the energy and the radial derivatives at full coupling.
+ *
+ * dU/dlambda of a fully coupled pair is the pair energy itself (the soft-core term vanishes at lambda = 1).
+ */
+template <std::size_t Order>
+[[clang::always_inline]] inline PairDerivatives<Order> fromRadial(double energy, double firstRadial,
+                                                                  double secondRadial, double r, double rr)
+{
+  if constexpr (Order == 0)
+  {
+    return PairDerivatives<0>{energy, energy};
+  }
+  else
+  {
+    double firstDerivativeFactor = firstRadial / r;
+    if constexpr (Order == 1)
+    {
+      return PairDerivatives<1>{energy, energy, firstDerivativeFactor};
+    }
+    else
+    {
+      return PairDerivatives<2>{energy, energy, firstDerivativeFactor, (secondRadial - firstDerivativeFactor) / rr};
+    }
+  }
+}
+
+/**
+ * \brief The switched Lennard-Jones forms at full coupling (VDWParameters::Type::LennardJonesSwitched and
+ * LennardJonesForceSwitched); see VDWParameters::potentialEnergyAtFullCoupling for the formulas.
+ *
+ * Below the switching distance the potential is plain Lennard-Jones (minus a constant for the force switch) and
+ * the square root is avoided; the switching region [r_s, rc] needs r.
+ */
+template <std::size_t Order>
+[[clang::always_inline]] inline PairDerivatives<Order> switchedLennardJones(const VDWParameters& p, const double rr,
+                                                                            bool forceSwitch)
+{
+  double eps4 = 4.0 * p.parameters.x;
+  double sigma2 = p.parameters.y * p.parameters.y;
+  double temp = rr / sigma2;
+  double rri3 = 1.0 / (temp * temp * temp);
+  double rri6 = rri3 * rri3;
+  double rc = p.parameters2.x;
+  double rs = p.parameters2.y;
+  double energy = eps4 * (rri6 - rri3);
+  double firstFactor = 12.0 * eps4 * rri3 * (0.5 - rri3) / rr;  // (1/r) dU/dr of Lennard-Jones
+
+  if (rr <= rs * rs) [[likely]]
+  {
+    if (forceSwitch)
+    {
+      // constant offset that makes the energy continuous with the switching region
+      double q = p.parameters2.z;
+      double invRc3 = 1.0 / (rc * rc * rc);
+      double invRs3 = invRc3 / q;
+      double sigma6 = sigma2 * sigma2 * sigma2;
+      double c6 = eps4 * sigma6;
+      energy -= c6 * (sigma6 * invRc3 * invRc3 * invRs3 * invRs3 - invRc3 * invRs3);
+    }
+    if constexpr (Order == 0)
+    {
+      return PairDerivatives<0>{energy, energy};
+    }
+    else if constexpr (Order == 1)
+    {
+      return PairDerivatives<1>{energy, energy, firstFactor};
+    }
+    else
+    {
+      return PairDerivatives<2>{energy, energy, firstFactor, 24.0 * eps4 * rri3 * (7.0 * rri3 - 2.0) / (rr * rr)};
+    }
+  }
+  if (rr >= rc * rc) return {};
+
+  double r = std::sqrt(rr);
+  if (!forceSwitch)
+  {
+    double inverseWidth = p.parameters2.z;
+    double x = (r - rs) * inverseWidth;
+    double x2 = x * x;
+    double oneMinusX = 1.0 - x;
+    double s = 1.0 + x2 * x * (-10.0 + x * (15.0 - 6.0 * x));
+    double ds = -30.0 * x2 * oneMinusX * oneMinusX * inverseWidth;
+    double dds = -60.0 * x * oneMinusX * (1.0 - 2.0 * x) * inverseWidth * inverseWidth;
+    double first = firstFactor * r;                                              // dU/dr
+    double second = 24.0 * eps4 * rri3 * (7.0 * rri3 - 2.0) / rr + firstFactor;  // d2U/dr2
+    return fromRadial<Order>(energy * s, first * s + energy * ds, second * s + 2.0 * first * ds + energy * dds, r,
+                             rr);
+  }
+
+  double q = p.parameters2.z;
+  double a12 = 1.0 / (1.0 - q * q);
+  double a6 = 1.0 / (1.0 - q);
+  double sigma6 = sigma2 * sigma2 * sigma2;
+  double c6 = eps4 * sigma6;
+  double c12 = c6 * sigma6;
+  double invRc3 = 1.0 / (rc * rc * rc);
+  double invR3 = 1.0 / (r * rr);
+  double invR4 = invR3 / r;
+  double invR5 = invR3 / rr;
+  double d3 = invR3 - invRc3;
+  double d6 = invR3 * invR3 - invRc3 * invRc3;
+  double switchedEnergy = c12 * a12 * d6 * d6 - c6 * a6 * d3 * d3;
+  double first = -12.0 * c12 * a12 * d6 * invR3 * invR4 + 6.0 * c6 * a6 * d3 * invR4;
+  double second = 2.0 * c12 * a12 * (36.0 * invR3 * invR3 * invR4 * invR4 + 42.0 * d6 * invR4 * invR4) -
+                  2.0 * c6 * a6 * (9.0 * invR4 * invR4 + 12.0 * d3 * invR5);
+  return fromRadial<Order>(switchedEnergy, first, second, r, rr);
+}
 }  // namespace Detail
 
 /**
@@ -63,31 +173,28 @@ template <std::size_t Order>
  *
  * See PairDerivatives for the field conventions of the returned struct.
  *
- * \param forcefield The force field parameters defining the interaction.
+ * \param p The pair parameters (an entry of the force-field pair table, or of its 1-4 table).
  * \param scalingA Scaling factor for atom A.
  * \param scalingB Scaling factor for atom B.
  * \param rr The squared distance between the two atoms.
- * \param typeA The type identifier for atom A.
- * \param typeB The type identifier for atom B.
  *
  * \return A PairDerivatives<Order> object with the energy and requested derivative factors.
  */
 export template <std::size_t Order>
-[[clang::always_inline]] inline PairDerivatives<Order> potentialVDW(const ForceField& forcefield, const double scalingA,
-                                                                    const double scalingB, const double rr,
-                                                                    const std::size_t typeA, const std::size_t typeB)
+[[clang::always_inline]] inline PairDerivatives<Order> potentialVDW(const VDWParameters& p, const double scalingA,
+                                                                    const double scalingB, const double rr)
 {
   static_assert(Order <= 2, "potentialVDW supports derivative orders 0, 1, and 2");
 
-  VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
+  VDWParameters::Type potentialType = p.type;
 
   double scaling = scalingA * scalingB;
 
   if (potentialType == VDWParameters::Type::LennardJones) [[likely]]
   {
-    double arg1 = 4.0 * forcefield(typeA, typeB).parameters.x;
-    double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;
-    double arg3 = forcefield(typeA, typeB).shift;
+    double arg1 = 4.0 * p.parameters.x;
+    double arg2 = p.parameters.y * p.parameters.y;
+    double arg3 = p.shift;
     double temp = (rr / arg2);          // (r/sigma)^2
     double temp3 = temp * temp * temp;  // (r/sigma)^6
     double inv_scaling = 1.0 - scaling;
@@ -124,7 +231,6 @@ export template <std::size_t Order>
     if (potentialType == VDWParameters::Type::LennardJonesShiftedForce ||
         potentialType == VDWParameters::Type::LennardJonesSecondOrderTaylorShifted)
     {
-      const VDWParameters& p = forcefield(typeA, typeB);
       double eps4 = 4.0 * p.parameters.x;
       double sigma2 = p.parameters.y * p.parameters.y;
       double sigma6 = sigma2 * sigma2 * sigma2;
@@ -166,8 +272,29 @@ export template <std::size_t Order>
     }
   }
 
+  // The switched Lennard-Jones forms at full coupling (the biomolecular force fields: no lambda-scaling); the
+  // soft-core version goes through the rare path.
+  if ((potentialType == VDWParameters::Type::LennardJonesSwitched ||
+       potentialType == VDWParameters::Type::LennardJonesForceSwitched) &&
+      scaling == 1.0)
+  {
+    return Detail::switchedLennardJones<Order>(p, rr, potentialType == VDWParameters::Type::LennardJonesForceSwitched);
+  }
+
   Detail::RareVDWDerivatives derivatives =
-      Detail::evaluateRareVDWDerivatives(forcefield, scalingA, scalingB, rr, typeA, typeB, potentialType);
+      Detail::evaluateRareVDWDerivatives(p, scalingA, scalingB, rr, potentialType);
   return Detail::vdwFromRareDerivatives<Order>(derivatives, rr);
+}
+
+/**
+ * \brief The van der Waals pair potential of the pseudo-atom types 'typeA' and 'typeB' of the force field (the
+ * regular pair table); see the VDWParameters overload.
+ */
+export template <std::size_t Order>
+[[clang::always_inline]] inline PairDerivatives<Order> potentialVDW(const ForceField& forcefield, const double scalingA,
+                                                                    const double scalingB, const double rr,
+                                                                    const std::size_t typeA, const std::size_t typeB)
+{
+  return potentialVDW<Order>(forcefield(typeA, typeB), scalingA, scalingB, rr);
 }
 }  // namespace Potentials

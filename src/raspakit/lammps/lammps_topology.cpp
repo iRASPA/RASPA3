@@ -319,6 +319,9 @@ void addBondedTerms(Topology &topology, TableRegistry &tables, const Potentials:
     if (!consumedCross.contains(&term)) warning("bend-torsion cross term without matching torsion dropped");
   }
   if (!intra.bondTorsions.empty()) warning("bond-torsion (MM3) cross terms have no LAMMPS equivalent; dropped");
+  if (!intra.cmaps.empty())
+    warning(std::format("{} CMAP terms are not exported (LAMMPS needs 'fix cmap' with a separate map file); dropped",
+                        intra.cmaps.size()));
 }
 
 /// Bond-graph separations up to 'maximum' from every atom (BFS).
@@ -387,6 +390,8 @@ ComponentSpecial analyseSpecial(const Component &component, std::vector<std::str
     const std::size_t A = pair.atomA;
     const std::size_t B = pair.atomB;
     const std::size_t s = separation[A][B];
+    // a pair with its own 1-4 pair parameters is not a special_bonds scaling of the regular pair
+    if (pair.pair14) result.standard = false;
     if (s == 3)
     {
       if (std::abs(vdw14 - pair.scalingVDW) > 1e-12) result.standard = false;
@@ -412,8 +417,8 @@ ComponentSpecial analyseSpecial(const Component &component, std::vector<std::str
   for (const std::array<std::size_t, 2> &pair : pairs14)
   {
     if (intra.exclusions.isExcluded(pair[0], pair[1])) continue;
-    const auto [scalingVDW, scalingCoulomb] = intra.exclusions.scalingOf(pair[0], pair[1]);
-    if (scalingVDW == 1.0 && scalingCoulomb == 1.0) ++unscaled14;
+    const IntraMolecularExclusions::ScaledPair scaling = intra.exclusions.scalingOf(pair[0], pair[1]);
+    if (scaling.scalingVDW == 1.0 && scaling.scalingCoulomb == 1.0 && !scaling.pair14) ++unscaled14;
   }
   if (unscaled14 > 0 && (std::abs(vdw14 - 1.0) > 1e-12 || (charged && std::abs(coul14 - 1.0) > 1e-12)))
   {
@@ -798,8 +803,9 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
         {
           const std::size_t typeA = component.atoms[pair.atomA].type;
           const std::size_t typeB = component.atoms[pair.atomB].type;
-          const VDWParameters &vdw = forceField(typeA, typeB);
-          if (vdw.type != VDWParameters::Type::LennardJones)
+          const VDWParameters &vdw = forceField.pair(typeA, typeB, pair.pair14);
+          // (the potential-switched form is plain Lennard-Jones at the 1-4 distances)
+          if (vdw.type != VDWParameters::Type::LennardJones && vdw.type != VDWParameters::Type::LennardJonesSwitched)
           {
             if (reported.insert(component.name).second)
             {

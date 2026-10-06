@@ -27,6 +27,10 @@ VDWParameters::Type VDWParameters::stringToEnum(const std::string interactionTyp
       {"lennardjonesshiftedforce", Type::LennardJonesShiftedForce},
       {"lennard-jones-second-order-taylor-shifted", Type::LennardJonesSecondOrderTaylorShifted},
       {"lennardjonessecondordertaylorshifted", Type::LennardJonesSecondOrderTaylorShifted},
+      {"lennard-jones-switched", Type::LennardJonesSwitched},
+      {"lennardjonesswitched", Type::LennardJonesSwitched},
+      {"lennard-jones-force-switched", Type::LennardJonesForceSwitched},
+      {"lennardjonesforceswitched", Type::LennardJonesForceSwitched},
       {"12-6", Type::Potential12_6},
       {"potential-12-6", Type::Potential12_6},
       {"12-6-2-0", Type::Potential12_6_2_0},
@@ -88,6 +92,10 @@ std::string VDWParameters::nameOfType(VDWParameters::Type type)
       return "Lennard-Jones shifted-force";
     case Type::LennardJonesSecondOrderTaylorShifted:
       return "Lennard-Jones second-order Taylor-shifted";
+    case Type::LennardJonesSwitched:
+      return "Lennard-Jones switched";
+    case Type::LennardJonesForceSwitched:
+      return "Lennard-Jones force-switched";
     case Type::Potential12_6:
       return "12-6";
     case Type::Potential12_6_2_0:
@@ -143,6 +151,11 @@ VDWParameters::ParameterMetadata VDWParameters::parameterMetadata(VDWParameters:
       return {2, {true, false}};
     case Type::LennardJonesSecondOrderTaylorShifted:
       // p0: epsilon [K], p1: sigma [A]
+      return {2, {true, false}};
+    case Type::LennardJonesSwitched:
+    case Type::LennardJonesForceSwitched:
+      // p0: epsilon [K], p1: sigma [A]  (the switching distance is a force-field setting, see
+      // computeDerivedParameters)
       return {2, {true, false}};
     case Type::Potential12_6:
       // p0: [K A^12], p1: [K A^6]
@@ -303,6 +316,47 @@ double VDWParameters::potentialEnergyAtFullCoupling(double rr) const
              (u6 * (u6 - 1.0) - c6 * (c6 - 1.0) + linearCoefficient * displacement -
               0.5 * quadraticCoefficient * displacement * displacement);
     }
+    case Type::LennardJonesSwitched:
+    {
+      // 4*p_0*((p_1/r)^12-(p_1/r)^6) * S(r) with S = 1 for r < r_s, S = 1 - 10 x^3 + 15 x^4 - 6 x^5 on
+      // [r_s, rc], x = (r - r_s) / (rc - r_s); zero beyond rc
+      double rc = parameters2.x;
+      double rs = parameters2.y;
+      double energy = lennardJonesEnergy(rr);
+      if (rr <= rs * rs) return energy;
+      if (rr >= rc * rc) return 0.0;
+      double x = (std::sqrt(rr) - rs) * parameters2.z;
+      double x3 = x * x * x;
+      return energy * (1.0 + x3 * (-10.0 + x * (15.0 - 6.0 * x)));
+    }
+    case Type::LennardJonesForceSwitched:
+    {
+      // CHARMM force switching (Steinbach and Brooks, J. Comput. Chem. 15, 667 (1994)), C12 = 4 eps sigma^12,
+      // C6 = 4 eps sigma^6:
+      //   r <= r_s:  C12 (r^-12 - rc^-6 r_s^-6) - C6 (r^-6 - rc^-3 r_s^-3)
+      //   r_s < r <= rc:  C12 rc^6/(rc^6 - r_s^6) (r^-6 - rc^-6)^2 - C6 rc^3/(rc^3 - r_s^3) (r^-3 - rc^-3)^2
+      double rc = parameters2.x;
+      double rs = parameters2.y;
+      double q = parameters2.z;  // (r_s / rc)^3
+      double eps4 = 4.0 * parameters.x;
+      double sigma2 = parameters.y * parameters.y;
+      double sigma6 = sigma2 * sigma2 * sigma2;
+      double c6 = eps4 * sigma6;
+      double c12 = c6 * sigma6;
+      double invRc3 = 1.0 / (rc * rc * rc);
+      if (rr <= rs * rs)
+      {
+        double invRs3 = invRc3 / q;
+        double rri6 = 1.0 / (rr * rr * rr);
+        return c12 * (rri6 * rri6 - invRc3 * invRc3 * invRs3 * invRs3) - c6 * (rri6 - invRc3 * invRs3);
+      }
+      if (rr >= rc * rc) return 0.0;
+      double r = std::sqrt(rr);
+      double invR3 = 1.0 / (r * rr);
+      double d3 = invR3 - invRc3;
+      double d6 = invR3 * invR3 - invRc3 * invRc3;
+      return c12 * d6 * d6 / (1.0 - q * q) - c6 * d3 * d3 / (1.0 - q);
+    }
     case Type::Potential12_6:
     {
       // p_0/r^12-p_1/r^6
@@ -403,11 +457,69 @@ double VDWParameters::potentialEnergyAtFullCoupling(double rr) const
   return 0.0;
 }
 
-void VDWParameters::computeDerivedParameters(double cutOff, double temperature)
+double VDWParameters::radialDerivativeAtFullCoupling(double r) const
+{
+  double rr = r * r;
+  double eps4 = 4.0 * parameters.x;
+  double sigma2 = parameters.y * parameters.y;
+  double sigma6 = sigma2 * sigma2 * sigma2;
+  double rri3 = sigma6 / (rr * rr * rr);
+  double lennardJonesDerivative = eps4 * (6.0 * rri3 - 12.0 * rri3 * rri3) / r;
+  switch (type)
+  {
+    case Type::LennardJonesSwitched:
+    {
+      double rc = parameters2.x;
+      double rs = parameters2.y;
+      if (r <= rs) return lennardJonesDerivative;
+      if (r >= rc) return 0.0;
+      double inverseWidth = parameters2.z;
+      double x = (r - rs) * inverseWidth;
+      double x2 = x * x;
+      double s = 1.0 + x2 * x * (-10.0 + x * (15.0 - 6.0 * x));
+      double ds = -30.0 * x2 * (1.0 - x) * (1.0 - x) * inverseWidth;
+      return lennardJonesDerivative * s + eps4 * rri3 * (rri3 - 1.0) * ds;
+    }
+    case Type::LennardJonesForceSwitched:
+    {
+      double rc = parameters2.x;
+      double rs = parameters2.y;
+      double q = parameters2.z;
+      if (r <= rs) return lennardJonesDerivative;
+      if (r >= rc) return 0.0;
+      double c6 = eps4 * sigma6;
+      double c12 = c6 * sigma6;
+      double invRc3 = 1.0 / (rc * rc * rc);
+      double invR3 = 1.0 / (r * rr);
+      double invR4 = invR3 / r;
+      double d3 = invR3 - invRc3;
+      double d6 = invR3 * invR3 - invRc3 * invRc3;
+      return c12 * 2.0 * d6 * (-6.0 * invR4 * invR3) / (1.0 - q * q) - c6 * 2.0 * d3 * (-3.0 * invR4) / (1.0 - q);
+    }
+    default:
+      return lennardJonesDerivative;
+  }
+}
+
+void VDWParameters::computeDerivedParameters(double cutOff, double temperature, double switchingDistance)
 {
   // type-specific derived constants (must be set before evaluating the potential)
   switch (type)
   {
+    case Type::LennardJonesSwitched:
+    case Type::LennardJonesForceSwitched:
+    {
+      double rs = switchingDistance > 0.0 ? switchingDistance : std::max(cutOff - 2.0, 0.5 * cutOff);
+      if (rs >= cutOff)
+      {
+        throw std::runtime_error(
+            std::format("[ForceField]: the switching distance ({} A) must be below the cutoff ({} A)\n", rs, cutOff));
+      }
+      parameters2.x = cutOff;
+      parameters2.y = rs;
+      parameters2.z = type == Type::LennardJonesSwitched ? 1.0 / (cutOff - rs) : std::pow(rs / cutOff, 3.0);
+      break;
+    }
     case Type::FeynmannHibbs:
     {
       // hbar^2/(24 mu kB T), with mu the reduced mass in atomic mass units
@@ -442,6 +554,8 @@ void VDWParameters::computeDerivedParameters(double cutOff, double temperature)
     case Type::MM3:
     case Type::LennardJonesShiftedForce:
     case Type::LennardJonesSecondOrderTaylorShifted:
+    case Type::LennardJonesSwitched:
+    case Type::LennardJonesForceSwitched:
     case Type::CFFEpsilonSigma:
     case Type::WeeksChandlerAndersen:
     {

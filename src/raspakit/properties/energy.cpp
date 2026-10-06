@@ -690,6 +690,26 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       std::print(stream, "\n");
     }
 
+    if (!components[k].intraMolecularPotentials.cmaps.empty())
+    {
+      std::print(stream, "    CMAP energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,
+                 components[k].name);
+      std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
+      double prefactor = Units::EnergyToKelvin;
+      for (std::size_t i = 0; i < numberOfBlocks; ++i)
+      {
+        EnergyStatus blockAverage = averaged(i);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.intraComponentEnergies[k].cmap);
+      }
+      std::print(stream, "        ----------------------------------------------------------------------------------------------------------------\n");
+      std::print(stream, "        Average  {: .6e} +/- {: .6e} [{}]\n",
+                 prefactor * computedAverage.first.intraComponentEnergies[k].cmap,
+                 prefactor * computedAverage.second.intraComponentEnergies[k].cmap,
+                 Units::displayedUnitOfEnergyString);
+      std::print(stream, "\n");
+    }
+
     if (components[k].intraMolecularPotentials.numberOfVanDerWaalsPairs() > 0)
     {
       std::print(stream, "    Intra Van Der Waals energy{} {} [{}]\n", Units::displayedUnitOfEnergyConversionString, k,

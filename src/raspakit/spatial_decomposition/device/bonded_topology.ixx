@@ -19,8 +19,9 @@ import system;
  * MoleculeInfo structs of bonded_kernel_source.cpp.
  *
  * `supports` reports the components that use other intramolecular terms (Urey-Bradley, inversion bends, cross
- * terms), molecules with more than 256 atoms and lambda-group atoms, for which the engine keeps the bonded work
- * on the host.
+ * terms, CMAP) and lambda-group atoms, for which the engine keeps the bonded work on the host. The molecule size is
+ * not limited: a slot finds its molecule through the system atom of the slot (`slotAtom` of the pair lists) and
+ * the per-atom molecule table.
  */
 export struct BondedTopology
 {
@@ -42,7 +43,6 @@ export struct BondedTopology
   };
   static_assert(sizeof(MoleculeInfo) == 32);
 
-  static constexpr std::size_t maximumAtomsPerMolecule = 256;
   static constexpr std::uint32_t noAtom = std::numeric_limits<std::uint32_t>::max();
 
   /// Whether the device kernels cover the intramolecular terms of the system; on false, `reason` names the first
@@ -53,12 +53,9 @@ export struct BondedTopology
   /// gradient indices would overflow.
   void build(const System& system);
 
-  /// The slot layout of a list build: per slot (molecule << 8) | index in the molecule (noAtom for a dummy
-  /// slot), and per sorted atom the sorted index of the first atom of its molecule (the reference of the
+  /// Per sorted atom of a list build, the sorted index of the first atom of its molecule (the reference of the
   /// relative positions the host packs).
-  void layout(std::span<const std::uint32_t> slotOfSorted, std::span<const std::uint32_t> originalToSorted,
-              std::size_t slots, std::vector<std::uint32_t>& slotMolecule,
-              std::vector<std::uint32_t>& referenceOfSorted) const;
+  void layout(std::span<const std::uint32_t> originalToSorted, std::vector<std::uint32_t>& referenceOfSorted) const;
 
   std::vector<Term> terms{};                        ///< the terms of all components, by component then kind
   std::vector<std::uint32_t> gradientOffset{};      ///< per term: offset of its gradient slots in the component block
@@ -68,6 +65,7 @@ export struct BondedTopology
   std::vector<std::uint32_t> exclusionPartners{};   ///< excluded partner (index in the molecule)
   std::vector<std::uint32_t> instanceMolecule{};    ///< molecule of every term instance
   std::vector<MoleculeInfo> molecules{};
+  std::vector<std::uint32_t> moleculeOfAtom{};      ///< per atom in the system order: its molecule
   std::vector<float> massOfAtom{};                  ///< per atom in the system order
   std::size_t numberOfInstances{0};                 ///< term instances over all molecules
   std::size_t numberOfGradients{0};                 ///< gradient slots over all molecules

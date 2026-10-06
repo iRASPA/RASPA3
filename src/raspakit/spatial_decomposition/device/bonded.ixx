@@ -26,14 +26,16 @@ export struct DeviceBondedResults
  * improper torsions, intramolecular Lennard-Jones and Coulomb pairs, and the atomic-to-molecular virial
  * correction.
  *
- * Two kernels (the shared bonded_kernel_source.cpp compiled by the DeviceContext): one work-item per term
+ * Three kernels (the shared bonded_kernel_source.cpp compiled by the DeviceContext): one work-item per term
  * instance evaluates the term once and writes the gradient on each of its atoms to a per-instance slot; one
- * work-item per slot (atom) evaluates the exclusion pairs and the virial correction, gathers the gradients of its
- * terms and adds the sum to the device force of the slot. Both leave per-group partial sums of the energies, the
- * exclusion strain derivative and the virial correction, which the host sums in double. The topology
- * (BondedTopology, built by DeviceStep) is uploaded once; the slot layout (molecule and index of every slot)
- * after every list build. The positions of the terms are the float positions relative to the first atom of the
- * molecule, indexed by the atom's index in the system, packed by the host.
+ * work-item per molecule computes its mass-weighted center; one work-item per slot (atom) evaluates the
+ * exclusion pairs and the virial correction, gathers the gradients of its terms and adds the sum to the device
+ * force of the slot. The term and atom kernels leave per-group partial sums of the energies, the exclusion strain
+ * derivative and the virial correction, which the host sums in double. The topology (BondedTopology, built by
+ * DeviceStep, including the molecule of every atom) is uploaded once; a slot finds its atom through the slot
+ * table of the pair lists, so the molecule size is not limited. The positions of the terms are the float
+ * positions relative to the first atom of the molecule, indexed by the atom's index in the system, packed by the
+ * host.
  */
 export class DeviceBonded
 {
@@ -56,13 +58,13 @@ export class DeviceBonded
   /// Follows a change of the Ewald alpha.
   void setAlpha(double alpha);
 
-  /// The slot layout of a list build (BondedTopology::layout); enqueues the upload (non-blocking; the span must
-  /// stay valid until the stream completed it).
-  void setLayout(std::span<const std::uint32_t> slotMolecule);
+  /// The number of slots of a list build (the atom kernel runs over the slots).
+  void setLayout(std::size_t slots);
 
   /// Enqueues the kernels (after the pair kernel and the mesh interpolation wrote `force`); `relative` holds the
-  /// relative position and charge of every atom in the system order.
-  void enqueue(DeviceBuffer relative, DeviceBuffer force);
+  /// relative position and charge of every atom in the system order, `slotAtom` the system atom of every slot
+  /// (noAtom for a dummy slot).
+  void enqueue(DeviceBuffer relative, DeviceBuffer slotAtom, DeviceBuffer force);
   /// Enqueues the read-back of the partial sums (complete with a mark / finish of the context).
   void enqueueRead();
 
@@ -90,17 +92,18 @@ export class DeviceBonded
   static_assert(sizeof(Parameters) == 48);
 
   DeviceContext* context{nullptr};
-  DeviceKernel termKernel{}, atomKernel{};
-  DeviceBufferOwner slotMoleculeBuffer{}, moleculeInfoBuffer{}, instanceMoleculeBuffer{}, massBuffer{};
+  DeviceKernel termKernel{}, centerKernel{}, atomKernel{};
+  DeviceBufferOwner moleculeOfAtomBuffer{}, moleculeInfoBuffer{}, moleculeCenterBuffer{}, instanceMoleculeBuffer{},
+      massBuffer{};
   DeviceBufferOwner termsBuffer{}, gradientOffsetBuffer{}, atomGradientStartBuffer{}, atomGradientsBuffer{};
   DeviceBufferOwner exclusionStartBuffer{}, exclusionPartnersBuffer{};
   DeviceBufferOwner termGradientBuffer{}, parameterBuffer{}, partialBuffer{};
-  std::size_t slotCapacity{0}, partialCapacity{0};
+  std::size_t partialCapacity{0};
 
   Parameters parameters{};
   bool parametersChanged{true};
   double alphaValue{0.0}, conversionFactor{0.0}, chargeSquaredSum{0.0}, exclusionChargeProductSum{0.0};
-  std::size_t numberOfMolecules{0}, numberOfTerms{0}, termGroups{0};
+  std::size_t numberOfMolecules{0}, numberOfTerms{0}, termGroups{0}, centerGroups{0};
 
   std::vector<float> hostPartials{};
   std::size_t atomGroups{0};

@@ -17,6 +17,7 @@ import bond_bend_potential;
 import bend_bend_potential;
 import bond_torsion_potential;
 import bend_torsion_potential;
+import cmap_potential;
 import van_der_waals_potential;
 import coulomb_potential;
 import connectivity_table;
@@ -86,7 +87,8 @@ bool hasUnsampledTerms(const Potentials::IntraMolecularPotentials &terms)
 {
   return !(terms.ureyBradleys.empty() && terms.inversionBends.empty() && terms.outOfPlaneBends.empty() &&
            terms.improperTorsions.empty() && terms.bondBonds.empty() && terms.bondBends.empty() &&
-           terms.bondTorsions.empty() && terms.bendBends.empty() && terms.bendTorsions.empty());
+           terms.bondTorsions.empty() && terms.bendBends.empty() && terms.bendTorsions.empty() &&
+           terms.cmaps.empty());
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -195,6 +197,18 @@ UnsampledStepTerms splitUnsampledStepTerms(const CBMC::GrowStep &step)
     (base ? split.baseCoupling : split.spinTerms).bendBends.push_back(term);
   }
 
+  // CMAP: two dihedrals over five atoms; base only when fully within the step. Both homes keep the map table.
+  if (!step.intra.cmaps.empty())
+  {
+    split.baseCoupling.cmapMaps = step.intra.cmapMaps;
+    split.spinTerms.cmapMaps = step.intra.cmapMaps;
+    for (const CMAPPotential &term : step.intra.cmaps)
+    {
+      const bool base = std::ranges::all_of(term.identifiers, inStep);
+      (base ? split.baseCoupling : split.spinTerms).cmaps.push_back(term);
+    }
+  }
+
   return split;
 }
 
@@ -253,6 +267,8 @@ void prepareBridgeClosure(CBMC::GrowStep &step)
   spin.bondTorsions = step.intra.bondTorsions;
   spin.bendBends = step.intra.bendBends;
   spin.bendTorsions = step.intra.bendTorsions;
+  spin.cmapMaps = step.intra.cmapMaps;
+  spin.cmaps = step.intra.cmaps;
   step.spin.hasUnsampledTerms = hasUnsampledTerms(spin);
 }
 
@@ -306,6 +322,11 @@ std::string baseCouplingSignature(const CBMC::GrowStep &step)
   for (const auto &t : terms.bendBends) appendTerm("BB", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
   for (const auto &t : terms.bendTorsions)
     appendTerm("Bt", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
+  for (const auto &t : terms.cmaps)
+  {
+    appendTerm("cmap", t.mapIndex, t.identifiers, std::array<double, 0>{});
+    key += ":" + terms.cmapMaps[t.mapIndex].name;
+  }
   return key;
 }
 
@@ -570,6 +591,8 @@ void CBMC::prepareStep(GrowStep &step, const ConnectivityTable &connectivity, co
   spinPotentials.bondTorsions = std::move(split.spinTerms.bondTorsions);
   spinPotentials.bendBends = std::move(split.spinTerms.bendBends);
   spinPotentials.bendTorsions = std::move(split.spinTerms.bendTorsions);
+  spinPotentials.cmapMaps = std::move(split.spinTerms.cmapMaps);
+  spinPotentials.cmaps = std::move(split.spinTerms.cmaps);
   step.spin.hasUnsampledTerms = hasUnsampledTerms(spinPotentials);
 
   // Declared chiral centres fully determined by this step: centred on the current bead, with every

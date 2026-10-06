@@ -20,6 +20,7 @@ import bond_bend_potential;
 import bond_torsion_potential;
 import bend_bend_potential;
 import bend_torsion_potential;
+import cmap_potential;
 import van_der_waals_potential;
 import coulomb_potential;
 import running_energy;
@@ -41,20 +42,22 @@ export namespace Potentials
  */
 struct ImplicitPairParameters
 {
-  std::uint64_t versionNumber{2};  ///< Version number for serialization.
+  std::uint64_t versionNumber{3};  ///< Version number for serialization.
 
   std::vector<std::uint32_t> typeIndex{};           ///< Per atom: the index of its type in 'parameters'.
   std::vector<double> charge{};                     ///< Per atom: the charge.
   std::size_t numberOfTypes{0};                     ///< The number of distinct atom types of the molecule.
   std::vector<VDWParameters> parameters{};          ///< [a * numberOfTypes + b]: the force-field pair potential.
+  std::vector<VDWParameters> parameters14{};        ///< [a * numberOfTypes + b]: the pair potential of the 1-4 pairs.
   bool useCharge{false};                            ///< Whether the force field uses charges (Coulomb terms exist).
 
   bool operator==(const ImplicitPairParameters &) const = default;
 
   [[nodiscard]] bool empty() const { return typeIndex.empty(); }
 
-  /// The explicit van der Waals term of the pair (A, B) with the given scaling.
-  [[nodiscard]] VanDerWaalsPotential vanDerWaalsTerm(std::size_t A, std::size_t B, double scaling) const;
+  /// The explicit van der Waals term of the pair (A, B) with the given scaling (a 1-4-parameter pair gets the
+  /// 1-4 pair potential).
+  [[nodiscard]] VanDerWaalsPotential vanDerWaalsTerm(std::size_t A, std::size_t B, double scaling, bool pair14) const;
   /// The explicit Coulomb term of the pair (A, B) with the given scaling.
   [[nodiscard]] CoulombPotential coulombTerm(std::size_t A, std::size_t B, double scaling) const;
 
@@ -87,7 +90,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ImplicitPair
  */
 struct IntraMolecularPotentials
 {
-  std::uint64_t versionNumber{2};  ///< Version number for serialization.
+  std::uint64_t versionNumber{3};  ///< Version number for serialization.
 
   IntraMolecularExclusions exclusions{};        ///< The exclusion topology defining the implicit non-bonded pairs.
   ImplicitPairParameters implicitParameters{};  ///< The parameters to materialise the implicit pairs.
@@ -105,20 +108,22 @@ struct IntraMolecularPotentials
   std::vector<BondTorsionPotential> bondTorsions{};        ///< List of bond-torsion potentials.
   std::vector<BendBendPotential> bendBends{};              ///< List of bend-bend potentials.
   std::vector<BendTorsionPotential> bendTorsions{};        ///< List of bend-torsion potentials.
+  std::vector<CMAPMap> cmapMaps{};                         ///< The CMAP correction maps the 'cmaps' terms refer to.
+  std::vector<CMAPPotential> cmaps{};                      ///< List of CMAP (phi, psi) correction terms.
   std::vector<VanDerWaalsPotential> vanDerWaals{};         ///< The explicit van der Waals pair terms.
   std::vector<CoulombPotential> coulombs{};                ///< The explicit Coulomb pair terms.
 
-  /// Visits every non-bonded van der Waals pair as 'function(A, B, scaling)': the explicit terms, then the
-  /// implicit pairs.
+  /// Visits every non-bonded van der Waals pair as 'function(A, B, scaling, pair14)': the explicit terms, then
+  /// the implicit pairs ('pair14': the pair uses the 1-4 pair parameters of the force field).
   template <typename Function>
   void forEachVanDerWaalsPair(Function &&function) const
   {
     for (const VanDerWaalsPotential &pair : vanDerWaals)
     {
-      function(pair.identifiers[0], pair.identifiers[1], pair.scaling);
+      function(pair.identifiers[0], pair.identifiers[1], pair.scaling, pair.pair14);
     }
-    exclusions.forEachNonExcludedPair([&](std::size_t A, std::size_t B, double scalingVDW, double)
-                                      { function(A, B, scalingVDW); });
+    exclusions.forEachNonExcludedPair([&](std::size_t A, std::size_t B, double scalingVDW, double, bool pair14)
+                                      { function(A, B, scalingVDW, pair14); });
   }
 
   /// Visits every non-bonded Coulomb pair as 'function(A, B, scaling)': the explicit terms, then the implicit
@@ -131,7 +136,7 @@ struct IntraMolecularPotentials
       function(pair.identifiers[0], pair.identifiers[1], pair.scaling);
     }
     if (!implicitParameters.useCharge) return;
-    exclusions.forEachNonExcludedPair([&](std::size_t A, std::size_t B, double, double scalingCoulomb)
+    exclusions.forEachNonExcludedPair([&](std::size_t A, std::size_t B, double, double scalingCoulomb, bool)
                                       { function(A, B, scalingCoulomb); });
   }
 
@@ -141,8 +146,8 @@ struct IntraMolecularPotentials
   void forEachVanDerWaalsTerm(Function &&function) const
   {
     for (const VanDerWaalsPotential &pair : vanDerWaals) function(pair);
-    exclusions.forEachNonExcludedPair([&](std::size_t A, std::size_t B, double scalingVDW, double)
-                                      { function(implicitParameters.vanDerWaalsTerm(A, B, scalingVDW)); });
+    exclusions.forEachNonExcludedPair([&](std::size_t A, std::size_t B, double scalingVDW, double, bool pair14)
+                                      { function(implicitParameters.vanDerWaalsTerm(A, B, scalingVDW, pair14)); });
   }
 
   /// Visits every non-bonded Coulomb pair as an explicit term, 'function(const CoulombPotential &)'.
@@ -151,7 +156,7 @@ struct IntraMolecularPotentials
   {
     for (const CoulombPotential &pair : coulombs) function(pair);
     if (!implicitParameters.useCharge) return;
-    exclusions.forEachNonExcludedPair([&](std::size_t A, std::size_t B, double, double scalingCoulomb)
+    exclusions.forEachNonExcludedPair([&](std::size_t A, std::size_t B, double, double scalingCoulomb, bool)
                                       { function(implicitParameters.coulombTerm(A, B, scalingCoulomb)); });
   }
 
@@ -210,6 +215,12 @@ struct IntraMolecularPotentials
   RunningEnergy computeInternalBondTorsionEnergies(const std::span<const Atom> atoms) const;
   RunningEnergy computeInternalBendBendEnergies(const std::span<const Atom> atoms) const;
   RunningEnergy computeInternalBendTorsionEnergies(const std::span<const Atom> atoms) const;
+  RunningEnergy computeInternalCMAPEnergies(const std::span<const Atom> atoms) const;
+
+  /// Appends a CMAP term over the atoms (A, B, C, D, E) with the map named 'mapName' from 'cmapMaps'; throws when
+  /// the map is unknown.
+  void addCMAP(const std::array<std::size_t, 5> &identifiers, const std::string &mapName);
+
   /**
    * \brief Intramolecular van der Waals energy of the listed pairs: the regular force-field pair potential (with its
    * cutoff and shift) under the minimum-image convention, times the pair scaling.

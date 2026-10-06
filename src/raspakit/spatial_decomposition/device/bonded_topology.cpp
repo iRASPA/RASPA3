@@ -41,15 +41,11 @@ bool BondedTopology::supports(const System& system, std::string& reason)
       unsupported = "bend-bend";
     else if (!potentials.bendTorsions.empty())
       unsupported = "bend-torsion";
+    else if (!potentials.cmaps.empty())
+      unsupported = "CMAP";
     if (unsupported)
     {
       reason = std::format("{} terms (component '{}')", unsupported, component.name);
-      return false;
-    }
-    if (component.atoms.size() > maximumAtomsPerMolecule)
-    {
-      reason =
-          std::format("molecules with more than {} atoms (component '{}')", maximumAtomsPerMolecule, component.name);
       return false;
     }
   }
@@ -74,6 +70,7 @@ void BondedTopology::build(const System& system)
   exclusionPartners.clear();
   instanceMolecule.clear();
   molecules.clear();
+  moleculeOfAtom.clear();
   massOfAtom.clear();
 
   // the terms of every component, flattened and grouped by kind, with the gradient slots per component atom (CSR)
@@ -134,18 +131,35 @@ void BondedTopology::build(const System& system)
     {
       addTerm(3, std::to_underlying(torsion.type), torsion.identifiers, torsion.parameters);
     }
-    // The scaled (1-4) pairs: the regular force-field pair potential of the two pseudo-atom types times the pair
-    // scaling (Potentials::intraMolecularVDW / intraMolecularCoulomb). The other non-excluded pairs of the
-    // molecule are in the pair lists (DeviceStep::setExclusions); terms without interaction are left out.
+    // The scaled (1-4) pairs: the force-field pair potential of the two pseudo-atom types (the 1-4 table for a
+    // pair14 pair) times the pair scaling (Potentials::intraMolecularVDW / intraMolecularCoulomb). The other
+    // non-excluded pairs of the molecule are in the pair lists (DeviceStep::setExclusions); terms without
+    // interaction are left out.
     for (const IntraMolecularExclusions::ScaledPair& pair : component.intraMolecularPotentials.exclusions.scaledPairs)
     {
       const std::size_t identifiers[2] = {pair.atomA, pair.atomB};
-      const VDWParameters& parameters = forceField(component.atoms[pair.atomA].type, component.atoms[pair.atomB].type);
-      if (pair.scalingVDW != 0.0 && parameters.type == VDWParameters::Type::LennardJones)
+      const VDWParameters& parameters = forceField.pair(static_cast<std::size_t>(component.atoms[pair.atomA].type),
+                                                        static_cast<std::size_t>(component.atoms[pair.atomB].type),
+                                                        pair.pair14);
+      if (pair.scalingVDW != 0.0 && (parameters.type == VDWParameters::Type::LennardJones ||
+                                     parameters.type == VDWParameters::Type::LennardJonesSwitched ||
+                                     parameters.type == VDWParameters::Type::LennardJonesForceSwitched))
       {
+        // The switched forms are plain Lennard-Jones below the switching distance (the force switch minus a
+        // constant), where the 1-4 pairs (a few Angstrom apart) always are.
+        double shift = parameters.shift;
+        if (parameters.type == VDWParameters::Type::LennardJonesForceSwitched)
+        {
+          const double rc = parameters.parameters2.x;
+          const double invRc3 = 1.0 / (rc * rc * rc);
+          const double invRs3 = invRc3 / parameters.parameters2.z;
+          const double sigma2 = parameters.parameters.y * parameters.parameters.y;
+          const double sigma6 = sigma2 * sigma2 * sigma2;
+          shift = 4.0 * parameters.parameters.x * sigma6 *
+                  (sigma6 * invRc3 * invRc3 * invRs3 * invRs3 - invRc3 * invRs3);
+        }
         const double values[3] = {pair.scalingVDW * 4.0 * parameters.parameters.x,
-                                  parameters.parameters.y * parameters.parameters.y,
-                                  pair.scalingVDW * parameters.shift};
+                                  parameters.parameters.y * parameters.parameters.y, pair.scalingVDW * shift};
         addTerm(4, 0, identifiers, values);
       }
       if (forceField.useCharge && component.atoms[pair.atomA].charge != 0.0 &&
@@ -184,6 +198,7 @@ void BondedTopology::build(const System& system)
     info.gradientBase = static_cast<std::uint32_t>(numberOfGradients);
     molecules.push_back(info);
     instanceMolecule.insert(instanceMolecule.end(), componentTerms[c], static_cast<std::uint32_t>(m));
+    moleculeOfAtom.insert(moleculeOfAtom.end(), molecule.numberOfAtoms, static_cast<std::uint32_t>(m));
     instances += componentTerms[c];
     numberOfGradients += componentGradients[c];
   }
@@ -212,21 +227,16 @@ void BondedTopology::build(const System& system)
   }
 }
 
-void BondedTopology::layout(std::span<const std::uint32_t> slotOfSorted, std::span<const std::uint32_t> originalToSorted,
-                            std::size_t slots, std::vector<std::uint32_t>& slotMolecule,
+void BondedTopology::layout(std::span<const std::uint32_t> originalToSorted,
                             std::vector<std::uint32_t>& referenceOfSorted) const
 {
-  slotMolecule.assign(slots, noAtom);
   referenceOfSorted.assign(originalToSorted.size(), 0);
-  for (std::size_t m = 0; m < molecules.size(); ++m)
+  for (const MoleculeInfo& molecule : molecules)
   {
-    const MoleculeInfo& molecule = molecules[m];
     const std::uint32_t reference = originalToSorted[molecule.firstAtom];
     for (std::uint32_t b = 0; b < molecule.numberOfAtoms; ++b)
     {
-      const std::uint32_t sorted = originalToSorted[molecule.firstAtom + b];
-      slotMolecule[slotOfSorted[sorted]] = (static_cast<std::uint32_t>(m) << 8) | b;
-      referenceOfSorted[sorted] = reference;
+      referenceOfSorted[originalToSorted[molecule.firstAtom + b]] = reference;
     }
   }
 }

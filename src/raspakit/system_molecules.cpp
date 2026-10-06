@@ -757,6 +757,11 @@ void System::buildConformationReservoirs()
     // orientations); single-atom components have nothing to grow.
     if (component.atoms.size() < 2 || component.rigid) continue;
 
+    // The reservoir is only read by CBMC grows (ring closure seeds). A component no configured move can
+    // grow (an MD-only protein read from a topology file) never consults it, and the 256 full-molecule
+    // regrows with their lookahead tables cost minutes for a ringed peptide: skip the build.
+    if (!component.mayUseGrowthPlans()) continue;
+
     // The reservoir carries the long-lived internal state a fresh grow cannot rebuild from potentials:
     // ring conformers ('generateRingConformation' seeds each ring-closure step from an independent,
     // well-mixed whole-molecule conformation so different grows start from different puckers) and the

@@ -46,9 +46,17 @@ export struct DevicePairParameters
   std::uint32_t numberOfTypes{0};
   std::uint32_t blocksPerCluster{0};
   std::uint32_t pairsPerLane{0};
-  std::uint32_t padding[2]{};
+  // the global Lennard-Jones switching (LennardJonesSwitching; mode 0: none)
+  std::uint32_t switchMode{0};
+  float switchDistanceSquared{0.0f};
+  float switchDistance{0.0f};
+  float switchInverseWidth{0.0f};
+  float switchInverseCutOff3{0.0f};
+  float switchA12{1.0f};
+  float switchA6{1.0f};
+  std::uint32_t padding[3]{};
 };
-static_assert(sizeof(DevicePairParameters) == 128);
+static_assert(sizeof(DevicePairParameters) == 160);
 
 /// Mirrors the BuildParameters struct of the pair kernel source.
 export struct DeviceBuildParameters
@@ -151,6 +159,8 @@ export class DeviceStep
   void setParameters(std::span<const LennardJonesPair> lennardJones, std::size_t types, bool useCharge,
                      double cutOffVDW, double cutOffCharge, double conversionFactor, double alpha, double verletSkin,
                      double pruneSkinValue);
+  /// Sets the global Lennard-Jones switching of the pairs (after setParameters; mode 0: none).
+  void setSwitching(const LennardJonesSwitching& switching);
 
   /// Adds the particle-mesh Ewald sum to the device step (mesh of PPPM::chooseMesh, B-spline order 3..7).
   void enableMesh(int3 meshSize, std::size_t order, double alpha, double conversionFactor);
@@ -278,7 +288,7 @@ export class DeviceStep
   bool meshProfiled{false};  ///< the stage profile of the mesh ran (once, at the first timing sample)
   bool useBonded{false};
   BondedTopology bondedTopology{};
-  std::vector<std::uint32_t> slotMolecule{}, referenceOfSorted{};
+  std::vector<std::uint32_t> referenceOfSorted{};
 
   DevicePairParameters parameters{};
   DeviceBuildParameters buildParameters{};

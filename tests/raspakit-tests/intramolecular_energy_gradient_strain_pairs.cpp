@@ -174,8 +174,10 @@ TEST(MC_intramolecular_gradient, flexible_charged_chain_per_term_matches_finite_
   ASSERT_EQ(full.numberOfCoulombPairs(), 6uz);
   ASSERT_TRUE(full.vanDerWaals.empty());
   ASSERT_EQ(full.exclusions.scaledPairs.size(), 3uz);
-  EXPECT_EQ(full.exclusions.scalingOf(1, 4), (std::pair<double, double>{0.0, 0.5}));
-  EXPECT_EQ(full.exclusions.scalingOf(0, 4), (std::pair<double, double>{1.0, 1.0}));
+  EXPECT_EQ(full.exclusions.scalingOf(1, 4).scalingVDW, 0.0);
+  EXPECT_EQ(full.exclusions.scalingOf(1, 4).scalingCoulomb, 0.5);
+  EXPECT_EQ(full.exclusions.scalingOf(0, 4).scalingVDW, 1.0);
+  EXPECT_EQ(full.exclusions.scalingOf(0, 4).scalingCoulomb, 1.0);
   const ForceField& ff = system.forceField;
   const SimulationBox& box = system.simulationBox;
 

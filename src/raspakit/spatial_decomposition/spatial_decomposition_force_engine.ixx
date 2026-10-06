@@ -182,6 +182,7 @@ export class SpatialDecompositionForceEngine
   bool fastCoulomb{false};
   std::size_t numberOfPseudoAtomTypes{0};
   std::vector<LennardJonesPair> lennardJones{};
+  LennardJonesSwitching lennardJonesSwitching{};
   EwaldRealSpaceTable ewaldTable{};
   ClusterPairKernel<double> clusterKernelDouble{};
   ClusterPairKernel<float> clusterKernelMixed{};
@@ -221,17 +222,69 @@ export class SpatialDecompositionForceEngine
   bool virialRequested{false};
   double3x3 pressureTensor{};
 
-  // bonded / exclusion work by molecule, handed out in chunks through the team's work counter so that it can be
-  // done by whichever threads are free (it overlaps with the FFTs of thread 0 when the mesh is in use)
-  std::size_t bondedChunkSize{1};
+  // The bonded / exclusion work in units handed out through the team's work counter, so that it is done by
+  // whichever threads are free (it overlaps with the FFTs of thread 0 when the mesh is in use). Small molecules
+  // are evaluated whole, in runs of molecules. A large molecule (a protein, a polymer) is sliced into ranges of
+  // its atoms (self energy, exclusion corrections, center-of-mass sums) and ranges of its terms per kind, so that
+  // one molecule spreads over all threads: the term slices write their gradients to per-term slots (as the device
+  // kernels do), gathered per atom in the scatter phase, so that no two units write the gradient of one atom.
+  struct BondedUnit
+  {
+    enum class Kind : std::uint8_t
+    {
+      Molecules,  ///< the molecules [begin, end), whole
+      Atoms,      ///< the atoms [begin, end) of `molecule`
+      Terms       ///< the terms [begin, end) of kind `termKind` of `molecule`
+    };
+    Kind kind{Kind::Molecules};
+    std::uint8_t termKind{0};
+    std::uint32_t molecule{0};
+    std::uint32_t begin{0}, end{0};
+  };
+  struct SplitMolecule
+  {
+    std::uint32_t molecule{0};
+    std::uint32_t slotBase{0};               ///< first gradient slot of the molecule in `termGradient`
+    std::uint32_t firstUnit{0}, endUnit{0};  ///< its atom units (consecutive in `bondedUnits`)
+  };
+  /// The gradient slots of the terms of a component (for its split molecules): per kind the offset of the first
+  /// slot, and per atom the slots of the terms it takes part in (CSR).
+  struct SplitTermLayout
+  {
+    bool built{false};
+    std::vector<std::uint32_t> kindOffset{};
+    std::vector<std::uint32_t> atomGradientStart{}, atomGradients{};
+    std::uint32_t gradients{0};
+  };
+  static constexpr std::uint32_t notSplit = std::numeric_limits<std::uint32_t>::max();
   std::size_t partitionedMolecules{0};
-  /// Energies, strain derivatives and virial corrections per chunk: whichever thread takes a chunk, the sums are
-  /// reduced in chunk order, so that the results do not depend on the scheduling (bit-reproducible runs).
-  std::vector<RunningEnergy> chunkEnergies{};
-  std::vector<double3x3> chunkStrain{}, chunkCorrection{};
-  /// Mass-weighted center of mass of the molecule of every atom (original atom order), set in the bonded work and
-  /// used for the atomic-to-molecular virial correction of the pair + mesh gradients in the scatter phase.
+  std::vector<std::size_t> partitionedPerComponent{};  ///< the molecule counts the units were built for
+  std::vector<BondedUnit> bondedUnits{};
+  std::vector<SplitMolecule> splitMolecules{};
+  /// Center of mass of every split molecule, reduced from its atom units at the start of the scatter phase by
+  /// every thread for itself (per thread, `splitMolecules.size()` entries).
+  std::vector<double3> splitCenterOfMass{};
+  std::vector<SplitTermLayout> splitLayouts{};  ///< per component
+  std::vector<std::uint32_t> atomSplit{};       ///< per atom: its SplitMolecule, or notSplit
+  std::vector<double3> termGradient{};          ///< the gradient slots of the term units
+  /// Energies, strain derivatives and virial corrections per unit: whichever thread takes a unit, the sums are
+  /// reduced in unit order, so that the results do not depend on the scheduling (bit-reproducible runs). The atom
+  /// units of a split molecule also leave their mass-weighted position sum and mass, and the outer-product and
+  /// plain sums of their exclusion gradients (the virial correction needs the center of mass, known only after all
+  /// atom units of the molecule are done).
+  std::vector<RunningEnergy> unitEnergies{};
+  std::vector<double3x3> unitStrain{}, unitCorrection{}, unitExclusionOuter{};
+  std::vector<double3> unitMassPosition{}, unitExclusionGradient{};
+  std::vector<double> unitMass{};
+  /// Mass-weighted center of mass of the molecule of every atom (original atom order), set in the bonded work for
+  /// the whole molecules (the split molecules read it from their SplitMolecule) and used for the
+  /// atomic-to-molecular virial correction of the pair + mesh gradients in the scatter phase.
   std::vector<double3> atomCenterOfMass{};
+  [[nodiscard]] bool bondedWorkOutdated(const System& system) const;
+  void buildSplitLayout(const System& system, std::size_t componentId);
+  void bondedMoleculesUnit(System& system, const BondedUnit& unit, std::size_t index);
+  void bondedAtomsUnit(System& system, const BondedUnit& unit, std::size_t index);
+  void bondedTermsUnit(System& system, const BondedUnit& unit, std::size_t index);
 
   double reciprocalEnergy{0.0};
   Timings timing{};

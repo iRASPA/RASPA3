@@ -36,15 +36,19 @@ import connectivity_table;
  */
 export struct IntraMolecularExclusions
 {
-  std::uint64_t versionNumber{2};  ///< Version number for serialization.
+  std::uint64_t versionNumber{3};  ///< Version number for serialization.
 
-  /// A non-excluded pair whose van der Waals or Coulomb interaction is scaled (the 1-4 pairs).
+  /// A non-excluded pair that is evaluated apart from the generic pair loops: its van der Waals or Coulomb
+  /// interaction is scaled (the 1-4 pairs, listed overrides), or it is a 1-4 pair of a force field with separate
+  /// 1-4 pair parameters ('pair14': the van der Waals interaction uses ForceField::pair14 instead of the regular
+  /// pair table).
   struct ScaledPair
   {
     std::uint32_t atomA{0};
     std::uint32_t atomB{0};
     double scalingVDW{1.0};
     double scalingCoulomb{1.0};
+    bool pair14{false};
 
     bool operator==(const ScaledPair &) const = default;
   };
@@ -54,7 +58,7 @@ export struct IntraMolecularExclusions
   std::vector<std::array<std::uint32_t, 2>> pairs{};  ///< The excluded pairs, atomA < atomB, sorted.
   std::vector<std::uint32_t> offsets{};               ///< CSR offsets of the excluded partners per atom.
   std::vector<std::uint32_t> partners{};              ///< Excluded partners of every atom (sorted per atom).
-  std::vector<ScaledPair> scaledPairs{};              ///< The non-excluded pairs with a scaling other than one.
+  std::vector<ScaledPair> scaledPairs{};              ///< The scaled and the 1-4-parameter pairs, sorted.
   std::vector<std::uint32_t> pairListOffsets{};       ///< CSR offsets of the excluded + scaled partners per atom.
   std::vector<std::uint32_t> pairListPartners{};      ///< Excluded + scaled partners of every atom (sorted).
 
@@ -98,16 +102,15 @@ export struct IntraMolecularExclusions
   /// pair-list exclusion table (excluded + scaled partners).
   void setScaledPairs(std::vector<ScaledPair> scaled);
 
-  /// The (van der Waals, Coulomb) scaling of the non-excluded pair (i, j): the factors of a scaled pair, (1, 1)
-  /// otherwise.
-  [[nodiscard]] std::pair<double, double> scalingOf(std::size_t i, std::size_t j) const
+  /// The scaling of the non-excluded pair (i, j): its ScaledPair entry, or the plain pair (1, 1, not 1-4).
+  [[nodiscard]] ScaledPair scalingOf(std::size_t i, std::size_t j) const
   {
     const std::array<std::uint32_t, 2> key{static_cast<std::uint32_t>(std::min(i, j)),
                                            static_cast<std::uint32_t>(std::max(i, j))};
     const auto it = std::ranges::lower_bound(scaledPairs, key, {},
                                              [](const ScaledPair &p) { return std::array<std::uint32_t, 2>{p.atomA, p.atomB}; });
-    if (it != scaledPairs.end() && it->atomA == key[0] && it->atomB == key[1]) return {it->scalingVDW, it->scalingCoulomb};
-    return {1.0, 1.0};
+    if (it != scaledPairs.end() && it->atomA == key[0] && it->atomB == key[1]) return *it;
+    return ScaledPair{key[0], key[1], 1.0, 1.0, false};
   }
 
   /// The number of pairs of the molecule that are not excluded.
@@ -118,13 +121,14 @@ export struct IntraMolecularExclusions
   }
 
   /**
-   * \brief Calls 'function(i, j, scalingVDW, scalingCoulomb)' for every non-excluded pair i < j of the molecule.
+   * \brief Calls 'function(i, j, scalingVDW, scalingCoulomb, pair14)' for every non-excluded pair i < j of the
+   * molecule.
    *
    * This enumerates the implicit non-bonded pairs: the pairs are not stored (their number grows with the square of
    * the molecule size), they follow from the exclusions and the scaled pairs. The scaled pairs keep their factors
-   * (also zero: with Ewald electrostatics a zero-scaled pair still carries the exclusion kernel), the others get
-   * (1, 1). The excluded partners and the scaled pairs are consumed in a merge walk over their sorted lists, so the
-   * cost is linear in the number of pairs of the molecule.
+   * (also zero: with Ewald electrostatics a zero-scaled pair still carries the exclusion kernel) and their 1-4
+   * flag, the others get (1, 1, false). The excluded partners and the scaled pairs are consumed in a merge walk
+   * over their sorted lists, so the cost is linear in the number of pairs of the molecule.
    */
   template <typename Function>
   void forEachNonExcludedPair(Function &&function) const
@@ -145,13 +149,15 @@ export struct IntraMolecularExclusions
         }
         double scalingVDW = 1.0;
         double scalingCoulomb = 1.0;
+        bool pair14 = false;
         if (scaled != scaledPairs.end() && scaled->atomA == i && scaled->atomB == j)
         {
           scalingVDW = scaled->scalingVDW;
           scalingCoulomb = scaled->scalingCoulomb;
+          pair14 = scaled->pair14;
           ++scaled;
         }
-        function(i, j, scalingVDW, scalingCoulomb);
+        function(i, j, scalingVDW, scalingCoulomb, pair14);
       }
     }
   }

@@ -26,13 +26,13 @@ import running_energy;
 // InterpolationEnergyGrid::makeInterpolationGrid
 // ----------------------------------------------------------------------------------------------------
 
-template <ForceField::InterpolationScheme Scheme, ForceField::InterpolationGridType GridType>
+template <ForceFieldSettings::InterpolationScheme Scheme, ForceFieldSettings::InterpolationGridType GridType>
 static void BM_EnergyGridCreationMFI(benchmark::State& state)
 {
   int N = static_cast<int>(state.range(0));
 
   ForceField forceField =
-      TestFactories::makeDefaultFF(12.0, true, false, GridType == ForceField::InterpolationGridType::EwaldReal);
+      TestFactories::makeDefaultFF(12.0, true, false, GridType == ForceFieldSettings::InterpolationGridType::EwaldReal);
   Framework f = TestFactories::makeMFI_Si(forceField, int3(1, 1, 1));
 
   int3 numberOfGridPoints{N, N, N};
@@ -44,19 +44,19 @@ static void BM_EnergyGridCreationMFI(benchmark::State& state)
     grid.makeInterpolationGrid(stream, GridType, forceField, f, 12.0, 5);
   }
 
-  constexpr const char* schemeName = Scheme == ForceField::InterpolationScheme::Tricubic ? "Tricubic" : "Triquintic";
+  constexpr const char* schemeName = Scheme == ForceFieldSettings::InterpolationScheme::Tricubic ? "Tricubic" : "Triquintic";
   constexpr const char* interactionName =
-      GridType == ForceField::InterpolationGridType::LennardJones ? "VDW" : "EwaldReal";
+      GridType == ForceFieldSettings::InterpolationGridType::LennardJones ? "VDW" : "EwaldReal";
   state.SetLabel(std::format("{} {}x{}x{} {}", schemeName, N, N, N, interactionName));
 }
 
-template <ForceField::InterpolationScheme Scheme, ForceField::InterpolationGridType GridType>
+template <ForceFieldSettings::InterpolationScheme Scheme, ForceFieldSettings::InterpolationGridType GridType>
 static void BM_EnergyGridCreationCHA(benchmark::State& state)
 {
   int N = static_cast<int>(state.range(0));
 
   ForceField forceField =
-      TestFactories::makeDefaultFF(12.0, true, false, GridType == ForceField::InterpolationGridType::EwaldReal);
+      TestFactories::makeDefaultFF(12.0, true, false, GridType == ForceFieldSettings::InterpolationGridType::EwaldReal);
   Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
 
   int3 numberOfGridPoints{N, N, N};
@@ -68,30 +68,30 @@ static void BM_EnergyGridCreationCHA(benchmark::State& state)
     grid.makeInterpolationGrid(stream, GridType, forceField, f, 12.0, 5);
   }
 
-  constexpr const char* schemeName = Scheme == ForceField::InterpolationScheme::Tricubic ? "Tricubic" : "Triquintic";
+  constexpr const char* schemeName = Scheme == ForceFieldSettings::InterpolationScheme::Tricubic ? "Tricubic" : "Triquintic";
   constexpr const char* interactionName =
-      GridType == ForceField::InterpolationGridType::LennardJones ? "VDW" : "EwaldReal";
+      GridType == ForceFieldSettings::InterpolationGridType::LennardJones ? "VDW" : "EwaldReal";
   state.SetLabel(std::format("{} {}x{}x{} {}", schemeName, N, N, N, interactionName));
 }
 
 // Interactions::computeFrameworkMoleculeEnergy
 // ----------------------------------------------------------------------------------------------------
-static const InterpolationEnergyGrid& getGrid(ForceField::InterpolationScheme scheme,
-                                              ForceField::InterpolationGridType type)
+static const InterpolationEnergyGrid& getGrid(ForceFieldSettings::InterpolationScheme scheme,
+                                              ForceFieldSettings::InterpolationGridType type)
 {
   // Make sure grids are only computed once by making them static within this benchmarking routine
   static std::optional<InterpolationEnergyGrid> cache[4];
   static std::once_flag flags[4];
 
-  size_t scheme_idx = (scheme == ForceField::InterpolationScheme::Tricubic) ? 0 : 1;
-  size_t type_idx = (type == ForceField::InterpolationGridType::LennardJones) ? 0 : 2;
+  size_t scheme_idx = (scheme == ForceFieldSettings::InterpolationScheme::Tricubic) ? 0 : 1;
+  size_t type_idx = (type == ForceFieldSettings::InterpolationGridType::LennardJones) ? 0 : 2;
   size_t idx = scheme_idx + type_idx;
 
   std::call_once(flags[idx],
                  [&]
                  {
                    ForceField ff = TestFactories::makeDefaultFF(12.0, true, false,
-                                                                type == ForceField::InterpolationGridType::EwaldReal);
+                                                                type == ForceFieldSettings::InterpolationGridType::EwaldReal);
                    Framework f = TestFactories::makeCHA(ff, int3(1, 1, 1));
 
                    int3 numberOfGridPoints{64, 64, 64};
@@ -99,7 +99,7 @@ static const InterpolationEnergyGrid& getGrid(ForceField::InterpolationScheme sc
 
                    std::stringstream null_stream;
                    cache[idx]->makeInterpolationGrid(null_stream, type, ff, f, 12.0,
-                                                     type == ForceField::InterpolationGridType::EwaldReal ? 5 : 2);
+                                                     type == ForceFieldSettings::InterpolationGridType::EwaldReal ? 5 : 2);
                  });
 
   return *cache[idx];
@@ -126,11 +126,11 @@ static void BM_ComputeFrameworkEnergyVDW(benchmark::State& state)
   std::optional<InterpolationEnergyGrid> grid;
   if (mode == 1)
   {
-    grid = getGrid(ForceField::InterpolationScheme::Tricubic, ForceField::InterpolationGridType::LennardJones);
+    grid = getGrid(ForceFieldSettings::InterpolationScheme::Tricubic, ForceFieldSettings::InterpolationGridType::LennardJones);
   }
   else if (mode == 2)
   {
-    grid = getGrid(ForceField::InterpolationScheme::Triquintic, ForceField::InterpolationGridType::LennardJones);
+    grid = getGrid(ForceFieldSettings::InterpolationScheme::Triquintic, ForceFieldSettings::InterpolationGridType::LennardJones);
   }
 
   for (auto _ : state)
@@ -165,11 +165,11 @@ static void BM_ComputeFrameworkEnergyEwald(benchmark::State& state)
   std::optional<InterpolationEnergyGrid> grid;
   if (mode == 1)
   {
-    grid = getGrid(ForceField::InterpolationScheme::Tricubic, ForceField::InterpolationGridType::EwaldReal);
+    grid = getGrid(ForceFieldSettings::InterpolationScheme::Tricubic, ForceFieldSettings::InterpolationGridType::EwaldReal);
   }
   else if (mode == 2)
   {
-    grid = getGrid(ForceField::InterpolationScheme::Triquintic, ForceField::InterpolationGridType::EwaldReal);
+    grid = getGrid(ForceFieldSettings::InterpolationScheme::Triquintic, ForceFieldSettings::InterpolationGridType::EwaldReal);
   }
 
   for (auto _ : state)
@@ -204,11 +204,11 @@ static void BM_ComputeFrameworkGradientVDW(benchmark::State& state)
   std::optional<InterpolationEnergyGrid> grid;
   if (mode == 1)
   {
-    grid = getGrid(ForceField::InterpolationScheme::Tricubic, ForceField::InterpolationGridType::LennardJones);
+    grid = getGrid(ForceFieldSettings::InterpolationScheme::Tricubic, ForceFieldSettings::InterpolationGridType::LennardJones);
   }
   else if (mode == 2)
   {
-    grid = getGrid(ForceField::InterpolationScheme::Triquintic, ForceField::InterpolationGridType::LennardJones);
+    grid = getGrid(ForceFieldSettings::InterpolationScheme::Triquintic, ForceFieldSettings::InterpolationGridType::LennardJones);
   }
 
   std::vector<AtomDynamics> dynamics(N);
@@ -247,11 +247,11 @@ static void BM_ComputeFrameworkGradientEwald(benchmark::State& state)
   std::optional<InterpolationEnergyGrid> grid;
   if (mode == 1)
   {
-    grid = getGrid(ForceField::InterpolationScheme::Tricubic, ForceField::InterpolationGridType::EwaldReal);
+    grid = getGrid(ForceFieldSettings::InterpolationScheme::Tricubic, ForceFieldSettings::InterpolationGridType::EwaldReal);
   }
   else if (mode == 2)
   {
-    grid = getGrid(ForceField::InterpolationScheme::Triquintic, ForceField::InterpolationGridType::EwaldReal);
+    grid = getGrid(ForceFieldSettings::InterpolationScheme::Triquintic, ForceFieldSettings::InterpolationGridType::EwaldReal);
   }
 
   std::vector<AtomDynamics> dynamics(N);
@@ -270,23 +270,23 @@ static void BM_ComputeFrameworkGradientEwald(benchmark::State& state)
 // ----------------------------------------------------------------------------------------------------
 
 // Grid creation
-// BENCHMARK_TEMPLATE(BM_EnergyGridCreation, ForceField::InterpolationScheme::Tricubic,
-//                    ForceField::InterpolationGridType::LennardJones)
+// BENCHMARK_TEMPLATE(BM_EnergyGridCreation, ForceFieldSettings::InterpolationScheme::Tricubic,
+//                    ForceFieldSettings::InterpolationGridType::LennardJones)
 //     ->RangeMultiplier(2)
 //     ->Range(1, 64);
 
-// BENCHMARK_TEMPLATE(BM_EnergyGridCreation, ForceField::InterpolationScheme::Tricubic,
-//                    ForceField::InterpolationGridType::EwaldReal)
+// BENCHMARK_TEMPLATE(BM_EnergyGridCreation, ForceFieldSettings::InterpolationScheme::Tricubic,
+//                    ForceFieldSettings::InterpolationGridType::EwaldReal)
 //     ->RangeMultiplier(2)
 //     ->Range(1, 64);
 
-// BENCHMARK_TEMPLATE(BM_EnergyGridCreation, ForceField::InterpolationScheme::Triquintic,
-//                    ForceField::InterpolationGridType::LennardJones)
+// BENCHMARK_TEMPLATE(BM_EnergyGridCreation, ForceFieldSettings::InterpolationScheme::Triquintic,
+//                    ForceFieldSettings::InterpolationGridType::LennardJones)
 //     ->RangeMultiplier(2)
 //     ->Range(1, 64);
 
-// BENCHMARK_TEMPLATE(BM_EnergyGridCreation, ForceField::InterpolationScheme::Triquintic,
-//                    ForceField::InterpolationGridType::EwaldReal)
+// BENCHMARK_TEMPLATE(BM_EnergyGridCreation, ForceFieldSettings::InterpolationScheme::Triquintic,
+//                    ForceFieldSettings::InterpolationGridType::EwaldReal)
 //     ->RangeMultiplier(2)
 //     ->Range(1, 64);
 

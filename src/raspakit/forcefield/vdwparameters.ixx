@@ -52,8 +52,18 @@ export struct VDWParameters
     Mie = 16,
     WeeksChandlerAndersen = 17,
     LennardJonesSecondOrderTaylorShifted = 18,
+    LennardJonesSwitched = 19,       ///< Lennard-Jones times the quintic switch S(r) of OpenMM/GROMACS on [r_s, r_c].
+    LennardJonesForceSwitched = 20,  ///< CHARMM force-switched Lennard-Jones (Steinbach and Brooks 1994).
     RepulsiveHarmonic = 100
   };
+
+  /// Returns whether the type is a Lennard-Jones form (epsilon, sigma) with a cutoff-dependent modification.
+  static constexpr bool isLennardJonesForm(Type type)
+  {
+    return type == Type::LennardJones || type == Type::LennardJonesShiftedForce ||
+           type == Type::LennardJonesSecondOrderTaylorShifted || type == Type::LennardJonesSwitched ||
+           type == Type::LennardJonesForceSwitched;
+  }
 
   // Hot members first: the Lennard-Jones code path only touches 'parameters', 'shift', and 'type',
   // which together occupy the first 48 bytes of the struct.
@@ -66,6 +76,8 @@ export struct VDWParameters
   ///   FeynmannHibbs:            x = FeynmannHibbs pre-factor  hbar^2/(24 mu kB T)  [A^2]
   ///   LennardJonesShiftedForce and LennardJonesSecondOrderTaylorShifted:
   ///                                x = (sigma/rc)^6, y = rc
+  ///   LennardJonesSwitched:     x = rc, y = r_switch, z = 1 / (rc - r_switch)
+  ///   LennardJonesForceSwitched: x = rc, y = r_switch, z = (r_switch / rc)^3
   ///   Generic:                  x = p4, y = p5
   ///   PellenqNicholson:         x = p4 (C10)
   ///   HydratedIonWater:         x = p4 (C12)
@@ -217,8 +229,23 @@ export struct VDWParameters
    *
    * \param cutOff The cutoff distance.
    * \param temperature The external temperature (used for the Feynmann-Hibbs potential).
+   * \param switchingDistance The distance where the switching function of the switched Lennard-Jones forms
+   *                          starts; 0 or negative selects the default of cutOff - 2 Angstrom (at least half the
+   *                          cutoff). Must be below the cutoff.
    */
-  void computeDerivedParameters(double cutOff, double temperature);
+  void computeDerivedParameters(double cutOff, double temperature, double switchingDistance = 0.0);
+
+  /// The radial derivative dU/dr of the unshifted potential at full coupling (switched Lennard-Jones forms only;
+  /// used for the tail corrections in the switching region).
+  double radialDerivativeAtFullCoupling(double r) const;
+
+  /// The plain Lennard-Jones energy (without switching) at full coupling for the Lennard-Jones forms.
+  double lennardJonesEnergy(double rr) const
+  {
+    double temp = rr / (parameters.y * parameters.y);
+    double rri3 = 1.0 / (temp * temp * temp);
+    return 4.0 * parameters.x * (rri3 * (rri3 - 1.0));
+  }
 
   /**
    * \brief Computes the potential energy shift at the cutoff distance.
@@ -242,6 +269,8 @@ export struct VDWParameters
       case Type::FeynmannHibbs:
       case Type::LennardJonesShiftedForce:
       case Type::LennardJonesSecondOrderTaylorShifted:
+      case Type::LennardJonesSwitched:
+      case Type::LennardJonesForceSwitched:
       case Type::CFFEpsilonSigma:
       case Type::MM3:
       case Type::WeeksChandlerAndersen:
@@ -259,6 +288,8 @@ export struct VDWParameters
       case Type::FeynmannHibbs:
       case Type::LennardJonesShiftedForce:
       case Type::LennardJonesSecondOrderTaylorShifted:
+      case Type::LennardJonesSwitched:
+      case Type::LennardJonesForceSwitched:
       case Type::CFFEpsilonSigma:
       case Type::MM3:
       case Type::WeeksChandlerAndersen:

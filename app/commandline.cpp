@@ -46,6 +46,7 @@ import integration_opencl_surface_area;
 import getopt;
 import interpolation_energy_grid;
 import lammps_reader;
+import amber_prmtop_reader;
 import pore_size_distribution_ban_vlugt;
 import opencl_clearance_grid;
 import grid_connected_components;
@@ -137,13 +138,19 @@ void CommandLine::run(int argc, char *argv[])
   std::optional<std::size_t> number_of_slices{ };
   std::optional<std::size_t> number_of_bins{ };
   std::vector<std::size_t> pseudoAtomsGrid;
-  ForceField::InterpolationScheme order{ForceField::InterpolationScheme::Tricubic};
-  ForceField::InterpolationGridType gridType{ForceField::InterpolationGridType::LennardJones};
+  ForceFieldSettings::InterpolationScheme order{ForceFieldSettings::InterpolationScheme::Tricubic};
+  ForceFieldSettings::InterpolationGridType gridType{ForceFieldSettings::InterpolationGridType::LennardJones};
   std::optional<ForceField> forceField{};
   Framework framework{};
   std::optional<std::string> from_lammps_data{};
   std::optional<std::string> from_lammps_input{};
   std::string from_lammps_output{"raspa-from-lammps"};
+  std::optional<std::string> from_prmtop{};
+  std::optional<std::string> prmtop_coordinates{};
+  std::optional<std::string> conversion_output{};
+  std::optional<double> prmtop_cutoff{};
+  std::optional<std::string> prmtop_truncation{};
+  std::optional<double> prmtop_switching_distance{};
 
 
   // Which build this is: the commit it was made from and when it was compiled, so that a result can be
@@ -413,13 +420,13 @@ void CommandLine::run(int argc, char *argv[])
              }
            })
       .reg({"--tricubic"}, argparser::no_argument, "Set interpolation scheme to tricubic",
-           [&order](std::string const &) { order = ForceField::InterpolationScheme::Tricubic; })
+           [&order](std::string const &) { order = ForceFieldSettings::InterpolationScheme::Tricubic; })
       .reg({"--triquintic"}, argparser::no_argument, "Set interpolation scheme to triquintic",
-           [&order](std::string const &) { order = ForceField::InterpolationScheme::Triquintic; })
+           [&order](std::string const &) { order = ForceFieldSettings::InterpolationScheme::Triquintic; })
       .reg({"--Lennard-Jones"}, argparser::no_argument, "Set interpolation energy grid to Lennard-Jones",
-           [&gridType](std::string const &) { gridType = ForceField::InterpolationGridType::LennardJones; })
+           [&gridType](std::string const &) { gridType = ForceFieldSettings::InterpolationGridType::LennardJones; })
       .reg({"--Ewald"}, argparser::no_argument, "Set interpolation energy grid to Ewald",
-           [&gridType](std::string const &) { gridType = ForceField::InterpolationGridType::EwaldReal; })
+           [&gridType](std::string const &) { gridType = ForceFieldSettings::InterpolationGridType::EwaldReal; })
       .reg({"--from-lammps"}, argparser::required_argument,
            "Convert a LAMMPS 'read_data' file to RASPA input (force_field.json, component JSON files, "
            "simulation.json) and exit. Combine with --lammps-input for the styles and --output-dir",
@@ -428,9 +435,30 @@ void CommandLine::run(int argc, char *argv[])
            "LAMMPS input script that defines bond/angle/dihedral/pair styles, special_bonds and pair_modify for "
            "--from-lammps (without it harmonic/harmonic/nharmonic/lj-cut are assumed)",
            [&from_lammps_input](std::string const &arg) { from_lammps_input = arg; })
+      .reg({"--from-prmtop"}, argparser::required_argument,
+           "Convert an AMBER 'prmtop' topology to RASPA input (force_field.json, component JSON files, "
+           "simulation.json, restart.json) and exit. Combine with --inpcrd for the coordinates and --output-dir; "
+           "water (WAT/HOH/TIP3) becomes a rigid component",
+           [&from_prmtop](std::string const &arg) { from_prmtop = arg; })
+      .reg({"--inpcrd"}, argparser::required_argument,
+           "AMBER ASCII coordinate file (inpcrd / rst7) for --from-prmtop; its positions and box seed the RASPA "
+           "configuration through restart.json",
+           [&prmtop_coordinates](std::string const &arg) { prmtop_coordinates = arg; })
+      .reg({"--cutoff"}, argparser::required_argument,
+           "Van der Waals / real-space Coulomb cut-off in Angstrom written by --from-prmtop (default 10)",
+           [&prmtop_cutoff](std::string const &arg) { prmtop_cutoff = std::stod(arg); })
+      .reg({"--truncation"}, argparser::required_argument,
+           "Van der Waals truncation written by --from-prmtop: truncated (default), shifted, switched (the OpenMM "
+           "switching function), or force-switched (CHARMM vfswitch)",
+           [&prmtop_truncation](std::string const &arg) { prmtop_truncation = arg; })
+      .reg({"--switching-distance"}, argparser::required_argument,
+           "Where the switching of --truncation switched / force-switched starts, in Angstrom (default: 2 below "
+           "the cut-off)",
+           [&prmtop_switching_distance](std::string const &arg) { prmtop_switching_distance = std::stod(arg); })
       .reg({"--output-dir"}, argparser::required_argument,
-           "Directory for the files written by --from-lammps (default 'raspa-from-lammps')",
-           [&from_lammps_output](std::string const &arg) { from_lammps_output = arg; })
+           "Directory for the files written by --from-lammps or --from-prmtop (default 'raspa-from-lammps' / "
+           "'raspa-from-prmtop')",
+           [&conversion_output](std::string const &arg) { conversion_output = arg; })
       .reg({"--cpu"}, argparser::no_argument, "Compute on the gpu", [&use_cpu](std::string const &) { use_cpu = true; })
       .reg({"--gpu"}, argparser::no_argument, "Compute on the gpu", [&use_gpu](std::string const &) { use_gpu = true; })
       // register positional arguments
@@ -471,6 +499,7 @@ void CommandLine::run(int argc, char *argv[])
 
   if (from_lammps_data)
   {
+    if (conversion_output) from_lammps_output = *conversion_output;
     try
     {
       std::optional<std::filesystem::path> inputScript{};
@@ -482,6 +511,37 @@ void CommandLine::run(int argc, char *argv[])
       for (const LAMMPS::ReadComponent &component : converted.components)
         std::cout << std::format("  {:<12} {} atoms x {} molecules\n", component.name, component.atomsPerMolecule,
                                  component.count);
+      for (const std::string &warning : converted.warnings) std::cout << "  " << warning << '\n';
+    }
+    catch (std::exception const &e)
+    {
+      std::cerr << "\u001b[31;1mERROR: " << e.what() << "\u001b[0m\n";
+      std::exit(-4);
+    }
+    std::exit(0);
+  }
+
+  if (from_prmtop)
+  {
+    std::string outputDirectory = conversion_output.value_or("raspa-from-prmtop");
+    try
+    {
+      std::optional<std::filesystem::path> coordinateFile{};
+      if (prmtop_coordinates) coordinateFile = std::filesystem::path(*prmtop_coordinates);
+      AMBER::ReadOptions options{};
+      if (prmtop_cutoff) options.cutOff = *prmtop_cutoff;
+      if (prmtop_truncation) options.truncationMethod = *prmtop_truncation;
+      if (prmtop_switching_distance) options.switchingDistance = *prmtop_switching_distance;
+      AMBER::ReadResult converted =
+          AMBER::readPrmtop(std::filesystem::path(*from_prmtop), coordinateFile, options);
+      AMBER::writeRaspaInput(converted, std::filesystem::path(outputDirectory));
+      std::cout << std::format("Converted '{}': {} component(s){} -> '{}'\n", *from_prmtop,
+                               converted.components.size(),
+                               converted.positions.empty() ? "" : std::format(", {} atoms", converted.positions.size()),
+                               outputDirectory);
+      for (const AMBER::ReadComponent &component : converted.components)
+        std::cout << std::format("  {:<14} {} atoms x {} molecules ({})\n", component.name, component.atomsPerMolecule,
+                                 component.count, component.rigid ? "rigid" : "flexible");
       for (const std::string &warning : converted.warnings) std::cout << "  " << warning << '\n';
     }
     catch (std::exception const &e)
@@ -1619,15 +1679,15 @@ void CommandLine::run(int argc, char *argv[])
     {
       HDF5Writer h5File(
           std::format("{}_{}_{}.h5", framework.name,
-                      (order == ForceField::InterpolationScheme::Tricubic) ? "Tricubic" : "Triquintic",
-                      (gridType == ForceField::InterpolationGridType::LennardJones) ? "LennardJones" : "Ewald"));
+                      (order == ForceFieldSettings::InterpolationScheme::Tricubic) ? "Tricubic" : "Triquintic",
+                      (gridType == ForceFieldSettings::InterpolationGridType::LennardJones) ? "LennardJones" : "Ewald"));
       for (std::size_t pseudoAtomIdx : pseudoAtomsGrid)
       {
         InterpolationEnergyGrid grid(framework.simulationBox, double3{},
                                      gridSize, order);
         std::ostream nullStream{nullptr};
         grid.makeFrameworkInterpolationGrid(nullStream, gridType, forceField.value(), framework,
-                                   (gridType == ForceField::InterpolationGridType::LennardJones)
+                                   (gridType == ForceFieldSettings::InterpolationGridType::LennardJones)
                                        ? forceField->cutOffFrameworkVDW
                                        : forceField->cutOffCoulomb,
                                    pseudoAtomIdx);
