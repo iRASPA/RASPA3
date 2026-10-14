@@ -20,6 +20,8 @@ import hyper_parallel_tempering;
 import reweighted_histogram;
 import parallel_tmmc;
 import nldft;
+import dctst;
+import dctst_free_energy;
 
 void runSimulation(InputReader& inputReader)
 {
@@ -161,6 +163,18 @@ void runSimulation(InputReader& inputReader)
     {
       NLDFT nldft(inputReader);
       nldft.run();
+      break;
+    }
+    case InputReader::SimulationType::DynamicallyCorrectedTST:
+    {
+      DynamicallyCorrectedTST dctst(inputReader);
+      dctst.run();
+      break;
+    }
+    case InputReader::SimulationType::DynamicallyCorrectedTSTFreeEnergy:
+    {
+      DynamicallyCorrectedTSTFreeEnergy dctst(inputReader);
+      dctst.run();
       break;
     }
     default:

@@ -562,6 +562,19 @@ InputReader::InputReader(const std::string inputFile)
       simulationType = SimulationType::MolecularDynamicsSpatialDecomposition;
       parseMolecularSimulations(parsed_data);
     }
+    else if (caseInSensStringCompare(simulationTypeString, "DynamicallyCorrectedTST") ||
+             caseInSensStringCompare(simulationTypeString, "dcTST") ||
+             caseInSensStringCompare(simulationTypeString, "DynamicallyCorrectedTransitionStateTheory"))
+    {
+      simulationType = SimulationType::DynamicallyCorrectedTST;
+      parseMolecularSimulations(parsed_data);
+    }
+    else if (caseInSensStringCompare(simulationTypeString, "DynamicallyCorrectedTSTFreeEnergy") ||
+             caseInSensStringCompare(simulationTypeString, "dcTSTFreeEnergy"))
+    {
+      simulationType = SimulationType::DynamicallyCorrectedTSTFreeEnergy;
+      parseMolecularSimulations(parsed_data);
+    }
     else if (caseInSensStringCompare(simulationTypeString, "ThermodynamicIntegration"))
     {
       simulationType = SimulationType::ThermodynamicIntegration;
@@ -3629,6 +3642,387 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         systems[systemId].timeStep = value["TimeStep"].get<double>();
       }
 
+      // dynamically corrected transition state theory: the 'dcTST' object of the system block, shared by the
+      // transmission driver ('DynamicallyCorrectedTST') and the free-energy driver
+      // ('DynamicallyCorrectedTSTFreeEnergy'); the geometry keys are common, the stage keys per driver
+      if (value.contains("dcTST"))
+      {
+        const bool transmissionDriver = simulationType == SimulationType::DynamicallyCorrectedTST;
+        const bool freeEnergyDriver = simulationType == SimulationType::DynamicallyCorrectedTSTFreeEnergy;
+        if (!transmissionDriver && !freeEnergyDriver)
+        {
+          throw std::runtime_error(
+              "[Input reader]: the 'dcTST' block requires 'SimulationType': 'DynamicallyCorrectedTST' or "
+              "'DynamicallyCorrectedTSTFreeEnergy'\n");
+        }
+        if (!value["dcTST"].is_object())
+        {
+          throw std::runtime_error("[Input reader]: 'dcTST' must be an object\n");
+        }
+        const auto &block = value["dcTST"];
+        static const std::set<std::string, InsensitiveCompare> geometryOptions = {
+            "TaggedComponent", "BarrierPosition", "BarrierNormal", "LatticeDistance", "CageCenter",
+            "CageOccupancies", "NumberOfReplicas"};
+        static const std::set<std::string, InsensitiveCompare> transmissionOptions = {
+            "NumberOfTransmissionCycles",    "NumberOfConstrainedEquilibrationCycles",
+            "TrajectoryTime",                "LaunchTrajectoryEvery",
+            "TrajectoriesPerConfiguration",  "SampleTrajectoryEvery",
+            "MaximumCollectiveShell",        "PlateauWindow",
+            "MaximumTranslationInPlane",     "ReinsertionInPlaneProbability",
+            "WriteTrajectoryDiagnostics",    "TrajectoryThermostat",
+            "BathRate",                      "CommitDistance",
+            "TrajectoryTermination",         "TerminationEvents",
+            "FreeEnergyInput",               "BarrierProbability",
+            "BarrierProbabilityError"};
+        static const std::set<std::string, InsensitiveCompare> freeEnergyOptions = {
+            "NumberOfPilotCycles",      "NumberOfWindowCycles",   "NumberOfWindowEquilibrationCycles",
+            "SampleEvery",              "NumberOfWindows",        "WindowSpacing",
+            "WindowRange",              "WindowCenters",          "WindowStiffness",
+            "FlatteningBias",           "MirrorSymmetry",         "FineBinWidth",
+            "NumberOfFreeEnergyBins",   "BarrierFitRange",        "WhamTolerance",
+            "WhamMaximumIterations",    "WriteWindowHistograms",  "MaximumTranslationTagged",
+            "ReinsertionTaggedProbability", "TaggedMoveFraction"};
+        for (auto &[optionKey, optionItem] : block.items())
+        {
+          if (geometryOptions.contains(optionKey)) continue;
+          if (transmissionDriver && transmissionOptions.contains(optionKey)) continue;
+          if (freeEnergyDriver && freeEnergyOptions.contains(optionKey)) continue;
+          if (transmissionOptions.contains(optionKey) || freeEnergyOptions.contains(optionKey))
+          {
+            throw std::runtime_error(std::format(
+                "[Input reader]: 'dcTST' option '{}' belongs to the {} driver ('SimulationType': '{}')\n", optionKey,
+                freeEnergyDriver ? "transmission" : "free-energy",
+                freeEnergyDriver ? "DynamicallyCorrectedTST" : "DynamicallyCorrectedTSTFreeEnergy"));
+          }
+          throw std::runtime_error(std::format("[Input reader]: unknown 'dcTST' option '{}'\n", optionKey));
+        }
+
+        auto readDouble3 = [&](const char *key, double3 &target)
+        {
+          if (block.contains(key))
+          {
+            if (!block[key].is_array() || block[key].size() != 3)
+            {
+              throw std::runtime_error(std::format("[Input reader]: 'dcTST' '{}' must be an array of 3 numbers\n", key));
+            }
+            target = double3(block[key][0].get<double>(), block[key][1].get<double>(), block[key][2].get<double>());
+          }
+        };
+        auto readUnsigned = [&](const char *key, std::size_t &target)
+        {
+          if (block.contains(key))
+          {
+            if (!block[key].is_number_unsigned())
+            {
+              throw std::runtime_error(std::format("[Input reader]: 'dcTST' '{}' must be an unsigned integer\n", key));
+            }
+            target = block[key].get<std::size_t>();
+          }
+        };
+        auto readNumber = [&](const char *key, double &target)
+        {
+          if (block.contains(key))
+          {
+            if (!block[key].is_number())
+            {
+              throw std::runtime_error(std::format("[Input reader]: 'dcTST' '{}' must be a number\n", key));
+            }
+            target = block[key].get<double>();
+          }
+        };
+        auto readBoolean = [&](const char *key, bool &target)
+        {
+          if (block.contains(key))
+          {
+            if (!block[key].is_boolean())
+            {
+              throw std::runtime_error(std::format("[Input reader]: 'dcTST' '{}' must be a boolean\n", key));
+            }
+            target = block[key].get<bool>();
+          }
+        };
+
+        // --- geometry, into either settings struct -------------------------------------------------
+        auto readGeometry = [&](auto &s)
+        {
+          if (!block.contains("TaggedComponent") || !block["TaggedComponent"].is_string())
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' requires 'TaggedComponent' (the name of a component)\n");
+          }
+          s.taggedComponentName = block["TaggedComponent"].get<std::string>();
+          std::optional<std::size_t> taggedIndex;
+          for (std::size_t i = 0; i < systems[systemId].components.size(); ++i)
+          {
+            if (caseInSensStringCompare(systems[systemId].components[i].name, s.taggedComponentName))
+            {
+              taggedIndex = i;
+            }
+          }
+          if (!taggedIndex.has_value())
+          {
+            throw std::runtime_error(std::format("[Input reader]: 'dcTST' 'TaggedComponent' '{}' is not a component\n",
+                                                 s.taggedComponentName));
+          }
+          s.taggedComponent = taggedIndex.value();
+
+          readDouble3("BarrierPosition", s.barrierPosition);
+          readDouble3("BarrierNormal", s.barrierNormal);
+          if (block.contains("CageCenter"))
+          {
+            double3 center{};
+            readDouble3("CageCenter", center);
+            s.cageCenter = center;
+          }
+          if (s.barrierNormal.length() <= 0.0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'BarrierNormal' must be a non-zero vector\n");
+          }
+          if (!block.contains("LatticeDistance") || !block["LatticeDistance"].is_number())
+          {
+            throw std::runtime_error(
+                "[Input reader]: 'dcTST' requires 'LatticeDistance' (the cage-to-cage distance along the normal)\n");
+          }
+          s.latticeDistance = block["LatticeDistance"].get<double>();
+          if (s.latticeDistance <= 0.0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'LatticeDistance' must be positive\n");
+          }
+          if (block.contains("CageOccupancies"))
+          {
+            const auto &occupancies = block["CageOccupancies"];
+            if (!occupancies.is_array() || occupancies.size() != 2 || !occupancies[0].is_number_unsigned() ||
+                !occupancies[1].is_number_unsigned())
+            {
+              throw std::runtime_error(
+                  "[Input reader]: 'dcTST' 'CageOccupancies' must be an array [n_A, n_B] of two unsigned integers "
+                  "(the occupancies of cage A, including the tagged molecule, and of cage B)\n");
+            }
+            s.cageOccupancies = std::pair<std::size_t, std::size_t>(occupancies[0].get<std::size_t>(),
+                                                                    occupancies[1].get<std::size_t>());
+            if (s.cageOccupancies->first == 0)
+            {
+              throw std::runtime_error(
+                  "[Input reader]: 'dcTST' 'CageOccupancies' n_A must be at least 1 (the tagged molecule itself is in "
+                  "cage A)\n");
+            }
+          }
+          s.numberOfReplicas = std::max<std::size_t>(1, numberOfThreads);
+          readUnsigned("NumberOfReplicas", s.numberOfReplicas);
+          if (s.numberOfReplicas == 0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'NumberOfReplicas' must be positive\n");
+          }
+        };
+
+        if (transmissionDriver)
+        {
+          DcTSTSettings &s = dctstSettings;
+          readGeometry(s);
+          readUnsigned("NumberOfTransmissionCycles", s.numberOfTransmissionCycles);
+          readUnsigned("NumberOfConstrainedEquilibrationCycles", s.numberOfConstrainedEquilibrationCycles);
+          readNumber("TrajectoryTime", s.trajectoryTime);
+          readUnsigned("LaunchTrajectoryEvery", s.launchTrajectoryEvery);
+          readUnsigned("TrajectoriesPerConfiguration", s.trajectoriesPerConfiguration);
+          readUnsigned("SampleTrajectoryEvery", s.sampleTrajectoryEvery);
+          readUnsigned("MaximumCollectiveShell", s.maximumCollectiveShell);
+          readNumber("MaximumTranslationInPlane", s.maximumTranslationInPlane);
+          readNumber("ReinsertionInPlaneProbability", s.reinsertionInPlaneProbability);
+          if (block.contains("PlateauWindow"))
+          {
+            if (!block["PlateauWindow"].is_array() || block["PlateauWindow"].size() != 2)
+            {
+              throw std::runtime_error("[Input reader]: 'dcTST' 'PlateauWindow' must be an array [begin, end] in ps\n");
+            }
+            s.plateauWindow = std::pair<double, double>(block["PlateauWindow"][0].get<double>(),
+                                                        block["PlateauWindow"][1].get<double>());
+          }
+          readBoolean("WriteTrajectoryDiagnostics", s.writeTrajectoryDiagnostics);
+          if (block.contains("TrajectoryThermostat"))
+          {
+            if (!block["TrajectoryThermostat"].is_string())
+            {
+              throw std::runtime_error(
+                  "[Input reader]: 'dcTST' 'TrajectoryThermostat' must be \"None\", \"Andersen\" or \"Langevin\"\n");
+            }
+            const std::string thermostat = block["TrajectoryThermostat"].get<std::string>();
+            if (caseInSensStringCompare(thermostat, "None") || caseInSensStringCompare(thermostat, "NVE"))
+            {
+              s.trajectoryThermostat = DcTSTSettings::TrajectoryThermostat::None;
+            }
+            else if (caseInSensStringCompare(thermostat, "Andersen"))
+            {
+              s.trajectoryThermostat = DcTSTSettings::TrajectoryThermostat::Andersen;
+            }
+            else if (caseInSensStringCompare(thermostat, "Langevin"))
+            {
+              s.trajectoryThermostat = DcTSTSettings::TrajectoryThermostat::Langevin;
+            }
+            else
+            {
+              throw std::runtime_error(
+                  std::format("[Input reader]: unknown 'dcTST' 'TrajectoryThermostat' '{}' (use \"None\", "
+                              "\"Andersen\" or \"Langevin\")\n",
+                              thermostat));
+            }
+          }
+          readNumber("BathRate", s.bathRate);
+          readNumber("CommitDistance", s.commitDistance);
+          if (s.trajectoryThermostat != DcTSTSettings::TrajectoryThermostat::None && s.bathRate <= 0.0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'BathRate' must be positive [1/ps]\n");
+          }
+          if (s.commitDistance < 0.0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'CommitDistance' must be non-negative [Angstrom]\n");
+          }
+          if (block.contains("TrajectoryTermination"))
+          {
+            if (!block["TrajectoryTermination"].is_string())
+            {
+              throw std::runtime_error(
+                  "[Input reader]: 'dcTST' 'TrajectoryTermination' must be \"FixedTime\" or \"Event\"\n");
+            }
+            const std::string termination = block["TrajectoryTermination"].get<std::string>();
+            if (caseInSensStringCompare(termination, "FixedTime"))
+            {
+              s.trajectoryTermination = DcTSTSettings::TrajectoryTermination::FixedTime;
+            }
+            else if (caseInSensStringCompare(termination, "Event"))
+            {
+              s.trajectoryTermination = DcTSTSettings::TrajectoryTermination::Event;
+            }
+            else
+            {
+              throw std::runtime_error(std::format(
+                  "[Input reader]: unknown 'dcTST' 'TrajectoryTermination' '{}' (use \"FixedTime\" or \"Event\")\n",
+                  termination));
+            }
+          }
+          readUnsigned("TerminationEvents", s.terminationEvents);
+          if (s.terminationEvents == 0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'TerminationEvents' must be at least 1\n");
+          }
+          if (block.contains("FreeEnergyInput"))
+          {
+            if (!block["FreeEnergyInput"].is_string())
+            {
+              throw std::runtime_error(
+                  "[Input reader]: 'dcTST' 'FreeEnergyInput' must be the path of the free-energy driver's JSON output\n");
+            }
+            s.freeEnergyInput = block["FreeEnergyInput"].get<std::string>();
+          }
+          if (block.contains("BarrierProbability"))
+          {
+            double p{0.0};
+            readNumber("BarrierProbability", p);
+            if (p <= 0.0)
+            {
+              throw std::runtime_error("[Input reader]: 'dcTST' 'BarrierProbability' must be positive [1/Angstrom]\n");
+            }
+            s.barrierProbability = p;
+          }
+          readNumber("BarrierProbabilityError", s.barrierProbabilityError);
+          if (s.trajectoryTime <= 0.0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'TrajectoryTime' must be positive\n");
+          }
+          if (s.reinsertionInPlaneProbability < 0.0 || s.reinsertionInPlaneProbability > 1.0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'ReinsertionInPlaneProbability' must be in [0, 1]\n");
+          }
+        }
+        else
+        {
+          DcTSTFreeEnergySettings &s = dctstFreeEnergySettings;
+          readGeometry(s);
+          readUnsigned("NumberOfPilotCycles", s.numberOfPilotCycles);
+          readUnsigned("NumberOfWindowCycles", s.numberOfWindowCycles);
+          readUnsigned("NumberOfWindowEquilibrationCycles", s.numberOfWindowEquilibrationCycles);
+          readUnsigned("SampleEvery", s.sampleEvery);
+          readUnsigned("NumberOfWindows", s.numberOfWindows);
+          readNumber("WindowSpacing", s.windowSpacing);
+          if (block.contains("WindowRange"))
+          {
+            if (!block["WindowRange"].is_array() || block["WindowRange"].size() != 2)
+            {
+              throw std::runtime_error(
+                  "[Input reader]: 'dcTST' 'WindowRange' must be an array [q_begin, q_end] in Angstrom\n");
+            }
+            s.windowRange = std::pair<double, double>(block["WindowRange"][0].get<double>(),
+                                                      block["WindowRange"][1].get<double>());
+            if (s.windowRange->second <= s.windowRange->first)
+            {
+              throw std::runtime_error("[Input reader]: 'dcTST' 'WindowRange' must have q_end > q_begin\n");
+            }
+          }
+          if (block.contains("WindowCenters"))
+          {
+            if (!block["WindowCenters"].is_array())
+            {
+              throw std::runtime_error("[Input reader]: 'dcTST' 'WindowCenters' must be an array of numbers [A]\n");
+            }
+            for (const auto &item : block["WindowCenters"])
+            {
+              if (!item.is_number())
+              {
+                throw std::runtime_error("[Input reader]: 'dcTST' 'WindowCenters' must be an array of numbers [A]\n");
+              }
+              s.windowCenters.push_back(item.get<double>());
+            }
+          }
+          readNumber("WindowStiffness", s.windowStiffness);
+          readBoolean("FlatteningBias", s.flatteningBias);
+          readBoolean("MirrorSymmetry", s.mirrorSymmetry);
+          readNumber("FineBinWidth", s.fineBinWidth);
+          readUnsigned("NumberOfFreeEnergyBins", s.numberOfFreeEnergyBins);
+          readNumber("BarrierFitRange", s.barrierFitRange);
+          readNumber("WhamTolerance", s.whamTolerance);
+          readUnsigned("WhamMaximumIterations", s.whamMaximumIterations);
+          readBoolean("WriteWindowHistograms", s.writeWindowHistograms);
+          readNumber("MaximumTranslationTagged", s.maximumTranslationTagged);
+          readNumber("ReinsertionTaggedProbability", s.reinsertionTaggedProbability);
+          readNumber("TaggedMoveFraction", s.taggedMoveFraction);
+          if (s.taggedMoveFraction < 0.0 || s.taggedMoveFraction > 1.0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'TaggedMoveFraction' must be in [0, 1]\n");
+          }
+          if (s.sampleEvery == 0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'SampleEvery' must be positive\n");
+          }
+          if (s.windowSpacing <= 0.0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'WindowSpacing' must be positive [Angstrom]\n");
+          }
+          if (s.windowStiffness < 0.0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'WindowStiffness' must be non-negative [1/Angstrom^2]\n");
+          }
+          if (s.fineBinWidth <= 0.0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'FineBinWidth' must be positive [Angstrom]\n");
+          }
+          if (s.numberOfFreeEnergyBins == 0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'NumberOfFreeEnergyBins' must be positive\n");
+          }
+          if (s.barrierFitRange <= 0.0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'BarrierFitRange' must be positive [Angstrom]\n");
+          }
+          if (s.reinsertionTaggedProbability < 0.0 || s.reinsertionTaggedProbability > 1.0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'ReinsertionTaggedProbability' must be in [0, 1]\n");
+          }
+          if (s.mirrorSymmetry && s.cageOccupancies.has_value())
+          {
+            throw std::runtime_error(
+                "[Input reader]: 'dcTST' 'MirrorSymmetry' is not available with 'CageOccupancies'\n");
+          }
+        }
+      }
+
       if (value.contains("ComputeMSD") && value["ComputeMSD"].is_boolean())
       {
         if (value["ComputeMSD"].get<bool>())
@@ -4268,6 +4662,113 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
   }
 
+  // dcTST: a single declared system (replicated into independent replicas by the driver), a rigid
+  // framework (the trajectories propagate the molecules only), a tagged component with molecules, and a
+  // rigid or fully flexible tagged molecule (the reaction-bead velocity of a semi-flexible molecule is not
+  // implemented)
+  if (simulationType == SimulationType::DynamicallyCorrectedTST ||
+      simulationType == SimulationType::DynamicallyCorrectedTSTFreeEnergy)
+  {
+    const bool freeEnergyDriver = simulationType == SimulationType::DynamicallyCorrectedTSTFreeEnergy;
+    const char *driverName = freeEnergyDriver ? "DynamicallyCorrectedTSTFreeEnergy" : "DynamicallyCorrectedTST";
+    const std::string &taggedName =
+        freeEnergyDriver ? dctstFreeEnergySettings.taggedComponentName : dctstSettings.taggedComponentName;
+    const std::size_t taggedComponent =
+        freeEnergyDriver ? dctstFreeEnergySettings.taggedComponent : dctstSettings.taggedComponent;
+    const std::optional<std::pair<std::size_t, std::size_t>> &cageOccupancies =
+        freeEnergyDriver ? dctstFreeEnergySettings.cageOccupancies : dctstSettings.cageOccupancies;
+
+    if (systems.size() != 1)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: '{}' requires exactly one declared system (it is "
+                      "replicated internally into independent replicas), {} systems were declared\n",
+                      driverName, systems.size()));
+    }
+    const System& system = systems.front();
+    if (taggedName.empty())
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: '{}' requires a 'dcTST' object in the system block\n", driverName));
+    }
+    if (system.framework.has_value() && system.framework->hasMobileAtoms())
+    {
+      throw std::runtime_error(std::format("[Input reader]: '{}' supports rigid frameworks only\n", driverName));
+    }
+    const Component& tagged = system.components[taggedComponent];
+    if (tagged.isSemiFlexible())
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: '{}': the tagged component '{}' is semi-flexible, which "
+                      "is not supported (rigid or fully flexible molecules only)\n",
+                      driverName, tagged.name));
+    }
+    if (system.numberOfMoleculesPerComponent[taggedComponent] == 0)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: '{}': the tagged component '{}' has no molecules; set "
+                      "'CreateNumberOfMolecules'\n",
+                      driverName, tagged.name));
+    }
+    if (tagged.startingBead >= tagged.atoms.size())
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: '{}': 'StartingBead' {} of the tagged component '{}' is "
+                      "out of range\n",
+                      driverName, tagged.startingBead, tagged.name));
+    }
+    for (const Component& component : system.components)
+    {
+      if (component.mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) > 0.0 ||
+          component.mc_moves_probabilities.getProbability(Move::Types::Swap) > 0.0)
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: '{}' is a fixed-loading (NVT) method; remove the swap "
+                        "moves of component '{}'\n",
+                        driverName, component.name));
+      }
+    }
+    if (system.forceField.computePolarization)
+    {
+      throw std::runtime_error(std::format("[Input reader]: '{}' does not support polarization\n", driverName));
+    }
+    if (!freeEnergyDriver && dctstSettings.trajectoryTermination == DcTSTSettings::TrajectoryTermination::Event &&
+        !system.framework.has_value())
+    {
+      throw std::runtime_error(
+          "[Input reader]: 'DynamicallyCorrectedTST' 'TrajectoryTermination': \"Event\" requires a framework (the "
+          "cages are the unit cells of its lattice)\n");
+    }
+    if (cageOccupancies.has_value())
+    {
+      if (!system.framework.has_value())
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: '{}' 'CageOccupancies' requires a framework (the cages are the "
+                        "unit cells of its lattice)\n",
+                        driverName));
+      }
+      const std::size_t totalMolecules = system.numberOfMolecules();
+      if (cageOccupancies->first + cageOccupancies->second > totalMolecules)
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: '{}' 'CageOccupancies' [{}, {}] requires at least {} "
+                        "molecules, the system has {}\n",
+                        driverName, cageOccupancies->first, cageOccupancies->second,
+                        cageOccupancies->first + cageOccupancies->second, totalMolecules));
+      }
+    }
+    if (!freeEnergyDriver && dctstSettings.freeEnergyInput.has_value() && dctstSettings.barrierProbability.has_value())
+    {
+      throw std::runtime_error(
+          "[Input reader]: 'DynamicallyCorrectedTST': give either 'FreeEnergyInput' or 'BarrierProbability', not both\n");
+    }
+
+    // the replicas are the parallelism: each replica runs on its own thread with the serial (grid-based)
+    // energy routines, the shared thread pool is not used
+    threadingType = ThreadPool::ThreadingType::Serial;
+  }
+
   // Spatial-decomposition MD: the force engine covers molecules in a periodic box (rigid, semi-flexible and
   // flexible; Lennard-Jones + Coulomb; bonded terms) in the NVE, NVT and NPT ensembles. Anything outside that
   // is refused here, naming the feature, rather than silently falling back to the O(N^2) code.
@@ -4719,7 +5220,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "MaximumReactionLambdaChangeProducts",
     "LambdaSwitchPoint",
     "Reactions",
-    "ThermochemicalDatabase"};
+    "ThermochemicalDatabase",
+    "dcTST"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::componentOptions = {
     "Name",

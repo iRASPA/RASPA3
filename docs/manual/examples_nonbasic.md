@@ -19,6 +19,8 @@
 14. [Molecular Dynamics: μPTPR methane in a box](#Example_nonbasic_14)
 15. [Monte Carlo: adsorption of dimethylcyclohexane isomers in zeolite Beta (ring-closure CBMC)](#Example_nonbasic_15)
 16. [Thermodynamic integration: 1,2-dimethylcyclohexane in zeolite Beta](#Example_nonbasic_16)
+17. [dcTST free-energy profile: methane in LTA (ITQ-29)](#Example_nonbasic_17)
+18. [dcTST: self- and collective diffusion of methane in LTA (ITQ-29)](#Example_nonbasic_18)
 
 
 
@@ -1308,6 +1310,258 @@ Run from `examples/non_basic/16_ti_fixed_lambda_dimethylcyclohexane_in_beta`:
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
       "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
+```
+
+#### dcTST free-energy profile: methane in LTA (ITQ-29)<a name="Example_nonbasic_17"></a>
+
+Dynamically corrected transition state theory (dcTST) for methane hopping
+between the α-cages of all-silica LTA (ITQ-29, Pm-3m setting,
+\f$a = 11.8671\f$ Å) at 300 K and six molecules per cage (162 molecules in
+the 3×3×3 box) is a calculation in two runs: the free-energy profile along
+the hop (this example) and the transmission coefficients that correct the
+transition-state rate (example 18, which reads this example's output). The
+8-ring windows between the cages lie on the planes through the face centers
+of the unit cell; the barrier plane \f$x = 0\f$ (fractional `[0, 0.5, 0.5]`
+of the 3×3×3 box with normal `[1, 0, 0]`) therefore contains 9 windows, and
+one hop covers the lattice distance \f$\lambda = a\f$. The sodalite cages
+(at the origin) and the double-4-rings (at the edge centers) are reachable
+by Monte Carlo insertion but not dynamically, so they are blocked.
+
+This run (`"SimulationType" : "DynamicallyCorrectedTSTFreeEnergy"`) samples
+the free-energy profile
+\f$\beta F(q)\f$ of the methane position along the normal: a short
+unconstrained *pilot* histogram of every methane (converged in the cage
+interior) plus umbrella windows on one tagged molecule, combined by binned
+WHAM/MBAR. LTA is symmetric about the window so `"MirrorSymmetry"` is on
+and the windows cover only \f$q\ge 0\f$. The JSON
+`output/output_300_0.dctst_free_energy.json` carries \f$P(q^*)\f$ at the
+dividing plane (a parabolic fit of the barrier top, not a bin average) and
+the joint occupancy distribution
+`dctst/cage_occupancy_distribution_300_0.txt` (at this loading
+\f$P(6,6) \approx 0.19\f$ and the pairs from (4,4) to (8,8) carry most of
+the weight). The fitted and the bin estimate of \f$P(q^*)\f$ should agree
+within the block error, and the minimum window overlap should stay above
+about 0.3 (add windows or lower `"WindowSpacing"` otherwise). The
+reweighting can be redone from `dctst/window_histograms_300_0.txt` with the
+dependency-free script `scripts/check_wham.py` (it uses `pymbar` as a
+second reference when installed); passing `--fit-range 0.2`, `0.3`, `0.4`
+checks that \f$P(q^*)\f$ is insensitive to the fit range (at infinite
+dilution the top of the LTA window barrier is parabolic to about 0.5% out
+to 0.3 Å, with \f$\beta F'' \approx -12\f$ Å⁻²). At infinite dilution the
+barrier is \f$\beta\Delta F^* = 9.76 \pm 0.03\f$ for this force field; at
+six molecules per cage expect a window barrier noticeably lower than that
+(the loading pushes molecules toward the windows). The profile is written
+to `dctst/free_energy_profile_300_0.txt`, and the summary already gives
+\f$k^{TST} = \tfrac12\langle|\dot q|\rangle P(q^*)\f$ with
+\f$\langle|\dot q|\rangle = \sqrt{2k_BT/\pi m} = 3.15\f$ Å/ps — the
+transition-state estimate of the hopping rate before the dynamical
+correction of example 18.
+
+The vacancy-mediated correlations that make \f$D_C\f$ exceed \f$D_S\f$ in a
+cage system are reached with the occupancy-resolved mode: adding
+`"CageOccupancies" : [6, 6]` to the `dcTST` block conditions the
+free-energy profile over cage A on six molecules in the cage the tagged
+molecule hops from (itself included) and six in the cage it hops to
+(`dctst/conditioned_free_energy_profile_300_0.txt`, and the conditioned
+\f$P(q^*|6,6)\f$ in the JSON; `"MirrorSymmetry"` must then be off since the
+two cages are no longer equivalent). The same key must be given to the
+transmission run that reads the JSON (example 18). The constrained Monte
+Carlo of a single occupancy pair costs the same as the unconstrained run.
+
+Run from `examples/non_basic/17_dctst_free_energy_methane_in_lta`:
+
+```json
+{
+  "SimulationType" : "DynamicallyCorrectedTSTFreeEnergy",
+  "NumberOfInitializationCycles" : 2000,
+  "NumberOfBlocks" : 5,
+  "NumberOfThreads" : 4,
+  "PrintEvery" : 500,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "ITQ-29",
+      "NumberOfUnitCells" : [3, 3, 3],
+      "ExternalTemperature" : 300.0,
+      "ChargeMethod" : "None",
+      "TimeStep" : 0.0005,
+
+      "dcTST" : {
+        "TaggedComponent" : "methane",
+        "BarrierPosition" : [0.0, 0.5, 0.5],
+        "BarrierNormal" : [1.0, 0.0, 0.0],
+        "LatticeDistance" : 11.8671,
+        "CageCenter" : [0.5, 0.5, 0.5],
+
+        "NumberOfPilotCycles" : 10000,
+        "NumberOfWindowEquilibrationCycles" : 400,
+        "NumberOfWindowCycles" : 4000,
+        "WindowSpacing" : 0.5,
+        "FlatteningBias" : true,
+        "MirrorSymmetry" : true,
+        "NumberOfFreeEnergyBins" : 100,
+        "FineBinWidth" : 0.01,
+        "BarrierFitRange" : 0.3,
+        "MaximumTranslationTagged" : 0.5,
+        "ReinsertionTaggedProbability" : 0.3
+      }
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "methane",
+      "StartingBead" : 0,
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "BlockingPockets" : [
+           [0.0, 0.0, 0.0, 4.0],
+           [0.5, 0.0, 0.0, 1.0],
+           [0.0, 0.5, 0.0, 1.0],
+           [0.0, 0.0, 0.5, 1.0]
+         ],
+      "CreateNumberOfMolecules" : 162
+    }
+  ]
+}
+```
+
+#### dcTST: self- and collective diffusion of methane in LTA (ITQ-29)<a name="Example_nonbasic_18"></a>
+
+The transmission half of the dcTST calculation of example 17: the same
+system (methane in ITQ-29 at 300 K, six molecules per cage, same `dcTST`
+geometry keys and blocking pockets), now with
+`"SimulationType" : "DynamicallyCorrectedTST"`. The run reads the
+free-energy JSON of example 17 as
+`"FreeEnergyInput" : "../17_dctst_free_energy_methane_in_lta/output/output_300_0.dctst_free_energy.json"`
+(run example 17 first; the input reader checks that the tagged component,
+lattice distance, barrier normal and temperature agree) for \f$P(q^*)\f$,
+holds molecule 0 on the barrier plane with in-plane moves and launches,
+every 10 cycles, a pair of forward and time-reversed trajectories of 2 ps
+(at this loading the collisions decorrelate a crossing within about a
+picosecond) from which the self transmission function \f$\kappa_S(t)\f$ and
+the collective one \f$\kappa_C(t)\f$ (the net cage displacement of all
+molecules) are accumulated, resolved up to two cage shells around the hop.
+The trajectories are plain NVE (`"TrajectoryThermostat" : "None"`): at six
+molecules per cage the other molecules thermalize a molecule that has
+crossed the window, so no stand-in for the lattice vibrations is needed
+(at low loading in a rigid framework that is not the case; there an
+Andersen or Langevin bath should be switched on, and the long-jump
+fraction in the output tells how often a molecule ran on to a second
+window). Four independent replicas run on four threads and are averaged;
+with 162 molecules and the framework atoms summed explicitly a 2 ps
+trajectory pair takes about 20 s wall time with four replicas running, so
+the 100 pairs per replica take roughly 35 minutes. Expected results: the
+measured \f$\langle|\dot q|\rangle\f$ of the molecules on the plane close
+to \f$\sqrt{2k_BT/\pi m} = 3.15\f$ Å/ps, a self transmission coefficient
+\f$\kappa_S\f$ well below one because of collisions in the cages, and a
+collective \f$\kappa_C\f$ that differs from \f$\kappa_S\f$ through the
+correlated displacements of the neighboring molecules (the per-shell
+columns show where the correlation comes from). The transmission functions
+are written to `dctst/transmission_function_300_0.txt`; the summary
+combines \f$\kappa\f$ with the imported \f$P(q^*)\f$ into
+\f$k_{A\to B}\f$, \f$D_S\f$ and \f$D_C\f$.
+
+The vacancy-mediated correlations that make \f$D_C\f$ exceed \f$D_S\f$ in a
+cage system act on the time scale of the hops, far beyond a 2 ps trajectory.
+They are reached with the occupancy-resolved mode: adding
+`"CageOccupancies" : [6, 6]` to the `dcTST` block of *both* runs (the
+free-energy run of example 17 and this one) holds the cage the tagged
+molecule hops from at six molecules (itself included) and the cage it hops
+to at six during the constrained Monte Carlo (moves of other molecules that
+would change either occupancy are rejected). The transmission run then
+reads the conditioned \f$P(q^*|6,6)\f$ from the free-energy JSON and gives
+\f$k(6\to6) = \kappa(6,6)\,k^{TST}(6,6)\f$; a series of such pairs of runs
+over the pairs with appreciable \f$P(n_A,n_B)\f$ — (5,6), (6,5), (6,7),
+(7,6), … — gives the occupancy-dependent rates whose weighted sum recovers
+the unconditioned rate and which feed a lattice model of \f$D_S\f$ and
+\f$D_C\f$.
+
+The same example can be run with event-terminated trajectories, which
+follow each hop until the next local axial hop in the column of cages around
+the window instead of for a fixed time: set
+`"TrajectoryTermination" : "Event"`, raise `"TrajectoryTime"` to `300.0`
+(now only a cap; at this loading and temperature the first event after
+commitment arrives after a few tens of picoseconds on average, and nearly
+every trajectory ends on an event long before the cap), and set
+`"SampleTrajectoryEvery"` to `200` so that the stored transmission functions
+stay at 3000 points. Run once with `"TerminationEvents" : 1` and once with
+`2` as a convergence check: the back-correlation factor
+\f$f = \kappa_S^{\mathrm{event}}/\kappa_S^{\mathrm{committed}}\f$ and the
+collective excess
+\f$\epsilon = \kappa_C^{\mathrm{event}}/\kappa_S^{\mathrm{committed}} - 1\f$
+should agree within their errors between the two, and the channel table
+shows which hops (the tagged molecule's own back-hop, the other molecules'
+hops into or out of A and B, or the hops at the outer windows) end the
+trajectories. With a mean termination time of ~30 ps a trajectory costs
+about 15 times a 2 ps trajectory, so for the same number of pairs allow a
+few hours instead of 35 minutes (reduce `"NumberOfTransmissionCycles"` or
+the number of pairs accordingly); the fixed-time run is still the one to use
+for \f$\kappa(t)\f$ itself. Event mode combines with `"CageOccupancies"`.
+
+Run from `examples/non_basic/18_dctst_methane_in_lta` after example 17 has
+finished:
+
+```json
+{
+  "SimulationType" : "DynamicallyCorrectedTST",
+  "NumberOfInitializationCycles" : 2000,
+  "NumberOfBlocks" : 5,
+  "NumberOfThreads" : 4,
+  "PrintEvery" : 500,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "ITQ-29",
+      "NumberOfUnitCells" : [3, 3, 3],
+      "ExternalTemperature" : 300.0,
+      "ChargeMethod" : "None",
+      "TimeStep" : 0.0005,
+
+      "dcTST" : {
+        "TaggedComponent" : "methane",
+        "BarrierPosition" : [0.0, 0.5, 0.5],
+        "BarrierNormal" : [1.0, 0.0, 0.0],
+        "LatticeDistance" : 11.8671,
+        "CageCenter" : [0.5, 0.5, 0.5],
+
+        "FreeEnergyInput" : "../17_dctst_free_energy_methane_in_lta/output/output_300_0.dctst_free_energy.json",
+
+        "NumberOfConstrainedEquilibrationCycles" : 500,
+        "NumberOfTransmissionCycles" : 1000,
+        "LaunchTrajectoryEvery" : 10,
+        "TrajectoriesPerConfiguration" : 1,
+        "TrajectoryTime" : 2.0,
+        "SampleTrajectoryEvery" : 10,
+        "MaximumCollectiveShell" : 2,
+        "PlateauWindow" : [1.0, 2.0],
+
+        "TrajectoryThermostat" : "None",
+
+        "MaximumTranslationInPlane" : 1.0,
+        "ReinsertionInPlaneProbability" : 0.5
+      }
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "methane",
+      "StartingBead" : 0,
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "BlockingPockets" : [
+           [0.0, 0.0, 0.0, 4.0],
+           [0.5, 0.0, 0.0, 1.0],
+           [0.0, 0.5, 0.0, 1.0],
+           [0.0, 0.0, 0.5, 1.0]
+         ],
+      "CreateNumberOfMolecules" : 162
     }
   ]
 }

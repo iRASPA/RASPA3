@@ -719,6 +719,311 @@ reported separately at the end of the simulation.
     per-energy-evaluation thread pool stays serial and the machine is not
     oversubscribed.
 
+-   `"SimulationType" : "DynamicallyCorrectedTSTFreeEnergy"`\
+    The free-energy half of dynamically corrected transition state theory
+    (dcTST; Ruiz-Montero, Frenkel and Brey; Dubbeldam et al.): the profile
+    \f$\beta F(q)\f$ of a tagged component along the barrier normal and the
+    probability density \f$P(q^*)\f$ at the dividing plane, from which the
+    transition-state rate follows as
+    \f$k^{TST} = \tfrac12\langle|\dot q|\rangle\,P(q^*)\f$ with the thermal
+    speed \f$\langle|\dot q|\rangle\f$ of the reaction bead along the normal
+    (\f$\sqrt{2k_BT/\pi m}\f$ of the molecular mass for a single bead or the
+    centre of mass; for an off-centre bead of a rigid molecule the rotational
+    contribution is averaged over the sampled orientations). An error
+    \f$\delta\f$ in \f$\beta F(q^*)\f$ is a relative error
+    \f$\delta\f$ in the diffusion coefficient, so the barrier top is sampled
+    by umbrella windows on one tagged molecule and combined with the unbiased
+    histogram of all molecules (the *pilot*) by binned multistate reweighting
+    (WHAM, equivalent to MBAR for a bias that depends on \f$q\f$ only). The
+    transmission coefficients and the dynamically corrected rates
+    \f$k_{A\to B}=\kappa\,k^{TST}\f$,
+    \f$D_S=\kappa_S k^{TST}\lambda^2\f$, \f$D_C=\kappa_C k^{TST}\lambda^2\f$
+    are computed by the companion driver `"DynamicallyCorrectedTST"`, which
+    reads this run's JSON through `"FreeEnergyInput"`.
+
+    The reaction coordinate is the position of the reaction bead of a molecule
+    (the component's `"StartingBead"`; for chains the second bead is usually
+    the best choice) projected on the barrier normal; the barrier is a plane
+    through `"BarrierPosition"` (fractional coordinates of the simulation box)
+    with Cartesian normal `"BarrierNormal"`. After
+    `"NumberOfInitializationCycles"` of unconstrained Monte Carlo the run has
+    two stages: (1) `"NumberOfPilotCycles"` of unconstrained Monte Carlo, during
+    which the histogram of \f$q\f$ of every molecule of the tagged component
+    (converged in the cage interior; the unbiased reference state of the
+    reweighting) and the joint cage-occupancy distribution \f$P(n_A,n_B)\f$
+    are accumulated; (2) `"NumberOfWindowEquilibrationCycles"` plus
+    `"NumberOfWindowCycles"` of biased Monte Carlo per window, the windows
+    distributed over the replicas (threads; with more replicas than window
+    centres the centres are repeated so that every replica samples, and the
+    repeats enter the reweighting as separate states). The bias of window \f$k\f$ is
+    \f$w_k(q)=\tfrac12\kappa(q-q_k)^2+w_0(q)\f$, tabulated piecewise-constant
+    per fine bin so that the reweighting is exact; \f$w_0\f$ is an optional
+    flattening bias from the pilot (`"FlatteningBias"`, default true). Window
+    centres are placed automatically over one period (`"WindowSpacing"` Å,
+    default `0.5`, or `"NumberOfWindows"`), or given explicitly
+    (`"WindowCenters"`, `"WindowRange"`). `"WindowStiffness"` is
+    \f$\beta\kappa\f$ in Å⁻² (default \f$4/\mathrm{spacing}^2\f$, so the
+    biased standard deviation is half the spacing); a window only holds the
+    barrier top when \f$\beta\kappa\f$ exceeds \f$|\beta F''(q^*)|\f$ (about
+    12 Å⁻² for the LTA window), so the spacing should not be much larger
+    than 0.5 Å for a sharp barrier — the summary's window table (`<x>`
+    far from the centre) and the overlap tell. `"MirrorSymmetry"` folds
+    \f$q\to -q\f$ (a cage symmetric about the window) so that only the
+    non-negative side is windowed. The reweighting lives on a fine grid
+    (`"FineBinWidth"`, default `0.01` Å); \f$P(q^*)\f$ is the value of a
+    parabola fitted to \f$\ln P\f$ over `"BarrierFitRange"` Å about the plane
+    (default `0.3` Å), not a bin average. The tagged molecule is moved by a
+    biased translation (`"MaximumTranslationTagged"`) and a biased CBMC
+    reinsertion within the window support
+    (`"ReinsertionTaggedProbability"`); a fixed fraction
+    `"TaggedMoveFraction"` (default `0.5`) of the window-stage steps selects
+    the tagged molecule, the rest a random molecule, so that the window
+    histogram does not starve at high loading.
+
+    Geometry keys (`"TaggedComponent"`, `"BarrierPosition"`,
+    `"BarrierNormal"`, `"LatticeDistance"`, `"CageCenter"`,
+    `"CageOccupancies"`, `"NumberOfReplicas"`) are shared with the
+    transmission driver so that the `"dcTST"` block can be copied between
+    the two inputs. Exactly one system is declared; it is replicated into
+    `"NumberOfReplicas"` independent replicas (default `"NumberOfThreads"`).
+    The framework must be rigid and the tagged component rigid or fully
+    flexible; use blocking pockets for cages that are inaccessible
+    dynamically but reachable by Monte Carlo insertion. Output:
+    `output/output_{T}_{P}.dctst_free_energy.txt` (`.json`) with
+    \f$P(q^*)\f$ and \f$k^{TST}\f$ (the JSON is the `"FreeEnergyInput"` of
+    the transmission driver), per-replica logs, and the gnuplot-friendly
+    profiles `dctst/free_energy_profile_{T}_{P}.txt` (reporting bins) and
+    `dctst/free_energy_profile_fine_{T}_{P}.txt`. The occupancy
+    distribution is written to `dctst/cage_occupancy_distribution_{T}_{P}.txt`.
+    The summary lists per window the mean and width of the sampled
+    coordinate, the mean bias \f$\langle w_k\rangle\f$, the histogram
+    overlap with the next window and the reweighting free energy
+    \f$g_k\f$, the full overlap matrix of all states (pilot included), the
+    rms deviation between the pilot histogram and the reweighted profile
+    where the pilot is well sampled (a consistency check of the windows and
+    the bias table), the bin estimate of \f$P(q^*)\f$ next to the fitted one,
+    the curvature \f$\beta F''(q^*)\f$ (negative at a barrier) and the block
+    error from half the blocks. `"WriteWindowHistograms"` (default true)
+    writes `dctst/window_histograms_{T}_{P}.txt` with the fine histograms and
+    bias tables of all states, from which the reweighting can be redone
+    independently (`examples/non_basic/17_dctst_free_energy_methane_in_lta/scripts/check_wham.py`).
+    Binary restart files are not supported.
+
+-   `"SimulationType" : "DynamicallyCorrectedTST"`\
+    The transmission half of dcTST: the self and collective transmission
+    coefficients \f$\kappa_S\f$ and \f$\kappa_C\f$ from short trajectories
+    started on the dividing surface. Combined with the probability density
+    \f$P(q^*)\f$ from the free-energy driver (its JSON through
+    `"FreeEnergyInput"`, or `"BarrierProbability"` and
+    `"BarrierProbabilityError"` given directly, in Å⁻¹) the hopping rate
+    to one neighboring cage and the diffusion coefficients follow as
+    \f$k_{A\to B} = \kappa_S \, k^{TST}\f$ with
+    \f$k^{TST} = \tfrac{1}{2}\langle|\dot q|\rangle \, P(q^*)\f$
+    (now with the *measured* mean speed of the reaction bead at the plane)
+    and \f$D_S = \kappa_S k^{TST} \lambda^2\f$,
+    \f$D_C = \kappa_C k^{TST} \lambda^2\f$ (a lattice of equivalent cages
+    with one window per lattice direction; \f$\lambda\f$ is the cage-to-cage
+    distance). \f$\kappa_C\f$ is accumulated from the net cage displacement
+    of *all* molecules during the same trajectories, resolved per shell of
+    cages around the two cages of the hop and per component. Without
+    `"FreeEnergyInput"` or `"BarrierProbability"` only the transmission
+    coefficients are reported.
+
+    The reaction coordinate and the barrier geometry are the same as for
+    the free-energy driver (copy the `"dcTST"` geometry keys). Cages are
+    indexed by \f$\lfloor q/\lambda \rfloor\f$ of the unwrapped reaction
+    coordinate. After `"NumberOfInitializationCycles"` of unconstrained
+    Monte Carlo the run has `"NumberOfConstrainedEquilibrationCycles"`
+    and `"NumberOfTransmissionCycles"` of constrained Monte Carlo in which
+    molecule 0 of the tagged component has its reaction bead held on the
+    barrier plane (in-plane translation and in-plane CBMC reinsertion moves
+    with `"MaximumTranslationInPlane"` and `"ReinsertionInPlaneProbability"`)
+    while all other molecules are sampled with their ordinary moves. Every
+    `"LaunchTrajectoryEvery"` production cycles, `"TrajectoriesPerConfiguration"`
+    pairs of trajectories of `"TrajectoryTime"` ps (the system
+    `"TimeStep"`) are started from the current configuration with
+    Maxwell–Boltzmann velocities, forward and time-reversed, and the
+    transmission functions \f$\kappa_S(t)\f$ and \f$\kappa_C(t)\f$ are
+    accumulated every `"SampleTrajectoryEvery"` steps; collective
+    contributions are resolved up to `"MaximumCollectiveShell"` cages from
+    the hop. The plateau values are averaged over `"PlateauWindow" : [begin,
+    end]` (ps; default the second half of the trajectory). All keys live in
+    a `"dcTST"` object of the system block; `"TaggedComponent"` (a component
+    name) and `"LatticeDistance"` (Å) are required. `"CageCenter" : [fx, fy,
+    fz]` gives the centre of a cage in fractional coordinates of the
+    framework *unit cell* (for LTA with the sodalite cage at the origin
+    `[0.5, 0.5, 0.5]`); it anchors the cage lattice of the occupancy-resolved
+    and event-terminated modes and must lie half a lattice distance from the
+    barrier plane. Without it the lattice is anchored at `"BarrierPosition"`
+    shifted by \f$\lambda/2\f$, which is only a cage centre when that
+    *supercell* fraction happens to coincide with one (for LTA: an odd number
+    of unit cells in the plane); the summary prints the unit-cell fractional
+    centre actually used, which should be checked.
+
+    In a rigid framework at low loading a molecule that crosses the window
+    keeps its excess energy: nothing thermalizes it in the next cage, so it
+    runs on to a second window or bounces back through the first one and
+    \f$\kappa(t)\f$ has no plateau (Kramers' energy-diffusion limit; the
+    original RASPA2 implementation hid this by terminating the trajectory at
+    the next cage). A stochastic bath standing in for the lattice vibrations
+    is therefore applied to all molecules during the trajectories:
+    `"TrajectoryThermostat" : "Andersen"` (default; every molecule gets a
+    fresh Maxwell–Boltzmann velocity with probability `"BathRate"`·Δt per
+    step, the dynamics between collisions is exactly Hamiltonian),
+    `"Langevin"` (Ornstein–Uhlenbeck friction and noise with friction
+    `"BathRate"` on the translational and body-frame angular velocities), or
+    `"None"` (plain NVE; the right choice at loadings where the other
+    molecules themselves thermalize a molecule within the cage, as in the
+    methane-in-LTA example at six molecules per cage, and the diagnostic mode
+    at low loading). `"BathRate"` is in ps⁻¹ (default `1.0`);
+    it should lie between the time scale of the recrossing dynamics in the
+    window (~0.1–0.3 ps, so the barrier dynamics is unperturbed) and the cage
+    residence time \f$1/k\f$, a range of several decades over which
+    \f$\kappa\f$ is insensitive to it — verify this with two or three values.
+    Two diagnostics quantify the problem for any run: the *long-jump
+    fraction* (trajectories in which the tagged molecule left the pair of
+    cages A/B, i.e. reached a second window; it should be ≈0 for a
+    well-defined plateau) and the *committed* estimator of \f$\kappa_S\f$,
+    in which the side-of-the-plane value is frozen once \f$|q|\f$ reaches
+    `"CommitDistance"` (Å; default \f$\lambda/2\f$, the cage centre) — the
+    RASPA2 convention — together with its *committed fraction*. The
+    net-cage-count, two-state and committed values of \f$\kappa_S\f$ agree
+    when the molecules are thermalized in the cage.
+
+    Exactly one system is declared; it is replicated into `"NumberOfReplicas"`
+    independent replicas (default `"NumberOfThreads"`), each with its own
+    thread and random-number stream, and the results are averaged over
+    replicas and blocks with 2σ errors. Use blocking pockets for cages that
+    are inaccessible dynamically but reachable by Monte Carlo insertion (the
+    sodalite cages of LTA, for instance); the in-plane moves respect them.
+    The framework must be rigid and the tagged component rigid or fully
+    flexible. Output: `output/output_{T}_{P}.dctst.txt` (`.json`) with the
+    combined results, `output/output_{T}_{P}.dctst.r{k}.txt` per replica, and
+    the gnuplot-friendly `dctst/transmission_function_{T}_{P}.txt`
+    (\f$\kappa_S(t)\f$, its two-state Bennett–Chandler and committed
+    variants, and \f$\kappa_C(t)\f$ per shell and per component). The energy
+    drift of the trajectories (NVE only) and \f$\langle|\dot q|\rangle\f$
+    (compare with \f$\sqrt{2k_BT/\pi m}\f$) are reported as checks. Binary
+    restart files are not supported by this driver.
+
+    *Occupancy-resolved mode* — `"CageOccupancies" : [n_A, n_B]`. In a cage
+    system the correlations that distinguish \f$D_C\f$ from \f$D_S\f$ act on
+    the time scale of the hops themselves (a hop leaves a vacancy that is
+    refilled much later), not within a picosecond trajectory, so the
+    collective transmission function above only captures the fast, concerted
+    part. The occupancy-resolved mode measures instead how the hopping rate
+    depends on the local environment: the two cages that share the window
+    of the tagged molecule are held at fixed occupancies, \f$n_A\f$
+    molecules in the cage it hops from (itself included) and \f$n_B\f$ in
+    the cage it hops to (all components counted). Cages are the unit cells
+    of the framework lattice, centred half a lattice distance behind the
+    barrier plane (so for LTA the \f$\alpha\f$-cages, with the plane through
+    the 8-rings). In the transmission stage every move of another molecule
+    that would change either occupancy is rejected (a hard-wall constraint,
+    which preserves detailed balance), the in-plane moves of the tagged
+    molecule may carry it to any window of the plane whose two cages have
+    the requested occupancies, and the starting configuration is prepared by
+    moving molecules into or out of A and B. The result is the conditioned
+    transmission coefficient \f$\kappa(n_A,n_B)\f$. The matching
+    free-energy run (the same `"CageOccupancies"` in
+    `"DynamicallyCorrectedTSTFreeEnergy"`) accumulates the profile of the
+    tagged component over cage A only for the requested occupancies (file
+    `dctst/conditioned_free_energy_profile_{T}_{P}.txt`, \f$q\f$ from the
+    centre of A at 0, the window towards B at \f$\lambda/2\f$), which
+    gives \f$P(q^*|n_A,n_B)\f$ and hence
+    \f$k(n_A\!\to\!n_B)=\kappa(n_A,n_B)\,k^{TST}(n_A,n_B)\f$ when that
+    JSON is read as `"FreeEnergyInput"`. The free-energy driver also records
+    the joint distribution \f$P(n_A,n_B)\f$ of the occupancies seen by a
+    molecule and its neighbour across the window
+    (`dctst/cage_occupancy_distribution_{T}_{P}.txt`, and \f$\langle
+    n_A\rangle\f$, \f$\langle n_B\rangle\f$ in the summary); it is the weight
+    with which the occupancy-resolved rates of a series of runs are
+    recombined, e.g. \f$\langle k\rangle=\sum P(n_A,n_B)\,k(n_A\!\to\!n_B)\f$
+    recovers the unconditioned rate, and the full set
+    \f$\{k(n_A\!\to\!n_B)\}\f$ is the input of a lattice (master-equation or
+    kinetic Monte Carlo) model that yields \f$D_S\f$ and \f$D_C\f$ including
+    the vacancy-mediated correlations. The D values printed in this mode are
+    those of a hypothetical lattice in which every window had the requested
+    occupancies. Requires a framework with at least two unit cells along
+    the barrier normal; \f$n_A \ge 1\f$. `"MirrorSymmetry"` is not available
+    with `"CageOccupancies"`.
+
+    *Event-terminated trajectories* — `"TrajectoryTermination" : "Event"`
+    (default `"FixedTime"`, the behaviour described above) with
+    `"TerminationEvents" : n` (default `1`). Instead of integrating every
+    trajectory for the full `"TrajectoryTime"`, each trajectory is stopped
+    at the \f$n\f$-th *local axial event* after the tagged molecule has
+    committed to a cage (\f$|q| \ge\f$ `"CommitDistance"`); `"TrajectoryTime"`
+    then only caps the trajectory, and capped trajectories are kept with
+    their final values. The events are the hops along the barrier normal in
+    the column of cages \f$A', A, B, B'\f$ around the tagged window (\f$A\f$
+    the cage of departure, \f$B\f$ the cage of arrival, \f$A'\f$ behind
+    \f$A\f$, \f$B'\f$ beyond \f$B\f$): any molecule, the tagged one included,
+    crossing one of the windows \f$W(A'|A)\f$, \f$W(A|B)\f$ or \f$W(B|B')\f$.
+    A hop is registered when the reaction bead is more than half a cell plus
+    the commit distance away from the centre of the cage the molecule was
+    last assigned to (the same hysteresis as the commitment of the tagged
+    molecule, so a bead oscillating in a window does not generate events);
+    lateral hops and hops elsewhere in the lattice are not events. The
+    tagged molecule's own later hops (a back-hop \f$B\to A\f$ or a forward
+    hop \f$B\to B'\f$) are events too. After termination the stored
+    transmission functions hold their final values, so the plateau estimates
+    remain defined. Two additional estimators are formed from the values at
+    termination: \f$\kappa_S^{\mathrm{event}}\f$ (the net cage count of the
+    tagged molecule; the committed estimator is kept alongside) and
+    \f$\kappa_C^{\mathrm{event}}\f$, in which the tagged displacement is
+    augmented by \f$Q_{\mathrm{local}}\f$, the signed number of axial
+    crossings of the other molecules in the column from \f$t=0\f$ (±1 per
+    crossing, positive along the normal). Terminating at the first event
+    makes this a first-order truncation of the collective correlations: the
+    *back-correlation factor* \f$f=\kappa_S^{\mathrm{event}}/
+    \kappa_S^{\mathrm{committed}}\f$ measures the recrossings of the tagged
+    molecule that occur after commitment but before any other local hop, and
+    the *collective excess* \f$\epsilon=\kappa_C^{\mathrm{event}}/
+    \kappa_S^{\mathrm{committed}}-1\f$ the net correlated flux of the other
+    molecules in the column up to that event; raising `"TerminationEvents"`
+    to 2 or 3 includes the next-order terms and should leave \f$f\f$ and
+    \f$\epsilon\f$ unchanged when converged. The summary reports
+    \f$D_S=\kappa_S^{\mathrm{event}}k^{TST}\lambda^2\f$ and
+    \f$D_C=\kappa_C^{\mathrm{event}}k^{TST}\lambda^2\f$ (with the imported
+    \f$P(q^*)\f$, conditioned when `"CageOccupancies"` is set), the
+    fractions of trajectories ended by an event, capped
+    after commitment and never committed, two estimates that remove the
+    bias of the capped trajectories (which carry no event and therefore
+    contribute exactly \f$\kappa_S^{\mathrm{committed}}\f$): the
+    *cap-corrected* \f$f_{\mathrm{corr}}=1+(f-1)/(1-p_{\mathrm{cap}})\f$ and
+    \f$\epsilon_{\mathrm{corr}}=\epsilon/(1-p_{\mathrm{cap}})\f$ with
+    \f$p_{\mathrm{cap}}\f$ the capped plus never-committed fraction, and the
+    *conditioned* \f$\kappa^{\mathrm{event}}_{\mathrm{cond}}\f$, \f$f_{\mathrm{cond}}\f$,
+    \f$\epsilon_{\mathrm{cond}}\f$ evaluated over the event-ended trajectories
+    only (the three agree when \f$p_{\mathrm{cap}}\f$ is a few percent, i.e.
+    for `"TrajectoryTime"` \f$\gtrsim 5\f$ mean termination times), the mean
+    a decomposition \f$\epsilon=(f-1)+\epsilon_{\mathrm{before}}+
+    \epsilon_{\mathrm{after}}\f$ of the collective excess into the tagged
+    back-correlation and the crossings of the other molecules before and
+    after the commitment of the tagged molecule, resolved per channel
+    (number of crossings, mean time, and signed \f$|\dot q|\f$-weighted
+    contribution to \f$\epsilon\f$, which identifies the correlation
+    mechanism: hole refill from \f$A'\f$, forward expulsion into \f$B'\f$,
+    or flux through the tagged window), the mean
+    and maximum termination
+    time, the mean integrated time per trajectory, and a channel table of
+    the terminating and of all post-commitment events (tagged back-hop,
+    tagged forward hop, other \f$A\to B\f$, \f$B\to A\f$, \f$A\to A'\f$,
+    \f$A'\to A\f$, \f$B\to B'\f$, \f$B'\to B\f$) for the forward and the
+    time-reversed trajectory separately. The channels are expressed in the
+    frame of the tagged hop: for the time-reversed member of a pair, which
+    starts into cage \f$A\f$, the roles of \f$A\f$ and \f$B\f$ (and of
+    \f$A'\f$ and \f$B'\f$) and the sign of the normal are mirrored, so
+    "forward" always means the direction of the tagged molecule's own hop.
+    The shell-resolved \f$\kappa_C(t)\f$ above are still accumulated as a
+    diagnostic. Event mode works with and without `"CageOccupancies"` and
+    requires the barrier normal to be along a lattice vector of a framework
+    with at least three unit cells along it and `"LatticeDistance"` equal to
+    the unit-cell length in that direction (with exactly three cells the
+    cages \f$A'\f$ and \f$B'\f$ coincide, and the three windows are all the
+    windows of the column).
+
 ### Simulation duration <a name="simulation-duration"></a>
 
 -   `"NumberOfProductionCycles" : integer`\

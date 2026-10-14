@@ -26,6 +26,8 @@ import energy_status;
 import averages;
 import minimization_options;
 import spatial_decomposition_settings;
+import dctst_settings;
+import dctst_free_energy_settings;
 
 /**
  * \struct InputDataSystem
@@ -91,7 +93,9 @@ export struct InputReader
     ParallelTMMC = 9,  ///< Multithreaded transition-matrix Monte Carlo: windowed macrostate walkers.
     NLDFT = 10,  ///< Classical nonlocal DFT isotherm on the framework energy grid (structurekit solver).
     ParallelTemperingMolecularDynamics = 11,  ///< Multithreaded replica-exchange molecular dynamics (REMD).
-    MolecularDynamicsSpatialDecomposition = 12  ///< MD with the multithreaded spatial-decomposition force engine.
+    MolecularDynamicsSpatialDecomposition = 12,  ///< MD with the multithreaded spatial-decomposition force engine.
+    DynamicallyCorrectedTST = 13,  ///< dcTST: self/collective transmission functions (and D with an external P(q*)).
+    DynamicallyCorrectedTSTFreeEnergy = 14  ///< dcTST: free-energy profile F(q) and P(q*) by umbrella sampling + WHAM.
   };
 
   /**
@@ -207,6 +211,8 @@ export struct InputReader
   ThreadPool::ThreadingType threadingType{ThreadPool::ThreadingType::Serial};  ///< Type of threading to be used.
   MinimizationOptions minimizationOptions{};
   SpatialDecompositionSettings spatialDecompositionSettings{};  ///< Settings of the spatial-decomposition MD engine.
+  DcTSTSettings dctstSettings{};  ///< Settings of the dcTST transmission driver ('dcTST' object of the system block).
+  DcTSTFreeEnergySettings dctstFreeEnergySettings{};  ///< Settings of the dcTST free-energy driver (same object).
 
   ForceField forceField;          ///< Force field used for defining interactions in the simulation.
   std::vector<System> systems{};  ///< Vector of simulation systems configured for the simulation.
