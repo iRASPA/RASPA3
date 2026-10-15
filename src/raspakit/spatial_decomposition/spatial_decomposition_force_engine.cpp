@@ -35,6 +35,8 @@ import bend_bend_potential;
 import bend_torsion_potential;
 import cmap_potential;
 import interactions_ewald;
+import polymer_links;
+import interactions_polymer_link;
 import integrators_update;
 import integrators_compute;
 import thermostat;
@@ -497,6 +499,20 @@ void SpatialDecompositionForceEngine::refreshCutoffs(System& system)
   }
 }
 
+void SpatialDecompositionForceEngine::topologyChanged(System& system)
+{
+  if (!initializedFlag) return;
+  // the atom types (and charges) may have changed: the per-type static sums, the type copies of the cell lists and
+  // of the device lists (refreshed at the next build) and the host copy of the resident state
+  refreshStaticSums(system);
+  cellList.numberOfBuilds = 0;
+  std::ranges::fill(rebuildRequested, 1);
+  residentValid = false;
+  residentHostCurrent = true;
+  if (residentEnabled) devicePairs.setResident(false);
+  system.polymerLinks.derivedValid = false;
+}
+
 RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, bool withVirial)
 {
   if (!initializedFlag) initialize(system);
@@ -553,6 +569,19 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
       strain += unitStrain[u];
       correction += unitCorrection[u];
     }
+  }
+  if (!system.polymerLinks.empty())
+  {
+    // The polymer-bond overlay (bonds formed during the run, their bends / torsions, the pair corrections and the
+    // retyped-term overrides): an addition on top of the complete pair + mesh + bonded gradients, evaluated on the
+    // calling thread after the team's step. The strain derivative and the virial correction of its inter-molecular
+    // terms enter the molecular pressure like those of the pairs.
+    const std::chrono::steady_clock::time_point polymerBegin = std::chrono::steady_clock::now();
+    total += Interactions::computePolymerLinkGradient(
+        system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
+        system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.polymerLinks,
+        withVirial ? &strain : nullptr, withVirial ? &correction : nullptr);
+    timing.polymer += std::chrono::steady_clock::now() - polymerBegin;
   }
   total = finishStep(system, total, strain, correction);
 
@@ -2099,7 +2128,8 @@ SpatialDecompositionForceEngine::Validation SpatialDecompositionForceEngine::val
       system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.spanOfFrameworkAtoms(),
       system.forceField, system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z,
       system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
-      system.numberOfMoleculesPerComponent, system.framework, system.spanOfFrameworkDynamics(), &system.crossLinks);
+      system.numberOfMoleculesPerComponent, system.framework, system.spanOfFrameworkDynamics(), &system.crossLinks,
+      &system.polymerLinks);
   std::vector<double3> referenceGradients;
   referenceGradients.reserve(system.atomDynamics.size());
   for (const AtomDynamics& dynamics : system.spanOfMoleculeDynamics()) referenceGradients.push_back(dynamics.gradient);
@@ -2282,6 +2312,10 @@ std::string SpatialDecompositionForceEngine::writeTimings() const
   else
   {
     result += std::format("    bonded + exclusions:      {:14.4f} [s]\n", timing.bonded.count());
+  }
+  if (timing.polymer.count() > 0.0)
+  {
+    result += std::format("    polymer-bond overlay:     {:14.4f} [s]\n", timing.polymer.count());
   }
   if (timing.steps > 0)
   {

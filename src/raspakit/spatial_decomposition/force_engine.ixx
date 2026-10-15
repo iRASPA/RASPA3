@@ -56,6 +56,12 @@ export class ForceEngine
     return std::visit([&](auto& engine) { return engine.computeGradients(system, withVirial); }, implementation);
   }
 
+  /// Topology / atom-type change notification (see SpatialDecompositionForceEngine::topologyChanged).
+  void topologyChanged(System& system)
+  {
+    std::visit([&](auto& engine) { engine.topologyChanged(system); }, implementation);
+  }
+
   /// Configurational molecular pressure tensor of the last computeGradients(system, true).
   const double3x3& molecularPressureTensor() const
   {

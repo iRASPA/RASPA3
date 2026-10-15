@@ -25,6 +25,7 @@ documents the available keywords. Keyword names are matched case-insensitively.
   * [Force field definition](#force-field-definition)
   * [System `MC`-moves](#system-mc-moves)
   * [Cross-links between molecules](#cross-links)
+  * [Polymerization (free-radical chain growth)](#polymerization)
   * [Molecular dynamics parameters](#molecular-dynamics-parameters)
   * [Options to measure properties](#options-to-measure-properties)
     * [Output pdb-movies](#output-pdb-movies)
@@ -1024,6 +1025,35 @@ reported separately at the end of the simulation.
     cages \f$A'\f$ and \f$B'\f$ coincide, and the three windows are all the
     windows of the column).
 
+-   `"SimulationType" : "Polymerization"`\
+    Stochastic, template-based free-radical chain-growth polymerization of
+    monomers in a box, built on `"MolecularDynamicsSpatialDecomposition"`
+    (all of its settings apply). The Monte Carlo (pre-)initialization and the
+    MD equilibration run on the unreacted monomers; during the production
+    stage the reactive sites declared with `"PolymerizationSites"` in the
+    molecule files are scanned every `"ScanEvery"` MD steps and the reactions
+    *initiation* (monomer → radical), *propagation* (radical tail bonds to a
+    monomer head within the capture radius; the monomer becomes the new
+    radical) and *termination by combination* (two radical tails bond) are
+    accepted with their probabilities. An accepted reaction retypes the head
+    and tail atoms to the product pseudo-atoms (e.g. `CH2_sp2 → CH2_bb`,
+    `CH_sp2 → CH_bb`), looks up the new bond, the bends and torsions through
+    it, and the 1-2/1-3 exclusions and 1-4 scalings of the new neighbours in
+    the *type-based tables* of the product (the same `"Bonds"`/`"Bends"`/
+    `"Torsions"` tables as a molecule file of the polymer), and ramps the new
+    terms in linearly over `"RelaxationSteps"` MD steps. The molecules of the
+    system never change: the polymer is the graph of bonds between them,
+    written to `output/polymer_topology.s<i>.json` at the end, with every
+    reaction logged in `output/polymerization_bonds.s<i>.txt`. The reactions
+    stop at `"TargetConversion"`; the MD continues to the end of the
+    production stage (the cured network). The polymer bonded energies are
+    reported in the `cross-link` slot of the energy report. The resident
+    (fully on-device) integrator and the device bonded kernels are switched
+    off for this driver; the device pair and mesh kernels stay in use. See
+    [Polymerization](#polymerization) for the keys. This is a separate
+    mechanism from the equilibrium cross-link moves (`"ReactiveSites"`,
+    `"CrossLinkBonds"`), which can not be combined with it.
+
 ### Simulation duration <a name="simulation-duration"></a>
 
 -   `"NumberOfProductionCycles" : integer`\
@@ -1638,6 +1668,104 @@ parallel tempering.
     belong to different molecules, and the valence of every site is respected.
     Without this key the simulation starts without cross-links and the
     formation/scission move builds them up.
+
+### Polymerization (free-radical chain growth) <a name="polymerization"></a>
+
+With `"SimulationType" : "Polymerization"` the system block takes a
+`"Polymerization"` object that controls the reactions and gives the bonded
+tables of the product. The reactive sites of the monomers are declared per
+component with `"PolymerizationSites"` (see
+[Component properties](#component-properties)); a site is a vinyl-like pair
+of bonded atoms, the *head* (the `CH2=` that a radical attacks) and the
+*tail* (the `=CH–` that carries the radical after addition). Every
+`"ScanEvery"` MD steps the sites are scanned: the radical tail–monomer head
+pairs within `"CaptureRadius"` of `"Propagation"` and the radical tail–radical
+tail pairs within `"CaptureRadius"` of `"Termination"` are the candidates,
+tried in order of increasing distance (one reaction per site per scan), each
+accepted with its probability. A probability can be given directly (per
+candidate pair and per scan) or as a rate constant \f$k\f$ in ps⁻¹, in which
+case the probability per scan is \f$1-\exp(-k\,\Delta t_\mathrm{scan})\f$
+with \f$\Delta t_\mathrm{scan} = \f$ `"ScanEvery"` × `"TimeStep"`.
+
+A reaction changes the types (and with them the charges and the Lennard-Jones
+parameters) of the head and tail atoms of the reacted site to
+`"HeadProductType"` / `"TailProductType"` and adds the new bond. The bonded
+terms through the new bond (the bond, the bends \f$X\!-\!A\!-\!B\f$ and
+\f$A\!-\!B\!-\!Y\f$, and the torsions \f$W\!-\!X\!-\!A\!-\!B\f$,
+\f$X\!-\!A\!-\!B\!-\!Y\f$, \f$A\!-\!B\!-\!Y\!-\!Z\f$) are looked up
+by the *current* types of the atoms in the `"Bonds"`, `"Bends"` and
+`"Torsions"` tables of the `"Polymerization"` block (or of
+`"TemplateFile"`); the terms of the monomer that contain a retyped atom are
+replaced by the table entry for the new types (so the backbone of the
+polymer gets e.g. the `CH2_bb–CH_bb–C_CO` bend instead of the
+`CH2_sp2–CH_sp2–C_CO` one). A missing entry is an error naming the type
+tuple to add. The non-bonded interaction of the atom pairs that are now
+1-2 or 1-3 across the new bond is removed, 1-4 pairs are scaled with the
+component's `"Intra14VanDerWaalsScalingValue"` /
+`"Intra14ChargeChargeScalingValue"` (including the Ewald exclusion
+corrections, as for the intra-molecular pairs). All new or changed terms are
+switched on with a linear ramp \f$\lambda(t)\f$ from 0 to 1 over
+`"RelaxationSteps"` MD steps so that the capture at up to the capture radius
+does not inject a large force; the conserved-energy reference of the drift
+report restarts at every accepted reaction.
+
+The keys of the `"Polymerization"` block (defaults in parentheses):
+
+-   `"ScanEvery" : integer` (`10`) — MD steps between reaction scans.
+-   `"StartCycle" : integer` (`0`) — production cycle at which the
+    reactions start (the sites are activated and the initial radicals placed).
+-   `"TargetConversion" : floating-point-number` (`1.0`) — the fraction of
+    sites that have reacted (radical or dead) at which the reactions stop.
+-   `"RelaxationSteps" : integer` (`1000`) — length of the force ramp.
+-   `"MaximumReactionsPerScan" : integer` (unlimited) — cap per scan.
+-   `"Initiation" : {"InitialRadicals" : n, "Probability" : p, "RateConstant" : k}`\
+    `n` random monomer sites become radicals at `"StartCycle"`; in addition
+    every monomer site is initiated with probability `p` per scan (or rate
+    `k`). Defaults `0`, `0.0`.
+-   `"Propagation" : {"CaptureRadius" : r, "Probability" : p, "RateConstant" : k, "AllowIntramolecular" : bool}`\
+    Defaults `4.0` Å, `1.0`, `true`. With `"AllowIntramolecular" : false` the
+    two sites of one molecule can not react with each other (no primary
+    cycles).
+-   `"Termination" : {"Enabled" : bool, "CaptureRadius" : r, "Probability" : p, "RateConstant" : k}`\
+    Termination by combination of two radical tails. Defaults `true`,
+    `4.0` Å, `1.0`.
+-   `"Bonds"`, `"Bends"`, `"Torsions" : list` — the type-based tables of the
+    product in the molecule-file format, e.g.
+    `[["CH2_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]]`; `"TemplateFile" :
+    "pHDDA-10.json"` reads the tables of a molecule file of the polymer
+    (looked up in the working directory, then `$RASPA_DIR`) and the inline
+    tables are added to it. For termination the tail–tail terms
+    (`CH_bb–CH_bb` bond, the bends and torsions around it) must be present as
+    well.
+-   `"WriteBondLog" : bool` (`true`) — `output/polymerization_bonds.s<i>.txt`:
+    one line per reaction with step, cycle, event, the two sites as
+    `component molecule atom`, the distance and the conversion.
+-   `"WriteTopology" : bool` (`true`) — `output/polymer_topology.s<i>.json`:
+    the state of every site and the list of bonds (component, molecule, atom
+    of both partners, kind and step) at the end of the run.
+
+The status report of every `"PrintEvery"` cycles adds the conversion, the
+numbers of radicals, dead sites, propagations and terminations, and the
+network statistics of the *molecule graph* (nodes: the monomer molecules,
+edges: the polymer bonds): molecules in the network, clusters, largest
+cluster and its fraction of all molecules with sites (the gel fraction),
+primary cycles (bonds within one molecule), the cycle rank
+\f$E - V + C\f$ of the graph, and the percolation analysis. For the latter
+every bond carries the lattice vector of the periodic image through which it
+is made (from the minimum-image bond vector between the unwrapped molecules);
+a cycle whose lattice vectors sum to a non-zero vector is a *winding loop*,
+a chain that connects the cluster to its own periodic image, so the cluster
+spans the box in that direction. The report gives the number of spanning
+clusters, the molecules in them, and the number of directions (0–3) and axes
+in which the largest spanning cluster percolates; the first appearance of a
+spanning cluster is the (finite-size) gel point. The *independent loops per
+box* is the cycle rank corrected for the periodicity: for a spanning cluster
+the loop count of the infinite network per box is \f$E - V\f$ (the
+\f$+1\f$ of a finite connected graph does not apply), so it is the cycle
+rank minus one per spanning cluster; it is the number of elastically
+relevant cycles of the phantom-network model. Binary restarts are supported.
+Example: `examples/polymers/4_polymerization_hdda_in_box` (HDDA with the
+pHDDA product tables).
 
 ### Molecular dynamics parameters <a name="molecular-dynamics-parameters"></a>
 
@@ -2373,6 +2501,23 @@ not improved by it.
     A component with reactive sites can not have a fractional molecule and
     can not use identity-change, pair-swap, group-swap, reptation, double
     bridging or Gibbs swap moves.
+
+-   `"PolymerizationSites" : list` (molecule definition file)\
+    Declares the reactive double bonds of a monomer for
+    `"SimulationType" : "Polymerization"` (see
+    [Polymerization](#polymerization)); independent of `"ReactiveSites"`.
+    Each entry is an object `{"Type" : "name", "Head" : h, "Tail" : t,
+    "HeadProductType" : "type", "TailProductType" : "type"}`: `h` and `t` are
+    bonded atoms of the molecule (indices into `"pseudoAtoms"`), the head is
+    the atom a radical adds to and the tail is the atom that carries the
+    radical afterwards; the product types are the pseudo-atoms of the force
+    field the two atoms become when the site reacts. An atom may be listed
+    once. Example for a diacrylate:
+
+        "PolymerizationSites" : [
+          {"Type" : "acrylate", "Head" : 0,  "Tail" : 1,  "HeadProductType" : "CH2_bb", "TailProductType" : "CH_bb"},
+          {"Type" : "acrylate", "Head" : 13, "Tail" : 12, "HeadProductType" : "CH2_bb", "TailProductType" : "CH_bb"}
+        ]
 
 -   `"Intra14VanDerWaalsScalingValue" : floating-point-number` (molecule definition file)\
     `"Intra14ChargeChargeScalingValue" : floating-point-number` (molecule definition file)\

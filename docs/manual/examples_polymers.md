@@ -4,6 +4,7 @@
 
 ## Table of Contents
 1. [Monte Carlo: cross-linked telechelic chains in box (reversible network)](#Example_polymers_1)
+2. [Polymerization: free-radical curing of HDDA in box](#Example_polymers_4)
 
 
 #### Monte Carlo: cross-linked telechelic chains in box (reversible network) <a name="Example_polymers_1"></a>
@@ -101,3 +102,118 @@ sites whose separation is not controlled by the capture radius, but the move
 costs only four bonded-energy evaluations). Setting it to zero leaves
 the association to the bond well alone. The links are stored in the restart file, so a run can be
 continued from a linked state.
+
+
+#### Polymerization: free-radical curing of HDDA in box <a name="Example_polymers_4"></a>
+
+150 hexanediol diacrylate (HDDA) monomers in a \f$38 \times 38 \times 38\f$
+&Aring; box at 300 K (about the liquid density) are cured into a cross-linked
+poly-HDDA network with `"SimulationType" : "Polymerization"`: a
+spatial-decomposition MD run in which, during the production stage, the vinyl
+groups react by stochastic free-radical chain growth. The monomer file
+`HDDA.json` is the 16-bead TraPPE-UA acrylate of the pHDDA examples (the
+polymer file `pHDDA-10.json` of
+`examples/polymers/2_mc_end_to_end_distance_phdda_20_in_box` is a *pre-built*
+chain of ten such units); its two double bonds are declared as reactive sites
+with the pseudo-atoms they become in the polymer backbone:
+
+```json
+  "PolymerizationSites" : [
+    {"Type" : "acrylate", "Head" : 0,  "Tail" : 1,  "HeadProductType" : "CH2_bb", "TailProductType" : "CH_bb"},
+    {"Type" : "acrylate", "Head" : 13, "Tail" : 12, "HeadProductType" : "CH2_bb", "TailProductType" : "CH_bb"}
+  ]
+```
+
+The `"Polymerization"` block of the system sets the kinetics and gives the
+bonded tables of the product by pseudo-atom type (the `CH2_bb`/`CH_bb` entries
+of the pHDDA-10 molecule file, extended with the `CH_bb–CH_bb` terms that a
+termination by combination needs). Eight random sites become radicals at the
+start of production; every 10 MD steps (10 fs) each radical tail within 4
+&Aring; of a monomer head adds to it with probability 0.05, and two radical
+tails within 4 &Aring; combine with the same probability. An accepted reaction
+retypes the head and tail to `CH2_bb`/`CH_bb` (which changes their
+Lennard-Jones parameters and charges), adds the new bond with its bends,
+torsions and 1-2/1-3 exclusions and scaled 1-4 pairs, and ramps the new
+terms in over 2 ps so that the capture does not heat the system (the
+thermostat holds 300 K within a few kelvin). The reactions stop at 90%
+conversion and the dynamics continues on the cured network.
+
+```json
+{
+  "SimulationType" : "Polymerization",
+  "NumberOfThreads" : 4,
+  "NumberOfInitializationCycles" : 200,
+  "NumberOfEquilibrationCycles" : 20000,
+  "NumberOfProductionCycles" : 2000000,
+  "PrintEvery" : 10000,
+
+  "Systems" : [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [38.0, 38.0, 38.0],
+      "ExternalTemperature" : 300.0,
+      "ExternalPressure" : 100000.0,
+      "Ensemble" : "NPT",
+      "TimeStep" : 0.001,
+      "ChargeMethod" : "Ewald",
+      "Polymerization" : {
+        "ScanEvery" : 10,
+        "TargetConversion" : 0.9,
+        "RelaxationSteps" : 2000,
+        "Initiation" :  {"InitialRadicals" : 8, "Probability" : 0.0},
+        "Propagation" : {"CaptureRadius" : 4.0, "Probability" : 0.05, "AllowIntramolecular" : true},
+        "Termination" : {"Enabled" : true, "CaptureRadius" : 4.0, "Probability" : 0.05},
+        "Bonds" : [
+          [["CH2_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]],
+          [["CH_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]],
+          [["CH_bb", "C_CO"], "HARMONIC", [301931.64, 1.52]]
+        ],
+        "Bends" : [ "..." ],
+        "Torsions" : [ "..." ]
+      }
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "HDDA",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 0.1,
+      "PartialReinsertionProbability" : 5.0,
+      "CrankshaftProbability" : 1.0,
+      "BeadDisplacementProbability" : 1.0,
+      "CreateNumberOfMolecules" : 150
+    }
+  ]
+}
+```
+
+The status report of every `"PrintEvery"` cycles adds a `Polymerization
+status` block with the conversion, the numbers of monomer, radical and dead
+sites, the numbers of initiations, propagations and terminations, and the
+network statistics: the molecules connected into polymer, the number of
+clusters, the size of the largest one (its fraction of all molecules is the
+gel fraction), the number of bonds that closed a cycle within one molecule
+(primary cycles, the two acrylates of one HDDA reacting with the same chain),
+the cycle rank of the molecule graph and the number of independent loops per
+box of the unfolded network (the cycle rank minus one per spanning cluster;
+the effective cross-links), and the percolation analysis: whether a cluster
+is bonded to its own periodic image through the boundary (a *winding loop*
+of the molecule graph), in how many directions, and the fraction of the
+molecules in such spanning clusters. The appearance of the first spanning
+cluster marks the gel point of the finite box. The bonded energy of the polymer bonds is
+reported in the `cross-link` slot of the energy breakdown. Every reaction is
+appended to `output/polymerization_bonds.s0.txt` (step, cycle, event, the two
+sites as component/molecule/atom, the distance at which the bond formed and
+the conversion), and `output/polymer_topology.s0.json` holds the final site
+states and the bond list, from which the polymer graph can be rebuilt. The
+polymer bonds, the retyped atoms and the reaction state are stored in the
+binary restart file, so a curing run can be continued. Within 12 ps of a
+test run the conversion reaches about 30% with one gel cluster of 68 of the
+150 molecules; a complete cure takes of the order of a nanosecond, which is
+why the production stage is long and the reaction probabilities are small
+(in the real system the propagation rate constant of acrylates is of order
+\f$10^4\f$ L mol⁻¹ s⁻¹, far slower than any MD run, so the rate here is a
+compromise that keeps the growth diffusion-limited and lets the network relax
+between reactions).

@@ -57,6 +57,7 @@ import mc_moves_cputime;
 import reaction;
 import reactions;
 import cross_links;
+import polymer_links;
 import cbmc;
 import interactions_framework_molecule;
 import interactions_framework_molecule_grid;
@@ -66,6 +67,7 @@ import interactions_pair_kernel;
 import interactions_ewald;
 import interactions_internal;
 import interactions_cross_link;
+import interactions_polymer_link;
 import interactions_external_field;
 import interactions_external_field_grid;
 import interactions_polarization_derivatives;
@@ -746,7 +748,7 @@ void System::precomputeTotalGradients() noexcept
                                                  spanOfFrameworkAtoms(), forceField, simulationBox, components, eik_x,
                                                  eik_y, eik_z, eik_xy, trialEik, fixedFrameworkStoredEik,
                                                  interpolationGrids, numberOfMoleculesPerComponent, framework,
-                                                 spanOfFrameworkDynamics(), &crossLinks) +
+                                                 spanOfFrameworkDynamics(), &crossLinks, &polymerLinks) +
                     computeTailCorrectionEnergies();
 }
 
@@ -787,6 +789,12 @@ RunningEnergy System::computeTotalEnergies() noexcept
   // Cross-links: inter-molecular bonds plus the corrections that turn the linked pairs, already counted
   // by the inter-molecular sums above, into bonded (excluded) pairs.
   runningIntraEnergy += computeCrossLinkEnergy(simulationBox, moleculeAtomPositions);
+  if (!polymerLinks.empty())
+  {
+    runningIntraEnergy += Interactions::computePolymerLinkEnergy(forceField, simulationBox, components,
+                                                                 numberOfMoleculesPerComponent, moleculeAtomPositions,
+                                                                 polymerLinks);
+  }
 
   if (forceField.computePolarization)
   {
@@ -1077,6 +1085,13 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
         forceField, simulationBox, components, numberOfMoleculesPerComponent, moleculeAtoms, pressureDynamics,
         crossLinks);
     pressureInfo.second += crossLinkStrain;
+  }
+  if (!polymerLinks.empty())
+  {
+    const auto [polymerEnergy, polymerStrain] = Interactions::computePolymerLinkEnergyStrainDerivative(
+        forceField, simulationBox, components, numberOfMoleculesPerComponent, moleculeAtoms, pressureDynamics,
+        polymerLinks);
+    pressureInfo.second += polymerStrain;
   }
 
   std::size_t molecule_index = 0;
@@ -1535,6 +1550,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.reactions;
   archive << s.tmmc;
   archive << s.crossLinks;
+  archive << s.polymerLinks;
 
   archive << s.averageEnergies;
   archive << s.averageLoadings;
@@ -1704,6 +1720,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   if (versionNumber >= 2)
   {
     archive >> s.crossLinks;
+  }
+  if (versionNumber >= 6)
+  {
+    archive >> s.polymerLinks;
   }
 
   archive >> s.averageEnergies;

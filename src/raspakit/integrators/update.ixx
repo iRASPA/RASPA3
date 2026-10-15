@@ -16,6 +16,7 @@ import randomnumbers;
 import interpolation_energy_grid;
 import framework;
 import cross_links;
+import polymer_links;
 
 export namespace Integrators
 {
@@ -220,5 +221,6 @@ RunningEnergy updateGradients(
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::vector<std::size_t> numberOfMoleculesPerComponent,
     const std::optional<Framework>& framework = std::nullopt,
-    std::span<AtomDynamics> frameworkDynamics = {}, const CrossLinkTable* crossLinks = nullptr);
+    std::span<AtomDynamics> frameworkDynamics = {}, const CrossLinkTable* crossLinks = nullptr,
+    PolymerLinkTable* polymerLinks = nullptr);
 }  // namespace Integrators

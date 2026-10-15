@@ -26,6 +26,8 @@ import mc_moves_move_types;
 import reaction;
 import reactions;
 import cross_links;
+import polymer_links;
+import polymerization_settings;
 import bond_potential;
 import bend_potential;
 import partition_function;
@@ -163,6 +165,181 @@ std::string deriveNameFromFileName(const std::string& owner, const std::string& 
 
 namespace
 {
+// The 'Polymerization' block of the system (see PolymerizationSettings and PolymerLinkTable): the reaction
+// parameters of the driver and the type-based bonded tables of the product.
+void readPolymerization(const nlohmann::basic_json<nlohmann::raspa_map>& value, System& system,
+                        PolymerizationSettings& settings)
+{
+  if (!value.contains("Polymerization")) return;
+  const auto& block = value["Polymerization"];
+  if (!block.is_object())
+  {
+    throw std::runtime_error("[Input reader]: 'Polymerization' must be an object\n");
+  }
+
+  auto readUnsigned = [&](const nlohmann::basic_json<nlohmann::raspa_map>& object, const char* key, std::size_t& target)
+  {
+    if (!object.contains(key)) return;
+    if (!object[key].is_number_unsigned())
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'Polymerization' '{}' must be an unsigned integer\n", key));
+    }
+    target = object[key].get<std::size_t>();
+  };
+  auto readNumber = [&](const nlohmann::basic_json<nlohmann::raspa_map>& object, const char* key, double& target)
+  {
+    if (!object.contains(key)) return;
+    if (!object[key].is_number())
+    {
+      throw std::runtime_error(std::format("[Input reader]: 'Polymerization' '{}' must be a number\n", key));
+    }
+    target = object[key].get<double>();
+  };
+  auto readOptionalNumber = [&](const nlohmann::basic_json<nlohmann::raspa_map>& object, const char* key, std::optional<double>& target)
+  {
+    if (!object.contains(key)) return;
+    if (!object[key].is_number())
+    {
+      throw std::runtime_error(std::format("[Input reader]: 'Polymerization' '{}' must be a number\n", key));
+    }
+    target = object[key].get<double>();
+  };
+  auto readBoolean = [&](const nlohmann::basic_json<nlohmann::raspa_map>& object, const char* key, bool& target)
+  {
+    if (!object.contains(key)) return;
+    if (!object[key].is_boolean())
+    {
+      throw std::runtime_error(std::format("[Input reader]: 'Polymerization' '{}' must be a boolean\n", key));
+    }
+    target = object[key].get<bool>();
+  };
+
+  readUnsigned(block, "ScanEvery", settings.scanEvery);
+  readUnsigned(block, "StartCycle", settings.startCycle);
+  readNumber(block, "TargetConversion", settings.targetConversion);
+  readUnsigned(block, "RelaxationSteps", settings.relaxationSteps);
+  readUnsigned(block, "MaximumReactionsPerScan", settings.maximumReactionsPerScan);
+  readBoolean(block, "WriteBondLog", settings.writeBondLog);
+  readBoolean(block, "WriteTopology", settings.writeTopology);
+  if (block.contains("TemplateFile"))
+  {
+    if (!block["TemplateFile"].is_string())
+    {
+      throw std::runtime_error("[Input reader]: 'Polymerization' 'TemplateFile' must be a string\n");
+    }
+    settings.templateFile = block["TemplateFile"].get<std::string>();
+  }
+  if (settings.scanEvery == 0)
+  {
+    throw std::runtime_error("[Input reader]: 'Polymerization' 'ScanEvery' must be positive\n");
+  }
+  if (settings.targetConversion < 0.0 || settings.targetConversion > 1.0)
+  {
+    throw std::runtime_error("[Input reader]: 'Polymerization' 'TargetConversion' must lie in [0, 1]\n");
+  }
+
+  if (block.contains("Initiation"))
+  {
+    const auto& initiation = block["Initiation"];
+    if (!initiation.is_object())
+    {
+      throw std::runtime_error("[Input reader]: 'Polymerization' 'Initiation' must be an object\n");
+    }
+    readUnsigned(initiation, "InitialRadicals", settings.initialRadicals);
+    readNumber(initiation, "Probability", settings.initiationProbability);
+    readOptionalNumber(initiation, "RateConstant", settings.initiationRateConstant);
+  }
+  if (block.contains("Propagation"))
+  {
+    const auto& propagation = block["Propagation"];
+    if (!propagation.is_object())
+    {
+      throw std::runtime_error("[Input reader]: 'Polymerization' 'Propagation' must be an object\n");
+    }
+    readNumber(propagation, "CaptureRadius", settings.propagationCaptureRadius);
+    readNumber(propagation, "Probability", settings.propagationProbability);
+    readOptionalNumber(propagation, "RateConstant", settings.propagationRateConstant);
+    readBoolean(propagation, "AllowIntramolecular", settings.allowIntramolecular);
+  }
+  if (block.contains("Termination"))
+  {
+    const auto& termination = block["Termination"];
+    if (!termination.is_object())
+    {
+      throw std::runtime_error("[Input reader]: 'Polymerization' 'Termination' must be an object\n");
+    }
+    readBoolean(termination, "Enabled", settings.terminationEnabled);
+    readNumber(termination, "CaptureRadius", settings.terminationCaptureRadius);
+    readNumber(termination, "Probability", settings.terminationProbability);
+    readOptionalNumber(termination, "RateConstant", settings.terminationRateConstant);
+  }
+  for (const auto& [name, probability] :
+       {std::pair{"Initiation", settings.initiationProbability}, std::pair{"Propagation", settings.propagationProbability},
+        std::pair{"Termination", settings.terminationProbability}})
+  {
+    if (probability < 0.0 || probability > 1.0)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'Polymerization' '{}' 'Probability' must lie in [0, 1]\n", name));
+    }
+  }
+  if (settings.propagationCaptureRadius <= 0.0 || settings.terminationCaptureRadius <= 0.0)
+  {
+    throw std::runtime_error("[Input reader]: 'Polymerization' 'CaptureRadius' must be positive\n");
+  }
+
+  // the type-based bonded tables of the product: from the template file first, then the inline tables
+  PolymerLinkTable& table = system.polymerLinks;
+  if (!settings.templateFile.empty())
+  {
+    std::string fileName = settings.templateFile;
+    if (!fileName.ends_with(".json")) fileName += ".json";
+    if (!std::filesystem::exists(fileName))
+    {
+      const char* env_p = std::getenv("RASPA_DIR");
+      if (env_p) fileName = env_p + std::string("/") + fileName;
+    }
+    if (!std::filesystem::exists(fileName))
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'Polymerization' 'TemplateFile' '{}' not found\n", settings.templateFile));
+    }
+    std::ifstream stream{fileName};
+    nlohmann::basic_json<nlohmann::raspa_map> templateData{};
+    try
+    {
+      templateData = nlohmann::json::parse(stream);
+    }
+    catch (nlohmann::json::parse_error& ex)
+    {
+      throw std::runtime_error(std::format("[Input reader]: parse error in 'TemplateFile' '{}' at byte {}\n{}\n",
+                                           fileName, ex.byte, ex.what()));
+    }
+    table.templates.read(templateData, system.forceField);
+  }
+  table.templates.read(block, system.forceField);
+  table.templates.resolve(system.forceField);
+  table.relaxationSteps = settings.relaxationSteps;
+
+  bool anySite = false;
+  for (const Component& component : system.components)
+  {
+    if (!component.polymerizationSites.empty()) anySite = true;
+  }
+  if (!anySite)
+  {
+    throw std::runtime_error(
+        "[Input reader]: 'Polymerization' is defined but no component declares 'PolymerizationSites'\n");
+  }
+  if (table.templates.empty())
+  {
+    throw std::runtime_error(
+        "[Input reader]: 'Polymerization' needs the bonded tables of the product ('Bonds', 'Bends', 'Torsions' or a "
+        "'TemplateFile')\n");
+  }
+}
+
 // Cross-links (see CrossLinkTable): the bond types of the system ('CrossLinkBonds'), the links present
 // at the start ('InitialCrossLinks'), and the restrictions on the moves of the reactive components.
 void readCrossLinks(const nlohmann::basic_json<nlohmann::raspa_map>& value, System& system)
@@ -573,6 +750,11 @@ InputReader::InputReader(const std::string inputFile)
              caseInSensStringCompare(simulationTypeString, "dcTSTFreeEnergy"))
     {
       simulationType = SimulationType::DynamicallyCorrectedTSTFreeEnergy;
+      parseMolecularSimulations(parsed_data);
+    }
+    else if (caseInSensStringCompare(simulationTypeString, "Polymerization"))
+    {
+      simulationType = SimulationType::Polymerization;
       parseMolecularSimulations(parsed_data);
     }
     else if (caseInSensStringCompare(simulationTypeString, "ThermodynamicIntegration"))
@@ -3435,6 +3617,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
 
       readCrossLinks(value, systems[systemId]);
+      readPolymerization(value, systems[systemId], polymerizationSettings);
 
       if (value.contains("ComputeEnergyHistogram") && value["ComputeEnergyHistogram"].is_boolean())
       {
@@ -5125,6 +5308,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "CrossLinkExchangeProbability",
     "CrossLinkBonds",
     "InitialCrossLinks",
+    "Polymerization",
     "TranslationSmartMCAllProbability",
     "ForceBiasTranslationAllProbability",
     "RotationSmartMCAllProbability",

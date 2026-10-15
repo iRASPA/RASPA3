@@ -16,6 +16,7 @@ import randomnumbers;
 import archive;
 import json;
 import cross_links;
+import polymerization_site;
 import units;
 import skposcarparser;
 import characterset;
@@ -383,6 +384,7 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
   computeRigidProperties();
 
   reactiveSites = readReactiveSites(parsed_data);
+  polymerizationSites = readPolymerizationSites(forceField, parsed_data);
 
   if (!rigid)
   {
@@ -3202,6 +3204,80 @@ std::vector<ReactiveSite> Component::readReactiveSites(
   return sites;
 }
 
+std::vector<PolymerizationSite> Component::readPolymerizationSites(
+    const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data) const
+{
+  std::vector<PolymerizationSite> sites{};
+  if (!parsed_data.contains("PolymerizationSites")) return sites;
+
+  const auto &list = parsed_data["PolymerizationSites"];
+  if (!list.is_array())
+  {
+    throw std::runtime_error(
+        std::format("[Component reader]: 'PolymerizationSites' must be an array of objects, got {}\n", list.dump()));
+  }
+
+  for (const auto &item : list)
+  {
+    PolymerizationSite site{};
+    try
+    {
+      if (!item.is_object()) throw std::runtime_error("expected an object");
+      site.siteType = item.contains("Type") ? item["Type"].get<std::string>() : std::string("vinyl");
+      site.head = item.at("Head").get<std::size_t>();
+      site.tail = item.at("Tail").get<std::size_t>();
+      site.headProductType = item.at("HeadProductType").get<std::string>();
+      site.tailProductType = item.at("TailProductType").get<std::string>();
+      if (item.contains("InitiatedHeadType")) site.initiatedHeadType = item["InitiatedHeadType"].get<std::string>();
+    }
+    catch (std::exception const &e)
+    {
+      throw std::runtime_error(std::format("[Component reader]: error in 'PolymerizationSites' entry {}: {}\n",
+                                           item.dump(), e.what()));
+    }
+
+    if (site.head >= definedAtoms.size() || site.tail >= definedAtoms.size())
+    {
+      throw std::runtime_error(
+          std::format("[Component reader]: 'PolymerizationSites' entry {}: atom index out of range (molecule has {} "
+                      "atoms)\n",
+                      item.dump(), definedAtoms.size()));
+    }
+    if (site.head == site.tail)
+    {
+      throw std::runtime_error(std::format(
+          "[Component reader]: 'PolymerizationSites' entry {}: 'Head' and 'Tail' must be different atoms\n",
+          item.dump()));
+    }
+    if (!connectivityTable[site.head, site.tail])
+    {
+      throw std::runtime_error(std::format(
+          "[Component reader]: 'PolymerizationSites' entry {}: 'Head' and 'Tail' must be bonded (the double bond)\n",
+          item.dump()));
+    }
+    for (const std::string &typeName :
+         {site.headProductType, site.tailProductType, site.initiatedHeadType.value_or(site.headProductType)})
+    {
+      if (!forceField.findPseudoAtom(typeName).has_value())
+      {
+        throw std::runtime_error(std::format(
+            "[Component reader]: 'PolymerizationSites' entry {}: unknown pseudo-atom '{}' (define it in the force "
+            "field)\n",
+            item.dump(), typeName));
+      }
+    }
+    if (std::ranges::any_of(sites, [&](const PolymerizationSite &other)
+                            { return other.head == site.head || other.tail == site.tail || other.head == site.tail ||
+                                     other.tail == site.head; }))
+    {
+      throw std::runtime_error(std::format(
+          "[Component reader]: 'PolymerizationSites' entry {}: an atom is shared with another site\n", item.dump()));
+    }
+    sites.push_back(site);
+  }
+  return sites;
+}
+
 std::vector<std::vector<std::size_t>> Component::readPartialReinsertionFixedAtoms(
     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
@@ -3463,6 +3539,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.lambdaGroupSwapCB;
 
   archive << c.reactiveSites;
+  archive << c.polymerizationSites;
 
   archive << c.moleculePropertiesSettings;
   archive << c.moleculeShapeSettings;
@@ -3588,6 +3665,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.lambdaGroupSwapCB;
 
   archive >> c.reactiveSites;
+  archive >> c.polymerizationSites;
 
   archive >> c.moleculePropertiesSettings;
   archive >> c.moleculeShapeSettings;

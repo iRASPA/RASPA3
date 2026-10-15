@@ -94,6 +94,7 @@ export class SpatialDecompositionForceEngine
     std::chrono::duration<double> pairs{};
     std::chrono::duration<double> mesh{};
     std::chrono::duration<double> bonded{};
+    std::chrono::duration<double> polymer{};       ///< the polymer-bond overlay (Polymerization driver)
     std::chrono::duration<double> device{};        ///< execution time of the OpenCL pair kernel on the device
     std::chrono::duration<double> devicePrune{};   ///< execution time of the OpenCL list compaction kernel
     std::chrono::duration<double> deviceMesh{};    ///< execution time of the OpenCL mesh chain (spread, FFTs, ...)
@@ -114,6 +115,11 @@ export class SpatialDecompositionForceEngine
   /// Evaluates all forces and energies of the system (the replacement of Integrators::updateGradients). With
   /// `withVirial` the configurational molecular pressure tensor is accumulated in the same pass.
   RunningEnergy computeGradients(System& system, bool withVirial = true);
+
+  /// Tells the engine that the bonded topology or the atom types of the system changed (a reaction of the
+  /// Polymerization driver): the position-independent sums are refreshed and the lists are rebuilt at the next
+  /// evaluation (the device copies of the atom types follow the build).
+  void topologyChanged(System& system);
 
   /// Configurational part of the molecular pressure tensor at the configuration of the last
   /// computeGradients(system, true): the same quantity as System::computeMolecularPressure().second (strain

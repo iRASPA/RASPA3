@@ -915,16 +915,24 @@ void MolecularDynamicsSpatialDecomposition::createOutputFiles()
   }
 }
 
+void MolecularDynamicsSpatialDecomposition::writeCheckpoint()
+{
+  if (checkpointWriter)
+    checkpointWriter();
+  else
+    writeBinaryRestartFile(*this);
+}
+
 void MolecularDynamicsSpatialDecomposition::checkpointIfDue(std::size_t cycle)
 {
   if (cycle % writeBinaryRestartEvery == 0uz && outputToFiles)
   {
-    writeBinaryRestartFile(*this);
+    writeCheckpoint();
   }
 
   if (GracefulShutdown::requested())
   {
-    writeBinaryRestartFile(*this);
+    writeCheckpoint();
     for (std::ofstream& outputStream : streams) std::flush(outputStream);
     GracefulShutdown::exitAfterCheckpoint();
   }
@@ -1501,6 +1509,7 @@ void MolecularDynamicsSpatialDecomposition::equilibrate()
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift += std::abs((system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
       refreshHostState(system_id, false);
+      if (afterSystemStep) afterSystemStep(system_id);
       ++system_id;
     }
 
@@ -1521,6 +1530,7 @@ void MolecularDynamicsSpatialDecomposition::equilibrate()
           std::ostream stream(streams[system_id].rdbuf());
           std::print(stream, "{}", system.writeEquilibrationStatusReportMD(currentCycle, numberOfEquilibrationCycles));
           std::print(stream, "{}", writeBarostatPressureWindow(system_id));
+          if (extraStatus) std::print(stream, "{}", extraStatus(system_id));
           std::flush(stream);
         }
 
@@ -1540,7 +1550,7 @@ void MolecularDynamicsSpatialDecomposition::equilibrate()
     {
       if (outputToFiles)
       {
-        writeBinaryRestartFile(*this);
+        writeCheckpoint();
       }
     }
   continueEquilibrationStage:;
@@ -1628,6 +1638,7 @@ void MolecularDynamicsSpatialDecomposition::production()
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift += std::abs((system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
       refreshHostState(system_id, true);
+      if (afterSystemStep) afterSystemStep(system_id);
       ++system_id;
     }
 
@@ -1676,6 +1687,7 @@ void MolecularDynamicsSpatialDecomposition::production()
           std::ostream stream(streams[system_id].rdbuf());
           std::print(stream, "{}", system.writeProductionStatusReportMD(currentCycle, numberOfProductionCycles));
           std::print(stream, "{}", writeBarostatPressureWindow(system_id));
+          if (extraStatus) std::print(stream, "{}", extraStatus(system_id));
           std::flush(stream);
         }
         ++system_id;
@@ -1738,7 +1750,7 @@ void MolecularDynamicsSpatialDecomposition::production()
     {
       if (outputToFiles)
       {
-        writeBinaryRestartFile(*this);
+        writeCheckpoint();
       }
     }
     t2 = std::chrono::steady_clock::now();

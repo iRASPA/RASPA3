@@ -28,6 +28,8 @@ import interpolation_energy_grid;
 import framework;
 import cross_links;
 import interactions_cross_link;
+import polymer_links;
+import interactions_polymer_link;
 
 void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                                   std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
@@ -894,7 +896,7 @@ RunningEnergy Integrators::updateGradients(
     std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& fixedFrameworkStoredEik,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::vector<std::size_t> numberOfMoleculesPerComponent, const std::optional<Framework>& framework,
-    std::span<AtomDynamics> frameworkDynamics, const CrossLinkTable* crossLinks)
+    std::span<AtomDynamics> frameworkDynamics, const CrossLinkTable* crossLinks, PolymerLinkTable* polymerLinks)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
@@ -953,6 +955,12 @@ RunningEnergy Integrators::updateGradients(
     internal_energies += Interactions::computeCrossLinkGradient(forceField, simulationBox, components,
                                                                 numberOfMoleculesPerComponent, moleculeAtomPositions,
                                                                 moleculeDynamics, *crossLinks);
+  }
+  if (polymerLinks && !polymerLinks->empty())
+  {
+    internal_energies += Interactions::computePolymerLinkGradient(forceField, simulationBox, components,
+                                                                  numberOfMoleculesPerComponent, moleculeAtomPositions,
+                                                                  moleculeDynamics, *polymerLinks);
   }
 
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();

@@ -54,6 +54,7 @@ import mc_moves_cputime;
 import reaction;
 import reactions;
 import cross_links;
+import polymer_links;
 import transition_matrix;
 import equation_of_states;
 import thermostat;
@@ -107,7 +108,7 @@ export struct System
          std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{5};
+  std::uint64_t versionNumber{6};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -261,6 +262,10 @@ export struct System
   /// Cross-links: inter-molecular bonds between the reactive sites of the components, with their
   /// bond types. Owned and mutated by the system (topology moves, renumbering on molecule deletion).
   CrossLinkTable crossLinks;
+
+  /// Polymer bonds formed by the chain-growth polymerization of the 'Polymerization' driver (irreversible
+  /// inter-molecular bonds with the full bonded topology of the product; see PolymerLinkTable).
+  PolymerLinkTable polymerLinks;
 
   // property measurements
   PropertyEnergy averageEnergies;

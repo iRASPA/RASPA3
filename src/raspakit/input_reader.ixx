@@ -28,6 +28,7 @@ import minimization_options;
 import spatial_decomposition_settings;
 import dctst_settings;
 import dctst_free_energy_settings;
+import polymerization_settings;
 
 /**
  * \struct InputDataSystem
@@ -95,7 +96,8 @@ export struct InputReader
     ParallelTemperingMolecularDynamics = 11,  ///< Multithreaded replica-exchange molecular dynamics (REMD).
     MolecularDynamicsSpatialDecomposition = 12,  ///< MD with the multithreaded spatial-decomposition force engine.
     DynamicallyCorrectedTST = 13,  ///< dcTST: self/collective transmission functions (and D with an external P(q*)).
-    DynamicallyCorrectedTSTFreeEnergy = 14  ///< dcTST: free-energy profile F(q) and P(q*) by umbrella sampling + WHAM.
+    DynamicallyCorrectedTSTFreeEnergy = 14,  ///< dcTST: free-energy profile F(q) and P(q*) by umbrella sampling + WHAM.
+    Polymerization = 15  ///< Stochastic chain-growth polymerization with the spatial-decomposition MD engine.
   };
 
   /**
@@ -213,6 +215,7 @@ export struct InputReader
   SpatialDecompositionSettings spatialDecompositionSettings{};  ///< Settings of the spatial-decomposition MD engine.
   DcTSTSettings dctstSettings{};  ///< Settings of the dcTST transmission driver ('dcTST' object of the system block).
   DcTSTFreeEnergySettings dctstFreeEnergySettings{};  ///< Settings of the dcTST free-energy driver (same object).
+  PolymerizationSettings polymerizationSettings{};  ///< Settings of the 'Polymerization' driver ('Polymerization' object).
 
   ForceField forceField;          ///< Force field used for defining interactions in the simulation.
   std::vector<System> systems{};  ///< Vector of simulation systems configured for the simulation.

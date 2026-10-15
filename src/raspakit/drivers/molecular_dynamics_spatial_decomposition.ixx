@@ -96,6 +96,16 @@ export struct MolecularDynamicsSpatialDecomposition
   std::vector<std::ofstream> streams;
   std::vector<nlohmann::json> outputJsons;
 
+  /// Hooks of the drivers built on top of this one (the Polymerization driver): called after the MD step of a
+  /// system in the equilibration and production loops, and for an extra block of the status report. Not part of
+  /// the restart (the owning driver sets them again).
+  std::function<void(std::size_t)> afterSystemStep{};
+  std::function<std::string(std::size_t)> extraStatus{};
+  /// Writes the checkpoint; a driver that owns this one sets it to archive itself (the checkpoint of a
+  /// Polymerization run is a Polymerization archive, not an MD archive).
+  std::function<void()> checkpointWriter{};
+  void writeCheckpoint();
+
   BlockErrorEstimation estimation;
 
   std::chrono::duration<double> totalSimulationTime{0};

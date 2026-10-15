@@ -22,6 +22,7 @@ import parallel_tmmc;
 import nldft;
 import dctst;
 import dctst_free_energy;
+import polymerization;
 
 void runSimulation(InputReader& inputReader)
 {
@@ -175,6 +176,17 @@ void runSimulation(InputReader& inputReader)
     {
       DynamicallyCorrectedTSTFreeEnergy dctst(inputReader);
       dctst.run();
+      break;
+    }
+    case InputReader::SimulationType::Polymerization:
+    {
+      Polymerization polymerization(inputReader);
+      if (inputReader.restartFromBinary)
+      {
+        readBinaryRestartFile(polymerization, inputReader.restartFromBinaryFileName);
+        polymerization.createOutputFiles();
+      }
+      polymerization.run();
       break;
     }
     default:
