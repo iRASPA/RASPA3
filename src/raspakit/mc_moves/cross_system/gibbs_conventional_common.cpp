@@ -165,7 +165,7 @@ std::optional<RunningEnergy> computeMoleculeEnergyDifference(
     std::span<const Atom> oldAtoms)
 {
   std::optional<RunningEnergy> frameworkDifference = Interactions::computeFrameworkMoleculeEnergyDifference(
-      system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+      system.forceField, system.simulationBox, system.interpolationGrids, system.framework, system.frameworkCellList(),
       system.spanOfFrameworkAtoms(), trialAtoms, oldAtoms);
   if (!frameworkDifference.has_value())
   {

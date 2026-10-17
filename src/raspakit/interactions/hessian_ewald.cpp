@@ -4,6 +4,8 @@ module interactions_hessian_ewald;
 
 import std;
 
+import ewald_structure_factor;
+
 import double3;
 import double3x3;
 import units;
@@ -426,10 +428,10 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
 
 RunningEnergy Interactions::computeEwaldFourierHessian(
     const ForceField& forceField, const SimulationBox& simulationBox, const std::optional<Framework>& framework,
-    std::span<const std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> fixedFrameworkStoredEik,
-    double netChargeFramework, std::span<const Molecule> moleculeData, std::span<const Component> components,
-    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, const MinimizationDofLayout& layout,
-    GeneralizedHessian& hessian, std::span<AtomDynamics> moleculeDynamics, std::span<AtomDynamics> frameworkDynamics,
+    const EwaldStructureFactor& fixedFrameworkStoredEik, double netChargeFramework,
+    std::span<const Molecule> moleculeData, std::span<const Component> components, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, const MinimizationDofLayout& layout, GeneralizedHessian& hessian,
+    std::span<AtomDynamics> moleculeDynamics, std::span<AtomDynamics> frameworkDynamics,
     const CellMinimizationLayout& cellLayout)
 {
   RunningEnergy energySum{};
@@ -670,7 +672,7 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
           }
 
           const std::complex<double> rigidSF = (useStoredEik && nvec < fixedFrameworkStoredEik.size())
-                                                   ? fixedFrameworkStoredEik[nvec].first
+                                                   ? fixedFrameworkStoredEik.sum[nvec]
                                                    : std::complex<double>(0.0, 0.0);
 
           std::complex<double> total = rigidSF + cksum;

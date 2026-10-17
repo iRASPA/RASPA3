@@ -73,7 +73,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     {
       frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
           system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-          system.spanOfFrameworkAtoms(), {}, molecule);
+          system.frameworkCellList(), system.spanOfFrameworkAtoms(), {}, molecule);
     }
     if (!frameworkMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 

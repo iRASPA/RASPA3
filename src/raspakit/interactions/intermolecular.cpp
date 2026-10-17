@@ -23,10 +23,24 @@ import component;
 import units;
 import threadpool;
 import mc_cell_list;
+import interactions_neighbourhood;
 
 // used in volume moves for computing the state at a new box and new, scaled atom positions
 RunningEnergy Interactions::computeInterMolecularEnergy(const ForceField& forceField, const SimulationBox& box,
                                                         std::span<const Atom> moleculeAtoms) noexcept
+{
+  RunningEnergy energySum{};
+
+  if (forceField.omitInterInteractions) return energySum;
+
+  // the pair sum over a structure-of-arrays copy of the atoms (SIMD lanes for fully coupled Lennard-Jones /
+  // Ewald systems), the same pairs and pair terms as the scalar triangular loop
+  return computeAllPairsInterMolecularEnergy(forceField, box, moleculeAtoms);
+}
+
+/// The scalar triangular pair loop (the reference the structure-of-arrays sums are checked against in the tests).
+RunningEnergy Interactions::computeInterMolecularEnergyScalar(const ForceField& forceField, const SimulationBox& box,
+                                                              std::span<const Atom> moleculeAtoms) noexcept
 {
   RunningEnergy energySum{};
 
@@ -59,23 +73,14 @@ RunningEnergy Interactions::computeInterMolecularEnergy(const ForceField& forceF
 
   if (forceField.omitInterInteractions) return energySum;
 
-  forEachMoleculeMoleculePair<0>(
-      forceField, box, cellList, moleculeAtoms,
-      [&energySum](std::size_t, std::size_t, const Atom& atomA, const Atom& atomB,
-                   const Potentials::PairDerivatives<0>& factors, const double3&)
-      {
-        energySum.moleculeMoleculeVDW += factors.energy;
-        energySum.addDudlambdaVDW(atomA.groupId, atomB.groupId, atomA.scalingVDW, atomB.scalingVDW, factors.dUdlambda);
-      },
-      [&energySum](std::size_t, std::size_t, const Atom& atomA, const Atom& atomB,
-                   const Potentials::PairDerivatives<0>& factors, const double3&)
-      {
-        energySum.moleculeMoleculeCharge += factors.energy;
-        energySum.addDudlambdaCharge(atomA.groupId, atomB.groupId, atomA.scalingCoulomb, atomB.scalingCoulomb,
-                                     factors.dUdlambda);
-      });
-
-  return energySum;
+  // a usable list: the pair sum straight out of the cells (SIMD lanes for fully coupled Lennard-Jones/Ewald
+  // systems), the same pairs and pair terms as the scalar enumeration below
+  if (cellList.enabled && cellList.valid && cellList.numberOfAtoms == moleculeAtoms.size())
+  {
+    return computeCellListInterMolecularEnergy(forceField, box, cellList, moleculeAtoms);
+  }
+  // no usable list: the pair sum over a structure-of-arrays copy of the atoms
+  return computeAllPairsInterMolecularEnergy(forceField, box, moleculeAtoms);
 }
 
 // Brick-CFCMC-style aggregated accounting: build effective (fractionally-weighted) pseudo-atom-type counts
@@ -334,116 +339,29 @@ RunningEnergy Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
     const ForceField& forceField, const SimulationBox& simulationBox, const MCCellList& cellList,
     std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
 {
-  if (!cellList.enabled || !cellList.valid)
-  {
-    return computeInterMolecularEnergyDifference(forceField, simulationBox, moleculeAtoms, newatoms, oldatoms);
-  }
+  if (forceField.omitInterInteractions) return RunningEnergy{};
+  if (newatoms.empty() && oldatoms.empty()) return RunningEnergy{};
 
-  RunningEnergy energySum{};
+  // The new and the old positions lie within the move's displacement of each other: the background within
+  // the cut-off of their common bounding sphere is gathered once (through the cells with their per-cell
+  // image shift when the list is usable, otherwise by a pass over all atoms) and both are evaluated with
+  // the dense kernel. Same pair arithmetic as the brute-force loop above (dr = posA - posB, A the
+  // background atom), so the two agree to the summation order.
+  const bool usableList = cellList.enabled && cellList.valid && cellList.numberOfAtoms == moleculeAtoms.size();
+  thread_local Neighbourhood scratch{};
+  const std::array<std::span<const Atom>, 2> sets{newatoms, oldatoms};
+  const auto [centre, radius] = Neighbourhood::boundingSphere(sets);
+  const double cutOff = std::max(forceField.cutOffMoleculeVDW, forceField.useCharge ? forceField.cutOffCoulomb : 0.0);
+  scratch.gather(simulationBox, usableList ? &cellList : nullptr, moleculeAtoms, centre, radius, cutOff);
 
-  if (forceField.omitInterInteractions) return energySum;
+  std::optional<RunningEnergy> energyNew = computeNeighbourhoodEnergy(
+      forceField, simulationBox, scratch, newatoms, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, 1.0, true);
+  if (!energyNew.has_value()) return std::nullopt;
+  std::optional<RunningEnergy> energyOld =
+      computeNeighbourhoodEnergy(forceField, simulationBox, scratch, oldatoms, forceField.cutOffMoleculeVDW,
+                                 forceField.cutOffCoulomb, -1.0, false);
 
-  const bool useCharge = forceField.useCharge;
-  const double overlapCriteria = forceField.energyOverlapCriteria;
-  const double cutOffMoleculeVDWSquared = forceField.cutOffMoleculeVDW * forceField.cutOffMoleculeVDW;
-  const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
-
-  // Same pair arithmetic as the brute-force loop above (dr = posA - posB, A the background atom), so the
-  // two agree to the summation order. The background atom is only fetched for pairs inside a cut-off.
-  for (const Atom& atom : newatoms)
-  {
-    const std::uint32_t molB = atom.moleculeId;
-    const double3 posB = atom.position;
-    const std::size_t typeB = static_cast<std::size_t>(atom.type);
-    const std::uint8_t groupIdB = atom.groupId;
-    const double scalingVDWB = atom.scalingVDW;
-    const double scalingCoulombB = atom.scalingCoulomb;
-    const double chargeB = atom.charge;
-
-    bool overlap = false;
-    cellList.forEachNeighbourRecord(
-        posB,
-        [&](const MCCellList::Record& record)
-        {
-          if (overlap || record.moleculeId == molB) return;
-
-          double3 dr = simulationBox.applyPeriodicBoundaryConditions(record.position() - posB);
-          const double rr = double3::dot(dr, dr);
-
-          if (rr < cutOffMoleculeVDWSquared)
-          {
-            const Atom& atomA = moleculeAtoms[record.atomIndex];
-            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialVDW<0>(
-                forceField, atomA.scalingVDW, scalingVDWB, rr, static_cast<std::size_t>(atomA.type), typeB);
-            if (energyFactor.energy > overlapCriteria)
-            {
-              overlap = true;
-              return;
-            }
-            energySum.moleculeMoleculeVDW += energyFactor.energy;
-            energySum.addDudlambdaVDW(atomA.groupId, groupIdB, atomA.scalingVDW, scalingVDWB, energyFactor.dUdlambda);
-          }
-          if (useCharge && rr < cutOffChargeSquared)
-          {
-            const Atom& atomA = moleculeAtoms[record.atomIndex];
-            if (atomA.charge * chargeB != 0.0 && atomA.scalingCoulomb * scalingCoulombB != 0.0)
-            {
-              const double r = std::sqrt(rr);
-              Potentials::PairDerivatives<0> energyFactor = Potentials::potentialCoulomb<0>(
-                  forceField, atomA.scalingCoulomb, scalingCoulombB, r, atomA.charge, chargeB);
-              energySum.moleculeMoleculeCharge += energyFactor.energy;
-              energySum.addDudlambdaCharge(atomA.groupId, groupIdB, atomA.scalingCoulomb, scalingCoulombB,
-                                           energyFactor.dUdlambda);
-            }
-          }
-        });
-    if (overlap) return std::nullopt;
-  }
-
-  for (const Atom& atom : oldatoms)
-  {
-    const std::uint32_t molB = atom.moleculeId;
-    const double3 posB = atom.position;
-    const std::size_t typeB = static_cast<std::size_t>(atom.type);
-    const std::uint8_t groupIdB = atom.groupId;
-    const double scalingVDWB = atom.scalingVDW;
-    const double scalingCoulombB = atom.scalingCoulomb;
-    const double chargeB = atom.charge;
-
-    cellList.forEachNeighbourRecord(
-        posB,
-        [&](const MCCellList::Record& record)
-        {
-          if (record.moleculeId == molB) return;
-
-          double3 dr = simulationBox.applyPeriodicBoundaryConditions(record.position() - posB);
-          const double rr = double3::dot(dr, dr);
-
-          if (rr < cutOffMoleculeVDWSquared)
-          {
-            const Atom& atomA = moleculeAtoms[record.atomIndex];
-            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialVDW<0>(
-                forceField, atomA.scalingVDW, scalingVDWB, rr, static_cast<std::size_t>(atomA.type), typeB);
-            energySum.moleculeMoleculeVDW -= energyFactor.energy;
-            energySum.addDudlambdaVDW(atomA.groupId, groupIdB, atomA.scalingVDW, scalingVDWB, -energyFactor.dUdlambda);
-          }
-          if (useCharge && rr < cutOffChargeSquared)
-          {
-            const Atom& atomA = moleculeAtoms[record.atomIndex];
-            if (atomA.charge * chargeB != 0.0 && atomA.scalingCoulomb * scalingCoulombB != 0.0)
-            {
-              const double r = std::sqrt(rr);
-              Potentials::PairDerivatives<0> energyFactor = Potentials::potentialCoulomb<0>(
-                  forceField, atomA.scalingCoulomb, scalingCoulombB, r, atomA.charge, chargeB);
-              energySum.moleculeMoleculeCharge -= energyFactor.energy;
-              energySum.addDudlambdaCharge(atomA.groupId, groupIdB, atomA.scalingCoulomb, scalingCoulombB,
-                                           -energyFactor.dUdlambda);
-            }
-          }
-        });
-  }
-
-  return std::optional{energySum};
+  return std::optional{energyNew.value() + energyOld.value()};
 }
 
 [[nodiscard]] RunningEnergy Interactions::computeInterMolecularTailEnergyDifference(

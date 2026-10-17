@@ -32,11 +32,13 @@ import triquintic_derivative_factor;
 import framework;
 import component;
 import interpolation_energy_grid;
+import mc_cell_list;
+import interactions_neighbourhood;
 
 RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
     const ForceField& forceField, const SimulationBox& simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
-    const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms,
+    const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms) noexcept
 {
   RunningEnergy energySum{};
@@ -161,7 +163,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
 [[nodiscard]] std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDifference(
     const ForceField& forceField, const SimulationBox& simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
-    const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms, std::span<const Atom> newatoms,
+    const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms, std::span<const Atom> newatoms,
     std::span<const Atom> oldatoms) noexcept
 {
   double3 dr, s, t;
@@ -297,10 +299,85 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
   return std::optional{energySum};
 }
 
+[[nodiscard]] std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDifference(
+    const ForceField& forceField, const SimulationBox& simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+    const std::optional<Framework>& framework, const MCCellList& frameworkCellList,
+    std::span<const Atom> frameworkAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
+{
+  RunningEnergy energySum{};
+  if (!framework.has_value()) return energySum;
+
+  const bool useCharge = forceField.useCharge;
+  const double overlapCriteria = forceField.energyOverlapCriteria;
+
+  // The atoms read from a grid are settled here; the others go through the gathered neighbourhood (same grid
+  // rule as the brute-force loop above).
+  auto readsGrid = [&](const Atom& atom)
+  {
+    return interpolationGrids[static_cast<std::size_t>(atom.type)].has_value() && !atom.isFractional &&
+           forceField.chargeMethod == ForceField::ChargeMethod::Ewald;
+  };
+  thread_local std::vector<Atom> pairNew{};
+  thread_local std::vector<Atom> pairOld{};
+  pairNew.clear();
+  pairOld.clear();
+  for (const Atom& atom : newatoms)
+  {
+    if (!readsGrid(atom))
+    {
+      pairNew.push_back(atom);
+      continue;
+    }
+    const double energy = interpolationGrids[static_cast<std::size_t>(atom.type)]->interpolate(atom.position);
+    if (energy > overlapCriteria) return std::nullopt;
+    energySum.frameworkMoleculeVDW += energy;
+    if (useCharge)
+    {
+      energySum.frameworkMoleculeCharge += atom.charge * interpolationGrids.back()->interpolate(atom.position);
+    }
+  }
+  for (const Atom& atom : oldatoms)
+  {
+    if (!readsGrid(atom))
+    {
+      pairOld.push_back(atom);
+      continue;
+    }
+    energySum.frameworkMoleculeVDW -=
+        interpolationGrids[static_cast<std::size_t>(atom.type)]->interpolate(atom.position);
+    if (useCharge)
+    {
+      energySum.frameworkMoleculeCharge -= atom.charge * interpolationGrids.back()->interpolate(atom.position);
+    }
+  }
+  if ((pairNew.empty() && pairOld.empty()) || frameworkAtoms.empty()) return energySum;
+
+  // The new and the old positions lie within the move's displacement of each other: the framework atoms within
+  // the cut-off of their common bounding sphere are gathered once and both sets are evaluated against them.
+  const bool usableList =
+      frameworkCellList.enabled && frameworkCellList.valid && frameworkCellList.numberOfAtoms == frameworkAtoms.size();
+  thread_local Neighbourhood scratch{};
+  const std::array<std::span<const Atom>, 2> sets{std::span<const Atom>(pairNew), std::span<const Atom>(pairOld)};
+  const auto [centre, radius] = Neighbourhood::boundingSphere(sets);
+  const double cutOff = std::max(forceField.cutOffFrameworkVDW, useCharge ? forceField.cutOffCoulomb : 0.0);
+  scratch.gatherFramework(simulationBox, usableList ? &frameworkCellList : nullptr, frameworkAtoms, centre, radius,
+                          cutOff);
+
+  std::optional<RunningEnergy> energyNew = computeNeighbourhoodEnergy(
+      forceField, simulationBox, scratch, pairNew, forceField.cutOffFrameworkVDW, forceField.cutOffCoulomb, 1.0, true);
+  if (!energyNew.has_value()) return std::nullopt;
+  std::optional<RunningEnergy> energyOld =
+      computeNeighbourhoodEnergy(forceField, simulationBox, scratch, pairOld, forceField.cutOffFrameworkVDW,
+                                 forceField.cutOffCoulomb, -1.0, false);
+
+  return std::optional{energySum + energyNew.value() + energyOld.value()};
+}
+
 std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDifference(
     const ForceField& forceField, const SimulationBox& simulationBox,
     [[maybe_unused]] const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
-    [[maybe_unused]] const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms,
+    [[maybe_unused]] const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
     std::span<double3> electricFieldMoleculeNew, std::span<double3> electricFieldMoleculeOld,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
 {

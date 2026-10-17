@@ -2678,65 +2678,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         forceFields[systemId] = ForceField::readForceField(name, "force_field.json");
       }
 
-      if (value.contains("CutOff") && value["CutOff"].is_number_float())
-      {
-        if (!forceFields[systemId].has_value())
-        {
-          throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
-        }
-        forceFields[systemId]->cutOffFrameworkVDW = value["CutOff"].get<double>();
-        forceFields[systemId]->cutOffMoleculeVDW = value["CutOff"].get<double>();
-        forceFields[systemId]->preComputeDerivedParameters();
-        forceFields[systemId]->preComputePotentialShift();
-        forceFields[systemId]->preComputeTailCorrection();
-      }
-
-      if (value.contains("CutOffVDW") && value["CutOffVDW"].is_number_float())
-      {
-        if (!forceFields[systemId].has_value())
-        {
-          throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
-        }
-        forceFields[systemId]->cutOffFrameworkVDW = value["CutOffVDW"].get<double>();
-        forceFields[systemId]->cutOffMoleculeVDW = value["CutOffVDW"].get<double>();
-        forceFields[systemId]->preComputeDerivedParameters();
-        forceFields[systemId]->preComputePotentialShift();
-        forceFields[systemId]->preComputeTailCorrection();
-      }
-
-      if (value.contains("CutOffFrameworkVDW") && value["CutOffFrameworkVDW"].is_number_float())
-      {
-        if (!forceFields[systemId].has_value())
-        {
-          throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
-        }
-        forceFields[systemId]->cutOffFrameworkVDW = value["CutOffFrameworkVDW"].get<double>();
-        forceFields[systemId]->preComputeDerivedParameters();
-        forceFields[systemId]->preComputePotentialShift();
-        forceFields[systemId]->preComputeTailCorrection();
-      }
-
-      if (value.contains("CutOffMoleculeVDW") && value["CutOffMoleculeVDW"].is_number_float())
-      {
-        if (!forceFields[systemId].has_value())
-        {
-          throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
-        }
-        forceFields[systemId]->cutOffMoleculeVDW = value["CutOffMoleculeVDW"].get<double>();
-        forceFields[systemId]->preComputeDerivedParameters();
-        forceFields[systemId]->preComputePotentialShift();
-        forceFields[systemId]->preComputeTailCorrection();
-      }
-
-      if (value.contains("CutOffCoulomb") && value["CutOffCoulomb"].is_number_float())
-      {
-        if (!forceFields[systemId].has_value())
-        {
-          throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
-        }
-        forceFields[systemId]->cutOffCoulomb = value["CutOffCoulomb"].get<double>();
-      }
-
       if (value.contains("OmitEwaldFourier") && value["OmitEwaldFourier"].is_boolean())
       {
         if (!forceFields[systemId].has_value())
@@ -4496,6 +4437,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (value.contains("HybridMCUseForceEngine") && value["HybridMCUseForceEngine"].is_boolean())
+      {
+        systems[systemId].hybridMCUseForceEngine = value["HybridMCUseForceEngine"].get<bool>();
+      }
+      systems[systemId].forceEngineSettings = spatialDecompositionSettings;
       if (value.contains("HybridMCMoveNumberOfSteps") && value["HybridMCMoveNumberOfSteps"].is_number_unsigned())
       {
         systems[systemId].numberOfHybridMCSteps = value["HybridMCMoveNumberOfSteps"].get<std::size_t>();
@@ -5290,9 +5236,6 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::systemOptions = {
     "ForceField",
-    "CutOff",
-    "CutOffVDW",
-    "CutOffCoulomb",
     "OmitEwaldFourier",
     "ComputePolarization",
     "ChargeMethod",
@@ -5303,6 +5246,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "ParallelTemperingSwapProbability",
     "HybridMCProbability",
     "HybridMCMoveNumberOfSteps",
+    "HybridMCUseForceEngine",
     "CrossLinkSwapProbability",
     "CrossLinkFormationProbability",
     "CrossLinkExchangeProbability",

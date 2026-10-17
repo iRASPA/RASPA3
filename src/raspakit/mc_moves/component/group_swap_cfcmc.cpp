@@ -125,7 +125,7 @@ std::optional<RunningEnergy> computeNonEwaldEnergyDifference(System& system, std
   if (!externalFieldDifference.has_value()) return std::nullopt;
 
   std::optional<RunningEnergy> frameworkDifference = Interactions::computeFrameworkMoleculeEnergyDifference(
-      system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+      system.forceField, system.simulationBox, system.interpolationGrids, system.framework, system.frameworkCellList(),
       system.spanOfFrameworkAtoms(), newAtoms, oldAtoms);
   if (!frameworkDifference.has_value()) return std::nullopt;
 

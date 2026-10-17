@@ -162,14 +162,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
           static_cast<std::uint32_t>(systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
     }
 
-    std::optional<RunningEnergy> frameworkDifferenceA =
-        timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
-              [&]
-              {
-                return Interactions::computeFrameworkMoleculeEnergyDifference(
-                    systemA.forceField, systemA.simulationBox, systemA.interpolationGrids, systemA.framework,
-                    systemA.spanOfFrameworkAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
-              });
+    std::optional<RunningEnergy> frameworkDifferenceA = timed(
+        systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
+        [&]
+        {
+          return Interactions::computeFrameworkMoleculeEnergyDifference(
+              systemA.forceField, systemA.simulationBox, systemA.interpolationGrids, systemA.framework,
+              systemA.frameworkCellList(), systemA.spanOfFrameworkAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
+        });
 
     if (!frameworkDifferenceA.has_value())
     {
@@ -227,7 +227,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               {
                 return Interactions::computeFrameworkMoleculeEnergyDifference(
                     systemA.forceField, systemA.simulationBox, systemA.interpolationGrids, systemA.framework,
-                    systemA.spanOfFrameworkAtoms(), newMolecule, {});
+                    systemA.frameworkCellList(), systemA.spanOfFrameworkAtoms(), newMolecule, {});
               });
 
     if (!frameworkDifferenceA2.has_value())
@@ -291,7 +291,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               {
                 return Interactions::computeFrameworkMoleculeEnergyDifference(
                     systemB.forceField, systemB.simulationBox, systemB.interpolationGrids, systemB.framework,
-                    systemB.spanOfFrameworkAtoms(), selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
+                    systemB.frameworkCellList(), systemB.spanOfFrameworkAtoms(), selectedIntegerMoleculeB,
+                    oldSelectedIntegerMoleculeB);
               });
     if (!frameworkDifferenceB.has_value())
     {
@@ -353,14 +354,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       atom.position = systemA.simulationBox.randomPosition(random);
     }
 
-    std::optional<RunningEnergy> frameworkDifferenceB2 =
-        timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
-              [&]
-              {
-                return Interactions::computeFrameworkMoleculeEnergyDifference(
-                    systemB.forceField, systemB.simulationBox, systemB.interpolationGrids, systemB.framework,
-                    systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
-              });
+    std::optional<RunningEnergy> frameworkDifferenceB2 = timed(
+        systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
+        [&]
+        {
+          return Interactions::computeFrameworkMoleculeEnergyDifference(
+              systemB.forceField, systemB.simulationBox, systemB.interpolationGrids, systemB.framework,
+              systemB.frameworkCellList(), systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
+        });
     if (!frameworkDifferenceB2.has_value())
     {
       // reject, set fractional molecule back to old state
@@ -541,14 +542,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                  a.componentId, a.groupId, a.isFractional);
                    });
 
-    std::optional<RunningEnergy> frameworkDifferenceA =
-        timed(systemA, componentA, move, Move::Timing::LambdaShuffleNonEwald,
-              [&]
-              {
-                return Interactions::computeFrameworkMoleculeEnergyDifference(
-                    systemA.forceField, systemA.simulationBox, systemA.interpolationGrids, systemA.framework,
-                    systemA.spanOfFrameworkAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
-              });
+    std::optional<RunningEnergy> frameworkDifferenceA = timed(
+        systemA, componentA, move, Move::Timing::LambdaShuffleNonEwald,
+        [&]
+        {
+          return Interactions::computeFrameworkMoleculeEnergyDifference(
+              systemA.forceField, systemA.simulationBox, systemA.interpolationGrids, systemA.framework,
+              systemA.frameworkCellList(), systemA.spanOfFrameworkAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
+        });
 
     if (!frameworkDifferenceA.has_value())
     {
@@ -596,14 +597,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     RunningEnergy energyDifferenceA =
         frameworkDifferenceA.value() + moleculeDifferenceA.value() + EwaldEnergyDifferenceA + tailEnergyDifferenceA;
 
-    std::optional<RunningEnergy> frameworkDifferenceB =
-        timed(systemA, componentA, move, Move::Timing::LambdaShuffleNonEwald,
-              [&]
-              {
-                return Interactions::computeFrameworkMoleculeEnergyDifference(
-                    systemB.forceField, systemB.simulationBox, systemB.interpolationGrids, systemB.framework,
-                    systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
-              });
+    std::optional<RunningEnergy> frameworkDifferenceB = timed(
+        systemA, componentA, move, Move::Timing::LambdaShuffleNonEwald,
+        [&]
+        {
+          return Interactions::computeFrameworkMoleculeEnergyDifference(
+              systemB.forceField, systemB.simulationBox, systemB.interpolationGrids, systemB.framework,
+              systemB.frameworkCellList(), systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
+        });
 
     if (!frameworkDifferenceB.has_value())
     {
@@ -723,7 +724,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               {
                 return Interactions::computeFrameworkMoleculeEnergyDifference(
                     systemA.forceField, systemA.simulationBox, systemA.interpolationGrids, systemA.framework,
-                    systemA.spanOfFrameworkAtoms(), trialPositions, fractionalMoleculeA);
+                    systemA.frameworkCellList(), systemA.spanOfFrameworkAtoms(), trialPositions, fractionalMoleculeA);
               });
 
     if (!frameworkEnergyDifference.has_value()) return std::nullopt;

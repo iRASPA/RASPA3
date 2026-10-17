@@ -4,6 +4,8 @@ module mc_moves_reaction_common;
 
 import std;
 
+import ewald_structure_factor;
+
 import component;
 import atom;
 import molecule;
@@ -73,8 +75,8 @@ void acceptChargedEwaldMove(System& system) noexcept
   // the intra-molecular exclusion terms directly and need no correction here.
 
   // rebuild trialEik by replacing the molecules one at a time, keeping storedEik untouched
-  const std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> storedEikSnapshot = system.storedEik;
-  std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> workingStoredEik = storedEikSnapshot;
+  const EwaldStructureFactor storedEikSnapshot = system.storedEik;
+  EwaldStructureFactor workingStoredEik = storedEikSnapshot;
   for (const std::vector<Atom>& oldMolecule : oldMolecules)
   {
     (void)Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
@@ -459,7 +461,7 @@ void setReactionFractionalScaling(System& system, Reaction& reaction, double lam
   }
 
   std::optional<RunningEnergy> frameworkDifference = Interactions::computeFrameworkMoleculeEnergyDifference(
-      system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+      system.forceField, system.simulationBox, system.interpolationGrids, system.framework, system.frameworkCellList(),
       system.spanOfFrameworkAtoms(), newAtoms, oldAtoms);
   if (!frameworkDifference)
   {

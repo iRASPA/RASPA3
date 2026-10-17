@@ -236,7 +236,6 @@ Some simulations, especially with a large number of unitcells, by using grid-int
       "Name" : "IRMOF-1",
       "NumberOfUnitCells" : [2, 2, 2],
       "ChargeMethod" : "Ewald",
-      "CutOff" : 12.0,
       "ExternalTemperature" : 298.0,
       "ExternalPressure" : 1e5
     }

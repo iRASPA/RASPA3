@@ -653,9 +653,12 @@ TEST(INPUT_READER, auto_macrostate_rejected_without_compute_bet)
 TEST(INPUT_READER, number_of_unit_cells_auto_satisfies_minimum_image_convention)
 {
   TemporaryDirectory workspace = makeTmmcWorkspace();
-  nlohmann::json input = readTMMCExample();
   // Unit cell ~30.6 Å; CutOff 20 Å → need ceil(40 / 30.6) = 2 replicas per axis.
-  input["Systems"][0]["CutOff"] = 20.0;
+  // The cut-off is a force-field option, so it is set in force_field.json.
+  nlohmann::json forceField = nlohmann::json::parse(input_reader_fixtures::kTmmcForceFieldJson);
+  forceField["CutOffVDW"] = 20.0;
+  workspace.write("force_field.json", forceField.dump(2));
+  nlohmann::json input = readTMMCExample();
   input["Systems"][0]["NumberOfUnitCells"] = "auto";
   TemporaryInput temporary(std::move(input), "unit_cells_auto", workspace.path());
   ScopedCurrentPath currentPath(workspace.path());

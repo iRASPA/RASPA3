@@ -2,6 +2,8 @@
 
 import std;
 
+import ewald_structure_factor;
+
 import int3;
 import double3;
 import double3x3;
@@ -39,6 +41,8 @@ import spatial_decomposition_worker_team;
 import spatial_decomposition_force_engine;
 import force_engine;
 import spatial_decomposition_device_step;
+import mc_moves_hybridmc;
+import mc_moves_move_types;
 
 namespace
 {
@@ -1755,4 +1759,179 @@ TEST_P(SpatialDecompositionDevice, resident_integrator_resumes_after_host_evalua
     maxDifference = std::max(maxDifference, std::sqrt(double3::dot(difference, difference)));
   }
   EXPECT_LT(maxDifference, 1e-5);
+}
+
+void DOUBLE3_EXPECT_NEAR(double3 a, double3 b, double tol);
+
+namespace
+{
+std::vector<double3> positionsOf(const System& system)
+{
+  std::vector<double3> result;
+  for (const Atom& atom : system.spanOfMoleculeAtoms()) result.push_back(atom.position);
+  return result;
+}
+
+// A dilute lattice of waters (no overlaps, so that the short trajectories stay well-behaved) with the running
+// energies of the system set as the Monte Carlo drivers do before the moves.
+System makeHybridMCWaterSystem(ForceField& forceField, Component& water, RandomNumber& random)
+{
+  System system =
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {water}, {}, {216}, 5);
+  randomizeConfiguration(system, random);
+  system.runningEnergies = system.computeTotalEnergies();
+  system.numberOfHybridMCSteps = 5;
+  system.forceEngineSettings = settingsFor(2);
+  return system;
+}
+}  // namespace
+
+TEST(spatial_decomposition, hybrid_mc_engine_path_follows_the_exact_trajectory_rigid_water)
+{
+  ForceField forceField = makeWaterForceField();
+  Component water = makeWater(forceField);
+  RandomNumber configuration(11);
+  System exact = makeHybridMCWaterSystem(forceField, water, configuration);
+  System engine = exact;
+  exact.hybridMCUseForceEngine = false;
+  engine.hybridMCUseForceEngine = true;
+  exact.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 5e-4);
+  engine.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 5e-4);
+
+  // the same random stream: the same Boltzmann velocities and the same acceptance draw
+  RandomNumber randomExact(5);
+  RandomNumber randomEngine(5);
+  const std::optional<RunningEnergy> acceptedExact = MC_Moves::hybridMCMove(randomExact, exact);
+  const std::optional<RunningEnergy> acceptedEngine = MC_Moves::hybridMCMove(randomEngine, engine);
+  ASSERT_TRUE(acceptedExact.has_value());
+  ASSERT_TRUE(acceptedEngine.has_value());
+  ASSERT_TRUE(engine.hybridMCForceEngine != nullptr);
+  EXPECT_TRUE(exact.hybridMCForceEngine == nullptr);
+
+  // the engine forces (mesh Ewald, tabulated erfc) steer the same trajectory to within their accuracy
+  const std::vector<double3> exactPositions = positionsOf(exact);
+  const std::vector<double3> enginePositions = positionsOf(engine);
+  EXPECT_LT(rmsDifference(enginePositions, exactPositions), 1e-5);
+
+  // the returned energies are the exact energies of the new configuration (what the caller stores as the running
+  // energies), tail correction included, kinetic energies of the trajectory attached
+  const RunningEnergy recomputed = engine.computeTotalEnergies();
+  EXPECT_NEAR(acceptedEngine->potentialEnergy(), recomputed.potentialEnergy(),
+              1e-10 * std::abs(recomputed.potentialEnergy()));
+  EXPECT_NEAR(acceptedEngine->moleculeMoleculeVDW, recomputed.moleculeMoleculeVDW,
+              1e-10 * std::abs(recomputed.moleculeMoleculeVDW));
+  EXPECT_NEAR(acceptedEngine->ewald_fourier, recomputed.ewald_fourier, 1e-10 * std::abs(recomputed.ewald_fourier));
+  EXPECT_NEAR(acceptedEngine->tail, recomputed.tail, 1e-10 * std::abs(recomputed.tail));
+  EXPECT_GT(acceptedEngine->translationalKineticEnergy, 0.0);
+  EXPECT_GT(acceptedEngine->rotationalKineticEnergy, 0.0);
+  EXPECT_NEAR(acceptedEngine->potentialEnergy(), acceptedExact->potentialEnergy(),
+              1e-6 * std::abs(acceptedExact->potentialEnergy()));
+  EXPECT_DOUBLE_EQ(engine.timeStep, 5e-4);
+
+  // the stored Ewald structure factors belong to the new configuration: a subsequent move must see no difference
+  const EwaldStructureFactor stored = engine.storedEik;
+  engine.computeTotalEnergies();
+  ASSERT_EQ(stored.size(), engine.storedEik.size());
+  for (std::size_t k = 0; k < stored.size(); ++k)
+  {
+    EXPECT_NEAR(std::abs(stored.sum[k] - engine.storedEik.sum[k]), 0.0, 1e-9);
+  }
+}
+
+TEST(spatial_decomposition, hybrid_mc_engine_path_restores_the_state_on_rejection)
+{
+  ForceField forceField = makeWaterForceField();
+  Component water = makeWater(forceField);
+  RandomNumber configuration(13);
+  System system = makeHybridMCWaterSystem(forceField, water, configuration);
+  // a time step far too large: the energy drift makes the rejection (almost) certain
+  system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 0.05);
+
+  const std::vector<double3> initialPositions = positionsOf(system);
+  const std::vector<Molecule> initialMolecules = system.moleculeData;
+  const EwaldStructureFactor initialStored(system.storedEik);
+  const RunningEnergy initialEnergies = system.runningEnergies;
+
+  RandomNumber random(17);
+  std::optional<RunningEnergy> accepted;
+  std::size_t rejected = 0;
+  for (std::size_t attempt = 0; attempt < 5 && !accepted.has_value(); ++attempt)
+  {
+    accepted = MC_Moves::hybridMCMove(random, system);
+    if (accepted.has_value()) break;
+    ++rejected;
+    const std::vector<double3> positions = positionsOf(system);
+    for (std::size_t i = 0; i < positions.size(); ++i)
+    {
+      DOUBLE3_EXPECT_NEAR(positions[i], initialPositions[i], 0.0);
+    }
+    for (std::size_t m = 0; m < initialMolecules.size(); ++m)
+    {
+      DOUBLE3_EXPECT_NEAR(system.moleculeData[m].centerOfMassPosition, initialMolecules[m].centerOfMassPosition, 0.0);
+      EXPECT_EQ(system.moleculeData[m].orientation.r, initialMolecules[m].orientation.r);
+    }
+    ASSERT_EQ(system.storedEik.size(), initialStored.size());
+    for (std::size_t k = 0; k < initialStored.size(); ++k)
+    {
+      EXPECT_EQ(system.storedEik.sum[k], initialStored.sum[k]);
+    }
+    EXPECT_FALSE(system.thermostat.has_value());
+    EXPECT_DOUBLE_EQ(system.timeStep, 0.0005);
+    // the restored configuration has the running energies it had
+    const RunningEnergy recomputed = system.computeTotalEnergies();
+    EXPECT_NEAR(recomputed.potentialEnergy(), initialEnergies.potentialEnergy(),
+                1e-10 * std::abs(initialEnergies.potentialEnergy()));
+  }
+  EXPECT_GT(rejected, 0uz);
+}
+
+TEST(spatial_decomposition, hybrid_mc_engine_path_flexible_chains_matches_the_exact_energy)
+{
+  ForceField forceField = ForceField(
+      {{"CH2", false, 14.02658, 0.0, 0.0, 8, false}, {"O", false, 15.9994, 0.0, 0.0, 8, false}},
+      {{56.0, 3.96}, {80.0, 3.1}}, ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0, 9.0, false, false, true);
+  forceField.automaticEwald = false;
+  forceField.EwaldAlpha = 0.32;
+  forceField.numberOfWaveVectors = int3(14, 14, 14);
+  forceField.reciprocalCutOffSquared = std::numeric_limits<double>::max();
+  forceField.reciprocalIntegerCutOffSquared = 196;
+
+  ConnectivityTable connectivityTable(3);
+  connectivityTable[0, 1] = true;
+  connectivityTable[1, 0] = true;
+  connectivityTable[1, 2] = true;
+  connectivityTable[2, 1] = true;
+  Potentials::IntraMolecularPotentials intraMolecularPotentials{};
+  intraMolecularPotentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {96500.0, 1.54}),
+                                    BondPotential({1, 2}, BondType::Harmonic, {96500.0, 1.43})};
+  intraMolecularPotentials.bends = {BendPotential({0, 1, 2}, BendType::Harmonic, {62500.0, 114.0})};
+  Component chain = Component(
+      forceField, "chain", 500.0, 4871800.0, 0.0993,
+      {Atom({0.0, 0.0, 0.0}, 0.3, 1.0, 0, 0, 0, false, false), Atom({1.54, 0.0, 0.0}, 0.2, 1.0, 0, 0, 0, false, false),
+       Atom({2.1, 1.3, 0.0}, -0.5, 1.0, 0, 1, 0, false, false)},
+      connectivityTable, intraMolecularPotentials, 5, 21);
+
+  System system =
+      System(forceField, SimulationBox(32.0, 32.0, 32.0), false, 300.0, 1e5, 1.0, {}, {chain}, {}, {125}, 5);
+  RandomNumber configuration(3);
+  randomizeConfiguration(system, configuration);
+  system.runningEnergies = system.computeTotalEnergies();
+  system.numberOfHybridMCSteps = 4;
+  system.forceEngineSettings = settingsFor(4, 1.5, 0.5);
+  system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 2e-4);
+
+  RandomNumber random(29);
+  std::optional<RunningEnergy> accepted;
+  for (std::size_t attempt = 0; attempt < 10 && !accepted.has_value(); ++attempt)
+  {
+    accepted = MC_Moves::hybridMCMove(random, system);
+  }
+  ASSERT_TRUE(accepted.has_value());
+  ASSERT_TRUE(system.hybridMCForceEngine != nullptr);
+  const RunningEnergy recomputed = system.computeTotalEnergies();
+  EXPECT_NEAR(accepted->potentialEnergy(), recomputed.potentialEnergy(),
+              1e-10 * std::abs(recomputed.potentialEnergy()));
+  EXPECT_NEAR(accepted->bond, recomputed.bond, 1e-10 * std::abs(recomputed.bond));
+  EXPECT_NEAR(accepted->bend, recomputed.bend, 1e-10 * std::abs(recomputed.bend));
+  EXPECT_NE(accepted->bond, 0.0);
 }

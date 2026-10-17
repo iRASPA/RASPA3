@@ -9,6 +9,7 @@ import simulationbox;
 import interpolation_energy_grid;
 import cross_links;
 export import mc_cell_list;
+export import interactions_neighbourhood;
 
 import std;
 
@@ -162,6 +163,18 @@ struct GrowContext
   /// brute-force background loop. Reset by 'withMoleculeAtoms' since the list no longer describes the
   /// background; set with 'withCellList'.
   const MCCellList *cellList{nullptr};
+  /// The background gathered once for a batch of trial sets (see Interactions::Neighbourhood), or nullptr.
+  /// An evaluation uses it when it covers the trial set and the cut-offs ('Neighbourhood::covers'), and
+  /// gathers for itself otherwise. Gathered over 'moleculeAtoms' with 'skipBackgroundMolecule' left out,
+  /// so it is reset by 'withMoleculeAtoms' and 'withSkippedMolecule'; set with 'withNeighbourhood'.
+  const Interactions::Neighbourhood* neighbourhood{nullptr};
+  /// Cell list built over exactly 'frameworkAtoms' (see 'System::frameworkCellList'), or nullptr for the
+  /// brute-force framework loop. The framework-molecule energy of a trial set then gathers the framework atoms
+  /// around the set (or reads 'frameworkNeighbourhood' when it covers the set) and evaluates with the dense
+  /// kernels; the atoms with an interpolation grid read the grid as before. Set with 'withFrameworkCellList'.
+  const MCCellList* frameworkCellList{nullptr};
+  /// The framework atoms gathered once for a batch of trial sets, or nullptr. Set with 'withFrameworkNeighbourhood'.
+  const Interactions::Neighbourhood* frameworkNeighbourhood{nullptr};
   /// Molecule id whose atoms in 'moleculeAtoms' are ignored by every energy evaluation (see the
   /// class comment); std::nullopt skips nothing beyond the same-id rule.
   std::optional<std::size_t> skipBackgroundMolecule{};
@@ -193,6 +206,7 @@ struct GrowContext
     GrowContext copy(*this);
     copy.moleculeAtoms = background;
     copy.cellList = nullptr;
+    copy.neighbourhood = nullptr;
     return copy;
   }
 
@@ -205,12 +219,41 @@ struct GrowContext
     return copy;
   }
 
+  /// The same environment with the background of a batch of trial sets pre-gathered in 'gathered' (over
+  /// this context's 'moleculeAtoms' and skipped molecule); nullptr restores the per-evaluation gather.
+  [[nodiscard]] GrowContext withNeighbourhood(const Interactions::Neighbourhood* gathered) const
+  {
+    GrowContext copy(*this);
+    copy.neighbourhood = gathered;
+    return copy;
+  }
+
+  /// The same environment with the framework atoms queried through 'list' (built over this context's
+  /// 'frameworkAtoms'); nullptr restores the brute-force loop.
+  [[nodiscard]] GrowContext withFrameworkCellList(const MCCellList* list) const
+  {
+    GrowContext copy(*this);
+    copy.frameworkCellList = list;
+    return copy;
+  }
+
+  /// The same environment with the framework atoms around a batch of trial sets pre-gathered in 'gathered'
+  /// (a 'Background::Framework' neighbourhood over this context's 'frameworkAtoms'); nullptr restores the
+  /// per-evaluation gather.
+  [[nodiscard]] GrowContext withFrameworkNeighbourhood(const Interactions::Neighbourhood* gathered) const
+  {
+    GrowContext copy(*this);
+    copy.frameworkNeighbourhood = gathered;
+    return copy;
+  }
+
   /// The same environment with the atoms of background molecule 'moleculeId' ignored (identity
   /// change: the trial molecule has a new id, the old molecule is still in the background).
   [[nodiscard]] GrowContext withSkippedMolecule(std::size_t moleculeId) const
   {
     GrowContext copy(*this);
     copy.skipBackgroundMolecule = moleculeId;
+    copy.neighbourhood = nullptr;
     return copy;
   }
 

@@ -33,6 +33,7 @@ import property_widom;
 import property_simulationbox;
 import property_energy;
 import mc_moves;
+import mc_moves_hybridmc;
 import mc_moves_probabilities;
 import mc_moves_cputime;
 import mc_moves_statistics;
@@ -1203,6 +1204,7 @@ void MonteCarlo::output()
       ++componentId;
     }
     std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
+    std::print(stream, "{}", MC_Moves::hybridMCForceEngineReport(system));
 
     std::print(stream, "Production run CPU timings of the MC moves summed over systems and components\n");
     std::print(stream, "========================================================================================================================\n\n");

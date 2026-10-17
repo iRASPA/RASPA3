@@ -4,6 +4,8 @@ module mc_moves_translation_rotation_smart_mc;
 
 import std;
 
+import ewald_structure_factor;
+
 import component;
 import molecule;
 import atom;
@@ -28,7 +30,7 @@ import mc_moves_cputime;
 // configuration for the Metropolis-Hastings correction to keep the move exact.
 static void computeMoleculeGradients(
     System &system, std::span<const Atom> selectedAtoms,
-    const std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &structureFactor,
+    const EwaldStructureFactor &structureFactor,
     std::vector<AtomDynamics> &dynamics)
 {
   dynamics.assign(selectedAtoms.size(), AtomDynamics{});
@@ -168,7 +170,7 @@ std::optional<RunningEnergy> MC_Moves::translationRotationSmartMCMove(RandomNumb
               }
               return Interactions::computeFrameworkMoleculeEnergyDifference(
                   system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-                  system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
+                  system.frameworkCellList(), system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
             });
   if (!frameworkMolecule.has_value()) return std::nullopt;
 

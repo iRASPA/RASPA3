@@ -2,6 +2,8 @@
 
 import std;
 
+import ewald_structure_factor;
+
 import double3;
 import double3x3;
 import simd_quatd;
@@ -34,8 +36,8 @@ struct EwaldEnergyEvaluator
   std::vector<std::complex<double>> eik_y;
   std::vector<std::complex<double>> eik_z;
   std::vector<std::complex<double>> eik_xy;
-  std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> fixedFrameworkStoredEik;
-  std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> storedEik;
+  EwaldStructureFactor fixedFrameworkStoredEik;
+  EwaldStructureFactor storedEik;
 
   double operator()(const System& system, const SimulationBox& box)
   {
@@ -274,8 +276,8 @@ TEST(minimization_hessian_ewald, flexible_md_live_framework_gradient_matches_fin
     std::vector<std::complex<double>> eikY;
     std::vector<std::complex<double>> eikZ;
     std::vector<std::complex<double>> eikXY;
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> trialEik;
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> fixedEik;
+    EwaldStructureFactor trialEik;
+    EwaldStructureFactor fixedEik;
     std::vector<AtomDynamics> moleculeScratch(system.spanOfMoleculeAtoms().size());
     std::vector<AtomDynamics> frameworkScratch(system.spanOfFrameworkAtoms().size());
     const RunningEnergy value = Interactions::computeEwaldFourierGradient(

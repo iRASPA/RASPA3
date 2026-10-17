@@ -19,6 +19,7 @@ import potential_pair_derivatives;
 import potential_pair_vdw;
 import potential_pair_coulomb;
 import mc_cell_list;
+import interactions_neighbourhood;
 import cbmc_grow_context;
 import cbmc_results;
 
@@ -336,6 +337,119 @@ bool accumulateGridEnergy(const ForceField &forceField,
   }
 }
 
+namespace
+{
+/// Whether a trial atom reads its framework energy from an interpolation grid (one exists for its type and the
+/// atom is not fractional).
+inline bool readsFrameworkGrid(const CBMC::GrowContext& context, const Atom& atom)
+{
+  return context.interpolationGrids[static_cast<std::size_t>(atom.type)].has_value() && !atom.isFractional;
+}
+
+/// The trial atoms of the sets that are evaluated by framework pairs (not from a grid), in 'pairAtoms'; false
+/// when the batch needs no framework pairs at all.
+bool frameworkPairAtoms(const CBMC::GrowContext& context, std::span<const std::span<const Atom>> trialSets,
+                        std::vector<Atom>& pairAtoms)
+{
+  pairAtoms.clear();
+  if (!context.frameworkCellList || context.frameworkAtoms.empty()) return false;
+  for (std::span<const Atom> set : trialSets)
+  {
+    for (const Atom& atom : set)
+    {
+      if (!readsFrameworkGrid(context, atom)) pairAtoms.push_back(atom);
+    }
+  }
+  return !pairAtoms.empty();
+}
+
+inline double frameworkGatherCutOff(const CBMC::GrowContext& context)
+{
+  // gathered at the full cut-offs, so the dual cut-off correction is covered as well
+  return std::max(context.forceField.cutOffFrameworkVDW,
+                  context.forceField.useCharge ? context.forceField.cutOffCoulomb : 0.0);
+}
+}  // namespace
+
+[[nodiscard]] std::optional<RunningEnergy> CBMC::computeFrameworkMoleculeEnergy(const GrowContext& context,
+                                                                                std::span<const Atom> atoms) noexcept
+{
+  if (context.frameworkAtoms.empty()) return RunningEnergy{};
+  if (!context.frameworkCellList)
+  {
+    return computeFrameworkMoleculeEnergy(context.forceField, context.simulationBox, context.interpolationGrids,
+                                          context.framework, context.frameworkAtoms, context.cutOffFrameworkVDW,
+                                          context.cutOffCoulomb, atoms);
+  }
+
+  // the atoms with a grid are settled here, the others by pairs against the gathered framework atoms
+  RunningEnergy energySum{};
+  thread_local std::vector<Atom> pairAtoms{};
+  pairAtoms.clear();
+  for (const Atom& atom : atoms)
+  {
+    if (!readsFrameworkGrid(context, atom))
+    {
+      pairAtoms.push_back(atom);
+      continue;
+    }
+    if (!accumulateGridEnergy(context.forceField, context.interpolationGrids, atom, energySum)) return std::nullopt;
+  }
+  if (pairAtoms.empty()) return energySum;
+
+  std::optional<RunningEnergy> pairEnergy;
+  if (context.frameworkNeighbourhood &&
+      context.frameworkNeighbourhood->covers(pairAtoms, context.cutOffFrameworkVDW, context.cutOffCoulomb,
+                                             context.forceField.useCharge))
+  {
+    pairEnergy = Interactions::computeNeighbourhoodEnergy(context.forceField, context.simulationBox,
+                                                          *context.frameworkNeighbourhood, pairAtoms,
+                                                          context.cutOffFrameworkVDW, context.cutOffCoulomb, 1.0, true);
+  }
+  else
+  {
+    // a one-off gather around this set; a single atom with no usable list is cheaper by the direct loop
+    const MCCellList& list = *context.frameworkCellList;
+    const bool usableList = list.enabled && list.valid && list.numberOfAtoms == context.frameworkAtoms.size();
+    if (!usableList && pairAtoms.size() < 2)
+    {
+      pairEnergy =
+          computeFrameworkSerial(context.forceField, context.simulationBox, context.interpolationGrids,
+                                 context.frameworkAtoms, context.cutOffFrameworkVDW, context.cutOffCoulomb, pairAtoms);
+    }
+    else if (pairAtoms.size() == 1)
+    {
+      // a lone trial atom (a first bead): straight out of the cells, without the gather
+      pairEnergy = Interactions::computeCellListAtomEnergy(
+          context.forceField, context.simulationBox, list, pairAtoms[0], context.cutOffFrameworkVDW,
+          context.cutOffCoulomb, 1.0, true, std::nullopt, Interactions::Neighbourhood::Background::Framework);
+    }
+    else
+    {
+      thread_local Interactions::Neighbourhood scratch{};
+      const auto [centre, radius] = Interactions::Neighbourhood::boundingSphere(pairAtoms);
+      scratch.gatherFramework(context.simulationBox, usableList ? &list : nullptr, context.frameworkAtoms, centre,
+                              radius, frameworkGatherCutOff(context));
+      pairEnergy =
+          Interactions::computeNeighbourhoodEnergy(context.forceField, context.simulationBox, scratch, pairAtoms,
+                                                   context.cutOffFrameworkVDW, context.cutOffCoulomb, 1.0, true);
+    }
+  }
+  if (!pairEnergy.has_value()) return std::nullopt;
+  return energySum + pairEnergy.value();
+}
+
+bool CBMC::gatherFrameworkNeighbourhood(const GrowContext& context, Interactions::Neighbourhood& neighbourhood,
+                                        std::span<const std::span<const Atom>> trialSets, double extraRadius) noexcept
+{
+  thread_local std::vector<Atom> pairAtoms{};
+  if (!frameworkPairAtoms(context, trialSets, pairAtoms)) return false;
+  const auto [centre, radius] = Interactions::Neighbourhood::boundingSphere(pairAtoms);
+  neighbourhood.gatherFramework(context.simulationBox, context.frameworkCellList, context.frameworkAtoms, centre,
+                                radius + extraRadius, frameworkGatherCutOff(context));
+  return true;
+}
+
 // ---------------------------------------------------------------------------------------------------
 // Inter-molecular.
 // ---------------------------------------------------------------------------------------------------
@@ -395,74 +509,59 @@ bool accumulateGridEnergy(const ForceField &forceField,
     std::span<const Atom> moleculeAtoms, double cutOffVDW, double cutOffCoulomb, std::span<const Atom> atoms,
     std::optional<std::size_t> skipBackgroundMolecule) noexcept
 {
-  if (!cellList.enabled || !cellList.valid || cutOffVDW > cellList.cutOff || cutOffCoulomb > cellList.cutOff)
+  if (atoms.empty()) return RunningEnergy{};
+
+  // A one-off neighbourhood of this trial set: the background within the cut-off of its bounding sphere,
+  // gathered through the cells when the list is usable and by a pass over all atoms otherwise, into the
+  // thread's scratch buffer and evaluated with the dense kernel. The pass over all atoms only pays off when
+  // it is amortised over several trial atoms: a single atom (a first bead) is cheaper by the direct loop.
+  const bool usableList = cellList.enabled && cellList.valid && cellList.numberOfAtoms == moleculeAtoms.size();
+  if (!usableList && atoms.size() < 2)
   {
     return computeInterMolecularEnergy(forceField, simulationBox, moleculeAtoms, cutOffVDW, cutOffCoulomb, atoms,
                                        skipBackgroundMolecule);
   }
-
-  const bool useCharge = forceField.useCharge;
-  const double overlapCriteria = forceField.energyOverlapCriteria;
-  const double cutOffVDWSquared = cutOffVDW * cutOffVDW;
-  const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
-  const std::uint32_t skippedMolecule = skipBackgroundMolecule.has_value()
-                                            ? static_cast<std::uint32_t>(skipBackgroundMolecule.value())
-                                            : std::numeric_limits<std::uint32_t>::max();
-
-  RunningEnergy energySum;
-  bool overlap = false;
-
-  // Same pair arithmetic as 'Interactions::evaluatePair' with the background atom as 'atomA'
-  // (dr = posA - posB); the background atom is only fetched for pairs inside a cut-off.
-  for (const Atom &atom : atoms)
+  const std::optional<std::uint32_t> skipped =
+      skipBackgroundMolecule.has_value() ? std::optional{static_cast<std::uint32_t>(skipBackgroundMolecule.value())}
+                                         : std::nullopt;
+  if (atoms.size() == 1)
   {
-    const std::uint32_t molB = atom.moleculeId;
-    const double3 posB = atom.position;
-
-    cellList.forEachNeighbourRecord(
-        posB,
-        [&](const MCCellList::Record &record)
-        {
-          if (overlap || record.moleculeId == molB || record.moleculeId == skippedMolecule) return;
-
-          double3 dr = simulationBox.applyPeriodicBoundaryConditions(record.position() - posB);
-          const double rr = double3::dot(dr, dr);
-
-          if (rr < cutOffVDWSquared)
-          {
-            const Atom &backgroundAtom = moleculeAtoms[record.atomIndex];
-            const Potentials::PairDerivatives<0> factors = Potentials::potentialVDW<0>(
-                forceField, backgroundAtom.scalingVDW, atom.scalingVDW, rr,
-                static_cast<std::size_t>(backgroundAtom.type), static_cast<std::size_t>(atom.type));
-            if (factors.energy > overlapCriteria)
-            {
-              overlap = true;
-              return;
-            }
-            energySum.moleculeMoleculeVDW += factors.energy;
-            energySum.addDudlambdaVDW(backgroundAtom.groupId, atom.groupId, backgroundAtom.scalingVDW, atom.scalingVDW,
-                                      factors.dUdlambda);
-          }
-          if (useCharge && rr < cutOffChargeSquared)
-          {
-            const Atom &backgroundAtom = moleculeAtoms[record.atomIndex];
-            if (backgroundAtom.charge * atom.charge != 0.0 &&
-                backgroundAtom.scalingCoulomb * atom.scalingCoulomb != 0.0)
-            {
-              const double r = std::sqrt(rr);
-              const Potentials::PairDerivatives<0> factors = Potentials::potentialCoulomb<0>(
-                  forceField, backgroundAtom.scalingCoulomb, atom.scalingCoulomb, r, backgroundAtom.charge,
-                  atom.charge);
-              energySum.moleculeMoleculeCharge += factors.energy;
-              energySum.addDudlambdaCharge(backgroundAtom.groupId, atom.groupId, backgroundAtom.scalingCoulomb,
-                                           atom.scalingCoulomb, factors.dUdlambda);
-            }
-          }
-        });
-    if (overlap) return std::nullopt;
+    // a lone trial atom (a first bead): straight out of the cells, without the gather
+    return Interactions::computeCellListAtomEnergy(forceField, simulationBox, cellList, atoms[0], cutOffVDW,
+                                                   cutOffCoulomb, 1.0, true, skipped,
+                                                   Interactions::Neighbourhood::Background::Molecules);
   }
+  thread_local Interactions::Neighbourhood scratch{};
+  const auto [centre, radius] = Interactions::Neighbourhood::boundingSphere(atoms);
+  scratch.gather(simulationBox, usableList ? &cellList : nullptr, moleculeAtoms, centre, radius,
+                 std::max(cutOffVDW, forceField.useCharge ? cutOffCoulomb : 0.0), skipped);
 
-  return energySum;
+  return Interactions::computeNeighbourhoodEnergy(forceField, simulationBox, scratch, atoms, cutOffVDW, cutOffCoulomb,
+                                                  1.0, true);
+}
+
+[[nodiscard]] std::optional<RunningEnergy> CBMC::computeInterMolecularEnergy(
+    const ForceField& forceField, const SimulationBox& simulationBox, const Interactions::Neighbourhood& neighbourhood,
+    double cutOffVDW, double cutOffCoulomb, std::span<const Atom> atoms) noexcept
+{
+  return Interactions::computeNeighbourhoodEnergy(forceField, simulationBox, neighbourhood, atoms, cutOffVDW,
+                                                  cutOffCoulomb, 1.0, true);
+}
+
+void CBMC::gatherNeighbourhood(const GrowContext& context, Interactions::Neighbourhood& neighbourhood,
+                               std::span<const std::span<const Atom>> trialSets, double extraRadius) noexcept
+{
+  const auto [centre, baseRadius] = Interactions::Neighbourhood::boundingSphere(trialSets);
+  const double radius = baseRadius + extraRadius;
+  const std::optional<std::uint32_t> skipped =
+      context.skipBackgroundMolecule.has_value()
+          ? std::optional{static_cast<std::uint32_t>(context.skipBackgroundMolecule.value())}
+          : std::nullopt;
+  // gathered at the full cut-offs, so the dual cut-off correction (which evaluates at the full and the
+  // inner cut-offs) is covered as well
+  const double cutOff = std::max(context.forceField.cutOffMoleculeVDW,
+                                 context.forceField.useCharge ? context.forceField.cutOffCoulomb : 0.0);
+  neighbourhood.gather(context.simulationBox, context.cellList, context.moleculeAtoms, centre, radius, cutOff, skipped);
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -475,10 +574,47 @@ bool accumulateGridEnergy(const ForceField &forceField,
   std::vector<CBMC::FirstBeadTrial> energies{};
   energies.reserve(trialPositions.size());
 
-  // Each first-bead trial is a one-atom trial set.
+  // Each first-bead trial is a one-atom trial set. The trials are spread over the whole box, so they share
+  // no local neighbourhood; when the system's cell list (molecule or framework) is not usable (a box too
+  // small for one) they instead share one unshifted copy of all atoms, over which the dense kernels apply the
+  // minimum image per pair -- cheaper than the atom-by-atom loop, provided the copy is amortised over several
+  // trials. A context without a cell list keeps the brute-force loop.
+  GrowContext shared(context);
+  if (trialPositions.size() >= 2)
+  {
+    const bool usableList = context.cellList && context.cellList->enabled && context.cellList->valid &&
+                            context.cellList->numberOfAtoms == context.moleculeAtoms.size();
+    if (context.cellList && !usableList && !context.neighbourhood && !context.moleculeAtoms.empty())
+    {
+      thread_local Interactions::Neighbourhood all{};
+      const std::optional<std::uint32_t> skipped =
+          context.skipBackgroundMolecule.has_value()
+              ? std::optional{static_cast<std::uint32_t>(context.skipBackgroundMolecule.value())}
+              : std::nullopt;
+      const double cutOff = std::max(context.forceField.cutOffMoleculeVDW,
+                                     context.forceField.useCharge ? context.forceField.cutOffCoulomb : 0.0);
+      all.gatherAll(context.moleculeAtoms, cutOff, skipped);
+      shared.neighbourhood = &all;
+    }
+
+    const bool usableFrameworkList = context.frameworkCellList && context.frameworkCellList->enabled &&
+                                     context.frameworkCellList->valid &&
+                                     context.frameworkCellList->numberOfAtoms == context.frameworkAtoms.size();
+    if (context.frameworkCellList && !usableFrameworkList && !context.frameworkNeighbourhood)
+    {
+      thread_local std::vector<Atom> pairAtoms{};
+      if (frameworkPairAtoms(context, std::span<const std::span<const Atom>>(&trialPositions, 1), pairAtoms))
+      {
+        thread_local Interactions::Neighbourhood allFramework{};
+        allFramework.gatherAllFramework(context.frameworkAtoms, frameworkGatherCutOff(context));
+        shared.frameworkNeighbourhood = &allFramework;
+      }
+    }
+  }
+
   for (const Atom &trialPosition : trialPositions)
   {
-    std::optional<RunningEnergy> energy = computeExternalNonOverlappingEnergy(context, component, {&trialPosition, 1});
+    std::optional<RunningEnergy> energy = computeExternalNonOverlappingEnergy(shared, component, {&trialPosition, 1});
     if (!energy.has_value()) continue;
     energies.push_back({trialPosition, energy.value()});
   }
@@ -500,19 +636,28 @@ std::optional<RunningEnergy> CBMC::computeExternalNonOverlappingEnergy(const Gro
                                        context.cutOffCoulomb, trialPositionSet);
   if (!externalFieldEnergy.has_value()) return std::nullopt;
 
-  std::optional<RunningEnergy> frameworkEnergy = CBMC::computeFrameworkMoleculeEnergy(
-      context.forceField, context.simulationBox, context.interpolationGrids, context.framework,
-      context.frameworkAtoms, context.cutOffFrameworkVDW, context.cutOffCoulomb, trialPositionSet);
+  std::optional<RunningEnergy> frameworkEnergy = CBMC::computeFrameworkMoleculeEnergy(context, trialPositionSet);
   if (!frameworkEnergy.has_value()) return std::nullopt;
 
-  std::optional<RunningEnergy> interEnergy =
-      context.cellList
-          ? CBMC::computeInterMolecularEnergy(context.forceField, context.simulationBox, *context.cellList,
-                                              context.moleculeAtoms, context.cutOffMoleculeVDW,
-                                              context.cutOffCoulomb, trialPositionSet, context.skipBackgroundMolecule)
-          : CBMC::computeInterMolecularEnergy(context.forceField, context.simulationBox, context.moleculeAtoms,
-                                              context.cutOffMoleculeVDW, context.cutOffCoulomb, trialPositionSet,
-                                              context.skipBackgroundMolecule);
+  std::optional<RunningEnergy> interEnergy;
+  if (context.neighbourhood && context.neighbourhood->covers(trialPositionSet, context.cutOffMoleculeVDW,
+                                                             context.cutOffCoulomb, context.forceField.useCharge))
+  {
+    interEnergy = CBMC::computeInterMolecularEnergy(context.forceField, context.simulationBox, *context.neighbourhood,
+                                                    context.cutOffMoleculeVDW, context.cutOffCoulomb, trialPositionSet);
+  }
+  else if (context.cellList)
+  {
+    interEnergy = CBMC::computeInterMolecularEnergy(
+        context.forceField, context.simulationBox, *context.cellList, context.moleculeAtoms, context.cutOffMoleculeVDW,
+        context.cutOffCoulomb, trialPositionSet, context.skipBackgroundMolecule);
+  }
+  else
+  {
+    interEnergy = CBMC::computeInterMolecularEnergy(context.forceField, context.simulationBox, context.moleculeAtoms,
+                                                    context.cutOffMoleculeVDW, context.cutOffCoulomb, trialPositionSet,
+                                                    context.skipBackgroundMolecule);
+  }
   if (!interEnergy.has_value()) return std::nullopt;
 
   return externalFieldEnergy.value() + interEnergy.value() + frameworkEnergy.value();

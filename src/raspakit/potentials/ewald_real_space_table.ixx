@@ -21,7 +21,9 @@ import std;
  *
  * The table is owned by the ForceField (see ForceField::updateEwaldRealSpaceTable) and used by
  * Potentials::potentialCoulomb for the energy and gradient of fully coupled pairs, and by the spatial-decomposition
- * molecular-dynamics pair kernel.
+ * molecular-dynamics pair kernel. The same spline is also stored as the four polynomial coefficients of every
+ * interval ('coefficients'), the form an energy-only SIMD kernel reads with one contiguous load per lane (the
+ * Monte Carlo neighbourhood kernel).
  */
 export struct EwaldRealSpaceTable
 {
@@ -36,6 +38,10 @@ export struct EwaldRealSpaceTable
   bool rangeCapped{false};           ///< The requested range exceeded the cap; rrMax is below the cutoff squared.
   std::vector<double> value{};       ///< u at the nodes.
   std::vector<double> derivative{};  ///< du/d(r^2) at the nodes.
+  /// The Hermite cubic of interval k in t = (rr - node_k) / spacing as u = ((a t + b) t + c) t + d, stored as
+  /// (a, b, c, d) at coefficients[4 k .. 4 k + 3]; one entry per node (the interval starting at it), so an index
+  /// up to value.size() - 2 is valid, as with 'interpolate'.
+  std::vector<double> coefficients{};
 
   void build(double alphaValue, double rMaxValue, double spacingValue = defaultSpacing,
              std::size_t maximumIntervals = defaultMaximumIntervals)
@@ -55,6 +61,16 @@ export struct EwaldRealSpaceTable
     {
       const double rr = rrMin + static_cast<double>(k) * spacing;
       exact(rr, value[k], derivative[k]);
+    }
+    coefficients.resize(4 * (intervals + 1));
+    for (std::size_t k = 0; k + 1 < intervals + 2; ++k)
+    {
+      const double p0 = value[k], p1 = value[k + 1];
+      const double m0 = derivative[k] * spacing, m1 = derivative[k + 1] * spacing;
+      coefficients[4 * k + 0] = 2.0 * p0 + m0 - 2.0 * p1 + m1;
+      coefficients[4 * k + 1] = -3.0 * p0 - 2.0 * m0 + 3.0 * p1 - m1;
+      coefficients[4 * k + 2] = m0;
+      coefficients[4 * k + 3] = p0;
     }
   }
 

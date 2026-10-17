@@ -88,7 +88,7 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
               }
               return Interactions::computeFrameworkMoleculeEnergyDifference(
                   system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-                  system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
+                  system.frameworkCellList(), system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
             });
   if (!frameworkMolecule.has_value()) return std::nullopt;
 

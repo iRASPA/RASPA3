@@ -12,6 +12,7 @@ import forcefield;
 import simulationbox;
 import interpolation_energy_grid;
 import mc_cell_list;
+import interactions_neighbourhood;
 import cbmc_grow_context;
 import cbmc_results;
 
@@ -46,6 +47,13 @@ bool insideBlockedPockets(const std::optional<Framework> &framework, const Compo
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms, double cutOffVDW,
     double cutOffCoulomb, std::span<const Atom> atoms) noexcept;
 
+/// Framework-molecule energy of a trial set in the context's environment: the atoms with a grid read it as
+/// above; the others are evaluated against the context's framework neighbourhood when it covers the set, or
+/// against the framework atoms gathered around the set through the context's framework cell list (see
+/// GrowContext::frameworkCellList), and by the brute-force loop when the context has no such list.
+[[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergy(const GrowContext& context,
+                                                                          std::span<const Atom> atoms) noexcept;
+
 /// Inter-molecular energy of the trial atoms 'atoms' against the background 'moleculeAtoms' (pairs
 /// within the same molecule id are skipped, as are all background atoms of 'skipBackgroundMolecule'
 /// when given -- the molecule being regrown). std::nullopt on a hard overlap.
@@ -54,13 +62,40 @@ bool insideBlockedPockets(const std::optional<Framework> &framework, const Compo
     double cutOffVDW, double cutOffCoulomb, std::span<const Atom> atoms,
     std::optional<std::size_t> skipBackgroundMolecule = std::nullopt) noexcept;
 
-/// Cell-list variant of 'computeInterMolecularEnergy': the same result (to the summation order) visiting
-/// only the 27-cell neighbourhood of every trial atom. 'cellList' must be built over 'moleculeAtoms'; a
-/// disabled or stale list falls back to the brute-force loop. Both cut-offs must not exceed the list's.
+/// Cell-list variant of 'computeInterMolecularEnergy': the same result (to the summation order), gathering
+/// the background within the cut-off of the trial set's bounding sphere through the cell list into a
+/// thread-local Interactions::Neighbourhood and evaluating with its dense kernel. 'cellList' must be
+/// built over 'moleculeAtoms'; with a disabled or stale list the neighbourhood is gathered by a pass over
+/// all atoms instead.
 [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergy(
     const ForceField &forceField, const SimulationBox &simulationBox, const MCCellList &cellList,
     std::span<const Atom> moleculeAtoms, double cutOffVDW, double cutOffCoulomb, std::span<const Atom> atoms,
     std::optional<std::size_t> skipBackgroundMolecule = std::nullopt) noexcept;
+
+/// Inter-molecular energy of a trial set against a pre-gathered neighbourhood (which must cover the set
+/// and the cut-offs, see 'Neighbourhood::covers'); the same result as the overloads above.
+[[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergy(const ForceField& forceField,
+                                                                       const SimulationBox& simulationBox,
+                                                                       const Interactions::Neighbourhood& neighbourhood,
+                                                                       double cutOffVDW, double cutOffCoulomb,
+                                                                       std::span<const Atom> atoms) noexcept;
+
+/// Gathers the background of a batch of trial sets (the context's molecule atoms minus its skipped
+/// molecule, within the force field's full cut-offs of the batch's bounding sphere) into 'neighbourhood',
+/// through the context's cell list when it has one. The batch is then evaluated with
+/// 'context.withNeighbourhood(&neighbourhood)'. 'extraRadius' widens the bounding sphere, so that the
+/// neighbourhood also covers trial sets near the batch that are generated later (see Neighbourhood::covers).
+void gatherNeighbourhood(const GrowContext& context, Interactions::Neighbourhood& neighbourhood,
+                         std::span<const std::span<const Atom>> trialSets, double extraRadius = 0.0) noexcept;
+
+/// The framework counterpart of 'gatherNeighbourhood': the context's framework atoms within the full cut-offs
+/// of the batch's bounding sphere, through its framework cell list. Returns false (and gathers nothing) when
+/// the batch needs no framework pairs -- no framework cell list in the context, no framework atoms, or every
+/// trial atom reads an interpolation grid. On true the batch is evaluated with
+/// 'context.withFrameworkNeighbourhood(&neighbourhood)'.
+[[nodiscard]] bool gatherFrameworkNeighbourhood(const GrowContext& context, Interactions::Neighbourhood& neighbourhood,
+                                                std::span<const std::span<const Atom>> trialSets,
+                                                double extraRadius = 0.0) noexcept;
 
 // The background a trial set is evaluated against is the context's: its molecule atoms minus those
 // with the trial atoms' own molecule id and minus 'context.skipBackgroundMolecule' (see GrowContext).

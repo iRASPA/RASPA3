@@ -2059,9 +2059,11 @@ directory `density_grids`.
 ## Force field options <a name="force-field-options"></a>
 
 The following keywords control the force field. `"MixingRule"`,
-`"TruncationMethod"`, `"TailCorrections"`, `"PseudoAtoms"`, `"SelfInteractions"`,
-and `"BinaryInteractions"` are read from the force field file
-(`force_field.json`), while the cutoffs and `"ChargeMethod"` are set per system.
+`"TruncationMethod"`, `"TailCorrections"`, the cutoffs (`"CutOff"`,
+`"CutOffVDW"`, `"CutOffFrameworkVDW"`, `"CutOffMoleculeVDW"`, `"CutOffCoulomb"`),
+`"PseudoAtoms"`, `"SelfInteractions"`, and `"BinaryInteractions"` are read from
+the force field file (`force_field.json`); the cutoffs cannot be overridden per
+system. `"ChargeMethod"` is set per system.
 
 -   `"MixingRule" : string`
     -   `"Lorentz-Berthelot"`

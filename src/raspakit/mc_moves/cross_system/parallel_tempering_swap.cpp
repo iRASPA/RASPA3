@@ -4,6 +4,8 @@ module mc_moves_parallel_tempering_swap;
 
 import std;
 
+import ewald_structure_factor;
+
 import component;
 import atom;
 import framework;
@@ -334,8 +336,8 @@ std::optional<double> soluteHamiltonianChange(const System& holder, const System
     std::vector<std::complex<double>> eik_y{};
     std::vector<std::complex<double>> eik_z{};
     std::vector<std::complex<double>> eik_xy{};
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> storedEik = holder.storedEik;
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> trialEik{};
+    EwaldStructureFactor storedEik = holder.storedEik;
+    EwaldStructureFactor trialEik{};
     change += Interactions::energyDifferenceEwaldFourier(eik_x, eik_y, eik_z, eik_xy, storedEik, trialEik,
                                                         holder.forceField, holder.simulationBox, holder.components, soluteTarget,
                                                         soluteHolder, holder.netCharge)

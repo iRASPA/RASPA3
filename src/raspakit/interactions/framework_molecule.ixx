@@ -17,6 +17,8 @@ import framework;
 import component;
 import interpolation_energy_grid;
 import interactions_pair_kernel;
+import mc_cell_list;
+import interactions_neighbourhood;
 
 export namespace Interactions
 {
@@ -33,9 +35,9 @@ export namespace Interactions
  * \return A RunningEnergy object containing the total interaction energy.
  */
 RunningEnergy computeFrameworkMoleculeEnergy(
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms,
+    const ForceField& forceField, const SimulationBox& simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+    const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms) noexcept;
 
 /**
@@ -85,10 +87,26 @@ RunningEnergy computeFrameworkMoleculeTailEnergyAggregated(
  */
 
 [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergyDifference(
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms, std::span<const Atom> newatoms,
+    const ForceField& forceField, const SimulationBox& simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+    const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms, std::span<const Atom> newatoms,
     std::span<const Atom> oldatoms) noexcept;
+
+/**
+ * \brief Cell-list variant of 'computeFrameworkMoleculeEnergyDifference'.
+ *
+ * Same result (to the summation order): the atoms read from an interpolation grid are handled as before; for
+ * the others the framework atoms within the cut-off of the bounding sphere of the new and old positions are
+ * gathered once through \p frameworkCellList into a structure-of-arrays 'Neighbourhood' and both position sets
+ * are evaluated with its dense kernel. \p frameworkCellList must have been built over exactly
+ * \p frameworkAtoms in \p simulationBox (see 'System::frameworkCellList'); with a disabled or stale list the
+ * neighbourhood is gathered by a pass over the framework atoms instead.
+ */
+[[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergyDifference(
+    const ForceField& forceField, const SimulationBox& simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+    const std::optional<Framework>& framework, const MCCellList& frameworkCellList,
+    std::span<const Atom> frameworkAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
 
 /**
  * \brief Computes the difference in interaction energy and electric-field between the framework and molecule atoms.
@@ -108,9 +126,9 @@ RunningEnergy computeFrameworkMoleculeTailEnergyAggregated(
  */
 
 [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergyDifference(
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms,
+    const ForceField& forceField, const SimulationBox& simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+    const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
     std::span<double3> electricFieldMoleculeNew, std::span<double3> electricFieldMoleculeOld,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
 

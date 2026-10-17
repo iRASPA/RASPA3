@@ -4,6 +4,8 @@ export module interactions_hessian_ewald;
 
 import std;
 
+import ewald_structure_factor;
+
 import atom;
 import atom_dynamics;
 import molecule;
@@ -44,12 +46,14 @@ export namespace Interactions
  * Per-atom Cartesian gradients are accumulated into \p moleculeDynamics / \p frameworkDynamics;
  * the strain first derivative is accumulated into hessian.strainGradient().
  */
-RunningEnergy computeEwaldFourierHessian(
-    const ForceField& forceField, const SimulationBox& simulationBox, const std::optional<Framework>& framework,
-    std::span<const std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> fixedFrameworkStoredEik,
-    double netChargeFramework, std::span<const Molecule> moleculeData, std::span<const Component> components,
-    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, const MinimizationDofLayout& layout,
-    GeneralizedHessian& hessian, std::span<AtomDynamics> moleculeDynamics,
-    std::span<AtomDynamics> frameworkDynamics = {}, const CellMinimizationLayout& cellLayout = {});
+RunningEnergy computeEwaldFourierHessian(const ForceField& forceField, const SimulationBox& simulationBox,
+                                         const std::optional<Framework>& framework,
+                                         const EwaldStructureFactor& fixedFrameworkStoredEik, double netChargeFramework,
+                                         std::span<const Molecule> moleculeData, std::span<const Component> components,
+                                         std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
+                                         const MinimizationDofLayout& layout, GeneralizedHessian& hessian,
+                                         std::span<AtomDynamics> moleculeDynamics,
+                                         std::span<AtomDynamics> frameworkDynamics = {},
+                                         const CellMinimizationLayout& cellLayout = {});
 
 }  // namespace Interactions

@@ -110,7 +110,7 @@ std::optional<RunningEnergy> MC_Moves::pivotMove(RandomNumber &random, System &s
             {
               return Interactions::computeFrameworkMoleculeEnergyDifference(
                   system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-                  system.spanOfFrameworkAtoms(), movedNew, movedOld);
+                  system.frameworkCellList(), system.spanOfFrameworkAtoms(), movedNew, movedOld);
             });
   if (!frameworkMolecule.has_value()) return std::nullopt;
 

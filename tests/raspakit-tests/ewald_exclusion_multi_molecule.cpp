@@ -2,6 +2,8 @@
 
 import std;
 
+import ewald_structure_factor;
+
 import double3;
 import units;
 import atom;
@@ -21,7 +23,7 @@ import potential_coulomb_real_space;
 
 namespace
 {
-using EikVector = std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>;
+using EikVector = EwaldStructureFactor;
 
 // Exclusion terms of the pairs whose two atoms belong to different molecules: precisely the spurious
 // contribution that appears when a multi-molecule span is treated as one molecule. Used to assert
@@ -165,4 +167,74 @@ TEST(ewald_exclusion_multi_molecule, ewald_combined_span_matches_chained_single_
 TEST(ewald_exclusion_multi_molecule, wolf_combined_span_matches_chained_single_molecule_calls)
 {
   expectCombinedMatchesChained(ForceField::ChargeMethod::Wolf);
+}
+
+namespace
+{
+// The chaining callers (pair swap, group swap, Gibbs swap, CFCMC swaps) hand the trial structure factor of
+// one call to the next as both the stored and the trial sums ('trialEik, trialEik'), and accept by swapping
+// the trial with the stored sums. The group sums of the dU/dlambda machinery have to survive such an aliased
+// call, whether the molecule it replaces is the fractional one (the group-carrying path) or a plain one (the
+// fast path that carries the group sums along unchanged).
+void expectAliasedChainMatchesFromScratch(bool fractionalMoleculeFirst)
+{
+  System system = makeThreeMoleculeSystem(ForceField::ChargeMethod::Ewald);
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  ASSERT_TRUE(system.storedEik.hasGroupSums);
+
+  const RunningEnergy before = Interactions::computeEwaldFourierEnergy(
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+      system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent, atomData);
+
+  const std::vector<Atom> oldPlain(atomData.begin(), atomData.begin() + 3);
+  const std::vector<Atom> oldFractional(atomData.begin() + 3, atomData.begin() + 6);
+  const std::vector<Atom> newPlain = trialStateOf(oldPlain, double3(0.3, -0.2, 0.1), std::nullopt);
+  const std::vector<Atom> newFractional = trialStateOf(oldFractional, double3(-0.15, 0.25, -0.2), 0.7);
+
+  const std::vector<Atom>& oldFirst = fractionalMoleculeFirst ? oldFractional : oldPlain;
+  const std::vector<Atom>& newFirst = fractionalMoleculeFirst ? newFractional : newPlain;
+  const std::vector<Atom>& oldSecond = fractionalMoleculeFirst ? oldPlain : oldFractional;
+  const std::vector<Atom>& newSecond = fractionalMoleculeFirst ? newPlain : newFractional;
+
+  RunningEnergy difference = Interactions::energyDifferenceEwaldFourier(
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
+      system.simulationBox, system.components, newFirst, oldFirst);
+  difference += Interactions::energyDifferenceEwaldFourier(
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
+      system.simulationBox, system.components, newSecond, oldSecond);
+  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
+  const EwaldStructureFactor accepted = system.storedEik;
+
+  std::copy(newPlain.begin(), newPlain.end(), atomData.begin());
+  std::copy(newFractional.begin(), newFractional.end(), atomData.begin() + 3);
+  const RunningEnergy after = Interactions::computeEwaldFourierEnergy(
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+      system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent, atomData);
+
+  // the accepted structure factor is the one of the new configuration, group sums included
+  ASSERT_EQ(accepted.size(), system.storedEik.size());
+  ASSERT_TRUE(system.storedEik.hasGroupSums);
+  for (std::size_t k = 0; k != system.storedEik.size(); ++k)
+  {
+    EXPECT_NEAR(std::abs(accepted.sum[k] - system.storedEik.sum[k]), 0.0, 1e-9);
+    EXPECT_NEAR(std::abs(accepted.groups(k)[0] - system.storedEik.groups(k)[0]), 0.0, 1e-9);
+  }
+
+  const RunningEnergy fromScratch = after - before;
+  EXPECT_NEAR(difference.ewald_fourier, fromScratch.ewald_fourier, 1e-8);
+  EXPECT_NEAR(difference.ewald_self, fromScratch.ewald_self, 1e-8);
+  EXPECT_NEAR(difference.ewald_exclusion, fromScratch.ewald_exclusion, 1e-8);
+  EXPECT_NEAR(difference.dudlambdaEwald[0], fromScratch.dudlambdaEwald[0], 1e-8);
+  EXPECT_GT(std::abs(after.dudlambdaEwald[0]), 1.0);
+}
+}  // namespace
+
+TEST(ewald_exclusion_multi_molecule, aliased_chained_calls_keep_the_group_sums_plain_then_fractional)
+{
+  expectAliasedChainMatchesFromScratch(false);
+}
+
+TEST(ewald_exclusion_multi_molecule, aliased_chained_calls_keep_the_group_sums_fractional_then_plain)
+{
+  expectAliasedChainMatchesFromScratch(true);
 }

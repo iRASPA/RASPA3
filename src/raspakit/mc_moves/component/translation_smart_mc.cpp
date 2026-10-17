@@ -4,6 +4,8 @@ module mc_moves_translation_smart_mc;
 
 import std;
 
+import ewald_structure_factor;
+
 import component;
 import molecule;
 import atom;
@@ -31,7 +33,7 @@ import mc_moves_cputime;
 // the move exact, and the exact polarization contribution is still part of the accepted energy difference.
 static double3 computeMoleculeForce(
     System &system, std::span<const Atom> selectedAtoms,
-    const std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &structureFactor)
+    const EwaldStructureFactor &structureFactor)
 {
   std::vector<AtomDynamics> dynamics(selectedAtoms.size());
 
@@ -115,7 +117,7 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMove(RandomNumber &rand
               }
               return Interactions::computeFrameworkMoleculeEnergyDifference(
                   system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-                  system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
+                  system.frameworkCellList(), system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
             });
   if (!frameworkMolecule.has_value()) return std::nullopt;
 

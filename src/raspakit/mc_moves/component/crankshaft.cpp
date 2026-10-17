@@ -111,7 +111,7 @@ std::optional<RunningEnergy> MC_Moves::crankshaftMove(RandomNumber &random, Syst
             {
               return Interactions::computeFrameworkMoleculeEnergyDifference(
                   system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-                  system.spanOfFrameworkAtoms(), movedNew, movedOld);
+                  system.frameworkCellList(), system.spanOfFrameworkAtoms(), movedNew, movedOld);
             });
   if (!frameworkMolecule.has_value()) return std::nullopt;
 

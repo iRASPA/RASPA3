@@ -106,7 +106,8 @@ CBMC::GrowContext System::makeGrowContext(CBMC::CutOffMode mode) const
   return CBMC::GrowContext(hasExternalField, forceField, simulationBox, interpolationGrids,
                            externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(),
                            beta, mode)
-      .withCellList(&cellList());
+      .withCellList(&cellList())
+      .withFrameworkCellList(&frameworkCellList());
 }
 
 double System::cellListCutOff() const
@@ -150,6 +151,30 @@ bool System::verifyCellList() const
 {
   const MCCellList &list = cellList();
   return list.verify(spanOfMoleculeAtoms(), simulationBox);
+}
+
+double System::frameworkCellListCutOff() const
+{
+  // The largest pair cut-off any framework-molecule query uses.
+  return std::max(forceField.cutOffFrameworkVDW, forceField.useCharge ? forceField.cutOffCoulomb : 0.0);
+}
+
+const MCCellList& System::frameworkCellList() const
+{
+  const std::span<const Atom> atoms = spanOfFrameworkAtoms();
+  // a framework with mobile atoms changes under the integrators and the framework moves: no static list
+  const bool rigid = !atoms.empty() && numberOfRigidFrameworkAtoms == numberOfFrameworkAtoms;
+  if (!rigid)
+  {
+    frameworkMCCellList.invalidate();
+    return frameworkMCCellList;
+  }
+  const double cutOff = frameworkCellListCutOff();
+  if (!frameworkMCCellList.isCurrent(atoms, simulationBox, cutOff))
+  {
+    frameworkMCCellList.build(atoms, simulationBox, cutOff);
+  }
+  return frameworkMCCellList;
 }
 
 CBMC::GrowContext System::makeIdealGasGrowContext() const

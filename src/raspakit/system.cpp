@@ -63,6 +63,7 @@ import interactions_framework_molecule;
 import interactions_framework_molecule_grid;
 import interactions_intermolecular;
 import mc_cell_list;
+import spatial_decomposition_settings;
 import interactions_pair_kernel;
 import interactions_ewald;
 import interactions_internal;
@@ -1586,6 +1587,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.soluteTemperingComponent;
   archive << s.soluteTemperingLambda;
 
+  archive << s.hybridMCUseForceEngine;
+  archive << s.forceEngineSettings;
+
   // 'interpolationGrids' and 'externalFieldInterpolationGrid' are intentionally not serialized:
   // they are derived data that can dominate the checkpoint size and are rebuilt deterministically
   // on restart (MonteCarlo/MolecularDynamics::createInterpolationGrids).
@@ -1768,6 +1772,13 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
     archive >> s.soluteTemperingComponent;
     archive >> s.soluteTemperingLambda;
   }
+  if (versionNumber >= 7)
+  {
+    archive >> s.hybridMCUseForceEngine;
+    archive >> s.forceEngineSettings;
+  }
+  // the engine itself is derived state, rebuilt by the first hybrid MC move
+  s.hybridMCForceEngine.reset();
 
   // archive >> s.columnNumberOfGridPoints;
   // archive >> s.columnTotalPressure;

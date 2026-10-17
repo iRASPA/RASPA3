@@ -4,6 +4,8 @@ export module integrators;
 
 import std;
 
+import ewald_structure_factor;
+
 import molecule;
 import atom;
 import atom_dynamics;
@@ -55,8 +57,8 @@ RunningEnergy velocityVerlet(
     const ForceField& forceField, const SimulationBox& simulationBox, std::vector<std::complex<double>>& eik_x,
     std::vector<std::complex<double>>& eik_y, std::vector<std::complex<double>>& eik_z,
     std::vector<std::complex<double>>& eik_xy,
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& trialEik,
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& fixedFrameworkStoredEik,
+    EwaldStructureFactor& trialEik,
+    EwaldStructureFactor& fixedFrameworkStoredEik,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::vector<std::size_t> &numberOfMoleculesPerComponent,
     const std::optional<Framework>& framework = std::nullopt,

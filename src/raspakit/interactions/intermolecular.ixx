@@ -28,15 +28,24 @@ export namespace Interactions
  * \param simulationBox The simulation box containing the atoms.
  * \param moleculeAtoms A span of atoms for which to compute inter-molecular energies.
  * \return The total inter-molecular energy contributions.
+ *
+ * The sum runs over a structure-of-arrays copy of the atoms ('Interactions::computeAllPairsInterMolecularEnergy':
+ * the pairs within the cut-off filtered by distance first, then SIMD lanes for fully coupled Lennard-Jones / Ewald
+ * systems); the same pairs and pair terms as the scalar loop 'computeInterMolecularEnergyScalar'.
  */
 RunningEnergy computeInterMolecularEnergy(const ForceField& forceField, const SimulationBox& simulationBox,
                                           std::span<const Atom> moleculeAtoms) noexcept;
 
+/// The scalar triangular pair loop over all atom pairs: the reference of the structure-of-arrays sums.
+RunningEnergy computeInterMolecularEnergyScalar(const ForceField& forceField, const SimulationBox& simulationBox,
+                                                std::span<const Atom> moleculeAtoms) noexcept;
+
 /**
  * \brief Cell-list variant of 'computeInterMolecularEnergy' (same result to the summation order).
  *
- * Each pair is visited once through the cell pairs of \p cellList, which must have been built over exactly
- * \p moleculeAtoms (a disabled or stale list falls back to the brute-force loop).
+ * Each pair is visited once straight out of the cells of \p cellList, which must have been built over exactly
+ * \p moleculeAtoms ('Interactions::computeCellListInterMolecularEnergy'); a disabled or stale list falls back to
+ * the all-pairs sum.
  */
 RunningEnergy computeInterMolecularEnergy(const ForceField& forceField, const SimulationBox& simulationBox,
                                           const MCCellList& cellList, std::span<const Atom> moleculeAtoms) noexcept;
@@ -122,9 +131,11 @@ void updateEffectiveTypeCounts(std::vector<double>& effectiveTypeCounts,
 /**
  * \brief Cell-list variant of 'computeInterMolecularEnergyDifference'.
  *
- * Same result (to the summation order), but each trial atom only visits the atoms in the 27-cell
- * neighbourhood of its position. \p cellList must have been built over exactly \p moleculeAtoms in
- * \p simulationBox (see 'System::cellList'); a disabled or stale list falls back to the brute-force loop.
+ * Same result (to the summation order): the background within the cut-off of the bounding sphere of the new
+ * and old positions is gathered once through the cell list into a structure-of-arrays 'Neighbourhood' (the
+ * periodic images resolved per cell) and both position sets are evaluated with its dense kernel. \p cellList
+ * must have been built over exactly \p moleculeAtoms in \p simulationBox (see 'System::cellList'); with a
+ * disabled or stale list the neighbourhood is gathered by a pass over all atoms instead.
  */
 [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyDifference(
     const ForceField& forceField, const SimulationBox& simulationBox, const MCCellList& cellList,

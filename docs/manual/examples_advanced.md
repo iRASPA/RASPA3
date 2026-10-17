@@ -536,7 +536,6 @@ Run from `examples/advanced/5_ti_fixed_lambda_nacl_in_water`:
       "ExternalTemperature" : 298.0,
       "ExternalPressure" : 1.0e5,
       "ChargeMethod" : "Ewald",
-      "CutOff" : 10.0,
       "VolumeMoveProbability" : 0.01
     }
   ],

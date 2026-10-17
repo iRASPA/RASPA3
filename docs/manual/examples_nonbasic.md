@@ -21,6 +21,7 @@
 16. [Thermodynamic integration: 1,2-dimethylcyclohexane in zeolite Beta](#Example_nonbasic_16)
 17. [dcTST free-energy profile: methane in LTA (ITQ-29)](#Example_nonbasic_17)
 18. [dcTST: self- and collective diffusion of methane in LTA (ITQ-29)](#Example_nonbasic_18)
+19. [Molecular Dynamics: self- and collective diffusion of methane in LTA (ITQ-29)](#Example_nonbasic_19)
 
 
 
@@ -524,7 +525,6 @@ The CO₂ Gibbs vapour–liquid example is `examples/basic/18_mc_gibbs_co2`.
       "Name" : "IRMOF-1",
       "NumberOfUnitCells" : [1, 1, 1],
       "ChargeMethod" : "Ewald",
-      "CutOff" : 12.0,
       "ExternalTemperature" : 300.0,
       "Ensemble" : "NVT",
       "ComputeMSD" : true,
@@ -942,7 +942,6 @@ Run from `examples/non_basic/9_mc_reaction_propene_metathesis`:
       "BoxLengths" : [150.0, 150.0, 150.0],
       "ExternalTemperature" : 450.0,
       "ExternalPressure" : 101300.0,
-      "CutOff" : 14.0,
       "ChargeMethod" : "None",
       "ReactionCBMCProbability" : 1.0,
       "VolumeMoveProbability" : 0.1,
@@ -1026,7 +1025,6 @@ Run from `examples/non_basic/10_mc_reaction_ammonia_synthesis`:
       "BoxLengths" : [34.0, 34.0, 34.0],
       "ExternalTemperature" : 573.0,
       "ExternalPressure" : 2.0e7,
-      "CutOff" : 12.0,
       "ChargeMethod" : "Ewald",
       "ThermochemicalDatabase" : "JANAF",
       "ReactionCBMCProbability" : 1.0,
@@ -1319,14 +1317,16 @@ Run from `examples/non_basic/16_ti_fixed_lambda_dimethylcyclohexane_in_beta`:
 
 Dynamically corrected transition state theory (dcTST) for methane hopping
 between the α-cages of all-silica LTA (ITQ-29, Pm-3m setting,
-\f$a = 11.8671\f$ Å) at 300 K and six molecules per cage (162 molecules in
-the 3×3×3 box) is a calculation in two runs: the free-energy profile along
+\f$a = 11.8671\f$ Å) at 300 K and six molecules per cage (216 molecules in
+the 4×3×3 box) is a calculation in two runs: the free-energy profile along
 the hop (this example) and the transmission coefficients that correct the
 transition-state rate (example 18, which reads this example's output). The
 8-ring windows between the cages lie on the planes through the face centers
 of the unit cell; the barrier plane \f$x = 0\f$ (fractional `[0, 0.5, 0.5]`
-of the 3×3×3 box with normal `[1, 0, 0]`) therefore contains 9 windows, and
-one hop covers the lattice distance \f$\lambda = a\f$. The sodalite cages
+of the 4×3×3 box with normal `[1, 0, 0]`) therefore contains 9 windows, and
+one hop covers the lattice distance \f$\lambda = a\f$. Four cells along the
+normal make the event-terminated column \(A', A, B, B'\) four distinct
+cages (on 3×3×3, \(A'\) and \(B'\) coincide by periodicity). The sodalite cages
 (at the origin) and the double-4-rings (at the edge centers) are reachable
 by Monte Carlo insertion but not dynamically, so they are blocked.
 
@@ -1385,7 +1385,7 @@ Run from `examples/non_basic/17_dctst_free_energy_methane_in_lta`:
     {
       "Type" : "Framework",
       "Name" : "ITQ-29",
-      "NumberOfUnitCells" : [3, 3, 3],
+      "NumberOfUnitCells" : [4, 3, 3],
       "ExternalTemperature" : 300.0,
       "ChargeMethod" : "None",
       "TimeStep" : 0.0005,
@@ -1424,7 +1424,7 @@ Run from `examples/non_basic/17_dctst_free_energy_methane_in_lta`:
            [0.0, 0.5, 0.0, 1.0],
            [0.0, 0.0, 0.5, 1.0]
          ],
-      "CreateNumberOfMolecules" : 162
+      "CreateNumberOfMolecules" : 216
     }
   ]
 }
@@ -1453,9 +1453,9 @@ crossed the window, so no stand-in for the lattice vibrations is needed
 Andersen or Langevin bath should be switched on, and the long-jump
 fraction in the output tells how often a molecule ran on to a second
 window). Four independent replicas run on four threads and are averaged;
-with 162 molecules and the framework atoms summed explicitly a 2 ps
-trajectory pair takes about 20 s wall time with four replicas running, so
-the 100 pairs per replica take roughly 35 minutes. Expected results: the
+with 216 molecules and the framework atoms summed explicitly a 2 ps
+trajectory pair takes about 25 s wall time with four replicas running, so
+the 100 pairs per replica take roughly 45 minutes. Expected results: the
 measured \f$\langle|\dot q|\rangle\f$ of the molecules on the plane close
 to \f$\sqrt{2k_BT/\pi m} = 3.15\f$ Å/ps, a self transmission coefficient
 \f$\kappa_S\f$ well below one because of collisions in the cages, and a
@@ -1518,7 +1518,7 @@ finished:
     {
       "Type" : "Framework",
       "Name" : "ITQ-29",
-      "NumberOfUnitCells" : [3, 3, 3],
+      "NumberOfUnitCells" : [4, 3, 3],
       "ExternalTemperature" : 300.0,
       "ChargeMethod" : "None",
       "TimeStep" : 0.0005,
@@ -1561,7 +1561,80 @@ finished:
            [0.0, 0.5, 0.0, 1.0],
            [0.0, 0.0, 0.5, 1.0]
          ],
-      "CreateNumberOfMolecules" : 162
+      "CreateNumberOfMolecules" : 216
+    }
+  ]
+}
+```
+
+#### Molecular Dynamics: self- and collective diffusion of methane in LTA (ITQ-29)<a name="Example_nonbasic_19"></a>
+
+Ordinary \(NVT\) molecular dynamics of methane in ITQ-29 at the same loading
+and temperature as examples 17 and 18 (six molecules per cage, 300 K, the
+same blocking pockets and 0.5 fs time step), but in a 4×3×3 box (216
+molecules), the same 4×3×3 cell as examples 17 and 18 so that the
+event-terminated column \(A', A, B, B'\) is four distinct cages.
+`"ComputeMSD"` writes the order-\(N\) self-MSD of methane to
+`msd/msd_self_methane.s0.txt` and the collective (Onsager) MSD
+\(\mathrm{MSD}_{ii}=\langle|\sum_k\Delta\mathbf{r}_k|^2\rangle/N\)
+to `msd/msd_onsager_methane_methane.s0.txt`. The long-time slopes give
+\(D_S=\tfrac16\lim d(\mathrm{MSD}_\mathrm{self})/dt\) and
+\(D_C=\tfrac16\lim d(\mathrm{MSD}_{ii})/dt\), the Einstein counterparts of
+the dcTST estimates \(\kappa_S k^{TST}\lambda^2\) and
+\(\kappa_C k^{TST}\lambda^2\). At this loading the two diffusivities should
+agree (\(\varepsilon\approx0\)); a comparison at higher loading is where
+dcTST's event-terminated \(\kappa_C\) is meant to be cheaper than waiting
+for the collective MSD to converge.
+
+The 2 million production cycles (1 ns) of the input below are enough to
+check the setup. A hop at six molecules per cage takes of order 10 ns, so
+a quantitative comparison with dcTST needs tens of nanoseconds
+(raise `"NumberOfProductionCycles"` to \(2\times10^7\)–\(10^8\)) or several
+independent replicas of this same 4×3×3 cell. Spatial-decomposition MD
+(`"MolecularDynamicsSpatialDecomposition"`) is not an option here: that
+engine does not support a framework, and the \(47.5\times 35.6\times 35.6\)
+Å box (~2700 atoms) is still too small for domain decomposition even if it
+did (cutoff plus skin leaves two cells along \(y\) and \(z\)). Parallelism
+for this size is independent replicas, not spatial decomposition.
+
+Run from `examples/non_basic/19_md_diffusion_methane_in_lta`:
+
+```json
+{
+  "SimulationType" : "MolecularDynamics",
+  "NumberOfInitializationCycles" : 2000,
+  "NumberOfEquilibrationCycles" : 20000,
+  "NumberOfProductionCycles" : 2000000,
+  "PrintEvery" : 10000,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "ITQ-29",
+      "NumberOfUnitCells" : [4, 3, 3],
+      "ExternalTemperature" : 300.0,
+      "ChargeMethod" : "None",
+      "TimeStep" : 0.0005,
+      "Ensemble" : "NVT",
+      "ComputeMSD" : true,
+      "SampleMSDEvery" : 10,
+      "WriteMSDEvery" : 10000
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "methane",
+      "StartingBead" : 0,
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "BlockingPockets" : [
+           [0.0, 0.0, 0.0, 4.0],
+           [0.5, 0.0, 0.0, 1.0],
+           [0.0, 0.5, 0.0, 1.0],
+           [0.0, 0.0, 0.5, 1.0]
+         ],
+      "CreateNumberOfMolecules" : 216
     }
   ]
 }

@@ -1039,7 +1039,7 @@ std::optional<RunningEnergy> DynamicallyCorrectedTST::translationInPlaneMove(std
   if (!externalFieldMolecule.has_value()) return std::nullopt;
 
   std::optional<RunningEnergy> frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
-      system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+      system.forceField, system.simulationBox, system.interpolationGrids, system.framework, system.frameworkCellList(),
       system.spanOfFrameworkAtoms(), trialMolecule.second, moleculeAtoms);
   if (!frameworkMolecule.has_value()) return std::nullopt;
 

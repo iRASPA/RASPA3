@@ -2,6 +2,8 @@
 
 import std;
 
+import ewald_structure_factor;
+
 import double3;
 import double3x3;
 import simd_quatd;
@@ -33,8 +35,8 @@ struct WolfExclusionEnergyEvaluator
   std::vector<std::complex<double>> eik_y;
   std::vector<std::complex<double>> eik_z;
   std::vector<std::complex<double>> eik_xy;
-  std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> fixedFrameworkStoredEik;
-  std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> storedEik;
+  EwaldStructureFactor fixedFrameworkStoredEik;
+  EwaldStructureFactor storedEik;
 
   double operator()(const System& system, const SimulationBox& box)
   {
@@ -317,7 +319,7 @@ TEST(minimization_hessian_wolf, flexible_framework_excluded_pairs_match_finite_d
   auto exclusionEnergy = [&]() -> double
   {
     std::vector<std::complex<double>> ex, ey, ez, exy;
-    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> total, fixed;
+    EwaldStructureFactor total, fixed;
     std::vector<AtomDynamics> mScratch(system.spanOfMoleculeAtoms().size());
     std::vector<AtomDynamics> fScratch(system.spanOfFrameworkAtoms().size());
     const RunningEnergy value = Interactions::computeEwaldFourierGradient(

@@ -44,11 +44,28 @@ EvaluatedTrials evaluateTrials(const CBMC::GrowContext &context, const Component
                                std::vector<CBMC::StepTrial> stepTrials, std::span<const std::size_t> tethersOfStep)
 {
   EvaluatedTrials evaluated{};
+  if (stepTrials.empty()) return evaluated;
   evaluated.trials.reserve(stepTrials.size());
+
+  // The trial sets of a step lie within a bond length (or the rigid body's radius) of the same anchor:
+  // their inter-molecular background (and the framework atoms around them, when the framework is evaluated
+  // by pairs) is gathered once and shared.
+  thread_local Interactions::Neighbourhood neighbourhood{};
+  thread_local Interactions::Neighbourhood frameworkNeighbourhood{};
+  std::vector<std::span<const Atom>> trialSets;
+  trialSets.reserve(stepTrials.size());
+  for (const CBMC::StepTrial& trial : stepTrials) trialSets.push_back(trial.positions);
+  CBMC::gatherNeighbourhood(context, neighbourhood, trialSets);
+  CBMC::GrowContext batchContext = context.withNeighbourhood(&neighbourhood);
+  if (CBMC::gatherFrameworkNeighbourhood(context, frameworkNeighbourhood, trialSets))
+  {
+    batchContext.frameworkNeighbourhood = &frameworkNeighbourhood;
+  }
+
   for (std::size_t i = 0; i != stepTrials.size(); ++i)
   {
     std::optional<CBMC::StepTrialEnergy> energy =
-        CBMC::evaluateStepTrial(context, component, step, chainAtoms, stepTrials[i].positions, tethersOfStep);
+        CBMC::evaluateStepTrial(batchContext, component, step, chainAtoms, stepTrials[i].positions, tethersOfStep);
     if (!energy.has_value()) continue;
     if (i == 0) evaluated.firstSurvived = true;
     evaluated.trials.push_back({std::move(stepTrials[i].positions), energy.value(), stepTrials[i].torsionWeight});

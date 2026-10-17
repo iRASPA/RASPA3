@@ -16,10 +16,41 @@ import cbmc_grow_step;
 import cbmc_operators;
 import cbmc_chain_common;
 import cbmc_statistics;
+import interactions_neighbourhood;
+import cbmc_external_energy;
 
 namespace
 {
 using namespace CBMC;
+
+// The background of one level (step) of the recoil search, gathered once and shared by every trial the
+// search evaluates at that level: the k trial directions, the alternatives probed a posteriori, and the
+// feelers that pass through it. The trials of a step are placed at bond length from the same anchor
+// bead(s), so they lie within a few Angstrom of each other; the neighbourhood is gathered around the
+// first trial seen with 'margin' to spare, and reused while it covers the trial (Neighbourhood::covers).
+// A miss (a later trial outside the margin: the anchor moved, as under the feelers of different
+// alternatives) re-gathers around the new trial and widens the margin, so the levels adapt to how far the
+// trials of a step spread. Without the shared gather every trial gathered its own background through the
+// cell list, which dominated the cost of recoil growth in dense systems.
+struct LevelNeighbourhood
+{
+  Interactions::Neighbourhood molecules{};
+  Interactions::Neighbourhood framework{};
+  bool valid{false};
+  bool hasFramework{false};
+  double margin{initialMargin};
+
+  static constexpr double initialMargin{3.2};  ///< two bond lengths
+  static constexpr double maximumMargin{8.0};
+};
+
+// One pool per thread, indexed by the step: a level stays live while the search is below it (the trials
+// of a step continue after a sub-tree returns), so the levels cannot be recycled by recursion depth.
+std::vector<LevelNeighbourhood>& levelPool()
+{
+  thread_local std::vector<LevelNeighbourhood> pool;
+  return pool;
+}
 
 // What every level of the recoil search reads: the growth environment, the component, the plan, and
 // the per-step openness reference. The trial count 'k' and recoil length 'l' are the context's
@@ -39,6 +70,9 @@ struct RecoilContext
   const std::vector<double> &referenceStepEnergies;
   // Which cross-link tethers of the environment are evaluated at which step (see cbmc_chain_common).
   TetherSchedule tethers;
+  // The per-level backgrounds (see LevelNeighbourhood); empty when the environment has no cell list or
+  // already carries a neighbourhood of its own.
+  std::span<LevelNeighbourhood> levels;
 
   [[nodiscard]] std::size_t numberOfTrialDirections() const noexcept
   {
@@ -46,6 +80,32 @@ struct RecoilContext
   }
   [[nodiscard]] std::size_t recoilLength() const noexcept { return env.settings.recoilGrowthMaximumRecoilLength; }
 };
+
+// The trial energy of a step through the level's shared background (evaluateStepTrial otherwise).
+std::optional<StepTrialEnergy> evaluateRecoilTrial(const RecoilContext& ctx, std::size_t seg, std::vector<Atom>& atoms,
+                                                   std::span<const Atom> positions)
+{
+  if (seg >= ctx.levels.size())
+  {
+    return evaluateStepTrial(ctx.env, ctx.component, ctx.steps[seg], atoms, positions, ctx.tethers.at(seg));
+  }
+
+  LevelNeighbourhood& level = ctx.levels[seg];
+  const GrowContext& env = ctx.env;
+  if (!level.valid ||
+      !level.molecules.covers(positions, env.cutOffMoleculeVDW, env.cutOffCoulomb, env.forceField.useCharge))
+  {
+    if (level.valid) level.margin = std::min(LevelNeighbourhood::maximumMargin, 1.5 * level.margin);
+    const std::span<const std::span<const Atom>> sets(&positions, 1);
+    gatherNeighbourhood(env, level.molecules, sets, level.margin);
+    level.hasFramework = gatherFrameworkNeighbourhood(env, level.framework, sets, level.margin);
+    level.valid = true;
+  }
+
+  GrowContext stepEnv = env.withNeighbourhood(&level.molecules);
+  if (level.hasFramework) stepEnv.frameworkNeighbourhood = &level.framework;
+  return evaluateStepTrial(stepEnv, ctx.component, ctx.steps[seg], atoms, positions, ctx.tethers.at(seg));
+}
 
 // The open/closed test of recoil growth is an absolute Boltzmann filter, and the weight divides by the
 // openness probability of the selected direction, so any fixed per-step energy reference is formally
@@ -102,8 +162,7 @@ bool feelerExists(RandomNumber &random, const RecoilContext &ctx, std::size_t se
     StepTrial trial = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.env.forceField, ctx.env.simulationBox, ctx.component, atoms, step);
     if (!(trial.torsionWeight > 0.0)) continue;  // a dead bridge-closure draw: closed
 
-    std::optional<StepTrialEnergy> energy =
-        evaluateStepTrial(ctx.env, ctx.component, step, atoms, trial.positions, ctx.tethers.at(seg));
+    std::optional<StepTrialEnergy> energy = evaluateRecoilTrial(ctx, seg, atoms, trial.positions);
     if (!energy.has_value()) continue;
 
     if (random.uniform() < openProbability(ctx, seg, energy->potentialEnergy()))
@@ -147,8 +206,7 @@ std::size_t countAvailableDirections(RandomNumber &random, const RecoilContext &
     StepTrial alternative = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.env.forceField, ctx.env.simulationBox, ctx.component, atoms, step);
     if (!(alternative.torsionWeight > 0.0)) continue;  // a dead bridge-closure draw: closed
 
-    std::optional<StepTrialEnergy> energy =
-        evaluateStepTrial(ctx.env, ctx.component, step, atoms, alternative.positions, ctx.tethers.at(seg));
+    std::optional<StepTrialEnergy> energy = evaluateRecoilTrial(ctx, seg, atoms, alternative.positions);
     if (!energy.has_value()) continue;
 
     if (random.uniform() >= openProbability(ctx, seg, energy->potentialEnergy())) continue;
@@ -197,8 +255,7 @@ GrowOutcome growRecursive(RandomNumber &random, const RecoilContext &ctx, std::s
     StepTrial trial = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.env.forceField, ctx.env.simulationBox, ctx.component, atoms, step);
     if (!(trial.torsionWeight > 0.0)) continue;  // a dead bridge-closure draw: closed
 
-    std::optional<StepTrialEnergy> energy =
-        evaluateStepTrial(ctx.env, ctx.component, step, atoms, trial.positions, ctx.tethers.at(seg));
+    std::optional<StepTrialEnergy> energy = evaluateRecoilTrial(ctx, seg, atoms, trial.positions);
     if (!energy.has_value()) continue;
 
     const double open = openProbability(ctx, seg, energy->potentialEnergy());
@@ -234,8 +291,24 @@ RecoilContext makeRecoilContext(const GrowContext &context, const Component &com
                                 const std::vector<std::size_t> &beadsAlreadyPlaced)
 {
   const std::vector<GrowStep> &plan = component.growthPlan(beadsAlreadyPlaced);
-  return RecoilContext{context, component, plan, component.recoilReferenceStepEnergies(context.forceField, context.simulationBox, beadsAlreadyPlaced),
-                       scheduleTethers(context, component, plan)};
+
+  // the per-level backgrounds: one per step, all stale at the start of a grow (the background changed)
+  std::span<LevelNeighbourhood> levels{};
+  if (context.cellList && !context.neighbourhood && !context.moleculeAtoms.empty())
+  {
+    std::vector<LevelNeighbourhood>& pool = levelPool();
+    if (pool.size() < plan.size()) pool.resize(plan.size());
+    levels = std::span(pool).first(plan.size());
+    for (LevelNeighbourhood& level : levels) level.valid = false;
+  }
+
+  return RecoilContext{
+      context,
+      component,
+      plan,
+      component.recoilReferenceStepEnergies(context.forceField, context.simulationBox, beadsAlreadyPlaced),
+      scheduleTethers(context, component, plan),
+      levels};
 }
 }  // namespace
 
@@ -307,8 +380,7 @@ RecoilContext makeRecoilContext(const GrowContext &context, const Component &com
     // The old configuration must not overlap: the recoil weight divides by its openness probability,
     // which would be zero, so no weight is defined for it.
     const std::optional<StepTrialEnergy> oldEnergy =
-        evaluateStepTrial(ctx.env, ctx.component, step, oldAtoms, stepBeadPositions(oldAtoms, step),
-                          ctx.tethers.at(seg));
+        evaluateRecoilTrial(ctx, seg, oldAtoms, stepBeadPositions(oldAtoms, step));
     if (!oldEnergy.has_value()) throwExistingConfigurationOverlaps("Recoil growth", component, seg, step);
     const double oldPotential = oldEnergy->potentialEnergy();
 

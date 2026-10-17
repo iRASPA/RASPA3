@@ -137,18 +137,37 @@ std::string System::writePreInitializationStatusReport(std::size_t currentCycle,
 
 std::string System::writeCellListStatus() const
 {
-  const MCCellList& list = cellList();
-  if (!list.enabled)
+  auto describe = [](std::string_view name, const MCCellList& list, double cutOff) -> std::string
   {
-    return std::format("MC cell list: disabled (fewer than 4 cells of the {:.2f} A cut-off in every box direction)\n",
-                       cellListCutOff());
+    if (!list.enabled)
+    {
+      return std::format(
+          "{}: disabled (every box direction is shorter than {:.1f} A, 8/3 of the {:.2f} A cut-off; "
+          "the trial energies gather from all atoms)\n",
+          name, 8.0 / 3.0 * cutOff, cutOff);
+    }
+    const double neighbourhood = list.averageNeighbourhoodSize();
+    const double fraction = list.numberOfAtoms > 0 ? neighbourhood / static_cast<double>(list.numberOfAtoms) : 1.0;
+    return std::format(
+        "{}: {}x{}x{} cells ({:.2f} A cut-off, {} cells per cut-off), {} atoms, a query's stencil holds "
+        "{:.0f} atoms ({:.1f}%), {} rebuilds\n",
+        name, list.numberOfCells.x, list.numberOfCells.y, list.numberOfCells.z, list.cutOff, list.subdivision,
+        list.numberOfAtoms, neighbourhood, 100.0 * fraction, list.numberOfBuilds);
+  };
+
+  std::string status = describe("MC cell list", cellList(), cellListCutOff());
+  if (numberOfFrameworkAtoms > 0)
+  {
+    if (numberOfRigidFrameworkAtoms != numberOfFrameworkAtoms)
+    {
+      status += "MC framework cell list: not used (the framework has mobile atoms)\n";
+    }
+    else
+    {
+      status += describe("MC framework cell list", frameworkCellList(), frameworkCellListCutOff());
+    }
   }
-  const double neighbourhood = list.averageNeighbourhoodSize();
-  const double fraction = list.numberOfAtoms > 0 ? neighbourhood / static_cast<double>(list.numberOfAtoms) : 1.0;
-  return std::format(
-      "MC cell list: {}x{}x{} cells ({:.2f} A cut-off), {} atoms, a query visits {:.0f} atoms ({:.1f}%), {} rebuilds\n",
-      list.numberOfCells.x, list.numberOfCells.y, list.numberOfCells.z, list.cutOff, list.numberOfAtoms, neighbourhood,
-      100.0 * fraction, list.numberOfBuilds);
+  return status;
 }
 
 std::string System::writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfProductionCycles) const

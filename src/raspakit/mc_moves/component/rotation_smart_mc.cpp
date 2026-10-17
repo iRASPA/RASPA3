@@ -4,6 +4,8 @@ module mc_moves_rotation_smart_mc;
 
 import std;
 
+import ewald_structure_factor;
+
 import component;
 import molecule;
 import atom;
@@ -26,7 +28,7 @@ import mc_moves_cputime;
 // drift; the polarization energy change still enters Delta U.
 static void computeMoleculeGradients(
     System &system, std::span<const Atom> selectedAtoms,
-    const std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> &structureFactor,
+    const EwaldStructureFactor &structureFactor,
     std::vector<AtomDynamics> &dynamics)
 {
   dynamics.assign(selectedAtoms.size(), AtomDynamics{});
@@ -140,7 +142,7 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMove(RandomNumber &random,
               }
               return Interactions::computeFrameworkMoleculeEnergyDifference(
                   system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-                  system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
+                  system.frameworkCellList(), system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
             });
   if (!frameworkMolecule.has_value()) return std::nullopt;
 

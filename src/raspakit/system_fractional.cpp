@@ -33,7 +33,7 @@ import scaling;
       system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid, atoms,
       {});
   std::optional<RunningEnergy> framework = Interactions::computeFrameworkMoleculeEnergyDifference(
-      system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+      system.forceField, system.simulationBox, system.interpolationGrids, system.framework, system.frameworkCellList(),
       system.spanOfFrameworkAtoms(), atoms, {});
   std::optional<RunningEnergy> intermolecular = Interactions::computeInterMolecularEnergyDifference(
       system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), atoms, {});

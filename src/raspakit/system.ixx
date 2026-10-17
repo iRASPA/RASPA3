@@ -4,6 +4,8 @@ export module system;
 
 import std;
 
+import ewald_structure_factor;
+
 import archive;
 import double3;
 import double3x3;
@@ -62,6 +64,7 @@ import thermobarostat;
 import json;
 import interpolation_energy_grid;
 import mc_cell_list;
+import spatial_decomposition_settings;
 import cbmc_grow_context;
 import write_lammps_data;
 import minimization_cell_layout;
@@ -108,7 +111,7 @@ export struct System
          std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{6};
+  std::uint64_t versionNumber{7};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -238,14 +241,23 @@ export struct System
   EnergyStatus currentEnergyStatus;
 
   std::size_t numberOfHybridMCSteps{10};
+  /// The hybrid MC move integrates its trajectory with the spatial-decomposition force engine (the MD engine:
+  /// cell lists, particle-mesh Ewald, threads) when the engine covers the system ('HybridMCUseForceEngine'); the
+  /// acceptance uses the exact energies either way. The settings are those of the MD engine ('NumberOfThreads',
+  /// 'VerletSkin', 'PPPMMeshSpacing', ...).
+  bool hybridMCUseForceEngine{true};
+  SpatialDecompositionSettings forceEngineSettings{};
+  /// The engine kept between hybrid MC moves (type-erased: the engine module depends on this one). Not archived;
+  /// shared between copies of a system, which the move detects and rebuilds.
+  std::shared_ptr<void> hybridMCForceEngine{};
 
   std::vector<std::complex<double>> eik_xy{};
   std::vector<std::complex<double>> eik_x{};
   std::vector<std::complex<double>> eik_y{};
   std::vector<std::complex<double>> eik_z{};
-  std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> storedEik{};
-  std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> fixedFrameworkStoredEik{};
-  std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>> trialEik{};
+  EwaldStructureFactor storedEik{};
+  EwaldStructureFactor fixedFrameworkStoredEik{};
+  EwaldStructureFactor trialEik{};
   double CoulombicFourierEnergySingleIon{0.0};
   double netCharge{0.0};
   double netChargeFramework{0.0};
@@ -478,6 +490,21 @@ export struct System
   void cellListAtomsMoved(std::span<const Atom> movedAtoms) const;
   /// Rebuilds a reference list and compares it with the maintained one (consistency check).
   [[nodiscard]] bool verifyCellList() const;
+
+  /**
+   * \brief Cell list over 'spanOfFrameworkAtoms()' for the framework-molecule energies of trial positions
+   * (the Monte Carlo moves and the CBMC grows without interpolation grids).
+   *
+   * A cache like 'moleculeCellList': 'frameworkCellList()' returns it current for the framework atoms, the
+   * box and the framework cut-off ('frameworkCellListCutOff'). The framework atoms never move in a Monte Carlo
+   * simulation with a rigid framework, so the list is built once (and again after a box change); for a
+   * framework with mobile atoms it is kept disabled (the queries then gather by a pass over the framework
+   * atoms, which reads the current positions).
+   */
+  mutable MCCellList frameworkMCCellList;
+  [[nodiscard]] const MCCellList& frameworkCellList() const;
+  [[nodiscard]] double frameworkCellListCutOff() const;
+  void invalidateFrameworkCellList() const { frameworkMCCellList.invalidate(); }
 
   /**
    * \brief Solute tempering (replica exchange with solute scaling, REST2).

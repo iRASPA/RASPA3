@@ -134,7 +134,6 @@ Run from `examples/parallel/3_parallel_ti_nacl_in_water`:
       "ExternalTemperature" : 298.0,
       "ExternalPressure" : 1.0e5,
       "ChargeMethod" : "Ewald",
-      "CutOff" : 10.0,
       "VolumeMoveProbability" : 0.01,
       "HybridMCProbability" : 0.001,
       "HybridMCMoveNumberOfSteps" : 10

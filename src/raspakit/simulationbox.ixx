@@ -273,7 +273,7 @@ export struct SimulationBox
   double3x3 cell;
   double3x3 inverseCell;
   double volume;
-  Type type;
+  Type type{Type::Rectangular};
 
   inline SimulationBox& operator+=(const SimulationBox& b)
   {
@@ -607,4 +607,9 @@ export void from_json(const nlohmann::json& j, SimulationBox& b)
   {
     b.volume = 0.0;
   }
+  // the type was not stored: rectangular when every angle is a right angle (as the cell-matrix constructor decides)
+  const bool rightAngles = std::fabs(b.angleAlpha - 0.5 * std::numbers::pi) < 1e-5 &&
+                           std::fabs(b.angleBeta - 0.5 * std::numbers::pi) < 1e-5 &&
+                           std::fabs(b.angleGamma - 0.5 * std::numbers::pi) < 1e-5;
+  b.type = rightAngles ? SimulationBox::Type::Rectangular : SimulationBox::Type::Triclinic;
 }

@@ -144,14 +144,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     }
 
     // Compute framework-molecule energy contribution
-    std::optional<RunningEnergy> frameworkDifference =
-        timed(system, component, move, Move::Timing::InsertionFramework,
-              [&]
-              {
-                return Interactions::computeFrameworkMoleculeEnergyDifference(
-                    system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-                    system.spanOfFrameworkAtoms(), fractionalMolecule, oldFractionalMolecule);
-              });
+    std::optional<RunningEnergy> frameworkDifference = timed(
+        system, component, move, Move::Timing::InsertionFramework,
+        [&]
+        {
+          return Interactions::computeFrameworkMoleculeEnergyDifference(
+              system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+              system.frameworkCellList(), system.spanOfFrameworkAtoms(), fractionalMolecule, oldFractionalMolecule);
+        });
     if (!frameworkDifference.has_value())
     {
       // Reject move and restore the fractional molecule
@@ -522,7 +522,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                 {
                   return Interactions::computeFrameworkMoleculeEnergyDifference(
                       system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-                      system.spanOfFrameworkAtoms(), newFractionalMolecule, savedFractionalMolecule);
+                      system.frameworkCellList(), system.spanOfFrameworkAtoms(), newFractionalMolecule,
+                      savedFractionalMolecule);
                 });
       if (!frameworkDifference.has_value())
       {
@@ -765,7 +766,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     time_begin = std::chrono::steady_clock::now();
     std::optional<RunningEnergy> frameworkEnergyDifference = Interactions::computeFrameworkMoleculeEnergyDifference(
         system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-        system.spanOfFrameworkAtoms(), trialPositions, molecule);
+        system.frameworkCellList(), system.spanOfFrameworkAtoms(), trialPositions, molecule);
     time_end = std::chrono::steady_clock::now();
     if (insertionDisabled || deletionDisabled)
     {
