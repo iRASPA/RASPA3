@@ -25,6 +25,7 @@ import double3;
 import double3x3;
 import simd_quatd;
 import cbmc;
+import cbmc_constants;
 import mc_moves;
 import mc_moves_move_types;
 import mc_moves_translation;
@@ -445,7 +446,7 @@ void DynamicallyCorrectedTST::setup()
              double3::dot(double3::abs(barrier.normal), front.simulationBox.perpendicularWidths()) / barrier.lambda);
   std::print(stream, "Number of replicas (threads):            {}\n", numberOfReplicas);
   std::print(stream, "Number of blocks per replica:            {}\n", numberOfBlocks);
-  std::print(stream, "Initialization cycles (unconstrained):   {}\n", numberOfInitializationCycles);
+  std::print(stream, "Initialization cycles (constrained):     {}\n", numberOfInitializationCycles);
   std::print(stream, "Constrained equilibration cycles:        {}\n", settings.numberOfConstrainedEquilibrationCycles);
   std::print(stream, "Transmission cycles (constrained):       {}\n", settings.numberOfTransmissionCycles);
   std::print(stream, "Trajectory pairs launched every:         {} cycles\n", settings.launchTrajectoryEvery);
@@ -730,9 +731,12 @@ void DynamicallyCorrectedTST::runStage(SimulationStage stage, std::size_t number
             System& system = systems[replicaId];
             std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
 
+            if (stage == SimulationStage::Initialization)
+            {
+              createConstrainedConfiguration(replicaId);
+            }
             if (stage == SimulationStage::Transmission)
             {
-              constrainTaggedMolecule(replicaId);
               if (settings.cageOccupancies.has_value())
               {
                 prepareOccupancies(replicaId);
@@ -747,6 +751,12 @@ void DynamicallyCorrectedTST::runStage(SimulationStage stage, std::size_t number
                 component.mc_moves_statistics.clearMoveStatistics();
                 component.mc_moves_cputime.clearTimingStatistics();
               }
+              // the in-plane move counters restart with the transmission stage; the adapted maximum
+              // displacement is kept
+              DcTSTConstrainedMoveStatistics& moves = constrainedMoves[replicaId];
+              const double maximumTranslation = moves.maximumTranslation;
+              moves = DcTSTConstrainedMoveStatistics{};
+              moves.maximumTranslation = maximumTranslation;
             }
 
             system.precomputeTotalRigidEnergy();
@@ -768,7 +778,7 @@ void DynamicallyCorrectedTST::runStage(SimulationStage stage, std::size_t number
               }
               const std::size_t block = estimation.currentBin;
 
-              performMonteCarloCycle(replicaId, stage);
+              performMonteCarloCycle(replicaId);
 
               if (stage == SimulationStage::Transmission && production && settings.launchTrajectoryEvery > 0uz &&
                   (cycle - equilibrationCycles) % settings.launchTrajectoryEvery == 0uz)
@@ -787,10 +797,8 @@ void DynamicallyCorrectedTST::runStage(SimulationStage stage, std::size_t number
                 std::print(replicaStream, "Cycle {} of {} ({})\n", cycle, numberOfCycles,
                            production ? "production" : "equilibration");
                 std::print(replicaStream, "{}", system.runningEnergies.printMC(""));
-                if (stage == SimulationStage::Transmission)
                 {
                   const DcTSTConstrainedMoveStatistics& moves = constrainedMoves[replicaId];
-                  const DcTSTTransmissionAccumulator& accumulator = transmission[replicaId];
                   const std::size_t translationTrials = moves.translationTotalTrials + moves.translationTrials;
                   const std::size_t translationAccepted = moves.translationTotalAccepted + moves.translationAccepted;
                   const std::size_t reinsertionTrials = moves.reinsertionTotalTrials + moves.reinsertionTrials;
@@ -805,6 +813,10 @@ void DynamicallyCorrectedTST::runStage(SimulationStage stage, std::size_t number
                              reinsertionTrials,
                              100.0 * static_cast<double>(reinsertionAccepted) /
                                  static_cast<double>(std::max(1uz, reinsertionTrials)));
+                }
+                if (stage == SimulationStage::Transmission)
+                {
+                  const DcTSTTransmissionAccumulator& accumulator = transmission[replicaId];
                   if (settings.cageOccupancies.has_value())
                   {
                     const DcTSTOccupancyState& state = occupancyStates[replicaId];
@@ -881,26 +893,21 @@ void DynamicallyCorrectedTST::runStage(SimulationStage stage, std::size_t number
 // Monte Carlo
 // =================================================================================================
 
-void DynamicallyCorrectedTST::performMonteCarloCycle(std::size_t replicaId, SimulationStage stage)
+void DynamicallyCorrectedTST::performMonteCarloCycle(std::size_t replicaId)
 {
   System& system = systems[replicaId];
   RandomNumber& rng = randoms[replicaId];
 
-  std::size_t fractionalMoleculeSystem = 0uz;
   const std::size_t numberOfSteps = std::max(system.numberOfMolecules(), 20uz) * system.numerOfAdsorbateComponents();
+  // the occupancy constraint exists from the start of the transmission stage ('prepareOccupancies')
+  const bool occupancyMode = occupancyStates[replicaId].active;
 
   for (std::size_t step = 0; step != numberOfSteps; ++step)
   {
     const std::size_t selectedComponent = system.randomComponent(rng);
 
-    if (stage == SimulationStage::Initialization)
-    {
-      MC_Moves::performRandomMoveInitialization(rng, system, system, selectedComponent, fractionalMoleculeSystem);
-      continue;
-    }
-
-    // transmission stage: the tagged molecule is restricted to its in-plane moves, all other molecules
-    // move with the single-molecule moves of their component
+    // both stages sample the constrained ensemble: the tagged molecule is restricted to its in-plane
+    // moves, all other molecules move with the single-molecule moves of their component
     const std::size_t numberOfMolecules = system.numberOfMoleculesPerComponent[selectedComponent];
     if (numberOfMolecules == 0uz) continue;
     const std::size_t selectedMolecule = std::min(
@@ -921,7 +928,6 @@ void DynamicallyCorrectedTST::performMonteCarloCycle(std::size_t replicaId, Simu
       // occupancy-resolved mode: the old configuration of the molecule, to undo an accepted move that changes
       // the occupancy of cage A or B (the constraint is a hard wall in configuration space: rejecting such
       // moves keeps detailed balance since the allowed set is the same seen from either side)
-      const bool occupancyMode = settings.cageOccupancies.has_value();
       const std::size_t moleculeIndex =
           occupancyMode ? system.moleculeIndexOfComponent(selectedComponent, selectedMolecule) : 0uz;
       std::span<Atom> moleculeAtoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
@@ -1022,9 +1028,9 @@ std::optional<RunningEnergy> DynamicallyCorrectedTST::translationInPlaneMove(std
 
   // occupancy-resolved mode: the window the bead moves to must have the requested occupancies
   std::pair<std::size_t, std::size_t> trialCages{};
-  if (settings.cageOccupancies.has_value())
+  DcTSTOccupancyState& state = occupancyStates[replicaId];
+  if (state.active)
   {
-    DcTSTOccupancyState& state = occupancyStates[replicaId];
     trialCages = cagesOfWindow(trialMolecule.second[component.startingBead].position);
     if (!occupanciesSatisfied(state, trialCages.first, trialCages.second))
     {
@@ -1062,9 +1068,8 @@ std::optional<RunningEnergy> DynamicallyCorrectedTST::translationInPlaneMove(std
     std::copy(trialMolecule.second.cbegin(), trialMolecule.second.cend(), moleculeAtoms.begin());
     system.cellListAtomsMoved(moleculeAtoms);
     molecule = trialMolecule.first;
-    if (settings.cageOccupancies.has_value())
+    if (state.active)
     {
-      DcTSTOccupancyState& state = occupancyStates[replicaId];
       state.cageA = trialCages.first;
       state.cageB = trialCages.second;
     }
@@ -1093,9 +1098,9 @@ std::optional<RunningEnergy> DynamicallyCorrectedTST::reinsertionInPlaneMove(std
 
   // occupancy-resolved mode: the window of the new point must have the requested occupancies
   std::pair<std::size_t, std::size_t> trialCages{};
-  if (settings.cageOccupancies.has_value())
+  DcTSTOccupancyState& state = occupancyStates[replicaId];
+  if (state.active)
   {
-    DcTSTOccupancyState& state = occupancyStates[replicaId];
     trialCages = cagesOfWindow(point);
     if (!occupanciesSatisfied(state, trialCages.first, trialCages.second))
     {
@@ -1141,9 +1146,8 @@ std::optional<RunningEnergy> DynamicallyCorrectedTST::reinsertionInPlaneMove(std
     record.atomIndex = molecule.atomIndex;
     record.numberOfAtoms = molecule.numberOfAtoms;
     molecule = record;
-    if (settings.cageOccupancies.has_value())
+    if (state.active)
     {
-      DcTSTOccupancyState& state = occupancyStates[replicaId];
       state.cageA = trialCages.first;
       state.cageB = trialCages.second;
     }
@@ -1153,50 +1157,58 @@ std::optional<RunningEnergy> DynamicallyCorrectedTST::reinsertionInPlaneMove(std
   return std::nullopt;
 }
 
-void DynamicallyCorrectedTST::constrainTaggedMolecule(std::size_t replicaId)
+void DynamicallyCorrectedTST::createConstrainedConfiguration(std::size_t replicaId)
 {
   System& system = systems[replicaId];
   RandomNumber& rng = randoms[replicaId];
+  std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
 
-  const std::size_t selectedComponent = settings.taggedComponent;
-  const Component& component = system.components[selectedComponent];
-  if (system.numberOfMoleculesPerComponent[selectedComponent] == 0uz)
+  const std::size_t taggedComponent = settings.taggedComponent;
+  const Component& tagged = system.components[taggedComponent];
+
+  // the number of molecules of every component the system was created with ('CreateNumberOfMolecules')
+  const std::vector<std::size_t> targetNumberOfMolecules = system.numberOfMoleculesPerComponent;
+  if (targetNumberOfMolecules[taggedComponent] == 0uz)
   {
     throw std::runtime_error(
-        std::format("dcTST: the tagged component '{}' has no molecules (replica {})\n", component.name, replicaId));
+        std::format("dcTST: the tagged component '{}' has no molecules (replica {})\n", tagged.name, replicaId));
   }
-  std::span<Atom> moleculeAtoms = system.spanOfMolecule(selectedComponent, 0uz);
-  Molecule& molecule = system.moleculeData[taggedMoleculeIndex(system)];
 
-  // place the reaction bead on the barrier plane. Uniform samples of the plane miss the 8-rings
-  // (most of the plane is framework), and at high loading every ring may already hold a methane,
-  // so a random CBMC growth fails. Try, in order: the window centres of this plane, uniform
-  // samples, then the molecule already closest to the plane (project it onto q = 0).
-  const CBMC::GrowContext context = system.makeGrowContext(CBMC::CutOffMode::Full);
-  const auto acceptGrow = [&](CBMC::GrowResult& growData) -> bool
+  // Order of creation (as in RASPA2): the system is emptied, the tagged molecule is grown first with its
+  // reaction bead on the barrier plane, and only then are the other molecules grown around it. Placing the
+  // tagged molecule into an already filled system fails at high loading -- every window may hold a
+  // molecule -- whereas in the empty framework the growth on a window centre always succeeds. The
+  // molecules created with the system are discarded (they are a random configuration anyway).
+  for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
   {
-    if (system.insideBlockedPockets(component, growData.atoms)) return false;
-    for (std::size_t i = 0; i < moleculeAtoms.size(); ++i)
+    while (system.numberOfMoleculesPerComponent[componentId] > 0uz)
     {
-      moleculeAtoms[i].position = growData.atoms[i].position;
+      const std::size_t last = system.numberOfMoleculesPerComponent[componentId] - 1uz;
+      system.deleteMolecule(componentId, last, system.spanOfMolecule(componentId, last));
     }
-    Molecule record = growData.molecule;
-    record.atomIndex = molecule.atomIndex;
-    record.numberOfAtoms = molecule.numberOfAtoms;
-    molecule = record;
-    system.invalidateCellList();
-    return true;
-  };
-  const auto tryGrowAt = [&](double3 point) -> bool
+  }
+
+  // a grown molecule is valid when it exists and does not overlap with its environment
+  const auto isValid = [&](const std::optional<CBMC::GrowResult>& growData)
+  { return growData.has_value() && growData->energies.potentialEnergy() <= system.forceField.energyOverlapCriteria; };
+
+  // the context is rebuilt per growth: every inserted molecule changes the background it spans
+  const auto creationContext = [&]()
+  { return system.makeGrowContext(CBMC::CutOffMode::Full).withChainScheme(CBMC::ChainScheme::ConfigurationalBias); };
+
+  // --- the tagged molecule: reaction bead pinned on the barrier plane ---------------------------------
+  const auto growTaggedAt = [&](double3 point) -> std::optional<CBMC::GrowResult>
   {
     std::optional<CBMC::GrowResult> growData = CBMC::growNewMolecule(
-        rng, context, component,
-        CBMC::NewMoleculeIdentity{.componentId = selectedComponent,
-                                  .moleculeId = static_cast<std::size_t>(moleculeAtoms.front().moleculeId)},
+        rng, creationContext(), tagged,
+        CBMC::NewMoleculeIdentity{.componentId = taggedComponent, .moleculeId = system.numberOfMolecules()},
         CBMC::GrowRequest{.firstBead = CBMC::FirstBeadScheme::Pinned, .firstBeadPosition = point});
-    return growData.has_value() && acceptGrow(*growData);
+    if (!isValid(growData) || system.insideBlockedPockets(tagged, growData->atoms)) return std::nullopt;
+    return growData;
   };
 
+  // the window centres of this plane (midpoints of neighbouring cage centres along the normal), in random
+  // order so that the replicas start in different windows
   std::vector<double3> windowPoints;
   const DcTSTCageLattice::AxisAlignment alignment = cageLattice.axisAlongDirection(barrier.normal);
   for (std::size_t c = 0; c < cageLattice.numberOfCages(); ++c)
@@ -1208,88 +1220,107 @@ void DynamicallyCorrectedTST::constrainTaggedMolecule(std::size_t replicaId)
       windowPoints.push_back(barrier.projectOntoPlane(system.simulationBox, mid, 0.0));
     }
   }
+  for (std::size_t i = windowPoints.size(); i > 1uz; --i)
+  {
+    const std::size_t j = std::min(i - 1uz, static_cast<std::size_t>(rng.uniform() * static_cast<double>(i)));
+    std::swap(windowPoints[i - 1uz], windowPoints[j]);
+  }
 
+  std::optional<CBMC::GrowResult> taggedGrow{};
+  std::string placement{};
   std::size_t attempts{0};
   constexpr std::size_t jitterPerWindow = 200uz;
   constexpr std::size_t uniformAttempts = 100000uz;
   for (const double3& window : windowPoints)
   {
-    if (tryGrowAt(window))
-    {
-      std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
-      std::print(replicaStream, "Tagged molecule placed on a window centre after {} attempts (q = {:.3e} [A])\n",
-                 attempts + 1uz,
-                 barrier.projection(system.simulationBox, moleculeAtoms[component.startingBead].position));
-      return;
-    }
     ++attempts;
-    for (std::size_t j = 0; j < jitterPerWindow; ++j)
+    taggedGrow = growTaggedAt(window);
+    if (taggedGrow.has_value())
     {
+      placement = "a window centre";
+      break;
+    }
+    for (std::size_t j = 0; j < jitterPerWindow && !taggedGrow.has_value(); ++j)
+    {
+      ++attempts;
       const double3 point = window + (rng.uniform() - 0.5) * 2.0 * barrier.inPlaneU +
                             (rng.uniform() - 0.5) * 2.0 * barrier.inPlaneV;
-      if (tryGrowAt(barrier.projectOntoPlane(system.simulationBox, point, 0.0)))
-      {
-        std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
-        std::print(replicaStream, "Tagged molecule placed near a window after {} attempts (q = {:.3e} [A])\n",
-                   attempts + 1uz,
-                   barrier.projection(system.simulationBox, moleculeAtoms[component.startingBead].position));
-        return;
-      }
-      ++attempts;
+      taggedGrow = growTaggedAt(barrier.projectOntoPlane(system.simulationBox, point, 0.0));
+      placement = "a point near a window centre";
     }
+    if (taggedGrow.has_value()) break;
   }
-  for (std::size_t attempt = 0; attempt < uniformAttempts; ++attempt)
+  // no cage lattice that matches the plane (bulk system, or a barrier through a different cross-section):
+  // uniform samples of the plane
+  for (std::size_t attempt = 0; attempt < uniformAttempts && !taggedGrow.has_value(); ++attempt)
   {
-    if (tryGrowAt(barrier.randomPointOnPlane(rng, system.simulationBox)))
-    {
-      std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
-      std::print(replicaStream, "Tagged molecule placed on the barrier plane after {} attempts (q = {:.3e} [A])\n",
-                 attempts + attempt + 1uz,
-                 barrier.projection(system.simulationBox, moleculeAtoms[component.startingBead].position));
-      return;
-    }
+    ++attempts;
+    taggedGrow = growTaggedAt(barrier.randomPointOnPlane(rng, system.simulationBox));
+    placement = "a uniformly sampled point of the plane";
   }
+  if (!taggedGrow.has_value())
+  {
+    throw std::runtime_error(
+        std::format("dcTST: the tagged molecule could not be grown with its reaction bead on the barrier plane of "
+                    "the empty framework after {} attempts (replica {}); check 'BarrierPosition', 'BarrierNormal' "
+                    "and the blocking pockets\n",
+                    attempts, replicaId));
+  }
+  system.insertMolecule(taggedComponent, taggedGrow->molecule, taggedGrow->atoms);
 
-  // every 8-ring is occupied: take the molecule already in a window and put its bead on the plane
-  const std::size_t taggedIndex = taggedMoleculeIndex(system);
-  std::size_t nearestLocal{0};
-  double nearestQ = std::abs(barrier.projection(system.simulationBox, moleculeAtoms[component.startingBead].position));
-  std::size_t local{0};
-  for (std::size_t j = 0; j < system.moleculeData.size(); ++j)
+  // --- the other molecules: grown around the tagged one -------------------------------------------------
+  // (the same creation scheme as 'System::createInitialMolecules': the first valid growth starts a short
+  // Markov chain of further growths accepted with the Rosenbluth weights, which corrects the conformational
+  // bias of a single growth of a flexible molecule; a rigid molecule is grown once)
+  const auto growCreationCandidate = [&](std::size_t componentId) -> CBMC::GrowResult
   {
-    if (system.moleculeData[j].componentId != selectedComponent) continue;
-    const std::span<const Atom> atoms = system.spanOfMolecule(selectedComponent, local);
-    const double q = std::abs(barrier.projection(system.simulationBox, atoms[component.startingBead].position));
-    if (q < nearestQ)
+    const Component& component = system.components[componentId];
+    const CBMC::NewMoleculeIdentity identity{.componentId = componentId, .moleculeId = system.numberOfMolecules()};
+
+    std::optional<CBMC::GrowResult> current = std::nullopt;
+    do
     {
-      nearestQ = q;
-      nearestLocal = local;
-    }
-    ++local;
-  }
-  if (nearestLocal != 0uz)
-  {
-    std::span<Atom> otherAtoms = system.spanOfMolecule(selectedComponent, nearestLocal);
-    Molecule& other = system.moleculeData[taggedIndex + nearestLocal];
-    for (std::size_t i = 0; i < moleculeAtoms.size(); ++i)
+      current = CBMC::growNewMolecule(rng, creationContext(), component, identity);
+    } while (!isValid(current));
+
+    const std::size_t numberOfGrowths = component.rigid ? 1uz : CBMC::Constants::creationCandidateGrowths;
+    for (std::size_t attempt = 1; attempt < numberOfGrowths; ++attempt)
     {
-      std::swap(moleculeAtoms[i].position, otherAtoms[i].position);
+      std::optional<CBMC::GrowResult> candidate = CBMC::growNewMolecule(rng, creationContext(), component, identity);
+      if (!isValid(candidate)) continue;
+
+      const double logAcceptance = candidate->logRosenbluthWeight - current->logRosenbluthWeight;
+      if (logAcceptance >= 0.0 || rng.uniform() < std::exp(logAcceptance))
+      {
+        current = std::move(candidate);
+      }
     }
-    std::swap(molecule.centerOfMassPosition, other.centerOfMassPosition);
-    std::swap(molecule.orientation, other.orientation);
-  }
-  for (Atom& atom : moleculeAtoms)
+    return std::move(current.value());
+  };
+
+  for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
   {
-    atom.position = barrier.projectOntoPlane(system.simulationBox, atom.position, 0.0);
+    while (system.numberOfMoleculesPerComponent[componentId] < targetNumberOfMolecules[componentId])
+    {
+      const CBMC::GrowResult growData = growCreationCandidate(componentId);
+      system.insertMolecule(componentId, growData.molecule, growData.atoms);
+    }
   }
-  molecule.centerOfMassPosition =
-      barrier.projectOntoPlane(system.simulationBox, molecule.centerOfMassPosition, 0.0);
   system.invalidateCellList();
 
-  std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
-  std::print(replicaStream,
-             "Tagged molecule projected from the occupant nearest the plane (|q| was {:.3e} [A]) (q = {:.3e} [A])\n",
-             nearestQ, barrier.projection(system.simulationBox, moleculeAtoms[component.startingBead].position));
+  const std::span<const Atom> taggedAtoms = system.spanOfMolecule(taggedComponent, 0uz);
+  std::print(replicaStream, "Constrained starting configuration\n");
+  std::print(replicaStream, "    tagged molecule grown first on {} after {} attempt(s) (reduced q = {:.3e} [A])\n",
+             placement, attempts,
+             barrier.reducedCoordinate(
+                 barrier.projection(system.simulationBox, taggedAtoms[tagged.startingBead].position)));
+  for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
+  {
+    std::print(replicaStream, "    component {} ({}): {} molecules\n", componentId, system.components[componentId].name,
+               system.numberOfMoleculesPerComponent[componentId]);
+  }
+  std::print(replicaStream, "\n");
+  std::flush(replicaStream);
 }
 
 // =================================================================================================
@@ -1474,6 +1505,9 @@ void DynamicallyCorrectedTST::prepareOccupancies(std::size_t replicaId)
              state.cageA, initialA, state.occupancy[state.cageA], state.cageB, initialB, state.occupancy[state.cageB],
              relocations);
   std::flush(replicaStream);
+
+  // from here on the moves enforce the constraint
+  state.active = true;
 }
 
 // =================================================================================================

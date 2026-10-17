@@ -833,13 +833,24 @@ reported separately at the end of the simulation.
     The reaction coordinate and the barrier geometry are the same as for
     the free-energy driver (copy the `"dcTST"` geometry keys). Cages are
     indexed by \f$\lfloor q/\lambda \rfloor\f$ of the unwrapped reaction
-    coordinate. After `"NumberOfInitializationCycles"` of unconstrained
-    Monte Carlo the run has `"NumberOfConstrainedEquilibrationCycles"`
-    and `"NumberOfTransmissionCycles"` of constrained Monte Carlo in which
-    molecule 0 of the tagged component has its reaction bead held on the
-    barrier plane (in-plane translation and in-plane CBMC reinsertion moves
-    with `"MaximumTranslationInPlane"` and `"ReinsertionInPlaneProbability"`)
-    while all other molecules are sampled with their ordinary moves. Every
+    coordinate. The whole run samples the constrained ensemble: molecule 0
+    of the tagged component has its reaction bead held on the barrier plane
+    (in-plane translation and in-plane CBMC reinsertion moves with
+    `"MaximumTranslationInPlane"` and `"ReinsertionInPlaneProbability"`)
+    while all other molecules are sampled with their ordinary moves. The
+    starting configuration is built in the order used by RASPA2: the
+    molecules created with the system are discarded, the tagged molecule is
+    grown first with its bead on the plane into the empty framework (a
+    window centre is tried first, so this always succeeds), and the
+    remaining `"CreateNumberOfMolecules"` − 1 molecules of the tagged
+    component and the molecules of the other components are then CBMC-grown
+    around it; placing the tagged molecule into an already filled system
+    would fail at loadings where every window holds a molecule. The run has
+    `"NumberOfInitializationCycles"` of constrained Monte Carlo (move
+    statistics are reset afterwards), then
+    `"NumberOfConstrainedEquilibrationCycles"` and
+    `"NumberOfTransmissionCycles"` of constrained Monte Carlo during which
+    the trajectories are launched. Every
     `"LaunchTrajectoryEvery"` production cycles, `"TrajectoriesPerConfiguration"`
     pairs of trajectories of `"TrajectoryTime"` ps (the system
     `"TimeStep"`) are started from the current configuration with

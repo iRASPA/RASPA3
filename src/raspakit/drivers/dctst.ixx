@@ -18,6 +18,7 @@ import dctst_barrier;
  */
 export struct DcTSTOccupancyState
 {
+  bool active{false};  ///< The constraint is enforced (from 'prepareOccupancies' at the start of the transmission stage).
   std::vector<std::size_t> cageOfMolecule;  ///< Cage (lattice index) of the reaction bead of every molecule.
   std::vector<std::size_t> occupancy;       ///< Number of molecules per cage, the tagged molecule excluded.
   std::size_t cageA{0};                     ///< The cage the tagged molecule hops from.
@@ -241,9 +242,11 @@ export struct DynamicallyCorrectedTST
 
   // --- per replica, executed inside the replica's thread ---------------------------------------
 
-  /// One Monte Carlo cycle; in the transmission stage the tagged molecule is restricted to its
-  /// in-plane moves.
-  void performMonteCarloCycle(std::size_t replicaId, SimulationStage stage);
+  /// One Monte Carlo cycle in the constrained ensemble: the tagged molecule (molecule 0 of the tagged
+  /// component) is restricted to its in-plane moves in both stages, all other molecules move with the
+  /// single-molecule moves of their component. The occupancy constraint is enforced once the occupancy
+  /// state is active (from the start of the transmission stage).
+  void performMonteCarloCycle(std::size_t replicaId);
 
   /// In-plane translation of the tagged molecule (reaction bead stays on the barrier plane).
   std::optional<RunningEnergy> translationInPlaneMove(std::size_t replicaId);
@@ -251,9 +254,13 @@ export struct DynamicallyCorrectedTST
   /// In-plane CBMC reinsertion of the tagged molecule (reaction bead at a random point of the plane).
   std::optional<RunningEnergy> reinsertionInPlaneMove(std::size_t replicaId);
 
-  /// Places the reaction bead of the tagged molecule on the barrier plane at the start of the
-  /// transmission stage.
-  void constrainTaggedMolecule(std::size_t replicaId);
+  /// Builds the starting configuration of the constrained ensemble at the start of the initialization
+  /// stage: the adsorbates created with the system are removed, the tagged molecule is grown first with
+  /// its reaction bead on the barrier plane (into the empty framework, where this always succeeds; a
+  /// window centre is tried first), and the remaining molecules of every component are then grown around
+  /// it with CBMC. The tagged molecule never leaves the plane afterwards, so no re-placement into a
+  /// crowded system is needed at the start of the transmission stage.
+  void createConstrainedConfiguration(std::size_t replicaId);
 
   /// Occupancy-resolved mode: the cages A and B of the tagged molecule's window from the position of
   /// its reaction bead.

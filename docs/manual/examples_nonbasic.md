@@ -1441,9 +1441,17 @@ free-energy JSON of example 17 as
 (run example 17 first; the input reader checks that the tagged component,
 lattice distance, barrier normal and temperature agree) for \f$P(q^*)\f$,
 holds molecule 0 on the barrier plane with in-plane moves and launches,
-every 10 cycles, a pair of forward and time-reversed trajectories of 2 ps
-(at this loading the collisions decorrelate a crossing within about a
-picosecond) from which the self transmission function \f$\kappa_S(t)\f$ and
+every 10 cycles, a pair of forward and time-reversed trajectories of 2 ps.
+The starting configuration is built as in RASPA2: the tagged methane is
+grown first with its bead on a window centre of the empty framework and the
+other 215 are then grown around it, so the placement cannot fail even
+though at six molecules per cage every 8-ring already holds a methane in an
+equilibrated configuration; the 2000 initialization cycles are already
+constrained Monte Carlo (the replica logs
+`output/output_300_0.dctst.r*.txt` list the placement and the in-plane
+acceptance ratios). The trajectories are 2 ps long (at this loading the
+collisions decorrelate a crossing within about a picosecond); from them
+the self transmission function \f$\kappa_S(t)\f$ and
 the collective one \f$\kappa_C(t)\f$ (the net cage displacement of all
 molecules) are accumulated, resolved up to two cage shells around the hop.
 The trajectories are plain NVE (`"TrajectoryThermostat" : "None"`): at six
