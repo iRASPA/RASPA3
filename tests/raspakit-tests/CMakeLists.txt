@@ -82,6 +82,7 @@ add_executable(unit_tests_raspakit
   exact_regression.cpp
   cif_reader.cpp
   solute_tempering.cpp
+  polymer_tacticity.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspakit)

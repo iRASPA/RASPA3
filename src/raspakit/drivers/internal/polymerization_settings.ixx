@@ -24,10 +24,27 @@ import archive;
  *
  * A new bond is ramped in over 'relaxationSteps' MD steps (see PolymerLinkTable). The reactions stop when
  * the conversion reaches 'targetConversion' (the remaining production cycles relax the network).
+ *
+ * The 'Tacticity' object controls the configuration of the backbone stereocentres (the tails of the reacted
+ * sites, see PolymerizationSite): the relative configuration of two consecutive centres of a chain is a meso
+ * dyad (isotactic placement) or a racemo dyad (syndiotactic placement). With a tacticity selected, every
+ * radical carries the configuration its tail has to take when it adds to the next monomer; a candidate
+ * whose approach geometry gives the other configuration is skipped ('StereoSelective', the default) or
+ * accepted and driven to the required configuration by the restraint. Every reacted centre is held in its
+ * configuration by a harmonic restraint on the normalised chiral volume (see PolymerLinkTable), since the
+ * united-atom CH bead has no hydrogen that would prevent the inversion of the centre.
  */
+export enum class Tacticity : std::uint8_t
+{
+  None = 0,          ///< No control (and no restraints); the dyad statistics are still reported.
+  Isotactic = 1,     ///< All dyads meso.
+  Syndiotactic = 2,  ///< All dyads racemo.
+  Atactic = 3        ///< Bernoullian: a dyad is meso with probability 'mesoProbability'.
+};
+
 export struct PolymerizationSettings
 {
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   std::size_t scanEvery{10};  ///< MD steps between two reaction scans ('ScanEvery').
   std::size_t startCycle{0};  ///< Production cycle at which the reactions start ('StartCycle').
@@ -52,6 +69,28 @@ export struct PolymerizationSettings
   bool writeBondLog{true};        ///< Write every reaction to 'output/polymerization_bonds.s<i>.txt' ('WriteBondLog').
   bool writeTopology{true};       ///< Write the final bond list to 'output/polymer_topology.s<i>.json' ('WriteTopology').
   std::string templateFile{};     ///< Optional molecule file whose type-based bonded tables are added ('TemplateFile').
+
+  Tacticity tacticity{Tacticity::None};  ///< ('Tacticity' / 'Type').
+  double mesoProbability{0.5};           ///< Probability of a meso dyad for 'Atactic' ('MesoProbability').
+  bool stereoSelective{true};            ///< Skip candidates that approach from the wrong face ('StereoSelective').
+  double chiralForceConstant{40000.0};   ///< [K] of the restraint on the normalised chiral volume ('ForceConstant').
+  double chiralReferenceVolume{0.6};     ///< [-] magnitude of the normalised chiral volume held ('ReferenceVolume').
+
+  static std::string tacticityName(Tacticity tacticity)
+  {
+    switch (tacticity)
+    {
+      case Tacticity::None:
+        return "none";
+      case Tacticity::Isotactic:
+        return "isotactic";
+      case Tacticity::Syndiotactic:
+        return "syndiotactic";
+      case Tacticity::Atactic:
+        return "atactic";
+    }
+    return "none";
+  }
 
   /// The acceptance probability of a reaction per scan: the probability, or 1 - exp(-k dt) from the rate constant.
   static double probabilityPerScan(double probability, std::optional<double> rateConstant, double scanTime)
@@ -82,6 +121,11 @@ export struct PolymerizationSettings
     archive << s.writeBondLog;
     archive << s.writeTopology;
     archive << s.templateFile;
+    archive << s.tacticity;
+    archive << s.mesoProbability;
+    archive << s.stereoSelective;
+    archive << s.chiralForceConstant;
+    archive << s.chiralReferenceVolume;
     return archive;
   }
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PolymerizationSettings &s)
@@ -113,6 +157,14 @@ export struct PolymerizationSettings
     archive >> s.writeBondLog;
     archive >> s.writeTopology;
     archive >> s.templateFile;
+    if (versionNumber >= 2)
+    {
+      archive >> s.tacticity;
+      archive >> s.mesoProbability;
+      archive >> s.stereoSelective;
+      archive >> s.chiralForceConstant;
+      archive >> s.chiralReferenceVolume;
+    }
     return archive;
   }
 };

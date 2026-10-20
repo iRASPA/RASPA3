@@ -25,10 +25,17 @@ import archive;
  * which switches the pair interactions and selects the bonded parameters of the product from the
  * type-based tables of the 'Polymerization' block. The optional 'InitiatedHeadType' is the head type
  * of a site that is activated by an initiator (default: the head product type).
+ *
+ * The tail becomes a stereocentre of the backbone once it has bonded to the next monomer (its
+ * substituents: the head, the side group and the polymer partner; the fourth one is the implicit
+ * hydrogen of the united-atom bead). The optional 'SideGroup' names the substituent whose placement
+ * defines the configuration of the centre (the tacticity of the chain); it defaults to the only
+ * neighbour of the tail other than the head and must be given when the tail has several (a
+ * methacrylate: the ester carbon or the methyl group).
  */
 export struct PolymerizationSite
 {
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   std::string siteType{};
   std::size_t head{};
@@ -36,6 +43,7 @@ export struct PolymerizationSite
   std::string headProductType{};
   std::string tailProductType{};
   std::optional<std::string> initiatedHeadType{};
+  std::optional<std::size_t> sideGroup{};  ///< The substituent of the tail that defines its configuration.
 
   bool operator==(PolymerizationSite const &) const = default;
 
@@ -48,6 +56,7 @@ export struct PolymerizationSite
     archive << s.headProductType;
     archive << s.tailProductType;
     archive << s.initiatedHeadType;
+    archive << s.sideGroup;
     return archive;
   }
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PolymerizationSite &s)
@@ -66,6 +75,7 @@ export struct PolymerizationSite
     archive >> s.headProductType;
     archive >> s.tailProductType;
     archive >> s.initiatedHeadType;
+    if (versionNumber >= 2) archive >> s.sideGroup;
     return archive;
   }
 };

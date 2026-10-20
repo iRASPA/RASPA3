@@ -3229,6 +3229,7 @@ std::vector<PolymerizationSite> Component::readPolymerizationSites(
       site.headProductType = item.at("HeadProductType").get<std::string>();
       site.tailProductType = item.at("TailProductType").get<std::string>();
       if (item.contains("InitiatedHeadType")) site.initiatedHeadType = item["InitiatedHeadType"].get<std::string>();
+      if (item.contains("SideGroup")) site.sideGroup = item["SideGroup"].get<std::size_t>();
     }
     catch (std::exception const &e)
     {
@@ -3254,6 +3255,29 @@ std::vector<PolymerizationSite> Component::readPolymerizationSites(
       throw std::runtime_error(std::format(
           "[Component reader]: 'PolymerizationSites' entry {}: 'Head' and 'Tail' must be bonded (the double bond)\n",
           item.dump()));
+    }
+    // the side group that defines the configuration of the tail as a stereocentre: given, or the only neighbour of
+    // the tail besides the head (a tail with several substituents needs an explicit choice; a tail without one, as
+    // in ethylene, has no stereocentre)
+    if (site.sideGroup.has_value())
+    {
+      if (site.sideGroup.value() >= definedAtoms.size() || site.sideGroup.value() == site.head ||
+          site.sideGroup.value() == site.tail || !connectivityTable[site.tail, site.sideGroup.value()])
+      {
+        throw std::runtime_error(std::format(
+            "[Component reader]: 'PolymerizationSites' entry {}: 'SideGroup' must be an atom bonded to 'Tail' other "
+            "than 'Head'\n",
+            item.dump()));
+      }
+    }
+    else if (site.tail < connectivityTable.numberOfBeads)
+    {
+      std::vector<std::size_t> substituents{};
+      for (std::size_t neighbour : connectivityTable.findAllNeighbors(site.tail))
+      {
+        if (neighbour != site.head) substituents.push_back(neighbour);
+      }
+      if (substituents.size() == 1) site.sideGroup = substituents.front();
     }
     for (const std::string &typeName :
          {site.headProductType, site.tailProductType, site.initiatedHeadType.value_or(site.headProductType)})

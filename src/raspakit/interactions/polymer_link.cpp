@@ -242,6 +242,34 @@ RunningEnergy evaluate(const ForceField &forceField, const SimulationBox &simula
     }
   }
 
+  // --- the restraints of the stereocentres: 1/2 k (V - chi V_0)^2 on the normalised chiral volume --------------
+  if (table.chiralForceConstant > 0.0)
+  {
+    for (const PolymerLinkTable::StereoCentreTerm &term : table.stereoCentres)
+    {
+      const double lambda = lambdaOfBond(term.bondId);
+      if (lambda == 0.0) continue;
+      const double3 centre = atoms[term.atoms[0]].position;
+      const double3 bp = simulationBox.applyPeriodicBoundaryConditions(atoms[term.atoms[1]].position - centre);
+      const double3 bn = simulationBox.applyPeriodicBoundaryConditions(atoms[term.atoms[2]].position - centre);
+      const double3 bz = simulationBox.applyPeriodicBoundaryConditions(atoms[term.atoms[3]].position - centre);
+      const ChiralVolume volume = ChiralVolume::compute(bp, bn, bz);
+      const double deviation = volume.value - static_cast<double>(term.chirality) * table.chiralReferenceVolume;
+      energy.crossLink += lambda * 0.5 * table.chiralForceConstant * deviation * deviation;
+      if constexpr (Order >= 1)
+      {
+        const double factor = lambda * table.chiralForceConstant * deviation;
+        const std::array<double3, 3> arms{bp, bn, bz};
+        for (std::size_t i = 0; i < 4; ++i)
+        {
+          const double3 gradient = factor * volume.gradient[i];
+          applyLink(term.atoms[i], gradient);
+          if (strain && i > 0) addOuterProduct(*strain, arms[i - 1], gradient);
+        }
+      }
+    }
+  }
+
   // --- the pair corrections ---------------------------------------------------------------------------------------
   for (const PolymerLinkTable::PairCorrection &pair : table.pairCorrections)
   {

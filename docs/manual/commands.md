@@ -1746,6 +1746,32 @@ switched on with a linear ramp \f$\lambda(t)\f$ from 0 to 1 over
 does not inject a large force; the conserved-energy reference of the drift
 report restarts at every accepted reaction.
 
+*Tacticity.* The tail of a reacted site is a stereocentre of the backbone:
+its substituents are the head, the side group (`"SideGroup"` of the site, by
+default the only neighbour of the tail other than the head) and the polymer
+partner, the implicit hydrogen of the united-atom bead being the fourth. Its
+configuration is the sign of the normalised chiral volume
+\f$\hat V = (\mathbf{b}_p \times \mathbf{b}_n)\cdot\mathbf{b}_z /
+(|\mathbf{b}_p||\mathbf{b}_n||\mathbf{b}_z|)\f$ of the bond vectors from the
+tail to the head (\f$p\f$), the partner (\f$n\f$) and the side group
+(\f$z\f$); the ordering follows the chain direction, so two consecutive
+centres of a chain form a *meso* dyad when their signs are equal and a
+*racemo* dyad when they differ. An all-meso chain is isotactic, an
+all-racemo chain syndiotactic. With `"Tacticity"` set, every radical carries
+the configuration its tail has to take when it adds to the next monomer,
+chosen relative to the centre before it in the chain (the first centre of a
+chain is free); the configuration a candidate pair would produce follows
+from the face from which the monomer approaches, and candidates with the
+wrong face are skipped (`"StereoSelective" : true`) or accepted and driven
+into the required configuration (`false`). Every reacted centre is then held
+by the restraint \f$U = \tfrac{1}{2} k (\hat V - \chi \hat V_0)^2\f$
+(\f$\chi = \pm 1\f$), ramped in with the bond, because nothing else in a
+united-atom model prevents a CH bead from inverting through the planar
+configuration (the barrier of the three bends alone is a few \f$k_B T\f$).
+\f$\hat V_0\f$ is 0.61 for three substituents at 114° and 0.77 for a
+tetrahedral centre. Without `"Tacticity"` no configuration is selected or
+restrained; the dyad statistics of the chains are reported in either case.
+
 The keys of the `"Polymerization"` block (defaults in parentheses):
 
 -   `"ScanEvery" : integer` (`10`) — MD steps between reaction scans.
@@ -1766,6 +1792,18 @@ The keys of the `"Polymerization"` block (defaults in parentheses):
 -   `"Termination" : {"Enabled" : bool, "CaptureRadius" : r, "Probability" : p, "RateConstant" : k}`\
     Termination by combination of two radical tails. Defaults `true`,
     `4.0` Å, `1.0`.
+-   `"Tacticity" : {"Type" : "Isotactic", "MesoProbability" : p, "StereoSelective" : bool, "ForceConstant" : k, "ReferenceVolume" : v}`\
+    (or just `"Tacticity" : "Isotactic"`) — the configuration of the
+    backbone stereocentres: `"Isotactic"` (all dyads meso),
+    `"Syndiotactic"` (all dyads racemo), `"Atactic"` (Bernoullian, a dyad
+    is meso with probability `p`, default `0.5`) or `"None"` (default: no
+    selection, no restraints). `"StereoSelective"` (default `true`) skips the
+    candidates whose approach face gives the wrong configuration; with
+    `false` every candidate is accepted and the restraint drives the new
+    centre to the required configuration. `k` is the force constant of the
+    restraint on the normalised chiral volume in K (default `40000`, an
+    inversion barrier of about 7000 K) and `v` the magnitude \f$\hat V_0\f$
+    held (default `0.6`).
 -   `"Bonds"`, `"Bends"`, `"Torsions" : list` — the type-based tables of the
     product in the molecule-file format, e.g.
     `[["CH2_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]]`; `"TemplateFile" :
@@ -1776,13 +1814,19 @@ The keys of the `"Polymerization"` block (defaults in parentheses):
     well.
 -   `"WriteBondLog" : bool` (`true`) — `output/polymerization_bonds.s<i>.txt`:
     one line per reaction with step, cycle, event, the two sites as
-    `component molecule atom`, the distance and the conversion.
+    `component molecule atom`, the distance, the conversion and the
+    configuration of the reacting tail with its dyad (`+m`, `-r`, `+.` for
+    the first centre of a chain; `-` for a tail that is not a stereocentre).
 -   `"WriteTopology" : bool` (`true`) — `output/polymer_topology.s<i>.json`:
-    the state of every site and the list of bonds (component, molecule, atom
-    of both partners, kind and step) at the end of the run.
+    the state and configuration of every site and the list of bonds
+    (component, molecule, atom of both partners, kind and step) at the end of
+    the run.
 
 The status report of every `"PrintEvery"` cycles adds the conversion, the
-numbers of radicals, dead sites, propagations and terminations, and the
+numbers of radicals, dead sites, propagations and terminations, the number
+of stereocentres with the meso/racemo dyad counts, the meso fraction and the
+triad fractions (mm, mr, rr) from the current geometry (with the number of
+restrained centres that are momentarily inverted), and the
 network statistics of the *molecule graph* (nodes: the monomer molecules,
 edges: the polymer bonds): molecules in the network, clusters, largest
 cluster and its fraction of all molecules with sites (the gel fraction),
@@ -1801,8 +1845,10 @@ the loop count of the infinite network per box is \f$E - V\f$ (the
 \f$+1\f$ of a finite connected graph does not apply), so it is the cycle
 rank minus one per spanning cluster; it is the number of elastically
 relevant cycles of the phantom-network model. Binary restarts are supported.
-Example: `examples/polymers/4_polymerization_hdda_in_box` (HDDA with the
-pHDDA product tables).
+Examples: `examples/polymers/4_polymerization_hdda_in_box` (HDDA with the
+pHDDA product tables) and
+`examples/polymers/5_polymerization_isotactic_methyl_acrylate_in_box`
+(isotactic chains of methyl acrylate).
 
 ### Molecular dynamics parameters <a name="molecular-dynamics-parameters"></a>
 
@@ -2551,7 +2597,12 @@ not improved by it.
     the atom a radical adds to and the tail is the atom that carries the
     radical afterwards; the product types are the pseudo-atoms of the force
     field the two atoms become when the site reacts. An atom may be listed
-    once. Example for a diacrylate:
+    once. The optional `"SideGroup" : s` names the substituent of the tail
+    that defines the configuration of the tail as a backbone stereocentre
+    (see the `"Tacticity"` key of [Polymerization](#polymerization)); it
+    defaults to the only neighbour of the tail other than the head and has
+    to be given when the tail has several (a methacrylate: the ester carbon
+    or the methyl). Example for a diacrylate:
 
         "PolymerizationSites" : [
           {"Type" : "acrylate", "Head" : 0,  "Tail" : 1,  "HeadProductType" : "CH2_bb", "TailProductType" : "CH_bb"},

@@ -321,6 +321,29 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PolymerTempl
   return archive;
 }
 
+// ---- ChiralVolume -------------------------------------------------------------------------------------------------
+
+ChiralVolume ChiralVolume::compute(const double3 &bp, const double3 &bn, const double3 &bz)
+{
+  ChiralVolume result{};
+  const double lp = std::sqrt(double3::dot(bp, bp));
+  const double ln = std::sqrt(double3::dot(bn, bn));
+  const double lz = std::sqrt(double3::dot(bz, bz));
+  const double norm = lp * ln * lz;
+  if (norm <= 0.0) return result;
+  const double3 pn = double3::cross(bp, bn);
+  const double3 nz = double3::cross(bn, bz);
+  const double3 zp = double3::cross(bz, bp);
+  const double value = double3::dot(pn, bz) / norm;
+  result.value = value;
+  // d(V/N)/db_i = (dV/db_i)/N - V b_i/|b_i|^2  with dV/db_p = b_n x b_z, dV/db_n = b_z x b_p, dV/db_z = b_p x b_n
+  result.gradient[1] = nz / norm - (value / (lp * lp)) * bp;
+  result.gradient[2] = zp / norm - (value / (ln * ln)) * bn;
+  result.gradient[3] = pn / norm - (value / (lz * lz)) * bz;
+  result.gradient[0] = -(result.gradient[1] + result.gradient[2] + result.gradient[3]);
+  return result;
+}
+
 // ---- PolymerLinkTable: layout and sites ---------------------------------------------------------------------------
 
 PolymerAtomRef PolymerLinkTable::Layout::ref(std::size_t atom) const
@@ -376,6 +399,7 @@ void PolymerLinkTable::activate(const std::vector<Component> &components,
           "[Polymerization]: the number of molecules changed after the polymerization was activated\n");
     }
     layout = makeLayout(components, numberOfMoleculesPerComponent);
+    if (siteChirality.size() != siteState.size()) siteChirality.assign(siteState.size(), 0);
     return;
   }
   sitesPerMolecule.resize(components.size());
@@ -390,6 +414,7 @@ void PolymerLinkTable::activate(const std::vector<Component> &components,
   }
   siteState.assign(offset, static_cast<std::uint8_t>(PolymerSiteState::Monomer));
   siteStep.assign(offset, 0);
+  siteChirality.assign(offset, 0);
   layout = makeLayout(components, numberOfMoleculesPerComponent);
   activated = true;
   derivedValid = false;
@@ -423,9 +448,73 @@ PolymerAtomRef PolymerLinkTable::tailOf(std::size_t index, const std::vector<Com
   return r;
 }
 
+std::optional<PolymerAtomRef> PolymerLinkTable::sideGroupOf(std::size_t index,
+                                                            const std::vector<Component> &components) const
+{
+  PolymerAtomRef r = siteRef(index);
+  const std::optional<std::size_t> sideGroup = components[r.componentId].polymerizationSites[r.atomIndex].sideGroup;
+  if (!sideGroup.has_value()) return std::nullopt;
+  r.atomIndex = static_cast<std::uint32_t>(sideGroup.value());
+  return r;
+}
+
+std::optional<std::pair<std::size_t, bool>> PolymerLinkTable::siteOfAtom(std::uint32_t atom,
+                                                                         const std::vector<Component> &components) const
+{
+  const PolymerAtomRef r = layout.ref(atom);
+  const std::vector<PolymerizationSite> &sites = components[r.componentId].polymerizationSites;
+  for (std::size_t s = 0; s < sites.size(); ++s)
+  {
+    if (sites[s].tail == r.atomIndex) return std::pair{siteIndex(r.componentId, r.moleculeIndex, s), true};
+    if (sites[s].head == r.atomIndex) return std::pair{siteIndex(r.componentId, r.moleculeIndex, s), false};
+  }
+  return std::nullopt;
+}
+
 std::size_t PolymerLinkTable::countSites(PolymerSiteState state) const
 {
   return static_cast<std::size_t>(std::ranges::count(siteState, static_cast<std::uint8_t>(state)));
+}
+
+std::optional<double> PolymerLinkTable::chiralVolumeOf(std::size_t site, std::uint32_t partner,
+                                                       const SimulationBox &simulationBox,
+                                                       const std::vector<Component> &components,
+                                                       std::span<const Atom> atoms) const
+{
+  const std::optional<PolymerAtomRef> sideGroup = sideGroupOf(site, components);
+  if (!sideGroup.has_value()) return std::nullopt;
+  const double3 centre = atoms[layout.index(tailOf(site, components))].position;
+  const double3 head = atoms[layout.index(headOf(site, components))].position;
+  const double3 side = atoms[layout.index(sideGroup.value())].position;
+  const double3 bp = simulationBox.applyPeriodicBoundaryConditions(head - centre);
+  const double3 bn = simulationBox.applyPeriodicBoundaryConditions(atoms[partner].position - centre);
+  const double3 bz = simulationBox.applyPeriodicBoundaryConditions(side - centre);
+  return ChiralVolume::compute(bp, bn, bz).value;
+}
+
+std::int8_t PolymerLinkTable::geometricChirality(std::size_t site, std::uint32_t partner,
+                                                 const SimulationBox &simulationBox,
+                                                 const std::vector<Component> &components,
+                                                 std::span<const Atom> atoms) const
+{
+  const std::optional<double> volume = chiralVolumeOf(site, partner, simulationBox, components, atoms);
+  if (!volume.has_value()) return 0;
+  return volume.value() < 0.0 ? -1 : 1;
+}
+
+std::size_t PolymerLinkTable::predecessorOf(std::size_t site, const std::vector<Component> &components) const
+{
+  const PolymerAtomRef head = headOf(site, components);
+  for (const PolymerBond &bond : bonds)
+  {
+    if (bond.kind == PolymerBondKind::Propagation && bond.b == head)
+    {
+      const std::uint32_t tail = static_cast<std::uint32_t>(layout.index(bond.a));
+      const std::optional<std::pair<std::size_t, bool>> previous = siteOfAtom(tail, components);
+      if (previous.has_value() && previous->second) return previous->first;
+    }
+  }
+  return noSite;
 }
 
 double PolymerLinkTable::conversion() const
@@ -496,13 +585,15 @@ void PolymerLinkTable::initiate(std::size_t site, const ForceField &forceField, 
   updateMoleculeMass(r, forceField, atoms, moleculeData);
   siteState[site] = static_cast<std::uint8_t>(PolymerSiteState::Radical);
   siteStep[site] = step;
+  siteChirality[site] = 0;
   ++numberOfInitiations;
   derivedValid = false;
 }
 
 void PolymerLinkTable::propagate(std::size_t radicalSite, std::size_t monomerSite, const ForceField &forceField,
                                  const std::vector<Component> &components, std::span<Atom> atoms,
-                                 std::span<Molecule> moleculeData, std::uint64_t step, double distance)
+                                 std::span<Molecule> moleculeData, std::uint64_t step, double distance,
+                                 std::int8_t chiralityRadical, std::int8_t chiralityMonomer)
 {
   if (state(radicalSite) != PolymerSiteState::Radical || state(monomerSite) != PolymerSiteState::Monomer)
   {
@@ -519,15 +610,17 @@ void PolymerLinkTable::propagate(std::size_t radicalSite, std::size_t monomerSit
                               PolymerBondKind::Propagation, step, distance});
   siteState[radicalSite] = static_cast<std::uint8_t>(PolymerSiteState::Dead);
   siteStep[radicalSite] = step;
+  siteChirality[radicalSite] = chiralityRadical;
   siteState[monomerSite] = static_cast<std::uint8_t>(PolymerSiteState::Radical);
   siteStep[monomerSite] = step;
+  siteChirality[monomerSite] = chiralityMonomer;
   ++numberOfPropagations;
   derivedValid = false;
 }
 
 void PolymerLinkTable::terminate(std::size_t siteA, std::size_t siteB, const ForceField &,
                                  const std::vector<Component> &components, std::span<Atom>, std::span<Molecule>,
-                                 std::uint64_t step, double distance)
+                                 std::uint64_t step, double distance, std::int8_t chiralityA, std::int8_t chiralityB)
 {
   if (state(siteA) != PolymerSiteState::Radical || state(siteB) != PolymerSiteState::Radical || siteA == siteB)
   {
@@ -537,8 +630,10 @@ void PolymerLinkTable::terminate(std::size_t siteA, std::size_t siteB, const For
                               distance});
   siteState[siteA] = static_cast<std::uint8_t>(PolymerSiteState::Dead);
   siteStep[siteA] = step;
+  siteChirality[siteA] = chiralityA;
   siteState[siteB] = static_cast<std::uint8_t>(PolymerSiteState::Dead);
   siteStep[siteB] = step;
+  siteChirality[siteB] = chiralityB;
   ++numberOfTerminations;
   derivedValid = false;
 }
@@ -584,14 +679,59 @@ void PolymerLinkTable::rebuild(const ForceField &forceField, const std::vector<C
   overrideBonds.clear();
   overrideBends.clear();
   overrideTorsions.clear();
+  stereoCentres.clear();
   linkNeighbours.clear();
+  tailPartner.assign(siteState.size(), noAtom);
+  tailBond.assign(siteState.size(), noAtom);
+  previousSite.assign(siteState.size(), noSite);
+  nextSite.assign(siteState.size(), noSite);
 
-  for (const PolymerBond &bond : bonds)
+  for (std::uint32_t k = 0; k < bonds.size(); ++k)
   {
+    const PolymerBond &bond = bonds[k];
     const std::uint32_t a = static_cast<std::uint32_t>(layout.index(bond.a));
     const std::uint32_t b = static_cast<std::uint32_t>(layout.index(bond.b));
     linkNeighbours[a].push_back(b);
     linkNeighbours[b].push_back(a);
+
+    // the chain bookkeeping of the sites: 'a' is always the tail of a site; 'b' is the head of the next unit
+    // (propagation) or the tail of the other chain (termination)
+    const std::optional<std::pair<std::size_t, bool>> siteA = siteOfAtom(a, components);
+    const std::optional<std::pair<std::size_t, bool>> siteB = siteOfAtom(b, components);
+    if (siteA.has_value() && siteA->second)
+    {
+      tailPartner[siteA->first] = b;
+      tailBond[siteA->first] = k;
+    }
+    if (siteB.has_value())
+    {
+      if (siteB->second)
+      {
+        tailPartner[siteB->first] = a;
+        tailBond[siteB->first] = k;
+      }
+      else if (siteA.has_value() && siteA->second)
+      {
+        previousSite[siteB->first] = siteA->first;
+        nextSite[siteA->first] = siteB->first;
+      }
+    }
+  }
+
+  // the restraints of the reacted stereocentres (a dead site whose tail has a partner and a side group)
+  for (std::size_t s = 0; s < siteState.size(); ++s)
+  {
+    if (siteState[s] != static_cast<std::uint8_t>(PolymerSiteState::Dead) || siteChirality[s] == 0) continue;
+    if (tailPartner[s] == noAtom) continue;
+    const std::optional<PolymerAtomRef> sideGroup = sideGroupOf(s, components);
+    if (!sideGroup.has_value()) continue;
+    StereoCentreTerm term{};
+    term.atoms = {static_cast<std::uint32_t>(layout.index(tailOf(s, components))),
+                  static_cast<std::uint32_t>(layout.index(headOf(s, components))), tailPartner[s],
+                  static_cast<std::uint32_t>(layout.index(sideGroup.value()))};
+    term.chirality = siteChirality[s];
+    term.bondId = tailBond[s];
+    stereoCentres.push_back(term);
   }
 
   auto typeName = [&](std::uint32_t atom) -> const std::string &
@@ -1102,11 +1242,56 @@ PolymerLinkTable::NetworkStatistics PolymerLinkTable::networkStatistics(const Si
   return statistics;
 }
 
+PolymerLinkTable::StereoStatistics PolymerLinkTable::stereoStatistics(const SimulationBox &simulationBox,
+                                                                       const std::vector<Component> &components,
+                                                                       std::span<const Atom> atoms) const
+{
+  StereoStatistics statistics{};
+  if (!derivedValid || tailPartner.size() != siteState.size()) return statistics;
+
+  // the sign of the chain-ordered chiral volume of every reacted stereocentre (0: not a stereocentre)
+  std::vector<std::int8_t> sign(siteState.size(), 0);
+  for (std::size_t s = 0; s < siteState.size(); ++s)
+  {
+    if (siteState[s] != static_cast<std::uint8_t>(PolymerSiteState::Dead) || tailPartner[s] == noAtom) continue;
+    sign[s] = geometricChirality(s, tailPartner[s], simulationBox, components, atoms);
+    if (sign[s] == 0) continue;
+    ++statistics.stereoCentres;
+    if (siteChirality[s] != 0)
+    {
+      ++statistics.restrained;
+      if (siteChirality[s] != sign[s]) ++statistics.inverted;
+    }
+  }
+  // the dyads (previous unit, this unit) and the triads (previous, this, next)
+  auto dyadIsMeso = [&](std::size_t i, std::size_t j) -> std::optional<bool>
+  {
+    if (i == noSite || j == noSite || sign[i] == 0 || sign[j] == 0) return std::nullopt;
+    return sign[i] == sign[j];
+  };
+  for (std::size_t s = 0; s < siteState.size(); ++s)
+  {
+    const std::optional<bool> dyad = dyadIsMeso(previousSite[s], s);
+    if (!dyad.has_value()) continue;
+    if (dyad.value()) ++statistics.mesoDyads; else ++statistics.racemoDyads;
+    const std::optional<bool> next = dyadIsMeso(s, nextSite[s]);
+    if (!next.has_value()) continue;
+    if (dyad.value() && next.value())
+      ++statistics.mm;
+    else if (!dyad.value() && !next.value())
+      ++statistics.rr;
+    else
+      ++statistics.mr;
+  }
+  return statistics;
+}
+
 std::string PolymerLinkTable::printStatus(const SimulationBox &simulationBox, const std::vector<Component> &components,
                                           std::span<const Atom> atoms) const
 {
   std::ostringstream stream;
   const NetworkStatistics network = networkStatistics(simulationBox, components, atoms);
+  const StereoStatistics stereo = stereoStatistics(simulationBox, components, atoms);
   std::print(stream, "Polymerization status\n");
   std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
   std::print(stream, "    sites:                           {} total, {} monomer, {} radical, {} dead\n",
@@ -1156,9 +1341,25 @@ std::string PolymerLinkTable::printStatus(const SimulationBox &simulationBox, co
   }
   if (derivedValid)
   {
-    std::print(stream, "    overlay terms:                   {} bonds, {} bends, {} torsions, {} pair corrections, {} retyped-term overrides\n",
+    std::print(stream,
+               "    overlay terms:                   {} bonds, {} bends, {} torsions, {} pair corrections, {} "
+               "retyped-term overrides, {} stereocentre restraints\n",
                linkBonds.size(), linkBends.size(), linkTorsions.size(), pairCorrections.size(),
-               overrideBonds.size() + overrideBends.size() + overrideTorsions.size());
+               overrideBonds.size() + overrideBends.size() + overrideTorsions.size(), stereoCentres.size());
+  }
+  if (stereo.stereoCentres > 0)
+  {
+    std::print(stream, "    stereocentres:                   {} ({} restrained, {} inverted)\n", stereo.stereoCentres,
+               stereo.restrained, stereo.inverted);
+    std::print(stream, "    tacticity (dyads):               {} meso, {} racemo, meso fraction {:.4f}\n",
+               stereo.mesoDyads, stereo.racemoDyads, stereo.mesoFraction());
+    if (stereo.mm + stereo.mr + stereo.rr > 0)
+    {
+      const double total = static_cast<double>(stereo.mm + stereo.mr + stereo.rr);
+      std::print(stream, "    tacticity (triads):              mm {:.4f}, mr {:.4f}, rr {:.4f}\n",
+                 static_cast<double>(stereo.mm) / total, static_cast<double>(stereo.mr) / total,
+                 static_cast<double>(stereo.rr) / total);
+    }
   }
   std::print(stream, "    ramps in progress:               {}\n", rampsActive() ? "yes" : "no");
   std::print(stream, "\n");
@@ -1193,6 +1394,14 @@ nlohmann::json PolymerLinkTable::jsonStatus(const SimulationBox &simulationBox,
   status["spanningFraction"] = network.spanningFraction;
   status["percolationDimension"] = network.percolationDimension;
   status["percolates"] = {network.percolates[0], network.percolates[1], network.percolates[2]};
+  const StereoStatistics stereo = stereoStatistics(simulationBox, components, atoms);
+  status["stereoCentres"] = stereo.stereoCentres;
+  status["restrainedStereoCentres"] = stereo.restrained;
+  status["invertedStereoCentres"] = stereo.inverted;
+  status["mesoDyads"] = stereo.mesoDyads;
+  status["racemoDyads"] = stereo.racemoDyads;
+  status["mesoFraction"] = stereo.mesoFraction();
+  status["triads"] = {{"mm", stereo.mm}, {"mr", stereo.mr}, {"rr", stereo.rr}};
   return status;
 }
 
@@ -1228,6 +1437,9 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Polyme
   archive << t.numberOfInitiations;
   archive << t.numberOfPropagations;
   archive << t.numberOfTerminations;
+  archive << t.siteChirality;
+  archive << t.chiralForceConstant;
+  archive << t.chiralReferenceVolume;
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
@@ -1257,6 +1469,16 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PolymerLinkT
   archive >> t.numberOfInitiations;
   archive >> t.numberOfPropagations;
   archive >> t.numberOfTerminations;
+  if (versionNumber >= 2)
+  {
+    archive >> t.siteChirality;
+    archive >> t.chiralForceConstant;
+    archive >> t.chiralReferenceVolume;
+  }
+  else
+  {
+    t.siteChirality.assign(t.siteState.size(), 0);
+  }
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
   archive >> magicNumber;

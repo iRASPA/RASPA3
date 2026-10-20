@@ -14,6 +14,7 @@ import running_energy;
 import input_reader;
 import randomnumbers;
 import json;
+import units;
 import polymer_links;
 import polymerization_site;
 import polymerization_settings;
@@ -29,6 +30,7 @@ Polymerization::Polymerization(InputReader& reader) : md(reader), settings(reade
   reactionsFinished.assign(md.systems.size(), 0);
   numberOfScans.assign(md.systems.size(), 0);
   activationCycle.assign(md.systems.size(), 0);
+  stereoRejections.assign(md.systems.size(), 0);
 
   for (std::size_t systemId = 0; const System& system : md.systems)
   {
@@ -51,6 +53,30 @@ Polymerization::Polymerization(InputReader& reader) : md(reader), settings(reade
       throw std::runtime_error(std::format(
           "Polymerization: system {} has no 'Polymerization' block with the bonded tables of the product\n",
           systemId));
+    }
+    // tacticity control needs the side group of every tail that has one (a tail with several substituents and no
+    // 'SideGroup' is ambiguous; a tail without substituents has no stereocentre and is left alone)
+    if (settings.tacticity != Tacticity::None)
+    {
+      for (const Component& component : system.components)
+      {
+        for (const PolymerizationSite& site : component.polymerizationSites)
+        {
+          if (site.sideGroup.has_value() || site.tail >= component.connectivityTable.numberOfBeads) continue;
+          std::size_t substituents = 0;
+          for (std::size_t neighbour : component.connectivityTable.findAllNeighbors(site.tail))
+          {
+            if (neighbour != site.head) ++substituents;
+          }
+          if (substituents > 1)
+          {
+            throw std::runtime_error(std::format(
+                "Polymerization: 'Tacticity' is set but the tail {} of the '{}' site of component '{}' has {} "
+                "substituents besides the head; give the one that defines the configuration with 'SideGroup'\n",
+                site.tail, site.siteType, component.name, substituents));
+          }
+        }
+      }
     }
     ++systemId;
   }
@@ -78,7 +104,9 @@ void Polymerization::openBondLogs()
     {
       std::print(bondLogs.back(),
                  "# step cycle event site_a(component molecule site) site_b(component molecule site) distance[A] "
-                 "conversion radicals bonds\n");
+                 "conversion radicals bonds stereo\n"
+                 "# stereo: configuration (+/-) of the reacting tail(s) and the dyad with the previous unit (m meso, "
+                 "r racemo, . none); '-' no stereocentre\n");
     }
   }
 }
@@ -116,16 +144,33 @@ void Polymerization::writeSettings()
     {
       std::print(stream, "    termination:                     disabled\n");
     }
+    if (settings.tacticity != Tacticity::None)
+    {
+      std::print(stream, "    tacticity:                       {}{}, wrong-face candidates {}\n",
+                 PolymerizationSettings::tacticityName(settings.tacticity),
+                 settings.tacticity == Tacticity::Atactic
+                     ? std::format(" (meso probability {:g})", settings.mesoProbability)
+                     : std::string{},
+                 settings.stereoSelective ? "skipped" : "accepted and driven by the restraint");
+      std::print(stream, "    stereocentre restraint:          1/2 k (V - chi V_0)^2 with k/k_B {:g} [K], V_0 {:g}\n",
+                 settings.chiralForceConstant, settings.chiralReferenceVolume);
+    }
+    else
+    {
+      std::print(stream, "    tacticity:                       not controlled (dyad statistics are reported)\n");
+    }
     std::print(stream, "{}", system.polymerLinks.templates.printStatus());
     for (std::size_t componentId = 0; const Component& component : system.components)
     {
       for (const PolymerizationSite& site : component.polymerizationSites)
       {
-        std::print(stream, "    site of component {} ({}):        type '{}', head {} -> '{}', tail {} -> '{}'{}\n",
+        std::print(stream, "    site of component {} ({}):        type '{}', head {} -> '{}', tail {} -> '{}'{}{}\n",
                    componentId, component.name, site.siteType, site.head, site.headProductType, site.tail,
                    site.tailProductType,
                    site.initiatedHeadType.has_value() ? std::format(", initiated head '{}'", *site.initiatedHeadType)
-                                                      : std::string{});
+                                                      : std::string{},
+                   site.sideGroup.has_value() ? std::format(", side group {}", *site.sideGroup)
+                                              : std::string(", no stereocentre"));
       }
       ++componentId;
     }
@@ -149,6 +194,8 @@ void Polymerization::run()
     {
       system.polymerLinks.activate(system.components, system.numberOfMoleculesPerComponent);
       system.polymerLinks.relaxationSteps = settings.relaxationSteps;
+      system.polymerLinks.chiralForceConstant = settings.chiralForceConstant * Units::KelvinToEnergy;
+      system.polymerLinks.chiralReferenceVolume = settings.chiralReferenceVolume;
       system.polymerLinks.rebuild(system.forceField, system.components, system.numberOfMoleculesPerComponent,
                                   system.spanOfMoleculeAtoms());
     }
@@ -187,6 +234,10 @@ void Polymerization::run()
       std::print(stream, "Final polymerization state\n");
       std::print(stream, "========================================================================================================================\n");
       std::print(stream, "    reaction scans:                  {}\n", numberOfScans[systemId]);
+      if (settings.tacticity != Tacticity::None)
+      {
+        std::print(stream, "    wrong-face candidates skipped:   {}\n", stereoRejections[systemId]);
+      }
       std::print(stream, "{}", system.polymerLinks.printStatus(system.simulationBox, system.components, system.spanOfMoleculeAtoms()));
       std::flush(stream);
       ++systemId;
@@ -238,6 +289,8 @@ void Polymerization::activate(std::size_t systemId)
   PolymerLinkTable& table = system.polymerLinks;
   table.activate(system.components, system.numberOfMoleculesPerComponent);
   table.relaxationSteps = settings.relaxationSteps;
+  table.chiralForceConstant = settings.chiralForceConstant * Units::KelvinToEnergy;
+  table.chiralReferenceVolume = settings.chiralReferenceVolume;
   activationCycle[systemId] = md.currentCycle;
 
   // the initial radicals: random monomer sites
@@ -256,7 +309,7 @@ void Polymerization::activate(std::size_t systemId)
     if (settings.writeBondLog && systemId < bondLogs.size())
     {
       const PolymerAtomRef r = table.siteRef(monomers[n]);
-      std::print(bondLogs[systemId], "{} {} initiation {} {} {} - - - 0 {:.6f} {} {}\n", table.currentStep,
+      std::print(bondLogs[systemId], "{} {} initiation {} {} {} - - - 0 {:.6f} {} {} -\n", table.currentStep,
                  md.currentCycle, r.componentId, r.moleculeIndex, r.atomIndex, table.conversion(),
                  table.countSites(PolymerSiteState::Radical), table.numberOfBonds());
     }
@@ -269,6 +322,23 @@ void Polymerization::activate(std::size_t systemId)
     std::flush(stream);
   }
   if (count > 0) topologyChanged(systemId);
+}
+
+std::int8_t Polymerization::nextChirality(std::int8_t previous)
+{
+  if (previous == 0) return 0;
+  switch (settings.tacticity)
+  {
+    case Tacticity::None:
+      return 0;
+    case Tacticity::Isotactic:
+      return previous;
+    case Tacticity::Syndiotactic:
+      return static_cast<std::int8_t>(-previous);
+    case Tacticity::Atactic:
+      return md.random.uniform() < settings.mesoProbability ? previous : static_cast<std::int8_t>(-previous);
+  }
+  return 0;
 }
 
 std::size_t Polymerization::scan(std::size_t systemId)
@@ -364,15 +434,39 @@ std::size_t Polymerization::scan(std::size_t systemId)
 
   std::size_t accepted = 0;
   std::unordered_set<std::size_t> reacted{};
-  auto log = [&](std::string_view event, std::size_t a, std::size_t b, double distance)
+
+  // The configuration the tail of radical 'site' takes when it bonds to 'partner': the one required by the
+  // tacticity when set, otherwise the one its geometry gives (the face of approach); none when the required
+  // and the geometric configuration differ and such candidates are skipped. 0: the tail is not a stereocentre.
+  auto resolveChirality = [&](std::size_t site, const PolymerAtomRef& partner) -> std::optional<std::int8_t>
+  {
+    const std::uint32_t partnerAtom = static_cast<std::uint32_t>(table.layout.index(partner));
+    const std::int8_t geometric =
+        table.geometricChirality(site, partnerAtom, system.simulationBox, components, atoms);
+    if (geometric == 0) return std::int8_t{0};
+    const std::int8_t required = table.chirality(site);
+    if (required == 0) return settings.tacticity == Tacticity::None ? std::int8_t{0} : geometric;
+    if (settings.stereoSelective && required != geometric) return std::nullopt;
+    return required;
+  };
+  // the dyad of the reacting tail with the centre before it in the chain, for the log
+  auto stereoText = [&](std::size_t site, std::int8_t chirality) -> std::string
+  {
+    if (chirality == 0) return "-";
+    const std::size_t previous = table.predecessorOf(site, components);
+    const std::int8_t before = previous == PolymerLinkTable::noSite ? std::int8_t{0} : table.chirality(previous);
+    const char dyad = before == 0 ? '.' : (before == chirality ? 'm' : 'r');
+    return std::format("{}{}", chirality > 0 ? '+' : '-', dyad);
+  };
+  auto log = [&](std::string_view event, std::size_t a, std::size_t b, double distance, std::string_view stereo)
   {
     if (!settings.writeBondLog || systemId >= bondLogs.size()) return;
     const PolymerAtomRef ra = table.siteRef(a);
     const PolymerAtomRef rb = table.siteRef(b);
-    std::print(bondLogs[systemId], "{} {} {} {} {} {} {} {} {} {:.4f} {:.6f} {} {}\n", table.currentStep,
+    std::print(bondLogs[systemId], "{} {} {} {} {} {} {} {} {} {:.4f} {:.6f} {} {} {}\n", table.currentStep,
                md.currentCycle, event, ra.componentId, ra.moleculeIndex, ra.atomIndex, rb.componentId,
                rb.moleculeIndex, rb.atomIndex, distance, table.conversion(),
-               table.countSites(PolymerSiteState::Radical), table.numberOfBonds());
+               table.countSites(PolymerSiteState::Radical), table.numberOfBonds(), stereo);
   };
   for (const Candidate& candidate : candidates)
   {
@@ -381,19 +475,41 @@ std::size_t Polymerization::scan(std::size_t systemId)
     const double probability =
         candidate.kind == PolymerBondKind::Propagation ? probabilityPropagation : probabilityTermination;
     if (probability <= 0.0) continue;
-    if (probability < 1.0 && md.random.uniform() >= probability) continue;
 
     if (candidate.kind == PolymerBondKind::Propagation)
     {
+      const std::optional<std::int8_t> chiralityA =
+          resolveChirality(candidate.a, table.headOf(candidate.b, components));
+      if (!chiralityA.has_value())
+      {
+        ++stereoRejections[systemId];
+        continue;
+      }
+      if (probability < 1.0 && md.random.uniform() >= probability) continue;
+      const std::string stereo = stereoText(candidate.a, chiralityA.value());
       table.propagate(candidate.a, candidate.b, system.forceField, components, atoms,
-                      std::span<Molecule>(system.moleculeData), table.currentStep, candidate.distance);
-      log("propagation", candidate.a, candidate.b, candidate.distance);
+                      std::span<Molecule>(system.moleculeData), table.currentStep, candidate.distance,
+                      chiralityA.value(), nextChirality(chiralityA.value()));
+      log("propagation", candidate.a, candidate.b, candidate.distance, stereo);
     }
     else
     {
+      const std::optional<std::int8_t> chiralityA =
+          resolveChirality(candidate.a, table.tailOf(candidate.b, components));
+      const std::optional<std::int8_t> chiralityB =
+          resolveChirality(candidate.b, table.tailOf(candidate.a, components));
+      if (!chiralityA.has_value() || !chiralityB.has_value())
+      {
+        ++stereoRejections[systemId];
+        continue;
+      }
+      if (probability < 1.0 && md.random.uniform() >= probability) continue;
+      const std::string stereo = std::format("{}/{}", stereoText(candidate.a, chiralityA.value()),
+                                             stereoText(candidate.b, chiralityB.value()));
       table.terminate(candidate.a, candidate.b, system.forceField, components, atoms,
-                      std::span<Molecule>(system.moleculeData), table.currentStep, candidate.distance);
-      log("termination", candidate.a, candidate.b, candidate.distance);
+                      std::span<Molecule>(system.moleculeData), table.currentStep, candidate.distance,
+                      chiralityA.value(), chiralityB.value());
+      log("termination", candidate.a, candidate.b, candidate.distance, stereo);
     }
     reacted.insert(candidate.a);
     reacted.insert(candidate.b);
@@ -413,7 +529,7 @@ std::size_t Polymerization::scan(std::size_t systemId)
       if (settings.writeBondLog && systemId < bondLogs.size())
       {
         const PolymerAtomRef r = table.siteRef(monomer.index);
-        std::print(bondLogs[systemId], "{} {} initiation {} {} {} - - - 0 {:.6f} {} {}\n", table.currentStep,
+        std::print(bondLogs[systemId], "{} {} initiation {} {} {} - - - 0 {:.6f} {} {} -\n", table.currentStep,
                    md.currentCycle, r.componentId, r.moleculeIndex, r.atomIndex, table.conversion(),
                    table.countSites(PolymerSiteState::Radical), table.numberOfBonds());
       }
@@ -473,20 +589,26 @@ void Polymerization::writeTopology()
       nlohmann::json sites = nlohmann::json::array();
       for (const PolymerizationSite& site : component.polymerizationSites)
       {
-        sites.push_back({{"type", site.siteType}, {"head", site.head}, {"tail", site.tail}});
+        nlohmann::json siteJson{{"type", site.siteType}, {"head", site.head}, {"tail", site.tail}};
+        if (site.sideGroup.has_value()) siteJson["sideGroup"] = site.sideGroup.value();
+        sites.push_back(siteJson);
       }
       entry["sites"] = sites;
       componentsJson.push_back(entry);
       ++componentId;
     }
     topology["components"] = componentsJson;
+    topology["tacticity"] = PolymerizationSettings::tacticityName(settings.tacticity);
     nlohmann::json states = nlohmann::json::array();
+    nlohmann::json chiralities = nlohmann::json::array();
     for (std::size_t i = 0; i < table.numberOfSites(); ++i)
     {
       const PolymerAtomRef r = table.siteRef(i);
       states.push_back({r.componentId, r.moleculeIndex, r.atomIndex, static_cast<int>(table.state(i))});
+      chiralities.push_back(static_cast<int>(table.chirality(i)));
     }
     topology["siteStates"] = states;
+    topology["siteChirality"] = chiralities;
     topology["bonds"] = table.jsonTopology();
 
     std::ofstream stream(std::format("output/polymer_topology.s{}.json", systemId));
@@ -503,6 +625,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Polyme
   archive << p.reactionsFinished;
   archive << p.numberOfScans;
   archive << p.activationCycle;
+  archive << p.stereoRejections;
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
@@ -524,6 +647,14 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Polymerizati
   archive >> p.reactionsFinished;
   archive >> p.numberOfScans;
   archive >> p.activationCycle;
+  if (versionNumber >= 2)
+  {
+    archive >> p.stereoRejections;
+  }
+  else
+  {
+    p.stereoRejections.assign(p.md.systems.size(), 0);
+  }
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
   archive >> magicNumber;

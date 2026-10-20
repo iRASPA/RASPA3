@@ -289,6 +289,63 @@ void readPolymerization(const nlohmann::basic_json<nlohmann::raspa_map>& value, 
     throw std::runtime_error("[Input reader]: 'Polymerization' 'CaptureRadius' must be positive\n");
   }
 
+  // the tacticity: "Tacticity" : "Isotactic" or "Tacticity" : {"Type" : "Atactic", "MesoProbability" : 0.5, ...}
+  if (block.contains("Tacticity"))
+  {
+    const auto& tacticity = block["Tacticity"];
+    auto readType = [&](const nlohmann::basic_json<nlohmann::raspa_map>& typeValue)
+    {
+      if (!typeValue.is_string())
+      {
+        throw std::runtime_error("[Input reader]: 'Polymerization' 'Tacticity' 'Type' must be a string\n");
+      }
+      const std::string name = typeValue.get<std::string>();
+      if (caseInSensStringCompare(name, "None"))
+        settings.tacticity = Tacticity::None;
+      else if (caseInSensStringCompare(name, "Isotactic"))
+        settings.tacticity = Tacticity::Isotactic;
+      else if (caseInSensStringCompare(name, "Syndiotactic"))
+        settings.tacticity = Tacticity::Syndiotactic;
+      else if (caseInSensStringCompare(name, "Atactic"))
+        settings.tacticity = Tacticity::Atactic;
+      else
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: 'Polymerization' 'Tacticity' '{}' unknown (use 'None', 'Isotactic', 'Syndiotactic' or "
+            "'Atactic')\n",
+            name));
+      }
+    };
+    if (tacticity.is_string())
+    {
+      readType(tacticity);
+    }
+    else if (tacticity.is_object())
+    {
+      if (tacticity.contains("Type")) readType(tacticity["Type"]);
+      readNumber(tacticity, "MesoProbability", settings.mesoProbability);
+      readBoolean(tacticity, "StereoSelective", settings.stereoSelective);
+      readNumber(tacticity, "ForceConstant", settings.chiralForceConstant);
+      readNumber(tacticity, "ReferenceVolume", settings.chiralReferenceVolume);
+    }
+    else
+    {
+      throw std::runtime_error("[Input reader]: 'Polymerization' 'Tacticity' must be a string or an object\n");
+    }
+    if (settings.mesoProbability < 0.0 || settings.mesoProbability > 1.0)
+    {
+      throw std::runtime_error("[Input reader]: 'Polymerization' 'Tacticity' 'MesoProbability' must lie in [0, 1]\n");
+    }
+    if (settings.chiralForceConstant < 0.0)
+    {
+      throw std::runtime_error("[Input reader]: 'Polymerization' 'Tacticity' 'ForceConstant' must be non-negative\n");
+    }
+    if (settings.chiralReferenceVolume <= 0.0 || settings.chiralReferenceVolume > 1.0)
+    {
+      throw std::runtime_error("[Input reader]: 'Polymerization' 'Tacticity' 'ReferenceVolume' must lie in (0, 1]\n");
+    }
+  }
+
   // the type-based bonded tables of the product: from the template file first, then the inline tables
   PolymerLinkTable& table = system.polymerLinks;
   if (!settings.templateFile.empty())

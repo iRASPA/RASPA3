@@ -5,6 +5,7 @@
 ## Table of Contents
 1. [Monte Carlo: cross-linked telechelic chains in box (reversible network)](#Example_polymers_1)
 2. [Polymerization: free-radical curing of HDDA in box](#Example_polymers_4)
+3. [Polymerization: isotactic poly(methyl acrylate) chains in box](#Example_polymers_5)
 
 
 #### Monte Carlo: cross-linked telechelic chains in box (reversible network) <a name="Example_polymers_1"></a>
@@ -217,3 +218,75 @@ why the production stage is long and the reaction probabilities are small
 \f$10^4\f$ L mol⁻¹ s⁻¹, far slower than any MD run, so the rate here is a
 compromise that keeps the growth diffusion-limited and lets the network relax
 between reactions).
+
+
+#### Polymerization: isotactic poly(methyl acrylate) chains in box <a name="Example_polymers_5"></a>
+
+200 methyl acrylate monomers (the six-bead TraPPE-UA ester
+`CH2_sp2=CH_sp2–C_CO(=O_CO)–O_es–CH3_O`) in a \f$32 \times 32 \times 32\f$
+&Aring; box at 300 K and 1 bar (the box relaxes to the liquid density, about
+31 &Aring;) are polymerized into linear chains with a
+controlled tacticity. The monomer has one vinyl group; its site declares the
+ester carbon as the side group that defines the configuration of the
+backbone CH (it is the only substituent of the tail besides the head, so the
+key could be left out):
+
+```json
+  "PolymerizationSites" : [
+    {"Type" : "acrylate", "Head" : 0, "Tail" : 1, "SideGroup" : 2, "HeadProductType" : "CH2_bb", "TailProductType" : "CH_bb"}
+  ]
+```
+
+Four random sites are initiated at the start of production and termination
+is switched off, so four chains grow until 90% of the monomers have reacted
+(about 45 units each). The `"Tacticity"` block asks for isotactic chains:
+
+```json
+      "Polymerization" : {
+        "ScanEvery" : 10,
+        "TargetConversion" : 0.9,
+        "RelaxationSteps" : 2000,
+        "Initiation" :  {"InitialRadicals" : 4, "Probability" : 0.0},
+        "Propagation" : {"CaptureRadius" : 4.0, "Probability" : 0.1},
+        "Termination" : {"Enabled" : false},
+        "Tacticity" : {
+          "Type" : "Isotactic",
+          "StereoSelective" : true,
+          "ForceConstant" : 40000.0,
+          "ReferenceVolume" : 0.6
+        },
+        "Bonds" : [ "..." ], "Bends" : [ "..." ], "Torsions" : [ "..." ]
+      }
+```
+
+The backbone CH of a reacted unit is a stereocentre (head, side group,
+polymer partner, and the implicit hydrogen of the united-atom bead) whose
+configuration is the sign of the chiral volume of its three explicit
+substituents, ordered along the chain. The first unit of a chain is free;
+when its radical adds to a monomer the face from which the monomer
+approaches decides the configuration, and from then on every new radical
+carries the configuration it has to take: the same sign as the centre
+before it (a meso dyad) for isotactic chains, the opposite sign (racemo) for
+syndiotactic ones, and a Bernoullian choice with `"MesoProbability"` for
+atactic ones. With `"StereoSelective"` a radical–monomer pair whose geometry
+would give the wrong configuration is skipped in that scan (the monomer has
+to come around to the other face; the number of such skipped candidates is
+reported at the end), so the selection costs reaction rate but no energy.
+Once reacted, every centre is held in its configuration by a harmonic
+restraint on the normalised chiral volume, ramped in with the bond, because
+the united-atom CH has no hydrogen that would otherwise keep it from
+inverting through the planar arrangement (the three bends alone give a
+barrier of only a few \f$k_B T\f$). The `Polymerization status` block
+reports the stereocentres, the meso/racemo dyad counts and the meso
+fraction, the triad fractions mm/mr/rr, and how many restrained centres are
+momentarily inverted; for this input the meso fraction is 1 (mm = 1) by
+construction, and the same input with `"Type" : "Syndiotactic"` gives meso
+fraction 0 (rr = 1), with `"Type" : "Atactic"` about 0.5 (mm : mr : rr
+≈ 1 : 2 : 1). Every reaction in `output/polymerization_bonds.s0.txt`
+carries the configuration of the reacting tail and its dyad (`+m`, `-m`,
+`+.` for the first centre of a chain), and `output/polymer_topology.s0.json`
+holds the configuration of every site next to its state, so the
+stereosequence of every chain can be read off. Leaving out the
+`"Tacticity"` block polymerizes without selection or restraints; the dyad
+statistics are then still reported and show the natural (near 1 : 1)
+outcome of the capture geometry.

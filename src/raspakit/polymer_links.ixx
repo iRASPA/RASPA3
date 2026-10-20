@@ -142,6 +142,27 @@ export struct PolymerTemplates
 };
 
 /**
+ * \brief The normalised chiral volume of a centre with three substituents and its gradient.
+ *
+ * For the centre c with the substituents p, n and z (b_i = r_i - r_c):
+ *
+ *   V = (b_p x b_n) . b_z / (|b_p| |b_n| |b_z|),     V in [-1, 1],
+ *
+ * the signed volume of the parallelepiped of the unit bond vectors: zero for a planar centre, +-0.77 for a
+ * tetrahedral one, +-0.61 for three substituents at 114 degrees; its sign is the configuration of the centre.
+ * For a backbone stereocentre the substituents are ordered along the chain (p: the head, n: the polymer partner)
+ * with z the side group, so that two consecutive centres of a chain have the same sign in a meso dyad and
+ * opposite signs in a racemo dyad.
+ */
+export struct ChiralVolume
+{
+  double value{0.0};
+  std::array<double3, 4> gradient{};  ///< d value / d r of the centre, p, n and z (in that order).
+
+  static ChiralVolume compute(const double3 &bp, const double3 &bn, const double3 &bz);
+};
+
+/**
  * \brief The bonds formed by a chain-growth polymerization and everything their energy needs.
  *
  * Owned by System. The molecules keep their component-defined topology; the polymer bonds are an
@@ -162,13 +183,24 @@ export struct PolymerTemplates
  * factor lambda on the term and on the pair corrections), so that a bond formed at the capture
  * distance pulls the atoms together smoothly instead of releasing the full bond energy at once.
  *
- * The authoritative state is 'bonds', the site states and the atom types of the system (the latter
- * are stored with the atoms); the per-term caches are derived and rebuilt by rebuild() after every
+ * The tail of a reacted site is a stereocentre of the backbone (its substituents: the head, the side group of
+ * the site definition and the polymer partner; the implicit hydrogen of the united-atom bead is the fourth).
+ * 'siteChirality' holds per site the sign of its normalised chiral volume (see ChiralVolume): for a dead site
+ * the configuration the centre is held in by the restraint
+ *
+ *   U = 1/2 k (V - chi V_0)^2        (chi = +-1, k 'chiralForceConstant', V_0 'chiralReferenceVolume'),
+ *
+ * ramped in with the bond that created the centre; for a radical the configuration its tail has to take when it
+ * reacts (set by the driver from the tacticity); zero for a free centre (no tacticity control, or a site without
+ * side group), which is neither restrained nor selected.
+ *
+ * The authoritative state is 'bonds', the site states and chiralities and the atom types of the system (the
+ * latter are stored with the atoms); the per-term caches are derived and rebuilt by rebuild() after every
  * reaction and after a restart.
  */
 export struct PolymerLinkTable
 {
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   PolymerTemplates templates{};
   std::vector<PolymerBond> bonds{};
@@ -181,9 +213,12 @@ export struct PolymerLinkTable
   std::vector<std::size_t> moleculesPerComponent{}; ///< Per component: the molecule counts at activation.
   std::vector<std::uint8_t> siteState{};            ///< Per site: PolymerSiteState.
   std::vector<std::uint64_t> siteStep{};            ///< Per site: the step of its last state change (ramp).
+  std::vector<std::int8_t> siteChirality{};         ///< Per site: configuration (dead) or required one (radical).
 
   std::size_t relaxationSteps{0};  ///< Length of the force ramp of a new bond in MD steps (0: no ramp).
   std::uint64_t currentStep{0};    ///< The current MD step (set by the driver; the ramps refer to it).
+  double chiralForceConstant{0.0};    ///< Of the restraint on the chiral volume [internal energy units].
+  double chiralReferenceVolume{0.6};  ///< Magnitude of the normalised chiral volume the restraint holds.
 
   std::size_t numberOfInitiations{0};
   std::size_t numberOfPropagations{0};
@@ -281,6 +316,15 @@ export struct PolymerLinkTable
     std::uint64_t step{};
   };
 
+  /// The restraint of a reacted stereocentre: 'atoms' are the centre (the tail), the head, the polymer partner and
+  /// the side group; 'chirality' the sign held; the ramp is the one of the bond that created the centre.
+  struct StereoCentreTerm
+  {
+    std::array<std::uint32_t, 4> atoms{};
+    std::int8_t chirality{0};
+    std::uint32_t bondId{};
+  };
+
   std::vector<LinkBondTerm> linkBonds{};
   std::vector<LinkBendTerm> linkBends{};
   std::vector<LinkTorsionTerm> linkTorsions{};
@@ -288,13 +332,24 @@ export struct PolymerLinkTable
   std::vector<OverrideBondTerm> overrideBonds{};
   std::vector<OverrideBendTerm> overrideBends{};
   std::vector<OverrideTorsionTerm> overrideTorsions{};
+  std::vector<StereoCentreTerm> stereoCentres{};
   /// Link partners of the atoms that carry polymer bonds (global atom indices).
   std::unordered_map<std::uint32_t, std::vector<std::uint32_t>> linkNeighbours{};
+  /// Per site: the polymer partner of the tail (global atom index) and the bond that made it; none: no partner.
+  std::vector<std::uint32_t> tailPartner{};
+  std::vector<std::uint32_t> tailBond{};
+  /// Per site: the site whose tail is bonded to the head (the previous unit of the chain), and the site whose
+  /// head the tail is bonded to (the next unit); none: chain end or termination junction.
+  std::vector<std::size_t> previousSite{};
+  std::vector<std::size_t> nextSite{};
+  static constexpr std::uint32_t noAtom = std::numeric_limits<std::uint32_t>::max();
+  static constexpr std::size_t noSite = std::numeric_limits<std::size_t>::max();
   bool derivedValid{false};
 
   bool operator==(PolymerLinkTable const &other) const
   {
-    return templates == other.templates && bonds == other.bonds && siteState == other.siteState;
+    return templates == other.templates && bonds == other.bonds && siteState == other.siteState &&
+           siteChirality == other.siteChirality;
   }
 
   /// True when the overlay has nothing to evaluate (no bond formed and no site retyped).
@@ -312,11 +367,28 @@ export struct PolymerLinkTable
   /// The component, molecule and site definition of site index 'index' (atomIndex holds the site definition).
   PolymerAtomRef siteRef(std::size_t index) const;
   PolymerSiteState state(std::size_t index) const { return static_cast<PolymerSiteState>(siteState[index]); }
+  std::int8_t chirality(std::size_t index) const { return siteChirality[index]; }
   PolymerAtomRef headOf(std::size_t index, const std::vector<Component> &components) const;
   PolymerAtomRef tailOf(std::size_t index, const std::vector<Component> &components) const;
+  /// The side group of the site definition (none: the tail is not a stereocentre).
+  std::optional<PolymerAtomRef> sideGroupOf(std::size_t index, const std::vector<Component> &components) const;
+  /// The site whose head or tail is the global atom 'atom', with whether the atom is the tail.
+  std::optional<std::pair<std::size_t, bool>> siteOfAtom(std::uint32_t atom,
+                                                         const std::vector<Component> &components) const;
   std::size_t countSites(PolymerSiteState state) const;
   /// Fraction of the sites that have reacted (radical or dead): the double-bond conversion.
   double conversion() const;
+
+  /// The normalised chiral volume of the tail of 'site' with the global atom 'partner' as its polymer neighbour
+  /// (minimum-image geometry); none when the site has no side group.
+  std::optional<double> chiralVolumeOf(std::size_t site, std::uint32_t partner, const SimulationBox &simulationBox,
+                                       const std::vector<Component> &components, std::span<const Atom> atoms) const;
+  /// The sign of chiralVolumeOf(): +1 / -1, or 0 when the site has no side group.
+  std::int8_t geometricChirality(std::size_t site, std::uint32_t partner, const SimulationBox &simulationBox,
+                                 const std::vector<Component> &components, std::span<const Atom> atoms) const;
+  /// The site whose tail is bonded to the head of 'site' through a propagation bond (from the bond list; valid
+  /// at any time), or none.
+  std::size_t predecessorOf(std::size_t site, const std::vector<Component> &components) const;
 
   /// The ramp factor of a term created at 'step'.
   double rampFactor(std::uint64_t step) const
@@ -330,18 +402,21 @@ export struct PolymerLinkTable
 
   // ---- reactions (the caller rebuilds the derived caches afterwards) --------------------------------------------
 
-  /// Monomer -> radical by an initiator: the head and the tail take their product types.
+  /// Monomer -> radical by an initiator: the head and the tail take their product types. The centre the tail
+  /// will become is free (no predecessor in the chain).
   void initiate(std::size_t site, const ForceField &forceField, const std::vector<Component> &components,
                 std::span<Atom> atoms, std::span<Molecule> moleculeData, std::uint64_t step);
   /// Radical 'radicalSite' adds to the head of monomer 'monomerSite': bond tail(radical) - head(monomer); the
-  /// radical site is dead afterwards and the monomer site is the new radical.
+  /// radical site is dead afterwards with configuration 'chiralityRadical' and the monomer site is the new
+  /// radical, which has to take 'chiralityMonomer' when it reacts (0: free).
   void propagate(std::size_t radicalSite, std::size_t monomerSite, const ForceField &forceField,
                  const std::vector<Component> &components, std::span<Atom> atoms, std::span<Molecule> moleculeData,
-                 std::uint64_t step, double distance);
-  /// Two radicals combine: bond tail - tail; both sites are dead afterwards.
+                 std::uint64_t step, double distance, std::int8_t chiralityRadical = 0,
+                 std::int8_t chiralityMonomer = 0);
+  /// Two radicals combine: bond tail - tail; both sites are dead afterwards with the given configurations.
   void terminate(std::size_t siteA, std::size_t siteB, const ForceField &forceField,
                  const std::vector<Component> &components, std::span<Atom> atoms, std::span<Molecule> moleculeData,
-                 std::uint64_t step, double distance);
+                 std::uint64_t step, double distance, std::int8_t chiralityA = 0, std::int8_t chiralityB = 0);
 
   /// Rebuilds the layout and the derived term lists for the current bonds, site states and atom types.
   void rebuild(const ForceField &forceField, const std::vector<Component> &components,
@@ -381,6 +456,34 @@ export struct PolymerLinkTable
   };
   NetworkStatistics networkStatistics(const SimulationBox &simulationBox, const std::vector<Component> &components,
                                       std::span<const Atom> atoms) const;
+
+  /**
+   * \brief Tacticity of the chains from the current geometry (needs the derived caches).
+   *
+   * A dyad is a pair of consecutive stereocentres of a chain (the tails of two sites joined by a propagation
+   * bond, both reacted); it is meso when both have the same sign of the chain-ordered chiral volume and racemo
+   * otherwise. The triads (mm, mr, rr) are the pairs of consecutive dyads. 'inverted' counts the restrained
+   * centres whose geometry currently has the sign opposite to the one held.
+   */
+  struct StereoStatistics
+  {
+    std::size_t stereoCentres{0};  ///< Reacted tails with a side group.
+    std::size_t restrained{0};     ///< Stereocentres with a configuration held by the restraint.
+    std::size_t inverted{0};       ///< Restrained centres currently in the other configuration.
+    std::size_t mesoDyads{0};
+    std::size_t racemoDyads{0};
+    std::size_t mm{0};
+    std::size_t mr{0};
+    std::size_t rr{0};
+
+    std::size_t dyads() const { return mesoDyads + racemoDyads; }
+    double mesoFraction() const
+    {
+      return dyads() > 0 ? static_cast<double>(mesoDyads) / static_cast<double>(dyads()) : 0.0;
+    }
+  };
+  StereoStatistics stereoStatistics(const SimulationBox &simulationBox, const std::vector<Component> &components,
+                                    std::span<const Atom> atoms) const;
 
   std::string printStatus(const SimulationBox &simulationBox, const std::vector<Component> &components,
                           std::span<const Atom> atoms) const;
