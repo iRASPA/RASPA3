@@ -33,6 +33,13 @@ import archive;
  * A new bond is ramped in over 'relaxationSteps' MD steps (see PolymerLinkTable). The reactions stop when
  * the conversion reaches 'targetConversion' (the remaining production cycles relax the network).
  *
+ * Radical trapping is measured, not imposed: for every living radical the waiting time between its successive
+ * reactions, dt = t(next reaction) - t(last reaction), is collected in a log-spaced histogram (closed intervals,
+ * separately for intervals ended by a propagation and by a termination), together with the open intervals from
+ * the last reaction of every still-living radical to the current time (its age). A single-exponential waiting
+ * time is a well-defined rate; a stretched or bimodal distribution, or a pile-up of old living radicals, is the
+ * trapping signature ('ComputeRadicalWaitingTimes' of the system block, see PropertyRadicalWaitingTimes).
+ *
  * The 'Tacticity' object controls the configuration of the backbone stereocentres (the tails of the reacted
  * sites, see PolymerizationSite): the relative configuration of two consecutive centres of a chain is a meso
  * dyad (isotactic placement) or a racemo dyad (syndiotactic placement). With a tacticity selected, every

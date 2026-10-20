@@ -58,6 +58,7 @@ import reaction;
 import reactions;
 import cross_links;
 import polymer_links;
+import property_radical_waiting_times;
 import cbmc;
 import interactions_framework_molecule;
 import interactions_framework_molecule_grid;
@@ -1401,6 +1402,14 @@ void System::setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement>
   }
 }
 
+void System::setPropertyRadicalWaitingTimes(const std::optional<PropertyRadicalWaitingTimes>& property)
+{
+  if (property.has_value())
+  {
+    propertyRadicalWaitingTimes = PropertyRadicalWaitingTimes(property->binsPerDecade, property->writeEvery);
+  }
+}
+
 void System::setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelationFunction>& vacf)
 {
   if (vacf.has_value())
@@ -1589,6 +1598,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
 
   archive << s.hybridMCUseForceEngine;
   archive << s.forceEngineSettings;
+  archive << s.propertyRadicalWaitingTimes;
 
   // 'interpolationGrids' and 'externalFieldInterpolationGrid' are intentionally not serialized:
   // they are derived data that can dominate the checkpoint size and are rebuilt deterministically
@@ -1776,6 +1786,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   {
     archive >> s.hybridMCUseForceEngine;
     archive >> s.forceEngineSettings;
+  }
+  if (versionNumber >= 8)
+  {
+    archive >> s.propertyRadicalWaitingTimes;
   }
   // the engine itself is derived state, rebuilt by the first hybrid MC move
   s.hybridMCForceEngine.reset();

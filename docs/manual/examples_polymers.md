@@ -208,7 +208,13 @@ reported in the `cross-link` slot of the energy breakdown. Every reaction is
 appended to `output/polymerization_bonds.s0.txt` (step, cycle, event, the two
 sites as component/molecule/atom, the distance at which the bond formed and
 the conversion), and `output/polymer_topology.s0.json` holds the final site
-states and the bond list, from which the polymer graph can be rebuilt. The
+states and the bond list, from which the polymer graph can be rebuilt. With
+`"ComputeRadicalWaitingTimes"` the waiting time of every living radical
+between its successive reactions, and the ages of the radicals still living,
+are collected in log-spaced histograms in
+`radical_waiting_times/radical_waiting_times.s0.txt`; a stretched tail or a
+pile-up of old living radicals in that distribution is the signature of
+radical trapping. The
 polymer bonds, the retyped atoms and the reaction state are stored in the
 binary restart file, so a curing run can be continued. Within 12 ps of a
 test run the conversion reaches about 30% with one gel cluster of 68 of the

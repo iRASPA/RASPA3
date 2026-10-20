@@ -34,6 +34,7 @@ documents the available keywords. Keyword names are matched case-insensitively.
     * [Radial Distribution Function (RDF) force-based](#radial-distribution-function-rdf-force-based)
     * [Radial Distribution Function (RDF) conventional](#radial-distribution-function-rdf-conventional)
     * [Mean-Squared Displacement (MSD) order-N](#mean-squared-displacement-msd-order-n)
+    * [Radical waiting times (polymerization)](#radical-waiting-times)
     * [Density grids](#density-grids)
 * [Force field options](#force-field-options)
   * [Configurational-bias and recoil-growth options](#cbmc-options)
@@ -1843,12 +1844,23 @@ The keys of the `"Polymerization"` block (defaults in parentheses):
     `component molecule atom`, the distance, the conversion and the
     configuration of the reacting tail with its dyad (`+m`, `-r`, `+.` for
     the first centre of a chain; `-` for a tail that is not a stereocentre),
-    and the angular strain of the new bond in K (`-` without
-    `"OrientationTemperature"`).
+    the angular strain of the new bond in K (`-` without
+    `"OrientationTemperature"`) and the waiting time of the reacting
+    radical(s) in ps.
 -   `"WriteTopology" : bool` (`true`) — `output/polymer_topology.s<i>.json`:
     the state and configuration of every site and the list of bonds
     (component, molecule, atom of both partners, kind and step) at the end of
     the run.
+
+*Radical trapping.* A radical is on a monomer only until its next
+propagation (it then moves to the added unit) or its termination; trapping is
+the situation in which that next event stops happening because the chain end
+is immobilised in a monomer-poor environment. It is measured, not imposed,
+with the system property `"ComputeRadicalWaitingTimes"` (see
+[Radical waiting times](#radical-waiting-times)): the waiting time of every
+living radical between its successive reactions, and the ages of the radicals
+still living. The bond log carries the waiting time of the reacting radical(s)
+in its last column.
 
 The status report of every `"PrintEvery"` cycles adds the conversion, the
 numbers of radicals, dead sites, propagations and terminations (with the
@@ -2098,6 +2110,44 @@ molecules; do not combine it with insertion/deletion moves.
 
 -   `"NumberOfBlockElementsMSD" : integer`\
     The number of elements per block in the order-N scheme. Default: `25`.
+
+#### Radical waiting times (polymerization) <a name="radical-waiting-times"></a>
+
+`"ComputeRadicalWaitingTimes" : boolean`
+
+Whether to collect, in a `"Polymerization"` run, the waiting-time distribution
+of the living radicals: for every radical the time
+\(\Delta t = t_\text{next reaction} - t_\text{last reaction}\) (the time since
+its initiation for the first reaction) is recorded at the moment it reacts,
+in a log-spaced histogram from \(10^{-3}\) to \(10^{6}\) ps, separately for
+intervals closed by a propagation (the adding radical) and by a termination
+(both radicals). The samples are added by the polymerization driver at the
+reaction, not on a sampling interval. When the property is written, the *open*
+intervals, the ages of the still-living radicals since their last reaction,
+are added as a second histogram (once the reactions have stopped at
+`"TargetConversion"` the ages are measured up to that step). Output is
+written to the directory `radical_waiting_times`: per bin the lower and upper
+edge, the counts of the closed intervals (propagation, termination, total) and
+of the open intervals, the probability densities per decade of time and the
+cumulative distributions; the header gives the mean, geometric mean and
+maximum of both. The status report of the polymerization adds the counts,
+mean, median and maximum of the closed intervals and the mean, median and
+oldest age of the living radicals with the number of radicals older than ten
+times the mean waiting time.
+
+A single-exponential waiting-time distribution is a well-defined propagation
+rate; a stretched tail, a second slow component, or a pile-up of old living
+radicals that no longer react is the trapping signature (its onset in
+conversion is read from the successive files). The property does not change
+the chemistry: the reaction scan treats every radical as reactive, so a
+buried radical that later meets a monomer still reacts, as in a post-cure.
+Requires `"SimulationType" : "Polymerization"`.
+
+-   `"WriteRadicalWaitingTimesEvery" : integer`\
+    Write the histograms every `int` cycles (MD steps). Default: `5000`.
+
+-   `"BinsPerDecadeRadicalWaitingTimes" : integer`\
+    The number of histogram bins per decade of time. Default: `10`.
 
 #### Velocity Auto-Correlation Function (VACF) <a name="velocity-auto-correlation-function-vacf"></a>
 

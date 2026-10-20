@@ -18,6 +18,7 @@ import units;
 import polymer_links;
 import polymerization_site;
 import polymerization_settings;
+import property_radical_waiting_times;
 import molecular_dynamics_spatial_decomposition;
 import force_engine;
 
@@ -34,6 +35,7 @@ Polymerization::Polymerization(InputReader& reader) : md(reader), settings(reade
   orientationRejections.assign(md.systems.size(), 0);
   acceptedStrain.assign(md.systems.size(), 0.0);
   acceptedStrainCount.assign(md.systems.size(), 0);
+  reactionsStoppedStep.assign(md.systems.size(), 0);
 
   for (std::size_t systemId = 0; const System& system : md.systems)
   {
@@ -107,11 +109,13 @@ void Polymerization::openBondLogs()
     {
       std::print(bondLogs.back(),
                  "# step cycle event site_a(component molecule site) site_b(component molecule site) distance[A] "
-                 "conversion radicals bonds stereo strain[K]\n"
+                 "conversion radicals bonds stereo strain[K] wait[ps]\n"
                  "# stereo: configuration (+/-) of the reacting tail(s) and the dyad with the previous unit (m meso, "
                  "r racemo, . none); '-' no stereocentre\n"
                  "# strain: angular strain of the new bond at the reaction (with an 'OrientationTemperature'); '-' not "
-                 "evaluated\n");
+                 "evaluated\n"
+                 "# wait: waiting time of the reacting radical since its last reaction (termination: both radicals a/b); "
+                 "'-' initiation\n");
     }
   }
 }
@@ -160,6 +164,11 @@ void Polymerization::writeSettings()
     else
     {
       std::print(stream, "    orientation weight:              none (distance criterion only)\n");
+    }
+    if (system.propertyRadicalWaitingTimes.has_value())
+    {
+      std::print(stream, "    waiting times:                   dt = t(next) - t(last reaction) per living radical, {} bins per decade, written every {} cycles\n",
+                 system.propertyRadicalWaitingTimes->binsPerDecade, system.propertyRadicalWaitingTimes->writeEvery);
     }
     if (settings.tacticity != Tacticity::None)
     {
@@ -257,6 +266,8 @@ void Polymerization::run()
       }
       std::print(stream, "{}", orientationText(systemId));
       std::print(stream, "{}", system.polymerLinks.printStatus(system.simulationBox, system.components, system.spanOfMoleculeAtoms()));
+      std::print(stream, "{}", waitingTimeText(systemId));
+      writeWaitingTimes(systemId, true);
       std::flush(stream);
       ++systemId;
     }
@@ -282,7 +293,29 @@ std::string Polymerization::status(std::size_t systemId)
   const System& system = md.systems[systemId];
   if (!system.polymerLinks.activated) return {};
   return system.polymerLinks.printStatus(system.simulationBox, system.components, system.spanOfMoleculeAtoms()) +
-         orientationText(systemId);
+         orientationText(systemId) + waitingTimeText(systemId);
+}
+
+std::uint64_t Polymerization::waitingTimeReferenceStep(std::size_t systemId) const
+{
+  return reactionsStoppedStep[systemId] > 0 ? reactionsStoppedStep[systemId]
+                                            : md.systems[systemId].polymerLinks.currentStep;
+}
+
+std::string Polymerization::waitingTimeText(std::size_t systemId) const
+{
+  const System& system = md.systems[systemId];
+  if (!system.propertyRadicalWaitingTimes.has_value()) return {};
+  return system.propertyRadicalWaitingTimes->printStatus(system.polymerLinks, system.timeStep,
+                                                         waitingTimeReferenceStep(systemId));
+}
+
+void Polymerization::writeWaitingTimes(std::size_t systemId, bool force) const
+{
+  const System& system = md.systems[systemId];
+  if (!system.propertyRadicalWaitingTimes.has_value() || !md.outputToFiles) return;
+  system.propertyRadicalWaitingTimes->writeOutput(systemId, md.currentCycle, system.polymerLinks, system.timeStep,
+                                                  waitingTimeReferenceStep(systemId), force);
 }
 
 void Polymerization::afterStep(std::size_t systemId)
@@ -295,6 +328,7 @@ void Polymerization::afterStep(std::size_t systemId)
   if (!table.activated) activate(systemId);
 
   ++table.currentStep;
+  writeWaitingTimes(systemId, false);
   if (reactionsFinished[systemId]) return;
   if (table.currentStep % settings.scanEvery != 0) return;
 
@@ -305,6 +339,7 @@ void Polymerization::afterStep(std::size_t systemId)
   if (table.conversion() >= settings.targetConversion)
   {
     reactionsFinished[systemId] = 1;
+    reactionsStoppedStep[systemId] = table.currentStep;
     if (md.outputToFiles)
     {
       std::ostream stream(md.streams[systemId].rdbuf());
@@ -340,7 +375,7 @@ void Polymerization::activate(std::size_t systemId)
     if (settings.writeBondLog && systemId < bondLogs.size())
     {
       const PolymerAtomRef r = table.siteRef(monomers[n]);
-      std::print(bondLogs[systemId], "{} {} initiation {} {} {} - - - 0 {:.6f} {} {} - -\n", table.currentStep,
+      std::print(bondLogs[systemId], "{} {} initiation {} {} {} - - - 0 {:.6f} {} {} - - -\n", table.currentStep,
                  md.currentCycle, r.componentId, r.moleculeIndex, r.atomIndex, table.conversion(),
                  table.countSites(PolymerSiteState::Radical), table.numberOfBonds());
     }
@@ -552,16 +587,20 @@ std::size_t Polymerization::scan(std::size_t systemId)
     const char dyad = before == 0 ? '.' : (before == chirality ? 'm' : 'r');
     return std::format("{}{}", chirality > 0 ? '+' : '-', dyad);
   };
-  auto log = [&](std::string_view event, std::size_t a, std::size_t b, double distance, std::string_view stereo)
+  // the waiting time of a radical since its last reaction (its creation), in ps
+  auto waitingTime = [&](std::size_t radical)
+  { return static_cast<double>(table.currentStep - std::min(table.currentStep, table.siteStep[radical])) * system.timeStep; };
+  auto log = [&](std::string_view event, std::size_t a, std::size_t b, double distance, std::string_view stereo,
+                 std::string_view wait)
   {
     if (!settings.writeBondLog || systemId >= bondLogs.size()) return;
     const PolymerAtomRef ra = table.siteRef(a);
     const PolymerAtomRef rb = table.siteRef(b);
-    std::print(bondLogs[systemId], "{} {} {} {} {} {} {} {} {} {:.4f} {:.6f} {} {} {} {}\n", table.currentStep,
+    std::print(bondLogs[systemId], "{} {} {} {} {} {} {} {} {} {:.4f} {:.6f} {} {} {} {} {}\n", table.currentStep,
                md.currentCycle, event, ra.componentId, ra.moleculeIndex, ra.atomIndex, rb.componentId,
                rb.moleculeIndex, rb.atomIndex, distance, table.conversion(),
                table.countSites(PolymerSiteState::Radical), table.numberOfBonds(), stereo,
-               weighted ? std::format("{:.1f}", lastStrain) : std::string("-"));
+               weighted ? std::format("{:.1f}", lastStrain) : std::string("-"), wait);
   };
   for (const Candidate& candidate : candidates)
   {
@@ -582,10 +621,12 @@ std::size_t Polymerization::scan(std::size_t systemId)
       }
       if (!accept(candidate, probability)) continue;
       const std::string stereo = stereoText(candidate.a, chiralityA.value());
+      const double waitA = waitingTime(candidate.a);
+      if (system.propertyRadicalWaitingTimes.has_value()) system.propertyRadicalWaitingTimes->addPropagation(waitA);
       table.propagate(candidate.a, candidate.b, system.forceField, components, atoms,
                       std::span<Molecule>(system.moleculeData), table.currentStep, candidate.distance,
                       chiralityA.value(), nextChirality(chiralityA.value()));
-      log("propagation", candidate.a, candidate.b, candidate.distance, stereo);
+      log("propagation", candidate.a, candidate.b, candidate.distance, stereo, std::format("{:.4g}", waitA));
     }
     else
     {
@@ -601,10 +642,17 @@ std::size_t Polymerization::scan(std::size_t systemId)
       if (!accept(candidate, probability)) continue;
       const std::string stereo = std::format("{}/{}", stereoText(candidate.a, chiralityA.value()),
                                              stereoText(candidate.b, chiralityB.value()));
+      const double waitA = waitingTime(candidate.a);
+      const double waitB = waitingTime(candidate.b);
+      if (system.propertyRadicalWaitingTimes.has_value())
+      {
+        system.propertyRadicalWaitingTimes->addTermination(waitA);
+        system.propertyRadicalWaitingTimes->addTermination(waitB);
+      }
       table.terminate(candidate.a, candidate.b, system.forceField, components, atoms,
                       std::span<Molecule>(system.moleculeData), table.currentStep, candidate.distance,
                       chiralityA.value(), chiralityB.value());
-      log("termination", candidate.a, candidate.b, candidate.distance, stereo);
+      log("termination", candidate.a, candidate.b, candidate.distance, stereo, std::format("{:.4g}/{:.4g}", waitA, waitB));
     }
     reacted.insert(candidate.a);
     reacted.insert(candidate.b);
@@ -624,7 +672,7 @@ std::size_t Polymerization::scan(std::size_t systemId)
       if (settings.writeBondLog && systemId < bondLogs.size())
       {
         const PolymerAtomRef r = table.siteRef(monomer.index);
-        std::print(bondLogs[systemId], "{} {} initiation {} {} {} - - - 0 {:.6f} {} {} - -\n", table.currentStep,
+        std::print(bondLogs[systemId], "{} {} initiation {} {} {} - - - 0 {:.6f} {} {} - - -\n", table.currentStep,
                    md.currentCycle, r.componentId, r.moleculeIndex, r.atomIndex, table.conversion(),
                    table.countSites(PolymerSiteState::Radical), table.numberOfBonds());
       }
@@ -724,6 +772,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Polyme
   archive << p.orientationRejections;
   archive << p.acceptedStrain;
   archive << p.acceptedStrainCount;
+  archive << p.reactionsStoppedStep;
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
@@ -764,6 +813,14 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Polymerizati
     p.orientationRejections.assign(p.md.systems.size(), 0);
     p.acceptedStrain.assign(p.md.systems.size(), 0.0);
     p.acceptedStrainCount.assign(p.md.systems.size(), 0);
+  }
+  if (versionNumber >= 4)
+  {
+    archive >> p.reactionsStoppedStep;
+  }
+  else
+  {
+    p.reactionsStoppedStep.assign(p.md.systems.size(), 0);
   }
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

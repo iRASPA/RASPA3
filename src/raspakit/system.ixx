@@ -57,6 +57,7 @@ import reaction;
 import reactions;
 import cross_links;
 import polymer_links;
+import property_radical_waiting_times;
 import transition_matrix;
 import equation_of_states;
 import thermostat;
@@ -111,7 +112,7 @@ export struct System
          std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{7};
+  std::uint64_t versionNumber{8};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -305,6 +306,9 @@ export struct System
   std::optional<PropertyMeanSquaredDisplacement> propertyMSD;
   std::optional<PropertyVelocityAutoCorrelationFunction> propertyVACF;
   std::optional<PropertyEndToEndAutoCorrelationFunction> propertyEndToEndACF;
+  /// Waiting times of the living radicals of a polymerization ('ComputeRadicalWaitingTimes'); the samples are
+  /// added by the Polymerization driver at the reactions.
+  std::optional<PropertyRadicalWaitingTimes> propertyRadicalWaitingTimes;
   std::optional<WriteLammpsData> writeLammpsData;
 
   std::optional<PropertyNumberOfMoleculesEvolution> propertyNumberOfMoleculesEvolution;
@@ -903,6 +907,7 @@ export struct System
   void setPropertyRDF(const std::optional<PropertyRadialDistributionFunction>& rdf);
   void setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement>& msd);
   void setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelationFunction>& vacf);
+  void setPropertyRadicalWaitingTimes(const std::optional<PropertyRadicalWaitingTimes>& property);
 
   /// Creates the intra-molecular analyses requested by the components (their 'moleculePropertiesSettings',
   /// 'moleculeShapeSettings', 'moleculeBackboneSettings' and 'endToEndACFSettings'): the molecule-properties

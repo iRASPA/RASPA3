@@ -41,6 +41,7 @@ import molecule_property_settings;
 import property_volume_evolution;
 import property_number_of_molecules_evolution;
 import property_msd;
+import property_radical_waiting_times;
 import property_vacf;
 import property_elastic_constants_fluctuation;
 import write_lammps_data;
@@ -4222,6 +4223,37 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (value.contains("ComputeRadicalWaitingTimes") && value["ComputeRadicalWaitingTimes"].is_boolean())
+      {
+        if (value["ComputeRadicalWaitingTimes"].get<bool>())
+        {
+          if (simulationType != SimulationType::Polymerization)
+          {
+            throw std::runtime_error(
+                "[Input reader]: 'ComputeRadicalWaitingTimes' needs 'SimulationType' : 'Polymerization'\n");
+          }
+          std::size_t writeEvery{5000};
+          if (value.contains("WriteRadicalWaitingTimesEvery") &&
+              value["WriteRadicalWaitingTimesEvery"].is_number_unsigned())
+          {
+            writeEvery = value["WriteRadicalWaitingTimesEvery"].get<std::size_t>();
+          }
+          std::size_t binsPerDecade{10};
+          if (value.contains("BinsPerDecadeRadicalWaitingTimes") &&
+              value["BinsPerDecadeRadicalWaitingTimes"].is_number_unsigned())
+          {
+            binsPerDecade = value["BinsPerDecadeRadicalWaitingTimes"].get<std::size_t>();
+          }
+          if (writeEvery == 0 || binsPerDecade == 0)
+          {
+            throw std::runtime_error(
+                "[Input reader]: 'WriteRadicalWaitingTimesEvery' and 'BinsPerDecadeRadicalWaitingTimes' must be "
+                "positive\n");
+          }
+          systems[systemId].propertyRadicalWaitingTimes = PropertyRadicalWaitingTimes(binsPerDecade, writeEvery);
+        }
+      }
+
       if (value.contains("ComputeMSD") && value["ComputeMSD"].is_boolean())
       {
         if (value["ComputeMSD"].get<bool>())
@@ -5378,6 +5410,9 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "WriteConventionalRDFEvery",
     "NumberOfBinsConventionalRDF",
     "RangeConventionalRDF",
+    "ComputeRadicalWaitingTimes",
+    "WriteRadicalWaitingTimesEvery",
+    "BinsPerDecadeRadicalWaitingTimes",
     "ComputeMSD",
     "SampleMSDEvery",
     "WriteMSDEvery",
