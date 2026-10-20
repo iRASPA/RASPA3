@@ -22,6 +22,14 @@ import archive;
  *  - termination: two radical tails within 'terminationCaptureRadius' combine with probability
  *                 'terminationProbability'.
  *
+ * With an 'OrientationTemperature' T* (Kelvin) in the 'Propagation' / 'Termination' block the acceptance is
+ * weighted by the geometry of the approach: p = p0 exp(-dU / k_B T*), where dU is the angular strain the new
+ * bond would carry (the bends and torsions through it, evaluated with the product templates in the current
+ * geometry, relative to their minima; see PolymerLinkTable::angularStrain). A monomer that approaches in the
+ * plane of its own double bond, or along the sigma framework of the radical, is thereby disfavoured in
+ * proportion to the strain the force field would have to relax; T* -> infinity recovers the distance-only
+ * criterion. Without the key the acceptance is distance-only.
+ *
  * A new bond is ramped in over 'relaxationSteps' MD steps (see PolymerLinkTable). The reactions stop when
  * the conversion reaches 'targetConversion' (the remaining production cycles relax the network).
  *
@@ -44,7 +52,7 @@ export enum class Tacticity : std::uint8_t
 
 export struct PolymerizationSettings
 {
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{3};
 
   std::size_t scanEvery{10};  ///< MD steps between two reaction scans ('ScanEvery').
   std::size_t startCycle{0};  ///< Production cycle at which the reactions start ('StartCycle').
@@ -60,11 +68,13 @@ export struct PolymerizationSettings
   double propagationProbability{1.0};    ///< Per candidate pair and scan ('Propagation' / 'Probability').
   std::optional<double> propagationRateConstant{};  ///< [1/ps] ('Propagation' / 'RateConstant').
   bool allowIntramolecular{true};  ///< Whether a radical may add to a site of its own molecule (primary cycles).
+  std::optional<double> propagationOrientationTemperature{};  ///< [K] ('Propagation' / 'OrientationTemperature').
 
   bool terminationEnabled{true};         ///< ('Termination' / 'Enabled').
   double terminationCaptureRadius{4.0};  ///< [Angstrom] ('Termination' / 'CaptureRadius').
   double terminationProbability{1.0};    ///< Per candidate pair and scan ('Termination' / 'Probability').
   std::optional<double> terminationRateConstant{};  ///< [1/ps] ('Termination' / 'RateConstant').
+  std::optional<double> terminationOrientationTemperature{};  ///< [K] ('Termination' / 'OrientationTemperature').
 
   bool writeBondLog{true};        ///< Write every reaction to 'output/polymerization_bonds.s<i>.txt' ('WriteBondLog').
   bool writeTopology{true};       ///< Write the final bond list to 'output/polymer_topology.s<i>.json' ('WriteTopology').
@@ -90,6 +100,13 @@ export struct PolymerizationSettings
         return "atactic";
     }
     return "none";
+  }
+
+  /// The orientation weight exp(-strain / k_B T*) of a candidate with angular strain 'strainInKelvin' (1 without T*).
+  static double orientationWeight(std::optional<double> orientationTemperature, double strainInKelvin)
+  {
+    if (!orientationTemperature.has_value()) return 1.0;
+    return std::exp(-std::max(0.0, strainInKelvin) / orientationTemperature.value());
   }
 
   /// The acceptance probability of a reaction per scan: the probability, or 1 - exp(-k dt) from the rate constant.
@@ -126,6 +143,8 @@ export struct PolymerizationSettings
     archive << s.stereoSelective;
     archive << s.chiralForceConstant;
     archive << s.chiralReferenceVolume;
+    archive << s.propagationOrientationTemperature;
+    archive << s.terminationOrientationTemperature;
     return archive;
   }
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PolymerizationSettings &s)
@@ -164,6 +183,11 @@ export struct PolymerizationSettings
       archive >> s.stereoSelective;
       archive >> s.chiralForceConstant;
       archive >> s.chiralReferenceVolume;
+    }
+    if (versionNumber >= 3)
+    {
+      archive >> s.propagationOrientationTemperature;
+      archive >> s.terminationOrientationTemperature;
     }
     return archive;
   }

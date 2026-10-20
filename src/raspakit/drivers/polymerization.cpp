@@ -31,6 +31,9 @@ Polymerization::Polymerization(InputReader& reader) : md(reader), settings(reade
   numberOfScans.assign(md.systems.size(), 0);
   activationCycle.assign(md.systems.size(), 0);
   stereoRejections.assign(md.systems.size(), 0);
+  orientationRejections.assign(md.systems.size(), 0);
+  acceptedStrain.assign(md.systems.size(), 0.0);
+  acceptedStrainCount.assign(md.systems.size(), 0);
 
   for (std::size_t systemId = 0; const System& system : md.systems)
   {
@@ -104,9 +107,11 @@ void Polymerization::openBondLogs()
     {
       std::print(bondLogs.back(),
                  "# step cycle event site_a(component molecule site) site_b(component molecule site) distance[A] "
-                 "conversion radicals bonds stereo\n"
+                 "conversion radicals bonds stereo strain[K]\n"
                  "# stereo: configuration (+/-) of the reacting tail(s) and the dyad with the previous unit (m meso, "
-                 "r racemo, . none); '-' no stereocentre\n");
+                 "r racemo, . none); '-' no stereocentre\n"
+                 "# strain: angular strain of the new bond at the reaction (with an 'OrientationTemperature'); '-' not "
+                 "evaluated\n");
     }
   }
 }
@@ -143,6 +148,18 @@ void Polymerization::writeSettings()
     else
     {
       std::print(stream, "    termination:                     disabled\n");
+    }
+    if (settings.propagationOrientationTemperature.has_value() || settings.terminationOrientationTemperature.has_value())
+    {
+      auto describe = [](std::optional<double> temperature)
+      { return temperature.has_value() ? std::format("T* = {:g} K", temperature.value()) : std::string("distance only"); };
+      std::print(stream, "    orientation weight:              p = p0 exp(-dU_angular / k_B T*); propagation {}, termination {}\n",
+                 describe(settings.propagationOrientationTemperature),
+                 describe(settings.terminationOrientationTemperature));
+    }
+    else
+    {
+      std::print(stream, "    orientation weight:              none (distance criterion only)\n");
     }
     if (settings.tacticity != Tacticity::None)
     {
@@ -238,6 +255,7 @@ void Polymerization::run()
       {
         std::print(stream, "    wrong-face candidates skipped:   {}\n", stereoRejections[systemId]);
       }
+      std::print(stream, "{}", orientationText(systemId));
       std::print(stream, "{}", system.polymerLinks.printStatus(system.simulationBox, system.components, system.spanOfMoleculeAtoms()));
       std::flush(stream);
       ++systemId;
@@ -247,11 +265,24 @@ void Polymerization::run()
   md.tearDown();
 }
 
+std::string Polymerization::orientationText(std::size_t systemId) const
+{
+  if (!settings.propagationOrientationTemperature.has_value() && !settings.terminationOrientationTemperature.has_value())
+  {
+    return {};
+  }
+  const std::size_t count = acceptedStrainCount[systemId];
+  return std::format(
+      "    orientation weight:              {} candidates rejected, mean angular strain of the accepted reactions {:.1f} [K]\n",
+      orientationRejections[systemId], count > 0 ? acceptedStrain[systemId] / static_cast<double>(count) : 0.0);
+}
+
 std::string Polymerization::status(std::size_t systemId)
 {
   const System& system = md.systems[systemId];
   if (!system.polymerLinks.activated) return {};
-  return system.polymerLinks.printStatus(system.simulationBox, system.components, system.spanOfMoleculeAtoms());
+  return system.polymerLinks.printStatus(system.simulationBox, system.components, system.spanOfMoleculeAtoms()) +
+         orientationText(systemId);
 }
 
 void Polymerization::afterStep(std::size_t systemId)
@@ -309,7 +340,7 @@ void Polymerization::activate(std::size_t systemId)
     if (settings.writeBondLog && systemId < bondLogs.size())
     {
       const PolymerAtomRef r = table.siteRef(monomers[n]);
-      std::print(bondLogs[systemId], "{} {} initiation {} {} {} - - - 0 {:.6f} {} {} -\n", table.currentStep,
+      std::print(bondLogs[systemId], "{} {} initiation {} {} {} - - - 0 {:.6f} {} {} - -\n", table.currentStep,
                  md.currentCycle, r.componentId, r.moleculeIndex, r.atomIndex, table.conversion(),
                  table.countSites(PolymerSiteState::Radical), table.numberOfBonds());
     }
@@ -434,6 +465,69 @@ std::size_t Polymerization::scan(std::size_t systemId)
 
   std::size_t accepted = 0;
   std::unordered_set<std::size_t> reacted{};
+  double lastStrain = 0.0;  // the angular strain [K] of the reaction just accepted (for the log)
+
+  // The orientation weight of a candidate: exp(-dU / k_B T*) with dU the angular strain of the new bond in the
+  // current geometry (the monomer's head and tail typed as in the product), in Kelvin.
+  const bool weighted = settings.propagationOrientationTemperature.has_value() ||
+                        settings.terminationOrientationTemperature.has_value();
+  if (weighted && !candidates.empty() && !table.derivedValid)
+  {
+    table.rebuild(system.forceField, components, system.numberOfMoleculesPerComponent, atoms);
+  }
+  auto angularStrainInKelvin = [&](const Candidate& candidate) -> double
+  {
+    std::map<std::uint32_t, std::uint16_t> retyped{};
+    const std::uint32_t a = static_cast<std::uint32_t>(table.layout.index(table.tailOf(candidate.a, components)));
+    std::uint32_t b{};
+    if (candidate.kind == PolymerBondKind::Propagation)
+    {
+      const PolymerAtomRef head = table.headOf(candidate.b, components);
+      const PolymerAtomRef tail = table.tailOf(candidate.b, components);
+      const PolymerAtomRef r = table.siteRef(candidate.b);
+      const PolymerizationSite& definition = components[r.componentId].polymerizationSites[r.atomIndex];
+      b = static_cast<std::uint32_t>(table.layout.index(head));
+      const std::optional<std::size_t> headType = system.forceField.findPseudoAtom(definition.headProductType);
+      const std::optional<std::size_t> tailType = system.forceField.findPseudoAtom(definition.tailProductType);
+      if (headType.has_value()) retyped[b] = static_cast<std::uint16_t>(headType.value());
+      if (tailType.has_value())
+      {
+        retyped[static_cast<std::uint32_t>(table.layout.index(tail))] = static_cast<std::uint16_t>(tailType.value());
+      }
+    }
+    else
+    {
+      b = static_cast<std::uint32_t>(table.layout.index(table.tailOf(candidate.b, components)));
+    }
+    return table.angularStrain(a, b, system.simulationBox, components, atoms, retyped) * Units::EnergyToKelvin;
+  };
+  // the acceptance draw: probability times the orientation weight; records the strain of an accepted reaction
+  auto accept = [&](const Candidate& candidate, double probability) -> bool
+  {
+    const std::optional<double> orientationTemperature = candidate.kind == PolymerBondKind::Propagation
+                                                             ? settings.propagationOrientationTemperature
+                                                             : settings.terminationOrientationTemperature;
+    double strain = 0.0;
+    double weight = 1.0;
+    if (orientationTemperature.has_value())
+    {
+      strain = angularStrainInKelvin(candidate);
+      weight = PolymerizationSettings::orientationWeight(orientationTemperature, strain);
+    }
+    const double p = probability * weight;
+    if (p < 1.0 && md.random.uniform() >= p)
+    {
+      if (orientationTemperature.has_value()) ++orientationRejections[systemId];
+      return false;
+    }
+    if (orientationTemperature.has_value())
+    {
+      acceptedStrain[systemId] += strain;
+      ++acceptedStrainCount[systemId];
+    }
+    lastStrain = strain;
+    return true;
+  };
 
   // The configuration the tail of radical 'site' takes when it bonds to 'partner': the one required by the
   // tacticity when set, otherwise the one its geometry gives (the face of approach); none when the required
@@ -463,10 +557,11 @@ std::size_t Polymerization::scan(std::size_t systemId)
     if (!settings.writeBondLog || systemId >= bondLogs.size()) return;
     const PolymerAtomRef ra = table.siteRef(a);
     const PolymerAtomRef rb = table.siteRef(b);
-    std::print(bondLogs[systemId], "{} {} {} {} {} {} {} {} {} {:.4f} {:.6f} {} {} {}\n", table.currentStep,
+    std::print(bondLogs[systemId], "{} {} {} {} {} {} {} {} {} {:.4f} {:.6f} {} {} {} {}\n", table.currentStep,
                md.currentCycle, event, ra.componentId, ra.moleculeIndex, ra.atomIndex, rb.componentId,
                rb.moleculeIndex, rb.atomIndex, distance, table.conversion(),
-               table.countSites(PolymerSiteState::Radical), table.numberOfBonds(), stereo);
+               table.countSites(PolymerSiteState::Radical), table.numberOfBonds(), stereo,
+               weighted ? std::format("{:.1f}", lastStrain) : std::string("-"));
   };
   for (const Candidate& candidate : candidates)
   {
@@ -485,7 +580,7 @@ std::size_t Polymerization::scan(std::size_t systemId)
         ++stereoRejections[systemId];
         continue;
       }
-      if (probability < 1.0 && md.random.uniform() >= probability) continue;
+      if (!accept(candidate, probability)) continue;
       const std::string stereo = stereoText(candidate.a, chiralityA.value());
       table.propagate(candidate.a, candidate.b, system.forceField, components, atoms,
                       std::span<Molecule>(system.moleculeData), table.currentStep, candidate.distance,
@@ -503,7 +598,7 @@ std::size_t Polymerization::scan(std::size_t systemId)
         ++stereoRejections[systemId];
         continue;
       }
-      if (probability < 1.0 && md.random.uniform() >= probability) continue;
+      if (!accept(candidate, probability)) continue;
       const std::string stereo = std::format("{}/{}", stereoText(candidate.a, chiralityA.value()),
                                              stereoText(candidate.b, chiralityB.value()));
       table.terminate(candidate.a, candidate.b, system.forceField, components, atoms,
@@ -529,7 +624,7 @@ std::size_t Polymerization::scan(std::size_t systemId)
       if (settings.writeBondLog && systemId < bondLogs.size())
       {
         const PolymerAtomRef r = table.siteRef(monomer.index);
-        std::print(bondLogs[systemId], "{} {} initiation {} {} {} - - - 0 {:.6f} {} {} -\n", table.currentStep,
+        std::print(bondLogs[systemId], "{} {} initiation {} {} {} - - - 0 {:.6f} {} {} - -\n", table.currentStep,
                    md.currentCycle, r.componentId, r.moleculeIndex, r.atomIndex, table.conversion(),
                    table.countSites(PolymerSiteState::Radical), table.numberOfBonds());
       }
@@ -626,6 +721,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Polyme
   archive << p.numberOfScans;
   archive << p.activationCycle;
   archive << p.stereoRejections;
+  archive << p.orientationRejections;
+  archive << p.acceptedStrain;
+  archive << p.acceptedStrainCount;
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
@@ -654,6 +752,18 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Polymerizati
   else
   {
     p.stereoRejections.assign(p.md.systems.size(), 0);
+  }
+  if (versionNumber >= 3)
+  {
+    archive >> p.orientationRejections;
+    archive >> p.acceptedStrain;
+    archive >> p.acceptedStrainCount;
+  }
+  else
+  {
+    p.orientationRejections.assign(p.md.systems.size(), 0);
+    p.acceptedStrain.assign(p.md.systems.size(), 0.0);
+    p.acceptedStrainCount.assign(p.md.systems.size(), 0);
   }
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

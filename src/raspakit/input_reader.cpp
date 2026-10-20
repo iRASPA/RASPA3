@@ -261,6 +261,7 @@ void readPolymerization(const nlohmann::basic_json<nlohmann::raspa_map>& value, 
     readNumber(propagation, "Probability", settings.propagationProbability);
     readOptionalNumber(propagation, "RateConstant", settings.propagationRateConstant);
     readBoolean(propagation, "AllowIntramolecular", settings.allowIntramolecular);
+    readOptionalNumber(propagation, "OrientationTemperature", settings.propagationOrientationTemperature);
   }
   if (block.contains("Termination"))
   {
@@ -273,6 +274,16 @@ void readPolymerization(const nlohmann::basic_json<nlohmann::raspa_map>& value, 
     readNumber(termination, "CaptureRadius", settings.terminationCaptureRadius);
     readNumber(termination, "Probability", settings.terminationProbability);
     readOptionalNumber(termination, "RateConstant", settings.terminationRateConstant);
+    readOptionalNumber(termination, "OrientationTemperature", settings.terminationOrientationTemperature);
+  }
+  for (const auto& [name, temperature] : {std::pair{"Propagation", settings.propagationOrientationTemperature},
+                                          std::pair{"Termination", settings.terminationOrientationTemperature}})
+  {
+    if (temperature.has_value() && temperature.value() <= 0.0)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: 'Polymerization' '{}' 'OrientationTemperature' must be positive\n", name));
+    }
   }
   for (const auto& [name, probability] :
        {std::pair{"Initiation", settings.initiationProbability}, std::pair{"Propagation", settings.propagationProbability},

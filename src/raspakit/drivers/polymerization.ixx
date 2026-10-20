@@ -44,7 +44,7 @@ export struct Polymerization
 {
   Polymerization(InputReader& reader);
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{3};
 
   MolecularDynamicsSpatialDecomposition md;
   PolymerizationSettings settings{};
@@ -57,6 +57,11 @@ export struct Polymerization
   std::vector<std::size_t> activationCycle{};
   /// Per system: the candidates skipped because the monomer approached from the wrong face.
   std::vector<std::size_t> stereoRejections{};
+  /// Per system: the candidates rejected by the orientation weight (with an 'OrientationTemperature').
+  std::vector<std::size_t> orientationRejections{};
+  /// Per system: the angular strain [K] of the accepted reactions, summed, and their number (the mean strain).
+  std::vector<double> acceptedStrain{};
+  std::vector<std::size_t> acceptedStrainCount{};
 
   std::vector<std::ofstream> bondLogs{};  ///< Not part of the restart (reopened in append mode).
 
@@ -69,6 +74,8 @@ export struct Polymerization
   void afterStep(std::size_t systemId);
   /// The status block of the MD driver's reports.
   std::string status(std::size_t systemId);
+  /// The orientation-weight line of the status (empty without an 'OrientationTemperature').
+  std::string orientationText(std::size_t systemId) const;
 
   /// Activates the table of a system (site layout, initial radicals) at the start of the reactive stage.
   void activate(std::size_t systemId);

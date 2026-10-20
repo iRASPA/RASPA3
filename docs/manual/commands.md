@@ -1724,6 +1724,30 @@ candidate pair and per scan) or as a rate constant \f$k\f$ in ps⁻¹, in which
 case the probability per scan is \f$1-\exp(-k\,\Delta t_\mathrm{scan})\f$
 with \f$\Delta t_\mathrm{scan} = \f$ `"ScanEvery"` × `"TimeStep"`.
 
+*Orientation weight.* The distance criterion alone accepts a pair whatever
+the relative orientation of the two sites, and the ramp then pulls the new
+bond into the geometry of its templates. With `"OrientationTemperature"`
+(\f$T^*\f$, in K) in the `"Propagation"` or `"Termination"` block the
+acceptance probability of a candidate is multiplied by
+\f$\exp(-\Delta U_\mathrm{ang}/k_B T^*)\f$, where \f$\Delta U_\mathrm{ang}\f$
+is the *angular strain* the new bond would carry in the current geometry:
+the sum of the bends \f$X\!-\!A\!-\!B\f$, \f$A\!-\!B\!-\!Y\f$ and the
+torsions \f$W\!-\!X\!-\!A\!-\!B\f$, \f$X\!-\!A\!-\!B\!-\!Y\f$,
+\f$A\!-\!B\!-\!Y\!-\!Z\f$ of the product tables (with the product types of
+the reacting atoms), each counted relative to the minimum of its template so
+that a pair in the ideal product geometry has zero strain. The bond stretch
+and the non-bonded terms are not included — the distance is already the
+capture criterion. \f$T^*\f$ is a selectivity, not the physical temperature:
+a sum of nine bend and torsion terms in a random approach is typically
+several thousand K (for HDDA the accepted reactions have a mean strain of
+about 7000 K at \f$T^* = 2000\f$ K, with the best candidates near 4500 K),
+so useful values of \f$T^*\f$ are a few thousand K; \f$T^* = 2000\f$ K
+reduces the propagation rate by an order of magnitude compared to the
+distance criterion alone in the same trajectory, while a large \f$T^*\f$
+recovers it. Without the key the weight is one. The candidates rejected by
+the weight and the mean strain of the accepted reactions are reported in
+the status, and the bond log carries the strain of every reaction.
+
 A reaction changes the types (and with them the charges and the Lennard-Jones
 parameters) of the head and tail atoms of the reacted site to
 `"HeadProductType"` / `"TailProductType"` and adds the new bond. The bonded
@@ -1785,13 +1809,15 @@ The keys of the `"Polymerization"` block (defaults in parentheses):
     `n` random monomer sites become radicals at `"StartCycle"`; in addition
     every monomer site is initiated with probability `p` per scan (or rate
     `k`). Defaults `0`, `0.0`.
--   `"Propagation" : {"CaptureRadius" : r, "Probability" : p, "RateConstant" : k, "AllowIntramolecular" : bool}`\
-    Defaults `4.0` Å, `1.0`, `true`. With `"AllowIntramolecular" : false` the
-    two sites of one molecule can not react with each other (no primary
-    cycles).
--   `"Termination" : {"Enabled" : bool, "CaptureRadius" : r, "Probability" : p, "RateConstant" : k}`\
+-   `"Propagation" : {"CaptureRadius" : r, "Probability" : p, "RateConstant" : k, "AllowIntramolecular" : bool, "OrientationTemperature" : T}`\
+    Defaults `4.0` Å, `1.0`, `true`, no orientation weight. With
+    `"AllowIntramolecular" : false` the two sites of one molecule can not
+    react with each other (no primary cycles). `T` (in K, positive) switches
+    on the orientation weight \f$\exp(-\Delta U_\mathrm{ang}/k_B T)\f$ on
+    the acceptance probability.
+-   `"Termination" : {"Enabled" : bool, "CaptureRadius" : r, "Probability" : p, "RateConstant" : k, "OrientationTemperature" : T}`\
     Termination by combination of two radical tails. Defaults `true`,
-    `4.0` Å, `1.0`.
+    `4.0` Å, `1.0`, no orientation weight.
 -   `"Tacticity" : {"Type" : "Isotactic", "MesoProbability" : p, "StereoSelective" : bool, "ForceConstant" : k, "ReferenceVolume" : v}`\
     (or just `"Tacticity" : "Isotactic"`) — the configuration of the
     backbone stereocentres: `"Isotactic"` (all dyads meso),
@@ -1816,14 +1842,18 @@ The keys of the `"Polymerization"` block (defaults in parentheses):
     one line per reaction with step, cycle, event, the two sites as
     `component molecule atom`, the distance, the conversion and the
     configuration of the reacting tail with its dyad (`+m`, `-r`, `+.` for
-    the first centre of a chain; `-` for a tail that is not a stereocentre).
+    the first centre of a chain; `-` for a tail that is not a stereocentre),
+    and the angular strain of the new bond in K (`-` without
+    `"OrientationTemperature"`).
 -   `"WriteTopology" : bool` (`true`) — `output/polymer_topology.s<i>.json`:
     the state and configuration of every site and the list of bonds
     (component, molecule, atom of both partners, kind and step) at the end of
     the run.
 
 The status report of every `"PrintEvery"` cycles adds the conversion, the
-numbers of radicals, dead sites, propagations and terminations, the number
+numbers of radicals, dead sites, propagations and terminations (with the
+candidates rejected by the orientation weight and the mean strain of the
+accepted reactions when the weight is on), the number
 of stereocentres with the meso/racemo dyad counts, the meso fraction and the
 triad fractions (mm, mr, rr) from the current geometry (with the number of
 restrained centres that are momentarily inverted), and the

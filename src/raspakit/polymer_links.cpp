@@ -217,7 +217,58 @@ void PolymerTemplates::resolve(const ForceField &forceField)
     if (!torsionIndex.try_emplace(key, i).second && torsionIndex.at(key) != i) ambiguous("Torsions", torsions[i].types);
     torsionIndex.try_emplace(reversed(key), i);
   }
+
+  // the minima of the angular templates (the reference of the orientation strain): scanned numerically on a
+  // synthetic geometry (the templates depend on the angle / dihedral only)
+  bendMinimum.assign(bends.size(), 0.0);
+  for (std::size_t i = 0; i < bends.size(); ++i)
+  {
+    const BendPotential potential({0, 1, 2}, bends[i].type, bends[i].parameters);
+    double minimum = std::numeric_limits<double>::max();
+    for (std::size_t k = 0; k <= 360; ++k)
+    {
+      const double theta = std::numbers::pi * static_cast<double>(k) / 360.0;
+      minimum = std::min(minimum, potential.calculateEnergy(double3(std::cos(theta), std::sin(theta), 0.0),
+                                                            double3(0.0, 0.0, 0.0), double3(1.0, 0.0, 0.0),
+                                                            std::nullopt));
+    }
+    bendMinimum[i] = minimum;
+  }
+  torsionMinimum.assign(torsions.size(), 0.0);
+  for (std::size_t i = 0; i < torsions.size(); ++i)
+  {
+    const TorsionPotential potential({0, 1, 2, 3}, torsions[i].type, torsions[i].parameters);
+    double minimum = std::numeric_limits<double>::max();
+    for (std::size_t k = 0; k < 720; ++k)
+    {
+      const double phi = 2.0 * std::numbers::pi * static_cast<double>(k) / 720.0;
+      minimum = std::min(minimum, potential.calculateEnergy(double3(1.0, 0.0, 0.0), double3(0.0, 0.0, 0.0),
+                                                            double3(0.0, 0.0, 1.0),
+                                                            double3(std::cos(phi), std::sin(phi), 1.0)));
+    }
+    torsionMinimum[i] = minimum;
+  }
   resolved = true;
+}
+
+std::optional<double> PolymerTemplates::bendStrain(const std::array<std::uint16_t, 3> &types, const double3 &a,
+                                                   const double3 &b, const double3 &c) const
+{
+  const auto it = bendIndex.find(types);
+  if (it == bendIndex.end()) return std::nullopt;
+  const BendTemplate &t = bends[it->second];
+  return BendPotential({0, 1, 2}, t.type, t.parameters).calculateEnergy(a, b, c, std::nullopt) -
+         bendMinimum[it->second];
+}
+
+std::optional<double> PolymerTemplates::torsionStrain(const std::array<std::uint16_t, 4> &types, const double3 &a,
+                                                      const double3 &b, const double3 &c, const double3 &d) const
+{
+  const auto it = torsionIndex.find(types);
+  if (it == torsionIndex.end()) return std::nullopt;
+  const TorsionTemplate &t = torsions[it->second];
+  return TorsionPotential({0, 1, 2, 3}, t.type, t.parameters).calculateEnergy(a, b, c, d) -
+         torsionMinimum[it->second];
 }
 
 std::optional<BondPotential> PolymerTemplates::bond(const std::array<std::uint16_t, 2> &types,
@@ -1047,6 +1098,72 @@ void PolymerLinkTable::rebuild(const ForceField &forceField, const std::vector<C
 }
 
 // ---- statistics and output ----------------------------------------------------------------------------------------
+
+double PolymerLinkTable::angularStrain(std::uint32_t a, std::uint32_t b, const SimulationBox &simulationBox,
+                                        const std::vector<Component> &components, std::span<const Atom> atoms,
+                                        const std::map<std::uint32_t, std::uint16_t> &retyped) const
+{
+  auto typeOf = [&](std::uint32_t atom) -> std::uint16_t
+  {
+    const auto it = retyped.find(atom);
+    return it != retyped.end() ? it->second : atoms[atom].type;
+  };
+  // positions imaged along the chain of the term (the first atom at its own position)
+  auto next = [&](const double3 &from, std::uint32_t to)
+  { return from + simulationBox.applyPeriodicBoundaryConditions(atoms[to].position - from); };
+  auto without = [](std::vector<std::uint32_t> list, std::uint32_t exclude)
+  {
+    std::erase(list, exclude);
+    return list;
+  };
+
+  const double3 pA = atoms[a].position;
+  const double3 pB = next(pA, b);
+  const std::vector<std::uint32_t> nA = without(neighboursOf(a, components), b);
+  const std::vector<std::uint32_t> nB = without(neighboursOf(b, components), a);
+
+  double strain = 0.0;
+  auto addBend = [&](std::uint32_t x, std::uint32_t y, std::uint32_t z, const double3 &px, const double3 &py,
+                     const double3 &pz)
+  {
+    const std::optional<double> value = templates.bendStrain({typeOf(x), typeOf(y), typeOf(z)}, px, py, pz);
+    if (value.has_value()) strain += value.value();
+  };
+  auto addTorsion = [&](std::uint32_t w, std::uint32_t x, std::uint32_t y, std::uint32_t z, const double3 &pw,
+                        const double3 &px, const double3 &py, const double3 &pz)
+  {
+    const std::optional<double> value =
+        templates.torsionStrain({typeOf(w), typeOf(x), typeOf(y), typeOf(z)}, pw, px, py, pz);
+    if (value.has_value()) strain += value.value();
+  };
+
+  for (std::uint32_t X : nA)
+  {
+    const double3 pX = next(pA, X);
+    addBend(X, a, b, pX, pA, pB);
+    for (std::uint32_t Y : nB)
+    {
+      if (X == Y) continue;
+      addTorsion(X, a, b, Y, pX, pA, pB, next(pB, Y));
+    }
+    for (std::uint32_t W : neighboursOf(X, components))
+    {
+      if (W == a || W == b) continue;
+      addTorsion(W, X, a, b, next(pX, W), pX, pA, pB);
+    }
+  }
+  for (std::uint32_t Y : nB)
+  {
+    const double3 pY = next(pB, Y);
+    addBend(a, b, Y, pA, pB, pY);
+    for (std::uint32_t Z : neighboursOf(Y, components))
+    {
+      if (Z == b || Z == a) continue;
+      addTorsion(a, b, Y, Z, pA, pB, pY, next(pY, Z));
+    }
+  }
+  return strain;
+}
 
 PolymerLinkTable::NetworkStatistics PolymerLinkTable::networkStatistics(const SimulationBox &simulationBox,
                                                                          const std::vector<Component> &components,

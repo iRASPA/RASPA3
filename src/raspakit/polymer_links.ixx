@@ -114,6 +114,8 @@ export struct PolymerTemplates
   std::map<std::array<std::uint16_t, 2>, std::size_t> bondIndex{};
   std::map<std::array<std::uint16_t, 3>, std::size_t> bendIndex{};
   std::map<std::array<std::uint16_t, 4>, std::size_t> torsionIndex{};
+  std::vector<double> bendMinimum{};     ///< Derived: the minimum of every bend template over the angle.
+  std::vector<double> torsionMinimum{};  ///< Derived: the minimum of every torsion template over the dihedral.
   bool resolved{false};
 
   bool operator==(PolymerTemplates const &other) const
@@ -134,6 +136,13 @@ export struct PolymerTemplates
                                     const std::array<std::size_t, 3> &identifiers) const;
   std::optional<TorsionPotential> torsion(const std::array<std::uint16_t, 4> &types,
                                           const std::array<std::size_t, 4> &identifiers) const;
+
+  /// The energy of the bend / torsion template of the given types at the given (imaged) positions, relative to
+  /// the minimum of the template; nullopt when there is no template for the types.
+  std::optional<double> bendStrain(const std::array<std::uint16_t, 3> &types, const double3 &a, const double3 &b,
+                                   const double3 &c) const;
+  std::optional<double> torsionStrain(const std::array<std::uint16_t, 4> &types, const double3 &a, const double3 &b,
+                                      const double3 &c, const double3 &d) const;
 
   std::string printStatus() const;
 
@@ -424,6 +433,20 @@ export struct PolymerLinkTable
 
   /// The neighbours (component connectivity and polymer bonds) of a global atom index.
   std::vector<std::uint32_t> neighboursOf(std::uint32_t atom, const std::vector<Component> &components) const;
+
+  /**
+   * \brief The angular strain a bond between the atoms 'a' and 'b' would carry in the current geometry.
+   *
+   * The sum of the bend and torsion templates through the bond (the terms rebuild() generates for it), each
+   * relative to its minimum, with the atoms typed as after the reaction ('retyped': global atom index -> product
+   * type; the other atoms keep their current types). The stretch of the bond itself and the non-bonded
+   * corrections are not included (the distance is the capture criterion), and a missing template is skipped
+   * (the reaction reports it). Internal energy units. Used for the orientation-weighted acceptance of the
+   * Polymerization driver: p = p0 exp(-strain / k_B T*).
+   */
+  double angularStrain(std::uint32_t a, std::uint32_t b, const SimulationBox &simulationBox,
+                       const std::vector<Component> &components, std::span<const Atom> atoms,
+                       const std::map<std::uint32_t, std::uint16_t> &retyped) const;
 
   /**
    * \brief Cluster and cycle analysis of the molecule graph (nodes: molecules, edges: polymer bonds).
