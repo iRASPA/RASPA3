@@ -3794,6 +3794,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             "MaximumCollectiveShell",        "PlateauWindow",
             "MaximumTranslationInPlane",     "ReinsertionInPlaneProbability",
             "WriteTrajectoryDiagnostics",    "TrajectoryThermostat",
+            "WritePairRecords",              "SnapshotInterval",
             "BathRate",                      "CommitDistance",
             "TrajectoryTermination",         "TerminationEvents",
             "FreeEnergyInput",               "BarrierProbability",
@@ -3961,6 +3962,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                                                         block["PlateauWindow"][1].get<double>());
           }
           readBoolean("WriteTrajectoryDiagnostics", s.writeTrajectoryDiagnostics);
+          readBoolean("WritePairRecords", s.writePairRecords);
+          readNumber("SnapshotInterval", s.snapshotInterval);
+          if (s.snapshotInterval < 0.0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'SnapshotInterval' must be >= 0 [s] (0 disables)\n");
+          }
           if (block.contains("TrajectoryThermostat"))
           {
             if (!block["TrajectoryThermostat"].is_string())

@@ -221,6 +221,18 @@ export struct DynamicallyCorrectedTST
   std::string outputJsonFileName;
   nlohmann::json outputJson;
   std::vector<std::ofstream> replicaStreams;
+  std::vector<std::ofstream> pairStreams;  ///< Per replica: the per-pair records ('WritePairRecords').
+
+  /// Stored time indices of the plateau window ('PlateauWindow', default the second half of the trajectory).
+  std::vector<std::size_t> plateauIndices;
+
+  // --- early termination and recovery ------------------------------------------------------------
+  /// A termination signal (SIGTERM/SIGINT/SIGUSR1, e.g. the scheduler's warning before the wall-time kill) was
+  /// received: the replicas stop at the next cycle boundary (a trajectory pair in progress is abandoned), and the
+  /// analysis and output run over the completed pairs.
+  std::atomic<bool> stoppedEarly{false};
+  std::vector<std::size_t> completedTransmissionCycles;  ///< Per replica: production cycles completed.
+  std::vector<std::chrono::steady_clock::time_point> lastSnapshotTime;  ///< Per replica ('SnapshotInterval').
 
   std::chrono::duration<double> totalInitializationTime{0};
   std::chrono::duration<double> totalTransmissionTime{0};
@@ -277,8 +289,19 @@ export struct DynamicallyCorrectedTST
   [[nodiscard]] std::vector<std::size_t> countOccupancies(const System& system) const;
 
   /// Launches 'TrajectoriesPerConfiguration' forward/time-reversed trajectory pairs from the
-  /// current configuration and accumulates the transmission functions.
-  void launchTrajectories(std::size_t replicaId, std::size_t block);
+  /// current configuration and accumulates the transmission functions. 'productionCycle' is the cycle of the
+  /// transmission stage (recorded with the pair). A pair interrupted by a termination signal is discarded.
+  void launchTrajectories(std::size_t replicaId, std::size_t block, std::size_t productionCycle);
+
+  /// Writes the header of the per-pair record file of a replica ('WritePairRecords').
+  void writePairRecordHeader(std::size_t replicaId);
+
+  /// Writes the accumulators of a replica to 'dctst/accumulator_{T}_{P}.r{k}.json' (written to a temporary file
+  /// and renamed, so the file is always complete). 'final' marks the snapshot at the end of the transmission stage.
+  void writeAccumulatorSnapshot(std::size_t replicaId, bool final) const;
+
+  /// The stored time indices inside the plateau window.
+  [[nodiscard]] std::vector<std::size_t> computePlateauIndices() const;
 
   /// Global index (into moleculeData) of the tagged molecule.
   [[nodiscard]] std::size_t taggedMoleculeIndex(const System& system) const;

@@ -43,6 +43,7 @@ import interactions_ewald;
 import interactions_external_field;
 import thermostat;
 import json;
+import graceful_shutdown;
 import dctst_settings;
 import dctst_barrier;
 
@@ -392,6 +393,8 @@ DynamicallyCorrectedTST::DynamicallyCorrectedTST(InputReader& reader)
     statistics.maximumTranslation = settings.maximumTranslationInPlane;
   }
   occupancyStates.assign(numberOfReplicas, DcTSTOccupancyState{});
+  completedTransmissionCycles.assign(numberOfReplicas, 0uz);
+  lastSnapshotTime.assign(numberOfReplicas, std::chrono::steady_clock::time_point{});
 }
 
 void DynamicallyCorrectedTST::run()
@@ -484,6 +487,15 @@ void DynamicallyCorrectedTST::setup()
   }
   std::print(stream, "Maximum in-plane translation (initial):  {} [A]\n", settings.maximumTranslationInPlane);
   std::print(stream, "In-plane reinsertion probability:        {}\n", settings.reinsertionInPlaneProbability);
+  std::print(stream, "Per-pair records:                        {}\n",
+             settings.writePairRecords ? "dctst/pairs_{T}_{P}.r{k}.txt (one line per completed pair)" : "off");
+  if (settings.snapshotInterval > 0.0)
+    std::print(stream, "Accumulator snapshots:                   dctst/accumulator_{{T}}_{{P}}.r{{k}}.json every {} [s]\n",
+               settings.snapshotInterval);
+  else
+    std::print(stream, "Accumulator snapshots:                   off\n");
+  std::print(stream, "Termination signal (TERM/INT/USR1):      stops at the next cycle boundary (an unfinished pair is "
+                     "discarded) and writes the results of the completed pairs\n");
   std::print(
       stream,
       "Cage lattice (occupancies):              {} x {} x {} cages, center of cage B at {:.4f} {:.4f} {:.4f} [A]\n",
@@ -554,6 +566,21 @@ void DynamicallyCorrectedTST::setup()
     std::print(replicaStream, "{}", system.writeComponentStatus());
     std::print(replicaStream, "{}", system.writeNumberOfPseudoAtoms());
     std::flush(replicaStream);
+  }
+
+  plateauIndices = computePlateauIndices();
+
+  // per-replica per-pair records
+  if (settings.writePairRecords)
+  {
+    pairStreams.reserve(numberOfReplicas);
+    for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
+    {
+      const System& system = systems[replicaId];
+      pairStreams.emplace_back(
+          std::format("dctst/pairs_{}_{}.r{}.txt", system.temperature, system.input_pressure, replicaId), std::ios::out);
+      writePairRecordHeader(replicaId);
+    }
   }
 
   // interpolation grids are computed once and shared (copied) between the replicas
@@ -768,9 +795,22 @@ void DynamicallyCorrectedTST::runStage(SimulationStage stage, std::size_t number
             std::flush(replicaStream);
 
             BlockErrorEstimation estimation(numberOfBlocks, std::max(1uz, productionCycles));
+            const bool snapshots = (stage == SimulationStage::Transmission) && settings.snapshotInterval > 0.0;
+            lastSnapshotTime[replicaId] = std::chrono::steady_clock::now();
 
             for (std::size_t cycle = 0; cycle != numberOfCycles; ++cycle)
             {
+              // a termination signal (e.g. the scheduler's warning before the wall-time kill): stop at this
+              // cycle boundary; the analysis then runs over the completed trajectory pairs
+              if (GracefulShutdown::requested())
+              {
+                stoppedEarly.store(true, std::memory_order_relaxed);
+                std::print(replicaStream, "Termination signal received: stopping at cycle {} of {} ({})\n\n", cycle,
+                           numberOfCycles, (cycle >= equilibrationCycles) ? "production" : "equilibration");
+                std::flush(replicaStream);
+                break;
+              }
+
               const bool production = cycle >= equilibrationCycles;
               if (production)
               {
@@ -783,7 +823,21 @@ void DynamicallyCorrectedTST::runStage(SimulationStage stage, std::size_t number
               if (stage == SimulationStage::Transmission && production && settings.launchTrajectoryEvery > 0uz &&
                   (cycle - equilibrationCycles) % settings.launchTrajectoryEvery == 0uz)
               {
-                launchTrajectories(replicaId, block);
+                launchTrajectories(replicaId, block, cycle - equilibrationCycles);
+                if (GracefulShutdown::requested()) continue;  // the pair was abandoned; the loop head stops the run
+              }
+              if (stage == SimulationStage::Transmission && production)
+              {
+                completedTransmissionCycles[replicaId] = cycle - equilibrationCycles + 1uz;
+              }
+              if (snapshots && production)
+              {
+                const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+                if (std::chrono::duration<double>(now - lastSnapshotTime[replicaId]).count() >= settings.snapshotInterval)
+                {
+                  writeAccumulatorSnapshot(replicaId, false);
+                  lastSnapshotTime[replicaId] = now;
+                }
               }
 
               if (cycle % optimizeMCMovesEvery == 0uz)
@@ -862,6 +916,11 @@ void DynamicallyCorrectedTST::runStage(SimulationStage stage, std::size_t number
               }
             }
 
+            if (snapshots)
+            {
+              writeAccumulatorSnapshot(replicaId, true);
+            }
+
             // consistency check of the running energies at the end of the stage
             RunningEnergy recomputed = system.computeTotalEnergies();
             std::print(replicaStream, "\n{}", recomputed.printMCDiff(system.runningEnergies));
@@ -872,6 +931,24 @@ void DynamicallyCorrectedTST::runStage(SimulationStage stage, std::size_t number
             std::flush(replicaStream);
           });
     }
+  }
+
+  if (stoppedEarly.load(std::memory_order_relaxed))
+  {
+    if (stage == SimulationStage::Transmission)
+    {
+      const auto [minimum, maximum] =
+          std::minmax_element(completedTransmissionCycles.begin(), completedTransmissionCycles.end());
+      std::print(stream,
+                 "Termination signal received: the transmission stage was stopped after {}..{} of {} production cycles "
+                 "per replica; the results are over the completed trajectory pairs\n",
+                 *minimum, *maximum, productionCycles);
+    }
+    else
+    {
+      std::print(stream, "Termination signal received during the {} stage: stopping\n", stageName);
+    }
+    std::flush(stream);
   }
 
   const std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
@@ -1514,7 +1591,7 @@ void DynamicallyCorrectedTST::prepareOccupancies(std::size_t replicaId)
 // Trajectories
 // =================================================================================================
 
-void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::size_t block)
+void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::size_t block, std::size_t productionCycle)
 {
   System& system = systems[replicaId];
   RandomNumber& rng = randoms[replicaId];
@@ -1633,6 +1710,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
   {
     double meanDrift{0.0};
     double maxDrift{0.0};
+    bool aborted{false};  // interrupted by a termination signal; the pair is discarded
     bool longJump{false};
     bool committed{false};
     bool eventTerminated{false};
@@ -1744,6 +1822,13 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     std::size_t step{1};
     for (; step <= numberOfTrajectorySteps; ++step)
     {
+      // a trajectory can take hours at a long cap: poll the termination signal inside the integration too
+      if ((step & 255uz) == 0uz && GracefulShutdown::requested())
+      {
+        outcome.aborted = true;
+        return;
+      }
+
       const RunningEnergy energies = Integrators::velocityVerlet(
           moleculeSpan, atomSpan, dynamicsSpan, system.components, system.timeStep, noThermostat, frameworkAtoms,
           system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
@@ -1893,6 +1978,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     // forward trajectory
     TrajectoryOutcome forward;
     integrateTrajectory(+1.0, forward);
+    if (forward.aborted) return;
     forwardSelf = deltaSelf;
     forwardSelfTwoState = deltaSelfTwoState;
     forwardSelfCommitted = deltaSelfCommitted;
@@ -1907,6 +1993,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     reverseVelocities(moleculeData, dynamics, groupSpan);
     TrajectoryOutcome backward;
     integrateTrajectory(-1.0, backward);
+    if (backward.aborted) return;
 
     // accumulate |qdot| (Delta^+ - Delta^-)
     accumulator.speed[block] += qdot;
@@ -1986,7 +2073,205 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
       }
       ++d;
     }
+
+    // per-pair record (flushed, so that a killed run keeps every completed pair)
+    if (settings.writePairRecords && replicaId < pairStreams.size())
+    {
+      auto plateauAverage = [&](const std::vector<double>& forwardValues, const std::vector<double>& backwardValues)
+      {
+        double sum{0.0};
+        for (std::size_t t : plateauIndices) sum += forwardValues[t] - backwardValues[t];
+        return sum / static_cast<double>(std::max(1uz, plateauIndices.size()));
+      };
+      double collectivePlateau{0.0};
+      for (std::size_t t : plateauIndices)
+      {
+        for (std::size_t s = 0; s < numberOfShells; ++s)
+        {
+          for (std::size_t c = 0; c < numberOfComponents; ++c)
+          {
+            const std::size_t index = accumulator.collectiveIndex(s, c, t);
+            collectivePlateau += forwardCollective[index] - deltaCollective[index];
+          }
+        }
+      }
+      collectivePlateau /= static_cast<double>(std::max(1uz, plateauIndices.size()));
+
+      auto status = [](const TrajectoryOutcome& outcome) -> int
+      { return outcome.eventTerminated ? 0 : (outcome.committed ? 1 : 2); };
+      auto channel = [](const TrajectoryOutcome& outcome) -> int
+      { return outcome.terminatingChannel.has_value() ? static_cast<int>(outcome.terminatingChannel.value()) : -1; };
+      auto phaseSum = [](const TrajectoryOutcome& outcome, std::size_t phase)
+      {
+        double sum{0.0};
+        for (double q : outcome.frameQ[phase]) sum += q;
+        return sum;
+      };
+      auto time = [&](std::size_t steps) { return static_cast<double>(steps) * system.timeStep; };
+
+      std::ostream pairStream(pairStreams[replicaId].rdbuf());
+      std::print(pairStream,
+                 "{} {} {:.8g} {:g} {:g} {:g} {:g} {} {} {:.6g} {:.6g} {} {} {:.6g} {:.6g} {:g} {:g} {:g} {:g} {} {} "
+                 "{:.4e} {:.4e} {:.8g} {:.8g} {:.8g} {:.8g} {:.8g}\n",
+                 productionCycle, block, qdot, forward.finalSelf, backward.finalSelf, forward.finalLocalQ,
+                 backward.finalLocalQ, status(forward), status(backward), time(forward.terminationStep),
+                 time(backward.terminationStep), channel(forward), channel(backward),
+                 forward.committed ? time(forward.commitStep) : 0.0, backward.committed ? time(backward.commitStep) : 0.0,
+                 phaseSum(forward, 0), phaseSum(forward, 1), phaseSum(backward, 0), phaseSum(backward, 1),
+                 forward.longJump ? 1 : 0, backward.longJump ? 1 : 0, forward.meanDrift, backward.meanDrift,
+                 plateauAverage(forwardSelf, deltaSelf), plateauAverage(forwardSelfTwoState, deltaSelfTwoState),
+                 plateauAverage(forwardSelfCommitted, deltaSelfCommitted),
+                 forwardSelfCommitted.back() - deltaSelfCommitted.back(), collectivePlateau);
+      std::flush(pairStream);
+    }
   }
+}
+
+// =================================================================================================
+// Plateau window, per-pair records and accumulator snapshots
+// =================================================================================================
+
+std::vector<std::size_t> DynamicallyCorrectedTST::computePlateauIndices() const
+{
+  const double timeStep = systems.front().timeStep;
+  double plateauBegin = 0.5 * settings.trajectoryTime;
+  double plateauEnd = settings.trajectoryTime;
+  if (settings.plateauWindow.has_value())
+  {
+    plateauBegin = settings.plateauWindow->first;
+    plateauEnd = settings.plateauWindow->second;
+  }
+  std::vector<std::size_t> indices;
+  for (std::size_t t = 0; t < numberOfTimes; ++t)
+  {
+    const double time = static_cast<double>(t * settings.sampleTrajectoryEvery) * timeStep;
+    if (time >= plateauBegin - 1e-12 && time <= plateauEnd + 1e-12) indices.push_back(t);
+  }
+  if (indices.empty()) indices.push_back(numberOfTimes - 1uz);
+  return indices;
+}
+
+void DynamicallyCorrectedTST::writePairRecordHeader(std::size_t replicaId)
+{
+  const System& system = systems[replicaId];
+  const Component& tagged = system.components[settings.taggedComponent];
+  const double commitDistance = (settings.commitDistance > 0.0) ? settings.commitDistance : 0.5 * barrier.lambda;
+  const double plateauBegin = static_cast<double>(plateauIndices.front() * settings.sampleTrajectoryEvery) * system.timeStep;
+  const double plateauEnd = static_cast<double>(plateauIndices.back() * settings.sampleTrajectoryEvery) * system.timeStep;
+
+  std::ostream file(pairStreams[replicaId].rdbuf());
+  std::print(file, "# dcTST per-pair records of component '{}', replica {} of {} (seed {})\n", tagged.name, replicaId,
+             numberOfReplicas, randoms[replicaId].seed);
+  std::print(file, "# one line per completed trajectory pair (forward '+' and time-reversed '-'), written after the pair;\n");
+  std::print(file, "# every estimator is a ratio of sums over the pairs, so files of different replicas and runs can be "
+                   "concatenated\n");
+  std::print(file, "# trajectory cap {} ps, time step {} ps, commit distance {:.4f} A, plateau window [{}, {}] ps, "
+                   "termination: {}\n",
+             settings.trajectoryTime, system.timeStep, commitDistance, plateauBegin, plateauEnd,
+             (settings.trajectoryTermination == DcTSTSettings::TrajectoryTermination::Event)
+                 ? std::format("event ({} local axial event(s) after commitment)", settings.terminationEvents)
+                 : std::string("fixed time"));
+  std::print(file, "# column 1: production cycle of the transmission stage\n");
+  std::print(file, "# column 2: block\n");
+  std::print(file, "# column 3: |qdot| [A/ps], initial speed of the reaction bead along the normal (the weight)\n");
+  std::print(file, "# column 4: Delta_S+ (final), net cage count of the tagged molecule at termination (+1/2 in B, -1/2 in A)\n");
+  std::print(file, "# column 5: Delta_S- (final)\n");
+  std::print(file, "# column 6: Q_local+, signed axial window crossings of the other molecules in the column (lab frame)\n");
+  std::print(file, "# column 7: Q_local-\n");
+  std::print(file, "# column 8: status+ (0 ended by an event, 1 capped after commitment, 2 never committed)\n");
+  std::print(file, "# column 9: status-\n");
+  std::print(file, "# column 10: termination time+ [ps]\n");
+  std::print(file, "# column 11: termination time- [ps]\n");
+  std::print(file, "# column 12: terminating channel+ (-1 none; 0 tagged B->A, 1 tagged B->B', 2 other A->B, 3 other B->A, "
+                   "4 other A->A', 5 other A'->A, 6 other B->B', 7 other B'->B; frame of the tagged hop)\n");
+  std::print(file, "# column 13: terminating channel-\n");
+  std::print(file, "# column 14: commit time+ [ps] (0 if never committed)\n");
+  std::print(file, "# column 15: commit time-\n");
+  std::print(file, "# column 16: Q_before+, crossings of the other molecules before the commitment (frame of the tagged hop)\n");
+  std::print(file, "# column 17: Q_after+, after the commitment\n");
+  std::print(file, "# column 18: Q_before-\n");
+  std::print(file, "# column 19: Q_after-\n");
+  std::print(file, "# column 20: long jump+ (tagged molecule left cages A/B)\n");
+  std::print(file, "# column 21: long jump-\n");
+  std::print(file, "# column 22: mean |relative energy drift|+\n");
+  std::print(file, "# column 23: mean |relative energy drift|-\n");
+  std::print(file, "# column 24: plateau average of Delta_S+ - Delta_S- (net cage count)\n");
+  std::print(file, "# column 25: plateau average of Delta_S+ - Delta_S- (two-state, side of the plane)\n");
+  std::print(file, "# column 26: plateau average of Delta_S+ - Delta_S- (committed)\n");
+  std::print(file, "# column 27: Delta_S+ - Delta_S- (committed) at the last stored time\n");
+  std::print(file, "# column 28: plateau average of the sum over all other molecules of Delta_j+ - Delta_j- (kappa_C - kappa_S, all molecules)\n");
+  std::print(file, "# estimators (w = column 3, sums over the pairs):\n");
+  std::print(file, "#   kappa_S^event = sum w (c4 - c5) / sum w;   kappa_C^event = sum w ((c4 + c6) - (c5 + c7)) / sum w\n");
+  std::print(file, "#   kappa_S (plateau) = sum w c24 / sum w;   kappa_S committed (plateau) = sum w c26 / sum w;   "
+                   "kappa_C (plateau, all) = sum w (c24 + c28) / sum w\n");
+  std::print(file, "#   conditioned (event-ended members only, s = +1 for '+', -1 for '-'): kappa^cond = 2 sum w s Delta / sum w\n");
+  std::print(file, "#   epsilon_before = sum w (c16 + c18) / sum w;   epsilon_after = sum w (c17 + c19) / sum w\n");
+  std::flush(file);
+}
+
+void DynamicallyCorrectedTST::writeAccumulatorSnapshot(std::size_t replicaId, bool final) const
+{
+  const System& system = systems[replicaId];
+  const DcTSTTransmissionAccumulator& accumulator = transmission[replicaId];
+
+  nlohmann::json json;
+  json["replica"] = replicaId;
+  json["numberOfReplicas"] = numberOfReplicas;
+  json["seed"] = randoms[replicaId].seed;
+  json["final"] = final;
+  json["transmissionCyclesCompleted"] = completedTransmissionCycles[replicaId];
+  json["numberOfTransmissionCycles"] = settings.numberOfTransmissionCycles;
+  json["numberOfBlocks"] = accumulator.numberOfBlocks;
+  json["numberOfShells"] = accumulator.numberOfShells;
+  json["numberOfComponents"] = accumulator.numberOfComponents;
+  json["numberOfTimes"] = accumulator.numberOfTimes;
+  json["sampleTrajectoryEvery"] = settings.sampleTrajectoryEvery;
+  json["timeStep"] = system.timeStep;
+  json["trajectoryTime"] = settings.trajectoryTime;
+  json["plateauIndices"] = {plateauIndices.front(), plateauIndices.back()};
+  json["collectiveIndex"] = "(shell * numberOfComponents + component) * numberOfTimes + time";
+
+  json["speed"] = accumulator.speed;
+  json["numberOfTrajectoryPairs"] = accumulator.numberOfTrajectoryPairs;
+  json["self"] = accumulator.self;
+  json["selfTwoState"] = accumulator.selfTwoState;
+  json["selfCommitted"] = accumulator.selfCommitted;
+  json["collective"] = accumulator.collective;
+  json["sumSpeedSquared"] = accumulator.sumSpeedSquared;
+  json["sumRelativeEnergyDrift"] = accumulator.sumRelativeEnergyDrift;
+  json["maximumRelativeEnergyDrift"] = accumulator.maximumRelativeEnergyDrift;
+  json["numberOfTrajectories"] = accumulator.numberOfTrajectories;
+  json["numberOfLongJumpTrajectories"] = accumulator.numberOfLongJumpTrajectories;
+  json["numberOfCommittedTrajectories"] = accumulator.numberOfCommittedTrajectories;
+  json["selfEvent"] = accumulator.selfEvent;
+  json["collectiveEvent"] = accumulator.collectiveEvent;
+  json["speedEventTerminated"] = accumulator.speedEventTerminated;
+  json["selfEventConditioned"] = accumulator.selfEventConditioned;
+  json["collectiveEventConditioned"] = accumulator.collectiveEventConditioned;
+  json["collectiveEventBeforeCommitment"] = accumulator.collectiveEventBeforeCommitment;
+  json["collectiveEventAfterCommitment"] = accumulator.collectiveEventAfterCommitment;
+  json["localQChannel"] = accumulator.localQChannel;
+  json["channelTimeSum"] = accumulator.channelTimeSum;
+  json["channelEvents"] = accumulator.channelEvents;
+  json["terminatingEvents"] = accumulator.terminatingEvents;
+  json["allEvents"] = accumulator.allEvents;
+  json["numberOfEventTerminatedTrajectories"] = accumulator.numberOfEventTerminatedTrajectories;
+  json["numberOfCappedTrajectories"] = accumulator.numberOfCappedTrajectories;
+  json["numberOfUncommittedTrajectories"] = accumulator.numberOfUncommittedTrajectories;
+  json["terminationTimeSum"] = accumulator.terminationTimeSum;
+  json["terminationTimeMaximum"] = accumulator.terminationTimeMaximum;
+  json["integratedTimeSum"] = accumulator.integratedTimeSum;
+
+  // written to a temporary file and renamed, so that the snapshot is always complete
+  const std::string fileName =
+      std::format("dctst/accumulator_{}_{}.r{}.json", system.temperature, system.input_pressure, replicaId);
+  const std::string temporaryName = fileName + ".tmp";
+  {
+    std::ofstream file(temporaryName, std::ios::out | std::ios::trunc);
+    file << json.dump();
+  }
+  std::error_code error;
+  std::filesystem::rename(temporaryName, fileName, error);
 }
 
 // =================================================================================================
@@ -2015,12 +2300,7 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
     plateauBegin = settings.plateauWindow->first;
     plateauEnd = settings.plateauWindow->second;
   }
-  std::vector<std::size_t> plateauIndices;
-  for (std::size_t t = 0; t < numberOfTimes; ++t)
-  {
-    if (result.time[t] >= plateauBegin - 1e-12 && result.time[t] <= plateauEnd + 1e-12) plateauIndices.push_back(t);
-  }
-  if (plateauIndices.empty()) plateauIndices.push_back(numberOfTimes - 1uz);
+  // plateauIndices (member) was set in setup()
 
   // pooled sums and per-block (replica x block) transmission functions
   double speed{0.0};
@@ -2426,6 +2706,14 @@ void DynamicallyCorrectedTST::output()
   {
     std::print(stream, "Transmission functions ({} trajectory pairs, {} replicas x {} blocks):\n",
                kappa.numberOfTrajectoryPairs, numberOfReplicas, numberOfBlocks);
+    if (stoppedEarly.load(std::memory_order_relaxed))
+    {
+      const auto [minimum, maximum] =
+          std::minmax_element(completedTransmissionCycles.begin(), completedTransmissionCycles.end());
+      std::print(stream,
+                 "    STOPPED EARLY by a termination signal:  {}..{} of {} production cycles completed per replica\n",
+                 *minimum, *maximum, settings.numberOfTransmissionCycles);
+    }
     std::print(stream, "    <|qdot|> at the barrier:             {:.6f} +/- {:.6f} [A/ps]\n", kappa.meanSpeed,
                kappa.meanSpeedError);
     std::print(stream, "    sqrt(2 kT/(pi m)) of the molecule:   {:.6f} [A/ps]\n", thermalSpeed);
@@ -2677,6 +2965,9 @@ void DynamicallyCorrectedTST::output()
   std::flush(stream);
 
   outputJson["results"]["numberOfTrajectoryPairs"] = kappa.numberOfTrajectoryPairs;
+  outputJson["results"]["stoppedEarly"] = stoppedEarly.load(std::memory_order_relaxed);
+  outputJson["results"]["transmissionCyclesCompleted"] = completedTransmissionCycles;
+  outputJson["results"]["transmissionCyclesRequested"] = settings.numberOfTransmissionCycles;
   outputJson["results"]["meanSpeed"] = kappa.meanSpeed;
   outputJson["results"]["kappaSelf"] = kappa.selfPlateau;
   outputJson["results"]["kappaSelfError"] = kappa.selfPlateauError;

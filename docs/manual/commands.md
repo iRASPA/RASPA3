@@ -916,7 +916,33 @@ reported separately at the end of the simulation.
     variants, and \f$\kappa_C(t)\f$ per shell and per component). The energy
     drift of the trajectories (NVE only) and \f$\langle|\dot q|\rangle\f$
     (compare with \f$\sqrt{2k_BT/\pi m}\f$) are reported as checks. Binary
-    restart files are not supported by this driver.
+    restart files are not supported by this driver; instead the run is made
+    recoverable and poolable in three ways. (i) A termination signal
+    (SIGTERM, SIGINT or SIGUSR1 — e.g. the scheduler's warning ahead of the
+    wall-time kill, `#SBATCH --signal=B:USR1@900` forwarded to the process)
+    stops every replica at the next cycle boundary, abandoning a trajectory
+    pair in progress, after which the normal analysis and output are written
+    over the completed pairs (the summary and the JSON, `"stoppedEarly"` and
+    `"transmissionCyclesCompleted"`, say so). (ii) `"WritePairRecords"`
+    (default true) writes one line per completed trajectory pair, flushed,
+    to `dctst/pairs_{T}_{P}.r{k}.txt` per replica: the weight
+    \f$|\dot q|\f$, the final net cage counts and \f$Q_{\mathrm{local}}\f$
+    of both members, their status (event-ended, capped, never committed),
+    termination and commitment times, terminating channel, the crossings
+    before and after commitment, the energy drift, and the plateau averages
+    of the self (net count, two-state, committed) and collective
+    displacements. Every estimator of the summary is a ratio of sums over
+    these lines (the formulas are in the file header), so the files of
+    several replicas and independent runs can be concatenated and the
+    estimators pooled exactly, re-blocked or bootstrapped, and a run that
+    was killed keeps all its completed pairs. (iii) `"SnapshotInterval"`
+    (seconds, default 600; 0 disables) makes every replica write its full
+    accumulators (the block sums of \f$\kappa_S(t)\f$, \f$\kappa_C(t)\f$ per
+    shell and component, and the event counters) as
+    `dctst/accumulator_{T}_{P}.r{k}.json`, replaced atomically, from which
+    the transmission functions of a killed run can be rebuilt
+    (\f$\kappa_S(t) = \sum_b \mathrm{self}[b][t] / \sum_b \mathrm{speed}[b]\f$,
+    pooled over replicas and runs).
 
     *Occupancy-resolved mode* — `"CageOccupancies" : [n_A, n_B]`. In a cage
     system the correlations that distinguish \f$D_C\f$ from \f$D_S\f$ act on

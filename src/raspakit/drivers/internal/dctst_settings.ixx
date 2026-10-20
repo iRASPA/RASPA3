@@ -125,6 +125,15 @@ export struct DcTSTSettings
   /// Write the trajectory diagnostics (energy drift per trajectory) ('WriteTrajectoryDiagnostics').
   bool writeTrajectoryDiagnostics{false};
 
+  /// Write one line per completed trajectory pair to 'dctst/pairs_{T}_{P}.r{k}.txt' (per replica, flushed after
+  /// every pair), from which every estimator can be rebuilt as a ratio of sums and runs can be pooled exactly
+  /// ('WritePairRecords', default true).
+  bool writePairRecords{true};
+  /// Interval in seconds at which every replica writes a JSON snapshot of its accumulators to
+  /// 'dctst/accumulator_{T}_{P}.r{k}.json' (atomically replaced; the transmission functions of a run that was
+  /// killed can be recovered from it) ('SnapshotInterval', default 600; 0 disables).
+  double snapshotInterval{600.0};
+
   /**
    * \brief How a trajectory ends ('TrajectoryTermination').
    *
