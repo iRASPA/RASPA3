@@ -1063,6 +1063,67 @@ reported separately at the end of the simulation.
     cages \f$A'\f$ and \f$B'\f$ coincide, and the three windows are all the
     windows of the column).
 
+    *Hybrid estimator of the collective excess* — `"HandoverTimes" :
+    [τ₁, τ₂, …]` (ps after the commitment of the tagged molecule; event mode
+    only; default `[1.0, 2.0, 3.0, 5.0, 8.0]`, `[]` disables it) and
+    `"OccupancyRateInputs" : [paths]`. The first-event estimator above
+    samples the race between the hop channels of the column: every
+    trajectory ends with \f$s = \pm1\f$, so \f$\epsilon\f$ has a variance of
+    one per trajectory and needs \f$\sim 1/\epsilon^2\f$ trajectories of a
+    mean length of the local exchange time (Ruiz-Montero, Frenkel and Brey,
+    Mol. Phys. 90, 925 (1997), for the same problem with \f$\kappa\f$). The
+    hybrid estimator does not sample the race. At a handover time
+    \f$\tau\f$ after commitment it records (i) the *concerted* part
+    \f$\epsilon_{\mathrm{conc}}(\tau)\f$: the cage coordinate of the tagged
+    molecule and the axial displacement of every other molecule of the
+    column measured with the committor of the free-energy profile,
+    \f$C(q) = \lfloor q/\lambda\rfloor + \tfrac12\f$ with every step replaced
+    by \f$p_B(q) = \int_{-\lambda/2}^{q} e^{\beta F}/\int_{-\lambda/2}^{\lambda/2}
+    e^{\beta F}\f$ (the committor of the diffusive limit, flat inside the
+    cages and switching across the window; built from `results.profile` of
+    `"FreeEnergyInput"`, the conditioned profile when `"CageOccupancies"`
+    is set), accumulated while the molecule is in the column and clamped to
+    it, relative to \f$\kappa_S^{\mathrm{committed}}\f$ minus one like
+    \f$\epsilon\f$ — a member whose first event already occurred before
+    \f$\tau\f$ enters with its first-event values, so that
+    \f$\epsilon_{\mathrm{conc}}(\tau\to\infty)\f$ is the first-event
+    \f$\epsilon\f$; and (ii) the occupancies \f$(n_{A'}, n_A, n_B, n_{B'})\f$
+    of the column at \f$\tau\f$ (all molecules, the tagged one in \f$B\f$;
+    frame of the tagged hop), as a \f$|\dot q|\f$-weighted histogram over the
+    members that had no event yet. From the histogram the *Markov* part
+    \f$\epsilon_{\mathrm{Markov}}(\tau) = \sum_n P(n)\,\sum_c s_c k_c(n)/\sum_c
+    k_c(n)\f$ is the expected sign of the first event with the channel rates
+    \f$n_X\,k(n_X\to n_Y)\f$ of the six axial channels (\f$s=\pm1\f$) and, in
+    the variant `lateral` (the first-order closure of the hierarchical
+    scheme), the refilling of \f$A\f$ from its \f$z-2\f$ lateral neighbours
+    and the lateral escape from \f$B\f$ with \f$s = 0\f$ (the `axial` variant
+    omits them; the truth lies between the two). The rates
+    \f$k(n\to n') = \kappa_S(n,n')\,k^{TST}(n,n')\f$ are read from the JSON
+    outputs of occupancy-conditioned transmission runs listed in
+    `"OccupancyRateInputs"` (`dcTST.cageOccupancies` and `kSelf`); pairs that
+    were not run are taken from the least-squares fit \f$\log k = c + a\,n -
+    b\,n'\f$ through the measured ones (also reported with the fit for every
+    pair), and the lateral channels use the mean occupancy of a cage. Without
+    the list only \f$\epsilon_{\mathrm{conc}}(\tau)\f$ and the histograms
+    are reported (JSON `results.eventTerminated.hybrid`, also in the
+    accumulator snapshots, so that the closure can be done afterwards or
+    pooled over runs). The sum \f$\epsilon_{\mathrm{hyb}}(\tau) =
+    \epsilon_{\mathrm{conc}}(\tau) + \epsilon_{\mathrm{Markov}}(\tau)\f$ must
+    not depend on \f$\tau\f$ once the hopping beyond \f$\tau\f$ is Markovian
+    (a drift with \f$\tau\f$ marks the non-Markovian part of the correlation,
+    and the table of the members that reached each \f$\tau\f$, had an event
+    before it or were truncated by the cap tells how far the test can be
+    trusted); the first-event \f$\epsilon\f$ from the same trajectories is
+    its \f$\tau\to\infty\f$ limit and validates it with a much larger error
+    bar. The variance of the concerted part is set by the molecules that
+    actually cross a window before \f$\tau\f$, i.e. it is of order
+    \f$\epsilon\f$ instead of one per trajectory. The trajectories are
+    integrated to at least commitment plus the last handover time (the
+    first-event quantities are frozen at the terminating event); the cost
+    per trajectory is therefore the recrossing time plus \f$\tau\f$, not the
+    local exchange time, which is what makes the estimator affordable at low
+    loading.
+
 -   `"SimulationType" : "Polymerization"`\
     Stochastic, template-based free-radical chain-growth polymerization of
     monomers in a box, built on `"MolecularDynamicsSpatialDecomposition"`

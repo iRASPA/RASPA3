@@ -156,6 +156,29 @@ export struct DcTSTSettings
   std::size_t terminationEvents{1};
 
   /**
+   * \brief Hybrid estimator of the collective excess ('HandoverTimes': [tau_1, tau_2, ...] in ps after
+   * commitment; event mode only; an empty list disables it).
+   *
+   * The first-event estimator samples the race between the hop channels of the column: every trajectory
+   * ends with s = +-1, so its variance is one per trajectory however small epsilon is. The hybrid estimator
+   * does not sample the race. At a handover time tau after the commitment of the tagged molecule it
+   * records (i) the displacement of every molecule of the column measured with the committor p_B(q) of
+   * the free-energy profile instead of the step function (Ruiz-Montero, Frenkel and Brey, Mol. Phys. 90,
+   * 925 (1997)) -- the 'concerted' part, which is of order epsilon per trajectory -- and (ii) the occupancies
+   * (n_A', n_A, n_B, n_B') of the column, from which the expected sign of the first event is computed with the
+   * occupancy-resolved rates k(n -> n') (the 'Markov' part, the lattice sum of the first-order closure
+   * evaluated per trajectory). Their sum should be independent of tau once the hopping beyond tau is
+   * Markovian; the direct first-event estimator is its tau -> infinity limit and is computed from the same
+   * trajectories (which are integrated to at least commitment + max tau).
+   */
+  std::vector<double> handoverTimes{1.0, 2.0, 3.0, 5.0, 8.0};
+  /// JSON outputs of occupancy-conditioned transmission runs ('OccupancyRateInputs': [paths]); each supplies
+  /// one rate k(n_A -> n_B) = kappa_S(n_A, n_B) k^TST(n_A, n_B). Pairs that are not in the list are taken from
+  /// a fit log k = c + a n - b n' through the listed ones. Without the list only the concerted part and the
+  /// occupancy histograms are reported (the closure can then be done afterwards from the JSON output).
+  std::vector<std::string> occupancyRateInputs{};
+
+  /**
    * \brief Occupancy-resolved mode ('CageOccupancies': [n_A, n_B]).
    *
    * Fixes the occupancies of the two cages that share the window of the tagged molecule: n_A molecules

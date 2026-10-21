@@ -126,9 +126,34 @@ export struct DcTSTTransmissionAccumulator
   double terminationTimeMaximum{0.0};                  ///< [ps]
   double integratedTimeSum{0.0};                       ///< Over all trajectories (for the cost per trajectory) [ps].
 
+  // --- hybrid estimator (handover times) --------------------------------------------------------------
+  /// Occupancy state of the column (all molecules, the tagged one included) at a handover time, in the frame of
+  /// the tagged hop: the tagged molecule is in B.
+  struct ColumnState
+  {
+    std::uint16_t nAPrime{0};
+    std::uint16_t nA{0};
+    std::uint16_t nB{0};
+    std::uint16_t nBPrime{0};
+    auto operator<=>(const ColumnState&) const = default;
+  };
+  /// Per handover time k and block, the hybrid analogues of selfEvent and collectiveEvent - selfEvent: for a
+  /// member whose first post-commitment event occurred before tau the values at that event (as in the first-event
+  /// estimator), otherwise the committor-smoothed cage coordinate C of the tagged molecule at tau, resp. the
+  /// smoothed axial displacement sum_j delta_j of the other molecules of the column accumulated up to tau.
+  /// Accumulated as |qdot| (value^+ - value^-) over the pair; members that did not reach tau enter with their
+  /// final values.
+  std::vector<std::vector<double>> hybridTagged;  ///< [handover][block]
+  std::vector<std::vector<double>> hybridOthers;  ///< [handover][block]
+  /// hybridOccupancy[k][state] = (sum of |qdot|, number of members) over the members that had no event before tau
+  /// and were in that state at tau; the Markov closure acts on this histogram.
+  std::vector<std::map<ColumnState, std::pair<double, std::size_t>>> hybridOccupancy;  ///< [handover]
+  std::vector<std::size_t> hybridEventBefore;  ///< [handover] members whose first event occurred before tau
+  std::vector<std::size_t> hybridTruncated;    ///< [handover] members that did not reach tau
+
   DcTSTTransmissionAccumulator() = default;
   DcTSTTransmissionAccumulator(std::size_t numberOfBlocks, std::size_t numberOfShells, std::size_t numberOfComponents,
-                               std::size_t numberOfTimes);
+                               std::size_t numberOfTimes, std::size_t numberOfHandovers);
 
   [[nodiscard]] std::size_t collectiveIndex(std::size_t shell, std::size_t component, std::size_t time) const
   {
@@ -243,6 +268,39 @@ export struct DynamicallyCorrectedTST
   std::optional<double> barrierProbability{};
   double barrierProbabilityError{0.0};
   std::string barrierProbabilitySource{};
+
+  // --- hybrid estimator ----------------------------------------------------------------------------
+  /// Committor p_B(q) of the diffusive limit, p_B(q) = int_{-lambda/2}^{q} e^{beta F} / int_{-lambda/2}^{lambda/2}
+  /// e^{beta F}, tabulated on 'committorTable.size()' points of q in [-lambda/2, lambda/2) (barrier at 0) from the
+  /// profile of 'FreeEnergyInput'; empty when no profile is available (the hybrid estimator is then disabled).
+  std::vector<double> committorTable{};
+  /// The handover times in integration steps (sorted), empty when the hybrid estimator is off.
+  std::vector<std::size_t> handoverSteps{};
+  [[nodiscard]] bool hybridEnabled() const { return !handoverSteps.empty(); }
+  /// Smooth cage coordinate of a reaction coordinate q: the net cage count floor(q / lambda) + 1/2 with the
+  /// step at every window replaced by the committor, so that it equals the expected final cage count of a
+  /// molecule found at q.
+  [[nodiscard]] double smoothCageCoordinate(double q) const;
+  /// Builds 'committorTable' from the free-energy profile (q grid and beta F) of the free-energy driver's JSON,
+  /// 'barrierOffset' being the q of the barrier on that grid (lambda/2 for a conditioned profile over cage A).
+  void buildCommittorTable(const std::vector<double>& q, const std::vector<double>& betaF, double barrierOffset);
+
+  /// Occupancy-resolved hopping rates k(n -> n') [1/ps] (n the occupancy of the departure cage, the hopping
+  /// molecule included; n' that of the arrival cage) read from 'OccupancyRateInputs', with a fit
+  /// log k = c + a n - b n' through them for the pairs that were not measured.
+  struct OccupancyRates
+  {
+    std::map<std::pair<std::size_t, std::size_t>, double> measured;
+    bool fitValid{false};
+    double fitConstant{0.0};
+    double fitDeparture{0.0};
+    double fitArrival{0.0};
+    double fitRms{0.0};  ///< Root-mean-square residual of log k over the measured pairs.
+    /// Rate from the table when measured, else from the fit (zero when neither is available).
+    [[nodiscard]] double rate(double n, double nPrime, bool tableFirst) const;
+  };
+  std::optional<OccupancyRates> occupancyRates{};
+  void loadOccupancyRates();
 
   void run();
   void setup();
@@ -379,6 +437,35 @@ export struct DynamicallyCorrectedTST
     double meanTerminationTime{0.0};  ///< [ps], over the event-terminated trajectories
     double maximumTerminationTime{0.0};
     double meanIntegratedTime{0.0};  ///< [ps], over all trajectories
+
+    /// Hybrid estimator at one handover time tau: epsilon_hyb(tau) = epsilon_conc(tau) + epsilon_Markov(tau), all
+    /// relative to kappa_S^committed like epsilon. 'tagged' and 'others' split epsilon_conc into the committor-smoothed
+    /// tagged part (the smooth analogue of f - 1) and the smoothed displacement of the other molecules.
+    struct Hybrid
+    {
+      double time{0.0};  ///< tau [ps]
+      double concerted{0.0};
+      double concertedError{0.0};
+      double concertedTagged{0.0};
+      double concertedOthers{0.0};
+      double fractionEventBefore{0.0};  ///< Members whose first event occurred before tau (they enter with their event value).
+      double fractionTruncated{0.0};    ///< Members that did not reach tau (trajectory capped or never committed).
+      std::size_t numberOfStates{0};    ///< Distinct occupancy states of the column at tau.
+      /// Markov closure over the occupancy histogram at tau with the measured/fitted rates: lateral channels of
+      /// A and B ending the race with s = 0 (the first-order closure of the article), and axial channels only.
+      bool markovAvailable{false};
+      double markovTable{0.0};      ///< Measured rates where available, fit elsewhere.
+      double markovTableAxial{0.0};
+      double markovFit{0.0};        ///< Fit for every pair.
+      double markovFitAxial{0.0};
+      double unmeasuredWeight{0.0};  ///< Weight fraction of the states that needed the fit for at least one channel.
+      double hybrid{0.0};           ///< concerted + markovTable
+      double hybridFit{0.0};        ///< concerted + markovFit
+      /// Occupancy histogram at tau (weight fraction of |qdot|, frame of the tagged hop, tagged molecule counted in B).
+      std::vector<std::pair<DcTSTTransmissionAccumulator::ColumnState, double>> occupancy;
+      std::vector<std::size_t> occupancyCounts;
+    };
+    std::vector<Hybrid> hybrid;
   };
 
   [[nodiscard]] TransmissionResult analyzeTransmission() const;

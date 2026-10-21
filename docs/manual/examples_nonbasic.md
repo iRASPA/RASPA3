@@ -22,6 +22,7 @@
 17. [dcTST free-energy profile: methane in LTA (ITQ-29)](#Example_nonbasic_17)
 18. [dcTST: self- and collective diffusion of methane in LTA (ITQ-29)](#Example_nonbasic_18)
 19. [Molecular Dynamics: self- and collective diffusion of methane in LTA (ITQ-29)](#Example_nonbasic_19)
+20. [dcTST hybrid estimator: collective excess of methane in LTA (ITQ-29)](#Example_nonbasic_20)
 
 
 
@@ -1511,6 +1512,31 @@ few hours instead of 35 minutes (reduce `"NumberOfTransmissionCycles"` or
 the number of pairs accordingly); the fixed-time run is still the one to use
 for \f$\kappa(t)\f$ itself. Event mode combines with `"CageOccupancies"`.
 
+In event mode the run also reports the *hybrid* estimator of
+\f$\epsilon\f$ (on by default, `"HandoverTimes" : [1.0, 2.0, 3.0, 5.0, 8.0]`
+ps after commitment; `[]` switches it off). Each terminating event is a
+\f$\pm1\f$ outcome of a race among the hop channels of the column, so the
+first-event \f$\epsilon\f$ carries a variance of one per trajectory however
+small \f$\epsilon\f$ is. The hybrid estimator replaces the outcome of the
+race by its expectation: at a handover time \f$\tau\f$ it records the
+displacement of the column measured with the committor
+\f$p_B(q)\f$ of the free-energy profile of example 17 instead of the cage
+step function (the *concerted* part, which only responds to molecules that
+are actually in a window), and the occupancies \f$(n_{A'}, n_A, n_B,
+n_{B'})\f$ of the column, from which the expected sign of the first event
+follows with the occupancy-resolved rates \f$k(n\to n')\f$ (the *Markov*
+part). The summary prints \f$\epsilon_{\mathrm{conc}}(\tau)\f$ with its
+error, its tagged and other-molecule parts and the occupancy histogram at
+every \f$\tau\f$; the Markov part is evaluated when the JSON outputs of
+occupancy-conditioned runs of this example are listed in
+`"OccupancyRateInputs"` (pairs that were not run are taken from a fit
+\f$\log k = c + a\,n - b\,n'\f$ through those that were), and
+\f$\epsilon_{\mathrm{hyb}}(\tau) = \epsilon_{\mathrm{conc}}(\tau) +
+\epsilon_{\mathrm{Markov}}(\tau)\f$ should form a plateau in \f$\tau\f$ that
+agrees with the first-event \f$\epsilon\f$ within the (much larger) error
+of the latter. The trajectories are integrated to at least commitment plus
+the last handover time even when the first event comes earlier.
+
 Run from `examples/non_basic/18_dctst_methane_in_lta` after example 17 has
 finished:
 
@@ -1647,3 +1673,143 @@ Run from `examples/non_basic/19_md_diffusion_methane_in_lta`:
   ]
 }
 ```
+
+#### dcTST hybrid estimator: collective excess of methane in LTA (ITQ-29)<a name="Example_nonbasic_20"></a>
+
+The same system as examples 17 and 18 (methane in ITQ-29 at six molecules
+per cage, 300 K), with the collective excess \(\varepsilon = D_C/D_S - 1\)
+measured by the *hybrid estimator* instead of waiting for the first event.
+In the event-terminated run of example 18 every trajectory follows the
+column \(A', A, B, B'\) until the next axial hop, a few tens of picoseconds
+on average, and ends with \(s=\pm1\): the estimator samples the race between
+the hop channels, so \(\varepsilon\) has a variance of one per trajectory
+whatever its size. The hybrid estimator replaces the outcome of the race by
+its expectation. At the handover times `"HandoverTimes" : [1, 2, 3, 5, 8]`
+ps after the commitment of the tagged molecule it records the displacement
+of the column measured with the committor \(p_B(q)\) of the free-energy
+profile of example 17 (the *concerted* part \(\varepsilon_{\mathrm{conc}}(\tau)\),
+flat inside the cages, responding only to molecules that are in a window)
+and the occupancies \((n_{A'}, n_A, n_B, n_{B'})\) of the column, from which
+the expected sign of the first event follows with the occupancy-resolved
+rates \(k(n\to n')\) (the *Markov* part \(\varepsilon_{\mathrm{Markov}}(\tau)\)).
+The cap `"TrajectoryTime" : 12.0` is set just above the last handover time:
+the trajectories cost 12 ps instead of the ~30 ps to the first event, most
+of them are "capped" for the first-event estimator (which is therefore not
+meaningful in this run; `p_cap` is close to one) but complete for the
+hybrid one (`p_trunc` in the hybrid table is small). The sum
+\(\varepsilon_{\mathrm{hyb}}(\tau) = \varepsilon_{\mathrm{conc}}(\tau) +
+\varepsilon_{\mathrm{Markov}}(\tau)\) must form a plateau in \(\tau\); a
+drift marks the non-Markovian part of the correlation. To compare with the
+first-event \(\varepsilon\) on the same trajectories, raise the cap to 300
+ps as in example 18 (the hybrid table is then evaluated on the same
+trajectories and its last column should agree with
+\(\varepsilon\) within the latter's much larger error bar).
+
+The rates \(k(n\to n') = \kappa_S(n,n')\,k^{TST}(n,n')\) come from
+occupancy-conditioned pairs of runs in the `rates/` subdirectory: for each
+pair \((n_A, n_B)\) a free-energy run (example 17 with
+`"CageOccupancies" : [n_A, n_B]`, no `"MirrorSymmetry"`) and a fixed-time
+transmission run (example 18 with the same `"CageOccupancies"`, reading the
+conditioned free-energy JSON). Three pairs are included, (6,6), (7,6) and
+(6,7), the minimum for the fit \(\log k = c + a\,n - b\,n'\) through which
+the driver supplies every pair that was not run (the summary lists the
+measured pairs, the fit coefficients and the weight `p_fit` of the
+occupancy states that needed the fit; adding the pairs (5,6), (6,5), (7,7),
+(5,7), (7,5) reduces it). The occupancy-conditioned runs are the ones that
+make the closure cheap: they need only the recrossing plateau of 2 ps, so
+their cost does not depend on the barrier height.
+
+Run in this order from `examples/non_basic/20_dctst_hybrid_methane_in_lta`
+after example 17 has finished: `rates/6_6/free_energy`, then
+`rates/6_6/transmission` (and likewise `7_6` and `6_7`; the six runs are
+independent of each other and can run in parallel), then the main run in
+the example directory, which reads
+`rates/*/transmission/output/output_300_0.dctst.json` through
+`"OccupancyRateInputs"`. Without that key the main run still reports
+\(\varepsilon_{\mathrm{conc}}(\tau)\) and writes the occupancy histograms to
+`results.eventTerminated.hybrid` of its JSON output for a closure done
+afterwards. Output of interest: the table "Hybrid estimator of the
+collective excess" in `output/output_300_0.dctst.txt` with
+\(\varepsilon_{\mathrm{conc}}\), its tagged and other-molecule parts,
+`Markov.lat` (lateral channels of \(A\) and \(B\) end the race with
+\(s=0\), the first-order closure) and `Markov.ax` (axial channels only),
+\(\varepsilon_{\mathrm{hyb}}\) for both, and the dominant occupancy states
+at the last handover time. With 50 pairs per replica (200 in total) the
+error of \(\varepsilon_{\mathrm{conc}}\) is of order \(10^{-2}\), which the
+first-event estimator reaches only with thousands of 30 ps trajectories.
+
+```json
+{
+  "SimulationType" : "DynamicallyCorrectedTST",
+  "NumberOfInitializationCycles" : 2000,
+  "NumberOfBlocks" : 5,
+  "NumberOfThreads" : 4,
+  "PrintEvery" : 500,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "ITQ-29",
+      "NumberOfUnitCells" : [4, 3, 3],
+      "ExternalTemperature" : 300.0,
+      "ChargeMethod" : "None",
+      "TimeStep" : 0.0005,
+
+      "dcTST" : {
+        "TaggedComponent" : "methane",
+        "BarrierPosition" : [0.0, 0.5, 0.5],
+        "BarrierNormal" : [1.0, 0.0, 0.0],
+        "LatticeDistance" : 11.8671,
+        "CageCenter" : [0.5, 0.5, 0.5],
+
+        "FreeEnergyInput" : "../17_dctst_free_energy_methane_in_lta/output/output_300_0.dctst_free_energy.json",
+
+        "NumberOfConstrainedEquilibrationCycles" : 500,
+        "NumberOfTransmissionCycles" : 500,
+        "LaunchTrajectoryEvery" : 10,
+        "TrajectoriesPerConfiguration" : 1,
+        "TrajectoryTime" : 12.0,
+        "SampleTrajectoryEvery" : 20,
+        "MaximumCollectiveShell" : 2,
+        "PlateauWindow" : [6.0, 12.0],
+
+        "TrajectoryTermination" : "Event",
+        "TerminationEvents" : 1,
+        "HandoverTimes" : [1.0, 2.0, 3.0, 5.0, 8.0],
+        "OccupancyRateInputs" : [
+          "rates/6_6/transmission/output/output_300_0.dctst.json",
+          "rates/7_6/transmission/output/output_300_0.dctst.json",
+          "rates/6_7/transmission/output/output_300_0.dctst.json"
+        ],
+
+        "TrajectoryThermostat" : "None",
+
+        "MaximumTranslationInPlane" : 1.0,
+        "ReinsertionInPlaneProbability" : 0.5
+      }
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "methane",
+      "StartingBead" : 0,
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "BlockingPockets" : [
+           [0.0, 0.0, 0.0, 4.0],
+           [0.5, 0.0, 0.0, 1.0],
+           [0.0, 0.5, 0.0, 1.0],
+           [0.0, 0.0, 0.5, 1.0]
+         ],
+      "CreateNumberOfMolecules" : 216
+    }
+  ]
+}
+```
+
+The `dcTST` block of `rates/6_6/free_energy/simulation.json` is that of
+example 17 with `"CageOccupancies" : [6, 6]` and without
+`"MirrorSymmetry"`; that of `rates/6_6/transmission/simulation.json` is
+that of example 18 with `"CageOccupancies" : [6, 6]` and
+`"FreeEnergyInput" : "../free_energy/output/output_300_0.dctst_free_energy.json"`.

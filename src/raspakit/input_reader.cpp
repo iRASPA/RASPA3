@@ -3867,7 +3867,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             "BathRate",                      "CommitDistance",
             "TrajectoryTermination",         "TerminationEvents",
             "FreeEnergyInput",               "BarrierProbability",
-            "BarrierProbabilityError"};
+            "BarrierProbabilityError",       "HandoverTimes",
+            "OccupancyRateInputs"};
         static const std::set<std::string, InsensitiveCompare> freeEnergyOptions = {
             "NumberOfPilotCycles",      "NumberOfWindowCycles",   "NumberOfWindowEquilibrationCycles",
             "SampleEvery",              "NumberOfWindows",        "WindowSpacing",
@@ -4126,6 +4127,67 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           if (s.trajectoryTime <= 0.0)
           {
             throw std::runtime_error("[Input reader]: 'dcTST' 'TrajectoryTime' must be positive\n");
+          }
+          if (block.contains("HandoverTimes"))
+          {
+            if (!block["HandoverTimes"].is_array())
+            {
+              throw std::runtime_error(
+                  "[Input reader]: 'dcTST' 'HandoverTimes' must be an array of times after commitment in ps\n");
+            }
+            s.handoverTimes.clear();
+            for (const auto &item : block["HandoverTimes"])
+            {
+              if (!item.is_number() || item.get<double>() <= 0.0)
+              {
+                throw std::runtime_error("[Input reader]: 'dcTST' 'HandoverTimes' must be positive numbers [ps]\n");
+              }
+              s.handoverTimes.push_back(item.get<double>());
+            }
+            std::sort(s.handoverTimes.begin(), s.handoverTimes.end());
+            s.handoverTimes.erase(std::unique(s.handoverTimes.begin(), s.handoverTimes.end()), s.handoverTimes.end());
+            if (!s.handoverTimes.empty() && s.handoverTimes.back() >= s.trajectoryTime)
+            {
+              throw std::runtime_error(
+                  "[Input reader]: 'dcTST' 'HandoverTimes' must be smaller than 'TrajectoryTime' (the cap)\n");
+            }
+            if (!s.handoverTimes.empty() &&
+                s.trajectoryTermination != DcTSTSettings::TrajectoryTermination::Event)
+            {
+              throw std::runtime_error(
+                  "[Input reader]: 'dcTST' 'HandoverTimes' requires 'TrajectoryTermination': \"Event\"\n");
+            }
+          }
+          else if (s.trajectoryTermination != DcTSTSettings::TrajectoryTermination::Event)
+          {
+            s.handoverTimes.clear();
+          }
+          else
+          {
+            std::erase_if(s.handoverTimes, [&](double tau) { return tau >= s.trajectoryTime; });
+          }
+          if (block.contains("OccupancyRateInputs"))
+          {
+            if (!block["OccupancyRateInputs"].is_array())
+            {
+              throw std::runtime_error(
+                  "[Input reader]: 'dcTST' 'OccupancyRateInputs' must be an array of paths of the JSON outputs of "
+                  "occupancy-conditioned transmission runs\n");
+            }
+            for (const auto &item : block["OccupancyRateInputs"])
+            {
+              if (!item.is_string())
+              {
+                throw std::runtime_error("[Input reader]: 'dcTST' 'OccupancyRateInputs' must contain strings\n");
+              }
+              s.occupancyRateInputs.push_back(item.get<std::string>());
+            }
+            if (s.handoverTimes.empty())
+            {
+              throw std::runtime_error(
+                  "[Input reader]: 'dcTST' 'OccupancyRateInputs' is only used by the hybrid estimator "
+                  "('HandoverTimes' with 'TrajectoryTermination': \"Event\")\n");
+            }
           }
           if (s.reinsertionInPlaneProbability < 0.0 || s.reinsertionInPlaneProbability > 1.0)
           {
