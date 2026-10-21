@@ -53,7 +53,9 @@ DcTSTWindowAccumulator::DcTSTWindowAccumulator(std::size_t numberOfBlocks, std::
       sumX(numberOfBlocks, 0.0),
       sumXSquared(numberOfBlocks, 0.0),
       sumBias(numberOfBlocks, 0.0),
-      maximumTranslation(maximumTranslation)
+      maximumTranslation(maximumTranslation),
+      barrierOccupancyPairs((DcTSTPilotAccumulator::maximumOccupancy + 1uz) * (DcTSTPilotAccumulator::maximumOccupancy + 1uz),
+                            0.0)
 {
 }
 
@@ -1399,6 +1401,23 @@ void DynamicallyCorrectedTSTFreeEnergy::sampleWindow(std::size_t replicaId, std:
   accumulator.sumX[block] += xf;
   accumulator.sumXSquared[block] += xf * xf;
   accumulator.sumBias[block] += windowBias(windowIndex, x);
+
+  // occupancies of the two cages sharing the window while the tagged molecule is on the dividing plane
+  if (!occupancyMode && std::abs(x) < DcTSTWindowAccumulator::barrierOccupancyHalfWidth)
+  {
+    const double3 position = atoms[component.startingBead].position;
+    const std::vector<std::size_t> occupancy = countOccupancies(system);
+    const double3 windowShift = 0.5 * barrier.lambda * barrier.normal;
+    const std::size_t behind = cageLattice.cageOf(position - windowShift);
+    const std::size_t ahead = cageLattice.cageOf(position + windowShift);
+    const std::size_t own = cageLattice.cageOf(position);
+    // the other molecules only; the tagged molecule is then counted in whichever cage plays A
+    std::size_t mBehind = occupancy[behind] - ((own == behind) ? 1uz : 0uz);
+    std::size_t mAhead = occupancy[ahead] - ((own == ahead) ? 1uz : 0uz);
+    accumulator.barrierOccupancyPairs[DcTSTPilotAccumulator::occupancyIndex(mBehind + 1uz, mAhead)] += 0.5;
+    accumulator.barrierOccupancyPairs[DcTSTPilotAccumulator::occupancyIndex(mAhead + 1uz, mBehind)] += 0.5;
+    accumulator.barrierOccupancySamples += 1.0;
+  }
 }
 
 double DynamicallyCorrectedTSTFreeEnergy::beadThermalSpeed() const
@@ -1928,6 +1947,22 @@ DynamicallyCorrectedTSTFreeEnergy::OccupancyDistribution DynamicallyCorrectedTST
     result.requestedProbability = result.joint[requestedIndex.value()];
     result.requestedProbabilityError = meanAndError(blockRequested).second;
   }
+
+  // P(n_A, n_B | q*) from the window stage
+  result.jointAtBarrier.assign(result.size * result.size, 0.0);
+  for (const DcTSTWindowAccumulator& accumulator : windowData)
+  {
+    for (std::size_t i = 0; i < result.jointAtBarrier.size(); ++i)
+    {
+      result.jointAtBarrier[i] += accumulator.barrierOccupancyPairs[i];
+    }
+    result.totalAtBarrier += accumulator.barrierOccupancySamples;
+  }
+  if (result.totalAtBarrier > 0.0)
+  {
+    result.availableAtBarrier = true;
+    for (double& p : result.jointAtBarrier) p /= result.totalAtBarrier;
+  }
   return result;
 }
 
@@ -1957,14 +1992,28 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
     std::print(file, "# <n_A> = {:.4f} (loading + 1 in the mean-field limit), <n_B> = {:.4f}\n", occupancies.meanA,
                occupancies.meanB);
     std::print(file, "# column 1: n_A\n# column 2: n_B\n# column 3: P(n_A, n_B)\n# column 4: P(n_A)\n# column 5: P(n_B)\n");
+    if (occupancies.availableAtBarrier)
+    {
+      std::print(file,
+                 "# column 6: P(n_A, n_B | q*), the occupancies while the tagged molecule is within {} A of the dividing "
+                 "plane ({} window-stage samples)\n# column 7: k^TST(n_A -> n_B) / k^TST = P(n_A, n_B | q*) / P(n_A, n_B)\n",
+                 DcTSTWindowAccumulator::barrierOccupancyHalfWidth, occupancies.totalAtBarrier);
+    }
     for (std::size_t nA = 0; nA < occupancies.size; ++nA)
     {
       for (std::size_t nB = 0; nB < occupancies.size; ++nB)
       {
-        const double p = occupancies.joint[nA * occupancies.size + nB];
-        if (p <= 0.0) continue;
-        std::print(file, "{:4} {:4} {:14.8f} {:14.8f} {:14.8f}\n", nA, nB, p, occupancies.marginalA[nA],
+        const std::size_t index = nA * occupancies.size + nB;
+        const double p = occupancies.joint[index];
+        const double pBarrier = occupancies.availableAtBarrier ? occupancies.jointAtBarrier[index] : 0.0;
+        if (p <= 0.0 && pBarrier <= 0.0) continue;
+        std::print(file, "{:4} {:4} {:14.8f} {:14.8f} {:14.8f}", nA, nB, p, occupancies.marginalA[nA],
                    occupancies.marginalB[nB]);
+        if (occupancies.availableAtBarrier)
+        {
+          std::print(file, " {:14.8f} {:14.6f}", pBarrier, (p > 0.0) ? pBarrier / p : 0.0);
+        }
+        std::print(file, "\n");
       }
     }
   }
@@ -2063,6 +2112,31 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
       std::print(stream, "    P(n_A = {}, n_B = {}):                      {:.6f} +/- {:.6f}\n",
                  settings.cageOccupancies->first, settings.cageOccupancies->second, occupancies.requestedProbability,
                  occupancies.requestedProbabilityError);
+    }
+    if (occupancies.availableAtBarrier)
+    {
+      std::print(stream,
+                 "    occupancies with the tagged molecule within {} A of the plane ({} window-stage samples), the\n"
+                 "    ratio P(n_A, n_B | q*) / P(n_A, n_B) = k^TST(n_A -> n_B) / k^TST (pairs with P(n_A, n_B) >= 0.005):\n",
+                 DcTSTWindowAccumulator::barrierOccupancyHalfWidth, occupancies.totalAtBarrier);
+      std::print(stream, "    {:>4} {:>4} {:>12} {:>14} {:>10} {:>8}\n", "n_A", "n_B", "P(n_A,n_B)", "P(n_A,n_B|q*)",
+                 "ratio", "samples");
+      double consistency{0.0};
+      for (std::size_t nA = 0; nA < occupancies.size; ++nA)
+      {
+        for (std::size_t nB = 0; nB < occupancies.size; ++nB)
+        {
+          const std::size_t index = nA * occupancies.size + nB;
+          const double p = occupancies.joint[index];
+          const double pBarrier = occupancies.jointAtBarrier[index];
+          consistency += pBarrier;
+          if (p < 0.005) continue;
+          std::print(stream, "    {:>4} {:>4} {:>12.6f} {:>14.6f} {:>10.4f} {:>8.0f}\n", nA, nB, p, pBarrier, pBarrier / p,
+                     pBarrier * occupancies.totalAtBarrier);
+        }
+      }
+      std::print(stream, "    (sum_(n_A,n_B) P(n_A,n_B) k^TST(n_A -> n_B) / k^TST = {:.4f}, exactly 1 by construction)\n",
+                 consistency);
     }
     std::print(stream, "\n");
   }
@@ -2246,6 +2320,20 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
       {
         const double p = occupancies.joint[nA * occupancies.size + nB];
         if (p > 0.0) json["joint"][std::format("{},{}", nA, nB)] = p;
+      }
+    }
+    json["samplesAtBarrier"] = occupancies.totalAtBarrier;
+    json["barrierHalfWidth"] = DcTSTWindowAccumulator::barrierOccupancyHalfWidth;
+    if (occupancies.availableAtBarrier)
+    {
+      json["jointAtBarrier"] = nlohmann::json::object();
+      for (std::size_t nA = 0; nA < occupancies.size; ++nA)
+      {
+        for (std::size_t nB = 0; nB < occupancies.size; ++nB)
+        {
+          const double p = occupancies.jointAtBarrier[nA * occupancies.size + nB];
+          if (p > 0.0) json["jointAtBarrier"][std::format("{},{}", nA, nB)] = p;
+        }
       }
     }
     if (occupancyMode)

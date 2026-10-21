@@ -1522,20 +1522,20 @@ race by its expectation: at a handover time \f$\tau\f$ it records the
 displacement of the column measured with the committor
 \f$p_B(q)\f$ of the free-energy profile of example 17 instead of the cage
 step function (the *concerted* part, which only responds to molecules that
-are actually in a window), and the occupancies \f$(n_{A'}, n_A, n_B,
-n_{B'})\f$ of the column, from which the expected sign of the first event
-follows with the occupancy-resolved rates \f$k(n\to n')\f$ (the *Markov*
-part). The summary prints \f$\epsilon_{\mathrm{conc}}(\tau)\f$ with its
-error, its tagged and other-molecule parts and the occupancy histogram at
-every \f$\tau\f$; the Markov part is evaluated when the JSON outputs of
-occupancy-conditioned runs of this example are listed in
-`"OccupancyRateInputs"` (pairs that were not run are taken from a fit
-\f$\log k = c + a\,n - b\,n'\f$ through those that were), and
-\f$\epsilon_{\mathrm{hyb}}(\tau) = \epsilon_{\mathrm{conc}}(\tau) +
-\epsilon_{\mathrm{Markov}}(\tau)\f$ should form a plateau in \f$\tau\f$ that
-agrees with the first-event \f$\epsilon\f$ within the (much larger) error
-of the latter. The trajectories are integrated to at least commitment plus
-the last handover time even when the first event comes earlier.
+are actually in a window), and the full neighbourhood of the column (the
+occupancies of \f$A',A,B,B'\f$ and of the four lateral neighbours of
+\f$A\f$ and of \f$B\f$), from which the expected sign of the first event
+follows with the occupancy-resolved rates \f$k(n\to n')\f$ of the same run
+(the *Markov* part; post-stratification of the trajectory members by the
+launch occupancies, times
+\f$k^{TST}(n\to n')/k^{TST}=P(n,n'|q^*)/P(n,n')\f$ of example 17).
+Conditioned runs listed in `"OccupancyRateInputs"` remain optional
+overrides. \f$\epsilon_{\mathrm{hyb}}(\tau) =
+\epsilon_{\mathrm{conc}}(\tau) + \epsilon_{\mathrm{Markov}}(\tau)\f$
+should form a plateau in \f$\tau\f$ that agrees with the first-event
+\f$\epsilon\f$ within the (much larger) error of the latter. The
+trajectories are integrated to at least commitment plus the last handover
+time even when the first event comes earlier. See example 20.
 
 Run from `examples/non_basic/18_dctst_methane_in_lta` after example 17 has
 finished:
@@ -1689,9 +1689,11 @@ ps after the commitment of the tagged molecule it records the displacement
 of the column measured with the committor \(p_B(q)\) of the free-energy
 profile of example 17 (the *concerted* part \(\varepsilon_{\mathrm{conc}}(\tau)\),
 flat inside the cages, responding only to molecules that are in a window)
-and the occupancies \((n_{A'}, n_A, n_B, n_{B'})\) of the column, from which
-the expected sign of the first event follows with the occupancy-resolved
-rates \(k(n\to n')\) (the *Markov* part \(\varepsilon_{\mathrm{Markov}}(\tau)\)).
+and the full neighbourhood of the column (the occupancies of
+\((n_{A'}, n_A, n_B, n_{B'})\) and of the four lateral neighbours of \(A\)
+and of \(B\)), from which the expected sign of the first event follows
+with the occupancy-resolved rates \(k(n\to n')\) of this run (the *Markov*
+part \(\varepsilon_{\mathrm{Markov}}(\tau)\)).
 The cap `"TrajectoryTime" : 12.0` is set just above the last handover time:
 the trajectories cost 12 ps instead of the ~30 ps to the first event, most
 of them are "capped" for the first-event estimator (which is therefore not
@@ -1705,37 +1707,36 @@ ps as in example 18 (the hybrid table is then evaluated on the same
 trajectories and its last column should agree with
 \(\varepsilon\) within the latter's much larger error bar).
 
-The rates \(k(n\to n') = \kappa_S(n,n')\,k^{TST}(n,n')\) come from
-occupancy-conditioned pairs of runs in the `rates/` subdirectory: for each
-pair \((n_A, n_B)\) a free-energy run (example 17 with
-`"CageOccupancies" : [n_A, n_B]`, no `"MirrorSymmetry"`) and a fixed-time
-transmission run (example 18 with the same `"CageOccupancies"`, reading the
-conditioned free-energy JSON). Three pairs are included, (6,6), (7,6) and
-(6,7), the minimum for the fit \(\log k = c + a\,n - b\,n'\) through which
-the driver supplies every pair that was not run (the summary lists the
-measured pairs, the fit coefficients and the weight `p_fit` of the
-occupancy states that needed the fit; adding the pairs (5,6), (6,5), (7,7),
-(5,7), (7,5) reduces it). The occupancy-conditioned runs are the ones that
-make the closure cheap: they need only the recrossing plateau of 2 ps, so
-their cost does not depend on the barrier height.
+The rates \(k(n\to n') = \kappa_S(n,n')\,k^{TST}(n,n')\) come from the
+same two runs as examples 17 and 18. Example 17 records
+\(P(n_A,n_B)\) in the pilot and \(P(n_A,n_B|q^*)\) in the window stage
+at the dividing plane, so that
+\(k^{TST}(n\to n') = k^{TST}\,P(n,n'|q^*)/P(n,n')\). This transmission
+run classifies every trajectory member by the launch occupancies
+\((n_{\mathrm{from}}, n_{\mathrm{to}})\) and reports
+\(\kappa(n,n')\) per class (the committor-smoothed
+\(\kappa_S\) when the profile is available). Their product is the
+post-stratified table \(k(n\to n')\); pairs with too few members are
+taken from the weighted fit \(\log k = c + a\,n - b\,n'\). The summary
+lists the classes, the rates with their source (`classes` or a
+conditioned file), the consistency
+\(\sum P(n,n')\,k(n\to n')\) versus \(\kappa\,k^{TST}\), and the weight
+`p_fit` of the neighbourhood states that needed the fit.
+`"OccupancyRateInputs"` remains available as an optional override by
+occupancy-conditioned runs (example 18 with `"CageOccupancies"`).
 
-Run in this order from `examples/non_basic/20_dctst_hybrid_methane_in_lta`
-after example 17 has finished: `rates/6_6/free_energy`, then
-`rates/6_6/transmission` (and likewise `7_6` and `6_7`; the six runs are
-independent of each other and can run in parallel), then the main run in
-the example directory, which reads
-`rates/*/transmission/output/output_300_0.dctst.json` through
-`"OccupancyRateInputs"`. Without that key the main run still reports
-\(\varepsilon_{\mathrm{conc}}(\tau)\) and writes the occupancy histograms to
-`results.eventTerminated.hybrid` of its JSON output for a closure done
-afterwards. Output of interest: the table "Hybrid estimator of the
+Run from `examples/non_basic/20_dctst_hybrid_methane_in_lta` after
+example 17 has finished (the same `"FreeEnergyInput"` as example 18).
+Output of interest: the line "kappa_S smooth (plateau)", the occupancy
+class and rate tables, and the table "Hybrid estimator of the
 collective excess" in `output/output_300_0.dctst.txt` with
 \(\varepsilon_{\mathrm{conc}}\), its tagged and other-molecule parts,
 `Markov.lat` (lateral channels of \(A\) and \(B\) end the race with
-\(s=0\), the first-order closure) and `Markov.ax` (axial channels only),
-\(\varepsilon_{\mathrm{hyb}}\) for both, and the dominant occupancy states
-at the last handover time. With 50 pairs per replica (200 in total) the
-error of \(\varepsilon_{\mathrm{conc}}\) is of order \(10^{-2}\), which the
+\(s=0\), the first-order closure, evaluated on the actual neighbourhood)
+and `Markov.ax` (axial channels only), \(\varepsilon_{\mathrm{hyb}}\)
+for both, and the dominant occupancy states at the last handover time.
+With 50 pairs per replica (200 in total) the error of
+\(\varepsilon_{\mathrm{conc}}\) is of order \(10^{-2}\), which the
 first-event estimator reaches only with thousands of 30 ps trajectories.
 
 ```json
@@ -1776,11 +1777,6 @@ first-event estimator reaches only with thousands of 30 ps trajectories.
         "TrajectoryTermination" : "Event",
         "TerminationEvents" : 1,
         "HandoverTimes" : [1.0, 2.0, 3.0, 5.0, 8.0],
-        "OccupancyRateInputs" : [
-          "rates/6_6/transmission/output/output_300_0.dctst.json",
-          "rates/7_6/transmission/output/output_300_0.dctst.json",
-          "rates/6_7/transmission/output/output_300_0.dctst.json"
-        ],
 
         "TrajectoryThermostat" : "None",
 
@@ -1807,9 +1803,3 @@ first-event estimator reaches only with thousands of 30 ps trajectories.
   ]
 }
 ```
-
-The `dcTST` block of `rates/6_6/free_energy/simulation.json` is that of
-example 17 with `"CageOccupancies" : [6, 6]` and without
-`"MirrorSymmetry"`; that of `rates/6_6/transmission/simulation.json` is
-that of example 18 with `"CageOccupancies" : [6, 6]` and
-`"FreeEnergyInput" : "../free_energy/output/output_300_0.dctst_free_energy.json"`.

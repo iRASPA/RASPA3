@@ -4182,12 +4182,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
               }
               s.occupancyRateInputs.push_back(item.get<std::string>());
             }
-            if (s.handoverTimes.empty())
-            {
-              throw std::runtime_error(
-                  "[Input reader]: 'dcTST' 'OccupancyRateInputs' is only used by the hybrid estimator "
-                  "('HandoverTimes' with 'TrajectoryTermination': \"Event\")\n");
-            }
           }
           if (s.reinsertionInPlaneProbability < 0.0 || s.reinsertionInPlaneProbability > 1.0)
           {

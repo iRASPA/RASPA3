@@ -82,6 +82,15 @@ export struct DcTSTWindowAccumulator
   std::size_t cageChanges{0};
   double startCoordinate{0.0};  ///< x of the tagged molecule when the window started.
   double endCoordinate{0.0};
+  /// Joint occupancy histogram (n_A, n_B) of the two cages sharing the window while the tagged molecule is
+  /// within 'barrierOccupancyHalfWidth' of the dividing plane, the tagged molecule counted in A and the two
+  /// assignments (A, B) = (behind, ahead) and (ahead, behind) each with weight 1/2. The umbrella bias acts on
+  /// the coordinate of the tagged molecule only, so conditioned on it the sample is unbiased: this is
+  /// P(n_A, n_B | q*), which with the pilot's P(n_A, n_B) gives the conditioned transition-state rates
+  /// k^TST(n_A -> n_B) = k^TST P(n_A, n_B | q*) / P(n_A, n_B) without constrained runs. Index as in the pilot.
+  std::vector<double> barrierOccupancyPairs;
+  double barrierOccupancySamples{0.0};
+  static constexpr double barrierOccupancyHalfWidth = 0.25;  ///< [A]
 
   DcTSTWindowAccumulator() = default;
   DcTSTWindowAccumulator(std::size_t numberOfBlocks, std::size_t numberOfBins, double maximumTranslation);
@@ -289,6 +298,10 @@ export struct DynamicallyCorrectedTSTFreeEnergy
     double requestedProbability{0.0};
     double requestedProbabilityError{0.0};
     bool available{false};
+    /// P(n_A, n_B | q*) from the window stage (see DcTSTWindowAccumulator::barrierOccupancyPairs).
+    std::vector<double> jointAtBarrier;
+    double totalAtBarrier{0.0};
+    bool availableAtBarrier{false};
   };
 
   [[nodiscard]] ProfileResult analyzeProfile() const;

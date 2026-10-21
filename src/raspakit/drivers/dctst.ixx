@@ -56,6 +56,10 @@ export struct DcTSTTransmissionAccumulator
   std::vector<std::vector<double>> selfTwoState;  ///< [block][time], side-of-the-plane variant (Bennett-Chandler)
   std::vector<std::vector<double>>
       selfCommitted;  ///< [block][time], side of the plane frozen once |q| >= commit distance (RASPA2 convention)
+  /// [block][time], the committor-smoothed cage coordinate C(q) of the tagged molecule (Ruiz-Montero, Frenkel
+  /// and Brey): the step of the net cage count at every window replaced by the committor p_B of the free-energy
+  /// profile, which removes the variance of the A/B decision from kappa_S; zero when no committor is available.
+  std::vector<std::vector<double>> selfSmooth;
   std::vector<std::vector<double>>
       collective;  ///< [block][(shell * numberOfComponents + component) * numberOfTimes + time]
   std::vector<std::size_t> numberOfTrajectoryPairs;  ///< [block]
@@ -148,8 +152,36 @@ export struct DcTSTTransmissionAccumulator
   /// hybridOccupancy[k][state] = (sum of |qdot|, number of members) over the members that had no event before tau
   /// and were in that state at tau; the Markov closure acts on this histogram.
   std::vector<std::map<ColumnState, std::pair<double, std::size_t>>> hybridOccupancy;  ///< [handover]
+  /// The full neighbourhood of the column: the column itself and the occupancies of the lateral neighbours of A
+  /// and of B (sorted, so that states that differ only by a permutation coincide); the Markov closure is evaluated
+  /// per state with the actual lateral occupancies instead of the mean one.
+  struct NeighbourhoodState
+  {
+    ColumnState column{};
+    std::array<std::uint16_t, 4> lateralA{};
+    std::array<std::uint16_t, 4> lateralB{};
+    auto operator<=>(const NeighbourhoodState&) const = default;
+  };
+  std::vector<std::map<NeighbourhoodState, std::pair<double, std::size_t>>> hybridNeighbourhood;  ///< [handover]
   std::vector<std::size_t> hybridEventBefore;  ///< [handover] members whose first event occurred before tau
   std::vector<std::size_t> hybridTruncated;    ///< [handover] members that did not reach tau
+
+  // --- occupancy classes (post-stratification) ----------------------------------------------------------
+  /// Per trajectory member, classified by the occupancies (n_from, n_to) of its departure cage (the tagged
+  /// molecule included) and its arrival cage at launch: the forward member of a pair hops A -> B with
+  /// (m_A + 1, m_B), the time-reversed member B -> A with (m_B + 1, m_A), m the numbers of other molecules at
+  /// launch. kappa(n, n') = 2 sum s |qdot| Delta / sum |qdot| over the members of the class (s = +-1 the launch
+  /// direction, Delta the plateau value of the member) is the occupancy-resolved recrossing factor without a
+  /// constrained run, and with the conditioned k^TST(n -> n') of the free-energy input gives k(n -> n').
+  struct ClassSums
+  {
+    std::vector<double> speed;          ///< [block] sum |qdot|
+    std::vector<double> self;           ///< [block] sum s |qdot| Delta (net cage count, plateau)
+    std::vector<double> selfSmooth;     ///< [block] committor-smoothed
+    std::vector<double> selfCommitted;  ///< [block]
+    std::size_t members{0};
+  };
+  std::map<std::pair<std::size_t, std::size_t>, ClassSums> classes;
 
   DcTSTTransmissionAccumulator() = default;
   DcTSTTransmissionAccumulator(std::size_t numberOfBlocks, std::size_t numberOfShells, std::size_t numberOfComponents,
@@ -286,21 +318,38 @@ export struct DynamicallyCorrectedTST
   void buildCommittorTable(const std::vector<double>& q, const std::vector<double>& betaF, double barrierOffset);
 
   /// Occupancy-resolved hopping rates k(n -> n') [1/ps] (n the occupancy of the departure cage, the hopping
-  /// molecule included; n' that of the arrival cage) read from 'OccupancyRateInputs', with a fit
-  /// log k = c + a n - b n' through them for the pairs that were not measured.
+  /// molecule included; n' that of the arrival cage): from the occupancy classes of this run combined with the
+  /// conditioned k^TST(n -> n') of the free-energy input (post-stratification), overridden by the conditioned
+  /// runs of 'OccupancyRateInputs' where given, with a weighted fit log k = c + a n - b n' through them for the
+  /// pairs that were not measured.
   struct OccupancyRates
   {
-    std::map<std::pair<std::size_t, std::size_t>, double> measured;
+    struct Entry
+    {
+      double rate{0.0};
+      double weight{1.0};  ///< Fit weight (number of trajectory members behind the value).
+      double kappa{0.0};   ///< The recrossing factor of the class (post-stratified entries).
+      double tstRatio{0.0};  ///< k^TST(n -> n') / k^TST (post-stratified entries).
+      std::string source;  ///< "classes" or the file of a conditioned run.
+    };
+    std::map<std::pair<std::size_t, std::size_t>, Entry> measured;
     bool fitValid{false};
     double fitConstant{0.0};
     double fitDeparture{0.0};
     double fitArrival{0.0};
-    double fitRms{0.0};  ///< Root-mean-square residual of log k over the measured pairs.
-    /// Rate from the table when measured, else from the fit (zero when neither is available).
-    [[nodiscard]] double rate(double n, double nPrime, bool tableFirst) const;
+    double fitRms{0.0};  ///< Weighted root-mean-square residual of log k over the measured pairs.
+    /// Rate from the table when measured (and 'tableFirst'), else from the fit (zero when neither is available).
+    [[nodiscard]] double rate(std::size_t n, std::size_t nPrime, bool tableFirst) const;
+    [[nodiscard]] bool isMeasured(std::size_t n, std::size_t nPrime) const { return measured.contains({n, nPrime}); }
   };
-  std::optional<OccupancyRates> occupancyRates{};
+  /// Rates of conditioned runs ('OccupancyRateInputs'), read before the run.
+  std::map<std::pair<std::size_t, std::size_t>, OccupancyRates::Entry> externalRates{};
   void loadOccupancyRates();
+  /// P(n_A, n_B) and P(n_A, n_B | q*) of the free-energy input (keys "nA,nB"); their ratio is k^TST(n_A -> n_B)/k^TST.
+  std::map<std::pair<std::size_t, std::size_t>, double> occupancyWeights{};
+  std::map<std::pair<std::size_t, std::size_t>, double> barrierOccupancyWeights{};
+  /// Minimum number of trajectory members for an occupancy class to supply a rate.
+  static constexpr std::size_t minimumClassMembers = 20;
 
   void run();
   void setup();
@@ -373,9 +422,14 @@ export struct DynamicallyCorrectedTST
     std::vector<double> selfError;
     std::vector<double> selfTwoState;
     std::vector<double> selfCommitted;
+    std::vector<double> selfSmooth;
+    std::vector<double> selfSmoothError;
     double selfTwoStatePlateau{0.0};
     double selfCommittedPlateau{0.0};
     double selfCommittedPlateauError{0.0};
+    bool smoothAvailable{false};
+    double selfSmoothPlateau{0.0};
+    double selfSmoothPlateauError{0.0};
     double longJumpFraction{0.0};   ///< Fraction of trajectories in which the tagged molecule left cages A/B.
     double committedFraction{0.0};  ///< Fraction of trajectories in which the tagged molecule got committed.
     double plateauBegin{0.0};
@@ -464,8 +518,31 @@ export struct DynamicallyCorrectedTST
       /// Occupancy histogram at tau (weight fraction of |qdot|, frame of the tagged hop, tagged molecule counted in B).
       std::vector<std::pair<DcTSTTransmissionAccumulator::ColumnState, double>> occupancy;
       std::vector<std::size_t> occupancyCounts;
+      std::size_t numberOfNeighbourhoodStates{0};
     };
     std::vector<Hybrid> hybrid;
+
+    /// Occupancy classes of the trajectory members (post-stratification), sorted by weight.
+    struct OccupancyClass
+    {
+      std::size_t nFrom{0};
+      std::size_t nTo{0};
+      std::size_t members{0};
+      double weightFraction{0.0};  ///< Share of sum |qdot| over all members.
+      double kappa{0.0};           ///< Net cage count, plateau.
+      double kappaError{0.0};
+      double kappaSmooth{0.0};
+      double kappaSmoothError{0.0};
+      double kappaCommitted{0.0};
+      double pilotWeight{0.0};  ///< P(n_from, n_to) of the free-energy input (0 when absent).
+      double tstRatio{0.0};     ///< k^TST(n_from -> n_to) / k^TST (0 when absent).
+    };
+    std::vector<OccupancyClass> classes;
+    double classesReweightedKappa{0.0};  ///< sum_classes P_FE(n,n') kappa(n,n') tstRatio(n,n') over the measured classes.
+    double classesReweightedCoverage{0.0};  ///< sum of P_FE over the measured classes.
+
+    /// The rate table of the Markov closure (empty when no k^TST is available and no conditioned runs are given).
+    std::optional<OccupancyRates> rates;
   };
 
   [[nodiscard]] TransmissionResult analyzeTransmission() const;

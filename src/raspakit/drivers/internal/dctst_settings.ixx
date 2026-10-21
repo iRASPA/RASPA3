@@ -165,17 +165,16 @@ export struct DcTSTSettings
    * records (i) the displacement of every molecule of the column measured with the committor p_B(q) of
    * the free-energy profile instead of the step function (Ruiz-Montero, Frenkel and Brey, Mol. Phys. 90,
    * 925 (1997)) -- the 'concerted' part, which is of order epsilon per trajectory -- and (ii) the occupancies
-   * (n_A', n_A, n_B, n_B') of the column, from which the expected sign of the first event is computed with the
-   * occupancy-resolved rates k(n -> n') (the 'Markov' part, the lattice sum of the first-order closure
-   * evaluated per trajectory). Their sum should be independent of tau once the hopping beyond tau is
+   * (n_A', n_A, n_B, n_B') of the column and the occupancies of the four lateral neighbours of A and of B,
+   * from which the expected sign of the first event is computed with the occupancy-resolved rates k(n -> n')
+   * of this run (the 'Markov' part). Their sum should be independent of tau once the hopping beyond tau is
    * Markovian; the direct first-event estimator is its tau -> infinity limit and is computed from the same
    * trajectories (which are integrated to at least commitment + max tau).
    */
   std::vector<double> handoverTimes{1.0, 2.0, 3.0, 5.0, 8.0};
-  /// JSON outputs of occupancy-conditioned transmission runs ('OccupancyRateInputs': [paths]); each supplies
-  /// one rate k(n_A -> n_B) = kappa_S(n_A, n_B) k^TST(n_A, n_B). Pairs that are not in the list are taken from
-  /// a fit log k = c + a n - b n' through the listed ones. Without the list only the concerted part and the
-  /// occupancy histograms are reported (the closure can then be done afterwards from the JSON output).
+  /// Optional overrides of the post-stratified rates k(n -> n') of this run: JSON outputs of occupancy-conditioned
+  /// transmission runs ('OccupancyRateInputs': [paths]); each supplies one rate k(n_A -> n_B). Pairs that are not
+  /// measured (neither by a class of this run nor by a listed file) are taken from a fit log k = c + a n - b n'.
   std::vector<std::string> occupancyRateInputs{};
 
   /**

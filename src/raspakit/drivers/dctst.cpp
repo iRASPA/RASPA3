@@ -62,6 +62,7 @@ DcTSTTransmissionAccumulator::DcTSTTransmissionAccumulator(std::size_t numberOfB
       self(numberOfBlocks, std::vector<double>(numberOfTimes, 0.0)),
       selfTwoState(numberOfBlocks, std::vector<double>(numberOfTimes, 0.0)),
       selfCommitted(numberOfBlocks, std::vector<double>(numberOfTimes, 0.0)),
+      selfSmooth(numberOfBlocks, std::vector<double>(numberOfTimes, 0.0)),
       collective(numberOfBlocks, std::vector<double>(numberOfShells * numberOfComponents * numberOfTimes, 0.0)),
       numberOfTrajectoryPairs(numberOfBlocks, 0uz),
       selfEvent(numberOfBlocks, 0.0),
@@ -74,6 +75,7 @@ DcTSTTransmissionAccumulator::DcTSTTransmissionAccumulator(std::size_t numberOfB
       hybridTagged(numberOfHandovers, std::vector<double>(numberOfBlocks, 0.0)),
       hybridOthers(numberOfHandovers, std::vector<double>(numberOfBlocks, 0.0)),
       hybridOccupancy(numberOfHandovers),
+      hybridNeighbourhood(numberOfHandovers),
       hybridEventBefore(numberOfHandovers, 0uz),
       hybridTruncated(numberOfHandovers, 0uz)
 {
@@ -713,9 +715,8 @@ void DynamicallyCorrectedTST::loadFreeEnergyInput()
       throw std::runtime_error("dcTST: 'FreeEnergyInput' has a non-positive P(q*)\n");
     }
 
-    // the free-energy profile beta F(q) for the committor of the hybrid estimator
-    if (!settings.handoverTimes.empty() && results.contains("profile") && results["profile"].contains("q") &&
-        results["profile"].contains("freeEnergy"))
+    // the free-energy profile beta F(q) for the committor (the smooth kappa_S and the hybrid estimator)
+    if (results.contains("profile") && results["profile"].contains("q") && results["profile"].contains("freeEnergy"))
     {
       std::vector<double> q, betaF;
       const nlohmann::json& profile = results["profile"];
@@ -730,6 +731,25 @@ void DynamicallyCorrectedTST::loadFreeEnergyInput()
       const double barrierOffset = settings.cageOccupancies.has_value() ? 0.5 * barrier.lambda : 0.0;
       buildCommittorTable(q, betaF, barrierOffset);
     }
+
+    // the occupancy distributions P(n_A, n_B) (pilot) and P(n_A, n_B | q*) (window stage at the plane): their
+    // ratio is the conditioned k^TST(n_A -> n_B) / k^TST of the occupancy classes
+    if (results.contains("cageOccupancies"))
+    {
+      const nlohmann::json& occupancies = results["cageOccupancies"];
+      auto readMap = [&](const char* key, std::map<std::pair<std::size_t, std::size_t>, double>& target)
+      {
+        if (!occupancies.contains(key) || !occupancies[key].is_object()) return;
+        for (const auto& [pairKey, value] : occupancies[key].items())
+        {
+          const std::size_t comma = pairKey.find(',');
+          if (comma == std::string::npos) continue;
+          target[{std::stoul(pairKey.substr(0, comma)), std::stoul(pairKey.substr(comma + 1))}] = value.get<double>();
+        }
+      };
+      readMap("joint", occupancyWeights);
+      readMap("jointAtBarrier", barrierOccupancyWeights);
+    }
   }
 
   if (barrierProbability.has_value())
@@ -742,6 +762,44 @@ void DynamicallyCorrectedTST::loadFreeEnergyInput()
   else
   {
     std::print(stream, "Barrier probability density P(q*):       not given; rates and D are not reported\n\n");
+  }
+
+  // the committor (smooth kappa_S; hybrid estimator)
+  if (!committorTable.empty())
+  {
+    auto quantile = [&](double p)
+    {
+      const double width = barrier.lambda / static_cast<double>(committorTable.size());
+      for (std::size_t i = 0; i < committorTable.size(); ++i)
+      {
+        if (committorTable[i] >= p) return -0.5 * barrier.lambda + (static_cast<double>(i) + 0.5) * width;
+      }
+      return 0.5 * barrier.lambda;
+    };
+    std::print(stream, "Committor p_B(q) from the free-energy profile ({} points over [-lambda/2, lambda/2)):\n",
+               committorTable.size());
+    std::print(stream, "    p_B = 0.1, 0.5, 0.9 at q =           {:.3f}, {:.3f}, {:.3f} [A] (barrier at 0)\n",
+               quantile(0.1), quantile(0.5), quantile(0.9));
+    std::print(stream, "    (used for the committor-smoothed kappa_S and the hybrid collective excess)\n\n");
+  }
+  else
+  {
+    std::print(stream, "Committor p_B(q):                        no free-energy profile; the smooth kappa_S and the "
+                       "hybrid estimator are not available\n\n");
+  }
+  if (!occupancyWeights.empty())
+  {
+    std::print(stream, "Occupancy distributions of the free-energy input: P(n_A, n_B) over {} pairs", occupancyWeights.size());
+    if (!barrierOccupancyWeights.empty())
+    {
+      std::print(stream, ", P(n_A, n_B | q*) over {} pairs\n    (their ratio is k^TST(n_A -> n_B)/k^TST, combined with "
+                         "the occupancy classes of this run into the rates k(n -> n'))\n\n",
+                 barrierOccupancyWeights.size());
+    }
+    else
+    {
+      std::print(stream, "; no P(n_A, n_B | q*) (older free-energy run): the occupancy classes give kappa(n, n') only\n\n");
+    }
   }
 
   // hybrid estimator: handover times in steps; needs the committor, i.e. a free-energy profile
@@ -774,6 +832,7 @@ void DynamicallyCorrectedTST::loadFreeEnergyInput()
           accumulator.hybridTagged.assign(handoverSteps.size(), std::vector<double>(numberOfBlocks, 0.0));
           accumulator.hybridOthers.assign(handoverSteps.size(), std::vector<double>(numberOfBlocks, 0.0));
           accumulator.hybridOccupancy.assign(handoverSteps.size(), {});
+          accumulator.hybridNeighbourhood.assign(handoverSteps.size(), {});
           accumulator.hybridEventBefore.assign(handoverSteps.size(), 0uz);
           accumulator.hybridTruncated.assign(handoverSteps.size(), 0uz);
         }
@@ -782,21 +841,7 @@ void DynamicallyCorrectedTST::loadFreeEnergyInput()
                          "times, Markov closure of the race):\n");
       std::print(stream, "    handover times after commitment:     ");
       for (std::size_t steps : handoverSteps) std::print(stream, "{:g} ", static_cast<double>(steps) * timeStep);
-      std::print(stream, "[ps]\n");
-      std::print(stream, "    committor table:                     {} points over [-lambda/2, lambda/2)\n",
-                 committorTable.size());
-      // the width of the committor transition: q at which p_B = 0.1 and 0.9
-      auto quantile = [&](double p)
-      {
-        const double width = barrier.lambda / static_cast<double>(committorTable.size());
-        for (std::size_t i = 0; i < committorTable.size(); ++i)
-        {
-          if (committorTable[i] >= p) return -0.5 * barrier.lambda + (static_cast<double>(i) + 0.5) * width;
-        }
-        return 0.5 * barrier.lambda;
-      };
-      std::print(stream, "    p_B = 0.1, 0.5, 0.9 at q =           {:.3f}, {:.3f}, {:.3f} [A] (barrier at 0)\n\n",
-                 quantile(0.1), quantile(0.5), quantile(0.9));
+      std::print(stream, "[ps]\n\n");
       outputJson["dcTST"]["handoverTimes"] = settings.handoverTimes;
     }
   }
@@ -878,29 +923,24 @@ double DynamicallyCorrectedTST::smoothCageCoordinate(double q) const
   return m + 0.5 + committorTable[bin];
 }
 
-double DynamicallyCorrectedTST::OccupancyRates::rate(double n, double nPrime, bool tableFirst) const
+double DynamicallyCorrectedTST::OccupancyRates::rate(std::size_t n, std::size_t nPrime, bool tableFirst) const
 {
   if (tableFirst)
   {
-    const double rounded = std::round(n), roundedPrime = std::round(nPrime);
-    if (std::abs(n - rounded) < 1e-9 && std::abs(nPrime - roundedPrime) < 1e-9 && rounded >= 0.0 &&
-        roundedPrime >= 0.0)
-    {
-      auto it = measured.find({static_cast<std::size_t>(rounded), static_cast<std::size_t>(roundedPrime)});
-      if (it != measured.end()) return it->second;
-    }
+    auto it = measured.find({n, nPrime});
+    if (it != measured.end()) return it->second.rate;
   }
   if (!fitValid) return 0.0;
-  return std::exp(fitConstant + fitDeparture * n - fitArrival * nPrime);
+  return std::exp(fitConstant + fitDeparture * static_cast<double>(n) - fitArrival * static_cast<double>(nPrime));
 }
 
 void DynamicallyCorrectedTST::loadOccupancyRates()
 {
-  occupancyRates.reset();
-  if (settings.occupancyRateInputs.empty() || !hybridEnabled()) return;
+  externalRates.clear();
+  if (settings.occupancyRateInputs.empty()) return;
 
-  OccupancyRates rates;
-  std::print(stream, "Occupancy-resolved rates for the Markov closure ('OccupancyRateInputs'):\n");
+  std::print(stream, "Occupancy-resolved rates of conditioned runs ('OccupancyRateInputs'; they override the classes of "
+                     "this run):\n");
   for (const std::string& path : settings.occupancyRateInputs)
   {
     std::ifstream file(path);
@@ -926,11 +966,17 @@ void DynamicallyCorrectedTST::loadOccupancyRates()
     }
     const std::size_t n = json["dcTST"]["cageOccupancies"][0].get<std::size_t>();
     const std::size_t nPrime = json["dcTST"]["cageOccupancies"][1].get<std::size_t>();
-    // the rate k_(A->B) = kappa_S k^TST is in results[<P(q*) source>]["kSelf"]
+    // the rate k_(A->B) = kappa_S k^TST is in results[<P(q*) source>]["kSelfSmooth"/"kSelf"]
     std::optional<double> k;
     for (const auto& [key, value] : json["results"].items())
     {
-      if (value.is_object() && value.contains("kSelf") && value["kSelf"].is_number())
+      if (!value.is_object()) continue;
+      if (value.contains("kSelfSmooth") && value["kSelfSmooth"].is_number() && value["kSelfSmooth"].get<double>() > 0.0)
+      {
+        k = value["kSelfSmooth"].get<double>();
+        break;
+      }
+      if (value.contains("kSelf") && value["kSelf"].is_number())
       {
         k = value["kSelf"].get<double>();
         break;
@@ -943,74 +989,72 @@ void DynamicallyCorrectedTST::loadOccupancyRates()
           "needs a 'FreeEnergyInput')\n",
           path));
     }
-    if (rates.measured.contains({n, nPrime}))
+    OccupancyRates::Entry entry;
+    entry.rate = k.value();
+    entry.weight = 2.0 * static_cast<double>(json["results"].value("numberOfTrajectoryPairs", 500uz));
+    entry.source = path;
+    if (externalRates.contains({n, nPrime}))
     {
       std::print(stream, "    WARNING: k({} -> {}) given more than once; the last one is used\n", n, nPrime);
     }
-    rates.measured[{n, nPrime}] = k.value();
+    externalRates[{n, nPrime}] = entry;
     std::print(stream, "    k({:>2} -> {:>2}) = {:.6e} [1/ps]   ({})\n", n, nPrime, k.value(), path);
-  }
-
-  // least-squares fit of log k = c + a n - b n' (three parameters; needs three pairs that are not collinear)
-  if (rates.measured.size() >= 3uz)
-  {
-    // normal equations of the 3 x 3 system
-    double S[3][3]{}, r[3]{};
-    for (const auto& [pair, k] : rates.measured)
-    {
-      const double x[3] = {1.0, static_cast<double>(pair.first), -static_cast<double>(pair.second)};
-      const double y = std::log(k);
-      for (std::size_t i = 0; i < 3; ++i)
-      {
-        r[i] += x[i] * y;
-        for (std::size_t j = 0; j < 3; ++j) S[i][j] += x[i] * x[j];
-      }
-    }
-    const double det = S[0][0] * (S[1][1] * S[2][2] - S[1][2] * S[2][1]) -
-                       S[0][1] * (S[1][0] * S[2][2] - S[1][2] * S[2][0]) +
-                       S[0][2] * (S[1][0] * S[2][1] - S[1][1] * S[2][0]);
-    if (std::abs(det) > 1e-12)
-    {
-      auto solve = [&](std::size_t column)
-      {
-        double M[3][3];
-        for (std::size_t i = 0; i < 3; ++i)
-          for (std::size_t j = 0; j < 3; ++j) M[i][j] = (j == column) ? r[i] : S[i][j];
-        return (M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1]) - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) +
-                M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0])) /
-               det;
-      };
-      rates.fitConstant = solve(0);
-      rates.fitDeparture = solve(1);
-      rates.fitArrival = solve(2);
-      rates.fitValid = true;
-      double residual{0.0};
-      for (const auto& [pair, k] : rates.measured)
-      {
-        const double predicted = rates.fitConstant + rates.fitDeparture * static_cast<double>(pair.first) -
-                                 rates.fitArrival * static_cast<double>(pair.second);
-        residual += std::pow(std::log(k) - predicted, 2);
-      }
-      rates.fitRms = std::sqrt(residual / static_cast<double>(rates.measured.size()));
-      std::print(stream, "    fit log k = c + a n - b n':          c = {:.4f}, a = {:.4f}, b = {:.4f} (rms residual of "
-                         "log k {:.4f} over {} pairs)\n",
-                 rates.fitConstant, rates.fitDeparture, rates.fitArrival, rates.fitRms, rates.measured.size());
-    }
-    else
-    {
-      std::print(stream, "    fit log k = c + a n - b n':          singular (the pairs are collinear); unmeasured pairs "
-                         "contribute no rate\n");
-    }
-  }
-  else
-  {
-    std::print(stream, "    fit log k = c + a n - b n':          not possible with fewer than three pairs; unmeasured "
-                       "pairs contribute no rate\n");
   }
   std::print(stream, "\n");
   std::flush(stream);
-  occupancyRates = rates;
 }
+
+namespace
+{
+/// Weighted least-squares fit log k = c + a n - b n' through the measured rates (three parameters; needs three
+/// pairs that are not collinear).
+void fitOccupancyRates(DynamicallyCorrectedTST::OccupancyRates& rates)
+{
+  rates.fitValid = false;
+  if (rates.measured.size() < 3uz) return;
+  double S[3][3]{}, r[3]{};
+  for (const auto& [pair, entry] : rates.measured)
+  {
+    const double x[3] = {1.0, static_cast<double>(pair.first), -static_cast<double>(pair.second)};
+    const double y = std::log(entry.rate);
+    const double w = std::max(entry.weight, 1e-12);
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+      r[i] += w * x[i] * y;
+      for (std::size_t j = 0; j < 3; ++j) S[i][j] += w * x[i] * x[j];
+    }
+  }
+  auto determinant = [](const double M[3][3])
+  {
+    return M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1]) - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) +
+           M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
+  };
+  const double det = determinant(S);
+  const double scale = std::abs(S[0][0] * S[1][1] * S[2][2]);
+  if (std::abs(det) <= 1e-10 * std::max(scale, 1e-300)) return;
+  auto solve = [&](std::size_t column)
+  {
+    double M[3][3];
+    for (std::size_t i = 0; i < 3; ++i)
+      for (std::size_t j = 0; j < 3; ++j) M[i][j] = (j == column) ? r[i] : S[i][j];
+    return determinant(M) / det;
+  };
+  rates.fitConstant = solve(0);
+  rates.fitDeparture = solve(1);
+  rates.fitArrival = solve(2);
+  rates.fitValid = true;
+  double residual{0.0}, weightSum{0.0};
+  for (const auto& [pair, entry] : rates.measured)
+  {
+    const double predicted = rates.fitConstant + rates.fitDeparture * static_cast<double>(pair.first) -
+                             rates.fitArrival * static_cast<double>(pair.second);
+    residual += entry.weight * std::pow(std::log(entry.rate) - predicted, 2);
+    weightSum += entry.weight;
+  }
+  rates.fitRms = std::sqrt(residual / std::max(weightSum, 1e-300));
+}
+}  // namespace
+
 
 std::size_t DynamicallyCorrectedTST::taggedMoleculeIndex(const System& system) const
 {
@@ -1947,7 +1991,9 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
   std::vector<double> deltaSelf(numberOfTimes);
   std::vector<double> deltaSelfTwoState(numberOfTimes);
   std::vector<double> deltaSelfCommitted(numberOfTimes);
+  std::vector<double> deltaSelfSmooth(numberOfTimes);
   std::vector<double> deltaCollective(numberOfShells * numberOfComponents * numberOfTimes);
+  const bool smoothMode = !committorTable.empty();
 
   const DcTSTSettings::TrajectoryThermostat bathType = settings.trajectoryThermostat;
   const double commitDistance = (settings.commitDistance > 0.0) ? settings.commitDistance : 0.5 * barrier.lambda;
@@ -1961,6 +2007,22 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
   double3 hopThreshold{};  // fractional distance from the committed cage center at which a hop is registered
   std::vector<std::size_t> initialCommittedCage(numberOfMolecules, noCage);
   std::vector<std::size_t> committedCage(numberOfMolecules, noCage);
+  // occupancy classes: the numbers of other molecules in the two cages sharing the tagged window at launch
+  std::size_t othersInA{0}, othersInB{0};
+  {
+    const double3 taggedBead =
+        systemAtoms[system.moleculeData[taggedIndex].atomIndex + taggedComponent.startingBead].position;
+    const auto [launchA, launchB] = cagesOfWindow(taggedBead);
+    for (std::size_t j = 0; j < numberOfMolecules; ++j)
+    {
+      if (j == taggedIndex) continue;
+      const Molecule& molecule = system.moleculeData[j];
+      const Component& component = system.components[molecule.componentId];
+      const std::size_t cage = cageLattice.cageOf(systemAtoms[molecule.atomIndex + component.startingBead].position);
+      if (cage == launchA) ++othersInA;
+      else if (cage == launchB) ++othersInB;
+    }
+  }
   if (eventMode)
   {
     axis = cageLattice.axisAlongDirection(barrier.normal);
@@ -2001,6 +2063,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
 
   // --- hybrid estimator: committor-smoothed displacements and column occupancies at the handover times ----------
   using ColumnState = DcTSTTransmissionAccumulator::ColumnState;
+  using NeighbourhoodState = DcTSTTransmissionAccumulator::NeighbourhoodState;
   const bool hybridMode = eventMode && hybridEnabled();
   const std::size_t numberOfHandovers = hybridMode ? handoverSteps.size() : 0uz;
   const std::size_t maximumHandoverSteps = hybridMode ? handoverSteps.back() : 0uz;
@@ -2015,6 +2078,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     double tagged{0.0};       // tagged cage count: smooth C at tau, or the net count at the first event
     double others{0.0};       // others: smoothed column displacement at tau, or Q_local at the first event
     ColumnState state{};      // occupancies of the column at tau (frame of the hop), when no event occurred before
+    NeighbourhoodState neighbourhood{};  // column plus the four lateral neighbours of A and of B
   };
 
   struct TrajectoryOutcome
@@ -2081,6 +2145,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     deltaSelf[0] = 0.5 * direction;
     deltaSelfTwoState[0] = 0.5 * direction;
     deltaSelfCommitted[0] = 0.5 * direction;
+    deltaSelfSmooth[0] = 0.5 * direction;
     outcome = TrajectoryOutcome{};
     outcome.handover.assign(numberOfHandovers, Handover{});
     bool& committed = outcome.committed;
@@ -2130,6 +2195,42 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
       }
       return state;
     };
+    auto neighbourhoodState = [&]() -> NeighbourhoodState
+    {
+      NeighbourhoodState state;
+      state.column = columnState();
+      const int a0 = (axis.axis == 0) ? 1 : 0;
+      const int a1 = (axis.axis == 2) ? 1 : 2;
+      auto fill = [&](std::size_t cage, std::array<std::uint16_t, 4>& dest)
+      {
+        const std::array<std::size_t, 4> neighbours{cageLattice.neighborAlongAxis(cage, a0, +1),
+                                                    cageLattice.neighborAlongAxis(cage, a0, -1),
+                                                    cageLattice.neighborAlongAxis(cage, a1, +1),
+                                                    cageLattice.neighborAlongAxis(cage, a1, -1)};
+        for (std::size_t i = 0; i < 4; ++i)
+        {
+          std::size_t count{0};
+          for (std::size_t j = 0; j < numberOfMolecules; ++j)
+          {
+            if (committedCage[j] == neighbours[i]) ++count;
+          }
+          dest[i] = static_cast<std::uint16_t>(count);
+        }
+        std::sort(dest.begin(), dest.end());
+      };
+      // frame of the tagged hop: for the time-reversed member A <-> B so that A is always the departure cage
+      if (direction > 0.0)
+      {
+        fill(cageA, state.lateralA);
+        fill(cageB, state.lateralB);
+      }
+      else
+      {
+        fill(cageB, state.lateralA);
+        fill(cageA, state.lateralB);
+      }
+      return state;
+    };
     auto channelOf = [&](std::size_t j, std::size_t window, int alongNormal) -> EventChannel
     {
       // in the frame of the tagged hop: direction +1 is the direction of the tagged molecule's initial
@@ -2161,6 +2262,8 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
       deltaSelf[t] = static_cast<double>(barrier.cageIndex(qTagged)) + 0.5;
       deltaSelfTwoState[t] = (qTagged > 0.0) ? 0.5 : -0.5;
       deltaSelfCommitted[t] = committed ? committedValue : deltaSelfTwoState[t];
+      // the committor-smoothed variant: the step of the net cage count replaced by p_B across each window
+      if (smoothMode) deltaSelfSmooth[t] = smoothCoordinate(qTagged);
       for (std::size_t j = 0; j < numberOfMolecules; ++j)
       {
         if (j == taggedIndex) continue;
@@ -2312,6 +2415,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
             handover.tagged = smoothQ[taggedIndex];
             handover.others = smoothOthers;
             handover.state = columnState();
+            handover.neighbourhood = neighbourhoodState();
           }
           ++nextHandover;
         }
@@ -2364,6 +2468,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
   std::vector<double> forwardSelf(numberOfTimes);
   std::vector<double> forwardSelfTwoState(numberOfTimes);
   std::vector<double> forwardSelfCommitted(numberOfTimes);
+  std::vector<double> forwardSelfSmooth(numberOfTimes);
   std::vector<double> forwardCollective(deltaCollective.size());
 
   for (std::size_t k = 0; k < settings.trajectoriesPerConfiguration; ++k)
@@ -2407,6 +2512,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     forwardSelf = deltaSelf;
     forwardSelfTwoState = deltaSelfTwoState;
     forwardSelfCommitted = deltaSelfCommitted;
+    forwardSelfSmooth = deltaSelfSmooth;
     forwardCollective = deltaCollective;
 
     // time-reversed trajectory from the same phase point
@@ -2435,15 +2541,46 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     std::vector<double>& collective = accumulator.collective[block];
     std::vector<double>& selfTwoState = accumulator.selfTwoState[block];
     std::vector<double>& selfCommitted = accumulator.selfCommitted[block];
+    std::vector<double>& selfSmooth = accumulator.selfSmooth[block];
     for (std::size_t t = 0; t < numberOfTimes; ++t)
     {
       self[t] += qdot * (forwardSelf[t] - deltaSelf[t]);
       selfTwoState[t] += qdot * (forwardSelfTwoState[t] - deltaSelfTwoState[t]);
       selfCommitted[t] += qdot * (forwardSelfCommitted[t] - deltaSelfCommitted[t]);
+      if (smoothMode) selfSmooth[t] += qdot * (forwardSelfSmooth[t] - deltaSelfSmooth[t]);
     }
     for (std::size_t i = 0; i < collective.size(); ++i)
     {
       collective[i] += qdot * (forwardCollective[i] - deltaCollective[i]);
+    }
+
+    // occupancy classes: the forward member hops A -> B with (m_A + 1, m_B), the time-reversed member B -> A
+    {
+      auto addClass = [&](std::size_t nFrom, std::size_t nTo, double sign, const std::vector<double>& memberSelf,
+                          const std::vector<double>& memberSmooth, const std::vector<double>& memberCommitted)
+      {
+        DcTSTTransmissionAccumulator::ClassSums& sums = accumulator.classes[{nFrom, nTo}];
+        if (sums.speed.empty())
+        {
+          sums.speed.assign(accumulator.numberOfBlocks, 0.0);
+          sums.self.assign(accumulator.numberOfBlocks, 0.0);
+          sums.selfSmooth.assign(accumulator.numberOfBlocks, 0.0);
+          sums.selfCommitted.assign(accumulator.numberOfBlocks, 0.0);
+        }
+        auto plateau = [&](const std::vector<double>& values)
+        {
+          double sum{0.0};
+          for (std::size_t t : plateauIndices) sum += values[t];
+          return sum / static_cast<double>(std::max(1uz, plateauIndices.size()));
+        };
+        sums.speed[block] += qdot;
+        sums.self[block] += qdot * sign * plateau(memberSelf);
+        if (smoothMode) sums.selfSmooth[block] += qdot * sign * plateau(memberSmooth);
+        sums.selfCommitted[block] += qdot * sign * plateau(memberCommitted);
+        ++sums.members;
+      };
+      addClass(othersInA + 1uz, othersInB, +1.0, forwardSelf, forwardSelfSmooth, forwardSelfCommitted);
+      addClass(othersInB + 1uz, othersInA, -1.0, deltaSelf, deltaSelfSmooth, deltaSelfCommitted);
     }
 
     // event-terminated estimator: values at termination
@@ -2471,6 +2608,9 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
           std::pair<double, std::size_t>& entry = accumulator.hybridOccupancy[h][handover.state];
           entry.first += qdot;
           ++entry.second;
+          std::pair<double, std::size_t>& neighbourhood = accumulator.hybridNeighbourhood[h][handover.neighbourhood];
+          neighbourhood.first += qdot;
+          ++neighbourhood.second;
         }
       }
     }
@@ -2686,7 +2826,22 @@ void DynamicallyCorrectedTST::writeAccumulatorSnapshot(std::size_t replicaId, bo
   json["self"] = accumulator.self;
   json["selfTwoState"] = accumulator.selfTwoState;
   json["selfCommitted"] = accumulator.selfCommitted;
+  json["selfSmooth"] = accumulator.selfSmooth;
   json["collective"] = accumulator.collective;
+  {
+    nlohmann::json classes = nlohmann::json::object();
+    for (const auto& [pair, sums] : accumulator.classes)
+    {
+      nlohmann::json entry;
+      entry["speed"] = sums.speed;
+      entry["self"] = sums.self;
+      entry["selfSmooth"] = sums.selfSmooth;
+      entry["selfCommitted"] = sums.selfCommitted;
+      entry["members"] = sums.members;
+      classes[std::format("{},{}", pair.first, pair.second)] = std::move(entry);
+    }
+    json["classes"] = classes;
+  }
   json["sumSpeedSquared"] = accumulator.sumSpeedSquared;
   json["sumRelativeEnergyDrift"] = accumulator.sumRelativeEnergyDrift;
   json["maximumRelativeEnergyDrift"] = accumulator.maximumRelativeEnergyDrift;
@@ -2720,6 +2875,8 @@ void DynamicallyCorrectedTST::writeAccumulatorSnapshot(std::size_t replicaId, bo
     hybrid["eventBefore"] = accumulator.hybridEventBefore;
     hybrid["truncated"] = accumulator.hybridTruncated;
     hybrid["occupancyKey"] = "nA',nA,nB,nB' (frame of the tagged hop, tagged molecule counted in B): [sum |qdot|, members]";
+    hybrid["neighbourhoodKey"] =
+        "nA',nA,nB,nB'|a1,a2,a3,a4|b1,b2,b3,b4 (column plus sorted lateral occupancies of A and of B)";
     for (std::size_t k = 0; k < accumulator.hybridOccupancy.size(); ++k)
     {
       nlohmann::json entry = nlohmann::json::object();
@@ -2728,6 +2885,18 @@ void DynamicallyCorrectedTST::writeAccumulatorSnapshot(std::size_t replicaId, bo
         entry[std::format("{},{},{},{}", state.nAPrime, state.nA, state.nB, state.nBPrime)] = {weight.first, weight.second};
       }
       hybrid["occupancy"].push_back(entry);
+    }
+    for (std::size_t k = 0; k < accumulator.hybridNeighbourhood.size(); ++k)
+    {
+      nlohmann::json entry = nlohmann::json::object();
+      for (const auto& [state, weight] : accumulator.hybridNeighbourhood[k])
+      {
+        entry[std::format("{},{},{},{}|{},{},{},{}|{},{},{},{}", state.column.nAPrime, state.column.nA, state.column.nB,
+                          state.column.nBPrime, state.lateralA[0], state.lateralA[1], state.lateralA[2],
+                          state.lateralA[3], state.lateralB[0], state.lateralB[1], state.lateralB[2],
+                          state.lateralB[3])] = {weight.first, weight.second};
+      }
+      hybrid["neighbourhood"].push_back(entry);
     }
   }
 
@@ -2776,10 +2945,12 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
   std::vector<double> self(numberOfTimes, 0.0);
   std::vector<double> selfTwoState(numberOfTimes, 0.0);
   std::vector<double> selfCommitted(numberOfTimes, 0.0);
+  std::vector<double> selfSmooth(numberOfTimes, 0.0);
   std::vector<double> collective(numberOfShells * numberOfComponents * numberOfTimes, 0.0);
   std::vector<double> blockSpeeds;
   std::vector<std::vector<double>> blockSelf;
   std::vector<std::vector<double>> blockSelfCommitted;
+  std::vector<std::vector<double>> blockSelfSmooth;
   std::vector<std::vector<std::vector<double>>> blockCollective;  // [block][shell][time], cumulative, kappa_C
   std::size_t numberOfTrajectories{0};
   std::size_t numberOfLongJumps{0};
@@ -2868,6 +3039,7 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
         self[t] += accumulator.self[b][t];
         selfTwoState[t] += accumulator.selfTwoState[b][t];
         selfCommitted[t] += accumulator.selfCommitted[b][t];
+        selfSmooth[t] += accumulator.selfSmooth[b][t];
       }
       for (std::size_t i = 0; i < collective.size(); ++i) collective[i] += accumulator.collective[b][i];
 
@@ -2875,13 +3047,16 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
       blockSpeeds.push_back(accumulator.speed[b] / static_cast<double>(accumulator.numberOfTrajectoryPairs[b]));
       std::vector<double> kappaSelf(numberOfTimes);
       std::vector<double> kappaCommitted(numberOfTimes);
+      std::vector<double> kappaSmooth(numberOfTimes);
       for (std::size_t t = 0; t < numberOfTimes; ++t)
       {
         kappaSelf[t] = accumulator.self[b][t] / accumulator.speed[b];
         kappaCommitted[t] = accumulator.selfCommitted[b][t] / accumulator.speed[b];
+        kappaSmooth[t] = accumulator.selfSmooth[b][t] / accumulator.speed[b];
       }
       blockSelf.push_back(kappaSelf);
       blockSelfCommitted.push_back(kappaCommitted);
+      if (!committorTable.empty()) blockSelfSmooth.push_back(kappaSmooth);
 
       std::vector<std::vector<double>> kappaCollective(numberOfShells, std::vector<double>(numberOfTimes, 0.0));
       std::vector<double> cumulative(numberOfTimes, 0.0);
@@ -2944,7 +3119,10 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
   result.self.assign(numberOfTimes, 0.0);
   result.selfTwoState.assign(numberOfTimes, 0.0);
   result.selfCommitted.assign(numberOfTimes, 0.0);
+  result.selfSmooth.assign(numberOfTimes, 0.0);
+  result.selfSmoothError.assign(numberOfTimes, 0.0);
   result.selfError.assign(numberOfTimes, 0.0);
+  result.smoothAvailable = !committorTable.empty();
   result.collective.assign(numberOfShells, std::vector<double>(numberOfTimes, 0.0));
   result.collectiveError.assign(numberOfShells, std::vector<double>(numberOfTimes, 0.0));
   result.collectivePerComponent.assign(
@@ -2961,6 +3139,13 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
     std::vector<double> values;
     for (const std::vector<double>& k : blockSelf) values.push_back(k[t]);
     result.selfError[t] = meanAndError(values).second;
+    if (result.smoothAvailable)
+    {
+      result.selfSmooth[t] = selfSmooth[t] / speed;
+      values.clear();
+      for (const std::vector<double>& k : blockSelfSmooth) values.push_back(k[t]);
+      result.selfSmoothError[t] = meanAndError(values).second;
+    }
   }
   // cumulative shells (the per-component parts are the kappa_X contributions of each shell, cumulative)
   std::vector<double> cumulativePerComponent(numberOfComponents * numberOfTimes, 0.0);
@@ -2995,6 +3180,13 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
   result.selfPlateau = windowAverage(result.self);
   result.selfTwoStatePlateau = windowAverage(result.selfTwoState);
   result.selfCommittedPlateau = windowAverage(result.selfCommitted);
+  if (result.smoothAvailable)
+  {
+    result.selfSmoothPlateau = windowAverage(result.selfSmooth);
+    std::vector<double> values;
+    for (const std::vector<double>& k : blockSelfSmooth) values.push_back(windowAverage(k));
+    result.selfSmoothPlateauError = meanAndError(values).second;
+  }
   {
     std::vector<double> values;
     for (const std::vector<double>& k : blockSelf) values.push_back(windowAverage(k));
@@ -3012,6 +3204,90 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
   }
   result.plateauBegin = plateauBegin;
   result.plateauEnd = plateauEnd;
+
+  // occupancy classes of the trajectory members (post-stratification) and the rates k(n -> n')
+  {
+    struct PooledClass
+    {
+      double speed{0.0};
+      double self{0.0};
+      double selfSmooth{0.0};
+      double selfCommitted{0.0};
+      std::size_t members{0};
+      std::vector<double> blockKappa;
+      std::vector<double> blockKappaSmooth;
+    };
+    std::map<std::pair<std::size_t, std::size_t>, PooledClass> pooled;
+    for (const DcTSTTransmissionAccumulator& accumulator : transmission)
+    {
+      for (const auto& [pair, sums] : accumulator.classes)
+      {
+        PooledClass& entry = pooled[pair];
+        entry.members += sums.members;
+        for (std::size_t b = 0; b < sums.speed.size(); ++b)
+        {
+          entry.speed += sums.speed[b];
+          entry.self += sums.self[b];
+          entry.selfSmooth += sums.selfSmooth[b];
+          entry.selfCommitted += sums.selfCommitted[b];
+          if (sums.speed[b] > 0.0)
+          {
+            entry.blockKappa.push_back(2.0 * sums.self[b] / sums.speed[b]);
+            if (result.smoothAvailable) entry.blockKappaSmooth.push_back(2.0 * sums.selfSmooth[b] / sums.speed[b]);
+          }
+        }
+      }
+    }
+    const double memberSpeed = 2.0 * speed;
+    for (const auto& [pair, entry] : pooled)
+    {
+      TransmissionResult::OccupancyClass item;
+      item.nFrom = pair.first;
+      item.nTo = pair.second;
+      item.members = entry.members;
+      item.weightFraction = (memberSpeed > 0.0) ? entry.speed / memberSpeed : 0.0;
+      item.kappa = (entry.speed > 0.0) ? 2.0 * entry.self / entry.speed : 0.0;
+      item.kappaError = meanAndError(entry.blockKappa).second;
+      item.kappaSmooth = (entry.speed > 0.0) ? 2.0 * entry.selfSmooth / entry.speed : 0.0;
+      item.kappaSmoothError = meanAndError(entry.blockKappaSmooth).second;
+      item.kappaCommitted = (entry.speed > 0.0) ? 2.0 * entry.selfCommitted / entry.speed : 0.0;
+      if (auto it = occupancyWeights.find(pair); it != occupancyWeights.end()) item.pilotWeight = it->second;
+      if (auto itB = barrierOccupancyWeights.find(pair);
+          itB != barrierOccupancyWeights.end() && item.pilotWeight > 0.0)
+      {
+        item.tstRatio = itB->second / item.pilotWeight;
+      }
+      result.classes.push_back(item);
+    }
+    std::sort(result.classes.begin(), result.classes.end(),
+              [](const TransmissionResult::OccupancyClass& a, const TransmissionResult::OccupancyClass& b)
+              { return a.weightFraction > b.weightFraction; });
+
+    OccupancyRates rates;
+    const bool haveKTST = barrierProbability.has_value() && result.meanSpeed > 0.0;
+    const double kTST = haveKTST ? 0.5 * result.meanSpeed * barrierProbability.value() : 0.0;
+    for (const TransmissionResult::OccupancyClass& item : result.classes)
+    {
+      const double kappaUsed = result.smoothAvailable ? item.kappaSmooth : item.kappa;
+      if (item.pilotWeight > 0.0 && item.tstRatio > 0.0)
+      {
+        result.classesReweightedKappa += item.pilotWeight * kappaUsed * item.tstRatio;
+        result.classesReweightedCoverage += item.pilotWeight;
+      }
+      if (item.members < minimumClassMembers || item.tstRatio <= 0.0 || !haveKTST) continue;
+      OccupancyRates::Entry entry;
+      entry.kappa = kappaUsed;
+      entry.tstRatio = item.tstRatio;
+      entry.rate = kappaUsed * item.tstRatio * kTST;
+      entry.weight = static_cast<double>(item.members);
+      entry.source = "classes";
+      if (entry.rate > 0.0) rates.measured[{item.nFrom, item.nTo}] = entry;
+    }
+    for (const auto& [pair, entry] : externalRates) rates.measured[pair] = entry;
+    fitOccupancyRates(rates);
+    if (!rates.measured.empty() || rates.fitValid) result.rates = std::move(rates);
+  }
+
   // first-order back-correlation factor and collective excess of the event-terminated estimator, relative to
   // the committed kappa_S at the end of the trajectories (its values are held after termination)
   const double selfCommittedFinal = result.selfCommitted.back();
@@ -3063,40 +3339,46 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
     if (hybridEnabled() && speed > 0.0)
     {
       using ColumnState = DcTSTTransmissionAccumulator::ColumnState;
+      using NeighbourhoodState = DcTSTTransmissionAccumulator::NeighbourhoodState;
       const std::size_t numberOfHandovers = handoverSteps.size();
       const std::size_t numberOfMembers = 2uz * result.numberOfTrajectoryPairs;
-      // mean occupancy of an unperturbed cage (all components), for the lateral channels of the closure
       const double meanOccupancy =
           static_cast<double>(system.numberOfMolecules()) / static_cast<double>(std::max(1uz, cageLattice.numberOfCages()));
-      constexpr double lateralNeighbors = 4.0;  // z - 2 for the cubic cage lattice (z = 6)
 
-      // expected sign of the first axial event of the column from its occupancies (first-order Markov closure):
-      // the axial channels with s = +-1, and (variant 'lateral') the refilling of A from its z - 2 lateral
-      // neighbours and the lateral escape from B, with s = 0
-      auto expectedSign = [&](const ColumnState& state, bool tableFirst, bool lateral, bool& usedFit) -> double
+      // expected sign of the first axial event from the full neighbourhood (first-order Markov closure):
+      // the six axial channels with s = +-1, and (variant 'lateral') the refill of A from each of its four
+      // lateral neighbours n_L k(n_L -> n_A) and the escape from B to each lateral n_B k(n_B -> n_L'), s = 0
+      auto expectedSign = [&](const NeighbourhoodState& state, bool tableFirst, bool lateral, bool& usedFit) -> double
       {
-        const OccupancyRates& rates = occupancyRates.value();
-        auto channelRate = [&](double nFrom, double nTo)
+        if (!result.rates.has_value()) return 0.0;
+        const OccupancyRates& rates = result.rates.value();
+        auto channelRate = [&](std::size_t nFrom, std::size_t nTo) -> double
         {
-          if (nFrom <= 0.0) return 0.0;
-          const double k = rates.rate(nFrom, nTo, tableFirst);
-          if (tableFirst && (std::abs(nFrom - std::round(nFrom)) > 1e-9 || std::abs(nTo - std::round(nTo)) > 1e-9 ||
-                             !rates.measured.contains({static_cast<std::size_t>(std::llround(nFrom)),
-                                                       static_cast<std::size_t>(std::llround(nTo))})))
-          {
-            usedFit = true;
-          }
-          return nFrom * k;
+          if (nFrom == 0uz) return 0.0;
+          if (tableFirst && !rates.isMeasured(nFrom, nTo)) usedFit = true;
+          return static_cast<double>(nFrom) * rates.rate(nFrom, nTo, tableFirst);
         };
-        const double nAPrime = state.nAPrime, nA = state.nA, nB = state.nB, nBPrime = state.nBPrime;
-        const double forward = channelRate(nAPrime, nA) + channelRate(nA, nB) + channelRate(nB, nBPrime);
-        const double backward = channelRate(nA, nAPrime) + channelRate(nB, nA) + channelRate(nBPrime, nB);
+        const ColumnState& column = state.column;
+        const double forward =
+            channelRate(column.nAPrime, column.nA) + channelRate(column.nA, column.nB) + channelRate(column.nB, column.nBPrime);
+        const double backward =
+            channelRate(column.nA, column.nAPrime) + channelRate(column.nB, column.nA) + channelRate(column.nBPrime, column.nB);
         double total = forward + backward;
         if (lateral)
         {
-          total += lateralNeighbors * (channelRate(meanOccupancy, nA) + channelRate(nB, meanOccupancy));
+          for (std::uint16_t nL : state.lateralA) total += channelRate(nL, column.nA);
+          for (std::uint16_t nL : state.lateralB) total += channelRate(column.nB, nL);
         }
         return (total > 0.0) ? (forward - backward) / total : 0.0;
+      };
+      auto wrapColumn = [&](const ColumnState& column) -> NeighbourhoodState
+      {
+        NeighbourhoodState state;
+        state.column = column;
+        const auto mean = static_cast<std::uint16_t>(std::max(0L, std::lround(meanOccupancy)));
+        state.lateralA.fill(mean);
+        state.lateralB.fill(mean);
+        return state;
       };
 
       for (std::size_t k = 0; k < numberOfHandovers; ++k)
@@ -3107,6 +3389,7 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
         std::vector<double> blockExcess;
         std::size_t eventBefore{0}, truncated{0};
         std::map<ColumnState, std::pair<double, std::size_t>> occupancy;
+        std::map<NeighbourhoodState, std::pair<double, std::size_t>> neighbourhood;
         for (const DcTSTTransmissionAccumulator& accumulator : transmission)
         {
           if (k >= accumulator.hybridTagged.size()) continue;
@@ -3128,6 +3411,15 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
             std::pair<double, std::size_t>& entry = occupancy[state];
             entry.first += weight.first;
             entry.second += weight.second;
+          }
+          if (k < accumulator.hybridNeighbourhood.size())
+          {
+            for (const auto& [state, weight] : accumulator.hybridNeighbourhood[k])
+            {
+              std::pair<double, std::size_t>& entry = neighbourhood[state];
+              entry.first += weight.first;
+              entry.second += weight.second;
+            }
           }
         }
         hybrid.concertedTagged = taggedSum / speed / selfCommittedFinal;
@@ -3159,19 +3451,28 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
           hybrid.occupancy = std::move(sortedOccupancy);
           hybrid.occupancyCounts = std::move(sortedCounts);
         }
-        if (occupancyRates.has_value())
+        hybrid.numberOfNeighbourhoodStates = neighbourhood.size();
+        if (result.rates.has_value())
         {
           hybrid.markovAvailable = true;
           double table{0.0}, tableAxial{0.0}, fit{0.0}, fitAxial{0.0}, unmeasured{0.0};
-          for (const auto& [state, weight] : occupancy)
+          auto accumulate = [&](const NeighbourhoodState& state, double weight)
           {
             bool usedFit{false};
             bool dummy{false};
-            table += weight.first * expectedSign(state, true, true, usedFit);
-            tableAxial += weight.first * expectedSign(state, true, false, dummy);
-            fit += weight.first * expectedSign(state, false, true, dummy);
-            fitAxial += weight.first * expectedSign(state, false, false, dummy);
-            if (usedFit) unmeasured += weight.first;
+            table += weight * expectedSign(state, true, true, usedFit);
+            tableAxial += weight * expectedSign(state, true, false, dummy);
+            fit += weight * expectedSign(state, false, true, dummy);
+            fitAxial += weight * expectedSign(state, false, false, dummy);
+            if (usedFit) unmeasured += weight;
+          };
+          if (!neighbourhood.empty())
+          {
+            for (const auto& [state, weight] : neighbourhood) accumulate(state, weight.first);
+          }
+          else
+          {
+            for (const auto& [state, weight] : occupancy) accumulate(wrapColumn(state), weight.first);
           }
           // per member: sum_members |qdot| E[s] / sum_pairs |qdot|, relative to kappa_S^committed
           hybrid.markovTable = table / speed / selfCommittedFinal;
@@ -3221,7 +3522,9 @@ void DynamicallyCorrectedTST::output()
     std::print(file, "# column 4: kappa_S(t) two-state (side of the plane, Bennett-Chandler)\n");
     std::print(file, "# column 5: kappa_S(t) committed (side of the plane, frozen once |q| >= {:.4f} A)\n",
                (settings.commitDistance > 0.0) ? settings.commitDistance : 0.5 * barrier.lambda);
-    std::size_t column = 6;
+    std::print(file, "# column 6: kappa_S(t) committor-smoothed (Ruiz-Montero; 0 if no free-energy profile)\n");
+    std::print(file, "# column 7: error of the committor-smoothed kappa_S\n");
+    std::size_t column = 8;
     for (std::size_t s = 0; s < numberOfShells; ++s)
     {
       if (s + 1 == numberOfShells)
@@ -3242,8 +3545,10 @@ void DynamicallyCorrectedTST::output()
     }
     for (std::size_t t = 0; t < numberOfTimes; ++t)
     {
-      std::print(file, "{:12.6f} {:12.6f} {:12.6f} {:12.6f} {:12.6f}", kappa.time[t], kappa.self[t], kappa.selfError[t],
-                 kappa.selfTwoState[t], kappa.selfCommitted[t]);
+      std::print(file, "{:12.6f} {:12.6f} {:12.6f} {:12.6f} {:12.6f} {:12.6f} {:12.6f}", kappa.time[t], kappa.self[t],
+                 kappa.selfError[t], kappa.selfTwoState[t], kappa.selfCommitted[t],
+                 kappa.smoothAvailable ? kappa.selfSmooth[t] : 0.0,
+                 kappa.smoothAvailable ? kappa.selfSmoothError[t] : 0.0);
       for (std::size_t s = 0; s < numberOfShells; ++s)
       {
         std::print(file, " {:12.6f} {:12.6f}", kappa.collective[s][t], kappa.collectiveError[s][t]);
@@ -3338,6 +3643,11 @@ void DynamicallyCorrectedTST::output()
     std::print(stream, "    kappa_S two-state (plateau):         {:.5f}\n", kappa.selfTwoStatePlateau);
     std::print(stream, "    kappa_S committed (plateau):         {:.5f} +/- {:.5f}\n", kappa.selfCommittedPlateau,
                kappa.selfCommittedPlateauError);
+    if (kappa.smoothAvailable)
+    {
+      std::print(stream, "    kappa_S smooth (plateau):            {:.5f} +/- {:.5f}\n", kappa.selfSmoothPlateau,
+                 kappa.selfSmoothPlateauError);
+    }
     for (std::size_t s = 0; s < numberOfShells; ++s)
     {
       if (s + 1 == numberOfShells)
@@ -3348,6 +3658,63 @@ void DynamicallyCorrectedTST::output()
                    kappa.collectivePlateau[s], kappa.collectivePlateauError[s]);
     }
     std::print(stream, "\n");
+
+    if (!kappa.classes.empty())
+    {
+      std::print(stream, "Occupancy classes of the trajectory members (post-stratification; n_from includes the tagged "
+                         "molecule, n_to is the arrival cage at launch):\n");
+      std::print(stream, "    {:>6} {:>6} {:>8} {:>8} {:>10} {:>9} {:>10} {:>9} {:>8} {:>8}\n", "n_from", "n_to",
+                 "members", "weight", "kappa", "+/-", "kappa_sm", "+/-", "P(n,n')", "kTST rel");
+      for (const TransmissionResult::OccupancyClass& item : kappa.classes)
+      {
+        if (item.weightFraction < 0.005 && item.members < minimumClassMembers) continue;
+        std::print(stream, "    {:>6} {:>6} {:>8} {:>8.4f} {:>10.5f} {:>9.5f} {:>10.5f} {:>9.5f} {:>8.4f} {:>8.4f}\n",
+                   item.nFrom, item.nTo, item.members, item.weightFraction, item.kappa, item.kappaError,
+                   item.kappaSmooth, item.kappaSmoothError, item.pilotWeight, item.tstRatio);
+      }
+      if (kappa.classesReweightedCoverage > 0.0)
+      {
+        std::print(stream,
+                   "    reweighted kappa = sum P(n,n') kappa(n,n') [P(n,n'|q*)/P(n,n')] over the classes: {:.5f} "
+                   "(coverage {:.3f} of P(n,n'))\n",
+                   kappa.classesReweightedKappa, kappa.classesReweightedCoverage);
+        std::print(stream,
+                   "    (equals kappa_S of this run when the classes cover the occupancy distribution and use the "
+                   "same kappa; the consistency of the rates is sum P k vs kappa k^TST)\n");
+      }
+      std::print(stream, "\n");
+    }
+    if (kappa.rates.has_value())
+    {
+      const OccupancyRates& rates = kappa.rates.value();
+      std::print(stream, "Occupancy-resolved rates k(n -> n') [1/ps] (post-stratified classes, overridden by "
+                         "'OccupancyRateInputs'):\n");
+      std::print(stream, "    {:>6} {:>6} {:>14} {:>8} {:>10} {:>10} {}\n", "n", "n'", "k", "weight", "kappa",
+                 "kTST rel", "source");
+      for (const auto& [pair, entry] : rates.measured)
+      {
+        std::print(stream, "    {:>6} {:>6} {:>14.6e} {:>8.0f} {:>10.5f} {:>10.4f} {}\n", pair.first, pair.second,
+                   entry.rate, entry.weight, entry.kappa, entry.tstRatio, entry.source);
+      }
+      if (rates.fitValid)
+      {
+        std::print(stream, "    fit log k = c + a n - b n': c = {:.4f}, a = {:.4f}, b = {:.4f} (weighted rms {:.4f})\n",
+                   rates.fitConstant, rates.fitDeparture, rates.fitArrival, rates.fitRms);
+      }
+      else if (rates.measured.size() < 3uz)
+      {
+        std::print(stream, "    (fewer than three measured pairs: the fit is not available)\n");
+      }
+      if (barrierProbability.has_value() && kappa.classesReweightedCoverage > 0.0)
+      {
+        const double kTST = 0.5 * kappa.meanSpeed * barrierProbability.value();
+        const double kappaUsed = kappa.smoothAvailable ? kappa.selfSmoothPlateau : kappa.selfPlateau;
+        std::print(stream,
+                   "    consistency: sum P(n,n') k(n->n') = {:.6e} [1/ps],  kappa k^TST = {:.6e} [1/ps]\n",
+                   kappa.classesReweightedKappa * kTST, kappaUsed * kTST);
+      }
+      std::print(stream, "\n");
+    }
 
     if (eventMode)
     {
@@ -3457,10 +3824,10 @@ void DynamicallyCorrectedTST::output()
                    "    epsilon_conc(tau): the committor-smoothed cage count of the tagged molecule and the smoothed\n"
                    "    axial displacement of the other molecules of the column at tau (members with an event before\n"
                    "    tau enter with their first-event values), relative to kappa_S^committed, minus one;\n"
-                   "    epsilon_Markov(tau): the expected sign of the first event from the occupancies (n_A', n_A, n_B,\n"
-                   "    n_B') of the column at tau with the occupancy-resolved rates k(n -> n') ('lateral': the\n"
-                   "    refilling of A from its lateral neighbours and the lateral escape from B end the race with\n"
-                   "    s = 0, the first-order closure of the article; 'axial': the six axial channels only);\n"
+                   "    epsilon_Markov(tau): the expected sign of the first event from the full neighbourhood at tau\n"
+                   "    (column plus the four lateral neighbours of A and of B) with the occupancy-resolved rates\n"
+                   "    k(n -> n') of this run ('lateral': refill of A from each neighbour and escape from B to each\n"
+                   "    neighbour end the race with s = 0; 'axial': the six axial channels only);\n"
                    "    epsilon_hyb = epsilon_conc + epsilon_Markov should not depend on tau once the hopping beyond\n"
                    "    tau is Markovian, and tends to the first-event epsilon = {:.5f} +/- {:.5f} for tau -> infinity.\n",
                    kappa.collectiveExcess, kappa.collectiveExcessError);
@@ -3492,13 +3859,12 @@ void DynamicallyCorrectedTST::output()
         if (!kappa.hybrid.front().markovAvailable)
         {
           std::print(stream,
-                     "    (no 'OccupancyRateInputs': epsilon_Markov is not evaluated here; the |qdot|-weighted occupancy\n"
-                     "     histograms at every tau are in the JSON output, 'results.eventTerminated.hybrid', for the\n"
-                     "     closure with the rates k(n -> n') of occupancy-conditioned runs)\n");
+                     "    (no rates k(n -> n'): epsilon_Markov is not evaluated; the occupancy and neighbourhood\n"
+                     "     histograms at every tau are in the JSON output, 'results.eventTerminated.hybrid')\n");
         }
         else
         {
-          const OccupancyRates& rates = occupancyRates.value();
+          const OccupancyRates& rates = kappa.rates.value();
           std::print(stream, "    (rates: {} measured pairs", rates.measured.size());
           if (rates.fitValid)
           {
@@ -3541,6 +3907,18 @@ void DynamicallyCorrectedTST::output()
       std::print(stream, "    k_(A->B) = kappa_S k^TST:            {:.6e} +/- {:.2e} [1/ps]\n", kS, kSError);
       std::print(stream, "    D_S = kappa_S k^TST lambda^2:        {:.6e} +/- {:.2e} [m^2/s]\n",
                  kS * lambdaSquared * conversion, kSError * lambdaSquared * conversion);
+      double kSSmooth{0.0}, kSSmoothError{0.0};
+      if (kappa.smoothAvailable)
+      {
+        kSSmooth = kappa.selfSmoothPlateau * kTST;
+        kSSmoothError =
+            kSSmooth *
+            std::sqrt(std::pow(kTSTError / std::max(kTST, 1e-300), 2) +
+                      std::pow(kappa.selfSmoothPlateauError / std::max(std::abs(kappa.selfSmoothPlateau), 1e-300), 2));
+        std::print(stream, "    k_(A->B) = kappa_S^smooth k^TST:     {:.6e} +/- {:.2e} [1/ps]\n", kSSmooth, kSSmoothError);
+        std::print(stream, "    D_S = kappa_S^smooth k^TST lambda^2: {:.6e} +/- {:.2e} [m^2/s]\n",
+                   kSSmooth * lambdaSquared * conversion, kSSmoothError * lambdaSquared * conversion);
+      }
       for (std::size_t s = 0; s < numberOfShells; ++s)
       {
         const double kC = kappa.collectivePlateau[s] * kTST;
@@ -3597,6 +3975,13 @@ void DynamicallyCorrectedTST::output()
       json["kSelf"] = kS;
       json["DSelf"] = kS * lambdaSquared * conversion;
       json["DSelfError"] = kSError * lambdaSquared * conversion;
+      if (kappa.smoothAvailable)
+      {
+        json["kSelfSmooth"] = kSSmooth;
+        json["kSelfSmoothError"] = kSSmoothError;
+        json["DSelfSmooth"] = kSSmooth * lambdaSquared * conversion;
+        json["DSelfSmoothError"] = kSSmoothError * lambdaSquared * conversion;
+      }
       for (std::size_t s = 0; s < numberOfShells; ++s)
       {
         const std::string key = (s + 1 == numberOfShells) ? "all" : std::to_string(s);
@@ -3643,6 +4028,53 @@ void DynamicallyCorrectedTST::output()
   outputJson["results"]["kappaSelfTwoState"] = kappa.selfTwoStatePlateau;
   outputJson["results"]["kappaSelfCommitted"] = kappa.selfCommittedPlateau;
   outputJson["results"]["kappaSelfCommittedError"] = kappa.selfCommittedPlateauError;
+  if (kappa.smoothAvailable)
+  {
+    outputJson["results"]["kappaSelfSmooth"] = kappa.selfSmoothPlateau;
+    outputJson["results"]["kappaSelfSmoothError"] = kappa.selfSmoothPlateauError;
+  }
+  if (!kappa.classes.empty())
+  {
+    nlohmann::json& classes = outputJson["results"]["occupancyClasses"];
+    classes["reweightedKappa"] = kappa.classesReweightedKappa;
+    classes["reweightedCoverage"] = kappa.classesReweightedCoverage;
+    for (const TransmissionResult::OccupancyClass& item : kappa.classes)
+    {
+      nlohmann::json entry;
+      entry["nFrom"] = item.nFrom;
+      entry["nTo"] = item.nTo;
+      entry["members"] = item.members;
+      entry["weightFraction"] = item.weightFraction;
+      entry["kappa"] = item.kappa;
+      entry["kappaError"] = item.kappaError;
+      entry["kappaSmooth"] = item.kappaSmooth;
+      entry["kappaSmoothError"] = item.kappaSmoothError;
+      entry["kappaCommitted"] = item.kappaCommitted;
+      entry["pilotWeight"] = item.pilotWeight;
+      entry["tstRatio"] = item.tstRatio;
+      classes["classes"].push_back(std::move(entry));
+    }
+  }
+  if (kappa.rates.has_value())
+  {
+    const OccupancyRates& rates = kappa.rates.value();
+    nlohmann::json& json = outputJson["results"]["occupancyRates"];
+    for (const auto& [pair, entry] : rates.measured)
+    {
+      nlohmann::json item;
+      item["rate"] = entry.rate;
+      item["weight"] = entry.weight;
+      item["kappa"] = entry.kappa;
+      item["tstRatio"] = entry.tstRatio;
+      item["source"] = entry.source;
+      json["measured"][std::format("{},{}", pair.first, pair.second)] = std::move(item);
+    }
+    json["fitValid"] = rates.fitValid;
+    json["fitConstant"] = rates.fitConstant;
+    json["fitDeparture"] = rates.fitDeparture;
+    json["fitArrival"] = rates.fitArrival;
+    json["fitRms"] = rates.fitRms;
+  }
   outputJson["results"]["longJumpFraction"] = kappa.longJumpFraction;
   outputJson["results"]["committedFraction"] = kappa.committedFraction;
   for (std::size_t s = 0; s < numberOfShells; ++s)
@@ -3711,12 +4143,16 @@ void DynamicallyCorrectedTST::output()
           "members; the fractions sum to 1 - fractionEventBefore - fractionTruncated";
       hybridJson["meanOccupancy"] = static_cast<double>(system.numberOfMolecules()) /
                                     static_cast<double>(std::max(1uz, cageLattice.numberOfCages()));
-      if (occupancyRates.has_value())
+      if (kappa.rates.has_value())
       {
-        const OccupancyRates& rates = occupancyRates.value();
-        for (const auto& [pair, k] : rates.measured)
+        const OccupancyRates& rates = kappa.rates.value();
+        for (const auto& [pair, entry] : rates.measured)
         {
-          hybridJson["rates"]["measured"][std::format("{},{}", pair.first, pair.second)] = k;
+          nlohmann::json item;
+          item["rate"] = entry.rate;
+          item["weight"] = entry.weight;
+          item["source"] = entry.source;
+          hybridJson["rates"]["measured"][std::format("{},{}", pair.first, pair.second)] = std::move(item);
         }
         hybridJson["rates"]["fitValid"] = rates.fitValid;
         hybridJson["rates"]["fitConstant"] = rates.fitConstant;
@@ -3735,6 +4171,7 @@ void DynamicallyCorrectedTST::output()
         entry["fractionEventBefore"] = hybrid.fractionEventBefore;
         entry["fractionTruncated"] = hybrid.fractionTruncated;
         entry["numberOfStates"] = hybrid.numberOfStates;
+        entry["numberOfNeighbourhoodStates"] = hybrid.numberOfNeighbourhoodStates;
         if (hybrid.markovAvailable)
         {
           entry["collectiveExcessMarkov"] = hybrid.markovTable;

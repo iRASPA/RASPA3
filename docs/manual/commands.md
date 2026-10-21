@@ -753,7 +753,12 @@ reported separately at the end of the simulation.
     which the histogram of \f$q\f$ of every molecule of the tagged component
     (converged in the cage interior; the unbiased reference state of the
     reweighting) and the joint cage-occupancy distribution \f$P(n_A,n_B)\f$
-    are accumulated; (2) `"NumberOfWindowEquilibrationCycles"` plus
+    are accumulated; the window stage also records
+    \f$P(n_A,n_B|q^*)\f$ while the tagged bead is within 0.25 Å of the
+    dividing plane (unbiased in the occupancies because the umbrella acts
+    only on \f$q\f$), so that
+    \f$k^{TST}(n_A\to n_B)/k^{TST} = P(n_A,n_B|q^*)/P(n_A,n_B)\f$;
+    (2) `"NumberOfWindowEquilibrationCycles"` plus
     `"NumberOfWindowCycles"` of biased Monte Carlo per window, the windows
     distributed over the replicas (threads; with more replicas than window
     centres the centres are repeated so that every replica samples, and the
@@ -901,7 +906,13 @@ reported separately at the end of the simulation.
     `"CommitDistance"` (Å; default \f$\lambda/2\f$, the cage centre) — the
     RASPA2 convention — together with its *committed fraction*. The
     net-cage-count, two-state and committed values of \f$\kappa_S\f$ agree
-    when the molecules are thermalized in the cage.
+    when the molecules are thermalized in the cage. When `"FreeEnergyInput"`
+    supplies a profile the run also reports the *committor-smoothed*
+    \f$\kappa_S\f$ (Ruiz-Montero, Frenkel and Brey): the step of the net
+    cage count at every window is replaced by the committor
+    \f$p_B(q)\f$ of that profile, which removes the variance of the A/B
+    decision. It is the recommended recrossing factor for the rates and
+    for \f$D_S\f$ (`kappaSelfSmooth`, `kSelfSmooth`, `DSelfSmooth`).
 
     Exactly one system is declared; it is replicated into `"NumberOfReplicas"`
     independent replicas (default `"NumberOfThreads"`), each with its own
@@ -913,8 +924,9 @@ reported separately at the end of the simulation.
     flexible. Output: `output/output_{T}_{P}.dctst.txt` (`.json`) with the
     combined results, `output/output_{T}_{P}.dctst.r{k}.txt` per replica, and
     the gnuplot-friendly `dctst/transmission_function_{T}_{P}.txt`
-    (\f$\kappa_S(t)\f$, its two-state Bennett–Chandler and committed
-    variants, and \f$\kappa_C(t)\f$ per shell and per component). The energy
+    (\f$\kappa_S(t)\f$, its two-state Bennett–Chandler, committed and
+    committor-smoothed variants, and \f$\kappa_C(t)\f$ per shell and per
+    component). The energy
     drift of the trajectories (NVE only) and \f$\langle|\dot q|\rangle\f$
     (compare with \f$\sqrt{2k_BT/\pi m}\f$) are reported as checks. Binary
     restart files are not supported by this driver; instead the run is made
@@ -973,15 +985,23 @@ reported separately at the end of the simulation.
     \f$k(n_A\!\to\!n_B)=\kappa(n_A,n_B)\,k^{TST}(n_A,n_B)\f$ when that
     JSON is read as `"FreeEnergyInput"`. The free-energy driver also records
     the joint distribution \f$P(n_A,n_B)\f$ of the occupancies seen by a
-    molecule and its neighbour across the window
+    molecule and its neighbour across the window, and
+    \f$P(n_A,n_B|q^*)\f$ at the dividing plane
     (`dctst/cage_occupancy_distribution_{T}_{P}.txt`, and \f$\langle
-    n_A\rangle\f$, \f$\langle n_B\rangle\f$ in the summary); it is the weight
-    with which the occupancy-resolved rates of a series of runs are
-    recombined, e.g. \f$\langle k\rangle=\sum P(n_A,n_B)\,k(n_A\!\to\!n_B)\f$
-    recovers the unconditioned rate, and the full set
-    \f$\{k(n_A\!\to\!n_B)\}\f$ is the input of a lattice (master-equation or
-    kinetic Monte Carlo) model that yields \f$D_S\f$ and \f$D_C\f$ including
-    the vacancy-mediated correlations. The D values printed in this mode are
+    n_A\rangle\f$, \f$\langle n_B\rangle\f$ in the summary). An unconditioned
+    transmission run classifies every trajectory member by the launch
+    occupancies \f$(n_{\mathrm{from}}, n_{\mathrm{to}})\f$ and reports
+    \f$\kappa(n,n')\f$ per class; combined with
+    \f$k^{TST}(n\to n') = k^{TST}\,P(n,n'|q^*)/P(n,n')\f$ this is the
+    post-stratified rate table \f$k(n\to n')\f$ of one run (JSON
+    `results.occupancyClasses` and `results.occupancyRates`; the
+    consistency check is
+    \f$\sum P(n,n')\,k(n\to n') = \kappa\,k^{TST}\f$). Conditioned runs
+    (`"CageOccupancies"` listed in `"OccupancyRateInputs"`) remain optional
+    overrides. The full set \f$\{k(n_A\!\to\!n_B)\}\f$ is the input of a
+    lattice (master-equation or kinetic Monte Carlo) model that yields
+    \f$D_S\f$ and \f$D_C\f$ including the vacancy-mediated correlations.
+    The D values printed in this mode are
     those of a hypothetical lattice in which every window had the requested
     occupancies. Requires a framework with at least two unit cells along
     the barrier normal; \f$n_A \ge 1\f$. `"MirrorSymmetry"` is not available
@@ -1065,8 +1085,9 @@ reported separately at the end of the simulation.
 
     *Hybrid estimator of the collective excess* — `"HandoverTimes" :
     [τ₁, τ₂, …]` (ps after the commitment of the tagged molecule; event mode
-    only; default `[1.0, 2.0, 3.0, 5.0, 8.0]`, `[]` disables it) and
-    `"OccupancyRateInputs" : [paths]`. The first-event estimator above
+    only; default `[1.0, 2.0, 3.0, 5.0, 8.0]`, `[]` disables it). Optional
+    `"OccupancyRateInputs" : [paths]` override the post-stratified rates of
+    this run. The first-event estimator above
     samples the race between the hop channels of the column: every
     trajectory ends with \f$s = \pm1\f$, so \f$\epsilon\f$ has a variance of
     one per trajectory and needs \f$\sim 1/\epsilon^2\f$ trajectories of a
@@ -1089,25 +1110,29 @@ reported separately at the end of the simulation.
     \f$\epsilon_{\mathrm{conc}}(\tau\to\infty)\f$ is the first-event
     \f$\epsilon\f$; and (ii) the occupancies \f$(n_{A'}, n_A, n_B, n_{B'})\f$
     of the column at \f$\tau\f$ (all molecules, the tagged one in \f$B\f$;
-    frame of the tagged hop), as a \f$|\dot q|\f$-weighted histogram over the
-    members that had no event yet. From the histogram the *Markov* part
+    frame of the tagged hop) together with the occupancies of the four
+    lateral neighbours of \f$A\f$ and of \f$B\f$, as a \f$|\dot q|\f$-weighted
+    histogram over the members that had no event yet. From the histogram the
+    *Markov* part
     \f$\epsilon_{\mathrm{Markov}}(\tau) = \sum_n P(n)\,\sum_c s_c k_c(n)/\sum_c
     k_c(n)\f$ is the expected sign of the first event with the channel rates
     \f$n_X\,k(n_X\to n_Y)\f$ of the six axial channels (\f$s=\pm1\f$) and, in
     the variant `lateral` (the first-order closure of the hierarchical
-    scheme), the refilling of \f$A\f$ from its \f$z-2\f$ lateral neighbours
-    and the lateral escape from \f$B\f$ with \f$s = 0\f$ (the `axial` variant
-    omits them; the truth lies between the two). The rates
-    \f$k(n\to n') = \kappa_S(n,n')\,k^{TST}(n,n')\f$ are read from the JSON
-    outputs of occupancy-conditioned transmission runs listed in
-    `"OccupancyRateInputs"` (`dcTST.cageOccupancies` and `kSelf`); pairs that
-    were not run are taken from the least-squares fit \f$\log k = c + a\,n -
-    b\,n'\f$ through the measured ones (also reported with the fit for every
-    pair), and the lateral channels use the mean occupancy of a cage. Without
-    the list only \f$\epsilon_{\mathrm{conc}}(\tau)\f$ and the histograms
-    are reported (JSON `results.eventTerminated.hybrid`, also in the
-    accumulator snapshots, so that the closure can be done afterwards or
-    pooled over runs). The sum \f$\epsilon_{\mathrm{hyb}}(\tau) =
+    scheme), the refill of \f$A\f$ from each of its four lateral neighbours
+    and the escape from \f$B\f$ to each of its four laterals with
+    \f$s = 0\f$ (the `axial` variant omits them; the truth lies between the
+    two), evaluated at the *actual* neighbourhood of that member. The rates
+    \f$k(n\to n') = \kappa_S(n,n')\,k^{TST}(n,n')\f$ come from the occupancy
+    classes of this run combined with
+    \f$P(n,n'|q^*)/P(n,n')\f$ of `"FreeEnergyInput"` (post-stratification;
+    \f$\kappa_S^{\mathrm{smooth}}\f$ of the class when the committor is
+    available); `"OccupancyRateInputs"` overrides individual pairs with
+    conditioned runs (`dcTST.cageOccupancies` and `kSelfSmooth` / `kSelf`).
+    Pairs that were not measured are taken from the weighted least-squares
+    fit \f$\log k = c + a\,n - b\,n'\f$. Without rates only
+    \f$\epsilon_{\mathrm{conc}}(\tau)\f$ and the histograms are reported
+    (JSON `results.eventTerminated.hybrid`, also in the accumulator
+    snapshots). The sum \f$\epsilon_{\mathrm{hyb}}(\tau) =
     \epsilon_{\mathrm{conc}}(\tau) + \epsilon_{\mathrm{Markov}}(\tau)\f$ must
     not depend on \f$\tau\f$ once the hopping beyond \f$\tau\f$ is Markovian
     (a drift with \f$\tau\f$ marks the non-Markovian part of the correlation,
