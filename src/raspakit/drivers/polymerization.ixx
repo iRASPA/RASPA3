@@ -5,6 +5,7 @@ export module polymerization;
 import std;
 
 import archive;
+import json;
 import input_reader;
 import molecular_dynamics_spatial_decomposition;
 import polymerization_settings;
@@ -27,6 +28,13 @@ import polymerization_settings;
  * PolymerLinkTable); the new terms are ramped in over 'RelaxationSteps' steps. The molecules of the system
  * never change: the polymer is the graph of bonds between them, written at the end to
  * 'output/polymer_topology.s<i>.json' (and every reaction to 'output/polymerization_bonds.s<i>.txt').
+ *
+ * Event frames ('WriteEventFrames'): the configuration at the moment of every reaction scan that accepted a
+ * reaction is written as a LAMMPS data file to 'polymerization_events/s<i>/step_<step>.data' (with the companion
+ * input script), with the polymer bonds and their bends and torsions merged into its topology and the reacted
+ * atoms carrying their product types; 'EventFrameEvery' thins the data files. The reactions of every frame (the
+ * atoms with their types before and after, the distance, the configuration, the new bonded terms) are appended
+ * as one JSON object per line to 'output/polymerization_events.s<i>.jsonl', and the topology file is refreshed.
  *
  * Radical trapping is measured with the PropertyRadicalWaitingTimes of the system ('ComputeRadicalWaitingTimes'):
  * the driver adds the waiting time of a radical to it at the reaction (the only moment the closed interval is
@@ -51,10 +59,48 @@ export struct Polymerization
 {
   Polymerization(InputReader& reader);
 
-  std::uint64_t versionNumber{4};
+  std::uint64_t versionNumber{5};
 
   MolecularDynamicsSpatialDecomposition md;
   PolymerizationSettings settings{};
+
+  enum class ReactionKind : std::uint8_t
+  {
+    Initiation,
+    Propagation,
+    Termination
+  };
+  /// One accepted reaction of a scan (the bond log and the event frames are written from these records).
+  struct ReactionEvent
+  {
+    ReactionKind kind{ReactionKind::Initiation};
+    std::size_t siteA{};                              ///< The initiated site, or the attacking radical.
+    std::size_t siteB{std::numeric_limits<std::size_t>::max()};  ///< The attacked monomer / the other radical.
+    std::uint32_t atomA{};                            ///< Global atom of the bond (the tail of 'siteA').
+    std::uint32_t atomB{std::numeric_limits<std::uint32_t>::max()};  ///< Its partner (none for an initiation).
+    double distance{0.0};                             ///< [Angstrom] at the reaction.
+    std::array<std::int8_t, 2> chirality{0, 0};       ///< Configuration taken by the tail(s) of a / b.
+    std::string stereo{"-"};                          ///< The log's stereo field.
+    std::optional<double> strain{};                   ///< Angular strain [K] with an 'OrientationTemperature'.
+    std::array<std::optional<double>, 2> waitingTime{};  ///< [ps] of the reacting radical(s).
+    std::size_t bond{std::numeric_limits<std::size_t>::max()};  ///< Index of the new bond in the table.
+    /// The atoms whose pseudo-atom type changed: global atom, type before and after.
+    std::vector<std::tuple<std::uint32_t, std::uint16_t, std::uint16_t>> retyped{};
+
+    static constexpr std::string_view name(ReactionKind kind)
+    {
+      switch (kind)
+      {
+        case ReactionKind::Initiation:
+          return "initiation";
+        case ReactionKind::Propagation:
+          return "propagation";
+        case ReactionKind::Termination:
+          return "termination";
+      }
+      return "unknown";
+    }
+  };
 
   /// Per system: whether the reactions have stopped (target conversion reached, or nothing left to react).
   std::vector<std::uint8_t> reactionsFinished{};
@@ -72,12 +118,16 @@ export struct Polymerization
   /// Per system: the step at which the reactions stopped (0: still running); the ages of the living radicals of
   /// the waiting-time property are measured up to this step.
   std::vector<std::uint64_t> reactionsStoppedStep{};
+  /// Per system: the number of reaction frames so far (the stride of the event data files counts these).
+  std::vector<std::size_t> eventFrames{};
 
-  std::vector<std::ofstream> bondLogs{};  ///< Not part of the restart (reopened in append mode).
+  std::vector<std::ofstream> bondLogs{};   ///< Not part of the restart (reopened in append mode).
+  std::vector<std::ofstream> eventLogs{};  ///< The JSON-lines records of the event frames; reopened in append mode.
 
   void run();
-  /// Reopens the output files of a restarted run (the MD driver's streams and the bond logs, in append mode).
+  /// Reopens the output files of a restarted run (the MD driver's streams and the logs, in append mode).
   void createOutputFiles();
+  /// Opens the bond logs and the event logs (append mode on a restart).
   void openBondLogs();
 
   /// The hook of the MD driver: called after every MD step of a system.
@@ -97,12 +147,21 @@ export struct Polymerization
   void activate(std::size_t systemId);
   /// The configuration the next radical of a chain has to take, given the configuration of the centre before it.
   std::int8_t nextChirality(std::int8_t previous);
-  /// One reaction scan of a system; returns the number of accepted reactions.
-  std::size_t scan(std::size_t systemId);
+  /// One reaction scan of a system; returns the accepted reactions (logged to the bond log).
+  std::vector<ReactionEvent> scan(std::size_t systemId);
+  /// Appends an event to the bond log of a system.
+  void logEvent(std::size_t systemId, const ReactionEvent& event);
   /// After accepted reactions: tells the engine, refreshes the forces and the energies of the system.
   void topologyChanged(std::size_t systemId);
+  /// The event frame of the reactions just accepted (after topologyChanged(): the LAMMPS data file of the
+  /// configuration with the polymer topology, the JSON record, the refreshed topology file).
+  void writeEventFrame(std::size_t systemId, std::span<const ReactionEvent> events);
+  /// The JSON record of an event frame ('dataFile': the data file written for it, empty when thinned out).
+  nlohmann::json eventRecord(std::size_t systemId, std::span<const ReactionEvent> events,
+                             std::string_view dataFile) const;
   void writeSettings();
-  void writeTopology();
+  /// Writes 'output/polymer_topology.s<i>.json' of a system (the current site states and bonds).
+  void writeTopology(std::size_t systemId);
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Polymerization& p);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Polymerization& p);

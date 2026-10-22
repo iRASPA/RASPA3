@@ -11,6 +11,7 @@ import simulationbox;
 import forcefield;
 import framework;
 import molecule;
+import polymer_links;
 import lammps_topology;
 
 /**
@@ -40,11 +41,13 @@ std::string writeInputScript(const Topology &topology);
 std::string writeTableFile(const Topology &topology);
 std::string writePairListFile(const Topology &topology);
 
+/// 'polymerLinks': the polymer overlay of a polymerization to merge into the topology (see buildTopology).
 ExportFiles exportSystem(std::span<const Component> components, std::span<const Atom> atomData,
                          std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,
                          const SimulationBox &simulationBox, const ForceField &forceField,
                          std::span<const std::size_t> numberOfIntegerMoleculesPerComponent,
-                         const std::optional<Framework> &framework, ExportOptions options = {});
+                         const std::optional<Framework> &framework, ExportOptions options = {},
+                         const PolymerLinkTable *polymerLinks = nullptr);
 }  // namespace LAMMPS
 
 export namespace IO

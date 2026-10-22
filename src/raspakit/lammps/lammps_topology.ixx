@@ -13,6 +13,7 @@ import component;
 import simulationbox;
 import forcefield;
 import framework;
+import polymer_links;
 import lammps_styles;
 
 /**
@@ -23,6 +24,14 @@ import lammps_styles;
  * topology lists in LAMMPS atom ids, wrapped coordinates with image flags, per-atom rigid-fragment ids,
  * pair coefficients per type pair, table bodies for forms without an analytic LAMMPS style, and the
  * settings that only the input script can carry (styles, special_bonds, cut-offs, kspace, constraints).
+ *
+ * A polymer overlay (the bonds formed by a polymerization, see PolymerLinkTable) is merged into the
+ * topology when given: the polymer bonds with their bends and torsions are added to the lists, and the
+ * bonded terms of the monomers whose parameters changed with the retyping take the product parameters.
+ * LAMMPS derives the 1-2 / 1-3 exclusions and the 1-4 scaling across the new bonds from the bond list
+ * itself (special_bonds), so the pair corrections of the overlay need no entries. The force ramps of
+ * fresh bonds and the stereocentre restraints have no LAMMPS equivalent: the terms are written at full
+ * strength and the restraints are dropped (both reported as warnings).
  */
 export namespace LAMMPS
 {
@@ -32,6 +41,7 @@ struct ExportOptions
   std::string dataFile{"raspa.data"};
   std::string tableFile{"raspa.table"};
   std::string pairListFile{"raspa.pairs"};
+  std::string comment{};  ///< Appended to the first (comment) line of the data file.
 };
 
 /// Distinct LAMMPS types of one bonded class, in order of first appearance.
@@ -129,13 +139,20 @@ struct Topology
   bool hasFramework{false};
   std::vector<MoleculeGroup> groups{};
 
+  // polymer overlay (zero without one)
+  std::size_t polymerBonds{0};      ///< Polymer bonds merged into the bond list.
+  std::size_t polymerOverrides{0};  ///< Monomer terms that took the product parameters.
+
   std::vector<std::string> pairStyles() const;
   bool pairCoefficientsInDataFile() const;  ///< single analytic VDW style: PairIJ Coeffs can live in the data file
 };
 
+/// 'polymerLinks': the polymer overlay to merge (its derived term lists must be current, see
+/// PolymerLinkTable::rebuild); none to export the component topology only.
 Topology buildTopology(std::span<const Component> components, std::span<const Atom> atomData,
                        std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,
                        const SimulationBox &simulationBox, const ForceField &forceField,
                        std::span<const std::size_t> numberOfIntegerMoleculesPerComponent,
-                       const std::optional<Framework> &framework, ExportOptions options = {});
+                       const std::optional<Framework> &framework, ExportOptions options = {},
+                       const PolymerLinkTable *polymerLinks = nullptr);
 }  // namespace LAMMPS

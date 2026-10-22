@@ -1168,7 +1168,9 @@ reported separately at the end of the simulation.
     terms in linearly over `"RelaxationSteps"` MD steps. The molecules of the
     system never change: the polymer is the graph of bonds between them,
     written to `output/polymer_topology.s<i>.json` at the end, with every
-    reaction logged in `output/polymerization_bonds.s<i>.txt`. The reactions
+    reaction logged in `output/polymerization_bonds.s<i>.txt`; with
+    `"WriteEventFrames"` the configuration at every reaction is written as a
+    LAMMPS data file with the polymer bonds in its topology. The reactions
     stop at `"TargetConversion"`; the MD continues to the end of the
     production stage (the cured network). The polymer bonded energies are
     reported in the `cross-link` slot of the energy report. With a device
@@ -1941,7 +1943,39 @@ The keys of the `"Polymerization"` block (defaults in parentheses):
 -   `"WriteTopology" : bool` (`true`) — `output/polymer_topology.s<i>.json`:
     the state and configuration of every site and the list of bonds
     (component, molecule, atom of both partners, kind and step) at the end of
-    the run.
+    the run (and after every event frame, see below).
+-   `"WriteEventFrames" : bool` (`false`) — writes the configuration at the
+    moment of every reaction. Every reaction scan that accepted at least one
+    reaction (the activation with its initial radicals included) is an *event
+    frame*: the system after the reaction is written as a LAMMPS data file
+    `polymerization_events/s<i>/step_<step>.data` with its companion input
+    script `step_<step>.in` (and `.table`/`.pairs` files when needed), in the
+    format of `"WriteLammpsData"`. The polymer bonds formed so far, with the
+    bends and torsions through them, are merged into the `Bonds`, `Angles`
+    and `Dihedrals` sections, the monomer terms whose parameters changed with
+    the retyping carry the product parameters, and the reacted atoms have
+    their product types; the 1-2/1-3 exclusions and the 1-4 scaling across
+    the polymer bonds follow from `special_bonds`. The data file is a
+    snapshot of the topology, not of the ramps: bonds younger than
+    `"RelaxationSteps"` are written at full strength, and the stereocentre
+    restraints are dropped (both noted in the input script). The first line
+    of the data file names the step, the time and the reactions of the frame.
+    Alongside, one JSON object per frame is appended to
+    `output/polymerization_events.s<i>.jsonl`: `step`, `time` (ps, from the
+    start of the reactive stage), `cycle`, `frame`, `dataFile` (`null` for a
+    frame thinned out by `"EventFrameEvery"`), the `box` vectors, the
+    `events` (kind, both atoms with their global index `id`, the 1-based
+    `lammpsId` of the data file, component, molecule, local atom index and
+    current type, the distance, the configurations and dyad, the strain and
+    the waiting times), the `retyped` atoms with their types before and after,
+    the `newBonds` with the bends and torsions they created (global atom
+    indices) and the running `totals`. The union of the records up to a frame
+    is the cross-link state of that frame; `output/polymer_topology.s<i>.json`
+    is rewritten after every frame as a self-contained snapshot. The logs are
+    appended to on a restart.
+-   `"EventFrameEvery" : int` (`1`) — write the data file of every n-th event
+    frame only (a frame of 10⁵ atoms is a few MB); the JSON records are
+    always complete.
 
 *Radical trapping.* A radical is on a monomer only until its next
 propagation (it then moves to the added unit) or its termination; trapping is

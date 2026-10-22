@@ -161,6 +161,8 @@ conversion and the dynamics continues on the cured network.
         "ScanEvery" : 10,
         "TargetConversion" : 0.9,
         "RelaxationSteps" : 2000,
+        "WriteEventFrames" : true,
+        "EventFrameEvery" : 10,
         "Initiation" :  {"InitialRadicals" : 8, "Probability" : 0.0},
         "Propagation" : {"CaptureRadius" : 4.0, "Probability" : 0.05, "AllowIntramolecular" : true},
         "Termination" : {"Enabled" : true, "CaptureRadius" : 4.0, "Probability" : 0.05},
@@ -209,6 +211,14 @@ appended to `output/polymerization_bonds.s0.txt` (step, cycle, event, the two
 sites as component/molecule/atom, the distance at which the bond formed and
 the conversion), and `output/polymer_topology.s0.json` holds the final site
 states and the bond list, from which the polymer graph can be rebuilt. With
+`"WriteEventFrames"` (here one data file in ten, `"EventFrameEvery": 10`) the
+configuration at the moment of a reaction is written as a LAMMPS data file to
+`polymerization_events/s0/step_<step>.data`, with the polymer bonds and their
+bends and torsions in its topology and the reacted atoms retyped, so the
+growing network can be followed in OVITO or VMD (both read the bonds of a
+data file); the reactions of every frame, with the atoms before and after
+and the new bonded terms, are the records of
+`output/polymerization_events.s0.jsonl`. With
 `"ComputeRadicalWaitingTimes"` the waiting time of every living radical
 between its successive reactions, and the ages of the radicals still living,
 are collected in log-spaced histograms in
@@ -252,6 +262,8 @@ is switched off, so four chains grow until 90% of the monomers have reacted
         "ScanEvery" : 10,
         "TargetConversion" : 0.9,
         "RelaxationSteps" : 2000,
+        "WriteEventFrames" : true,
+        "EventFrameEvery" : 5,
         "Initiation" :  {"InitialRadicals" : 4, "Probability" : 0.0},
         "Propagation" : {"CaptureRadius" : 4.0, "Probability" : 0.1},
         "Termination" : {"Enabled" : false},
@@ -292,7 +304,13 @@ fraction 0 (rr = 1), with `"Type" : "Atactic"` about 0.5 (mm : mr : rr
 carries the configuration of the reacting tail and its dyad (`+m`, `-m`,
 `+.` for the first centre of a chain), and `output/polymer_topology.s0.json`
 holds the configuration of every site next to its state, so the
-stereosequence of every chain can be read off. Leaving out the
+stereosequence of every chain can be read off. With `"WriteEventFrames"`
+every propagation is also recorded in `output/polymerization_events.s0.jsonl`
+(the atoms before and after, the configuration taken, the dyad, the new
+bonded terms) and one frame in five is written as a LAMMPS data file to
+`polymerization_events/s0/`, with the chains as bonded topology; the
+stereocentre restraints have no LAMMPS equivalent and are not part of those
+files (the input script notes it). Leaving out the
 `"Tacticity"` block polymerizes without selection or restraints; the dyad
 statistics are then still reported and show the natural (near 1 : 1)
 outcome of the capture geometry.

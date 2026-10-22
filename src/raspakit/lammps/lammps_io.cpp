@@ -13,6 +13,7 @@ import simulationbox;
 import forcefield;
 import framework;
 import molecule;
+import polymer_links;
 import lammps_styles;
 import lammps_topology;
 
@@ -173,7 +174,8 @@ std::string writeDataFile(const Topology &topology)
 {
   std::ostringstream out;
   std::print(out, "LAMMPS data file written by RASPA3 (units real, atom_style full); input script: see the companion "
-                  ".in file\n\n");
+                  ".in file{}{}\n\n",
+             topology.options.comment.empty() ? "" : "; ", topology.options.comment);
 
   std::print(out, "{} atoms\n", topology.atoms.size());
   std::print(out, "{} bonds\n", topology.bondList.size());
@@ -267,6 +269,14 @@ std::string writeInputScript(const Topology &topology)
 {
   std::ostringstream out;
   std::vector<std::string> notes = topology.warnings;
+  if (topology.polymerBonds > 0 || topology.polymerOverrides > 0)
+  {
+    notes.insert(notes.begin(),
+                 std::format("polymer overlay merged: {} polymer bonds (with their bends and torsions) added to the "
+                             "topology, {} monomer terms carry the product parameters; the 1-2/1-3 exclusions and "
+                             "the 1-4 scaling across the polymer bonds follow from special_bonds",
+                             topology.polymerBonds, topology.polymerOverrides));
+  }
 
   std::print(out, "# LAMMPS input script written by RASPA3 for {}\n", topology.options.dataFile);
   std::print(out, "# Reads the exported configuration and evaluates the energy once (run 0); append your own\n");
@@ -510,10 +520,11 @@ ExportFiles exportSystem(std::span<const Component> components, std::span<const 
                          std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,
                          const SimulationBox &simulationBox, const ForceField &forceField,
                          std::span<const std::size_t> numberOfIntegerMoleculesPerComponent,
-                         const std::optional<Framework> &framework, ExportOptions options)
+                         const std::optional<Framework> &framework, ExportOptions options,
+                         const PolymerLinkTable *polymerLinks)
 {
   Topology topology = buildTopology(components, atomData, atomDynamics, moleculeData, simulationBox, forceField,
-                                    numberOfIntegerMoleculesPerComponent, framework, std::move(options));
+                                    numberOfIntegerMoleculesPerComponent, framework, std::move(options), polymerLinks);
   ExportFiles files{};
   files.data = writeDataFile(topology);
   files.input = writeInputScript(topology);

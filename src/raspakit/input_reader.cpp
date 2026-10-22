@@ -223,6 +223,8 @@ void readPolymerization(const nlohmann::basic_json<nlohmann::raspa_map>& value, 
   readUnsigned(block, "MaximumReactionsPerScan", settings.maximumReactionsPerScan);
   readBoolean(block, "WriteBondLog", settings.writeBondLog);
   readBoolean(block, "WriteTopology", settings.writeTopology);
+  readBoolean(block, "WriteEventFrames", settings.writeEventFrames);
+  readUnsigned(block, "EventFrameEvery", settings.eventFrameEvery);
   if (block.contains("TemplateFile"))
   {
     if (!block["TemplateFile"].is_string())
@@ -230,6 +232,10 @@ void readPolymerization(const nlohmann::basic_json<nlohmann::raspa_map>& value, 
       throw std::runtime_error("[Input reader]: 'Polymerization' 'TemplateFile' must be a string\n");
     }
     settings.templateFile = block["TemplateFile"].get<std::string>();
+  }
+  if (settings.eventFrameEvery == 0)
+  {
+    throw std::runtime_error("[Input reader]: 'Polymerization' 'EventFrameEvery' must be positive\n");
   }
   if (settings.scanEvery == 0)
   {

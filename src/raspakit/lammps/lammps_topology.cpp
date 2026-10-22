@@ -34,6 +34,7 @@ import bend_bend_potential;
 import bend_torsion_potential;
 import van_der_waals_potential;
 import coulomb_potential;
+import polymer_links;
 import lammps_styles;
 
 namespace
@@ -65,6 +66,44 @@ struct TableRegistry
     return keyword;
   }
 };
+
+/// The LAMMPS type of a bond / bend / torsion potential on its own (no class2 promotion), tabulated when
+/// LAMMPS has no analytic style for its form.
+std::size_t registerBondType(Topology &topology, TableRegistry &tables, const BondPotential &bond)
+{
+  Term term = bondTerm(bond);
+  if (term.style == "table")
+  {
+    term.tableKeyword = tables.keywordFor(
+        topology, parameterKey("B", static_cast<std::size_t>(bond.type), bond.parameters), "B",
+        [&](std::string_view keyword) { return bondTableBody(bond, keyword, topology.options.grid); });
+  }
+  return topology.bonds.add(term);
+}
+
+std::size_t registerBendType(Topology &topology, TableRegistry &tables, const BendPotential &bend)
+{
+  Term term = bendTerm(bend);
+  if (term.style == "table")
+  {
+    term.tableKeyword = tables.keywordFor(
+        topology, parameterKey("A", static_cast<std::size_t>(bend.type), bend.parameters), "A",
+        [&](std::string_view keyword) { return angleTableBody(bend, keyword, topology.options.grid); });
+  }
+  return topology.angles.add(term);
+}
+
+std::size_t registerTorsionType(Topology &topology, TableRegistry &tables, const TorsionPotential &torsion)
+{
+  Term term = torsionTerm(torsion);
+  if (term.style == "table")
+  {
+    term.tableKeyword = tables.keywordFor(
+        topology, parameterKey("D", static_cast<std::size_t>(torsion.type), torsion.parameters), "D",
+        [&](std::string_view keyword) { return dihedralTableBody(torsion, keyword, topology.options.grid); });
+  }
+  return topology.dihedrals.add(term);
+}
 
 std::array<std::size_t, 4> sortedKey(std::span<const std::size_t> ids)
 {
@@ -105,14 +144,7 @@ void addBondedTerms(Topology &topology, TableRegistry &tables, const Potentials:
   // ---- bonds --------------------------------------------------------------------------------------
   for (const BondPotential &bond : intra.bonds)
   {
-    Term term = bondTerm(bond);
-    if (term.style == "table")
-    {
-      term.tableKeyword = tables.keywordFor(
-          topology, parameterKey("B", static_cast<std::size_t>(bond.type), bond.parameters), "B",
-          [&](std::string_view keyword) { return bondTableBody(bond, keyword, topology.options.grid); });
-    }
-    const std::size_t type = topology.bonds.add(term);
+    const std::size_t type = registerBondType(topology, tables, bond);
     if (bond.type == BondType::Fixed &&
         std::find(topology.shakeBondTypes.begin(), topology.shakeBondTypes.end(), type) ==
             topology.shakeBondTypes.end())
@@ -452,6 +484,125 @@ ComponentSpecial analyseSpecial(const Component &component, std::vector<std::str
   return result;
 }
 
+/// Merges the polymer overlay of a polymerization into the topology: the monomer terms whose parameters changed
+/// with the retyping of the reacted atoms take the product parameters (the type of the existing entry changes),
+/// and the polymer bonds with their bends and torsions are appended. The overlay indexes the atoms of the
+/// molecule span; 'lammpsIdOfMoleculeAtom' maps them onto the exported atoms.
+void mergePolymerOverlay(Topology &topology, TableRegistry &tables, const PolymerLinkTable &links,
+                         std::span<const std::size_t> lammpsIdOfMoleculeAtom)
+{
+  // the LAMMPS ids of the atoms of a term (all zero when one of them is not exported)
+  auto ids = [&]<std::size_t N>(const std::array<std::uint32_t, N> &atoms)
+  {
+    std::array<std::size_t, 4> out{0, 0, 0, 0};
+    for (std::size_t i = 0; i < N; ++i)
+    {
+      const std::size_t id = atoms[i] < lammpsIdOfMoleculeAtom.size() ? lammpsIdOfMoleculeAtom[atoms[i]] : 0;
+      if (id == 0) return std::array<std::size_t, 4>{0, 0, 0, 0};
+      out[i] = id;
+    }
+    return out;
+  };
+  std::size_t dropped = 0;
+
+  // ---- retyped monomer terms: the existing entries take the product parameters -------------------------
+  if (!links.overrideBonds.empty() || !links.overrideBends.empty() || !links.overrideTorsions.empty())
+  {
+    auto index = [](std::span<const BondedEntry> entries, std::size_t arity)
+    {
+      std::map<std::array<std::size_t, 4>, std::size_t> result{};
+      for (std::size_t i = 0; i < entries.size(); ++i)
+      {
+        // the first entry on the atoms is the bend / torsion itself (a Urey-Bradley on the triple comes after)
+        result.emplace(canonicalKey(std::span<const std::size_t>(entries[i].atoms).first(arity)), i);
+      }
+      return result;
+    };
+    const std::map<std::array<std::size_t, 4>, std::size_t> bondIndex = index(topology.bondList, 2);
+    const std::map<std::array<std::size_t, 4>, std::size_t> angleIndex = index(topology.angleList, 3);
+    const std::map<std::array<std::size_t, 4>, std::size_t> dihedralIndex = index(topology.dihedralList, 4);
+    std::size_t missing = 0;
+
+    for (const PolymerLinkTable::OverrideBondTerm &term : links.overrideBonds)
+    {
+      const std::array<std::size_t, 4> atoms = ids(term.atoms);
+      if (atoms[0] == 0) { ++dropped; continue; }
+      auto it = bondIndex.find(canonicalKey(std::span<const std::size_t>(atoms).first(2)));
+      if (it == bondIndex.end()) { ++missing; continue; }
+      topology.bondList[it->second].type = registerBondType(topology, tables, term.replacement);
+      ++topology.polymerOverrides;
+    }
+    for (const PolymerLinkTable::OverrideBendTerm &term : links.overrideBends)
+    {
+      const std::array<std::size_t, 4> atoms = ids(term.atoms);
+      if (atoms[0] == 0) { ++dropped; continue; }
+      auto it = angleIndex.find(canonicalKey(std::span<const std::size_t>(atoms).first(3)));
+      if (it == angleIndex.end()) { ++missing; continue; }
+      BondedEntry &entry = topology.angleList[it->second];
+      entry.type = registerBendType(topology, tables, term.replacement);
+      entry.atoms = atoms;  // a class2-promoted entry may have been reversed; the plain term has no orientation
+      ++topology.polymerOverrides;
+    }
+    for (const PolymerLinkTable::OverrideTorsionTerm &term : links.overrideTorsions)
+    {
+      const std::array<std::size_t, 4> atoms = ids(term.atoms);
+      if (atoms[0] == 0) { ++dropped; continue; }
+      auto it = dihedralIndex.find(canonicalKey(std::span<const std::size_t>(atoms)));
+      if (it == dihedralIndex.end()) { ++missing; continue; }
+      BondedEntry &entry = topology.dihedralList[it->second];
+      entry.type = registerTorsionType(topology, tables, term.replacement);
+      entry.atoms = atoms;
+      ++topology.polymerOverrides;
+    }
+    if (missing > 0)
+    {
+      topology.warnings.push_back(std::format(
+          "polymer overlay: {} retyped monomer terms have no matching entry in the exported topology; the monomer "
+          "parameters are kept for them",
+          missing));
+    }
+  }
+
+  // ---- the polymer bonds with their bends and torsions ------------------------------------------------
+  for (const PolymerLinkTable::LinkBondTerm &term : links.linkBonds)
+  {
+    const std::array<std::size_t, 4> atoms = ids(term.atoms);
+    if (atoms[0] == 0) { ++dropped; continue; }
+    topology.bondList.push_back({registerBondType(topology, tables, term.potential), atoms});
+    ++topology.polymerBonds;
+  }
+  for (const PolymerLinkTable::LinkBendTerm &term : links.linkBends)
+  {
+    const std::array<std::size_t, 4> atoms = ids(term.atoms);
+    if (atoms[0] == 0) { ++dropped; continue; }
+    topology.angleList.push_back({registerBendType(topology, tables, term.potential), atoms});
+  }
+  for (const PolymerLinkTable::LinkTorsionTerm &term : links.linkTorsions)
+  {
+    const std::array<std::size_t, 4> atoms = ids(term.atoms);
+    if (atoms[0] == 0) { ++dropped; continue; }
+    topology.dihedralList.push_back({registerTorsionType(topology, tables, term.potential), atoms});
+  }
+  if (dropped > 0)
+  {
+    topology.warnings.push_back(
+        std::format("polymer overlay: {} terms on atoms that are not exported were dropped", dropped));
+  }
+
+  // ---- what LAMMPS cannot carry -----------------------------------------------------------------------
+  if (links.chiralForceConstant > 0.0 && !links.stereoCentres.empty())
+  {
+    topology.warnings.push_back(std::format(
+        "polymer overlay: {} stereocentre restraints have no LAMMPS equivalent; dropped", links.stereoCentres.size()));
+  }
+  if (links.rampsActive())
+  {
+    topology.warnings.push_back(
+        "polymer overlay: bonds formed less than 'RelaxationSteps' ago are still ramped in by RASPA (lambda < 1); "
+        "their terms are written at full strength");
+  }
+}
+
 std::string sanitize(std::string_view name)
 {
   std::string out{};
@@ -510,7 +661,8 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
                        std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,
                        const SimulationBox &simulationBox, const ForceField &forceField,
                        std::span<const std::size_t> numberOfIntegerMoleculesPerComponent,
-                       const std::optional<Framework> &framework, ExportOptions options)
+                       const std::optional<Framework> &framework, ExportOptions options,
+                       const PolymerLinkTable *polymerLinks)
 {
   Topology topology{};
   topology.options = std::move(options);
@@ -667,6 +819,8 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
   std::size_t moleculeDataOffset = 0;
   std::vector<ComponentSpecial> specials{};
   std::vector<std::pair<std::size_t, std::size_t>> exportedMolecules{};  // component index, first LAMMPS atom id
+  // the LAMMPS atom id of every atom of the molecule span (0: not exported); the polymer overlay refers to these
+  std::vector<std::size_t> lammpsIdOfMoleculeAtom(atomData.size() - std::min(numberOfFrameworkAtoms, atomData.size()), 0);
   for (std::size_t c = 0; c < components.size(); ++c)
   {
     const Component &component = components[c];
@@ -729,6 +883,7 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
             velocity = atomDynamics[a].velocity;
           }
           AtomEntry entry = makeAtom(atomData[a], ++atomId, moleculeId, velocity);
+          lammpsIdOfMoleculeAtom[a - numberOfFrameworkAtoms] = atomId;
           if (fragmentIndexOfAtom[local] != std::numeric_limits<std::size_t>::max())
           {
             entry.fragment = fragmentBase + fragmentIndexOfAtom[local] + 1;
@@ -765,6 +920,12 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
   {
     topology.warnings.push_back(std::format("{} atoms after the last component were not exported",
                                             atomData.size() - cursor));
+  }
+
+  // ---- polymer overlay --------------------------------------------------------------------------------
+  if (polymerLinks != nullptr && polymerLinks->derivedValid && !polymerLinks->empty())
+  {
+    mergePolymerOverlay(topology, tables, *polymerLinks, lammpsIdOfMoleculeAtom);
   }
 
   // ---- special_bonds ----------------------------------------------------------------------------------

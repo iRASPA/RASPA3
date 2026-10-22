@@ -59,7 +59,7 @@ export enum class Tacticity : std::uint8_t
 
 export struct PolymerizationSettings
 {
-  std::uint64_t versionNumber{3};
+  std::uint64_t versionNumber{4};
 
   std::size_t scanEvery{10};  ///< MD steps between two reaction scans ('ScanEvery').
   std::size_t startCycle{0};  ///< Production cycle at which the reactions start ('StartCycle').
@@ -85,6 +85,11 @@ export struct PolymerizationSettings
 
   bool writeBondLog{true};        ///< Write every reaction to 'output/polymerization_bonds.s<i>.txt' ('WriteBondLog').
   bool writeTopology{true};       ///< Write the final bond list to 'output/polymer_topology.s<i>.json' ('WriteTopology').
+  /// Write the configuration at every reaction as a LAMMPS data file (with the polymer bonds in its topology) to
+  /// 'polymerization_events/s<i>/', with a record of the reactions per frame in
+  /// 'output/polymerization_events.s<i>.jsonl' ('WriteEventFrames').
+  bool writeEventFrames{false};
+  std::size_t eventFrameEvery{1};  ///< Write the data file of every n-th reaction frame only ('EventFrameEvery').
   std::string templateFile{};     ///< Optional molecule file whose type-based bonded tables are added ('TemplateFile').
 
   Tacticity tacticity{Tacticity::None};  ///< ('Tacticity' / 'Type').
@@ -152,6 +157,8 @@ export struct PolymerizationSettings
     archive << s.chiralReferenceVolume;
     archive << s.propagationOrientationTemperature;
     archive << s.terminationOrientationTemperature;
+    archive << s.writeEventFrames;
+    archive << s.eventFrameEvery;
     return archive;
   }
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PolymerizationSettings &s)
@@ -195,6 +202,11 @@ export struct PolymerizationSettings
     {
       archive >> s.propagationOrientationTemperature;
       archive >> s.terminationOrientationTemperature;
+    }
+    if (versionNumber >= 4)
+    {
+      archive >> s.writeEventFrames;
+      archive >> s.eventFrameEvery;
     }
     return archive;
   }

@@ -6,6 +6,7 @@ import std;
 
 import archive;
 import double3;
+import double3x3;
 import atom;
 import molecule;
 import system;
@@ -21,6 +22,47 @@ import polymerization_settings;
 import property_radical_waiting_times;
 import molecular_dynamics_spatial_decomposition;
 import force_engine;
+import lammps_io;
+import lammps_topology;
+
+namespace
+{
+using ReactionEvent = Polymerization::ReactionEvent;
+using ReactionKind = Polymerization::ReactionKind;
+
+/// Records the current types of the atoms of the molecule of 'site' in the event (before the reaction).
+void snapshotTypes(const PolymerLinkTable& table, std::span<const Atom> atoms, std::size_t site, ReactionEvent& event)
+{
+  const PolymerAtomRef r = table.siteRef(site);
+  const std::size_t start = table.layout.moleculeStart(r.componentId, r.moleculeIndex);
+  const std::size_t end = start + table.layout.atomsPerMolecule[r.componentId];
+  for (std::size_t g = start; g < end; ++g)
+  {
+    // (both sites of a reaction within one molecule list the molecule once)
+    const bool present = std::ranges::any_of(event.retyped, [&](const auto& t) { return std::get<0>(t) == g; });
+    if (!present) event.retyped.emplace_back(static_cast<std::uint32_t>(g), atoms[g].type, atoms[g].type);
+  }
+}
+
+/// After the reaction: keeps the atoms whose type changed, with the type they have now.
+void completeRetyping(std::span<const Atom> atoms, ReactionEvent& event)
+{
+  for (auto& [g, before, after] : event.retyped) after = atoms[g].type;
+  std::erase_if(event.retyped, [](const auto& t) { return std::get<1>(t) == std::get<2>(t); });
+}
+
+/// The event record of the initiation of 'site' (to complete after the reaction).
+ReactionEvent initiationEvent(const PolymerLinkTable& table, const std::vector<Component>& components,
+                              std::span<const Atom> atoms, std::size_t site)
+{
+  ReactionEvent event{};
+  event.kind = ReactionKind::Initiation;
+  event.siteA = site;
+  event.atomA = static_cast<std::uint32_t>(table.layout.index(table.tailOf(site, components)));
+  snapshotTypes(table, atoms, site, event);
+  return event;
+}
+}  // namespace
 
 Polymerization::Polymerization(InputReader& reader) : md(reader), settings(reader.polymerizationSettings)
 {
@@ -32,6 +74,7 @@ Polymerization::Polymerization(InputReader& reader) : md(reader), settings(reade
   acceptedStrain.assign(md.systems.size(), 0.0);
   acceptedStrainCount.assign(md.systems.size(), 0);
   reactionsStoppedStep.assign(md.systems.size(), 0);
+  eventFrames.assign(md.systems.size(), 0);
 
   for (std::size_t systemId = 0; const System& system : md.systems)
   {
@@ -92,14 +135,20 @@ void Polymerization::createOutputFiles()
 
 void Polymerization::openBondLogs()
 {
-  if (!settings.writeBondLog || !md.outputToFiles) return;
+  if (!md.outputToFiles) return;
   const std::ios::openmode mode =
       (md.simulationStage != MolecularDynamicsSpatialDecomposition::SimulationStage::Uninitialized) ? std::ios::app
                                                                                                       : std::ios::out;
   std::filesystem::create_directories("output");
   bondLogs.clear();
+  eventLogs.clear();
   for (std::size_t systemId = 0; systemId < md.systems.size(); ++systemId)
   {
+    if (settings.writeEventFrames)
+    {
+      eventLogs.emplace_back(std::format("output/polymerization_events.s{}.jsonl", systemId), mode);
+    }
+    if (!settings.writeBondLog) continue;
     bondLogs.emplace_back(std::format("output/polymerization_bonds.s{}.txt", systemId), mode);
     if (mode == std::ios::out)
     {
@@ -199,6 +248,15 @@ void Polymerization::writeSettings()
     std::print(stream,
                "    engine:                          polymer overlay on the device with the device bonded kernels "
                "(resident integrator allowed), on the host otherwise\n");
+    if (settings.writeEventFrames)
+    {
+      std::print(stream,
+                 "    event frames:                    LAMMPS data file of {} in polymerization_events/s{}/ "
+                 "(polymer bonds in the topology), records in output/polymerization_events.s{}.jsonl\n",
+                 settings.eventFrameEvery == 1 ? std::string("every reaction frame")
+                                               : std::format("one in {} reaction frames", settings.eventFrameEvery),
+                 systemId, systemId);
+    }
     std::print(stream, "\n\n");
     std::flush(stream);
     ++systemId;
@@ -267,9 +325,9 @@ void Polymerization::run()
       std::print(stream, "{}", waitingTimeText(systemId));
       writeWaitingTimes(systemId, true);
       std::flush(stream);
+      writeTopology(systemId);
       ++systemId;
     }
-    writeTopology();
   }
   md.tearDown();
 }
@@ -338,9 +396,13 @@ void Polymerization::afterStep(std::size_t systemId)
   // the scan reads the positions (and a reaction modifies the atoms and re-evaluates the forces on the host):
   // with the resident integrator the device state is fetched first (a no-op when the host copy is current)
   md.engines[systemId].downloadResidentState(system);
-  const std::size_t accepted = scan(systemId);
+  const std::vector<ReactionEvent> events = scan(systemId);
   ++numberOfScans[systemId];
-  if (accepted > 0) topologyChanged(systemId);
+  if (!events.empty())
+  {
+    topologyChanged(systemId);
+    writeEventFrame(systemId, events);
+  }
 
   if (table.conversion() >= settings.targetConversion)
   {
@@ -372,19 +434,17 @@ void Polymerization::activate(std::size_t systemId)
     if (table.state(i) == PolymerSiteState::Monomer) monomers.push_back(i);
   }
   const std::size_t count = std::min(settings.initialRadicals, monomers.size());
+  std::vector<ReactionEvent> events{};
   for (std::size_t n = 0; n < count; ++n)
   {
     const std::size_t pick = n + static_cast<std::size_t>(md.random.uniform() * static_cast<double>(monomers.size() - n));
     std::swap(monomers[n], monomers[std::min(pick, monomers.size() - 1)]);
+    ReactionEvent event = initiationEvent(table, system.components, system.spanOfMoleculeAtoms(), monomers[n]);
     table.initiate(monomers[n], system.forceField, system.components, system.spanOfMoleculeAtoms(),
                    std::span<Molecule>(system.moleculeData), table.currentStep);
-    if (settings.writeBondLog && systemId < bondLogs.size())
-    {
-      const PolymerAtomRef r = table.siteRef(monomers[n]);
-      std::print(bondLogs[systemId], "{} {} initiation {} {} {} - - - 0 {:.6f} {} {} - - -\n", table.currentStep,
-                 md.currentCycle, r.componentId, r.moleculeIndex, r.atomIndex, table.conversion(),
-                 table.countSites(PolymerSiteState::Radical), table.numberOfBonds());
-    }
+    completeRetyping(system.spanOfMoleculeAtoms(), event);
+    logEvent(systemId, event);
+    events.push_back(std::move(event));
   }
   if (md.outputToFiles)
   {
@@ -393,7 +453,11 @@ void Polymerization::activate(std::size_t systemId)
                md.currentCycle, table.numberOfSites(), count);
     std::flush(stream);
   }
-  if (count > 0) topologyChanged(systemId);
+  if (count > 0)
+  {
+    topologyChanged(systemId);
+    writeEventFrame(systemId, events);
+  }
 }
 
 std::int8_t Polymerization::nextChirality(std::int8_t previous)
@@ -413,7 +477,32 @@ std::int8_t Polymerization::nextChirality(std::int8_t previous)
   return 0;
 }
 
-std::size_t Polymerization::scan(std::size_t systemId)
+void Polymerization::logEvent(std::size_t systemId, const ReactionEvent& event)
+{
+  if (!settings.writeBondLog || systemId >= bondLogs.size()) return;
+  const PolymerLinkTable& table = md.systems[systemId].polymerLinks;
+  const PolymerAtomRef ra = table.siteRef(event.siteA);
+  if (event.kind == ReactionKind::Initiation)
+  {
+    std::print(bondLogs[systemId], "{} {} initiation {} {} {} - - - 0 {:.6f} {} {} - - -\n", table.currentStep,
+               md.currentCycle, ra.componentId, ra.moleculeIndex, ra.atomIndex, table.conversion(),
+               table.countSites(PolymerSiteState::Radical), table.numberOfBonds());
+    return;
+  }
+  const PolymerAtomRef rb = table.siteRef(event.siteB);
+  auto waitText = [](const std::optional<double>& wait)
+  { return wait.has_value() ? std::format("{:.4g}", wait.value()) : std::string("-"); };
+  const std::string wait = event.kind == ReactionKind::Termination
+                               ? std::format("{}/{}", waitText(event.waitingTime[0]), waitText(event.waitingTime[1]))
+                               : waitText(event.waitingTime[0]);
+  std::print(bondLogs[systemId], "{} {} {} {} {} {} {} {} {} {:.4f} {:.6f} {} {} {} {} {}\n", table.currentStep,
+             md.currentCycle, ReactionEvent::name(event.kind), ra.componentId, ra.moleculeIndex, ra.atomIndex,
+             rb.componentId, rb.moleculeIndex, rb.atomIndex, event.distance, table.conversion(),
+             table.countSites(PolymerSiteState::Radical), table.numberOfBonds(), event.stereo,
+             event.strain.has_value() ? std::format("{:.1f}", event.strain.value()) : std::string("-"), wait);
+}
+
+std::vector<Polymerization::ReactionEvent> Polymerization::scan(std::size_t systemId)
 {
   System& system = md.systems[systemId];
   PolymerLinkTable& table = system.polymerLinks;
@@ -504,7 +593,7 @@ std::size_t Polymerization::scan(std::size_t systemId)
   std::ranges::sort(candidates, [](const Candidate& x, const Candidate& y)
                     { return std::tie(x.distance, x.a, x.b) < std::tie(y.distance, y.a, y.b); });
 
-  std::size_t accepted = 0;
+  std::vector<ReactionEvent> events{};
   std::unordered_set<std::size_t> reacted{};
   double lastStrain = 0.0;  // the angular strain [K] of the reaction just accepted (for the log)
 
@@ -596,21 +685,24 @@ std::size_t Polymerization::scan(std::size_t systemId)
   // the waiting time of a radical since its last reaction (its creation), in ps
   auto waitingTime = [&](std::size_t radical)
   { return static_cast<double>(table.currentStep - std::min(table.currentStep, table.siteStep[radical])) * system.timeStep; };
-  auto log = [&](std::string_view event, std::size_t a, std::size_t b, double distance, std::string_view stereo,
-                 std::string_view wait)
+  // the event record of a bond-forming candidate, before the reaction (the retyped atoms are completed after it)
+  auto bondEvent = [&](const Candidate& candidate, std::uint32_t atomB)
   {
-    if (!settings.writeBondLog || systemId >= bondLogs.size()) return;
-    const PolymerAtomRef ra = table.siteRef(a);
-    const PolymerAtomRef rb = table.siteRef(b);
-    std::print(bondLogs[systemId], "{} {} {} {} {} {} {} {} {} {:.4f} {:.6f} {} {} {} {} {}\n", table.currentStep,
-               md.currentCycle, event, ra.componentId, ra.moleculeIndex, ra.atomIndex, rb.componentId,
-               rb.moleculeIndex, rb.atomIndex, distance, table.conversion(),
-               table.countSites(PolymerSiteState::Radical), table.numberOfBonds(), stereo,
-               weighted ? std::format("{:.1f}", lastStrain) : std::string("-"), wait);
+    ReactionEvent event{};
+    event.kind = candidate.kind == PolymerBondKind::Propagation ? ReactionKind::Propagation : ReactionKind::Termination;
+    event.siteA = candidate.a;
+    event.siteB = candidate.b;
+    event.atomA = static_cast<std::uint32_t>(table.layout.index(table.tailOf(candidate.a, components)));
+    event.atomB = atomB;
+    event.distance = candidate.distance;
+    event.bond = table.bonds.size();  // the index the new bond takes
+    snapshotTypes(table, atoms, candidate.a, event);
+    snapshotTypes(table, atoms, candidate.b, event);
+    return event;
   };
   for (const Candidate& candidate : candidates)
   {
-    if (accepted >= settings.maximumReactionsPerScan) break;
+    if (events.size() >= settings.maximumReactionsPerScan) break;
     if (reacted.contains(candidate.a) || reacted.contains(candidate.b)) continue;
     const double probability =
         candidate.kind == PolymerBondKind::Propagation ? probabilityPropagation : probabilityTermination;
@@ -618,26 +710,34 @@ std::size_t Polymerization::scan(std::size_t systemId)
 
     if (candidate.kind == PolymerBondKind::Propagation)
     {
-      const std::optional<std::int8_t> chiralityA =
-          resolveChirality(candidate.a, table.headOf(candidate.b, components));
+      const PolymerAtomRef head = table.headOf(candidate.b, components);
+      const std::optional<std::int8_t> chiralityA = resolveChirality(candidate.a, head);
       if (!chiralityA.has_value())
       {
         ++stereoRejections[systemId];
         continue;
       }
       if (!accept(candidate, probability)) continue;
-      const std::string stereo = stereoText(candidate.a, chiralityA.value());
-      const double waitA = waitingTime(candidate.a);
-      if (system.propertyRadicalWaitingTimes.has_value()) system.propertyRadicalWaitingTimes->addPropagation(waitA);
+      ReactionEvent event = bondEvent(candidate, static_cast<std::uint32_t>(table.layout.index(head)));
+      event.chirality = {chiralityA.value(), nextChirality(chiralityA.value())};
+      event.stereo = stereoText(candidate.a, chiralityA.value());
+      event.waitingTime[0] = waitingTime(candidate.a);
+      if (weighted) event.strain = lastStrain;
+      if (system.propertyRadicalWaitingTimes.has_value())
+      {
+        system.propertyRadicalWaitingTimes->addPropagation(event.waitingTime[0].value());
+      }
       table.propagate(candidate.a, candidate.b, system.forceField, components, atoms,
                       std::span<Molecule>(system.moleculeData), table.currentStep, candidate.distance,
-                      chiralityA.value(), nextChirality(chiralityA.value()));
-      log("propagation", candidate.a, candidate.b, candidate.distance, stereo, std::format("{:.4g}", waitA));
+                      event.chirality[0], event.chirality[1]);
+      completeRetyping(atoms, event);
+      logEvent(systemId, event);
+      events.push_back(std::move(event));
     }
     else
     {
-      const std::optional<std::int8_t> chiralityA =
-          resolveChirality(candidate.a, table.tailOf(candidate.b, components));
+      const PolymerAtomRef tailB = table.tailOf(candidate.b, components);
+      const std::optional<std::int8_t> chiralityA = resolveChirality(candidate.a, tailB);
       const std::optional<std::int8_t> chiralityB =
           resolveChirality(candidate.b, table.tailOf(candidate.a, components));
       if (!chiralityA.has_value() || !chiralityB.has_value())
@@ -646,23 +746,26 @@ std::size_t Polymerization::scan(std::size_t systemId)
         continue;
       }
       if (!accept(candidate, probability)) continue;
-      const std::string stereo = std::format("{}/{}", stereoText(candidate.a, chiralityA.value()),
-                                             stereoText(candidate.b, chiralityB.value()));
-      const double waitA = waitingTime(candidate.a);
-      const double waitB = waitingTime(candidate.b);
+      ReactionEvent event = bondEvent(candidate, static_cast<std::uint32_t>(table.layout.index(tailB)));
+      event.chirality = {chiralityA.value(), chiralityB.value()};
+      event.stereo = std::format("{}/{}", stereoText(candidate.a, chiralityA.value()),
+                                 stereoText(candidate.b, chiralityB.value()));
+      event.waitingTime = {waitingTime(candidate.a), waitingTime(candidate.b)};
+      if (weighted) event.strain = lastStrain;
       if (system.propertyRadicalWaitingTimes.has_value())
       {
-        system.propertyRadicalWaitingTimes->addTermination(waitA);
-        system.propertyRadicalWaitingTimes->addTermination(waitB);
+        system.propertyRadicalWaitingTimes->addTermination(event.waitingTime[0].value());
+        system.propertyRadicalWaitingTimes->addTermination(event.waitingTime[1].value());
       }
       table.terminate(candidate.a, candidate.b, system.forceField, components, atoms,
                       std::span<Molecule>(system.moleculeData), table.currentStep, candidate.distance,
-                      chiralityA.value(), chiralityB.value());
-      log("termination", candidate.a, candidate.b, candidate.distance, stereo, std::format("{:.4g}/{:.4g}", waitA, waitB));
+                      event.chirality[0], event.chirality[1]);
+      completeRetyping(atoms, event);
+      logEvent(systemId, event);
+      events.push_back(std::move(event));
     }
     reacted.insert(candidate.a);
     reacted.insert(candidate.b);
-    ++accepted;
   }
 
   // continuous initiation of the monomer sites that did not react in this scan
@@ -670,24 +773,20 @@ std::size_t Polymerization::scan(std::size_t systemId)
   {
     for (const Site& monomer : monomers)
     {
-      if (accepted >= settings.maximumReactionsPerScan) break;
+      if (events.size() >= settings.maximumReactionsPerScan) break;
       if (reacted.contains(monomer.index)) continue;
       if (md.random.uniform() >= probabilityInitiation) continue;
+      ReactionEvent event = initiationEvent(table, components, atoms, monomer.index);
       table.initiate(monomer.index, system.forceField, components, atoms, std::span<Molecule>(system.moleculeData),
                      table.currentStep);
-      if (settings.writeBondLog && systemId < bondLogs.size())
-      {
-        const PolymerAtomRef r = table.siteRef(monomer.index);
-        std::print(bondLogs[systemId], "{} {} initiation {} {} {} - - - 0 {:.6f} {} {} - - -\n", table.currentStep,
-                   md.currentCycle, r.componentId, r.moleculeIndex, r.atomIndex, table.conversion(),
-                   table.countSites(PolymerSiteState::Radical), table.numberOfBonds());
-      }
+      completeRetyping(atoms, event);
+      logEvent(systemId, event);
+      events.push_back(std::move(event));
       reacted.insert(monomer.index);
-      ++accepted;
     }
   }
-  if (accepted > 0 && settings.writeBondLog && systemId < bondLogs.size()) std::flush(bondLogs[systemId]);
-  return accepted;
+  if (!events.empty() && settings.writeBondLog && systemId < bondLogs.size()) std::flush(bondLogs[systemId]);
+  return events;
 }
 
 void Polymerization::topologyChanged(std::size_t systemId)
@@ -718,52 +817,191 @@ void Polymerization::topologyChanged(std::size_t systemId)
   system.referenceEnergy = system.conservedEnergy;
 }
 
-void Polymerization::writeTopology()
+void Polymerization::writeTopology(std::size_t systemId)
 {
-  if (!settings.writeTopology) return;
+  if (!settings.writeTopology || !md.outputToFiles) return;
   std::filesystem::create_directories("output");
-  for (std::size_t systemId = 0; const System& system : md.systems)
+  const System& system = md.systems[systemId];
+  const PolymerLinkTable& table = system.polymerLinks;
+  nlohmann::json topology{};
+  topology["step"] = table.currentStep;
+  topology["time"] = static_cast<double>(table.currentStep) * system.timeStep;
+  topology["status"] = table.jsonStatus(system.simulationBox, system.components, system.spanOfMoleculeAtoms());
+  nlohmann::json componentsJson = nlohmann::json::array();
+  for (std::size_t componentId = 0; const Component& component : system.components)
   {
-    const PolymerLinkTable& table = system.polymerLinks;
-    nlohmann::json topology{};
-    topology["status"] = table.jsonStatus(system.simulationBox, system.components, system.spanOfMoleculeAtoms());
-    nlohmann::json componentsJson = nlohmann::json::array();
-    for (std::size_t componentId = 0; const Component& component : system.components)
+    nlohmann::json entry{};
+    entry["id"] = componentId;
+    entry["name"] = component.name;
+    entry["numberOfMolecules"] = system.numberOfMoleculesPerComponent[componentId];
+    entry["numberOfAtoms"] = component.atoms.size();
+    nlohmann::json sites = nlohmann::json::array();
+    for (const PolymerizationSite& site : component.polymerizationSites)
     {
-      nlohmann::json entry{};
-      entry["id"] = componentId;
-      entry["name"] = component.name;
-      entry["numberOfMolecules"] = system.numberOfMoleculesPerComponent[componentId];
-      entry["numberOfAtoms"] = component.atoms.size();
-      nlohmann::json sites = nlohmann::json::array();
-      for (const PolymerizationSite& site : component.polymerizationSites)
-      {
-        nlohmann::json siteJson{{"type", site.siteType}, {"head", site.head}, {"tail", site.tail}};
-        if (site.sideGroup.has_value()) siteJson["sideGroup"] = site.sideGroup.value();
-        sites.push_back(siteJson);
-      }
-      entry["sites"] = sites;
-      componentsJson.push_back(entry);
-      ++componentId;
+      nlohmann::json siteJson{{"type", site.siteType}, {"head", site.head}, {"tail", site.tail}};
+      if (site.sideGroup.has_value()) siteJson["sideGroup"] = site.sideGroup.value();
+      sites.push_back(siteJson);
     }
-    topology["components"] = componentsJson;
-    topology["tacticity"] = PolymerizationSettings::tacticityName(settings.tacticity);
-    nlohmann::json states = nlohmann::json::array();
-    nlohmann::json chiralities = nlohmann::json::array();
-    for (std::size_t i = 0; i < table.numberOfSites(); ++i)
-    {
-      const PolymerAtomRef r = table.siteRef(i);
-      states.push_back({r.componentId, r.moleculeIndex, r.atomIndex, static_cast<int>(table.state(i))});
-      chiralities.push_back(static_cast<int>(table.chirality(i)));
-    }
-    topology["siteStates"] = states;
-    topology["siteChirality"] = chiralities;
-    topology["bonds"] = table.jsonTopology();
-
-    std::ofstream stream(std::format("output/polymer_topology.s{}.json", systemId));
-    stream << topology.dump(2) << "\n";
-    ++systemId;
+    entry["sites"] = sites;
+    componentsJson.push_back(entry);
+    ++componentId;
   }
+  topology["components"] = componentsJson;
+  topology["tacticity"] = PolymerizationSettings::tacticityName(settings.tacticity);
+  nlohmann::json states = nlohmann::json::array();
+  nlohmann::json chiralities = nlohmann::json::array();
+  for (std::size_t i = 0; i < table.numberOfSites(); ++i)
+  {
+    const PolymerAtomRef r = table.siteRef(i);
+    states.push_back({r.componentId, r.moleculeIndex, r.atomIndex, static_cast<int>(table.state(i))});
+    chiralities.push_back(static_cast<int>(table.chirality(i)));
+  }
+  topology["siteStates"] = states;
+  topology["siteChirality"] = chiralities;
+  topology["bonds"] = table.jsonTopology();
+
+  std::ofstream stream(std::format("output/polymer_topology.s{}.json", systemId));
+  stream << topology.dump(2) << "\n";
+}
+
+void Polymerization::writeEventFrame(std::size_t systemId, std::span<const ReactionEvent> events)
+{
+  if (!settings.writeEventFrames || !md.outputToFiles || events.empty()) return;
+  const System& system = md.systems[systemId];
+  const PolymerLinkTable& table = system.polymerLinks;
+  const std::size_t frame = eventFrames[systemId]++;
+
+  std::string dataFile{};
+  if (frame % settings.eventFrameEvery == 0)
+  {
+    const std::filesystem::path directory = std::format("polymerization_events/s{}", systemId);
+    std::filesystem::create_directories(directory);
+    const std::string stem = std::format("step_{:010d}", table.currentStep);
+    std::size_t initiations = 0, propagations = 0, terminations = 0;
+    for (const ReactionEvent& event : events)
+    {
+      initiations += event.kind == ReactionKind::Initiation;
+      propagations += event.kind == ReactionKind::Propagation;
+      terminations += event.kind == ReactionKind::Termination;
+    }
+    LAMMPS::ExportOptions options{};
+    options.dataFile = stem + ".data";
+    options.tableFile = stem + ".table";
+    options.pairListFile = stem + ".pairs";
+    options.comment = std::format(
+        "polymerization event frame: step {}, time {:.6g} ps, cycle {}, {} initiation(s), {} propagation(s), {} "
+        "termination(s), {} polymer bonds in total (see output/polymerization_events.s{}.jsonl)",
+        table.currentStep, static_cast<double>(table.currentStep) * system.timeStep, md.currentCycle, initiations,
+        propagations, terminations, table.numberOfBonds(), systemId);
+    const LAMMPS::ExportFiles files = LAMMPS::exportSystem(
+        system.components, system.atomData, system.atomDynamics, system.moleculeData, system.simulationBox,
+        system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options, &table);
+    std::ofstream(directory / options.dataFile) << files.data;
+    std::ofstream(directory / (stem + ".in")) << files.input;
+    if (!files.table.empty()) std::ofstream(directory / options.tableFile) << files.table;
+    if (!files.pairList.empty()) std::ofstream(directory / options.pairListFile) << files.pairList;
+    dataFile = (directory / options.dataFile).generic_string();
+  }
+
+  if (systemId < eventLogs.size())
+  {
+    eventLogs[systemId] << eventRecord(systemId, events, dataFile).dump() << "\n";
+    std::flush(eventLogs[systemId]);
+  }
+  writeTopology(systemId);
+}
+
+nlohmann::json Polymerization::eventRecord(std::size_t systemId, std::span<const ReactionEvent> events,
+                                           std::string_view dataFile) const
+{
+  const System& system = md.systems[systemId];
+  const PolymerLinkTable& table = system.polymerLinks;
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  // the LAMMPS atom id of the global atom g of the molecule span: the framework atoms come first, ids are 1-based
+  const std::size_t idOffset = system.spanOfFrameworkAtoms().size() + 1;
+  auto typeName = [&](std::uint16_t type) { return system.forceField.pseudoAtoms[type].name; };
+  auto atomJson = [&](std::uint32_t g)
+  {
+    const PolymerAtomRef r = table.layout.ref(g);
+    return nlohmann::json{{"id", g},
+                          {"lammpsId", idOffset + g},
+                          {"component", r.componentId},
+                          {"molecule", r.moleculeIndex},
+                          {"atom", r.atomIndex},
+                          {"type", typeName(atoms[g].type)}};
+  };
+  auto optionalNumber = [](const std::optional<double>& value)
+  { return value.has_value() ? nlohmann::json(value.value()) : nlohmann::json(nullptr); };
+
+  nlohmann::json record{};
+  record["step"] = table.currentStep;
+  record["time"] = static_cast<double>(table.currentStep) * system.timeStep;
+  record["cycle"] = md.currentCycle;
+  record["frame"] = eventFrames[systemId] > 0 ? eventFrames[systemId] - 1 : 0;
+  record["dataFile"] = dataFile.empty() ? nlohmann::json(nullptr) : nlohmann::json(std::string(dataFile));
+  const double3x3& cell = system.simulationBox.cell;
+  record["box"] = {{cell.ax, cell.ay, cell.az}, {cell.bx, cell.by, cell.bz}, {cell.cx, cell.cy, cell.cz}};
+
+  nlohmann::json eventsJson = nlohmann::json::array();
+  nlohmann::json retyped = nlohmann::json::array();
+  nlohmann::json newBonds = nlohmann::json::array();
+  for (const ReactionEvent& event : events)
+  {
+    nlohmann::json entry{};
+    entry["kind"] = ReactionEvent::name(event.kind);
+    entry["siteA"] = event.siteA;
+    entry["a"] = atomJson(event.atomA);
+    if (event.kind != ReactionKind::Initiation)
+    {
+      entry["siteB"] = event.siteB;
+      entry["b"] = atomJson(event.atomB);
+      entry["distance"] = event.distance;
+      entry["chirality"] = {event.chirality[0], event.chirality[1]};
+      entry["stereo"] = event.stereo;
+      entry["strain"] = optionalNumber(event.strain);
+      entry["waitingTime"] = {optionalNumber(event.waitingTime[0]), optionalNumber(event.waitingTime[1])};
+      entry["bond"] = event.bond;
+    }
+    eventsJson.push_back(entry);
+    for (const auto& [g, before, after] : event.retyped)
+    {
+      retyped.push_back({{"id", g}, {"lammpsId", idOffset + g}, {"from", typeName(before)}, {"to", typeName(after)}});
+    }
+    if (event.bond < table.bonds.size())
+    {
+      const PolymerBond& bond = table.bonds[event.bond];
+      nlohmann::json bondJson{};
+      bondJson["bond"] = event.bond;
+      bondJson["kind"] = bond.kind == PolymerBondKind::Propagation ? "propagation" : "termination";
+      bondJson["atoms"] = {table.layout.index(bond.a), table.layout.index(bond.b)};
+      bondJson["formationDistance"] = bond.formationDistance;
+      // the bonded terms the bond created (global atoms; valid after the rebuild of the table)
+      nlohmann::json bends = nlohmann::json::array();
+      nlohmann::json torsions = nlohmann::json::array();
+      for (const PolymerLinkTable::LinkBendTerm& term : table.linkBends)
+      {
+        if (term.bondId == event.bond) bends.push_back(term.atoms);
+      }
+      for (const PolymerLinkTable::LinkTorsionTerm& term : table.linkTorsions)
+      {
+        if (term.bondId == event.bond) torsions.push_back(term.atoms);
+      }
+      bondJson["bends"] = bends;
+      bondJson["torsions"] = torsions;
+      newBonds.push_back(bondJson);
+    }
+  }
+  record["events"] = eventsJson;
+  record["retyped"] = retyped;
+  record["newBonds"] = newBonds;
+  record["totals"] = {{"bonds", table.numberOfBonds()},
+                      {"monomers", table.countSites(PolymerSiteState::Monomer)},
+                      {"radicals", table.countSites(PolymerSiteState::Radical)},
+                      {"dead", table.countSites(PolymerSiteState::Dead)},
+                      {"conversion", table.conversion()},
+                      {"relaxationSteps", table.relaxationSteps},
+                      {"rampsActive", table.rampsActive()}};
+  return record;
 }
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Polymerization& p)
@@ -779,6 +1017,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Polyme
   archive << p.acceptedStrain;
   archive << p.acceptedStrainCount;
   archive << p.reactionsStoppedStep;
+  archive << p.eventFrames;
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
@@ -827,6 +1066,14 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Polymerizati
   else
   {
     p.reactionsStoppedStep.assign(p.md.systems.size(), 0);
+  }
+  if (versionNumber >= 5)
+  {
+    archive >> p.eventFrames;
+  }
+  else
+  {
+    p.eventFrames.assign(p.md.systems.size(), 0);
   }
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

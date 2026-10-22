@@ -22,6 +22,11 @@ import system;
 import torsion_potential;
 import units;
 import vdwparameters;
+import intra_molecular_potentials;
+import van_der_waals_potential;
+import coulomb_potential;
+import polymer_links;
+import polymerization_site;
 
 // Every LAMMPS functional form is re-implemented here, straight from the LAMMPS documentation, and evaluated
 // on random geometries against RASPA's own calculateEnergy of the term that was mapped onto it.
@@ -733,4 +738,216 @@ TEST(lammps_export, rigid_molecule_gets_fragment_ids_and_rigid_small)
   EXPECT_NE(input.find("rigid/small custom i_fragment"), std::string::npos);
   EXPECT_NE(input.find("neigh_modify exclude molecule/intra"), std::string::npos);
   EXPECT_NE(input.find("read_data raspa.data fix fragments NULL Fragments"), std::string::npos);
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Polymer overlay
+// ---------------------------------------------------------------------------------------------------
+
+namespace
+{
+/// Two five-bead vinyl monomers (head 0, tail 1 with the side group 4) with a polymer-bond template for every
+/// type combination (parameters depending on the number of backbone types in the term), the first propagated
+/// into the second: one polymer bond, the heads and tails of both retyped to CH2_bb / CH_bb.
+System polymerSystem()
+{
+  ForceField forceField = ForceField(
+      {{"CH3", false, 15.03452, 0.25, 0.0, 6, false},
+       {"CH2", false, 14.02658, -0.25, 0.0, 6, false},
+       {"CH2_bb", false, 14.02658, 0.35, 0.0, 6, false},
+       {"CH_bb", false, 13.01864, -0.35, 0.0, 6, false}},
+      {{98.0, 3.75}, {46.0, 3.95}, {60.0, 3.85}, {20.0, 4.30}}, ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0,
+      9.0, false, false, true);
+
+  ConnectivityTable connectivityTable(5);
+  Potentials::IntraMolecularPotentials potentials{};
+  for (const auto [a, b] : {std::pair{0uz, 1uz}, std::pair{1uz, 2uz}, std::pair{2uz, 3uz}, std::pair{1uz, 4uz}})
+  {
+    connectivityTable[a, b] = true;
+    connectivityTable[b, a] = true;
+    potentials.bonds.push_back(BondPotential({a, b}, BondType::Harmonic, {96500.0, 1.54}));
+  }
+  for (const auto [a, b, c] : {std::tuple{0uz, 1uz, 2uz}, std::tuple{0uz, 1uz, 4uz}, std::tuple{2uz, 1uz, 4uz},
+                               std::tuple{1uz, 2uz, 3uz}})
+  {
+    potentials.bends.push_back(BendPotential({a, b, c}, BendType::Harmonic, {62500.0, 112.0}));
+  }
+  potentials.torsions = {TorsionPotential({0, 1, 2, 3}, TorsionType::TraPPE, {0.0, 355.03, -68.19, 791.32}),
+                         TorsionPotential({4, 1, 2, 3}, TorsionType::TraPPE, {0.0, 355.03, -68.19, 791.32})};
+  potentials.vanDerWaals = {VanDerWaalsPotential({0, 3}, VDWParameters::Type::LennardJones, {98.0, 3.75}, 0.5),
+                            VanDerWaalsPotential({4, 3}, VDWParameters::Type::LennardJones, {98.0, 3.75}, 0.5)};
+  potentials.coulombs = {CoulombPotential({0, 3}, CoulombType::Coulomb, 0.25, 0.25, 0.5),
+                         CoulombPotential({4, 3}, CoulombType::Coulomb, 0.0, 0.25, 0.5)};
+  const std::vector<Atom> beads{Atom({-1.26, -0.89, 0.0}, 0.25, 1.0, 0, 0, 0, false, false),
+                                Atom({0.0, 0.0, 0.0}, -0.25, 1.0, 0, 1, 0, false, false),
+                                Atom({1.26, -0.89, 0.0}, -0.25, 1.0, 0, 1, 0, false, false),
+                                Atom({2.52, 0.0, 0.0}, 0.25, 1.0, 0, 0, 0, false, false),
+                                Atom({0.0, 0.77, 1.33}, 0.0, 1.0, 0, 0, 0, false, false)};
+  Component monomer =
+      Component(forceField, "vinyl", 425.0, 3796000.0, 0.199, beads, connectivityTable, potentials, 5, 21);
+  monomer.intra14VanDerWaalsScaling = 0.5;
+  monomer.intra14ChargeChargeScaling = 0.5;
+  monomer.polymerizationSites.push_back(PolymerizationSite{.siteType = "vinyl",
+                                                            .head = 0,
+                                                            .tail = 1,
+                                                            .headProductType = "CH2_bb",
+                                                            .tailProductType = "CH_bb",
+                                                            .initiatedHeadType = std::nullopt,
+                                                            .sideGroup = 4});
+
+  System system = System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {monomer}, {}, {2}, 5);
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  for (std::size_t m = 0; m < 2; ++m)
+  {
+    const double3 offset = m == 0 ? double3(10.0, 10.0, 10.0) : double3(11.0, 7.5, 9.0);
+    for (std::size_t i = 0; i < 5; ++i) atoms[m * 5 + i].position = offset + beads[i].position;
+  }
+
+  const std::array<std::string, 4> names{"CH3", "CH2", "CH2_bb", "CH_bb"};
+  const auto backbone = [](const std::string& name) { return name.ends_with("_bb") ? 1.0 : 0.0; };
+  PolymerLinkTable& table = system.polymerLinks;
+  for (std::size_t a = 0; a < 4; ++a)
+  {
+    for (std::size_t b = a; b < 4; ++b)
+    {
+      const double n = backbone(names[a]) + backbone(names[b]);
+      table.templates.bonds.push_back(
+          {.types = {names[a], names[b]}, .type = BondType::Harmonic, .parameters = {96500.0 + 5000.0 * n, 1.54 - 0.01 * n}});
+    }
+  }
+  for (std::size_t a = 0; a < 4; ++a)
+  {
+    for (std::size_t b = 0; b < 4; ++b)
+    {
+      for (std::size_t c = a; c < 4; ++c)
+      {
+        const double n = backbone(names[a]) + backbone(names[b]) + backbone(names[c]);
+        table.templates.bends.push_back(
+            {.types = {names[a], names[b], names[c]}, .type = BendType::Harmonic, .parameters = {62500.0 + 2000.0 * n, 112.0 - 1.5 * n}});
+      }
+    }
+  }
+  for (std::size_t a = 0; a < 4; ++a)
+  {
+    for (std::size_t b = 0; b < 4; ++b)
+    {
+      for (std::size_t c = 0; c < 4; ++c)
+      {
+        for (std::size_t d = 0; d < 4; ++d)
+        {
+          if (std::array<std::size_t, 4>{d, c, b, a} < std::array<std::size_t, 4>{a, b, c, d}) continue;
+          const double n = backbone(names[a]) + backbone(names[b]) + backbone(names[c]) + backbone(names[d]);
+          table.templates.torsions.push_back({.types = {names[a], names[b], names[c], names[d]},
+                                              .type = TorsionType::TraPPE,
+                                              .parameters = {0.0, 355.03 + 10.0 * n, -68.19, 791.32 + 20.0 * n}});
+        }
+      }
+    }
+  }
+  table.templates.resolve(forceField);
+  table.activate(system.components, system.numberOfMoleculesPerComponent);
+  table.relaxationSteps = 100;
+  table.currentStep = 1000;
+  table.initiate(0, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), 0);
+  table.propagate(0, 1, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), 0, 1.6, 1, 0);
+  table.rebuild(forceField, system.components, system.numberOfMoleculesPerComponent, atoms);
+  return system;
+}
+
+std::vector<std::vector<double>> section(const std::string& data, std::string_view title)
+{
+  std::vector<std::vector<double>> rows{};
+  std::istringstream stream(data);
+  std::string line;
+  bool inside = false;
+  while (std::getline(stream, line))
+  {
+    if (line.starts_with(title)) { inside = true; continue; }
+    if (!inside) continue;
+    if (line.empty()) { if (!rows.empty()) break; continue; }
+    if (std::isalpha(static_cast<unsigned char>(line.front()))) break;
+    rows.push_back(numbers(line.substr(0, line.find('#'))));
+  }
+  return rows;
+}
+}  // namespace
+
+TEST(lammps_export, polymer_overlay_is_merged_into_the_topology)
+{
+  System system = polymerSystem();
+  const PolymerLinkTable& table = system.polymerLinks;
+  ASSERT_EQ(table.numberOfBonds(), 1u);
+  ASSERT_EQ(table.linkBonds.size(), 1u);
+  ASSERT_FALSE(table.linkBends.empty());
+  ASSERT_FALSE(table.linkTorsions.empty());
+  ASSERT_FALSE(table.overrideBonds.empty());
+
+  LAMMPS::ExportOptions options{};
+  options.comment = "event frame test";
+  const LAMMPS::Topology plain = LAMMPS::buildTopology(
+      system.components, system.atomData, system.atomDynamics, system.moleculeData, system.simulationBox,
+      system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options);
+  const LAMMPS::Topology merged = LAMMPS::buildTopology(
+      system.components, system.atomData, system.atomDynamics, system.moleculeData, system.simulationBox,
+      system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options, &table);
+
+  // the component topology is unchanged without the overlay; the overlay appends the link terms
+  EXPECT_EQ(plain.bondList.size(), 8u);
+  EXPECT_EQ(plain.angleList.size(), 8u);
+  EXPECT_EQ(plain.dihedralList.size(), 4u);
+  EXPECT_EQ(plain.polymerBonds, 0u);
+  EXPECT_EQ(merged.bondList.size(), 8u + table.linkBonds.size());
+  EXPECT_EQ(merged.angleList.size(), 8u + table.linkBends.size());
+  EXPECT_EQ(merged.dihedralList.size(), 4u + table.linkTorsions.size());
+  EXPECT_EQ(merged.polymerBonds, 1u);
+  EXPECT_EQ(merged.polymerOverrides,
+            table.overrideBonds.size() + table.overrideBends.size() + table.overrideTorsions.size());
+
+  // the polymer bond joins the tail of the first molecule (atom 2) to the head of the second (atom 6), with the
+  // CH_bb - CH2_bb template (r0 = 1.52); the retyped head-tail bond of the first molecule took the same template
+  const LAMMPS::BondedEntry& link = merged.bondList.back();
+  EXPECT_EQ(std::min(link.atoms[0], link.atoms[1]), 2u);
+  EXPECT_EQ(std::max(link.atoms[0], link.atoms[1]), 6u);
+  const LAMMPS::Term& linkTerm = merged.bonds.types[link.type - 1];
+  EXPECT_EQ(linkTerm.style, "harmonic");
+  const std::vector<double> linkCoefficients = numbers(linkTerm.coefficients);
+  ASSERT_EQ(linkCoefficients.size(), 2u);
+  EXPECT_NEAR(linkCoefficients[0], 0.5 * 106500.0 * Units::KelvinToEnergy * Units::EnergyToKCalPerMol, 1e-5);
+  EXPECT_NEAR(linkCoefficients[1], 1.52, 1e-9);
+  EXPECT_EQ(merged.bondList[0].type, link.type);
+  EXPECT_NE(plain.bondList[0].type, link.type);
+  // the retyped 1-2-3 bend of the first molecule (CH_bb central, one backbone type) took its product parameters
+  const std::vector<double> plainBend = numbers(plain.angles.types[plain.angleList[0].type - 1].coefficients);
+  const std::vector<double> mergedBend = numbers(merged.angles.types[merged.angleList[0].type - 1].coefficients);
+  ASSERT_EQ(mergedBend.size(), 2u);
+  EXPECT_NEAR(plainBend[1], 112.0, 1e-9);
+  EXPECT_NEAR(mergedBend[1], 112.0 - 1.5 * 2.0, 1e-9);  // atoms 0-1-2: CH2_bb, CH_bb, CH2
+
+  // the data file: the reacted atoms carry their product types, the bond count includes the polymer bond
+  const std::string data = LAMMPS::writeDataFile(merged);
+  EXPECT_NE(data.find("event frame test"), std::string::npos);
+  EXPECT_NE(data.find(std::format("{} bonds\n", merged.bondList.size())), std::string::npos);
+  const std::vector<std::vector<double>> atomRows = section(data, "Atoms");
+  ASSERT_EQ(atomRows.size(), 10u);
+  EXPECT_EQ(static_cast<int>(atomRows[0][2]), 3);  // molecule 1 head: CH2_bb
+  EXPECT_EQ(static_cast<int>(atomRows[1][2]), 4);  // molecule 1 tail: CH_bb
+  EXPECT_EQ(static_cast<int>(atomRows[5][2]), 3);  // molecule 2 head: CH2_bb
+  EXPECT_EQ(static_cast<int>(atomRows[6][2]), 4);  // molecule 2 tail: CH_bb
+  EXPECT_EQ(static_cast<int>(atomRows[2][2]), 2);  // untouched: CH2
+  const std::vector<std::vector<double>> bondRows = section(data, "Bonds");
+  ASSERT_EQ(bondRows.size(), merged.bondList.size());
+  EXPECT_EQ(static_cast<std::size_t>(bondRows.back()[2]), link.atoms[0]);
+  EXPECT_EQ(static_cast<std::size_t>(bondRows.back()[3]), link.atoms[1]);
+
+  // the input script reports the merge; the ramp of the fresh bond is finished (no ramp note)
+  const std::string input = LAMMPS::writeInputScript(merged);
+  EXPECT_NE(input.find("polymer overlay merged: 1 polymer bonds"), std::string::npos);
+  EXPECT_EQ(input.find("still ramped in"), std::string::npos);
+
+  // with the ramp in progress the input script says so
+  system.polymerLinks.currentStep = 50;
+  const LAMMPS::Topology ramping = LAMMPS::buildTopology(
+      system.components, system.atomData, system.atomDynamics, system.moleculeData, system.simulationBox,
+      system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options, &table);
+  EXPECT_NE(LAMMPS::writeInputScript(ramping).find("still ramped in"), std::string::npos);
 }
