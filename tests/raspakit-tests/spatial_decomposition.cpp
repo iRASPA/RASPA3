@@ -43,6 +43,8 @@ import force_engine;
 import spatial_decomposition_device_step;
 import mc_moves_hybridmc;
 import mc_moves_move_types;
+import polymer_links;
+import polymerization_site;
 
 namespace
 {
@@ -1934,4 +1936,376 @@ TEST(spatial_decomposition, hybrid_mc_engine_path_flexible_chains_matches_the_ex
   EXPECT_NEAR(accepted->bond, recomputed.bond, 1e-10 * std::abs(recomputed.bond));
   EXPECT_NEAR(accepted->bend, recomputed.bend, 1e-10 * std::abs(recomputed.bend));
   EXPECT_NE(accepted->bond, 0.0);
+}
+
+namespace
+{
+/// Moves molecule 'b' (of a single-component system of five-bead molecules) rigidly so that its atom 'atomB' sits
+/// at the bond distance from atom 'atomA' of molecule 'a' along the open direction of 'atomA' (away from its
+/// bonded neighbours), with 'b' rotated so that the open direction of 'atomB' points back at 'atomA': a chain-like
+/// junction without overlaps of the other beads.
+void approachMolecules(System& system, std::size_t a, std::size_t atomA, std::size_t b, std::size_t atomB)
+{
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  const ConnectivityTable& connectivity = system.components[0].connectivityTable;
+  const std::size_t n = system.components[0].atoms.size();
+  const auto openDirection = [&](std::size_t m, std::size_t atom)
+  {
+    double3 sum{};
+    for (std::size_t k = 0; k < n; ++k)
+    {
+      if (!connectivity[atom, k]) continue;
+      sum += double3::normalize(atoms[n * m + k].position - atoms[n * m + atom].position);
+    }
+    return double3::normalize(-sum);
+  };
+  const double3 direction = openDirection(a, atomA);
+  // Rodrigues: rotate 'b' about its atom 'atomB' so that openDirection(b, atomB) becomes -direction; an atom with
+  // a single neighbour (a head) is tilted so that the junction bend is 110 degrees instead of collinear (the
+  // dihedrals through a collinear bend are undefined)
+  const double3 u = openDirection(b, atomB);
+  double3 v = -direction;
+  std::size_t neighbours = 0;
+  for (std::size_t k = 0; k < n; ++k) neighbours += connectivity[atomB, k] ? 1 : 0;
+  if (neighbours == 1)
+  {
+    const double3 trial = std::abs(direction.x) < 0.9 ? double3(1.0, 0.0, 0.0) : double3(0.0, 1.0, 0.0);
+    const double3 perpendicular = double3::normalize(double3::cross(direction, trial));
+    const double angle = 110.0 * std::numbers::pi / 180.0;
+    // the bond of atomB points at cos(angle) along -direction, sin(angle) along the perpendicular
+    v = -(std::cos(angle) * (-direction) + std::sin(angle) * perpendicular);
+  }
+  const double3 axis = double3::cross(u, v);
+  const double sine = std::sqrt(double3::dot(axis, axis));
+  const double cosine = double3::dot(u, v);
+  const double3 pivot = atoms[n * b + atomB].position;
+  for (std::size_t k = 0; k < n; ++k)
+  {
+    const double3 r = atoms[n * b + k].position - pivot;
+    double3 rotated = r;
+    if (sine > 1e-12)
+    {
+      const double3 unit = axis * (1.0 / sine);
+      rotated = r * cosine + double3::cross(unit, r) * sine + unit * (double3::dot(unit, r) * (1.0 - cosine));
+    }
+    else if (cosine < 0.0)
+    {
+      rotated = -r;
+    }
+    atoms[n * b + k].position = pivot + rotated;
+  }
+  const double3 shift = atoms[n * a + atomA].position + 1.6 * direction - pivot;
+  for (std::size_t k = 0; k < n; ++k) atoms[n * b + k].position += shift;
+  system.moleculeData[b].centerOfMassPosition += shift;
+}
+
+/// A branched five-bead monomer (a united-atom vinyl: head 0 = CH3, tail 1 = CH2 with the side group 4, and the
+/// tail's chain 2 - 3) whose head and tail take the backbone types CH2_bb / CH_bb when the site reacts. Every
+/// polymer-bond template exists (all type combinations, with parameters that depend on the number of backbone
+/// types in the term, so that the retyped-term overrides are non-zero), and the component's 1-4 pairs are scaled
+/// by one half with the first pair containing the head (a retyped atom of a scaled pair).
+System makePolymerSystem(std::size_t seed, std::size_t dimers, std::size_t terminations, std::uint64_t currentStep,
+                         std::size_t relaxationSteps, double chiralForceConstant)
+{
+  ForceField forceField = ForceField(
+      {{"CH3", false, 15.03452, 0.25, 0.0, 6, false},
+       {"CH2", false, 14.02658, -0.25, 0.0, 6, false},
+       {"CH2_bb", false, 14.02658, 0.35, 0.0, 6, false},
+       {"CH_bb", false, 13.01864, -0.35, 0.0, 6, false}},
+      {{98.0, 3.75}, {46.0, 3.95}, {60.0, 3.85}, {20.0, 4.30}}, ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0,
+      9.0, false, false, true);
+  forceField.automaticEwald = false;
+  forceField.EwaldAlpha = 0.32;
+  forceField.numberOfWaveVectors = int3(20, 20, 20);
+  forceField.reciprocalCutOffSquared = std::numeric_limits<double>::max();
+  forceField.reciprocalIntegerCutOffSquared = 400;
+
+  ConnectivityTable connectivityTable(5);
+  for (const auto [a, b] : {std::pair{0uz, 1uz}, std::pair{1uz, 2uz}, std::pair{2uz, 3uz}, std::pair{1uz, 4uz}})
+  {
+    connectivityTable[a, b] = true;
+    connectivityTable[b, a] = true;
+  }
+  Potentials::IntraMolecularPotentials potentials{};
+  for (const auto [a, b] : {std::pair{0uz, 1uz}, std::pair{1uz, 2uz}, std::pair{2uz, 3uz}, std::pair{1uz, 4uz}})
+  {
+    potentials.bonds.push_back(BondPotential({a, b}, BondType::Harmonic, {96500.0, 1.54}));
+  }
+  for (const auto [a, b, c] : {std::tuple{0uz, 1uz, 2uz}, std::tuple{0uz, 1uz, 4uz}, std::tuple{2uz, 1uz, 4uz},
+                               std::tuple{1uz, 2uz, 3uz}})
+  {
+    potentials.bends.push_back(BendPotential({a, b, c}, BendType::Harmonic, {62500.0, 112.0}));
+  }
+  potentials.torsions = {
+      TorsionPotential({0, 1, 2, 3}, TorsionType::TraPPE, {0.0, 355.03, -68.19, 791.32}),
+      TorsionPotential({4, 1, 2, 3}, TorsionType::TraPPE, {0.0, 355.03, -68.19, 791.32})};
+  potentials.vanDerWaals = {VanDerWaalsPotential({0, 3}, VDWParameters::Type::LennardJones, {98.0, 3.75}, 0.5),
+                            VanDerWaalsPotential({4, 3}, VDWParameters::Type::LennardJones, {98.0, 3.75}, 0.5)};
+  potentials.coulombs = {CoulombPotential({0, 3}, CoulombType::Coulomb, 0.25, 0.25, 0.5),
+                         CoulombPotential({4, 3}, CoulombType::Coulomb, 0.0, 0.25, 0.5)};
+
+  const std::vector<Atom> beads{Atom({-1.26, -0.89, 0.0}, 0.25, 1.0, 0, 0, 0, false, false),
+                                Atom({0.0, 0.0, 0.0}, -0.25, 1.0, 0, 1, 0, false, false),
+                                Atom({1.26, -0.89, 0.0}, -0.25, 1.0, 0, 1, 0, false, false),
+                                Atom({2.52, 0.0, 0.0}, 0.25, 1.0, 0, 0, 0, false, false),
+                                Atom({0.0, 0.77, 1.33}, 0.0, 1.0, 0, 0, 0, false, false)};
+  Component monomer =
+      Component(forceField, "vinyl", 425.0, 3796000.0, 0.199, beads, connectivityTable, potentials, 5, 21);
+  monomer.intra14VanDerWaalsScaling = 0.5;
+  monomer.intra14ChargeChargeScaling = 0.5;
+  monomer.polymerizationSites.push_back(PolymerizationSite{.siteType = "vinyl",
+                                                            .head = 0,
+                                                            .tail = 1,
+                                                            .headProductType = "CH2_bb",
+                                                            .tailProductType = "CH_bb",
+                                                            .initiatedHeadType = std::nullopt,
+                                                            .sideGroup = 4});
+
+  System system =
+      System(forceField, SimulationBox(40.0, 39.0, 41.0), false, 300.0, 1e5, 1.0, {}, {monomer}, {}, {64}, 5);
+  RandomNumber random(seed);
+  randomizeConfiguration(system, random);
+
+  // the templates: every combination of the four types (canonical orientation only), backbone-dependent parameters
+  const std::array<std::string, 4> names{"CH3", "CH2", "CH2_bb", "CH_bb"};
+  const auto backbone = [](const std::string& name) { return name.ends_with("_bb") ? 1.0 : 0.0; };
+  PolymerLinkTable& table = system.polymerLinks;
+  for (std::size_t a = 0; a < 4; ++a)
+  {
+    for (std::size_t b = a; b < 4; ++b)
+    {
+      const double n = backbone(names[a]) + backbone(names[b]);
+      table.templates.bonds.push_back(
+          {.types = {names[a], names[b]}, .type = BondType::Harmonic, .parameters = {96500.0 + 5000.0 * n, 1.54 - 0.01 * n}});
+    }
+  }
+  for (std::size_t a = 0; a < 4; ++a)
+  {
+    for (std::size_t b = 0; b < 4; ++b)
+    {
+      for (std::size_t c = a; c < 4; ++c)
+      {
+        const double n = backbone(names[a]) + backbone(names[b]) + backbone(names[c]);
+        table.templates.bends.push_back({.types = {names[a], names[b], names[c]},
+                                         .type = BendType::Harmonic,
+                                         .parameters = {62500.0 + 2000.0 * n, 112.0 - 1.5 * n}});
+      }
+    }
+  }
+  for (std::size_t a = 0; a < 4; ++a)
+  {
+    for (std::size_t b = 0; b < 4; ++b)
+    {
+      for (std::size_t c = 0; c < 4; ++c)
+      {
+        for (std::size_t d = 0; d < 4; ++d)
+        {
+          const std::array<std::size_t, 4> key{a, b, c, d};
+          const std::array<std::size_t, 4> reversedKey{d, c, b, a};
+          if (reversedKey < key) continue;
+          const double n = backbone(names[a]) + backbone(names[b]) + backbone(names[c]) + backbone(names[d]);
+          table.templates.torsions.push_back({.types = {names[a], names[b], names[c], names[d]},
+                                              .type = TorsionType::TraPPE,
+                                              .parameters = {0.0, 355.03 + 10.0 * n, -68.19, 791.32 + 20.0 * n}});
+        }
+      }
+    }
+  }
+  table.templates.resolve(forceField);
+  table.activate(system.components, system.numberOfMoleculesPerComponent);
+  table.relaxationSteps = relaxationSteps;
+  table.currentStep = currentStep;
+  table.chiralForceConstant = chiralForceConstant * Units::KelvinToEnergy;
+  table.chiralReferenceVolume = 0.6;
+
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+
+  // the first 2 * dimers molecules pair up by propagation (tail of the radical to the head of the monomer), the
+  // next 2 * terminations by two initiations and a termination (tail to tail); the first half of the bonds formed
+  // at step 0, the second half at step 'currentStep' / 2 (different ramp factors when a ramp is active)
+  std::size_t molecule = 0;
+  std::size_t formed = 0;
+  const std::size_t total = dimers + terminations;
+  const auto stepOf = [&](std::size_t index) { return index < total / 2 ? 0 : currentStep / 2; };
+  for (std::size_t n = 0; n < dimers; ++n, molecule += 2)
+  {
+    const std::size_t a = molecule;
+    const std::size_t b = molecule + 1;
+    approachMolecules(system, a, 1, b, 0);
+    table.initiate(a, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), stepOf(formed));
+    const std::int8_t chirality = (n % 3 == 0) ? 0 : ((n % 3 == 1) ? 1 : -1);
+    table.propagate(a, b, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData),
+                    stepOf(formed), 1.6, chirality, 0);
+    ++formed;
+  }
+  for (std::size_t n = 0; n < terminations; ++n, molecule += 2)
+  {
+    const std::size_t a = molecule;
+    const std::size_t b = molecule + 1;
+    approachMolecules(system, a, 1, b, 1);
+    table.initiate(a, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), stepOf(formed));
+    table.initiate(b, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), stepOf(formed));
+    table.terminate(a, b, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData),
+                    stepOf(formed), 1.6, (n % 2 == 0) ? 1 : -1, (n % 2 == 0) ? -1 : 1);
+    ++formed;
+  }
+  table.rebuild(forceField, system.components, system.numberOfMoleculesPerComponent, atoms);
+  return system;
+}
+
+void expectPolymerOverlayMatchesHost(PairDevice pairDevice, System& system, const char* label)
+{
+  // the same device pair kernel and mesh; the molecular terms and the polymer overlay on the host (double) and
+  // on the device (single precision; the overlay from the wrapped slot positions)
+  SpatialDecompositionSettings hostSettings = settingsFor(4, 1.5, 0.5);
+  hostSettings.pairDevice = pairDevice;
+  hostSettings.deviceBonded = false;
+  SpatialDecompositionForceEngine host(hostSettings);
+  host.initialize(system);
+  EXPECT_FALSE(host.usesDeviceBonded());
+  EXPECT_FALSE(host.usesDevicePolymerOverlay());
+  const RunningEnergy hostEnergy = host.computeGradients(system, true);
+  const std::vector<double3> hostGradient = gradientsOf(system);
+
+  SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+  settings.pairDevice = pairDevice;
+  SpatialDecompositionForceEngine device(settings);
+  device.initialize(system);
+  EXPECT_TRUE(device.usesDeviceBonded());
+  ASSERT_TRUE(device.usesDevicePolymerOverlay()) << device.writeStatus();
+  const RunningEnergy energy = device.computeGradients(system, true);
+  const std::vector<double3> gradient = gradientsOf(system);
+
+  const auto near = [&](double a, double b, double scale, const char* what)
+  {
+    EXPECT_FALSE(std::isnan(a)) << label << ": " << what;
+    EXPECT_NEAR(a, b, 1e-5 * std::max(std::abs(scale), 1e-3)) << label << ": " << what;
+  };
+  EXPECT_NE(hostEnergy.crossLink, 0.0) << label;
+  near(energy.crossLink, hostEnergy.crossLink, hostEnergy.crossLink, "cross-link");
+  near(energy.bond, hostEnergy.bond, hostEnergy.bond, "bond");
+  near(energy.bend, hostEnergy.bend, hostEnergy.bend, "bend");
+  near(energy.torsion, hostEnergy.torsion, hostEnergy.torsion, "torsion");
+  near(energy.intraVDW, hostEnergy.intraVDW, hostEnergy.intraVDW, "intra VDW");
+  near(energy.intraCoul, hostEnergy.intraCoul, hostEnergy.intraCoul, "intra Coulomb");
+  near(energy.moleculeMoleculeVDW, hostEnergy.moleculeMoleculeVDW, hostEnergy.moleculeMoleculeVDW, "VDW");
+  near(energy.moleculeMoleculeCharge, hostEnergy.moleculeMoleculeCharge, hostEnergy.moleculeMoleculeCharge,
+       "Coulomb");
+  near(energy.ewald_self + energy.ewald_exclusion, hostEnergy.ewald_self + hostEnergy.ewald_exclusion,
+       hostEnergy.ewald_self + hostEnergy.ewald_exclusion, "Ewald exclusion");
+  near(energy.potentialEnergy(), hostEnergy.potentialEnergy(), hostEnergy.potentialEnergy(), "potential");
+  EXPECT_LT(rmsDifference(gradient, hostGradient), 1e-5 * rmsNorm(hostGradient)) << label;
+  EXPECT_LT(maxAbsDifference(device.molecularPressureTensor(), host.molecularPressureTensor()),
+            1e-5 * maxAbs(host.molecularPressureTensor()))
+      << label;
+
+  // deterministic
+  const RunningEnergy again = device.computeGradients(system, true);
+  EXPECT_EQ(again.potentialEnergy(), energy.potentialEnergy()) << label;
+  EXPECT_EQ(again.crossLink, energy.crossLink) << label;
+  EXPECT_EQ(rmsDifference(gradientsOf(system), gradient), 0.0) << label;
+}
+}  // namespace
+
+TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_matches_host)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+
+  // all ramps complete: the bonds, bends and torsions across the polymer bonds, the overrides of the retyped
+  // monomer terms, the pair corrections (excluded 1-2 / 1-3, scaled 1-4) and the stereo restraints at full strength
+  {
+    System system = makePolymerSystem(7, 20, 6, 1000, 100, 2000.0);
+    ASSERT_EQ(system.polymerLinks.numberOfBonds(), 26uz);
+    EXPECT_FALSE(system.polymerLinks.rampsActive());
+    EXPECT_FALSE(system.polymerLinks.stereoCentres.empty());
+    expectPolymerOverlayMatchesHost(pairDevice, system, "complete ramps");
+  }
+  // mid-ramp: half of the bonds at lambda = 0.6, the other half at lambda = 0.1 (the retype corrections stay at 1)
+  {
+    System system = makePolymerSystem(11, 20, 6, 60, 100, 2000.0);
+    EXPECT_TRUE(system.polymerLinks.rampsActive());
+    expectPolymerOverlayMatchesHost(pairDevice, system, "active ramps");
+  }
+  // no ramp, no stereo restraint (the centres are listed but the restraint is off)
+  {
+    System system = makePolymerSystem(13, 12, 0, 0, 0, 0.0);
+    EXPECT_EQ(system.polymerLinks.chiralForceConstant, 0.0);
+    expectPolymerOverlayMatchesHost(pairDevice, system, "no ramp");
+  }
+}
+
+TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_follows_the_ramp_and_new_bonds)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  System system = makePolymerSystem(17, 16, 4, 20, 100, 2000.0);
+
+  SpatialDecompositionSettings hostSettings = settingsFor(4, 1.5, 0.5);
+  hostSettings.pairDevice = pairDevice;
+  hostSettings.deviceBonded = false;
+  SpatialDecompositionForceEngine host(hostSettings);
+  host.initialize(system);
+  SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+  settings.pairDevice = pairDevice;
+  SpatialDecompositionForceEngine device(settings);
+  device.initialize(system);
+  ASSERT_TRUE(device.usesDevicePolymerOverlay()) << device.writeStatus();
+
+  const auto compare = [&](const char* label)
+  {
+    const RunningEnergy hostEnergy = host.computeGradients(system, true);
+    const std::vector<double3> hostGradient = gradientsOf(system);
+    const RunningEnergy energy = device.computeGradients(system, true);
+    EXPECT_NEAR(energy.crossLink, hostEnergy.crossLink, 1e-5 * std::abs(hostEnergy.crossLink)) << label;
+    EXPECT_NEAR(energy.potentialEnergy(), hostEnergy.potentialEnergy(), 1e-5 * std::abs(hostEnergy.potentialEnergy()))
+        << label;
+    EXPECT_LT(rmsDifference(gradientsOf(system), hostGradient), 1e-5 * rmsNorm(hostGradient)) << label;
+    return hostEnergy.crossLink;
+  };
+
+  // the ramp advances with the step the driver sets (the lambda buffer is rewritten, the topology stays)
+  const double start = compare("step 20");
+  system.polymerLinks.currentStep = 70;
+  const double later = compare("step 70");
+  EXPECT_GT(std::abs(later), std::abs(start));
+  system.polymerLinks.currentStep = 500;
+  compare("step 500");
+
+  // a reaction: two more molecules react (retyping, a new bond), the driver's topologyChanged() on both engines
+  PolymerLinkTable& table = system.polymerLinks;
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  const std::size_t a = 40;
+  const std::size_t b = 41;
+  approachMolecules(system, a, 1, b, 0);
+  table.initiate(a, system.forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), 500);
+  table.propagate(a, b, system.forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), 500,
+                  1.6, 1, 0);
+  table.rebuild(system.forceField, system.components, system.numberOfMoleculesPerComponent, atoms);
+  host.topologyChanged(system);
+  device.topologyChanged(system);
+  system.polymerLinks.currentStep = 560;
+  compare("after the reaction");
+  system.polymerLinks.currentStep = 2000;
+  compare("after the reaction, ramp complete");
+}
+
+TEST_P(SpatialDecompositionDevice, resident_integrator_matches_host_polymer_overlay_nve)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  // the overlay on the device in both runs (host integration with device forces against the resident integrator);
+  // a mid-ramp state that stays constant (the driver advances the step)
+  const auto makeSystem = [](std::size_t seed) { return makePolymerSystem(seed, 20, 6, 60, 100, 2000.0); };
+  expectResidentMatchesHost(makeSystem, pairDevice, false, 60, 0.0005, 0.3,
+                            {.position = 1e-4, .velocity = 1e-4, .energy = 1e-4, .drift = 1e-5});
+}
+
+TEST_P(SpatialDecompositionDevice, resident_integrator_matches_host_polymer_overlay_nvt)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  const auto makeSystem = [](std::size_t seed) { return makePolymerSystem(seed, 20, 6, 1000, 100, 2000.0); };
+  expectResidentMatchesHost(makeSystem, pairDevice, true, 40, 0.0005, 0.3,
+                            {.position = 1e-4, .velocity = 1e-4, .energy = 1e-4, .drift = 1e-5});
 }

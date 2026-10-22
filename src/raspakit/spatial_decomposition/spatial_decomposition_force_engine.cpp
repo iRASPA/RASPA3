@@ -50,7 +50,25 @@ import spatial_decomposition_cluster_kernel;
 import spatial_decomposition_device_context;
 import spatial_decomposition_device_step;
 import spatial_decomposition_device_resident;
+import spatial_decomposition_device_polymer;
+import spatial_decomposition_device_polymer_topology;
 import spatial_decomposition_worker_team;
+
+namespace
+{
+/// The energies of the device polymer overlay into the slots the host overlay fills.
+void addPolymerResults(RunningEnergy& energy, const DevicePolymerResults& results)
+{
+  energy.crossLink += results.crossLink;
+  energy.bond += results.bond;
+  energy.bend += results.bend;
+  energy.torsion += results.torsion;
+  energy.moleculeMoleculeVDW += results.moleculeMoleculeVDW;
+  energy.moleculeMoleculeCharge += results.moleculeMoleculeCharge;
+  energy.ewald_exclusion += results.ewaldExclusion;
+  energy.intraVDW += results.intraVDW;
+}
+}  // namespace
 
 SpatialDecompositionForceEngine::SpatialDecompositionForceEngine(const SpatialDecompositionSettings& s) : settings(s)
 {
@@ -442,6 +460,24 @@ void SpatialDecompositionForceEngine::initialize(System& system)
       deviceBonded = true;
     }
   }
+  // the polymer-bond overlay of the Polymerization driver: on the device with the bonded terms, else on the host
+  devicePolymer = false;
+  polymerHostFallback = false;
+  polymerOverlayOutdated = true;
+  polymerLambdasActive = false;
+  polymerTopology = PolymerOverlayTopology{};
+  if (!system.polymerLinks.templates.empty() || !system.polymerLinks.empty())
+  {
+    if (deviceBonded)
+    {
+      devicePairs.enablePolymerOverlay();
+      devicePolymer = true;
+    }
+    else if (deviceKernel)
+    {
+      polymerHostFallback = true;
+    }
+  }
   // the resident integrator needs the complete forces on the device
   residentEnabled = false;
   residentValid = false;
@@ -511,6 +547,38 @@ void SpatialDecompositionForceEngine::topologyChanged(System& system)
   residentHostCurrent = true;
   if (residentEnabled) devicePairs.setResident(false);
   system.polymerLinks.derivedValid = false;
+  // the device bonded topology holds the masses and charge sums of the atoms as they were: rebuild it; the device
+  // overlay follows the table at the next step
+  if (deviceBonded) devicePairs.refreshBondedTopology(system);
+  polymerOverlayOutdated = true;
+}
+
+void SpatialDecompositionForceEngine::preparePolymerOverlay(System& system)
+{
+  if (!devicePolymer) return;
+  PolymerLinkTable& table = system.polymerLinks;
+  if (table.empty() && polymerTopology.terms.empty()) return;
+  if (polymerOverlayOutdated || !table.derivedValid)
+  {
+    if (!table.derivedValid)
+    {
+      table.rebuild(system.forceField, system.components, system.numberOfMoleculesPerComponent,
+                    system.spanOfMoleculeAtoms());
+    }
+    polymerTopology.build(system, table);
+    devicePairs.setPolymerTopology(polymerTopology);
+    polymerTopology.lambdas(table, polymerLambdas);
+    devicePairs.setPolymerLambdas(polymerLambdas);
+    polymerOverlayOutdated = false;
+    polymerLambdasActive = table.rampsActive();
+  }
+  else if (polymerLambdasActive)
+  {
+    // the ramps advance with the step; the last write (all ramps complete) stays until the next reaction
+    polymerTopology.lambdas(table, polymerLambdas);
+    devicePairs.setPolymerLambdas(polymerLambdas);
+    polymerLambdasActive = table.rampsActive();
+  }
 }
 
 RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, bool withVirial)
@@ -536,6 +604,7 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
     if (deviceKernel) devicePairs.setExclusions(system);
   }
   if (bondedWorkOutdated(system)) prepareBondedWork(system);
+  preparePolymerOverlay(system);
   team->resetWork();
 
   for (RunningEnergy& energy : threadEnergies) energy = RunningEnergy{};
@@ -570,12 +639,13 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
       correction += unitCorrection[u];
     }
   }
-  if (!system.polymerLinks.empty())
+  if (!system.polymerLinks.empty() && !devicePolymer)
   {
     // The polymer-bond overlay (bonds formed during the run, their bends / torsions, the pair corrections and the
     // retyped-term overrides): an addition on top of the complete pair + mesh + bonded gradients, evaluated on the
-    // calling thread after the team's step. The strain derivative and the virial correction of its inter-molecular
-    // terms enter the molecular pressure like those of the pairs.
+    // calling thread after the team's step (on the device after the bonded kernels when those run there). The
+    // strain derivative and the virial correction of its inter-molecular terms enter the molecular pressure like
+    // those of the pairs.
     const std::chrono::steady_clock::time_point polymerBegin = std::chrono::steady_clock::now();
     total += Interactions::computePolymerLinkGradient(
         system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
@@ -804,6 +874,7 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
 
   // forces, then the second half: molecular gradients and torques, kick, barostat coupling of the velocities,
   // kinetic energies and the kinetic virial
+  preparePolymerOverlay(system);
   devicePairs.enqueueResident(box, displacement.sinceCompaction > devicePairs.pruneDisplacementThreshold());
   DeviceEvent secondHalf = resident.enqueueSecondHalf(dt, coupling);
   waitStart = std::chrono::steady_clock::now();
@@ -849,7 +920,15 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
     deviceSingleIonSum = results.singleIonSum;
     deviceSingleIonStrain = results.singleIonStrain;
   }
-  total = finishStep(system, total, results.pairStrain + results.bonded.exclusionStrain, results.bonded.correction);
+  double3x3 strain = results.pairStrain + results.bonded.exclusionStrain;
+  double3x3 correction = results.bonded.correction;
+  if (devicePolymer)
+  {
+    addPolymerResults(total, results.polymer);
+    strain += results.polymer.strain;
+    correction += results.polymer.correction;
+  }
+  total = finishStep(system, total, strain, correction);
   total.translationalKineticEnergy = residentKinetic.translational;
   total.rotationalKineticEnergy = residentKinetic.rotational;
   if (system.thermostat.has_value()) total.NoseHooverEnergy = system.thermostat->getEnergy();
@@ -1135,6 +1214,15 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
       {
         threadStrain[0] += results.bonded.exclusionStrain;
         threadCorrection[0] += results.bonded.correction;
+      }
+    }
+    if (devicePolymer)
+    {
+      addPolymerResults(energy, results.polymer);
+      if (virialRequested)
+      {
+        threadStrain[0] += results.polymer.strain;
+        threadCorrection[0] += results.polymer.correction;
       }
     }
     timing.deviceWait += std::chrono::steady_clock::now() - start;
@@ -2224,6 +2312,10 @@ std::string SpatialDecompositionForceEngine::writeStatus() const
                           deviceBondedFallback.empty()
                               ? std::string{}
                               : std::format(" (the device kernels do not cover {})", deviceBondedFallback));
+  }
+  if (polymerHostFallback)
+  {
+    result += "    polymer overlay on the host (the device bonded terms are off)\n";
   }
   if (residentEnabled)
   {

@@ -24,10 +24,6 @@ import force_engine;
 
 Polymerization::Polymerization(InputReader& reader) : md(reader), settings(reader.polymerizationSettings)
 {
-  // the overlay is evaluated on the host: the complete-step-on-device integrator and the device bonded kernels
-  // (which bake the atom types of the components) are not used
-  md.engineSettings.resident = false;
-  md.engineSettings.deviceBonded = false;
   reactionsFinished.assign(md.systems.size(), 0);
   numberOfScans.assign(md.systems.size(), 0);
   activationCycle.assign(md.systems.size(), 0);
@@ -200,7 +196,9 @@ void Polymerization::writeSettings()
       }
       ++componentId;
     }
-    std::print(stream, "    engine:                          resident integrator and device bonded kernels disabled (host overlay)\n");
+    std::print(stream,
+               "    engine:                          polymer overlay on the device with the device bonded kernels "
+               "(resident integrator allowed), on the host otherwise\n");
     std::print(stream, "\n\n");
     std::flush(stream);
     ++systemId;
@@ -325,13 +323,21 @@ void Polymerization::afterStep(std::size_t systemId)
 
   System& system = md.systems[systemId];
   PolymerLinkTable& table = system.polymerLinks;
-  if (!table.activated) activate(systemId);
+  if (!table.activated)
+  {
+    // the activation retypes atoms and re-evaluates the forces on the host: the host state must be current
+    md.engines[systemId].downloadResidentState(system);
+    activate(systemId);
+  }
 
   ++table.currentStep;
   writeWaitingTimes(systemId, false);
   if (reactionsFinished[systemId]) return;
   if (table.currentStep % settings.scanEvery != 0) return;
 
+  // the scan reads the positions (and a reaction modifies the atoms and re-evaluates the forces on the host):
+  // with the resident integrator the device state is fetched first (a no-op when the host copy is current)
+  md.engines[systemId].downloadResidentState(system);
   const std::size_t accepted = scan(systemId);
   ++numberOfScans[systemId];
   if (accepted > 0) topologyChanged(systemId);
@@ -831,8 +837,5 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Polymerizati
         std::format("Polymerization: Invalid magic number {} at the end of the restart data\n", magicNumber));
   }
 #endif
-  // the engine settings of the restart file are those of the input; the restrictions of this driver apply again
-  p.md.engineSettings.resident = false;
-  p.md.engineSettings.deviceBonded = false;
   return archive;
 }

@@ -15,6 +15,7 @@ import spatial_decomposition_pair_kernel;
 import spatial_decomposition_cluster_kernel;
 import spatial_decomposition_device_step;
 import spatial_decomposition_device_resident;
+import spatial_decomposition_device_polymer_topology;
 import spatial_decomposition_worker_team;
 
 /**
@@ -118,7 +119,8 @@ export class SpatialDecompositionForceEngine
 
   /// Tells the engine that the bonded topology or the atom types of the system changed (a reaction of the
   /// Polymerization driver): the position-independent sums are refreshed and the lists are rebuilt at the next
-  /// evaluation (the device copies of the atom types follow the build).
+  /// evaluation (the device copies of the atom types follow the build); with the device bonded terms their
+  /// topology (masses, charge sums) is re-uploaded and the device polymer overlay is rebuilt at the next step.
   void topologyChanged(System& system);
 
   /// Configurational part of the molecular pressure tensor at the configuration of the last
@@ -166,6 +168,9 @@ export class SpatialDecompositionForceEngine
   bool usesDeviceMesh() const { return deviceMesh; }
   /// Whether the bonded terms and the self / exclusion corrections run on the OpenCL device.
   bool usesDeviceBonded() const { return deviceBonded; }
+  /// Whether the polymer-bond overlay of the Polymerization driver runs on the device (with the device bonded
+  /// terms); else it is evaluated on the host after the step.
+  bool usesDevicePolymerOverlay() const { return devicePolymer; }
 
  private:
   SpatialDecompositionSettings settings;
@@ -206,6 +211,16 @@ export class SpatialDecompositionForceEngine
   double deviceSingleIonSum{0.0};
   double3x3 deviceReciprocalStrain{};
   double3x3 deviceSingleIonStrain{};
+  // the polymer-bond overlay of the Polymerization driver on the device (with the device bonded terms): the
+  // flattened terms follow the table after every reaction (topologyChanged), the ramp factors every step while
+  // ramps are in progress
+  bool devicePolymer{false};
+  bool polymerHostFallback{false};  ///< the device does the pairs but the overlay stayed on the host (status line)
+  PolymerOverlayTopology polymerTopology{};
+  std::vector<float> polymerLambdas{};
+  bool polymerOverlayOutdated{true};
+  bool polymerLambdasActive{false};
+  void preparePolymerOverlay(System& system);
   // the resident integrator (settings.resident, with the complete step on the device)
   bool residentEnabled{false};
   bool residentValid{false};  ///< the device holds the authoritative state (else the host does)

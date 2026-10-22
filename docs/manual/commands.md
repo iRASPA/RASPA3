@@ -1171,10 +1171,15 @@ reported separately at the end of the simulation.
     reaction logged in `output/polymerization_bonds.s<i>.txt`. The reactions
     stop at `"TargetConversion"`; the MD continues to the end of the
     production stage (the cured network). The polymer bonded energies are
-    reported in the `cross-link` slot of the energy report. The resident
-    (fully on-device) integrator and the device bonded kernels are switched
-    off for this driver; the device pair and mesh kernels stay in use. See
-    [Polymerization](#polymerization) for the keys. This is a separate
+    reported in the `cross-link` slot of the energy report. With a device
+    pair kernel (`"PairDevice"`) the polymer overlay runs on the device
+    alongside the bonded kernels, so the resident (fully on-device)
+    integrator (`"Resident"`, the default) is available: the scans fetch the
+    device state every `"ScanEvery"` steps, and an accepted reaction
+    re-evaluates the forces on the host and uploads the state again. When the
+    bonded terms stay on the host (intramolecular potentials the device
+    kernels do not cover) the overlay is evaluated on the host after each
+    step. See [Polymerization](#polymerization) for the keys. This is a separate
     mechanism from the equilibrium cross-link moves (`"ReactiveSites"`,
     `"CrossLinkBonds"`), which can not be combined with it.
 

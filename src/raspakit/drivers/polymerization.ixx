@@ -40,9 +40,12 @@ import polymerization_settings;
  * with the wrong approach face are skipped ('StereoSelective') or accepted and driven into the required
  * configuration by the restraint; every reacted centre is held by the restraint afterwards.
  *
- * Restrictions: the resident (fully on-device) integrator and the device bonded kernels are switched off (the
- * overlay is evaluated on the host; the device pair and mesh kernels stay in use); 'ReactiveSites' /
- * 'CrossLinkBonds' (the equilibrium cross-link moves) are a separate mechanism and are not combined with it.
+ * Engine: with the device bonded kernels the overlay is evaluated on the device as well (DevicePolymerOverlay,
+ * rebuilt after every reaction, its ramp factors written per step), so the resident (fully on-device) integrator
+ * can be used; the scans then fetch the device state first and a reaction re-evaluates the forces on the host,
+ * after which the state is uploaded again. Without the device bonded kernels the overlay is evaluated on the host
+ * after the step. 'ReactiveSites' / 'CrossLinkBonds' (the equilibrium cross-link moves) are a separate mechanism
+ * and are not combined with it.
  */
 export struct Polymerization
 {

@@ -6,8 +6,8 @@ export module spatial_decomposition_device_kernels;
  * \file kernel_sources.ixx
  * \brief The device kernels of the spatial-decomposition MD step, as source text shared by the backends.
  *
- * The four sources (pair_kernel_source.cpp, mesh_kernel_source.cpp, bonded_kernel_source.cpp,
- * resident_kernel_source.cpp) hold the physics once. They are written in a small *kernel dialect*: plain C with
+ * The five sources (pair_kernel_source.cpp, mesh_kernel_source.cpp, bonded_kernel_source.cpp,
+ * resident_kernel_source.cpp, polymer_kernel_source.cpp) hold the physics once. They are written in a small *kernel dialect*: plain C with
  * the address spaces, work-item queries, barriers, vector constructors and bit casts behind macros, which the
  * backend that compiles them defines in a header it prepends to the source (OpenCL C 1.2:
  * opencl/dialect_source.cpp, Metal: metal/dialect_source.cpp, CUDA/NVRTC: cuda/dialect_source.cpp). A backend
@@ -59,3 +59,6 @@ export extern const char* const deviceKernelBondedSource;
 /// The resident velocity-Verlet integrator in double-float arithmetic (resident_kernel_source.cpp); compile with
 /// DeviceMath::Strict.
 export extern const char* const deviceKernelResidentSource;
+/// The polymer-bond overlay of the Polymerization driver (polymer_kernel_source.cpp); compile appended to the
+/// bonded source, whose term functions it reuses.
+export extern const char* const deviceKernelPolymerSource;

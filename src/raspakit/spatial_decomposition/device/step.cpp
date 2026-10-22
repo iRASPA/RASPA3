@@ -196,15 +196,18 @@ void DeviceStep::initialize(PairDevice device)
   // the buffers and kernels belong to the old context: release them first
   mesh = DeviceMesh{};
   bonded = DeviceBonded{};
+  polymer = DevicePolymerOverlay{};
+  usePolymer = false;
   for (DeviceBufferOwner* buffer :
        {&parameterBuffer, &buildParameterBuffer, &lennardJonesBuffer, &positionBuffer, &buildPositionBuffer,
         &typeBuffer, &forceBuffer, &relativeBuffer, &clusterMinBuffer, &clusterMaxBuffer, &compactReferenceBuffer,
         &cellOfClusterBuffer, &outerCountBuffer, &laneCountBuffer, &partialBuffer, &cellSlotStartBuffer,
         &outerClusterBuffer, &outerMaskBuffer, &pairListBuffer, &slotAtomBuffer, &exclusionStartBuffer,
-        &exclusionPartnerBuffer})
+        &exclusionPartnerBuffer, &slotOfAtomBuffer})
   {
     buffer->reset();
   }
+  slotOfAtomCapacity = 0;
   context.reset();
   mappedPositions = nullptr;
   mappedRelative = nullptr;
@@ -269,6 +272,28 @@ void DeviceStep::enableBonded(const System& system, double alpha, double convers
                        system.forceField.cutOffCoulomb);
   useBonded = true;
 }
+
+void DeviceStep::refreshBondedTopology(const System& system)
+{
+  if (!useBonded) return;
+  bondedTopology.build(system);
+  bonded.setTopology(bondedTopology);
+  if (padded > 0) bonded.setLayout(padded);
+}
+
+void DeviceStep::enablePolymerOverlay()
+{
+  if (!useBonded)
+  {
+    throw std::runtime_error("[Device polymer overlay]: the overlay needs the device bonded terms (enableBonded)\n");
+  }
+  if (!polymer.initialized()) polymer.initialize(*context);
+  usePolymer = true;
+}
+
+void DeviceStep::setPolymerTopology(const PolymerOverlayTopology& topology) { polymer.setTopology(topology); }
+
+void DeviceStep::setPolymerLambdas(std::span<const float> lambdas) { polymer.setLambdas(lambdas); }
 
 void DeviceStep::setEwaldAlpha(double alpha)
 {
@@ -551,6 +576,13 @@ void DeviceStep::beginBuild(const CellList& cells, const SimulationBox& box, std
   context->write(buildPositionBuffer.get(), 0, 4 * padded * sizeof(float), buildPosition.data(), false);
   context->write(slotAtomBuffer.get(), 0, padded * sizeof(std::uint32_t), slotAtom.data(), false);
   context->write(typeBuffer.get(), 0, padded * sizeof(std::uint32_t), typeOfSlot.data(), false);
+  if (useBonded && numberOfAtoms > 0)
+  {
+    // the slot of every system atom (the polymer overlay reads the slot positions by atom)
+    slotOfAtom.resize(numberOfAtoms);
+    for (std::size_t k = 0; k < numberOfAtoms; ++k) slotOfAtom[cells.sortedToOriginal[k]] = slotOfSorted[k];
+    context->write(slotOfAtomBuffer.get(), 0, numberOfAtoms * sizeof(std::uint32_t), slotOfAtom.data(), false);
+  }
   context->write(cellSlotStartBuffer.get(), 0, (numberOfCells + 1) * sizeof(std::uint32_t), cellSlotStart.data(),
                  false);
   context->write(cellOfClusterBuffer.get(), 0, iClusters * sizeof(std::uint32_t), cellOfCluster.data(), false);
@@ -648,6 +680,11 @@ void DeviceStep::ensureBuffers()
       relativeCapacity = needed + needed / 4;
       relativeBuffer.allocate(*context, relativeCapacity * sizeof(float), DeviceMemory::Shared);
     }
+    if (numberOfAtoms > slotOfAtomCapacity)
+    {
+      slotOfAtomCapacity = numberOfAtoms + numberOfAtoms / 4 + 1;
+      slotOfAtomBuffer.allocate(*context, slotOfAtomCapacity * sizeof(std::uint32_t), DeviceMemory::Device);
+    }
   }
   if (iClusters > iClusterCapacity)
   {
@@ -710,6 +747,30 @@ void DeviceStep::enqueuePairs()
 void DeviceStep::enqueueMesh() { mesh.enqueue(positionBuffer.get(), forceBuffer.get(), true); }
 
 void DeviceStep::enqueueBonded() { bonded.enqueue(relativeBuffer.get(), slotAtomBuffer.get(), forceBuffer.get()); }
+
+void DeviceStep::enqueuePolymer()
+{
+  // the box, cutoffs, Ewald and switching parameters of the pair kernel (updateParameters ran for this step)
+  DevicePolymerPairSetup setup{};
+  std::copy(std::begin(parameters.cell), std::end(parameters.cell), std::begin(setup.cell));
+  std::copy(std::begin(parameters.inverseCell), std::end(parameters.inverseCell), std::begin(setup.inverseCell));
+  setup.cutOffVDWSquared = parameters.cutOffVDWSquared;
+  setup.cutOffChargeSquared = parameters.cutOffChargeSquared;
+  setup.alpha = parameters.alpha;
+  setup.coulombFactor = parameters.coulombFactor;
+  setup.useCharge = parameters.useCharge;
+  setup.orthorhombic = parameters.orthorhombic;
+  setup.switchMode = parameters.switchMode;
+  setup.switchDistanceSquared = parameters.switchDistanceSquared;
+  setup.switchDistance = parameters.switchDistance;
+  setup.switchInverseWidth = parameters.switchInverseWidth;
+  setup.switchInverseCutOff3 = parameters.switchInverseCutOff3;
+  setup.switchA12 = parameters.switchA12;
+  setup.switchA6 = parameters.switchA6;
+  polymer.setPairSetup(setup);
+  polymer.enqueue(positionBuffer.get(), slotOfAtomBuffer.get(), relativeBuffer.get(), bonded.moleculeOfAtom(),
+                  bonded.moleculeCenter(), forceBuffer.get());
+}
 
 void DeviceStep::packPositions(std::size_t part, std::span<const std::uint32_t> sortedAtoms, const CellList& cells,
                                const SimulationBox& box)
@@ -792,6 +853,7 @@ void DeviceStep::enqueueChain()
   }
   if (useMesh) enqueueMesh();
   if (useBonded) enqueueBonded();
+  if (usePolymer) enqueuePolymer();
   // the forces are complete here: download them into the host copy in stream order, so that mapping them after
   // the wait for the step needs no further transfer or synchronization (the resident integrator keeps them on
   // the device)
@@ -799,6 +861,7 @@ void DeviceStep::enqueueChain()
   context->read(partialBuffer.get(), 0, hostPartials.size() * sizeof(float), hostPartials.data());
   if (useMesh) mesh.enqueueRead();
   if (useBonded) bonded.enqueueRead();
+  if (usePolymer) polymer.enqueueRead();
   stepEvent = context->mark();
   context->flush();
 }
@@ -897,7 +960,16 @@ void DeviceStep::enqueueStep(const SimulationBox& box, bool compact)
       mesh.profile(positionBuffer.get(), forceBuffer.get());
     }
     if (useMesh) sampledMeshTime = timedChain([&] { enqueueMesh(); });
-    if (useBonded) sampledBondedTime = timedChain([&] { enqueueBonded(); });
+    if (useBonded)
+    {
+      // the polymer overlay (when present) is counted with the bonded terms
+      sampledBondedTime = timedChain(
+          [&]
+          {
+            enqueueBonded();
+            if (usePolymer) enqueuePolymer();
+          });
+    }
   }
 
   if (compact)
@@ -985,6 +1057,7 @@ DeviceStep::Results DeviceStep::wait(const std::function<void()>& afterRetry)
     mesh.collect(results.reciprocalEnergy, results.reciprocalStrain, results.singleIonSum, results.singleIonStrain);
   }
   if (useBonded) results.bonded = bonded.collect();
+  if (usePolymer) results.polymer = polymer.collect();
   return results;
 }
 
@@ -1013,6 +1086,7 @@ std::string DeviceStep::status() const
   }
   if (useMesh) result += mesh.status();
   if (useBonded) result += bonded.status();
+  if (usePolymer) result += polymer.status();
   return result;
 }
 

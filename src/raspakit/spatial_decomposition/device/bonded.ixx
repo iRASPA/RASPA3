@@ -71,6 +71,11 @@ export class DeviceBonded
   /// After the read completed: the sums over all molecules.
   DeviceBondedResults collect() const;
 
+  /// The per-atom molecule table and the per-molecule centers of the last enqueue (for the polymer overlay's
+  /// virial correction).
+  DeviceBuffer moleculeOfAtom() const { return moleculeOfAtomBuffer.get(); }
+  DeviceBuffer moleculeCenter() const { return moleculeCenterBuffer.get(); }
+
   std::string status() const;
 
  private:

@@ -16,6 +16,8 @@ import spatial_decomposition_device_context;
 import spatial_decomposition_device_mesh;
 import spatial_decomposition_device_bonded;
 import spatial_decomposition_device_bonded_topology;
+import spatial_decomposition_device_polymer;
+import spatial_decomposition_device_polymer_topology;
 
 /// Launch geometry fixed by the pair kernel source (CLUSTER_I, CLUSTER_J, GROUP_SIZE, the partial sums per group).
 export namespace DeviceKernelLayout
@@ -168,8 +170,20 @@ export class DeviceStep
   void enableBonded(const System& system, double alpha, double conversionFactor, bool useCharge);
   bool meshEnabled() const { return useMesh; }
   bool bondedEnabled() const { return useBonded; }
+  /// Rebuilds and re-uploads the bonded topology after the atom types or charges of the system changed (the
+  /// Polymerization driver's retyping): the masses, the charge sums of the self and exclusion corrections.
+  void refreshBondedTopology(const System& system);
   /// Follows a change of the Ewald alpha in the mesh and bonded parameters (setParameters covers the pairs).
   void setEwaldAlpha(double alpha);
+
+  /// Adds the polymer-bond overlay of the Polymerization driver to the device step (after enableBonded: the
+  /// overlay's virial correction uses the bonded kernels' molecule centers). The terms follow with
+  /// setPolymerTopology after every reaction, the ramp factors with setPolymerLambdas.
+  void enablePolymerOverlay();
+  bool polymerEnabled() const { return usePolymer; }
+  void setPolymerTopology(const PolymerOverlayTopology& topology);
+  void setPolymerLambdas(std::span<const float> lambdas);
+  std::size_t numberOfPolymerTerms() const { return polymer.numberOfTerms(); }
 
   /// List build after CellList::bin (one thread): the slot layout on the host, then the uploads and the build
   /// kernels enqueued on the device; `parts` is the number of threads that pack positions.
@@ -227,6 +241,8 @@ export class DeviceStep
     double3x3 singleIonStrain{};
     // bonded
     DeviceBondedResults bonded{};
+    // polymer overlay
+    DevicePolymerResults polymer{};
   };
   /// Waits for the step and returns its energies and strain derivatives; the forces are then readable. When a
   /// lane list overflowed, the chain is enqueued again and `afterRetry` is called (the resident integrator
@@ -271,11 +287,15 @@ export class DeviceStep
   DeviceBufferOwner cellOfClusterBuffer{}, outerCountBuffer{}, laneCountBuffer{}, partialBuffer{};
   DeviceBufferOwner cellSlotStartBuffer{}, outerClusterBuffer{}, outerMaskBuffer{}, pairListBuffer{};
   DeviceBufferOwner slotAtomBuffer{}, exclusionStartBuffer{}, exclusionPartnerBuffer{};
+  DeviceBufferOwner slotOfAtomBuffer{};  ///< per atom (system order): its slot; uploaded per build with the bonded terms
   std::size_t lennardJonesCapacity{0};
   std::size_t exclusionStartCapacity{0}, exclusionPartnerCapacity{0};
+  std::size_t slotOfAtomCapacity{0};
   DeviceEvent buildEvent{}, stepEvent{};
   DeviceMesh mesh{};
   DeviceBonded bonded{};
+  DevicePolymerOverlay polymer{};
+  bool usePolymer{false};
 
   // device capacities
   std::size_t slotCapacity{0}, iClusterCapacity{0}, cellCapacity{0}, relativeCapacity{0};
@@ -308,6 +328,7 @@ export class DeviceStep
   std::vector<std::uint32_t> typeOfSlot{};
   std::vector<float> buildPosition{};                          ///< x, y, z, molecule bits per slot at the binning.
   std::vector<std::uint32_t> slotAtom{};                       ///< System atom index per slot (noAtom for dummies).
+  std::vector<std::uint32_t> slotOfAtom{};                     ///< Slot per system atom (with the bonded terms).
   /// Per atom (system order): CSR start of its excluded + scaled same-molecule partners (bit 31: every pair of
   /// its molecule is excluded, rigid molecule), and the partner atoms (system order).
   std::vector<std::uint32_t> atomExclusionStart{}, atomExclusionPartner{};
@@ -341,6 +362,7 @@ export class DeviceStep
   void enqueuePairs();
   void enqueueMesh();
   void enqueueBonded();
+  void enqueuePolymer();
   void enqueueChain();
   void enqueueStep(const SimulationBox& box, bool compact);
   void updateParameters(const SimulationBox& box);
