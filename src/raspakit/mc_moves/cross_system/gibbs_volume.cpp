@@ -29,20 +29,13 @@ import interactions_external_field;
 import mc_moves_move_types;
 import mc_moves_cputime;
 
-std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove(RandomNumber& random, System& systemA,
-                                                                                 System& systemB,
-                                                                                 std::size_t selectedComponent)
+std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove(
+    RandomNumber& random, System& systemA, System& systemB, [[maybe_unused]] std::size_t selectedComponent)
 {
   Move::Types move = Move::Types::GibbsVolume;
 
-  // Volume moves do not change either particle-number macrostate.  Record the
-  // selected cross-system trial here so every exit path (including overlaps)
-  // contributes exactly one neutral TMMC transition for each box.
-  const std::size_t oldNA = systemA.numberOfIntegerMoleculesPerComponent[selectedComponent];
-  const std::size_t oldNB = systemB.numberOfIntegerMoleculesPerComponent[selectedComponent];
-  systemA.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNA);
-  systemB.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNB);
-
+  // Volume moves do not change either particle-number macrostate and leave the
+  // TMMC collection matrices untouched.
   systemA.mc_moves_statistics.addTrial(move);
   systemB.mc_moves_statistics.addTrial(move);
 

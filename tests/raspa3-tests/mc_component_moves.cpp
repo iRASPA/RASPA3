@@ -599,7 +599,7 @@ TEST(MC_COMPONENT_MOVES, cfcmc_cbmc_restores_atoms_after_lower_tmmc_window_rejec
   EXPECT_TRUE(testedBoundary);
 }
 
-TEST(MC_COMPONENT_MOVES, neutral_trial_updates_tmmc_diagonal)
+TEST(MC_COMPONENT_MOVES, neutral_trial_leaves_tmmc_matrix_untouched)
 {
   const ForceField forceField = makeNonInteractingForceField();
   MCMoveProbabilities probabilities;
@@ -617,7 +617,11 @@ TEST(MC_COMPONENT_MOVES, neutral_trial_updates_tmmc_diagonal)
   EXPECT_EQ(MC_Moves::performRandomMoveInitialization(random, system, system, 0, fractionalMoleculeSystem),
             Move::Types::Widom);
 
-  EXPECT_DOUBLE_EQ(system.tmmc.cmatrix[1].x, 0.0);
-  EXPECT_DOUBLE_EQ(system.tmmc.cmatrix[1].y, 1.0);
-  EXPECT_DOUBLE_EQ(system.tmmc.cmatrix[1].z, 0.0);
+  // A move that cannot change N is not a transition of the macrostate chain: no row is touched.
+  for (const double3& row : system.tmmc.cmatrix)
+  {
+    EXPECT_DOUBLE_EQ(row.x, 0.0);
+    EXPECT_DOUBLE_EQ(row.y, 0.0);
+    EXPECT_DOUBLE_EQ(row.z, 0.0);
+  }
 }

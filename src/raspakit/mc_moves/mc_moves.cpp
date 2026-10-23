@@ -87,68 +87,13 @@ import mc_moves_cross_link_formation;
 namespace
 {
 
-bool isAlwaysTMMCNeutralLocalMove(Move::Types moveType)
-{
-  switch (moveType)
-  {
-    case Move::Types::VolumeChange:
-    case Move::Types::AnisotropicVolumeChange:
-    case Move::Types::Widom:
-    case Move::Types::WidomCFCMC:
-    case Move::Types::WidomCBCFCMC:
-    case Move::Types::TranslationSmartMCAll:
-    case Move::Types::RotationSmartMCAll:
-    case Move::Types::HybridMC:
-    case Move::Types::CrossLinkSwap:
-    case Move::Types::CrossLinkFormationScission:
-    case Move::Types::CrossLinkExchange:
-      return true;
-    default:
-      return false;
-  }
-}
-
-bool isGuardedTMMCNeutralMove(Move::Types moveType)
-{
-  switch (moveType)
-  {
-    case Move::Types::Translation:
-    case Move::Types::RandomTranslation:
-    case Move::Types::TranslationSmartMC:
-    case Move::Types::RotationSmartMC:
-    case Move::Types::TranslationRotationSmartMC:
-    case Move::Types::Rotation:
-    case Move::Types::RandomRotation:
-    case Move::Types::ReinsertionCBMC:
-    case Move::Types::PartialReinsertionCBMC:
-    case Move::Types::Pivot:
-    case Move::Types::PivotCBMC:
-    case Move::Types::Crankshaft:
-    case Move::Types::Reptation:
-    case Move::Types::ConcertedRotation:
-    case Move::Types::BeadDisplacement:
-    case Move::Types::BeadFlip:
-    case Move::Types::DoubleBridging:
-    case Move::Types::IntramolecularDoubleRebridging:
-      return true;
-    default:
-      return false;
-  }
-}
-
-void recordOtherwiseMissingNeutralTMMCTrial(Move::Types moveType, System& system, std::size_t componentId,
-                                            std::size_t oldN)
-{
-  const bool skippedForEmptyComponent =
-      isGuardedTMMCNeutralMove(moveType) && system.numberOfMoleculesPerComponent[componentId] == 0uz;
-  const bool skippedIdentity =
-      moveType == Move::Types::IdentityChangeCBMC && system.components[componentId].identityChanges.empty();
-
-  if (isAlwaysTMMCNeutralLocalMove(moveType) || skippedForEmptyComponent || skippedIdentity)
-  {
-    system.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
-  }
-}
+// Moves that leave the molecule count unchanged (translation, rotation, reinsertion, volume, Widom, ...)
+// do not touch the collection matrix. ln Pi is the detailed-balance ratio of the N -> N+1 and N+1 -> N
+// entries normalized by their row totals; a stay recorded on the diagonal only rescales both rows by the
+// same factor, which cancels. Leaving it out makes the matrix independent of the move mix and removes the
+// need to account for neutral trials that are skipped (e.g. a translation drawn for an empty component).
+// Rejected insertions and deletions still record (0, 1 - Pacc, Pacc) / (Pacc, 1 - Pacc, 0): their diagonal
+// share is part of the acceptance-probability average.
 
 void captureTMMCLambdaBin(System& system, std::size_t componentId)
 {
@@ -231,10 +176,9 @@ MC_Moves::ParticleExchangeResult MC_Moves::performMolecularDynamicsSwap(RandomNu
   }
   else
   {
-    const std::size_t selectedMolecule =
-        system.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0
-            ? 0
-            : system.randomIntegerMoleculeOfComponent(random, selectedComponent);
+    const std::size_t selectedMolecule = system.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0
+                                             ? 0
+                                             : system.randomIntegerMoleculeOfComponent(random, selectedComponent);
     const auto [energyDifference, unusedAcceptance] =
         deletionMoveCBMC(random, system, selectedComponent, selectedMolecule);
     (void)unusedAcceptance;
@@ -288,7 +232,6 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::Rotation:
@@ -307,7 +250,6 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::ReinsertionCBMC:
@@ -325,7 +267,6 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::Pivot:
@@ -342,7 +283,6 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::PivotCBMC:
@@ -359,7 +299,6 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::Crankshaft:
@@ -376,7 +315,6 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::Reptation:
@@ -393,7 +331,6 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::ConcertedRotation:
@@ -410,7 +347,6 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::BeadDisplacement:
@@ -427,7 +363,6 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::BeadFlip:
@@ -444,7 +379,6 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::DoubleBridging:
@@ -463,7 +397,6 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::IntramolecularDoubleRebridging:
@@ -480,7 +413,6 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::PartialReinsertionCBMC:
@@ -498,7 +430,6 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     default:
@@ -539,7 +470,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -559,7 +489,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -578,7 +507,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -598,7 +526,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -618,7 +545,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -638,7 +564,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -658,7 +583,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -699,8 +623,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -718,7 +640,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::PivotCBMC:
@@ -735,7 +656,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::Crankshaft:
@@ -752,7 +672,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::Reptation:
@@ -769,7 +688,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::ConcertedRotation:
@@ -786,7 +704,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::BeadDisplacement:
@@ -803,7 +720,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::BeadFlip:
@@ -820,7 +736,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::DoubleBridging:
@@ -839,7 +754,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::IntramolecularDoubleRebridging:
@@ -856,7 +770,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::PartialReinsertionCBMC:
@@ -873,8 +786,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -889,8 +800,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -905,8 +814,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -1153,7 +1060,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -1424,7 +1330,6 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
       break;
     }
   }
-  recordOtherwiseMissingNeutralTMMCTrial(moveType, selectedSystem, selectedComponent, oldN);
   settleCellLists(moveType, selectedSystem, selectedSecondSystem);
   return moveType;
 }
@@ -1457,7 +1362,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -1477,7 +1381,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -1496,7 +1399,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -1516,7 +1418,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -1536,7 +1437,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -1556,7 +1456,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -1576,7 +1475,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -1617,8 +1515,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -1636,7 +1532,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::PivotCBMC:
@@ -1653,7 +1548,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::Crankshaft:
@@ -1670,7 +1564,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::Reptation:
@@ -1687,7 +1580,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::ConcertedRotation:
@@ -1704,7 +1596,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::BeadDisplacement:
@@ -1721,7 +1612,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::BeadFlip:
@@ -1738,7 +1628,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::DoubleBridging:
@@ -1757,7 +1646,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::IntramolecularDoubleRebridging:
@@ -1774,7 +1662,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::PartialReinsertionCBMC:
@@ -1791,8 +1678,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -1807,8 +1692,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -1823,8 +1706,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -2071,7 +1952,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -2342,7 +2222,6 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       break;
     }
   }
-  recordOtherwiseMissingNeutralTMMCTrial(moveType, selectedSystem, selectedComponent, oldN);
   settleCellLists(moveType, selectedSystem, selectedSecondSystem);
   return moveType;
 }
@@ -2373,7 +2252,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -2389,7 +2267,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -2408,7 +2285,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -2428,7 +2304,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -2448,7 +2323,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -2465,7 +2339,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -2480,7 +2353,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -2515,7 +2387,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -2533,7 +2404,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::PivotCBMC:
@@ -2550,7 +2420,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::Crankshaft:
@@ -2567,7 +2436,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::Reptation:
@@ -2584,7 +2452,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::ConcertedRotation:
@@ -2601,7 +2468,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::BeadDisplacement:
@@ -2618,7 +2484,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::BeadFlip:
@@ -2635,7 +2500,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::DoubleBridging:
@@ -2654,7 +2518,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::IntramolecularDoubleRebridging:
@@ -2671,7 +2534,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
           selectedSystem.runningEnergies += energyDifference.value();
         }
       }
-      selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       break;
     }
     case Move::Types::PartialReinsertionCBMC:
@@ -2687,7 +2549,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -2702,7 +2563,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -2717,7 +2577,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -2988,7 +2847,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -3316,7 +3174,6 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
       break;
     }
   }
-  recordOtherwiseMissingNeutralTMMCTrial(moveType, selectedSystem, selectedComponent, oldN);
   std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 
   // Use lookup to skip adding count to system stats for cross system

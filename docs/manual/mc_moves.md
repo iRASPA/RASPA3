@@ -121,11 +121,18 @@ component population or replace a replica configuration in a way that is not
 represented by the current one-dimensional nearest-neighbor collection
 matrix.
 
-For every attempted compatible move, the collection matrix receives the
-unbiased physical transition probability \f$P_\mathrm{phys}\f$. Sampling
-factors from the lambda bias \f$\eta(\lambda)\f$ and from the TMMC macrostate
-bias \f$B_{n,o}\f$ affect trajectory acceptance but are excluded from the
-probability accumulated in the collection matrix.
+For every attempted move that can change \f$N\f$ (insertions and deletions,
+including those rejected by an overlap or at the macrostate bounds), the
+collection matrix receives the unbiased physical transition probability
+\f$P_\mathrm{phys}\f$. Sampling factors from the lambda bias
+\f$\eta(\lambda)\f$ and from the TMMC macrostate bias \f$B_{n,o}\f$ affect
+trajectory acceptance but are excluded from the probability accumulated in the
+collection matrix. Moves that leave \f$N\f$ unchanged (translation, rotation,
+reinsertion, volume, Widom, ...) are not recorded: \f$\ln\Pi\f$ follows from
+the \f$N\to N\pm1\f$ entries normalized by their row totals, and a stay on the
+diagonal would scale every row by the same move-mix factor, which cancels in
+the detailed-balance ratio. The collection matrix is therefore independent of
+the translation and rotation probabilities.
 
 ## Notation <a name="notation"></a>
 

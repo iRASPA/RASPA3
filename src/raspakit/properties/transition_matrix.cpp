@@ -31,11 +31,13 @@ void TransitionMatrix::initialize()
 // C(No -> Nn) += p(o -> n)
 // C(No -> No) += 1 − p(o -> n)
 //
-// translation: double3(0.0, 1.0, 0.0)
 // insertion: double3(0.0, 1.0 - Pacc, Pacc)
 // insertion overlap-detected: double3(0.0, 1.0, 0.0)
 // deletion: double3(Pacc, 1.0 - Pacc, 0.0)
 // deletion overlap-detected: double3(0.0, 1.0, 0.0)
+// moves that leave N unchanged (translation, rotation, reinsertion, volume, Widom, ...): not recorded.
+//   ln Pi only uses the off-diagonal entries normalized by the row totals; a stay on the diagonal would
+//   rescale every row by the same move-mix factor, which cancels in the detailed-balance ratio.
 // 1D-N CFCMC lambda hop: double3(0.0, 0.0, 0.0) — skip (integer N is unchanged).
 // (N, λ) chain: a lambda hop is a real ±1 step and is recorded like insertion/deletion.
 void TransitionMatrix::updateMatrix(double3 Pacc, std::size_t oldN)

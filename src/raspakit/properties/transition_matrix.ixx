@@ -97,8 +97,9 @@ export struct TransitionMatrix
    *
    * Records the probabilities of transitions between macrostates in the collection matrix.
    * The acceptance probabilities vector Pacc contains probabilities for deletion (x),
-   * no change (y), and insertion (z) moves. A zero vector is a no-op (used by 1D-N TMMC
-   * to skip CFCMC lambda hops). With numberOfLambdaBins > 1 the matrix is the flattened
+   * no change (y), and insertion (z) moves. Only attempts that can change the macrostate
+   * are recorded; moves that leave N unchanged do not call this. A zero vector is a no-op
+   * (used by 1D-N TMMC to skip CFCMC lambda hops). With numberOfLambdaBins > 1 the matrix is the flattened
    * (N, λ) chain and lambda hops are real ±1 transitions; the 2-argument overload records
    * at currentLambdaBin.
    *

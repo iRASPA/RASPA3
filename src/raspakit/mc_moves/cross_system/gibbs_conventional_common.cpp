@@ -41,13 +41,22 @@ class DualTMMCTrial
   {
   }
 
+  // An attempt that exits before its acceptance probability is known (overlap, empty box) is a
+  // rejected transfer for the boxes whose macrostate it would have changed; a box whose fractional
+  // molecule only changes lambda records nothing (N is unchanged there).
   ~DualTMMCTrial()
   {
     if (!recorded_)
     {
-      systemA_.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNA_);
-      systemB_.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNB_);
+      systemA_.tmmc.updateMatrix(transitionVector(0.0, deltaA_), oldNA_);
+      systemB_.tmmc.updateMatrix(transitionVector(0.0, deltaB_), oldNB_);
     }
+  }
+
+  void setMacrostateDeltas(int deltaA, int deltaB)
+  {
+    deltaA_ = deltaA;
+    deltaB_ = deltaB;
   }
 
   bool transitionsAreInBounds(int deltaA, int deltaB) const
@@ -82,17 +91,20 @@ class DualTMMCTrial
     return 1.0;
   }
 
+  // A pure lambda change leaves N unchanged and is not recorded (a zero vector is a no-op in updateMatrix).
   static double3 transitionVector(double physicalAcceptance, int delta)
   {
     if (delta > 0) return double3(0.0, 1.0 - physicalAcceptance, physicalAcceptance);
     if (delta < 0) return double3(physicalAcceptance, 1.0 - physicalAcceptance, 0.0);
-    return double3(0.0, 1.0, 0.0);
+    return double3(0.0, 0.0, 0.0);
   }
 
   System& systemA_;
   System& systemB_;
   std::size_t oldNA_;
   std::size_t oldNB_;
+  int deltaA_{0};
+  int deltaB_{0};
   bool recorded_{false};
 };
 
@@ -339,15 +351,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     lambdaNewB += 1.0;
   }
 
-  if (moveKindA == GibbsMoveKind::Delete && systemA.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0)
-  {
-    return std::nullopt;
-  }
-  if (moveKindB == GibbsMoveKind::Delete && systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0)
-  {
-    return std::nullopt;
-  }
-
   const auto macrostateDelta = [](GibbsMoveKind moveKind)
   {
     if (moveKind == GibbsMoveKind::Insert) return 1;
@@ -356,6 +359,16 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   };
   const int deltaA = macrostateDelta(moveKindA);
   const int deltaB = macrostateDelta(moveKindB);
+  tmmcTrial.setMacrostateDeltas(deltaA, deltaB);
+
+  if (moveKindA == GibbsMoveKind::Delete && systemA.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0)
+  {
+    return std::nullopt;
+  }
+  if (moveKindB == GibbsMoveKind::Delete && systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0)
+  {
+    return std::nullopt;
+  }
 
   const std::size_t newBinA = lambdaBinFromValue(lambdaA, lambdaNewA);
   const std::size_t newBinB = lambdaBinFromValue(lambdaB, lambdaNewB);
