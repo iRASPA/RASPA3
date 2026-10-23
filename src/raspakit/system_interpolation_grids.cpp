@@ -198,8 +198,8 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
           static_cast<std::size_t>(perpendicular_widths.z / forceField.settings.spacingCoulombGrid + 0.5);
     }
 
-    // also create a Charge grid when needed
-    if (!forceField.settings.gridPseudoAtomIndices.empty())
+    // also create a Charge grid when needed (not when the simulation carries no charges at all)
+    if (!forceField.settings.gridPseudoAtomIndices.empty() && forceField.useCharge)
     {
       std::print(stream, "Generating an Ewald Real interpolation grid ({}x{}x{}) for a unit charge\n",
                  numberOfCoulombGridPoints.x, numberOfCoulombGridPoints.y, numberOfCoulombGridPoints.z);
@@ -449,7 +449,7 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
 
         // test charges when no VDW overlap detected (putting a unit charge on top of negative framework atom can lead
         // to very negative energies)
-        if (analytical_vdw_energy < forceField.energyOverlapCriteria)
+        if (forceField.useCharge && analytical_vdw_energy < forceField.energyOverlapCriteria)
         {
           double charge = forceField.pseudoAtoms[index].charge;
           auto [interpolated_value_real_ewald, interpolated_gradient_real_ewald, interpolated_hessian_real_ewald] =
@@ -740,6 +740,13 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
         std::print(stream, "Boltzmann relative error:                  {}\n\n",
                    std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_hessian.cz /
                              boltzmann_weighted_full_squared_summed_vdw_hessian.cz));
+      }
+
+      if (!forceField.useCharge)
+      {
+        std::print(stream, "\n");
+        std::flush(stream);
+        continue;
       }
 
       std::print(stream, "Testing Coulomb interpolation grid ({}x{}x{}) for {}\n", numberOfCoulombGridPoints.x,

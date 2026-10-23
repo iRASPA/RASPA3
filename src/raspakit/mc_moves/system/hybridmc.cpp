@@ -349,11 +349,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
     // in the acceptance rule, but it must be restored in the returned energy: the caller overwrites
     // system.runningEnergies with it, and both the tail energy and its dU/dlambda contribution would
     // otherwise be lost.
-    currentEnergy +=
-        Interactions::computeInterMolecularTailEnergy(system.forceField, system.simulationBox,
-                                                      system.spanOfMoleculeAtoms()) +
-        Interactions::computeFrameworkMoleculeTailEnergy(system.forceField, system.simulationBox,
-                                                         system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
+    currentEnergy += system.computeTailCorrectionEnergies();
     return currentEnergy;
   }
   return std::nullopt;

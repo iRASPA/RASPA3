@@ -43,6 +43,31 @@ export struct InterpolationEnergyGrid
   std::pair<double, double3> interpolateGradient(double3 pos) const;
   std::tuple<double, double3, double3x3> interpolateHessian(double3 pos) const;
 
+  /// The energies of this grid and of 'other' (typically the Van der Waals and the Coulomb grid of the same
+  /// framework) at 'pos'. The position is located once and the corner data of both grids are fetched together, so
+  /// the two memory stalls overlap; equivalent to calling 'interpolate' on each grid.
+  std::pair<double, double> interpolate(const InterpolationEnergyGrid& other, double3 pos) const;
+  std::pair<std::pair<double, double3>, std::pair<double, double3>> interpolateGradient(
+      const InterpolationEnergyGrid& other, double3 pos) const;
+
+  /// Starts fetching the corner data of the cell that contains 'pos' into the cache. The grid is far larger
+  /// than the caches and a probe position is effectively random, so an evaluation otherwise waits for memory;
+  /// issuing the prefetches for a batch of positions (the trial positions of a CBMC step, the atoms of a
+  /// molecule) before evaluating them overlaps those waits.
+  void prefetch(double3 pos) const;
+
+  /// The cell of a position: the lower-corner node indices and the position inside the cell (each in [0, 1)).
+  struct Cell
+  {
+    std::size_t x0, y0, z0;
+    double3 t;
+  };
+  Cell locateCell(double3 pos) const;
+
+  /// Derivatives with respect to the cell coordinate converted to Cartesian space.
+  double3 cartesianGradient(const double3& cellGradient) const;
+  double3x3 cartesianHessian(const double3x3& cellHessian) const;
+
   void writeOutput(std::size_t systemId, const SimulationBox &simulationBox, const ForceField &forceField);
 
   static const uint3 parseExternalFieldGridDimensions(const std::string& filename);

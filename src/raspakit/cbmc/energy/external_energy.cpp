@@ -215,15 +215,35 @@ bool accumulateGridEnergy(const ForceField &forceField,
                           const Atom &atom, RunningEnergy &energySum)
 {
   const std::size_t type = static_cast<std::size_t>(atom.type);
-  const double energy = interpolationGrids[type]->interpolate(atom.position);
-  if (energy > forceField.energyOverlapCriteria) return false;
-
-  energySum.frameworkMoleculeVDW += energy;
   if (forceField.useCharge)
   {
-    energySum.frameworkMoleculeCharge += atom.charge * interpolationGrids.back()->interpolate(atom.position);
+    // both grids in one pass: the position is located once and the two memory fetches overlap
+    const auto [energyVDW, energyCoulomb] =
+        interpolationGrids[type]->interpolate(interpolationGrids.back().value(), atom.position);
+    if (energyVDW > forceField.energyOverlapCriteria) return false;
+    energySum.frameworkMoleculeVDW += energyVDW;
+    energySum.frameworkMoleculeCharge += atom.charge * energyCoulomb;
+    return true;
   }
+  const double energy = interpolationGrids[type]->interpolate(atom.position);
+  if (energy > forceField.energyOverlapCriteria) return false;
+  energySum.frameworkMoleculeVDW += energy;
   return true;
+}
+
+/// Starts fetching the grid data of every trial atom that reads a grid, so the evaluations that follow find it in
+/// the cache instead of each waiting for memory in turn.
+void prefetchGridEnergies(const ForceField& forceField,
+                          const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+                          std::span<const Atom> atoms)
+{
+  for (const Atom& atom : atoms)
+  {
+    const std::optional<InterpolationEnergyGrid>& grid = interpolationGrids[static_cast<std::size_t>(atom.type)];
+    if (!grid.has_value() || atom.isFractional) continue;
+    grid->prefetch(atom.position);
+    if (forceField.useCharge) interpolationGrids.back()->prefetch(atom.position);
+  }
 }
 
 [[nodiscard]] std::optional<RunningEnergy> computeFrameworkSerial(
@@ -235,6 +255,7 @@ bool accumulateGridEnergy(const ForceField &forceField,
   const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
 
   RunningEnergy energySum;
+  prefetchGridEnergies(forceField, interpolationGrids, atoms);
   for (const Atom &atom : atoms)
   {
     // A grid exists only for a framework; a fractional atom is never read from the grid.
@@ -386,6 +407,7 @@ inline double frameworkGatherCutOff(const CBMC::GrowContext& context)
   RunningEnergy energySum{};
   thread_local std::vector<Atom> pairAtoms{};
   pairAtoms.clear();
+  prefetchGridEnergies(context.forceField, context.interpolationGrids, atoms);
   for (const Atom& atom : atoms)
   {
     if (!readsFrameworkGrid(context, atom))
@@ -610,6 +632,13 @@ void CBMC::gatherNeighbourhood(const GrowContext& context, Interactions::Neighbo
         shared.frameworkNeighbourhood = &allFramework;
       }
     }
+  }
+
+  // The trials are random positions in the box: their grid cells are fetched for all of them up front, so the
+  // per-trial evaluations do not each wait for memory.
+  if (!context.frameworkAtoms.empty())
+  {
+    prefetchGridEnergies(context.forceField, context.interpolationGrids, trialPositions);
   }
 
   for (const Atom &trialPosition : trialPositions)

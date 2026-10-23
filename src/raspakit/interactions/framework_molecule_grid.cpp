@@ -656,8 +656,8 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPosition(
       return {derivatives[0],
 
               derivatives[1] * frameworkCell[0][0],
-              derivatives[2] * frameworkCell[0][0],
-              derivatives[3] * frameworkCell[0][0],
+              derivatives[2] * frameworkCell[1][1],
+              derivatives[3] * frameworkCell[2][2],
 
               derivatives[4] * frameworkCell[0][0] * frameworkCell[0][0],
               derivatives[5] * frameworkCell[0][0] * frameworkCell[1][1],

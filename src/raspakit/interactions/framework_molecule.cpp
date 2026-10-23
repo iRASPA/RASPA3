@@ -35,6 +35,49 @@ import interpolation_energy_grid;
 import mc_cell_list;
 import interactions_neighbourhood;
 
+namespace
+{
+// The grids are far larger than the caches and the atoms of a loop are spread over the whole box, so an
+// interpolation waits for memory. Loops over many atoms fetch the grid cells this many atoms ahead.
+constexpr std::size_t gridPrefetchDistance = 8;
+
+inline void prefetchGridCell(const ForceField& forceField,
+                             const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+                             std::span<const Atom> atoms, std::size_t index)
+{
+  if (index >= atoms.size()) return;
+  const Atom& atom = atoms[index];
+  const std::optional<InterpolationEnergyGrid>& grid = interpolationGrids[static_cast<std::size_t>(atom.type)];
+  if (!grid.has_value() || atom.isFractional) return;
+  grid->prefetch(atom.position);
+  if (forceField.useCharge) interpolationGrids.back()->prefetch(atom.position);
+}
+
+inline void prefetchGridCells(const ForceField& forceField,
+                              const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+                              std::span<const Atom> atoms, std::size_t begin, std::size_t end)
+{
+  for (std::size_t index = begin; index < end; ++index)
+  {
+    prefetchGridCell(forceField, interpolationGrids, atoms, index);
+  }
+}
+
+// The grid energies of one atom (the Van der Waals grid of its type, and the Coulomb grid when charges are on).
+inline std::pair<double, double> gridEnergies(const ForceField& forceField,
+                                              const std::vector<std::optional<InterpolationEnergyGrid>>& grids,
+                                              const Atom& atom)
+{
+  const InterpolationEnergyGrid& grid = grids[static_cast<std::size_t>(atom.type)].value();
+  if (forceField.useCharge)
+  {
+    const auto [energyVDW, energyCoulomb] = grid.interpolate(grids.back().value(), atom.position);
+    return {energyVDW, atom.charge * energyCoulomb};
+  }
+  return {grid.interpolate(atom.position), 0.0};
+}
+}  // namespace
+
 RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
     const ForceField& forceField, const SimulationBox& simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
@@ -43,25 +86,23 @@ RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
 {
   RunningEnergy energySum{};
 
-  bool useCharge = forceField.useCharge;
-
   if (!framework.has_value()) return energySum;
   if (moleculeAtoms.empty()) return energySum;
 
-  for (const Atom& moleculeAtom : moleculeAtoms)
+  prefetchGridCells(forceField, interpolationGrids, moleculeAtoms, 0, gridPrefetchDistance);
+  for (std::size_t index = 0; index < moleculeAtoms.size(); ++index)
   {
+    const Atom& moleculeAtom = moleculeAtoms[index];
     std::size_t typeB = static_cast<std::size_t>(moleculeAtom.type);
     bool isFractional = static_cast<bool>(moleculeAtom.isFractional);
 
     if (interpolationGrids[typeB].has_value() && !isFractional &&
         forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
-      energySum.frameworkMoleculeVDW += interpolationGrids[typeB]->interpolate(moleculeAtom.position);
-      if (useCharge)
-      {
-        energySum.frameworkMoleculeCharge +=
-            moleculeAtom.charge * interpolationGrids.back()->interpolate(moleculeAtom.position);
-      }
+      prefetchGridCell(forceField, interpolationGrids, moleculeAtoms, index + gridPrefetchDistance);
+      const auto [energyVDW, energyCoulomb] = gridEnergies(forceField, interpolationGrids, moleculeAtom);
+      energySum.frameworkMoleculeVDW += energyVDW;
+      energySum.frameworkMoleculeCharge += energyCoulomb;
     }
     else
     {
@@ -84,32 +125,108 @@ RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
   return energySum;
 }
 
+namespace
+{
+// The framework-molecule tail correction of a molecule atom B is sum_A s_A s_B 2 (2 pi / V) C_AB over all framework
+// atoms A, which depends on the framework only through the scalingVDW-weighted count of its atoms per type (and
+// per dU/dlambda group, for the rare framework atom that carries one). The framework is therefore reduced once to
+// per-type weights w_B = 2 (2 pi / V) sum_A N_A C_AB, and every molecule atom costs a lookup instead of a pass over
+// all framework atoms.
+struct FrameworkTailWeights
+{
+  std::vector<double> perType;                                                   // w_B
+  std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> perGroupType;  // w_B restricted to group g
+
+  FrameworkTailWeights(const ForceField& forceField, const SimulationBox& simulationBox,
+                       std::span<const Atom> frameworkAtoms)
+  {
+    const std::size_t numberOfPseudoAtoms = forceField.numberOfPseudoAtoms;
+    std::vector<double> counts(numberOfPseudoAtoms, 0.0);
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> groupCounts{};
+    for (const Atom& atom : frameworkAtoms)
+    {
+      counts[static_cast<std::size_t>(atom.type)] += atom.scalingVDW;
+      if (atom.groupId != 0)
+      {
+        std::vector<double>& group = groupCounts[static_cast<std::size_t>(atom.groupId - 1)];
+        if (group.empty()) group.assign(numberOfPseudoAtoms, 0.0);
+        group[static_cast<std::size_t>(atom.type)] += atom.scalingVDW;
+      }
+    }
+
+    const double factor = 2.0 * (2.0 * std::numbers::pi / simulationBox.volume);
+    auto weights = [&](const std::vector<double>& typeCounts)
+    {
+      std::vector<double> w(numberOfPseudoAtoms, 0.0);
+      for (std::size_t typeB = 0; typeB < numberOfPseudoAtoms; ++typeB)
+      {
+        double sum = 0.0;
+        for (std::size_t typeA = 0; typeA < numberOfPseudoAtoms; ++typeA)
+        {
+          sum += typeCounts[typeA] * forceField(typeA, typeB).tailCorrectionEnergy;
+        }
+        w[typeB] = factor * sum;
+      }
+      return w;
+    };
+    perType = weights(counts);
+    for (std::size_t group = 0; group < maximumNumberOfDUDlambdaGroups; ++group)
+    {
+      if (!groupCounts[group].empty()) perGroupType[group] = weights(groupCounts[group]);
+    }
+  }
+
+  // Adds sign times the tail correction of 'atom' with the whole framework (energy and dU/dlambda).
+  void accumulate(RunningEnergy& energySum, const Atom& atom, double sign) const
+  {
+    const std::size_t typeB = static_cast<std::size_t>(atom.type);
+    const double scalingVDWB = atom.scalingVDW;
+    const double w = perType[typeB];
+
+    energySum.tail += sign * scalingVDWB * w;
+    // the molecule atom's group collects sum_A s_A * temp_AB = w_B; a framework group collects s_B times its share
+    if (atom.groupId != 0) energySum.dudlambdaVDW[static_cast<std::size_t>(atom.groupId - 1)] += sign * w;
+    for (std::size_t group = 0; group < maximumNumberOfDUDlambdaGroups; ++group)
+    {
+      if (!perGroupType[group].empty())
+      {
+        energySum.dudlambdaVDW[group] += sign * scalingVDWB * perGroupType[group][typeB];
+      }
+    }
+  }
+};
+
+// Whether any framework-molecule pair involving one of 'atoms' carries a tail correction at all; false lets the
+// callers skip the framework entirely (the common case: tail corrections off, or only between adsorbates).
+bool hasFrameworkTailCorrection(const ForceField& forceField, std::span<const Atom> atoms)
+{
+  const std::size_t numberOfPseudoAtoms = forceField.numberOfPseudoAtoms;
+  for (const Atom& atom : atoms)
+  {
+    const std::size_t typeB = static_cast<std::size_t>(atom.type);
+    for (std::size_t typeA = 0; typeA < numberOfPseudoAtoms; ++typeA)
+    {
+      if (forceField(typeA, typeB).tailCorrectionEnergy != 0.0) return true;
+    }
+  }
+  return false;
+}
+}  // namespace
+
 RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField& forceField,
                                                                const SimulationBox& simulationBox,
                                                                std::span<const Atom> frameworkAtoms,
                                                                std::span<const Atom> moleculeAtoms) noexcept
 {
   RunningEnergy energySum{};
+  if (frameworkAtoms.empty() || moleculeAtoms.empty()) return energySum;
+  if (!hasFrameworkTailCorrection(forceField, moleculeAtoms)) return energySum;
 
-  double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
-  for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
+  const FrameworkTailWeights weights(forceField, simulationBox, frameworkAtoms);
+  for (const Atom& atom : moleculeAtoms)
   {
-    std::size_t typeA = static_cast<std::size_t>(it1->type);
-    std::uint8_t groupIdA = it1->groupId;
-    double scalingVDWA = it1->scalingVDW;
-
-    for (std::span<const Atom>::iterator it2 = moleculeAtoms.begin(); it2 != moleculeAtoms.end(); ++it2)
-    {
-      std::size_t typeB = static_cast<std::size_t>(it2->type);
-      std::uint8_t groupIdB = it2->groupId;
-      double scalingVDWB = it2->scalingVDW;
-
-      double temp = 2.0 * preFactor * forceField(typeA, typeB).tailCorrectionEnergy;
-      energySum.tail += scalingVDWA * scalingVDWB * temp;
-      energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, temp);
-    }
+    weights.accumulate(energySum, atom, 1.0);
   }
-
   return energySum;
 }
 
@@ -191,16 +308,13 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
     if (interpolationGrids[typeB].has_value() && !isFractional &&
         forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
-      double energy = interpolationGrids[typeB]->interpolate(posB);
-      if (energy > overlapCriteria)
+      const auto [energyVDW, energyCoulomb] = gridEnergies(forceField, interpolationGrids, atom);
+      if (energyVDW > overlapCriteria)
       {
         return std::nullopt;
       }
-      energySum.frameworkMoleculeVDW += energy;
-      if (useCharge)
-      {
-        energySum.frameworkMoleculeCharge += chargeB * interpolationGrids.back()->interpolate(posB);
-      }
+      energySum.frameworkMoleculeVDW += energyVDW;
+      energySum.frameworkMoleculeCharge += energyCoulomb;
     }
     else
     {
@@ -253,11 +367,9 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
     if (interpolationGrids[typeB].has_value() && !isFractional &&
         forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
-      energySum.frameworkMoleculeVDW -= interpolationGrids[typeB]->interpolate(posB);
-      if (useCharge)
-      {
-        energySum.frameworkMoleculeCharge -= chargeB * interpolationGrids.back()->interpolate(posB);
-      }
+      const auto [energyVDW, energyCoulomb] = gridEnergies(forceField, interpolationGrids, atom);
+      energySum.frameworkMoleculeVDW -= energyVDW;
+      energySum.frameworkMoleculeCharge -= energyCoulomb;
     }
     else
     {
@@ -322,6 +434,9 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
   thread_local std::vector<Atom> pairOld{};
   pairNew.clear();
   pairOld.clear();
+  // the grid cells of both sets are fetched up front: a move touches a handful of atoms, each a memory wait
+  prefetchGridCells(forceField, interpolationGrids, newatoms, 0, newatoms.size());
+  prefetchGridCells(forceField, interpolationGrids, oldatoms, 0, oldatoms.size());
   for (const Atom& atom : newatoms)
   {
     if (!readsGrid(atom))
@@ -329,13 +444,10 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
       pairNew.push_back(atom);
       continue;
     }
-    const double energy = interpolationGrids[static_cast<std::size_t>(atom.type)]->interpolate(atom.position);
-    if (energy > overlapCriteria) return std::nullopt;
-    energySum.frameworkMoleculeVDW += energy;
-    if (useCharge)
-    {
-      energySum.frameworkMoleculeCharge += atom.charge * interpolationGrids.back()->interpolate(atom.position);
-    }
+    const auto [energyVDW, energyCoulomb] = gridEnergies(forceField, interpolationGrids, atom);
+    if (energyVDW > overlapCriteria) return std::nullopt;
+    energySum.frameworkMoleculeVDW += energyVDW;
+    energySum.frameworkMoleculeCharge += energyCoulomb;
   }
   for (const Atom& atom : oldatoms)
   {
@@ -344,12 +456,9 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
       pairOld.push_back(atom);
       continue;
     }
-    energySum.frameworkMoleculeVDW -=
-        interpolationGrids[static_cast<std::size_t>(atom.type)]->interpolate(atom.position);
-    if (useCharge)
-    {
-      energySum.frameworkMoleculeCharge -= atom.charge * interpolationGrids.back()->interpolate(atom.position);
-    }
+    const auto [energyVDW, energyCoulomb] = gridEnergies(forceField, interpolationGrids, atom);
+    energySum.frameworkMoleculeVDW -= energyVDW;
+    energySum.frameworkMoleculeCharge -= energyCoulomb;
   }
   if ((pairNew.empty() && pairOld.empty()) || frameworkAtoms.empty()) return energySum;
 
@@ -541,38 +650,21 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
 {
   RunningEnergy energySum{};
-
-  double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
-
-  for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
+  if (frameworkAtoms.empty()) return energySum;
+  if (!hasFrameworkTailCorrection(forceField, newatoms) && !hasFrameworkTailCorrection(forceField, oldatoms))
   {
-    std::size_t typeA = static_cast<std::size_t>(it1->type);
-    std::uint8_t groupIdA = it1->groupId;
-    double scalingVDWA = it1->scalingVDW;
-
-    for (const Atom& atom : newatoms)
-    {
-      std::size_t typeB = static_cast<std::size_t>(atom.type);
-      std::uint8_t groupIdB = atom.groupId;
-      double scalingVDWB = atom.scalingVDW;
-
-      double temp = 2.0 * preFactor * forceField(typeA, typeB).tailCorrectionEnergy;
-      energySum.tail += scalingVDWA * scalingVDWB * temp;
-      energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, temp);
-    }
-
-    for (const Atom& atom : oldatoms)
-    {
-      std::size_t typeB = static_cast<std::size_t>(atom.type);
-      std::uint8_t groupIdB = atom.groupId;
-      double scalingVDWB = atom.scalingVDW;
-
-      double temp = 2.0 * preFactor * forceField(typeA, typeB).tailCorrectionEnergy;
-      energySum.tail -= scalingVDWA * scalingVDWB * temp;
-      energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, -temp);
-    }
+    return energySum;
   }
 
+  const FrameworkTailWeights weights(forceField, simulationBox, frameworkAtoms);
+  for (const Atom& atom : newatoms)
+  {
+    weights.accumulate(energySum, atom, 1.0);
+  }
+  for (const Atom& atom : oldatoms)
+  {
+    weights.accumulate(energySum, atom, -1.0);
+  }
   return energySum;
 }
 
@@ -591,6 +683,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
 
   if (moleculeAtoms.empty()) return energySum;
 
+  if (!mobileFramework) prefetchGridCells(forceField, interpolationGrids, moleculeAtoms, 0, gridPrefetchDistance);
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
     std::size_t indexA = static_cast<std::size_t>(it1 - moleculeAtoms.begin());
@@ -601,15 +694,20 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     if (!mobileFramework && interpolationGrids[typeA].has_value() && !isFractional &&
         forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
-      auto [energy_vdw, gradient_vdw] = interpolationGrids[typeA]->interpolateGradient(moleculeAtom.position);
-      energySum.frameworkMoleculeVDW += energy_vdw;
-      moleculeDynamics[indexA].gradient += gradient_vdw;
+      prefetchGridCell(forceField, interpolationGrids, moleculeAtoms, indexA + gridPrefetchDistance);
       if (useCharge)
       {
-        auto [energy_real_ewald, gradient_real_ewald] =
-            interpolationGrids.back()->interpolateGradient(moleculeAtom.position);
-        energySum.frameworkMoleculeCharge += moleculeAtom.charge * energy_real_ewald;
-        moleculeDynamics[indexA].gradient += moleculeAtom.charge * gradient_real_ewald;
+        const auto [vdw, realEwald] =
+            interpolationGrids[typeA]->interpolateGradient(interpolationGrids.back().value(), moleculeAtom.position);
+        energySum.frameworkMoleculeVDW += vdw.first;
+        energySum.frameworkMoleculeCharge += moleculeAtom.charge * realEwald.first;
+        moleculeDynamics[indexA].gradient += vdw.second + moleculeAtom.charge * realEwald.second;
+      }
+      else
+      {
+        auto [energy_vdw, gradient_vdw] = interpolationGrids[typeA]->interpolateGradient(moleculeAtom.position);
+        energySum.frameworkMoleculeVDW += energy_vdw;
+        moleculeDynamics[indexA].gradient += gradient_vdw;
       }
     }
     else
@@ -663,6 +761,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
   if (moleculeAtoms.empty()) return std::make_pair(energy, strainDerivativeTensor);
 
   // Framework atoms are fixed, so their gradient is never consumed and is not accumulated.
+  prefetchGridCells(forceField, interpolationGrids, moleculeAtoms, 0, gridPrefetchDistance);
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
     std::size_t indexA = static_cast<std::size_t>(it1 - moleculeAtoms.begin());
@@ -681,22 +780,26 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     if (interpolationGrids[typeA].has_value() && !isFractional &&
         forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
-      auto [energy_vdw, gradient_vdw] = interpolationGrids[typeA]->interpolateGradient(posA);
-      energy.frameworkComponentEnergy(0, compA).VanDerWaals += EnergyDuDlambda(energy_vdw, 0.0);
-      const double3 f = gradient_vdw;
-
-      moleculeDynamics[indexA].gradient += f;
-      accumulateStrainDerivative(strainDerivativeTensor, f, posA);
-
+      prefetchGridCell(forceField, interpolationGrids, moleculeAtoms, indexA + gridPrefetchDistance);
       if (useCharge)
       {
-        auto [energy_real_ewald, gradient_real_ewald] = interpolationGrids.back()->interpolateGradient(posA);
-        energy.frameworkComponentEnergy(0, compA).CoulombicReal +=
-            EnergyDuDlambda(chargeA * energy_real_ewald, 0.0);
-        const double3 g = chargeA * gradient_real_ewald;
+        const auto [vdw, realEwald] =
+            interpolationGrids[typeA]->interpolateGradient(interpolationGrids.back().value(), posA);
+        energy.frameworkComponentEnergy(0, compA).VanDerWaals += EnergyDuDlambda(vdw.first, 0.0);
+        energy.frameworkComponentEnergy(0, compA).CoulombicReal += EnergyDuDlambda(chargeA * realEwald.first, 0.0);
+        const double3 f = vdw.second + chargeA * realEwald.second;
 
-        moleculeDynamics[indexA].gradient += g;
-        accumulateStrainDerivative(strainDerivativeTensor, g, posA);
+        moleculeDynamics[indexA].gradient += f;
+        accumulateStrainDerivative(strainDerivativeTensor, f, posA);
+      }
+      else
+      {
+        auto [energy_vdw, gradient_vdw] = interpolationGrids[typeA]->interpolateGradient(posA);
+        energy.frameworkComponentEnergy(0, compA).VanDerWaals += EnergyDuDlambda(energy_vdw, 0.0);
+        const double3 f = gradient_vdw;
+
+        moleculeDynamics[indexA].gradient += f;
+        accumulateStrainDerivative(strainDerivativeTensor, f, posA);
       }
 
       if (gatherFieldForAtom)

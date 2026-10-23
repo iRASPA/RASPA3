@@ -823,10 +823,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
           forceField, simulationBox, moleculeElectricField, moleculeAtomPositions);
     }
 
-    RunningEnergy frameworkMoleculeTailEnergy = Interactions::computeFrameworkMoleculeTailEnergy(
-        forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
-    RunningEnergy intermolecularTailEnergy =
-        Interactions::computeInterMolecularTailEnergy(forceField, simulationBox, moleculeAtomPositions);
+    RunningEnergy tailEnergy = computeTailCorrectionEnergies();
 
     RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierElectricField(
         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
@@ -838,8 +835,8 @@ RunningEnergy System::computeTotalEnergies() noexcept
     Interactions::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox, moleculeAtomPositions,
                                              externalFieldEnergy, externalFieldInterpolationGrid);
 
-    return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
-           ewaldEnergy + polarizationEnergy + runningIntraEnergy + externalFieldEnergy;
+    return frameworkMoleculeEnergy + intermolecularEnergy + tailEnergy + ewaldEnergy + polarizationEnergy +
+           runningIntraEnergy + externalFieldEnergy;
   }
   else
   {
@@ -848,10 +845,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
     RunningEnergy intermolecularEnergy =
         Interactions::computeInterMolecularEnergy(forceField, simulationBox, pairCellList, moleculeAtomPositions);
 
-    RunningEnergy frameworkMoleculeTailEnergy = Interactions::computeFrameworkMoleculeTailEnergy(
-        forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
-    RunningEnergy intermolecularTailEnergy =
-        Interactions::computeInterMolecularTailEnergy(forceField, simulationBox, moleculeAtomPositions);
+    RunningEnergy tailEnergy = computeTailCorrectionEnergies();
 
     RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierEnergy(
         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox, components,
@@ -861,8 +855,8 @@ RunningEnergy System::computeTotalEnergies() noexcept
     Interactions::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox, moleculeAtomPositions,
                                              externalFieldEnergy, externalFieldInterpolationGrid);
 
-    return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
-           ewaldEnergy + runningIntraEnergy + externalFieldEnergy;
+    return frameworkMoleculeEnergy + intermolecularEnergy + tailEnergy + ewaldEnergy + runningIntraEnergy +
+           externalFieldEnergy;
   }
 }
 
