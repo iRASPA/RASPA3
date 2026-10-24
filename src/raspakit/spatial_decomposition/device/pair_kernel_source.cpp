@@ -439,7 +439,11 @@ void clusterPairs(GLOBAL const float4* RESTRICT position,      // x, y, z, q per
   float sxx = 0.0f, syx = 0.0f, szx = 0.0f, sxy = 0.0f, syy = 0.0f, szy = 0.0f, sxz = 0.0f, syz = 0.0f, szz = 0.0f;
 
   // one listed pair: the Lennard-Jones and real-space Ewald terms with the i-side gradient and the strain
-  // derivative accumulated; `inList` is 0 when this lane is past its own count (padded to the longest lane)
+  // derivative accumulated; `inList` is 0 when this lane is past its own count (padded to the longest lane).
+  // A padded lane reads slot b of j-cluster 0, which for i-cluster 0 can be the i-atom itself (rr = 0): the
+  // masked result (0 times the value) is only zero when the value is finite, and the Lennard-Jones force at the
+  // clamp distance overflows single precision for sigma above ~4 A (0 x inf = NaN). Such a lane is evaluated at
+  // 1 A instead.
 #define PAIR_TERM(pj, lj, inList)                                                                             \
   {                                                                                                           \
     float3 dr = pi.xyz - (pj).xyz;                                                                            \
@@ -454,7 +458,7 @@ void clusterPairs(GLOBAL const float4* RESTRICT position,      // x, y, z, q per
       dr = minimumImage(dr, p->cell, p->inverseCell, 0u);                                                     \
     }                                                                                                         \
     const float rr = dot(dr, dr);                                                                             \
-    const float rrSafe = fmax(rr, minimumRR);                                                                 \
+    const float rrSafe = ((inList) != 0.0f) ? fmax(rr, minimumRR) : 1.0f;                                     \
     const float invRR = 1.0f / rrSafe;                                                                        \
     const float maskVDW = (rr < cutOffVDWSquared) ? (inList) : 0.0f;                                          \
     const float invRR3 = invRR * invRR * invRR;                                                               \

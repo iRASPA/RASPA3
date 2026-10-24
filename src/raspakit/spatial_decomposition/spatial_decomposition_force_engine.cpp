@@ -56,6 +56,15 @@ import spatial_decomposition_worker_team;
 
 namespace
 {
+/// Whether 'value' is NaN or infinite. The build uses -ffast-math, under which the compiler folds std::isfinite,
+/// 'value != value' and even an integer test of the bit pattern to a constant; the volatile copy keeps the test.
+bool nonFinite(double value)
+{
+  volatile std::uint64_t bits = std::bit_cast<std::uint64_t>(value);
+  const std::uint64_t copy = bits;
+  return ((copy >> 52) & 0x7FFu) == 0x7FFu;
+}
+
 /// The energies of the device polymer overlay into the slots the host overlay fills.
 void addPolymerResults(RunningEnergy& energy, const DevicePolymerResults& results)
 {
@@ -885,6 +894,14 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
   const DeviceResident::Kinetic kinetic = resident.collectKinetic();
   resident.acceptVelocities();
   residentHostCurrent = false;
+  // a non-finite force on a single atom turns the kinetic energy, through the thermostat factor, every velocity
+  // and then every position into NaN within a step: report it here instead of failing somewhere downstream
+  if (nonFinite(kinetic.translational) || nonFinite(kinetic.rotational))
+  {
+    throw std::runtime_error(
+        "[Spatial decomposition]: the kinetic energy is not finite after the resident step; the dynamics diverged "
+        "(a non-finite force: check the time step, overlapping atoms and the force field)\n");
+  }
 
   // the thermostat at the end of the step: the factor is applied with the first half of the next step, the
   // reported kinetic energies (and the kinetic virial of the next step) are those of the scaled velocities

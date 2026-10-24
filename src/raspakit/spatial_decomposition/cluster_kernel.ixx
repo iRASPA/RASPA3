@@ -456,7 +456,10 @@ class ClusterPairKernel
           const Vec dy = yi[a] - yj;
           const Vec dz = zi[a] - zj;
           const Vec rr = dx * dx + dy * dy + dz * dz;
-          const Vec rrSafe = max(rr, minimumRR);
+          // a masked lane can be the atom itself (the j-cluster of its own block, rr = 0): the masked result
+          // (0 times the value) is only zero when the value is finite, and the Lennard-Jones force at the clamp
+          // distance overflows single precision for sigma above ~4 A (0 x inf = NaN); such lanes use 1 A
+          const Vec rrSafe = max(rr, minimumRR) * inList + (Real(1) - inList);
           const Vec invRR = reciprocal(rrSafe);
 
           // Lennard-Jones: parameters of the pair types gathered per lane

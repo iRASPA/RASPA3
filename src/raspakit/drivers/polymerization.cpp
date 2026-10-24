@@ -30,6 +30,16 @@ namespace
 using ReactionEvent = Polymerization::ReactionEvent;
 using ReactionKind = Polymerization::ReactionKind;
 
+/// Whether 'value' is NaN or infinite. The build uses -ffast-math, under which the compiler folds std::isfinite,
+/// 'value != value' and even an integer test of the bit pattern to a constant; the volatile copy keeps the test.
+bool nonFinite(double value)
+{
+  volatile std::uint64_t bits = std::bit_cast<std::uint64_t>(value);
+  const std::uint64_t copy = bits;
+  return ((copy >> 52) & 0x7FFu) == 0x7FFu;
+}
+bool nonFinite(const double3& value) { return nonFinite(value.x) || nonFinite(value.y) || nonFinite(value.z); }
+
 /// Records the current types of the atoms of the molecule of 'site' in the event (before the reaction).
 void snapshotTypes(const PolymerLinkTable& table, std::span<const Atom> atoms, std::size_t site, ReactionEvent& event)
 {
@@ -524,6 +534,20 @@ std::vector<Polymerization::ReactionEvent> Polymerization::scan(std::size_t syst
   };
   std::vector<Site> radicals{};
   std::vector<Site> monomers{};
+  // Diverged dynamics show up here as NaN coordinates: under -ffast-math a NaN passes the capture-radius test
+  // and breaks the ordering of the candidate sort (which then reads past its range), so stop with a message.
+  auto sitePosition = [&](const PolymerAtomRef& ref)
+  {
+    const double3 position = atoms[table.layout.index(ref)].position;
+    if (nonFinite(position))
+    {
+      throw std::runtime_error(std::format(
+          "[Polymerization]: the position of atom {} of molecule {} (component {}) is not finite at step {} "
+          "(cycle {}); the dynamics diverged (check the time step, the relaxation of new bonds and the forces)\n",
+          ref.atomIndex, ref.moleculeIndex, ref.componentId, table.currentStep, md.currentCycle));
+    }
+    return position;
+  };
   for (std::size_t i = 0; i < table.numberOfSites(); ++i)
   {
     switch (table.state(i))
@@ -531,13 +555,13 @@ std::vector<Polymerization::ReactionEvent> Polymerization::scan(std::size_t syst
       case PolymerSiteState::Radical:
       {
         const PolymerAtomRef tail = table.tailOf(i, components);
-        radicals.push_back(Site{i, tail, atoms[table.layout.index(tail)].position});
+        radicals.push_back(Site{i, tail, sitePosition(tail)});
         break;
       }
       case PolymerSiteState::Monomer:
       {
         const PolymerAtomRef head = table.headOf(i, components);
-        monomers.push_back(Site{i, head, atoms[table.layout.index(head)].position});
+        monomers.push_back(Site{i, head, sitePosition(head)});
         break;
       }
       case PolymerSiteState::Dead:
