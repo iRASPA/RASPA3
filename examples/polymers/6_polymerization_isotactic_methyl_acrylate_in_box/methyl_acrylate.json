@@ -1,0 +1,50 @@
+{
+  "CriticalTemperature" : 536.0,
+  "CriticalPressure" : 4300000.0,
+  "AcentricFactor" : 0.35,
+  "StartingBead" : 0,
+  "Intra14ChargeChargeScalingValue" : 0.5,
+  "PolymerizationSites" : [
+    {"Type" : "acrylate", "Head" : 0, "Tail" : 1, "SideGroup" : 2, "HeadProductType" : "CH2_bb", "TailProductType" : "CH_bb"}
+  ],
+  "pseudoAtoms" :
+    [
+      ["CH2_sp2", [0.0, 0.0, 0.0]],
+      ["CH_sp2", [0.0, 0.0, 0.0]],
+      ["C_CO", [0.0, 0.0, 0.0]],
+      ["O_CO", [0.0, 0.0, 0.0]],
+      ["O_es", [0.0, 0.0, 0.0]],
+      ["CH3_O", [0.0, 0.0, 0.0]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [2, 4],
+    [4, 5]
+  ],
+  "Bonds" : [
+    [["CH2_sp2", "CH_sp2"], "HARMONIC", [301931.64, 1.33]],
+    [["CH_sp2", "C_CO"], "HARMONIC", [301931.64, 1.52]],
+    [["C_CO", "O_CO"], "HARMONIC", [301931.64, 1.2]],
+    [["C_CO", "O_es"], "HARMONIC", [301931.64, 1.344]],
+    [["O_es", "CH3_O"], "HARMONIC", [301931.64, 1.41]]
+  ],
+  "Bends" : [
+    [["CH2_sp2", "CH_sp2", "C_CO"], "HARMONIC", [70420.0, 119.7]],
+    [["CH_sp2", "C_CO", "O_CO"], "HARMONIC", [40300.0, 126.0]],
+    [["CH_sp2", "C_CO", "O_es"], "HARMONIC", [70591.62, 110.0]],
+    [["O_CO", "C_CO", "O_es"], "HARMONIC", [40300.0, 123.0]],
+    [["C_CO", "O_es", "CH3_O"], "HARMONIC", [62500.0, 115.0]]
+  ],
+  "Torsions" : [
+    [["CH2_sp2", "CH_sp2", "C_CO", "O_CO"], "TRAPPE_EXTENDED", [823.03, -47.91, -773.13, -1.99, 0.0]],
+    [["CH2_sp2", "CH_sp2", "C_CO", "O_es"], "TRAPPE_EXTENDED", [823.03, 47.91, -773.13, 1.99, 0.0]],
+    [["CH3_O", "O_es", "C_CO", "CH_sp2"], "TRAPPE_EXTENDED", [1820.74, 417.41, -1373.14, 30.19, 0.0]],
+    [["CH3_O", "O_es", "C_CO", "O_CO"], "TRAPPE_EXTENDED", [1820.74, -417.41, -1373.14, -30.19, 0.0]]
+  ],
+  "Partial-reinsertion" : [
+    [2, 3, 4, 5],
+    [0, 1, 2, 3]
+  ]
+}

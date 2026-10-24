@@ -1,0 +1,97 @@
+{
+  "SimulationType" : "Polymerization",
+  "RandomSeed" : 1,
+  "NumberOfThreads" : 8,
+  "PairDevice" : "GPU",
+  "VerletSkin" : 2.0,
+  "PPPMMeshSpacing" : 1.0,
+  "PPPMInterpolationOrder" : 5,
+  "NumberOfInitializationCycles" : 50,
+  "NumberOfEquilibrationCycles" : 300000,
+  "NumberOfProductionCycles" : 10000000,
+  "PrintEvery" : 10000,
+  "WriteBinaryRestartEvery" : 200000,
+
+  "Systems" : [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [111.4, 111.4, 111.4],
+      "ExternalTemperature" : 600.0,
+      "ExternalPressure" : 100000.0,
+      "Ensemble" : "NVT",
+      "TimeStep" : 0.001,
+      "ChargeMethod" : "Ewald",
+      "Polymerization" : {
+        "ScanEvery" : 2000,
+        "StartCycle" : 0,
+        "TargetConversion" : 1.0,
+        "RelaxationSteps" : 2000,
+        "WriteEventFrames" : true,
+        "EventFrameEvery" : 1,
+        "Initiation" : {
+          "InitialRadicals" : 135
+        },
+        "Propagation" : {
+          "CaptureRadius" : 4.0,
+          "Probability" : 0.5,
+          "AllowIntramolecular" : true
+        },
+        "Termination" : {
+          "Enabled" : true,
+          "CaptureRadius" : 4.0,
+          "Probability" : 0.5
+        },
+        "Bonds" : [
+          [["CH2_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]],
+          [["CH_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]],
+          [["CH_bb", "C_CO"], "HARMONIC", [301931.64, 1.52]],
+          [["CH2_sp2", "CH_sp2"], "HARMONIC", [301931.64, 1.33]],
+          [["CH_sp2", "C_CO"], "HARMONIC", [301931.64, 1.52]]
+        ],
+        "Bends" : [
+          [["CH2_bb", "CH_bb", "CH2_bb"], "HARMONIC", [62500.0, 114.0]],
+          [["CH2_bb", "CH_bb", "C_CO"], "HARMONIC", [62500.0, 114.0]],
+          [["CH_bb", "CH2_bb", "CH_bb"], "HARMONIC", [62500.0, 114.0]],
+          [["CH2_bb", "CH_bb", "CH_bb"], "HARMONIC", [62500.0, 114.0]],
+          [["C_CO", "CH_bb", "CH_bb"], "HARMONIC", [62500.0, 114.0]],
+          [["CH_bb", "C_CO", "O_CO"], "HARMONIC", [40300.0, 126.0]],
+          [["CH_bb", "C_CO", "O_es"], "HARMONIC", [70591.62, 110.0]],
+          [["CH2_sp2", "CH_sp2", "C_CO"], "HARMONIC", [70420.0, 119.7]],
+          [["CH_sp2", "C_CO", "O_CO"], "HARMONIC", [40300.0, 126.0]],
+          [["CH_sp2", "C_CO", "O_es"], "HARMONIC", [70591.62, 110.0]]
+        ],
+        "Torsions" : [
+          [["CH2_O", "O_es", "C_CO", "CH_bb"], "TRAPPE_EXTENDED", [1820.74, 417.41, -1373.14, 30.19, 0.0]],
+          [["CH2_bb", "CH_bb", "CH2_bb", "CH_bb"], "TRAPPE_EXTENDED", [1078.16, 355.03, 68.19, 791.32, 0.0]],
+          [["CH2_bb", "CH_bb", "C_CO", "O_CO"], "TRAPPE_EXTENDED", [823.03, -47.91, -773.13, -1.99, 0.0]],
+          [["CH2_bb", "CH_bb", "C_CO", "O_es"], "TRAPPE_EXTENDED", [823.03, 47.91, -773.13, 1.99, 0.0]],
+          [["CH_bb", "CH2_bb", "CH_bb", "C_CO"], "TRAPPE_EXTENDED", [1078.16, 355.03, 68.19, 791.32, 0.0]],
+          [["CH2_bb", "CH_bb", "CH_bb", "CH2_bb"], "TRAPPE_EXTENDED", [1078.16, 355.03, 68.19, 791.32, 0.0]],
+          [["CH2_bb", "CH_bb", "CH_bb", "C_CO"], "TRAPPE_EXTENDED", [1078.16, 355.03, 68.19, 791.32, 0.0]],
+          [["C_CO", "CH_bb", "CH_bb", "C_CO"], "TRAPPE_EXTENDED", [1078.16, 355.03, 68.19, 791.32, 0.0]],
+          [["CH_bb", "CH2_bb", "CH_bb", "CH_bb"], "TRAPPE_EXTENDED", [1078.16, 355.03, 68.19, 791.32, 0.0]],
+          [["O_CO", "C_CO", "CH_bb", "CH_bb"], "TRAPPE_EXTENDED", [823.03, -47.91, -773.13, -1.99, 0.0]],
+          [["O_es", "C_CO", "CH_bb", "CH_bb"], "TRAPPE_EXTENDED", [823.03, 47.91, -773.13, 1.99, 0.0]],
+          [["CH2_O", "O_es", "C_CO", "CH_sp2"], "TRAPPE_EXTENDED", [1820.74, 417.41, -1373.14, 30.19, 0.0]],
+          [["CH2_sp2", "CH_sp2", "C_CO", "O_CO"], "TRAPPE_EXTENDED", [823.03, -47.91, -773.13, -1.99, 0.0]],
+          [["CH2_sp2", "CH_sp2", "C_CO", "O_es"], "TRAPPE_EXTENDED", [823.03, 47.91, -773.13, 1.99, 0.0]]
+        ]
+      },
+      "ComputeRadicalWaitingTimes" : true,
+      "WriteRadicalWaitingTimesEvery" : 10000
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "HDDA",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 0.1,
+      "PartialReinsertionProbability" : 5.0,
+      "CrankshaftProbability" : 1.0,
+      "BeadDisplacementProbability" : 1.0,
+      "CreateNumberOfMolecules" : 2690
+    }
+  ]
+}
