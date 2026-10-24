@@ -80,6 +80,9 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_D
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/polymers/1_mc_cross_linked_telechelic_chains_in_box/run)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/polymers/2_mc_end_to_end_distance_phdda_20_in_box/run)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/polymers/3_md_end_to_end_distance_phdda_20_in_box/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/polymers/8_polymerization_hdda_in_box/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/polymers/9_polymerization_hdda_in_box_realistic/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/polymers/10_polymerization_isotactic_methyl_acrylate_in_box/run)
 
 install(DIRECTORY basic DESTINATION share/raspa3/examples 
         COMPONENT examples

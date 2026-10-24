@@ -3,9 +3,10 @@
 
 
 ## Table of Contents
-1. [Monte Carlo: cross-linked telechelic chains in box (reversible network)](#Example_polymers_1)
-2. [Polymerization: free-radical curing of HDDA in box](#Example_polymers_4)
-3. [Polymerization: isotactic poly(methyl acrylate) chains in box](#Example_polymers_5)
+- [1. Monte Carlo: cross-linked telechelic chains in box (reversible network)](#Example_polymers_1)
+- [8. Polymerization: free-radical curing of HDDA in box](#Example_polymers_8)
+- [9. Polymerization: free-radical curing of HDDA in box at realistic rates](#Example_polymers_9)
+- [10. Polymerization: isotactic poly(methyl acrylate) chains in box](#Example_polymers_10)
 
 
 #### Monte Carlo: cross-linked telechelic chains in box (reversible network) <a name="Example_polymers_1"></a>
@@ -105,17 +106,18 @@ the association to the bond well alone. The links are stored in the restart file
 continued from a linked state.
 
 
-#### Polymerization: free-radical curing of HDDA in box <a name="Example_polymers_4"></a>
+#### Polymerization: free-radical curing of HDDA in box <a name="Example_polymers_8"></a>
 
-150 hexanediol diacrylate (HDDA) monomers in a \f$38 \times 38 \times 38\f$
-&Aring; box at 300 K (about the liquid density) are cured into a cross-linked
+Run from `examples/polymers/8_polymerization_hdda_in_box`.
+2690 hexanediol diacrylate (HDDA) monomers in a \f$111.4 \times 111.4 \times 111.4\f$
+&Aring; box at 600 K (NVT) are cured into a cross-linked
 poly-HDDA network with `"SimulationType" : "Polymerization"`: a
-spatial-decomposition MD run in which, during the production stage, the vinyl
+spatial-decomposition MD run (`"PairDevice" : "GPU"`) in which, during the production stage, the vinyl
 groups react by stochastic free-radical chain growth. The monomer file
 `HDDA.json` is the 16-bead TraPPE-UA acrylate of the pHDDA examples (the
-polymer file `pHDDA-10.json` of
+polymer file `pHDDA-20.json` of
 `examples/polymers/2_mc_end_to_end_distance_phdda_20_in_box` is a *pre-built*
-chain of ten such units); its two double bonds are declared as reactive sites
+chain of twenty such units); its two double bonds are declared as reactive sites
 with the pseudo-atoms they become in the polymer backbone:
 
 ```json
@@ -127,45 +129,45 @@ with the pseudo-atoms they become in the polymer backbone:
 
 The `"Polymerization"` block of the system sets the kinetics and gives the
 bonded tables of the product by pseudo-atom type (the `CH2_bb`/`CH_bb` entries
-of the pHDDA-10 molecule file, extended with the `CH_bb–CH_bb` terms that a
-termination by combination needs). Eight random sites become radicals at the
-start of production; every 10 MD steps (10 fs) each radical tail within 4
-&Aring; of a monomer head adds to it with probability 0.05, and two radical
+of the pHDDA-20 molecule file, extended with the `CH_bb–CH_bb` terms that a
+termination by combination needs). 135 random sites become radicals at the
+start of production; every 2000 MD steps (2 ps) each radical tail within 4
+&Aring; of a monomer head adds to it with probability 0.5, and two radical
 tails within 4 &Aring; combine with the same probability. An accepted reaction
 retypes the head and tail to `CH2_bb`/`CH_bb` (which changes their
 Lennard-Jones parameters and charges), adds the new bond with its bends,
 torsions and 1-2/1-3 exclusions and scaled 1-4 pairs, and ramps the new
-terms in over 2 ps so that the capture does not heat the system (the
-thermostat holds 300 K within a few kelvin). The reactions stop at 90%
-conversion and the dynamics continues on the cured network.
+terms in over 2 ps so that the capture does not heat the system. The reactions
+run to full conversion and the dynamics continues on the cured network.
+Example 9 is the same monomers with the slow, orientation-weighted kinetics.
 
 ```json
 {
   "SimulationType" : "Polymerization",
-  "NumberOfThreads" : 4,
-  "NumberOfInitializationCycles" : 200,
-  "NumberOfEquilibrationCycles" : 20000,
-  "NumberOfProductionCycles" : 2000000,
+  "NumberOfThreads" : 8,
+  "PairDevice" : "GPU",
+  "NumberOfInitializationCycles" : 50,
+  "NumberOfEquilibrationCycles" : 300000,
+  "NumberOfProductionCycles" : 10000000,
   "PrintEvery" : 10000,
 
   "Systems" : [
     {
       "Type" : "Box",
-      "BoxLengths" : [38.0, 38.0, 38.0],
-      "ExternalTemperature" : 300.0,
-      "ExternalPressure" : 100000.0,
-      "Ensemble" : "NPT",
+      "BoxLengths" : [111.4, 111.4, 111.4],
+      "ExternalTemperature" : 600.0,
+      "Ensemble" : "NVT",
       "TimeStep" : 0.001,
       "ChargeMethod" : "Ewald",
       "Polymerization" : {
-        "ScanEvery" : 10,
-        "TargetConversion" : 0.9,
+        "ScanEvery" : 2000,
+        "TargetConversion" : 1.0,
         "RelaxationSteps" : 2000,
         "WriteEventFrames" : true,
-        "EventFrameEvery" : 10,
-        "Initiation" :  {"InitialRadicals" : 8, "Probability" : 0.0},
-        "Propagation" : {"CaptureRadius" : 4.0, "Probability" : 0.05, "AllowIntramolecular" : true},
-        "Termination" : {"Enabled" : true, "CaptureRadius" : 4.0, "Probability" : 0.05},
+        "EventFrameEvery" : 1,
+        "Initiation" :  {"InitialRadicals" : 135},
+        "Propagation" : {"CaptureRadius" : 4.0, "Probability" : 0.5, "AllowIntramolecular" : true},
+        "Termination" : {"Enabled" : true, "CaptureRadius" : 4.0, "Probability" : 0.5},
         "Bonds" : [
           [["CH2_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]],
           [["CH_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]],
@@ -186,7 +188,7 @@ conversion and the dynamics continues on the cured network.
       "PartialReinsertionProbability" : 5.0,
       "CrankshaftProbability" : 1.0,
       "BeadDisplacementProbability" : 1.0,
-      "CreateNumberOfMolecules" : 150
+      "CreateNumberOfMolecules" : 2690
     }
   ]
 }
@@ -211,7 +213,7 @@ appended to `output/polymerization_bonds.s0.txt` (step, cycle, event, the two
 sites as component/molecule/atom, the distance at which the bond formed and
 the conversion), and `output/polymer_topology.s0.json` holds the final site
 states and the bond list, from which the polymer graph can be rebuilt. With
-`"WriteEventFrames"` (here one data file in ten, `"EventFrameEvery": 10`) the
+`"WriteEventFrames"` (here a data file for every reaction, `"EventFrameEvery": 1`) the
 configuration at the moment of a reaction is written as a LAMMPS data file to
 `polymerization_events/s0/step_<step>.data`, with the polymer bonds and their
 bends and torsions in its topology and the reacted atoms retyped, so the
@@ -226,18 +228,43 @@ are collected in log-spaced histograms in
 pile-up of old living radicals in that distribution is the signature of
 radical trapping. The
 polymer bonds, the retyped atoms and the reaction state are stored in the
-binary restart file, so a curing run can be continued. Within 12 ps of a
-test run the conversion reaches about 30% with one gel cluster of 68 of the
-150 molecules; a complete cure takes of the order of a nanosecond, which is
-why the production stage is long and the reaction probabilities are small
-(in the real system the propagation rate constant of acrylates is of order
-\f$10^4\f$ L mol⁻¹ s⁻¹, far slower than any MD run, so the rate here is a
-compromise that keeps the growth diffusion-limited and lets the network relax
-between reactions).
+binary restart file, so a curing run can be continued. A complete cure takes
+of the order of a nanosecond even at these elevated probabilities, which is
+why the production stage is long (in the real system the propagation rate
+constant of acrylates is of order \f$10^4\f$ L mol⁻¹ s⁻¹, far slower than any
+MD run). Example 9 keeps the scan frequent and the probability small, which
+is the setup that leaves time for the network to relax between reactions.
 
 
-#### Polymerization: isotactic poly(methyl acrylate) chains in box <a name="Example_polymers_5"></a>
+#### Polymerization: free-radical curing of HDDA in box at realistic rates <a name="Example_polymers_9"></a>
 
+The same 2690 HDDA monomers, monomer file and product tables as example 8,
+run from `examples/polymers/9_polymerization_hdda_in_box_realistic`. The box
+is \f$125 \times 125 \times 125\f$ &Aring; at 300 K and 1 bar (`"Ensemble" :
+"NPT"`). Five sites start as radicals and further radicals are created with
+`"RateConstant" : 4e-7`. Propagation and termination are attempted every 10
+MD steps (10 fs) inside a 4 &Aring; capture radius with probability 0.05, and
+an orientation weight (`"OrientationTemperature" : 2000`) rejects poorly
+aligned approaches. The reactions stop at 90% conversion. Radical waiting
+times are collected, as in example 8.
+
+```json
+      "Polymerization" : {
+        "ScanEvery" : 10,
+        "TargetConversion" : 0.9,
+        "RelaxationSteps" : 2000,
+        "WriteEventFrames" : true,
+        "EventFrameEvery" : 1,
+        "Initiation" :  {"InitialRadicals" : 5, "RateConstant" : 4e-7},
+        "Propagation" : {"CaptureRadius" : 4.0, "Probability" : 0.05, "AllowIntramolecular" : true, "OrientationTemperature" : 2000.0},
+        "Termination" : {"Enabled" : true, "CaptureRadius" : 4.0, "Probability" : 0.05, "OrientationTemperature" : 2000.0}
+      }
+```
+
+
+#### Polymerization: isotactic poly(methyl acrylate) chains in box <a name="Example_polymers_10"></a>
+
+Run from `examples/polymers/10_polymerization_isotactic_methyl_acrylate_in_box`.
 200 methyl acrylate monomers (the six-bead TraPPE-UA ester
 `CH2_sp2=CH_sp2–C_CO(=O_CO)–O_es–CH3_O`) in a \f$32 \times 32 \times 32\f$
 &Aring; box at 300 K and 1 bar (the box relaxes to the liquid density, about

@@ -2012,9 +2012,12 @@ the loop count of the infinite network per box is \f$E - V\f$ (the
 \f$+1\f$ of a finite connected graph does not apply), so it is the cycle
 rank minus one per spanning cluster; it is the number of elastically
 relevant cycles of the phantom-network model. Binary restarts are supported.
-Examples: `examples/polymers/4_polymerization_hdda_in_box` (HDDA with the
-pHDDA product tables) and
-`examples/polymers/5_polymerization_isotactic_methyl_acrylate_in_box`
+Examples: `examples/polymers/8_polymerization_hdda_in_box` (HDDA with the
+pHDDA product tables),
+`examples/polymers/9_polymerization_hdda_in_box_realistic` (the same monomers
+at 300 K with an initiation rate constant and orientation-weighted
+acceptance) and
+`examples/polymers/10_polymerization_isotactic_methyl_acrylate_in_box`
 (isotactic chains of methyl acrylate).
 
 ### Molecular dynamics parameters <a name="molecular-dynamics-parameters"></a>
