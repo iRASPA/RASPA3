@@ -221,6 +221,10 @@ export class SpatialDecompositionForceEngine
   bool polymerOverlayOutdated{true};
   bool polymerLambdasActive{false};
   void preparePolymerOverlay(System& system);
+  /// The pairs the lists leave out changed (the molecules or the polymer bonds): the device table is re-uploaded
+  /// before the next build.
+  bool pairExclusionsOutdated{true};
+  void preparePairListExclusions(System& system);
   // the resident integrator (settings.resident, with the complete step on the device)
   bool residentEnabled{false};
   bool residentValid{false};  ///< the device holds the authoritative state (else the host does)

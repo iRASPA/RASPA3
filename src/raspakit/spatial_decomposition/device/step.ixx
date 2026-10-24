@@ -29,6 +29,11 @@ constexpr std::size_t pairPartials = 11;   ///< partial sums per i-cluster: 2 en
 constexpr std::uint32_t noAtom = std::numeric_limits<std::uint32_t>::max();
 /// Bit of an atom's exclusion start marking that every pair of its molecule is excluded (ALL_EXCLUDED_BIT).
 constexpr std::uint32_t allExcludedBit = 0x80000000u;
+/// Bit of an atom's exclusion start marking that its partner list holds atoms of other molecules too (the pairs
+/// the polymer bonds exclude), so that the build tests its pairs with every molecule (OTHER_MOLECULE_BIT).
+constexpr std::uint32_t otherMoleculeBit = 0x40000000u;
+/// The offset part of an exclusion start.
+constexpr std::uint32_t exclusionOffsetMask = 0x3FFFFFFFu;
 }  // namespace DeviceKernelLayout
 
 /// Mirrors the Parameters struct of the pair kernel source (4-byte members only, so the layouts agree).
@@ -150,10 +155,12 @@ export class DeviceStep
   /// The device context (for the resident integrator, which shares the position and force buffers).
   DeviceContext& deviceContext() { return *context; }
 
-  /// Fixes the same-molecule pairs the list build leaves out: the excluded pairs and the scaled (1-4) pairs of
-  /// every molecule (IntraMolecularExclusions::isExcludedFromPairList), as a CSR table over the atoms in system
-  /// order. Every other same-molecule pair is listed and evaluated by the pair kernel at full strength. Must be
-  /// called before the first build and whenever the molecules of the system change.
+  /// Fixes the pairs the list build leaves out: the excluded pairs and the scaled (1-4) pairs of every molecule
+  /// (IntraMolecularExclusions::isExcludedFromPairList) and the pairs the polymer bonds of the system exclude
+  /// (PolymerLinkTable::unlisted, between molecules in general), as a CSR table over the atoms in system order.
+  /// Every other pair is listed and evaluated by the pair kernel at full strength. Must be called before the first
+  /// build and whenever the molecules or the polymer bonds of the system change (the table of the polymer bonds
+  /// must be rebuilt first).
   void setExclusions(const System& system);
 
   /// Fixes the pair-type tables, the cutoffs, the Ewald parameters (`useCharge`: Ewald real space on) and the

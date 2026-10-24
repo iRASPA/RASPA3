@@ -979,6 +979,9 @@ void PolymerLinkTable::rebuild(const ForceField &forceField, const std::vector<C
               correction.wantedScaling.scalingCoulomb == correction.countedScaling.scalingCoulomb &&
               correction.wantedScaling.pair14 == correction.countedScaling.pair14)))
           continue;
+        // the pairs the new bond excludes leave the pair lists (see PairCorrection); a scaled pair is not in the
+        // lists to begin with (the bonded work evaluates it) and keeps the difference formulation
+        correction.listed = !(correction.wanted == PairState::Excluded && correction.counted == PairState::Full);
 
         auto [it, inserted] = corrections.try_emplace(key, correction);
         if (!inserted && newer(k, it->second.bondId)) it->second = correction;
@@ -986,7 +989,13 @@ void PolymerLinkTable::rebuild(const ForceField &forceField, const std::vector<C
     }
   }
   pairCorrections.reserve(corrections.size());
-  for (const auto &[key, correction] : corrections) pairCorrections.push_back(correction);
+  std::vector<std::array<std::uint32_t, 2>> unlistedPairs{};
+  for (const auto &[key, correction] : corrections)
+  {
+    pairCorrections.push_back(correction);
+    if (!correction.listed) unlistedPairs.push_back(key);
+  }
+  unlisted = PairListExclusions::fromPairs(layout.numberOfAtoms, unlistedPairs);
 
   // The bonded terms of the molecules that contain a retyped atom.
   struct RetypedMolecule

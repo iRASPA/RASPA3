@@ -211,9 +211,17 @@ void CellList::updateCellGrid(const SimulationBox& box)
   buildStencil(box);
 }
 
-void CellList::bin(const SimulationBox& box, std::span<const Atom> atoms, std::span<const Component> componentList)
+void CellList::bin(const SimulationBox& box, std::span<const Atom> atoms, std::span<const Component> componentList,
+                   const PairListExclusions* extra)
 {
   components = componentList;
+  extraExclusions = (extra != nullptr && !extra->empty()) ? extra : nullptr;
+  if (extraExclusions != nullptr && extraExclusions->start.size() != atoms.size() + 1)
+  {
+    throw std::runtime_error(
+        std::format("[Cell list]: the extra pair exclusions are laid out for {} atoms, the system has {}\n",
+                    extraExclusions->start.size() - 1, atoms.size()));
+  }
   numberOfAtoms = atoms.size();
   const std::size_t numberOfCellsTotal = static_cast<std::size_t>(numberOfCells.x) *
                                          static_cast<std::size_t>(numberOfCells.y) *
@@ -402,11 +410,18 @@ void CellList::buildLists(std::size_t domainIndex, const SimulationBox& box)
     const std::uint32_t inMoleculeI = atomInMolecule[i];
     const IntraMolecularExclusions* exclusions =
         components.empty() ? nullptr : &components[componentOfAtom[i]].intraMolecularPotentials.exclusions;
-    // a same-molecule candidate is left out when it is excluded or scaled (or always, without components)
+    // a same-molecule candidate is left out when it is excluded or scaled (or always, without components); any
+    // candidate when the pair is among the extra exclusions (system atom indices)
+    const std::uint32_t originalI = sortedToOriginal[i];
+    const bool hasExtra = extraExclusions != nullptr && extraExclusions->any(originalI);
     auto skipped = [&](std::uint32_t j)
     {
-      return moleculeId[j] == moleculeI &&
-             (exclusions == nullptr || exclusions->isExcludedFromPairList(inMoleculeI, atomInMolecule[j]));
+      if (moleculeId[j] == moleculeI &&
+          (exclusions == nullptr || exclusions->isExcludedFromPairList(inMoleculeI, atomInMolecule[j])))
+      {
+        return true;
+      }
+      return hasExtra && extraExclusions->contains(originalI, sortedToOriginal[j]);
     };
     domain.neighbourStart[k] = static_cast<std::uint32_t>(domain.neighbourList.size());
 

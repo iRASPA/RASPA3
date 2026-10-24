@@ -290,8 +290,16 @@ export struct PolymerLinkTable
     double scalingCoulomb{1.0};
     bool pair14{false};
   };
-  /// A pair whose treatment by the pair sums ('counted') differs from what the polymer topology requires
-  /// ('wanted'); the overlay adds value(wanted) - value(counted).
+  /// A pair whose treatment before the bond ('counted': what the pair sums of the components count) differs from
+  /// what the polymer topology requires ('wanted'). With the ramp factor lambda of the bond the pair has to be at
+  /// lambda value(wanted) + (1 - lambda) value(counted). A 'listed' pair is still supplied by the regular sums
+  /// (the pair lists at full strength, or the bonded work of its molecule for a scaled pair): the overlay adds
+  /// lambda (value(wanted) - value(counted)). The pairs the topology excludes (1-2 and 1-3 through the new bond)
+  /// that the pair lists held at full strength are left out of the lists altogether ('unlisted' below): the
+  /// overlay then supplies the whole lambda value(wanted) + (1 - lambda) value(counted). (In the pair lists the
+  /// full-strength Lennard-Jones of two bonded atoms at the bond length, 1e8 K/A and more, would be cancelled by
+  /// the overlay afterwards; in the single precision of the device pair kernel that cancellation leaves a biased
+  /// residual of the order of an ulp of the large term, a net force on the system.)
   struct PairCorrection
   {
     std::array<std::uint32_t, 2> atoms{};
@@ -300,6 +308,7 @@ export struct PolymerLinkTable
     PairScalingInfo countedScaling{};
     PairScalingInfo wantedScaling{};
     std::uint32_t bondId{};
+    bool listed{true};
   };
   /// A bonded term of a molecule whose parameters change because an atom of it was retyped: the overlay adds
   /// 'replacement - original'. The ramp follows the step of the state change of the site that retyped the atom.
@@ -342,6 +351,8 @@ export struct PolymerLinkTable
   std::vector<OverrideBendTerm> overrideBends{};
   std::vector<OverrideTorsionTerm> overrideTorsions{};
   std::vector<StereoCentreTerm> stereoCentres{};
+  /// The pairs the pair lists leave out (the pair corrections with listed == false), as a table over the atoms.
+  PairListExclusions unlisted{};
   /// Link partners of the atoms that carry polymer bonds (global atom indices).
   std::unordered_map<std::uint32_t, std::vector<std::uint32_t>> linkNeighbours{};
   /// Per site: the polymer partner of the tail (global atom index) and the bond that made it; none: no partner.

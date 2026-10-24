@@ -32,6 +32,9 @@ module spatial_decomposition_device_kernels;
 // CSR table over the atoms in system order (`exclusionStart` per atom, bit 31 set when every pair of the
 // molecule is excluded, i.e. a rigid molecule; `exclusionPartner` the partner atoms) with the system atom of
 // every slot (`slotAtom`). Every other same-molecule pair is listed and evaluated like a pair of two molecules.
+// The pairs the polymer bonds of a run exclude (atoms of different molecules in general) are in the same table;
+// the atoms that have such partners carry bit 30 of their start, and the build tests their pairs with every
+// molecule.
 const char* const deviceKernelPairSource = R"CLC(
 #define CLUSTER_I 8
 #define CLUSTER_J 4
@@ -40,6 +43,8 @@ const char* const deviceKernelPairSource = R"CLC(
 #define STENCIL 27
 #define NO_ATOM 0xFFFFFFFFu
 #define ALL_EXCLUDED_BIT 0x80000000u
+#define OTHER_MOLECULE_BIT 0x40000000u
+#define EXCLUSION_OFFSET_MASK 0x3FFFFFFFu
 
 typedef struct
 {
@@ -150,16 +155,17 @@ DEVICE_FUNCTION uint appendBlocks(LOCAL uint* flags, uint id, uint J, uint mask,
   return count + all;
 }
 
-// Whether the same-molecule pair (atomI, atomJ) (system atom indices) is left out of the lists: excluded or
-// scaled. A linear scan of the short partner list of atomI (1-2, 1-3 and 1-4 partners; a rigid molecule is
-// flagged instead of listed).
-DEVICE_FUNCTION bool excludedFromList(uint atomI, uint atomJ, GLOBAL const uint* RESTRICT exclusionStart,
+// Whether the pair (atomI, atomJ) (system atom indices) is left out of the lists: a same-molecule pair that is
+// excluded or scaled, or a pair the polymer bonds exclude. A linear scan of the short partner list of atomI (1-2,
+// 1-3 and 1-4 partners, the partners through polymer bonds; a rigid molecule is flagged instead of listed).
+DEVICE_FUNCTION bool excludedFromList(uint atomI, uint atomJ, bool sameMolecule,
+                                      GLOBAL const uint* RESTRICT exclusionStart,
                                       GLOBAL const uint* RESTRICT exclusionPartner)
 {
   const uint start = exclusionStart[atomI];
-  if (start & ALL_EXCLUDED_BIT) return true;
-  const uint end = exclusionStart[atomI + 1] & ~ALL_EXCLUDED_BIT;
-  for (uint k = start; k < end; ++k)
+  if (sameMolecule && (start & ALL_EXCLUDED_BIT)) return true;
+  const uint end = exclusionStart[atomI + 1] & EXCLUSION_OFFSET_MASK;
+  for (uint k = start & EXCLUSION_OFFSET_MASK; k < end; ++k)
   {
     if (exclusionPartner[k] == atomJ) return true;
   }
@@ -192,6 +198,7 @@ void buildList(GLOBAL const float4* RESTRICT buildPosition,
 
   LOCAL_DECL(float4 pi[CLUSTER_I]);
   LOCAL_DECL(uint atomI[CLUSTER_I]);
+  LOCAL_DECL(uint otherI[CLUSTER_I]);  // the atom has excluded partners in other molecules
   LOCAL_DECL(uint stencilCell[STENCIL]);
   LOCAL_DECL(float4 stencilShift[STENCIL]);  // translation of the neighbour cell; w != 0: image not fixed (minimum image)
   LOCAL_DECL(uint stencilFirst[STENCIL]);    // first candidate index of the neighbour cell
@@ -214,7 +221,9 @@ void buildList(GLOBAL const float4* RESTRICT buildPosition,
   if (id < CLUSTER_I)
   {
     pi[id] = buildPosition[I * CLUSTER_I + id];
-    atomI[id] = slotAtom[I * CLUSTER_I + id];
+    const uint atom = slotAtom[I * CLUSTER_I + id];
+    atomI[id] = atom;
+    otherI[id] = (atom != NO_ATOM) ? (exclusionStart[atom] & OTHER_MOLECULE_BIT) : 0u;
   }
   if (id < STENCIL)
   {
@@ -304,7 +313,12 @@ void buildList(GLOBAL const float4* RESTRICT buildPosition,
             {
               // the same atom (the clusters of one cell overlap) or a left-out same-molecule pair
               const uint ai = atomI[a];
-              if (ai == atomJ || excludedFromList(ai, atomJ, exclusionStart, exclusionPartner)) continue;
+              if (ai == atomJ || excludedFromList(ai, atomJ, true, exclusionStart, exclusionPartner)) continue;
+            }
+            else if (otherI[a] != 0u)
+            {
+              // a pair the polymer bonds exclude
+              if (excludedFromList(atomI[a], atomJ, false, exclusionStart, exclusionPartner)) continue;
             }
             float3 dr = pa.xyz - pj.xyz - shift.xyz;
             if (ambiguous) dr = minimumImage(dr, bp->cell, bp->inverseCell, bp->orthorhombic);

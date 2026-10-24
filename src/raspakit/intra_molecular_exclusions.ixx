@@ -219,3 +219,65 @@ void forEachExcludedPair(const Components &components, std::span<const Atom> ato
     start = end;
   }
 }
+
+/**
+ * \brief Pairs of system atoms that the pair lists leave out in addition to the exclusions of the components.
+ *
+ * The pairs that bonds formed during a run (the polymer bonds of the Polymerization driver) exclude: the atoms
+ * belong to different molecules in general, so the component tables cannot hold them. Kept as a CSR table of the
+ * partners of every system atom (both directions) for the membership test of the list builds; empty when no
+ * such pair exists. The terms that replace the pair interaction (the Ewald exclusion correction of an excluded
+ * pair) are evaluated by the overlay that owns the pairs.
+ */
+export struct PairListExclusions
+{
+  std::vector<std::uint32_t> start{};    ///< CSR offsets per system atom (size atoms + 1; empty: no pairs).
+  std::vector<std::uint32_t> partner{};  ///< The partners (system atom indices), sorted per atom.
+
+  bool empty() const { return partner.empty(); }
+
+  /// Builds the table from the (unordered) pairs for 'numberOfAtoms' atoms.
+  static PairListExclusions fromPairs(std::size_t numberOfAtoms, std::span<const std::array<std::uint32_t, 2>> pairs)
+  {
+    PairListExclusions table{};
+    if (pairs.empty()) return table;
+    table.start.assign(numberOfAtoms + 1, 0);
+    for (const std::array<std::uint32_t, 2> &pair : pairs)
+    {
+      ++table.start[pair[0] + 1];
+      ++table.start[pair[1] + 1];
+    }
+    for (std::size_t i = 0; i < numberOfAtoms; ++i) table.start[i + 1] += table.start[i];
+    table.partner.resize(table.start[numberOfAtoms]);
+    std::vector<std::uint32_t> fill(table.start.begin(), table.start.end() - 1);
+    for (const std::array<std::uint32_t, 2> &pair : pairs)
+    {
+      table.partner[fill[pair[0]]++] = pair[1];
+      table.partner[fill[pair[1]]++] = pair[0];
+    }
+    for (std::size_t i = 0; i < numberOfAtoms; ++i)
+    {
+      std::sort(table.partner.begin() + table.start[i], table.partner.begin() + table.start[i + 1]);
+    }
+    return table;
+  }
+
+  /// Whether atom 'i' has partners (a cheap test before 'contains').
+  bool any(std::uint32_t i) const { return !start.empty() && start[i] != start[i + 1]; }
+
+  /// Whether the pair (i, j) is left out.
+  bool contains(std::uint32_t i, std::uint32_t j) const
+  {
+    if (start.empty()) return false;
+    const auto begin = partner.begin() + start[i];
+    const auto end = partner.begin() + start[i + 1];
+    return std::binary_search(begin, end, j);
+  }
+
+  /// The partners of atom 'i'.
+  std::span<const std::uint32_t> partnersOf(std::uint32_t i) const
+  {
+    if (start.empty()) return {};
+    return std::span<const std::uint32_t>(partner).subspan(start[i], start[i + 1] - start[i]);
+  }
+};

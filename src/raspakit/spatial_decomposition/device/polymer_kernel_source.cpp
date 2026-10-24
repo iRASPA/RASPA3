@@ -10,7 +10,8 @@ module spatial_decomposition_device_kernels;
 // The overlay is an addition on top of the complete pair + mesh + bonded gradients, evaluated after the bonded
 // kernels: the bonds formed during the run with their bends and torsions (ramped in with a factor lambda per
 // bond), the restraints of the stereocentres, the pair corrections of the pairs whose non-bonded treatment the
-// new bonds change (value(wanted) - value(counted), the pair kernel and the mesh are left untouched), and the
+// new bonds change (value(wanted) - value(counted) for a pair the pair lists still hold, the whole ramped value
+// for a pair the lists leave out; the pair kernel and the mesh are left untouched), and the
 // 'replacement - original' overrides of the monomer terms that contain a retyped atom. The terms refer to the
 // atoms by their index in the system; the geometry of a term is read from the wrapped slot positions of the pair
 // lists (through the slot of every atom) and imaged consecutively along the chain of the term, as the host does
@@ -38,7 +39,8 @@ typedef struct
   uint ramp;      // index of the ramp factor of the term
   uint atoms[4];  // system atom indices
   uint flags;     // bit 0: inter-molecular (strain derivative and virial correction); bit 1: the pair energies go to
-                  // the intramolecular slot
+                  // the intramolecular slot; bit 2: the pair lists leave the pair out (the term supplies
+                  // lambda wanted + (1 - lambda) counted instead of lambda (wanted - counted))
   uint padding[3];
   float parameters[6];   // link / replacement parameters; pair: wanted (f 4 eps, sigma^6, f shift, f_coulomb);
                          // stereocentre: k, chi V_0
@@ -238,6 +240,7 @@ void polymerTerms(GLOBAL const float4* RESTRICT position,     // per slot: wrapp
     const uint kind = term.kind;
     const uint count = (kind == 0u || kind == 3u || kind == 6u) ? 2u : (kind == 1u || kind == 4u) ? 3u : 4u;
     const bool inter = (term.flags & 1u) != 0u;
+    const bool unlisted = (term.flags & 4u) != 0u;
 
     // the geometry of the term: the first atom at its wrapped position, the others imaged consecutively along the
     // chain (the stereocentre: its substituents imaged from the centre)
@@ -257,7 +260,7 @@ void polymerTerms(GLOBAL const float4* RESTRICT position,     // per slot: wrapp
 
     // named gradients (not an array: the device compilers mishandle the address of an indexed vector element)
     float3 gA = FLOAT3(0.0f, 0.0f, 0.0f), gB = gA, gC = gA, gD = gA;
-    if (lam != 0.0f)
+    if (lam != 0.0f || unlisted)
     {
       float scale = lam;  // applied to the gradients below (the pair correction applies it in its factor)
       float P[6], Q[6];
@@ -319,10 +322,12 @@ void polymerTerms(GLOBAL const float4* RESTRICT position,     // per slot: wrapp
         float wVDW, wCoulomb, wExclusion, wFactor, cVDW, cCoulomb, cExclusion, cFactor;
         polymerPairState(term.type, P, rr, qq, p, &wVDW, &wCoulomb, &wExclusion, &wFactor);
         polymerPairState(term.type2, Q, rr, qq, p, &cVDW, &cCoulomb, &cExclusion, &cFactor);
-        acc[((term.flags & 2u) != 0u) ? 7u : 4u] = lam * (wVDW - cVDW);
-        acc[5] = lam * (wCoulomb - cCoulomb);
-        acc[6] = lam * (wExclusion - cExclusion);
-        const float factor = lam * (wFactor - cFactor);
+        // the pair lists supply the counted value of a listed pair, nothing of an unlisted one
+        const float countedWeight = unlisted ? (1.0f - lam) : -lam;
+        acc[((term.flags & 2u) != 0u) ? 7u : 4u] = lam * wVDW + countedWeight * cVDW;
+        acc[5] = lam * wCoulomb + countedWeight * cCoulomb;
+        acc[6] = lam * wExclusion + countedWeight * cExclusion;
+        const float factor = lam * wFactor + countedWeight * cFactor;
         gA = factor * dr;
         gB = -gA;
         scale = 1.0f;

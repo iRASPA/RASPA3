@@ -271,22 +271,25 @@ RunningEnergy evaluate(const ForceField &forceField, const SimulationBox &simula
   }
 
   // --- the pair corrections ---------------------------------------------------------------------------------------
+  // (the pair has to be at lambda value(wanted) + (1 - lambda) value(counted); the pair lists supply value(counted)
+  // of a listed pair and nothing of an unlisted one)
   for (const PolymerLinkTable::PairCorrection &pair : table.pairCorrections)
   {
     const double lambda = lambdaOfBond(pair.bondId);
-    if (lambda == 0.0) continue;
+    if (lambda == 0.0 && pair.listed) continue;
+    const double countedWeight = pair.listed ? -lambda : 1.0 - lambda;
     const Atom &a = atoms[pair.atoms[0]];
     const Atom &b = atoms[pair.atoms[1]];
     const double3 dr = simulationBox.applyPeriodicBoundaryConditions(a.position - b.position);
     const double rr = double3::dot(dr, dr);
     const PairValue wanted = pairValue<Order>(forceField, a, b, dr, rr, pair.wanted, pair.wantedScaling);
     const PairValue counted = pairValue<Order>(forceField, a, b, dr, rr, pair.counted, pair.countedScaling);
-    energy.moleculeMoleculeVDW += lambda * (wanted.vdw - counted.vdw);
-    energy.moleculeMoleculeCharge += lambda * (wanted.coulomb - counted.coulomb);
-    energy.ewald_exclusion += lambda * (wanted.exclusion - counted.exclusion);
+    energy.moleculeMoleculeVDW += lambda * wanted.vdw + countedWeight * counted.vdw;
+    energy.moleculeMoleculeCharge += lambda * wanted.coulomb + countedWeight * counted.coulomb;
+    energy.ewald_exclusion += lambda * wanted.exclusion + countedWeight * counted.exclusion;
     if constexpr (Order >= 1)
     {
-      const double factor = lambda * (wanted.factor - counted.factor);
+      const double factor = lambda * wanted.factor + countedWeight * counted.factor;
       if (factor == 0.0) continue;
       const double3 gradient = factor * dr;
       applyLink(pair.atoms[0], gradient);

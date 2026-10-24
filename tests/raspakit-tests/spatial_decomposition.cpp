@@ -1943,8 +1943,11 @@ namespace
 /// Moves molecule 'b' (of a single-component system of five-bead molecules) rigidly so that its atom 'atomB' sits
 /// at the bond distance from atom 'atomA' of molecule 'a' along the open direction of 'atomA' (away from its
 /// bonded neighbours), with 'b' rotated so that the open direction of 'atomB' points back at 'atomA': a chain-like
-/// junction without overlaps of the other beads.
-void approachMolecules(System& system, std::size_t a, std::size_t atomA, std::size_t b, std::size_t atomB)
+/// junction. The spin of 'b' about the new bond is the one that keeps its other beads farthest from every other
+/// atom of the system (the rest of 'a' and the other molecules), so that the configuration has no overlaps and can
+/// be integrated.
+void approachMolecules(System& system, std::size_t a, std::size_t atomA, std::size_t b, std::size_t atomB,
+                       double distance = 1.6)
 {
   std::span<Atom> atoms = system.spanOfMoleculeAtoms();
   const ConnectivityTable& connectivity = system.components[0].connectivityTable;
@@ -1994,9 +1997,44 @@ void approachMolecules(System& system, std::size_t a, std::size_t atomA, std::si
     }
     atoms[n * b + k].position = pivot + rotated;
   }
-  const double3 shift = atoms[n * a + atomA].position + 1.6 * direction - pivot;
+  const double3 shift = atoms[n * a + atomA].position + distance * direction - pivot;
   for (std::size_t k = 0; k < n; ++k) atoms[n * b + k].position += shift;
   system.moleculeData[b].centerOfMassPosition += shift;
+
+  // the spin about the bond axis: the angle with the largest minimum distance of b's beads to the other atoms
+  const double3 axisPoint = atoms[n * b + atomB].position;
+  const auto spun = [&](std::size_t k, double angle)
+  {
+    const double3 r = atoms[n * b + k].position - axisPoint;
+    const double c = std::cos(angle);
+    const double s = std::sin(angle);
+    return axisPoint + r * c + double3::cross(direction, r) * s + direction * (double3::dot(direction, r) * (1.0 - c));
+  };
+  double bestAngle = 0.0;
+  double bestDistance = -1.0;
+  for (std::size_t step = 0; step < 72; ++step)
+  {
+    const double angle = static_cast<double>(step) * (2.0 * std::numbers::pi / 72.0);
+    double minimum = std::numeric_limits<double>::max();
+    for (std::size_t k = 0; k < n; ++k)
+    {
+      if (k == atomB) continue;
+      const double3 position = spun(k, angle);
+      for (std::size_t j = 0; j < atoms.size(); ++j)
+      {
+        // not b itself, nor the bonded partner (the 1-3 distances across the new bond are set by the geometry)
+        if (j / n == b || j == n * a + atomA) continue;
+        const double3 dr = system.simulationBox.applyPeriodicBoundaryConditions(position - atoms[j].position);
+        minimum = std::min(minimum, double3::dot(dr, dr));
+      }
+    }
+    if (minimum > bestDistance)
+    {
+      bestDistance = minimum;
+      bestAngle = angle;
+    }
+  }
+  for (std::size_t k = 0; k < n; ++k) atoms[n * b + k].position = spun(k, bestAngle);
 }
 
 /// A branched five-bead monomer (a united-atom vinyl: head 0 = CH3, tail 1 = CH2 with the side group 4, and the
@@ -2005,7 +2043,7 @@ void approachMolecules(System& system, std::size_t a, std::size_t atomA, std::si
 /// types in the term, so that the retyped-term overrides are non-zero), and the component's 1-4 pairs are scaled
 /// by one half with the first pair containing the head (a retyped atom of a scaled pair).
 System makePolymerSystem(std::size_t seed, std::size_t dimers, std::size_t terminations, std::uint64_t currentStep,
-                         std::size_t relaxationSteps, double chiralForceConstant)
+                         std::size_t relaxationSteps, double chiralForceConstant, double bondDistance = 1.6)
 {
   ForceField forceField = ForceField(
       {{"CH3", false, 15.03452, 0.25, 0.0, 6, false},
@@ -2131,22 +2169,22 @@ System makePolymerSystem(std::size_t seed, std::size_t dimers, std::size_t termi
   {
     const std::size_t a = molecule;
     const std::size_t b = molecule + 1;
-    approachMolecules(system, a, 1, b, 0);
+    approachMolecules(system, a, 1, b, 0, bondDistance);
     table.initiate(a, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), stepOf(formed));
     const std::int8_t chirality = (n % 3 == 0) ? 0 : ((n % 3 == 1) ? 1 : -1);
     table.propagate(a, b, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData),
-                    stepOf(formed), 1.6, chirality, 0);
+                    stepOf(formed), bondDistance, chirality, 0);
     ++formed;
   }
   for (std::size_t n = 0; n < terminations; ++n, molecule += 2)
   {
     const std::size_t a = molecule;
     const std::size_t b = molecule + 1;
-    approachMolecules(system, a, 1, b, 1);
+    approachMolecules(system, a, 1, b, 1, bondDistance);
     table.initiate(a, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), stepOf(formed));
     table.initiate(b, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), stepOf(formed));
     table.terminate(a, b, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData),
-                    stepOf(formed), 1.6, (n % 2 == 0) ? 1 : -1, (n % 2 == 0) ? -1 : 1);
+                    stepOf(formed), bondDistance, (n % 2 == 0) ? 1 : -1, (n % 2 == 0) ? -1 : 1);
     ++formed;
   }
   table.rebuild(forceField, system.components, system.numberOfMoleculesPerComponent, atoms);
@@ -2290,13 +2328,74 @@ TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_follows_the_ram
   compare("after the reaction, ramp complete");
 }
 
+// The pairs a polymer bond excludes (1-2 and 1-3 through the bond) are left out of the pair lists and the overlay
+// supplies their whole ramped value, lambda value(wanted) + (1 - lambda) value(counted); with the pairs in the
+// lists and the overlay adding lambda (value(wanted) - value(counted)) the total is the same in exact arithmetic
+// (the difference is the single-precision cancellation of the 1e8 K/A repulsion of the bonded pairs, which gave
+// the device pair kernel a net force per bond). Host engine, double precision, with and without ramps.
+TEST(spatial_decomposition, engine_polymer_unlisted_pairs_match_the_listed_formulation)
+{
+  for (const std::uint64_t currentStep : {1000uz, 60uz})
+  {
+    System system = makePolymerSystem(7, 20, 6, currentStep, 100, 2000.0);
+    PolymerLinkTable& table = system.polymerLinks;
+    ASSERT_FALSE(table.unlisted.empty());
+    std::size_t unlistedCount = 0;
+    for (const PolymerLinkTable::PairCorrection& pair : table.pairCorrections)
+    {
+      if (pair.listed) continue;
+      ++unlistedCount;
+      EXPECT_EQ(pair.wanted, PolymerLinkTable::PairState::Excluded);
+      EXPECT_EQ(pair.counted, PolymerLinkTable::PairState::Full);
+      EXPECT_TRUE(table.unlisted.contains(pair.atoms[0], pair.atoms[1]));
+      EXPECT_TRUE(table.unlisted.contains(pair.atoms[1], pair.atoms[0]));
+    }
+    EXPECT_EQ(unlistedCount, table.unlisted.partner.size() / 2);
+    // the bond itself is among them
+    for (const PolymerLinkTable::LinkBondTerm& bond : table.linkBonds)
+    {
+      EXPECT_TRUE(table.unlisted.contains(bond.atoms[0], bond.atoms[1]));
+    }
+
+    SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+    settings.pairDevice = PairDevice::CPU;
+    SpatialDecompositionForceEngine engine(settings);
+    engine.initialize(system);
+    const RunningEnergy energy = engine.computeGradients(system, true);
+    const std::vector<double3> gradient = gradientsOf(system);
+    const double3x3 pressure = engine.molecularPressureTensor();
+
+    // the listed formulation: every pair in the lists, the overlay the difference
+    for (PolymerLinkTable::PairCorrection& pair : table.pairCorrections) pair.listed = true;
+    table.unlisted = PairListExclusions{};
+    SpatialDecompositionForceEngine reference(settings);
+    reference.initialize(system);
+    const RunningEnergy referenceEnergy = reference.computeGradients(system, true);
+    const std::vector<double3> referenceGradient = gradientsOf(system);
+
+    const auto near = [&](double a, double b, const char* what)
+    { EXPECT_NEAR(a, b, 1e-9 * std::max(std::abs(b), 1.0)) << what << " at step " << currentStep; };
+    near(energy.potentialEnergy(), referenceEnergy.potentialEnergy(), "potential");
+    near(energy.moleculeMoleculeVDW, referenceEnergy.moleculeMoleculeVDW, "VDW");
+    near(energy.moleculeMoleculeCharge, referenceEnergy.moleculeMoleculeCharge, "Coulomb");
+    near(energy.ewald_exclusion, referenceEnergy.ewald_exclusion, "Ewald exclusion");
+    near(energy.crossLink, referenceEnergy.crossLink, "cross-link");
+    EXPECT_LT(rmsDifference(gradient, referenceGradient), 1e-9 * rmsNorm(referenceGradient)) << currentStep;
+    EXPECT_LT(maxAbsDifference(pressure, reference.molecularPressureTensor()),
+              1e-9 * maxAbs(reference.molecularPressureTensor()))
+        << currentStep;
+  }
+}
+
 TEST_P(SpatialDecompositionDevice, resident_integrator_matches_host_polymer_overlay_nve)
 {
   const PairDevice pairDevice = GetParam();
   if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
   // the overlay on the device in both runs (host integration with device forces against the resident integrator);
-  // a mid-ramp state that stays constant (the driver advances the step)
-  const auto makeSystem = [](std::size_t seed) { return makePolymerSystem(seed, 20, 6, 60, 100, 2000.0); };
+  // a mid-ramp state that stays constant (the driver advances the step). Mid-ramp the pairs across the new bonds
+  // still carry (1 - lambda) of their full-strength repulsion, so the bonds start near the capture distance of the
+  // driver rather than at the bond length (where that repulsion is ~1e7 K per pair, not integrable)
+  const auto makeSystem = [](std::size_t seed) { return makePolymerSystem(seed, 20, 6, 60, 100, 2000.0, 3.2); };
   expectResidentMatchesHost(makeSystem, pairDevice, false, 60, 0.0005, 0.3,
                             {.position = 1e-4, .velocity = 1e-4, .energy = 1e-4, .drift = 1e-5});
 }

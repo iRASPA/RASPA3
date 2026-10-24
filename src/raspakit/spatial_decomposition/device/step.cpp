@@ -314,6 +314,14 @@ void DeviceStep::writeBuildParameters(bool blocking)
 void DeviceStep::setExclusions(const System& system)
 {
   const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  const PairListExclusions& unlisted = system.polymerLinks.unlisted;
+  if (!unlisted.empty() && unlisted.start.size() != atoms.size() + 1)
+  {
+    throw std::runtime_error(
+        std::format("[Device pair kernel]: the pairs excluded by the polymer bonds are laid out for {} atoms, the "
+                    "system has {}\n",
+                    unlisted.start.size() - 1, atoms.size()));
+  }
   atomExclusionStart.assign(atoms.size() + 1, 0);
   atomExclusionPartner.clear();
   for (const Molecule& molecule : system.moleculeData)
@@ -331,13 +339,21 @@ void DeviceStep::setExclusions(const System& system)
       {
         for (const std::uint32_t b : exclusions.pairListPartnersOf(a)) atomExclusionPartner.push_back(first + b);
       }
+      // the pairs the polymer bonds exclude: partners of any molecule (the atom's own included), tested against
+      // every candidate of the atom
+      const std::span<const std::uint32_t> extra = unlisted.partnersOf(first + a);
+      if (!extra.empty())
+      {
+        start |= DeviceKernelLayout::otherMoleculeBit;
+        atomExclusionPartner.insert(atomExclusionPartner.end(), extra.begin(), extra.end());
+      }
       atomExclusionStart[first + a] = start;
     }
   }
   atomExclusionStart[atoms.size()] = static_cast<std::uint32_t>(atomExclusionPartner.size());
-  if (atomExclusionPartner.size() >= DeviceKernelLayout::allExcludedBit)
+  if (atomExclusionPartner.size() >= DeviceKernelLayout::otherMoleculeBit)
   {
-    throw std::runtime_error("[Device pair kernel]: too many intramolecular exclusions for 31-bit offsets\n");
+    throw std::runtime_error("[Device pair kernel]: too many pair exclusions for 30-bit offsets\n");
   }
   if (atomExclusionPartner.empty()) atomExclusionPartner.push_back(noAtom);
 

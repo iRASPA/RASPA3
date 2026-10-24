@@ -168,7 +168,7 @@ void PolymerOverlayTopology::build(const System& system, const PolymerLinkTable&
     term.ramp = rampIndex(stepOfBond(pair.bondId));
     term.atoms[0] = pair.atoms[0];
     term.atoms[1] = pair.atoms[1];
-    term.flags = interMolecular;
+    term.flags = interMolecular | (pair.listed ? 0u : unlistedPair);
     const std::size_t typeA = static_cast<std::size_t>(systemAtoms[pair.atoms[0]].type);
     const std::size_t typeB = static_cast<std::size_t>(systemAtoms[pair.atoms[1]].type);
     pairParameters(forceField, pair.wanted, pair.wantedScaling, typeA, typeB, term.parameters);

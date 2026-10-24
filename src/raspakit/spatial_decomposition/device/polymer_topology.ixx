@@ -45,6 +45,9 @@ export struct PolymerOverlayTopology
 
   static constexpr std::uint32_t interMolecular = 1u;
   static constexpr std::uint32_t intramolecularPair = 2u;
+  /// A pair correction whose pair the pair lists leave out (PolymerLinkTable::PairCorrection::listed == false):
+  /// the term supplies lambda value(wanted) + (1 - lambda) value(counted) instead of the difference.
+  static constexpr std::uint32_t unlistedPair = 4u;
   /// The step of the ramp that is always fully on (the retype corrections).
   static constexpr std::uint64_t alwaysOn = std::numeric_limits<std::uint64_t>::max();
 

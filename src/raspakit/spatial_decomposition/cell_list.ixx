@@ -103,6 +103,8 @@ export struct CellList
   std::vector<std::uint32_t> atomInMolecule{};  ///< Index of the atom within its molecule.
   std::vector<std::uint8_t> componentOfAtom{};
   std::span<const Component> components{};  ///< The components of the last `bin` (exclusion topology per component).
+  /// Pairs of system atoms the lists leave out in addition (the last `bin`; null or empty: none).
+  const PairListExclusions* extraExclusions{nullptr};
   std::vector<std::uint32_t> cellOfAtom{};
   std::vector<std::uint32_t> ownerOfAtom{};
   std::vector<double> wrappedX{}, wrappedY{}, wrappedZ{};  ///< Positions at the last build, wrapped into the box.
@@ -146,9 +148,12 @@ export struct CellList
    *
    * 'atoms' holds whole molecules as contiguous runs of equal componentId and moleculeId. With 'components' (indexed
    * by componentId) the same-molecule pairs that are neither excluded nor scaled enter the lists; without, every
-   * same-molecule pair is skipped. Throws when a run does not match the atom count of its component.
+   * same-molecule pair is skipped. 'extraExclusions' (optional) lists further pairs of system atoms the lists leave
+   * out, e.g. the pairs excluded by bonds formed during the run. Throws when a run does not match the atom count
+   * of its component.
    */
-  void bin(const SimulationBox& box, std::span<const Atom> atoms, std::span<const Component> components = {});
+  void bin(const SimulationBox& box, std::span<const Atom> atoms, std::span<const Component> components = {},
+           const PairListExclusions* extraExclusions = nullptr);
 
   /**
    * \brief Builds the neighbour list, the ghost images and the compact atom data of one sub-domain from the current

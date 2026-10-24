@@ -560,6 +560,25 @@ void SpatialDecompositionForceEngine::topologyChanged(System& system)
   // overlay follows the table at the next step
   if (deviceBonded) devicePairs.refreshBondedTopology(system);
   polymerOverlayOutdated = true;
+  // the pairs the new bonds exclude leave the lists at the rebuild
+  pairExclusionsOutdated = true;
+}
+
+void SpatialDecompositionForceEngine::preparePairListExclusions(System& system)
+{
+  // the pairs the polymer bonds exclude (PolymerLinkTable::unlisted) follow the derived table: valid before the
+  // lists (host and device) are built; the device holds the merged table of the component exclusions and these
+  PolymerLinkTable& table = system.polymerLinks;
+  if (!table.empty() && !table.derivedValid)
+  {
+    table.rebuild(system.forceField, system.components, system.numberOfMoleculesPerComponent,
+                  system.spanOfMoleculeAtoms());
+  }
+  if (pairExclusionsOutdated)
+  {
+    if (deviceKernel) devicePairs.setExclusions(system);
+    pairExclusionsOutdated = false;
+  }
 }
 
 void SpatialDecompositionForceEngine::preparePolymerOverlay(System& system)
@@ -610,8 +629,9 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
     fy.assign(numberOfAtoms, 0.0);
     fz.assign(numberOfAtoms, 0.0);
     cellList.numberOfBuilds = 0;  // forces a rebuild
-    if (deviceKernel) devicePairs.setExclusions(system);
+    pairExclusionsOutdated = true;
   }
+  preparePairListExclusions(system);
   if (bondedWorkOutdated(system)) prepareBondedWork(system);
   preparePolymerOverlay(system);
   team->resetWork();
@@ -757,7 +777,7 @@ void SpatialDecompositionForceEngine::residentRebuild(System& system)
                     cellList.listCutoff, halfWidth));
   }
   cellList.updateCellGrid(box);
-  cellList.bin(box, system.spanOfMoleculeAtoms(), system.components);
+  cellList.bin(box, system.spanOfMoleculeAtoms(), system.components, &system.polymerLinks.unlisted);
   ++timing.rebuilds;
   devicePairs.beginBuild(cellList, box, 1);
   resident.setLayout(devicePairs, cellList, box);
@@ -787,8 +807,9 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
     fy.assign(numberOfAtoms, 0.0);
     fz.assign(numberOfAtoms, 0.0);
     cellList.numberOfBuilds = 0;
-    devicePairs.setExclusions(system);
+    pairExclusionsOutdated = true;
   }
+  preparePairListExclusions(system);
   if (bondedWorkOutdated(system)) prepareBondedWork(system);
   bool rebuild = cellList.numberOfBuilds == 0 || cellList.numberOfAtoms != numberOfAtoms;
 
@@ -801,7 +822,7 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
       // bin the host positions and lay out the device lists; the slot positions follow with the upload
       const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
       cellList.updateCellGrid(box);
-      cellList.bin(box, system.spanOfMoleculeAtoms(), system.components);
+      cellList.bin(box, system.spanOfMoleculeAtoms(), system.components, &system.polymerLinks.unlisted);
       ++timing.rebuilds;
       devicePairs.beginBuild(cellList, box, 1);
       devicePairs.finishBuild();
@@ -1127,7 +1148,7 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
           if (thread == 0)
           {
             cellList.updateCellGrid(box);
-            cellList.bin(box, atoms, system.components);
+            cellList.bin(box, atoms, system.components, &system.polymerLinks.unlisted);
             ++timing.rebuilds;
             if (deviceKernel) devicePairs.beginBuild(cellList, box, threads);
           }
