@@ -22,7 +22,7 @@
       "TimeStep" : 0.001,
       "ChargeMethod" : "Ewald",
       "Polymerization" : {
-        "ScanEvery" : 10,
+        "ScanEvery" : 10000,
         "StartCycle" : 0,
         "TargetConversion" : 0.9,
         "RelaxationSteps" : 2000,

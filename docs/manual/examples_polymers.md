@@ -110,8 +110,13 @@ continued from a linked state.
 
 Run from `examples/polymers/8_polymerization_hdda_in_box`.
 2690 hexanediol diacrylate (HDDA) monomers in a \f$111.4 \times 111.4 \times 111.4\f$
-&Aring; box at 600 K (NVT) are cured into a cross-linked
-poly-HDDA network with `"SimulationType" : "Polymerization"`: a
+&Aring; box at 600 K and 1 bar (NPT) are cured into a cross-linked
+poly-HDDA network with `"SimulationType" : "Polymerization"`, following the
+protocol of A. Torres-Knoop, I. Kryven, V. Schamboeck and P. D. Iedema,
+*Soft Matter* **14**, 3404 (2018) (TraPPE-UA acrylates with harmonic bonds,
+curing at 600 K in NPT, Nos&eacute;&ndash;Hoover coupling 1 ps, 5 % of the
+monomers initially radical, capture radius 4 &Aring;, reaction probability 0.5,
+proximity check every 10 ps): a
 spatial-decomposition MD run (`"PairDevice" : "GPU"`) in which, during the production stage, the vinyl
 groups react by stochastic free-radical chain growth. The monomer file
 `HDDA.json` is the 16-bead TraPPE-UA acrylate of the pHDDA examples (the
@@ -131,7 +136,7 @@ The `"Polymerization"` block of the system sets the kinetics and gives the
 bonded tables of the product by pseudo-atom type (the `CH2_bb`/`CH_bb` entries
 of the pHDDA-20 molecule file, extended with the `CH_bb–CH_bb` terms that a
 termination by combination needs). 135 random sites become radicals at the
-start of production; every 2000 MD steps (2 ps) each radical tail within 4
+start of production; every 10000 MD steps (10 ps) each radical tail within 4
 &Aring; of a monomer head adds to it with probability 0.5, and two radical
 tails within 4 &Aring; combine with the same probability. An accepted reaction
 retypes the head and tail to `CH2_bb`/`CH_bb` (which changes their
@@ -147,7 +152,7 @@ Example 9 is the same monomers with the slow, orientation-weighted kinetics.
   "NumberOfThreads" : 8,
   "PairDevice" : "GPU",
   "NumberOfInitializationCycles" : 50,
-  "NumberOfEquilibrationCycles" : 300000,
+  "NumberOfEquilibrationCycles" : 500000,
   "NumberOfProductionCycles" : 10000000,
   "PrintEvery" : 10000,
 
@@ -156,11 +161,13 @@ Example 9 is the same monomers with the slow, orientation-weighted kinetics.
       "Type" : "Box",
       "BoxLengths" : [111.4, 111.4, 111.4],
       "ExternalTemperature" : 600.0,
-      "Ensemble" : "NVT",
+      "ExternalPressure" : 100000.0,
+      "Ensemble" : "NPT",
+      "TimeScaleParameterThermostat" : 1.0,
       "TimeStep" : 0.001,
       "ChargeMethod" : "Ewald",
       "Polymerization" : {
-        "ScanEvery" : 2000,
+        "ScanEvery" : 10000,
         "TargetConversion" : 1.0,
         "RelaxationSteps" : 2000,
         "WriteEventFrames" : true,

@@ -3,7 +3,7 @@
   "TruncationMethod" : "truncated",
   "TailCorrections" : true,
   "CutOffVDW" : 14.0,
-  "CutOffCoulomb" : 12.0,
+  "CutOffCoulomb" : 14.0,
   "PseudoAtoms" :
   [
     {
