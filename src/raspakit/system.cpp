@@ -716,6 +716,45 @@ void System::samplePropertiesEvolution(std::size_t absoluteCurrentCycle)
   }
 }
 
+void System::resetConservedEnergyBookkeeping()
+{
+  conservedEnergy = runningEnergies.conservedEnergy();
+  referenceEnergy = conservedEnergy;
+  polymerRampWork = 0.0;
+  polymerReactionJumps = 0.0;
+  polymerRampWasActive = polymerLinks.activated && polymerLinks.rampsActive();
+}
+
+void System::accountConservedEnergy()
+{
+  const double previous = conservedEnergy;
+  conservedEnergy = runningEnergies.conservedEnergy();
+
+  // a ramp changes lambda between the force evaluation of the previous step and that of this one, so the
+  // step that ends a ramp (rampsActive() already false) still changes the Hamiltonian
+  const bool ramping = polymerLinks.activated && polymerLinks.rampsActive();
+  if (ramping || polymerRampWasActive)
+  {
+    const double work = conservedEnergy - previous;
+    polymerRampWork += work;
+    referenceEnergy += work;
+  }
+  polymerRampWasActive = ramping;
+
+  accumulatedDrift += std::abs((conservedEnergy - referenceEnergy) / referenceEnergy);
+}
+
+void System::accountTopologyChange()
+{
+  const double previous = conservedEnergy;
+  conservedEnergy = runningEnergies.conservedEnergy();
+  const double jump = conservedEnergy - previous;
+  polymerRampWork += jump;
+  polymerReactionJumps += jump;
+  referenceEnergy += jump;
+  polymerRampWasActive = true;
+}
+
 void System::precomputeTotalRigidEnergy() noexcept
 {
   Interactions::precomputeEwaldFourierRigid(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, forceField,
@@ -1525,6 +1564,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.conservedEnergy;
   archive << s.referenceEnergy;
   archive << s.accumulatedDrift;
+  archive << s.polymerRampWork;
+  archive << s.polymerReactionJumps;
+  archive << s.polymerRampWasActive;
 
   archive << s.rigidEnergies;
   archive << s.runningEnergies;
@@ -1697,6 +1739,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.conservedEnergy;
   archive >> s.referenceEnergy;
   archive >> s.accumulatedDrift;
+  archive >> s.polymerRampWork;
+  archive >> s.polymerReactionJumps;
+  archive >> s.polymerRampWasActive;
 
   archive >> s.rigidEnergies;
   archive >> s.runningEnergies;

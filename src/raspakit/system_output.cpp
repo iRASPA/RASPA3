@@ -400,8 +400,21 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   std::print(stream, "Nose-Hoover energy: {: .6e}\n", conv * runningEnergies.NoseHooverEnergy);
   std::print(stream, "Conserved energy:   {: .6e}\n", conv * runningEnergies.conservedEnergy());
   double drift = std::abs((conservedEnergy - referenceEnergy) / referenceEnergy);
-  std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift,
+  std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n", drift,
              accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
+  if (polymerLinks.activated)
+  {
+    // the work of the force ramps (excluded from the drift): the change of the conserved energy at the reactions
+    // (the terms that switch without a ramp) and over the ramps, per reaction event
+    std::size_t reactions = 0;
+    for (std::size_t count : polymerLinks.reactionCounts) reactions += count;
+    std::print(stream,
+               "Polymer ramp work:  {: .6e} ({: .6e} per reaction; at the reactions {: .6e}, over the ramps "
+               "{: .6e}; excluded from the drift)\n",
+               conv * polymerRampWork, conv * polymerRampWork / static_cast<double>(std::max(reactions, 1uz)),
+               conv * polymerReactionJumps, conv * (polymerRampWork - polymerReactionJumps));
+  }
+  std::print(stream, "\n");
 
   std::print(stream, "\n");
 
@@ -930,8 +943,21 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   std::print(stream, "Nose-Hoover energy: {: .6e}\n", conv * runningEnergies.NoseHooverEnergy);
   std::print(stream, "Conserved energy:   {: .6e}\n", conv * runningEnergies.conservedEnergy());
   double drift = std::abs((conservedEnergy - referenceEnergy) / referenceEnergy);
-  std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift,
+  std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n", drift,
              accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
+  if (polymerLinks.activated)
+  {
+    // the work of the force ramps (excluded from the drift): the change of the conserved energy at the reactions
+    // (the terms that switch without a ramp) and over the ramps, per reaction event
+    std::size_t reactions = 0;
+    for (std::size_t count : polymerLinks.reactionCounts) reactions += count;
+    std::print(stream,
+               "Polymer ramp work:  {: .6e} ({: .6e} per reaction; at the reactions {: .6e}, over the ramps "
+               "{: .6e}; excluded from the drift)\n",
+               conv * polymerRampWork, conv * polymerRampWork / static_cast<double>(std::max(reactions, 1uz)),
+               conv * polymerReactionJumps, conv * (polymerRampWork - polymerReactionJumps));
+  }
+  std::print(stream, "\n");
 
   std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.average();
   std::print(stream, "Total potential energy:   {: .6e} ({: .6e} +/- {:.6e}) [K]\n",

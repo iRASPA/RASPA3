@@ -388,8 +388,7 @@ void ParallelTemperingMolecularDynamics::prepareReplicaMolecularDynamicsStage(st
 
   system.precomputeTotalGradients();
   refreshKineticAndExtendedEnergies(system);
-  system.conservedEnergy = system.runningEnergies.conservedEnergy();
-  system.referenceEnergy = system.conservedEnergy;
+  system.resetConservedEnergyBookkeeping();
 
   std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
   replicaStream << system.runningEnergies.printMD("Recomputed from scratch", system.referenceEnergy);
@@ -619,9 +618,7 @@ void ParallelTemperingMolecularDynamics::runStage(SimulationStage stage, std::si
               {
                 // one time step per cycle
                 system.runningEnergies = molecularDynamicsStep(system);
-                system.conservedEnergy = system.runningEnergies.conservedEnergy();
-                system.accumulatedDrift +=
-                    std::abs((system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
+                system.accountConservedEnergy();
                 if (stage == SimulationStage::Production)
                 {
                   ++stepsPerReplica[replicaId];

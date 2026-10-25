@@ -795,15 +795,15 @@ void Polymerization::topologyChanged(std::size_t systemId)
   }
 
   // forces and potential energies of the new topology; the kinetic, thermostat and barostat parts of the step
-  // are kept, and the conserved-energy reference restarts (the potential is not continuous across a reaction)
+  // are kept, and the jump of the potential (the potential is not continuous across a reaction) is booked as
+  // ramp work, so that the drift report keeps measuring the integration error across the reactions
   const RunningEnergy previous = system.runningEnergies;
   md.recomputeGradients(systemId);
   system.runningEnergies.translationalKineticEnergy = previous.translationalKineticEnergy;
   system.runningEnergies.rotationalKineticEnergy = previous.rotationalKineticEnergy;
   system.runningEnergies.NoseHooverEnergy = previous.NoseHooverEnergy;
   system.runningEnergies.thermobarostatEnergy = previous.thermobarostatEnergy;
-  system.conservedEnergy = system.runningEnergies.conservedEnergy();
-  system.referenceEnergy = system.conservedEnergy;
+  system.accountTopologyChange();
 }
 
 void Polymerization::writeTopology(std::size_t systemId)
@@ -816,6 +816,9 @@ void Polymerization::writeTopology(std::size_t systemId)
   topology["step"] = table.currentStep;
   topology["time"] = static_cast<double>(table.currentStep) * system.timeStep;
   topology["status"] = table.jsonStatus(system.simulationBox, system.components, system.spanOfMoleculeAtoms());
+  // the work of the force ramps over the production stage (the model's heat of reaction) in K
+  topology["rampWork"] = system.polymerRampWork * Units::EnergyToKelvin;
+  topology["rampWorkAtReactions"] = system.polymerReactionJumps * Units::EnergyToKelvin;
   nlohmann::json componentsJson = nlohmann::json::array();
   for (std::size_t componentId = 0; const Component& component : system.components)
   {

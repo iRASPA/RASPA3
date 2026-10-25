@@ -232,9 +232,22 @@ export struct System
   std::vector<double3> electricField;
   std::vector<double3> electricFieldNew;
 
+  /// The conserved (extended-system) energy after the last MD step.
   double conservedEnergy{};
+  /// The reference of the drift report: the conserved energy at the start of the stage, shifted by the work
+  /// of the polymer force ramps (see 'accountConservedEnergy'), so that the drift is the integration error only.
   double referenceEnergy{};
+  /// Sum over the steps of the stage of the relative drift |E - E_ref| / E_ref ("Average drift" per step).
   double accumulatedDrift{};
+  /// The work of the polymer force ramps in the stage: the change of the conserved energy over the steps in
+  /// which a ramp is active, plus the jump of the potential at each topology change (the model's heat of
+  /// reaction, removed by the thermostat). Excluded from the drift.
+  double polymerRampWork{};
+  /// The part of 'polymerRampWork' that is the jump of the potential at the topology changes themselves (the
+  /// terms a reaction changes without a ramp: the non-bonded parameters of the retyped atoms).
+  double polymerReactionJumps{};
+  /// Whether a polymer ramp was active in the previous step (the step that ends a ramp still changes lambda).
+  bool polymerRampWasActive{false};
   RunningEnergy rigidEnergies;
   RunningEnergy runningEnergies;
 
@@ -390,6 +403,33 @@ export struct System
   void rebuildForFramework(const Framework& newFramework, const SimulationBox& newSimulationBox);
 
   void checkCartesianPositions();
+
+  /**
+   * \brief Starts the conserved-energy bookkeeping of an MD stage from 'runningEnergies'.
+   *
+   * Sets the drift reference and the current conserved energy, and clears the ramp-work sum.
+   */
+  void resetConservedEnergyBookkeeping();
+
+  /**
+   * \brief Conserved-energy bookkeeping after an MD step ('runningEnergies' holds the energies of the step).
+   *
+   * The change of the conserved energy over a step in which a polymer force ramp is active (or that ends one)
+   * is the work of the time-dependent Hamiltonian, not integration error: it is added to 'polymerRampWork' and
+   * to the drift reference, so that 'conservedEnergy - referenceEnergy' stays the integration drift across
+   * the reactions. The integration error of the ramp steps themselves is attributed to the ramp work (a few
+   * K per ramp against the 1e4-1e5 K a ramp injects). The relative drift of the step is accumulated for the
+   * "Average drift".
+   */
+  void accountConservedEnergy();
+
+  /**
+   * \brief Accounts a jump of the conserved energy at a topology change (a reaction) as polymer ramp work.
+   *
+   * 'runningEnergies' holds the energies of the new topology; the jump against the previous value of
+   * 'conservedEnergy' shifts the drift reference.
+   */
+  void accountTopologyChange();
 
   void precomputeTotalRigidEnergy() noexcept;
   void precomputeTotalGradients() noexcept;

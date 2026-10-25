@@ -1178,7 +1178,7 @@ void MolecularDynamicsSpatialDecomposition::equilibrate()
     }
     if (system.thermobarostat.has_value())
       system.runningEnergies.thermobarostatEnergy = system.thermobarostat->energy(system.simulationBox.volume);
-    system.referenceEnergy = system.runningEnergies.conservedEnergy();
+    system.resetConservedEnergyBookkeeping();
 
     if (outputToFiles)
     {
@@ -1203,8 +1203,7 @@ void MolecularDynamicsSpatialDecomposition::equilibrate()
     {
       system.runningEnergies = molecularDynamicsStep(system_id);
 
-      system.conservedEnergy = system.runningEnergies.conservedEnergy();
-      system.accumulatedDrift += std::abs((system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
+      system.accountConservedEnergy();
       refreshHostState(system_id, false);
       if (afterSystemStep) afterSystemStep(system_id);
       ++system_id;
@@ -1294,7 +1293,7 @@ void MolecularDynamicsSpatialDecomposition::production()
     }
     if (system.thermobarostat.has_value())
       system.runningEnergies.thermobarostatEnergy = system.thermobarostat->energy(system.simulationBox.volume);
-    system.referenceEnergy = system.runningEnergies.conservedEnergy();
+    system.resetConservedEnergyBookkeeping();
 
     if (outputToFiles)
     {
@@ -1332,8 +1331,7 @@ void MolecularDynamicsSpatialDecomposition::production()
     {
       system.runningEnergies = molecularDynamicsStep(system_id);
 
-      system.conservedEnergy = system.runningEnergies.conservedEnergy();
-      system.accumulatedDrift += std::abs((system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
+      system.accountConservedEnergy();
       refreshHostState(system_id, true);
       if (afterSystemStep) afterSystemStep(system_id);
       ++system_id;

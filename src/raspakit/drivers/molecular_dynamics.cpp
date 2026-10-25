@@ -1091,7 +1091,7 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
     }
     if (system.thermobarostat.has_value())
       system.runningEnergies.thermobarostatEnergy = system.thermobarostat->energy(system.simulationBox.volume);
-    system.referenceEnergy = system.runningEnergies.conservedEnergy();
+    system.resetConservedEnergyBookkeeping();
 
     if (outputToFiles)
     {
@@ -1117,9 +1117,7 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
       if (currentCycle % 3uz == 0uz) attemptParticleExchange(random, system);
       system.runningEnergies = molecularDynamicsStep(system);
 
-      system.conservedEnergy = system.runningEnergies.conservedEnergy();
-      system.accumulatedDrift +=
-          std::abs((system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
+      system.accountConservedEnergy();
 
       if (system.propertyElasticConstantsFluctuation && currentCycle % system.elasticConstantsSampleEvery == 0)
       {
@@ -1233,7 +1231,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     }
     if (system.thermobarostat.has_value())
       system.runningEnergies.thermobarostatEnergy = system.thermobarostat->energy(system.simulationBox.volume);
-    system.referenceEnergy = system.runningEnergies.conservedEnergy();
+    system.resetConservedEnergyBookkeeping();
 
     if (outputToFiles)
     {
@@ -1306,9 +1304,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
       if (currentCycle % 3uz == 0uz) attemptParticleExchange(random, system);
       system.runningEnergies = molecularDynamicsStep(system);
 
-      system.conservedEnergy = system.runningEnergies.conservedEnergy();
-      system.accumulatedDrift +=
-          std::abs((system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
+      system.accountConservedEnergy();
     }
 
     for (System& system : systems)

@@ -1915,8 +1915,20 @@ component's `"Intra14VanDerWaalsScalingValue"` /
 corrections, as for the intra-molecular pairs). All new or changed terms are
 switched on with a linear ramp \f$\lambda(t)\f$ from 0 to 1 over
 `"RelaxationSteps"` MD steps so that the capture at up to the capture radius
-does not inject a large force; the conserved-energy reference of the drift
-report restarts at every accepted reaction. A broken bond is switched off
+does not inject a large force. The ramp makes the Hamiltonian time dependent,
+so the conserved energy changes by the work of the ramp (the model's heat of
+reaction, typically \f$10^4\f$–\f$10^5\f$ K per bond, which the thermostat
+removes). The MD status report keeps the two apart: the change of the
+conserved energy over the steps in which a ramp is active, plus the jump of
+the potential at the reaction itself (the non-bonded parameters of the
+retyped atoms switch without a ramp), is summed as `Polymer ramp work` (in
+total, per reaction event, and split into the part at the reactions and the
+part over the ramps) and added to the drift reference, so that `Drift` and
+`Average drift` stay the integration error of the integrator across the
+reactions (the integration error of the ramp steps themselves, a few hundred
+K per ramp at most, is attributed to the ramp work). The same totals are
+written as `"rampWork"` and `"rampWorkAtReactions"` (in K) to the topology
+file. A broken bond is switched off
 with the same ramp: the bond and the bends and torsions of the monomer that
 run through it go to zero (they need no table entry), the connectivity the
 polymer topology follows loses the bond, and the pairs around it that the
@@ -2042,7 +2054,9 @@ The keys of the `"Polymerization"` block (defaults in parentheses):
     configuration of every group, the stereocentres, the list of bonds
     (component, molecule, atom of both partners, rule and step) and the list
     of broken bonds at the end of the run (and after every event frame, see
-    below).
+    below), and `"rampWork"` / `"rampWorkAtReactions"`, the work of the force
+    ramps over the production stage in K (total, and the jumps at the
+    reactions).
 -   `"WriteEventFrames" : bool` (`false`) — writes the configuration at the
     moment of every reaction. Every reaction scan that accepted at least one
     reaction (the activation with its initial events included) is an *event

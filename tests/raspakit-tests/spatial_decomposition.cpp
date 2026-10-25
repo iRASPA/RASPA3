@@ -3011,6 +3011,78 @@ TEST(spatial_decomposition, engine_polymer_second_addition_keeps_the_ramps_of_th
   EXPECT_LT(rmsDifference(gradient, referenceGradient), 1e-8 * rmsNorm(referenceGradient));
 }
 
+TEST(spatial_decomposition, polymer_ramp_work_is_kept_out_of_the_conserved_energy_drift)
+{
+  // one bond formed at step 50 with a 100-step ramp, the table at step 100; the table's step is moved by
+  // hand to play the bookkeeping of the MD driver through the ramp, its end, and a later reaction
+  System system = makeRingOpeningSystem(5, 2, 1, 100, 100);
+  PolymerLinkTable& table = system.polymerLinks;
+  ASSERT_TRUE(table.activated);
+  ASSERT_EQ(table.bonds[0].formedAtStep, 50u);
+  ASSERT_TRUE(table.rampsActive());
+
+  system.runningEnergies = RunningEnergy{};
+  system.runningEnergies.moleculeMoleculeVDW = -5.0e4;
+  system.runningEnergies.translationalKineticEnergy = 2.0e4;
+  system.resetConservedEnergyBookkeeping();
+  const double start = system.conservedEnergy;
+  EXPECT_DOUBLE_EQ(system.referenceEnergy, start);
+  EXPECT_DOUBLE_EQ(system.polymerRampWork, 0.0);
+  EXPECT_TRUE(system.polymerRampWasActive);
+
+  // a step inside the ramp: the whole change is ramp work, the drift stays zero
+  system.runningEnergies.bond += 300.0;
+  system.accountConservedEnergy();
+  EXPECT_DOUBLE_EQ(system.polymerRampWork, 300.0);
+  EXPECT_DOUBLE_EQ(system.conservedEnergy - system.referenceEnergy, 0.0);
+  EXPECT_DOUBLE_EQ(system.accumulatedDrift, 0.0);
+
+  // the step that ends the ramp (lambda reaches one in its force evaluation) still counts as ramp work
+  table.currentStep = 150;
+  ASSERT_FALSE(table.rampsActive());
+  system.runningEnergies.bond += 50.0;
+  system.accountConservedEnergy();
+  EXPECT_DOUBLE_EQ(system.polymerRampWork, 350.0);
+  EXPECT_DOUBLE_EQ(system.conservedEnergy - system.referenceEnergy, 0.0);
+  EXPECT_FALSE(system.polymerRampWasActive);
+
+  // steps without a ramp: the change is integration drift
+  table.currentStep = 151;
+  system.runningEnergies.bond += 2.0;
+  system.accountConservedEnergy();
+  EXPECT_DOUBLE_EQ(system.polymerRampWork, 350.0);
+  EXPECT_DOUBLE_EQ(system.conservedEnergy - system.referenceEnergy, 2.0);
+  EXPECT_DOUBLE_EQ(system.accumulatedDrift, std::abs(2.0 / system.referenceEnergy));
+  const double driftSoFar = system.accumulatedDrift;
+
+  // a reaction: the jump of the potential of the new topology is ramp work; the drift carries over
+  system.runningEnergies.bond += 1.0e4;
+  system.accountTopologyChange();
+  EXPECT_DOUBLE_EQ(system.polymerRampWork, 350.0 + 1.0e4);
+  EXPECT_DOUBLE_EQ(system.polymerReactionJumps, 1.0e4);
+  EXPECT_DOUBLE_EQ(system.conservedEnergy - system.referenceEnergy, 2.0);
+  EXPECT_DOUBLE_EQ(system.accumulatedDrift, driftSoFar);
+  EXPECT_TRUE(system.polymerRampWasActive);
+  EXPECT_DOUBLE_EQ(system.conservedEnergy, start + 350.0 + 2.0 + 1.0e4);
+
+  // the first step after the reaction (the table has no new ramp here, the flag covers it)
+  system.runningEnergies.bond -= 100.0;
+  system.accountConservedEnergy();
+  EXPECT_DOUBLE_EQ(system.polymerRampWork, 250.0 + 1.0e4);
+  EXPECT_DOUBLE_EQ(system.conservedEnergy - system.referenceEnergy, 2.0);
+  EXPECT_FALSE(system.polymerRampWasActive);
+
+  // a system without polymer links: every change is drift
+  System plain = makeRingOpeningSystem(5, 2, 0, 100, 100);
+  plain.runningEnergies = RunningEnergy{};
+  plain.runningEnergies.moleculeMoleculeVDW = -5.0e4;
+  plain.resetConservedEnergyBookkeeping();
+  plain.runningEnergies.bond += 300.0;
+  plain.accountConservedEnergy();
+  EXPECT_DOUBLE_EQ(plain.polymerRampWork, 0.0);
+  EXPECT_DOUBLE_EQ(plain.conservedEnergy - plain.referenceEnergy, 300.0);
+}
+
 TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_matches_host_with_broken_bonds)
 {
   const PairDevice pairDevice = GetParam();
