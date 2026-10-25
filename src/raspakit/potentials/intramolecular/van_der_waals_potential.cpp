@@ -62,7 +62,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, VanDerWaalsP
   archive >> b.identifiers;
   archive >> b.scaling;
   archive >> b.parameters;
-  if (versionNumber >= 3) archive >> b.pair14;
+  archive >> b.pair14;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

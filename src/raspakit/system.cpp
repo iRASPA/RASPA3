@@ -1725,14 +1725,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
 
   archive >> s.reactions;
   archive >> s.tmmc;
-  if (versionNumber >= 2)
-  {
-    archive >> s.crossLinks;
-  }
-  if (versionNumber >= 6)
-  {
-    archive >> s.polymerLinks;
-  }
+  archive >> s.crossLinks;
+  archive >> s.polymerLinks;
 
   archive >> s.averageEnergies;
   archive >> s.averageLoadings;
@@ -1754,37 +1748,22 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.averageEnergyHistogram;
   archive >> s.averageNumberOfMoleculesHistogram;
   archive >> s.propertyMoleculeProperties;
-  if (versionNumber >= 3)
-  {
-    archive >> s.propertyMoleculeShape;
-    archive >> s.propertyMoleculeBackbone;
-  }
+  archive >> s.propertyMoleculeShape;
+  archive >> s.propertyMoleculeBackbone;
   archive >> s.propertyMSD;
   archive >> s.propertyVACF;
-  if (versionNumber >= 4)
-  {
-    archive >> s.propertyEndToEndACF;
-  }
+  archive >> s.propertyEndToEndACF;
   archive >> s.writeLammpsData;
 
   archive >> s.propertyNumberOfMoleculesEvolution;
   archive >> s.propertyVolumeEvolution;
   archive >> s.propertyConservedEnergyEvolution;
 
-  if (versionNumber >= 5)
-  {
-    archive >> s.soluteTemperingComponent;
-    archive >> s.soluteTemperingLambda;
-  }
-  if (versionNumber >= 7)
-  {
-    archive >> s.hybridMCUseForceEngine;
-    archive >> s.forceEngineSettings;
-  }
-  if (versionNumber >= 8)
-  {
-    archive >> s.propertyRadicalWaitingTimes;
-  }
+  archive >> s.soluteTemperingComponent;
+  archive >> s.soluteTemperingLambda;
+  archive >> s.hybridMCUseForceEngine;
+  archive >> s.forceEngineSettings;
+  archive >> s.propertyRadicalWaitingTimes;
   // the engine itself is derived state, rebuilt by the first hybrid MC move
   s.hybridMCForceEngine.reset();
 

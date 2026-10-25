@@ -342,27 +342,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Thermostat &
   archive >> t.numberOfYoshidaSuzukiSteps;
   archive >> t.timeScaleParameterThermostat;
 
-  if (versionNumber >= 2)
-  {
-    archive >> t.translationalDegreesOfFreedom;
-    archive >> t.rotationalDegreesOfFreedom;
-    archive >> t.translationalCenterOfMassConstraint;
-  }
-  else
-  {
-    // version-1 files did not store the particle degrees of freedom; recover them from the archived
-    // chain targets (k_B T (N_f - N_c) and k_B T N_rot; the center-of-mass constraint is folded in)
-    const double kT = Units::KB * t.temperature;
-    t.translationalCenterOfMassConstraint = 0;
-    t.translationalDegreesOfFreedom =
-        (kT > 0.0 && !t.thermostatDegreesOfFreedomTranslation.empty())
-            ? static_cast<std::size_t>(std::llround(t.thermostatDegreesOfFreedomTranslation.front() / kT))
-            : 0;
-    t.rotationalDegreesOfFreedom =
-        (kT > 0.0 && !t.thermostatDegreesOfFreedomRotation.empty())
-            ? static_cast<std::size_t>(std::llround(t.thermostatDegreesOfFreedomRotation.front() / kT))
-            : 0;
-  }
+  archive >> t.translationalDegreesOfFreedom;
+  archive >> t.rotationalDegreesOfFreedom;
+  archive >> t.translationalCenterOfMassConstraint;
 
   archive >> t.thermostatForceTranslation;
   archive >> t.thermostatVelocityTranslation;

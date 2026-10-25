@@ -53,7 +53,7 @@ export struct ParallelTempering
    */
   ParallelTempering(InputReader& reader);
 
-  std::uint64_t versionNumber{3};  ///< Version number for serialization (2: round-trips, 3: solute tempering).
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   RandomNumber random;  ///< Random number generator (seeding + swap acceptance).
 

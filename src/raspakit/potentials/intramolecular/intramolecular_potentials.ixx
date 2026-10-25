@@ -42,7 +42,7 @@ export namespace Potentials
  */
 struct ImplicitPairParameters
 {
-  std::uint64_t versionNumber{3};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   std::vector<std::uint32_t> typeIndex{};           ///< Per atom: the index of its type in 'parameters'.
   std::vector<double> charge{};                     ///< Per atom: the charge.
@@ -90,7 +90,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ImplicitPair
  */
 struct IntraMolecularPotentials
 {
-  std::uint64_t versionNumber{3};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   IntraMolecularExclusions exclusions{};        ///< The exclusion topology defining the implicit non-bonded pairs.
   ImplicitPairParameters implicitParameters{};  ///< The parameters to materialise the implicit pairs.

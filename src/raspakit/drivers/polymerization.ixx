@@ -63,7 +63,7 @@ export struct Polymerization
 {
   Polymerization(InputReader& reader);
 
-  std::uint64_t versionNumber{6};
+  std::uint64_t versionNumber{1};
 
   MolecularDynamicsSpatialDecomposition md;
   PolymerizationSettings settings{};

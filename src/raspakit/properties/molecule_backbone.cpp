@@ -678,16 +678,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyMole
                                          location.line(), location.file_name()));
   }
 
-  if (versionNumber < 3)
-  {
-    // Versions 1 and 2 held system-wide settings and a single wave-vector grid; the per-component
-    // layout cannot be reconstructed from them.
-    const std::source_location &location = std::source_location::current();
-    throw std::runtime_error(std::format(
-        "Invalid version {} reading 'PropertyMoleculeBackbone' (expected {}) at line {} in file {}\n", versionNumber,
-        p.versionNumber, location.line(), location.file_name()));
-  }
-
   archive >> p.numberOfBlocks;
   archive >> p.numberOfComponents;
   archive >> p.settingsPerComponent;

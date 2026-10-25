@@ -1054,7 +1054,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Polymerizati
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
-  if (versionNumber != p.versionNumber)
+  if (versionNumber > p.versionNumber)
   {
     throw std::runtime_error(std::format("Invalid version reading 'Polymerization' at line {} in file {}\n",
                                          std::source_location::current().line(),

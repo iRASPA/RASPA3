@@ -10,7 +10,7 @@ import energy_dudlambda;
 
 export struct EnergyIntra
 {
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{1};
 
   double bond;
   double ureyBradley;

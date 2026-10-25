@@ -87,22 +87,10 @@ Archive<std::ifstream>& CBMC::operator>>(Archive<std::ifstream>& archive, CBMC::
                     location.line(), location.file_name()));
   }
 
-  if (versionNumber < 3)
-  {
-    // Versions 1 and 2 stored the step sizes of the former internal flexible-bead Monte-Carlo
-    // (bond-length, bend-angle, cone-position); read and discard them.
-    MoveStatistics<double> legacy{};
-    archive >> legacy;
-    archive >> legacy;
-    archive >> legacy;
-  }
   archive >> p.ringDisplacementChange;
   archive >> p.ringRotationChange;
   archive >> p.ringCrankshaftMove;
-  if (versionNumber >= 2)
-  {
-    archive >> p.rigidTiltRotationChange;
-  }
+  archive >> p.rigidTiltRotationChange;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

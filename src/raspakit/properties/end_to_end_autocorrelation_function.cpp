@@ -714,14 +714,12 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEndT
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
-  if (versionNumber != p.versionNumber)
+  if (versionNumber > p.versionNumber)
   {
-    // version 1 held one system-wide schedule and block structure; it cannot be split per component;
-    // version 2 lacks the conformational (R^2, Rg^2) accumulators
     const std::source_location &location = std::source_location::current();
-    throw std::runtime_error(std::format(
-        "Invalid version {} reading 'PropertyEndToEndAutoCorrelationFunction' (expected {}) at line {} in file {}\n",
-        versionNumber, p.versionNumber, location.line(), location.file_name()));
+    throw std::runtime_error(
+        std::format("Invalid version reading 'PropertyEndToEndAutoCorrelationFunction' at line {} in file {}\n",
+                    location.line(), location.file_name()));
   }
 
   archive >> p.numberOfMoleculesPerComponent;

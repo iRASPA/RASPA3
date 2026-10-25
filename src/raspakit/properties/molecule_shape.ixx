@@ -103,7 +103,7 @@ export struct PropertyMoleculeShape
   PropertyMoleculeShape(std::size_t numberOfBlocks, const ForceField &forceField,
                        const std::vector<Component> &components);
 
-  std::uint64_t versionNumber{3};
+  std::uint64_t versionNumber{1};
 
   std::size_t numberOfBlocks{0};
   std::size_t numberOfComponents{0};

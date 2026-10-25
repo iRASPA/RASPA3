@@ -18,7 +18,7 @@ export template <typename T>
  */
 struct MoveStatistics
 {
-  std::uint64_t versionNumber{2};  ///< Version number for serialization purposes (2: reported snapshot).
+  std::uint64_t versionNumber{1};  ///< Version number for serialization purposes.
 
   bool operator==(MoveStatistics<T> const &) const = default;
 
@@ -209,19 +209,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoveStatisti
   archive >> m.upperLimit;
   archive >> m.optimize;
 
-  if (versionNumber >= 2)
-  {
-    archive >> m.reportedCounts;
-    archive >> m.reportedConstructed;
-    archive >> m.reportedAccepted;
-  }
-  else
-  {
-    // older restart file: the first report after the restart covers the whole history so far
-    m.reportedCounts = T{};
-    m.reportedConstructed = T{};
-    m.reportedAccepted = T{};
-  }
+  archive >> m.reportedCounts;
+  archive >> m.reportedConstructed;
+  archive >> m.reportedAccepted;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

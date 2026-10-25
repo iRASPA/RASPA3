@@ -15,7 +15,7 @@ import archive;
 /// 'ComputeMoleculeProperties' in the input.
 export struct MoleculePropertiesSettings
 {
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{1};
 
   std::size_t sampleEvery{10};
   std::optional<std::size_t> writeEvery{5000};
@@ -34,7 +34,7 @@ export struct MoleculePropertiesSettings
 /// Gyration-tensor shape descriptors; 'ComputeMoleculeShape' in the input.
 export struct MoleculeShapeSettings
 {
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{1};
 
   std::size_t sampleEvery{10};
   std::optional<std::size_t> writeEvery{5000};

@@ -74,7 +74,7 @@ export struct PropertyMoleculeBackbone
   /// component has a backbone of fewer than three beads or an invalid wave-vector range.
   PropertyMoleculeBackbone(std::size_t numberOfBlocks, const std::vector<Component> &components);
 
-  std::uint64_t versionNumber{3};
+  std::uint64_t versionNumber{1};
 
   std::size_t numberOfBlocks{0};
   std::size_t numberOfComponents{0};

@@ -7,7 +7,7 @@ import randomnumbers;
 
 // The restart file stores the state of the std::mt19937_64 engine in its standard textual form
 // (312 decimal words, [rand.eng.mers]); restoring is O(1) instead of replaying 'count' draws with
-// discard(). Files in the legacy 'seed, count' format must still read.
+// discard(). A stream that does not start with the archive marker is rejected.
 
 namespace
 {
@@ -56,25 +56,18 @@ TEST(RANDOM_ARCHIVE, engine_state_round_trip_continues_the_sequence)
   }
 }
 
-TEST(RANDOM_ARCHIVE, legacy_seed_count_format_still_reads)
+TEST(RANDOM_ARCHIVE, stream_without_marker_is_rejected)
 {
-  RandomNumber reference(std::size_t{4242});
-  for (std::size_t i = 0; i < 5000; ++i) reference.uniform();
-
-  const std::filesystem::path path = temporaryFile("raspa3_random_archive_legacy.bin");
+  const std::filesystem::path path = temporaryFile("raspa3_random_archive_no_marker.bin");
   {
     std::ofstream stream(path, std::ios::binary);
     Archive<std::ofstream> archive(stream);
-    archive << std::size_t{4242};  // seed (the first word is not the marker, so this is the legacy layout)
-    archive << std::size_t{5000};  // count: one engine call per uniform()
+    archive << std::size_t{4242};  // not the marker
+    archive << std::size_t{5000};
   }
   RandomNumber restored;
-  readArchive(path, restored);
+  EXPECT_THROW(readArchive(path, restored), std::runtime_error);
   std::filesystem::remove(path);
-
-  EXPECT_EQ(restored.seed, std::size_t{4242});
-  EXPECT_EQ(restored.count, std::size_t{5000});
-  for (std::size_t i = 0; i < 100; ++i) EXPECT_EQ(restored.uniform(), reference.uniform());
 }
 
 TEST(RANDOM_ARCHIVE, textual_engine_state_is_standard_form)

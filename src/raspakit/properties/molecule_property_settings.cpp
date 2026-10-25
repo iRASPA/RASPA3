@@ -10,7 +10,7 @@ namespace
 {
 void checkVersion(std::uint64_t read, std::uint64_t current, const char* name)
 {
-  if (read != current)
+  if (read > current)
   {
     const std::source_location& location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading '{}' at line {} in file {}\n", name, location.line(),

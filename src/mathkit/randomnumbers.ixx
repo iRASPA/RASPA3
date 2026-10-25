@@ -28,7 +28,7 @@ export struct RandomNumber
     return (mt == rhs.mt) && (seed == rhs.seed) && (count == rhs.count);
   }
 
-  /// Marker that starts the versioned archive format (distinguishes it from the legacy 'seed, count' format).
+  /// Marker that starts the archive record (a sanity check that the stream is positioned at a RandomNumber).
   static constexpr std::uint64_t archiveMarker{0x52414E444F4D2121};  // "RANDOM!!"
   /// Archive format version (1: seed, count, and the engine state as its standard textual representation).
   static constexpr std::uint64_t versionNumber{1};

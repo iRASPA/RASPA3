@@ -36,7 +36,7 @@ import connectivity_table;
  */
 export struct IntraMolecularExclusions
 {
-  std::uint64_t versionNumber{3};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   /// A non-excluded pair that is evaluated apart from the generic pair loops: its van der Waals or Coulomb
   /// interaction is scaled (the 1-4 pairs, listed overrides), or it is a 1-4 pair of a force field with separate

@@ -1356,8 +1356,7 @@ nlohmann::json Framework::jsonStatus() const
   return status;
 }
 
-// Version 2: the rigid-body reference data moved into the Fragment base class.
-static constexpr std::uint64_t frameworkGroupVersionNumber{2};
+static constexpr std::uint64_t frameworkGroupVersionNumber{1};
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const FrameworkGroup& g)
 {
@@ -1371,7 +1370,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, FrameworkGro
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
-  if (versionNumber != frameworkGroupVersionNumber)
+  if (versionNumber > frameworkGroupVersionNumber)
   {
     const std::source_location& location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'FrameworkGroup' at line {} in file {}\n",

@@ -694,14 +694,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RunningEnerg
   archive >> e.bendTorsion;
   archive >> e.intraVDW;
   archive >> e.intraCoul;
-  if (versionNumber >= 2)
-  {
-    archive >> e.crossLink;
-  }
-  else
-  {
-    e.crossLink = 0.0;
-  }
+  archive >> e.crossLink;
   archive >> e.tail;
   archive >> e.polarization;
   archive >> e.dudlambdaVDW;
@@ -711,14 +704,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RunningEnerg
   archive >> e.rotationalKineticEnergy;
   archive >> e.NoseHooverEnergy;
   archive >> e.thermobarostatEnergy;
-  if (versionNumber >= 3)
-  {
-    archive >> e.cmap;
-  }
-  else
-  {
-    e.cmap = 0.0;
-  }
+  archive >> e.cmap;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

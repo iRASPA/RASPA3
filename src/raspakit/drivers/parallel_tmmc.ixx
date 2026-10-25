@@ -143,7 +143,7 @@ export struct ParallelTMMC
   ParallelTMMC(System templateSystem, std::vector<double> temperatures,
                ParallelTMMCParameters parameters = {});
 
-  std::uint64_t versionNumber{2};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   RandomNumber random;  ///< Random number generator (seeding).
 

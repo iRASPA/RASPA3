@@ -39,7 +39,7 @@ export struct PropertyMoleculeProperties
   /// component has nothing to sample (no flexible bonds, bends or torsions and no end-to-end atoms).
   PropertyMoleculeProperties(std::size_t numberOfBlocks, const std::vector<Component> &components);
 
-  std::uint64_t versionNumber{3};
+  std::uint64_t versionNumber{1};
 
   std::size_t numberOfBlocks{0};
   std::size_t numberOfComponents{0};

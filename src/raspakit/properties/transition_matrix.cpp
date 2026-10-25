@@ -412,26 +412,16 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, TransitionMa
   archive >> m.rejectOutOfBound;
   archive >> m.rezeroAfterInitialization;
 
-  if (versionNumber >= 2)
-  {
-    archive >> m.wangLandauHistogram;
-    archive >> m.wangLandauFactor;
-    archive >> m.wangLandauFactorFloor;
-    archive >> m.wangLandauFlatness;
-    archive >> m.wangLandauCheckEvery;
-    archive >> m.wangLandauVisits;
-    archive >> m.useWangLandau;
-  }
+  archive >> m.wangLandauHistogram;
+  archive >> m.wangLandauFactor;
+  archive >> m.wangLandauFactorFloor;
+  archive >> m.wangLandauFlatness;
+  archive >> m.wangLandauCheckEvery;
+  archive >> m.wangLandauVisits;
+  archive >> m.useWangLandau;
 
   archive >> m.statisticsFileName;
-  if (versionNumber >= 3)
-  {
-    archive >> m.numberOfLambdaBins;
-  }
-  else
-  {
-    m.numberOfLambdaBins = 1uz;
-  }
+  archive >> m.numberOfLambdaBins;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

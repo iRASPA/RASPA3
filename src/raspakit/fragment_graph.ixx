@@ -29,7 +29,7 @@ import fragment;
  */
 export struct FragmentGraph
 {
-  std::uint64_t versionNumber{2};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   std::vector<Fragment> fragments{};        ///< Fragments in deterministic order (by lowest atom index).
   std::vector<std::size_t> atomFragmentIds{};  ///< Maps each atom to the index of its fragment.

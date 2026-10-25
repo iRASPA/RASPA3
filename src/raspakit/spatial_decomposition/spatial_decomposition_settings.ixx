@@ -63,7 +63,7 @@ export inline bool isDevice(PairDevice device) { return device != PairDevice::CP
 
 export struct SpatialDecompositionSettings
 {
-  std::uint64_t versionNumber{5};
+  std::uint64_t versionNumber{1};
 
   /// Number of worker threads (1: every phase runs on the calling thread through the same code path).
   std::size_t numberOfThreads{1};
@@ -177,38 +177,19 @@ export Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Spati
   {
     s.domainGrid.reset();
   }
-  s.pairPrecision = PairPrecision::Double;
-  s.pruneSkin = 0.5;
-  s.clusterKernelForDouble = false;
-  if (versionNumber >= 2)
-  {
-    std::uint8_t precision;
-    archive >> precision;
-    s.pairPrecision = precision == 1 ? PairPrecision::Mixed : PairPrecision::Double;
-    archive >> s.pruneSkin;
-    archive >> s.clusterKernelForDouble;
-  }
-  s.pairDevice = PairDevice::CPU;
-  if (versionNumber >= 3)
-  {
-    std::uint8_t device;
-    archive >> device;
-    s.pairDevice = device == 1   ? PairDevice::OpenCL
-                   : device == 2 ? PairDevice::Metal
-                   : device == 3 ? PairDevice::CUDA
-                                 : PairDevice::CPU;
-  }
-  s.deviceMesh = true;
-  s.deviceBonded = true;
-  if (versionNumber >= 4)
-  {
-    archive >> s.deviceMesh;
-    archive >> s.deviceBonded;
-  }
-  s.resident = true;
-  if (versionNumber >= 5)
-  {
-    archive >> s.resident;
-  }
+  std::uint8_t precision;
+  archive >> precision;
+  s.pairPrecision = precision == 1 ? PairPrecision::Mixed : PairPrecision::Double;
+  archive >> s.pruneSkin;
+  archive >> s.clusterKernelForDouble;
+  std::uint8_t device;
+  archive >> device;
+  s.pairDevice = device == 1   ? PairDevice::OpenCL
+                 : device == 2 ? PairDevice::Metal
+                 : device == 3 ? PairDevice::CUDA
+                               : PairDevice::CPU;
+  archive >> s.deviceMesh;
+  archive >> s.deviceBonded;
+  archive >> s.resident;
   return archive;
 }

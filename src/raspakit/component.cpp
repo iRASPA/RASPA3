@@ -3564,9 +3564,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
-  // The version-5 layout is incompatible with older archives (scratch/duplicated fields were
-  // dropped), so a mismatched version cannot be read field-by-field and must be rejected outright.
-  if (versionNumber != c.versionNumber)
+  if (versionNumber > c.versionNumber)
   {
     const std::source_location &location = std::source_location::current();
     throw std::runtime_error(std::format(
@@ -3632,11 +3630,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.partialReinsertionFixedAtoms;
   archive >> c.identityChanges;
   archive >> c.gibbsIdentityChanges;
-  // 'identitySwitches' was added in version 2; older restart files do not contain it.
-  if (versionNumber >= 2)
-  {
-    archive >> c.identitySwitches;
-  }
+  archive >> c.identitySwitches;
 
   archive >> c.initialNumberOfMolecules;
 

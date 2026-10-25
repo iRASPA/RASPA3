@@ -53,7 +53,7 @@ export struct Thermostat
              std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps,
              double timeScaleParameterThermostat);
 
-  std::uint64_t versionNumber{2};  ///< Version number for serialization (2: degrees of freedom are archived).
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   double temperature{};                       ///< The target temperature for the thermostat.
   double timeStep{};                          ///< The simulation time step.

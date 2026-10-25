@@ -263,7 +263,7 @@ export struct ChiralVolume
  */
 export struct PolymerLinkTable
 {
-  std::uint64_t versionNumber{4};
+  std::uint64_t versionNumber{1};
 
   PolymerTemplates templates{};
   ReactionScheme scheme{};

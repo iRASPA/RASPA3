@@ -453,19 +453,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Thermobarost
   value.ensemble = static_cast<MolecularDynamicsEnsemble>(ensemble);
   value.cellType = static_cast<CellMinimizationType>(cellType);
   value.monoclinicAngle = static_cast<MonoclinicAngleType>(angle);
-  if (version >= 2)
-  {
-    std::uint8_t coupling{};
-    archive >> coupling;
-    if (coupling > static_cast<std::uint8_t>(BarostatCoupling::Atomic))
-      throw std::runtime_error("Invalid Thermobarostat coupling in restart");
-    value.coupling = static_cast<BarostatCoupling>(coupling);
-  }
-  else
-  {
-    // Version-1 restarts were produced with per-atom coupling of flexible molecules.
-    value.coupling = BarostatCoupling::Atomic;
-  }
+  std::uint8_t coupling{};
+  archive >> coupling;
+  if (coupling > static_cast<std::uint8_t>(BarostatCoupling::Atomic))
+    throw std::runtime_error("Invalid Thermobarostat coupling in restart");
+  value.coupling = static_cast<BarostatCoupling>(coupling);
   archive >> value.temperature >> value.pressure >> value.timeStep >> value.timeScaleParameterBarostat;
   archive >> value.translationalDegreesOfFreedom >> value.cellDegreesOfFreedom >> value.chainLength;
   archive >> value.numberOfRespaSteps >> value.numberOfYoshidaSuzukiSteps;

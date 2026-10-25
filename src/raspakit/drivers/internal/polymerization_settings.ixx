@@ -53,7 +53,7 @@ export enum class Tacticity : std::uint8_t
 
 export struct PolymerizationSettings
 {
-  std::uint64_t versionNumber{5};
+  std::uint64_t versionNumber{1};
 
   std::size_t scanEvery{10};  ///< MD steps between two reaction scans ('ScanEvery').
   std::size_t startCycle{0};  ///< Production cycle at which the reactions start ('StartCycle').
@@ -116,7 +116,7 @@ export struct PolymerizationSettings
   {
     std::uint64_t versionNumber;
     archive >> versionNumber;
-    if (versionNumber != s.versionNumber)
+    if (versionNumber > s.versionNumber)
     {
       throw std::runtime_error(std::format("Invalid version reading 'PolymerizationSettings' at line {} in file {}\n",
                                            std::source_location::current().line(),

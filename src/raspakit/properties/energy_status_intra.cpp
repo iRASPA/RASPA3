@@ -58,14 +58,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyIntra 
   archive >> e.bendTorsion;
   archive >> e.vanDerWaals;
   archive >> e.coulomb;
-  if (versionNumber >= 2)
-  {
-    archive >> e.cmap;
-  }
-  else
-  {
-    e.cmap = 0.0;
-  }
+  archive >> e.cmap;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

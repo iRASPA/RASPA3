@@ -19,7 +19,7 @@ import double3;
  */
 export struct TransitionMatrix
 {
-  std::uint64_t versionNumber{3};  ///< Version number for serialization compatibility.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization compatibility.
 
   bool operator==(TransitionMatrix const&) const = default;
 

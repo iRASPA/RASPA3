@@ -83,7 +83,7 @@ export struct PropertyRadicalWaitingTimes
   {
   }
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{1};
 
   std::size_t binsPerDecade{10};
   std::size_t writeEvery{5000};

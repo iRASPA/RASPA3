@@ -544,7 +544,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyMole
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
-  if (versionNumber != p.versionNumber)
+  if (versionNumber > p.versionNumber)
   {
     const std::source_location &location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'PropertyMoleculeProperties' at line {} in file {}\n",

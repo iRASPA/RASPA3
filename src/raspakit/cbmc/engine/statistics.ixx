@@ -14,11 +14,7 @@ export namespace CBMC
 /// indexed by the anchor bead of the step). Serialized into the restart file.
 struct InternalMoveStatistics
 {
-  // Version 2 added 'rigidTiltRotationChange' (version-1 restart files are read with its default).
-  // Version 3 dropped the bond-length / bend-angle / cone-position entries of the former internal
-  // flexible-bead Monte-Carlo, which the exact base sampler replaced; older files still carry them and
-  // the reader skips them.
-  std::uint64_t versionNumber{3};
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   // Internal ring-closure Monte-Carlo step sizes: 'ringDisplacementChange' is the maximum per-atom
   // and rigid-fragment translation (Angstrom), 'ringRotationChange' the maximum whole-ring tilt and

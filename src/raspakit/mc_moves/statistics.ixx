@@ -66,7 +66,7 @@ export struct SubMoveStatistics
 
 export struct MCMoveStatistics
 {
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{1};
 
   bool operator==(MCMoveStatistics const&) const = default;
 

@@ -32,7 +32,7 @@ export std::string barostatCouplingName(BarostatCoupling coupling);
 
 export struct Thermobarostat
 {
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{1};
   MolecularDynamicsEnsemble ensemble{MolecularDynamicsEnsemble::NVE};
   CellMinimizationType cellType{CellMinimizationType::Isotropic};
   MonoclinicAngleType monoclinicAngle{MonoclinicAngleType::Beta};

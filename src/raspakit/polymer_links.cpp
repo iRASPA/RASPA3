@@ -2019,7 +2019,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PolymerLinkT
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
-  if (versionNumber != t.versionNumber)
+  if (versionNumber > t.versionNumber)
   {
     throw std::runtime_error(std::format("Invalid version reading 'PolymerLinkTable' at line {} in file {}\n",
                                          std::source_location::current().line(),

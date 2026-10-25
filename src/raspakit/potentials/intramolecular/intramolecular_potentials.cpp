@@ -1277,11 +1277,8 @@ Archive<std::ifstream> &Potentials::operator>>(Archive<std::ifstream> &archive, 
   archive >> p.coulombs;
   archive >> p.exclusions;
   archive >> p.implicitParameters;
-  if (versionNumber >= 3)
-  {
-    archive >> p.cmapMaps;
-    archive >> p.cmaps;
-  }
+  archive >> p.cmapMaps;
+  archive >> p.cmaps;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
@@ -1337,7 +1334,7 @@ Archive<std::ifstream> &Potentials::operator>>(Archive<std::ifstream> &archive, 
   archive >> p.charge;
   archive >> p.numberOfTypes;
   archive >> p.parameters;
-  if (versionNumber >= 3) archive >> p.parameters14;
+  archive >> p.parameters14;
   archive >> p.useCharge;
   return archive;
 }

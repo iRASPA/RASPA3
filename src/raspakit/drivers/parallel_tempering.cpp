@@ -1004,20 +1004,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTemp
   archive >> pt.swapAccepted;
   archive >> pt.swapAttemptsPerPair;
   archive >> pt.swapAcceptedPerPair;
-  if (versionNumber >= 2)
-  {
-    archive >> pt.roundTrips;
-  }
-  else
-  {
-    // restart file predates the round-trip diagnostic: start counting from the current arrangement
-    pt.roundTrips.initialize(pt.numberOfReplicas);
-  }
-  if (versionNumber >= 3)
-  {
-    archive >> pt.soluteTemperingComponent;
-    archive >> pt.soluteTemperatures;
-  }
+  archive >> pt.roundTrips;
+  archive >> pt.soluteTemperingComponent;
+  archive >> pt.soluteTemperatures;
 
   archive >> pt.totalPreInitializationSimulationTime;
   archive >> pt.totalInitializationSimulationTime;

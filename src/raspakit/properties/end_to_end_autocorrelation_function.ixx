@@ -147,7 +147,7 @@ export struct PropertyEndToEndAutoCorrelationFunction
       const std::vector<std::optional<EndToEndACFSettings>> &settingsPerComponent, std::size_t numberOfParticles,
       double timeStep);
 
-  std::uint64_t versionNumber{3};
+  std::uint64_t versionNumber{1};
 
   std::vector<std::size_t> numberOfMoleculesPerComponent{};
   std::vector<std::size_t> moleculeOffsetPerComponent{};  ///< Index of the first molecule of each component.

@@ -10,8 +10,7 @@ import mc_moves_statistics;
 
 // The periodic status reports show the acceptance 'since the previous report' next to the cumulative
 // one. The window is the difference between the cumulative counters and a snapshot taken when the
-// previous report was written ('markReported'). The snapshot is part of the restart file (version 2 of
-// the MoveStatistics record); a version-1 record must still read, with an empty snapshot.
+// previous report was written ('markReported'). The snapshot is part of the restart file.
 
 TEST(MOVE_STATISTICS_WINDOW, window_is_difference_with_snapshot)
 {
@@ -94,41 +93,4 @@ TEST(MOVE_STATISTICS_WINDOW, archive_round_trip_keeps_snapshot)
   EXPECT_EQ(restored, original);
   EXPECT_EQ(restored.windowCounts(), 20.0);
   EXPECT_EQ(restored.windowAccepted(), 10.0);
-}
-
-TEST(MOVE_STATISTICS_WINDOW, version_1_record_reads_with_empty_snapshot)
-{
-  // hand-written version-1 record: everything up to and including 'optimize', no snapshot
-  const std::filesystem::path path = std::filesystem::temp_directory_path() / "raspa3_move_statistics_window_v1.bin";
-  {
-    std::ofstream stream(path, std::ios::binary);
-    Archive<std::ofstream> archive(stream);
-    archive << std::uint64_t{1};
-    archive << double{3.0};     // counts
-    archive << double{3.0};     // constructed
-    archive << double{1.0};     // accepted
-    archive << std::size_t{7};  // allCounts
-    archive << double{120.0};   // totalCounts
-    archive << double{110.0};   // totalConstructed
-    archive << double{40.0};    // totalAccepted
-    archive << double{0.3};     // maxChange
-    archive << double{0.5};     // targetAcceptance
-    archive << double{0.01};    // lowerLimit
-    archive << double{0.5};     // upperLimit
-    archive << bool{true};      // optimize
-  }
-  MoveStatistics<double> restored;
-  restored.reportedCounts = 99.0;  // must be reset by a version-1 read
-  {
-    std::ifstream stream(path, std::ios::binary);
-    Archive<std::ifstream> archive(stream);
-    archive >> restored;
-  }
-  std::filesystem::remove(path);
-
-  EXPECT_EQ(restored.totalCounts, 120.0);
-  EXPECT_EQ(restored.totalAccepted, 40.0);
-  EXPECT_EQ(restored.maxChange, 0.3);
-  EXPECT_EQ(restored.reportedCounts, 0.0);
-  EXPECT_EQ(restored.windowCounts(), 120.0);  // first report after the restart covers the whole history
 }

@@ -1732,16 +1732,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
   }
 
   archive >> f.data;
-  if (versionNumber >= 3)
-  {
-    archive >> f.data14;
-    archive >> f.truncationMethod;
-    archive >> f.switchingDistance;
-  }
-  if (versionNumber >= 4)
-  {
-    archive >> f.cmapMaps;
-  }
+  archive >> f.data14;
+  archive >> f.truncationMethod;
+  archive >> f.switchingDistance;
+  archive >> f.cmapMaps;
   archive >> f.shiftPotentials;
   archive >> f.tailCorrections;
   archive >> f.cutOffFrameworkVDWAutomatic;

@@ -153,18 +153,13 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Random
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RandomNumber &r)
 {
-  std::uint64_t first;
-  archive >> first;
-
-  if (first != RandomNumber::archiveMarker)
+  std::uint64_t marker;
+  archive >> marker;
+  if (marker != RandomNumber::archiveMarker)
   {
-    // legacy format: 'first' is the seed, followed by the draw count; replay the sequence
-    r.seed = first;
-    archive >> r.count;
-    r.mt = std::mt19937_64(r.seed);
-    r.mt.discard(r.count);
-    r.normalDistribution.reset();
-    return archive;
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid archive marker reading 'RandomNumber' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
   }
 
   std::uint64_t versionNumber;

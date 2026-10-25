@@ -23,7 +23,7 @@ import vdwparameters;
  */
 export struct VanDerWaalsPotential
 {
-  std::uint64_t versionNumber{3};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   std::array<std::size_t, 2> identifiers{0, 0};  ///< Identifiers of the two atoms forming the pair.
   double scaling{1.0};                           ///< The pair scaling (1-4 scaling, 1 for ordinary pairs).

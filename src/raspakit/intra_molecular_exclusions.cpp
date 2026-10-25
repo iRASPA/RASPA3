@@ -218,7 +218,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, IntraMolecul
     archive >> pair.atomB;
     archive >> pair.scalingVDW;
     archive >> pair.scalingCoulomb;
-    if (versionNumber >= 3) archive >> pair.pair14;
+    archive >> pair.pair14;
   }
 
 #if DEBUG_ARCHIVE
