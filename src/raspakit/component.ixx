@@ -43,7 +43,7 @@ import chiral_center;
 import connectivity_table;
 import intra_molecular_exclusions;
 import cross_links;
-import polymerization_site;
+import reactive_group;
 export import fragment;
 export import fragment_graph;
 export import cbmc_growth_plan;
@@ -259,10 +259,10 @@ export struct Component
   /// CrossLinkTable). Read from the component's 'ReactiveSites'. Empty for ordinary components.
   std::vector<ReactiveSite> reactiveSites{};
 
-  /// Polymerizable groups of this molecule for the chain-growth model of the 'Polymerization' driver (the
-  /// bonds formed are owned by the system's PolymerLinkTable). Read from the component's
-  /// 'PolymerizationSites'; independent of 'ReactiveSites'. Empty for ordinary components.
-  std::vector<PolymerizationSite> polymerizationSites{};
+  /// Reactive functional groups of this molecule for the reaction rules of the 'Polymerization' driver (the
+  /// bonds formed are owned by the system's PolymerLinkTable). Read from the component's 'ReactiveGroups';
+  /// independent of 'ReactiveSites'. Empty for ordinary components.
+  std::vector<ReactiveGroup> reactiveGroups{};
 
   /// The fragment decomposition of the molecule and its deterministic CBMC growth structure. Every
   /// molecule has one: a fully flexible molecule is all single-atom fragments, a fully rigid molecule
@@ -730,8 +730,14 @@ export struct Component
    * system. Throws for indices out of range, duplicates, or a zero valence.
    */
   std::vector<ReactiveSite> readReactiveSites(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data) const;
-  std::vector<PolymerizationSite> readPolymerizationSites(
-      const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data) const;
+  /**
+   * \brief Reads the optional 'ReactiveGroups' of a molecule (see ReactiveGroup): objects
+   *        {"Type" : "name", "State" : "initial", "Atoms" : {"role" : index, ...}}.
+   *
+   * Throws for indices out of range, an atom in two groups or twice in one group, duplicate roles, or an
+   * empty 'Atoms'.
+   */
+  std::vector<ReactiveGroup> readReactiveGroups(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data) const;
 
   /**
    * \brief Reads the optional 'ChiralCenters' of a molecule: a list of atom-index quadruples

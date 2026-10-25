@@ -13,7 +13,8 @@ import atom;
 import molecule;
 import forcefield;
 import component;
-import polymerization_site;
+import reactive_group;
+import polymer_reactions;
 import bond_potential;
 import bend_potential;
 import torsion_potential;
@@ -40,28 +41,14 @@ export struct PolymerAtomRef
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PolymerAtomRef &r);
 };
 
-/// The state of a polymerization site (see PolymerizationSite).
-export enum class PolymerSiteState : std::uint8_t
-{
-  Monomer = 0,  ///< Unreacted double bond.
-  Radical = 1,  ///< Active chain end: the tail carries the unpaired electron.
-  Dead = 2      ///< Fully reacted (both the head and the tail are bonded).
-};
-
-export enum class PolymerBondKind : std::uint8_t
-{
-  Propagation = 0,  ///< Radical tail + monomer head.
-  Termination = 1   ///< Radical tail + radical tail (combination).
-};
-
 /**
- * \brief One bond formed by the polymerization: two atoms of (in general) different molecules.
+ * \brief One bond formed by a reaction: two atoms of (in general) different molecules.
  */
 export struct PolymerBond
 {
-  PolymerAtomRef a{};  ///< The tail of the attacking radical.
-  PolymerAtomRef b{};  ///< The head of the attacked monomer, or the tail of the other radical.
-  PolymerBondKind kind{PolymerBondKind::Propagation};
+  PolymerAtomRef a{};
+  PolymerAtomRef b{};
+  std::uint16_t reaction{0};      ///< Index of the reaction rule that formed it (see ReactionScheme).
   std::uint64_t formedAtStep{0};  ///< MD step at which the bond was formed (the start of its force ramp).
   double formationDistance{0.0};  ///< Distance of the two atoms when the bond was formed [Angstrom].
 
@@ -71,6 +58,63 @@ export struct PolymerBond
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PolymerBond &b);
 };
 
+/**
+ * \brief One bond of the molecule topology broken by a reaction ('BreakBonds' of a ReactionRule): two atoms of
+ * one molecule. The bond and the bends and torsions of the molecule through it are switched off (ramped out)
+ * and the non-bonded exclusions of the pairs around it follow the new connectivity.
+ */
+export struct BrokenBond
+{
+  PolymerAtomRef a{};
+  PolymerAtomRef b{};
+  std::uint16_t reaction{0};      ///< Index of the reaction rule that broke it.
+  std::uint64_t brokenAtStep{0};  ///< MD step at which the bond was broken (the start of its ramp).
+
+  bool operator==(BrokenBond const &) const = default;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BrokenBond &b);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BrokenBond &b);
+};
+
+/**
+ * \brief The change of pseudo-atom type of an atom by a reaction ('Retype' of a product).
+ *
+ * The log of the retypings gives the types of the atoms at any step; the bonded terms of a molecule that contain
+ * a retyped atom are overridden step by step along it (a term whose atoms are retyped twice goes from the
+ * parameters of the component to those of the first product types with the ramp of the first reaction, and from
+ * there to those of the second with the ramp of the second).
+ */
+export struct Retyping
+{
+  PolymerAtomRef atom{};
+  std::uint16_t from{0};  ///< The pseudo-atom type before.
+  std::uint16_t to{0};    ///< The pseudo-atom type after.
+  std::uint64_t step{0};  ///< MD step of the reaction (the start of the ramp of the overridden terms).
+
+  bool operator==(Retyping const &) const = default;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Retyping &r);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Retyping &r);
+};
+
+/**
+ * \brief A stereocentre created by a reaction ('Stereo' of a ReactionRule): the centre atom and its three
+ * substituents (global atom indices, in the order of the rule), the configuration it is held in (the sign of its
+ * normalised chiral volume; 0: free, not restrained), the bond whose ramp it follows, and the group it belongs
+ * to (the group of the centre atom; the dyad statistics pair the centres of consecutive groups of a chain).
+ */
+export struct StereoCentre
+{
+  std::array<std::uint32_t, 4> atoms{};
+  std::int8_t chirality{0};
+  std::uint32_t bond{0};
+  std::size_t group{0};
+
+  bool operator==(StereoCentre const &) const = default;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const StereoCentre &c);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, StereoCentre &c);
+};
 /**
  * \brief The type-based bonded parameter tables of the polymer ('Bonds', 'Bends', 'Torsions' of the
  * 'Polymerization' block, in the syntax of the molecule files).
@@ -172,7 +216,7 @@ export struct ChiralVolume
 };
 
 /**
- * \brief The bonds formed by a chain-growth polymerization and everything their energy needs.
+ * \brief The bonds formed by the reactions of a polymerization and everything their energy needs.
  *
  * Owned by System. The molecules keep their component-defined topology; the polymer bonds are an
  * overlay of inter-molecular (in the case of a cycle: intramolecular) bonded interactions, like the
@@ -184,56 +228,68 @@ export struct ChiralVolume
  *  - the pairs within three bonds across the new bond lose the non-bonded interaction the pair sums
  *    count for them (1-2, 1-3: excluded; 1-4: scaled with the 1-4 scaling of the component) -- the pair
  *    kernels are left untouched and the overlay subtracts exactly what they added;
- *  - the head and the tail of a reacted site change pseudo-atom type (the sp2 beads of the double bond
- *    become the sp3 beads of the backbone); the bonded terms of the monomer that contain a retyped atom
- *    are overridden by the product parameters (the overlay adds 'new - old').
+ *  - the atoms of a reacted group change pseudo-atom type as the rule prescribes (the sp2 beads of the
+ *    double bond become the sp3 beads of the backbone); the bonded terms of the molecule that contain a
+ *    retyped atom are overridden by the product parameters (the overlay adds 'new - old'; 'retypings' logs the
+ *    type changes, a term retyped by several reactions is taken from one parameter set to the next with the
+ *    ramp of each);
+ *  - a bond of the molecule topology broken by a rule ('brokenBonds'; the ring opening of an epoxide) is
+ *    overridden to zero together with the bends and torsions of the molecule through it (the overlay adds
+ *    '0 - old'), the connectivity the overlay follows loses the bond, and the pairs around it whose
+ *    exclusion no longer holds (1-3 pairs that become 1-4 or farther) receive the non-bonded interaction the
+ *    molecule's exclusions withhold from them.
  *
  * Every term of a bond is ramped in over 'relaxationSteps' MD steps after its formation (a linear
  * factor lambda on the term and on the pair corrections), so that a bond formed at the capture
- * distance pulls the atoms together smoothly instead of releasing the full bond energy at once.
+ * distance pulls the atoms together smoothly instead of releasing the full bond energy at once. A later
+ * reaction at an atom of an earlier bond does not restart the ramps of what it leaves unchanged: the pair
+ * corrections and the overrides form chains in the order of the reactions, every link ramped by its own.
  *
- * The tail of a reacted site is a stereocentre of the backbone (its substituents: the head, the side group of
- * the site definition and the polymer partner; the implicit hydrogen of the united-atom bead is the fourth).
- * 'siteChirality' holds per site the sign of its normalised chiral volume (see ChiralVolume): for a dead site
- * the configuration the centre is held in by the restraint
+ * The groups are the ReactiveGroup's of the molecules, enumerated per component, molecule and group definition
+ * once the table is activated; every group has a type and a state of the ReactionScheme ('scheme'). A reaction
+ * rule applied to one or two groups (apply()) retypes their atoms, changes their states, forms the bonds and
+ * records the stereocentres of the rule. A stereocentre is held in its configuration by the restraint
  *
  *   U = 1/2 k (V - chi V_0)^2        (chi = +-1, k 'chiralForceConstant', V_0 'chiralReferenceVolume'),
  *
- * ramped in with the bond that created the centre; for a radical the configuration its tail has to take when it
- * reacts (set by the driver from the tacticity); zero for a free centre (no tacticity control, or a site without
- * side group), which is neither restrained nor selected.
+ * on its normalised chiral volume (see ChiralVolume), ramped in with the bond that created it; a centre with
+ * chi = 0 (no tacticity control) is recorded for the statistics but not restrained. 'groupChirality' holds per
+ * group the configuration its next centre has to take (set by the driver from the tacticity through the 'Next'
+ * of a stereo entry; 0: free), and 'previousGroup' the group whose centre precedes it along the chain.
  *
- * The authoritative state is 'bonds', the site states and chiralities and the atom types of the system (the
- * latter are stored with the atoms); the per-term caches are derived and rebuilt by rebuild() after every
- * reaction and after a restart.
+ * The authoritative state is 'bonds', 'brokenBonds', 'retypings', 'centres', the group states and chiralities and
+ * the atom types of the system (the latter are stored with the atoms); the per-term caches are derived and rebuilt
+ * by rebuild() after every reaction and after a restart.
  */
 export struct PolymerLinkTable
 {
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{4};
 
   PolymerTemplates templates{};
+  ReactionScheme scheme{};
   std::vector<PolymerBond> bonds{};
+  std::vector<BrokenBond> brokenBonds{};
+  std::vector<Retyping> retypings{};  ///< In the order of the reactions.
+  std::vector<StereoCentre> centres{};
 
-  // Site bookkeeping. The sites are enumerated per component, molecule and site definition; the layout is fixed
-  // when the table is activated (the start of the reactive stage; the molecule counts do not change afterwards).
+  // Group bookkeeping. The groups are enumerated per component, molecule and group definition; the layout is
+  // fixed when the table is activated (the start of the reactive stage; the molecule counts do not change afterwards).
   bool activated{false};
-  std::vector<std::size_t> sitesPerMolecule{};      ///< Per component.
-  std::vector<std::size_t> siteOffset{};            ///< Per component: index of the first site of the component.
+  std::vector<std::size_t> groupsPerMolecule{};     ///< Per component.
+  std::vector<std::size_t> groupOffset{};           ///< Per component: index of the first group of the component.
   std::vector<std::size_t> moleculesPerComponent{}; ///< Per component: the molecule counts at activation.
-  std::vector<std::uint8_t> siteState{};            ///< Per site: PolymerSiteState.
-  std::vector<std::uint64_t> siteStep{};            ///< Per site: the step of its last state change (ramp).
-  std::vector<std::int8_t> siteChirality{};         ///< Per site: configuration (dead) or required one (radical).
+  std::vector<std::uint8_t> groupState{};           ///< Per group: state index within its type (see 'scheme').
+  std::vector<std::uint64_t> groupStep{};           ///< Per group: the step of its last state change (ramp).
+  std::vector<std::int8_t> groupChirality{};        ///< Per group: the configuration its next centre has to take.
+  std::vector<std::size_t> previousGroup{};         ///< Per group: the group preceding it along the chain (noGroup: none).
+  std::vector<std::size_t> reactionCounts{};        ///< Per reaction rule: the number of times it was applied.
 
   std::size_t relaxationSteps{0};  ///< Length of the force ramp of a new bond in MD steps (0: no ramp).
   std::uint64_t currentStep{0};    ///< The current MD step (set by the driver; the ramps refer to it).
   double chiralForceConstant{0.0};    ///< Of the restraint on the chiral volume [internal energy units].
   double chiralReferenceVolume{0.6};  ///< Magnitude of the normalised chiral volume the restraint holds.
 
-  std::size_t numberOfInitiations{0};
-  std::size_t numberOfPropagations{0};
-  std::size_t numberOfTerminations{0};
-
-  // ---- derived caches (rebuild()) ------------------------------------------------------------------------------
+  // ---- derived caches (activate() / rebuild()) ------------------------------------------------------------------
 
   /// Resolves (component, molecule, atom) to the index in the molecule-atom span, and molecules to global indices.
   struct Layout
@@ -258,6 +314,8 @@ export struct PolymerLinkTable
     std::size_t moleculeOf(std::size_t atom) const;
   };
   Layout layout{};
+  std::vector<std::uint16_t> groupType{};     ///< Per group: the group type index of the scheme.
+  std::vector<std::uint8_t> groupInitial{};   ///< Per group: the initial state index.
 
   struct LinkBondTerm
   {
@@ -307,11 +365,13 @@ export struct PolymerLinkTable
     PairState wanted{PairState::Excluded};
     PairScalingInfo countedScaling{};
     PairScalingInfo wantedScaling{};
-    std::uint32_t bondId{};
+    std::uint64_t step{};  ///< The step of the (newest) bond formation or breaking that changed the pair (ramp).
     bool listed{true};
   };
-  /// A bonded term of a molecule whose parameters change because an atom of it was retyped: the overlay adds
-  /// 'replacement - original'. The ramp follows the step of the state change of the site that retyped the atom.
+  /// A bonded term of a molecule whose parameters change because an atom of it was retyped, or that is switched
+  /// off because it runs through a broken bond (the replacement is then the zero potential: BondType::None,
+  /// BendType::Fixed, TorsionType::Fixed): the overlay adds 'replacement - original'. The ramp follows the step
+  /// of the state change of the group that retyped the atom (of the reaction that broke the bond).
   struct OverrideBondTerm
   {
     std::array<std::uint32_t, 2> atoms{};
@@ -334,8 +394,8 @@ export struct PolymerLinkTable
     std::uint64_t step{};
   };
 
-  /// The restraint of a reacted stereocentre: 'atoms' are the centre (the tail), the head, the polymer partner and
-  /// the side group; 'chirality' the sign held; the ramp is the one of the bond that created the centre.
+  /// The restraint of a stereocentre: 'atoms' are the centre and its three substituents; 'chirality' the sign
+  /// held; the ramp is the one of the bond that created the centre.
   struct StereoCentreTerm
   {
     std::array<std::uint32_t, 4> atoms{};
@@ -355,60 +415,73 @@ export struct PolymerLinkTable
   PairListExclusions unlisted{};
   /// Link partners of the atoms that carry polymer bonds (global atom indices).
   std::unordered_map<std::uint32_t, std::vector<std::uint32_t>> linkNeighbours{};
-  /// Per site: the polymer partner of the tail (global atom index) and the bond that made it; none: no partner.
-  std::vector<std::uint32_t> tailPartner{};
-  std::vector<std::uint32_t> tailBond{};
-  /// Per site: the site whose tail is bonded to the head (the previous unit of the chain), and the site whose
-  /// head the tail is bonded to (the next unit); none: chain end or termination junction.
-  std::vector<std::size_t> previousSite{};
-  std::vector<std::size_t> nextSite{};
+  /// The broken bonds as canonical pairs of global atom indices -> the step of the breaking.
+  std::map<std::array<std::uint32_t, 2>, std::uint64_t> brokenPairs{};
+  /// Per group: the group following it along the chain (the inverse of 'previousGroup'; noGroup: none).
+  std::vector<std::size_t> nextGroup{};
   static constexpr std::uint32_t noAtom = std::numeric_limits<std::uint32_t>::max();
-  static constexpr std::size_t noSite = std::numeric_limits<std::size_t>::max();
+  static constexpr std::size_t noGroup = std::numeric_limits<std::size_t>::max();
   bool derivedValid{false};
 
   bool operator==(PolymerLinkTable const &other) const
   {
-    return templates == other.templates && bonds == other.bonds && siteState == other.siteState &&
-           siteChirality == other.siteChirality;
+    return templates == other.templates && scheme == other.scheme && bonds == other.bonds &&
+           brokenBonds == other.brokenBonds && retypings == other.retypings && centres == other.centres &&
+           groupState == other.groupState &&
+           groupChirality == other.groupChirality;
   }
 
-  /// True when the overlay has nothing to evaluate (no bond formed and no site retyped).
-  bool empty() const { return bonds.empty() && numberOfInitiations == 0; }
+  /// True when the overlay has nothing to evaluate (no bond formed or broken and no group reacted).
+  bool empty() const { return bonds.empty() && brokenBonds.empty() && totalReactions() == 0; }
   std::size_t numberOfBonds() const { return bonds.size(); }
+  std::size_t numberOfBrokenBonds() const { return brokenBonds.size(); }
+  std::size_t totalReactions() const;
 
-  /// Fixes the site layout for the current molecule counts; all sites start as monomers.
+  /// Fixes the group layout for the current molecule counts; all groups start in their initial states.
   void activate(const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent);
 
-  std::size_t numberOfSites() const { return siteState.size(); }
-  std::size_t siteIndex(std::size_t componentId, std::size_t moleculeIndex, std::size_t site) const
+  std::size_t numberOfGroups() const { return groupState.size(); }
+  std::size_t groupIndex(std::size_t componentId, std::size_t moleculeIndex, std::size_t group) const
   {
-    return siteOffset[componentId] + moleculeIndex * sitesPerMolecule[componentId] + site;
+    return groupOffset[componentId] + moleculeIndex * groupsPerMolecule[componentId] + group;
   }
-  /// The component, molecule and site definition of site index 'index' (atomIndex holds the site definition).
-  PolymerAtomRef siteRef(std::size_t index) const;
-  PolymerSiteState state(std::size_t index) const { return static_cast<PolymerSiteState>(siteState[index]); }
-  std::int8_t chirality(std::size_t index) const { return siteChirality[index]; }
-  PolymerAtomRef headOf(std::size_t index, const std::vector<Component> &components) const;
-  PolymerAtomRef tailOf(std::size_t index, const std::vector<Component> &components) const;
-  /// The side group of the site definition (none: the tail is not a stereocentre).
-  std::optional<PolymerAtomRef> sideGroupOf(std::size_t index, const std::vector<Component> &components) const;
-  /// The site whose head or tail is the global atom 'atom', with whether the atom is the tail.
-  std::optional<std::pair<std::size_t, bool>> siteOfAtom(std::uint32_t atom,
-                                                         const std::vector<Component> &components) const;
-  std::size_t countSites(PolymerSiteState state) const;
-  /// Fraction of the sites that have reacted (radical or dead): the double-bond conversion.
+  /// The component, molecule and group definition of group index 'index' (atomIndex holds the definition index).
+  PolymerAtomRef groupRef(std::size_t index) const;
+  const ReactiveGroup &definitionOf(std::size_t index, const std::vector<Component> &components) const;
+  std::uint16_t typeOf(std::size_t index) const { return groupType[index]; }
+  std::uint8_t state(std::size_t index) const { return groupState[index]; }
+  const std::string &stateName(std::size_t index) const { return scheme.stateName(groupType[index], groupState[index]); }
+  /// Whether the group has left its initial state.
+  bool reacted(std::size_t index) const { return groupState[index] != groupInitial[index]; }
+  /// Whether the group is in an active state (a living chain end, see ReactionScheme).
+  bool active(std::size_t index) const { return scheme.isActive(groupType[index], groupState[index]); }
+  std::int8_t chirality(std::size_t index) const { return groupChirality[index]; }
+  /// The atom of role 'role' (index into the roles of the group's type) of group 'index'.
+  PolymerAtomRef atomRefOf(std::size_t index, std::uint16_t role, const std::vector<Component> &components) const;
+  std::uint32_t atomOf(std::size_t index, std::uint16_t role, const std::vector<Component> &components) const
+  {
+    return static_cast<std::uint32_t>(layout.index(atomRefOf(index, role, components)));
+  }
+  /// The group that contains the global atom 'atom' (none when the atom belongs to no group).
+  std::optional<std::size_t> groupOfAtom(std::uint32_t atom, const std::vector<Component> &components) const;
+  std::size_t countGroups(std::uint16_t type, std::uint8_t state) const;
+  std::size_t countGroups(std::uint16_t type) const;
+  /// The groups in active states.
+  std::size_t countActive() const;
+  /// The conversion as the scheme defines it (default: the fraction of the groups no longer in their initial state).
   double conversion() const;
+  /// The most recent stereocentre of a group (none: the group has no centre).
+  std::optional<std::size_t> centreOf(std::size_t group) const;
 
-  /// The normalised chiral volume of the tail of 'site' with the global atom 'partner' as its polymer neighbour
-  /// (minimum-image geometry); none when the site has no side group.
-  std::optional<double> chiralVolumeOf(std::size_t site, std::uint32_t partner, const SimulationBox &simulationBox,
-                                       const std::vector<Component> &components, std::span<const Atom> atoms) const;
-  /// The sign of chiralVolumeOf(): +1 / -1, or 0 when the site has no side group.
-  std::int8_t geometricChirality(std::size_t site, std::uint32_t partner, const SimulationBox &simulationBox,
-                                 const std::vector<Component> &components, std::span<const Atom> atoms) const;
-  /// The site whose tail is bonded to the head of 'site' through a propagation bond (from the bond list; valid
-  /// at any time), or none.
-  std::size_t predecessorOf(std::size_t site, const std::vector<Component> &components) const;
+  /// The atoms (centre, substituents) of stereo entry 'k' of rule 'rule' applied to 'groups'.
+  std::array<std::uint32_t, 4> stereoAtoms(const ReactionRule &rule, std::size_t k, std::span<const std::size_t> groups,
+                                           const std::vector<Component> &components) const;
+  /// The normalised chiral volume of a centre with the given atoms (minimum-image geometry).
+  double chiralVolumeOf(const std::array<std::uint32_t, 4> &atoms, const SimulationBox &simulationBox,
+                        std::span<const Atom> systemAtoms) const;
+  /// The sign of chiralVolumeOf(): +1 / -1.
+  std::int8_t geometricChirality(const std::array<std::uint32_t, 4> &atoms, const SimulationBox &simulationBox,
+                                 std::span<const Atom> systemAtoms) const;
 
   /// The ramp factor of a term created at 'step'.
   double rampFactor(std::uint64_t step) const
@@ -422,27 +495,28 @@ export struct PolymerLinkTable
 
   // ---- reactions (the caller rebuilds the derived caches afterwards) --------------------------------------------
 
-  /// Monomer -> radical by an initiator: the head and the tail take their product types. The centre the tail
-  /// will become is free (no predecessor in the chain).
-  void initiate(std::size_t site, const ForceField &forceField, const std::vector<Component> &components,
-                std::span<Atom> atoms, std::span<Molecule> moleculeData, std::uint64_t step);
-  /// Radical 'radicalSite' adds to the head of monomer 'monomerSite': bond tail(radical) - head(monomer); the
-  /// radical site is dead afterwards with configuration 'chiralityRadical' and the monomer site is the new
-  /// radical, which has to take 'chiralityMonomer' when it reacts (0: free).
-  void propagate(std::size_t radicalSite, std::size_t monomerSite, const ForceField &forceField,
-                 const std::vector<Component> &components, std::span<Atom> atoms, std::span<Molecule> moleculeData,
-                 std::uint64_t step, double distance, std::int8_t chiralityRadical = 0,
-                 std::int8_t chiralityMonomer = 0);
-  /// Two radicals combine: bond tail - tail; both sites are dead afterwards with the given configurations.
-  void terminate(std::size_t siteA, std::size_t siteB, const ForceField &forceField,
-                 const std::vector<Component> &components, std::span<Atom> atoms, std::span<Molecule> moleculeData,
-                 std::uint64_t step, double distance, std::int8_t chiralityA = 0, std::int8_t chiralityB = 0);
+  /**
+   * \brief Applies reaction rule 'ruleIndex' to 'groups' (one group for a unimolecular rule, two for a bimolecular
+   * one, in the order of the reactants of the rule).
+   *
+   * Retypes the atoms of the products, changes the states of the groups, forms the bonds of the rule (at the
+   * current distances of their atoms), breaks the bonds of its 'BreakBonds' (throws when one of them is already
+   * broken) and records its stereocentres with the configurations 'chiralities' (one per stereo entry of the rule;
+   * 0: free). A stereo entry with 'Next' sets the required configuration of the next group to 'nextChiralities[k]'
+   * and makes the centre's group its predecessor. Returns the indices of the new bonds.
+   */
+  std::vector<std::size_t> apply(std::size_t ruleIndex, std::span<const std::size_t> groups,
+                                 std::span<const std::int8_t> chiralities, std::span<const std::int8_t> nextChiralities,
+                                 const ForceField &forceField, const std::vector<Component> &components,
+                                 std::span<Atom> atoms, std::span<Molecule> moleculeData,
+                                 const SimulationBox &simulationBox, std::uint64_t step);
 
-  /// Rebuilds the layout and the derived term lists for the current bonds, site states and atom types.
+  /// Rebuilds the layout and the derived term lists for the current bonds, group states and atom types.
   void rebuild(const ForceField &forceField, const std::vector<Component> &components,
                const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> atoms);
 
-  /// The neighbours (component connectivity and polymer bonds) of a global atom index.
+  /// The neighbours of a global atom index in the current topology: the component connectivity without the
+  /// broken bonds, plus the polymer bonds.
   std::vector<std::uint32_t> neighboursOf(std::uint32_t atom, const std::vector<Component> &components) const;
 
   /**
@@ -478,7 +552,7 @@ export struct PolymerLinkTable
     std::size_t largestCluster{0};      ///< Molecules in the largest cluster.
     std::size_t intramolecularBonds{0}; ///< Bonds closing a cycle within one molecule (primary cycles).
     std::size_t cycleRank{0};           ///< bonds - moleculesInNetwork + clusters (independent cycles of the molecule graph).
-    double gelFraction{0.0};            ///< Molecules of the largest cluster over all molecules with sites.
+    double gelFraction{0.0};            ///< Molecules of the largest cluster over all molecules with groups.
 
     std::size_t effectiveCycleRank{0};    ///< cycleRank - spanningClusters: independent loops of the unfolded network per box.
     std::size_t spanningClusters{0};      ///< Clusters connected to one of their own periodic images.
@@ -486,7 +560,7 @@ export struct PolymerLinkTable
     std::size_t largestSpanningCluster{0};///< Molecules in the largest spanning cluster (0: no percolation).
     std::size_t percolationDimension{0};  ///< Directions (0-3) in which the largest spanning cluster percolates.
     std::array<bool, 3> percolates{false, false, false};  ///< Some cluster winds along the a, b, c axis.
-    double spanningFraction{0.0};         ///< Molecules of the spanning clusters over all molecules with sites.
+    double spanningFraction{0.0};         ///< Molecules of the spanning clusters over all molecules with groups.
   };
   NetworkStatistics networkStatistics(const SimulationBox &simulationBox, const std::vector<Component> &components,
                                       std::span<const Atom> atoms) const;
@@ -494,15 +568,15 @@ export struct PolymerLinkTable
   /**
    * \brief Tacticity of the chains from the current geometry (needs the derived caches).
    *
-   * A dyad is a pair of consecutive stereocentres of a chain (the tails of two sites joined by a propagation
-   * bond, both reacted); it is meso when both have the same sign of the chain-ordered chiral volume and racemo
-   * otherwise. The triads (mm, mr, rr) are the pairs of consecutive dyads. 'inverted' counts the restrained
-   * centres whose geometry currently has the sign opposite to the one held.
+   * A dyad is a pair of stereocentres of two consecutive groups of a chain ('previousGroup'); it is meso when
+   * both have the same sign of the chiral volume and racemo otherwise. The triads (mm, mr, rr) are the pairs of
+   * consecutive dyads. 'inverted' counts the restrained centres whose geometry currently has the sign opposite to
+   * the one held.
    */
   struct StereoStatistics
   {
-    std::size_t stereoCentres{0};  ///< Reacted tails with a side group.
-    std::size_t restrained{0};     ///< Stereocentres with a configuration held by the restraint.
+    std::size_t stereoCentres{0};  ///< Centres created by the reactions.
+    std::size_t restrained{0};     ///< Centres with a configuration held by the restraint.
     std::size_t inverted{0};       ///< Restrained centres currently in the other configuration.
     std::size_t mesoDyads{0};
     std::size_t racemoDyads{0};
@@ -523,14 +597,19 @@ export struct PolymerLinkTable
                           std::span<const Atom> atoms) const;
   nlohmann::json jsonStatus(const SimulationBox &simulationBox, const std::vector<Component> &components,
                             std::span<const Atom> atoms) const;
-  /// The bonds as [[c, m, a], [c, m, a]] with their kind, for the topology output.
+  /// The bonds as [[c, m, a], [c, m, a]] with their reaction, for the topology output.
   nlohmann::json jsonTopology() const;
+  /// The broken bonds in the same form.
+  nlohmann::json jsonBrokenBonds() const;
+  /// The group counts per type and state, for the status outputs.
+  nlohmann::json jsonGroupCounts() const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PolymerLinkTable &t);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PolymerLinkTable &t);
 
  private:
-  void retype(std::size_t globalAtom, const std::string &typeName, const ForceField &forceField, std::span<Atom> atoms);
+  void retype(std::size_t globalAtom, std::uint16_t type, std::uint64_t step, const ForceField &forceField,
+              std::span<Atom> atoms);
   void updateMoleculeMass(const PolymerAtomRef &ref, const ForceField &forceField, std::span<const Atom> atoms,
                           std::span<Molecule> moleculeData) const;
   Layout makeLayout(const std::vector<Component> &components,

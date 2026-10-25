@@ -28,22 +28,41 @@
         "RelaxationSteps" : 2000,
         "WriteEventFrames" : true,
         "EventFrameEvery" : 1,
-        "Initiation" : {
-           "InitialRadicals" : 5, 
-           "RateConstant" : 4e-07
-        },
-        "Propagation" : {
-          "CaptureRadius" : 4.0, 
-          "Probability" : 0.05, 
-          "AllowIntramolecular" : true,
-          "OrientationTemperature" : 2000.0
-        },
-        "Termination" : {
-          "Enabled" : true, 
-          "CaptureRadius" : 4.0, 
-          "Probability" : 0.05, 
-          "OrientationTemperature" : 2000.0
-        },
+        "Reactions" : [
+          {
+            "Name" : "initiation",
+            "Reactants" : [{"Label" : "M", "Type" : "acrylate", "State" : "monomer"}],
+            "Products" : [{"Label" : "M", "State" : "radical", "Retype" : {"head" : "CH2_bb", "tail" : "CH_bb"}}],
+            "RateConstant" : 4e-07,
+            "InitialEvents" : 5
+          },
+          {
+            "Name" : "propagation",
+            "Reactants" : [{"Label" : "R", "Type" : "acrylate", "State" : "radical"},
+                           {"Label" : "M", "Type" : "acrylate", "State" : "monomer"}],
+            "Capture" : {"Atoms" : ["R.tail", "M.head"], "Radius" : 4.0},
+            "FormBonds" : [["R.tail", "M.head"]],
+            "Products" : [{"Label" : "R", "State" : "dead"},
+                          {"Label" : "M", "State" : "radical", "Retype" : {"head" : "CH2_bb", "tail" : "CH_bb"}}],
+            "Stereo" : {"Centre" : "R.tail", "Substituents" : ["R.head", "M.head", "R.side"], "Next" : "M"},
+            "Probability" : 0.05,
+            "AllowIntramolecular" : true,
+            "OrientationTemperature" : 2000.0
+          },
+          {
+            "Name" : "termination",
+            "Reactants" : [{"Label" : "A", "Type" : "acrylate", "State" : "radical"},
+                           {"Label" : "B", "Type" : "acrylate", "State" : "radical"}],
+            "Capture" : {"Atoms" : ["A.tail", "B.tail"], "Radius" : 4.0},
+            "FormBonds" : [["A.tail", "B.tail"]],
+            "Products" : [{"Label" : "A", "State" : "dead"}, {"Label" : "B", "State" : "dead"}],
+            "Stereo" : [{"Centre" : "A.tail", "Substituents" : ["A.head", "B.tail", "A.side"]},
+                        {"Centre" : "B.tail", "Substituents" : ["B.head", "A.tail", "B.side"]}],
+            "Probability" : 0.05,
+            "OrientationTemperature" : 2000.0
+          }
+        ],
+        "Conversion" : [{"Type" : "acrylate", "States" : ["radical", "dead"]}],
         "Bonds" : [
           [["CH2_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]],
           [["CH_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]],

@@ -1,0 +1,115 @@
+{
+  "SimulationType" : "Polymerization",
+  "NumberOfThreads" : 4,
+  "VerletSkin" : 2.0,
+  "PPPMMeshSpacing" : 1.0,
+  "PPPMInterpolationOrder" : 5,
+  "NumberOfInitializationCycles" : 200,
+  "NumberOfEquilibrationCycles" : 10000,
+  "NumberOfProductionCycles" : 1000000,
+  "PrintEvery" : 10000,
+  "WriteBinaryRestartEvery" : 200000,
+
+  "Systems" : [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [32.0, 32.0, 32.0],
+      "ExternalTemperature" : 350.0,
+      "ExternalPressure" : 100000.0,
+      "Ensemble" : "NPT",
+      "TimeStep" : 0.001,
+      "ChargeMethod" : "Ewald",
+      "Polymerization" : {
+        "ScanEvery" : 2000,
+        "TargetConversion" : 0.9,
+        "RelaxationSteps" : 2000,
+        "WriteEventFrames" : true,
+        "EventFrameEvery" : 5,
+        "Reactions" : [
+          {
+            "Name" : "primary_addition",
+            "Reactants" : [{"Label" : "E", "Type" : "epoxide", "State" : "closed"},
+                           {"Label" : "A", "Type" : "amine", "State" : "primary"}],
+            "Capture" : {"Atoms" : ["E.CH2", "A.N"], "Radius" : 3.5},
+            "FormBonds" : [["E.CH2", "A.N"]],
+            "BreakBonds" : [["E.CH2", "E.O"]],
+            "Products" : [{"Label" : "E", "State" : "opened", "Retype" : {"CH2" : "CH2_N", "CH" : "CH_OH", "O" : "O_OH"}},
+                          {"Label" : "A", "State" : "secondary", "Retype" : {"N" : "NH"}}],
+            "Probability" : 0.5
+          },
+          {
+            "Name" : "secondary_addition",
+            "Reactants" : [{"Label" : "E", "Type" : "epoxide", "State" : "closed"},
+                           {"Label" : "A", "Type" : "amine", "State" : "secondary"}],
+            "Capture" : {"Atoms" : ["E.CH2", "A.N"], "Radius" : 3.5},
+            "FormBonds" : [["E.CH2", "A.N"]],
+            "BreakBonds" : [["E.CH2", "E.O"]],
+            "Products" : [{"Label" : "E", "State" : "opened", "Retype" : {"CH2" : "CH2_N", "CH" : "CH_OH", "O" : "O_OH"}},
+                          {"Label" : "A", "State" : "tertiary", "Retype" : {"N" : "N_t"}}],
+            "Probability" : 0.25
+          }
+        ],
+        "Conversion" : [{"Type" : "epoxide", "States" : ["opened"]}],
+        "Bonds" : [
+          [["CH2_N", "CH_OH"], "HARMONIC", [301931.64, 1.54]],
+          [["CH_OH", "O_OH"], "HARMONIC", [301931.64, 1.43]],
+          [["CH_OH", "CH2_O"], "HARMONIC", [301931.64, 1.54]],
+          [["CH2_N", "NH"], "HARMONIC", [301931.64, 1.448]],
+          [["CH2_N", "N_t"], "HARMONIC", [301931.64, 1.448]]
+        ],
+        "Bends" : [
+          [["CH2_N", "CH_OH", "O_OH"], "HARMONIC", [50400.0, 109.5]],
+          [["CH2_N", "CH_OH", "CH2_O"], "HARMONIC", [62500.0, 112.0]],
+          [["O_OH", "CH_OH", "CH2_O"], "HARMONIC", [50400.0, 109.5]],
+          [["CH_OH", "CH2_O", "O_eth"], "HARMONIC", [50300.0, 112.0]],
+          [["CH_OH", "CH2_N", "NH"], "HARMONIC", [56400.0, 109.5]],
+          [["CH_OH", "CH2_N", "N_t"], "HARMONIC", [56400.0, 109.5]],
+          [["CH2_N", "NH", "CH2_N"], "HARMONIC", [56400.0, 112.0]],
+          [["CH2_N", "N_t", "CH2_N"], "HARMONIC", [56400.0, 112.0]],
+          [["NH", "CH2_N", "CH2_N"], "HARMONIC", [56400.0, 109.5]],
+          [["N_t", "CH2_N", "CH2_N"], "HARMONIC", [56400.0, 109.5]]
+        ],
+        "Torsions" : [
+          [["O_eth", "CH2_O", "CH_OH", "CH2_N"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+          [["O_eth", "CH2_O", "CH_OH", "O_OH"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+          [["CH2_O", "O_eth", "CH2_O", "CH_OH"], "TRAPPE", [0.0, 725.35, -163.75, 558.2]],
+          [["CH_OH", "CH2_N", "NH", "CH2_N"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+          [["CH_OH", "CH2_N", "N_t", "CH2_N"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+          [["O_OH", "CH_OH", "CH2_N", "NH"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+          [["O_OH", "CH_OH", "CH2_N", "N_t"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+          [["CH2_O", "CH_OH", "CH2_N", "NH"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+          [["CH2_O", "CH_OH", "CH2_N", "N_t"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+          [["CH2_N", "NH", "CH2_N", "CH2_N"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+          [["CH2_N", "N_t", "CH2_N", "CH2_N"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+          [["NH", "CH2_N", "CH2_N", "N_p"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+          [["NH", "CH2_N", "CH2_N", "NH"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+          [["N_t", "CH2_N", "CH2_N", "N_p"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+          [["N_t", "CH2_N", "CH2_N", "NH"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+          [["N_t", "CH2_N", "CH2_N", "N_t"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
+        ]
+      }
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "diglycidyl_ether",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 0.1,
+      "PartialReinsertionProbability" : 2.0,
+      "CrankshaftProbability" : 1.0,
+      "BeadDisplacementProbability" : 1.0,
+      "CreateNumberOfMolecules" : 120
+    },
+    {
+      "Name" : "ethylenediamine",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 0.1,
+      "CrankshaftProbability" : 1.0,
+      "BeadDisplacementProbability" : 1.0,
+      "CreateNumberOfMolecules" : 60
+    }
+  ]
+}

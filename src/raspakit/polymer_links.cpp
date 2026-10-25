@@ -13,7 +13,8 @@ import atom;
 import molecule;
 import forcefield;
 import component;
-import polymerization_site;
+import reactive_group;
+import polymer_reactions;
 import bond_potential;
 import bend_potential;
 import torsion_potential;
@@ -41,7 +42,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Polyme
 {
   archive << b.a;
   archive << b.b;
-  archive << b.kind;
+  archive << b.reaction;
   archive << b.formedAtStep;
   archive << b.formationDistance;
   return archive;
@@ -51,9 +52,63 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PolymerBond 
 {
   archive >> b.a;
   archive >> b.b;
-  archive >> b.kind;
+  archive >> b.reaction;
   archive >> b.formedAtStep;
   archive >> b.formationDistance;
+  return archive;
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BrokenBond &b)
+{
+  archive << b.a;
+  archive << b.b;
+  archive << b.reaction;
+  archive << b.brokenAtStep;
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BrokenBond &b)
+{
+  archive >> b.a;
+  archive >> b.b;
+  archive >> b.reaction;
+  archive >> b.brokenAtStep;
+  return archive;
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Retyping &r)
+{
+  archive << r.atom;
+  archive << r.from;
+  archive << r.to;
+  archive << r.step;
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Retyping &r)
+{
+  archive >> r.atom;
+  archive >> r.from;
+  archive >> r.to;
+  archive >> r.step;
+  return archive;
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const StereoCentre &c)
+{
+  archive << c.atoms;
+  archive << c.chirality;
+  archive << c.bond;
+  archive << c.group;
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, StereoCentre &c)
+{
+  archive >> c.atoms;
+  archive >> c.chirality;
+  archive >> c.bond;
+  archive >> c.group;
   return archive;
 }
 
@@ -395,7 +450,7 @@ ChiralVolume ChiralVolume::compute(const double3 &bp, const double3 &bn, const d
   return result;
 }
 
-// ---- PolymerLinkTable: layout and sites ---------------------------------------------------------------------------
+// ---- PolymerLinkTable: layout and groups --------------------------------------------------------------------------
 
 PolymerAtomRef PolymerLinkTable::Layout::ref(std::size_t atom) const
 {
@@ -439,9 +494,38 @@ PolymerLinkTable::Layout PolymerLinkTable::makeLayout(
   return result;
 }
 
+std::size_t PolymerLinkTable::totalReactions() const
+{
+  return std::accumulate(reactionCounts.begin(), reactionCounts.end(), 0uz);
+}
+
 void PolymerLinkTable::activate(const std::vector<Component> &components,
                                 const std::vector<std::size_t> &numberOfMoleculesPerComponent)
 {
+  if (!scheme.resolved)
+  {
+    throw std::runtime_error("[Polymerization]: the reaction scheme is not resolved (no 'Reactions' read)\n");
+  }
+  // the per-group type and initial state (derived; also after a restart)
+  auto fillTypes = [&]()
+  {
+    groupType.assign(groupState.size(), 0);
+    groupInitial.assign(groupState.size(), 0);
+    for (std::size_t c = 0; c < components.size(); ++c)
+    {
+      for (std::size_t m = 0; m < moleculesPerComponent[c]; ++m)
+      {
+        for (std::size_t g = 0; g < groupsPerMolecule[c]; ++g)
+        {
+          const ReactiveGroup &definition = components[c].reactiveGroups[g];
+          const std::uint16_t type = scheme.typeIndex(definition.type).value();
+          const std::size_t index = groupIndex(c, m, g);
+          groupType[index] = type;
+          groupInitial[index] = scheme.stateIndex(type, definition.initialState).value();
+        }
+      }
+    }
+  };
   if (activated)
   {
     if (moleculesPerComponent != numberOfMoleculesPerComponent)
@@ -450,129 +534,163 @@ void PolymerLinkTable::activate(const std::vector<Component> &components,
           "[Polymerization]: the number of molecules changed after the polymerization was activated\n");
     }
     layout = makeLayout(components, numberOfMoleculesPerComponent);
-    if (siteChirality.size() != siteState.size()) siteChirality.assign(siteState.size(), 0);
+    if (groupChirality.size() != groupState.size()) groupChirality.assign(groupState.size(), 0);
+    if (previousGroup.size() != groupState.size()) previousGroup.assign(groupState.size(), noGroup);
+    if (reactionCounts.size() != scheme.rules.size()) reactionCounts.resize(scheme.rules.size(), 0);
+    fillTypes();
     return;
   }
-  sitesPerMolecule.resize(components.size());
-  siteOffset.resize(components.size());
+  groupsPerMolecule.resize(components.size());
+  groupOffset.resize(components.size());
   moleculesPerComponent = numberOfMoleculesPerComponent;
   std::size_t offset = 0;
   for (std::size_t c = 0; c < components.size(); ++c)
   {
-    sitesPerMolecule[c] = components[c].polymerizationSites.size();
-    siteOffset[c] = offset;
-    offset += sitesPerMolecule[c] * numberOfMoleculesPerComponent[c];
+    groupsPerMolecule[c] = components[c].reactiveGroups.size();
+    groupOffset[c] = offset;
+    offset += groupsPerMolecule[c] * numberOfMoleculesPerComponent[c];
   }
-  siteState.assign(offset, static_cast<std::uint8_t>(PolymerSiteState::Monomer));
-  siteStep.assign(offset, 0);
-  siteChirality.assign(offset, 0);
+  groupState.assign(offset, 0);
+  groupStep.assign(offset, 0);
+  groupChirality.assign(offset, 0);
+  previousGroup.assign(offset, noGroup);
+  reactionCounts.assign(scheme.rules.size(), 0);
+  fillTypes();
+  groupState = groupInitial;
   layout = makeLayout(components, numberOfMoleculesPerComponent);
   activated = true;
   derivedValid = false;
 }
 
-PolymerAtomRef PolymerLinkTable::siteRef(std::size_t index) const
+PolymerAtomRef PolymerLinkTable::groupRef(std::size_t index) const
 {
-  for (std::size_t c = siteOffset.size(); c-- > 0;)
+  for (std::size_t c = groupOffset.size(); c-- > 0;)
   {
-    if (index >= siteOffset[c] && sitesPerMolecule[c] > 0)
+    if (index >= groupOffset[c] && groupsPerMolecule[c] > 0)
     {
-      const std::size_t local = index - siteOffset[c];
-      return PolymerAtomRef{static_cast<std::uint32_t>(c), static_cast<std::uint32_t>(local / sitesPerMolecule[c]),
-                            static_cast<std::uint32_t>(local % sitesPerMolecule[c])};
+      const std::size_t local = index - groupOffset[c];
+      return PolymerAtomRef{static_cast<std::uint32_t>(c), static_cast<std::uint32_t>(local / groupsPerMolecule[c]),
+                            static_cast<std::uint32_t>(local % groupsPerMolecule[c])};
     }
   }
-  throw std::runtime_error("[Polymerization]: site index outside of the site layout\n");
+  throw std::runtime_error("[Polymerization]: group index outside of the group layout\n");
 }
 
-PolymerAtomRef PolymerLinkTable::headOf(std::size_t index, const std::vector<Component> &components) const
+const ReactiveGroup &PolymerLinkTable::definitionOf(std::size_t index, const std::vector<Component> &components) const
 {
-  PolymerAtomRef r = siteRef(index);
-  r.atomIndex = static_cast<std::uint32_t>(components[r.componentId].polymerizationSites[r.atomIndex].head);
+  const PolymerAtomRef r = groupRef(index);
+  return components[r.componentId].reactiveGroups[r.atomIndex];
+}
+
+PolymerAtomRef PolymerLinkTable::atomRefOf(std::size_t index, std::uint16_t role,
+                                           const std::vector<Component> &components) const
+{
+  PolymerAtomRef r = groupRef(index);
+  const ReactiveGroup &definition = components[r.componentId].reactiveGroups[r.atomIndex];
+  const std::optional<std::size_t> atom = definition.atomOf(scheme.types[groupType[index]].roles[role]);
+  if (!atom.has_value())
+  {
+    throw std::runtime_error(std::format("[Polymerization]: group '{}' of component '{}' has no role '{}'\n",
+                                         definition.type, components[r.componentId].name,
+                                         scheme.types[groupType[index]].roles[role]));
+  }
+  r.atomIndex = static_cast<std::uint32_t>(atom.value());
   return r;
 }
 
-PolymerAtomRef PolymerLinkTable::tailOf(std::size_t index, const std::vector<Component> &components) const
-{
-  PolymerAtomRef r = siteRef(index);
-  r.atomIndex = static_cast<std::uint32_t>(components[r.componentId].polymerizationSites[r.atomIndex].tail);
-  return r;
-}
-
-std::optional<PolymerAtomRef> PolymerLinkTable::sideGroupOf(std::size_t index,
-                                                            const std::vector<Component> &components) const
-{
-  PolymerAtomRef r = siteRef(index);
-  const std::optional<std::size_t> sideGroup = components[r.componentId].polymerizationSites[r.atomIndex].sideGroup;
-  if (!sideGroup.has_value()) return std::nullopt;
-  r.atomIndex = static_cast<std::uint32_t>(sideGroup.value());
-  return r;
-}
-
-std::optional<std::pair<std::size_t, bool>> PolymerLinkTable::siteOfAtom(std::uint32_t atom,
-                                                                         const std::vector<Component> &components) const
+std::optional<std::size_t> PolymerLinkTable::groupOfAtom(std::uint32_t atom,
+                                                         const std::vector<Component> &components) const
 {
   const PolymerAtomRef r = layout.ref(atom);
-  const std::vector<PolymerizationSite> &sites = components[r.componentId].polymerizationSites;
-  for (std::size_t s = 0; s < sites.size(); ++s)
+  const std::vector<ReactiveGroup> &groups = components[r.componentId].reactiveGroups;
+  for (std::size_t g = 0; g < groups.size(); ++g)
   {
-    if (sites[s].tail == r.atomIndex) return std::pair{siteIndex(r.componentId, r.moleculeIndex, s), true};
-    if (sites[s].head == r.atomIndex) return std::pair{siteIndex(r.componentId, r.moleculeIndex, s), false};
+    if (groups[g].contains(r.atomIndex)) return groupIndex(r.componentId, r.moleculeIndex, g);
   }
   return std::nullopt;
 }
 
-std::size_t PolymerLinkTable::countSites(PolymerSiteState state) const
+std::size_t PolymerLinkTable::countGroups(std::uint16_t type, std::uint8_t state) const
 {
-  return static_cast<std::size_t>(std::ranges::count(siteState, static_cast<std::uint8_t>(state)));
-}
-
-std::optional<double> PolymerLinkTable::chiralVolumeOf(std::size_t site, std::uint32_t partner,
-                                                       const SimulationBox &simulationBox,
-                                                       const std::vector<Component> &components,
-                                                       std::span<const Atom> atoms) const
-{
-  const std::optional<PolymerAtomRef> sideGroup = sideGroupOf(site, components);
-  if (!sideGroup.has_value()) return std::nullopt;
-  const double3 centre = atoms[layout.index(tailOf(site, components))].position;
-  const double3 head = atoms[layout.index(headOf(site, components))].position;
-  const double3 side = atoms[layout.index(sideGroup.value())].position;
-  const double3 bp = simulationBox.applyPeriodicBoundaryConditions(head - centre);
-  const double3 bn = simulationBox.applyPeriodicBoundaryConditions(atoms[partner].position - centre);
-  const double3 bz = simulationBox.applyPeriodicBoundaryConditions(side - centre);
-  return ChiralVolume::compute(bp, bn, bz).value;
-}
-
-std::int8_t PolymerLinkTable::geometricChirality(std::size_t site, std::uint32_t partner,
-                                                 const SimulationBox &simulationBox,
-                                                 const std::vector<Component> &components,
-                                                 std::span<const Atom> atoms) const
-{
-  const std::optional<double> volume = chiralVolumeOf(site, partner, simulationBox, components, atoms);
-  if (!volume.has_value()) return 0;
-  return volume.value() < 0.0 ? -1 : 1;
-}
-
-std::size_t PolymerLinkTable::predecessorOf(std::size_t site, const std::vector<Component> &components) const
-{
-  const PolymerAtomRef head = headOf(site, components);
-  for (const PolymerBond &bond : bonds)
+  std::size_t count = 0;
+  for (std::size_t i = 0; i < groupState.size(); ++i)
   {
-    if (bond.kind == PolymerBondKind::Propagation && bond.b == head)
-    {
-      const std::uint32_t tail = static_cast<std::uint32_t>(layout.index(bond.a));
-      const std::optional<std::pair<std::size_t, bool>> previous = siteOfAtom(tail, components);
-      if (previous.has_value() && previous->second) return previous->first;
-    }
+    if (groupType[i] == type && groupState[i] == state) ++count;
   }
-  return noSite;
+  return count;
+}
+
+std::size_t PolymerLinkTable::countGroups(std::uint16_t type) const
+{
+  return static_cast<std::size_t>(std::ranges::count(groupType, type));
+}
+
+std::size_t PolymerLinkTable::countActive() const
+{
+  std::size_t count = 0;
+  for (std::size_t i = 0; i < groupState.size(); ++i)
+  {
+    if (active(i)) ++count;
+  }
+  return count;
 }
 
 double PolymerLinkTable::conversion() const
 {
-  if (siteState.empty()) return 0.0;
-  return static_cast<double>(siteState.size() - countSites(PolymerSiteState::Monomer)) /
-         static_cast<double>(siteState.size());
+  if (groupState.empty()) return 0.0;
+  if (scheme.conversion.empty())
+  {
+    std::size_t changed = 0;
+    for (std::size_t i = 0; i < groupState.size(); ++i) changed += reacted(i);
+    return static_cast<double>(changed) / static_cast<double>(groupState.size());
+  }
+  std::size_t counted = 0, total = 0;
+  for (std::size_t i = 0; i < groupState.size(); ++i)
+  {
+    for (const ReactionScheme::Conversion &entry : scheme.conversion)
+    {
+      if (entry.typeIndex != groupType[i]) continue;
+      ++total;
+      if (entry.stateMask[groupState[i]]) ++counted;
+    }
+  }
+  return total > 0 ? static_cast<double>(counted) / static_cast<double>(total) : 0.0;
+}
+
+std::optional<std::size_t> PolymerLinkTable::centreOf(std::size_t group) const
+{
+  for (std::size_t k = centres.size(); k-- > 0;)
+  {
+    if (centres[k].group == group) return k;
+  }
+  return std::nullopt;
+}
+
+std::array<std::uint32_t, 4> PolymerLinkTable::stereoAtoms(const ReactionRule &rule, std::size_t k,
+                                                           std::span<const std::size_t> groups,
+                                                           const std::vector<Component> &components) const
+{
+  const ReactionRule::ResolvedStereo &stereo = rule.stereoAtoms[k];
+  auto resolve = [&](const RoleIndex &ref) { return atomOf(groups[ref.reactant], ref.role, components); };
+  return {resolve(stereo.centre), resolve(stereo.substituents[0]), resolve(stereo.substituents[1]),
+          resolve(stereo.substituents[2])};
+}
+
+double PolymerLinkTable::chiralVolumeOf(const std::array<std::uint32_t, 4> &atoms, const SimulationBox &simulationBox,
+                                        std::span<const Atom> systemAtoms) const
+{
+  const double3 centre = systemAtoms[atoms[0]].position;
+  const double3 b1 = simulationBox.applyPeriodicBoundaryConditions(systemAtoms[atoms[1]].position - centre);
+  const double3 b2 = simulationBox.applyPeriodicBoundaryConditions(systemAtoms[atoms[2]].position - centre);
+  const double3 b3 = simulationBox.applyPeriodicBoundaryConditions(systemAtoms[atoms[3]].position - centre);
+  return ChiralVolume::compute(b1, b2, b3).value;
+}
+
+std::int8_t PolymerLinkTable::geometricChirality(const std::array<std::uint32_t, 4> &atoms,
+                                                 const SimulationBox &simulationBox,
+                                                 std::span<const Atom> systemAtoms) const
+{
+  return chiralVolumeOf(atoms, simulationBox, systemAtoms) < 0.0 ? -1 : 1;
 }
 
 bool PolymerLinkTable::rampsActive() const
@@ -582,28 +700,27 @@ bool PolymerLinkTable::rampsActive() const
   {
     if (currentStep < bond.formedAtStep + relaxationSteps) return true;
   }
-  for (std::size_t i = 0; i < siteState.size(); ++i)
+  for (const BrokenBond &bond : brokenBonds)
   {
-    if (siteState[i] != static_cast<std::uint8_t>(PolymerSiteState::Monomer) &&
-        currentStep < siteStep[i] + relaxationSteps)
-      return true;
+    if (currentStep < bond.brokenAtStep + relaxationSteps) return true;
+  }
+  for (std::size_t i = 0; i < groupState.size(); ++i)
+  {
+    if (reacted(i) && currentStep < groupStep[i] + relaxationSteps) return true;
   }
   return false;
 }
 
 // ---- reactions ----------------------------------------------------------------------------------------------------
 
-void PolymerLinkTable::retype(std::size_t globalAtom, const std::string &typeName, const ForceField &forceField,
-                              std::span<Atom> atoms)
+void PolymerLinkTable::retype(std::size_t globalAtom, std::uint16_t type, std::uint64_t step,
+                              const ForceField &forceField, std::span<Atom> atoms)
 {
-  const std::optional<std::size_t> type = forceField.findPseudoAtom(typeName);
-  if (!type.has_value())
-  {
-    throw std::runtime_error(std::format("[Polymerization]: unknown product pseudo-atom '{}'\n", typeName));
-  }
   Atom &atom = atoms[globalAtom];
-  atom.type = static_cast<std::uint16_t>(type.value());
-  atom.charge = forceField.pseudoAtoms[type.value()].charge;
+  if (atom.type == type) return;
+  retypings.push_back(Retyping{layout.ref(static_cast<std::uint32_t>(globalAtom)), atom.type, type, step});
+  atom.type = type;
+  atom.charge = forceField.pseudoAtoms[static_cast<std::size_t>(type)].charge;
 }
 
 void PolymerLinkTable::updateMoleculeMass(const PolymerAtomRef &ref, const ForceField &forceField,
@@ -621,72 +738,130 @@ void PolymerLinkTable::updateMoleculeMass(const PolymerAtomRef &ref, const Force
   molecule.invMass = mass > 0.0 ? 1.0 / mass : 0.0;
 }
 
-void PolymerLinkTable::initiate(std::size_t site, const ForceField &forceField, const std::vector<Component> &components,
-                                std::span<Atom> atoms, std::span<Molecule> moleculeData, std::uint64_t step)
+std::vector<std::size_t> PolymerLinkTable::apply(std::size_t ruleIndex, std::span<const std::size_t> groups,
+                                                 std::span<const std::int8_t> chiralities,
+                                                 std::span<const std::int8_t> nextChiralities,
+                                                 const ForceField &forceField, const std::vector<Component> &components,
+                                                 std::span<Atom> atoms, std::span<Molecule> moleculeData,
+                                                 const SimulationBox &simulationBox, std::uint64_t step)
 {
-  if (state(site) != PolymerSiteState::Monomer)
+  const ReactionRule &rule = scheme.rules[ruleIndex];
+  if (groups.size() != rule.reactants.size())
   {
-    throw std::runtime_error("[Polymerization]: only a monomer site can be initiated\n");
+    throw std::runtime_error(std::format("[Polymerization]: reaction '{}' takes {} group(s), {} given\n", rule.name,
+                                         rule.reactants.size(), groups.size()));
   }
-  const PolymerAtomRef r = siteRef(site);
-  const PolymerizationSite &definition = components[r.componentId].polymerizationSites[r.atomIndex];
-  const std::size_t start = layout.moleculeStart(r.componentId, r.moleculeIndex);
-  retype(start + definition.head, definition.initiatedHeadType.value_or(definition.headProductType), forceField, atoms);
-  retype(start + definition.tail, definition.tailProductType, forceField, atoms);
-  updateMoleculeMass(r, forceField, atoms, moleculeData);
-  siteState[site] = static_cast<std::uint8_t>(PolymerSiteState::Radical);
-  siteStep[site] = step;
-  siteChirality[site] = 0;
-  ++numberOfInitiations;
-  derivedValid = false;
-}
-
-void PolymerLinkTable::propagate(std::size_t radicalSite, std::size_t monomerSite, const ForceField &forceField,
-                                 const std::vector<Component> &components, std::span<Atom> atoms,
-                                 std::span<Molecule> moleculeData, std::uint64_t step, double distance,
-                                 std::int8_t chiralityRadical, std::int8_t chiralityMonomer)
-{
-  if (state(radicalSite) != PolymerSiteState::Radical || state(monomerSite) != PolymerSiteState::Monomer)
+  if (chiralities.size() != rule.stereoAtoms.size() || nextChiralities.size() != rule.stereoAtoms.size())
   {
-    throw std::runtime_error("[Polymerization]: propagation needs a radical and a monomer site\n");
+    throw std::runtime_error(std::format("[Polymerization]: reaction '{}' declares {} stereocentre(s), {} configurations given\n",
+                                         rule.name, rule.stereoAtoms.size(), chiralities.size()));
   }
-  const PolymerAtomRef m = siteRef(monomerSite);
-  const PolymerizationSite &definition = components[m.componentId].polymerizationSites[m.atomIndex];
-  const std::size_t start = layout.moleculeStart(m.componentId, m.moleculeIndex);
-  retype(start + definition.head, definition.headProductType, forceField, atoms);
-  retype(start + definition.tail, definition.tailProductType, forceField, atoms);
-  updateMoleculeMass(m, forceField, atoms, moleculeData);
-
-  bonds.push_back(PolymerBond{tailOf(radicalSite, components), headOf(monomerSite, components),
-                              PolymerBondKind::Propagation, step, distance});
-  siteState[radicalSite] = static_cast<std::uint8_t>(PolymerSiteState::Dead);
-  siteStep[radicalSite] = step;
-  siteChirality[radicalSite] = chiralityRadical;
-  siteState[monomerSite] = static_cast<std::uint8_t>(PolymerSiteState::Radical);
-  siteStep[monomerSite] = step;
-  siteChirality[monomerSite] = chiralityMonomer;
-  ++numberOfPropagations;
-  derivedValid = false;
-}
-
-void PolymerLinkTable::terminate(std::size_t siteA, std::size_t siteB, const ForceField &,
-                                 const std::vector<Component> &components, std::span<Atom>, std::span<Molecule>,
-                                 std::uint64_t step, double distance, std::int8_t chiralityA, std::int8_t chiralityB)
-{
-  if (state(siteA) != PolymerSiteState::Radical || state(siteB) != PolymerSiteState::Radical || siteA == siteB)
+  for (std::size_t i = 0; i < groups.size(); ++i)
   {
-    throw std::runtime_error("[Polymerization]: termination needs two different radical sites\n");
+    if (groupType[groups[i]] != rule.reactantType[i] || groupState[groups[i]] != rule.reactantState[i])
+    {
+      throw std::runtime_error(std::format(
+          "[Polymerization]: reaction '{}': reactant {} is a '{}' group in state '{}', not '{}' in state '{}'\n",
+          rule.name, rule.reactants[i].label, scheme.types[groupType[groups[i]]].name, stateName(groups[i]),
+          rule.reactants[i].type, rule.reactants[i].state));
+    }
   }
-  bonds.push_back(PolymerBond{tailOf(siteA, components), tailOf(siteB, components), PolymerBondKind::Termination, step,
-                              distance});
-  siteState[siteA] = static_cast<std::uint8_t>(PolymerSiteState::Dead);
-  siteStep[siteA] = step;
-  siteChirality[siteA] = chiralityA;
-  siteState[siteB] = static_cast<std::uint8_t>(PolymerSiteState::Dead);
-  siteStep[siteB] = step;
-  siteChirality[siteB] = chiralityB;
-  ++numberOfTerminations;
+  if (groups.size() == 2 && groups[0] == groups[1])
+  {
+    throw std::runtime_error(std::format("[Polymerization]: reaction '{}' needs two different groups\n", rule.name));
+  }
+
+  // the atoms of the bonds and the stereocentres are resolved before the retyping (the roles do not change, but
+  // the bookkeeping below is clearer with everything in hand)
+  std::vector<std::array<std::uint32_t, 2>> bondAtoms{};
+  for (const std::array<RoleIndex, 2> &bond : rule.bondAtoms)
+  {
+    bondAtoms.push_back({atomOf(groups[bond[0].reactant], bond[0].role, components),
+                         atomOf(groups[bond[1].reactant], bond[1].role, components)});
+  }
+  std::vector<std::array<std::uint32_t, 4>> centreAtoms{};
+  for (std::size_t k = 0; k < rule.stereoAtoms.size(); ++k) centreAtoms.push_back(stereoAtoms(rule, k, groups, components));
+
+  // the bonds broken: bonds of the molecule topology that are still intact
+  std::vector<std::array<std::uint32_t, 2>> breakPairs{};
+  for (const std::array<RoleIndex, 2> &bond : rule.breakAtoms)
+  {
+    const std::array<std::uint32_t, 2> pair{atomOf(groups[bond[0].reactant], bond[0].role, components),
+                                            atomOf(groups[bond[1].reactant], bond[1].role, components)};
+    const PolymerAtomRef ra = layout.ref(pair[0]);
+    const PolymerAtomRef rb = layout.ref(pair[1]);
+    const bool alreadyBroken = std::ranges::any_of(
+        brokenBonds, [&](const BrokenBond &b) { return (b.a == ra && b.b == rb) || (b.a == rb && b.b == ra); });
+    if (alreadyBroken)
+    {
+      throw std::runtime_error(std::format(
+          "[Polymerization]: reaction '{}' breaks the bond {}-{} of molecule {} of component '{}', which an earlier "
+          "reaction already broke\n",
+          rule.name, ra.atomIndex, rb.atomIndex, ra.moleculeIndex, components[ra.componentId].name));
+    }
+    breakPairs.push_back(pair);
+  }
+
+  // the products: retyped atoms and new states
+  for (std::size_t i = 0; i < groups.size(); ++i)
+  {
+    for (const auto &[role, type] : rule.retype[i])
+    {
+      retype(atomOf(groups[i], role, components), type, step, forceField, atoms);
+    }
+    groupState[groups[i]] = rule.productState[i];
+    groupStep[groups[i]] = step;
+  }
+  for (std::size_t i = 0; i < groups.size(); ++i)
+  {
+    const PolymerAtomRef r = groupRef(groups[i]);
+    if (i > 0 && r.sameMolecule(groupRef(groups[0]))) continue;
+    updateMoleculeMass(r, forceField, atoms, moleculeData);
+  }
+
+  // the bonds
+  std::vector<std::size_t> newBonds{};
+  for (const std::array<std::uint32_t, 2> &pair : bondAtoms)
+  {
+    const double3 dr = simulationBox.applyPeriodicBoundaryConditions(atoms[pair[0]].position - atoms[pair[1]].position);
+    bonds.push_back(PolymerBond{layout.ref(pair[0]), layout.ref(pair[1]), static_cast<std::uint16_t>(ruleIndex), step,
+                                std::sqrt(double3::dot(dr, dr))});
+    newBonds.push_back(bonds.size() - 1);
+  }
+  for (const std::array<std::uint32_t, 2> &pair : breakPairs)
+  {
+    brokenBonds.push_back(BrokenBond{layout.ref(pair[0]), layout.ref(pair[1]), static_cast<std::uint16_t>(ruleIndex), step});
+  }
+
+  // the stereocentres: the ramp of the restraint follows the (first) bond that involves the centre atom
+  for (std::size_t k = 0; k < rule.stereoAtoms.size(); ++k)
+  {
+    StereoCentre centre{};
+    centre.atoms = centreAtoms[k];
+    centre.chirality = chiralities[k];
+    centre.group = groups[rule.stereoAtoms[k].centre.reactant];
+    centre.bond = static_cast<std::uint32_t>(newBonds.front());
+    for (std::size_t b = 0; b < bondAtoms.size(); ++b)
+    {
+      if (bondAtoms[b][0] == centre.atoms[0] || bondAtoms[b][1] == centre.atoms[0])
+      {
+        centre.bond = static_cast<std::uint32_t>(newBonds[b]);
+        break;
+      }
+    }
+    centres.push_back(centre);
+    groupChirality[centre.group] = chiralities[k];
+    if (rule.stereoAtoms[k].next.has_value())
+    {
+      const std::size_t next = groups[rule.stereoAtoms[k].next.value()];
+      groupChirality[next] = nextChiralities[k];
+      previousGroup[next] = centre.group;
+    }
+  }
+
+  ++reactionCounts[ruleIndex];
   derivedValid = false;
+  return newBonds;
 }
 
 // ---- derived topology ---------------------------------------------------------------------------------------------
@@ -702,7 +877,9 @@ std::vector<std::uint32_t> PolymerLinkTable::neighboursOf(std::uint32_t atom,
   {
     for (std::size_t local : component.connectivityTable.findAllNeighbors(r.atomIndex))
     {
-      result.push_back(static_cast<std::uint32_t>(start + local));
+      const std::uint32_t partner = static_cast<std::uint32_t>(start + local);
+      if (!brokenPairs.empty() && brokenPairs.contains(canonical<2>({atom, partner}))) continue;
+      result.push_back(partner);
     }
   }
   const auto it = linkNeighbours.find(atom);
@@ -732,57 +909,33 @@ void PolymerLinkTable::rebuild(const ForceField &forceField, const std::vector<C
   overrideTorsions.clear();
   stereoCentres.clear();
   linkNeighbours.clear();
-  tailPartner.assign(siteState.size(), noAtom);
-  tailBond.assign(siteState.size(), noAtom);
-  previousSite.assign(siteState.size(), noSite);
-  nextSite.assign(siteState.size(), noSite);
+  brokenPairs.clear();
+  nextGroup.assign(groupState.size(), noGroup);
+  for (std::size_t g = 0; g < groupState.size(); ++g)
+  {
+    if (previousGroup[g] != noGroup) nextGroup[previousGroup[g]] = g;
+  }
 
   for (std::uint32_t k = 0; k < bonds.size(); ++k)
   {
-    const PolymerBond &bond = bonds[k];
-    const std::uint32_t a = static_cast<std::uint32_t>(layout.index(bond.a));
-    const std::uint32_t b = static_cast<std::uint32_t>(layout.index(bond.b));
+    const std::uint32_t a = static_cast<std::uint32_t>(layout.index(bonds[k].a));
+    const std::uint32_t b = static_cast<std::uint32_t>(layout.index(bonds[k].b));
     linkNeighbours[a].push_back(b);
     linkNeighbours[b].push_back(a);
-
-    // the chain bookkeeping of the sites: 'a' is always the tail of a site; 'b' is the head of the next unit
-    // (propagation) or the tail of the other chain (termination)
-    const std::optional<std::pair<std::size_t, bool>> siteA = siteOfAtom(a, components);
-    const std::optional<std::pair<std::size_t, bool>> siteB = siteOfAtom(b, components);
-    if (siteA.has_value() && siteA->second)
-    {
-      tailPartner[siteA->first] = b;
-      tailBond[siteA->first] = k;
-    }
-    if (siteB.has_value())
-    {
-      if (siteB->second)
-      {
-        tailPartner[siteB->first] = a;
-        tailBond[siteB->first] = k;
-      }
-      else if (siteA.has_value() && siteA->second)
-      {
-        previousSite[siteB->first] = siteA->first;
-        nextSite[siteA->first] = siteB->first;
-      }
-    }
+  }
+  for (const BrokenBond &bond : brokenBonds)
+  {
+    const std::uint32_t a = static_cast<std::uint32_t>(layout.index(bond.a));
+    const std::uint32_t b = static_cast<std::uint32_t>(layout.index(bond.b));
+    auto [it, inserted] = brokenPairs.try_emplace(canonical<2>({a, b}), bond.brokenAtStep);
+    if (!inserted) it->second = std::max(it->second, bond.brokenAtStep);
   }
 
-  // the restraints of the reacted stereocentres (a dead site whose tail has a partner and a side group)
-  for (std::size_t s = 0; s < siteState.size(); ++s)
+  // the restraints of the stereocentres with a held configuration
+  for (const StereoCentre &centre : centres)
   {
-    if (siteState[s] != static_cast<std::uint8_t>(PolymerSiteState::Dead) || siteChirality[s] == 0) continue;
-    if (tailPartner[s] == noAtom) continue;
-    const std::optional<PolymerAtomRef> sideGroup = sideGroupOf(s, components);
-    if (!sideGroup.has_value()) continue;
-    StereoCentreTerm term{};
-    term.atoms = {static_cast<std::uint32_t>(layout.index(tailOf(s, components))),
-                  static_cast<std::uint32_t>(layout.index(headOf(s, components))), tailPartner[s],
-                  static_cast<std::uint32_t>(layout.index(sideGroup.value()))};
-    term.chirality = siteChirality[s];
-    term.bondId = tailBond[s];
-    stereoCentres.push_back(term);
+    if (centre.chirality == 0) continue;
+    stereoCentres.push_back(StereoCentreTerm{centre.atoms, centre.chirality, centre.bond});
   }
 
   auto typeName = [&](std::uint32_t atom) -> const std::string &
@@ -885,8 +1038,69 @@ void PolymerLinkTable::rebuild(const ForceField &forceField, const std::vector<C
     linkTorsions.push_back(LinkTorsionTerm{key, potential.value(), k});
   }
 
-  // The pairs whose non-bonded treatment changes: within three bonds of each other through a polymer bond.
-  auto breadthFirst = [&](std::uint32_t start, std::size_t maxDepth)
+  // The pairs whose non-bonded treatment changes: within three bonds of each other through a formed bond, or
+  // through a broken bond. The events (formations and breakings) are replayed in the order of their steps on a
+  // copy of the topology that grows with them, so that every pair is assigned the treatment the topology of the
+  // moment requires and the ramp of the event that changed it. A pair changed by several events (the bond's own
+  // pair is within three bonds of the next bond of its atom) keeps the entries of all of them, a chain: the entry
+  // of an event takes the pair from the treatment the previous entry established ('counted') to the new one
+  // ('wanted'), lambda (wanted - counted); an entry whose treatment the newer event leaves as it is is not
+  // repeated (its ramp would restart, and with it the full non-bonded repulsion of two atoms already pulled to
+  // the bond length).
+  struct TopologyEvent
+  {
+    std::uint64_t step;
+    bool breaking;
+    std::array<std::uint32_t, 2> atoms;
+  };
+  std::vector<TopologyEvent> events{};
+  events.reserve(bonds.size() + brokenBonds.size());
+  for (const PolymerBond &bond : bonds)
+  {
+    events.push_back(TopologyEvent{bond.formedAtStep, false,
+                                   {static_cast<std::uint32_t>(layout.index(bond.a)),
+                                    static_cast<std::uint32_t>(layout.index(bond.b))}});
+  }
+  for (const BrokenBond &bond : brokenBonds)
+  {
+    events.push_back(TopologyEvent{bond.brokenAtStep, true,
+                                   {static_cast<std::uint32_t>(layout.index(bond.a)),
+                                    static_cast<std::uint32_t>(layout.index(bond.b))}});
+  }
+  std::ranges::stable_sort(events, {}, &TopologyEvent::step);
+
+  // the topology as of the event being replayed
+  std::unordered_map<std::uint32_t, std::vector<std::uint32_t>> formedSoFar{};
+  std::set<std::array<std::uint32_t, 2>> brokenSoFar{};
+  auto neighboursAt = [&](std::uint32_t atom)
+  {
+    const PolymerAtomRef r = layout.ref(atom);
+    const Component &component = components[r.componentId];
+    const std::size_t start = layout.moleculeStart(r.componentId, r.moleculeIndex);
+    std::vector<std::uint32_t> result{};
+    if (r.atomIndex < component.connectivityTable.numberOfBeads)
+    {
+      for (std::size_t local : component.connectivityTable.findAllNeighbors(r.atomIndex))
+      {
+        const std::uint32_t partner = static_cast<std::uint32_t>(start + local);
+        if (!brokenSoFar.empty() && brokenSoFar.contains(canonical<2>({atom, partner}))) continue;
+        result.push_back(partner);
+      }
+    }
+    const auto it = formedSoFar.find(atom);
+    if (it != formedSoFar.end())
+    {
+      for (std::uint32_t partner : it->second)
+      {
+        if (!std::ranges::contains(result, partner)) result.push_back(partner);
+      }
+    }
+    return result;
+  };
+  // the atoms within 'maxDepth' bonds of 'start' (with their distance); 'extra' is a bond added to the topology
+  // (a broken bond, for the neighbourhood through it)
+  auto breadthFirst = [&](std::uint32_t start, std::size_t maxDepth,
+                          std::optional<std::array<std::uint32_t, 2>> extra = std::nullopt)
   {
     std::unordered_map<std::uint32_t, std::size_t> distance{{start, 0}};
     std::vector<std::uint32_t> frontier{start};
@@ -895,7 +1109,13 @@ void PolymerLinkTable::rebuild(const ForceField &forceField, const std::vector<C
       std::vector<std::uint32_t> next{};
       for (std::uint32_t atom : frontier)
       {
-        for (std::uint32_t neighbour : neighboursOf(atom, components))
+        std::vector<std::uint32_t> neighbours = neighboursAt(atom);
+        if (extra.has_value())
+        {
+          if (atom == (*extra)[0]) neighbours.push_back((*extra)[1]);
+          if (atom == (*extra)[1]) neighbours.push_back((*extra)[0]);
+        }
+        for (std::uint32_t neighbour : neighbours)
         {
           if (distance.try_emplace(neighbour, depth).second) next.push_back(neighbour);
         }
@@ -913,193 +1133,365 @@ void PolymerLinkTable::rebuild(const ForceField &forceField, const std::vector<C
     return found == it->second.end() ? 4 : found->second;
   };
   const bool pair14Parameters = forceField.hasPair14Parameters();
-  std::map<std::array<std::uint32_t, 2>, PairCorrection> corrections{};
-  for (std::uint32_t k = 0; k < bonds.size(); ++k)
+  struct PairTreatment
   {
-    const std::uint32_t A = static_cast<std::uint32_t>(layout.index(bonds[k].a));
-    const std::uint32_t B = static_cast<std::uint32_t>(layout.index(bonds[k].b));
-    const auto fromA = breadthFirst(A, 2);
-    const auto fromB = breadthFirst(B, 2);
+    PairState state{PairState::Full};
+    PairScalingInfo scaling{};
+    bool operator==(const PairTreatment &other) const
+    {
+      if (state != other.state) return false;
+      if (state != PairState::Scaled) return true;
+      return scaling.scalingVDW == other.scaling.scalingVDW && scaling.scalingCoulomb == other.scaling.scalingCoulomb &&
+             scaling.pair14 == other.scaling.pair14;
+    }
+  };
+  // what the pair sums count for the pair (the exclusions of the molecule as the component defines it)
+  auto countedBySums = [&](const std::array<std::uint32_t, 2> &key)
+  {
+    PairTreatment counted{};
+    const PolymerAtomRef ru = layout.ref(key[0]);
+    const PolymerAtomRef rv = layout.ref(key[1]);
+    if (!ru.sameMolecule(rv)) return counted;
+    const IntraMolecularExclusions &exclusions = components[ru.componentId].intraMolecularPotentials.exclusions;
+    if (exclusions.isExcluded(ru.atomIndex, rv.atomIndex))
+    {
+      counted.state = PairState::Excluded;
+      return counted;
+    }
+    const IntraMolecularExclusions::ScaledPair scaled = exclusions.scalingOf(ru.atomIndex, rv.atomIndex);
+    if (scaled.scalingVDW != 1.0 || scaled.scalingCoulomb != 1.0 || scaled.pair14)
+    {
+      counted.state = PairState::Scaled;
+      counted.scaling = {scaled.scalingVDW, scaled.scalingCoulomb, scaled.pair14};
+    }
+    return counted;
+  };
+  // what the polymer topology requires of a pair at graph distance d
+  auto requiredAt = [&](std::size_t d, const Component &component)
+  {
+    PairTreatment wanted{};
+    if (d <= 2)
+    {
+      wanted.state = PairState::Excluded;
+    }
+    else if (d == 3)
+    {
+      wanted.state = PairState::Scaled;
+      wanted.scaling = {component.intra14VanDerWaalsScaling, component.intra14ChargeChargeScaling, pair14Parameters};
+      if (wanted.scaling.scalingVDW == 1.0 && wanted.scaling.scalingCoulomb == 1.0 && !wanted.scaling.pair14)
+      {
+        wanted.state = PairState::Full;
+        wanted.scaling = {};
+      }
+    }
+    return wanted;
+  };
+  struct PairChain
+  {
+    PairTreatment counted{};        ///< What the pair sums count.
+    std::vector<std::size_t> entries{};  ///< Indices into 'chain' in the order of the events.
+  };
+  std::vector<PairCorrection> chain{};
+  std::map<std::array<std::uint32_t, 2>, PairChain> chains{};
+  // The pairs (u, v) within three bonds of each other through the bond A-B ('fromA', 'fromB': the neighbourhoods
+  // of its two atoms in the graph the bond belongs to); 'step' is the step of the formation or breaking of A-B,
+  // 'breaking' whether A-B is a broken bond (whose 1-2 and 1-3 pairs the new topology may release).
+  auto correctPairs = [&](const std::unordered_map<std::uint32_t, std::size_t> &fromA,
+                          const std::unordered_map<std::uint32_t, std::size_t> &fromB, std::uint64_t step,
+                          bool breaking)
+  {
     for (const auto &[u, du] : fromA)
     {
       for (const auto &[v, dv] : fromB)
       {
         if (u == v || du + 1 + dv > 3) continue;
         const std::array<std::uint32_t, 2> key = canonical<2>({u, v});
-        const std::size_t d = graphDistance(key[0], key[1]);
-        if (d > 3) continue;
+        const std::size_t d = graphDistance(key[0], key[1]);  // in the topology of the event (4: beyond three bonds)
+
+        auto chainIt = chains.find(key);
+        const PairTreatment counted = chainIt == chains.end() ? countedBySums(key) : chainIt->second.counted;
+        const PairTreatment current =
+            chainIt == chains.end() ? counted
+                                    : PairTreatment{chain[chainIt->second.entries.back()].wanted,
+                                                    chain[chainIt->second.entries.back()].wantedScaling};
+        // an excluded pair of the molecule is left alone (a formed bond can only bring atoms closer; an exclusion
+        // for another reason, a rigid fragment, stands), unless it was a 1-2 or 1-3 pair through a broken bond
+        // that the new topology no longer excludes: that pair gets the required treatment below
+        if (counted.state == PairState::Excluded && current.state == PairState::Excluded &&
+            (!breaking || du + 1 + dv > 2 || d <= 2))
+          continue;
+
+        const PairTreatment wanted = requiredAt(d, components[layout.ref(key[0]).componentId]);
+        if (wanted == current) continue;
 
         PairCorrection correction{};
         correction.atoms = key;
-        correction.bondId = k;
-        const PolymerAtomRef ru = layout.ref(key[0]);
-        const PolymerAtomRef rv = layout.ref(key[1]);
-        const Component &component = components[ru.componentId];
-
-        // what the pair sums count for the pair now
-        correction.counted = PairState::Full;
-        if (ru.sameMolecule(rv))
-        {
-          const IntraMolecularExclusions &exclusions = component.intraMolecularPotentials.exclusions;
-          if (exclusions.isExcluded(ru.atomIndex, rv.atomIndex))
-          {
-            correction.counted = PairState::Excluded;
-          }
-          else
-          {
-            const IntraMolecularExclusions::ScaledPair scaled = exclusions.scalingOf(ru.atomIndex, rv.atomIndex);
-            if (scaled.scalingVDW != 1.0 || scaled.scalingCoulomb != 1.0 || scaled.pair14)
-            {
-              correction.counted = PairState::Scaled;
-              correction.countedScaling = {scaled.scalingVDW, scaled.scalingCoulomb, scaled.pair14};
-            }
-          }
-        }
-        if (correction.counted == PairState::Excluded) continue;
-
-        // what the polymer topology requires
-        if (d <= 2)
-        {
-          correction.wanted = PairState::Excluded;
-        }
-        else
-        {
-          correction.wanted = PairState::Scaled;
-          correction.wantedScaling = {component.intra14VanDerWaalsScaling, component.intra14ChargeChargeScaling,
-                                      pair14Parameters};
-          if (correction.wantedScaling.scalingVDW == 1.0 && correction.wantedScaling.scalingCoulomb == 1.0 &&
-              !correction.wantedScaling.pair14)
-          {
-            correction.wanted = PairState::Full;
-          }
-        }
-        if (correction.wanted == correction.counted &&
-            (correction.wanted != PairState::Scaled ||
-             (correction.wantedScaling.scalingVDW == correction.countedScaling.scalingVDW &&
-              correction.wantedScaling.scalingCoulomb == correction.countedScaling.scalingCoulomb &&
-              correction.wantedScaling.pair14 == correction.countedScaling.pair14)))
-          continue;
-        // the pairs the new bond excludes leave the pair lists (see PairCorrection); a scaled pair is not in the
-        // lists to begin with (the bonded work evaluates it) and keeps the difference formulation
-        correction.listed = !(correction.wanted == PairState::Excluded && correction.counted == PairState::Full);
-
-        auto [it, inserted] = corrections.try_emplace(key, correction);
-        if (!inserted && newer(k, it->second.bondId)) it->second = correction;
+        correction.step = step;
+        correction.counted = current.state;
+        correction.countedScaling = current.scaling;
+        correction.wanted = wanted.state;
+        correction.wantedScaling = wanted.scaling;
+        correction.listed = true;
+        if (chainIt == chains.end()) chainIt = chains.emplace(key, PairChain{counted, {}}).first;
+        chainIt->second.entries.push_back(chain.size());
+        chain.push_back(correction);
       }
     }
-  }
-  pairCorrections.reserve(corrections.size());
-  std::vector<std::array<std::uint32_t, 2>> unlistedPairs{};
-  for (const auto &[key, correction] : corrections)
+  };
+  for (std::size_t first = 0; first < events.size();)
   {
-    pairCorrections.push_back(correction);
-    if (!correction.listed) unlistedPairs.push_back(key);
+    std::size_t last = first;
+    while (last < events.size() && events[last].step == events[first].step) ++last;
+    // the topology after the events of this step
+    for (std::size_t e = first; e < last; ++e)
+    {
+      const TopologyEvent &event = events[e];
+      if (event.breaking)
+      {
+        brokenSoFar.insert(canonical<2>(event.atoms));
+      }
+      else
+      {
+        formedSoFar[event.atoms[0]].push_back(event.atoms[1]);
+        formedSoFar[event.atoms[1]].push_back(event.atoms[0]);
+      }
+    }
+    distanceCache.clear();
+    for (std::size_t e = first; e < last; ++e)
+    {
+      const TopologyEvent &event = events[e];
+      if (event.breaking)
+      {
+        // around a broken bond the affected pairs are the ones that were within three bonds through it: the
+        // neighbourhoods in the topology with the bond still present
+        const std::array<std::uint32_t, 2> bond = canonical<2>(event.atoms);
+        correctPairs(breadthFirst(bond[0], 2, bond), breadthFirst(bond[1], 2, bond), event.step, true);
+      }
+      else
+      {
+        correctPairs(breadthFirst(event.atoms[0], 2), breadthFirst(event.atoms[1], 2), event.step, false);
+      }
+    }
+    first = last;
+  }
+  // The pairs the pair lists hold at full strength that the topology excludes at some point of their chain leave
+  // the pair lists (see PairCorrection): the first entry of the chain then supplies the whole
+  // lambda value(wanted) + (1 - lambda) value(counted) in place of the lists, the later entries stay differences.
+  pairCorrections.reserve(chain.size());
+  std::vector<std::array<std::uint32_t, 2>> unlistedPairs{};
+  for (auto &[key, pairChain] : chains)
+  {
+    const bool unlistedPair =
+        pairChain.counted.state == PairState::Full &&
+        std::ranges::any_of(pairChain.entries,
+                            [&](std::size_t index) { return chain[index].wanted == PairState::Excluded; });
+    if (unlistedPair)
+    {
+      chain[pairChain.entries.front()].listed = false;
+      unlistedPairs.push_back(key);
+    }
+    for (std::size_t index : pairChain.entries) pairCorrections.push_back(chain[index]);
   }
   unlisted = PairListExclusions::fromPairs(layout.numberOfAtoms, unlistedPairs);
 
-  // The bonded terms of the molecules that contain a retyped atom.
-  struct RetypedMolecule
+  // The bonded terms of the molecules that contain a retyped atom or run through a broken bond: overridden. A
+  // term is taken through its history: from the parameters of the component to the template of the types after
+  // each retyping that changes one of its atoms (the ramp of that reaction), and to zero at the breaking of a
+  // bond it runs through (the ramp of the breaking; nothing after that). The overlay adds 'replacement - original'
+  // per link of the chain.
+  struct MoleculeHistory
   {
-    std::unordered_map<std::uint32_t, std::uint64_t> atoms;  // local atom -> step of the retyping
+    std::unordered_map<std::uint32_t, std::vector<std::pair<std::uint64_t, std::uint16_t>>> types{};  // local atom -> (step, type after)
+    std::vector<std::pair<std::array<std::uint32_t, 2>, std::uint64_t>> broken{};                     // local pair, step
   };
-  std::map<std::pair<std::uint32_t, std::uint32_t>, RetypedMolecule> retyped{};
-  for (std::size_t i = 0; i < siteState.size(); ++i)
+  std::map<std::pair<std::uint32_t, std::uint32_t>, MoleculeHistory> histories{};
+  for (const Retyping &retyping : retypings)
   {
-    if (siteState[i] == static_cast<std::uint8_t>(PolymerSiteState::Monomer)) continue;
-    const PolymerAtomRef r = siteRef(i);
-    const Component &component = components[r.componentId];
-    const PolymerizationSite &definition = component.polymerizationSites[r.atomIndex];
-    const std::size_t start = layout.moleculeStart(r.componentId, r.moleculeIndex);
-    RetypedMolecule &molecule = retyped[{r.componentId, r.moleculeIndex}];
-    for (std::size_t local : {definition.head, definition.tail})
-    {
-      if (atoms[start + local].type != component.atoms[local].type)
-      {
-        auto [it, inserted] = molecule.atoms.try_emplace(static_cast<std::uint32_t>(local), siteStep[i]);
-        if (!inserted) it->second = std::max(it->second, siteStep[i]);
-      }
-    }
+    histories[{retyping.atom.componentId, retyping.atom.moleculeIndex}].types[retyping.atom.atomIndex].push_back(
+        {retyping.step, retyping.to});
   }
-  for (const auto &[moleculeKey, molecule] : retyped)
+  for (const auto &[pair, step] : brokenPairs)
   {
-    if (molecule.atoms.empty()) continue;
+    const PolymerAtomRef ra = layout.ref(pair[0]);
+    const PolymerAtomRef rb = layout.ref(pair[1]);
+    histories[{ra.componentId, ra.moleculeIndex}].broken.push_back(
+        {std::array<std::uint32_t, 2>{ra.atomIndex, rb.atomIndex}, step});
+  }
+  for (auto &[moleculeKey, history] : histories)
+  {
     const Component &component = components[moleculeKey.first];
     const std::size_t start = layout.moleculeStart(moleculeKey.first, moleculeKey.second);
-    auto affected = [&](std::span<const std::size_t> identifiers, std::uint64_t &step)
+    for (auto &[local, changes] : history.types) std::ranges::sort(changes);
+
+    // the type of a local atom after the reactions up to 'step'
+    auto typeAt = [&](std::size_t local, std::uint64_t step) -> std::uint16_t
     {
-      bool any = false;
-      step = 0;
+      std::uint16_t type = component.atoms[local].type;
+      const auto it = history.types.find(static_cast<std::uint32_t>(local));
+      if (it == history.types.end()) return type;
+      for (const auto &[changeStep, to] : it->second)
+      {
+        if (changeStep > step) break;
+        type = to;
+      }
+      return type;
+    };
+    // the steps at which the types of a term change, and the step at which a bond it runs through breaks
+    struct TermHistory
+    {
+      std::vector<std::uint64_t> retypeSteps{};
+      std::optional<std::uint64_t> breakStep{};
+    };
+    auto termHistory = [&](std::span<const std::size_t> identifiers, bool adjacentOnly)
+    {
+      TermHistory result{};
       for (std::size_t id : identifiers)
       {
-        const auto it = molecule.atoms.find(static_cast<std::uint32_t>(id));
-        if (it != molecule.atoms.end())
-        {
-          any = true;
-          step = std::max(step, it->second);
-        }
+        const auto it = history.types.find(static_cast<std::uint32_t>(id));
+        if (it == history.types.end()) continue;
+        for (const auto &[step, to] : it->second) result.retypeSteps.push_back(step);
       }
-      return any;
+      std::ranges::sort(result.retypeSteps);
+      const auto duplicates = std::ranges::unique(result.retypeSteps);
+      result.retypeSteps.erase(duplicates.begin(), duplicates.end());
+      for (const auto &[pair, step] : history.broken)
+      {
+        bool through = false;
+        if (adjacentOnly)
+        {
+          for (std::size_t i = 0; i + 1 < identifiers.size(); ++i)
+          {
+            if ((identifiers[i] == pair[0] && identifiers[i + 1] == pair[1]) ||
+                (identifiers[i] == pair[1] && identifiers[i + 1] == pair[0]))
+              through = true;
+          }
+        }
+        else
+        {
+          through = std::ranges::contains(identifiers, pair[0]) && std::ranges::contains(identifiers, pair[1]);
+        }
+        if (through) result.breakStep = std::min(result.breakStep.value_or(step), step);
+      }
+      // the retypings from the breaking on do not matter for a term that is gone
+      if (result.breakStep.has_value())
+      {
+        std::erase_if(result.retypeSteps, [&](std::uint64_t step) { return step >= *result.breakStep; });
+      }
+      return result;
     };
+    auto missing = [&](const char *what, std::span<const std::uint32_t> global, std::uint64_t step)
+    {
+      std::string types{};
+      std::string names{};
+      for (std::uint32_t atom : global)
+      {
+        const std::string &name = forceField.pseudoAtoms[typeAt(layout.ref(atom).atomIndex, step)].name;
+        types += std::format("{} ", name);
+        names += std::format("{}\"{}\"", names.empty() ? "" : ", ", name);
+      }
+      return std::runtime_error(std::format(
+          "[Polymerization]: no '{}' template for the retyped term {}of types {}at step {} (add [[{}], ...] to the "
+          "'Polymerization' block)\n",
+          what, describe(global), types, step, names));
+    };
+
     for (const BondPotential &bond : component.intraMolecularPotentials.bonds)
     {
-      std::uint64_t step{};
-      if (!affected(bond.identifiers, step)) continue;
+      const TermHistory terms = termHistory(bond.identifiers, false);
+      if (terms.retypeSteps.empty() && !terms.breakStep.has_value()) continue;
       const std::array<std::uint32_t, 2> global{static_cast<std::uint32_t>(start + bond.identifiers[0]),
                                                 static_cast<std::uint32_t>(start + bond.identifiers[1])};
-      const std::optional<BondPotential> replacement =
-          templates.bond({atoms[global[0]].type, atoms[global[1]].type}, {global[0], global[1]});
-      if (!replacement.has_value())
+      BondPotential previous = bond;
+      previous.identifiers = {global[0], global[1]};
+      for (std::uint64_t step : terms.retypeSteps)
       {
-        throw std::runtime_error(std::format(
-            "[Polymerization]: no 'Bonds' template for the retyped bond {}(add [[\"{}\", \"{}\"], ...] to the "
-            "'Polymerization' block)\n",
-            describe(global), typeName(global[0]), typeName(global[1])));
+        const std::optional<BondPotential> replacement = templates.bond(
+            {typeAt(bond.identifiers[0], step), typeAt(bond.identifiers[1], step)}, {global[0], global[1]});
+        if (!replacement.has_value()) throw missing("Bonds", global, step);
+        overrideBonds.push_back(OverrideBondTerm{global, previous, replacement.value(), step});
+        previous = replacement.value();
       }
-      BondPotential original = bond;
-      original.identifiers = {global[0], global[1]};
-      overrideBonds.push_back(OverrideBondTerm{global, original, replacement.value(), step});
+      if (terms.breakStep.has_value())
+      {
+        overrideBonds.push_back(OverrideBondTerm{global, previous, BondPotential({global[0], global[1]}, BondType::None, {}),
+                                                 *terms.breakStep});
+      }
     }
     for (const BendPotential &bend : component.intraMolecularPotentials.bends)
     {
-      std::uint64_t step{};
-      if (!affected(bend.identifiers, step)) continue;
+      const TermHistory terms = termHistory(bend.identifiers, true);
+      if (terms.retypeSteps.empty() && !terms.breakStep.has_value()) continue;
       const std::array<std::uint32_t, 3> global{static_cast<std::uint32_t>(start + bend.identifiers[0]),
                                                 static_cast<std::uint32_t>(start + bend.identifiers[1]),
                                                 static_cast<std::uint32_t>(start + bend.identifiers[2])};
-      const std::optional<BendPotential> replacement = templates.bend(
-          {atoms[global[0]].type, atoms[global[1]].type, atoms[global[2]].type}, {global[0], global[1], global[2]});
-      if (!replacement.has_value())
+      BendPotential previous = bend;
+      previous.identifiers = {global[0], global[1], global[2]};
+      for (std::uint64_t step : terms.retypeSteps)
       {
-        throw std::runtime_error(std::format(
-            "[Polymerization]: no 'Bends' template for the retyped bend {}(add [[\"{}\", \"{}\", \"{}\"], ...] to "
-            "the 'Polymerization' block)\n",
-            describe(global), typeName(global[0]), typeName(global[1]), typeName(global[2])));
+        const std::optional<BendPotential> replacement = templates.bend(
+            {typeAt(bend.identifiers[0], step), typeAt(bend.identifiers[1], step), typeAt(bend.identifiers[2], step)},
+            {global[0], global[1], global[2]});
+        if (!replacement.has_value()) throw missing("Bends", global, step);
+        overrideBends.push_back(OverrideBendTerm{global, previous, replacement.value(), step});
+        previous = replacement.value();
       }
-      BendPotential original = bend;
-      original.identifiers = {global[0], global[1], global[2]};
-      overrideBends.push_back(OverrideBendTerm{global, original, replacement.value(), step});
+      if (terms.breakStep.has_value())
+      {
+        overrideBends.push_back(OverrideBendTerm{
+            global, previous, BendPotential({global[0], global[1], global[2]}, BendType::Fixed, {}), *terms.breakStep});
+      }
     }
     for (const TorsionPotential &torsion : component.intraMolecularPotentials.torsions)
     {
-      std::uint64_t step{};
-      if (!affected(torsion.identifiers, step)) continue;
+      const TermHistory terms = termHistory(torsion.identifiers, true);
+      if (terms.retypeSteps.empty() && !terms.breakStep.has_value()) continue;
       const std::array<std::uint32_t, 4> global{static_cast<std::uint32_t>(start + torsion.identifiers[0]),
                                                 static_cast<std::uint32_t>(start + torsion.identifiers[1]),
                                                 static_cast<std::uint32_t>(start + torsion.identifiers[2]),
                                                 static_cast<std::uint32_t>(start + torsion.identifiers[3])};
-      const std::optional<TorsionPotential> replacement = templates.torsion(
-          {atoms[global[0]].type, atoms[global[1]].type, atoms[global[2]].type, atoms[global[3]].type},
-          {global[0], global[1], global[2], global[3]});
-      if (!replacement.has_value())
+      TorsionPotential previous = torsion;
+      previous.identifiers = {global[0], global[1], global[2], global[3]};
+      for (std::uint64_t step : terms.retypeSteps)
+      {
+        const std::optional<TorsionPotential> replacement =
+            templates.torsion({typeAt(torsion.identifiers[0], step), typeAt(torsion.identifiers[1], step),
+                               typeAt(torsion.identifiers[2], step), typeAt(torsion.identifiers[3], step)},
+                              {global[0], global[1], global[2], global[3]});
+        if (!replacement.has_value()) throw missing("Torsions", global, step);
+        overrideTorsions.push_back(OverrideTorsionTerm{global, previous, replacement.value(), step});
+        previous = replacement.value();
+      }
+      if (terms.breakStep.has_value())
+      {
+        overrideTorsions.push_back(OverrideTorsionTerm{
+            global, previous, TorsionPotential({global[0], global[1], global[2], global[3]}, TorsionType::Fixed, {}),
+            *terms.breakStep});
+      }
+    }
+    // the term types the overlay does not carry
+    const auto &intra = component.intraMolecularPotentials;
+    for (const auto &[pair, step] : history.broken)
+    {
+      auto hasBoth = [&](std::span<const std::size_t> identifiers)
+      { return std::ranges::contains(identifiers, pair[0]) && std::ranges::contains(identifiers, pair[1]); };
+      const bool unsupported =
+          std::ranges::any_of(intra.ureyBradleys, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.inversionBends, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.outOfPlaneBends, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.improperTorsions, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.bondBonds, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.bondBends, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.bondTorsions, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.bendBends, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.bendTorsions, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.cmaps, [&](const auto &t) { return hasBoth(t.identifiers); });
+      if (unsupported)
       {
         throw std::runtime_error(std::format(
-            "[Polymerization]: no 'Torsions' template for the retyped torsion {}(add [[\"{}\", \"{}\", \"{}\", "
-            "\"{}\"], ...] to the 'Polymerization' block)\n",
-            describe(global), typeName(global[0]), typeName(global[1]), typeName(global[2]), typeName(global[3])));
+            "[Polymerization]: the broken bond {}-{} of component '{}' takes part in a Urey-Bradley, inversion, "
+            "out-of-plane, improper, cross or CMAP term; only bonds, bends and torsions can be switched off\n",
+            pair[0], pair[1], component.name));
       }
-      TorsionPotential original = torsion;
-      original.identifiers = {global[0], global[1], global[2], global[3]};
-      overrideTorsions.push_back(OverrideTorsionTerm{global, original, replacement.value(), step});
     }
   }
 
@@ -1356,9 +1748,9 @@ PolymerLinkTable::NetworkStatistics PolymerLinkTable::networkStatistics(const Si
   statistics.effectiveCycleRank = statistics.cycleRank - statistics.spanningClusters;
 
   std::size_t moleculesWithSites = 0;
-  for (std::size_t c = 0; c < sitesPerMolecule.size(); ++c)
+  for (std::size_t c = 0; c < groupsPerMolecule.size(); ++c)
   {
-    if (sitesPerMolecule[c] > 0) moleculesWithSites += moleculesPerComponent[c];
+    if (groupsPerMolecule[c] > 0) moleculesWithSites += moleculesPerComponent[c];
   }
   if (moleculesWithSites > 0)
   {
@@ -1369,38 +1761,37 @@ PolymerLinkTable::NetworkStatistics PolymerLinkTable::networkStatistics(const Si
 }
 
 PolymerLinkTable::StereoStatistics PolymerLinkTable::stereoStatistics(const SimulationBox &simulationBox,
-                                                                       const std::vector<Component> &components,
+                                                                       const std::vector<Component> &,
                                                                        std::span<const Atom> atoms) const
 {
   StereoStatistics statistics{};
-  if (!derivedValid || tailPartner.size() != siteState.size()) return statistics;
+  if (!derivedValid || nextGroup.size() != groupState.size()) return statistics;
 
-  // the sign of the chain-ordered chiral volume of every reacted stereocentre (0: not a stereocentre)
-  std::vector<std::int8_t> sign(siteState.size(), 0);
-  for (std::size_t s = 0; s < siteState.size(); ++s)
+  // the sign of the chiral volume of the (most recent) centre of every group (0: no centre)
+  std::vector<std::int8_t> sign(groupState.size(), 0);
+  for (const StereoCentre &centre : centres)
   {
-    if (siteState[s] != static_cast<std::uint8_t>(PolymerSiteState::Dead) || tailPartner[s] == noAtom) continue;
-    sign[s] = geometricChirality(s, tailPartner[s], simulationBox, components, atoms);
-    if (sign[s] == 0) continue;
+    const std::int8_t geometric = geometricChirality(centre.atoms, simulationBox, atoms);
+    sign[centre.group] = geometric;
     ++statistics.stereoCentres;
-    if (siteChirality[s] != 0)
+    if (centre.chirality != 0)
     {
       ++statistics.restrained;
-      if (siteChirality[s] != sign[s]) ++statistics.inverted;
+      if (centre.chirality != geometric) ++statistics.inverted;
     }
   }
-  // the dyads (previous unit, this unit) and the triads (previous, this, next)
+  // the dyads (previous group, this group) and the triads (previous, this, next)
   auto dyadIsMeso = [&](std::size_t i, std::size_t j) -> std::optional<bool>
   {
-    if (i == noSite || j == noSite || sign[i] == 0 || sign[j] == 0) return std::nullopt;
+    if (i == noGroup || j == noGroup || sign[i] == 0 || sign[j] == 0) return std::nullopt;
     return sign[i] == sign[j];
   };
-  for (std::size_t s = 0; s < siteState.size(); ++s)
+  for (std::size_t g = 0; g < groupState.size(); ++g)
   {
-    const std::optional<bool> dyad = dyadIsMeso(previousSite[s], s);
+    const std::optional<bool> dyad = dyadIsMeso(previousGroup[g], g);
     if (!dyad.has_value()) continue;
     if (dyad.value()) ++statistics.mesoDyads; else ++statistics.racemoDyads;
-    const std::optional<bool> next = dyadIsMeso(s, nextSite[s]);
+    const std::optional<bool> next = dyadIsMeso(g, nextGroup[g]);
     if (!next.has_value()) continue;
     if (dyad.value() && next.value())
       ++statistics.mm;
@@ -1420,14 +1811,35 @@ std::string PolymerLinkTable::printStatus(const SimulationBox &simulationBox, co
   const StereoStatistics stereo = stereoStatistics(simulationBox, components, atoms);
   std::print(stream, "Polymerization status\n");
   std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
-  std::print(stream, "    sites:                           {} total, {} monomer, {} radical, {} dead\n",
-             numberOfSites(), countSites(PolymerSiteState::Monomer), countSites(PolymerSiteState::Radical),
-             countSites(PolymerSiteState::Dead));
-  std::print(stream, "    conversion (reacted sites):      {:.4f}\n", conversion());
-  std::print(stream, "    events:                          {} initiations, {} propagations, {} terminations\n",
-             numberOfInitiations, numberOfPropagations, numberOfTerminations);
+  std::print(stream, "    groups:                          {} total, {} active (living chain ends)\n", numberOfGroups(),
+             countActive());
+  for (std::size_t t = 0; t < scheme.types.size(); ++t)
+  {
+    const ReactionScheme::GroupType &type = scheme.types[t];
+    std::string counts{};
+    for (std::size_t s = 0; s < type.states.size(); ++s)
+    {
+      counts += std::format("{} {}{}", countGroups(static_cast<std::uint16_t>(t), static_cast<std::uint8_t>(s)),
+                            type.states[s], s + 1 < type.states.size() ? ", " : "");
+    }
+    std::print(stream, "    '{}' groups:{}{} total: {}\n", type.name,
+               std::string(std::max<std::size_t>(1, 22 - std::min<std::size_t>(22, type.name.size())), ' '),
+               countGroups(static_cast<std::uint16_t>(t)), counts);
+  }
+  std::print(stream, "    conversion:                      {:.4f}\n", conversion());
+  std::string events{};
+  for (std::size_t r = 0; r < scheme.rules.size(); ++r)
+  {
+    events += std::format("{} {}{}", r < reactionCounts.size() ? reactionCounts[r] : 0, scheme.rules[r].name,
+                          r + 1 < scheme.rules.size() ? ", " : "");
+  }
+  std::print(stream, "    events:                          {}\n", events);
   std::print(stream, "    polymer bonds:                   {} ({} intramolecular / primary cycles)\n", bonds.size(),
              network.intramolecularBonds);
+  if (!brokenBonds.empty() || scheme.hasBreaking())
+  {
+    std::print(stream, "    broken bonds:                    {}\n", brokenBonds.size());
+  }
   std::print(stream, "    network:                         {} molecules in {} clusters, largest {} molecules (fraction {:.4f})\n",
              network.moleculesInNetwork, network.numberOfClusters, network.largestCluster, network.gelFraction);
   std::print(stream, "    cycles:                          rank {} of the molecule graph, {} independent loops per box in the unfolded network\n",
@@ -1443,27 +1855,22 @@ std::string PolymerLinkTable::printStatus(const SimulationBox &simulationBox, co
   {
     std::print(stream, "    percolation:                     no cluster connected to its periodic image (sol)\n");
   }
-  for (std::size_t c = 0; c < sitesPerMolecule.size() && c < components.size(); ++c)
+  for (std::size_t c = 0; c < groupsPerMolecule.size() && c < components.size(); ++c)
   {
-    if (sitesPerMolecule[c] == 0) continue;
-    std::size_t monomer = 0, radical = 0, dead = 0;
-    for (std::size_t i = siteOffset[c]; i < siteOffset[c] + sitesPerMolecule[c] * moleculesPerComponent[c]; ++i)
+    if (groupsPerMolecule[c] == 0) continue;
+    std::size_t unreacted = 0, activeCount = 0, reactedCount = 0;
+    for (std::size_t i = groupOffset[c]; i < groupOffset[c] + groupsPerMolecule[c] * moleculesPerComponent[c]; ++i)
     {
-      switch (state(i))
-      {
-        case PolymerSiteState::Monomer:
-          ++monomer;
-          break;
-        case PolymerSiteState::Radical:
-          ++radical;
-          break;
-        case PolymerSiteState::Dead:
-          ++dead;
-          break;
-      }
+      if (!reacted(i))
+        ++unreacted;
+      else
+        ++reactedCount;
+      if (active(i)) ++activeCount;
     }
-    std::print(stream, "    component {} ({}):              {} sites per molecule, {} monomer, {} radical, {} dead\n", c,
-               components[c].name, sitesPerMolecule[c], monomer, radical, dead);
+    std::print(stream, "    component {} ({}):{}{} groups per molecule, {} unreacted, {} reacted ({} active)\n", c,
+               components[c].name,
+               std::string(std::max<std::size_t>(1, 15 - std::min<std::size_t>(15, components[c].name.size())), ' '),
+               groupsPerMolecule[c], unreacted, reactedCount, activeCount);
   }
   if (derivedValid)
   {
@@ -1492,21 +1899,39 @@ std::string PolymerLinkTable::printStatus(const SimulationBox &simulationBox, co
   return stream.str();
 }
 
+nlohmann::json PolymerLinkTable::jsonGroupCounts() const
+{
+  nlohmann::json counts = nlohmann::json::object();
+  for (std::size_t t = 0; t < scheme.types.size(); ++t)
+  {
+    nlohmann::json states = nlohmann::json::object();
+    for (std::size_t s = 0; s < scheme.types[t].states.size(); ++s)
+    {
+      states[scheme.types[t].states[s]] = countGroups(static_cast<std::uint16_t>(t), static_cast<std::uint8_t>(s));
+    }
+    counts[scheme.types[t].name] = states;
+  }
+  return counts;
+}
+
 nlohmann::json PolymerLinkTable::jsonStatus(const SimulationBox &simulationBox,
                                             const std::vector<Component> &components,
                                             std::span<const Atom> atoms) const
 {
   nlohmann::json status{};
   const NetworkStatistics network = networkStatistics(simulationBox, components, atoms);
-  status["numberOfSites"] = numberOfSites();
-  status["monomerSites"] = countSites(PolymerSiteState::Monomer);
-  status["radicalSites"] = countSites(PolymerSiteState::Radical);
-  status["deadSites"] = countSites(PolymerSiteState::Dead);
+  status["numberOfGroups"] = numberOfGroups();
+  status["activeGroups"] = countActive();
+  status["groups"] = jsonGroupCounts();
   status["conversion"] = conversion();
-  status["initiations"] = numberOfInitiations;
-  status["propagations"] = numberOfPropagations;
-  status["terminations"] = numberOfTerminations;
+  nlohmann::json events = nlohmann::json::object();
+  for (std::size_t r = 0; r < scheme.rules.size(); ++r)
+  {
+    events[scheme.rules[r].name] = r < reactionCounts.size() ? reactionCounts[r] : 0;
+  }
+  status["events"] = events;
   status["bonds"] = bonds.size();
+  status["brokenBonds"] = brokenBonds.size();
   status["intramolecularBonds"] = network.intramolecularBonds;
   status["moleculesInNetwork"] = network.moleculesInNetwork;
   status["clusters"] = network.numberOfClusters;
@@ -1539,9 +1964,24 @@ nlohmann::json PolymerLinkTable::jsonTopology() const
     nlohmann::json entry{};
     entry["atoms"] = {{bond.a.componentId, bond.a.moleculeIndex, bond.a.atomIndex},
                       {bond.b.componentId, bond.b.moleculeIndex, bond.b.atomIndex}};
-    entry["kind"] = bond.kind == PolymerBondKind::Propagation ? "propagation" : "termination";
+    entry["reaction"] = bond.reaction < scheme.rules.size() ? scheme.rules[bond.reaction].name : std::string("?");
     entry["step"] = bond.formedAtStep;
     entry["formationDistance"] = bond.formationDistance;
+    topology.push_back(entry);
+  }
+  return topology;
+}
+
+nlohmann::json PolymerLinkTable::jsonBrokenBonds() const
+{
+  nlohmann::json topology = nlohmann::json::array();
+  for (const BrokenBond &bond : brokenBonds)
+  {
+    nlohmann::json entry{};
+    entry["atoms"] = {{bond.a.componentId, bond.a.moleculeIndex, bond.a.atomIndex},
+                      {bond.b.componentId, bond.b.moleculeIndex, bond.b.atomIndex}};
+    entry["reaction"] = bond.reaction < scheme.rules.size() ? scheme.rules[bond.reaction].name : std::string("?");
+    entry["step"] = bond.brokenAtStep;
     topology.push_back(entry);
   }
   return topology;
@@ -1551,19 +1991,22 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Polyme
 {
   archive << t.versionNumber;
   archive << t.templates;
+  archive << t.scheme;
   archive << t.bonds;
+  archive << t.brokenBonds;
+  archive << t.retypings;
+  archive << t.centres;
   archive << t.activated;
-  archive << t.sitesPerMolecule;
-  archive << t.siteOffset;
+  archive << t.groupsPerMolecule;
+  archive << t.groupOffset;
   archive << t.moleculesPerComponent;
-  archive << t.siteState;
-  archive << t.siteStep;
+  archive << t.groupState;
+  archive << t.groupStep;
+  archive << t.groupChirality;
+  archive << t.previousGroup;
+  archive << t.reactionCounts;
   archive << t.relaxationSteps;
   archive << t.currentStep;
-  archive << t.numberOfInitiations;
-  archive << t.numberOfPropagations;
-  archive << t.numberOfTerminations;
-  archive << t.siteChirality;
   archive << t.chiralForceConstant;
   archive << t.chiralReferenceVolume;
 #if DEBUG_ARCHIVE
@@ -1576,35 +2019,31 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PolymerLinkT
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
-  if (versionNumber > t.versionNumber)
+  if (versionNumber != t.versionNumber)
   {
     throw std::runtime_error(std::format("Invalid version reading 'PolymerLinkTable' at line {} in file {}\n",
                                          std::source_location::current().line(),
                                          std::source_location::current().file_name()));
   }
   archive >> t.templates;
+  archive >> t.scheme;
   archive >> t.bonds;
+  archive >> t.brokenBonds;
+  archive >> t.retypings;
+  archive >> t.centres;
   archive >> t.activated;
-  archive >> t.sitesPerMolecule;
-  archive >> t.siteOffset;
+  archive >> t.groupsPerMolecule;
+  archive >> t.groupOffset;
   archive >> t.moleculesPerComponent;
-  archive >> t.siteState;
-  archive >> t.siteStep;
+  archive >> t.groupState;
+  archive >> t.groupStep;
+  archive >> t.groupChirality;
+  archive >> t.previousGroup;
+  archive >> t.reactionCounts;
   archive >> t.relaxationSteps;
   archive >> t.currentStep;
-  archive >> t.numberOfInitiations;
-  archive >> t.numberOfPropagations;
-  archive >> t.numberOfTerminations;
-  if (versionNumber >= 2)
-  {
-    archive >> t.siteChirality;
-    archive >> t.chiralForceConstant;
-    archive >> t.chiralReferenceVolume;
-  }
-  else
-  {
-    t.siteChirality.assign(t.siteState.size(), 0);
-  }
+  archive >> t.chiralForceConstant;
+  archive >> t.chiralReferenceVolume;
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
   archive >> magicNumber;

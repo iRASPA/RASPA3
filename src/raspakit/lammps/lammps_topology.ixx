@@ -142,6 +142,7 @@ struct Topology
   // polymer overlay (zero without one)
   std::size_t polymerBonds{0};      ///< Polymer bonds merged into the bond list.
   std::size_t polymerOverrides{0};  ///< Monomer terms that took the product parameters.
+  std::size_t polymerBrokenTerms{0};  ///< Monomer bonds, angles and dihedrals removed by broken bonds.
 
   std::vector<std::string> pairStyles() const;
   bool pairCoefficientsInDataFile() const;  ///< single analytic VDW style: PairIJ Coeffs can live in the data file

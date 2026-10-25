@@ -4,8 +4,8 @@
   "AcentricFactor" : 0.35,
   "StartingBead" : 0,
   "Intra14ChargeChargeScalingValue" : 0.5,
-  "PolymerizationSites" : [
-    {"Type" : "acrylate", "Head" : 0, "Tail" : 1, "SideGroup" : 2, "HeadProductType" : "CH2_bb", "TailProductType" : "CH_bb"}
+  "ReactiveGroups" : [
+    {"Type" : "acrylate", "State" : "monomer", "Atoms" : {"head" : 0, "tail" : 1, "side" : 2}}
   ],
   "pseudoAtoms" :
     [

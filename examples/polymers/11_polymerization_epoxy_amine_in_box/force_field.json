@@ -1,0 +1,189 @@
+{
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "truncated",
+  "TailCorrections" : true,
+  "CutOffVDW" : 12.0,
+  "CutOffCoulomb" : 12.0,
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "CH2_ep",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 14.02658,
+      "charge" : 0.25,
+      "source" : "epoxide ring CH2 (ether-like, united atom); TraPPE-UA ethers, J. M. Stubbs, J. J. Potoff, J. I. Siepmann, J. Phys. Chem. B 2004, 108, 17596-17605"
+    },
+    {
+      "name" : "CH_ep",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 13.01864,
+      "charge" : 0.25,
+      "source" : "epoxide ring CH (ether-like, united atom); TraPPE-UA, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1999, 103, 4508-4517"
+    },
+    {
+      "name" : "O_ep",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -0.5,
+      "source" : "epoxide ring O (ether-like); TraPPE-UA ethers, J. M. Stubbs, J. J. Potoff, J. I. Siepmann, J. Phys. Chem. B 2004, 108, 17596-17605"
+    },
+    {
+      "name" : "CH2_O",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 14.02658,
+      "charge" : 0.25,
+      "source" : "CH2 bonded to the ether O; TraPPE-UA ethers, J. M. Stubbs, J. J. Potoff, J. I. Siepmann, J. Phys. Chem. B 2004, 108, 17596-17605"
+    },
+    {
+      "name" : "O_eth",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -0.5,
+      "source" : "ether O; TraPPE-UA ethers, J. M. Stubbs, J. J. Potoff, J. I. Siepmann, J. Phys. Chem. B 2004, 108, 17596-17605"
+    },
+    {
+      "name" : "N_p",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "N",
+      "print_as" : "N",
+      "mass" : 16.02258,
+      "charge" : -0.18,
+      "source" : "primary amine NH2 as one bead (N -0.892 with its two H +0.356 folded in); TraPPE-UA amines, C. D. Wick, J. M. Stubbs, N. Rai, J. I. Siepmann, J. Phys. Chem. B 2005, 109, 18974-18982"
+    },
+    {
+      "name" : "CH2_N",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 14.02658,
+      "charge" : 0.18,
+      "source" : "CH2 bonded to an amine N; TraPPE-UA amines, C. D. Wick, J. M. Stubbs, N. Rai, J. I. Siepmann, J. Phys. Chem. B 2005, 109, 18974-18982"
+    },
+    {
+      "name" : "NH",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "N",
+      "print_as" : "N",
+      "mass" : 15.01464,
+      "charge" : -0.36,
+      "source" : "secondary amine NH as one bead (N -0.745 with its H +0.385 folded in); TraPPE-UA amines, C. D. Wick, J. M. Stubbs, N. Rai, J. I. Siepmann, J. Phys. Chem. B 2005, 109, 18974-18982"
+    },
+    {
+      "name" : "N_t",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "N",
+      "print_as" : "N",
+      "mass" : 14.0067,
+      "charge" : -0.54,
+      "source" : "tertiary amine N; TraPPE-UA amines, C. D. Wick, J. M. Stubbs, N. Rai, J. I. Siepmann, J. Phys. Chem. B 2005, 109, 18974-18982"
+    },
+    {
+      "name" : "CH_OH",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 13.01864,
+      "charge" : 0.265,
+      "source" : "CH bonded to the hydroxyl O of the opened ring; TraPPE-UA alcohols, B. Chen, J. J. Potoff, J. I. Siepmann, J. Phys. Chem. B 2001, 105, 3093-3104"
+    },
+    {
+      "name" : "O_OH",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 17.00734,
+      "charge" : -0.265,
+      "source" : "hydroxyl OH as one bead (O -0.700 with its H +0.435 folded in); TraPPE-UA alcohols, B. Chen, J. J. Potoff, J. I. Siepmann, J. Phys. Chem. B 2001, 105, 3093-3104"
+    }
+  ],
+  "SelfInteractions" :
+  [
+    {
+      "name" : "CH2_ep",
+      "type" : "lennard-jones",
+      "parameters" : [46.0, 3.95],
+      "source" : "TraPPE-UA CH2, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1998, 102, 2569-2577"
+    },
+    {
+      "name" : "CH_ep",
+      "type" : "lennard-jones",
+      "parameters" : [10.0, 4.68],
+      "source" : "TraPPE-UA CH, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1999, 103, 4508-4517"
+    },
+    {
+      "name" : "O_ep",
+      "type" : "lennard-jones",
+      "parameters" : [55.0, 2.8],
+      "source" : "TraPPE-UA ether O, J. M. Stubbs, J. J. Potoff, J. I. Siepmann, J. Phys. Chem. B 2004, 108, 17596-17605"
+    },
+    {
+      "name" : "CH2_O",
+      "type" : "lennard-jones",
+      "parameters" : [46.0, 3.95],
+      "source" : "TraPPE-UA CH2, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1998, 102, 2569-2577"
+    },
+    {
+      "name" : "O_eth",
+      "type" : "lennard-jones",
+      "parameters" : [55.0, 2.8],
+      "source" : "TraPPE-UA ether O, J. M. Stubbs, J. J. Potoff, J. I. Siepmann, J. Phys. Chem. B 2004, 108, 17596-17605"
+    },
+    {
+      "name" : "N_p",
+      "type" : "lennard-jones",
+      "parameters" : [111.0, 3.34],
+      "source" : "TraPPE-UA amine N, C. D. Wick, J. M. Stubbs, N. Rai, J. I. Siepmann, J. Phys. Chem. B 2005, 109, 18974-18982"
+    },
+    {
+      "name" : "CH2_N",
+      "type" : "lennard-jones",
+      "parameters" : [46.0, 3.95],
+      "source" : "TraPPE-UA CH2, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1998, 102, 2569-2577"
+    },
+    {
+      "name" : "NH",
+      "type" : "lennard-jones",
+      "parameters" : [111.0, 3.34],
+      "source" : "TraPPE-UA amine N, C. D. Wick, J. M. Stubbs, N. Rai, J. I. Siepmann, J. Phys. Chem. B 2005, 109, 18974-18982"
+    },
+    {
+      "name" : "N_t",
+      "type" : "lennard-jones",
+      "parameters" : [111.0, 3.34],
+      "source" : "TraPPE-UA amine N, C. D. Wick, J. M. Stubbs, N. Rai, J. I. Siepmann, J. Phys. Chem. B 2005, 109, 18974-18982"
+    },
+    {
+      "name" : "CH_OH",
+      "type" : "lennard-jones",
+      "parameters" : [10.0, 4.68],
+      "source" : "TraPPE-UA CH, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1999, 103, 4508-4517"
+    },
+    {
+      "name" : "O_OH",
+      "type" : "lennard-jones",
+      "parameters" : [93.0, 3.02],
+      "source" : "TraPPE-UA alcohol O, B. Chen, J. J. Potoff, J. I. Siepmann, J. Phys. Chem. B 2001, 105, 3093-3104"
+    }
+  ]
+}

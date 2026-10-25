@@ -5,9 +5,9 @@
   "StartingBead" : 0,
   "Intra14ChargeChargeScalingValue" : 0.5,
   "EndToEndAtoms" : [0, 13],
-  "PolymerizationSites" : [
-    {"Type" : "acrylate", "Head" : 0,  "Tail" : 1,  "HeadProductType" : "CH2_bb", "TailProductType" : "CH_bb"},
-    {"Type" : "acrylate", "Head" : 13, "Tail" : 12, "HeadProductType" : "CH2_bb", "TailProductType" : "CH_bb"}
+  "ReactiveGroups" : [
+    {"Type" : "acrylate", "State" : "monomer", "Atoms" : {"head" : 0,  "tail" : 1,  "side" : 2}},
+    {"Type" : "acrylate", "State" : "monomer", "Atoms" : {"head" : 13, "tail" : 12, "side" : 11}}
   ],
   "pseudoAtoms" :
     [

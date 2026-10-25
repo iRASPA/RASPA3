@@ -1150,22 +1150,25 @@ reported separately at the end of the simulation.
     loading.
 
 -   `"SimulationType" : "Polymerization"`\
-    Stochastic, template-based free-radical chain-growth polymerization of
-    monomers in a box, built on `"MolecularDynamicsSpatialDecomposition"`
+    Stochastic, template-based reactive molecular dynamics (polymerization)
+    of monomers in a box, built on `"MolecularDynamicsSpatialDecomposition"`
     (all of its settings apply). The Monte Carlo (pre-)initialization and the
     MD equilibration run on the unreacted monomers; during the production
-    stage the reactive sites declared with `"PolymerizationSites"` in the
-    molecule files are scanned every `"ScanEvery"` MD steps and the reactions
-    *initiation* (monomer → radical), *propagation* (radical tail bonds to a
-    monomer head within the capture radius; the monomer becomes the new
-    radical) and *termination by combination* (two radical tails bond) are
-    accepted with their probabilities. An accepted reaction retypes the head
-    and tail atoms to the product pseudo-atoms (e.g. `CH2_sp2 → CH2_bb`,
-    `CH_sp2 → CH_bb`), looks up the new bond, the bends and torsions through
-    it, and the 1-2/1-3 exclusions and 1-4 scalings of the new neighbours in
-    the *type-based tables* of the product (the same `"Bonds"`/`"Bends"`/
-    `"Torsions"` tables as a molecule file of the polymer), and ramps the new
-    terms in linearly over `"RelaxationSteps"` MD steps. The molecules of the
+    stage the reactive groups declared with `"ReactiveGroups"` in the
+    molecule files are scanned every `"ScanEvery"` MD steps for the
+    user-defined reaction rules of the `"Reactions"` list: a rule is a
+    transition of one group (unimolecular, e.g. *initiation*: monomer →
+    radical) or of a pair of groups whose capture atoms are within a radius
+    (bimolecular, e.g. *propagation*: radical tail bonds to a monomer head,
+    the monomer becomes the new radical; *termination by combination*: two
+    radical tails bond), accepted with its probability. An accepted reaction
+    retypes the atoms of the groups as the rule prescribes (e.g. `CH2_sp2 →
+    CH2_bb`, `CH_sp2 → CH_bb`), looks up the new bond, the bends and torsions
+    through it, and the 1-2/1-3 exclusions and 1-4 scalings of the new
+    neighbours in the *type-based tables* of the product (the same
+    `"Bonds"`/`"Bends"`/`"Torsions"` tables as a molecule file of the
+    polymer), and ramps the new terms in linearly over `"RelaxationSteps"`
+    MD steps. The molecules of the
     system never change: the polymer is the graph of bonds between them,
     written to `output/polymer_topology.s<i>.json` at the end, with every
     reaction logged in `output/polymerization_bonds.s<i>.txt`; with
@@ -1800,160 +1803,257 @@ parallel tempering.
     Without this key the simulation starts without cross-links and the
     formation/scission move builds them up.
 
-### Polymerization (free-radical chain growth) <a name="polymerization"></a>
+### Polymerization (reaction rules) <a name="polymerization"></a>
 
 With `"SimulationType" : "Polymerization"` the system block takes a
-`"Polymerization"` object that controls the reactions and gives the bonded
-tables of the product. The reactive sites of the monomers are declared per
-component with `"PolymerizationSites"` (see
-[Component properties](#component-properties)); a site is a vinyl-like pair
-of bonded atoms, the *head* (the `CH2=` that a radical attacks) and the
-*tail* (the `=CH–` that carries the radical after addition). Every
-`"ScanEvery"` MD steps the sites are scanned: the radical tail–monomer head
-pairs within `"CaptureRadius"` of `"Propagation"` and the radical tail–radical
-tail pairs within `"CaptureRadius"` of `"Termination"` are the candidates,
-tried in order of increasing distance (one reaction per site per scan), each
-accepted with its probability. A probability can be given directly (per
-candidate pair and per scan) or as a rate constant \f$k\f$ in ps⁻¹, in which
-case the probability per scan is \f$1-\exp(-k\,\Delta t_\mathrm{scan})\f$
-with \f$\Delta t_\mathrm{scan} = \f$ `"ScanEvery"` × `"TimeStep"`.
+`"Polymerization"` object that defines the chemistry as a list of reaction
+rules and gives the bonded tables of the product. The reactive groups of the
+monomers are declared per component with `"ReactiveGroups"` (see
+[Component properties](#component-properties)): a group has a *type* (e.g.
+`acrylate`, `epoxide`, `amine`), a set of named *role atoms* (for a vinyl
+group the `head`, the `CH2=` that a radical attacks, the `tail`, the `=CH–`
+that carries the radical after addition, and the `side` group on the tail)
+and an initial *state* (`monomer`). The reactions are transitions between
+the states of one group (unimolecular) or of a pair of groups (bimolecular),
+written with reactant labels so that the atoms of the rule can be named as
+`Label.role`. The free-radical chain growth of an acrylate is
+
+```json
+"Reactions" : [
+  {
+    "Name" : "initiation",
+    "Reactants" : [{"Label" : "M", "Type" : "acrylate", "State" : "monomer"}],
+    "Products"  : [{"Label" : "M", "State" : "radical", "Retype" : {"head" : "CH2_bb", "tail" : "CH_bb"}}],
+    "Probability" : 0.0,
+    "InitialEvents" : 135
+  },
+  {
+    "Name" : "propagation",
+    "Reactants" : [{"Label" : "R", "Type" : "acrylate", "State" : "radical"},
+                   {"Label" : "M", "Type" : "acrylate", "State" : "monomer"}],
+    "Capture"   : {"Atoms" : ["R.tail", "M.head"], "Radius" : 4.0},
+    "FormBonds" : [["R.tail", "M.head"]],
+    "Products"  : [{"Label" : "R", "State" : "dead"},
+                   {"Label" : "M", "State" : "radical", "Retype" : {"head" : "CH2_bb", "tail" : "CH_bb"}}],
+    "Stereo"    : {"Centre" : "R.tail", "Substituents" : ["R.head", "M.head", "R.side"], "Next" : "M"},
+    "Probability" : 0.5
+  },
+  {
+    "Name" : "termination",
+    "Reactants" : [{"Label" : "A", "Type" : "acrylate", "State" : "radical"},
+                   {"Label" : "B", "Type" : "acrylate", "State" : "radical"}],
+    "Capture"   : {"Atoms" : ["A.tail", "B.tail"], "Radius" : 4.0},
+    "FormBonds" : [["A.tail", "B.tail"]],
+    "Products"  : [{"Label" : "A", "State" : "dead"}, {"Label" : "B", "State" : "dead"}],
+    "Probability" : 0.5
+  }
+],
+"Conversion" : [{"Type" : "acrylate", "States" : ["radical", "dead"]}]
+```
+
+and a step-growth chemistry (an epoxide ring opened by a primary amine that
+becomes a secondary amine and reacts once more) is written in the same way
+with an `epoxide` and an `amine` group type and the states `primary →
+secondary → tertiary` of the amine. Every `"ScanEvery"` MD steps the groups
+are scanned: for every bimolecular rule the pairs of groups in its reactant
+states whose capture atoms are within `"Radius"` are the candidates, pooled
+over the rules and tried in order of increasing distance (one reaction per
+group per scan), each accepted with the probability of its rule; afterwards
+every group in the reactant state of a unimolecular rule reacts with that
+rule's probability. A probability can be given directly (per candidate and
+per scan) or as a rate constant \f$k\f$ in ps⁻¹, in which case the
+probability per scan is \f$1-\exp(-k\,\Delta t_\mathrm{scan})\f$ with
+\f$\Delta t_\mathrm{scan} = \f$ `"ScanEvery"` × `"TimeStep"`.
+
+A state of a group type is *active* when a bimolecular rule has it as a
+reactant and no group starts in it: the groups in active states are the
+living chain ends (the radicals of a chain growth, the partly reacted amines
+of a step growth); their number is reported and their waiting times are
+collected (see below).
 
 *Orientation weight.* The distance criterion alone accepts a pair whatever
-the relative orientation of the two sites, and the ramp then pulls the new
+the relative orientation of the two groups, and the ramp then pulls the new
 bond into the geometry of its templates. With `"OrientationTemperature"`
-(\f$T^*\f$, in K) in the `"Propagation"` or `"Termination"` block the
-acceptance probability of a candidate is multiplied by
-\f$\exp(-\Delta U_\mathrm{ang}/k_B T^*)\f$, where \f$\Delta U_\mathrm{ang}\f$
-is the *angular strain* the new bond would carry in the current geometry:
-the sum of the bends \f$X\!-\!A\!-\!B\f$, \f$A\!-\!B\!-\!Y\f$ and the
-torsions \f$W\!-\!X\!-\!A\!-\!B\f$, \f$X\!-\!A\!-\!B\!-\!Y\f$,
-\f$A\!-\!B\!-\!Y\!-\!Z\f$ of the product tables (with the product types of
-the reacting atoms), each counted relative to the minimum of its template so
-that a pair in the ideal product geometry has zero strain. The bond stretch
-and the non-bonded terms are not included — the distance is already the
-capture criterion. \f$T^*\f$ is a selectivity, not the physical temperature:
-a sum of nine bend and torsion terms in a random approach is typically
-several thousand K (for HDDA the accepted reactions have a mean strain of
-about 7000 K at \f$T^* = 2000\f$ K, with the best candidates near 4500 K),
-so useful values of \f$T^*\f$ are a few thousand K; \f$T^* = 2000\f$ K
-reduces the propagation rate by an order of magnitude compared to the
-distance criterion alone in the same trajectory, while a large \f$T^*\f$
-recovers it. Without the key the weight is one. The candidates rejected by
-the weight and the mean strain of the accepted reactions are reported in
-the status, and the bond log carries the strain of every reaction.
+(\f$T^*\f$, in K) in a rule the acceptance probability of a candidate is
+multiplied by \f$\exp(-\Delta U_\mathrm{ang}/k_B T^*)\f$, where
+\f$\Delta U_\mathrm{ang}\f$ is the *angular strain* the new bond(s) would
+carry in the current geometry: the sum of the bends \f$X\!-\!A\!-\!B\f$,
+\f$A\!-\!B\!-\!Y\f$ and the torsions \f$W\!-\!X\!-\!A\!-\!B\f$,
+\f$X\!-\!A\!-\!B\!-\!Y\f$, \f$A\!-\!B\!-\!Y\!-\!Z\f$ of the product tables
+(with the product types of the reacting atoms), each counted relative to the
+minimum of its template so that a pair in the ideal product geometry has
+zero strain. The bond stretch and the non-bonded terms are not included —
+the distance is already the capture criterion. \f$T^*\f$ is a selectivity,
+not the physical temperature: a sum of nine bend and torsion terms in a
+random approach is typically several thousand K (for HDDA the accepted
+reactions have a mean strain of about 7000 K at \f$T^* = 2000\f$ K, with the
+best candidates near 4500 K), so useful values of \f$T^*\f$ are a few
+thousand K; \f$T^* = 2000\f$ K reduces the propagation rate by an order of
+magnitude compared to the distance criterion alone in the same trajectory,
+while a large \f$T^*\f$ recovers it. Without the key the weight is one. The
+candidates rejected by the weight and the mean strain of the accepted
+reactions are reported in the status, and the bond log carries the strain
+of every reaction.
 
 A reaction changes the types (and with them the charges and the Lennard-Jones
-parameters) of the head and tail atoms of the reacted site to
-`"HeadProductType"` / `"TailProductType"` and adds the new bond. The bonded
-terms through the new bond (the bond, the bends \f$X\!-\!A\!-\!B\f$ and
-\f$A\!-\!B\!-\!Y\f$, and the torsions \f$W\!-\!X\!-\!A\!-\!B\f$,
-\f$X\!-\!A\!-\!B\!-\!Y\f$, \f$A\!-\!B\!-\!Y\!-\!Z\f$) are looked up
-by the *current* types of the atoms in the `"Bonds"`, `"Bends"` and
-`"Torsions"` tables of the `"Polymerization"` block (or of
-`"TemplateFile"`); the terms of the monomer that contain a retyped atom are
-replaced by the table entry for the new types (so the backbone of the
-polymer gets e.g. the `CH2_bb–CH_bb–C_CO` bend instead of the
-`CH2_sp2–CH_sp2–C_CO` one). A missing entry is an error naming the type
-tuple to add. The non-bonded interaction of the atom pairs that are now
-1-2 or 1-3 across the new bond is removed, 1-4 pairs are scaled with the
+parameters) of the atoms named in `"Retype"` of the products, adds the
+bonds of `"FormBonds"` and removes the bonds of `"BreakBonds"` (a bond of the
+monomer topology within one reactant: the ring bond of an epoxide that opens
+on the attack of an amine). The bonded terms through a new bond (the bond, the
+bends \f$X\!-\!A\!-\!B\f$ and \f$A\!-\!B\!-\!Y\f$, and the torsions
+\f$W\!-\!X\!-\!A\!-\!B\f$, \f$X\!-\!A\!-\!B\!-\!Y\f$,
+\f$A\!-\!B\!-\!Y\!-\!Z\f$) are looked up by the *current* types of the atoms
+in the `"Bonds"`, `"Bends"` and `"Torsions"` tables of the
+`"Polymerization"` block (or of `"TemplateFile"`); the terms of the monomer
+that contain a retyped atom are replaced by the table entry for the new
+types (so the backbone of the polymer gets e.g. the `CH2_bb–CH_bb–C_CO` bend
+instead of the `CH2_sp2–CH_sp2–C_CO` one). A missing entry is an error naming
+the type tuple to add. The non-bonded interaction of the atom pairs that are
+now 1-2 or 1-3 across the new bond is removed, 1-4 pairs are scaled with the
 component's `"Intra14VanDerWaalsScalingValue"` /
 `"Intra14ChargeChargeScalingValue"` (including the Ewald exclusion
 corrections, as for the intra-molecular pairs). All new or changed terms are
 switched on with a linear ramp \f$\lambda(t)\f$ from 0 to 1 over
 `"RelaxationSteps"` MD steps so that the capture at up to the capture radius
 does not inject a large force; the conserved-energy reference of the drift
-report restarts at every accepted reaction.
+report restarts at every accepted reaction. A broken bond is switched off
+with the same ramp: the bond and the bends and torsions of the monomer that
+run through it go to zero (they need no table entry), the connectivity the
+polymer topology follows loses the bond, and the pairs around it that the
+monomer excludes as 1-2 or 1-3 pairs but that are farther apart in the new
+topology receive the 1-4 scaled (three bonds) or full non-bonded interaction.
+Only bonds, bends and torsions can be switched off; a bond that takes part in
+a Urey-Bradley, inversion, out-of-plane, improper, cross or CMAP term can not
+be broken. No atoms are removed: a condensation that releases a small
+molecule is modelled by retyping (the leaving atoms become spectators). A
+later reaction at an atom of an earlier bond (the second addition to an
+amine) leaves the terms of the earlier bond alone: only what it changes is
+ramped, from the state the earlier reactions established (a bend that is
+retyped twice goes from the monomer parameters to the first product's with
+the first ramp and on to the second product's with the second).
 
-*Tacticity.* The tail of a reacted site is a stereocentre of the backbone:
-its substituents are the head, the side group (`"SideGroup"` of the site, by
-default the only neighbour of the tail other than the head) and the polymer
-partner, the implicit hydrogen of the united-atom bead being the fourth. Its
-configuration is the sign of the normalised chiral volume
-\f$\hat V = (\mathbf{b}_p \times \mathbf{b}_n)\cdot\mathbf{b}_z /
-(|\mathbf{b}_p||\mathbf{b}_n||\mathbf{b}_z|)\f$ of the bond vectors from the
-tail to the head (\f$p\f$), the partner (\f$n\f$) and the side group
-(\f$z\f$); the ordering follows the chain direction, so two consecutive
-centres of a chain form a *meso* dyad when their signs are equal and a
-*racemo* dyad when they differ. An all-meso chain is isotactic, an
-all-racemo chain syndiotactic. With `"Tacticity"` set, every radical carries
-the configuration its tail has to take when it adds to the next monomer,
-chosen relative to the centre before it in the chain (the first centre of a
-chain is free); the configuration a candidate pair would produce follows
-from the face from which the monomer approaches, and candidates with the
-wrong face are skipped (`"StereoSelective" : true`) or accepted and driven
-into the required configuration (`false`). Every reacted centre is then held
-by the restraint \f$U = \tfrac{1}{2} k (\hat V - \chi \hat V_0)^2\f$
-(\f$\chi = \pm 1\f$), ramped in with the bond, because nothing else in a
-united-atom model prevents a CH bead from inverting through the planar
-configuration (the barrier of the three bends alone is a few \f$k_B T\f$).
-\f$\hat V_0\f$ is 0.61 for three substituents at 114° and 0.77 for a
-tetrahedral centre. Without `"Tacticity"` no configuration is selected or
-restrained; the dyad statistics of the chains are reported in either case.
+*Tacticity.* A `"Stereo"` entry of a rule declares that the reaction creates
+a stereocentre: the `"Centre"` atom and its three `"Substituents"` (the
+implicit hydrogen of a united-atom bead is the fourth). Its configuration is
+the sign of the normalised chiral volume
+\f$\hat V = (\mathbf{b}_1 \times \mathbf{b}_2)\cdot\mathbf{b}_3 /
+(|\mathbf{b}_1||\mathbf{b}_2||\mathbf{b}_3|)\f$ of the bond vectors from the
+centre to the substituents in the listed order; for a backbone centre the
+order (previous unit, next unit, side group) follows the chain direction, so
+two consecutive centres of a chain form a *meso* dyad when their signs are
+equal and a *racemo* dyad when they differ. An all-meso chain is isotactic,
+an all-racemo chain syndiotactic. `"Next"` names the reactant whose own
+centre is the next one along the chain (the monomer that becomes the new
+radical): it inherits from this centre the configuration it has to take, and
+the dyad statistics pair the two. With `"Tacticity"` set, the configuration
+of a new centre is chosen relative to the centre before it in the chain (the
+first centre of a chain is free); the configuration a candidate pair would
+produce follows from the face from which the monomer approaches, and
+candidates with the wrong face are skipped (`"StereoSelective" : true`) or
+accepted and driven into the required configuration (`false`). Every created
+centre is then held by the restraint
+\f$U = \tfrac{1}{2} k (\hat V - \chi \hat V_0)^2\f$ (\f$\chi = \pm 1\f$),
+ramped in with the bond, because nothing else in a united-atom model prevents
+a CH bead from inverting through the planar configuration (the barrier of the
+three bends alone is a few \f$k_B T\f$). \f$\hat V_0\f$ is 0.61 for three
+substituents at 114° and 0.77 for a tetrahedral centre. Without
+`"Tacticity"` no configuration is selected or restrained; the dyad statistics
+of the chains are reported in either case.
 
 The keys of the `"Polymerization"` block (defaults in parentheses):
 
 -   `"ScanEvery" : integer` (`10`) — MD steps between reaction scans.
 -   `"StartCycle" : integer` (`0`) — production cycle at which the
-    reactions start (the sites are activated and the initial radicals placed).
--   `"TargetConversion" : floating-point-number` (`1.0`) — the fraction of
-    sites that have reacted (radical or dead) at which the reactions stop.
+    reactions start (the groups are activated and the initial events applied).
+-   `"TargetConversion" : floating-point-number` (`1.0`) — the conversion at
+    which the reactions stop.
 -   `"RelaxationSteps" : integer` (`1000`) — length of the force ramp.
 -   `"MaximumReactionsPerScan" : integer` (unlimited) — cap per scan.
--   `"Initiation" : {"InitialRadicals" : n, "Probability" : p, "RateConstant" : k}`\
-    `n` random monomer sites become radicals at `"StartCycle"`; in addition
-    every monomer site is initiated with probability `p` per scan (or rate
-    `k`). Defaults `0`, `0.0`.
--   `"Propagation" : {"CaptureRadius" : r, "Probability" : p, "RateConstant" : k, "AllowIntramolecular" : bool, "OrientationTemperature" : T}`\
-    Defaults `4.0` Å, `1.0`, `true`, no orientation weight. With
-    `"AllowIntramolecular" : false` the two sites of one molecule can not
-    react with each other (no primary cycles). `T` (in K, positive) switches
-    on the orientation weight \f$\exp(-\Delta U_\mathrm{ang}/k_B T)\f$ on
-    the acceptance probability.
--   `"Termination" : {"Enabled" : bool, "CaptureRadius" : r, "Probability" : p, "RateConstant" : k, "OrientationTemperature" : T}`\
-    Termination by combination of two radical tails. Defaults `true`,
-    `4.0` Å, `1.0`, no orientation weight.
+-   `"Reactions" : list` — the reaction rules (required). Every rule is an
+    object with:
+    -   `"Name" : string` — used in the logs and the status.
+    -   `"Reactants" : [{"Label" : "A", "Type" : t, "State" : s}, ...]` —
+        one (unimolecular) or two (bimolecular) reactants: the group type
+        and the state a group must be in. The labels default to `A` and `B`.
+    -   `"Products" : [{"Label" : "A", "State" : s, "Retype" : {role : pseudo-atom, ...}}, ...]` —
+        per reactant (matched by label; a reactant without an entry is
+        unchanged) the new state (default: unchanged) and the role atoms
+        whose pseudo-atom type changes.
+    -   `"Capture" : {"Atoms" : ["A.x", "B.y"], "Radius" : r}` — the two
+        atoms whose distance is the capture criterion of a bimolecular rule
+        (required for a bimolecular rule; `r` defaults to `4.0` Å).
+    -   `"FormBonds" : [["A.x", "B.y"], ...]` — the bonds formed, each
+        between the two reactants.
+    -   `"BreakBonds" : [["A.x", "A.y"], ...]` — the bonds broken, each a
+        bond of the molecule topology between two role atoms of one
+        reactant (and not one the same rule forms); a bond can be broken
+        once.
+    -   `"Stereo" : {"Centre" : "A.x", "Substituents" : ["A.p", "B.n", "A.z"], "Next" : "B"}`
+        (or a list of such objects) — the stereocentres the reaction creates
+        (see *Tacticity*); needs `"FormBonds"`.
+    -   `"Probability" : p` (`1.0`) or `"RateConstant" : k` (ps⁻¹) — the
+        acceptance per candidate and scan.
+    -   `"OrientationTemperature" : T` — switches on the orientation weight
+        \f$\exp(-\Delta U_\mathrm{ang}/k_B T)\f$ (bimolecular rules).
+    -   `"AllowIntramolecular" : bool` (`true`) — with `false` two groups of
+        one molecule can not react with each other through this rule (no
+        primary cycles).
+    -   `"InitialEvents" : n` (`0`) — a unimolecular rule is applied to `n`
+        random eligible groups when the reactions are activated at
+        `"StartCycle"` (the initial radicals).
+    Two reactants with the same type and state (termination) form an
+    unordered pair; the labels are assigned at random when the capture roles
+    coincide, and both assignments are tried otherwise.
+-   `"Conversion" : {"Type" : t, "States" : [s, ...]}` (or a list of such
+    objects) — the conversion is the fraction of the groups of the listed
+    types that are in the listed states. Default: the fraction of all groups
+    that are no longer in their initial state.
 -   `"Tacticity" : {"Type" : "Isotactic", "MesoProbability" : p, "StereoSelective" : bool, "ForceConstant" : k, "ReferenceVolume" : v}`\
     (or just `"Tacticity" : "Isotactic"`) — the configuration of the
     backbone stereocentres: `"Isotactic"` (all dyads meso),
     `"Syndiotactic"` (all dyads racemo), `"Atactic"` (Bernoullian, a dyad
     is meso with probability `p`, default `0.5`) or `"None"` (default: no
-    selection, no restraints). `"StereoSelective"` (default `true`) skips the
-    candidates whose approach face gives the wrong configuration; with
-    `false` every candidate is accepted and the restraint drives the new
-    centre to the required configuration. `k` is the force constant of the
-    restraint on the normalised chiral volume in K (default `40000`, an
-    inversion barrier of about 7000 K) and `v` the magnitude \f$\hat V_0\f$
-    held (default `0.6`).
+    selection, no restraints). Requires a rule with a `"Stereo"` entry.
+    `"StereoSelective"` (default `true`) skips the candidates whose approach
+    face gives the wrong configuration; with `false` every candidate is
+    accepted and the restraint drives the new centre to the required
+    configuration. `k` is the force constant of the restraint on the
+    normalised chiral volume in K (default `40000`, an inversion barrier of
+    about 7000 K) and `v` the magnitude \f$\hat V_0\f$ held (default `0.6`).
 -   `"Bonds"`, `"Bends"`, `"Torsions" : list` — the type-based tables of the
     product in the molecule-file format, e.g.
     `[["CH2_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]]`; `"TemplateFile" :
     "pHDDA-10.json"` reads the tables of a molecule file of the polymer
     (looked up in the working directory, then `$RASPA_DIR`) and the inline
-    tables are added to it. For termination the tail–tail terms
-    (`CH_bb–CH_bb` bond, the bends and torsions around it) must be present as
-    well.
+    tables are added to it. Every bond a rule can form needs its terms (for
+    the termination above the `CH_bb–CH_bb` bond and the bends and torsions
+    around it).
 -   `"WriteBondLog" : bool` (`true`) — `output/polymerization_bonds.s<i>.txt`:
-    one line per reaction with step, cycle, event, the two sites as
-    `component molecule atom`, the distance, the conversion and the
-    configuration of the reacting tail with its dyad (`+m`, `-r`, `+.` for
-    the first centre of a chain; `-` for a tail that is not a stereocentre),
-    the angular strain of the new bond in K (`-` without
-    `"OrientationTemperature"`) and the waiting time of the reacting
-    radical(s) in ps.
+    one line per reaction with step, cycle, the rule name, the two groups as
+    `component molecule group` (`- - -` for a unimolecular rule), the capture
+    distance, the conversion, the number of active groups and of bonds, the
+    configuration of every created stereocentre with its dyad (`+m`, `-r`,
+    `+.` for the first centre of a chain; `-` without stereocentres), the
+    angular strain of the new bond(s) in K (`-` without
+    `"OrientationTemperature"`) and the waiting time of the reacting active
+    group(s) in ps.
 -   `"WriteTopology" : bool` (`true`) — `output/polymer_topology.s<i>.json`:
-    the state and configuration of every site and the list of bonds
-    (component, molecule, atom of both partners, kind and step) at the end of
-    the run (and after every event frame, see below).
+    the groups of the components, the reaction scheme, the state and
+    configuration of every group, the stereocentres, the list of bonds
+    (component, molecule, atom of both partners, rule and step) and the list
+    of broken bonds at the end of the run (and after every event frame, see
+    below).
 -   `"WriteEventFrames" : bool` (`false`) — writes the configuration at the
     moment of every reaction. Every reaction scan that accepted at least one
-    reaction (the activation with its initial radicals included) is an *event
+    reaction (the activation with its initial events included) is an *event
     frame*: the system after the reaction is written as a LAMMPS data file
     `polymerization_events/s<i>/step_<step>.data` with its companion input
     script `step_<step>.in` (and `.table`/`.pairs` files when needed), in the
     format of `"WriteLammpsData"`. The polymer bonds formed so far, with the
     bends and torsions through them, are merged into the `Bonds`, `Angles`
     and `Dihedrals` sections, the monomer terms whose parameters changed with
-    the retyping carry the product parameters, and the reacted atoms have
+    the retyping carry the product parameters, the monomer bonds, angles and
+    dihedrals through a broken bond are left out, and the reacted atoms have
     their product types; the 1-2/1-3 exclusions and the 1-4 scaling across
     the polymer bonds follow from `special_bonds`. The data file is a
     snapshot of the topology, not of the ramps: bonds younger than
@@ -1964,15 +2064,17 @@ The keys of the `"Polymerization"` block (defaults in parentheses):
     `output/polymerization_events.s<i>.jsonl`: `step`, `time` (ps, from the
     start of the reactive stage), `cycle`, `frame`, `dataFile` (`null` for a
     frame thinned out by `"EventFrameEvery"`), the `box` vectors, the
-    `events` (kind, both atoms with their global index `id`, the 1-based
-    `lammpsId` of the data file, component, molecule, local atom index and
-    current type, the distance, the configurations and dyad, the strain and
-    the waiting times), the `retyped` atoms with their types before and after,
-    the `newBonds` with the bends and torsions they created (global atom
-    indices) and the running `totals`. The union of the records up to a frame
-    is the cross-link state of that frame; `output/polymer_topology.s<i>.json`
-    is rewritten after every frame as a self-contained snapshot. The logs are
-    appended to on a restart.
+    `events` (the rule, both groups with their states, the capture atoms with
+    their global index `id`, the 1-based `lammpsId` of the data file,
+    component, molecule, local atom index and current type, the distance, the
+    configurations and dyads, the strain, the waiting times and the new
+    bonds and broken bonds), the `retyped` atoms with their types before and
+    after, the `newBonds` with the bends and torsions they created (global
+    atom indices), the `brokenBonds` and the running `totals` (group counts
+    per type and state, active groups, bonds, broken bonds, conversion). The union of the records up to a frame is the cross-link
+    state of that frame; `output/polymer_topology.s<i>.json` is rewritten
+    after every frame as a self-contained snapshot. The logs are appended to
+    on a restart.
 -   `"EventFrameEvery" : int` (`1`) — write the data file of every n-th event
     frame only (a frame of 10⁵ atoms is a few MB); the JSON records are
     always complete.
@@ -1983,14 +2085,14 @@ the situation in which that next event stops happening because the chain end
 is immobilised in a monomer-poor environment. It is measured, not imposed,
 with the system property `"ComputeRadicalWaitingTimes"` (see
 [Radical waiting times](#radical-waiting-times)): the waiting time of every
-living radical between its successive reactions, and the ages of the radicals
-still living. The bond log carries the waiting time of the reacting radical(s)
-in its last column.
+active group between its successive reactions (per rule that ends it), and
+the ages of the groups still active. The bond log carries the waiting time of
+the reacting group(s) in its last column.
 
-The status report of every `"PrintEvery"` cycles adds the conversion, the
-numbers of radicals, dead sites, propagations and terminations (with the
-candidates rejected by the orientation weight and the mean strain of the
-accepted reactions when the weight is on), the number
+The status report of every `"PrintEvery"` cycles adds the number of groups
+per type and state, the active groups, the conversion and the number of
+events per rule (with the candidates rejected by the orientation weight and
+the mean strain of the accepted reactions when the weight is on), the number
 of stereocentres with the meso/racemo dyad counts, the meso fraction and the
 triad fractions (mm, mr, rr) from the current geometry (with the number of
 restrained centres that are momentarily inverted), and the
@@ -2244,23 +2346,25 @@ molecules; do not combine it with insertion/deletion moves.
 `"ComputeRadicalWaitingTimes" : boolean`
 
 Whether to collect, in a `"Polymerization"` run, the waiting-time distribution
-of the living radicals: for every radical the time
+of the active groups (the living chain ends: the groups in an *active* state
+of the reaction scheme, see [Polymerization](#polymerization)): for every
+active group the time
 \(\Delta t = t_\text{next reaction} - t_\text{last reaction}\) (the time since
-its initiation for the first reaction) is recorded at the moment it reacts,
-in a log-spaced histogram from \(10^{-3}\) to \(10^{6}\) ps, separately for
-intervals closed by a propagation (the adding radical) and by a termination
-(both radicals). The samples are added by the polymerization driver at the
-reaction, not on a sampling interval. When the property is written, the *open*
-intervals, the ages of the still-living radicals since their last reaction,
-are added as a second histogram (once the reactions have stopped at
-`"TargetConversion"` the ages are measured up to that step). Output is
-written to the directory `radical_waiting_times`: per bin the lower and upper
-edge, the counts of the closed intervals (propagation, termination, total) and
-of the open intervals, the probability densities per decade of time and the
-cumulative distributions; the header gives the mean, geometric mean and
-maximum of both. The status report of the polymerization adds the counts,
-mean, median and maximum of the closed intervals and the mean, median and
-oldest age of the living radicals with the number of radicals older than ten
+it became active for the first reaction) is recorded at the moment it reacts,
+in a log-spaced histogram from \(10^{-3}\) to \(10^{6}\) ps, separately per
+reaction rule that closes the interval (a propagation: the adding radical; a
+termination: both radicals). The samples are added by the polymerization
+driver at the reaction, not on a sampling interval. When the property is
+written, the *open* intervals, the ages of the still-active groups since
+their last reaction, are added as a second histogram (once the reactions have
+stopped at `"TargetConversion"` the ages are measured up to that step).
+Output is written to the directory `radical_waiting_times`: per bin the lower
+and upper edge, the counts of the closed intervals (one column per rule, then
+the total) and of the open intervals, the probability densities per decade of
+time and the cumulative distributions; the header gives the mean, geometric
+mean and maximum of both. The status report of the polymerization adds the
+counts, mean, median and maximum of the closed intervals and the mean, median
+and oldest age of the active groups with the number of groups older than ten
 times the mean waiting time.
 
 A single-exponential waiting-time distribution is a well-defined propagation
@@ -2795,26 +2899,28 @@ not improved by it.
     can not use identity-change, pair-swap, group-swap, reptation, double
     bridging or Gibbs swap moves.
 
--   `"PolymerizationSites" : list` (molecule definition file)\
-    Declares the reactive double bonds of a monomer for
+-   `"ReactiveGroups" : list` (molecule definition file)\
+    Declares the reactive groups of a monomer for
     `"SimulationType" : "Polymerization"` (see
     [Polymerization](#polymerization)); independent of `"ReactiveSites"`.
-    Each entry is an object `{"Type" : "name", "Head" : h, "Tail" : t,
-    "HeadProductType" : "type", "TailProductType" : "type"}`: `h` and `t` are
-    bonded atoms of the molecule (indices into `"pseudoAtoms"`), the head is
-    the atom a radical adds to and the tail is the atom that carries the
-    radical afterwards; the product types are the pseudo-atoms of the force
-    field the two atoms become when the site reacts. An atom may be listed
-    once. The optional `"SideGroup" : s` names the substituent of the tail
-    that defines the configuration of the tail as a backbone stereocentre
-    (see the `"Tacticity"` key of [Polymerization](#polymerization)); it
-    defaults to the only neighbour of the tail other than the head and has
-    to be given when the tail has several (a methacrylate: the ester carbon
-    or the methyl). Example for a diacrylate:
+    Each entry is an object `{"Type" : "name", "State" : "state", "Atoms" :
+    {"role" : index, ...}}`: the type names the kind of group the reaction
+    rules refer to (`acrylate`, `epoxide`, `amine`, ...), the state is the
+    one the group starts in (default `monomer`), and the atoms (indices into
+    `"pseudoAtoms"`) are named by their role so that a rule can address them
+    as `Label.role` — for a vinyl group the `head` (the `CH2=` a radical adds
+    to), the `tail` (the `=CH–` that carries the radical afterwards) and the
+    `side` group on the tail that defines the configuration of the tail as a
+    backbone stereocentre (a methacrylate: the ester carbon or the methyl,
+    whichever the `"Stereo"` entry of the rule should use). All groups of one
+    type must declare the same roles; an atom may belong to one group only.
+    What happens to the atoms (the product types, the bonds formed) is given
+    by the `"Reactions"` of the `"Polymerization"` block, not here. Example
+    for a diacrylate:
 
-        "PolymerizationSites" : [
-          {"Type" : "acrylate", "Head" : 0,  "Tail" : 1,  "HeadProductType" : "CH2_bb", "TailProductType" : "CH_bb"},
-          {"Type" : "acrylate", "Head" : 13, "Tail" : 12, "HeadProductType" : "CH2_bb", "TailProductType" : "CH_bb"}
+        "ReactiveGroups" : [
+          {"Type" : "acrylate", "State" : "monomer", "Atoms" : {"head" : 0,  "tail" : 1,  "side" : 2}},
+          {"Type" : "acrylate", "State" : "monomer", "Atoms" : {"head" : 13, "tail" : 12, "side" : 11}}
         ]
 
 -   `"Intra14VanDerWaalsScalingValue" : floating-point-number` (molecule definition file)\

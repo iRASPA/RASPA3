@@ -1,0 +1,33 @@
+{
+  "CriticalTemperature" : 593.0,
+  "CriticalPressure" : 6290000.0,
+  "AcentricFactor" : 0.51,
+  "StartingBead" : 1,
+  "Intra14ChargeChargeScalingValue" : 0.5,
+  "ReactiveGroups" : [
+    {"Type" : "amine", "State" : "primary", "Atoms" : {"N" : 0}},
+    {"Type" : "amine", "State" : "primary", "Atoms" : {"N" : 3}}
+  ],
+  "pseudoAtoms" :
+    [
+      ["N_p", [0.0, 0.0, 0.0]],
+      ["CH2_N", [0.0, 0.0, 0.0]],
+      ["CH2_N", [0.0, 0.0, 0.0]],
+      ["N_p", [0.0, 0.0, 0.0]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3]
+  ],
+  "Bonds" : [
+    [["N_p", "CH2_N"], "HARMONIC", [301931.64, 1.448]],
+    [["CH2_N", "CH2_N"], "HARMONIC", [301931.64, 1.54]]
+  ],
+  "Bends" : [
+    [["N_p", "CH2_N", "CH2_N"], "HARMONIC", [56400.0, 109.5]]
+  ],
+  "Torsions" : [
+    [["N_p", "CH2_N", "CH2_N", "N_p"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
+  ]
+}

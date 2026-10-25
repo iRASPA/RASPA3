@@ -16,7 +16,7 @@ import randomnumbers;
 import archive;
 import json;
 import cross_links;
-import polymerization_site;
+import reactive_group;
 import units;
 import skposcarparser;
 import characterset;
@@ -384,7 +384,7 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
   computeRigidProperties();
 
   reactiveSites = readReactiveSites(parsed_data);
-  polymerizationSites = readPolymerizationSites(forceField, parsed_data);
+  reactiveGroups = readReactiveGroups(parsed_data);
 
   if (!rigid)
   {
@@ -3204,102 +3204,85 @@ std::vector<ReactiveSite> Component::readReactiveSites(
   return sites;
 }
 
-std::vector<PolymerizationSite> Component::readPolymerizationSites(
-    const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data) const
+std::vector<ReactiveGroup> Component::readReactiveGroups(
+    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data) const
 {
-  std::vector<PolymerizationSite> sites{};
-  if (!parsed_data.contains("PolymerizationSites")) return sites;
+  std::vector<ReactiveGroup> groups{};
+  if (parsed_data.contains("PolymerizationSites"))
+  {
+    throw std::runtime_error(
+        "[Component reader]: 'PolymerizationSites' is no longer read; declare the groups with 'ReactiveGroups' "
+        "({\"Type\" : \"name\", \"State\" : \"monomer\", \"Atoms\" : {\"role\" : index, ...}}) and the "
+        "chemistry with the 'Reactions' of the 'Polymerization' block\n");
+  }
+  if (!parsed_data.contains("ReactiveGroups")) return groups;
 
-  const auto &list = parsed_data["PolymerizationSites"];
+  const auto &list = parsed_data["ReactiveGroups"];
   if (!list.is_array())
   {
     throw std::runtime_error(
-        std::format("[Component reader]: 'PolymerizationSites' must be an array of objects, got {}\n", list.dump()));
+        std::format("[Component reader]: 'ReactiveGroups' must be an array of objects, got {}\n", list.dump()));
   }
 
   for (const auto &item : list)
   {
-    PolymerizationSite site{};
+    ReactiveGroup group{};
     try
     {
       if (!item.is_object()) throw std::runtime_error("expected an object");
-      site.siteType = item.contains("Type") ? item["Type"].get<std::string>() : std::string("vinyl");
-      site.head = item.at("Head").get<std::size_t>();
-      site.tail = item.at("Tail").get<std::size_t>();
-      site.headProductType = item.at("HeadProductType").get<std::string>();
-      site.tailProductType = item.at("TailProductType").get<std::string>();
-      if (item.contains("InitiatedHeadType")) site.initiatedHeadType = item["InitiatedHeadType"].get<std::string>();
-      if (item.contains("SideGroup")) site.sideGroup = item["SideGroup"].get<std::size_t>();
+      group.type = item.at("Type").get<std::string>();
+      if (item.contains("State")) group.initialState = item["State"].get<std::string>();
+      const auto &roleAtoms = item.at("Atoms");
+      if (!roleAtoms.is_object() || roleAtoms.empty()) throw std::runtime_error("'Atoms' must be a non-empty object {role : index}");
+      for (const auto &[role, index] : roleAtoms.items())
+      {
+        if (!index.is_number_unsigned()) throw std::runtime_error(std::format("the atom of role '{}' must be an index", role));
+        group.atoms.emplace_back(role, index.get<std::size_t>());
+      }
     }
     catch (std::exception const &e)
     {
-      throw std::runtime_error(std::format("[Component reader]: error in 'PolymerizationSites' entry {}: {}\n",
-                                           item.dump(), e.what()));
+      throw std::runtime_error(
+          std::format("[Component reader]: error in 'ReactiveGroups' entry {}: {}\n", item.dump(), e.what()));
     }
 
-    if (site.head >= definedAtoms.size() || site.tail >= definedAtoms.size())
-    {
-      throw std::runtime_error(
-          std::format("[Component reader]: 'PolymerizationSites' entry {}: atom index out of range (molecule has {} "
-                      "atoms)\n",
-                      item.dump(), definedAtoms.size()));
-    }
-    if (site.head == site.tail)
+    if (group.type.empty() || group.initialState.empty())
     {
       throw std::runtime_error(std::format(
-          "[Component reader]: 'PolymerizationSites' entry {}: 'Head' and 'Tail' must be different atoms\n",
-          item.dump()));
+          "[Component reader]: 'ReactiveGroups' entry {}: 'Type' and 'State' must be non-empty names\n", item.dump()));
     }
-    if (!connectivityTable[site.head, site.tail])
+    for (std::size_t i = 0; i < group.atoms.size(); ++i)
     {
-      throw std::runtime_error(std::format(
-          "[Component reader]: 'PolymerizationSites' entry {}: 'Head' and 'Tail' must be bonded (the double bond)\n",
-          item.dump()));
-    }
-    // the side group that defines the configuration of the tail as a stereocentre: given, or the only neighbour of
-    // the tail besides the head (a tail with several substituents needs an explicit choice; a tail without one, as
-    // in ethylene, has no stereocentre)
-    if (site.sideGroup.has_value())
-    {
-      if (site.sideGroup.value() >= definedAtoms.size() || site.sideGroup.value() == site.head ||
-          site.sideGroup.value() == site.tail || !connectivityTable[site.tail, site.sideGroup.value()])
+      const auto &[role, atom] = group.atoms[i];
+      if (atom >= definedAtoms.size())
       {
         throw std::runtime_error(std::format(
-            "[Component reader]: 'PolymerizationSites' entry {}: 'SideGroup' must be an atom bonded to 'Tail' other "
-            "than 'Head'\n",
-            item.dump()));
+            "[Component reader]: 'ReactiveGroups' entry {}: atom index {} of role '{}' out of range (molecule has {} "
+            "atoms)\n",
+            item.dump(), atom, role, definedAtoms.size()));
       }
-    }
-    else if (site.tail < connectivityTable.numberOfBeads)
-    {
-      std::vector<std::size_t> substituents{};
-      for (std::size_t neighbour : connectivityTable.findAllNeighbors(site.tail))
+      for (std::size_t j = 0; j < i; ++j)
       {
-        if (neighbour != site.head) substituents.push_back(neighbour);
+        if (group.atoms[j].first == role)
+        {
+          throw std::runtime_error(std::format(
+              "[Component reader]: 'ReactiveGroups' entry {}: the role '{}' is listed twice\n", item.dump(), role));
+        }
+        if (group.atoms[j].second == atom)
+        {
+          throw std::runtime_error(std::format(
+              "[Component reader]: 'ReactiveGroups' entry {}: atom {} is listed twice\n", item.dump(), atom));
+        }
       }
-      if (substituents.size() == 1) site.sideGroup = substituents.front();
-    }
-    for (const std::string &typeName :
-         {site.headProductType, site.tailProductType, site.initiatedHeadType.value_or(site.headProductType)})
-    {
-      if (!forceField.findPseudoAtom(typeName).has_value())
+      if (std::ranges::any_of(groups, [&](const ReactiveGroup &other) { return other.contains(atom); }))
       {
         throw std::runtime_error(std::format(
-            "[Component reader]: 'PolymerizationSites' entry {}: unknown pseudo-atom '{}' (define it in the force "
-            "field)\n",
-            item.dump(), typeName));
+            "[Component reader]: 'ReactiveGroups' entry {}: atom {} is shared with another group\n", item.dump(), atom));
       }
     }
-    if (std::ranges::any_of(sites, [&](const PolymerizationSite &other)
-                            { return other.head == site.head || other.tail == site.tail || other.head == site.tail ||
-                                     other.tail == site.head; }))
-    {
-      throw std::runtime_error(std::format(
-          "[Component reader]: 'PolymerizationSites' entry {}: an atom is shared with another site\n", item.dump()));
-    }
-    sites.push_back(site);
+    groups.push_back(std::move(group));
   }
-  return sites;
+  return groups;
 }
 
 std::vector<std::vector<std::size_t>> Component::readPartialReinsertionFixedAtoms(
@@ -3563,7 +3546,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.lambdaGroupSwapCB;
 
   archive << c.reactiveSites;
-  archive << c.polymerizationSites;
+  archive << c.reactiveGroups;
 
   archive << c.moleculePropertiesSettings;
   archive << c.moleculeShapeSettings;
@@ -3689,7 +3672,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.lambdaGroupSwapCB;
 
   archive >> c.reactiveSites;
-  archive >> c.polymerizationSites;
+  archive >> c.reactiveGroups;
 
   archive >> c.moleculePropertiesSettings;
   archive >> c.moleculeShapeSettings;

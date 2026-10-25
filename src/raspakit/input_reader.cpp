@@ -27,6 +27,7 @@ import reaction;
 import reactions;
 import cross_links;
 import polymer_links;
+import polymer_reactions;
 import polymerization_settings;
 import bond_potential;
 import bend_potential;
@@ -197,15 +198,6 @@ void readPolymerization(const nlohmann::basic_json<nlohmann::raspa_map>& value, 
     }
     target = object[key].get<double>();
   };
-  auto readOptionalNumber = [&](const nlohmann::basic_json<nlohmann::raspa_map>& object, const char* key, std::optional<double>& target)
-  {
-    if (!object.contains(key)) return;
-    if (!object[key].is_number())
-    {
-      throw std::runtime_error(std::format("[Input reader]: 'Polymerization' '{}' must be a number\n", key));
-    }
-    target = object[key].get<double>();
-  };
   auto readBoolean = [&](const nlohmann::basic_json<nlohmann::raspa_map>& object, const char* key, bool& target)
   {
     if (!object.contains(key)) return;
@@ -246,65 +238,353 @@ void readPolymerization(const nlohmann::basic_json<nlohmann::raspa_map>& value, 
     throw std::runtime_error("[Input reader]: 'Polymerization' 'TargetConversion' must lie in [0, 1]\n");
   }
 
-  if (block.contains("Initiation"))
+  for (const char* key : {"Initiation", "Propagation", "Termination"})
   {
-    const auto& initiation = block["Initiation"];
-    if (!initiation.is_object())
+    if (block.contains(key))
     {
-      throw std::runtime_error("[Input reader]: 'Polymerization' 'Initiation' must be an object\n");
-    }
-    readUnsigned(initiation, "InitialRadicals", settings.initialRadicals);
-    readNumber(initiation, "Probability", settings.initiationProbability);
-    readOptionalNumber(initiation, "RateConstant", settings.initiationRateConstant);
-  }
-  if (block.contains("Propagation"))
-  {
-    const auto& propagation = block["Propagation"];
-    if (!propagation.is_object())
-    {
-      throw std::runtime_error("[Input reader]: 'Polymerization' 'Propagation' must be an object\n");
-    }
-    readNumber(propagation, "CaptureRadius", settings.propagationCaptureRadius);
-    readNumber(propagation, "Probability", settings.propagationProbability);
-    readOptionalNumber(propagation, "RateConstant", settings.propagationRateConstant);
-    readBoolean(propagation, "AllowIntramolecular", settings.allowIntramolecular);
-    readOptionalNumber(propagation, "OrientationTemperature", settings.propagationOrientationTemperature);
-  }
-  if (block.contains("Termination"))
-  {
-    const auto& termination = block["Termination"];
-    if (!termination.is_object())
-    {
-      throw std::runtime_error("[Input reader]: 'Polymerization' 'Termination' must be an object\n");
-    }
-    readBoolean(termination, "Enabled", settings.terminationEnabled);
-    readNumber(termination, "CaptureRadius", settings.terminationCaptureRadius);
-    readNumber(termination, "Probability", settings.terminationProbability);
-    readOptionalNumber(termination, "RateConstant", settings.terminationRateConstant);
-    readOptionalNumber(termination, "OrientationTemperature", settings.terminationOrientationTemperature);
-  }
-  for (const auto& [name, temperature] : {std::pair{"Propagation", settings.propagationOrientationTemperature},
-                                          std::pair{"Termination", settings.terminationOrientationTemperature}})
-  {
-    if (temperature.has_value() && temperature.value() <= 0.0)
-    {
-      throw std::runtime_error(
-          std::format("[Input reader]: 'Polymerization' '{}' 'OrientationTemperature' must be positive\n", name));
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'Polymerization' '{}' is no longer supported; the reactions are given as rules in the "
+          "'Reactions' list (see the manual, 'Polymerization')\n",
+          key));
     }
   }
-  for (const auto& [name, probability] :
-       {std::pair{"Initiation", settings.initiationProbability}, std::pair{"Propagation", settings.propagationProbability},
-        std::pair{"Termination", settings.terminationProbability}})
+
+  // ---- the reaction rules -----------------------------------------------------------------------------------------
+  PolymerLinkTable& table = system.polymerLinks;
+  ReactionScheme& scheme = table.scheme;
+  scheme = ReactionScheme{};
+  // "A.role" -> RoleRef
+  auto parseRoleRef = [&](const nlohmann::basic_json<nlohmann::raspa_map>& item, const std::string& rule,
+                          const char* where) -> RoleRef
   {
-    if (probability < 0.0 || probability > 1.0)
+    if (!item.is_string())
     {
-      throw std::runtime_error(
-          std::format("[Input reader]: 'Polymerization' '{}' 'Probability' must lie in [0, 1]\n", name));
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'Polymerization' reaction '{}': '{}' must name atoms as strings 'Label.role'\n", rule, where));
     }
-  }
-  if (settings.propagationCaptureRadius <= 0.0 || settings.terminationCaptureRadius <= 0.0)
+    const std::string text = item.get<std::string>();
+    const std::size_t dot = text.find('.');
+    if (dot == std::string::npos || dot == 0 || dot + 1 >= text.size())
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'Polymerization' reaction '{}': '{}' entry '{}' must have the form 'Label.role'\n", rule,
+          where, text));
+    }
+    return RoleRef{text.substr(0, dot), text.substr(dot + 1)};
+  };
+  if (!block.contains("Reactions"))
   {
-    throw std::runtime_error("[Input reader]: 'Polymerization' 'CaptureRadius' must be positive\n");
+    throw std::runtime_error("[Input reader]: 'Polymerization' needs a 'Reactions' list\n");
+  }
+  if (!block["Reactions"].is_array())
+  {
+    throw std::runtime_error("[Input reader]: 'Polymerization' 'Reactions' must be an array of objects\n");
+  }
+  for (const auto& item : block["Reactions"])
+  {
+    if (!item.is_object())
+    {
+      throw std::runtime_error("[Input reader]: 'Polymerization' 'Reactions' must be an array of objects\n");
+    }
+    ReactionRule rule{};
+    rule.name = item.contains("Name") && item["Name"].is_string()
+                    ? item["Name"].get<std::string>()
+                    : std::format("reaction {}", scheme.rules.size() + 1);
+    const std::string& name = rule.name;
+    for (const ReactionRule& other : scheme.rules)
+    {
+      if (other.name == name)
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: 'Polymerization' reaction name '{}' is used twice\n", name));
+      }
+    }
+
+    // the reactants: [{"Label": "R", "Type": "acrylate", "State": "radical"}, ...] (labels default to "A", "B")
+    if (!item.contains("Reactants") || !item["Reactants"].is_array() || item["Reactants"].empty() ||
+        item["Reactants"].size() > 2)
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'Polymerization' reaction '{}': 'Reactants' must be an array of one or two objects\n", name));
+    }
+    for (std::size_t i = 0; const auto& reactantJson : item["Reactants"])
+    {
+      if (!reactantJson.is_object() || !reactantJson.contains("Type") || !reactantJson["Type"].is_string() ||
+          !reactantJson.contains("State") || !reactantJson["State"].is_string())
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: 'Polymerization' reaction '{}': every reactant needs a 'Type' and a 'State' (strings)\n",
+            name));
+      }
+      ReactionRule::Reactant reactant{};
+      reactant.label = reactantJson.contains("Label") && reactantJson["Label"].is_string()
+                           ? reactantJson["Label"].get<std::string>()
+                           : std::string(i == 0 ? "A" : "B");
+      reactant.type = reactantJson["Type"].get<std::string>();
+      reactant.state = reactantJson["State"].get<std::string>();
+      for (const ReactionRule::Reactant& other : rule.reactants)
+      {
+        if (other.label == reactant.label)
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: 'Polymerization' reaction '{}': the reactant label '{}' is used twice\n", name,
+              reactant.label));
+        }
+      }
+      rule.reactants.push_back(reactant);
+      ++i;
+    }
+    rule.products.resize(rule.reactants.size());
+
+    // the products: [{"Label": "R", "State": "dead", "Retype": {"head": "CH2_bb"}}, ...]; a reactant without a
+    // product entry is unchanged
+    if (item.contains("Products"))
+    {
+      if (!item["Products"].is_array())
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: 'Polymerization' reaction '{}': 'Products' must be an array of objects\n", name));
+      }
+      for (const auto& productJson : item["Products"])
+      {
+        if (!productJson.is_object())
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: 'Polymerization' reaction '{}': 'Products' must be an array of objects\n", name));
+        }
+        const std::string label = productJson.contains("Label") && productJson["Label"].is_string()
+                                      ? productJson["Label"].get<std::string>()
+                                      : rule.reactants[0].label;
+        const std::optional<std::uint8_t> index = rule.reactantOf(label);
+        if (!index.has_value())
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: 'Polymerization' reaction '{}': product label '{}' matches no reactant\n", name, label));
+        }
+        ReactionRule::Product& product = rule.products[index.value()];
+        if (productJson.contains("State"))
+        {
+          if (!productJson["State"].is_string())
+          {
+            throw std::runtime_error(std::format(
+                "[Input reader]: 'Polymerization' reaction '{}': product 'State' must be a string\n", name));
+          }
+          product.state = productJson["State"].get<std::string>();
+        }
+        if (productJson.contains("Retype"))
+        {
+          if (!productJson["Retype"].is_object())
+          {
+            throw std::runtime_error(std::format(
+                "[Input reader]: 'Polymerization' reaction '{}': 'Retype' must be an object role -> pseudo-atom\n",
+                name));
+          }
+          for (const auto& [role, typeName] : productJson["Retype"].items())
+          {
+            if (!typeName.is_string())
+            {
+              throw std::runtime_error(std::format(
+                  "[Input reader]: 'Polymerization' reaction '{}': 'Retype' '{}' must name a pseudo-atom\n", name,
+                  role));
+            }
+            product.retype.emplace_back(role, typeName.get<std::string>());
+          }
+        }
+      }
+    }
+
+    // "Capture": {"Atoms": ["R.tail", "M.head"], "Radius": 4.0}
+    if (item.contains("Capture"))
+    {
+      const auto& capture = item["Capture"];
+      if (!capture.is_object() || !capture.contains("Atoms") || !capture["Atoms"].is_array() ||
+          capture["Atoms"].size() != 2)
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: 'Polymerization' reaction '{}': 'Capture' must be an object with 'Atoms' (two "
+            "'Label.role' strings) and 'Radius'\n",
+            name));
+      }
+      rule.capture = std::array<RoleRef, 2>{parseRoleRef(capture["Atoms"][0], name, "Capture"),
+                                            parseRoleRef(capture["Atoms"][1], name, "Capture")};
+      if (capture.contains("Radius"))
+      {
+        if (!capture["Radius"].is_number() || capture["Radius"].get<double>() <= 0.0)
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: 'Polymerization' reaction '{}': 'Capture' 'Radius' must be a positive number\n", name));
+        }
+        rule.captureRadius = capture["Radius"].get<double>();
+      }
+    }
+
+    // "FormBonds": [["R.tail", "M.head"], ...]
+    if (item.contains("FormBonds"))
+    {
+      if (!item["FormBonds"].is_array())
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: 'Polymerization' reaction '{}': 'FormBonds' must be an array of pairs\n", name));
+      }
+      for (const auto& pair : item["FormBonds"])
+      {
+        if (!pair.is_array() || pair.size() != 2)
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: 'Polymerization' reaction '{}': every entry of 'FormBonds' must be a pair of "
+              "'Label.role' strings\n",
+              name));
+        }
+        rule.formBonds.push_back({parseRoleRef(pair[0], name, "FormBonds"), parseRoleRef(pair[1], name, "FormBonds")});
+      }
+    }
+
+    // "BreakBonds": [["E.carbon", "E.oxygen"], ...] (bonds of the molecule topology within one group)
+    if (item.contains("BreakBonds"))
+    {
+      if (!item["BreakBonds"].is_array())
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: 'Polymerization' reaction '{}': 'BreakBonds' must be an array of pairs\n", name));
+      }
+      for (const auto& pair : item["BreakBonds"])
+      {
+        if (!pair.is_array() || pair.size() != 2)
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: 'Polymerization' reaction '{}': every entry of 'BreakBonds' must be a pair of "
+              "'Label.role' strings\n",
+              name));
+        }
+        rule.breakBonds.push_back(
+            {parseRoleRef(pair[0], name, "BreakBonds"), parseRoleRef(pair[1], name, "BreakBonds")});
+      }
+    }
+
+    // "Stereo": {"Centre": "R.tail", "Substituents": ["R.head", "M.head", "R.side"], "Next": "M"} or a list of them
+    if (item.contains("Stereo"))
+    {
+      auto readStereo = [&](const nlohmann::basic_json<nlohmann::raspa_map>& stereoJson)
+      {
+        if (!stereoJson.is_object() || !stereoJson.contains("Centre") || !stereoJson.contains("Substituents") ||
+            !stereoJson["Substituents"].is_array() || stereoJson["Substituents"].size() != 3)
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: 'Polymerization' reaction '{}': every 'Stereo' entry needs a 'Centre' and three "
+              "'Substituents' ('Label.role' strings)\n",
+              name));
+        }
+        ReactionRule::Stereo stereo{};
+        stereo.centre = parseRoleRef(stereoJson["Centre"], name, "Stereo");
+        for (std::size_t k = 0; k < 3; ++k)
+        {
+          stereo.substituents[k] = parseRoleRef(stereoJson["Substituents"][k], name, "Stereo");
+        }
+        if (stereoJson.contains("Next"))
+        {
+          if (!stereoJson["Next"].is_string())
+          {
+            throw std::runtime_error(std::format(
+                "[Input reader]: 'Polymerization' reaction '{}': 'Stereo' 'Next' must be a reactant label\n", name));
+          }
+          stereo.next = stereoJson["Next"].get<std::string>();
+        }
+        rule.stereo.push_back(stereo);
+      };
+      if (item["Stereo"].is_array())
+      {
+        for (const auto& stereoJson : item["Stereo"]) readStereo(stereoJson);
+      }
+      else
+      {
+        readStereo(item["Stereo"]);
+      }
+    }
+
+    if (item.contains("Probability"))
+    {
+      if (!item["Probability"].is_number())
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: 'Polymerization' reaction '{}': 'Probability' must be a number\n", name));
+      }
+      rule.probability = item["Probability"].get<double>();
+    }
+    if (item.contains("RateConstant"))
+    {
+      if (!item["RateConstant"].is_number())
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: 'Polymerization' reaction '{}': 'RateConstant' must be a number [1/ps]\n", name));
+      }
+      rule.rateConstant = item["RateConstant"].get<double>();
+    }
+    if (item.contains("OrientationTemperature"))
+    {
+      if (!item["OrientationTemperature"].is_number())
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: 'Polymerization' reaction '{}': 'OrientationTemperature' must be a number [K]\n", name));
+      }
+      rule.orientationTemperature = item["OrientationTemperature"].get<double>();
+    }
+    if (item.contains("AllowIntramolecular"))
+    {
+      if (!item["AllowIntramolecular"].is_boolean())
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: 'Polymerization' reaction '{}': 'AllowIntramolecular' must be a boolean\n", name));
+      }
+      rule.allowIntramolecular = item["AllowIntramolecular"].get<bool>();
+    }
+    if (item.contains("InitialEvents"))
+    {
+      if (!item["InitialEvents"].is_number_unsigned())
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: 'Polymerization' reaction '{}': 'InitialEvents' must be an unsigned integer\n", name));
+      }
+      rule.initialEvents = item["InitialEvents"].get<std::size_t>();
+    }
+    scheme.rules.push_back(std::move(rule));
+  }
+  if (scheme.rules.empty())
+  {
+    throw std::runtime_error("[Input reader]: 'Polymerization' 'Reactions' must contain at least one reaction\n");
+  }
+
+  // "Conversion": {"Type": "acrylate", "States": ["radical", "dead"]} or a list of them
+  if (block.contains("Conversion"))
+  {
+    auto readConversion = [&](const nlohmann::basic_json<nlohmann::raspa_map>& conversionJson)
+    {
+      if (!conversionJson.is_object() || !conversionJson.contains("Type") || !conversionJson["Type"].is_string() ||
+          !conversionJson.contains("States") || !conversionJson["States"].is_array())
+      {
+        throw std::runtime_error(
+            "[Input reader]: 'Polymerization' 'Conversion' entries need a 'Type' (string) and 'States' (array of "
+            "strings)\n");
+      }
+      ReactionScheme::Conversion conversion{};
+      conversion.type = conversionJson["Type"].get<std::string>();
+      for (const auto& state : conversionJson["States"])
+      {
+        if (!state.is_string())
+        {
+          throw std::runtime_error("[Input reader]: 'Polymerization' 'Conversion' 'States' must be strings\n");
+        }
+        conversion.states.push_back(state.get<std::string>());
+      }
+      scheme.conversion.push_back(conversion);
+    };
+    if (block["Conversion"].is_array())
+    {
+      for (const auto& conversionJson : block["Conversion"]) readConversion(conversionJson);
+    }
+    else
+    {
+      readConversion(block["Conversion"]);
+    }
   }
 
   // the tacticity: "Tacticity" : "Isotactic" or "Tacticity" : {"Type" : "Atactic", "MesoProbability" : 0.5, ...}
@@ -365,7 +645,6 @@ void readPolymerization(const nlohmann::basic_json<nlohmann::raspa_map>& value, 
   }
 
   // the type-based bonded tables of the product: from the template file first, then the inline tables
-  PolymerLinkTable& table = system.polymerLinks;
   if (!settings.templateFile.empty())
   {
     std::string fileName = settings.templateFile;
@@ -397,15 +676,15 @@ void readPolymerization(const nlohmann::basic_json<nlohmann::raspa_map>& value, 
   table.templates.resolve(system.forceField);
   table.relaxationSteps = settings.relaxationSteps;
 
-  bool anySite = false;
+  bool anyGroup = false;
   for (const Component& component : system.components)
   {
-    if (!component.polymerizationSites.empty()) anySite = true;
+    if (!component.reactiveGroups.empty()) anyGroup = true;
   }
-  if (!anySite)
+  if (!anyGroup)
   {
     throw std::runtime_error(
-        "[Input reader]: 'Polymerization' is defined but no component declares 'PolymerizationSites'\n");
+        "[Input reader]: 'Polymerization' is defined but no component declares 'ReactiveGroups'\n");
   }
   if (table.templates.empty())
   {
@@ -413,6 +692,9 @@ void readPolymerization(const nlohmann::basic_json<nlohmann::raspa_map>& value, 
         "[Input reader]: 'Polymerization' needs the bonded tables of the product ('Bonds', 'Bends', 'Torsions' or a "
         "'TemplateFile')\n");
   }
+
+  // the rules against the groups of the components and the force field
+  scheme.resolve(system.components, system.forceField);
 }
 
 // Cross-links (see CrossLinkTable): the bond types of the system ('CrossLinkBonds'), the links present

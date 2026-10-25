@@ -522,6 +522,11 @@ void mergePolymerOverlay(Topology &topology, TableRegistry &tables, const Polyme
     const std::map<std::array<std::size_t, 4>, std::size_t> angleIndex = index(topology.angleList, 3);
     const std::map<std::array<std::size_t, 4>, std::size_t> dihedralIndex = index(topology.dihedralList, 4);
     std::size_t missing = 0;
+    // the terms switched off by a broken bond (the replacement is the zero potential) are removed from the lists;
+    // the overrides of a term come in the order of the reactions (a term retyped twice: two entries), the last
+    // one is the one exported
+    std::set<std::size_t> removedBonds{}, removedAngles{}, removedDihedrals{};
+    std::set<std::size_t> retypedBonds{}, retypedAngles{}, retypedDihedrals{};
 
     for (const PolymerLinkTable::OverrideBondTerm &term : links.overrideBonds)
     {
@@ -529,8 +534,13 @@ void mergePolymerOverlay(Topology &topology, TableRegistry &tables, const Polyme
       if (atoms[0] == 0) { ++dropped; continue; }
       auto it = bondIndex.find(canonicalKey(std::span<const std::size_t>(atoms).first(2)));
       if (it == bondIndex.end()) { ++missing; continue; }
+      if (term.replacement.type == BondType::None)
+      {
+        removedBonds.insert(it->second);
+        continue;
+      }
       topology.bondList[it->second].type = registerBondType(topology, tables, term.replacement);
-      ++topology.polymerOverrides;
+      retypedBonds.insert(it->second);
     }
     for (const PolymerLinkTable::OverrideBendTerm &term : links.overrideBends)
     {
@@ -538,10 +548,15 @@ void mergePolymerOverlay(Topology &topology, TableRegistry &tables, const Polyme
       if (atoms[0] == 0) { ++dropped; continue; }
       auto it = angleIndex.find(canonicalKey(std::span<const std::size_t>(atoms).first(3)));
       if (it == angleIndex.end()) { ++missing; continue; }
+      if (term.replacement.type == BendType::Fixed || term.replacement.type == BendType::Rigid)
+      {
+        removedAngles.insert(it->second);
+        continue;
+      }
       BondedEntry &entry = topology.angleList[it->second];
       entry.type = registerBendType(topology, tables, term.replacement);
       entry.atoms = atoms;  // a class2-promoted entry may have been reversed; the plain term has no orientation
-      ++topology.polymerOverrides;
+      retypedAngles.insert(it->second);
     }
     for (const PolymerLinkTable::OverrideTorsionTerm &term : links.overrideTorsions)
     {
@@ -549,11 +564,20 @@ void mergePolymerOverlay(Topology &topology, TableRegistry &tables, const Polyme
       if (atoms[0] == 0) { ++dropped; continue; }
       auto it = dihedralIndex.find(canonicalKey(std::span<const std::size_t>(atoms)));
       if (it == dihedralIndex.end()) { ++missing; continue; }
+      if (term.replacement.type == TorsionType::Fixed)
+      {
+        removedDihedrals.insert(it->second);
+        continue;
+      }
       BondedEntry &entry = topology.dihedralList[it->second];
       entry.type = registerTorsionType(topology, tables, term.replacement);
       entry.atoms = atoms;
-      ++topology.polymerOverrides;
+      retypedDihedrals.insert(it->second);
     }
+    for (std::size_t j : removedBonds) retypedBonds.erase(j);
+    for (std::size_t j : removedAngles) retypedAngles.erase(j);
+    for (std::size_t j : removedDihedrals) retypedDihedrals.erase(j);
+    topology.polymerOverrides += retypedBonds.size() + retypedAngles.size() + retypedDihedrals.size();
     if (missing > 0)
     {
       topology.warnings.push_back(std::format(
@@ -561,6 +585,37 @@ void mergePolymerOverlay(Topology &topology, TableRegistry &tables, const Polyme
           "parameters are kept for them",
           missing));
     }
+    // a Urey-Bradley on the triple of a removed angle shares its atoms: remove it too (it follows the angle)
+    if (!removedAngles.empty())
+    {
+      std::set<std::array<std::size_t, 4>> removedKeys{};
+      for (std::size_t j : removedAngles)
+      {
+        removedKeys.insert(canonicalKey(std::span<const std::size_t>(topology.angleList[j].atoms).first(3)));
+      }
+      for (std::size_t i = 0; i < topology.angleList.size(); ++i)
+      {
+        if (removedKeys.contains(canonicalKey(std::span<const std::size_t>(topology.angleList[i].atoms).first(3))))
+        {
+          removedAngles.insert(i);
+        }
+      }
+    }
+    auto erase = [](std::vector<BondedEntry> &list, const std::set<std::size_t> &removed)
+    {
+      if (removed.empty()) return;
+      std::vector<BondedEntry> kept{};
+      kept.reserve(list.size() - removed.size());
+      for (std::size_t i = 0; i < list.size(); ++i)
+      {
+        if (!removed.contains(i)) kept.push_back(list[i]);
+      }
+      list = std::move(kept);
+    };
+    erase(topology.bondList, removedBonds);
+    erase(topology.angleList, removedAngles);
+    erase(topology.dihedralList, removedDihedrals);
+    topology.polymerBrokenTerms += removedBonds.size() + removedAngles.size() + removedDihedrals.size();
   }
 
   // ---- the polymer bonds with their bends and torsions ------------------------------------------------

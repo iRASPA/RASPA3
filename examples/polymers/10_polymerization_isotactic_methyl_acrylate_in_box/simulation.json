@@ -25,9 +25,27 @@
         "RelaxationSteps" : 2000,
         "WriteEventFrames" : true,
         "EventFrameEvery" : 5,
-        "Initiation" :  {"InitialRadicals" : 4, "Probability" : 0.0},
-        "Propagation" : {"CaptureRadius" : 4.0, "Probability" : 0.1},
-        "Termination" : {"Enabled" : false},
+        "Reactions" : [
+          {
+            "Name" : "initiation",
+            "Reactants" : [{"Label" : "M", "Type" : "acrylate", "State" : "monomer"}],
+            "Products" : [{"Label" : "M", "State" : "radical", "Retype" : {"head" : "CH2_bb", "tail" : "CH_bb"}}],
+            "Probability" : 0.0,
+            "InitialEvents" : 4
+          },
+          {
+            "Name" : "propagation",
+            "Reactants" : [{"Label" : "R", "Type" : "acrylate", "State" : "radical"},
+                           {"Label" : "M", "Type" : "acrylate", "State" : "monomer"}],
+            "Capture" : {"Atoms" : ["R.tail", "M.head"], "Radius" : 4.0},
+            "FormBonds" : [["R.tail", "M.head"]],
+            "Products" : [{"Label" : "R", "State" : "dead"},
+                          {"Label" : "M", "State" : "radical", "Retype" : {"head" : "CH2_bb", "tail" : "CH_bb"}}],
+            "Stereo" : {"Centre" : "R.tail", "Substituents" : ["R.head", "M.head", "R.side"], "Next" : "M"},
+            "Probability" : 0.1
+          }
+        ],
+        "Conversion" : [{"Type" : "acrylate", "States" : ["radical", "dead"]}],
         "Tacticity" : {
           "Type" : "Isotactic",
           "StereoSelective" : true,

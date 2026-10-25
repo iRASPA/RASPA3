@@ -26,7 +26,8 @@ import intra_molecular_potentials;
 import van_der_waals_potential;
 import coulomb_potential;
 import polymer_links;
-import polymerization_site;
+import reactive_group;
+import polymer_reactions;
 
 // Every LAMMPS functional form is re-implemented here, straight from the LAMMPS documentation, and evaluated
 // on random geometries against RASPA's own calculateEnergy of the term that was mapped onto it.
@@ -787,13 +788,8 @@ System polymerSystem()
       Component(forceField, "vinyl", 425.0, 3796000.0, 0.199, beads, connectivityTable, potentials, 5, 21);
   monomer.intra14VanDerWaalsScaling = 0.5;
   monomer.intra14ChargeChargeScaling = 0.5;
-  monomer.polymerizationSites.push_back(PolymerizationSite{.siteType = "vinyl",
-                                                            .head = 0,
-                                                            .tail = 1,
-                                                            .headProductType = "CH2_bb",
-                                                            .tailProductType = "CH_bb",
-                                                            .initiatedHeadType = std::nullopt,
-                                                            .sideGroup = 4});
+  monomer.reactiveGroups.push_back(
+      ReactiveGroup{.type = "vinyl", .atoms = {{"head", 0}, {"tail", 1}, {"side", 4}}, .initialState = "monomer"});
 
   System system = System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {monomer}, {}, {2}, 5);
   std::span<Atom> atoms = system.spanOfMoleculeAtoms();
@@ -845,11 +841,163 @@ System polymerSystem()
     }
   }
   table.templates.resolve(forceField);
+
+  // the chain growth: initiation (monomer -> radical, head and tail retyped) and propagation (radical tail -
+  // monomer head, the monomer becomes the radical and is retyped, a stereocentre on the radical's tail)
+  ReactionRule initiation{};
+  initiation.name = "initiation";
+  initiation.reactants = {{.label = "A", .type = "vinyl", .state = "monomer"}};
+  initiation.products = {{.state = "radical", .retype = {{"head", "CH2_bb"}, {"tail", "CH_bb"}}}};
+  ReactionRule propagation{};
+  propagation.name = "propagation";
+  propagation.reactants = {{.label = "R", .type = "vinyl", .state = "radical"},
+                           {.label = "M", .type = "vinyl", .state = "monomer"}};
+  propagation.products = {{.state = "dead"}, {.state = "radical", .retype = {{"head", "CH2_bb"}, {"tail", "CH_bb"}}}};
+  propagation.capture = std::array<RoleRef, 2>{RoleRef{"R", "tail"}, RoleRef{"M", "head"}};
+  propagation.formBonds = {{RoleRef{"R", "tail"}, RoleRef{"M", "head"}}};
+  propagation.stereo = {{.centre = {"R", "tail"},
+                         .substituents = {RoleRef{"R", "head"}, RoleRef{"M", "head"}, RoleRef{"R", "side"}},
+                         .next = "M"}};
+  table.scheme.rules = {initiation, propagation};
+  table.scheme.resolve(system.components, forceField);
+
   table.activate(system.components, system.numberOfMoleculesPerComponent);
   table.relaxationSteps = 100;
   table.currentStep = 1000;
-  table.initiate(0, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), 0);
-  table.propagate(0, 1, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), 0, 1.6, 1, 0);
+  const std::array<std::size_t, 1> first{0};
+  table.apply(0, first, {}, {}, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData),
+              system.simulationBox, 0);
+  const std::array<std::size_t, 2> pair{0, 1};
+  const std::array<std::int8_t, 1> chirality{1};
+  const std::array<std::int8_t, 1> next{0};
+  table.apply(1, pair, chirality, next, forceField, system.components, atoms,
+              std::span<Molecule>(system.moleculeData), system.simulationBox, 0);
+  table.rebuild(forceField, system.components, system.numberOfMoleculesPerComponent, atoms);
+  return system;
+}
+
+/// Two epoxy-amine monomers (a three-membered ring C_ep 0, CH2_ep 1, O_ep 2, a linker CH2 3 and an amine N 4) with
+/// a product template for every type combination; the amine of the second opens the ring of the first: the bond
+/// C1-N forms, the ring bond C1-O breaks, C1, O and N are retyped.
+System ringOpeningSystem()
+{
+  const std::array<std::string, 8> names{"C_ep", "CH2_ep", "O_ep", "CH2", "N", "C_op", "O_op", "NH"};
+  ForceField forceField = ForceField(
+      {{"C_ep", false, 13.01864, 0.20, 0.0, 6, false},
+       {"CH2_ep", false, 14.02658, 0.20, 0.0, 6, false},
+       {"O_ep", false, 15.9994, -0.40, 0.0, 8, false},
+       {"CH2", false, 14.02658, 0.30, 0.0, 6, false},
+       {"N", false, 16.0226, -0.30, 0.0, 7, false},
+       {"C_op", false, 13.01864, 0.25, 0.0, 6, false},
+       {"O_op", false, 17.0073, -0.45, 0.0, 8, false},
+       {"NH", false, 15.0146, -0.30, 0.0, 7, false}},
+      {{50.0, 3.90}, {46.0, 3.95}, {60.0, 3.00}, {46.0, 3.95}, {80.0, 3.30}, {55.0, 3.85}, {90.0, 3.05}, {85.0, 3.35}},
+      ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0, 9.0, false, false, true);
+
+  ConnectivityTable connectivityTable(5);
+  Potentials::IntraMolecularPotentials potentials{};
+  for (const auto [a, b] : {std::pair{0uz, 1uz}, std::pair{1uz, 2uz}, std::pair{2uz, 0uz}, std::pair{0uz, 3uz}, std::pair{3uz, 4uz}})
+  {
+    connectivityTable[a, b] = true;
+    connectivityTable[b, a] = true;
+    potentials.bonds.push_back(BondPotential({a, b}, BondType::Harmonic, {96500.0, 1.47}));
+  }
+  for (const auto [a, b, c] : {std::tuple{0uz, 1uz, 2uz}, std::tuple{1uz, 2uz, 0uz}, std::tuple{2uz, 0uz, 1uz},
+                               std::tuple{3uz, 0uz, 1uz}, std::tuple{3uz, 0uz, 2uz}, std::tuple{0uz, 3uz, 4uz}})
+  {
+    potentials.bends.push_back(BendPotential({a, b, c}, BendType::Harmonic, {62500.0, 112.0}));
+  }
+  potentials.torsions = {TorsionPotential({4, 3, 0, 1}, TorsionType::TraPPE, {0.0, 355.03, -68.19, 791.32}),
+                         TorsionPotential({4, 3, 0, 2}, TorsionType::TraPPE, {0.0, 355.03, -68.19, 791.32}),
+                         TorsionPotential({3, 0, 1, 2}, TorsionType::TraPPE, {0.0, 355.03, -68.19, 791.32}),
+                         TorsionPotential({3, 0, 2, 1}, TorsionType::TraPPE, {0.0, 355.03, -68.19, 791.32})};
+  potentials.vanDerWaals = {VanDerWaalsPotential({1, 4}, VDWParameters::Type::LennardJones, {46.0, 3.95}, 0.5),
+                            VanDerWaalsPotential({2, 4}, VDWParameters::Type::LennardJones, {60.0, 3.00}, 0.5)};
+  potentials.coulombs = {CoulombPotential({1, 4}, CoulombType::Coulomb, 0.20, -0.30, 0.5),
+                         CoulombPotential({2, 4}, CoulombType::Coulomb, -0.40, -0.30, 0.5)};
+  const double3 linker = 1.52 * double3::normalize(double3(-0.45, -0.35, 0.82));
+  const double3 amine = linker + 1.47 * double3::normalize(double3(-0.9, 0.3, 0.3));
+  const std::vector<Atom> beads{Atom({0.0, 0.0, 0.0}, 0.20, 1.0, 0, 0, 0, false, false),
+                                Atom({1.47, 0.0, 0.0}, 0.20, 1.0, 0, 1, 0, false, false),
+                                Atom({0.735, 1.273, 0.0}, -0.40, 1.0, 0, 2, 0, false, false),
+                                Atom(linker, 0.30, 1.0, 0, 3, 0, false, false),
+                                Atom(amine, -0.30, 1.0, 0, 4, 0, false, false)};
+  Component monomer =
+      Component(forceField, "epoxyamine", 400.0, 3000000.0, 0.2, beads, connectivityTable, potentials, 5, 21);
+  monomer.intra14VanDerWaalsScaling = 0.5;
+  monomer.intra14ChargeChargeScaling = 0.5;
+  monomer.reactiveGroups.push_back(
+      ReactiveGroup{.type = "epoxide", .atoms = {{"C1", 0}, {"C2", 1}, {"O", 2}}, .initialState = "closed"});
+  monomer.reactiveGroups.push_back(ReactiveGroup{.type = "amine", .atoms = {{"N", 4}}, .initialState = "primary"});
+
+  System system = System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {monomer}, {}, {2}, 5);
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  for (std::size_t m = 0; m < 2; ++m)
+  {
+    const double3 offset = m == 0 ? double3(10.0, 10.0, 10.0) : double3(10.0 - amine.x - 1.5, 10.0 - amine.y, 10.0 - amine.z);
+    for (std::size_t i = 0; i < 5; ++i) atoms[m * 5 + i].position = offset + beads[i].position;
+  }
+
+  const auto product = [](const std::string& name) { return (name == "C_op" || name == "O_op" || name == "NH") ? 1.0 : 0.0; };
+  PolymerLinkTable& table = system.polymerLinks;
+  for (std::size_t a = 0; a < 8; ++a)
+  {
+    for (std::size_t b = a; b < 8; ++b)
+    {
+      const double n = product(names[a]) + product(names[b]);
+      table.templates.bonds.push_back(
+          {.types = {names[a], names[b]}, .type = BondType::Harmonic, .parameters = {96500.0 + 5000.0 * n, 1.47 - 0.01 * n}});
+    }
+  }
+  for (std::size_t a = 0; a < 8; ++a)
+  {
+    for (std::size_t b = 0; b < 8; ++b)
+    {
+      for (std::size_t c = a; c < 8; ++c)
+      {
+        const double n = product(names[a]) + product(names[b]) + product(names[c]);
+        table.templates.bends.push_back(
+            {.types = {names[a], names[b], names[c]}, .type = BendType::Harmonic, .parameters = {62500.0 + 2000.0 * n, 112.0 - 1.5 * n}});
+      }
+    }
+  }
+  for (std::size_t a = 0; a < 8; ++a)
+  {
+    for (std::size_t b = 0; b < 8; ++b)
+    {
+      for (std::size_t c = 0; c < 8; ++c)
+      {
+        for (std::size_t d = 0; d < 8; ++d)
+        {
+          if (std::array<std::size_t, 4>{d, c, b, a} < std::array<std::size_t, 4>{a, b, c, d}) continue;
+          const double n = product(names[a]) + product(names[b]) + product(names[c]) + product(names[d]);
+          table.templates.torsions.push_back({.types = {names[a], names[b], names[c], names[d]},
+                                              .type = TorsionType::TraPPE,
+                                              .parameters = {0.0, 355.03 + 10.0 * n, -68.19, 791.32 + 20.0 * n}});
+        }
+      }
+    }
+  }
+  table.templates.resolve(forceField);
+
+  ReactionRule opening{};
+  opening.name = "opening";
+  opening.reactants = {{.label = "E", .type = "epoxide", .state = "closed"},
+                       {.label = "A", .type = "amine", .state = "primary"}};
+  opening.products = {{.state = "opened", .retype = {{"C1", "C_op"}, {"O", "O_op"}}},
+                      {.state = "secondary", .retype = {{"N", "NH"}}}};
+  opening.capture = std::array<RoleRef, 2>{RoleRef{"E", "C1"}, RoleRef{"A", "N"}};
+  opening.formBonds = {{RoleRef{"E", "C1"}, RoleRef{"A", "N"}}};
+  opening.breakBonds = {{RoleRef{"E", "C1"}, RoleRef{"E", "O"}}};
+  table.scheme.rules = {opening};
+  table.scheme.resolve(system.components, forceField);
+
+  table.activate(system.components, system.numberOfMoleculesPerComponent);
+  table.relaxationSteps = 100;
+  table.currentStep = 1000;
+  const std::array<std::size_t, 2> groups{table.groupIndex(0, 0, 0), table.groupIndex(0, 1, 1)};
+  table.apply(0, groups, {}, {}, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData),
+              system.simulationBox, 0);
   table.rebuild(forceField, system.components, system.numberOfMoleculesPerComponent, atoms);
   return system;
 }
@@ -950,4 +1098,60 @@ TEST(lammps_export, polymer_overlay_is_merged_into_the_topology)
       system.components, system.atomData, system.atomDynamics, system.moleculeData, system.simulationBox,
       system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options, &table);
   EXPECT_NE(LAMMPS::writeInputScript(ramping).find("still ramped in"), std::string::npos);
+}
+
+// A bond broken by a reaction ('BreakBonds'): the bond and the monomer angles and dihedrals through it leave the
+// exported topology (LAMMPS derives the special neighbours from the bond list, so the exclusions follow), the
+// polymer bond with its bends and torsions is appended as usual.
+TEST(lammps_export, polymer_broken_bonds_are_removed_from_the_topology)
+{
+  System system = ringOpeningSystem();
+  const PolymerLinkTable& table = system.polymerLinks;
+  ASSERT_EQ(table.numberOfBonds(), 1u);
+  ASSERT_EQ(table.numberOfBrokenBonds(), 1u);
+  ASSERT_EQ(table.linkBonds.size(), 1u);
+
+  LAMMPS::ExportOptions options{};
+  const LAMMPS::Topology plain = LAMMPS::buildTopology(
+      system.components, system.atomData, system.atomDynamics, system.moleculeData, system.simulationBox,
+      system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options);
+  const LAMMPS::Topology merged = LAMMPS::buildTopology(
+      system.components, system.atomData, system.atomDynamics, system.moleculeData, system.simulationBox,
+      system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options, &table);
+
+  // two monomers: 5 bonds, 6 angles, 4 dihedrals each; the ring opening removes the bond 0-2, the angles 1-2-0,
+  // 2-0-1, 3-0-2 and the dihedrals 3-0-2-1, 4-3-0-2 of the first
+  EXPECT_EQ(plain.bondList.size(), 10u);
+  EXPECT_EQ(plain.angleList.size(), 12u);
+  EXPECT_EQ(plain.dihedralList.size(), 8u);
+  EXPECT_EQ(merged.bondList.size(), 10u - 1u + table.linkBonds.size());
+  EXPECT_EQ(merged.angleList.size(), 12u - 3u + table.linkBends.size());
+  EXPECT_EQ(merged.dihedralList.size(), 8u - 2u + table.linkTorsions.size());
+  EXPECT_EQ(merged.polymerBonds, 1u);
+  EXPECT_EQ(merged.polymerBrokenTerms, 6u);
+
+  // the broken bond (LAMMPS ids 1 and 3) is in neither the bond list nor any angle or dihedral as adjacent atoms
+  const auto adjacent = [](const LAMMPS::BondedEntry& entry, std::size_t arity)
+  {
+    for (std::size_t i = 0; i + 1 < arity; ++i)
+    {
+      if ((entry.atoms[i] == 1u && entry.atoms[i + 1] == 3u) || (entry.atoms[i] == 3u && entry.atoms[i + 1] == 1u))
+        return true;
+    }
+    return false;
+  };
+  for (const LAMMPS::BondedEntry& entry : merged.bondList) EXPECT_FALSE(adjacent(entry, 2));
+  for (const LAMMPS::BondedEntry& entry : merged.angleList) EXPECT_FALSE(adjacent(entry, 3));
+  for (const LAMMPS::BondedEntry& entry : merged.dihedralList) EXPECT_FALSE(adjacent(entry, 4));
+  // the new bond C1 (id 1) - N of the second molecule (id 10) is present
+  const LAMMPS::BondedEntry& link = merged.bondList.back();
+  EXPECT_EQ(std::min(link.atoms[0], link.atoms[1]), 1u);
+  EXPECT_EQ(std::max(link.atoms[0], link.atoms[1]), 10u);
+
+  const std::string data = LAMMPS::writeDataFile(merged);
+  EXPECT_NE(data.find(std::format("{} bonds\n", merged.bondList.size())), std::string::npos);
+  const std::vector<std::vector<double>> bondRows = section(data, "Bonds");
+  ASSERT_EQ(bondRows.size(), merged.bondList.size());
+  const std::string input = LAMMPS::writeInputScript(merged);
+  EXPECT_NE(input.find("6 monomer bonds, angles and dihedrals through broken bonds removed"), std::string::npos);
 }

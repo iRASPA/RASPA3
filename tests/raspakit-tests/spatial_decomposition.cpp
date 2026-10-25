@@ -44,7 +44,8 @@ import spatial_decomposition_device_step;
 import mc_moves_hybridmc;
 import mc_moves_move_types;
 import polymer_links;
-import polymerization_site;
+import reactive_group;
+import polymer_reactions;
 
 namespace
 {
@@ -1947,7 +1948,7 @@ namespace
 /// atom of the system (the rest of 'a' and the other molecules), so that the configuration has no overlaps and can
 /// be integrated.
 void approachMolecules(System& system, std::size_t a, std::size_t atomA, std::size_t b, std::size_t atomB,
-                       double distance = 1.6)
+                       double distance = 1.6, std::optional<double3> approachDirection = std::nullopt)
 {
   std::span<Atom> atoms = system.spanOfMoleculeAtoms();
   const ConnectivityTable& connectivity = system.components[0].connectivityTable;
@@ -1962,7 +1963,7 @@ void approachMolecules(System& system, std::size_t a, std::size_t atomA, std::si
     }
     return double3::normalize(-sum);
   };
-  const double3 direction = openDirection(a, atomA);
+  const double3 direction = approachDirection.value_or(openDirection(a, atomA));
   // Rodrigues: rotate 'b' about its atom 'atomB' so that openDirection(b, atomB) becomes -direction; an atom with
   // a single neighbour (a head) is tilted so that the junction bend is 110 degrees instead of collinear (the
   // dihedrals through a collinear bend are undefined)
@@ -2037,8 +2038,44 @@ void approachMolecules(System& system, std::size_t a, std::size_t atomA, std::si
   for (std::size_t k = 0; k < n; ++k) atoms[n * b + k].position = spun(k, bestAngle);
 }
 
+/// The free-radical chain growth of a 'vinyl' group (roles head, tail, side): initiation (monomer -> radical, the
+/// head and tail retyped to the backbone types), propagation (radical tail - monomer head, the monomer becomes
+/// the radical, its head and tail retyped; a stereocentre on the radical's tail whose next centre is the monomer)
+/// and termination by combination (tail - tail, a stereocentre on both tails).
+std::vector<ReactionRule> vinylChainGrowth()
+{
+  ReactionRule initiation{};
+  initiation.name = "initiation";
+  initiation.reactants = {{.label = "A", .type = "vinyl", .state = "monomer"}};
+  initiation.products = {{.state = "radical", .retype = {{"head", "CH2_bb"}, {"tail", "CH_bb"}}}};
+
+  ReactionRule propagation{};
+  propagation.name = "propagation";
+  propagation.reactants = {{.label = "R", .type = "vinyl", .state = "radical"},
+                           {.label = "M", .type = "vinyl", .state = "monomer"}};
+  propagation.products = {{.state = "dead"}, {.state = "radical", .retype = {{"head", "CH2_bb"}, {"tail", "CH_bb"}}}};
+  propagation.capture = std::array<RoleRef, 2>{RoleRef{"R", "tail"}, RoleRef{"M", "head"}};
+  propagation.formBonds = {{RoleRef{"R", "tail"}, RoleRef{"M", "head"}}};
+  propagation.stereo = {{.centre = {"R", "tail"},
+                         .substituents = {RoleRef{"R", "head"}, RoleRef{"M", "head"}, RoleRef{"R", "side"}},
+                         .next = "M"}};
+  propagation.probability = 0.5;
+
+  ReactionRule termination{};
+  termination.name = "termination";
+  termination.reactants = {{.label = "A", .type = "vinyl", .state = "radical"},
+                           {.label = "B", .type = "vinyl", .state = "radical"}};
+  termination.products = {{.state = "dead"}, {.state = "dead"}};
+  termination.capture = std::array<RoleRef, 2>{RoleRef{"A", "tail"}, RoleRef{"B", "tail"}};
+  termination.formBonds = {{RoleRef{"A", "tail"}, RoleRef{"B", "tail"}}};
+  termination.stereo = {
+      {.centre = {"A", "tail"}, .substituents = {RoleRef{"A", "head"}, RoleRef{"B", "tail"}, RoleRef{"A", "side"}}},
+      {.centre = {"B", "tail"}, .substituents = {RoleRef{"B", "head"}, RoleRef{"A", "tail"}, RoleRef{"B", "side"}}}};
+  return {initiation, propagation, termination};
+}
+
 /// A branched five-bead monomer (a united-atom vinyl: head 0 = CH3, tail 1 = CH2 with the side group 4, and the
-/// tail's chain 2 - 3) whose head and tail take the backbone types CH2_bb / CH_bb when the site reacts. Every
+/// tail's chain 2 - 3) whose head and tail take the backbone types CH2_bb / CH_bb when the group reacts. Every
 /// polymer-bond template exists (all type combinations, with parameters that depend on the number of backbone
 /// types in the term, so that the retyped-term overrides are non-zero), and the component's 1-4 pairs are scaled
 /// by one half with the first pair containing the head (a retyped atom of a scaled pair).
@@ -2091,13 +2128,8 @@ System makePolymerSystem(std::size_t seed, std::size_t dimers, std::size_t termi
       Component(forceField, "vinyl", 425.0, 3796000.0, 0.199, beads, connectivityTable, potentials, 5, 21);
   monomer.intra14VanDerWaalsScaling = 0.5;
   monomer.intra14ChargeChargeScaling = 0.5;
-  monomer.polymerizationSites.push_back(PolymerizationSite{.siteType = "vinyl",
-                                                            .head = 0,
-                                                            .tail = 1,
-                                                            .headProductType = "CH2_bb",
-                                                            .tailProductType = "CH_bb",
-                                                            .initiatedHeadType = std::nullopt,
-                                                            .sideGroup = 4});
+  monomer.reactiveGroups.push_back(
+      ReactiveGroup{.type = "vinyl", .atoms = {{"head", 0}, {"tail", 1}, {"side", 4}}, .initialState = "monomer"});
 
   System system =
       System(forceField, SimulationBox(40.0, 39.0, 41.0), false, 300.0, 1e5, 1.0, {}, {monomer}, {}, {64}, 5);
@@ -2150,6 +2182,8 @@ System makePolymerSystem(std::size_t seed, std::size_t dimers, std::size_t termi
     }
   }
   table.templates.resolve(forceField);
+  table.scheme.rules = vinylChainGrowth();
+  table.scheme.resolve(system.components, forceField);
   table.activate(system.components, system.numberOfMoleculesPerComponent);
   table.relaxationSteps = relaxationSteps;
   table.currentStep = currentStep;
@@ -2157,6 +2191,15 @@ System makePolymerSystem(std::size_t seed, std::size_t dimers, std::size_t termi
   table.chiralReferenceVolume = 0.6;
 
   std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  // one group per molecule: the group index is the molecule index
+  const auto apply = [&](std::size_t rule, std::initializer_list<std::size_t> groups,
+                         std::initializer_list<std::int8_t> chiralities, std::uint64_t step)
+  {
+    const std::vector<std::int8_t> next(chiralities.size(), 0);
+    table.apply(rule, std::span<const std::size_t>(groups.begin(), groups.size()),
+                std::span<const std::int8_t>(chiralities.begin(), chiralities.size()), next, forceField,
+                system.components, atoms, std::span<Molecule>(system.moleculeData), system.simulationBox, step);
+  };
 
   // the first 2 * dimers molecules pair up by propagation (tail of the radical to the head of the monomer), the
   // next 2 * terminations by two initiations and a termination (tail to tail); the first half of the bonds formed
@@ -2170,10 +2213,9 @@ System makePolymerSystem(std::size_t seed, std::size_t dimers, std::size_t termi
     const std::size_t a = molecule;
     const std::size_t b = molecule + 1;
     approachMolecules(system, a, 1, b, 0, bondDistance);
-    table.initiate(a, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), stepOf(formed));
+    apply(0, {a}, {}, stepOf(formed));
     const std::int8_t chirality = (n % 3 == 0) ? 0 : ((n % 3 == 1) ? 1 : -1);
-    table.propagate(a, b, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData),
-                    stepOf(formed), bondDistance, chirality, 0);
+    apply(1, {a, b}, {chirality}, stepOf(formed));
     ++formed;
   }
   for (std::size_t n = 0; n < terminations; ++n, molecule += 2)
@@ -2181,13 +2223,369 @@ System makePolymerSystem(std::size_t seed, std::size_t dimers, std::size_t termi
     const std::size_t a = molecule;
     const std::size_t b = molecule + 1;
     approachMolecules(system, a, 1, b, 1, bondDistance);
-    table.initiate(a, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), stepOf(formed));
-    table.initiate(b, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), stepOf(formed));
-    table.terminate(a, b, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData),
-                    stepOf(formed), bondDistance, (n % 2 == 0) ? 1 : -1, (n % 2 == 0) ? -1 : 1);
+    apply(0, {a}, {}, stepOf(formed));
+    apply(0, {b}, {}, stepOf(formed));
+    apply(2, {a, b}, {static_cast<std::int8_t>((n % 2 == 0) ? 1 : -1), static_cast<std::int8_t>((n % 2 == 0) ? -1 : 1)},
+          stepOf(formed));
     ++formed;
   }
   table.rebuild(forceField, system.components, system.numberOfMoleculesPerComponent, atoms);
+  return system;
+}
+
+// ---- ring opening (bond breaking) --------------------------------------------------------------------------------
+
+/// The pseudo-atoms of the epoxy-amine model: a monomer carrying a three-membered ring (C_ep 0, CH2_ep 1, O_ep 2)
+/// with a linker (CH2 3) to a primary amine (N 4); the ring opening retypes the attacked carbon and the oxygen
+/// (C_op, O_op) and the amine (NH). The product types carry the index >= 5.
+const std::array<std::string, 8> ringTypeNames{"C_ep", "CH2_ep", "O_ep", "CH2", "N", "C_op", "O_op", "NH"};
+
+ForceField ringForceField()
+{
+  ForceField forceField = ForceField(
+      {{"C_ep", false, 13.01864, 0.20, 0.0, 6, false},
+       {"CH2_ep", false, 14.02658, 0.20, 0.0, 6, false},
+       {"O_ep", false, 15.9994, -0.40, 0.0, 8, false},
+       {"CH2", false, 14.02658, 0.30, 0.0, 6, false},
+       {"N", false, 16.0226, -0.30, 0.0, 7, false},
+       {"C_op", false, 13.01864, 0.25, 0.0, 6, false},
+       {"O_op", false, 17.0073, -0.45, 0.0, 8, false},
+       {"NH", false, 15.0146, -0.30, 0.0, 7, false}},
+      {{50.0, 3.90}, {46.0, 3.95}, {60.0, 3.00}, {46.0, 3.95}, {80.0, 3.30}, {55.0, 3.85}, {90.0, 3.05}, {85.0, 3.35}},
+      ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0, 9.0, false, false, true);
+  forceField.automaticEwald = false;
+  forceField.EwaldAlpha = 0.32;
+  forceField.numberOfWaveVectors = int3(20, 20, 20);
+  forceField.reciprocalCutOffSquared = std::numeric_limits<double>::max();
+  forceField.reciprocalIntegerCutOffSquared = 400;
+  return forceField;
+}
+
+/// The bonded parameters of the product templates: a formula in the number of product types in the term (so that
+/// every retyped term changes its parameters).
+double ringProductCount(std::span<const std::size_t> types)
+{
+  double n = 0.0;
+  for (std::size_t t : types) n += t >= 5 ? 1.0 : 0.0;
+  return n;
+}
+std::vector<double> ringTemplateBond(std::span<const std::size_t> types)
+{
+  const double n = ringProductCount(types);
+  return {96500.0 + 5000.0 * n, 1.47 - 0.01 * n};
+}
+std::vector<double> ringTemplateBend(std::span<const std::size_t> types)
+{
+  const double n = ringProductCount(types);
+  return {62500.0 + 2000.0 * n, 112.0 - 1.5 * n};
+}
+std::vector<double> ringTemplateTorsion(std::span<const std::size_t> types)
+{
+  const double n = ringProductCount(types);
+  return {0.0, 355.03 + 10.0 * n, -68.19, 791.32 + 20.0 * n};
+}
+
+/// The monomer: ring bonds 0-1, 1-2, 2-0, the linker 0-3 and the amine 3-4; harmonic bonds and bends, TraPPE
+/// torsions, the 1-4 pairs (1,4) and (2,4) scaled by one half.
+const std::vector<std::pair<std::size_t, std::size_t>> ringMonomerBonds{{0, 1}, {1, 2}, {2, 0}, {0, 3}, {3, 4}};
+const std::vector<std::array<std::size_t, 3>> ringMonomerBends{{0, 1, 2}, {1, 2, 0}, {2, 0, 1}, {3, 0, 1}, {3, 0, 2}, {0, 3, 4}};
+const std::vector<std::array<std::size_t, 4>> ringMonomerTorsions{{4, 3, 0, 1}, {4, 3, 0, 2}, {3, 0, 1, 2}, {3, 0, 2, 1}};
+std::vector<double> ringMonomerBondParameters(std::size_t a, std::size_t b)
+{
+  const std::array<std::size_t, 2> key{std::min(a, b), std::max(a, b)};
+  if (key == std::array<std::size_t, 2>{0, 3}) return {96500.0, 1.52};
+  if (key == std::array<std::size_t, 2>{3, 4}) return {96500.0, 1.47};
+  return {96500.0, 1.47};
+}
+std::vector<double> ringMonomerBendParameters(const std::array<std::size_t, 3>& bend)
+{
+  const bool ring = bend[0] <= 2 && bend[1] <= 2 && bend[2] <= 2;
+  return {62500.0, ring ? 60.0 : (bend[1] == 3 ? 112.0 : 118.0)};
+}
+std::vector<double> ringMonomerTorsionParameters() { return {0.0, 355.03, -68.19, 791.32}; }
+
+Component ringMonomer(const ForceField& forceField)
+{
+  ConnectivityTable connectivityTable(5);
+  Potentials::IntraMolecularPotentials potentials{};
+  for (const auto [a, b] : ringMonomerBonds)
+  {
+    connectivityTable[a, b] = true;
+    connectivityTable[b, a] = true;
+    potentials.bonds.push_back(BondPotential({a, b}, BondType::Harmonic, ringMonomerBondParameters(a, b)));
+  }
+  for (const std::array<std::size_t, 3>& bend : ringMonomerBends)
+  {
+    potentials.bends.push_back(BendPotential(bend, BendType::Harmonic, ringMonomerBendParameters(bend)));
+  }
+  for (const std::array<std::size_t, 4>& torsion : ringMonomerTorsions)
+  {
+    potentials.torsions.push_back(TorsionPotential(torsion, TorsionType::TraPPE, ringMonomerTorsionParameters()));
+  }
+  potentials.vanDerWaals = {VanDerWaalsPotential({1, 4}, VDWParameters::Type::LennardJones, {46.0, 3.95}, 0.5),
+                            VanDerWaalsPotential({2, 4}, VDWParameters::Type::LennardJones, {60.0, 3.00}, 0.5)};
+  potentials.coulombs = {CoulombPotential({1, 4}, CoulombType::Coulomb, 0.20, -0.30, 0.5),
+                         CoulombPotential({2, 4}, CoulombType::Coulomb, -0.40, -0.30, 0.5)};
+
+  const double3 linker = 1.52 * double3::normalize(double3(-0.45, -0.35, 0.82));
+  const double3 amine = linker + 1.47 * double3::normalize(double3(-0.9, 0.3, 0.3));
+  const std::vector<Atom> beads{Atom({0.0, 0.0, 0.0}, 0.20, 1.0, 0, 0, 0, false, false),
+                                Atom({1.47, 0.0, 0.0}, 0.20, 1.0, 0, 1, 0, false, false),
+                                Atom({0.735, 1.273, 0.0}, -0.40, 1.0, 0, 2, 0, false, false),
+                                Atom(linker, 0.30, 1.0, 0, 3, 0, false, false),
+                                Atom(amine, -0.30, 1.0, 0, 4, 0, false, false)};
+  Component monomer =
+      Component(forceField, "epoxyamine", 400.0, 3000000.0, 0.2, beads, connectivityTable, potentials, 5, 21);
+  monomer.intra14VanDerWaalsScaling = 0.5;
+  monomer.intra14ChargeChargeScaling = 0.5;
+  monomer.reactiveGroups.push_back(
+      ReactiveGroup{.type = "epoxide", .atoms = {{"C1", 0}, {"C2", 1}, {"O", 2}}, .initialState = "closed"});
+  monomer.reactiveGroups.push_back(ReactiveGroup{.type = "amine", .atoms = {{"N", 4}}, .initialState = "primary"});
+  return monomer;
+}
+
+/// The ring opening: the amine attacks the ring carbon; the C1-N bond forms, the C1-O bond breaks, C1, O and N
+/// are retyped.
+std::vector<ReactionRule> ringOpening()
+{
+  ReactionRule opening{};
+  opening.name = "opening";
+  opening.reactants = {{.label = "E", .type = "epoxide", .state = "closed"},
+                       {.label = "A", .type = "amine", .state = "primary"}};
+  opening.products = {{.state = "opened", .retype = {{"C1", "C_op"}, {"O", "O_op"}}},
+                      {.state = "secondary", .retype = {{"N", "NH"}}}};
+  opening.capture = std::array<RoleRef, 2>{RoleRef{"E", "C1"}, RoleRef{"A", "N"}};
+  opening.formBonds = {{RoleRef{"E", "C1"}, RoleRef{"A", "N"}}};
+  opening.breakBonds = {{RoleRef{"E", "C1"}, RoleRef{"E", "O"}}};
+  // the second addition to the same amine (no retyping: the test of the ramp continuity compares the energy with
+  // and without this reaction at its step)
+  ReactionRule second{};
+  second.name = "second_opening";
+  second.reactants = {{.label = "E", .type = "epoxide", .state = "closed"},
+                      {.label = "A", .type = "amine", .state = "secondary"}};
+  second.products = {{.state = "opened"}, {.state = "tertiary"}};
+  second.capture = std::array<RoleRef, 2>{RoleRef{"E", "C1"}, RoleRef{"A", "N"}};
+  second.formBonds = {{RoleRef{"E", "C1"}, RoleRef{"A", "N"}}};
+  second.breakBonds = {{RoleRef{"E", "C1"}, RoleRef{"E", "O"}}};
+  return {opening, second};
+}
+
+/// 'molecules' epoxy-amine monomers; the first 2 * 'reactions' pair up (the amine of the second attacks the ring
+/// of the first), at step 0 for the first half and at 'currentStep' / 2 for the second. With 'secondAdditions' > 0
+/// the amines of the first 'secondAdditions' pairs (already secondary) also attack the rings of the molecules
+/// 2 * 'reactions', 2 * 'reactions' + 1, ... at 'secondStep' ('currentStep' / 2 by default; the second rule, no
+/// retyping).
+System makeRingOpeningSystem(std::size_t seed, std::size_t molecules, std::size_t reactions, std::uint64_t currentStep,
+                             std::size_t relaxationSteps, double bondDistance = 1.5, double boxLength = 40.0,
+                             std::size_t secondAdditions = 0, std::optional<std::uint64_t> secondStep = std::nullopt)
+{
+  const ForceField forceField = ringForceField();
+  const Component monomer = ringMonomer(forceField);
+  System system = System(forceField, SimulationBox(boxLength, boxLength - 1.0, boxLength + 1.0), false, 300.0, 1e5,
+                         1.0, {}, {monomer}, {}, {molecules}, 5);
+  RandomNumber random(seed);
+  randomizeConfiguration(system, random);
+
+  PolymerLinkTable& table = system.polymerLinks;
+  const std::size_t count = ringTypeNames.size();
+  for (std::size_t a = 0; a < count; ++a)
+  {
+    for (std::size_t b = a; b < count; ++b)
+    {
+      const std::array<std::size_t, 2> key{a, b};
+      table.templates.bonds.push_back(
+          {.types = {ringTypeNames[a], ringTypeNames[b]}, .type = BondType::Harmonic, .parameters = ringTemplateBond(key)});
+    }
+  }
+  for (std::size_t a = 0; a < count; ++a)
+  {
+    for (std::size_t b = 0; b < count; ++b)
+    {
+      for (std::size_t c = a; c < count; ++c)
+      {
+        const std::array<std::size_t, 3> key{a, b, c};
+        table.templates.bends.push_back({.types = {ringTypeNames[a], ringTypeNames[b], ringTypeNames[c]},
+                                         .type = BendType::Harmonic,
+                                         .parameters = ringTemplateBend(key)});
+      }
+    }
+  }
+  for (std::size_t a = 0; a < count; ++a)
+  {
+    for (std::size_t b = 0; b < count; ++b)
+    {
+      for (std::size_t c = 0; c < count; ++c)
+      {
+        for (std::size_t d = 0; d < count; ++d)
+        {
+          const std::array<std::size_t, 4> key{a, b, c, d};
+          const std::array<std::size_t, 4> reversedKey{d, c, b, a};
+          if (reversedKey < key) continue;
+          table.templates.torsions.push_back(
+              {.types = {ringTypeNames[a], ringTypeNames[b], ringTypeNames[c], ringTypeNames[d]},
+               .type = TorsionType::TraPPE,
+               .parameters = ringTemplateTorsion(key)});
+        }
+      }
+    }
+  }
+  table.templates.resolve(forceField);
+  table.scheme.rules = ringOpening();
+  table.scheme.resolve(system.components, forceField);
+  table.activate(system.components, system.numberOfMoleculesPerComponent);
+  table.relaxationSteps = relaxationSteps;
+  table.currentStep = currentStep;
+
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  for (std::size_t n = 0; n < reactions; ++n)
+  {
+    const std::size_t a = 2 * n;
+    const std::size_t b = 2 * n + 1;
+    approachMolecules(system, a, 0, b, 4, bondDistance);
+    const std::array<std::size_t, 2> groups{table.groupIndex(0, a, 0), table.groupIndex(0, b, 1)};
+    table.apply(0, groups, {}, {}, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData),
+                system.simulationBox, n < reactions / 2 ? 0 : currentStep / 2);
+  }
+  const std::size_t n = monomer.atoms.size();
+  for (std::size_t s = 0; s < secondAdditions; ++s)
+  {
+    const std::size_t b = 2 * s + 1;        // the amine, bonded to C1 of molecule 2 s
+    const std::size_t c = 2 * reactions + s;  // the ring it attacks
+    // away from both the CH2 of the amine and its first partner
+    const double3 nitrogen = atoms[n * b + 4].position;
+    const double3 direction = double3::normalize(-(double3::normalize(atoms[n * b + 3].position - nitrogen) +
+                                                   double3::normalize(atoms[n * (2 * s) + 0].position - nitrogen)));
+    approachMolecules(system, b, 4, c, 0, bondDistance, direction);
+    const std::array<std::size_t, 2> groups{table.groupIndex(0, c, 0), table.groupIndex(0, b, 1)};
+    table.apply(1, groups, {}, {}, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData),
+                system.simulationBox, secondStep.value_or(currentStep / 2));
+  }
+  table.rebuild(forceField, system.components, system.numberOfMoleculesPerComponent, atoms);
+  return system;
+}
+
+/// The reacted pair of 'makeRingOpeningSystem' as one molecule of a product component with the opened topology:
+/// the atoms 0-4 of the attacked monomer (C1 and O retyped, the C1-O bond gone), 5-9 of the attacking one (N
+/// retyped), the bond 0-9. The terms that contain a retyped atom or the new bond take the template parameters,
+/// the others keep the monomer's; the 1-4 pairs of the new graph are scaled by one half.
+System makeRingOpeningProduct(const System& reacted)
+{
+  const ForceField forceField = ringForceField();
+  const std::size_t n = 10;
+  const std::vector<std::size_t> types{5, 1, 6, 3, 4, 0, 1, 2, 3, 7};
+  const std::set<std::size_t> retyped{0, 2, 9};
+  std::vector<std::pair<std::size_t, std::size_t>> bonds{{0, 1}, {1, 2}, {0, 3}, {3, 4},
+                                                         {5, 6}, {6, 7}, {7, 5}, {5, 8}, {8, 9}, {0, 9}};
+  ConnectivityTable connectivity(n);
+  for (const auto [a, b] : bonds)
+  {
+    connectivity[a, b] = true;
+    connectivity[b, a] = true;
+  }
+  const auto neighbours = [&](std::size_t atom)
+  {
+    std::vector<std::size_t> result{};
+    for (std::size_t k = 0; k < n; ++k)
+    {
+      if (connectivity[atom, k]) result.push_back(k);
+    }
+    return result;
+  };
+  const auto local = [](std::size_t atom) { return atom % 5; };
+  // a term takes the template parameters when it contains a retyped atom or runs through the new bond (atoms of
+  // both monomers)
+  const auto fromTemplate = [&](std::span<const std::size_t> term)
+  {
+    return std::ranges::any_of(term, [&](std::size_t a) { return retyped.contains(a) || a / 5 != term.front() / 5; });
+  };
+  const auto typesOf = [&](std::span<const std::size_t> term)
+  {
+    std::vector<std::size_t> result{};
+    for (std::size_t atom : term) result.push_back(types[atom]);
+    return result;
+  };
+
+  Potentials::IntraMolecularPotentials potentials{};
+  for (const auto [a, b] : bonds)
+  {
+    const std::array<std::size_t, 2> term{a, b};
+    potentials.bonds.push_back(BondPotential(term, BondType::Harmonic,
+                                             fromTemplate(term) ? ringTemplateBond(typesOf(term))
+                                                                : ringMonomerBondParameters(local(a), local(b))));
+  }
+  for (std::size_t b = 0; b < n; ++b)
+  {
+    const std::vector<std::size_t> nb = neighbours(b);
+    for (std::size_t i = 0; i < nb.size(); ++i)
+    {
+      for (std::size_t j = i + 1; j < nb.size(); ++j)
+      {
+        const std::array<std::size_t, 3> term{nb[i], b, nb[j]};
+        std::vector<double> parameters{};
+        if (fromTemplate(term))
+        {
+          parameters = ringTemplateBend(typesOf(term));
+        }
+        else
+        {
+          // the monomer lists the bend in one orientation; the parameters depend on the local atoms only
+          const std::array<std::size_t, 3> localTerm{local(term[0]), local(term[1]), local(term[2])};
+          parameters = ringMonomerBendParameters(localTerm);
+        }
+        potentials.bends.push_back(BendPotential(term, BendType::Harmonic, parameters));
+      }
+    }
+  }
+  for (const auto [b, c] : bonds)
+  {
+    for (std::size_t a : neighbours(b))
+    {
+      if (a == c) continue;
+      for (std::size_t d : neighbours(c))
+      {
+        if (d == b || d == a) continue;
+        const std::array<std::size_t, 4> term{a, b, c, d};
+        potentials.torsions.push_back(TorsionPotential(
+            term, TorsionType::TraPPE,
+            fromTemplate(term) ? ringTemplateTorsion(typesOf(term)) : ringMonomerTorsionParameters()));
+      }
+    }
+  }
+  // (the explicit pair terms of a programmatic component fix the scaling of their pairs; the parameters come from
+  // the force field)
+  for (const std::array<std::size_t, 2>& pair : IntraMolecularExclusions::pairs14(connectivity))
+  {
+    potentials.vanDerWaals.push_back(VanDerWaalsPotential(pair, VDWParameters::Type::LennardJones, {50.0, 3.9}, 0.5));
+    potentials.coulombs.push_back(CoulombPotential(pair, CoulombType::Coulomb, forceField.pseudoAtoms[types[pair[0]]].charge,
+                                                   forceField.pseudoAtoms[types[pair[1]]].charge, 0.5));
+  }
+
+  std::span<const Atom> reactedAtoms = reacted.spanOfMoleculeAtoms();
+  std::vector<Atom> beads{};
+  for (std::size_t k = 0; k < n; ++k)
+  {
+    Atom atom = reactedAtoms[k];
+    atom.type = static_cast<std::uint16_t>(types[k]);
+    atom.charge = forceField.pseudoAtoms[types[k]].charge;
+    atom.moleculeId = 0;
+    beads.push_back(atom);
+  }
+  Component product = Component(forceField, "product", 400.0, 3000000.0, 0.2, beads, connectivity, potentials, 5, 21);
+  product.intra14VanDerWaalsScaling = 0.5;
+  product.intra14ChargeChargeScaling = 0.5;
+
+  System system = System(forceField, reacted.simulationBox, false, 300.0, 1e5, 1.0, {}, {product}, {}, {1}, 5);
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  double3 com{};
+  double mass = 0.0;
+  for (std::size_t k = 0; k < n; ++k)
+  {
+    atoms[k].position = reactedAtoms[k].position;
+    const double m = forceField.pseudoAtoms[types[k]].mass;
+    com += m * atoms[k].position;
+    mass += m;
+  }
+  system.moleculeData[0].centerOfMassPosition = com / mass;
   return system;
 }
 
@@ -2316,9 +2714,14 @@ TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_follows_the_ram
   const std::size_t a = 40;
   const std::size_t b = 41;
   approachMolecules(system, a, 1, b, 0);
-  table.initiate(a, system.forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), 500);
-  table.propagate(a, b, system.forceField, system.components, atoms, std::span<Molecule>(system.moleculeData), 500,
-                  1.6, 1, 0);
+  const std::array<std::size_t, 1> initiated{a};
+  table.apply(0, initiated, {}, {}, system.forceField, system.components, atoms,
+              std::span<Molecule>(system.moleculeData), system.simulationBox, 500);
+  const std::array<std::size_t, 2> pair{a, b};
+  const std::array<std::int8_t, 1> chirality{1};
+  const std::array<std::int8_t, 1> next{0};
+  table.apply(1, pair, chirality, next, system.forceField, system.components, atoms,
+              std::span<Molecule>(system.moleculeData), system.simulationBox, 500);
   table.rebuild(system.forceField, system.components, system.numberOfMoleculesPerComponent, atoms);
   host.topologyChanged(system);
   device.topologyChanged(system);
@@ -2345,7 +2748,7 @@ TEST(spatial_decomposition, engine_polymer_unlisted_pairs_match_the_listed_formu
     {
       if (pair.listed) continue;
       ++unlistedCount;
-      EXPECT_EQ(pair.wanted, PolymerLinkTable::PairState::Excluded);
+      // the first entry of the chain of a pair the lists held at full strength that the topology excludes
       EXPECT_EQ(pair.counted, PolymerLinkTable::PairState::Full);
       EXPECT_TRUE(table.unlisted.contains(pair.atoms[0], pair.atoms[1]));
       EXPECT_TRUE(table.unlisted.contains(pair.atoms[1], pair.atoms[0]));
@@ -2387,6 +2790,251 @@ TEST(spatial_decomposition, engine_polymer_unlisted_pairs_match_the_listed_formu
   }
 }
 
+// A broken bond ('BreakBonds' of a reaction rule): the bond and the bends and torsions of the molecule through it
+// are overridden to zero, the connectivity the overlay follows loses the bond, and the pairs the molecule's
+// exclusions withhold that the new topology no longer excludes receive their interaction. With the ramp complete
+// the reacted pair has to have the energy and the gradients of one molecule with the product topology.
+TEST(spatial_decomposition, engine_polymer_broken_bond_matches_the_product_topology)
+{
+  System system = makeRingOpeningSystem(5, 2, 1, 1000, 100);
+  PolymerLinkTable& table = system.polymerLinks;
+  ASSERT_EQ(table.numberOfBonds(), 1uz);
+  ASSERT_EQ(table.numberOfBrokenBonds(), 1uz);
+  EXPECT_FALSE(table.rampsActive());
+  EXPECT_EQ(table.brokenBonds[0].a.atomIndex, 0u);
+  EXPECT_EQ(table.brokenBonds[0].b.atomIndex, 2u);
+
+  // the connectivity: C1 (atom 0) lost the oxygen (2) and gained the amine nitrogen of the other molecule (9)
+  const std::vector<std::uint32_t> neighbours = table.neighboursOf(0, system.components);
+  EXPECT_FALSE(std::ranges::contains(neighbours, 2u));
+  EXPECT_TRUE(std::ranges::contains(neighbours, 1u));
+  EXPECT_TRUE(std::ranges::contains(neighbours, 3u));
+  EXPECT_TRUE(std::ranges::contains(neighbours, 9u));
+  EXPECT_FALSE(std::ranges::contains(table.neighboursOf(2, system.components), 0u));
+
+  // the terms switched off: the bond, the bends 1-2-0, 2-0-1, 3-0-2 and the torsions 3-0-2-1, 4-3-0-2
+  std::size_t removedBonds = 0, removedBends = 0, removedTorsions = 0;
+  for (const PolymerLinkTable::OverrideBondTerm& term : table.overrideBonds)
+  {
+    if (term.replacement.type != BondType::None) continue;
+    ++removedBonds;
+    EXPECT_EQ(std::min(term.atoms[0], term.atoms[1]), 0u);
+    EXPECT_EQ(std::max(term.atoms[0], term.atoms[1]), 2u);
+  }
+  for (const PolymerLinkTable::OverrideBendTerm& term : table.overrideBends)
+  {
+    if (term.replacement.type == BendType::Fixed) ++removedBends;
+  }
+  for (const PolymerLinkTable::OverrideTorsionTerm& term : table.overrideTorsions)
+  {
+    if (term.replacement.type == TorsionType::Fixed) ++removedTorsions;
+  }
+  EXPECT_EQ(removedBonds, 1uz);
+  EXPECT_EQ(removedBends, 3uz);
+  EXPECT_EQ(removedTorsions, 2uz);
+  // no bend or torsion of the new bond runs through the broken one (the oxygen is reached through C2 only:
+  // the torsion O-C2-C1-N exists, O-C1-N does not)
+  const auto throughBroken = [](std::span<const std::uint32_t> atoms)
+  {
+    for (std::size_t i = 0; i + 1 < atoms.size(); ++i)
+    {
+      if ((atoms[i] == 0u && atoms[i + 1] == 2u) || (atoms[i] == 2u && atoms[i + 1] == 0u)) return true;
+    }
+    return false;
+  };
+  bool oxygenTorsion = false;
+  for (const PolymerLinkTable::LinkBendTerm& term : table.linkBends)
+  {
+    EXPECT_FALSE(throughBroken(term.atoms)) << "bend through the broken bond";
+    EXPECT_FALSE(std::ranges::contains(term.atoms, 2u)) << "bend O-C1-N";
+  }
+  for (const PolymerLinkTable::LinkTorsionTerm& term : table.linkTorsions)
+  {
+    EXPECT_FALSE(throughBroken(term.atoms)) << "torsion through the broken bond";
+    if (std::ranges::contains(term.atoms, 2u)) oxygenTorsion = true;
+  }
+  EXPECT_TRUE(oxygenTorsion);
+
+  // the released pairs: the linker - oxygen (3, 2) was 1-3 (excluded) and is 1-4 now; the oxygen - nitrogen (2, 4)
+  // was 1-4 (scaled) and is 1-5 now; C1 - O (0, 2) is 1-3 through C2 and stays excluded
+  bool linkerOxygen = false, oxygenNitrogen = false;
+  for (const PolymerLinkTable::PairCorrection& pair : table.pairCorrections)
+  {
+    EXPECT_NE(pair.atoms, (std::array<std::uint32_t, 2>{0u, 2u}));
+    if (pair.atoms == std::array<std::uint32_t, 2>{2u, 3u})
+    {
+      linkerOxygen = true;
+      EXPECT_EQ(pair.counted, PolymerLinkTable::PairState::Excluded);
+      EXPECT_EQ(pair.wanted, PolymerLinkTable::PairState::Scaled);
+      EXPECT_TRUE(pair.listed);
+    }
+    if (pair.atoms == std::array<std::uint32_t, 2>{2u, 4u})
+    {
+      oxygenNitrogen = true;
+      EXPECT_EQ(pair.counted, PolymerLinkTable::PairState::Scaled);
+      EXPECT_EQ(pair.wanted, PolymerLinkTable::PairState::Full);
+      EXPECT_TRUE(pair.listed);
+    }
+  }
+  EXPECT_TRUE(linkerOxygen);
+  EXPECT_TRUE(oxygenNitrogen);
+
+  SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+  settings.pairDevice = PairDevice::CPU;
+  SpatialDecompositionForceEngine engine(settings);
+  engine.initialize(system);
+  const RunningEnergy energy = engine.computeGradients(system, true);
+  const std::vector<double3> gradient = gradientsOf(system);
+  EXPECT_NE(energy.crossLink, 0.0);
+
+  System product = makeRingOpeningProduct(system);
+  SpatialDecompositionForceEngine reference(settings);
+  reference.initialize(product);
+  const RunningEnergy referenceEnergy = reference.computeGradients(product, true);
+  const std::vector<double3> referenceGradient = gradientsOf(product);
+  EXPECT_EQ(referenceEnergy.crossLink, 0.0);
+  EXPECT_NEAR(energy.potentialEnergy(), referenceEnergy.potentialEnergy(),
+              1e-8 * std::max(std::abs(referenceEnergy.potentialEnergy()), 1.0));
+  EXPECT_LT(rmsDifference(gradient, referenceGradient), 1e-8 * rmsNorm(referenceGradient));
+
+  // the overlay is not a no-op: without the released pairs and the removed terms the energy differs
+  System untouched = makeRingOpeningSystem(5, 2, 1, 1000, 100);
+  PolymerLinkTable& partial = untouched.polymerLinks;
+  std::erase_if(partial.overrideBonds, [](const auto& t) { return t.replacement.type == BondType::None; });
+  std::erase_if(partial.overrideBends, [](const auto& t) { return t.replacement.type == BendType::Fixed; });
+  std::erase_if(partial.overrideTorsions, [](const auto& t) { return t.replacement.type == TorsionType::Fixed; });
+  std::erase_if(partial.pairCorrections, [](const auto& p) { return p.counted == PolymerLinkTable::PairState::Excluded; });
+  SpatialDecompositionForceEngine partialEngine(settings);
+  partialEngine.initialize(untouched);
+  const RunningEnergy partialEnergy = partialEngine.computeGradients(untouched, true);
+  EXPECT_GT(std::abs(partialEnergy.potentialEnergy() - referenceEnergy.potentialEnergy()),
+            1e-3 * std::abs(referenceEnergy.potentialEnergy()));
+}
+
+// A second bond at an atom of an earlier bond: the pairs of the earlier bond are within three bonds of the new one
+// as well, but their treatment does not change, so they keep the ramp of the earlier bond (a restarted ramp would
+// switch the full repulsion of two atoms at the bond length back on). The pair corrections form chains in the
+// order of the events, and at the step of the second reaction (its ramp at zero) the energy and the forces are
+// those of the system with the first reaction only.
+TEST(spatial_decomposition, engine_polymer_second_addition_keeps_the_ramps_of_the_first_bond)
+{
+  // molecules 0-1 and 2-3 pair up (at step 0 and 30); molecule 1's amine (atom 9), bonded to C1 of molecule 0
+  // (atom 0) at step 0, also bonds to C1 of molecule 4 (atom 20) at step 30; the ramps take 100 steps
+  System system = makeRingOpeningSystem(5, 5, 2, 60, 100, 1.5, 40.0, 1, 30);
+  PolymerLinkTable& table = system.polymerLinks;
+  ASSERT_EQ(table.numberOfBonds(), 3uz);
+  ASSERT_EQ(table.numberOfBrokenBonds(), 3uz);
+  EXPECT_EQ(table.bonds[0].formedAtStep, 0u);
+  EXPECT_EQ(table.bonds[2].formedAtStep, 30u);
+  EXPECT_NEAR(table.rampFactor(0), 0.6, 1e-12);
+  EXPECT_NEAR(table.rampFactor(30), 0.3, 1e-12);
+
+  std::map<std::array<std::uint32_t, 2>, std::vector<PolymerLinkTable::PairCorrection>> chains{};
+  for (const PolymerLinkTable::PairCorrection& pair : table.pairCorrections) chains[pair.atoms].push_back(pair);
+  for (const auto& [key, chain] : chains)
+  {
+    for (std::size_t i = 0; i < chain.size(); ++i)
+    {
+      // an entry changes the treatment, continues the previous one, and only the first may be the unlisted form
+      EXPECT_FALSE(chain[i].wanted == chain[i].counted &&
+                   chain[i].wantedScaling.scalingVDW == chain[i].countedScaling.scalingVDW &&
+                   chain[i].wantedScaling.scalingCoulomb == chain[i].countedScaling.scalingCoulomb)
+          << "pair " << key[0] << "-" << key[1];
+      if (i > 0)
+      {
+        EXPECT_GT(chain[i].step, chain[i - 1].step) << "pair " << key[0] << "-" << key[1];
+        EXPECT_EQ(chain[i].counted, chain[i - 1].wanted) << "pair " << key[0] << "-" << key[1];
+        EXPECT_TRUE(chain[i].listed) << "pair " << key[0] << "-" << key[1];
+      }
+    }
+  }
+  const auto chainOf = [&](std::uint32_t a, std::uint32_t b) -> const std::vector<PolymerLinkTable::PairCorrection>&
+  { return chains[std::array<std::uint32_t, 2>{a, b}]; };
+  // the first bond's own pair and its 1-3 pairs keep the step of the first bond
+  ASSERT_EQ(chainOf(0u, 9u).size(), 1uz);
+  EXPECT_EQ(chainOf(0u, 9u)[0].step, 0u);
+  EXPECT_EQ(chainOf(0u, 9u)[0].wanted, PolymerLinkTable::PairState::Excluded);
+  EXPECT_FALSE(chainOf(0u, 9u)[0].listed);
+  ASSERT_EQ(chainOf(1u, 9u).size(), 1uz);  // C2 of molecule 0 - N
+  EXPECT_EQ(chainOf(1u, 9u)[0].step, 0u);
+  ASSERT_EQ(chainOf(0u, 8u).size(), 1uz);  // C1 of molecule 0 - CH2 of the amine
+  EXPECT_EQ(chainOf(0u, 8u)[0].step, 0u);
+  // the second bond's pairs have its step, among them C1 - N - C1 (1-3 through the nitrogen)
+  ASSERT_EQ(chainOf(9u, 20u).size(), 1uz);
+  EXPECT_EQ(chainOf(9u, 20u)[0].step, 30u);
+  EXPECT_FALSE(chainOf(9u, 20u)[0].listed);
+  ASSERT_EQ(chainOf(0u, 20u).size(), 1uz);
+  EXPECT_EQ(chainOf(0u, 20u)[0].step, 30u);
+  EXPECT_EQ(chainOf(0u, 20u)[0].wanted, PolymerLinkTable::PairState::Excluded);
+  EXPECT_EQ(chainOf(0u, 20u)[0].counted, PolymerLinkTable::PairState::Full);
+
+  // the overrides of the terms of molecule 1 that contain the nitrogen (retyped at step 0; the second addition
+  // changes the state of its group again but not its type) keep the step of the first reaction
+  ASSERT_EQ(table.retypings.size(), 6uz);  // C1 and O of molecules 0 and 2, N of molecules 1 and 3
+  std::size_t nitrogenOverrides = 0;
+  for (const PolymerLinkTable::OverrideBendTerm& term : table.overrideBends)
+  {
+    if (!std::ranges::contains(term.atoms, 9u)) continue;
+    ++nitrogenOverrides;
+    EXPECT_EQ(term.step, 0u);
+  }
+  EXPECT_GT(nitrogenOverrides, 0uz);
+
+  // at the step of the second addition its ramp is zero: the same energy and forces as without it (the same
+  // positions: the fifth molecule is placed the same way, and the second rule does not retype)
+  System both = makeRingOpeningSystem(5, 5, 2, 30, 100, 1.5, 40.0, 1, 30);
+  System without = makeRingOpeningSystem(5, 5, 2, 30, 100);
+  {
+    std::span<const Atom> placed = both.spanOfMoleculeAtoms();
+    std::span<Atom> atoms = without.spanOfMoleculeAtoms();
+    ASSERT_EQ(placed.size(), atoms.size());
+    for (std::size_t i = 0; i < atoms.size(); ++i)
+    {
+      atoms[i].position = placed[i].position;
+      EXPECT_EQ(atoms[i].type, placed[i].type);
+    }
+    without.moleculeData[4].centerOfMassPosition = both.moleculeData[4].centerOfMassPosition;
+  }
+  EXPECT_EQ(both.polymerLinks.rampFactor(30), 0.0);
+  SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+  settings.pairDevice = PairDevice::CPU;
+  SpatialDecompositionForceEngine engine(settings);
+  engine.initialize(both);
+  const RunningEnergy energy = engine.computeGradients(both, true);
+  const std::vector<double3> gradient = gradientsOf(both);
+  SpatialDecompositionForceEngine reference(settings);
+  reference.initialize(without);
+  const RunningEnergy referenceEnergy = reference.computeGradients(without, true);
+  const std::vector<double3> referenceGradient = gradientsOf(without);
+  EXPECT_NEAR(energy.potentialEnergy(), referenceEnergy.potentialEnergy(),
+              1e-8 * std::max(std::abs(referenceEnergy.potentialEnergy()), 1.0));
+  EXPECT_LT(rmsDifference(gradient, referenceGradient), 1e-8 * rmsNorm(referenceGradient));
+}
+
+TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_matches_host_with_broken_bonds)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  {
+    System system = makeRingOpeningSystem(7, 24, 8, 1000, 100);
+    ASSERT_EQ(system.polymerLinks.numberOfBrokenBonds(), 8uz);
+    EXPECT_FALSE(system.polymerLinks.rampsActive());
+    expectPolymerOverlayMatchesHost(pairDevice, system, "broken bonds, complete ramps");
+  }
+  {
+    System system = makeRingOpeningSystem(11, 24, 8, 60, 100);
+    EXPECT_TRUE(system.polymerLinks.rampsActive());
+    expectPolymerOverlayMatchesHost(pairDevice, system, "broken bonds, active ramps");
+  }
+  {
+    // second additions: two bonds at one nitrogen, chains of pair corrections
+    System system = makeRingOpeningSystem(13, 24, 8, 60, 100, 1.5, 40.0, 4);
+    ASSERT_EQ(system.polymerLinks.numberOfBonds(), 12uz);
+    EXPECT_TRUE(system.polymerLinks.rampsActive());
+    expectPolymerOverlayMatchesHost(pairDevice, system, "second additions, active ramps");
+  }
+}
+
 TEST_P(SpatialDecompositionDevice, resident_integrator_matches_host_polymer_overlay_nve)
 {
   const PairDevice pairDevice = GetParam();
@@ -2405,6 +3053,22 @@ TEST_P(SpatialDecompositionDevice, resident_integrator_matches_host_polymer_over
   const PairDevice pairDevice = GetParam();
   if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
   const auto makeSystem = [](std::size_t seed) { return makePolymerSystem(seed, 20, 6, 1000, 100, 2000.0); };
+  expectResidentMatchesHost(makeSystem, pairDevice, true, 40, 0.0005, 0.3,
+                            {.position = 1e-4, .velocity = 1e-4, .energy = 1e-4, .drift = 1e-5});
+}
+
+// The resident integrator with broken bonds and second additions (chains of pair corrections and overrides), with
+// the ramps active: the removed ring terms, the released pairs and the retyped terms on the device.
+TEST_P(SpatialDecompositionDevice, resident_integrator_matches_host_polymer_overlay_with_broken_bonds)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  const auto makeSystem = [](std::size_t seed) { return makeRingOpeningSystem(seed, 24, 8, 60, 100, 3.2, 40.0, 4); };
+  {
+    System system = makeSystem(7);
+    ASSERT_EQ(system.polymerLinks.numberOfBrokenBonds(), 12uz);
+    EXPECT_TRUE(system.polymerLinks.rampsActive());
+  }
   expectResidentMatchesHost(makeSystem, pairDevice, true, 40, 0.0005, 0.3,
                             {.position = 1e-4, .velocity = 1e-4, .energy = 1e-4, .drift = 1e-5});
 }

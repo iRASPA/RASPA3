@@ -275,7 +275,7 @@ RunningEnergy evaluate(const ForceField &forceField, const SimulationBox &simula
   // of a listed pair and nothing of an unlisted one)
   for (const PolymerLinkTable::PairCorrection &pair : table.pairCorrections)
   {
-    const double lambda = lambdaOfBond(pair.bondId);
+    const double lambda = table.rampFactor(pair.step);
     if (lambda == 0.0 && pair.listed) continue;
     const double countedWeight = pair.listed ? -lambda : 1.0 - lambda;
     const Atom &a = atoms[pair.atoms[0]];

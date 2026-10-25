@@ -269,13 +269,17 @@ std::string writeInputScript(const Topology &topology)
 {
   std::ostringstream out;
   std::vector<std::string> notes = topology.warnings;
-  if (topology.polymerBonds > 0 || topology.polymerOverrides > 0)
+  if (topology.polymerBonds > 0 || topology.polymerOverrides > 0 || topology.polymerBrokenTerms > 0)
   {
     notes.insert(notes.begin(),
                  std::format("polymer overlay merged: {} polymer bonds (with their bends and torsions) added to the "
-                             "topology, {} monomer terms carry the product parameters; the 1-2/1-3 exclusions and "
+                             "topology, {} monomer terms carry the product parameters{}; the 1-2/1-3 exclusions and "
                              "the 1-4 scaling across the polymer bonds follow from special_bonds",
-                             topology.polymerBonds, topology.polymerOverrides));
+                             topology.polymerBonds, topology.polymerOverrides,
+                             topology.polymerBrokenTerms > 0
+                                 ? std::format(", {} monomer bonds, angles and dihedrals through broken bonds removed",
+                                               topology.polymerBrokenTerms)
+                                 : std::string{}));
   }
 
   std::print(out, "# LAMMPS input script written by RASPA3 for {}\n", topology.options.dataFile);

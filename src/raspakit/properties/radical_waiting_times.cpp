@@ -82,10 +82,16 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyRadi
 
 // ---- property -------------------------------------------------------------------------------------------------------
 
+void PropertyRadicalWaitingTimes::add(std::size_t reaction, double dt)
+{
+  while (byReaction.size() <= reaction) byReaction.emplace_back(binsPerDecade);
+  byReaction[reaction].add(dt);
+}
+
 PropertyRadicalWaitingTimes::Histogram PropertyRadicalWaitingTimes::closed() const
 {
-  Histogram all = propagation;
-  all += termination;
+  Histogram all(binsPerDecade);
+  for (const Histogram &h : byReaction) all += h;
   return all;
 }
 
@@ -95,13 +101,27 @@ PropertyRadicalWaitingTimes::Histogram PropertyRadicalWaitingTimes::open(const P
 {
   Histogram ages(binsPerDecade);
   if (!table.activated) return ages;
-  for (std::size_t i = 0; i < table.numberOfSites(); ++i)
+  for (std::size_t i = 0; i < table.numberOfGroups(); ++i)
   {
-    if (table.state(i) != PolymerSiteState::Radical) continue;
-    const std::uint64_t since = table.siteStep[i] < referenceStep ? referenceStep - table.siteStep[i] : 0;
+    if (!table.active(i)) continue;
+    const std::uint64_t since = table.groupStep[i] < referenceStep ? referenceStep - table.groupStep[i] : 0;
     ages.add(static_cast<double>(since) * timeStep);
   }
   return ages;
+}
+
+// "propagation 12, termination 3" over the rules with samples
+static std::string countsByReaction(const PropertyRadicalWaitingTimes &property, const PolymerLinkTable &table)
+{
+  std::string text{};
+  for (std::size_t r = 0; r < property.byReaction.size(); ++r)
+  {
+    if (property.byReaction[r].count == 0) continue;
+    if (!text.empty()) text += ", ";
+    text += std::format("{} {}", r < table.scheme.rules.size() ? table.scheme.rules[r].name : std::format("rule {}", r),
+                        property.byReaction[r].count);
+  }
+  return text.empty() ? std::string("none") : text;
 }
 
 void PropertyRadicalWaitingTimes::writeOutput(std::size_t systemId, std::size_t currentCycle,
@@ -113,35 +133,39 @@ void PropertyRadicalWaitingTimes::writeOutput(std::size_t systemId, std::size_t 
 
   const Histogram all = closed();
   const Histogram ages = open(table, timeStep, referenceStep);
+  const std::size_t numberOfRules = table.scheme.rules.size();
 
   std::filesystem::create_directory("radical_waiting_times");
   std::ofstream stream(std::format("radical_waiting_times/radical_waiting_times.s{}.txt", systemId));
 
-  std::print(stream, "# waiting times of the living radicals: dt = t(next reaction) - t(last reaction) of the radical that reacts\n");
-  std::print(stream, "# closed intervals end in a propagation (the adding radical) or a termination (both radicals); the open\n");
-  std::print(stream, "# intervals are the ages of the radicals still living at the time of writing (from their last reaction,\n");
-  std::print(stream, "# or their initiation). A single exponential is a well-defined rate; a stretched tail, a second slow\n");
-  std::print(stream, "# component, or a pile-up of old living radicals is the trapping signature.\n");
-  std::print(stream, "# step {}, time {:.6g} [ps], conversion {:.6f}, living radicals {}, reactions {}\n", table.currentStep,
+  std::print(stream, "# waiting times of the active groups (living chain ends): dt = t(next reaction) - t(last reaction)\n");
+  std::print(stream, "# of the active group that reacts. The closed intervals are listed per reaction that ended them; the open\n");
+  std::print(stream, "# intervals are the ages of the groups still active at the time of writing (from their last reaction,\n");
+  std::print(stream, "# or their activation). A single exponential is a well-defined rate; a stretched tail, a second slow\n");
+  std::print(stream, "# component, or a pile-up of old active groups is the trapping signature.\n");
+  std::print(stream, "# step {}, time {:.6g} [ps], conversion {:.6f}, active groups {}, reactions {}\n", table.currentStep,
              static_cast<double>(table.currentStep) * timeStep, table.conversion(), ages.count,
              referenceStep < table.currentStep ? std::format("stopped at step {}", referenceStep)
                                                : std::string("running"));
-  std::print(stream, "# closed: {} (propagation {}, termination {}), mean {:.6g} [ps], geometric mean {:.6g} [ps], max {:.6g} [ps]\n",
-             all.count, propagation.count, termination.count, all.mean(), all.geometricMean(), all.maximum);
+  std::print(stream, "# closed: {} ({}), mean {:.6g} [ps], geometric mean {:.6g} [ps], max {:.6g} [ps]\n", all.count,
+             countsByReaction(*this, table), all.mean(), all.geometricMean(), all.maximum);
   std::print(stream, "# open:   {}, mean {:.6g} [ps], geometric mean {:.6g} [ps], max {:.6g} [ps]\n", ages.count,
              ages.mean(), ages.geometricMean(), ages.maximum);
   std::print(stream, "# log-spaced bins ({} per decade); the densities are per decade of time: count / (N * {:.6g})\n",
              binsPerDecade, all.binWidth());
   std::print(stream, "# column 1: lower edge of the bin [ps]\n");
   std::print(stream, "# column 2: upper edge of the bin [ps]\n");
-  std::print(stream, "# column 3: closed intervals ended by a propagation [-]\n");
-  std::print(stream, "# column 4: closed intervals ended by a termination [-]\n");
-  std::print(stream, "# column 5: closed intervals, total [-]\n");
-  std::print(stream, "# column 6: open intervals (ages of the living radicals) [-]\n");
-  std::print(stream, "# column 7: density of the closed intervals [1/decade]\n");
-  std::print(stream, "# column 8: density of the open intervals [1/decade]\n");
-  std::print(stream, "# column 9: cumulative distribution of the closed intervals [-]\n");
-  std::print(stream, "# column 10: cumulative distribution of the open intervals [-]\n");
+  std::size_t column = 3;
+  for (std::size_t r = 0; r < numberOfRules; ++r)
+  {
+    std::print(stream, "# column {}: closed intervals ended by reaction '{}' [-]\n", column++, table.scheme.rules[r].name);
+  }
+  std::print(stream, "# column {}: closed intervals, total [-]\n", column++);
+  std::print(stream, "# column {}: open intervals (ages of the active groups) [-]\n", column++);
+  std::print(stream, "# column {}: density of the closed intervals [1/decade]\n", column++);
+  std::print(stream, "# column {}: density of the open intervals [1/decade]\n", column++);
+  std::print(stream, "# column {}: cumulative distribution of the closed intervals [-]\n", column++);
+  std::print(stream, "# column {}: cumulative distribution of the open intervals [-]\n", column++);
 
   std::uint64_t closedCumulative = 0, openCumulative = 0;
   for (std::size_t bin = 0; bin < all.numberOfBins(); ++bin)
@@ -149,8 +173,12 @@ void PropertyRadicalWaitingTimes::writeOutput(std::size_t systemId, std::size_t 
     closedCumulative += all.counts[bin];
     openCumulative += ages.counts[bin];
     if (all.counts[bin] == 0 && ages.counts[bin] == 0) continue;
-    std::print(stream, "{:.6g} {:.6g} {} {} {} {} {:.6g} {:.6g} {:.6f} {:.6f}\n", all.lowerEdge(bin), all.upperEdge(bin),
-               propagation.counts[bin], termination.counts[bin], all.counts[bin], ages.counts[bin], all.density(bin),
+    std::print(stream, "{:.6g} {:.6g}", all.lowerEdge(bin), all.upperEdge(bin));
+    for (std::size_t r = 0; r < numberOfRules; ++r)
+    {
+      std::print(stream, " {}", r < byReaction.size() ? byReaction[r].counts[bin] : 0);
+    }
+    std::print(stream, " {} {} {:.6g} {:.6g} {:.6f} {:.6f}\n", all.counts[bin], ages.counts[bin], all.density(bin),
                ages.density(bin),
                all.count > 0 ? static_cast<double>(closedCumulative) / static_cast<double>(all.count) : 0.0,
                ages.count > 0 ? static_cast<double>(openCumulative) / static_cast<double>(ages.count) : 0.0);
@@ -166,13 +194,12 @@ std::string PropertyRadicalWaitingTimes::printStatus(const PolymerLinkTable &tab
 
   std::string text{};
   text += std::format(
-      "    waiting times:                   {} closed intervals (propagation {}, termination {}), mean {:.4g} [ps], "
-      "median {:.3g} [ps], max {:.4g} [ps]\n",
-      all.count, propagation.count, termination.count, all.mean(), all.median(), all.maximum);
-  // the living radicals older than ten times the mean closed interval are the candidates for trapping
+      "    waiting times:                   {} closed intervals ({}), mean {:.4g} [ps], median {:.3g} [ps], max {:.4g} [ps]\n",
+      all.count, countsByReaction(*this, table), all.mean(), all.median(), all.maximum);
+  // the active groups older than ten times the mean closed interval are the candidates for trapping
   const double threshold = all.count > 0 ? 10.0 * all.mean() : 0.0;
   text += std::format(
-      "    living radicals:                 {} with mean age {:.4g} [ps], median {:.3g} [ps], oldest {:.4g} [ps]{}\n",
+      "    active groups:                   {} with mean age {:.4g} [ps], median {:.3g} [ps], oldest {:.4g} [ps]{}\n",
       ages.count, ages.mean(), ages.median(), ages.maximum,
       all.count > 0 ? std::format(", {} older than 10x the mean waiting time ({:.3g} [ps])", ages.countAbove(threshold),
                                   threshold)
@@ -184,7 +211,7 @@ std::string PropertyRadicalWaitingTimes::printSettings() const
 {
   std::ostringstream stream;
   std::print(stream, "Radical waiting times:\n");
-  std::print(stream, "    dt = t(next reaction) - t(last reaction) of every living radical, sampled at the reaction\n");
+  std::print(stream, "    dt = t(next reaction) - t(last reaction) of every active group, sampled at the reaction\n");
   std::print(stream, "    bins per decade: {} (1e{:g} to 1e{:g} ps)\n", binsPerDecade, minimumExponent, maximumExponent);
   std::print(stream, "    write every: {}\n", writeEvery);
   std::print(stream, "\n");
@@ -196,8 +223,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << p.versionNumber;
   archive << p.binsPerDecade;
   archive << p.writeEvery;
-  archive << p.propagation;
-  archive << p.termination;
+  archive << p.byReaction;
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
@@ -208,7 +234,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyRadi
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
-  if (versionNumber > p.versionNumber)
+  if (versionNumber != p.versionNumber)
   {
     const std::source_location &location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'PropertyRadicalWaitingTimes' at line {} in file {}\n",
@@ -216,8 +242,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyRadi
   }
   archive >> p.binsPerDecade;
   archive >> p.writeEvery;
-  archive >> p.propagation;
-  archive >> p.termination;
+  archive >> p.byReaction;
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
   archive >> magicNumber;
