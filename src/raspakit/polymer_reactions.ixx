@@ -92,6 +92,10 @@ export struct ReactionRule
     RoleRef centre{};
     std::array<RoleRef, 3> substituents{};
     std::optional<std::string> next{};  ///< Label of the reactant carrying the next centre of the chain.
+    // declared here and defaulted out of line (polymer_reactions.cpp): clang 23 crashes generating the implicit
+    // destructor (the std::array<RoleRef, 3> member) when it is first needed in an importing module unit. A
+    // user-declared destructor keeps the struct an aggregate (designated initializers still work).
+    ~Stereo();
     bool operator==(Stereo const &) const = default;
   };
 

@@ -341,7 +341,10 @@ DynamicallyCorrectedTST::DynamicallyCorrectedTST(InputReader& reader)
   }
 
   // the event-terminated estimator classifies the hops by lattice axis: the barrier normal must be a
-  // lattice direction and the column of cages A', A, B, B' needs at least three cells along it
+  // lattice direction with at least two cells along it (cages A and B distinct). With two cells the column
+  // A', A, B, B' closes on itself (A' = B, B' = A) and the two windows of the ring are W(A|B) and the far
+  // window; with three cells A' = B'. The hops are tracked from unwrapped displacements, so the ring length
+  // does not enter the detection.
   if (settings.trajectoryTermination == DcTSTSettings::TrajectoryTermination::Event)
   {
     const DcTSTCageLattice::AxisAlignment alignment = cageLattice.axisAlongDirection(barrier.normal);
@@ -352,11 +355,11 @@ DynamicallyCorrectedTST::DynamicallyCorrectedTST(InputReader& reader)
                       "of the framework unit cell (best alignment |cos| = {:.4f})\n",
                       alignment.cosine));
     }
-    if (cageLattice.numberOfUnitCells[alignment.axis] < 3)
+    if (cageLattice.numberOfUnitCells[alignment.axis] < 2)
     {
       throw std::runtime_error(
-          "dcTST: 'TrajectoryTermination' \"Event\" needs at least three unit cells along the barrier normal (the "
-          "column of cages A', A, B, B')\n");
+          "dcTST: 'TrajectoryTermination' \"Event\" needs at least two unit cells along the barrier normal (the "
+          "cages A and B of the window)\n");
     }
     if (std::abs(cageLattice.axisLength(alignment.axis) - barrier.lambda) > 1e-3 * barrier.lambda)
     {
@@ -1987,6 +1990,10 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
   std::vector<GroupState> groupData;
   std::vector<double> unwrappedQ(numberOfMolecules);
   std::vector<double3> previousPosition(numberOfMolecules);
+  // event mode: fractional offset (unit-cell basis) of the reaction bead from the center of its committed cage,
+  // accumulated from the minimum-image step displacements so that it is not folded back by the supercell;
+  // the hop threshold (half a cell plus the commit distance) can then exceed half the box along an axis
+  std::vector<double3> cageOffset(numberOfMolecules);
 
   std::vector<double> deltaSelf(numberOfTimes);
   std::vector<double> deltaSelfTwoState(numberOfTimes);
@@ -2047,15 +2054,16 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
       initialCommittedCage[j] = cageLattice.cageOf(systemAtoms[molecule.atomIndex + component.startingBead].position);
     }
   }
-  // the window between two cages of the column along the normal: 0 = W(A'|A), 1 = W(A|B), 2 = W(B|B'); the
-  // cages A' and B' coincide when the box is three cells long along the normal, in which case the three
-  // windows are all the windows of the column
-  auto columnWindow = [&](std::size_t from, std::size_t to) -> std::optional<std::size_t>
+  // the window between two cages of the column along the normal: 0 = W(A'|A), 1 = W(A|B), 2 = W(B|B'). The
+  // window is identified by the cage the molecule leaves and the direction of the hop along the normal, so
+  // that it stays well defined when cages of the column coincide (three cells: A' = B'; two cells: A' = B and
+  // B' = A, where windows 0 and 2 are the same far window of the two-cage ring)
+  auto columnWindow = [&](std::size_t from, int alongNormal) -> std::optional<std::size_t>
   {
-    auto pair = [&](std::size_t c1, std::size_t c2) { return (from == c1 && to == c2) || (from == c2 && to == c1); };
-    if (pair(cageA, cageB)) return 1uz;
-    if (pair(cageAPrime, cageA)) return 0uz;
-    if (pair(cageB, cageC)) return 2uz;
+    if (from == cageA) return (alongNormal > 0) ? std::optional<std::size_t>{1uz} : std::optional<std::size_t>{0uz};
+    if (from == cageB) return (alongNormal > 0) ? std::optional<std::size_t>{2uz} : std::optional<std::size_t>{1uz};
+    if (from == cageAPrime && alongNormal > 0) return 0uz;
+    if (from == cageC && alongNormal < 0) return 2uz;
     return std::nullopt;
   };
   auto inColumn = [&](std::size_t cage)
@@ -2138,6 +2146,10 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
       const Component& component = system.components[molecule.componentId];
       previousPosition[j] = atoms[molecule.atomIndex + component.startingBead].position;
       unwrappedQ[j] = (j == taggedIndex) ? 0.0 : barrier.projection(system.simulationBox, previousPosition[j]);
+      cageOffset[j] = (eventMode && initialCommittedCage[j] != noCage)
+                          ? cageLattice.fractionalOffset(system.simulationBox, previousPosition[j],
+                                                         initialCommittedCage[j])
+                          : double3{};
     }
 
     // t = 0: the tagged bead is on the surface, moving into B (direction +1) or A (direction -1)
@@ -2309,7 +2321,9 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
         const Molecule& molecule = moleculeData[j];
         const Component& component = system.components[molecule.componentId];
         const double3 position = atoms[molecule.atomIndex + component.startingBead].position;
-        unwrappedQ[j] += barrier.displacement(system.simulationBox, previousPosition[j], position);
+        const double3 stepDisplacement = system.simulationBox.applyPeriodicBoundaryConditions(position - previousPosition[j]);
+        unwrappedQ[j] += double3::dot(stepDisplacement, barrier.normal);
+        if (eventMode) cageOffset[j] += cageLattice.inverseCell * stepDisplacement;
         previousPosition[j] = position;
       }
 
@@ -2331,7 +2345,13 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
         committed = true;
         committedValue = (qTagged > 0.0) ? 0.5 : -0.5;
         outcome.commitStep = step;
-        if (eventMode) committedCage[taggedIndex] = (qTagged > 0.0) ? cageB : cageA;
+        if (eventMode)
+        {
+          committedCage[taggedIndex] = (qTagged > 0.0) ? cageB : cageA;
+          // the tagged bead is within the commit distance of the window, i.e. inside the cage it commits to
+          cageOffset[taggedIndex] = cageLattice.fractionalOffset(system.simulationBox, previousPosition[taggedIndex],
+                                                                 committedCage[taggedIndex]);
+        }
       }
       if (!terminated && (qTagged >= barrier.lambda || qTagged < -barrier.lambda)) outcome.longJump = true;
 
@@ -2345,7 +2365,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
         {
           const std::size_t cage = committedCage[j];
           if (cage == noCage) continue;
-          const double3 f = cageLattice.fractionalOffset(system.simulationBox, previousPosition[j], cage);
+          const double3& f = cageOffset[j];
           for (std::size_t i = 0; i < 3; ++i)
           {
             const int hop = (f[i] >= hopThreshold[i]) ? 1 : (f[i] <= -hopThreshold[i]) ? -1 : 0;
@@ -2353,10 +2373,10 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
             const std::size_t newCage = cageLattice.neighborAlongAxis(cage, static_cast<int>(i), hop);
             if (static_cast<int>(i) == axis.axis && !terminated)
             {
-              const std::optional<std::size_t> window = columnWindow(cage, newCage);
+              const int alongNormal = hop * axis.sign;
+              const std::optional<std::size_t> window = columnWindow(cage, alongNormal);
               if (window.has_value())
               {
-                const int alongNormal = hop * axis.sign;
                 const EventChannel channel = channelOf(j, window.value(), alongNormal);
                 const std::size_t channelIndex = static_cast<std::size_t>(channel);
                 const std::size_t phase = committed ? 1uz : 0uz;
@@ -2392,6 +2412,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
               }
             }
             committedCage[j] = newCage;
+            cageOffset[j][i] -= static_cast<double>(hop);  // now measured from the center of the new cage
             break;  // at most one hop per molecule per step
           }
         }

@@ -12,6 +12,8 @@ import reactive_group;
 
 // ---- ReactionRule -------------------------------------------------------------------------------------------------
 
+ReactionRule::Stereo::~Stereo() = default;
+
 namespace
 {
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RoleRef &r)
