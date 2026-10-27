@@ -138,18 +138,34 @@ to), `tail` (the `=CH–` that carries the radical afterwards) and `side`
 The `"Polymerization"` block of the system spells out the chemistry as
 reaction rules between the states of the groups and gives the bonded tables
 of the product by pseudo-atom type (the `CH2_bb`/`CH_bb` entries of the
-pHDDA-20 molecule file, extended with the `CH_bb–CH_bb` terms that a
-termination by combination needs). The *initiation* rule turns a `monomer`
-group into a `radical` and retypes its head and tail to the backbone
+pHDDA-20 molecule file, extended with the `CH_bb–CH_bb` and `CH2_bb–CH2_bb`
+terms that a termination by combination and the head-to-head linkages need).
+The radical of a group is located by its state: `radical_tail` is the usual
+secondary radical on the `tail` carbon (`–CH•–COOR`), `radical_head` the
+primary radical on the `head` carbon (`–CH2•`) that a mis-addition leaves
+behind. The *initiation* rule turns a `monomer`
+group into a `radical_tail` and retypes its head and tail to the backbone
 pseudo-atoms `CH2_bb`/`CH_bb`; it is applied to 135 random groups at the
 start of production (`"InitialEvents"`) and never afterwards
-(`"Probability" : 0.0`). The *propagation* rule pairs a `radical` group `R`
-with a `monomer` group `M` whose `R.tail`–`M.head` distance is within 4
+(`"Probability" : 0.0`). The *propagation* rule pairs a `radical_tail` group
+`R` with a `monomer` group `M` whose `R.tail`–`M.head` distance is within 4
 &Aring;, forms that bond, leaves `R` as `dead` and makes `M` the new
-`radical` (retyped), with probability 0.5 per scan every 10000 MD steps
-(10 ps); the *termination* rule bonds the tails of two radicals within 4
-&Aring; with the same probability and leaves both `dead`. The conversion is
-the fraction of acrylate groups in the states `radical` or `dead`. An
+`radical_tail` (retyped), with probability 0.5 per scan every 10000 MD steps
+(10 ps): the regular head-to-tail addition. Three further propagation rules
+give the regiochemistry: `propagation_tail_tail` adds `R.tail` to `M.tail`
+instead and leaves the radical on `M.head` (`radical_head`), with probability
+0.01, i.e. 2 % of the regular rate when both monomer carbons are in range;
+`propagation_head_head` lets a `radical_head` add to `M.head` and returns
+the radical to a tail (probability 0.5, a tail-to-tail linkage in the
+chain); `propagation_head_tail` lets it add to `M.tail` and keeps a head
+radical (0.01). Each rule has its own capture pair, so for a radical with
+both carbons of a monomer in range the closer pair is tried first with its
+rule's probability and the other gets its own trial when that fails. The
+*termination* rules bond two radicals within 4 &Aring; with probability 0.5
+and leave both `dead`, one rule per combination of radical states
+(`tail–tail`, `head–tail`, `head–head`). The conversion is
+the fraction of acrylate groups in the states `radical_tail`, `radical_head`
+or `dead`. An
 accepted reaction retypes the atoms (which changes their Lennard-Jones
 parameters and charges), adds the new bond with its bends, torsions and
 1-2/1-3 exclusions and scaled 1-4 pairs, and ramps the new terms in over 2 ps
@@ -187,38 +203,94 @@ same monomers with the slow, orientation-weighted kinetics.
           {
             "Name" : "initiation",
             "Reactants" : [{"Label" : "M", "Type" : "acrylate", "State" : "monomer"}],
-            "Products" : [{"Label" : "M", "State" : "radical", "Retype" : {"head" : "CH2_bb", "tail" : "CH_bb"}}],
+            "Products" : [{"Label" : "M", "State" : "radical_tail", "Retype" : {"head" : "CH2_bb", "tail" : "CH_bb"}}],
             "Probability" : 0.0,
             "InitialEvents" : 135
           },
           {
             "Name" : "propagation",
-            "Reactants" : [{"Label" : "R", "Type" : "acrylate", "State" : "radical"},
+            "Reactants" : [{"Label" : "R", "Type" : "acrylate", "State" : "radical_tail"},
                            {"Label" : "M", "Type" : "acrylate", "State" : "monomer"}],
             "Capture" : {"Atoms" : ["R.tail", "M.head"], "Radius" : 4.0},
             "FormBonds" : [["R.tail", "M.head"]],
             "Products" : [{"Label" : "R", "State" : "dead"},
-                          {"Label" : "M", "State" : "radical", "Retype" : {"head" : "CH2_bb", "tail" : "CH_bb"}}],
+                          {"Label" : "M", "State" : "radical_tail", "Retype" : {"head" : "CH2_bb", "tail" : "CH_bb"}}],
             "Stereo" : {"Centre" : "R.tail", "Substituents" : ["R.head", "M.head", "R.side"], "Next" : "M"},
             "Probability" : 0.5,
             "AllowIntramolecular" : true
           },
           {
+            "Name" : "propagation_tail_tail",
+            "Reactants" : [{"Label" : "R", "Type" : "acrylate", "State" : "radical_tail"},
+                           {"Label" : "M", "Type" : "acrylate", "State" : "monomer"}],
+            "Capture" : {"Atoms" : ["R.tail", "M.tail"], "Radius" : 4.0},
+            "FormBonds" : [["R.tail", "M.tail"]],
+            "Products" : [{"Label" : "R", "State" : "dead"},
+                          {"Label" : "M", "State" : "radical_head", "Retype" : {"head" : "CH2_bb", "tail" : "CH_bb"}}],
+            "Stereo" : [{"Centre" : "R.tail", "Substituents" : ["R.head", "M.tail", "R.side"]},
+                        {"Centre" : "M.tail", "Substituents" : ["M.head", "R.tail", "M.side"]}],
+            "Probability" : 0.01,
+            "AllowIntramolecular" : true
+          },
+          {
+            "Name" : "propagation_head_head",
+            "Reactants" : [{"Label" : "R", "Type" : "acrylate", "State" : "radical_head"},
+                           {"Label" : "M", "Type" : "acrylate", "State" : "monomer"}],
+            "Capture" : {"Atoms" : ["R.head", "M.head"], "Radius" : 4.0},
+            "FormBonds" : [["R.head", "M.head"]],
+            "Products" : [{"Label" : "R", "State" : "dead"},
+                          {"Label" : "M", "State" : "radical_tail", "Retype" : {"head" : "CH2_bb", "tail" : "CH_bb"}}],
+            "Probability" : 0.5,
+            "AllowIntramolecular" : true
+          },
+          {
+            "Name" : "propagation_head_tail",
+            "Reactants" : [{"Label" : "R", "Type" : "acrylate", "State" : "radical_head"},
+                           {"Label" : "M", "Type" : "acrylate", "State" : "monomer"}],
+            "Capture" : {"Atoms" : ["R.head", "M.tail"], "Radius" : 4.0},
+            "FormBonds" : [["R.head", "M.tail"]],
+            "Products" : [{"Label" : "R", "State" : "dead"},
+                          {"Label" : "M", "State" : "radical_head", "Retype" : {"head" : "CH2_bb", "tail" : "CH_bb"}}],
+            "Stereo" : {"Centre" : "M.tail", "Substituents" : ["M.head", "R.head", "M.side"]},
+            "Probability" : 0.01,
+            "AllowIntramolecular" : true
+          },
+          {
             "Name" : "termination",
-            "Reactants" : [{"Label" : "A", "Type" : "acrylate", "State" : "radical"},
-                           {"Label" : "B", "Type" : "acrylate", "State" : "radical"}],
+            "Reactants" : [{"Label" : "A", "Type" : "acrylate", "State" : "radical_tail"},
+                           {"Label" : "B", "Type" : "acrylate", "State" : "radical_tail"}],
             "Capture" : {"Atoms" : ["A.tail", "B.tail"], "Radius" : 4.0},
             "FormBonds" : [["A.tail", "B.tail"]],
             "Products" : [{"Label" : "A", "State" : "dead"}, {"Label" : "B", "State" : "dead"}],
             "Stereo" : [{"Centre" : "A.tail", "Substituents" : ["A.head", "B.tail", "A.side"]},
                         {"Centre" : "B.tail", "Substituents" : ["B.head", "A.tail", "B.side"]}],
             "Probability" : 0.5
+          },
+          {
+            "Name" : "termination_head_tail",
+            "Reactants" : [{"Label" : "A", "Type" : "acrylate", "State" : "radical_head"},
+                           {"Label" : "B", "Type" : "acrylate", "State" : "radical_tail"}],
+            "Capture" : {"Atoms" : ["A.head", "B.tail"], "Radius" : 4.0},
+            "FormBonds" : [["A.head", "B.tail"]],
+            "Products" : [{"Label" : "A", "State" : "dead"}, {"Label" : "B", "State" : "dead"}],
+            "Stereo" : {"Centre" : "B.tail", "Substituents" : ["B.head", "A.head", "B.side"]},
+            "Probability" : 0.5
+          },
+          {
+            "Name" : "termination_head_head",
+            "Reactants" : [{"Label" : "A", "Type" : "acrylate", "State" : "radical_head"},
+                           {"Label" : "B", "Type" : "acrylate", "State" : "radical_head"}],
+            "Capture" : {"Atoms" : ["A.head", "B.head"], "Radius" : 4.0},
+            "FormBonds" : [["A.head", "B.head"]],
+            "Products" : [{"Label" : "A", "State" : "dead"}, {"Label" : "B", "State" : "dead"}],
+            "Probability" : 0.5
           }
         ],
-        "Conversion" : [{"Type" : "acrylate", "States" : ["radical", "dead"]}],
+        "Conversion" : [{"Type" : "acrylate", "States" : ["radical_tail", "radical_head", "dead"]}],
         "Bonds" : [
           [["CH2_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]],
           [["CH_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]],
+          [["CH2_bb", "CH2_bb"], "HARMONIC", [301931.64, 1.54]],
           [["CH_bb", "C_CO"], "HARMONIC", [301931.64, 1.52]]
         ],
         "Bends" : [ "..." ],
@@ -267,9 +339,14 @@ every propagation (`17/17`: handed from the radical group to the added
 monomer) to its termination (`17x/23x`), so the reactions of one chain end
 can be followed through the log; the `radicals` table of the topology file
 summarises each (step and rule of birth and death, the group it sits or died
-on, the number of propagations, which is the kinetic chain length), and
-`groupLastRadical` names for every group the radical that passed through it,
-i.e. the chain a dead group belongs to. With
+on with that group's state, which says whether the radical is on the tail or
+the head carbon, the number of propagations, which is the kinetic chain
+length), and `groupLastRadical` names for every group the radical that
+passed through it, i.e. the chain a dead group belongs to. The `events`
+counts of the status block (and the rule names in the log) give the
+regiochemistry of the cure: the number of `propagation_tail_tail` and
+`propagation_head_tail` events over all propagations is the fraction of
+head-to-head linkages. With
 `"WriteEventFrames"` (here a data file for every reaction, `"EventFrameEvery": 1`) the
 configuration at the moment of a reaction is written as a LAMMPS data file to
 `polymerization_events/s0/step_<step>.data`, with the polymer bonds and their
@@ -301,11 +378,13 @@ is \f$125 \times 125 \times 125\f$ &Aring; at 300 K and 1 bar (`"Ensemble" :
 "NPT"`). Five groups start as radicals and further radicals are created by
 the initiation rule with `"RateConstant" : 4e-7`. Propagation and
 termination are attempted every 10 MD steps (10 fs) inside a 4 &Aring;
-capture radius with probability 0.05, and an orientation weight
-(`"OrientationTemperature" : 2000` on both rules) rejects poorly aligned
-approaches. The reactions stop at 90% conversion. Radical waiting times are
-collected, as in example 8. The rules are those of example 8 with the
-kinetic keys changed:
+capture radius with probability 0.05 for the regular head-to-tail addition
+and the terminations and 0.001 for the two mis-additions that leave a head
+radical (`propagation_tail_tail`, `propagation_head_tail`), and an
+orientation weight (`"OrientationTemperature" : 2000` on every bimolecular
+rule) rejects poorly aligned approaches. The reactions stop at 90%
+conversion. Radical waiting times are collected, as in example 8. The rules
+are those of example 8 with the kinetic keys changed:
 
 ```json
       "Polymerization" : {
@@ -317,9 +396,14 @@ kinetic keys changed:
         "Reactions" : [
           {"Name" : "initiation", "...", "RateConstant" : 4e-7, "InitialEvents" : 5},
           {"Name" : "propagation", "...", "Probability" : 0.05, "AllowIntramolecular" : true, "OrientationTemperature" : 2000.0},
-          {"Name" : "termination", "...", "Probability" : 0.05, "OrientationTemperature" : 2000.0}
+          {"Name" : "propagation_tail_tail", "...", "Probability" : 0.001, "AllowIntramolecular" : true, "OrientationTemperature" : 2000.0},
+          {"Name" : "propagation_head_head", "...", "Probability" : 0.05, "AllowIntramolecular" : true, "OrientationTemperature" : 2000.0},
+          {"Name" : "propagation_head_tail", "...", "Probability" : 0.001, "AllowIntramolecular" : true, "OrientationTemperature" : 2000.0},
+          {"Name" : "termination", "...", "Probability" : 0.05, "OrientationTemperature" : 2000.0},
+          {"Name" : "termination_head_tail", "...", "Probability" : 0.05, "OrientationTemperature" : 2000.0},
+          {"Name" : "termination_head_head", "...", "Probability" : 0.05, "OrientationTemperature" : 2000.0}
         ],
-        "Conversion" : [{"Type" : "acrylate", "States" : ["radical", "dead"]}]
+        "Conversion" : [{"Type" : "acrylate", "States" : ["radical_tail", "radical_head", "dead"]}]
       }
 ```
 

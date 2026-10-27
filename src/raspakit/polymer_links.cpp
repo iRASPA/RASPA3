@@ -2152,6 +2152,7 @@ nlohmann::json PolymerLinkTable::jsonRadicals() const
     entry["diedStep"] = r.alive ? nlohmann::json(nullptr) : nlohmann::json(r.diedStep);
     entry["diedRule"] = r.alive ? nlohmann::json(nullptr) : ruleName(r.diedRule);
     entry["lastGroup"] = groupJson(r.lastGroup);
+    entry["state"] = stateName(r.lastGroup);  // of that group: for a living radical, the state that locates it
     entry["propagations"] = r.propagations;
     entry["events"] = r.events;
     table.push_back(entry);

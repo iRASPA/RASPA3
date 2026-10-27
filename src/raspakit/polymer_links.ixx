@@ -667,7 +667,9 @@ export struct PolymerLinkTable
   /// The group counts per type and state, for the status outputs.
   nlohmann::json jsonGroupCounts() const;
   /// The radicals (see RadicalRecord) as a table, for the topology output: per radical its id, birth and death
-  /// (step and rule), the groups it was born on and sits on as [c, m, g], its propagations and events.
+  /// (step and rule), the groups it was born on and sits on as [c, m, g] with the state of the latter (which
+  /// locates the radical within the group when the scheme distinguishes, e.g., 'radical_tail' and
+  /// 'radical_head'), its propagations and events.
   nlohmann::json jsonRadicals() const;
   /// Radical id or null, for the JSON outputs.
   static nlohmann::json jsonRadicalId(std::size_t radical);
