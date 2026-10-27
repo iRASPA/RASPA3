@@ -406,6 +406,72 @@ TEST(mc_cell_list, build_and_incremental_updates_are_consistent)
   EXPECT_TRUE(list.verify(atoms, system.simulationBox));
 }
 
+// Regression: a CIF cell with 90-degree angles, built through the angle constructor and the supercell scaling,
+// used to carry off-diagonal elements of about 1e-15 (std::cos(pi/2) is not 0). A wrap through that matrix
+// moved an in-box coordinate by one ulp per application, so a slot written at one time no longer matched a
+// fresh wrap of the same atom and 'verify' aborted the run ("Monte Carlo cell list inconsistent").
+TEST(mc_cell_list, right_angle_boxes_are_exactly_diagonal_and_in_box_positions_are_stored_unchanged)
+{
+  const double right = 90.0 * Units::DegreesToRadians;
+  const SimulationBox unitCell(22.3869, 22.3869, 22.3869, right, right, right);
+  const SimulationBox box = unitCell.scaled(int3(2, 2, 2));
+  EXPECT_EQ(box.type, SimulationBox::Type::Rectangular);
+  EXPECT_EQ(box.cell.ay, 0.0);
+  EXPECT_EQ(box.cell.az, 0.0);
+  EXPECT_EQ(box.cell.bx, 0.0);
+  EXPECT_EQ(box.cell.bz, 0.0);
+  EXPECT_EQ(box.cell.cx, 0.0);
+  EXPECT_EQ(box.cell.cy, 0.0);
+  EXPECT_EQ(box.inverseCell.bx, 0.0);
+  EXPECT_EQ(box.inverseCell.cy, 0.0);
+  EXPECT_DOUBLE_EQ(box.cell.ax, 2.0 * 22.3869);
+
+  // two right angles of a monoclinic cell are exact as well
+  const SimulationBox monoclinic(10.0, 12.0, 14.0, right, 100.0 * Units::DegreesToRadians, right);
+  EXPECT_EQ(monoclinic.type, SimulationBox::Type::Triclinic);
+  EXPECT_EQ(monoclinic.cell.bx, 0.0);
+  EXPECT_EQ(monoclinic.cell.cy, 0.0);
+  EXPECT_NE(monoclinic.cell.cx, 0.0);
+
+  RandomNumber random(7);
+  std::vector<Atom> atoms;
+  for (std::size_t i = 0; i < 600; ++i)
+  {
+    Atom atom(box.cell * double3(random.uniform(), random.uniform(), random.uniform()), 0.0, 1.0, 0, 0, 0, false,
+              false);
+    atom.moleculeId = static_cast<std::uint32_t>(i);
+    atoms.push_back(atom);
+  }
+  // the atom of the reported failure
+  atoms[2].position = double3(39.721948621946979, 43.451152171399592, 43.892688375709476);
+
+  MCCellList list;
+  list.build(atoms, box, 12.0);
+  EXPECT_TRUE(list.orthorhombic);
+  EXPECT_EQ(list.numberOfCells, int3(7, 7, 7));
+  EXPECT_TRUE(list.verify(atoms, box));
+
+  // an in-box position is stored bitwise, and the wrap is idempotent also for positions outside the box
+  for (std::size_t i = 0; i < atoms.size(); ++i)
+  {
+    const std::size_t slot = static_cast<std::size_t>(list.cellOfAtom[i]) * list.capacity + list.slotOfAtom[i];
+    EXPECT_EQ(list.slotX[slot], atoms[i].position.x);
+    EXPECT_EQ(list.slotY[slot], atoms[i].position.y);
+    EXPECT_EQ(list.slotZ[slot], atoms[i].position.z);
+    const double3 outside = atoms[i].position + box.cell * double3(3.0, -2.0, 1.0);
+    const double3 once = list.wrappedPosition(outside);
+    EXPECT_EQ(list.wrappedPosition(once), once);
+    EXPECT_EQ(list.cellIndexOf(outside), list.cellIndexOf(atoms[i].position));
+  }
+
+  // a stale slot that is off by a rounding error is tolerated, a stale slot that is really elsewhere is not
+  atoms[2].position.x = std::nextafter(atoms[2].position.x, 0.0);
+  atoms[2].position.z = std::nextafter(atoms[2].position.z, 100.0);
+  EXPECT_TRUE(list.verify(atoms, box));
+  atoms[2].position.x += 1e-6;
+  EXPECT_FALSE(list.verify(atoms, box));
+}
+
 namespace
 {
 std::vector<Atom> randomAtoms(const SimulationBox& box, std::size_t count, RandomNumber& random)

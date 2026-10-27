@@ -39,13 +39,8 @@ UnitCell::UnitCell(double a, double b, double c, double alpha, double beta, doub
 UnitCell::UnitCell(double a, double b, double c, double alpha, double beta, double gamma, Type type)
     : lengthA(a), lengthB(b), lengthC(c), angleAlpha(alpha), angleBeta(beta), angleGamma(gamma), type(type)
 {
-  double temp = (std::cos(alpha) - std::cos(gamma) * std::cos(beta)) / std::sin(gamma);
-
-  double3 v1 = double3(a, 0.0, 0.0);
-  double3 v2 = double3(b * std::cos(gamma), b * std::sin(gamma), 0.0);
-  double3 v3 =
-      double3(c * std::cos(beta), c * temp, c * std::sqrt(1.0 - std::cos(beta) * std::cos(beta) - temp * temp));
-  this->cell = double3x3(v1, v2, v3);
+  // exact zeros for right angles (see 'double3x3::fromCellParameters')
+  this->cell = double3x3::fromCellParameters(a, b, c, alpha, beta, gamma);
   if (a != 0.0 && b != 0.0 && c != 0.0)
   {
     this->inverseCell = this->cell.inverse();
@@ -111,12 +106,7 @@ UnitCell UnitCell::scaled(int3 scale) const
   v.angleBeta = angleBeta;
   v.angleGamma = angleGamma;
 
-  double temp = (std::cos(v.angleAlpha) - std::cos(v.angleGamma) * std::cos(v.angleBeta)) / std::sin(v.angleGamma);
-  double3 v1 = double3(v.lengthA, 0.0, 0.0);
-  double3 v2 = double3(v.lengthB * std::cos(v.angleGamma), v.lengthB * std::sin(v.angleGamma), 0.0);
-  double3 v3 = double3(v.lengthC * std::cos(v.angleBeta), v.lengthC * temp,
-                       v.lengthC * std::sqrt(1.0 - std::cos(v.angleBeta) * std::cos(v.angleBeta) - temp * temp));
-  v.cell = double3x3(v1, v2, v3);
+  v.cell = double3x3::fromCellParameters(v.lengthA, v.lengthB, v.lengthC, v.angleAlpha, v.angleBeta, v.angleGamma);
   v.inverseCell = v.cell.inverse();
   v.volume = v.cell.determinant();
   v.type = type;

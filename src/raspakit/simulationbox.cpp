@@ -21,20 +21,7 @@ SimulationBox::SimulationBox(double a, double b, double c) : type(Type::Rectangu
   angleAlpha = std::numbers::pi * 90.0 / 180.0;
   angleBeta = std::numbers::pi * 90.0 / 180.0;
   angleGamma = std::numbers::pi * 90.0 / 180.0;
-
-  double3 v1 = double3(a, 0.0, 0.0);
-  double3 v2 = double3(0.0, b, 0.0);
-  double3 v3 = double3(0.0, 0.0, c);
-  cell = double3x3(v1, v2, v3);
-  if (a != 0.0 && b != 0.0 && c != 0.0)
-  {
-    inverseCell = cell.inverse();
-    volume = cell.determinant();
-  }
-  else
-  {
-    volume = 0.0;
-  }
+  formCellMatrix();
 }
 
 SimulationBox::SimulationBox(double a, double b, double c, double alpha, double beta, double gamma)
@@ -46,44 +33,13 @@ SimulationBox::SimulationBox(double a, double b, double c, double alpha, double 
   {
     type = Type::Rectangular;
   }
-
-  double temp = (std::cos(alpha) - std::cos(gamma) * std::cos(beta)) / std::sin(gamma);
-
-  double3 v1 = double3(a, 0.0, 0.0);
-  double3 v2 = double3(b * std::cos(gamma), b * std::sin(gamma), 0.0);
-  double3 v3 =
-      double3(c * std::cos(beta), c * temp, c * std::sqrt(1.0 - std::cos(beta) * std::cos(beta) - temp * temp));
-  cell = double3x3(v1, v2, v3);
-  if (a != 0.0 && b != 0.0 && c != 0.0)
-  {
-    inverseCell = cell.inverse();
-    volume = cell.determinant();
-  }
-  else
-  {
-    volume = 0.0;
-  }
+  formCellMatrix();
 }
 
 SimulationBox::SimulationBox(double a, double b, double c, double alpha, double beta, double gamma, Type type)
     : lengthA(a), lengthB(b), lengthC(c), angleAlpha(alpha), angleBeta(beta), angleGamma(gamma), type(type)
 {
-  double temp = (std::cos(alpha) - std::cos(gamma) * std::cos(beta)) / std::sin(gamma);
-
-  double3 v1 = double3(a, 0.0, 0.0);
-  double3 v2 = double3(b * std::cos(gamma), b * std::sin(gamma), 0.0);
-  double3 v3 =
-      double3(c * std::cos(beta), c * temp, c * std::sqrt(1.0 - std::cos(beta) * std::cos(beta) - temp * temp));
-  cell = double3x3(v1, v2, v3);
-  if (a != 0.0 && b != 0.0 && c != 0.0)
-  {
-    inverseCell = cell.inverse();
-    volume = cell.determinant();
-  }
-  else
-  {
-    volume = 0.0;
-  }
+  formCellMatrix();
 }
 
 SimulationBox::SimulationBox(double3x3 m) : type(Type::Triclinic)
@@ -129,7 +85,7 @@ SimulationBox::SimulationBox(double3x3 m, Type type) : type(type)
   angleGamma = std::acos(double3::dot(column1, column2) / (this->lengthA * this->lengthB));
 }
 
-double3 SimulationBox::randomPosition(RandomNumber &random) const
+double3 SimulationBox::randomPosition(RandomNumber& random) const
 {
   return cell * double3(random.uniform(), random.uniform(), random.uniform());
 }
@@ -160,14 +116,7 @@ void SimulationBox::setBoxLengths(double3 lengths)
   lengthA = lengths.x;
   lengthB = lengths.y;
   lengthC = lengths.z;
-  double temp = (std::cos(angleAlpha) - std::cos(angleGamma) * std::cos(angleBeta)) / std::sin(angleGamma);
-  double3 v1 = double3(lengths.x, 0.0, 0.0);
-  double3 v2 = double3(lengths.y * std::cos(angleGamma), lengths.y * std::sin(angleGamma), 0.0);
-  double3 v3 = double3(lengths.z * std::cos(angleBeta), lengths.z * temp,
-                       lengths.z * std::sqrt(1.0 - std::cos(angleBeta) * std::cos(angleBeta) - temp * temp));
-  cell = double3x3(v1, v2, v3);
-  inverseCell = cell.inverse();
-  volume = cell.determinant();
+  formCellMatrix();
 }
 
 void SimulationBox::setBoxAngles(double3 angles)
@@ -175,18 +124,11 @@ void SimulationBox::setBoxAngles(double3 angles)
   angleAlpha = angles.x;
   angleBeta = angles.y;
   angleGamma = angles.z;
-  double3 lengths = this->lengths();
-  lengthA = lengths.x;
-  lengthB = lengths.y;
-  lengthC = lengths.z;
-  double temp = (std::cos(angles.x) - std::cos(angles.z) * std::cos(angles.y)) / std::sin(angles.z);
-  double3 v1 = double3(lengths.x, 0.0, 0.0);
-  double3 v2 = double3(lengths.y * std::cos(angles.z), lengths.y * std::sin(angles.z), 0.0);
-  double3 v3 = double3(lengths.z * std::cos(angles.y), lengths.z * temp,
-                       lengths.z * std::sqrt(1.0 - std::cos(angles.y) * std::cos(angles.y) - temp * temp));
-  cell = double3x3(v1, v2, v3);
-  inverseCell = cell.inverse();
-  volume = cell.determinant();
+  const double3 edgeLengths = this->lengths();
+  lengthA = edgeLengths.x;
+  lengthB = edgeLengths.y;
+  lengthC = edgeLengths.z;
+  formCellMatrix();
 }
 
 double3 SimulationBox::lengths() const { return double3(cell[0].length(), cell[1].length(), cell[2].length()); }
@@ -236,7 +178,7 @@ nlohmann::json SimulationBox::jsonStatus() const
   return box;
 }
 
-std::string SimulationBox::printStatus(const SimulationBox &average, [[maybe_unused]] const SimulationBox &error) const
+std::string SimulationBox::printStatus(const SimulationBox& average, [[maybe_unused]] const SimulationBox& error) const
 {
   std::ostringstream stream;
   std::print(stream, "Box:     {:9.5f} {:9.5f} {:9.5f}  Average: {:9.5f} {:9.5f} {:9.5f}\n", cell.ax, cell.bx, cell.cx,
@@ -261,7 +203,7 @@ std::string SimulationBox::printStatus(const SimulationBox &average, [[maybe_unu
   return stream.str();
 }
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const SimulationBox &box)
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const SimulationBox& box)
 {
   archive << box.versionNumber;
 
@@ -283,13 +225,13 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Simula
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, SimulationBox &box)
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, SimulationBox& box)
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > box.versionNumber)
   {
-    const std::source_location &location = std::source_location::current();
+    const std::source_location& location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'SimulationBox' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }

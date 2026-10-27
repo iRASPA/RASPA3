@@ -274,7 +274,18 @@ bool MCCellList::verify(std::span<const Atom> atoms, const SimulationBox& simula
       if (cellOfAtom[atomIndex] != cell || slotOfAtom[atomIndex] != k) return false;
       const Atom& atom = atoms[atomIndex];
       const double3 wrapped = wrappedPosition(atom.position);
-      if (!(slotX[slot] == wrapped.x && slotY[slot] == wrapped.y && slotZ[slot] == wrapped.z)) return false;
+      // A fresh wrap of an unchanged position matches the slot. A later rewrite of the atom that only
+      // moves it by a few ulps (the non-associative cell round-trip) must not fail the guard; a real
+      // missed update is angstroms away, or lands in a different cell, which the cell-index test rejects.
+      auto close = [](double stored, double fresh)
+      {
+        const double scale = std::max(1.0, std::max(std::abs(stored), std::abs(fresh)));
+        return std::abs(stored - fresh) <= 8.0 * std::numeric_limits<double>::epsilon() * scale;
+      };
+      if (!(close(slotX[slot], wrapped.x) && close(slotY[slot], wrapped.y) && close(slotZ[slot], wrapped.z)))
+      {
+        return false;
+      }
       if (slotMoleculeId[slot] != atom.moleculeId) return false;
       if (slotMoleculeIdValue[slot] != static_cast<double>(atom.moleculeId)) return false;
       if (slotCharge[slot] != atom.charge || slotScalingVDW[slot] != atom.scalingVDW ||

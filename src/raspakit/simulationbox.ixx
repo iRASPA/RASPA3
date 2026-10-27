@@ -290,6 +290,29 @@ export struct SimulationBox
   }
 
   /**
+   * \brief Rebuilds 'cell', 'inverseCell' and 'volume' from the lengths and the angles.
+   *
+   * Right angles give exact zeros in the cell matrix ('double3x3::fromCellParameters'). Forming the matrix
+   * with std::cos(pi/2) leaves off-diagonal elements of about 1e-15; a wrap through such a matrix
+   * ('cell * fract(inverse * r)') then moves a coordinate by one ulp on every application, and the Monte
+   * Carlo cell list, which stores one such wrap, later rejects the atom when a fresh wrap no longer
+   * matches it. An exactly diagonal matrix also lets the cell lists take their orthorhombic paths.
+   */
+  void formCellMatrix()
+  {
+    cell = double3x3::fromCellParameters(lengthA, lengthB, lengthC, angleAlpha, angleBeta, angleGamma);
+    if (lengthA != 0.0 && lengthB != 0.0 && lengthC != 0.0)
+    {
+      inverseCell = cell.inverse();
+      volume = cell.determinant();
+    }
+    else
+    {
+      volume = 0.0;
+    }
+  }
+
+  /**
    * \brief Scales the simulation box by a scalar factor.
    *
    * Multiplies the lengths of the box by the given scalar and recalculates
@@ -297,20 +320,12 @@ export struct SimulationBox
    *
    * \param scale The scalar factor to scale the box by.
    */
-  void scale(double scale)
+  void scale(double factor)
   {
-    lengthA *= scale;
-    lengthB *= scale;
-    lengthC *= scale;
-
-    double temp = (std::cos(angleAlpha) - std::cos(angleGamma) * std::cos(angleBeta)) / std::sin(angleGamma);
-    double3 v1 = double3(lengthA, 0.0, 0.0);
-    double3 v2 = double3(lengthB * std::cos(angleGamma), lengthB * std::sin(angleGamma), 0.0);
-    double3 v3 = double3(lengthC * std::cos(angleBeta), lengthC * temp,
-                         lengthC * std::sqrt(1.0 - std::cos(angleBeta) * std::cos(angleBeta) - temp * temp));
-    cell = double3x3(v1, v2, v3);
-    inverseCell = cell.inverse();
-    volume = cell.determinant();
+    lengthA *= factor;
+    lengthB *= factor;
+    lengthC *= factor;
+    formCellMatrix();
   }
 
   /**
@@ -326,15 +341,7 @@ export struct SimulationBox
     lengthA *= static_cast<double>(scale.x);
     lengthB *= static_cast<double>(scale.y);
     lengthC *= static_cast<double>(scale.z);
-
-    double temp = (std::cos(angleAlpha) - std::cos(angleGamma) * std::cos(angleBeta)) / std::sin(angleGamma);
-    double3 v1 = double3(lengthA, 0.0, 0.0);
-    double3 v2 = double3(lengthB * std::cos(angleGamma), lengthB * std::sin(angleGamma), 0.0);
-    double3 v3 = double3(lengthC * std::cos(angleBeta), lengthC * temp,
-                         lengthC * std::sqrt(1.0 - std::cos(angleBeta) * std::cos(angleBeta) - temp * temp));
-    cell = double3x3(v1, v2, v3);
-    inverseCell = cell.inverse();
-    volume = cell.determinant();
+    formCellMatrix();
   }
 
   /**
@@ -350,22 +357,14 @@ export struct SimulationBox
   {
     SimulationBox v;
 
+    v.type = type;
     v.lengthA = scale * lengthA;
     v.lengthB = scale * lengthB;
     v.lengthC = scale * lengthC;
     v.angleAlpha = angleAlpha;
     v.angleBeta = angleBeta;
     v.angleGamma = angleGamma;
-
-    double temp = (std::cos(v.angleAlpha) - std::cos(v.angleGamma) * std::cos(v.angleBeta)) / std::sin(v.angleGamma);
-    double3 v1 = double3(v.lengthA, 0.0, 0.0);
-    double3 v2 = double3(v.lengthB * std::cos(v.angleGamma), v.lengthB * std::sin(v.angleGamma), 0.0);
-    double3 v3 = double3(v.lengthC * std::cos(v.angleBeta), v.lengthC * temp,
-                         v.lengthC * std::sqrt(1.0 - std::cos(v.angleBeta) * std::cos(v.angleBeta) - temp * temp));
-    v.cell = double3x3(v1, v2, v3);
-    v.inverseCell = v.cell.inverse();
-    v.volume = v.cell.determinant();
-    v.type = type;
+    v.formCellMatrix();
 
     return v;
   }
@@ -383,22 +382,14 @@ export struct SimulationBox
   {
     SimulationBox v;
 
+    v.type = type;
     v.lengthA = scale.x * lengthA;
     v.lengthB = scale.y * lengthB;
     v.lengthC = scale.z * lengthC;
     v.angleAlpha = angleAlpha;
     v.angleBeta = angleBeta;
     v.angleGamma = angleGamma;
-
-    double temp = (std::cos(v.angleAlpha) - std::cos(v.angleGamma) * std::cos(v.angleBeta)) / std::sin(v.angleGamma);
-    double3 v1 = double3(v.lengthA, 0.0, 0.0);
-    double3 v2 = double3(v.lengthB * std::cos(v.angleGamma), v.lengthB * std::sin(v.angleGamma), 0.0);
-    double3 v3 = double3(v.lengthC * std::cos(v.angleBeta), v.lengthC * temp,
-                         v.lengthC * std::sqrt(1.0 - std::cos(v.angleBeta) * std::cos(v.angleBeta) - temp * temp));
-    v.cell = double3x3(v1, v2, v3);
-    v.inverseCell = v.cell.inverse();
-    v.volume = v.cell.determinant();
-    v.type = type;
+    v.formCellMatrix();
 
     return v;
   }
@@ -416,22 +407,14 @@ export struct SimulationBox
   {
     SimulationBox v;
 
+    v.type = type;
     v.lengthA = static_cast<double>(scale.x) * lengthA;
     v.lengthB = static_cast<double>(scale.y) * lengthB;
     v.lengthC = static_cast<double>(scale.z) * lengthC;
     v.angleAlpha = angleAlpha;
     v.angleBeta = angleBeta;
     v.angleGamma = angleGamma;
-
-    double temp = (std::cos(v.angleAlpha) - std::cos(v.angleGamma) * std::cos(v.angleBeta)) / std::sin(v.angleGamma);
-    double3 v1 = double3(v.lengthA, 0.0, 0.0);
-    double3 v2 = double3(v.lengthB * std::cos(v.angleGamma), v.lengthB * std::sin(v.angleGamma), 0.0);
-    double3 v3 = double3(v.lengthC * std::cos(v.angleBeta), v.lengthC * temp,
-                         v.lengthC * std::sqrt(1.0 - std::cos(v.angleBeta) * std::cos(v.angleBeta) - temp * temp));
-    v.cell = double3x3(v1, v2, v3);
-    v.inverseCell = v.cell.inverse();
-    v.volume = v.cell.determinant();
-    v.type = type;
+    v.formCellMatrix();
 
     return v;
   }
@@ -591,25 +574,10 @@ export void from_json(const nlohmann::json& j, SimulationBox& b)
   b.angleBeta *= Units::DegreesToRadians;
   b.angleGamma *= Units::DegreesToRadians;
 
-  double temp = (std::cos(b.angleAlpha) - std::cos(b.angleGamma) * std::cos(b.angleBeta)) / std::sin(b.angleGamma);
-
-  double3 v1 = double3(b.lengthA, 0.0, 0.0);
-  double3 v2 = double3(b.lengthB * std::cos(b.angleGamma), b.lengthB * std::sin(b.angleGamma), 0.0);
-  double3 v3 = double3(b.lengthC * std::cos(b.angleBeta), b.lengthC * temp,
-                       b.lengthC * std::sqrt(1.0 - std::cos(b.angleBeta) * std::cos(b.angleBeta) - temp * temp));
-  b.cell = double3x3(v1, v2, v3);
-  if (b.lengthA != 0.0 && b.lengthB != 0.0 && b.lengthC != 0.0)
-  {
-    b.inverseCell = b.cell.inverse();
-    b.volume = b.cell.determinant();
-  }
-  else
-  {
-    b.volume = 0.0;
-  }
   // the type was not stored: rectangular when every angle is a right angle (as the cell-matrix constructor decides)
   const bool rightAngles = std::fabs(b.angleAlpha - 0.5 * std::numbers::pi) < 1e-5 &&
                            std::fabs(b.angleBeta - 0.5 * std::numbers::pi) < 1e-5 &&
                            std::fabs(b.angleGamma - 0.5 * std::numbers::pi) < 1e-5;
   b.type = rightAngles ? SimulationBox::Type::Rectangular : SimulationBox::Type::Triclinic;
+  b.formCellMatrix();
 }

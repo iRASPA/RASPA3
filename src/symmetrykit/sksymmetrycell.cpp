@@ -124,13 +124,8 @@ SKSymmetryCell SKSymmetryCell::idealized(std::size_t pointGroupNumber, std::stri
 
 double3x3 SKSymmetryCell::unitCell() const
 {
-  double temp = (std::cos(_alpha) - std::cos(_gamma) * std::cos(_beta)) / std::sin(_gamma);
-
-  double3 v1 = double3(_a, 0.0, 0.0);
-  double3 v2 = double3(_b * std::cos(_gamma), _b * std::sin(_gamma), 0.0);
-  double3 v3 =
-      double3(_c * std::cos(_beta), _c * temp, _c * std::sqrt(1.0 - std::cos(_beta) * std::cos(_beta) - temp * temp));
-  return double3x3(v1, v2, v3);
+  // exact zeros for right angles (see 'double3x3::fromCellParameters')
+  return double3x3::fromCellParameters(_a, _b, _c, _alpha, _beta, _gamma);
 }
 
 double3x3 SKSymmetryCell::metricTensor()

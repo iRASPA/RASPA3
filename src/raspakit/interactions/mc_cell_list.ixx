@@ -148,8 +148,20 @@ export struct MCCellList
   void updateAtoms(std::span<const Atom> atoms, std::size_t first, std::size_t count);
 
   /// The position wrapped into the box (fractional coordinates in [0, 1)).
+  ///
+  /// An orthorhombic axis is folded as 'x - image * length'. A coordinate already inside the primary
+  /// cell is therefore returned unchanged. Multiplying the fractional coordinate back by the length is
+  /// not bitwise the identity, and doing so on every update walks the stored slot by one ulp until it no
+  /// longer matches a fresh wrap of the atom.
   [[nodiscard]] inline double3 wrappedPosition(const double3& position) const
   {
+    if (orthorhombic)
+    {
+      double fractionalX, fractionalY, fractionalZ;
+      return double3(foldOrthorhombic(position.x, cellMatrix.ax, inverseCellMatrix.ax, fractionalX),
+                     foldOrthorhombic(position.y, cellMatrix.by, inverseCellMatrix.by, fractionalY),
+                     foldOrthorhombic(position.z, cellMatrix.cz, inverseCellMatrix.cz, fractionalZ));
+    }
     double3 s = inverseCellMatrix * position;
     s.x -= std::floor(s.x);
     s.y -= std::floor(s.y);
@@ -160,12 +172,22 @@ export struct MCCellList
   /// Cell index of a position (any position, also outside the box).
   [[nodiscard]] inline std::size_t cellIndexOf(const double3& position) const
   {
-    double3 s = inverseCellMatrix * position;
-    s.x -= std::floor(s.x);
-    s.y -= std::floor(s.y);
-    s.z -= std::floor(s.z);
-    return cellIndex(cellCoordinate(s.x, numberOfCells.x), cellCoordinate(s.y, numberOfCells.y),
-                     cellCoordinate(s.z, numberOfCells.z));
+    double sx, sy, sz;
+    if (orthorhombic)
+    {
+      foldOrthorhombic(position.x, cellMatrix.ax, inverseCellMatrix.ax, sx);
+      foldOrthorhombic(position.y, cellMatrix.by, inverseCellMatrix.by, sy);
+      foldOrthorhombic(position.z, cellMatrix.cz, inverseCellMatrix.cz, sz);
+    }
+    else
+    {
+      const double3 s = inverseCellMatrix * position;
+      sx = s.x - std::floor(s.x);
+      sy = s.y - std::floor(s.y);
+      sz = s.z - std::floor(s.z);
+    }
+    return cellIndex(cellCoordinate(sx, numberOfCells.x), cellCoordinate(sy, numberOfCells.y),
+                     cellCoordinate(sz, numberOfCells.z));
   }
 
   [[nodiscard]] inline std::size_t cellIndex(int ix, int iy, int iz) const
@@ -465,6 +487,30 @@ export struct MCCellList
     if (i < 0) return i + n;
     if (i >= n) return i - n;
     return i;
+  }
+
+  /// Folds one axis of an orthorhombic box into [0, length) and reports the fractional coordinate in [0, 1).
+  /// 'wrapped = x - image * length', so an in-cell coordinate is unchanged. A fractional part that rounds to
+  /// 1 is kept just below 1, in the last cell, rather than snapped onto the origin.
+  static inline double foldOrthorhombic(double x, double length, double inverse, double& fractional)
+  {
+    const double scaled = x * inverse;
+    double image = std::floor(scaled);
+    double wrapped = x - image * length;
+    if (wrapped < 0.0)
+    {
+      wrapped += length;
+      image -= 1.0;
+    }
+    else if (wrapped >= length)
+    {
+      wrapped -= length;
+      image += 1.0;
+    }
+    fractional = scaled - image;
+    if (fractional < 0.0) fractional += 1.0;
+    if (!(fractional < 1.0)) fractional = std::nextafter(1.0, 0.0);
+    return wrapped;
   }
 
   [[nodiscard]] static inline int cellCoordinate(double fractional, int n)

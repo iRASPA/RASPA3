@@ -141,6 +141,18 @@ export union double3x3
 
   static double3x3 identity();
 
+  /// cos and sin of a cell angle evaluated through the complementary angle, cos(a) = sin(pi/2 - a) and
+  /// sin(a) = cos(pi/2 - a). For a right angle the argument is exactly zero, so the results are exactly 0 and 1
+  /// (std::cos(pi/2) is 6.1e-17, not 0; 90 degrees converts to the same double as pi/2).
+  static double cosCellAngle(double angle);
+  static double sinCellAngle(double angle);
+
+  /// The cell matrix (lattice vectors as columns, a along x, b in the xy-plane) of the cell parameters, with
+  /// exact zeros for right angles: see 'cosCellAngle'. A matrix formed with std::cos(pi/2) carries off-diagonal
+  /// elements of about 1e-15, and a wrap through it ('cell * fract(inverse * r)') moves a coordinate by one ulp
+  /// on every application.
+  static double3x3 fromCellParameters(double a, double b, double c, double alpha, double beta, double gamma);
+
   double determinant(void) const;
   double trace(void) const;
   double3x3 const inverse() const;
