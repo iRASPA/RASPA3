@@ -90,45 +90,66 @@ export struct DcTSTTransmissionAccumulator
     OtherBptoB = 7,        ///< Another molecule enters B from B'.
     Count = 8
   };
-  /// selfEvent[block] += |qdot| (Delta_S^+ - Delta_S^-) with Delta_S the net cage count of the tagged molecule at
-  /// termination; collectiveEvent[block] likewise for Delta_S + Q_local, Q_local the signed sum of the axial
-  /// window crossings of the other molecules in the column of cages A', A, B, B'.
-  std::vector<double> selfEvent;        ///< [block]
-  std::vector<double> collectiveEvent;  ///< [block]
-  /// The same estimator restricted to the event-terminated trajectories, per trajectory (not per pair): the
-  /// forward (s = +1) and time-reversed (s = -1) members contribute |qdot| s Delta separately, and
-  /// speedEventTerminated[block] sums |qdot| over the contributing members, so that
-  /// kappa^cond = 2 selfEventConditioned / speedEventTerminated (identical to kappa^event when no trajectory
-  /// is capped). Only the identity of the first channel enters the first-order estimate, not its timing, so
-  /// the restriction removes the bias of the capped trajectories (which carry no event) without introducing
-  /// a new one.
-  std::vector<double> speedEventTerminated;        ///< [block]
-  std::vector<double> selfEventConditioned;        ///< [block]
-  std::vector<double> collectiveEventConditioned;  ///< [block]
-  /// Decomposition of Q_local (in the frame of the tagged hop, |qdot|-weighted, forward and time-reversed
-  /// members added) into the crossings before and after the commitment of the tagged molecule, so that
-  /// collectiveEvent - selfEvent = collectiveEventBeforeCommitment + collectiveEventAfterCommitment per block.
+  /**
+   * \brief The event-terminated sums at one event order k = 1..n ('TerminationEvents' = n).
+   *
+   * A run that terminates at the n-th local axial event passes through the events 1..n-1 of every trajectory
+   * on the way, and the state of a trajectory at its k-th event does not depend on where the integration stops.
+   * The sums are therefore kept for every order k: byEvent[k - 1] is what a run with 'TerminationEvents' = k and
+   * the same cap would have accumulated. A member "ended by an event" at order k is one that reached its k-th
+   * event before the cap; a member capped with fewer events enters with its values at the cap, exactly as in
+   * the n-th order.
+   *
+   * self[block] += |qdot| (Delta_S^+ - Delta_S^-) with Delta_S the net cage count of the tagged molecule at the
+   * k-th event; collective[block] likewise for Delta_S + Q_local, Q_local the signed sum of the axial window
+   * crossings of the other molecules in the column of cages A', A, B, B' up to that event.
+   *
+   * The conditioned estimator is restricted to the members that ended by an event, per trajectory (not per
+   * pair): the forward (s = +1) and time-reversed (s = -1) members contribute |qdot| s Delta separately, and
+   * speedTerminated[block] sums |qdot| over the contributing members, so that
+   * kappa^cond = 2 selfConditioned / speedTerminated (identical to kappa^event when no trajectory is capped).
+   * Only the identity of the channels enters the estimate, not their timing, so the restriction removes the
+   * bias of the capped trajectories (which carry no event) without introducing a new one.
+   *
+   * collectiveAfterCommitment[block] is the |qdot|-weighted signed Q_local of the crossings of the other
+   * molecules after the commitment of the tagged molecule up to the k-th event (frame of the tagged hop,
+   * forward and time-reversed members added), so that per block
+   * collective - self = collectiveEventBeforeCommitment + collectiveAfterCommitment. The same per channel:
+   * localQChannelAfter is the |qdot|-weighted signed contribution to Q_local (zero for the tagged channels,
+   * whose effect is in the self part), channelEventsAfter the number of crossings and channelTimeSumAfter the
+   * sum of their times since commitment [ps].
+   */
+  struct EventOrderSums
+  {
+    std::vector<double> self;                       ///< [block]
+    std::vector<double> collective;                 ///< [block]
+    std::vector<double> speedTerminated;            ///< [block]
+    std::vector<double> selfConditioned;            ///< [block]
+    std::vector<double> collectiveConditioned;      ///< [block]
+    std::vector<double> collectiveAfterCommitment;  ///< [block]
+    std::array<double, static_cast<std::size_t>(EventChannel::Count)> localQChannelAfter{};
+    std::array<double, static_cast<std::size_t>(EventChannel::Count)> channelTimeSumAfter{};
+    std::array<std::size_t, static_cast<std::size_t>(EventChannel::Count)> channelEventsAfter{};
+    /// terminatingEvents[direction][channel]: number of members whose k-th event was in that channel; direction
+    /// 0 is the forward and 1 the time-reversed trajectory of the pair.
+    std::array<std::array<std::size_t, static_cast<std::size_t>(EventChannel::Count)>, 2> terminatingEvents{};
+    /// allEvents[direction][channel]: the local axial events after commitment up to the k-th, per channel.
+    std::array<std::array<std::size_t, static_cast<std::size_t>(EventChannel::Count)>, 2> allEvents{};
+    std::size_t numberOfEventTerminatedTrajectories{0};  ///< Reached the k-th event before the cap.
+    std::size_t numberOfCappedTrajectories{0};           ///< Committed, but capped before the k-th event.
+    double terminationTimeSum{0.0};                      ///< Time of the k-th event over the members that reached it [ps].
+    double terminationTimeMaximum{0.0};                  ///< [ps]
+  };
+  std::vector<EventOrderSums> byEvent;  ///< [order - 1], 'TerminationEvents' entries (one in fixed-time mode).
+  /// The crossings of the other molecules before the commitment of the tagged molecule (independent of the
+  /// event order): |qdot|-weighted signed Q_local per block, and per channel the |qdot|-weighted signed
+  /// contribution, the number of crossings and the sum of their times since launch [ps].
   std::vector<double> collectiveEventBeforeCommitment;  ///< [block]
-  std::vector<double> collectiveEventAfterCommitment;   ///< [block]
-  /// The same per channel (phase 0 = before commitment, 1 = after): localQChannel is the |qdot|-weighted signed
-  /// contribution to Q_local (zero for the tagged channels, whose effect is in the self part), channelEvents the
-  /// number of crossings and channelTimeSum the sum of their times (since launch before commitment, since
-  /// commitment after it) [ps].
-  std::array<std::array<double, static_cast<std::size_t>(EventChannel::Count)>, 2> localQChannel{};
-  std::array<std::array<double, static_cast<std::size_t>(EventChannel::Count)>, 2> channelTimeSum{};
-  std::array<std::array<std::size_t, static_cast<std::size_t>(EventChannel::Count)>, 2> channelEvents{};
-  /// terminatingEvents[direction][channel]: number of trajectories terminated by that channel; direction 0 is the
-  /// forward and 1 the time-reversed trajectory of the pair.
-  std::array<std::array<std::size_t, static_cast<std::size_t>(EventChannel::Count)>, 2> terminatingEvents{};
-  /// allEvents[direction][channel]: all local axial events counted after commitment (several per trajectory
-  /// when 'TerminationEvents' > 1).
-  std::array<std::array<std::size_t, static_cast<std::size_t>(EventChannel::Count)>, 2> allEvents{};
-  std::size_t numberOfEventTerminatedTrajectories{0};  ///< Ended by the n-th event.
-  std::size_t numberOfCappedTrajectories{0};           ///< Reached the cap after commitment.
-  std::size_t numberOfUncommittedTrajectories{0};      ///< Reached the cap without ever committing.
-  double terminationTimeSum{0.0};                      ///< Over the event-terminated trajectories [ps].
-  double terminationTimeMaximum{0.0};                  ///< [ps]
-  double integratedTimeSum{0.0};                       ///< Over all trajectories (for the cost per trajectory) [ps].
+  std::array<double, static_cast<std::size_t>(EventChannel::Count)> localQChannelBefore{};
+  std::array<double, static_cast<std::size_t>(EventChannel::Count)> channelTimeSumBefore{};
+  std::array<std::size_t, static_cast<std::size_t>(EventChannel::Count)> channelEventsBefore{};
+  std::size_t numberOfUncommittedTrajectories{0};  ///< Reached the cap without ever committing.
+  double integratedTimeSum{0.0};                   ///< Over all trajectories (for the cost per trajectory) [ps].
 
   // --- hybrid estimator (handover times) --------------------------------------------------------------
   /// Occupancy state of the column (all molecules, the tagged one included) at a handover time, in the frame of
@@ -185,7 +206,7 @@ export struct DcTSTTransmissionAccumulator
 
   DcTSTTransmissionAccumulator() = default;
   DcTSTTransmissionAccumulator(std::size_t numberOfBlocks, std::size_t numberOfShells, std::size_t numberOfComponents,
-                               std::size_t numberOfTimes, std::size_t numberOfHandovers);
+                               std::size_t numberOfTimes, std::size_t numberOfHandovers, std::size_t numberOfEventOrders);
 
   [[nodiscard]] std::size_t collectiveIndex(std::size_t shell, std::size_t component, std::size_t time) const
   {
@@ -448,48 +469,68 @@ export struct DynamicallyCorrectedTST
     double maximumRelativeEnergyDrift{0.0};
 
     // event-terminated estimator
-    double selfEvent{0.0};  ///< kappa_S^event
-    double selfEventError{0.0};
-    double collectiveEvent{0.0};  ///< kappa_C^event
-    double collectiveEventError{0.0};
-    double backCorrelationFactor{0.0};  ///< f = kappa_S^event / kappa_S^committed
-    double backCorrelationFactorError{0.0};
-    double collectiveExcess{0.0};  ///< epsilon = kappa_C^event / kappa_S^committed - 1
-    double collectiveExcessError{0.0};
-    /// Restricted to the event-terminated trajectories (unbiased by the cap at first-event order).
-    double selfEventConditioned{0.0};
-    double selfEventConditionedError{0.0};
-    double collectiveEventConditioned{0.0};
-    double collectiveEventConditionedError{0.0};
-    double backCorrelationFactorConditioned{0.0};
-    double collectiveExcessConditioned{0.0};
-    /// Cap-corrected: the deviations from kappa_S^committed divided by the fraction of trajectories that
-    /// ended on an event (a trajectory without an event carries no induced jump and no back-hop).
-    double cappedFraction{0.0};  ///< (capped + never committed) / all trajectories
-    double backCorrelationFactorCapCorrected{0.0};
-    double collectiveExcessCapCorrected{0.0};
-    /// Decomposition epsilon = (f - 1) + epsilon_before + epsilon_after (Q_local crossings before and after the
-    /// commitment of the tagged molecule), and per channel and phase the contribution to epsilon, the number of
-    /// crossings and their mean time (since launch before commitment, since commitment after it) [ps].
+    /// The event-terminated estimator at one event order k (the values of every trajectory at its k-th local
+    /// axial event after commitment, or at the cap when it had fewer events). A run with 'TerminationEvents' = n
+    /// yields the orders k = 1..n from the same trajectories; eventOrders.back() is the n-th, the one the run
+    /// was set up for.
+    struct EventOrder
+    {
+      std::size_t order{1};   ///< k
+      double selfEvent{0.0};  ///< kappa_S^event
+      double selfEventError{0.0};
+      double collectiveEvent{0.0};  ///< kappa_C^event
+      double collectiveEventError{0.0};
+      double backCorrelationFactor{0.0};  ///< f = kappa_S^event / kappa_S^committed
+      double backCorrelationFactorError{0.0};
+      double collectiveExcess{0.0};  ///< epsilon = kappa_C^event / kappa_S^committed - 1
+      double collectiveExcessError{0.0};
+      /// Restricted to the trajectories that reached the k-th event (unbiased by the cap at that order).
+      double selfEventConditioned{0.0};
+      double selfEventConditionedError{0.0};
+      double collectiveEventConditioned{0.0};
+      double collectiveEventConditionedError{0.0};
+      double backCorrelationFactorConditioned{0.0};
+      double collectiveExcessConditioned{0.0};
+      /// Cap-corrected: the deviations from kappa_S^committed divided by the fraction of trajectories that
+      /// reached the k-th event (a trajectory without an event carries no induced jump and no back-hop).
+      double cappedFraction{0.0};  ///< (capped before the k-th event + never committed) / all trajectories
+      double backCorrelationFactorCapCorrected{0.0};
+      double collectiveExcessCapCorrected{0.0};
+      /// epsilon_after of the decomposition epsilon = (f - 1) + epsilon_before + epsilon_after: the Q_local
+      /// crossings of the other molecules after the commitment of the tagged molecule up to the k-th event, in
+      /// total and per channel (contribution to epsilon, number of crossings, mean time since commitment [ps]).
+      double collectiveExcessAfterCommitment{0.0};
+      double collectiveExcessAfterCommitmentError{0.0};
+      std::array<double, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>
+          collectiveExcessChannelAfter{};
+      std::array<double, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>
+          channelMeanTimeAfter{};
+      std::array<std::size_t, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>
+          channelEventsAfter{};
+      /// [direction][channel]: the channel of the k-th event, and all events up to the k-th.
+      std::array<std::array<std::size_t, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>, 2>
+          terminatingEvents{};
+      std::array<std::array<std::size_t, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>, 2>
+          allEvents{};
+      std::size_t numberOfEventTerminatedTrajectories{0};  ///< Reached the k-th event before the cap.
+      std::size_t numberOfCappedTrajectories{0};           ///< Committed, but capped before the k-th event.
+      double meanTerminationTime{0.0};  ///< [ps], time of the k-th event over the trajectories that reached it
+      double maximumTerminationTime{0.0};
+    };
+    std::vector<EventOrder> eventOrders;  ///< [order - 1]
+    [[nodiscard]] const EventOrder& lastEventOrder() const { return eventOrders.back(); }
+    /// epsilon_before: the Q_local crossings of the other molecules before the commitment of the tagged molecule
+    /// (independent of the event order), in total and per channel (contribution to epsilon, number of crossings,
+    /// mean time since launch [ps]).
     double collectiveExcessBeforeCommitment{0.0};
     double collectiveExcessBeforeCommitmentError{0.0};
-    double collectiveExcessAfterCommitment{0.0};
-    double collectiveExcessAfterCommitmentError{0.0};
-    std::array<std::array<double, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>, 2>
-        collectiveExcessChannel{};
-    std::array<std::array<double, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>, 2>
-        channelMeanTime{};
-    std::array<std::array<std::size_t, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>, 2>
-        channelEvents{};
-    std::array<std::array<std::size_t, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>, 2>
-        terminatingEvents{};
-    std::array<std::array<std::size_t, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>, 2>
-        allEvents{};
-    std::size_t numberOfEventTerminatedTrajectories{0};
-    std::size_t numberOfCappedTrajectories{0};
+    std::array<double, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>
+        collectiveExcessChannelBefore{};
+    std::array<double, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>
+        channelMeanTimeBefore{};
+    std::array<std::size_t, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>
+        channelEventsBefore{};
     std::size_t numberOfUncommittedTrajectories{0};
-    double meanTerminationTime{0.0};  ///< [ps], over the event-terminated trajectories
-    double maximumTerminationTime{0.0};
     double meanIntegratedTime{0.0};  ///< [ps], over all trajectories
 
     /// Hybrid estimator at one handover time tau: epsilon_hyb(tau) = epsilon_conc(tau) + epsilon_Markov(tau), all

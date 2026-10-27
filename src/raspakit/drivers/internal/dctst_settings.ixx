@@ -152,7 +152,9 @@ export struct DcTSTSettings
   };
   TrajectoryTermination trajectoryTermination{TrajectoryTermination::FixedTime};
   /// Number of local axial window crossings, counted after the commitment of the tagged molecule, at
-  /// which an event-terminated trajectory ends ('TerminationEvents').
+  /// which an event-terminated trajectory ends ('TerminationEvents'). The estimators of every lower order
+  /// k = 1..n are reported from the same trajectories (the state at the k-th event does not depend on where
+  /// the integration stops), so one run at the highest order of interest covers the convergence check in n.
   std::size_t terminationEvents{1};
 
   /**

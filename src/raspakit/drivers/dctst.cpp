@@ -53,7 +53,8 @@ import dctst_barrier;
 
 DcTSTTransmissionAccumulator::DcTSTTransmissionAccumulator(std::size_t numberOfBlocks, std::size_t numberOfShells,
                                                            std::size_t numberOfComponents, std::size_t numberOfTimes,
-                                                           std::size_t numberOfHandovers)
+                                                           std::size_t numberOfHandovers,
+                                                           std::size_t numberOfEventOrders)
     : numberOfBlocks(numberOfBlocks),
       numberOfShells(numberOfShells),
       numberOfComponents(numberOfComponents),
@@ -65,13 +66,8 @@ DcTSTTransmissionAccumulator::DcTSTTransmissionAccumulator(std::size_t numberOfB
       selfSmooth(numberOfBlocks, std::vector<double>(numberOfTimes, 0.0)),
       collective(numberOfBlocks, std::vector<double>(numberOfShells * numberOfComponents * numberOfTimes, 0.0)),
       numberOfTrajectoryPairs(numberOfBlocks, 0uz),
-      selfEvent(numberOfBlocks, 0.0),
-      collectiveEvent(numberOfBlocks, 0.0),
-      speedEventTerminated(numberOfBlocks, 0.0),
-      selfEventConditioned(numberOfBlocks, 0.0),
-      collectiveEventConditioned(numberOfBlocks, 0.0),
+      byEvent(std::max(1uz, numberOfEventOrders)),
       collectiveEventBeforeCommitment(numberOfBlocks, 0.0),
-      collectiveEventAfterCommitment(numberOfBlocks, 0.0),
       hybridTagged(numberOfHandovers, std::vector<double>(numberOfBlocks, 0.0)),
       hybridOthers(numberOfHandovers, std::vector<double>(numberOfBlocks, 0.0)),
       hybridOccupancy(numberOfHandovers),
@@ -79,6 +75,15 @@ DcTSTTransmissionAccumulator::DcTSTTransmissionAccumulator(std::size_t numberOfB
       hybridEventBefore(numberOfHandovers, 0uz),
       hybridTruncated(numberOfHandovers, 0uz)
 {
+  for (EventOrderSums& sums : byEvent)
+  {
+    sums.self.assign(numberOfBlocks, 0.0);
+    sums.collective.assign(numberOfBlocks, 0.0);
+    sums.speedTerminated.assign(numberOfBlocks, 0.0);
+    sums.selfConditioned.assign(numberOfBlocks, 0.0);
+    sums.collectiveConditioned.assign(numberOfBlocks, 0.0);
+    sums.collectiveAfterCommitment.assign(numberOfBlocks, 0.0);
+  }
 }
 
 void DcTSTConstrainedMoveStatistics::optimize(double targetAcceptance)
@@ -396,8 +401,12 @@ DynamicallyCorrectedTST::DynamicallyCorrectedTST(InputReader& reader)
 
   const std::size_t numberOfShells = settings.maximumCollectiveShell + 2uz;
   const std::size_t numberOfComponents = systems.front().components.size();
-  transmission.assign(numberOfReplicas, DcTSTTransmissionAccumulator(numberOfBlocks, numberOfShells, numberOfComponents,
-                                                                     numberOfTimes, settings.handoverTimes.size()));
+  // every event order k = 1..n is accumulated from the same trajectories in event mode
+  const bool eventTermination = settings.trajectoryTermination == DcTSTSettings::TrajectoryTermination::Event;
+  const std::size_t numberOfEventOrders = eventTermination ? settings.terminationEvents : 1uz;
+  transmission.assign(numberOfReplicas,
+                      DcTSTTransmissionAccumulator(numberOfBlocks, numberOfShells, numberOfComponents, numberOfTimes,
+                                                   settings.handoverTimes.size(), numberOfEventOrders));
   constrainedMoves.assign(numberOfReplicas, DcTSTConstrainedMoveStatistics{});
   for (DcTSTConstrainedMoveStatistics& statistics : constrainedMoves)
   {
@@ -2089,6 +2098,18 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     NeighbourhoodState neighbourhood{};  // column plus the four lateral neighbours of A and of B
   };
 
+  // one local axial event after the commitment of the tagged molecule; the state of the trajectory at its k-th
+  // event is the k-th order event-terminated estimate, so every event up to the n-th is recorded
+  struct PostCommitmentEvent
+  {
+    EventChannel channel{};
+    double frameQ{0.0};  // signed contribution to Q_local in the frame of the tagged hop (zero for the tagged channels)
+    double time{0.0};    // since commitment [ps]
+    std::size_t step{0};
+    double self{0.0};    // net cage count of the tagged molecule just after the event
+    double localQ{0.0};  // Q_local (lab frame) just after the event
+  };
+
   struct TrajectoryOutcome
   {
     double meanDrift{0.0};
@@ -2096,27 +2117,47 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     bool aborted{false};  // interrupted by a termination signal; the pair is discarded
     bool longJump{false};
     bool committed{false};
-    bool eventTerminated{false};
-    std::size_t terminationStep{0};  // the step of the terminating event, or the last integrated step
+    bool eventTerminated{false};     // reached the n-th event before the cap
+    std::size_t terminationStep{0};  // the step of the n-th event, or the last integrated step
     std::size_t integratedSteps{0};  // steps integrated (beyond the termination in hybrid mode)
     std::vector<Handover> handover;  // [handover time]
-    std::optional<EventChannel> terminatingChannel{};
-    std::array<std::size_t, static_cast<std::size_t>(EventChannel::Count)> events{};  // after commitment
+    // the local axial events after commitment, in order (at most n)
+    std::vector<PostCommitmentEvent> events;
     double finalSelf{0.0};    // net cage count of the tagged molecule at termination
     double finalLocalQ{0.0};  // Q_local: signed axial crossings of the other molecules in the column
-    // decomposition in the frame of the tagged hop, [phase][channel] with phase 0 before and 1 after the
-    // commitment of the tagged molecule: signed contribution to Q_local (others only), number of crossings
-    // (tagged included) and the sum of their times (since launch, resp. since commitment) [ps]
+    // the crossings before the commitment of the tagged molecule, per channel in the frame of the tagged hop:
+    // signed contribution to Q_local (others only), number of crossings (tagged included) and the sum of their
+    // times since launch [ps]
     std::size_t commitStep{0};
-    std::array<std::array<double, static_cast<std::size_t>(EventChannel::Count)>, 2> frameQ{};
-    std::array<std::array<std::size_t, static_cast<std::size_t>(EventChannel::Count)>, 2> eventCount{};
-    std::array<std::array<double, static_cast<std::size_t>(EventChannel::Count)>, 2> eventTime{};
+    std::array<double, static_cast<std::size_t>(EventChannel::Count)> frameQBefore{};
+    std::array<std::size_t, static_cast<std::size_t>(EventChannel::Count)> eventCountBefore{};
+    std::array<double, static_cast<std::size_t>(EventChannel::Count)> eventTimeBefore{};
+
+    // the k-th order view of the member: its state at the k-th event when it reached it, else at termination
+    struct OrderView
+    {
+      bool ended{false};  // reached the k-th event before the cap
+      double self{0.0};
+      double localQ{0.0};
+      std::size_t step{0};
+      std::optional<EventChannel> channel{};
+    };
+    [[nodiscard]] OrderView at(std::size_t order) const
+    {
+      if (order >= 1uz && events.size() >= order)
+      {
+        const PostCommitmentEvent& event = events[order - 1uz];
+        return {true, event.self, event.localQ, event.step, event.channel};
+      }
+      return {false, finalSelf, finalLocalQ, terminationStep, std::nullopt};
+    }
   };
 
   // integrates one trajectory from the current working copies and fills the delta arrays; reports the
   // energy drift (meaningful for NVE only), whether the tagged molecule left the pair of cages A/B
   // ('long jump') and whether it reached the commit distance; in event mode the trajectory ends at the
-  // n-th local axial hop event after commitment and the stored values are held from then on
+  // n-th local axial hop event after commitment (every event up to it is recorded) and the stored values are
+  // held from then on
   auto integrateTrajectory = [&](double direction, TrajectoryOutcome& outcome)
   {
     std::span<GroupState> groupSpan(groupData);
@@ -2379,33 +2420,35 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
               {
                 const EventChannel channel = channelOf(j, window.value(), alongNormal);
                 const std::size_t channelIndex = static_cast<std::size_t>(channel);
-                const std::size_t phase = committed ? 1uz : 0uz;
                 const int frameDirection = (direction > 0.0) ? alongNormal : -alongNormal;
-                if (j != taggedIndex)
+                const double frameQ = (j != taggedIndex) ? static_cast<double>(frameDirection) : 0.0;
+                if (j != taggedIndex) localQ += static_cast<double>(alongNormal);
+                if (!committed)
                 {
-                  localQ += static_cast<double>(alongNormal);
-                  outcome.frameQ[phase][channelIndex] += static_cast<double>(frameDirection);
+                  outcome.frameQBefore[channelIndex] += frameQ;
+                  ++outcome.eventCountBefore[channelIndex];
+                  outcome.eventTimeBefore[channelIndex] += static_cast<double>(step) * system.timeStep;
                 }
-                ++outcome.eventCount[phase][channelIndex];
-                outcome.eventTime[phase][channelIndex] +=
-                    static_cast<double>(step - (committed ? outcome.commitStep : 0uz)) * system.timeStep;
-                if (committed)
+                else
                 {
-                  ++outcome.events[static_cast<std::size_t>(channel)];
+                  // the state just after the event (the net cage count of the tagged molecule has already
+                  // changed when its own hop is registered)
+                  const double self = static_cast<double>(barrier.cageIndex(unwrappedQ[taggedIndex])) + 0.5;
+                  outcome.events.push_back(PostCommitmentEvent{
+                      channel, frameQ, static_cast<double>(step - outcome.commitStep) * system.timeStep, step, self,
+                      localQ});
                   if (!firstEventStep.has_value())
                   {
-                    // the first event after commitment, as the hybrid estimator uses it (the net cage count of
-                    // the tagged molecule has already changed when its own hop is registered)
+                    // the first event after commitment, as the hybrid estimator uses it
                     firstEventStep = step;
-                    firstEventTagged = static_cast<double>(barrier.cageIndex(unwrappedQ[taggedIndex])) + 0.5;
+                    firstEventTagged = self;
                     firstEventOthers = localQ;
                   }
                   if (++eventsAfterCommitment >= settings.terminationEvents)
                   {
                     terminated = true;
-                    outcome.terminatingChannel = channel;
                     outcome.terminationStep = step;
-                    outcome.finalSelf = static_cast<double>(barrier.cageIndex(unwrappedQ[taggedIndex])) + 0.5;
+                    outcome.finalSelf = self;
                     outcome.finalLocalQ = localQ;
                   }
                 }
@@ -2604,10 +2647,56 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
       addClass(othersInB + 1uz, othersInA, -1.0, deltaSelf, deltaSelfSmooth, deltaSelfCommitted);
     }
 
-    // event-terminated estimator: values at termination
-    accumulator.selfEvent[block] += qdot * (forward.finalSelf - backward.finalSelf);
-    accumulator.collectiveEvent[block] +=
-        qdot * ((forward.finalSelf + forward.finalLocalQ) - (backward.finalSelf + backward.finalLocalQ));
+    // event-terminated estimator at every order k = 1..n: the values of the members at their k-th event (at
+    // termination when they had fewer events), the channel of that event and the events up to it
+    for (std::size_t o = 0; o < accumulator.byEvent.size(); ++o)
+    {
+      DcTSTTransmissionAccumulator::EventOrderSums& sums = accumulator.byEvent[o];
+      const std::size_t order = o + 1uz;
+      const TrajectoryOutcome::OrderView forwardView = forward.at(order);
+      const TrajectoryOutcome::OrderView backwardView = backward.at(order);
+      sums.self[block] += qdot * (forwardView.self - backwardView.self);
+      sums.collective[block] +=
+          qdot * ((forwardView.self + forwardView.localQ) - (backwardView.self + backwardView.localQ));
+      for (std::size_t d = 0; const TrajectoryOutcome* outcome : {&forward, &backward})
+      {
+        const TrajectoryOutcome::OrderView view = outcome->at(order);
+        if (view.ended)
+        {
+          ++sums.numberOfEventTerminatedTrajectories;
+          const double time = static_cast<double>(view.step) * system.timeStep;
+          sums.terminationTimeSum += time;
+          sums.terminationTimeMaximum = std::max(sums.terminationTimeMaximum, time);
+          ++sums.terminatingEvents[d][static_cast<std::size_t>(view.channel.value())];
+
+          // conditioned estimator: this member alone, with the sign of its launch direction
+          const double sign = (d == 0uz) ? 1.0 : -1.0;
+          sums.speedTerminated[block] += qdot;
+          sums.selfConditioned[block] += qdot * sign * view.self;
+          sums.collectiveConditioned[block] += qdot * sign * (view.self + view.localQ);
+        }
+        else if (outcome->committed)
+        {
+          ++sums.numberOfCappedTrajectories;
+        }
+        // the events after commitment up to the k-th (frame of the tagged hop: the forward and the time-reversed
+        // member add with the same sign)
+        double phaseQ{0.0};
+        const std::size_t count = std::min(order, outcome->events.size());
+        for (std::size_t i = 0; i < count; ++i)
+        {
+          const PostCommitmentEvent& event = outcome->events[i];
+          const std::size_t c = static_cast<std::size_t>(event.channel);
+          ++sums.allEvents[d][c];
+          phaseQ += event.frameQ;
+          sums.localQChannelAfter[c] += qdot * event.frameQ;
+          ++sums.channelEventsAfter[c];
+          sums.channelTimeSumAfter[c] += event.time;
+        }
+        sums.collectiveAfterCommitment[block] += qdot * phaseQ;
+        ++d;
+      }
+    }
     // hybrid estimator: pair differences at the handover times and the occupancy histogram
     for (std::size_t h = 0; h < numberOfHandovers; ++h)
     {
@@ -2636,53 +2725,21 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
       }
     }
 
-    for (std::size_t d = 0; const TrajectoryOutcome* outcome : {&forward, &backward})
+    for (const TrajectoryOutcome* outcome : {&forward, &backward})
     {
       accumulator.integratedTimeSum += static_cast<double>(outcome->integratedSteps) * system.timeStep;
-      if (outcome->eventTerminated)
-      {
-        ++accumulator.numberOfEventTerminatedTrajectories;
-        const double time = static_cast<double>(outcome->terminationStep) * system.timeStep;
-        accumulator.terminationTimeSum += time;
-        accumulator.terminationTimeMaximum = std::max(accumulator.terminationTimeMaximum, time);
-        ++accumulator.terminatingEvents[d][static_cast<std::size_t>(outcome->terminatingChannel.value())];
-
-        // conditioned estimator: this member alone, with the sign of its launch direction
-        const double sign = (d == 0uz) ? 1.0 : -1.0;
-        accumulator.speedEventTerminated[block] += qdot;
-        accumulator.selfEventConditioned[block] += qdot * sign * outcome->finalSelf;
-        accumulator.collectiveEventConditioned[block] += qdot * sign * (outcome->finalSelf + outcome->finalLocalQ);
-      }
-      else if (outcome->committed)
-      {
-        ++accumulator.numberOfCappedTrajectories;
-      }
-      else
-      {
-        ++accumulator.numberOfUncommittedTrajectories;
-      }
+      if (!outcome->committed) ++accumulator.numberOfUncommittedTrajectories;
+      // the crossings of the other molecules before the commitment of the tagged molecule, per channel (frame of
+      // the tagged hop: the forward and the time-reversed member add with the same sign)
+      double phaseQ{0.0};
       for (std::size_t c = 0; c < static_cast<std::size_t>(EventChannel::Count); ++c)
       {
-        accumulator.allEvents[d][c] += outcome->events[c];
+        phaseQ += outcome->frameQBefore[c];
+        accumulator.localQChannelBefore[c] += qdot * outcome->frameQBefore[c];
+        accumulator.channelEventsBefore[c] += outcome->eventCountBefore[c];
+        accumulator.channelTimeSumBefore[c] += outcome->eventTimeBefore[c];
       }
-      // decomposition of Q_local by phase and channel (frame of the tagged hop: the forward and the
-      // time-reversed member add with the same sign)
-      for (std::size_t phase = 0; phase < 2; ++phase)
-      {
-        double phaseQ{0.0};
-        for (std::size_t c = 0; c < static_cast<std::size_t>(EventChannel::Count); ++c)
-        {
-          phaseQ += outcome->frameQ[phase][c];
-          accumulator.localQChannel[phase][c] += qdot * outcome->frameQ[phase][c];
-          accumulator.channelEvents[phase][c] += outcome->eventCount[phase][c];
-          accumulator.channelTimeSum[phase][c] += outcome->eventTime[phase][c];
-        }
-        if (phase == 0uz)
-          accumulator.collectiveEventBeforeCommitment[block] += qdot * phaseQ;
-        else
-          accumulator.collectiveEventAfterCommitment[block] += qdot * phaseQ;
-      }
-      ++d;
+      accumulator.collectiveEventBeforeCommitment[block] += qdot * phaseQ;
     }
 
     // per-pair record (flushed, so that a killed run keeps every completed pair)
@@ -2711,11 +2768,17 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
       auto status = [](const TrajectoryOutcome& outcome) -> int
       { return outcome.eventTerminated ? 0 : (outcome.committed ? 1 : 2); };
       auto channel = [](const TrajectoryOutcome& outcome) -> int
-      { return outcome.terminatingChannel.has_value() ? static_cast<int>(outcome.terminatingChannel.value()) : -1; };
-      auto phaseSum = [](const TrajectoryOutcome& outcome, std::size_t phase)
+      { return outcome.eventTerminated ? static_cast<int>(outcome.events.back().channel) : -1; };
+      auto beforeSum = [](const TrajectoryOutcome& outcome)
       {
         double sum{0.0};
-        for (double q : outcome.frameQ[phase]) sum += q;
+        for (double q : outcome.frameQBefore) sum += q;
+        return sum;
+      };
+      auto afterSum = [](const TrajectoryOutcome& outcome)
+      {
+        double sum{0.0};
+        for (const PostCommitmentEvent& event : outcome.events) sum += event.frameQ;
         return sum;
       };
       auto time = [&](std::size_t steps) { return static_cast<double>(steps) * system.timeStep; };
@@ -2723,16 +2786,30 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
       std::ostream pairStream(pairStreams[replicaId].rdbuf());
       std::print(pairStream,
                  "{} {} {:.8g} {:g} {:g} {:g} {:g} {} {} {:.6g} {:.6g} {} {} {:.6g} {:.6g} {:g} {:g} {:g} {:g} {} {} "
-                 "{:.4e} {:.4e} {:.8g} {:.8g} {:.8g} {:.8g} {:.8g}\n",
+                 "{:.4e} {:.4e} {:.8g} {:.8g} {:.8g} {:.8g} {:.8g}",
                  productionCycle, block, qdot, forward.finalSelf, backward.finalSelf, forward.finalLocalQ,
                  backward.finalLocalQ, status(forward), status(backward), time(forward.terminationStep),
                  time(backward.terminationStep), channel(forward), channel(backward),
                  forward.committed ? time(forward.commitStep) : 0.0, backward.committed ? time(backward.commitStep) : 0.0,
-                 phaseSum(forward, 0), phaseSum(forward, 1), phaseSum(backward, 0), phaseSum(backward, 1),
+                 beforeSum(forward), afterSum(forward), beforeSum(backward), afterSum(backward),
                  forward.longJump ? 1 : 0, backward.longJump ? 1 : 0, forward.meanDrift, backward.meanDrift,
                  plateauAverage(forwardSelf, deltaSelf), plateauAverage(forwardSelfTwoState, deltaSelfTwoState),
                  plateauAverage(forwardSelfCommitted, deltaSelfCommitted),
                  forwardSelfCommitted.back() - deltaSelfCommitted.back(), collectivePlateau);
+      // the lower event orders k = 1..n-1 (the n-th is in columns 4-13): ten columns per order
+      for (std::size_t order = 1; order < accumulator.byEvent.size(); ++order)
+      {
+        const TrajectoryOutcome::OrderView f = forward.at(order);
+        const TrajectoryOutcome::OrderView b = backward.at(order);
+        auto orderStatus = [](const TrajectoryOutcome& outcome, const TrajectoryOutcome::OrderView& view) -> int
+        { return view.ended ? 0 : (outcome.committed ? 1 : 2); };
+        auto orderChannel = [](const TrajectoryOutcome::OrderView& view) -> int
+        { return view.channel.has_value() ? static_cast<int>(view.channel.value()) : -1; };
+        std::print(pairStream, " {:g} {:g} {:g} {:g} {} {} {:.6g} {:.6g} {} {}", f.self, b.self, f.localQ, b.localQ,
+                   orderStatus(forward, f), orderStatus(backward, b), time(f.step), time(b.step), orderChannel(f),
+                   orderChannel(b));
+      }
+      std::print(pairStream, "\n");
       std::flush(pairStream);
     }
   }
@@ -2817,6 +2894,19 @@ void DynamicallyCorrectedTST::writePairRecordHeader(std::size_t replicaId)
                    "kappa_C (plateau, all) = sum w (c24 + c28) / sum w\n");
   std::print(file, "#   conditioned (event-ended members only, s = +1 for '+', -1 for '-'): kappa^cond = 2 sum w s Delta / sum w\n");
   std::print(file, "#   epsilon_before = sum w (c16 + c18) / sum w;   epsilon_after = sum w (c17 + c19) / sum w\n");
+  const std::size_t numberOfEventOrders = transmission[replicaId].byEvent.size();
+  if (numberOfEventOrders > 1uz)
+  {
+    std::print(file,
+               "# columns 29..{}: the lower event orders k = 1..{} (columns 4-13 hold the {}-th), ten columns per order "
+               "starting at 29 + 10 (k - 1):\n",
+               28uz + 10uz * (numberOfEventOrders - 1uz), numberOfEventOrders - 1uz, numberOfEventOrders);
+    std::print(file,
+               "#   Delta_S+ and Delta_S- at the k-th event, Q_local+ and Q_local-, status+ and status- (0 reached the "
+               "k-th event, 1 capped before it after commitment, 2 never committed),\n"
+               "#   time+ and time- of the k-th event [ps], channel+ and channel- of the k-th event (members with fewer "
+               "events carry their values at termination and channel -1)\n");
+  }
   std::flush(file);
 }
 
@@ -2869,23 +2959,40 @@ void DynamicallyCorrectedTST::writeAccumulatorSnapshot(std::size_t replicaId, bo
   json["numberOfTrajectories"] = accumulator.numberOfTrajectories;
   json["numberOfLongJumpTrajectories"] = accumulator.numberOfLongJumpTrajectories;
   json["numberOfCommittedTrajectories"] = accumulator.numberOfCommittedTrajectories;
-  json["selfEvent"] = accumulator.selfEvent;
-  json["collectiveEvent"] = accumulator.collectiveEvent;
-  json["speedEventTerminated"] = accumulator.speedEventTerminated;
-  json["selfEventConditioned"] = accumulator.selfEventConditioned;
-  json["collectiveEventConditioned"] = accumulator.collectiveEventConditioned;
+  // the event-terminated sums: the n-th order under the top-level keys, every order k = 1..n under 'byEvent'
+  auto writeOrder = [](nlohmann::json& target, const DcTSTTransmissionAccumulator::EventOrderSums& sums)
+  {
+    target["selfEvent"] = sums.self;
+    target["collectiveEvent"] = sums.collective;
+    target["speedEventTerminated"] = sums.speedTerminated;
+    target["selfEventConditioned"] = sums.selfConditioned;
+    target["collectiveEventConditioned"] = sums.collectiveConditioned;
+    target["collectiveEventAfterCommitment"] = sums.collectiveAfterCommitment;
+    target["localQChannelAfter"] = sums.localQChannelAfter;
+    target["channelTimeSumAfter"] = sums.channelTimeSumAfter;
+    target["channelEventsAfter"] = sums.channelEventsAfter;
+    target["terminatingEvents"] = sums.terminatingEvents;
+    target["allEvents"] = sums.allEvents;
+    target["numberOfEventTerminatedTrajectories"] = sums.numberOfEventTerminatedTrajectories;
+    target["numberOfCappedTrajectories"] = sums.numberOfCappedTrajectories;
+    target["terminationTimeSum"] = sums.terminationTimeSum;
+    target["terminationTimeMaximum"] = sums.terminationTimeMaximum;
+  };
+  writeOrder(json, accumulator.byEvent.back());
+  json["terminationEvents"] = accumulator.byEvent.size();
+  json["byEvent"] = nlohmann::json::array();
+  for (std::size_t o = 0; o < accumulator.byEvent.size(); ++o)
+  {
+    nlohmann::json entry;
+    entry["order"] = o + 1uz;
+    writeOrder(entry, accumulator.byEvent[o]);
+    json["byEvent"].push_back(std::move(entry));
+  }
   json["collectiveEventBeforeCommitment"] = accumulator.collectiveEventBeforeCommitment;
-  json["collectiveEventAfterCommitment"] = accumulator.collectiveEventAfterCommitment;
-  json["localQChannel"] = accumulator.localQChannel;
-  json["channelTimeSum"] = accumulator.channelTimeSum;
-  json["channelEvents"] = accumulator.channelEvents;
-  json["terminatingEvents"] = accumulator.terminatingEvents;
-  json["allEvents"] = accumulator.allEvents;
-  json["numberOfEventTerminatedTrajectories"] = accumulator.numberOfEventTerminatedTrajectories;
-  json["numberOfCappedTrajectories"] = accumulator.numberOfCappedTrajectories;
+  json["localQChannelBefore"] = accumulator.localQChannelBefore;
+  json["channelTimeSumBefore"] = accumulator.channelTimeSumBefore;
+  json["channelEventsBefore"] = accumulator.channelEventsBefore;
   json["numberOfUncommittedTrajectories"] = accumulator.numberOfUncommittedTrajectories;
-  json["terminationTimeSum"] = accumulator.terminationTimeSum;
-  json["terminationTimeMaximum"] = accumulator.terminationTimeMaximum;
   json["integratedTimeSum"] = accumulator.integratedTimeSum;
   if (hybridEnabled())
   {
@@ -2976,26 +3083,11 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
   std::size_t numberOfTrajectories{0};
   std::size_t numberOfLongJumps{0};
   std::size_t numberOfCommitted{0};
-  double selfEvent{0.0};
-  double collectiveEvent{0.0};
-  std::vector<double> blockSelfEvent;
-  std::vector<double> blockCollectiveEvent;
-  std::vector<double> blockEventExcess;           // (kappa_C^event - kappa_S^event) per block
-  std::vector<double> blockEventBackCorrelation;  // (kappa_S^event - kappa_S^committed) per block
-  double speedEventTerminated{0.0};
-  double selfEventConditioned{0.0};
-  double collectiveEventConditioned{0.0};
-  std::vector<double> blockSelfEventConditioned;
-  std::vector<double> blockCollectiveEventConditioned;
   double collectiveEventBefore{0.0};
-  double collectiveEventAfter{0.0};
   std::vector<double> blockCollectiveEventBefore;
-  std::vector<double> blockCollectiveEventAfter;
-  std::array<std::array<double, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>, 2>
-      localQChannel{};
-  std::array<std::array<double, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>, 2>
-      channelTimeSum{};
-  double terminationTimeSum{0.0};
+  using ChannelArray = std::array<double, static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count)>;
+  ChannelArray localQChannelBefore{};
+  ChannelArray channelTimeSumBefore{};
   double integratedTimeSum{0.0};
   for (const DcTSTTransmissionAccumulator& accumulator : transmission)
   {
@@ -3007,54 +3099,22 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
     numberOfTrajectories += accumulator.numberOfTrajectories;
     numberOfLongJumps += accumulator.numberOfLongJumpTrajectories;
     numberOfCommitted += accumulator.numberOfCommittedTrajectories;
-    result.numberOfEventTerminatedTrajectories += accumulator.numberOfEventTerminatedTrajectories;
-    result.numberOfCappedTrajectories += accumulator.numberOfCappedTrajectories;
     result.numberOfUncommittedTrajectories += accumulator.numberOfUncommittedTrajectories;
-    terminationTimeSum += accumulator.terminationTimeSum;
     integratedTimeSum += accumulator.integratedTimeSum;
-    result.maximumTerminationTime = std::max(result.maximumTerminationTime, accumulator.terminationTimeMaximum);
-    for (std::size_t d = 0; d < 2; ++d)
+    for (std::size_t c = 0; c < static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count); ++c)
     {
-      for (std::size_t c = 0; c < static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count); ++c)
-      {
-        result.terminatingEvents[d][c] += accumulator.terminatingEvents[d][c];
-        result.allEvents[d][c] += accumulator.allEvents[d][c];
-        // d doubles as the phase index here (both run over 0, 1)
-        localQChannel[d][c] += accumulator.localQChannel[d][c];
-        channelTimeSum[d][c] += accumulator.channelTimeSum[d][c];
-        result.channelEvents[d][c] += accumulator.channelEvents[d][c];
-      }
+      localQChannelBefore[c] += accumulator.localQChannelBefore[c];
+      channelTimeSumBefore[c] += accumulator.channelTimeSumBefore[c];
+      result.channelEventsBefore[c] += accumulator.channelEventsBefore[c];
     }
     for (std::size_t b = 0; b < accumulator.numberOfBlocks; ++b)
     {
       speed += accumulator.speed[b];
-      selfEvent += accumulator.selfEvent[b];
-      collectiveEvent += accumulator.collectiveEvent[b];
       if (accumulator.numberOfTrajectoryPairs[b] > 0uz && accumulator.speed[b] > 0.0)
       {
-        blockSelfEvent.push_back(accumulator.selfEvent[b] / accumulator.speed[b]);
-        blockCollectiveEvent.push_back(accumulator.collectiveEvent[b] / accumulator.speed[b]);
-        // the differences are far less noisy than the kappas themselves (same trajectories)
-        blockEventExcess.push_back((accumulator.collectiveEvent[b] - accumulator.selfEvent[b]) /
-                                   accumulator.speed[b]);
-        blockEventBackCorrelation.push_back((accumulator.selfEvent[b] - accumulator.selfCommitted[b].back()) /
-                                            accumulator.speed[b]);
         blockCollectiveEventBefore.push_back(accumulator.collectiveEventBeforeCommitment[b] / accumulator.speed[b]);
-        blockCollectiveEventAfter.push_back(accumulator.collectiveEventAfterCommitment[b] / accumulator.speed[b]);
       }
       collectiveEventBefore += accumulator.collectiveEventBeforeCommitment[b];
-      collectiveEventAfter += accumulator.collectiveEventAfterCommitment[b];
-      speedEventTerminated += accumulator.speedEventTerminated[b];
-      selfEventConditioned += accumulator.selfEventConditioned[b];
-      collectiveEventConditioned += accumulator.collectiveEventConditioned[b];
-      if (accumulator.speedEventTerminated[b] > 0.0)
-      {
-        // per trajectory member: kappa = 2 sum |qdot| s Delta / sum |qdot| (see the accumulator)
-        blockSelfEventConditioned.push_back(2.0 * accumulator.selfEventConditioned[b] /
-                                            accumulator.speedEventTerminated[b]);
-        blockCollectiveEventConditioned.push_back(2.0 * accumulator.collectiveEventConditioned[b] /
-                                                  accumulator.speedEventTerminated[b]);
-      }
       for (std::size_t t = 0; t < numberOfTimes; ++t)
       {
         self[t] += accumulator.self[b][t];
@@ -3108,33 +3168,102 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
   result.meanSpeed =
       (result.numberOfTrajectoryPairs > 0uz) ? speed / static_cast<double>(result.numberOfTrajectoryPairs) : 0.0;
   result.meanSpeedError = meanAndError(blockSpeeds).second;
-  if (result.numberOfEventTerminatedTrajectories > 0uz)
-  {
-    result.meanTerminationTime = terminationTimeSum / static_cast<double>(result.numberOfEventTerminatedTrajectories);
-  }
   if (numberOfTrajectories > 0uz)
   {
     result.meanIntegratedTime = integratedTimeSum / static_cast<double>(numberOfTrajectories);
   }
-  if (speed > 0.0)
+
+  // the event-terminated estimator at every order k = 1..n: pooled sums and block values over the replicas
+  // (the parts relative to kappa_S^committed follow once the transmission functions are known)
+  const std::size_t numberOfEventOrders = front.byEvent.size();
+  result.eventOrders.assign(numberOfEventOrders, TransmissionResult::EventOrder{});
+  // per order and block: (kappa_C^event - kappa_S^event), (kappa_S^event - kappa_S^committed), epsilon_after sums
+  std::vector<std::vector<double>> blockEventExcess(numberOfEventOrders);
+  std::vector<std::vector<double>> blockEventBackCorrelation(numberOfEventOrders);
+  std::vector<std::vector<double>> blockCollectiveEventAfter(numberOfEventOrders);
+  std::vector<double> collectiveEventAfter(numberOfEventOrders, 0.0);
+  std::vector<ChannelArray> localQChannelAfter(numberOfEventOrders);
+  std::vector<ChannelArray> channelTimeSumAfter(numberOfEventOrders);
+  for (std::size_t o = 0; o < numberOfEventOrders; ++o)
   {
-    result.selfEvent = selfEvent / speed;
-    result.collectiveEvent = collectiveEvent / speed;
-    result.selfEventError = meanAndError(blockSelfEvent).second;
-    result.collectiveEventError = meanAndError(blockCollectiveEvent).second;
-  }
-  if (speedEventTerminated > 0.0)
-  {
-    result.selfEventConditioned = 2.0 * selfEventConditioned / speedEventTerminated;
-    result.collectiveEventConditioned = 2.0 * collectiveEventConditioned / speedEventTerminated;
-    result.selfEventConditionedError = meanAndError(blockSelfEventConditioned).second;
-    result.collectiveEventConditionedError = meanAndError(blockCollectiveEventConditioned).second;
-  }
-  if (numberOfTrajectories > 0uz)
-  {
-    result.cappedFraction =
-        static_cast<double>(result.numberOfCappedTrajectories + result.numberOfUncommittedTrajectories) /
-        static_cast<double>(numberOfTrajectories);
+    TransmissionResult::EventOrder& order = result.eventOrders[o];
+    order.order = o + 1uz;
+    localQChannelAfter[o].fill(0.0);
+    channelTimeSumAfter[o].fill(0.0);
+    double selfEvent{0.0}, collectiveEvent{0.0};
+    double speedEventTerminated{0.0}, selfEventConditioned{0.0}, collectiveEventConditioned{0.0};
+    double terminationTimeSum{0.0};
+    std::vector<double> blockSelfEvent, blockCollectiveEvent;
+    std::vector<double> blockSelfEventConditioned, blockCollectiveEventConditioned;
+    for (const DcTSTTransmissionAccumulator& accumulator : transmission)
+    {
+      if (o >= accumulator.byEvent.size()) continue;
+      const DcTSTTransmissionAccumulator::EventOrderSums& sums = accumulator.byEvent[o];
+      order.numberOfEventTerminatedTrajectories += sums.numberOfEventTerminatedTrajectories;
+      order.numberOfCappedTrajectories += sums.numberOfCappedTrajectories;
+      terminationTimeSum += sums.terminationTimeSum;
+      order.maximumTerminationTime = std::max(order.maximumTerminationTime, sums.terminationTimeMaximum);
+      for (std::size_t c = 0; c < static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count); ++c)
+      {
+        for (std::size_t d = 0; d < 2; ++d)
+        {
+          order.terminatingEvents[d][c] += sums.terminatingEvents[d][c];
+          order.allEvents[d][c] += sums.allEvents[d][c];
+        }
+        localQChannelAfter[o][c] += sums.localQChannelAfter[c];
+        channelTimeSumAfter[o][c] += sums.channelTimeSumAfter[c];
+        order.channelEventsAfter[c] += sums.channelEventsAfter[c];
+      }
+      for (std::size_t b = 0; b < accumulator.numberOfBlocks; ++b)
+      {
+        selfEvent += sums.self[b];
+        collectiveEvent += sums.collective[b];
+        collectiveEventAfter[o] += sums.collectiveAfterCommitment[b];
+        if (accumulator.numberOfTrajectoryPairs[b] > 0uz && accumulator.speed[b] > 0.0)
+        {
+          blockSelfEvent.push_back(sums.self[b] / accumulator.speed[b]);
+          blockCollectiveEvent.push_back(sums.collective[b] / accumulator.speed[b]);
+          // the differences are far less noisy than the kappas themselves (same trajectories)
+          blockEventExcess[o].push_back((sums.collective[b] - sums.self[b]) / accumulator.speed[b]);
+          blockEventBackCorrelation[o].push_back((sums.self[b] - accumulator.selfCommitted[b].back()) /
+                                                 accumulator.speed[b]);
+          blockCollectiveEventAfter[o].push_back(sums.collectiveAfterCommitment[b] / accumulator.speed[b]);
+        }
+        speedEventTerminated += sums.speedTerminated[b];
+        selfEventConditioned += sums.selfConditioned[b];
+        collectiveEventConditioned += sums.collectiveConditioned[b];
+        if (sums.speedTerminated[b] > 0.0)
+        {
+          // per trajectory member: kappa = 2 sum |qdot| s Delta / sum |qdot| (see the accumulator)
+          blockSelfEventConditioned.push_back(2.0 * sums.selfConditioned[b] / sums.speedTerminated[b]);
+          blockCollectiveEventConditioned.push_back(2.0 * sums.collectiveConditioned[b] / sums.speedTerminated[b]);
+        }
+      }
+    }
+    if (order.numberOfEventTerminatedTrajectories > 0uz)
+    {
+      order.meanTerminationTime = terminationTimeSum / static_cast<double>(order.numberOfEventTerminatedTrajectories);
+    }
+    if (speed > 0.0)
+    {
+      order.selfEvent = selfEvent / speed;
+      order.collectiveEvent = collectiveEvent / speed;
+      order.selfEventError = meanAndError(blockSelfEvent).second;
+      order.collectiveEventError = meanAndError(blockCollectiveEvent).second;
+    }
+    if (speedEventTerminated > 0.0)
+    {
+      order.selfEventConditioned = 2.0 * selfEventConditioned / speedEventTerminated;
+      order.collectiveEventConditioned = 2.0 * collectiveEventConditioned / speedEventTerminated;
+      order.selfEventConditionedError = meanAndError(blockSelfEventConditioned).second;
+      order.collectiveEventConditionedError = meanAndError(blockCollectiveEventConditioned).second;
+    }
+    if (numberOfTrajectories > 0uz)
+    {
+      order.cappedFraction =
+          static_cast<double>(order.numberOfCappedTrajectories + result.numberOfUncommittedTrajectories) /
+          static_cast<double>(numberOfTrajectories);
+    }
   }
 
   result.self.assign(numberOfTimes, 0.0);
@@ -3314,45 +3443,56 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
   const double selfCommittedFinal = result.selfCommitted.back();
   if (std::abs(selfCommittedFinal) > 1e-12)
   {
-    result.backCorrelationFactor = result.selfEvent / selfCommittedFinal;
-    result.collectiveExcess = result.collectiveEvent / selfCommittedFinal - 1.0;
-    // block errors of the differences; epsilon = (kappa_C^event - kappa_S^event)/kappa_S^committed + (f - 1)
-    const double backCorrelationError = meanAndError(blockEventBackCorrelation).second;
-    const double excessError = meanAndError(blockEventExcess).second;
-    result.backCorrelationFactorError = backCorrelationError / std::abs(selfCommittedFinal);
-    result.collectiveExcessError =
-        std::sqrt(excessError * excessError + backCorrelationError * backCorrelationError) /
-        std::abs(selfCommittedFinal);
-    result.backCorrelationFactorConditioned = result.selfEventConditioned / selfCommittedFinal;
-    result.collectiveExcessConditioned = result.collectiveEventConditioned / selfCommittedFinal - 1.0;
-    // a capped trajectory contributes Delta = +-1 and Q_local = 0, i.e. exactly kappa_S^committed; the
-    // deviations f - 1 and epsilon therefore scale with the event-terminated fraction 1 - p_cap
-    const double eventFraction = 1.0 - result.cappedFraction;
-    if (eventFraction > 1e-12)
+    for (std::size_t o = 0; o < numberOfEventOrders; ++o)
     {
-      result.backCorrelationFactorCapCorrected = 1.0 + (result.backCorrelationFactor - 1.0) / eventFraction;
-      result.collectiveExcessCapCorrected = result.collectiveExcess / eventFraction;
+      TransmissionResult::EventOrder& order = result.eventOrders[o];
+      order.backCorrelationFactor = order.selfEvent / selfCommittedFinal;
+      order.collectiveExcess = order.collectiveEvent / selfCommittedFinal - 1.0;
+      // block errors of the differences; epsilon = (kappa_C^event - kappa_S^event)/kappa_S^committed + (f - 1)
+      const double backCorrelationError = meanAndError(blockEventBackCorrelation[o]).second;
+      const double excessError = meanAndError(blockEventExcess[o]).second;
+      order.backCorrelationFactorError = backCorrelationError / std::abs(selfCommittedFinal);
+      order.collectiveExcessError = std::sqrt(excessError * excessError + backCorrelationError * backCorrelationError) /
+                                    std::abs(selfCommittedFinal);
+      order.backCorrelationFactorConditioned = order.selfEventConditioned / selfCommittedFinal;
+      order.collectiveExcessConditioned = order.collectiveEventConditioned / selfCommittedFinal - 1.0;
+      // a capped trajectory contributes Delta = +-1 and Q_local = 0, i.e. exactly kappa_S^committed; the
+      // deviations f - 1 and epsilon therefore scale with the event-terminated fraction 1 - p_cap
+      const double eventFraction = 1.0 - order.cappedFraction;
+      if (eventFraction > 1e-12)
+      {
+        order.backCorrelationFactorCapCorrected = 1.0 + (order.backCorrelationFactor - 1.0) / eventFraction;
+        order.collectiveExcessCapCorrected = order.collectiveExcess / eventFraction;
+      }
+      // epsilon_after of the decomposition epsilon - (f - 1) = epsilon_before + epsilon_after, and per channel
+      if (speed > 0.0)
+      {
+        order.collectiveExcessAfterCommitment = collectiveEventAfter[o] / speed / selfCommittedFinal;
+        order.collectiveExcessAfterCommitmentError =
+            meanAndError(blockCollectiveEventAfter[o]).second / std::abs(selfCommittedFinal);
+        for (std::size_t c = 0; c < static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count); ++c)
+        {
+          order.collectiveExcessChannelAfter[c] = localQChannelAfter[o][c] / speed / selfCommittedFinal;
+          order.channelMeanTimeAfter[c] =
+              (order.channelEventsAfter[c] > 0uz)
+                  ? channelTimeSumAfter[o][c] / static_cast<double>(order.channelEventsAfter[c])
+                  : 0.0;
+        }
+      }
     }
-    // decomposition of epsilon - (f - 1) = (kappa_C^event - kappa_S^event) / kappa_S^committed into the
-    // crossings before and after commitment, and per channel
+    // epsilon_before: the crossings before commitment (independent of the event order), and per channel
     if (speed > 0.0)
     {
       result.collectiveExcessBeforeCommitment = collectiveEventBefore / speed / selfCommittedFinal;
-      result.collectiveExcessAfterCommitment = collectiveEventAfter / speed / selfCommittedFinal;
       result.collectiveExcessBeforeCommitmentError =
           meanAndError(blockCollectiveEventBefore).second / std::abs(selfCommittedFinal);
-      result.collectiveExcessAfterCommitmentError =
-          meanAndError(blockCollectiveEventAfter).second / std::abs(selfCommittedFinal);
-      for (std::size_t phase = 0; phase < 2; ++phase)
+      for (std::size_t c = 0; c < static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count); ++c)
       {
-        for (std::size_t c = 0; c < static_cast<std::size_t>(DcTSTTransmissionAccumulator::EventChannel::Count); ++c)
-        {
-          result.collectiveExcessChannel[phase][c] = localQChannel[phase][c] / speed / selfCommittedFinal;
-          result.channelMeanTime[phase][c] =
-              (result.channelEvents[phase][c] > 0uz)
-                  ? channelTimeSum[phase][c] / static_cast<double>(result.channelEvents[phase][c])
-                  : 0.0;
-        }
+        result.collectiveExcessChannelBefore[c] = localQChannelBefore[c] / speed / selfCommittedFinal;
+        result.channelMeanTimeBefore[c] =
+            (result.channelEventsBefore[c] > 0uz)
+                ? channelTimeSumBefore[c] / static_cast<double>(result.channelEventsBefore[c])
+                : 0.0;
       }
     }
 
@@ -3740,51 +3880,89 @@ void DynamicallyCorrectedTST::output()
     if (eventMode)
     {
       using EventChannel = DcTSTTransmissionAccumulator::EventChannel;
+      using EventOrder = TransmissionResult::EventOrder;
+      const EventOrder& last = kappa.lastEventOrder();
       const std::size_t total = 2uz * kappa.numberOfTrajectoryPairs;
       auto fraction = [&](std::size_t n) { return static_cast<double>(n) / static_cast<double>(std::max(1uz, total)); };
       std::print(stream, "Event-terminated estimator ({} local axial event(s) after commitment, cap {} [ps]):\n",
                  settings.terminationEvents, settings.trajectoryTime);
       std::print(stream, "    trajectories ended by an event:      {} ({:.4f})\n",
-                 kappa.numberOfEventTerminatedTrajectories, fraction(kappa.numberOfEventTerminatedTrajectories));
-      std::print(stream, "    trajectories capped after commitment: {} ({:.4f})\n", kappa.numberOfCappedTrajectories,
-                 fraction(kappa.numberOfCappedTrajectories));
+                 last.numberOfEventTerminatedTrajectories, fraction(last.numberOfEventTerminatedTrajectories));
+      std::print(stream, "    trajectories capped after commitment: {} ({:.4f})\n", last.numberOfCappedTrajectories,
+                 fraction(last.numberOfCappedTrajectories));
       std::print(stream, "    trajectories never committed:        {} ({:.4f})\n",
                  kappa.numberOfUncommittedTrajectories, fraction(kappa.numberOfUncommittedTrajectories));
       std::print(stream, "    termination time (event-ended):      mean {:.4f}, maximum {:.4f} [ps]\n",
-                 kappa.meanTerminationTime, kappa.maximumTerminationTime);
+                 last.meanTerminationTime, last.maximumTerminationTime);
       std::print(stream, "    integrated time per trajectory:      mean {:.4f} [ps]\n", kappa.meanIntegratedTime);
-      std::print(stream, "    kappa_S^event (net cage count):      {:.5f} +/- {:.5f}\n", kappa.selfEvent,
-                 kappa.selfEventError);
+      std::print(stream, "    kappa_S^event (net cage count):      {:.5f} +/- {:.5f}\n", last.selfEvent,
+                 last.selfEventError);
       std::print(stream, "    kappa_S^committed (final):           {:.5f}\n", kappa.selfCommitted.back());
-      std::print(stream, "    kappa_C^event (self + Q_local):      {:.5f} +/- {:.5f}\n", kappa.collectiveEvent,
-                 kappa.collectiveEventError);
+      std::print(stream, "    kappa_C^event (self + Q_local):      {:.5f} +/- {:.5f}\n", last.collectiveEvent,
+                 last.collectiveEventError);
       std::print(stream, "    f = kappa_S^event / kappa_S^committed:        {:.5f} +/- {:.5f}\n",
-                 kappa.backCorrelationFactor, kappa.backCorrelationFactorError);
+                 last.backCorrelationFactor, last.backCorrelationFactorError);
       std::print(stream, "    epsilon = kappa_C^event / kappa_S^committed - 1: {:.5f} +/- {:.5f}\n",
-                 kappa.collectiveExcess, kappa.collectiveExcessError);
+                 last.collectiveExcess, last.collectiveExcessError);
       std::print(stream, "    (errors from the block values of the differences kappa_C^event - kappa_S^event and\n"
                          "     kappa_S^event - kappa_S^committed, which share the trajectories and are much less noisy\n"
                          "     than the kappas themselves; the error of k^TST is not included)\n");
       std::print(stream, "  Cap-corrected (deviations divided by the event-ended fraction 1 - p_cap, p_cap = {:.4f}):\n",
-                 kappa.cappedFraction);
+                 last.cappedFraction);
       std::print(stream, "    f_corr = 1 + (f - 1) / (1 - p_cap):              {:.5f}\n",
-                 kappa.backCorrelationFactorCapCorrected);
+                 last.backCorrelationFactorCapCorrected);
       std::print(stream, "    epsilon_corr = epsilon / (1 - p_cap):            {:.5f}\n",
-                 kappa.collectiveExcessCapCorrected);
+                 last.collectiveExcessCapCorrected);
       std::print(stream, "  Conditioned on the event-ended trajectories only (per trajectory, not per pair):\n");
-      std::print(stream, "    kappa_S^event|cond:                  {:.5f} +/- {:.5f}\n", kappa.selfEventConditioned,
-                 kappa.selfEventConditionedError);
+      std::print(stream, "    kappa_S^event|cond:                  {:.5f} +/- {:.5f}\n", last.selfEventConditioned,
+                 last.selfEventConditionedError);
       std::print(stream, "    kappa_C^event|cond:                  {:.5f} +/- {:.5f}\n",
-                 kappa.collectiveEventConditioned, kappa.collectiveEventConditionedError);
+                 last.collectiveEventConditioned, last.collectiveEventConditionedError);
       std::print(stream, "    f_cond = kappa_S^event|cond / kappa_S^committed:        {:.5f}\n",
-                 kappa.backCorrelationFactorConditioned);
+                 last.backCorrelationFactorConditioned);
       std::print(stream, "    epsilon_cond = kappa_C^event|cond / kappa_S^committed - 1: {:.5f}\n",
-                 kappa.collectiveExcessConditioned);
+                 last.collectiveExcessConditioned);
       std::print(stream,
                  "    (f_corr/epsilon_corr and f_cond/epsilon_cond agree when the capped trajectories are an "
                  "unbiased sample;\n"
                  "    a cap T >~ 5 tau_event keeps p_cap below a few percent and makes all three estimates "
                  "coincide)\n");
+
+      if (kappa.eventOrders.size() > 1uz)
+      {
+        // the lower orders from the same trajectories: a trajectory passes through its events 1..n-1 on the way to
+        // the n-th, and its state at the k-th event does not depend on where the integration stops
+        std::print(stream,
+                   "  Every event order k = 1..{} from the same trajectories (the state at the k-th event after "
+                   "commitment,\n"
+                   "  identical to a run with 'TerminationEvents' = k and the same cap; f and epsilon should be "
+                   "independent of k\n"
+                   "  once the hopping beyond the k-th event is uncorrelated with the tagged hop):\n",
+                   kappa.eventOrders.size());
+        std::print(stream, "    {:>3} {:>9} {:>8} {:>9} {:>8} {:>9} {:>8} {:>9} {:>8} {:>9} {:>9} {:>7} {:>9} {:>9}\n",
+                   "k", "kappa_S", "+/-", "kappa_C", "+/-", "f", "+/-", "epsilon", "+/-", "f_cond", "eps_cond", "p_cap",
+                   "eps_after", "<t_k>[ps]");
+        for (const EventOrder& order : kappa.eventOrders)
+        {
+          std::print(
+              stream,
+              "    {:>3} {:>9.5f} {:>8.5f} {:>9.5f} {:>8.5f} {:>9.5f} {:>8.5f} {:>9.5f} {:>8.5f} {:>9.5f} {:>9.5f} "
+              "{:>7.4f} {:>9.5f} {:>9.4f}\n",
+              order.order, order.selfEvent, order.selfEventError, order.collectiveEvent, order.collectiveEventError,
+              order.backCorrelationFactor, order.backCorrelationFactorError, order.collectiveExcess,
+              order.collectiveExcessError, order.backCorrelationFactorConditioned, order.collectiveExcessConditioned,
+              order.cappedFraction, order.collectiveExcessAfterCommitment, order.meanTerminationTime);
+        }
+        std::print(stream,
+                   "    (p_cap at order k counts the trajectories capped before their k-th event; eps_after is the "
+                   "part of epsilon\n"
+                   "     from the other molecules after commitment up to the k-th event, eps_before = {:.5f} is "
+                   "common to all k;\n"
+                   "     the channel tables below are for k = {}, those of every k are in the JSON output "
+                   "'results.eventTerminated.byEvent')\n",
+                   kappa.collectiveExcessBeforeCommitment, kappa.eventOrders.size());
+      }
+
       std::print(stream,
                  "    channels in the frame of the tagged hop (A = cage of departure, B = arrival, A' behind A, B' "
                  "beyond B;\n"
@@ -3800,10 +3978,10 @@ void DynamicallyCorrectedTST::output()
       for (std::size_t c = 0; c < static_cast<std::size_t>(EventChannel::Count); ++c)
       {
         std::print(stream, "    {:<26} {:>10} {:>10} {:>10}   {:>10} {:>10} {:>10}\n", channelNames[c],
-                   kappa.terminatingEvents[0][c], kappa.terminatingEvents[1][c],
-                   kappa.terminatingEvents[0][c] + kappa.terminatingEvents[1][c], kappa.allEvents[0][c],
-                   kappa.allEvents[1][c], kappa.allEvents[0][c] + kappa.allEvents[1][c]);
-        terminatingSum += kappa.terminatingEvents[0][c] + kappa.terminatingEvents[1][c];
+                   last.terminatingEvents[0][c], last.terminatingEvents[1][c],
+                   last.terminatingEvents[0][c] + last.terminatingEvents[1][c], last.allEvents[0][c],
+                   last.allEvents[1][c], last.allEvents[0][c] + last.allEvents[1][c]);
+        terminatingSum += last.terminatingEvents[0][c] + last.terminatingEvents[1][c];
       }
       std::print(stream, "    {:<26} {:>32}\n", "terminating events total", terminatingSum);
       std::print(stream,
@@ -3814,15 +3992,15 @@ void DynamicallyCorrectedTST::output()
       // channel
       std::print(stream, "  Decomposition of the collective excess, epsilon = (f - 1) + epsilon_before + epsilon_after:\n");
       std::print(stream, "    (f - 1), tagged molecule after commitment:         {:>9.5f} +/- {:.5f}\n",
-                 kappa.backCorrelationFactor - 1.0, kappa.backCorrelationFactorError);
+                 last.backCorrelationFactor - 1.0, last.backCorrelationFactorError);
       std::print(stream, "    epsilon_before, others before tagged commitment:   {:>9.5f} +/- {:.5f}\n",
                  kappa.collectiveExcessBeforeCommitment, kappa.collectiveExcessBeforeCommitmentError);
       std::print(stream, "    epsilon_after, others after tagged commitment:     {:>9.5f} +/- {:.5f}\n",
-                 kappa.collectiveExcessAfterCommitment, kappa.collectiveExcessAfterCommitmentError);
+                 last.collectiveExcessAfterCommitment, last.collectiveExcessAfterCommitmentError);
       std::print(stream, "    sum:                                               {:>9.5f}   (epsilon = {:.5f})\n",
-                 (kappa.backCorrelationFactor - 1.0) + kappa.collectiveExcessBeforeCommitment +
-                     kappa.collectiveExcessAfterCommitment,
-                 kappa.collectiveExcess);
+                 (last.backCorrelationFactor - 1.0) + kappa.collectiveExcessBeforeCommitment +
+                     last.collectiveExcessAfterCommitment,
+                 last.collectiveExcess);
       std::print(stream,
                  "    per channel (frame of the tagged hop; 'events' are all crossings of both members of the pair,\n"
                  "    <t> the mean time since launch (before) or since commitment (after), 'epsilon' the |qdot|-weighted\n"
@@ -3833,8 +4011,8 @@ void DynamicallyCorrectedTST::output()
       for (std::size_t c = 0; c < static_cast<std::size_t>(EventChannel::Count); ++c)
       {
         std::print(stream, "    {:<26} {:>8} {:>9.3f} {:>10.5f}   {:>8} {:>9.3f} {:>10.5f}\n", channelNames[c],
-                   kappa.channelEvents[0][c], kappa.channelMeanTime[0][c], kappa.collectiveExcessChannel[0][c],
-                   kappa.channelEvents[1][c], kappa.channelMeanTime[1][c], kappa.collectiveExcessChannel[1][c]);
+                   kappa.channelEventsBefore[c], kappa.channelMeanTimeBefore[c], kappa.collectiveExcessChannelBefore[c],
+                   last.channelEventsAfter[c], last.channelMeanTimeAfter[c], last.collectiveExcessChannelAfter[c]);
       }
       std::print(stream, "\n");
 
@@ -3851,7 +4029,7 @@ void DynamicallyCorrectedTST::output()
                    "    neighbour end the race with s = 0; 'axial': the six axial channels only);\n"
                    "    epsilon_hyb = epsilon_conc + epsilon_Markov should not depend on tau once the hopping beyond\n"
                    "    tau is Markovian, and tends to the first-event epsilon = {:.5f} +/- {:.5f} for tau -> infinity.\n",
-                   kappa.collectiveExcess, kappa.collectiveExcessError);
+                   kappa.eventOrders.front().collectiveExcess, kappa.eventOrders.front().collectiveExcessError);
         std::print(stream, "    {:>8} {:>10} {:>9} {:>10} {:>10} {:>8} {:>8} {:>6}", "tau [ps]", "eps_conc", "+/-",
                    "tagged", "others", "p_event", "p_trunc", "states");
         if (kappa.hybrid.front().markovAvailable)
@@ -3898,14 +4076,14 @@ void DynamicallyCorrectedTST::output()
           std::print(stream, ")\n");
         }
         // the dominant occupancy states at the last handover time
-        const TransmissionResult::Hybrid& last = kappa.hybrid.back();
+        const TransmissionResult::Hybrid& lastHandover = kappa.hybrid.back();
         std::print(stream, "    occupancy states (n_A', n_A, n_B, n_B') at tau = {:g} ps, weight fraction (members):\n",
-                   last.time);
-        for (std::size_t i = 0; i < std::min(12uz, last.occupancy.size()); ++i)
+                   lastHandover.time);
+        for (std::size_t i = 0; i < std::min(12uz, lastHandover.occupancy.size()); ++i)
         {
-          const auto& [state, weight] = last.occupancy[i];
+          const auto& [state, weight] = lastHandover.occupancy[i];
           std::print(stream, "      ({:>2}, {:>2}, {:>2}, {:>2})  {:.4f} ({})\n", state.nAPrime, state.nA, state.nB,
-                     state.nBPrime, weight, last.occupancyCounts[i]);
+                     state.nBPrime, weight, lastHandover.occupancyCounts[i]);
         }
         std::print(stream, "\n");
       }
@@ -3955,25 +4133,49 @@ void DynamicallyCorrectedTST::output()
           std::print(stream, "    D_C (shell <= {}):                    {:.6e} +/- {:.2e} [m^2/s]\n", s,
                      kC * lambdaSquared * conversion, kCError * lambdaSquared * conversion);
       }
-      double kSEvent{0.0}, kSEventError{0.0}, kCEvent{0.0}, kCEventError{0.0};
+      // the event-terminated rates at every order k (the n-th is the headline value)
+      struct EventRates
+      {
+        double kSelf{0.0}, kSelfError{0.0}, kCollective{0.0}, kCollectiveError{0.0};
+      };
+      auto eventRates = [&](const TransmissionResult::EventOrder& order) -> EventRates
+      {
+        EventRates rates;
+        rates.kSelf = order.selfEvent * kTST;
+        rates.kSelfError = std::abs(rates.kSelf) *
+                           std::sqrt(std::pow(kTSTError / std::max(kTST, 1e-300), 2) +
+                                     std::pow(order.selfEventError / std::max(std::abs(order.selfEvent), 1e-300), 2));
+        rates.kCollective = order.collectiveEvent * kTST;
+        rates.kCollectiveError =
+            std::abs(rates.kCollective) *
+            std::sqrt(std::pow(kTSTError / std::max(kTST, 1e-300), 2) +
+                      std::pow(order.collectiveEventError / std::max(std::abs(order.collectiveEvent), 1e-300), 2));
+        return rates;
+      };
+      EventRates lastRates;
       if (eventMode)
       {
-        kSEvent = kappa.selfEvent * kTST;
-        kSEventError = std::abs(kSEvent) *
-                       std::sqrt(std::pow(kTSTError / std::max(kTST, 1e-300), 2) +
-                                 std::pow(kappa.selfEventError / std::max(std::abs(kappa.selfEvent), 1e-300), 2));
-        kCEvent = kappa.collectiveEvent * kTST;
-        kCEventError =
-            std::abs(kCEvent) *
-            std::sqrt(std::pow(kTSTError / std::max(kTST, 1e-300), 2) +
-                      std::pow(kappa.collectiveEventError / std::max(std::abs(kappa.collectiveEvent), 1e-300), 2));
+        lastRates = eventRates(kappa.lastEventOrder());
         std::print(stream, "    event-terminated estimator:\n");
-        std::print(stream, "    k_(A->B) = kappa_S^event k^TST:      {:.6e} +/- {:.2e} [1/ps]\n", kSEvent,
-                   kSEventError);
+        std::print(stream, "    k_(A->B) = kappa_S^event k^TST:      {:.6e} +/- {:.2e} [1/ps]\n", lastRates.kSelf,
+                   lastRates.kSelfError);
         std::print(stream, "    D_S = kappa_S^event k^TST lambda^2:  {:.6e} +/- {:.2e} [m^2/s]\n",
-                   kSEvent * lambdaSquared * conversion, kSEventError * lambdaSquared * conversion);
+                   lastRates.kSelf * lambdaSquared * conversion, lastRates.kSelfError * lambdaSquared * conversion);
         std::print(stream, "    D_C = kappa_C^event k^TST lambda^2:  {:.6e} +/- {:.2e} [m^2/s]\n",
-                   kCEvent * lambdaSquared * conversion, kCEventError * lambdaSquared * conversion);
+                   lastRates.kCollective * lambdaSquared * conversion,
+                   lastRates.kCollectiveError * lambdaSquared * conversion);
+        if (kappa.eventOrders.size() > 1uz)
+        {
+          std::print(stream, "    per event order k:  {:>3} {:>14} {:>14} {:>14} {:>14}\n", "k", "k_(A->B) [1/ps]",
+                     "+/-", "D_S [m^2/s]", "D_C [m^2/s]");
+          for (const TransmissionResult::EventOrder& order : kappa.eventOrders)
+          {
+            const EventRates rates = eventRates(order);
+            std::print(stream, "                        {:>3} {:>14.6e} {:>14.2e} {:>14.6e} {:>14.6e}\n", order.order,
+                       rates.kSelf, rates.kSelfError, rates.kSelf * lambdaSquared * conversion,
+                       rates.kCollective * lambdaSquared * conversion);
+          }
+        }
       }
       if (occupancyMode)
       {
@@ -4011,12 +4213,24 @@ void DynamicallyCorrectedTST::output()
       }
       if (eventMode)
       {
-        json["kSelfEvent"] = kSEvent;
-        json["kSelfEventError"] = kSEventError;
-        json["DSelfEvent"] = kSEvent * lambdaSquared * conversion;
-        json["DSelfEventError"] = kSEventError * lambdaSquared * conversion;
-        json["DCollectiveEvent"] = kCEvent * lambdaSquared * conversion;
-        json["DCollectiveEventError"] = kCEventError * lambdaSquared * conversion;
+        auto writeRates = [&](nlohmann::json& target, const EventRates& rates)
+        {
+          target["kSelfEvent"] = rates.kSelf;
+          target["kSelfEventError"] = rates.kSelfError;
+          target["DSelfEvent"] = rates.kSelf * lambdaSquared * conversion;
+          target["DSelfEventError"] = rates.kSelfError * lambdaSquared * conversion;
+          target["DCollectiveEvent"] = rates.kCollective * lambdaSquared * conversion;
+          target["DCollectiveEventError"] = rates.kCollectiveError * lambdaSquared * conversion;
+        };
+        writeRates(json, lastRates);
+        json["byEvent"] = nlohmann::json::array();
+        for (const TransmissionResult::EventOrder& order : kappa.eventOrders)
+        {
+          nlohmann::json entry;
+          entry["order"] = order.order;
+          writeRates(entry, eventRates(order));
+          json["byEvent"].push_back(std::move(entry));
+        }
       }
     };
     if (barrierProbability.has_value())
@@ -4108,54 +4322,69 @@ void DynamicallyCorrectedTST::output()
   {
     using EventChannel = DcTSTTransmissionAccumulator::EventChannel;
     nlohmann::json& json = outputJson["results"]["eventTerminated"];
-    json["kappaSelfEvent"] = kappa.selfEvent;
-    json["kappaSelfEventError"] = kappa.selfEventError;
-    json["kappaSelfCommittedFinal"] = kappa.selfCommitted.back();
-    json["kappaCollectiveEvent"] = kappa.collectiveEvent;
-    json["kappaCollectiveEventError"] = kappa.collectiveEventError;
-    json["backCorrelationFactor"] = kappa.backCorrelationFactor;
-    json["backCorrelationFactorError"] = kappa.backCorrelationFactorError;
-    json["collectiveExcess"] = kappa.collectiveExcess;
-    json["collectiveExcessError"] = kappa.collectiveExcessError;
-    json["cappedFraction"] = kappa.cappedFraction;
-    json["backCorrelationFactorCapCorrected"] = kappa.backCorrelationFactorCapCorrected;
-    json["collectiveExcessCapCorrected"] = kappa.collectiveExcessCapCorrected;
-    json["kappaSelfEventConditioned"] = kappa.selfEventConditioned;
-    json["kappaSelfEventConditionedError"] = kappa.selfEventConditionedError;
-    json["kappaCollectiveEventConditioned"] = kappa.collectiveEventConditioned;
-    json["kappaCollectiveEventConditionedError"] = kappa.collectiveEventConditionedError;
-    json["backCorrelationFactorConditioned"] = kappa.backCorrelationFactorConditioned;
-    json["collectiveExcessConditioned"] = kappa.collectiveExcessConditioned;
-    json["numberOfEventTerminatedTrajectories"] = kappa.numberOfEventTerminatedTrajectories;
-    json["numberOfCappedTrajectories"] = kappa.numberOfCappedTrajectories;
-    json["numberOfUncommittedTrajectories"] = kappa.numberOfUncommittedTrajectories;
-    json["meanTerminationTime"] = kappa.meanTerminationTime;
-    json["maximumTerminationTime"] = kappa.maximumTerminationTime;
-    json["meanIntegratedTime"] = kappa.meanIntegratedTime;
     static constexpr std::array<const char*, static_cast<std::size_t>(EventChannel::Count)> channelKeys = {
         "taggedBackHop",  "taggedForwardHop", "otherAtoB", "otherBtoA",
         "otherAtoAPrime", "otherAPrimeToA",   "otherBtoC", "otherCtoB"};
-    for (std::size_t c = 0; c < static_cast<std::size_t>(EventChannel::Count); ++c)
+    // the quantities of one event order; the n-th order is written under the top-level keys (the run's headline
+    // estimate), and every order k = 1..n under 'byEvent'
+    auto writeOrder = [&](nlohmann::json& target, const TransmissionResult::EventOrder& order)
     {
-      json["terminatingEvents"]["forward"][channelKeys[c]] = kappa.terminatingEvents[0][c];
-      json["terminatingEvents"]["reverse"][channelKeys[c]] = kappa.terminatingEvents[1][c];
-      json["allEvents"]["forward"][channelKeys[c]] = kappa.allEvents[0][c];
-      json["allEvents"]["reverse"][channelKeys[c]] = kappa.allEvents[1][c];
-      for (std::size_t phase = 0; phase < 2; ++phase)
+      target["order"] = order.order;
+      target["kappaSelfEvent"] = order.selfEvent;
+      target["kappaSelfEventError"] = order.selfEventError;
+      target["kappaCollectiveEvent"] = order.collectiveEvent;
+      target["kappaCollectiveEventError"] = order.collectiveEventError;
+      target["backCorrelationFactor"] = order.backCorrelationFactor;
+      target["backCorrelationFactorError"] = order.backCorrelationFactorError;
+      target["collectiveExcess"] = order.collectiveExcess;
+      target["collectiveExcessError"] = order.collectiveExcessError;
+      target["cappedFraction"] = order.cappedFraction;
+      target["backCorrelationFactorCapCorrected"] = order.backCorrelationFactorCapCorrected;
+      target["collectiveExcessCapCorrected"] = order.collectiveExcessCapCorrected;
+      target["kappaSelfEventConditioned"] = order.selfEventConditioned;
+      target["kappaSelfEventConditionedError"] = order.selfEventConditionedError;
+      target["kappaCollectiveEventConditioned"] = order.collectiveEventConditioned;
+      target["kappaCollectiveEventConditionedError"] = order.collectiveEventConditionedError;
+      target["backCorrelationFactorConditioned"] = order.backCorrelationFactorConditioned;
+      target["collectiveExcessConditioned"] = order.collectiveExcessConditioned;
+      target["numberOfEventTerminatedTrajectories"] = order.numberOfEventTerminatedTrajectories;
+      target["numberOfCappedTrajectories"] = order.numberOfCappedTrajectories;
+      target["meanTerminationTime"] = order.meanTerminationTime;
+      target["maximumTerminationTime"] = order.maximumTerminationTime;
+      for (std::size_t c = 0; c < static_cast<std::size_t>(EventChannel::Count); ++c)
       {
-        nlohmann::json& entry =
-            json["decomposition"]["channels"][channelKeys[c]][(phase == 0uz) ? "beforeCommitment" : "afterCommitment"];
-        entry["events"] = kappa.channelEvents[phase][c];
-        entry["meanTime"] = kappa.channelMeanTime[phase][c];
-        entry["collectiveExcess"] = kappa.collectiveExcessChannel[phase][c];
+        target["terminatingEvents"]["forward"][channelKeys[c]] = order.terminatingEvents[0][c];
+        target["terminatingEvents"]["reverse"][channelKeys[c]] = order.terminatingEvents[1][c];
+        target["allEvents"]["forward"][channelKeys[c]] = order.allEvents[0][c];
+        target["allEvents"]["reverse"][channelKeys[c]] = order.allEvents[1][c];
+        nlohmann::json& before = target["decomposition"]["channels"][channelKeys[c]]["beforeCommitment"];
+        before["events"] = kappa.channelEventsBefore[c];
+        before["meanTime"] = kappa.channelMeanTimeBefore[c];
+        before["collectiveExcess"] = kappa.collectiveExcessChannelBefore[c];
+        nlohmann::json& after = target["decomposition"]["channels"][channelKeys[c]]["afterCommitment"];
+        after["events"] = order.channelEventsAfter[c];
+        after["meanTime"] = order.channelMeanTimeAfter[c];
+        after["collectiveExcess"] = order.collectiveExcessChannelAfter[c];
       }
+      target["decomposition"]["backCorrelation"] = order.backCorrelationFactor - 1.0;
+      target["decomposition"]["backCorrelationError"] = order.backCorrelationFactorError;
+      target["decomposition"]["collectiveExcessBeforeCommitment"] = kappa.collectiveExcessBeforeCommitment;
+      target["decomposition"]["collectiveExcessBeforeCommitmentError"] = kappa.collectiveExcessBeforeCommitmentError;
+      target["decomposition"]["collectiveExcessAfterCommitment"] = order.collectiveExcessAfterCommitment;
+      target["decomposition"]["collectiveExcessAfterCommitmentError"] = order.collectiveExcessAfterCommitmentError;
+    };
+    writeOrder(json, kappa.lastEventOrder());
+    json["terminationEvents"] = settings.terminationEvents;
+    json["kappaSelfCommittedFinal"] = kappa.selfCommitted.back();
+    json["numberOfUncommittedTrajectories"] = kappa.numberOfUncommittedTrajectories;
+    json["meanIntegratedTime"] = kappa.meanIntegratedTime;
+    json["byEvent"] = nlohmann::json::array();
+    for (const TransmissionResult::EventOrder& order : kappa.eventOrders)
+    {
+      nlohmann::json entry;
+      writeOrder(entry, order);
+      json["byEvent"].push_back(std::move(entry));
     }
-    json["decomposition"]["backCorrelation"] = kappa.backCorrelationFactor - 1.0;
-    json["decomposition"]["backCorrelationError"] = kappa.backCorrelationFactorError;
-    json["decomposition"]["collectiveExcessBeforeCommitment"] = kappa.collectiveExcessBeforeCommitment;
-    json["decomposition"]["collectiveExcessBeforeCommitmentError"] = kappa.collectiveExcessBeforeCommitmentError;
-    json["decomposition"]["collectiveExcessAfterCommitment"] = kappa.collectiveExcessAfterCommitment;
-    json["decomposition"]["collectiveExcessAfterCommitmentError"] = kappa.collectiveExcessAfterCommitmentError;
     if (!kappa.hybrid.empty())
     {
       nlohmann::json& hybridJson = json["hybrid"];

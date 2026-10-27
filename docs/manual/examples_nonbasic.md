@@ -1498,17 +1498,20 @@ the window instead of for a fixed time: set
 commitment arrives after a few tens of picoseconds on average, and nearly
 every trajectory ends on an event long before the cap), and set
 `"SampleTrajectoryEvery"` to `200` so that the stored transmission functions
-stay at 3000 points. Run once with `"TerminationEvents" : 1` and once with
-`2` as a convergence check: the back-correlation factor
+stay at 3000 points. Run with `"TerminationEvents" : 2` (or higher): the
+run reports every lower order from the same trajectories, so the table over
+\f$k\f$ in the summary (and `results.eventTerminated.byEvent` in the JSON)
+is the convergence check. The back-correlation factor
 \f$f = \kappa_S^{\mathrm{event}}/\kappa_S^{\mathrm{committed}}\f$ and the
 collective excess
 \f$\epsilon = \kappa_C^{\mathrm{event}}/\kappa_S^{\mathrm{committed}} - 1\f$
-should agree within their errors between the two, and the channel table
-shows which hops (the tagged molecule's own back-hop, the other molecules'
-hops into or out of A and B, or the hops at the outer windows) end the
-trajectories. With a mean termination time of ~30 ps a trajectory costs
-about 15 times a 2 ps trajectory, so for the same number of pairs allow a
-few hours instead of 35 minutes (reduce `"NumberOfTransmissionCycles"` or
+should agree within their errors between \f$k = 1\f$ and \f$k = 2\f$, and
+the channel table shows which hops (the tagged molecule's own back-hop, the
+other molecules' hops into or out of A and B, or the hops at the outer
+windows) end the trajectories. With a mean time to the first event of
+~30 ps a trajectory costs about 15 times a 2 ps trajectory (and roughly
+\f$n\f$ times that at order \f$n\f$), so for the same number of pairs allow
+a few hours instead of 35 minutes (reduce `"NumberOfTransmissionCycles"` or
 the number of pairs accordingly); the fixed-time run is still the one to use
 for \f$\kappa(t)\f$ itself. Event mode combines with `"CageOccupancies"`.
 

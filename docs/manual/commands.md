@@ -1042,7 +1042,23 @@ reported separately at the end of the simulation.
     \kappa_S^{\mathrm{committed}}-1\f$ the net correlated flux of the other
     molecules in the column up to that event; raising `"TerminationEvents"`
     to 2 or 3 includes the next-order terms and should leave \f$f\f$ and
-    \f$\epsilon\f$ unchanged when converged. The summary reports
+    \f$\epsilon\f$ unchanged when converged. A run with
+    `"TerminationEvents" : n` yields every lower order from the same
+    trajectories: a trajectory passes through its events \f$1..n-1\f$ on the
+    way to the \f$n\f$-th, and its state at the \f$k\f$-th event does not
+    depend on where the integration stops, so the estimators at order
+    \f$k\f$ are exactly those of a run with `"TerminationEvents" : k` and the
+    same cap (a trajectory capped after its \f$k\f$-th event still counts as
+    event-ended at order \f$k\f$, so \f$p_{\mathrm{cap}}\f$ is smaller at the
+    lower orders). The summary prints a table over \f$k\f$ of
+    \f$\kappa_S^{\mathrm{event}}\f$, \f$\kappa_C^{\mathrm{event}}\f$,
+    \f$f\f$, \f$\epsilon\f$, their conditioned variants,
+    \f$p_{\mathrm{cap}}\f$ and the mean time of the \f$k\f$-th event, the
+    JSON output holds the full set of every order under
+    `results.eventTerminated.byEvent` (the top-level keys are the
+    \f$n\f$-th), and the per-pair records carry ten extra columns per lower
+    order. The convergence check in \f$n\f$ therefore needs a single run at
+    the highest order of interest. The summary reports
     \f$D_S=\kappa_S^{\mathrm{event}}k^{TST}\lambda^2\f$ and
     \f$D_C=\kappa_C^{\mathrm{event}}k^{TST}\lambda^2\f$ (with the imported
     \f$P(q^*)\f$, conditioned when `"CageOccupancies"` is set), the
