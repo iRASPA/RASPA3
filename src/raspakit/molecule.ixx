@@ -91,6 +91,7 @@ export struct Molecule
         orientationGradient(0.0, 0.0, 0.0, 0.0),
         mass(mass),
         invMass(1.0 / mass),
+        atomIndex(0),
         numberOfAtoms(numberOfAtoms),
         componentId(componentId) {};
 

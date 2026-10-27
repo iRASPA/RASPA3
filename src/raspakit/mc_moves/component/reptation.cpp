@@ -219,7 +219,11 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
       std::copy(new_electric_field.begin(), new_electric_field.end(), electricFieldMolecule.begin());
     }
 
+    // the grown record carries the new orientation; the position of the molecule in the atom array is unchanged
+    // and is not part of a grow result
+    const std::size_t atomIndex = molecule.atomIndex;
     molecule = growData->molecule;
+    molecule.atomIndex = atomIndex;
     molecule.centerOfMassPosition = component.computeCenterOfMass(molecule_atoms);
 
     return (growData->energies - retraceData.energies) + energyFourierDifference + polarizationDifference;
