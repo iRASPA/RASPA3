@@ -112,6 +112,34 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, StereoCentre
   return archive;
 }
 
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RadicalRecord &r)
+{
+  archive << r.bornStep;
+  archive << r.bornRule;
+  archive << r.bornGroup;
+  archive << r.diedStep;
+  archive << r.diedRule;
+  archive << r.alive;
+  archive << r.lastGroup;
+  archive << r.propagations;
+  archive << r.events;
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RadicalRecord &r)
+{
+  archive >> r.bornStep;
+  archive >> r.bornRule;
+  archive >> r.bornGroup;
+  archive >> r.diedStep;
+  archive >> r.diedRule;
+  archive >> r.alive;
+  archive >> r.lastGroup;
+  archive >> r.propagations;
+  archive >> r.events;
+  return archive;
+}
+
 // ---- PolymerTemplates ---------------------------------------------------------------------------------------------
 
 namespace
@@ -537,6 +565,8 @@ void PolymerLinkTable::activate(const std::vector<Component> &components,
     if (groupChirality.size() != groupState.size()) groupChirality.assign(groupState.size(), 0);
     if (previousGroup.size() != groupState.size()) previousGroup.assign(groupState.size(), noGroup);
     if (reactionCounts.size() != scheme.rules.size()) reactionCounts.resize(scheme.rules.size(), 0);
+    if (groupRadical.size() != groupState.size()) groupRadical.assign(groupState.size(), noRadical);
+    if (groupLastRadical.size() != groupState.size()) groupLastRadical.assign(groupState.size(), noRadical);
     fillTypes();
     return;
   }
@@ -555,6 +585,9 @@ void PolymerLinkTable::activate(const std::vector<Component> &components,
   groupChirality.assign(offset, 0);
   previousGroup.assign(offset, noGroup);
   reactionCounts.assign(scheme.rules.size(), 0);
+  groupRadical.assign(offset, noRadical);
+  groupLastRadical.assign(offset, noRadical);
+  radicals.clear();
   fillTypes();
   groupState = groupInitial;
   layout = makeLayout(components, numberOfMoleculesPerComponent);
@@ -633,6 +666,11 @@ std::size_t PolymerLinkTable::countActive() const
     if (active(i)) ++count;
   }
   return count;
+}
+
+std::size_t PolymerLinkTable::countLivingRadicals() const
+{
+  return static_cast<std::size_t>(std::ranges::count_if(radicals, [](const RadicalRecord &r) { return r.alive; }));
 }
 
 double PolymerLinkTable::conversion() const
@@ -738,12 +776,13 @@ void PolymerLinkTable::updateMoleculeMass(const PolymerAtomRef &ref, const Force
   molecule.invMass = mass > 0.0 ? 1.0 / mass : 0.0;
 }
 
-std::vector<std::size_t> PolymerLinkTable::apply(std::size_t ruleIndex, std::span<const std::size_t> groups,
-                                                 std::span<const std::int8_t> chiralities,
-                                                 std::span<const std::int8_t> nextChiralities,
-                                                 const ForceField &forceField, const std::vector<Component> &components,
-                                                 std::span<Atom> atoms, std::span<Molecule> moleculeData,
-                                                 const SimulationBox &simulationBox, std::uint64_t step)
+PolymerLinkTable::ApplyResult PolymerLinkTable::apply(std::size_t ruleIndex, std::span<const std::size_t> groups,
+                                                      std::span<const std::int8_t> chiralities,
+                                                      std::span<const std::int8_t> nextChiralities,
+                                                      const ForceField &forceField,
+                                                      const std::vector<Component> &components, std::span<Atom> atoms,
+                                                      std::span<Molecule> moleculeData,
+                                                      const SimulationBox &simulationBox, std::uint64_t step)
 {
   const ReactionRule &rule = scheme.rules[ruleIndex];
   if (groups.size() != rule.reactants.size())
@@ -801,6 +840,99 @@ std::vector<std::size_t> PolymerLinkTable::apply(std::size_t ruleIndex, std::spa
     }
     breakPairs.push_back(pair);
   }
+
+  // the radicals: handed over by the state changes of the reactants (see the header)
+  ApplyResult result{};
+  if (groupRadical.size() != groupState.size()) groupRadical.assign(groupState.size(), noRadical);
+  if (groupLastRadical.size() != groupState.size()) groupLastRadical.assign(groupState.size(), noRadical);
+  std::array<bool, 2> activeBefore{false, false};
+  std::array<bool, 2> activeAfter{false, false};
+  for (std::size_t i = 0; i < groups.size(); ++i)
+  {
+    activeBefore[i] = active(groups[i]);
+    activeAfter[i] = scheme.isActive(groupType[groups[i]], rule.productState[i]);
+    result.radicalBefore[i] = groupRadical[groups[i]];
+    result.radicalAfter[i] = result.radicalBefore[i];
+  }
+  // a reactant that was active without a radical (a group that started in an active state, or a restart from an
+  // older run) receives one now, so that every living chain end carries an identity from here on
+  for (std::size_t i = 0; i < groups.size(); ++i)
+  {
+    if (activeBefore[i] && result.radicalBefore[i] == noRadical)
+    {
+      radicals.push_back(RadicalRecord{.bornStep = groupStep[groups[i]],
+                                       .bornRule = static_cast<std::uint16_t>(ruleIndex),
+                                       .bornGroup = groups[i],
+                                       .lastGroup = groups[i]});
+      result.radicalBefore[i] = radicals.size() - 1;
+      result.radicalAfter[i] = result.radicalBefore[i];
+      groupRadical[groups[i]] = result.radicalBefore[i];
+      groupLastRadical[groups[i]] = result.radicalBefore[i];
+    }
+  }
+  std::array<bool, 2> inherited{false, false};  // per reactant: its radical was taken over by the other reactant
+  for (std::size_t i = 0; i < groups.size(); ++i)
+  {
+    if (activeBefore[i] || !activeAfter[i]) continue;
+    // inactive -> active: inherit from the single reactant going active -> inactive, else a new radical
+    std::optional<std::size_t> donor{};
+    std::size_t donors = 0;
+    for (std::size_t j = 0; j < groups.size(); ++j)
+    {
+      if (j != i && activeBefore[j] && !activeAfter[j] && !inherited[j])
+      {
+        donor = j;
+        ++donors;
+      }
+    }
+    if (donors == 1)
+    {
+      const std::size_t radical = result.radicalBefore[donor.value()];
+      inherited[donor.value()] = true;
+      result.radicalAfter[i] = radical;
+      RadicalRecord &record = radicals[radical];
+      record.lastGroup = groups[i];
+      ++record.propagations;
+    }
+    else
+    {
+      radicals.push_back(RadicalRecord{.bornStep = step,
+                                       .bornRule = static_cast<std::uint16_t>(ruleIndex),
+                                       .bornGroup = groups[i],
+                                       .lastGroup = groups[i]});
+      result.radicalAfter[i] = radicals.size() - 1;
+      result.born[i] = true;
+    }
+  }
+  for (std::size_t i = 0; i < groups.size(); ++i)
+  {
+    if (activeBefore[i] && !activeAfter[i])
+    {
+      result.radicalAfter[i] = noRadical;
+      if (!inherited[i] && result.radicalBefore[i] != noRadical)
+      {
+        RadicalRecord &record = radicals[result.radicalBefore[i]];
+        record.alive = false;
+        record.diedStep = step;
+        record.diedRule = static_cast<std::uint16_t>(ruleIndex);
+        record.lastGroup = groups[i];
+        result.died[i] = true;
+      }
+    }
+  }
+  // every radical that took part (on a reactant before or after the reaction) counts the event once
+  std::vector<std::size_t> taking{};
+  for (std::size_t i = 0; i < groups.size(); ++i)
+  {
+    for (std::size_t radical : {result.radicalBefore[i], result.radicalAfter[i]})
+    {
+      if (radical != noRadical && !std::ranges::contains(taking, radical)) taking.push_back(radical);
+    }
+    groupRadical[groups[i]] = result.radicalAfter[i];
+    if (result.radicalAfter[i] != noRadical) groupLastRadical[groups[i]] = result.radicalAfter[i];
+    else if (result.radicalBefore[i] != noRadical) groupLastRadical[groups[i]] = result.radicalBefore[i];
+  }
+  for (std::size_t radical : taking) ++radicals[radical].events;
 
   // the products: retyped atoms and new states
   for (std::size_t i = 0; i < groups.size(); ++i)
@@ -861,7 +993,8 @@ std::vector<std::size_t> PolymerLinkTable::apply(std::size_t ruleIndex, std::spa
 
   ++reactionCounts[ruleIndex];
   derivedValid = false;
-  return newBonds;
+  result.bonds = std::move(newBonds);
+  return result;
 }
 
 // ---- derived topology ---------------------------------------------------------------------------------------------
@@ -1834,6 +1967,24 @@ std::string PolymerLinkTable::printStatus(const SimulationBox &simulationBox, co
                           r + 1 < scheme.rules.size() ? ", " : "");
   }
   std::print(stream, "    events:                          {}\n", events);
+  if (!radicals.empty())
+  {
+    std::size_t terminated = 0, propagationsOfTerminated = 0;
+    for (const RadicalRecord &r : radicals)
+    {
+      if (r.alive) continue;
+      ++terminated;
+      propagationsOfTerminated += r.propagations;
+    }
+    std::print(stream, "    radicals:                        {} created, {} living, {} terminated", radicals.size(),
+               countLivingRadicals(), terminated);
+    if (terminated > 0)
+    {
+      std::print(stream, ", mean propagations per terminated radical {:.2f}",
+                 static_cast<double>(propagationsOfTerminated) / static_cast<double>(terminated));
+    }
+    std::print(stream, "\n");
+  }
   std::print(stream, "    polymer bonds:                   {} ({} intramolecular / primary cycles)\n", bonds.size(),
              network.intramolecularBonds);
   if (!brokenBonds.empty() || scheme.hasBreaking())
@@ -1930,6 +2081,8 @@ nlohmann::json PolymerLinkTable::jsonStatus(const SimulationBox &simulationBox,
     events[scheme.rules[r].name] = r < reactionCounts.size() ? reactionCounts[r] : 0;
   }
   status["events"] = events;
+  status["radicals"] = radicals.size();
+  status["livingRadicals"] = countLivingRadicals();
   status["bonds"] = bonds.size();
   status["brokenBonds"] = brokenBonds.size();
   status["intramolecularBonds"] = network.intramolecularBonds;
@@ -1972,6 +2125,40 @@ nlohmann::json PolymerLinkTable::jsonTopology() const
   return topology;
 }
 
+nlohmann::json PolymerLinkTable::jsonRadicalId(std::size_t radical)
+{
+  return radical == noRadical ? nlohmann::json(nullptr) : nlohmann::json(radical);
+}
+
+nlohmann::json PolymerLinkTable::jsonRadicals() const
+{
+  nlohmann::json table = nlohmann::json::array();
+  auto ruleName = [&](std::uint16_t rule)
+  { return rule < scheme.rules.size() ? nlohmann::json(scheme.rules[rule].name) : nlohmann::json("?"); };
+  auto groupJson = [&](std::size_t group)
+  {
+    const PolymerAtomRef r = groupRef(group);
+    return nlohmann::json{r.componentId, r.moleculeIndex, r.atomIndex};
+  };
+  for (std::size_t id = 0; id < radicals.size(); ++id)
+  {
+    const RadicalRecord &r = radicals[id];
+    nlohmann::json entry{};
+    entry["id"] = id;
+    entry["bornStep"] = r.bornStep;
+    entry["bornRule"] = ruleName(r.bornRule);
+    entry["bornGroup"] = groupJson(r.bornGroup);
+    entry["alive"] = r.alive;
+    entry["diedStep"] = r.alive ? nlohmann::json(nullptr) : nlohmann::json(r.diedStep);
+    entry["diedRule"] = r.alive ? nlohmann::json(nullptr) : ruleName(r.diedRule);
+    entry["lastGroup"] = groupJson(r.lastGroup);
+    entry["propagations"] = r.propagations;
+    entry["events"] = r.events;
+    table.push_back(entry);
+  }
+  return table;
+}
+
 nlohmann::json PolymerLinkTable::jsonBrokenBonds() const
 {
   nlohmann::json topology = nlohmann::json::array();
@@ -2009,6 +2196,10 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Polyme
   archive << t.currentStep;
   archive << t.chiralForceConstant;
   archive << t.chiralReferenceVolume;
+  // version 2: the radicals
+  archive << t.groupRadical;
+  archive << t.groupLastRadical;
+  archive << t.radicals;
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
@@ -2044,6 +2235,19 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PolymerLinkT
   archive >> t.currentStep;
   archive >> t.chiralForceConstant;
   archive >> t.chiralReferenceVolume;
+  if (versionNumber >= 2)
+  {
+    archive >> t.groupRadical;
+    archive >> t.groupLastRadical;
+    archive >> t.radicals;
+  }
+  else
+  {
+    // an older restart: the living chain ends receive their radicals at their next reaction (apply())
+    t.groupRadical.assign(t.groupState.size(), PolymerLinkTable::noRadical);
+    t.groupLastRadical.assign(t.groupState.size(), PolymerLinkTable::noRadical);
+    t.radicals.clear();
+  }
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
   archive >> magicNumber;

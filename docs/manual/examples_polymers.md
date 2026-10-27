@@ -258,10 +258,18 @@ molecules in such spanning clusters. The appearance of the first spanning
 cluster marks the gel point of the finite box. The bonded energy of the polymer bonds is
 reported in the `cross-link` slot of the energy breakdown. Every reaction is
 appended to `output/polymerization_bonds.s0.txt` (step, cycle, the rule, the
-two groups as component/molecule/group, the distance at which the bond formed
-and the conversion), and `output/polymer_topology.s0.json` holds the reaction
-scheme, the final group states and the bond list, from which the polymer
-graph can be rebuilt. With
+two groups as component/molecule/group, the distance at which the bond formed,
+the conversion and the radical id of each reacting group), and
+`output/polymer_topology.s0.json` holds the reaction scheme, the final group
+states and the bond list, from which the polymer graph can be rebuilt. Every
+living radical carries an id from its initiation (`41*` in the log) through
+every propagation (`17/17`: handed from the radical group to the added
+monomer) to its termination (`17x/23x`), so the reactions of one chain end
+can be followed through the log; the `radicals` table of the topology file
+summarises each (step and rule of birth and death, the group it sits or died
+on, the number of propagations, which is the kinetic chain length), and
+`groupLastRadical` names for every group the radical that passed through it,
+i.e. the chain a dead group belongs to. With
 `"WriteEventFrames"` (here a data file for every reaction, `"EventFrameEvery": 1`) the
 configuration at the moment of a reaction is written as a LAMMPS data file to
 `polymerization_events/s0/step_<step>.data`, with the polymer bonds and their

@@ -144,14 +144,18 @@ void Polymerization::openBondLogs()
     {
       std::print(bondLogs.back(),
                  "# step cycle reaction group_a(component molecule group) group_b(component molecule group) "
-                 "distance[A] conversion active bonds stereo strain[K] wait[ps]\n"
+                 "distance[A] conversion active bonds stereo strain[K] wait[ps] radical\n"
                  "# group_b, distance: '-' for a unimolecular reaction\n"
                  "# stereo: per stereocentre of the reaction the configuration (+/-) and the dyad with the centre "
                  "before it in the chain (m meso, r racemo, . none); '-' no stereocentre\n"
                  "# strain: angular strain of the new bond(s) at the reaction (with an 'OrientationTemperature'); "
                  "'-' not evaluated\n"
                  "# wait: waiting time of the reacting group(s) in an active state since their last reaction "
-                 "(a/b for a bimolecular reaction); '-' not active\n");
+                 "(a/b for a bimolecular reaction); '-' not active\n"
+                 "# radical: the id of the radical (living chain end) on each reacting group (a/b for a bimolecular "
+                 "reaction; '-' none): the id a propagation hands from group_a to group_b, '*' born in this "
+                 "reaction (initiation), 'x' died in this reaction (termination); the ids are listed in "
+                 "'radicals' of output/polymer_topology.s<i>.json\n");
     }
   }
 }
@@ -526,8 +530,14 @@ Polymerization::ReactionEvent Polymerization::react(std::size_t systemId, std::s
   }
 
   const std::size_t brokenBefore = table.brokenBonds.size();
-  event.bonds = table.apply(ruleIndex, groups, chiralities, nextChiralities, system.forceField, components, atoms,
-                            std::span<Molecule>(system.moleculeData), system.simulationBox, table.currentStep);
+  PolymerLinkTable::ApplyResult applied =
+      table.apply(ruleIndex, groups, chiralities, nextChiralities, system.forceField, components, atoms,
+                  std::span<Molecule>(system.moleculeData), system.simulationBox, table.currentStep);
+  event.bonds = std::move(applied.bonds);
+  event.radicalBefore = applied.radicalBefore;
+  event.radicalAfter = applied.radicalAfter;
+  event.radicalBorn = applied.born;
+  event.radicalDied = applied.died;
   for (std::size_t i = brokenBefore; i < table.brokenBonds.size(); ++i) event.brokenBonds.push_back(i);
   completeRetyping(atoms, event);
   logEvent(systemId, event);
@@ -548,10 +558,22 @@ void Polymerization::logEvent(std::size_t systemId, const ReactionEvent& event)
                                ? std::format("{}/{}", optionalText(event.waitingTime[0], "{:.4g}"),
                                              optionalText(event.waitingTime[1], "{:.4g}"))
                                : optionalText(event.waitingTime[0], "{:.4g}");
-  std::print(bondLogs[systemId], "{} {} {} {} {} {} {} {} {:.6f} {} {} {} {} {}\n", table.currentStep, md.currentCycle,
-             table.scheme.rules[event.rule].name, ra.componentId, ra.moleculeIndex, ra.atomIndex, b,
+  // the radical of every reactant: the one it carried into the reaction, or the one born on it ('*'); 'x' when
+  // it died in the reaction
+  auto radicalText = [&](std::size_t i)
+  {
+    const std::size_t radical = event.radicalBefore[i] != PolymerLinkTable::noRadical ? event.radicalBefore[i]
+                                                                                        : event.radicalAfter[i];
+    if (radical == PolymerLinkTable::noRadical) return std::string("-");
+    return std::format("{}{}{}", radical, event.radicalBorn[i] ? "*" : "", event.radicalDied[i] ? "x" : "");
+  };
+  const std::string radical =
+      event.bimolecular() ? std::format("{}/{}", radicalText(0), radicalText(1)) : radicalText(0);
+  std::print(bondLogs[systemId], "{} {} {} {} {} {} {} {} {:.6f} {} {} {} {} {} {}\n", table.currentStep,
+             md.currentCycle, table.scheme.rules[event.rule].name, ra.componentId, ra.moleculeIndex, ra.atomIndex, b,
              event.bimolecular() ? std::format("{:.4f}", event.distance) : std::string("-"), table.conversion(),
-             table.countActive(), table.numberOfBonds(), event.stereo, optionalText(event.strain, "{:.1f}"), wait);
+             table.countActive(), table.numberOfBonds(), event.stereo, optionalText(event.strain, "{:.1f}"), wait,
+             radical);
 }
 
 std::vector<Polymerization::ReactionEvent> Polymerization::scan(std::size_t systemId)
@@ -843,14 +865,23 @@ void Polymerization::writeTopology(std::size_t systemId)
   topology["tacticity"] = PolymerizationSettings::tacticityName(settings.tacticity);
   nlohmann::json states = nlohmann::json::array();
   nlohmann::json chiralities = nlohmann::json::array();
+  nlohmann::json groupRadicals = nlohmann::json::array();
+  nlohmann::json groupLastRadicals = nlohmann::json::array();
   for (std::size_t i = 0; i < table.numberOfGroups(); ++i)
   {
     const PolymerAtomRef r = table.groupRef(i);
     states.push_back({r.componentId, r.moleculeIndex, r.atomIndex, table.stateName(i)});
     chiralities.push_back(static_cast<int>(table.chirality(i)));
+    groupRadicals.push_back(PolymerLinkTable::jsonRadicalId(table.radicalOf(i)));
+    groupLastRadicals.push_back(PolymerLinkTable::jsonRadicalId(table.lastRadicalOf(i)));
   }
   topology["groupStates"] = states;
   topology["groupChirality"] = chiralities;
+  // per group (aligned with 'groupStates'): the radical sitting on it, and the last radical that passed through it
+  // (the chain a dead group belongs to); the radicals themselves are the table 'radicals'
+  topology["groupRadical"] = groupRadicals;
+  topology["groupLastRadical"] = groupLastRadicals;
+  topology["radicals"] = table.jsonRadicals();
   nlohmann::json centres = nlohmann::json::array();
   for (const StereoCentre& centre : table.centres)
   {
@@ -940,7 +971,8 @@ nlohmann::json Polymerization::eventRecord(std::size_t systemId, std::span<const
                           {"component", r.componentId},
                           {"molecule", r.moleculeIndex},
                           {"group", r.atomIndex},
-                          {"state", table.stateName(group)}};
+                          {"state", table.stateName(group)},
+                          {"radical", PolymerLinkTable::jsonRadicalId(table.radicalOf(group))}};
   };
   auto optionalNumber = [](const std::optional<double>& value)
   { return value.has_value() ? nlohmann::json(value.value()) : nlohmann::json(nullptr); };
@@ -974,6 +1006,18 @@ nlohmann::json Polymerization::eventRecord(std::size_t systemId, std::span<const
     entry["stereo"] = event.stereo;
     entry["strain"] = optionalNumber(event.strain);
     entry["waitingTime"] = {optionalNumber(event.waitingTime[0]), optionalNumber(event.waitingTime[1])};
+    // per reactant: the radical it carried into the reaction (or that was born on it), the one on it afterwards,
+    // and whether the radical was born or died here
+    entry["radical"] = {PolymerLinkTable::jsonRadicalId(event.radicalBefore[0] != PolymerLinkTable::noRadical
+                                                            ? event.radicalBefore[0]
+                                                            : event.radicalAfter[0]),
+                        PolymerLinkTable::jsonRadicalId(event.radicalBefore[1] != PolymerLinkTable::noRadical
+                                                            ? event.radicalBefore[1]
+                                                            : event.radicalAfter[1])};
+    entry["radicalAfter"] = {PolymerLinkTable::jsonRadicalId(event.radicalAfter[0]),
+                             PolymerLinkTable::jsonRadicalId(event.radicalAfter[1])};
+    entry["radicalBorn"] = {event.radicalBorn[0], event.radicalBorn[1]};
+    entry["radicalDied"] = {event.radicalDied[0], event.radicalDied[1]};
     entry["bonds"] = event.bonds;
     entry["brokenBonds"] = event.brokenBonds;
     eventsJson.push_back(entry);
@@ -1027,6 +1071,8 @@ nlohmann::json Polymerization::eventRecord(std::size_t systemId, std::span<const
                       {"brokenBonds", table.numberOfBrokenBonds()},
                       {"groups", table.jsonGroupCounts()},
                       {"active", table.countActive()},
+                      {"radicals", table.numberOfRadicals()},
+                      {"livingRadicals", table.countLivingRadicals()},
                       {"conversion", table.conversion()},
                       {"relaxationSteps", table.relaxationSteps},
                       {"rampsActive", table.rampsActive()}};

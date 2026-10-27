@@ -2063,8 +2063,14 @@ The keys of the `"Polymerization"` block (defaults in parentheses):
     configuration of every created stereocentre with its dyad (`+m`, `-r`,
     `+.` for the first centre of a chain; `-` without stereocentres), the
     angular strain of the new bond(s) in K (`-` without
-    `"OrientationTemperature"`) and the waiting time of the reacting active
-    group(s) in ps.
+    `"OrientationTemperature"`), the waiting time of the reacting active
+    group(s) in ps, and the *radical* of each reacting group. Every living
+    chain end (every group in an active state) carries a radical id, numbered
+    in the order of birth: an initiation creates one (`41*`), a propagation
+    hands it from the radical group to the monomer it adds (`17/17`), a
+    termination ends both (`17x/23x`); `-` for a group without a radical. The
+    id is the handle that connects the reactions of one chain end across the
+    log.
 -   `"WriteTopology" : bool` (`true`) — `output/polymer_topology.s<i>.json`:
     the groups of the components, the reaction scheme, the state and
     configuration of every group, the stereocentres, the list of bonds
@@ -2072,7 +2078,15 @@ The keys of the `"Polymerization"` block (defaults in parentheses):
     of broken bonds at the end of the run (and after every event frame, see
     below), and `"rampWork"` / `"rampWorkAtReactions"`, the work of the force
     ramps over the production stage in K (total, and the jumps at the
-    reactions).
+    reactions). The radicals are in it as `"groupRadical"` (per group, aligned
+    with `"groupStates"`: the id of the radical on it or `null`),
+    `"groupLastRadical"` (the last radical that passed through the group: the
+    chain a dead group belongs to) and the table `"radicals"`: per id its
+    `bornStep`, `bornRule` and `bornGroup` (`[component, molecule, group]`),
+    whether it is `alive`, its `diedStep` and `diedRule` (`null` while
+    living), its `lastGroup` (the group it sits on, or died on), its
+    `propagations` (the number of groups it was handed on to: the kinetic
+    chain length) and `events` (the reactions it took part in).
 -   `"WriteEventFrames" : bool` (`false`) — writes the configuration at the
     moment of every reaction. Every reaction scan that accepted at least one
     reaction (the activation with its initial events included) is an *event
@@ -2097,11 +2111,15 @@ The keys of the `"Polymerization"` block (defaults in parentheses):
     `events` (the rule, both groups with their states, the capture atoms with
     their global index `id`, the 1-based `lammpsId` of the data file,
     component, molecule, local atom index and current type, the distance, the
-    configurations and dyads, the strain, the waiting times and the new
-    bonds and broken bonds), the `retyped` atoms with their types before and
-    after, the `newBonds` with the bends and torsions they created (global
-    atom indices), the `brokenBonds` and the running `totals` (group counts
-    per type and state, active groups, bonds, broken bonds, conversion). The union of the records up to a frame is the cross-link
+    configurations and dyads, the strain, the waiting times, the radicals
+    (`radical`: per reactant the id it carried into the reaction or that was
+    born on it, `radicalAfter`: the id on each reactant afterwards,
+    `radicalBorn` / `radicalDied`; each group also names its current
+    `radical`) and the new bonds and broken bonds), the `retyped` atoms with
+    their types before and after, the `newBonds` with the bends and torsions
+    they created (global atom indices), the `brokenBonds` and the running
+    `totals` (group counts per type and state, active groups, radicals created
+    and living, bonds, broken bonds, conversion). The union of the records up to a frame is the cross-link
     state of that frame; `output/polymer_topology.s<i>.json` is rewritten
     after every frame as a self-contained snapshot. The logs are appended to
     on a restart.

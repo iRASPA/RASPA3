@@ -10,6 +10,7 @@ import input_reader;
 import molecular_dynamics_spatial_decomposition;
 import polymerization_settings;
 import polymer_reactions;
+import polymer_links;
 
 /**
  * \brief Stochastic reactive molecular dynamics with user-defined reaction rules (polymerization) on the
@@ -31,6 +32,11 @@ import polymer_reactions;
  * PolymerLinkTable); the new terms are ramped in over 'RelaxationSteps' steps. The molecules of the system never
  * change: the polymer is the graph of bonds between them, written at the end to
  * 'output/polymer_topology.s<i>.json' (and every reaction to 'output/polymerization_bonds.s<i>.txt').
+ *
+ * Every living chain end carries a radical id (see RadicalRecord): created at an initiation, handed on by every
+ * propagation, closed by a termination. The bond log, the event records and the topology file name the radical
+ * of every reaction, and the topology file holds the table of the radicals (birth, death, propagations), from
+ * which the reactions of one radical can be followed.
  *
  * Event frames ('WriteEventFrames'): the configuration at the moment of every reaction scan that accepted a
  * reaction is written as a LAMMPS data file to 'polymerization_events/s<i>/step_<step>.data' (with the companion
@@ -82,6 +88,12 @@ export struct Polymerization
     std::string stereo{"-"};                           ///< The log's stereo field.
     std::optional<double> strain{};                    ///< Angular strain [K] with an 'OrientationTemperature'.
     std::array<std::optional<double>, 2> waitingTime{};  ///< [ps] of the reacting active group(s).
+    /// Per reactant: the radical (see RadicalRecord) on it before and after the reaction (noRadical: none), and
+    /// whether that radical was born or died in this reaction.
+    std::array<std::size_t, 2> radicalBefore{PolymerLinkTable::noRadical, PolymerLinkTable::noRadical};
+    std::array<std::size_t, 2> radicalAfter{PolymerLinkTable::noRadical, PolymerLinkTable::noRadical};
+    std::array<bool, 2> radicalBorn{false, false};
+    std::array<bool, 2> radicalDied{false, false};
     std::vector<std::size_t> bonds{};                  ///< Indices of the new bonds in the table.
     std::vector<std::size_t> brokenBonds{};            ///< Indices of the bonds broken by the event in the table.
     /// The atoms whose pseudo-atom type changed: global atom, type before and after.

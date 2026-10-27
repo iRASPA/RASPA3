@@ -115,6 +115,36 @@ export struct StereoCentre
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const StereoCentre &c);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, StereoCentre &c);
 };
+
+/**
+ * \brief The life of one radical (one living chain end): the identity that sits on an active group and is handed
+ * from group to group by the reactions.
+ *
+ * A radical is born when a reaction puts a group into an active state without taking it from another reactant
+ * (initiation), moves with the reaction that deactivates one reactant and activates another (propagation, chain
+ * transfer) and dies when its group is deactivated without a successor (termination, both radicals of a
+ * combination). The record holds the steps and rules of its birth and death, the group it was born on and the
+ * group it sits on (or died on), the number of transfers ('propagations': the kinetic chain length of a chain
+ * growth) and the number of reactions it took part in.
+ */
+export struct RadicalRecord
+{
+  std::uint64_t bornStep{0};
+  std::uint16_t bornRule{0};
+  std::size_t bornGroup{0};
+  std::uint64_t diedStep{0};  ///< 0 (and 'alive'): still living.
+  std::uint16_t diedRule{0};
+  bool alive{true};
+  std::size_t lastGroup{0};  ///< The group it sits on (living) or died on.
+  std::size_t propagations{0};
+  std::size_t events{0};
+
+  bool operator==(RadicalRecord const &) const = default;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RadicalRecord &r);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RadicalRecord &r);
+};
+
 /**
  * \brief The type-based bonded parameter tables of the polymer ('Bonds', 'Bends', 'Torsions' of the
  * 'Polymerization' block, in the syntax of the molecule files).
@@ -257,13 +287,17 @@ export struct ChiralVolume
  * group the configuration its next centre has to take (set by the driver from the tacticity through the 'Next'
  * of a stereo entry; 0: free), and 'previousGroup' the group whose centre precedes it along the chain.
  *
- * The authoritative state is 'bonds', 'brokenBonds', 'retypings', 'centres', the group states and chiralities and
- * the atom types of the system (the latter are stored with the atoms); the per-term caches are derived and rebuilt
- * by rebuild() after every reaction and after a restart.
+ * The radicals (the living chain ends, see RadicalRecord) are numbered in the order of their birth; 'groupRadical'
+ * holds per group the radical sitting on it and 'groupLastRadical' the last radical that passed through it, so a
+ * dead group can be traced to its chain. apply() hands the radicals over by the state changes of the reactants.
+ *
+ * The authoritative state is 'bonds', 'brokenBonds', 'retypings', 'centres', the group states, chiralities and
+ * radicals and the atom types of the system (the latter are stored with the atoms); the per-term caches are
+ * derived and rebuilt by rebuild() after every reaction and after a restart.
  */
 export struct PolymerLinkTable
 {
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   PolymerTemplates templates{};
   ReactionScheme scheme{};
@@ -283,6 +317,9 @@ export struct PolymerLinkTable
   std::vector<std::int8_t> groupChirality{};        ///< Per group: the configuration its next centre has to take.
   std::vector<std::size_t> previousGroup{};         ///< Per group: the group preceding it along the chain (noGroup: none).
   std::vector<std::size_t> reactionCounts{};        ///< Per reaction rule: the number of times it was applied.
+  std::vector<std::size_t> groupRadical{};          ///< Per group: the radical sitting on it (noRadical: none).
+  std::vector<std::size_t> groupLastRadical{};      ///< Per group: the last radical that passed through it (noRadical: none).
+  std::vector<RadicalRecord> radicals{};            ///< The radicals in the order of their birth (the index is the id).
 
   std::size_t relaxationSteps{0};  ///< Length of the force ramp of a new bond in MD steps (0: no ramp).
   std::uint64_t currentStep{0};    ///< The current MD step (set by the driver; the ramps refer to it).
@@ -421,6 +458,7 @@ export struct PolymerLinkTable
   std::vector<std::size_t> nextGroup{};
   static constexpr std::uint32_t noAtom = std::numeric_limits<std::uint32_t>::max();
   static constexpr std::size_t noGroup = std::numeric_limits<std::size_t>::max();
+  static constexpr std::size_t noRadical = std::numeric_limits<std::size_t>::max();
   bool derivedValid{false};
 
   bool operator==(PolymerLinkTable const &other) const
@@ -428,7 +466,8 @@ export struct PolymerLinkTable
     return templates == other.templates && scheme == other.scheme && bonds == other.bonds &&
            brokenBonds == other.brokenBonds && retypings == other.retypings && centres == other.centres &&
            groupState == other.groupState &&
-           groupChirality == other.groupChirality;
+           groupChirality == other.groupChirality && groupRadical == other.groupRadical &&
+           radicals == other.radicals;
   }
 
   /// True when the overlay has nothing to evaluate (no bond formed or broken and no group reacted).
@@ -456,6 +495,14 @@ export struct PolymerLinkTable
   /// Whether the group is in an active state (a living chain end, see ReactionScheme).
   bool active(std::size_t index) const { return scheme.isActive(groupType[index], groupState[index]); }
   std::int8_t chirality(std::size_t index) const { return groupChirality[index]; }
+  /// The radical sitting on group 'index' (noRadical: none).
+  std::size_t radicalOf(std::size_t index) const { return groupRadical[index]; }
+  /// The last radical that passed through group 'index' (noRadical: none).
+  std::size_t lastRadicalOf(std::size_t index) const { return groupLastRadical[index]; }
+  /// The number of radicals created so far.
+  std::size_t numberOfRadicals() const { return radicals.size(); }
+  /// The number of radicals still living (equals the number of active groups).
+  std::size_t countLivingRadicals() const;
   /// The atom of role 'role' (index into the roles of the group's type) of group 'index'.
   PolymerAtomRef atomRefOf(std::size_t index, std::uint16_t role, const std::vector<Component> &components) const;
   std::uint32_t atomOf(std::size_t index, std::uint16_t role, const std::vector<Component> &components) const
@@ -503,13 +550,29 @@ export struct PolymerLinkTable
    * current distances of their atoms), breaks the bonds of its 'BreakBonds' (throws when one of them is already
    * broken) and records its stereocentres with the configurations 'chiralities' (one per stereo entry of the rule;
    * 0: free). A stereo entry with 'Next' sets the required configuration of the next group to 'nextChiralities[k]'
-   * and makes the centre's group its predecessor. Returns the indices of the new bonds.
+   * and makes the centre's group its predecessor.
+   *
+   * The radicals are handed over by the state changes of the reactants (active before / after the rule): a
+   * reactant that becomes active inherits the radical of the one reactant that becomes inactive in the same
+   * reaction (propagation, chain transfer), or receives a new radical when there is none (initiation); a
+   * reactant that stays active keeps its radical; the radical of a reactant that becomes inactive dies when no
+   * other reactant inherits it (termination).
+   *
+   * Returns the indices of the new bonds and, per reactant, the radical before and after the reaction and
+   * whether it was born or died in it.
    */
-  std::vector<std::size_t> apply(std::size_t ruleIndex, std::span<const std::size_t> groups,
-                                 std::span<const std::int8_t> chiralities, std::span<const std::int8_t> nextChiralities,
-                                 const ForceField &forceField, const std::vector<Component> &components,
-                                 std::span<Atom> atoms, std::span<Molecule> moleculeData,
-                                 const SimulationBox &simulationBox, std::uint64_t step);
+  struct ApplyResult
+  {
+    std::vector<std::size_t> bonds{};                                    ///< Indices of the new bonds.
+    std::array<std::size_t, 2> radicalBefore{noRadical, noRadical};  ///< Per reactant: the radical on it before.
+    std::array<std::size_t, 2> radicalAfter{noRadical, noRadical};   ///< Per reactant: the radical on it after.
+    std::array<bool, 2> born{false, false};                              ///< Per reactant: its radical was created here.
+    std::array<bool, 2> died{false, false};                              ///< Per reactant: its radical died here.
+  };
+  ApplyResult apply(std::size_t ruleIndex, std::span<const std::size_t> groups, std::span<const std::int8_t> chiralities,
+                    std::span<const std::int8_t> nextChiralities, const ForceField &forceField,
+                    const std::vector<Component> &components, std::span<Atom> atoms, std::span<Molecule> moleculeData,
+                    const SimulationBox &simulationBox, std::uint64_t step);
 
   /// Rebuilds the layout and the derived term lists for the current bonds, group states and atom types.
   void rebuild(const ForceField &forceField, const std::vector<Component> &components,
@@ -603,6 +666,11 @@ export struct PolymerLinkTable
   nlohmann::json jsonBrokenBonds() const;
   /// The group counts per type and state, for the status outputs.
   nlohmann::json jsonGroupCounts() const;
+  /// The radicals (see RadicalRecord) as a table, for the topology output: per radical its id, birth and death
+  /// (step and rule), the groups it was born on and sits on as [c, m, g], its propagations and events.
+  nlohmann::json jsonRadicals() const;
+  /// Radical id or null, for the JSON outputs.
+  static nlohmann::json jsonRadicalId(std::size_t radical);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PolymerLinkTable &t);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PolymerLinkTable &t);
