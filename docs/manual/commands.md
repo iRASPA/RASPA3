@@ -1453,6 +1453,25 @@ reported separately at the end of the simulation.
     at the library), and reports the missing piece when either is absent.
     Default: `"CPU"`.
 
+-   `"CBMCDevice" : string`\
+    Where the multiple-try CBMC moves (`"SwapMultiTrialProbability"`,
+    `"ReinsertionMultiTrialProbability"`, `"GibbsSwapMultiTrialProbability"`)
+    grow their `"NumberOfTrialMolecules"` trial molecules. `"CPU"` grows every
+    trial with the ordinary CBMC grower in double precision. `"OpenCL"`,
+    `"Metal"`, `"CUDA"` and `"GPU"` (the platform's native backend, as for
+    `"PairDevice"`) evaluate the trial molecules of a move in one batch on the
+    device in single precision; the device is a proposal engine only: the one
+    selected trial (and the existing molecule on the deletion/retrace side)
+    is re-evaluated on the host in double precision, which is what the
+    running energies receive, and the acceptance rule carries the ratio of
+    the double- and single-precision Boltzmann factors, so the sampled
+    distribution is exactly that of the double-precision force field. The
+    device grower handles rigid components of at most 32 atoms with unit
+    scaling, with Lennard-Jones (or no) pair interactions and Ewald (or no)
+    electrostatics, no external field and no cross-link tethers; a component
+    outside this scope is grown on the host within the same move. An
+    unavailable device is reported at input time. Default: `"CPU"`.
+
 -   `"RandomSeed" : integer`\
     Seeds the random-number generator for reproducible runs. When omitted a
     non-deterministic seed is used.
@@ -3276,6 +3295,25 @@ molecules; do not combine it with insertion/deletion moves.
     of the molecule is then grown with biasing. This move is very useful, and
     often necessary, to change the internal configuration of flexible molecules.
 
+-   `"ReinsertionMultiTrialProbability" : floating-point-number`\
+    The relative probability of a multiple-try `CBMC` reinsertion move. Instead
+    of one trial molecule, `"NumberOfTrialMolecules"` complete molecules are
+    grown independently with `CBMC`; one is selected with probability
+    proportional to its weight (the Ewald Fourier change is folded into every
+    weight before the selection) and the acceptance uses the mean weight of the
+    set against the mean weight of the old molecule and $M-1$ reference grows,
+    $\mathrm{acc} = \min(1, \bar W_\mathrm{new}/\bar W_\mathrm{old})$. The
+    acceptance per attempt approaches one for large $M$; with $M=1$ the move is
+    the plain `CBMC` reinsertion. Not available with polarization.
+
+-   `"NumberOfTrialMolecules" : integer`\
+    The number of complete trial molecules $M$ (default 10) grown by the
+    multiple-try moves `"ReinsertionMultiTrialProbability"`,
+    `"SwapMultiTrialProbability"` and `"GibbsSwapMultiTrialProbability"`. The
+    cost of a move grows linearly with $M$ (the grows are independent and run
+    in parallel on a device when one is available); the gain is a high
+    acceptance per attempted move.
+
 -   `"PartialReinsertionProbability" : floating-point-number`\
     The relative probability of a partial `CBMC` reinsertion move, which regrows
     only part of the molecule. The parts are declared in the molecule file as
@@ -3473,6 +3511,20 @@ molecules; do not combine it with insertion/deletion moves.
     imposes chemical equilibrium with a reservoir, but it grows the molecule from
     multiple first beads using biasing.
 
+-   `"SwapMultiTrialProbability" : floating-point-number`\
+    The relative probability of a multiple-try `CBMC` insertion or deletion move
+    (50% each). An insertion grows `"NumberOfTrialMolecules"` complete
+    molecules and selects one with probability proportional to its weight; a
+    deletion retraces the selected molecule and grows $M-1$ reference molecules
+    into the system without it. The Ewald Fourier and tail-correction changes
+    are folded into every weight before the selection, and the acceptance rules
+    use the mean weights,
+    $\mathrm{acc}_\mathrm{ins} = \min(1, \beta f V/(N+1) \cdot
+    \bar W_\mathrm{new}/W^\mathrm{IG})$ and
+    $\mathrm{acc}_\mathrm{del} = \min(1, N/(\beta f V) \cdot
+    W^\mathrm{IG}/\bar W_\mathrm{old})$. With $M=1$ the move is the plain
+    `CBMC` swap. TMMC-aware. Not available with polarization.
+
 -   `"CFCMC_SwapProbability" : floating-point-number`\
     The relative probability of an insertion or deletion move via the `CFCMC`
     scheme.
@@ -3485,6 +3537,16 @@ molecules; do not combine it with insertion/deletion moves.
     The relative probability of a Gibbs swap move, which transfers a randomly
     selected molecule from one box to the other (50% from box `I` to `II`, 50%
     the other way).
+
+-   `"GibbsSwapMultiTrialProbability" : floating-point-number`\
+    The relative probability of a multiple-try `CBMC` Gibbs swap move. In the
+    receiving box `"NumberOfTrialMolecules"` complete molecules are grown and
+    one is selected with probability proportional to its weight; in the
+    donating box the transferred molecule is retraced and $M-1$ reference
+    molecules are grown into the box without it. Each box folds its own Ewald
+    Fourier and tail changes into the weights; the acceptance is the ratio of
+    the mean weights times $N_B V_A / ((N_A+1) V_B)$. Not available with
+    polarization.
 
 -   `"GibbsSwapCFCMCProbability" : floating-point-number`\
     The relative probability of a Gibbs swap move using the `CFCMC` scheme.

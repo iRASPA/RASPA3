@@ -849,7 +849,8 @@ void readCrossLinks(const nlohmann::basic_json<nlohmann::raspa_map>& value, Syst
       }
     }
   }
-  const std::array crossSystemProhibited{Move::Types::GibbsSwapCBMC, Move::Types::GibbsSwapCFCMC,
+  const std::array crossSystemProhibited{Move::Types::GibbsSwapCBMC, Move::Types::GibbsSwapMultiTrialCBMC,
+                                         Move::Types::GibbsSwapCFCMC,
                                          Move::Types::GibbsSwapCBCFCMC, Move::Types::GibbsConventionalCFCMC,
                                          Move::Types::GibbsConventionalCBCFCMC,
                                          Move::Types::GibbsIdentityChangeCBMC};
@@ -1808,6 +1809,53 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           parsed_data["PairDevice"].get<std::string>()));
     }
   }
+  if (parsed_data.contains("CBMCDevice"))
+  {
+    if (!parsed_data["CBMCDevice"].is_string())
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'CBMCDevice' must be a string ('CPU', 'OpenCL', 'Metal', 'CUDA' or 'GPU')\n"));
+    }
+    std::string device = parsed_data["CBMCDevice"].get<std::string>();
+    std::transform(device.begin(), device.end(), device.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    if (device == "cpu")
+    {
+      cbmcDevice = PairDevice::CPU;
+    }
+    else if (device == "opencl")
+    {
+      cbmcDevice = PairDevice::OpenCL;
+    }
+    else if (device == "metal")
+    {
+      cbmcDevice = PairDevice::Metal;
+    }
+    else if (device == "cuda")
+    {
+      cbmcDevice = PairDevice::CUDA;
+    }
+    else if (device == "gpu")
+    {
+#ifdef __APPLE__
+      cbmcDevice = PairDevice::Metal;
+#else
+      cbmcDevice = DeviceStep::available(PairDevice::CUDA) ? PairDevice::CUDA : PairDevice::OpenCL;
+#endif
+    }
+    else
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'CBMCDevice' must be 'CPU', 'OpenCL', 'Metal', 'CUDA' or 'GPU', '{}' was given\n",
+          parsed_data["CBMCDevice"].get<std::string>()));
+    }
+    if (cbmcDevice != PairDevice::CPU && !DeviceStep::available(cbmcDevice))
+    {
+      const std::string reason = DeviceStep::unavailableReason(cbmcDevice);
+      throw std::runtime_error(std::format("[Input reader]: 'CBMCDevice' is '{}' but no such device is available{}\n",
+                                           pairDeviceName(cbmcDevice), reason.empty() ? "" : ": " + reason));
+    }
+  }
   if (parsed_data.contains("Resident"))
   {
     if (!parsed_data["Resident"].is_boolean())
@@ -2145,6 +2193,37 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("SwapMultiTrialProbability") && item["SwapMultiTrialProbability"].is_number_float())
+      {
+        double probability = item["SwapMultiTrialProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::SwapMultiTrialCBMC, probability);
+        }
+      }
+
+      if (item.contains("ReinsertionMultiTrialProbability") && item["ReinsertionMultiTrialProbability"].is_number_float())
+      {
+        double probability = item["ReinsertionMultiTrialProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::ReinsertionMultiTrialCBMC, probability);
+        }
+      }
+
+      if (item.contains("NumberOfTrialMolecules") && item["NumberOfTrialMolecules"].is_number_integer())
+      {
+        std::int64_t numberOfTrialMolecules = item["NumberOfTrialMolecules"].get<std::int64_t>();
+        if (numberOfTrialMolecules < 1)
+        {
+          throw std::runtime_error(std::format("[Input reader]: NumberOfTrialMolecules must be at least 1\n"));
+        }
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].numberOfTrialMolecules = static_cast<std::size_t>(numberOfTrialMolecules);
+        }
+      }
+
       if (item.contains("PairSwapConventionalProbability") && item["PairSwapConventionalProbability"].is_number_float())
       {
         double pairSwapProbability = item["PairSwapConventionalProbability"].get<double>();
@@ -2290,6 +2369,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
           move_probabilities[i].setProbability(Move::Types::GibbsSwapCBMC, gibbsSwapCBMCProbability);
+        }
+      }
+
+      if (item.contains("GibbsSwapMultiTrialProbability") && item["GibbsSwapMultiTrialProbability"].is_number_float())
+      {
+        double probability = item["GibbsSwapMultiTrialProbability"].get<double>();
+        for (std::size_t i = 0; i < move_probabilities.size(); ++i)
+        {
+          move_probabilities[i].setProbability(Move::Types::GibbsSwapMultiTrialCBMC, probability);
         }
       }
 
@@ -3917,6 +4005,25 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       readCrossLinks(value, systems[systemId]);
       readPolymerization(value, systems[systemId], polymerizationSettings);
 
+      // The multiple-try moves fold the long-range terms into every trial weight; the induced-dipole energy
+      // is not among the terms they evaluate.
+      if (systems[systemId].forceField.computePolarization)
+      {
+        for (const Component& component : systems[systemId].components)
+        {
+          for (const Move::Types moveType : {Move::Types::SwapMultiTrialCBMC, Move::Types::ReinsertionMultiTrialCBMC,
+                                             Move::Types::GibbsSwapMultiTrialCBMC})
+          {
+            if (component.mc_moves_probabilities.getProbability(moveType) > 0.0)
+            {
+              throw std::runtime_error(std::format(
+                  "[Input reader]: component '{}' enables the '{}' move, which does not support polarization\n",
+                  component.name, Move::moveNames[std::to_underlying(moveType)]));
+            }
+          }
+        }
+      }
+
       if (value.contains("ComputeEnergyHistogram") && value["ComputeEnergyHistogram"].is_boolean())
       {
         if (value["ComputeEnergyHistogram"].get<bool>())
@@ -4893,6 +5000,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         systems[systemId].hybridMCUseForceEngine = value["HybridMCUseForceEngine"].get<bool>();
       }
       systems[systemId].forceEngineSettings = spatialDecompositionSettings;
+      systems[systemId].cbmcDevice = cbmcDevice;
       if (value.contains("HybridMCMoveNumberOfSteps") && value["HybridMCMoveNumberOfSteps"].is_number_unsigned())
       {
         systems[systemId].numberOfHybridMCSteps = value["HybridMCMoveNumberOfSteps"].get<std::size_t>();
@@ -5300,6 +5408,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     for (const Component& component : system.components)
     {
       if (component.mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) > 0.0 ||
+          component.mc_moves_probabilities.getProbability(Move::Types::SwapMultiTrialCBMC) > 0.0 ||
           component.mc_moves_probabilities.getProbability(Move::Types::Swap) > 0.0)
       {
         throw std::runtime_error(
@@ -5680,6 +5789,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "PairPrecision",
     "PruneSkin",
     "PairDevice",
+    "CBMCDevice",
     "Resident",
     "DomainGrid",
     "Components",
@@ -5842,6 +5952,10 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "IdentitySwitchProbability",
     "SwapConventionalProbability",
     "SwapProbability",
+    "SwapMultiTrialProbability",
+    "ReinsertionMultiTrialProbability",
+    "GibbsSwapMultiTrialProbability",
+    "NumberOfTrialMolecules",
     "PairSwapConventionalProbability",
     "PairSwapProbability",
     "CFCMC_PairSwapProbability",

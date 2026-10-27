@@ -213,6 +213,7 @@ export struct InputReader
   ThreadPool::ThreadingType threadingType{ThreadPool::ThreadingType::Serial};  ///< Type of threading to be used.
   MinimizationOptions minimizationOptions{};
   SpatialDecompositionSettings spatialDecompositionSettings{};  ///< Settings of the spatial-decomposition MD engine.
+  PairDevice cbmcDevice{PairDevice::CPU};  ///< Device of the multiple-try CBMC grower ('CBMCDevice').
   DcTSTSettings dctstSettings{};  ///< Settings of the dcTST transmission driver ('dcTST' object of the system block).
   DcTSTFreeEnergySettings dctstFreeEnergySettings{};  ///< Settings of the dcTST free-energy driver (same object).
   PolymerizationSettings polymerizationSettings{};  ///< Settings of the 'Polymerization' driver ('Polymerization' object).

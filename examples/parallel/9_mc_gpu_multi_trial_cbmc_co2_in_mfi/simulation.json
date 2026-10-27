@@ -1,0 +1,36 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfInitializationCycles" : 50000,
+  "NumberOfEquilibrationCycles" : 50000,
+  "NumberOfProductionCycles" : 100000,
+  "PrintEvery" : 5000,
+  "CBMCDevice" : "GPU",
+
+  "Systems" :
+  [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "HeliumVoidFraction" : 0.3,
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ExternalTemperature" : 353.0,
+      "ExternalPressure" : 1.0e5,
+      "ChargeMethod" : "Ewald"
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "CO2",
+      "FugacityCoefficient" : 1.0,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionMultiTrialProbability" : 0.5,
+      "SwapMultiTrialProbability" : 1.0,
+      "NumberOfTrialMolecules" : 64,
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}

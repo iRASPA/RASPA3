@@ -50,6 +50,7 @@ bool isTMMCCrossSystemMove(Move::Types moveType)
   {
     case Move::Types::GibbsVolume:
     case Move::Types::GibbsSwapCBMC:
+    case Move::Types::GibbsSwapMultiTrialCBMC:
     case Move::Types::GibbsSwapCFCMC:
     case Move::Types::GibbsSwapCBCFCMC:
     case Move::Types::GibbsConventionalCFCMC:

@@ -5,6 +5,7 @@ add_executable(unit_tests_raspa3
   mc_identity_switch_drift.cpp
   mc_thermodynamic_integration_drift.cpp
   mc_muvt_drift.cpp
+  mc_multi_trial_cbmc.cpp
   mc_muvt_grids_drift.cpp
   mc_npt_drift.cpp
   mc_nvt_drift.cpp

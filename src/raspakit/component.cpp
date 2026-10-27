@@ -3489,6 +3489,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.pivotRandomizationFraction;
   archive << c.pivotCBMCNumberOfTrialAngles;
   archive << c.pivotCBMCRandomizationFraction;
+  archive << c.numberOfTrialMolecules;
   archive << c.crankshaftRandomizationFraction;
   archive << c.crankshaftMaxSegmentSize;
   archive << c.concertedRotationRandomizationFraction;
@@ -3609,6 +3610,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.pivotRandomizationFraction;
   archive >> c.pivotCBMCNumberOfTrialAngles;
   archive >> c.pivotCBMCRandomizationFraction;
+  archive >> c.numberOfTrialMolecules;
   archive >> c.crankshaftRandomizationFraction;
   archive >> c.crankshaftMaxSegmentSize;
   archive >> c.concertedRotationRandomizationFraction;

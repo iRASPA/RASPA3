@@ -91,6 +91,7 @@ export struct MCMoveStatistics
     stats[std::to_underlying(Move::Types::RandomRotation)] = MoveStatistics<double3>{};
     stats[std::to_underlying(Move::Types::Swap)] = MoveStatistics<double3>{};
     stats[std::to_underlying(Move::Types::SwapCBMC)] = MoveStatistics<double3>{};
+    stats[std::to_underlying(Move::Types::SwapMultiTrialCBMC)] = MoveStatistics<double3>{};
     stats[std::to_underlying(Move::Types::PairSwapCBMC)] = MoveStatistics<double3>{};
     stats[std::to_underlying(Move::Types::PairSwap)] = MoveStatistics<double3>{};
     stats[std::to_underlying(Move::Types::GroupSwap)] = MoveStatistics<double3>{};
@@ -164,12 +165,14 @@ export struct MCMoveStatistics
     stats[std::to_underlying(Move::Types::AnisotropicVolumeChange)] =
         MoveStatistics<double3>{.maxChange = double3(0.1), .lowerLimit = double3(0.01), .upperLimit = double3(1.5)};
     stats[std::to_underlying(Move::Types::ReinsertionCBMC)] = MoveStatistics<double>{};
+    stats[std::to_underlying(Move::Types::ReinsertionMultiTrialCBMC)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::PartialReinsertionCBMC)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::IdentityChangeCBMC)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::IdentitySwitchCBMC)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::GibbsVolume)] =
         MoveStatistics<double>{.maxChange = 0.1, .lowerLimit = 0.01, .upperLimit = 1.5};
     stats[std::to_underlying(Move::Types::GibbsSwapCBMC)] = MoveStatistics<double>{};
+    stats[std::to_underlying(Move::Types::GibbsSwapMultiTrialCBMC)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::GibbsIdentityChangeCBMC)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::Widom)] = MoveStatistics<double>{};
     stats[std::to_underlying(Move::Types::WidomCFCMC)] = MoveStatistics<double>{};

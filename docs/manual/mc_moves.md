@@ -24,11 +24,13 @@ the [Commands](\ref commands) page for the full input documentation.
   * [Translation-rotation smart MC](#translation-rotation-smart-mc)
 * [Configurational-bias moves](#configurational-bias-moves)
   * [Reinsertion (CBMC)](#reinsertion-cbmc)
+  * [Reinsertion multi-trial (CBMC)](#reinsertion-multi-trial-cbmc)
   * [Partial reinsertion (CBMC)](#partial-reinsertion-cbmc)
   * [Identity change (CBMC)](#identity-change-cbmc)
 * [Insertion and deletion moves](#insertion-and-deletion-moves)
   * [Swap (conventional)](#swap-conventional)
   * [Swap (CBMC)](#swap-cbmc)
+  * [Swap multi-trial (CBMC)](#swap-multi-trial-cbmc)
   * [Swap (CFCMC)](#swap-cfcmc)
   * [Swap (CB/CFCMC)](#swap-cbcfcmc)
   * [Pair swap (conventional)](#pair-swap-conventional)
@@ -48,6 +50,7 @@ the [Commands](\ref commands) page for the full input documentation.
 * [Gibbs ensemble moves](#gibbs-ensemble-moves)
   * [Gibbs volume change](#gibbs-volume-change)
   * [Gibbs swap (CBMC)](#gibbs-swap-cbmc)
+  * [Gibbs swap multi-trial (CBMC)](#gibbs-swap-multi-trial-cbmc)
   * [Gibbs swap (CFCMC, serial)](#gibbs-swap-cfcmc)
   * [Gibbs swap (CB/CFCMC, serial)](#gibbs-swap-cbcfcmc)
   * [Gibbs conventional CFCMC (parallel)](#gibbs-conventional-cfcmc)
@@ -566,6 +569,64 @@ D. Frenkel, G.C.A.M. Mooij, and B. Smit, *Novel scheme to study structural and
 thermal properties of continuously deformable molecules*, J. Phys.: Condens.
 Matter **4**, 3053-3076 (1992). <https://doi.org/10.1088/0953-8984/4/12/006>
 
+### Reinsertion multi-trial (CBMC) <a name="reinsertion-multi-trial-cbmc"></a>
+
+Keyword: `"ReinsertionMultiTrialProbability"` (component move);
+`"NumberOfTrialMolecules"` sets \f$M\f$ (default 10)
+
+Multiple-try variant of the CBMC reinsertion. Instead of one trial molecule,
+\f$M\f$ complete molecules are grown independently with CBMC at random
+positions; one of them is selected with probability proportional to its
+weight, and the acceptance uses the *mean* weight of the whole set. Because the
+move already picks a good candidate out of \f$M\f$, the acceptance rate rises
+towards one for large \f$M\f$. The \f$M\f$ grows are independent of each other,
+which is what makes the move suitable for a parallel (GPU) grower: the CPU
+implementation is the reference, the device grower produces the same
+proposals. The reciprocal-Ewald change is folded into every trial weight
+*before* the selection, so no separate correction factor appears in the
+acceptance rule.
+
+Steps:
+
+- select a random box, component and molecule \f$\mathbf{o}\f$,
+- grow \f$M\f$ trial molecules \f$\mathbf{n}_1 \ldots \mathbf{n}_M\f$ with CBMC
+  (with the old molecule excluded from the background) and form the weights
+  \f$\tilde W(\mathbf{n}_i) = W(\mathbf{n}_i)\,
+  e^{-\beta \Delta U_\mathrm{Ewald}(\mathbf{n}_i)}\f$,
+- select \f$\mathbf{n} = \mathbf{n}_i\f$ with probability
+  \f$\tilde W(\mathbf{n}_i)/\sum_j \tilde W(\mathbf{n}_j)\f$,
+- retrace the old molecule to obtain \f$W(\mathbf{o})\f$ and grow \f$M-1\f$
+  reference molecules \f$\mathbf{o}'_j\f$ in the same background,
+- accept or reject on the ratio of mean weights.
+
+Acceptance rule:
+
+\f[
+\text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1,
+\frac{\bar W(\mathbf{n})}{\bar W(\mathbf{o})}\right),
+\qquad
+\bar W(\mathbf{n}) = \frac{1}{M}\sum_{i=1}^{M} \tilde W(\mathbf{n}_i),
+\qquad
+\bar W(\mathbf{o}) = \frac{1}{M}\left(W(\mathbf{o}) +
+  \sum_{j=1}^{M-1} \tilde W(\mathbf{o}'_j)\right)
+\f]
+
+All reciprocal-Ewald energies in both sets are differences relative to the
+current configuration (so the old molecule itself carries no Ewald factor).
+With \f$M=1\f$ the move is identical to the CBMC reinsertion. The move uses
+the multiple-first-bead scheme of Esselink et al. for the first bead, and does
+not support polarization.
+
+Useful for: the same systems as the CBMC reinsertion, when a very high
+acceptance per attempt is wanted (e.g. many grows run in parallel on an
+accelerator) or when the single-trial move acceptance is very low.
+
+References: K. Esselink, L.D.J.C. Loyens, and B. Smit, *Parallel Monte Carlo
+simulations*, Phys. Rev. E **51**, 1560-1568 (1995).
+<https://doi.org/10.1103/PhysRevE.51.1560>;
+D. Frenkel, G.C.A.M. Mooij, and B. Smit, J. Phys.: Condens. Matter **4**,
+3053-3076 (1992). <https://doi.org/10.1088/0953-8984/4/12/006>
+
 ### Partial reinsertion (CBMC) <a name="partial-reinsertion-cbmc"></a>
 
 Keyword: `"PartialReinsertionProbability"` (component move)
@@ -750,6 +811,99 @@ molecules: adsorption isotherms of alkanes in zeolites*, Mol. Phys. **85**,
 153-172 (1995). <https://doi.org/10.1080/00268979500101011>;
 T.J.H. Vlugt, R. Krishna, and B. Smit, J. Phys. Chem. B **103**, 1102-1118
 (1999). <https://doi.org/10.1021/jp982736c>
+
+### Swap multi-trial (CBMC) <a name="swap-multi-trial-cbmc"></a>
+
+Keyword: `"SwapMultiTrialProbability"` (component move);
+`"NumberOfTrialMolecules"` sets \f$M\f$ (default 10)
+
+Multiple-try variant of the CBMC swap. For an insertion, \f$M\f$ complete
+molecules are grown independently with CBMC and one is selected with
+probability proportional to its weight; for a deletion, the selected molecule
+is retraced and \f$M-1\f$ reference molecules are grown into the system
+*without* that molecule. The acceptance uses the mean weight of each set, so
+that the ratio of insertion to deletion acceptance obeys detailed balance for
+the grand-canonical distribution. The reciprocal-Ewald and tail-correction
+changes are folded into every weight before the selection; there is no
+separate \f$e^{-\beta \Delta U_\mathrm{corr}}\f$ factor.
+
+Steps:
+
+- select a random box and component; with 50% probability attempt an
+  insertion, otherwise a deletion,
+- insertion: grow \f$M\f$ trial molecules, form
+  \f$\tilde W(\mathbf{n}_i) = W(\mathbf{n}_i)\,
+  e^{-\beta \Delta U_\mathrm{corr}(\mathbf{n}_i)}\f$ with
+  \f$\Delta U_\mathrm{corr}\f$ the reciprocal-Ewald plus tail change of
+  inserting \f$\mathbf{n}_i\f$ into the current system, select one with
+  probability \f$\tilde W(\mathbf{n}_i)/\sum_j \tilde W(\mathbf{n}_j)\f$,
+- deletion: select a random integer molecule \f$\mathbf{o}\f$, retrace it to
+  obtain \f$W(\mathbf{o})\f$, grow \f$M-1\f$ reference molecules
+  \f$\mathbf{o}'_j\f$ into the system without \f$\mathbf{o}\f$, and measure
+  every \f$\Delta U_\mathrm{corr}\f$ (including that of \f$\mathbf{o}\f$ itself)
+  relative to that \f$N-1\f$ state,
+- accept or reject.
+
+Acceptance rules:
+
+\f[
+\text{acc}_\text{ins} = \min\left(1, B_{N+1,N}\frac{\beta f V}{N+1}\,
+      \frac{\bar W(\mathbf{n})}{W^\text{IG}} \right),
+\qquad
+\text{acc}_\text{del} = \min\left(1, B_{N-1,N}\frac{N}{\beta f V}\,
+      \frac{W^\text{IG}}{\bar W(\mathbf{o})} \right)
+\f]
+
+with
+
+\f[
+\bar W(\mathbf{n}) = \frac{1}{M}\sum_{i=1}^{M} \tilde W(\mathbf{n}_i),
+\qquad
+\bar W(\mathbf{o}) = \frac{1}{M}\left(\tilde W(\mathbf{o}) +
+  \sum_{j=1}^{M-1} \tilde W(\mathbf{o}'_j)\right)
+\f]
+
+Trials that overlap carry zero weight but still count in the \f$1/M\f$
+normalization. With \f$M=1\f$ the move is identical to the CBMC swap. The
+move is TMMC-aware (the macrostate transition matrix is updated with the
+unbiased acceptance probability) and does not support polarization.
+
+Useful for: GCMC of molecules whose single-trial insertion acceptance is very
+low (dense phases, bulky or branched molecules in tight pores), and as the
+host side of a parallel grower: the \f$M\f$ independent grows map onto an
+accelerator, and the acceptance per attempted move approaches one for large
+\f$M\f$.
+
+**Device grower.** With the top-level setting `"CBMCDevice"` (`"OpenCL"`,
+`"Metal"`, `"CUDA"` or `"GPU"`) the trial molecules of rigid components are
+grown on the device: \f$M\f$ groups of \f$k\f$ complete rigid molecules
+(\f$k\f$ = `"NumberOfTrialDirections"`) at uniform random positions and
+orientations are evaluated in one batch in single precision, one trial per
+group is Rosenbluth-selected and the group weight is
+\f$W_i = \frac{1}{k}\sum_j e^{-\beta U_{ij}}\f$; the Fourier and tail terms
+are added on the host as above and one group is selected with probability
+\f$\propto \tilde W_i\f$. The retrace side evaluates the existing molecule
+with the same kernel, completes its group with \f$k-1\f$ fresh trials and
+adds \f$M-1\f$ reference groups. The device is a proposal engine only: the
+selected trial and the existing molecule are re-evaluated on the host in
+double precision, and the acceptance rule is multiplied by
+\f$\exp(-\beta[(U_\text{d}-U_\text{f})(\mathbf{n}) -
+(U_\text{d}-U_\text{f})(\mathbf{o})])\f$, the ratio of the double
+(\f$U_\text{d}\f$) and single (\f$U_\text{f}\f$) precision Boltzmann factors
+at the end points, as in the dual cut-off scheme. The proposal is reversible
+for the single-precision potential and the correction is the Metropolis
+factor between the two potentials, so the chain samples the double-precision
+distribution exactly; the running energies only ever receive host energies.
+Components the device scheme does not cover (flexible molecules, more than 32
+atoms, fractional molecules, external fields, cross-link tethers, pair
+potentials other than Lennard-Jones, non-Ewald electrostatics) are grown on
+the host within the same move.
+
+References: K. Esselink, L.D.J.C. Loyens, and B. Smit, *Parallel Monte Carlo
+simulations*, Phys. Rev. E **51**, 1560-1568 (1995).
+<https://doi.org/10.1103/PhysRevE.51.1560>;
+D. Frenkel and B. Smit, *Understanding Molecular Simulation*, 2nd ed.,
+Academic Press (2002), Sect. 13.6 (parallel CBMC).
 
 ### Swap (CFCMC) <a name="swap-cfcmc"></a>
 
@@ -1788,6 +1942,55 @@ generalization and application to mixture and membrane equilibria*, Mol. Phys.
 G.C.A.M. Mooij, D. Frenkel, and B. Smit, *Direct simulation of phase
 equilibria of chain molecules*, J. Phys.: Condens. Matter **4**, L255-L259
 (1992). <https://doi.org/10.1088/0953-8984/4/16/001>
+
+### Gibbs swap multi-trial (CBMC) <a name="gibbs-swap-multi-trial-cbmc"></a>
+
+Keyword: `"GibbsSwapMultiTrialProbability"` (component move);
+`"NumberOfTrialMolecules"` sets \f$M\f$ (default 10)
+
+Multiple-try variant of the Gibbs CBMC swap. In the receiving box \f$M\f$
+trial molecules are grown and one is selected with probability proportional to
+its weight; in the donating box the transferred molecule is retraced and
+\f$M-1\f$ reference molecules are grown into the box without it. Each box
+folds its own reciprocal-Ewald and tail change into the weights before the
+selection.
+
+Steps:
+
+- choose the transfer direction (box \f$A \rightarrow B\f$ or
+  \f$B \rightarrow A\f$, 50% each); reject unless the donor has an integer
+  molecule of the component,
+- receiving box \f$A\f$: grow \f$M\f$ trial molecules, form
+  \f$\tilde W_A(\mathbf{n}_i) = W_A(\mathbf{n}_i)\,
+  e^{-\beta_A \Delta U_{\mathrm{corr},A}(\mathbf{n}_i)}\f$, select one,
+- donating box \f$B\f$: retrace the molecule \f$\mathbf{o}\f$ and grow
+  \f$M-1\f$ references \f$\mathbf{o}'_j\f$ into box \f$B\f$ without
+  \f$\mathbf{o}\f$; all \f$\Delta U_{\mathrm{corr},B}\f$ are measured relative
+  to that state,
+- accept or reject the simultaneous insertion and deletion.
+
+Acceptance rule (transfer from box \f$B\f$ to box \f$A\f$):
+
+\f[
+\text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1,
+  \frac{\bar W_A(\mathbf{n})\, N_B\, V_A}{\bar W_B(\mathbf{o})\, (N_A+1)\, V_B}\right),
+\qquad
+\bar W_A(\mathbf{n}) = \frac{1}{M}\sum_i \tilde W_A(\mathbf{n}_i),
+\qquad
+\bar W_B(\mathbf{o}) = \frac{1}{M}\left(\tilde W_B(\mathbf{o}) +
+  \sum_{j=1}^{M-1}\tilde W_B(\mathbf{o}'_j)\right)
+\f]
+
+With \f$M=1\f$ the move is identical to the Gibbs swap (CBMC). The move is
+TMMC-aware and does not support polarization.
+
+Useful for: Gibbs-ensemble phase equilibria of molecules whose transfer
+acceptance is very low (dense liquids, long or branched chains).
+
+References: K. Esselink, L.D.J.C. Loyens, and B. Smit, Phys. Rev. E **51**,
+1560-1568 (1995). <https://doi.org/10.1103/PhysRevE.51.1560>;
+G.C.A.M. Mooij, D. Frenkel, and B. Smit, J. Phys.: Condens. Matter **4**,
+L255-L259 (1992). <https://doi.org/10.1088/0953-8984/4/16/001>
 
 ### Gibbs swap (CFCMC, serial) <a name="gibbs-swap-cfcmc"></a>
 

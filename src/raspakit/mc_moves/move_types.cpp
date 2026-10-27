@@ -61,7 +61,10 @@ std::array<std::string, std::to_underlying(Move::Types::Count)> Move::moveNames 
   "Cross-link swap",
   "Cross-link formation/scission",
   "Cross-link exchange",
-  "Pivot (CBMC)"
+  "Pivot (CBMC)",
+  "Swap multi-trial (CBMC)",
+  "Reinsertion multi-trial (CBMC)",
+  "Gibbs swap multi-trial (CBMC)"
 };
 
 std::array<std::string, std::to_underlying(Move::Timing::Count)> Move::timingNames =
@@ -276,4 +279,11 @@ std::array<std::vector<Move::Timing>, std::to_underlying(Move::Types::Count)> Mo
     std::vector<Move::Timing>{Move::Timing::MoleculeMolecule},
     // PivotCBMC
     std::vector<Move::Timing>{Move::Timing::ExternalFieldMolecule, Move::Timing::FrameworkMolecule,
-                              Move::Timing::MoleculeMolecule, Move::Timing::Ewald}};
+                              Move::Timing::MoleculeMolecule, Move::Timing::Ewald},
+    // SwapMultiTrialCBMC
+    std::vector<Move::Timing>{Move::Timing::InsertionTotal, Move::Timing::DeletionTotal, Move::Timing::NonEwald,
+                              Move::Timing::Ewald},
+    // ReinsertionMultiTrialCBMC
+    std::vector<Move::Timing>{Move::Timing::NonEwald, Move::Timing::Ewald},
+    // GibbsSwapMultiTrialCBMC
+    std::vector<Move::Timing>{Move::Timing::NonEwald, Move::Timing::Ewald}};

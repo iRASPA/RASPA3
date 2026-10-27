@@ -20,6 +20,7 @@ file(GLOB RASPAKIT_CPP_FILES
   ${PROJECT_SOURCE_DIR}/cbmc/engine/*.cpp
   ${PROJECT_SOURCE_DIR}/cbmc/schemes/*.cpp
   ${PROJECT_SOURCE_DIR}/cbmc/energy/*.cpp
+  ${PROJECT_SOURCE_DIR}/cbmc/device/*.cpp
   ${PROJECT_SOURCE_DIR}/interactions/*.cpp
   ${PROJECT_SOURCE_DIR}/forcefield/*.cpp
   ${PROJECT_SOURCE_DIR}/minimization/*.cpp
@@ -50,6 +51,7 @@ file(GLOB RASPAKIT_IXX_FILES
   ${PROJECT_SOURCE_DIR}/cbmc/engine/*.ixx
   ${PROJECT_SOURCE_DIR}/cbmc/schemes/*.ixx
   ${PROJECT_SOURCE_DIR}/cbmc/energy/*.ixx
+  ${PROJECT_SOURCE_DIR}/cbmc/device/*.ixx
   ${PROJECT_SOURCE_DIR}/interactions/*.ixx
   ${PROJECT_SOURCE_DIR}/forcefield/*.ixx
   ${PROJECT_SOURCE_DIR}/minimization/*.ixx

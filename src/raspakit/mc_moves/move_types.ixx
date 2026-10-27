@@ -65,7 +65,10 @@ export struct Move
     CrossLinkFormationScission = 54,      // Formation or scission of a cross-link between two reactive sites (system move)
     CrossLinkExchange = 55,               // Two cross-links trade partners, (a,b)+(c,d) -> (a,c)+(b,d) (system move)
     PivotCBMC = 56,                       // Pivot with Rosenbluth selection of the rotation angle among k trial angles
-    Count = 57
+    SwapMultiTrialCBMC = 57,              // Multiple-try CBMC insertion/deletion: M trial molecules, selection by weight
+    ReinsertionMultiTrialCBMC = 58,       // Multiple-try CBMC reinsertion
+    GibbsSwapMultiTrialCBMC = 59,         // Multiple-try CBMC Gibbs swap (cross-system move)
+    Count = 60
   };
 
   /**
@@ -138,6 +141,8 @@ export inline std::unordered_set<Move::Types> componentMoves = {Move::Types::Tra
                                                                 Move::Types::RotationSmartMC,
                                                                 Move::Types::TranslationRotationSmartMC,
                                                                 Move::Types::ReinsertionCBMC,    Move::Types::PartialReinsertionCBMC,
+                                                                Move::Types::ReinsertionMultiTrialCBMC,
+                                                                Move::Types::SwapMultiTrialCBMC,
                                                                 Move::Types::Pivot,
                                                                 Move::Types::PivotCBMC,
                                                                 Move::Types::Crankshaft,
@@ -171,6 +176,7 @@ export inline std::unordered_set<Move::Types> crossSystemMoves = {Move::Types::G
                                                                   Move::Types::GibbsConventionalCFCMC,
                                                                   Move::Types::GibbsConventionalCBCFCMC,
                                                                   Move::Types::GibbsIdentityChangeCBMC,
+                                                                  Move::Types::GibbsSwapMultiTrialCBMC,
                                                                   Move::Types::ParallelTempering};
 
 export inline std::unordered_set<Move::Types> groupMoves = {Move::Types::ReactionCBMC, Move::Types::ReactionConventionalCFCMC,

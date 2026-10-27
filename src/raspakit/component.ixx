@@ -221,6 +221,9 @@ export struct Component
   // for the large rotations, so the randomization fraction defaults higher than for the plain pivot.
   std::size_t pivotCBMCNumberOfTrialAngles{10};  ///< Number of trial angles of the CBMC pivot.
   double pivotCBMCRandomizationFraction{0.5};    ///< Fraction of CBMC-pivot attempts with trial angles in [-pi, pi].
+  /// Number of complete trial molecules M of the multiple-try moves (SwapMultiTrialCBMC,
+  /// ReinsertionMultiTrialCBMC, GibbsSwapMultiTrialCBMC); M = 1 reduces them to the ordinary CBMC moves.
+  std::size_t numberOfTrialMolecules{10};
   // Fraction of crankshaft-move attempts that randomize the rotation angle completely (uniform in
   // [-pi, pi]) instead of perturbing it within the adaptive window; same rationale as
   // 'pivotRandomizationFraction'.

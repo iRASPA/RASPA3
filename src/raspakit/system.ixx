@@ -265,6 +265,12 @@ export struct System
   /// shared between copies of a system, which the move detects and rebuilds.
   std::shared_ptr<void> hybridMCForceEngine{};
 
+  /// The device the multiple-try CBMC moves (SwapMultiTrialCBMC, ReinsertionMultiTrialCBMC,
+  /// GibbsSwapMultiTrialCBMC) grow their trial molecules on ('CBMCDevice' in the input; CPU: the host grower). A
+  /// device grows rigid molecules in single precision as a proposal and the host re-evaluates the selected one in
+  /// double (see cbmc_multi_trial_device); components it does not cover are grown on the host. Not archived.
+  PairDevice cbmcDevice{PairDevice::CPU};
+
   std::vector<std::complex<double>> eik_xy{};
   std::vector<std::complex<double>> eik_x{};
   std::vector<std::complex<double>> eik_y{};

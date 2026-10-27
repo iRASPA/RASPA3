@@ -364,6 +364,7 @@ void System::determineSwappableComponents()
   {
     if (component.mc_moves_probabilities.getProbability(Move::Types::Swap) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::SwapMultiTrialCBMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCBMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::PairSwap) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCFCMC) > 0.0 ||
@@ -379,6 +380,7 @@ void System::determineSwappableComponents()
     }
 
     if (component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapMultiTrialCBMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCBCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMC) > 0.0 ||

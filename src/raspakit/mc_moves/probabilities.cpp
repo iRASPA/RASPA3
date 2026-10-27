@@ -124,10 +124,13 @@ std::string MCMoveProbabilities::repr()
   std::print(stream, "identitySwitchCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::IdentitySwitchCBMC)]);
   std::print(stream, "swapProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::Swap)]);
   std::print(stream, "swapCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::SwapCBMC)]);
+  std::print(stream, "swapMultiTrialCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::SwapMultiTrialCBMC)]);
+  std::print(stream, "reinsertionMultiTrialCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::ReinsertionMultiTrialCBMC)]);
   std::print(stream, "swapCFCMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::SwapCFCMC)]);
   std::print(stream, "swapCBCFCMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::SwapCBCFCMC)]);
   std::print(stream, "gibbsVolumeChangeProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::GibbsVolume)]);
   std::print(stream, "gibbsSwapCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::GibbsSwapCBMC)]);
+  std::print(stream, "gibbsSwapMultiTrialCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::GibbsSwapMultiTrialCBMC)]);
   std::print(stream, "gibbsSwapCFCMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::GibbsSwapCFCMC)]);
   std::print(stream, "gibbsIdentityChangeCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::GibbsIdentityChangeCBMC)]);
   std::print(stream, "widomProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::Widom)]);
