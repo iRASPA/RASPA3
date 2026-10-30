@@ -147,11 +147,12 @@ struct LambdaRescaleTrial
   RunningEnergy energyDifference;                       // U(newLambda) - U(oldLambda)
 };
 
-static void restoreLambdaRescale(LambdaRescaleTrial &trial)
+static void restoreLambdaRescale(System &system, LambdaRescaleTrial &trial)
 {
   for (std::size_t i = 0; i < trial.molecules.size(); ++i)
   {
     std::copy(trial.oldAtoms[i].begin(), trial.oldAtoms[i].end(), trial.molecules[i].begin());
+    system.cellListAtomsMoved(trial.molecules[i]);
   }
 }
 
@@ -192,11 +193,15 @@ static std::optional<LambdaRescaleTrial> rescaleToLambda(System &system, std::si
     const std::vector<Atom> &oldMolecule = trial.oldAtoms[i];
 
     for (Atom &atom : molecule) atom.setScaling(newLambda);
+    // The cell list caches the scaling of every atom. This move is driven outside 'MC_Moves::performRandomMove'
+    // (no 'settleCellLists' afterwards), so the list must follow every in-place edit: an accepted exchange leaves
+    // the rescaled molecules in place, and the cell-list moves that follow would otherwise see the old lambda.
+    system.cellListAtomsMoved(molecule);
 
     std::optional<RunningEnergy> nonEwaldDifference = computeNonEwaldEnergyDifference(system, molecule, oldMolecule);
     if (!nonEwaldDifference.has_value())
     {
-      restoreLambdaRescale(trial);
+      restoreLambdaRescale(system, trial);
       return std::nullopt;
     }
     trial.energyDifference += nonEwaldDifference.value();
@@ -251,6 +256,7 @@ static std::optional<LambdaRescaleTrial> rescaleToLambda(System &system, std::si
 
 static void acceptLambdaRescale(System &system, const LambdaRescaleTrial &trial)
 {
+  // the atoms are already at the new scaling and the cell list was refreshed when they were rescaled
   Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
   if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
@@ -308,7 +314,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::LambdaExchange(
   std::optional<LambdaRescaleTrial> trialB = rescaleToLambda(systemB, tiComponentB.value(), lambdaValueA);
   if (!trialB.has_value())
   {
-    restoreLambdaRescale(trialA.value());
+    restoreLambdaRescale(systemA, trialA.value());
     return std::nullopt;
   }
 
@@ -342,8 +348,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::LambdaExchange(
     return std::make_pair(trialA->energyDifference, trialB->energyDifference);
   }
 
-  restoreLambdaRescale(trialA.value());
-  restoreLambdaRescale(trialB.value());
+  restoreLambdaRescale(systemA, trialA.value());
+  restoreLambdaRescale(systemB, trialB.value());
 
   std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
   systemA.mc_moves_cputime[move][Move::Timing::Total] += (time_end - time_begin);

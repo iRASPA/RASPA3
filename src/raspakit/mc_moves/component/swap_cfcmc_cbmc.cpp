@@ -117,12 +117,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     {
       atom.setScalingToInteger();
     }
+    // The cell list caches the scaling of every atom: refresh the edited molecule, or the CBMC grow below sees the
+    // fractional molecule at its old scaling.
+    system.cellListAtomsMoved(fractionalMolecule);
 
     // Check if the molecule is inside blocked pockets
     if ((system.insideBlockedPockets(component, fractionalMolecule)))
     {
       // Reject move and restore the fractional molecule
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      system.cellListAtomsMoved(fractionalMolecule);
 
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
@@ -140,6 +144,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     {
       // Reject move and restore the fractional molecule
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      system.cellListAtomsMoved(fractionalMolecule);
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
@@ -156,6 +161,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     {
       // Reject move and restore the fractional molecule
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      system.cellListAtomsMoved(fractionalMolecule);
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
@@ -172,6 +178,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     {
       // Reject move and restore the fractional molecule
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      system.cellListAtomsMoved(fractionalMolecule);
 
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
@@ -230,6 +237,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     {
       // Reject move and restore the fractional molecule
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      system.cellListAtomsMoved(fractionalMolecule);
 
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
@@ -338,6 +346,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       // records the physical insertion probability at a window wall, but the sampled
       // configuration must remain exactly unchanged.
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      system.cellListAtomsMoved(fractionalMolecule);
       return {std::nullopt, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
     }
 
@@ -398,6 +407,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
     // Reject move and restore the fractional molecule
     std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+    system.cellListAtomsMoved(fractionalMolecule);
 
     return {std::nullopt, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
   }
@@ -471,6 +481,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       {
         atom.setScalingToInactiveFractional();
       }
+      system.cellListAtomsMoved(fractionalMolecule);
 
       // Save the state of the new fractional molecule
       std::vector<Atom> savedFractionalMolecule(newFractionalMolecule.begin(), newFractionalMolecule.end());
@@ -486,6 +497,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       {
         atom.setScalingToFractional(newLambda, groupId);
       }
+      system.cellListAtomsMoved(newFractionalMolecule);
 
       // Check if the new fractional molecule is inside blocked pockets
       if ((system.insideBlockedPockets(component, newFractionalMolecule)))
@@ -493,6 +505,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
         // Restore old molecules
         std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
         std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
+        system.cellListAtomsMoved(fractionalMolecule);
+        system.cellListAtomsMoved(newFractionalMolecule);
 
         return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
@@ -511,6 +525,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
         // Restore old molecules
         std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
         std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
+        system.cellListAtomsMoved(fractionalMolecule);
+        system.cellListAtomsMoved(newFractionalMolecule);
 
         return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
@@ -530,6 +546,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
         // Restore old molecules
         std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
         std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
+        system.cellListAtomsMoved(fractionalMolecule);
+        system.cellListAtomsMoved(newFractionalMolecule);
 
         return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
@@ -548,6 +566,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
         // Restore old molecules
         std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
         std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
+        system.cellListAtomsMoved(fractionalMolecule);
+        system.cellListAtomsMoved(newFractionalMolecule);
 
         return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
@@ -658,6 +678,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
         // rejection.
         std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
         std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
+        system.cellListAtomsMoved(fractionalMolecule);
+        system.cellListAtomsMoved(newFractionalMolecule);
         return {std::nullopt, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
       }
 
@@ -706,6 +728,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       // Restore the old molecules
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
       std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
+      system.cellListAtomsMoved(fractionalMolecule);
+      system.cellListAtomsMoved(newFractionalMolecule);
 
       return {std::nullopt, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
     }
@@ -889,6 +913,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
       // Update molecule positions with new scaling
       std::copy(trialPositions.begin(), trialPositions.end(), molecule.begin());
+      system.cellListAtomsMoved(molecule);
       system.computeTailCorrectionCounts();
 
       component.lambdaGC.setCurrentBin(newBin);

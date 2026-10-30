@@ -558,6 +558,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     {
       restoreFractionalMolecules(systemA, snapshotA);
       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      systemB.cellListAtomsMoved(fractionalMoleculeB);
       return std::nullopt;
     }
 
@@ -566,6 +567,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     {
       atom.moleculeId = static_cast<std::uint32_t>(globalFractionalMoleculeIndexB);
     }
+    systemB.cellListAtomsMoved(fractionalMoleculeB);
 
     // Intra-molecular bookkeeping (zero for rigid molecules): the placeholder conformation leaves B; the grown
     // conformation enters B through the grow energies. Not part of the acceptance rule.
@@ -598,6 +600,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     {
       restoreFractionalMolecules(systemA, snapshotA);
       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      systemB.cellListAtomsMoved(fractionalMoleculeB);
       return std::nullopt;
     }
 
@@ -651,6 +654,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     restoreFractionalMolecules(systemA, snapshotA);
     std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+    systemB.cellListAtomsMoved(fractionalMoleculeB);
 
     return std::nullopt;
   }
@@ -731,6 +735,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       componentA.mc_moves_statistics.addAccepted(move, 2);
 
       std::copy(trialPositions.begin(), trialPositions.end(), fractionalMoleculeA.begin());
+      systemA.cellListAtomsMoved(fractionalMoleculeA);
       systemA.computeTailCorrectionCounts();
 
       componentA.lambdaGC.setCurrentBin(newBin);

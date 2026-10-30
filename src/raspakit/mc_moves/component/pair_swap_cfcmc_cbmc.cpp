@@ -202,6 +202,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     {
       std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      system.cellListAtomsMoved(fractionalMoleculeA);
+      system.cellListAtomsMoved(fractionalMoleculeB);
     };
 
     RunningEnergy energyDifference{};
@@ -209,6 +211,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     // (1a) fractional molecule of component A becomes integer
     for (Atom& atom : fractionalMoleculeA) atom.setScalingToInteger();
+    // The cell list caches the scaling of every atom: refresh the edited molecules, or the CBMC grow below sees the
+    // fractional molecules at their old scaling.
+    system.cellListAtomsMoved(fractionalMoleculeA);
 
     if (system.insideBlockedPockets(componentA, fractionalMoleculeA))
     {
@@ -249,6 +254,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     // (1b) fractional molecule of component B becomes integer
     for (Atom& atom : fractionalMoleculeB) atom.setScalingToInteger();
+    system.cellListAtomsMoved(fractionalMoleculeB);
 
     if (system.insideBlockedPockets(componentBRef, fractionalMoleculeB))
     {
@@ -613,6 +619,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
       std::copy(oldNewFractionalMoleculeA.begin(), oldNewFractionalMoleculeA.end(), newFractionalMoleculeA.begin());
       std::copy(oldNewFractionalMoleculeB.begin(), oldNewFractionalMoleculeB.end(), newFractionalMoleculeB.begin());
+      system.cellListAtomsMoved(fractionalMoleculeA);
+      system.cellListAtomsMoved(fractionalMoleculeB);
+      system.cellListAtomsMoved(newFractionalMoleculeA);
+      system.cellListAtomsMoved(newFractionalMoleculeB);
     };
 
     // (1) retrace the fractional pair; the growth order of the reverse (insertion) move is A first,
@@ -674,6 +684,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     {
       atom.setScalingOff();
     }
+    system.cellListAtomsMoved(fractionalMoleculeA);
+    system.cellListAtomsMoved(fractionalMoleculeB);
 
     RunningEnergy energyDifference{};
 
@@ -683,6 +695,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     {
       atom.setScalingToFractional(newLambda, groupIdA);
     }
+    system.cellListAtomsMoved(newFractionalMoleculeA);
 
     if (system.insideBlockedPockets(componentA, newFractionalMoleculeA))
     {
@@ -727,6 +740,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     {
       atom.setScalingToFractional(newLambda, groupIdB);
     }
+    system.cellListAtomsMoved(newFractionalMoleculeB);
 
     if (system.insideBlockedPockets(componentBRef, newFractionalMoleculeB))
     {
@@ -913,6 +927,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     {
       std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      system.cellListAtomsMoved(fractionalMoleculeA);
+      system.cellListAtomsMoved(fractionalMoleculeB);
     };
 
     RunningEnergy energyDifference{};
@@ -920,6 +936,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     // rescale the fractional molecule of component A
     for (Atom& atom : fractionalMoleculeA) atom.setScaling(newLambda);
+    system.cellListAtomsMoved(fractionalMoleculeA);
 
     if (system.insideBlockedPockets(componentA, fractionalMoleculeA))
     {
@@ -960,6 +977,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     // rescale the fractional molecule of component B
     for (Atom& atom : fractionalMoleculeB) atom.setScaling(newLambda);
+    system.cellListAtomsMoved(fractionalMoleculeB);
 
     if (system.insideBlockedPockets(componentBRef, fractionalMoleculeB))
     {
