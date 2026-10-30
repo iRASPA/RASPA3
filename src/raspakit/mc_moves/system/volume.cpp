@@ -105,6 +105,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   newTotalEnergy.bondTorsion = oldTotalEnergy.bondTorsion;
   newTotalEnergy.bendBend = oldTotalEnergy.bendBend;
   newTotalEnergy.bendTorsion = oldTotalEnergy.bendTorsion;
+  newTotalEnergy.cmap = oldTotalEnergy.cmap;
   newTotalEnergy.intraVDW = oldTotalEnergy.intraVDW;
   newTotalEnergy.intraCoul = oldTotalEnergy.intraCoul;
 
@@ -218,6 +219,7 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
   newTotalEnergy.bondTorsion = oldTotalEnergy.bondTorsion;
   newTotalEnergy.bendBend = oldTotalEnergy.bendBend;
   newTotalEnergy.bendTorsion = oldTotalEnergy.bendTorsion;
+  newTotalEnergy.cmap = oldTotalEnergy.cmap;
   newTotalEnergy.intraVDW = oldTotalEnergy.intraVDW;
   newTotalEnergy.intraCoul = oldTotalEnergy.intraCoul;
 

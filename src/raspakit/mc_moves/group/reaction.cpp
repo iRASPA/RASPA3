@@ -9,6 +9,7 @@ import randomnumbers;
 import system;
 import running_energy;
 import reaction;
+import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import cbmc_results;
@@ -98,9 +99,14 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, system.components, newAtoms, oldAtoms, system.netCharge);
 
-  RunningEnergy tailEnergyDifference = Interactions::computeInterMolecularTailEnergyDifferenceReaction(
-      system.forceField, system.simulationBox, system.totalNumberOfPseudoAtoms, reaction.reactantStoichiometry,
-      reaction.productStoichiometry, system.components, forward);
+  // Tail corrections of the molecule-molecule and of the framework-molecule interactions: both change with the
+  // pseudo-atom composition of the adsorbate phase.
+  RunningEnergy tailEnergyDifference =
+      Interactions::computeInterMolecularTailEnergyDifferenceReaction(
+          system.forceField, system.simulationBox, system.totalNumberOfPseudoAtoms, reaction.reactantStoichiometry,
+          reaction.productStoichiometry, system.components, forward) +
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
+                                                                 system.spanOfFrameworkAtoms(), newAtoms, oldAtoms);
 
   const ReactionCommon::ReactionMoveKind moveKind =
       forward ? ReactionCommon::ReactionMoveKind::ForwardInsert

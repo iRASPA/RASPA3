@@ -25,6 +25,8 @@ export struct InterpolationEnergyGrid
   uint3 numberOfGridPoints;
   uint3 numberOfCells;
   ForceFieldSettings::InterpolationScheme order;
+
+  // omit data from binary restart (the grid will recreated on the fly)
   std::vector<double> data;
 
   InterpolationEnergyGrid() {}

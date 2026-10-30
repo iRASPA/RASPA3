@@ -85,21 +85,10 @@ export struct RandomNumber
     return std::make_pair(first, second);
   }
 
-  inline double3 UnitSphere()
-  {
-    double ran1, ran2, ranh, ransq;
-
-    do
-    {
-      ran1 = 2.0 * uniform();
-      ran2 = 2.0 * uniform();
-      ransq = ran1 * ran1 + ran2 * ran2;
-    } while (ransq >= 1.0);
-
-    ranh = 2.0 * std::sqrt(1.0 - ransq);
-
-    return double3(ran1 * ranh, ran2 * ranh, 1.0 - 2.0 * ransq);
-  }
+  /// Uniformly distributed unit vector (Marsaglia). Same as 'randomVectorOnUnitSphere'; kept for the call sites
+  /// that use this name. The earlier inline version dropped the '- 1.0' of the Marsaglia draws and therefore only
+  /// returned directions with x >= 0 and y >= 0, which broke the symmetry of the pair/group insertion proposals.
+  inline double3 UnitSphere() { return randomVectorOnUnitSphere(); }
 
   double3 randomVectorOnUnitSphere();
   double3 randomVectorOnCone(double3 v, double angle);

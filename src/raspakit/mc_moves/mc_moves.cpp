@@ -135,6 +135,8 @@ bool MC_Moves::maintainsCellList(Move::Types moveType)
     case Move::Types::ConcertedRotation:
     case Move::Types::BeadDisplacement:
     case Move::Types::BeadFlip:
+    case Move::Types::DoubleBridging:
+    case Move::Types::IntramolecularDoubleRebridging:
     // insertions and deletions go through 'System::insertMolecule'/'deleteMolecule', which invalidate
     case Move::Types::Swap:
     case Move::Types::SwapCBMC:
@@ -1055,8 +1057,10 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         }
         selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
-      else if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
+      else
       {
+        // Like 'Swap': an empty component is handled inside the move (trial counted, Pacc = 0 recorded in the
+        // collection matrix). Skipping the attempt here would leave the N = 0 row without its deletion trials.
         std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
 
         const auto [energyDifference, Pacc] =
@@ -1083,8 +1087,10 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         }
         selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
-      else if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
+      else
       {
+        // Like 'Swap': an empty component is handled inside the move (trial counted, Pacc = 0 recorded in the
+        // collection matrix). Skipping the attempt here would leave the N = 0 row without its deletion trials.
         std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
 
         const auto [energyDifference, Pacc] =
@@ -1278,6 +1284,14 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
     }
     case Move::Types::WidomCFCMC:
     {
+      // Lambda moves only (insertion and deletion disabled), like WidomCBCFCMC below: this is what equilibrates
+      // the Wang-Landau lambda bias before production.
+      const auto [energyDifference, Pacc] =
+          MC_Moves::swapMove_CFCMC(random, selectedSystem, selectedComponent, 0, true, true);
+      if (energyDifference)
+      {
+        selectedSystem.runningEnergies += energyDifference.value();
+      }
       break;
     }
     case Move::Types::WidomCBCFCMC:
@@ -2019,8 +2033,10 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         }
         selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
-      else if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
+      else
       {
+        // Like 'Swap': an empty component is handled inside the move (trial counted, Pacc = 0 recorded in the
+        // collection matrix). Skipping the attempt here would leave the N = 0 row without its deletion trials.
         std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
 
         const auto [energyDifference, Pacc] =
@@ -2047,8 +2063,10 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         }
         selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
-      else if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
+      else
       {
+        // Like 'Swap': an empty component is handled inside the move (trial counted, Pacc = 0 recorded in the
+        // collection matrix). Skipping the attempt here would leave the N = 0 row without its deletion trials.
         std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
 
         const auto [energyDifference, Pacc] =
@@ -2242,6 +2260,14 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
     }
     case Move::Types::WidomCFCMC:
     {
+      // Lambda moves only (insertion and deletion disabled), like WidomCBCFCMC below: this is what equilibrates
+      // the Wang-Landau lambda bias before production.
+      const auto [energyDifference, Pacc] =
+          MC_Moves::swapMove_CFCMC(random, selectedSystem, selectedComponent, 0, true, true);
+      if (energyDifference)
+      {
+        selectedSystem.runningEnergies += energyDifference.value();
+      }
       break;
     }
     case Move::Types::WidomCBCFCMC:
@@ -2992,8 +3018,10 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         }
         selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
-      else if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
+      else
       {
+        // Like 'Swap': an empty component is handled inside the move (trial counted, Pacc = 0 recorded in the
+        // collection matrix). Skipping the attempt here would leave the N = 0 row without its deletion trials.
         std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
 
         const auto [energyDifference, Pacc] =
@@ -3020,8 +3048,10 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         }
         selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
-      else if (selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
+      else
       {
+        // Like 'Swap': an empty component is handled inside the move (trial counted, Pacc = 0 recorded in the
+        // collection matrix). Skipping the attempt here would leave the N = 0 row without its deletion trials.
         std::size_t selectedMolecule = selectedSystem.randomIntegerMoleculeOfComponent(random, selectedComponent);
 
         const auto [energyDifference, Pacc] =

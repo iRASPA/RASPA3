@@ -194,6 +194,8 @@ std::optional<RunningEnergy> MC_Moves::intramolecularDoubleRebridgingMove(Random
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     std::copy(trialAtoms.cbegin(), trialAtoms.cend(), molecule_atoms.begin());
+    // in-place change of one molecule: keep the molecule cell list consistent, like the other in-place moves
+    system.cellListAtomsMoved(molecule_atoms);
     molecule.centerOfMassPosition = component.computeCenterOfMass(molecule_atoms);
 
     return energyDifference;

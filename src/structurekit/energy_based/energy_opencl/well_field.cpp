@@ -966,8 +966,15 @@ __kernel void WellField(__global float *energyOut,
   float value = df_hi(reduceOrientations(energies, clearances, dummyHit, numberOfOrientations, beta, kT, ceiling,
                                          &bestOrientation, &bestClearance));
 
+  // Same rule as the CPU field: no neighbour, or deep inside a wall, is not a medial or filament voxel and
+  // the softmin is not consulted (a voxel on top of an atom would otherwise see its one image skipped as
+  // too close and come out with no weight and a reliability of zero, the mark of a tight channel).
   float reliability = 1.0f;
-  if(bestClearance < 1.0e9f)
+  if(!(bestClearance < 1.0e9f) || bestClearance < -0.5f)
+  {
+    reliability = bestClearance < -0.5f ? 1.0f : 0.0f;
+  }
+  else
   {
     float4 axis = axes[bestOrientation];
     float4 directionSum = (float4)(0.0f);

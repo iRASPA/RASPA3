@@ -47,14 +47,19 @@ class DualTMMCTrial
   {
   }
 
+  // A transfer attempt that exits before its acceptance probability is known (overlap, empty box) is a
+  // rejected transfer for both boxes. The lambda-change and reinsertion sub-moves leave N unchanged in both
+  // boxes and record nothing (see the collection-matrix policy in mc_moves.cpp).
   ~DualTMMCTrial()
   {
-    if (!recorded_)
+    if (transferAttempted_ && !recorded_)
     {
       systemA_.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNA_);
       systemB_.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNB_);
     }
   }
+
+  void beginTransfer() { transferAttempted_ = true; }
 
   bool transferIsInBounds() const
   {
@@ -80,6 +85,7 @@ class DualTMMCTrial
   System& systemB_;
   std::size_t oldNA_;
   std::size_t oldNB_;
+  bool transferAttempted_{false};
   bool recorded_{false};
 };
 
@@ -120,6 +126,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // components are off in an inactive box), as the matching operation of the reverse move is.
 
     componentA.mc_moves_statistics.addTrial(move, 0);
+    tmmcTrial.beginTransfer();
 
     if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;
 

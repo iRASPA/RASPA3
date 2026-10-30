@@ -287,6 +287,10 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
 
     std::copy(trialI.cbegin(), trialI.cend(), atomsI.begin());
     std::copy(trialJ.cbegin(), trialJ.cend(), atomsJ.begin());
+    // Both chains changed in place (the molecule atom storage order is unchanged): keep the molecule cell list
+    // consistent here, like the other in-place moves, so that a following move does not see stale cells.
+    system.cellListAtomsMoved(atomsI);
+    system.cellListAtomsMoved(atomsJ);
     system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)].centerOfMassPosition =
         component.computeCenterOfMass(atomsI);
     system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, partnerMolecule)].centerOfMassPosition =

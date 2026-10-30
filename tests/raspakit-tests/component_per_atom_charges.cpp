@@ -21,8 +21,12 @@ class TemporaryComponentFile
  public:
   explicit TemporaryComponentFile(const nlohmann::json& definition)
   {
+    // The tests run as separate processes under 'ctest -j' (one per gtest filter), so a per-process counter
+    // alone collides across them; add a per-process random token to keep the file names distinct.
+    static const std::uint64_t processToken = std::random_device{}();
     static std::size_t counter{};
-    path = std::filesystem::temp_directory_path() / std::format("raspa3-per-atom-charges-{}.json", counter++);
+    path = std::filesystem::temp_directory_path() /
+           std::format("raspa3-per-atom-charges-{:x}-{}.json", processToken, counter++);
     std::ofstream stream(path);
     stream << definition.dump(2);
   }

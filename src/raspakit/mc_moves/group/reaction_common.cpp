@@ -824,6 +824,8 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     system.mc_moves_statistics.addConstructed(move);
     system.mc_moves_statistics.addAccepted(move);
     setSerialReactionFractionalScaling(system, reaction, lambdaNew);
+    // the effective (scaling-weighted) pseudo-atom counts used by the tail corrections follow the new lambda
+    system.computeTailCorrectionCounts();
     reaction.currentLambda = lambdaNew;
     lambdaHistogram.setCurrentBin(newBin);
     acceptChargedEwaldMove(system);
@@ -892,6 +894,12 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     RunningEnergy tailDifference{};
     RunningEnergy fourierDifference{};
     RunningEnergy energyDifference{};
+    // Non-CBMC path: the conformations of the new molecules are drawn from the ideal-gas Boltzmann
+    // distribution exp(-beta U_intra) (and the removed ones were generated the same way), so the
+    // intra-molecular energy difference cancels against the generation probabilities and must not
+    // enter the acceptance rule. It does enter the returned energy difference, which updates the
+    // running energies (same convention as the conventional swap/CFCMC moves).
+    RunningEnergy internalDifference{};
     if (useCBMC)
     {
       tailDifference = computeGroupSwapTailEnergyDifference(system, newAtoms, oldAtoms);
@@ -910,9 +918,9 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
       {
         return std::nullopt;
       }
-      energyDifference = completeDifference.value() +
-                         (internalEnergyFromAtomGroups(system, newAtoms) -
-                          internalEnergyFromAtomGroups(system, oldAtoms));
+      internalDifference =
+          internalEnergyFromAtomGroups(system, newAtoms) - internalEnergyFromAtomGroups(system, oldAtoms);
+      energyDifference = completeDifference.value() + internalDifference;
       if (useChargedEwald)
       {
         energyDifference += computeChargedGroupEwaldDifference(system, newAtoms, oldAtoms);
@@ -960,7 +968,8 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     else
     {
       acceptanceProbability =
-          std::exp(-system.beta * energyDifference.potentialEnergy() + equilibriumTerm + biasNew - biasOld);
+          std::exp(-system.beta * (energyDifference.potentialEnergy() - internalDifference.potentialEnergy()) +
+                   equilibriumTerm + biasNew - biasOld);
     }
     if (random.uniform() >= acceptanceProbability)
     {
@@ -1274,6 +1283,10 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   RunningEnergy tailDifference{};
   RunningEnergy fourierDifference{};
   RunningEnergy energyDifference{};
+  // Non-CBMC path: the grown ghost molecules are drawn from the ideal-gas Boltzmann distribution (and the
+  // deleted ones were generated the same way), so the intra-molecular energy difference cancels against the
+  // generation probabilities and is kept out of the acceptance rule; it only updates the running energies.
+  RunningEnergy internalDifference{};
   if (useCBMC)
   {
     tailDifference = computeGroupSwapTailEnergyDifference(system, fullNewAtoms, fullOldAtoms);
@@ -1293,9 +1306,9 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
       restoreOldScalings();
       return std::nullopt;
     }
-    energyDifference = completeDifference.value() +
-                       (internalEnergyFromAtomGroups(system, fullNewAtoms) -
-                        internalEnergyFromAtomGroups(system, fullOldAtoms));
+    internalDifference =
+        internalEnergyFromAtomGroups(system, fullNewAtoms) - internalEnergyFromAtomGroups(system, fullOldAtoms);
+    energyDifference = completeDifference.value() + internalDifference;
     if (system.forceField.useCharge)
     {
       energyDifference += computeChargedGroupEwaldDifference(system, fullNewAtoms, fullOldAtoms);
@@ -1326,7 +1339,8 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   else
   {
     acceptanceProbability =
-        std::exp(equilibriumTerm + biasNew - biasOld - system.beta * energyDifference.potentialEnergy());
+        std::exp(equilibriumTerm + biasNew - biasOld -
+                 system.beta * (energyDifference.potentialEnergy() - internalDifference.potentialEnergy()));
   }
 
   if (random.uniform() >= acceptanceProbability)
@@ -1449,6 +1463,9 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   }
 
   system.syncReactionFractionalMoleculeIndices();
+  // The in-place rescaling above changed the scalings of molecules that were still counted with their old
+  // scaling; rebuild the effective pseudo-atom counts of the tail corrections from the final configuration.
+  system.computeTailCorrectionCounts();
   reaction.currentLambda = lambdaNew;
   system.syncReactionLambdaBin(reaction);
   acceptChargedEwaldMove(system);
@@ -1548,6 +1565,8 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 
   Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
   setReactionFractionalScaling(system, reaction, lambdaNew);
+  // the effective (scaling-weighted) pseudo-atom counts used by the tail corrections follow the new lambda
+  system.computeTailCorrectionCounts();
   reaction.currentLambda = lambdaNew;
   system.syncReactionLambdaBin(reaction);
 

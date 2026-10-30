@@ -121,6 +121,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   newTotalEnergyA.bondTorsion = oldTotalEnergyA.bondTorsion;
   newTotalEnergyA.bendBend = oldTotalEnergyA.bendBend;
   newTotalEnergyA.bendTorsion = oldTotalEnergyA.bendTorsion;
+  newTotalEnergyA.cmap = oldTotalEnergyA.cmap;
   newTotalEnergyA.intraVDW = oldTotalEnergyA.intraVDW;
   newTotalEnergyA.intraCoul = oldTotalEnergyA.intraCoul;
 
@@ -204,6 +205,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   newTotalEnergyB.bondTorsion = oldTotalEnergyB.bondTorsion;
   newTotalEnergyB.bendBend = oldTotalEnergyB.bendBend;
   newTotalEnergyB.bendTorsion = oldTotalEnergyB.bendTorsion;
+  newTotalEnergyB.cmap = oldTotalEnergyB.cmap;
   newTotalEnergyB.intraVDW = oldTotalEnergyB.intraVDW;
   newTotalEnergyB.intraCoul = oldTotalEnergyB.intraCoul;
 
