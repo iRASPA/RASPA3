@@ -279,6 +279,10 @@ export struct System
   EwaldStructureFactor fixedFrameworkStoredEik{};
   EwaldStructureFactor trialEik{};
   double CoulombicFourierEnergySingleIon{0.0};
+  /// Net charge of the system as the Ewald net-charge correction sees it: the framework charge plus the
+  /// Coulomb-scaled charge sum(scalingCoulomb * charge) of the molecule atoms (a fractional molecule counts with
+  /// its scaled charge). Maintained incrementally by the molecule insertions and deletions and rebuilt from the
+  /// atoms by 'computeTailCorrectionCounts' (every accepted scaling change calls it).
   double netCharge{0.0};
   double netChargeFramework{0.0};
   double netChargeAdsorbates{0.0};
@@ -741,8 +745,15 @@ export struct System
   void rescaleMolarFractions();
   void computeComponentFluidProperties();
   void computeNumberOfPseudoAtoms();
-  /// Rebuilds effectiveNumberOfPseudoAtomsVDW and fractionalPseudoAtomCountsPerGroup from the current molecule atoms.
+  /// Rebuilds the scaling-dependent aggregates from the current molecule atoms: effectiveNumberOfPseudoAtomsVDW and
+  /// fractionalPseudoAtomCountsPerGroup (tail corrections) and the Coulomb-scaled net charges (Ewald net-charge
+  /// correction, see 'computeNetCharge'). Called after every accepted change of the atom scaling.
   void computeTailCorrectionCounts();
+  /// Rebuilds netChargeAdsorbates, netChargePerComponent and netCharge as the Coulomb-scaled charge of the current
+  /// molecule atoms plus the framework charge.
+  void computeNetCharge();
+  /// Coulomb-scaled charge sum(scalingCoulomb * charge) of a set of atoms.
+  [[nodiscard]] static double scaledNetCharge(std::span<const Atom> atoms);
   /// Incrementally adds a single atom's contribution to the aggregated tail-correction counts.
   void addAtomToTailCorrectionCounts(const Atom& atom);
   /// Incrementally removes a single atom's contribution from the aggregated tail-correction counts.

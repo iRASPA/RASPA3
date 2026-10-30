@@ -36,9 +36,11 @@ void restoreFractionalMolecules(System& system, const FractionalSnapshot& snapsh
 /// selected component at 'selectedActiveLambda', the others at their lambda in 'lambdaSourceSystem'), relative to
 /// 'beforeSnapshot'. The first Ewald sub-step of the move in 'system': 'storedEik' -> 'trialEik'. The atoms in
 /// memory are read as they are (the caller may already have replaced the selected molecule's atoms).
+/// 'runningNetCharge' is the Coulomb-scaled net charge threaded across the sub-steps like the tail counts: the
+/// net-charge correction expands around it, and it is advanced by the change of this sub-step.
 [[nodiscard]] std::optional<RunningEnergy> computeFlagSwapFractionalEnergyDifference(
     System& system, std::vector<double>& tailEffectiveCounts,
-    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts, double& runningNetCharge,
     const FractionalSnapshot& beforeSnapshot, std::size_t selectedComponent, bool systemBecomesActive,
     double selectedActiveLambda, const System& lambdaSourceSystem) noexcept;
 
@@ -46,7 +48,7 @@ void restoreFractionalMolecules(System& system, const FractionalSnapshot& snapsh
 /// selected component's own sub-steps in 'system', so the Ewald difference chains on 'trialEik'.
 [[nodiscard]] std::optional<RunningEnergy> computeFlagSwapOtherComponentsEnergyDifference(
     System& system, std::vector<double>& tailEffectiveCounts,
-    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts, double& runningNetCharge,
     const FractionalSnapshot& beforeSnapshot, std::size_t selectedComponent, bool systemBecomesActive,
     const System& lambdaSourceSystem) noexcept;
 

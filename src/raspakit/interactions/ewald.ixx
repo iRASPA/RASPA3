@@ -134,6 +134,16 @@ RunningEnergy energyDifferenceEwaldFourier(
     const std::array<double, maximumNumberOfDUDlambdaGroups>& netChargeDerivativeExternal = {});
 
 /**
+ * \brief Change of the Coulomb-scaled net charge sum(scalingCoulomb * charge) when 'oldatoms' is replaced by
+ *        'newatoms'.
+ *
+ * A move that chains several 'energyDifferenceEwaldFourier' steps ('storedEik -> trialEik', then
+ * 'trialEik -> trialEik') has to pass the net charge of the configuration each step starts from: the
+ * system's net charge for the first step, then incremented by this difference after every step.
+ */
+double scaledNetChargeDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
+
+/**
  * \brief The Ewald (or real-space charge method) energy difference of a move that displaces only some atoms
  * of a molecule: 'newMolecule' and 'oldMolecule' are the complete molecule, 'movedIndices' the atoms whose
  * positions differ between the two.
@@ -412,7 +422,7 @@ RunningEnergy computeEwaldFourierElectricField(
     EwaldStructureFactor& fixedFrameworkStoredEik, EwaldStructureFactor& storedEik, const ForceField& forceField,
     const SimulationBox& simulationBox, std::span<double3> electricFieldMolecules,
     const std::vector<Component>& components, const std::vector<std::size_t>& numberOfMoleculesPerComponent,
-    std::span<Atom> atomData);
+    std::span<Atom> atomData, double netChargeFramework = 0.0);
 
 /**
  * \brief Computes the periodic Coulomb potential matrix used in charge equilibration.

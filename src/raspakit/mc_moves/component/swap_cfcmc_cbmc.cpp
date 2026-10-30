@@ -183,15 +183,19 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
-    // Compute Ewald energy contribution
-    RunningEnergy EwaldEnergyDifference = timed(
-        system, component, move, Move::Timing::InsertionEwald,
-        [&]
-        {
-          return Interactions::energyDifferenceEwaldFourier(
-              system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-              system.forceField, system.simulationBox, system.components, fractionalMolecule, oldFractionalMolecule, system.netCharge);
-        });
+    // Compute Ewald energy contribution. The net charge the net-charge correction expands around is threaded
+    // across the two sub-steps: step 2 starts from the configuration after step 1.
+    double runningNetCharge = system.netCharge;
+    RunningEnergy EwaldEnergyDifference =
+        timed(system, component, move, Move::Timing::InsertionEwald,
+              [&]
+              {
+                return Interactions::energyDifferenceEwaldFourier(
+                    system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                    system.forceField, system.simulationBox, system.components, fractionalMolecule,
+                    oldFractionalMolecule, runningNetCharge);
+              });
+    runningNetCharge += Interactions::scaledNetChargeDifference(fractionalMolecule, oldFractionalMolecule);
 
     // Compute tail-correction energy contribution (Brick-CFCMC-style aggregated accounting).
     // Snapshot the committed effective type counts and thread them across the sequential sub-steps.
@@ -251,8 +255,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
-                    system.forceField, system.simulationBox, system.components, std::span(growData->atoms.begin(), growData->atoms.end()),
-                    {}, system.netCharge);
+                    system.forceField, system.simulationBox, system.components,
+                    std::span(growData->atoms.begin(), growData->atoms.end()), {}, runningNetCharge);
               });
 
     // Compute tail-correction energy contribution for the new molecule (threaded counts include the step-1 change).
@@ -444,15 +448,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       CBMC::RetraceResult retraceData =
           timed(system, component, move, Move::Timing::DeletionNonEwald,
                 [&] { return CBMC::retraceMolecule(random, retraceContext, component, fractionalMolecule); });
-      // Compute Ewald energy difference for the retraced molecule
-      RunningEnergy energyFourierDifference =
-          timed(system, component, move, Move::Timing::DeletionEwald,
-                [&]
-                {
-                  return Interactions::energyDifferenceEwaldFourier(
-                      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                      system.forceField, system.simulationBox, system.components, {}, fractionalMolecule, system.netCharge);
-                });
+      // Compute Ewald energy difference for the retraced molecule (net charge threaded across the two sub-steps,
+      // see insertion)
+      double runningNetCharge = system.netCharge;
+      RunningEnergy energyFourierDifference = timed(
+          system, component, move, Move::Timing::DeletionEwald,
+          [&]
+          {
+            return Interactions::energyDifferenceEwaldFourier(
+                system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                system.forceField, system.simulationBox, system.components, {}, fractionalMolecule, runningNetCharge);
+          });
+      runningNetCharge += Interactions::scaledNetChargeDifference({}, fractionalMolecule);
 
       // Compute tail-correction energy difference for the retraced molecule (Brick-CFCMC-style aggregated accounting).
       // Snapshot the committed effective type counts and thread them across the sequential sub-steps.
@@ -579,8 +586,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                 {
                   return Interactions::energyDifferenceEwaldFourier(
                       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
-                      system.forceField, system.simulationBox, system.components, newFractionalMolecule, savedFractionalMolecule,
-                      system.netCharge);
+                      system.forceField, system.simulationBox, system.components, newFractionalMolecule,
+                      savedFractionalMolecule, runningNetCharge);
                 });
 
       // Compute tail-correction energy contribution for the new fractional molecule (threaded counts include step 1).

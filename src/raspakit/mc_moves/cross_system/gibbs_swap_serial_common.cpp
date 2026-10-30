@@ -65,7 +65,7 @@ namespace
 // from the structure factor the preceding sub-steps left in 'trialEik' (otherwise their update would be discarded).
 std::optional<RunningEnergy> computeFractionalMoleculesEnergyDifference(
     System& system, std::vector<double>& tailEffectiveCounts,
-    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts, double& runningNetCharge,
     std::span<const Atom> newAtomsCombined, std::span<const Atom> oldAtomsCombined, bool chainedOnTrialEik) noexcept
 {
   std::optional<RunningEnergy> frameworkDifference = Interactions::computeFrameworkMoleculeEnergyDifference(
@@ -86,7 +86,8 @@ std::optional<RunningEnergy> computeFractionalMoleculesEnergyDifference(
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, chainedOnTrialEik ? system.trialEik : system.storedEik,
       system.trialEik, system.forceField, system.simulationBox, system.components, newAtomsCombined, oldAtomsCombined,
-      system.netCharge);
+      runningNetCharge);
+  runningNetCharge += Interactions::scaledNetChargeDifference(newAtomsCombined, oldAtomsCombined);
 
   RunningEnergy tailDifference =
       computeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, newAtomsCombined, oldAtomsCombined);
@@ -114,7 +115,7 @@ void setTargetScaling(Atom& atom, const System& system, std::size_t componentId,
 
 std::optional<RunningEnergy> computeFlagSwapFractionalEnergyDifference(
     System& system, std::vector<double>& tailEffectiveCounts,
-    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts, double& runningNetCharge,
     const FractionalSnapshot& beforeSnapshot, std::size_t selectedComponent, bool systemBecomesActive,
     double selectedActiveLambda, const System& lambdaSourceSystem) noexcept
 {
@@ -145,13 +146,13 @@ std::optional<RunningEnergy> computeFlagSwapFractionalEnergyDifference(
     }
   }
 
-  return computeFractionalMoleculesEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, newAtomsCombined,
-                                                    oldAtomsCombined, false);
+  return computeFractionalMoleculesEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, runningNetCharge,
+                                                    newAtomsCombined, oldAtomsCombined, false);
 }
 
 std::optional<RunningEnergy> computeFlagSwapOtherComponentsEnergyDifference(
     System& system, std::vector<double>& tailEffectiveCounts,
-    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts, double& runningNetCharge,
     const FractionalSnapshot& beforeSnapshot, std::size_t selectedComponent, bool systemBecomesActive,
     const System& lambdaSourceSystem) noexcept
 {
@@ -180,8 +181,8 @@ std::optional<RunningEnergy> computeFlagSwapOtherComponentsEnergyDifference(
     return RunningEnergy{};
   }
 
-  return computeFractionalMoleculesEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, newAtomsCombined,
-                                                    oldAtomsCombined, true);
+  return computeFractionalMoleculesEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, runningNetCharge,
+                                                    newAtomsCombined, oldAtomsCombined, true);
 }
 
 void applyFlagSwapScaling(System& system, std::size_t selectedComponent, bool systemBecomesActive,

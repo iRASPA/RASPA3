@@ -503,6 +503,30 @@ void System::computeTailCorrectionCounts()
       fractionalPseudoAtomCountsPerGroup[static_cast<std::size_t>(atom.groupId) - 1][type] += 1.0;
     }
   }
+
+  // the net charge is scaling-dependent in the same way (a fractional molecule counts with its scaled charge)
+  computeNetCharge();
+}
+
+double System::scaledNetCharge(std::span<const Atom> atoms)
+{
+  double charge = 0.0;
+  for (const Atom& atom : atoms)
+  {
+    charge += atom.scalingCoulomb * atom.charge;
+  }
+  return charge;
+}
+
+void System::computeNetCharge()
+{
+  netChargePerComponent.assign(components.size(), 0.0);
+  for (const Atom& atom : spanOfMoleculeAtoms())
+  {
+    netChargePerComponent[static_cast<std::size_t>(atom.componentId)] += atom.scalingCoulomb * atom.charge;
+  }
+  netChargeAdsorbates = std::accumulate(netChargePerComponent.begin(), netChargePerComponent.end(), 0.0);
+  netCharge = netChargeFramework + netChargeAdsorbates;
 }
 
 void System::addAtomToTailCorrectionCounts(const Atom& atom)
@@ -868,7 +892,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
 
     RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierElectricField(
         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
-        moleculeElectricField, components, numberOfMoleculesPerComponent, moleculeAtomPositions);
+        moleculeElectricField, components, numberOfMoleculesPerComponent, moleculeAtomPositions, netChargeFramework);
 
     RunningEnergy polarizationEnergy = computePolarizationEnergy();
 
@@ -1019,9 +1043,9 @@ void System::computeTotalElectricField() noexcept
   Interactions::computeFrameworkMoleculeElectricField(forceField, simulationBox, moleculeElectricField,
                                                       frameworkAtomPositions, moleculeAtomPositions);
 
-  Interactions::computeEwaldFourierElectricField(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik,
-                                                 forceField, simulationBox, moleculeElectricField, components,
-                                                 numberOfMoleculesPerComponent, moleculeAtomPositions);
+  Interactions::computeEwaldFourierElectricField(
+      eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox, moleculeElectricField,
+      components, numberOfMoleculesPerComponent, moleculeAtomPositions, netChargeFramework);
 }
 
 std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept

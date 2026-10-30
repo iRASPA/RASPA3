@@ -65,9 +65,11 @@ void System::insertFractionalMoleculeAtIndex(std::size_t selectedComponent, std:
   numberOfMoleculesPerComponent[selectedComponent] += 1;
   numberOfFractionalMoleculesPerComponent[selectedComponent] += 1;
 
-  netCharge += components[selectedComponent].netCharge;
-  netChargeAdsorbates += components[selectedComponent].netCharge;
-  netChargePerComponent[selectedComponent] += components[selectedComponent].netCharge;
+  // the Coulomb-scaled charge of the inserted atoms (a fractional molecule counts with its scaled charge)
+  const double insertedCharge = scaledNetCharge(atoms);
+  netCharge += insertedCharge;
+  netChargeAdsorbates += insertedCharge;
+  netChargePerComponent[selectedComponent] += insertedCharge;
 
   for (Atom& atom : atoms)
   {
@@ -138,9 +140,11 @@ void System::insertMolecule(std::size_t selectedComponent, [[maybe_unused]] cons
   numberOfMoleculesPerComponent[selectedComponent] += 1;
   numberOfIntegerMoleculesPerComponent[selectedComponent] += 1;
 
-  netCharge += components[selectedComponent].netCharge;
-  netChargeAdsorbates += components[selectedComponent].netCharge;
-  netChargePerComponent[selectedComponent] += components[selectedComponent].netCharge;
+  // the Coulomb-scaled charge of the inserted atoms (a fractional molecule counts with its scaled charge)
+  const double insertedCharge = scaledNetCharge(atoms);
+  netCharge += insertedCharge;
+  netChargeAdsorbates += insertedCharge;
+  netChargePerComponent[selectedComponent] += insertedCharge;
 
   translationalDegreesOfFreedom += components[selectedComponent].translationalDegreesOfFreedom;
   rotationalDegreesOfFreedom += components[selectedComponent].rotationalDegreesOfFreedom;
@@ -180,9 +184,11 @@ void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_u
   numberOfMoleculesPerComponent[selectedComponent] += 1;
   numberOfIntegerMoleculesPerComponent[selectedComponent] += 1;
 
-  netCharge += components[selectedComponent].netCharge;
-  netChargeAdsorbates += components[selectedComponent].netCharge;
-  netChargePerComponent[selectedComponent] += components[selectedComponent].netCharge;
+  // the Coulomb-scaled charge of the inserted atoms (a fractional molecule counts with its scaled charge)
+  const double insertedCharge = scaledNetCharge(atoms);
+  netCharge += insertedCharge;
+  netChargeAdsorbates += insertedCharge;
+  netChargePerComponent[selectedComponent] += insertedCharge;
 
   translationalDegreesOfFreedom += components[selectedComponent].translationalDegreesOfFreedom;
   rotationalDegreesOfFreedom += components[selectedComponent].rotationalDegreesOfFreedom;
@@ -221,6 +227,9 @@ void System::deleteFractionalMolecule(std::size_t selectedComponent, std::size_t
     totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] -= 1;
     removeAtomFromTailCorrectionCounts(atom);
   }
+  // the Coulomb-scaled charge of the removed atoms (a fractional molecule counts with its scaled charge); taken
+  // before the erase below invalidates the span
+  const double removedCharge = scaledNetCharge(molecule);
 
   // A linked molecule can not be removed (the moves guard against it); renumber the sites above it.
   crossLinks.moleculeDeleted(selectedComponent, selectedMolecule);
@@ -246,9 +255,9 @@ void System::deleteFractionalMolecule(std::size_t selectedComponent, std::size_t
   numberOfMoleculesPerComponent[selectedComponent] -= 1;
   numberOfFractionalMoleculesPerComponent[selectedComponent] -= 1;
 
-  netCharge -= components[selectedComponent].netCharge;
-  netChargeAdsorbates -= components[selectedComponent].netCharge;
-  netChargePerComponent[selectedComponent] -= components[selectedComponent].netCharge;
+  netCharge -= removedCharge;
+  netChargeAdsorbates -= removedCharge;
+  netChargePerComponent[selectedComponent] -= removedCharge;
 
   updateMoleculeAtomInformation();
 }
@@ -262,6 +271,9 @@ void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedM
     totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] -= 1;
     removeAtomFromTailCorrectionCounts(atom);
   }
+  // the Coulomb-scaled charge of the removed atoms (a fractional molecule counts with its scaled charge); taken
+  // before the erase below invalidates the span
+  const double removedCharge = scaledNetCharge(molecule);
 
   // A linked molecule can not be removed (the moves guard against it); renumber the sites above it.
   crossLinks.moleculeDeleted(selectedComponent, selectedMolecule);
@@ -287,9 +299,9 @@ void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedM
   numberOfMoleculesPerComponent[selectedComponent] -= 1;
   numberOfIntegerMoleculesPerComponent[selectedComponent] -= 1;
 
-  netCharge -= components[selectedComponent].netCharge;
-  netChargeAdsorbates -= components[selectedComponent].netCharge;
-  netChargePerComponent[selectedComponent] -= components[selectedComponent].netCharge;
+  netCharge -= removedCharge;
+  netChargeAdsorbates -= removedCharge;
+  netChargePerComponent[selectedComponent] -= removedCharge;
 
   translationalDegreesOfFreedom -= components[selectedComponent].translationalDegreesOfFreedom;
   rotationalDegreesOfFreedom -= components[selectedComponent].rotationalDegreesOfFreedom;

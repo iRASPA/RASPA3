@@ -172,10 +172,14 @@ RunningEnergy probeTailEnergyDifference(
                                                                    system.spanOfFrameworkAtoms(), newAtoms, oldAtoms);
 }
 
+// Energy difference of replacing 'oldAtoms' by 'trialAtoms'. Like the tail counts, the Coulomb-scaled net charge the
+// Ewald net-charge correction expands around is threaded across the sequential sub-steps: the call uses the running
+// value and then advances it, so the next sub-step (which chains its structure factor on this one) starts from the
+// configuration after this change.
 std::optional<RunningEnergy> computeMoleculeEnergyDifference(
     System& system, std::vector<double>& tailEffectiveCounts,
-    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts, std::span<const Atom> trialAtoms,
-    std::span<const Atom> oldAtoms)
+    std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts, double& runningNetCharge,
+    std::span<const Atom> trialAtoms, std::span<const Atom> oldAtoms)
 {
   std::optional<RunningEnergy> frameworkDifference = Interactions::computeFrameworkMoleculeEnergyDifference(
       system.forceField, system.simulationBox, system.interpolationGrids, system.framework, system.frameworkCellList(),
@@ -194,7 +198,8 @@ std::optional<RunningEnergy> computeMoleculeEnergyDifference(
 
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, trialAtoms, oldAtoms, system.netCharge);
+      system.simulationBox, system.components, trialAtoms, oldAtoms, runningNetCharge);
+  runningNetCharge += Interactions::scaledNetChargeDifference(trialAtoms, oldAtoms);
 
   RunningEnergy tailDifference =
       computeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, trialAtoms, oldAtoms);
@@ -275,26 +280,28 @@ void acceptDeleteStep(System& system, std::size_t selectedComponent, std::size_t
   system.updateMoleculeAtomInformation();
 }
 
+// Non-committing probe variants (see probeTailEnergyDifference): 'runningNetCharge' is the net charge of the
+// configuration the structure factor in 'storedEik' corresponds to.
 RunningEnergy growEwaldTailDifference(
     System& system, const std::vector<double>& tailEffectiveCounts,
-    const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
+    const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts, double runningNetCharge,
     std::span<const Atom> growAtoms)
 {
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, growAtoms, {}, system.netCharge);
+      system.simulationBox, system.components, growAtoms, {}, runningNetCharge);
   RunningEnergy tailDifference = probeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, growAtoms, {});
   return ewaldDifference + tailDifference;
 }
 
 RunningEnergy retraceEwaldTailDifference(
     System& system, const std::vector<double>& tailEffectiveCounts,
-    const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
+    const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts, double runningNetCharge,
     std::span<const Atom> retraceAtoms)
 {
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, {}, retraceAtoms, system.netCharge);
+      system.simulationBox, system.components, {}, retraceAtoms, runningNetCharge);
   RunningEnergy tailDifference =
       probeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, {}, retraceAtoms);
   return ewaldDifference + tailDifference;
@@ -402,6 +409,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   std::vector<double> tailEffB = systemB.effectiveNumberOfPseudoAtomsVDW;
   std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupB =
       systemB.fractionalPseudoAtomCountsPerGroup;
+  // Coulomb-scaled net charge of each box, threaded across the sub-steps like the tail counts.
+  double netChargeA = systemA.netCharge;
+  double netChargeB = systemB.netCharge;
 
   // Deletion prelude (lambda < 0): upon acceptance the fractional molecule leaves its box. Its intra-molecular
   // energy leaves the running energies (not the acceptance rule: the reverse insertion draws the conformation from
@@ -426,8 +436,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       const CBMC::GrowContext context = system.makeGrowContext();
       CBMC::RetraceResult retraceData = CBMC::retraceMolecule(random, context, component, fractionalMolecule);
       prelude.logRosenbluthWeight = retraceData.logRosenbluthWeight;
-      prelude.retraceEwaldTail =
-          retraceEwaldTailDifference(system, tailEffectiveCounts, tailGroupCounts, fractionalMolecule);
+      prelude.retraceEwaldTail = retraceEwaldTailDifference(system, tailEffectiveCounts, tailGroupCounts,
+                                                            system.netCharge, fractionalMolecule);
     }
     return prelude;
   };
@@ -446,7 +456,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   std::vector<Atom> trialFractionalA(fractionalMoleculeA.begin(), fractionalMoleculeA.end());
   applyTargetScaling(trialFractionalA, moveKindA, lambdaNewA);
   std::optional<RunningEnergy> energyFirstStepA =
-      computeMoleculeEnergyDifference(systemA, tailEffA, tailGroupA, trialFractionalA, fractionalMoleculeA);
+      computeMoleculeEnergyDifference(systemA, tailEffA, tailGroupA, netChargeA, trialFractionalA, fractionalMoleculeA);
   if (!energyFirstStepA.has_value())
   {
     restoreEwaldState();
@@ -456,7 +466,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   std::vector<Atom> trialFractionalB(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
   applyTargetScaling(trialFractionalB, moveKindB, lambdaNewB);
   std::optional<RunningEnergy> energyFirstStepB =
-      computeMoleculeEnergyDifference(systemB, tailEffB, tailGroupB, trialFractionalB, fractionalMoleculeB);
+      computeMoleculeEnergyDifference(systemB, tailEffB, tailGroupB, netChargeB, trialFractionalB, fractionalMoleculeB);
   if (!energyFirstStepB.has_value())
   {
     restoreEwaldState();
@@ -510,8 +520,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
 
   auto constructBoundaryTrial = [&](System& system, std::vector<double>& tailEffectiveCounts,
                                     std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
-                                    Component& component, GibbsMoveKind moveKind, double lambdaNew,
-                                    BoundaryTrial& trial) -> bool
+                                    double& runningNetCharge, Component& component, GibbsMoveKind moveKind,
+                                    double lambdaNew, BoundaryTrial& trial) -> bool
   {
     const double integerCount = static_cast<double>(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     const double volume = system.simulationBox.volume;
@@ -534,8 +544,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
                                                   .isFractional = true});
         if (!trial.cbmcInsert.has_value()) return false;
 
-        RunningEnergy ewaldTail =
-            growEwaldTailDifference(system, tailEffectiveCounts, tailGroupCounts, trial.cbmcInsert->atoms);
+        RunningEnergy ewaldTail = growEwaldTailDifference(system, tailEffectiveCounts, tailGroupCounts,
+                                                          runningNetCharge, trial.cbmcInsert->atoms);
         trial.energy = trial.cbmcInsert->energies + ewaldTail;
         const double idealGas = component.idealGasRosenbluthWeight.value_or(1.0);
         // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero).
@@ -554,9 +564,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
         atom.componentId = static_cast<std::uint8_t>(selectedComponent);
         atom.setScalingToFractional(lambdaNew, component.lambdaGibbs.dUdlambdaGroupId);
       }
-      std::optional<RunningEnergy> insertionEnergy =
-          computeMoleculeEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, trialAtoms,
-                                          std::span<const Atom>{});
+      std::optional<RunningEnergy> insertionEnergy = computeMoleculeEnergyDifference(
+          system, tailEffectiveCounts, tailGroupCounts, runningNetCharge, trialAtoms, std::span<const Atom>{});
       if (!insertionEnergy.has_value())
       {
         return false;
@@ -582,8 +591,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     {
       atom.setScalingToFractional(lambdaNew, component.lambdaGibbs.dUdlambdaGroupId);
     }
-    std::optional<RunningEnergy> deletionEnergy =
-        computeMoleculeEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, trialSelected, selectedMolecule);
+    std::optional<RunningEnergy> deletionEnergy = computeMoleculeEnergyDifference(
+        system, tailEffectiveCounts, tailGroupCounts, runningNetCharge, trialSelected, selectedMolecule);
     if (!deletionEnergy.has_value())
     {
       return false;
@@ -595,8 +604,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
 
   BoundaryTrial boundaryA{};
   BoundaryTrial boundaryB{};
-  if (!constructBoundaryTrial(systemA, tailEffA, tailGroupA, componentA, moveKindA, lambdaNewA, boundaryA) ||
-      !constructBoundaryTrial(systemB, tailEffB, tailGroupB, componentB, moveKindB, lambdaNewB, boundaryB))
+  if (!constructBoundaryTrial(systemA, tailEffA, tailGroupA, netChargeA, componentA, moveKindA, lambdaNewA,
+                              boundaryA) ||
+      !constructBoundaryTrial(systemB, tailEffB, tailGroupB, netChargeB, componentB, moveKindB, lambdaNewB, boundaryB))
   {
     restoreFractionals();
     return std::nullopt;
