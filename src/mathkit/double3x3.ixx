@@ -501,4 +501,17 @@ export void to_json(nlohmann::json& j, const double3x3& a)
   j = nlohmann::json{{a.ax, a.ay, a.az}, {a.bx, a.by, a.bz}, {a.cx, a.cy, a.cz}};
 }
 
-export void from_json(const nlohmann::json& j, double3x3& a) { j.get_to(a); }
+export void from_json(const nlohmann::json& j, double3x3& a)
+{
+  std::array<std::array<double, 3>, 3> data;
+  j.get_to(data);
+  a.ax = data[0][0];
+  a.ay = data[0][1];
+  a.az = data[0][2];
+  a.bx = data[1][0];
+  a.by = data[1][1];
+  a.bz = data[1][2];
+  a.cx = data[2][0];
+  a.cy = data[2][1];
+  a.cz = data[2][2];
+}

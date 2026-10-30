@@ -54,8 +54,12 @@ void System::insertFractionalMoleculeAtIndex(std::size_t selectedComponent, std:
   std::vector<Molecule>::iterator moleculeIterator = indexForMolecule(selectedComponent, moleculeIndex);
   moleculeData.insert(moleculeIterator, molecule);
 
+  // Keep electricField aligned with atomData: insert at the molecule position, not at the end.
+  std::vector<double3>::const_iterator iterator_electric_field =
+      iteratorForElectricField(selectedComponent, moleculeIndex);
+  electricField.insert(iterator_electric_field, atoms.size(), double3(0.0, 0.0, 0.0));
+
   electricPotential.resize(electricPotential.size() + atoms.size());
-  electricField.resize(electricField.size() + atoms.size());
   electricFieldNew.resize(electricFieldNew.size() + atoms.size());
 
   numberOfMoleculesPerComponent[selectedComponent] += 1;
@@ -123,8 +127,12 @@ void System::insertMolecule(std::size_t selectedComponent, [[maybe_unused]] cons
       indexForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
   moleculeData.insert(moleculeIterator, molecule);
 
+  // Keep electricField aligned with atomData: insert at the molecule position, not at the end.
+  std::vector<double3>::const_iterator iterator_electric_field =
+      iteratorForElectricField(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
+  electricField.insert(iterator_electric_field, atoms.size(), double3(0.0, 0.0, 0.0));
+
   electricPotential.resize(electricPotential.size() + atoms.size());
-  electricField.resize(electricField.size() + atoms.size());
   electricFieldNew.resize(electricFieldNew.size() + atoms.size());
 
   numberOfMoleculesPerComponent[selectedComponent] += 1;

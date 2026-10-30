@@ -221,7 +221,7 @@ export union double3
   {
     bool operator()(const double3& lhs, const double3& rhs) const
     {
-      return (std::fabs(lhs.x - rhs.x) < 1e-3) && std::fabs(lhs.y - rhs.y) < 1e-3 && std::fabs(lhs.z == rhs.z) < 1e-3;
+      return (std::fabs(lhs.x - rhs.x) < 1e-3) && std::fabs(lhs.y - rhs.y) < 1e-3 && std::fabs(lhs.z - rhs.z) < 1e-3;
     }
   };
 

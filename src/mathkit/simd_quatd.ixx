@@ -119,7 +119,9 @@ export void to_json(nlohmann::json& j, const simd_quatd& q)
   j = nlohmann::json{q.ix, q.iy, q.iz, q.r};
 }
 
-export void from_json(const nlohmann::json& j, simd_quatd& q) 
-{ 
-  j.get_to(q);
+export void from_json(const nlohmann::json& j, simd_quatd& q)
+{
+  std::array<double, 4> data;
+  j.get_to(data);
+  q = simd_quatd(data[0], data[1], data[2], data[3]);
 }

@@ -1559,6 +1559,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.atomData;
   archive << s.atomDynamics;
   archive << s.moleculeData;
+  archive << s.groupData;
+  archive << s.frameworkGroupData;
   archive << s.electricPotential;
   archive << s.electricField;
   archive << s.electricFieldNew;
@@ -1682,7 +1684,6 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.numberOfRigidFrameworkAtoms;
 
   archive >> s.framework;
-  s.numberOfRigidFrameworkAtoms = s.framework && s.framework->rigid ? s.numberOfFrameworkAtoms : 0;
   archive >> s.components;
 
   archive >> s.equationOfState;
@@ -1734,6 +1735,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.atomData;
   archive >> s.atomDynamics;
   archive >> s.moleculeData;
+  archive >> s.groupData;
+  archive >> s.frameworkGroupData;
   archive >> s.electricPotential;
   archive >> s.electricField;
   archive >> s.electricFieldNew;
