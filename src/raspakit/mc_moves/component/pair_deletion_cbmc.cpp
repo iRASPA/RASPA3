@@ -130,6 +130,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
+  // A cross-linked molecule can not leave the system while it is bonded to another molecule.
+  if (system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule))
+  {
+    return {std::nullopt, double3(0.0, 1.0, 0.0)};
+  }
+
   std::span<Atom> moleculeAAtoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
   const double3 positionA = moleculeAAtoms[system.components[selectedComponent].startingBead].position;
 
@@ -157,6 +163,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
 
   const std::size_t numberOfPartners = partnerMolecules.size();
   const std::size_t selectedMoleculeB = partnerMolecules[random.uniform_integer(0, numberOfPartners - 1)];
+  if (system.crossLinks.moleculeIsLinked(componentB, selectedMoleculeB))
+  {
+    return {std::nullopt, double3(0.0, 1.0, 0.0)};
+  }
   std::span<Atom> moleculeA = system.spanOfMolecule(selectedComponent, selectedMolecule);
   std::span<Atom> moleculeB = system.spanOfMolecule(componentB, selectedMoleculeB);
 
@@ -358,6 +368,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
+  // A cross-linked molecule can not leave the system while it is bonded to another molecule.
+  if (system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule))
+  {
+    return {std::nullopt, double3(0.0, 1.0, 0.0)};
+  }
+
   std::span<Atom> moleculeAAtoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
   const double3 positionA = moleculeAAtoms[system.components[selectedComponent].startingBead].position;
 
@@ -385,6 +401,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
 
   const std::size_t numberOfPartners = partnerMolecules.size();
   const std::size_t selectedMoleculeB = partnerMolecules[random.uniform_integer(0, numberOfPartners - 1)];
+  if (system.crossLinks.moleculeIsLinked(componentB, selectedMoleculeB))
+  {
+    return {std::nullopt, double3(0.0, 1.0, 0.0)};
+  }
   std::span<Atom> moleculeA = system.spanOfMolecule(selectedComponent, selectedMolecule);
   std::span<Atom> moleculeB = system.spanOfMolecule(componentB, selectedMoleculeB);
 

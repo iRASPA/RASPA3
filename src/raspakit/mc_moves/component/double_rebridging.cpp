@@ -34,6 +34,10 @@ std::optional<RunningEnergy> MC_Moves::intramolecularDoubleRebridgingMove(Random
   const Component::BridgingTopology& topology = component.bridgingTopology();
   if (topology.sitePairs.empty() || system.forceField.computePolarization) return std::nullopt;
 
+  // A cross-linked molecule can not rebridge: the move relabels the repeat units between the two bridged sites,
+  // which would silently move a linked reactive site to another atom (the cross-link table refers to atom indices).
+  if (system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule)) return std::nullopt;
+
   component.mc_moves_statistics.addTrial(move);
 
   const std::vector<Component::BridgingTopology::Unit>& units = topology.units;

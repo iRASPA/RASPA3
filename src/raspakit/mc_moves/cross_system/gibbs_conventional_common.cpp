@@ -585,6 +585,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     // same for the CBMC and the conventional variant (the CBMC part of a deletion is the retrace of the leaving
     // fractional molecule, done in the deletion prelude before the first step).
     trial.selectedInteger = system.randomIntegerMoleculeOfComponent(random, selectedComponent);
+    // A cross-linked molecule can not become the fractional molecule (it leaves the box when lambda reaches zero,
+    // and only integer molecules carry links).
+    if (system.crossLinks.moleculeIsLinked(selectedComponent, trial.selectedInteger)) return false;
     std::span<Atom> selectedMolecule = system.spanOfMolecule(selectedComponent, trial.selectedInteger);
     std::vector<Atom> trialSelected(selectedMolecule.begin(), selectedMolecule.end());
     for (Atom& atom : trialSelected)

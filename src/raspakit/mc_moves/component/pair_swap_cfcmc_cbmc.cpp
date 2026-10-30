@@ -614,6 +614,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     std::size_t selectedMoleculeA = system.randomIntegerMoleculeOfComponent(random, selectedComponent);
     std::size_t selectedMoleculeB = system.randomIntegerMoleculeOfComponent(random, componentB);
 
+    // A cross-linked molecule can not become a fractional molecule (the fractional pair leaves the system when
+    // lambda reaches zero, and only integer molecules carry links).
+    if (system.crossLinks.moleculeIsLinked(selectedComponent, selectedMoleculeA) ||
+        system.crossLinks.moleculeIsLinked(componentB, selectedMoleculeB))
+    {
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    }
+
     std::span<Atom> newFractionalMoleculeA = system.spanOfMolecule(selectedComponent, selectedMoleculeA);
     std::span<Atom> newFractionalMoleculeB = system.spanOfMolecule(componentB, selectedMoleculeB);
 

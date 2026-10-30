@@ -250,6 +250,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // System B, step 1: CBMC retrace a randomly selected integer molecule (B is inactive: its fractional molecules
     // are off, so the background is the integer molecules only).
     std::size_t indexSelectedIntegerMoleculeB = systemB.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+    // A cross-linked molecule can not become the fractional molecule (it leaves the box when lambda reaches zero,
+    // and only integer molecules carry links).
+    if (systemB.crossLinks.moleculeIsLinked(selectedComponent, indexSelectedIntegerMoleculeB))
+    {
+      restoreFractionalMolecules(systemA, snapshotA);
+      return std::nullopt;
+    }
+
     std::span<Atom> selectedIntegerMoleculeB = systemB.spanOfMolecule(selectedComponent, indexSelectedIntegerMoleculeB);
     const std::vector<Atom> oldSelectedIntegerMoleculeB(selectedIntegerMoleculeB.begin(),
                                                         selectedIntegerMoleculeB.end());

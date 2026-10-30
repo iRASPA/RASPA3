@@ -76,6 +76,10 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   oldComponentData.mc_moves_statistics.addTrial(move);
 
   const std::size_t selectedMoleculeOld = system.randomIntegerMoleculeOfComponent(random, oldComponent);
+
+  // A cross-linked molecule can not change identity while it is bonded to another molecule.
+  if (system.crossLinks.moleculeIsLinked(oldComponent, selectedMoleculeOld)) return std::nullopt;
+
   std::span<Atom> oldMoleculeAtoms = system.spanOfMolecule(oldComponent, selectedMoleculeOld);
   const Atom &oldStartingBead = oldMoleculeAtoms[oldComponentData.startingBead];
 

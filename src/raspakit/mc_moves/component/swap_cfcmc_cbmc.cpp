@@ -434,6 +434,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       // Select a random integer molecule to be fractional
       selectedMolecule = system.randomIntegerMoleculeOfComponent(random, selectedComponent);
 
+      // A cross-linked molecule can not become the fractional molecule (the fractional molecule leaves the system
+      // when lambda reaches zero, and only integer molecules carry links).
+      if (system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule))
+      {
+        return {std::nullopt, double3(0.0, 1.0, 0.0)};
+      }
+
       // Get spans for fractional and new fractional molecules
       std::span<Atom> fractionalMolecule = system.spanOfMolecule(selectedComponent, indexFractionalMolecule);
       std::span<Atom> newFractionalMolecule = system.spanOfMolecule(selectedComponent, selectedMolecule);

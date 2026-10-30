@@ -48,7 +48,10 @@ std::vector<CrossLinkSite> MC_Moves::CrossLinkCommon::freeSites(const System &sy
   {
     const Component &component = system.components[c];
     if (component.reactiveSites.empty()) continue;
-    for (std::size_t m = 0; m < system.numberOfIntegerMoleculesPerComponent[c]; ++m)
+    // Only integer molecules can be linked. They occupy the per-component indices after the fractional
+    // molecules (fractional first: 0 .. numberOfFractional - 1, then integer up to numberOfMolecules - 1).
+    for (std::size_t m = system.numberOfFractionalMoleculesPerComponent[c];
+         m < system.numberOfMoleculesPerComponent[c]; ++m)
     {
       for (const ReactiveSite &reactiveSite : component.reactiveSites)
       {
@@ -103,7 +106,9 @@ std::vector<MC_Moves::CrossLinkCommon::Candidate> candidatesOf(const System &sys
     }
     if (!anyBondType) continue;
 
-    for (std::size_t m = 0; m < system.numberOfIntegerMoleculesPerComponent[c]; ++m)
+    // integer molecules only (they follow the fractional molecules in the per-component numbering)
+    for (std::size_t m = system.numberOfFractionalMoleculesPerComponent[c];
+         m < system.numberOfMoleculesPerComponent[c]; ++m)
     {
       if (c == pivot.componentId && m == pivot.moleculeIndex) continue;  // no intramolecular links
       const std::span<const Atom> atoms = system.spanOfMolecule(c, m);

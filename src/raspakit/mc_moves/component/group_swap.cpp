@@ -447,6 +447,12 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
+  // A cross-linked molecule can not leave the system while it is bonded to another molecule.
+  if (system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule))
+  {
+    return {std::nullopt, double3(0.0, 1.0, 0.0)};
+  }
+
   std::span<Atom> centralAtoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
   const double3 centralPosition = centralAtoms[centralComponent.startingBead].position;
 
@@ -499,6 +505,10 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
     }
 
     const std::size_t chosen = candidates[random.uniform_integer(0, candidates.size() - 1)];
+    if (system.crossLinks.moleculeIsLinked(satelliteComponentId, chosen))
+    {
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    }
     const std::span<const Atom> chosenAtoms = system.spanOfMolecule(satelliteComponentId, chosen);
     const double3 dr = system.simulationBox.applyPeriodicBoundaryConditions(centralPosition -
                                                                             chosenAtoms[startingBead].position);

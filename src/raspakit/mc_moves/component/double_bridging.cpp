@@ -40,6 +40,16 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
     return std::nullopt;
   }
 
+  // Cross-linked molecules do not take part: the move exchanges the tails of two chains, which would move the
+  // linked reactive sites to the other molecule (the cross-link table refers to molecule and atom indices).
+  // The selected molecule is rejected here; linked molecules are also left out of the partner candidates (in
+  // the old and in the new state alike, so that the selection probabilities stay symmetric).
+  if (system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule))
+  {
+    return std::nullopt;
+  }
+  auto isLinked = [&](std::size_t m) { return system.crossLinks.moleculeIsLinked(selectedComponent, m); };
+
   component.mc_moves_statistics.addTrial(move);
 
   const std::vector<Component::BridgingTopology::Unit>& units = topology.units;
@@ -74,7 +84,7 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
     std::size_t count = 0;
     for (std::size_t m = numberOfFractional; m != all.size(); ++m)
     {
-      if (m != self && isCandidate(all[self], all[m])) ++count;
+      if (m != self && !isLinked(m) && isCandidate(all[self], all[m])) ++count;
     }
     return count;
   };
@@ -87,7 +97,7 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
   std::vector<std::size_t> candidates{};
   for (std::size_t m = numberOfFractional; m != numberOfMolecules; ++m)
   {
-    if (m != selectedMolecule && isCandidate(anchorsI, anchors[m])) candidates.push_back(m);
+    if (m != selectedMolecule && !isLinked(m) && isCandidate(anchorsI, anchors[m])) candidates.push_back(m);
   }
   if (candidates.empty()) return std::nullopt;
   const std::size_t partnerMolecule =

@@ -736,6 +736,16 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
       }
     }
 
+    // A cross-linked molecule can not become a fractional molecule (the fractional group leaves the system when
+    // lambda reaches zero, and only integer molecules carry links).
+    for (std::size_t i = 0; i < groupSize; ++i)
+    {
+      if (system.crossLinks.moleculeIsLinked(members[i].componentId, selectedMolecules[i]))
+      {
+        return {std::nullopt, double3(0.0, 1.0, 0.0)};
+      }
+    }
+
     std::vector<std::span<Atom>> newFractionalMolecules(groupSize);
     std::vector<std::vector<Atom>> oldNewFractionalMolecules(groupSize);
     for (std::size_t i = 0; i < groupSize; ++i)

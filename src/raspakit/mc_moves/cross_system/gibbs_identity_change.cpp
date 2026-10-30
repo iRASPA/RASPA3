@@ -52,6 +52,10 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
   data.oldComponent = oldComponent;
   data.newComponent = newComponent;
   data.selectedMoleculeOld = system.randomIntegerMoleculeOfComponent(random, oldComponent);
+
+  // A cross-linked molecule can not change identity while it is bonded to another molecule.
+  if (system.crossLinks.moleculeIsLinked(oldComponent, data.selectedMoleculeOld)) return false;
+
   data.oldMoleculeAtoms = system.spanOfMolecule(oldComponent, data.selectedMoleculeOld);
   const Atom& oldStartingBead = data.oldMoleculeAtoms[oldComponentData.startingBead];
 

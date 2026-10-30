@@ -40,6 +40,13 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
     return std::nullopt;
   }
 
+  // A cross-linked molecule can not reptate: the move relabels the repeat units along the chain, which would
+  // silently move the linked reactive site to another atom (the cross-link table refers to atom indices).
+  if (system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule))
+  {
+    return std::nullopt;
+  }
+
   component.mc_moves_statistics.addTrial(move);
 
   const std::size_t numberOfUnits = units.size();
