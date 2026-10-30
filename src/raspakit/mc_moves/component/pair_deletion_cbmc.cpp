@@ -229,10 +229,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
       timed(system, componentA, Move::Types::PairSwapCBMC, Move::Timing::Tail,
             [&]
             {
+              // Each molecule against the background it was retraced against: A against the molecules without the
+              // pair, B against those plus A, so the A-B tail cross term is removed exactly once (the full molecule
+              // span still contains both and would subtract it twice).
               return Interactions::computeInterMolecularTailEnergyDifference(
-                         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), {}, oldMoleculeA) +
+                         system.forceField, system.simulationBox, backgroundWithoutPair, {}, oldMoleculeA) +
                      Interactions::computeInterMolecularTailEnergyDifference(
-                         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), {}, oldMoleculeB) +
+                         system.forceField, system.simulationBox, backgroundForB, {}, oldMoleculeB) +
                      Interactions::computeFrameworkMoleculeTailEnergyDifference(
                          system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), {}, oldMoleculeA) +
                      Interactions::computeFrameworkMoleculeTailEnergyDifference(
@@ -454,10 +457,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
       timed(system, componentA, Move::Types::PairSwap, Move::Timing::Tail,
             [&]
             {
+              // Each molecule against the background it was retraced against: A against the molecules without the
+              // pair, B against those plus A, so the A-B tail cross term is removed exactly once (the full molecule
+              // span still contains both and would subtract it twice).
               return Interactions::computeInterMolecularTailEnergyDifference(
-                         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), {}, oldMoleculeA) +
+                         system.forceField, system.simulationBox, backgroundWithoutPair, {}, oldMoleculeA) +
                      Interactions::computeInterMolecularTailEnergyDifference(
-                         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), {}, oldMoleculeB) +
+                         system.forceField, system.simulationBox, backgroundForB, {}, oldMoleculeB) +
                      Interactions::computeFrameworkMoleculeTailEnergyDifference(
                          system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), {}, oldMoleculeA) +
                      Interactions::computeFrameworkMoleculeTailEnergyDifference(

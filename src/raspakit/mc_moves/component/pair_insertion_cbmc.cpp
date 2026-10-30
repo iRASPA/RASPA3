@@ -147,10 +147,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
       timed(system, componentA, Move::Types::PairSwapCBMC, Move::Timing::Tail,
             [&]
             {
+              // Each molecule against the background it was grown against: A against the existing molecules, B
+              // against the existing molecules plus A, so the A-B tail cross term is counted exactly once.
               return Interactions::computeInterMolecularTailEnergyDifference(
                          system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), newMoleculeA, {}) +
                      Interactions::computeInterMolecularTailEnergyDifference(
-                         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), newMoleculeB, {}) +
+                         system.forceField, system.simulationBox, moleculeAtomDataWithTrialA, newMoleculeB, {}) +
                      Interactions::computeFrameworkMoleculeTailEnergyDifference(
                          system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), newMoleculeA, {}) +
                      Interactions::computeFrameworkMoleculeTailEnergyDifference(
@@ -387,10 +389,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
       timed(system, componentA, Move::Types::PairSwap, Move::Timing::Tail,
             [&]
             {
+              // Each molecule against the background it was grown against: A against the existing molecules, B
+              // against the existing molecules plus A, so the A-B tail cross term is counted exactly once.
               return Interactions::computeInterMolecularTailEnergyDifference(
                          system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), newMoleculeA, {}) +
                      Interactions::computeInterMolecularTailEnergyDifference(
-                         system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), newMoleculeB, {}) +
+                         system.forceField, system.simulationBox, moleculeAtomDataWithTrialA, newMoleculeB, {}) +
                      Interactions::computeFrameworkMoleculeTailEnergyDifference(
                          system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), newMoleculeA, {}) +
                      Interactions::computeFrameworkMoleculeTailEnergyDifference(
