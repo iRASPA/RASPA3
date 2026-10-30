@@ -317,6 +317,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
       atom.setScalingToFractional(newLambda, groupIdB);
     }
 
+    // The intra-molecular energies of the inserted conformations enter the running energies but not the
+    // acceptance rule: the conformations are drawn from the ideal-gas Boltzmann distribution exp(-beta U_intra),
+    // so they cancel against the generation probability (zero for rigid molecules).
+    const RunningEnergy internalEnergyNewA = componentA.intraMolecularPotentials.computeInternalEnergies(
+        system.forceField, system.simulationBox, trialMoleculeA.second);
+    const RunningEnergy internalEnergyNewB = componentBRef.intraMolecularPotentials.computeInternalEnergies(
+        system.forceField, system.simulationBox, trialMoleculeB.second);
+
     if (system.insideBlockedPockets(componentA, trialMoleculeA.second) ||
         system.insideBlockedPockets(componentBRef, trialMoleculeB.second))
     {
@@ -430,8 +438,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
             system.trialEik, system.forceField, system.simulationBox, trialElectricFieldB, {}, trialMoleculeB.second,
             {});
 
-        accumulateInterMolecularFieldDelta(system, trialMoleculeA.second, {}, electricFieldNeighborDelta);
-        accumulateInterMolecularFieldDelta(system, trialMoleculeB.second, {}, electricFieldNeighborDelta);
+        // Step 2: the new pair changes the field on the existing molecules, and the existing molecules (the
+        // fractional pair now integer among them) contribute the real-space part of the field the new pair
+        // feels; that field is stored with the inserted molecules, so it is accumulated into the trial fields.
+        [[maybe_unused]] std::optional<RunningEnergy> fieldOnA =
+            Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+                system.forceField, system.simulationBox, electricFieldNeighborDelta, trialElectricFieldA,
+                std::span<double3>{}, system.spanOfMoleculeAtoms(), trialMoleculeA.second, {});
+        [[maybe_unused]] std::optional<RunningEnergy> fieldOnB =
+            Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+                system.forceField, system.simulationBox, electricFieldNeighborDelta, trialElectricFieldB,
+                std::span<double3>{}, system.spanOfMoleculeAtoms(), trialMoleculeB.second, {});
 
         std::vector<double3> fieldOnAfromB(trialMoleculeA.second.size());
         std::vector<double3> fieldOnBfromA(trialMoleculeB.second.size());
@@ -526,6 +543,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
       std::span<Atom> lastMoleculeA = system.spanOfMolecule(selectedComponent, lastMoleculeIdA);
       fractionalMoleculeA = system.spanOfMolecule(selectedComponent, indexFractionalA);
       std::swap_ranges(fractionalMoleculeA.begin(), fractionalMoleculeA.end(), lastMoleculeA.begin());
+      if (system.forceField.computePolarization)
+      {
+        std::span<double3> fieldFractionalA = system.spanElectricFieldOld(selectedComponent, indexFractionalA);
+        std::span<double3> fieldLastA = system.spanElectricFieldOld(selectedComponent, lastMoleculeIdA);
+        std::swap_ranges(fieldFractionalA.begin(), fieldFractionalA.end(), fieldLastA.begin());
+      }
       std::swap(system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, indexFractionalA)],
                 system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, lastMoleculeIdA)]);
 
@@ -541,6 +564,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
       std::span<Atom> lastMoleculeB = system.spanOfMolecule(componentB, lastMoleculeIdB);
       fractionalMoleculeB = system.spanOfMolecule(componentB, indexFractionalB);
       std::swap_ranges(fractionalMoleculeB.begin(), fractionalMoleculeB.end(), lastMoleculeB.begin());
+      if (system.forceField.computePolarization)
+      {
+        std::span<double3> fieldFractionalB = system.spanElectricFieldOld(componentB, indexFractionalB);
+        std::span<double3> fieldLastB = system.spanElectricFieldOld(componentB, lastMoleculeIdB);
+        std::swap_ranges(fieldFractionalB.begin(), fieldFractionalB.end(), fieldLastB.begin());
+      }
       std::swap(system.moleculeData[system.moleculeIndexOfComponent(componentB, indexFractionalB)],
                 system.moleculeData[system.moleculeIndexOfComponent(componentB, lastMoleculeIdB)]);
 
@@ -549,7 +578,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
 
       componentA.mc_moves_statistics.addAccepted(move, 0);
 
-      return {energyDifference + polarizationDifference, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
+      return {energyDifference + polarizationDifference + internalEnergyNewA + internalEnergyNewB,
+              double3(0.0, 1.0 - physicalPacc, physicalPacc)};
     }
 
     restoreFractionalPair();
@@ -889,7 +919,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
 
       componentA.mc_moves_statistics.addAccepted(move, 1);
 
-      return {energyDifference + polarizationDifference, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
+      // The conformations of the removed fractional pair leave the system: their intra-molecular energies are
+      // removed from the running energies (not part of the acceptance rule, see the insertion branch).
+      const RunningEnergy internalEnergyOldA = componentA.intraMolecularPotentials.computeInternalEnergies(
+          system.forceField, system.simulationBox, oldFractionalMoleculeA);
+      const RunningEnergy internalEnergyOldB = componentBRef.intraMolecularPotentials.computeInternalEnergies(
+          system.forceField, system.simulationBox, oldFractionalMoleculeB);
+
+      return {energyDifference + polarizationDifference - internalEnergyOldA - internalEnergyOldB,
+              double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
     }
 
     restoreMolecules();

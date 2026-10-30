@@ -392,8 +392,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
             system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
             system.trialEik, system.forceField, system.simulationBox, grownElectricFieldB, {}, growDataB->atoms, {});
 
-        accumulateInterMolecularFieldDelta(system, growDataA->atoms, {}, electricFieldNeighborDelta);
-        accumulateInterMolecularFieldDelta(system, growDataB->atoms, {}, electricFieldNeighborDelta);
+        // Step 2: the new pair changes the field on the existing molecules, and the existing molecules (the
+        // fractional pair now integer among them) contribute the real-space part of the field the new pair
+        // feels; that field is stored with the inserted molecules, so it is accumulated into the grown fields.
+        [[maybe_unused]] std::optional<RunningEnergy> fieldOnA =
+            Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+                system.forceField, system.simulationBox, electricFieldNeighborDelta, grownElectricFieldA,
+                std::span<double3>{}, system.spanOfMoleculeAtoms(), growDataA->atoms, {});
+        [[maybe_unused]] std::optional<RunningEnergy> fieldOnB =
+            Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+                system.forceField, system.simulationBox, electricFieldNeighborDelta, grownElectricFieldB,
+                std::span<double3>{}, system.spanOfMoleculeAtoms(), growDataB->atoms, {});
 
         std::vector<double3> fieldOnAfromB(growDataA->atoms.size());
         std::vector<double3> fieldOnBfromA(growDataB->atoms.size());

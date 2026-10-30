@@ -407,6 +407,13 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         }
         energyDifference += nonEwaldDifference.value();
 
+        // The intra-molecular energy of the inserted conformation enters the running energies but not the
+        // acceptance rule: the conformation is drawn from the ideal-gas Boltzmann distribution exp(-beta U_intra),
+        // so it cancels against the generation probability (zero for rigid molecules). The CB variant has it in
+        // 'growData->energies'.
+        trialGrowEnergies[i] = memberComponent.intraMolecularPotentials.computeInternalEnergies(
+            system.forceField, system.simulationBox, trialMolecule.second);
+
         trialMolecules[i] = trialMolecule.first;
         trialAtoms[i] = std::move(trialMolecule.second);
       }
@@ -481,10 +488,15 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
           accumulateInterMolecularFieldDelta(system, fractionalMolecules[i], oldFractionalMolecules[i],
                                              electricFieldNeighborDelta);
         }
-        // step 2: field of the new trial molecules on the existing molecules
+        // step 2: field of the new trial molecules on the existing molecules, and the real-space part of the
+        // field the existing molecules (the fractional group now integer among them) produce on each trial
+        // molecule; the latter is stored with the inserted molecules, so it is accumulated into the trial fields
         for (std::size_t i = 0; i < groupSize; ++i)
         {
-          accumulateInterMolecularFieldDelta(system, trialAtoms[i], {}, electricFieldNeighborDelta);
+          [[maybe_unused]] std::optional<RunningEnergy> fieldOnTrial =
+              Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+                  system.forceField, system.simulationBox, electricFieldNeighborDelta, trialElectricFields[i],
+                  std::span<double3>{}, system.spanOfMoleculeAtoms(), trialAtoms[i], {});
         }
 
         // mutual fields among the new trial molecules
@@ -843,6 +855,12 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
           return {std::nullopt, double3(0.0, 1.0, 0.0)};
         }
         energyDifference += nonEwaldDifference.value();
+
+        // The conformation of the removed fractional molecule leaves the system: its intra-molecular energy is
+        // removed from the running energies (not part of the acceptance rule; the CB variant has it in the
+        // retrace energies).
+        retraceEnergies[i] = system.components[members[i].componentId].intraMolecularPotentials.computeInternalEnergies(
+            system.forceField, system.simulationBox, oldFractionalMolecules[i]);
       }
     }
 
