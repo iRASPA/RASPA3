@@ -187,9 +187,12 @@ std::optional<CBMC::MultiTrialGrowResult> CBMC::DeviceMultiTrialGrower::growBatc
   }
 
   std::vector<DeviceTrialEnergy> energies;
-  environment->setForceField(context.forceField, context.simulationBox);
-  environment->setBackground(context.frameworkAtoms, context.moleculeAtoms);
-  environment->evaluate(batch, n, templateAtoms.front().moleculeId, context.skipBackgroundMolecule, energies);
+  {
+    std::scoped_lock lock(environmentMutex);
+    environment->setForceField(context.forceField, context.simulationBox);
+    environment->setBackground(context.frameworkAtoms, context.moleculeAtoms);
+    environment->evaluate(batch, n, templateAtoms.front().moleculeId, context.skipBackgroundMolecule, energies);
+  }
 
   std::vector<GroupSelection> groups;
   std::vector<double> logWeightsTilde;
@@ -246,9 +249,12 @@ CBMC::MultiTrialRetraceResult CBMC::DeviceMultiTrialGrower::retraceBatch(
   }
 
   std::vector<DeviceTrialEnergy> energies;
-  environment->setForceField(context.forceField, context.simulationBox);
-  environment->setBackground(context.frameworkAtoms, context.moleculeAtoms);
-  environment->evaluate(batch, n, moleculeAtoms.front().moleculeId, context.skipBackgroundMolecule, energies);
+  {
+    std::scoped_lock lock(environmentMutex);
+    environment->setForceField(context.forceField, context.simulationBox);
+    environment->setBackground(context.frameworkAtoms, context.moleculeAtoms);
+    environment->evaluate(batch, n, moleculeAtoms.front().moleculeId, context.skipBackgroundMolecule, energies);
+  }
 
   // The existing molecule always counts (an overlap flagged by the device for an accepted configuration can only
   // be a borderline rounding case: it is given the overlap criterion as its energy, i.e. a finite tiny weight).
@@ -368,7 +374,13 @@ CBMC::MultiTrialRetraceResult CBMC::DeviceMultiTrialGrower::retraceRegrow(
 
 const CBMC::MultiTrialGrower &CBMC::deviceMultiTrialGrower(PairDevice device)
 {
+  // The registry is shared by the replica threads of the multi-system drivers: guard the lookup and the lazy
+  // construction (which compiles the kernel). Entries are never removed, so the returned reference stays valid
+  // after the lock is released.
+  static std::mutex registryMutex;
   static std::map<PairDevice, std::unique_ptr<DeviceMultiTrialGrower>> growers;
+
+  std::scoped_lock lock(registryMutex);
   auto it = growers.find(device);
   if (it == growers.end())
   {

@@ -86,7 +86,7 @@ void System::insertFractionalMolecule(std::size_t selectedComponent, [[maybe_unu
   const std::uint8_t groupId = fractionalSlotDUdlambdaGroupId(selectedComponent, moleculeIndex);
   for (Atom& atom : atoms)
   {
-    atom.moleculeId = static_cast<std::uint16_t>(moleculeIndex);
+    atom.moleculeId = static_cast<std::uint32_t>(moleculeIndex);
     atom.setScalingToFractional(l, groupId);
   }
   insertFractionalMoleculeAtIndex(selectedComponent, moleculeIndex, molecule, std::move(atoms));
@@ -148,7 +148,7 @@ void System::insertMolecule(std::size_t selectedComponent, [[maybe_unused]] cons
   // Update the number of pseudo atoms per type (used for tail-corrections)
   for (Atom& atom : atoms)
   {
-    atom.moleculeId = static_cast<std::uint16_t>(numberOfMoleculesPerComponent[selectedComponent]);
+    atom.moleculeId = static_cast<std::uint32_t>(numberOfMoleculesPerComponent[selectedComponent]);
     numberOfPseudoAtoms[selectedComponent][static_cast<std::size_t>(atom.type)] += 1;
     totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] += 1;
     addAtomToTailCorrectionCounts(atom);
@@ -190,7 +190,7 @@ void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_u
   // Update the number of pseudo atoms per type (used for tail-corrections)
   for (Atom& atom : atoms)
   {
-    atom.moleculeId = static_cast<std::uint16_t>(numberOfMoleculesPerComponent[selectedComponent]);
+    atom.moleculeId = static_cast<std::uint32_t>(numberOfMoleculesPerComponent[selectedComponent]);
     numberOfPseudoAtoms[selectedComponent][static_cast<std::size_t>(atom.type)] += 1;
     totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] += 1;
     addAtomToTailCorrectionCounts(atom);

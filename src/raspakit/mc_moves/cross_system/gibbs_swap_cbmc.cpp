@@ -140,6 +140,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   // Select a random molecule of the selected component from system B
   std::size_t selectedMolecule = systemB.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+  // A cross-linked molecule can not leave the system while it is bonded to another molecule.
+  if (systemB.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule)) return std::nullopt;
+
   std::span<Atom> molecule = systemB.spanOfMolecule(selectedComponent, selectedMolecule);
 
   const CBMC::GrowContext retraceContext = systemB.makeGrowContext();

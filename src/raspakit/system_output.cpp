@@ -1299,13 +1299,67 @@ nlohmann::json System::jsonMCMoveStatistics() const
 
     if (component.hasFractionalMolecule)
     {
-      double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
-      double imposedFugacity = component.molFraction * pressure;
+      double imposedChemicalPotential =
+          std::log(beta * component.fugacityCoefficient.value_or(1.0) * component.molFraction * pressure) / beta;
+      double imposedFugacity = component.fugacityCoefficient.value_or(1.0) * component.molFraction * pressure;
 
-      status["lambdaStatistics"]["CFCMC"] =
+      status[component.name]["lambdaStatistics"]["CFCMC"] =
           component.lambdaGC.jsonAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity);
-      status["lambdaStatistics"]["thermodynamicIntegration"] =
+      status[component.name]["lambdaStatistics"]["thermodynamicIntegration"] =
           component.lambdaGC.jsonDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity);
+    }
+
+    if (component.mc_moves_probabilities.getProbability(Move::Types::Widom) > 0.0)
+    {
+      double imposedChemicalPotential =
+          std::log(beta * component.molFraction * component.fugacityCoefficient.value_or(1.0) * pressure) / beta;
+      double imposedFugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * pressure;
+      status[component.name]["widom"]["rosenbluthWeight"] =
+          component.averageRosenbluthWeights.jsonAveragesRosenbluthWeightStatistics(
+              temperature, simulationBox.volume, frameworkMass(),
+              framework.transform([](const Framework& f) { return f.numberOfUnitCells; }));
+      status[component.name]["widom"]["chemicalPotential"] =
+          component.averageRosenbluthWeights.jsonAveragesChemicalPotentialStatistics(beta, imposedChemicalPotential,
+                                                                                     imposedFugacity);
+    }
+
+    nlohmann::json cbmcStatistics;
+    for (std::size_t i = 0; i != component.atoms.size(); ++i)
+    {
+      nlohmann::json beadStatistics = component.cbmcMoveStatistics[i].jsonMCMoveStatistics();
+      if (!beadStatistics.empty()) cbmcStatistics[std::to_string(i)] = beadStatistics;
+    }
+    if (!cbmcStatistics.empty()) status[component.name]["cbmcMoveStatistics"] = cbmcStatistics;
+
+    nlohmann::json recoilGrowth =
+        component.recoilGrowthStatistics.jsonStatistics(forceField.settings.recoilGrowthNumberOfTrialDirections);
+    if (!recoilGrowth.empty()) status[component.name]["recoilGrowth"] = recoilGrowth;
+  }
+
+  if (usesReactionConventionalCFCMC())
+  {
+    for (const Reaction& reaction : reactions.list)
+    {
+      nlohmann::json reactionStatus;
+      if (reaction.isSerialRxCFC())
+      {
+        reactionStatus["reactantSide"]["occupancy"] = reaction.lambda.occupancy();
+        reactionStatus["reactantSide"]["CFCMC"] = reaction.lambda.jsonAveragesStatistics(beta, std::nullopt, std::nullopt);
+        reactionStatus["reactantSide"]["thermodynamicIntegration"] =
+            reaction.lambda.jsonDUdLambdaStatistics(beta, std::nullopt, std::nullopt);
+        reactionStatus["productSide"]["occupancy"] = reaction.lambdaProductSide.occupancy();
+        reactionStatus["productSide"]["CFCMC"] =
+            reaction.lambdaProductSide.jsonAveragesStatistics(beta, std::nullopt, std::nullopt);
+        reactionStatus["productSide"]["thermodynamicIntegration"] =
+            reaction.lambdaProductSide.jsonDUdLambdaStatistics(beta, std::nullopt, std::nullopt);
+      }
+      else
+      {
+        const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
+        reactionStatus["CFCMC"] = histogram.jsonAveragesStatistics(beta, std::nullopt, std::nullopt);
+        reactionStatus["thermodynamicIntegration"] = histogram.jsonDUdLambdaStatistics(beta, std::nullopt, std::nullopt);
+      }
+      status["reactions"][std::to_string(reaction.id)]["lambdaStatistics"] = reactionStatus;
     }
   }
 

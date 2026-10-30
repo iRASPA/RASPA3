@@ -284,7 +284,7 @@ export struct SimulationBox
     angleBeta += b.angleBeta;
     angleGamma += b.angleGamma;
     cell += b.cell;
-    volume += volume;
+    volume += b.volume;
 
     return *this;
   }

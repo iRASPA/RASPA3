@@ -77,6 +77,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMoveMu
   Component& componentA = systemA.components[selectedComponent];
   Component& componentB = systemB.components[selectedComponent];
   checkMultiTrialSupported(systemA, "Gibbs swap multi-trial (CBMC)");
+  checkMultiTrialSupported(systemB, "Gibbs swap multi-trial (CBMC)");
   DualTMMCTrial tmmcTrial(systemA, systemB, selectedComponent);
 
   if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;
@@ -109,6 +110,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMoveMu
 
   // Deletion side (system B): the molecule retraced and M-1 references grown into B without it.
   const std::size_t selectedMolecule = systemB.randomIntegerMoleculeOfComponent(random, selectedComponent);
+
+  // A cross-linked molecule can not leave the system while it is bonded to another molecule.
+  if (systemB.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule)) return std::nullopt;
+
   std::span<Atom> molecule = systemB.spanOfMolecule(selectedComponent, selectedMolecule);
   const std::span<const Atom> oldMolecule = molecule;
   const std::size_t oldGlobalMoleculeId = systemB.moleculeIndexOfComponent(selectedComponent, selectedMolecule);

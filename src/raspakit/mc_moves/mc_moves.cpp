@@ -3426,9 +3426,10 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
   std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 
   // Use lookup to skip adding count to system stats for cross system
-  if (moveType != Move::Types::GibbsSwapCBMC && moveType != Move::Types::GibbsSwapCFCMC &&
-      moveType != Move::Types::GibbsSwapCBCFCMC && moveType != Move::Types::GibbsConventionalCFCMC &&
-      moveType != Move::Types::GibbsConventionalCBCFCMC && moveType != Move::Types::GibbsIdentityChangeCBMC)
+  if (moveType != Move::Types::GibbsSwapCBMC && moveType != Move::Types::GibbsSwapMultiTrialCBMC &&
+      moveType != Move::Types::GibbsSwapCFCMC && moveType != Move::Types::GibbsSwapCBCFCMC &&
+      moveType != Move::Types::GibbsConventionalCFCMC && moveType != Move::Types::GibbsConventionalCBCFCMC &&
+      moveType != Move::Types::GibbsIdentityChangeCBMC)
   {
     selectedSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
     if (componentMoves.count(moveType))

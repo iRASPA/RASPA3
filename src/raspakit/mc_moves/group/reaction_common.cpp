@@ -163,12 +163,21 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
       return false;
     }
 
+    // A cross-linked molecule can not leave the system while it is bonded to another molecule.
     std::vector<std::size_t> available;
     const std::size_t fractionalOffset = system.numberOfFractionalMoleculesPerComponent[componentId];
     for (std::size_t moleculeId = 0; moleculeId < system.numberOfIntegerMoleculesPerComponent[componentId];
          ++moleculeId)
     {
-      available.push_back(fractionalOffset + moleculeId);
+      if (!system.crossLinks.moleculeIsLinked(componentId, fractionalOffset + moleculeId))
+      {
+        available.push_back(fractionalOffset + moleculeId);
+      }
+    }
+
+    if (count > available.size())
+    {
+      return false;
     }
 
     for (std::size_t k = 0; k < count; ++k)
@@ -538,21 +547,11 @@ void deleteSelectedMolecules(System& system,
                       return a.second > b.second;
                     });
 
+  // deleteMolecule erases the slot in place (atoms, dynamics, electric field, molecule data, cross-link table);
+  // deleting in descending order per component keeps the remaining indices of that component valid.
   for (const auto& [componentId, moleculeId] : sorted)
   {
-    // swap the doomed molecule to the last slot of its component so that deleteMolecule pops the tail
-    const std::size_t lastIntegerIndex = system.numberOfMoleculesPerComponent[componentId] - 1;
-    if (moleculeId != lastIntegerIndex)
-    {
-      std::span<Atom> moleculeA = system.spanOfMolecule(componentId, moleculeId);
-      std::span<Atom> moleculeB = system.spanOfMolecule(componentId, lastIntegerIndex);
-      std::swap_ranges(moleculeA.begin(), moleculeA.end(), moleculeB.begin());
-      std::swap(system.moleculeData[system.moleculeIndexOfComponent(componentId, moleculeId)],
-                system.moleculeData[system.moleculeIndexOfComponent(componentId, lastIntegerIndex)]);
-    }
-
-    std::span<Atom> molecule = system.spanOfMolecule(componentId, lastIntegerIndex);
-    system.deleteMolecule(componentId, lastIntegerIndex, molecule);
+    system.deleteMolecule(componentId, moleculeId, system.spanOfMolecule(componentId, moleculeId));
   }
 }
 

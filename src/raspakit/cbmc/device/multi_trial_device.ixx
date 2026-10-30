@@ -85,6 +85,12 @@ class DeviceMultiTrialGrower final : public MultiTrialGrower
  private:
   // the environment holds the device state of the current evaluation; the grower's interface is const
   mutable std::unique_ptr<DeviceGrowEnvironment> environment;
+  // One grower per device kind is shared by every system of the process. The multi-system drivers (parallel
+  // tempering, parallel TMMC, ...) run their replicas on concurrent threads, so the device section of a batch
+  // (background upload + evaluation, which rewrites the environment's buffers and staging) is serialized here;
+  // the host side of a batch (trial placement, selection, double re-evaluation) only touches locals and runs
+  // concurrently.
+  mutable std::mutex environmentMutex;
 
   std::optional<MultiTrialGrowResult> growBatch(RandomNumber &random, const GrowContext &context,
                                                 const Component &component, std::span<const Atom> templateAtoms,

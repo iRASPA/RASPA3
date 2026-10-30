@@ -62,6 +62,19 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   double cutOffCoulomb_stored_A = systemA.forceField.cutOffCoulomb;
   double ewald_alpha_stored_A = systemA.forceField.EwaldAlpha;
   int3 ewald_k_stored_A = systemA.forceField.numberOfWaveVectors;
+  std::size_t ewald_k_cutoff_stored_A = systemA.forceField.reciprocalIntegerCutOffSquared;
+
+  // initializeAutomaticCutOff mutates the force field for the trial box; every non-accepting exit must undo that.
+  auto restoreForceFieldA = [&]
+  {
+    systemA.forceField.cutOffFrameworkVDW = cutOffFrameworkVDW_stored_A;
+    systemA.forceField.cutOffMoleculeVDW = cutOffMoleculeVDW_stored_A;
+    systemA.forceField.cutOffCoulomb = cutOffCoulomb_stored_A;
+    systemA.forceField.EwaldAlpha = ewald_alpha_stored_A;
+    systemA.forceField.numberOfWaveVectors = ewald_k_stored_A;
+    systemA.forceField.reciprocalIntegerCutOffSquared = ewald_k_cutoff_stored_A;
+    systemA.forceField.updateEwaldRealSpaceTable();
+  };
 
   systemA.forceField.initializeAutomaticCutOff(newBoxA);
 
@@ -113,6 +126,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
   if (newTotalInterEnergyA.potentialEnergy() > systemA.forceField.energyOverlapCriteria)
   {
+    restoreForceFieldA();
     return std::nullopt;
   }
 
@@ -132,6 +146,18 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   double cutOffCoulomb_stored_B = systemB.forceField.cutOffCoulomb;
   double ewald_alpha_stored_B = systemB.forceField.EwaldAlpha;
   int3 ewald_k_stored_B = systemB.forceField.numberOfWaveVectors;
+  std::size_t ewald_k_cutoff_stored_B = systemB.forceField.reciprocalIntegerCutOffSquared;
+
+  auto restoreForceFieldB = [&]
+  {
+    systemB.forceField.cutOffFrameworkVDW = cutOffFrameworkVDW_stored_B;
+    systemB.forceField.cutOffMoleculeVDW = cutOffMoleculeVDW_stored_B;
+    systemB.forceField.cutOffCoulomb = cutOffCoulomb_stored_B;
+    systemB.forceField.EwaldAlpha = ewald_alpha_stored_B;
+    systemB.forceField.numberOfWaveVectors = ewald_k_stored_B;
+    systemB.forceField.reciprocalIntegerCutOffSquared = ewald_k_cutoff_stored_B;
+    systemB.forceField.updateEwaldRealSpaceTable();
+  };
 
   systemB.forceField.initializeAutomaticCutOff(newBoxB);
 
@@ -183,6 +209,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
   if (newTotalInterEnergyB.potentialEnergy() > systemB.forceField.energyOverlapCriteria)
   {
+    restoreForceFieldA();
+    restoreForceFieldB();
     return std::nullopt;
   }
 
@@ -217,19 +245,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
     return std::make_pair(newTotalEnergyA - oldTotalEnergyA, newTotalEnergyB - oldTotalEnergyB);
   }
 
-  systemA.forceField.cutOffFrameworkVDW = cutOffFrameworkVDW_stored_A;
-  systemA.forceField.cutOffMoleculeVDW = cutOffMoleculeVDW_stored_A;
-  systemA.forceField.cutOffCoulomb = cutOffCoulomb_stored_A;
-  systemA.forceField.EwaldAlpha = ewald_alpha_stored_A;
-  systemA.forceField.numberOfWaveVectors = ewald_k_stored_A;
-  systemA.forceField.updateEwaldRealSpaceTable();
-
-  systemB.forceField.cutOffFrameworkVDW = cutOffFrameworkVDW_stored_B;
-  systemB.forceField.cutOffMoleculeVDW = cutOffMoleculeVDW_stored_B;
-  systemB.forceField.cutOffCoulomb = cutOffCoulomb_stored_B;
-  systemB.forceField.EwaldAlpha = ewald_alpha_stored_B;
-  systemB.forceField.numberOfWaveVectors = ewald_k_stored_B;
-  systemB.forceField.updateEwaldRealSpaceTable();
+  restoreForceFieldA();
+  restoreForceFieldB();
 
   return std::nullopt;
 }

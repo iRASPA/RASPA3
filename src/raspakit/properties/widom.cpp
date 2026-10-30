@@ -7,6 +7,7 @@ import int3;
 import units;
 import averages;
 import stringutils;
+import json;
 
 std::string PropertyWidom::writeAveragesRosenbluthWeightStatistics(double temperature, double volume,
                                                                    std::optional<double> frameworkMass,
@@ -201,6 +202,116 @@ std::string PropertyWidom::writeAveragesChemicalPotentialStatistics(double beta,
   std::print(stream, "\n\n");
 
   return stream.str();
+}
+
+nlohmann::json PropertyWidom::jsonAveragesRosenbluthWeightStatistics(double temperature, double volume,
+                                                                     std::optional<double> frameworkMass,
+                                                                     std::optional<int3> number_of_unit_cells) const
+{
+  nlohmann::json status;
+
+  std::pair<double, double> average_rosenbluth_weight = result();
+
+  std::vector<double> blocks(numberOfBlocks);
+  for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+  {
+    blocks[blockIndex] = averagedRosenbluthWeight(blockIndex);
+  }
+  status["rosenbluthWeight"]["blocks"]["[-]"] = blocks;
+  status["rosenbluthWeight"]["mean"]["[-]"] = average_rosenbluth_weight.first;
+  status["rosenbluthWeight"]["confidence"]["[-]"] = average_rosenbluth_weight.second;
+
+  if (frameworkMass.has_value())
+  {
+    double frameworkDensity =
+        1e-3 * frameworkMass.value() /
+        (volume * Units::LengthUnit * Units::LengthUnit * Units::LengthUnit * Units::AvogadroConstant);
+    double conversion_factor_mol_per_kg = 1.0 / (Units::MolarGasConstant * temperature * frameworkDensity);
+
+    std::vector<double> henryBlocks(numberOfBlocks);
+    for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+    {
+      henryBlocks[blockIndex] = conversion_factor_mol_per_kg * averagedRosenbluthWeight(blockIndex);
+    }
+    status["henryCoefficient"]["blocks"]["[mol/kg/Pa]"] = henryBlocks;
+    status["henryCoefficient"]["mean"]["[mol/kg/Pa]"] = average_rosenbluth_weight.first * conversion_factor_mol_per_kg;
+    status["henryCoefficient"]["confidence"]["[mol/kg/Pa]"] =
+        average_rosenbluth_weight.second * conversion_factor_mol_per_kg;
+
+    if (number_of_unit_cells.has_value())
+    {
+      double conversion_factor_molecules_per_uc =
+          Units::AvogadroConstant * volume * Units::LengthUnit * Units::LengthUnit * Units::LengthUnit /
+          (Units::MolarGasConstant * temperature *
+           static_cast<double>(number_of_unit_cells->x * number_of_unit_cells->y * number_of_unit_cells->z));
+
+      status["henryCoefficient"]["mean"]["[molec./uc/Pa]"] =
+          average_rosenbluth_weight.first * conversion_factor_molecules_per_uc;
+      status["henryCoefficient"]["confidence"]["[molec./uc/Pa]"] =
+          average_rosenbluth_weight.second * conversion_factor_molecules_per_uc;
+    }
+  }
+
+  return status;
+}
+
+nlohmann::json PropertyWidom::jsonAveragesChemicalPotentialStatistics(double beta,
+                                                                      std::optional<double> imposedChemicalPotential,
+                                                                      std::optional<double> imposedFugacity) const
+{
+  nlohmann::json status;
+
+  std::pair<WidomData, WidomData> average_chemical_potential = chemicalPotentialResult(beta);
+  std::pair<double, double> average_fugacity = fugacityResult(beta);
+
+  std::vector<double> excessBlocksKelvin(numberOfBlocks);
+  std::vector<double> fugacityBlocks(numberOfBlocks);
+  for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+  {
+    excessBlocksKelvin[blockIndex] = Units::EnergyToKelvin * averagedChemicalPotential(blockIndex, beta).excess;
+    fugacityBlocks[blockIndex] = Units::PressureConversionFactor * averagedFugacity(blockIndex, beta);
+  }
+
+  status["excessChemicalPotential"]["blocks"]["[K]"] = excessBlocksKelvin;
+  status["excessChemicalPotential"]["mean"]["[K]"] = Units::EnergyToKelvin * average_chemical_potential.first.excess;
+  status["excessChemicalPotential"]["confidence"]["[K]"] =
+      Units::EnergyToKelvin * average_chemical_potential.second.excess;
+  status["idealGasChemicalPotential"]["mean"]["[K]"] =
+      Units::EnergyToKelvin * average_chemical_potential.first.idealGas;
+  status["idealGasChemicalPotential"]["confidence"]["[K]"] =
+      Units::EnergyToKelvin * average_chemical_potential.second.idealGas;
+  status["totalChemicalPotential"]["mean"]["[K]"] = Units::EnergyToKelvin * average_chemical_potential.first.total;
+  status["totalChemicalPotential"]["confidence"]["[K]"] =
+      Units::EnergyToKelvin * average_chemical_potential.second.total;
+
+  status["excessChemicalPotential"]["mean"]["[kJ/mol]"] =
+      Units::EnergyToKJPerMol * average_chemical_potential.first.excess;
+  status["excessChemicalPotential"]["confidence"]["[kJ/mol]"] =
+      Units::EnergyToKJPerMol * average_chemical_potential.second.excess;
+  status["idealGasChemicalPotential"]["mean"]["[kJ/mol]"] =
+      Units::EnergyToKJPerMol * average_chemical_potential.first.idealGas;
+  status["idealGasChemicalPotential"]["confidence"]["[kJ/mol]"] =
+      Units::EnergyToKJPerMol * average_chemical_potential.second.idealGas;
+  status["totalChemicalPotential"]["mean"]["[kJ/mol]"] =
+      Units::EnergyToKJPerMol * average_chemical_potential.first.total;
+  status["totalChemicalPotential"]["confidence"]["[kJ/mol]"] =
+      Units::EnergyToKJPerMol * average_chemical_potential.second.total;
+
+  if (imposedChemicalPotential)
+  {
+    status["imposedChemicalPotential"]["[K]"] = Units::EnergyToKelvin * imposedChemicalPotential.value();
+    status["imposedChemicalPotential"]["[kJ/mol]"] = Units::EnergyToKJPerMol * imposedChemicalPotential.value();
+  }
+
+  status["measuredFugacity"]["blocks"] = fugacityBlocks;
+  status["measuredFugacity"]["mean"] = Units::PressureConversionFactor * average_fugacity.first;
+  status["measuredFugacity"]["confidence"] = Units::PressureConversionFactor * average_fugacity.second;
+  if (imposedFugacity)
+  {
+    status["imposedFugacity"] = Units::PressureConversionFactor * imposedFugacity.value();
+  }
+
+  return status;
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyWidom &w)

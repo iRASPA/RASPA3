@@ -4,6 +4,8 @@ module cbmc_statistics;
 
 import std;
 
+import json;
+
 static std::string formatStatistics(const std::string name, const MoveStatistics<double>& move)
 {
   std::ostringstream stream;
@@ -44,6 +46,42 @@ const std::string CBMC::InternalMoveStatistics::writeMCMoveStatistics() const
   return stream.str();
 }
 
+static nlohmann::json jsonStatistics(const MoveStatistics<double>& move)
+{
+  nlohmann::json status;
+  status["all"] = move.allCounts;
+  status["total"] = move.totalCounts;
+  status["constructed"] = move.totalConstructed;
+  status["accepted"] = move.totalAccepted;
+  status["fraction"] = move.totalAccepted / std::max(1.0, double(move.totalCounts));
+  status["maxChange"] = move.maxChange;
+  return status;
+}
+
+nlohmann::json CBMC::InternalMoveStatistics::jsonMCMoveStatistics() const
+{
+  nlohmann::json status;
+
+  if (ringDisplacementChange.totalCounts > 0.0)
+  {
+    status["CBMC Ring-displacement"] = jsonStatistics(ringDisplacementChange);
+  }
+  if (ringRotationChange.totalCounts > 0.0)
+  {
+    status["CBMC Ring-rotation"] = jsonStatistics(ringRotationChange);
+  }
+  if (ringCrankshaftMove.totalCounts > 0.0)
+  {
+    status["CBMC Ring-crankshaft"] = jsonStatistics(ringCrankshaftMove);
+  }
+  if (rigidTiltRotationChange.totalCounts > 0.0)
+  {
+    status["CBMC Rigid-tilt rotation"] = jsonStatistics(rigidTiltRotationChange);
+  }
+
+  return status;
+}
+
 const std::string CBMC::RecoilGrowthStatistics::writeStatistics(std::size_t numberOfTrialDirections) const
 {
   std::ostringstream stream;
@@ -57,6 +95,24 @@ const std::string CBMC::RecoilGrowthStatistics::writeStatistics(std::size_t numb
              availableDirectionsSum / std::max(1.0, growSteps) / static_cast<double>(numberOfTrialDirections),
              numberOfTrialDirections);
   return stream.str();
+}
+
+nlohmann::json CBMC::RecoilGrowthStatistics::jsonStatistics(std::size_t numberOfTrialDirections) const
+{
+  nlohmann::json status;
+  if (grows <= 0.0) return status;
+
+  status["grows"] = grows;
+  status["completed"] = completed;
+  status["completedFraction"] = completed / grows;
+  status["deadEnds"] = deadEnds;
+  status["deadEndsFraction"] = deadEnds / grows;
+  status["discarded"] = discarded;
+  status["discardedFraction"] = discarded / grows;
+  status["meanAvailableDirectionsFraction"] =
+      availableDirectionsSum / std::max(1.0, growSteps) / static_cast<double>(numberOfTrialDirections);
+  status["numberOfTrialDirections"] = numberOfTrialDirections;
+  return status;
 }
 
 Archive<std::ofstream>& CBMC::operator<<(Archive<std::ofstream>& archive, const CBMC::InternalMoveStatistics& p)

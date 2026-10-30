@@ -171,7 +171,8 @@ std::optional<RunningEnergy> hybridMCMoveWithEngine(RandomNumber& random, System
   if (random.uniform() < std::exp(-system.beta * deltaH))
   {
     system.mc_moves_statistics.addAccepted(move);
-    system.timeStep = dt;
+    // the adaptive HMC step size is a property of the move, not of the system (the MD drivers read 'timeStep')
+    system.timeStep = savedTimeStep;
     finalEnergy.translationalKineticEnergy = trajectoryEnergy.translationalKineticEnergy;
     finalEnergy.rotationalKineticEnergy = trajectoryEnergy.rotationalKineticEnergy;
     return finalEnergy;
@@ -330,7 +331,6 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
 
     system.moleculeData = moleculeData;
     system.groupData = groupData;
-    system.timeStep = dt;
 
     std::copy(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), atomData.begin());
     std::copy(moleculeDynamics.begin(), moleculeDynamics.end(), dynamicsData.begin());

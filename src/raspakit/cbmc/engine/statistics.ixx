@@ -5,6 +5,7 @@ export module cbmc_statistics;
 import std;
 
 import archive;
+import json;
 import move_statistics;
 
 export namespace CBMC
@@ -45,6 +46,8 @@ struct InternalMoveStatistics
   }
 
   const std::string writeMCMoveStatistics() const;
+  /// JSON counterpart of 'writeMCMoveStatistics' (samplers without any trial are omitted).
+  nlohmann::json jsonMCMoveStatistics() const;
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const InternalMoveStatistics& p);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, InternalMoveStatistics& p);
@@ -72,5 +75,7 @@ struct RecoilGrowthStatistics
   double growSteps{0.0};
 
   const std::string writeStatistics(std::size_t numberOfTrialDirections) const;
+  /// JSON counterpart of 'writeStatistics' (empty when no grow was attempted).
+  nlohmann::json jsonStatistics(std::size_t numberOfTrialDirections) const;
 };
 }  // namespace CBMC

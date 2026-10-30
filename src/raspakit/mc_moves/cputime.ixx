@@ -130,18 +130,17 @@ export struct MCMoveCpuTime
     return ConstTimingRowRef{timingMap[std::to_underlying(move)]};
   }
 
-  inline MCMoveCpuTime& operator=(const MCMoveCpuTime& b)
-  {
-    propertySampling = b.propertySampling;
-    energyPressureComputation = b.energyPressureComputation;
-    timingMap = b.timingMap;
-    return *this;
-  }
+  MCMoveCpuTime& operator=(const MCMoveCpuTime& b) = default;
 
   inline MCMoveCpuTime& operator+=(const MCMoveCpuTime& b)
   {
     propertySampling += b.propertySampling;
     energyPressureComputation += b.energyPressureComputation;
+    pressureFrameworkTime += b.pressureFrameworkTime;
+    pressureIntermolecularTime += b.pressureIntermolecularTime;
+    pressureEwaldTime += b.pressureEwaldTime;
+    pressureTailTime += b.pressureTailTime;
+    pressureRestTime += b.pressureRestTime;
 
     for (std::size_t i = 0; i != timingMap.size(); ++i)
     {
@@ -216,18 +215,7 @@ decltype(auto) timed(Owner& owner, Move::Types move, Move::Timing timing, Callab
 
 export inline MCMoveCpuTime operator+(const MCMoveCpuTime& a, const MCMoveCpuTime& b)
 {
-  MCMoveCpuTime m;
-
-  m.propertySampling = a.propertySampling + b.propertySampling;
-  m.energyPressureComputation = a.energyPressureComputation + b.energyPressureComputation;
-
-  for (std::size_t i = 0; i != m.timingMap.size(); ++i)
-  {
-    for (std::size_t j = 0; j != m.timingMap[i].size(); ++j)
-    {
-      m.timingMap[i][j] = a.timingMap[i][j] + b.timingMap[i][j];
-    }
-  }
-
+  MCMoveCpuTime m(a);
+  m += b;
   return m;
 }

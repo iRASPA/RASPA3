@@ -7,6 +7,7 @@ import std;
 import archive;
 import int3;
 import averages;
+import json;
 export import property_block_average;
 
 export struct WidomData
@@ -172,6 +173,13 @@ export struct PropertyWidom
                                                       std::optional<int3> number_of_unit_cells) const;
   std::string writeAveragesChemicalPotentialStatistics(double beta, std::optional<double> imposedChemicalPotential,
                                                        std::optional<double> imposedFugacity) const;
+
+  /// JSON counterparts of the two text writers above (same quantities and units).
+  nlohmann::json jsonAveragesRosenbluthWeightStatistics(double temperature, double volume,
+                                                        std::optional<double> frameworkMass,
+                                                        std::optional<int3> number_of_unit_cells) const;
+  nlohmann::json jsonAveragesChemicalPotentialStatistics(double beta, std::optional<double> imposedChemicalPotential,
+                                                         std::optional<double> imposedFugacity) const;
 
   inline void addWidomSample(std::size_t blockIndex, double RosenbluthValue, std::size_t N, double V, double weight)
   {

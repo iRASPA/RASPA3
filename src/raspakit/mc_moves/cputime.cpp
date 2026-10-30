@@ -18,6 +18,13 @@ void MCMoveCpuTime::clearTimingStatistics()
   {
     moveTimings.fill(std::chrono::duration<double>::zero());
   }
+  propertySampling = std::chrono::duration<double>::zero();
+  energyPressureComputation = std::chrono::duration<double>::zero();
+  pressureFrameworkTime = std::chrono::duration<double>::zero();
+  pressureIntermolecularTime = std::chrono::duration<double>::zero();
+  pressureEwaldTime = std::chrono::duration<double>::zero();
+  pressureTailTime = std::chrono::duration<double>::zero();
+  pressureRestTime = std::chrono::duration<double>::zero();
 }
 
 const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
@@ -229,8 +236,6 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MCMove
 {
   archive << t.versionNumber;
 
-  archive << t.propertySampling;
-  archive << t.energyPressureComputation;
   archive << t.timingMap;
 
   archive << t.propertySampling;
@@ -259,8 +264,6 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MCMoveCpuTim
                                          location.line(), location.file_name()));
   }
 
-  archive >> t.propertySampling;
-  archive >> t.energyPressureComputation;
   archive >> t.timingMap;
 
   archive >> t.propertySampling;

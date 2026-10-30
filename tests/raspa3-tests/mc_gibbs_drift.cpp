@@ -620,6 +620,95 @@ TEST(MC_GIBBS_DRIFT, methane_gibbs_cfcbmc)
   }
 }
 
+// Serial Gibbs CFCMC in a methane/CO2 mixture whose first component holds a different number of molecules in each
+// box: the fractional CO2 molecule then has a different global molecule index in A and B, and the second component
+// adds a charged fractional molecule that follows the flag swap of the first. Exercises the cross-system atom
+// swaps (molecule ids must be restored per system) and the chained Ewald sub-steps of the swap/shuffle moves.
+namespace
+{
+void runMixtureGibbsSwapDrift(Move::Types gibbsSwapMove)
+{
+  const ForceField forceField = makeZeoliteAlkaneForceField();
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  probabilities.setProbability(Move::Types::Rotation, 1.0);
+  probabilities.setProbability(gibbsSwapMove, 1.0);
+
+  Component methane = Component::makeMethane(forceField, 0);
+  methane.mc_moves_probabilities = probabilities;
+  enableThermodynamicIntegration(methane);
+
+  Component co2 = Component::makeCO2(forceField, 1, true);
+  co2.mc_moves_probabilities = probabilities;
+  enableThermodynamicIntegration(co2);
+
+  SimulationBox box = SimulationBox(30.0, 30.0, 30.0);
+
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+
+  System systemVapor =
+      System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane, co2}, {}, {30, 20}, 5, systemProbabilities);
+  System systemLiquid =
+      System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane, co2}, {}, {45, 20}, 5, systemProbabilities);
+
+  std::vector<System> systems{systemVapor, systemLiquid};
+  size_t numberOfProductionCycles{500};
+  size_t numberOfInitializationCycles{100};
+  size_t numberOfEquilibrationCycles{200};
+  size_t printEvery{1000};
+  size_t writeBinaryRestartEvery{10000};
+  size_t rescaleWangLandauEvery{5000};
+  size_t optimizeMCMovesEvery{5000};
+  size_t numberOfBlocks{5};
+  bool outputToFiles{false};
+
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
+                             numberOfBlocks, outputToFiles);
+
+  mc.run();
+
+  // exactly one box holds the active fractional molecules, and the activity flag governs every component
+  EXPECT_NE(mc.systems[0].containsTheFractionalMolecule, mc.systems[1].containsTheFractionalMolecule);
+  for (System &s : mc.systems)
+  {
+    expectNoEnergyDrift(s);
+
+    for (std::size_t componentId = 0; componentId < s.components.size(); ++componentId)
+    {
+      const Component &component = s.components[componentId];
+      const std::size_t index = s.indexOfFractionalMoleculeForMove(gibbsSwapMove, componentId);
+      for (const Atom &atom : s.spanOfMolecule(componentId, index))
+      {
+        Atom expected = atom;
+        if (s.containsTheFractionalMolecule)
+        {
+          expected.setScalingToFractional(component.lambdaGC.lambdaValue(), component.lambdaGC.dUdlambdaGroupId);
+        }
+        else
+        {
+          expected.setScalingToInactiveFractional();
+        }
+        EXPECT_TRUE(atom.isFractional);
+        EXPECT_EQ(atom.groupId, expected.groupId);
+        EXPECT_DOUBLE_EQ(atom.scalingVDW, expected.scalingVDW);
+        EXPECT_DOUBLE_EQ(atom.scalingCoulomb, expected.scalingCoulomb);
+      }
+    }
+  }
+}
+}  // namespace
+
+TEST(MC_GIBBS_DRIFT, mixture_gibbs_cfcmc_unequal_molecule_counts)
+{
+  runMixtureGibbsSwapDrift(Move::Types::GibbsSwapCFCMC);
+}
+
+TEST(MC_GIBBS_DRIFT, mixture_gibbs_cbcfcmc_unequal_molecule_counts)
+{
+  runMixtureGibbsSwapDrift(Move::Types::GibbsSwapCBCFCMC);
+}
+
 TEST(MC_GIBBS_DRIFT, methane_gibbs_conventional_cfcmc)
 {
   const ForceField forceField = makeZeoliteAlkaneForceField();

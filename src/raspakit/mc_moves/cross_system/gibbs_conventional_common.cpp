@@ -19,6 +19,7 @@ import interactions_ewald;
 import interactions_external_field;
 import mc_moves_move_types;
 import cbmc;
+import intra_molecular_potentials;
 
 namespace
 {
@@ -402,6 +403,45 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupB =
       systemB.fractionalPseudoAtomCountsPerGroup;
 
+  // Deletion prelude (lambda < 0): upon acceptance the fractional molecule leaves its box. Its intra-molecular
+  // energy leaves the running energies (not the acceptance rule: the reverse insertion draws the conformation from
+  // the ideal-gas distribution, CBMC or not). With CBMC the molecule is retraced at lambda_old, before anything is
+  // rescaled, exactly mirroring the grow of the insertion side: ideal-gas-weight / W replaces the short-range
+  // Boltzmann factor of its removal, and only the Ewald Fourier + tail part of that removal stays explicit.
+  struct DeletionPrelude
+  {
+    RunningEnergy internalEnergy{};
+    double logRosenbluthWeight{0.0};
+    RunningEnergy retraceEwaldTail{};
+  };
+  auto prepareDeletion = [&](System& system, const std::vector<double>& tailEffectiveCounts,
+                             const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
+                             const Component& component, std::span<const Atom> fractionalMolecule) -> DeletionPrelude
+  {
+    DeletionPrelude prelude{};
+    prelude.internalEnergy = component.intraMolecularPotentials.computeInternalEnergies(
+        system.forceField, system.simulationBox, fractionalMolecule);
+    if (useCBMC)
+    {
+      const CBMC::GrowContext context = system.makeGrowContext();
+      CBMC::RetraceResult retraceData = CBMC::retraceMolecule(random, context, component, fractionalMolecule);
+      prelude.logRosenbluthWeight = retraceData.logRosenbluthWeight;
+      prelude.retraceEwaldTail =
+          retraceEwaldTailDifference(system, tailEffectiveCounts, tailGroupCounts, fractionalMolecule);
+    }
+    return prelude;
+  };
+  DeletionPrelude deletionA{};
+  DeletionPrelude deletionB{};
+  if (moveKindA == GibbsMoveKind::Delete)
+  {
+    deletionA = prepareDeletion(systemA, tailEffA, tailGroupA, componentA, fractionalMoleculeA);
+  }
+  if (moveKindB == GibbsMoveKind::Delete)
+  {
+    deletionB = prepareDeletion(systemB, tailEffB, tailGroupB, componentB, fractionalMoleculeB);
+  }
+
   // First step: the fractional molecule of each box takes its target scaling
   std::vector<Atom> trialFractionalA(fractionalMoleculeA.begin(), fractionalMoleculeA.end());
   applyTargetScaling(trialFractionalA, moveKindA, lambdaNewA);
@@ -429,6 +469,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   {
     savedFractionalA = std::vector<Atom>(fractionalMoleculeA.begin(), fractionalMoleculeA.end());
     applyTargetScaling(fractionalMoleculeA, moveKindA, lambdaNewA);
+    // The cell list caches the scaling and group id of every atom: refresh the rescaled molecule, or a CBMC
+    // grow in the boundary step sees the fractional molecule at its old scaling.
+    systemA.cellListAtomsMoved(fractionalMoleculeA);
     // The second boundary operation starts from the structure factor produced by
     // the first fractional-scaling operation, so reciprocal-space cross terms are retained.
     systemA.storedEik = systemA.trialEik;
@@ -437,6 +480,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   {
     savedFractionalB = std::vector<Atom>(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
     applyTargetScaling(fractionalMoleculeB, moveKindB, lambdaNewB);
+    systemB.cellListAtomsMoved(fractionalMoleculeB);
     systemB.storedEik = systemB.trialEik;
   }
 
@@ -445,10 +489,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     if (savedFractionalA.has_value())
     {
       std::copy(savedFractionalA->begin(), savedFractionalA->end(), fractionalMoleculeA.begin());
+      systemA.cellListAtomsMoved(fractionalMoleculeA);
     }
     if (savedFractionalB.has_value())
     {
       std::copy(savedFractionalB->begin(), savedFractionalB->end(), fractionalMoleculeB.begin());
+      systemB.cellListAtomsMoved(fractionalMoleculeB);
     }
     restoreEwaldState();
   };
@@ -515,27 +561,22 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       {
         return false;
       }
-      trial.energy = insertionEnergy.value();
-      trial.acceptanceFactor = std::exp(-system.beta * trial.energy.potentialEnergy()) * volume / (integerCount + 1.0);
+      // The intra-molecular energy of the inserted conformation enters the running energies but not the
+      // acceptance rule: the conformation is drawn from the ideal-gas Boltzmann distribution exp(-beta U_intra),
+      // so it cancels against the generation probability (zero for rigid molecules).
+      RunningEnergy internalEnergyNew = component.intraMolecularPotentials.computeInternalEnergies(
+          system.forceField, system.simulationBox, trialAtoms);
+      trial.energy = insertionEnergy.value() + internalEnergyNew;
+      trial.acceptanceFactor =
+          std::exp(-system.beta * insertionEnergy->potentialEnergy()) * volume / (integerCount + 1.0);
       return true;
     }
 
+    // Deletion: a randomly chosen integer molecule becomes the fractional molecule at lambda_new. This step is the
+    // same for the CBMC and the conventional variant (the CBMC part of a deletion is the retrace of the leaving
+    // fractional molecule, done in the deletion prelude before the first step).
     trial.selectedInteger = system.randomIntegerMoleculeOfComponent(random, selectedComponent);
     std::span<Atom> selectedMolecule = system.spanOfMolecule(selectedComponent, trial.selectedInteger);
-    if (useCBMC)
-    {
-      std::vector<Atom> oldSelectedMolecule(selectedMolecule.begin(), selectedMolecule.end());
-      CBMC::RetraceResult retraceData = CBMC::retraceMolecule(random, context, component, selectedMolecule);
-
-      RunningEnergy ewaldTail =
-          retraceEwaldTailDifference(system, tailEffectiveCounts, tailGroupCounts, selectedMolecule);
-      // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero,
-      // which would turn this quotient into +inf).
-      trial.acceptanceFactor = std::exp(std::log(integerCount / volume) - retraceData.logRosenbluthWeight -
-                                        system.beta * ewaldTail.potentialEnergy());
-      std::copy(oldSelectedMolecule.begin(), oldSelectedMolecule.end(), selectedMolecule.begin());
-    }
-
     std::vector<Atom> trialSelected(selectedMolecule.begin(), selectedMolecule.end());
     for (Atom& atom : trialSelected)
     {
@@ -548,10 +589,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       return false;
     }
     trial.energy = deletionEnergy.value();
-    if (!useCBMC)
-    {
-      trial.acceptanceFactor = std::exp(-system.beta * trial.energy.potentialEnergy()) * integerCount / volume;
-    }
+    trial.acceptanceFactor = std::exp(-system.beta * trial.energy.potentialEnergy()) * integerCount / volume;
     return true;
   };
 
@@ -566,9 +604,28 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
 
   componentA.mc_moves_statistics.addConstructed(move);
 
-  const double physicalAcceptance = std::exp(-systemA.beta * energyFirstStepA->potentialEnergy() -
-                                             systemB.beta * energyFirstStepB->potentialEnergy()) *
-                                    boundaryA.acceptanceFactor * boundaryB.acceptanceFactor;
+  // The first-step factor of a box: the Boltzmann factor of rescaling its fractional molecule, except for a CBMC
+  // deletion, where the retrace of the leaving molecule replaces the short-range part (the mirror image of the
+  // insertion side, where W / ideal-gas-weight replaces the grown molecule's Boltzmann factor):
+  //   ideal-gas-weight / W_retrace * exp(-beta (Ewald Fourier + tail of the removal)).
+  auto firstStepFactor = [&](const System& system, const Component& component, GibbsMoveKind moveKind,
+                             const RunningEnergy& energyFirstStep, const DeletionPrelude& prelude)
+  {
+    if (useCBMC && moveKind == GibbsMoveKind::Delete)
+    {
+      const double idealGas = component.idealGasRosenbluthWeight.value_or(1.0);
+      // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero,
+      // which would turn this quotient into +inf).
+      return std::exp(std::log(idealGas) - prelude.logRosenbluthWeight -
+                      system.beta * prelude.retraceEwaldTail.potentialEnergy());
+    }
+    return std::exp(-system.beta * energyFirstStep.potentialEnergy());
+  };
+
+  const double physicalAcceptance =
+      firstStepFactor(systemA, componentA, moveKindA, energyFirstStepA.value(), deletionA) *
+      firstStepFactor(systemB, componentB, moveKindB, energyFirstStepB.value(), deletionB) *
+      boundaryA.acceptanceFactor * boundaryB.acceptanceFactor;
   const double lambdaBias = std::exp((biasNewA - biasOldA) + (biasNewB - biasOldB));
   if (!tmmcTrial.transitionsAreInBounds(deltaA, deltaB))
   {
@@ -625,7 +682,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   systemA.computeTailCorrectionCounts();
   systemB.computeTailCorrectionCounts();
 
+  // Upon a deletion the conformation of the (former) fractional molecule leaves the box, and with it its
+  // intra-molecular energy.
   RunningEnergy energyDifferenceA = energyFirstStepA.value() + boundaryA.energy;
   RunningEnergy energyDifferenceB = energyFirstStepB.value() + boundaryB.energy;
+  if (moveKindA == GibbsMoveKind::Delete) energyDifferenceA -= deletionA.internalEnergy;
+  if (moveKindB == GibbsMoveKind::Delete) energyDifferenceB -= deletionB.internalEnergy;
   return std::make_pair(energyDifferenceA, energyDifferenceB);
 }
