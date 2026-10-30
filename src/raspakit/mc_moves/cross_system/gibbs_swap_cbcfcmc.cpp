@@ -29,7 +29,10 @@ import mc_moves_gibbs_swap_serial_common;
 
 // All systems have a fractional molecule, only one of these is 'active', the others are switched off with 'lambda=0'.
 // Serial CFCMC: at most one simulation box has containsTheFractionalMolecule==true; systemA must be that box.
-// Integer insertions and deletions use CBMC grow and retrace.
+// The interchange retraces the fractional molecule and grows a new integer molecule in the active box, and retraces
+// an integer molecule and grows a new fractional molecule in the other box; the shuffle retraces the fractional
+// molecule in the active box and grows it in the other box. Every CBMC operation has its mirror image in the reverse
+// move, so the acceptance rules are ratios of Rosenbluth weights.
 
 using namespace MC_Moves::GibbsSwapSerialCommon;
 
@@ -107,7 +110,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   if (switchValue < 0.25)
   {
-    // Lambda interchange: fractional molecule exchange between boxes with CBMC grow (A) and retrace (B).
+    // Lambda interchange: the fractional molecule of A becomes an integer molecule and an integer molecule of B
+    // becomes the fractional molecule, both through CBMC. In A the fractional molecule is retraced at lambda and a
+    // new integer molecule is grown; in B a randomly selected integer molecule is retraced and a new fractional
+    // molecule is grown at the same lambda. The reverse move (with the roles of the boxes exchanged) regenerates
+    // the original configuration, so the acceptance rule is the ratio of the four Rosenbluth weights times the
+    // Boltzmann factor of the terms CBMC does not see (Ewald, tail, other-component flag swaps). Every grow and
+    // retrace is evaluated against a background of integer molecules only (the fractional molecules of the other
+    // components are off in an inactive box), as the matching operation of the reverse move is.
 
     componentA.mc_moves_statistics.addTrial(move, 0);
 
@@ -133,43 +143,65 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupB =
         systemB.fractionalPseudoAtomCountsPerGroup;
 
-    // System A: copy inactive fractional molecule from B into the active fractional slot
-    std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
-    for (Atom& atom : fractionalMoleculeA)
-    {
-      atom.moleculeId =
-          static_cast<std::uint32_t>(systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
-    }
+    // System A, step 1: Ewald and tail contributions of removing the fractional molecule at lambda (the first Ewald
+    // sub-step of the move in A: storedEik -> trialEik). Its short-range and intra-molecular energies come from the
+    // CBMC retrace below.
+    RunningEnergy EwaldFourierDifferenceRetraceA =
+        timed(systemA, componentA, move, Move::Timing::LambdaInterchangeEwald,
+              [&]
+              {
+                return Interactions::energyDifferenceEwaldFourier(
+                    systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
+                    systemA.forceField, systemA.simulationBox, systemA.components, {}, oldFractionalMoleculeA,
+                    systemA.netCharge);
+              });
 
-    RunningEnergy intraFractionalDifferenceA =
-        componentA.intraMolecularPotentials.computeInternalEnergies(systemA.forceField, systemA.simulationBox, fractionalMoleculeA) -
-        componentA.intraMolecularPotentials.computeInternalEnergies(systemA.forceField, systemA.simulationBox, oldFractionalMoleculeA);
+    RunningEnergy tailEnergyDifferenceRetraceA =
+        timed(systemA, componentA, move, Move::Timing::LambdaInterchangeTail,
+              [&] { return computeTailEnergyDifference(systemA, tailEffA, tailGroupA, {}, oldFractionalMoleculeA); });
 
-    RunningEnergy energyDifferenceA = intraFractionalDifferenceA;
-
-    // Combined flag-swap energy for all fractional molecules in A (selected: new position + off; others: off),
-    // computed and applied to memory before the grow so the grow sees the post-flag-swap background.
-    std::optional<RunningEnergy> flagSwapFractionalDifferenceA =
+    // System A, step 2: the fractional molecules of the other components switch off (unbiased). Evaluated while the
+    // selected fractional molecule is still in memory at lambda, so that its cross terms with them are counted here;
+    // the retrace and grow below then see a background of integer molecules only.
+    std::optional<RunningEnergy> flagSwapOtherComponentsDifferenceA =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
               [&]
               {
-                return computeFlagSwapFractionalEnergyDifference(systemA, tailEffA, tailGroupA, snapshotA,
-                                                                       selectedComponent, false, oldLambda, systemA);
+                return computeFlagSwapOtherComponentsEnergyDifference(systemA, tailEffA, tailGroupA, snapshotA,
+                                                                      selectedComponent, false, systemA);
               });
-    if (!flagSwapFractionalDifferenceA.has_value())
+    if (!flagSwapOtherComponentsDifferenceA.has_value())
     {
-      restoreFractionalMolecules(systemA, snapshotA);
       return std::nullopt;
     }
-    energyDifferenceA += flagSwapFractionalDifferenceA.value();
 
+    // System A, step 3: the fractional slot takes the inactive placeholder of B, all fractional molecules of A take
+    // the inactive scaling in memory, and the old fractional molecule is retraced at lambda against that background
+    // (its own slot is excluded by molecule id).
+    std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
+    for (Atom& atom : fractionalMoleculeA)
+    {
+      atom.isFractional = true;
+      atom.moleculeId =
+          static_cast<std::uint32_t>(systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
+    }
     applyFlagSwapScaling(systemA, selectedComponent, false, oldLambda, systemA);
 
-    // System A: CBMC grow a new integer molecule
+    // Intra-molecular bookkeeping (zero for rigid molecules): the placeholder conformation of B enters A; the old
+    // fractional conformation leaves A through the retrace energies. Not part of the acceptance rule.
+    RunningEnergy intraEnergyPlaceholderA = componentA.intraMolecularPotentials.computeInternalEnergies(
+        systemA.forceField, systemA.simulationBox, fractionalMoleculeA);
+
+    const CBMC::GrowContext retraceContextA = systemA.makeGrowContext();
+    CBMC::RetraceResult retraceDataA =
+        timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
+              [&] { return CBMC::retraceMolecule(random, retraceContextA, componentA, oldFractionalMoleculeA); });
+
+    // System A, step 4: CBMC grow a new integer molecule against the same background.
     // Trial global molecule id (unique, not yet in the system); insertMolecule assigns the final id.
     std::size_t newMoleculeIndex = systemA.numberOfMolecules();
     const CBMC::GrowContext growContextA = systemA.makeGrowContext();
-    std::optional<CBMC::GrowResult> growData =
+    std::optional<CBMC::GrowResult> growDataA =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
               [&]
               {
@@ -177,7 +209,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                              {.componentId = selectedComponent, .moleculeId = newMoleculeIndex});
               });
 
-    if (!growData)
+    if (!growDataA)
     {
       restoreFractionalMolecules(systemA, snapshotA);
       return std::nullopt;
@@ -190,7 +222,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                 return Interactions::energyDifferenceEwaldFourier(
                     systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.trialEik, systemA.trialEik,
                     systemA.forceField, systemA.simulationBox, systemA.components,
-                    std::span(growData->atoms.begin(), growData->atoms.end()), {}, systemA.netCharge);
+                    std::span(growDataA->atoms.begin(), growDataA->atoms.end()), {}, systemA.netCharge);
               });
 
     RunningEnergy tailEnergyDifferenceGrowA =
@@ -198,102 +230,108 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               [&]
               {
                 return computeTailEnergyDifference(systemA, tailEffA, tailGroupA,
-                                                   std::span(growData->atoms.begin(), growData->atoms.end()), {});
+                                                   std::span(growDataA->atoms.begin(), growDataA->atoms.end()), {});
               });
 
-    energyDifferenceA += growData->energies + EwaldFourierDifferenceGrowA + tailEnergyDifferenceGrowA;
+    // Terms of A that enter the acceptance rule explicitly (everything the retrace and the grow do not see).
+    RunningEnergy unbiasedDifferenceA = EwaldFourierDifferenceRetraceA + tailEnergyDifferenceRetraceA +
+                                        flagSwapOtherComponentsDifferenceA.value() + EwaldFourierDifferenceGrowA +
+                                        tailEnergyDifferenceGrowA;
 
-    double correctionFactorEwaldGrowA = std::exp(
-        -systemA.beta * (EwaldFourierDifferenceGrowA.potentialEnergy() + tailEnergyDifferenceGrowA.potentialEnergy()));
+    RunningEnergy energyDifferenceA =
+        -(retraceDataA.energies - EwaldFourierDifferenceRetraceA - tailEnergyDifferenceRetraceA) +
+        flagSwapOtherComponentsDifferenceA.value() + intraEnergyPlaceholderA + growDataA->energies +
+        EwaldFourierDifferenceGrowA + tailEnergyDifferenceGrowA;
 
-    // System B: CBMC retrace a randomly selected integer molecule
+    // System B, step 1: CBMC retrace a randomly selected integer molecule (B is inactive: its fractional molecules
+    // are off, so the background is the integer molecules only).
     std::size_t indexSelectedIntegerMoleculeB = systemB.randomIntegerMoleculeOfComponent(random, selectedComponent);
     std::span<Atom> selectedIntegerMoleculeB = systemB.spanOfMolecule(selectedComponent, indexSelectedIntegerMoleculeB);
-    std::vector<Atom> oldSelectedIntegerMoleculeB(selectedIntegerMoleculeB.begin(), selectedIntegerMoleculeB.end());
+    const std::vector<Atom> oldSelectedIntegerMoleculeB(selectedIntegerMoleculeB.begin(),
+                                                        selectedIntegerMoleculeB.end());
+
+    auto restoreB = [&]()
+    {
+      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      systemB.cellListAtomsMoved(fractionalMoleculeB);
+      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(),
+                selectedIntegerMoleculeB.begin());
+      systemB.cellListAtomsMoved(selectedIntegerMoleculeB);
+    };
 
     const CBMC::GrowContext retraceContextB = systemB.makeGrowContext();
-    CBMC::RetraceResult retraceData =
+    CBMC::RetraceResult retraceDataB =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
               [&] { return CBMC::retraceMolecule(random, retraceContextB, componentB, selectedIntegerMoleculeB); });
+
     RunningEnergy EwaldFourierDifferenceRetraceB =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeEwald,
               [&]
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.trialEik,
-                    systemB.forceField, systemB.simulationBox, systemB.components, {}, selectedIntegerMoleculeB, systemB.netCharge);
+                    systemB.forceField, systemB.simulationBox, systemB.components, {}, selectedIntegerMoleculeB,
+                    systemB.netCharge);
               });
 
     RunningEnergy tailEnergyDifferenceRetraceB =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeTail,
               [&] { return computeTailEnergyDifference(systemB, tailEffB, tailGroupB, {}, selectedIntegerMoleculeB); });
 
-    double correctionFactorEwaldRetraceB = std::exp(systemB.beta * (EwaldFourierDifferenceRetraceB.potentialEnergy() +
-                                                                    tailEnergyDifferenceRetraceB.potentialEnergy()));
-
+    // System B, step 2: the retraced molecule leaves the background for the grow of the new fractional molecule.
     for (Atom& atom : selectedIntegerMoleculeB)
     {
       atom.setScalingOff();
-      atom.position = systemB.simulationBox.randomPosition(random);
     }
+    systemB.cellListAtomsMoved(selectedIntegerMoleculeB);
 
-    std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
-    for (Atom& atom : fractionalMoleculeB)
-    {
-      atom.moleculeId =
-          static_cast<std::uint32_t>(systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
-      atom.setScalingToFractional(oldLambda, componentB.lambdaGC.dUdlambdaGroupId);
-    }
-
-    RunningEnergy intraFractionalDifferenceB =
-        componentB.intraMolecularPotentials.computeInternalEnergies(systemB.forceField, systemB.simulationBox, fractionalMoleculeB) -
-        componentB.intraMolecularPotentials.computeInternalEnergies(systemB.forceField, systemB.simulationBox, oldFractionalMoleculeB);
-
-    std::optional<RunningEnergy> frameworkDifferenceB2 = timed(
-        systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
-        [&]
-        {
-          return Interactions::computeFrameworkMoleculeEnergyDifference(
-              systemB.forceField, systemB.simulationBox, systemB.interpolationGrids, systemB.framework,
-              systemB.frameworkCellList(), systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
-        });
-    if (!frameworkDifferenceB2.has_value())
-    {
-      restoreFractionalMolecules(systemA, snapshotA);
-      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(),
-                selectedIntegerMoleculeB.begin());
-      return std::nullopt;
-    }
-
-    std::optional<RunningEnergy> moleculeDifferenceB2 =
+    // System B, step 3: CBMC grow the new fractional molecule at lambda into the fractional slot (the slot's own
+    // placeholder is excluded by molecule id).
+    const std::size_t globalFractionalMoleculeIndexB =
+        systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB);
+    const CBMC::GrowContext growContextB = systemB.makeGrowContext();
+    std::optional<CBMC::GrowResult> growDataB =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
               [&]
               {
-                return Interactions::computeInterMolecularEnergyDifference(systemB.forceField, systemB.simulationBox,
-                                                                           systemB.spanOfMoleculeAtoms(),
-                                                                           fractionalMoleculeB, oldFractionalMoleculeB);
+                return CBMC::growNewMolecule(random, growContextB, componentB,
+                                             {.componentId = selectedComponent,
+                                              .moleculeId = globalFractionalMoleculeIndexB,
+                                              .scaling = oldLambda,
+                                              .groupId = componentB.lambdaGC.dUdlambdaGroupId,
+                                              .isFractional = true});
               });
-    if (!moleculeDifferenceB2.has_value())
+
+    if (!growDataB)
     {
       restoreFractionalMolecules(systemA, snapshotA);
-      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(),
-                selectedIntegerMoleculeB.begin());
+      restoreB();
       return std::nullopt;
     }
 
-    RunningEnergy EwaldFourierDifferenceB2 =
+    std::copy(growDataB->atoms.begin(), growDataB->atoms.end(), fractionalMoleculeB.begin());
+    for (Atom& atom : fractionalMoleculeB)
+    {
+      atom.moleculeId = static_cast<std::uint32_t>(globalFractionalMoleculeIndexB);
+    }
+    systemB.cellListAtomsMoved(fractionalMoleculeB);
+
+    // Intra-molecular bookkeeping (zero for rigid molecules): the placeholder conformation leaves B; the grown
+    // conformation enters B through the grow energies. Not part of the acceptance rule.
+    RunningEnergy intraEnergyPlaceholderB = componentB.intraMolecularPotentials.computeInternalEnergies(
+        systemB.forceField, systemB.simulationBox, oldFractionalMoleculeB);
+
+    RunningEnergy EwaldFourierDifferenceGrowB =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeEwald,
               [&]
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.trialEik, systemB.trialEik,
-                    systemB.forceField, systemB.simulationBox, systemB.components, fractionalMoleculeB, oldFractionalMoleculeB,
-                    systemB.netCharge);
+                    systemB.forceField, systemB.simulationBox, systemB.components, fractionalMoleculeB,
+                    oldFractionalMoleculeB, systemB.netCharge);
               });
 
-    RunningEnergy tailEnergyDifferenceB2 =
+    RunningEnergy tailEnergyDifferenceGrowB =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeTail,
               [&]
               {
@@ -301,43 +339,52 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                                    oldFractionalMoleculeB);
               });
 
+    // System B, step 4: the fractional molecules of the other components switch on (unbiased), with the new
+    // fractional molecule present so that their cross terms with it are counted here.
     std::optional<RunningEnergy> flagSwapOtherComponentsDifferenceB =
-        computeFlagSwapOtherComponentsEnergyDifference(systemB, tailEffB, tailGroupB, snapshotB, selectedComponent,
-                                                             true, systemA);
+        timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
+              [&]
+              {
+                return computeFlagSwapOtherComponentsEnergyDifference(systemB, tailEffB, tailGroupB, snapshotB,
+                                                                      selectedComponent, true, systemA);
+              });
     if (!flagSwapOtherComponentsDifferenceB.has_value())
     {
       restoreFractionalMolecules(systemA, snapshotA);
-      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(),
-                selectedIntegerMoleculeB.begin());
+      restoreB();
       return std::nullopt;
     }
 
+    // Terms of B that enter the acceptance rule explicitly (everything the retrace and the grow do not see).
+    RunningEnergy unbiasedDifferenceB = EwaldFourierDifferenceRetraceB + tailEnergyDifferenceRetraceB +
+                                        EwaldFourierDifferenceGrowB + tailEnergyDifferenceGrowB +
+                                        flagSwapOtherComponentsDifferenceB.value();
+
     RunningEnergy energyDifferenceB =
-        -(retraceData.energies - EwaldFourierDifferenceRetraceB - tailEnergyDifferenceRetraceB) +
-        frameworkDifferenceB2.value() + moleculeDifferenceB2.value() + EwaldFourierDifferenceB2 +
-        tailEnergyDifferenceB2 + intraFractionalDifferenceB + flagSwapOtherComponentsDifferenceB.value();
+        -(retraceDataB.energies - EwaldFourierDifferenceRetraceB - tailEnergyDifferenceRetraceB) + growDataB->energies +
+        EwaldFourierDifferenceGrowB + tailEnergyDifferenceGrowB + flagSwapOtherComponentsDifferenceB.value() -
+        intraEnergyPlaceholderB;
 
     double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin];
+    // One integer molecule moves from B to A and the fractional molecule from A to B: the volume factors of the
+    // two transfers cancel, leaving the molecule-count factor of the integer transfer.
     double preFactor = static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                        (1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent]));
-    double idealGasRosenbluthWeight = componentA.idealGasRosenbluthWeight.value_or(1.0);
 
     componentA.mc_moves_statistics.addConstructed(move, 0);
 
-    // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
+    // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero). The grow and
+    // retrace of an integer molecule (A and B) and of the fractional molecule at the same lambda (B and A) pair up,
+    // so the ideal-gas reference weights cancel; their energies are in the weights and must not be counted again.
     const double physicalAcceptance =
-        std::exp(std::log(preFactor) + growData->logRosenbluthWeight - std::log(idealGasRosenbluthWeight) -
-                 retraceData.logRosenbluthWeight + std::log(correctionFactorEwaldGrowA) +
-                 std::log(correctionFactorEwaldRetraceB) -
-                 systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy()));
+        std::exp(std::log(preFactor) + growDataA->logRosenbluthWeight - retraceDataA.logRosenbluthWeight +
+                 growDataB->logRosenbluthWeight - retraceDataB.logRosenbluthWeight -
+                 systemA.beta * (unbiasedDifferenceA.potentialEnergy() + unbiasedDifferenceB.potentialEnergy()));
     if (!tmmcTrial.transferIsInBounds())
     {
       tmmcTrial.recordTransfer(physicalAcceptance);
       restoreFractionalMolecules(systemA, snapshotA);
-      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(),
-                selectedIntegerMoleculeB.begin());
+      restoreB();
       return std::nullopt;
     }
     const double tmmcBias = tmmcTrial.biasFactor();
@@ -347,42 +394,26 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     {
       componentA.mc_moves_statistics.addAccepted(move, 0);
 
-      std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
-      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(),
-                selectedIntegerMoleculeB.begin());
-
       syncOtherComponentLambdaBins(systemA, systemB, selectedComponent);
       std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
       std::swap(componentA.lambdaGC.currentBin, componentB.lambdaGC.currentBin);
 
-      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
-      for (Atom& atom : fractionalMoleculeA)
-      {
-        atom.moleculeId =
-            static_cast<std::uint32_t>(systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
-        atom.isFractional = true;
-      }
-
+      // System A: the placeholder record of B moves into the fractional slot (its atoms are already in place), the
+      // grown integer molecule is appended.
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
-      systemA.insertMolecule(selectedComponent, growData->molecule, growData->atoms);
       systemA.moleculeData[systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA)] =
-          systemB.moleculeData[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)];
+          systemB.moleculeData[globalFractionalMoleculeIndexB];
+      systemA.insertMolecule(selectedComponent, growDataA->molecule, growDataA->atoms);
 
-      std::swap(
-          systemB.moleculeData[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)],
-          systemB.moleculeData[systemB.moleculeIndexOfComponent(selectedComponent, indexSelectedIntegerMoleculeB)]);
+      // System B: the grown fractional molecule takes the slot (its atoms are already in place), the retraced
+      // integer molecule is deleted.
+      systemB.moleculeData[globalFractionalMoleculeIndexB] = growDataB->molecule;
       Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.trialEik);
+      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(),
+                selectedIntegerMoleculeB.begin());
       systemB.deleteMolecule(selectedComponent, indexSelectedIntegerMoleculeB, selectedIntegerMoleculeB);
 
-      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
-      for (Atom& atom : fractionalMoleculeB)
-      {
-        atom.moleculeId =
-            static_cast<std::uint32_t>(systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
-        atom.isFractional = true;
-      }
-
+      // all fractional molecules take the scaling of their box's new activity state
       const double activeLambda = componentB.lambdaGC.lambdaValue();
       applyFlagSwapScaling(systemA, selectedComponent, false, activeLambda, systemA);
       applyFlagSwapScaling(systemB, selectedComponent, true, activeLambda, systemA);
@@ -397,14 +428,17 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     }
 
     restoreFractionalMolecules(systemA, snapshotA);
-    std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-    std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), selectedIntegerMoleculeB.begin());
+    restoreB();
 
     return std::nullopt;
   }
   else if (switchValue < 0.5)
   {
-    // Shuffle: move active fractional molecule from A to B using CBMC grow in B.
+    // Shuffle: move the active fractional molecule from A to B. The fractional molecule is CBMC-retraced in A and
+    // CBMC-grown in B, both at the current lambda, so the acceptance rule is the ratio of the two Rosenbluth weights
+    // times the Boltzmann factor of the terms CBMC does not see (Ewald, tail, other-component flag swaps). The
+    // retrace and the grow are evaluated against the same kind of background (integer molecules only; the fractional
+    // molecules of the other components are off in an inactive box), which keeps the move symmetric with its reverse.
 
     componentA.mc_moves_statistics.addTrial(move, 1);
 
@@ -428,6 +462,38 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupB =
         systemB.fractionalPseudoAtomCountsPerGroup;
 
+    // System A, step 1: Ewald and tail contributions of removing the fractional molecule at lambda (the first Ewald
+    // sub-step of the move in A: storedEik -> trialEik). Its short-range and intra-molecular energies come from the
+    // CBMC retrace below.
+    RunningEnergy EwaldFourierDifferenceRetraceA =
+        timed(systemA, componentA, move, Move::Timing::LambdaShuffleEwald,
+              [&]
+              {
+                return Interactions::energyDifferenceEwaldFourier(
+                    systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
+                    systemA.forceField, systemA.simulationBox, systemA.components, {}, oldFractionalMoleculeA,
+                    systemA.netCharge);
+              });
+
+    RunningEnergy tailEnergyDifferenceRetraceA =
+        timed(systemA, componentA, move, Move::Timing::LambdaShuffleTail,
+              [&] { return computeTailEnergyDifference(systemA, tailEffA, tailGroupA, {}, oldFractionalMoleculeA); });
+
+    // System A, step 2: the fractional molecules of the other components switch off (unbiased). Evaluated while the
+    // selected fractional molecule is still in memory at lambda, so that its cross terms with them are counted here;
+    // the retrace below then sees a background of integer molecules only (as the grow of the reverse move does).
+    std::optional<RunningEnergy> flagSwapOtherComponentsDifferenceA =
+        timed(systemA, componentA, move, Move::Timing::LambdaShuffleNonEwald,
+              [&]
+              {
+                return computeFlagSwapOtherComponentsEnergyDifference(systemA, tailEffA, tailGroupA, snapshotA,
+                                                                      selectedComponent, false, systemA);
+              });
+    if (!flagSwapOtherComponentsDifferenceA.has_value())
+    {
+      return std::nullopt;
+    }
+
     std::swap_ranges(fractionalMoleculeA.begin(), fractionalMoleculeA.end(), fractionalMoleculeB.begin());
 
     // swap_ranges copies moleculeId across systems; restore the ids valid in each system so that
@@ -447,31 +513,31 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       atom.moleculeId =
           static_cast<std::uint32_t>(systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
     }
+    // keep the cell lists (used by the CBMC retrace and grow below) in step with the edited slots
+    systemA.cellListAtomsMoved(fractionalMoleculeA);
+    systemB.cellListAtomsMoved(fractionalMoleculeB);
 
-    RunningEnergy intraEnergyDifferenceA =
-        componentA.intraMolecularPotentials.computeInternalEnergies(systemA.forceField, systemA.simulationBox, fractionalMoleculeA) -
-        componentA.intraMolecularPotentials.computeInternalEnergies(systemA.forceField, systemA.simulationBox, oldFractionalMoleculeA);
+    // Intra-molecular bookkeeping (zero for rigid molecules): the placeholder conformation of B enters A; the old
+    // fractional conformation leaves A through the retrace energies. Not part of the acceptance rule.
+    RunningEnergy intraEnergyPlaceholderA = componentA.intraMolecularPotentials.computeInternalEnergies(
+        systemA.forceField, systemA.simulationBox, fractionalMoleculeA);
 
-    // Combined flag-swap energy for all fractional molecules in A (selected: new position + off; others: off),
-    // computed in one batch to count the selected-other fractional cross-terms exactly once, and applied to
-    // memory so the remainder of the move sees the post-flag-swap background.
-    std::optional<RunningEnergy> flagSwapFractionalDifferenceA =
-        timed(systemA, componentA, move, Move::Timing::LambdaShuffleNonEwald,
-              [&]
-              {
-                return computeFlagSwapFractionalEnergyDifference(systemA, tailEffA, tailGroupA, snapshotA,
-                                                                       selectedComponent, false, oldLambda, systemA);
-              });
-    if (!flagSwapFractionalDifferenceA.has_value())
-    {
-      restoreFractionalMolecules(systemA, snapshotA);
-      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-      return std::nullopt;
-    }
-
-    RunningEnergy energyDifferenceA = intraEnergyDifferenceA + flagSwapFractionalDifferenceA.value();
-
+    // System A, step 3: all fractional molecules of A take the inactive scaling in memory, and the old fractional
+    // molecule is retraced at lambda against that background (its own slot is excluded by molecule id).
     applyFlagSwapScaling(systemA, selectedComponent, false, oldLambda, systemA);
+
+    const CBMC::GrowContext retraceContextA = systemA.makeGrowContext();
+    CBMC::RetraceResult retraceDataA =
+        timed(systemA, componentA, move, Move::Timing::LambdaShuffleNonEwald,
+              [&] { return CBMC::retraceMolecule(random, retraceContextA, componentA, oldFractionalMoleculeA); });
+
+    // Terms of A that enter the acceptance rule explicitly (everything the retrace does not see).
+    RunningEnergy unbiasedDifferenceA =
+        EwaldFourierDifferenceRetraceA + tailEnergyDifferenceRetraceA + flagSwapOtherComponentsDifferenceA.value();
+
+    RunningEnergy energyDifferenceA =
+        -(retraceDataA.energies - EwaldFourierDifferenceRetraceA - tailEnergyDifferenceRetraceA) +
+        flagSwapOtherComponentsDifferenceA.value() + intraEnergyPlaceholderA;
 
     const std::size_t globalFractionalMoleculeIndexB =
         systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB);
@@ -501,48 +567,21 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       atom.moleculeId = static_cast<std::uint32_t>(globalFractionalMoleculeIndexB);
     }
 
-    RunningEnergy intraEnergyDifference =
-        componentB.intraMolecularPotentials.computeInternalEnergies(systemB.forceField, systemB.simulationBox, fractionalMoleculeB) -
-        componentB.intraMolecularPotentials.computeInternalEnergies(systemB.forceField, systemB.simulationBox, oldFractionalMoleculeB);
+    // Intra-molecular bookkeeping (zero for rigid molecules): the placeholder conformation leaves B; the grown
+    // conformation enters B through the grow energies. Not part of the acceptance rule.
+    RunningEnergy intraEnergyPlaceholderB = componentB.intraMolecularPotentials.computeInternalEnergies(
+        systemB.forceField, systemB.simulationBox, oldFractionalMoleculeB);
 
-    std::optional<RunningEnergy> frameworkDifferenceB = timed(
-        systemA, componentA, move, Move::Timing::LambdaShuffleNonEwald,
-        [&]
-        {
-          return Interactions::computeFrameworkMoleculeEnergyDifference(
-              systemB.forceField, systemB.simulationBox, systemB.interpolationGrids, systemB.framework,
-              systemB.frameworkCellList(), systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
-        });
-    if (!frameworkDifferenceB.has_value())
-    {
-      restoreFractionalMolecules(systemA, snapshotA);
-      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-      return std::nullopt;
-    }
-
-    std::optional<RunningEnergy> moleculeDifferenceB =
-        timed(systemA, componentA, move, Move::Timing::LambdaShuffleNonEwald,
-              [&]
-              {
-                return Interactions::computeInterMolecularEnergyDifference(systemB.forceField, systemB.simulationBox,
-                                                                           systemB.spanOfMoleculeAtoms(),
-                                                                           fractionalMoleculeB, oldFractionalMoleculeB);
-              });
-    if (!moleculeDifferenceB.has_value())
-    {
-      restoreFractionalMolecules(systemA, snapshotA);
-      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-      return std::nullopt;
-    }
-
+    // The short-range (framework, inter-molecular) and intra-molecular energies of the grown molecule are in
+    // 'growData' (energies and Rosenbluth weight); only the Ewald, tail, and other-component terms remain.
     RunningEnergy EwaldEnergyDifferenceB =
         timed(systemA, componentA, move, Move::Timing::LambdaShuffleEwald,
               [&]
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.trialEik,
-                    systemB.forceField, systemB.simulationBox, systemB.components, fractionalMoleculeB, oldFractionalMoleculeB,
-                    systemB.netCharge);
+                    systemB.forceField, systemB.simulationBox, systemB.components, fractionalMoleculeB,
+                    oldFractionalMoleculeB, systemB.netCharge);
               });
 
     RunningEnergy tailEnergyDifferenceB =
@@ -553,9 +592,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                                    oldFractionalMoleculeB);
               });
 
-    std::optional<RunningEnergy> flagSwapOtherComponentsDifferenceB =
-        computeFlagSwapOtherComponentsEnergyDifference(systemB, tailEffB, tailGroupB, snapshotB, selectedComponent,
-                                                             true, systemA);
+    std::optional<RunningEnergy> flagSwapOtherComponentsDifferenceB = computeFlagSwapOtherComponentsEnergyDifference(
+        systemB, tailEffB, tailGroupB, snapshotB, selectedComponent, true, systemA);
     if (!flagSwapOtherComponentsDifferenceB.has_value())
     {
       restoreFractionalMolecules(systemA, snapshotA);
@@ -563,20 +601,24 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       return std::nullopt;
     }
 
-    RunningEnergy energyDifferenceB = frameworkDifferenceB.value() + moleculeDifferenceB.value() +
-                                      EwaldEnergyDifferenceB + tailEnergyDifferenceB + intraEnergyDifference +
-                                      flagSwapOtherComponentsDifferenceB.value();
+    // Terms of B that enter the acceptance rule explicitly (everything the grow does not see).
+    RunningEnergy unbiasedDifferenceB =
+        EwaldEnergyDifferenceB + tailEnergyDifferenceB + flagSwapOtherComponentsDifferenceB.value();
+
+    RunningEnergy energyDifferenceB = growData->energies + EwaldEnergyDifferenceB + tailEnergyDifferenceB +
+                                      flagSwapOtherComponentsDifferenceB.value() - intraEnergyPlaceholderB;
 
     componentA.mc_moves_statistics.addConstructed(move, 1);
 
     double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin];
     double preFactor = systemB.simulationBox.volume / systemA.simulationBox.volume;
-    double idealGasRosenbluthWeight = componentB.idealGasRosenbluthWeight.value_or(1.0);
 
-    // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero).
+    // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero). The grow in B
+    // and the retrace in A are both of the fractional molecule at the same lambda, so the ideal-gas reference weight
+    // cancels; their energies are in the weights and must not be counted again here.
     if (random.uniform() <
-        std::exp(std::log(preFactor) + growData->logRosenbluthWeight - std::log(idealGasRosenbluthWeight) -
-                 systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy()) +
+        std::exp(std::log(preFactor) + growData->logRosenbluthWeight - retraceDataA.logRosenbluthWeight -
+                 systemA.beta * (unbiasedDifferenceA.potentialEnergy() + unbiasedDifferenceB.potentialEnergy()) +
                  biasTerm))
     {
       componentA.mc_moves_statistics.addAccepted(move, 1);
@@ -667,7 +709,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
-                    systemA.forceField, systemA.simulationBox, systemA.components, trialPositions, fractionalMoleculeA, systemA.netCharge);
+                    systemA.forceField, systemA.simulationBox, systemA.components, trialPositions, fractionalMoleculeA,
+                    systemA.netCharge);
               });
 
     RunningEnergy tailEnergyDifference = timed(

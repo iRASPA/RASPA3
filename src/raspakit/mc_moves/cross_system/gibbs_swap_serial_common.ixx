@@ -50,7 +50,9 @@ void restoreFractionalMolecules(System& system, const FractionalSnapshot& snapsh
     const FractionalSnapshot& beforeSnapshot, std::size_t selectedComponent, bool systemBecomesActive,
     const System& lambdaSourceSystem) noexcept;
 
-/// Applies the scaling of the target activity state to all fractional molecules of 'system' in memory.
+/// Applies the scaling of the target activity state to all fractional molecules of 'system' in memory, and refreshes
+/// their records in the system's cell list (which caches position, scaling, and group id) so that a subsequent CBMC
+/// grow or retrace sees the edited state. 'restoreFractionalMolecules' refreshes the records the same way.
 void applyFlagSwapScaling(System& system, std::size_t selectedComponent, bool systemBecomesActive,
                           double selectedActiveLambda, const System& lambdaSourceSystem);
 

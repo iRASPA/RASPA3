@@ -41,6 +41,7 @@ void restoreFractionalMolecules(System& system, const FractionalSnapshot& snapsh
     const auto& [componentId, index] = indices;
     std::span<Atom> fractionalMolecule = system.spanOfMolecule(componentId, index);
     std::copy(moleculeAtoms.begin(), moleculeAtoms.end(), fractionalMolecule.begin());
+    system.cellListAtomsMoved(fractionalMolecule);
   }
 }
 
@@ -53,7 +54,7 @@ RunningEnergy computeTailEnergyDifference(
       Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
           system.forceField, system.simulationBox, tailEffectiveCounts, tailGroupCounts, newAtoms, oldAtoms) +
       Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                system.spanOfFrameworkAtoms(), newAtoms, oldAtoms);
+                                                                 system.spanOfFrameworkAtoms(), newAtoms, oldAtoms);
   Interactions::updateEffectiveTypeCounts(tailEffectiveCounts, tailGroupCounts, newAtoms, oldAtoms);
   return result;
 }
@@ -201,6 +202,9 @@ void applyFlagSwapScaling(System& system, std::size_t selectedComponent, bool sy
       setTargetScaling(atom, system, componentId, selectedComponent, systemBecomesActive, selectedActiveLambda,
                        lambdaSourceSystem);
     }
+    // The cell list caches the position, scaling, and group id of every atom: refresh the edited molecule, or a
+    // CBMC grow/retrace later in the move sees the fractional molecules at their old position and scaling.
+    system.cellListAtomsMoved(fractionalMolecule);
   }
 }
 

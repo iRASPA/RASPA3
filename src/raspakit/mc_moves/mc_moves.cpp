@@ -864,6 +864,10 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         // perform move
         const auto [energyDifference, Pacc] = MC_Moves::insertionMove(random, selectedSystem, selectedComponent);
 
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
         selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
@@ -1824,6 +1828,10 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         // perform move
         const auto [energyDifference, Pacc] = MC_Moves::insertionMove(random, selectedSystem, selectedComponent);
 
+        if (energyDifference)
+        {
+          selectedSystem.runningEnergies += energyDifference.value();
+        }
         selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
