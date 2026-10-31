@@ -146,6 +146,13 @@ std::optional<RunningEnergy> hybridMCMoveWithEngine(RandomNumber& random, System
   const std::vector<Molecule> savedMolecules(system.moleculeData);
   const std::vector<GroupState> savedGroups(groupDataSpan.begin(), groupDataSpan.end());
   const EwaldStructureFactor savedStoredEik(system.storedEik);
+  // 'computeTotalEnergies' below also refreshes the stored electric field for the trial configuration
+  std::vector<double3> savedElectricField;
+  if (system.forceField.computePolarization)
+  {
+    const std::span<const double3> electricField = system.spanOfMoleculeElectricField();
+    savedElectricField.assign(electricField.begin(), electricField.end());
+  }
   const double savedTimeStep = system.timeStep;
   // an NVE proposal: no thermostat along the trajectory
   std::optional<Thermostat> savedThermostat = std::exchange(system.thermostat, std::nullopt);
@@ -211,6 +218,10 @@ std::optional<RunningEnergy> hybridMCMoveWithEngine(RandomNumber& random, System
   std::copy(savedGroups.begin(), savedGroups.end(), groupDataSpan.begin());
   system.moleculeData = savedMolecules;
   system.storedEik = savedStoredEik;
+  if (system.forceField.computePolarization)
+  {
+    std::copy(savedElectricField.begin(), savedElectricField.end(), system.spanOfMoleculeElectricField().begin());
+  }
   system.timeStep = savedTimeStep;
   return std::nullopt;
 }

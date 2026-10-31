@@ -4,14 +4,58 @@ export module mc_moves_volume;
 
 import std;
 
+import int3;
 import double3;
 import randomnumbers;
 import running_energy;
 import atom;
+import molecule;
+import simulationbox;
+import ewald_structure_factor;
 import system;
 
 export namespace MC_Moves
 {
+/**
+ * \brief The state of a system a volume move changes, saved before the trial box is applied and restored
+ * when the move is rejected (see 'applyTrialVolume').
+ */
+struct SavedVolumeState
+{
+  SimulationBox box;
+  std::vector<Molecule> molecules;
+  std::vector<Atom> atoms;
+  EwaldStructureFactor storedEik;
+  std::vector<double3> electricField;  ///< Only when the force field computes polarization.
+  double cutOffFrameworkVDW;
+  double cutOffMoleculeVDW;
+  double cutOffCoulomb;
+  double ewaldAlpha;
+  int3 numberOfWaveVectors;
+  std::size_t reciprocalIntegerCutOffSquared;
+};
+
+SavedVolumeState saveVolumeState(const System &system);
+
+/**
+ * \brief Applies a trial box to the system and returns the exact total energy of the resulting configuration.
+ *
+ * The molecules are translated rigidly so that their centres of mass keep their fractional positions
+ * ('System::scaledCenterOfMassPositions'); the automatic cut-offs and the Ewald parameters are re-derived for
+ * the new box ('initializeAutomaticCutOff' followed by 'initializeEwaldParameters', as every driver does at
+ * stage entry: with a user-fixed Coulomb cut-off the number of wave vectors still follows the box). The energy
+ * is a full recomputation ('System::computeTotalEnergies'), so it carries every term the running energy
+ * carries -- inter-molecular, tail, Ewald, intra-molecular, cross-links, polymer links, external field and
+ * polarization -- and the stored Ewald structure factors and electric field describe the trial configuration
+ * afterwards. A rejected move restores all of that with 'restoreVolumeState'.
+ */
+RunningEnergy applyTrialVolume(System &system, const SimulationBox &newBox);
+
+void restoreVolumeState(System &system, const SavedVolumeState &saved);
+
+/// Whether the inter-molecular part of a trial energy marks an overlap (the move is then rejected outright).
+bool volumeTrialOverlaps(const System &system, const RunningEnergy &trialEnergy);
+
 /**
  * \brief Performs a volume move in a Monte Carlo simulation.
  *

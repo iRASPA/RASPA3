@@ -13,8 +13,7 @@ import simd_quatd;
 import randomnumbers;
 import system;
 import running_energy;
-import integrators_update;
-import interactions_ewald;
+import ewald_structure_factor;
 import mc_moves_move_types;
 
 static double3 labFrameTorque(const Component &component, const Molecule &molecule, std::span<const Atom> atoms,
@@ -61,46 +60,72 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMoveAll(RandomNumber &rand
   double sigma = system.mc_moves_statistics.getMaxChange(move);
   double b = 0.5 * system.beta * sigma * sigma;
 
-  RunningEnergy savedRunningEnergy = system.runningEnergies;
-
-  time_begin = std::chrono::steady_clock::now();
-  system.precomputeTotalGradients();
-  Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
-                                                        system.spanOfMoleculeDynamics(), system.components);
-  RunningEnergy oldEnergy = system.runningEnergies;
-
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
-  std::span<AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
+  std::span<const AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
 
-  std::vector<double3> torqueOld(numberOfMolecules);
+  // Only rigid multi-atomic molecules participate; the others keep Delta phi = 0 and a zero torque.
+  const auto torques = [&]()
+  {
+    std::vector<double3> result(numberOfMolecules);
+    std::size_t index = 0;
+    for (std::size_t i = 0; i != numberOfMolecules; ++i)
+    {
+      const Molecule &molecule = system.moleculeData[i];
+      const Component &component = system.components[molecule.componentId];
+      result[i] = labFrameTorque(component, molecule, std::span<const Atom>(&atomData[index], molecule.numberOfAtoms),
+                                 std::span<const AtomDynamics>(&dynamics[index], molecule.numberOfAtoms));
+      index += molecule.numberOfAtoms;
+    }
+    return result;
+  };
+
+  // The gradient routines cover the pair, Ewald and intra-molecular terms only; the acceptance uses the
+  // exact total energies (external field and polarization included) of the old and the new configuration.
+  // 'computeTotalEnergies' also refreshes the stored Ewald structure factors and the electric field for the
+  // configuration it evaluates, so those are saved for the rejection path.
+  time_begin = std::chrono::steady_clock::now();
+  const RunningEnergy savedRunningEnergy = system.runningEnergies;
+  const RunningEnergy oldEnergy = system.computeTotalEnergies();
+  const EwaldStructureFactor savedStoredEik(system.storedEik);
+  std::vector<double3> savedElectricField;
+  if (system.forceField.computePolarization)
+  {
+    const std::span<const double3> electricField = system.spanOfMoleculeElectricField();
+    savedElectricField.assign(electricField.begin(), electricField.end());
+  }
+
+  // Torques on every rigid molecule in the current configuration.
+  system.precomputeTotalGradients();
+  const std::vector<double3> torqueOld = torques();
+
   std::vector<double3> angularDisplacement(numberOfMolecules);
-  std::size_t index = 0;
   for (std::size_t i = 0; i != numberOfMolecules; ++i)
   {
-    Molecule &molecule = system.moleculeData[i];
+    const Molecule &molecule = system.moleculeData[i];
     const Component &component = system.components[molecule.componentId];
-    std::span<const Atom> atoms(&atomData[index], molecule.numberOfAtoms);
-    std::span<const AtomDynamics> moleculeDynamics(&dynamics[index], molecule.numberOfAtoms);
-
-    // Only rigid multi-atomic molecules participate; others keep Delta phi = 0 for detailed balance.
     if (molecule.numberOfAtoms >= 2 && component.rigid)
     {
-      torqueOld[i] = labFrameTorque(component, molecule, atoms, moleculeDynamics);
       double3 xi(random.Gaussian(), random.Gaussian(), random.Gaussian());
       angularDisplacement[i] = b * torqueOld[i] + sigma * xi;
     }
-    else
-    {
-      torqueOld[i] = double3{};
-      angularDisplacement[i] = double3{};
-    }
-    index += molecule.numberOfAtoms;
   }
 
   std::vector<Atom> savedAtoms(atomData.begin(), atomData.end());
   std::vector<Molecule> savedMolecules(system.moleculeData);
 
-  index = 0;
+  const auto restore = [&]()
+  {
+    std::copy(savedAtoms.cbegin(), savedAtoms.cend(), atomData.begin());
+    system.moleculeData = savedMolecules;
+    system.storedEik = savedStoredEik;
+    if (system.forceField.computePolarization)
+    {
+      std::copy(savedElectricField.cbegin(), savedElectricField.cend(), system.spanOfMoleculeElectricField().begin());
+    }
+    system.runningEnergies = savedRunningEnergy;
+  };
+
+  std::size_t index = 0;
   for (std::size_t i = 0; i != numberOfMolecules; ++i)
   {
     Molecule &molecule = system.moleculeData[i];
@@ -117,51 +142,52 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMoveAll(RandomNumber &rand
     index += molecule.numberOfAtoms;
   }
 
+  // A molecule rotated into a blocked pocket rejects the collective move.
+  index = 0;
+  for (std::size_t i = 0; i != numberOfMolecules; ++i)
+  {
+    const Molecule &molecule = system.moleculeData[i];
+    if (system.insideBlockedPockets(system.components[molecule.componentId],
+                                    std::span<const Atom>(&atomData[index], molecule.numberOfAtoms)))
+    {
+      restore();
+      time_end = std::chrono::steady_clock::now();
+      system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
+      return std::nullopt;
+    }
+    index += molecule.numberOfAtoms;
+  }
+
+  // Torques in the trial configuration, and its exact energy.
   system.precomputeTotalGradients();
-  Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
-                                                        system.spanOfMoleculeDynamics(), system.components);
-  RunningEnergy newEnergy = system.runningEnergies;
+  const std::vector<double3> torqueNew = torques();
+  const RunningEnergy newEnergy = system.computeTotalEnergies();
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
 
   system.mc_moves_statistics.addConstructed(move);
 
   double logBias = 0.0;
-  index = 0;
   for (std::size_t i = 0; i != numberOfMolecules; ++i)
   {
-    Molecule &molecule = system.moleculeData[i];
-    const Component &component = system.components[molecule.componentId];
-    std::span<const Atom> atoms(&atomData[index], molecule.numberOfAtoms);
-    std::span<const AtomDynamics> moleculeDynamics(&dynamics[index], molecule.numberOfAtoms);
-
-    double3 torqueNew{};
-    if (molecule.numberOfAtoms >= 2 && component.rigid)
-    {
-      torqueNew = labFrameTorque(component, molecule, atoms, moleculeDynamics);
-    }
-
     double3 forwardDeviation = angularDisplacement[i] - b * torqueOld[i];
-    double3 reverseDeviation = angularDisplacement[i] + b * torqueNew;
+    double3 reverseDeviation = angularDisplacement[i] + b * torqueNew[i];
     logBias += forwardDeviation.length_squared() - reverseDeviation.length_squared();
-    index += molecule.numberOfAtoms;
   }
   logBias /= (2.0 * sigma * sigma);
 
-  RunningEnergy energyDifference = newEnergy - oldEnergy;
+  const RunningEnergy energyDifference = newEnergy - oldEnergy;
 
   if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() + logBias))
   {
     system.mc_moves_statistics.addAccepted(move);
 
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
-
+    // The stored Ewald structure factors and the electric field already describe the new configuration.
     system.runningEnergies = savedRunningEnergy + energyDifference;
     return system.runningEnergies;
   }
 
-  std::copy(savedAtoms.cbegin(), savedAtoms.cend(), atomData.begin());
-  system.moleculeData = savedMolecules;
-  system.runningEnergies = savedRunningEnergy;
+  // Reject: restore the original configuration, structure factors, electric field and running energy.
+  restore();
   return std::nullopt;
 }

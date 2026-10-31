@@ -22,11 +22,77 @@ import property_lambda_probability_histogram;
 import property_widom;
 import averages;
 import forcefield;
+import ewald_structure_factor;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import mc_moves_move_types;
 import mc_moves_cputime;
+
+MC_Moves::SavedVolumeState MC_Moves::saveVolumeState(const System &system)
+{
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  SavedVolumeState saved{.box = system.simulationBox,
+                         .molecules = system.moleculeData,
+                         .atoms = std::vector<Atom>(atoms.begin(), atoms.end()),
+                         .storedEik = system.storedEik,
+                         .electricField = {},
+                         .cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW,
+                         .cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW,
+                         .cutOffCoulomb = system.forceField.cutOffCoulomb,
+                         .ewaldAlpha = system.forceField.EwaldAlpha,
+                         .numberOfWaveVectors = system.forceField.numberOfWaveVectors,
+                         .reciprocalIntegerCutOffSquared = system.forceField.reciprocalIntegerCutOffSquared};
+  if (system.forceField.computePolarization)
+  {
+    const std::span<const double3> electricField = system.spanOfMoleculeElectricField();
+    saved.electricField.assign(electricField.begin(), electricField.end());
+  }
+  return saved;
+}
+
+RunningEnergy MC_Moves::applyTrialVolume(System &system, const SimulationBox &newBox)
+{
+  // Scale molecules by their centre of mass: only the centre-of-mass fractional position is kept fixed while
+  // each molecule is translated rigidly. This preserves the internal geometry of both rigid and flexible
+  // molecules. The framework atoms are untouched.
+  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositions =
+      system.scaledCenterOfMassPositions(system.simulationBox, newBox);
+
+  system.simulationBox = newBox;
+  std::copy(newPositions.first.begin(), newPositions.first.end(), system.moleculeData.begin());
+  std::copy(newPositions.second.begin(), newPositions.second.end(), system.spanOfMoleculeAtoms().begin());
+
+  system.forceField.initializeAutomaticCutOff(newBox);
+  system.forceField.initializeEwaldParameters(newBox);
+
+  return system.computeTotalEnergies();
+}
+
+void MC_Moves::restoreVolumeState(System &system, const SavedVolumeState &saved)
+{
+  system.simulationBox = saved.box;
+  system.moleculeData = saved.molecules;
+  std::copy(saved.atoms.begin(), saved.atoms.end(), system.spanOfMoleculeAtoms().begin());
+  system.storedEik = saved.storedEik;
+  if (system.forceField.computePolarization)
+  {
+    std::copy(saved.electricField.begin(), saved.electricField.end(), system.spanOfMoleculeElectricField().begin());
+  }
+
+  system.forceField.cutOffFrameworkVDW = saved.cutOffFrameworkVDW;
+  system.forceField.cutOffMoleculeVDW = saved.cutOffMoleculeVDW;
+  system.forceField.cutOffCoulomb = saved.cutOffCoulomb;
+  system.forceField.EwaldAlpha = saved.ewaldAlpha;
+  system.forceField.numberOfWaveVectors = saved.numberOfWaveVectors;
+  system.forceField.reciprocalIntegerCutOffSquared = saved.reciprocalIntegerCutOffSquared;
+  system.forceField.updateEwaldRealSpaceTable();
+}
+
+bool MC_Moves::volumeTrialOverlaps(const System &system, const RunningEnergy &trialEnergy)
+{
+  return trialEnergy.moleculeMoleculeVDW + trialEnergy.moleculeMoleculeCharge > system.forceField.energyOverlapCriteria;
+}
 
 std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &system)
 {
@@ -49,65 +115,18 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   double scale = std::pow(newVolume / oldVolume, 1.0 / 3.0);
 
   SimulationBox newBox = system.simulationBox.scaled(scale);
-  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositions =
-      system.scaledCenterOfMassPositions(system.simulationBox, newBox);
 
-  double cutOffFrameworkVDW_stored = system.forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDW_stored = system.forceField.cutOffMoleculeVDW;
-  double cutOffCoulomb_stored = system.forceField.cutOffCoulomb;
-  double ewald_alpha_stored = system.forceField.EwaldAlpha;
-  int3 ewald_k_stored = system.forceField.numberOfWaveVectors;
-  std::size_t ewald_k_cutoff_stored = system.forceField.reciprocalIntegerCutOffSquared;
+  // The trial box is applied to the live system and its exact total energy computed; every non-accepting exit
+  // restores the saved state.
+  const SavedVolumeState saved = saveVolumeState(system);
+  RunningEnergy newTotalEnergy =
+      timed(system, move, Move::Timing::NonEwald, [&] { return applyTrialVolume(system, newBox); });
 
-  system.forceField.initializeAutomaticCutOff(newBox);
-
-  // Compute new intermolecular energy
-  RunningEnergy newTotalInterEnergy =
-      timed(system, move, Move::Timing::NonEwald,
-            [&] { return Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions.second); });
-
-  // Compute new tail corrections. The tail energy is position-independent, so a volume change only rescales it
-  // through the box volume; reuse the maintained effective pseudo-atom-type counts (O(nType^2)).
-  RunningEnergy newTotalTailEnergy = timed(system, move, Move::Timing::Tail,
-                                           [&]
-                                           {
-                                             return Interactions::computeInterMolecularTailEnergyAggregated(
-                                                 system.forceField, newBox, system.effectiveNumberOfPseudoAtomsVDW,
-                                                 system.fractionalPseudoAtomCountsPerGroup);
-                                           });
-
-  // Compute new Ewald Fourier energy
-  RunningEnergy newTotalEwaldEnergy =
-      timed(system, move, Move::Timing::Ewald,
-            [&]
-            {
-              return Interactions::computeEwaldFourierEnergy(
-                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik,
-                  system.trialEik, system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent,
-                  newPositions.second, system.netChargeFramework);
-            });
-
-  // Sum up all energy contributions
-  RunningEnergy newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
-  // Cross-links act between molecules and change with the box scaling.
-  newTotalEnergy += system.computeCrossLinkEnergy(newBox, newPositions.second);
-
-  // The intra-molecular energies have not changed by the com-scaling
-  newTotalEnergy.bond = oldTotalEnergy.bond;
-  newTotalEnergy.ureyBradley = oldTotalEnergy.ureyBradley;
-  newTotalEnergy.bend = oldTotalEnergy.bend;
-  newTotalEnergy.inversionBend = oldTotalEnergy.inversionBend;
-  newTotalEnergy.outOfPlaneBend = oldTotalEnergy.outOfPlaneBend;
-  newTotalEnergy.torsion = oldTotalEnergy.torsion;
-  newTotalEnergy.improperTorsion = oldTotalEnergy.improperTorsion;
-  newTotalEnergy.bondBond = oldTotalEnergy.bondBond;
-  newTotalEnergy.bondBend = oldTotalEnergy.bondBend;
-  newTotalEnergy.bondTorsion = oldTotalEnergy.bondTorsion;
-  newTotalEnergy.bendBend = oldTotalEnergy.bendBend;
-  newTotalEnergy.bendTorsion = oldTotalEnergy.bendTorsion;
-  newTotalEnergy.cmap = oldTotalEnergy.cmap;
-  newTotalEnergy.intraVDW = oldTotalEnergy.intraVDW;
-  newTotalEnergy.intraCoul = oldTotalEnergy.intraCoul;
+  if (volumeTrialOverlaps(system, newTotalEnergy))
+  {
+    restoreVolumeState(system, saved);
+    return std::nullopt;
+  }
 
   // Update constructed move counts
   system.mc_moves_statistics.addConstructed(move);
@@ -118,31 +137,16 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
                                    (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) *
                                       system.beta))
   {
-    // Move accepted: update system state
+    // Move accepted: the system already holds the new box, positions, structure factors and electric field.
     system.mc_moves_statistics.addAccepted(move);
-
-    system.simulationBox = newBox;
-    std::copy(newPositions.first.begin(), newPositions.first.end(), system.moleculeData.begin());
-    // scaledCenterOfMassPositions returns molecule atoms only; framework atoms are untouched.
-    std::copy(newPositions.second.begin(), newPositions.second.end(), system.spanOfMoleculeAtoms().begin());
-
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
-
     return newTotalEnergy - oldTotalEnergy;
   }
 
-  system.forceField.cutOffFrameworkVDW = cutOffFrameworkVDW_stored;
-  system.forceField.cutOffMoleculeVDW = cutOffMoleculeVDW_stored;
-  system.forceField.cutOffCoulomb = cutOffCoulomb_stored;
-  system.forceField.EwaldAlpha = ewald_alpha_stored;
-  system.forceField.numberOfWaveVectors = ewald_k_stored;
-  system.forceField.reciprocalIntegerCutOffSquared = ewald_k_cutoff_stored;
-  system.forceField.updateEwaldRealSpaceTable();
-
+  restoreVolumeState(system, saved);
   return std::nullopt;
 }
 
-std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& random, System& system)
+std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber &random, System &system)
 {
   Move::Types move = Move::Types::AnisotropicVolumeChange;
 
@@ -151,84 +155,33 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
   RunningEnergy oldTotalEnergy = system.runningEnergies;
   const double numberOfMolecules = static_cast<double>(std::accumulate(
       system.numberOfIntegerMoleculesPerComponent.begin(), system.numberOfIntegerMoleculesPerComponent.end(), 0));
-  const SimulationBox& oldBox = system.simulationBox;
-  const double oldVolume = oldBox.volume;
+  const double oldVolume = system.simulationBox.volume;
 
-  const double3 maxVolumeChange(
-      system.mc_moves_statistics.getMaxChange(move, 0),
-      system.mc_moves_statistics.getMaxChange(move, 1),
-      system.mc_moves_statistics.getMaxChange(move, 2));
+  const double3 maxVolumeChange(system.mc_moves_statistics.getMaxChange(move, 0),
+                                system.mc_moves_statistics.getMaxChange(move, 1),
+                                system.mc_moves_statistics.getMaxChange(move, 2));
 
   const double3 scale(std::exp(maxVolumeChange.x * (2.0 * random.uniform() - 1.0)),
                       std::exp(maxVolumeChange.y * (2.0 * random.uniform() - 1.0)),
                       std::exp(maxVolumeChange.z * (2.0 * random.uniform() - 1.0)));
 
-  SimulationBox newBox = oldBox.scaled(scale);
+  SimulationBox newBox = system.simulationBox.scaled(scale);
 
-  // Scale molecules by their center of mass: only the center-of-mass fractional position is kept fixed while
-  // each molecule is translated rigidly. This preserves the internal geometry of both rigid and flexible
-  // molecules, so the intramolecular energies remain unchanged (see below).
-  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositions =
-      system.scaledCenterOfMassPositions(oldBox, newBox);
+  const SavedVolumeState saved = saveVolumeState(system);
+  RunningEnergy newTotalEnergy =
+      timed(system, move, Move::Timing::NonEwald, [&] { return applyTrialVolume(system, newBox); });
 
-  const double cutOffFrameworkVDW_stored = system.forceField.cutOffFrameworkVDW;
-  const double cutOffMoleculeVDW_stored = system.forceField.cutOffMoleculeVDW;
-  const double cutOffCoulomb_stored = system.forceField.cutOffCoulomb;
-  const double ewald_alpha_stored = system.forceField.EwaldAlpha;
-  const int3 ewald_k_stored = system.forceField.numberOfWaveVectors;
-  const std::size_t ewald_k_cutoff_stored = system.forceField.reciprocalIntegerCutOffSquared;
-
-  system.forceField.initializeAutomaticCutOff(newBox);
-
-  RunningEnergy newTotalInterEnergy =
-      timed(system, move, Move::Timing::NonEwald,
-            [&] { return Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions.second); });
-
-  // Tail energy is position-independent; reuse the maintained effective pseudo-atom-type counts (O(nType^2)).
-  RunningEnergy newTotalTailEnergy = timed(system, move, Move::Timing::Tail,
-                                           [&]
-                                           {
-                                             return Interactions::computeInterMolecularTailEnergyAggregated(
-                                                 system.forceField, newBox, system.effectiveNumberOfPseudoAtomsVDW,
-                                                 system.fractionalPseudoAtomCountsPerGroup);
-                                           });
-
-  RunningEnergy newTotalEwaldEnergy =
-      timed(system, move, Move::Timing::Ewald,
-            [&]
-            {
-              return Interactions::computeEwaldFourierEnergy(
-                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik,
-                  system.trialEik, system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent,
-                  newPositions.second, system.netChargeFramework);
-            });
-
-  RunningEnergy newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
-  // Cross-links act between molecules and change with the box scaling.
-  newTotalEnergy += system.computeCrossLinkEnergy(newBox, newPositions.second);
-
-  newTotalEnergy.bond = oldTotalEnergy.bond;
-  newTotalEnergy.ureyBradley = oldTotalEnergy.ureyBradley;
-  newTotalEnergy.bend = oldTotalEnergy.bend;
-  newTotalEnergy.inversionBend = oldTotalEnergy.inversionBend;
-  newTotalEnergy.outOfPlaneBend = oldTotalEnergy.outOfPlaneBend;
-  newTotalEnergy.torsion = oldTotalEnergy.torsion;
-  newTotalEnergy.improperTorsion = oldTotalEnergy.improperTorsion;
-  newTotalEnergy.bondBond = oldTotalEnergy.bondBond;
-  newTotalEnergy.bondBend = oldTotalEnergy.bondBend;
-  newTotalEnergy.bondTorsion = oldTotalEnergy.bondTorsion;
-  newTotalEnergy.bendBend = oldTotalEnergy.bendBend;
-  newTotalEnergy.bendTorsion = oldTotalEnergy.bendTorsion;
-  newTotalEnergy.cmap = oldTotalEnergy.cmap;
-  newTotalEnergy.intraVDW = oldTotalEnergy.intraVDW;
-  newTotalEnergy.intraCoul = oldTotalEnergy.intraCoul;
+  if (volumeTrialOverlaps(system, newTotalEnergy))
+  {
+    restoreVolumeState(system, saved);
+    return std::nullopt;
+  }
 
   system.mc_moves_statistics.addConstructed(move);
 
   const double volumeRatio = scale.x * scale.y * scale.z;
   const double pressureWork =
-      oldVolume * (system.pressureTensorDiagonal.x * (scale.x - 1.0) +
-                   system.pressureTensorDiagonal.y * (scale.y - 1.0) +
+      oldVolume * (system.pressureTensorDiagonal.x * (scale.x - 1.0) + system.pressureTensorDiagonal.y * (scale.y - 1.0) +
                    system.pressureTensorDiagonal.z * (scale.z - 1.0));
 
   if (random.uniform() < std::exp((numberOfMolecules + 1.0) * std::log(volumeRatio) -
@@ -236,24 +189,9 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
                                       system.beta))
   {
     system.mc_moves_statistics.addAccepted(move);
-
-    system.simulationBox = newBox;
-    std::copy(newPositions.first.begin(), newPositions.first.end(), system.moleculeData.begin());
-    // scaledCenterOfMassPositions returns molecule atoms only; framework atoms are untouched.
-    std::copy(newPositions.second.begin(), newPositions.second.end(), system.spanOfMoleculeAtoms().begin());
-
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
-
     return newTotalEnergy - oldTotalEnergy;
   }
 
-  system.forceField.cutOffFrameworkVDW = cutOffFrameworkVDW_stored;
-  system.forceField.cutOffMoleculeVDW = cutOffMoleculeVDW_stored;
-  system.forceField.cutOffCoulomb = cutOffCoulomb_stored;
-  system.forceField.EwaldAlpha = ewald_alpha_stored;
-  system.forceField.numberOfWaveVectors = ewald_k_stored;
-  system.forceField.reciprocalIntegerCutOffSquared = ewald_k_cutoff_stored;
-  system.forceField.updateEwaldRealSpaceTable();
-
+  restoreVolumeState(system, saved);
   return std::nullopt;
 }

@@ -38,7 +38,10 @@ import elastic_constants;
 import molecular_dynamics;
 import mc_moves;
 import mc_moves_hybridmc;
+import mc_moves_translation_smart_mc_all;
+import mc_moves_rotation_smart_mc_all;
 import mc_moves_move_types;
+import ewald_structure_factor;
 import randomnumbers;
 
 namespace
@@ -193,9 +196,10 @@ System makeSemiFlexibleChainSystem()
                        Atom({1.2, -0.25, 0.35}, 0.0, 1.0, 0, type, 0, false, false)},
                       connectivityTable, potentials, 0, 0);
   component.buildFragmentGraph({{0, 1, 2}});
+  // the positions of a component are one flat list (two molecules of four atoms here)
   return System(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {component},
-                {{double3(5.0, 5.0, 5.0), double3(5.6, 4.4, 5.0), double3(6.2, 5.0, 5.0), double3(6.8, 4.5, 5.35)},
-                 {double3(12.0, 8.0, 7.0), double3(12.6, 7.4, 7.0), double3(13.2, 8.0, 7.0), double3(13.8, 7.5, 7.35)}},
+                {{double3(5.0, 5.0, 5.0), double3(5.6, 4.4, 5.0), double3(6.2, 5.0, 5.0), double3(6.8, 4.5, 5.35),
+                  double3(12.0, 8.0, 7.0), double3(12.6, 7.4, 7.0), double3(13.2, 8.0, 7.0), double3(13.8, 7.5, 7.35)}},
                 {0}, 5);
 }
 }  // namespace
@@ -1367,4 +1371,212 @@ TEST(integrators, flexible_molecule_velocity_matches_atom_com_after_thermostat)
   {
     DOUBLE3_EXPECT_NEAR(system.moleculeData[m].velocity, expectedMoleculeCenterOfMassVelocity(system, m), 1.0e-12);
   }
+}
+
+namespace
+{
+std::vector<double3> netForcesPerMolecule(System& system)
+{
+  system.precomputeTotalGradients();
+  const std::span<const AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
+  std::vector<double3> forces(system.moleculeData.size());
+  std::size_t index = 0;
+  for (std::size_t i = 0; i < system.moleculeData.size(); ++i)
+  {
+    for (std::size_t k = 0; k < system.moleculeData[i].numberOfAtoms; ++k)
+    {
+      forces[i] -= dynamics[index + k].gradient;
+    }
+    index += system.moleculeData[i].numberOfAtoms;
+  }
+  return forces;
+}
+
+System makeCO2InITQ29System()
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework framework = Framework::makeITQ29(forceField, int3(1, 1, 1));
+  Component co2 = Component::makeCO2(forceField, 0, false);
+  return System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, framework, {co2}, {}, {2}, 5);
+}
+}  // namespace
+
+TEST(smart_mc_all, translation_biases_semi_flexible_molecules_with_the_net_atomic_force)
+{
+  // The drift of the smart-MC proposal is b times the net force on the molecule, the sum of its atomic
+  // forces. 'Molecule::gradient' is not maintained for semi-flexible molecules (their rigid groups carry the
+  // gradients), so a stale value there must not enter the proposal.
+  const double sigma = 0.05;
+  std::size_t accepted = 0;
+  for (std::size_t seed = 0; seed < 12; ++seed)
+  {
+    System system = makeSemiFlexibleChainSystem();
+    ASSERT_TRUE(system.components[0].isSemiFlexible());
+    system.mc_moves_statistics.setMaxChange(Move::Types::TranslationSmartMCAll, sigma);
+
+    // bring the molecules within range of each other so that the net forces are appreciable
+    ASSERT_EQ(system.moleculeData.size(), 2uz);
+    const std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+    ASSERT_EQ(atoms.size(), 8uz);
+    const double3 shift(-3.5, -2.0, -1.0);
+    for (std::size_t k = 4; k < 8; ++k) atoms[k].position += shift;
+    system.moleculeData[1].centerOfMassPosition += shift;
+    for (Molecule& molecule : system.moleculeData) molecule.gradient = double3(3.0e3, -2.0e3, 1.0e3);
+
+    const std::vector<double3> netForce = netForcesPerMolecule(system);
+    const double b = 0.5 * system.beta * sigma * sigma;
+    ASSERT_GT(b * netForce[0].length(), 1.0e-7) << "the fixture must exert a measurable drift";
+    system.runningEnergies = system.computeTotalEnergies();
+    const std::vector<Atom> before(atoms.begin(), atoms.end());
+
+    RandomNumber random(seed);
+    RandomNumber replay(seed);
+    const std::optional<RunningEnergy> result = MC_Moves::translationSmartMCMoveAll(random, system);
+
+    std::size_t index = 0;
+    for (std::size_t i = 0; i < system.moleculeData.size(); ++i)
+    {
+      const double3 xi(replay.Gaussian(), replay.Gaussian(), replay.Gaussian());
+      const double3 expected = result.has_value() ? b * netForce[i] + sigma * xi : double3{};
+      for (std::size_t k = 0; k < system.moleculeData[i].numberOfAtoms; ++k)
+      {
+        DOUBLE3_EXPECT_NEAR(atoms[index + k].position - before[index + k].position, expected, 1.0e-10);
+      }
+      index += system.moleculeData[i].numberOfAtoms;
+    }
+    if (result.has_value())
+    {
+      ++accepted;
+      const double scale = std::max(1.0, std::abs(result->potentialEnergy()));
+      EXPECT_NEAR(result->potentialEnergy(), system.computeTotalEnergies().potentialEnergy(), 1.0e-8 * scale);
+    }
+  }
+  EXPECT_GE(accepted, 1uz);
+}
+
+TEST(smart_mc_all, translation_rejects_a_molecule_displaced_into_a_blocked_pocket)
+{
+  // Pockets are defined in the framework cell; attached after construction (the initial grow refuses
+  // pockets), covering the whole box.
+  System system = makeCO2InITQ29System();
+  system.components[0].blockingPockets.push_back(double4(0.5, 0.5, 0.5, 40.0));
+  system.mc_moves_statistics.setMaxChange(Move::Types::TranslationSmartMCAll, 1.0e-3);
+  system.runningEnergies = system.computeTotalEnergies();
+  const RunningEnergy energyBefore = system.runningEnergies;
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  const std::vector<Atom> before(atoms.begin(), atoms.end());
+
+  RandomNumber random(5);
+  EXPECT_FALSE(MC_Moves::translationSmartMCMoveAll(random, system).has_value());
+  for (std::size_t k = 0; k < atoms.size(); ++k)
+  {
+    DOUBLE3_EXPECT_NEAR(atoms[k].position, before[k].position, 1.0e-14);
+  }
+  EXPECT_EQ(system.runningEnergies.potentialEnergy(), energyBefore.potentialEnergy());
+}
+
+TEST(smart_mc_all, rotation_rejects_a_molecule_rotated_into_a_blocked_pocket)
+{
+  System system = makeCO2InITQ29System();
+  ASSERT_TRUE(system.components[0].rigid);
+  system.components[0].blockingPockets.push_back(double4(0.5, 0.5, 0.5, 40.0));
+  system.mc_moves_statistics.setMaxChange(Move::Types::RotationSmartMCAll, 1.0e-3);
+  system.runningEnergies = system.computeTotalEnergies();
+  const RunningEnergy energyBefore = system.runningEnergies;
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  const std::vector<Atom> before(atoms.begin(), atoms.end());
+
+  RandomNumber random(5);
+  EXPECT_FALSE(MC_Moves::rotationSmartMCMoveAll(random, system).has_value());
+  for (std::size_t k = 0; k < atoms.size(); ++k)
+  {
+    DOUBLE3_EXPECT_NEAR(atoms[k].position, before[k].position, 1.0e-14);
+  }
+  EXPECT_EQ(system.runningEnergies.potentialEnergy(), energyBefore.potentialEnergy());
+}
+
+TEST(smart_mc_all, translation_acceptance_includes_the_external_field_energy)
+{
+  // The gradient routines carry no external field; the acceptance and the returned running energy must
+  // nevertheless include its change.
+  const auto makeSystem = []()
+  {
+    ForceField forceField({{"O", false, 16.0, 0.0, 0.0, 8, false}}, {{80.0, 3.0}},
+                          ForceField::MixingRule::Lorentz_Berthelot, 8.0, 8.0, 8.0, false, false, false);
+    forceField.potentialEnergySurfaceType = ForceField::PotentialEnergySurfaceType::MullerBrown;
+    const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("O"));
+    Component atomic(forceField, "atomic", 64.0, 1.0e6, 0.02, {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, type, 0, false, false)},
+                     {}, {}, 5, 21);
+    System system(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {atomic},
+                  {{double3(0.5, 0.3, 5.0)}, {double3(-0.4, 1.2, 9.0)}}, {0}, 5);
+    system.hasExternalField = true;
+    system.mc_moves_statistics.setMaxChange(Move::Types::TranslationSmartMCAll, 0.02);
+    system.runningEnergies = system.computeTotalEnergies();
+    return system;
+  };
+
+  std::size_t accepted = 0;
+  for (std::size_t seed = 0; seed < 16 && accepted < 3; ++seed)
+  {
+    System system = makeSystem();
+    const RunningEnergy exactOld = system.computeTotalEnergies();
+    ASSERT_NE(exactOld.externalFieldVDW, 0.0);
+
+    RandomNumber random(seed);
+    const std::optional<RunningEnergy> result = MC_Moves::translationSmartMCMoveAll(random, system);
+    if (!result.has_value()) continue;
+    ++accepted;
+
+    const RunningEnergy exactNew = system.computeTotalEnergies();
+    EXPECT_NE(exactNew.externalFieldVDW, exactOld.externalFieldVDW);
+    const double scale = std::max(1.0, std::abs(exactNew.potentialEnergy()));
+    EXPECT_NEAR(result->externalFieldVDW, exactNew.externalFieldVDW, 1.0e-10 * scale);
+    EXPECT_NEAR(result->potentialEnergy(), exactNew.potentialEnergy(), 1.0e-10 * scale);
+    EXPECT_NEAR(system.runningEnergies.potentialEnergy(), exactNew.potentialEnergy(), 1.0e-10 * scale);
+  }
+  EXPECT_GE(accepted, 1uz);
+}
+
+TEST(smart_mc_all, moves_keep_the_running_energy_and_structure_factors_consistent)
+{
+  // Rigid charged molecules with Ewald: accepted moves leave the running energy equal to the exact energy, rejected
+  // moves restore the configuration and the stored structure factors.
+  System system = makeCO2InITQ29System();
+  system.mc_moves_statistics.setMaxChange(Move::Types::TranslationSmartMCAll, 0.3);
+  system.mc_moves_statistics.setMaxChange(Move::Types::RotationSmartMCAll, 0.6);
+  system.runningEnergies = system.computeTotalEnergies();
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+
+  RandomNumber random(3);
+  std::size_t accepted = 0;
+  std::size_t rejected = 0;
+  for (std::size_t step = 0; step < 40; ++step)
+  {
+    const std::vector<Atom> before(atoms.begin(), atoms.end());
+    const RunningEnergy energyBefore = system.runningEnergies;
+    const EwaldStructureFactor eikBefore(system.storedEik);
+
+    const std::optional<RunningEnergy> result = (step % 2 == 0) ? MC_Moves::translationSmartMCMoveAll(random, system)
+                                                                : MC_Moves::rotationSmartMCMoveAll(random, system);
+    if (result.has_value())
+    {
+      ++accepted;
+      system.runningEnergies = result.value();
+    }
+    else
+    {
+      ++rejected;
+      for (std::size_t k = 0; k < atoms.size(); ++k)
+      {
+        DOUBLE3_EXPECT_NEAR(atoms[k].position, before[k].position, 1.0e-14);
+      }
+      EXPECT_EQ(system.runningEnergies.potentialEnergy(), energyBefore.potentialEnergy());
+      EXPECT_TRUE(system.storedEik == eikBefore);
+    }
+    const RunningEnergy exact = system.computeTotalEnergies();
+    const double scale = std::max(1.0, std::abs(exact.potentialEnergy()));
+    EXPECT_NEAR(system.runningEnergies.potentialEnergy(), exact.potentialEnergy(), 1.0e-8 * scale);
+  }
+  EXPECT_GE(accepted, 1uz);
+  EXPECT_GE(rejected, 1uz);
 }

@@ -28,6 +28,7 @@ import interactions_ewald;
 import interactions_external_field;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_volume;
 
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove(
     RandomNumber& random, System& systemA, System& systemB, [[maybe_unused]] std::size_t selectedComponent)
@@ -48,171 +49,41 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   double newVolumeA = expdv * totalVolume / (1.0 + expdv);
   double newVolumeB = totalVolume - newVolumeA;
 
-  // Scale systemA to new volume and calculate new positions
+  // Scale systemA to the new volume: the trial box is applied to the live system and its exact total energy
+  // computed (see 'applyTrialVolume'); every non-accepting exit restores the saved state.
   RunningEnergy oldTotalEnergyA = systemA.runningEnergies;
   double numberOfMoleculesA = static_cast<double>(std::accumulate(
       systemA.numberOfIntegerMoleculesPerComponent.begin(), systemA.numberOfIntegerMoleculesPerComponent.end(), 0));
   double scaleA = std::pow(newVolumeA / oldVolumeA, 1.0 / 3.0);
   SimulationBox newBoxA = systemA.simulationBox.scaled(scaleA);
-  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsA =
-      systemA.scaledCenterOfMassPositions(systemA.simulationBox, newBoxA);
 
-  double cutOffFrameworkVDW_stored_A = systemA.forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDW_stored_A = systemA.forceField.cutOffMoleculeVDW;
-  double cutOffCoulomb_stored_A = systemA.forceField.cutOffCoulomb;
-  double ewald_alpha_stored_A = systemA.forceField.EwaldAlpha;
-  int3 ewald_k_stored_A = systemA.forceField.numberOfWaveVectors;
-  std::size_t ewald_k_cutoff_stored_A = systemA.forceField.reciprocalIntegerCutOffSquared;
+  const SavedVolumeState savedA = saveVolumeState(systemA);
+  RunningEnergy newTotalEnergyA =
+      timed(systemA, move, Move::Timing::NonEwald, [&] { return applyTrialVolume(systemA, newBoxA); });
 
-  // initializeAutomaticCutOff mutates the force field for the trial box; every non-accepting exit must undo that.
-  auto restoreForceFieldA = [&]
+  if (volumeTrialOverlaps(systemA, newTotalEnergyA))
   {
-    systemA.forceField.cutOffFrameworkVDW = cutOffFrameworkVDW_stored_A;
-    systemA.forceField.cutOffMoleculeVDW = cutOffMoleculeVDW_stored_A;
-    systemA.forceField.cutOffCoulomb = cutOffCoulomb_stored_A;
-    systemA.forceField.EwaldAlpha = ewald_alpha_stored_A;
-    systemA.forceField.numberOfWaveVectors = ewald_k_stored_A;
-    systemA.forceField.reciprocalIntegerCutOffSquared = ewald_k_cutoff_stored_A;
-    systemA.forceField.updateEwaldRealSpaceTable();
-  };
-
-  systemA.forceField.initializeAutomaticCutOff(newBoxA);
-
-  // Compute new intermolecular energy for systemA
-  RunningEnergy newTotalInterEnergyA =
-      timed(systemA, move, Move::Timing::NonEwald, [&]
-            { return Interactions::computeInterMolecularEnergy(systemA.forceField, newBoxA, newPositionsA.second); });
-
-  // Compute new tail corrections for systemA. Tail energy is position-independent; reuse the maintained
-  // effective pseudo-atom-type counts (O(nType^2)).
-  RunningEnergy newTotalTailEnergyA = timed(systemA, move, Move::Timing::Tail,
-                                            [&]
-                                            {
-                                              return Interactions::computeInterMolecularTailEnergyAggregated(
-                                                  systemA.forceField, newBoxA, systemA.effectiveNumberOfPseudoAtomsVDW,
-                                                  systemA.fractionalPseudoAtomCountsPerGroup);
-                                            });
-
-  // Compute new Ewald Fourier energy for systemA
-  RunningEnergy newTotalEwaldEnergyA =
-      timed(systemA, move, Move::Timing::Ewald,
-            [&]
-            {
-              return Interactions::computeEwaldFourierEnergy(
-                  systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.fixedFrameworkStoredEik,
-                  systemA.trialEik, systemA.forceField, newBoxA, systemA.components,
-                  systemA.numberOfMoleculesPerComponent, newPositionsA.second, systemA.netChargeFramework);
-            });
-
-  // Update energy and statistics for systemA
-  RunningEnergy newTotalEnergyA = newTotalInterEnergyA + newTotalTailEnergyA + newTotalEwaldEnergyA;
-  newTotalEnergyA += systemA.computeCrossLinkEnergy(newBoxA, newPositionsA.second);
-
-  // The intra-molecular energies have not changed by the com-scaling
-  newTotalEnergyA.bond = oldTotalEnergyA.bond;
-  newTotalEnergyA.ureyBradley = oldTotalEnergyA.ureyBradley;
-  newTotalEnergyA.bend = oldTotalEnergyA.bend;
-  newTotalEnergyA.inversionBend = oldTotalEnergyA.inversionBend;
-  newTotalEnergyA.outOfPlaneBend = oldTotalEnergyA.outOfPlaneBend;
-  newTotalEnergyA.torsion = oldTotalEnergyA.torsion;
-  newTotalEnergyA.improperTorsion = oldTotalEnergyA.improperTorsion;
-  newTotalEnergyA.bondBond = oldTotalEnergyA.bondBond;
-  newTotalEnergyA.bondBend = oldTotalEnergyA.bondBend;
-  newTotalEnergyA.bondTorsion = oldTotalEnergyA.bondTorsion;
-  newTotalEnergyA.bendBend = oldTotalEnergyA.bendBend;
-  newTotalEnergyA.bendTorsion = oldTotalEnergyA.bendTorsion;
-  newTotalEnergyA.cmap = oldTotalEnergyA.cmap;
-  newTotalEnergyA.intraVDW = oldTotalEnergyA.intraVDW;
-  newTotalEnergyA.intraCoul = oldTotalEnergyA.intraCoul;
-
-  if (newTotalInterEnergyA.potentialEnergy() > systemA.forceField.energyOverlapCriteria)
-  {
-    restoreForceFieldA();
+    restoreVolumeState(systemA, savedA);
     return std::nullopt;
   }
 
   systemA.mc_moves_statistics.addConstructed(move);
 
-  // Scale systemB to new volume and calculate new positions
+  // Scale systemB to the new volume
   RunningEnergy oldTotalEnergyB = systemB.runningEnergies;
   double numberOfMoleculesB = static_cast<double>(std::accumulate(
       systemB.numberOfIntegerMoleculesPerComponent.begin(), systemB.numberOfIntegerMoleculesPerComponent.end(), 0));
   double scaleB = std::pow(newVolumeB / oldVolumeB, 1.0 / 3.0);
   SimulationBox newBoxB = systemB.simulationBox.scaled(scaleB);
-  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsB =
-      systemB.scaledCenterOfMassPositions(systemB.simulationBox, newBoxB);
 
-  double cutOffFrameworkVDW_stored_B = systemB.forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDW_stored_B = systemB.forceField.cutOffMoleculeVDW;
-  double cutOffCoulomb_stored_B = systemB.forceField.cutOffCoulomb;
-  double ewald_alpha_stored_B = systemB.forceField.EwaldAlpha;
-  int3 ewald_k_stored_B = systemB.forceField.numberOfWaveVectors;
-  std::size_t ewald_k_cutoff_stored_B = systemB.forceField.reciprocalIntegerCutOffSquared;
+  const SavedVolumeState savedB = saveVolumeState(systemB);
+  RunningEnergy newTotalEnergyB =
+      timed(systemA, move, Move::Timing::NonEwald, [&] { return applyTrialVolume(systemB, newBoxB); });
 
-  auto restoreForceFieldB = [&]
+  if (volumeTrialOverlaps(systemB, newTotalEnergyB))
   {
-    systemB.forceField.cutOffFrameworkVDW = cutOffFrameworkVDW_stored_B;
-    systemB.forceField.cutOffMoleculeVDW = cutOffMoleculeVDW_stored_B;
-    systemB.forceField.cutOffCoulomb = cutOffCoulomb_stored_B;
-    systemB.forceField.EwaldAlpha = ewald_alpha_stored_B;
-    systemB.forceField.numberOfWaveVectors = ewald_k_stored_B;
-    systemB.forceField.reciprocalIntegerCutOffSquared = ewald_k_cutoff_stored_B;
-    systemB.forceField.updateEwaldRealSpaceTable();
-  };
-
-  systemB.forceField.initializeAutomaticCutOff(newBoxB);
-
-  // Compute new intermolecular energy for systemB
-  RunningEnergy newTotalInterEnergyB =
-      timed(systemA, move, Move::Timing::NonEwald, [&]
-            { return Interactions::computeInterMolecularEnergy(systemB.forceField, newBoxB, newPositionsB.second); });
-
-  // Compute new tail corrections for systemB. Tail energy is position-independent; reuse the maintained
-  // effective pseudo-atom-type counts (O(nType^2)).
-  RunningEnergy newTotalTailEnergyB = timed(systemA, move, Move::Timing::Tail,
-                                            [&]
-                                            {
-                                              return Interactions::computeInterMolecularTailEnergyAggregated(
-                                                  systemB.forceField, newBoxB, systemB.effectiveNumberOfPseudoAtomsVDW,
-                                                  systemB.fractionalPseudoAtomCountsPerGroup);
-                                            });
-
-  // Compute new Ewald Fourier energy for systemB
-  RunningEnergy newTotalEwaldEnergyB =
-      timed(systemA, move, Move::Timing::Ewald,
-            [&]
-            {
-              return Interactions::computeEwaldFourierEnergy(
-                  systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.fixedFrameworkStoredEik,
-                  systemB.trialEik, systemB.forceField, newBoxB, systemB.components,
-                  systemB.numberOfMoleculesPerComponent, newPositionsB.second, systemB.netChargeFramework);
-            });
-
-  // Update energy and statistics for systemB
-  RunningEnergy newTotalEnergyB = newTotalInterEnergyB + newTotalTailEnergyB + newTotalEwaldEnergyB;
-  newTotalEnergyB += systemB.computeCrossLinkEnergy(newBoxB, newPositionsB.second);
-
-  // The intra-molecular energies have not changed by the com-scaling
-  newTotalEnergyB.bond = oldTotalEnergyB.bond;
-  newTotalEnergyB.ureyBradley = oldTotalEnergyB.ureyBradley;
-  newTotalEnergyB.bend = oldTotalEnergyB.bend;
-  newTotalEnergyB.inversionBend = oldTotalEnergyB.inversionBend;
-  newTotalEnergyB.outOfPlaneBend = oldTotalEnergyB.outOfPlaneBend;
-  newTotalEnergyB.torsion = oldTotalEnergyB.torsion;
-  newTotalEnergyB.improperTorsion = oldTotalEnergyB.improperTorsion;
-  newTotalEnergyB.bondBond = oldTotalEnergyB.bondBond;
-  newTotalEnergyB.bondBend = oldTotalEnergyB.bondBend;
-  newTotalEnergyB.bondTorsion = oldTotalEnergyB.bondTorsion;
-  newTotalEnergyB.bendBend = oldTotalEnergyB.bendBend;
-  newTotalEnergyB.bendTorsion = oldTotalEnergyB.bendTorsion;
-  newTotalEnergyB.cmap = oldTotalEnergyB.cmap;
-  newTotalEnergyB.intraVDW = oldTotalEnergyB.intraVDW;
-  newTotalEnergyB.intraCoul = oldTotalEnergyB.intraCoul;
-
-  if (newTotalInterEnergyB.potentialEnergy() > systemB.forceField.energyOverlapCriteria)
-  {
-    restoreForceFieldA();
-    restoreForceFieldB();
+    restoreVolumeState(systemA, savedA);
+    restoreVolumeState(systemB, savedB);
     return std::nullopt;
   }
 
@@ -227,28 +98,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
       std::exp(-systemA.beta * deltaU + ((numberOfMoleculesA + 1.0) * std::log(newVolumeA / oldVolumeA)) +
                ((numberOfMoleculesB + 1.0) * std::log(newVolumeB / oldVolumeB))))
   {
-    // Accept the move: update systems A and B with new configurations and energies
+    // Accept the move: both systems already hold their new boxes, positions, structure factors and electric fields.
     systemA.mc_moves_statistics.addAccepted(move);
-
-    systemA.simulationBox = newBoxA;
-    std::copy(newPositionsA.first.begin(), newPositionsA.first.end(), systemA.moleculeData.begin());
-    // scaledCenterOfMassPositions returns molecule atoms only; framework atoms are untouched.
-    std::copy(newPositionsA.second.begin(), newPositionsA.second.end(), systemA.spanOfMoleculeAtoms().begin());
-    Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
-
     systemB.mc_moves_statistics.addAccepted(move);
-
-    systemB.simulationBox = newBoxB;
-    std::copy(newPositionsB.first.begin(), newPositionsB.first.end(), systemB.moleculeData.begin());
-    // scaledCenterOfMassPositions returns molecule atoms only; framework atoms are untouched.
-    std::copy(newPositionsB.second.begin(), newPositionsB.second.end(), systemB.spanOfMoleculeAtoms().begin());
-    Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.trialEik);
 
     return std::make_pair(newTotalEnergyA - oldTotalEnergyA, newTotalEnergyB - oldTotalEnergyB);
   }
 
-  restoreForceFieldA();
-  restoreForceFieldB();
+  restoreVolumeState(systemA, savedA);
+  restoreVolumeState(systemB, savedB);
 
   return std::nullopt;
 }

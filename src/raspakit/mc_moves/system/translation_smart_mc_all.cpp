@@ -7,12 +7,12 @@ import std;
 import component;
 import molecule;
 import atom;
+import atom_dynamics;
 import double3;
 import randomnumbers;
 import system;
 import running_energy;
-import integrators_update;
-import interactions_ewald;
+import ewald_structure_factor;
 import mc_moves_move_types;
 
 std::optional<RunningEnergy> MC_Moves::translationSmartMCMoveAll(RandomNumber &random, System &system)
@@ -33,31 +33,71 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMoveAll(RandomNumber &r
   double sigma = system.mc_moves_statistics.getMaxChange(move);
   double b = 0.5 * system.beta * sigma * sigma;
 
-  // Preserve the maintained running energy so that tail/polarization baselines are kept: only the
-  // gradient-based potential difference is applied to it on acceptance.
-  RunningEnergy savedRunningEnergy = system.runningEnergies;
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  std::span<const AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
+
+  // The net force on a molecule is the sum of its atomic forces whatever the molecule type (rigid,
+  // flexible or semi-flexible); 'Molecule::gradient' is not maintained for semi-flexible molecules
+  // (their rigid groups carry the gradients), so the sum is taken here directly.
+  const auto netForces = [&]()
+  {
+    std::vector<double3> forces(numberOfMolecules);
+    std::size_t index = 0;
+    for (std::size_t i = 0; i != numberOfMolecules; ++i)
+    {
+      double3 gradient{};
+      for (std::size_t k = 0; k != system.moleculeData[i].numberOfAtoms; ++k)
+      {
+        gradient += dynamics[index + k].gradient;
+      }
+      forces[i] = -gradient;
+      index += system.moleculeData[i].numberOfAtoms;
+    }
+    return forces;
+  };
+
+  // The gradient routines cover the pair, Ewald and intra-molecular terms only; the acceptance uses the
+  // exact total energies (external field and polarization included) of the old and the new configuration.
+  // 'computeTotalEnergies' also refreshes the stored Ewald structure factors and the electric field for the
+  // configuration it evaluates, so those are saved for the rejection path.
+  time_begin = std::chrono::steady_clock::now();
+  const RunningEnergy savedRunningEnergy = system.runningEnergies;
+  const RunningEnergy oldEnergy = system.computeTotalEnergies();
+  const EwaldStructureFactor savedStoredEik(system.storedEik);
+  std::vector<double3> savedElectricField;
+  if (system.forceField.computePolarization)
+  {
+    const std::span<const double3> electricField = system.spanOfMoleculeElectricField();
+    savedElectricField.assign(electricField.begin(), electricField.end());
+  }
 
   // Forces on every molecule in the current configuration.
-  time_begin = std::chrono::steady_clock::now();
   system.precomputeTotalGradients();
-  Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
-                                                        system.spanOfMoleculeDynamics(), system.components);
-  RunningEnergy oldEnergy = system.runningEnergies;
+  const std::vector<double3> forceOld = netForces();
 
   // Biased trial displacement of each molecule's center of mass.
-  std::vector<double3> forceOld(numberOfMolecules);
   std::vector<double3> displacement(numberOfMolecules);
   for (std::size_t i = 0; i != numberOfMolecules; ++i)
   {
-    forceOld[i] = -system.moleculeData[i].gradient;
     double3 xi(random.Gaussian(), random.Gaussian(), random.Gaussian());
     displacement[i] = b * forceOld[i] + sigma * xi;
   }
 
   // Save the current configuration and apply the collective trial displacement to the live system.
-  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   std::vector<Atom> savedAtoms(atomData.begin(), atomData.end());
   std::vector<Molecule> savedMolecules(system.moleculeData);
+
+  const auto restore = [&]()
+  {
+    std::copy(savedAtoms.cbegin(), savedAtoms.cend(), atomData.begin());
+    system.moleculeData = savedMolecules;
+    system.storedEik = savedStoredEik;
+    if (system.forceField.computePolarization)
+    {
+      std::copy(savedElectricField.cbegin(), savedElectricField.cend(), system.spanOfMoleculeElectricField().begin());
+    }
+    system.runningEnergies = savedRunningEnergy;
+  };
 
   std::size_t index = 0;
   for (std::size_t i = 0; i != numberOfMolecules; ++i)
@@ -72,11 +112,26 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMoveAll(RandomNumber &r
     index += molecule.numberOfAtoms;
   }
 
-  // Forces on every molecule in the trial configuration.
+  // A molecule displaced into a blocked pocket rejects the collective move.
+  index = 0;
+  for (std::size_t i = 0; i != numberOfMolecules; ++i)
+  {
+    const Molecule &molecule = system.moleculeData[i];
+    if (system.insideBlockedPockets(system.components[molecule.componentId],
+                                    std::span<const Atom>(&atomData[index], molecule.numberOfAtoms)))
+    {
+      restore();
+      time_end = std::chrono::steady_clock::now();
+      system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
+      return std::nullopt;
+    }
+    index += molecule.numberOfAtoms;
+  }
+
+  // Forces on every molecule in the trial configuration, and its exact energy.
   system.precomputeTotalGradients();
-  Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
-                                                        system.spanOfMoleculeDynamics(), system.components);
-  RunningEnergy newEnergy = system.runningEnergies;
+  const std::vector<double3> forceNew = netForces();
+  const RunningEnergy newEnergy = system.computeTotalEnergies();
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
 
@@ -86,29 +141,24 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMoveAll(RandomNumber &r
   double logBias = 0.0;
   for (std::size_t i = 0; i != numberOfMolecules; ++i)
   {
-    double3 forceNew = -system.moleculeData[i].gradient;
     double3 forwardDeviation = displacement[i] - b * forceOld[i];
-    double3 reverseDeviation = displacement[i] + b * forceNew;
+    double3 reverseDeviation = displacement[i] + b * forceNew[i];
     logBias += forwardDeviation.length_squared() - reverseDeviation.length_squared();
   }
   logBias /= (2.0 * sigma * sigma);
 
-  RunningEnergy energyDifference = newEnergy - oldEnergy;
+  const RunningEnergy energyDifference = newEnergy - oldEnergy;
 
   if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() + logBias))
   {
     system.mc_moves_statistics.addAccepted(move);
 
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
-
-    // Add only the gradient-based potential difference to the maintained running energy.
+    // The stored Ewald structure factors and the electric field already describe the new configuration.
     system.runningEnergies = savedRunningEnergy + energyDifference;
     return system.runningEnergies;
   }
 
-  // Reject: restore the original configuration and running energy.
-  std::copy(savedAtoms.cbegin(), savedAtoms.cend(), atomData.begin());
-  system.moleculeData = savedMolecules;
-  system.runningEnergies = savedRunningEnergy;
+  // Reject: restore the original configuration, structure factors, electric field and running energy.
+  restore();
   return std::nullopt;
 }

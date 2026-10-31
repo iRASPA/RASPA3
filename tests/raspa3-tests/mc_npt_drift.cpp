@@ -13,6 +13,10 @@ import simulationbox;
 import running_energy;
 import mc_moves_move_types;
 import mc_moves_probabilities;
+import mc_moves_volume;
+import randomnumbers;
+import int3;
+import ewald_structure_factor;
 import connectivity_table;
 import intra_molecular_potentials;
 import bond_potential;
@@ -202,4 +206,136 @@ TEST(MC_NPT_DRIFT, anisotropic_volume_change_flexible)
     EXPECT_NEAR(drift.tail, 0.0, 1e-6);
     EXPECT_NEAR(drift.bond, 0.0, 1e-6);
   }
+}
+
+namespace
+{
+System makeDiluteCO2System()
+{
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component co2 = Component(forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
+                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
+                            {}, {}, 5, 21, {}, std::nullopt, false);
+  System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {co2}, {}, {10}, 5);
+  system.runningEnergies = system.computeTotalEnergies();
+  return system;
+}
+}  // namespace
+
+TEST(MC_NPT_DRIFT, volume_move_rederives_the_ewald_wave_vectors_for_the_new_box)
+{
+  // A user-fixed Coulomb cut-off with automatic Ewald parameters: alpha is box independent but the number of
+  // wave vectors follows the box widths, so an accepted volume change must re-derive it (as every driver does
+  // at stage entry); a rejected one must leave the force field and the system untouched.
+  std::size_t accepted = 0;
+  std::size_t rejected = 0;
+  for (std::size_t seed = 0; seed < 24 && (accepted < 3 || rejected < 3); ++seed)
+  {
+    System system = makeDiluteCO2System();
+    ASSERT_FALSE(system.forceField.cutOffCoulombAutomatic);
+    ASSERT_TRUE(system.forceField.automaticEwald);
+    system.mc_moves_statistics.setMaxChange(Move::Types::VolumeChange, 1.0);
+    // the pressure term decides between acceptance and rejection of the large volume changes proposed here
+    system.pressure = (seed % 2 == 0) ? 0.0 : 1.0e3;
+
+    const SimulationBox boxBefore = system.simulationBox;
+    const int3 waveVectorsBefore = system.forceField.numberOfWaveVectors;
+    const double alphaBefore = system.forceField.EwaldAlpha;
+    const RunningEnergy energyBefore = system.runningEnergies;
+    const EwaldStructureFactor eikBefore(system.storedEik);
+    const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+    const std::vector<Atom> atomsBefore(atoms.begin(), atoms.end());
+
+    RandomNumber random(seed);
+    const std::optional<RunningEnergy> result = MC_Moves::volumeMove(random, system);
+    if (result.has_value())
+    {
+      ++accepted;
+      system.runningEnergies += result.value();
+      EXPECT_NE(system.simulationBox.volume, boxBefore.volume);
+
+      ForceField reference = system.forceField;
+      reference.numberOfWaveVectors = waveVectorsBefore;
+      reference.initializeEwaldParameters(system.simulationBox);
+      EXPECT_EQ(system.forceField.numberOfWaveVectors.x, reference.numberOfWaveVectors.x);
+      EXPECT_EQ(system.forceField.numberOfWaveVectors.y, reference.numberOfWaveVectors.y);
+      EXPECT_EQ(system.forceField.numberOfWaveVectors.z, reference.numberOfWaveVectors.z);
+      EXPECT_EQ(system.forceField.reciprocalIntegerCutOffSquared, reference.reciprocalIntegerCutOffSquared);
+      EXPECT_DOUBLE_EQ(system.forceField.EwaldAlpha, alphaBefore);
+      EXPECT_DOUBLE_EQ(system.forceField.cutOffCoulomb, 12.0);
+      if (std::abs(std::log(system.simulationBox.volume / boxBefore.volume)) > 0.6)
+      {
+        EXPECT_NE(system.forceField.numberOfWaveVectors.x, waveVectorsBefore.x);
+      }
+
+      const RunningEnergy exact = system.computeTotalEnergies();
+      const double scale = std::max(1.0, std::abs(exact.potentialEnergy()));
+      EXPECT_NEAR(system.runningEnergies.potentialEnergy(), exact.potentialEnergy(), 1.0e-8 * scale);
+      EXPECT_NEAR(system.runningEnergies.ewald_fourier, exact.ewald_fourier, 1.0e-8 * scale);
+    }
+    else
+    {
+      ++rejected;
+      EXPECT_EQ(system.simulationBox.volume, boxBefore.volume);
+      EXPECT_EQ(system.forceField.numberOfWaveVectors.x, waveVectorsBefore.x);
+      EXPECT_EQ(system.forceField.numberOfWaveVectors.y, waveVectorsBefore.y);
+      EXPECT_EQ(system.forceField.numberOfWaveVectors.z, waveVectorsBefore.z);
+      EXPECT_EQ(system.forceField.EwaldAlpha, alphaBefore);
+      EXPECT_EQ(system.runningEnergies.potentialEnergy(), energyBefore.potentialEnergy());
+      EXPECT_TRUE(system.storedEik == eikBefore);
+      for (std::size_t k = 0; k < atoms.size(); ++k)
+      {
+        EXPECT_EQ(atoms[k].position.x, atomsBefore[k].position.x);
+        EXPECT_EQ(atoms[k].position.y, atomsBefore[k].position.y);
+        EXPECT_EQ(atoms[k].position.z, atomsBefore[k].position.z);
+      }
+    }
+  }
+  EXPECT_GE(accepted, 1uz);
+  EXPECT_GE(rejected, 1uz);
+}
+
+TEST(MC_NPT_DRIFT, volume_move_keeps_the_external_field_energy)
+{
+  // The external-field energy changes with the rigid translation of the molecules and must be part of the
+  // acceptance and of the returned energy (a volume move that leaves it out zeroes it in the running energy).
+  const auto makeSystem = []()
+  {
+    ForceField forceField({{"O", false, 16.0, 0.0, 0.0, 8, false}}, {{80.0, 3.0}},
+                          ForceField::MixingRule::Lorentz_Berthelot, 8.0, 8.0, 8.0, false, false, false);
+    forceField.potentialEnergySurfaceType = ForceField::PotentialEnergySurfaceType::MullerBrown;
+    const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("O"));
+    Component atomic(forceField, "atomic", 64.0, 1.0e6, 0.02, {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, type, 0, false, false)},
+                     {}, {}, 5, 21);
+    System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {atomic},
+                  {{double3(0.6, 0.2, 5.0), double3(-0.3, 1.0, 12.0), double3(1.2, 0.4, 20.0)}}, {0}, 5);
+    system.hasExternalField = true;
+    system.pressure = 0.0;
+    system.mc_moves_statistics.setMaxChange(Move::Types::VolumeChange, 0.3);
+    system.runningEnergies = system.computeTotalEnergies();
+    return system;
+  };
+
+  std::size_t accepted = 0;
+  for (std::size_t seed = 0; seed < 16 && accepted < 3; ++seed)
+  {
+    System system = makeSystem();
+    const RunningEnergy exactOld = system.computeTotalEnergies();
+    ASSERT_NE(exactOld.externalFieldVDW, 0.0);
+
+    RandomNumber random(seed);
+    const std::optional<RunningEnergy> result = MC_Moves::volumeMove(random, system);
+    if (!result.has_value()) continue;
+    ++accepted;
+    system.runningEnergies += result.value();
+
+    const RunningEnergy exactNew = system.computeTotalEnergies();
+    EXPECT_NE(exactNew.externalFieldVDW, exactOld.externalFieldVDW);
+    const double scale = std::max(1.0, std::abs(exactNew.potentialEnergy()));
+    EXPECT_NEAR(system.runningEnergies.externalFieldVDW, exactNew.externalFieldVDW, 1.0e-10 * scale);
+    EXPECT_NEAR(system.runningEnergies.potentialEnergy(), exactNew.potentialEnergy(), 1.0e-10 * scale);
+  }
+  EXPECT_GE(accepted, 1uz);
 }
