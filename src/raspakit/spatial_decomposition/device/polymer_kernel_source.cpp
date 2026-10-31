@@ -318,7 +318,10 @@ void polymerTerms(GLOBAL const float4* RESTRICT position,     // per slot: wrapp
       {
         const float3 dr = pos[0] - pos[1];
         const float rr = dot(dr, dr);
-        const float qq = pos4[0].w * pos4[1].w;
+        // An intramolecular correction (a scaled pair with a retyped atom, flag 2) differs between its two
+        // treatments in the Lennard-Jones parameters only: the Coulomb parts would cancel exactly in the energy and
+        // up to rounding in the gradient factor. Evaluated with zero charge, so that neither is computed.
+        const float qq = ((term.flags & 2u) != 0u) ? 0.0f : pos4[0].w * pos4[1].w;
         float wVDW, wCoulomb, wExclusion, wFactor, cVDW, cCoulomb, cExclusion, cFactor;
         polymerPairState(term.type, P, rr, qq, p, &wVDW, &wCoulomb, &wExclusion, &wFactor);
         polymerPairState(term.type2, Q, rr, qq, p, &cVDW, &cCoulomb, &cExclusion, &cFactor);

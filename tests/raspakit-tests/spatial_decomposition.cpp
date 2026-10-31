@@ -2335,16 +2335,30 @@ std::vector<ReactionRule> vinylChainGrowth()
 /// polymer-bond template exists (all type combinations, with parameters that depend on the number of backbone
 /// types in the term, so that the retyped-term overrides are non-zero), and the component's 1-4 pairs are scaled
 /// by one half with the first pair containing the head (a retyped atom of a scaled pair).
+///
+/// With 'chargedSide' the side bead is an uncharged pseudo-atom of its own ('S') that the reactions retype to a
+/// charged one ('S_bb', +0.20; the tail then goes to 'CH_bbs', -0.55, so that the molecule stays neutral): the
+/// scaled pair (side, 3) has an uncharged atom in the monomer and two charged ones after the reaction.
 System makePolymerSystem(std::size_t seed, std::size_t dimers, std::size_t terminations, std::uint64_t currentStep,
-                         std::size_t relaxationSteps, double chiralForceConstant, double bondDistance = 1.6)
+                         std::size_t relaxationSteps, double chiralForceConstant, double bondDistance = 1.6,
+                         bool chargedSide = false)
 {
-  ForceField forceField = ForceField(
-      {{"CH3", false, 15.03452, 0.25, 0.0, 6, false},
-       {"CH2", false, 14.02658, -0.25, 0.0, 6, false},
-       {"CH2_bb", false, 14.02658, 0.35, 0.0, 6, false},
-       {"CH_bb", false, 13.01864, -0.35, 0.0, 6, false}},
-      {{98.0, 3.75}, {46.0, 3.95}, {60.0, 3.85}, {20.0, 4.30}}, ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0,
-      9.0, false, false, true);
+  std::vector<PseudoAtom> pseudoAtoms{{"CH3", false, 15.03452, 0.25, 0.0, 6, false},
+                                      {"CH2", false, 14.02658, -0.25, 0.0, 6, false},
+                                      {"CH2_bb", false, 14.02658, 0.35, 0.0, 6, false},
+                                      {"CH_bb", false, 13.01864, -0.35, 0.0, 6, false}};
+  std::vector<VDWParameters> pairParameters{{98.0, 3.75}, {46.0, 3.95}, {60.0, 3.85}, {20.0, 4.30}};
+  if (chargedSide)
+  {
+    pseudoAtoms.push_back({"S", false, 15.03452, 0.0, 0.0, 6, false});
+    pseudoAtoms.push_back({"S_bb", false, 15.03452, 0.20, 0.0, 6, false});
+    pseudoAtoms.push_back({"CH_bbs", false, 13.01864, -0.55, 0.0, 6, false});
+    pairParameters.push_back({98.0, 3.75});
+    pairParameters.push_back({90.0, 3.80});
+    pairParameters.push_back({20.0, 4.30});
+  }
+  ForceField forceField = ForceField(pseudoAtoms, pairParameters, ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0,
+                                     9.0, false, false, true);
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.32;
   forceField.numberOfWaveVectors = int3(20, 20, 20);
@@ -2375,11 +2389,12 @@ System makePolymerSystem(std::size_t seed, std::size_t dimers, std::size_t termi
   potentials.coulombs = {CoulombPotential({0, 3}, CoulombType::Coulomb, 0.25, 0.25, 0.5),
                          CoulombPotential({4, 3}, CoulombType::Coulomb, 0.0, 0.25, 0.5)};
 
+  const std::uint16_t sideType = chargedSide ? 4 : 0;
   const std::vector<Atom> beads{Atom({-1.26, -0.89, 0.0}, 0.25, 1.0, 0, 0, 0, false, false),
                                 Atom({0.0, 0.0, 0.0}, -0.25, 1.0, 0, 1, 0, false, false),
                                 Atom({1.26, -0.89, 0.0}, -0.25, 1.0, 0, 1, 0, false, false),
                                 Atom({2.52, 0.0, 0.0}, 0.25, 1.0, 0, 0, 0, false, false),
-                                Atom({0.0, 0.77, 1.33}, 0.0, 1.0, 0, 0, 0, false, false)};
+                                Atom({0.0, 0.77, 1.33}, 0.0, 1.0, 0, sideType, 0, false, false)};
   Component monomer =
       Component(forceField, "vinyl", 425.0, 3796000.0, 0.199, beads, connectivityTable, potentials, 5, 21);
   monomer.intra14VanDerWaalsScaling = 0.5;
@@ -2392,24 +2407,26 @@ System makePolymerSystem(std::size_t seed, std::size_t dimers, std::size_t termi
   RandomNumber random(seed);
   randomizeConfiguration(system, random);
 
-  // the templates: every combination of the four types (canonical orientation only), backbone-dependent parameters
-  const std::array<std::string, 4> names{"CH3", "CH2", "CH2_bb", "CH_bb"};
-  const auto backbone = [](const std::string& name) { return name.ends_with("_bb") ? 1.0 : 0.0; };
+  // the templates: every combination of the types (canonical orientation only), backbone-dependent parameters
+  std::vector<std::string> names{"CH3", "CH2", "CH2_bb", "CH_bb"};
+  if (chargedSide) names.insert(names.end(), {"S", "S_bb", "CH_bbs"});
+  const std::size_t numberOfTypes = names.size();
+  const auto backbone = [](const std::string& name) { return name.contains("_bb") ? 1.0 : 0.0; };
   PolymerLinkTable& table = system.polymerLinks;
-  for (std::size_t a = 0; a < 4; ++a)
+  for (std::size_t a = 0; a < numberOfTypes; ++a)
   {
-    for (std::size_t b = a; b < 4; ++b)
+    for (std::size_t b = a; b < numberOfTypes; ++b)
     {
       const double n = backbone(names[a]) + backbone(names[b]);
       table.templates.bonds.push_back(
           {.types = {names[a], names[b]}, .type = BondType::Harmonic, .parameters = {96500.0 + 5000.0 * n, 1.54 - 0.01 * n}});
     }
   }
-  for (std::size_t a = 0; a < 4; ++a)
+  for (std::size_t a = 0; a < numberOfTypes; ++a)
   {
-    for (std::size_t b = 0; b < 4; ++b)
+    for (std::size_t b = 0; b < numberOfTypes; ++b)
     {
-      for (std::size_t c = a; c < 4; ++c)
+      for (std::size_t c = a; c < numberOfTypes; ++c)
       {
         const double n = backbone(names[a]) + backbone(names[b]) + backbone(names[c]);
         table.templates.bends.push_back({.types = {names[a], names[b], names[c]},
@@ -2418,13 +2435,13 @@ System makePolymerSystem(std::size_t seed, std::size_t dimers, std::size_t termi
       }
     }
   }
-  for (std::size_t a = 0; a < 4; ++a)
+  for (std::size_t a = 0; a < numberOfTypes; ++a)
   {
-    for (std::size_t b = 0; b < 4; ++b)
+    for (std::size_t b = 0; b < numberOfTypes; ++b)
     {
-      for (std::size_t c = 0; c < 4; ++c)
+      for (std::size_t c = 0; c < numberOfTypes; ++c)
       {
-        for (std::size_t d = 0; d < 4; ++d)
+        for (std::size_t d = 0; d < numberOfTypes; ++d)
         {
           const std::array<std::size_t, 4> key{a, b, c, d};
           const std::array<std::size_t, 4> reversedKey{d, c, b, a};
@@ -2439,6 +2456,22 @@ System makePolymerSystem(std::size_t seed, std::size_t dimers, std::size_t termi
   }
   table.templates.resolve(forceField);
   table.scheme.rules = vinylChainGrowth();
+  if (chargedSide)
+  {
+    // the reacting group's side bead becomes charged, its tail takes the compensating charge
+    for (ReactionRule& rule : table.scheme.rules)
+    {
+      for (ReactionRule::Product& product : rule.products)
+      {
+        if (product.retype.empty()) continue;
+        for (auto& [role, typeName] : product.retype)
+        {
+          if (role == "tail") typeName = "CH_bbs";
+        }
+        product.retype.emplace_back("side", "S_bb");
+      }
+    }
+  }
   table.scheme.resolve(system.components, forceField);
   table.activate(system.components, system.numberOfMoleculesPerComponent);
   table.relaxationSteps = relaxationSteps;
@@ -2925,6 +2958,93 @@ TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_matches_host)
     EXPECT_EQ(system.polymerLinks.chiralForceConstant, 0.0);
     expectPolymerOverlayMatchesHost(pairDevice, system, "no ramp");
   }
+}
+
+// A retyping that charges an atom which is uncharged in the monomer: the scaled (1-4) pair (side, 3) has no Coulomb
+// interaction in the monomer and a scaled one (plus the Ewald exclusion of its Fourier part) once the side bead is
+// retyped. The device bonded terms are instanced per component: the Coulomb term of a scaled pair of a reactive
+// component must exist even when the monomer's atoms are uncharged, and read the current charges.
+TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_follows_a_retyping_that_charges_an_atom)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+
+  System system = makePolymerSystem(7, 20, 6, 1000, 100, 2000.0, 1.6, true);
+  ASSERT_EQ(system.polymerLinks.numberOfBonds(), 26uz);
+
+  // the monomer's side bead is uncharged and of its own type; the reacted molecules carry charged side beads and
+  // stay neutral
+  const Component& component = system.components[0];
+  EXPECT_EQ(component.atoms[4].charge, 0.0);
+  EXPECT_EQ(system.forceField.pseudoAtoms[component.atoms[4].type].charge, 0.0);
+  std::size_t chargedSides = 0;
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  for (const Molecule& molecule : system.moleculeData)
+  {
+    const std::span<const Atom> moleculeAtoms = atoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+    double net = 0.0;
+    for (const Atom& atom : moleculeAtoms) net += atom.charge;
+    EXPECT_NEAR(net, 0.0, 1e-12);
+    if (moleculeAtoms[4].charge != 0.0) ++chargedSides;
+  }
+  EXPECT_EQ(chargedSides, 2uz * (20 + 6));
+
+  expectPolymerOverlayMatchesHost(pairDevice, system, "charged side");
+}
+
+// A reaction retypes the head (CH3 -> CH2_bb) and the tail (CH2 -> CH_bb) of a group, which changes their masses.
+// 'PolymerLinkTable::updateMoleculeMass' sets the molecule mass from the current types; the atom masses of the
+// integrators (kinetic energy, centre-of-mass velocity, velocity initialization) must follow the same types, so
+// that the momentum of a molecule relative to its centre of mass vanishes and the atom masses add up to the
+// molecule mass.
+TEST(spatial_decomposition, polymer_retyped_atom_masses_follow_the_current_types)
+{
+  System system = makePolymerSystem(7, 20, 6, 1000, 100, 2000.0);
+  ASSERT_EQ(system.polymerLinks.numberOfBonds(), 26uz);
+  const Component& component = system.components[0];
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+
+  std::size_t reacted = 0;
+  for (const Molecule& molecule : system.moleculeData)
+  {
+    const std::span<const Atom> moleculeAtoms = atoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+    double current = 0.0, defined = 0.0;
+    for (std::size_t i = 0; i < moleculeAtoms.size(); ++i)
+    {
+      EXPECT_DOUBLE_EQ(component.atomMass(i, moleculeAtoms[i]),
+                       system.forceField.pseudoAtoms[moleculeAtoms[i].type].mass);
+      current += component.atomMass(i, moleculeAtoms[i]);
+      defined += component.definedAtoms[i].second;
+    }
+    EXPECT_NEAR(current, molecule.mass, 1e-12);
+    EXPECT_NEAR(1.0 / current, molecule.invMass, 1e-15);
+    if (std::abs(current - defined) > 1e-9) ++reacted;
+  }
+  EXPECT_EQ(reacted, 2uz * (20 + 6));
+  EXPECT_NEAR(component.totalMass, 3.0 * 15.03452 + 2.0 * 14.02658, 1e-9);
+
+  RandomNumber random(31);
+  Integrators::initializeVelocities(random, system.moleculeData, system.spanOfMoleculeAtoms(),
+                                    system.spanOfMoleculeDynamics(), system.components, system.temperature);
+  Integrators::updateCenterOfMassAndQuaternionVelocities(system.moleculeData, system.spanOfMoleculeAtoms(),
+                                                         system.spanOfMoleculeDynamics(), system.components, {});
+  const std::span<const AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
+  double kinetic = 0.0;
+  for (const Molecule& molecule : system.moleculeData)
+  {
+    double3 relativeMomentum{};
+    for (std::size_t i = 0; i < molecule.numberOfAtoms; ++i)
+    {
+      const double mass = system.forceField.pseudoAtoms[atoms[molecule.atomIndex + i].type].mass;
+      const double3 velocity = dynamics[molecule.atomIndex + i].velocity;
+      relativeMomentum += mass * (velocity - molecule.velocity);
+      kinetic += 0.5 * mass * double3::dot(velocity, velocity);
+    }
+    EXPECT_NEAR(relativeMomentum.length(), 0.0, 1e-12);
+  }
+  EXPECT_NEAR(Integrators::computeTranslationalKineticEnergy(system.moleculeData, system.spanOfMoleculeAtoms(),
+                                                             system.spanOfMoleculeDynamics(), system.components),
+              kinetic, 1e-10 * kinetic);
 }
 
 TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_follows_the_ramp_and_new_bonds)

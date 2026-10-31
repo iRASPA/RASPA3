@@ -315,7 +315,8 @@ void DeviceResident::upload(const System& system, DeviceStep& step, const CellLi
       atomInfoValues[4 * i + 1] = static_cast<std::uint32_t>(b);
       atomInfoValues[4 * i + 2] = static_cast<std::uint32_t>(molecule.atomIndex);
       atomInfoValues[4 * i + 3] = component.rigid ? 0u : 1u;
-      const double massValue = component.definedAtoms[b].second;
+      // the mass of the current pseudo-atom type (a polymerization reaction may have retyped the atom)
+      const double massValue = component.atomMass(b, atomData[i]);
       const Float2 am = split(massValue), aim = split(1.0 / massValue);
       atomMasses[4 * i] = am.x;
       atomMasses[4 * i + 1] = am.y;

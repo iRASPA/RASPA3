@@ -20,7 +20,7 @@ import running_energy;
 import integrators_cputime;
 
 double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> moleculeData,
-                                                      [[maybe_unused]] std::span<const Atom> moleculeAtomPositions,
+                                                      std::span<const Atom> moleculeAtomPositions,
                                                       std::span<const AtomDynamics> moleculeDynamics,
                                                       const std::vector<Component>& components,
                                                       const std::optional<Framework>& framework,
@@ -42,6 +42,7 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
       // Center-of-mass kinetic energy of each rigid group plus per-atom kinetic energy of the
       // flexible atoms.
       std::span<const AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
+      std::span<const Atom> atoms = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
       std::size_t rigidRank{};
       for (const Fragment& group : component.fragmentGraph.fragments)
       {
@@ -56,7 +57,7 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
       {
         if (!component.rigidFragmentContaining(i).has_value())
         {
-          double mass = component.definedAtoms[i].second;
+          double mass = component.atomMass(i, atoms[i]);
           energy += 0.5 * mass * double3::dot(span[i].velocity, span[i].velocity);
         }
       }
@@ -71,9 +72,10 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
     {
       // Flexible molecule: all kinetic energy is carried by the atoms
       std::span<const AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
+      std::span<const Atom> atoms = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
       for (std::size_t i = 0; i != span.size(); i++)
       {
-        double mass = component.definedAtoms[i].second;
+        double mass = component.atomMass(i, atoms[i]);
         energy += 0.5 * mass * double3::dot(span[i].velocity, span[i].velocity);
       }
     }

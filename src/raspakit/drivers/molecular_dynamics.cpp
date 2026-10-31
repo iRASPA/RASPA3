@@ -373,13 +373,13 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
         system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
     std::span<AtomDynamics> dynamics =
         system.spanOfMoleculeDynamics().subspan(molecule.atomIndex, molecule.numberOfAtoms);
+    std::span<Atom> atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
 
     if (component.isSemiFlexible())
     {
       // Derive the rigid-group states of the freshly grown molecule from its atom positions and give
       // the groups thermal velocities; flexible atoms get per-atom thermal velocities and rigid-group
       // atoms carry no independent velocity (mirrors Integrators::initializeVelocities).
-      std::span<Atom> atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
       std::vector<GroupState> states;
       states.reserve(component.numberOfRigidFragments());
       for (std::size_t g = 0; g != component.fragmentGraph.fragments.size(); ++g)
@@ -402,14 +402,14 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
           dynamics[i].velocity = double3(0.0, 0.0, 0.0);
           continue;
         }
-        const double mass = component.definedAtoms[i].second;
+        const double mass = component.atomMass(i, atoms[i]);
         dynamics[i].velocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
                                std::sqrt(Units::KB * system.temperature / mass);
       }
     }
     else
     {
-      Integrators::initializeMoleculeVelocity(random, molecule, dynamics, component, system.temperature);
+      Integrators::initializeMoleculeVelocity(random, molecule, atoms, dynamics, component, system.temperature);
     }
   }
 

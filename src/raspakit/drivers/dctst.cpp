@@ -185,8 +185,9 @@ simd_quatd orientationMomentumFromBodyAngularVelocity(const simd_quatd& q, const
  * on the same degrees of freedom (angular velocities in the body frame with the principal inertia).
  */
 void applyBath(RandomNumber& rng, DcTSTSettings::TrajectoryThermostat type, double rate, double timeStep,
-               double temperature, std::span<Molecule> moleculeData, std::span<AtomDynamics> dynamics,
-               std::span<GroupState> groupData, const std::vector<Component>& components)
+               double temperature, std::span<Molecule> moleculeData, std::span<const Atom> atoms,
+               std::span<AtomDynamics> dynamics, std::span<GroupState> groupData,
+               const std::vector<Component>& components)
 {
   const double kT = Units::KB * temperature;
   const double c1 = std::exp(-rate * timeStep);
@@ -200,6 +201,7 @@ void applyBath(RandomNumber& rng, DcTSTSettings::TrajectoryThermostat type, doub
   {
     const Component& component = components[molecule.componentId];
     std::span<AtomDynamics> moleculeDynamics = dynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+    std::span<const Atom> moleculeAtoms = atoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
     const std::size_t numberOfRigidFragments = component.isSemiFlexible() ? component.numberOfRigidFragments() : 0uz;
 
     if (type == DcTSTSettings::TrajectoryThermostat::Andersen)
@@ -218,12 +220,13 @@ void applyBath(RandomNumber& rng, DcTSTSettings::TrajectoryThermostat type, doub
           for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
           {
             if (component.rigidFragmentContaining(i).has_value()) continue;
-            moleculeDynamics[i].velocity = gaussian3() * std::sqrt(kT / component.definedAtoms[i].second);
+            moleculeDynamics[i].velocity = gaussian3() * std::sqrt(kT / component.atomMass(i, moleculeAtoms[i]));
           }
         }
         else
         {
-          Integrators::initializeMoleculeVelocity(rng, molecule, moleculeDynamics, component, temperature);
+          Integrators::initializeMoleculeVelocity(rng, molecule, moleculeAtoms, moleculeDynamics, component,
+                                                  temperature);
         }
       }
     }
@@ -247,8 +250,8 @@ void applyBath(RandomNumber& rng, DcTSTSettings::TrajectoryThermostat type, doub
         for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
         {
           if (component.rigidFragmentContaining(i).has_value()) continue;
-          moleculeDynamics[i].velocity =
-              c1 * moleculeDynamics[i].velocity + c2 * std::sqrt(kT / component.definedAtoms[i].second) * gaussian3();
+          moleculeDynamics[i].velocity = c1 * moleculeDynamics[i].velocity +
+                                         c2 * std::sqrt(kT / component.atomMass(i, moleculeAtoms[i])) * gaussian3();
         }
       }
       else if (component.rigid)
@@ -268,7 +271,7 @@ void applyBath(RandomNumber& rng, DcTSTSettings::TrajectoryThermostat type, doub
         double3 momentum{};
         for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
         {
-          const double mass = component.definedAtoms[i].second;
+          const double mass = component.atomMass(i, moleculeAtoms[i]);
           moleculeDynamics[i].velocity = c1 * moleculeDynamics[i].velocity + c2 * std::sqrt(kT / mass) * gaussian3();
           momentum += mass * moleculeDynamics[i].velocity;
         }
@@ -2347,8 +2350,8 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
 
       if (bathType != DcTSTSettings::TrajectoryThermostat::None)
       {
-        applyBath(rng, bathType, settings.bathRate, system.timeStep, system.temperature, moleculeSpan, dynamicsSpan,
-                  groupSpan, system.components);
+        applyBath(rng, bathType, settings.bathRate, system.timeStep, system.temperature, moleculeSpan, atomSpan,
+                  dynamicsSpan, groupSpan, system.components);
       }
       else
       {

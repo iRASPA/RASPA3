@@ -94,7 +94,7 @@ void centersOfMass(const System& system, const MoleculeRange& range, bool withPo
       double3 momentum{};
       for (std::size_t i = 0; i < molecule.numberOfAtoms; ++i)
       {
-        const double atomMass = component.definedAtoms[i].second;
+        const double atomMass = component.atomMass(i, atoms[atomIndex + i]);
         mass += atomMass;
         if (withPositions) weightedPosition += atomMass * atoms[atomIndex + i].position;
         if (!semiFlexible || !component.rigidFragmentContaining(i).has_value())

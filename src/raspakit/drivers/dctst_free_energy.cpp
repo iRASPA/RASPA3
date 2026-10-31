@@ -113,10 +113,10 @@ constexpr double forbiddenBias = 1e30;
 /// molecule v_bead.n = v_com.n + omega_body.(r_body x n_body) with independent Gaussian v_com (variance kT/M)
 /// and omega_body (variances kT/I_i), so 1/m_eff = 1/M + sum_i (r_body x n_body)_i^2 / I_i; for a flexible
 /// molecule the bead is an atom of mass m_bead.
-double beadInverseEffectiveMass(const Component& component, const Molecule& molecule, std::size_t bead,
-                                const double3& normal)
+double beadInverseEffectiveMass(const Component& component, const Molecule& molecule, std::span<const Atom> atoms,
+                                std::size_t bead, const double3& normal)
 {
-  if (!component.rigid) return 1.0 / component.definedAtoms[bead].second;
+  if (!component.rigid) return 1.0 / component.atomMass(bead, atoms[bead]);
   double inverseMass = 1.0 / molecule.mass;
   if (molecule.numberOfAtoms > 1)
   {
@@ -1347,7 +1347,8 @@ void DynamicallyCorrectedTSTFreeEnergy::samplePilot(std::size_t replicaId, std::
     // thermal speed of the bead along the normal for this orientation
     {
       const Molecule& molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, m)];
-      const double inverseMass = beadInverseEffectiveMass(component, molecule, component.startingBead, barrier.normal);
+      const double inverseMass =
+          beadInverseEffectiveMass(component, molecule, atoms, component.startingBead, barrier.normal);
       accumulator.beadSpeedSum += std::sqrt(2.0 * kT * inverseMass / std::numbers::pi);
       accumulator.beadSpeedCount += 1.0;
     }

@@ -162,8 +162,15 @@ void BondedTopology::build(const System& system)
                                   parameters.parameters.y * parameters.parameters.y, pair.scalingVDW * shift};
         addTerm(4, 0, identifiers, values);
       }
-      if (forceField.useCharge && component.atoms[pair.atomA].charge != 0.0 &&
-          component.atoms[pair.atomB].charge != 0.0)
+      // The Coulomb term reads the charges of the atoms (the relative positions carry them), so it follows a
+      // charge the Polymerization driver changes by retyping an atom (PolymerLinkTable::retype). The term is
+      // left out when it can never be non-zero: both atoms of the component uncharged, and the component has no
+      // reactive group that could retype one of them to a charged pseudo-atom (the terms are instanced per
+      // component, so the decision can not follow the individual molecules; the term of an uncharged pair of a
+      // reactive component evaluates to zero until a retyping charges it).
+      const bool charged = component.atoms[pair.atomA].charge != 0.0 && component.atoms[pair.atomB].charge != 0.0;
+      const bool mayBeRetyped = !component.reactiveGroups.empty();
+      if (forceField.useCharge && (charged || mayBeRetyped))
       {
         const double values[1] = {pair.scalingCoulomb};
         addTerm(5, 0, identifiers, values);

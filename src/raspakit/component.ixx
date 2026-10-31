@@ -149,7 +149,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization.
 
   Type type{0};  ///< Type of the component (Adsorbate or Cation).
 
@@ -242,6 +242,21 @@ export struct Component
   // perturbing it within the adaptive window; same rationale as 'pivotRandomizationFraction'.
   double beadFlipRandomizationFraction{0.2};  ///< Fraction of bead-flip attempts with a full randomization.
   std::vector<std::pair<Atom, double>> definedAtoms{};  ///< List of defined atoms and their masses.
+
+  /// The masses of the force field's pseudo-atoms by type (ForceField::pseudoAtoms[].mass), so that the mass of
+  /// an atom can follow its current type: a reaction of the Polymerization driver retypes atoms
+  /// (PolymerLinkTable::retype, which also updates Molecule::mass), and the dynamics of a flexible molecule use
+  /// the mass of the atom's current pseudo-atom. For an atom of the component's own type this is
+  /// 'definedAtoms[i].second'.
+  std::vector<double> pseudoAtomMasses{};
+
+  /// The mass of bead 'index' of a molecule of this component whose current atom is 'atom': the pseudo-atom mass
+  /// of the atom's type ('definedAtoms[index].second' when the table does not cover the type).
+  double atomMass(std::size_t index, const Atom &atom) const
+  {
+    const std::size_t type = static_cast<std::size_t>(atom.type);
+    return type < pseudoAtomMasses.size() ? pseudoAtomMasses[type] : definedAtoms[index].second;
+  }
 
   double3 inertiaVector{};         ///< Inertia vector of the component.
   double3 inverseInertiaVector{};  ///< Inverse of the inertia vector.

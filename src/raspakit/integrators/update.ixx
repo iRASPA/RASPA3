@@ -111,17 +111,15 @@ void updateVelocities(std::span<Molecule> moleculeData, std::span<Atom> molecule
  * center-of-mass velocity).
  *
  * \param random A random number generator
- * \param moleculeData Span of molecules to initialize velocity for.
- * \param moleculeAtomPositions Span of atoms corresponding to the molecules.
- * \param components Components to get the inertiaVector
+ * \param molecule The molecule to initialize the velocity of.
+ * \param moleculeAtoms The atoms of the molecule (their current types give the atom masses of a flexible molecule).
+ * \param moleculeDynamics The per-atom dynamics of the molecule.
+ * \param component Component to get the inertiaVector
  * \param temperature Temperature to set velocities to.
- * \param framework Optional framework definition.
- * \param frameworkAtomPositions Framework atoms used to obtain pseudo-atom masses.
- * \param frameworkDynamics Per-framework-atom velocities to initialize.
- * \param forceField Force field containing framework pseudo-atom masses.
  */
-void initializeMoleculeVelocity(RandomNumber& random, Molecule& molecule, std::span<AtomDynamics> moleculeDynamics,
-                                const Component& component, double temperature);
+void initializeMoleculeVelocity(RandomNumber& random, Molecule& molecule, std::span<const Atom> moleculeAtoms,
+                                std::span<AtomDynamics> moleculeDynamics, const Component& component,
+                                double temperature);
 
 /**
  * \brief Initializes one rigid group's center-of-mass velocity and orientation momentum from the

@@ -27,6 +27,7 @@ import skatom;
 import skcell;
 import skspacegroup;
 import forcefield;
+import pseudo_atom;
 import atom;
 import property_lambda_probability_histogram;
 import property_widom;
@@ -61,6 +62,18 @@ import cbmc_torsion_selection;
 import vdwparameters;
 import blocking_pockets;
 
+
+namespace
+{
+/// The masses of the force field's pseudo-atoms by type (Component::pseudoAtomMasses).
+std::vector<double> pseudoAtomMassTable(const ForceField &forceField)
+{
+  std::vector<double> masses;
+  masses.reserve(forceField.pseudoAtoms.size());
+  for (const PseudoAtom &pseudoAtom : forceField.pseudoAtoms) masses.push_back(pseudoAtom.mass);
+  return masses;
+}
+}  // namespace
 
 // default constructor, needed for binary restart-file
 Component::Component() {}
@@ -131,6 +144,7 @@ Component::Component(const ForceField &forceField, std::string componentName, do
     netCharge += atom.charge;
     definedAtoms.push_back({atom, mass});
   }
+  pseudoAtomMasses = pseudoAtomMassTable(forceField);
 
   // A default-constructed connectivity table (no bonds) must still cover all atoms so the fragment
   // graph can index them.
@@ -358,6 +372,7 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
     totalMass += mass;
     netCharge += atom.charge;
   }
+  pseudoAtomMasses = pseudoAtomMassTable(forceField);
 
   connectivityTable = readConnectivityTable(definedAtoms.size(), parsed_data);
 
@@ -3557,6 +3572,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
 
   archive << c.reactiveSites;
   archive << c.reactiveGroups;
+  archive << c.pseudoAtomMasses;  // version 2
 
   archive << c.moleculePropertiesSettings;
   archive << c.moleculeShapeSettings;
@@ -3678,6 +3694,15 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 
   archive >> c.reactiveSites;
   archive >> c.reactiveGroups;
+  if (versionNumber >= 2)
+  {
+    archive >> c.pseudoAtomMasses;
+  }
+  else
+  {
+    // a version-1 restart: the table is unknown, 'atomMass' falls back to the defined bead masses
+    c.pseudoAtomMasses.clear();
+  }
 
   archive >> c.moleculePropertiesSettings;
   archive >> c.moleculeShapeSettings;

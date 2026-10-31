@@ -139,6 +139,7 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeDa
       if (component.isSemiFlexible())
       {
         std::span<const AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
+        std::span<const Atom> atoms = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
         std::size_t rigidRank{};
         for (const Fragment& group : component.fragmentGraph.fragments)
         {
@@ -154,7 +155,7 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeDa
         {
           if (!component.rigidFragmentContaining(i).has_value())
           {
-            double mass = component.definedAtoms[i].second;
+            double mass = component.atomMass(i, atoms[i]);
             totalMass += mass;
             totalMomentum += mass * span[i].velocity;
           }
@@ -361,11 +362,12 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
         }
       }
       std::span<AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
+      std::span<const Atom> atoms = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
       for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
       {
         if (!component.rigidFragmentContaining(i).has_value())
         {
-          double mass = component.definedAtoms[i].second;
+          double mass = component.atomMass(i, atoms[i]);
           span[i].velocity -= 0.5 * dt * span[i].gradient / mass;
         }
       }
@@ -381,9 +383,10 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
     if (!component.rigid)
     {
       std::span<AtomDynamics> span = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
+      std::span<const Atom> atoms = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
       for (std::size_t i = 0; i != span.size(); i++)
       {
-        double mass = component.definedAtoms[i].second;
+        double mass = component.atomMass(i, atoms[i]);
         span[i].velocity -= 0.5 * dt * span[i].gradient / mass;
       }
     }
@@ -416,6 +419,7 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
 }
 
 void Integrators::initializeMoleculeVelocity(RandomNumber& random, Molecule& molecule,
+                                             std::span<const Atom> moleculeAtoms,
                                              std::span<AtomDynamics> moleculeDynamics, const Component& component,
                                              double temperature)
 {
@@ -441,12 +445,12 @@ void Integrators::initializeMoleculeVelocity(RandomNumber& random, Molecule& mol
   }
   else
   {
-    if (moleculeDynamics.size() != molecule.numberOfAtoms)
+    if (moleculeDynamics.size() != molecule.numberOfAtoms || moleculeAtoms.size() != molecule.numberOfAtoms)
       throw std::runtime_error("Flexible-molecule dynamics span has the wrong size");
     double3 momentum{};
     for (std::size_t i = 0; i != moleculeDynamics.size(); i++)
     {
-      const double mass = component.definedAtoms[i].second;
+      const double mass = component.atomMass(i, moleculeAtoms[i]);
       moleculeDynamics[i].velocity =
           double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * std::sqrt(Units::KB * temperature / mass);
       momentum += mass * moleculeDynamics[i].velocity;
@@ -501,8 +505,7 @@ void Integrators::initializeFrameworkGroupVelocity(RandomNumber& random, GroupSt
 }
 
 void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule> moleculeData,
-                                       [[maybe_unused]] std::span<Atom> moleculeAtomPositions,
-                                       std::span<AtomDynamics> moleculeDynamics,
+                                       std::span<Atom> moleculeAtomPositions, std::span<AtomDynamics> moleculeDynamics,
                                        const std::vector<Component>& components, double temperature,
                                        const std::optional<Framework>& framework,
                                        std::span<const Atom> frameworkAtomPositions,
@@ -515,6 +518,7 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
   {
     const Component& component = components[molecule.componentId];
     std::span<AtomDynamics> dynamics = moleculeDynamics.subspan(index, molecule.numberOfAtoms);
+    std::span<const Atom> atoms = moleculeAtomPositions.subspan(index, molecule.numberOfAtoms);
 
     if (component.isSemiFlexible())
     {
@@ -536,7 +540,7 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
           dynamics[i].velocity = double3(0.0, 0.0, 0.0);
           continue;
         }
-        double mass = component.definedAtoms[i].second;
+        double mass = component.atomMass(i, atoms[i]);
         dynamics[i].velocity =
             double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * std::sqrt(Units::KB * temperature / mass);
       }
@@ -545,7 +549,7 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
       continue;
     }
 
-    initializeMoleculeVelocity(random, molecule, dynamics, component, temperature);
+    initializeMoleculeVelocity(random, molecule, atoms, dynamics, component, temperature);
     index += molecule.numberOfAtoms;
   }
   if (framework && framework->hasMobileAtoms())
@@ -612,7 +616,7 @@ void Integrators::createCartesianPositions(std::span<Molecule> moleculeData,
       double3 com{};
       for (std::size_t i = 0; i != span.size(); i++)
       {
-        com += component.definedAtoms[i].second * span[i].position;
+        com += component.atomMass(i, span[i]) * span[i].position;
       }
       molecule.centerOfMassPosition = com * molecule.invMass;
       groupIndex += component.numberOfRigidFragments();
@@ -637,7 +641,7 @@ void Integrators::createCartesianPositions(std::span<Molecule> moleculeData,
       double3 com{};
       for (std::size_t i = 0; i != span.size(); i++)
       {
-        double mass = component.definedAtoms[i].second;
+        double mass = component.atomMass(i, span[i]);
         com += mass * span[i].position;
       }
       molecule.centerOfMassPosition = com * molecule.invMass;
@@ -727,11 +731,12 @@ void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> 
   {
     std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
     std::span<const AtomDynamics> spanDynamics = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
+    const Component& component = components[molecule.componentId];
 
     double3 com{};
     for (std::size_t i = 0; i != span.size(); i++)
     {
-      double mass = components[molecule.componentId].definedAtoms[i].second;
+      double mass = component.atomMass(i, span[i]);
       com += mass * span[i].position;
     }
     com = com * molecule.invMass;
@@ -740,7 +745,7 @@ void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> 
     double3 angularMomentum{};
     for (std::size_t i = 0; i != span.size(); i++)
     {
-      double mass = components[molecule.componentId].definedAtoms[i].second;
+      double mass = component.atomMass(i, span[i]);
       com_velocity += mass * spanDynamics[i].velocity;
 
       double3 dr = span[i].position - com;

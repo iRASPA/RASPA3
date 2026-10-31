@@ -846,6 +846,7 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
     if (system.thermobarostat.has_value())
     {
       const std::span<const AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
+      const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
       for (const Molecule& molecule : system.moleculeData)
       {
         const Component& component = system.components[molecule.componentId];
@@ -857,7 +858,7 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
         else
         {
           for (std::size_t b = 0; b < molecule.numberOfAtoms; ++b)
-            momentum += component.definedAtoms[b].second * dynamics[molecule.atomIndex + b].velocity;
+            momentum += component.atomMass(b, atoms[molecule.atomIndex + b]) * dynamics[molecule.atomIndex + b].velocity;
         }
         residentKinetic.virialTrace += double3::dot(momentum, momentum) * molecule.invMass;
       }

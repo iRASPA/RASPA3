@@ -245,7 +245,10 @@ void PolymerOverlayTopology::build(const System& system, const PolymerLinkTable&
         term.flags = intramolecularPair;
         pairParameters(forceField, PairState::Scaled, scaling, currentA, currentB, term.parameters);
         pairParameters(forceField, PairState::Scaled, scaling, originalA, originalB, term.parameters2);
-        // the Coulomb parts cancel exactly (same charges, same scaling): leave them out
+        // The Coulomb parts cancel exactly: the kernels take the charges from the atoms (the current, retyped
+        // charges, in the bonded kernel's scaled-pair term as well as here), and the scaling is the pair's in both
+        // treatments, so only the Lennard-Jones parameters differ. Leave them out (the kernel also skips the
+        // Coulomb evaluation of an intramolecular correction, see polymerTerms).
         term.parameters[3] = 0.0f;
         term.parameters2[3] = 0.0f;
         if (term.parameters[0] == term.parameters2[0] && term.parameters[1] == term.parameters2[1] &&

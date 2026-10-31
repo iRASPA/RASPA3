@@ -230,8 +230,9 @@ TEST(integrators, initializes_only_the_inserted_molecule_velocity)
   Molecule& inserted = system.moleculeData[1];
 
   Integrators::initializeMoleculeVelocity(
-      random, inserted, system.spanOfMoleculeDynamics().subspan(inserted.atomIndex, inserted.numberOfAtoms),
-      system.components[0], system.temperature);
+      random, inserted, system.spanOfMoleculeAtoms().subspan(inserted.atomIndex, inserted.numberOfAtoms),
+      system.spanOfMoleculeDynamics().subspan(inserted.atomIndex, inserted.numberOfAtoms), system.components[0],
+      system.temperature);
 
   EXPECT_EQ(system.moleculeData[0].velocity, double3(4.0, 5.0, 6.0));
   EXPECT_GT(inserted.velocity.length(), 0.0);
