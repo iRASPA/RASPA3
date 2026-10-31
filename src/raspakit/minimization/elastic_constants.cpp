@@ -211,8 +211,27 @@ double3x3 computeMolecularKineticVirial(const System& system, BarostatCoupling c
   {
     const std::span<const Atom> atoms = system.spanOfFrameworkAtoms();
     const std::span<const AtomDynamics> dynamics = system.spanOfFrameworkDynamics();
-    for (std::size_t i = 0; i < atoms.size(); ++i)
-      add(system.forceField.pseudoAtoms[atoms[i].type].mass, dynamics[i].velocity);
+    const std::span<const GroupState> frameworkGroups = system.spanOfFrameworkGroupData();
+    if (system.framework->isMixed())
+    {
+      for (std::size_t i = 0; i < atoms.size(); ++i)
+      {
+        if (system.framework->isFlexibleAtom(i))
+          add(system.forceField.pseudoAtoms[atoms[i].type].mass, dynamics[i].velocity);
+      }
+      std::size_t rigidRank{};
+      for (const FrameworkGroup& group : system.framework->groups)
+      {
+        if (!group.isRigidBody()) continue;
+        add(group.mass, frameworkGroups[rigidRank].velocity);
+        ++rigidRank;
+      }
+    }
+    else
+    {
+      for (std::size_t i = 0; i < atoms.size(); ++i)
+        add(system.forceField.pseudoAtoms[atoms[i].type].mass, dynamics[i].velocity);
+    }
   }
   return stress;
 }

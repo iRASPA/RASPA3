@@ -336,6 +336,8 @@ void propagateCell(System& system, const double3x3& cellVelocity, BarostatCoupli
         widths.x, widths.y, widths.z, requiredWidth));
   system.forceField.initializeAutomaticCutOff(system.simulationBox);
   system.forceField.initializeEwaldParameters(system.simulationBox);
+  // The reciprocal mesh and the stored rigid-framework structure factor belong to the old cell.
+  system.precomputeTotalRigidEnergy();
 }
 
 // Offset of a molecule's rigid-group states inside System::groupData: the entries are ordered like

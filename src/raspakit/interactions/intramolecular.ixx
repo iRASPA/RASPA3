@@ -30,6 +30,13 @@ RunningEnergy computeFrameworkIntraMolecularGradient(const ForceField& forceFiel
                                                      std::span<const Atom> frameworkAtoms,
                                                      std::span<AtomDynamics> frameworkDynamics);
 
+/// Energy and atomic strain derivative of the framework intramolecular table (bonds, bends, torsions,
+/// framework-framework VDW and real-space Coulomb). Used by the molecular-pressure / barostat virial:
+/// a flexible host's restoring stress is these terms, not the adsorbate intramolecular cancellation.
+std::pair<RunningEnergy, double3x3> computeFrameworkIntraMolecularEnergyStrainDerivative(
+    const ForceField& forceField, const Framework& framework, const SimulationBox& simulationBox,
+    std::span<const Atom> frameworkAtoms, std::span<AtomDynamics> frameworkDynamics);
+
 RunningEnergy computeIntraMolecularEnergy(const ForceField& forceField, const SimulationBox& simulationBox,
                                           const Potentials::IntraMolecularPotentials& intraMolecularPotentials,
                                           std::span<const Molecule> moleculeData,

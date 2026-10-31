@@ -255,6 +255,8 @@ void propagateCell(System& system, const double3x3& cellVelocity, BarostatCoupli
         widths.x, widths.y, widths.z, requiredWidth));
   system.forceField.initializeAutomaticCutOff(system.simulationBox);
   system.forceField.initializeEwaldParameters(system.simulationBox);
+  // The reciprocal mesh and the stored rigid-framework structure factor belong to the old cell.
+  system.precomputeTotalRigidEnergy();
 }
 
 // Molecular coupling: the atoms and rigid groups of the non-rigid molecules of the range follow their centre of

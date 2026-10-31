@@ -5,6 +5,7 @@ import std;
 import int3;
 import double3;
 import double3x3;
+import framework;
 import units;
 import atom;
 import atom_dynamics;
@@ -27,6 +28,11 @@ import randomnumbers;
 import integrators_update;
 import elastic_constants;
 import thermobarostat;
+import minimization_cell_layout;
+import interactions_internal;
+import molecular_dynamics;
+import ewald_structure_factor;
+import bond_potential;
 
 // The molecular-dynamics barostat couples to the centers of mass of rigid molecules and to every atom
 // of a flexible molecule individually. Its driving virial must therefore be the derivative of the total
@@ -285,4 +291,166 @@ TEST(BAROSTAT_VIRIAL, rigid_molecules_leave_the_molecular_virial_unchanged)
   EXPECT_DOUBLE_EQ(barostatVirial.ay, molecularVirial.ay);
   EXPECT_DOUBLE_EQ(barostatVirial.bz, molecularVirial.bz);
   EXPECT_DOUBLE_EQ(barostatVirial.az, molecularVirial.az);
+}
+
+TEST(BAROSTAT_VIRIAL, flexible_framework_bond_matches_atomic_scaling_finite_difference)
+{
+  ForceField forceField({{"A", false, 12.0, 0.0, 0.0, 6, false}}, {{0.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 8.0, 8.0, 8.0, false, false, false);
+  forceField.useCharge = false;
+  forceField.omitEwaldFourier = true;
+  const SimulationBox box(20.0, 20.0, 20.0);
+  std::vector<Atom> atoms{Atom({5.0, 5.0, 5.0}, 0.0, 1.0, 0, 0, 0, 0, true),
+                          Atom({6.4, 5.0, 5.0}, 0.0, 1.0, 0, 0, 0, 0, true)};
+  Framework framework(forceField, "two-atom", box, 1, atoms, atoms, int3(1, 1, 1));
+  framework.rigid = false;
+  framework.intraMolecularPotentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {20000.0, 1.2})};
+  framework.intraMolecularImageShifts.bonds = {{{int3{}, int3{}}}};
+
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, framework, {}, {}, {}, 5);
+  ASSERT_TRUE(system.framework->hasMobileAtoms());
+
+  const double3x3 virial = system.computeMolecularPressure().second;
+  const double volume = system.simulationBox.volume;
+  const double excess = virial.trace() / (3.0 * volume);
+
+  const double delta = 1e-5;
+  const auto energyAtScale = [&](double scale)
+  {
+    SimulationBox scaledBox = system.simulationBox.scaled(scale);
+    std::vector<Atom> scaled(system.spanOfFrameworkAtoms().begin(), system.spanOfFrameworkAtoms().end());
+    for (Atom& atom : scaled) atom.position = scale * atom.position;
+    return Interactions::computeFrameworkIntraMolecularEnergy(system.forceField, *system.framework, scaledBox, scaled)
+        .potentialEnergy();
+  };
+  const double scalePlus = std::cbrt(1.0 + delta);
+  const double scaleMinus = std::cbrt(1.0 - delta);
+  const double fd =
+      -(energyAtScale(scalePlus) - energyAtScale(scaleMinus)) /
+      (system.simulationBox.scaled(scalePlus).volume - system.simulationBox.scaled(scaleMinus).volume);
+
+  EXPECT_NEAR(excess, fd, 1e-5 * std::abs(fd) + 1e-8);
+  EXPECT_GT(std::abs(fd), 1e-4);
+}
+
+TEST(BAROSTAT_VIRIAL, kinetic_virial_of_mixed_framework_uses_group_velocity)
+{
+  ForceField forceField({{"C", true, 12.0, 0.0, 0.0, 6, true}}, {{80.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 5.0, 5.0, 5.0, false, false, false);
+  const SimulationBox box(14.0, 14.0, 14.0);
+  std::vector<Atom> atoms{Atom({4.0 / 14.0, 0.5, 0.5}, 0.0, 1.0, 0, 0, 0, 0, true),
+                          Atom({5.4 / 14.0, 0.52, 0.5}, 0.0, 1.0, 0, 0, 0, 0, true),
+                          Atom({6.8 / 14.0, 0.48, 0.5}, 0.0, 1.0, 0, 0, 0, 0, true),
+                          Atom({8.2 / 14.0, 0.52, 0.5}, 0.0, 1.0, 0, 0, 0, 0, true),
+                          Atom({9.6 / 14.0, 0.5, 0.5}, 0.0, 1.0, 0, 0, 0, 0, true),
+                          Atom({11.0 / 14.0, 0.51, 0.5}, 0.0, 1.0, 0, 0, 0, 0, true)};
+  Framework framework(forceField, "mixed-chain", box, 1, atoms, atoms, int3(1, 1, 1));
+  const std::filesystem::path definition =
+      std::filesystem::temp_directory_path() / "raspa3-mixed-framework-barostat.json";
+  {
+    std::ofstream stream(definition);
+    stream << R"({"Type": "Flexible",
+                  "Groups": [
+                    {"Type": "Fixed", "Atoms": [0]},
+                    {"Type": "Rigid", "Atoms": [1, 2, 3]},
+                    {"Type": "Flexible", "Atoms": [4, 5]}
+                  ]})";
+  }
+  framework.readFrameworkDefinition(forceField, definition.string());
+  std::filesystem::remove(definition);
+
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, {framework}, {}, {}, {}, 5);
+  system.initializeFrameworkGroupData();
+  ASSERT_EQ(system.frameworkGroupData.size(), 1u);
+
+  for (AtomDynamics& dynamics : system.spanOfFrameworkDynamics()) dynamics.velocity = double3(0.0, 0.0, 0.0);
+  system.frameworkGroupData[0].velocity = double3(0.3, -0.2, 0.4);
+  system.spanOfFrameworkDynamics()[4].velocity = double3(0.1, 0.0, -0.05);
+  system.spanOfFrameworkDynamics()[5].velocity = double3(-0.2, 0.15, 0.0);
+
+  const double groupMass = system.framework->groups[1].mass;
+  const double mass4 = system.forceField.pseudoAtoms[system.spanOfFrameworkAtoms()[4].type].mass;
+  const double mass5 = system.forceField.pseudoAtoms[system.spanOfFrameworkAtoms()[5].type].mass;
+  const double expected =
+      groupMass * double3::dot(system.frameworkGroupData[0].velocity, system.frameworkGroupData[0].velocity) +
+      mass4 * double3::dot(system.spanOfFrameworkDynamics()[4].velocity, system.spanOfFrameworkDynamics()[4].velocity) +
+      mass5 * double3::dot(system.spanOfFrameworkDynamics()[5].velocity, system.spanOfFrameworkDynamics()[5].velocity);
+
+  EXPECT_NEAR(computeMolecularKineticVirial(system, BarostatCoupling::Atomic).trace(), expected, 1e-10 * expected);
+}
+
+TEST(BAROSTAT_VIRIAL, mobile_framework_ewald_enters_the_pressure_tensor)
+{
+  ForceField forceField({{"C", true, 12.0, 0.4, 0.0, 6, true}}, {{0.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 8.0, 8.0, 8.0, true, false, true);
+  const SimulationBox box(16.0, 16.0, 16.0);
+  std::vector<Atom> atoms{Atom({5.0, 8.0, 8.0}, 0.4, 1.0, 0, 0, 0, 0, true),
+                          Atom({9.0, 8.0, 8.0}, -0.4, 1.0, 0, 0, 0, 0, true)};
+  Framework framework(forceField, "charged-pair", box, 1, atoms, atoms, int3(1, 1, 1));
+  framework.rigid = false;
+
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, framework, {}, {}, {}, 5);
+  system.forceField.initializeEwaldParameters(system.simulationBox);
+  system.precomputeTotalRigidEnergy();
+  ASSERT_TRUE(system.framework->hasMobileAtoms());
+
+  const double3x3 virial = system.computeMolecularPressure().second;
+  EXPECT_GT(std::abs(virial.trace()), 0.0);
+
+  const auto ewaldEnergy = [&](double scale)
+  {
+    System copy = system;
+    copy.simulationBox = system.simulationBox.scaled(scale);
+    copy.forceField.initializeEwaldParameters(copy.simulationBox);
+    copy.precomputeTotalRigidEnergy();
+    for (Atom& atom : copy.spanOfFrameworkAtoms()) atom.position = scale * atom.position;
+    return Integrators::updateGradients(copy.moleculeData, copy.spanOfMoleculeAtoms(), copy.spanOfMoleculeDynamics(),
+                                        copy.spanOfFrameworkAtoms(), copy.forceField, copy.simulationBox,
+                                        copy.components, copy.eik_x, copy.eik_y, copy.eik_z, copy.eik_xy, copy.trialEik,
+                                        copy.fixedFrameworkStoredEik, copy.interpolationGrids,
+                                        copy.numberOfMoleculesPerComponent, copy.framework,
+                                        copy.spanOfFrameworkDynamics())
+        .potentialEnergy();
+  };
+  const double delta = 1e-5;
+  const double scalePlus = std::cbrt(1.0 + delta);
+  const double scaleMinus = std::cbrt(1.0 - delta);
+  const double fd = -(ewaldEnergy(scalePlus) - ewaldEnergy(scaleMinus)) /
+                    (system.simulationBox.scaled(scalePlus).volume - system.simulationBox.scaled(scaleMinus).volume);
+  EXPECT_NEAR(virial.trace() / (3.0 * system.simulationBox.volume), fd, 5e-5 * std::abs(fd) + 1e-8);
+}
+
+TEST(BAROSTAT_VIRIAL, propagate_cell_refreshes_fixed_framework_ewald)
+{
+  ForceField forceField({{"C", true, 12.0, 0.4, 0.0, 6, true}}, {{0.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 8.0, 8.0, 8.0, true, false, true);
+  const SimulationBox box(24.0, 24.0, 24.0);
+  std::vector<Atom> atoms{Atom({5.0, 8.0, 8.0}, 0.4, 1.0, 0, 0, 0, 0, true),
+                          Atom({9.0, 8.0, 8.0}, -0.4, 1.0, 0, 0, 0, 0, true)};
+  Framework framework(forceField, "rigid-charged-pair", box, 1, atoms, atoms, int3(1, 1, 1));
+  framework.rigid = true;
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, framework, {}, {}, {}, 5);
+  system.timeStep = 1.0e-3;
+  system.thermobarostat =
+      Thermobarostat(MolecularDynamicsEnsemble::NPT, CellMinimizationType::Isotropic, MonoclinicAngleType::Beta, 300.0,
+                     system.pressure, system.timeStep, system.translationalDegreesOfFreedom, 3, 1, 1.0);
+  RandomNumber random(4);
+  system.thermobarostat->initialize(random);
+  system.thermobarostat->logVolumeVelocity = 0.4;
+  system.precomputeTotalGradients();
+  system.precomputeTotalRigidEnergy();
+  system.runningEnergies.translationalKineticEnergy = 0.0;
+  system.runningEnergies.thermobarostatEnergy = system.thermobarostat->energy(system.simulationBox.volume);
+
+  molecularDynamicsStep(system);
+
+  const EwaldStructureFactor afterStep = system.fixedFrameworkStoredEik;
+  system.precomputeTotalRigidEnergy();
+  ASSERT_EQ(afterStep.size(), system.fixedFrameworkStoredEik.size());
+  ASSERT_GT(afterStep.size(), 0uz);
+  for (std::size_t k = 0; k < afterStep.size(); ++k)
+  {
+    EXPECT_NEAR(afterStep.sum[k].real(), system.fixedFrameworkStoredEik.sum[k].real(), 1e-10);
+    EXPECT_NEAR(afterStep.sum[k].imag(), system.fixedFrameworkStoredEik.sum[k].imag(), 1e-10);
+  }
 }

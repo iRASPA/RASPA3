@@ -1877,7 +1877,8 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
     const ForceField& forceField, const SimulationBox& simulationBox, const std::optional<Framework>& framework,
     const std::vector<Component>& components,
     [[maybe_unused]] const std::vector<std::size_t>& numberOfMoleculesPerComponent, std::span<const Atom> atomData,
-    std::span<AtomDynamics> atomDynamics, double netChargeFramework, std::vector<double> netChargePerComponent) noexcept
+    std::span<AtomDynamics> atomDynamics, double netChargeFramework, std::vector<double> netChargePerComponent,
+    std::span<const Atom> frameworkAtoms, std::span<AtomDynamics> frameworkDynamics) noexcept
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -1933,7 +1934,34 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
     return std::make_pair(energy, strainDerivative);
   }
 
-  std::size_t numberOfAtoms = atomData.size();
+  // Live Fourier hosts are mobile framework atoms; lab-fixed atoms stay in fixedFrameworkStoredEik.
+  const bool liveFramework =
+      framework && framework->hasMobileAtoms() && frameworkDynamics.size() == frameworkAtoms.size();
+  const std::size_t fixedFrameworkAtomCount = framework ? framework->numberOfFixedAtoms() : 0;
+  const std::size_t mobileFrameworkAtomCount = framework ? framework->numberOfMobileAtoms() : 0;
+  const bool useFixedFrameworkEik = !liveFramework || fixedFrameworkAtomCount > 0;
+  std::vector<Atom> liveAtoms;
+  if (liveFramework)
+  {
+    liveAtoms.reserve(mobileFrameworkAtomCount + atomData.size());
+    liveAtoms.insert(liveAtoms.end(), frameworkAtoms.begin() + static_cast<std::ptrdiff_t>(fixedFrameworkAtomCount),
+                     frameworkAtoms.end());
+    liveAtoms.insert(liveAtoms.end(), atomData.begin(), atomData.end());
+  }
+  const std::span<const Atom> atoms = liveFramework ? std::span<const Atom>(liveAtoms) : atomData;
+  const std::size_t numberOfAtoms = atoms.size();
+  const std::size_t frameworkOffset = liveFramework ? mobileFrameworkAtomCount : 0;
+  const auto addGradient = [&](std::size_t atom, const double3& gradient)
+  {
+    if (liveFramework && atom < frameworkOffset)
+    {
+      frameworkDynamics[fixedFrameworkAtomCount + atom].gradient += gradient;
+    }
+    else if (!atomDynamics.empty())
+    {
+      atomDynamics[atom - frameworkOffset].gradient += gradient;
+    }
+  };
   std::size_t numberOfComponents = components.size();
 
   std::size_t kx_max_unsigned = static_cast<std::size_t>(forceField.numberOfWaveVectors.x);
@@ -1947,7 +1975,7 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
   std::size_t numberOfWaveVectors = (kx_max_unsigned + 1) * 2 * (ky_max_unsigned + 1) * 2 * (kz_max_unsigned + 1);
   fixedFrameworkStoredEik.reserveWaveVectors(numberOfWaveVectors);
 
-  Ewald::buildEikTables(eik_x, eik_y, eik_z, eik_xy, atomData, kx_max_unsigned, ky_max_unsigned, kz_max_unsigned,
+  Ewald::buildEikTables(eik_x, eik_y, eik_z, eik_xy, atoms, kx_max_unsigned, ky_max_unsigned, kz_max_unsigned,
                         inv_box);
 
   std::size_t nvec = 0;
@@ -1985,21 +2013,25 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
           {
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<std::size_t>(std::abs(kz))];
             eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
-            std::size_t comp = static_cast<std::size_t>(atomData[i].componentId);
-            double charge = atomData[i].charge;
-            double scaling = atomData[i].scalingCoulomb;
-            cksum[comp] += scaling * charge * (eik_xy[i] * eikz_temp);
-            test += scaling * charge * (eik_xy[i] * eikz_temp);
+            const double charge = atoms[i].charge;
+            const double scaling = atoms[i].scalingCoulomb;
+            const std::complex<double> contribution = scaling * charge * (eik_xy[i] * eikz_temp);
+            test += contribution;
+            if (i >= frameworkOffset)
+            {
+              const std::size_t comp = static_cast<std::size_t>(atoms[i].componentId);
+              cksum[comp] += contribution;
+            }
           }
 
-          test += fixedFrameworkStoredEik.sum[nvec];
+          std::complex<double> rigidSum{};
+          if (useFixedFrameworkEik) rigidSum = fixedFrameworkStoredEik.sum[nvec];
+          test += rigidSum;
 
           for (std::size_t i = 0; i != numberOfComponents; ++i)
           {
             energy.frameworkComponentEnergy(0, i).CoulombicFourier +=
-                EnergyDuDlambda(2.0 * temp *
-                                    (fixedFrameworkStoredEik.sum[nvec].real() * cksum[i].real() +
-                                     fixedFrameworkStoredEik.sum[nvec].imag() * cksum[i].imag()),
+                EnergyDuDlambda(2.0 * temp * (rigidSum.real() * cksum[i].real() + rigidSum.imag() * cksum[i].imag()),
                                 0.0);
             for (std::size_t j = 0; j != numberOfComponents; ++j)
             {
@@ -2013,12 +2045,11 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<std::size_t>(std::abs(kz))];
             eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
             std::complex<double> cki = eik_xy[i] * eikz_temp;
-            double charge = atomData[i].charge;
-            double scaling = atomData[i].scalingCoulomb;
+            const double charge = atoms[i].charge;
+            const double scaling = atoms[i].scalingCoulomb;
 
-            atomDynamics[i].gradient -= scaling * charge * 2.0 * temp *
-                                        (cki.imag() * test.real() - cki.real() * test.imag()) *
-                                        (kvec_x + kvec_y + kvec_z);
+            addGradient(i, -(scaling * charge * 2.0 * temp * (cki.imag() * test.real() - cki.real() * test.imag()) *
+                             (kvec_x + kvec_y + kvec_z)));
           }
 
           singleIonFourierSum += temp;

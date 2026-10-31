@@ -1145,11 +1145,28 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
                                            forceField, components, simulationBox, rebuiltCellList(),
                                            spanOfMoleculeAtoms(), pressureDynamics, interGather));
 
+  std::vector<AtomDynamics> pressureFrameworkDynamics;
+  if (framework && framework->hasMobileAtoms())
+  {
+    pressureFrameworkDynamics.assign(spanOfFrameworkAtoms().size(), AtomDynamics{});
+  }
+  std::span<AtomDynamics> pressureFrameworkSpan(pressureFrameworkDynamics);
+
   pressureInfo = pairSum(pressureInfo,
                          Interactions::computeEwaldFourierEnergyStrainDerivative(
                              eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
                              framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
-                             pressureDynamics, netChargeFramework, netChargePerComponent));
+                             pressureDynamics, netChargeFramework, netChargePerComponent, spanOfFrameworkAtoms(),
+                             pressureFrameworkSpan));
+
+  if (framework && framework->hasMobileAtoms())
+  {
+    const auto [frameworkIntraEnergy, frameworkIntraStrain] =
+        Interactions::computeFrameworkIntraMolecularEnergyStrainDerivative(
+            forceField, *framework, simulationBox, spanOfFrameworkAtoms(), pressureFrameworkSpan);
+    pressureInfo.second += frameworkIntraStrain;
+    (void)frameworkIntraEnergy;
+  }
 
   // Cross-links act between molecules, so unlike the intramolecular potentials their forces do not cancel
   // in the molecular virial: their strain derivative and site gradients enter like the inter-molecular
@@ -1280,6 +1297,37 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
       correctionTerm.cx += (position.z - com.z) * gradient.x;
       correctionTerm.cy += (position.z - com.z) * gradient.y;
       correctionTerm.cz += (position.z - com.z) * gradient.z;
+    }
+  }
+
+  // Rigid mobile framework groups: convert the atomic virial of junction / Ewald forces on the
+  // group atoms to the center-of-mass virial the barostat couples to.
+  if (framework && framework->isMixed() && !pressureFrameworkDynamics.empty())
+  {
+    const std::span<const Atom> frameworkAtoms = spanOfFrameworkAtoms();
+    for (const FrameworkGroup& group : framework->groups)
+    {
+      if (!group.isRigidBody()) continue;
+      double3 com{};
+      for (std::size_t k = 0; k != group.atoms.size(); ++k)
+      {
+        com += group.atomMasses[k] * frameworkAtoms[group.atoms[k]].position;
+      }
+      com = com / group.mass;
+      for (std::size_t atom : group.atoms)
+      {
+        const double3 arm = frameworkAtoms[atom].position - com;
+        const double3 gradient = pressureFrameworkDynamics[atom].gradient;
+        correctionTerm.ax += arm.x * gradient.x;
+        correctionTerm.ay += arm.x * gradient.y;
+        correctionTerm.az += arm.x * gradient.z;
+        correctionTerm.bx += arm.y * gradient.x;
+        correctionTerm.by += arm.y * gradient.y;
+        correctionTerm.bz += arm.y * gradient.z;
+        correctionTerm.cx += arm.z * gradient.x;
+        correctionTerm.cy += arm.z * gradient.y;
+        correctionTerm.cz += arm.z * gradient.z;
+      }
     }
   }
 
