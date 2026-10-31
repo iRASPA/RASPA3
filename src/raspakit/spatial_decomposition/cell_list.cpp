@@ -17,19 +17,9 @@ namespace
 {
 constexpr std::uint32_t noIndex = std::numeric_limits<std::uint32_t>::max();
 
-// periodic shift (nx, ny, nz) <-> packed code; the shifts are small integers but not limited to -1..1 because the
-// atom positions are not wrapped into the box
-std::uint32_t packShift(int nx, int ny, int nz)
+double3 shiftOf(const int3& n)
 {
-  return static_cast<std::uint32_t>(nx + 128) | (static_cast<std::uint32_t>(ny + 128) << 8) |
-         (static_cast<std::uint32_t>(nz + 128) << 16);
-}
-
-double3 unpackShift(std::uint32_t code)
-{
-  return double3(static_cast<double>(static_cast<int>(code & 0xFFu) - 128),
-                 static_cast<double>(static_cast<int>((code >> 8) & 0xFFu) - 128),
-                 static_cast<double>(static_cast<int>((code >> 16) & 0xFFu) - 128));
+  return double3(static_cast<double>(n.x), static_cast<double>(n.y), static_cast<double>(n.z));
 }
 }  // namespace
 
@@ -167,7 +157,7 @@ std::uint32_t CellList::cellIndexOf(const SimulationBox& box, const double3& pos
   return static_cast<std::uint32_t>((cz * numberOfCells.y + cy) * numberOfCells.x + cx);
 }
 
-double3 CellList::shiftVector(const SimulationBox& box, std::uint32_t code) { return box.cell * unpackShift(code); }
+double3 CellList::shiftVector(const SimulationBox& box, const int3& n) { return box.cell * shiftOf(n); }
 
 void CellList::setup(const SimulationBox& box, double cutoffValue, double skinValue, std::size_t numberOfThreads,
                      std::optional<int3> requested)
@@ -380,15 +370,16 @@ void CellList::buildLists(std::size_t domainIndex, const SimulationBox& box)
       domain.neighbourList.push_back(domain.localIndexOfAtom[j]);
       return;
     }
-    // the image as a ghost: reuse its slot when an earlier owned atom already found it
-    const std::uint32_t code = packShift(nx, ny, nz);
+    // the image as a ghost: reuse its slot when an earlier owned atom already found it.
+    // n is wrap_i - wrap_j plus the stencil wrap, so it grows with unwrapped diffusion and is stored as int3.
+    const int3 n(nx, ny, nz);
     std::uint32_t slot = domain.imageHead[j];
-    while (slot != noIndex && domain.imageShift[slot] != code) slot = domain.imageNext[slot];
+    while (slot != noIndex && domain.imageShift[slot] != n) slot = domain.imageNext[slot];
     if (slot == noIndex)
     {
       slot = static_cast<std::uint32_t>(domain.imageAtom.size());
       domain.imageAtom.push_back(j);
-      domain.imageShift.push_back(code);
+      domain.imageShift.push_back(n);
       domain.imageOwner.push_back(ownerOfAtom[j]);
       domain.imageNext.push_back(domain.imageHead[j]);
       domain.imageHead[j] = slot;
@@ -532,7 +523,7 @@ void CellList::gatherPositions(std::size_t domainIndex, const SimulationBox& box
   for (std::size_t slot = 0; slot < images; ++slot)
   {
     const std::uint32_t j = domain.imageAtom[slot];
-    const double3 shift = cell * unpackShift(domain.imageShift[slot]);
+    const double3 shift = cell * shiftOf(domain.imageShift[slot]);
     positions[owned + slot].x = x[j] + shift.x;
     positions[owned + slot].y = y[j] + shift.y;
     positions[owned + slot].z = z[j] + shift.z;

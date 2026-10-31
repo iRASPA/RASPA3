@@ -437,6 +437,35 @@ TEST(spatial_decomposition, cell_list_displacement_check_rebuilds_when_the_box_c
   EXPECT_TRUE(cellList.refreshPositionsAndCheck(0, atoms, scaled));
 }
 
+TEST(spatial_decomposition, cell_list_image_shift_follows_unwrapped_wrap_counts)
+{
+  // two atoms a few Angstroms apart in the wrapped box, one of them 200 boxes from the origin: the image
+  // shift is wrap_i - wrap_j, which is outside the old 8-bit pack (n + 128 in one byte per axis)
+  const SimulationBox box(20.0, 20.0, 20.0);
+  std::vector<Atom> atoms{Atom(double3(1.0, 1.0, 1.0), 0.0, 1.0, 0, 0, 0, false, false),
+                          Atom(double3(4001.0, 4.0, 1.0), 0.0, 1.0, 1, 0, 0, false, false)};
+  CellList cellList;
+  cellList.setup(box, 8.0, 2.0, 1, std::nullopt);
+  cellList.bin(box, atoms);
+  cellList.buildLists(0, box);
+
+  ASSERT_EQ(cellList.wrap[cellList.originalToSorted[0]], int3(0, 0, 0));
+  ASSERT_EQ(cellList.wrap[cellList.originalToSorted[1]], int3(200, 0, 0));
+
+  const CellList::DomainLists& domain = cellList.domains[0];
+  ASSERT_EQ(domain.imageAtom.size(), 1u);
+  const int3 n = domain.imageShift[0];
+  EXPECT_EQ(std::abs(n.x), 200);
+  EXPECT_EQ(n.y, 0);
+  EXPECT_EQ(n.z, 0);
+
+  const std::size_t local = domain.ownedAtoms.size();
+  const double3 gathered(domain.positions[local].x, domain.positions[local].y, domain.positions[local].z);
+  const std::uint32_t imageOriginal = cellList.sortedToOriginal[domain.imageAtom[0]];
+  EXPECT_LT((gathered - (atoms[imageOriginal].position + CellList::shiftVector(box, n))).length(), 1e-9);
+  EXPECT_NEAR((gathered - atoms[1 - imageOriginal].position).length(), 3.0, 1e-9);
+}
+
 TEST(spatial_decomposition, cell_list_displacement_check_still_sees_thermal_motion)
 {
   const SimulationBox box(20.0, 20.0, 20.0);

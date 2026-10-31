@@ -62,7 +62,7 @@ export struct CellList
 
     // ghost images, local index = ownedAtoms.size() + slot
     std::vector<std::uint32_t> imageAtom{};                   ///< Slot -> sorted-order index of the atom.
-    std::vector<std::uint32_t> imageShift{};                  ///< Slot -> packed periodic shift (see shiftVector).
+    std::vector<int3> imageShift{};  ///< Slot -> integer box translation n of the ghost (image = r + cell * n).
     std::vector<std::uint32_t> imageOwner{};                  ///< Slot -> owning sub-domain of the atom.
     std::vector<std::vector<std::uint32_t>> imagesByOwner{};  ///< Per owner (this one included): its slots.
 
@@ -193,8 +193,8 @@ export struct CellList
   int3 cellGridFor(const SimulationBox& box, int cellsPerCutoff) const;
   std::uint32_t cellIndexOf(const SimulationBox& box, const double3& position) const;
 
-  /// Periodic shift vector (cell * n) of a packed shift code (n_i + 128 in bits 8 i .. 8 i + 7) for the box.
-  static double3 shiftVector(const SimulationBox& box, std::uint32_t code);
+  /// Periodic shift vector (cell * n) of an integer box translation for the box.
+  static double3 shiftVector(const SimulationBox& box, const int3& n);
 
  private:
   void buildStencil(const SimulationBox& box);
