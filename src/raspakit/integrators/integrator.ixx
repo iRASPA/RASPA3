@@ -19,6 +19,7 @@ import forcefield;
 import interpolation_energy_grid;
 import framework;
 import cross_links;
+import polymer_links;
 
 // integrators.ixx
 
@@ -63,5 +64,6 @@ RunningEnergy velocityVerlet(
     const std::vector<std::size_t> &numberOfMoleculesPerComponent,
     const std::optional<Framework>& framework = std::nullopt,
     std::span<AtomDynamics> frameworkDynamics = {}, std::span<GroupState> groupData = {},
-    std::span<GroupState> frameworkGroupData = {}, const CrossLinkTable* crossLinks = nullptr);
+    std::span<GroupState> frameworkGroupData = {}, const CrossLinkTable* crossLinks = nullptr,
+    PolymerLinkTable* polymerLinks = nullptr);
 }  // namespace Integrators

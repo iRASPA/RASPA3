@@ -564,9 +564,14 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
                 moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), components, framework,
                 spanOfFrameworkAtoms(), spanOfFrameworkDynamics(), &forceField, spanOfGroupData(),
                 spanOfFrameworkGroupData());
+  // an empty (MuVT) or single-molecule system with a constrained centre of mass has no translational degrees
+  // of freedom left; report 0 K rather than 0/0
+  const std::size_t effectiveTranslationalDegreesOfFreedom =
+      translationalDegreesOfFreedom - std::min(translationalDegreesOfFreedom, translationalCenterOfMassConstraint);
   double translationalTemperature =
-      2.0 * translationalKineticEnergy /
-      (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
+      effectiveTranslationalDegreesOfFreedom > 0
+          ? 2.0 * translationalKineticEnergy / (Units::KB * static_cast<double>(effectiveTranslationalDegreesOfFreedom))
+          : 0.0;
   averageTranslationalTemperature.addSample(currentBlock, translationalTemperature, w);
 
   double rotationalKineticEnergy =
@@ -580,10 +585,11 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
           : 0.0;
   averageRotationalTemperature.addSample(currentBlock, rotationalTemperature, w);
 
-  double overallTemperature =
-      2.0 * (translationalKineticEnergy + rotationalKineticEnergy) /
-      (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint +
-                                       rotationalDegreesOfFreedom));
+  const std::size_t overallDegreesOfFreedom = effectiveTranslationalDegreesOfFreedom + rotationalDegreesOfFreedom;
+  double overallTemperature = overallDegreesOfFreedom > 0
+                                  ? 2.0 * (translationalKineticEnergy + rotationalKineticEnergy) /
+                                        (Units::KB * static_cast<double>(overallDegreesOfFreedom))
+                                  : 0.0;
   averageTemperature.addSample(currentBlock, overallTemperature, w);
 
   loadings = LoadingData(components.size(), numberOfIntegerMoleculesPerComponent, simulationBox);

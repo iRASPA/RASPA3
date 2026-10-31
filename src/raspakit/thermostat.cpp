@@ -135,6 +135,21 @@ void Thermostat::initialize(RandomNumber &random)
                                         ? 0.0
                                         : random.Gaussian() * std::sqrt(kT / thermostatMassRotation[i]);
   }
+
+  // The first (inward) Yoshida-Suzuki sweep of 'NoseHooverNVT' propagates every chain element with the forces
+  // of the preceding sweep; the forces on the elements 1..M-1 follow from the chain velocities drawn above.
+  // (The force on element 0 needs the particle kinetic energy and is set on entry of 'NoseHooverNVT'.)
+  for (std::size_t i = 1; i < thermostatChainLength; ++i)
+  {
+    thermostatForceTranslation[i] =
+        (thermostatMassTranslation[i - 1] * thermostatVelocityTranslation[i - 1] * thermostatVelocityTranslation[i - 1] -
+         thermostatDegreesOfFreedomTranslation[i]) /
+        thermostatMassTranslation[i];
+    thermostatForceRotation[i] =
+        (thermostatMassRotation[i - 1] * thermostatVelocityRotation[i - 1] * thermostatVelocityRotation[i - 1] -
+         thermostatDegreesOfFreedomRotation[i]) /
+        thermostatMassRotation[i];
+  }
 }
 
 std::pair<double, double> Thermostat::NoseHooverNVT(double UKineticTranslation, double UKineticRotation)
@@ -145,8 +160,11 @@ std::pair<double, double> Thermostat::NoseHooverNVT(double UKineticTranslation, 
   std::size_t nc = numberOfRespaSteps;
   std::size_t nyosh = numberOfYoshidaSuzukiSteps;
 
+  // The chain only acts when there are particle degrees of freedom left after the centre-of-mass constraint
+  // (a single molecule with a constrained centre of mass has none; integrating the chain against g_0 = 0 would
+  // let the chain run away and leak into the conserved quantity).
   double scale_translation = 1.0;
-  if (translationalDegreesOfFreedom > 0)
+  if (translationalDegreesOfFreedom > translationalCenterOfMassConstraint)
   {
     thermostatForceTranslation[0] =
         (2.0 * UKineticTranslation - thermostatDegreesOfFreedomTranslation[0]) / thermostatMassTranslation[0];
@@ -254,7 +272,7 @@ double Thermostat::getEnergy()
 {
   double energy{};
 
-  if (translationalDegreesOfFreedom > 0)
+  if (translationalDegreesOfFreedom > translationalCenterOfMassConstraint)
   {
     energy += 0.5 * thermostatMassTranslation[0] * thermostatVelocityTranslation[0] * thermostatVelocityTranslation[0] +
               static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint) * Units::KB *

@@ -367,6 +367,90 @@ TEST(thermobarostat, refreshing_degrees_of_freedom_keeps_the_live_cell_momentum)
   EXPECT_EQ(state.chainVelocity, chainVelocity);
 }
 
+TEST(thermostat, initialization_sets_the_chain_forces_consistent_with_the_drawn_velocities)
+{
+  Thermostat state(300.0, 0.0005, 12, 6, 4, 1, 0.15);
+  RandomNumber random(555);
+  state.initialize(random);
+  const double kT = Units::KB * 300.0;
+  for (std::size_t i = 1; i != state.thermostatChainLength; ++i)
+  {
+    EXPECT_NEAR(state.thermostatForceTranslation[i],
+                (state.thermostatMassTranslation[i - 1] * state.thermostatVelocityTranslation[i - 1] *
+                     state.thermostatVelocityTranslation[i - 1] -
+                 kT) /
+                    state.thermostatMassTranslation[i],
+                1.0e-12);
+    EXPECT_NEAR(state.thermostatForceRotation[i],
+                (state.thermostatMassRotation[i - 1] * state.thermostatVelocityRotation[i - 1] *
+                     state.thermostatVelocityRotation[i - 1] -
+                 kT) /
+                    state.thermostatMassRotation[i],
+                1.0e-12);
+    EXPECT_NE(state.thermostatForceTranslation[i], 0.0);
+  }
+}
+
+TEST(thermobarostat, initialization_sets_the_chain_forces_consistent_with_the_drawn_velocities)
+{
+  Thermobarostat state(MolecularDynamicsEnsemble::NPT, CellMinimizationType::Isotropic, MonoclinicAngleType::Beta,
+                       300.0, 0.0, 0.001, 12, 4, 1, 0.5);
+  RandomNumber random(777);
+  state.initialize(random);
+  for (std::size_t i = 1; i != state.chainLength; ++i)
+  {
+    EXPECT_NEAR(state.chainForce[i],
+                (state.chainMass[i - 1] * state.chainVelocity[i - 1] * state.chainVelocity[i - 1] -
+                 state.chainDegreesOfFreedom[i]) /
+                    state.chainMass[i],
+                1.0e-12);
+    EXPECT_NE(state.chainForce[i], 0.0);
+  }
+}
+
+TEST(thermostat, chain_is_inert_when_the_centre_of_mass_constraint_removes_all_translational_degrees_of_freedom)
+{
+  // one molecule, constraint 3: nothing to thermostat translationally
+  Thermostat state(300.0, 0.0005, 3, 0, 3, 1, 0.15);
+  state.translationalCenterOfMassConstraint = 3;
+  RandomNumber random(31);
+  state.initialize(random);
+
+  for (std::size_t step = 0; step != 1000; ++step)
+  {
+    const auto [scaleTranslation, scaleRotation] = state.NoseHooverNVT(0.0, 0.0);
+    EXPECT_DOUBLE_EQ(scaleTranslation, 1.0);
+    EXPECT_DOUBLE_EQ(scaleRotation, 1.0);
+  }
+  EXPECT_DOUBLE_EQ(state.getEnergy(), 0.0);
+  for (std::size_t i = 0; i != state.thermostatChainLength; ++i)
+  {
+    EXPECT_DOUBLE_EQ(state.thermostatVelocityTranslation[i], 0.0);
+    EXPECT_DOUBLE_EQ(state.thermostatPositionTranslation[i], 0.0);
+  }
+}
+
+TEST(system, sampled_temperatures_are_finite_without_translational_degrees_of_freedom)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, false, false, false);
+  Component methane = Component::makeMethane(forceField, 0);
+  System system(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1.0e4, 1.0, std::nullopt, {methane}, {},
+                {1}, 5);
+  system.translationalCenterOfMassConstraint = 3;
+  ASSERT_EQ(system.translationalDegreesOfFreedom, 3u);
+  system.sampleProperties(0, 0, 0, false);
+  EXPECT_TRUE(std::isfinite(system.averageTranslationalTemperature.averaged(0)));
+  EXPECT_TRUE(std::isfinite(system.averageTemperature.averaged(0)));
+  EXPECT_DOUBLE_EQ(system.averageTranslationalTemperature.averaged(0), 0.0);
+  EXPECT_DOUBLE_EQ(system.averageTemperature.averaged(0), 0.0);
+
+  System empty(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1.0e4, 1.0, std::nullopt, {methane}, {},
+               {0}, 5);
+  empty.sampleProperties(0, 0, 0, false);
+  EXPECT_TRUE(std::isfinite(empty.averageTranslationalTemperature.averaged(0)));
+  EXPECT_TRUE(std::isfinite(empty.averageTemperature.averaged(0)));
+}
+
 TEST(thermostat, refreshes_variable_particle_degrees_of_freedom_without_resetting_chain_state)
 {
   Thermostat state(300.0, 0.0005, 6, 3, 3, 1, 0.15);

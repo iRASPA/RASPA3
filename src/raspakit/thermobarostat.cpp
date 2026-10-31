@@ -243,6 +243,13 @@ void Thermobarostat::initialize(RandomNumber& random)
     // canonical chain momenta: variance of v_i is k_B T / Q_i (not N_cell k_B T / Q_0 for the first element)
     chainVelocity[i] = random.Gaussian() * std::sqrt(Units::KB * temperature / chainMass[i]);
   }
+  // forces on the chain elements 1..M-1 for the first inward sweep of 'chainStep' (element 0 needs the
+  // barostat kinetic energy and is set on entry of 'chainStep')
+  for (std::size_t i = 1; i < chainLength; ++i)
+  {
+    chainForce[i] =
+        (chainMass[i - 1] * chainVelocity[i - 1] * chainVelocity[i - 1] - chainDegreesOfFreedom[i]) / chainMass[i];
+  }
 }
 
 double Thermobarostat::chainStep(double kineticEnergy)

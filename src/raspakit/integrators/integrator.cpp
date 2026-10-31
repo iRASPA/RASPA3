@@ -18,6 +18,7 @@ import integrators_cputime;
 import interpolation_energy_grid;
 import framework;
 import cross_links;
+import polymer_links;
 
 RunningEnergy Integrators::velocityVerlet(
     std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions, std::span<AtomDynamics> moleculeDynamics,
@@ -31,7 +32,7 @@ RunningEnergy Integrators::velocityVerlet(
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::vector<std::size_t> &numberOfMoleculesPerComponent, const std::optional<Framework>& framework,
     std::span<AtomDynamics> frameworkDynamics, std::span<GroupState> groupData,
-    std::span<GroupState> frameworkGroupData, const CrossLinkTable* crossLinks)
+    std::span<GroupState> frameworkGroupData, const CrossLinkTable* crossLinks, PolymerLinkTable* polymerLinks)
 {
   // apply thermo for temperature control
   if (thermostat.has_value())
@@ -71,7 +72,7 @@ RunningEnergy Integrators::velocityVerlet(
       moleculeData, moleculeAtomPositions, moleculeDynamics, frameworkAtomPositions, forceField, simulationBox,
       components, eik_x, eik_y, eik_z, eik_xy,
       trialEik, fixedFrameworkStoredEik, interpolationGrids, numberOfMoleculesPerComponent, framework,
-      frameworkDynamics, crossLinks);
+      frameworkDynamics, crossLinks, polymerLinks);
 
   // compute the gradients on the center of mass and the orientation
   updateCenterOfMassAndQuaternionGradients(moleculeData, moleculeAtomPositions, moleculeDynamics, components, groupData,

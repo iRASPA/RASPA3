@@ -522,7 +522,8 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
       system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.spanOfFrameworkAtoms(),
       system.forceField, system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z,
       system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
-      system.numberOfMoleculesPerComponent, system.framework, system.spanOfFrameworkDynamics(), &system.crossLinks);
+      system.numberOfMoleculesPerComponent, system.framework, system.spanOfFrameworkDynamics(), &system.crossLinks,
+      &system.polymerLinks);
   Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
                                                         system.spanOfMoleculeDynamics(), system.components,
                                                         system.spanOfGroupData(), system.framework,
@@ -623,7 +624,7 @@ RunningEnergy molecularDynamicsStep(System& system)
                 system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik,
                 system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent,
                 system.framework, system.spanOfFrameworkDynamics(), system.spanOfGroupData(),
-                system.spanOfFrameworkGroupData(), &system.crossLinks);
+                system.spanOfFrameworkGroupData(), &system.crossLinks, &system.polymerLinks);
 
   // The integrator returns the gradient-based energies, which exclude the VDW tail corrections. They do not affect
   // the forces, but they are part of the potential energy (and, in NPT, of the conserved quantity through their
