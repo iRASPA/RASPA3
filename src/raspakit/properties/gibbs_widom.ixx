@@ -40,8 +40,10 @@ export struct PropertyGibbsWidom
 
   inline void addWidomSample(std::size_t blockIndex, double RosenbluthValue, std::size_t N, double V, double weight)
   {
-    // The inserted molecule is the (N + 1)th, so the ideal-gas volume per molecule is V / (N + 1).
-    double volumePerMolecule = V / static_cast<double>(N + 1uz);
+    // Volume per molecule of the molecules already in the box. Counting the test particle as N + 1
+    // shifts the ideal-gas term and the fugacity by ln((N + 1) / N), which corrupts the Henry
+    // coefficient at low loading. An empty box has no density; one molecule keeps the ratio finite.
+    double volumePerMolecule = V / static_cast<double>(std::max(N, 1uz));
     rosenbluthWeight.addSample(blockIndex, RosenbluthValue, weight);
     chemicalPotentialTerms.addSample(
         blockIndex, WidomData(volumePerMolecule * RosenbluthValue, RosenbluthValue, volumePerMolecule), weight);
