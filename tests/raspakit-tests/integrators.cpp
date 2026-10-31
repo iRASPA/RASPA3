@@ -1016,3 +1016,49 @@ TEST(molecular_dynamics, resume_of_a_finished_or_empty_stage_does_not_loop)
   md.currentCycle = 0;
   md.production();
 }
+
+TEST(molecular_dynamics, precompute_total_gradients_fills_rigid_body_forces)
+{
+  // Equilibration/production re-derive group kinematics then call precomputeTotalGradients. The
+  // first Velocity-Verlet half-kick uses molecule.gradient / orientationGradient, not the atom
+  // gradients, so those rigid-body forces must be reduced here.
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Component co2 = Component::makeCO2(forceField, 0, false);
+  System system(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {co2}, {}, {2}, 5);
+  ASSERT_TRUE(system.components[0].rigid);
+
+  system.moleculeData[0].centerOfMassPosition = double3(5.0, 5.0, 5.0);
+  system.moleculeData[1].centerOfMassPosition = double3(5.0, 9.0, 5.0);
+  system.moleculeData[0].orientation = simd_quatd(0.0, 0.0, 0.0, 1.0);
+  system.moleculeData[1].orientation = simd_quatd(0.0, 0.0, 0.0, 1.0);
+  Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
+
+  system.initializeGroupData();
+  system.moleculeData[0].gradient = double3(0.0, 0.0, 0.0);
+  system.moleculeData[1].gradient = double3(0.0, 0.0, 0.0);
+  system.moleculeData[0].orientationGradient = simd_quatd(0.0, 0.0, 0.0, 0.0);
+  system.moleculeData[1].orientationGradient = simd_quatd(0.0, 0.0, 0.0, 0.0);
+
+  system.precomputeTotalGradients();
+
+  EXPECT_GT(double3::dot(system.moleculeData[0].gradient, system.moleculeData[0].gradient), 0.0);
+  EXPECT_GT(double3::dot(system.moleculeData[1].gradient, system.moleculeData[1].gradient), 0.0);
+  DOUBLE3_EXPECT_NEAR(system.moleculeData[0].gradient + system.moleculeData[1].gradient, double3(0.0, 0.0, 0.0),
+                      1.0e-10);
+}
+
+TEST(molecular_dynamics, precompute_total_gradients_fills_framework_group_forces)
+{
+  System system = makeMixedFrameworkHybridMCSystem();
+  ASSERT_EQ(system.framework->numberOfRigidGroups(), 1u);
+
+  system.initializeGroupData();
+  system.initializeFrameworkGroupData();
+  ASSERT_EQ(system.frameworkGroupData.size(), 1u);
+  system.frameworkGroupData[0].gradient = double3(0.0, 0.0, 0.0);
+  system.frameworkGroupData[0].orientationGradient = simd_quatd(0.0, 0.0, 0.0, 0.0);
+
+  system.precomputeTotalGradients();
+
+  EXPECT_GT(double3::dot(system.frameworkGroupData[0].gradient, system.frameworkGroupData[0].gradient), 0.0);
+}

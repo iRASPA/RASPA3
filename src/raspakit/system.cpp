@@ -825,6 +825,12 @@ void System::precomputeTotalGradients() noexcept
                                                  interpolationGrids, numberOfMoleculesPerComponent, framework,
                                                  spanOfFrameworkDynamics(), &crossLinks, &polymerLinks) +
                     computeTailCorrectionEnergies();
+  // Velocity Verlet's first half-kick uses the rigid-body (and rigid-group) forces/torques, not the
+  // per-atom gradients. MD stage entry re-derives group kinematics and would otherwise start with
+  // zero COM/orientation gradients and an unphysical first impulse.
+  Integrators::updateCenterOfMassAndQuaternionGradients(
+      moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), components, spanOfGroupData(), framework,
+      spanOfFrameworkDynamics(), spanOfFrameworkGroupData());
 }
 
 RunningEnergy System::computeTotalEnergies() noexcept
