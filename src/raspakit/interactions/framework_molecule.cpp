@@ -48,7 +48,7 @@ inline void prefetchGridCell(const ForceField& forceField,
   if (index >= atoms.size()) return;
   const Atom& atom = atoms[index];
   const std::optional<InterpolationEnergyGrid>& grid = interpolationGrids[static_cast<std::size_t>(atom.type)];
-  if (!grid.has_value() || atom.isFractional) return;
+  if (!grid.has_value() || !atom.isFullyCoupled()) return;
   grid->prefetch(atom.position);
   if (forceField.useCharge) interpolationGrids.back()->prefetch(atom.position);
 }
@@ -94,9 +94,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
   {
     const Atom& moleculeAtom = moleculeAtoms[index];
     std::size_t typeB = static_cast<std::size_t>(moleculeAtom.type);
-    bool isFractional = static_cast<bool>(moleculeAtom.isFractional);
 
-    if (interpolationGrids[typeB].has_value() && !isFractional &&
+    if (interpolationGrids[typeB].has_value() && moleculeAtom.isFullyCoupled() &&
         forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
       prefetchGridCell(forceField, interpolationGrids, moleculeAtoms, index + gridPrefetchDistance);
@@ -300,12 +299,11 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
     double3 posB = atom.position;
     std::size_t typeB = static_cast<std::size_t>(atom.type);
     std::uint8_t groupIdB = atom.groupId;
-    bool isFractional = static_cast<bool>(atom.isFractional);
     double scalingVDWB = atom.scalingVDW;
     double scalingCoulombB = atom.scalingCoulomb;
     double chargeB = atom.charge;
 
-    if (interpolationGrids[typeB].has_value() && !isFractional &&
+    if (interpolationGrids[typeB].has_value() && atom.isFullyCoupled() &&
         forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
       const auto [energyVDW, energyCoulomb] = gridEnergies(forceField, interpolationGrids, atom);
@@ -359,12 +357,11 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
     double3 posB = atom.position;
     std::size_t typeB = static_cast<std::size_t>(atom.type);
     std::uint8_t groupIdB = atom.groupId;
-    bool isFractional = static_cast<bool>(atom.isFractional);
     double scalingVDWB = atom.scalingVDW;
     double scalingCoulombB = atom.scalingCoulomb;
     double chargeB = atom.charge;
 
-    if (interpolationGrids[typeB].has_value() && !isFractional &&
+    if (interpolationGrids[typeB].has_value() && atom.isFullyCoupled() &&
         forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
       const auto [energyVDW, energyCoulomb] = gridEnergies(forceField, interpolationGrids, atom);
@@ -427,7 +424,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
   // rule as the brute-force loop above).
   auto readsGrid = [&](const Atom& atom)
   {
-    return interpolationGrids[static_cast<std::size_t>(atom.type)].has_value() && !atom.isFractional &&
+    return interpolationGrids[static_cast<std::size_t>(atom.type)].has_value() && atom.isFullyCoupled() &&
            forceField.chargeMethod == ForceField::ChargeMethod::Ewald;
   };
   thread_local std::vector<Atom> pairNew{};
@@ -689,9 +686,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     std::size_t indexA = static_cast<std::size_t>(it1 - moleculeAtoms.begin());
     const Atom& moleculeAtom = *it1;
     std::size_t typeA = static_cast<std::size_t>(moleculeAtom.type);
-    bool isFractional = static_cast<bool>(moleculeAtom.isFractional);
 
-    if (!mobileFramework && interpolationGrids[typeA].has_value() && !isFractional &&
+    if (!mobileFramework && interpolationGrids[typeA].has_value() && moleculeAtom.isFullyCoupled() &&
         forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
       prefetchGridCell(forceField, interpolationGrids, moleculeAtoms, indexA + gridPrefetchDistance);
@@ -768,7 +764,6 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     const double3 posA = it1->position;
     std::size_t compA = static_cast<std::size_t>(it1->componentId);
     std::size_t typeA = static_cast<std::size_t>(it1->type);
-    bool isFractional = static_cast<bool>(it1->isFractional);
     double scalingVDWA = it1->scalingVDW;
     double chargeA = it1->charge;
 
@@ -777,7 +772,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     const double3 sigmaA =
         gatherFieldForAtom ? polarizationGather->centerOfMassOffset[indexA] : double3(0.0, 0.0, 0.0);
 
-    if (interpolationGrids[typeA].has_value() && !isFractional &&
+    if (interpolationGrids[typeA].has_value() && it1->isFullyCoupled() &&
         forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
       prefetchGridCell(forceField, interpolationGrids, moleculeAtoms, indexA + gridPrefetchDistance);

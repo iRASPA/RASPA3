@@ -210,6 +210,15 @@ export struct Atom
     isFractional = false;
   }
 
+  /**
+   * \brief Whether the atom is in the integer state (fully coupled, not fractional).
+   *
+   * The framework interpolation grids store the unscaled (lambda = 1) energies, so only atoms in this
+   * state may be read from a grid. A fractional atom at any lambda and a switched-off atom (scaling 0,
+   * not fractional) must be evaluated by pairs so that their scaling is applied.
+   */
+  bool isFullyCoupled() const { return !isFractional && scalingVDW == 1.0 && scalingCoulomb == 1.0; }
+
   // scaling is linear and first switch LJ on in 0-0.5, then the electrostatics from 0.5 to 1.0
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Atom &atom);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Atom &atom);

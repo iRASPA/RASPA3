@@ -3,8 +3,10 @@
 import std;
 
 import int3;
+import uint3;
 import double3;
 import units;
+import interpolation_energy_grid;
 import atom;
 import pseudo_atom;
 import vdwparameters;
@@ -185,4 +187,71 @@ TEST(static_energy, tail_correction_aggregated_difference_matches_per_atom_refer
   {
     EXPECT_NEAR(aggregated.dudlambdaVDW[g], reference.dudlambdaVDW[g], 1e-10);
   }
+}
+
+// The framework grids tabulate the unscaled (lambda = 1) energies. A fractional molecule that is switched off
+// for deletion (scaling 0, not fractional: Atom::setScalingOff, as in the pair/group CFCMC swaps) must not be
+// read from the grid as if it were a fully coupled integer molecule.
+TEST(static_energy, switched_off_molecule_is_not_read_from_the_framework_grid)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component co2 = Component::makeCO2(forceField, 0, true);
+  forceField.settings.gridPseudoAtomIndices = {static_cast<std::size_t>(co2.atoms[0].type),
+                                               static_cast<std::size_t>(co2.atoms[1].type)};
+  forceField.settings.numberOfVDWGridPoints = uint3(32, 32, 32);
+  forceField.settings.numberOfCoulombGridPoints = uint3(32, 32, 32);
+  forceField.settings.numberOfGridTestPoints = 10;
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
+
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2}, {}, {1}, 5);
+  std::ostringstream log;
+  system.createFrameworkInterpolationGrids(log);
+  ASSERT_TRUE(system.interpolationGrids[static_cast<std::size_t>(co2.atoms[0].type)].has_value());
+
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  atomData[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
+  atomData[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
+  atomData[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
+  const std::vector<std::optional<InterpolationEnergyGrid>> noGrids(system.interpolationGrids.size());
+
+  // the grids are live: an integer molecule reads them (and agrees with the pair sum to interpolation accuracy)
+  RunningEnergy integerFromGrid = Interactions::computeFrameworkMoleculeEnergy(
+      system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+      system.spanOfFrameworkAtoms(), atomData);
+  RunningEnergy integerFromPairs = Interactions::computeFrameworkMoleculeEnergy(
+      system.forceField, system.simulationBox, noGrids, system.framework, system.spanOfFrameworkAtoms(), atomData);
+  EXPECT_NE(integerFromGrid.frameworkMoleculeVDW, integerFromPairs.frameworkMoleculeVDW);
+  EXPECT_NEAR(integerFromGrid.frameworkMoleculeVDW, integerFromPairs.frameworkMoleculeVDW,
+              0.05 * std::abs(integerFromPairs.frameworkMoleculeVDW));
+
+  // deletion of a fractional molecule: lambda = 0.6 -> switched off
+  std::vector<Atom> oldFractional(atomData.begin(), atomData.end());
+  for (Atom& atom : oldFractional) atom.setScalingToFractional(0.6, std::uint8_t{1});
+  std::vector<Atom> switchedOff(oldFractional.begin(), oldFractional.end());
+  for (Atom& atom : switchedOff) atom.setScalingOff();
+
+  std::optional<RunningEnergy> withGrids = Interactions::computeFrameworkMoleculeEnergyDifference(
+      system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+      system.frameworkCellList(), system.spanOfFrameworkAtoms(), switchedOff, oldFractional);
+  std::optional<RunningEnergy> withoutGrids = Interactions::computeFrameworkMoleculeEnergyDifference(
+      system.forceField, system.simulationBox, noGrids, system.framework, system.frameworkCellList(),
+      system.spanOfFrameworkAtoms(), switchedOff, oldFractional);
+  ASSERT_TRUE(withGrids.has_value());
+  ASSERT_TRUE(withoutGrids.has_value());
+  EXPECT_NEAR(withGrids->frameworkMoleculeVDW, withoutGrids->frameworkMoleculeVDW, 1e-10);
+  EXPECT_NEAR(withGrids->frameworkMoleculeCharge, withoutGrids->frameworkMoleculeCharge, 1e-10);
+
+  // the switched-off molecule has no framework energy: the difference is minus the fractional energy
+  RunningEnergy fractionalEnergy = Interactions::computeFrameworkMoleculeEnergy(
+      system.forceField, system.simulationBox, noGrids, system.framework, system.spanOfFrameworkAtoms(),
+      oldFractional);
+  EXPECT_NEAR(withGrids->frameworkMoleculeVDW, -fractionalEnergy.frameworkMoleculeVDW, 1e-10);
+  EXPECT_NEAR(withGrids->frameworkMoleculeCharge, -fractionalEnergy.frameworkMoleculeCharge, 1e-10);
+
+  // the brute-force variant of the difference agrees as well
+  std::optional<RunningEnergy> bruteForce = Interactions::computeFrameworkMoleculeEnergyDifference(
+      system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+      system.spanOfFrameworkAtoms(), switchedOff, oldFractional);
+  ASSERT_TRUE(bruteForce.has_value());
+  EXPECT_NEAR(bruteForce->frameworkMoleculeVDW, -fractionalEnergy.frameworkMoleculeVDW, 1e-10);
 }

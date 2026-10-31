@@ -240,7 +240,7 @@ void prefetchGridEnergies(const ForceField& forceField,
   for (const Atom& atom : atoms)
   {
     const std::optional<InterpolationEnergyGrid>& grid = interpolationGrids[static_cast<std::size_t>(atom.type)];
-    if (!grid.has_value() || atom.isFractional) continue;
+    if (!grid.has_value() || !atom.isFullyCoupled()) continue;
     grid->prefetch(atom.position);
     if (forceField.useCharge) interpolationGrids.back()->prefetch(atom.position);
   }
@@ -258,8 +258,8 @@ void prefetchGridEnergies(const ForceField& forceField,
   prefetchGridEnergies(forceField, interpolationGrids, atoms);
   for (const Atom &atom : atoms)
   {
-    // A grid exists only for a framework; a fractional atom is never read from the grid.
-    if (interpolationGrids[static_cast<std::size_t>(atom.type)].has_value() && !atom.isFractional)
+    // A grid exists only for a framework; only a fully coupled atom is read from the grid.
+    if (interpolationGrids[static_cast<std::size_t>(atom.type)].has_value() && atom.isFullyCoupled())
     {
       if (!accumulateGridEnergy(forceField, interpolationGrids, atom, energySum)) return std::nullopt;
       continue;
@@ -361,10 +361,10 @@ void prefetchGridEnergies(const ForceField& forceField,
 namespace
 {
 /// Whether a trial atom reads its framework energy from an interpolation grid (one exists for its type and the
-/// atom is not fractional).
+/// atom is fully coupled; the grids hold the unscaled energies).
 inline bool readsFrameworkGrid(const CBMC::GrowContext& context, const Atom& atom)
 {
-  return context.interpolationGrids[static_cast<std::size_t>(atom.type)].has_value() && !atom.isFractional;
+  return context.interpolationGrids[static_cast<std::size_t>(atom.type)].has_value() && atom.isFullyCoupled();
 }
 
 /// The trial atoms of the sets that are evaluated by framework pairs (not from a grid), in 'pairAtoms'; false
