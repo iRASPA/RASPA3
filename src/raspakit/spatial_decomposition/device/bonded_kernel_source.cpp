@@ -113,7 +113,8 @@ DEVICE_FUNCTION float bondTerm(uint type, PRIVATE const float* P, float3 posA, f
       DF = 6.0f * (P[1] * temp - 2.0f * P[0] * temp * temp) / rr;
       break;
     case 6:  // LennardJones
-      temp = (P[1] / rr) * (P[1] / rr) * (P[1] / rr);
+      temp = P[1] * P[1] / rr;  // (sigma/r)^2
+      temp = temp * temp * temp;
       U = 4.0f * P[0] * (temp * (temp - 1.0f));
       DF = 24.0f * P[0] * (temp * (1.0f - 2.0f * temp)) / rr;
       break;
@@ -322,7 +323,7 @@ DEVICE_FUNCTION float torsionTerm(uint type, PRIVATE const float* P, float3 posA
                   16.0f * P[4] * cos_phi2 * cos_phi2 * cos_phi - 32.0f * P[5] * cos_phi2 * cos_phi2 * cos_phi2);
       DF = 0.5f * (P[0] - 3.0f * P[2] + 5.0f * P[4]) - 2.0f * (P[1] - 4.0f * P[3] + 9.0f * P[5]) * cos_phi +
            6.0f * (P[2] - 5.0f * P[4]) * cos_phi2 - 16.0f * (P[3] - 6.0f * P[5]) * cos_phi2 * cos_phi +
-           40.0f * P[4] * cos_phi2 * cos_phi2 - 96.0f * P[5] * cos_phi2 * cos_phi * cos_phi;
+           40.0f * P[4] * cos_phi2 * cos_phi2 - 96.0f * P[5] * cos_phi2 * cos_phi2 * cos_phi;
       break;
     case 14:  // FourierSeries2
       U = 0.5f * (P[2] + 2.0f * P[3] + P[4] - 3.0f * P[2] * cos_phi + 5.0f * P[4] * cos_phi + P[0] * (1.0f + cos_phi) +

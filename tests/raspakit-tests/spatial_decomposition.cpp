@@ -903,6 +903,59 @@ System makeChainSystem(bool withBondBond, RandomNumber& random, std::size_t numb
   return system;
 }
 
+// A 4-bead chain (CH3-CH2-CH2-CH3, charged like makeChainSystem) in a gauche conformation (bonds 1.54 Angstrom,
+// bends 114 degrees, torsion 70 degrees: away from the trans configuration where the torsion types that divide
+// by sin(phi) are ill-conditioned) with the given intramolecular terms, 64 molecules on a lattice; for the
+// comparison of the device term formulas with the host ones type by type.
+System makeTermChainSystem(const Potentials::IntraMolecularPotentials& potentials, RandomNumber& random)
+{
+  ForceField forceField = ForceField(
+      {{"CH3", false, 15.03452, 0.0, 0.0, 6, false}, {"CH2", false, 14.02658, 0.0, 0.0, 6, false}},
+      {{98.0, 3.75}, {46.0, 3.95}}, ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0, 9.0, false, false, true);
+  forceField.automaticEwald = false;
+  forceField.EwaldAlpha = 0.32;
+  forceField.numberOfWaveVectors = int3(20, 20, 20);
+  forceField.reciprocalCutOffSquared = std::numeric_limits<double>::max();
+  forceField.reciprocalIntegerCutOffSquared = 400;
+
+  ConnectivityTable connectivityTable(4);
+  for (std::size_t i = 0; i + 1 < 4; ++i)
+  {
+    connectivityTable[i, i + 1] = true;
+    connectivityTable[i + 1, i] = true;
+  }
+
+  // B at the origin, C along x, A in the xy-plane at the bend angle from BC, D at the bend angle from CB and
+  // rotated by the torsion angle out of the plane (0 = cis)
+  const double bond = 1.54;
+  const double bend = 114.0 * Units::DegreesToRadians;
+  const double torsion = 70.0 * Units::DegreesToRadians;
+  const double3 positions[4] = {double3(bond * std::cos(bend), bond * std::sin(bend), 0.0), double3(0.0, 0.0, 0.0),
+                                double3(bond, 0.0, 0.0),
+                                double3(bond - bond * std::cos(bend), bond * std::sin(bend) * std::cos(torsion),
+                                        bond * std::sin(bend) * std::sin(torsion))};
+  std::vector<Atom> beads{};
+  for (std::size_t i = 0; i < 4; ++i)
+  {
+    const bool end = (i == 0 || i == 3);
+    beads.push_back(Atom(positions[i], end ? 0.25 : -0.25, 1.0, 0, end ? 0 : 1, 0, false, false));
+  }
+  Component chain =
+      Component(forceField, "chain", 425.0, 3796000.0, 0.199, beads, connectivityTable, potentials, 5, 21);
+  // the molecules are placed from the component geometry (randomizeConfiguration moves them) rather than grown:
+  // the CBMC growth samples the bond lengths from the bond potential, which some of the tested types (a spring to
+  // r = 0, the repulsive-only forms) never let converge
+  std::vector<double3> initialPositions{};
+  for (std::size_t m = 0; m < 64; ++m)
+  {
+    for (const double3& position : positions) initialPositions.push_back(position);
+  }
+  System system = System(forceField, SimulationBox(40.0, 39.0, 41.0), false, 300.0, 1e5, 1.0, {}, {chain},
+                         {initialPositions}, {0}, 5);
+  randomizeConfiguration(system, random);
+  return system;
+}
+
 // A compact chain of n^3 beads on a boustrophedon path through an n x n x n lattice (3.8 Angstrom spacing, like a
 // coarse-grained protein backbone), with harmonic bonds and bends, TraPPE torsions, alternating charges and the
 // 1-4 pairs scaled by one half: a single molecule with far more atoms than the 256 of the old device slot packing.
@@ -1156,6 +1209,140 @@ TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_with_torsions)
   EXPECT_EQ(again.torsion, energy.torsion);
   EXPECT_EQ(rmsDifference(gradientsOf(system), gradient), 0.0);
   EXPECT_EQ(maxAbsDifference(device.molecularPressureTensor(), pressure), 0.0);
+}
+
+// Every bond, bend and torsion type the device term functions implement (bondTerm, bendTerm, torsionTerm of
+// bonded_kernel_source.cpp, transcribed from the potentialEnergyGradientStrain functions), one type at a time
+// against the host evaluation of the same system: the energy of the term kind, the gradients and the pressure.
+// The parameters (in the input units of the potentials: K, Angstrom, degrees) put the equilibrium geometry away
+// from the chain's conformation so that every term carries a force, and make the terms stiff enough that an
+// error in one of them exceeds the single-precision noise of the whole gradient.
+TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_every_bond_bend_and_torsion_type)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+
+  struct Case
+  {
+    std::string label;
+    BondType bond{BondType::Harmonic};
+    std::vector<double> bondParameters{96500.0, 1.50};
+    BendType bend{BendType::Harmonic};
+    std::vector<double> bendParameters{62500.0, 110.0};
+    TorsionType torsion{TorsionType::TraPPE};
+    std::vector<double> torsionParameters{0.0, 355.03, -68.19, 791.32};
+  };
+  std::vector<Case> cases;
+  auto bondCase = [&](std::string label, BondType type, std::vector<double> parameters)
+  {
+    Case c;
+    c.label = "bond " + std::move(label);
+    c.bond = type;
+    c.bondParameters = std::move(parameters);
+    cases.push_back(std::move(c));
+  };
+  auto bendCase = [&](std::string label, BendType type, std::vector<double> parameters)
+  {
+    Case c;
+    c.label = "bend " + std::move(label);
+    c.bend = type;
+    c.bendParameters = std::move(parameters);
+    cases.push_back(std::move(c));
+  };
+  auto torsionCase = [&](std::string label, TorsionType type, std::vector<double> parameters)
+  {
+    Case c;
+    c.label = "torsion " + std::move(label);
+    c.torsion = type;
+    c.torsionParameters = std::move(parameters);
+    cases.push_back(std::move(c));
+  };
+
+  // bonds: r about 1.54 +/- 0.1 Angstrom
+  bondCase("Harmonic", BondType::Harmonic, {96500.0, 1.50});
+  bondCase("CoreShellSpring", BondType::CoreShellSpring, {20000.0});
+  bondCase("Morse", BondType::Morse, {40000.0, 1.8, 1.50});
+  bondCase("LJ_12_6", BondType::LJ_12_6, {1.0e6, 1.0e5});
+  bondCase("LennardJones", BondType::LennardJones, {5000.0, 1.40});
+  bondCase("Buckingham", BondType::Buckingham, {1.0e6, 3.0, 1.0e4});
+  // the restraint width 0.03 Angstrom: the displaced bonds fall on both sides of it
+  bondCase("RestrainedHarmonic", BondType::RestrainedHarmonic, {96500.0, 1.50, 0.03});
+  bondCase("Quartic", BondType::Quartic, {96500.0, 1.50, -50000.0, 80000.0});
+  bondCase("CFF_Quartic", BondType::CFF_Quartic, {48000.0, 1.50, -30000.0, 40000.0});
+  bondCase("MM3", BondType::MM3, {4.5, 1.50});
+
+  // bends: theta about 114 +/- a few degrees
+  bendCase("Harmonic", BendType::Harmonic, {62500.0, 110.0});
+  bendCase("CoreShell", BendType::CoreShell, {62500.0, 110.0});
+  bendCase("Quartic", BendType::Quartic, {62500.0, 110.0, -20000.0, 30000.0});
+  bendCase("CFF_Quartic", BendType::CFF_Quartic, {31000.0, 110.0, -10000.0, 15000.0});
+  bendCase("HarmonicCosine", BendType::HarmonicCosine, {62500.0, 110.0});
+  bendCase("Cosine", BendType::Cosine, {5000.0, 3.0, 30.0});
+  bendCase("Tafipolsky", BendType::Tafipolsky, {5000.0});
+  bendCase("MM3", BendType::MM3, {2.0, 110.0});
+  bendCase("MM3_inplane", BendType::MM3_inplane, {2.0, 110.0});
+
+  // torsions: phi about 70 +/- a few degrees
+  torsionCase("Harmonic", TorsionType::Harmonic, {5000.0, 60.0});
+  torsionCase("HarmonicCosine", TorsionType::HarmonicCosine, {5000.0, 60.0});
+  torsionCase("ThreeCosine", TorsionType::ThreeCosine, {300.0, 400.0, 500.0});
+  torsionCase("RyckaertBellemans", TorsionType::RyckaertBellemans, {1000.0, 300.0, -400.0, 500.0, -600.0, 700.0});
+  torsionCase("TraPPE", TorsionType::TraPPE, {0.0, 355.03, -68.19, 791.32});
+  torsionCase("TraPPE_Extended", TorsionType::TraPPE_Extended, {100.0, 200.0, -300.0, 400.0, -500.0});
+  torsionCase("ModifiedTraPPE", TorsionType::ModifiedTraPPE, {0.0, 355.03, -68.19, 791.32, 20.0});
+  torsionCase("CVFF", TorsionType::CVFF, {500.0, 3.0, 30.0});
+  torsionCase("CFF", TorsionType::CFF, {300.0, 400.0, 500.0});
+  torsionCase("CFF2", TorsionType::CFF2, {300.0, 400.0, 500.0});
+  torsionCase("OPLS", TorsionType::OPLS, {100.0, 355.03, -68.19, 791.32});
+  torsionCase("MM3", TorsionType::MM3, {0.5, 0.3, 0.8});
+  torsionCase("FourierSeries", TorsionType::FourierSeries, {100.0, 200.0, 300.0, 400.0, 500.0, 600.0});
+  torsionCase("FourierSeries2", TorsionType::FourierSeries2, {100.0, 200.0, 300.0, 400.0, 500.0, 600.0});
+  torsionCase("Polynomial", TorsionType::Polynomial, {100.0, 200.0, 300.0, 400.0, 500.0, 600.0});
+
+  for (const Case& c : cases)
+  {
+    Potentials::IntraMolecularPotentials potentials{};
+    for (std::size_t i = 0; i < 3; ++i) potentials.bonds.push_back(BondPotential({i, i + 1}, c.bond, c.bondParameters));
+    for (std::size_t i = 0; i < 2; ++i)
+    {
+      potentials.bends.push_back(BendPotential({i, i + 1, i + 2}, c.bend, c.bendParameters));
+    }
+    potentials.torsions.push_back(TorsionPotential({0, 1, 2, 3}, c.torsion, c.torsionParameters));
+    potentials.vanDerWaals = {VanDerWaalsPotential({0, 3}, VDWParameters::Type::LennardJones, {98.0, 3.75}, 0.5)};
+    potentials.coulombs = {CoulombPotential({0, 3}, CoulombType::Coulomb, 0.25, 0.25, 0.5)};
+    RandomNumber random(23);
+    System system = makeTermChainSystem(potentials, random);
+
+    SpatialDecompositionSettings hostSettings = settingsFor(4, 1.5, 0.5);
+    hostSettings.pairDevice = pairDevice;
+    hostSettings.deviceBonded = false;
+    SpatialDecompositionForceEngine host(hostSettings);
+    host.initialize(system);
+    ASSERT_FALSE(host.usesDeviceBonded()) << c.label;
+    const RunningEnergy hostEnergy = host.computeGradients(system, true);
+    const std::vector<double3> hostGradient = gradientsOf(system);
+    EXPECT_NE(hostEnergy.bond, 0.0) << c.label;
+    EXPECT_NE(hostEnergy.bend, 0.0) << c.label;
+    EXPECT_NE(hostEnergy.torsion, 0.0) << c.label;
+
+    SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+    settings.pairDevice = pairDevice;
+    SpatialDecompositionForceEngine device(settings);
+    device.initialize(system);
+    ASSERT_TRUE(device.usesDeviceBonded()) << c.label;
+    const RunningEnergy energy = device.computeGradients(system, true);
+    const std::vector<double3> gradient = gradientsOf(system);
+
+    EXPECT_NEAR(energy.bond, hostEnergy.bond, 2e-5 * std::abs(hostEnergy.bond)) << c.label;
+    EXPECT_NEAR(energy.bend, hostEnergy.bend, 2e-5 * std::abs(hostEnergy.bend)) << c.label;
+    EXPECT_NEAR(energy.torsion, hostEnergy.torsion, 2e-5 * std::abs(hostEnergy.torsion)) << c.label;
+    EXPECT_NEAR(energy.potentialEnergy(), hostEnergy.potentialEnergy(), 2e-5 * std::abs(hostEnergy.potentialEnergy()))
+        << c.label;
+    EXPECT_LT(rmsDifference(gradient, hostGradient), 1e-5 * rmsNorm(hostGradient)) << c.label;
+    EXPECT_LT(maxAbsDifference(device.molecularPressureTensor(), host.molecularPressureTensor()),
+              1e-5 * maxAbs(host.molecularPressureTensor()))
+        << c.label;
+  }
 }
 
 TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_long_chain)
