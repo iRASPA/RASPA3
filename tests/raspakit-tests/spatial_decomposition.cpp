@@ -651,7 +651,75 @@ void expectKernelAgreesWithScalar(const SpatialDecompositionSettings& candidate,
     EXPECT_EQ(engine.timings().rebuilds, 1uz);
   }
 }
+
+// A barostat re-derives the automatic cutoffs after every cell change; the kernels prepared with the old cutoffs
+// (the specialised cluster kernels and the device hold them as parameters) must follow. The Lennard-Jones cutoff is
+// lowered from 9 to 7 A on an engine that has already evaluated the system, with and without charges (with charges
+// the Coulomb cutoff and the Ewald alpha stay, so the Ewald table alone does not signal the change), and compared
+// with an engine prepared at 7 A from the start.
+void expectKernelFollowsACutoffChange(const SpatialDecompositionSettings& settings, bool withCharge,
+                                      double tolerance)
+{
+  ForceField forceField = makeWaterForceField();
+  forceField.useCharge = withCharge;
+  Component water = makeWater(forceField);
+  const auto makeSystem = [&]()
+  {
+    System system =
+        System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {water}, {}, {343}, 5);
+    RandomNumber random(13);
+    randomizeConfiguration(system, random);
+    return system;
+  };
+
+  System system = makeSystem();
+  SpatialDecompositionForceEngine engine(settings);
+  engine.initialize(system);
+  ASSERT_TRUE(engine.usesFastKernel());
+  const RunningEnergy before = engine.computeGradients(system, true);
+
+  system.forceField.cutOffMoleculeVDW = 7.0;
+  const RunningEnergy changed = engine.computeGradients(system, true);
+  const std::vector<double3> changedGradient = gradientsOf(system);
+  const double3x3 changedPressure = engine.molecularPressureTensor();
+
+  System reference = makeSystem();
+  reference.forceField.cutOffMoleculeVDW = 7.0;
+  SpatialDecompositionForceEngine fresh(settings);
+  fresh.initialize(reference);
+  ASSERT_TRUE(fresh.usesFastKernel());
+  const RunningEnergy expected = fresh.computeGradients(reference, true);
+  const std::vector<double3> expectedGradient = gradientsOf(reference);
+
+  // the shorter cutoff changes the Lennard-Jones energy by far more than the tolerance
+  EXPECT_GT(std::abs(expected.moleculeMoleculeVDW - before.moleculeMoleculeVDW),
+            1e-3 * std::abs(expected.moleculeMoleculeVDW));
+  EXPECT_NEAR(changed.moleculeMoleculeVDW, expected.moleculeMoleculeVDW,
+              tolerance * std::abs(expected.moleculeMoleculeVDW));
+  EXPECT_NEAR(changed.moleculeMoleculeCharge, expected.moleculeMoleculeCharge,
+              tolerance * std::max(1.0, std::abs(expected.moleculeMoleculeCharge)));
+  EXPECT_NEAR(changed.potentialEnergy(), expected.potentialEnergy(), tolerance * std::abs(expected.potentialEnergy()));
+  EXPECT_LT(rmsDifference(changedGradient, expectedGradient), tolerance * rmsNorm(expectedGradient));
+  EXPECT_LT(maxAbsDifference(changedPressure, fresh.molecularPressureTensor()),
+            tolerance * maxAbs(fresh.molecularPressureTensor()));
+}
 }  // namespace
+
+TEST(spatial_decomposition, engine_cluster_kernels_follow_a_cutoff_change)
+{
+  for (const bool withCharge : {false, true})
+  {
+    SpatialDecompositionSettings mixed = settingsFor(2);
+    mixed.pairPrecision = PairPrecision::Mixed;
+    expectKernelFollowsACutoffChange(mixed, withCharge, 1e-6);
+
+    SpatialDecompositionSettings cluster = settingsFor(2);
+    cluster.clusterKernelForDouble = true;
+    expectKernelFollowsACutoffChange(cluster, withCharge, 1e-10);
+
+    expectKernelFollowsACutoffChange(settingsFor(2), withCharge, 1e-10);
+  }
+}
 
 TEST(spatial_decomposition, engine_cluster_kernel_double_matches_scalar_rigid_water)
 {
@@ -694,6 +762,18 @@ TEST_P(SpatialDecompositionDevice, engine_device_pair_kernel_agrees_with_double_
   settings.deviceBonded = false;
   expectKernelAgreesWithScalar(settings,
                                {.vdw = 1e-6, .charge = 1e-4, .total = 1e-5, .gradient = 1e-5, .pressure = 1e-5});
+}
+
+TEST_P(SpatialDecompositionDevice, engine_device_kernel_follows_a_cutoff_change)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  for (const bool withCharge : {false, true})
+  {
+    SpatialDecompositionSettings settings = settingsFor(1);
+    settings.pairDevice = pairDevice;
+    expectKernelFollowsACutoffChange(settings, withCharge, 1e-5);
+  }
 }
 
 TEST_P(SpatialDecompositionDevice, engine_device_pair_kernel_without_pruning_rigid_water)

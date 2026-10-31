@@ -7,6 +7,7 @@ import std;
 import double3;
 import double3x3;
 import running_energy;
+import forcefield;
 import system;
 import spatial_decomposition_settings;
 import spatial_decomposition_cell_list;
@@ -191,6 +192,19 @@ export class SpatialDecompositionForceEngine
   // on request for validation)
   bool fastKernel{false};
   bool fastCoulomb{false};
+  /// The force-field values the kernels were prepared with (prepareKernel bakes the cutoffs, the Ewald alpha and the
+  /// switching polynomials into the cluster / device kernel parameters): a change (the automatic cutoffs after a
+  /// cell change of the barostat) prepares them again.
+  struct PreparedParameters
+  {
+    double cutOffMoleculeVDW{-1.0};
+    double cutOffCoulomb{-1.0};
+    double ewaldAlpha{-1.0};
+    bool useCharge{false};
+    bool operator==(const PreparedParameters&) const = default;
+  };
+  PreparedParameters prepared{};
+  static PreparedParameters parametersOf(const ForceField& forceField);
   std::size_t numberOfPseudoAtomTypes{0};
   std::vector<LennardJonesPair> lennardJones{};
   LennardJonesSwitching lennardJonesSwitching{};

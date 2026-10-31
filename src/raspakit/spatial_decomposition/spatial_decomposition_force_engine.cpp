@@ -535,13 +535,25 @@ void SpatialDecompositionForceEngine::refreshCutoffs(System& system)
   {
     cellList.setup(system.simulationBox, cutoff, settings.verletSkin, settings.numberOfThreads, settings.domainGrid);
   }
-  if (fastCoulomb && (forceField.EwaldAlpha != ewaldTable.alpha || !ewaldTable.spans(forceField.cutOffCoulomb)))
+  // the specialised kernels (cluster kernel, device) hold the cutoffs, the Ewald alpha and the switching polynomials
+  // as parameters, and the kernel choice depends on whether the Ewald table can span the (new) Coulomb cutoff: any
+  // change prepares them again (the generic kernel reads the force field directly); the cluster lists of the
+  // specialised kernel follow the choice at the next build
+  if (parametersOf(forceField) != prepared ||
+      (fastCoulomb && (forceField.EwaldAlpha != ewaldTable.alpha || !ewaldTable.spans(forceField.cutOffCoulomb))))
   {
-    // the kernel choice depends on whether the table can span the (new) cutoff; the cluster lists of the
-    // specialised kernel follow the choice at the next build
     prepareKernel(system);
     cellList.numberOfBuilds = 0;
   }
+}
+
+SpatialDecompositionForceEngine::PreparedParameters SpatialDecompositionForceEngine::parametersOf(
+    const ForceField& forceField)
+{
+  return PreparedParameters{.cutOffMoleculeVDW = forceField.cutOffMoleculeVDW,
+                            .cutOffCoulomb = forceField.cutOffCoulomb,
+                            .ewaldAlpha = forceField.EwaldAlpha,
+                            .useCharge = forceField.useCharge};
 }
 
 void SpatialDecompositionForceEngine::topologyChanged(System& system)
@@ -1403,7 +1415,9 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
                               forceField.EwaldAlpha, settings.verletSkin, settings.pruneSkin);
     devicePairs.setSwitching(lennardJonesSwitching);
     devicePairs.setEwaldAlpha(forceField.EwaldAlpha);
-    devicePairs.setExclusions(system);
+    // the exclusion table goes up once, before the next build (preparePairListExclusions), rather than on every
+    // call (the automatic cutoffs change at every step of a barostat run)
+    pairExclusionsOutdated = true;
   }
   else if (fastKernel && usesClusterKernel())
   {
@@ -1424,6 +1438,7 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
       clusterKernelDouble.setSwitching(lennardJonesSwitching);
     }
   }
+  prepared = parametersOf(forceField);
 }
 
 void SpatialDecompositionForceEngine::buildClusterLists(std::size_t thread)
