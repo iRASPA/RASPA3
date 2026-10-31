@@ -51,30 +51,47 @@ std::optional<RunningEnergy> MC_Moves::tetheredProtonHopMove(RandomNumber& rando
     cartesianSites[i] = system.simulationBox.cell * fractionalSites[i];
   }
 
-  // The site the proton currently occupies is the nearest candidate (minimum image).
-  std::size_t currentSite = 0;
-  double nearestDistanceSquared = std::numeric_limits<double>::max();
-  for (std::size_t i = 0; i < cartesianSites.size(); ++i)
+  // The site a position belongs to is the nearest candidate (minimum image).
+  const auto nearestSite = [&](const double3& position)
   {
-    const double3 dr = system.simulationBox.applyPeriodicBoundaryConditions(cartesianSites[i] - currentPosition);
-    const double distanceSquared = dr.length_squared();
-    if (distanceSquared < nearestDistanceSquared)
+    std::size_t nearest = 0;
+    double nearestDistanceSquared = std::numeric_limits<double>::max();
+    for (std::size_t i = 0; i < cartesianSites.size(); ++i)
     {
-      nearestDistanceSquared = distanceSquared;
-      currentSite = i;
+      const double3 dr = system.simulationBox.applyPeriodicBoundaryConditions(cartesianSites[i] - position);
+      const double distanceSquared = dr.length_squared();
+      if (distanceSquared < nearestDistanceSquared)
+      {
+        nearestDistanceSquared = distanceSquared;
+        nearest = i;
+      }
     }
-  }
+    return nearest;
+  };
+  const std::size_t currentSite = nearestSite(currentPosition);
 
   // Propose a different site of the same group, drawn uniformly among the remaining candidates.
   std::size_t targetSite = static_cast<std::size_t>(random.uniform_integer(0, cartesianSites.size() - 2));
   if (targetSite >= currentSite) ++targetSite;
 
-  // The displacement carries the proton from its current position to the chosen candidate site,
-  // wrapped to the minimum image so that the jump crosses periodic boundaries correctly.
+  // The displacement is the site-to-site vector (minimum image), not the vector from the current position
+  // to the target site: the proton keeps its thermal offset from the site centre. Combined with
+  // translation moves the proton is generally off-centre, and snapping it onto the exact centre would make
+  // the hop irreversible (the reverse hop could never regenerate the off-centre position), breaking
+  // detailed balance. With the site-to-site vector the reverse hop (target -> current) applies exactly the
+  // opposite displacement and restores the old position, so the proposal is symmetric.
   const double3 displacement =
-      system.simulationBox.applyPeriodicBoundaryConditions(cartesianSites[targetSite] - currentPosition);
+      system.simulationBox.applyPeriodicBoundaryConditions(cartesianSites[targetSite] - cartesianSites[currentSite]);
 
   std::pair<Molecule, std::vector<Atom>> trialMolecule = component.translate(molecule, molecule_atoms, displacement);
+
+  // The reverse hop must classify the trial position as belonging to the target site; when the offset is so
+  // large that the trial position is nearer to another site (the Voronoi cells of the sites differ in
+  // shape), the reverse proposal would never be generated and the move is rejected.
+  if (nearestSite(trialMolecule.second[startingBead].position) != targetSite)
+  {
+    return std::nullopt;
+  }
 
   if (system.insideBlockedPockets(component, trialMolecule.second))
   {
@@ -127,7 +144,8 @@ std::optional<RunningEnergy> MC_Moves::tetheredProtonHopMove(RandomNumber& rando
   else
   {
     interMolecule = Interactions::computeInterMolecularEnergyDifference(
-        system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
+        system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), trialMolecule.second,
+        molecule_atoms);
   }
   time_end = std::chrono::steady_clock::now();
   component.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);
@@ -179,6 +197,7 @@ std::optional<RunningEnergy> MC_Moves::tetheredProtonHopMove(RandomNumber& rando
 
     std::copy(trialMolecule.second.cbegin(), trialMolecule.second.cend(), molecule_atoms.begin());
     molecule = trialMolecule.first;
+    system.cellListAtomsMoved(molecule_atoms);
 
     if (system.forceField.computePolarization)
     {

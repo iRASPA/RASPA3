@@ -125,6 +125,7 @@ bool MC_Moves::maintainsCellList(Move::Types moveType)
     case Move::Types::TranslationSmartMC:
     case Move::Types::RotationSmartMC:
     case Move::Types::TranslationRotationSmartMC:
+    case Move::Types::TetheredProtonHop:
     case Move::Types::ReinsertionCBMC:
     case Move::Types::ReinsertionMultiTrialCBMC:
     case Move::Types::PartialReinsertionCBMC:
