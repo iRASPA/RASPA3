@@ -71,9 +71,16 @@ struct MultiTrialRetraceResult
   /// Number of reference trials that could be constructed.
   std::size_t numberOfConstructed{0};
   /// The retrace-side counterpart of 'MultiTrialGrowResult::logProposalCorrection':
-  /// +beta (U_target(old) - U_proposal(old)), to be ADDED to the log acceptance. Zero for the CPU grower.
+  /// +beta (U_target(old) - U_proposal(old)), to be ADDED to the log acceptance. Zero for the CPU grower. When the
+  /// proposal potential gives the existing configuration zero weight (the grow side could never have produced it),
+  /// the correction is 'rejectedLogProposalCorrection': the move's acceptance probability underflows to zero.
   double logProposalCorrection{0.0};
 };
+
+/// The log proposal correction of a configuration the proposal potential can not produce: a finite stand-in for
+/// minus infinity (the code is compiled with fast-math, so an infinity could not be relied on), chosen so that it
+/// dominates every other finite term of a log acceptance and its exponential underflows to exactly zero.
+inline constexpr double rejectedLogProposalCorrection = -1.0e300;
 
 /**
  * \brief Grows M complete trial molecules and selects one (or retraces one against M-1 references).

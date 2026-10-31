@@ -87,11 +87,13 @@ class DeviceGrowEnvironment
   PairDevice device() const { return kind; }
   std::string deviceName() const;
 
-  /// Fixes the pair tables, the cutoffs and the Ewald parameters from the force field (re-uploaded when the
-  /// force field object or its size changed), and the box.
+  /// Fixes the pair tables, the cutoffs and the Ewald parameters from the force field, and the box. The pair
+  /// table is rebuilt on the host every call and re-uploaded only when its contents changed: the environment is
+  /// shared by every system of the process, so the identity of the force-field object says nothing about what
+  /// the device holds (another system, or a force field rebuilt in place, may have the same address).
   void setForceField(const ForceField& forceField, const SimulationBox& box);
 
-  /// Uploads the background of a move: the framework atoms (re-uploaded only when the span or the box changed)
+  /// Uploads the background of a move: the framework atoms (re-uploaded only when their packed contents changed)
   /// followed by the molecule atoms (always). Call after 'setForceField'.
   void setBackground(std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms);
 
@@ -115,12 +117,13 @@ class DeviceGrowEnvironment
   DeviceBufferOwner trialTypeBuffer;
   DeviceBufferOwner partialBuffer;
 
-  // cache keys of the uploaded tables and framework
-  const ForceField* uploadedForceField{nullptr};
+  // What the device currently holds, by content (the environment is a process-wide singleton: keys by object
+  // address or span size alone would alias between systems and miss in-place changes).
+  std::vector<std::array<float, 4>> uploadedLennardJones;
   std::size_t uploadedTypes{0};
-  const Atom* uploadedFrameworkData{nullptr};
-  std::size_t uploadedFrameworkSize{std::numeric_limits<std::size_t>::max()};
-  std::array<float, 9> uploadedCell{};
+  std::vector<std::array<float, 4>> uploadedFrameworkPositions;
+  std::vector<std::uint32_t> uploadedFrameworkTypes;
+  bool frameworkUploaded{false};
   std::size_t backgroundCapacity{0};
   std::size_t trialCapacity{0};
   std::size_t partialCapacity{0};

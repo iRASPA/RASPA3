@@ -115,24 +115,31 @@ std::string CBMC::DeviceGrowEnvironment::deviceName() const { return context ? c
 void CBMC::DeviceGrowEnvironment::setForceField(const ForceField& forceField, const SimulationBox& box)
 {
   const std::size_t types = forceField.pseudoAtoms.size();
-  if (uploadedForceField != &forceField || uploadedTypes != types)
+
+  // 4 epsilon, sigma^2, shift per type pair; a 'None' pair is all zeros (u = 0). The table is rebuilt every call
+  // (types^2 entries, negligible next to a batch evaluation) and compared by content with what the device holds:
+  // the environment is a process-wide singleton, so the address of 'forceField' can not key the cache (two systems
+  // may hold different force fields at the same address over time, or one force field may change in place).
+  std::vector<std::array<float, 4>> table(types * types, {0.0f, 0.0f, 0.0f, 0.0f});
+  for (std::size_t a = 0; a < types; ++a)
   {
-    // 4 epsilon, sigma^2, shift per type pair; a 'None' pair is all zeros (u = 0)
-    std::vector<std::array<float, 4>> table(types * types, {0.0f, 0.0f, 0.0f, 0.0f});
-    for (std::size_t a = 0; a < types; ++a)
+    for (std::size_t b = 0; b < types; ++b)
     {
-      for (std::size_t b = 0; b < types; ++b)
-      {
-        const VDWParameters& pair = forceField(a, b);
-        if (pair.type != VDWParameters::Type::LennardJones) continue;
-        const double sigma = pair.parameters.y;
-        table[a * types + b] = {static_cast<float>(4.0 * pair.parameters.x), static_cast<float>(sigma * sigma),
-                                static_cast<float>(pair.shift), 0.0f};
-      }
+      const VDWParameters& pair = forceField(a, b);
+      if (pair.type != VDWParameters::Type::LennardJones) continue;
+      const double sigma = pair.parameters.y;
+      table[a * types + b] = {static_cast<float>(4.0 * pair.parameters.x), static_cast<float>(sigma * sigma),
+                              static_cast<float>(pair.shift), 0.0f};
     }
-    lennardJonesBuffer.allocate(*context, table.size() * sizeof(std::array<float, 4>), DeviceMemory::Device);
+  }
+  if (!lennardJonesBuffer || uploadedTypes != types || uploadedLennardJones != table)
+  {
+    if (!lennardJonesBuffer || uploadedTypes != types)
+    {
+      lennardJonesBuffer.allocate(*context, table.size() * sizeof(std::array<float, 4>), DeviceMemory::Device);
+    }
     context->write(lennardJonesBuffer.get(), 0, table.size() * sizeof(std::array<float, 4>), table.data(), true);
-    uploadedForceField = &forceField;
+    uploadedLennardJones = std::move(table);
     uploadedTypes = types;
   }
 
@@ -158,7 +165,7 @@ void CBMC::DeviceGrowEnvironment::ensureBackgroundCapacity(std::size_t atoms)
   backgroundTypeBuffer.allocate(*context, backgroundCapacity * sizeof(std::uint32_t), DeviceMemory::Device);
   backgroundMoleculeBuffer.allocate(*context, backgroundCapacity * sizeof(std::uint32_t), DeviceMemory::Device);
   // a reallocation loses the cached framework
-  uploadedFrameworkSize = std::numeric_limits<std::size_t>::max();
+  frameworkUploaded = false;
 }
 
 void CBMC::DeviceGrowEnvironment::setBackground(std::span<const Atom> frameworkAtoms,
@@ -166,11 +173,6 @@ void CBMC::DeviceGrowEnvironment::setBackground(std::span<const Atom> frameworkA
 {
   const std::size_t total = frameworkAtoms.size() + moleculeAtoms.size();
   ensureBackgroundCapacity(total);
-
-  std::array<float, 9> cell{};
-  std::copy(std::begin(parameters.cell), std::end(parameters.cell), cell.begin());
-  const bool frameworkChanged = uploadedFrameworkData != frameworkAtoms.data() ||
-                                uploadedFrameworkSize != frameworkAtoms.size() || uploadedCell != cell;
 
   auto pack = [&](std::span<const Atom> atoms, std::uint32_t typeBits, bool framework)
   {
@@ -197,13 +199,19 @@ void CBMC::DeviceGrowEnvironment::setBackground(std::span<const Atom> frameworkA
                    hostMolecules.data(), true);
   };
 
+  // The framework is packed every call (a linear pass, cheap next to the batch evaluation) and re-uploaded only
+  // when the packed contents differ from what the device holds. The span's address and size can not key the
+  // cache: the environment is shared by every system of the process, and a framework may be replaced in place
+  // (another system's framework at the same address, a volume move, a reloaded structure).
+  pack(frameworkAtoms, frameworkBit, true);
+  const bool frameworkChanged =
+      !frameworkUploaded || uploadedFrameworkPositions != hostPositions || uploadedFrameworkTypes != hostTypes;
   if (frameworkChanged)
   {
-    pack(frameworkAtoms, frameworkBit, true);
     upload(0, frameworkAtoms.size());
-    uploadedFrameworkData = frameworkAtoms.data();
-    uploadedFrameworkSize = frameworkAtoms.size();
-    uploadedCell = cell;
+    uploadedFrameworkPositions = hostPositions;
+    uploadedFrameworkTypes = hostTypes;
+    frameworkUploaded = true;
   }
   numberOfFramework = frameworkAtoms.size();
   pack(moleculeAtoms, 0u, false);

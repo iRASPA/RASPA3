@@ -27,6 +27,8 @@ import mc_moves_move_types;
 import mc_moves_probabilities;
 import simd_quatd;
 import spatial_decomposition_settings;
+import bend_potential;
+import intra_molecular_potentials;
 import cbmc;
 import cbmc_external_energy;
 import cbmc_multi_trial;
@@ -681,4 +683,223 @@ TEST(MC_MULTI_TRIAL_CBMC, device_loading_matches_cpu_grower_methane_fau)
   EXPECT_GT(meanDevice, 1.0);
   EXPECT_NEAR(meanDevice, meanCPU, 3.0 * (errorCPU + errorDevice) + 0.05 * meanCPU)
       << "CPU: " << meanCPU << " +/- " << errorCPU << ", device: " << meanDevice << " +/- " << errorDevice;
+}
+
+// A rigid molecule carries no bonds, but a programmatic component may still carry other internal terms (a bend,
+// say); their energy is a constant of the rigid geometry. The CPU grower reports it in the grown and retraced
+// energies ('finishGrownChain' / 'finishRetracedChain'), and so must the device grower: otherwise the running
+// energies miss the internal energy of every molecule the device inserts or deletes.
+TEST(MC_MULTI_TRIAL_CBMC, device_grower_reports_the_internal_energies_of_a_rigid_molecule)
+{
+  const std::optional<PairDevice> device = availableCBMCDevice();
+  if (!device.has_value()) GTEST_SKIP() << "no CBMC device available";
+
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
+
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  probabilities.setProbability(Move::Types::Rotation, 1.0);
+  probabilities.setProbability(Move::Types::ReinsertionMultiTrialCBMC, 1.0);
+  probabilities.setProbability(Move::Types::SwapMultiTrialCBMC, 1.0);
+
+  // a harmonic bend at 170 degrees on the linear O-C-O: (1/2) k (10 degrees)^2 per molecule, whatever its placement
+  const double bendConstant = 1000.0;
+  const double bendAngle = 170.0;
+  Potentials::IntraMolecularPotentials internal{};
+  internal.bends.push_back(BendPotential({0, 1, 2}, BendType::Harmonic, {bendConstant, bendAngle}));
+  const double bendEnergy = 0.5 * bendConstant * Units::KelvinToEnergy * std::pow(10.0 * Units::DegreesToRadians, 2);
+
+  Component co2 = Component(forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
+                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
+                            {}, internal, 5, 21, probabilities, std::nullopt, false);
+  co2.numberOfTrialMolecules = 8;
+  ASSERT_TRUE(co2.rigid);
+  ASSERT_EQ(co2.intraMolecularPotentials.bends.size(), 1uz);
+
+  System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2}, {}, {10}, 5);
+  system.cbmcDevice = device.value();
+  const Component &component = system.components[0];
+
+  // the grower itself: the energies of a grown and of a retraced molecule carry the bend term
+  {
+    const CBMC::GrowContext context = system.makeGrowContext();
+    std::string reason;
+    ASSERT_TRUE(CBMC::DeviceMultiTrialGrower::supports(context, component, reason)) << reason;
+    const CBMC::MultiTrialGrower &grower = CBMC::deviceMultiTrialGrower(device.value());
+    const CBMC::LongRangeCorrection zero = [](std::span<const Atom>) { return 0.0; };
+    RandomNumber random(3);
+
+    const CBMC::NewMoleculeIdentity identity{.componentId = 0, .moleculeId = system.numberOfMolecules()};
+    const std::optional<CBMC::MultiTrialGrowResult> grown =
+        grower.growNew(random, context, component, identity, 8, zero);
+    ASSERT_TRUE(grown.has_value());
+    EXPECT_NEAR(grown->selected.energies.bend, bendEnergy, 1e-10);
+    // the internal energy is a constant of the rigid geometry: it is not part of the proposal correction, which is
+    // the single-versus-double precision difference of the external energy (far below beta * bendEnergy = 0.05)
+    EXPECT_LT(std::abs(grown->logProposalCorrection), 0.2 * system.beta * bendEnergy);
+
+    const std::span<const Atom> existing = system.spanOfMolecule(0, 0);
+    const CBMC::MultiTrialRetraceResult retraced = grower.retraceNew(
+        random, context, component, existing, {.componentId = 0, .moleculeId = existing.front().moleculeId}, 8, zero);
+    EXPECT_NEAR(retraced.old.energies.bend, bendEnergy, 1e-10);
+    EXPECT_LT(std::abs(retraced.logProposalCorrection), 0.2 * system.beta * bendEnergy);
+
+    // the CPU grower reports the same internal term (to the round-off of its rotated geometry: the bend of a
+    // placed molecule is recomputed from the rotated positions, a few 1e-6 off the reference value)
+    const std::optional<CBMC::MultiTrialGrowResult> grownCPU =
+        CBMC::cpuMultiTrialGrower().growNew(random, context, component, identity, 8, zero);
+    ASSERT_TRUE(grownCPU.has_value());
+    EXPECT_NEAR(grownCPU->selected.energies.bend, bendEnergy, 1e-4);
+  }
+
+  // through the moves: the bend energy of the molecules inserted and deleted on the device is accounted for (an
+  // omitted term would show as a drift of 'bendEnergy' = 12.7 per inserted molecule; the round-off of the rotated
+  // geometries is a few 1e-6)
+  MonteCarlo mc = makeMonteCarlo({system}, 20, 5, 5);
+  mc.run();
+
+  for (System &s : mc.systems)
+  {
+    EXPECT_EQ(s.cbmcDevice, device.value());
+    expectNoEnergyDrift(s, 1e-4);
+    const RunningEnergy drift = s.runningEnergies - s.computeTotalEnergies();
+    EXPECT_NEAR(drift.bend, 0.0, 1e-4);
+    EXPECT_NEAR(s.runningEnergies.bend, static_cast<double>(s.numberOfIntegerMoleculesPerComponent[0]) * bendEnergy,
+                1e-4);
+
+    const MoveStatistics<double3> &swapStatistics =
+        std::get<MoveStatistics<double3>>(s.components[0].mc_moves_statistics[Move::Types::SwapMultiTrialCBMC]);
+    EXPECT_GT(swapStatistics.totalAccepted.x + swapStatistics.totalAccepted.y, 0.0);
+  }
+}
+
+// The device environment is shared by every system of the process: what it holds must be keyed by content, not by
+// the address of the force field or of the framework span. A force field changed in place (same object, same
+// number of types) and a framework moved in place (same span) must both reach the device.
+TEST(MC_MULTI_TRIAL_CBMC, device_environment_tracks_in_place_changes_of_the_force_field_and_framework)
+{
+  const std::optional<PairDevice> device = availableCBMCDevice();
+  if (!device.has_value()) GTEST_SKIP() << "no CBMC device available";
+
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
+  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
+                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 6, 0, false, false)}, {}, {}, 5, 21,
+                                MCMoveProbabilities(), std::nullopt, false);
+  // no molecules: the background is the framework alone
+  System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {methane}, {}, {0}, 5);
+  const Component &component = system.components[0];
+  const CBMC::GrowContext context = system.makeGrowContext(CBMC::CutOffMode::Full);
+
+  // a few methane trial positions, kept away from overlaps
+  RandomNumber random(17);
+  std::vector<Atom> trials;
+  while (trials.size() < 16)
+  {
+    Atom atom = component.atoms[0];
+    atom.position = context.simulationBox.randomPosition(random);
+    atom.moleculeId = 0;
+    const std::optional<RunningEnergy> host = computeExternalNonOverlappingEnergy(context, component, std::span(&atom, 1));
+    if (host.has_value() && host->potentialEnergy() < 0.0) trials.push_back(atom);
+  }
+
+  CBMC::DeviceGrowEnvironment environment(device.value());
+  std::vector<CBMC::DeviceTrialEnergy> energies;
+  const double tolerance = 2e-4;
+
+  auto deviceVDW = [&](std::span<const Atom> frameworkAtoms) -> std::vector<double>
+  {
+    environment.setForceField(system.forceField, context.simulationBox);
+    environment.setBackground(frameworkAtoms, context.moleculeAtoms);
+    environment.evaluate(trials, 1, 0, std::nullopt, energies);
+    std::vector<double> values;
+    for (const CBMC::DeviceTrialEnergy &energy : energies) values.push_back(energy.vdw);
+    return values;
+  };
+  auto hostVDW = [&](std::span<const Atom> atoms) -> std::vector<double>
+  {
+    std::vector<double> values;
+    for (const Atom &atom : atoms)
+    {
+      const std::optional<RunningEnergy> host = computeExternalNonOverlappingEnergy(context, component, std::span(&atom, 1));
+      values.push_back(host.has_value() ? host->frameworkMoleculeVDW : std::numeric_limits<double>::quiet_NaN());
+    }
+    return values;
+  };
+  auto expectMatch = [&](const std::vector<double> &deviceValues, const std::vector<double> &hostValues,
+                         std::string_view stage)
+  {
+    ASSERT_EQ(deviceValues.size(), hostValues.size());
+    for (std::size_t i = 0; i < deviceValues.size(); ++i)
+    {
+      const double scale = std::max(std::abs(hostValues[i]), 1000.0 * Units::KelvinToEnergy);
+      EXPECT_NEAR(deviceValues[i], hostValues[i], tolerance * scale) << stage << ", trial " << i;
+    }
+  };
+
+  // 1. the reference
+  const std::vector<double> before = deviceVDW(context.frameworkAtoms);
+  expectMatch(before, hostVDW(trials), "reference");
+
+  // 2. the force field changed in place: the methane-framework epsilons doubled (same object, same type count)
+  for (std::size_t type : {1uz, 3uz})
+  {
+    system.forceField(6, type).parameters.x *= 2.0;
+    system.forceField(type, 6).parameters.x *= 2.0;
+  }
+  system.forceField.preComputePotentialShift();
+  const std::vector<double> doubled = deviceVDW(context.frameworkAtoms);
+  expectMatch(doubled, hostVDW(trials), "force field changed in place");
+  for (std::size_t i = 0; i < before.size(); ++i)
+  {
+    EXPECT_GT(std::abs(doubled[i] - before[i]), 1e-3 * std::abs(before[i])) << "trial " << i;
+  }
+
+  // 3. the framework moved in place: every framework atom shifted by the same vector, in a copy whose span
+  //    (address and size) is unchanged between the two uploads; the device must see the shifted framework
+  std::vector<Atom> frameworkCopy(context.frameworkAtoms.begin(), context.frameworkAtoms.end());
+  const std::vector<double> unshifted = deviceVDW(frameworkCopy);
+  expectMatch(unshifted, hostVDW(trials), "framework copy");
+
+  const double3 shift(1.3, -0.7, 0.4);
+  for (Atom &atom : frameworkCopy) atom.position += shift;
+  const std::vector<double> shifted = deviceVDW(frameworkCopy);
+  // the energy of a trial against the shifted framework is that of the back-shifted trial against the original
+  std::vector<Atom> backShifted = trials;
+  for (Atom &atom : backShifted) atom.position -= shift;
+  expectMatch(shifted, hostVDW(backShifted), "framework shifted in place");
+  std::size_t changed = 0;
+  for (std::size_t i = 0; i < shifted.size(); ++i)
+  {
+    if (std::abs(shifted[i] - unshifted[i]) > 1e-3 * std::abs(unshifted[i])) ++changed;
+  }
+  EXPECT_GT(changed, 0uz);
+}
+
+// The proposal potential (the device's single-precision energies) gives a trial that overlaps zero weight, so the
+// grow side can never produce such a configuration. When the device flags the EXISTING molecule as overlapping on
+// the retrace side (a rounding case at the overlap criterion), the reverse move has no forward counterpart and is
+// rejected: the correction is the finite stand-in for minus infinity and the acceptance underflows to zero in every
+// consumer of the result. Clamping the energy instead would give a finite acceptance when no reference trial is
+// constructed (the clamped weight cancels against the mean weight).
+TEST(MC_MULTI_TRIAL_CBMC, rejected_log_proposal_correction_underflows_every_acceptance)
+{
+  const double correction = CBMC::rejectedLogProposalCorrection;
+  EXPECT_TRUE(std::isfinite(correction));
+
+  // the way the moves combine the terms: exp(logMeanWeight_new - logMeanWeight_old + corrections + prefactors)
+  for (double other : {-1e6, 0.0, 1e6, 700.0, 1e3 * 300.0})
+  {
+    EXPECT_EQ(std::exp(other + correction), 0.0) << other;
+    EXPECT_EQ(std::exp(other - 1e6 + correction + 50.0), 0.0) << other;
+  }
+  // and the check against a uniform draw never accepts
+  RandomNumber random(1);
+  for (std::size_t i = 0; i < 1000; ++i)
+  {
+    EXPECT_FALSE(random.uniform() < std::exp(1e6 + correction));
+  }
 }

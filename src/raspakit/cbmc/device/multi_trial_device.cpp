@@ -230,7 +230,15 @@ std::optional<CBMC::MultiTrialGrowResult> CBMC::DeviceMultiTrialGrower::growBatc
 
   const double deviceEnergy = energies[selected.selectedSet].total();
   std::vector<Atom> atoms(selectedAtoms.begin(), selectedAtoms.end());
-  GrowResult grow(component.createMoleculeRecord(atoms), std::move(atoms), hostEnergy.value(), selected.logWeight);
+  // As the CPU grower ('finishGrownChain'), the result carries the internal energies of the molecule next to the
+  // external ones: the running energies of the system receive the sum. A rigid molecule carries no bonds (and no
+  // intramolecular pairs), but may carry other internal terms (a programmatic component with bends, torsions,
+  // ...); their value is a constant of the rigid geometry, so it does not enter the proposal correction, which is
+  // the ratio of the external Boltzmann factors of the target and the proposal potential.
+  const RunningEnergy internalEnergies =
+      component.intraMolecularPotentials.computeInternalEnergies(context.forceField, context.simulationBox, atoms);
+  GrowResult grow(component.createMoleculeRecord(atoms), std::move(atoms), hostEnergy.value() + internalEnergies,
+                  selected.logWeight);
   return MultiTrialGrowResult{.selected = std::move(grow),
                               .selectedLongRangeEnergy = selected.longRangeEnergy,
                               .logMeanWeight = logSumExp(logWeightsTilde) - std::log(static_cast<double>(M)),
@@ -266,11 +274,16 @@ CBMC::MultiTrialRetraceResult CBMC::DeviceMultiTrialGrower::retraceBatch(
     environment->evaluate(batch, n, moleculeAtoms.front().moleculeId, context.skipBackgroundMolecule, energies);
   }
 
-  // The existing molecule always counts (an overlap flagged by the device for an accepted configuration can only
-  // be a borderline rounding case: it is given the overlap criterion as its energy, i.e. a finite tiny weight).
+  // The existing molecule always counts in its group. When the device flags it as overlapping (a borderline
+  // rounding case of an accepted configuration: a pair energy at the overlap criterion in single precision), the
+  // proposal potential assigns it zero weight: the grow side discards such a trial, so the forward move can not
+  // produce this configuration and the reverse move must be rejected ('rejectedLogProposalCorrection' below).
+  // Clamping its energy to the criterion instead would leave a finite weight whose factor cancels against
+  // 'logMeanWeight' when no reference trial is constructed, i.e. a finite acceptance without a reverse path.
   const DeviceTrialEnergy &oldDevice = energies[0];
+  const bool oldOverlaps = oldDevice.overlap;
   const double oldDeviceEnergy =
-      oldDevice.overlap ? std::max(oldDevice.total(), context.forceField.energyOverlapCriteria) : oldDevice.total();
+      oldOverlaps ? std::max(oldDevice.total(), context.forceField.energyOverlapCriteria) : oldDevice.total();
   GroupMembers oldGroup = collectGroup(beta, 1, k - 1, energies, invalid);
   oldGroup.logBoltzmann.insert(oldGroup.logBoltzmann.begin(), -beta * oldDeviceEnergy);
   const double logWeightOld = groupLogWeight(oldGroup, k);
@@ -302,11 +315,20 @@ CBMC::MultiTrialRetraceResult CBMC::DeviceMultiTrialGrower::retraceBatch(
         component.name, moleculeAtoms.front().moleculeId));
   }
 
-  return MultiTrialRetraceResult{.old = RetraceResult(hostEnergy.value(), logWeightOld),
+  // as 'finishRetracedChain': the energies the move removes from the system include the internal terms
+  const RunningEnergy internalEnergies = component.intraMolecularPotentials.computeInternalEnergies(
+      context.forceField, context.simulationBox, moleculeAtoms);
+
+  // +beta (U_target(old) - U_proposal(old)); minus infinity (in its finite fast-math-safe form) when the proposal
+  // potential gives the existing configuration zero weight.
+  const double logProposalCorrection = oldOverlaps ? rejectedLogProposalCorrection
+                                                   : beta * (hostEnergy->potentialEnergy() - oldDeviceEnergy);
+
+  return MultiTrialRetraceResult{.old = RetraceResult(hostEnergy.value() + internalEnergies, logWeightOld),
                                  .oldLongRangeEnergy = oldLongRange,
                                  .logMeanWeight = logSumExp(logWeightsTilde) - std::log(static_cast<double>(M)),
                                  .numberOfConstructed = constructed,
-                                 .logProposalCorrection = beta * (hostEnergy->potentialEnergy() - oldDeviceEnergy)};
+                                 .logProposalCorrection = logProposalCorrection};
 }
 
 std::optional<CBMC::MultiTrialGrowResult> CBMC::DeviceMultiTrialGrower::growNew(
