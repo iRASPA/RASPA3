@@ -127,7 +127,7 @@ DEVICE_FUNCTION float bondTerm(uint type, PRIVATE const float* P, float3 posA, f
       r1 = r - P[1];
       temp = min(fabs(r1), P[2]);
       U = 0.5f * P[0] * temp * temp + P[0] * P[2] * max(fabs(r1) - P[2], 0.0f);
-      DF = -P[0] * copysign(temp, r1) / r;
+      DF = P[0] * copysign(temp, r1) / r;
       break;
     case 9:  // Quartic
       temp = r - P[1];
