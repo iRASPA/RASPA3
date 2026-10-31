@@ -549,23 +549,31 @@ void System::removeAtomFromTailCorrectionCounts(const Atom& atom)
   }
 }
 
-void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, std::size_t currentCycle)
+void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, std::size_t currentCycle,
+                              bool kineticEnergiesFromRunningEnergies)
 {
   std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
   double w = weight();
 
   averageSimulationBox.addSample(currentBlock, simulationBox, w);
 
-  double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
-      moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), components, framework, spanOfFrameworkAtoms(),
-      spanOfFrameworkDynamics(), &forceField, spanOfGroupData(), spanOfFrameworkGroupData());
+  double translationalKineticEnergy =
+      kineticEnergiesFromRunningEnergies
+          ? runningEnergies.translationalKineticEnergy
+          : Integrators::computeTranslationalKineticEnergy(
+                moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), components, framework,
+                spanOfFrameworkAtoms(), spanOfFrameworkDynamics(), &forceField, spanOfGroupData(),
+                spanOfFrameworkGroupData());
   double translationalTemperature =
       2.0 * translationalKineticEnergy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
   averageTranslationalTemperature.addSample(currentBlock, translationalTemperature, w);
 
-  double rotationalKineticEnergy = Integrators::computeRotationalKineticEnergy(
-      moleculeData, components, spanOfGroupData(), framework, spanOfFrameworkGroupData());
+  double rotationalKineticEnergy =
+      kineticEnergiesFromRunningEnergies
+          ? runningEnergies.rotationalKineticEnergy
+          : Integrators::computeRotationalKineticEnergy(moleculeData, components, spanOfGroupData(), framework,
+                                                        spanOfFrameworkGroupData());
   double rotationalTemperature =
       rotationalDegreesOfFreedom > 0
           ? 2.0 * rotationalKineticEnergy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom))

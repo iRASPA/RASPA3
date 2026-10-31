@@ -904,7 +904,18 @@ export struct System
 
   bool insideBlockedPockets(const Component& component, std::span<const Atom> molecule_atoms) const;
 
-  void sampleProperties(std::size_t systemId, std::size_t currentBlock, std::size_t currentCycle);
+  /**
+   * \brief Samples the block averages of the thermodynamic properties of the current state.
+   *
+   * \param kineticEnergiesFromRunningEnergies When true the temperatures are formed from the kinetic energies
+   *        stored in 'runningEnergies' (set by the molecular-dynamics step) instead of being recomputed from the
+   *        velocities in 'moleculeData' / the atom dynamics. The GPU-resident integrator keeps the velocities on
+   *        the device and only downloads them when the host needs them (every 'PrintEvery' cycles or for a
+   *        per-step property), so the host velocities are stale in between; the kinetic energies of the step are
+   *        reduced on the device and are current every cycle.
+   */
+  void sampleProperties(std::size_t systemId, std::size_t currentBlock, std::size_t currentCycle,
+                        bool kineticEnergiesFromRunningEnergies = false);
   void samplePropertiesEvolution(std::size_t absoluteCurrentCycle);
 
   void writeCPUTimeStatistics(std::ostream& stream) const;

@@ -1365,7 +1365,10 @@ void MolecularDynamicsSpatialDecomposition::production()
 
     for (std::size_t system_id{0}; System& system : systems)
     {
-      system.sampleProperties(system_id, estimation.currentBin, currentCycle);
+      // the temperatures from the kinetic energies of the step: with the resident integrator the host velocities
+      // are refreshed only when needed (refreshHostState), the step's kinetic energies are reduced on the device
+      // every cycle; the host integrators store the same quantities for the velocities they leave behind
+      system.sampleProperties(system_id, estimation.currentBin, currentCycle, true);
       if (system.forceBasedRDFSampleDue(currentCycle))
       {
         system.sampleForceBasedRDFFromCurrentGradients(currentCycle, estimation.currentBin);

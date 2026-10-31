@@ -1865,6 +1865,75 @@ TEST_P(SpatialDecompositionDevice, resident_integrator_matches_host_rigid_water_
                             {.position = 1e-3, .velocity = 1e-3, .energy = 1e-4, .drift = 1e-5});
 }
 
+// The MD driver samples the temperatures every cycle but refreshes the host copy of the resident state only when
+// it needs it (every 'PrintEvery' cycles): the samples have to come from the kinetic energies the step reduced on
+// the device (System::sampleProperties with kineticEnergiesFromRunningEnergies), not from the host velocities,
+// which stay what they were at the last download.
+TEST_P(SpatialDecompositionDevice, resident_integrator_temperature_samples_follow_the_device_kinetic_energies)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  System system = makeWaterSystem(7);
+  system.timeStep = 0.002;
+  giveVelocities(system, 21, true);
+
+  SpatialDecompositionSettings settings = settingsFor(4, 0.3, 0.5);
+  settings.pairDevice = pairDevice;
+  settings.resident = true;
+  SpatialDecompositionForceEngine engine(settings);
+  engine.initialize(system);
+  ASSERT_TRUE(engine.usesResident()) << engine.writeStatus();
+  startState(system, engine);
+
+  const double translationalDegrees =
+      static_cast<double>(system.translationalDegreesOfFreedom - system.translationalCenterOfMassConstraint);
+  const double rotationalDegrees = static_cast<double>(system.rotationalDegreesOfFreedom);
+  auto hostTranslationalTemperature = [&]
+  {
+    return 2.0 *
+           Integrators::computeTranslationalKineticEnergy(
+               system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+               system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
+               system.spanOfGroupData(), system.spanOfFrameworkGroupData()) /
+           (Units::KB * translationalDegrees);
+  };
+  const double initialTemperature = hostTranslationalTemperature();
+
+  // 20 steps without a download, sampled every step as the driver does (block 0)
+  const std::size_t steps = 20;
+  double expectedTranslational = 0.0;
+  double expectedRotational = 0.0;
+  double expectedOverall = 0.0;
+  for (std::size_t step = 1; step <= steps; ++step)
+  {
+    system.runningEnergies = engine.residentVelocityVerlet(system);
+    system.sampleProperties(0, 0, step, true);
+    const double translational = system.runningEnergies.translationalKineticEnergy;
+    const double rotational = system.runningEnergies.rotationalKineticEnergy;
+    expectedTranslational += 2.0 * translational / (Units::KB * translationalDegrees);
+    expectedRotational += 2.0 * rotational / (Units::KB * rotationalDegrees);
+    expectedOverall += 2.0 * (translational + rotational) / (Units::KB * (translationalDegrees + rotationalDegrees));
+  }
+  expectedTranslational /= static_cast<double>(steps);
+  expectedRotational /= static_cast<double>(steps);
+  expectedOverall /= static_cast<double>(steps);
+  EXPECT_NEAR(system.averageTranslationalTemperature.averaged(0), expectedTranslational, 1e-10 * expectedTranslational);
+  EXPECT_NEAR(system.averageRotationalTemperature.averaged(0), expectedRotational, 1e-10 * expectedRotational);
+  EXPECT_NEAR(system.averageTemperature.averaged(0), expectedOverall, 1e-10 * expectedOverall);
+
+  // the host velocities are still those of the start: a sample from them (block 1) repeats the initial
+  // temperature, which the dynamics have moved away from
+  EXPECT_EQ(hostTranslationalTemperature(), initialTemperature);
+  system.sampleProperties(0, 1, steps + 1, false);
+  EXPECT_EQ(system.averageTranslationalTemperature.averaged(1), initialTemperature);
+  EXPECT_GT(std::abs(expectedTranslational - initialTemperature), 1e-6 * initialTemperature);
+
+  // after a download the host velocities carry the state of the last step: the two ways of sampling agree
+  engine.downloadResidentState(system);
+  const double lastTemperature = 2.0 * system.runningEnergies.translationalKineticEnergy / (Units::KB * translationalDegrees);
+  EXPECT_NEAR(hostTranslationalTemperature(), lastTemperature, 1e-5 * lastTemperature);
+}
+
 TEST_P(SpatialDecompositionDevice, resident_integrator_matches_host_flexible_chains_nve)
 {
   const PairDevice pairDevice = GetParam();
