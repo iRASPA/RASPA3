@@ -116,6 +116,87 @@ System makeMixedFrameworkHybridMCSystem()
   system.spanOfMoleculeAtoms()[0].position = double3(11.6, 9.8, 7.6);
   return system;
 }
+
+double3 expectedMoleculeCenterOfMassVelocity(const System& system, std::size_t moleculeIndex)
+{
+  const Molecule& molecule = system.moleculeData[moleculeIndex];
+  const Component& component = system.components[molecule.componentId];
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms().subspan(molecule.atomIndex, molecule.numberOfAtoms);
+  const std::span<const AtomDynamics> dynamics =
+      system.spanOfMoleculeDynamics().subspan(molecule.atomIndex, molecule.numberOfAtoms);
+  double3 momentum{};
+  if (component.isSemiFlexible())
+  {
+    std::size_t groupIndex{};
+    for (std::size_t m = 0; m < moleculeIndex; ++m)
+      groupIndex += system.components[system.moleculeData[m].componentId].numberOfRigidFragments();
+    std::size_t rigidRank{};
+    for (const Fragment& group : component.fragmentGraph.fragments)
+    {
+      if (!group.isRigidBody()) continue;
+      momentum += group.mass * system.groupData[groupIndex + rigidRank].velocity;
+      ++rigidRank;
+    }
+    for (std::size_t i = 0; i != atoms.size(); ++i)
+    {
+      if (component.rigidFragmentContaining(i).has_value()) continue;
+      momentum += component.atomMass(i, atoms[i]) * dynamics[i].velocity;
+    }
+  }
+  else
+  {
+    for (std::size_t i = 0; i != atoms.size(); ++i)
+      momentum += component.atomMass(i, atoms[i]) * dynamics[i].velocity;
+  }
+  return momentum * molecule.invMass;
+}
+
+System makeFlexibleEthaneSystem()
+{
+  ForceField forceField({{"CH3", false, 15.03452, 0.0, 0.0, 8, false}}, {{108.0, 3.76}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  ConnectivityTable connectivityTable(2);
+  connectivityTable[0, 1] = true;
+  connectivityTable[1, 0] = true;
+  Potentials::IntraMolecularPotentials intraMolecularPotentials{};
+  intraMolecularPotentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {5000.0, 1.54})};
+  Component component(forceField, "ethane", 305.33, 4871800.0, 0.0993,
+                      {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false),
+                       Atom({1.70, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)},
+                      connectivityTable, intraMolecularPotentials, 5, 21);
+  component.rigid = false;
+  return System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {component},
+                {{double3(5.0, 5.0, 5.0), double3(6.70, 5.0, 5.0)},
+                 {double3(12.0, 8.0, 7.0), double3(13.70, 8.0, 7.0)}},
+                {0}, 5);
+}
+
+System makeSemiFlexibleChainSystem()
+{
+  ForceField forceField({{"O", false, 16.0, 0.0, 0.0, 8, false}}, {{80.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 8.0, 8.0, 8.0, false, false, false);
+  ConnectivityTable connectivityTable(4);
+  connectivityTable[0, 1] = true;
+  connectivityTable[1, 0] = true;
+  connectivityTable[1, 2] = true;
+  connectivityTable[2, 1] = true;
+  connectivityTable[2, 3] = true;
+  connectivityTable[3, 2] = true;
+  Potentials::IntraMolecularPotentials potentials;
+  potentials.bonds.emplace_back(std::array<std::size_t, 2>{2, 3}, BondType::Harmonic, std::vector<double>{1500.0, 0.85});
+  const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("O"));
+  Component component(forceField, "semi-flexible", 64.0, 1.0e6, 0.02,
+                      {Atom({-0.6, 0.25, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                       Atom({0.0, -0.35, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                       Atom({0.6, 0.25, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                       Atom({1.2, -0.25, 0.35}, 0.0, 1.0, 0, type, 0, false, false)},
+                      connectivityTable, potentials, 0, 0);
+  component.buildFragmentGraph({{0, 1, 2}});
+  return System(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {component},
+                {{double3(5.0, 5.0, 5.0), double3(5.6, 4.4, 5.0), double3(6.2, 5.0, 5.0), double3(6.8, 4.5, 5.35)},
+                 {double3(12.0, 8.0, 7.0), double3(12.6, 7.4, 7.0), double3(13.2, 8.0, 7.0), double3(13.8, 7.5, 7.35)}},
+                {0}, 5);
+}
 }  // namespace
 
 void DOUBLE3_EXPECT_NEAR(double3 a, double3 b, double tol);
@@ -1061,4 +1142,75 @@ TEST(molecular_dynamics, precompute_total_gradients_fills_framework_group_forces
   system.precomputeTotalGradients();
 
   EXPECT_GT(double3::dot(system.frameworkGroupData[0].gradient, system.frameworkGroupData[0].gradient), 0.0);
+}
+
+TEST(integrators, semi_flexible_molecule_velocity_matches_group_and_atom_com)
+{
+  System system = makeSemiFlexibleChainSystem();
+  ASSERT_TRUE(system.components[0].isSemiFlexible());
+  system.initializeGroupData();
+  RandomNumber random(11);
+  Integrators::initializeVelocities(random, system.moleculeData, system.spanOfMoleculeAtoms(),
+                                    system.spanOfMoleculeDynamics(), system.components, system.temperature,
+                                    std::nullopt, {}, {}, nullptr, system.spanOfGroupData());
+  Integrators::removeCenterOfMassVelocityDrift(system.moleculeData, system.spanOfMoleculeAtoms(),
+                                               system.spanOfMoleculeDynamics(), system.components, std::nullopt, {}, {},
+                                               nullptr, system.spanOfGroupData());
+
+  for (std::size_t m = 0; m != system.moleculeData.size(); ++m)
+  {
+    DOUBLE3_EXPECT_NEAR(system.moleculeData[m].velocity, expectedMoleculeCenterOfMassVelocity(system, m), 1.0e-12);
+  }
+
+  Integrators::scaleVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                               system.components, {1.15, 1.0}, std::nullopt, {}, system.spanOfGroupData());
+  for (std::size_t m = 0; m != system.moleculeData.size(); ++m)
+  {
+    DOUBLE3_EXPECT_NEAR(system.moleculeData[m].velocity, expectedMoleculeCenterOfMassVelocity(system, m), 1.0e-12);
+  }
+
+  system.precomputeTotalGradients();
+  std::optional<Thermostat> thermostat = std::nullopt;
+  system.timeStep = 1.0e-3;
+  Integrators::velocityVerlet(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                              system.components, system.timeStep, thermostat, system.spanOfFrameworkAtoms(),
+                              system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z,
+                              system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
+                              system.numberOfMoleculesPerComponent, system.framework, system.spanOfFrameworkDynamics(),
+                              system.spanOfGroupData());
+  for (std::size_t m = 0; m != system.moleculeData.size(); ++m)
+  {
+    DOUBLE3_EXPECT_NEAR(system.moleculeData[m].velocity, expectedMoleculeCenterOfMassVelocity(system, m), 1.0e-12);
+  }
+}
+
+TEST(integrators, flexible_molecule_velocity_matches_atom_com_after_thermostat)
+{
+  System system = makeFlexibleEthaneSystem();
+  ASSERT_FALSE(system.components[0].rigid);
+  ASSERT_FALSE(system.components[0].isSemiFlexible());
+  RandomNumber random(19);
+  Integrators::initializeVelocities(random, system.moleculeData, system.spanOfMoleculeAtoms(),
+                                    system.spanOfMoleculeDynamics(), system.components, system.temperature);
+  Integrators::removeCenterOfMassVelocityDrift(system.moleculeData, system.spanOfMoleculeAtoms(),
+                                               system.spanOfMoleculeDynamics(), system.components);
+  Integrators::scaleVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                               system.components, {1.15, 1.0});
+  for (std::size_t m = 0; m != system.moleculeData.size(); ++m)
+  {
+    DOUBLE3_EXPECT_NEAR(system.moleculeData[m].velocity, expectedMoleculeCenterOfMassVelocity(system, m), 1.0e-12);
+  }
+
+  system.precomputeTotalGradients();
+  std::optional<Thermostat> thermostat = std::nullopt;
+  system.timeStep = 1.0e-3;
+  Integrators::velocityVerlet(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+                              system.components, system.timeStep, thermostat, system.spanOfFrameworkAtoms(),
+                              system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z,
+                              system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
+                              system.numberOfMoleculesPerComponent);
+  for (std::size_t m = 0; m != system.moleculeData.size(); ++m)
+  {
+    DOUBLE3_EXPECT_NEAR(system.moleculeData[m].velocity, expectedMoleculeCenterOfMassVelocity(system, m), 1.0e-12);
+  }
 }

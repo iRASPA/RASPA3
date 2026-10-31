@@ -33,6 +33,49 @@ import interactions_cross_link;
 import polymer_links;
 import interactions_polymer_link;
 
+// molecule.velocity / centerOfMassPosition are what VACF and MSD read. Rigid molecules integrate
+// those fields directly. Semi-flexible and flexible molecules integrate groups and atoms; the
+// molecule record has to be the mass-weighted centre of mass of those degrees of freedom.
+void syncNonRigidMoleculeCenterOfMass(Molecule& molecule, std::span<const Atom> atoms,
+                                      std::span<const AtomDynamics> dynamics, const Component& component,
+                                      std::span<const GroupState> groupData, std::size_t groupIndex)
+{
+  if (component.rigid) return;
+
+  double3 com{};
+  double3 momentum{};
+  if (component.isSemiFlexible() && !groupData.empty())
+  {
+    std::size_t rigidRank{};
+    for (const Fragment& group : component.fragmentGraph.fragments)
+    {
+      if (!group.isRigidBody()) continue;
+      const GroupState& state = groupData[groupIndex + rigidRank];
+      com += group.mass * state.centerOfMassPosition;
+      momentum += group.mass * state.velocity;
+      ++rigidRank;
+    }
+    for (std::size_t i = 0; i != atoms.size(); ++i)
+    {
+      if (component.rigidFragmentContaining(i).has_value()) continue;
+      const double mass = component.atomMass(i, atoms[i]);
+      com += mass * atoms[i].position;
+      momentum += mass * dynamics[i].velocity;
+    }
+  }
+  else
+  {
+    for (std::size_t i = 0; i != atoms.size(); ++i)
+    {
+      const double mass = component.atomMass(i, atoms[i]);
+      com += mass * atoms[i].position;
+      momentum += mass * dynamics[i].velocity;
+    }
+  }
+  molecule.centerOfMassPosition = com * molecule.invMass;
+  molecule.velocity = momentum * molecule.invMass;
+}
+
 void Integrators::scaleVelocities(std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
                                   std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
                                   std::pair<double, double> scaling, const std::optional<Framework>& framework,
@@ -290,6 +333,7 @@ void Integrators::updatePositions(std::span<Molecule> moleculeData, std::span<At
           span[i].position += dt * spanDynamics[i].velocity;
         }
       }
+      syncNonRigidMoleculeCenterOfMass(molecule, span, spanDynamics, component, groupData, groupIndex);
       groupIndex += component.numberOfRigidFragments();
       index += molecule.numberOfAtoms;
       continue;
@@ -306,6 +350,7 @@ void Integrators::updatePositions(std::span<Molecule> moleculeData, std::span<At
       {
         span[i].position += dt * spanDynamics[i].velocity;
       }
+      syncNonRigidMoleculeCenterOfMass(molecule, span, spanDynamics, component, {}, 0);
     }
     index += molecule.numberOfAtoms;
   }
@@ -371,6 +416,7 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
           span[i].velocity -= 0.5 * dt * span[i].gradient / mass;
         }
       }
+      syncNonRigidMoleculeCenterOfMass(molecule, atoms, span, component, groupData, groupIndex);
       groupIndex += component.numberOfRigidFragments();
       index += molecule.numberOfAtoms;
       continue;
@@ -389,6 +435,7 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
         double mass = component.atomMass(i, atoms[i]);
         span[i].velocity -= 0.5 * dt * span[i].gradient / mass;
       }
+      syncNonRigidMoleculeCenterOfMass(molecule, atoms, span, component, {}, 0);
     }
     index += molecule.numberOfAtoms;
   }
@@ -544,6 +591,7 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
         dynamics[i].velocity =
             double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * std::sqrt(Units::KB * temperature / mass);
       }
+      syncNonRigidMoleculeCenterOfMass(molecule, atoms, dynamics, component, groupData, groupIndex);
       groupIndex += component.numberOfRigidFragments();
       index += molecule.numberOfAtoms;
       continue;
