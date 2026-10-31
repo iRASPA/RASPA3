@@ -71,7 +71,7 @@ export struct Thermobarostat
                  std::size_t numberOfYoshidaSuzukiSteps = 5, double timeScaleParameterBarostat = 1.0);
 
   void initialize(RandomNumber& random);
-  void refreshDegreesOfFreedom(RandomNumber& random, std::size_t translationalDegreesOfFreedom, double volume);
+  void refreshDegreesOfFreedom(std::size_t translationalDegreesOfFreedom, double volume);
   double chainStep(double kineticEnergy);
   // kinetic energy of the barostat (isotropic: of x=ln(V) with mass W/9; flexible: of the cell-rate matrix)
   double barostatKineticEnergy() const;

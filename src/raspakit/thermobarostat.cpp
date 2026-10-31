@@ -206,8 +206,10 @@ Thermobarostat::Thermobarostat(MolecularDynamicsEnsemble ensemble, CellMinimizat
   cellMass = particleScale * timeScaleParameterBarostat * timeScaleParameterBarostat / 3.0;
 }
 
-void Thermobarostat::refreshDegreesOfFreedom(RandomNumber& random, std::size_t newTranslationalDegreesOfFreedom,
-                                             double volume)
+// Particle exchanges change the number of coupled degrees of freedom and therefore the barostat masses.
+// The cell momentum is a dynamical variable of the live trajectory and is deliberately left untouched here;
+// only 'initialize' draws it from the canonical distribution.
+void Thermobarostat::refreshDegreesOfFreedom(std::size_t newTranslationalDegreesOfFreedom, double volume)
 {
   if (!(volume > 0.0) || !std::isfinite(volume)) throw std::runtime_error("Thermobarostat requires positive volume");
   translationalDegreesOfFreedom = newTranslationalDegreesOfFreedom;
@@ -216,7 +218,15 @@ void Thermobarostat::refreshDegreesOfFreedom(RandomNumber& random, std::size_t n
   logVolumeMass = particleScale * timeScaleParameterBarostat * timeScaleParameterBarostat;
   cellMass = particleScale * timeScaleParameterBarostat * timeScaleParameterBarostat / 3.0;
   logVolumePosition = std::log(volume);
+}
 
+void Thermobarostat::initialize(RandomNumber& random)
+{
+  if (chainLength == 0) throw std::runtime_error("BarostatChainLength must be positive");
+  if (numberOfRespaSteps == 0) throw std::runtime_error("NumberOfRespaSteps must be positive");
+  refreshDegreesOfFreedom(translationalDegreesOfFreedom, std::exp(logVolumePosition));
+  if (molecularDynamicsUsesIsotropicBarostat(ensemble))
+    logVolumeVelocity = random.Gaussian() * std::sqrt(Units::KB * temperature / (logVolumeMass / 9.0));
   if (molecularDynamicsUsesFlexibleBarostat(ensemble))
   {
     for (std::size_t column = 0; column != 3; ++column)
@@ -224,15 +234,6 @@ void Thermobarostat::refreshDegreesOfFreedom(RandomNumber& random, std::size_t n
         cellVelocity.mm[column][row] = random.Gaussian() * std::sqrt(Units::KB * temperature / cellMass);
     cellVelocity = projectCellTensor(cellVelocity, cellType, monoclinicAngle);
   }
-}
-
-void Thermobarostat::initialize(RandomNumber& random)
-{
-  if (chainLength == 0) throw std::runtime_error("BarostatChainLength must be positive");
-  if (numberOfRespaSteps == 0) throw std::runtime_error("NumberOfRespaSteps must be positive");
-  refreshDegreesOfFreedom(random, translationalDegreesOfFreedom, std::exp(logVolumePosition));
-  if (molecularDynamicsUsesIsotropicBarostat(ensemble))
-    logVolumeVelocity = random.Gaussian() * std::sqrt(Units::KB * temperature / (logVolumeMass / 9.0));
 
   chainDegreesOfFreedom[0] = static_cast<double>(cellDegreesOfFreedom) * Units::KB * temperature;
   for (std::size_t i = 1; i != chainLength; ++i) chainDegreesOfFreedom[i] = Units::KB * temperature;

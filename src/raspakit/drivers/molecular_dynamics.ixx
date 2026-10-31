@@ -19,6 +19,10 @@ import running_energy;
 
 export RunningEnergy molecularDynamicsStep(System& system);
 
+// One grand-canonical particle-exchange attempt (MuVT / MuPT / MuPTPR). On acceptance the particle-number
+// dependent state (group states, thermostat and barostat degrees of freedom, gradients) is refreshed.
+export MC_Moves::ParticleExchangeResult attemptParticleExchange(RandomNumber& random, System& system);
+
 /**
  * \brief Represents a molecular dynamics simulation.
  *

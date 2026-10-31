@@ -429,9 +429,10 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
                                                 system.translationalCenterOfMassConstraint);
   if (system.thermobarostat)
   {
-    const std::size_t effectiveDegreesOfFreedom =
-        system.translationalDegreesOfFreedom - system.translationalCenterOfMassConstraint;
-    system.thermobarostat->refreshDegreesOfFreedom(random, effectiveDegreesOfFreedom, system.simulationBox.volume);
+    // the barostat couples to molecules (or rigid groups / flexible atoms), not to the thermostat's atomic
+    // degrees of freedom: the same count 'equilibrate' uses when the barostat is set up
+    system.thermobarostat->refreshDegreesOfFreedom(
+        barostatTranslationalDegreesOfFreedom(system, system.thermobarostat->coupling), system.simulationBox.volume);
   }
 
   system.precomputeTotalGradients();
@@ -440,22 +441,6 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
                                                         system.spanOfGroupData(), system.framework,
                                                         system.spanOfFrameworkDynamics(),
                                                         system.spanOfFrameworkGroupData());
-}
-
-void attemptParticleExchange(RandomNumber& random, System& system)
-{
-  if (!molecularDynamicsHasParticleExchange(system.molecularDynamicsEnsemble) || system.components.empty()) return;
-
-  const std::size_t selectedComponent =
-      std::min(static_cast<std::size_t>(random.uniform() * static_cast<double>(system.components.size())),
-               system.components.size() - 1);
-  if (system.components[selectedComponent].mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) <= 0.0)
-    return;
-
-  std::size_t exchangedMolecule{};
-  const MC_Moves::ParticleExchangeResult result =
-      MC_Moves::performMolecularDynamicsSwap(random, system, selectedComponent, exchangedMolecule);
-  refreshParticleNumberDependentState(random, system, selectedComponent, result, exchangedMolecule);
 }
 
 // The barostat is driven by the virial of the points it couples to (molecular coupling: the centres of mass of
@@ -608,6 +593,24 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
   return energies;
 }
 }  // namespace
+
+MC_Moves::ParticleExchangeResult attemptParticleExchange(RandomNumber& random, System& system)
+{
+  if (!molecularDynamicsHasParticleExchange(system.molecularDynamicsEnsemble) || system.components.empty())
+    return MC_Moves::ParticleExchangeResult::Rejected;
+
+  const std::size_t selectedComponent =
+      std::min(static_cast<std::size_t>(random.uniform() * static_cast<double>(system.components.size())),
+               system.components.size() - 1);
+  if (system.components[selectedComponent].mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) <= 0.0)
+    return MC_Moves::ParticleExchangeResult::Rejected;
+
+  std::size_t exchangedMolecule{};
+  const MC_Moves::ParticleExchangeResult result =
+      MC_Moves::performMolecularDynamicsSwap(random, system, selectedComponent, exchangedMolecule);
+  refreshParticleNumberDependentState(random, system, selectedComponent, result, exchangedMolecule);
+  return result;
+}
 
 RunningEnergy molecularDynamicsStep(System& system)
 {

@@ -34,6 +34,7 @@ import interpolation_energy_grid;
 import thermostat;
 import thermobarostat;
 import minimization_cell_layout;
+import elastic_constants;
 import molecular_dynamics;
 import mc_moves;
 import mc_moves_hybridmc;
@@ -339,6 +340,31 @@ TEST(thermobarostat, isotropic_kinetic_energy_uses_the_mass_of_ln_volume)
   const double variance = sumSquared / static_cast<double>(samples);
   const double expected = Units::KB * temperature / (state.logVolumeMass / 9.0);
   EXPECT_NEAR(variance / expected, 1.0, 0.05);
+}
+
+TEST(thermobarostat, refreshing_degrees_of_freedom_keeps_the_live_cell_momentum)
+{
+  Thermobarostat state(MolecularDynamicsEnsemble::MuPTPR, CellMinimizationType::Regular, MonoclinicAngleType::Beta,
+                       300.0, 1.0, 0.001, 12, 3, 1, 0.5);
+  RandomNumber random(4242);
+  state.initialize(random);
+  const double3x3 cellVelocity = projectCellTensor(double3x3(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
+                                                   state.cellType, state.monoclinicAngle);
+  state.cellVelocity = cellVelocity;
+  state.logVolumeVelocity = 0.25;
+  const std::vector<double> chainVelocity = state.chainVelocity;
+
+  state.refreshDegreesOfFreedom(24, 8000.0);
+
+  EXPECT_EQ(state.translationalDegreesOfFreedom, 24u);
+  EXPECT_NEAR(state.logVolumeMass, 27.0 * Units::KB * 300.0 * 0.25, 1.0e-12);
+  EXPECT_NEAR(state.cellMass, state.logVolumeMass / 3.0, 1.0e-12);
+  EXPECT_DOUBLE_EQ(state.logVolumePosition, std::log(8000.0));
+  for (std::size_t column = 0; column != 3; ++column)
+    for (std::size_t row = 0; row != 3; ++row)
+      EXPECT_DOUBLE_EQ(state.cellVelocity.mm[column][row], cellVelocity.mm[column][row]);
+  EXPECT_DOUBLE_EQ(state.logVolumeVelocity, 0.25);
+  EXPECT_EQ(state.chainVelocity, chainVelocity);
 }
 
 TEST(thermostat, refreshes_variable_particle_degrees_of_freedom_without_resetting_chain_state)
@@ -1142,6 +1168,50 @@ TEST(molecular_dynamics, precompute_total_gradients_fills_framework_group_forces
   system.precomputeTotalGradients();
 
   EXPECT_GT(double3::dot(system.frameworkGroupData[0].gradient, system.frameworkGroupData[0].gradient), 0.0);
+}
+
+TEST(molecular_dynamics, accepted_particle_exchange_refreshes_barostat_with_molecular_degrees_of_freedom)
+{
+  // Flexible ethane: the thermostat sees 3 atomic translational degrees of freedom per atom, the (molecular)
+  // barostat sees 3 per molecule. After an accepted exchange the barostat must get the molecular count.
+  System system = makeFlexibleEthaneSystem();
+  system.molecularDynamicsEnsemble = MolecularDynamicsEnsemble::MuPTPR;
+  system.components[0].fugacityCoefficient = 1.0;
+  system.components[0].idealGasRosenbluthWeight = 1.0;
+  system.components[0].mc_moves_probabilities.setProbability(Move::Types::SwapCBMC, 1.0);
+  system.pressure = 1.0e12;
+  system.translationalCenterOfMassConstraint = 3;
+  system.thermostat = Thermostat(300.0, 1.0e-3, system.translationalDegreesOfFreedom, 0, 3, 1, 0.15);
+  system.thermostat->translationalCenterOfMassConstraint = 3;
+  system.thermobarostat = Thermobarostat(MolecularDynamicsEnsemble::MuPTPR, CellMinimizationType::Regular,
+                                         MonoclinicAngleType::Beta, 300.0, 1.0, 1.0e-3,
+                                         barostatTranslationalDegreesOfFreedom(system, BarostatCoupling::Molecular),
+                                         3, 1, 0.5);
+  RandomNumber random(2024);
+  system.thermostat->initialize(random);
+  system.thermobarostat->initialize(random);
+  system.precomputeTotalGradients();
+
+  const double3x3 cellVelocity = projectCellTensor(double3x3(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
+                                                   system.thermobarostat->cellType,
+                                                   system.thermobarostat->monoclinicAngle);
+  system.thermobarostat->cellVelocity = cellVelocity;
+
+  MC_Moves::ParticleExchangeResult result = MC_Moves::ParticleExchangeResult::Rejected;
+  for (std::size_t attempt = 0; attempt != 200 && result != MC_Moves::ParticleExchangeResult::Inserted; ++attempt)
+    result = attemptParticleExchange(random, system);
+  ASSERT_EQ(result, MC_Moves::ParticleExchangeResult::Inserted);
+
+  const std::size_t molecularDegreesOfFreedom = 3 * system.moleculeData.size() - 3;
+  const std::size_t atomicDegreesOfFreedom = system.translationalDegreesOfFreedom - 3;
+  ASSERT_NE(molecularDegreesOfFreedom, atomicDegreesOfFreedom);
+  EXPECT_EQ(system.thermobarostat->translationalDegreesOfFreedom, molecularDegreesOfFreedom);
+  EXPECT_EQ(system.thermobarostat->translationalDegreesOfFreedom,
+            barostatTranslationalDegreesOfFreedom(system, system.thermobarostat->coupling));
+  EXPECT_EQ(system.thermostat->translationalDegreesOfFreedom, system.translationalDegreesOfFreedom);
+  for (std::size_t column = 0; column != 3; ++column)
+    for (std::size_t row = 0; row != 3; ++row)
+      EXPECT_DOUBLE_EQ(system.thermobarostat->cellVelocity.mm[column][row], cellVelocity.mm[column][row]);
 }
 
 TEST(integrators, semi_flexible_molecule_velocity_matches_group_and_atom_com)
