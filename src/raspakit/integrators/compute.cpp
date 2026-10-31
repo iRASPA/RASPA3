@@ -88,12 +88,15 @@ double Integrators::computeTranslationalKineticEnergy(std::span<const Molecule> 
       throw std::runtime_error("Flexible-framework kinetic energy requires force-field and dynamics data");
     }
     std::size_t rigidRank{};
-    for (const FrameworkGroup& group : framework->groups)
+    if (!frameworkGroupData.empty())
     {
-      if (!group.isRigidBody()) continue;
-      const GroupState& state = frameworkGroupData[rigidRank];
-      energy += 0.5 * group.mass * double3::dot(state.velocity, state.velocity);
-      ++rigidRank;
+      for (const FrameworkGroup& group : framework->groups)
+      {
+        if (!group.isRigidBody()) continue;
+        const GroupState& state = frameworkGroupData[rigidRank];
+        energy += 0.5 * group.mass * double3::dot(state.velocity, state.velocity);
+        ++rigidRank;
+      }
     }
     for (std::size_t i = 0; i != frameworkAtomPositions.size(); ++i)
     {

@@ -5,6 +5,7 @@ import std;
 import archive;
 import int3;
 import double3;
+import double4;
 import double3x3;
 import simd_quatd;
 import units;
@@ -56,6 +57,64 @@ Framework makeTwoAtomFramework(const ForceField& forceField, bool rigid)
   Framework framework(forceField, "two-atom-framework", box, 1, atoms, atoms, int3(1, 1, 1));
   framework.rigid = rigid;
   return framework;
+}
+
+class TemporaryFile
+{
+ public:
+  TemporaryFile(std::string name, std::string_view contents)
+      : path(std::filesystem::temp_directory_path() / std::move(name))
+  {
+    std::ofstream stream(path);
+    stream << contents;
+  }
+  ~TemporaryFile()
+  {
+    std::error_code ignored;
+    std::filesystem::remove(path, ignored);
+  }
+  std::filesystem::path path;
+};
+
+// Fixed{0} | Rigid{1,2,3} (nonlinear) | Flexible{4,5}, plus one adsorbate. Hits the mixed-framework
+// Hybrid MC path that must pass frameworkGroupData into the integrator.
+System makeMixedFrameworkHybridMCSystem()
+{
+  ForceField forceField({{"C", true, 12.0, 0.0, 0.0, 6, true}, {"M", false, 16.0, 0.0, 0.0, 8, false}},
+                        {{80.0, 3.0}, {60.0, 2.5}}, ForceField::MixingRule::Lorentz_Berthelot, 5.0, 5.0, 5.0, false,
+                        false, false);
+  const SimulationBox box(14.0, 14.0, 14.0);
+  const std::size_t typeC = *forceField.findPseudoAtom("C");
+  const std::size_t typeM = *forceField.findPseudoAtom("M");
+
+  auto frameworkAtom = [&](double3 fractionalPosition)
+  { return Atom(fractionalPosition, 0.0, 1.0, 0, static_cast<std::uint16_t>(typeC), 0, 0, true); };
+
+  std::vector<Atom> atoms{frameworkAtom({4.0 / 14.0, 7.0 / 14.0, 7.0 / 14.0}),
+                          frameworkAtom({5.4 / 14.0, 7.3 / 14.0, 7.0 / 14.0}),
+                          frameworkAtom({6.8 / 14.0, 6.8 / 14.0, 7.0 / 14.0}),
+                          frameworkAtom({8.2 / 14.0, 7.3 / 14.0, 7.0 / 14.0}),
+                          frameworkAtom({9.6 / 14.0, 7.0 / 14.0, 7.0 / 14.0}),
+                          frameworkAtom({11.0 / 14.0, 7.2 / 14.0, 7.0 / 14.0})};
+  Framework framework(forceField, "mixed-chain", box, 1, atoms, atoms, int3(1, 1, 1));
+
+  TemporaryFile definition("raspa3-mixed-framework-hybridmc.json",
+                           R"({"Type": "Flexible",
+                               "Groups": [
+                                 {"Type": "Fixed", "Atoms": [0]},
+                                 {"Type": "Rigid", "Atoms": [1, 2, 3]},
+                                 {"Type": "Flexible", "Atoms": [4, 5]}
+                               ]})");
+  framework.readFrameworkDefinition(forceField, definition.path.string());
+
+  Component molecule(forceField, "single-site", 16.0, 1.0e6, 0.011,
+                     {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, static_cast<std::uint16_t>(typeM), 0, false, false)},
+                     ConnectivityTable(1), Potentials::IntraMolecularPotentials{}, 0, 0);
+  molecule.rigid = false;
+
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, {framework}, {molecule}, {}, {1}, 5);
+  system.spanOfMoleculeAtoms()[0].position = double3(11.6, 9.8, 7.6);
+  return system;
 }
 }  // namespace
 
@@ -814,6 +873,53 @@ TEST(hybrid_mc, flexible_molecule_in_flexible_framework_does_not_throw)
 
   RandomNumber random(3);
   EXPECT_NO_THROW(std::ignore = MC_Moves::hybridMCMove(random, system));
+}
+
+TEST(hybrid_mc, mixed_framework_rigid_group_does_not_throw)
+{
+  System system = makeMixedFrameworkHybridMCSystem();
+  ASSERT_TRUE(system.framework->isMixed());
+  ASSERT_EQ(system.framework->numberOfRigidGroups(), 1u);
+  ASSERT_TRUE(system.framework->hasMobileAtoms());
+
+  system.numberOfHybridMCSteps = 4;
+  system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 1.0e-4);
+
+  std::vector<double3> initialFramework;
+  for (const Atom& atom : system.spanOfFrameworkAtoms()) initialFramework.push_back(atom.position);
+  const double3 initialMolecule = system.spanOfMoleculeAtoms()[0].position;
+
+  RandomNumber random(21);
+  std::optional<RunningEnergy> accepted;
+  EXPECT_NO_THROW(accepted = MC_Moves::hybridMCMove(random, system));
+  ASSERT_EQ(system.spanOfFrameworkAtoms().size(), initialFramework.size());
+  if (accepted.has_value())
+  {
+    EXPECT_EQ(system.frameworkGroupData.size(), 1u);
+  }
+  else
+  {
+    for (std::size_t i = 0; i != initialFramework.size(); ++i)
+    {
+      DOUBLE3_EXPECT_NEAR(system.spanOfFrameworkAtoms()[i].position, initialFramework[i], 1.0e-14);
+    }
+    DOUBLE3_EXPECT_NEAR(system.spanOfMoleculeAtoms()[0].position, initialMolecule, 1.0e-14);
+  }
+}
+
+TEST(hybrid_mc, rejects_when_molecule_is_inside_blocked_pocket)
+{
+  // Pocket is attached after construction: System::createInitialMolecules refuses pockets, so a
+  // box-filling sphere at construction time would hang the initial grow.
+  System system = makeMixedFrameworkHybridMCSystem();
+  system.components[0].blockingPockets.push_back(double4(0.5, 0.5, 0.5, 40.0));
+  system.numberOfHybridMCSteps = 2;
+  system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 1.0e-4);
+
+  const double3 initialMolecule = system.spanOfMoleculeAtoms()[0].position;
+  RandomNumber random(5);
+  EXPECT_FALSE(MC_Moves::hybridMCMove(random, system).has_value());
+  DOUBLE3_EXPECT_NEAR(system.spanOfMoleculeAtoms()[0].position, initialMolecule, 1.0e-14);
 }
 
 TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)

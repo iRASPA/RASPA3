@@ -102,6 +102,22 @@ HybridMCEngine* hybridMCEngine(System& system)
   return holder.get();
 }
 
+bool moleculeEnteredBlockedPocket(const System& system, std::span<const Molecule> molecules,
+                                  std::span<const Atom> atoms)
+{
+  std::size_t offset = 0;
+  for (const Molecule& molecule : molecules)
+  {
+    if (system.insideBlockedPockets(system.components[molecule.componentId],
+                                    atoms.subspan(offset, molecule.numberOfAtoms)))
+    {
+      return true;
+    }
+    offset += molecule.numberOfAtoms;
+  }
+  return false;
+}
+
 /**
  * \brief The hybrid MC move with the trajectory integrated by the spatial-decomposition force engine, on the
  * system's own arrays (restored on rejection).
@@ -159,6 +175,17 @@ std::optional<RunningEnergy> hybridMCMoveWithEngine(RandomNumber& random, System
   system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
   system.mc_moves_statistics.addConstructed(move);
   system.thermostat = std::move(savedThermostat);
+
+  if (moleculeEnteredBlockedPocket(system, system.moleculeData, atomData))
+  {
+    std::copy(savedAtoms.begin(), savedAtoms.end(), atomData.begin());
+    std::copy(savedDynamics.begin(), savedDynamics.end(), dynamicsData.begin());
+    std::copy(savedGroups.begin(), savedGroups.end(), groupDataSpan.begin());
+    system.moleculeData = savedMolecules;
+    system.storedEik = savedStoredEik;
+    system.timeStep = savedTimeStep;
+    return std::nullopt;
+  }
 
   const double finalKinetic = trajectoryEnergy.translationalKineticEnergy + trajectoryEnergy.rotationalKineticEnergy;
   const double initialPotential = system.runningEnergies.potentialEnergy();
@@ -268,6 +295,20 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   std::span<AtomDynamics> trialFrameworkDynamics =
       flexibleFramework ? std::span<AtomDynamics>(frameworkDynamics) : std::span<AtomDynamics>{};
 
+  // Rigid mobile groups of a mixed framework: the same per-group state the MD integrator uses.
+  std::vector<GroupState> frameworkGroupData;
+  if (flexibleFramework && system.framework->numberOfRigidGroups() > 0)
+  {
+    for (std::size_t g = 0; g != system.framework->groups.size(); ++g)
+    {
+      if (system.framework->groups[g].isRigidBody())
+      {
+        frameworkGroupData.push_back(system.framework->deriveGroupState(g, trialFrameworkAtoms));
+      }
+    }
+  }
+  std::span<GroupState> frameworkGroupDataSpan(frameworkGroupData);
+
   // Hybrid MC is an NVE proposal; do not carry over an MD thermostat.
   std::optional<Thermostat> thermostat = std::nullopt;
 
@@ -278,7 +319,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   // NOTE: it is important that the reference energy has the initial kinetic energies
   Integrators::initializeVelocities(random, moleculeData, moleculeAtomPositions, moleculeDynamics, system.components,
                                     system.temperature, system.framework, trialFrameworkAtoms, trialFrameworkDynamics,
-                                    &system.forceField, groupDataSpan);
+                                    &system.forceField, groupDataSpan, frameworkGroupDataSpan);
 
   // Remove COM drift for bulk fluids and for flexible frameworks (lab frame is free).
   // A rigid framework pins the lab frame, so adsorbate COM momentum is left intact.
@@ -286,7 +327,8 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   {
     Integrators::removeCenterOfMassVelocityDrift(moleculeData, moleculeAtomPositions, moleculeDynamics,
                                                  system.components, system.framework, trialFrameworkAtoms,
-                                                 trialFrameworkDynamics, &system.forceField, groupDataSpan);
+                                                 trialFrameworkDynamics, &system.forceField, groupDataSpan,
+                                                 frameworkGroupDataSpan);
   }
 
   // Gradients must live on the trial copies: Velocity Verlet's first half-kick uses them.
@@ -296,12 +338,13 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
       system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent, system.framework,
       trialFrameworkDynamics, &system.crossLinks);
   Integrators::updateCenterOfMassAndQuaternionGradients(moleculeData, moleculeAtomPositions, moleculeDynamics,
-                                                        system.components, groupDataSpan);
+                                                        system.components, groupDataSpan, system.framework,
+                                                        trialFrameworkDynamics, frameworkGroupDataSpan);
   referenceEnergy.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
       moleculeData, moleculeAtomPositions, moleculeDynamics, system.components, system.framework, trialFrameworkAtoms,
-      trialFrameworkDynamics, &system.forceField, groupDataSpan);
-  referenceEnergy.rotationalKineticEnergy =
-      Integrators::computeRotationalKineticEnergy(moleculeData, system.components, groupDataSpan);
+      trialFrameworkDynamics, &system.forceField, groupDataSpan, frameworkGroupDataSpan);
+  referenceEnergy.rotationalKineticEnergy = Integrators::computeRotationalKineticEnergy(
+      moleculeData, system.components, groupDataSpan, system.framework, frameworkGroupDataSpan);
   RunningEnergy currentEnergy = referenceEnergy;
 
   // integrate for N steps
@@ -312,13 +355,18 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
         moleculeData, moleculeAtomPositions, moleculeDynamics, system.components, dt, thermostat, trialFrameworkAtoms,
         system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
         system.trialEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
-        system.numberOfMoleculesPerComponent, system.framework, trialFrameworkDynamics, groupDataSpan, {},
-        &system.crossLinks);
+        system.numberOfMoleculesPerComponent, system.framework, trialFrameworkDynamics, groupDataSpan,
+        frameworkGroupDataSpan, &system.crossLinks);
   }
   time_end = std::chrono::steady_clock::now();
 
   system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
   system.mc_moves_statistics.addConstructed(move);
+
+  if (moleculeEnteredBlockedPocket(system, moleculeData, moleculeAtomPositions))
+  {
+    return std::nullopt;
+  }
 
   // the Metropolis rule on the Hamiltonian: a trajectory that lowers H is always accepted (the proposal is
   // reversible and volume-preserving, so this is detailed balance for the Boltzmann distribution)
@@ -331,6 +379,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
 
     system.moleculeData = moleculeData;
     system.groupData = groupData;
+    system.frameworkGroupData = frameworkGroupData;
 
     std::copy(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), atomData.begin());
     std::copy(moleculeDynamics.begin(), moleculeDynamics.end(), dynamicsData.begin());
@@ -341,7 +390,8 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
     }
 
     Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components,
-                                          system.spanOfGroupData());
+                                          system.spanOfGroupData(), system.framework, system.spanOfFrameworkAtoms(),
+                                          system.spanOfFrameworkGroupData());
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     // The MD gradient/energy routines do not include the LJ tail corrections. The tail term is
