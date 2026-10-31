@@ -104,9 +104,25 @@ export struct MonteCarloTransitionMatrix
   std::chrono::duration<double> totalSimulationTime{0};                ///< Total simulation time.
 
   /**
+   * \brief First-run preparation (not on a binary restart): fractional-molecule bookkeeping of the systems,
+   * output files with their headers and the interpolation grids.
+   */
+  void setup();
+
+  /**
    * \brief Creates output files for writing simulation data.
    */
   void createOutputFiles();
+
+  /**
+   * \brief Writes the system, force field and component status to the output files.
+   */
+  void writeOutputHeader();
+
+  /**
+   * \brief Builds the framework and external-field interpolation grids (not part of the restart file).
+   */
+  void createInterpolationGrids();
 
   /**
    * \brief Writes the periodic binary restart file and services a pending shutdown signal.

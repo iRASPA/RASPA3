@@ -52,8 +52,10 @@ void runSimulation(InputReader& inputReader)
       if (inputReader.restartFromBinary)
       {
         readBinaryRestartFile(mc, inputReader.restartFromBinaryFileName);
-        // the resumed stage jumps past the header block, so the output streams must exist
+        // the resumed stage jumps past setup(), so the output streams must exist, and the
+        // interpolation grids are not stored in the restart file and must be rebuilt
         mc.createOutputFiles();
+        mc.createInterpolationGrids();
       }
       mc.run();
       break;

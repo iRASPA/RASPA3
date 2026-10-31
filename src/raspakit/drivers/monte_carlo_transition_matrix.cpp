@@ -131,6 +131,7 @@ void MonteCarloTransitionMatrix::run()
     case SimulationStage::Production:
       goto continueProductionStage;
     case SimulationStage::Uninitialized:
+      setup();
       break;
     default:
       // an unlisted stage (e.g. a newly added stage without resume dispatch) must fail loudly
@@ -148,6 +149,110 @@ continueProductionStage:
   production();
 
   output();
+}
+
+void MonteCarloTransitionMatrix::setup()
+{
+  // this case only happens at first run, not when using a binary-restart file (same as MonteCarlo::setup)
+  for (std::size_t system_id{0}; System& system : systems)
+  {
+    system.forceField.initializeAutomaticCutOff(system.simulationBox);
+    system.forceField.initializeEwaldParameters(system.simulationBox);
+
+    // switch the fractional molecule on in the first system, and off in all others (serial Gibbs CFCMC)
+    if (system.usesGibbsConventionalCFCMC() || system_id == 0uz)
+      system.containsTheFractionalMolecule = true;
+    else
+      system.containsTheFractionalMolecule = false;
+
+    // inactive fractional molecules must not contribute dUdlambda: set their groupId to zero
+    system.initializeGibbsSwapFractionalMoleculeGroupIds();
+
+    if (system.usesGibbsConventionalCFCMC())
+    {
+      system.initializeGibbsConventionalFractionalMolecules();
+      system.precomputeTotalRigidEnergy();
+      system.runningEnergies = system.computeTotalEnergies();
+    }
+
+    // if a gradient-based move is on (MC/MD hybrid or translation/rotation smart MC), make sure that the
+    // interpolation method includes gradients
+    bool usesGradientMove = system.mc_moves_probabilities.getProbability(Move::Types::HybridMC) > 0.0 ||
+                            system.mc_moves_probabilities.getProbability(Move::Types::TranslationSmartMCAll) > 0.0 ||
+                            system.mc_moves_probabilities.getProbability(Move::Types::RotationSmartMCAll) > 0.0;
+    for (const Component& component : system.components)
+    {
+      usesGradientMove |=
+          component.mc_moves_probabilities.getProbability(Move::Types::TranslationSmartMC) > 0.0 ||
+          component.mc_moves_probabilities.getProbability(Move::Types::RotationSmartMC) > 0.0 ||
+          component.mc_moves_probabilities.getProbability(Move::Types::TranslationRotationSmartMC) > 0.0;
+    }
+    if (usesGradientMove &&
+        system.forceField.settings.interpolationScheme == ForceFieldSettings::InterpolationScheme::Polynomial)
+    {
+      system.forceField.settings.interpolationScheme = ForceFieldSettings::InterpolationScheme::Tricubic;
+    }
+
+    ++system_id;
+  }
+
+  createOutputFiles();
+  writeOutputHeader();
+
+  createInterpolationGrids();
+}
+
+void MonteCarloTransitionMatrix::writeOutputHeader()
+{
+  for (std::size_t system_id{0}; const System& system : systems)
+  {
+    std::ostream stream(streams[system_id].rdbuf());
+
+    std::print(stream, "{}", system.writeOutputHeader());
+    std::print(stream, "Random seed: {}\n\n", random.seed);
+    std::print(stream, "{}\n", HardwareInfo::writeInfo());
+    std::print(stream, "{}", Units::printStatus());
+    std::print(stream, "{}", system.writeSystemStatus());
+    std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
+    std::print(stream, "{}", system.forceField.printForceFieldStatus());
+    std::print(stream, "{}", system.writeComponentStatus());
+    std::print(stream, "{}", system.reactions.printStatus());
+    std::print(stream, "{}", system.crossLinks.printStatus());
+
+#ifdef VERSION
+#define QUOTE(str) #str
+#define EXPAND_AND_QUOTE(str) QUOTE(str)
+    outputJsons[system_id]["version"] = EXPAND_AND_QUOTE(VERSION);
+#endif
+
+    outputJsons[system_id]["seed"] = random.seed;
+    outputJsons[system_id]["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
+    outputJsons[system_id]["initialization"]["units"] = Units::jsonStatus();
+    outputJsons[system_id]["initialization"]["initialConditions"] = system.jsonSystemStatus();
+    outputJsons[system_id]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
+    outputJsons[system_id]["initialization"]["forceField"]["pseudoAtoms"] = system.forceField.jsonPseudoAtomStatus();
+    outputJsons[system_id]["initialization"]["components"] = system.jsonComponentStatus();
+    outputJsons[system_id]["initialization"]["reactions"] = system.reactions.jsonStatus();
+    outputJsons[system_id]["initialization"]["crossLinks"] = system.crossLinks.jsonStatus();
+
+    std::ofstream json(outputJsonFileNames[system_id]);
+    json << outputJsons[system_id].dump(4);
+
+    ++system_id;
+  }
+}
+
+void MonteCarloTransitionMatrix::createInterpolationGrids()
+{
+  // the grids are not stored in the binary restart file: also called after a restart (run_simulation)
+  for (std::size_t system_id{0}; System& system : systems)
+  {
+    std::ostream stream(streams[system_id].rdbuf());
+    system.createExternalFieldInterpolationGrid(stream, system_id);
+    system.createFrameworkInterpolationGrids(stream);
+
+    ++system_id;
+  }
 }
 
 void MonteCarloTransitionMatrix::createOutputFiles()
@@ -210,6 +315,8 @@ void MonteCarloTransitionMatrix::performCycle()
     std::pair<std::size_t, std::size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
     System& selectedSystem = systems[selectedSystemPair.first];
     System& selectedSecondSystem = systems[selectedSystemPair.second];
+    // with a single system both references alias the same system: sample it once, not twice
+    const bool hasSecondSystem = &selectedSecondSystem != &selectedSystem;
 
     std::size_t selectedComponent = selectedSystem.randomComponent(random);
     Move::Types performedMove = Move::Types::Count;
@@ -227,7 +334,7 @@ void MonteCarloTransitionMatrix::performCycle()
                                                                   selectedComponent, fractionalMoleculeSystem);
 
         sampleTMMCState(selectedSystem, selectedComponent, false);
-        if (isTMMCCrossSystemMove(performedMove) && &selectedSecondSystem != &selectedSystem)
+        if (isTMMCCrossSystemMove(performedMove) && hasSecondSystem)
         {
           sampleTMMCState(selectedSecondSystem, selectedComponent, false);
         }
@@ -237,7 +344,7 @@ void MonteCarloTransitionMatrix::performCycle()
                                                                  selectedComponent, fractionalMoleculeSystem);
 
         sampleTMMCState(selectedSystem, selectedComponent, true);
-        if (isTMMCCrossSystemMove(performedMove) && &selectedSecondSystem != &selectedSystem)
+        if (isTMMCCrossSystemMove(performedMove) && hasSecondSystem)
         {
           sampleTMMCState(selectedSecondSystem, selectedComponent, true);
         }
@@ -245,17 +352,18 @@ void MonteCarloTransitionMatrix::performCycle()
         selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
             selectedSystem.lambdaWangLandauIsActive(selectedComponent));
-        selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
-            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
-            selectedSecondSystem.lambdaWangLandauIsActive(selectedComponent));
-
         selectedSystem.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
-        selectedSecondSystem.pairSwapLambdaWangLandauIteration(
-            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
-
         selectedSystem.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
-        selectedSecondSystem.reactionLambdaWangLandauIteration(
-            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        if (hasSecondSystem)
+        {
+          selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
+              selectedSecondSystem.lambdaWangLandauIsActive(selectedComponent));
+          selectedSecondSystem.pairSwapLambdaWangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+          selectedSecondSystem.reactionLambdaWangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        }
         break;
       case SimulationStage::Production:
         performedMove =
@@ -263,7 +371,7 @@ void MonteCarloTransitionMatrix::performCycle()
                                                   fractionalMoleculeSystem, estimation.currentBin);
 
         sampleTMMCState(selectedSystem, selectedComponent, true);
-        if (isTMMCCrossSystemMove(performedMove) && &selectedSecondSystem != &selectedSystem)
+        if (isTMMCCrossSystemMove(performedMove) && hasSecondSystem)
         {
           sampleTMMCState(selectedSecondSystem, selectedComponent, true);
         }
@@ -273,12 +381,15 @@ void MonteCarloTransitionMatrix::performCycle()
     }
 
     selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
-    selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
-        selectedSecondSystem.containsTheFractionalMolecule);
     selectedSystem.pairSwapLambdaSampleOccupancy();
-    selectedSecondSystem.pairSwapLambdaSampleOccupancy();
     selectedSystem.reactionLambdaSampleOccupancy();
-    selectedSecondSystem.reactionLambdaSampleOccupancy();
+    if (hasSecondSystem)
+    {
+      selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
+          selectedSecondSystem.containsTheFractionalMolecule);
+      selectedSecondSystem.pairSwapLambdaSampleOccupancy();
+      selectedSecondSystem.reactionLambdaSampleOccupancy();
+    }
   }
 }
 
@@ -288,59 +399,6 @@ void MonteCarloTransitionMatrix::preInitialize()
 
   if (simulationStage == SimulationStage::PreInitialization) goto continuePreInitializationStage;
   simulationStage = SimulationStage::PreInitialization;
-
-  if (streams.empty())
-  {
-    createOutputFiles();
-
-    for (std::size_t system_id{0}; System& system : systems)
-    {
-      // switch the fractional molecule on in the first system, and off in all others
-      if (system_id == 0uz)
-        system.containsTheFractionalMolecule = true;
-      else
-        system.containsTheFractionalMolecule = false;
-
-      ++system_id;
-    }
-
-    for (std::size_t system_id{0}; const System& system : systems)
-    {
-      std::ostream stream(streams[system_id].rdbuf());
-
-      std::print(stream, "{}", system.writeOutputHeader());
-      std::print(stream, "Random seed: {}\n\n", random.seed);
-      std::print(stream, "{}\n", HardwareInfo::writeInfo());
-      std::print(stream, "{}", Units::printStatus());
-      std::print(stream, "{}", system.writeSystemStatus());
-      std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
-      std::print(stream, "{}", system.forceField.printForceFieldStatus());
-      std::print(stream, "{}", system.writeComponentStatus());
-      std::print(stream, "{}", system.reactions.printStatus());
-      std::print(stream, "{}", system.crossLinks.printStatus());
-
-#ifdef VERSION
-#define QUOTE(str) #str
-#define EXPAND_AND_QUOTE(str) QUOTE(str)
-      outputJsons[system_id]["version"] = EXPAND_AND_QUOTE(VERSION);
-#endif
-
-      outputJsons[system_id]["seed"] = random.seed;
-      outputJsons[system_id]["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
-      outputJsons[system_id]["initialization"]["units"] = Units::jsonStatus();
-      outputJsons[system_id]["initialization"]["initialConditions"] = system.jsonSystemStatus();
-      outputJsons[system_id]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
-      outputJsons[system_id]["initialization"]["forceField"]["pseudoAtoms"] = system.forceField.jsonPseudoAtomStatus();
-      outputJsons[system_id]["initialization"]["components"] = system.jsonComponentStatus();
-      outputJsons[system_id]["initialization"]["reactions"] = system.reactions.jsonStatus();
-      outputJsons[system_id]["initialization"]["crossLinks"] = system.crossLinks.jsonStatus();
-
-      std::ofstream json(outputJsonFileNames[system_id]);
-      json << outputJsons[system_id].dump(4);
-
-      ++system_id;
-    }
-  }
 
   for (std::size_t system_id{0}; System& system : systems)
   {
@@ -403,59 +461,6 @@ void MonteCarloTransitionMatrix::initialize()
 
   if (simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
   simulationStage = SimulationStage::Initialization;
-
-  if (streams.empty())
-  {
-    createOutputFiles();
-
-    for (std::size_t system_id{0}; System& system : systems)
-    {
-      // switch the fractional molecule on in the first system, and off in all others
-      if (system_id == 0uz)
-        system.containsTheFractionalMolecule = true;
-      else
-        system.containsTheFractionalMolecule = false;
-
-      ++system_id;
-    }
-
-    for (std::size_t system_id{0}; const System& system : systems)
-    {
-      std::ostream stream(streams[system_id].rdbuf());
-
-      std::print(stream, "{}", system.writeOutputHeader());
-      std::print(stream, "Random seed: {}\n\n", random.seed);
-      std::print(stream, "{}\n", HardwareInfo::writeInfo());
-      std::print(stream, "{}", Units::printStatus());
-      std::print(stream, "{}", system.writeSystemStatus());
-      std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
-      std::print(stream, "{}", system.forceField.printForceFieldStatus());
-      std::print(stream, "{}", system.writeComponentStatus());
-      std::print(stream, "{}", system.reactions.printStatus());
-      std::print(stream, "{}", system.crossLinks.printStatus());
-
-#ifdef VERSION
-#define QUOTE(str) #str
-#define EXPAND_AND_QUOTE(str) QUOTE(str)
-      outputJsons[system_id]["version"] = EXPAND_AND_QUOTE(VERSION);
-#endif
-
-      outputJsons[system_id]["seed"] = random.seed;
-      outputJsons[system_id]["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
-      outputJsons[system_id]["initialization"]["units"] = Units::jsonStatus();
-      outputJsons[system_id]["initialization"]["initialConditions"] = system.jsonSystemStatus();
-      outputJsons[system_id]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
-      outputJsons[system_id]["initialization"]["forceField"]["pseudoAtoms"] = system.forceField.jsonPseudoAtomStatus();
-      outputJsons[system_id]["initialization"]["components"] = system.jsonComponentStatus();
-      outputJsons[system_id]["initialization"]["reactions"] = system.reactions.jsonStatus();
-      outputJsons[system_id]["initialization"]["crossLinks"] = system.crossLinks.jsonStatus();
-
-      std::ofstream json(outputJsonFileNames[system_id]);
-      json << outputJsons[system_id].dump(4);
-
-      ++system_id;
-    }
-  }
 
   for (std::size_t system_id{0}; System& system : systems)
   {

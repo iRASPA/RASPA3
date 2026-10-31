@@ -183,7 +183,7 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
   if (framework.has_value())
   {
     uint3 numberOfCoulombGridPoints{};
-    if (forceField.settings.numberOfVDWGridPoints.has_value())
+    if (forceField.settings.numberOfCoulombGridPoints.has_value())
     {
       numberOfCoulombGridPoints = forceField.settings.numberOfCoulombGridPoints.value();
     }

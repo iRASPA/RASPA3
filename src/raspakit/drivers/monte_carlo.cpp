@@ -312,6 +312,8 @@ void MonteCarlo::performCycle()
     std::pair<std::size_t, std::size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
     System& selectedSystem = systems[selectedSystemPair.first];
     System& selectedSecondSystem = systems[selectedSystemPair.second];
+    // with a single system both references alias the same system: sample it once, not twice
+    const bool hasSecondSystem = &selectedSecondSystem != &selectedSystem;
 
     std::size_t selectedComponent = selectedSystem.randomComponent(random);
 
@@ -335,25 +337,33 @@ void MonteCarlo::performCycle()
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
             selectedSystem.lambdaWangLandauIsActive(selectedComponent));
 
-        selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
-            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
-            selectedSecondSystem.lambdaWangLandauIsActive(selectedComponent));
+        if (hasSecondSystem)
+        {
+          selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
+              selectedSecondSystem.lambdaWangLandauIsActive(selectedComponent));
+        }
 
         if (selectedSystem.usesGibbsConventionalCFCMC())
         {
           selectedSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
               PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
-          selectedSecondSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
-              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
+          if (hasSecondSystem)
+          {
+            selectedSecondSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
+                PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
+          }
         }
 
         selectedSystem.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
-        selectedSecondSystem.pairSwapLambdaWangLandauIteration(
-            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
-
         selectedSystem.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
-        selectedSecondSystem.reactionLambdaWangLandauIteration(
-            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        if (hasSecondSystem)
+        {
+          selectedSecondSystem.pairSwapLambdaWangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+          selectedSecondSystem.reactionLambdaWangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        }
         break;
       case SimulationStage::Production:
         MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent,
@@ -363,17 +373,23 @@ void MonteCarlo::performCycle()
     }
 
     selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
-    selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
-        selectedSecondSystem.containsTheFractionalMolecule);
     if (selectedSystem.usesGibbsConventionalCFCMC())
     {
       selectedSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
-      selectedSecondSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
     }
     selectedSystem.pairSwapLambdaSampleOccupancy();
-    selectedSecondSystem.pairSwapLambdaSampleOccupancy();
     selectedSystem.reactionLambdaSampleOccupancy();
-    selectedSecondSystem.reactionLambdaSampleOccupancy();
+    if (hasSecondSystem)
+    {
+      selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
+          selectedSecondSystem.containsTheFractionalMolecule);
+      if (selectedSecondSystem.usesGibbsConventionalCFCMC())
+      {
+        selectedSecondSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
+      }
+      selectedSecondSystem.pairSwapLambdaSampleOccupancy();
+      selectedSecondSystem.reactionLambdaSampleOccupancy();
+    }
   }
 }
 
@@ -1314,6 +1330,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
 
   archive << mc.estimation;
 
+  // version 2: the overall cycle number that indexes the property-evolution samples
+  archive << mc.absoluteCurrentCycle;
+
   // not written: totalGridCreationTime
 
   archive << mc.totalPreInitializationSimulationTime;
@@ -1358,6 +1377,23 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
   archive >> mc.fractionalMoleculeSystem;
 
   archive >> mc.estimation;
+
+  if (versionNumber >= 2)
+  {
+    archive >> mc.absoluteCurrentCycle;
+  }
+  else
+  {
+    // older restart files did not store it; the best available estimate is the cycle count of the stages
+    // that were completed before the one being resumed plus the position within the current stage
+    mc.absoluteCurrentCycle = mc.currentCycle;
+    if (mc.simulationStage > MonteCarlo::SimulationStage::PreInitialization)
+      mc.absoluteCurrentCycle += mc.numberOfPreInitializationCycles;
+    if (mc.simulationStage > MonteCarlo::SimulationStage::Initialization)
+      mc.absoluteCurrentCycle += mc.numberOfInitializationCycles;
+    if (mc.simulationStage > MonteCarlo::SimulationStage::Equilibration)
+      mc.absoluteCurrentCycle += mc.numberOfEquilibrationCycles;
+  }
 
   // not written: totalGridCreationTime
 
