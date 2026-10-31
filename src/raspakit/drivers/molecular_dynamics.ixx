@@ -92,7 +92,7 @@ export struct MolecularDynamics
   std::size_t numberOfEquilibrationCycles;      ///< Number of equilibration cycles.
   
   std::size_t printEvery;                    ///< Frequency of printing output.
-  std::size_t writeRestartEvery;             ///< Frequency of writing restart files. 
+  std::size_t writeRestartEvery{5000};       ///< Frequency of writing restart files. 
   std::size_t writeBinaryRestartEvery;       ///< Frequency of writing binary restart files.
   std::size_t rescaleWangLandauEvery;        ///< Frequency of rescaling Wang-Landau factors.
   std::size_t optimizeMCMovesEvery;          ///< Frequency of optimizing Monte Carlo moves.

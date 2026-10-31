@@ -726,17 +726,16 @@ void MolecularDynamics::createOutputFiles()
 
 void MolecularDynamics::checkpointIfDue(std::size_t currentCycle)
 {
-  // periodic binary restart file
-  if (currentCycle % writeBinaryRestartEvery == 0uz && outputToFiles)
+  const bool periodic =
+      writeBinaryRestartEvery != 0uz && currentCycle % writeBinaryRestartEvery == 0uz && outputToFiles;
+  if (periodic)
   {
     writeBinaryRestartFile(*this);
   }
 
-  // graceful shutdown: checkpoint at this cycle boundary and exit cleanly
   if (GracefulShutdown::requested())
   {
     writeBinaryRestartFile(*this);
-    // std::exit skips stack unwinding: flush the text output streams explicitly
     for (std::ofstream& outputStream : streams) std::flush(outputStream);
     GracefulShutdown::exitAfterCheckpoint();
   }
@@ -865,7 +864,7 @@ void MolecularDynamics::preInitialize(std::function<void()> call_back_function, 
     system.runningEnergies = system.computeTotalEnergies();
   }
 
-  for (currentCycle = 0uz; currentCycle != numberOfPreInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  for (currentCycle = 0uz; currentCycle < numberOfPreInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     totalNumberOfMolecules = std::transform_reduce(
         systems.begin(), systems.end(), 0uz, [](const std::size_t& acc, const std::size_t& b) { return acc + b; },
@@ -956,7 +955,7 @@ void MolecularDynamics::initialize(std::function<void()> call_back_function, std
     system.runningEnergies = system.computeTotalEnergies();
   }
 
-  for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  for (currentCycle = 0uz; currentCycle < numberOfInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     totalNumberOfMolecules = std::transform_reduce(
         systems.begin(), systems.end(), 0uz, [](const std::size_t& acc, const std::size_t& b) { return acc + b; },
@@ -1110,7 +1109,7 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
     ++system_id;
   };
 
-  for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  for (currentCycle = 0uz; currentCycle < numberOfEquilibrationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     for (System& system : systems)
     {
@@ -1173,14 +1172,8 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
       }
     }
 
-    if (currentCycle % printEvery == 0uz)
-    {
-      // write restart
-      if (outputToFiles)
-      {
-        writeBinaryRestartFile(*this);
-      }
-    }
+    checkpointIfDue(currentCycle);
+
   continueEquilibrationStage:;
   }
 }
@@ -1261,7 +1254,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
   }
 
   numberOfSteps = 0uz;
-  for (currentCycle = 0uz; currentCycle != numberOfProductionCycles; ++currentCycle, ++absoluteCurrentCycle)
+  for (currentCycle = 0uz; currentCycle < numberOfProductionCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     t1 = std::chrono::steady_clock::now();
 
@@ -1411,14 +1404,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
       ++system_id;
     }
 
-    // write binary-restart file
-    if (currentCycle % printEvery == 0uz)
-    {
-      if (outputToFiles)
-      {
-        writeBinaryRestartFile(*this);
-      }
-    }
+    checkpointIfDue(currentCycle);
     t2 = std::chrono::steady_clock::now();
     totalSimulationTime += (t2 - t1);
   continueProductionStage:;

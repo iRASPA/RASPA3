@@ -622,14 +622,23 @@ void MolecularDynamicsSpatialDecomposition::writeCheckpoint()
 
 void MolecularDynamicsSpatialDecomposition::checkpointIfDue(std::size_t cycle)
 {
-  if (cycle % writeBinaryRestartEvery == 0uz && outputToFiles)
+  const bool periodic =
+      writeBinaryRestartEvery != 0uz && cycle % writeBinaryRestartEvery == 0uz && outputToFiles;
+  const bool stop = GracefulShutdown::requested();
+  if (!periodic && !stop) return;
+
+  // a graceful stop (or a writeBinaryRestartEvery that is not a multiple of printEvery) can fall between
+  // host downloads; the archive must see the current device positions
+  if (!engines.empty())
   {
-    writeCheckpoint();
+    const bool production = simulationStage == SimulationStage::Production;
+    for (std::size_t system_id{0}; system_id < systems.size(); ++system_id)
+      refreshHostState(system_id, production, true);
   }
 
-  if (GracefulShutdown::requested())
+  writeCheckpoint();
+  if (stop)
   {
-    writeCheckpoint();
     for (std::ofstream& outputStream : streams) std::flush(outputStream);
     GracefulShutdown::exitAfterCheckpoint();
   }
@@ -784,7 +793,7 @@ void MolecularDynamicsSpatialDecomposition::preInitialize()
     system.runningEnergies = system.computeTotalEnergies();
   }
 
-  for (currentCycle = 0uz; currentCycle != numberOfPreInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  for (currentCycle = 0uz; currentCycle < numberOfPreInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     totalNumberOfMolecules = std::transform_reduce(
         systems.begin(), systems.end(), 0uz, [](const std::size_t& acc, const std::size_t& b) { return acc + b; },
@@ -858,7 +867,7 @@ void MolecularDynamicsSpatialDecomposition::initialize()
     system.runningEnergies = system.computeTotalEnergies();
   }
 
-  for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  for (currentCycle = 0uz; currentCycle < numberOfInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     totalNumberOfMolecules = std::transform_reduce(
         systems.begin(), systems.end(), 0uz, [](const std::size_t& acc, const std::size_t& b) { return acc + b; },
@@ -1191,7 +1200,7 @@ void MolecularDynamicsSpatialDecomposition::equilibrate()
     ++system_id;
   };
 
-  for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  for (currentCycle = 0uz; currentCycle < numberOfEquilibrationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     for (std::size_t system_id{0}; System& system : systems)
     {
@@ -1236,13 +1245,8 @@ void MolecularDynamicsSpatialDecomposition::equilibrate()
       }
     }
 
-    if (currentCycle % printEvery == 0uz)
-    {
-      if (outputToFiles)
-      {
-        writeCheckpoint();
-      }
-    }
+    checkpointIfDue(currentCycle);
+
   continueEquilibrationStage:;
   }
   // the host state of the stage end (the production stage starts from it)
@@ -1315,7 +1319,7 @@ void MolecularDynamicsSpatialDecomposition::production()
   };
 
   numberOfSteps = 0uz;
-  for (currentCycle = 0uz; currentCycle != numberOfProductionCycles; ++currentCycle, ++absoluteCurrentCycle)
+  for (currentCycle = 0uz; currentCycle < numberOfProductionCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     t1 = std::chrono::steady_clock::now();
 
@@ -1438,13 +1442,7 @@ void MolecularDynamicsSpatialDecomposition::production()
       ++system_id;
     }
 
-    if (currentCycle % printEvery == 0uz)
-    {
-      if (outputToFiles)
-      {
-        writeCheckpoint();
-      }
-    }
+    checkpointIfDue(currentCycle);
     t2 = std::chrono::steady_clock::now();
     totalSimulationTime += (t2 - t1);
   continueProductionStage:;

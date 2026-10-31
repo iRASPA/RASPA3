@@ -875,3 +875,38 @@ TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   QUATD_EXPECT_NEAR(system.moleculeData[0].orientationMomentum, simd_quatd(10.000043, 0.0, 0.0, -0.000592), 1e-6);
   QUATD_EXPECT_NEAR(system.moleculeData[1].orientationMomentum, simd_quatd(-10.000043, 0.0, 0.0, -0.000592), 1e-6);
 }
+
+TEST(molecular_dynamics, resume_of_a_finished_or_empty_stage_does_not_loop)
+{
+  MolecularDynamics md;
+  md.outputToFiles = false;
+  md.printEvery = 1;
+  md.writeBinaryRestartEvery = 1;
+  md.optimizeMCMovesEvery = 1;
+  md.numberOfSteps = 0;
+  md.numberOfPreInitializationCycles = 0;
+  md.numberOfInitializationCycles = 3;
+  md.numberOfEquilibrationCycles = 5;
+  md.numberOfProductionCycles = 7;
+
+  md.simulationStage = MolecularDynamics::SimulationStage::PreInitialization;
+  md.currentCycle = 0;
+  md.preInitialize();
+
+  md.simulationStage = MolecularDynamics::SimulationStage::Initialization;
+  md.currentCycle = 3;
+  md.initialize();
+
+  md.simulationStage = MolecularDynamics::SimulationStage::Equilibration;
+  md.currentCycle = 5;
+  md.equilibrate();
+
+  md.simulationStage = MolecularDynamics::SimulationStage::Production;
+  md.currentCycle = 7;
+  md.production();
+
+  md.numberOfProductionCycles = 0;
+  md.simulationStage = MolecularDynamics::SimulationStage::Production;
+  md.currentCycle = 0;
+  md.production();
+}

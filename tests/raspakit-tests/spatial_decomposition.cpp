@@ -39,6 +39,7 @@ import spatial_decomposition_pppm;
 import spatial_decomposition_pair_kernel;
 import spatial_decomposition_worker_team;
 import spatial_decomposition_force_engine;
+import molecular_dynamics_spatial_decomposition;
 import force_engine;
 import spatial_decomposition_device_step;
 import mc_moves_hybridmc;
@@ -3791,4 +3792,40 @@ TEST_P(SpatialDecompositionDevice, resident_integrator_matches_host_polymer_over
   }
   expectResidentMatchesHost(makeSystem, pairDevice, true, 40, 0.0005, 0.3,
                             {.position = 1e-4, .velocity = 1e-4, .energy = 1e-4, .drift = 1e-5});
+}
+
+TEST(spatial_decomposition, md_driver_resume_of_a_finished_or_empty_stage_does_not_loop)
+{
+  // goto continue*Stage at the end of `for (; currentCycle < N; ++currentCycle)` increments once and must then
+  // exit: with `!=`, a checkpoint at currentCycle == N (or N == 0) wraps around 2^64 times
+  MolecularDynamicsSpatialDecomposition md;
+  md.outputToFiles = false;
+  md.printEvery = 1;
+  md.writeBinaryRestartEvery = 1;
+  md.optimizeMCMovesEvery = 1;
+
+  md.numberOfPreInitializationCycles = 0;
+  md.simulationStage = MolecularDynamicsSpatialDecomposition::SimulationStage::PreInitialization;
+  md.currentCycle = 0;
+  md.preInitialize();
+
+  md.numberOfInitializationCycles = 3;
+  md.simulationStage = MolecularDynamicsSpatialDecomposition::SimulationStage::Initialization;
+  md.currentCycle = 3;
+  md.initialize();
+
+  md.numberOfEquilibrationCycles = 5;
+  md.simulationStage = MolecularDynamicsSpatialDecomposition::SimulationStage::Equilibration;
+  md.currentCycle = 5;
+  md.equilibrate();
+
+  md.numberOfProductionCycles = 7;
+  md.simulationStage = MolecularDynamicsSpatialDecomposition::SimulationStage::Production;
+  md.currentCycle = 7;
+  md.production();
+
+  md.numberOfProductionCycles = 0;
+  md.simulationStage = MolecularDynamicsSpatialDecomposition::SimulationStage::Production;
+  md.currentCycle = 0;
+  md.production();
 }
