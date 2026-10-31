@@ -23,6 +23,7 @@ import interactions_ewald;
 import energy_status;
 import mc_moves_translation;
 import mc_moves_rotation;
+import mc_moves_gibbs_identity_change;
 
 TEST(electrostatic_polarization, Test_2_CO2_in_ITQ_29_2x2x2)
 {
@@ -157,4 +158,62 @@ TEST(electrostatic_polarization, dudlambda_matches_finite_difference)
   system.runningEnergies = system.computeTotalEnergies();
   double withoutPolarization = system.runningEnergies.dudlambda(lambda, 1) * Units::EnergyToKelvin;
   EXPECT_GT(std::abs(analytic - withoutPolarization), 0.1);  // ~1.19 K for this configuration
+}
+
+// The Gibbs identity change switches a molecule in each box; with molecule-molecule polarization the real-space
+// field the switched molecule feels from its neighbours and the field change it causes on them must be part of
+// the energy and of the stored field, exactly as in the single-box identity change.
+TEST(electrostatic_polarization, stored_field_consistency_gibbs_identity_change)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  forceField.computePolarization = true;
+  forceField.omitInterPolarization = false;
+  forceField.omitInterInteractions = false;
+  forceField.omitEwaldFourier = false;
+
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
+  Component a = Component::makeCO2(forceField, 0, true);
+  Component b = Component::makeCO2(forceField, 1, true);
+  a.gibbsIdentityChanges = {1};
+  b.gibbsIdentityChanges = {0};
+  ASSERT_EQ(a.type, b.type);
+
+  System systemI = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {a, b}, {}, {6, 4}, 5);
+  System systemII = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {a, b}, {}, {4, 6}, 5);
+
+  RandomNumber random(17);
+  RunningEnergy runningI = systemI.computeTotalEnergies();
+  RunningEnergy runningII = systemII.computeTotalEnergies();
+  systemI.runningEnergies = runningI;
+  systemII.runningEnergies = runningII;
+
+  std::size_t accepted = 0;
+  for (std::size_t step = 0; step < 300; ++step)
+  {
+    const std::size_t componentA = random.uniform_integer(0, 1);
+    std::optional<std::pair<RunningEnergy, RunningEnergy>> e =
+        MC_Moves::GibbsIdentityChangeMove_CBMC(random, systemI, systemII, componentA);
+    if (e.has_value())
+    {
+      ++accepted;
+      runningI += e->first;
+      runningII += e->second;
+    }
+  }
+  ASSERT_GE(accepted, 5uz);
+
+  for (System* system : {&systemI, &systemII})
+  {
+    std::span<double3> maintained = system->spanOfMoleculeElectricField();
+    std::vector<double3> snapshot(maintained.begin(), maintained.end());
+    system->computeTotalElectricField();
+    EXPECT_LT(maxFieldDifference(snapshot, system->spanOfMoleculeElectricField()), 1e-8);
+  }
+
+  RunningEnergy recomputedI = systemI.computeTotalEnergies();
+  RunningEnergy recomputedII = systemII.computeTotalEnergies();
+  EXPECT_NEAR(runningI.polarization - recomputedI.polarization, 0.0, 1e-6);
+  EXPECT_NEAR(runningI.potentialEnergy() - recomputedI.potentialEnergy(), 0.0, 1e-6);
+  EXPECT_NEAR(runningII.polarization - recomputedII.polarization, 0.0, 1e-6);
+  EXPECT_NEAR(runningII.potentialEnergy() - recomputedII.potentialEnergy(), 0.0, 1e-6);
 }

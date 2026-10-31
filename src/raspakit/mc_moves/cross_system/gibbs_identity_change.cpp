@@ -41,6 +41,8 @@ struct BoxIdentityChangeData
   std::vector<Atom> oldMoleculeCopy;
   std::vector<double3> oldElectricField;
   std::vector<double3> newElectricField;
+  /// Change of the electric field on every other atom of the box (molecule-molecule polarization only).
+  std::vector<double3> electricFieldNeighborDelta;
 };
 
 bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types move, std::size_t oldComponent,
@@ -124,8 +126,35 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
         system.trialEik, system.forceField, system.simulationBox, data.newElectricField, data.oldElectricField,
         data.growData.atoms, data.oldMoleculeCopy);
 
+    // Molecule-molecule polarization (as in the single-box identity change): the old and new molecule occupy the
+    // same slot, so the grown atoms are given the old molecule's id for the field difference so that the transformed
+    // molecule's own atoms are skipped; this adds the real-space inter-molecular field on the switched molecule and
+    // records the field change on the surrounding molecules. The inter-molecular energy itself is already accounted
+    // for through CBMC, so the returned energy is discarded.
+    if (!system.forceField.omitInterPolarization)
+    {
+      std::vector<Atom> newAtomsForField(data.growData.atoms.begin(), data.growData.atoms.end());
+      if (!data.oldMoleculeCopy.empty())
+      {
+        for (Atom& atom : newAtomsForField) atom.moleculeId = data.oldMoleculeCopy.front().moleculeId;
+      }
+
+      data.electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+      [[maybe_unused]] std::optional<RunningEnergy> interPolarizationEnergy =
+          Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+              system.forceField, system.simulationBox, data.electricFieldNeighborDelta, data.newElectricField,
+              data.oldElectricField, system.spanOfMoleculeAtoms(), newAtomsForField, data.oldMoleculeCopy);
+    }
+
     data.polarizationDifference = Interactions::computePolarizationEnergyDifference(
         system.forceField, data.newElectricField, data.oldElectricField, data.growData.atoms, data.oldMoleculeCopy);
+
+    if (!system.forceField.omitInterPolarization)
+    {
+      data.polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+          system.forceField, system.spanOfMoleculeElectricField(), data.electricFieldNeighborDelta,
+          system.spanOfMoleculeAtoms());
+    }
   }
 
   data.correctionFactorEwald = std::exp(
@@ -141,6 +170,17 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
 void acceptBoxIdentityChange(System& system, BoxIdentityChangeData& data)
 {
   Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
+
+  // Apply the field changes on the surrounding molecules before the old molecule is removed and the new one added
+  // (the delta is indexed over the current atom array).
+  if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+  {
+    std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+    for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+    {
+      storedElectricField[i] += data.electricFieldNeighborDelta[i];
+    }
+  }
 
   std::vector<Atom> acceptedAtoms(data.growData.atoms.begin(), data.growData.atoms.end());
   for (Atom& atom : acceptedAtoms)

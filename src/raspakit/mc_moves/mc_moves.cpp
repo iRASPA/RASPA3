@@ -3285,11 +3285,11 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
           selectedSecondSystem.runningEnergies += energy.value().second;
         }
 
+        // Like the other cross-system moves, the time is attributed to the system the move was drawn for only;
+        // adding it to both systems would count it twice in the summed totals.
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
         selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
         selectedSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
-        selectedSecondSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
-        selectedSecondSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       }
       break;
     }
