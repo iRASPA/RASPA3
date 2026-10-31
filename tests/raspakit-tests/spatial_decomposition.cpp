@@ -396,6 +396,62 @@ TEST(spatial_decomposition, cell_list_matches_brute_force_pairs_triclinic)
   EXPECT_EQ(ambiguous, 0u);
 }
 
+TEST(spatial_decomposition, cell_list_displacement_check_follows_the_box_not_the_unwrapped_origin)
+{
+  // a pair 3 A apart, ten boxes from the origin: a 1% barostat scale moves the unwrapped coordinates by ~2 A
+  // (more than skin/2) while the pair and the comoving positions are unchanged
+  const SimulationBox box(20.0, 20.0, 20.0);
+  const double cutoff = 8.0;
+  const double skin = 2.0;
+  std::vector<Atom> atoms{Atom(double3(200.0, 1.0, 1.0), 0.0, 1.0, 0, 0, 0, false, false),
+                          Atom(double3(203.0, 1.0, 1.0), 0.0, 1.0, 1, 0, 0, false, false)};
+  CellList cellList;
+  cellList.setup(box, cutoff, skin, 1, std::nullopt);
+  cellList.bin(box, atoms);
+
+  const double scale = 0.99;
+  const SimulationBox scaled(20.0 * scale, 20.0 * scale, 20.0 * scale);
+  for (Atom& atom : atoms) atom.position = scale * atom.position;
+  EXPECT_GT((atoms[0].position - double3(200.0, 1.0, 1.0)).length(), 0.5 * skin);
+  EXPECT_FALSE(cellList.refreshPositionsAndCheck(0, atoms, scaled));
+}
+
+TEST(spatial_decomposition, cell_list_displacement_check_rebuilds_when_the_box_contracts_the_list_cutoff)
+{
+  // atoms sit at the origin, so their unwrapped Cartesian displacement under a 30% contraction is a fraction
+  // of an Angstrom; a pair at the list cutoff (including a ghost image) shrinks by 3 A, more than the skin
+  const SimulationBox box(20.0, 20.0, 20.0);
+  const double cutoff = 8.0;
+  const double skin = 2.0;
+  std::vector<Atom> atoms{Atom(double3(0.4, 0.4, 0.4), 0.0, 1.0, 0, 0, 0, false, false),
+                          Atom(double3(1.2, 0.4, 0.4), 0.0, 1.0, 1, 0, 0, false, false)};
+  CellList cellList;
+  cellList.setup(box, cutoff, skin, 1, std::nullopt);
+  cellList.bin(box, atoms);
+
+  const double scale = 0.70;
+  const SimulationBox scaled(14.0, 14.0, 14.0);
+  for (Atom& atom : atoms) atom.position = scale * atom.position;
+  EXPECT_LT((atoms[0].position - double3(0.4, 0.4, 0.4)).length(), 0.5 * skin);
+  EXPECT_LT((atoms[1].position - double3(1.2, 0.4, 0.4)).length(), 0.5 * skin);
+  EXPECT_TRUE(cellList.refreshPositionsAndCheck(0, atoms, scaled));
+}
+
+TEST(spatial_decomposition, cell_list_displacement_check_still_sees_thermal_motion)
+{
+  const SimulationBox box(20.0, 20.0, 20.0);
+  std::vector<Atom> atoms{Atom(double3(1.0, 1.0, 1.0), 0.0, 1.0, 0, 0, 0, false, false),
+                          Atom(double3(4.0, 1.0, 1.0), 0.0, 1.0, 1, 0, 0, false, false)};
+  CellList cellList;
+  cellList.setup(box, 8.0, 2.0, 1, std::nullopt);
+  cellList.bin(box, atoms);
+  atoms[0].position.x += 1.1;
+  EXPECT_TRUE(cellList.refreshPositionsAndCheck(0, atoms, box));
+  atoms[0].position.x -= 1.1;
+  atoms[0].position.x += 0.2;
+  EXPECT_FALSE(cellList.refreshPositionsAndCheck(0, atoms, box));
+}
+
 TEST(spatial_decomposition, cell_list_matches_brute_force_pairs_small_box)
 {
   // cutoff + skin exactly half the box: 6 cells per axis with a 7-wide stencil, so neighbour cells are reached

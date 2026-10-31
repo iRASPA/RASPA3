@@ -42,7 +42,11 @@ export struct LocalAtom
  *
  * The shift of a pair stays valid until the next rebuild: with `cutoff + skin` at most half the smallest
  * perpendicular width of the box (checked in `setup`) no other image of the neighbour can come within the cutoff
- * before an atom has moved more than `skin / 2`, which is the rebuild criterion (`refreshPositionsAndCheck`).
+ * before the comoving displacement of an atom (its motion relative to the deforming cell) exceeds the remaining
+ * skin, which is the rebuild criterion (`refreshPositionsAndCheck`). A barostat step scales the unwrapped
+ * positions with the cell; the check therefore compares each atom to its build position transported by
+ * H(t) H(t0)^{-1}, and spends the rest of the skin on the contraction of a list-cutoff vector (an owned atom
+ * and a ghost image can approach when the box shrinks even if neither atom moves in the scaled frame).
  *
  * Same-molecule pairs: the lists hold the pairs of a molecule that interact with the regular full-strength pair
  * potential, i.e. all but the excluded pairs (1-2, 1-3, same rigid fragment; every pair of a rigid molecule) and
@@ -86,7 +90,9 @@ export struct CellList
   int3 numberOfCells{1, 1, 1};
   int subdivision{3};          ///< Cells per list cutoff along an axis (cell width >= listCutoff / subdivision).
   int3 stencilRange{1, 1, 1};  ///< Neighbour-cell offsets needed to cover the list cutoff, per axis.
-  double3x3 cellAtBuild{};     ///< Box matrix at the last build.
+  double3x3 cellAtBuild{};         ///< Box matrix at the last build.
+  double3x3 inverseCellAtBuild{};  ///< Inverse of `cellAtBuild` (the map H(t) H(t0)^{-1} of a later box).
+  double3 widthsAtBuild{};         ///< Perpendicular widths at the last build (the contraction of the list cutoff).
   DomainDecomposition decomposition{};
   std::size_t numberOfDomains{1};
   std::optional<int3> requestedGrid{};
@@ -170,9 +176,11 @@ export struct CellList
   /// current box applied to the images (parallel per domain; after all owners refreshed their positions).
   void gatherPositions(std::size_t domain, const SimulationBox& box);
 
-  /// Copies the current positions of the atoms owned by a domain into the x/y/z arrays and returns whether an
-  /// owned atom has moved more than skin / 2 since the last build.
-  bool refreshPositionsAndCheck(std::size_t domain, std::span<const Atom> atoms);
+  /// Copies the current positions of the atoms owned by a domain into the x/y/z arrays and returns whether the
+  /// neighbour lists must be rebuilt: an owned atom has moved more than half the remaining skin in the frame
+  /// that follows the cell (r(t) - H(t) H(t0)^{-1} r(t0)), or the box has contracted enough that a pair at the
+  /// list cutoff can enter the interaction cutoff.
+  bool refreshPositionsAndCheck(std::size_t domain, std::span<const Atom> atoms, const SimulationBox& box);
 
   bool boxChanged(const SimulationBox& box) const;
 

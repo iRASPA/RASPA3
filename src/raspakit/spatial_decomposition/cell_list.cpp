@@ -343,6 +343,8 @@ void CellList::bin(const SimulationBox& box, std::span<const Atom> atoms, std::s
   }
 
   cellAtBuild = box.cell;
+  inverseCellAtBuild = box.inverseCell;
+  widthsAtBuild = box.perpendicularWidths();
   ++numberOfBuilds;
 }
 
@@ -537,9 +539,28 @@ void CellList::gatherPositions(std::size_t domainIndex, const SimulationBox& box
   }
 }
 
-bool CellList::refreshPositionsAndCheck(std::size_t domainIndex, std::span<const Atom> atoms)
+bool CellList::refreshPositionsAndCheck(std::size_t domainIndex, std::span<const Atom> atoms, const SimulationBox& box)
 {
   DomainLists& domain = domains[domainIndex];
+  const bool sameBox = !boxChanged(box);
+  // H(t) H(t0)^{-1}: the barostat applies this map to the unwrapped positions, so the displacement that
+  // spends the Verlet skin is the motion left after transporting the build position with the cell.
+  const double3x3 map = sameBox ? double3x3::identity() : box.cell * inverseCellAtBuild;
+  double contraction = 0.0;
+  if (!sameBox && listCutoff > 0.0)
+  {
+    const double3 current = box.perpendicularWidths();
+    const double ratio =
+        std::min({current.x / widthsAtBuild.x, current.y / widthsAtBuild.y, current.z / widthsAtBuild.z});
+    contraction = listCutoff * std::max(0.0, 1.0 - ratio);
+  }
+  const double budget = skin - contraction;
+  if (budget <= 0.0)
+  {
+    domain.maximumDisplacementSquared = 0.0;
+    return true;
+  }
+
   double maximumSquared = 0.0;
   for (const std::uint32_t i : domain.ownedAtoms)
   {
@@ -547,13 +568,14 @@ bool CellList::refreshPositionsAndCheck(std::size_t domainIndex, std::span<const
     x[i] = p.x;
     y[i] = p.y;
     z[i] = p.z;
-    const double dx = p.x - refX[i];
-    const double dy = p.y - refY[i];
-    const double dz = p.z - refZ[i];
+    const double3 reference = sameBox ? double3(refX[i], refY[i], refZ[i]) : map * double3(refX[i], refY[i], refZ[i]);
+    const double dx = p.x - reference.x;
+    const double dy = p.y - reference.y;
+    const double dz = p.z - reference.z;
     maximumSquared = std::max(maximumSquared, dx * dx + dy * dy + dz * dz);
   }
   domain.maximumDisplacementSquared = maximumSquared;
-  return maximumSquared > 0.25 * skin * skin;
+  return maximumSquared > 0.25 * budget * budget;
 }
 
 bool CellList::boxChanged(const SimulationBox& box) const

@@ -1121,10 +1121,11 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
     mark = now;
   };
 
-  // phase 0: refresh positions of the owned atoms, decide whether the lists must be rebuilt. A change of the box
-  // (barostat) by itself does not invalidate the lists: the atoms move with the cell and the displacement check
-  // covers that motion, and the pair distances are always taken with the minimum image of the current box. The
-  // box must only stay large enough for the minimum-image lists. The mesh influence function does depend on the
+  // phase 0: refresh positions of the owned atoms, decide whether the lists must be rebuilt. A barostat step
+  // scales the unwrapped positions with the cell: the displacement check follows that map (so a molecule that
+  // has diffused many boxes from the origin does not rebuild every step) and spends the rest of the skin on
+  // the contraction of a list-cutoff pair (an owned atom and a ghost image can approach when the box shrinks).
+  // The box must stay large enough for the minimum-image lists. The mesh influence function depends on the
   // cell: thread 0 decides here whether it must be recomputed (a flag read by all threads after the barrier).
   const bool boxChanged = cellList.boxChanged(box);
   workers.phase(
@@ -1152,7 +1153,7 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
           }
         }
         bool request = cellList.numberOfBuilds == 0 || cellList.numberOfAtoms != atoms.size();
-        if (!request) request = cellList.refreshPositionsAndCheck(thread, atoms);
+        if (!request) request = cellList.refreshPositionsAndCheck(thread, atoms, box);
         rebuildRequested[thread] = request ? 1 : 0;
       });
 
