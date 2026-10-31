@@ -552,6 +552,100 @@ TEST(MC_MULTI_TRIAL_CBMC, device_swap_and_reinsertion_drift_rigid_ewald_fau)
   }
 }
 
+// The device kernel evaluates unscaled pairs: a fractional (CFCMC) molecule among the background atoms, not only
+// in the component being grown, sends the grow to the CPU grower. The 'supports' check is static: no device needed.
+TEST(MC_MULTI_TRIAL_CBMC, device_grower_declines_a_background_with_a_fractional_molecule)
+{
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
+
+  MCMoveProbabilities multiTrial = MCMoveProbabilities();
+  multiTrial.setProbability(Move::Types::Translation, 1.0);
+  multiTrial.setProbability(Move::Types::SwapMultiTrialCBMC, 1.0);
+  MCMoveProbabilities cfcmc = MCMoveProbabilities();
+  cfcmc.setProbability(Move::Types::Translation, 1.0);
+  cfcmc.setProbability(Move::Types::SwapCFCMC, 1.0);
+
+  auto makeMethane = [&](const MCMoveProbabilities &probabilities)
+  {
+    return Component(forceField, "methane", 190.564, 45599200, 0.01142,
+                     {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 0, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt,
+                     false);
+  };
+
+  // CO2 with a CFCMC fractional molecule: the methane grows see it in their background
+  {
+    System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f},
+                           {makeMethane(multiTrial), makeCO2(forceField, cfcmc, 1)}, {}, {10, 5}, 5);
+    ASSERT_TRUE(system.components[1].hasFractionalMolecule);
+    const CBMC::GrowContext context = system.makeGrowContext();
+    const bool backgroundIsFractional = std::ranges::any_of(
+        context.moleculeAtoms, [](const Atom &atom) { return atom.isFractional || atom.scalingVDW != 1.0; });
+    ASSERT_TRUE(backgroundIsFractional);
+
+    std::string reason;
+    EXPECT_FALSE(CBMC::DeviceMultiTrialGrower::supports(context, system.components[0], reason));
+    EXPECT_NE(reason.find("fractional"), std::string::npos) << reason;
+  }
+
+  // the same mixture without a fractional molecule is grown on the device
+  {
+    System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f},
+                           {makeMethane(multiTrial), makeCO2(forceField, multiTrial, 1)}, {}, {10, 5}, 5);
+    ASSERT_FALSE(system.components[1].hasFractionalMolecule);
+    const CBMC::GrowContext context = system.makeGrowContext();
+    std::string reason;
+    EXPECT_TRUE(CBMC::DeviceMultiTrialGrower::supports(context, system.components[0], reason)) << reason;
+  }
+}
+
+// With the CBMC device set and a fractional molecule present, the multiple-try moves run through the CPU grower:
+// the simulation proceeds with the moves accepted and the running energies without drift.
+TEST(MC_MULTI_TRIAL_CBMC, device_grower_falls_back_to_the_cpu_grower_next_to_a_fractional_molecule)
+{
+  const std::optional<PairDevice> device = availableCBMCDevice();
+  if (!device.has_value()) GTEST_SKIP() << "no CBMC device available";
+
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
+
+  MCMoveProbabilities multiTrial = MCMoveProbabilities();
+  multiTrial.setProbability(Move::Types::Translation, 1.0);
+  multiTrial.setProbability(Move::Types::ReinsertionMultiTrialCBMC, 1.0);
+  multiTrial.setProbability(Move::Types::SwapMultiTrialCBMC, 1.0);
+  MCMoveProbabilities cfcmc = MCMoveProbabilities();
+  cfcmc.setProbability(Move::Types::Translation, 1.0);
+  cfcmc.setProbability(Move::Types::Rotation, 1.0);
+  cfcmc.setProbability(Move::Types::SwapCFCMC, 1.0);
+
+  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
+                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 0, false, false)}, {}, {}, 5, 21, multiTrial,
+                                std::nullopt, false);
+  methane.numberOfTrialMolecules = 5;
+  Component co2 = makeCO2(forceField, cfcmc, 1);
+
+  System system = System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {methane, co2}, {}, {10, 5}, 5);
+  system.cbmcDevice = device.value();
+
+  MonteCarlo mc = makeMonteCarlo({system}, 20, 5, 5);
+  mc.run();
+
+  for (System &s : mc.systems)
+  {
+    EXPECT_EQ(s.cbmcDevice, device.value());
+    expectNoEnergyDrift(s);
+    const MoveStatistics<double3> &swapStatistics =
+        std::get<MoveStatistics<double3>>(s.components[0].mc_moves_statistics[Move::Types::SwapMultiTrialCBMC]);
+    EXPECT_GT(swapStatistics.totalCounts.x, 0.0);
+    EXPECT_GT(swapStatistics.totalCounts.y, 0.0);
+    EXPECT_GT(swapStatistics.totalAccepted.x + swapStatistics.totalAccepted.y, 0.0);
+    const MoveStatistics<double> &reinsertionStatistics =
+        std::get<MoveStatistics<double>>(s.components[0].mc_moves_statistics[Move::Types::ReinsertionMultiTrialCBMC]);
+    EXPECT_GT(reinsertionStatistics.totalCounts, 0.0);
+    EXPECT_GT(reinsertionStatistics.totalAccepted, 0.0);
+  }
+}
+
 // The device proposal with its double-precision correction samples the same grand-canonical distribution as the
 // CPU grower: the average loading of methane in FAU agrees within the statistical error.
 TEST(MC_MULTI_TRIAL_CBMC, device_loading_matches_cpu_grower_methane_fau)

@@ -39,7 +39,8 @@ import cbmc_device_environment;
  * correction is the Metropolis factor between the two potentials, as in the dual cut-off scheme).
  *
  * Scope: fully rigid components of at most 'DeviceGrowEnvironment::maximumAtomsPerSet' atoms, unit scaling (no
- * fractional molecules), no external field, no cross-link tethers, force fields of plain 12-6 Lennard-Jones and
+ * fractional molecules, neither the grown molecule nor any molecule of the background: the kernel evaluates
+ * unscaled pairs), no external field, no cross-link tethers, force fields of plain 12-6 Lennard-Jones and
  * Ewald (or no) electrostatics. Everything else is forwarded to the CPU grower, so a system can mix supported and
  * unsupported components (every component is always grown by one and the same scheme, which is all detailed
  * balance needs). k is 'GrowthSettings::numberOfTrialDirections'.

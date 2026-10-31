@@ -164,6 +164,16 @@ bool CBMC::DeviceMultiTrialGrower::supports(const GrowContext &context, const Co
     reason = std::format("component '{}' has scaled (fractional) atoms", component.name);
     return false;
   }
+  // The kernel evaluates plain (unscaled) Lennard-Jones and Coulomb pairs against the background: a scaled or
+  // fractional molecule among the background atoms (a CFCMC fractional molecule, possibly at lambda = 0) would be
+  // seen at full strength, flagging overlaps and weights the host potential does not have.
+  if (!unitScaling(context.moleculeAtoms) || !unitScaling(context.frameworkAtoms))
+  {
+    reason = std::format("the environment of component '{}' holds scaled (fractional) atoms; the device kernel "
+                         "evaluates unscaled pairs",
+                         component.name);
+    return false;
+  }
   const std::vector<std::uint8_t> present = presentTypes(context, component);
   return DeviceGrowEnvironment::supportsForceField(context.forceField, present, reason);
 }
