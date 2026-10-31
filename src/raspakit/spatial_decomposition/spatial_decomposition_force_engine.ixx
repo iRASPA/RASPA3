@@ -111,6 +111,11 @@ export class SpatialDecompositionForceEngine
   /// Returns whether the engine covers the system; on false, `reason` names the unsupported feature.
   static bool supports(const System& system, std::string& reason);
 
+  /// Checks that the box, the Verlet skin and the requested device can host the engine, without baking the
+  /// pair-kernel flags, the switching polynomials or the PPPM mesh (those follow the composition and the box
+  /// at initialize()). The MD spatial-decomposition driver uses this before the MC initialization cycles.
+  void validateLayout(const System& system) const;
+
   /// Builds the worker team, the cell list and the mesh for the system's current box and atoms.
   void initialize(System& system);
 
@@ -119,9 +124,11 @@ export class SpatialDecompositionForceEngine
   RunningEnergy computeGradients(System& system, bool withVirial = true);
 
   /// Tells the engine that the bonded topology or the atom types of the system changed (a reaction of the
-  /// Polymerization driver): the position-independent sums are refreshed and the lists are rebuilt at the next
-  /// evaluation (the device copies of the atom types follow the build); with the device bonded terms their
-  /// topology (masses, charge sums) is re-uploaded and the device polymer overlay is rebuilt at the next step.
+  /// Polymerization driver): the pair kernel is prepared again (a retyping can introduce a type that was absent
+  /// when the kernel flags and the switching polynomials were chosen), the position-independent sums are
+  /// refreshed and the lists are rebuilt at the next evaluation (the device copies of the atom types follow the
+  /// build); with the device bonded terms their topology (masses, charge sums) is re-uploaded and the device
+  /// polymer overlay is rebuilt at the next step.
   void topologyChanged(System& system);
 
   /// Configurational part of the molecular pressure tensor at the configuration of the last

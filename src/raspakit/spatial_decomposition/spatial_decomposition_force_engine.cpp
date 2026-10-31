@@ -138,6 +138,29 @@ bool SpatialDecompositionForceEngine::supports(const System& system, std::string
   return true;
 }
 
+void SpatialDecompositionForceEngine::validateLayout(const System& system) const
+{
+  std::string reason;
+  if (!supports(system, reason))
+  {
+    throw std::runtime_error(std::format("[Spatial decomposition]: the force engine does not support {}\n", reason));
+  }
+
+  const ForceField& forceField = system.forceField;
+  double cutoff = forceField.cutOffMoleculeVDW;
+  if (forceField.useCharge) cutoff = std::max(cutoff, forceField.cutOffCoulomb);
+  CellList cells;
+  cells.setup(system.simulationBox, cutoff, settings.verletSkin, settings.numberOfThreads, settings.domainGrid);
+
+  if (settings.pairDevice != PairDevice::CPU && !DeviceStep::available(settings.pairDevice))
+  {
+    throw std::runtime_error(std::format(
+        "[Spatial decomposition]: 'PairDevice' is '{}' but no {} device is available on this machine ({})\n",
+        pairDeviceName(settings.pairDevice), pairDeviceName(settings.pairDevice),
+        DeviceStep::unavailableReason(settings.pairDevice)));
+  }
+}
+
 namespace
 {
 // The term lists of a component the host bonded units slice (the kinds of BondedUnit::termKind); the scaled
@@ -448,13 +471,6 @@ void SpatialDecompositionForceEngine::initialize(System& system)
     devicePairs.initialize(settings.pairDevice);
   }
   prepareKernel(system);
-  if (deviceKernel && !fastKernel)
-  {
-    throw std::runtime_error(
-        "[Spatial decomposition]: the device pair kernel covers plain Lennard-Jones (truncated, shifted, or "
-        "switched) between fully coupled atoms with Ewald or no electrostatics; use 'PairDevice' : 'CPU' for this "
-        "system\n");
-  }
   if (deviceMesh)
   {
     devicePairs.enableMesh(PPPM::chooseMesh(system.simulationBox, settings.meshSpacing, settings.interpolationOrder),
@@ -559,6 +575,9 @@ SpatialDecompositionForceEngine::PreparedParameters SpatialDecompositionForceEng
 void SpatialDecompositionForceEngine::topologyChanged(System& system)
 {
   if (!initializedFlag) return;
+  // a retyping can introduce a type that was absent when the kernel flags and the switching polynomials were
+  // chosen (the pair table is filled for every type; the present-type scan decides the truncation scheme)
+  prepareKernel(system);
   // the atom types (and charges) may have changed: the per-type static sums, the type copies of the cell lists and
   // of the device lists (refreshed at the next build) and the host copy of the resident state
   refreshStaticSums(system);
@@ -642,6 +661,9 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
     fz.assign(numberOfAtoms, 0.0);
     cellList.numberOfBuilds = 0;  // forces a rebuild
     pairExclusionsOutdated = true;
+    // insertions (MC initialization, a grow) change the set of present types and can introduce a non-unit
+    // scaling: the specialised kernels were prepared from the previous composition
+    prepareKernel(system);
   }
   preparePairListExclusions(system);
   if (bondedWorkOutdated(system)) prepareBondedWork(system);
@@ -820,6 +842,7 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
     fz.assign(numberOfAtoms, 0.0);
     cellList.numberOfBuilds = 0;
     pairExclusionsOutdated = true;
+    prepareKernel(system);
   }
   preparePairListExclusions(system);
   if (bondedWorkOutdated(system)) prepareBondedWork(system);
@@ -1321,10 +1344,22 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
   // pseudo-atom types present, fully coupled atoms (no lambda scaling), and Ewald or no electrostatics.
   std::vector<std::uint8_t> present(numberOfPseudoAtomTypes, 0);
   bool unitScaling = true;
+  auto markType = [&](std::uint16_t type)
+  {
+    const std::size_t index = static_cast<std::size_t>(type);
+    if (index < present.size()) present[index] = 1;
+  };
   for (const Atom& atom : atoms)
   {
-    present[atom.type] = 1;
+    markType(atom.type);
     if (atom.scalingVDW != 1.0 || atom.scalingCoulomb != 1.0) unitScaling = false;
+  }
+  // types of every component (including one that has no molecules yet): a later insertion must not discover a
+  // switched or non-Lennard-Jones pair that was ignored here because no atom of that type was present
+  for (const Component& component : system.components)
+  {
+    for (const Atom& atom : component.atoms) markType(atom.type);
+    if (component.hasFractionalMolecule) unitScaling = false;
   }
   // The switched Lennard-Jones forms (ForceField::TruncationMethod Switched / ForceSwitched) are covered as
   // well: the switching is global (one switching distance, the molecule cutoff), the per-pair table keeps
@@ -1439,6 +1474,14 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
     }
   }
   prepared = parametersOf(forceField);
+
+  if (deviceKernel && !fastKernel)
+  {
+    throw std::runtime_error(
+        "[Spatial decomposition]: the device pair kernel covers plain Lennard-Jones (truncated, shifted, or "
+        "switched) between fully coupled atoms with Ewald or no electrostatics; use 'PairDevice' : 'CPU' for this "
+        "system\n");
+  }
 }
 
 void SpatialDecompositionForceEngine::buildClusterLists(std::size_t thread)

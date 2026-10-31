@@ -44,6 +44,13 @@ export class ForceEngine
     return SpatialDecompositionForceEngine::supports(system, reason);
   }
 
+  /// Checks that the box, the Verlet skin and the requested device can host the engine (see
+  /// SpatialDecompositionForceEngine::validateLayout).
+  void validateLayout(const System& system) const
+  {
+    std::visit([&](const auto& engine) { engine.validateLayout(system); }, implementation);
+  }
+
   /// Builds the engine's data structures for the system's current box and atoms.
   void initialize(System& system)
   {

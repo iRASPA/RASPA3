@@ -705,6 +705,113 @@ void expectKernelFollowsACutoffChange(const SpatialDecompositionSettings& settin
 }
 }  // namespace
 
+TEST(spatial_decomposition, engine_validate_layout_does_not_prepare_the_kernels)
+{
+  ForceField forceField = makeWaterForceField();
+  Component water = makeWater(forceField);
+  System system =
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {water}, {}, {8}, 5);
+  SpatialDecompositionForceEngine engine(settingsFor(1));
+  engine.validateLayout(system);
+  EXPECT_FALSE(engine.initialized());
+
+  System tight(forceField, SimulationBox(10.0, 10.0, 10.0), false, 300.0, 1e5, 1.0, {}, {water}, {}, {1}, 5);
+  SpatialDecompositionSettings wideSkin = settingsFor(1, 6.0);
+  SpatialDecompositionForceEngine probe(wideSkin);
+  EXPECT_THROW(probe.validateLayout(tight), std::runtime_error);
+}
+
+// MC initialization can insert into a component that had no molecules when the engine was first prepared.
+// The specialised kernels decide their switching from the types that are present: an empty configuration
+// used to leave the kernels in truncated mode. The engine must follow the inserted atoms.
+TEST(spatial_decomposition, engine_follows_molecules_inserted_after_initialize)
+{
+  ForceField forceField({{"Ar", false, 39.948, 0.0, 0.0, 18, false}}, {{119.8, 3.405}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 10.0, 10.0, 10.0, false, false, false);
+  forceField.setTruncationMethod(ForceField::TruncationMethod::Switched, 8.0);
+  Component argon = Component(forceField, "Ar", 150.0, 4.8e6, 0.0,
+                              {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21);
+
+  System empty(forceField, SimulationBox(26.0, 26.0, 26.0), false, 300.0, 1e4, 1.0, {}, {argon}, {}, {0}, 5);
+  SpatialDecompositionForceEngine engine(settingsFor(2));
+  engine.initialize(empty);
+  ASSERT_TRUE(engine.usesFastKernel());
+  ASSERT_EQ(empty.spanOfMoleculeAtoms().size(), 0uz);
+
+  RandomNumber random(11);
+  for (std::size_t ix = 0; ix < 4; ++ix)
+    for (std::size_t iy = 0; iy < 4; ++iy)
+      for (std::size_t iz = 0; iz < 4; ++iz)
+      {
+        const double3 position =
+            6.5 * double3(static_cast<double>(ix) + 0.5, static_cast<double>(iy) + 0.5, static_cast<double>(iz) + 0.5) +
+            1.5 * double3(random.uniform() - 0.5, random.uniform() - 0.5, random.uniform() - 0.5);
+        Atom atom = argon.atoms[0];
+        atom.position = position;
+        empty.insertMolecule(0, Molecule(position, simd_quatd(), argon.totalMass, 0, 1), {atom});
+      }
+  ASSERT_EQ(empty.spanOfMoleculeAtoms().size(), 64uz);
+
+  const RunningEnergy changed = engine.computeGradients(empty, true);
+  const std::vector<double3> changedGradient = gradientsOf(empty);
+
+  SpatialDecompositionForceEngine fresh(settingsFor(2));
+  fresh.initialize(empty);
+  ASSERT_TRUE(fresh.usesFastKernel());
+  const RunningEnergy expected = fresh.computeGradients(empty, true);
+  EXPECT_NEAR(changed.moleculeMoleculeVDW, expected.moleculeMoleculeVDW, 1e-10 * std::abs(expected.moleculeMoleculeVDW));
+  EXPECT_LT(rmsDifference(changedGradient, gradientsOf(empty)), 1e-10 * rmsNorm(gradientsOf(empty)));
+
+  // the switched cutoff removes a large slice of the truncated energy
+  System truncated = empty;
+  truncated.forceField.setTruncationMethod(ForceField::TruncationMethod::Truncated);
+  SpatialDecompositionForceEngine truncatedEngine(settingsFor(2));
+  truncatedEngine.initialize(truncated);
+  const RunningEnergy truncatedEnergy = truncatedEngine.computeGradients(truncated, false);
+  EXPECT_GT(std::abs(truncatedEnergy.moleculeMoleculeVDW - expected.moleculeMoleculeVDW),
+            1e-3 * std::abs(expected.moleculeMoleculeVDW));
+}
+
+// A polymerization retyping can introduce a type that no component template carried. The pair kernel must
+// drop the specialised path when that type is not plain Lennard-Jones of the same truncation.
+TEST(spatial_decomposition, engine_reprepares_the_kernel_when_a_new_type_appears)
+{
+  ForceField forceField({{"Ar", false, 39.948, 0.0, 0.0, 18, false}, {"Xe", false, 131.293, 0.0, 0.0, 54, false}},
+                        {{119.8, 3.405}, {164.0, 3.63}}, ForceField::MixingRule::Lorentz_Berthelot, 10.0, 10.0, 10.0,
+                        false, false, false);
+  for (std::size_t a = 0; a < 2; ++a)
+  {
+    for (std::size_t b = 0; b < 2; ++b)
+    {
+      if (a == 0 && b == 0) continue;
+      VDWParameters& pair = forceField(a, b);
+      pair.type = VDWParameters::Type::LennardJonesSwitched;
+      pair.computeDerivedParameters(10.0, 300.0, 8.0);
+    }
+  }
+  Component argon = Component(forceField, "Ar", 150.0, 4.8e6, 0.0,
+                              {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21);
+  System system(forceField, SimulationBox(26.0, 26.0, 26.0), false, 300.0, 1e4, 1.0, {}, {argon}, {}, {64}, 5);
+  RandomNumber random(17);
+  randomizeConfiguration(system, random);
+
+  SpatialDecompositionForceEngine engine(settingsFor(2));
+  engine.initialize(system);
+  ASSERT_TRUE(engine.usesFastKernel());
+  const RunningEnergy before = engine.computeGradients(system, false);
+
+  for (Atom& atom : system.spanOfMoleculeAtoms()) atom.type = 1;
+  engine.topologyChanged(system);
+  const RunningEnergy changed = engine.computeGradients(system, false);
+
+  SpatialDecompositionForceEngine fresh(settingsFor(2));
+  fresh.initialize(system);
+  const RunningEnergy expected = fresh.computeGradients(system, false);
+  EXPECT_NEAR(changed.moleculeMoleculeVDW, expected.moleculeMoleculeVDW, 1e-10 * std::abs(expected.moleculeMoleculeVDW));
+  EXPECT_GT(std::abs(expected.moleculeMoleculeVDW - before.moleculeMoleculeVDW),
+            1e-3 * std::abs(expected.moleculeMoleculeVDW));
+}
+
 TEST(spatial_decomposition, engine_cluster_kernels_follow_a_cutoff_change)
 {
   for (const bool withCharge : {false, true})

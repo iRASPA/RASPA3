@@ -671,16 +671,13 @@ void MolecularDynamicsSpatialDecomposition::setup()
     ++system_id;
   }
 
-  // Build the engines now (cell grid, sub-domain layout, FFT plans) so that a box that is too small for the
-  // requested thread count or Verlet skin is reported before any MC cycles are spent.
-  if (engines.size() != systems.size())
+  // the box, the Verlet skin and the device: report a layout that the engine cannot host before any MC cycles
+  // are spent. The engines themselves are built in startEngines after the MC initialization (the pair-kernel
+  // flags, the switching polynomials and the PPPM mesh follow the composition and the box of that point).
+  for (const System& system : systems)
   {
-    engines.clear();
-    for (System& system : systems)
-    {
-      engines.emplace_back(engineSettings);
-      engines.back().initialize(system);
-    }
+    ForceEngine probe(engineSettings);
+    probe.validateLayout(system);
   }
 
   if (outputToFiles)
@@ -921,19 +918,16 @@ void MolecularDynamicsSpatialDecomposition::initialize()
 
 void MolecularDynamicsSpatialDecomposition::startEngines(std::string_view stageName)
 {
-  if (engines.size() != systems.size())
-  {
-    engines.clear();
-    for (std::size_t i = 0; i < systems.size(); ++i)
-    {
-      engines.emplace_back(engineSettings);
-    }
-  }
+  // always rebuild: MC initialization (and NPT equilibration before production) can change the box and the
+  // set of present atom types, and initialize() bakes those into the pair kernels and the PPPM mesh
+  engines.clear();
+  engines.reserve(systems.size());
+  for (std::size_t i = 0; i < systems.size(); ++i) engines.emplace_back(engineSettings);
 
   for (std::size_t system_id{0}; System& system : systems)
   {
     ForceEngine& engine = engines[system_id];
-    if (!engine.initialized()) engine.initialize(system);
+    engine.initialize(system);
 
     // the exact code as the reference for this configuration; the engine leaves its own forces in the system
     const ForceEngine::Validation validation = engine.validate(system);
