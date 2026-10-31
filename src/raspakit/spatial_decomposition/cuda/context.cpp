@@ -834,8 +834,11 @@ void CUDAContext::finish()
   check(api, api.cuStreamSynchronize(stream), "cuStreamSynchronize");
   for (auto& [sequence, event] : pending) eventPool.push_back(event);
   pending.clear();
-  completedMark = marks + 1;  // everything enqueued so far (at mark counters <= marks) has passed
-  completeTransfers(marks + 1);
+  // Advance the counter. Transfers enqueued at the previous value compare strictly less than
+  // completedMark, and the next mark() receives a sequence that has not already been completed.
+  ++marks;
+  completedMark = marks;
+  completeTransfers(marks);
 }
 }  // namespace
 

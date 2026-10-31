@@ -97,11 +97,20 @@ Potentials::Internal::bendPotentialEnergyGradientHessianStrain(
       temp2 = temp * temp;
       U = parameters[0] * temp2 *
           (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 + 2.2e-8 * temp2 * temp2);
-      DF = parameters[0] * Units::RadiansToDegrees *
-           (2.0 - (3.0 * 0.014 - (4.0 * 5.6e-5 - (5.0 * 7.0e-7 - 6.0 * 2.2e-8 * temp) * temp) * temp) * temp) * temp *
-           DTDX;
-      DDF = 0.0;
+    {
+      // U(t) = K (t^2 - a t^3 + b t^4 - c t^5 + d t^6), t = (theta - theta_0) in degrees
+      const double dUdt = parameters[0] *
+                          (2.0 - (3.0 * 0.014 - (4.0 * 5.6e-5 - (5.0 * 7.0e-7 - 6.0 * 2.2e-8 * temp) * temp) * temp) * temp) *
+                          temp;
+      const double d2Udt2 =
+          parameters[0] *
+          (2.0 - (6.0 * 0.014 - (12.0 * 5.6e-5 - (20.0 * 7.0e-7 - 30.0 * 2.2e-8 * temp) * temp) * temp) * temp);
+      const double dUdtheta = dUdt * Units::RadiansToDegrees;
+      const double d2Udtheta2 = d2Udt2 * Units::RadiansToDegrees * Units::RadiansToDegrees;
+      DF = dUdtheta * DTDX;
+      DDF = d2Udtheta2 * DTDX * DTDX + dUdtheta * cos_theta * cube(DTDX);
       break;
+    }
     default:
       std::unreachable();
   }

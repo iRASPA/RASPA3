@@ -176,15 +176,16 @@ std::tuple<double, std::array<double3, 4>, double3x3> BondTorsionPotential::pote
   double3 du_dc = DCos * dtC - gamsb * Dcb_unit + gamsc * Ddc_unit;
   double3 du_dd = DCos * dtD - gamsc * Ddc_unit;
 
-  strain_derivative.ax += rbc * Dcb.x * (du_dc.x + du_dd.x) + rab * Dab.x * du_da.x + rcd * Ddc.x * du_dd.x;
-  strain_derivative.bx += rbc * Dcb.y * (du_dc.x + du_dd.x) + rab * Dab.y * du_da.x + rcd * Ddc.y * du_dd.x;
-  strain_derivative.cx += rbc * Dcb.z * (du_dc.x + du_dd.x) + rab * Dab.z * du_da.x + rcd * Ddc.z * du_dd.x;
-  strain_derivative.ay += rbc * Dcb.x * (du_dc.y + du_dd.y) + rab * Dab.x * du_da.y + rcd * Ddc.x * du_dd.y;
-  strain_derivative.by += rbc * Dcb.y * (du_dc.y + du_dd.y) + rab * Dab.y * du_da.y + rcd * Ddc.y * du_dd.y;
-  strain_derivative.cy += rbc * Dcb.z * (du_dc.y + du_dd.y) + rab * Dab.z * du_da.y + rcd * Ddc.z * du_dd.y;
-  strain_derivative.az += rbc * Dcb.x * (du_dc.z + du_dd.z) + rab * Dab.x * du_da.z + rcd * Ddc.x * du_dd.z;
-  strain_derivative.bz += rbc * Dcb.y * (du_dc.z + du_dd.z) + rab * Dab.y * du_da.z + rcd * Ddc.y * du_dd.z;
-  strain_derivative.cz += rbc * Dcb.z * (du_dc.z + du_dd.z) + rab * Dab.z * du_da.z + rcd * Ddc.z * du_dd.z;
+  // Dab, Dcb and Ddc are the unnormalized bond vectors (same form as TorsionPotential).
+  strain_derivative.ax += Dcb.x * (du_dc.x + du_dd.x) + Dab.x * du_da.x + Ddc.x * du_dd.x;
+  strain_derivative.bx += Dcb.y * (du_dc.x + du_dd.x) + Dab.y * du_da.x + Ddc.y * du_dd.x;
+  strain_derivative.cx += Dcb.z * (du_dc.x + du_dd.x) + Dab.z * du_da.x + Ddc.z * du_dd.x;
+  strain_derivative.ay += Dcb.x * (du_dc.y + du_dd.y) + Dab.x * du_da.y + Ddc.x * du_dd.y;
+  strain_derivative.by += Dcb.y * (du_dc.y + du_dd.y) + Dab.y * du_da.y + Ddc.y * du_dd.y;
+  strain_derivative.cy += Dcb.z * (du_dc.y + du_dd.y) + Dab.z * du_da.y + Ddc.z * du_dd.y;
+  strain_derivative.az += Dcb.x * (du_dc.z + du_dd.z) + Dab.x * du_da.z + Ddc.x * du_dd.z;
+  strain_derivative.bz += Dcb.y * (du_dc.z + du_dd.z) + Dab.y * du_da.z + Ddc.y * du_dd.z;
+  strain_derivative.cz += Dcb.z * (du_dc.z + du_dd.z) + Dab.z * du_da.z + Ddc.z * du_dd.z;
 
   return {U, {du_da, du_db, du_dc, du_dd}, strain_derivative};
 }

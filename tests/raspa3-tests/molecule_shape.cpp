@@ -322,18 +322,20 @@ TEST(MOLECULE_SHAPE, sampling_moments_ratios_and_histograms)
   EXPECT_NEAR(average[binTet], 0.5 / deltaRg, 1e-12);
   for (std::size_t bin = 0; bin != numberOfBins; ++bin) EXPECT_EQ(error[bin], 0.0);
 
-  // Anisotropy histogram: k^2 = 1 sits on the upper edge of the [0, 1] range and is discarded from the
-  // histogram (the moments keep it); k^2 = 0 lands in the first bin.
+  // Anisotropy histogram: k^2 = 0 lands in the first bin; a rod (k^2 = 1) is the closed upper
+  // edge of [0, 1] and lands in the last bin.
   const double deltaShapeAnisotropy = property.deltaShapeAnisotropyPerComponent[0];
   const double deltaProlateness = property.deltaProlatenessPerComponent[0];
   auto [kValues, kAverage, kError] = property.result(property.shapeAnisotropyHistogram, 0, deltaShapeAnisotropy, 0.0);
   EXPECT_NEAR(kAverage[0], 0.5 / deltaShapeAnisotropy, 1e-12);
+  EXPECT_NEAR(kAverage.back(), 0.5 / deltaShapeAnisotropy, 1e-12);
 
-  // Prolateness histogram: S = 0 and S = 2 (the upper edge, discarded).
+  // Prolateness histogram: S = 0, and S = 2 on the closed upper edge of [-1/4, 2].
   auto [sValues, sAverage, sError] =
       property.result(property.prolatenessHistogram, 0, deltaProlateness, property.prolatenessLowerLimit);
   std::size_t binZero = static_cast<std::size_t>((0.0 - property.prolatenessLowerLimit) / deltaProlateness);
   EXPECT_NEAR(sAverage[binZero], 0.5 / deltaProlateness, 1e-12);
+  EXPECT_NEAR(sAverage.back(), 0.5 / deltaProlateness, 1e-12);
 
   // Skew one block; the errors become positive.
   property.sample(components, {1}, std::span<const Atom>(rod), 0, 0);

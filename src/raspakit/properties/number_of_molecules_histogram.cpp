@@ -19,7 +19,7 @@ void PropertyNumberOfMoleculesHistogram::addSample(std::size_t blockIndex, std::
   for (std::size_t i = 0; i < numberOfIntegerMoleculesPerComponent.size(); ++i)
   {
     bin = std::make_signed_t<std::size_t>(numberOfIntegerMoleculesPerComponent[i]) - std::make_signed_t<std::size_t>(range.first);
-    if (bin > 0 && bin < std::make_signed_t<std::size_t>(numberOfBins))
+    if (bin >= 0 && bin < std::make_signed_t<std::size_t>(numberOfBins))
     {
       histogram(blockIndex, i, static_cast<std::size_t>(bin)) += weight;
     }

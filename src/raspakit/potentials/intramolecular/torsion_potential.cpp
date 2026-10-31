@@ -801,7 +801,7 @@ std::tuple<double, std::array<double3, 4>, double3x3> TorsionPotential::potentia
            2.0 * (parameters[1] - 4.0 * parameters[3] + 9.0 * parameters[5]) * cos_phi +
            6.0 * (parameters[2] - 5.0 * parameters[4]) * cos_phi2 -
            16.0 * (parameters[3] - 6.0 * parameters[5]) * cos_phi2 * cos_phi +
-           40.0 * parameters[4] * cos_phi2 * cos_phi2 - 96.0 * parameters[5] * cos_phi2 * cos_phi * cos_phi;
+           40.0 * parameters[4] * cos_phi2 * cos_phi2 - 96.0 * parameters[5] * cos_phi2 * cos_phi2 * cos_phi;
       break;
     case TorsionType::FourierSeries2:
       U = 0.5 * (parameters[2] + 2.0 * parameters[3] + parameters[4] - 3.0 * parameters[2] * cos_phi +

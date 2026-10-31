@@ -1118,23 +1118,6 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
       system.runningEnergies = molecularDynamicsStep(system);
 
       system.accountConservedEnergy();
-
-      if (system.propertyElasticConstantsFluctuation && currentCycle % system.elasticConstantsSampleEvery == 0)
-      {
-        System samplingSystem = system;
-        const auto molecularPressure = samplingSystem.computeMolecularPressure();
-        system.currentEnergyStatus = molecularPressure.first;
-        system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
-        const double3x3 kineticPressure =
-            computeMolecularKineticVirial(system, BarostatCoupling::Atomic) / system.simulationBox.volume;
-        const double effectiveKineticEntities =
-            static_cast<double>(system.translationalDegreesOfFreedom - system.translationalCenterOfMassConstraint) /
-            3.0;
-        const ElasticFluctuationTerms terms(stressVoigt(system.currentExcessPressureTensor),
-                                            stressVoigt(kineticPressure), computeAffineBornTensor(system), system.beta,
-                                            system.simulationBox.volume, effectiveKineticEntities);
-        system.propertyElasticConstantsFluctuation->addSample(estimation.currentBin, terms, 1.0);
-      }
     }
 
     for (System& system : systems)
@@ -1305,6 +1288,25 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
       system.runningEnergies = molecularDynamicsStep(system);
 
       system.accountConservedEnergy();
+
+      // Stress-fluctuation elastic constants are a production-phase average (the block estimator uses
+      // 'estimation.currentBin', which is only advanced during production).
+      if (system.propertyElasticConstantsFluctuation && currentCycle % system.elasticConstantsSampleEvery == 0)
+      {
+        System samplingSystem = system;
+        const auto molecularPressure = samplingSystem.computeMolecularPressure();
+        system.currentEnergyStatus = molecularPressure.first;
+        system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
+        const double3x3 kineticPressure =
+            computeMolecularKineticVirial(system, BarostatCoupling::Atomic) / system.simulationBox.volume;
+        const double effectiveKineticEntities =
+            static_cast<double>(system.translationalDegreesOfFreedom - system.translationalCenterOfMassConstraint) /
+            3.0;
+        const ElasticFluctuationTerms terms(stressVoigt(system.currentExcessPressureTensor),
+                                            stressVoigt(kineticPressure), computeAffineBornTensor(system), system.beta,
+                                            system.simulationBox.volume, effectiveKineticEntities);
+        system.propertyElasticConstantsFluctuation->addSample(estimation.currentBin, terms, 1.0);
+      }
     }
 
     for (System& system : systems)

@@ -49,7 +49,11 @@ std::tuple<double, std::array<double3, 2>, double3x3> Potentials::Internal::dist
         DF = 6.0 * (parameters[1] * temp - 2.0 * parameters[0] * temp * temp) / rr;
         break;
       case BondType::LennardJones:
-        temp = (parameters[1] / rr) * (parameters[1] / rr) * (parameters[1] / rr);
+        // t = (sigma/r)^6
+        {
+          const double sigmaSquaredOverRSquared = (parameters[1] * parameters[1]) / rr;
+          temp = sigmaSquaredOverRSquared * sigmaSquaredOverRSquared * sigmaSquaredOverRSquared;
+        }
         U = 4.0 * parameters[0] * (temp * (temp - 1.0));
         DF = 24.0 * parameters[0] * (temp * (1.0 - 2.0 * temp)) / rr;
         break;
@@ -63,7 +67,7 @@ std::tuple<double, std::array<double3, 2>, double3x3> Potentials::Internal::dist
         r1 = r - parameters[1];
         U = 0.5 * parameters[0] * std::pow(std::min(std::fabs(r1), parameters[2]), 2) +
             parameters[0] * parameters[2] * std::max(std::fabs(r1) - parameters[2], 0.0);
-        DF = -parameters[0] * (std::copysign(std::min(std::fabs(r1), parameters[2]), r1)) / r;
+        DF = parameters[0] * (std::copysign(std::min(std::fabs(r1), parameters[2]), r1)) / r;
         break;
       case BondType::Quartic:
         temp = r - parameters[1];
@@ -111,7 +115,11 @@ std::tuple<double, std::array<double3, 2>, double3x3> Potentials::Internal::dist
         U = parameters[0] * temp * temp - parameters[1] * temp;
         break;
       case BondType::LennardJones:
-        temp = (parameters[1] / rr) * (parameters[1] / rr) * (parameters[1] / rr);
+        // t = (sigma/r)^6
+        {
+          const double sigmaSquaredOverRSquared = (parameters[1] * parameters[1]) / rr;
+          temp = sigmaSquaredOverRSquared * sigmaSquaredOverRSquared * sigmaSquaredOverRSquared;
+        }
         U = 4.0 * parameters[0] * (temp * (temp - 1.0));
         break;
       case BondType::Buckingham:

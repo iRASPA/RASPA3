@@ -548,10 +548,9 @@ void evaluateDerivatives(System& system, const MinimizationDofLayout& layout, De
     results.hessian.resize(layout.numDofs(), nStrain);
   }
 
-  if (capabilities.hessianPositionPosition || capabilities.hessianPositionStrain || capabilities.hessianStrainStrain)
-  {
-    results.hessian.zero();
-  }
+  // The interaction routines below always accumulate into the Hessian container (it also carries the strain
+  // gradient used for the cell-DOF gradient), so it is cleared whether or not a Hessian was requested.
+  results.hessian.zero();
 
   if (!results.gradient.empty())
   {
@@ -639,7 +638,8 @@ void evaluateDerivatives(System& system, const MinimizationDofLayout& layout, De
       results.energy += frameworkIntraEnergy.potentialEnergy();
     }
 
-    if (capabilities.hessianPositionPosition || capabilities.hessianPositionStrain || capabilities.hessianStrainStrain)
+    // Non-bonded (intermolecular, framework-molecule, tail, Ewald) and pressure-volume terms are part of the
+    // energy and gradient, so they are evaluated for every requested capability, not only when a Hessian is wanted.
     {
       RunningEnergy interEnergy = Interactions::computeInterMolecularHessian(
           system.forceField, system.simulationBox, system.moleculeData, system.components, moleculeAtomPositions,
@@ -656,19 +656,34 @@ void evaluateDerivatives(System& system, const MinimizationDofLayout& layout, De
       {
         throw std::invalid_argument("evaluateDerivatives: cell layout does not match minimization DOFs");
       }
-      if (layout.numberOfCellDofs() != 0)
+      // Energy-only calls leave the gradient span empty. Cell-DOF gradient writes require a full
+      // gradient buffer; a Hessian with cell degrees of freedom still needs the position gradient
+      // for the affine blocks, which is assembled into a temporary when the gradient was not requested.
+      const bool haveGradient = capabilities.gradient && results.gradient.size() == layout.numDofs();
+      if (layout.numberOfCellDofs() != 0 && capabilities.gradient && !haveGradient)
       {
-        if (!capabilities.gradient || results.gradient.size() != layout.numDofs())
+        throw std::invalid_argument("evaluateDerivatives: variable-cell derivatives require the full gradient");
+      }
+      const bool wantCellHessian = capabilities.hessianPositionPosition || capabilities.hessianPositionStrain ||
+                                   capabilities.hessianStrainStrain;
+      if (layout.numberOfCellDofs() != 0 && (haveGradient || wantCellHessian))
+      {
+        std::vector<double> temporaryGradient;
+        std::span<double> gradient = results.gradient;
+        if (!haveGradient)
         {
-          throw std::invalid_argument("evaluateDerivatives: variable-cell derivatives require the full gradient");
+          temporaryGradient.assign(layout.numDofs(), 0.0);
+          gradient = temporaryGradient;
         }
-        assemblePositionGradient(system, layout, moleculeAtomPositions, moleculeDynamics, frameworkDynamics,
-                                 results.gradient);
-        addAffineCellDerivatives(system, layout, cellLayout, results.gradient, results.hessian);
-        for (std::size_t a = 0; a < cellLayout.size(); ++a)
+        assemblePositionGradient(system, layout, moleculeAtomPositions, moleculeDynamics, frameworkDynamics, gradient);
+        addAffineCellDerivatives(system, layout, cellLayout, gradient, results.hessian);
+        if (haveGradient)
         {
-          results.gradient[*layout.cellDof(a)] =
-              matrixContraction(results.hessian.strainGradient(), cellLayout.bases[a]);
+          for (std::size_t a = 0; a < cellLayout.size(); ++a)
+          {
+            results.gradient[*layout.cellDof(a)] =
+                matrixContraction(results.hessian.strainGradient(), cellLayout.bases[a]);
+          }
         }
       }
 
@@ -681,7 +696,10 @@ void evaluateDerivatives(System& system, const MinimizationDofLayout& layout, De
       for (std::size_t a = 0; a < cellLayout.size(); ++a)
       {
         const double traceA = cellLayout.bases[a].trace();
-        results.gradient[*layout.cellDof(a)] -= tailEnergy * traceA;
+        if (haveGradient)
+        {
+          results.gradient[*layout.cellDof(a)] -= tailEnergy * traceA;
+        }
         for (std::size_t b = 0; b < cellLayout.size(); ++b)
         {
           results.hessian.add(*layout.cellDof(a), *layout.cellDof(b),
@@ -700,7 +718,10 @@ void evaluateDerivatives(System& system, const MinimizationDofLayout& layout, De
         const double3x3 ewaldStrainGradient = results.hessian.strainGradient() - strainBeforeEwald;
         for (std::size_t a = 0; a < cellLayout.size(); ++a)
         {
-          results.gradient[*layout.cellDof(a)] += matrixContraction(ewaldStrainGradient, cellLayout.bases[a]);
+          if (haveGradient)
+          {
+            results.gradient[*layout.cellDof(a)] += matrixContraction(ewaldStrainGradient, cellLayout.bases[a]);
+          }
         }
 
         const double pressureVolume = system.pressure * system.simulationBox.volume;
@@ -708,7 +729,10 @@ void evaluateDerivatives(System& system, const MinimizationDofLayout& layout, De
         for (std::size_t a = 0; a < cellLayout.size(); ++a)
         {
           const double traceA = cellLayout.bases[a].trace();
-          results.gradient[*layout.cellDof(a)] += pressureVolume * traceA;
+          if (haveGradient)
+          {
+            results.gradient[*layout.cellDof(a)] += pressureVolume * traceA;
+          }
           for (std::size_t b = 0; b < cellLayout.size(); ++b)
           {
             results.hessian.add(*layout.cellDof(a), *layout.cellDof(b),

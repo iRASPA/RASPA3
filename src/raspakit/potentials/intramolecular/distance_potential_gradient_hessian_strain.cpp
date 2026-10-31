@@ -52,20 +52,27 @@ DistanceEnergyDerivatives distanceEnergyDerivatives(BondType type,
       temp = 1.0 / (rr * rr * rr);
       result.energy = parameters[0] * temp * temp - parameters[1] * temp;
       result.firstDerivative = 6.0 * (parameters[1] * temp - 2.0 * parameters[0] * temp * temp) / r;
-      result.secondDerivative = 24.0 * (7.0 * parameters[0] * temp * temp - 2.0 * parameters[1] * temp) / rr;
+      // d^2/dr^2 (A r^-12 - B r^-6) = 156 A r^-14 - 42 B r^-8
+      result.secondDerivative = 6.0 * (26.0 * parameters[0] * temp * temp - 7.0 * parameters[1] * temp) / rr;
       break;
     case BondType::LennardJones:
-      temp = (parameters[1] / rr) * (parameters[1] / rr) * (parameters[1] / rr);
+      // t = (sigma/r)^6
+      {
+        const double sigmaSquaredOverRSquared = (parameters[1] * parameters[1]) / rr;
+        temp = sigmaSquaredOverRSquared * sigmaSquaredOverRSquared * sigmaSquaredOverRSquared;
+      }
       result.energy = 4.0 * parameters[0] * (temp * (temp - 1.0));
       result.firstDerivative = 24.0 * parameters[0] * (temp * (1.0 - 2.0 * temp)) / r;
-      result.secondDerivative = 96.0 * parameters[0] * temp * (7.0 * temp - 2.0) / rr;
+      // d^2/dr^2 4 eps (t^2 - t), t = (sigma/r)^6: 4 eps (156 t^2 - 42 t) / r^2
+      result.secondDerivative = 24.0 * parameters[0] * temp * (26.0 * temp - 7.0) / rr;
       break;
     case BondType::Buckingham:
       temp = parameters[2] / (rr * rr * rr);
       exp_term = parameters[0] * std::exp(-parameters[1] * r);
       result.energy = -temp + exp_term;
-      result.firstDerivative = 6.0 * temp / r + parameters[1] * exp_term;
-      result.secondDerivative = (-48.0 * temp / rr + parameters[1] * parameters[1] * exp_term) / r;
+      // U = A exp(-b r) - C r^-6, temp = C r^-6, exp_term = A exp(-b r)
+      result.firstDerivative = 6.0 * temp / r - parameters[1] * exp_term;
+      result.secondDerivative = parameters[1] * parameters[1] * exp_term - 42.0 * temp / rr;
       break;
     case BondType::RestrainedHarmonic:
     {
@@ -107,9 +114,9 @@ DistanceEnergyDerivatives distanceEnergyDerivatives(BondType type,
       result.energy = parameters[0] * temp2 * (1.0 - 2.55 * temp + (7.0 / 12.0) * 2.55 * 2.55 * temp2);
       result.firstDerivative =
           parameters[0] * (2.0 + 2.55 * (4.0 * 2.55 * (7.0 / 12.0) * temp - 3.0) * temp) * temp;
+      // U = K (t^2 - a t^3 + c t^4) with a = 2.55, c = (7/12) a^2:  U'' = K (2 - 6 a t + 12 c t^2)
       result.secondDerivative =
-          parameters[0] *
-          (2.0 + 2.55 * (3.0 * 4.0 * 2.55 * (7.0 / 12.0) * temp - 3.0) * temp + 2.55 * (4.0 * 2.55 * (7.0 / 12.0) * temp - 3.0) * temp);
+          parameters[0] * (2.0 - 6.0 * 2.55 * temp + 12.0 * (7.0 / 12.0) * 2.55 * 2.55 * temp2);
       break;
     default:
       std::unreachable();

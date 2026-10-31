@@ -40,7 +40,8 @@ export struct PropertyGibbsWidom
 
   inline void addWidomSample(std::size_t blockIndex, double RosenbluthValue, std::size_t N, double V, double weight)
   {
-    double volumePerMolecule = V / static_cast<double>(std::max(N, 1uz));
+    // The inserted molecule is the (N + 1)th, so the ideal-gas volume per molecule is V / (N + 1).
+    double volumePerMolecule = V / static_cast<double>(N + 1uz);
     rosenbluthWeight.addSample(blockIndex, RosenbluthValue, weight);
     chemicalPotentialTerms.addSample(
         blockIndex, WidomData(volumePerMolecule * RosenbluthValue, RosenbluthValue, volumePerMolecule), weight);

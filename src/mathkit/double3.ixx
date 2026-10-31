@@ -164,9 +164,9 @@ export union double3
   {
     double c = std::cos(angle);
     double w = 1.0 - c;
-    double s = std::sqrt(1.0 - c * c);
-
-    if (angle < 0.0) s = -s;
+    // Use sin(angle) directly: 'sqrt(1 - c^2)' with a sign flip for negative angles only reproduces
+    // sin(angle) on [-pi, pi] and gives the wrong sign for |angle| > pi (e.g. a roll angle in (pi, 2 pi)).
+    double s = std::sin(angle);
 
     double r1 = coord.x * (this->x * this->x * w + c) + coord.y * (this->x * this->y * w + this->z * s) +
                 coord.z * (this->x * this->z * w - this->y * s);

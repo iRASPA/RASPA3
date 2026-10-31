@@ -239,7 +239,8 @@ void Thermobarostat::initialize(RandomNumber& random)
   for (std::size_t i = 0; i != chainLength; ++i)
   {
     chainMass[i] = chainDegreesOfFreedom[i] * timeScaleParameterBarostat * timeScaleParameterBarostat;
-    chainVelocity[i] = random.Gaussian() * std::sqrt(chainDegreesOfFreedom[i] / chainMass[i]);
+    // canonical chain momenta: variance of v_i is k_B T / Q_i (not N_cell k_B T / Q_0 for the first element)
+    chainVelocity[i] = random.Gaussian() * std::sqrt(Units::KB * temperature / chainMass[i]);
   }
 }
 

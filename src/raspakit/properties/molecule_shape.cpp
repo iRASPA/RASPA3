@@ -373,10 +373,13 @@ void PropertyMoleculeShape::sample(const std::vector<Component> &components,
       std::size_t binRg = static_cast<std::size_t>(rg / deltaRadiusOfGyrationPerComponent[c]);
       if (binRg < numberOfRadiusOfGyrationBinsPerComponent[c]) radiusOfGyrationHistogram[block][c][binRg] += 1.0;
 
+      // The upper endpoint (a rod: κ² = 1, S = 2) lands on bin == numberOfBins and belongs in the last bin.
       std::size_t binKappa = static_cast<std::size_t>(d.shapeAnisotropy / deltaShapeAnisotropy);
+      if (binKappa == numberOfBins) binKappa = numberOfBins - 1;
       if (binKappa < numberOfBins) shapeAnisotropyHistogram[block][c][binKappa] += 1.0;
 
       std::size_t binS = static_cast<std::size_t>((d.prolateness - prolatenessLowerLimit) / deltaProlateness);
+      if (binS == numberOfBins) binS = numberOfBins - 1;
       if (binS < numberOfBins) prolatenessHistogram[block][c][binS] += 1.0;
 
       numberOfCounts[block][c] += 1.0;

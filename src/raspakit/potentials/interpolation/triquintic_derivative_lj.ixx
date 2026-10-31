@@ -64,7 +64,7 @@ export namespace Potentials
   double r10 = r8 * r2;
   double r12 = r10 * r2;
 
-  return TriquinticDerivativeFactor(arg1 * temp3 * temp3 - temp3_rc * temp3_rc, -12.0 * arg1 * temp3 * temp3 / r2,
+  return TriquinticDerivativeFactor(arg1 * (temp3 * temp3 - temp3_rc * temp3_rc), -12.0 * arg1 * temp3 * temp3 / r2,
                                     168.0 * arg1 * temp3 * temp3 / r4, -2688.0 * arg1 * temp3 * temp3 / r6,
                                     48384.0 * arg1 * temp3 * temp3 / r8, -967680.0 * arg1 * temp3 * temp3 / r10,
                                     21288960.0 * arg1 * temp3 * temp3 / r12);
@@ -84,7 +84,7 @@ export namespace Potentials
   double r10 = r8 * r2;
   double r12 = r10 * r2;
 
-  return TriquinticDerivativeFactor(arg1 * temp3 - temp3_rc, -6.0 * arg1 * temp3 / r2, 48.0 * arg1 * temp3 / r4,
+  return TriquinticDerivativeFactor(arg1 * (temp3 - temp3_rc), -6.0 * arg1 * temp3 / r2, 48.0 * arg1 * temp3 / r4,
                                     -480.0 * arg1 * temp3 / r6, 5760.0 * arg1 * temp3 / r8,
                                     -80640.0 * arg1 * temp3 / r10, 1290240.0 * arg1 * temp3 / r12);
 };

@@ -518,6 +518,14 @@ void Component::scaleSoluteHamiltonian(double lambda)
   }
   netCharge *= sqrtLambda;
   intraMolecularPotentials.scaleEnergy(lambda);
+
+  // Growth plans copy the intramolecular potentials, and the recoil cache stores energies evaluated
+  // from those copies. Both were built at the previous lambda.
+  growthPlanCache.clear();
+  baseCouplingConstantsMemo.clear();
+  closureGuideMemo.clear();
+  lookaheadGuideMemo.clear();
+  recoilReferenceStepEnergiesCache.clear();
 }
 
 std::vector<std::vector<std::size_t>> Component::readRigidBodies(
@@ -1441,7 +1449,8 @@ void Component::computeRigidProperties()
     if (inertiaVector.y / rotall < 1.0e-5) --rotationalDegreesOfFreedom;
     if (inertiaVector.z / rotall < 1.0e-5) --rotationalDegreesOfFreedom;
 
-    shapeType = Component::Shape{index};
+    // Three vanishing principal moments is a point mass. Shape is only NonLinear, Linear, and Point.
+    shapeType = index >= 3 ? Component::Shape::Point : static_cast<Component::Shape>(index);
   }
   else
   {

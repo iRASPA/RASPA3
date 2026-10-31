@@ -11,34 +11,22 @@ import average_energy_type;
 void PropertyEnergyHistogram::addSample(std::size_t blockIndex, std::size_t currentCycle, AverageEnergyType energy,
                                         const double &weight)
 {
-  std::size_t bin;
-
   if (currentCycle % sampleEvery != 0uz) return;
 
-  bin = static_cast<std::size_t>((energy.totalEnergy - valueRange.first) * static_cast<double>(numberOfBins) /
-                                 std::fabs(valueRange.second - valueRange.first));
-  if (bin < numberOfBins)
+  // The scaled index is signed. Casting a negative value to std::size_t is undefined for <= -1
+  // and truncates (-1, 0) onto bin 0.
+  const double span = std::fabs(valueRange.second - valueRange.first);
+  auto accumulate = [&](double value, double AverageEnergyType::*channel)
   {
-    histogram(blockIndex, 0, bin).totalEnergy += weight;
-  }
-  bin = static_cast<std::size_t>((energy.VanDerWaalsEnergy - valueRange.first) * static_cast<double>(numberOfBins) /
-                                 std::fabs(valueRange.second - valueRange.first));
-  if (bin < numberOfBins)
-  {
-    histogram(blockIndex, 0, bin).VanDerWaalsEnergy += weight;
-  }
-  bin = static_cast<std::size_t>((energy.CoulombEnergy - valueRange.first) * static_cast<double>(numberOfBins) /
-                                 std::fabs(valueRange.second - valueRange.first));
-  if (bin < numberOfBins)
-  {
-    histogram(blockIndex, 0, bin).CoulombEnergy += weight;
-  }
-  bin = static_cast<std::size_t>((energy.polarizationEnergy - valueRange.first) * static_cast<double>(numberOfBins) /
-                                 std::fabs(valueRange.second - valueRange.first));
-  if (bin < numberOfBins)
-  {
-    histogram(blockIndex, 0, bin).polarizationEnergy += weight;
-  }
+    if (!(span > 0.0)) return;
+    const double scaled = (value - valueRange.first) * static_cast<double>(numberOfBins) / span;
+    if (scaled < 0.0 || scaled >= static_cast<double>(numberOfBins)) return;
+    histogram(blockIndex, 0, static_cast<std::size_t>(scaled)).*channel += weight;
+  };
+  accumulate(energy.totalEnergy, &AverageEnergyType::totalEnergy);
+  accumulate(energy.VanDerWaalsEnergy, &AverageEnergyType::VanDerWaalsEnergy);
+  accumulate(energy.CoulombEnergy, &AverageEnergyType::CoulombEnergy);
+  accumulate(energy.polarizationEnergy, &AverageEnergyType::polarizationEnergy);
 
   histogram.addCount(blockIndex, weight);
 }

@@ -27,6 +27,8 @@ export struct SampledNeighborGrid
   // Cartesian centres folded into the primary cell; bins and image shifts refer to these.
   std::vector<double3> wrappedPositions;
   std::vector<std::vector<std::size_t>> bins;
+  // 1 once the bins above are safe to read. Readers take an acquire load; the builder release-stores.
+  alignas(std::atomic_ref<std::uint32_t>::required_alignment) std::uint32_t published{0};
 };
 
 // A crystal as the samplers see it: a cell, the centres of the atoms of one unit cell, and the radius of

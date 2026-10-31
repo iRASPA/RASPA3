@@ -339,10 +339,12 @@ std::tuple<double, std::array<double3, 3>, double3x3> BondBendPotential::potenti
       exp_term = std::exp(-(rab / parameters[2] + rbc / parameters[3]));
       pterm = (parameters[0] / (8.0 * (theta - std::numbers::pi) * (theta - std::numbers::pi))) * temp * temp *
               exp_term;
-      gamma = (parameters[0] / (2.0 * (theta - std::numbers::pi) * (theta - std::numbers::pi)) *
-               ((parameters[1] - std::numbers::pi) * (parameters[1] - std::numbers::pi) -
+      // dU/dtheta with t = theta - pi, a = (p_1 - pi)^2:  U = p_0 (a - t^2)^2 / (8 t^2) exp(..)
+      // => dU/dtheta = -p_0 (a - t^2)(a + t^2) / (4 t^3) exp(..)
+      gamma = (-(parameters[0] / (4.0 * std::pow(theta - std::numbers::pi, 3))) * temp *
+               ((parameters[1] - std::numbers::pi) * (parameters[1] - std::numbers::pi) +
                 (theta - std::numbers::pi) * (theta - std::numbers::pi)) *
-               (theta - std::numbers::pi) * exp_term) /
+               exp_term) /
               sin_theta;
       gamsa = pterm / parameters[2];
       gamsc = pterm / parameters[3];
@@ -360,7 +362,7 @@ std::tuple<double, std::array<double3, 3>, double3x3> BondBendPotential::potenti
               exp_term;
       gamma = (parameters[0] *
                (std::pow(theta, parameters[2] - 1.0) * (theta - parameters[1]) * (theta + parameters[1] - 2.0 * std::numbers::pi) *
-                    ((parameters[2] + 4.0) * (theta - parameters[1]) * (theta - parameters[1]) -
+                    ((parameters[2] + 4.0) * theta * theta -
                      2.0 * std::numbers::pi * (parameters[2] + 2.0) * theta + parameters[2] * parameters[1] *
                                                                                       (2.0 * std::numbers::pi - parameters[1])) -
                 parameters[2] * std::pow(std::numbers::pi, parameters[2] - 1.0) * (theta - parameters[1]) *
@@ -384,15 +386,16 @@ std::tuple<double, std::array<double3, 3>, double3x3> BondBendPotential::potenti
       -(gamma * (Rab.z - Rbc.z * cos_theta) / rbc + gamsc * Rbc.z)};
   double3 du_db = -(du_da + du_dc);
 
-  strain_derivative.ax = rab * Rab_vec.x * du_da.x + rbc * Rbc_vec.x * du_dc.x;
-  strain_derivative.bx = rab * Rab_vec.y * du_da.x + rbc * Rbc_vec.y * du_dc.x;
-  strain_derivative.cx = rab * Rab_vec.z * du_da.x + rbc * Rbc_vec.z * du_dc.x;
-  strain_derivative.ay = rab * Rab_vec.x * du_da.y + rbc * Rbc_vec.x * du_dc.y;
-  strain_derivative.by = rab * Rab_vec.y * du_da.y + rbc * Rbc_vec.y * du_dc.y;
-  strain_derivative.cy = rab * Rab_vec.z * du_da.y + rbc * Rbc_vec.z * du_dc.y;
-  strain_derivative.az = rab * Rab_vec.x * du_da.z + rbc * Rbc_vec.x * du_dc.z;
-  strain_derivative.bz = rab * Rab_vec.y * du_da.z + rbc * Rbc_vec.y * du_dc.z;
-  strain_derivative.cz = rab * Rab_vec.z * du_da.z + rbc * Rbc_vec.z * du_dc.z;
+  // Rab_vec and Rbc_vec are the unnormalized bond vectors (r_ab * Rab, r_bc * Rbc).
+  strain_derivative.ax = Rab_vec.x * du_da.x + Rbc_vec.x * du_dc.x;
+  strain_derivative.bx = Rab_vec.y * du_da.x + Rbc_vec.y * du_dc.x;
+  strain_derivative.cx = Rab_vec.z * du_da.x + Rbc_vec.z * du_dc.x;
+  strain_derivative.ay = Rab_vec.x * du_da.y + Rbc_vec.x * du_dc.y;
+  strain_derivative.by = Rab_vec.y * du_da.y + Rbc_vec.y * du_dc.y;
+  strain_derivative.cy = Rab_vec.z * du_da.y + Rbc_vec.z * du_dc.y;
+  strain_derivative.az = Rab_vec.x * du_da.z + Rbc_vec.x * du_dc.z;
+  strain_derivative.bz = Rab_vec.y * du_da.z + Rbc_vec.y * du_dc.z;
+  strain_derivative.cz = Rab_vec.z * du_da.z + Rbc_vec.z * du_dc.z;
 
   return {pterm, {du_da, du_db, du_dc}, strain_derivative};
 }

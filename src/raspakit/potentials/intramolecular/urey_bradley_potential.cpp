@@ -388,7 +388,9 @@ double UreyBradleyPotential::calculateEnergy(const double3 &posA, const double3 
 std::tuple<double, std::array<double3, 2>, double3x3> UreyBradleyPotential::potentialEnergyGradientStrain(
     const double3 &posA, const double3 &posB) const
 {
-  const auto bond_type = static_cast<BondType>(std::to_underlying(type));
+  // 'BondType' has an extra leading 'None' enumerator, so the Urey-Bradley enumerators are shifted by one
+  // (UreyBradleyType::Harmonic == 1, BondType::Harmonic == 2).
+  const auto bond_type = static_cast<BondType>(std::to_underlying(type) + 1);
   return Potentials::Internal::distancePotentialEnergyGradientStrain(bond_type, parameters, posA, posB, false);
 }
 

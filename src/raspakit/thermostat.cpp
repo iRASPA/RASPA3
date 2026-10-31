@@ -122,19 +122,18 @@ void Thermostat::initialize(RandomNumber &random)
   const std::size_t effectiveTranslationalDegreesOfFreedom =
       translationalDegreesOfFreedom - translationalCenterOfMassConstraint;
 
+  // The chain momenta p_i = Q_i v_i are canonically distributed, exp(-p_i^2 / (2 Q_i k_B T)), so every chain
+  // velocity is Gaussian with variance k_B T / Q_i (independent of the number of particle degrees of freedom).
+  const double kT = Units::KB * temperature;
   for (std::size_t i = 0; i != thermostatChainLength; ++i)
   {
     thermostatVelocityTranslation[i] = effectiveTranslationalDegreesOfFreedom == 0
                                            ? 0.0
-                                           : random.Gaussian() *
-                                                 std::sqrt(static_cast<double>(effectiveTranslationalDegreesOfFreedom) /
-                                                           thermostatMassTranslation[i]);
+                                           : random.Gaussian() * std::sqrt(kT / thermostatMassTranslation[i]);
 
     thermostatVelocityRotation[i] = rotationalDegreesOfFreedom == 0
                                         ? 0.0
-                                        : random.Gaussian() *
-                                              std::sqrt(static_cast<double>(rotationalDegreesOfFreedom) /
-                                                        thermostatMassTranslation[i]);
+                                        : random.Gaussian() * std::sqrt(kT / thermostatMassRotation[i]);
   }
 }
 

@@ -46,11 +46,24 @@ void ensureNeighborGrid(const SampledStructure &structure)
 {
   SampledNeighborGrid &grid = structure.neighborGrid;
   const double maxRadius = maximumRadiusOf(structure.radii);
-  if (grid.atomCount == structure.positions.size() && grid.maximumRadius == maxRadius && !grid.bins.empty())
+  std::atomic_ref<std::uint32_t> published{grid.published};
+  if (published.load(std::memory_order_acquire) != 0 && grid.atomCount == structure.positions.size() &&
+      grid.maximumRadius == maxRadius && !grid.bins.empty())
   {
     return;
   }
 
+  // Only the first build of a grid is serialized. Later clearances on a published grid stay on the
+  // acquire path above, so the worker threads in SampledRoadmap::build do not share this mutex.
+  static std::mutex buildMutex;
+  std::lock_guard<std::mutex> lock(buildMutex);
+  if (published.load(std::memory_order_relaxed) != 0 && grid.atomCount == structure.positions.size() &&
+      grid.maximumRadius == maxRadius && !grid.bins.empty())
+  {
+    return;
+  }
+
+  published.store(0, std::memory_order_relaxed);
   grid.atomCount = structure.positions.size();
   grid.maximumRadius = maxRadius;
 
@@ -86,6 +99,7 @@ void ensureNeighborGrid(const SampledStructure &structure)
     int3 bin = binOfFractional(fractional, gridSize);
     grid.bins[static_cast<std::size_t>((bin.z * gridSize.y + bin.y) * gridSize.x + bin.x)].push_back(i);
   }
+  published.store(1, std::memory_order_release);
 }
 }  // namespace
 

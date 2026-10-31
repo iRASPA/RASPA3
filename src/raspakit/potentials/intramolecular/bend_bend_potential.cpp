@@ -182,15 +182,17 @@ std::tuple<double, std::array<double3, 4>, double3x3> BendBendPotential::potenti
     case BendBendType::MM3:
       U = -parameters[0] * (Units::RadiansToDegrees * Units::RadiansToDegrees) * (theta1 - parameters[1]) *
           (theta2 - parameters[2]);
-      d_theta1 = parameters[0] * (Units::RadiansToDegrees * Units::RadiansToDegrees) * (theta2 - parameters[2]) /
+      // U = -p_0 (theta1 - p_1)(theta2 - p_2): the derivatives carry the minus sign of the energy.
+      d_theta1 = -parameters[0] * (Units::RadiansToDegrees * Units::RadiansToDegrees) * (theta2 - parameters[2]) /
                  sin_theta1;
-      d_theta2 = parameters[0] * (Units::RadiansToDegrees * Units::RadiansToDegrees) * (theta1 - parameters[1]) /
+      d_theta2 = -parameters[0] * (Units::RadiansToDegrees * Units::RadiansToDegrees) * (theta1 - parameters[1]) /
                  sin_theta2;
       break;
     default:
       std::unreachable();
   }
 
+  // 'vec_ab' and 'vec_other' are the unnormalized bond vectors (r_ab * dir_ab, r_other * dir_other).
   auto add_bend_contribution = [&](double d_theta, double cos_theta, const double3 &dir_ab, const double3 &dir_other,
                                  double r_ab, double r_other, const double3 &vec_ab, const double3 &vec_other,
                                  double3 &grad_a, double3 &grad_b, double3 &grad_other)
@@ -208,15 +210,15 @@ std::tuple<double, std::array<double3, 4>, double3x3> BendBendPotential::potenti
     grad_b += fb;
     grad_other += fo;
 
-    strain_derivative.ax += r_ab * vec_ab.x * fa.x + r_other * vec_other.x * fo.x;
-    strain_derivative.bx += r_ab * vec_ab.y * fa.x + r_other * vec_other.y * fo.x;
-    strain_derivative.cx += r_ab * vec_ab.z * fa.x + r_other * vec_other.z * fo.x;
-    strain_derivative.ay += r_ab * vec_ab.x * fa.y + r_other * vec_other.x * fo.y;
-    strain_derivative.by += r_ab * vec_ab.y * fa.y + r_other * vec_other.y * fo.y;
-    strain_derivative.cy += r_ab * vec_ab.z * fa.y + r_other * vec_other.z * fo.y;
-    strain_derivative.az += r_ab * vec_ab.x * fa.z + r_other * vec_other.x * fo.z;
-    strain_derivative.bz += r_ab * vec_ab.y * fa.z + r_other * vec_other.y * fo.z;
-    strain_derivative.cz += r_ab * vec_ab.z * fa.z + r_other * vec_other.z * fo.z;
+    strain_derivative.ax += vec_ab.x * fa.x + vec_other.x * fo.x;
+    strain_derivative.bx += vec_ab.y * fa.x + vec_other.y * fo.x;
+    strain_derivative.cx += vec_ab.z * fa.x + vec_other.z * fo.x;
+    strain_derivative.ay += vec_ab.x * fa.y + vec_other.x * fo.y;
+    strain_derivative.by += vec_ab.y * fa.y + vec_other.y * fo.y;
+    strain_derivative.cy += vec_ab.z * fa.y + vec_other.z * fo.y;
+    strain_derivative.az += vec_ab.x * fa.z + vec_other.x * fo.z;
+    strain_derivative.bz += vec_ab.y * fa.z + vec_other.y * fo.z;
+    strain_derivative.cz += vec_ab.z * fa.z + vec_other.z * fo.z;
   };
 
   add_bend_contribution(d_theta1, cos_theta1, Dab, Dbc, rab, rbc, Dab_vec, Dbc_vec, du_da, du_db, du_dc);
