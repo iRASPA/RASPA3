@@ -813,6 +813,71 @@ TEST(mc_cell_list, cbmc_trial_energy_matches_brute_force)
   }
 }
 
+TEST(mc_cell_list, grow_context_over_another_background_leaves_the_cell_list_alone_and_matches_brute_force)
+{
+  ForceField forceField = makeChainForceField();
+  Component chain = makeChain(forceField);
+  System system =
+      System(forceField, SimulationBox(40.0, 39.0, 41.0), false, 300.0, 1e5, 1.0, {}, {chain}, {}, {300}, 5);
+  RandomNumber random(11);
+  randomizeConfiguration(system, random);
+
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  const double cutOff = system.cellListCutOff();
+
+  // a background that differs from the system's molecule atoms: the first molecule removed
+  const std::vector<Atom> background(atoms.begin() + 4, atoms.end());
+
+  // the overload does not build (or rebuild) the molecule cell list: it describes another array anyway
+  system.invalidateCellList();
+  ASSERT_FALSE(system.moleculeCellList.isCurrent(atoms, system.simulationBox, cutOff));
+  const CBMC::GrowContext context = system.makeGrowContext(background);
+  EXPECT_FALSE(system.moleculeCellList.isCurrent(atoms, system.simulationBox, cutOff));
+  EXPECT_EQ(context.cellList, nullptr);
+  EXPECT_EQ(context.neighbourhood, nullptr);
+  EXPECT_NE(context.frameworkCellList, nullptr);
+  EXPECT_EQ(context.moleculeAtoms.data(), background.data());
+  EXPECT_EQ(context.moleculeAtoms.size(), background.size());
+
+  // and it is the same context as the explicit replacement of the background
+  const CBMC::GrowContext reference = system.makeGrowContext().withMoleculeAtoms(background);
+  EXPECT_TRUE(system.moleculeCellList.isCurrent(atoms, system.simulationBox, cutOff));
+  EXPECT_EQ(reference.cellList, nullptr);
+  EXPECT_EQ(context.cutOffMode, reference.cutOffMode);
+  EXPECT_EQ(context.cutOffFrameworkVDW, reference.cutOffFrameworkVDW);
+  EXPECT_EQ(context.cutOffMoleculeVDW, reference.cutOffMoleculeVDW);
+  EXPECT_EQ(context.cutOffCoulomb, reference.cutOffCoulomb);
+  EXPECT_EQ(context.beta, reference.beta);
+
+  const CBMC::GrowContext fullContext = system.makeGrowContext(background, CBMC::CutOffMode::Full);
+  EXPECT_EQ(fullContext.cutOffMode, CBMC::CutOffMode::Full);
+  EXPECT_EQ(fullContext.cellList, nullptr);
+
+  // trial beads of a new molecule evaluated against the reduced background: brute force over exactly that
+  // background, so the removed molecule contributes nothing
+  for (std::size_t round = 0; round < 10; ++round)
+  {
+    std::vector<Atom> trialPositions;
+    for (std::size_t k = 0; k < 10; ++k)
+    {
+      Atom bead = atoms[0];
+      bead.moleculeId = static_cast<std::uint32_t>(system.moleculeData.size() + 3);
+      bead.position = system.simulationBox.cell * double3(random.uniform(), random.uniform(), random.uniform());
+      trialPositions.push_back(bead);
+    }
+    const std::vector<CBMC::FirstBeadTrial> viaOverload =
+        CBMC::computeExternalNonOverlappingEnergies(context, chain, trialPositions);
+    const std::vector<CBMC::FirstBeadTrial> viaReplacement =
+        CBMC::computeExternalNonOverlappingEnergies(reference, chain, trialPositions);
+    ASSERT_EQ(viaOverload.size(), viaReplacement.size());
+    for (std::size_t k = 0; k < viaOverload.size(); ++k)
+    {
+      EXPECT_EQ(viaOverload[k].position.position.x, viaReplacement[k].position.position.x);
+      expectSameEnergies(std::optional{viaReplacement[k].energy}, std::optional{viaOverload[k].energy});
+    }
+  }
+}
+
 TEST(mc_cell_list, batched_neighbourhood_matches_brute_force_for_every_trial_set)
 {
   // a large box (cell list enabled) and the small water box of the examples (cell list disabled, the gather

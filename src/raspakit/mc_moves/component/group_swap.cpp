@@ -169,7 +169,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
 
     memberBackgroundSizes.push_back(background.size());
 
-    const CBMC::GrowContext growContext = system.makeGrowContext().withMoleculeAtoms(background);
+    const CBMC::GrowContext growContext = system.makeGrowContext(background);
 
     std::optional<CBMC::GrowResult> growData =
         MC_Moves::timed(system, centralComponent, move, Move::Timing::NonEwald,
@@ -573,7 +573,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
   {
     const Component& memberComponent = system.components[members[i].componentId];
     const std::span<const Atom> backgroundSlice(cumulativeBackground.data(), memberBackgroundSizes[i]);
-    const CBMC::GrowContext retraceContext = system.makeGrowContext().withMoleculeAtoms(backgroundSlice);
+    const CBMC::GrowContext retraceContext = system.makeGrowContext(backgroundSlice);
 
     std::span<Atom> memberAtoms = system.spanOfMolecule(members[i].componentId, members[i].moleculeId);
 

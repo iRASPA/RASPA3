@@ -224,7 +224,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
       std::optional<CBMC::GrowResult> growData;
       if (useCBMC)
       {
-        const CBMC::GrowContext growContext = system.makeGrowContext().withMoleculeAtoms(background);
+        const CBMC::GrowContext growContext = system.makeGrowContext(background);
         growData = CBMC::growNewMolecule(random, growContext, component,
                                          {.componentId = componentId,
                                           .moleculeId = selectedMolecule,
@@ -324,7 +324,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
     CBMC::RetraceResult retraceData{RunningEnergy{}, 0.0};
     if (useCBMC)
     {
-      const CBMC::GrowContext retraceContext = system.makeGrowContext().withMoleculeAtoms(background);
+      const CBMC::GrowContext retraceContext = system.makeGrowContext(background);
       try
       {
         retraceData = CBMC::retraceMolecule(random, retraceContext, component, moleculeAtoms);

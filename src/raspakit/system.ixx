@@ -518,10 +518,24 @@ export struct System
    *
    * The default 'Growth' mode makes the dual cut-off decision (inner cut-off when the force field
    * enables the scheme, full cut-offs otherwise); the CBMC entry points correct their results to the
-   * full cut-offs themselves whenever the context grew at the inner cut-off. Use
-   * 'CBMC::GrowContext::withMoleculeAtoms' on the result to grow against a different background.
+   * full cut-offs themselves whenever the context grew at the inner cut-off. The inter-molecular
+   * background is queried through 'cellList()' (built on demand) and the framework through
+   * 'frameworkCellList()'.
    */
   CBMC::GrowContext makeGrowContext(CBMC::CutOffMode mode = CBMC::CutOffMode::Growth) const;
+
+  /**
+   * \brief The CBMC growth context of this system grown against 'background' instead of its own
+   * molecule atoms (e.g. the molecule atoms with a pair removed, or with already grown group
+   * members appended).
+   *
+   * Equivalent to 'makeGrowContext(mode).withMoleculeAtoms(background)' but does not touch
+   * 'cellList()': the molecule cell list describes 'spanOfMoleculeAtoms()' only, so a context over
+   * another background falls back to the brute-force loop anyway and building (or rebuilding) the
+   * list for it would be wasted work. The framework cell list is kept since the framework is the same.
+   */
+  CBMC::GrowContext makeGrowContext(std::span<const Atom> background,
+                                    CBMC::CutOffMode mode = CBMC::CutOffMode::Growth) const;
 
   /**
    * \brief Persistent cell list over 'spanOfMoleculeAtoms()' for the Monte Carlo energy differences.

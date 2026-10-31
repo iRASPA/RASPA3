@@ -199,9 +199,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   std::vector<Atom> backgroundForB = backgroundWithoutPair;
   backgroundForB.insert(backgroundForB.end(), moleculeA.begin(), moleculeA.end());
 
-  const CBMC::GrowContext retraceContextB = system.makeGrowContext().withMoleculeAtoms(backgroundForB);
+  const CBMC::GrowContext retraceContextB = system.makeGrowContext(backgroundForB);
 
-  const CBMC::GrowContext retraceContextA = system.makeGrowContext().withMoleculeAtoms(backgroundWithoutPair);
+  const CBMC::GrowContext retraceContextA = system.makeGrowContext(backgroundWithoutPair);
 
   CBMC::RetraceResult retraceDataB =
       timed(system, componentA, Move::Types::PairSwapCBMC, Move::Timing::NonEwald,
@@ -437,9 +437,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   std::vector<Atom> backgroundForB = backgroundWithoutPair;
   backgroundForB.insert(backgroundForB.end(), moleculeA.begin(), moleculeA.end());
 
-  const CBMC::GrowContext retraceContextB = system.makeGrowContext().withMoleculeAtoms(backgroundForB);
+  const CBMC::GrowContext retraceContextB = system.makeGrowContext(backgroundForB);
 
-  const CBMC::GrowContext retraceContextA = system.makeGrowContext().withMoleculeAtoms(backgroundWithoutPair);
+  const CBMC::GrowContext retraceContextA = system.makeGrowContext(backgroundWithoutPair);
 
   CBMC::RetraceResult retraceDataB =
       timed(system, componentA, Move::Types::PairSwap, Move::Timing::NonEwald,

@@ -110,6 +110,13 @@ CBMC::GrowContext System::makeGrowContext(CBMC::CutOffMode mode) const
       .withFrameworkCellList(&frameworkCellList());
 }
 
+CBMC::GrowContext System::makeGrowContext(std::span<const Atom> background, CBMC::CutOffMode mode) const
+{
+  return CBMC::GrowContext(hasExternalField, forceField, simulationBox, interpolationGrids,
+                           externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(), background, beta, mode)
+      .withFrameworkCellList(&frameworkCellList());
+}
+
 double System::cellListCutOff() const
 {
   // The largest pair cut-off any molecule-molecule query uses (the dual cut-off inner value is smaller).

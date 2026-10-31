@@ -106,7 +106,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
                                                system.spanOfMoleculeAtoms().end());
   moleculeAtomDataWithTrialA.insert(moleculeAtomDataWithTrialA.end(), growDataA->atoms.begin(), growDataA->atoms.end());
 
-  const CBMC::GrowContext growContextB = system.makeGrowContext().withMoleculeAtoms(moleculeAtomDataWithTrialA);
+  const CBMC::GrowContext growContextB = system.makeGrowContext(moleculeAtomDataWithTrialA);
 
   std::optional<CBMC::GrowResult> growDataB =
       timed(system, componentA, Move::Types::PairSwapCBMC, Move::Timing::NonEwald,
@@ -348,7 +348,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
                                                system.spanOfMoleculeAtoms().end());
   moleculeAtomDataWithTrialA.insert(moleculeAtomDataWithTrialA.end(), growDataA->atoms.begin(), growDataA->atoms.end());
 
-  const CBMC::GrowContext growContextB = system.makeGrowContext().withMoleculeAtoms(moleculeAtomDataWithTrialA);
+  const CBMC::GrowContext growContextB = system.makeGrowContext(moleculeAtomDataWithTrialA);
 
   std::optional<CBMC::GrowResult> growDataB =
       timed(system, componentA, Move::Types::PairSwap, Move::Timing::NonEwald,

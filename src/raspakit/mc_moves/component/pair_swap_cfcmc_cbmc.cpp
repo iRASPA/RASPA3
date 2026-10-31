@@ -330,7 +330,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     moleculeAtomDataWithTrialA.insert(moleculeAtomDataWithTrialA.end(), growDataA->atoms.begin(),
                                       growDataA->atoms.end());
 
-    const CBMC::GrowContext growContextB = system.makeGrowContext().withMoleculeAtoms(moleculeAtomDataWithTrialA);
+    const CBMC::GrowContext growContextB = system.makeGrowContext(moleculeAtomDataWithTrialA);
 
     std::optional<CBMC::GrowResult> growDataB =
         timed(system, componentA, move, Move::Timing::InsertionNonEwald,
@@ -655,7 +655,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     const CBMC::GrowContext retraceContextB = system.makeGrowContext();
 
-    const CBMC::GrowContext retraceContextA = system.makeGrowContext().withMoleculeAtoms(backgroundWithoutFractionalB);
+    const CBMC::GrowContext retraceContextA = system.makeGrowContext(backgroundWithoutFractionalB);
 
     time_begin = std::chrono::steady_clock::now();
     CBMC::RetraceResult retraceDataB = CBMC::retraceMolecule(random, retraceContextB, componentBRef, fractionalMoleculeB,

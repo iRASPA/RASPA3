@@ -327,7 +327,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
 
       if (useCBMC)
       {
-        const CBMC::GrowContext growContext = system.makeGrowContext().withMoleculeAtoms(accumulatedBackground);
+        const CBMC::GrowContext growContext = system.makeGrowContext(accumulatedBackground);
 
         time_begin = std::chrono::steady_clock::now();
         const CBMC::NewMoleculeIdentity identity{.componentId = componentId,
@@ -795,7 +795,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
           background.push_back(atom);
         }
 
-        const CBMC::GrowContext retraceContext = system.makeGrowContext().withMoleculeAtoms(background);
+        const CBMC::GrowContext retraceContext = system.makeGrowContext(background);
 
         Component& memberComponent = system.components[members[i].componentId];
         // the reverse insertion grows the central molecule with a free first bead and every

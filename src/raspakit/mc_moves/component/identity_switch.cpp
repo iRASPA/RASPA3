@@ -124,7 +124,7 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
 
   auto makeContext = [&](std::span<const Atom> background)
   {
-    return system.makeGrowContext().withMoleculeAtoms(background);
+    return system.makeGrowContext(background);
   };
 
   // One side of the exchange: the existing molecule (retraced at its own site) together with the
