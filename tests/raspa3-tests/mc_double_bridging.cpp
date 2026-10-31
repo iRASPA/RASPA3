@@ -672,3 +672,65 @@ TEST(MC_DOUBLE_BRIDGING, energy_bookkeeping_with_lennard_jones_and_ewald)
   EXPECT_NEAR(running.torsion * toKelvin, recomputed.torsion * toKelvin, 1e-4);
   EXPECT_NEAR(running.potentialEnergy() * toKelvin, recomputed.potentialEnergy() * toKelvin, 1e-4);
 }
+
+// The partner chain is shifted by a lattice vector so that the two new chains are contiguous, and the shifted
+// head is committed with it. A non-periodic external field sees that shift: its energy change must be part of
+// the acceptance and of the returned difference, not only the trimer contribution. The polynomial test field
+// x*y*z is non-periodic and sensitive to a 14 A shift; the temperature is very high so that the field does not
+// suppress the moves and the bookkeeping is checked over many accepted bridgings with wrapped-around chains.
+TEST(MC_DOUBLE_BRIDGING, db_external_field_sees_the_lattice_shift_of_the_partner)
+{
+  ForceField forceField = makeZeroForceField();
+  forceField.potentialEnergySurfaceType = ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction;
+  Component decane = makeComponent(forceField, "db-decane-field", chainJson(10, "0.0, 0.0, 0.0, 0.0"));
+
+  constexpr std::size_t numberOfChains = 6;
+  System system = System(forceField, SimulationBox(14.0, 14.0, 14.0), false, 1.0e7, 1e4, 1.0, {}, {decane}, {},
+                         {numberOfChains}, 5);
+  system.hasExternalField = true;
+  system.runningEnergies = system.computeTotalEnergies();
+  system.components[0].pivotRandomizationFraction = 1.0;
+  ASSERT_NE(system.runningEnergies.externalFieldVDW, 0.0);
+
+  RandomNumber random(1234);
+  std::size_t accepted = 0, shifted = 0;
+  std::vector<Atom> snapshot{};
+  for (std::size_t i = 0; i != 60000; ++i)
+  {
+    const std::size_t molecule = static_cast<std::size_t>(random.uniform() * static_cast<double>(numberOfChains));
+    std::optional<RunningEnergy> energyDifference;
+    if (i % 20 == 0)
+    {
+      energyDifference = MC_Moves::pivotMove(random, system, 0, molecule);
+    }
+    else if (i % 20 == 10)
+    {
+      energyDifference = MC_Moves::translationMove(random, system, 0, molecule);
+    }
+    else
+    {
+      const std::span<const Atom> all = system.spanOfMoleculeAtoms();
+      snapshot.assign(all.begin(), all.end());
+      energyDifference = MC_Moves::doubleBridgingMove(random, system, 0, molecule);
+      if (energyDifference.has_value())
+      {
+        ++accepted;
+        // a head atom (unit 0 never belongs to a trimer or a tail) displaced by a lattice vector
+        for (std::size_t m = 0; m != numberOfChains; ++m)
+        {
+          if ((system.spanOfMolecule(0, m)[0].position - snapshot[m * 10].position).length() > 1.0) ++shifted;
+        }
+      }
+    }
+    if (energyDifference.has_value()) system.runningEnergies += energyDifference.value();
+  }
+  EXPECT_GT(accepted, 100uz);
+  EXPECT_GT(shifted, 10uz);
+
+  system.checkMoleculeIds();
+  const RunningEnergy recomputed = system.computeTotalEnergies();
+  EXPECT_NEAR(system.runningEnergies.externalFieldVDW, recomputed.externalFieldVDW,
+              1e-8 * std::max(1.0, std::abs(recomputed.externalFieldVDW)));
+  EXPECT_NEAR(system.runningEnergies.potentialEnergy(), recomputed.potentialEnergy(),
+              1e-8 * std::max(1.0, std::abs(recomputed.potentialEnergy())));
+}

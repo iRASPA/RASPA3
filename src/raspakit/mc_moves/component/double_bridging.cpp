@@ -181,9 +181,10 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
     return std::nullopt;
   }
 
-  // The atoms whose positions change: the two trimers with their side groups. Every other atom keeps
-  // its position (and, for the framework, the external field and the other molecules, its identity
-  // does not matter), so the non-bonded differences with the surroundings involve these atoms only.
+  // The atoms whose positions change up to a lattice vector: the two trimers with their side groups. Every
+  // other atom keeps its position (the partner's head is shifted by a lattice vector) and, for the framework
+  // and the other molecules, its identity does not matter, so the periodic non-bonded differences with the
+  // surroundings involve these atoms only.
   std::vector<Atom> movedOld{}, movedNew{};
   auto collectTrimerAtoms = [&](std::vector<Atom>& destination, const std::vector<Atom>& source)
   {
@@ -199,13 +200,20 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
   collectTrimerAtoms(movedNew, trialI);
   collectTrimerAtoms(movedNew, trialJ);
 
+  // The external field is a function of the unwrapped positions (it need not be periodic), so the lattice
+  // shift of the partner's head (units 0 .. site, shifted along with the rest of the chain) changes its
+  // energy as well. Both chains are therefore passed in full, against the stored (unshifted) atoms.
+  std::vector<Atom> allNew = trialI;
+  allNew.insert(allNew.end(), trialJ.begin(), trialJ.end());
+  std::vector<Atom> storedOld(atomsI.begin(), atomsI.end());
+  storedOld.insert(storedOld.end(), atomsJ.begin(), atomsJ.end());
   std::optional<RunningEnergy> externalFieldMolecule =
       timed(system, component, move, Move::Timing::ExternalFieldMolecule,
             [&]
             {
               return Interactions::computeExternalFieldEnergyDifference(
                   system.hasExternalField, system.forceField, system.simulationBox,
-                  system.externalFieldInterpolationGrid, movedNew, movedOld);
+                  system.externalFieldInterpolationGrid, allNew, storedOld);
             });
   if (!externalFieldMolecule.has_value()) return std::nullopt;
 
@@ -250,9 +258,7 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
 
   // Ewald: the Fourier sum only sees the trimer displacements (the exchanged tails contribute
   // identical terms on both sides), but the intramolecular exclusion terms change with the chain
-  // membership, so both chains are passed in full.
-  std::vector<Atom> allNew = trialI;
-  allNew.insert(allNew.end(), trialJ.begin(), trialJ.end());
+  // membership, so both chains are passed in full (the lattice shift of the partner drops out of the sum).
   std::vector<Atom> allOld = oldI;
   allOld.insert(allOld.end(), oldJ.begin(), oldJ.end());
   RunningEnergy ewaldFourierEnergy =
