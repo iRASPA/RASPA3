@@ -278,18 +278,29 @@ std::string OpenCL::printBestOpenCLDevice()
     if (err == CL_SUCCESS) stream << std::format("3D_MAX_DEPTH {}\n", szMaxDims[4]);
 
     // CL_DEVICE_PREFERRED_VECTOR_WIDTH_<type>
-    cl_uint vec_width[6];
-    clGetDeviceInfo(clDeviceId.value(), CL_DEVICE_PREFERRED_VECTOR_WIDTH_CHAR, sizeof(cl_uint), &vec_width[0], NULL);
-    clGetDeviceInfo(clDeviceId.value(), CL_DEVICE_PREFERRED_VECTOR_WIDTH_SHORT, sizeof(cl_uint), &vec_width[1], NULL);
-    clGetDeviceInfo(clDeviceId.value(), CL_DEVICE_PREFERRED_VECTOR_WIDTH_INT, sizeof(cl_uint), &vec_width[2], NULL);
-    clGetDeviceInfo(clDeviceId.value(), CL_DEVICE_PREFERRED_VECTOR_WIDTH_LONG, sizeof(cl_uint), &vec_width[3], NULL);
-    clGetDeviceInfo(clDeviceId.value(), CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT, sizeof(cl_uint), &vec_width[4], NULL);
-    clGetDeviceInfo(clDeviceId.value(), CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE, sizeof(cl_uint), &vec_width[5], NULL);
+    cl_uint vec_width[6] = {0, 0, 0, 0, 0, 0};
+    err = clGetDeviceInfo(clDeviceId.value(), CL_DEVICE_PREFERRED_VECTOR_WIDTH_CHAR, sizeof(cl_uint), &vec_width[0],
+                          NULL);
+    if (err == CL_SUCCESS)
+      err = clGetDeviceInfo(clDeviceId.value(), CL_DEVICE_PREFERRED_VECTOR_WIDTH_SHORT, sizeof(cl_uint), &vec_width[1],
+                            NULL);
+    if (err == CL_SUCCESS)
+      err = clGetDeviceInfo(clDeviceId.value(), CL_DEVICE_PREFERRED_VECTOR_WIDTH_INT, sizeof(cl_uint), &vec_width[2],
+                            NULL);
+    if (err == CL_SUCCESS)
+      err = clGetDeviceInfo(clDeviceId.value(), CL_DEVICE_PREFERRED_VECTOR_WIDTH_LONG, sizeof(cl_uint), &vec_width[3],
+                            NULL);
+    if (err == CL_SUCCESS)
+      err = clGetDeviceInfo(clDeviceId.value(), CL_DEVICE_PREFERRED_VECTOR_WIDTH_FLOAT, sizeof(cl_uint), &vec_width[4],
+                            NULL);
+    if (err == CL_SUCCESS)
+      err = clGetDeviceInfo(clDeviceId.value(), CL_DEVICE_PREFERRED_VECTOR_WIDTH_DOUBLE, sizeof(cl_uint),
+                            &vec_width[5], NULL);
     if (err == CL_SUCCESS)
     {
       stream << "CL_DEVICE_PREFERRED_VECTOR_WIDTH\n";
-      stream << std::format("CHAR {}, SHORT {}, INT {}, FLOAT {}, DOUBLE {}\n", vec_width[0], vec_width[1],
-                            vec_width[2], vec_width[3], vec_width[4]);
+      stream << std::format("CHAR {}, SHORT {}, INT {}, LONG {}, FLOAT {}, DOUBLE {}\n", vec_width[0], vec_width[1],
+                            vec_width[2], vec_width[3], vec_width[4], vec_width[5]);
     }
 
     return stream.str();
@@ -440,7 +451,7 @@ bool OpenCL::supportsImageFormatCapabilities(cl_context &trial_clContext, cl_dev
   }
   clReleaseMemObject(image_R_INT16);
 
-  cl_image_format imageFormat_R_INT32{CL_R, CL_UNSIGNED_INT16};
+  cl_image_format imageFormat_R_INT32{CL_R, CL_UNSIGNED_INT32};
   cl_image_desc imageDescriptor_R_INT32{CL_MEM_OBJECT_IMAGE3D, 128, 128, 128, 0, 0, 0, 0, 0, nullptr};
   cl_mem image_R_INT32 =
       clCreateImage(trial_clContext, CL_MEM_READ_WRITE, &imageFormat_R_INT32, &imageDescriptor_R_INT32, nullptr, &err);

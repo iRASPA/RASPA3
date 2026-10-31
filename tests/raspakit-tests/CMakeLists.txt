@@ -83,6 +83,7 @@ add_executable(unit_tests_raspakit
   cif_reader.cpp
   solute_tempering.cpp
   polymer_tacticity.cpp
+  opencl_device.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspakit)

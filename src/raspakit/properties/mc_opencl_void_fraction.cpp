@@ -26,8 +26,32 @@ import component;
 import system;
 import mc_moves_widom;
 
+namespace
+{
+// The build log of a program for a device, sized by a first query (the log of a failed build regularly exceeds a
+// fixed buffer, and a query with a too-small buffer fails without writing anything).
+std::string programBuildLog(cl_program program, cl_device_id device)
+{
+  size_t length = 0;
+  if (clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, nullptr, &length) != CL_SUCCESS || length == 0)
+  {
+    return std::string("(no build log)");
+  }
+  std::string log(length, '\0');
+  if (clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, length, log.data(), nullptr) != CL_SUCCESS)
+  {
+    return std::string("(no build log)");
+  }
+  while (!log.empty() && log.back() == '\0') log.pop_back();
+  return log;
+}
+}  // namespace
+
 MC_OpenCL_VoidFraction::MC_OpenCL_VoidFraction()
 {
+  // idempotent: selects the device and creates the shared context and queue when not done yet
+  OpenCL::initialize();
+
   if (OpenCL::clContext.has_value() && OpenCL::clDeviceId.has_value())
   {
     cl_int err;
@@ -37,35 +61,49 @@ MC_OpenCL_VoidFraction::MC_OpenCL_VoidFraction()
         clCreateProgramWithSource(OpenCL::clContext.value(), 1, &voidFractionShaderSourceCode, nullptr, &err);
     if (err != CL_SUCCESS)
     {
-      throw std::runtime_error(std::format("MC_OpenCL_VoidFraction: OpenCL clCreateProgramWithSource failed at {}\n", __LINE__));
+      voidFractionProgram = nullptr;
+      throw std::runtime_error(
+          std::format("MC_OpenCL_VoidFraction: OpenCL clCreateProgramWithSource failed at {}\n", __LINE__));
     }
 
     err = clBuildProgram(voidFractionProgram, 0, nullptr, nullptr, nullptr, nullptr);
     if (err != CL_SUCCESS)
     {
-      size_t len;
-      char buffer[2048];
-      clGetProgramBuildInfo(voidFractionProgram, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer,
-                            &len);
-      std::string message =
+      const std::string log = programBuildLog(voidFractionProgram, OpenCL::clDeviceId.value());
+      clReleaseProgram(voidFractionProgram);
+      voidFractionProgram = nullptr;
+      throw std::runtime_error(
           std::format("MC_OpenCL_VoidFraction: OpenCL Failed to build program at {} (line {} error: {})\n", __FILE__,
-                      __LINE__, std::string(buffer));
-      throw std::runtime_error(message);
+                      __LINE__, log));
     }
 
     voidFractionKernel = clCreateKernel(voidFractionProgram, "ComputeVoidFraction", &err);
     if (err != CL_SUCCESS)
     {
-      throw std::runtime_error(std::format("MC_OpenCL_VoidFraction: OpenCL clCreateKernel failed {} : {}\n", __FILE__, __LINE__));
+      voidFractionKernel = nullptr;
+      clReleaseProgram(voidFractionProgram);
+      voidFractionProgram = nullptr;
+      throw std::runtime_error(
+          std::format("MC_OpenCL_VoidFraction: OpenCL clCreateKernel failed {} : {}\n", __FILE__, __LINE__));
     }
     err = clGetKernelWorkGroupInfo(voidFractionKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
                                    sizeof(size_t), &voidFractionWorkGroupSize, nullptr);
     if (err != CL_SUCCESS)
     {
-      throw std::runtime_error(std::format("MC_OpenCL_VoidFraction: OpenCL clGetKernelWorkGroupInfo failed at {} : {}\n", __FILE__, __LINE__));
+      clReleaseKernel(voidFractionKernel);
+      voidFractionKernel = nullptr;
+      clReleaseProgram(voidFractionProgram);
+      voidFractionProgram = nullptr;
+      throw std::runtime_error(std::format(
+          "MC_OpenCL_VoidFraction: OpenCL clGetKernelWorkGroupInfo failed at {} : {}\n", __FILE__, __LINE__));
     }
   }
+}
 
+MC_OpenCL_VoidFraction::~MC_OpenCL_VoidFraction()
+{
+  if (voidFractionKernel != nullptr) clReleaseKernel(voidFractionKernel);
+  if (voidFractionProgram != nullptr) clReleaseProgram(voidFractionProgram);
 }
 
 void MC_OpenCL_VoidFraction::run([[maybe_unused]] const ForceField &forceField,
