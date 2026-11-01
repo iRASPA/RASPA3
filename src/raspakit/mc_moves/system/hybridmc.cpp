@@ -124,9 +124,9 @@ bool moleculeEnteredBlockedPocket(const System& system, std::span<const Molecule
  *
  * The acceptance is exact: velocity Verlet is time-reversible and volume-preserving for any force that depends on
  * the positions only, so the engine forces (cell lists, particle-mesh Ewald, optionally mixed precision) make a
- * valid proposal, and the Metropolis test uses the exact Hamiltonian, U_exact + K, with U_exact(old) the running
- * energy of the system and U_exact(new) a full recomputation (System::computeTotalEnergies, which also refreshes
- * the stored Ewald structure factors for the new configuration).
+ * valid proposal, and the Metropolis test uses the exact Hamiltonian, U_exact + K, with both U_exact(old) and
+ * U_exact(new) a full recomputation (System::computeTotalEnergies, which also refreshes the stored Ewald
+ * structure factors for the configuration it evaluates).
  */
 std::optional<RunningEnergy> hybridMCMoveWithEngine(RandomNumber& random, System& system, ForceEngine& engine,
                                                     double dt)
@@ -158,11 +158,23 @@ std::optional<RunningEnergy> hybridMCMoveWithEngine(RandomNumber& random, System
   std::optional<Thermostat> savedThermostat = std::exchange(system.thermostat, std::nullopt);
   system.timeStep = dt;
 
+  // The acceptance uses the exact Hamiltonian. This path never sees a framework, an external field or
+  // polarization (ForceEngine::supports), but U_old is still taken from a full recomputation so a drifted
+  // running energy cannot leak into the Metropolis test.
+  const std::chrono::steady_clock::time_point time_old_energy = std::chrono::steady_clock::now();
+  const RunningEnergy oldEnergy = system.computeTotalEnergies();
+  system.mc_moves_cputime[move][Move::Timing::Energy] += (std::chrono::steady_clock::now() - time_old_energy);
+
   // Boltzmann velocities (the reference energy carries their kinetic energy); a bulk fluid has a free lab frame
   Integrators::initializeVelocities(random, system.moleculeData, atomData, dynamicsData, system.components,
                                     system.temperature, std::nullopt, {}, {}, &system.forceField, groupDataSpan);
-  Integrators::removeCenterOfMassVelocityDrift(system.moleculeData, atomData, dynamicsData, system.components,
-                                               std::nullopt, {}, {}, &system.forceField, groupDataSpan);
+  // Total momentum is conserved along this trajectory (no rigid framework, no external field). Removing the
+  // centre-of-mass velocity puts the draw on the P = 0 hyperplane, which the reverse move then shares.
+  if (!system.hasExternalField)
+  {
+    Integrators::removeCenterOfMassVelocityDrift(system.moleculeData, atomData, dynamicsData, system.components,
+                                                 std::nullopt, {}, {}, &system.forceField, groupDataSpan);
+  }
   const double initialKinetic =
       Integrators::computeTranslationalKineticEnergy(system.moleculeData, atomData, dynamicsData, system.components,
                                                      std::nullopt, {}, {}, &system.forceField, groupDataSpan) +
@@ -195,12 +207,11 @@ std::optional<RunningEnergy> hybridMCMoveWithEngine(RandomNumber& random, System
   }
 
   const double finalKinetic = trajectoryEnergy.translationalKineticEnergy + trajectoryEnergy.rotationalKineticEnergy;
-  const double initialPotential = system.runningEnergies.potentialEnergy();
   // the exact energy of the new configuration (this also refreshes the stored Ewald structure factors)
   const std::chrono::steady_clock::time_point time_energy = std::chrono::steady_clock::now();
   RunningEnergy finalEnergy = system.computeTotalEnergies();
   system.mc_moves_cputime[move][Move::Timing::Energy] += (std::chrono::steady_clock::now() - time_energy);
-  const double deltaH = (finalEnergy.potentialEnergy() + finalKinetic) - (initialPotential + initialKinetic);
+  const double deltaH = (finalEnergy.potentialEnergy() + finalKinetic) - (oldEnergy.potentialEnergy() + initialKinetic);
 
   if (random.uniform() < std::exp(-system.beta * deltaH))
   {
@@ -326,20 +337,38 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   // get Timestep from the max change
   double dt = system.mc_moves_statistics.getMaxChange(move);
 
+  // The acceptance uses the exact Hamiltonian. The MD gradient routines carry the pair, Ewald, bonded and
+  // cross-link terms only (no external field, no polarization); a trajectory driven by those forces is still a
+  // time-reversible, volume-preserving proposal, so the Metropolis test on the exact energies samples the full
+  // Boltzmann distribution. 'computeTotalEnergies' also refreshes the stored Ewald structure factors and the
+  // electric field for the configuration it evaluates; the current ones are saved for the rejection path.
+  time_begin = std::chrono::steady_clock::now();
+  const RunningEnergy oldEnergy = system.computeTotalEnergies();
+  const EwaldStructureFactor savedStoredEik(system.storedEik);
+  std::vector<double3> savedElectricField;
+  if (system.forceField.computePolarization)
+  {
+    const std::span<const double3> electricField = system.spanOfMoleculeElectricField();
+    savedElectricField.assign(electricField.begin(), electricField.end());
+  }
+  system.mc_moves_cputime[move][Move::Timing::Energy] += (std::chrono::steady_clock::now() - time_begin);
+
   // initialize the velocities according to Boltzmann distribution
   // NOTE: it is important that the reference energy has the initial kinetic energies
   Integrators::initializeVelocities(random, moleculeData, moleculeAtomPositions, moleculeDynamics, system.components,
                                     system.temperature, system.framework, trialFrameworkAtoms, trialFrameworkDynamics,
                                     &system.forceField, groupDataSpan, frameworkGroupDataSpan);
 
-  // Remove COM drift for bulk fluids and for flexible frameworks (lab frame is free).
-  // A rigid framework pins the lab frame, so adsorbate COM momentum is left intact.
-  if (system.numberOfFrameworkAtoms == 0 || flexibleFramework)
+  // Remove COM drift for bulk fluids and for flexible frameworks (lab frame is free). The total momentum is then
+  // conserved along the trajectory, so the P = 0 hyperplane the velocities are drawn on is invariant and the
+  // reversed final momenta can be drawn by the reverse move. A rigid framework pins the lab frame, and an
+  // external field exerts a net force on the molecules: in both cases the momentum is not conserved and must be
+  // left intact.
+  if ((system.numberOfFrameworkAtoms == 0 || flexibleFramework) && !system.hasExternalField)
   {
-    Integrators::removeCenterOfMassVelocityDrift(moleculeData, moleculeAtomPositions, moleculeDynamics,
-                                                 system.components, system.framework, trialFrameworkAtoms,
-                                                 trialFrameworkDynamics, &system.forceField, groupDataSpan,
-                                                 frameworkGroupDataSpan);
+    Integrators::removeCenterOfMassVelocityDrift(
+        moleculeData, moleculeAtomPositions, moleculeDynamics, system.components, system.framework, trialFrameworkAtoms,
+        trialFrameworkDynamics, &system.forceField, groupDataSpan, frameworkGroupDataSpan);
   }
 
   // Gradients must live on the trial copies: Velocity Verlet's first half-kick uses them.
@@ -379,39 +408,75 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
     return std::nullopt;
   }
 
-  // the Metropolis rule on the Hamiltonian: a trajectory that lowers H is always accepted (the proposal is
-  // reversible and volume-preserving, so this is detailed balance for the Boltzmann distribution)
-  const double deltaH = currentEnergy.conservedEnergy() - referenceEnergy.conservedEnergy();
+  // The trial configuration goes into the system for its exact energy (the only energy routines are the
+  // system's own); the current one is kept for the rejection path.
+  const std::vector<Atom> savedAtoms(atomData.begin(), atomData.end());
+  const std::vector<AtomDynamics> savedDynamics(dynamicsData.begin(), dynamicsData.end());
+  const std::vector<Molecule> savedMolecules(std::move(system.moleculeData));
+  const std::vector<GroupState> savedGroups(std::move(system.groupData));
+  const std::vector<GroupState> savedFrameworkGroups(std::move(system.frameworkGroupData));
+  std::vector<Atom> savedFrameworkAtoms;
+  std::vector<AtomDynamics> savedFrameworkDynamics;
+  if (flexibleFramework)
+  {
+    savedFrameworkAtoms.assign(frameworkAtomData.begin(), frameworkAtomData.end());
+    savedFrameworkDynamics.assign(frameworkDynamicsData.begin(), frameworkDynamicsData.end());
+  }
+
+  system.moleculeData = std::move(moleculeData);
+  system.groupData = std::move(groupData);
+  system.frameworkGroupData = std::move(frameworkGroupData);
+  std::copy(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), atomData.begin());
+  std::copy(moleculeDynamics.begin(), moleculeDynamics.end(), dynamicsData.begin());
+  if (flexibleFramework)
+  {
+    std::copy(frameworkAtomPositions.begin(), frameworkAtomPositions.end(), frameworkAtomData.begin());
+    std::copy(frameworkDynamics.begin(), frameworkDynamics.end(), frameworkDynamicsData.begin());
+  }
+  Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components,
+                                        system.spanOfGroupData(), system.framework, system.spanOfFrameworkAtoms(),
+                                        system.spanOfFrameworkGroupData());
+
+  // the exact energy of the new configuration (this also refreshes the stored Ewald structure factors and the
+  // electric field)
+  time_begin = std::chrono::steady_clock::now();
+  RunningEnergy newEnergy = system.computeTotalEnergies();
+  system.mc_moves_cputime[move][Move::Timing::Energy] += (std::chrono::steady_clock::now() - time_begin);
+
+  // the Metropolis rule on the exact Hamiltonian H = U + K: a trajectory that lowers H is always accepted (the
+  // proposal is reversible and volume-preserving, so this is detailed balance for the Boltzmann distribution)
+  const double initialKinetic = referenceEnergy.translationalKineticEnergy + referenceEnergy.rotationalKineticEnergy;
+  const double finalKinetic = currentEnergy.translationalKineticEnergy + currentEnergy.rotationalKineticEnergy;
+  const double deltaH = (newEnergy.potentialEnergy() + finalKinetic) - (oldEnergy.potentialEnergy() + initialKinetic);
 
   // accept or reject based on energy difference
   if (random.uniform() < std::exp(-system.beta * deltaH))
   {
     system.mc_moves_statistics.addAccepted(move);
 
-    system.moleculeData = moleculeData;
-    system.groupData = groupData;
-    system.frameworkGroupData = frameworkGroupData;
+    // The stored Ewald structure factors and the electric field already describe the new configuration. The
+    // returned energy is the exact one (tail corrections, external field and polarization included); the caller
+    // overwrites system.runningEnergies with it.
+    newEnergy.translationalKineticEnergy = currentEnergy.translationalKineticEnergy;
+    newEnergy.rotationalKineticEnergy = currentEnergy.rotationalKineticEnergy;
+    return newEnergy;
+  }
 
-    std::copy(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), atomData.begin());
-    std::copy(moleculeDynamics.begin(), moleculeDynamics.end(), dynamicsData.begin());
-    if (flexibleFramework)
-    {
-      std::copy(frameworkAtomPositions.begin(), frameworkAtomPositions.end(), frameworkAtomData.begin());
-      std::copy(frameworkDynamics.begin(), frameworkDynamics.end(), frameworkDynamicsData.begin());
-    }
-
-    Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components,
-                                          system.spanOfGroupData(), system.framework, system.spanOfFrameworkAtoms(),
-                                          system.spanOfFrameworkGroupData());
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
-
-    // The MD gradient/energy routines do not include the LJ tail corrections. The tail term is
-    // constant along the NVE trajectory (N, V and the scaling factors do not change), so it cancels
-    // in the acceptance rule, but it must be restored in the returned energy: the caller overwrites
-    // system.runningEnergies with it, and both the tail energy and its dU/dlambda contribution would
-    // otherwise be lost.
-    currentEnergy += system.computeTailCorrectionEnergies();
-    return currentEnergy;
+  // rejected: the old configuration, structure factors and electric field
+  std::copy(savedAtoms.begin(), savedAtoms.end(), atomData.begin());
+  std::copy(savedDynamics.begin(), savedDynamics.end(), dynamicsData.begin());
+  system.moleculeData = savedMolecules;
+  system.groupData = savedGroups;
+  system.frameworkGroupData = savedFrameworkGroups;
+  if (flexibleFramework)
+  {
+    std::copy(savedFrameworkAtoms.begin(), savedFrameworkAtoms.end(), frameworkAtomData.begin());
+    std::copy(savedFrameworkDynamics.begin(), savedFrameworkDynamics.end(), frameworkDynamicsData.begin());
+  }
+  system.storedEik = savedStoredEik;
+  if (system.forceField.computePolarization)
+  {
+    std::copy(savedElectricField.begin(), savedElectricField.end(), system.spanOfMoleculeElectricField().begin());
   }
   return std::nullopt;
 }

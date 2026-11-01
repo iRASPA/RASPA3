@@ -1117,6 +1117,133 @@ TEST(hybrid_mc, rejects_when_molecule_is_inside_blocked_pocket)
   DOUBLE3_EXPECT_NEAR(system.spanOfMoleculeAtoms()[0].position, initialMolecule, 1.0e-14);
 }
 
+// The MD gradient routines carry no external field, so the trajectory is a surrogate proposal; the acceptance and
+// the returned energy must nevertheless be the exact ones (external field and tail corrections included), and a
+// rejected move must leave the configuration and its energy untouched.
+TEST(hybrid_mc, acceptance_and_returned_energy_are_exact_with_an_external_field)
+{
+  const auto makeSystem = [](bool externalField)
+  {
+    ForceField forceField({{"O", false, 16.0, 0.0, 0.0, 8, false}}, {{80.0, 3.0}},
+                          ForceField::MixingRule::Lorentz_Berthelot, 8.0, 8.0, 8.0, false, true, false);
+    forceField.potentialEnergySurfaceType = ForceField::PotentialEnergySurfaceType::MullerBrown;
+    const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("O"));
+    Component atomic(forceField, "atomic", 64.0, 1.0e6, 0.02,
+                     {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, type, 0, false, false)}, {}, {}, 5, 21);
+    // Four atoms of one component (Hybrid MC needs more than one molecule). They sit near a Muller-Brown
+    // minimum in x,y and are spaced along z so the pair energy is finite.
+    System system(forceField, SimulationBox(20.0, 20.0, 20.0), externalField, 300.0, 1e4, 1.0, {}, {atomic},
+                  {{double3(-0.50, 1.50, 4.0), double3(-0.45, 1.55, 8.0), double3(-0.55, 1.45, 12.0),
+                    double3(-0.40, 1.40, 16.0)}},
+                  {0}, 5);
+    system.hybridMCUseForceEngine = false;
+    system.numberOfHybridMCSteps = 8;
+    system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 5.0e-4);
+    system.runningEnergies = system.computeTotalEnergies();
+    return system;
+  };
+
+  for (const bool externalField : {true, false})
+  {
+    std::size_t accepted = 0, rejected = 0;
+    for (std::size_t seed = 0; seed < 24 && (accepted < 3 || rejected < 1); ++seed)
+    {
+      System system = makeSystem(externalField);
+      ASSERT_GT(system.moleculeData.size(), 1uz);
+      const RunningEnergy exactOld = system.computeTotalEnergies();
+      if (externalField) ASSERT_NE(exactOld.externalFieldVDW, 0.0);
+      ASSERT_NE(exactOld.tail, 0.0);
+      std::vector<double3> initialPositions;
+      for (const Atom& atom : system.spanOfMoleculeAtoms()) initialPositions.push_back(atom.position);
+
+      RandomNumber random(seed);
+      const std::optional<RunningEnergy> result = MC_Moves::hybridMCMove(random, system);
+      const RunningEnergy exactNew = system.computeTotalEnergies();
+      const double scale = std::max(1.0, std::abs(exactNew.potentialEnergy()));
+      if (!result.has_value())
+      {
+        ++rejected;
+        for (std::size_t i = 0; i != initialPositions.size(); ++i)
+        {
+          DOUBLE3_EXPECT_NEAR(system.spanOfMoleculeAtoms()[i].position, initialPositions[i], 1.0e-14);
+        }
+        EXPECT_NEAR(exactNew.potentialEnergy(), exactOld.potentialEnergy(), 1.0e-10 * scale);
+        continue;
+      }
+      ++accepted;
+      if (externalField) EXPECT_NE(exactNew.externalFieldVDW, exactOld.externalFieldVDW);
+      EXPECT_NEAR(result->externalFieldVDW, exactNew.externalFieldVDW, 1.0e-10 * scale);
+      EXPECT_NEAR(result->tail, exactNew.tail, 1.0e-10 * scale);
+      EXPECT_NEAR(result->potentialEnergy(), exactNew.potentialEnergy(), 1.0e-10 * scale);
+      EXPECT_GT(result->translationalKineticEnergy, 0.0);
+    }
+    EXPECT_GE(accepted, 1uz) << "external field " << externalField;
+  }
+}
+
+// Polarization forces are likewise absent from the MD gradients; the acceptance and the returned energy
+// must still be the exact ones (polarization included), and a rejected move must leave the stored
+// electric field of the old configuration.
+TEST(hybrid_mc, acceptance_and_returned_energy_are_exact_with_polarization)
+{
+  const auto makeSystem = []()
+  {
+    ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+    forceField.computePolarization = true;
+    forceField.omitInterPolarization = false;
+    Framework framework = Framework::makeITQ29(forceField, int3(1, 1, 1));
+    Component co2 = Component::makeCO2(forceField, 0, true);
+    System system(forceField, std::nullopt, false, 300.0, 1e4, 1.0, framework, {co2}, {}, {2}, 5);
+    system.hybridMCUseForceEngine = false;
+    system.numberOfHybridMCSteps = 3;
+    system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 1.0e-4);
+    system.runningEnergies = system.computeTotalEnergies();
+    return system;
+  };
+
+  System probe = makeSystem();
+  ASSERT_LT(probe.runningEnergies.polarization, -1e-8);
+
+  std::size_t accepted = 0;
+  for (std::size_t seed = 0; seed < 16 && accepted < 2; ++seed)
+  {
+    System system = makeSystem();
+    const RunningEnergy exactOld = system.computeTotalEnergies();
+    RandomNumber random(seed);
+    const std::optional<RunningEnergy> result = MC_Moves::hybridMCMove(random, system);
+    if (!result.has_value()) continue;
+    ++accepted;
+    const RunningEnergy exactNew = system.computeTotalEnergies();
+    const double scale = std::max(1.0, std::abs(exactNew.potentialEnergy()));
+    EXPECT_NEAR(result->polarization, exactNew.polarization, 1.0e-10 * scale);
+    EXPECT_NEAR(result->potentialEnergy(), exactNew.potentialEnergy(), 1.0e-10 * scale);
+    EXPECT_GT(result->translationalKineticEnergy, 0.0);
+    EXPECT_NE(exactNew.polarization, exactOld.polarization);
+  }
+  EXPECT_GE(accepted, 1uz);
+
+  System rejected = makeSystem();
+  rejected.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 0.05);
+  const std::span<const double3> field = rejected.spanOfMoleculeElectricField();
+  const std::vector<double3> initialField(field.begin(), field.end());
+  const std::vector<Atom> initialAtoms(rejected.spanOfMoleculeAtoms().begin(), rejected.spanOfMoleculeAtoms().end());
+  const RunningEnergy exactOld = rejected.runningEnergies;
+  RandomNumber random(3);
+  EXPECT_FALSE(MC_Moves::hybridMCMove(random, rejected).has_value());
+  const std::span<const Atom> atoms = rejected.spanOfMoleculeAtoms();
+  for (std::size_t i = 0; i != initialAtoms.size(); ++i)
+  {
+    DOUBLE3_EXPECT_NEAR(atoms[i].position, initialAtoms[i].position, 1.0e-14);
+  }
+  const std::span<const double3> restored = rejected.spanOfMoleculeElectricField();
+  for (std::size_t i = 0; i != initialField.size(); ++i)
+  {
+    DOUBLE3_EXPECT_NEAR(restored[i], initialField[i], 1.0e-14);
+  }
+  EXPECT_NEAR(rejected.computeTotalEnergies().potentialEnergy(), exactOld.potentialEnergy(),
+              1.0e-10 * std::max(1.0, std::abs(exactOld.potentialEnergy())));
+}
+
 TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);

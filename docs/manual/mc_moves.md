@@ -1780,20 +1780,25 @@ Steps:
   fractional molecule records),
 - draw fresh velocities for all movable degrees of freedom from the
   Maxwell-Boltzmann distribution at the system temperature,
-- remove center-of-mass velocity drift for bulk fluids and flexible frameworks
-  (a rigid framework pins the lab frame, so adsorbate COM momentum is kept),
+- remove center-of-mass velocity drift only when the total momentum is
+  conserved along the trajectory (bulk fluids and flexible frameworks, and
+  only when there is no external field). A rigid framework pins the lab
+  frame, and an external field exerts a net force, so in both cases the
+  adsorbate COM momentum is left intact,
 - integrate Newton's equations of motion (velocity Verlet, NVE) for the chosen
-  number of MD steps,
-- measure the drift of the conserved (total) energy
-  \f$\Delta E = E_\text{end} - E_\text{start}\f$ over the trajectory,
-- accept the final configuration or restore the initial one.
+  number of MD steps. The forces along the trajectory are the pair, Ewald,
+  bonded and cross-link terms; external-field and polarization forces are
+  omitted, so with those terms the trajectory is a surrogate proposal,
+- accept or reject on the exact Hamiltonian
+  \f$H = U + K\f$, with \f$U\f$ the full energy of the configuration
+  (external field, polarization and tail corrections included).
 
-Acceptance rule (the implementation deliberately uses the absolute
-conserved-energy drift
-\f$d=|E_\text{end}-E_\text{start}|\f$):
+Acceptance rule (any reversible, volume-preserving proposal is valid with the
+exact Hamiltonian):
 
 \f[
-\text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1, e^{-\beta d}\right)
+\text{acc}(\mathbf{o} \rightarrow \mathbf{n}) =
+\min\left(1, e^{-\beta[(U_{\mathbf{n}}+K_{\mathbf{n}})-(U_{\mathbf{o}}+K_{\mathbf{o}})]}\right)
 \f]
 
 Useful for: dense fluids where single-molecule moves relax the structure

@@ -26,6 +26,12 @@ export namespace MC_Moves
  * proposal and the Metropolis test on the exact Hamiltonian keeps the sampled distribution exact. The returned
  * energies are the exact energies of the new configuration (System::computeTotalEnergies).
  *
+ * The same holds for the exact integrator path: its gradient routines carry no external-field or polarization
+ * forces, so in such systems the trajectory is a surrogate proposal, and the acceptance is on the exact energies
+ * (U_old and U_new from System::computeTotalEnergies, external field and polarization included). The centre-of-mass
+ * velocity is removed only when the total momentum is conserved along the trajectory (no rigid framework, no
+ * external field).
+ *
  * \param random A reference to the random number generator.
  * \param system A reference to the system on which the move is performed.
  * \return An optional RunningEnergy object containing the system's energy if the move is accepted, or std::nullopt if

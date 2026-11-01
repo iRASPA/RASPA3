@@ -1682,7 +1682,14 @@ reported separately at the end of the simulation.
     propagates the Hamiltonian through a short Molecular Dynamics trajectory and
     accepts or rejects the new state based on the energy drift. Rigid and
     flexible adsorbates are supported in a rigid or flexible framework. Use
-    `"HybridMCMoveNumberOfSteps"` to set the number of MD steps.
+    `"HybridMCMoveNumberOfSteps"` to set the number of MD steps. The
+    acceptance uses the exact Hamiltonian (the full energies of the old and
+    the new configuration); the trajectory itself is driven by the pair,
+    Ewald, bonded and cross-link forces only, so with an external field or
+    polarization it is a surrogate proposal, still reversible and
+    volume-preserving, with a lower acceptance ratio. The centre-of-mass
+    velocity is removed only when the total momentum is conserved along the
+    trajectory (no rigid framework and no external field).
 
 -   `"ParallelTemperingSwapProbability" : floating-point-number`\
     The probability per cycle of attempting a parallel-tempering swap between two
