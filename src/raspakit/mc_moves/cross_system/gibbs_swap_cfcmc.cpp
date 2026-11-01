@@ -195,6 +195,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       atom.moleculeId = static_cast<std::uint32_t>(systemA.numberOfMolecules());
     }
 
+    std::optional<RunningEnergy> externalFieldDifferenceA2 =
+        timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
+              [&] { return computeExternalFieldEnergyDifference(systemA, newMolecule, {}); });
+    if (!externalFieldDifferenceA2.has_value())
+    {
+      restoreFractionalMolecules(systemA, snapshotA);
+      return std::nullopt;
+    }
+
     std::optional<RunningEnergy> frameworkDifferenceA2 =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
               [&]
@@ -239,8 +248,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               [&] { return computeTailEnergyDifference(systemA, tailEffA, tailGroupA, newMolecule, {}); });
 
     RunningEnergy energyDifferenceA = intraFractionalDifferenceA + flagSwapFractionalDifferenceA.value() +
-                                      frameworkDifferenceA2.value() + moleculeDifferenceA2.value() +
-                                      EwaldFourierDifferenceA2 + tailEnergyDifferenceA2;
+                                      externalFieldDifferenceA2.value() + frameworkDifferenceA2.value() +
+                                      moleculeDifferenceA2.value() + EwaldFourierDifferenceA2 + tailEnergyDifferenceA2;
 
     // System B: Changing a randomly selected molecule in the other simulation box into a fractional molecule
     // (at the same lambda); the fractional molecules of the other components switch on
@@ -272,6 +281,20 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     for (Atom& atom : selectedIntegerMoleculeB)
     {
       atom.setScalingOff();
+    }
+
+    std::optional<RunningEnergy> externalFieldDifferenceB =
+        timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
+              [&]
+              {
+                return computeExternalFieldEnergyDifference(systemB, selectedIntegerMoleculeB,
+                                                            oldSelectedIntegerMoleculeB);
+              });
+    if (!externalFieldDifferenceB.has_value())
+    {
+      restoreFractionalMolecules(systemA, snapshotA);
+      restoreB();
+      return std::nullopt;
     }
 
     std::optional<RunningEnergy> frameworkDifferenceB =
@@ -343,6 +366,16 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     RunningEnergy intraFractionalDifferenceB = -componentB.intraMolecularPotentials.computeInternalEnergies(
         systemB.forceField, systemB.simulationBox, oldFractionalMoleculeB);
 
+    std::optional<RunningEnergy> externalFieldDifferenceB2 =
+        timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
+              [&] { return computeExternalFieldEnergyDifference(systemB, fractionalMoleculeB, oldFractionalMoleculeB); });
+    if (!externalFieldDifferenceB2.has_value())
+    {
+      restoreFractionalMolecules(systemA, snapshotA);
+      restoreB();
+      return std::nullopt;
+    }
+
     std::optional<RunningEnergy> frameworkDifferenceB2 = timed(
         systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
         [&]
@@ -401,8 +434,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       return std::nullopt;
     }
 
-    RunningEnergy energyDifferenceB = frameworkDifferenceB.value() + moleculeDifferenceB.value() +
-                                      EwaldFourierDifferenceB + tailEnergyDifferenceB + frameworkDifferenceB2.value() +
+    RunningEnergy energyDifferenceB = externalFieldDifferenceB.value() + frameworkDifferenceB.value() +
+                                      moleculeDifferenceB.value() + EwaldFourierDifferenceB + tailEnergyDifferenceB +
+                                      externalFieldDifferenceB2.value() + frameworkDifferenceB2.value() +
                                       moleculeDifferenceB2.value() + EwaldFourierDifferenceB2 + tailEnergyDifferenceB2 +
                                       intraFractionalDifferenceB + flagSwapOtherComponentsDifferenceB.value();
 
@@ -598,6 +632,16 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
         componentB.intraMolecularPotentials.computeInternalEnergies(systemB.forceField, systemB.simulationBox,
                                                                     oldFractionalMoleculeB);
 
+    std::optional<RunningEnergy> externalFieldDifferenceB =
+        timed(systemA, componentA, move, Move::Timing::LambdaShuffleNonEwald,
+              [&] { return computeExternalFieldEnergyDifference(systemB, fractionalMoleculeB, oldFractionalMoleculeB); });
+    if (!externalFieldDifferenceB.has_value())
+    {
+      restoreFractionalMolecules(systemA, snapshotA);
+      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      return std::nullopt;
+    }
+
     std::optional<RunningEnergy> frameworkDifferenceB = timed(
         systemA, componentA, move, Move::Timing::LambdaShuffleNonEwald,
         [&]
@@ -658,9 +702,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       return std::nullopt;
     }
 
-    RunningEnergy energyDifferenceB = frameworkDifferenceB.value() + moleculeDifferenceB.value() +
-                                      EwaldEnergyDifferenceB + tailEnergyDifferenceB + intraEnergyDifferenceB +
-                                      flagSwapOtherComponentsDifferenceB.value();
+    RunningEnergy energyDifferenceB = externalFieldDifferenceB.value() + frameworkDifferenceB.value() +
+                                      moleculeDifferenceB.value() + EwaldEnergyDifferenceB + tailEnergyDifferenceB +
+                                      intraEnergyDifferenceB + flagSwapOtherComponentsDifferenceB.value();
 
     componentA.mc_moves_statistics.addConstructed(move, 1);
 
@@ -736,6 +780,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupA =
         systemA.fractionalPseudoAtomCountsPerGroup;
 
+    std::optional<RunningEnergy> externalFieldEnergyDifference =
+        timed(systemA, componentA, move, Move::Timing::LambdaChangeNonEwald,
+              [&] { return computeExternalFieldEnergyDifference(systemA, trialPositions, fractionalMoleculeA); });
+    if (!externalFieldEnergyDifference.has_value()) return std::nullopt;
+
     std::optional<RunningEnergy> frameworkEnergyDifference =
         timed(systemA, componentA, move, Move::Timing::LambdaChangeNonEwald,
               [&]
@@ -771,8 +820,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
         systemA, componentA, move, Move::Timing::LambdaChangeTail, [&]
         { return computeTailEnergyDifference(systemA, tailEffA, tailGroupA, trialPositions, fractionalMoleculeA); });
 
-    RunningEnergy energyDifference = frameworkEnergyDifference.value() + interEnergyDifference.value() +
-                                     EwaldFourierDifference + tailEnergyDifference;
+    RunningEnergy energyDifference = externalFieldEnergyDifference.value() + frameworkEnergyDifference.value() +
+                                     interEnergyDifference.value() + EwaldFourierDifference + tailEnergyDifference;
 
     componentA.mc_moves_statistics.addConstructed(move, 2);
 

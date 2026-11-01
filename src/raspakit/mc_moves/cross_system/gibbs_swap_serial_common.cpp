@@ -12,6 +12,7 @@ import property_lambda_probability_histogram;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
+import interactions_external_field;
 import mc_moves_move_types;
 
 namespace MC_Moves::GibbsSwapSerialCommon
@@ -59,6 +60,15 @@ RunningEnergy computeTailEnergyDifference(
   return result;
 }
 
+std::optional<RunningEnergy> computeExternalFieldEnergyDifference(const System& system, std::span<const Atom> newAtoms,
+                                                                  std::span<const Atom> oldAtoms) noexcept
+{
+  if (!system.hasExternalField) return RunningEnergy{};
+  return Interactions::computeExternalFieldEnergyDifference(system.hasExternalField, system.forceField,
+                                                            system.simulationBox, system.externalFieldInterpolationGrid,
+                                                            newAtoms, oldAtoms);
+}
+
 namespace
 {
 // 'chainedOnTrialEik': this is not the first Ewald sub-step of the move in 'system'; the difference then starts
@@ -68,6 +78,13 @@ std::optional<RunningEnergy> computeFractionalMoleculesEnergyDifference(
     std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts, double& runningNetCharge,
     std::span<const Atom> newAtomsCombined, std::span<const Atom> oldAtomsCombined, bool chainedOnTrialEik) noexcept
 {
+  std::optional<RunningEnergy> externalFieldDifference =
+      computeExternalFieldEnergyDifference(system, newAtomsCombined, oldAtomsCombined);
+  if (!externalFieldDifference.has_value())
+  {
+    return std::nullopt;
+  }
+
   std::optional<RunningEnergy> frameworkDifference = Interactions::computeFrameworkMoleculeEnergyDifference(
       system.forceField, system.simulationBox, system.interpolationGrids, system.framework, system.frameworkCellList(),
       system.spanOfFrameworkAtoms(), newAtomsCombined, oldAtomsCombined);
@@ -92,7 +109,8 @@ std::optional<RunningEnergy> computeFractionalMoleculesEnergyDifference(
   RunningEnergy tailDifference =
       computeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, newAtomsCombined, oldAtomsCombined);
 
-  return frameworkDifference.value() + moleculeDifference.value() + ewaldDifference + tailDifference;
+  return externalFieldDifference.value() + frameworkDifference.value() + moleculeDifference.value() + ewaldDifference +
+         tailDifference;
 }
 
 void setTargetScaling(Atom& atom, const System& system, std::size_t componentId, std::size_t selectedComponent,

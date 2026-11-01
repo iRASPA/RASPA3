@@ -32,6 +32,13 @@ void restoreFractionalMolecules(System& system, const FractionalSnapshot& snapsh
     std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts, std::span<const Atom> newAtoms,
     std::span<const Atom> oldAtoms);
 
+/// External-field difference of a sub-step (zero without an external field); 'std::nullopt' when a new position
+/// lies outside a confining geometry. The field scales with the fractional scaling of the atoms, so every sub-step
+/// that changes positions or scalings carries it, like the framework and intermolecular terms.
+[[nodiscard]] std::optional<RunningEnergy> computeExternalFieldEnergyDifference(const System& system,
+                                                                                std::span<const Atom> newAtoms,
+                                                                                std::span<const Atom> oldAtoms) noexcept;
+
 /// Energy difference of all fractional molecules of 'system' taking the scaling of the target activity state (the
 /// selected component at 'selectedActiveLambda', the others at their lambda in 'lambdaSourceSystem'), relative to
 /// 'beforeSnapshot'. The first Ewald sub-step of the move in 'system': 'storedEik' -> 'trialEik'. The atoms in

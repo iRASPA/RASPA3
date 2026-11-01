@@ -868,6 +868,14 @@ ForceField::ForceField(std::string filePath)
   if (!cutOffMoleculeVDWAutomatic) smallestExplicitCutOff = std::min(smallestExplicitCutOff, cutOffMoleculeVDW);
   if (!cutOffCoulombAutomatic) smallestExplicitCutOff = std::min(smallestExplicitCutOff, cutOffCoulomb);
   settings.readFromJSON(parsed_data, pseudoAtoms, smallestExplicitCutOff);
+
+  // A field read from file exists only as the interpolation grid; the energy routines have no analytic fallback
+  if (potentialEnergySurfaceType == PotentialEnergySurfaceType::GridFile && !settings.useExternalFieldGrid)
+  {
+    throw std::runtime_error(
+        "[Forcefield reader]: 'ExternalFieldPotentialEnergySurface' 'GridFile' requires 'UseExternalFieldGrid' : "
+        "true\n");
+  }
 }
 
 void ForceField::ensurePair14Table()

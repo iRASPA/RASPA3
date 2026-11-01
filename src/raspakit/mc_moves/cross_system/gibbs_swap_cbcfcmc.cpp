@@ -710,6 +710,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupA =
         systemA.fractionalPseudoAtomCountsPerGroup;
 
+    std::optional<RunningEnergy> externalFieldEnergyDifference =
+        timed(systemA, componentA, move, Move::Timing::LambdaChangeNonEwald,
+              [&] { return computeExternalFieldEnergyDifference(systemA, trialPositions, fractionalMoleculeA); });
+    if (!externalFieldEnergyDifference.has_value()) return std::nullopt;
+
     std::optional<RunningEnergy> frameworkEnergyDifference =
         timed(systemA, componentA, move, Move::Timing::LambdaChangeNonEwald,
               [&]
@@ -746,8 +751,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
         systemA, componentA, move, Move::Timing::LambdaChangeTail, [&]
         { return computeTailEnergyDifference(systemA, tailEffA, tailGroupA, trialPositions, fractionalMoleculeA); });
 
-    RunningEnergy energyDifference = frameworkEnergyDifference.value() + interEnergyDifference.value() +
-                                     EwaldFourierDifference + tailEnergyDifference;
+    RunningEnergy energyDifference = externalFieldEnergyDifference.value() + frameworkEnergyDifference.value() +
+                                     interEnergyDifference.value() + EwaldFourierDifference + tailEnergyDifference;
 
     componentA.mc_moves_statistics.addConstructed(move, 2);
 

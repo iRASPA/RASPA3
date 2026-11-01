@@ -21,524 +21,199 @@ import tricubic_derivatives_external_field;
 import triquintic_derivatives_external_field;
 import interpolation_energy_grid;
 
-void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unused]] const ForceField &forceField,
-        [[maybe_unused]] const SimulationBox &simulationBox,
-        [[maybe_unused]] std::span<const Atom> moleculeAtoms,
-        [[maybe_unused]] RunningEnergy &energyStatus,
-        [[maybe_unused]] const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid) noexcept
+namespace
+{
+/// The external field at one atom. Like the framework interaction, the field couples to the fractional molecules
+/// through the VDW scaling: U = scalingVDW * U_ext(r) for the smooth fields (analytic or tabulated), so that the
+/// analytic evaluation of a field and its interpolation grid agree, and a switched-off molecule (scaling zero) has
+/// no field energy at all, as the serial Gibbs CFCMC bookkeeping of inactive fractional molecules assumes.
+/// 'energy' is that scaled energy, 'dUdlambda' the derivative factor dU/d(scalingVDW) = U_ext (see
+/// PairDerivatives), and 'inside' is false when a coupled atom lies outside a confining geometry (cylinder /
+/// rectangular channel through the cell centre). The callers turn 'outside' into either an overlap rejection
+/// (trial positions, like the CBMC growth) or the overlap sentinel energy 10 * energyOverlapCriteria (the total
+/// energy and positions that are already part of the configuration), so that a molecule that starts outside the
+/// channel is not trapped there: a move that brings it inside lowers the energy by the sentinel and is accepted.
+struct ExternalFieldValue
+{
+  double energy{0.0};
+  double dUdlambda{0.0};
+  bool inside{true};
+};
+
+// Whether 'posA' lies within 'radius' of the axis through the cell centre along 'axisBegin -> axisEnd'.
+bool insideCylinder(const double3& posA, const double3& axisBegin, const double3& axisEnd, double radius)
+{
+  const double3 v = (axisEnd - axisBegin).normalized();
+  const double3 w = double3::cross(posA - axisBegin, v);
+  return w.length_squared() < radius * radius;
+}
+
+// Whether 'posA' lies within the rectangular channel along 'axisBegin -> axisEnd'. 'first' and 'second' index
+// the two transverse components of w = (posA - axisBegin) x v that are compared against the channel width
+// (externalFieldGeometryParameters.x) and height (externalFieldGeometryParameters.y). The same cyclic choice of
+// components is made for the three axes: (y, z) for a channel along x, (z, x) along y, and (x, y) along z, so
+// that the width is the extent along z, x, and y, and the height the extent along y, z, and x, respectively.
+bool insideRectangle(const double3& posA, const double3& axisBegin, const double3& axisEnd, std::size_t first,
+                     std::size_t second, const double4& externalFieldGeometryParameters)
+{
+  const double3 v = (axisEnd - axisBegin).normalized();
+  const double3 w = double3::cross(posA - axisBegin, v);
+  return std::abs(w[first]) < externalFieldGeometryParameters.x &&
+         std::abs(w[second]) < externalFieldGeometryParameters.y;
+}
+
+ExternalFieldValue externalFieldValue(const ForceField& forceField, const SimulationBox& simulationBox,
+                                      const std::optional<InterpolationEnergyGrid>& externalFieldInterpolationGrid,
+                                      const Atom& atom)
+{
+  const double3 posA = atom.position;
+  const double scalingVDWA = atom.scalingVDW;
+  const double4 externalFieldGeometryParameters = forceField.externalFieldGeometryParameters;
+
+  ExternalFieldValue value{};
+
+  // a decoupled atom (an inactive fractional molecule) feels neither the field nor the confining geometry
+  if (scalingVDWA == 0.0) return value;
+
+  if (externalFieldInterpolationGrid.has_value())
+  {
+    value.dUdlambda = externalFieldInterpolationGrid->interpolate(posA);
+    value.energy = scalingVDWA * value.dUdlambda;
+    return value;
+  }
+
+  double fieldEnergy{0.0};
+  switch (forceField.potentialEnergySurfaceType)
+  {
+    case ForceField::PotentialEnergySurfaceType::None:
+      break;
+    case ForceField::PotentialEnergySurfaceType::GridFile:
+      // A field read from file is only available through the interpolation grid (checked by the force-field
+      // reader: 'GridFile' requires 'UseExternalFieldGrid').
+      break;
+    case ForceField::PotentialEnergySurfaceType::MullerBrown:
+    {
+      const double4 A{-200.0, -100.0, -170.0, -15.0};
+      const double4 a{-1.0, -1.0, -6.5, -0.7};
+      const double4 x0{1.0, 0.0, -0.5, -1.0};
+      const double4 b{0.0, 0.0, 11.0, 0.6};
+      const double4 y0{0.0, 0.5, 1.5, 1.0};
+      const double4 c{-10.0, -10.0, -6.5, 0.7};
+      for (std::size_t i = 0; i < 4; ++i)
+      {
+        fieldEnergy +=
+            A[i] * std::exp(a[i] * (posA.x - x0[i]) * (posA.x - x0[i]) + b[i] * (posA.x - x0[i]) * (posA.y - y0[i]) +
+                            c[i] * (posA.y - y0[i]) * (posA.y - y0[i]));
+      }
+    }
+    break;
+    case ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction:
+      fieldEnergy = posA.x * posA.y * posA.z;
+      break;
+    case ForceField::PotentialEnergySurfaceType::CylinderX:
+      value.inside = insideCylinder(posA, simulationBox.cell * double3{0.0, 0.5, 0.5},
+                                    simulationBox.cell * double3{1.0, 0.5, 0.5}, externalFieldGeometryParameters.x);
+      break;
+    case ForceField::PotentialEnergySurfaceType::CylinderY:
+      value.inside = insideCylinder(posA, simulationBox.cell * double3{0.5, 0.0, 0.5},
+                                    simulationBox.cell * double3{0.5, 1.0, 0.5}, externalFieldGeometryParameters.x);
+      break;
+    case ForceField::PotentialEnergySurfaceType::CylinderZ:
+      value.inside = insideCylinder(posA, simulationBox.cell * double3{0.5, 0.5, 0.0},
+                                    simulationBox.cell * double3{0.5, 0.5, 1.0}, externalFieldGeometryParameters.x);
+      break;
+    case ForceField::PotentialEnergySurfaceType::RectangleX:
+      value.inside =
+          insideRectangle(posA, simulationBox.cell * double3{0.0, 0.5, 0.5},
+                          simulationBox.cell * double3{1.0, 0.5, 0.5}, 1, 2, externalFieldGeometryParameters);
+      break;
+    case ForceField::PotentialEnergySurfaceType::RectangleY:
+      value.inside =
+          insideRectangle(posA, simulationBox.cell * double3{0.5, 0.0, 0.5},
+                          simulationBox.cell * double3{0.5, 1.0, 0.5}, 2, 0, externalFieldGeometryParameters);
+      break;
+    case ForceField::PotentialEnergySurfaceType::RectangleZ:
+      value.inside =
+          insideRectangle(posA, simulationBox.cell * double3{0.5, 0.5, 0.0},
+                          simulationBox.cell * double3{0.5, 0.5, 1.0}, 0, 1, externalFieldGeometryParameters);
+      break;
+    default:
+      break;
+  }
+
+  if (!value.inside)
+  {
+    // the hard wall of a confining geometry is not softened with lambda
+    value.energy = 10.0 * forceField.energyOverlapCriteria;
+    return value;
+  }
+
+  value.dUdlambda = fieldEnergy;
+  value.energy = scalingVDWA * fieldEnergy;
+  return value;
+}
+}  // namespace
+
+void Interactions::computeExternalFieldEnergy(
+    bool hasExternalField, [[maybe_unused]] const ForceField& forceField,
+    [[maybe_unused]] const SimulationBox& simulationBox, [[maybe_unused]] std::span<const Atom> moleculeAtoms,
+    [[maybe_unused]] RunningEnergy& energyStatus,
+    [[maybe_unused]] const std::optional<InterpolationEnergyGrid>& externalFieldInterpolationGrid) noexcept
 {
   if (hasExternalField)
   {
-    if (moleculeAtoms.empty()) return;
-
-    double4 externalFieldGeometryParameters = forceField.externalFieldGeometryParameters;
-
-    for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
+    for (const Atom& atom : moleculeAtoms)
     {
-      [[maybe_unused]] std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
-      [[maybe_unused]] std::size_t compA = static_cast<std::size_t>(it1->componentId);
-      [[maybe_unused]] std::size_t typeA = static_cast<std::size_t>(it1->type);
-      [[maybe_unused]] bool isFractional = static_cast<bool>(it1->isFractional);
-      [[maybe_unused]] std::uint8_t groupIdA = it1->groupId;
-      [[maybe_unused]] double scalingVDWA = it1->scalingVDW;
-      [[maybe_unused]] double scalingCoulombA = it1->scalingCoulomb;
-      [[maybe_unused]] double chargeA = it1->charge;
-      [[maybe_unused]] double3 posA = it1->position;
+      const ExternalFieldValue value =
+          externalFieldValue(forceField, simulationBox, externalFieldInterpolationGrid, atom);
 
-      [[maybe_unused]] double3 s = (simulationBox.inverseCell * posA).fract();
-
-      // Fill in the energy based on the atom properties and the fractional position 's'
-      Potentials::PairDerivatives<0> energyFactor{0.0, 0.0};
-
-      if (externalFieldInterpolationGrid.has_value())
-      {
-        energyFactor.energy = scalingVDWA * externalFieldInterpolationGrid->interpolate(posA);
-      }
-      else
-      {
-        switch (forceField.potentialEnergySurfaceType)
-        {
-          case ForceField::PotentialEnergySurfaceType::None:
-            break;
-          case ForceField::PotentialEnergySurfaceType::GridFile:
-            energyFactor.energy = scalingVDWA * externalFieldInterpolationGrid->interpolate(posA);
-            break;
-          case ForceField::PotentialEnergySurfaceType::MullerBrown:
-          {
-            double4 A{-200.0, -100.0, -170.0, -15.0};
-            double4 a{-1.0, -1.0, -6.5, -0.7};
-            double4 x0{1.0, 0.0, -0.5, -1.0};
-            double4 b{0.0, 0.0, 11.0, 0.6};
-            double4 y0{0.0, 0.5, 1.5, 1.0};
-            double4 c{-10.0, -10.0, -6.5, 0.7};
-            energyFactor.energy = 0.0;
-            for (std::size_t i = 0; i < 4; ++i)
-            {
-              energyFactor.energy += A[i] * std::exp(a[i] * (posA.x - x0[i]) * (posA.x - x0[i]) +
-                                                     b[i] * (posA.x - x0[i]) * (posA.y - y0[i]) +
-                                                     c[i] * (posA.y - y0[i]) * (posA.y - y0[i]));
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::CylinderX:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.0, 0.5, 0.5};
-            double3 cylinder_end = simulationBox.cell * double3{1.0, 0.5, 0.5};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            double distance_squared = w.length_squared();
-            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::CylinderY:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.0, 0.5};
-            double3 cylinder_end = simulationBox.cell * double3{0.5, 1.0, 0.5};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            double distance_squared = w.length_squared();
-            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::CylinderZ:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.5, 0.0};
-            double3 cylinder_end = simulationBox.cell * double3{0.5, 0.5, 1.0};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            double distance_squared = w.length_squared();
-            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::RectangleX:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.0, 0.5, 0.5};
-            double3 cylinder_end = simulationBox.cell * double3{1.0, 0.5, 0.5};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            if(std::abs(w.y) < externalFieldGeometryParameters.x && std::abs(w.z) < externalFieldGeometryParameters.y)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::RectangleY:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.0, 0.5};
-            double3 cylinder_end = simulationBox.cell * double3{0.5, 1.0, 0.5};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            if(std::abs(w.z) < externalFieldGeometryParameters.x && std::abs(w.x) < externalFieldGeometryParameters.y)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::RectangleZ:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.5, 0.0};
-            double3 cylinder_end = simulationBox.cell * double3{0.5, 0.5, 1.0};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            if(std::abs(w.x) < externalFieldGeometryParameters.x && std::abs(w.y) < externalFieldGeometryParameters.y)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction:
-            energyFactor.energy = posA.x * posA.y * posA.z;
-            break;
-          default:
-            break;
-        }
-      }
-      energyStatus.externalFieldVDW += energyFactor.energy;
-      energyStatus.addDudlambdaVDW(groupIdA, 0, 1.0, 1.0, energyFactor.dUdlambda);
+      energyStatus.externalFieldVDW += value.energy;
+      energyStatus.addDudlambdaVDW(atom.groupId, 0, 1.0, 1.0, value.dUdlambda);
     }
   }
 }
 
-void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe_unused]] const ForceField &forceField,
-                                                  [[maybe_unused]] const SimulationBox &simulationBox,
+void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe_unused]] const ForceField& forceField,
+                                                  [[maybe_unused]] const SimulationBox& simulationBox,
                                                   [[maybe_unused]] std::span<const Atom> moleculeAtoms,
-                                                  [[maybe_unused]] RunningEnergy &energyStatus) noexcept
+                                                  [[maybe_unused]] RunningEnergy& energyStatus) noexcept
 {
   if (hasExternalField)
   {
   }
 }
 
-
 [[nodiscard]] std::optional<RunningEnergy> Interactions::computeExternalFieldEnergyDifference(
-    bool hasExternalField, [[maybe_unused]] const ForceField &forceField,
-    [[maybe_unused]] const SimulationBox &simulationBox, 
-    [[maybe_unused]] const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
+    bool hasExternalField, [[maybe_unused]] const ForceField& forceField,
+    [[maybe_unused]] const SimulationBox& simulationBox,
+    [[maybe_unused]] const std::optional<InterpolationEnergyGrid>& externalFieldInterpolationGrid,
     [[maybe_unused]] std::span<const Atom> newatoms, [[maybe_unused]] std::span<const Atom> oldatoms) noexcept
 {
   RunningEnergy energySum;
 
   if (hasExternalField)
   {
-    double4 externalFieldGeometryParameters = forceField.externalFieldGeometryParameters;
-
-    for (std::span<const Atom>::iterator it1 = newatoms.begin(); it1 != newatoms.end(); ++it1)
+    // Trial positions outside a confining geometry are an overlap (as in the CBMC growth).
+    for (const Atom& atom : newatoms)
     {
-      [[maybe_unused]] double3 posA = it1->position;
-      [[maybe_unused]] std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
-      [[maybe_unused]] std::size_t compA = static_cast<std::size_t>(it1->componentId);
-      [[maybe_unused]] std::size_t typeA = static_cast<std::size_t>(it1->type);
-      [[maybe_unused]] std::uint8_t groupIdA = it1->groupId;
-      [[maybe_unused]] double scalingVDWA = it1->scalingVDW;
-      [[maybe_unused]] double scalingCoulombA = it1->scalingCoulomb;
-      [[maybe_unused]] double chargeA = it1->charge;
+      const ExternalFieldValue value =
+          externalFieldValue(forceField, simulationBox, externalFieldInterpolationGrid, atom);
+      if (!value.inside) return std::nullopt;
 
-      // Fill in the energy based on the atom properties and the fractional position 's'
-      Potentials::PairDerivatives<0> energyFactor{0.0, 0.0};
-
-      if (externalFieldInterpolationGrid.has_value())
-      {
-        energyFactor.energy = scalingVDWA * externalFieldInterpolationGrid->interpolate(posA);
-      }
-      else
-      {
-        switch (forceField.potentialEnergySurfaceType)
-        {
-          case ForceField::PotentialEnergySurfaceType::None:
-            break;
-          case ForceField::PotentialEnergySurfaceType::GridFile:
-            energyFactor.energy = scalingVDWA * externalFieldInterpolationGrid->interpolate(posA);
-            break;
-          case ForceField::PotentialEnergySurfaceType::MullerBrown:
-          {
-            double4 A{-200.0, -100.0, -170.0, -15.0};
-            double4 a{-1.0, -1.0, -6.5, -0.7};
-            double4 x0{1.0, 0.0, -0.5, -1.0};
-            double4 b{0.0, 0.0, 11.0, 0.6};
-            double4 y0{0.0, 0.5, 1.5, 1.0};
-            double4 c{-10.0, -10.0, -6.5, 0.7};
-            energyFactor.energy = 0.0;
-            for (std::size_t i = 0; i < 4; ++i)
-            {
-              energyFactor.energy += A[i] * std::exp(a[i] * (posA.x - x0[i]) * (posA.x - x0[i]) +
-                                                     b[i] * (posA.x - x0[i]) * (posA.y - y0[i]) +
-                                                     c[i] * (posA.y - y0[i]) * (posA.y - y0[i]));
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction:
-            energyFactor.energy = posA.x * posA.y * posA.z;
-            break;
-          case ForceField::PotentialEnergySurfaceType::CylinderX:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.0, 0.5, 0.5};
-            double3 cylinder_end = simulationBox.cell * double3{1.0, 0.5, 0.5};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            double distance_squared = w.length_squared();
-            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              return std::nullopt;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::CylinderY:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.0, 0.5};
-            double3 cylinder_end = simulationBox.cell * double3{0.5, 1.0, 0.5};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            double distance_squared = w.length_squared();
-            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              return std::nullopt;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::CylinderZ:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.5, 0.0};
-            double3 cylinder_end = simulationBox.cell * double3{0.5, 0.5, 1.0};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            double distance_squared = w.length_squared();
-            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              return std::nullopt;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::RectangleX:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.0, 0.5, 0.5};
-            double3 cylinder_end = simulationBox.cell * double3{1.0, 0.5, 0.5};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            if(std::abs(w.y) < externalFieldGeometryParameters.x && std::abs(w.z) < externalFieldGeometryParameters.y)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::RectangleY:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.0, 0.5};
-            double3 cylinder_end = simulationBox.cell * double3{0.5, 1.0, 0.5};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            if(std::abs(w.z) < externalFieldGeometryParameters.x && std::abs(w.x) < externalFieldGeometryParameters.y)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::RectangleZ:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.5, 0.0};
-            double3 cylinder_end = simulationBox.cell * double3{0.5, 0.5, 1.0};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            if(std::abs(w.y) < externalFieldGeometryParameters.x && std::abs(w.x) < externalFieldGeometryParameters.y)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
-            }
-          }
-          break;
-          default:
-            break;
-        }
-      }
-      energySum.externalFieldVDW += energyFactor.energy;
-      energySum.addDudlambdaVDW(groupIdA, 0, 1.0, 1.0, energyFactor.dUdlambda);
+      energySum.externalFieldVDW += value.energy;
+      energySum.addDudlambdaVDW(atom.groupId, 0, 1.0, 1.0, value.dUdlambda);
     }
 
-    for (std::span<const Atom>::iterator it1 = oldatoms.begin(); it1 != oldatoms.end(); ++it1)
+    // The old positions are part of the configuration: outside the geometry they carry the sentinel energy that
+    // the total energy assigned to them, so the difference stays consistent with the running total and a molecule
+    // that starts outside can be moved back in.
+    for (const Atom& atom : oldatoms)
     {
-      [[maybe_unused]] std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
-      [[maybe_unused]] std::size_t compA = static_cast<std::size_t>(it1->componentId);
-      [[maybe_unused]] std::size_t typeA = static_cast<std::size_t>(it1->type);
-      [[maybe_unused]] std::uint8_t groupIdA = it1->groupId;
-      [[maybe_unused]] double scalingVDWA = it1->scalingVDW;
-      [[maybe_unused]] double scalingCoulombA = it1->scalingCoulomb;
-      [[maybe_unused]] double chargeA = it1->charge;
-      [[maybe_unused]] double3 posA = it1->position;
-      [[maybe_unused]] double3 s = (simulationBox.inverseCell * posA).fract();
+      const ExternalFieldValue value =
+          externalFieldValue(forceField, simulationBox, externalFieldInterpolationGrid, atom);
 
-      // Fill in the energy based on the atom properties and the fractional position 's'
-      Potentials::PairDerivatives<0> energyFactor{0.0, 0.0};
-
-      if (externalFieldInterpolationGrid.has_value())
-      {
-        energyFactor.energy = scalingVDWA * externalFieldInterpolationGrid->interpolate(posA);
-      }
-      else
-      {
-        switch (forceField.potentialEnergySurfaceType)
-        {
-          case ForceField::PotentialEnergySurfaceType::None:
-            break;
-          case ForceField::PotentialEnergySurfaceType::GridFile:
-            energyFactor.energy = externalFieldInterpolationGrid->interpolate(posA);
-            break;
-          case ForceField::PotentialEnergySurfaceType::MullerBrown:
-          {
-            double4 A{-200.0, -100.0, -170.0, -15.0};
-            double4 a{-1.0, -1.0, -6.5, -0.7};
-            double4 x0{1.0, 0.0, -0.5, -1.0};
-            double4 b{0.0, 0.0, 11.0, 0.6};
-            double4 y0{0.0, 0.5, 1.5, 1.0};
-            double4 c{-10.0, -10.0, -6.5, 0.7};
-            for (std::size_t i = 0; i < 4; ++i)
-            {
-              energyFactor.energy += A[i] * std::exp(a[i] * (posA.x - x0[i]) * (posA.x - x0[i]) +
-                                                     b[i] * (posA.x - x0[i]) * (posA.y - y0[i]) +
-                                                     c[i] * (posA.y - y0[i]) * (posA.y - y0[i]));
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction:
-            energyFactor.energy = posA.x * posA.y * posA.z;
-            break;
-          case ForceField::PotentialEnergySurfaceType::CylinderX:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.0, 0.5, 0.5};
-            double3 cylinder_end = simulationBox.cell * double3{1.0, 0.5, 0.5};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            double distance_squared = w.length_squared();
-            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              return std::nullopt;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::CylinderY:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.0, 0.5};
-            double3 cylinder_end = simulationBox.cell * double3{0.5, 1.0, 0.5};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            double distance_squared = w.length_squared();
-            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              return std::nullopt;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::CylinderZ:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.5, 0.0};
-            double3 cylinder_end = simulationBox.cell * double3{0.5, 0.5, 1.0};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            double distance_squared = w.length_squared();
-            if(distance_squared < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              return std::nullopt;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::RectangleX:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.0, 0.5, 0.5};
-            double3 cylinder_end = simulationBox.cell * double3{1.0, 0.5, 0.5};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            if(std::abs(w.y) < externalFieldGeometryParameters.x && std::abs(w.z) < externalFieldGeometryParameters.y)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::RectangleY:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.0, 0.5};
-            double3 cylinder_end = simulationBox.cell * double3{0.5, 1.0, 0.5};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            if(std::abs(w.z) < externalFieldGeometryParameters.x && std::abs(w.x) < externalFieldGeometryParameters.y)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
-            }
-          }
-          break;
-          case ForceField::PotentialEnergySurfaceType::RectangleZ:
-          {
-            double3 cylinder_begin = simulationBox.cell * double3{0.5, 0.5, 0.0};
-            double3 cylinder_end = simulationBox.cell * double3{0.5, 0.5, 1.0};
-            double3 v = (cylinder_end - cylinder_begin).normalized();
-
-            double3 w = double3::cross(posA - cylinder_begin, v);
-            if(std::abs(w.y) < externalFieldGeometryParameters.x && std::abs(w.x) < externalFieldGeometryParameters.y)
-            {
-              energyFactor.energy = 0.0;
-            }
-            else
-            {
-              energyFactor.energy = 10.0 * forceField.energyOverlapCriteria;
-            }
-          }
-          break;
-          default:
-            break;
-        }
-      }
-      energySum.externalFieldVDW -= energyFactor.energy;
-      energySum.addDudlambdaVDW(groupIdA, 0, 1.0, 1.0, -energyFactor.dUdlambda);
+      energySum.externalFieldVDW -= value.energy;
+      energySum.addDudlambdaVDW(atom.groupId, 0, 1.0, 1.0, -value.dUdlambda);
     }
   }
 

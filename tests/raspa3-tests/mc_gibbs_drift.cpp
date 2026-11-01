@@ -22,6 +22,7 @@ import monte_carlo;
 import simulationbox;
 import running_energy;
 import mc_moves_statistics;
+import move_statistics;
 import mc_moves_move_types;
 import mc_moves_probabilities;
 import mc_moves_move_types;
@@ -707,6 +708,59 @@ TEST(MC_GIBBS_DRIFT, mixture_gibbs_cfcmc_unequal_molecule_counts)
 TEST(MC_GIBBS_DRIFT, mixture_gibbs_cbcfcmc_unequal_molecule_counts)
 {
   runMixtureGibbsSwapDrift(Move::Types::GibbsSwapCBCFCMC);
+}
+
+// Serial Gibbs CFCMC with an external field: the swap, shuffle and lambda sub-steps of the fractional molecule
+// used to leave the field out of their energy differences (the conventional Gibbs swap already carried it). The
+// polynomial test field x*y*z depends on position, so an accepted swap or shuffle without it drifts the running
+// energy; the temperature is very high so that the field does not suppress the moves.
+namespace
+{
+void runGibbsSwapExternalFieldDrift(Move::Types gibbsSwapMove)
+{
+  ForceField forceField = makeZeoliteAlkaneForceField();
+  forceField.potentialEnergySurfaceType = ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction;
+  forceField.settings.useExternalFieldGrid = false;  // evaluate the field analytically
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  probabilities.setProbability(gibbsSwapMove, 1.0);
+
+  Component methane = Component::makeMethane(forceField, 0);
+  methane.mc_moves_probabilities = probabilities;
+  enableThermodynamicIntegration(methane);
+
+  SimulationBox box = SimulationBox(20.0, 20.0, 20.0);
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+
+  System systemA = System(forceField, box, true, 1.0e7, 1e4, 1.0, {}, {methane}, {}, {20}, 5, systemProbabilities);
+  System systemB = System(forceField, box, true, 1.0e7, 1e4, 1.0, {}, {methane}, {}, {30}, 5, systemProbabilities);
+
+  std::vector<System> systems{systemA, systemB};
+  MonteCarlo mc = MonteCarlo({300, 0, 100, 100, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
+  mc.run();
+
+  EXPECT_NE(mc.systems[0].containsTheFractionalMolecule, mc.systems[1].containsTheFractionalMolecule);
+  // the swap (x), shuffle (y) and lambda (z) sub-moves all got accepted
+  const MoveStatistics<double3> &statistics =
+      std::get<MoveStatistics<double3>>(mc.systems[0].components[0].mc_moves_statistics[gibbsSwapMove]);
+  EXPECT_GT(statistics.totalAccepted.x, 0.0);
+  EXPECT_GT(statistics.totalAccepted.y, 0.0);
+  EXPECT_GT(statistics.totalAccepted.z, 0.0);
+  for (System &s : mc.systems)
+  {
+    expectNoEnergyDrift(s);
+  }
+}
+}  // namespace
+
+TEST(MC_GIBBS_DRIFT, gibbs_cfcmc_with_external_field)
+{
+  runGibbsSwapExternalFieldDrift(Move::Types::GibbsSwapCFCMC);
+}
+
+TEST(MC_GIBBS_DRIFT, gibbs_cbcfcmc_with_external_field)
+{
+  runGibbsSwapExternalFieldDrift(Move::Types::GibbsSwapCBCFCMC);
 }
 
 TEST(MC_GIBBS_DRIFT, methane_gibbs_conventional_cfcmc)

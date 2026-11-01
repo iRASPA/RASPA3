@@ -69,7 +69,14 @@ Run from `examples/external_fields/1_mc_water_in_cylinder_channel`.
 #### Monte Carlo: water in a square channel <a name="Example_external_2"></a>
 
 The same water Monte Carlo setup, confined to a rectangular channel of width
-and height 5 &Aring; along z (`"RectangleZ"`).
+and height 5 &Aring; along z (`"RectangleZ"`). The width and the height are
+half-widths measured from the channel axis through the centre of the cell: for
+`"RectangleX"` the width is the extent along z and the height along y, for
+`"RectangleY"` along x and z, and for `"RectangleZ"` along y and x. Inside the
+channel (and inside the cylinder of `"CylinderX/Y/Z"`) the field is zero;
+outside it is an overlap: trial positions outside are rejected, and a molecule
+that starts outside (e.g. from a restart file) carries the overlap energy until
+a move brings it back in.
 
 Run from `examples/external_fields/2_mc_water_in_square_channel`.
 
@@ -86,6 +93,12 @@ Run from `examples/external_fields/2_mc_water_in_square_channel`.
 
 The cylindrical channel of example 1, with the external field tabulated on a
 \f$128^3\f$ grid and interpolated during the run (`"UseExternalFieldGrid" : true`).
+A tabulated field couples linearly to the CFCMC fractional molecules
+(\f$U = \lambda_\mathrm{VDW} U_\mathrm{ext}\f$, with the matching
+\f$\partial U/\partial\lambda\f$ in the dU/dλ estimators). A field read from a
+cube file (`"ExternalFieldPotentialEnergySurface" : "GridFile"`,
+`"ExternalFieldGridFileName"`) exists only as this grid and therefore requires
+`"UseExternalFieldGrid" : true`.
 
 Run from `examples/external_fields/3_mc_water_in_cylinder_channel_grids`.
 

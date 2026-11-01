@@ -53,7 +53,9 @@ void computeExternalFieldTailEnergy(bool hasExternalField, const ForceField &for
  *
  * Calculates the energy difference due to an external field when atoms have moved or changed,
  * which is useful for evaluating Monte Carlo moves. Returns an optional RunningEnergy,
- * which is `std::nullopt` if the energy exceeds the overlap criteria.
+ * which is `std::nullopt` if a new position lies outside a confining geometry. The field
+ * couples through the VDW scaling of the atoms (U = scalingVDW * U_ext, dU/dlambda factor U_ext),
+ * so lambda changes of a fractional molecule at a fixed position carry an energy difference.
  *
  * \param hasExternalField Flag indicating if the external field is active.
  * \param forceField The force field parameters.

@@ -80,7 +80,8 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
     return w.length_squared() < externalFieldGeometryParameters.x * externalFieldGeometryParameters.x;
   };
   // 'first' and 'second' index the two transverse components (0 = x, 1 = y, 2 = z) compared against the
-  // half-widths in 'externalFieldGeometryParameters.x' and '.y'.
+  // half-widths in 'externalFieldGeometryParameters.x' and '.y'; the same cyclic choice as in
+  // Interactions::computeExternalFieldEnergy: (y, z) along x, (z, x) along y, (x, y) along z.
   const auto insideRectangle = [&](const double3 &posA, const double3 &axisBegin, const double3 &axisEnd,
                                    std::size_t first, std::size_t second)
   {
@@ -96,11 +97,16 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
     const double scalingVDWA = atom.scalingVDW;
     const double3 posA = atom.position;
 
+    // The field couples through the VDW scaling, U = scalingVDW * U_ext with dU/d(scalingVDW) = U_ext, and a
+    // decoupled atom feels neither the field nor the confining geometry (see Interactions::computeExternalFieldEnergy).
+    if (scalingVDWA == 0.0) continue;
+
+    // 'dUdlambda' collects the unscaled field U_ext; the scaled energy is formed after the switch
     Potentials::PairDerivatives<0> energyFactor{0.0, 0.0};
 
     if (externalFieldInterpolationGrid.has_value())
     {
-      energyFactor.energy = scalingVDWA * externalFieldInterpolationGrid->interpolate(posA);
+      energyFactor.dUdlambda = externalFieldInterpolationGrid->interpolate(posA);
     }
     else
     {
@@ -109,7 +115,7 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
         case ForceField::PotentialEnergySurfaceType::None:
           break;
         case ForceField::PotentialEnergySurfaceType::GridFile:
-          energyFactor.energy = scalingVDWA * externalFieldInterpolationGrid->interpolate(posA);
+          // only available through the interpolation grid ('GridFile' requires 'UseExternalFieldGrid')
           break;
         case ForceField::PotentialEnergySurfaceType::MullerBrown:
         {
@@ -119,17 +125,16 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
           const double4 b{0.0, 0.0, 11.0, 0.6};
           const double4 y0{0.0, 0.5, 1.5, 1.0};
           const double4 c{-10.0, -10.0, -6.5, 0.7};
-          energyFactor.energy = 0.0;
           for (std::size_t i = 0; i < 4; ++i)
           {
-            energyFactor.energy += A[i] * std::exp(a[i] * (posA.x - x0[i]) * (posA.x - x0[i]) +
-                                                   b[i] * (posA.x - x0[i]) * (posA.y - y0[i]) +
-                                                   c[i] * (posA.y - y0[i]) * (posA.y - y0[i]));
+            energyFactor.dUdlambda += A[i] * std::exp(a[i] * (posA.x - x0[i]) * (posA.x - x0[i]) +
+                                                      b[i] * (posA.x - x0[i]) * (posA.y - y0[i]) +
+                                                      c[i] * (posA.y - y0[i]) * (posA.y - y0[i]));
           }
         }
         break;
         case ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction:
-          energyFactor.energy = posA.x * posA.y * posA.z;
+          energyFactor.dUdlambda = posA.x * posA.y * posA.z;
           break;
         case ForceField::PotentialEnergySurfaceType::CylinderX:
           if (!insideCylinder(posA, simulationBox.cell * double3{0.0, 0.5, 0.5},
@@ -158,13 +163,14 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
           break;
         case ForceField::PotentialEnergySurfaceType::RectangleZ:
           if (!insideRectangle(posA, simulationBox.cell * double3{0.5, 0.5, 0.0},
-                               simulationBox.cell * double3{0.5, 0.5, 1.0}, 1, 0))
+                               simulationBox.cell * double3{0.5, 0.5, 1.0}, 0, 1))
             return std::nullopt;
           break;
         default:
           break;
       }
     }
+    energyFactor.energy = scalingVDWA * energyFactor.dUdlambda;
     energySum.externalFieldVDW += energyFactor.energy;
     energySum.addDudlambdaVDW(groupIdA, 0, 1.0, 1.0, energyFactor.dUdlambda);
   }
