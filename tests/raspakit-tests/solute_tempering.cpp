@@ -4,9 +4,13 @@ import std;
 
 import double3;
 import int3;
+import uint3;
 import units;
 import atom;
+import framework;
 import forcefield;
+import interpolation_energy_grid;
+import interactions_framework_molecule;
 import vdwparameters;
 import pseudo_atom;
 import potential_pair_vdw;
@@ -533,4 +537,69 @@ TEST(solute_tempering, swap_keeps_the_hamiltonian_with_the_replica)
               1e-8 * std::abs(energyAofXB) + 1e-8);
   EXPECT_NEAR(systemB.computeTotalEnergies().potentialEnergy(), potentialEnergy(systemB),
               1e-8 * std::abs(energyBofXA) + 1e-8);
+}
+
+// The replicas share the framework grids, computed once with the Hamiltonian of the first replica. A replica
+// with another lambda must read its own framework-solute interaction (sqrt(lambda)-scaled) from its grids, and
+// the exchange acceptance must evaluate the target Hamiltonian with the target's grids: with the holder's grids
+// the framework-solute Van der Waals part of the Hamiltonian change is identically zero.
+TEST(solute_tempering, framework_grids_follow_the_replica_hamiltonian)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component co2 = Component::makeCO2(forceField, 0, true);
+  forceField.settings.gridPseudoAtomIndices = {static_cast<std::size_t>(co2.atoms[0].type),
+                                               static_cast<std::size_t>(co2.atoms[1].type)};
+  forceField.settings.numberOfVDWGridPoints = uint3(32, 32, 32);
+  forceField.settings.numberOfCoulombGridPoints = uint3(32, 32, 32);
+  forceField.settings.numberOfGridTestPoints = 10;
+  Framework framework = Framework::makeITQ29(forceField, int3(2, 2, 2));
+
+  System reference = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {framework}, {co2}, {}, {1}, 5);
+  std::span<Atom> atomData = reference.spanOfMoleculeAtoms();
+  atomData[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
+  atomData[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
+  atomData[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
+  std::ostringstream log;
+  reference.createFrameworkInterpolationGrids(log);
+  reference.rebuildConfigurationDerivedState();
+  ASSERT_TRUE(reference.interpolationGrids[static_cast<std::size_t>(co2.atoms[0].type)].has_value());
+
+  // the replica is set up like the parallel-tempering driver does: scale the Hamiltonian, then take over the grids
+  const double lambda = 0.3;
+  System replica = reference;
+  replica.scaleSoluteHamiltonian(0, lambda);
+  replica.copyInterpolationGridsFrom(reference);
+  replica.rebuildConfigurationDerivedState();
+
+  const std::vector<std::optional<InterpolationEnergyGrid>> noGrids(reference.interpolationGrids.size());
+  auto frameworkEnergy = [](const System& s, const std::vector<std::optional<InterpolationEnergyGrid>>& grids)
+  {
+    return Interactions::computeFrameworkMoleculeEnergy(s.forceField, s.simulationBox, grids, s.framework,
+                                                        s.spanOfFrameworkAtoms(), s.spanOfMoleculeAtoms());
+  };
+  const RunningEnergy referenceFromGrid = frameworkEnergy(reference, reference.interpolationGrids);
+  const RunningEnergy replicaFromGrid = frameworkEnergy(replica, replica.interpolationGrids);
+  const RunningEnergy replicaFromPairs = frameworkEnergy(replica, noGrids);
+
+  // the solute-type grids of the replica are the reference grids scaled by sqrt(lambda); the Coulomb grid is
+  // shared and the scaling enters through the solute charges
+  EXPECT_NEAR(replicaFromGrid.frameworkMoleculeVDW, std::sqrt(lambda) * referenceFromGrid.frameworkMoleculeVDW,
+              1e-10 * std::abs(referenceFromGrid.frameworkMoleculeVDW));
+  EXPECT_NEAR(replicaFromGrid.frameworkMoleculeCharge,
+              std::sqrt(lambda) * referenceFromGrid.frameworkMoleculeCharge,
+              1e-10 * std::abs(referenceFromGrid.frameworkMoleculeCharge));
+  EXPECT_GT(std::abs(replicaFromGrid.frameworkMoleculeVDW - referenceFromGrid.frameworkMoleculeVDW), 1.0);
+
+  // and agree with the pair sum of the replica's own force field to interpolation accuracy
+  EXPECT_NEAR(replicaFromGrid.frameworkMoleculeVDW, replicaFromPairs.frameworkMoleculeVDW,
+              0.05 * std::abs(replicaFromPairs.frameworkMoleculeVDW));
+
+  // exchange acceptance: E_replica(X) - E_reference(X) for the configuration both hold, as the replicas sample it
+  const double expected = potentialEnergy(replica) - potentialEnergy(reference);
+  const std::optional<double> change = MC_Moves::ParallelTemperingSoluteHamiltonianChange(reference, replica);
+  const std::optional<double> changeBack = MC_Moves::ParallelTemperingSoluteHamiltonianChange(replica, reference);
+  ASSERT_TRUE(change.has_value());
+  ASSERT_TRUE(changeBack.has_value());
+  EXPECT_NEAR(change.value(), expected, 1e-8 * std::abs(expected) + 1e-8);
+  EXPECT_NEAR(changeBack.value(), -expected, 1e-8 * std::abs(expected) + 1e-8);
 }

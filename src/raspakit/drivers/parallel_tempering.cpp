@@ -318,13 +318,13 @@ void ParallelTempering::setup()
     replicaJson << replicaJsons[replicaId].dump(4);
   }
 
-  // interpolation grids are computed once and shared (copied) between the replicas
+  // interpolation grids are computed once and shared (copied) between the replicas; under solute tempering the
+  // solute-type grids are rescaled to the lambda of each replica
   systems.front().createExternalFieldInterpolationGrid(stream, 0);
   systems.front().createFrameworkInterpolationGrids(stream);
   for (std::size_t replicaId = 1; replicaId < systems.size(); ++replicaId)
   {
-    systems[replicaId].externalFieldInterpolationGrid = systems.front().externalFieldInterpolationGrid;
-    systems[replicaId].interpolationGrids = systems.front().interpolationGrids;
+    systems[replicaId].copyInterpolationGridsFrom(systems.front());
   }
 }
 

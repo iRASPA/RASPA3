@@ -313,8 +313,9 @@ std::optional<double> soluteHamiltonianChange(const System& holder, const System
   if (holder.framework.has_value())
   {
     std::span<const Atom> frameworkAtoms = holder.spanOfFrameworkAtoms();
+    // the grids of a replica tabulate the framework interaction of its own Hamiltonian (System::copyInterpolationGridsFrom)
     std::optional<RunningEnergy> frameworkTarget = Interactions::computeFrameworkMoleculeEnergyDifference(
-        target.forceField, holder.simulationBox, holder.interpolationGrids, holder.framework, frameworkAtoms,
+        target.forceField, holder.simulationBox, target.interpolationGrids, holder.framework, frameworkAtoms,
         soluteTarget, {});
     std::optional<RunningEnergy> frameworkHolder = Interactions::computeFrameworkMoleculeEnergyDifference(
         holder.forceField, holder.simulationBox, holder.interpolationGrids, holder.framework, frameworkAtoms,

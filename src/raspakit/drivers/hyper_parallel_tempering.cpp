@@ -299,8 +299,7 @@ void HyperParallelTempering::setup()
   systems.front().createFrameworkInterpolationGrids(stream);
   for (std::size_t replicaId = 1; replicaId < systems.size(); ++replicaId)
   {
-    systems[replicaId].externalFieldInterpolationGrid = systems.front().externalFieldInterpolationGrid;
-    systems[replicaId].interpolationGrids = systems.front().interpolationGrids;
+    systems[replicaId].copyInterpolationGridsFrom(systems.front());
   }
 }
 

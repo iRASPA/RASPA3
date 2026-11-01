@@ -823,6 +823,11 @@ double3x3 InterpolationEnergyGrid::cartesianHessian(const double3x3& cellHessian
   return unitCellBox.inverseCell.transpose() * hessian * unitCellBox.inverseCell;
 }
 
+void InterpolationEnergyGrid::scaleEnergy(double factor)
+{
+  for (double& value : data) value *= factor;
+}
+
 double InterpolationEnergyGrid::interpolate(double3 pos) const
 {
   switch (order)

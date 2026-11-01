@@ -11,6 +11,7 @@ import forcefield;
 import framework;
 import property_loading;
 import interactions_ewald;
+import interpolation_energy_grid;
 
 // Solute tempering (REST2): the Hamiltonian of one component is scaled per replica. The scaling is
 // stored in three places that have to stay consistent: the pair parameters of the solute's
@@ -108,6 +109,34 @@ void System::rescaleSoluteCharges(double factor)
   netChargePerComponent[componentId] *= factor;
   netChargeAdsorbates = std::accumulate(netChargePerComponent.begin(), netChargePerComponent.end(), 0.0);
   netCharge = netChargeFramework + netChargeAdsorbates;
+}
+
+void System::copyInterpolationGridsFrom(const System& reference)
+{
+  externalFieldInterpolationGrid = reference.externalFieldInterpolationGrid;
+  interpolationGrids = reference.interpolationGrids;
+
+  // a replica without solute tempering is the lambda = 1 Hamiltonian of the tempered component
+  const std::optional<std::size_t> componentId =
+      soluteTemperingComponent.has_value() ? soluteTemperingComponent : reference.soluteTemperingComponent;
+  if (!componentId.has_value()) return;
+  if (soluteTemperingComponent.has_value() && reference.soluteTemperingComponent.has_value() &&
+      soluteTemperingComponent != reference.soluteTemperingComponent)
+  {
+    throw std::runtime_error("[System]: solute tempering: the replicas temper different components\n");
+  }
+  if (soluteTemperingLambda == reference.soluteTemperingLambda) return;
+
+  // the framework-solute pair energies are proportional to sqrt(lambda) (ForceField::scaleSoluteInteractions)
+  const double factor = std::sqrt(soluteTemperingLambda / reference.soluteTemperingLambda);
+  const std::vector<bool> soluteTypes = pseudoAtomTypesOfComponent(componentId.value());
+  for (std::size_t type = 0; type < soluteTypes.size(); ++type)
+  {
+    if (soluteTypes[type] && interpolationGrids[type].has_value())
+    {
+      interpolationGrids[type]->scaleEnergy(factor);
+    }
+  }
 }
 
 void System::rebuildConfigurationDerivedState()

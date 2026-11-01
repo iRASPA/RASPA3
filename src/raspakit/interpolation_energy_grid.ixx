@@ -41,6 +41,11 @@ export struct InterpolationEnergyGrid
                              const ForceField &forceField, const Framework &framework, double cutOff,
                              std::size_t pseudo_atom_index);
 
+  /// Multiplies the tabulated energy (and its tabulated derivatives) by 'factor'. The interpolants are linear in
+  /// the data, so the grid then interpolates 'factor' times the original energy: the grid of a pair potential whose
+  /// energy parameters were scaled by 'factor' (solute tempering: ForceField::scaleSoluteInteractions).
+  void scaleEnergy(double factor);
+
   double interpolate(double3 pos) const;
   std::pair<double, double3> interpolateGradient(double3 pos) const;
   std::tuple<double, double3, double3x3> interpolateHessian(double3 pos) const;

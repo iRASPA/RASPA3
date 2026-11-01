@@ -611,6 +611,19 @@ export struct System
   void rescaleSoluteCharges(double factor);
 
   /**
+   * \brief Takes over the interpolation grids of 'reference' (a replica of the same system), scaled to the
+   * Hamiltonian of this system.
+   *
+   * The replicas of a parallel-tempering run share the framework and external-field grids, which are computed
+   * once. The framework Van der Waals grid of a pseudo-atom type tabulates the framework interaction with the
+   * force field it was built with; under solute tempering the solute's framework interaction is scaled by
+   * sqrt(lambda), so the solute-type grids of a replica with a different lambda are the reference grids times
+   * sqrt(lambda / lambda_reference). The Coulomb grid is per unit charge and the solute charges carry their own
+   * scaling, so it is shared as is. The running energies are not recomputed.
+   */
+  void copyInterpolationGridsFrom(const System& reference);
+
+  /**
    * \brief Recomputes everything derived from the configuration after the atoms/molecules were
    * replaced wholesale (configuration exchange between replicas, restart): Ewald parameters and
    * structure factors, running energies, loadings, per-molecule bookkeeping, pseudo-atom and
