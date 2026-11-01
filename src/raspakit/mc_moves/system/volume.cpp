@@ -29,7 +29,7 @@ import interactions_ewald;
 import mc_moves_move_types;
 import mc_moves_cputime;
 
-MC_Moves::SavedVolumeState MC_Moves::saveVolumeState(const System &system)
+MC_Moves::SavedVolumeState MC_Moves::saveVolumeState(const System& system)
 {
   const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
   SavedVolumeState saved{.box = system.simulationBox,
@@ -51,7 +51,7 @@ MC_Moves::SavedVolumeState MC_Moves::saveVolumeState(const System &system)
   return saved;
 }
 
-RunningEnergy MC_Moves::applyTrialVolume(System &system, const SimulationBox &newBox)
+RunningEnergy MC_Moves::applyTrialVolume(System& system, const SimulationBox& newBox)
 {
   // Scale molecules by their centre of mass: only the centre-of-mass fractional position is kept fixed while
   // each molecule is translated rigidly. This preserves the internal geometry of both rigid and flexible
@@ -69,7 +69,7 @@ RunningEnergy MC_Moves::applyTrialVolume(System &system, const SimulationBox &ne
   return system.computeTotalEnergies();
 }
 
-void MC_Moves::restoreVolumeState(System &system, const SavedVolumeState &saved)
+void MC_Moves::restoreVolumeState(System& system, const SavedVolumeState& saved)
 {
   system.simulationBox = saved.box;
   system.moleculeData = saved.molecules;
@@ -89,12 +89,12 @@ void MC_Moves::restoreVolumeState(System &system, const SavedVolumeState &saved)
   system.forceField.updateEwaldRealSpaceTable();
 }
 
-bool MC_Moves::volumeTrialOverlaps(const System &system, const RunningEnergy &trialEnergy)
+bool MC_Moves::volumeTrialOverlaps(const System& system, const RunningEnergy& trialEnergy)
 {
   return trialEnergy.moleculeMoleculeVDW + trialEnergy.moleculeMoleculeCharge > system.forceField.energyOverlapCriteria;
 }
 
-std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &system)
+std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber& random, System& system)
 {
   Move::Types move = Move::Types::VolumeChange;
 
@@ -102,9 +102,9 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   system.mc_moves_statistics.addTrial(move);
 
   RunningEnergy oldTotalEnergy = system.runningEnergies;
-  // Calculate the total number of molecules
-  double numberOfMolecules = static_cast<double>(std::accumulate(system.numberOfIntegerMoleculesPerComponent.begin(),
-                                                                 system.numberOfIntegerMoleculesPerComponent.end(), 0));
+  // Every centre of mass the trial scales, including reserved fractional slots (the integer loading
+  // is a different N: it is the observable, not the Jacobian exponent).
+  const double numberOfMolecules = numberOfScaledMolecules(system);
   double oldVolume = system.simulationBox.volume;
   double maxVolumeChange = system.mc_moves_statistics.getMaxChange(move);
 
@@ -146,10 +146,9 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   return std::nullopt;
 }
 
-double MC_Moves::anisotropicPressureWork(const System &system, const SimulationBox &oldBox,
-                                         const SimulationBox &newBox)
+double MC_Moves::anisotropicPressureWork(const System& system, const SimulationBox& oldBox, const SimulationBox& newBox)
 {
-  const double3 &p = system.pressureTensorDiagonal;
+  const double3& p = system.pressureTensorDiagonal;
   const double hydrostaticPressure = (p.x + p.y + p.z) / 3.0;
 
   // hydrostatic part: the exact p dV of the NpT ensemble
@@ -157,7 +156,7 @@ double MC_Moves::anisotropicPressureWork(const System &system, const SimulationB
 
   // deviatoric part: a constant tension -V_0 (p_aa - p) / L_a^0 on each pair of faces (linear strain with
   // respect to the reference cell); it vanishes identically for a hydrostatic pressure tensor
-  const SimulationBox &reference = system.referenceSimulationBox;
+  const SimulationBox& reference = system.referenceSimulationBox;
   const double deviatoricWork =
       reference.volume * ((p.x - hydrostaticPressure) * (newBox.lengthA - oldBox.lengthA) / reference.lengthA +
                           (p.y - hydrostaticPressure) * (newBox.lengthB - oldBox.lengthB) / reference.lengthB +
@@ -166,15 +165,14 @@ double MC_Moves::anisotropicPressureWork(const System &system, const SimulationB
   return hydrostaticWork + deviatoricWork;
 }
 
-std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber &random, System &system)
+std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& random, System& system)
 {
   Move::Types move = Move::Types::AnisotropicVolumeChange;
 
   system.mc_moves_statistics.addTrial(move);
 
   RunningEnergy oldTotalEnergy = system.runningEnergies;
-  const double numberOfMolecules = static_cast<double>(std::accumulate(
-      system.numberOfIntegerMoleculesPerComponent.begin(), system.numberOfIntegerMoleculesPerComponent.end(), 0));
+  const double numberOfMolecules = numberOfScaledMolecules(system);
 
   const double3 maxVolumeChange(system.mc_moves_statistics.getMaxChange(move, 0),
                                 system.mc_moves_statistics.getMaxChange(move, 1),
@@ -203,9 +201,9 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber &rando
   const double volumeRatio = scale.x * scale.y * scale.z;
   const double pressureWork = anisotropicPressureWork(system, saved.box, newBox);
 
-  if (random.uniform() < std::exp((numberOfMolecules + 1.0) * std::log(volumeRatio) -
-                                  (pressureWork + (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) *
-                                      system.beta))
+  if (random.uniform() <
+      std::exp((numberOfMolecules + 1.0) * std::log(volumeRatio) -
+               (pressureWork + (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) * system.beta))
   {
     system.mc_moves_statistics.addAccepted(move);
     return newTotalEnergy - oldTotalEnergy;

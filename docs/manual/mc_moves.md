@@ -1679,9 +1679,11 @@ Acceptance rule (for sampling in \f$\ln V\f$):
   e^{-\beta\left[\Delta U + p\,(V_\mathbf{n} - V_\mathbf{o})\right]}\right)
 \f]
 
-For this section \f$N=\sum_i N_i^\mathrm{integer}\f$: the total number of
-integer adsorbate molecules in the box. Reserved fractional slots do not enter
-the Jacobian exponent.
+For this section \f$N\f$ is the number of adsorbate centres of mass the move
+scales: every record in the molecule list, including reserved fractional
+slots. The integer loading is a different count (the observable); omitting the
+scaled fractional COMs from the Jacobian while still translating them breaks
+detailed balance.
 
 Useful for: \f$NpT\f$ simulations of bulk fluids (densities, equations of state)
 and for equilibrating mobile-fluid densities around a fixed framework. Expensive:
@@ -1742,7 +1744,8 @@ Acceptance rule (for sampling in \f$\ln L_\alpha\f$):
   e^{-\beta\left[\Delta U + \Delta W\right]}\right)
 \f]
 
-Here too \f$N=\sum_i N_i^\mathrm{integer}\f$ and fractional slots are excluded.
+Here too \f$N\f$ is the number of scaled centres of mass, including reserved
+fractional slots.
 
 \f$\Delta W\f$ is an exact difference of the pressure terms of \f$H\f$, so
 the forward and the reverse work cancel and detailed balance holds. The
@@ -1921,8 +1924,8 @@ Acceptance rule:
   e^{-\beta\left[\Delta U_A + \Delta U_B\right]}\right)
 \f]
 
-Here \f$N_A=\sum_iN_{i,A}^\mathrm{integer}\f$ and
-\f$N_B=\sum_iN_{i,B}^\mathrm{integer}\f$. Reserved fractional slots are excluded.
+Here \f$N_A\f$ and \f$N_B\f$ are the numbers of scaled centres of mass in each
+box, including reserved fractional slots.
 The ordered adjacent system pair is supplied by the dispatcher; the proposal
 itself is symmetric under exchanging its two members.
 

@@ -52,8 +52,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   // Scale systemA to the new volume: the trial box is applied to the live system and its exact total energy
   // computed (see 'applyTrialVolume'); every non-accepting exit restores the saved state.
   RunningEnergy oldTotalEnergyA = systemA.runningEnergies;
-  double numberOfMoleculesA = static_cast<double>(std::accumulate(
-      systemA.numberOfIntegerMoleculesPerComponent.begin(), systemA.numberOfIntegerMoleculesPerComponent.end(), 0));
+  const double numberOfMoleculesA = numberOfScaledMolecules(systemA);
   double scaleA = std::pow(newVolumeA / oldVolumeA, 1.0 / 3.0);
   SimulationBox newBoxA = systemA.simulationBox.scaled(scaleA);
 
@@ -71,8 +70,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
   // Scale systemB to the new volume
   RunningEnergy oldTotalEnergyB = systemB.runningEnergies;
-  double numberOfMoleculesB = static_cast<double>(std::accumulate(
-      systemB.numberOfIntegerMoleculesPerComponent.begin(), systemB.numberOfIntegerMoleculesPerComponent.end(), 0));
+  const double numberOfMoleculesB = numberOfScaledMolecules(systemB);
   double scaleB = std::pow(newVolumeB / oldVolumeB, 1.0 / 3.0);
   SimulationBox newBoxB = systemB.simulationBox.scaled(scaleB);
 

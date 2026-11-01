@@ -76,8 +76,8 @@ TEST(MC_NPT_DRIFT, isotropic_volume_change)
                             {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
-      Component(forceField, "methane", 190.564, 45599200, 0.01142,
-                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt, false);
+      Component(forceField, "methane", 190.564, 45599200, 0.01142, {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)},
+                {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   SimulationBox box = SimulationBox(30.0, 30.0, 30.0, 100.0 * (std::numbers::pi / 180.0),
                                     95.0 * (std::numbers::pi / 180.0), 75.0 * (std::numbers::pi / 180.0));
@@ -85,8 +85,8 @@ TEST(MC_NPT_DRIFT, isotropic_volume_change)
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
   systemProbabilities.setProbability(Move::Types::VolumeChange, 0.01);
 
-  System system = System(forceField, box, false, 300.0, 1e4, 1.0, {}, {co2, methane}, {}, {10, 15}, 5,
-                         systemProbabilities);
+  System system =
+      System(forceField, box, false, 300.0, 1e4, 1.0, {}, {co2, methane}, {}, {10, 15}, 5, systemProbabilities);
 
   std::vector<System> systems{system};
   MonteCarlo mc = MonteCarlo({20, 0, 5, 5, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
@@ -125,9 +125,9 @@ TEST(MC_NPT_DRIFT, isotropic_volume_change_flexible)
   intraMolecularPotentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {96500.0, 1.54})};
 
   Component ethane = Component(forceField, "ethane", 305.33, 4871800.0, 0.0993,
-                              {Atom({0.0, 0.0, 0.77}, 0.0, 1.0, 0, 6, 0, false, false),
-                               Atom({0.0, 0.0, -0.77}, 0.0, 1.0, 0, 6, 0, false, false)},
-                              connectivityTable, intraMolecularPotentials, 5, 21, probabilities, std::nullopt, false);
+                               {Atom({0.0, 0.0, 0.77}, 0.0, 1.0, 0, 6, 0, false, false),
+                                Atom({0.0, 0.0, -0.77}, 0.0, 1.0, 0, 6, 0, false, false)},
+                               connectivityTable, intraMolecularPotentials, 5, 21, probabilities, std::nullopt, false);
 
   SimulationBox box = SimulationBox(30.0, 30.0, 30.0, 100.0 * (std::numbers::pi / 180.0),
                                     95.0 * (std::numbers::pi / 180.0), 75.0 * (std::numbers::pi / 180.0));
@@ -175,9 +175,9 @@ TEST(MC_NPT_DRIFT, anisotropic_volume_change_flexible)
   intraMolecularPotentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {96500.0, 1.54})};
 
   Component ethane = Component(forceField, "ethane", 305.33, 4871800.0, 0.0993,
-                              {Atom({0.0, 0.0, 0.77}, 0.0, 1.0, 0, 6, 0, false, false),
-                               Atom({0.0, 0.0, -0.77}, 0.0, 1.0, 0, 6, 0, false, false)},
-                              connectivityTable, intraMolecularPotentials, 5, 21, probabilities, std::nullopt, false);
+                               {Atom({0.0, 0.0, 0.77}, 0.0, 1.0, 0, 6, 0, false, false),
+                                Atom({0.0, 0.0, -0.77}, 0.0, 1.0, 0, 6, 0, false, false)},
+                               connectivityTable, intraMolecularPotentials, 5, 21, probabilities, std::nullopt, false);
 
   SimulationBox box = SimulationBox(30.0, 30.0, 30.0, 100.0 * (std::numbers::pi / 180.0),
                                     95.0 * (std::numbers::pi / 180.0), 75.0 * (std::numbers::pi / 180.0));
@@ -247,8 +247,8 @@ TEST(MC_NPT_DRIFT, anisotropic_pressure_work_is_a_state_function)
   EXPECT_NEAR(ab + bc, ac, tolerance);
 
   // the deviatoric part does contribute: the work differs from the hydrostatic p dV
-  const double hydrostatic = (system.pressureTensorDiagonal.x + system.pressureTensorDiagonal.y +
-                              system.pressureTensorDiagonal.z) / 3.0;
+  const double hydrostatic =
+      (system.pressureTensorDiagonal.x + system.pressureTensorDiagonal.y + system.pressureTensorDiagonal.z) / 3.0;
   EXPECT_GT(std::abs(ab - hydrostatic * (b.volume - a.volume)), 1e-6 * std::abs(ab));
 
   // the first-order form is not reversible
@@ -351,8 +351,8 @@ TEST(MC_NPT_DRIFT, volume_move_keeps_the_external_field_energy)
                           ForceField::MixingRule::Lorentz_Berthelot, 8.0, 8.0, 8.0, false, false, false);
     forceField.potentialEnergySurfaceType = ForceField::PotentialEnergySurfaceType::MullerBrown;
     const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("O"));
-    Component atomic(forceField, "atomic", 64.0, 1.0e6, 0.02, {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, type, 0, false, false)},
-                     {}, {}, 5, 21);
+    Component atomic(forceField, "atomic", 64.0, 1.0e6, 0.02,
+                     {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, type, 0, false, false)}, {}, {}, 5, 21);
     System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {atomic},
                   {{double3(0.6, 0.2, 5.0), double3(-0.3, 1.0, 12.0), double3(1.2, 0.4, 20.0)}}, {0}, 5);
     system.hasExternalField = true;
@@ -382,4 +382,41 @@ TEST(MC_NPT_DRIFT, volume_move_keeps_the_external_field_energy)
     EXPECT_NEAR(system.runningEnergies.potentialEnergy(), exactNew.potentialEnergy(), 1.0e-10 * scale);
   }
   EXPECT_GE(accepted, 1uz);
+}
+
+TEST(MC_NPT_DRIFT, volume_jacobian_counts_scaled_fractional_molecules)
+{
+  // Ideal-gas NPT: <V> = (n + 1) / (βP) with n the number of centres of mass the move scales. A reserved
+  // CFCMC slot is such a centre of mass, so n includes it; counting only integer molecules would sample
+  // half this volume (empty-box NPT).
+  const ForceField forceField({{"A", false, 16.0, 0.0, 0.0, 8, false}}, {{0.0, 3.0}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, false, false);
+  MCMoveProbabilities componentProbabilities{};
+  componentProbabilities.setProbability(Move::Types::SwapCFCMC, 1.0);
+  Component atomic(forceField, "atomic", 64.0, 1.0e6, 0.02, {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)},
+                   {}, {}, 5, 21, componentProbabilities, std::nullopt, false);
+  System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {atomic}, {}, {0}, 5);
+  ASSERT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 0uz);
+  ASSERT_EQ(system.numberOfFractionalMoleculesPerComponent[0], 1uz);
+  ASSERT_EQ(system.moleculeData.size(), 1uz);
+  EXPECT_DOUBLE_EQ(MC_Moves::numberOfScaledMolecules(system), 1.0);
+
+  system.pressure = 2.0 / (system.beta * system.simulationBox.volume);
+  system.runningEnergies = system.computeTotalEnergies();
+  EXPECT_NEAR(system.runningEnergies.potentialEnergy(), 0.0, 1.0e-12);
+  system.mc_moves_statistics.setMaxChange(Move::Types::VolumeChange, 0.4);
+
+  RandomNumber random(7);
+  double sumV = 0.0;
+  constexpr std::size_t samples = 8000;
+  for (std::size_t i = 0; i != samples; ++i)
+  {
+    if (const std::optional<RunningEnergy> energy = MC_Moves::volumeMove(random, system))
+    {
+      system.runningEnergies += energy.value();
+    }
+    sumV += system.simulationBox.volume;
+  }
+  const double expected = 2.0 / (system.beta * system.pressure);
+  EXPECT_NEAR(sumV / static_cast<double>(samples), expected, 0.2 * expected);
 }

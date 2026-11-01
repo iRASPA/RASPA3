@@ -35,7 +35,15 @@ struct SavedVolumeState
   std::size_t reciprocalIntegerCutOffSquared;
 };
 
-SavedVolumeState saveVolumeState(const System &system);
+SavedVolumeState saveVolumeState(const System& system);
+
+/// Centres of mass a volume move scales: every record in 'moleculeData', including reserved
+/// fractional slots. The configuration-space Jacobian is (V_new / V_old)^n with this n; loadings
+/// and TMMC keep using the integer count.
+[[nodiscard]] inline double numberOfScaledMolecules(const System& system)
+{
+  return static_cast<double>(system.moleculeData.size());
+}
 
 /**
  * \brief Applies a trial box to the system and returns the exact total energy of the resulting configuration.
@@ -49,12 +57,12 @@ SavedVolumeState saveVolumeState(const System &system);
  * polarization -- and the stored Ewald structure factors and electric field describe the trial configuration
  * afterwards. A rejected move restores all of that with 'restoreVolumeState'.
  */
-RunningEnergy applyTrialVolume(System &system, const SimulationBox &newBox);
+RunningEnergy applyTrialVolume(System& system, const SimulationBox& newBox);
 
-void restoreVolumeState(System &system, const SavedVolumeState &saved);
+void restoreVolumeState(System& system, const SavedVolumeState& saved);
 
 /// Whether the inter-molecular part of a trial energy marks an overlap (the move is then rejected outright).
-bool volumeTrialOverlaps(const System &system, const RunningEnergy &trialEnergy);
+bool volumeTrialOverlaps(const System& system, const RunningEnergy& trialEnergy);
 
 /**
  * \brief Performs a volume move in a Monte Carlo simulation.
@@ -66,7 +74,7 @@ bool volumeTrialOverlaps(const System &system, const RunningEnergy &trialEnergy)
  * \param system The simulation system to modify.
  * \return The new total energy if the move is accepted; std::nullopt otherwise.
  */
-std::optional<RunningEnergy> volumeMove(RandomNumber &random, System &system);
+std::optional<RunningEnergy> volumeMove(RandomNumber& random, System& system);
 
 /**
  * \brief The work of the imposed pressure tensor for a change of the box lengths in the anisotropic volume move.
@@ -85,7 +93,7 @@ std::optional<RunningEnergy> volumeMove(RandomNumber &random, System &system);
  * works do not cancel (even for a hydrostatic tensor it differs from p dV at second order) and the resulting
  * chain samples no equilibrium ensemble.
  */
-double anisotropicPressureWork(const System &system, const SimulationBox &oldBox, const SimulationBox &newBox);
+double anisotropicPressureWork(const System& system, const SimulationBox& oldBox, const SimulationBox& newBox);
 
 /**
  * \brief Performs an anisotropic volume move with independent pressures along a, b, and c.
@@ -93,5 +101,5 @@ double anisotropicPressureWork(const System &system, const SimulationBox &oldBox
  * Scales each lattice vector length independently (the angles are kept) and accepts with the constant-stress
  * enthalpy of 'anisotropicPressureWork'.
  */
-std::optional<RunningEnergy> anisotropicVolumeMove(RandomNumber &random, System &system);
+std::optional<RunningEnergy> anisotropicVolumeMove(RandomNumber& random, System& system);
 }  // namespace MC_Moves
