@@ -3486,11 +3486,25 @@ molecules; do not combine it with insertion/deletion moves.
     every atom outside the two trimers stays in place. The segment must be
     congruent under reversal (unit $k$ and unit $a+4+b-k$ have the same
     pseudo-atom types, charges and side-group structure; a homopolymer
-    backbone qualifies). The acceptance rule contains the Metropolis factor,
-    the closure factors of both bridges and the ratio of the chart volume
-    elements of the reversed segment (unity for uniform fixed bonds and
-    bends). Requires a backbone of at least twelve units. Not available with
-    polarization.
+    backbone qualifies). The side groups of the reversed segment are, per
+    pair of sites, either re-projected through the local frame of their
+    backbone atom (which keeps their handedness with respect to the chain
+    direction) or copied in place (which inverts it); the choice is made
+    when the molecule is read so that the declared `"ChiralCenters"` pattern
+    is mapped onto itself (for an isotactic chain: re-projection when $a+b$
+    is even, in-place copy when it is odd; without declared centres the side
+    groups are re-projected). Pairs for which neither map preserves the
+    declared pattern are excluded. The acceptance rule contains the Metropolis
+    factor, the closure factors of both bridges and the ratio of the chart
+    volume elements of the reversed segment (unity for uniform fixed bonds
+    and bends). Requires a backbone of at least twelve units. Not available
+    with polarization.
+
+    All moves that change the internal geometry without CBMC (bead
+    displacement, bead flip, crankshaft, concerted rotation, double bridging
+    and double rebridging) treat the declared `"ChiralCenters"` as a hard
+    constraint: a trial configuration that inverts the sign of a declared
+    centre is rejected, as in CBMC growth.
 
 -   `"ReptationProbability" : floating-point-number`\
     The relative probability of a reptation (slithering-snake) move for chain

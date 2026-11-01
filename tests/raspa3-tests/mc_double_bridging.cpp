@@ -19,6 +19,11 @@ import mc_moves_pivot;
 import mc_moves_translation;
 import mc_moves_double_bridging;
 import mc_moves_double_rebridging;
+import mc_moves_bead_displacement;
+import mc_moves_bead_flip;
+import mc_moves_crankshaft;
+import mc_moves_concerted_rotation;
+import chiral_center;
 
 // Tests for the connectivity-altering bridging moves of Karayiannis, Mavrantzas and Theodorou:
 // double bridging (DB, two chains exchange tails) and intramolecular double rebridging (IDR, a chain
@@ -106,6 +111,79 @@ constexpr std::string_view kBranchedJson =
   "VanDerWaals" : "auto"
 }
 )";
+
+// Polypropylene-like chain: a 16-bead zigzag backbone (bond 1.54 A, bend 114 degrees, in the xy-plane) with a
+// CH3 side atom on the interior backbone atoms in 'sideUnits' (listed in increasing order; side atom number p
+// is backbone atom 16 + p), all on the +z side of the zigzag plane (isotactic in the planar-zigzag sense). A
+// chiral centre [i, i-1, i+1, side] is declared on every substituted backbone atom; with the chain direction as
+// reference its handedness alternates along the chain. 'bondType' and 'bendType' select FIXED or HARMONIC
+// bonded terms.
+std::string polypropyleneJson(std::string_view bondType, std::string_view bendType,
+                              const std::vector<std::size_t>& sideUnits)
+{
+  constexpr std::size_t backbone = 16;
+  constexpr double dx = 1.2916, dy = 0.8387;  // 1.54 A bonds, 114 degree bends
+  std::string pseudoAtoms{}, connectivity{}, chiralCenters{};
+  for (std::size_t i = 0; i != backbone; ++i)
+  {
+    pseudoAtoms += std::format("{}[\"CH2\", [{}, {}, 0.0]]", i == 0 ? "" : ", ", dx * static_cast<double>(i),
+                               (i % 2 == 1) ? dy : 0.0);
+    if (i + 1 != backbone) connectivity += std::format("{}[{}, {}]", i == 0 ? "" : ", ", i, i + 1);
+  }
+  for (std::size_t p = 0; p != sideUnits.size(); ++p)
+  {
+    const std::size_t i = sideUnits[p];
+    const std::size_t side = backbone + p;
+    // 112 degrees to both backbone neighbours, pointing away from the bend bisector and up
+    const double y = ((i % 2 == 1) ? dy : 0.0) + ((i % 2 == 1) ? 1.059 : -1.059);
+    pseudoAtoms += std::format(", [\"CH3\", [{}, {}, 1.118]]", dx * static_cast<double>(i), y);
+    connectivity += std::format(", [{}, {}]", i, side);
+    chiralCenters += std::format("{}[{}, {}, {}, {}]", p == 0 ? "" : ", ", i, i - 1, i + 1, side);
+  }
+  std::string bondParameters = bondType == "FIXED" ? "1.54" : "96500.0, 1.54";
+  std::string bendParameters = bendType == "FIXED" ? "" : "62500.0, ";
+  std::string sideBendParameters = bendType == "FIXED" ? "" : "62500.0, ";
+  return std::format(R"({{
+  "CriticalTemperature" : 617.7,
+  "CriticalPressure" : 2110000.0,
+  "AcentricFactor" : 0.492,
+  "pseudoAtoms" : [{}],
+  "Connectivity" : [{}],
+  "ChiralCenters" : [{}],
+  "Bonds" : [
+    [["CH2", "CH2"], "{}", [{}]],
+    [["CH2", "CH3"], "{}", [{}]]
+  ],
+  "Bends" : [
+    [["CH2", "CH2", "CH2"], "{}", [{}114.0]],
+    [["CH2", "CH2", "CH3"], "{}", [{}112.0]]
+  ],
+  "Torsions" : [
+    [["CH2", "CH2", "CH2", "CH2"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]],
+    [["CH3", "CH2", "CH2", "CH2"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]],
+    [["CH3", "CH2", "CH2", "CH3"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]]
+  ],
+  "VanDerWaals" : "auto"
+}}
+)",
+                     pseudoAtoms, connectivity, chiralCenters, bondType, bondParameters, bondType, bondParameters,
+                     bendType, bendParameters, bendType, sideBendParameters);
+}
+
+// The declared handedness of every chiral centre of 'component' in 'atoms'.
+std::vector<double> chiralSigns(const Component& component, std::span<const Atom> atoms)
+{
+  std::vector<double> signs{};
+  for (const ChiralCenter& center : component.intraMolecularPotentials.chiralCenters)
+  {
+    const double3 p0 = atoms[center.ids[0]].position;
+    const double volume =
+        double3::dot(atoms[center.ids[1]].position - p0,
+                     double3::cross(atoms[center.ids[2]].position - p0, atoms[center.ids[3]].position - p0));
+    signs.push_back(volume > 0.0 ? 1.0 : -1.0);
+  }
+  return signs;
+}
 
 ForceField makeZeroForceField()
 {
@@ -733,4 +811,187 @@ TEST(MC_DOUBLE_BRIDGING, db_external_field_sees_the_lattice_shift_of_the_partner
               1e-8 * std::max(1.0, std::abs(recomputed.externalFieldVDW)));
   EXPECT_NEAR(system.runningEnergies.potentialEnergy(), recomputed.potentialEnergy(),
               1e-8 * std::max(1.0, std::abs(recomputed.potentialEnergy())));
+}
+
+// The reversed segment of the rebridging runs through its units in the opposite direction. The side groups
+// are therefore either re-projected through the local frames (handedness with respect to the chain direction
+// kept) or copied in place (handedness inverted); which map takes the declared stereo pattern onto itself is
+// a property of the pair (a, b). With the alternating pattern of the isotactic zigzag, a slot k and its source
+// a+4+b-k have the same declared handedness exactly when a + b is even.
+TEST(MC_DOUBLE_BRIDGING, idr_side_group_map_follows_the_declared_stereo_pattern)
+{
+  const ForceField forceField = makeZeroForceField();
+  std::vector<std::size_t> allInterior(14);
+  std::iota(allInterior.begin(), allInterior.end(), 1uz);
+  Component chain = makeComponent(forceField, "idr-pp-topology", polypropyleneJson("FIXED", "HARMONIC", allInterior));
+  ASSERT_EQ(chain.intraMolecularPotentials.chiralCenters.size(), 14uz);
+
+  // the reference geometry alternates in handedness along the chain
+  const std::vector<double> reference = chiralSigns(chain, chain.atoms);
+  for (std::size_t i = 1; i < reference.size(); ++i) EXPECT_EQ(reference[i], -reference[i - 1]);
+  EXPECT_TRUE(chain.intraMolecularPotentials.preservesChiralCenters(chain.atoms));
+
+  const Component::BridgingTopology& topology = chain.bridgingTopology();
+  ASSERT_EQ(topology.units.size(), 16uz);
+  ASSERT_EQ(topology.sitePairs.size(), topology.sitePairReprojectsSideGroups.size());
+  ASSERT_GT(topology.sitePairs.size(), 0uz);
+  std::size_t reprojected = 0, inPlace = 0;
+  for (std::size_t p = 0; p != topology.sitePairs.size(); ++p)
+  {
+    const bool even = (topology.sitePairs[p][0] + topology.sitePairs[p][1]) % 2 == 0;
+    EXPECT_EQ(topology.sitePairReprojectsSideGroups[p], even);
+    (even ? reprojected : inPlace) += 1;
+  }
+  EXPECT_GT(reprojected, 0uz);
+  EXPECT_GT(inPlace, 0uz);
+
+  // a chain without declared centres re-projects on every pair
+  Component achiral = makeComponent(forceField, "idr-pp-achiral", chainJson(16, "0.0, 0.0, 0.0, 0.0"));
+  for (bool flag : achiral.bridgingTopology().sitePairReprojectsSideGroups) EXPECT_TRUE(flag);
+
+  // the predicate: mirroring one side group through the plane of its backbone atom and its two backbone
+  // neighbours (the component re-orients its reference atoms) inverts its centre
+  std::vector<Atom> mirrored = chain.atoms;
+  {
+    const double3 c = mirrored[7].position;
+    const double3 normal = double3::cross(mirrored[6].position - c, mirrored[8].position - c).normalized();
+    const double3 side = mirrored[15 + 7].position - c;
+    mirrored[15 + 7].position = c + side - 2.0 * double3::dot(side, normal) * normal;
+  }
+  EXPECT_FALSE(chain.intraMolecularPotentials.preservesChiralCenters(mirrored));
+}
+
+// Rebridging of chains with side groups and declared chiral centres in a Lennard-Jones melt: every accepted
+// move keeps the declared handedness of every centre (with the segment side groups copied in place on every
+// pair, as before, every unit of a re-projected segment would be inverted), the move stays productive, and the
+// re-projected side groups are part of the energy bookkeeping (they leave their old positions, so their
+// interactions with the other chains change). The side groups sit on interior units of the segment only, so
+// that pairs whose four closure anchors carry no side group exist: at an anchor the side group stays while its
+// neighbour a3 or a5 moves, which with alkane-stiff side bends rejects nearly every closure (a pre-existing
+// property of the move, shared with the concerted rotation). Side groups on units 6, 7, 8 give the pair
+// (1, 9) with a + b even (re-projection: 6 <-> 8 and 7 <-> 7 have the same declared handedness); side groups
+// on 6, 7 give the pair (1, 8) with a + b odd (in-place copy: 6 <-> 7 have opposite handedness).
+TEST(MC_DOUBLE_BRIDGING, idr_keeps_declared_chiral_centres_and_books_the_moved_side_groups)
+{
+  const ForceField forceField({{"CH2", false, 14.03, 0.0, 0.0, 6, false}, {"CH3", false, 15.04, 0.0, 0.0, 6, false}},
+                              {{40.0, 2.5}, {40.0, 2.5}}, ForceField::MixingRule::Lorentz_Berthelot, 6.0, 6.0, 6.0,
+                              true, false, false);
+  struct Variant
+  {
+    std::vector<std::size_t> sideUnits;
+    std::array<std::size_t, 2> pair;
+    bool reprojects;
+  };
+  for (const Variant& variant : {Variant{{6, 7, 8}, {1, 9}, true}, Variant{{6, 7}, {1, 8}, false}})
+  {
+    Component chain = makeComponent(forceField, std::format("idr-pp-melt-{}", variant.sideUnits.size()),
+                                    polypropyleneJson("FIXED", "HARMONIC", variant.sideUnits));
+    const std::vector<double> reference = chiralSigns(chain, chain.atoms);
+    const Component::BridgingTopology& topology = chain.bridgingTopology();
+    const auto found = std::ranges::find(topology.sitePairs, variant.pair);
+    ASSERT_NE(found, topology.sitePairs.end());
+    EXPECT_EQ(topology.sitePairReprojectsSideGroups[static_cast<std::size_t>(found - topology.sitePairs.begin())],
+              variant.reprojects);
+
+    constexpr std::size_t numberOfChains = 6;
+    System system = System(forceField, SimulationBox(26.0, 26.0, 26.0), false, 600.0, 1e4, 1.0, {}, {chain}, {},
+                           {numberOfChains}, 5);
+    system.runningEnergies = system.computeTotalEnergies();
+    system.components[0].pivotRandomizationFraction = 0.5;
+    for (std::size_t m = 0; m != numberOfChains; ++m)
+    {
+      EXPECT_EQ(chiralSigns(system.components[0], system.spanOfMolecule(0, m)), reference) << "chain " << m;
+    }
+
+    RandomNumber random(4711);
+    std::size_t acceptedRebridging = 0;
+    for (std::size_t i = 0; i != 60000; ++i)
+    {
+      const std::size_t molecule = static_cast<std::size_t>(random.uniform() * static_cast<double>(numberOfChains));
+      std::optional<RunningEnergy> energyDifference;
+      switch (i % 4)
+      {
+        case 0:
+          energyDifference = MC_Moves::pivotMove(random, system, 0, molecule);
+          break;
+        case 1:
+          energyDifference = MC_Moves::translationMove(random, system, 0, molecule);
+          break;
+        default:
+          energyDifference = MC_Moves::intramolecularDoubleRebridgingMove(random, system, 0, molecule);
+          if (energyDifference.has_value())
+          {
+            ++acceptedRebridging;
+            EXPECT_EQ(chiralSigns(system.components[0], system.spanOfMolecule(0, molecule)), reference) << "move " << i;
+          }
+          break;
+      }
+      if (energyDifference.has_value()) system.runningEnergies += energyDifference.value();
+    }
+    EXPECT_GT(acceptedRebridging, 10uz) << "side units " << variant.sideUnits.size();
+
+    system.checkMoleculeIds();
+    const RunningEnergy running = system.runningEnergies;
+    const RunningEnergy recomputed = system.computeTotalEnergies();
+    const double toKelvin = Units::EnergyToKelvin;
+    EXPECT_NEAR(running.moleculeMoleculeVDW * toKelvin, recomputed.moleculeMoleculeVDW * toKelvin, 1e-4);
+    EXPECT_NEAR(running.intraVDW * toKelvin, recomputed.intraVDW * toKelvin, 1e-4);
+    EXPECT_NEAR(running.bend * toKelvin, recomputed.bend * toKelvin, 1e-4);
+    EXPECT_NEAR(running.potentialEnergy() * toKelvin, recomputed.potentialEnergy() * toKelvin, 1e-4);
+  }
+}
+
+// The declared chiral centres are a hard constraint for the moves that change the internal geometry without
+// CBMC. Harmonic bonds and bends at a high temperature let the bead displacement, the bead flip (a full
+// randomization of the side-atom direction inverts a centre half of the time), the crankshaft and the
+// concerted rotation propose inverted centres frequently; none may be accepted.
+TEST(MC_DOUBLE_BRIDGING, local_moves_reject_inverted_declared_chiral_centres)
+{
+  const ForceField forceField = makeZeroForceField();
+  std::vector<std::size_t> allInterior(14);
+  std::iota(allInterior.begin(), allInterior.end(), 1uz);
+  Component chain = makeComponent(forceField, "pp-local-moves", polypropyleneJson("HARMONIC", "HARMONIC", allInterior));
+  const std::vector<double> reference = chiralSigns(chain, chain.atoms);
+  ASSERT_FALSE(chain.displaceableBeads().empty());
+  ASSERT_FALSE(chain.flipBeads().empty());
+  ASSERT_FALSE(chain.concertedRotationWindows().empty());
+
+  System system =
+      System(forceField, SimulationBox(100.0, 100.0, 100.0), false, 3000.0, 1e4, 1.0, {}, {chain}, {}, {1}, 5);
+  system.runningEnergies = system.computeTotalEnergies();
+  system.components[0].pivotRandomizationFraction = 1.0;
+  const std::span<const Atom> atoms = system.spanOfMolecule(0, 0);
+
+  RandomNumber random(99);
+  std::array<std::size_t, 4> accepted{};
+  for (std::size_t i = 0; i != 20000; ++i)
+  {
+    std::optional<RunningEnergy> energyDifference;
+    switch (i % 4)
+    {
+      case 0:
+        energyDifference = MC_Moves::beadDisplacementMove(random, system, 0, 0);
+        break;
+      case 1:
+        energyDifference = MC_Moves::beadFlipMove(random, system, 0, 0);
+        break;
+      case 2:
+        energyDifference = MC_Moves::crankshaftMove(random, system, 0, 0);
+        break;
+      default:
+        energyDifference = MC_Moves::concertedRotationMove(random, system, 0, 0);
+        break;
+    }
+    if (energyDifference.has_value())
+    {
+      ++accepted[i % 4];
+      system.runningEnergies += energyDifference.value();
+      ASSERT_EQ(chiralSigns(system.components[0], atoms), reference) << "move " << i % 4 << " at step " << i;
+    }
+  }
+  for (std::size_t move = 0; move != 4; ++move) EXPECT_GT(accepted[move], 0uz) << "move " << move;
+
+  const RunningEnergy recomputed = system.computeTotalEnergies();
+  EXPECT_NEAR(system.runningEnergies.potentialEnergy(), recomputed.potentialEnergy(),
+              1e-6 * std::max(1.0, std::abs(recomputed.potentialEnergy())));
 }

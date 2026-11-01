@@ -427,6 +427,14 @@ export struct Component
     /// requires unit k and unit a+4+b-k to be congruent (same types, charges and side-group
     /// structure).
     std::vector<std::array<std::size_t, 2>> sitePairs{};
+    /// Per site pair: how the side groups of the reversed segment are placed. True: carried rigidly from the
+    /// local frame (atom, previous, next) of the source unit to that of the target slot, which keeps the
+    /// handedness of every unit with respect to the chain direction. False: copied in place, which inverts it
+    /// (the chain runs through the unit in the opposite direction). Decided from the declared chiral centres
+    /// in the reference geometry so that the move maps the declared stereo pattern onto itself (an isotactic
+    /// pattern, alternating along the chain, needs the in-place copy for pairs with a + b odd); true when no
+    /// centre decides it.
+    std::vector<bool> sitePairReprojectsSideGroups{};
     /// Upper bound [Angstrom] on the distance a trimer can bridge (the sum of its four backbone bond
     /// lengths in the reference geometry). Used as the deterministic, symmetric criterion that
     /// selects bridging partners.

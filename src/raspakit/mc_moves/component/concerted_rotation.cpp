@@ -139,6 +139,10 @@ std::optional<RunningEnergy> MC_Moves::concertedRotationMove(RandomNumber &rando
   {
     return std::nullopt;
   }
+  // a declared chiral centre is a hard constraint: the side groups follow their backbone atoms rigidly (the centres
+  // on the moved atoms keep their handedness), but a centre at the anchors a1 and a6, whose neighbour a2 or a5
+  // moves while the side group stays, can invert
+  if (!component.intraMolecularPotentials.preservesChiralCenters(trialAtoms)) return std::nullopt;
 
   // Only the displaced backbone atoms and their side groups interact differently with the surroundings: the
   // external-field, framework, inter-molecular and Ewald differences are evaluated for those atoms alone

@@ -8,6 +8,7 @@ import component;
 import atom;
 import molecule;
 import double3;
+import double3x3;
 import simulationbox;
 import randomnumbers;
 import system;
@@ -41,8 +42,10 @@ std::optional<RunningEnergy> MC_Moves::intramolecularDoubleRebridgingMove(Random
   component.mc_moves_statistics.addTrial(move);
 
   const std::vector<Component::BridgingTopology::Unit>& units = topology.units;
-  const std::array<std::size_t, 2> pair =
-      topology.sitePairs[static_cast<std::size_t>(random.uniform() * static_cast<double>(topology.sitePairs.size()))];
+  const std::size_t pairIndex =
+      static_cast<std::size_t>(random.uniform() * static_cast<double>(topology.sitePairs.size()));
+  const std::array<std::size_t, 2> pair = topology.sitePairs[pairIndex];
+  const bool reprojectSideGroups = topology.sitePairReprojectsSideGroups[pairIndex];
   const std::size_t a = pair[0], b = pair[1];
   const double maximumDistance = topology.maximumBridgeDistance;
 
@@ -98,27 +101,62 @@ std::optional<RunningEnergy> MC_Moves::intramolecularDoubleRebridgingMove(Random
   const double logChart = std::log(Bridging::chartVolumeElement(newAnchors1.a6, newAnchors1.a7, newAnchors1.a8)) -
                           std::log(Bridging::chartVolumeElement(oldAnchors1.a6, oldAnchors1.a7, oldAnchors1.a8));
 
-  // Trial chain: the segment a+4 ... b reversed slot by slot (the units are congruent, so the side
-  // atoms map in order), the two trimers re-bridged with their side groups carried along.
+  // Trial chain: the backbone of the segment a+4 ... b reversed slot by slot (the units are congruent,
+  // so the side atoms map in order), the two trimers re-bridged with their side groups carried along.
   std::vector<Atom> trialAtoms = oldAtoms;
   for (std::size_t k = a + 4; k <= b; ++k)
   {
     const Component::BridgingTopology::Unit& target = units[k];
     const Component::BridgingTopology::Unit& source = units[a + 4 + b - k];
     trialAtoms[target.backboneAtom].position = oldAtoms[source.backboneAtom].position;
-    for (std::size_t p = 0; p != target.sideAtoms.size(); ++p)
-    {
-      trialAtoms[target.sideAtoms[p]].position = oldAtoms[source.sideAtoms[p]].position;
-    }
   }
   Bridging::placeTrimer(trialAtoms, oldAtoms, units, a, oldAnchors1, oldTrimer1, newAnchors1, closure1->trimer);
   Bridging::placeTrimer(trialAtoms, oldAtoms, units, b, oldAnchors2, oldTrimer2, newAnchors2, closure2->trimer);
 
+  // The side groups of the reversed segment. The chain now runs through every unit in the opposite direction
+  // (its previous and next backbone neighbours are interchanged). Carrying the side atoms rigidly from the local
+  // frame (atom, previous, next) of the source unit to the frame of the target slot, as the trimer units are,
+  // keeps the handedness of every unit with respect to the chain direction; copying them in place inverts it
+  // (the two in-plane frame vectors are interchanged, which reverses the frame normal). The topology selects
+  // the map that takes the declared stereo pattern onto itself ('sitePairReprojectsSideGroups'). Either map is
+  // a proper rigid motion per unit whose inverse the reverse move applies (the frames are functions of the
+  // backbone positions, which it restores exactly), so no Jacobian enters.
+  for (std::size_t k = a + 4; k <= b; ++k)
+  {
+    const Component::BridgingTopology::Unit& target = units[k];
+    if (target.sideAtoms.empty()) continue;
+    const std::size_t s = a + 4 + b - k;
+    const Component::BridgingTopology::Unit& source = units[s];
+    if (!reprojectSideGroups)
+    {
+      for (std::size_t p = 0; p != target.sideAtoms.size(); ++p)
+      {
+        trialAtoms[target.sideAtoms[p]].position = oldAtoms[source.sideAtoms[p]].position;
+      }
+      continue;
+    }
+    const double3 oldCenter = position(s);
+    const double3x3 oldFrame = ConcertedRotation::localFrame(oldCenter, position(s - 1), position(s + 1));
+    const double3 newCenter = trialAtoms[target.backboneAtom].position;
+    const double3x3 newFrame = ConcertedRotation::localFrame(newCenter, trialAtoms[units[k - 1].backboneAtom].position,
+                                                             trialAtoms[units[k + 1].backboneAtom].position);
+    for (std::size_t p = 0; p != target.sideAtoms.size(); ++p)
+    {
+      trialAtoms[target.sideAtoms[p]].position = ConcertedRotation::transformRigidly(
+          oldCenter, oldFrame, newCenter, newFrame, oldAtoms[source.sideAtoms[p]].position);
+    }
+  }
+
   if (system.insideBlockedPockets(component, trialAtoms)) return std::nullopt;
 
-  // The atoms whose positions change are the two trimers with their side groups; the reversed segment
-  // is the same set of (type, position) pairs before and after, so it drops out of every non-bonded
-  // difference with the surroundings.
+  // a declared chiral centre is a hard constraint: the units of the segment and of the trimers keep their
+  // handedness, but a centre at an anchor, whose neighbour a3 or a5 moves while its side group stays, can invert
+  if (!component.intraMolecularPotentials.preservesChiralCenters(trialAtoms)) return std::nullopt;
+
+  // The atoms whose positions change are the two trimers with their side groups and, when re-projected, the
+  // side groups of the reversed segment; the backbone of the segment (and its side groups when copied in place)
+  // is the same set of (type, position) pairs before and after, so it drops out of every non-bonded difference
+  // with the surroundings.
   std::vector<Atom> movedOld{}, movedNew{};
   for (std::size_t site : {a, b})
   {
@@ -132,6 +170,14 @@ std::optional<RunningEnergy> MC_Moves::intramolecularDoubleRebridgingMove(Random
         movedOld.push_back(oldAtoms[atom]);
         movedNew.push_back(trialAtoms[atom]);
       }
+    }
+  }
+  for (std::size_t k = a + 4; reprojectSideGroups && k <= b; ++k)
+  {
+    for (std::size_t atom : units[k].sideAtoms)
+    {
+      movedOld.push_back(oldAtoms[atom]);
+      movedNew.push_back(trialAtoms[atom]);
     }
   }
 

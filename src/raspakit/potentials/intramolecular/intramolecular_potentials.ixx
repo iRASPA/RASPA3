@@ -181,6 +181,17 @@ struct IntraMolecularPotentials
                                         const std::span<const Atom> atoms) const;
 
   /**
+   * \brief Whether every declared chiral centre has its declared handedness in 'atoms'.
+   *
+   * The handedness is the sign of the signed volume of the three neighbours around the centre
+   * ('Component::readChiralCenters'). The declared centres are a hard constraint on the configuration
+   * space: CBMC growth enforces it while placing the beads, and the moves that change the internal
+   * geometry without CBMC (bead displacement and flip, crankshaft, concerted rotation, double bridging and
+   * rebridging) reject a trial configuration for which this returns false. True when no centre is declared.
+   */
+  [[nodiscard]] bool preservesChiralCenters(const std::span<const Atom> atoms) const;
+
+  /**
    * \brief Computes the internal interactions that are not sampled during CBMC / recoil-growth.
    *
    * During growing/retracing only the bond, bend, and torsion potentials are sampled, and the

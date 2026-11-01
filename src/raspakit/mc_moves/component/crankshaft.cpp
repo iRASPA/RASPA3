@@ -77,6 +77,9 @@ std::optional<RunningEnergy> MC_Moves::crankshaftMove(RandomNumber &random, Syst
   {
     return std::nullopt;
   }
+  // a declared chiral centre is a hard constraint: the rotation about the axis preserves the centres inside the
+  // rotated segment, but a centre at an axis atom (whose neighbours rotate about it) can invert
+  if (!component.intraMolecularPotentials.preservesChiralCenters(trialAtoms)) return std::nullopt;
 
   // Only the rotated segment interacts differently with its surroundings: the external-field, framework,
   // inter-molecular and Ewald differences are evaluated for those atoms alone (every other atom contributes

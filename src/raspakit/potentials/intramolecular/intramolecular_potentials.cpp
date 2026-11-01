@@ -268,6 +268,21 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalEnergies(cons
   return energies;
 }
 
+bool Potentials::IntraMolecularPotentials::preservesChiralCenters(const std::span<const Atom> atoms) const
+{
+  for (const ChiralCenter &center : chiralCenters)
+  {
+    const double3 p0 = atoms[center.ids[0]].position;
+    const double3 d1 = atoms[center.ids[1]].position - p0;
+    const double3 d2 = atoms[center.ids[2]].position - p0;
+    const double3 d3 = atoms[center.ids[3]].position - p0;
+    const double signedVolume = double3::dot(d1, double3::cross(d2, d3));
+    const double referenceSign = (center.type == ChiralCenter::Chirality::R_Chiral) ? 1.0 : -1.0;
+    if (!(referenceSign * signedVolume > 0.0)) return false;
+  }
+  return true;
+}
+
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalEnergiesNotSampledDuringGrowth(
     const std::span<const Atom> atoms) const
 {

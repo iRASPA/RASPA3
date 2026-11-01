@@ -180,6 +180,13 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
   {
     return std::nullopt;
   }
+  // a declared chiral centre is a hard constraint: the trimer units keep their handedness (their side groups are
+  // carried with a proper rotation), but a centre at an anchor, whose neighbour a3 or a5 moves, can invert
+  if (!component.intraMolecularPotentials.preservesChiralCenters(trialI) ||
+      !component.intraMolecularPotentials.preservesChiralCenters(trialJ))
+  {
+    return std::nullopt;
+  }
 
   // The atoms whose positions change up to a lattice vector: the two trimers with their side groups. Every
   // other atom keeps its position (the partner's head is shifted by a lattice vector) and, for the framework

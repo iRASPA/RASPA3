@@ -86,6 +86,8 @@ std::optional<RunningEnergy> MC_Moves::beadFlipMove(RandomNumber &random, System
   {
     return std::nullopt;
   }
+  // a declared chiral centre is a hard constraint: a flipped neighbour that inverts a centre is rejected
+  if (!component.intraMolecularPotentials.preservesChiralCenters(trialAtoms)) return std::nullopt;
 
   // Only the flipped bead interacts differently with its surroundings: the external-field, framework,
   // inter-molecular and Ewald differences are evaluated for that atom alone (every other atom contributes

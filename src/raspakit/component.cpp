@@ -1278,6 +1278,76 @@ const Component::BridgingTopology &Component::bridgingTopology() const
     }
     return true;
   };
+  // The side groups of the reversed segment: slot k takes the atoms of unit s = a+4+b-k with the chain running
+  // through it in the opposite direction. Carrying the side atoms rigidly from the local frame (s; s-1, s+1) to
+  // the frame (k; k-1, k+1) keeps the handedness of the unit with respect to the chain direction, copying them
+  // in place inverts it (the two in-plane frame vectors are interchanged). Which map takes the declared stereo
+  // pattern onto itself follows from the declared chiral centres: for a centre C whose atoms lie in slot k
+  // (its backbone atom, its side atoms, the two neighbouring backbone atoms), the re-projection gives it the
+  // handedness that its image phi(C) in unit s has in every valid configuration, which is known when phi(C) is
+  // (a permutation of) a declared centre; the in-place copy gives the opposite. A centre whose image is not
+  // declared decides nothing (the move checks the centres of every trial configuration anyway). A pair on which
+  // the centres disagree can never keep the pattern and is dropped.
+  auto declaredSign = [](const ChiralCenter &center)
+  { return center.type == ChiralCenter::Chirality::R_Chiral ? 1.0 : -1.0; };
+  auto sideGroupReprojection = [&](std::size_t a, std::size_t b) -> std::optional<bool>
+  {
+    std::optional<bool> decision{};
+    for (const ChiralCenter &center : intraMolecularPotentials.chiralCenters)
+    {
+      const std::size_t k = unitOfAtom[center.ids[0]];
+      if (k < a + 4 || k > b) continue;
+      const std::size_t s = a + 4 + b - k;
+      auto image = [&](std::size_t atom) -> std::optional<std::size_t>
+      {
+        if (atom == backboneAtom(k)) return backboneAtom(s);
+        if (atom == backboneAtom(k - 1)) return backboneAtom(s - 1);
+        if (atom == backboneAtom(k + 1)) return backboneAtom(s + 1);
+        const std::vector<std::size_t> &sideAtoms = result.units[k].sideAtoms;
+        const auto found = std::ranges::find(sideAtoms, atom);
+        if (found == sideAtoms.end()) return std::nullopt;
+        return result.units[s].sideAtoms[static_cast<std::size_t>(found - sideAtoms.begin())];
+      };
+      std::array<std::size_t, 4> mapped{};
+      bool inSlot = true;
+      for (std::size_t i = 0; i != 4 && inSlot; ++i)
+      {
+        const std::optional<std::size_t> atom = image(center.ids[i]);
+        inSlot = atom.has_value();
+        if (inSlot) mapped[i] = atom.value();
+      }
+      if (!inSlot) continue;
+
+      // the handedness of the image: the declared centre on the same four atoms, times the parity of the
+      // permutation between the two orderings (the signed volume is antisymmetric in its four atoms)
+      std::optional<double> imageSign{};
+      for (const ChiralCenter &declared : intraMolecularPotentials.chiralCenters)
+      {
+        std::array<std::size_t, 4> sortedMapped = mapped, sortedDeclared = declared.ids;
+        std::ranges::sort(sortedMapped);
+        std::ranges::sort(sortedDeclared);
+        if (sortedMapped != sortedDeclared) continue;
+        std::array<std::size_t, 4> permutation{};
+        for (std::size_t i = 0; i != 4; ++i)
+        {
+          permutation[i] = static_cast<std::size_t>(std::ranges::find(mapped, declared.ids[i]) - mapped.begin());
+        }
+        std::size_t inversions = 0;
+        for (std::size_t i = 0; i != 4; ++i)
+          for (std::size_t j = i + 1; j != 4; ++j)
+            if (permutation[i] > permutation[j]) ++inversions;
+        imageSign = declaredSign(declared) * (inversions % 2 == 0 ? 1.0 : -1.0);
+        break;
+      }
+      if (!imageSign.has_value()) continue;
+
+      const bool reproject = (imageSign.value() == declaredSign(center));
+      if (decision.has_value() && decision.value() != reproject) return std::nullopt;
+      decision = reproject;
+    }
+    return decision.value_or(true);
+  };
+
   for (std::size_t a : result.sites)
   {
     for (std::size_t b : result.sites)
@@ -1288,7 +1358,11 @@ const Component::BridgingTopology &Component::bridgingTopology() const
       {
         congruent = unitsCongruent(k, a + 4 + b - k);
       }
-      if (congruent) result.sitePairs.push_back({a, b});
+      if (!congruent) continue;
+      const std::optional<bool> reproject = sideGroupReprojection(a, b);
+      if (!reproject.has_value()) continue;
+      result.sitePairs.push_back({a, b});
+      result.sitePairReprojectsSideGroups.push_back(reproject.value());
     }
   }
 
