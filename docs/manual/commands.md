@@ -2612,6 +2612,10 @@ system. `"ChargeMethod"` is set per system.
 
 -   `"ComputePolarization" : boolean`\
     Whether to include polarization (induced-dipole) energy in the interactions.
+    With polarization the framework-molecule interaction is evaluated pairwise
+    (the electric field at the molecule atoms is needed), so framework
+    interpolation grids requested with `"UseInterpolationGrids"` are not
+    created.
 
 -   `"ChargeMethod" : string`\
     Sets the method used for the electrostatics:

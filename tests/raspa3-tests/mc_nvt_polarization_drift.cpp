@@ -3,6 +3,7 @@
 import std;
 
 import int3;
+import uint3;
 import double3;
 import double3x3;
 import randomnumbers;
@@ -27,7 +28,7 @@ import mc_moves_probabilities;
 // incrementally. After the run the running polarization energy must still agree with a full recomputation.
 
 static System makePolarizableCO2System(MCMoveProbabilities probabilities, double pressure,
-                                       std::size_t numberOfMolecules)
+                                       std::size_t numberOfMolecules, bool requestFrameworkGrids = false)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   forceField.computePolarization = true;
@@ -39,13 +40,22 @@ static System makePolarizableCO2System(MCMoveProbabilities probabilities, double
   Component c = Component::makeCO2(forceField, 0, true);
   c.mc_moves_probabilities = probabilities;
 
+  if (requestFrameworkGrids)
+  {
+    forceField.settings.gridPseudoAtomIndices = {static_cast<std::size_t>(c.atoms[0].type),
+                                                 static_cast<std::size_t>(c.atoms[1].type)};
+    forceField.settings.numberOfVDWGridPoints = uint3(32, 32, 32);
+    forceField.settings.numberOfCoulombGridPoints = uint3(32, 32, 32);
+    forceField.settings.numberOfGridTestPoints = 10;
+  }
+
   return System(forceField, std::nullopt, false, 300.0, pressure, 1.0, {f}, {c}, {}, {numberOfMolecules}, 5);
 }
 
 static void runAndCheckDrift(MCMoveProbabilities probabilities, double pressure = 1e4,
-                             std::size_t numberOfMolecules = 20)
+                             std::size_t numberOfMolecules = 20, bool requestFrameworkGrids = false)
 {
-  System system = makePolarizableCO2System(probabilities, pressure, numberOfMolecules);
+  System system = makePolarizableCO2System(probabilities, pressure, numberOfMolecules, requestFrameworkGrids);
 
   std::vector<System> systems{system};
   std::size_t numberOfProductionCycles{20};
@@ -68,6 +78,12 @@ static void runAndCheckDrift(MCMoveProbabilities probabilities, double pressure 
   {
     RunningEnergy recomputedEnergies = s.computeTotalEnergies();
     RunningEnergy drift = s.runningEnergies - recomputedEnergies;
+
+    // polarization is pairwise: requested framework grids are not created
+    for (const auto &grid : s.interpolationGrids)
+    {
+      EXPECT_FALSE(grid.has_value());
+    }
 
     EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
     EXPECT_NEAR(drift.frameworkMoleculeCharge, 0.0, 1e-6);
@@ -126,6 +142,19 @@ TEST(MC_NVT_POLARIZATION_DRIFT, reinsertion_cbmc)
   probabilities.setProbability(Move::Types::Translation, 1.0);
   probabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
   runAndCheckDrift(probabilities);
+}
+
+// With polarization the framework interaction is evaluated pairwise everywhere (the electric field needs the
+// framework atoms), so requested framework grids must not be used by the CBMC growth either: the running energies
+// of CBMC moves would otherwise carry the grid interpolation error against the pairwise total.
+TEST(MC_MUVT_POLARIZATION_DRIFT, swap_cbmc_with_requested_framework_grids)
+{
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  probabilities.setProbability(Move::Types::Rotation, 1.0);
+  probabilities.setProbability(Move::Types::SwapCBMC, 1.0);
+  probabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  runAndCheckDrift(probabilities, 1e5, 4, true);
 }
 
 TEST(MC_MUVT_POLARIZATION_DRIFT, swap_cfcmc)

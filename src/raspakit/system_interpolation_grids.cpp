@@ -182,6 +182,17 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
 
   if (framework.has_value())
   {
+    // With polarization the framework-molecule interaction is evaluated pairwise everywhere (the electric field
+    // at the molecule atoms needs the framework atoms). The CBMC growth must then see the same pairwise
+    // interaction, otherwise its running energies carry the grid interpolation error against the recomputed total.
+    if (forceField.computePolarization && !forceField.settings.gridPseudoAtomIndices.empty())
+    {
+      std::print(stream,
+                 "Framework interpolation grids are not used with 'ComputePolarization': the framework-molecule\n"
+                 "interaction is evaluated pairwise together with the electric field.\n\n");
+      return;
+    }
+
     uint3 numberOfCoulombGridPoints{};
     if (forceField.settings.numberOfCoulombGridPoints.has_value())
     {
