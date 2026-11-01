@@ -44,9 +44,6 @@ struct MoleculeGroupRetraceData
   [[nodiscard]] double rosenbluthWeight() const noexcept { return std::exp(logRosenbluthWeight); }
 };
 
-void appendAllReactionFractionalMoleculeExclusions(const System& system,
-                                                   std::vector<std::pair<std::size_t, std::size_t>>& exclude) noexcept;
-
 [[nodiscard]] std::size_t totalStoichiometry(std::span<const std::size_t> stoichiometry) noexcept;
 
 [[nodiscard]] bool selectRandomIntegerMolecules(RandomNumber& random, System& system,
@@ -70,6 +67,12 @@ void appendAllReactionFractionalMoleculeExclusions(const System& system,
 
 [[nodiscard]] double idealGasRosenbluthWeightProduct(const System& system,
                                                      std::span<const std::size_t> stoichiometry) noexcept;
+
+// Tail-correction change (molecule-molecule and framework-molecule) of replacing the molecules 'oldAtoms' by
+// 'newAtoms', pairwise over the present molecules with their scalings (and therefore with the dU/dlambda of the
+// fractional molecules they interact with).
+[[nodiscard]] RunningEnergy computeGroupSwapTailEnergyDifference(System& system, std::span<const Atom> newAtoms,
+                                                                 std::span<const Atom> oldAtoms) noexcept;
 
 void setReactionFractionalScaling(System& system, Reaction& reaction, double lambda) noexcept;
 

@@ -6,6 +6,7 @@
 import std;
 
 import double3;
+import atom;
 import int3;
 import forcefield;
 import framework;
@@ -487,6 +488,65 @@ TEST(MC_REACTION_DRIFT, reaction_parallel_move_filters_exact_reaction_type)
   EXPECT_NE(system.reactions.list[0].currentLambda, 0.5);
   EXPECT_DOUBLE_EQ(system.reactions.list[1].currentLambda, 0.5);
   checkEnergyDrift(system);
+}
+
+// A CBMC reaction next to a parallel Rx/CFC reaction: the fractional molecules of the latter are part of the
+// Hamiltonian (coupled with lambda / 1 - lambda) and the inserted and deleted whole molecules interact with them.
+// Those interactions must be in the acceptance rule and in the running energies of the CBMC reaction move.
+TEST(MC_REACTION_DRIFT, reaction_cbmc_sees_the_fractional_molecules_of_another_reaction)
+{
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+  systemProbabilities.setProbability(Move::Types::ReactionCBMC, 0.5);
+  systemProbabilities.setProbability(Move::Types::ReactionConventionalCFCMC, 0.5);
+  System system = makeTwoParallelReactionSystem(systemProbabilities);
+  system.reactions.list[0].reactionMove = Move::Types::ReactionCBMC;
+  system.reactions.list[1].reactionMove = Move::Types::ReactionConventionalCFCMC;
+  system.createReactionFractionalMolecules();
+
+  Reaction& fractionalReaction = system.reactions.list[1];
+  fractionalReaction.currentLambda = 0.5;
+  MC_Moves::ReactionCommon::setReactionFractionalScaling(system, fractionalReaction, fractionalReaction.currentLambda);
+  system.runningEnergies = system.computeTotalEnergies();
+
+  // the fractional molecules carry a non-zero interaction with the whole molecules
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  std::vector<Atom> fractionalAtoms{};
+  for (const Atom& atom : atoms)
+  {
+    if (atom.isFractional) fractionalAtoms.push_back(atom);
+  }
+  ASSERT_FALSE(fractionalAtoms.empty());
+
+  RandomNumber random(42);
+  std::size_t accepted = 0;
+  for (std::size_t attempt = 0; attempt < kReactionDriftSingleMoveAttempts; ++attempt)
+  {
+    if (const std::optional<RunningEnergy> delta = MC_Moves::reactionMove_CBMC(random, system))
+    {
+      system.runningEnergies += delta.value();
+      ++accepted;
+    }
+  }
+  EXPECT_GT(accepted, 0uz);
+  checkEnergyDrift(system);
+}
+
+// the same, interleaved with the lambda moves of the fractional reaction and the component moves in a full run
+TEST(MC_REACTION_DRIFT, reaction_cbmc_mixed_with_parallel_cfcmc_reaction)
+{
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+  systemProbabilities.setProbability(Move::Types::ReactionCBMC, 0.5);
+  systemProbabilities.setProbability(Move::Types::ReactionConventionalCFCMC, 0.5);
+  System system = makeTwoParallelReactionSystem(systemProbabilities);
+  system.reactions.list[0].reactionMove = Move::Types::ReactionCBMC;
+  system.reactions.list[1].reactionMove = Move::Types::ReactionConventionalCFCMC;
+  system.createReactionFractionalMolecules();
+  system.reactions.list[1].currentLambda = 0.5;
+  system.reactions.list[1].maximumLambdaChange = 0.05;
+  MC_Moves::ReactionCommon::setReactionFractionalScaling(system, system.reactions.list[1], 0.5);
+  system.runningEnergies = system.computeTotalEnergies();
+
+  runReactionDriftTest({std::move(system)});
 }
 
 void setupLambdaOnlyReaction(System& system)

@@ -100,29 +100,6 @@ void acceptChargedEwaldMove(System& system) noexcept
     System& system, std::span<const Atom> newAtoms, std::span<const Atom> oldAtoms, bool includeTailCorrections = true,
     bool includeEwaldCorrections = true, std::span<const Atom> excludeFromBackground = {}) noexcept;
 
-void appendAllReactionFractionalMoleculeExclusions(const System& system,
-                                                   std::vector<std::pair<std::size_t, std::size_t>>& exclude) noexcept
-{
-  for (const Reaction& reaction : system.reactions.list)
-  {
-    if (reaction.reactantFractionalMoleculeIds.size() != system.components.size())
-    {
-      continue;
-    }
-    for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
-    {
-      for (const std::size_t moleculeId : reaction.reactantFractionalMoleculeIds[componentId])
-      {
-        exclude.emplace_back(componentId, moleculeId);
-      }
-      for (const std::size_t moleculeId : reaction.productFractionalMoleculeIds[componentId])
-      {
-        exclude.emplace_back(componentId, moleculeId);
-      }
-    }
-  }
-}
-
 void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double lambda,
                                 std::uint8_t dUdlambdaGroupId) noexcept
 {

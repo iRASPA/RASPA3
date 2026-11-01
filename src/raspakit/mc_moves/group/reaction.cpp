@@ -60,23 +60,18 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
     return std::nullopt;
   }
 
-  std::vector<std::pair<std::size_t, std::size_t>> fractionalMoleculeExclusions;
-  ReactionCommon::appendAllReactionFractionalMoleculeExclusions(system, fractionalMoleculeExclusions);
-
-  std::vector<std::pair<std::size_t, std::size_t>> excludeMolecules = selectedMolecules;
-  excludeMolecules.insert(excludeMolecules.end(), fractionalMoleculeExclusions.begin(),
-                          fractionalMoleculeExclusions.end());
+  // The new molecules are grown in the system without the molecules they replace. Everything else, including the
+  // fractional molecules of CFCMC reactions (coupled with their lambda), is part of the Hamiltonian and stays in
+  // the background of the growth and of the retrace; the reverse move grows in the same environment.
   std::optional<ReactionCommon::MoleculeGroupGrowData> growData =
-      ReactionCommon::growMoleculeGroupInsertion(random, system, insertStoichiometry, excludeMolecules);
+      ReactionCommon::growMoleculeGroupInsertion(random, system, insertStoichiometry, selectedMolecules);
   if (!growData)
   {
     return std::nullopt;
   }
 
-  // the fractional molecules are also excluded from the retrace backgrounds so that the retrace
-  // matches the growth environment of the reverse move (which excludes them as well)
   std::optional<ReactionCommon::MoleculeGroupRetraceData> retraceData =
-      ReactionCommon::retraceMoleculeGroupDeletion(random, system, selectedMolecules, fractionalMoleculeExclusions);
+      ReactionCommon::retraceMoleculeGroupDeletion(random, system, selectedMolecules, {});
   if (!retraceData)
   {
     return std::nullopt;
@@ -100,13 +95,10 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
       system.simulationBox, system.components, newAtoms, oldAtoms, system.netCharge);
 
   // Tail corrections of the molecule-molecule and of the framework-molecule interactions: both change with the
-  // pseudo-atom composition of the adsorbate phase.
+  // pseudo-atom composition of the adsorbate phase. Pairwise with the scalings of the present molecules, so that
+  // the coupling of coexisting fractional molecules (and their dU/dlambda) is honoured.
   RunningEnergy tailEnergyDifference =
-      Interactions::computeInterMolecularTailEnergyDifferenceReaction(
-          system.forceField, system.simulationBox, system.totalNumberOfPseudoAtoms, reaction.reactantStoichiometry,
-          reaction.productStoichiometry, system.components, forward) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                 system.spanOfFrameworkAtoms(), newAtoms, oldAtoms);
+      ReactionCommon::computeGroupSwapTailEnergyDifference(system, newAtoms, oldAtoms);
 
   const ReactionCommon::ReactionMoveKind moveKind =
       forward ? ReactionCommon::ReactionMoveKind::ForwardInsert
