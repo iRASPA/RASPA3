@@ -13,6 +13,8 @@ import simulationbox;
 import running_energy;
 import mc_moves_move_types;
 import mc_moves_probabilities;
+import mc_moves_statistics;
+import move_statistics;
 import mc_moves_volume;
 import randomnumbers;
 import int3;
@@ -103,6 +105,112 @@ TEST(MC_NPT_DRIFT, isotropic_volume_change)
     EXPECT_NEAR(drift.ewald_fourier, 0.0, 1e-6);
     EXPECT_NEAR(drift.ewald_self, 0.0, 1e-6);
     EXPECT_NEAR(drift.ewald_exclusion, 0.0, 1e-6);
+    EXPECT_NEAR(drift.tail, 0.0, 1e-6);
+  }
+}
+
+// With "CutOff": "auto" every volume change moves the VDW cut-off with the box. The shifts and tail corrections
+// must follow: both on the trial box (the accepted running energy is the total at the new cut-off) and on the
+// restore after a rejected trial (the subsequent translation differences use the shifts of the old cut-off).
+TEST(MC_NPT_DRIFT, automatic_cutoff_follows_the_volume_moves)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, true, false);
+  forceField.cutOffFrameworkVDWAutomatic = true;
+  forceField.cutOffMoleculeVDWAutomatic = true;
+
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+
+  Component methane =
+      Component(forceField, "methane", 190.564, 45599200, 0.01142, {Atom({0, 0, 0}, 0.0, 1.0, 0, 6, 0, false, false)},
+                {}, {}, 5, 21, probabilities, std::nullopt, false);
+
+  // dense (liquid-like) state: the box stays small so the automatic cut-off is short and the shifts are sizeable
+  SimulationBox box = SimulationBox(16.0, 16.0, 16.0);
+
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+  systemProbabilities.setProbability(Move::Types::VolumeChange, 1.0);
+
+  System system = System(forceField, box, false, 120.0, 1e8, 1.0, {}, {methane}, {}, {60}, 5, systemProbabilities);
+  system.mc_moves_statistics.setMaxChange(Move::Types::VolumeChange, 0.5);
+
+  // the shifts and tail corrections of every pair are those of the current cut-off
+  auto expectCutOffDependentParametersUpToDate = [](const System& s)
+  {
+    ForceField reference = s.forceField;
+    reference.preComputeCutOffDependentParameters();
+    for (std::size_t pair = 0; pair < reference.data.size(); ++pair)
+    {
+      EXPECT_DOUBLE_EQ(s.forceField.data[pair].shift, reference.data[pair].shift);
+      EXPECT_DOUBLE_EQ(s.forceField.data[pair].tailCorrectionEnergy, reference.data[pair].tailCorrectionEnergy);
+      EXPECT_DOUBLE_EQ(s.forceField.data[pair].tailCorrectionPressure, reference.data[pair].tailCorrectionPressure);
+    }
+  };
+
+  // Single volume trials: after every trial, accepted or rejected, the shifts and tail corrections must belong
+  // to the cut-off the system was left with. (In a full run an accepted volume move resets the running energy to
+  // the exact total, so stale shifts left by a rejected trial would only show up in the energy drift when the
+  // last trial happened to be rejected; here they are checked trial by trial.)
+  {
+    System single = system;
+    single.forceField.initializeAutomaticCutOff(single.simulationBox);
+    single.runningEnergies = single.computeTotalEnergies();
+    expectCutOffDependentParametersUpToDate(single);
+    const double shiftBefore = single.forceField.data[6 * forceField.numberOfPseudoAtoms + 6].shift;
+
+    RandomNumber random(7);
+    std::size_t accepted = 0, rejected = 0;
+    for (std::size_t trial = 0; trial < 64; ++trial)
+    {
+      const double cutOffBefore = single.forceField.cutOffMoleculeVDW;
+      if (const std::optional<RunningEnergy> energy = MC_Moves::volumeMove(random, single))
+      {
+        ++accepted;
+        single.runningEnergies += energy.value();
+        EXPECT_NE(single.forceField.cutOffMoleculeVDW, cutOffBefore);
+      }
+      else
+      {
+        ++rejected;
+        EXPECT_DOUBLE_EQ(single.forceField.cutOffMoleculeVDW, cutOffBefore);
+      }
+      expectCutOffDependentParametersUpToDate(single);
+
+      const RunningEnergy drift = single.runningEnergies - single.computeTotalEnergies();
+      EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
+    }
+    EXPECT_GT(accepted, 0uz);
+    EXPECT_GT(rejected, 0uz);
+    // the shift is sizeable and has actually changed at this density
+    EXPECT_NE(single.forceField.data[6 * forceField.numberOfPseudoAtoms + 6].shift, shiftBefore);
+    EXPECT_GT(std::abs(shiftBefore), 0.01);
+  }
+
+  // Full run with translations in between the volume moves: the cut-off follows the box and nothing drifts.
+  std::vector<System> systems{system};
+  MonteCarlo mc = MonteCarlo({200, 0, 20, 20, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
+  mc.run();
+
+  for (System& s : mc.systems)
+  {
+    // both accepted and rejected volume trials occurred
+    const MoveStatistics<double>& volumeStatistics =
+        std::get<MoveStatistics<double>>(s.mc_moves_statistics[Move::Types::VolumeChange]);
+    EXPECT_GT(volumeStatistics.totalAccepted, 0.0);
+    EXPECT_GT(volumeStatistics.totalCounts, volumeStatistics.totalAccepted);
+
+    const double expectedCutOff =
+        0.5 * std::min({s.simulationBox.perpendicularWidths().x, s.simulationBox.perpendicularWidths().y,
+                        s.simulationBox.perpendicularWidths().z}) -
+        std::numeric_limits<double>::epsilon();
+    EXPECT_DOUBLE_EQ(s.forceField.cutOffMoleculeVDW, expectedCutOff);
+    EXPECT_NE(s.forceField.cutOffMoleculeVDW, 12.0);
+    expectCutOffDependentParametersUpToDate(s);
+
+    RunningEnergy recomputedEnergies = s.computeTotalEnergies();
+    RunningEnergy drift = s.runningEnergies - recomputedEnergies;
+    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeVDW, 0.0, 1e-6);
     EXPECT_NEAR(drift.tail, 0.0, 1e-6);
   }
 }

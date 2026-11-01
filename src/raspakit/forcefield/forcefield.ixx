@@ -306,6 +306,16 @@ export struct ForceField
   void preComputeTailCorrection();
 
   /**
+   * \brief Recomputes everything that depends on the VDW cut-offs.
+   *
+   * The derived constants (switching and shifted-force coefficients), the potential shifts, and the tail
+   * corrections are all evaluated at 'cutOffFrameworkVDW' / 'cutOffMoleculeVDW'. Called whenever those change
+   * after construction: by 'initializeAutomaticCutOff' for an automatic cut-off, and after a volume move
+   * restores the cut-offs of the old box.
+   */
+  void preComputeCutOffDependentParameters();
+
+  /**
    * \brief Scales the interactions of a set of pseudo-atom types (solute tempering, REST2).
    *
    * Pair interactions between two solute types are scaled by lambda, between a solute type and
@@ -395,6 +405,13 @@ export struct ForceField
    */
   void initializeEwaldParameters(const SimulationBox &simulationBox);
 
+  /**
+   * \brief Sets the automatic cut-offs to half the smallest perpendicular width of the box.
+   *
+   * Only the cut-offs flagged automatic ("auto" in the force-field file) are replaced. A changed VDW cut-off
+   * re-evaluates the potential shifts, tail corrections and switching constants at the new cut-off; an automatic
+   * Coulomb cut-off also re-derives the Ewald parameters.
+   */
   void initializeAutomaticCutOff(const SimulationBox &simulationBox);
 
   /**

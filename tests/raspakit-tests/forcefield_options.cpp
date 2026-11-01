@@ -5,6 +5,7 @@
 import std;
 
 import forcefield;
+import simulationbox;
 
 // Force-field JSON options for the CBMC internal samplers (ring-closure Monte-Carlo tuning knobs).
 
@@ -82,4 +83,42 @@ TEST(forcefield_options, equality_compares_the_pseudo_atoms)
   ForceField c = a;
   c.pseudoAtoms[0].name = "CH3";
   EXPECT_FALSE(a == c);
+}
+
+// "CutOff": "auto" sets the cut-off to half the box at run time; the potential shifts and the tail corrections
+// (and the switching constants) must follow it instead of staying at the value of the force-field file.
+TEST(forcefield_options, automatic_cutoff_recomputes_shifts_and_tail_corrections)
+{
+  const SimulationBox box(20.0, 20.0, 20.0);
+  const double automaticCutOff = 10.0 - std::numeric_limits<double>::epsilon();
+
+  ForceField automatic({{"CH4", false, 16.04, 0.0, 0.0, 6, false}, {"O", true, 16.0, 0.0, 0.0, 8, false}},
+                       {{158.5, 3.72}, {53.0, 3.3}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0,
+                       true, true, false);
+  automatic.cutOffFrameworkVDWAutomatic = true;
+  automatic.cutOffMoleculeVDWAutomatic = true;
+  const double shiftAt12 = automatic.data[0].shift;
+  const double tailAt12 = automatic.data[0].tailCorrectionEnergy;
+
+  automatic.initializeAutomaticCutOff(box);
+  EXPECT_DOUBLE_EQ(automatic.cutOffMoleculeVDW, automaticCutOff);
+  EXPECT_DOUBLE_EQ(automatic.cutOffFrameworkVDW, automaticCutOff);
+
+  const ForceField reference({{"CH4", false, 16.04, 0.0, 0.0, 6, false}, {"O", true, 16.0, 0.0, 0.0, 8, false}},
+                             {{158.5, 3.72}, {53.0, 3.3}}, ForceField::MixingRule::Lorentz_Berthelot,
+                             automaticCutOff, automaticCutOff, 12.0, true, true, false);
+  for (std::size_t pair = 0; pair < 4; ++pair)
+  {
+    EXPECT_DOUBLE_EQ(automatic.data[pair].shift, reference.data[pair].shift);
+    EXPECT_DOUBLE_EQ(automatic.data[pair].tailCorrectionEnergy, reference.data[pair].tailCorrectionEnergy);
+    EXPECT_DOUBLE_EQ(automatic.data[pair].tailCorrectionPressure, reference.data[pair].tailCorrectionPressure);
+  }
+  EXPECT_NE(automatic.data[0].shift, shiftAt12);
+  EXPECT_NE(automatic.data[0].tailCorrectionEnergy, tailAt12);
+
+  // explicit cut-offs are left alone
+  ForceField explicitCutOff = reference;
+  explicitCutOff.initializeAutomaticCutOff(SimulationBox(30.0, 30.0, 30.0));
+  EXPECT_DOUBLE_EQ(explicitCutOff.cutOffMoleculeVDW, automaticCutOff);
+  EXPECT_DOUBLE_EQ(explicitCutOff.data[0].shift, reference.data[0].shift);
 }

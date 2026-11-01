@@ -454,3 +454,60 @@ TEST(BAROSTAT_VIRIAL, propagate_cell_refreshes_fixed_framework_ewald)
     EXPECT_NEAR(afterStep.sum[k].imag(), system.fixedFrameworkStoredEik.sum[k].imag(), 1e-10);
   }
 }
+
+// With "CutOff": "auto" the barostat moves the VDW cut-off with the cell at every step; the potential shifts and
+// the tail corrections must be those of the new cut-off, not of the cut-off the force field was set up with.
+TEST(BAROSTAT_VIRIAL, propagate_cell_follows_the_automatic_cutoff)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, true, false);
+  forceField.useCharge = false;
+  forceField.omitEwaldFourier = true;
+  forceField.cutOffCoulomb = 8.0;
+  forceField.cutOffFrameworkVDWAutomatic = true;
+  forceField.cutOffMoleculeVDWAutomatic = true;
+
+  Component methane =
+      Component(forceField, "methane", 190.564, 45599200, 0.01142, {Atom({0, 0, 0}, 0.0, 1.0, 0, 6, 0, false, false)},
+                {}, {}, 5, 21, {}, std::nullopt, false);
+  const SimulationBox box(20.0, 20.0, 20.0);
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, {}, {methane}, {}, {30}, 5);
+
+  const double setupCutOff = system.forceField.cutOffMoleculeVDW;
+  EXPECT_DOUBLE_EQ(setupCutOff, 10.0 - std::numeric_limits<double>::epsilon());
+  const double setupShift = system.forceField(6, 6).shift;
+  const double setupTail = system.forceField(6, 6).tailCorrectionEnergy;
+
+  system.timeStep = 1.0e-3;
+  system.thermobarostat =
+      Thermobarostat(MolecularDynamicsEnsemble::NPT, CellMinimizationType::Isotropic, MonoclinicAngleType::Beta, 300.0,
+                     system.pressure, system.timeStep, system.translationalDegreesOfFreedom, 3, 1, 1.0);
+  RandomNumber random(4);
+  system.thermobarostat->initialize(random);
+  system.thermobarostat->logVolumeVelocity = 0.4;
+  system.precomputeTotalGradients();
+  system.precomputeTotalRigidEnergy();
+  system.runningEnergies.translationalKineticEnergy = 0.0;
+  system.runningEnergies.thermobarostatEnergy = system.thermobarostat->energy(system.simulationBox.volume);
+
+  molecularDynamicsStep(system);
+
+  // the cell changed and the cut-off followed it
+  ASSERT_NE(system.simulationBox.lengthA, 20.0);
+  const double3 widths = system.simulationBox.perpendicularWidths();
+  const double expectedCutOff = 0.5 * std::min({widths.x, widths.y, widths.z}) - std::numeric_limits<double>::epsilon();
+  EXPECT_DOUBLE_EQ(system.forceField.cutOffMoleculeVDW, expectedCutOff);
+  EXPECT_DOUBLE_EQ(system.forceField.cutOffFrameworkVDW, expectedCutOff);
+  EXPECT_NE(system.forceField.cutOffMoleculeVDW, setupCutOff);
+
+  // the shifts and tail corrections of every pair belong to the new cut-off
+  ForceField reference = system.forceField;
+  reference.preComputeCutOffDependentParameters();
+  for (std::size_t pair = 0; pair < reference.data.size(); ++pair)
+  {
+    EXPECT_DOUBLE_EQ(system.forceField.data[pair].shift, reference.data[pair].shift);
+    EXPECT_DOUBLE_EQ(system.forceField.data[pair].tailCorrectionEnergy, reference.data[pair].tailCorrectionEnergy);
+    EXPECT_DOUBLE_EQ(system.forceField.data[pair].tailCorrectionPressure, reference.data[pair].tailCorrectionPressure);
+  }
+  EXPECT_NE(system.forceField(6, 6).shift, setupShift);
+  EXPECT_NE(system.forceField(6, 6).tailCorrectionEnergy, setupTail);
+}

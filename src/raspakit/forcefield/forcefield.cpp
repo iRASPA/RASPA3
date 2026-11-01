@@ -1166,6 +1166,13 @@ void ForceField::preComputeTailCorrection()
   }
 }
 
+void ForceField::preComputeCutOffDependentParameters()
+{
+  preComputeDerivedParameters();
+  preComputePotentialShift();
+  preComputeTailCorrection();
+}
+
 void ForceField::scaleSoluteInteractions(const std::vector<bool> &soluteType, double lambda)
 {
   if (soluteType.size() != numberOfPseudoAtoms)
@@ -1593,6 +1600,9 @@ void ForceField::initializeAutomaticCutOff(const SimulationBox& simulationBox)
 
   double smallest_perpendicular_width = std::min({perpendicularWidths.x, perpendicularWidths.y, perpendicularWidths.z});
 
+  const double oldCutOffFrameworkVDW = cutOffFrameworkVDW;
+  const double oldCutOffMoleculeVDW = cutOffMoleculeVDW;
+
   if (cutOffFrameworkVDWAutomatic)
   {
     cutOffFrameworkVDW = 0.5 * smallest_perpendicular_width - std::numeric_limits<double>::epsilon();
@@ -1601,6 +1611,12 @@ void ForceField::initializeAutomaticCutOff(const SimulationBox& simulationBox)
   if (cutOffMoleculeVDWAutomatic)
   {
     cutOffMoleculeVDW = 0.5 * smallest_perpendicular_width - std::numeric_limits<double>::epsilon();
+  }
+
+  // the shifts, tail corrections and switching constants were evaluated at the previous cut-offs
+  if (cutOffFrameworkVDW != oldCutOffFrameworkVDW || cutOffMoleculeVDW != oldCutOffMoleculeVDW)
+  {
+    preComputeCutOffDependentParameters();
   }
 
   if (cutOffCoulombAutomatic && automaticEwald)

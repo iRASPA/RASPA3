@@ -80,8 +80,12 @@ void MC_Moves::restoreVolumeState(System& system, const SavedVolumeState& saved)
     std::copy(saved.electricField.begin(), saved.electricField.end(), system.spanOfMoleculeElectricField().begin());
   }
 
+  const bool vdwCutOffChanged = system.forceField.cutOffFrameworkVDW != saved.cutOffFrameworkVDW ||
+                                system.forceField.cutOffMoleculeVDW != saved.cutOffMoleculeVDW;
   system.forceField.cutOffFrameworkVDW = saved.cutOffFrameworkVDW;
   system.forceField.cutOffMoleculeVDW = saved.cutOffMoleculeVDW;
+  // the shifts and tail corrections follow an automatic VDW cut-off (see ForceField::initializeAutomaticCutOff)
+  if (vdwCutOffChanged) system.forceField.preComputeCutOffDependentParameters();
   system.forceField.cutOffCoulomb = saved.cutOffCoulomb;
   system.forceField.EwaldAlpha = saved.ewaldAlpha;
   system.forceField.numberOfWaveVectors = saved.numberOfWaveVectors;
