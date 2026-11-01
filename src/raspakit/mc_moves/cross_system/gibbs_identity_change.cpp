@@ -31,7 +31,7 @@ struct BoxIdentityChangeData
   RunningEnergy energyFourierDifference;
   RunningEnergy tailEnergyDifference;
   RunningEnergy polarizationDifference;
-  double correctionFactorEwald{1.0};
+  double logCorrectionFactorEwald{0.0};
   double logRosenbluthNew{0.0};
   double logRosenbluthOld{0.0};
   std::size_t oldComponent{};
@@ -157,8 +157,10 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
     }
   }
 
-  data.correctionFactorEwald = std::exp(
-      -system.beta * (data.energyFourierDifference.potentialEnergy() + data.polarizationDifference.potentialEnergy()));
+  // kept in log space: the Boltzmann factor of the Fourier/self terms of charged molecules overflows or
+  // underflows on its own
+  data.logCorrectionFactorEwald =
+      -system.beta * (data.energyFourierDifference.potentialEnergy() + data.polarizationDifference.potentialEnergy());
   // Rosenbluth weights are carried as exact logarithms: the raw weights of long chains underflow to zero.
   data.logRosenbluthNew =
       data.growData.logRosenbluthWeight - system.beta * data.tailEnergyDifference.potentialEnergy();
@@ -276,7 +278,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsIdentityCh
   }
 
   const double acceptanceProbability =
-      std::exp(std::log(boxIData.correctionFactorEwald) + std::log(boxIIData.correctionFactorEwald) +
+      std::exp(boxIData.logCorrectionFactorEwald + boxIIData.logCorrectionFactorEwald +
                boxIData.logRosenbluthNew + boxIIData.logRosenbluthNew - boxIData.logRosenbluthOld -
                boxIIData.logRosenbluthOld +
                std::log(numberOfMoleculesA_boxI * numberOfMoleculesB_boxII /

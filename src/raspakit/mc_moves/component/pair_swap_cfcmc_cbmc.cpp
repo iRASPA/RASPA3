@@ -470,23 +470,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     componentA.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::InsertionTail] += (time_end - time_begin);
 
-    const double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.potentialEnergy() +
-                                                                  tailEnergyDifferenceGrow.potentialEnergy() +
-                                                                  polarizationDifference.potentialEnergy()));
+    // Ewald, tail and polarization energy differences in log space (the Boltzmann factor of the Fourier/self
+    // terms of charged molecules overflows or underflows on its own)
+    const double logCorrectionFactorEwald =
+        -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifferenceGrow.potentialEnergy() +
+                        polarizationDifference.potentialEnergy());
 
     // Calculate acceptance probability. One factor beta*f*V per molecule of the pair: the box volume
     // V for A and the pair-sphere volume V_s (with the radial bias) for B. The reverse deletion
     // selects the pair to fractionalize uniformly: A among the N_A+1 and B among the N_B+1 integer
     // molecules.
-    const double preFactor = correctionFactorEwald *
-                             (system.beta * fugacityA * system.simulationBox.volume / static_cast<double>(1 + oldN_A)) *
+    const double preFactor = (system.beta * fugacityA * system.simulationBox.volume / static_cast<double>(1 + oldN_A)) *
                              (system.beta * fugacityB * sphereVolume * distanceBias /
                               static_cast<double>(1 + oldN_B));
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
     const double physicalPacc =
-        std::exp(std::log(preFactor) + growDataA->logRosenbluthWeight - std::log(idealGasA) +
-                 growDataB->logRosenbluthWeight - std::log(idealGasB) -
+        std::exp(logCorrectionFactorEwald + std::log(preFactor) + growDataA->logRosenbluthWeight -
+                 std::log(idealGasA) + growDataB->logRosenbluthWeight - std::log(idealGasB) -
                  system.beta * energyDifference.potentialEnergy());
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
@@ -848,22 +849,22 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
       }
     }
 
-    const double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.potentialEnergy() +
-                                                                  tailEnergyDifferenceRetrace.potentialEnergy() +
-                                                                  polarizationDifference.potentialEnergy()));
+    // Ewald, tail and polarization energy differences in log space (see the insertion branch)
+    const double logCorrectionFactorEwald =
+        -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifferenceRetrace.potentialEnergy() +
+                        polarizationDifference.potentialEnergy());
 
     // Calculate acceptance probability: exact reciprocal of the insertion prefactor, with the
     // reverse distance bias evaluated at the removed pair's separation.
-    const double preFactor = correctionFactorEwald *
-                             (static_cast<double>(oldN_A) / (system.beta * fugacityA * system.simulationBox.volume)) *
+    const double preFactor = (static_cast<double>(oldN_A) / (system.beta * fugacityA * system.simulationBox.volume)) *
                              (static_cast<double>(oldN_B) * distanceBias /
                               (system.beta * fugacityB * sphereVolume));
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero,
     // which would turn these quotients into +inf).
     const double physicalPacc =
-        std::exp(std::log(preFactor) + std::log(idealGasA) - retraceDataA.logRosenbluthWeight +
-                 std::log(idealGasB) - retraceDataB.logRosenbluthWeight -
+        std::exp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasA) -
+                 retraceDataA.logRosenbluthWeight + std::log(idealGasB) - retraceDataB.logRosenbluthWeight -
                  system.beta * energyDifference.potentialEnergy());
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 

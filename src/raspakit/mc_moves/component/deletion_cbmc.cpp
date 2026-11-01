@@ -122,20 +122,20 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
       }
     }
 
-    // Calculate the correction factor for Ewald summation
-    double correctionFactorEwald =
-        std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
-                                 polarizationDifference.potentialEnergy()));
+    // Ewald, tail and polarization energy differences in log space (see insertion)
+    double logCorrectionFactorEwald =
+        -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
+                        polarizationDifference.potentialEnergy());
 
     // Compute acceptance probability factors
     double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
     double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
-    double preFactor = correctionFactorEwald * double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
+    double preFactor = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                        (system.beta * fugacity * system.simulationBox.volume);
     // Rosenbluth weight through its exact logarithm: the raw weight of a long chain underflows to zero,
     // which would turn this quotient into +inf and unconditionally accept every deletion.
-    double Pacc =
-        std::exp(std::log(preFactor) + std::log(idealGasRosenbluthWeight) - retraceData.logRosenbluthWeight);
+    double Pacc = std::exp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasRosenbluthWeight) -
+                           retraceData.logRosenbluthWeight);
     std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
     // Check if the new macrostate is within the allowed TMMC range

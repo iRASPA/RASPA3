@@ -307,9 +307,11 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
     }
   }
 
-  const double correctionFactorEwald =
-      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
-                               polarizationDifference.potentialEnergy()));
+  // Ewald, tail and polarization energy differences in log space (the Boltzmann factor of the Fourier/self
+  // terms of charged molecules overflows or underflows on its own)
+  const double logCorrectionFactorEwald =
+      -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
+                      polarizationDifference.potentialEnergy());
 
   // The reverse deletion selects the central molecule uniformly among all integer molecules of the
   // central component in the inserted state, which includes any satellites of the same component.
@@ -325,7 +327,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
   const double N_central = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
 
   // Accumulated in log space: the raw Rosenbluth weights of long chains underflow to zero.
-  double logPacc = std::log(correctionFactorEwald) +
+  double logPacc = logCorrectionFactorEwald +
                    std::log(system.beta * fugacityCentral * system.simulationBox.volume /
                             (N_central + double(insertedCentralComponentMolecules))) +
                    growDataCentral->logRosenbluthWeight - std::log(idealGasCentral);
@@ -689,9 +691,11 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
     }
   }
 
-  const double correctionFactorEwald =
-      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
-                               polarizationDifference.potentialEnergy()));
+  // Ewald, tail and polarization energy differences in log space (the Boltzmann factor of the Fourier/self
+  // terms of charged molecules overflows or underflows on its own)
+  const double logCorrectionFactorEwald =
+      -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
+                      polarizationDifference.potentialEnergy());
 
   const double fugacityCentral =
       centralComponent.molFraction * centralComponent.fugacityCoefficient.value_or(1.0) * system.pressure;
@@ -700,7 +704,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
 
   // Accumulated in log space: the raw Rosenbluth weights of long chains underflow to zero, which
   // would turn these quotients into +inf.
-  double logPacc = std::log(correctionFactorEwald) +
+  double logPacc = logCorrectionFactorEwald +
                    std::log(N_central / (system.beta * fugacityCentral * system.simulationBox.volume)) +
                    std::log(idealGasCentral) - retraceData[0].logRosenbluthWeight;
 

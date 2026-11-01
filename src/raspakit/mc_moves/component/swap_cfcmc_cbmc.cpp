@@ -326,21 +326,21 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
           system.forceField, grownElectricField, {}, growData->atoms, {});
     }
 
-    // Calculate correction factor for Ewald summation
-    double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.potentialEnergy() +
-                                                            tailEnergyDifferenceGrow.potentialEnergy() +
-                                                            polarizationDifference.potentialEnergy()));
+    // Ewald, tail and polarization energy differences in log space (the Boltzmann factor of the Fourier/self
+    // terms of charged molecules overflows or underflows on its own)
+    double logCorrectionFactorEwald =
+        -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifferenceGrow.potentialEnergy() +
+                        polarizationDifference.potentialEnergy());
 
     // Compute acceptance probability
     double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
     double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
-    double preFactor = correctionFactorEwald * system.beta * fugacity * system.simulationBox.volume /
+    double preFactor = system.beta * fugacity * system.simulationBox.volume /
                        static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero).
-    double physicalPacc =
-        std::exp(std::log(preFactor) + growData->logRosenbluthWeight - std::log(idealGasRosenbluthWeight) -
-                 system.beta * energyDifference.potentialEnergy());
+    double physicalPacc = std::exp(logCorrectionFactorEwald + std::log(preFactor) + growData->logRosenbluthWeight -
+                                   std::log(idealGasRosenbluthWeight) - system.beta * energyDifference.potentialEnergy());
     double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     // Retrieve bias from transition matrix
@@ -484,9 +484,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       component.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
       system.mc_moves_cputime[move][Move::Timing::DeletionTail] += (time_end - time_begin);
 
-      // Calculate correction factor for Ewald summation
-      double correctionFactorEwald = std::exp(
-          -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifferenceRetrace.potentialEnergy()));
+      // Ewald and tail energy differences in log space (see the insertion branch)
+      double logCorrectionFactorEwald =
+          -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifferenceRetrace.potentialEnergy());
 
       // Deactivate scaling for the fractional molecule; it remains the (parked) fractional slot
       // Before: lambda and fractional computed fully
@@ -673,14 +673,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       // Compute acceptance probability
       double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
       double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
-      double preFactor = correctionFactorEwald *
-                         double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
+      double preFactor = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                          (system.beta * component.molFraction * fugacity * system.simulationBox.volume);
       double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
       // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero,
       // which would turn this quotient into +inf).
       double physicalPacc = std::exp(
-          std::log(preFactor) + std::log(idealGasRosenbluthWeight) - retraceData.logRosenbluthWeight -
+          logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasRosenbluthWeight) -
+          retraceData.logRosenbluthWeight -
           system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
       double samplingPacc = physicalPacc * std::exp(biasTerm);
 

@@ -315,12 +315,14 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
   // CBMC weights do not contain (Fourier-space Ewald and polarization).  The interaction between the
   // two exchanged molecules needs no separate term: the nested background puts it inside the second
   // grow and the second retrace.
-  const double correctionFactor =
-      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
+  // Kept in log space: the Boltzmann factor of the Fourier/self terms of charged molecules overflows or
+  // underflows on its own.
+  const double logCorrectionFactor =
+      -system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy());
 
   // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
   const double acceptanceProbability =
-      std::exp(std::log(correctionFactor) + exchangeB.grown->logRosenbluthWeight +
+      std::exp(logCorrectionFactor + exchangeB.grown->logRosenbluthWeight +
                exchangeA.grown->logRosenbluthWeight - exchangeA.retraced.logRosenbluthWeight -
                exchangeB.retraced.logRosenbluthWeight);
 

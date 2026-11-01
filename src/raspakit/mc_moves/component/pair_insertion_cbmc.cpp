@@ -217,9 +217,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
     }
   }
 
-  const double correctionFactorEwald =
-      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
-                               polarizationDifference.potentialEnergy()));
+  // Ewald, tail and polarization energy differences in log space (the Boltzmann factor of the Fourier/self
+  // terms of charged molecules overflows or underflows on its own)
+  const double logCorrectionFactorEwald =
+      -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
+                      polarizationDifference.potentialEnergy());
 
   // Molecule B is proposed with r uniform in [0, R_max] instead of uniform in the sphere volume,
   // giving the radial bias 3 r^2 / R_max^2 relative to the sphere-volume factor V_s.
@@ -239,13 +241,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   // One factor beta*f*V per molecule: the box volume V for A (placed anywhere) and the sphere
   // volume V_s for B (confined to the pair sphere); the reverse deletion selects A among N_A+1
   // integer molecules and B among the k_new in-range partners.
-  const double preFactor = correctionFactorEwald *
-                           (system.beta * fugacityA * system.simulationBox.volume / (N_A + 1.0)) *
+  const double preFactor = (system.beta * fugacityA * system.simulationBox.volume / (N_A + 1.0)) *
                            (system.beta * fugacityB * sphereVolume * distanceBias / k_new);
 
   // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
-  const double Pacc = std::exp(std::log(preFactor) + growDataA->logRosenbluthWeight - std::log(idealGasA) +
-                               growDataB->logRosenbluthWeight - std::log(idealGasB));
+  const double Pacc = std::exp(logCorrectionFactorEwald + std::log(preFactor) + growDataA->logRosenbluthWeight -
+                               std::log(idealGasA) + growDataB->logRosenbluthWeight - std::log(idealGasB));
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
@@ -459,9 +460,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
     }
   }
 
-  const double correctionFactorEwald =
-      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
-                               polarizationDifference.potentialEnergy()));
+  // Ewald, tail and polarization energy differences in log space (the Boltzmann factor of the Fourier/self
+  // terms of charged molecules overflows or underflows on its own)
+  const double logCorrectionFactorEwald =
+      -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
+                      polarizationDifference.potentialEnergy());
 
   // Molecule B is proposed uniformly in the sphere volume (r = R_max * cbrt(u)), so there is no
   // radial bias.
@@ -480,13 +483,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   // One factor beta*f*V per molecule: the box volume V for A (placed anywhere) and the sphere
   // volume V_s for B (confined to the pair sphere); the reverse deletion selects A among N_A+1
   // integer molecules and B among the k_new in-range partners.
-  const double preFactor = correctionFactorEwald *
-                           (system.beta * fugacityA * system.simulationBox.volume / (N_A + 1.0)) *
+  const double preFactor = (system.beta * fugacityA * system.simulationBox.volume / (N_A + 1.0)) *
                            (system.beta * fugacityB * sphereVolume / k_new);
 
   // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
-  const double Pacc = std::exp(std::log(preFactor) + growDataA->logRosenbluthWeight - std::log(idealGasA) +
-                               growDataB->logRosenbluthWeight - std::log(idealGasB));
+  const double Pacc = std::exp(logCorrectionFactorEwald + std::log(preFactor) + growDataA->logRosenbluthWeight -
+                               std::log(idealGasA) + growDataB->logRosenbluthWeight - std::log(idealGasB));
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 

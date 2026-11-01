@@ -952,8 +952,10 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     double acceptanceProbability;
     if (useCBMC)
     {
-      const double correctionFactor =
-          std::exp(-system.beta * (fourierDifference.potentialEnergy() + tailDifference.potentialEnergy()));
+      // Ewald and tail energy differences in log space (the Boltzmann factor overflows or underflows on its
+      // own for charged molecules)
+      const double logCorrectionFactor =
+          -system.beta * (fourierDifference.potentialEnergy() + tailDifference.potentialEnergy());
       // grow and retrace referenced to the ideal-gas Rosenbluth weights, so that the full ideal-gas
       // partition functions q_i can be used in the equilibrium term
       const std::vector<std::size_t>& oldStoichiometry =
@@ -963,7 +965,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
       // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
       acceptanceProbability =
           std::exp(growData->logRosenbluthWeight - std::log(idealGasNew) - retraceData->logRosenbluthWeight +
-                   std::log(idealGasOld) + std::log(correctionFactor) + equilibriumTerm + biasNew - biasOld);
+                   std::log(idealGasOld) + logCorrectionFactor + equilibriumTerm + biasNew - biasOld);
     }
     else
     {

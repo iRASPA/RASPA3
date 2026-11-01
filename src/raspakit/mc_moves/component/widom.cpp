@@ -118,15 +118,16 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
     }
   }
 
-  // Compute the correction factor from Ewald, tail and polarization energy differences.
-  double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.potentialEnergy() +
-                                                          tailEnergyDifference.potentialEnergy() +
-                                                          polarizationDifference.potentialEnergy()));
+  // Ewald, tail and polarization energy differences in log space: the Boltzmann factor of the Fourier/self
+  // terms of a charged molecule overflows or underflows on its own, although together with the real-space
+  // terms in the Rosenbluth weight the sample is of order one.
+  double logCorrectionFactorEwald =
+      -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
+                      polarizationDifference.potentialEnergy());
 
   double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
 
   // The Rosenbluth weight enters through its exact logarithm: the raw weight of a long chain underflows
   // to zero even when the normalized sample W/W_ideal is of order one.
-  return std::exp(std::log(correctionFactorEwald) + growData->logRosenbluthWeight -
-                  std::log(idealGasRosenbluthWeight));
+  return std::exp(logCorrectionFactorEwald + growData->logRosenbluthWeight - std::log(idealGasRosenbluthWeight));
 }

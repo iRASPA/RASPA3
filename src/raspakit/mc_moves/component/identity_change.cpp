@@ -183,8 +183,10 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
     }
   }
 
-  const double correctionFactorEwald =
-      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
+  // Ewald and polarization energy differences in log space (the Boltzmann factor of the Fourier/self terms of
+  // charged molecules overflows or underflows on its own)
+  const double logCorrectionFactorEwald =
+      -system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy());
 
   const double idealGasRosenbluthWeightNew = newComponentData.idealGasRosenbluthWeight.value_or(1.0);
   const double idealGasRosenbluthWeightOld = oldComponentData.idealGasRosenbluthWeight.value_or(1.0);
@@ -200,7 +202,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   // The two Rosenbluth weights enter through their exact logarithms: the raw weights of long chains
   // underflow to zero, which would turn this cross-component ratio into 0/0 (NaN) or x/0 (inf).
   const double acceptanceProbability = std::exp(
-      std::log(correctionFactorEwald) - system.beta * tailEnergyDifference.potentialEnergy() +
+      logCorrectionFactorEwald - system.beta * tailEnergyDifference.potentialEnergy() +
       growData->logRosenbluthWeight - std::log(idealGasRosenbluthWeightNew) - retraceData.logRosenbluthWeight +
       std::log(idealGasRosenbluthWeightOld) +
       std::log(fugacityNew * numberOfMoleculesOld / (fugacityOld * (numberOfMoleculesNew + 1.0))));

@@ -134,9 +134,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                          systemA.forceField, systemA.simulationBox, systemA.spanOfFrameworkAtoms(), newMolecule, {});
             });
 
-  // Compute correction factor for Ewald energies in system A
-  double correctionFactorEwaldA =
-      std::exp(-systemA.beta * (energyFourierDifferenceA.potentialEnergy() + tailEnergyDifferenceA.potentialEnergy()));
+  // Ewald and tail energy differences of system A in log space (the Boltzmann factor of the Fourier/self
+  // terms of charged molecules overflows or underflows on its own)
+  double logCorrectionFactorEwaldA =
+      -systemA.beta * (energyFourierDifferenceA.potentialEnergy() + tailEnergyDifferenceA.potentialEnergy());
 
   // Select a random molecule of the selected component from system B
   std::size_t selectedMolecule = systemB.randomIntegerMoleculeOfComponent(random, selectedComponent);
@@ -177,14 +178,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   // Update statistics for retraced molecules in system B
   componentB.mc_moves_statistics.addConstructed(move);
 
-  // Compute correction factor for Ewald energies in system B
-  double correctionFactorEwaldB =
-      std::exp(systemB.beta * (energyFourierDifferenceB.potentialEnergy() + tailEnergyDifferenceB.potentialEnergy()));
+  // Ewald and tail energy differences of system B in log space
+  double logCorrectionFactorEwaldB =
+      systemB.beta * (energyFourierDifferenceB.potentialEnergy() + tailEnergyDifferenceB.potentialEnergy());
 
   // Rosenbluth weights through their exact logarithms: the raw weights of long chains underflow to
   // zero, which would turn this cross-box ratio into 0/0 (NaN) or x/0 (inf).
   const double physicalAcceptance = std::exp(
-      std::log(correctionFactorEwaldA) - std::log(correctionFactorEwaldB) + growData->logRosenbluthWeight -
+      logCorrectionFactorEwaldA - logCorrectionFactorEwaldB + growData->logRosenbluthWeight -
       retraceData.logRosenbluthWeight +
       std::log((static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) *
                 systemA.simulationBox.volume) /

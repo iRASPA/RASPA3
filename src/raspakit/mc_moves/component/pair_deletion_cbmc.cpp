@@ -257,9 +257,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
       pairDeletionPolarizationDifference(system, selectedComponent, selectedMolecule, componentB, selectedMoleculeB,
                                          moleculeA, moleculeB, oldMoleculeA, oldMoleculeB, electricFieldNeighborDelta);
 
-  const double correctionFactorEwald =
-      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
-                               polarizationDifference.potentialEnergy()));
+  // Ewald, tail and polarization energy differences in log space (see the pair insertion)
+  const double logCorrectionFactorEwald =
+      -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
+                      polarizationDifference.potentialEnergy());
 
   // Reverse of the insertion's radial proposal (r uniform in [0, R_max]): bias R_max^2 / (3 r^2)
   // relative to the sphere-volume factor V_s.
@@ -279,11 +280,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   const double logRosenbluthWeight = retraceDataA.logRosenbluthWeight + retraceDataB.logRosenbluthWeight;
 
   // Exact reciprocal of the insertion prefactor: N_A/(beta*f_A*V) for A and k/(beta*f_B*V_s) for B.
-  const double preFactor = correctionFactorEwald *
-                           (N_A / (system.beta * fugacityA * system.simulationBox.volume)) *
+  const double preFactor = (N_A / (system.beta * fugacityA * system.simulationBox.volume)) *
                            (k * distanceBias / (system.beta * fugacityB * sphereVolume));
 
-  const double Pacc = std::exp(std::log(preFactor) + std::log(idealGasA * idealGasB) - logRosenbluthWeight);
+  const double Pacc = std::exp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasA * idealGasB) -
+                               logRosenbluthWeight);
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
@@ -495,9 +496,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
       pairDeletionPolarizationDifference(system, selectedComponent, selectedMolecule, componentB, selectedMoleculeB,
                                          moleculeA, moleculeB, oldMoleculeA, oldMoleculeB, electricFieldNeighborDelta);
 
-  const double correctionFactorEwald =
-      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
-                               polarizationDifference.potentialEnergy()));
+  // Ewald, tail and polarization energy differences in log space (see the pair insertion)
+  const double logCorrectionFactorEwald =
+      -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
+                      polarizationDifference.potentialEnergy());
 
   // Reverse of the insertion's uniform-in-sphere proposal: no radial bias.
   const double sphereVolume = (4.0 / 3.0) * std::numbers::pi * R_max * R_max * R_max;
@@ -515,11 +517,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   const double logRosenbluthWeight = retraceDataA.logRosenbluthWeight + retraceDataB.logRosenbluthWeight;
 
   // Exact reciprocal of the insertion prefactor: N_A/(beta*f_A*V) for A and k/(beta*f_B*V_s) for B.
-  const double preFactor = correctionFactorEwald *
-                           (N_A / (system.beta * fugacityA * system.simulationBox.volume)) *
+  const double preFactor = (N_A / (system.beta * fugacityA * system.simulationBox.volume)) *
                            (k / (system.beta * fugacityB * sphereVolume));
 
-  const double Pacc = std::exp(std::log(preFactor) + std::log(idealGasA * idealGasB) - logRosenbluthWeight);
+  const double Pacc = std::exp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasA * idealGasB) -
+                               logRosenbluthWeight);
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 

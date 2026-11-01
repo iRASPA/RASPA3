@@ -119,22 +119,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
     }
   }
 
-  // Calculate correction factor for Ewald energy difference
-  double correctionFactorEwald =
-      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
-                               polarizationDifference.potentialEnergy()));
+  // Ewald, tail and polarization energy differences enter the acceptance in log space: the Fourier/self
+  // terms of a charged molecule and the real-space terms in the Rosenbluth weight are large and of opposite
+  // sign, so the separate Boltzmann factor would overflow or underflow even when their sum is moderate.
+  double logCorrectionFactorEwald =
+      -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
+                      polarizationDifference.potentialEnergy());
 
   // Compute the acceptance probability pre-factor
   double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
   double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
-  double preFactor = correctionFactorEwald * system.beta * fugacity * system.simulationBox.volume /
+  double preFactor = system.beta * fugacity * system.simulationBox.volume /
                      double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
 
   // Calculate the acceptance probability Pacc, with the Rosenbluth weight entering through its exact
   // logarithm: the raw weight of a long chain underflows to zero, which would silently drive the
   // acceptance to zero regardless of the actual weight ratio.
-  double Pacc =
-      std::exp(std::log(preFactor) + growData->logRosenbluthWeight - std::log(idealGasRosenbluthWeight));
+  double Pacc = std::exp(logCorrectionFactorEwald + std::log(preFactor) + growData->logRosenbluthWeight -
+                         std::log(idealGasRosenbluthWeight));
 
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 

@@ -19,6 +19,7 @@ add_executable(unit_tests_raspa3
   mc_pivot_cbmc.cpp
   mc_double_bridging.cpp
   mc_driver_bookkeeping.cpp
+  mc_acceptance_log_space.cpp
   mc_bead_moves.cpp
   mc_cross_links.cpp
   md_parallel_tempering.cpp
