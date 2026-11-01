@@ -53,6 +53,14 @@ export struct DcTSTBarrier
   /// 'q' reduced into the period [-lambda/2, lambda/2) around the barrier.
   [[nodiscard]] double reducedCoordinate(double q) const;
 
+  /// Whether 'x' lies in the periodic interval of radius 'halfWidth' about 'center' on the reduced
+  /// coordinate (the reinsertion support of an unconditioned window).
+  [[nodiscard]] bool inPeriodicWindow(double x, double center, double halfWidth) const;
+
+  /// A uniformly random point of that periodic interval. When 'halfWidth' is at least half a period
+  /// the sample is uniform on the whole period.
+  [[nodiscard]] double samplePeriodicWindow(RandomNumber& random, double center, double halfWidth) const;
+
   /// Bin index of 'q' on a histogram of 'numberOfBins' bins over [-lambda/2, lambda/2) with bin 0
   /// centered on the barrier.
   [[nodiscard]] std::size_t bin(double q, std::size_t numberOfBins) const;

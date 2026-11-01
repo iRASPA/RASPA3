@@ -54,8 +54,8 @@ DcTSTWindowAccumulator::DcTSTWindowAccumulator(std::size_t numberOfBlocks, std::
       sumXSquared(numberOfBlocks, 0.0),
       sumBias(numberOfBlocks, 0.0),
       maximumTranslation(maximumTranslation),
-      barrierOccupancyPairs((DcTSTPilotAccumulator::maximumOccupancy + 1uz) * (DcTSTPilotAccumulator::maximumOccupancy + 1uz),
-                            0.0)
+      barrierOccupancyPairs(
+          (DcTSTPilotAccumulator::maximumOccupancy + 1uz) * (DcTSTPilotAccumulator::maximumOccupancy + 1uz), 0.0)
 {
 }
 
@@ -172,7 +172,8 @@ QuadraticFit fitQuadratic(std::span<const double> t, std::span<const double> y, 
     }
   }
   const double m[3][3] = {{s[0], s[1], s[2]}, {s[1], s[2], s[3]}, {s[2], s[3], s[4]}};
-  const double det = m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
+  const double det = m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) -
+                     m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
                      m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
   if (std::abs(det) < 1e-300) return fit;
   auto solveColumn = [&](std::size_t column)
@@ -180,7 +181,8 @@ QuadraticFit fitQuadratic(std::span<const double> t, std::span<const double> y, 
     double mc[3][3];
     for (std::size_t i = 0; i < 3; ++i)
       for (std::size_t j = 0; j < 3; ++j) mc[i][j] = (j == column) ? r[i] : m[i][j];
-    return (mc[0][0] * (mc[1][1] * mc[2][2] - mc[1][2] * mc[2][1]) - mc[0][1] * (mc[1][0] * mc[2][2] - mc[1][2] * mc[2][0]) +
+    return (mc[0][0] * (mc[1][1] * mc[2][2] - mc[1][2] * mc[2][1]) -
+            mc[0][1] * (mc[1][0] * mc[2][2] - mc[1][2] * mc[2][0]) +
             mc[0][2] * (mc[1][0] * mc[2][1] - mc[1][1] * mc[2][0])) /
            det;
   };
@@ -233,8 +235,8 @@ DynamicallyCorrectedTSTFreeEnergy::DynamicallyCorrectedTSTFreeEnergy(InputReader
   }
   if (templateSystem.framework.has_value())
   {
-    cageLattice = DcTSTCageLattice(templateSystem.framework->simulationBox,
-                                   templateSystem.framework->numberOfUnitCells, lattice_origin);
+    cageLattice = DcTSTCageLattice(templateSystem.framework->simulationBox, templateSystem.framework->numberOfUnitCells,
+                                   lattice_origin);
   }
   else
   {
@@ -428,8 +430,9 @@ double DynamicallyCorrectedTSTFreeEnergy::coordinate(const System& system, const
 {
   if (occupancyMode)
   {
-    return double3::dot(system.simulationBox.applyPeriodicBoundaryConditions(position - cageLattice.center(state.cageA)),
-                        barrier.normal);
+    return double3::dot(
+        system.simulationBox.applyPeriodicBoundaryConditions(position - cageLattice.center(state.cageA)),
+        barrier.normal);
   }
   return barrier.reducedCoordinate(barrier.projection(system.simulationBox, position));
 }
@@ -539,7 +542,8 @@ void DynamicallyCorrectedTSTFreeEnergy::runPilot()
             }
             system.precomputeTotalRigidEnergy();
             system.runningEnergies = system.computeTotalEnergies();
-            std::print(replicaStream, "\nPilot stage\n{}\n\n", system.runningEnergies.printMC("Recomputed from scratch"));
+            std::print(replicaStream, "\nPilot stage\n{}\n\n",
+                       system.runningEnergies.printMC("Recomputed from scratch"));
 
             const std::size_t numberOfCycles = settings.numberOfPilotCycles;
             BlockErrorEstimation estimation(numberOfBlocks, std::max(1uz, numberOfCycles));
@@ -720,7 +724,8 @@ void DynamicallyCorrectedTSTFreeEnergy::buildWindows()
   windowData.assign(windows.size(),
                     DcTSTWindowAccumulator(numberOfBlocks, grid.numberOfBins, settings.maximumTranslationTagged));
 
-  std::print(stream, "\nWindows: {} windows, stiffness beta kappa = {:.4f} [1/A^2] (sigma = {:.4f} [A]), spacing {:.4f} [A]\n",
+  std::print(stream,
+             "\nWindows: {} windows, stiffness beta kappa = {:.4f} [1/A^2] (sigma = {:.4f} [A]), spacing {:.4f} [A]\n",
              windows.size(), stiffness, 1.0 / std::sqrt(stiffness), spacing);
   for (std::size_t k = 0; k < windows.size(); ++k)
   {
@@ -909,7 +914,8 @@ void DynamicallyCorrectedTSTFreeEnergy::startWindow(std::size_t replicaId, std::
   {
     const std::span<const Atom> atoms = system.spanOfMolecule(selectedComponent, best);
     accumulator.startCoordinate = coordinate(system, state, atoms[component.startingBead].position);
-    std::print(replicaStream, "Window {}: tagged molecule {} of component '{}' at x = {:.4f} [A] ({:.4f} from the center)\n",
+    std::print(replicaStream,
+               "Window {}: tagged molecule {} of component '{}' at x = {:.4f} [A] ({:.4f} from the center)\n",
                windowIndex, best, component.name, accumulator.startCoordinate, bestDistance);
     std::flush(replicaStream);
     return;
@@ -1248,22 +1254,32 @@ std::optional<RunningEnergy> DynamicallyCorrectedTSTFreeEnergy::biasedReinsertio
 
   ++statistics.reinsertionTrials;
 
-  // the reaction bead is placed at a uniformly random coordinate of the window support (clipped to the grid)
-  // and a uniformly random in-plane position; the old bead must lie in the same support for the move to be
-  // reversible
+  // the reaction bead is placed at a uniformly random coordinate of the window support and a uniformly
+  // random in-plane position; the old bead must lie in the same support for the move to be reversible.
+  // Unconditioned windows are periodic on [−λ/2, λ/2): the support is the circle-arc of radius
+  // supportHalfWidth about the center (so a window that straddles ±λ/2 is the union of two intervals).
+  // Occupancy and mirror windows are not periodic; their support is clipped to the grid.
   const bool mirror = settings.mirrorSymmetry && !occupancyMode;
+  const bool periodicSupport = !occupancyMode && !mirror;
   const double low = std::max(grid.begin, window.center - window.supportHalfWidth);
   const double high = std::min(grid.end, window.center + window.supportHalfWidth);
-  if (high <= low) return std::nullopt;
   const double xOld = coordinate(system, state, moleculeAtoms[component.startingBead].position);
   const double xOldFolded = foldedCoordinate(xOld);
-  const bool oldInside = (!occupancyMode && !mirror)
-                             ? std::abs(barrier.reducedCoordinate(xOld - window.center)) <= window.supportHalfWidth
-                             : (xOldFolded >= low && xOldFolded < high);
+  const bool oldInside = periodicSupport ? barrier.inPeriodicWindow(xOld, window.center, window.supportHalfWidth)
+                                         : (xOldFolded >= low && xOldFolded < high);
   if (!oldInside) return std::nullopt;
 
-  double xNew = low + (high - low) * rng.uniform();
-  if (mirror && rng.uniform() < 0.5) xNew = -xNew;
+  double xNew;
+  if (periodicSupport)
+  {
+    xNew = barrier.samplePeriodicWindow(rng, window.center, window.supportHalfWidth);
+  }
+  else
+  {
+    if (high <= low) return std::nullopt;
+    xNew = low + (high - low) * rng.uniform();
+    if (mirror && rng.uniform() < 0.5) xNew = -xNew;
+  }
   if (!occupancyMode) xNew = barrier.reducedCoordinate(xNew);
   if (!grid.contains(xNew)) return std::nullopt;
 
@@ -1448,7 +1464,8 @@ std::vector<double> DynamicallyCorrectedTSTFreeEnergy::pooledPilotHistogram(std:
     for (std::size_t b = 0; b < accumulator.numberOfBlocks; ++b)
     {
       if (block.has_value() && b != block.value()) continue;
-      const std::vector<double>& source = occupancyMode ? accumulator.conditionedHistogram[b] : accumulator.histogram[b];
+      const std::vector<double>& source =
+          occupancyMode ? accumulator.conditionedHistogram[b] : accumulator.histogram[b];
       for (std::size_t i = 0; i < grid.numberOfBins; ++i) histogram[i] += source[i];
     }
   }
@@ -1500,9 +1517,7 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
     return counts;
   };
   auto countsOf = [&](std::optional<std::size_t> block)
-  {
-    return block.has_value() ? countsOfBlocks({block.value()}) : countsOfBlocks({});
-  };
+  { return block.has_value() ? countsOfBlocks({block.value()}) : countsOfBlocks({}); };
 
   // --- a solution: normalized density, free energy, barrier estimates ------------------------------
   struct Solution
@@ -1887,8 +1902,8 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
     }
     if (!differences.empty())
     {
-      const double mean = std::accumulate(differences.begin(), differences.end(), 0.0) /
-                          static_cast<double>(differences.size());
+      const double mean =
+          std::accumulate(differences.begin(), differences.end(), 0.0) / static_cast<double>(differences.size());
       double sumSquares{0.0};
       for (double d : differences) sumSquares += (d - mean) * (d - mean);
       result.pilotConsistencyRms = std::sqrt(sumSquares / static_cast<double>(differences.size()));
@@ -1992,13 +2007,15 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
                tagged.name, occupancies.total);
     std::print(file, "# <n_A> = {:.4f} (loading + 1 in the mean-field limit), <n_B> = {:.4f}\n", occupancies.meanA,
                occupancies.meanB);
-    std::print(file, "# column 1: n_A\n# column 2: n_B\n# column 3: P(n_A, n_B)\n# column 4: P(n_A)\n# column 5: P(n_B)\n");
+    std::print(file,
+               "# column 1: n_A\n# column 2: n_B\n# column 3: P(n_A, n_B)\n# column 4: P(n_A)\n# column 5: P(n_B)\n");
     if (occupancies.availableAtBarrier)
     {
-      std::print(file,
-                 "# column 6: P(n_A, n_B | q*), the occupancies while the tagged molecule is within {} A of the dividing "
-                 "plane ({} window-stage samples)\n# column 7: k^TST(n_A -> n_B) / k^TST = P(n_A, n_B | q*) / P(n_A, n_B)\n",
-                 DcTSTWindowAccumulator::barrierOccupancyHalfWidth, occupancies.totalAtBarrier);
+      std::print(
+          file,
+          "# column 6: P(n_A, n_B | q*), the occupancies while the tagged molecule is within {} A of the dividing "
+          "plane ({} window-stage samples)\n# column 7: k^TST(n_A -> n_B) / k^TST = P(n_A, n_B | q*) / P(n_A, n_B)\n",
+          DcTSTWindowAccumulator::barrierOccupancyHalfWidth, occupancies.totalAtBarrier);
     }
     for (std::size_t nA = 0; nA < occupancies.size; ++nA)
     {
@@ -2024,19 +2041,25 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
   {
     {
       std::ofstream file(std::format("dctst/{}free_energy_profile_{}.txt", label, suffix));
-      std::print(file, "# dcTST free-energy profile of component '{}' along the barrier normal (multistate reweighting "
-                       "of the pilot histogram and {} umbrella windows)\n",
+      std::print(file,
+                 "# dcTST free-energy profile of component '{}' along the barrier normal (multistate reweighting "
+                 "of the pilot histogram and {} umbrella windows)\n",
                  tagged.name, windows.size());
       if (occupancyMode)
-        std::print(file, "# x is measured from the center of cage A, the window to cage B is at x = {:.4f} [A]; "
-                         "conditioned on n_A = {}, n_B = {}\n",
+        std::print(file,
+                   "# x is measured from the center of cage A, the window to cage B is at x = {:.4f} [A]; "
+                   "conditioned on n_A = {}, n_B = {}\n",
                    0.5 * barrier.lambda, settings.cageOccupancies->first, settings.cageOccupancies->second);
       else
-        std::print(file, "# bin 0 is centered on the barrier (q = 0); one period [-lambda/2, lambda/2), lambda = {} [A]\n",
+        std::print(file,
+                   "# bin 0 is centered on the barrier (q = 0); one period [-lambda/2, lambda/2), lambda = {} [A]\n",
                    barrier.lambda);
-      std::print(file, "# beta F is shifted so that its minimum is zero; errors are 2 sigma over the blocks; unsampled bins 'inf'\n");
-      std::print(file, "# column 1: q [A]\n# column 2: beta F(q) reweighted\n# column 3: error\n# column 4: beta F(q) pilot "
-                       "histogram only\n");
+      std::print(file,
+                 "# beta F is shifted so that its minimum is zero; errors are 2 sigma over the blocks; unsampled bins "
+                 "'inf'\n");
+      std::print(file,
+                 "# column 1: q [A]\n# column 2: beta F(q) reweighted\n# column 3: error\n# column 4: beta F(q) pilot "
+                 "histogram only\n");
       for (std::size_t i = 0; i < profile.q.size(); ++i)
       {
         std::print(file, "{:12.6f} {} {:12.6f} {}\n", profile.q[i],
@@ -2048,34 +2071,40 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
     }
     {
       std::ofstream file(std::format("dctst/{}free_energy_profile_fine_{}.txt", label, suffix));
-      std::print(file, "# dcTST free-energy profile of component '{}' on the fine grid of the reweighting ({} bins of {:.5f} A)\n",
-                 tagged.name, grid.numberOfBins, grid.width);
-      std::print(file, "# column 1: x [A]\n# column 2: beta F(x)\n# column 3: error (2 sigma over the blocks)\n# column 4: "
-                       "flattening bias w_0(x) [kT]\n");
+      std::print(
+          file,
+          "# dcTST free-energy profile of component '{}' on the fine grid of the reweighting ({} bins of {:.5f} A)\n",
+          tagged.name, grid.numberOfBins, grid.width);
+      std::print(file,
+                 "# column 1: x [A]\n# column 2: beta F(x)\n# column 3: error (2 sigma over the blocks)\n# column 4: "
+                 "flattening bias w_0(x) [kT]\n");
       for (std::size_t b = 0; b < grid.numberOfBins; ++b)
       {
-        std::print(file, "{:12.6f} {} {:12.6f} {:12.6f}\n", grid.center(b),
-                   profile.fineDefined[b] ? std::format("{:14.6f}", profile.fineFreeEnergy[b])
-                                          : std::format("{:>14}", "inf"),
-                   profile.fineFreeEnergyError[b], flatteningBias[b]);
+        std::print(
+            file, "{:12.6f} {} {:12.6f} {:12.6f}\n", grid.center(b),
+            profile.fineDefined[b] ? std::format("{:14.6f}", profile.fineFreeEnergy[b]) : std::format("{:>14}", "inf"),
+            profile.fineFreeEnergyError[b], flatteningBias[b]);
       }
     }
     if (settings.writeWindowHistograms)
     {
       std::ofstream file(std::format("dctst/{}window_histograms_{}.txt", label, suffix));
-      std::print(file, "# dcTST umbrella windows: fine histograms of the tagged molecule (counts, all blocks) and the "
-                       "reduced bias per window [kT]\n");
+      std::print(file,
+                 "# dcTST umbrella windows: fine histograms of the tagged molecule (counts, all blocks) and the "
+                 "reduced bias per window [kT]\n");
       std::print(file, "# window centers [A]:");
       for (const DcTSTWindow& w : windows) std::print(file, " {:.4f}", w.center);
       std::print(file, "\n# stiffness beta kappa [1/A^2]: {:.6f}\n", windows.empty() ? 0.0 : windows.front().stiffness);
-      std::print(file, "# barrier x* [A]: {:.6f}\n# normalization range [A]: {:.6f} {:.6f}\n# fine bin width [A]: {:.6f}\n",
+      std::print(file,
+                 "# barrier x* [A]: {:.6f}\n# normalization range [A]: {:.6f} {:.6f}\n# fine bin width [A]: {:.6f}\n",
                  grid.barrier, grid.normalizationBegin, grid.normalizationEnd, grid.width);
       std::print(file, "# fit range |x - x*| <= [A]: {:.6f}\n", settings.barrierFitRange);
       std::print(file, "# pilot forbidden above [A]: {}\n",
                  occupancyMode ? std::format("{:.6f}", grid.barrier) : std::string("none"));
       std::print(file, "# column 1: x [A]\n# column 2: pilot histogram (all molecules)\n");
       std::print(file, "# columns 3..{}: counts of window 0..{}\n# columns {}..{}: bias of window 0..{}\n",
-                 2 + windows.size(), windows.size() - 1, 3 + windows.size(), 2 + 2 * windows.size(), windows.size() - 1);
+                 2 + windows.size(), windows.size() - 1, 3 + windows.size(), 2 + 2 * windows.size(),
+                 windows.size() - 1);
       const std::vector<double> pilotHistogram = pooledPilotHistogram();
       for (std::size_t b = 0; b < grid.numberOfBins; ++b)
       {
@@ -2116,10 +2145,11 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
     }
     if (occupancies.availableAtBarrier)
     {
-      std::print(stream,
-                 "    occupancies with the tagged molecule within {} A of the plane ({} window-stage samples), the\n"
-                 "    ratio P(n_A, n_B | q*) / P(n_A, n_B) = k^TST(n_A -> n_B) / k^TST (pairs with P(n_A, n_B) >= 0.005):\n",
-                 DcTSTWindowAccumulator::barrierOccupancyHalfWidth, occupancies.totalAtBarrier);
+      std::print(
+          stream,
+          "    occupancies with the tagged molecule within {} A of the plane ({} window-stage samples), the\n"
+          "    ratio P(n_A, n_B | q*) / P(n_A, n_B) = k^TST(n_A -> n_B) / k^TST (pairs with P(n_A, n_B) >= 0.005):\n",
+          DcTSTWindowAccumulator::barrierOccupancyHalfWidth, occupancies.totalAtBarrier);
       std::print(stream, "    {:>4} {:>4} {:>12} {:>14} {:>10} {:>8}\n", "n_A", "n_B", "P(n_A,n_B)", "P(n_A,n_B|q*)",
                  "ratio", "samples");
       double consistency{0.0};
@@ -2132,11 +2162,12 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
           const double pBarrier = occupancies.jointAtBarrier[index];
           consistency += pBarrier;
           if (p < 0.005) continue;
-          std::print(stream, "    {:>4} {:>4} {:>12.6f} {:>14.6f} {:>10.4f} {:>8.0f}\n", nA, nB, p, pBarrier, pBarrier / p,
-                     pBarrier * occupancies.totalAtBarrier);
+          std::print(stream, "    {:>4} {:>4} {:>12.6f} {:>14.6f} {:>10.4f} {:>8.0f}\n", nA, nB, p, pBarrier,
+                     pBarrier / p, pBarrier * occupancies.totalAtBarrier);
         }
       }
-      std::print(stream, "    (sum_(n_A,n_B) P(n_A,n_B) k^TST(n_A -> n_B) / k^TST = {:.4f}, exactly 1 by construction)\n",
+      std::print(stream,
+                 "    (sum_(n_A,n_B) P(n_A,n_B) k^TST(n_A -> n_B) / k^TST = {:.4f}, exactly 1 by construction)\n",
                  consistency);
     }
     std::print(stream, "\n");
@@ -2161,10 +2192,12 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
                            static_cast<double>(std::max(1uz, a.translationTotalTrials + a.translationTrials));
       const double accRe = static_cast<double>(a.reinsertionTotalAccepted + a.reinsertionAccepted) /
                            static_cast<double>(std::max(1uz, a.reinsertionTotalTrials + a.reinsertionTrials));
-      std::print(stream, "    {:>4} {:>10.4f} {:>10.4f} {:>10.4f} {:>12.0f} {:>10.4f} {:>10.4f} {:>10.4f} {:>4.2f}/{:<4.2f}{}\n",
-                 k, windows[k].center, profile.windowMean[k], profile.windowSigma[k], profile.windowCounts[k],
-                 profile.windowMeanBias[k], profile.overlap[k], profile.stateFreeEnergies[k + 1uz], accTr, accRe,
-                 windows[k].source == k ? "" : std::format("  (repeat of {})", windows[k].source));
+      std::print(
+          stream,
+          "    {:>4} {:>10.4f} {:>10.4f} {:>10.4f} {:>12.0f} {:>10.4f} {:>10.4f} {:>10.4f} {:>4.2f}/{:<4.2f}{}\n", k,
+          windows[k].center, profile.windowMean[k], profile.windowSigma[k], profile.windowCounts[k],
+          profile.windowMeanBias[k], profile.overlap[k], profile.stateFreeEnergies[k + 1uz], accTr, accRe,
+          windows[k].source == k ? "" : std::format("  (repeat of {})", windows[k].source));
     }
     double minimumOverlap = 1.0;
     for (std::size_t k = 0; k < windows.size(); ++k)
@@ -2199,9 +2232,10 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
     std::print(stream, "    g_0 (pilot) = 0 by gauge; window free energies above\n");
     if (profile.pilotConsistencyBins > 0)
     {
-      std::print(stream,
-                 "    pilot vs reweighted profile:         rms {:.4f} kT over {} fine bins with >= {:.0f} pilot counts\n",
-                 profile.pilotConsistencyRms, profile.pilotConsistencyBins, ProfileResult::pilotConsistencyMinimumCounts);
+      std::print(
+          stream,
+          "    pilot vs reweighted profile:         rms {:.4f} kT over {} fine bins with >= {:.0f} pilot counts\n",
+          profile.pilotConsistencyRms, profile.pilotConsistencyBins, ProfileResult::pilotConsistencyMinimumCounts);
     }
     std::print(stream, "\n");
 
@@ -2209,12 +2243,14 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
     std::print(stream, "    beta F(q*) - beta F(min), top fit:    {:.5f} +/- {:.5f}\n", profile.barrierFreeEnergy,
                profile.barrierFreeEnergyError);
     std::print(stream, "    beta F(q*) - beta F(min), bin:        {:.5f}\n", profile.barrierFreeEnergyBin);
-    std::print(stream, "    P(q*) at the plane, top fit:          {:.6e} +/- {:.3e} [1/A] ({} points, |x - x*| <= {} A)\n",
-               profile.barrierProbability, profile.barrierProbabilityError, profile.fitPoints, settings.barrierFitRange);
+    std::print(
+        stream, "    P(q*) at the plane, top fit:          {:.6e} +/- {:.3e} [1/A] ({} points, |x - x*| <= {} A)\n",
+        profile.barrierProbability, profile.barrierProbabilityError, profile.fitPoints, settings.barrierFitRange);
     std::print(stream, "    P(q*) at the plane, bin:              {:.6e} +/- {:.3e} [1/A]\n",
                profile.barrierProbabilityBin, profile.barrierProbabilityBinError);
-    std::print(stream, "    error with half the blocks:           {:.3e} ({} merged blocks; should agree with the full-block "
-                       "error{})\n",
+    std::print(stream,
+               "    error with half the blocks:           {:.3e} ({} merged blocks; should agree with the full-block "
+               "error{})\n",
                profile.barrierProbabilityErrorHalfBlocks, profile.numberOfHalfBlocks,
                profile.numberOfHalfBlocks < 3 ? ", but is itself uncertain with fewer than 3 merged blocks" : "");
     if (profile.fitValid)
@@ -2241,8 +2277,9 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
     const double kTST = 0.5 * meanSpeed * profile.barrierProbability;
     const double kTSTError = 0.5 * meanSpeed * profile.barrierProbabilityError;
     std::print(stream, "Transition-state rate:\n");
-    std::print(stream, "    <|qdot|> of the reaction bead:       {:.6f} [A/ps] (pilot orientations; sqrt(2 kT / pi M) of the "
-                       "molecular mass: {:.6f})\n",
+    std::print(stream,
+               "    <|qdot|> of the reaction bead:       {:.6f} [A/ps] (pilot orientations; sqrt(2 kT / pi M) of the "
+               "molecular mass: {:.6f})\n",
                meanSpeed, thermalSpeed);
     std::print(stream, "    k^TST = <|qdot|>/2 P(q*):            {:.6e} +/- {:.2e} [1/ps]\n", kTST, kTSTError);
     std::print(stream, "    k^TST lambda^2 (D for kappa = 1):    {:.6e} +/- {:.2e} [m^2/s]\n",
@@ -2277,8 +2314,9 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
     json["pilotConsistencyBins"] = profile.pilotConsistencyBins;
     for (std::size_t i = 0; i < numberOfStates; ++i)
     {
-      json["overlapMatrix"].push_back(std::vector<double>(profile.overlapMatrix.begin() + static_cast<std::ptrdiff_t>(i * numberOfStates),
-                                                          profile.overlapMatrix.begin() + static_cast<std::ptrdiff_t>((i + 1uz) * numberOfStates)));
+      json["overlapMatrix"].push_back(
+          std::vector<double>(profile.overlapMatrix.begin() + static_cast<std::ptrdiff_t>(i * numberOfStates),
+                              profile.overlapMatrix.begin() + static_cast<std::ptrdiff_t>((i + 1uz) * numberOfStates)));
     }
     for (std::size_t k = 0; k < windows.size(); ++k)
     {

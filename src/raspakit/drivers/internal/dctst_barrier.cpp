@@ -50,6 +50,23 @@ double DcTSTBarrier::reducedCoordinate(double q) const
   return reduced;
 }
 
+bool DcTSTBarrier::inPeriodicWindow(double x, double center, double halfWidth) const
+{
+  return std::abs(reducedCoordinate(x - center)) <= halfWidth;
+}
+
+double DcTSTBarrier::samplePeriodicWindow(RandomNumber& random, double center, double halfWidth) const
+{
+  // Uniform on the circle-arc of radius halfWidth about center. Sampling the clipped Cartesian
+  // interval [center - w, center + w] ∩ [−λ/2, λ/2) would drop the wrapped cap, and the reverse
+  // of a jump into that cap would have proposal density zero.
+  if (halfWidth >= 0.5 * lambda)
+  {
+    return reducedCoordinate((random.uniform() - 0.5) * lambda);
+  }
+  return reducedCoordinate(center + (2.0 * random.uniform() - 1.0) * halfWidth);
+}
+
 std::size_t DcTSTBarrier::bin(double q, std::size_t numberOfBins) const
 {
   // bins of width lambda / numberOfBins, bin 0 centered on the barrier (q = 0)

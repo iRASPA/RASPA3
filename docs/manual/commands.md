@@ -782,7 +782,10 @@ reported separately at the end of the simulation.
     (default `0.3` Å), not a bin average. The tagged molecule is moved by a
     biased translation (`"MaximumTranslationTagged"`) and a biased CBMC
     reinsertion within the window support
-    (`"ReinsertionTaggedProbability"`); a fixed fraction
+    (`"ReinsertionTaggedProbability"`). In the unconditioned (periodic)
+    mode that support is the circle-arc of radius four standard deviations
+    about the window centre, so a window that straddles \(\pm\lambda/2\)
+    wraps; occupancy and mirror windows are clipped to the grid. A fixed fraction
     `"TaggedMoveFraction"` (default `0.5`) of the window-stage steps selects
     the tagged molecule, the rest a random molecule, so that the window
     histogram does not starve at high loading.
