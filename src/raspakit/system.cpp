@@ -180,6 +180,7 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   {
     simulationBox = framework->simulationBox.scaled(framework->numberOfUnitCells);
   }
+  referenceSimulationBox = simulationBox;
 
   // 'CutOffCoulomb': "auto" is half the shortest box edge. Apply it before the reciprocal mesh is
   // built: a fixed short cutoff in a large cell makes the Fourier sum the expensive part of every
@@ -288,6 +289,7 @@ void System::rebuildForFramework(const Framework& newFramework, const Simulation
 
   framework = newFramework;
   simulationBox = newSimulationBox;
+  referenceSimulationBox = newSimulationBox;
 
   const std::vector<Atom>& frameworkAtoms = framework->atoms;
   numberOfFrameworkAtoms = frameworkAtoms.size();
@@ -1732,6 +1734,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.forceEngineSettings;
   archive << s.propertyRadicalWaitingTimes;
 
+  // version 2
+  archive << s.referenceSimulationBox;
+
   // 'interpolationGrids' and 'externalFieldInterpolationGrid' are intentionally not serialized:
   // they are derived data that can dominate the checkpoint size and are rebuilt deterministically
   // on restart (MonteCarlo/MolecularDynamics::createInterpolationGrids).
@@ -1908,6 +1913,16 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.propertyRadicalWaitingTimes;
   // the engine itself is derived state, rebuilt by the first hybrid MC move
   s.hybridMCForceEngine.reset();
+
+  if (versionNumber >= 2)
+  {
+    archive >> s.referenceSimulationBox;
+  }
+  else
+  {
+    // an older restart: the constant-stress reference cell is the box at the restart point
+    s.referenceSimulationBox = s.simulationBox;
+  }
 
   // archive >> s.columnNumberOfGridPoints;
   // archive >> s.columnTotalPressure;

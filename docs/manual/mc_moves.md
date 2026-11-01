@@ -1698,24 +1698,43 @@ phases of infinitely thin hard platelets*, Mol. Phys. **52**, 1303-1334 (1984).
 
 Keyword: `"AnisotropicVolumeMoveProbability"` (system move)
 
-Changes the three box lengths independently (the box shape can change while
-the pressure tensor is imposed per diagonal component). Molecules are
+Changes the three box lengths independently at fixed box angles (the box
+shape can change while a diagonal pressure tensor is imposed). Molecules are
 translated rigidly with their center-of-mass fractional position kept fixed,
 so intramolecular energies are unchanged.
 Framework coordinates remain fixed.
+
+The move samples the constant-stress enthalpy of Parrinello and Rahman,
+
+\f[
+H(L_a, L_b, L_c) = U + \bar{p}\,V
+  + V_0 \sum_{\alpha} \left(p_{\alpha\alpha} - \bar{p}\right)
+    \left(\frac{L_\alpha}{L_\alpha^0} - 1\right),
+\qquad \bar{p} = \tfrac{1}{3}\left(p_{xx} + p_{yy} + p_{zz}\right),
+\f]
+
+with \f$\bar{p}\f$ the hydrostatic part of the imposed tensor and the
+deviatoric part acting as a constant tension on each pair of box faces,
+measured against the reference cell \f$h_0\f$ (lengths \f$L_\alpha^0\f$,
+volume \f$V_0\f$): the box the system was constructed with (for a restart,
+the box at the restart point). For a hydrostatic tensor
+(`"ExternalPressureX/Y/Z"` not set) the deviatoric term vanishes identically
+and \f$H = U + pV\f$ is the ordinary \f$NpT\f$ enthalpy, independent of the
+reference cell.
 
 Steps:
 
 - select a random box,
 - draw three independent scale factors \f$s_\alpha = e^{\Delta_{\text{max},\alpha}(2u_\alpha-1)}\f$
-  for \f$\alpha = x,y,z\f$,
+  for \f$\alpha = a,b,c\f$,
 - scale the box vectors and the molecular center-of-mass positions accordingly,
 - recompute the total energy,
 - accept or reject using the volume ratio
-  \f$V_\mathbf{n}/V_\mathbf{o} = s_x s_y s_z\f$ and the pressure-tensor work
-  \f$\Delta W = V_\mathbf{o} \sum_\alpha p_{\alpha\alpha}\,(s_\alpha - 1)\f$.
+  \f$V_\mathbf{n}/V_\mathbf{o} = s_a s_b s_c\f$ and the pressure work
+  \f$\Delta W = \bar{p}\,(V_\mathbf{n} - V_\mathbf{o})
+  + V_0 \sum_\alpha (p_{\alpha\alpha} - \bar{p})\,(L_\alpha^\mathbf{n} - L_\alpha^\mathbf{o})/L_\alpha^0\f$.
 
-Acceptance rule:
+Acceptance rule (for sampling in \f$\ln L_\alpha\f$):
 
 \f[
 \text{acc}(\mathbf{o} \rightarrow \mathbf{n}) = \min\left(1,
@@ -1725,12 +1744,22 @@ Acceptance rule:
 
 Here too \f$N=\sum_i N_i^\mathrm{integer}\f$ and fractional slots are excluded.
 
+\f$\Delta W\f$ is an exact difference of the pressure terms of \f$H\f$, so
+the forward and the reverse work cancel and detailed balance holds. The
+first-order form \f$V_\mathbf{o} \sum_\alpha p_{\alpha\alpha}\,(s_\alpha - 1)\f$
+is *not* a state function (the pressures \f$p_{\alpha\alpha}\f$ on faces of
+area \f$V/L_\alpha\f$ are non-conservative unless they are equal) and must
+not be used.
+
 Useful for: fluid boxes whose aspect ratio must relax and anisotropic
 confinement where box shape matters. This move does not deform a framework.
 
-Reference: S. Yashonath and C.N.R. Rao, *A Monte Carlo study of crystal
+References: S. Yashonath and C.N.R. Rao, *A Monte Carlo study of crystal
 structure transformations*, Mol. Phys. **54**, 245-251 (1985).
-<https://doi.org/10.1080/00268978500100201>
+<https://doi.org/10.1080/00268978500100201>;
+M. Parrinello and A. Rahman, *Polymorphic transitions in single crystals: A
+new molecular dynamics method*, J. Appl. Phys. **52**, 7182-7190 (1981).
+<https://doi.org/10.1063/1.328693>
 
 ### Hybrid MC <a name="hybrid-mc"></a>
 

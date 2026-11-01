@@ -69,10 +69,29 @@ bool volumeTrialOverlaps(const System &system, const RunningEnergy &trialEnergy)
 std::optional<RunningEnergy> volumeMove(RandomNumber &random, System &system);
 
 /**
+ * \brief The work of the imposed pressure tensor for a change of the box lengths in the anisotropic volume move.
+ *
+ * The move samples the constant-stress enthalpy (Parrinello and Rahman, J. Appl. Phys. 52, 7182 (1981))
+ *
+ *   H(L) = U + p V + V_0 sum_a (p_aa - p) (L_a / L_a^0 - 1)
+ *
+ * with p = (p_xx + p_yy + p_zz) / 3 the hydrostatic part of the pressure tensor and the deviatoric part acting
+ * as a constant tension on each pair of box faces, measured relative to the reference cell h_0
+ * ('System::referenceSimulationBox', volume V_0 and lengths L_a^0). The returned value is the difference of the
+ * pressure terms of H between the new and the old box, i.e. an exact difference of a state function, so that the
+ * acceptance rule obeys detailed balance. For a hydrostatic pressure tensor it reduces to p (V_new - V_old).
+ *
+ * The earlier first-order form V_old sum_a p_aa (s_a - 1) is not a state function: the forward and reverse
+ * works do not cancel (even for a hydrostatic tensor it differs from p dV at second order) and the resulting
+ * chain samples no equilibrium ensemble.
+ */
+double anisotropicPressureWork(const System &system, const SimulationBox &oldBox, const SimulationBox &newBox);
+
+/**
  * \brief Performs an anisotropic volume move with independent pressures along a, b, and c.
  *
- * Scales each lattice vector length independently and applies the corresponding diagonal pressure component
- * in the acceptance criterion.
+ * Scales each lattice vector length independently (the angles are kept) and accepts with the constant-stress
+ * enthalpy of 'anisotropicPressureWork'.
  */
 std::optional<RunningEnergy> anisotropicVolumeMove(RandomNumber &random, System &system);
 }  // namespace MC_Moves

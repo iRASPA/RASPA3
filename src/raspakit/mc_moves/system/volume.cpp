@@ -146,6 +146,26 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   return std::nullopt;
 }
 
+double MC_Moves::anisotropicPressureWork(const System &system, const SimulationBox &oldBox,
+                                         const SimulationBox &newBox)
+{
+  const double3 &p = system.pressureTensorDiagonal;
+  const double hydrostaticPressure = (p.x + p.y + p.z) / 3.0;
+
+  // hydrostatic part: the exact p dV of the NpT ensemble
+  const double hydrostaticWork = hydrostaticPressure * (newBox.volume - oldBox.volume);
+
+  // deviatoric part: a constant tension -V_0 (p_aa - p) / L_a^0 on each pair of faces (linear strain with
+  // respect to the reference cell); it vanishes identically for a hydrostatic pressure tensor
+  const SimulationBox &reference = system.referenceSimulationBox;
+  const double deviatoricWork =
+      reference.volume * ((p.x - hydrostaticPressure) * (newBox.lengthA - oldBox.lengthA) / reference.lengthA +
+                          (p.y - hydrostaticPressure) * (newBox.lengthB - oldBox.lengthB) / reference.lengthB +
+                          (p.z - hydrostaticPressure) * (newBox.lengthC - oldBox.lengthC) / reference.lengthC);
+
+  return hydrostaticWork + deviatoricWork;
+}
+
 std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber &random, System &system)
 {
   Move::Types move = Move::Types::AnisotropicVolumeChange;
@@ -155,7 +175,6 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber &rando
   RunningEnergy oldTotalEnergy = system.runningEnergies;
   const double numberOfMolecules = static_cast<double>(std::accumulate(
       system.numberOfIntegerMoleculesPerComponent.begin(), system.numberOfIntegerMoleculesPerComponent.end(), 0));
-  const double oldVolume = system.simulationBox.volume;
 
   const double3 maxVolumeChange(system.mc_moves_statistics.getMaxChange(move, 0),
                                 system.mc_moves_statistics.getMaxChange(move, 1),
@@ -179,10 +198,10 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber &rando
 
   system.mc_moves_statistics.addConstructed(move);
 
+  // The box lengths are sampled uniformly in ln L_a, so the Jacobian is (V_n/V_o)^{N+1} as for the isotropic
+  // move. The pressure work is the exact difference of the constant-stress enthalpy between the two boxes.
   const double volumeRatio = scale.x * scale.y * scale.z;
-  const double pressureWork =
-      oldVolume * (system.pressureTensorDiagonal.x * (scale.x - 1.0) + system.pressureTensorDiagonal.y * (scale.y - 1.0) +
-                   system.pressureTensorDiagonal.z * (scale.z - 1.0));
+  const double pressureWork = anisotropicPressureWork(system, saved.box, newBox);
 
   if (random.uniform() < std::exp((numberOfMolecules + 1.0) * std::log(volumeRatio) -
                                   (pressureWork + (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) *

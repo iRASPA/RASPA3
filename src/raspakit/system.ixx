@@ -112,7 +112,7 @@ export struct System
          std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -210,6 +210,10 @@ export struct System
   double timeStep{0.0005};
 
   SimulationBox simulationBox;
+  // Reference cell h_0 of the constant-stress enthalpy sampled by the anisotropic volume move: the box the
+  // system was constructed with. Only the deviatoric part of the imposed pressure tensor refers to it
+  // (see 'MC_Moves::anisotropicPressureWork'); a hydrostatic pressure tensor does not depend on it.
+  SimulationBox referenceSimulationBox;
   bool containsTheFractionalMolecule{true};
 
   // A contiguous list of adsorbate atoms per component for easy and fast looping

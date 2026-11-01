@@ -224,6 +224,50 @@ System makeDiluteCO2System()
 }
 }  // namespace
 
+TEST(MC_NPT_DRIFT, anisotropic_pressure_work_is_a_state_function)
+{
+  // The pressure work of the anisotropic volume move must be the difference of a potential of the box lengths:
+  // the forward and the reverse work cancel (detailed balance) and the work is independent of the path. The
+  // former first-order form V_o sum_a p_aa (s_a - 1) satisfies neither, not even for a hydrostatic tensor.
+  System system = makeDiluteCO2System();
+  system.pressureTensorDiagonal = double3(1e4, 1.2e4, 0.8e4) / Units::PressureConversionFactor;
+  ASSERT_EQ(system.referenceSimulationBox.volume, system.simulationBox.volume);
+
+  const SimulationBox a = system.simulationBox;
+  const SimulationBox b = a.scaled(double3(1.07, 0.95, 1.02));
+  const SimulationBox c = b.scaled(double3(0.90, 1.10, 1.05));
+
+  const double ab = MC_Moves::anisotropicPressureWork(system, a, b);
+  const double ba = MC_Moves::anisotropicPressureWork(system, b, a);
+  const double bc = MC_Moves::anisotropicPressureWork(system, b, c);
+  const double ac = MC_Moves::anisotropicPressureWork(system, a, c);
+  ASSERT_NE(ab, 0.0);
+  const double tolerance = 1e-12 * (std::abs(ab) + std::abs(bc));
+  EXPECT_NEAR(ab + ba, 0.0, tolerance);
+  EXPECT_NEAR(ab + bc, ac, tolerance);
+
+  // the deviatoric part does contribute: the work differs from the hydrostatic p dV
+  const double hydrostatic = (system.pressureTensorDiagonal.x + system.pressureTensorDiagonal.y +
+                              system.pressureTensorDiagonal.z) / 3.0;
+  EXPECT_GT(std::abs(ab - hydrostatic * (b.volume - a.volume)), 1e-6 * std::abs(ab));
+
+  // the first-order form is not reversible
+  const auto linearized = [&](const SimulationBox& o, const SimulationBox& n)
+  {
+    const double3& p = system.pressureTensorDiagonal;
+    return o.volume * (p.x * (n.lengthA / o.lengthA - 1.0) + p.y * (n.lengthB / o.lengthB - 1.0) +
+                       p.z * (n.lengthC / o.lengthC - 1.0));
+  };
+  EXPECT_GT(std::abs(linearized(a, b) + linearized(b, a)), 1e-4 * std::abs(ab));
+
+  // a hydrostatic tensor recovers the NpT work p (V_n - V_o) exactly, independent of the reference cell
+  system.pressureTensorDiagonal = double3(system.pressure, system.pressure, system.pressure);
+  system.referenceSimulationBox = c;
+  const double isotropic = MC_Moves::anisotropicPressureWork(system, a, b);
+  EXPECT_NEAR(isotropic, system.pressure * (b.volume - a.volume), 1e-12 * std::abs(isotropic));
+  EXPECT_GT(std::abs(linearized(a, b) - isotropic), 1e-4 * std::abs(isotropic));
+}
+
 TEST(MC_NPT_DRIFT, volume_move_rederives_the_ewald_wave_vectors_for_the_new_box)
 {
   // A user-fixed Coulomb cut-off with automatic Ewald parameters: alpha is box independent but the number of

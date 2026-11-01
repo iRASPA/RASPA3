@@ -1535,7 +1535,11 @@ reported separately at the end of the simulation.
 -   `"ExternalPressureX" / "ExternalPressureY" / "ExternalPressureZ" : floating-point-number`\
     Override individual diagonal components of the pressure tensor, for
     anisotropic (directional) pressure control. Each defaults to
-    `"ExternalPressure"` when not given.
+    `"ExternalPressure"` when not given. The anisotropic volume move imposes
+    the tensor as a constant-stress enthalpy: the hydrostatic part (the mean
+    of the three components) multiplies the volume, and the deviatoric part is
+    a constant tension on each pair of box faces relative to the initial box
+    (see the anisotropic volume change in the moves manual).
 
 -   `"ChemicalPotential" : floating-point-number`\
     Sets the imposed chemical potential (in internal units); the corresponding
