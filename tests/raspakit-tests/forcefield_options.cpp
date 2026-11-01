@@ -66,3 +66,20 @@ TEST(forcefield_options, ring_mc_probabilities_outside_unit_interval_throw)
   EXPECT_THROW(parse(R"("CBMCRingCrankshaftProbability": 1.5)"), std::runtime_error);
   EXPECT_THROW(parse(R"("CBMCRingTiltProbability": -0.1)"), std::runtime_error);
 }
+
+// operator== must compare the pseudo-atoms of the two force fields (it used to compare iterators into the
+// same container, so force fields differing only in their pseudo-atoms compared equal).
+TEST(forcefield_options, equality_compares_the_pseudo_atoms)
+{
+  const ForceField a({{"CH4", false, 16.04, 0.0, 0.0, 6, false}}, {{158.5, 3.72}},
+                     ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  ForceField b = a;
+  EXPECT_TRUE(a == b);
+
+  b.pseudoAtoms[0].mass = 15.0;
+  EXPECT_FALSE(a == b);
+
+  ForceField c = a;
+  c.pseudoAtoms[0].name = "CH3";
+  EXPECT_FALSE(a == c);
+}

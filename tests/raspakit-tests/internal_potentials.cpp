@@ -710,3 +710,12 @@ TEST(internal_potentials, bend_torsion_forms_match_RASPA2)
     EXPECT_NEAR(bendTorsion.calculateEnergy(posA, posB, posC, posD), ref, tol * std::abs(ref));
   }
 }
+
+// The HARMONIC_COSINE torsion stores cos(p_1); the status line must report p_1 itself in degrees.
+TEST(internal_potentials, harmonic_cosine_torsion_prints_the_reference_angle_in_degrees)
+{
+  TorsionPotential torsion({0, 1, 2, 3}, TorsionType::HarmonicCosine, {5000.0, 120.0});
+  const std::string line = torsion.print();
+  EXPECT_NE(line.find("p_0/k_B=5000"), std::string::npos) << line;
+  EXPECT_NE(line.find("p_1=120 [degrees]"), std::string::npos) << line;
+}

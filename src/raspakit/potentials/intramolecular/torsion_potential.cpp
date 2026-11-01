@@ -283,9 +283,10 @@ std::string TorsionPotential::print() const
       // ===============================================
       // p_0/k_B [K]
       // p_1     [degrees]
-      return std::format("{} - {} - {} - {} : HARMONIC_COSINE p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees]\n",
+      // parameters[1] stores cos(p_1), see the constructor
+      return std::format("{} - {} - {} - {} : HARMONIC_COSINE p_0/k_B={:g} [K], p_1={:g} [degrees]\n",
                          identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::RadiansToDegrees);
+                         parameters[0] * Units::EnergyToKelvin, std::acos(parameters[1]) * Units::RadiansToDegrees);
     case TorsionType::ThreeCosine:
       // (1/2)*p_0*(1+cos(phi))+(1/2)*p_1*(1-cos(2*phi))+(1/2)*p_2*(1+cos(3*phi))
       // ========================================================================

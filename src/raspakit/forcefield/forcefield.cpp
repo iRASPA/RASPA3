@@ -1818,12 +1818,10 @@ bool ForceField::operator==(const ForceField& other) const
       return false;
     }
   }
-  for (auto it1 = pseudoAtoms.begin(), it2 = pseudoAtoms.begin(); it1 != pseudoAtoms.end(); ++it1, ++it2)
+  if (pseudoAtoms.size() != other.pseudoAtoms.size()) return false;
+  for (std::size_t idx = 0; idx < pseudoAtoms.size(); ++idx)
   {
-    if (it1 != it2)
-    {
-      return false;
-    }
+    if (!(pseudoAtoms[idx] == other.pseudoAtoms[idx])) return false;
   }
   return true;
 }
