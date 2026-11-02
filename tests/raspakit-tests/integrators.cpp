@@ -1783,3 +1783,65 @@ TEST(smart_mc_all, rejection_restores_stored_ewald_and_electric_field)
   EXPECT_GE(rejected, 1uz);
   EXPECT_GE(followUpAccepted, 1uz);
 }
+
+namespace
+{
+// A chain host: 'fixedAtoms' lab-fixed atoms at the start, the others flexible, no molecules.
+System makeHybridFrameworkSystem(const std::string& groups)
+{
+  ForceField forceField({{"C", true, 12.0, 0.0, 0.0, 6, true}}, {{80.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot,
+                        5.0, 5.0, 5.0, true, false, false);
+  const SimulationBox box(14.0, 14.0, 14.0);
+  std::vector<Atom> atoms;
+  for (const double3& position : {double3(4.0, 7.0, 7.0), double3(5.4, 7.3, 7.0), double3(6.8, 6.8, 7.0)})
+  {
+    atoms.push_back(Atom(position / 14.0, 0.0, 1.0, 0, 0, 0, 0, true));
+  }
+  Framework framework(forceField, "hybrid-chain", box, 1, atoms, atoms, int3(1, 1, 1));
+  const std::filesystem::path definition = std::filesystem::temp_directory_path() / "raspa3-hybrid-framework.json";
+  std::ofstream(definition) << std::format(R"({{"Type": "Flexible", {} "Intra14VanDerWaalsScalingValue": 0.0,
+                                                "Intra14ChargeChargeScalingValue": 0.0}})",
+                                           groups);
+  framework.readFrameworkDefinition(forceField, definition.string());
+  std::filesystem::remove(definition);
+  return System(forceField, box, false, 300.0, 1.0e4, 1.0, framework, {}, {}, {}, 5);
+}
+
+// With no integration steps the move commits the velocities it drew, which exposes the projection.
+double drawnFrameworkMomentum(System& system, RandomNumber& random)
+{
+  system.numberOfHybridMCSteps = 0;
+  EXPECT_TRUE(MC_Moves::hybridMCMove(random, system).has_value());
+  double3 momentum{};
+  for (std::size_t i = 0; i < system.spanOfFrameworkDynamics().size(); ++i)
+  {
+    if (system.framework->isFlexibleAtom(i)) momentum += 12.0 * system.spanOfFrameworkDynamics()[i].velocity;
+  }
+  return momentum.length();
+}
+}  // namespace
+
+// Momentum is only conserved without lab-fixed atoms: fixed atoms exert an external force, so the P = 0 hyperplane is
+// not invariant and a projected draw has no reverse move.
+TEST(hybrid_mc, velocities_are_projected_only_when_momentum_is_conserved)
+{
+  RandomNumber random(29);
+  System flexible = makeHybridFrameworkSystem("");
+  ASSERT_FALSE(flexible.framework->isMixed());
+  EXPECT_LT(drawnFrameworkMomentum(flexible, random), 1e-10);
+
+  System mixed = makeHybridFrameworkSystem(
+      R"("Groups": [{"Type": "Fixed", "Atoms": [0]}, {"Type": "Flexible", "Atoms": [1, 2]}],)");
+  ASSERT_TRUE(mixed.framework->isMixed());
+  ASSERT_GT(mixed.framework->numberOfFixedAtoms(), 0uz);
+  EXPECT_GT(drawnFrameworkMomentum(mixed, random), 1e-6);
+}
+
+// Nothing can move in a host of Fixed groups only, so there is nothing to propose.
+TEST(hybrid_mc, framework_of_fixed_groups_only_is_rejected_without_a_trajectory)
+{
+  RandomNumber random(31);
+  System system = makeHybridFrameworkSystem(R"("Groups": [{"Type": "Fixed", "Atoms": [0, 1, 2]}],)");
+  ASSERT_FALSE(system.framework->hasMobileAtoms());
+  EXPECT_FALSE(MC_Moves::hybridMCMove(random, system).has_value());
+}

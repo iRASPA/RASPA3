@@ -145,14 +145,6 @@ std::optional<RunningEnergy> hybridMCMoveWithEngine(RandomNumber& random, System
   const std::vector<AtomDynamics> savedDynamics(dynamicsData.begin(), dynamicsData.end());
   const std::vector<Molecule> savedMolecules(system.moleculeData);
   const std::vector<GroupState> savedGroups(groupDataSpan.begin(), groupDataSpan.end());
-  const EwaldStructureFactor savedStoredEik(system.storedEik);
-  // 'computeTotalEnergies' below also refreshes the stored electric field for the trial configuration
-  std::vector<double3> savedElectricField;
-  if (system.forceField.computePolarization)
-  {
-    const std::span<const double3> electricField = system.spanOfMoleculeElectricField();
-    savedElectricField.assign(electricField.begin(), electricField.end());
-  }
   const double savedTimeStep = system.timeStep;
   // an NVE proposal: no thermostat along the trajectory
   std::optional<Thermostat> savedThermostat = std::exchange(system.thermostat, std::nullopt);
@@ -163,6 +155,15 @@ std::optional<RunningEnergy> hybridMCMoveWithEngine(RandomNumber& random, System
   // running energy cannot leak into the Metropolis test.
   const std::chrono::steady_clock::time_point time_old_energy = std::chrono::steady_clock::now();
   const RunningEnergy oldEnergy = system.computeTotalEnergies();
+  // 'computeTotalEnergies' refreshes the stored Ewald structure factors and the electric field for the configuration
+  // it evaluates: the state to restore on rejection is the one it just left, not the one before it
+  const EwaldStructureFactor savedStoredEik(system.storedEik);
+  std::vector<double3> savedElectricField;
+  if (system.forceField.computePolarization)
+  {
+    const std::span<const double3> electricField = system.spanOfMoleculeElectricField();
+    savedElectricField.assign(electricField.begin(), electricField.end());
+  }
   system.mc_moves_cputime[move][Move::Timing::Energy] += (std::chrono::steady_clock::now() - time_old_energy);
 
   // Boltzmann velocities (the reference energy carries their kinetic energy); a bulk fluid has a free lab frame
@@ -255,9 +256,9 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   system.mc_moves_statistics.addTrial(move);
 
   const bool flexibleFramework = system.framework && !system.framework->rigid;
-  const bool hasMovableFramework = flexibleFramework && system.numberOfFrameworkAtoms > 0;
+  const bool hasMovableFramework = flexibleFramework && system.framework->hasMobileAtoms();
   // Reject when there is nothing to propagate. For a flexible framework the atoms themselves
-  // are degrees of freedom, so a framework-only (or single-molecule) system is allowed.
+  // are degrees of freedom, so a framework-only (or single-molecule) system is allowed; Fixed groups are not.
   if (system.moleculeData.size() <= 1 && !hasMovableFramework)
   {
     return std::nullopt;
@@ -339,8 +340,8 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   // get Timestep from the max change
   double dt = system.mc_moves_statistics.getMaxChange(move);
 
-  // The acceptance uses the exact Hamiltonian. The MD gradient routines carry the pair, Ewald, bonded and
-  // cross-link terms only (no external field, no polarization); a trajectory driven by those forces is still a
+  // The acceptance uses the exact Hamiltonian. The MD gradient routines carry the pair, Ewald, bonded, cross-link and
+  // polymer-link terms only (no external field, no polarization); a trajectory driven by those forces is still a
   // time-reversible, volume-preserving proposal, so the Metropolis test on the exact energies samples the full
   // Boltzmann distribution. 'computeTotalEnergies' also refreshes the stored Ewald structure factors and the
   // electric field for the configuration it evaluates; the current ones are saved for the rejection path.
@@ -363,10 +364,13 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
 
   // Remove COM drift for bulk fluids and for flexible frameworks (lab frame is free). The total momentum is then
   // conserved along the trajectory, so the P = 0 hyperplane the velocities are drawn on is invariant and the
-  // reversed final momenta can be drawn by the reverse move. A rigid framework pins the lab frame, and an
-  // external field exerts a net force on the molecules: in both cases the momentum is not conserved and must be
-  // left intact.
-  if ((system.numberOfFrameworkAtoms == 0 || flexibleFramework) && !system.hasExternalField)
+  // reversed final momenta can be drawn by the reverse move. A rigid framework or the Fixed atoms of a mixed one pin
+  // the lab frame, and an external field exerts a net force on the molecules: in these cases the momentum is not
+  // conserved and must be left intact.
+  const bool momentumIsConserved =
+      (system.numberOfFrameworkAtoms == 0 || (flexibleFramework && system.framework->numberOfFixedAtoms() == 0)) &&
+      !system.hasExternalField;
+  if (momentumIsConserved)
   {
     Integrators::removeCenterOfMassVelocityDrift(
         moleculeData, moleculeAtomPositions, moleculeDynamics, system.components, system.framework, trialFrameworkAtoms,
@@ -378,7 +382,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
       moleculeData, moleculeAtomPositions, moleculeDynamics, trialFrameworkAtoms, system.forceField,
       system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik,
       system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent, system.framework,
-      trialFrameworkDynamics, &system.crossLinks);
+      trialFrameworkDynamics, &system.crossLinks, &system.polymerLinks);
   Integrators::updateCenterOfMassAndQuaternionGradients(moleculeData, moleculeAtomPositions, moleculeDynamics,
                                                         system.components, groupDataSpan, system.framework,
                                                         trialFrameworkDynamics, frameworkGroupDataSpan);
@@ -398,7 +402,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
         system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
         system.trialEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
         system.numberOfMoleculesPerComponent, system.framework, trialFrameworkDynamics, groupDataSpan,
-        frameworkGroupDataSpan, &system.crossLinks);
+        frameworkGroupDataSpan, &system.crossLinks, &system.polymerLinks);
   }
   time_end = std::chrono::steady_clock::now();
 

@@ -3829,3 +3829,32 @@ TEST(spatial_decomposition, md_driver_resume_of_a_finished_or_empty_stage_does_n
   md.currentCycle = 0;
   md.production();
 }
+
+// The hybrid MC trajectory feels the polymer links: with a small time step the Hamiltonian that decides the acceptance,
+// which includes the link energy, is conserved, and nearly every trial is accepted. Without the link forces the atoms
+// fly apart along the stiff link potential at constant kinetic energy.
+TEST(spatial_decomposition, hybrid_mc_trajectory_follows_the_polymer_links)
+{
+  System system = makePolymerSystem(7, 20, 6, 1000, 100, 2000.0);
+  ASSERT_GT(system.polymerLinks.numberOfBonds(), 0uz);
+  ASSERT_FALSE(system.polymerLinks.rampsActive());
+
+  RandomNumber random(53);
+  system.hybridMCUseForceEngine = false;
+  system.numberOfHybridMCSteps = 20;
+  system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 0.0002);
+  system.runningEnergies = system.computeTotalEnergies();
+
+  std::size_t accepted{0};
+  const std::size_t trials{30};
+  for (std::size_t trial = 0; trial < trials; ++trial)
+  {
+    const std::optional<RunningEnergy> energy = MC_Moves::hybridMCMove(random, system);
+    if (energy)
+    {
+      system.runningEnergies = energy.value();
+      ++accepted;
+    }
+  }
+  EXPECT_GE(accepted, trials - 3);
+}
