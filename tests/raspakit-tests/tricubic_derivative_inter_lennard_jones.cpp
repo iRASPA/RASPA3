@@ -15,6 +15,9 @@ import component;
 import system;
 import simulationbox;
 import tricubic_derivative_factor;
+import triquintic_derivative_factor;
+import potential_tricubic_derivative_lj;
+import potential_triquintic_derivative_lj;
 import running_energy;
 import interactions_intermolecular;
 import interactions_framework_molecule;
@@ -522,5 +525,86 @@ TEST(third_derivative_inter_lennard_jones, Test_third_derivative_fractional_meth
     double numerical_third_derivative_m123 = (x2_hessian_corr.bz - x1_hessian_corr.bz) / delta;
 
     EXPECT_NEAR(numerical_third_derivative_m123, reference_fractional, tolerance);
+  }
+}
+
+// The split repulsion and attraction grids are each shifted to zero at the cutoff, so that together they reproduce
+// the shifted Lennard-Jones potential, and the tricubic and triquintic forms must give the same energy.
+TEST(third_derivative_inter_lennard_jones, Test_tricubic_repulsion_attraction_are_shifted_at_the_cutoff)
+{
+  const double cutoff = 12.0;
+  const double cutoff2 = cutoff * cutoff;
+  ForceField forceField({PseudoAtom("CH3", false, 15.04, 0.0, 0.0, 6, false)}, {VDWParameters(98.0, 3.75)},
+                        ForceField::MixingRule::Lorentz_Berthelot, cutoff, cutoff, cutoff, true, false, false);
+
+  const double tolerance = 1e-10;
+
+  EXPECT_NEAR(Potentials::potentialLennardJonesRepulsionTricubicDerivative(forceField, cutoff2, 0, 0).energy,
+              0.0, tolerance);
+  EXPECT_NEAR(Potentials::potentialLennardJonesAttractionTricubicDerivative(forceField, cutoff2, 0, 0).energy,
+              0.0, tolerance);
+
+  for (const double r : {3.5, 4.2, 6.0, 9.0, 11.5})
+  {
+    const double r2 = r * r;
+    const double repulsion =
+        Potentials::potentialLennardJonesRepulsionTricubicDerivative(forceField, r2, 0, 0).energy;
+    const double attraction =
+        Potentials::potentialLennardJonesAttractionTricubicDerivative(forceField, r2, 0, 0).energy;
+
+    EXPECT_NEAR(repulsion, Potentials::potentialLennardJonesRepulsionTriquinticDerivative(forceField, r2, 0, 0).energy,
+                tolerance);
+    EXPECT_NEAR(attraction, Potentials::potentialLennardJonesAttractionTriquinticDerivative(forceField, r2, 0, 0).energy,
+                tolerance);
+    EXPECT_NEAR(repulsion - attraction, Potentials::potentialLennardJonesTricubicDerivative(forceField, r2, 0, 0).energy,
+                tolerance);
+  }
+}
+
+// Repulsion minus attraction must equal the full Lennard-Jones grid energy of the same pair, for shifted, unshifted
+// and per-pair shifted force fields, with each pair using its own cutoff.
+TEST(third_derivative_inter_lennard_jones, Test_split_grids_follow_the_force_field_shift)
+{
+  auto makeForceField = [](bool shifted)
+  {
+    return ForceField({PseudoAtom("Si", true, 28.0855, 0.0, 0.0, 14, false),
+                       PseudoAtom("CH3", false, 15.04, 0.0, 0.0, 6, false)},
+                      {VDWParameters(22.0, 2.3), VDWParameters(98.0, 3.75)},
+                      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 10.0, 12.0, shifted, false, false);
+  };
+
+  ForceField mixed = makeForceField(false);
+  mixed.shiftPotentials[0 * mixed.numberOfPseudoAtoms + 1] = true;
+  mixed.shiftPotentials[1 * mixed.numberOfPseudoAtoms + 0] = true;
+  mixed.preComputePotentialShift();
+
+  const double tolerance = 1e-10;
+  for (const ForceField& forceField : {makeForceField(true), makeForceField(false), mixed})
+  {
+    for (const std::size_t typeA : {0uz, 1uz})
+    {
+      for (const std::size_t typeB : {0uz, 1uz})
+      {
+        for (const double r : {3.5, 4.2, 6.0, 9.0})
+        {
+          const double r2 = r * r;
+          const double repulsion =
+              Potentials::potentialLennardJonesRepulsionTricubicDerivative(forceField, r2, typeA, typeB).energy;
+          const double attraction =
+              Potentials::potentialLennardJonesAttractionTricubicDerivative(forceField, r2, typeA, typeB).energy;
+          const double repulsion5 =
+              Potentials::potentialLennardJonesRepulsionTriquinticDerivative(forceField, r2, typeA, typeB).energy;
+          const double attraction5 =
+              Potentials::potentialLennardJonesAttractionTriquinticDerivative(forceField, r2, typeA, typeB).energy;
+
+          EXPECT_NEAR(repulsion - attraction,
+                      Potentials::potentialLennardJonesTricubicDerivative(forceField, r2, typeA, typeB).energy, tolerance);
+          EXPECT_NEAR(repulsion5 - attraction5,
+                      Potentials::potentialLennardJonesTriquinticDerivative(forceField, r2, typeA, typeB).energy, tolerance);
+          EXPECT_NEAR(repulsion, repulsion5, tolerance);
+          EXPECT_NEAR(attraction, attraction5, tolerance);
+        }
+      }
+    }
   }
 }

@@ -46,7 +46,6 @@ double Interactions::calculateEnergyAtPosition(ForceFieldSettings::Interpolation
                                                const ForceField &forceField, const SimulationBox &simulationBox,
                                                double3 posA, std::size_t typeA, std::span<const Atom> frameworkAtoms)
 {
-  const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffSquared = interpolationGridCutOffSquared(interpolationGridType, forceField);
 
   double energy{0.0};
@@ -70,12 +69,10 @@ double Interactions::calculateEnergyAtPosition(ForceFieldSettings::Interpolation
           v = Potentials::potentialLennardJonesTricubicDerivative(forceField, rr, typeA, typeB);
           break;
         case ForceFieldSettings::InterpolationGridType::LennardJonesRepulsion:
-          v = Potentials::potentialLennardJonesRepulsionTricubicDerivative(forceField, rr, cutOffFrameworkVDWSquared,
-                                                                           typeA, typeB);
+          v = Potentials::potentialLennardJonesRepulsionTricubicDerivative(forceField, rr, typeA, typeB);
           break;
         case ForceFieldSettings::InterpolationGridType::LennardJonesAttraction:
-          v = Potentials::potentialLennardJonesAttractionTricubicDerivative(forceField, rr, cutOffFrameworkVDWSquared,
-                                                                            typeA, typeB);
+          v = Potentials::potentialLennardJonesAttractionTricubicDerivative(forceField, rr, typeA, typeB);
           break;
         case ForceFieldSettings::InterpolationGridType::EwaldReal:
           v = Potentials::potentialRealEwaldTricubicDerivative(forceField, rr, std::sqrt(rr), 1.0, chargeB);
@@ -96,7 +93,6 @@ Interactions::calculateTricubicDerivativeAtPosition(ForceFieldSettings::Interpol
                                                     double3 posA, std::size_t typeA,
                                                     std::span<const Atom> frameworkAtoms)
 {
-  const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffSquared = interpolationGridCutOffSquared(interpolationGridType, forceField);
 
   double energy{0.0};
@@ -123,12 +119,10 @@ Interactions::calculateTricubicDerivativeAtPosition(ForceFieldSettings::Interpol
           v = Potentials::potentialLennardJonesTricubicDerivative(forceField, rr, typeA, typeB);
           break;
         case ForceFieldSettings::InterpolationGridType::LennardJonesRepulsion:
-          v = Potentials::potentialLennardJonesRepulsionTricubicDerivative(forceField, rr, cutOffFrameworkVDWSquared,
-                                                                           typeA, typeB);
+          v = Potentials::potentialLennardJonesRepulsionTricubicDerivative(forceField, rr, typeA, typeB);
           break;
         case ForceFieldSettings::InterpolationGridType::LennardJonesAttraction:
-          v = Potentials::potentialLennardJonesAttractionTricubicDerivative(forceField, rr, cutOffFrameworkVDWSquared,
-                                                                            typeA, typeB);
+          v = Potentials::potentialLennardJonesAttractionTricubicDerivative(forceField, rr, typeA, typeB);
           break;
         case ForceFieldSettings::InterpolationGridType::EwaldReal:
           v = Potentials::potentialRealEwaldTricubicDerivative(forceField, rr, std::sqrt(rr), 1.0, chargeB);
@@ -187,7 +181,6 @@ std::array<double, 8> Interactions::calculateTricubicFractionalAtPosition(
     const SimulationBox &simulationBox, double3 posA, std::size_t typeA, const SimulationBox &frameworkBox,
     std::span<const Atom> frameworkAtoms)
 {
-  const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffSquared = interpolationGridCutOffSquared(interpolationGridType, forceField);
   double energy{0.0};
   double first_derivative_x{};
@@ -225,12 +218,10 @@ std::array<double, 8> Interactions::calculateTricubicFractionalAtPosition(
               v = Potentials::potentialLennardJonesTricubicDerivative(forceField, rr, typeA, typeB);
               break;
             case ForceFieldSettings::InterpolationGridType::LennardJonesRepulsion:
-              v = Potentials::potentialLennardJonesRepulsionTricubicDerivative(forceField, rr,
-                                                                               cutOffFrameworkVDWSquared, typeA, typeB);
+              v = Potentials::potentialLennardJonesRepulsionTricubicDerivative(forceField, rr, typeA, typeB);
               break;
             case ForceFieldSettings::InterpolationGridType::LennardJonesAttraction:
-              v = Potentials::potentialLennardJonesAttractionTricubicDerivative(
-                  forceField, rr, cutOffFrameworkVDWSquared, typeA, typeB);
+              v = Potentials::potentialLennardJonesAttractionTricubicDerivative(forceField, rr, typeA, typeB);
               break;
             case ForceFieldSettings::InterpolationGridType::EwaldReal:
               v = Potentials::potentialRealEwaldTricubicDerivative(forceField, rr, std::sqrt(rr), 1.0, chargeB);
@@ -309,7 +300,6 @@ Interactions::calculateTriquinticDerivativeAtPosition(ForceFieldSettings::Interp
                                                       double3 posA, std::size_t typeA,
                                                       std::span<const Atom> frameworkAtoms)
 {
-  const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffSquared = interpolationGridCutOffSquared(interpolationGridType, forceField);
 
   double energy{0.0};
@@ -339,12 +329,10 @@ Interactions::calculateTriquinticDerivativeAtPosition(ForceFieldSettings::Interp
           v = Potentials::potentialLennardJonesTriquinticDerivative(forceField, rr, typeA, typeB);
           break;
         case ForceFieldSettings::InterpolationGridType::LennardJonesRepulsion:
-          v = Potentials::potentialLennardJonesRepulsionTriquinticDerivative(forceField, rr, cutOffFrameworkVDWSquared,
-                                                                             typeA, typeB);
+          v = Potentials::potentialLennardJonesRepulsionTriquinticDerivative(forceField, rr, typeA, typeB);
           break;
         case ForceFieldSettings::InterpolationGridType::LennardJonesAttraction:
-          v = Potentials::potentialLennardJonesAttractionTriquinticDerivative(forceField, rr,
-                                                                              cutOffFrameworkVDWSquared, typeA, typeB);
+          v = Potentials::potentialLennardJonesAttractionTriquinticDerivative(forceField, rr, typeA, typeB);
           break;
         case ForceFieldSettings::InterpolationGridType::EwaldReal:
           v = Potentials::potentialRealEwaldTriquinticDerivative(forceField, rr, std::sqrt(rr), 1.0, chargeB);
@@ -572,7 +560,6 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPosition(
     const SimulationBox &simulationBox, double3 posA, std::size_t typeA, const SimulationBox &frameworkBox,
     std::span<const Atom> frameworkAtoms)
 {
-  const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffSquared = interpolationGridCutOffSquared(interpolationGridType, forceField);
   std::array<double, 27> derivatives{};
   double energy_fractional{0.0};
@@ -607,12 +594,10 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPosition(
               v = Potentials::potentialLennardJonesTriquinticDerivative(forceField, rr, typeA, typeB);
               break;
             case ForceFieldSettings::InterpolationGridType::LennardJonesRepulsion:
-              v = Potentials::potentialLennardJonesRepulsionTriquinticDerivative(
-                  forceField, rr, cutOffFrameworkVDWSquared, typeA, typeB);
+              v = Potentials::potentialLennardJonesRepulsionTriquinticDerivative(forceField, rr, typeA, typeB);
               break;
             case ForceFieldSettings::InterpolationGridType::LennardJonesAttraction:
-              v = Potentials::potentialLennardJonesAttractionTriquinticDerivative(
-                  forceField, rr, cutOffFrameworkVDWSquared, typeA, typeB);
+              v = Potentials::potentialLennardJonesAttractionTriquinticDerivative(forceField, rr, typeA, typeB);
               break;
             case ForceFieldSettings::InterpolationGridType::EwaldReal:
               v = Potentials::potentialRealEwaldTriquinticDerivative(forceField, rr, std::sqrt(rr), 1.0, chargeB);

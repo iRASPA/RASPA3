@@ -45,35 +45,39 @@ export namespace Potentials
       24.0 * arg1 * (7.0 * temp3 * temp3 - 2.0 * temp3) / r4, -96.0 * arg1 * (28.0 * temp3 * temp3 - 5.0 * temp3) / r6);
 };
 
+// The repulsion and attraction parts are each shifted at the pair cutoff only if the force field shifts this pair, so
+// that repulsion minus attraction equals the full Lennard-Jones energy (the shift being U(rc) of the whole potential).
 [[clang::always_inline]] inline TricubicDerivativeFactor potentialLennardJonesRepulsionTricubicDerivative(
-    const ForceField& forcefield, const double& r2, const double& cutoff2, const std::size_t& typeA,
-    const std::size_t& typeB)
+    const ForceField& forcefield, const double& r2, const std::size_t& typeA, const std::size_t& typeB)
 {
   double arg1 = 4.0 * forcefield(typeA, typeB).parameters.x;
   double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;
   double temp3 = (arg2 / r2) * (arg2 / r2) * (arg2 / r2);
-  double temp3_rc = (arg2 / cutoff2) * (arg2 / cutoff2) * (arg2 / cutoff2);
-  temp3_rc = 0.0;
+  double cutoff2 = forcefield.cutOffVDW(typeA, typeB) * forcefield.cutOffVDW(typeA, typeB);
+  double temp3_rc = forcefield.shiftPotentials[typeA * forcefield.numberOfPseudoAtoms + typeB]
+                        ? (arg2 / cutoff2) * (arg2 / cutoff2) * (arg2 / cutoff2)
+                        : 0.0;
   double r4 = r2 * r2;
   double r6 = r4 * r2;
 
-  return TricubicDerivativeFactor(arg1 * temp3 * temp3 - temp3_rc * temp3_rc, -12.0 * arg1 * temp3 * temp3 / r2,
+  return TricubicDerivativeFactor(arg1 * (temp3 * temp3 - temp3_rc * temp3_rc), -12.0 * arg1 * temp3 * temp3 / r2,
                                   168.0 * arg1 * temp3 * temp3 / r4, -2688.0 * arg1 * temp3 * temp3 / r6);
 };
 
 [[clang::always_inline]] inline TricubicDerivativeFactor potentialLennardJonesAttractionTricubicDerivative(
-    const ForceField& forcefield, const double& r2, const double& cutoff2, const std::size_t& typeA,
-    const std::size_t& typeB)
+    const ForceField& forcefield, const double& r2, const std::size_t& typeA, const std::size_t& typeB)
 {
   double arg1 = 4.0 * forcefield(typeA, typeB).parameters.x;
   double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;
   double temp3 = (arg2 / r2) * (arg2 / r2) * (arg2 / r2);
-  double temp3_rc = (arg2 / cutoff2) * (arg2 / cutoff2) * (arg2 / cutoff2);
-  temp3_rc = 0.0;
+  double cutoff2 = forcefield.cutOffVDW(typeA, typeB) * forcefield.cutOffVDW(typeA, typeB);
+  double temp3_rc = forcefield.shiftPotentials[typeA * forcefield.numberOfPseudoAtoms + typeB]
+                        ? (arg2 / cutoff2) * (arg2 / cutoff2) * (arg2 / cutoff2)
+                        : 0.0;
   double r4 = r2 * r2;
   double r6 = r4 * r2;
 
-  return TricubicDerivativeFactor(arg1 * temp3 - temp3_rc, -6.0 * arg1 * temp3 / r2, 48.0 * arg1 * temp3 / r4,
+  return TricubicDerivativeFactor(arg1 * (temp3 - temp3_rc), -6.0 * arg1 * temp3 / r2, 48.0 * arg1 * temp3 / r4,
                                   -480.0 * arg1 * temp3 / r6);
 };
 
