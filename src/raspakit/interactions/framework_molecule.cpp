@@ -832,17 +832,24 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
         }
         if (rr < cutOffChargeSquared)
         {
-          const double r = std::sqrt(rr);
-          const Potentials::PairDerivatives<1> pairFactors = Potentials::potentialCoulomb<1>(
-              forceField, it1->scalingCoulomb, it2->scalingCoulomb, r, chargeA, it2->charge);
-          energy.frameworkComponentEnergy(0, compA).CoulombicReal += EnergyDuDlambda(pairFactors.energy, 0.0);
-          accumulateGradientAndStrain(pairFactors.firstDerivativeFactor * dr, dr);
-
-          const Potentials::PairDerivatives<2> unitFactors =
-              Potentials::potentialCoulomb<2>(forceField, 1.0, 1.0, r, 1.0, 1.0);
+          // An uncharged framework site is no source (see 'evaluatePair'), and its factors diverge on an overlap.
           const double scaledChargeB = it2->scalingCoulomb * it2->charge;
-          accumulatePolarizationFieldStrain(*polarizationGather, indexA, scaledChargeB, dr, dr - sigmaA,
-                                            unitFactors.firstDerivativeFactor, unitFactors.secondDerivativeFactor);
+          if (scaledChargeB != 0.0)
+          {
+            const double r = std::sqrt(rr);
+            if (it1->scalingCoulomb * chargeA != 0.0)
+            {
+              const Potentials::PairDerivatives<1> pairFactors = Potentials::potentialCoulomb<1>(
+                  forceField, it1->scalingCoulomb, it2->scalingCoulomb, r, chargeA, it2->charge);
+              energy.frameworkComponentEnergy(0, compA).CoulombicReal += EnergyDuDlambda(pairFactors.energy, 0.0);
+              accumulateGradientAndStrain(pairFactors.firstDerivativeFactor * dr, dr);
+            }
+
+            const Potentials::PairDerivatives<2> unitFactors =
+                Potentials::potentialCoulomb<2>(forceField, 1.0, 1.0, r, 1.0, 1.0);
+            accumulatePolarizationFieldStrain(*polarizationGather, indexA, scaledChargeB, dr, dr - sigmaA,
+                                              unitFactors.firstDerivativeFactor, unitFactors.secondDerivativeFactor);
+          }
         }
       }
     }

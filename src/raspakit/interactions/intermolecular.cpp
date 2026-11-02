@@ -710,24 +710,39 @@ std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStra
           }
           if (useCharge && rr < cutOffChargeSquared)
           {
-            const double r = std::sqrt(rr);
-            const Potentials::PairDerivatives<1> pairFactors = Potentials::potentialCoulomb<1>(
-                forceField, it1->scalingCoulomb, it2->scalingCoulomb, r, it1->charge, it2->charge);
-            energy.componentEnergy(compA, compB).CoulombicReal += 0.5 * EnergyDuDlambda(pairFactors.energy, 0.0);
-            energy.componentEnergy(compB, compA).CoulombicReal += 0.5 * EnergyDuDlambda(pairFactors.energy, 0.0);
-            accumulateGradientAndStrain(pairFactors.firstDerivativeFactor * dr, dr);
-
-            const Potentials::PairDerivatives<2> unitFactors =
-                Potentials::potentialCoulomb<2>(forceField, 1.0, 1.0, r, 1.0, 1.0);
+            // An uncharged site has no pair term and is no field source, like the early-out of 'evaluatePair'; its
+            // factors must not be evaluated, as they diverge when it overlaps another site. It is still a field point.
             const double scaledChargeA = it1->scalingCoulomb * it1->charge;
             const double scaledChargeB = it2->scalingCoulomb * it2->charge;
+            const double r = std::sqrt(rr);
+            if (scaledChargeA * scaledChargeB != 0.0)
+            {
+              const Potentials::PairDerivatives<1> pairFactors = Potentials::potentialCoulomb<1>(
+                  forceField, it1->scalingCoulomb, it2->scalingCoulomb, r, it1->charge, it2->charge);
+              energy.componentEnergy(compA, compB).CoulombicReal += 0.5 * EnergyDuDlambda(pairFactors.energy, 0.0);
+              energy.componentEnergy(compB, compA).CoulombicReal += 0.5 * EnergyDuDlambda(pairFactors.energy, 0.0);
+              accumulateGradientAndStrain(pairFactors.firstDerivativeFactor * dr, dr);
+            }
 
-            const double3 delta =
-                dr - polarizationGather->centerOfMassOffset[indexA] + polarizationGather->centerOfMassOffset[indexB];
-            accumulatePolarizationFieldStrain(*polarizationGather, indexA, scaledChargeB, dr, delta,
-                                              unitFactors.firstDerivativeFactor, unitFactors.secondDerivativeFactor);
-            accumulatePolarizationFieldStrain(*polarizationGather, indexB, scaledChargeA, -dr, -delta,
-                                              unitFactors.firstDerivativeFactor, unitFactors.secondDerivativeFactor);
+            if (scaledChargeA != 0.0 || scaledChargeB != 0.0)
+            {
+              const Potentials::PairDerivatives<2> unitFactors =
+                  Potentials::potentialCoulomb<2>(forceField, 1.0, 1.0, r, 1.0, 1.0);
+              const double3 delta = dr - polarizationGather->centerOfMassOffset[indexA] +
+                                    polarizationGather->centerOfMassOffset[indexB];
+              if (scaledChargeB != 0.0)
+              {
+                accumulatePolarizationFieldStrain(*polarizationGather, indexA, scaledChargeB, dr, delta,
+                                                  unitFactors.firstDerivativeFactor,
+                                                  unitFactors.secondDerivativeFactor);
+              }
+              if (scaledChargeA != 0.0)
+              {
+                accumulatePolarizationFieldStrain(*polarizationGather, indexB, scaledChargeA, -dr, -delta,
+                                                  unitFactors.firstDerivativeFactor,
+                                                  unitFactors.secondDerivativeFactor);
+              }
+            }
           }
         }
       }
@@ -843,24 +858,37 @@ std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStra
     }
     if (useCharge && rr < cutOffChargeSquared)
     {
-      const double r = std::sqrt(rr);
-      const Potentials::PairDerivatives<1> pairFactors = Potentials::potentialCoulomb<1>(
-          forceField, atomA.scalingCoulomb, atomB.scalingCoulomb, r, atomA.charge, atomB.charge);
-      energy.componentEnergy(compA, compB).CoulombicReal += 0.5 * EnergyDuDlambda(pairFactors.energy, 0.0);
-      energy.componentEnergy(compB, compA).CoulombicReal += 0.5 * EnergyDuDlambda(pairFactors.energy, 0.0);
-      accumulateGradientAndStrain(indexA, indexB, pairFactors.firstDerivativeFactor * dr, dr);
-
-      const Potentials::PairDerivatives<2> unitFactors =
-          Potentials::potentialCoulomb<2>(forceField, 1.0, 1.0, r, 1.0, 1.0);
+      // An uncharged site has no pair term and is no field source, like the early-out of 'evaluatePair'; its factors
+      // must not be evaluated, as they diverge when it overlaps another site. It is still a field point.
       const double scaledChargeA = atomA.scalingCoulomb * atomA.charge;
       const double scaledChargeB = atomB.scalingCoulomb * atomB.charge;
+      const double r = std::sqrt(rr);
+      if (scaledChargeA * scaledChargeB != 0.0)
+      {
+        const Potentials::PairDerivatives<1> pairFactors = Potentials::potentialCoulomb<1>(
+            forceField, atomA.scalingCoulomb, atomB.scalingCoulomb, r, atomA.charge, atomB.charge);
+        energy.componentEnergy(compA, compB).CoulombicReal += 0.5 * EnergyDuDlambda(pairFactors.energy, 0.0);
+        energy.componentEnergy(compB, compA).CoulombicReal += 0.5 * EnergyDuDlambda(pairFactors.energy, 0.0);
+        accumulateGradientAndStrain(indexA, indexB, pairFactors.firstDerivativeFactor * dr, dr);
+      }
 
-      const double3 delta =
-          dr - polarizationGather->centerOfMassOffset[indexA] + polarizationGather->centerOfMassOffset[indexB];
-      accumulatePolarizationFieldStrain(*polarizationGather, indexA, scaledChargeB, dr, delta,
-                                        unitFactors.firstDerivativeFactor, unitFactors.secondDerivativeFactor);
-      accumulatePolarizationFieldStrain(*polarizationGather, indexB, scaledChargeA, -dr, -delta,
-                                        unitFactors.firstDerivativeFactor, unitFactors.secondDerivativeFactor);
+      if (scaledChargeA != 0.0 || scaledChargeB != 0.0)
+      {
+        const Potentials::PairDerivatives<2> unitFactors =
+            Potentials::potentialCoulomb<2>(forceField, 1.0, 1.0, r, 1.0, 1.0);
+        const double3 delta =
+            dr - polarizationGather->centerOfMassOffset[indexA] + polarizationGather->centerOfMassOffset[indexB];
+        if (scaledChargeB != 0.0)
+        {
+          accumulatePolarizationFieldStrain(*polarizationGather, indexA, scaledChargeB, dr, delta,
+                                            unitFactors.firstDerivativeFactor, unitFactors.secondDerivativeFactor);
+        }
+        if (scaledChargeA != 0.0)
+        {
+          accumulatePolarizationFieldStrain(*polarizationGather, indexB, scaledChargeA, -dr, -delta,
+                                            unitFactors.firstDerivativeFactor, unitFactors.secondDerivativeFactor);
+        }
+      }
     }
   };
 

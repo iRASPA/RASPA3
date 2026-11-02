@@ -202,6 +202,8 @@ export template <std::size_t Order>
     double rri6 = rri3 * rri3;
     double term = arg1 * (rri3 * (rri3 - 1.0)) - arg3;
     double dlambda_term = arg1 * scaling * inv_scaling * (2.0 * rri6 * rri3 - rri6);
+    // (r/sigma)^6 / r^2, without the division by r^2: the soft-core form stays finite at r = 0 for scaling < 1
+    double temp3OverRR = temp * temp / arg2;
 
     if constexpr (Order == 0)
     {
@@ -209,12 +211,13 @@ export template <std::size_t Order>
     }
     else if constexpr (Order == 1)
     {
-      return {scaling * term, term + dlambda_term, 12.0 * scaling * arg1 * (rri6 * temp3 * (0.5 - rri3)) / rr};
+      return {scaling * term, term + dlambda_term, 12.0 * scaling * arg1 * (rri6 * temp3OverRR * (0.5 - rri3))};
     }
     else
     {
-      return {scaling * term, term + dlambda_term, 12.0 * scaling * arg1 * (rri6 * temp3 * (0.5 - rri3)) / rr,
-              24.0 * arg1 * scaling * rri6 * temp3 * (1.0 + rri3 * (temp3 * (-3.0 + 9.0 * rri3) - 2.0)) / (rr * rr)};
+      return {scaling * term, term + dlambda_term, 12.0 * scaling * arg1 * (rri6 * temp3OverRR * (0.5 - rri3)),
+              24.0 * arg1 * scaling * rri6 * (temp / (arg2 * arg2)) *
+                  (1.0 + rri3 * (temp3 * (-3.0 + 9.0 * rri3) - 2.0))};
     }
   }
 

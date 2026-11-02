@@ -25,6 +25,8 @@ import interactions_polarization_derivatives;
 import minimization_cell_layout;
 import mc_moves_translation;
 import connectivity_table;
+import potential_pair_vdw;
+import potential_pair_derivatives;
 import intra_molecular_potentials;
 
 namespace
@@ -406,5 +408,129 @@ TEST(ewald_polarization, molecular_pressure_polarization_matches_reference_deriv
   {
     EXPECT_NEAR(fused, expected, 1e-8 * std::max({1.0, std::abs(fused), std::abs(expected)}))
         << "Fused polarization pressure strain disagrees with computePolarizationDerivatives";
+  }
+}
+
+namespace
+{
+// The build uses -ffast-math: the compiler may assume that no double is NaN or infinite, and then folds std::isfinite,
+// comparisons (EXPECT_NEAR included) and even tests of the exponent bits away. The formatted text does show them.
+bool isFiniteValue(double value)
+{
+  const std::string text = std::format("{}", value);
+  return !text.contains("nan") && !text.contains("inf");
+}
+
+// A charged polarizable ion, a second ion, and a site without charge or van der Waals coupling. An uncharged site has
+// no interaction at all, so where it sits (even exactly on top of the polarizable ion) must not matter.
+System makeOverlappingDummySystem(ForceField::ChargeMethod chargeMethod, bool dummyInFramework, const double3& dummy)
+{
+  ForceField forceField({{"F", true, 12.0, 0.0, 0.0, 6, true},
+                         {"Q", false, 16.0, 0.5, 1.5, 8, false},
+                         {"R", false, 16.0, -0.5, 0.0, 8, false},
+                         {"D", false, 16.0, 0.0, 0.0, 8, false}},
+                        {{0.0, 3.0}, {80.0, 3.0}, {80.0, 3.0}, {0.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot,
+                        7.0, 7.0, 7.0, true, false, true);
+  forceField.computePolarization = true;
+  forceField.omitInterPolarization = false;
+  forceField.chargeMethod = chargeMethod;
+  if (chargeMethod == ForceField::ChargeMethod::Ewald)
+  {
+    forceField.automaticEwald = false;
+    forceField.numberOfWaveVectors = int3(6, 6, 6);
+  }
+  else
+  {
+    forceField.omitEwaldFourier = true;
+  }
+  forceField.EwaldAlpha = 0.3;
+
+  const SimulationBox box(16.0, 16.0, 16.0);
+  const auto site = [&](const char* name, std::size_t type, double charge)
+  {
+    return Component(forceField, name, 16.0, 1.0e6, 0.011,
+                     {Atom({0.0, 0.0, 0.0}, charge, 1.0, 0, static_cast<std::uint16_t>(type), 0, false, false)},
+                     ConnectivityTable(1), Potentials::IntraMolecularPotentials{}, 0, 0);
+  };
+  const Component ionA = site("ion-a", 1, 0.5);
+  const Component ionB = site("ion-b", 2, -0.5);
+  const Component dummyComponent = site("dummy", 3, 0.0);
+
+  std::vector<Atom> frameworkAtoms{Atom(double3(0.25, 0.25, 0.25), 0.4, 1.0, 0, 0, 0, 0, true),
+                                   Atom(double3(0.75, 0.25, 0.25), -0.4, 1.0, 0, 0, 0, 0, true),
+                                   Atom((dummyInFramework ? dummy : double3(3.0, 3.0, 12.0)) / 16.0, 0.0, 1.0, 0, 0, 0,
+                                        0, true)};
+  Framework framework(forceField, "dummy-host", box, 1, frameworkAtoms, frameworkAtoms, int3(1, 1, 1));
+
+  const std::vector<std::size_t> numbers = dummyInFramework ? std::vector<std::size_t>{1, 1, 0}
+                                                            : std::vector<std::size_t>{1, 1, 1};
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, {framework}, {ionA, ionB, dummyComponent}, {}, numbers, 5);
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  atoms[0].position = double3(8.0, 8.0, 8.0);
+  atoms[1].position = double3(11.0, 8.5, 8.0);
+  if (!dummyInFramework)
+  {
+    atoms[2].position = dummy;
+    atoms[2].scalingVDW = 0.0;
+  }
+  system.spanOfFrameworkAtoms()[2].scalingVDW = 0.0;
+  system.forceField.initializeEwaldParameters(system.simulationBox);
+  system.precomputeTotalRigidEnergy();
+  return system;
+}
+}  // namespace
+
+TEST(polarization_pressure, uncharged_site_on_top_of_a_polarizable_atom_has_no_effect)
+{
+  const double3 onTop(8.0, 8.0, 8.0);
+  const double3 farAway(2.0, 13.0, 3.0);
+  for (const ForceField::ChargeMethod method : {ForceField::ChargeMethod::Ewald, ForceField::ChargeMethod::Wolf})
+  {
+    for (const bool dummyInFramework : {false, true})
+    {
+      System overlapping = makeOverlappingDummySystem(method, dummyInFramework, onTop);
+      System separated = makeOverlappingDummySystem(method, dummyInFramework, farAway);
+      const double3x3 a = overlapping.computeMolecularPressure().second;
+      const double3x3 b = separated.computeMolecularPressure().second;
+      ASSERT_TRUE(isFiniteValue(b.trace()));
+      EXPECT_TRUE(isFiniteValue(a.trace())) << "method " << std::to_underlying(method) << " framework " << dummyInFramework;
+      EXPECT_NEAR(a.trace(), b.trace(), 1e-8 * std::max(1.0, std::abs(b.trace())))
+          << "method " << std::to_underlying(method) << " framework " << dummyInFramework;
+    }
+  }
+}
+
+// The soft-core Lennard-Jones factors at exact overlap: finite for a partly or fully decoupled pair, and the closed
+// form without the division by r^2 is the same function as the original one elsewhere.
+TEST(polarization_pressure, soft_core_lennard_jones_is_finite_at_overlap)
+{
+  ForceField forceField({{"A", false, 16.0, 0.0, 0.0, 8, false}}, {{80.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot,
+                        7.0, 7.0, 7.0, true, false, false);
+  for (const double scaling : {0.0, 0.5, 0.9})
+  {
+    const Potentials::PairDerivatives<2> factors = Potentials::potentialVDW<2>(forceField, scaling, 1.0, 0.0, 0, 0);
+    EXPECT_TRUE(isFiniteValue(factors.energy)) << scaling;
+    EXPECT_TRUE(isFiniteValue(factors.firstDerivativeFactor)) << scaling;
+    EXPECT_TRUE(isFiniteValue(factors.secondDerivativeFactor)) << scaling;
+    EXPECT_DOUBLE_EQ(factors.firstDerivativeFactor, 0.0) << scaling;
+    EXPECT_DOUBLE_EQ(factors.secondDerivativeFactor, 0.0) << scaling;
+  }
+
+  const double epsilon4 = 4.0 * forceField(0, 0).parameters.x;
+  const double sigma2 = forceField(0, 0).parameters.y * forceField(0, 0).parameters.y;
+  for (const double scaling : {0.5, 1.0})
+  {
+    for (const double rr : {4.0, 9.0, 16.0})
+    {
+      const double temp3 = (rr / sigma2) * (rr / sigma2) * (rr / sigma2);
+      const double inverse = 1.0 - scaling;
+      const double rri3 = 1.0 / (temp3 + 0.5 * inverse * inverse);
+      const double rri6 = rri3 * rri3;
+      const Potentials::PairDerivatives<2> factors = Potentials::potentialVDW<2>(forceField, scaling, 1.0, rr, 0, 0);
+      const double first = 12.0 * scaling * epsilon4 * (rri6 * temp3 * (0.5 - rri3)) / rr;
+      const double second = 24.0 * epsilon4 * scaling * rri6 * temp3 * (1.0 + rri3 * (temp3 * (-3.0 + 9.0 * rri3) - 2.0)) / (rr * rr);
+      EXPECT_NEAR(factors.firstDerivativeFactor, first, 1e-12 * std::abs(first));
+      EXPECT_NEAR(factors.secondDerivativeFactor, second, 1e-12 * std::abs(second));
+    }
   }
 }
