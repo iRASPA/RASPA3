@@ -130,9 +130,11 @@ bool sameHamiltonianUpToSoluteTempering(const System& systemA, const System& sys
   {
     return sameHamiltonian(systemA.forceField, systemB.forceField);
   }
-  // compare everything but the pair table and the charges of the solute's pseudo-atom types
+  // compare everything but the pair tables ('data' and the 1-4 table 'data14') and the charges of the
+  // solute's pseudo-atom types: these are exactly the fields ForceField::scaleSoluteInteractions scales
   ForceField normalizedB = systemB.forceField;
   if (normalizedB.data.size() != systemA.forceField.data.size() ||
+      normalizedB.data14.size() != systemA.forceField.data14.size() ||
       normalizedB.pseudoAtoms.size() != systemA.forceField.pseudoAtoms.size())
   {
     return false;
@@ -143,7 +145,11 @@ bool sameHamiltonianUpToSoluteTempering(const System& systemA, const System& sys
   {
     for (std::size_t j = 0; j < n; ++j)
     {
-      if (soluteTypes[i] || soluteTypes[j]) normalizedB.data[i * n + j] = systemA.forceField.data[i * n + j];
+      if (soluteTypes[i] || soluteTypes[j])
+      {
+        normalizedB.data[i * n + j] = systemA.forceField.data[i * n + j];
+        if (!normalizedB.data14.empty()) normalizedB.data14[i * n + j] = systemA.forceField.data14[i * n + j];
+      }
     }
     if (soluteTypes[i]) normalizedB.pseudoAtoms[i].charge = systemA.forceField.pseudoAtoms[i].charge;
   }

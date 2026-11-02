@@ -470,6 +470,27 @@ TEST(solute_tempering, solute_hamiltonian_change_matches_rescaled_system_energy)
   EXPECT_NEAR(logR.value(), 0.0, 1e-8);
 }
 
+// a force field with its own 1-4 pair table ('data14') is scaled in that table too; the compatibility check
+// must normalize it back as well, otherwise every swap between solute-tempering replicas is rejected
+TEST(solute_tempering, replicas_with_a_separate_1_4_table_remain_compatible)
+{
+  System systemA = makeSystem();
+  systemA.forceField.data14 = systemA.forceField.data;
+  ASSERT_TRUE(systemA.forceField.hasPair14Parameters());
+  System systemB = systemA;
+  systemB.scaleSoluteHamiltonian(0, 0.3);
+  ASSERT_FALSE(systemA.forceField == systemB.forceField);
+
+  const double expected = potentialEnergy(systemB) - potentialEnergy(systemA);
+  const std::optional<double> changeAToB = MC_Moves::ParallelTemperingSoluteHamiltonianChange(systemA, systemB);
+  ASSERT_TRUE(changeAToB.has_value());
+  EXPECT_NEAR(changeAToB.value(), expected, 1e-8 * std::abs(expected) + 1e-8);
+
+  const std::optional<double> logR = MC_Moves::ParallelTemperingLogAcceptance(systemA, systemB);
+  ASSERT_TRUE(logR.has_value());
+  EXPECT_NEAR(logR.value(), 0.0, 1e-8);
+}
+
 // different configurations: log R = -beta [ (E_A(X_B) - E_B(X_B)) + (E_B(X_A) - E_A(X_A)) ] at equal T,
 // with E_A(X_B) obtained by brute force (rescaling a copy of B back to A's Hamiltonian)
 TEST(solute_tempering, log_acceptance_matches_brute_force_hamiltonian_switch)
