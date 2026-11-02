@@ -1007,10 +1007,19 @@ RunningEnergy Interactions::computeInterMolecularElectricField(const ForceField&
         if (useCharge && rr < cutOffChargeSquared)
         {
           double r = std::sqrt(rr);
-          Potentials::PairDerivatives<0> energyFactor =
-              Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
-          energySum.moleculeMoleculeCharge += energyFactor.energy;
-          energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, energyFactor.dUdlambda);
+
+          // Energy and dU/dlambda follow the pair-kernel convention (see 'evaluatePairAtSeparation'): a pair with an
+          // uncharged or Coulomb-decoupled site (fractional molecule at lambda <= 1/2) is skipped, so that the
+          // bookkeeping of the moves and of the total energy agree. The field is accumulated regardless: a decoupled
+          // or uncharged (but polarizable) site still sees its sources.
+          if (chargeA * chargeB != 0.0 && scalingCoulombA * scalingCoulombB != 0.0)
+          {
+            Potentials::PairDerivatives<0> energyFactor =
+                Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+            energySum.moleculeMoleculeCharge += energyFactor.energy;
+            energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB,
+                                         energyFactor.dUdlambda);
+          }
 
           Potentials::PairDerivatives<1> gradient = Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
 
@@ -1088,11 +1097,17 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularElectricFieldDif
         if (useCharge && rr < cutOffChargeSquared)
         {
           double r = std::sqrt(rr);
-          Potentials::PairDerivatives<0> energyFactor =
-              Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
-          energySum.moleculeMoleculeCharge += energyFactor.energy;
-          energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, energyFactor.dUdlambda);
+          // energy/dU/dlambda follow the pair-kernel skip of uncharged or Coulomb-decoupled pairs; the field does not
+          if (chargeA * chargeB != 0.0 && scalingCoulombA * scalingCoulombB != 0.0)
+          {
+            Potentials::PairDerivatives<0> energyFactor =
+                Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+
+            energySum.moleculeMoleculeCharge += energyFactor.energy;
+            energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB,
+                                         energyFactor.dUdlambda);
+          }
 
           Potentials::PairDerivatives<1> gradient = Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
 
@@ -1134,11 +1149,16 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularElectricFieldDif
         if (useCharge && rr < cutOffChargeSquared)
         {
           double r = std::sqrt(rr);
-          Potentials::PairDerivatives<0> energyFactor =
-              Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
-          energySum.moleculeMoleculeCharge -= energyFactor.energy;
-          energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, -energyFactor.dUdlambda);
+          if (chargeA * chargeB != 0.0 && scalingCoulombA * scalingCoulombB != 0.0)
+          {
+            Potentials::PairDerivatives<0> energyFactor =
+                Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+
+            energySum.moleculeMoleculeCharge -= energyFactor.energy;
+            energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB,
+                                         -energyFactor.dUdlambda);
+          }
 
           Potentials::PairDerivatives<1> gradient = Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
 
@@ -1216,11 +1236,17 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularPolarizationElec
         if (useCharge && rr < cutOffChargeSquared)
         {
           double r = std::sqrt(rr);
-          Potentials::PairDerivatives<0> energyFactor =
-              Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
-          energySum.moleculeMoleculeCharge += energyFactor.energy;
-          energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, energyFactor.dUdlambda);
+          // energy/dU/dlambda follow the pair-kernel skip of uncharged or Coulomb-decoupled pairs; the field does not
+          if (chargeA * chargeB != 0.0 && scalingCoulombA * scalingCoulombB != 0.0)
+          {
+            Potentials::PairDerivatives<0> energyFactor =
+                Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+
+            energySum.moleculeMoleculeCharge += energyFactor.energy;
+            energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB,
+                                         energyFactor.dUdlambda);
+          }
 
           Potentials::PairDerivatives<1> gradient = Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
 
@@ -1264,11 +1290,16 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularPolarizationElec
         if (useCharge && rr < cutOffChargeSquared)
         {
           double r = std::sqrt(rr);
-          Potentials::PairDerivatives<0> energyFactor =
-              Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
-          energySum.moleculeMoleculeCharge -= energyFactor.energy;
-          energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, -energyFactor.dUdlambda);
+          if (chargeA * chargeB != 0.0 && scalingCoulombA * scalingCoulombB != 0.0)
+          {
+            Potentials::PairDerivatives<0> energyFactor =
+                Potentials::potentialCoulomb<0>(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+
+            energySum.moleculeMoleculeCharge -= energyFactor.energy;
+            energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB,
+                                         -energyFactor.dUdlambda);
+          }
 
           Potentials::PairDerivatives<1> gradient = Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
 

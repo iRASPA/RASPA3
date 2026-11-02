@@ -24,6 +24,7 @@ import energy_status;
 import mc_moves_translation;
 import mc_moves_rotation;
 import mc_moves_gibbs_identity_change;
+import mc_moves_lambda_exchange;
 
 TEST(electrostatic_polarization, Test_2_CO2_in_ITQ_29_2x2x2)
 {
@@ -73,6 +74,99 @@ static double maxFieldDifference(std::span<const double3> a, std::span<const dou
     m = std::max(m, (a[i] - b[i]).length());
   }
   return m;
+}
+
+// Lambda exchange (Hamiltonian parallel tempering of pinned fractional molecules) for an ion pair, i.e. two
+// fractional molecules rescaled in place one after the other. Both replicas are polarizable: the energy, the
+// stored field and the dU/dlambda accumulators have to agree with a full recomputation after the exchange. The
+// pinned bins straddle lambda = 1/2, where the Coulomb coupling of the fractional molecules switches on, so the
+// total-energy field routines and the move differences must apply the same skip of Coulomb-decoupled pairs.
+namespace
+{
+System makePinnedPairSystem(std::size_t fixedBin, std::uint64_t seed, bool polarization)
+{
+  ForceField forceField =
+      ForceField({{"Na+", false, 22.99, 1.0, 1.5, 11, false}, {"Cl-", false, 35.45, -1.0, 3.0, 17, false}},
+                 {{15.0966, 2.65755}, {142.562, 3.51932}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0,
+                 12.0, true, false, true);
+  forceField.computePolarization = polarization;
+  forceField.omitInterPolarization = false;
+
+  Component na = Component::makeIon(forceField, 0, "Na+", forceField.findPseudoAtom("Na+").value(), 1.0);
+  na.pairComponentId = 1;
+  na.maximumPairDistance = 8.0;
+  na.fixedLambdaBin = fixedBin;
+  na.fixedLambdaCoordinate = Component::FixedLambdaCoordinate::PairSwap;
+  na.lambdaPairSwap.computeDUdlambda = true;
+
+  Component cl = Component::makeIon(forceField, 1, "Cl-", forceField.findPseudoAtom("Cl-").value(), -1.0);
+  cl.pairComponentId = 0;
+  cl.maximumPairDistance = 8.0;
+
+  // very high temperature so that the exchange is accepted regardless of the energy change
+  System system = System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 1.0e8, 1e5, 1.0, {}, {na, cl}, {},
+                         {6, 6}, 5);
+  RandomNumber random(seed);
+  for (Atom& atom : system.spanOfMoleculeAtoms())
+  {
+    atom.position = double3(30.0 * random.uniform(), 30.0 * random.uniform(), 30.0 * random.uniform());
+  }
+  system.runningEnergies = system.computeTotalEnergies();
+  return system;
+}
+
+void expectLambdaExchangeConsistent(bool polarization)
+{
+  System systemA = makePinnedPairSystem(3, 7, polarization);
+  System systemB = makePinnedPairSystem(15, 11, polarization);
+
+  const double lambdaA = systemA.components[0].lambdaPairSwap.lambdaValue();
+  const double lambdaB = systemB.components[0].lambdaPairSwap.lambdaValue();
+  ASSERT_LT(lambdaA, 0.5);
+  ASSERT_GT(lambdaB, 0.5);
+  ASSERT_EQ(systemA.numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[0], 1uz);
+  ASSERT_EQ(systemA.numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[1], 1uz);
+
+  RandomNumber random(42);
+  std::optional<std::pair<RunningEnergy, RunningEnergy>> result = MC_Moves::LambdaExchange(random, systemA, systemB);
+  ASSERT_TRUE(result.has_value());
+
+  EXPECT_DOUBLE_EQ(systemA.components[0].lambdaPairSwap.lambdaValue(), lambdaB);
+  EXPECT_DOUBLE_EQ(systemB.components[0].lambdaPairSwap.lambdaValue(), lambdaA);
+
+  for (System* s : {&systemA, &systemB})
+  {
+    std::span<double3> maintained = s->spanOfMoleculeElectricField();
+    std::vector<double3> snapshot(maintained.begin(), maintained.end());
+
+    RunningEnergy recomputed = s->computeTotalEnergies();
+    RunningEnergy drift = s->runningEnergies - recomputed;
+
+    if (polarization)
+    {
+      EXPECT_LT(maxFieldDifference(snapshot, s->spanOfMoleculeElectricField()), 1e-8);
+      EXPECT_GT(std::abs(recomputed.polarization), 0.0);
+    }
+    EXPECT_NEAR(drift.polarization, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeCharge, 0.0, 1e-6);
+    EXPECT_NEAR(drift.ewald_fourier, 0.0, 1e-6);
+    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaCharge(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaEwald(), 0.0, 1e-6);
+  }
+}
+}  // namespace
+
+TEST(electrostatic_polarization, lambda_exchange_pair_cfcmc_without_polarization)
+{
+  expectLambdaExchangeConsistent(false);
+}
+
+TEST(electrostatic_polarization, lambda_exchange_pair_cfcmc_with_polarization)
+{
+  expectLambdaExchangeConsistent(true);
 }
 
 TEST(electrostatic_polarization, stored_field_consistency_translation)
