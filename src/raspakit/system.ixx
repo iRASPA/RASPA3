@@ -793,6 +793,7 @@ export struct System
   void pairSwapLambdaWriteBiasingFiles(std::size_t systemId);
   [[nodiscard]] double reactionLambdaMinBias() const noexcept;
   void reactionLambdaNormalize(double minBias) noexcept;
+  void reactionLambdaWriteBiasingFiles(std::size_t systemId);
   void reactionLambdaSampleProductionHistograms(std::size_t blockIndex, double weight) noexcept;
   void rescaleMolarFractions();
   void computeComponentFluidProperties();

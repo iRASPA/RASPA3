@@ -745,11 +745,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
             }
           }
           system.pairSwapLambdaWriteBiasingFiles(system_id);
-          for (Reaction& reaction : system.reactions.list)
-          {
-            system.activeReactionLambdaHistogram(reaction).writeBiasingFile(
-                std::format("bias_factors/lambda_bias_reaction_{}.s{}.json", reaction.id, system_id));
-          }
+          system.reactionLambdaWriteBiasingFiles(system_id);
         }
 
         ++system_id;
@@ -893,11 +889,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
         }
       }
       system.pairSwapLambdaWriteBiasingFiles(system_id);
-      for (Reaction& reaction : system.reactions.list)
-      {
-        system.activeReactionLambdaHistogram(reaction).writeBiasingFile(
-            std::format("bias_factors/lambda_bias_reaction_{}.s{}.json", reaction.id, system_id));
-      }
+      system.reactionLambdaWriteBiasingFiles(system_id);
 
       ++system_id;
     }

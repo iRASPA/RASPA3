@@ -27,6 +27,7 @@ import mc_moves_reaction_cbcfcmc;
 import mc_moves_reaction_conventional_cfcmc;
 import mc_moves_reaction_conventional_cbcfcmc;
 import randomnumbers;
+import property_lambda_probability_histogram;
 
 namespace
 {
@@ -1611,6 +1612,77 @@ TEST(MC_REACTION_DRIFT, reaction_parallel_dudlambda_finite_difference)
     // restore the central state for the next iteration
     MC_Moves::ReactionCommon::setReactionFractionalScaling(system, reaction, lambda);
   }
+}
+
+// reactionLambdaNormalize shifts both serial Rx/CFC histograms, so the minimum must span both sides
+// whichever one is active: otherwise the inactive side turns negative.
+TEST(MC_REACTION_DRIFT, reaction_serial_lambda_min_bias_spans_both_sides)
+{
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+  systemProbabilities.setProbability(Move::Types::ReactionCFCMC, 1.0);
+
+  for (const bool fractionalSideIsReactants : {true, false})
+  {
+    System system = makeCO2N2SerialReactionSystem(systemProbabilities, {2, 0}, {0, 2}, {30, 10});
+    Reaction& reaction = system.reactions.list[0];
+    reaction.fractionalSideIsReactants = fractionalSideIsReactants;
+
+    PropertyLambdaProbabilityHistogram& active =
+        fractionalSideIsReactants ? reaction.lambda : reaction.lambdaProductSide;
+    PropertyLambdaProbabilityHistogram& inactive =
+        fractionalSideIsReactants ? reaction.lambdaProductSide : reaction.lambda;
+    std::fill(active.biasFactor.begin(), active.biasFactor.end(), 5.0);
+    std::fill(inactive.biasFactor.begin(), inactive.biasFactor.end(), 7.0);
+    active.biasFactor[3] = 2.0;
+    inactive.biasFactor[4] = 0.5;
+    const double crossSideDifference = inactive.biasFactor[3] - active.biasFactor[3];
+
+    const double minBias = system.reactionLambdaMinBias();
+    EXPECT_DOUBLE_EQ(minBias, 0.5);
+
+    system.reactionLambdaNormalize(minBias);
+    EXPECT_DOUBLE_EQ(*std::ranges::min_element(inactive.biasFactor), 0.0);
+    EXPECT_DOUBLE_EQ(*std::ranges::min_element(active.biasFactor), 1.5);
+    // the serial side-switch acceptance depends on this difference
+    EXPECT_DOUBLE_EQ(inactive.biasFactor[3] - active.biasFactor[3], crossSideDifference);
+  }
+}
+
+// Each serial Rx/CFC side is written to its own file, with the same content whichever side is active.
+TEST(MC_REACTION_DRIFT, reaction_serial_lambda_biasing_files_cover_both_sides)
+{
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+  systemProbabilities.setProbability(Move::Types::ReactionCFCMC, 1.0);
+
+  const std::filesystem::path originalPath = std::filesystem::current_path();
+  const std::filesystem::path testPath =
+      std::filesystem::temp_directory_path() / "raspa3_reaction_serial_lambda_biasing_files";
+  std::filesystem::remove_all(testPath);
+  std::filesystem::create_directories(testPath / "bias_factors");
+  std::filesystem::current_path(testPath);
+
+  for (const bool fractionalSideIsReactants : {true, false})
+  {
+    System system = makeCO2N2SerialReactionSystem(systemProbabilities, {2, 0}, {0, 2}, {30, 10});
+    Reaction& reaction = system.reactions.list[0];
+    reaction.fractionalSideIsReactants = fractionalSideIsReactants;
+    std::fill(reaction.lambda.biasFactor.begin(), reaction.lambda.biasFactor.end(), 1.5);
+    std::fill(reaction.lambdaProductSide.biasFactor.begin(), reaction.lambdaProductSide.biasFactor.end(), 2.5);
+
+    system.reactionLambdaWriteBiasingFiles(0);
+
+    PropertyLambdaProbabilityHistogram reactants = reaction.lambda;
+    PropertyLambdaProbabilityHistogram products = reaction.lambdaProductSide;
+    reactants.readBiasingFile(std::format("bias_factors/lambda_bias_reaction_{}_reactants.s0.json", reaction.id));
+    products.readBiasingFile(std::format("bias_factors/lambda_bias_reaction_{}_products.s0.json", reaction.id));
+    EXPECT_EQ(reactants.biasFactor, reaction.lambda.biasFactor);
+    EXPECT_EQ(products.biasFactor, reaction.lambdaProductSide.biasFactor);
+    EXPECT_FALSE(
+        std::filesystem::exists(std::format("bias_factors/lambda_bias_reaction_{}.s0.json", reaction.id)));
+  }
+
+  std::filesystem::current_path(originalPath);
+  std::filesystem::remove_all(testPath);
 }
 
 // Thermodynamic integration for a serial Rx/CFC reaction: the active fractional side is coupled

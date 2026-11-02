@@ -774,14 +774,24 @@ void System::reactionLambdaFinalize() noexcept
 double System::reactionLambdaMinBias() const noexcept
 {
   double minBias = std::numeric_limits<double>::max();
-  for (const Reaction& reaction : reactions.list)
+  auto includeHistogram = [&minBias](const PropertyLambdaProbabilityHistogram& histogram)
   {
-    const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
     if (!histogram.biasFactor.empty())
     {
       const double currentMinBias =
           *std::min_element(histogram.biasFactor.cbegin(), histogram.biasFactor.cend());
       minBias = currentMinBias < minBias ? currentMinBias : minBias;
+    }
+  };
+
+  // must cover the same histograms that reactionLambdaNormalize shifts: both sides for serial Rx/CFC,
+  // whichever one currently holds the fractional molecules
+  for (const Reaction& reaction : reactions.list)
+  {
+    includeHistogram(reaction.lambda);
+    if (reaction.isSerialRxCFC())
+    {
+      includeHistogram(reaction.lambdaProductSide);
     }
   }
   return minBias;
@@ -795,6 +805,27 @@ void System::reactionLambdaNormalize(double minBias) noexcept
     if (reaction.isSerialRxCFC())
     {
       reaction.lambdaProductSide.normalize(minBias);
+    }
+  }
+}
+
+// Serial Rx/CFC has one histogram per side and the side-switch acceptance uses both, so each gets its
+// own file. The side holding the fractional molecules plays no role in what is written.
+void System::reactionLambdaWriteBiasingFiles(std::size_t systemId)
+{
+  for (Reaction& reaction : reactions.list)
+  {
+    if (reaction.isSerialRxCFC())
+    {
+      reaction.lambda.writeBiasingFile(
+          std::format("bias_factors/lambda_bias_reaction_{}_reactants.s{}.json", reaction.id, systemId));
+      reaction.lambdaProductSide.writeBiasingFile(
+          std::format("bias_factors/lambda_bias_reaction_{}_products.s{}.json", reaction.id, systemId));
+    }
+    else
+    {
+      reaction.lambda.writeBiasingFile(
+          std::format("bias_factors/lambda_bias_reaction_{}.s{}.json", reaction.id, systemId));
     }
   }
 }
