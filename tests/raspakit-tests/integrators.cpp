@@ -38,6 +38,7 @@ import elastic_constants;
 import molecular_dynamics;
 import mc_moves;
 import mc_moves_hybridmc;
+import mc_moves_translation;
 import mc_moves_translation_smart_mc_all;
 import mc_moves_rotation_smart_mc_all;
 import mc_moves_move_types;
@@ -1519,11 +1520,13 @@ std::vector<double3> netForcesPerMolecule(System& system)
   return forces;
 }
 
-System makeCO2InITQ29System()
+System makeCO2InITQ29System(bool useCharges = false, bool polarization = false)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  forceField.computePolarization = polarization;
+  forceField.omitInterPolarization = false;
   Framework framework = Framework::makeITQ29(forceField, int3(1, 1, 1));
-  Component co2 = Component::makeCO2(forceField, 0, false);
+  Component co2 = Component::makeCO2(forceField, 0, useCharges);
   return System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, framework, {co2}, {}, {2}, 5);
 }
 }  // namespace
@@ -1667,11 +1670,14 @@ TEST(smart_mc_all, translation_acceptance_includes_the_external_field_energy)
 TEST(smart_mc_all, moves_keep_the_running_energy_and_structure_factors_consistent)
 {
   // Rigid charged molecules with Ewald: accepted moves leave the running energy equal to the exact energy, rejected
-  // moves restore the configuration and the stored structure factors.
-  System system = makeCO2InITQ29System();
+  // moves restore the configuration and the stored structure factors. Charged molecules are required: uncharged
+  // CO2 produces a zero molecule structure factor for both the old and the trial configuration, so a missing
+  // restore of storedEik would not be observed.
+  System system = makeCO2InITQ29System(true);
   system.mc_moves_statistics.setMaxChange(Move::Types::TranslationSmartMCAll, 0.3);
   system.mc_moves_statistics.setMaxChange(Move::Types::RotationSmartMCAll, 0.6);
   system.runningEnergies = system.computeTotalEnergies();
+  ASSERT_FALSE(system.storedEik.empty());
   const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
 
   RandomNumber random(3);
@@ -1706,4 +1712,65 @@ TEST(smart_mc_all, moves_keep_the_running_energy_and_structure_factors_consisten
   }
   EXPECT_GE(accepted, 1uz);
   EXPECT_GE(rejected, 1uz);
+}
+
+// computeTotalEnergies() writes storedEik and the molecule electric field in place for the configuration it
+// evaluates. A rejected collective smart-MC move must restore both; otherwise a later incremental translation
+// (which reads storedEik as the old structure factor and the stored field as the old polarization field) drifts.
+TEST(smart_mc_all, rejection_restores_stored_ewald_and_electric_field)
+{
+  System system = makeCO2InITQ29System(true, true);
+  system.mc_moves_statistics.setMaxChange(Move::Types::TranslationSmartMCAll, 0.3);
+  system.mc_moves_statistics.setMaxChange(Move::Types::RotationSmartMCAll, 0.6);
+  system.runningEnergies = system.computeTotalEnergies();
+  ASSERT_LT(system.runningEnergies.polarization, -1.0e-8);
+  ASSERT_FALSE(system.storedEik.empty());
+
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  const std::span<const double3> field = system.spanOfMoleculeElectricField();
+  RandomNumber random(7);
+  std::size_t rejected = 0;
+  std::size_t followUpAccepted = 0;
+  for (std::size_t step = 0; step < 40; ++step)
+  {
+    const std::vector<Atom> atomsBefore(atoms.begin(), atoms.end());
+    const std::vector<double3> fieldBefore(field.begin(), field.end());
+    const EwaldStructureFactor eikBefore(system.storedEik);
+    const RunningEnergy energyBefore = system.runningEnergies;
+
+    const std::optional<RunningEnergy> result = (step % 2 == 0) ? MC_Moves::translationSmartMCMoveAll(random, system)
+                                                                : MC_Moves::rotationSmartMCMoveAll(random, system);
+    if (result.has_value())
+    {
+      system.runningEnergies = result.value();
+      continue;
+    }
+
+    ++rejected;
+    for (std::size_t k = 0; k < atoms.size(); ++k)
+    {
+      DOUBLE3_EXPECT_NEAR(atoms[k].position, atomsBefore[k].position, 1.0e-14);
+    }
+    for (std::size_t k = 0; k < field.size(); ++k)
+    {
+      DOUBLE3_EXPECT_NEAR(field[k], fieldBefore[k], 1.0e-14);
+    }
+    EXPECT_TRUE(system.storedEik == eikBefore);
+    EXPECT_EQ(system.runningEnergies.potentialEnergy(), energyBefore.potentialEnergy());
+
+    // Incremental translation uses the restored storedEik and electric field as the old state.
+    const std::optional<RunningEnergy> delta = MC_Moves::translationMove(random, system, 0, 0);
+    if (delta.has_value())
+    {
+      ++followUpAccepted;
+      system.runningEnergies += delta.value();
+    }
+    const RunningEnergy exact = system.computeTotalEnergies();
+    const double scale = std::max(1.0, std::abs(exact.potentialEnergy()));
+    EXPECT_NEAR(system.runningEnergies.potentialEnergy(), exact.potentialEnergy(), 1.0e-8 * scale);
+    EXPECT_NEAR(system.runningEnergies.polarization, exact.polarization, 1.0e-8 * scale);
+    EXPECT_NEAR(system.runningEnergies.ewald_fourier, exact.ewald_fourier, 1.0e-8 * scale);
+  }
+  EXPECT_GE(rejected, 1uz);
+  EXPECT_GE(followUpAccepted, 1uz);
 }
