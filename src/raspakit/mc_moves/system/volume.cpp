@@ -91,6 +91,11 @@ void MC_Moves::restoreVolumeState(System& system, const SavedVolumeState& saved)
   system.forceField.numberOfWaveVectors = saved.numberOfWaveVectors;
   system.forceField.reciprocalIntegerCutOffSquared = saved.reciprocalIntegerCutOffSquared;
   system.forceField.updateEwaldRealSpaceTable();
+
+  // 'applyTrialVolume' rebuilt the molecule cell list (via 'computeTotalEnergies') for the trial box and
+  // positions; it must not survive the restore (the box comparison in 'isCurrent' would catch a changed box,
+  // but a restored cut-off or an identical box would not).
+  system.invalidateCellList();
 }
 
 bool MC_Moves::volumeTrialOverlaps(const System& system, const RunningEnergy& trialEnergy)

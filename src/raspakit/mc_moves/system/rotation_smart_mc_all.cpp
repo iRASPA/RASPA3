@@ -123,6 +123,8 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMoveAll(RandomNumber &rand
       std::copy(savedElectricField.cbegin(), savedElectricField.cend(), system.spanOfMoleculeElectricField().begin());
     }
     system.runningEnergies = savedRunningEnergy;
+    // the molecule cell list may have been rebuilt by 'computeTotalEnergies' for the rejected trial positions
+    system.invalidateCellList();
   };
 
   std::size_t index = 0;

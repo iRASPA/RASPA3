@@ -234,6 +234,8 @@ std::optional<RunningEnergy> hybridMCMoveWithEngine(RandomNumber& random, System
     std::copy(savedElectricField.begin(), savedElectricField.end(), system.spanOfMoleculeElectricField().begin());
   }
   system.timeStep = savedTimeStep;
+  // the molecule cell list was rebuilt by 'computeTotalEnergies' for the rejected trial positions
+  system.invalidateCellList();
   return std::nullopt;
 }
 }  // namespace
@@ -478,5 +480,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   {
     std::copy(savedElectricField.begin(), savedElectricField.end(), system.spanOfMoleculeElectricField().begin());
   }
+  // the molecule cell list was rebuilt by 'computeTotalEnergies' for the rejected trial positions
+  system.invalidateCellList();
   return std::nullopt;
 }

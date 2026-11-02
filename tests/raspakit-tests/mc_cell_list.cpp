@@ -33,6 +33,13 @@ import mc_moves_move_types;
 import mc_moves_probabilities;
 import mc_moves_swap_cfcmc;
 import mc_moves_reaction_common;
+import move_statistics;
+import mc_moves_statistics;
+import mc_moves_volume;
+import mc_moves_gibbs_volume;
+import mc_moves_hybridmc;
+import mc_moves_translation_smart_mc_all;
+import mc_moves_rotation_smart_mc_all;
 import reaction;
 import cbmc_external_energy;
 import cbmc_grow_context;
@@ -2036,4 +2043,174 @@ TEST(mc_cell_list, reaction_lambda_scaling_refreshes_cached_scaling)
                                                 system.cellListCutOff()));
   ASSERT_TRUE(system.verifyCellList());
   EXPECT_EQ(system.moleculeCellList.numberOfBuilds, buildsBefore);
+}
+
+// The collective moves (hybrid MC, smart MC of all molecules, the volume moves) take the exact energy of their
+// trial configuration from 'computeTotalEnergies', which rebuilds the molecule cell list for the trial positions
+// (and box) and marks it valid. A rejection restores the positions, so the list has to go as well: the atom
+// count, the box and the cut-off are the same as before the trial, so 'isCurrent' alone would keep serving the
+// trial-position list to the next single-molecule or CBMC move. The moves are called directly (the Monte Carlo
+// driver's 'settleCellLists' invalidates after every unmaintained move, which would hide a missing invalidation
+// inside the move). 'verifyCellList' rebuilds a reference list from the current positions and compares.
+namespace
+{
+System makeCollectiveMoveSystem(RandomNumber& random)
+{
+  ForceField forceField = makeWaterForceField();
+  Component water = makeWater(forceField);
+  System system =
+      System(forceField, SimulationBox(40.0, 40.0, 40.0), false, 400.0, 1e5, 1.0, {}, {water}, {}, {40}, 5);
+  randomizeConfiguration(system, random);
+  prepareForMonteCarlo(system);
+  return system;
+}
+
+// Runs 'attempt' up to 'maximumAttempts' times, checks the cell list against the positions after every call, and
+// returns the number of rejections.
+template <typename Attempt>
+std::size_t runRejectingMoves(System& system, Attempt&& attempt, std::size_t maximumAttempts)
+{
+  std::size_t rejected = 0;
+  for (std::size_t i = 0; i != maximumAttempts; ++i)
+  {
+    const bool accepted = attempt();
+    if (!accepted) ++rejected;
+    EXPECT_TRUE(system.verifyCellList()) << "stale molecule cell list after attempt " << i
+                                         << (accepted ? " (accepted)" : " (rejected)");
+  }
+  return rejected;
+}
+}  // namespace
+
+TEST(mc_cell_list, rejected_translation_smart_mc_all_invalidates_list)
+{
+  RandomNumber random(23);
+  System system = makeCollectiveMoveSystem(random);
+  ASSERT_TRUE(system.cellList().enabled);
+  ASSERT_TRUE(system.verifyCellList());
+
+  // a large step displaces the molecules into each other: the trials are rejected
+  system.mc_moves_statistics.setMaxChange(Move::Types::TranslationSmartMCAll, 3.0);
+  const std::size_t rejected = runRejectingMoves(
+      system,
+      [&]
+      {
+        const std::optional<RunningEnergy> energy = MC_Moves::translationSmartMCMoveAll(random, system);
+        if (energy) system.runningEnergies = energy.value();
+        return energy.has_value();
+      },
+      10);
+  EXPECT_GE(rejected, 1uz);
+}
+
+TEST(mc_cell_list, rejected_rotation_smart_mc_all_invalidates_list)
+{
+  RandomNumber random(29);
+  System system = makeCollectiveMoveSystem(random);
+  ASSERT_TRUE(system.cellList().enabled);
+  ASSERT_TRUE(system.verifyCellList());
+
+  system.mc_moves_statistics.setMaxChange(Move::Types::RotationSmartMCAll, 3.0);
+  const std::size_t rejected = runRejectingMoves(
+      system,
+      [&]
+      {
+        const std::optional<RunningEnergy> energy = MC_Moves::rotationSmartMCMoveAll(random, system);
+        if (energy) system.runningEnergies = energy.value();
+        return energy.has_value();
+      },
+      10);
+  EXPECT_GE(rejected, 1uz);
+}
+
+TEST(mc_cell_list, rejected_hybrid_mc_invalidates_list)
+{
+  for (const bool useForceEngine : {false, true})
+  {
+    RandomNumber random(31);
+    System system = makeCollectiveMoveSystem(random);
+    ASSERT_TRUE(system.cellList().enabled);
+    ASSERT_TRUE(system.verifyCellList());
+
+    system.hybridMCUseForceEngine = useForceEngine;
+    system.numberOfHybridMCSteps = 5;
+    // a large time step makes the trajectory blow up: the trials are rejected
+    system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 0.05);
+    const std::size_t rejected = runRejectingMoves(
+        system,
+        [&]
+        {
+          const std::optional<RunningEnergy> energy = MC_Moves::hybridMCMove(random, system);
+          if (energy) system.runningEnergies = energy.value();
+          return energy.has_value();
+        },
+        5);
+    EXPECT_GE(rejected, 1uz) << "force engine: " << useForceEngine;
+  }
+}
+
+TEST(mc_cell_list, rejected_volume_moves_invalidate_list)
+{
+  RandomNumber random(37);
+  System system = makeCollectiveMoveSystem(random);
+  ASSERT_TRUE(system.cellList().enabled);
+  ASSERT_TRUE(system.verifyCellList());
+
+  // compressions by up to a factor e in the volume overlap the molecules: about half the trials are rejected
+  system.mc_moves_statistics.setMaxChange(Move::Types::VolumeChange, 1.0);
+  const std::size_t rejectedIsotropic = runRejectingMoves(
+      system,
+      [&]
+      {
+        const std::optional<RunningEnergy> energy = MC_Moves::volumeMove(random, system);
+        if (energy) system.runningEnergies += energy.value();
+        return energy.has_value();
+      },
+      20);
+  EXPECT_GE(rejectedIsotropic, 1uz);
+
+  std::get<MoveStatistics<double3>>(system.mc_moves_statistics.stats[std::to_underlying(
+                                        Move::Types::AnisotropicVolumeChange)])
+      .maxChange = double3(0.5, 0.5, 0.5);
+  const std::size_t rejectedAnisotropic = runRejectingMoves(
+      system,
+      [&]
+      {
+        const std::optional<RunningEnergy> energy = MC_Moves::anisotropicVolumeMove(random, system);
+        if (energy) system.runningEnergies += energy.value();
+        return energy.has_value();
+      },
+      20);
+  EXPECT_GE(rejectedAnisotropic, 1uz);
+}
+
+TEST(mc_cell_list, rejected_gibbs_volume_move_invalidates_both_lists)
+{
+  RandomNumber random(41);
+  System systemA = makeCollectiveMoveSystem(random);
+  System systemB = makeCollectiveMoveSystem(random);
+  ASSERT_TRUE(systemA.cellList().enabled);
+  ASSERT_TRUE(systemB.cellList().enabled);
+  ASSERT_TRUE(systemA.verifyCellList());
+  ASSERT_TRUE(systemB.verifyCellList());
+
+  systemA.mc_moves_statistics.setMaxChange(Move::Types::GibbsVolume, 1.0);
+  std::size_t rejected = 0;
+  for (std::size_t i = 0; i != 20; ++i)
+  {
+    const std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+        MC_Moves::GibbsVolumeMove(random, systemA, systemB, 0);
+    if (energy)
+    {
+      systemA.runningEnergies += energy->first;
+      systemB.runningEnergies += energy->second;
+    }
+    else
+    {
+      ++rejected;
+    }
+    EXPECT_TRUE(systemA.verifyCellList()) << "stale molecule cell list of system A after attempt " << i;
+    EXPECT_TRUE(systemB.verifyCellList()) << "stale molecule cell list of system B after attempt " << i;
+  }
+  EXPECT_GE(rejected, 1uz);
 }
