@@ -690,6 +690,42 @@ TEST(phonon_dispersion, gamma_point_matches_normal_modes_charged_rigid_molecules
   }
 }
 
+// A bent, charged rigid molecule: unlike a linear dipole it has three orientational DOFs, and the Ewald exclusion
+// correction of its intramolecular pairs has to cancel exactly in the rigid-body projection.
+TEST(phonon_dispersion, gamma_point_matches_normal_modes_bent_charged_rigid_molecules)
+{
+  ForceField forceField({{"P", false, 16.0, 0.5, 0.0, 8, false}, {"N", false, 16.0, -1.0, 0.0, 8, false}},
+                        {{80.0, 3.0}, {80.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot, 4.0, 4.0, 4.0, true,
+                        false, true);
+  const SimulationBox box(9.0, 9.0, 9.0);
+  Component trimer(forceField, "trimer", 48.0, 1.0e6, 0.02,
+                   {Atom({-0.8, 0.0, -0.3}, 0.5, 1.0, 0, 0, 0, false, false),
+                    Atom({0.0, 0.0, 0.3}, -1.0, 1.0, 0, 1, 0, false, false),
+                    Atom({0.8, 0.0, -0.3}, 0.5, 1.0, 0, 0, 0, false, false)},
+                   ConnectivityTable(3), Potentials::IntraMolecularPotentials{}, 0, 0);
+  trimer.rigid = true;
+  System system(forceField, box, false, 300.0, 1e4, 1.0, {}, {trimer}, {}, {3}, 5);
+  const std::array<double3, 3> centersOfMass = {double3(1.5, 4.5, 4.5), double3(4.5, 5.3, 4.0),
+                                                double3(7.5, 3.8, 5.0)};
+  for (std::size_t moleculeIndex = 0; moleculeIndex < 3; ++moleculeIndex)
+  {
+    system.moleculeData[moleculeIndex].centerOfMassPosition = centersOfMass[moleculeIndex];
+    system.moleculeData[moleculeIndex].orientation = simd_quatd(0.0, 0.0, 0.0, 1.0);
+    setRigidMoleculePositions(system, moleculeIndex);
+  }
+
+  const NormalModesResult modes = computeNormalModes(system);
+  const std::vector<PhononModes> dispersion = computePhononDispersion(system, std::array<double3, 1>{double3(0.0, 0.0, 0.0)});
+  ASSERT_EQ(dispersion[0].eigenvalues.size(), modes.numberOfModes);
+  double scale = 0.0;
+  for (const double value : modes.eigenvalues) scale = std::max(scale, std::abs(value));
+  ASSERT_GT(scale, 0.0);
+  for (std::size_t mode = 0; mode < modes.numberOfModes; ++mode)
+  {
+    EXPECT_NEAR(dispersion[0].eigenvalues[mode], modes.eigenvalues[mode], 1e-6 * scale + 1e-10) << "mode=" << mode;
+  }
+}
+
 TEST(phonon_dispersion, charged_rigid_molecule_dispersion_is_time_reversal_symmetric_and_k_dependent)
 {
   System system = makeChargedRigidMoleculeChainSystem();

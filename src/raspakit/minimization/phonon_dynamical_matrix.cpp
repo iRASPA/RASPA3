@@ -12,6 +12,7 @@ import double3x3;
 import atom;
 import molecule;
 import component;
+import intra_molecular_exclusions;
 import framework;
 import forcefield;
 import simulationbox;
@@ -381,7 +382,11 @@ std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std:
     if (component.rigid)
     {
       component.rigid = false;
+      // The bonded terms go, but the atom pairs stay excluded: a rigid molecule has no intramolecular pair terms, and
+      // the Ewald exclusion correction has to remove their reciprocal-space energy.
+      IntraMolecularExclusions exclusions = std::move(component.intraMolecularPotentials.exclusions);
       component.intraMolecularPotentials = {};
+      component.intraMolecularPotentials.exclusions = std::move(exclusions);
     }
     // Flatten to a fully-flexible Cartesian molecule: every atom becomes its own single-atom
     // fragment (no rigid bodies), so there is no rigid-body constraint left to project out here.
