@@ -851,6 +851,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       componentA.mc_moves_statistics.addAccepted(move, 2);
 
       std::copy(trialPositions.begin(), trialPositions.end(), fractionalMoleculeA.begin());
+      systemA.cellListAtomsMoved(fractionalMoleculeA);
       systemA.computeTailCorrectionCounts();
 
       componentA.lambdaGC.setCurrentBin(newBin);

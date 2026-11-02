@@ -1086,6 +1086,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
         }
       }
 
+      system.cellListAtomsMoved(fractionalMoleculeA);
+      system.cellListAtomsMoved(fractionalMoleculeB);
       system.computeTailCorrectionCounts();
 
       lambda.setCurrentBin(newBin);

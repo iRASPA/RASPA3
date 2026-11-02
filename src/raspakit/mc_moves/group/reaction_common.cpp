@@ -396,13 +396,15 @@ void setReactionFractionalScaling(System& system, Reaction& reaction, double lam
   {
     for (const std::size_t moleculeId : reaction.reactantFractionalMoleculeIds[componentId])
     {
-      applyLinearReactionScaling(system.spanOfMolecule(componentId, moleculeId), true, lambda,
-                                 reaction.dUdlambdaGroup(true));
+      std::span<Atom> molecule = system.spanOfMolecule(componentId, moleculeId);
+      applyLinearReactionScaling(molecule, true, lambda, reaction.dUdlambdaGroup(true));
+      system.cellListAtomsMoved(molecule);
     }
     for (const std::size_t moleculeId : reaction.productFractionalMoleculeIds[componentId])
     {
-      applyLinearReactionScaling(system.spanOfMolecule(componentId, moleculeId), false, lambda,
-                                 reaction.dUdlambdaGroup(false));
+      std::span<Atom> molecule = system.spanOfMolecule(componentId, moleculeId);
+      applyLinearReactionScaling(molecule, false, lambda, reaction.dUdlambdaGroup(false));
+      system.cellListAtomsMoved(molecule);
     }
   }
 }
@@ -604,8 +606,9 @@ void setSerialReactionFractionalScaling(System& system, Reaction& reaction, doub
     for (const std::size_t moleculeId : activeIds[componentId])
     {
       // serial mode: both sides share one dU/dlambda group (only one side is fractional at a time)
-      applySerialFractionalScaling(system.spanOfMolecule(componentId, moleculeId), lambda,
-                                   reaction.lambda.dUdlambdaGroupId);
+      std::span<Atom> molecule = system.spanOfMolecule(componentId, moleculeId);
+      applySerialFractionalScaling(molecule, lambda, reaction.lambda.dUdlambdaGroupId);
+      system.cellListAtomsMoved(molecule);
     }
   }
 }

@@ -673,10 +673,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   {
     if (moveKind == GibbsMoveKind::LambdaChange)
     {
-      for (Atom& atom : system.spanOfMolecule(selectedComponent, indexFractional))
+      std::span<Atom> fractional = system.spanOfMolecule(selectedComponent, indexFractional);
+      for (Atom& atom : fractional)
       {
         atom.setScalingToFractional(lambdaNew, component.lambdaGibbs.dUdlambdaGroupId);
       }
+      system.cellListAtomsMoved(fractional);
       component.lambdaGibbs.setCurrentBin(lambdaBinFromValue(component.lambdaGibbs, lambdaNew));
       return;
     }

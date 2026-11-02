@@ -968,6 +968,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       }
 
       std::copy(trialPositions.begin(), trialPositions.end(), molecule.begin());
+      system.cellListAtomsMoved(molecule);
       system.computeTailCorrectionCounts();
 
       component.lambdaGC.setCurrentBin(newBin);

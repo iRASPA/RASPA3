@@ -31,6 +31,9 @@ import mc_cell_list;
 import mc_moves;
 import mc_moves_move_types;
 import mc_moves_probabilities;
+import mc_moves_swap_cfcmc;
+import mc_moves_reaction_common;
+import reaction;
 import cbmc_external_energy;
 import cbmc_grow_context;
 import cbmc_results;
@@ -1953,4 +1956,84 @@ TEST(mc_cell_list, disabled_in_a_small_box_and_moves_still_consistent)
 
   // the all-atom gather with the per-pair minimum image is exercised by the moves
   runMovesAndCheck(system, random, 2000);
+}
+
+// Accepted lambda-change moves rewrite scalingVDW / scalingCoulomb in atomData. The cell list caches those
+// scalings in its slots; without cellListAtomsMoved the next cell-list-accelerated translation would interact
+// with the fractional molecule at the old lambda. SwapCFCMC with insertion and deletion disabled is a pure
+// lambda hop, and is called directly (the Monte Carlo driver invalidates unmaintained moves, which would hide
+// a missing refresh).
+TEST(mc_cell_list, swap_cfcmc_lambda_change_refreshes_cached_scaling)
+{
+  ForceField forceField = makeWaterForceField();
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::SwapCFCMC, 1.0);
+  Component water = makeWater(forceField, probabilities);
+  System system =
+      System(forceField, SimulationBox(40.0, 40.0, 40.0), false, 1.0e6, 1e5, 1.0, {}, {water}, {}, {40}, 5);
+  RandomNumber random(11);
+  randomizeConfiguration(system, random);
+  prepareForMonteCarlo(system);
+
+  ASSERT_TRUE(system.cellList().enabled);
+  ASSERT_TRUE(system.verifyCellList());
+  const std::size_t buildsBefore = system.moleculeCellList.numberOfBuilds;
+
+  const std::size_t fractionalIndex = system.indexOfFractionalMoleculeForMove(Move::Types::SwapCFCMC, 0);
+  std::span<const Atom> fractional = system.spanOfMolecule(0, fractionalIndex);
+  const double scalingBefore = fractional.front().scalingVDW;
+  const std::size_t binBefore = system.components[0].lambdaGC.currentBin;
+
+  bool accepted = false;
+  for (std::size_t attempt = 0; attempt < 200 && !accepted; ++attempt)
+  {
+    const auto [energy, unused] = MC_Moves::swapMove_CFCMC(random, system, 0, 0, true, true);
+    (void)unused;
+    if (energy.has_value() && system.components[0].lambdaGC.currentBin != binBefore)
+    {
+      system.runningEnergies += energy.value();
+      accepted = true;
+    }
+  }
+  ASSERT_TRUE(accepted);
+  EXPECT_NE(system.components[0].lambdaGC.currentBin, binBefore);
+  EXPECT_NE(fractional.front().scalingVDW, scalingBefore);
+  EXPECT_TRUE(system.moleculeCellList.isCurrent(system.spanOfMoleculeAtoms(), system.simulationBox,
+                                                system.cellListCutOff()));
+  ASSERT_TRUE(system.verifyCellList());
+  EXPECT_EQ(system.moleculeCellList.numberOfBuilds, buildsBefore);
+}
+
+// setReactionFractionalScaling is the accept path of a parallel Rx/CFC lambda hop: it rewrites every
+// fractional molecule in place and must refresh the cached scalings the same way.
+TEST(mc_cell_list, reaction_lambda_scaling_refreshes_cached_scaling)
+{
+  ForceField forceField = makeWaterForceField();
+  MCMoveProbabilities systemProbabilities;
+  systemProbabilities.setProbability(Move::Types::ReactionConventionalCFCMC, 1.0);
+  Component water = makeWater(forceField);
+  water.lnPartitionFunction = 1.0;
+  System system =
+      System(forceField, SimulationBox(40.0, 40.0, 40.0), false, 400.0, 1e5, 1.0, {}, {water}, {}, {40}, 5,
+             systemProbabilities);
+  Reaction reaction(0, {1}, {1});
+  reaction.reactionMove = Move::Types::ReactionConventionalCFCMC;
+  system.reactions.list.push_back(reaction);
+  system.createReactionFractionalMolecules();
+  RandomNumber random(13);
+  randomizeConfiguration(system, random);
+  prepareForMonteCarlo(system);
+
+  ASSERT_TRUE(system.cellList().enabled);
+  ASSERT_TRUE(system.verifyCellList());
+  const std::size_t buildsBefore = system.moleculeCellList.numberOfBuilds;
+
+  ASSERT_FALSE(system.reactions.list.front().reactantFractionalMoleculeIds.empty());
+  ASSERT_FALSE(system.reactions.list.front().reactantFractionalMoleculeIds.front().empty());
+  MC_Moves::ReactionCommon::setReactionFractionalScaling(system, system.reactions.list.front(), 0.8);
+
+  EXPECT_TRUE(system.moleculeCellList.isCurrent(system.spanOfMoleculeAtoms(), system.simulationBox,
+                                                system.cellListCutOff()));
+  ASSERT_TRUE(system.verifyCellList());
+  EXPECT_EQ(system.moleculeCellList.numberOfBuilds, buildsBefore);
 }

@@ -1172,6 +1172,10 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         }
       }
 
+      for (std::size_t i = 0; i < groupSize; ++i)
+      {
+        system.cellListAtomsMoved(fractionalMolecules[i]);
+      }
       system.computeTailCorrectionCounts();
 
       lambda.setCurrentBin(newBin);
