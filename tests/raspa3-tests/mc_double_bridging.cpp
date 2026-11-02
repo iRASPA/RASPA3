@@ -754,7 +754,7 @@ TEST(MC_DOUBLE_BRIDGING, energy_bookkeeping_with_lennard_jones_and_ewald)
 // The partner chain is shifted by a lattice vector so that the two new chains are contiguous, and the shifted
 // head is committed with it. A non-periodic external field sees that shift: its energy change must be part of
 // the acceptance and of the returned difference, not only the trimer contribution. The polynomial test field
-// x*y*z is non-periodic and sensitive to a 14 A shift; the temperature is very high so that the field does not
+// is non-periodic and sensitive to a 14 A shift; the temperature is very high so that the field does not
 // suppress the moves and the bookkeeping is checked over many accepted bridgings with wrapped-around chains.
 TEST(MC_DOUBLE_BRIDGING, db_external_field_sees_the_lattice_shift_of_the_partner)
 {

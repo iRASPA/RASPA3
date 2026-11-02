@@ -101,7 +101,7 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream, std::siz
 
             // convert gradient from fractional to Cartesian
             analytical_gradient =
-                framework->simulationBox.inverseCell.transpose() *
+                simulationBox.inverseCell.transpose() *
                 double3(analytical_tricubic[1], analytical_tricubic[2], analytical_tricubic[3]);
 
             analytical_gradient.x *= Units::EnergyToKelvin;
@@ -118,7 +118,7 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream, std::siz
 
             // convert gradient from fractional to Cartesian
             analytical_gradient =
-                framework->simulationBox.inverseCell.transpose() *
+                simulationBox.inverseCell.transpose() *
                 double3(analytical_triquintic[1], analytical_triquintic[2], analytical_triquintic[3]);
 
             analytical_gradient.x *= Units::EnergyToKelvin;
@@ -130,7 +130,7 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream, std::siz
                           analytical_triquintic[5], analytical_triquintic[7], analytical_triquintic[8],
                           analytical_triquintic[6], analytical_triquintic[8], analytical_triquintic[9]);
             analytical_hessian =
-                framework->simulationBox.inverseCell.transpose() * hessian * framework->simulationBox.inverseCell;
+                simulationBox.inverseCell.transpose() * hessian * simulationBox.inverseCell;
 
             analytical_hessian.ax *= Units::EnergyToKelvin;
             analytical_hessian.ay *= Units::EnergyToKelvin;
@@ -167,7 +167,7 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream, std::siz
     }
   }
 
-  if(forceField.settings.writeExternalFieldInterpolationGrid)
+  if (forceField.settings.writeExternalFieldInterpolationGrid && externalFieldInterpolationGrid.has_value())
   {
     externalFieldInterpolationGrid->writeOutput(systemId, simulationBox, forceField);
   }

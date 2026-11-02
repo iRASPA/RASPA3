@@ -16,6 +16,11 @@ import interpolation_energy_grid;
 
 export namespace Interactions
 {
+/// The energy of the analytic potential energy surface at 'position', evaluated at 'position' plus
+/// ForceField::potentialEnergySurfaceOrigin as in the interpolation grid. Zero for the types without a surface
+/// energy (the confining geometries, and a field that only exists as a grid).
+[[nodiscard]] double analyticExternalFieldEnergy(const ForceField &forceField, const double3 &position);
+
 /**
  * \brief Computes the external field energy contribution for the system.
  *

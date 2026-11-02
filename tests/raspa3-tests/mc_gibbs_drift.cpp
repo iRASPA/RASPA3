@@ -812,7 +812,7 @@ TEST(MC_GIBBS_DRIFT, mixture_gibbs_cbcfcmc_unequal_molecule_counts)
 
 // Serial Gibbs CFCMC with an external field: the swap, shuffle and lambda sub-steps of the fractional molecule
 // used to leave the field out of their energy differences (the conventional Gibbs swap already carried it). The
-// polynomial test field x*y*z depends on position, so an accepted swap or shuffle without it drifts the running
+// polynomial test field depends on position, so an accepted swap or shuffle without it drifts the running
 // energy; the temperature is very high so that the field does not suppress the moves.
 namespace
 {

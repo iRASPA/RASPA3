@@ -12,6 +12,8 @@ import running_energy;
 import interpolation_energy_grid;
 import interactions_external_field;
 import cbmc_external_energy;
+import units;
+import system;
 
 namespace
 {
@@ -163,4 +165,148 @@ TEST(external_field, tabulated_field_scales_with_lambda_and_carries_dudlambda)
   ASSERT_TRUE(trial.has_value());
   EXPECT_NEAR(trial->externalFieldVDW, 0.3 * fieldValue, 1e-10);
   EXPECT_NEAR(trial->dudlambdaVDW[group - 1], fieldValue, 1e-10);
+}
+
+namespace
+{
+// Runs in an empty directory, since the grid routines read and write files relative to the working directory.
+class ScopedTemporaryDirectory
+{
+ public:
+  explicit ScopedTemporaryDirectory(const std::string& name)
+      : original(std::filesystem::current_path()), path(std::filesystem::temp_directory_path() / name)
+  {
+    std::filesystem::remove_all(path);
+    std::filesystem::create_directories(path);
+    std::filesystem::current_path(path);
+  }
+  ~ScopedTemporaryDirectory()
+  {
+    std::filesystem::current_path(original);
+    std::filesystem::remove_all(path);
+  }
+
+ private:
+  std::filesystem::path original;
+  std::filesystem::path path;
+};
+
+std::vector<double> readCubeValues(const std::string& fileName)
+{
+  std::ifstream stream(fileName);
+  std::string line;
+  // two comment lines, the origin, three grid vectors, and the single atom
+  for (std::size_t i = 0; i < 7; ++i) std::getline(stream, line);
+  std::vector<double> values;
+  double value{};
+  while (stream >> value) values.push_back(value);
+  return values;
+}
+}  // namespace
+
+// The analytic field, the CBMC energy and the interpolation grid are the same surface, shifted by the same origin.
+TEST(external_field, analytic_cbmc_and_grid_agree_on_every_test_function)
+{
+  const SimulationBox box(4.0, 4.0, 4.0);
+  const std::optional<InterpolationEnergyGrid> noGrid = std::nullopt;
+  const std::vector<Atom> atom{makeAtom(double3(1.31, 2.13, 0.72))};
+
+  for (const ForceField::PotentialEnergySurfaceType type :
+       {ForceField::PotentialEnergySurfaceType::SecondOrderPolynomialTestFunction,
+        ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction,
+        ForceField::PotentialEnergySurfaceType::FourthOrderPolynomialTestFunction,
+        ForceField::PotentialEnergySurfaceType::FifthOrderPolynomialTestFunction,
+        ForceField::PotentialEnergySurfaceType::SixthOrderPolynomialTestFunction,
+        ForceField::PotentialEnergySurfaceType::ExponentialNonPolynomialTestFunction})
+  {
+    for (const double3 origin : {double3(0.0, 0.0, 0.0), double3(0.5, -0.25, 0.75)})
+    {
+      ForceField forceField = makeForceField(type);
+      forceField.potentialEnergySurfaceOrigin = origin;
+
+      std::optional<InterpolationEnergyGrid> grid = InterpolationEnergyGrid(
+          box, origin, uint3{65, 65, 65}, ForceFieldSettings::InterpolationScheme::Triquintic);
+      std::stringstream stream;
+      grid->makeExternalFieldInterpolationGrid(stream, forceField, box);
+
+      const double fromGrid = totalEnergy(forceField, box, grid, atom);
+      const double tolerance = 1e-5 * std::max(1.0, std::abs(fromGrid));
+      ASSERT_NE(fromGrid, 0.0) << "type " << std::to_underlying(type);
+      EXPECT_NEAR(totalEnergy(forceField, box, noGrid, atom), fromGrid, tolerance)
+          << "type " << std::to_underlying(type) << " origin " << origin.x;
+
+      std::optional<RunningEnergy> trial = cbmcEnergy(forceField, box, noGrid, atom);
+      ASSERT_TRUE(trial.has_value());
+      EXPECT_NEAR(trial->externalFieldVDW, fromGrid, tolerance)
+          << "type " << std::to_underlying(type) << " origin " << origin.x;
+    }
+  }
+}
+
+// One energy per grid vertex in cube order (x slowest, z fastest), not the Hermite derivatives stored with it.
+TEST(external_field, cube_output_holds_one_energy_per_grid_vertex)
+{
+  const ScopedTemporaryDirectory directory("raspa3_external_field_cube_output");
+  const SimulationBox box(8.0, 8.0, 8.0);
+  ForceField forceField = makeForceField(ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction);
+
+  for (const ForceFieldSettings::InterpolationScheme scheme : {ForceFieldSettings::InterpolationScheme::Polynomial,
+                                                               ForceFieldSettings::InterpolationScheme::Tricubic,
+                                                               ForceFieldSettings::InterpolationScheme::Triquintic})
+  {
+    const uint3 points{3, 4, 5};
+    InterpolationEnergyGrid grid(box, double3(0.0, 0.0, 0.0), points, scheme);
+    std::stringstream stream;
+    grid.makeExternalFieldInterpolationGrid(stream, forceField, box);
+    grid.writeOutput(0, box, forceField);
+
+    const std::vector<double> values = readCubeValues("interpolation_grids/grid_external_field.s0.cube");
+    ASSERT_EQ(values.size(), points.x * points.y * points.z);
+
+    std::size_t index{0};
+    for (std::size_t i = 0; i < points.x; ++i)
+    {
+      for (std::size_t j = 0; j < points.y; ++j)
+      {
+        for (std::size_t k = 0; k < points.z; ++k)
+        {
+          const double x = 8.0 * static_cast<double>(i) / 2.0;
+          const double y = 8.0 * static_cast<double>(j) / 3.0;
+          const double z = 8.0 * static_cast<double>(k) / 4.0;
+          const double expected = (x * x * x + 2.0 * x * x * y * z * z - y * y * z + 1.0) * Units::EnergyToKelvin;
+          EXPECT_NEAR(values[index], expected, 1e-8 * std::max(1.0, std::abs(expected)));
+          ++index;
+        }
+      }
+    }
+  }
+}
+
+// Asking for the grid output without a grid writes nothing; a system without a framework can build and write a grid.
+TEST(external_field, grid_setup_without_framework_or_without_grid)
+{
+  const ScopedTemporaryDirectory directory("raspa3_external_field_grid_setup");
+  const SimulationBox box(8.0, 8.0, 8.0);
+  ForceField forceField = makeForceField(ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction);
+  forceField.settings.writeExternalFieldInterpolationGrid = true;
+  forceField.settings.interpolationScheme = ForceFieldSettings::InterpolationScheme::Triquintic;
+  forceField.settings.numberOfGridTestPoints = 10;
+  const std::string output = "interpolation_grids/grid_external_field.s0.cube";
+
+  std::ostringstream log;
+  forceField.settings.useExternalFieldGrid = false;
+  System withoutGrid = System(forceField, box, false, 300.0, 1e4, 1.0, {}, {}, {}, {}, 5);
+  withoutGrid.hasExternalField = true;
+  withoutGrid.createExternalFieldInterpolationGrid(log, 0);
+  EXPECT_FALSE(withoutGrid.externalFieldInterpolationGrid.has_value());
+  EXPECT_FALSE(std::filesystem::exists(output));
+
+  // the grid dimensions are read from the cube file
+  std::ofstream(forceField.externalFieldGridFileName) << "comment\ncomment\n1 0 0 0\n-5 2 0 0\n-5 0 2 0\n-5 0 0 2\n";
+  forceField.settings.useExternalFieldGrid = true;
+  System withGrid = System(forceField, box, false, 300.0, 1e4, 1.0, {}, {}, {}, {}, 5);
+  withGrid.hasExternalField = true;
+  withGrid.createExternalFieldInterpolationGrid(log, 0);
+  ASSERT_TRUE(withGrid.externalFieldInterpolationGrid.has_value());
+  EXPECT_EQ(readCubeValues(output).size(), 125uz);
 }

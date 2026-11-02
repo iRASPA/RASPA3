@@ -82,7 +82,7 @@ ExternalFieldValue externalFieldValue(const ForceField& forceField, const Simula
     return value;
   }
 
-  double fieldEnergy{0.0};
+  const double fieldEnergy = Interactions::analyticExternalFieldEnergy(forceField, posA);
   switch (forceField.potentialEnergySurfaceType)
   {
     case ForceField::PotentialEnergySurfaceType::None:
@@ -90,25 +90,6 @@ ExternalFieldValue externalFieldValue(const ForceField& forceField, const Simula
     case ForceField::PotentialEnergySurfaceType::GridFile:
       // A field read from file is only available through the interpolation grid (checked by the force-field
       // reader: 'GridFile' requires 'UseExternalFieldGrid').
-      break;
-    case ForceField::PotentialEnergySurfaceType::MullerBrown:
-    {
-      const double4 A{-200.0, -100.0, -170.0, -15.0};
-      const double4 a{-1.0, -1.0, -6.5, -0.7};
-      const double4 x0{1.0, 0.0, -0.5, -1.0};
-      const double4 b{0.0, 0.0, 11.0, 0.6};
-      const double4 y0{0.0, 0.5, 1.5, 1.0};
-      const double4 c{-10.0, -10.0, -6.5, 0.7};
-      for (std::size_t i = 0; i < 4; ++i)
-      {
-        fieldEnergy +=
-            A[i] * std::exp(a[i] * (posA.x - x0[i]) * (posA.x - x0[i]) + b[i] * (posA.x - x0[i]) * (posA.y - y0[i]) +
-                            c[i] * (posA.y - y0[i]) * (posA.y - y0[i]));
-      }
-    }
-    break;
-    case ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction:
-      fieldEnergy = posA.x * posA.y * posA.z;
       break;
     case ForceField::PotentialEnergySurfaceType::CylinderX:
       value.inside = insideCylinder(posA, simulationBox.cell * double3{0.0, 0.5, 0.5},
@@ -153,6 +134,45 @@ ExternalFieldValue externalFieldValue(const ForceField& forceField, const Simula
   return value;
 }
 }  // namespace
+
+double Interactions::analyticExternalFieldEnergy(const ForceField& forceField, const double3& position)
+{
+  const double3 pos = position + forceField.potentialEnergySurfaceOrigin;
+
+  switch (forceField.potentialEnergySurfaceType)
+  {
+    case ForceField::PotentialEnergySurfaceType::SecondOrderPolynomialTestFunction:
+      return std::get<0>(Potentials::potentialTricubicSecondOrderPolynomialTestFunction(pos));
+    case ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction:
+      return std::get<0>(Potentials::potentialTricubicThirdOrderPolynomialTestFunction(pos));
+    case ForceField::PotentialEnergySurfaceType::FourthOrderPolynomialTestFunction:
+      return std::get<0>(Potentials::potentialTricubicFourthOrderPolynomialTestFunction(pos));
+    case ForceField::PotentialEnergySurfaceType::FifthOrderPolynomialTestFunction:
+      return std::get<0>(Potentials::potentialTricubicFifthOrderPolynomialTestFunction(pos));
+    case ForceField::PotentialEnergySurfaceType::SixthOrderPolynomialTestFunction:
+      return std::get<0>(Potentials::potentialTricubicSixthOrderPolynomialTestFunction(pos));
+    case ForceField::PotentialEnergySurfaceType::ExponentialNonPolynomialTestFunction:
+      return std::get<0>(Potentials::potentialTricubicExponentialNonPolynomialTestFunction(pos));
+    case ForceField::PotentialEnergySurfaceType::MullerBrown:
+    {
+      const double4 A{-200.0, -100.0, -170.0, -15.0};
+      const double4 a{-1.0, -1.0, -6.5, -0.7};
+      const double4 x0{1.0, 0.0, -0.5, -1.0};
+      const double4 b{0.0, 0.0, 11.0, 0.6};
+      const double4 y0{0.0, 0.5, 1.5, 1.0};
+      const double4 c{-10.0, -10.0, -6.5, 0.7};
+      double energy{0.0};
+      for (std::size_t i = 0; i < 4; ++i)
+      {
+        energy += A[i] * std::exp(a[i] * (pos.x - x0[i]) * (pos.x - x0[i]) + b[i] * (pos.x - x0[i]) * (pos.y - y0[i]) +
+                                  c[i] * (pos.y - y0[i]) * (pos.y - y0[i]));
+      }
+      return energy;
+    }
+    default:
+      return 0.0;
+  }
+}
 
 void Interactions::computeExternalFieldEnergy(
     bool hasExternalField, [[maybe_unused]] const ForceField& forceField,

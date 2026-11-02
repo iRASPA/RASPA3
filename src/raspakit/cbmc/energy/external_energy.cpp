@@ -14,6 +14,7 @@ import forcefield;
 import simulationbox;
 import threadpool;
 import interpolation_energy_grid;
+import interactions_external_field;
 import interactions_pair_kernel;
 import potential_pair_derivatives;
 import potential_pair_vdw;
@@ -110,31 +111,13 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
     }
     else
     {
+      energyFactor.dUdlambda = Interactions::analyticExternalFieldEnergy(forceField, posA);
       switch (forceField.potentialEnergySurfaceType)
       {
         case ForceField::PotentialEnergySurfaceType::None:
           break;
         case ForceField::PotentialEnergySurfaceType::GridFile:
           // only available through the interpolation grid ('GridFile' requires 'UseExternalFieldGrid')
-          break;
-        case ForceField::PotentialEnergySurfaceType::MullerBrown:
-        {
-          const double4 A{-200.0, -100.0, -170.0, -15.0};
-          const double4 a{-1.0, -1.0, -6.5, -0.7};
-          const double4 x0{1.0, 0.0, -0.5, -1.0};
-          const double4 b{0.0, 0.0, 11.0, 0.6};
-          const double4 y0{0.0, 0.5, 1.5, 1.0};
-          const double4 c{-10.0, -10.0, -6.5, 0.7};
-          for (std::size_t i = 0; i < 4; ++i)
-          {
-            energyFactor.dUdlambda += A[i] * std::exp(a[i] * (posA.x - x0[i]) * (posA.x - x0[i]) +
-                                                      b[i] * (posA.x - x0[i]) * (posA.y - y0[i]) +
-                                                      c[i] * (posA.y - y0[i]) * (posA.y - y0[i]));
-          }
-        }
-        break;
-        case ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction:
-          energyFactor.dUdlambda = posA.x * posA.y * posA.z;
           break;
         case ForceField::PotentialEnergySurfaceType::CylinderX:
           if (!insideCylinder(posA, simulationBox.cell * double3{0.0, 0.5, 0.5},

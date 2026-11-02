@@ -1012,8 +1012,9 @@ void InterpolationEnergyGrid::writeOutput(std::size_t systemId, const Simulation
 {
   std::filesystem::create_directory("interpolation_grids");
 
-  std::mdspan<double, std::dextents<std::size_t, 3>> data_cell(
-      data.data(), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  // only the energy of each vertex: the Hermite schemes store it together with its derivatives
+  std::mdspan<const double, std::dextents<std::size_t, 4>, std::layout_left> data_cell(
+      data.data(), std::to_underlying(order), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
 
   std::ofstream ostream(std::format("interpolation_grids/grid_external_field.s{}.cube", systemId));
   const double3x3 cell = simulationBox.cell;
@@ -1022,19 +1023,26 @@ void InterpolationEnergyGrid::writeOutput(std::size_t systemId, const Simulation
   std::print(ostream, "Written by RASPA-3\n");
   std::print(ostream, "{} {} {} {}\n", 1, origin.x, origin.y, origin.z);
 
-  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.x, cell.ax / static_cast<double>(numberOfGridPoints.x), 
-      cell.ay / static_cast<double>(numberOfGridPoints.x), cell.az / static_cast<double>(numberOfGridPoints.x));
-  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.y, cell.bx / static_cast<double>(numberOfGridPoints.y), 
-      cell.by / static_cast<double>(numberOfGridPoints.y), cell.bz / static_cast<double>(numberOfGridPoints.y));
-  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.z, cell.cx / static_cast<double>(numberOfGridPoints.z), 
-      cell.cy / static_cast<double>(numberOfGridPoints.z), cell.cz / static_cast<double>(numberOfGridPoints.z));
+  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.x, cell.ax / static_cast<double>(numberOfCells.x), 
+      cell.ay / static_cast<double>(numberOfCells.x), cell.az / static_cast<double>(numberOfCells.x));
+  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.y, cell.bx / static_cast<double>(numberOfCells.y), 
+      cell.by / static_cast<double>(numberOfCells.y), cell.bz / static_cast<double>(numberOfCells.y));
+  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.z, cell.cx / static_cast<double>(numberOfCells.z), 
+      cell.cy / static_cast<double>(numberOfCells.z), cell.cz / static_cast<double>(numberOfCells.z));
 
   // work around: needs to be 1 atom for iRASPA
   std::print(ostream, "1 0.0 0.0 0.0 0.0\n");
 
-  for (std::vector<double>::iterator it = data.begin(); it != data.end(); ++it)
+  // the cube order: x is the slowest and z the fastest index
+  for (std::size_t i = 0; i < static_cast<std::size_t>(numberOfGridPoints.x); ++i)
   {
-    std::print(ostream, "{}\n", *it * Units::EnergyToKelvin);
+    for (std::size_t j = 0; j < static_cast<std::size_t>(numberOfGridPoints.y); ++j)
+    {
+      for (std::size_t k = 0; k < static_cast<std::size_t>(numberOfGridPoints.z); ++k)
+      {
+        std::print(ostream, "{}\n", data_cell[0, i, j, k] * Units::EnergyToKelvin);
+      }
+    }
   }
 }
 
