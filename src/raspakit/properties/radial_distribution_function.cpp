@@ -61,6 +61,8 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
     std::size_t typeA = static_cast<std::size_t>(frameworkAtoms[ia].type);
     for (std::size_t ib = 0; ib < moleculeAtoms.size(); ++ib)
     {
+      // the distribution of the integer molecules: a fractional molecule is no member of the ensemble
+      if (moleculeAtoms[ib].isFractional) continue;
       posB = moleculeAtoms[ib].position;
       gradientB = moleculeDynamics[ib].gradient;
       std::size_t typeB = static_cast<std::size_t>(moleculeAtoms[ib].type);
@@ -70,6 +72,7 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
 
   for (std::size_t ia = 0; ia + 1 < moleculeAtoms.size(); ++ia)
   {
+    if (moleculeAtoms[ia].isFractional) continue;
     posA = moleculeAtoms[ia].position;
     gradientA = moleculeDynamics[ia].gradient;
     std::size_t molA = static_cast<std::size_t>(moleculeAtoms[ia].moleculeId);
@@ -78,6 +81,7 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
 
     for (std::size_t ib = ia + 1; ib < moleculeAtoms.size(); ++ib)
     {
+      if (moleculeAtoms[ib].isFractional) continue;
       std::size_t molB = static_cast<std::size_t>(moleculeAtoms[ib].moleculeId);
       std::size_t compB = static_cast<std::size_t>(moleculeAtoms[ib].componentId);
 

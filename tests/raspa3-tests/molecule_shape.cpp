@@ -11,6 +11,12 @@ import component;
 import molecule_property_settings;
 import mc_moves_probabilities;
 import property_molecule_shape;
+import property_molecule_properties;
+import property_molecule_backbone;
+import property_conventional_rdf;
+import property_rdf;
+import atom_dynamics;
+import simulationbox;
 
 // Tests for the gyration-tensor shape descriptors: analytic conformations (rod, square, tetrahedron)
 // pin down Rg, the eigenvalues, asphericity, acylindricity, shape anisotropy and prolateness, and
@@ -437,4 +443,67 @@ TEST(MOLECULE_SHAPE, default_range_from_contour_length)
 
   // Mass weights of identical beads are uniform.
   for (double w : property.weightsPerComponent[0]) EXPECT_NEAR(w, 0.25, 1e-12);
+}
+
+// A fractional molecule is no member of the ensemble: it does not count in the molecular properties, wherever it sits
+// in the component (the CFCMC moves keep it among the integer molecules).
+TEST(MOLECULE_SHAPE, property_samplers_skip_the_fractional_molecule)
+{
+  const ForceField forceField = makeZeroForceField();
+  std::vector<Component> components{makeComponent(forceField, "chain", kLinearChainJson)};
+  components[0].moleculeShapeSettings = MoleculeShapeSettings{.sampleEvery = 1, .writeEvery = 1, .numberOfBins = 40};
+  components[0].moleculePropertiesSettings = MoleculePropertiesSettings{.sampleEvery = 1, .writeEvery = 1, .numberOfBins = 32, .bondRange = 4.0, .endToEndRange = 6.0};
+  components[0].moleculeBackboneSettings = MoleculeBackboneSettings{.sampleEvery = 1, .writeEvery = 1};
+  PropertyMoleculeShape shape(1, forceField, components);
+  PropertyMoleculeProperties properties(1, components);
+  PropertyMoleculeBackbone backbone(1, components);
+
+  std::vector<Atom> integerMolecule = components[0].atoms;
+  std::vector<Atom> fractionalMolecule = components[0].atoms;
+  for (std::size_t i = 0; i < 4; ++i)
+  {
+    integerMolecule[i].position = double3(static_cast<double>(i), 0.0, 0.0);
+    fractionalMolecule[i].position = double3(0.0, static_cast<double>(i) * 0.5, 0.0);
+    fractionalMolecule[i].isFractional = true;
+  }
+  for (const bool fractionalFirst : {true, false})
+  {
+    std::vector<Atom> atoms = fractionalFirst ? fractionalMolecule : integerMolecule;
+    const std::vector<Atom>& second = fractionalFirst ? integerMolecule : fractionalMolecule;
+    atoms.insert(atoms.end(), second.begin(), second.end());
+    shape.sample(components, {2}, std::span<const Atom>(atoms), 0, 0);
+    properties.sample(components, {2}, std::span<const Atom>(atoms), 0, 0);
+    backbone.sample(components, {2}, std::span<const Atom>(atoms), 0, 0);
+  }
+  EXPECT_DOUBLE_EQ(shape.numberOfCounts[0][0], 2.0);
+  EXPECT_DOUBLE_EQ(properties.numberOfCounts[0][0], 2.0);
+  EXPECT_DOUBLE_EQ(backbone.numberOfCounts[0][0], 2.0);
+}
+
+// The pair distribution functions are those of the integer atoms, as the density grid already is.
+TEST(MOLECULE_SHAPE, rdf_samplers_skip_the_fractional_atoms)
+{
+  const SimulationBox box(20.0, 20.0, 20.0);
+  const auto atom = [](double x, std::uint32_t moleculeId, bool fractional)
+  {
+    Atom result{};
+    result.position = double3(x, 5.0, 5.0);
+    result.moleculeId = moleculeId;
+    result.isFractional = fractional;
+    return result;
+  };
+  std::vector<Atom> framework{atom(1.0, 0, false)};
+  std::vector<AtomDynamics> frameworkDynamics(1);
+  std::vector<Atom> molecules{atom(2.0, 0, false), atom(3.0, 1, true), atom(5.0, 2, false)};
+  std::vector<AtomDynamics> moleculeDynamics(3);
+  // the channel holds framework-molecule (2 integer atoms, each order) and molecule-molecule (1 pair, each order)
+  const std::size_t expected = 2 * 2 + 2;
+
+  PropertyConventionalRadialDistributionFunction conventional(1, 1, 20, 10.0, 1, 1);
+  conventional.sample(box, framework, molecules, 0, 0);
+  EXPECT_EQ(conventional.pairCount[0], expected);
+
+  PropertyRadialDistributionFunction forceBased(1, 1, 20, 10.0, 1, 1);
+  forceBased.sample(box, framework, frameworkDynamics, {}, molecules, moleculeDynamics, 0, 0);
+  EXPECT_EQ(forceBased.pairCount[0], expected);
 }

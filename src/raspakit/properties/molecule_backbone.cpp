@@ -298,6 +298,8 @@ void PropertyMoleculeBackbone::sample(const std::vector<Component> &components,
       // Positions are stored unwrapped, so plain differences are the physical intramolecular vectors.
       std::span<const Atom> molecule = moleculeAtoms.subspan(offset, numberOfAtoms);
       offset += numberOfAtoms;
+      // A fractional molecule is no member of the ensemble (the CFCMC moves keep it among the integer molecules).
+      if (molecule.front().isFractional) continue;
 
       accumulateInternalDistances(molecule, backbone, internalDistanceSquaredSum[block][c]);
       accumulateBondCorrelation(molecule, backbone, bondCorrelationSum[block][c]);

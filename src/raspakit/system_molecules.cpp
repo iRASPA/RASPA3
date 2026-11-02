@@ -65,6 +65,10 @@ void System::insertFractionalMoleculeAtIndex(std::size_t selectedComponent, std:
   numberOfMoleculesPerComponent[selectedComponent] += 1;
   numberOfFractionalMoleculesPerComponent[selectedComponent] += 1;
 
+  // a fractional molecule has velocities like any other: every one of them counts in the temperature
+  translationalDegreesOfFreedom += components[selectedComponent].translationalDegreesOfFreedom;
+  rotationalDegreesOfFreedom += components[selectedComponent].rotationalDegreesOfFreedom;
+
   // the Coulomb-scaled charge of the inserted atoms (a fractional molecule counts with its scaled charge)
   const double insertedCharge = scaledNetCharge(atoms);
   netCharge += insertedCharge;
@@ -254,6 +258,9 @@ void System::deleteFractionalMolecule(std::size_t selectedComponent, std::size_t
 
   numberOfMoleculesPerComponent[selectedComponent] -= 1;
   numberOfFractionalMoleculesPerComponent[selectedComponent] -= 1;
+
+  translationalDegreesOfFreedom -= components[selectedComponent].translationalDegreesOfFreedom;
+  rotationalDegreesOfFreedom -= components[selectedComponent].rotationalDegreesOfFreedom;
 
   netCharge -= removedCharge;
   netChargeAdsorbates -= removedCharge;
@@ -546,9 +553,6 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
             componentId, indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(componentId),
             growData->molecule, std::move(atoms));
       }
-
-      translationalDegreesOfFreedom += components[componentId].translationalDegreesOfFreedom;
-      rotationalDegreesOfFreedom += components[componentId].rotationalDegreesOfFreedom;
     }
 
     // Broensted protons: one single-site proton per candidate group, placed on the group's first

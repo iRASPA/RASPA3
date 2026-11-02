@@ -6,6 +6,8 @@
 import std;
 
 import double3;
+import atom;
+import molecule;
 import forcefield;
 import component;
 import system;
@@ -211,6 +213,39 @@ TEST(MC_FRACTIONAL_MOLECULE_ORDER, swap_and_gibbs_swap_layout)
   EXPECT_EQ(gibbsSwapIndex, 1uz);
   EXPECT_NE(gcIndex, gibbsSwapIndex);
   expectFractionalBeforeInteger(system);
+}
+
+// The velocities of every molecule enter the temperature, the fractional ones included: the degrees of freedom count
+// each of them once, for any number of slots, and follow their insertion and deletion.
+TEST(MC_FRACTIONAL_MOLECULE_ORDER, degrees_of_freedom_count_every_fractional_molecule)
+{
+  ForceField forceField = makeAlkaneForceField();
+  SimulationBox box = SimulationBox(30.0, 30.0, 30.0);
+  MCMoveProbabilities componentProbabilities = MCMoveProbabilities();
+  componentProbabilities.setProbability(Move::Types::Translation, 1.0);
+  componentProbabilities.setProbability(Move::Types::SwapCFCMC, 1.0);
+  componentProbabilities.setProbability(Move::Types::GibbsSwapCFCMC, 1.0);
+  Component propane = makeAlkaneFromExample(forceField, 0, "propane", componentProbabilities);
+  propane.lnPartitionFunction = 1.0;
+
+  const std::size_t integers = 3;
+  System system = System(forceField, box, false, 500.0, 1e4, 1.0, {}, {propane}, {}, std::vector<std::size_t>{integers}, 5,
+                         MCMoveProbabilities());
+  ASSERT_EQ(system.numberOfFractionalMoleculesPerComponent[0], 2uz);
+  const std::size_t perMoleculeTranslation = system.components[0].translationalDegreesOfFreedom;
+  const std::size_t perMoleculeRotation = system.components[0].rotationalDegreesOfFreedom;
+  EXPECT_EQ(system.translationalDegreesOfFreedom, (integers + 2) * perMoleculeTranslation);
+  EXPECT_EQ(system.rotationalDegreesOfFreedom, (integers + 2) * perMoleculeRotation);
+
+  // a fractional molecule leaves and comes back (as in the serial reaction moves)
+  const std::size_t slot = system.indexOfFractionalMoleculeForMove(Move::Types::GibbsSwapCFCMC, 0);
+  const std::vector<Atom> atoms(system.spanOfMolecule(0, slot).begin(), system.spanOfMolecule(0, slot).end());
+  const Molecule molecule = system.moleculeData[slot];
+  system.deleteFractionalMolecule(0, slot, system.spanOfMolecule(0, slot));
+  EXPECT_EQ(system.translationalDegreesOfFreedom, (integers + 1) * perMoleculeTranslation);
+  system.insertFractionalMoleculeAtIndex(0, slot, molecule, atoms);
+  EXPECT_EQ(system.translationalDegreesOfFreedom, (integers + 2) * perMoleculeTranslation);
+  EXPECT_EQ(system.rotationalDegreesOfFreedom, (integers + 2) * perMoleculeRotation);
 }
 
 }  // namespace

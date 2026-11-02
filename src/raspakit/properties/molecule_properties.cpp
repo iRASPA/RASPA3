@@ -189,6 +189,8 @@ void PropertyMoleculeProperties::sample(const std::vector<Component> &components
     {
       std::span<const Atom> molecule = moleculeAtoms.subspan(offset, numberOfAtoms);
       offset += numberOfAtoms;
+      // A fractional molecule is no member of the ensemble (the CFCMC moves keep it among the integer molecules).
+      if (molecule.front().isFractional) continue;
 
       // Bond lengths [Angstrom].
       for (std::size_t i = 0; i < bonds.size(); ++i)

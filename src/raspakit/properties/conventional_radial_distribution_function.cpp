@@ -33,6 +33,8 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
     std::size_t typeA = static_cast<std::size_t>(it1->type);
     for (std::span<Atom>::iterator it2 = moleculeAtoms.begin(); it2 != moleculeAtoms.end(); ++it2)
     {
+      // the distribution of the integer molecules: a fractional molecule is no member of the ensemble
+      if (it2->isFractional) continue;
       posB = it2->position;
       std::size_t typeB = static_cast<std::size_t>(it2->type);
 
@@ -55,6 +57,7 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
 
   for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
   {
+    if (it1->isFractional) continue;
     posA = it1->position;
     std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
     std::size_t compA = static_cast<std::size_t>(it1->componentId);
@@ -62,6 +65,7 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
 
     for (std::span<Atom>::iterator it2 = it1 + 1; it2 != moleculeAtoms.end(); ++it2)
     {
+      if (it2->isFractional) continue;
       std::size_t molB = static_cast<std::size_t>(it2->moleculeId);
       std::size_t compB = static_cast<std::size_t>(it2->componentId);
 
