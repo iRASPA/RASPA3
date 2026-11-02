@@ -166,11 +166,14 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
     simulationBox = box.value();
   }
 
+  // Merge the (deprecated) system-level move probabilities into the components first: everything below
+  // inspects the per-component probabilities to decide which components are swappable, which need
+  // fractional molecules, and which dUdlambda groups exist.
+  rescaleMoveProbabilities();
   removeRedundantMoves();
   determineSwappableComponents();
   determineFractionalComponents();
   assignDUdlambdaGroups();
-  rescaleMoveProbabilities();
   rescaleMolarFractions();
   computeNumberOfPseudoAtoms();
   computeTailCorrectionCounts();

@@ -1360,10 +1360,17 @@ void DynamicallyCorrectedTST::performMonteCarloCycle(std::size_t replicaId)
       std::span<Atom> moleculeAtoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
       std::vector<Atom> oldAtoms;
       Molecule oldMolecule;
+      std::vector<double3> oldElectricField;
       if (occupancyMode)
       {
         oldAtoms.assign(moleculeAtoms.begin(), moleculeAtoms.end());
         oldMolecule = system.moleculeData[moleculeIndex];
+        // an accepted move commits the electric field (of the molecule and, with molecule-molecule polarization,
+        // of every other molecule) into the stored field: keep a copy so that the undo below can restore it
+        if (system.forceField.computePolarization)
+        {
+          oldElectricField = system.electricField;
+        }
       }
 
       switch (moveType)
@@ -1399,7 +1406,7 @@ void DynamicallyCorrectedTST::performMonteCarloCycle(std::size_t replicaId)
           ++state.cageChanges;
           if (oldCage == state.cageA || oldCage == state.cageB || newCage == state.cageA || newCage == state.cageB)
           {
-            // undo: positions, molecule record, cell list and the Ewald structure factor
+            // undo: positions, molecule record, cell list, the Ewald structure factor and the stored electric field
             if (system.forceField.useCharge && system.forceField.usesEwaldFourier())
             {
               Interactions::energyDifferenceEwaldFourier(
@@ -1410,6 +1417,10 @@ void DynamicallyCorrectedTST::performMonteCarloCycle(std::size_t replicaId)
             std::copy(oldAtoms.cbegin(), oldAtoms.cend(), moleculeAtoms.begin());
             system.cellListAtomsMoved(moleculeAtoms);
             system.moleculeData[moleculeIndex] = oldMolecule;
+            if (system.forceField.computePolarization)
+            {
+              system.electricField = oldElectricField;
+            }
             energyDifference = std::nullopt;
             ++state.rejectedMoves;
           }

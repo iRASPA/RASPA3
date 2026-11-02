@@ -1096,10 +1096,17 @@ void DynamicallyCorrectedTSTFreeEnergy::performWindowCycle(std::size_t replicaId
       std::span<Atom> moleculeAtoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
       std::vector<Atom> oldAtoms;
       Molecule oldMolecule;
+      std::vector<double3> oldElectricField;
       if (occupancyMode)
       {
         oldAtoms.assign(moleculeAtoms.begin(), moleculeAtoms.end());
         oldMolecule = system.moleculeData[moleculeIndex];
+        // an accepted move commits the electric field (of the molecule and, with molecule-molecule polarization,
+        // of every other molecule) into the stored field: keep a copy so that the undo below can restore it
+        if (system.forceField.computePolarization)
+        {
+          oldElectricField = system.electricField;
+        }
       }
 
       switch (moveType)
@@ -1144,6 +1151,10 @@ void DynamicallyCorrectedTSTFreeEnergy::performWindowCycle(std::size_t replicaId
             std::copy(oldAtoms.cbegin(), oldAtoms.cend(), moleculeAtoms.begin());
             system.cellListAtomsMoved(moleculeAtoms);
             system.moleculeData[moleculeIndex] = oldMolecule;
+            if (system.forceField.computePolarization)
+            {
+              system.electricField = oldElectricField;
+            }
             energyDifference = std::nullopt;
             ++accumulator.rejectedByOccupancy;
           }

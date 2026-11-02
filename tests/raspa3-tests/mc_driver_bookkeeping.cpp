@@ -75,6 +75,86 @@ TEST(MC_DRIVER_BOOKKEEPING, single_system_is_sampled_once_per_step)
   EXPECT_EQ(tmmc.systems[0].components[0].lambdaGC.occupancyTotal, expectedTMMCSteps);
 }
 
+// The (deprecated) system-level move probabilities are merged into the components before the constructor decides
+// which components are swappable and which need a fractional molecule: a CFCMC swap given only on the system
+// level must still allocate the fractional molecule and its dU/dlambda group.
+TEST(MC_DRIVER_BOOKKEEPING, system_level_move_probabilities_drive_the_fractional_bookkeeping)
+{
+  const ForceField forceField({{"CH4", false, 16.04246, 0.0, 0.0, 6, false}}, {{158.5, 3.72}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  Component methane(forceField, "methane", 190.564, 45599200, 0.01142,
+                    {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21, MCMoveProbabilities(),
+                    std::nullopt, false);
+  methane.lambdaGC.computeDUdlambda = true;
+
+  MCMoveProbabilities systemProbabilities;
+  systemProbabilities.setProbability(Move::Types::Translation, 1.0);
+  systemProbabilities.setProbability(Move::Types::SwapCFCMC, 1.0);
+
+  System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {4}, 5,
+                systemProbabilities);
+
+  EXPECT_GT(system.components[0].mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC), 0.0);
+  EXPECT_TRUE(system.components[0].swappable);
+  EXPECT_TRUE(system.components[0].hasFractionalMolecule);
+  EXPECT_EQ(system.numberOfGCFractionalMoleculesPerComponent_CFCMC[0], 1uz);
+  EXPECT_EQ(system.numberOfFractionalMoleculesPerComponent[0], 1uz);
+  EXPECT_NE(system.components[0].lambdaGC.dUdlambdaGroupId, 0);
+  EXPECT_EQ(system.swappableComponents, std::vector<std::size_t>{0uz});
+}
+
+// The transition-matrix driver runs the lambda bookkeeping of the conventional Gibbs CFCMC move (Wang-Landau
+// sampling and occupancy) like the plain Monte Carlo driver does.
+TEST(MC_DRIVER_BOOKKEEPING, transition_matrix_samples_the_gibbs_lambda_histogram)
+{
+  const ForceField forceField({{"CH4", false, 16.04246, 0.0, 0.0, 6, false}}, {{158.5, 3.72}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  probabilities.setProbability(Move::Types::GibbsConventionalCFCMC, 1.0);
+  Component methane(forceField, "methane", 190.564, 45599200, 0.01142,
+                    {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt,
+                    false);
+  methane.lambdaGibbs.computeDUdlambda = true;
+
+  std::vector<System> systems{
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {10}, 5),
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {10}, 5)};
+  ASSERT_TRUE(systems[0].usesGibbsConventionalCFCMC());
+
+  // the driver writes its output files relative to the working directory
+  const std::filesystem::path previous = std::filesystem::current_path();
+  const std::filesystem::path scratch = std::filesystem::temp_directory_path() / "raspa3_tmmc_gibbs_lambda_test";
+  std::filesystem::create_directories(scratch);
+  std::filesystem::current_path(scratch);
+  {
+    RandomNumber random(5);
+    MonteCarloTransitionMatrix tmmc(makeSchedule(1, 0, 1), systems, random, 5);
+    tmmc.setup();
+    for (System& system : tmmc.systems) system.runningEnergies = system.computeTotalEnergies();
+
+    // one component: max(total number of molecules, 20) steps per cycle (the count is taken before the cycle)
+    const std::size_t steps =
+        std::max(tmmc.systems[0].numberOfMolecules() + tmmc.systems[1].numberOfMolecules(), 20uz);
+
+    tmmc.simulationStage = MonteCarloTransitionMatrix::SimulationStage::Equilibration;
+    tmmc.performCycle();
+
+    // every step samples the occupancy of both lambda histograms in both systems of the pair
+    std::size_t gibbsOccupancy{0uz};
+    std::size_t gcOccupancy{0uz};
+    for (const System& system : tmmc.systems)
+    {
+      gibbsOccupancy += system.components[0].lambdaGibbs.occupancyTotal;
+      gcOccupancy += system.components[0].lambdaGC.occupancyTotal;
+    }
+    EXPECT_EQ(gcOccupancy, 2uz * steps);
+    EXPECT_EQ(gibbsOccupancy, 2uz * steps);
+  }
+  std::filesystem::current_path(previous);
+  std::filesystem::remove_all(scratch);
+}
+
 // The overall cycle number indexes the property-evolution samples; it has to survive a binary restart.
 TEST(MC_DRIVER_BOOKKEEPING, archive_restores_the_absolute_cycle_number)
 {

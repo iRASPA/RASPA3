@@ -164,17 +164,20 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
     std::copy(newMolecule.begin(), newMolecule.end(), molecule_atoms.begin());
     system.cellListAtomsMoved(molecule_atoms);
 
-    if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+    if (system.forceField.computePolarization)
     {
-      std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
-      for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+      if (!system.forceField.omitInterPolarization)
       {
-        storedElectricField[i] += electricFieldNeighborDelta[i];
+        std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+        for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+        {
+          storedElectricField[i] += electricFieldNeighborDelta[i];
+        }
       }
-    }
 
-    std::span<double3> electricFieldMolecule = system.spanElectricFieldOld(selectedComponent, selectedMolecule);
-    std::copy(new_electric_field.begin(), new_electric_field.end(), electricFieldMolecule.begin());
+      std::span<double3> electricFieldMolecule = system.spanElectricFieldOld(selectedComponent, selectedMolecule);
+      std::copy(new_electric_field.begin(), new_electric_field.end(), electricFieldMolecule.begin());
+    }
 
     // the grown record carries the new center of mass and orientation; the position of the molecule in the atom
     // array is unchanged and is not part of a grow result

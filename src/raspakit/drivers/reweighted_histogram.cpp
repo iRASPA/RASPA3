@@ -787,9 +787,20 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
                 const bool anyFractionalMolecule =
                     std::ranges::any_of(system.components, [](const Component& component)
                                         { return component.hasFractionalMolecule; });
+                // Every lambda coordinate of the component has to be at bin 0: besides the GC fractional molecule
+                // a component may carry pair-swap, group-swap, or Gibbs fractional molecules with their own
+                // lambda histograms (an unused histogram stays at bin 0).
                 const bool fractionalMoleculesAreDecoupled = std::ranges::all_of(
-                    system.components, [](const Component& component)
-                    { return !component.hasFractionalMolecule || component.lambdaGC.currentBin == 0uz; });
+                    system.components,
+                    [](const Component& component)
+                    {
+                      return !component.hasFractionalMolecule ||
+                             (component.lambdaGC.currentBin == 0uz && component.lambdaPairSwap.currentBin == 0uz &&
+                              component.lambdaPairSwapCB.currentBin == 0uz &&
+                              component.lambdaGroupSwap.currentBin == 0uz &&
+                              component.lambdaGroupSwapCB.currentBin == 0uz &&
+                              component.lambdaGibbs.currentBin == 0uz);
+                    });
                 if (anyFractionalMolecule ? fractionalMoleculesAreDecoupled
                                           : cycle % sampleReweightingEvery == 0uz)
                 {

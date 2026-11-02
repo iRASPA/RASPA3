@@ -134,6 +134,8 @@ void ThermodynamicIntegration::performCycle()
     std::pair<std::size_t, std::size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
     System& selectedSystem = systems[selectedSystemPair.first];
     System& selectedSecondSystem = systems[selectedSystemPair.second];
+    // with a single system both references alias the same system: sample it once, not twice
+    const bool hasSecondSystem = &selectedSecondSystem != &selectedSystem;
 
     std::size_t selectedComponent = selectedSystem.randomComponent(random);
 
@@ -159,11 +161,14 @@ void ThermodynamicIntegration::performCycle()
     }
 
     selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
-    selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
-        selectedSecondSystem.containsTheFractionalMolecule);
     // pinned pair- and group-swap lambda histograms
     selectedSystem.pairSwapLambdaSampleOccupancy();
-    selectedSecondSystem.pairSwapLambdaSampleOccupancy();
+    if (hasSecondSystem)
+    {
+      selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
+          selectedSecondSystem.containsTheFractionalMolecule);
+      selectedSecondSystem.pairSwapLambdaSampleOccupancy();
+    }
   }
 }
 

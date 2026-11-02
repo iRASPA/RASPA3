@@ -191,18 +191,25 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
-    // Apply the field changes on the existing molecules before the new molecule (and its field) is appended.
-    if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+    if (system.forceField.computePolarization)
     {
-      std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
-      for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+      // Apply the field changes on the existing molecules before the new molecule (and its field) is appended.
+      if (!system.forceField.omitInterPolarization)
       {
-        storedElectricField[i] += electricFieldNeighborDelta[i];
+        std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+        for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+        {
+          storedElectricField[i] += electricFieldNeighborDelta[i];
+        }
       }
-    }
 
-    system.insertMoleculePolarization(selectedComponent, trialMolecule.first, trialMolecule.second,
-                                      electricFieldMoleculeNew);
+      system.insertMoleculePolarization(selectedComponent, trialMolecule.first, trialMolecule.second,
+                                        electricFieldMoleculeNew);
+    }
+    else
+    {
+      system.insertMolecule(selectedComponent, trialMolecule.first, trialMolecule.second);
+    }
 
     return {energyDifference + internalEnergyNew, double3(0.0, 1.0 - Pacc, Pacc)};
   };

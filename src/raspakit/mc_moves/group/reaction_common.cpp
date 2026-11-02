@@ -828,12 +828,15 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 
     const double acceptanceProbability =
         std::exp(-system.beta * scalingDifference->potentialEnergy() + biasNew - biasOld);
+
+    // the trial configuration has been constructed; counted before the Metropolis test
+    system.mc_moves_statistics.addConstructed(move);
+
     if (random.uniform() >= acceptanceProbability)
     {
       return std::nullopt;
     }
 
-    system.mc_moves_statistics.addConstructed(move);
     system.mc_moves_statistics.addAccepted(move);
     setSerialReactionFractionalScaling(system, reaction, lambdaNew);
     // the effective (scaling-weighted) pseudo-atom counts used by the tail corrections follow the new lambda
@@ -985,12 +988,15 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
           std::exp(-system.beta * (energyDifference.potentialEnergy() - internalDifference.potentialEnergy()) +
                    equilibriumTerm + biasNew - biasOld);
     }
+
+    // the trial configuration has been constructed; counted before the Metropolis test
+    system.mc_moves_statistics.addConstructed(move);
+
     if (random.uniform() >= acceptanceProbability)
     {
       return std::nullopt;
     }
 
-    system.mc_moves_statistics.addConstructed(move);
     system.mc_moves_statistics.addAccepted(move);
 
     deleteReactionSideFractionalMolecules(system, reaction, reaction.fractionalSideIsReactants);
@@ -1093,12 +1099,15 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 
   const double acceptanceProbability =
       std::exp(factorialTerm + biasNew - biasOld) * std::exp(-system.beta * energyDifference.potentialEnergy());
+
+  // the trial configuration has been constructed; counted before the Metropolis test
+  system.mc_moves_statistics.addConstructed(move);
+
   if (random.uniform() >= acceptanceProbability)
   {
     return std::nullopt;
   }
 
-  system.mc_moves_statistics.addConstructed(move);
   system.mc_moves_statistics.addAccepted(move);
 
   // capture the promoted (fractional -> whole) molecules before any bookkeeping changes the indices
@@ -1357,13 +1366,15 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
                  system.beta * (energyDifference.potentialEnergy() - internalDifference.potentialEnergy()));
   }
 
+  // the trial configuration has been constructed; counted before the Metropolis test
+  system.mc_moves_statistics.addConstructed(move);
+
   if (random.uniform() >= acceptanceProbability)
   {
     restoreOldScalings();
     return std::nullopt;
   }
 
-  system.mc_moves_statistics.addConstructed(move);
   system.mc_moves_statistics.addAccepted(move);
 
   // capture the promoted (fractional -> whole) molecules before any bookkeeping changes the indices
@@ -1569,12 +1580,15 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 
   const double acceptanceProbability =
       std::exp(-system.beta * scalingDifference->potentialEnergy() + biasNew - biasOld);
+
+  // the trial configuration has been constructed; counted before the Metropolis test
+  system.mc_moves_statistics.addConstructed(move);
+
   if (random.uniform() >= acceptanceProbability)
   {
     return std::nullopt;
   }
 
-  system.mc_moves_statistics.addConstructed(move);
   system.mc_moves_statistics.addAccepted(move);
 
   Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);

@@ -570,11 +570,9 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
           atom.position = position;
         }
 
+        // insertMolecule already adds the translational and rotational degrees of freedom of the proton
         insertMolecule(componentId, molecule, molecule_atoms);
       }
-
-      translationalDegreesOfFreedom += components[componentId].translationalDegreesOfFreedom;
-      rotationalDegreesOfFreedom += components[componentId].rotationalDegreesOfFreedom;
 
       componentId++;
       continue;

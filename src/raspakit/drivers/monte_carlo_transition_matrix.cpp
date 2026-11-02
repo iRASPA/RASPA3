@@ -352,6 +352,11 @@ void MonteCarloTransitionMatrix::performCycle()
         selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
             selectedSystem.lambdaWangLandauIsActive(selectedComponent));
+        if (selectedSystem.usesGibbsConventionalCFCMC())
+        {
+          selectedSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
+        }
         selectedSystem.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         selectedSystem.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         if (hasSecondSystem)
@@ -359,6 +364,11 @@ void MonteCarloTransitionMatrix::performCycle()
           selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
               PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
               selectedSecondSystem.lambdaWangLandauIsActive(selectedComponent));
+          if (selectedSecondSystem.usesGibbsConventionalCFCMC())
+          {
+            selectedSecondSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
+                PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
+          }
           selectedSecondSystem.pairSwapLambdaWangLandauIteration(
               PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
           selectedSecondSystem.reactionLambdaWangLandauIteration(
@@ -381,12 +391,20 @@ void MonteCarloTransitionMatrix::performCycle()
     }
 
     selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
+    if (selectedSystem.usesGibbsConventionalCFCMC())
+    {
+      selectedSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
+    }
     selectedSystem.pairSwapLambdaSampleOccupancy();
     selectedSystem.reactionLambdaSampleOccupancy();
     if (hasSecondSystem)
     {
       selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
           selectedSecondSystem.containsTheFractionalMolecule);
+      if (selectedSecondSystem.usesGibbsConventionalCFCMC())
+      {
+        selectedSecondSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
+      }
       selectedSecondSystem.pairSwapLambdaSampleOccupancy();
       selectedSecondSystem.reactionLambdaSampleOccupancy();
     }
@@ -538,6 +556,12 @@ void MonteCarloTransitionMatrix::equilibrate()
       component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
                                              system.containsTheFractionalMolecule);
       component.lambdaGC.clear();
+      if (system.usesGibbsConventionalCFCMC())
+      {
+        component.lambdaGibbs.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
+                                                  true);
+        component.lambdaGibbs.clear();
+      }
     }
 
     system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
@@ -587,6 +611,11 @@ void MonteCarloTransitionMatrix::equilibrate()
           component.lambdaGC.WangLandauIteration(
               PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
               system.containsTheFractionalMolecule);
+          if (system.usesGibbsConventionalCFCMC())
+          {
+            component.lambdaGibbs.WangLandauIteration(
+                PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors, true);
+          }
         }
 
         system.pairSwapLambdaWangLandauIteration(
@@ -635,6 +664,11 @@ void MonteCarloTransitionMatrix::production()
       component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
                                              system.containsTheFractionalMolecule);
       component.lambdaGC.clear();
+      if (system.usesGibbsConventionalCFCMC())
+      {
+        component.lambdaGibbs.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize, true);
+        component.lambdaGibbs.clear();
+      }
     }
 
     system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
@@ -654,6 +688,12 @@ void MonteCarloTransitionMatrix::production()
       double currentMinBias =
           *std::min_element(component.lambdaGC.biasFactor.cbegin(), component.lambdaGC.biasFactor.cend());
       minBias = currentMinBias < minBias ? currentMinBias : minBias;
+      if (system.usesGibbsConventionalCFCMC())
+      {
+        const double gibbsMinBias =
+            *std::min_element(component.lambdaGibbs.biasFactor.cbegin(), component.lambdaGibbs.biasFactor.cend());
+        minBias = gibbsMinBias < minBias ? gibbsMinBias : minBias;
+      }
     }
 
     const double pairSwapMinBias = system.pairSwapLambdaMinBias();
@@ -676,6 +716,10 @@ void MonteCarloTransitionMatrix::production()
     for (Component& component : system.components)
     {
       component.lambdaGC.normalize(minBias);
+      if (system.usesGibbsConventionalCFCMC())
+      {
+        component.lambdaGibbs.normalize(minBias);
+      }
     }
     system.pairSwapLambdaNormalize(minBias);
     system.reactionLambdaNormalize(minBias);

@@ -118,12 +118,14 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
                system.beta * tailEnergyDifference.potentialEnergy() - retraceData->logRosenbluthWeight +
                std::log(idealGasRemove) + equilibriumTerm);
 
+  // the trial configuration has been constructed; counted before the Metropolis test
+  system.mc_moves_statistics.addConstructed(move);
+
   if (random.uniform() >= acceptanceProbability)
   {
     return std::nullopt;
   }
 
-  system.mc_moves_statistics.addConstructed(move);
   system.mc_moves_statistics.addAccepted(move);
 
   Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);

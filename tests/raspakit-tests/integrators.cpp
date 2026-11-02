@@ -1177,6 +1177,10 @@ TEST(hybrid_mc, acceptance_and_returned_energy_are_exact_with_an_external_field)
       EXPECT_NEAR(result->tail, exactNew.tail, 1.0e-10 * scale);
       EXPECT_NEAR(result->potentialEnergy(), exactNew.potentialEnergy(), 1.0e-10 * scale);
       EXPECT_GT(result->translationalKineticEnergy, 0.0);
+      // the MC driver overwrites runningEnergies with the returned energy (it does not add)
+      system.runningEnergies = *result;
+      EXPECT_NEAR(system.runningEnergies.externalFieldVDW, exactNew.externalFieldVDW, 1.0e-10 * scale);
+      EXPECT_NEAR(system.runningEnergies.potentialEnergy(), exactNew.potentialEnergy(), 1.0e-10 * scale);
     }
     EXPECT_GE(accepted, 1uz) << "external field " << externalField;
   }
@@ -1220,6 +1224,11 @@ TEST(hybrid_mc, acceptance_and_returned_energy_are_exact_with_polarization)
     EXPECT_NEAR(result->potentialEnergy(), exactNew.potentialEnergy(), 1.0e-10 * scale);
     EXPECT_GT(result->translationalKineticEnergy, 0.0);
     EXPECT_NE(exactNew.polarization, exactOld.polarization);
+    EXPECT_LT(result->polarization, -1.0e-8);
+    // the MC driver overwrites runningEnergies with the returned energy (it does not add)
+    system.runningEnergies = *result;
+    EXPECT_NEAR(system.runningEnergies.polarization, exactNew.polarization, 1.0e-10 * scale);
+    EXPECT_LT(system.runningEnergies.polarization, -1.0e-8);
   }
   EXPECT_GE(accepted, 1uz);
 

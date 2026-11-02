@@ -426,6 +426,10 @@ TEST(MC_COMPONENT_MOVES, tethered_proton_hop_sites_place_one_proton_per_group)
   ASSERT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 2uz);
   EXPECT_LT((system.spanOfMolecule(0, 0).front().position - groups[0].front()).length(), 1.0e-9);
   EXPECT_LT((system.spanOfMolecule(0, 1).front().position - groups[1].front()).length(), 1.0e-9);
+
+  // the degrees of freedom are those of the two inserted protons, counted once (by the insertion itself)
+  EXPECT_EQ(system.translationalDegreesOfFreedom, 2uz * system.components[0].translationalDegreesOfFreedom);
+  EXPECT_EQ(system.rotationalDegreesOfFreedom, 2uz * system.components[0].rotationalDegreesOfFreedom);
 }
 
 TEST(MC_COMPONENT_MOVES, tethered_proton_hop_relocates_to_a_different_site)
