@@ -588,6 +588,7 @@ void Minimization::runPhase()
     {
       throw std::runtime_error("Variable-cell minimization does not support an external field");
     }
+    if (options.computeElasticConstants) throwIfMixedFramework(system);
     const MinimizationDofLayout layout = buildMinimizationDofLayout(
         system.moleculeData, system.components, numberOfFrameworkAtoms, cellLayout.size(), frameworkPtr);
     // Seed the authoritative rigid-group state once (single Procrustes fit); afterwards

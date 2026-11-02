@@ -53,6 +53,9 @@ export ElasticConstantsResult computeElasticConstants(const System& system,
  */
 export std::array<double, 36> computeAffineBornTensor(const System& system);
 
+/// Elastic constants need cell derivatives, which mixed frameworks do not have; the drivers call this before a run.
+export void throwIfMixedFramework(const System& system);
+
 /**
  * Mass, centre-of-mass position and centre-of-mass velocity of one molecule. A rigid molecule returns its
  * stored centre-of-mass state; a flexible molecule is reduced over its atoms, a semi-flexible one over its

@@ -768,6 +768,7 @@ void MolecularDynamics::setup()
     {
       if (system.molecularDynamicsEnsemble != MolecularDynamicsEnsemble::NVT)
         throw std::runtime_error("Stress-fluctuation elastic constants require fixed-cell NVT molecular dynamics");
+      throwIfMixedFramework(system);
       if (system.elasticConstantsSampleEvery == 0)
         throw std::runtime_error("ElasticConstantsSampleEvery must be positive");
       if (system.hasExternalField || system.forceField.computePolarization)

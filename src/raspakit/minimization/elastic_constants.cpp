@@ -66,9 +66,20 @@ std::vector<double> pseudoInverse(const std::vector<double>& matrix, std::size_t
 }
 }  // namespace
 
+void throwIfMixedFramework(const System& system)
+{
+  if (system.framework && system.framework->isMixed())
+  {
+    throw std::runtime_error(
+        "Elastic constants do not support mixed fixed/rigid/flexible frameworks: the cell derivatives are not "
+        "implemented for them");
+  }
+}
+
 std::array<double, 36> computeAffineBornTensor(const System& system)
 {
   if (system.hasExternalField) throw std::runtime_error("Elastic constants do not support an external field");
+  throwIfMixedFramework(system);
 
   System derivativeSystem = system;
   derivativeSystem.pressure = 0.0;
@@ -79,7 +90,8 @@ std::array<double, 36> computeAffineBornTensor(const System& system)
                                                          ? derivativeSystem.spanOfFrameworkAtoms().size()
                                                          : 0;
   const MinimizationDofLayout layout = buildMinimizationDofLayout(
-      derivativeSystem.moleculeData, derivativeSystem.components, numberOfFlexibleFrameworkAtoms, cellLayout.size());
+      derivativeSystem.moleculeData, derivativeSystem.components, numberOfFlexibleFrameworkAtoms, cellLayout.size(),
+      derivativeSystem.framework ? &*derivativeSystem.framework : nullptr);
   GeneralizedHessian hessian(layout.numDofs(), 0);
   std::vector<double> gradient(layout.numDofs(), 0.0);
   DerivativeCapabilities capabilities{.energy = true, .gradient = true, .hessianPositionPosition = true};
@@ -364,6 +376,7 @@ ElasticConstantsResult computeElasticConstants(const System& system, double rela
   {
     throw std::runtime_error("Elastic constants do not support an external field");
   }
+  throwIfMixedFramework(system);
 
   const double externalPressure = system.pressure;
   System derivativeSystem = system;
@@ -376,7 +389,8 @@ ElasticConstantsResult computeElasticConstants(const System& system, double rela
                                                          ? derivativeSystem.spanOfFrameworkAtoms().size()
                                                          : 0;
   const MinimizationDofLayout layout = buildMinimizationDofLayout(
-      derivativeSystem.moleculeData, derivativeSystem.components, numberOfFlexibleFrameworkAtoms, cellLayout.size());
+      derivativeSystem.moleculeData, derivativeSystem.components, numberOfFlexibleFrameworkAtoms, cellLayout.size(),
+      derivativeSystem.framework ? &*derivativeSystem.framework : nullptr);
   const std::size_t numberOfPositionDofs = layout.numberOfPositionDofs();
   const std::size_t numberOfDofs = layout.numDofs();
 

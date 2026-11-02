@@ -296,3 +296,52 @@ TEST(elastic_constants_fluctuation, archive_round_trip_preserves_accumulator)
   EXPECT_DOUBLE_EQ(restored.bookKeeping[1].first.configurationalStress[0], 2.0);
   EXPECT_DOUBLE_EQ(restored.bookKeeping[1].first.born[0], 7.0);
 }
+
+namespace
+{
+System makeMixedFrameworkSystem()
+{
+  ForceField forceField({{"C", true, 12.0, 0.0, 0.0, 6, true}}, {{80.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot,
+                        5.0, 5.0, 5.0, true, false, false);
+  const SimulationBox box(14.0, 14.0, 14.0);
+  std::vector<Atom> atoms;
+  for (const double3& position : {double3(4.0, 7.0, 7.0), double3(5.4, 7.3, 7.0), double3(6.8, 6.8, 7.0)})
+  {
+    atoms.push_back(Atom(position / 14.0, 0.0, 1.0, 0, 0, 0, 0, true));
+  }
+  Framework framework(forceField, "mixed-chain", box, 1, atoms, atoms, int3(1, 1, 1));
+
+  const std::filesystem::path definition = std::filesystem::temp_directory_path() / "raspa3-elastic-mixed-framework.json";
+  std::ofstream(definition) << R"({"Type": "Flexible",
+                                   "Groups": [{"Type": "Fixed", "Atoms": [0]}, {"Type": "Flexible", "Atoms": [1, 2]}],
+                                   "Intra14VanDerWaalsScalingValue": 0.0,
+                                   "Intra14ChargeChargeScalingValue": 0.0})";
+  framework.readFrameworkDefinition(forceField, definition.string());
+  std::filesystem::remove(definition);
+  EXPECT_TRUE(framework.isMixed());
+  return System(forceField, box, false, 300.0, 1.0e4, 1.0, framework, {}, {}, {}, 5);
+}
+
+template <typename Function>
+void expectUnsupportedMixedFramework(Function&& function)
+{
+  try
+  {
+    function();
+    FAIL() << "a mixed framework must be rejected";
+  }
+  catch (const std::runtime_error& error)
+  {
+    EXPECT_NE(std::string_view(error.what()).find("Elastic constants"), std::string_view::npos) << error.what();
+  }
+}
+}  // namespace
+
+// The cell derivatives behind the elastic constants are not available for a mixed framework: a clear error, not an
+// inconsistent degree-of-freedom layout.
+TEST(elastic_constants, mixed_framework_is_rejected)
+{
+  const System system = makeMixedFrameworkSystem();
+  expectUnsupportedMixedFramework([&] { (void)computeElasticConstants(system, 1.0e-8); });
+  expectUnsupportedMixedFramework([&] { (void)computeAffineBornTensor(system); });
+}
