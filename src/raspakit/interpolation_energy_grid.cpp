@@ -721,29 +721,33 @@ double polynomialInterpolate(const std::vector<double>& data, const uint3& numbe
   const Index mend = NumPoints / 2;
   const Index mstart = mend + 1 - NumPoints;  // for 4: -1, for 5: -2, for 6: -2
 
+  // The stencil reaches across the cell boundaries. The grid is periodic with a period of numberOfCells
+  // planes: the last stored plane (index numberOfCells) is the copy of the first one (s = 0 and s = 1), so the
+  // wrap is modulo numberOfCells, not modulo numberOfGridPoints.
+
   for (Index l0 = 0; l0 < NumPoints; ++l0)
   {
     zt[static_cast<std::size_t>(l0)] = static_cast<double>(l0 + mstart);
 
     Index lp = z0 + l0 + mstart;
-    if (lp < 0) lp += static_cast<Index>(numberOfGridPoints.z);
-    if (lp >= static_cast<Index>(numberOfGridPoints.z)) lp -= static_cast<Index>(numberOfGridPoints.z);
+    if (lp < 0) lp += static_cast<Index>(numberOfCells.z);
+    if (lp >= static_cast<Index>(numberOfCells.z)) lp -= static_cast<Index>(numberOfCells.z);
 
     for (Index k0 = 0; k0 < NumPoints; ++k0)
     {
       yt[static_cast<std::size_t>(k0)] = static_cast<double>(k0 + mstart);
 
       Index kp = y0 + k0 + mstart;
-      if (kp < 0) kp += static_cast<Index>(numberOfGridPoints.y);
-      if (kp >= static_cast<Index>(numberOfGridPoints.y)) kp -= static_cast<Index>(numberOfGridPoints.y);
+      if (kp < 0) kp += static_cast<Index>(numberOfCells.y);
+      if (kp >= static_cast<Index>(numberOfCells.y)) kp -= static_cast<Index>(numberOfCells.y);
 
       for (Index j0 = 0; j0 < NumPoints; ++j0)
       {
         xt[static_cast<std::size_t>(j0)] = static_cast<double>(j0 + mstart);
 
         Index jp = x0 + j0 + mstart;
-        if (jp < 0) jp += static_cast<Index>(numberOfGridPoints.x);
-        if (jp >= static_cast<Index>(numberOfGridPoints.x)) jp -= static_cast<Index>(numberOfGridPoints.x);
+        if (jp < 0) jp += static_cast<Index>(numberOfCells.x);
+        if (jp >= static_cast<Index>(numberOfCells.x)) jp -= static_cast<Index>(numberOfCells.x);
 
         yjtmp[static_cast<std::size_t>(j0)] =
             data_cell[0, static_cast<std::size_t>(jp), static_cast<std::size_t>(kp), static_cast<std::size_t>(lp)];

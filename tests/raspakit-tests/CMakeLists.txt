@@ -25,6 +25,7 @@ add_executable(unit_tests_raspakit
   pressure.cpp
   barostat_virial.cpp
   static_energy.cpp
+  interpolation_energy_grid.cpp
   component_per_atom_charges.cpp
   lammps_export.cpp
   amber_prmtop.cpp
