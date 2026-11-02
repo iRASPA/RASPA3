@@ -402,7 +402,7 @@ nlohmann::json PropertyLambdaProbabilityHistogram::jsonAveragesStatistics(
   for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
   {
     excessChemicalPotentialBlocks[blockIndex] =
-        Units::EnergyToKelvin * averagedExcessChemicalPotential(blockIndex, beta);
+        Units::EnergyToKelvin * (averagedExcessChemicalPotential(blockIndex, beta) + excessChemicalPotentialBias);
   }
 
   status["excessChemicalPotential"]["blocks"]["[K]"] = excessChemicalPotentialBlocks;

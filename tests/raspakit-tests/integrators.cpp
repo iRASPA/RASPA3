@@ -1980,3 +1980,73 @@ TEST(molecular_dynamics, barostat_pressure_ideal_part_counts_the_coupled_points)
     }
   }
 }
+
+// The constraint on the centre-of-mass degrees of freedom holds through a particle exchange: an inserted molecule
+// brings thermal momentum and a deleted one takes its momentum with it, so the rest has to be brought back to P = 0.
+// Without a conserved momentum (here: an external field) the velocities are left alone.
+TEST(molecular_dynamics, particle_exchange_keeps_the_constrained_momentum_at_zero)
+{
+  const auto makeExchangeSystem = [](bool externalField)
+  {
+    ForceField forceField = ForceField::makeZeoliteForceField(11.8, false, false, false);
+    Component methane = Component::makeMethane(forceField, 0);
+    methane.fugacityCoefficient = 1.0;
+    methane.idealGasRosenbluthWeight = 1.0;
+    methane.mc_moves_probabilities.setProbability(Move::Types::SwapCBMC, 1.0);
+    System system(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1.0e12, 1.0, std::nullopt, {methane}, {},
+                  {4}, 5);
+    system.molecularDynamicsEnsemble = MolecularDynamicsEnsemble::MuVT;
+    system.hasExternalField = externalField;
+    system.initializeGroupData();
+    RandomNumber random(211);
+    Integrators::initializeVelocities(random, system.moleculeData, system.spanOfMoleculeAtoms(),
+                                      system.spanOfMoleculeDynamics(), system.components, system.temperature);
+    if (system.conservesCenterOfMassMomentum())
+    {
+      Integrators::removeCenterOfMassVelocityDrift(system.moleculeData, system.spanOfMoleculeAtoms(),
+                                                   system.spanOfMoleculeDynamics(), system.components);
+    }
+    return system;
+  };
+  const auto momentum = [](const System& system)
+  {
+    double3 total{};
+    for (const Molecule& molecule : system.moleculeData) total += molecule.mass * molecule.velocity;
+    return total.length();
+  };
+
+  System conserved = makeExchangeSystem(false);
+  ASSERT_LT(momentum(conserved), 1e-10);
+  RandomNumber random(1879);
+  MC_Moves::ParticleExchangeResult result = MC_Moves::ParticleExchangeResult::Rejected;
+  for (std::size_t attempt = 0; attempt != 100 && result != MC_Moves::ParticleExchangeResult::Inserted; ++attempt)
+  {
+    result = attemptParticleExchange(random, conserved);
+  }
+  ASSERT_EQ(result, MC_Moves::ParticleExchangeResult::Inserted);
+  EXPECT_EQ(conserved.translationalCenterOfMassConstraint, 3uz);
+  EXPECT_LT(momentum(conserved), 1e-10);
+
+  conserved.pressure = 1.0e-12;
+  result = MC_Moves::ParticleExchangeResult::Rejected;
+  for (std::size_t attempt = 0; attempt != 100 && result != MC_Moves::ParticleExchangeResult::Deleted; ++attempt)
+  {
+    result = attemptParticleExchange(random, conserved);
+  }
+  ASSERT_EQ(result, MC_Moves::ParticleExchangeResult::Deleted);
+  EXPECT_LT(momentum(conserved), 1e-10);
+
+  System notConserved = makeExchangeSystem(true);
+  const std::size_t before = notConserved.moleculeData.size();
+  const double initial = momentum(notConserved);
+  ASSERT_GT(initial, 1e-6);
+  result = MC_Moves::ParticleExchangeResult::Rejected;
+  for (std::size_t attempt = 0; attempt != 100 && result != MC_Moves::ParticleExchangeResult::Inserted; ++attempt)
+  {
+    result = attemptParticleExchange(random, notConserved);
+  }
+  ASSERT_EQ(result, MC_Moves::ParticleExchangeResult::Inserted);
+  ASSERT_EQ(notConserved.moleculeData.size(), before + 1);
+  EXPECT_GT(momentum(notConserved), 1e-6);
+  EXPECT_EQ(notConserved.translationalCenterOfMassConstraint, 0uz);
+}

@@ -132,7 +132,7 @@ std::string PropertyGibbsWidom::writeAveragesChemicalPotentialStatistics(double 
                  Units::PressureConversionFactor * average_fugacity.second);
       if (imposedFugacity)
       {
-        std::print(stream, "    Imposed fugacity:         {: .6e} [K]\n",
+        std::print(stream, "    Imposed fugacity:         {: .6e} [Pa]\n",
                    Units::PressureConversionFactor * imposedFugacity.value());
       }
     }

@@ -5421,6 +5421,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     {
       throw std::runtime_error(std::format("[Input reader]: '{}' does not support polarization\n", driverName));
     }
+    // the trajectories include the link forces, but the moves of the tagged molecule leave the link energy out
+    if (!system.crossLinks.empty() ||
+        system.mc_moves_probabilities.getProbability(Move::Types::CrossLinkFormationScission) > 0.0)
+    {
+      throw std::runtime_error(std::format("[Input reader]: '{}' does not support cross-links\n", driverName));
+    }
     if (!freeEnergyDriver && dctstSettings.trajectoryTermination == DcTSTSettings::TrajectoryTermination::Event &&
         !system.framework.has_value())
     {

@@ -166,7 +166,9 @@ void PropertyConventionalRadialDistributionFunction::writeOutput(
         double avg_n_pairs = static_cast<double>(pairCount[channel(atomTypeA, atomTypeB)] +
                                                  pairCount[channel(atomTypeB, atomTypeA)]) /
                              histogram.totalNumberOfCounts;
-        double normalization = volume / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
+        // the average volume of the samples: the current volume differs from it under NPT
+        const double averageVolume = volumeSampleCount > 0.0 ? volumeCumulative / volumeSampleCount : volume;
+        double normalization = averageVolume / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
 
         for (std::size_t bin = 0; bin != numberOfBins; ++bin)
         {

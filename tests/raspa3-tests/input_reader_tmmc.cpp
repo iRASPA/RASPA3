@@ -681,3 +681,52 @@ TEST(INPUT_READER, number_of_unit_cells_rejects_invalid_string)
 
   EXPECT_THROW(InputReader reader(temporary.path().filename().string()), std::runtime_error);
 }
+
+namespace
+{
+std::string dcTSTInputError(bool crossLinked)
+{
+  TemporaryDirectory workspace;
+  workspace.write("force_field.json", input_reader_fixtures::kBoxForceFieldJson);
+  nlohmann::json molecule = nlohmann::json::parse(molecule_fixtures::kMethaneJson);
+  molecule["ReactiveSites"] = nlohmann::json::array({nlohmann::json::array({0, "X"})});
+  workspace.write("methane.json", molecule.dump());
+
+  nlohmann::json input = readNVTExample();
+  input["SimulationType"] = "DynamicallyCorrectedTST";
+  nlohmann::json& system = input["Systems"][0];
+  system.erase("Ensemble");
+  system.erase("ComputeMSD");
+  system.erase("SampleMSDEvery");
+  system.erase("WriteMSDEvery");
+  system["dcTST"] = {{"TaggedComponent", "methane"},
+                     {"BarrierPosition", {0.0, 0.5, 0.5}},
+                     {"BarrierNormal", {1.0, 0.0, 0.0}},
+                     {"LatticeDistance", 30.0}};
+  input["Components"][0]["CreateNumberOfMolecules"] = 4;
+  if (crossLinked)
+  {
+    system["CrossLinkBonds"] = nlohmann::json::array(
+        {{{"Sites", {"X", "X"}}, {"Bond", nlohmann::json::array({"HARMONIC", {100.0, 3.8}})}}});
+    system["InitialCrossLinks"] = nlohmann::json::array({{{0, 0, 0}, {0, 1, 0}}});
+  }
+  TemporaryInput temporary(std::move(input), "dctst_cross_links", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+  try
+  {
+    InputReader reader(temporary.path().filename().string());
+  }
+  catch (const std::exception& error)
+  {
+    return error.what();
+  }
+  return {};
+}
+}  // namespace
+
+// The tagged-molecule moves of dcTST leave the link energy out, while the trajectories include the link forces.
+TEST(INPUT_READER, dctst_rejects_cross_links)
+{
+  EXPECT_EQ(dcTSTInputError(false).find("cross-link"), std::string::npos) << dcTSTInputError(false);
+  EXPECT_NE(dcTSTInputError(true).find("cross-link"), std::string::npos) << dcTSTInputError(true);
+}

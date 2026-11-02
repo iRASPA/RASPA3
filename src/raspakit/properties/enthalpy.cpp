@@ -140,10 +140,10 @@ nlohmann::json PropertyEnthalpy::jsonAveragesStatistics(std::vector<std::size_t>
 
       std::pair<double, double> totalEnthalpy = meanConfidence(blockTotalEnthalpy);
       status["total"]["block"] = blockTotalEnthalpy;
-      status["total"]["mean"]["[K]"] = totalEnthalpy.first;
-      status["total"]["confidence"]["[K]"] = totalEnthalpy.second;
-      status["total"]["mean"]["[kJ/mol]"] = totalEnthalpy.first;
-      status["total"]["confidence"]["[kJ/mol]"] = totalEnthalpy.second;
+      status["total"]["mean"]["[K]"] = Units::EnergyToKelvin * totalEnthalpy.first;
+      status["total"]["confidence"]["[K]"] = Units::EnergyToKelvin * totalEnthalpy.second;
+      status["total"]["mean"]["[kJ/mol]"] = Units::EnergyToKJPerMol * totalEnthalpy.first;
+      status["total"]["confidence"]["[kJ/mol]"] = Units::EnergyToKJPerMol * totalEnthalpy.second;
     }
   }
 

@@ -975,7 +975,7 @@ void Minimization::writeBinaryRestartFile() noexcept
 void Minimization::checkpointIfDue(std::size_t currentCycle)
 {
   // periodic binary restart file
-  if (currentCycle % writeBinaryRestartEvery == 0uz)
+  if (writeBinaryRestartEvery != 0uz && currentCycle % writeBinaryRestartEvery == 0uz)
   {
     writeBinaryRestartFile();
   }

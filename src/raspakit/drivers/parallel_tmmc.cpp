@@ -531,6 +531,20 @@ void ParallelTMMC::setup()
       numberOfWalkers = systems.size();
       blockCollectionMatrices.resize(numberOfWalkers);
       stepsPerWalker.assign(numberOfWalkers, 0uz);
+
+      // the macrostate range ended at the physical packing: the Widom grid (and with it the fraction of it that is
+      // sampled) and the steps per cycle follow; the grid starts at the unchanged lower bound, so nothing shifts
+      const std::size_t numberOfMacrostates = maxMacrostate - minMacrostate + 1uz;
+      widomWeightSums.resize(numberOfWalkers);
+      widomWeightSquaredSums.resize(numberOfWalkers);
+      widomInsertions.resize(numberOfWalkers);
+      for (std::size_t walkerId = 0; walkerId < numberOfWalkers; ++walkerId)
+      {
+        widomWeightSums[walkerId].resize(numberOfMacrostates);
+        widomWeightSquaredSums[walkerId].resize(numberOfMacrostates);
+        widomInsertions[walkerId].resize(numberOfMacrostates);
+      }
+      numberOfStepsPerCycle = std::max(1uz, maxMacrostate);
     }
 
     std::print(stream, "Initial configurations ready\n\n");

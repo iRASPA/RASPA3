@@ -415,6 +415,15 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
     }
   }
 
+  // An inserted molecule brings thermal momentum and a deleted one takes its momentum along: while the centre-of-mass
+  // degrees of freedom are constrained, the momentum has to stay at the zero the constraint assumes.
+  if (system.conservesCenterOfMassMomentum())
+  {
+    Integrators::removeCenterOfMassVelocityDrift(
+        system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+        system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
+        system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+  }
   system.updateCenterOfMassConstraint();
 
   if (system.thermostat)

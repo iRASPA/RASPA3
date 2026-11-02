@@ -79,10 +79,9 @@ void PropertyNumberOfMoleculesHistogram::writeOutput(std::size_t systemId, std::
 
   for (std::size_t bin = 0; bin != numberOfBins; ++bin)
   {
+    stream_output << std::format("{}", bin + range.first);
     for (std::size_t i = 0; i < numberOfComponents; ++i)
     {
-      stream_output << std::format("{}", bin + range.first);
-
       auto [bins, average, error] = results_data[i];
 
       stream_output << std::format(" {} {}", average[bin], error[bin]);

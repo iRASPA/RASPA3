@@ -86,6 +86,11 @@ void runSimulation(InputReader& inputReader)
     }
     case InputReader::SimulationType::ThermodynamicIntegration:
     {
+      // this driver has no restart file format: continuing from scratch without a word would look like a resume
+      if (inputReader.restartFromBinary)
+      {
+        throw std::runtime_error("[Input reader]: 'ThermodynamicIntegration' does not support 'RestartFromBinary'\n");
+      }
       ThermodynamicIntegration ti(inputReader);
       ti.run();
       break;

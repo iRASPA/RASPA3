@@ -47,7 +47,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
       }
       std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Ideal gas pressure  {: .6e} +/- {: .6e} [Pa]\n", conv * average_pressure.first.idealGasPressure,
-                 average_pressure.second.idealGasPressure);
+                 conv * average_pressure.second.idealGasPressure);
       std::print(stream, "                        {: .6e} +/- {: .6e} [bar]\n",
                  1e-5 * conv * average_pressure.first.idealGasPressure, 1e-5 * conv * average_pressure.second.idealGasPressure);
       std::print(stream, "\n\n");
@@ -100,7 +100,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
       }
       std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Ideal gas pressure  {: .6e} +/- {: .6e} [{}]\n", conv * average_pressure.first.idealGasPressure,
-                 average_pressure.second.idealGasPressure, Units::unitOfPressureString);
+                 conv * average_pressure.second.idealGasPressure, Units::unitOfPressureString);
       std::print(stream, "\n\n");
 
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
@@ -183,7 +183,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Pressu
   archive << l.idealGasPressure;
 
 #if DEBUG_ARCHIVE
-  archive << static_caststd::<int64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::int64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;

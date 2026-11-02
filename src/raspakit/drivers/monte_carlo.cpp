@@ -209,7 +209,7 @@ void MonteCarlo::createOutputFiles()
 void MonteCarlo::checkpointIfDue(std::size_t currentCycle)
 {
   // periodic binary restart file
-  if (currentCycle % writeBinaryRestartEvery == 0uz && outputToFiles)
+  if (writeBinaryRestartEvery != 0uz && currentCycle % writeBinaryRestartEvery == 0uz && outputToFiles)
   {
     writeBinaryRestartFile(*this);
   }

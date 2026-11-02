@@ -507,3 +507,38 @@ TEST(MOLECULE_SHAPE, rdf_samplers_skip_the_fractional_atoms)
   forceBased.sample(box, framework, frameworkDynamics, {}, molecules, moleculeDynamics, 0, 0);
   EXPECT_EQ(forceBased.pairCount[0], expected);
 }
+
+// The conventional RDF is normalized by the average volume of its samples, not by the volume at the time of writing
+// (they differ under NPT).
+TEST(MOLECULE_SHAPE, conventional_rdf_is_normalized_by_the_sampled_volume)
+{
+  const ForceField forceField = makeZeroForceField();
+  const std::filesystem::path original = std::filesystem::current_path();
+  const std::filesystem::path directory = std::filesystem::temp_directory_path() / "raspa3-conventional-rdf-volume";
+  std::filesystem::remove_all(directory);
+  std::filesystem::create_directories(directory);
+  std::filesystem::current_path(directory);
+
+  std::vector<Atom> framework{};
+  std::vector<Atom> molecules(2);
+  molecules[0].position = double3(5.0, 5.0, 5.0);
+  molecules[1].position = double3(7.0, 5.0, 5.0);
+  molecules[1].moleculeId = 1;
+  PropertyConventionalRadialDistributionFunction rdf(1, 1, 20, 10.0, 1, 1);
+  rdf.sample(SimulationBox(20.0, 20.0, 20.0), framework, molecules, 0, 0);
+
+  std::vector<std::size_t> counts{2};
+  const auto writtenAtVolume = [&](double volume)
+  {
+    rdf.writeOutput(forceField, 0, volume, counts, 0);
+    std::ifstream stream("conventional_rdf/rdf_CH2_CH2.s0.txt");
+    return std::string(std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>());
+  };
+  const std::string first = writtenAtVolume(1000.0);
+  const std::string second = writtenAtVolume(64000.0);
+  ASSERT_FALSE(first.empty());
+  EXPECT_EQ(first, second);
+
+  std::filesystem::current_path(original);
+  std::filesystem::remove_all(directory);
+}

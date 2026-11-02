@@ -83,10 +83,10 @@ std::string RunningEnergy::printMC() const
     std::print(stream, "    intra bond-bend{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
                conv * bondBend, Units::displayedUnitOfEnergyString);
   }
-  if (std::fabs(bondBend) > 1e-10)
+  if (std::fabs(bondTorsion) > 1e-10)
   {
     std::print(stream, "    intra bond-torsion{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
-               conv * bondBend, Units::displayedUnitOfEnergyString);
+               conv * bondTorsion, Units::displayedUnitOfEnergyString);
   }
   if (std::fabs(bendBend) > 1e-10)
   {
