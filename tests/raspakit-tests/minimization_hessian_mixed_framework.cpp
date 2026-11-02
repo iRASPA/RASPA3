@@ -24,6 +24,7 @@ import normal_modes;
 import phonon_dynamical_matrix;
 import running_energy;
 import interactions_hessian_ewald;
+import interactions_hessian_intramolecular;
 
 namespace
 {
@@ -386,6 +387,31 @@ TEST(minimization_hessian_mixed_framework, writes_normal_mode_movies)
   std::filesystem::remove_all(directory);
 }
 
+// The system under the molecular strain: the Fixed and Flexible atoms scale affinely, a Rigid group through its center
+// of mass only.
+System scaledMixedSystem(const System& system, const MixedBaseState& base, double scale)
+{
+  System copy = system;
+  copy.simulationBox = system.simulationBox.scaled(scale);
+  copy.forceField.initializeEwaldParameters(copy.simulationBox);
+  std::span<Atom> frameworkAtoms = copy.spanOfFrameworkAtoms();
+  for (std::size_t i = 0; i < frameworkAtoms.size(); ++i) frameworkAtoms[i].position = scale * base.frameworkPositions[i];
+  for (std::size_t g = 0; g < copy.framework->groups.size(); ++g)
+  {
+    const FrameworkGroup& group = copy.framework->groups[g];
+    if (!group.isRigidBody()) continue;
+    for (const std::size_t atom : group.atoms)
+    {
+      frameworkAtoms[atom].position =
+          scale * base.rigidGroupCenters[g] + (base.frameworkPositions[atom] - base.rigidGroupCenters[g]);
+    }
+  }
+  std::span<Atom> moleculeAtoms = copy.spanOfMoleculeAtoms();
+  for (std::size_t i = 0; i < moleculeAtoms.size(); ++i) moleculeAtoms[i].position = scale * base.moleculePositions[i];
+  copy.precomputeTotalRigidEnergy();
+  return copy;
+}
+
 // The Ewald strain first derivative of a mixed framework is the derivative of the Ewald energy under the molecular
 // strain: the Fixed and Flexible atoms scale affinely and a Rigid group scales through its center of mass only, so
 // the exclusion pairs inside the group do not strain.
@@ -397,23 +423,7 @@ TEST(minimization_hessian_mixed_framework, ewald_strain_gradient_matches_finite_
 
   const auto evaluate = [&](double scale, double3x3& strain)
   {
-    System copy = system;
-    copy.simulationBox = system.simulationBox.scaled(scale);
-    copy.forceField.initializeEwaldParameters(copy.simulationBox);
-    std::span<Atom> frameworkAtoms = copy.spanOfFrameworkAtoms();
-    for (std::size_t i = 0; i < frameworkAtoms.size(); ++i) frameworkAtoms[i].position = scale * base.frameworkPositions[i];
-    for (std::size_t g = 0; g < copy.framework->groups.size(); ++g)
-    {
-      const FrameworkGroup& group = copy.framework->groups[g];
-      if (!group.isRigidBody()) continue;
-      for (const std::size_t atom : group.atoms)
-      {
-        frameworkAtoms[atom].position = scale * base.rigidGroupCenters[g] + (base.frameworkPositions[atom] - base.rigidGroupCenters[g]);
-      }
-    }
-    std::span<Atom> moleculeAtoms = copy.spanOfMoleculeAtoms();
-    for (std::size_t i = 0; i < moleculeAtoms.size(); ++i) moleculeAtoms[i].position = scale * base.moleculePositions[i];
-    copy.precomputeTotalRigidEnergy();
+    System copy = scaledMixedSystem(system, base, scale);
 
     GeneralizedHessian hessian(layout.numDofs(), 0);
     std::vector<AtomDynamics> moleculeDynamics(copy.spanOfMoleculeAtoms().size());
@@ -430,6 +440,34 @@ TEST(minimization_hessian_mixed_framework, ewald_strain_gradient_matches_finite_
   double3x3 ignored{};
   (void)evaluate(1.0, strain);
   const double delta = 1.0e-4;
+  const double fd = (evaluate(std::exp(delta), ignored) - evaluate(std::exp(-delta), ignored)) / (2.0 * delta);
+  ASSERT_GT(std::abs(fd), 1.0e-3);
+  EXPECT_NEAR(strain.trace(), fd, 1.0e-5 * std::abs(fd) + 1.0e-4);
+}
+
+// The same for the framework intramolecular terms, whose junction bonds, bends and torsions reach into the Rigid group.
+TEST(minimization_hessian_mixed_framework, framework_intramolecular_strain_gradient_matches_finite_difference)
+{
+  System system = makeMixedFrameworkSystem(true);
+  const MinimizationDofLayout layout = makeMixedLayout(system);
+  const MixedBaseState base = captureBaseState(system);
+
+  const auto evaluate = [&](double scale, double3x3& strain)
+  {
+    System copy = scaledMixedSystem(system, base, scale);
+    GeneralizedHessian hessian(layout.numDofs(), 0);
+    std::vector<AtomDynamics> frameworkDynamics(copy.spanOfFrameworkAtoms().size());
+    const RunningEnergy energy = Interactions::computeFrameworkIntraMolecularHessian(
+        copy.forceField, *copy.framework, copy.simulationBox, copy.spanOfFrameworkAtoms(), layout, hessian,
+        frameworkDynamics);
+    strain = hessian.strainGradient();
+    return energy.potentialEnergy();
+  };
+
+  double3x3 strain{};
+  double3x3 ignored{};
+  (void)evaluate(1.0, strain);
+  const double delta = 1.0e-5;
   const double fd = (evaluate(std::exp(delta), ignored) - evaluate(std::exp(-delta), ignored)) / (2.0 * delta);
   ASSERT_GT(std::abs(fd), 1.0e-3);
   EXPECT_NEAR(strain.trace(), fd, 1.0e-5 * std::abs(fd) + 1.0e-4);

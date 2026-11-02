@@ -70,6 +70,32 @@ void removeRigidOffsetStrainGradient(GeneralizedHessian& hessian, const Minimiza
   }
 }
 
+// The same for a framework term: rigid-group atoms of a mixed framework follow the center of mass of their group.
+template <std::size_t N>
+void removeFrameworkRigidOffsetStrainGradient(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                              const Minimization::RigidDerivativeCache& rigidCache,
+                                              std::span<const Atom> frameworkAtoms,
+                                              const std::array<std::size_t, N>& atomIds,
+                                              const std::array<double3, N>& gradients)
+{
+  for (std::size_t i = 0; i < N; ++i)
+  {
+    const std::size_t atom = atomIds[i];
+    if (!layout.frameworkAtomRigidComDof(atom).has_value()) continue;
+    const double3 offset = frameworkAtoms[atom].position - rigidCache.frameworkBodyCenterOfMass(atom);
+    const double3& gradient = gradients[i];
+    hessian.strainGradient().ax -= offset.x * gradient.x;
+    hessian.strainGradient().bx -= offset.y * gradient.x;
+    hessian.strainGradient().cx -= offset.z * gradient.x;
+    hessian.strainGradient().ay -= offset.x * gradient.y;
+    hessian.strainGradient().by -= offset.y * gradient.y;
+    hessian.strainGradient().cy -= offset.z * gradient.y;
+    hessian.strainGradient().az -= offset.x * gradient.z;
+    hessian.strainGradient().bz -= offset.y * gradient.z;
+    hessian.strainGradient().cz -= offset.z * gradient.z;
+  }
+}
+
 template <std::size_t N>
 bool hasPeriodicShift(const std::array<int3, N>& shifts)
 {
@@ -201,6 +227,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     hessian.strainGradient().cz += dr.z * gradientA.z;
     if (mixed)
     {
+      removeFrameworkRigidOffsetStrainGradient<2>(hessian, layout, rigidCache, atoms, {A, B}, {gradientA, -gradientA});
       Minimization::scatterRadialHessianSites(hessian, {frameworkSite(A), frameworkSite(B)}, {gradientA, -gradientA},
                                               f1, f2, dr);
       return;
@@ -251,6 +278,8 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     hessian.strainGradient() += strain;
     if (mixed)
     {
+      removeFrameworkRigidOffsetStrainGradient<2>(hessian, layout, rigidCache, atoms, {A, B},
+                                                  {gradient[0], gradient[1]});
       Minimization::scatterRadialHessianSites(hessian, {frameworkSite(A), frameworkSite(B)},
                                               {gradient[0], gradient[1]}, f1, f2, positionA - positionB);
       continue;
@@ -280,6 +309,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     hessian.strainGradient() += strain;
     if (mixed)
     {
+      removeFrameworkRigidOffsetStrainGradient<3>(hessian, layout, rigidCache, atoms, ids, gradient);
       Minimization::scatterBendHessianSites(hessian, {frameworkSite(ids[0]), frameworkSite(ids[1]),
                                                       frameworkSite(ids[2])},
                                             gradient, geometry);
@@ -315,6 +345,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
       hessian.strainGradient() += strain;
       if (mixed)
       {
+        removeFrameworkRigidOffsetStrainGradient<4>(hessian, layout, rigidCache, atoms, ids, gradient);
         Minimization::scatterTorsionHessianSites(hessian,
                                                  {frameworkSite(ids[0]), frameworkSite(ids[1]), frameworkSite(ids[2]),
                                                   frameworkSite(ids[3])},
