@@ -1145,9 +1145,16 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
     if (!forceField.omitInterPolarization) interGather = &polarizationGather;
   }
 
+  std::vector<AtomDynamics> pressureFrameworkDynamics;
+  if (framework && framework->hasMobileAtoms())
+  {
+    pressureFrameworkDynamics.assign(spanOfFrameworkAtoms().size(), AtomDynamics{});
+  }
+  std::span<AtomDynamics> pressureFrameworkSpan(pressureFrameworkDynamics);
+
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
       forceField, framework, components, simulationBox, spanOfFrameworkAtoms(),
-      spanOfMoleculeAtoms(), pressureDynamics, frameworkGather);
+      spanOfMoleculeAtoms(), pressureDynamics, frameworkGather, pressureFrameworkSpan);
 
   pressureInfo.first.translationalKineticEnergy = runningEnergies.translationalKineticEnergy;
   pressureInfo.first.rotationalKineticEnergy = runningEnergies.rotationalKineticEnergy;
@@ -1157,13 +1164,6 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo = pairSum(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
                                            forceField, components, simulationBox, rebuiltCellList(),
                                            spanOfMoleculeAtoms(), pressureDynamics, interGather));
-
-  std::vector<AtomDynamics> pressureFrameworkDynamics;
-  if (framework && framework->hasMobileAtoms())
-  {
-    pressureFrameworkDynamics.assign(spanOfFrameworkAtoms().size(), AtomDynamics{});
-  }
-  std::span<AtomDynamics> pressureFrameworkSpan(pressureFrameworkDynamics);
 
   pressureInfo = pairSum(pressureInfo,
                          Interactions::computeEwaldFourierEnergyStrainDerivative(

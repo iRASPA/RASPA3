@@ -799,3 +799,48 @@ TEST(BAROSTAT_VIRIAL, omit_inter_interactions_applies_to_the_ewald_strain_deriva
   system.spanOfMoleculeAtoms()[0].position.x = x;
   EXPECT_NEAR(dynamics[0].gradient.x, (energyPlus - energyMinus) / (2.0 * positionDelta), 1e-5);
 }
+
+// The Ewald strain derivative of a rigid framework differentiates the energy it reports: the framework has no energy
+// with itself, so its own reciprocal-space term (which depends on alpha) must not enter the virial.
+TEST(BAROSTAT_VIRIAL, rigid_framework_ewald_strain_matches_the_energy_derivative_for_every_alpha)
+{
+  for (const double alpha : {0.25, 0.3, 0.4})
+  {
+    ForceField forceField = ForceField::makeZeoliteForceField(7.5, true, false, true);
+    forceField.automaticEwald = false;
+    forceField.EwaldAlpha = alpha;
+    forceField.numberOfWaveVectors = int3(10, 10, 10);
+    Framework framework = Framework::makeITQ29(forceField, int3(1, 1, 1));
+    Component co2 = Component::makeCO2(forceField, 0, true);
+    System system(forceField, std::nullopt, false, 300.0, 1.0e4, 1.0, {framework}, {co2}, {}, {1}, 5);
+    std::span<Atom> molecules = system.spanOfMoleculeAtoms();
+    molecules[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
+    molecules[1].position = double3(5.93355, 7.93355, 5.93355);
+    molecules[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
+    system.precomputeTotalRigidEnergy();
+
+    const auto ewaldEnergy = [](System& s)
+    {
+      const RunningEnergy energy = Interactions::computeEwaldFourierEnergy(
+          s.eik_x, s.eik_y, s.eik_z, s.eik_xy, s.fixedFrameworkStoredEik, s.storedEik, s.forceField, s.simulationBox,
+          s.components, s.numberOfMoleculesPerComponent, s.spanOfMoleculeAtoms(), s.netChargeFramework);
+      return energy.ewald_fourier + energy.ewald_self + energy.ewald_exclusion;
+    };
+
+    std::vector<AtomDynamics> dynamics(molecules.size());
+    auto [status, strain] = Interactions::computeEwaldFourierEnergyStrainDerivative(
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+        system.forceField, system.simulationBox, system.framework, system.components,
+        system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), dynamics, system.netChargeFramework,
+        system.netChargePerComponent);
+
+    const double delta = 1e-5;
+    System plus = scaledSystem(system, std::cbrt(1.0 + delta));
+    System minus = scaledSystem(system, std::cbrt(1.0 - delta));
+    ASSERT_DOUBLE_EQ(plus.forceField.EwaldAlpha, alpha);
+    const double fd =
+        (ewaldEnergy(plus) - ewaldEnergy(minus)) / (plus.simulationBox.volume - minus.simulationBox.volume);
+    ASSERT_GT(std::abs(fd), 1e-3);
+    EXPECT_NEAR(strain.trace() / (3.0 * system.simulationBox.volume), fd, 2e-3 * std::abs(fd) + 1e-7) << "alpha " << alpha;
+  }
+}

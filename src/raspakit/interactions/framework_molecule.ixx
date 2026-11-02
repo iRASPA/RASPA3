@@ -213,6 +213,7 @@ RunningEnergy computeFrameworkMoleculeGradient(
  *        PolarizationFieldStrain).
  * \note Always walks the framework atoms and never reads the interpolation grids: the virial needs the pair
  *       displacements, which a grid does not hold. The energies are therefore the exact pair energies.
+ * \param frameworkDynamics Optional, one entry per framework atom: receives the reaction gradients of the molecules.
  * \return A pair consisting of EnergyStatus containing the interaction energies, and a double3x3 tensor representing
  * the strain derivative.
  */
@@ -220,7 +221,7 @@ RunningEnergy computeFrameworkMoleculeGradient(
     const ForceField &forceField, const std::optional<Framework> &framework,
     const std::vector<Component> &components, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
-    const PolarizationFieldStrain *polarizationGather = nullptr) noexcept;
+    const PolarizationFieldStrain *polarizationGather = nullptr, std::span<AtomDynamics> frameworkDynamics = {}) noexcept;
 
 /**
  * \brief Computes the electric potential at molecule atom positions due to the framework atoms.

@@ -1956,8 +1956,8 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
   double alpha_squared = alpha * alpha;
   double singleIonFourierSum = 0.0;
 
-  // Total net charge, used for the net-charge correction to the strain derivative; the strain
-  // derivative includes the rigid-framework contribution, so the framework charge is included.
+  // Total net charge, used for the net-charge correction to the strain derivative. The framework charge is included
+  // for its cross term with the other charges; the lab-fixed self term is removed again below.
   double netChargeTotal = netChargeFramework;
   for (double q : netChargePerComponent)
   {
@@ -2043,9 +2043,9 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
   };
   std::size_t numberOfComponents = components.size();
 
-  // The energy of computeEwaldFourierGradient that is differentiated below: the lab-fixed charges of a live framework
-  // have no energy among themselves, and without inter-molecular interactions only the lab-fixed framework couples
-  // to the live charges. A rigid framework keeps its contribution (see the net charge above).
+  // The energy that is differentiated below: lab-fixed charges have no energy among themselves, whether they are a
+  // rigid framework or the fixed part of a mixed one, and without inter-molecular interactions only the lab-fixed
+  // framework couples to the live charges.
   const bool omitInterInteractions = forceField.omitInterInteractions;
   double rigidFrameworkCharge = netChargeFramework;
   if (liveFramework)
@@ -2058,7 +2058,7 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
   }
   const double netChargeTerm = omitInterInteractions
                                    ? 2.0 * rigidFrameworkCharge * (netChargeTotal - rigidFrameworkCharge)
-                                   : netChargeTotalSquared - (liveFramework ? rigidFrameworkCharge * rigidFrameworkCharge : 0.0);
+                                   : netChargeTotalSquared - rigidFrameworkCharge * rigidFrameworkCharge;
 
   std::size_t kx_max_unsigned = static_cast<std::size_t>(forceField.numberOfWaveVectors.x);
   std::size_t ky_max_unsigned = static_cast<std::size_t>(forceField.numberOfWaveVectors.y);
@@ -2162,7 +2162,7 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
           // regular Fourier term (the correction's self part, alpha/sqrt(pi), is strain-independent).
           const double structureFactorTerm =
               omitInterInteractions ? std::norm(test) - std::norm(rigidSum) - std::norm(test - rigidSum)
-                                    : std::norm(test) - (liveFramework ? std::norm(rigidSum) : 0.0);
+                                    : std::norm(test) - std::norm(rigidSum);
           double currentEnergy = temp * (structureFactorTerm - netChargeTerm);
           double fac = 2.0 * (1.0 / rksq + 0.25 / (alpha * alpha)) * currentEnergy;
           strainDerivative.ax -= currentEnergy - fac * rk.x * rk.x;

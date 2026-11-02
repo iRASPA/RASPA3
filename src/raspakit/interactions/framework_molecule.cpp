@@ -752,7 +752,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     const ForceField& forceField, const std::optional<Framework>& framework,
     const std::vector<Component>& components, const SimulationBox& simulationBox, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
-    const PolarizationFieldStrain* polarizationGather) noexcept
+    const PolarizationFieldStrain* polarizationGather, std::span<AtomDynamics> frameworkDynamics) noexcept
 {
   double3x3 strainDerivativeTensor;
   EnergyStatus energy(1, framework.has_value() ? 1 : 0, components.size());
@@ -764,7 +764,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
 
   if (moleculeAtoms.empty()) return std::make_pair(energy, strainDerivativeTensor);
 
-  // Framework atoms are fixed, so their gradient is never consumed and is not accumulated.
+  // The framework gradient is optional: only the virial correction of the rigid groups of a mixed framework needs it.
   // The framework grids are deliberately not used: the virial is a sum over g_AB x PBC(r_A - r_B), and a grid
   // only holds the summed gradient on atom A, from which the pair displacements cannot be recovered.
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
@@ -783,6 +783,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
 
     for (std::span<const Atom>::iterator it2 = frameworkAtoms.begin(); it2 != frameworkAtoms.end(); ++it2)
     {
+      std::size_t indexB = static_cast<std::size_t>(it2 - frameworkAtoms.begin());
       std::size_t typeB = static_cast<std::size_t>(it2->type);
       double scalingVDWB = it2->scalingVDW;
 
@@ -793,6 +794,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
       const auto accumulateGradientAndStrain = [&](const double3& g, const double3& dr)
       {
         moleculeDynamics[indexA].gradient += g;
+        if (!frameworkDynamics.empty()) frameworkDynamics[indexB].gradient -= g;
         accumulateStrainDerivative(strainDerivativeTensor, g, dr);
       };
 

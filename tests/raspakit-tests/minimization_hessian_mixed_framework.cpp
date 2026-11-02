@@ -472,3 +472,32 @@ TEST(minimization_hessian_mixed_framework, framework_intramolecular_strain_gradi
   ASSERT_GT(std::abs(fd), 1.0e-3);
   EXPECT_NEAR(strain.trace(), fd, 1.0e-5 * std::abs(fd) + 1.0e-4);
 }
+
+// The molecular pressure of a framework with a Rigid group is the derivative of the total energy under the molecular
+// strain. The group scales through its center of mass, so every force on its atoms enters the center-of-mass virial,
+// including the real-space forces of the adsorbate.
+TEST(minimization_hessian_mixed_framework, molecular_pressure_matches_finite_difference_with_rigid_group)
+{
+  for (const bool charged : {false, true})
+  {
+    System system = makeMixedFrameworkSystem(charged);
+    const MixedBaseState base = captureBaseState(system);
+
+    const auto energyAtScale = [&](double scale)
+    {
+      System copy = scaledMixedSystem(system, base, scale);
+      return copy.computeTotalEnergies().potentialEnergy();
+    };
+    const double delta = 1.0e-5;
+    const double scalePlus = std::cbrt(1.0 + delta);
+    const double scaleMinus = std::cbrt(1.0 - delta);
+    const double volumePlus = system.simulationBox.scaled(scalePlus).volume;
+    const double volumeMinus = system.simulationBox.scaled(scaleMinus).volume;
+    const double fd = -(energyAtScale(scalePlus) - energyAtScale(scaleMinus)) / (volumePlus - volumeMinus);
+    ASSERT_GT(std::abs(fd), 1.0e-6);
+
+    const double3x3 virial = system.computeMolecularPressure().second;
+    EXPECT_NEAR(virial.trace() / (3.0 * system.simulationBox.volume), fd, 1.0e-4 * std::abs(fd) + 1.0e-8)
+        << "charged " << charged;
+  }
+}
