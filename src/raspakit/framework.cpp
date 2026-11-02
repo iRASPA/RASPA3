@@ -1024,6 +1024,10 @@ void Framework::regenerateVanDerWaalsImageList(const ForceField& forceField, con
                                   (excludeIntra13Interactions && pairs13.contains(pair)) ||
                                   (excludeIntraBendInteractions && definedBendPairs.contains(pair));
       const bool scaled14 = pairs14.contains(pair);
+      // Fixed atoms have no energy among themselves in any image. A rigid group keeps its minimum-image geometry, so
+      // those pairs are constant as in the construction-time list, but the distance to a replica of the group is not.
+      const bool insideGroup = isInsideFixedOrRigidGroup(pair);
+      if (insideGroup && isFixedAtom(i)) continue;
       // The covalently bonded neighbour is the minimum image; only that image is excluded or 1-4 scaled.
       const int3 bondedImage = periodicImageShift(box, atoms[i].position, atoms[j].position);
 
@@ -1035,7 +1039,7 @@ void Framework::regenerateVanDerWaalsImageList(const ForceField& forceField, con
           {
             const int3 shift(a, b, c);
             const bool isBondedImage = (shift == bondedImage);
-            if (isBondedImage && excludedBonded) continue;
+            if (isBondedImage && (excludedBonded || insideGroup)) continue;
             if (isBondedImage && scaled14)
             {
               if (intra14VanDerWaalsScaling > 0.0) emitPair(i, j, shift, intra14VanDerWaalsScaling);
@@ -1056,6 +1060,7 @@ void Framework::regenerateVanDerWaalsImageList(const ForceField& forceField, con
   // covalently bonded in the supercell atom indexing, so no exclusion applies.
   for (std::size_t i = 0; i < atoms.size(); ++i)
   {
+    if (isFixedAtom(i)) continue;  // the separation from its own image is constant and a fixed atom has no energy
     for (int a = -shells.x; a <= shells.x; ++a)
     {
       for (int b = -shells.y; b <= shells.y; ++b)

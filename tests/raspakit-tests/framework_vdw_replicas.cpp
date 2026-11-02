@@ -139,3 +139,100 @@ TEST(framework_vdw_replicas, large_cell_is_left_as_single_minimum_image)
   const double referenceEnergy = bruteForceLatticeVanDerWaals(framework.atoms, forceField, box, cutOff, 2);
   EXPECT_NEAR(replicaEnergy, referenceEnergy, 1.0e-6 * (1.0 + std::abs(referenceEnergy)));
 }
+
+// A small cell with a Fixed group {0, 1}, a Rigid five-atom chain {2..6} and a Flexible atom {7}. Fixed atoms have no energy
+// among themselves in any image, and neither has a Rigid group in its own geometry (the minimum-image pairs). A Rigid
+// atom does interact with the replicas of its group: that distance changes when the group rotates.
+TEST(framework_vdw_replicas, replicas_respect_fixed_and_rigid_groups)
+{
+  const double cutOff = 13.0;
+  ForceField forceField({{"C", true, 12.0, 0.0, 0.0, 6, true}}, {{100.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, cutOff, cutOff, cutOff, false, false, false);
+  const SimulationBox box(12.0, 12.0, 12.0);
+  std::vector<Atom> atoms;
+  // chains with ~1.45 A spacing, the bond detection connects the atoms of each group
+  // (the chain ends are a nonbonded pair of the group, closer than half the cell)
+  for (const double3& position : {double3(1.0, 1.0, 1.0), double3(2.4, 1.3, 1.0), double3(3.0, 6.0, 6.0),
+                                  double3(4.4, 6.3, 6.0), double3(5.8, 5.8, 6.0), double3(7.2, 6.3, 6.0),
+                                  double3(8.6, 6.0, 6.0), double3(1.5, 10.0, 10.0)})
+  {
+    atoms.push_back(Atom(position / 12.0, 0.0, 1.0, 0, 0, 0, 0, true));
+  }
+  Framework framework(forceField, "replica-groups", box, 1, atoms, atoms, int3(1, 1, 1));
+
+  const std::filesystem::path definition = std::filesystem::temp_directory_path() / "raspa3-replica-groups.json";
+  std::ofstream(definition) << R"({"Type": "Flexible",
+                                   "Groups": [{"Type": "Fixed", "Atoms": [0, 1]},
+                                              {"Type": "Rigid", "Atoms": [2, 3, 4, 5, 6]},
+                                              {"Type": "Flexible", "Atoms": [7]}],
+                                   "Intra14VanDerWaalsScalingValue": 0.0,
+                                   "Intra14ChargeChargeScalingValue": 0.0})";
+  framework.readFrameworkDefinition(forceField, definition.string());
+  std::filesystem::remove(definition);
+  ASSERT_TRUE(framework.isMixed());
+
+  framework.regenerateVanDerWaalsImageList(forceField, box, cutOff);
+
+  const auto isFixed = [](std::size_t atom) { return atom < 2; };
+  const auto isRigid = [](std::size_t atom) { return atom >= 2 && atom < 7; };
+  const auto minimumImageShift = [&](std::size_t i, std::size_t j)
+  {
+    const double3 raw = framework.atoms[i].position - framework.atoms[j].position;
+    const double3 fractional = box.inverseCell * (raw - box.applyPeriodicBoundaryConditions(raw));
+    return int3(static_cast<int>(std::llround(fractional.x)), static_cast<int>(std::llround(fractional.y)),
+                static_cast<int>(std::llround(fractional.z)));
+  };
+
+  std::vector<std::size_t> rigidReplicaTerms;
+  std::size_t fixedRigidTerms{0};
+  const auto& terms = framework.intraMolecularPotentials.vanDerWaals;
+  for (std::size_t index = 0; index < terms.size(); ++index)
+  {
+    const std::size_t i = terms[index].identifiers[0];
+    const std::size_t j = terms[index].identifiers[1];
+    const int3 shift = framework.intraMolecularImageShifts.vanDerWaals[index][1];
+    EXPECT_FALSE(isFixed(i) && isFixed(j)) << "pair " << i << " " << j;
+    if (i != j && isRigid(i) && isRigid(j))
+    {
+      const int3 minimum = minimumImageShift(i, j);
+      EXPECT_FALSE(shift.x == minimum.x && shift.y == minimum.y && shift.z == minimum.z) << "pair " << i << " " << j;
+    }
+    if (isRigid(i) && isRigid(j) && i != j) rigidReplicaTerms.push_back(index);
+    if ((isFixed(i) && isRigid(j)) || (isRigid(i) && isFixed(j))) ++fixedRigidTerms;
+  }
+  EXPECT_GT(fixedRigidTerms, 0uz);
+  ASSERT_FALSE(rigidReplicaTerms.empty());
+
+  // those replica terms are real: their energy depends on the orientation of the group
+  const auto replicaEnergy = [&](const std::array<double3, 5>& positions)
+  {
+    double energy{0.0};
+    for (const std::size_t index : rigidReplicaTerms)
+    {
+      const std::size_t i = terms[index].identifiers[0];
+      const std::size_t j = terms[index].identifiers[1];
+      const int3 shift = framework.intraMolecularImageShifts.vanDerWaals[index][1];
+      const double3 dr = positions[i - 2] - (positions[j - 2] + box.cell * double3(static_cast<double>(shift.x),
+                                                                                  static_cast<double>(shift.y),
+                                                                                  static_cast<double>(shift.z)));
+      energy += Potentials::potentialVDW<0>(forceField, 1.0, 1.0, double3::dot(dr, dr), 0, 0).energy;
+    }
+    return energy;
+  };
+  std::array<double3, 5> positions{};
+  double3 center{};
+  for (std::size_t k = 0; k < 5; ++k)
+  {
+    positions[k] = framework.atoms[k + 2].position;
+    center = center + positions[k] / 5.0;
+  }
+  std::array<double3, 5> rotated{};
+  const double cosine = std::cos(0.5);
+  const double sine = std::sin(0.5);
+  for (std::size_t k = 0; k < 5; ++k)
+  {
+    const double3 d = positions[k] - center;
+    rotated[k] = center + double3(cosine * d.x - sine * d.y, sine * d.x + cosine * d.y, d.z);
+  }
+  EXPECT_GT(std::abs(replicaEnergy(rotated) - replicaEnergy(positions)), 1e-3);
+}
