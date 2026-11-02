@@ -463,8 +463,12 @@ void DeviceStep::beginBuild(const CellList& cells, const SimulationBox& box, std
   cellCount.assign(numberOfCells + 1, 0);
   for (std::size_t k = 0; k < numberOfAtoms; ++k)
   {
+    // The positions are wrapped already, and the kernels take the periodic shift from the cells: the cell has to
+    // match the position sent to the device. Wrapping again would move a position that rounds onto the boundary
+    // (s = 1 or s = -1e-16) to the far side of the box, away from its neighbours, so it is only clamped.
     double3 s = inverseCell * double3(cells.wrappedX[k], cells.wrappedY[k], cells.wrappedZ[k]);
-    s = double3(s.x - std::floor(s.x), s.y - std::floor(s.y), s.z - std::floor(s.z));
+    const double below1 = std::nextafter(1.0, 0.0);
+    s = double3(std::clamp(s.x, 0.0, below1), std::clamp(s.y, 0.0, below1), std::clamp(s.z, 0.0, below1));
     const double fx = s.x * gx, fy = s.y * gy, fz = s.z * gz;
     const std::int32_t cx = std::clamp(static_cast<std::int32_t>(fx), 0, grid.x - 1);
     const std::int32_t cy = std::clamp(static_cast<std::int32_t>(fy), 0, grid.y - 1);

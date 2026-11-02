@@ -957,6 +957,37 @@ TEST_P(SpatialDecompositionDevice, engine_device_pair_kernel_agrees_with_double_
                                {.vdw = 1e-6, .charge = 1e-4, .total = 1e-5, .gradient = 1e-5, .pressure = 1e-5});
 }
 
+// An atom just below the periodic boundary wraps to exactly x = L: the coarse cell of the device list has to follow
+// that wrapped position (the last cell), or the pair across the boundary falls outside its cell stencil and is lost.
+TEST_P(SpatialDecompositionDevice, engine_device_keeps_the_pair_across_the_boundary_of_an_atom_wrapped_onto_it)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+
+  ForceField forceField({{"M", false, 16.0, 0.0, 0.0, 8, false}}, {{100.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 8.0, 8.0, 8.0, true, false, false);
+  Component particle(forceField, "particle", 16.0, 1.0e6, 0.011, {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)},
+                     ConnectivityTable(1), Potentials::IntraMolecularPotentials{}, 0, 0);
+  const SimulationBox box(40.0, 40.0, 40.0);
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, std::nullopt, {particle}, {}, {2}, 5);
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  atoms[0].position = double3(-1.0e-17, 20.0, 20.0);
+  atoms[1].position = double3(36.5, 20.0, 20.0);
+
+  const double reference = system.computeTotalEnergies().moleculeMoleculeVDW;
+  ASSERT_LT(reference, -1.0);
+
+  // cutoff 8 + skin 1: 40 / 9 = 4 device cells along x, where the periodic shift comes from the cells alone
+  SpatialDecompositionSettings settings = settingsFor(1);
+  settings.pairDevice = pairDevice;
+  settings.deviceMesh = false;
+  settings.deviceBonded = false;
+  SpatialDecompositionForceEngine engine(settings);
+  engine.initialize(system);
+  const RunningEnergy energy = engine.computeGradients(system, false);
+  EXPECT_NEAR(energy.moleculeMoleculeVDW, reference, 1e-4 * std::abs(reference));
+}
+
 TEST_P(SpatialDecompositionDevice, engine_device_kernel_follows_a_cutoff_change)
 {
   const PairDevice pairDevice = GetParam();
