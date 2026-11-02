@@ -23,15 +23,19 @@ using PairState = PolymerLinkTable::PairState;
 using PairScalingInfo = PolymerLinkTable::PairScalingInfo;
 
 /// The (4 epsilon, sigma^6, shift) of a Lennard-Jones pair as the device kernels take it (the force-switched form
-/// with the constant it adds below the switching distance, see DeviceStep / BondedTopology); zeros when the pair
-/// potential is not a Lennard-Jones form (the overlay then has no van der Waals term for the pair).
+/// with the constant it adds below the switching distance, see DeviceStep / BondedTopology); zeros for no
+/// interaction, an error for any other potential.
 std::array<double, 3> lennardJonesTriple(const VDWParameters& parameters)
 {
+  if (parameters.type == VDWParameters::Type::None) return {0.0, 0.0, 0.0};
   if (parameters.type != VDWParameters::Type::LennardJones &&
       parameters.type != VDWParameters::Type::LennardJonesSwitched &&
       parameters.type != VDWParameters::Type::LennardJonesForceSwitched)
   {
-    return {0.0, 0.0, 0.0};
+    // the overlay kernel has the Lennard-Jones form only: dropping the pair would change the energy silently
+    throw std::runtime_error(
+        "[Polymerization]: the device polymer overlay supports Lennard-Jones pairs only, a bond or a retyped atom "
+        "involves another van der Waals potential; use 'PairDevice' : 'CPU' for this system\n");
   }
   const double epsilon4 = 4.0 * parameters.parameters.x;
   const double sigma2 = parameters.parameters.y * parameters.parameters.y;

@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
 import std;
+import spatial_decomposition_device_polymer_topology;
+import double4;
 
 import ewald_structure_factor;
 
@@ -419,6 +421,26 @@ TEST(spatial_decomposition, cell_list_displacement_check_follows_the_box_not_the
 
 // A shear can shorten a pair while no perpendicular width of the box shrinks: straightening a tilted cell increases
 // the width, yet moves pairs along the diagonal closer by about 12% here, more than the skin of a 10 A list.
+// The device compacts its lane lists (cutoff + prune skin) when an atom moved half the skin; a contraction of the box
+// since the last compaction spends part of that skin.
+TEST(spatial_decomposition, device_compaction_criterion_follows_the_deformation_of_the_box)
+{
+  const double inner = 8.3;
+  const double skin = 0.3;
+  EXPECT_FALSE(DeviceStep::pruneSkinExhausted(skin, inner, 0.0, 0.14 * 0.14));
+  EXPECT_TRUE(DeviceStep::pruneSkinExhausted(skin, inner, 0.0, 0.16 * 0.16));
+  // 1% contraction takes 0.083 A: half of what is left is 0.1085 A
+  EXPECT_FALSE(DeviceStep::pruneSkinExhausted(skin, inner, 0.01, 0.10 * 0.10));
+  EXPECT_TRUE(DeviceStep::pruneSkinExhausted(skin, inner, 0.01, 0.12 * 0.12));
+  // the whole skin is spent, however little the atoms moved
+  EXPECT_TRUE(DeviceStep::pruneSkinExhausted(skin, inner, 0.05, 0.0));
+
+  const SimulationBox box(30.0, 30.0, 30.0);
+  EXPECT_NEAR(CellList::largestShortening(SimulationBox(27.0, 27.0, 27.0).cell, box.inverseCell), 0.1, 1e-10);
+  EXPECT_DOUBLE_EQ(CellList::largestShortening(SimulationBox(33.0, 33.0, 33.0).cell, box.inverseCell), 0.0);
+  EXPECT_NEAR(CellList::largestShortening(box.cell, box.inverseCell), 0.0, 1e-12);
+}
+
 TEST(spatial_decomposition, cell_list_displacement_check_rebuilds_when_a_shear_shortens_the_list_cutoff)
 {
   const SimulationBox tilted(double3x3(double3(30.0, 0.0, 0.0), double3(7.5, 30.0, 0.0), double3(0.0, 0.0, 30.0)));
@@ -1020,6 +1042,59 @@ TEST_P(SpatialDecompositionDevice, engine_device_keeps_the_pair_across_the_bound
   engine.initialize(system);
   const RunningEnergy energy = engine.computeGradients(system, false);
   EXPECT_NEAR(energy.moleculeMoleculeVDW, reference, 1e-4 * std::abs(reference));
+}
+
+// The pair table of the kernels is plain Lennard-Jones, but a 1-4 pair can have its own potential ('parameters14').
+// The bonded kernel only has the Lennard-Jones form: such a term stays on the host instead of being dropped.
+TEST_P(SpatialDecompositionDevice, engine_device_keeps_a_non_lennard_jones_1_4_pair)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+
+  for (const bool morse14 : {false, true})
+  {
+    ForceField forceField({{"M", false, 16.0, 0.0, 0.0, 8, false}}, {{100.0, 3.0}},
+                          ForceField::MixingRule::Lorentz_Berthelot, 8.0, 8.0, 8.0, true, false, false);
+    forceField.setPair14SelfInteraction(
+        0, morse14 ? VDWParameters(double4(50.0, 1.0, 5.0, 0.0), 0.0, 0.0, 0.0, VDWParameters::Type::Morse)
+                   : VDWParameters(70.0, 3.0));
+    std::vector<Atom> sites;
+    for (std::size_t i = 0; i < 4; ++i)
+    {
+      sites.push_back(Atom(double3(1.6 * static_cast<double>(i), 0.0, 0.0), 0.0, 1.0, 0, 0, 0, false, false));
+    }
+    // a bonded chain without bonded terms: its end atoms are the only 1-4 pair, with the 1-4 table of the force field
+    ConnectivityTable connectivity(4);
+    for (std::size_t i = 0; i + 1 < 4; ++i)
+    {
+      connectivity[i, i + 1] = true;
+      connectivity[i + 1, i] = true;
+    }
+    Component chain(forceField, "chain", 64.0, 1.0e6, 0.011, sites, connectivity, Potentials::IntraMolecularPotentials{},
+                    0, 0);
+    chain.rigid = false;
+    chain.buildFragmentGraph({});
+    chain.intra14VanDerWaalsScaling = 0.5;
+    chain.buildIntraMolecularNonBondedPairs(forceField);
+    ASSERT_EQ(chain.intraMolecularPotentials.exclusions.scaledPairs.size(), 1uz);
+
+    System system(forceField, SimulationBox(40.0, 40.0, 40.0), false, 300.0, 1.0e4, 1.0, std::nullopt, {chain}, {}, {1}, 5);
+    std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+    for (std::size_t i = 0; i < 4; ++i) atoms[i].position = double3(10.0 + 1.6 * static_cast<double>(i), 20.0, 20.0);
+
+    std::string reason;
+    EXPECT_EQ(DeviceStep::supportsBonded(system, reason), !morse14) << reason;
+
+    const double reference = system.computeTotalEnergies().intraVDW;
+    ASSERT_NE(reference, 0.0);
+    SpatialDecompositionSettings settings = settingsFor(1);
+    settings.pairDevice = pairDevice;
+    settings.deviceMesh = false;
+    SpatialDecompositionForceEngine engine(settings);
+    engine.initialize(system);
+    const RunningEnergy energy = engine.computeGradients(system, false);
+    EXPECT_NEAR(energy.intraVDW, reference, 1e-4 * std::abs(reference)) << "Morse " << morse14;
+  }
 }
 
 TEST_P(SpatialDecompositionDevice, engine_device_kernel_follows_a_cutoff_change)
@@ -3269,6 +3344,23 @@ void expectPolymerOverlayMatchesHost(PairDevice pairDevice, System& system, cons
   EXPECT_EQ(rmsDifference(gradientsOf(system), gradient), 0.0) << label;
 }
 }  // namespace
+
+// The polymer overlay on the device has the Lennard-Jones form only: another potential on a bonded or retyped pair is
+// an error, not a pair that silently has no van der Waals term.
+TEST(spatial_decomposition, device_polymer_overlay_refuses_a_non_lennard_jones_pair)
+{
+  System system = makePolymerSystem(7, 20, 6, 1000, 100, 2000.0, 1.6, true);
+  ASSERT_GT(system.polymerLinks.numberOfBonds(), 0uz);
+
+  PolymerOverlayTopology topology;
+  EXPECT_NO_THROW(topology.build(system, system.polymerLinks));
+
+  for (VDWParameters& parameters : system.forceField.data)
+  {
+    if (parameters.type == VDWParameters::Type::LennardJones) parameters.type = VDWParameters::Type::Morse;
+  }
+  EXPECT_THROW(topology.build(system, system.polymerLinks), std::runtime_error);
+}
 
 TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_matches_host)
 {

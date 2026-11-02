@@ -534,10 +534,15 @@ double CellList::skinBudget(const SimulationBox& box) const
 {
   if (!boxChanged(box) || listCutoff <= 0.0) return skin;
 
+  return skin - listCutoff * largestShortening(box.cell, inverseCellAtBuild);
+}
+
+double CellList::largestShortening(const double3x3& cell, const double3x3& inverseCellBefore)
+{
   // The deformation F = H(t) H(t0)^{-1} shortens a pair by at most the factor of its smallest singular value, the
   // square root of the smallest eigenvalue of the symmetric C = F^T F (trigonometric solution). The perpendicular
   // widths do not bound this: a shear can shorten pairs while the widths grow.
-  const double3x3 F = box.cell * inverseCellAtBuild;
+  const double3x3 F = cell * inverseCellBefore;
   const double3x3 C = F.transpose() * F;
   const double q = C.trace() / 3.0;
   const double offDiagonal = C.ay * C.ay + C.az * C.az + C.bz * C.bz;
@@ -551,8 +556,7 @@ double CellList::skinBudget(const SimulationBox& box) const
     const double phi = std::acos(std::clamp(0.5 * B.determinant(), -1.0, 1.0)) / 3.0;
     smallestEigenvalue = q + 2.0 * p * std::cos(phi + 2.0 * std::numbers::pi / 3.0);
   }
-  const double shortening = 1.0 - std::sqrt(std::max(0.0, smallestEigenvalue));
-  return skin - listCutoff * std::max(0.0, shortening);
+  return std::max(0.0, 1.0 - std::sqrt(std::max(0.0, smallestEigenvalue)));
 }
 
 bool CellList::refreshPositionsAndCheck(std::size_t domainIndex, std::span<const Atom> atoms, const SimulationBox& box)

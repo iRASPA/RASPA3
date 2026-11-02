@@ -48,6 +48,22 @@ bool BondedTopology::supports(const System& system, std::string& reason)
       reason = std::format("{} terms (component '{}')", unsupported, component.name);
       return false;
     }
+    // The scaled-pair term of the bonded kernel has the Lennard-Jones form only, and these pairs are not in the pair
+    // lists either. The 1-4 table is independent of the table the pair kernel checks ('parameters14').
+    for (const IntraMolecularExclusions::ScaledPair& pair : potentials.exclusions.scaledPairs)
+    {
+      if (pair.scalingVDW == 0.0) continue;
+      const VDWParameters::Type type = system.forceField
+                                           .pair(static_cast<std::size_t>(component.atoms[pair.atomA].type),
+                                                 static_cast<std::size_t>(component.atoms[pair.atomB].type), pair.pair14)
+                                           .type;
+      if (type != VDWParameters::Type::LennardJones && type != VDWParameters::Type::LennardJonesSwitched &&
+          type != VDWParameters::Type::LennardJonesForceSwitched && type != VDWParameters::Type::None)
+      {
+        reason = std::format("non-Lennard-Jones scaled 1-4 van der Waals pairs (component '{}')", component.name);
+        return false;
+      }
+    }
   }
   for (const Atom& atom : system.spanOfMoleculeAtoms())
   {

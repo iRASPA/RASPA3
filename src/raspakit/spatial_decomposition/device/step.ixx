@@ -228,8 +228,11 @@ export class DeviceStep
   ResidentTargets residentTargets() const;
   /// Slot of every sorted atom of the current layout.
   std::span<const std::uint32_t> slotsOfSorted() const { return slotOfSorted; }
-  /// Squared displacement since the last compaction above which the lane lists must be compacted again.
-  double pruneDisplacementThreshold() const { return pruneDisplacementSquared; }
+  /// Whether an atom that moved by the squared 'displacementSquared' since the last compaction requires a new one in
+  /// the box 'box': the deformation of the box since then spends part of the prune skin.
+  bool compactionDue(const SimulationBox& box, double displacementSquared) const;
+  /// The criterion itself: the prune skin minus what the deformation takes from a pair at the inner cutoff.
+  static bool pruneSkinExhausted(double pruneSkin, double innerCutoff, double shortening, double displacementSquared);
   /// Enqueues the step in resident mode: compaction when the lane lists are new or when `compactionDue` (an atom
   /// moved more than prune skin / 2 since the last compaction, measured on the device), then the chain.
   void enqueueResident(const SimulationBox& box, bool compactionDue);
@@ -323,7 +326,7 @@ export class DeviceStep
   bool parametersChanged{true};
   double pruneSkin{0.0};
   double innerCutoff{0.0};  ///< cutoff + prune skin (or + Verlet skin without pruning) of the lane lists
-  double pruneDisplacementSquared{0.0};
+  double3x3 inverseCellAtCompaction{};
 
   // slot layout of the current list
   std::size_t padded{0};

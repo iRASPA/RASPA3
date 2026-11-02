@@ -943,7 +943,7 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
   // forces, then the second half: molecular gradients and torques, kick, barostat coupling of the velocities,
   // kinetic energies and the kinetic virial
   preparePolymerOverlay(system);
-  devicePairs.enqueueResident(box, displacement.sinceCompaction > devicePairs.pruneDisplacementThreshold());
+  devicePairs.enqueueResident(box, devicePairs.compactionDue(box, displacement.sinceCompaction));
   DeviceEvent secondHalf = resident.enqueueSecondHalf(dt, coupling);
   waitStart = std::chrono::steady_clock::now();
   const DeviceStep::Results results =

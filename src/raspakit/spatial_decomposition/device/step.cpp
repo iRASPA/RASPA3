@@ -405,7 +405,6 @@ void DeviceStep::setParameters(std::span<const LennardJonesPair> lennardJones, s
   innerCutoff = cutoff + (pruning() ? pruneSkin : verletSkin);
   const double inner = innerCutoff + 1e-4;
   parameters.innerCutoffSquared = static_cast<float>(inner * inner);
-  pruneDisplacementSquared = 0.25 * pruneSkin * pruneSkin;
   parametersChanged = true;
 
   parameters.switchMode = 0;
@@ -886,6 +885,18 @@ void DeviceStep::enqueueChain()
   context->flush();
 }
 
+bool DeviceStep::pruneSkinExhausted(double pruneSkin, double innerCutoff, double shortening, double displacementSquared)
+{
+  const double budget = pruneSkin - innerCutoff * shortening;
+  return budget <= 0.0 || displacementSquared > 0.25 * budget * budget;
+}
+
+bool DeviceStep::compactionDue(const SimulationBox& box, double displacementSquared) const
+{
+  return pruneSkinExhausted(pruneSkin, innerCutoff, CellList::largestShortening(box.cell, inverseCellAtCompaction),
+                            displacementSquared);
+}
+
 void DeviceStep::enqueue(const SimulationBox& box)
 {
   // compact the lane lists when the outer list is new or (with pruning) an atom moved more than prune skin / 2
@@ -893,7 +904,7 @@ void DeviceStep::enqueue(const SimulationBox& box)
   bool compact = !laneListsValid;
   if (pruning())
   {
-    for (const double displacement : partDisplacement) compact = compact || displacement > pruneDisplacementSquared;
+    for (const double displacement : partDisplacement) compact = compact || compactionDue(box, displacement);
   }
   if (compact) listPositions.assign(mappedPositions, mappedPositions + 4 * padded);
   // the mapped host pointers must not be live while the device uses the buffers
@@ -950,6 +961,7 @@ void DeviceStep::enqueueStep(const SimulationBox& box, bool compact)
   compactedThisStep = compact;
   if (compact)
   {
+    inverseCellAtCompaction = box.inverseCell;
     laneListsValid = true;
     ++compactions;
   }

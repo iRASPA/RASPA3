@@ -185,6 +185,9 @@ export struct CellList
   /// The part of the Verlet skin left for the atoms to move in the box 'box': the skin minus what the deformation of
   /// the box since the list build takes from a pair at the list cutoff. Zero or negative: the list has to be rebuilt.
   double skinBudget(const SimulationBox& box) const;
+  /// By which fraction the deformation from the cell with inverse 'inverseCellBefore' to 'cell' shortens a pair at
+  /// most, in any direction: 1 minus the smallest singular value of the deformation, at least 0.
+  static double largestShortening(const double3x3& cell, const double3x3& inverseCellBefore);
 
   bool boxChanged(const SimulationBox& box) const;
 
