@@ -21,6 +21,7 @@ import minimization_hessian_scatter;
 import minimization_rigid_kinematics;
 import minimization_cell_layout;
 import potential_coulomb_real_space;
+import interactions_ewald;
 import interactions_ewald_kvector;
 
 namespace
@@ -155,6 +156,38 @@ EwaldSite makeExclusionSite(const MinimizationDofLayout& layout, const Minimizat
     site.positionBase = layout.flexibleAtomDof(moleculeIndex, localAtom, MinimizationDofAxis::X);
   }
   return site;
+}
+
+// The same site of a (global) atom of a mixed framework; the offset of a rigid-group atom is relative to the group
+// center of mass, a fixed atom has no degrees of freedom.
+EwaldSite makeFrameworkExclusionSite(const MinimizationDofLayout& layout,
+                                     const Minimization::RigidDerivativeCache& rigidCache,
+                                     std::span<const Atom> frameworkAtoms, std::size_t atom)
+{
+  const Minimization::HessianSite hessianSite = Minimization::makeFrameworkHessianSite(layout, rigidCache, atom);
+  EwaldSite site{};
+  site.positionBase = hessianSite.positionBase;
+  site.orientationBase = hessianSite.orientationBase;
+  site.derivatives = hessianSite.derivatives;
+  site.rigid = hessianSite.orientationBase.has_value();
+  if (site.rigid) site.internalOffset = frameworkAtoms[atom].position - rigidCache.frameworkBodyCenterOfMass(atom);
+  return site;
+}
+
+// The strain first derivative of a radial pair with gradient 'gradient' on its first atom and virial arm 'arm'.
+double3x3 radialPairStrain(const double3& arm, const double3& gradient)
+{
+  double3x3 strain{};
+  strain.ax = arm.x * gradient.x;
+  strain.bx = arm.y * gradient.x;
+  strain.cx = arm.z * gradient.x;
+  strain.ay = arm.x * gradient.y;
+  strain.by = arm.y * gradient.y;
+  strain.cy = arm.z * gradient.y;
+  strain.az = arm.x * gradient.z;
+  strain.bz = arm.y * gradient.z;
+  strain.cz = arm.z * gradient.z;
+  return strain;
 }
 
 // Intra-molecular exclusion / completion Hessian for the finite-cutoff shifted charge methods (Wolf,
@@ -338,34 +371,7 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
   // Ewald framework exclusion block but uses the shifted completion q_i q_j (V(r) - 1/r).
   if (liveFramework)
   {
-    std::set<std::array<std::size_t, 2>> excludedPairs;
-    std::map<std::array<std::size_t, 2>, double> coulombScaling;
-    for (const CoulombPotential& potential : framework->intraMolecularPotentials.coulombs)
-    {
-      coulombScaling[{std::min(potential.identifiers[0], potential.identifiers[1]),
-                      std::max(potential.identifiers[0], potential.identifiers[1])}] = potential.scaling;
-    }
-    const auto excludeIfAbsentOrScaled = [&](const std::array<std::size_t, 2>& pair)
-    {
-      const auto scaling = coulombScaling.find(pair);
-      if (scaling == coulombScaling.end() || scaling->second != 1.0) excludedPairs.insert(pair);
-    };
-    if (!framework->connectivityTable.table.empty())
-    {
-      for (const std::array<std::size_t, 2>& bond : framework->connectivityTable.findAllBonds())
-      {
-        excludeIfAbsentOrScaled({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
-      }
-      for (const std::array<std::size_t, 3>& bend : framework->connectivityTable.findAllBends())
-      {
-        excludeIfAbsentOrScaled({std::min(bend[0], bend[2]), std::max(bend[0], bend[2])});
-      }
-      for (const std::array<std::size_t, 4>& torsion : framework->connectivityTable.findAllTorsions())
-      {
-        excludeIfAbsentOrScaled({std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])});
-      }
-    }
-    for (const std::array<std::size_t, 2>& pair : excludedPairs)
+    for (const std::array<std::size_t, 2>& pair : Interactions::frameworkExcludedChargePairs(*framework))
     {
       const std::size_t i = pair[0];
       const std::size_t j = pair[1];
@@ -392,28 +398,25 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
         frameworkDynamics[j].gradient -= gradientI;
       }
 
-      double3x3 strain{};
-      strain.ax = dr.x * gradientI.x;
-      strain.bx = dr.y * gradientI.x;
-      strain.cx = dr.z * gradientI.x;
-      strain.ay = dr.x * gradientI.y;
-      strain.by = dr.y * gradientI.y;
-      strain.cy = dr.z * gradientI.y;
-      strain.az = dr.x * gradientI.z;
-      strain.bz = dr.y * gradientI.z;
-      strain.cz = dr.z * gradientI.z;
-      hessian.strainGradient() += strain;
-
       if (mixed)
       {
-        const Minimization::HessianSite siteI = Minimization::makeFrameworkHessianSite(layout, rigidCache, i);
-        const Minimization::HessianSite siteJ = Minimization::makeFrameworkHessianSite(layout, rigidCache, j);
-        // Both fixed, or the same rigid group: fixed separation, energy only.
-        if (!siteI.positionBase && !siteJ.positionBase) continue;
-        if (siteI.orientationBase && siteJ.orientationBase && siteI.positionBase == siteJ.positionBase) continue;
-        Minimization::scatterRadialHessianSites(hessian, {siteI, siteJ}, {gradientI, -gradientI}, f1, f2, dr);
+        const EwaldSite siteI = makeFrameworkExclusionSite(layout, rigidCache, frameworkAtoms, i);
+        const EwaldSite siteJ = makeFrameworkExclusionSite(layout, rigidCache, frameworkAtoms, j);
+        // The same rigid group: fixed separation under the molecular strain as well, energy only.
+        if (siteI.rigid && siteJ.rigid && siteI.positionBase == siteJ.positionBase) continue;
+        const double3 arm = dr - siteI.internalOffset + siteJ.internalOffset;
+        hessian.strainGradient() += radialPairStrain(arm, gradientI);
+        Minimization::scatterRadialHessianSites(hessian,
+                                                {Minimization::makeFrameworkHessianSite(layout, rigidCache, i),
+                                                 Minimization::makeFrameworkHessianSite(layout, rigidCache, j)},
+                                                {gradientI, -gradientI}, f1, f2, dr);
+        if (numberOfCellDofs != 0)
+        {
+          addExclusionPairCellDerivatives(hessian, layout, cellLayout, siteI, siteJ, f1, f2, dr, arm);
+        }
         continue;
       }
+      hessian.strainGradient() += radialPairStrain(dr, gradientI);
       Minimization::scatterAtomicPositionPositionByDof(hessian, *layout.frameworkAtomDof(i, MinimizationDofAxis::X),
                                                        *layout.frameworkAtomDof(j, MinimizationDofAxis::X), f1, f2, dr);
       if (numberOfCellDofs != 0)
@@ -1074,35 +1077,7 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
 
     if (flexibleFramework || mixed)
     {
-      std::set<std::array<std::size_t, 2>> excludedPairs;
-      std::map<std::array<std::size_t, 2>, double> coulombScaling;
-      for (const CoulombPotential& potential : framework->intraMolecularPotentials.coulombs)
-      {
-        coulombScaling[{std::min(potential.identifiers[0], potential.identifiers[1]),
-                        std::max(potential.identifiers[0], potential.identifiers[1])}] = potential.scaling;
-      }
-      const auto excludeIfAbsentOrScaled = [&](const std::array<std::size_t, 2>& pair)
-      {
-        const auto scaling = coulombScaling.find(pair);
-        if (scaling == coulombScaling.end() || scaling->second != 1.0) excludedPairs.insert(pair);
-      };
-      if (!framework->connectivityTable.table.empty())
-      {
-        for (const std::array<std::size_t, 2>& bond : framework->connectivityTable.findAllBonds())
-        {
-          excludeIfAbsentOrScaled({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
-        }
-        for (const std::array<std::size_t, 3>& bend : framework->connectivityTable.findAllBends())
-        {
-          excludeIfAbsentOrScaled({std::min(bend[0], bend[2]), std::max(bend[0], bend[2])});
-        }
-        for (const std::array<std::size_t, 4>& torsion : framework->connectivityTable.findAllTorsions())
-        {
-          const std::array<std::size_t, 2> pair{std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])};
-          excludeIfAbsentOrScaled(pair);
-        }
-      }
-      for (const std::array<std::size_t, 2>& pair : excludedPairs)
+      for (const std::array<std::size_t, 2>& pair : Interactions::frameworkExcludedChargePairs(*framework))
       {
         const std::size_t i = pair[0];
         const std::size_t j = pair[1];
@@ -1125,27 +1100,25 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
           frameworkDynamics[i].gradient += gradientI;
           frameworkDynamics[j].gradient -= gradientI;
         }
-        double3x3 strain{};
-        strain.ax = dr.x * gradientI.x;
-        strain.bx = dr.y * gradientI.x;
-        strain.cx = dr.z * gradientI.x;
-        strain.ay = dr.x * gradientI.y;
-        strain.by = dr.y * gradientI.y;
-        strain.cy = dr.z * gradientI.y;
-        strain.az = dr.x * gradientI.z;
-        strain.bz = dr.y * gradientI.z;
-        strain.cz = dr.z * gradientI.z;
-        hessian.strainGradient() += strain;
         if (mixed)
         {
-          const Minimization::HessianSite siteI = Minimization::makeFrameworkHessianSite(layout, rigidCache, i);
-          const Minimization::HessianSite siteJ = Minimization::makeFrameworkHessianSite(layout, rigidCache, j);
-          // Both fixed, or the same rigid group: fixed separation, energy only.
-          if (!siteI.positionBase && !siteJ.positionBase) continue;
-          if (siteI.orientationBase && siteJ.orientationBase && siteI.positionBase == siteJ.positionBase) continue;
-          Minimization::scatterRadialHessianSites(hessian, {siteI, siteJ}, {gradientI, -gradientI}, f1, f2, dr);
+          const EwaldSite siteI = makeFrameworkExclusionSite(layout, rigidCache, frameworkAtoms, i);
+          const EwaldSite siteJ = makeFrameworkExclusionSite(layout, rigidCache, frameworkAtoms, j);
+          // The same rigid group: fixed separation under the molecular strain as well, energy only.
+          if (siteI.rigid && siteJ.rigid && siteI.positionBase == siteJ.positionBase) continue;
+          const double3 arm = dr - siteI.internalOffset + siteJ.internalOffset;
+          hessian.strainGradient() += radialPairStrain(arm, gradientI);
+          Minimization::scatterRadialHessianSites(hessian,
+                                                  {Minimization::makeFrameworkHessianSite(layout, rigidCache, i),
+                                                   Minimization::makeFrameworkHessianSite(layout, rigidCache, j)},
+                                                  {gradientI, -gradientI}, f1, f2, dr);
+          if (numberOfCellDofs != 0)
+          {
+            addExclusionPairCellDerivatives(hessian, layout, cellLayout, siteI, siteJ, f1, f2, dr, arm);
+          }
           continue;
         }
+        hessian.strainGradient() += radialPairStrain(dr, gradientI);
         Minimization::scatterAtomicPositionPositionByDof(hessian, *layout.frameworkAtomDof(i, MinimizationDofAxis::X),
                                                          *layout.frameworkAtomDof(j, MinimizationDofAxis::X), f1, f2,
                                                          dr);

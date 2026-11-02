@@ -75,7 +75,7 @@ void acceptChargedEwaldMove(System& system) noexcept
   (void)Interactions::computeEwaldFourierEnergy(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
       system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
-      system.spanOfMoleculeAtoms(), system.netChargeFramework);
+      system.spanOfMoleculeAtoms(), system.netChargeFramework, system.framework, system.spanOfFrameworkAtoms());
 }
 
 [[nodiscard]] RunningEnergy computeChargedGroupEwaldDifference(System& system, std::span<const Atom> newAtoms,

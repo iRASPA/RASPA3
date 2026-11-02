@@ -28,6 +28,7 @@ import randomnumbers;
 import integrators_update;
 import elastic_constants;
 import thermobarostat;
+import interactions_ewald;
 import minimization_cell_layout;
 import interactions_internal;
 import molecular_dynamics;
@@ -578,4 +579,223 @@ TEST(BAROSTAT_VIRIAL, propagate_cell_follows_the_automatic_cutoff)
   }
   EXPECT_NE(system.forceField(6, 6).shift, setupShift);
   EXPECT_NE(system.forceField(6, 6).tailCorrectionEnergy, setupTail);
+}
+
+namespace
+{
+class TemporaryDefinition
+{
+ public:
+  explicit TemporaryDefinition(std::string_view contents)
+      : path(std::filesystem::temp_directory_path() / "raspa3-barostat-mobile-framework-ewald.json")
+  {
+    std::ofstream(path) << contents;
+  }
+  ~TemporaryDefinition()
+  {
+    std::error_code ignored;
+    std::filesystem::remove(path, ignored);
+  }
+  std::filesystem::path path;
+};
+
+// A five-atom bonded chain with charges 'charges' and a charged single-site adsorbate. 'mixed' makes the atoms 0 and
+// 1 lab-fixed and the others flexible; otherwise the whole chain is flexible. No Lennard-Jones and no bonded terms.
+System makeChargedChainSystem(bool mixed, const std::array<double, 5>& charges, double ionCharge)
+{
+  ForceField forceField({{"C", true, 12.0, 0.0, 0.0, 6, true}, {"M", false, 16.0, 0.0, 0.0, 8, false}},
+                        {{0.0, 3.0}, {0.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot, 7.5, 7.5, 7.5, true, false,
+                        true);
+  const SimulationBox box(16.0, 16.0, 16.0);
+  std::vector<Atom> atoms;
+  const std::array<double3, 5> positions{double3(5.0, 8.0, 8.0), double3(6.4, 8.3, 8.0), double3(7.8, 7.8, 8.0),
+                                         double3(9.2, 8.3, 8.0), double3(10.6, 8.0, 8.0)};
+  for (std::size_t i = 0; i != 5; ++i)
+  {
+    atoms.push_back(Atom(positions[i] / 16.0, charges[i], 1.0, 0, 0, 0, 0, true));
+  }
+  Framework framework(forceField, "charged-chain", box, 1, atoms, atoms, int3(1, 1, 1));
+
+  const TemporaryDefinition definition(mixed ? R"({"Type": "Flexible",
+                                                   "Groups": [{"Type": "Fixed", "Atoms": [0, 1]},
+                                                              {"Type": "Flexible", "Atoms": [2, 3, 4]}],
+                                                   "Intra14VanDerWaalsScalingValue": 0.0,
+                                                   "Intra14ChargeChargeScalingValue": 0.0})"
+                                             : R"({"Type": "Flexible",
+                                                   "Intra14VanDerWaalsScalingValue": 0.0,
+                                                   "Intra14ChargeChargeScalingValue": 0.0})");
+  framework.readFrameworkDefinition(forceField, definition.path.string());
+  EXPECT_EQ(framework.isMixed(), mixed);
+
+  Component ion(forceField, "ion", 16.0, 1.0e6, 0.011, {Atom({0.0, 0.0, 0.0}, ionCharge, 1.0, 0, 1, 0, false, false)},
+                ConnectivityTable(1), Potentials::IntraMolecularPotentials{}, 0, 0);
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, {framework}, {ion}, {}, {1}, 5);
+  system.spanOfMoleculeAtoms()[0].position = double3(9.0, 11.0, 9.5);
+  system.forceField.initializeEwaldParameters(system.simulationBox);
+  system.precomputeTotalRigidEnergy();
+  return system;
+}
+
+RunningEnergy gradientEnergy(System& system)
+{
+  return Integrators::updateGradients(system.moleculeData, system.spanOfMoleculeAtoms(),
+                                      system.spanOfMoleculeDynamics(), system.spanOfFrameworkAtoms(), system.forceField,
+                                      system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z,
+                                      system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
+                                      system.interpolationGrids, system.numberOfMoleculesPerComponent, system.framework,
+                                      system.spanOfFrameworkDynamics());
+}
+
+// The system with the cell and every atom scaled affinely.
+System scaledSystem(const System& system, double scale)
+{
+  System copy = system;
+  copy.simulationBox = system.simulationBox.scaled(scale);
+  copy.forceField.initializeEwaldParameters(copy.simulationBox);
+  for (Atom& atom : copy.spanOfFrameworkAtoms()) atom.position = scale * atom.position;
+  for (Atom& atom : copy.spanOfMoleculeAtoms()) atom.position = scale * atom.position;
+  copy.precomputeTotalRigidEnergy();
+  return copy;
+}
+
+const std::array<double, 5> chainCharges{0.3, -0.3, 0.2, -0.4, 0.2};
+}  // namespace
+
+// The running energy of a Monte Carlo run and of the integrator are the same energy, for a mobile framework as well.
+TEST(BAROSTAT_VIRIAL, total_energy_matches_the_gradient_energy_of_a_mobile_framework)
+{
+  for (const bool mixed : {false, true})
+  {
+    System system = makeChargedChainSystem(mixed, chainCharges, 0.4);
+    const RunningEnergy total = system.computeTotalEnergies();
+    const RunningEnergy gradient = gradientEnergy(system);
+    EXPECT_NEAR(total.ewald_fourier, gradient.ewald_fourier, 1e-8) << "mixed " << mixed;
+    EXPECT_NEAR(total.ewald_self, gradient.ewald_self, 1e-8) << "mixed " << mixed;
+    EXPECT_NEAR(total.ewald_exclusion, gradient.ewald_exclusion, 1e-8) << "mixed " << mixed;
+    EXPECT_NEAR(total.potentialEnergy(), gradient.potentialEnergy(), 1e-8) << "mixed " << mixed;
+  }
+}
+
+// A Monte Carlo move of a charge next to a mobile framework: the incremental Fourier energy is the change of the total.
+TEST(BAROSTAT_VIRIAL, ewald_move_difference_sees_a_mobile_framework)
+{
+  for (const bool mixed : {false, true})
+  {
+    System system = makeChargedChainSystem(mixed, chainCharges, 0.4);
+    const RunningEnergy before = system.computeTotalEnergies();
+
+    const std::vector<Atom> oldAtoms(system.spanOfMoleculeAtoms().begin(), system.spanOfMoleculeAtoms().end());
+    std::vector<Atom> newAtoms = oldAtoms;
+    newAtoms[0].position = double3(8.0, 9.5, 8.5);
+
+    const RunningEnergy difference = Interactions::energyDifferenceEwaldFourier(
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
+        system.simulationBox, system.components, newAtoms, oldAtoms);
+
+    system.spanOfMoleculeAtoms()[0].position = newAtoms[0].position;
+    const RunningEnergy after = system.computeTotalEnergies();
+    ASSERT_GT(std::abs(difference.ewald_fourier), 1e-3) << "mixed " << mixed;
+    EXPECT_NEAR(difference.ewald_fourier, after.ewald_fourier - before.ewald_fourier, 1e-8) << "mixed " << mixed;
+  }
+}
+
+// The framework-adsorbate entry of the energy status includes the mobile framework atoms.
+TEST(BAROSTAT_VIRIAL, energy_status_holds_the_mobile_framework_fourier_energy)
+{
+  const auto fourier = [](const std::array<double, 5>& charges, double ionCharge)
+  {
+    System system = makeChargedChainSystem(false, charges, ionCharge);
+    return gradientEnergy(system).ewald_fourier;
+  };
+  const double expected = fourier(chainCharges, 0.4) - fourier(chainCharges, 0.0) - fourier({}, 0.4);
+  ASSERT_GT(std::abs(expected), 1e-3);
+
+  System system = makeChargedChainSystem(false, chainCharges, 0.4);
+  EnergyStatus status = system.computeMolecularPressure().first;
+  EXPECT_NEAR(status.frameworkComponentEnergy(0, 0).CoulombicFourier.energy, expected, 1e-8);
+}
+
+// The bonded pair of two lab-fixed atoms is no part of any energy: its Fourier energy is subtracted with the stored
+// structure factor, so an exclusion correction would be left over.
+TEST(BAROSTAT_VIRIAL, fixed_framework_pairs_have_no_exclusion_energy)
+{
+  System system = makeChargedChainSystem(true, {0.3, -0.3, 0.0, 0.0, 0.0}, 0.0);
+  EXPECT_DOUBLE_EQ(gradientEnergy(system).ewald_exclusion, 0.0);
+  EXPECT_DOUBLE_EQ(system.computeTotalEnergies().ewald_exclusion, 0.0);
+}
+
+// The virial of a framework with lab-fixed and flexible atoms is the derivative of the energy it reports.
+TEST(BAROSTAT_VIRIAL, mixed_framework_ewald_virial_matches_finite_difference)
+{
+  System system = makeChargedChainSystem(true, chainCharges, 0.4);
+  const double delta = 1e-5;
+  const double scalePlus = std::cbrt(1.0 + delta);
+  const double scaleMinus = std::cbrt(1.0 - delta);
+  System plus = scaledSystem(system, scalePlus);
+  System minus = scaledSystem(system, scaleMinus);
+  const double fd = -(gradientEnergy(plus).potentialEnergy() - gradientEnergy(minus).potentialEnergy()) /
+                    (plus.simulationBox.volume - minus.simulationBox.volume);
+  ASSERT_GT(std::abs(fd), 1e-6);
+
+  const double3x3 virial = system.computeMolecularPressure().second;
+  EXPECT_NEAR(virial.trace() / (3.0 * system.simulationBox.volume), fd, 5e-5 * std::abs(fd) + 1e-8);
+}
+
+// With the inter-molecular interactions omitted, the strain routine differentiates the framework-adsorbate energy
+// of computeEwaldFourierEnergy, and neither reports nor differentiates the adsorbate-adsorbate terms.
+TEST(BAROSTAT_VIRIAL, omit_inter_interactions_applies_to_the_ewald_strain_derivative)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(7.5, true, false, true);
+  forceField.omitInterInteractions = true;
+  forceField.automaticEwald = false;
+  forceField.EwaldAlpha = 0.3;
+  forceField.numberOfWaveVectors = int3(6, 6, 6);
+  Framework framework = Framework::makeITQ29(forceField, int3(1, 1, 1));
+  Component co2 = Component::makeCO2(forceField, 0, true);
+  System system(forceField, std::nullopt, false, 300.0, 1.0e4, 1.0, {framework}, {co2}, {}, {2}, 5);
+  std::span<Atom> molecules = system.spanOfMoleculeAtoms();
+  molecules[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
+  molecules[1].position = double3(5.93355, 7.93355, 5.93355);
+  molecules[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
+  molecules[3].position = double3(5.93355, 3.93355, 5.93355 + 1.149);
+  molecules[4].position = double3(5.93355, 3.93355, 5.93355);
+  molecules[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
+  system.precomputeTotalRigidEnergy();
+
+  const auto ewaldEnergy = [](System& s)
+  {
+    const RunningEnergy energy = Interactions::computeEwaldFourierEnergy(
+        s.eik_x, s.eik_y, s.eik_z, s.eik_xy, s.fixedFrameworkStoredEik, s.storedEik, s.forceField, s.simulationBox,
+        s.components, s.numberOfMoleculesPerComponent, s.spanOfMoleculeAtoms(), s.netChargeFramework);
+    return energy.ewald_fourier + energy.ewald_self + energy.ewald_exclusion;
+  };
+
+  std::vector<AtomDynamics> dynamics(system.spanOfMoleculeAtoms().size());
+  auto [status, strain] = Interactions::computeEwaldFourierEnergyStrainDerivative(
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+      system.forceField, system.simulationBox, system.framework, system.components, system.numberOfMoleculesPerComponent,
+      system.spanOfMoleculeAtoms(), dynamics, system.netChargeFramework, system.netChargePerComponent);
+
+  EXPECT_DOUBLE_EQ(status.componentEnergy(0, 0).CoulombicFourier.energy, 0.0);
+  EXPECT_NEAR(status.frameworkComponentEnergy(0, 0).CoulombicFourier.energy, ewaldEnergy(system), 1e-8);
+
+  const double delta = 1e-5;
+  const double scalePlus = std::cbrt(1.0 + delta);
+  const double scaleMinus = std::cbrt(1.0 - delta);
+  System plus = scaledSystem(system, scalePlus);
+  System minus = scaledSystem(system, scaleMinus);
+  const double fd =
+      (ewaldEnergy(plus) - ewaldEnergy(minus)) / (plus.simulationBox.volume - minus.simulationBox.volume);
+  ASSERT_GT(std::abs(fd), 1e-6);
+  EXPECT_NEAR(strain.trace() / (3.0 * system.simulationBox.volume), fd, 1e-4 * std::abs(fd) + 1e-8);
+
+  // the force on an adsorbate atom comes from the framework only
+  const double positionDelta = 1e-5;
+  const double x = system.spanOfMoleculeAtoms()[0].position.x;
+  system.spanOfMoleculeAtoms()[0].position.x = x + positionDelta;
+  const double energyPlus = ewaldEnergy(system);
+  system.spanOfMoleculeAtoms()[0].position.x = x - positionDelta;
+  const double energyMinus = ewaldEnergy(system);
+  system.spanOfMoleculeAtoms()[0].position.x = x;
+  EXPECT_NEAR(dynamics[0].gradient.x, (energyPlus - energyMinus) / (2.0 * positionDelta), 1e-5);
 }

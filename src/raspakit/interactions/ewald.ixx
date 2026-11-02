@@ -88,6 +88,8 @@ void precomputeEwaldFourierRigid(std::vector<std::complex<double>>& eik_x, std::
  * \param moleculeAtoms Positions and properties of the molecules' atoms.
  * \param netChargeFramework Net charge of the framework, used for the net-charge correction
  *                           (Bogusz et al., J. Chem. Phys. 108, 7070 (1998)).
+ * \param framework With 'frameworkAtoms': its mobile atoms take part in the energy and in 'storedEik', as in
+ *                  computeEwaldFourierGradient.
  * \return The running energy containing the Ewald Fourier energy contributions.
  */
 RunningEnergy computeEwaldFourierEnergy(std::vector<std::complex<double>>& eik_x,
@@ -98,7 +100,13 @@ RunningEnergy computeEwaldFourierEnergy(std::vector<std::complex<double>>& eik_x
                                         const ForceField& forceField, const SimulationBox& simulationBox,
                                         const std::vector<Component>& components,
                                         const std::vector<std::size_t>& numberOfMoleculesPerComponent,
-                                        std::span<const Atom> moleculeAtoms, double netChargeFramework = 0.0);
+                                        std::span<const Atom> moleculeAtoms, double netChargeFramework = 0.0,
+                                        const std::optional<Framework>& framework = std::nullopt,
+                                        std::span<const Atom> frameworkAtoms = {});
+
+/// The bonded framework pairs that need an exclusion correction: the 1-2, 1-3 and 1-4 pairs of the connectivity table
+/// without an unscaled intramolecular Coulomb term, except the pairs of two lab-fixed atoms.
+std::set<std::array<std::size_t, 2>> frameworkExcludedChargePairs(const Framework& framework);
 
 /**
  * \brief Computes the energy difference due to atom position changes in the Ewald Fourier summation.

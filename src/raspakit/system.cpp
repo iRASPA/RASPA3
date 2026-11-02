@@ -941,7 +941,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
 
     RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierEnergy(
         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox, components,
-        numberOfMoleculesPerComponent, moleculeAtomPositions, netChargeFramework);
+        numberOfMoleculesPerComponent, moleculeAtomPositions, netChargeFramework, framework, frameworkAtomPositions);
 
     RunningEnergy externalFieldEnergy;
     Interactions::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox, moleculeAtomPositions,

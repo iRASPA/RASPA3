@@ -383,7 +383,8 @@ void addChargeExclusionStrainDerivative(EnergyStatus& energy, double3x3& strainD
 
 // Excluded Coulomb pairs of a flexible framework: the bonded 1-2, 1-3 and 1-4 pairs of the connectivity table
 // that are not evaluated as unscaled intramolecular Coulomb pairs of the framework (those pairs carry their own
-// Ewald/shifted-potential completion in the framework intramolecular routines).
+// Ewald/shifted-potential completion in the framework intramolecular routines). A pair of two lab-fixed atoms is
+// left out: it has no Coulomb energy to complete, its Fourier energy is subtracted with the stored structure factor.
 std::set<std::array<std::size_t, 2>> frameworkExcludedChargePairs(const Framework& framework)
 {
   std::set<std::array<std::size_t, 2>> excludedPairs;
@@ -395,6 +396,7 @@ std::set<std::array<std::size_t, 2>> frameworkExcludedChargePairs(const Framewor
   }
   const auto excludeIfAbsentOrScaled = [&](const std::array<std::size_t, 2>& pair)
   {
+    if (framework.isFixedAtom(pair[0]) && framework.isFixedAtom(pair[1])) return;
     const auto scaling = coulombScaling.find(pair);
     if (scaling == coulombScaling.end() || scaling->second != 1.0) excludedPairs.insert(pair);
   };
@@ -456,7 +458,27 @@ void addFrameworkChargeExclusionStrainDerivative(double3x3& strainDerivative, co
     strainDerivative.cz += f.z * dr.z;
   }
 }
+
+// The energy of the same exclusion corrections, for the routines without gradients.
+void addFrameworkChargeExclusionEnergy(RunningEnergy& energy, const ForceField& forceField,
+                                       const SimulationBox& simulationBox, const Framework& framework,
+                                       std::span<const Atom> frameworkAtoms)
+{
+  for (const std::array<std::size_t, 2>& pair : frameworkExcludedChargePairs(framework))
+  {
+    const double3 dr = simulationBox.applyPeriodicBoundaryConditions(frameworkAtoms[pair[0]].position -
+                                                                     frameworkAtoms[pair[1]].position);
+    const ExclusionPairTerm term =
+        chargeExclusionPairTerm(forceField, frameworkAtoms[pair[0]], frameworkAtoms[pair[1]], double3::dot(dr, dr), 1.0);
+    if (term.active) energy.ewald_exclusion += term.energy;
+  }
+}
 }  // namespace
+
+std::set<std::array<std::size_t, 2>> Interactions::frameworkExcludedChargePairs(const Framework& framework)
+{
+  return ::frameworkExcludedChargePairs(framework);
+}
 
 void Interactions::addChargeSelfEnergy(RunningEnergy& energy, const ForceField& forceField, std::span<const Atom> atoms)
 {
@@ -748,7 +770,8 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
     EwaldStructureFactor& fixedFrameworkStoredEik, EwaldStructureFactor& storedEik, const ForceField& forceField,
     const SimulationBox& simulationBox, const std::vector<Component>& components,
     [[maybe_unused]] const std::vector<std::size_t>& numberOfMoleculesPerComponent,
-    std::span<const Atom> moleculeAtomPositions, double netChargeFramework)
+    std::span<const Atom> moleculeAtoms, double netChargeFramework, const std::optional<Framework>& framework,
+    std::span<const Atom> frameworkAtoms)
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -767,14 +790,40 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
   {
     if (forceField.usesRealSpaceChargeCorrections() && !forceField.omitInterInteractions)
     {
-      addRealSpaceSelfEnergy(energySum, forceField, moleculeAtomPositions);
+      addRealSpaceSelfEnergy(energySum, forceField, moleculeAtoms);
       // Intramolecular exclusion / completion of the shifted pair sum (see addChargeExclusionEnergy).
-      addChargeExclusionEnergy(energySum, forceField, simulationBox, components, moleculeAtomPositions);
+      addChargeExclusionEnergy(energySum, forceField, simulationBox, components, moleculeAtoms);
+      if (framework && framework->hasMobileAtoms() && !frameworkAtoms.empty())
+      {
+        addRealSpaceSelfEnergy(energySum, forceField, frameworkAtoms);
+        addFrameworkChargeExclusionEnergy(energySum, forceField, simulationBox, *framework, frameworkAtoms);
+      }
     }
     return energySum;
   }
 
-  std::size_t numberOfAtoms = moleculeAtomPositions.size();
+  // Live Fourier hosts are the mobile framework atoms, as in computeEwaldFourierGradient; lab-fixed atoms contribute
+  // through fixedFrameworkStoredEik. The stored structure factor then holds every charge, so that the incremental
+  // moves see the mobile framework.
+  const bool liveFramework = framework && framework->hasMobileAtoms() && !frameworkAtoms.empty();
+  const std::size_t fixedFrameworkAtomCount = liveFramework ? framework->numberOfFixedAtoms() : 0;
+  std::vector<Atom> liveAtoms;
+  double rigidFrameworkCharge = netChargeFramework;
+  if (liveFramework)
+  {
+    liveAtoms.reserve(frameworkAtoms.size() - fixedFrameworkAtomCount + moleculeAtoms.size());
+    liveAtoms.insert(liveAtoms.end(), frameworkAtoms.begin() + static_cast<std::ptrdiff_t>(fixedFrameworkAtomCount),
+                     frameworkAtoms.end());
+    liveAtoms.insert(liveAtoms.end(), moleculeAtoms.begin(), moleculeAtoms.end());
+    rigidFrameworkCharge = 0.0;
+    for (const Atom& atom : frameworkAtoms.first(fixedFrameworkAtomCount))
+    {
+      rigidFrameworkCharge += atom.scalingCoulomb * atom.charge;
+    }
+  }
+  const std::span<const Atom> atoms = liveFramework ? std::span<const Atom>(liveAtoms) : moleculeAtoms;
+
+  std::size_t numberOfAtoms = atoms.size();
 
   std::size_t kx_max_unsigned = static_cast<std::size_t>(forceField.numberOfWaveVectors.x);
   std::size_t ky_max_unsigned = static_cast<std::size_t>(forceField.numberOfWaveVectors.y);
@@ -788,14 +837,14 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
   storedEik.beginFill(numberOfWaveVectors);
   fixedFrameworkStoredEik.reserveWaveVectors(numberOfWaveVectors);
 
-  Ewald::buildEikTables(eik_x, eik_y, eik_z, eik_xy, moleculeAtomPositions, kx_max_unsigned, ky_max_unsigned,
+  Ewald::buildEikTables(eik_x, eik_y, eik_z, eik_xy, atoms, kx_max_unsigned, ky_max_unsigned,
                         kz_max_unsigned, inv_box);
 
   // without group-tagged atoms the group sums vanish and the structure factor is the lane-reduced sum over the
   // charges (both signs of kz from one pass); the per-atom loop below carries the dU/dlambda groups otherwise
-  const bool anyGroups = std::ranges::any_of(moleculeAtomPositions, [](const Atom& atom) { return atom.groupId != 0; });
+  const bool anyGroups = std::ranges::any_of(atoms, [](const Atom& atom) { return atom.groupId != 0; });
   FourierStructureFactorSums& laneSums = fourierStructureFactorSums();
-  if (!anyGroups) laneSums.prepare(moleculeAtomPositions, eik_z, kz_max_unsigned);
+  if (!anyGroups) laneSums.prepare(atoms, eik_z, kz_max_unsigned);
 
   std::size_t nvec = 0;
   double prefactor = Units::CoulombicConversionFactor * (2.0 * std::numbers::pi / simulationBox.volume);
@@ -837,9 +886,9 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
             {
               std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<std::size_t>(std::abs(kz))];
               eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
-              double charge = moleculeAtomPositions[i].charge;
-              double scaling = moleculeAtomPositions[i].scalingCoulomb;
-              std::uint8_t groupIdA = moleculeAtomPositions[i].groupId;
+              double charge = atoms[i].charge;
+              double scaling = atoms[i].scalingCoulomb;
+              std::uint8_t groupIdA = atoms[i].groupId;
               cksum.first += scaling * charge * (eik_xy[i] * eikz_temp);
               if (groupIdA != 0) cksum.second[groupIdA - 1] += charge * eik_xy[i] * eikz_temp;
             }
@@ -878,17 +927,18 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
   {
     // Subtract self-energy
     double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
-    for (std::size_t i = 0; i != moleculeAtomPositions.size(); ++i)
+    for (std::size_t i = 0; i != atoms.size(); ++i)
     {
-      double charge = moleculeAtomPositions[i].charge;
-      double scaling = moleculeAtomPositions[i].scalingCoulomb;
-      std::uint8_t groupIdA = moleculeAtomPositions[i].groupId;
+      double charge = atoms[i].charge;
+      double scaling = atoms[i].scalingCoulomb;
+      std::uint8_t groupIdA = atoms[i].groupId;
       energySum.ewald_self -= prefactor_self * scaling * charge * scaling * charge;
       if (groupIdA != 0) energySum.dudlambdaEwald[groupIdA - 1] -= 2.0 * prefactor_self * scaling * charge * charge;
     }
 
     // Subtract exclusion-energy (the excluded intramolecular pairs only)
-    addChargeExclusionEnergy(energySum, forceField, simulationBox, components, moleculeAtomPositions);
+    addChargeExclusionEnergy(energySum, forceField, simulationBox, components, moleculeAtoms);
+    if (liveFramework) addFrameworkChargeExclusionEnergy(energySum, forceField, simulationBox, *framework, frameworkAtoms);
   }
 
   // Net-charge correction: neutralizing background plus removal of the spurious interaction of the
@@ -898,27 +948,27 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
   {
     double netChargeAdsorbates = 0.0;
     std::array<double, maximumNumberOfDUDlambdaGroups> netChargeDerivative{};
-    for (std::size_t i = 0; i != moleculeAtomPositions.size(); ++i)
+    for (std::size_t i = 0; i != atoms.size(); ++i)
     {
-      netChargeAdsorbates += moleculeAtomPositions[i].scalingCoulomb * moleculeAtomPositions[i].charge;
-      if (moleculeAtomPositions[i].groupId != 0)
-        netChargeDerivative[moleculeAtomPositions[i].groupId - 1] += moleculeAtomPositions[i].charge;
+      netChargeAdsorbates += atoms[i].scalingCoulomb * atoms[i].charge;
+      if (atoms[i].groupId != 0)
+        netChargeDerivative[atoms[i].groupId - 1] += atoms[i].charge;
     }
     double uIon = -(singleIonFourierSum - Units::CoulombicConversionFactor * alpha / std::sqrt(std::numbers::pi));
     if (omitInterInteractions)
     {
-      energySum.ewald_fourier += 2.0 * uIon * netChargeFramework * netChargeAdsorbates;
+      energySum.ewald_fourier += 2.0 * uIon * rigidFrameworkCharge * netChargeAdsorbates;
       for (std::size_t g = 0; g != maximumNumberOfDUDlambdaGroups; ++g)
       {
-        energySum.dudlambdaEwald[g] += 2.0 * uIon * netChargeFramework * netChargeDerivative[g];
+        energySum.dudlambdaEwald[g] += 2.0 * uIon * rigidFrameworkCharge * netChargeDerivative[g];
       }
     }
     else
     {
-      energySum.ewald_fourier += uIon * (2.0 * netChargeFramework + netChargeAdsorbates) * netChargeAdsorbates;
+      energySum.ewald_fourier += uIon * (2.0 * rigidFrameworkCharge + netChargeAdsorbates) * netChargeAdsorbates;
       for (std::size_t g = 0; g != maximumNumberOfDUDlambdaGroups; ++g)
       {
-        energySum.dudlambdaEwald[g] += 2.0 * uIon * (netChargeFramework + netChargeAdsorbates) * netChargeDerivative[g];
+        energySum.dudlambdaEwald[g] += 2.0 * uIon * (rigidFrameworkCharge + netChargeAdsorbates) * netChargeDerivative[g];
       }
     }
   }
@@ -1993,6 +2043,23 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
   };
   std::size_t numberOfComponents = components.size();
 
+  // The energy of computeEwaldFourierGradient that is differentiated below: the lab-fixed charges of a live framework
+  // have no energy among themselves, and without inter-molecular interactions only the lab-fixed framework couples
+  // to the live charges. A rigid framework keeps its contribution (see the net charge above).
+  const bool omitInterInteractions = forceField.omitInterInteractions;
+  double rigidFrameworkCharge = netChargeFramework;
+  if (liveFramework)
+  {
+    rigidFrameworkCharge = 0.0;
+    for (const Atom& atom : frameworkAtoms.first(fixedFrameworkAtomCount))
+    {
+      rigidFrameworkCharge += atom.scalingCoulomb * atom.charge;
+    }
+  }
+  const double netChargeTerm = omitInterInteractions
+                                   ? 2.0 * rigidFrameworkCharge * (netChargeTotal - rigidFrameworkCharge)
+                                   : netChargeTotalSquared - (liveFramework ? rigidFrameworkCharge * rigidFrameworkCharge : 0.0);
+
   std::size_t kx_max_unsigned = static_cast<std::size_t>(forceField.numberOfWaveVectors.x);
   std::size_t ky_max_unsigned = static_cast<std::size_t>(forceField.numberOfWaveVectors.y);
   std::size_t kz_max_unsigned = static_cast<std::size_t>(forceField.numberOfWaveVectors.z);
@@ -2037,6 +2104,7 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
 
           std::complex<double> test{0.0, 0.0};
+          std::complex<double> mobileFrameworkSum{0.0, 0.0};
           std::fill(cksum.begin(), cksum.end(), std::complex<double>(0.0, 0.0));
           for (std::size_t i = 0; i != numberOfAtoms; ++i)
           {
@@ -2051,17 +2119,22 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
               const std::size_t comp = static_cast<std::size_t>(atoms[i].componentId);
               cksum[comp] += contribution;
             }
+            else
+            {
+              mobileFrameworkSum += contribution;
+            }
           }
 
           std::complex<double> rigidSum{};
           if (useFixedFrameworkEik) rigidSum = fixedFrameworkStoredEik.sum[nvec];
           test += rigidSum;
 
+          const std::complex<double> frameworkSum = omitInterInteractions ? rigidSum : rigidSum + mobileFrameworkSum;
           for (std::size_t i = 0; i != numberOfComponents; ++i)
           {
-            energy.frameworkComponentEnergy(0, i).CoulombicFourier +=
-                EnergyDuDlambda(2.0 * temp * (rigidSum.real() * cksum[i].real() + rigidSum.imag() * cksum[i].imag()),
-                                0.0);
+            energy.frameworkComponentEnergy(0, i).CoulombicFourier += EnergyDuDlambda(
+                2.0 * temp * (frameworkSum.real() * cksum[i].real() + frameworkSum.imag() * cksum[i].imag()), 0.0);
+            if (omitInterInteractions) continue;
             for (std::size_t j = 0; j != numberOfComponents; ++j)
             {
               energy.componentEnergy(i, j).CoulombicFourier += EnergyDuDlambda(
@@ -2077,7 +2150,8 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
             const double charge = atoms[i].charge;
             const double scaling = atoms[i].scalingCoulomb;
 
-            addGradient(i, -(scaling * charge * 2.0 * temp * (cki.imag() * test.real() - cki.real() * test.imag()) *
+            const std::complex<double> field = omitInterInteractions ? rigidSum : test;
+            addGradient(i, -(scaling * charge * 2.0 * temp * (cki.imag() * field.real() - cki.real() * field.imag()) *
                              (kvec_x + kvec_y + kvec_z)));
           }
 
@@ -2086,7 +2160,10 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
           // Include the net-charge correction in the strain derivative: per wave vector its energy
           // contribution is -temp * Q_total^2, with the same k- and volume-dependence as the
           // regular Fourier term (the correction's self part, alpha/sqrt(pi), is strain-independent).
-          double currentEnergy = temp * (test.real() * test.real() + test.imag() * test.imag() - netChargeTotalSquared);
+          const double structureFactorTerm =
+              omitInterInteractions ? std::norm(test) - std::norm(rigidSum) - std::norm(test - rigidSum)
+                                    : std::norm(test) - (liveFramework ? std::norm(rigidSum) : 0.0);
+          double currentEnergy = temp * (structureFactorTerm - netChargeTerm);
           double fac = 2.0 * (1.0 / rksq + 0.25 / (alpha * alpha)) * currentEnergy;
           strainDerivative.ax -= currentEnergy - fac * rk.x * rk.x;
           strainDerivative.bx -= -fac * rk.x * rk.y;
@@ -2106,27 +2183,30 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
     }
   }
 
-  // Subtract self-energy
-  double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
-  for (std::size_t i = 0; i != atomData.size(); ++i)
+  if (!omitInterInteractions)
   {
-    double charge = atomData[i].charge;
-    double scaling = atomData[i].scalingCoulomb;
-    std::size_t comp = static_cast<std::size_t>(atomData[i].componentId);
-    energy.componentEnergy(comp, comp).CoulombicFourier -=
-        EnergyDuDlambda(prefactor_self * scaling * charge * scaling * charge, 0.0);
-  }
+    // Subtract self-energy
+    double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
+    for (std::size_t i = 0; i != atomData.size(); ++i)
+    {
+      double charge = atomData[i].charge;
+      double scaling = atomData[i].scalingCoulomb;
+      std::size_t comp = static_cast<std::size_t>(atomData[i].componentId);
+      energy.componentEnergy(comp, comp).CoulombicFourier -=
+          EnergyDuDlambda(prefactor_self * scaling * charge * scaling * charge, 0.0);
+    }
 
-  // Subtract exclusion-energy (the excluded intramolecular pairs only), with gradient and strain derivative
-  addChargeExclusionStrainDerivative(energy, strainDerivative, forceField, simulationBox, components, atomData,
-                                     atomDynamics);
+    // Subtract exclusion-energy (the excluded intramolecular pairs only), with gradient and strain derivative
+    addChargeExclusionStrainDerivative(energy, strainDerivative, forceField, simulationBox, components, atomData,
+                                       atomDynamics);
 
-  // A live framework is part of the Fourier sum above, so its bonded (excluded) pairs need the same correction;
-  // its self-energy is strain independent (and, like every framework-framework term, has no EnergyStatus entry).
-  if (liveFramework)
-  {
-    addFrameworkChargeExclusionStrainDerivative(strainDerivative, forceField, simulationBox, *framework, frameworkAtoms,
-                                                frameworkDynamics);
+    // A live framework is part of the Fourier sum above, so its bonded (excluded) pairs need the same correction;
+    // its self-energy is strain independent (and, like every framework-framework term, has no EnergyStatus entry).
+    if (liveFramework)
+    {
+      addFrameworkChargeExclusionStrainDerivative(strainDerivative, forceField, simulationBox, *framework, frameworkAtoms,
+                                                  frameworkDynamics);
+    }
   }
 
   // Handle net-charges: neutralizing background plus removal of the spurious interaction of the
@@ -2138,10 +2218,12 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
   for (std::size_t i = 0; i != components.size(); ++i)
   {
     energy.frameworkComponentEnergy(0, i).CoulombicFourier +=
-        EnergyDuDlambda(2.0 * uIon * netChargeFramework * netChargePerComponent[i], 0.0);
+        EnergyDuDlambda(2.0 * uIon * (omitInterInteractions ? rigidFrameworkCharge : netChargeFramework) *
+                            netChargePerComponent[i],
+                        0.0);
   }
 
-  for (std::size_t i = 0; i != components.size(); ++i)
+  for (std::size_t i = 0; i != components.size() && !omitInterInteractions; ++i)
   {
     for (std::size_t j = 0; j != components.size(); ++j)
     {
