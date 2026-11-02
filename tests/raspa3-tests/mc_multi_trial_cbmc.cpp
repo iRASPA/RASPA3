@@ -494,6 +494,64 @@ TEST(MC_MULTI_TRIAL_CBMC, device_energies_match_host_double)
   }
 }
 
+// An empty background (the first insertion into an empty box without a framework) must still evaluate: the kernel
+// takes the background buffers as arguments, so they have to exist even when nothing is uploaded into them. The
+// trial energies of an empty background are zero and no trial overlaps.
+TEST(MC_MULTI_TRIAL_CBMC, device_environment_evaluates_an_empty_background)
+{
+  const std::optional<PairDevice> device = availableCBMCDevice();
+  if (!device.has_value()) GTEST_SKIP() << "no CBMC device available";
+
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component co2 = makeCO2(forceField, MCMoveProbabilities(), 0);
+  System system = System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {co2}, {}, {0}, 5);
+  ASSERT_TRUE(system.spanOfFrameworkAtoms().empty());
+  ASSERT_TRUE(system.spanOfMoleculeAtoms().empty());
+
+  const CBMC::GrowContext context = system.makeGrowContext(CBMC::CutOffMode::Full);
+  std::string reason;
+  ASSERT_TRUE(CBMC::DeviceMultiTrialGrower::supports(context, co2, reason)) << reason;
+
+  CBMC::DeviceGrowEnvironment environment(device.value());
+  environment.setForceField(context.forceField, context.simulationBox);
+  ASSERT_NO_THROW(environment.setBackground(context.frameworkAtoms, context.moleculeAtoms));
+
+  RandomNumber random(7);
+  const std::size_t n = co2.atoms.size();
+  const std::size_t sets = 64;
+  std::vector<Atom> batch(sets * n);
+  for (std::size_t set = 0; set < sets; ++set)
+  {
+    const double3 center = context.simulationBox.randomPosition(random);
+    const double3x3 rotation = double3x3::buildRotationMatrixInverse(random.randomSimdQuatd());
+    for (std::size_t i = 0; i < n; ++i)
+    {
+      Atom atom = co2.atoms[i];
+      atom.position = center + rotation * co2.atoms[i].position;
+      atom.moleculeId = 0;
+      batch[set * n + i] = atom;
+    }
+  }
+  std::vector<CBMC::DeviceTrialEnergy> energies;
+  ASSERT_NO_THROW(environment.evaluate(batch, n, 0, std::nullopt, energies));
+  ASSERT_EQ(energies.size(), sets);
+  for (std::size_t set = 0; set < sets; ++set)
+  {
+    EXPECT_FALSE(energies[set].overlap) << "set " << set;
+    EXPECT_EQ(energies[set].vdw, 0.0) << "set " << set;
+    EXPECT_EQ(energies[set].charge, 0.0) << "set " << set;
+  }
+
+  // the grower itself on the empty system: the first molecule is placed without an exception
+  const CBMC::MultiTrialGrower &grower = CBMC::deviceMultiTrialGrower(device.value());
+  const CBMC::LongRangeCorrection zero = [](std::span<const Atom>) { return 0.0; };
+  std::optional<CBMC::MultiTrialGrowResult> grown;
+  const CBMC::NewMoleculeIdentity identity{.componentId = 0, .moleculeId = 0};
+  ASSERT_NO_THROW(grown = grower.growNew(random, context, co2, identity, 8, zero));
+  ASSERT_TRUE(grown.has_value());
+  EXPECT_EQ(grown->selected.atoms.size(), n);
+}
+
 // The device grower reproduces the CPU grower's bookkeeping: with the system's CBMC device set, the multiple-try
 // swap and reinsertion of rigid Ewald molecules in FAU leave no energy drift and are accepted.
 TEST(MC_MULTI_TRIAL_CBMC, device_swap_and_reinsertion_drift_rigid_ewald_fau)

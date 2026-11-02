@@ -159,7 +159,10 @@ void CBMC::DeviceGrowEnvironment::setForceField(const ForceField& forceField, co
 
 void CBMC::DeviceGrowEnvironment::ensureBackgroundCapacity(std::size_t atoms)
 {
-  if (atoms <= backgroundCapacity) return;
+  // The kernel takes the background buffers as arguments whatever the background holds, so they must exist even
+  // for an empty background (the first insertion into an empty box without a framework): the first call allocates
+  // regardless of 'atoms' (a capacity of zero would otherwise never be exceeded by zero atoms).
+  if (atoms <= backgroundCapacity && backgroundBuffer) return;
   backgroundCapacity = grown(atoms);
   backgroundBuffer.allocate(*context, backgroundCapacity * sizeof(std::array<float, 4>), DeviceMemory::Device);
   backgroundTypeBuffer.allocate(*context, backgroundCapacity * sizeof(std::uint32_t), DeviceMemory::Device);
