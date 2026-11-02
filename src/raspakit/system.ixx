@@ -446,6 +446,12 @@ export struct System
   void accountTopologyChange();
 
   void precomputeTotalRigidEnergy() noexcept;
+
+  /// Whether molecular dynamics conserves a total momentum that can be removed from the velocities (with its three
+  /// degrees of freedom): more than one mobile entity, no lab-fixed framework atoms and no external field.
+  [[nodiscard]] bool conservesCenterOfMassMomentum() const noexcept;
+  /// Sets the translational centre-of-mass constraint of the system and its thermostat accordingly.
+  void updateCenterOfMassConstraint() noexcept;
   void precomputeTotalGradients() noexcept;
   /// Framework-molecule and molecule-molecule VDW tail corrections (energy and dU/dlambda) of the current
   /// configuration, evaluated from aggregated per-type counts (O(N)). The gradient routines do not include them.

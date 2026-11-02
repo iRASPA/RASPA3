@@ -1845,3 +1845,138 @@ TEST(hybrid_mc, framework_of_fixed_groups_only_is_rejected_without_a_trajectory)
   ASSERT_FALSE(system.framework->hasMobileAtoms());
   EXPECT_FALSE(MC_Moves::hybridMCMove(random, system).has_value());
 }
+
+namespace
+{
+enum class DriftHost
+{
+  None,
+  Rigid,
+  Flexible,
+  FixedAndFlexible
+};
+
+// 'numberOfMolecules' single-site molecules, optionally in a three-atom chain host.
+System makeDriftSystem(DriftHost host, std::size_t numberOfMolecules, bool externalField = false)
+{
+  ForceField forceField({{"C", true, 12.0, 0.0, 0.0, 6, true}, {"M", false, 16.0, 0.0, 0.0, 8, false}},
+                        {{80.0, 3.0}, {60.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot, 5.0, 5.0, 5.0, true, false,
+                        false);
+  const SimulationBox box(14.0, 14.0, 14.0);
+  Component molecule(forceField, "site", 16.0, 1.0e6, 0.011, {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 1, 0, false, false)},
+                     ConnectivityTable(1), Potentials::IntraMolecularPotentials{}, 0, 0);
+  std::vector<Framework> frameworks;
+  if (host != DriftHost::None)
+  {
+    std::vector<Atom> atoms;
+    for (const double3& position : {double3(4.0, 7.0, 7.0), double3(5.4, 7.3, 7.0), double3(6.8, 6.8, 7.0)})
+    {
+      atoms.push_back(Atom(position / 14.0, 0.0, 1.0, 0, 0, 0, 0, true));
+    }
+    Framework framework(forceField, "drift-chain", box, 1, atoms, atoms, int3(1, 1, 1));
+    if (host != DriftHost::Rigid)
+    {
+      const std::filesystem::path definition = std::filesystem::temp_directory_path() / "raspa3-drift-framework.json";
+      std::ofstream(definition) << std::format(
+          R"({{"Type": "Flexible", {} "Intra14VanDerWaalsScalingValue": 0.0, "Intra14ChargeChargeScalingValue": 0.0}})",
+          host == DriftHost::FixedAndFlexible
+              ? R"("Groups": [{"Type": "Fixed", "Atoms": [0]}, {"Type": "Flexible", "Atoms": [1, 2]}],)"
+              : "");
+      framework.readFrameworkDefinition(forceField, definition.string());
+      std::filesystem::remove(definition);
+    }
+    frameworks.push_back(framework);
+  }
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, frameworks.empty() ? std::nullopt : std::optional(frameworks[0]),
+                {molecule}, {}, {numberOfMolecules}, 5);
+  system.hasExternalField = externalField;
+  std::span<Atom> sites = system.spanOfMoleculeAtoms();
+  for (std::size_t i = 0; i < sites.size(); ++i)
+  {
+    sites[i].position = double3(2.0 + 3.0 * static_cast<double>(i), 12.0, 2.0);
+  }
+  return system;
+}
+
+// Enters the equilibration stage of the driver, which draws the velocities, without running a cycle.
+struct DriftState
+{
+  std::size_t constraint;
+  double moleculeMomentum;
+  double kineticEnergy;
+};
+
+DriftState enterEquilibration(const System& system)
+{
+  MolecularDynamics md({0, 0, 0, 0, 1000, 10000, 5000, 5000}, {system}, 17uz, 5, false);
+  md.equilibrate();
+  const System& result = md.systems[0];
+  double3 momentum{};
+  double kinetic{0.0};
+  for (const Molecule& molecule : result.moleculeData)
+  {
+    momentum += molecule.mass * molecule.velocity;
+    kinetic += 0.5 * molecule.mass * double3::dot(molecule.velocity, molecule.velocity);
+  }
+  return {result.translationalCenterOfMassConstraint, momentum.length(), kinetic};
+}
+}  // namespace
+
+// Bulk fluid without a thermostat: the centre-of-mass momentum is removed, so its three degrees of freedom are gone
+// from the temperature as well.
+TEST(molecular_dynamics, nve_fluid_removes_the_drift_and_its_degrees_of_freedom)
+{
+  const DriftState state = enterEquilibration(makeDriftSystem(DriftHost::None, 4));
+  EXPECT_EQ(state.constraint, 3uz);
+  EXPECT_LT(state.moleculeMomentum, 1e-10);
+  EXPECT_GT(state.kineticEnergy, 0.0);
+}
+
+// A single molecule has no internal reference for its momentum: zeroing it would freeze the molecule at 0 K.
+TEST(molecular_dynamics, single_molecule_keeps_its_velocity)
+{
+  for (const DriftHost host : {DriftHost::None, DriftHost::Rigid})
+  {
+    const DriftState state = enterEquilibration(makeDriftSystem(host, 1));
+    EXPECT_EQ(state.constraint, 0uz);
+    EXPECT_GT(state.kineticEnergy, 0.0);
+  }
+}
+
+// Rigid or lab-fixed framework atoms and an external field exert a net force: there is no conserved momentum to
+// remove and no degrees of freedom to subtract.
+TEST(molecular_dynamics, momentum_is_kept_when_it_is_not_conserved)
+{
+  for (const System& system : {makeDriftSystem(DriftHost::Rigid, 4), makeDriftSystem(DriftHost::FixedAndFlexible, 4),
+                               makeDriftSystem(DriftHost::None, 4, true), makeDriftSystem(DriftHost::Flexible, 4, true)})
+  {
+    const DriftState state = enterEquilibration(system);
+    EXPECT_EQ(state.constraint, 0uz);
+    EXPECT_GT(state.moleculeMomentum, 1e-6);
+  }
+}
+
+TEST(molecular_dynamics, flexible_framework_conserves_the_total_momentum)
+{
+  const DriftState state = enterEquilibration(makeDriftSystem(DriftHost::Flexible, 2));
+  EXPECT_EQ(state.constraint, 3uz);
+}
+
+// The ideal-gas part of the barostat pressure counts every coupled point once, with or without the constraint.
+TEST(molecular_dynamics, barostat_pressure_ideal_part_counts_the_coupled_points)
+{
+  for (const std::size_t numberOfMolecules : {1uz, 4uz})
+  {
+    for (const std::size_t constraint : {0uz, 3uz})
+    {
+      if (numberOfMolecules == 1uz && constraint == 3uz) continue;
+      System system = makeDriftSystem(DriftHost::None, numberOfMolecules);
+      system.translationalCenterOfMassConstraint = constraint;
+      const std::size_t degreesOfFreedom = barostatTranslationalDegreesOfFreedom(system, BarostatCoupling::Molecular);
+      const double3x3 pressure = barostatPressureTensor(system, double3x3{}, BarostatCoupling::Molecular, degreesOfFreedom);
+      const double3x3 virial = computeBarostatVirial(system, double3x3{}, BarostatCoupling::Molecular) / system.simulationBox.volume;
+      const double expected = static_cast<double>(numberOfMolecules) / (system.beta * system.simulationBox.volume);
+      EXPECT_NEAR(pressure.ax - virial.ax, expected, 1e-12 * expected) << numberOfMolecules << " " << constraint;
+    }
+  }
+}

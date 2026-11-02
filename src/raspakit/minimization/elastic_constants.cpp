@@ -359,7 +359,9 @@ double3x3 barostatPressureTensor(const System& system, const double3x3& molecula
 {
   const double volume = system.simulationBox.volume;
   double3x3 pressure = computeBarostatVirial(system, molecularVirial, coupling) / volume;
-  const double ideal = static_cast<double>(translationalDegreesOfFreedom + 3) / (3.0 * system.beta * volume);
+  // every coupled point once: the degrees of freedom plus those taken by the centre-of-mass constraint, if any
+  const double ideal = static_cast<double>(translationalDegreesOfFreedom + system.translationalCenterOfMassConstraint) /
+                       (3.0 * system.beta * volume);
   pressure.ax += ideal;
   pressure.by += ideal;
   pressure.cz += ideal;

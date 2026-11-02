@@ -808,6 +808,24 @@ void System::precomputeTotalRigidEnergy() noexcept
                                             simulationBox, spanOfRigidFrameworkAtoms());
 }
 
+bool System::conservesCenterOfMassMomentum() const noexcept
+{
+  if (hasExternalField) return false;
+  if (framework.has_value())
+  {
+    if (!framework->hasMobileAtoms() || framework->numberOfFixedAtoms() > 0) return false;
+    return numberOfFrameworkAtoms + spanOfMoleculeAtoms().size() > 1uz;
+  }
+  return numberOfMolecules() > 1uz;
+}
+
+void System::updateCenterOfMassConstraint() noexcept
+{
+  translationalCenterOfMassConstraint =
+      conservesCenterOfMassMomentum() ? std::min<std::size_t>(3, translationalDegreesOfFreedom) : 0;
+  if (thermostat.has_value()) thermostat->translationalCenterOfMassConstraint = translationalCenterOfMassConstraint;
+}
+
 RunningEnergy System::computeTailCorrectionEnergies() const noexcept
 {
   const std::size_t numberOfPseudoAtomTypes = forceField.numberOfPseudoAtoms;

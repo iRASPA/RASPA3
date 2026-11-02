@@ -415,13 +415,7 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
     }
   }
 
-  const bool flexibleFrameworkConstraint =
-      system.framework && !system.framework->rigid &&
-      system.numberOfFrameworkAtoms + system.spanOfMoleculeAtoms().size() > 1uz;
-  const bool moleculeConstraint = !system.framework.has_value() && system.numberOfMolecules() > 1uz;
-  system.translationalCenterOfMassConstraint =
-      flexibleFrameworkConstraint || moleculeConstraint ? std::min<std::size_t>(3, system.translationalDegreesOfFreedom)
-                                                       : 0;
+  system.updateCenterOfMassConstraint();
 
   if (system.thermostat)
     system.thermostat->refreshDegreesOfFreedom(system.translationalDegreesOfFreedom,
@@ -1059,20 +1053,18 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
                                       &system.forceField, system.spanOfGroupData(),
                                       system.spanOfFrameworkGroupData());
 
-    Integrators::removeCenterOfMassVelocityDrift(
-        system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
-        system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
-        system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+    // Only a conserved momentum can be removed, and then its degrees of freedom go with it, with or without a
+    // thermostat. Lab-fixed atoms or an external field exert a net force, and a single molecule would freeze.
+    if (system.conservesCenterOfMassMomentum())
+    {
+      Integrators::removeCenterOfMassVelocityDrift(
+          system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+          system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
+          system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+    }
+    system.updateCenterOfMassConstraint();
     if (system.thermostat.has_value())
     {
-      const bool flexibleFrameworkConstraint =
-          system.framework && system.framework->hasMobileAtoms() &&
-          system.numberOfFrameworkAtoms + system.spanOfMoleculeAtoms().size() > 1uz;
-      if (flexibleFrameworkConstraint || (!system.framework.has_value() && system.numberOfMolecules() > 1uz))
-      {
-        system.translationalCenterOfMassConstraint = 3;
-        system.thermostat->translationalCenterOfMassConstraint = 3;
-      }
       system.thermostat->initialize(random);
     }
     if (system.thermobarostat.has_value())
