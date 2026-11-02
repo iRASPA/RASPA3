@@ -930,7 +930,9 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
   context.wait(resident.enqueueFirstHalf(scaling, dt, coupling));
   timing.deviceWait += std::chrono::steady_clock::now() - waitStart;
   DeviceResident::Displacement displacement = resident.collectDisplacement();
-  if (displacement.sinceBuild > 0.25 * cellList.skin * cellList.skin) rebuild = true;
+  // as on the host: the part of the skin that a contraction of the box since the build has not taken
+  const double skinBudget = cellList.skinBudget(box);
+  if (skinBudget <= 0.0 || displacement.sinceBuild > 0.25 * skinBudget * skinBudget) rebuild = true;
   if (rebuild)
   {
     resident.downloadPositions(system);

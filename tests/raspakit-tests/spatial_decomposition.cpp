@@ -417,6 +417,40 @@ TEST(spatial_decomposition, cell_list_displacement_check_follows_the_box_not_the
   EXPECT_FALSE(cellList.refreshPositionsAndCheck(0, atoms, scaled));
 }
 
+// A shear can shorten a pair while no perpendicular width of the box shrinks: straightening a tilted cell increases
+// the width, yet moves pairs along the diagonal closer by about 12% here, more than the skin of a 10 A list.
+TEST(spatial_decomposition, cell_list_displacement_check_rebuilds_when_a_shear_shortens_the_list_cutoff)
+{
+  const SimulationBox tilted(double3x3(double3(30.0, 0.0, 0.0), double3(7.5, 30.0, 0.0), double3(0.0, 0.0, 30.0)));
+  const SimulationBox straight(double3x3(double3(30.0, 0.0, 0.0), double3(0.0, 30.0, 0.0), double3(0.0, 0.0, 30.0)));
+  const double3 widthsBefore = tilted.perpendicularWidths();
+  const double3 widthsAfter = straight.perpendicularWidths();
+  ASSERT_GE(widthsAfter.x, widthsBefore.x);
+  ASSERT_GE(widthsAfter.y, widthsBefore.y);
+  ASSERT_GE(widthsAfter.z, widthsBefore.z);
+
+  std::vector<Atom> atoms{Atom(double3(0.2, 0.2, 0.2), 0.0, 1.0, 0, 0, 0, false, false),
+                          Atom(double3(0.6, 0.2, 0.2), 0.0, 1.0, 1, 0, 0, false, false)};
+  CellList cellList;
+  cellList.setup(tilted, 9.0, 1.0, 1, std::nullopt);
+  cellList.bin(tilted, atoms);
+  EXPECT_DOUBLE_EQ(cellList.skinBudget(tilted), 1.0);
+  EXPECT_LT(cellList.skinBudget(straight), 1.0);
+  EXPECT_TRUE(cellList.refreshPositionsAndCheck(0, atoms, straight));
+}
+
+// The budget of the isotropic contraction is the one the resident (device) integrator compares its displacement with.
+TEST(spatial_decomposition, cell_list_skin_budget_follows_an_isotropic_contraction)
+{
+  const SimulationBox box(30.0, 30.0, 30.0);
+  std::vector<Atom> atoms{Atom(double3(0.2, 0.2, 0.2), 0.0, 1.0, 0, 0, 0, false, false)};
+  CellList cellList;
+  cellList.setup(box, 9.0, 1.0, 1, std::nullopt);
+  cellList.bin(box, atoms);
+  EXPECT_NEAR(cellList.skinBudget(SimulationBox(27.0, 27.0, 27.0)), 1.0 - 10.0 * 0.1, 1e-10);
+  EXPECT_DOUBLE_EQ(cellList.skinBudget(SimulationBox(33.0, 33.0, 33.0)), 1.0);
+}
+
 TEST(spatial_decomposition, cell_list_displacement_check_rebuilds_when_the_box_contracts_the_list_cutoff)
 {
   // atoms sit at the origin, so their unwrapped Cartesian displacement under a 30% contraction is a fraction

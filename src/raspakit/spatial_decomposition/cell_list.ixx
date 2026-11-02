@@ -182,6 +182,10 @@ export struct CellList
   /// list cutoff can enter the interaction cutoff.
   bool refreshPositionsAndCheck(std::size_t domain, std::span<const Atom> atoms, const SimulationBox& box);
 
+  /// The part of the Verlet skin left for the atoms to move in the box 'box': the skin minus what the deformation of
+  /// the box since the list build takes from a pair at the list cutoff. Zero or negative: the list has to be rebuilt.
+  double skinBudget(const SimulationBox& box) const;
+
   bool boxChanged(const SimulationBox& box) const;
 
   std::size_t totalPairs() const;

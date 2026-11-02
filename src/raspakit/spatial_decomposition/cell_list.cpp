@@ -530,6 +530,31 @@ void CellList::gatherPositions(std::size_t domainIndex, const SimulationBox& box
   }
 }
 
+double CellList::skinBudget(const SimulationBox& box) const
+{
+  if (!boxChanged(box) || listCutoff <= 0.0) return skin;
+
+  // The deformation F = H(t) H(t0)^{-1} shortens a pair by at most the factor of its smallest singular value, the
+  // square root of the smallest eigenvalue of the symmetric C = F^T F (trigonometric solution). The perpendicular
+  // widths do not bound this: a shear can shorten pairs while the widths grow.
+  const double3x3 F = box.cell * inverseCellAtBuild;
+  const double3x3 C = F.transpose() * F;
+  const double q = C.trace() / 3.0;
+  const double offDiagonal = C.ay * C.ay + C.az * C.az + C.bz * C.bz;
+  const double diagonal = (C.ax - q) * (C.ax - q) + (C.by - q) * (C.by - q) + (C.cz - q) * (C.cz - q);
+  const double p = std::sqrt((diagonal + 2.0 * offDiagonal) / 6.0);
+  double smallestEigenvalue = q;
+  if (p > 1e-14 * q)
+  {
+    const double3x3 B(double3((C.ax - q) / p, C.ay / p, C.az / p), double3(C.ay / p, (C.by - q) / p, C.bz / p),
+                      double3(C.az / p, C.bz / p, (C.cz - q) / p));
+    const double phi = std::acos(std::clamp(0.5 * B.determinant(), -1.0, 1.0)) / 3.0;
+    smallestEigenvalue = q + 2.0 * p * std::cos(phi + 2.0 * std::numbers::pi / 3.0);
+  }
+  const double shortening = 1.0 - std::sqrt(std::max(0.0, smallestEigenvalue));
+  return skin - listCutoff * std::max(0.0, shortening);
+}
+
 bool CellList::refreshPositionsAndCheck(std::size_t domainIndex, std::span<const Atom> atoms, const SimulationBox& box)
 {
   DomainLists& domain = domains[domainIndex];
@@ -537,15 +562,7 @@ bool CellList::refreshPositionsAndCheck(std::size_t domainIndex, std::span<const
   // H(t) H(t0)^{-1}: the barostat applies this map to the unwrapped positions, so the displacement that
   // spends the Verlet skin is the motion left after transporting the build position with the cell.
   const double3x3 map = sameBox ? double3x3::identity() : box.cell * inverseCellAtBuild;
-  double contraction = 0.0;
-  if (!sameBox && listCutoff > 0.0)
-  {
-    const double3 current = box.perpendicularWidths();
-    const double ratio =
-        std::min({current.x / widthsAtBuild.x, current.y / widthsAtBuild.y, current.z / widthsAtBuild.z});
-    contraction = listCutoff * std::max(0.0, 1.0 - ratio);
-  }
-  const double budget = skin - contraction;
+  const double budget = skinBudget(box);
   if (budget <= 0.0)
   {
     domain.maximumDisplacementSquared = 0.0;
