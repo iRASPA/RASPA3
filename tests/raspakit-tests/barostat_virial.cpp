@@ -844,3 +844,51 @@ TEST(BAROSTAT_VIRIAL, rigid_framework_ewald_strain_matches_the_energy_derivative
     EXPECT_NEAR(strain.trace() / (3.0 * system.simulationBox.volume), fd, 2e-3 * std::abs(fd) + 1e-7) << "alpha " << alpha;
   }
 }
+
+// The tail correction of the virial holds the same pairs as the tail energy: framework-molecule and molecule-molecule,
+// not framework-framework. An empty framework has no tail pressure, and the correction of a loaded one is the sum over
+// those pairs.
+TEST(BAROSTAT_VIRIAL, tail_pressure_excludes_framework_framework_pairs)
+{
+  const auto makeSystem = [](bool tailCorrections, std::size_t numberOfMolecules)
+  {
+    ForceField forceField = ForceField::makeZeoliteForceField(12.0, false, tailCorrections, false);
+    Framework framework = Framework::makeITQ29(forceField, int3(2, 2, 2));
+    Component methane = Component::makeMethane(forceField, 0);
+    System system(forceField, std::nullopt, false, 300.0, 1.0e4, 1.0, {framework}, {methane}, {}, {numberOfMolecules}, 5);
+    std::span<Atom> molecules = system.spanOfMoleculeAtoms();
+    for (std::size_t i = 0; i < molecules.size(); ++i)
+    {
+      molecules[i].position = double3(5.93355 + 12.0 * static_cast<double>(i), 7.93355, 5.93355);
+    }
+    return system;
+  };
+
+  System empty = makeSystem(true, 0);
+  ASSERT_NE(empty.forceField(0, 1).tailCorrectionPressure, 0.0);
+  EXPECT_DOUBLE_EQ(empty.computeMolecularPressure().second.trace(), 0.0);
+
+  System withTail = makeSystem(true, 2);
+  System withoutTail = makeSystem(false, 2);
+
+  const std::size_t numberOfTypes = withTail.forceField.numberOfPseudoAtoms;
+  std::vector<double> frameworkCounts(numberOfTypes, 0.0);
+  std::vector<double> moleculeCounts(numberOfTypes, 0.0);
+  for (const Atom& atom : withTail.spanOfFrameworkAtoms()) frameworkCounts[atom.type] += atom.scalingVDW;
+  for (const Atom& atom : withTail.spanOfMoleculeAtoms()) moleculeCounts[atom.type] += atom.scalingVDW;
+  double expected = 0.0;
+  for (std::size_t a = 0; a < numberOfTypes; ++a)
+  {
+    for (std::size_t b = 0; b < numberOfTypes; ++b)
+    {
+      expected += (moleculeCounts[a] * moleculeCounts[b] + 2.0 * frameworkCounts[a] * moleculeCounts[b]) *
+                  withTail.forceField(a, b).tailCorrectionPressure;
+    }
+  }
+  expected *= -2.0 * std::numbers::pi / (3.0 * withTail.simulationBox.volume);
+  ASSERT_NE(expected, 0.0);
+
+  const double difference =
+      withTail.computeMolecularPressure().second.trace() - withoutTail.computeMolecularPressure().second.trace();
+  EXPECT_NEAR(difference, 3.0 * expected, 1e-9 * std::abs(expected));
+}

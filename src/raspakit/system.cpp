@@ -1256,17 +1256,21 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   // '-= pressureTailCorrection' into the correct negative diagonal contribution.
   // The pair sum depends on the atom types only: sum_i sum_j s_i s_j P(t_i, t_j) over all ordered pairs
   // (self terms once, i != j twice) equals sum_{t,t'} n_t n_t' P(t, t') with the scaling-weighted type counts.
+  // It holds the pairs of computeTailCorrectionEnergies: molecule-molecule and framework-molecule (both orders),
+  // the framework has no tail correction with itself.
   double preFactor = -2.0 * std::numbers::pi / (3.0 * simulationBox.volume);
   {
-    std::vector<double> typeCounts(forceField.numberOfPseudoAtoms, 0.0);
-    for (const Atom& atom : atomData) typeCounts[static_cast<std::size_t>(atom.type)] += atom.scalingVDW;
-    for (std::size_t typeA = 0; typeA < typeCounts.size(); ++typeA)
+    std::vector<double> moleculeCounts(forceField.numberOfPseudoAtoms, 0.0);
+    std::vector<double> frameworkCounts(forceField.numberOfPseudoAtoms, 0.0);
+    for (const Atom& atom : spanOfMoleculeAtoms()) moleculeCounts[static_cast<std::size_t>(atom.type)] += atom.scalingVDW;
+    for (const Atom& atom : spanOfFrameworkAtoms()) frameworkCounts[static_cast<std::size_t>(atom.type)] += atom.scalingVDW;
+    for (std::size_t typeA = 0; typeA < moleculeCounts.size(); ++typeA)
     {
-      if (typeCounts[typeA] == 0.0) continue;
-      for (std::size_t typeB = 0; typeB < typeCounts.size(); ++typeB)
+      if (moleculeCounts[typeA] == 0.0) continue;
+      for (std::size_t typeB = 0; typeB < moleculeCounts.size(); ++typeB)
       {
-        pressureTailCorrection +=
-            typeCounts[typeA] * typeCounts[typeB] * preFactor * forceField(typeA, typeB).tailCorrectionPressure;
+        pressureTailCorrection += moleculeCounts[typeA] * (moleculeCounts[typeB] + 2.0 * frameworkCounts[typeB]) *
+                                  preFactor * forceField(typeA, typeB).tailCorrectionPressure;
       }
     }
   }
