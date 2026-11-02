@@ -528,8 +528,15 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
 
       if (numberOfGibbsFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
       {
+        // The conventional Gibbs fractional molecule starts at lambda = 0.5 (full VDW scaling), not switched off:
+        // grow it at that scaling so that the placement sees the framework and the blocking pockets (a grow at
+        // scaling zero has no energy and no pocket radius, and may land inside a wall or a pocket).
         const std::uint8_t groupId = components[componentId].lambdaGibbs.dUdlambdaGroupId;
-        const std::optional<CBMC::GrowResult> growData = growFractionalMolecule(groupId);
+        const std::optional<CBMC::GrowResult> growData = growCreationCandidate({.componentId = componentId,
+                                                                                .moleculeId = numberOfMolecules(),
+                                                                                .scaling = 0.5,
+                                                                                .groupId = groupId,
+                                                                                .isFractional = true});
         std::vector<Atom> atoms = growData->atoms;
         for (Atom& atom : atoms)
         {

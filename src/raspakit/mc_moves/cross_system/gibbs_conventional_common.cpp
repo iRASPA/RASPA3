@@ -455,6 +455,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   // First step: the fractional molecule of each box takes its target scaling
   std::vector<Atom> trialFractionalA(fractionalMoleculeA.begin(), fractionalMoleculeA.end());
   applyTargetScaling(trialFractionalA, moveKindA, lambdaNewA);
+  if (systemA.insideBlockedPockets(componentA, trialFractionalA)) return std::nullopt;
   std::optional<RunningEnergy> energyFirstStepA =
       computeMoleculeEnergyDifference(systemA, tailEffA, tailGroupA, netChargeA, trialFractionalA, fractionalMoleculeA);
   if (!energyFirstStepA.has_value())
@@ -465,6 +466,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
 
   std::vector<Atom> trialFractionalB(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
   applyTargetScaling(trialFractionalB, moveKindB, lambdaNewB);
+  if (systemB.insideBlockedPockets(componentB, trialFractionalB))
+  {
+    restoreEwaldState();
+    return std::nullopt;
+  }
   std::optional<RunningEnergy> energyFirstStepB =
       computeMoleculeEnergyDifference(systemB, tailEffB, tailGroupB, netChargeB, trialFractionalB, fractionalMoleculeB);
   if (!energyFirstStepB.has_value())
@@ -564,6 +570,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
         atom.componentId = static_cast<std::uint8_t>(selectedComponent);
         atom.setScalingToFractional(lambdaNew, component.lambdaGibbs.dUdlambdaGroupId);
       }
+      // Random (non-CBMC) placement: a position inside a blocked pocket is rejected before any energy is
+      // evaluated (CBMC growth performs this check inside the trial-position selection).
+      if (system.insideBlockedPockets(component, trialAtoms)) return false;
       std::optional<RunningEnergy> insertionEnergy = computeMoleculeEnergyDifference(
           system, tailEffectiveCounts, tailGroupCounts, runningNetCharge, trialAtoms, std::span<const Atom>{});
       if (!insertionEnergy.has_value())

@@ -6,6 +6,7 @@
 import std;
 
 import double3;
+import double4;
 import atom;
 import int3;
 import forcefield;
@@ -395,6 +396,40 @@ TEST(MC_REACTION_DRIFT, reaction_flexible_group_growth_allows_conventional_ideal
   EXPECT_EQ(conventional->rosenbluthWeight(), 1.0);
   ASSERT_TRUE(cbmc.has_value());
   EXPECT_NE(cbmc->logRosenbluthWeight, 0.0);
+}
+
+// The conventional (non-CBMC) group insertion places each molecule at a random position; like the CBMC growth it
+// must refuse a position inside a blocking pocket of that molecule's component.
+TEST(MC_REACTION_DRIFT, reaction_group_insertion_respects_blocked_pockets)
+{
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+  systemProbabilities.setProbability(Move::Types::ReactionCFCMC, 1.0);
+  System system = makeZeolitePropaneButaneReactionSystem(systemProbabilities);
+  ASSERT_TRUE(system.framework.has_value());
+  // Attached after construction (the initial grow refuses pockets); a sphere of radius 40 A covers the whole FAU cell
+  system.components[0].blockingPockets.push_back(double4(0.5, 0.5, 0.5, 40.0));
+
+  const std::vector<std::pair<std::size_t, std::size_t>> exclusions;
+  for (const bool useCBMC : {false, true})
+  {
+    RandomNumber random(42);
+    // a component whose whole box is blocked can not be inserted
+    EXPECT_FALSE(MC_Moves::ReactionCommon::growMoleculeGroupInsertion(random, system, std::vector<std::size_t>{1, 0},
+                                                                      exclusions, 0.5, true, 1, useCBMC)
+                     .has_value());
+    EXPECT_FALSE(MC_Moves::ReactionCommon::growMoleculeGroupInsertion(random, system, std::vector<std::size_t>{1, 1},
+                                                                      exclusions, 1.0, false, 0, useCBMC)
+                     .has_value());
+    // the pocket belongs to component 0 only: component 1 is inserted as before
+    bool inserted = false;
+    for (std::size_t attempt = 0; attempt < 50 && !inserted; ++attempt)
+    {
+      inserted = MC_Moves::ReactionCommon::growMoleculeGroupInsertion(random, system, std::vector<std::size_t>{0, 1},
+                                                                       exclusions, 0.5, true, 1, useCBMC)
+                     .has_value();
+    }
+    EXPECT_TRUE(inserted);
+  }
 }
 
 TEST(MC_REACTION_DRIFT, reaction_flexible_creates_fractional_slots_for_serial_and_parallel)

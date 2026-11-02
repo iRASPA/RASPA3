@@ -195,6 +195,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       atom.moleculeId = static_cast<std::uint32_t>(systemA.numberOfMolecules());
     }
 
+    if (systemA.insideBlockedPockets(componentA, newMolecule))
+    {
+      restoreFractionalMolecules(systemA, snapshotA);
+      return std::nullopt;
+    }
+
     std::optional<RunningEnergy> externalFieldDifferenceA2 =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
               [&] { return computeExternalFieldEnergyDifference(systemA, newMolecule, {}); });
@@ -624,6 +630,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                  a.componentId, a.groupId, a.isFractional);
                    });
 
+    // Random (non-CBMC) placement: reject a position inside a blocked pocket of B before any energy is evaluated
+    if (systemB.insideBlockedPockets(componentB, fractionalMoleculeB))
+    {
+      restoreFractionalMolecules(systemA, snapshotA);
+      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      return std::nullopt;
+    }
+
     // Intra-molecular bookkeeping (zero for rigid molecules): the ideal-gas conformation replaces the placeholder
     // conformation in B. It is drawn from the ideal-gas Boltzmann distribution, so it does not enter the acceptance.
     RunningEnergy intraEnergyDifferenceB =
@@ -774,6 +788,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                      a.setScaling(newLambda);
                      return a;
                    });
+
+    if (systemA.insideBlockedPockets(componentA, trialPositions)) return std::nullopt;
 
     // Snapshot effective tail-correction counts; threaded through the sub-step.
     std::vector<double> tailEffA = systemA.effectiveNumberOfPseudoAtomsVDW;

@@ -7,6 +7,7 @@ import std;
 
 import int3;
 import double3;
+import double4;
 import double3x3;
 import units;
 import atom;
@@ -28,6 +29,8 @@ import mc_moves_probabilities;
 import mc_moves_move_types;
 
 import randomnumbers;
+import mc_moves_translation;
+import mc_moves_gibbs_swap_cfcmc;
 import mc_moves_gibbs_swap_cbcfcmc;
 import mc_moves_gibbs_conventional_common;
 import mc_moves_parallel_tempering_swap;
@@ -193,6 +196,50 @@ void rejectAllBinsExceptCurrent(Component &component)
   const std::size_t oldBin = component.lambdaGibbs.currentBin;
   std::fill(component.lambdaGibbs.biasFactor.begin(), component.lambdaGibbs.biasFactor.end(), -100.0);
   component.lambdaGibbs.biasFactor[oldBin] = 0.0;
+}
+
+// True when a molecule sits inside a blocking pocket of its component (the pocket radius scales with the VDW
+// scaling, so switched-off placeholders never do).
+bool anyMoleculeInsideBlockedPockets(const System &system)
+{
+  for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
+  {
+    const Component &component = system.components[componentId];
+    for (std::size_t moleculeId = 0; moleculeId < system.numberOfMoleculesPerComponent[componentId]; ++moleculeId)
+    {
+      if (system.insideBlockedPockets(component, system.spanOfMolecule(componentId, moleculeId))) return true;
+    }
+  }
+  return false;
+}
+
+// Methane in FAU with a blocking pocket (a sphere of radius 10 A at the cell centre, about a quarter of the unit
+// cell) attached before construction, so that the initial configuration respects it. The temperature is very high so
+// that the swap/shuffle/insertion sub-moves of the serial Gibbs CFCMC moves are accepted frequently.
+std::vector<System> makePocketGibbsSystems(const ForceField &forceField, const MCMoveProbabilities &probabilities,
+                                           bool conventional)
+{
+  const Framework framework = Framework::makeFAU(forceField);
+  Component methane = Component::makeMethane(forceField, 0);
+  methane.mc_moves_probabilities = probabilities;
+  methane.blockingPockets.push_back(double4(0.5, 0.5, 0.5, 10.0));
+  if (conventional) methane.lambdaGibbs.computeDUdlambda = true;
+  else enableThermodynamicIntegration(methane);
+
+  return {System(forceField, std::nullopt, false, 1.0e5, 1e4, 1.0, framework, {methane}, {}, {10}, 5),
+          System(forceField, std::nullopt, false, 1.0e5, 1e4, 1.0, framework, {methane}, {}, {10}, 5)};
+}
+
+// A few translation moves (which respect the pockets) so that a fractional molecule parked next to a pocket does not
+// block the lambda path of the Gibbs moves for the rest of the run.
+void translateRandomMolecules(RandomNumber &random, System &system, std::size_t count)
+{
+  for (std::size_t i = 0; i < count; ++i)
+  {
+    const std::size_t selectedMolecule = system.randomMoleculeOfComponent(random, 0);
+    const std::optional<RunningEnergy> delta = MC_Moves::translationMove(random, system, 0, selectedMolecule);
+    if (delta.has_value()) system.runningEnergies += delta.value();
+  }
 }
 
 }  // namespace
@@ -983,6 +1030,92 @@ TEST(MC_GIBBS_DRIFT, cbmc_mixed_lambda_and_delete_boundary)
               (systems[0].computeTotalEnergies() - beforeA).potentialEnergy(), 1e-6);
   EXPECT_NEAR(delta->second.potentialEnergy(),
               (systems[1].computeTotalEnergies() - beforeB).potentialEnergy(), 1e-6);
+  expectNoEnergyDrift(systems[0]);
+  expectNoEnergyDrift(systems[1]);
+}
+
+// The non-CBMC Gibbs CFCMC sub-moves place a molecule at a random position (the fractional shuffle into the other
+// box) or raise the scaling of a molecule in place (promotion of the fractional molecule to an integer one, lambda
+// change). Like the single-box SwapCFCMC move, they must refuse a trial state inside a blocking pocket: the pocket is
+// not part of the energy, so nothing else keeps a randomly placed molecule out of it.
+TEST(MC_GIBBS_DRIFT, gibbs_swap_cfcmc_respects_blocked_pockets)
+{
+  const ForceField forceField = makeZeoliteAlkaneForceField();
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::GibbsSwapCFCMC, 1.0);
+  std::vector<System> systems = makePocketGibbsSystems(forceField, probabilities, false);
+  setupSerialGibbsCFCMC(systems);
+  ASSERT_FALSE(anyMoleculeInsideBlockedPockets(systems[0]));
+  ASSERT_FALSE(anyMoleculeInsideBlockedPockets(systems[1]));
+
+  RandomNumber random(42);
+  std::size_t fractionalMoleculeSystem{0};
+  for (std::size_t attempt = 0; attempt < 3000; ++attempt)
+  {
+    const std::size_t a = systems[0].containsTheFractionalMolecule ? 0 : 1;
+    const std::size_t b = 1 - a;
+    const auto delta = MC_Moves::GibbsSwapMove_CFCMC(random, systems[a], systems[b], 0, fractionalMoleculeSystem);
+    if (delta.has_value())
+    {
+      systems[a].runningEnergies += delta->first;
+      systems[b].runningEnergies += delta->second;
+    }
+    translateRandomMolecules(random, systems[0], 2);
+    translateRandomMolecules(random, systems[1], 2);
+    ASSERT_FALSE(anyMoleculeInsideBlockedPockets(systems[0])) << "after attempt " << attempt;
+    ASSERT_FALSE(anyMoleculeInsideBlockedPockets(systems[1])) << "after attempt " << attempt;
+  }
+
+  // the swap (x), shuffle (y) and lambda (z) sub-moves all got accepted (statistics live on the box holding the
+  // fractional molecule at the time of the move)
+  double3 accepted{};
+  for (const System &s : systems)
+  {
+    accepted += std::get<MoveStatistics<double3>>(s.components[0].mc_moves_statistics[Move::Types::GibbsSwapCFCMC])
+                    .totalAccepted;
+  }
+  EXPECT_GT(accepted.x, 0.0);
+  EXPECT_GT(accepted.y, 0.0);
+  EXPECT_GT(accepted.z, 0.0);
+  EXPECT_NE(systems[0].containsTheFractionalMolecule, systems[1].containsTheFractionalMolecule);
+  expectNoEnergyDrift(systems[0]);
+  expectNoEnergyDrift(systems[1]);
+}
+
+// Same for the conventional (non-CBMC) Gibbs CFCMC move: a boundary crossing inserts a molecule at a random position
+// in one box and rescales the fractional molecule of the other in place.
+TEST(MC_GIBBS_DRIFT, gibbs_conventional_cfcmc_respects_blocked_pockets)
+{
+  const ForceField forceField = makeZeoliteAlkaneForceField();
+  std::vector<System> systems =
+      makePocketGibbsSystems(forceField, makeGibbsConventionalCFCMCProbabilities(), true);
+  setupSerialGibbsCFCMC(systems);
+  ASSERT_FALSE(anyMoleculeInsideBlockedPockets(systems[0]));
+  ASSERT_FALSE(anyMoleculeInsideBlockedPockets(systems[1]));
+
+  RandomNumber random(42);
+  std::size_t minimumIntegerMolecules{systems[0].numberOfIntegerMoleculesPerComponent[0]};
+  std::size_t maximumIntegerMolecules{minimumIntegerMolecules};
+  for (std::size_t attempt = 0; attempt < 3000; ++attempt)
+  {
+    const std::size_t a = attempt % 2;
+    const std::size_t b = 1 - a;
+    const auto delta = MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(random, systems[a], systems[b], 0, false);
+    if (delta.has_value())
+    {
+      systems[a].runningEnergies += delta->first;
+      systems[b].runningEnergies += delta->second;
+    }
+    translateRandomMolecules(random, systems[0], 2);
+    translateRandomMolecules(random, systems[1], 2);
+    minimumIntegerMolecules = std::min(minimumIntegerMolecules, systems[0].numberOfIntegerMoleculesPerComponent[0]);
+    maximumIntegerMolecules = std::max(maximumIntegerMolecules, systems[0].numberOfIntegerMoleculesPerComponent[0]);
+    ASSERT_FALSE(anyMoleculeInsideBlockedPockets(systems[0])) << "after attempt " << attempt;
+    ASSERT_FALSE(anyMoleculeInsideBlockedPockets(systems[1])) << "after attempt " << attempt;
+  }
+
+  // molecules were actually exchanged between the boxes
+  EXPECT_LT(minimumIntegerMolecules, maximumIntegerMolecules);
   expectNoEnergyDrift(systems[0]);
   expectNoEnergyDrift(systems[1]);
 }

@@ -265,6 +265,12 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
             atom.setScalingToInteger();
           }
         }
+        // Random placement: a position inside a blocked pocket rejects the whole group insertion (the CBMC path
+        // performs this check inside the trial-position selection).
+        if (system.insideBlockedPockets(component, atoms))
+        {
+          return std::nullopt;
+        }
         // Unit Rosenbluth weight (log 0), no stored 'r'.
         growData.emplace(molecule, std::move(atoms), RunningEnergy{}, 0.0);
       }
