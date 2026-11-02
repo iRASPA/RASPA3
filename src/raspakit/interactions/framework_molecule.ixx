@@ -210,14 +210,14 @@ RunningEnergy computeFrameworkMoleculeGradient(
  * \param moleculeAtoms A span of atoms representing the molecule; their gradients will be updated.
  * \param polarizationGather Optional accumulator: when non-null the real-space Coulomb pair loop additionally
  *        gathers the polarization field of the framework charges and its strain response (see
- *        PolarizationFieldStrain). Molecule atoms whose energy comes from an interpolation grid still gather
- *        the field through an explicit framework walk, since the field is never grid-interpolated.
+ *        PolarizationFieldStrain).
+ * \note Always walks the framework atoms and never reads the interpolation grids: the virial needs the pair
+ *       displacements, which a grid does not hold. The energies are therefore the exact pair energies.
  * \return A pair consisting of EnergyStatus containing the interaction energies, and a double3x3 tensor representing
  * the strain derivative.
  */
 [[nodiscard]] std::pair<EnergyStatus, double3x3> computeFrameworkMoleculeEnergyStrainDerivative(
     const ForceField &forceField, const std::optional<Framework> &framework,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::vector<Component> &components, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
     const PolarizationFieldStrain *polarizationGather = nullptr) noexcept;

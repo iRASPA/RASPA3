@@ -1146,7 +1146,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   }
 
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
-      forceField, framework, interpolationGrids, components, simulationBox, spanOfFrameworkAtoms(),
+      forceField, framework, components, simulationBox, spanOfFrameworkAtoms(),
       spanOfMoleculeAtoms(), pressureDynamics, frameworkGather);
 
   pressureInfo.first.translationalKineticEnergy = runningEnergies.translationalKineticEnergy;

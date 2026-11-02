@@ -5,6 +5,7 @@ import std;
 import int3;
 import uint3;
 import double3;
+import double3x3;
 import units;
 import interpolation_energy_grid;
 import atom;
@@ -16,6 +17,7 @@ import component;
 import system;
 import simulationbox;
 import running_energy;
+import energy_status;
 import interactions_intermolecular;
 import interactions_framework_molecule;
 import interactions_ewald;
@@ -187,6 +189,51 @@ TEST(static_energy, tail_correction_aggregated_difference_matches_per_atom_refer
   {
     EXPECT_NEAR(aggregated.dudlambdaVDW[g], reference.dudlambdaVDW[g], 1e-10);
   }
+}
+
+// The virial needs the pair displacements, which the framework grids do not hold, so the pressure of a system with
+// grids must equal the pressure of the same system without them, and report the same tail correction.
+TEST(static_energy, molecular_pressure_is_independent_of_the_framework_grids)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, false, true, true);
+  Component co2 = Component::makeCO2(forceField, 0, true);
+  forceField.settings.gridPseudoAtomIndices = {static_cast<std::size_t>(co2.atoms[0].type),
+                                               static_cast<std::size_t>(co2.atoms[1].type)};
+  forceField.settings.numberOfVDWGridPoints = uint3(32, 32, 32);
+  forceField.settings.numberOfCoulombGridPoints = uint3(32, 32, 32);
+  forceField.settings.numberOfGridTestPoints = 10;
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
+
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2}, {}, {1}, 5);
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  atomData[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
+  atomData[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
+  atomData[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
+  std::ostringstream log;
+  system.createFrameworkInterpolationGrids(log);
+  system.rebuildConfigurationDerivedState();
+  ASSERT_TRUE(system.interpolationGrids[static_cast<std::size_t>(co2.atoms[0].type)].has_value());
+
+  const std::pair<EnergyStatus, double3x3> withGrids = system.computeMolecularPressure();
+
+  system.interpolationGrids.assign(system.interpolationGrids.size(), std::nullopt);
+  const std::pair<EnergyStatus, double3x3> withoutGrids = system.computeMolecularPressure();
+
+  const double3x3& a = withGrids.second;
+  const double3x3& b = withoutGrids.second;
+  EXPECT_NEAR(a.ax, b.ax, 1e-8);
+  EXPECT_NEAR(a.ay, b.ay, 1e-8);
+  EXPECT_NEAR(a.az, b.az, 1e-8);
+  EXPECT_NEAR(a.bx, b.bx, 1e-8);
+  EXPECT_NEAR(a.by, b.by, 1e-8);
+  EXPECT_NEAR(a.bz, b.bz, 1e-8);
+  EXPECT_NEAR(a.cx, b.cx, 1e-8);
+  EXPECT_NEAR(a.cy, b.cy, 1e-8);
+  EXPECT_NEAR(a.cz, b.cz, 1e-8);
+
+  const double tail = withoutGrids.first.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy;
+  EXPECT_NE(tail, 0.0);
+  EXPECT_NEAR(withGrids.first.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy, tail, 1e-8);
 }
 
 // The framework grids tabulate the unscaled (lambda = 1) energies. A fractional molecule that is switched off

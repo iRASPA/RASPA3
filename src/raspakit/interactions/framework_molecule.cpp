@@ -750,7 +750,6 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
 
 [[nodiscard]] std::pair<EnergyStatus, double3x3> Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
     const ForceField& forceField, const std::optional<Framework>& framework,
-    const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::vector<Component>& components, const SimulationBox& simulationBox, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
     const PolarizationFieldStrain* polarizationGather) noexcept
@@ -766,7 +765,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
   if (moleculeAtoms.empty()) return std::make_pair(energy, strainDerivativeTensor);
 
   // Framework atoms are fixed, so their gradient is never consumed and is not accumulated.
-  prefetchGridCells(forceField, interpolationGrids, moleculeAtoms, 0, gridPrefetchDistance);
+  // The framework grids are deliberately not used: the virial is a sum over g_AB x PBC(r_A - r_B), and a grid
+  // only holds the summed gradient on atom A, from which the pair displacements cannot be recovered.
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
     std::size_t indexA = static_cast<std::size_t>(it1 - moleculeAtoms.begin());
@@ -781,113 +781,66 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     const double3 sigmaA =
         gatherFieldForAtom ? polarizationGather->centerOfMassOffset[indexA] : double3(0.0, 0.0, 0.0);
 
-    if (interpolationGrids[typeA].has_value() && it1->isFullyCoupled() &&
-        forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
+    for (std::span<const Atom>::iterator it2 = frameworkAtoms.begin(); it2 != frameworkAtoms.end(); ++it2)
     {
-      prefetchGridCell(forceField, interpolationGrids, moleculeAtoms, indexA + gridPrefetchDistance);
-      if (useCharge)
-      {
-        const auto [vdw, realEwald] =
-            interpolationGrids[typeA]->interpolateGradient(interpolationGrids.back().value(), posA);
-        energy.frameworkComponentEnergy(0, compA).VanDerWaals += EnergyDuDlambda(vdw.first, 0.0);
-        energy.frameworkComponentEnergy(0, compA).CoulombicReal += EnergyDuDlambda(chargeA * realEwald.first, 0.0);
-        const double3 f = vdw.second + chargeA * realEwald.second;
+      std::size_t typeB = static_cast<std::size_t>(it2->type);
+      double scalingVDWB = it2->scalingVDW;
 
-        moleculeDynamics[indexA].gradient += f;
-        accumulateStrainDerivative(strainDerivativeTensor, f, posA);
+      EnergyDuDlambda temp(
+          preFactor * scalingVDWA * scalingVDWB * forceField(typeB, typeA).tailCorrectionEnergy, 0.0);
+      energy.frameworkComponentEnergy(0, compA).VanDerWaalsTailCorrection += 2.0 * temp;
+
+      const auto accumulateGradientAndStrain = [&](const double3& g, const double3& dr)
+      {
+        moleculeDynamics[indexA].gradient += g;
+        accumulateStrainDerivative(strainDerivativeTensor, g, dr);
+      };
+
+      if (!gatherFieldForAtom)
+      {
+        evaluatePair<1>(
+            forceField, simulationBox, *it1, *it2, cutOffFrameworkVDWSquared, cutOffChargeSquared, useCharge,
+            [&](const Potentials::PairDerivatives<1>& factors, const double3& dr)
+            {
+              energy.frameworkComponentEnergy(0, compA).VanDerWaals += EnergyDuDlambda(factors.energy, 0.0);
+              accumulateGradientAndStrain(factors.firstDerivativeFactor * dr, dr);
+            },
+            [&](const Potentials::PairDerivatives<1>& factors, const double3& dr)
+            {
+              energy.frameworkComponentEnergy(0, compA).CoulombicReal += EnergyDuDlambda(factors.energy, 0.0);
+              accumulateGradientAndStrain(factors.firstDerivativeFactor * dr, dr);
+            });
       }
       else
       {
-        auto [energy_vdw, gradient_vdw] = interpolationGrids[typeA]->interpolateGradient(posA);
-        energy.frameworkComponentEnergy(0, compA).VanDerWaals += EnergyDuDlambda(energy_vdw, 0.0);
-        const double3 f = gradient_vdw;
+        // Fused polarization path: the same pair walk yields both the pair energy/virial and the
+        // polarization field with its strain response (scaled by the framework source charge only). The
+        // pair term is taken at order 1 so it is identical to the non-polarization branch above (the
+        // order-1 Ewald term is tabulated, the order-2 field factors are closed-form).
+        double3 dr = posA - it2->position;
+        dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+        const double rr = double3::dot(dr, dr);
 
-        moleculeDynamics[indexA].gradient += f;
-        accumulateStrainDerivative(strainDerivativeTensor, f, posA);
-      }
-
-      if (gatherFieldForAtom)
-      {
-        // The electric field is never grid-interpolated: walk the framework charges explicitly for the
-        // polarization field (matching computeTotalElectricField), even though the energy came from the grid.
-        for (const Atom& frameworkAtom : frameworkAtoms)
+        if (rr < cutOffFrameworkVDWSquared)
         {
-          double3 dr = posA - frameworkAtom.position;
-          dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-          const double rr = double3::dot(dr, dr);
-          if (rr >= cutOffChargeSquared) continue;
+          const Potentials::PairDerivatives<1> factors =
+              Potentials::potentialVDW<1>(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+          energy.frameworkComponentEnergy(0, compA).VanDerWaals += EnergyDuDlambda(factors.energy, 0.0);
+          accumulateGradientAndStrain(factors.firstDerivativeFactor * dr, dr);
+        }
+        if (rr < cutOffChargeSquared)
+        {
           const double r = std::sqrt(rr);
+          const Potentials::PairDerivatives<1> pairFactors = Potentials::potentialCoulomb<1>(
+              forceField, it1->scalingCoulomb, it2->scalingCoulomb, r, chargeA, it2->charge);
+          energy.frameworkComponentEnergy(0, compA).CoulombicReal += EnergyDuDlambda(pairFactors.energy, 0.0);
+          accumulateGradientAndStrain(pairFactors.firstDerivativeFactor * dr, dr);
+
           const Potentials::PairDerivatives<2> unitFactors =
               Potentials::potentialCoulomb<2>(forceField, 1.0, 1.0, r, 1.0, 1.0);
-          accumulatePolarizationFieldStrain(*polarizationGather, indexA,
-                                            frameworkAtom.scalingCoulomb * frameworkAtom.charge, dr, dr - sigmaA,
+          const double scaledChargeB = it2->scalingCoulomb * it2->charge;
+          accumulatePolarizationFieldStrain(*polarizationGather, indexA, scaledChargeB, dr, dr - sigmaA,
                                             unitFactors.firstDerivativeFactor, unitFactors.secondDerivativeFactor);
-        }
-      }
-    }
-    else
-    {
-      for (std::span<const Atom>::iterator it2 = frameworkAtoms.begin(); it2 != frameworkAtoms.end(); ++it2)
-      {
-        std::size_t typeB = static_cast<std::size_t>(it2->type);
-        double scalingVDWB = it2->scalingVDW;
-
-        EnergyDuDlambda temp(
-            preFactor * scalingVDWA * scalingVDWB * forceField(typeB, typeA).tailCorrectionEnergy, 0.0);
-        energy.frameworkComponentEnergy(0, compA).VanDerWaalsTailCorrection += 2.0 * temp;
-
-        const auto accumulateGradientAndStrain = [&](const double3& g, const double3& dr)
-        {
-          moleculeDynamics[indexA].gradient += g;
-          accumulateStrainDerivative(strainDerivativeTensor, g, dr);
-        };
-
-        if (!gatherFieldForAtom)
-        {
-          evaluatePair<1>(
-              forceField, simulationBox, *it1, *it2, cutOffFrameworkVDWSquared, cutOffChargeSquared, useCharge,
-              [&](const Potentials::PairDerivatives<1>& factors, const double3& dr)
-              {
-                energy.frameworkComponentEnergy(0, compA).VanDerWaals += EnergyDuDlambda(factors.energy, 0.0);
-                accumulateGradientAndStrain(factors.firstDerivativeFactor * dr, dr);
-              },
-              [&](const Potentials::PairDerivatives<1>& factors, const double3& dr)
-              {
-                energy.frameworkComponentEnergy(0, compA).CoulombicReal += EnergyDuDlambda(factors.energy, 0.0);
-                accumulateGradientAndStrain(factors.firstDerivativeFactor * dr, dr);
-              });
-        }
-        else
-        {
-          // Fused polarization path: the same pair walk yields both the pair energy/virial and the
-          // polarization field with its strain response (scaled by the framework source charge only). The
-          // pair term is taken at order 1 so it is identical to the non-polarization branch above (the
-          // order-1 Ewald term is tabulated, the order-2 field factors are closed-form).
-          double3 dr = posA - it2->position;
-          dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-          const double rr = double3::dot(dr, dr);
-
-          if (rr < cutOffFrameworkVDWSquared)
-          {
-            const Potentials::PairDerivatives<1> factors =
-                Potentials::potentialVDW<1>(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
-            energy.frameworkComponentEnergy(0, compA).VanDerWaals += EnergyDuDlambda(factors.energy, 0.0);
-            accumulateGradientAndStrain(factors.firstDerivativeFactor * dr, dr);
-          }
-          if (rr < cutOffChargeSquared)
-          {
-            const double r = std::sqrt(rr);
-            const Potentials::PairDerivatives<1> pairFactors = Potentials::potentialCoulomb<1>(
-                forceField, it1->scalingCoulomb, it2->scalingCoulomb, r, chargeA, it2->charge);
-            energy.frameworkComponentEnergy(0, compA).CoulombicReal += EnergyDuDlambda(pairFactors.energy, 0.0);
-            accumulateGradientAndStrain(pairFactors.firstDerivativeFactor * dr, dr);
-
-            const Potentials::PairDerivatives<2> unitFactors =
-                Potentials::potentialCoulomb<2>(forceField, 1.0, 1.0, r, 1.0, 1.0);
-            const double scaledChargeB = it2->scalingCoulomb * it2->charge;
-            accumulatePolarizationFieldStrain(*polarizationGather, indexA, scaledChargeB, dr, dr - sigmaA,
-                                              unitFactors.firstDerivativeFactor, unitFactors.secondDerivativeFactor);
-          }
         }
       }
     }
