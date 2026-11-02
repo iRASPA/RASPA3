@@ -1059,7 +1059,7 @@ std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionC
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
     double3 posB = it1->position;
-    double scalingB = it1->scalingVDW;
+    double scalingB = it1->scalingCoulomb;
     double chargeB = it1->charge;
 
     double3 dr = posA - posB;

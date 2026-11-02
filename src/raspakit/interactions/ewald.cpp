@@ -380,6 +380,82 @@ void addChargeExclusionStrainDerivative(EnergyStatus& energy, double3x3& strainD
                         strainDerivative.cz += f.z * dr.z;
                       });
 }
+
+// Excluded Coulomb pairs of a flexible framework: the bonded 1-2, 1-3 and 1-4 pairs of the connectivity table
+// that are not evaluated as unscaled intramolecular Coulomb pairs of the framework (those pairs carry their own
+// Ewald/shifted-potential completion in the framework intramolecular routines).
+std::set<std::array<std::size_t, 2>> frameworkExcludedChargePairs(const Framework& framework)
+{
+  std::set<std::array<std::size_t, 2>> excludedPairs;
+  std::map<std::array<std::size_t, 2>, double> coulombScaling;
+  for (const CoulombPotential& potential : framework.intraMolecularPotentials.coulombs)
+  {
+    coulombScaling[{std::min(potential.identifiers[0], potential.identifiers[1]),
+                    std::max(potential.identifiers[0], potential.identifiers[1])}] = potential.scaling;
+  }
+  const auto excludeIfAbsentOrScaled = [&](const std::array<std::size_t, 2>& pair)
+  {
+    const auto scaling = coulombScaling.find(pair);
+    if (scaling == coulombScaling.end() || scaling->second != 1.0) excludedPairs.insert(pair);
+  };
+  if (!framework.connectivityTable.table.empty())
+  {
+    for (const std::array<std::size_t, 2>& bond : framework.connectivityTable.findAllBonds())
+    {
+      excludeIfAbsentOrScaled({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
+    }
+    for (const std::array<std::size_t, 3>& bend : framework.connectivityTable.findAllBends())
+    {
+      excludeIfAbsentOrScaled({std::min(bend[0], bend[2]), std::max(bend[0], bend[2])});
+    }
+    for (const std::array<std::size_t, 4>& torsion : framework.connectivityTable.findAllTorsions())
+    {
+      excludeIfAbsentOrScaled({std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])});
+    }
+  }
+  return excludedPairs;
+}
+
+// Exclusion corrections of the excluded pairs of a flexible framework (Ewald: -q_i q_j erf(alpha r)/r; finite-cutoff
+// methods: q_i q_j (V(r) - 1/r) inside the cutoff) for the strain-derivative routine: the framework-atom gradients
+// and the strain derivative. The term is distance dependent and belongs to the pressure of a flexible framework
+// just like the molecular exclusions. Framework-framework energies have no entry in EnergyStatus, so only the
+// gradient and the strain derivative are accumulated.
+void addFrameworkChargeExclusionStrainDerivative(double3x3& strainDerivative, const ForceField& forceField,
+                                                 const SimulationBox& simulationBox, const Framework& framework,
+                                                 std::span<const Atom> frameworkAtoms,
+                                                 std::span<AtomDynamics> frameworkDynamics)
+{
+  if (!forceField.useCharge) return;
+  if (!forceField.usesEwaldFourier() && !forceField.usesRealSpaceChargeCorrections()) return;
+  for (const std::array<std::size_t, 2>& pair : frameworkExcludedChargePairs(framework))
+  {
+    const std::size_t i = pair[0];
+    const std::size_t j = pair[1];
+    const double3 dr =
+        simulationBox.applyPeriodicBoundaryConditions(frameworkAtoms[i].position - frameworkAtoms[j].position);
+    const ExclusionPairTerm term =
+        chargeExclusionPairTerm(forceField, frameworkAtoms[i], frameworkAtoms[j], double3::dot(dr, dr), 1.0);
+    if (!term.active) continue;
+
+    const double3 f = term.firstDerivativeFactor * dr;
+    if (!frameworkDynamics.empty())
+    {
+      frameworkDynamics[i].gradient += f;
+      frameworkDynamics[j].gradient -= f;
+    }
+
+    strainDerivative.ax += f.x * dr.x;
+    strainDerivative.bx += f.y * dr.x;
+    strainDerivative.cx += f.z * dr.x;
+    strainDerivative.ay += f.x * dr.y;
+    strainDerivative.by += f.y * dr.y;
+    strainDerivative.cy += f.z * dr.y;
+    strainDerivative.az += f.x * dr.z;
+    strainDerivative.bz += f.y * dr.z;
+    strainDerivative.cz += f.z * dr.z;
+  }
+}
 }  // namespace
 
 void Interactions::addChargeSelfEnergy(RunningEnergy& energy, const ForceField& forceField, std::span<const Atom> atoms)
@@ -893,34 +969,7 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
         addRealSpaceSelfEnergy(energySum, forceField, frameworkAtoms);
 
         const double cutOffSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
-        std::set<std::array<std::size_t, 2>> excludedPairs;
-        std::map<std::array<std::size_t, 2>, double> coulombScaling;
-        for (const CoulombPotential& potential : framework->intraMolecularPotentials.coulombs)
-        {
-          coulombScaling[{std::min(potential.identifiers[0], potential.identifiers[1]),
-                          std::max(potential.identifiers[0], potential.identifiers[1])}] = potential.scaling;
-        }
-        const auto excludeIfAbsentOrScaled = [&](const std::array<std::size_t, 2>& pair)
-        {
-          const auto scaling = coulombScaling.find(pair);
-          if (scaling == coulombScaling.end() || scaling->second != 1.0) excludedPairs.insert(pair);
-        };
-        if (!framework->connectivityTable.table.empty())
-        {
-          for (const std::array<std::size_t, 2>& bond : framework->connectivityTable.findAllBonds())
-          {
-            excludeIfAbsentOrScaled({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
-          }
-          for (const std::array<std::size_t, 3>& bend : framework->connectivityTable.findAllBends())
-          {
-            excludeIfAbsentOrScaled({std::min(bend[0], bend[2]), std::max(bend[0], bend[2])});
-          }
-          for (const std::array<std::size_t, 4>& torsion : framework->connectivityTable.findAllTorsions())
-          {
-            excludeIfAbsentOrScaled({std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])});
-          }
-        }
-        for (const std::array<std::size_t, 2>& pair : excludedPairs)
+        for (const std::array<std::size_t, 2>& pair : frameworkExcludedChargePairs(*framework))
         {
           const std::size_t i = pair[0];
           const std::size_t j = pair[1];
@@ -1093,34 +1142,7 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
 
     if (liveFramework)
     {
-      std::set<std::array<std::size_t, 2>> excludedPairs;
-      std::map<std::array<std::size_t, 2>, double> coulombScaling;
-      for (const CoulombPotential& potential : framework->intraMolecularPotentials.coulombs)
-      {
-        coulombScaling[{std::min(potential.identifiers[0], potential.identifiers[1]),
-                        std::max(potential.identifiers[0], potential.identifiers[1])}] = potential.scaling;
-      }
-      const auto excludeIfAbsentOrScaled = [&](const std::array<std::size_t, 2>& pair)
-      {
-        const auto scaling = coulombScaling.find(pair);
-        if (scaling == coulombScaling.end() || scaling->second != 1.0) excludedPairs.insert(pair);
-      };
-      if (!framework->connectivityTable.table.empty())
-      {
-        for (const std::array<std::size_t, 2>& bond : framework->connectivityTable.findAllBonds())
-        {
-          excludeIfAbsentOrScaled({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
-        }
-        for (const std::array<std::size_t, 3>& bend : framework->connectivityTable.findAllBends())
-        {
-          excludeIfAbsentOrScaled({std::min(bend[0], bend[2]), std::max(bend[0], bend[2])});
-        }
-        for (const std::array<std::size_t, 4>& torsion : framework->connectivityTable.findAllTorsions())
-        {
-          excludeIfAbsentOrScaled({std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])});
-        }
-      }
-      for (const std::array<std::size_t, 2>& pair : excludedPairs)
+      for (const std::array<std::size_t, 2>& pair : frameworkExcludedChargePairs(*framework))
       {
         const std::size_t i = pair[0];
         const std::size_t j = pair[1];
@@ -1931,6 +1953,13 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
     addChargeExclusionStrainDerivative(energy, strainDerivative, forceField, simulationBox, components, atomData,
                                        atomDynamics);
 
+    // The bonded pairs of a flexible framework are excluded as well (see computeEwaldFourierGradient).
+    if (framework && framework->hasMobileAtoms() && frameworkDynamics.size() == frameworkAtoms.size())
+    {
+      addFrameworkChargeExclusionStrainDerivative(strainDerivative, forceField, simulationBox, *framework,
+                                                  frameworkAtoms, frameworkDynamics);
+    }
+
     return std::make_pair(energy, strainDerivative);
   }
 
@@ -2091,6 +2120,14 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
   // Subtract exclusion-energy (the excluded intramolecular pairs only), with gradient and strain derivative
   addChargeExclusionStrainDerivative(energy, strainDerivative, forceField, simulationBox, components, atomData,
                                      atomDynamics);
+
+  // A live framework is part of the Fourier sum above, so its bonded (excluded) pairs need the same correction;
+  // its self-energy is strain independent (and, like every framework-framework term, has no EnergyStatus entry).
+  if (liveFramework)
+  {
+    addFrameworkChargeExclusionStrainDerivative(strainDerivative, forceField, simulationBox, *framework, frameworkAtoms,
+                                                frameworkDynamics);
+  }
 
   // Handle net-charges: neutralizing background plus removal of the spurious interaction of the
   // net charge with its own periodic images; see Bogusz et al., J. Chem. Phys. 108, 7070 (1998).

@@ -420,6 +420,74 @@ TEST(BAROSTAT_VIRIAL, mobile_framework_ewald_enters_the_pressure_tensor)
   EXPECT_NEAR(virial.trace() / (3.0 * system.simulationBox.volume), fd, 5e-5 * std::abs(fd) + 1e-8);
 }
 
+namespace
+{
+// A bonded, charged, flexible framework chain (bonds 0-1 and 1-2, so the pairs 0-1, 1-2 and 0-2 are excluded
+// from the Coulomb pair sum): the exclusion correction of the excluded pairs is distance dependent and must
+// enter the pressure tensor. Checks the analytic virial against the finite difference of the total energy of
+// Integrators::updateGradients under the affine scaling of the framework atoms.
+void checkBondedFrameworkChargeStrain(ForceField forceField)
+{
+  const SimulationBox box(16.0, 16.0, 16.0);
+  // fractional unit-cell positions: a bent chain with 1.5 A bonds
+  std::vector<Atom> atoms{Atom({5.0 / 16.0, 0.5, 0.5}, 0.4, 1.0, 0, 0, 0, 0, true),
+                          Atom({6.5 / 16.0, 0.5, 0.5}, -0.8, 1.0, 0, 0, 0, 0, true),
+                          Atom({7.3 / 16.0, 9.3 / 16.0, 0.5}, 0.4, 1.0, 0, 0, 0, 0, true)};
+  Framework framework(forceField, "charged-chain", box, 1, atoms, atoms, int3(1, 1, 1));
+  framework.rigid = false;
+  framework.connectivityTable = ConnectivityTable(3);
+  framework.connectivityTable[0, 1] = framework.connectivityTable[1, 0] = true;
+  framework.connectivityTable[1, 2] = framework.connectivityTable[2, 1] = true;
+
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, framework, {}, {}, {}, 5);
+  system.forceField.initializeEwaldParameters(system.simulationBox);
+  system.precomputeTotalRigidEnergy();
+  ASSERT_TRUE(system.framework->hasMobileAtoms());
+
+  const auto energyAtScale = [&](double scale)
+  {
+    System copy = system;
+    copy.simulationBox = system.simulationBox.scaled(scale);
+    copy.forceField.initializeEwaldParameters(copy.simulationBox);
+    copy.precomputeTotalRigidEnergy();
+    for (Atom& atom : copy.spanOfFrameworkAtoms()) atom.position = scale * atom.position;
+    return Integrators::updateGradients(copy.moleculeData, copy.spanOfMoleculeAtoms(), copy.spanOfMoleculeDynamics(),
+                                        copy.spanOfFrameworkAtoms(), copy.forceField, copy.simulationBox,
+                                        copy.components, copy.eik_x, copy.eik_y, copy.eik_z, copy.eik_xy, copy.trialEik,
+                                        copy.fixedFrameworkStoredEik, copy.interpolationGrids,
+                                        copy.numberOfMoleculesPerComponent, copy.framework,
+                                        copy.spanOfFrameworkDynamics())
+        .potentialEnergy();
+  };
+  const double delta = 1e-5;
+  const double scalePlus = std::cbrt(1.0 + delta);
+  const double scaleMinus = std::cbrt(1.0 - delta);
+  const double fd = -(energyAtScale(scalePlus) - energyAtScale(scaleMinus)) /
+                    (system.simulationBox.scaled(scalePlus).volume - system.simulationBox.scaled(scaleMinus).volume);
+  ASSERT_GT(std::abs(fd), 1e-6) << "the excluded pairs do not strain the energy; the test configuration is wrong";
+
+  const double3x3 virial = system.computeMolecularPressure().second;
+  EXPECT_NEAR(virial.trace() / (3.0 * system.simulationBox.volume), fd, 5e-5 * std::abs(fd) + 1e-8);
+}
+}  // namespace
+
+TEST(BAROSTAT_VIRIAL, mobile_framework_ewald_exclusion_enters_the_pressure_tensor)
+{
+  ForceField forceField({{"C", true, 12.0, 0.4, 0.0, 6, true}}, {{0.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot,
+                        8.0, 8.0, 8.0, true, false, true);
+  checkBondedFrameworkChargeStrain(forceField);
+}
+
+TEST(BAROSTAT_VIRIAL, mobile_framework_wolf_exclusion_enters_the_pressure_tensor)
+{
+  ForceField forceField({{"C", true, 12.0, 0.4, 0.0, 6, true}}, {{0.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot,
+                        8.0, 8.0, 8.0, true, false, true);
+  forceField.chargeMethod = ForceField::ChargeMethod::Wolf;
+  forceField.omitEwaldFourier = true;
+  forceField.EwaldAlpha = 0.25;
+  checkBondedFrameworkChargeStrain(forceField);
+}
+
 TEST(BAROSTAT_VIRIAL, propagate_cell_refreshes_fixed_framework_ewald)
 {
   ForceField forceField({{"C", true, 12.0, 0.4, 0.0, 6, true}}, {{0.0, 3.0}},
