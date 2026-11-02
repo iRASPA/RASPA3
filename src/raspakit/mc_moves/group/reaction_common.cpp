@@ -100,6 +100,44 @@ void acceptChargedEwaldMove(System& system) noexcept
     System& system, std::span<const Atom> newAtoms, std::span<const Atom> oldAtoms, bool includeTailCorrections = true,
     bool includeEwaldCorrections = true, std::span<const Atom> excludeFromBackground = {}) noexcept;
 
+// Molecule-molecule tail-correction change of replacing 'oldAtoms' by 'newAtoms' against the background of the
+// present molecules not in 'excludedMoleculeIds': U(background + newAtoms) - U(background + oldAtoms), evaluated
+// from the scaled (scalingVDW) per-type composition (Brick-CFCMC-style aggregated accounting). Identical to the
+// pairwise computeInterMolecularTailEnergyDifference over the background, including the dU/dlambda of the
+// fractional molecules, but O(types^2) instead of O(N * M) and without copying the background.
+[[nodiscard]] static RunningEnergy computeAggregatedTailEnergyDifference(
+    const System& system, const std::unordered_set<std::size_t>& excludedMoleculeIds, std::span<const Atom> newAtoms,
+    std::span<const Atom> oldAtoms) noexcept
+{
+  const std::size_t numberOfPseudoAtomTypes = system.forceField.pseudoAtoms.size();
+  std::vector<double> effectiveTypeCounts(numberOfPseudoAtomTypes, 0.0);
+  std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> groupCounts;
+  for (std::vector<double>& counts : groupCounts)
+  {
+    counts.assign(numberOfPseudoAtomTypes, 0.0);
+  }
+
+  for (const Atom& atom : system.spanOfMoleculeAtoms())
+  {
+    if (excludedMoleculeIds.contains(static_cast<std::size_t>(atom.moleculeId)))
+    {
+      continue;
+    }
+    const std::size_t type = static_cast<std::size_t>(atom.type);
+    effectiveTypeCounts[type] += atom.scalingVDW;
+    if (atom.groupId != 0)
+    {
+      groupCounts[static_cast<std::size_t>(atom.groupId) - 1][type] += 1.0;
+    }
+  }
+
+  // the "old" state is the background plus the replaced molecules as passed in 'oldAtoms'
+  Interactions::updateEffectiveTypeCounts(effectiveTypeCounts, groupCounts, oldAtoms, std::span<const Atom>{});
+
+  return Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
+      system.forceField, system.simulationBox, effectiveTypeCounts, groupCounts, newAtoms, oldAtoms);
+}
+
 void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double lambda,
                                 std::uint8_t dUdlambdaGroupId) noexcept
 {
@@ -475,8 +513,7 @@ void setReactionFractionalScaling(System& system, Reaction& reaction, double lam
 
   if (includeTailCorrections)
   {
-    energyDifference += Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                                background, newAtoms, oldAtoms) +
+    energyDifference += computeAggregatedTailEnergyDifference(system, oldGlobalMoleculeIds, newAtoms, oldAtoms) +
                         Interactions::computeFrameworkMoleculeTailEnergyDifference(
                             system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), newAtoms, oldAtoms);
   }
@@ -494,18 +531,7 @@ void setReactionFractionalScaling(System& system, Reaction& reaction, double lam
     oldGlobalMoleculeIds.insert(static_cast<std::size_t>(atom.moleculeId));
   }
 
-  std::vector<Atom> background;
-  background.reserve(system.spanOfMoleculeAtoms().size());
-  for (const Atom& atom : system.spanOfMoleculeAtoms())
-  {
-    if (!oldGlobalMoleculeIds.contains(static_cast<std::size_t>(atom.moleculeId)))
-    {
-      background.push_back(atom);
-    }
-  }
-
-  return Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox, background,
-                                                                 newAtoms, oldAtoms) +
+  return computeAggregatedTailEnergyDifference(system, oldGlobalMoleculeIds, newAtoms, oldAtoms) +
          Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                     system.spanOfFrameworkAtoms(), newAtoms, oldAtoms);
 }

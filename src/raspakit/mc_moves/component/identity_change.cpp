@@ -128,13 +128,15 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
                   system.forceField, system.simulationBox, system.components, newMolecule, oldMoleculeAtoms, system.netCharge);
             });
 
+  // Tail correction from the scaled (scalingVDW) pseudo-atom composition of the box, so that coexisting
+  // fractional molecules count with their coupling and their dU/dlambda is carried along.
   RunningEnergy tailEnergyDifference =
       timed(system, oldComponentData, move, Move::Timing::Tail,
             [&]
             {
-              return Interactions::computeInterMolecularTailEnergyDifferenceAddRemove(
-                         system.forceField, system.simulationBox, system.totalNumberOfPseudoAtoms, newComponentData,
-                         oldComponentData) +
+              return Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
+                         system.forceField, system.simulationBox, system.effectiveNumberOfPseudoAtomsVDW,
+                         system.fractionalPseudoAtomCountsPerGroup, newMolecule, oldMoleculeAtoms) +
                      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                                 system.spanOfFrameworkAtoms(),
                                                                                 newMolecule, oldMoleculeAtoms);

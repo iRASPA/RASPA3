@@ -477,7 +477,9 @@ void System::computeNumberOfPseudoAtoms()
   }
   std::fill(totalNumberOfPseudoAtoms.begin(), totalNumberOfPseudoAtoms.end(), 0);
 
-  for (const Atom& atom : atomData)
+  // molecule atoms only: 'atomData' also holds the framework atoms once the frameworks are created (the
+  // per-component counts are indexed by the adsorbate component id, and the totals are adsorbate totals)
+  for (const Atom& atom : spanOfMoleculeAtoms())
   {
     std::size_t componentId = static_cast<std::size_t>(atom.componentId);
     std::size_t type = static_cast<std::size_t>(atom.type);

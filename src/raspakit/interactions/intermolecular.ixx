@@ -170,7 +170,9 @@ void updateEffectiveTypeCounts(std::vector<double>& effectiveTypeCounts,
 /**
  * \brief Tail correction difference when replacing one molecule type with another (identity change).
  *
- * Equivalent to RASPA2 TailMolecularEnergyDifferenceAddRemove.
+ * Equivalent to RASPA2 TailMolecularEnergyDifferenceAddRemove. Works from integer pseudo-atom counts, so it
+ * counts fractional molecules with weight one and yields no dU/dlambda: in boxes that may hold fractional
+ * molecules use computeInterMolecularTailEnergyDifferenceAggregated with the scaled effective type counts.
  */
 [[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifferenceAddRemove(
     const ForceField& forceField, const SimulationBox& simulationBox, std::span<const std::size_t> currentTypeCounts,
@@ -178,6 +180,9 @@ void updateEffectiveTypeCounts(std::vector<double>& effectiveTypeCounts,
 
 /**
  * \brief Tail correction difference for a reaction ensemble move (RASPA2 TailMolecularEnergyDifferenceRXMX).
+ *
+ * Integer-count variant with the same limitation as computeInterMolecularTailEnergyDifferenceAddRemove (no
+ * scaling, no dU/dlambda); the reaction moves use the aggregated scaled accounting instead.
  */
 [[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifferenceReaction(
     const ForceField& forceField, const SimulationBox& simulationBox, std::span<const std::size_t> currentTypeCounts,

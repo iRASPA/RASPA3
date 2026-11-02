@@ -307,6 +307,59 @@ TEST(MC_GIBBS_DRIFT, binary_mixture_propane_butane)
   }
 }
 
+// Gibbs identity change in boxes that also hold Gibbs-CFCMC fractional molecules, with tail corrections and
+// thermodynamic integration: the tail difference of the transformed molecule must use the scaled (scalingVDW)
+// composition of its box and carry the dU/dlambda of the fractional molecules it interacts with.
+TEST(MC_GIBBS_DRIFT, binary_mixture_propane_butane_cfcmc_identity_change_tail_corrections)
+{
+  const ForceField forceField = makeAlkaneForceField();
+
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  probabilities.setProbability(Move::Types::Rotation, 1.0);
+  probabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities.setProbability(Move::Types::GibbsSwapCBCFCMC, 1.0);
+  probabilities.setProbability(Move::Types::GibbsIdentityChangeCBMC, 1.0);
+
+  Component propane = makeAlkaneFromExample(forceField, 0, "propane", probabilities, true);
+  Component butane = makeAlkaneFromExample(forceField, 1, "butane", probabilities, true);
+  propane.gibbsIdentityChanges = {1};
+  butane.gibbsIdentityChanges = {0};
+
+  SimulationBox box = SimulationBox(30.0, 30.0, 30.0);
+
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+
+  System systemVapor =
+      System(forceField, box, false, 500.0, 1e4, 1.0, {}, {propane, butane}, {}, {30, 30}, 5, systemProbabilities);
+  System systemLiquid =
+      System(forceField, box, false, 500.0, 1e4, 1.0, {}, {propane, butane}, {}, {50, 50}, 5, systemProbabilities);
+
+  std::vector<System> systems{systemVapor, systemLiquid};
+  size_t numberOfProductionCycles{20};
+  size_t numberOfInitializationCycles{5};
+  size_t numberOfEquilibrationCycles{5};
+  size_t printEvery{1000};
+  size_t writeBinaryRestartEvery{10000};
+  size_t rescaleWangLandauEvery{5000};
+  size_t optimizeMCMovesEvery{5000};
+  size_t numberOfBlocks{5};
+  bool outputToFiles{false};
+
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
+                             numberOfBlocks, outputToFiles);
+
+  mc.run();
+
+  for (System &s : mc.systems)
+  {
+    EXPECT_EQ(s.numberOfFractionalMoleculesPerComponent[0], 1uz);
+    EXPECT_EQ(s.numberOfFractionalMoleculesPerComponent[1], 1uz);
+    expectNoEnergyDrift(s);
+  }
+}
+
 TEST(MC_GIBBS_DRIFT, gibbs_mixture_methane_ethane_co2)
 {
   const ForceField forceField = makeZeoliteAlkaneForceField();

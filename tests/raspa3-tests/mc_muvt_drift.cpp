@@ -746,6 +746,70 @@ TEST(MC_MUVT_DRIFT, identity_change_propane_butane_tail_corrections)
   }
 }
 
+// Identity change in a box that also holds CFCMC fractional molecules, with tail corrections and thermodynamic
+// integration: the tail difference of the transformed molecule must use the scaled (scalingVDW) composition of the
+// box and carry the dU/dlambda of the fractional molecules it interacts with. Counting every fractional atom with
+// weight one (and dropping dU/dlambda) drifts both 'tail' and 'dudlambdaVDW'.
+TEST(MC_MUVT_DRIFT, identity_change_cfcmc_propane_butane_tail_corrections)
+{
+  const ForceField forceField = makeAlkaneForceField();
+  SimulationBox box = SimulationBox(30.0, 30.0, 30.0);
+
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  probabilities.setProbability(Move::Types::Rotation, 1.0);
+  probabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  probabilities.setProbability(Move::Types::IdentityChangeCBMC, 1.0);
+  probabilities.setProbability(Move::Types::SwapCBCFCMC, 1.0);
+
+  Component propane = makeAlkaneFromExample(forceField, 0, "propane", probabilities);
+  Component butane = makeAlkaneFromExample(forceField, 1, "butane", probabilities);
+  propane.identityChanges = {1};
+  butane.identityChanges = {0};
+  propane.molFraction = 0.5;
+  butane.molFraction = 0.5;
+  propane.swappable = true;
+  butane.swappable = true;
+  propane.idealGasRosenbluthWeight = 1.0;
+  butane.idealGasRosenbluthWeight = 1.0;
+  propane.lambdaGC.computeDUdlambda = true;
+  butane.lambdaGC.computeDUdlambda = true;
+
+  System system = System(forceField, box, false, 500.0, 1e4, 1.0, {}, {propane, butane}, {}, {50, 50}, 5);
+
+  std::vector<System> systems{system};
+  size_t numberOfProductionCycles{20};
+  size_t numberOfInitializationCycles{5};
+  size_t numberOfEquilibrationCycles{5};
+  size_t printEvery{1000};
+  size_t writeBinaryRestartEvery{10000};
+  size_t rescaleWangLandauEvery{5000};
+  size_t optimizeMCMovesEvery{5000};
+  size_t numberOfBlocks{5};
+  bool outputToFiles{false};
+
+  MonteCarlo mc = MonteCarlo({numberOfProductionCycles, 0, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery}, systems, 42uz,
+                             numberOfBlocks, outputToFiles);
+
+  mc.run();
+
+  for (System &s : mc.systems)
+  {
+    EXPECT_EQ(s.numberOfFractionalMoleculesPerComponent[0], 1uz);
+    EXPECT_EQ(s.numberOfFractionalMoleculesPerComponent[1], 1uz);
+
+    RunningEnergy recomputedEnergies = s.computeTotalEnergies();
+    RunningEnergy drift = s.runningEnergies - recomputedEnergies;
+
+    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.moleculeMoleculeVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.intraVDW, 0.0, 1e-6);
+    EXPECT_NEAR(drift.tail, 0.0, 1e-6);
+    EXPECT_NEAR(drift.totalDudlambdaVDW(), 0.0, 1e-6);
+  }
+}
+
 TEST(MC_MUVT_DRIFT, pair_swap_conventional_na_cl)
 {
   ForceField forceField =
