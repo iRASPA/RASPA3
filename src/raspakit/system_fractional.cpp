@@ -470,14 +470,51 @@ void System::initializeGibbsConventionalFractionalMolecules() noexcept
 // 'fixedLambdaBin' at lambda = bin * delta. Depending on the pinned coordinate this is the single
 // GC fractional molecule, both molecules of an ion-pair, or all members of a CFCMC group. The bin
 // never changes during the simulation, so all dU/dlambda samples accumulate in this single bin.
-void System::initializeFixedLambdaFractionalMolecules() noexcept
+void System::initializeFixedLambdaFractionalMolecules()
 {
   auto rescale = [this](std::size_t componentId, std::size_t slotIndex, double lambda, std::uint8_t groupId)
   {
-    for (Atom& atom : spanOfMolecule(componentId, slotIndex))
+    std::span<Atom> molecule = spanOfMolecule(componentId, slotIndex);
+    for (Atom& atom : molecule)
     {
       atom.setScalingToFractional(lambda, groupId);
     }
+
+    // The slot was created switched off ('createInitialMolecules' grows every fractional molecule at scaling
+    // zero, where the pocket radius is zero), or pinned before at a smaller lambda: the molecule may lie inside a
+    // blocked pocket at the pinned lambda. Grow it anew at that scaling; the grow filters every trial position
+    // against the pockets with the radius of the scaling it is grown with, so the result needs no further check.
+    const Component& component = components[componentId];
+    if (!insideBlockedPockets(component, molecule))
+    {
+      return;
+    }
+
+    RandomNumber random(1200 + componentId + slotIndex);
+    const std::size_t globalMoleculeIndex = moleculeIndexOfComponent(componentId, slotIndex);
+    const CBMC::NewMoleculeIdentity identity{.componentId = componentId,
+                                             .moleculeId = globalMoleculeIndex,
+                                             .scaling = lambda,
+                                             .groupId = groupId,
+                                             .isFractional = true};
+
+    // The molecule is regrown under its own id, so it is excluded from its own background by the grow.
+    std::optional<CBMC::GrowResult> growData = std::nullopt;
+    do
+    {
+      growData = CBMC::growNewMolecule(
+          random, makeGrowContext(CBMC::CutOffMode::Full).withChainScheme(CBMC::ChainScheme::ConfigurationalBias),
+          component, identity);
+    } while (!growData.has_value() || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
+
+    std::copy(growData->atoms.begin(), growData->atoms.end(), molecule.begin());
+    for (Atom& atom : molecule)
+    {
+      atom.setScalingToFractional(lambda, groupId);
+    }
+    // the grown record carries the centre of mass and orientation; the atom range is refilled below
+    moleculeData[globalMoleculeIndex] = growData->molecule;
+    updateMoleculeAtomInformation();
   };
 
   for (std::size_t componentId = 0; componentId < components.size(); ++componentId)

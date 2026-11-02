@@ -156,12 +156,20 @@ std::optional<RunningEnergy> computeFlagSwapFractionalEnergyDifference(
     const std::size_t indexFractionalMolecule =
         system.indexOfFractionalMoleculeForMove(Move::Types::GibbsSwapCFCMC, componentId);
     std::span<const Atom> fractionalMolecule = system.spanOfMolecule(componentId, indexFractionalMolecule);
-    for (Atom atom : fractionalMolecule)
+    std::vector<Atom> trialMolecule(fractionalMolecule.begin(), fractionalMolecule.end());
+    for (Atom& atom : trialMolecule)
     {
       setTargetScaling(atom, system, componentId, selectedComponent, systemBecomesActive, selectedActiveLambda,
                        lambdaSourceSystem);
-      newAtomsCombined.push_back(atom);
     }
+
+    // A switched-off fractional molecule (pocket radius zero) may have drifted into a blocked pocket; it can not be
+    // switched on there.
+    if (system.insideBlockedPockets(system.components[componentId], trialMolecule))
+    {
+      return std::nullopt;
+    }
+    newAtomsCombined.insert(newAtomsCombined.end(), trialMolecule.begin(), trialMolecule.end());
   }
 
   return computeFractionalMoleculesEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, runningNetCharge,
@@ -187,11 +195,19 @@ std::optional<RunningEnergy> computeFlagSwapOtherComponentsEnergyDifference(
     oldAtomsCombined.insert(oldAtomsCombined.end(), moleculeAtoms.begin(), moleculeAtoms.end());
 
     std::span<const Atom> fractionalMolecule = system.spanOfMolecule(componentId, index);
-    for (Atom atom : fractionalMolecule)
+    std::vector<Atom> trialMolecule(fractionalMolecule.begin(), fractionalMolecule.end());
+    for (Atom& atom : trialMolecule)
     {
       setTargetScaling(atom, system, componentId, selectedComponent, systemBecomesActive, 0.0, lambdaSourceSystem);
-      newAtomsCombined.push_back(atom);
     }
+
+    // A switched-off fractional molecule (pocket radius zero) may have drifted into a blocked pocket; it can not be
+    // switched on there.
+    if (system.insideBlockedPockets(system.components[componentId], trialMolecule))
+    {
+      return std::nullopt;
+    }
+    newAtomsCombined.insert(newAtomsCombined.end(), trialMolecule.begin(), trialMolecule.end());
   }
 
   if (oldAtomsCombined.empty())

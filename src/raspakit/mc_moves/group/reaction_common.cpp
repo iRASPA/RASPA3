@@ -48,6 +48,23 @@ namespace MC_Moves::ReactionCommon
   return molecules;
 }
 
+// Atoms of molecules (possibly of several components) rescaled in place: true when any of them lies inside a
+// blocked pocket of its component at the new scaling. The pocket radius scales with the VDW scaling, so a
+// molecule outside every pocket at a small lambda can be inside one when its lambda grows or when it is promoted
+// to a whole molecule.
+[[nodiscard]] static bool anyInsideBlockedPockets(const System& system, std::span<const Atom> atoms) noexcept
+{
+  for (const Atom& atom : atoms)
+  {
+    const Component& component = system.components[static_cast<std::size_t>(atom.componentId)];
+    if (system.insideBlockedPockets(component, std::span<const Atom>(&atom, 1)))
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
 void acceptChargedEwaldMove(System& system) noexcept
 {
   if (!system.forceField.usesEwaldFourier())
@@ -814,6 +831,11 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
       std::vector<Atom> newAtoms = oldAtoms;
       applySerialFractionalScaling(newAtoms, lambdaNew, reaction.lambda.dUdlambdaGroupId);
 
+      if (anyInsideBlockedPockets(system, newAtoms))
+      {
+        return std::nullopt;
+      }
+
       const bool useChargedEwald = system.forceField.useCharge;
       scalingDifference = computeGroupSwapEnergyDifference(system, newAtoms, oldAtoms, true, !useChargedEwald);
       if (!scalingDifference)
@@ -1052,6 +1074,11 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   {
     atom.setScalingToInteger();
   }
+  // the promoted molecules take the full pocket radius (the demoted ones only shrink theirs)
+  if (anyInsideBlockedPockets(system, newIntegerAtoms))
+  {
+    return std::nullopt;
+  }
   std::vector<Atom> newFractionalAtoms = oldIntegerAtoms;
   applySerialFractionalScaling(newFractionalAtoms, reaction.currentLambda, reaction.lambda.dUdlambdaGroupId);
 
@@ -1240,6 +1267,11 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   for (Atom& atom : promotedNewAtoms)
   {
     atom.setScalingToInteger();
+  }
+  // the promoted molecules take the full pocket radius (the demoted ones only shrink theirs)
+  if (anyInsideBlockedPockets(system, promotedNewAtoms))
+  {
+    return std::nullopt;
   }
   // forward demotes whole reactant molecules into reactant fractionals, backward demotes products
   std::vector<Atom> demotedNewAtoms = demotedOldAtoms;
@@ -1570,6 +1602,12 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 
     if (!oldAtoms.empty())
     {
+      // reactants and products are coupled in opposite directions: one side always grows its pocket radius
+      if (anyInsideBlockedPockets(system, newAtoms))
+      {
+        return std::nullopt;
+      }
+
       scalingDifference = computeGroupSwapEnergyDifference(system, newAtoms, oldAtoms, true, true);
       if (!scalingDifference)
       {

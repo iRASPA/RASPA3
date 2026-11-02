@@ -765,7 +765,7 @@ export struct System
   [[nodiscard]] bool usesParallelReactionCFCMC() const noexcept;
   [[nodiscard]] bool usesGibbsConventionalCFCMC() const noexcept;
   void initializeGibbsConventionalFractionalMolecules() noexcept;
-  void initializeFixedLambdaFractionalMolecules() noexcept;
+  void initializeFixedLambdaFractionalMolecules();
   void initializeGibbsSwapFractionalMoleculeGroupIds() noexcept;
   [[nodiscard]] bool hasReactionFractionalMolecules() const noexcept;
   [[nodiscard]] PropertyLambdaProbabilityHistogram& activeReactionLambdaHistogram(Reaction& reaction) noexcept;

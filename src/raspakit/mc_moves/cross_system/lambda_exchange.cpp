@@ -198,6 +198,14 @@ static std::optional<LambdaRescaleTrial> rescaleToLambda(System &system, std::si
     // the rescaled molecules in place, and the cell-list moves that follow would otherwise see the old lambda.
     system.cellListAtomsMoved(molecule);
 
+    // The pocket radius scales with the VDW scaling: a molecule outside every pocket at its own lambda can be
+    // inside one at the larger lambda of the partner replica.
+    if (system.insideBlockedPockets(system.components[moleculeIds[i].first], molecule))
+    {
+      restoreLambdaRescale(system, trial);
+      return std::nullopt;
+    }
+
     std::optional<RunningEnergy> nonEwaldDifference = computeNonEwaldEnergyDifference(system, molecule, oldMolecule);
     if (!nonEwaldDifference.has_value())
     {

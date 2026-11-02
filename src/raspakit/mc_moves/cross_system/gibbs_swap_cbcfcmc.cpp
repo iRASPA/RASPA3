@@ -705,6 +705,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                      return a;
                    });
 
+    // The pocket radius scales with the VDW scaling: a molecule that is outside every pocket at the old lambda can
+    // be inside one at a larger lambda (and at lambda = 0 it is never inside any).
+    if (systemA.insideBlockedPockets(componentA, trialPositions)) return std::nullopt;
+
     // Snapshot effective tail-correction counts; threaded through the sub-step.
     std::vector<double> tailEffA = systemA.effectiveNumberOfPseudoAtomsVDW;
     std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupA =
