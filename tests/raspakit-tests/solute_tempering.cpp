@@ -491,6 +491,36 @@ TEST(solute_tempering, replicas_with_a_separate_1_4_table_remain_compatible)
   EXPECT_NEAR(logR.value(), 0.0, 1e-8);
 }
 
+// A pinned lambda (fixed-lambda thermodynamic integration) belongs to the replica's Hamiltonian while the
+// fractional atoms' scaling factors travel with the configuration: replicas pinned at different lambdas are
+// not exchangeable by ParallelTemperingSwap (LambdaExchange is the move for those); equal pins are.
+TEST(solute_tempering, parallel_tempering_requires_equal_pinned_lambda_bins)
+{
+  auto makePinned = [](std::size_t fixedBin)
+  {
+    ForceField forceField = makeForceField();
+    Component co2 = Component::makeCO2(forceField, 0, true);
+    co2.fixedLambdaBin = fixedBin;
+    co2.fixedLambdaCoordinate = Component::FixedLambdaCoordinate::GC;
+    System system = System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {co2}, {}, {4}, 5);
+    system.runningEnergies = system.computeTotalEnergies();
+    return system;
+  };
+
+  System systemA = makePinned(3);
+  System systemB = makePinned(15);
+  ASSERT_EQ(systemA.numberOfGCFractionalMoleculesPerComponent_CFCMC[0], 1uz);
+  ASSERT_NE(systemA.components[0].lambdaGC.currentBin, systemB.components[0].lambdaGC.currentBin);
+  EXPECT_FALSE(MC_Moves::ParallelTemperingLogAcceptance(systemA, systemB).has_value());
+  RandomNumber random(3);
+  EXPECT_FALSE(MC_Moves::ParallelTemperingSwap(random, systemA, systemB).has_value());
+  EXPECT_EQ(systemA.components[0].fixedLambdaBin, std::optional<std::size_t>{3});
+  EXPECT_EQ(systemA.components[0].lambdaGC.currentBin, 3uz);
+
+  System systemC = makePinned(3);
+  EXPECT_TRUE(MC_Moves::ParallelTemperingLogAcceptance(systemA, systemC).has_value());
+}
+
 // different configurations: log R = -beta [ (E_A(X_B) - E_B(X_B)) + (E_B(X_A) - E_A(X_A)) ] at equal T,
 // with E_A(X_B) obtained by brute force (rescaling a copy of B back to A's Hamiltonian)
 TEST(solute_tempering, log_acceptance_matches_brute_force_hamiltonian_switch)

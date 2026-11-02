@@ -34,6 +34,8 @@ import mc_moves_move_types;
 import mc_moves_cputime;
 import integrators_compute;
 import integrators_update;
+import thermobarostat;
+import elastic_constants;
 
 namespace
 {
@@ -97,6 +99,15 @@ bool matchingLambdaGrids(const System& systemA, const System& systemB)
     const Component& componentB = systemB.components[componentId];
     if (!componentA.hasFractionalMolecule && !componentB.hasFractionalMolecule) continue;
     if (componentA.hasFractionalMolecule != componentB.hasFractionalMolecule) return false;
+    // A pinned lambda (fixed-lambda thermodynamic integration) is a Hamiltonian parameter of the replica,
+    // not configuration state: the fractional atoms carry their scaling factors with the configuration,
+    // so an exchange between replicas pinned at different lambdas would leave replica A holding atoms
+    // scaled at lambda_B. Replicas at different pinned lambdas exchange through 'LambdaExchange'.
+    if (componentA.fixedLambdaBin != componentB.fixedLambdaBin) return false;
+    if (componentA.fixedLambdaBin.has_value() && componentA.fixedLambdaCoordinate != componentB.fixedLambdaCoordinate)
+    {
+      return false;
+    }
     if (componentA.lambdaGC.numberOfSamplePoints != componentB.lambdaGC.numberOfSamplePoints) return false;
     if (componentA.lambdaGC.biasFactor.size() != componentB.lambdaGC.biasFactor.size()) return false;
     if (componentA.lambdaGC.currentBin >= componentA.lambdaGC.biasFactor.size()) return false;
@@ -405,6 +416,11 @@ void rebuildMolecularDynamicsState(System& system, double velocityScaling)
   }
   if (system.thermobarostat.has_value())
   {
+    // the box travelled with the configuration (no framework): the barostat's volume coordinate and the
+    // molecule-based degrees of freedom it couples to are re-derived from the post-swap state, as the
+    // molecular-dynamics driver does when it (re)starts from a configuration
+    system.thermobarostat->refreshDegreesOfFreedom(
+        barostatTranslationalDegreesOfFreedom(system, system.thermobarostat->coupling), system.simulationBox.volume);
     system.runningEnergies.thermobarostatEnergy = system.thermobarostat->energy(system.simulationBox.volume);
   }
 
