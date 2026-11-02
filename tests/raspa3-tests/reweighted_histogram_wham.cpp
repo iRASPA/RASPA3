@@ -9,6 +9,8 @@ import averages;
 import component;
 import forcefield;
 import isotherm_bet;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 import property_loading;
 import randomnumbers;
 import reweighted_histogram;
@@ -175,6 +177,59 @@ TEST(REWEIGHTED_HISTOGRAM_WHAM, weight_ignores_lambda_bias_without_fractional_mo
   EXPECT_TRUE(system.lambdaWangLandauIsActive(0));
   system.components[0].lambdaGC.biasFactor[0] = std::log(2.0);
   EXPECT_NEAR(system.weight(), 0.5, 1.0e-12);
+}
+
+TEST(REWEIGHTED_HISTOGRAM_WHAM, weight_includes_pair_and_group_swap_lambda_bias)
+{
+  const ForceField forceField({{"A", false, 1.0, 1.0, 0.0, 1, false}, {"B", false, 1.0, -1.0, 0.0, 2, false}},
+                              {{0.0, 1.0}, {0.0, 1.0}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0,
+                              true, false, false);
+  const Component a(forceField, "A", 1.0, 1.0, 0.0, {Atom({0.0, 0.0, 0.0}, 1.0, 1.0, 0, 0, 0, false, false)}, {},
+                    {}, 5, 21);
+  const Component b(forceField, "B", 1.0, 1.0, 0.0, {Atom({0.0, 0.0, 0.0}, -1.0, 1.0, 0, 1, 1, false, false)}, {},
+                    {}, 5, 21);
+  System system(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {a, b}, {}, {0, 0}, 5);
+
+  // component 0 drives an ion-pair with component 1 and a group with two satellites of component 1
+  system.components[0].pairComponentId = 1;
+  system.components[1].pairComponentId = 0;
+  system.components[0].groupComponentIds = {1, 1};
+  system.components[0].hasFractionalMolecule = true;
+  system.components[1].hasFractionalMolecule = true;
+
+  // no CFCMC pair/group move enabled: the (arbitrary) pair/group bias factors must not leak into the weight
+  for (Component& component : system.components)
+  {
+    component.lambdaPairSwap.biasFactor.assign(component.lambdaPairSwap.numberOfSamplePoints, -1.0e4);
+    component.lambdaPairSwapCB.biasFactor.assign(component.lambdaPairSwapCB.numberOfSamplePoints, -1.0e4);
+    component.lambdaGroupSwap.biasFactor.assign(component.lambdaGroupSwap.numberOfSamplePoints, -1.0e4);
+    component.lambdaGroupSwapCB.biasFactor.assign(component.lambdaGroupSwapCB.numberOfSamplePoints, -1.0e4);
+  }
+  EXPECT_DOUBLE_EQ(system.weight(), 1.0);
+
+  // enabling the moves on the driving component activates exactly its four histograms, not the partner's
+  system.components[0].mc_moves_probabilities.setProbability(Move::Types::PairSwapCFCMC, 1.0);
+  system.components[0].mc_moves_probabilities.setProbability(Move::Types::PairSwapCBCFCMC, 1.0);
+  system.components[0].mc_moves_probabilities.setProbability(Move::Types::GroupSwapCFCMC, 1.0);
+  system.components[0].mc_moves_probabilities.setProbability(Move::Types::GroupSwapCBCFCMC, 1.0);
+  ASSERT_TRUE(system.componentDrivesPairSwapLambda(0, Move::Types::PairSwapCFCMC));
+  ASSERT_FALSE(system.componentDrivesPairSwapLambda(1, Move::Types::PairSwapCFCMC));
+  ASSERT_TRUE(system.componentDrivesGroupSwapLambda(0, Move::Types::GroupSwapCFCMC));
+
+  Component& driver = system.components[0];
+  driver.lambdaPairSwap.biasFactor.assign(driver.lambdaPairSwap.numberOfSamplePoints, std::log(2.0));
+  driver.lambdaPairSwapCB.biasFactor.assign(driver.lambdaPairSwapCB.numberOfSamplePoints, std::log(3.0));
+  driver.lambdaGroupSwap.biasFactor.assign(driver.lambdaGroupSwap.numberOfSamplePoints, std::log(5.0));
+  driver.lambdaGroupSwapCB.biasFactor.assign(driver.lambdaGroupSwapCB.numberOfSamplePoints, std::log(7.0));
+  EXPECT_NEAR(system.weight(), 1.0 / (2.0 * 3.0 * 5.0 * 7.0), 1.0e-12);
+
+  // the GC lambda bias still multiplies in alongside the pair/group biases
+  driver.lambdaGC.biasFactor.assign(driver.lambdaGC.numberOfSamplePoints, std::log(11.0));
+  EXPECT_NEAR(system.weight(), 1.0 / (2.0 * 3.0 * 5.0 * 7.0 * 11.0), 1.0e-12);
+
+  // the weight must stay finite and strictly positive
+  EXPECT_TRUE(std::isfinite(system.weight()));
+  EXPECT_GT(system.weight(), 0.0);
 }
 
 TEST(REWEIGHTED_HISTOGRAM_WHAM, empty_loading_average_is_finite)

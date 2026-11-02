@@ -685,21 +685,42 @@ export struct System
   // product of the individual lambda weights (each weight() already equals exp(-W_i)). This
   // reduces to a single term when only one fractional molecule is present; inactive lambda
   // coordinates contribute exp(0) = 1 and drop out of the product.
+  // The ion-pair and group CFCMC lambda coordinates live on the driving component of the pair/group
+  // (see componentDrivesPairSwapLambda / componentDrivesGroupSwapLambda) and are included under the
+  // same gating as in sampleProperties(), so that every biased coordinate is unbiased exactly once.
   // Improving the accuracy of computing chemical potentials in CFCMC simulations
   // A. Rahbari, R. Hens, D. Dubbeldam, and T.J.H Vlugt
   // Mol. Phys.  117(23-24), 3493-3508, 2019
   double weight() const
   {
-    double w = std::transform_reduce(
-        components.begin(), components.end(), 1.0, [](const double& acc, const double& b) { return acc * b; },
-        [](const Component& component)
-        {
-          if (!component.hasFractionalMolecule)
-          {
-            return 1.0;
-          }
-          return component.lambdaGC.weight() * component.lambdaGibbs.weight();
-        });
+    double w = 1.0;
+    for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+    {
+      const Component& component = components[componentId];
+      if (!component.hasFractionalMolecule)
+      {
+        continue;
+      }
+
+      w *= component.lambdaGC.weight() * component.lambdaGibbs.weight();
+
+      if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCFCMC))
+      {
+        w *= component.lambdaPairSwap.weight();
+      }
+      if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCBCFCMC))
+      {
+        w *= component.lambdaPairSwapCB.weight();
+      }
+      if (componentDrivesGroupSwapLambda(componentId, Move::Types::GroupSwapCFCMC))
+      {
+        w *= component.lambdaGroupSwap.weight();
+      }
+      if (componentDrivesGroupSwapLambda(componentId, Move::Types::GroupSwapCBCFCMC))
+      {
+        w *= component.lambdaGroupSwapCB.weight();
+      }
+    }
 
     if (usesReactionConventionalCFCMC())
     {
