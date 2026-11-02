@@ -42,6 +42,7 @@ TEST(MC, rebuild_configuration_derived_state_keeps_molecule_pseudo_atom_counts)
 
   System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {methane, co2}, {}, {5, 3}, 5);
   ASSERT_GT(system.numberOfFrameworkAtoms, 0uz);
+  ASSERT_EQ(system.atomData.size(), system.numberOfFrameworkAtoms + system.spanOfMoleculeAtoms().size());
 
   std::vector<std::size_t> expected(forceField.pseudoAtoms.size(), 0uz);
   for (const Atom& atom : system.spanOfMoleculeAtoms())
@@ -49,14 +50,41 @@ TEST(MC, rebuild_configuration_derived_state_keeps_molecule_pseudo_atom_counts)
     expected[static_cast<std::size_t>(atom.type)] += 1;
   }
   EXPECT_EQ(system.totalNumberOfPseudoAtoms, expected);
+  EXPECT_EQ(std::accumulate(system.totalNumberOfPseudoAtoms.begin(), system.totalNumberOfPseudoAtoms.end(), 0uz),
+            system.spanOfMoleculeAtoms().size());
 
   system.rebuildConfigurationDerivedState();
 
   EXPECT_EQ(system.totalNumberOfPseudoAtoms, expected);
+  EXPECT_EQ(std::accumulate(system.totalNumberOfPseudoAtoms.begin(), system.totalNumberOfPseudoAtoms.end(), 0uz),
+            system.spanOfMoleculeAtoms().size());
   for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
   {
     const std::size_t count = std::accumulate(system.numberOfPseudoAtoms[componentId].begin(),
                                               system.numberOfPseudoAtoms[componentId].end(), 0uz);
     EXPECT_EQ(count, system.numberOfMoleculesPerComponent[componentId] * system.components[componentId].atoms.size());
   }
+}
+
+// Framework atoms keep componentId == 0. With no adsorbate components, looping atomData would index
+// numberOfPseudoAtoms[0] (empty) and is out-of-bounds; the molecule span is empty and the totals stay zero.
+TEST(MC, rebuild_configuration_derived_state_framework_only_does_not_count_framework)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Framework f = Framework::makeMFI(forceField, int3(1, 1, 1));
+
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {}, {}, {}, 5);
+  ASSERT_TRUE(system.components.empty());
+  ASSERT_TRUE(system.numberOfPseudoAtoms.empty());
+  ASSERT_GT(system.numberOfFrameworkAtoms, 0uz);
+  ASSERT_TRUE(system.spanOfMoleculeAtoms().empty());
+  ASSERT_EQ(system.atomData.size(), system.numberOfFrameworkAtoms);
+
+  const std::vector<std::size_t> zeros(forceField.pseudoAtoms.size(), 0uz);
+  EXPECT_EQ(system.totalNumberOfPseudoAtoms, zeros);
+
+  system.rebuildConfigurationDerivedState();
+
+  EXPECT_TRUE(system.numberOfPseudoAtoms.empty());
+  EXPECT_EQ(system.totalNumberOfPseudoAtoms, zeros);
 }
