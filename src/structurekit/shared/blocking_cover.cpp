@@ -126,11 +126,17 @@ GridBlockingCover coverPockets(uint3 gridSize, const UnitCell &unitCell,
     const GridPore &pore = pores[poreIndex];
 
     // The pocket is followed out of the cell, so that a pocket lying across a cell boundary is one connected
-    // body of points rather than two halves at opposite ends of the cell. It closes on nothing, that being
-    // what makes it a pocket, so following it can never contradict itself.
+    // body of points rather than two halves at opposite ends of the cell. It is followed by the six face
+    // steps, which are the steps the flood that found it took: by those it closes on nothing, that being what
+    // makes it a pocket, so following it can never contradict itself. The diagonal steps would. A pocket
+    // whose two ends touch corner to corner across the boundary is, by the diagonals, a loop through the
+    // boundary, and following that loop cuts it wherever the walk happens to meet itself rather than at the
+    // corner contact, which puts the middle of the pocket somewhere other than its middle.
     std::vector<int3> points;
     points.reserve(pore.numberOfVoxels);
 
+    const std::array<int3, 6> faces{int3(1, 0, 0),  int3(-1, 0, 0), int3(0, 1, 0),
+                                    int3(0, -1, 0), int3(0, 0, 1),  int3(0, 0, -1)};
     std::vector<int3> stack;
     stack.push_back(pore.exampleVoxel);
     seen[voxelAt(pore.exampleVoxel.x, pore.exampleVoxel.y, pore.exampleVoxel.z)] = 1;
@@ -140,21 +146,14 @@ GridBlockingCover coverPockets(uint3 gridSize, const UnitCell &unitCell,
       stack.pop_back();
       points.push_back(here);
 
-      for (std::int32_t dk = -1; dk <= 1; ++dk)
+      for (const int3 &face : faces)
       {
-        for (std::int32_t dj = -1; dj <= 1; ++dj)
-        {
-          for (std::int32_t di = -1; di <= 1; ++di)
-          {
-            if (di == 0 && dj == 0 && dk == 0) continue;
-            int3 there(here.x + di, here.y + dj, here.z + dk);
-            std::size_t voxel = voxelAt(there.x, there.y, there.z);
-            if (seen[voxel] != 0) continue;
-            if (voxelPore[voxel] != static_cast<std::int32_t>(poreIndex)) continue;
-            seen[voxel] = 1;
-            stack.push_back(there);
-          }
-        }
+        int3 there(here.x + face.x, here.y + face.y, here.z + face.z);
+        std::size_t voxel = voxelAt(there.x, there.y, there.z);
+        if (seen[voxel] != 0) continue;
+        if (voxelPore[voxel] != static_cast<std::int32_t>(poreIndex)) continue;
+        seen[voxel] = 1;
+        stack.push_back(there);
       }
     }
     cover.numberOfPocketVoxels += points.size();
@@ -180,8 +179,12 @@ GridBlockingCover coverPockets(uint3 gridSize, const UnitCell &unitCell,
                                                                     points[p].z - centre.z)));
       }
 
+      // A reachable grid point stands for its voxel as the pocket's points stand for theirs, so the sphere
+      // stops half a voxel short of it: through the point itself it would hold half that voxel, which is room
+      // the molecule is owed. The look for the nearest reachable point has to go that half voxel further.
       GridBlockingSphere sphere;
-      double admissible = distanceToReachable(centre, wanted);
+      double toReachable = distanceToReachable(centre, wanted + halfDiagonal);
+      double admissible = toReachable == unreachable ? unreachable : std::max(toReachable - halfDiagonal, 0.0);
       sphere.radius = std::min(wanted, admissible);
       sphere.clipped = admissible < wanted;
       sphere.pocket = poreIndex;
@@ -216,19 +219,34 @@ GridBlockingCover coverPockets(uint3 gridSize, const UnitCell &unitCell,
                            static_cast<std::int32_t>(std::lround(middle.y)),
                            static_cast<std::int32_t>(std::lround(middle.z)));
 
-      // The middle is only taken if its sphere reaches the widest point, since otherwise there is no telling
-      // that this round covers anything at all and the pocket would never be finished.
+      // A point is covered when its voxel is: the whole of the voxel lies inside the sphere when the far
+      // corner does, half a diagonal beyond the point. A sphere grown to its full reach covers every point it
+      // was grown for by construction; one cut back at a channel does not, and the points whose voxels stick
+      // out of it are left for another round rather than written off on the strength of their centres.
+      auto covers = [&](const GridBlockingSphere &candidate, std::size_t p)
+      {
+        double distance = lengthOfSteps(int3(points[p].x - candidate.centreVoxel.x, points[p].y - candidate.centreVoxel.y,
+                                             points[p].z - candidate.centreVoxel.z));
+        return distance + halfDiagonal <= candidate.radius * (1.0 + 1.0e-12);
+      };
+
+      // The middle is only taken if its sphere covers something still uncovered, since otherwise there is no
+      // telling that this round gets anywhere and the pocket would never be finished. Failing that the sphere
+      // goes about the widest point, which it covers unless it cannot hold even that point's own voxel, and
+      // then the point is taken anyway: the sphere is counted as the refusal it is below, rather than placed
+      // over and over.
       GridBlockingSphere sphere = sphereAbout(nearestToMiddle);
-      double toAnchor = lengthOfSteps(int3(points[anchor].x - nearestToMiddle.x, points[anchor].y - nearestToMiddle.y,
-                                           points[anchor].z - nearestToMiddle.z));
-      if (toAnchor > sphere.radius) sphere = sphereAbout(points[anchor]);
+      bool aboutAnchor = true;
+      for (std::size_t p = 0; p < points.size() && aboutAnchor; ++p)
+      {
+        if (covered[p] == 0 && covers(sphere, p)) aboutAnchor = false;
+      }
+      if (aboutAnchor) sphere = sphereAbout(points[anchor]);
 
       for (std::size_t p = 0; p < points.size(); ++p)
       {
         if (covered[p] != 0) continue;
-        double distance = lengthOfSteps(int3(points[p].x - sphere.centreVoxel.x, points[p].y - sphere.centreVoxel.y,
-                                             points[p].z - sphere.centreVoxel.z));
-        if (distance > sphere.radius && p != anchor) continue;
+        if (!covers(sphere, p) && !(aboutAnchor && p == anchor)) continue;
         covered[p] = 1;
         --left;
         ++sphere.voxelsCovered;

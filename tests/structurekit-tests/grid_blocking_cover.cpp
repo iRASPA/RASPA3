@@ -103,7 +103,8 @@ TEST(grid_blocking_cover, one_cavity_gets_one_sphere_over_its_middle)
 TEST(grid_blocking_cover, a_sphere_stops_at_the_reachable_room_beside_it)
 {
   // The same cavity, with a rod of reachable points running past it four grid steps from its middle. The
-  // sphere would have grown to about 3.5 and is cut back to 4 minus nothing, the rod being exactly four away.
+  // sphere would have grown to about 4.3 and is cut back to the four steps to the rod less half a voxel
+  // diagonal, the rod's points standing for their voxels as the cavity's do.
   const double side = 20.0;
   const uint3 gridSize(20, 20, 20);
   Region region(gridSize, side);
@@ -125,7 +126,8 @@ TEST(grid_blocking_cover, a_sphere_stops_at_the_reachable_room_beside_it)
 
   ASSERT_FALSE(cover.spheres.empty());
   EXPECT_TRUE(cover.spheres[0].clipped) << "the rod is nearer than the corner of the cavity";
-  EXPECT_NEAR(cover.spheres[0].radius, 4.0, 1.0e-9) << "cut back to exactly the four steps to the rod";
+  EXPECT_NEAR(cover.spheres[0].radius, 4.0 - 0.5 * std::sqrt(3.0), 1.0e-9)
+      << "cut back to the four steps to the rod, less half a voxel";
   EXPECT_GE(cover.numberOfClippedSpheres, 1u);
 
   // However many spheres it takes, the two things that must hold of them are that the cavity is accounted
@@ -271,4 +273,75 @@ TEST(grid_blocking_cover, a_point_in_a_hexagonal_cell_is_covered_out_to_the_far_
   ASSERT_EQ(cover.spheres.size(), 1u);
   EXPECT_EQ(cover.numberOfRefusedPoints, 0u);
   EXPECT_NEAR(cover.spheres[0].radius, 1.0, 1.0e-9);
+}
+
+
+TEST(grid_blocking_cover, a_pocket_touching_its_own_image_corner_to_corner_is_unwrapped_as_the_pocket_it_is)
+{
+  // A row along x from x = 1 to x = 19, with two points at y = 6 over its left end, at x = 0 and x = 1. Across
+  // the boundary the point at (0, 6) is corner to corner with the row's far end at (19, 5), which the flood,
+  // taking face steps only, does not count as touching: the row is a pocket, from x = 0 to x = 19, and its
+  // middle is at x = 9. Followed by diagonal steps as well it would be a loop through the boundary, cut
+  // wherever the walk met itself, with its middle somewhere else.
+  const double side = 20.0;
+  const uint3 gridSize(20, 20, 20);
+  Region region(gridSize, side);
+  region.paint(int3(1, 5, 5), int3(19, 5, 5), 1.0f);
+  region.paint(int3(0, 6, 5), int3(1, 6, 5), 1.0f);
+
+  GridComponents components = region.componentsAbove(0.5);
+  ASSERT_EQ(components.pores.size(), 1u);
+  ASSERT_EQ(components.numberOfPockets, 1u) << "corner to corner is not a way through";
+  ASSERT_EQ(components.pores[0].numberOfVoxels, 21u);
+
+  std::vector<std::uint8_t> needsCover(1, 1);
+  std::vector<std::uint8_t> reachable(region.openness.size(), 0);
+  GridBlockingCover cover = coverPockets(gridSize, region.box, components.voxelPore, components.pores, needsCover,
+                                         region.openness, reachable);
+
+  ASSERT_EQ(cover.spheres.size(), 1u);
+  EXPECT_EQ(cover.spheres[0].voxelsCovered, 21u);
+  EXPECT_NEAR(cover.spheres[0].centreFractional.x, 9.0 / 20.0, 1.0e-9);
+  EXPECT_NEAR(cover.spheres[0].centreFractional.y, 5.0 / 20.0, 1.0e-9);
+  // From x = 9 the far end at x = 19 is ten steps off, plus half a voxel for the far end's own voxel.
+  EXPECT_NEAR(cover.spheres[0].radius, 10.0 + 0.5 * std::sqrt(3.0), 1.0e-9);
+}
+
+
+TEST(grid_blocking_cover, a_point_whose_voxel_sticks_out_of_a_cut_sphere_is_not_covered_by_it)
+{
+  // Two points side by side, the second the wider, and a reachable point two steps beyond the second. The
+  // sphere goes over the second and is cut back to the reachable point less half a voxel, which leaves it
+  // reaching the first point's centre but not the far side of its voxel. So the first point is not covered
+  // by it, and gets a sphere of its own, of half a voxel diagonal.
+  const double side = 20.0;
+  const uint3 gridSize(20, 20, 20);
+  Region region(gridSize, side);
+  region.paint(int3(5, 5, 5), int3(5, 5, 5), 1.0f);
+  region.paint(int3(6, 5, 5), int3(6, 5, 5), 2.0f);
+
+  GridComponents components = region.componentsAbove(0.5);
+  ASSERT_EQ(components.pores.size(), 1u);
+  ASSERT_EQ(components.pores[0].numberOfVoxels, 2u);
+
+  std::vector<std::uint8_t> needsCover(1, 1);
+  std::vector<std::uint8_t> reachable(region.openness.size(), 0);
+  reachable[(5 * gridSize.y + 5) * gridSize.x + 8] = 1;
+
+  GridBlockingCover cover = coverPockets(gridSize, region.box, components.voxelPore, components.pores, needsCover,
+                                         region.openness, reachable);
+
+  const double halfDiagonal = 0.5 * std::sqrt(3.0);
+  ASSERT_EQ(cover.spheres.size(), 2u);
+  EXPECT_EQ(cover.numberOfRefusedPoints, 0u);
+
+  EXPECT_NEAR(cover.spheres[0].centreFractional.x, 6.0 / 20.0, 1.0e-9);
+  EXPECT_TRUE(cover.spheres[0].clipped);
+  EXPECT_NEAR(cover.spheres[0].radius, 2.0 - halfDiagonal, 1.0e-9);
+  EXPECT_EQ(cover.spheres[0].voxelsCovered, 1u) << "the first point's voxel sticks out of it";
+
+  EXPECT_NEAR(cover.spheres[1].centreFractional.x, 5.0 / 20.0, 1.0e-9);
+  EXPECT_FALSE(cover.spheres[1].clipped);
+  EXPECT_NEAR(cover.spheres[1].radius, halfDiagonal, 1.0e-9);
+  EXPECT_EQ(cover.spheres[1].voxelsCovered, 1u);
 }
