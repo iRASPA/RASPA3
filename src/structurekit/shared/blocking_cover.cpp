@@ -37,8 +37,12 @@ GridBlockingCover coverPockets(uint3 gridSize, const UnitCell &unitCell,
   };
 
   // Half a voxel diagonal: how far a point may be from the nearest grid point, and so how much further than
-  // the last grid point of the pocket a sphere has to reach to have covered the pocket itself.
-  const double halfDiagonal = 0.5 * lengthOfSteps(int3(1, 1, 1));
+  // the last grid point of the pocket a sphere has to reach to have covered the pocket itself. It is the
+  // longest of the voxel's four diagonals: on a cell with an obtuse angle the step of (1, 1, 1) is a shorter
+  // one, and a point in the far corner along the long one would be left outside the sphere.
+  const double halfDiagonal = 0.5 * unitCell.longestDiagonal(double3(1.0 / static_cast<double>(nx),
+                                                                     1.0 / static_cast<double>(ny),
+                                                                     1.0 / static_cast<double>(nz)));
 
   double3 widths = unitCell.perpendicularWidths();
 

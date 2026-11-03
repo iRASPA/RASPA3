@@ -87,6 +87,19 @@ double3 UnitCell::perpendicularWidths() const
                  v / std::sqrt(double3::dot(c1, c1)));
 }
 
+double UnitCell::longestDiagonal(double3 fractions) const
+{
+  double longest = 0.0;
+  for (double sy : {-1.0, 1.0})
+  {
+    for (double sz : {-1.0, 1.0})
+    {
+      longest = std::max(longest, (cell * double3(fractions.x, sy * fractions.y, sz * fractions.z)).length());
+    }
+  }
+  return longest;
+}
+
 int3 UnitCell::smallestNumberOfUnitCellsForMinimumImagesConvention(double cutOff) const
 {
   double3 widths = perpendicularWidths();

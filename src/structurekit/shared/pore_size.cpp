@@ -13,10 +13,11 @@ import structure_parallel;
 
 double coveringSlack(const UnitCell &unitCell, uint3 gridSize)
 {
+  // A voxel diagonal, which is the longest of its four: on a cell with an obtuse angle the sum of the three
+  // steps is one of the shorter ones, and a slack read off it leaves part of the shell uncovered.
   double3 step(1.0 / static_cast<double>(gridSize.x), 1.0 / static_cast<double>(gridSize.y),
                1.0 / static_cast<double>(gridSize.z));
-  double3 halfStep = 0.5 * (unitCell.cell * step);
-  return 2.0 * halfStep.length();
+  return unitCell.longestDiagonal(step);
 }
 
 

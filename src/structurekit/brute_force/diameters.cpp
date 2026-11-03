@@ -339,10 +339,13 @@ BruteForceDiameters BruteForceDiameters::compute(const BruteForceStructure &stru
   };
 
   // The hop lengths differ, so the penalty that makes every width one a sphere is shown to manage is half
-  // the longest of them. Applying the worst case to all of them keeps the bracket honest and the pass
-  // single.
-  double longestHop = std::sqrt(voxels.spacing.x * voxels.spacing.x + voxels.spacing.y * voxels.spacing.y +
-                                voxels.spacing.z * voxels.spacing.z);
+  // the longest of them, which is the longest body diagonal of a voxel. That is not the spacings in
+  // quadrature: the spacings are the widths across a voxel rather than its edges, and on a triclinic cell
+  // the edges are not perpendicular, so the longest of the four diagonals has to be measured as such.
+  // Applying the worst case to all of them keeps the bracket honest and the pass single.
+  double longestHop = structure.unitCell.longestDiagonal(double3(1.0 / static_cast<double>(voxels.counts.x),
+                                                                 1.0 / static_cast<double>(voxels.counts.y),
+                                                                 1.0 / static_cast<double>(voxels.counts.z)));
 
   WayThrough way = widestWayThrough();
 

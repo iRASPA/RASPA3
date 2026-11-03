@@ -99,3 +99,32 @@ TEST(brute_force_diameters, a_pocket_as_wide_at_one_point_as_the_bottleneck_is_n
     EXPECT_NEAR(diameters.includedAlongFreePathDiameter, 2.0 * tubeRoom, 1.0e-6) << "open tube " << open;
   }
 }
+
+
+TEST(brute_force_diameters, the_guaranteed_width_allows_for_the_longest_hop_between_slanted_voxels)
+{
+  // One atom in a hexagonal cell, so the void runs away every way. The guaranteed width is the width less half
+  // the longest hop, and the hops are the thirteen steps to neighbouring voxels, the longest of which runs
+  // along a voxel's long diagonal: on a cell with an obtuse angle that is longer than the voxel's edges in
+  // quadrature, and longer again than the widths across it.
+  const double right = 0.5 * std::numbers::pi;
+  UnitCell box(12.0, 12.0, 12.0, right, right, 2.0 * std::numbers::pi / 3.0);
+  BruteForceStructure structure = BruteForceStructure::create("one atom", box, {double3(0.0, 0.0, 0.0)}, {2.0});
+  BruteForceVoxels voxels = BruteForceVoxels::build(structure, 0.5);
+  BruteForceDiameters diameters = BruteForceDiameters::compute(structure, voxels);
+
+  ASSERT_TRUE(diameters.percolates);
+
+  const std::array<int3, 13> steps{int3(1, 0, 0),  int3(0, 1, 0),  int3(0, 0, 1),   int3(1, 1, 0),   int3(1, -1, 0),
+                                   int3(1, 0, 1),  int3(1, 0, -1), int3(0, 1, 1),   int3(0, 1, -1),  int3(1, 1, 1),
+                                   int3(1, 1, -1), int3(1, -1, 1), int3(1, -1, -1)};
+  double longestHop = 0.0;
+  for (const int3 &step : steps)
+  {
+    double3 hop = box.cell * double3(static_cast<double>(step.x) / static_cast<double>(voxels.counts.x),
+                                     static_cast<double>(step.y) / static_cast<double>(voxels.counts.y),
+                                     static_cast<double>(step.z) / static_cast<double>(voxels.counts.z));
+    longestHop = std::max(longestHop, hop.length());
+  }
+  EXPECT_NEAR(diameters.guaranteedFreeSphereDiameter, diameters.freeSphereDiameter - longestHop, 1.0e-9);
+}

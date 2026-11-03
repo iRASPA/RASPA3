@@ -66,9 +66,12 @@ BruteForceBlockingPockets BruteForceBlockingPockets::compute(const BruteForceStr
 
     // How far the pocket reaches from its centre, and how near the nearest place a molecule belongs is. A
     // voxel stands for a little box, so the reach is taken to the far corner of it and the approach to the
-    // near corner, which keeps the sphere covering what it should on a coarse grid.
-    double halfDiagonal = 0.5 * std::sqrt(voxels.spacing.x * voxels.spacing.x + voxels.spacing.y * voxels.spacing.y +
-                                          voxels.spacing.z * voxels.spacing.z);
+    // near corner, which keeps the sphere covering what it should on a coarse grid. The corner is half the
+    // box's longest diagonal from its centre. That is not the spacings in quadrature: the spacings are the
+    // widths across the box, not its edges, and on a triclinic cell the edges are not perpendicular either.
+    double halfDiagonal = 0.5 * structure.unitCell.longestDiagonal(double3(1.0 / static_cast<double>(voxels.counts.x),
+                                                                           1.0 / static_cast<double>(voxels.counts.y),
+                                                                           1.0 / static_cast<double>(voxels.counts.z)));
 
     for (std::size_t voxel : members)
     {

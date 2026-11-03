@@ -345,3 +345,18 @@ TEST(grid_pore_size, the_largest_pore_is_in_the_last_bin_of_its_own_range)
   EXPECT_NEAR(cut.points[5].cumulativeVoidFraction, 0.4, 1.0e-12);
   EXPECT_NEAR(integral(cut, false), 0.6, 1.0e-12) << "what lies past the range is not drawn";
 }
+
+
+TEST(grid_pore_size, the_covering_slack_is_the_longest_diagonal_of_a_voxel)
+{
+  // Where every angle of the cell is right the four body diagonals of a voxel are the same length, and where
+  // one is obtuse they are not, the sum of the three steps being one of the short ones. In a hexagonal cell
+  // the step along a less the step along b is root three steps long, and with the step along c the long
+  // diagonal of a voxel is twice the step; the sum of the three steps is only root two of them.
+  const double right = 0.5 * std::numbers::pi;
+  const UnitCell hexagonal(10.0, 10.0, 10.0, right, right, 2.0 * std::numbers::pi / 3.0);
+  EXPECT_NEAR(coveringSlack(hexagonal, uint3(10, 10, 10)), 2.0, 1.0e-9);
+
+  const UnitCell box(10.0, 20.0, 30.0);
+  EXPECT_NEAR(coveringSlack(box, uint3(10, 10, 10)), std::sqrt(1.0 + 4.0 + 9.0), 1.0e-9);
+}

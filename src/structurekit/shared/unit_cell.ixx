@@ -107,6 +107,13 @@ export struct UnitCell
   // to go and how much room a grid spacing stands for.
   double3 perpendicularWidths() const;
 
+  // The longest body diagonal of the box spanned by the given fraction of each cell vector: (1, 1, 1) is the
+  // cell itself, and (1/nx, 1/ny, 1/nz) is one voxel of a grid over it. Half of it is how far a point of the
+  // box can be from the nearest of its corners, whatever the shape of the box. The sum of the three vectors
+  // is one of the four diagonals and not always the longest: wherever two of them meet at an obtuse angle
+  // their difference is longer than their sum, so it is the longest of the four that has to be taken.
+  double longestDiagonal(double3 fractions = double3(1.0, 1.0, 1.0)) const;
+
   // How many unit cells are needed along each axis before a cutoff of `cutOff` fits inside half the cell,
   // which is the condition for the minimum image convention to be the whole interaction.
   int3 smallestNumberOfUnitCellsForMinimumImagesConvention(double cutOff) const;

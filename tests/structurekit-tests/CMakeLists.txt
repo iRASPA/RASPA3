@@ -19,6 +19,7 @@ add_executable(unit_tests_structurekit
   pore_diameters.cpp
   brute_force_diameters.cpp
   blocking_spheres.cpp
+  brute_force_blocking_pockets.cpp
   main.cpp)
 
 # Only the structural analysis and the three kits below it. What the engine can hand it is tested from

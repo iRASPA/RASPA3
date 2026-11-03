@@ -25,7 +25,9 @@ struct Region
   UnitCell box;
   std::vector<float> openness;
 
-  Region(uint3 size, double side) : gridSize(size), box(side, side, side)
+  Region(uint3 size, double side) : Region(size, UnitCell(side, side, side)) {}
+
+  Region(uint3 size, const UnitCell &cell) : gridSize(size), box(cell)
   {
     this->openness.assign(static_cast<std::size_t>(size.x) * size.y * size.z, 0.0f);
   }
@@ -245,4 +247,28 @@ TEST(grid_blocking_cover, a_cavity_across_the_cell_boundary_is_one_body)
   EXPECT_LT(cover.spheres[0].radius, 4.0) << "a sphere over the true middle is small";
   const double x = cover.spheres[0].centreFractional.x;
   EXPECT_TRUE(x > 0.9 || x < 0.1) << "the centre lies in the cavity, at x = " << x;
+}
+
+
+TEST(grid_blocking_cover, a_point_in_a_hexagonal_cell_is_covered_out_to_the_far_corner_of_its_voxel)
+{
+  // One open point on its own. The sphere over it has to reach the corners of its voxel, and on a cell with an
+  // obtuse angle the far corner lies along the voxel's long diagonal, which is not the sum of the three steps:
+  // in a hexagonal cell of ten steps of one Angstrom the long diagonal is two, so the radius is one.
+  const double right = 0.5 * std::numbers::pi;
+  const uint3 gridSize(10, 10, 10);
+  Region region(gridSize, UnitCell(10.0, 10.0, 10.0, right, right, 2.0 * std::numbers::pi / 3.0));
+  region.paint(int3(5, 5, 5), int3(5, 5, 5), 1.0f);
+
+  GridComponents components = region.componentsAbove(0.5);
+  ASSERT_EQ(components.pores.size(), 1u);
+
+  std::vector<std::uint8_t> needsCover(1, 1);
+  std::vector<std::uint8_t> reachable(region.openness.size(), 0);
+  GridBlockingCover cover = coverPockets(gridSize, region.box, components.voxelPore, components.pores, needsCover,
+                                         region.openness, reachable);
+
+  ASSERT_EQ(cover.spheres.size(), 1u);
+  EXPECT_EQ(cover.numberOfRefusedPoints, 0u);
+  EXPECT_NEAR(cover.spheres[0].radius, 1.0, 1.0e-9);
 }

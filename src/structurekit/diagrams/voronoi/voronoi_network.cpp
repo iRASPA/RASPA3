@@ -374,10 +374,7 @@ VoronoiNetwork VoronoiNetwork::create(const UnitCell& unitCell,
   // lies in some image of the cell, within that distance of one of its corners, and the images
   // of any one atom sit at the same offset from every corner. The bound keeps the searches below
   // finite, as a tangent sphere solved from four nearly coplanar atoms can be arbitrarily wide.
-  double maximumClearance = 0.0;
-  for (double sy : {-1.0, 1.0})
-    for (double sz : {-1.0, 1.0})
-      maximumClearance = std::max(maximumClearance, 0.5 * (cell * double3(1.0, sy, sz)).length());
+  double maximumClearance = 0.5 * unitCell.longestDiagonal();
 
   // Cell list over the atoms, sized for roughly four atoms per bin.
   double atomTargetBinSize = std::cbrt(volume / std::max(1.0, static_cast<double>(numberOfAtoms) / 4.0));
