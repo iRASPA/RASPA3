@@ -102,16 +102,29 @@ std::vector<std::size_t> neighboursOf(const Component &component, std::size_t at
   return component.connectivityTable.findAllNeighbors(atom);
 }
 
+// The bend between two links of the reactive site 'atom' of a component, if the site declares one.
+const BendPotential *linkBendOf(const Component &component, std::size_t atom)
+{
+  for (const ReactiveSite &site : component.reactiveSites)
+  {
+    if (site.atom == atom) return site.linkBend.has_value() ? &site.linkBend.value() : nullptr;
+  }
+  return nullptr;
+}
+
 // The terms of one link between site 'siteA' of molecule A and site 'siteB' of molecule B.
 // 'atomA(local)' / 'atomB(local)' return the atoms of the two molecules by local index;
 // 'addGradientA(local, g)' / 'addGradientB(local, g)' receive the gradients (Order >= 1 only).
 // 'neighboursA' / 'neighboursB' are the intramolecular neighbours of the two sites.
-template <std::size_t Order, typename AtomA, typename AtomB, typename GradientA, typename GradientB>
+// 'takesExclusion(localA, localB)' tells whether these terms hold the exclusion of a pair across the link: several
+// links can reach the same pair, which the inter-molecular sum counted once.
+template <std::size_t Order, typename AtomA, typename AtomB, typename GradientA, typename GradientB,
+          typename ExclusionFilter>
 void evaluateLinkTerms(const ForceField &forceField, const SimulationBox &simulationBox,
                        const CrossLinkBondType &bondType, std::size_t siteA, std::size_t siteB,
                        std::span<const std::size_t> neighboursA, std::span<const std::size_t> neighboursB,
                        AtomA &&atomA, AtomB &&atomB, RunningEnergy &energy, GradientA &&addGradientA,
-                       GradientB &&addGradientB, double3x3 *strain)
+                       GradientB &&addGradientB, ExclusionFilter &&takesExclusion, double3x3 *strain)
 {
   const Atom &atomSiteA = atomA(siteA);
   const Atom &atomSiteB = atomB(siteB);
@@ -182,6 +195,7 @@ void evaluateLinkTerms(const ForceField &forceField, const SimulationBox &simula
   // Non-bonded exclusions across the link: the 1-2 pair and the 1-3 pairs.
   auto exclude = [&](std::size_t localA, std::size_t localB)
   {
+    if (!takesExclusion(localA, localB)) return;
     excludePair<Order>(
         forceField, simulationBox, atomA(localA), atomB(localB), energy,
         [&](const double3 &g)
@@ -196,23 +210,127 @@ void evaluateLinkTerms(const ForceField &forceField, const SimulationBox &simula
   for (std::size_t nB : neighboursB) exclude(siteA, nB);
 }
 
-// Evaluates one link of the table. 'atomAt(site, localAtom)' returns the atom 'localAtom' of the
-// molecule that 'site' belongs to; 'addGradient(site, localAtom, g)' receives the gradients (Order >= 1
-// only).
+// Evaluates a set of links as if they were the only links: the terms of every link, and the terms that two links
+// at one site form together (the bend of the site between its two partners, and the 1-3 exclusion of the two
+// partners when they are on different molecules), with every excluded pair once however many links reach it.
+// 'atomAt(site)' returns the atom that 'site' names (component, molecule, atom index); 'addGradient(site, g)'
+// receives the gradients (Order >= 1 only).
 template <std::size_t Order, typename AtomAccessor, typename GradientSink>
-void evaluateLink(const ForceField &forceField, const SimulationBox &simulationBox,
-                  const std::vector<Component> &components, const CrossLinkTable &table, const CrossLink &link,
-                  AtomAccessor &&atomAt, RunningEnergy &energy, GradientSink &&addGradient, double3x3 *strain)
+RunningEnergy evaluateLinkSet(const ForceField &forceField, const SimulationBox &simulationBox,
+                              const std::vector<Component> &components, const CrossLinkTable &table,
+                              std::span<const CrossLink> links, AtomAccessor &&atomAt, GradientSink &&addGradient,
+                              double3x3 *strain)
 {
-  const std::vector<std::size_t> neighboursA = neighboursOf(components[link.a.componentId], link.a.atomIndex);
-  const std::vector<std::size_t> neighboursB = neighboursOf(components[link.b.componentId], link.b.atomIndex);
+  RunningEnergy energy{};
+  if (links.empty()) return energy;
 
-  evaluateLinkTerms<Order>(
-      forceField, simulationBox, table.bondTypes[link.bondTypeId], link.a.atomIndex, link.b.atomIndex, neighboursA,
-      neighboursB, [&](std::size_t local) -> const Atom & { return atomAt(link.a, local); },
-      [&](std::size_t local) -> const Atom & { return atomAt(link.b, local); }, energy,
-      [&](std::size_t local, const double3 &g) { addGradient(link.a, local, g); },
-      [&](std::size_t local, const double3 &g) { addGradient(link.b, local, g); }, strain);
+  auto atomOf = [](const CrossLinkSite &site, std::size_t local)
+  { return CrossLinkSite{site.componentId, site.moleculeIndex, static_cast<std::uint32_t>(local)}; };
+
+  std::set<std::pair<std::uint64_t, std::uint64_t>> excluded{};
+  auto takesExclusion = [&](const CrossLinkSite &x, const CrossLinkSite &y)
+  { return excluded.insert(std::minmax(x.siteKey(), y.siteKey())).second; };
+
+  // the partners of every site of the set
+  std::map<CrossLinkSite, std::vector<CrossLinkSite>> partnersOfSite{};
+
+  for (const CrossLink &link : links)
+  {
+    const std::vector<std::size_t> neighboursA = neighboursOf(components[link.a.componentId], link.a.atomIndex);
+    const std::vector<std::size_t> neighboursB = neighboursOf(components[link.b.componentId], link.b.atomIndex);
+    evaluateLinkTerms<Order>(
+        forceField, simulationBox, table.bondTypes[link.bondTypeId], link.a.atomIndex, link.b.atomIndex,
+        neighboursA, neighboursB, [&](std::size_t local) -> const Atom & { return atomAt(atomOf(link.a, local)); },
+        [&](std::size_t local) -> const Atom & { return atomAt(atomOf(link.b, local)); }, energy,
+        [&](std::size_t local, const double3 &g) { addGradient(atomOf(link.a, local), g); },
+        [&](std::size_t local, const double3 &g) { addGradient(atomOf(link.b, local), g); },
+        [&](std::size_t localA, std::size_t localB)
+        { return takesExclusion(atomOf(link.a, localA), atomOf(link.b, localB)); },
+        strain);
+    partnersOfSite[link.a].push_back(link.b);
+    partnersOfSite[link.b].push_back(link.a);
+  }
+
+  // The terms through two links of one site y: for the partners x and z, the bend (x, y, z) and the exclusion of
+  // the pair (x, z), which the inter-molecular sum counted when x and z are on different molecules. When x and z
+  // are on the same molecule the pair keeps the treatment of that molecule's own topology.
+  for (const auto &[y, partners] : partnersOfSite)
+  {
+    if (partners.size() < 2) continue;
+    const BendPotential *bend = linkBendOf(components[y.componentId], y.atomIndex);
+    const double3 posY = atomAt(y).position;
+    auto imageNextToY = [&](const CrossLinkSite &site)
+    { return posY + simulationBox.applyPeriodicBoundaryConditions(atomAt(site).position - posY); };
+    for (std::size_t i = 0; i < partners.size(); ++i)
+    {
+      for (std::size_t j = i + 1; j < partners.size(); ++j)
+      {
+        const CrossLinkSite &x = partners[i];
+        const CrossLinkSite &z = partners[j];
+        if (x == z) continue;
+        if (bend != nullptr)
+        {
+          const double3 posX = imageNextToY(x);
+          const double3 posZ = imageNextToY(z);
+          if constexpr (Order == 0)
+          {
+            energy.crossLink += bend->calculateEnergy(posX, posY, posZ, std::nullopt);
+          }
+          else
+          {
+            const auto [bendEnergy, gradients, bendStrain] = bend->potentialEnergyGradientStrain(posX, posY, posZ);
+            energy.crossLink += bendEnergy;
+            addGradient(x, gradients[0]);
+            addGradient(y, gradients[1]);
+            addGradient(z, gradients[2]);
+            if (strain) *strain += bendStrain;
+          }
+        }
+        if (!x.sameMolecule(z) && takesExclusion(x, z))
+        {
+          excludePair<Order>(
+              forceField, simulationBox, atomAt(x), atomAt(z), energy,
+              [&](const double3 &g)
+              {
+                addGradient(x, g);
+                addGradient(z, -g);
+              },
+              strain);
+        }
+      }
+    }
+  }
+  return energy;
+}
+
+using MoleculeId = std::pair<std::uint32_t, std::uint32_t>;
+
+MoleculeId moleculeOf(const CrossLinkSite &site) { return {site.componentId, site.moleculeIndex}; }
+
+// The links whose terms can involve, or share an excluded pair with, a term of the links of the given molecules:
+// the links of those molecules and the links of the molecules they are linked to (a pair reached through two links
+// joins a molecule to the partner of its partner). Each link once.
+std::vector<CrossLink> linksAround(const CrossLinkTable &table, const std::set<MoleculeId> &molecules)
+{
+  std::set<MoleculeId> around = molecules;
+  for (const MoleculeId &molecule : molecules)
+  {
+    for (std::size_t id : table.linksOfMolecule(molecule.first, molecule.second))
+    {
+      const CrossLink &link = table.links[id];
+      around.insert(moleculeOf(link.a));
+      around.insert(moleculeOf(link.b));
+    }
+  }
+  std::set<std::size_t> ids{};
+  for (const MoleculeId &molecule : around)
+  {
+    for (std::size_t id : table.linksOfMolecule(molecule.first, molecule.second)) ids.insert(id);
+  }
+  std::vector<CrossLink> links{};
+  links.reserve(ids.size());
+  for (std::size_t id : ids) links.push_back(table.links[id]);
+  return links;
 }
 
 }  // namespace
@@ -247,19 +365,36 @@ RunningEnergy Interactions::computeCrossLinkEnergyOfLinks(
     const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtoms,
     const CrossLinkTable &table, std::span<const CrossLink> links)
 {
-  RunningEnergy energy{};
-  if (links.empty()) return energy;
+  if (links.empty()) return {};
 
   const CrossLinkAtomLayout layout = CrossLinkAtomLayout::make(components, numberOfMoleculesPerComponent);
-  auto atomAt = [&](const CrossLinkSite &site, std::size_t localAtom) -> const Atom &
-  { return moleculeAtoms[layout.moleculeStart(site.componentId, site.moleculeIndex) + localAtom]; };
-  auto noGradient = [](const CrossLinkSite &, std::size_t, const double3 &) {};
+  auto atomAt = [&](const CrossLinkSite &site) -> const Atom & { return moleculeAtoms[layout.index(site)]; };
+  auto noGradient = [](const CrossLinkSite &, const double3 &) {};
+  return evaluateLinkSet<0>(forceField, simulationBox, components, table, links, atomAt, noGradient, nullptr);
+}
 
-  for (const CrossLink &link : links)
-  {
-    evaluateLink<0>(forceField, simulationBox, components, table, link, atomAt, energy, noGradient, nullptr);
-  }
-  return energy;
+RunningEnergy Interactions::computeCrossLinkTopologyChangeEnergy(
+    const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Component> &components,
+    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtoms,
+    const CrossLinkTable &table, std::span<const CrossLink> removed, std::span<const CrossLink> added)
+{
+  // The links around the molecules of the changed links enter both sides; the terms they form among themselves
+  // cancel, the terms they form with a changed link, or an excluded pair they share with one, do not.
+  std::set<MoleculeId> molecules{};
+  for (const CrossLink &link : removed) molecules.insert({moleculeOf(link.a), moleculeOf(link.b)});
+  for (const CrossLink &link : added) molecules.insert({moleculeOf(link.a), moleculeOf(link.b)});
+
+  std::vector<CrossLink> before = linksAround(table, molecules);
+  std::erase_if(before, [&](const CrossLink &link)
+                { return std::ranges::contains(removed, link) || std::ranges::contains(added, link); });
+  std::vector<CrossLink> after = before;
+  before.insert(before.end(), removed.begin(), removed.end());
+  after.insert(after.end(), added.begin(), added.end());
+
+  return computeCrossLinkEnergyOfLinks(forceField, simulationBox, components, numberOfMoleculesPerComponent,
+                                       moleculeAtoms, table, after) -
+         computeCrossLinkEnergyOfLinks(forceField, simulationBox, components, numberOfMoleculesPerComponent,
+                                       moleculeAtoms, table, before);
 }
 
 RunningEnergy Interactions::computeCrossLinkEnergyDifference(
@@ -269,33 +404,24 @@ RunningEnergy Interactions::computeCrossLinkEnergyDifference(
     std::span<const Atom> oldAtoms)
 {
   if (table.empty()) return {};
-  const std::span<const std::size_t> linkIds = table.linksOfMolecule(componentId, moleculeIndex);
-  if (linkIds.empty()) return {};
+  if (!table.moleculeIsLinked(componentId, moleculeIndex)) return {};
+
+  // the links of the molecule and of its partners: the terms that involve an atom of the molecule, and the
+  // excluded pairs those terms share with other links (the terms without an atom of the molecule cancel)
+  const std::vector<CrossLink> links =
+      linksAround(table, {MoleculeId{static_cast<std::uint32_t>(componentId), static_cast<std::uint32_t>(moleculeIndex)}});
 
   const CrossLinkAtomLayout layout = CrossLinkAtomLayout::make(components, numberOfMoleculesPerComponent);
   auto isMoved = [&](const CrossLinkSite &site)
   { return site.componentId == componentId && site.moleculeIndex == moleculeIndex; };
-  auto atomNew = [&](const CrossLinkSite &site, std::size_t localAtom) -> const Atom &
-  {
-    if (isMoved(site)) return newAtoms[localAtom];
-    return moleculeAtoms[layout.moleculeStart(site.componentId, site.moleculeIndex) + localAtom];
-  };
-  auto atomOld = [&](const CrossLinkSite &site, std::size_t localAtom) -> const Atom &
-  {
-    if (isMoved(site)) return oldAtoms[localAtom];
-    return moleculeAtoms[layout.moleculeStart(site.componentId, site.moleculeIndex) + localAtom];
-  };
-  auto noGradient = [](const CrossLinkSite &, std::size_t, const double3 &) {};
+  auto atomNew = [&](const CrossLinkSite &site) -> const Atom &
+  { return isMoved(site) ? newAtoms[site.atomIndex] : moleculeAtoms[layout.index(site)]; };
+  auto atomOld = [&](const CrossLinkSite &site) -> const Atom &
+  { return isMoved(site) ? oldAtoms[site.atomIndex] : moleculeAtoms[layout.index(site)]; };
+  auto noGradient = [](const CrossLinkSite &, const double3 &) {};
 
-  RunningEnergy energyNew{};
-  RunningEnergy energyOld{};
-  for (std::size_t id : linkIds)
-  {
-    const CrossLink &link = table.links[id];
-    evaluateLink<0>(forceField, simulationBox, components, table, link, atomNew, energyNew, noGradient, nullptr);
-    evaluateLink<0>(forceField, simulationBox, components, table, link, atomOld, energyOld, noGradient, nullptr);
-  }
-  return energyNew - energyOld;
+  return evaluateLinkSet<0>(forceField, simulationBox, components, table, links, atomNew, noGradient, nullptr) -
+         evaluateLinkSet<0>(forceField, simulationBox, components, table, links, atomOld, noGradient, nullptr);
 }
 
 std::vector<CrossLinkTether> Interactions::makeCrossLinkTethers(
@@ -310,6 +436,8 @@ std::vector<CrossLinkTether> Interactions::makeCrossLinkTethers(
 
   const CrossLinkAtomLayout layout = CrossLinkAtomLayout::make(components, numberOfMoleculesPerComponent);
   tethers.reserve(linkIds.size());
+  // (atom of this molecule, partner component, partner molecule, atom of the partner): each pair held by one tether
+  std::set<std::tuple<std::size_t, std::uint32_t, std::uint32_t, std::size_t>> excluded{};
   for (std::size_t id : linkIds)
   {
     const CrossLink &link = table.links[id];
@@ -327,6 +455,18 @@ std::vector<CrossLinkTether> Interactions::makeCrossLinkTethers(
     {
       tether.partnerNeighbours.emplace_back(n, moleculeAtoms[partnerStart + n]);
     }
+
+    auto holdExclusion = [&](std::size_t local, std::size_t partnerLocal)
+    {
+      if (excluded.insert({local, partner.componentId, partner.moleculeIndex, partnerLocal}).second)
+      {
+        tether.exclusions.emplace_back(local, partnerLocal);
+      }
+    };
+    holdExclusion(own.atomIndex, partner.atomIndex);
+    for (std::size_t n : neighboursOf(components[componentId], own.atomIndex)) holdExclusion(n, partner.atomIndex);
+    for (const auto &[n, atom] : tether.partnerNeighbours) holdExclusion(own.atomIndex, n);
+
     tethers.push_back(std::move(tether));
   }
   return tethers;
@@ -362,7 +502,10 @@ RunningEnergy Interactions::computeCrossLinkTetherEnergy(const ForceField &force
     evaluateLinkTerms<0>(
         forceField, simulationBox, *tether.bondType, tether.siteAtom, tether.partnerSiteAtom, neighboursA,
         neighboursB, [&](std::size_t local) -> const Atom & { return moleculeAtoms[local]; }, atomB, energy,
-        noGradient, noGradient, nullptr);
+        noGradient, noGradient,
+        [&](std::size_t local, std::size_t partnerLocal)
+        { return std::ranges::contains(tether.exclusions, std::make_pair(local, partnerLocal)); },
+        nullptr);
   }
   return energy;
 }
@@ -374,20 +517,14 @@ RunningEnergy Interactions::computeCrossLinkGradient(const ForceField &forceFiel
                                                      std::span<AtomDynamics> moleculeDynamics,
                                                      const CrossLinkTable &table)
 {
-  RunningEnergy energy{};
-  if (table.empty()) return energy;
+  if (table.empty()) return {};
 
   const CrossLinkAtomLayout layout = CrossLinkAtomLayout::make(components, numberOfMoleculesPerComponent);
-  auto atomAt = [&](const CrossLinkSite &site, std::size_t localAtom) -> const Atom &
-  { return moleculeAtoms[layout.moleculeStart(site.componentId, site.moleculeIndex) + localAtom]; };
-  auto addGradient = [&](const CrossLinkSite &site, std::size_t localAtom, const double3 &g)
-  { moleculeDynamics[layout.moleculeStart(site.componentId, site.moleculeIndex) + localAtom].gradient += g; };
-
-  for (const CrossLink &link : table.links)
-  {
-    evaluateLink<1>(forceField, simulationBox, components, table, link, atomAt, energy, addGradient, nullptr);
-  }
-  return energy;
+  auto atomAt = [&](const CrossLinkSite &site) -> const Atom & { return moleculeAtoms[layout.index(site)]; };
+  auto addGradient = [&](const CrossLinkSite &site, const double3 &g)
+  { moleculeDynamics[layout.index(site)].gradient += g; };
+  return evaluateLinkSet<1>(forceField, simulationBox, components, table, table.links, atomAt, addGradient,
+                            nullptr);
 }
 
 std::pair<RunningEnergy, double3x3> Interactions::computeCrossLinkEnergyStrainDerivative(
@@ -395,19 +532,14 @@ std::pair<RunningEnergy, double3x3> Interactions::computeCrossLinkEnergyStrainDe
     const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtoms,
     std::span<AtomDynamics> moleculeDynamics, const CrossLinkTable &table)
 {
-  RunningEnergy energy{};
   double3x3 strain{};
-  if (table.empty()) return {energy, strain};
+  if (table.empty()) return {RunningEnergy{}, strain};
 
   const CrossLinkAtomLayout layout = CrossLinkAtomLayout::make(components, numberOfMoleculesPerComponent);
-  auto atomAt = [&](const CrossLinkSite &site, std::size_t localAtom) -> const Atom &
-  { return moleculeAtoms[layout.moleculeStart(site.componentId, site.moleculeIndex) + localAtom]; };
-  auto addGradient = [&](const CrossLinkSite &site, std::size_t localAtom, const double3 &g)
-  { moleculeDynamics[layout.moleculeStart(site.componentId, site.moleculeIndex) + localAtom].gradient += g; };
-
-  for (const CrossLink &link : table.links)
-  {
-    evaluateLink<1>(forceField, simulationBox, components, table, link, atomAt, energy, addGradient, &strain);
-  }
+  auto atomAt = [&](const CrossLinkSite &site) -> const Atom & { return moleculeAtoms[layout.index(site)]; };
+  auto addGradient = [&](const CrossLinkSite &site, const double3 &g)
+  { moleculeDynamics[layout.index(site)].gradient += g; };
+  const RunningEnergy energy = evaluateLinkSet<1>(forceField, simulationBox, components, table, table.links, atomAt,
+                                                  addGradient, &strain);
   return {energy, strain};
 }

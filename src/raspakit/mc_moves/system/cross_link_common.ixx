@@ -58,6 +58,8 @@ std::optional<std::size_t> bondTypeFor(const System &system, const CrossLinkSite
 bool withinCaptureRadius(const System &system, const CrossLinkSite &a, const CrossLinkSite &b,
                          std::size_t bondTypeId);
 
-/// The energy of one (hypothetical or existing) link in the current configuration.
-RunningEnergy linkEnergy(const System &system, const CrossLink &link);
+/// The change of the cross-link energy when the links 'removed' are replaced by the links 'added' in the current
+/// configuration; the links may share excluded pairs with each other and with the other links of the table.
+RunningEnergy linkChangeEnergy(const System &system, std::span<const CrossLink> removed,
+                               std::span<const CrossLink> added);
 }  // namespace MC_Moves::CrossLinkCommon

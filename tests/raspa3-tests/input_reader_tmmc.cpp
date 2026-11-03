@@ -730,3 +730,71 @@ TEST(INPUT_READER, dctst_rejects_cross_links)
   EXPECT_EQ(dcTSTInputError(false).find("cross-link"), std::string::npos) << dcTSTInputError(false);
   EXPECT_NE(dcTSTInputError(true).find("cross-link"), std::string::npos) << dcTSTInputError(true);
 }
+
+namespace
+{
+constexpr std::string_view kCrossLinkMonomerJson = R"({
+  "CriticalTemperature" : 190.6,
+  "CriticalPressure" : 4599200.0,
+  "AcentricFactor" : 0.011,
+  "pseudoAtoms" : [["CH4", [0.0, 0.0, 0.0]]],
+  "ReactiveSites" : [{"Atom": 0, "Type": "X", "Valence": 2}]
+}
+)";
+
+constexpr std::string_view kCrossLinkMonomerWithBendJson = R"({
+  "CriticalTemperature" : 190.6,
+  "CriticalPressure" : 4599200.0,
+  "AcentricFactor" : 0.011,
+  "pseudoAtoms" : [["CH4", [0.0, 0.0, 0.0]]],
+  "ReactiveSites" : [{"Atom": 0, "Type": "X", "Valence": 2, "LinkBend": ["HARMONIC", [0.0, 120.0]]}]
+}
+)";
+
+nlohmann::json crossLinkInput()
+{
+  nlohmann::json input = readNVTExample();
+  input["SimulationType"] = "MonteCarlo";
+  input["Systems"][0]["CrossLinkBonds"] = {{{"Sites", {"X", "X"}}, {"Bond", {"HARMONIC", {1000.0, 1.5}}}}};
+  input["Components"][0]["Name"] = "monomer";
+  input["Components"][0]["CreateNumberOfMolecules"] = 4;
+  input["Systems"][0]["CrossLinkFormationProbability"] = 0.5;
+  return input;
+}
+}  // namespace
+
+// A reactive site that can carry two links forms the bend between its partners: the bend has to be given.
+TEST(INPUT_READER, cross_link_site_with_valence_above_one_needs_a_link_bend)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  workspace.write("monomer.json", kCrossLinkMonomerJson);
+  TemporaryInput temporary(crossLinkInput(), "cross_link_valence", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  try
+  {
+    InputReader reader(temporary.path().filename().string());
+    FAIL() << "expected InputReader to reject a valence-2 site without a 'LinkBend'";
+  }
+  catch (const std::runtime_error& error)
+  {
+    const std::string message = error.what();
+    EXPECT_NE(message.find("LinkBend"), std::string::npos) << message;
+    EXPECT_NE(message.find("valence 2"), std::string::npos) << message;
+  }
+}
+
+TEST(INPUT_READER, cross_link_site_with_valence_above_one_and_a_link_bend_is_accepted)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  workspace.write("monomer.json", kCrossLinkMonomerWithBendJson);
+  TemporaryInput temporary(crossLinkInput(), "cross_link_valence_bend", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  ASSERT_EQ(reader.systems.size(), 1uz);
+  ASSERT_EQ(reader.systems[0].components.size(), 1uz);
+  ASSERT_EQ(reader.systems[0].components[0].reactiveSites.size(), 1uz);
+  EXPECT_EQ(reader.systems[0].components[0].reactiveSites[0].valence, 2uz);
+  EXPECT_TRUE(reader.systems[0].components[0].reactiveSites[0].linkBend.has_value());
+}

@@ -58,9 +58,9 @@ std::optional<RunningEnergy> MC_Moves::crossLinkExchangeMove(RandomNumber& rando
       MC_Moves::timed(system, move, Move::Timing::MoleculeMolecule,
                       [&]
                       {
-                        return CrossLinkCommon::linkEnergy(system, newFirst) +
-                               CrossLinkCommon::linkEnergy(system, newSecond) -
-                               CrossLinkCommon::linkEnergy(system, first) - CrossLinkCommon::linkEnergy(system, second);
+                        const std::array<CrossLink, 2> removed{first, second};
+                        const std::array<CrossLink, 2> added{newFirst, newSecond};
+                        return CrossLinkCommon::linkChangeEnergy(system, removed, added);
                       });
 
   system.mc_moves_statistics.addConstructed(move);

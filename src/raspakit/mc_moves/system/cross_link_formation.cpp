@@ -52,7 +52,7 @@ std::optional<RunningEnergy> MC_Moves::crossLinkFormationScissionMove(RandomNumb
 
     const CrossLink newLink{i, j, chosen.bondTypeId};
     const RunningEnergy energyDifference = MC_Moves::timed(system, move, Move::Timing::MoleculeMolecule,
-                                                           [&] { return CrossLinkCommon::linkEnergy(system, newLink); });
+                                                           [&] { return CrossLinkCommon::linkChangeEnergy(system, {}, std::span<const CrossLink>(&newLink, 1)); });
 
     system.mc_moves_statistics.addConstructed(move, formationDirection);
 
@@ -80,7 +80,7 @@ std::optional<RunningEnergy> MC_Moves::crossLinkFormationScissionMove(RandomNumb
   if (!CrossLinkCommon::withinCaptureRadius(system, oldLink.a, oldLink.b, oldLink.bondTypeId)) return std::nullopt;
 
   const RunningEnergy energyDifference = MC_Moves::timed(
-      system, move, Move::Timing::MoleculeMolecule, [&] { return -CrossLinkCommon::linkEnergy(system, oldLink); });
+      system, move, Move::Timing::MoleculeMolecule, [&] { return CrossLinkCommon::linkChangeEnergy(system, std::span<const CrossLink>(&oldLink, 1), {}); });
 
   // Proposal counts in the state without the link.
   table.removeLink(linkId);

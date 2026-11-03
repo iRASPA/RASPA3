@@ -3268,6 +3268,22 @@ std::vector<ReactiveSite> Component::readReactiveSites(
         site.atom = item.at("Atom").get<std::size_t>();
         site.siteType = item.at("Type").get<std::string>();
         if (item.contains("Valence")) site.valence = item["Valence"].get<std::size_t>();
+        if (item.contains("LinkBend"))
+        {
+          const auto &bend = item["LinkBend"];
+          if (!bend.is_array() || bend.size() != 2)
+          {
+            throw std::runtime_error("'LinkBend' must be [\"POTENTIAL\", [parameters...]]");
+          }
+          std::string bendName = bend[0].get<std::string>();
+          std::ranges::transform(bendName, bendName.begin(), [](unsigned char c) { return std::toupper(c); });
+          if (!BendPotential::definitionForString.contains(bendName))
+          {
+            throw std::runtime_error(std::format("unknown bend potential '{}'", bend[0].get<std::string>()));
+          }
+          site.linkBend = BendPotential({0, 1, 2}, BendPotential::definitionForString.at(bendName),
+                                        bend[1].get<std::vector<double>>());
+        }
       }
       else
       {

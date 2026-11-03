@@ -1766,20 +1766,27 @@ site types are declared per system with `"CrossLinkBonds"`.
 The energy of a cross-linked state is the ordinary inter-molecular energy of
 all molecules, corrected for the bonded pairs, plus the bonded terms:
 
-$$U = U_\mathrm{inter} - \sum_{\mathrm{links}} u_\mathrm{pair}(r_{ij})
+$$U = U_\mathrm{inter} - \sum_{\mathrm{excluded\ pairs}} u_\mathrm{pair}(r_{ij})
     + \sum_{\mathrm{links}} \left[ u_\mathrm{bond}(r_{ij}) + \epsilon_\mathrm{form}
-    + \sum u_\mathrm{junction}(\theta) \right]$$
+    + \sum u_\mathrm{junction}(\theta) \right]
+    + \sum_{\mathrm{sites\ with\ two\ links}} u_\mathrm{link\ bend}(\theta)$$
 
-The van der Waals and real-space Coulomb interaction of the two bonded atoms is
-subtracted (their exclusion is booked in the molecule-molecule VDW and Coulomb
-slots and, for Ewald summation, in the Ewald exclusion slot, exactly as an
-intra-molecular 1-2 exclusion would be), so that two linked monomers have the
-same energy as one molecule with that bond. The bonded terms are reported in a
+The excluded pairs are the pairs within two bonds of each other through a
+link, as in a molecule: the two bonded atoms, and the 1-3 pairs across the
+link (an intra-molecular neighbour of a site with the partner site, and the
+two partners of a site that carries two links). Their van der Waals and
+real-space Coulomb interaction is subtracted (the exclusion is booked in the
+molecule-molecule VDW and Coulomb slots and, for Ewald summation, in the Ewald
+exclusion slot, exactly as an intra-molecular exclusion would be), so that two
+linked monomers have the same energy as one molecule with that bond, and a
+site with two links the energy of a bonded atom with two bonds. A pair that
+several links reach is excluded once. The bonded terms are reported in a
 separate `cross-link` energy slot. The optional junction bends run over every
 angle *neighbour–site–partner* formed by the link with the intra-molecular
-neighbours of each site. Cross-links contribute to the gradients and the
-virial, so they can be used with molecular dynamics, hybrid MC, volume moves
-and Gibbs volume moves.
+neighbours of each site; the `"LinkBend"` of a reactive site runs over the
+angle *partner–site–partner* of its two links. Cross-links contribute to the
+gradients and the virial, so they can be used with molecular dynamics, hybrid
+MC, volume moves and Gibbs volume moves.
 
 Linked molecules may be moved by all displacement moves (translation,
 rotation, bead displacement, bead flip, crankshaft, pivot, concerted rotation,
@@ -2972,7 +2979,13 @@ not improved by it.
     index refers to the `"pseudoAtoms"` list of the molecule, the type is a
     free name matched against the `"Sites"` of the system's
     `"CrossLinkBonds"`, and the valence (default `1`) is the maximum number of
-    simultaneous cross-links the site can carry. An atom may be listed once.
+    simultaneous cross-links the site can carry. A site with a valence above
+    one forms the bend *partner–site–partner* between its two links, given as
+    `"LinkBend" : ["POTENTIAL", [parameters...]]` in the object form (same
+    form and units as the `"Bends"` of the molecule, e.g.
+    `["HARMONIC", [62500.0, 114.0]]`; `["HARMONIC", [0.0, 120.0]]` for no
+    bend); it is required for such a site when the system defines
+    `"CrossLinkBonds"`. An atom may be listed once.
     Example for a telechelic chain whose two end beads can each form one bond:
 
         "ReactiveSites" : [

@@ -24,7 +24,13 @@ import cross_links;
  * pairs, because the atoms belong to different molecules) and the correction here removes exactly
  * what they added and adds what an intramolecular pair would have received (the Ewald exclusion
  * -erf(alpha r)/r, or the shifted-potential completion of the finite-cutoff charge methods). The
- * net effect is that a linked pair is treated exactly like a bonded pair inside one molecule.
+ * net effect is that a linked pair is treated exactly like a bonded pair inside one molecule. Two
+ * links of one site (valence above one) form the bend (partner, site, partner) of the site
+ * ('ReactiveSite::linkBend') and make the two partners a 1-3 pair, whose non-bonded interaction is
+ * removed in the same way when the partners are on different molecules (partners on the same molecule
+ * keep the treatment of that molecule's own topology). Several links can reach the same pair (links
+ * between adjacent sites, or a pair that is both a 1-2 and a 1-3 pair); the pair is excluded once,
+ * because the inter-molecular sum counted it once.
  *
  * The corrections are booked in the same RunningEnergy slots as the terms they cancel
  * (moleculeMoleculeVDW, moleculeMoleculeCharge, ewald_exclusion); the bonded part goes to
@@ -62,13 +68,25 @@ RunningEnergy computeCrossLinkEnergy(const ForceField &forceField, const Simulat
                                      const std::vector<std::size_t> &numberOfMoleculesPerComponent,
                                      std::span<const Atom> moleculeAtoms, const CrossLinkTable &table);
 
-/// Energy of the given links (which need not be present in the table; their bondTypeId refers to the
-/// table's bond types) in the current configuration. Used by the topology moves.
+/// Energy of exactly the given links (which need not be present in the table; their bondTypeId refers
+/// to the table's bond types) in the current configuration, as if they were the only links: the terms
+/// of every link and the terms two of the links form at a shared site.
 RunningEnergy computeCrossLinkEnergyOfLinks(const ForceField &forceField, const SimulationBox &simulationBox,
                                             const std::vector<Component> &components,
                                             const std::vector<std::size_t> &numberOfMoleculesPerComponent,
                                             std::span<const Atom> moleculeAtoms, const CrossLinkTable &table,
                                             std::span<const CrossLink> links);
+
+/// Change of the total cross-link energy when the links 'removed' are replaced by the links 'added'. A
+/// pair stays excluded while another link reaches it, and a link forms terms with the other links of its
+/// sites, so this is not the difference of the energies of the separate links. The other links of the
+/// table are taken as they are, whether or not 'removed' are still in it. Used by the topology moves.
+RunningEnergy computeCrossLinkTopologyChangeEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                   const std::vector<Component> &components,
+                                                   const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+                                                   std::span<const Atom> moleculeAtoms, const CrossLinkTable &table,
+                                                   std::span<const CrossLink> removed,
+                                                   std::span<const CrossLink> added);
 
 /// Change of the cross-link energy when the atoms of molecule 'moleculeIndex' of 'componentId' move
 /// from 'oldAtoms' to 'newAtoms' (both spans in the molecule's local atom order); all other atoms are

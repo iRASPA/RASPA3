@@ -48,7 +48,11 @@ std::optional<RunningEnergy> MC_Moves::crossLinkSwapMove(RandomNumber& random, S
 
   const RunningEnergy energyDifference =
       MC_Moves::timed(system, move, Move::Timing::MoleculeMolecule,
-                      [&] { return CrossLinkCommon::linkEnergy(system, newLink) - CrossLinkCommon::linkEnergy(system, oldLink); });
+                      [&]
+                      {
+                        return CrossLinkCommon::linkChangeEnergy(system, std::span<const CrossLink>(&oldLink, 1),
+                                                                 std::span<const CrossLink>(&newLink, 1));
+                      });
 
   system.mc_moves_statistics.addConstructed(move);
 

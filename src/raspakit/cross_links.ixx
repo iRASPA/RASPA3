@@ -20,11 +20,13 @@ import bend_potential;
  */
 export struct ReactiveSite
 {
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   std::size_t atom{};        ///< Index of the atom within the molecule.
   std::string siteType{};    ///< Site type name, matched against the cross-link bond types.
   std::size_t valence{1};    ///< Maximum number of simultaneous cross-links of this site.
+  /// Bend (partner, site, partner) between two links of the site; required when the valence exceeds one.
+  std::optional<BendPotential> linkBend{};
 
   bool operator==(ReactiveSite const &) const = default;
 
@@ -39,7 +41,9 @@ export struct ReactiveSite
  *   u_bond(r_AB) + formationEnergy + sum of junction bends (n_A, A, B) and (A, B, n_B)
  *   - (the non-bonded pair interactions of A-B, n_A-B and A-n_B that the inter-molecular sum counted),
  * so a linked pair of atoms and the 1-3 pairs across the link are treated exactly like the
- * corresponding intramolecular pairs of a single molecule. The 'formationEnergy' is a constant
+ * corresponding intramolecular pairs of a single molecule. Two links of one site (valence above one)
+ * form the bend (partner, site, partner) of the site ('ReactiveSite::linkBend') and make the two
+ * partners a 1-3 pair, whose non-bonded interaction is removed likewise. The 'formationEnergy' is a constant
  * added per link (a bond formation energy, negative when bonding is favourable); it drives the
  * bond-count in the formation/scission ensemble and cancels in the bond-swap move.
  *
@@ -139,6 +143,9 @@ export struct CrossLinkTether
   std::size_t partnerSiteAtom{};            ///< Local atom index of the partner's site in its molecule.
   Atom partnerSite{};                       ///< The partner's site atom.
   std::vector<std::pair<std::size_t, Atom>> partnerNeighbours{};  ///< (local index, atom) of the partner's neighbours.
+  /// The pairs (local atom, partner's local atom) excluded by this tether. A pair that several links of the molecule
+  /// reach is held by one tether only, whose atoms are all in place when it is evaluated.
+  std::vector<std::pair<std::size_t, std::size_t>> exclusions{};
 };
 
 /**

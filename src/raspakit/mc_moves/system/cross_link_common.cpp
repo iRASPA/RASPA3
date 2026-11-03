@@ -158,9 +158,10 @@ std::vector<std::size_t> MC_Moves::CrossLinkCommon::linksOfSite(const System &sy
   return ids;
 }
 
-RunningEnergy MC_Moves::CrossLinkCommon::linkEnergy(const System &system, const CrossLink &link)
+RunningEnergy MC_Moves::CrossLinkCommon::linkChangeEnergy(const System &system, std::span<const CrossLink> removed,
+                                                          std::span<const CrossLink> added)
 {
-  return Interactions::computeCrossLinkEnergyOfLinks(system.forceField, system.simulationBox, system.components,
-                                                     system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(),
-                                                     system.crossLinks, std::span<const CrossLink>(&link, 1));
+  return Interactions::computeCrossLinkTopologyChangeEnergy(
+      system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
+      system.spanOfMoleculeAtoms(), system.crossLinks, removed, added);
 }

@@ -830,6 +830,25 @@ void readCrossLinks(const nlohmann::basic_json<nlohmann::raspa_map>& value, Syst
     throw std::runtime_error(
         "[Input reader]: 'CrossLinkBonds' are defined but no component declares 'ReactiveSites'\n");
   }
+  // A site that can carry two links forms a bend between its partners (as a bonded atom with two bonds does);
+  // the bend has to be stated, a bend with a zero force constant when no bend is wanted.
+  if (!table.bondTypes.empty())
+  {
+    for (const Component& component : system.components)
+    {
+      for (const ReactiveSite& site : component.reactiveSites)
+      {
+        if (site.valence > 1 && !site.linkBend.has_value())
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: reactive site (atom {}, type '{}') of component '{}' has valence {} but no 'LinkBend'; "
+              "two links of one site form the bend partner-site-partner, give it as \"LinkBend\" : [\"POTENTIAL\", "
+              "[parameters...]] in the 'ReactiveSites' entry (for example [\"HARMONIC\", [0.0, 120.0]] for no bend)\n",
+              site.atom, site.siteType, component.name, site.valence));
+        }
+      }
+    }
+  }
   for (const CrossLinkBondType& bondType : table.bondTypes)
   {
     for (const std::string& siteType : {bondType.siteTypeA, bondType.siteTypeB})

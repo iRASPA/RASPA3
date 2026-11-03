@@ -5,6 +5,7 @@
 import std;
 
 import double3;
+import double3x3;
 import atom;
 import atom_dynamics;
 import units;
@@ -997,4 +998,588 @@ TEST(MC_CROSS_LINKS, fixed_endpoint_regrowth_of_doubly_linked_chains)
   // The interior atoms actually moved.
   const std::span<const Atom> atoms = system.spanOfMolecule(0, 0);
   EXPECT_GT((atoms[1].position - zigzag[1]).length() + (atoms[2].position - zigzag[2]).length(), 0.05);
+}
+
+// Several links can exclude the same atom pair (links between adjacent sites of the same two molecules), while the
+// inter-molecular sum counted that pair once: every pair is excluded once, however many links reach it.
+namespace
+{
+// Linear molecule of 'numberOfAtoms' beads of 'atomName' with the given reactive atoms, all of site type 'siteType'.
+std::string multiSiteChainJson(std::string_view atomName, std::size_t numberOfAtoms,
+                               std::vector<std::size_t> reactiveAtoms, std::string_view siteType, std::size_t valence)
+{
+  std::string atoms{};
+  std::string connectivity{};
+  for (std::size_t i = 0; i < numberOfAtoms; ++i)
+  {
+    atoms += std::format("{}[\"{}\", [{}, 0.0, 0.0]]", i == 0 ? "" : ", ", atomName, static_cast<double>(i) * kBondLength);
+    if (i > 0) connectivity += std::format("{}[{}, {}]", i == 1 ? "" : ", ", i - 1, i);
+  }
+  std::string sites{};
+  for (std::size_t i = 0; i < reactiveAtoms.size(); ++i)
+  {
+    sites += std::format("{}{{\"Atom\": {}, \"Type\": \"{}\", \"Valence\": {}}}", i == 0 ? "" : ", ", reactiveAtoms[i],
+                         siteType, valence);
+  }
+  std::string topology{};
+  if (numberOfAtoms > 1)
+  {
+    topology = std::format(R"("Connectivity" : [{0}],
+  "Bonds" : [[["{1}", "{1}"], "HARMONIC", [{2}, {3}]]],
+  {4}"VanDerWaals" : "auto",
+  "Coulomb" : "auto",
+)",
+                           connectivity, atomName, kBondK, kBondLength,
+                           numberOfAtoms > 2 ? std::format("\"Bends\" : [[[\"{0}\", \"{0}\", \"{0}\"], \"HARMONIC\", [0.0, 114.0]]],\n  ", atomName)
+                                             : std::string{});
+  }
+  return std::format(R"({{
+  "CriticalTemperature" : 190.6,
+  "CriticalPressure" : 4599200.0,
+  "AcentricFactor" : 0.011,
+  "pseudoAtoms" : [{}],
+  {}"ReactiveSites" : [{}]
+}}
+)",
+                     atoms, topology, sites);
+}
+
+// A closed ring of the given atoms in which every bond is the same harmonic bond: the reference of a linked network.
+std::string ringJson(std::vector<std::string> atomNames)
+{
+  std::string atoms{};
+  std::string connectivity{};
+  std::set<std::pair<std::string, std::string>> bondTypes{};
+  for (std::size_t i = 0; i < atomNames.size(); ++i)
+  {
+    const std::size_t next = (i + 1) % atomNames.size();
+    atoms += std::format("{}[\"{}\", [{}, 0.0, 0.0]]", i == 0 ? "" : ", ", atomNames[i], static_cast<double>(i) * kBondLength);
+    connectivity += std::format("{}[{}, {}]", i == 0 ? "" : ", ", i, next);
+    bondTypes.insert(std::minmax(atomNames[i], atomNames[next]));
+  }
+  std::string bonds{};
+  for (const auto& [a, b] : bondTypes)
+  {
+    bonds += std::format("{}[[\"{}\", \"{}\"], \"HARMONIC\", [{}, {}]]", bonds.empty() ? "" : ", ", a, b, kBondK, kBondLength);
+  }
+  // the bends and torsions of a ring have to be defined; they are zero, as a link has none here
+  const std::size_t n = atomNames.size();
+  std::set<std::vector<std::string>> bendTypes{};
+  std::set<std::vector<std::string>> torsionTypes{};
+  for (std::size_t i = 0; i < n; ++i)
+  {
+    // a definition matches in both directions
+    auto canonical = [](std::vector<std::string> names)
+    {
+      std::vector<std::string> reversed(names.rbegin(), names.rend());
+      return std::min(names, reversed);
+    };
+    bendTypes.insert(canonical({atomNames[i], atomNames[(i + 1) % n], atomNames[(i + 2) % n]}));
+    torsionTypes.insert(
+        canonical({atomNames[i], atomNames[(i + 1) % n], atomNames[(i + 2) % n], atomNames[(i + 3) % n]}));
+  }
+  std::string bends{};
+  for (const std::vector<std::string>& t : bendTypes)
+  {
+    bends += std::format("{}[[\"{}\", \"{}\", \"{}\"], \"HARMONIC\", [0.0, 114.0]]", bends.empty() ? "" : ", ", t[0], t[1], t[2]);
+  }
+  std::string torsions{};
+  for (const std::vector<std::string>& t : torsionTypes)
+  {
+    torsions += std::format("{}[[\"{}\", \"{}\", \"{}\", \"{}\"], \"TRAPPE\", [0.0, 0.0, 0.0, 0.0]]",
+                            torsions.empty() ? "" : ", ", t[0], t[1], t[2], t[3]);
+  }
+  return std::format(R"({{
+  "CriticalTemperature" : 190.6,
+  "CriticalPressure" : 4599200.0,
+  "AcentricFactor" : 0.011,
+  "pseudoAtoms" : [{}],
+  "Connectivity" : [{}],
+  "Bonds" : [{}],
+  "Bends" : [{}],
+  "Torsions" : [{}],
+  "VanDerWaals" : "auto",
+  "Coulomb" : "auto"
+}}
+)",
+                     atoms, connectivity, bonds, bends, torsions);
+}
+
+void expectSameEnergies(const RunningEnergy& linked, const RunningEnergy& reference)
+{
+  const double tolerance = 1e-8 * std::max(1.0, std::abs(reference.potentialEnergy()));
+  EXPECT_NEAR(linked.potentialEnergy(), reference.potentialEnergy(), tolerance);
+  EXPECT_NEAR(linked.moleculeMoleculeVDW, 0.0, 1e-8);
+  EXPECT_NEAR(linked.moleculeMoleculeCharge, 0.0, 1e-8);
+  EXPECT_NEAR(linked.ewald_exclusion, reference.ewald_exclusion, tolerance);
+  EXPECT_NEAR(linked.crossLink + linked.bond, reference.bond + reference.bend, tolerance);
+}
+
+// Two dimers A1-A2 and B1-B2, linked A1-B1 and A2-B2: the 1-3 pairs (A2,B1) and (A1,B2) are reached by both links.
+System makeLadder(const ForceField& forceField, const std::string& name)
+{
+  Component dimerA = makeComponent(forceField, 0, name + "-a", multiSiteChainJson("A", 2, {0, 1}, "X", 1));
+  Component dimerB = makeComponent(forceField, 1, name + "-b", multiSiteChainJson("B", 2, {0, 1}, "Y", 1));
+  System system = makeSystem(forceField, {dimerA, dimerB},
+                             {{double3(10.0, 10.0, 10.0), double3(11.5, 10.2, 10.1)},
+                              {double3(10.3, 11.6, 10.4), double3(11.8, 11.9, 10.9)}});
+  system.crossLinks.bondTypes.push_back(harmonicBondType("X", "Y", kBondK, kBondLength, 6.0));
+  system.crossLinks.addLink(CrossLink{site(0, 0, 0), site(1, 0, 0), 0});
+  system.crossLinks.addLink(CrossLink{site(0, 0, 1), site(1, 0, 1), 0});
+  return system;
+}
+}  // namespace
+
+TEST(MC_CROSS_LINKS, ladder_of_two_links_equals_four_membered_ring)
+{
+  const ForceField forceField = makeForceField(100.0, 0.4, -0.4, true);
+  const System linked = makeLadder(forceField, "xl-ladder");
+  const RunningEnergy linkedEnergy = const_cast<System&>(linked).computeTotalEnergies();
+
+  const std::span<const Atom> atoms = linked.spanOfMoleculeAtoms();
+  Component ring = makeComponent(forceField, 0, "xl-ring-aabb", ringJson({"A", "A", "B", "B"}));
+  System reference = makeSystem(forceField, {ring},
+                                {{atoms[0].position, atoms[1].position, atoms[3].position, atoms[2].position}});
+  expectSameEnergies(linkedEnergy, reference.computeTotalEnergies());
+}
+
+TEST(MC_CROSS_LINKS, two_links_to_one_site_from_adjacent_sites_equal_three_membered_ring)
+{
+  const ForceField forceField = makeForceField(100.0, 0.4, -0.4, true);
+  Component dimer = makeComponent(forceField, 0, "xl-shared-a", multiSiteChainJson("A", 2, {0, 1}, "X", 1));
+  Component monomer = makeComponent(forceField, 1, "xl-shared-b", multiSiteChainJson("B", 1, {0}, "Y", 2));
+  const double3 a1(10.0, 10.0, 10.0);
+  const double3 a2(11.5, 10.2, 10.1);
+  const double3 b(10.6, 11.4, 10.5);
+  System linked = makeSystem(forceField, {dimer, monomer}, {{a1, a2}, {b}});
+  linked.crossLinks.bondTypes.push_back(harmonicBondType("X", "Y", kBondK, kBondLength, 6.0));
+  linked.crossLinks.addLink(CrossLink{site(0, 0, 0), site(1, 0, 0), 0});
+  linked.crossLinks.addLink(CrossLink{site(0, 0, 1), site(1, 0, 0), 0});
+
+  Component ring = makeComponent(forceField, 0, "xl-ring-aab", ringJson({"A", "A", "B"}));
+  System reference = makeSystem(forceField, {ring}, {{a1, a2, b}});
+  expectSameEnergies(linked.computeTotalEnergies(), reference.computeTotalEnergies());
+}
+
+TEST(MC_CROSS_LINKS, two_links_sharing_a_neighbour_of_their_sites_equal_four_membered_ring)
+{
+  const ForceField forceField = makeForceField(100.0, 0.4, -0.4, true);
+  Component trimer = makeComponent(forceField, 0, "xl-bridge-a", multiSiteChainJson("A", 3, {0, 2}, "X", 1));
+  Component monomer = makeComponent(forceField, 1, "xl-bridge-b", multiSiteChainJson("B", 1, {0}, "Y", 2));
+  const double3 a0(10.0, 10.0, 10.0);
+  const double3 a1(11.4, 10.3, 10.2);
+  const double3 a2(11.9, 11.7, 10.6);
+  const double3 b(10.4, 11.5, 10.9);
+  System linked = makeSystem(forceField, {trimer, monomer}, {{a0, a1, a2}, {b}});
+  linked.crossLinks.bondTypes.push_back(harmonicBondType("X", "Y", kBondK, kBondLength, 6.0));
+  linked.crossLinks.addLink(CrossLink{site(0, 0, 0), site(1, 0, 0), 0});
+  linked.crossLinks.addLink(CrossLink{site(0, 0, 2), site(1, 0, 0), 0});
+
+  Component ring = makeComponent(forceField, 0, "xl-ring-aaab", ringJson({"A", "A", "A", "B"}));
+  System reference = makeSystem(forceField, {ring}, {{a0, a1, a2, b}});
+  expectSameEnergies(linked.computeTotalEnergies(), reference.computeTotalEnergies());
+
+  // the regrown middle atom is reached by both links: the tethers of the trimer hold its pair with b once
+  const std::vector<CrossLinkTether> tethers = linked.crossLinkTethers(0, 0);
+  ASSERT_EQ(tethers.size(), 2uz);
+  EXPECT_EQ(tethers[0].exclusions.size() + tethers[1].exclusions.size(), 3uz);
+  const std::array<std::size_t, 2> all{0, 1};
+  const RunningEnergy tetherEnergy = Interactions::computeCrossLinkTetherEnergy(
+      forceField, linked.simulationBox, linked.components[0], linked.spanOfMolecule(0, 0), tethers, all);
+  const RunningEnergy total = linked.computeCrossLinkEnergy(linked.simulationBox, linked.spanOfMoleculeAtoms());
+  EXPECT_NEAR(tetherEnergy.potentialEnergy(), total.potentialEnergy(), 1e-8);
+}
+
+TEST(MC_CROSS_LINKS, shared_exclusions_gradient_strain_difference_and_tethers_are_consistent)
+{
+  const ForceField forceField = makeForceField(100.0, 0.4, -0.4, true);
+  System system = makeLadder(forceField, "xl-ladder-derivatives");
+  const std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+
+  auto total = [&](std::span<const Atom> positions)
+  {
+    return Interactions::computeCrossLinkEnergy(forceField, system.simulationBox, system.components,
+                                                system.numberOfMoleculesPerComponent, positions, system.crossLinks);
+  };
+
+  std::vector<AtomDynamics> dynamics(atoms.size());
+  const RunningEnergy energy =
+      Interactions::computeCrossLinkGradient(forceField, system.simulationBox, system.components,
+                                             system.numberOfMoleculesPerComponent, atoms, dynamics, system.crossLinks);
+  EXPECT_NEAR(energy.potentialEnergy(), total(atoms).potentialEnergy(), 1e-10);
+  std::vector<AtomDynamics> strainDynamics(atoms.size());
+  const auto [strainEnergy, strain] = Interactions::computeCrossLinkEnergyStrainDerivative(
+      forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent, atoms, strainDynamics,
+      system.crossLinks);
+  EXPECT_NEAR(energy.potentialEnergy(), strainEnergy.potentialEnergy(), 1e-10);
+
+  const double h = 1e-5;
+  for (std::size_t i = 0; i < atoms.size(); ++i)
+  {
+    EXPECT_NEAR((dynamics[i].gradient - strainDynamics[i].gradient).length(), 0.0, 1e-10);
+    for (std::size_t k = 0; k < 3; ++k)
+    {
+      auto shifted = [&](double delta)
+      {
+        std::vector<Atom> copy(atoms.begin(), atoms.end());
+        double3 d{};
+        (k == 0 ? d.x : (k == 1 ? d.y : d.z)) = delta;
+        copy[i].position += d;
+        return total(copy).potentialEnergy();
+      };
+      const double numerical = (shifted(h) - shifted(-h)) / (2.0 * h);
+      const double analytic =
+          (k == 0 ? dynamics[i].gradient.x : (k == 1 ? dynamics[i].gradient.y : dynamics[i].gradient.z));
+      EXPECT_NEAR(analytic, numerical, 1e-5 * std::max(1.0, std::abs(numerical))) << "atom " << i << " axis " << k;
+    }
+  }
+
+  // The energy difference of a moved molecule (all links that can share a pair are links of that molecule).
+  const RunningEnergy before = total(atoms);
+  std::vector<Atom> oldAtoms(atoms.begin(), atoms.begin() + 2);
+  std::vector<Atom> newAtoms = oldAtoms;
+  newAtoms[0].position += double3(0.11, -0.07, 0.05);
+  newAtoms[1].position += double3(-0.06, 0.09, -0.04);
+  const RunningEnergy difference = Interactions::computeCrossLinkEnergyDifference(
+      forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent, atoms,
+      system.crossLinks, 0, 0, newAtoms, oldAtoms);
+  std::vector<Atom> movedAtoms(atoms.begin(), atoms.end());
+  movedAtoms[0] = newAtoms[0];
+  movedAtoms[1] = newAtoms[1];
+  EXPECT_NEAR(difference.potentialEnergy(), total(movedAtoms).potentialEnergy() - before.potentialEnergy(), 1e-8);
+
+  // The tethers of a molecule hold each excluded pair once, also when only some of them are evaluated at a time.
+  const std::vector<CrossLinkTether> tethers = system.crossLinkTethers(0, 0);
+  ASSERT_EQ(tethers.size(), 2uz);
+  const std::span<const Atom> molecule = system.spanOfMolecule(0, 0);
+  const std::array<std::size_t, 1> first{0};
+  const std::array<std::size_t, 1> second{1};
+  const RunningEnergy tetherEnergy = Interactions::computeCrossLinkTetherEnergy(
+      forceField, system.simulationBox, system.components[0], molecule, tethers, first) +
+                                     Interactions::computeCrossLinkTetherEnergy(forceField, system.simulationBox,
+                                                                                system.components[0], molecule, tethers,
+                                                                                second);
+  EXPECT_NEAR(tetherEnergy.potentialEnergy(), before.potentialEnergy(), 1e-8);
+}
+
+// The topology moves score the change of the set of excluded pairs: breaking one link of a ladder keeps the pairs
+// the other link still excludes. Frozen positions: the distribution over the 7 topologies of two dimers is exact.
+TEST(MC_CROSS_LINKS, topology_moves_with_shared_exclusions_sample_exact_distribution)
+{
+  // a small epsilon: the pairs at these short distances are then of the order of the thermal energy
+  const ForceField forceField = makeForceField(0.01, 0.0, 0.0, false);
+  System system = makeLadder(forceField, "xl-ladder-moves");
+  system.crossLinks.links.clear();
+  system.crossLinks.rebuildIndex();
+  system.crossLinks.bondTypes[0] = harmonicBondType("X", "Y", 800.0, 1.8, 6.0, -250.0);
+
+  using Key = std::vector<std::pair<std::uint32_t, std::uint32_t>>;
+  auto keyOf = [](const std::vector<CrossLink>& links)
+  {
+    Key key{};
+    for (const CrossLink& link : links)
+    {
+      key.push_back(link.a.componentId == 0 ? std::make_pair(link.a.atomIndex, link.b.atomIndex)
+                                            : std::make_pair(link.b.atomIndex, link.a.atomIndex));
+    }
+    std::ranges::sort(key);
+    return key;
+  };
+  const std::vector<Key> topologies{{},
+                                    {{0, 0}},
+                                    {{0, 1}},
+                                    {{1, 0}},
+                                    {{1, 1}},
+                                    {{0, 0}, {1, 1}},
+                                    {{0, 1}, {1, 0}}};
+  std::vector<double> logWeights{};
+  std::vector<double> energies{};
+  for (const Key& topology : topologies)
+  {
+    std::vector<CrossLink> links{};
+    for (const auto& [i, j] : topology) links.push_back(CrossLink{site(0, 0, i), site(1, 0, j), 0});
+    const RunningEnergy energy = Interactions::computeCrossLinkEnergyOfLinks(
+        forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
+        system.spanOfMoleculeAtoms(), system.crossLinks, links);
+    energies.push_back(energy.potentialEnergy());
+    logWeights.push_back(-system.beta * energy.potentialEnergy());
+  }
+  // the two links of a ladder share pairs: the energy of the pair of links is not the sum of the single links
+  EXPECT_GT(system.beta * std::abs(energies[5] - energies[1] - energies[4]), 0.2);
+  const double maxLog = *std::ranges::max_element(logWeights);
+  std::vector<double> weights{};
+  for (double logWeight : logWeights) weights.push_back(std::exp(logWeight - maxLog));
+  const double normalization = std::accumulate(weights.begin(), weights.end(), 0.0);
+
+  RandomNumber random(2024);
+  std::map<Key, std::size_t> counts{};
+  const std::size_t numberOfMoves = 600000;
+  RunningEnergy running = system.computeCrossLinkEnergy(system.simulationBox, system.spanOfMoleculeAtoms());
+  for (std::size_t step = 0; step < numberOfMoves; ++step)
+  {
+    const double choice = random.uniform();
+    std::optional<RunningEnergy> difference;
+    if (choice < 0.5)
+      difference = MC_Moves::crossLinkFormationScissionMove(random, system);
+    else if (choice < 0.8)
+      difference = MC_Moves::crossLinkSwapMove(random, system);
+    else
+      difference = MC_Moves::crossLinkExchangeMove(random, system);
+    if (difference) running += difference.value();
+    counts[keyOf(system.crossLinks.links)] += 1;
+  }
+  const RunningEnergy recomputed = system.computeCrossLinkEnergy(system.simulationBox, system.spanOfMoleculeAtoms());
+  EXPECT_NEAR(running.potentialEnergy(), recomputed.potentialEnergy(),
+              1e-8 * std::max(1.0, std::abs(recomputed.potentialEnergy())));
+
+  double largest = 0.0;
+  for (std::size_t t = 0; t < topologies.size(); ++t)
+  {
+    const double exact = weights[t] / normalization;
+    largest = std::max(largest, exact);
+    const double sampled = static_cast<double>(counts[topologies[t]]) / static_cast<double>(numberOfMoves);
+    EXPECT_NEAR(sampled, exact, 0.015) << "topology " << t;
+  }
+  // the distribution is spread over the topologies, also the ones whose links share pairs
+  EXPECT_LT(largest, 0.8);
+  EXPECT_GT(weights[5] / normalization + weights[6] / normalization, 0.02);
+}
+
+// A site that carries two links: the two partners form a 1-3 pair through the site and the bend of the site, as the
+// two bonds of an atom in a molecule do.
+namespace
+{
+// Single-bead monomer with one reactive site of valence 2 and the bend between its two links.
+std::string valenceTwoMonomerJson(std::string_view atomName, std::string_view siteType, double bendK, double bendAngle)
+{
+  return std::format(R"({{
+  "CriticalTemperature" : 190.6,
+  "CriticalPressure" : 4599200.0,
+  "AcentricFactor" : 0.011,
+  "pseudoAtoms" : [["{}", [0.0, 0.0, 0.0]]],
+  "ReactiveSites" : [{{"Atom": 0, "Type": "{}", "Valence": 2, "LinkBend": ["HARMONIC", [{}, {}]]}}]
+}}
+)",
+                     atomName, siteType, bendK, bendAngle);
+}
+
+// The molecule A-B-A with harmonic bonds and the bend at B: the reference for two monomers A linked to one B.
+std::string chainABAJson(double bondK, double bondLength, double bendK, double bendAngle)
+{
+  return std::format(R"({{
+  "CriticalTemperature" : 190.6,
+  "CriticalPressure" : 4599200.0,
+  "AcentricFactor" : 0.011,
+  "pseudoAtoms" : [["A", [0.0, 0.0, 0.0]], ["B", [{1}, 0.0, 0.0]], ["A", [{4}, 0.0, 0.0]]],
+  "Connectivity" : [[0, 1], [1, 2]],
+  "Bonds" : [[["A", "B"], "HARMONIC", [{0}, {1}]]],
+  "Bends" : [[["A", "B", "A"], "HARMONIC", [{2}, {3}]]],
+  "VanDerWaals" : "auto",
+  "Coulomb" : "auto"
+}}
+)",
+                     bondK, bondLength, bendK, bendAngle, 2.0 * bondLength);
+}
+
+// Two monomers A (valence 1) linked to one monomer B (valence 2, with a link bend), in a bent geometry.
+System makeValenceTwoChain(const ForceField& forceField, const std::string& name, double bendK = kBendK,
+                           std::vector<double3> positionsA = {double3(10.0, 10.0, 10.0), double3(12.4, 11.4, 10.5)},
+                           double3 positionB = double3(11.5, 10.2, 10.1))
+{
+  Component monomerA = makeComponent(forceField, 0, name + "-a", monomerJson("A", "X"));
+  Component monomerB = makeComponent(forceField, 1, name + "-b", valenceTwoMonomerJson("B", "Y", bendK, kBendAngle));
+  System system = makeSystem(forceField, {monomerA, monomerB}, {std::move(positionsA), {positionB}});
+  system.crossLinks.bondTypes.push_back(harmonicBondType("X", "Y", kBondK, kBondLength, 6.0));
+  return system;
+}
+}  // namespace
+
+TEST(MC_CROSS_LINKS, two_links_at_one_site_equal_bonded_chain_with_bend)
+{
+  const ForceField forceField = makeForceField(100.0, 0.2, -0.4, true);
+  System linked = makeValenceTwoChain(forceField, "xl-valence-two");
+  linked.crossLinks.addLink(CrossLink{site(0, 0, 0), site(1, 0, 0), 0});
+  linked.crossLinks.addLink(CrossLink{site(0, 1, 0), site(1, 0, 0), 0});
+  const RunningEnergy linkedEnergy = linked.computeTotalEnergies();
+
+  const std::span<const Atom> atoms = linked.spanOfMoleculeAtoms();
+  Component chain = makeComponent(forceField, 0, "xl-chain-aba", chainABAJson(kBondK, kBondLength, kBendK, kBendAngle));
+  System reference = makeSystem(forceField, {chain}, {{atoms[0].position, atoms[2].position, atoms[1].position}});
+  const RunningEnergy referenceEnergy = reference.computeTotalEnergies();
+
+  expectSameEnergies(linkedEnergy, referenceEnergy);
+  EXPECT_NEAR(linkedEnergy.crossLink, referenceEnergy.bond + referenceEnergy.bend, 1e-8);
+  EXPECT_GT(referenceEnergy.bend, 1.0);
+}
+
+TEST(MC_CROSS_LINKS, two_links_at_one_site_derivatives_and_differences_are_consistent)
+{
+  const ForceField forceField = makeForceField(100.0, 0.2, -0.4, true);
+  System system = makeValenceTwoChain(forceField, "xl-valence-two-derivatives");
+  system.crossLinks.addLink(CrossLink{site(0, 0, 0), site(1, 0, 0), 0});
+  system.crossLinks.addLink(CrossLink{site(0, 1, 0), site(1, 0, 0), 0});
+  const std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+
+  auto total = [&](std::span<const Atom> positions)
+  {
+    return Interactions::computeCrossLinkEnergy(forceField, system.simulationBox, system.components,
+                                                system.numberOfMoleculesPerComponent, positions, system.crossLinks);
+  };
+
+  std::vector<AtomDynamics> dynamics(atoms.size());
+  const RunningEnergy energy =
+      Interactions::computeCrossLinkGradient(forceField, system.simulationBox, system.components,
+                                             system.numberOfMoleculesPerComponent, atoms, dynamics, system.crossLinks);
+  EXPECT_NEAR(energy.potentialEnergy(), total(atoms).potentialEnergy(), 1e-10);
+  std::vector<AtomDynamics> strainDynamics(atoms.size());
+  const auto [strainEnergy, strain] = Interactions::computeCrossLinkEnergyStrainDerivative(
+      forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent, atoms, strainDynamics,
+      system.crossLinks);
+  EXPECT_NEAR(energy.potentialEnergy(), strainEnergy.potentialEnergy(), 1e-10);
+
+  const double h = 1e-5;
+  double3 totalGradient{};
+  for (std::size_t i = 0; i < atoms.size(); ++i)
+  {
+    totalGradient += dynamics[i].gradient;
+    EXPECT_NEAR((dynamics[i].gradient - strainDynamics[i].gradient).length(), 0.0, 1e-10);
+    for (std::size_t k = 0; k < 3; ++k)
+    {
+      auto shifted = [&](double delta)
+      {
+        std::vector<Atom> copy(atoms.begin(), atoms.end());
+        double3 d{};
+        (k == 0 ? d.x : (k == 1 ? d.y : d.z)) = delta;
+        copy[i].position += d;
+        return total(copy).potentialEnergy();
+      };
+      const double numerical = (shifted(h) - shifted(-h)) / (2.0 * h);
+      const double analytic =
+          (k == 0 ? dynamics[i].gradient.x : (k == 1 ? dynamics[i].gradient.y : dynamics[i].gradient.z));
+      EXPECT_NEAR(analytic, numerical, 1e-5 * std::max(1.0, std::abs(numerical))) << "atom " << i << " axis " << k;
+    }
+  }
+  EXPECT_NEAR(totalGradient.length(), 0.0, 1e-6);
+
+  // the strain derivative against a finite difference of the energy under a homogeneous deformation
+  for (std::size_t row = 0; row < 3; ++row)
+  {
+    for (std::size_t column = 0; column < 3; ++column)
+    {
+      auto deformed = [&](double delta)
+      {
+        double3x3 deformation = double3x3::identity();
+        deformation[row][column] += delta;
+        const SimulationBox box(deformation * system.simulationBox.cell);
+        std::vector<Atom> copy(atoms.begin(), atoms.end());
+        for (Atom& atom : copy) atom.position = deformation * atom.position;
+        return Interactions::computeCrossLinkEnergy(forceField, box, system.components,
+                                                    system.numberOfMoleculesPerComponent, copy, system.crossLinks)
+            .potentialEnergy();
+      };
+      const double numerical = (deformed(h) - deformed(-h)) / (2.0 * h);
+      EXPECT_NEAR(strain[row][column], numerical, 1e-5 * std::max(1.0, std::abs(numerical)))
+          << "strain " << row << " " << column;
+    }
+  }
+
+  // The energy difference of a moved molecule: the pair of the two partners and the bend at the site involve the
+  // other partner, whose link is not a link of the moved molecule.
+  const RunningEnergy before = total(atoms);
+  for (const auto [component, molecule, first] : {std::tuple{0uz, 1uz, 1uz}, std::tuple{1uz, 0uz, 2uz}})
+  {
+    std::vector<Atom> oldAtoms{atoms[first]};
+    std::vector<Atom> newAtoms = oldAtoms;
+    newAtoms[0].position += double3(0.13, -0.09, 0.07);
+    const RunningEnergy difference = Interactions::computeCrossLinkEnergyDifference(
+        forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent, atoms,
+        system.crossLinks, component, molecule, newAtoms, oldAtoms);
+    std::vector<Atom> movedAtoms(atoms.begin(), atoms.end());
+    movedAtoms[first] = newAtoms[0];
+    EXPECT_NEAR(difference.potentialEnergy(), total(movedAtoms).potentialEnergy() - before.potentialEnergy(), 1e-8)
+        << "component " << component << " molecule " << molecule;
+  }
+
+  // The topology change: adding the second link adds the terms it forms with the first one.
+  const CrossLink second = system.crossLinks.links[1];
+  system.crossLinks.removeLink(1);
+  const RunningEnergy change = Interactions::computeCrossLinkTopologyChangeEnergy(
+      forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent, atoms,
+      system.crossLinks, {}, std::span<const CrossLink>(&second, 1));
+  EXPECT_NEAR(change.potentialEnergy(), before.potentialEnergy() - total(atoms).potentialEnergy(), 1e-8);
+}
+
+// At frozen positions the topology moves sample the exact distribution over the four topologies of two valence-1
+// monomers A and one valence-2 monomer B; the doubly linked topology carries the bend and the A-A exclusion.
+TEST(MC_CROSS_LINKS, topology_moves_with_two_links_at_one_site_sample_exact_distribution)
+{
+  // the monomers at the Lennard-Jones contact distance of the bond, where the pair energies are thermal
+  const ForceField forceField = makeForceField(100.0, 0.0, 0.0, false);
+  const double3 b(10.0, 10.0, 10.0);
+  const double angle = 100.0 * Units::DegreesToRadians;
+  System system = makeValenceTwoChain(forceField, "xl-valence-two-moves", 2000.0,
+                                      {b + 3.4 * double3(1.0, 0.0, 0.05), b + 3.4 * double3(std::cos(angle), std::sin(angle), -0.05)}, b);
+  system.crossLinks.bondTypes[0] = harmonicBondType("X", "Y", 800.0, 3.4, 6.0, -250.0);
+
+  using Key = std::vector<std::uint32_t>;  // the molecules of component A linked to B
+  auto keyOf = [](const std::vector<CrossLink>& links)
+  {
+    Key key{};
+    for (const CrossLink& link : links) key.push_back(link.a.componentId == 0 ? link.a.moleculeIndex : link.b.moleculeIndex);
+    std::ranges::sort(key);
+    return key;
+  };
+  const std::vector<Key> topologies{{}, {0}, {1}, {0, 1}};
+  std::vector<double> energies{};
+  for (const Key& topology : topologies)
+  {
+    std::vector<CrossLink> links{};
+    for (std::uint32_t m : topology) links.push_back(CrossLink{site(0, m, 0), site(1, 0, 0), 0});
+    energies.push_back(Interactions::computeCrossLinkEnergyOfLinks(
+                           forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
+                           system.spanOfMoleculeAtoms(), system.crossLinks, links)
+                           .potentialEnergy());
+  }
+  // the two links at B form a bend and exclude the A-A pair: the energy is not the sum of the single links
+  EXPECT_GT(system.beta * std::abs(energies[3] - energies[1] - energies[2]), 0.2);
+  std::vector<double> weights{};
+  for (double energy : energies) weights.push_back(std::exp(-system.beta * (energy - energies[3])));
+  const double normalization = std::accumulate(weights.begin(), weights.end(), 0.0);
+
+  RandomNumber random(4711);
+  std::map<Key, std::size_t> counts{};
+  const std::size_t numberOfMoves = 400000;
+  RunningEnergy running = system.computeCrossLinkEnergy(system.simulationBox, system.spanOfMoleculeAtoms());
+  for (std::size_t step = 0; step < numberOfMoves; ++step)
+  {
+    const double choice = random.uniform();
+    std::optional<RunningEnergy> difference;
+    if (choice < 0.6)
+      difference = MC_Moves::crossLinkFormationScissionMove(random, system);
+    else if (choice < 0.8)
+      difference = MC_Moves::crossLinkSwapMove(random, system);
+    else
+      difference = MC_Moves::crossLinkExchangeMove(random, system);
+    if (difference) running += difference.value();
+    counts[keyOf(system.crossLinks.links)] += 1;
+    for (const CrossLink& link : system.crossLinks.links)
+    {
+      ASSERT_LE(system.crossLinks.linkCount(link.a), 2u);
+      ASSERT_LE(system.crossLinks.linkCount(link.b), 2u);
+    }
+  }
+  const RunningEnergy recomputed = system.computeCrossLinkEnergy(system.simulationBox, system.spanOfMoleculeAtoms());
+  EXPECT_NEAR(running.potentialEnergy(), recomputed.potentialEnergy(),
+              1e-8 * std::max(1.0, std::abs(recomputed.potentialEnergy())));
+
+  double largest = 0.0;
+  for (std::size_t t = 0; t < topologies.size(); ++t)
+  {
+    const double exact = weights[t] / normalization;
+    largest = std::max(largest, exact);
+    const double sampled = static_cast<double>(counts[topologies[t]]) / static_cast<double>(numberOfMoves);
+    EXPECT_NEAR(sampled, exact, 0.015) << "topology " << t;
+  }
+  EXPECT_LT(largest, 0.8);
+  EXPECT_GT(weights[3] / normalization, 0.05);
 }
