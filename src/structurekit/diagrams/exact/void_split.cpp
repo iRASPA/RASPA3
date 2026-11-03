@@ -248,7 +248,7 @@ ExactVoidSplit exactVoidSplitByComponents(const PoreAccessibility& accessibility
 
   // Which surfaces have the accessible void on their far side, by the same division the area and the excluded
   // volume use. Taken first because a pocket needs it about every surface but its own.
-  const std::vector<SurfaceSide> sides = surfaceSides(components, patches, verdicts);
+  const std::vector<SurfaceSide> sides = surfaceSides(components, patches, verdicts, patches.sidePolicy);
   std::vector<std::uint8_t> facesChannel(components.numberOfComponents, 0);
   for (std::size_t component = 0; component < components.numberOfComponents; ++component)
   {

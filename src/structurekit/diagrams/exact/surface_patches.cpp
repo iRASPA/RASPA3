@@ -525,6 +525,7 @@ MeasuredPatches exactAccessibleSurfaceAreaByComponent(const PoreAccessibility& a
 
   // Which side each surface is on, now that each has been measured whole. The counts alongside say what
   // settled each of them, which is how much of this division is geometry's and how much is the network's.
+  patches.sidePolicy = policy;
   const std::vector<SurfaceSide> sides = surfaceSides(components, patches, verdicts, policy);
   for (std::size_t component = 0; component < components.numberOfComponents; ++component)
   {

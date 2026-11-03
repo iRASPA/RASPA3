@@ -8,6 +8,7 @@ import pore_accessibility;
 import exact_union_volume;
 import exact_surface_patches;
 import exact_solvent_excluded;
+import exact_boundary_components;
 
 // The solvent excluded surface of an arrangement of balls, the volume it encloses, and the pore-size
 // distribution that is the derivative of that volume.
@@ -821,4 +822,48 @@ TEST(exact_solvent_excluded, two_unequal_atoms_with_the_circle_behind_a_centre)
         << "bare " << bareFirst << " " << bareSecond << " separation " << separation << " probe " << probe;
   }
   EXPECT_GE(slopes, 2uz);
+}
+
+
+// Under a smaller reachability probe the area is divided by the network alone (a sealed cage that the smaller
+// probe reaches is reachable); the excluded volume behind it has to divide the same surfaces the same way, or
+// the two halves of one report disagree about the same cage.
+TEST(exact_solvent_excluded, the_excluded_volume_divides_the_surfaces_as_the_area_did)
+{
+  const double a = 10.0;
+  UnitCell box(a, a, a);
+  auto [positions, radii] = icosahedralCage(double3(0.5 * a, 0.5 * a, 0.5 * a), 2.5, 1.6);
+  const double probe = 0.5;
+  PoreAccessibility accessibility = inflatedGeometry(box, positions, radii, probe);
+
+  BoundaryComponents components = boundaryComponents(accessibility);
+  std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(accessibility, components, nullptr);
+  ASSERT_EQ(components.numberOfComponents, 2uz);
+
+  // the geometric rule: the cage is sealed, and the excluded volume agrees
+  MeasuredPatches geometric = exactAccessibleSurfaceAreaByComponent(accessibility, components, verdicts, 1,
+                                                                    SurfaceMoments::volume, SurfaceSidePolicy::geometric);
+  const std::vector<SurfaceSide> sides = surfaceSides(components, geometric, verdicts, SurfaceSidePolicy::geometric);
+  std::optional<std::size_t> cage{};
+  for (std::size_t component = 0; component < components.numberOfComponents; ++component)
+  {
+    if (sides[component].closure == SurfaceClosure::sealed) cage = component;
+  }
+  ASSERT_TRUE(cage.has_value());
+  SolventExcludedGeometry sealed = solventExcludedGeometry(accessibility, probe, components, verdicts, geometric, 1);
+  EXPECT_EQ(sealed.componentSide[cage.value()], -1);
+  EXPECT_GT(sealed.inaccessiblePoreVolume, 0.0);
+
+  // the network rule with a verdict that reaches the cage (as a smaller probe's network would): the area calls
+  // the cage reachable, and so must the excluded volume measured from the same patches
+  verdicts[cage.value()].decided = true;
+  verdicts[cage.value()].accessible = true;
+  MeasuredPatches network = exactAccessibleSurfaceAreaByComponent(accessibility, components, verdicts, 1,
+                                                                  SurfaceMoments::volume, SurfaceSidePolicy::network);
+  EXPECT_EQ(surfaceSides(components, network, verdicts, SurfaceSidePolicy::network)[cage.value()].side, 1);
+  SolventExcludedGeometry reached = solventExcludedGeometry(accessibility, probe, components, verdicts, network, 1);
+  EXPECT_EQ(reached.componentSide[cage.value()], 1);
+  EXPECT_NEAR(reached.inaccessiblePoreVolume, 0.0, 1.0e-9);
+  EXPECT_NEAR(reached.accessiblePoreVolume, sealed.accessiblePoreVolume + sealed.inaccessiblePoreVolume,
+              1.0e-8 * std::max(1.0, sealed.poreVolume));
 }

@@ -96,6 +96,13 @@ export enum class SurfaceMoments : std::uint8_t
   andCentre,  // and the first moment, which is what a centroid comes from
 };
 
+// How reachable vs sealed is decided for a connected surface; see `surfaceSides`.
+export enum class SurfaceSidePolicy : std::uint8_t
+{
+  geometric,
+  network,
+};
+
 export struct MeasuredPatches
 {
   double accessible{0.0};    // Å²
@@ -133,6 +140,11 @@ export struct MeasuredPatches
   // is closed or it is not, and which arcs belong to it is a matter of geometry rather than of a
   // classification, so a bounded one's moments close to round-off whatever the classifier makes of it.
   std::vector<BoundaryMoments> components;
+
+  // How the surfaces were divided into reachable and sealed when they were measured (see `SurfaceSidePolicy`).
+  // The excluded volume and the void split divide the same surfaces again, and read it from here so that they
+  // divide them the same way whatever the caller asked for.
+  SurfaceSidePolicy sidePolicy{SurfaceSidePolicy::geometric};
 
   // What the sweep did, and where it could not answer. None of this enters any of the numbers above; it is
   // what a caller looks at to decide whether to believe them.
@@ -227,12 +239,6 @@ export struct SurfaceSide
   int side{0};  // plus one reachable, minus one shut in, zero where nothing could say
 };
 
-// How reachable vs sealed is decided for a connected surface; see `surfaceSides`.
-export enum class SurfaceSidePolicy : std::uint8_t
-{
-  geometric,
-  network,
-};
 
 // The same measurement, split by the connected surfaces of the boundary rather than arc by arc.
 //

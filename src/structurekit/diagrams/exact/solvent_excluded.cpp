@@ -920,9 +920,10 @@ SolventExcludedGeometry solventExcludedGeometry(const PoreAccessibility& accessi
   result.probeRadius = probeRadius;
   result.accessibleVolume = unionOfBallsVolume(accessibility, patches, components);
 
-  // The same division of the surfaces the area was split by, so that a volume and an area of this structure
+  // The same division of the surfaces the area was split by, by the same rule (the area may have been split by
+  // the network alone, under a smaller reachability probe), so that a volume and an area of this structure
   // never disagree about which side a surface is on.
-  const std::vector<SurfaceSide> sides = surfaceSides(components, patches, verdicts);
+  const std::vector<SurfaceSide> sides = surfaceSides(components, patches, verdicts, patches.sidePolicy);
   result.componentSide.assign(components.numberOfComponents, 0);
   for (std::size_t component = 0; component < components.numberOfComponents; ++component)
   {
