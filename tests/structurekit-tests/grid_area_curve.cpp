@@ -181,3 +181,34 @@ TEST(grid_area_curve, the_curve_can_be_read_off_between_its_bins)
   EXPECT_EQ(curve.areaAt(0.5), 0.0) << "below the range there is nothing to report";
   EXPECT_EQ(curve.areaAt(20.0), 0.0) << "nor above it";
 }
+
+
+// An energy field at a wall: a slab of pore voxels at one value beside voxels held at a ceiling orders of
+// magnitude above the range. Every level between the pore's value and the ceiling is crossed within the voxel
+// beside the wall, so each such level is two planes, the slab having two faces, and no level below the pore's
+// value is crossed anywhere. Measured by a band symmetric about the voxel's value, the voxel beside the wall was
+// credited with every level under the range as well, half its weight was counted as lying below the range, and
+// the resolution reported was the height of the wall.
+TEST(grid_area_curve, a_wall_is_credited_only_with_the_levels_it_climbs_through)
+{
+  const double side = 20.0;
+  const UnitCell box(side, side, side);
+  const uint3 gridSize(32, 32, 32);
+
+  std::vector<float> field(32 * 32 * 32, -10.0f);
+  for (std::size_t k = 16; k < 32; ++k)
+  {
+    for (std::size_t j = 0; j < 32; ++j)
+    {
+      for (std::size_t i = 0; i < 32; ++i) field[(k * 32 + j) * 32 + i] = 1.0e7f;
+    }
+  }
+
+  AreaCurve curve = areaAgainstLevel(gridSize, box, field, -500.0, 500.0, 100);
+
+  const double twoPlanes = 2.0 * side * side;
+  EXPECT_NEAR(curve.areaAt(200.0), twoPlanes, 0.05 * twoPlanes);
+  EXPECT_NEAR(curve.areaAt(-300.0), 0.0, 1.0e-9) << "no level below the pore's value is crossed anywhere";
+  EXPECT_NEAR(curve.fractionBelowRange, 0.0, 1.0e-12);
+  EXPECT_LE(curve.meanSpanPerVoxel, 3.0 * 1000.0) << "the resolution is read within the range, not off the wall";
+}

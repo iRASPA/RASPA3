@@ -117,32 +117,56 @@ AreaCurve areaAgainstLevel(uint3 gridSize, const UnitCell &unitCell, std::span<c
             return static_cast<double>(field[static_cast<std::size_t>((cc * ny + bb) * nx + aa)]);
           };
 
-          const double alongX = 0.5 * (at(i + 1, j, k) - at(i - 1, j, k));
-          const double alongY = 0.5 * (at(i, j + 1, k) - at(i, j - 1, k));
-          const double alongZ = 0.5 * (at(i, j, k + 1) - at(i, j, k - 1));
+          const double west = at(i - 1, j, k);
+          const double east = at(i + 1, j, k);
+          const double south = at(i, j - 1, k);
+          const double north = at(i, j + 1, k);
+          const double below = at(i, j, k - 1);
+          const double above = at(i, j, k + 1);
+
+          const double alongX = 0.5 * (east - west);
+          const double alongY = 0.5 * (north - south);
+          const double alongZ = 0.5 * (above - below);
 
           double3 fractionalGradient(alongX / fractionalStep.x, alongY / fractionalStep.y, alongZ / fractionalStep.z);
           const double magnitude = transposedMultiply(inverseCell, fractionalGradient).length();
 
-          // How far the field moves across this one voxel, which is the projection of the voxel onto the gradient
-          // and works out to the sum of the three differences already in hand.
-          const double span = std::abs(alongX) + std::abs(alongY) + std::abs(alongZ);
-          if (here >= lowestLevel && here < highestLevel)
-          {
-            localSpan += span;
-            ++localSpanned;
-          }
-
           // The voxel is not a point. Its value is a sample of a field that varies across it, and dropping the
           // whole of its weight into the single bin its center happens to fall in is what makes this estimator
-          // alias: bins narrower than `span` are then filled by whether a grid point landed in them rather than
-          // by the field, and neighbouring bins come out at wildly different heights. Taking the field as linear
-          // across the voxel, which is the same approximation the gradient already is, spreads that weight evenly
-          // over the values the voxel actually covers. Nothing is lost, since the integral over the band is what
-          // it was, and the curve becomes smooth in the only sense available to it: the field cannot resolve
-          // structure finer than it moves in one voxel, and it now says so rather than inventing some.
-          const double lowest = here - 0.5 * span;
-          const double highest = here + 0.5 * span;
+          // alias: bins narrower than the voxel's band are then filled by whether a grid point landed in them
+          // rather than by the field, and neighbouring bins come out at wildly different heights. Taking the field
+          // as linear across the voxel, which is the same approximation the gradient already is, spreads that
+          // weight evenly over the values the voxel actually covers. Nothing is lost, since the integral over the
+          // band is what it was, and the curve becomes smooth in the only sense available to it: the field cannot
+          // resolve structure finer than it moves in one voxel, and it now says so rather than inventing some.
+          //
+          // Towards each neighbour the field is taken as linear from the voxel's own value to halfway, so the band
+          // reaches on each side of the value as far as the field moves on that side, and no further; on a smooth
+          // field that is the same band the central difference gives. Taken as symmetric about the value from the
+          // central difference alone, it reached as far below a voxel beside a wall as the wall stood above it. An
+          // energy field climbs by orders of magnitude in the one voxel into an atom, and the mirror image of that
+          // climb credited the voxel with every level under the whole range, area it never carried, counted half
+          // of it as lying below the range, and made the resolution reported the height of the wall.
+          double lowest = here;
+          double highest = here;
+          for (const auto &[toward, away] : {std::pair{east, west}, std::pair{north, south}, std::pair{above, below}})
+          {
+            const double up = 0.5 * (toward - here);
+            const double down = 0.5 * (here - away);
+            lowest += std::min({-down, up, 0.0});
+            highest += std::max({-down, up, 0.0});
+          }
+          const double span = highest - lowest;
+
+          // How far the field moves across this one voxel, for the resolution of the curve: measured within the
+          // range's neighbourhood, since a voxel beside a wall moves by whatever the wall is held at, which says
+          // nothing about how finely the curve can be read.
+          if (here >= lowestLevel && here < highestLevel)
+          {
+            localSpan += std::clamp(highest, lowestLevel - guard, highestLevel + guard) -
+                         std::clamp(lowest, lowestLevel - guard, highestLevel + guard);
+            ++localSpanned;
+          }
 
           if (span <= 0.0)
           {
