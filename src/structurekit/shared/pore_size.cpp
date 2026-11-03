@@ -254,7 +254,12 @@ PoreSizeCurve binPoreSizes(std::span<const float> poreRadius, std::span<const fl
     if (distance[v] < 0.0f) continue;
     const double diameter = 2.0 * static_cast<double>(poreRadius[v]);
     std::size_t bin = static_cast<std::size_t>(std::floor(diameter / step));
-    if (bin > bins) bin = bins;
+
+    // The top of the range belongs to the last bin. By default the range is the largest sphere itself, and
+    // the family of pores at exactly that size is the one spike the curve is certain to have, so it has to
+    // land in a bin that is drawn; past the end of the range it would be counted at or above every bin and
+    // drawn in none. Only sizes beyond an explicitly shorter range go there.
+    if (bin >= bins) bin = (diameter <= largest) ? bins - 1 : bins;
 
     const double w = weightOf(v);
     voidAtLeast[bin] += w;

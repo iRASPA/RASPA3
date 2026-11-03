@@ -295,3 +295,53 @@ TEST(grid_pore_size, weighting_the_narrow_slab_moves_the_curve_onto_it)
   EXPECT_NEAR(shareAtLeast(5.0), 1.0 / 3.0, 0.03) << "weighting the narrow slab takes the curve off the wide one";
   EXPECT_NEAR(curve.meanDiameter, (4.0 * 4.0 + 2.0 * 8.0) / 6.0, 0.2) << "and the mean size comes down with it";
 }
+
+
+// The family of pores at the largest size is the one spike every distribution is certain to have, since the
+// largest sphere in the void fills a family of its own; and by default the range of the histogram ends exactly
+// at that size. The top of the range belongs to the last bin: a size that is the range itself is in the curve,
+// and only a size past an explicitly shorter range stands beyond it, counted at or above every bin but drawn
+// in none.
+TEST(grid_pore_size, the_largest_pore_is_in_the_last_bin_of_its_own_range)
+{
+  // Sixty points in pores 4 across, forty in pores 8 across, the wide ones reachable.
+  std::vector<float> poreRadius(100, 2.0f);
+  std::vector<float> distance(100, 1.0f);
+  std::vector<std::uint8_t> accessible(100, 0);
+  for (std::size_t v = 60; v < 100; ++v)
+  {
+    poreRadius[v] = 4.0f;
+    accessible[v] = 1;
+  }
+
+  auto integral = [](const PoreSizeCurve &curve, bool reached)
+  {
+    double sum = 0.0;
+    for (const PoreSizeCurvePoint &point : curve.points)
+    {
+      sum += (reached ? point.accessibleDistribution : point.distribution) * curve.binWidth;
+    }
+    return sum;
+  };
+
+  for (std::optional<double> range : {std::optional<double>{}, std::optional<double>{8.0}})
+  {
+    PoreSizeCurve curve = binPoreSizes(poreRadius, distance, accessible, {}, range, 8);
+    ASSERT_EQ(curve.points.size(), 8uz);
+    EXPECT_NEAR(curve.largestDiameter, 8.0, 1.0e-12);
+    EXPECT_NEAR(curve.binWidth, 1.0, 1.0e-12);
+
+    EXPECT_NEAR(curve.points[7].cumulativeVoidFraction, 0.4, 1.0e-12);
+    EXPECT_NEAR(curve.points[7].distribution, 0.4, 1.0e-12) << "the largest pores are drawn in the last bin";
+    EXPECT_NEAR(curve.points[7].accessibleDistribution, 1.0, 1.0e-12);
+    EXPECT_NEAR(curve.points[4].distribution, 0.6, 1.0e-12);
+    EXPECT_NEAR(integral(curve, false), 1.0, 1.0e-12) << "the distribution accounts for the whole void";
+    EXPECT_NEAR(integral(curve, true), 1.0, 1.0e-12);
+  }
+
+  // A range that stops short of the widest pores leaves them out of the histogram and in the cumulative curve.
+  PoreSizeCurve cut = binPoreSizes(poreRadius, distance, accessible, {}, 6.0, 6);
+  EXPECT_NEAR(cut.points[0].cumulativeVoidFraction, 1.0, 1.0e-12);
+  EXPECT_NEAR(cut.points[5].cumulativeVoidFraction, 0.4, 1.0e-12);
+  EXPECT_NEAR(integral(cut, false), 0.6, 1.0e-12) << "what lies past the range is not drawn";
+}

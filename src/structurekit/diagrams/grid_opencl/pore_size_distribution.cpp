@@ -104,61 +104,29 @@ void GridPoreSizeDistribution::run(const PairInteractions &interactions, const C
     }
   }
 
-  this->largestDiameter = 0.0;
-  std::size_t reachedVoxels = 0;
+  std::vector<std::uint8_t> accessible(numberOfVoxels, 0);
   for (std::size_t v = 0; v < numberOfVoxels; ++v)
   {
-    if (grid.clearance[v] < 0.0f) continue;
-    this->largestDiameter = std::max(this->largestDiameter, 2.0 * static_cast<double>(poreRadius[v]));
     std::int32_t voidPore = voidComponents.voxelPore[v];
-    if (voidPore >= 0 && voidComponentReached[static_cast<std::size_t>(voidPore)] != 0) ++reachedVoxels;
+    if (voidPore >= 0 && voidComponentReached[static_cast<std::size_t>(voidPore)] != 0) accessible[v] = 1;
   }
+
+  // The curve is a count of grid points against the size found at each of them, binned by the one routine
+  // every grid route bins with, so that where the top of the range falls is decided once.
+  PoreSizeCurve curve = binPoreSizes(poreRadius, grid.clearance, accessible, {}, maximumDiameter, numberOfBins);
+  this->largestDiameter = curve.largestDiameter;
 
   const double totalVoxels = static_cast<double>(numberOfVoxels);
   this->voidFraction = static_cast<double>(voidVoxels) / totalVoxels;
-  this->accessibleVoidFraction = static_cast<double>(reachedVoxels) / totalVoxels;
+  this->accessibleVoidFraction = static_cast<double>(curve.numberOfAccessibleVoxels) / totalVoxels;
 
-  // The curve is a count of grid points against the size found at each of them, so it needs no fitting: the
-  // cumulative curve is exact for the field it was measured on, and only its derivative depends on how finely
-  // the sizes are divided up.
-  const std::size_t bins = numberOfBins.value_or(200);
-  const double largest = maximumDiameter.value_or(std::max(this->largestDiameter, 1.0));
-  const double step = largest / static_cast<double>(bins);
-
-  std::vector<double> voidAtLeast(bins + 1, 0.0);
-  std::vector<double> reachedAtLeast(bins + 1, 0.0);
-  for (std::size_t v = 0; v < numberOfVoxels; ++v)
+  this->points.resize(curve.points.size());
+  for (std::size_t bin = 0; bin < curve.points.size(); ++bin)
   {
-    if (grid.clearance[v] < 0.0f) continue;
-    double diameter = 2.0 * static_cast<double>(poreRadius[v]);
-    std::size_t bin = static_cast<std::size_t>(std::floor(diameter / step));
-    if (bin > bins) bin = bins;
-
-    voidAtLeast[bin] += 1.0;
-    std::int32_t voidPore = voidComponents.voxelPore[v];
-    if (voidPore >= 0 && voidComponentReached[static_cast<std::size_t>(voidPore)] != 0) reachedAtLeast[bin] += 1.0;
-  }
-
-  // Turn the counts per size into counts at or above a size, from the top down.
-  for (std::size_t bin = bins; bin-- > 0;)
-  {
-    voidAtLeast[bin] += voidAtLeast[bin + 1];
-    reachedAtLeast[bin] += reachedAtLeast[bin + 1];
-  }
-
-  double voidNormalisation = (voidVoxels > 0) ? static_cast<double>(voidVoxels) : 1.0;
-  double reachedNormalisation = (reachedVoxels > 0) ? static_cast<double>(reachedVoxels) : 1.0;
-
-  this->points.resize(bins);
-  for (std::size_t bin = 0; bin < bins; ++bin)
-  {
-    GridPoreSizeDistributionPoint point;
-    point.diameter = (static_cast<double>(bin) + 0.5) * step;
-    point.cumulativeVoidFraction = voidAtLeast[bin] / voidNormalisation;
-    point.cumulativeAccessibleFraction = reachedAtLeast[bin] / reachedNormalisation;
-    point.distribution = (voidAtLeast[bin] - voidAtLeast[bin + 1]) / (voidNormalisation * step);
-    point.accessibleDistribution = (reachedAtLeast[bin] - reachedAtLeast[bin + 1]) / (reachedNormalisation * step);
-    this->points[bin] = point;
+    const PoreSizeCurvePoint &from = curve.points[bin];
+    this->points[bin] = GridPoreSizeDistributionPoint{from.diameter, from.cumulativeVoidFraction,
+                                                      from.distribution, from.cumulativeAccessibleFraction,
+                                                      from.accessibleDistribution};
   }
 
   std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - time_begin;
@@ -187,7 +155,8 @@ void GridPoreSizeDistribution::run(const PairInteractions &interactions, const C
   std::print(report, "# A sphere covers a point when it comes within {:.5f} [Å] of it, half a voxel diagonal twice\n",
              this->slack);
   std::print(report, "# The largest sphere that fits in the void is {:.5f} [Å] across\n", this->largestDiameter);
-  std::print(report, "# Diameters evaluated: {}, up to {} [Å]\n", bins, largest);
+  std::print(report, "# Diameters evaluated: {}, up to {} [Å]\n", curve.points.size(),
+             static_cast<double>(curve.points.size()) * curve.binWidth);
   std::print(report, "# GPU Timing: {} [s] for the spheres, {} [s] for the clearance field\n", this->gpuSeconds,
              grid.seconds);
   std::print(report, "# CPU Timing: {} [s] in total\n", this->seconds);
