@@ -1807,7 +1807,9 @@ hop) are skipped for molecules that currently carry a link; a molecule can
 only leave the system after its links have been broken. Reactive components
 can not use CFCMC-type moves,
 identity changes, pair or group swaps, reptation, double bridging, the Gibbs
-swap moves or reactions. Cross-links are written to and read from the restart
+swap moves or reactions, and can not be combined with the induced-dipole
+polarization model (`"ComputePolarization"`): the electric field does not
+exclude the pairs a link excludes. Cross-links are written to and read from the restart
 and crash-recovery files, and are swapped along with the configurations in
 parallel tempering.
 

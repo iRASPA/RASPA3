@@ -4022,6 +4022,18 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
 
       readCrossLinks(value, systems[systemId]);
+      // The bonds between molecules (cross-links, polymer bonds) exclude the non-bonded pair terms of the linked
+      // atoms, but not their contribution to the electric field of the induced-dipole model: a linked pair would
+      // polarize itself at bond distance.
+      if (systems[systemId].forceField.computePolarization &&
+          (systems[systemId].crossLinks.enabled() || value.contains("Polymerization")))
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: system {} combines 'ComputePolarization' with {}; the electric field of "
+                        "the induced-dipole model does not exclude the pairs a bond between molecules excludes, so "
+                        "polarization is not supported for bonds between molecules\n",
+                        systemId, systems[systemId].crossLinks.enabled() ? "'CrossLinkBonds'" : "'Polymerization'"));
+      }
       readPolymerization(value, systems[systemId], polymerizationSettings);
 
       // The multiple-try moves fold the long-range terms into every trial weight; the induced-dipole energy

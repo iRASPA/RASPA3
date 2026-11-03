@@ -798,3 +798,38 @@ TEST(INPUT_READER, cross_link_site_with_valence_above_one_and_a_link_bend_is_acc
   EXPECT_EQ(reader.systems[0].components[0].reactiveSites[0].valence, 2uz);
   EXPECT_TRUE(reader.systems[0].components[0].reactiveSites[0].linkBend.has_value());
 }
+
+// The electric field of the induced-dipole model does not exclude the pairs a bond between molecules excludes.
+TEST(INPUT_READER, cross_links_and_polymerization_reject_polarization)
+{
+  for (const bool polymerization : {false, true})
+  {
+    TemporaryDirectory workspace = makeBoxMdWorkspace();
+    workspace.write("monomer.json", kCrossLinkMonomerWithBendJson);
+    nlohmann::json input = crossLinkInput();
+    input["Systems"][0]["ComputePolarization"] = true;
+    if (polymerization)
+    {
+      input["Systems"][0].erase("CrossLinkBonds");
+      input["Systems"][0].erase("CrossLinkFormationProbability");
+      input["Systems"][0]["Polymerization"] = {{"StartCycle", 0}};
+    }
+    TemporaryInput temporary(std::move(input), polymerization ? "polymerization_polarization" : "cross_link_polarization",
+                             workspace.path());
+    ScopedCurrentPath currentPath(workspace.path());
+
+    try
+    {
+      InputReader reader(temporary.path().filename().string());
+      FAIL() << "expected InputReader to reject polarization with bonds between molecules (polymerization: "
+             << polymerization << ")";
+    }
+    catch (const std::runtime_error& error)
+    {
+      const std::string message = error.what();
+      EXPECT_NE(message.find("polarization is not supported for bonds between molecules"), std::string::npos)
+          << message;
+      EXPECT_NE(message.find(polymerization ? "'Polymerization'" : "'CrossLinkBonds'"), std::string::npos) << message;
+    }
+  }
+}
