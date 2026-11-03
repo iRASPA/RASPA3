@@ -608,13 +608,15 @@ export struct PolymerLinkTable
    * periodic network is bonds - molecules (the '+1' of a finite connected graph does not apply), so the
    * effective cycle rank is the cycle rank of the molecule graph minus one per spanning cluster.
    */
+  /// The nodes of the network are the fragments: the atoms of a molecule connected through the bonds of its own
+  /// topology that no reaction broke (a molecule a reaction split is two nodes). 'molecules' below reads 'fragments'.
   struct NetworkStatistics
   {
-    std::size_t moleculesInNetwork{0};  ///< Molecules carrying at least one polymer bond.
-    std::size_t numberOfClusters{0};    ///< Connected components of the bonded molecules.
-    std::size_t largestCluster{0};      ///< Molecules in the largest cluster.
-    std::size_t intramolecularBonds{0}; ///< Bonds closing a cycle within one molecule (primary cycles).
-    std::size_t cycleRank{0};           ///< bonds - moleculesInNetwork + clusters (independent cycles of the molecule graph).
+    std::size_t moleculesInNetwork{0};  ///< Fragments carrying at least one polymer bond.
+    std::size_t numberOfClusters{0};    ///< Connected components of the bonded fragments.
+    std::size_t largestCluster{0};      ///< Fragments in the largest cluster.
+    std::size_t intramolecularBonds{0}; ///< Bonds closing a cycle within one fragment (primary cycles).
+    std::size_t cycleRank{0};           ///< bonds - moleculesInNetwork + clusters (independent cycles of the fragment graph).
     double gelFraction{0.0};            ///< Molecules of the largest cluster over all molecules with groups.
 
     std::size_t effectiveCycleRank{0};    ///< cycleRank - spanningClusters: independent loops of the unfolded network per box.

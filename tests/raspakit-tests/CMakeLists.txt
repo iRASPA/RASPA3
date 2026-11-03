@@ -84,6 +84,7 @@ add_executable(unit_tests_raspakit
   cif_reader.cpp
   solute_tempering.cpp
   polymer_tacticity.cpp
+  polymer_network_statistics.cpp
   dctst_window.cpp
   external_field.cpp
   opencl_device.cpp

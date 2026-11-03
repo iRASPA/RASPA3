@@ -951,7 +951,8 @@ PolymerLinkTable::ApplyResult PolymerLinkTable::apply(std::size_t ruleIndex, std
     updateMoleculeMass(r, forceField, atoms, moleculeData);
   }
 
-  // the bonds
+  // the bonds; the adjacency ('linkNeighbours', 'brokenPairs') follows at once, so that the angular strain of the
+  // next candidate of a scan sees the bonds this reaction formed and broke (the derived term lists wait for rebuild)
   std::vector<std::size_t> newBonds{};
   for (const std::array<std::uint32_t, 2> &pair : bondAtoms)
   {
@@ -959,10 +960,14 @@ PolymerLinkTable::ApplyResult PolymerLinkTable::apply(std::size_t ruleIndex, std
     bonds.push_back(PolymerBond{layout.ref(pair[0]), layout.ref(pair[1]), static_cast<std::uint16_t>(ruleIndex), step,
                                 std::sqrt(double3::dot(dr, dr))});
     newBonds.push_back(bonds.size() - 1);
+    linkNeighbours[pair[0]].push_back(pair[1]);
+    linkNeighbours[pair[1]].push_back(pair[0]);
   }
   for (const std::array<std::uint32_t, 2> &pair : breakPairs)
   {
     brokenBonds.push_back(BrokenBond{layout.ref(pair[0]), layout.ref(pair[1]), static_cast<std::uint16_t>(ruleIndex), step});
+    auto [it, inserted] = brokenPairs.try_emplace(canonical<2>({pair[0], pair[1]}), step);
+    if (!inserted) it->second = std::max(it->second, step);
   }
 
   // the stereocentres: the ramp of the restraint follows the (first) bond that involves the centre atom
@@ -1454,7 +1459,11 @@ void PolymerLinkTable::rebuild(const ForceField &forceField, const std::vector<C
   {
     const Component &component = components[moleculeKey.first];
     const std::size_t start = layout.moleculeStart(moleculeKey.first, moleculeKey.second);
-    for (auto &[local, changes] : history.types) std::ranges::sort(changes);
+    // in the order of the reactions ('retypings' is): two retypings of an atom at one step keep that order
+    for (auto &[local, changes] : history.types)
+    {
+      std::ranges::stable_sort(changes, {}, &std::pair<std::uint64_t, std::uint16_t>::first);
+    }
 
     // the type of a local atom after the reactions up to 'step'
     auto typeAt = [&](std::size_t local, std::uint64_t step) -> std::uint16_t
@@ -1706,56 +1715,76 @@ PolymerLinkTable::NetworkStatistics PolymerLinkTable::networkStatistics(const Si
   NetworkStatistics statistics{};
   if (bonds.empty()) return statistics;
 
-  // the molecules carrying bonds (keys: component, molecule) are the nodes of the molecule graph
-  std::map<std::pair<std::uint32_t, std::uint32_t>, std::size_t> index{};
-  auto idOf = [&](const PolymerAtomRef &r)
+  // The nodes of the graph are the fragments: the atoms of a molecule connected through the bonds of its own
+  // topology that no reaction broke (a molecule a reaction split, an initiator for instance, is two nodes, which
+  // can end up in different clusters). Per molecule: the fragment of every atom and the unwrapped positions (the
+  // atoms of a fragment made contiguous by walking its bonds with minimum-image bond vectors), so that the lattice
+  // vector of a polymer bond is independent of how the atoms happen to be wrapped. The walk stops at a broken bond:
+  // its two atoms can be anywhere relative to each other.
+  constexpr std::uint32_t noFragment = std::numeric_limits<std::uint32_t>::max();
+  struct MoleculeFragments
   {
-    return index.try_emplace({r.componentId, r.moleculeIndex}, index.size()).first->second;
+    std::vector<std::uint32_t> fragmentOfAtom{};
+    std::vector<double3> unwrapped{};
+    std::uint32_t count{0};
   };
-
-  // unwrapped positions per molecule (the atoms of a molecule made contiguous by walking the connectivity with
-  // minimum-image bond vectors from atom 0), so that the lattice vector of a bond is independent of how the
-  // atoms happen to be wrapped
-  std::map<std::pair<std::uint32_t, std::uint32_t>, std::vector<double3>> unwrapped{};
-  auto unwrappedPosition = [&](const PolymerAtomRef &r) -> double3
+  std::map<std::pair<std::uint32_t, std::uint32_t>, MoleculeFragments> fragments{};
+  auto fragmentsOf = [&](const PolymerAtomRef &r) -> const MoleculeFragments &
   {
-    auto [it, inserted] = unwrapped.try_emplace({r.componentId, r.moleculeIndex});
-    if (inserted)
+    auto [it, inserted] = fragments.try_emplace({r.componentId, r.moleculeIndex});
+    if (!inserted) return it->second;
+
+    const Component &component = components[r.componentId];
+    const std::size_t start = layout.moleculeStart(r.componentId, r.moleculeIndex);
+    const std::size_t n = layout.atomsPerMolecule[r.componentId];
+    std::set<std::array<std::uint32_t, 2>> broken{};
+    for (const BrokenBond &bond : brokenBonds)
     {
-      const Component &component = components[r.componentId];
-      const std::size_t start = layout.moleculeStart(r.componentId, r.moleculeIndex);
-      const std::size_t n = layout.atomsPerMolecule[r.componentId];
-      std::vector<double3> &positions = it->second;
-      positions.resize(n);
-      std::vector<std::uint8_t> visited(n, 0);
-      positions[0] = atoms[start].position;
-      visited[0] = 1;
-      std::vector<std::size_t> queue{0};
+      if (bond.a.componentId == r.componentId && bond.a.moleculeIndex == r.moleculeIndex &&
+          bond.b.componentId == r.componentId && bond.b.moleculeIndex == r.moleculeIndex)
+      {
+        broken.insert(canonical<2>({bond.a.atomIndex, bond.b.atomIndex}));
+      }
+    }
+    MoleculeFragments &molecule = it->second;
+    molecule.fragmentOfAtom.assign(n, noFragment);
+    molecule.unwrapped.resize(n);
+    for (std::size_t seed = 0; seed < n; ++seed)
+    {
+      if (molecule.fragmentOfAtom[seed] != noFragment) continue;
+      const std::uint32_t fragment = molecule.count++;
+      molecule.fragmentOfAtom[seed] = fragment;
+      molecule.unwrapped[seed] = atoms[start + seed].position;
+      std::vector<std::size_t> queue{seed};
       for (std::size_t head = 0; head < queue.size(); ++head)
       {
         const std::size_t current = queue[head];
         if (current >= component.connectivityTable.numberOfBeads) continue;
         for (std::size_t neighbour : component.connectivityTable.findAllNeighbors(current))
         {
-          if (neighbour >= n || visited[neighbour]) continue;
-          positions[neighbour] = positions[current] + simulationBox.applyPeriodicBoundaryConditions(
-                                                          atoms[start + neighbour].position - atoms[start + current].position);
-          visited[neighbour] = 1;
+          if (neighbour >= n || molecule.fragmentOfAtom[neighbour] != noFragment) continue;
+          if (!broken.empty() &&
+              broken.contains(canonical<2>({static_cast<std::uint32_t>(current), static_cast<std::uint32_t>(neighbour)})))
+          {
+            continue;
+          }
+          molecule.unwrapped[neighbour] =
+              molecule.unwrapped[current] + simulationBox.applyPeriodicBoundaryConditions(
+                                                atoms[start + neighbour].position - atoms[start + current].position);
+          molecule.fragmentOfAtom[neighbour] = fragment;
           queue.push_back(neighbour);
         }
       }
-      // atoms not reached through the connectivity (disconnected fragments): minimum image relative to atom 0
-      for (std::size_t k = 0; k < n; ++k)
-      {
-        if (!visited[k])
-        {
-          positions[k] = positions[0] + simulationBox.applyPeriodicBoundaryConditions(atoms[start + k].position -
-                                                                                      atoms[start].position);
-        }
-      }
     }
-    return it->second[r.atomIndex];
+    return molecule;
   };
+  std::map<std::tuple<std::uint32_t, std::uint32_t, std::uint32_t>, std::size_t> index{};
+  auto idOf = [&](const PolymerAtomRef &r)
+  {
+    const std::uint32_t fragment = fragmentsOf(r).fragmentOfAtom[r.atomIndex];
+    return index.try_emplace({r.componentId, r.moleculeIndex, fragment}, index.size()).first->second;
+  };
+  auto unwrappedPosition = [&](const PolymerAtomRef &r) -> double3 { return fragmentsOf(r).unwrapped[r.atomIndex]; };
 
   using Lattice = std::array<std::int64_t, 3>;
   auto add = [](const Lattice &x, const Lattice &y) { return Lattice{x[0] + y[0], x[1] + y[1], x[2] + y[2]}; };
