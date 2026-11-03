@@ -434,15 +434,29 @@ std::int32_t BoundaryComponents::patchOfCirclePoint(std::size_t atomIndex, const
   {
     const SphereCircle& circle = boundary.circles[c];
     if (circle.arcPatch.empty()) continue;
-    std::size_t arc = arcHolding(circle, circle.angleOf(unitDirection));
+    const double t = circle.angleOf(unitDirection);
+    const std::size_t arc = arcHolding(circle, t);
+    if (circle.arcPatch[arc] >= 0) return circle.arcPatch[arc];
+    if (circle.cornerAngles.empty()) continue;
 
-    // The point is a corner of the exposed region as often as not, and there either of the two arcs
-    // meeting there may be the one holding it. Whichever is exposed answers, both being edges of the same
-    // patch where both are.
+    // The point is a corner of the exposed region as often as not, and rounding decides which of the two arcs
+    // meeting there is found holding it. Found on a buried arc, it is the exposed arc across the nearer of
+    // the arc's two corners that holds it; the two exposed arcs on either side of a buried arc can bound
+    // different patches, so the side matters. Across a covered crossing the next arc is buried as well, and
+    // the other side is tried then.
     const std::size_t count = circle.arcPatch.size();
-    for (std::size_t attempt = 0; attempt < 3; ++attempt)
+    auto distanceTo = [&](double corner)
     {
-      std::size_t k = (attempt == 0) ? arc : ((attempt == 1) ? (arc + count - 1) % count : (arc + 1) % count);
+      double difference = std::abs(t - corner);
+      return std::min(difference, 2.0 * std::numbers::pi - difference);
+    };
+    const double toBegin = distanceTo(circle.cornerAngles[arc]);
+    const double toEnd = distanceTo(circle.cornerAngles[(arc + 1) % count]);
+    const std::size_t previous = (arc + count - 1) % count;
+    const std::size_t next = (arc + 1) % count;
+    for (std::size_t k : (toEnd < toBegin) ? std::array<std::size_t, 2>{next, previous}
+                                            : std::array<std::size_t, 2>{previous, next})
+    {
       if (circle.arcPatch[k] >= 0) return circle.arcPatch[k];
     }
   }

@@ -837,3 +837,43 @@ TEST(boundary_components, the_single_arc_is_tried_before_the_way_points)
   boundary.wayPointGroup = {0};
   EXPECT_TRUE(connectedOnSphere(boundary, from, to));
 }
+
+// A point found on a buried arc of a circle (a corner, which rounding hands to either of the arcs meeting
+// there) belongs to the exposed arc across the nearer corner. The two exposed arcs on either side of a buried
+// arc can bound different patches, so the far side must not answer.
+TEST(boundary_components, a_corner_of_a_buried_arc_is_read_from_the_nearer_side)
+{
+  BoundaryComponents components;
+  components.atoms.resize(1);
+  SphereBoundary& boundary = components.atoms[0];
+  boundary.numberOfPatches = 2;
+
+  SphereCircle circle;
+  circle.axis = double3(0.0, 0.0, 1.0);
+  circle.halfAngle = std::numbers::pi / 3.0;
+  circle.cosineHalfAngle = std::cos(circle.halfAngle);
+  circle.sineHalfAngle = std::sin(circle.halfAngle);
+  circle.first = double3(1.0, 0.0, 0.0);
+  circle.second = double3(0.0, 1.0, 0.0);
+  // arc 0 (0.5 .. 1.5) bounds patch 0, arc 1 (1.5 .. 2.5) is buried, arc 2 (2.5 .. 3.5) bounds patch 1, arc 3
+  // (3.5 .. 0.5, round the end) is buried
+  circle.cornerAngles = {0.5, 1.5, 2.5, 3.5};
+  circle.arcPatch = {0, -1, 1, -1};
+  boundary.circles.push_back(circle);
+
+  // the corners of the buried arc 1, from just inside it and exactly on them
+  for (const double t : {1.5, 1.5 + 1.0e-9, 1.5 - 1.0e-9})
+  {
+    EXPECT_EQ(components.patchOfCirclePoint(0, circle.direction(t)), 0) << "t = " << t;
+  }
+  for (const double t : {2.5, 2.5 - 1.0e-9, 2.5 + 1.0e-9})
+  {
+    EXPECT_EQ(components.patchOfCirclePoint(0, circle.direction(t)), 1) << "t = " << t;
+  }
+  // the corners of the buried arc 3, which wraps round the end of the angle range
+  EXPECT_EQ(components.patchOfCirclePoint(0, circle.direction(3.5 - 1.0e-9)), 1);
+  EXPECT_EQ(components.patchOfCirclePoint(0, circle.direction(0.5 - 1.0e-9)), 0);
+  EXPECT_EQ(components.patchOfCirclePoint(0, circle.direction(0.5)), 0);
+  // the middle of an exposed arc
+  EXPECT_EQ(components.patchOfCirclePoint(0, circle.direction(3.0)), 1);
+}
