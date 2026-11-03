@@ -32,14 +32,17 @@ export struct GridPercolation
   double percolationOpenness{0.0};
 
   // The most open point of the region that first ran through, which is reachable without ever passing a
-  // point less open than `percolationOpenness`.
+  // point less open than `percolationOpenness`. Points exactly that open count as passable, so a wider
+  // region joined to the first through such a point is on the path.
   double highestOpennessOnPath{0.0};
 
   // The openness at which the pore system last ran in at least one, two, and three directions. Lowest
   // double where it never runs that far, so that a caller which negates gets a sensible symbol back.
   std::array<double, 3> opennessByDimension{};
 
-  // How many independent lattice translations the first percolating region had, at the moment it closed.
+  // How many independent lattice translations the first percolating region had at the level it closed at,
+  // every point of that level included: channels that open together at one openness, as the symmetry of a
+  // cubic crystal makes them, are counted together.
   int dimensionalityAtThreshold{0};
 
   // How many points took part, which is those at or above the floor given to the sweep.

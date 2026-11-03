@@ -52,25 +52,29 @@ PercolatingPath widestPercolatingPath(const VoronoiNetwork& network, std::span<c
   std::sort(order.begin(), order.end(),
             [&](std::size_t a, std::size_t b) { return network.edges[a].radius > network.edges[b].radius; });
 
+  // The component is read off once every edge as wide as the bottleneck has been added, not when the
+  // first of them closed the loop: a node behind a neck exactly that wide is reachable at the bottleneck's
+  // radius, so it is on the path, and which of two tied edges the sort put first cannot decide that.
   PeriodicUnionFind unionFind(network.nodes.size());
-  std::size_t percolatingRoot = 0;
+  std::size_t percolatingMember = 0;
 
   for (std::size_t index : order)
   {
     const VoronoiEdge& edge = network.edges[index];
+    if (path.percolates && edge.radius < path.radius) break;
+
     auto [rootFrom, accFrom] = unionFind.find(edge.from);
     auto [rootTo, accTo] = unionFind.find(edge.to);
 
     if (rootFrom == rootTo)
     {
       int3 net = accFrom + edge.delta - accTo;
-      if (net.x != 0 || net.y != 0 || net.z != 0)
+      if (!path.percolates && (net.x != 0 || net.y != 0 || net.z != 0))
       {
         path.percolates = true;
         path.limitingEdge = index;
         path.radius = edge.radius;
-        percolatingRoot = rootFrom;
-        break;
+        percolatingMember = edge.from;
       }
     }
     else
@@ -82,6 +86,7 @@ PercolatingPath widestPercolatingPath(const VoronoiNetwork& network, std::span<c
 
   if (!path.percolates) return path;
 
+  const std::size_t percolatingRoot = unionFind.find(percolatingMember).first;
   for (std::size_t node : nodes)
   {
     if (unionFind.find(node).first == percolatingRoot) path.componentNodes.push_back(node);

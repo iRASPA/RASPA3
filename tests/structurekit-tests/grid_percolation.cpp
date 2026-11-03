@@ -227,3 +227,61 @@ TEST(grid_percolation, the_escape_agrees_with_asking_at_every_level_separately)
   // The check is only worth having if the field had somewhere to be trapped in and somewhere to get out by.
   EXPECT_GT(trapped, 0u) << "nothing was sealed off, so the case being checked never arose";
 }
+
+
+// Three rods of one openness along x, y and z, crossing at the centre, with one point of the y rod more open
+// than the rest. Whichever rod the sweep happens to close first, all three close at the same level, so the
+// pore system runs in three directions at its threshold; and the open point is reachable from any of them
+// without passing anything less open than that level, so it is the most open point on the path. Both were
+// read off at the first closing, when the other rods and the rest of the closing point's own neighbours were
+// still to come, and came out as the order of ties fell.
+TEST(grid_percolation, channels_that_open_together_are_counted_together_at_the_threshold)
+{
+  const uint3 gridSize(8, 8, 8);
+  Field field(gridSize, 0.0f);
+  for (std::size_t i = 0; i < 8; ++i)
+  {
+    field.at(i, 4, 4) = 5.0f;
+    field.at(4, i, 4) = 5.0f;
+    field.at(4, 4, i) = 5.0f;
+  }
+  field.at(4, 0, 4) = 9.0f;
+
+  GridPercolation sweep = sweepPercolation(gridSize, field.value, 1.0f, true);
+
+  ASSERT_TRUE(sweep.percolates);
+  EXPECT_NEAR(sweep.percolationOpenness, 5.0, 1.0e-12);
+  EXPECT_EQ(sweep.dimensionalityAtThreshold, 3);
+  EXPECT_NEAR(sweep.highestOpennessOnPath, 9.0, 1.0e-12);
+  for (int dimension = 0; dimension < 3; ++dimension)
+  {
+    EXPECT_NEAR(sweep.opennessByDimension[static_cast<std::size_t>(dimension)], 5.0, 1.0e-12);
+  }
+}
+
+
+// A rod that closes at a higher level than the rest keeps the threshold to itself: the other rods join below
+// it, and the dimensionality at the threshold stays one, as it should.
+TEST(grid_percolation, a_channel_that_opens_alone_keeps_its_own_threshold)
+{
+  const uint3 gridSize(8, 8, 8);
+  Field field(gridSize, 0.0f);
+  for (std::size_t i = 0; i < 8; ++i)
+  {
+    field.at(i, 4, 4) = 6.0f;
+    field.at(4, i, 4) = 5.0f;
+    field.at(4, 4, i) = 5.0f;
+  }
+  field.at(4, 4, 4) = 6.0f;  // the crossing belongs to the x rod, which the other two rods overwrote
+  field.at(4, 0, 4) = 9.0f;
+
+  GridPercolation sweep = sweepPercolation(gridSize, field.value, 1.0f, true);
+
+  ASSERT_TRUE(sweep.percolates);
+  EXPECT_NEAR(sweep.percolationOpenness, 6.0, 1.0e-12);
+  EXPECT_EQ(sweep.dimensionalityAtThreshold, 1);
+  // The y rod holds the open point, but joins only at 5: below the threshold, so off the path.
+  EXPECT_NEAR(sweep.highestOpennessOnPath, 6.0, 1.0e-12);
+  EXPECT_NEAR(sweep.opennessByDimension[0], 6.0, 1.0e-12);
+  EXPECT_NEAR(sweep.opennessByDimension[2], 5.0, 1.0e-12);
+}

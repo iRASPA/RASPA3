@@ -370,6 +370,15 @@ VoronoiNetwork VoronoiNetwork::create(const UnitCell& unitCell,
   double maximumAtomRadius = 0.0;
   for (double radius : radii) maximumAtomRadius = std::max(maximumAtomRadius, radius);
 
+  // No clearance in a periodic structure exceeds half the cell's longest diagonal: every point
+  // lies in some image of the cell, within that distance of one of its corners, and the images
+  // of any one atom sit at the same offset from every corner. The bound keeps the searches below
+  // finite, as a tangent sphere solved from four nearly coplanar atoms can be arbitrarily wide.
+  double maximumClearance = 0.0;
+  for (double sy : {-1.0, 1.0})
+    for (double sz : {-1.0, 1.0})
+      maximumClearance = std::max(maximumClearance, 0.5 * (cell * double3(1.0, sy, sz)).length());
+
   // Cell list over the atoms, sized for roughly four atoms per bin.
   double atomTargetBinSize = std::cbrt(volume / std::max(1.0, static_cast<double>(numberOfAtoms) / 4.0));
   int3 atomBinCount(std::max(1, static_cast<std::int32_t>(perpendicularWidths.x / atomTargetBinSize)),
@@ -616,6 +625,10 @@ VoronoiNetwork VoronoiNetwork::create(const UnitCell& unitCell,
                 // The sphere touches all four, so the clearance at its centre cannot exceed its
                 // radius; a shorter radius cannot improve on what we already have.
                 if (sphere.radius <= bestClearance) continue;
+                // A sphere wider than any clearance the cell admits is not empty, and its centre is
+                // that far from the atoms it was solved from: measuring the clearance there, over a
+                // search ball that wide, would be a walk over the whole of space.
+                if (sphere.radius > maximumClearance) continue;
 
                 // Almost every sphere that gets this far is spoiled by an atom that is already in
                 // hand, since the atoms tightest at the point the sphere was solved from are the

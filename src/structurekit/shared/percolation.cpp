@@ -195,11 +195,31 @@ GridPercolation sweepPercolation(uint3 gridSize, std::span<const float> openness
 
   PeriodicUnionFind unionFind(order.size(), recordEscape);
 
+  // The region that first ran through, by one of its points, and what is read off it once the level it
+  // closed at has been swept to the end. Closing happens at one neighbour of one point, but the level is
+  // shared by the rest of that point's neighbours and by every point of the same openness still to come,
+  // and all of them are reachable without passing anything less open than the threshold: a wider region
+  // joined at the threshold is on the path, and a second direction closed at the threshold is a direction
+  // the pore system runs in at it. So the two are taken when the level is left, not when it was reached.
+  std::int32_t percolatingMember = -1;
+  bool thresholdSettled = false;
+  auto settleThreshold = [&]()
+  {
+    if (percolatingMember < 0 || thresholdSettled) return;
+    thresholdSettled = true;
+    int3 displacement(0, 0, 0);
+    const std::int32_t root = unionFind.find(percolatingMember, displacement);
+    result.highestOpennessOnPath = static_cast<double>(unionFind.highestOpenness[static_cast<std::size_t>(root)]);
+    std::unordered_map<std::int32_t, std::vector<int3>>::iterator windings = unionFind.windings.find(root);
+    result.dimensionalityAtThreshold = (windings == unionFind.windings.end()) ? 0 : latticeVectorRank(windings->second);
+  };
+
   for (std::size_t i = 0; i < order.size(); ++i)
   {
     const std::int32_t voxel = order[i];
     const float here = openness[static_cast<std::size_t>(voxel)];
     const std::int32_t current = static_cast<std::int32_t>(i);
+    if (percolatingMember >= 0 && static_cast<double>(here) < result.percolationOpenness) settleThreshold();
     unionFind.highestOpenness[i] = here;
     if (recordEscape)
     {
@@ -346,12 +366,11 @@ GridPercolation sweepPercolation(uint3 gridSize, std::span<const float> openness
       {
         result.percolates = true;
         result.percolationOpenness = static_cast<double>(here);
-        result.dimensionalityAtThreshold = rank;
-        result.highestOpennessOnPath =
-            static_cast<double>(unionFind.highestOpenness[static_cast<std::size_t>(root)]);
+        percolatingMember = current;
       }
     }
   }
+  settleThreshold();
 
   std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - time_begin;
   result.seconds = elapsed.count();
