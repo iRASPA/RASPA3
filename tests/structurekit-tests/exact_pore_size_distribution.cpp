@@ -5,6 +5,7 @@ import std;
 import double3;
 import unit_cell;
 import pore_accessibility;
+import voronoi_network;
 import exact_pore_size_distribution;
 import exact_void_split;
 import voronoi_blocking_spheres;
@@ -496,4 +497,57 @@ TEST(exact_pore_size_distribution, a_floor_below_the_probe_is_refused)
   EXPECT_THROW(exactPoreSizePeaks(build, lattice.box.volume, 1, 0.5, 0.0), std::invalid_argument);
   EXPECT_NO_THROW(exactPoreSizeDistribution(build, lattice.box.volume, 6.0, 12, 1, 0.5, 0.5));
   EXPECT_NO_THROW(exactPoreSizeDistribution(build, lattice.box.volume, 6.0, 12, 1, 0.0, 0.0));
+}
+
+
+// The sweep stops one step past the largest sphere the network reports, which is an estimate: its nodes are
+// walked up to the peaks of the clearance, and a walk that fell short would leave the estimate below the
+// sphere that is really there. Stopped there, the rows beyond would be zeros that are not true, a cliff where
+// the void is still whole, and the search would corner a spike at that row and never see the real one. The
+// estimate is handed in short on purpose here, by two Ångström, and the curve has to come out as if it had
+// not been: the same corner spike, nothing truncated, the void accounted for.
+TEST(exact_pore_size_distribution, a_short_estimate_of_the_largest_sphere_does_not_end_the_curve)
+{
+  const double edge = 6.0;
+  const double radius = 1.5;
+  const double corner = std::sqrt(3.0) * edge - 2.0 * radius;
+  Lattice lattice = simpleCubic(edge, radius);
+
+  auto honest = [&](double inflation)
+  { return PoreAccessibility::create(lattice.box, lattice.fractionalPositions, lattice.radii, inflation); };
+  auto understated = [&](double inflation)
+  {
+    PoreAccessibility accessibility = honest(inflation);
+    if (inflation == 0.0)
+    {
+      // The estimate is read off the bare network's nodes, and only there.
+      for (VoronoiNode& node : accessibility.network.nodes)
+      {
+        node.maximalRadius = std::min(node.maximalRadius, 0.5 * (corner - 2.0));
+      }
+    }
+    return accessibility;
+  };
+
+  PoreSizeDistributionCurve reference = exactPoreSizeDistribution(honest, lattice.box.volume, 9.0, 90, 1);
+  PoreSizeDistributionCurve curve = exactPoreSizeDistribution(understated, lattice.box.volume, 9.0, 90, 1);
+
+  ASSERT_FALSE(curve.spikes.empty());
+  EXPECT_NEAR(curve.spikes.back().diameter, corner, 1.0e-4) << "the curve ends where the void does";
+  EXPECT_NEAR(curve.largestDiameter, corner, 1.0e-4);
+  EXPECT_LT(curve.truncatedWeight, 1.0e-9);
+  EXPECT_NEAR(curve.integral + curve.singularWeight, 1.0, 0.02);
+  for (const PoreSizeSpike& spike : curve.spikes)
+  {
+    EXPECT_GT(std::abs(spike.diameter - (corner - 2.0)), 0.5) << "no spike at the short estimate";
+  }
+
+  // And it is the same curve, row for row, as the one taken from the sound estimate.
+  ASSERT_EQ(curve.spikes.size(), reference.spikes.size());
+  EXPECT_NEAR(curve.spikes.back().weight, reference.spikes.back().weight, 1.0e-9);
+  ASSERT_EQ(curve.points.size(), reference.points.size());
+  for (std::size_t row = 0; row < curve.points.size(); ++row)
+  {
+    EXPECT_NEAR(curve.points[row].poreVolume, reference.points[row].poreVolume, 1.0e-9) << "row " << row;
+  }
 }

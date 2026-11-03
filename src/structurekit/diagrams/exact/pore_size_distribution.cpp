@@ -380,21 +380,46 @@ Sample Sampler::at(double diameter, PoreSizeDistributionPoint* row)
 // One step past that diameter is still taken, so the cliff that puts the last of the void over is bracketed
 // and the spike search has an interval to work in; everything beyond is left at the zeros the rows start as.
 //
+// Where that diameter comes from is the network, which is an estimate and not the definition: its nodes are
+// walked up to the peaks of the clearance, and a peak the walk falls short of leaves the estimate below the
+// largest sphere. A row left at zero below that sphere would be a cliff that is not there, and the search
+// would corner it as a spike at the row's own diameter, with the true one beyond it never looked at. So the
+// estimate is where the sweep starts to look for the end and not where it stops: while the last row evaluated
+// still holds volume, the rows after it are evaluated too, a batch at a time, until one comes back empty or
+// the table runs out. On a sound estimate the first pass already ends on an empty row and nothing more is done.
+//
 // This is where the threads go. It is nearly all of the cost of the curve, one diameter costing a whole
 // geometry, and each of them lands in a row of its own with nothing summed across them --- so the rows come
 // out the same on any number of threads, to the bit, which is not true of every loop that is threaded here.
 std::vector<Sample> evaluateRows(Sampler& sampler, std::vector<PoreSizeDistributionPoint>& points, double step)
 {
   std::vector<Sample> rows(points.size());
+  for (std::size_t bin = 0; bin < points.size(); ++bin)
+  {
+    const double diameter = step * (static_cast<double>(bin) + 0.5);
+    points[bin].diameter = diameter;
+    rows[bin].diameter = diameter;
+  }
+
+  const std::size_t workers = std::max<std::size_t>(1, workersAvailable());
+  auto evaluate = [&](std::size_t from, std::size_t to)
+  {
+    forEachIndex(to - from, workers,
+                 [&](std::size_t, std::size_t i)
+                 { rows[from + i] = sampler.at(rows[from + i].diameter, &points[from + i]); });
+  };
+
   const double cutoff = sampler.largestIncludedDiameter + step;
-  forEachIndex(points.size(), workersAvailable(),
-               [&](std::size_t, std::size_t bin)
-               {
-                 const double diameter = step * (static_cast<double>(bin) + 0.5);
-                 points[bin].diameter = diameter;
-                 rows[bin].diameter = diameter;
-                 if (diameter <= cutoff) rows[bin] = sampler.at(diameter, &points[bin]);
-               });
+  std::size_t evaluated = 0;
+  while (evaluated < rows.size() && rows[evaluated].diameter <= cutoff) ++evaluated;
+  evaluate(0, evaluated);
+
+  while (evaluated > 0 && evaluated < rows.size() && rows[evaluated - 1].whole.cumulative > spikeFloor)
+  {
+    const std::size_t to = std::min(rows.size(), evaluated + workers);
+    evaluate(evaluated, to);
+    evaluated = to;
+  }
   return rows;
 }
 
