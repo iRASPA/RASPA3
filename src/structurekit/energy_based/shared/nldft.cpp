@@ -764,6 +764,19 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
   const double siteScale =
       (dumbbell && nSites > 0) ? model.sites / static_cast<double>(nSites) : 1.0;
   const double depositScale = dumbbell ? siteScale : 1.0;
+
+  // The sites are deposited scaled, so that the packing of the site density is the fused molecule's and the
+  // hard-sphere part matches the bulk's. The attraction counts every site in full: in the uniform fluid the
+  // sum over a molecule's sites of the convolved field has to come to a rho, the mean-field term of the bulk
+  // chemical potential, which is n_att^2 a_site rho and so wants the n_att rho of sites unscaled. Convolving
+  // the scaled deposit as it stood left the pore fluid short of its attraction by the scale, about a quarter
+  // for the nitrogen dumbbell, and the uniform liquid was no longer stationary at the bulk's own chemical
+  // potential. The scaled deposit is reused, with the scale taken back out of the pair spectrum.
+  std::vector<double> uHatSites = uHat;
+  if (siteAtt && dumbbell && depositScale > 0.0)
+  {
+    for (double &u : uHatSites) u /= depositScale;
+  }
   std::vector<double3> siteDelta;
   if (needDeposit && nSites > 0)
   {
@@ -880,7 +893,7 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
       for (unsigned t = 0; t < workers; ++t)
         for (std::size_t i = 0; i < N; ++i) rhoSite[i] += siteLocal[t][i];
       if (dumbbell) fftw_execute_dft_r2c(forward, rhoSite.get(), rhoHat.get());
-      if (siteAtt && dumbbell) convolveTo(uHat, phiAtt.get());
+      if (siteAtt && dumbbell) convolveTo(uHatSites, phiAtt.get());
     }
     convolveTo(w3Hat, n3B.get());
     convolveTo(w2Hat, n2A.get());

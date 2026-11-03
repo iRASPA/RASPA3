@@ -132,6 +132,43 @@ TEST(energy_nldft, an_empty_box_holds_the_bulk_liquid)
 }
 
 
+// The nitrogen dumbbell with site-site attraction, in an empty box at one and three atmospheres. The sites
+// are deposited scaled so that their packing is the fused molecule's, and the attraction has to count them
+// unscaled, or the pore fluid is short of a quarter of its attraction: at these densities that shifts the box
+// away from the bulk gas by a few parts in a hundred, where the two otherwise agree to a part in a thousand.
+// The liquid cannot be held this way: for the molecular models the relative pressure is measured against the
+// experimental saturation pressure, not the model's own, so the model's liquid is not at the reservoir's
+// chemical potential at x = 1.
+TEST(energy_nldft, a_molecular_empty_box_holds_the_bulk_gas)
+{
+  NLDFTOptions options;
+  options.pressurePoints = 2;
+  options.xLow = 1.0;
+  options.xHigh = 3.0;
+  options.dumbbellSiteOffsets = {-0.55, 0.55};
+  options.dumbbellSiteDiameter = 3.31;
+  options.attractiveSiteOffsets = {-0.55, 0.55};
+  options.attractiveSigma = 3.31;
+  options.attractiveEpsilon = 36.0;
+
+  uint3 gridSize{32, 32, 32};
+  UnitCell cell(20.0, 20.0, 20.0);
+  const std::size_t orientations = 8;
+  std::vector<float> energy(32 * 32 * 32, 0.0f);
+  std::vector<float> orientationEnergy(32 * 32 * 32 * orientations, 0.0f);
+
+  NLDFTGridIsotherm result =
+      nldftIsothermOnGrid(energy, gridSize, cell, options, orientationEnergy, orientations);
+  ASSERT_EQ(result.isotherm.size(), 2u);
+  EXPECT_EQ(result.unconverged, 0u);
+  for (const IsothermPoint &point : result.isotherm)
+  {
+    double expected = nldftGasDensity(options, result.bulk, point.relativePressure) * cell.volume;
+    EXPECT_NEAR(point.moleculesPerCell, expected, 0.01 * expected) << "x = " << point.relativePressure;
+  }
+}
+
+
 // A deep slab (a FER-like slit, a quarter of the cell) fills to a liquid-like film well below x = 1
 // without overpacking the whole cell, and the isotherm is monotone.
 TEST(energy_nldft, a_slit_fills_to_a_liquid_film_without_overpacking)
