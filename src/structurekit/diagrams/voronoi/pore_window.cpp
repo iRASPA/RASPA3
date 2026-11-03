@@ -62,7 +62,7 @@ PoreWindow PoreWindow::measure(const VoronoiNetwork& network, const double3& pos
   const double3x3 inverseCell = network.unitCell.inverseCell;
   const std::vector<double>& radii = network.atomRadii;
   double3 perpendicularWidths = perpendicularWidthsOf(network.unitCell);
-  double maximumRadius = *std::max_element(radii.begin(), radii.end());
+  double maximumRadius = radii.empty() ? 0.0 : *std::max_element(radii.begin(), radii.end());
   double3 positionFractional = inverseCell * position;
 
   // Visits every atom image whose surface comes within `searchRadius` of the bottleneck. Each atom is

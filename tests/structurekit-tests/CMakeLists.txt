@@ -22,6 +22,7 @@ add_executable(unit_tests_structurekit
   brute_force_blocking_pockets.cpp
   brute_force_pore_spikes.cpp
   brute_force_solvent_excluded.cpp
+  empty_structures.cpp
   main.cpp)
 
 # Only the structural analysis and the three kits below it. What the engine can hand it is tested from

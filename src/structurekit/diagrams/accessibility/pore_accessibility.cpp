@@ -47,7 +47,8 @@ PoreAccessibility PoreAccessibility::createFromNetwork(VoronoiNetwork network, M
   accessibility.metric = metric;
   accessibility.probeRadius = probeRadius;
   accessibility.atomRadii = network.atomRadii;
-  accessibility.maximumAtomRadius = *std::max_element(network.atomRadii.begin(), network.atomRadii.end());
+  accessibility.maximumAtomRadius =
+      network.atomRadii.empty() ? 0.0 : *std::max_element(network.atomRadii.begin(), network.atomRadii.end());
   accessibility.network = std::move(network);
 
   // With inflated atoms, any node with positive radius has room for the probe centre, so

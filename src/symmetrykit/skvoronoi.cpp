@@ -514,7 +514,10 @@ SKVoronoiCell SKVoronoi::computeCell(std::size_t siteIndex) const
     }
   }
   cell.volume = volume;
-  cell.centroidCartesian = centroid / volume;
+  // A cut that leaves every vertex on or beyond its plane clears the cell, so a cell with vertices has
+  // thickness and a volume to divide by; the guard is for a flat cell nothing above produces, so that if
+  // one ever arrives its centroid is a point and not a NaN.
+  cell.centroidCartesian = (volume != 0.0) ? centroid / volume : double3(0.0, 0.0, 0.0);
 
   return cell;
 }

@@ -126,10 +126,15 @@ double VoronoiNetwork::largestIncludedSphereDiameter() const
 
 VoronoiNetwork VoronoiNetwork::create(const UnitCell& unitCell,
                                       const std::vector<double3>& fractionalPositions,
-                                      const std::vector<double>& radii)
+                                      const std::vector<double>& givenRadii)
 {
   VoronoiNetwork network;
   network.unitCell = unitCell;
+  // Empty radii ask the diagram for the ordinary, unweighted Voronoi construction. From here on there is
+  // one radius per atom whatever was asked, since everything below and everything downstream indexes the
+  // radii by atom and takes the largest of them, and an unweighted atom is one of radius zero.
+  const std::vector<double> radii =
+      givenRadii.empty() ? std::vector<double>(fractionalPositions.size(), 0.0) : givenRadii;
   network.atomRadii = radii;
 
   const double3x3 cell = unitCell.cell;
