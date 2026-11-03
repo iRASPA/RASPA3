@@ -291,35 +291,51 @@ BruteForceDiameters BruteForceDiameters::compute(const BruteForceStructure &stru
 
   std::ranges::sort(hops, [](const Hop &a, const Hop &b) { return a.width > b.width; });
 
-  // The pass, run at whatever width each hop is credited with. Returns the width at which the void first
-  // runs away through the crystal, and the vectors it runs away along.
-  auto widestWayThrough = [&](double lengthPenalty)
+  // The pass. Returns the hop at which the void first runs away through the crystal, the vectors the piece
+  // that ran away repeats under, and the pieces as they stand with every hop of that width in.
+  //
+  // The pass stops where the hops get narrower than the one that closed the loop, not some fixed number of
+  // hops later: every hop as wide as that one is on the path, since a sphere of the bottleneck's width
+  // manages it, and none narrower is, since one does not. Running on would credit the path with directions
+  // it only gains at a lower width, and a path that runs one way is to be reported as running one way.
+  //
+  // Only the repeats of the piece that closed the loop count. Other pieces can close loops of their own at
+  // the same width, and a vector one of them runs away along says nothing about the directions of this one.
+  struct WayThrough
   {
-    PeriodicUnionFind pieces(numberOfVoxels);
-
-    std::vector<int3> found;
-    double at = 0.0;
-    std::size_t closedAt = hops.size();
+    std::size_t closedAt;       // index into hops, or hops.size() when nothing ran away
+    std::vector<int3> repeats;  // of the piece that closed the loop
+    PeriodicUnionFind pieces;
+  };
+  auto widestWayThrough = [&]()
+  {
+    WayThrough way{hops.size(), {}, PeriodicUnionFind(numberOfVoxels)};
+    std::vector<std::pair<std::size_t, int3>> found;  // a voxel of the piece, and the vector it repeats under
 
     for (std::size_t index = 0; index < hops.size(); ++index)
     {
       const Hop &hop = hops[index];
+      if (way.closedAt < hops.size() && hop.width < hops[way.closedAt].width) break;
 
-      if (std::optional<int3> repeat = pieces.join(hop.from, hop.to, hop.crossing); repeat.has_value())
+      if (std::optional<int3> repeat = way.pieces.join(hop.from, hop.to, hop.crossing); repeat.has_value())
       {
-        if (found.empty())
-        {
-          at = static_cast<double>(hop.width) - lengthPenalty;
-          closedAt = index;
-        }
-        found.push_back(repeat.value());
+        if (way.closedAt == hops.size()) way.closedAt = index;
+        found.emplace_back(hop.from, repeat.value());
       }
-
-      // Once it runs away, keep going only long enough to see in how many directions it does.
-      if (!found.empty() && index > closedAt + hops.size() / 20 && latticeRank(found) == 3) break;
     }
 
-    return std::pair<double, std::vector<int3>>{at, found};
+    // Which piece a loop belongs to is settled only once every hop of the width is in, as two pieces that
+    // closed loops of their own can be joined by a later hop of the same width.
+    if (way.closedAt < hops.size())
+    {
+      std::size_t root = way.pieces.find(hops[way.closedAt].from).first;
+      for (const auto &[voxel, repeat] : found)
+      {
+        if (way.pieces.find(voxel).first == root) way.repeats.push_back(repeat);
+      }
+    }
+
+    return way;
   };
 
   // The hop lengths differ, so the penalty that makes every width one a sphere is shown to manage is half
@@ -328,31 +344,23 @@ BruteForceDiameters BruteForceDiameters::compute(const BruteForceStructure &stru
   double longestHop = std::sqrt(voxels.spacing.x * voxels.spacing.x + voxels.spacing.y * voxels.spacing.y +
                                 voxels.spacing.z * voxels.spacing.z);
 
-  auto [width, repeats] = widestWayThrough(0.0);
+  WayThrough way = widestWayThrough();
 
-  self.percolates = !repeats.empty();
-  self.dimensionality = latticeRank(repeats);
+  self.percolates = way.closedAt < hops.size();
+  double width = self.percolates ? static_cast<double>(hops[way.closedAt].width) : 0.0;
+  self.dimensionality = latticeRank(way.repeats);
   self.freeSphereDiameter = 2.0 * width;
   self.guaranteedFreeSphereDiameter = 2.0 * std::max(width - 0.5 * longestHop, 0.0);
 
   // Dif: the roomiest place that can be reached without ever passing anywhere narrower than the bottleneck,
-  // walked uphill from the best voxel of that component.
+  // walked uphill from the best voxel of that component. The component is the piece the loop closed in, as
+  // the pass left it: every hop as wide as the bottleneck is in, and nothing narrower. The piece of
+  // whichever hop of that width happened to sort last is not the same thing; on a crystal with a pocket
+  // that is somewhere exactly as wide as the bottleneck, that read Dif off the pocket.
   if (self.percolates)
   {
-    PeriodicUnionFind pieces(numberOfVoxels);
-    for (const Hop &hop : hops)
-    {
-      if (static_cast<double>(hop.width) < width) break;
-      pieces.join(hop.from, hop.to, hop.crossing);
-    }
-
-    // Which piece the hop that closed the loop belongs to is the percolating one.
-    std::size_t seed = hops.front().from;
-    for (const Hop &hop : hops)
-    {
-      if (static_cast<double>(hop.width) < width) break;
-      seed = hop.from;
-    }
+    PeriodicUnionFind &pieces = way.pieces;
+    std::size_t seed = hops[way.closedAt].from;
     std::size_t percolatingRoot = pieces.find(seed).first;
 
     std::size_t best = seed;

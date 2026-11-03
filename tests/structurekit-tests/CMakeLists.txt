@@ -17,6 +17,7 @@ add_executable(unit_tests_structurekit
   apollonius_surface_area.cpp
   voronoi_network_peaks.cpp
   pore_diameters.cpp
+  brute_force_diameters.cpp
   main.cpp)
 
 # Only the structural analysis and the three kits below it. What the engine can hand it is tested from
