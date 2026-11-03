@@ -321,6 +321,47 @@ TEST(MC_BEAD_MOVES, movable_bead_enumeration_respects_constraints)
 // soft bond (sigma = 0.24 A) makes the l^2 factor shift <l> by 0.08 A above l0, so the test
 // distinguishes the correct distribution from a Gaussian in l and from any proposal asymmetry. The
 // bends and torsions must be uniform.
+namespace
+{
+// Linear 10-bead chain with FIXED bonds, free bends and FIXED torsions (held at the given dihedral).
+std::string fixedTorsionDecaneJson()
+{
+  std::string json = fixedBondDecaneJson("\"HARMONIC\", [0.0, 114.0]");
+  const std::string torsion = "\"TRAPPE\", [0.0, 0.0, 0.0, 0.0]";
+  const std::size_t at = json.find(torsion);
+  if (at != std::string::npos) json.replace(at, torsion.size(), "\"FIXED\", [60.0]");
+  return json;
+}
+}  // namespace
+
+// The rotation moves respect the holonomic constraints as the bead moves do:
+//  - FIXED bends: a pivot keeps every bend (only the torsions through its bond change), a crankshaft changes the
+//    bends at its anchors between the segment and the rest of the chain, so no crankshaft unit remains;
+//  - FIXED torsions: every pivot bond is the middle bond of a torsion and every crankshaft, concerted rotation
+//    and bridging changes torsions, so none of them remains.
+TEST(MC_BEAD_MOVES, rotation_move_enumeration_respects_constraints)
+{
+  const ForceField forceField = makeForceField(0.0, 0.0);
+
+  Component fixedBends =
+      makeComponent(forceField, "rotation-decane-fixed-bends", fixedBondDecaneJson("\"FIXED\", [114.0]"));
+  EXPECT_EQ(fixedBends.pivotBonds().size(), 7uz);
+  EXPECT_TRUE(fixedBends.crankshaftUnits().empty());
+
+  Component fixedTorsions = makeComponent(forceField, "rotation-decane-fixed-torsions", fixedTorsionDecaneJson());
+  EXPECT_TRUE(fixedTorsions.pivotBonds().empty());
+  EXPECT_TRUE(fixedTorsions.crankshaftUnits().empty());
+  EXPECT_TRUE(fixedTorsions.concertedRotationWindows().empty());
+  EXPECT_TRUE(fixedTorsions.bridgingTopology().sites.empty());
+
+  // free bends and torsions: the interior bonds pivot, and the segments of up to four beads crank
+  Component free = makeComponent(forceField, "rotation-decane-free", fixedBondDecaneJson("\"HARMONIC\", [0.0, 114.0]"));
+  EXPECT_EQ(free.pivotBonds().size(), 7uz);
+  EXPECT_FALSE(free.crankshaftUnits().empty());
+  EXPECT_FALSE(free.concertedRotationWindows().empty());
+  EXPECT_FALSE(free.bridgingTopology().sites.empty());
+}
+
 TEST(MC_BEAD_MOVES, displacement_samples_harmonic_bond_distribution)
 {
   constexpr double bondForceConstant = 5000.0;  // K/A^2

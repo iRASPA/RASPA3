@@ -409,10 +409,10 @@ std::vector<std::array<std::size_t, 4>> ConnectivityTable::findAllTorsions() con
 
   for (const std::array<std::size_t, 3> found_bend : found_bends)
   {
-    // extend to the left
+    // extend to the left (on a three-membered ring the neighbour can be the far end of the bend: no torsion)
     for (std::size_t left_bead : findAllNeighbors(found_bend[0]))
     {
-      if (left_bead != found_bend[1])
+      if (left_bead != found_bend[1] && left_bead != found_bend[2])
       {
         std::array<std::size_t, 4> torsion = {left_bead, found_bend[0], found_bend[1], found_bend[2]};
         std::array<std::size_t, 4> torsion_mirrored = {found_bend[2], found_bend[1], found_bend[0], left_bead};
@@ -427,7 +427,7 @@ std::vector<std::array<std::size_t, 4>> ConnectivityTable::findAllTorsions() con
     // extend to the right
     for (std::size_t right_bead : findAllNeighbors(found_bend[2]))
     {
-      if (right_bead != found_bend[1])
+      if (right_bead != found_bend[1] && right_bead != found_bend[0])
       {
         std::array<std::size_t, 4> torsion = {found_bend[0], found_bend[1], found_bend[2], right_bead};
         std::array<std::size_t, 4> torsion_mirrored = {right_bead, found_bend[2], found_bend[1], found_bend[0]};

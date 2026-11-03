@@ -864,7 +864,8 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
     }
     if (unitFactor != 1.0)
     {
-      if (term->type == "CVFF")
+      // CVFF carries (K, n, d), HARMONIC (K, phi_0 in degrees): only their first parameter is an energy
+      if (term->type == "CVFF" || term->type == "HARMONIC")
         term->parameters[0] *= unitFactor;
       else
         scaleEnergies(*term, torsionEnergyAll, unitFactor);

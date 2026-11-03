@@ -160,8 +160,9 @@ std::string BendPotential::print() const
       return std::format(
           "{} - {} - {} : QUARTIC p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees], p_2/k_B={:g} [K/rad^3], p_3/k_B={:g} "
           "[K/rad^4]\n",
-          identifiers[0], identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin, parameters[1],
-          parameters[2] * Units::EnergyToKelvin, parameters[3] * Units::EnergyToKelvin);
+          identifiers[0], identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin,
+          parameters[1] * Units::RadiansToDegrees, parameters[2] * Units::EnergyToKelvin,
+          parameters[3] * Units::EnergyToKelvin);
     case BendType::CFF_Quartic:
       // p_0*(theta-p_1)^2+p_2*(theta-p_1)^3+p_3*(theta-p_1)^4
       // =====================================================

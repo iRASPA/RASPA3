@@ -747,6 +747,53 @@ const std::vector<double> &Component::recoilReferenceStepEnergies(
   return recoilReferenceStepEnergiesCache.emplace(beadsAlreadyPlaced, std::move(reference)).first->second;
 }
 
+namespace
+{
+/// Whether a FIXED torsion runs through the bond (a, b) as its middle bond: a rotation about the bond changes it.
+bool fixedTorsionThroughBond(const Potentials::IntraMolecularPotentials &potentials, std::size_t a, std::size_t b)
+{
+  for (const TorsionPotential &torsion : potentials.torsions)
+  {
+    if (torsion.type != TorsionType::Fixed) continue;
+    const std::array<std::size_t, 4> &id = torsion.identifiers;
+    if ((id[1] == a && id[2] == b) || (id[1] == b && id[2] == a)) return true;
+  }
+  return false;
+}
+
+/// Whether a FIXED or RIGID bend, or a FIXED torsion, has an atom in a rigidly moved set and an atom outside it
+/// that is not one of the 'axisAtoms' (the atoms on the rotation axis keep their distances to both parts): such a
+/// term changes under the rotation.
+bool holonomicTermCrossesSegment(const Potentials::IntraMolecularPotentials &potentials,
+                                 const std::vector<bool> &inSegment, std::span<const std::size_t> axisAtoms)
+{
+  auto crosses = [&](std::span<const std::size_t> identifiers)
+  {
+    bool inside = false;
+    bool outside = false;
+    for (std::size_t atom : identifiers)
+    {
+      if (inSegment[atom])
+        inside = true;
+      else if (std::ranges::find(axisAtoms, atom) == axisAtoms.end())
+        outside = true;
+    }
+    return inside && outside;
+  };
+  for (const BendPotential &bend : potentials.bends)
+  {
+    if (bend.type != BendType::Fixed && bend.type != BendType::Rigid) continue;
+    if (crosses(bend.identifiers)) return true;
+  }
+  for (const TorsionPotential &torsion : potentials.torsions)
+  {
+    if (torsion.type != TorsionType::Fixed) continue;
+    if (crosses(torsion.identifiers)) return true;
+  }
+  return false;
+}
+}  // namespace
+
 const std::vector<Component::PivotBond> &Component::pivotBonds() const
 {
   if (pivotBondsCache.has_value()) return pivotBondsCache.value();
@@ -797,6 +844,10 @@ const std::vector<Component::PivotBond> &Component::pivotBonds() const
     {
       continue;
     }
+
+    // The rotation keeps every bond and bend (the other neighbours of an axis atom lie on its own side) and
+    // changes only the torsions through the bond: a FIXED one is a holonomic constraint the move would break.
+    if (fixedTorsionThroughBond(intraMolecularPotentials, bond[0], bond[1])) continue;
 
     std::optional<std::vector<std::size_t>> sideOfSecond = partition(bond[1], bond[0]);
     if (!sideOfSecond.has_value()) continue;  // ring bond
@@ -904,6 +955,12 @@ const std::vector<Component::CrankshaftUnit> &Component::crankshaftUnits() const
           if (deformsRigidFragment) break;
         }
         if (deformsRigidFragment) continue;
+
+        // The rotation keeps the geometry of the segment with the anchors, and of everything else; the bends at
+        // the anchors between a segment atom and an outside atom, and the torsions across the anchors, change:
+        // a FIXED or RIGID one is a holonomic constraint the move would break.
+        const std::array<std::size_t, 2> anchors{anchorA, anchorB};
+        if (holonomicTermCrossesSegment(intraMolecularPotentials, inSegment, anchors)) continue;
 
         std::sort(segment.begin(), segment.end());
         result.push_back(CrankshaftUnit{{anchorA, anchorB}, std::move(segment)});
@@ -1106,6 +1163,19 @@ const std::vector<Component::ConcertedRotationWindow> &Component::concertedRotat
     // Holonomic bends at the window ends that the move would violate.
     if (holonomicBend(b[1], b[2], b[0]) || holonomicBend(b[6], b[5], b[7])) return;
 
+    // FIXED torsions: every torsion of the backbone and across a moving group changes; a torsion is kept only
+    // when its four atoms move as one group (fixed, or one backbone atom with its side group).
+    for (const TorsionPotential &torsion : intraMolecularPotentials.torsions)
+    {
+      if (torsion.type != TorsionType::Fixed) continue;
+      auto groupOf = [&](std::size_t atom) { return group[atom] == unassigned ? 0 : group[atom]; };
+      const std::size_t first = groupOf(torsion.identifiers[0]);
+      for (std::size_t atom : torsion.identifiers)
+      {
+        if (groupOf(atom) != first) return;
+      }
+    }
+
     for (std::vector<std::size_t> &substituent : window.substituents)
     {
       std::sort(substituent.begin(), substituent.end());
@@ -1246,6 +1316,16 @@ const Component::BridgingTopology &Component::bridgingTopology() const
     }
     if (holonomicBend(backboneAtom(s), backboneAtom(s + 1), backboneAtom(s - 1))) return false;
     if (holonomicBend(backboneAtom(s + 4), backboneAtom(s + 3), backboneAtom(s + 5))) return false;
+    // FIXED torsions: kept only when the four atoms stay in one part (head, one trimer unit, or tail)
+    for (const TorsionPotential &torsion : intraMolecularPotentials.torsions)
+    {
+      if (torsion.type != TorsionType::Fixed) continue;
+      const std::size_t first = group(torsion.identifiers[0]);
+      for (std::size_t atom : torsion.identifiers)
+      {
+        if (group(atom) != first) return false;
+      }
+    }
     return true;
   };
   for (std::size_t s = 0; s != numberOfUnits; ++s)

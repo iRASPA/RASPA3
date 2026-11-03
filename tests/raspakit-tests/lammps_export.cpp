@@ -705,6 +705,95 @@ read_data mixed.data
   EXPECT_NEAR(reread.netCharge, 0.2, 1e-9);
 }
 
+// A quadratic dihedral read in another unit system: the force constant is converted, the equilibrium angle (degrees)
+// is not an energy and stays.
+TEST(lammps_export, reader_scales_only_the_energy_of_a_quadratic_dihedral)
+{
+  const std::string data = R"(LAMMPS data file
+
+4 atoms
+3 bonds
+2 angles
+1 dihedrals
+1 atom types
+1 bond types
+1 angle types
+1 dihedral types
+
+0.0 20.0 xlo xhi
+0.0 20.0 ylo yhi
+0.0 20.0 zlo zhi
+
+Masses
+
+1 14.0
+
+Pair Coeffs # lj/cut
+
+1 0.01 3.9
+
+Bond Coeffs # harmonic
+
+1 10.0 1.54
+
+Angle Coeffs # harmonic
+
+1 2.0 114.0
+
+Dihedral Coeffs # quadratic
+
+1 0.5 120.0
+
+Atoms # molecular
+
+1 1 1 5.0 5.0 5.0
+2 1 1 6.5 5.0 5.0
+3 1 1 7.0 6.4 5.0
+4 1 1 8.5 6.6 5.6
+
+Bonds
+
+1 1 1 2
+2 1 2 3
+3 1 3 4
+
+Angles
+
+1 1 1 2 3
+2 1 2 3 4
+
+Dihedrals
+
+1 1 1 2 3 4
+)";
+  const std::string input = R"(units metal
+atom_style molecular
+pair_style lj/cut 9.0
+bond_style harmonic
+angle_style harmonic
+dihedral_style quadratic
+read_data quadratic.data
+)";
+  TemporaryDirectory directory;
+  std::filesystem::path dataPath = directory.path / "quadratic.data";
+  std::filesystem::path inputPath = directory.path / "quadratic.in";
+  std::ofstream(dataPath) << data;
+  std::ofstream(inputPath) << input;
+
+  LAMMPS::ReadResult read = LAMMPS::readDataFile(dataPath, inputPath);
+  ASSERT_EQ(read.components.size(), 1u);
+  const nlohmann::json &definition = read.components[0].definition;
+  ASSERT_EQ(definition["Torsions"].size(), 1u);
+  EXPECT_EQ(definition["Torsions"][0][1], "HARMONIC");
+  const std::vector<double> parameters = definition["Torsions"][0][2].get<std::vector<double>>();
+  ASSERT_EQ(parameters.size(), 2u);
+  // (1/2) p_0 (phi - phi_0)^2 = K (phi - phi_0)^2: p_0 = 2 K, K = 0.5 eV = 0.5 * 23.060548 kcal/mol
+  EXPECT_NEAR(parameters[0], 2.0 * 0.5 * 23.060548 * 503.219488, 1.0);
+  EXPECT_NEAR(parameters[1], 120.0, 1e-9);
+  // the angle of the bend is not scaled either
+  EXPECT_NEAR(definition["Bends"][0][2][1].get<double>(), 114.0, 1e-9);
+}
+
 TEST(lammps_export, rigid_molecule_gets_fragment_ids_and_rigid_small)
 {
   ForceField forceField = chainForceField();
