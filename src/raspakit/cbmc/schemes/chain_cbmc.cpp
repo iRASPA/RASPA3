@@ -41,7 +41,7 @@ struct EvaluatedTrials
 
 EvaluatedTrials evaluateTrials(const CBMC::GrowContext &context, const Component &component,
                                const CBMC::GrowStep &step, std::vector<Atom> &chainAtoms,
-                               std::vector<CBMC::StepTrial> stepTrials, std::span<const std::size_t> tethersOfStep)
+                               std::vector<CBMC::StepTrial> stepTrials, const CBMC::StepTethers &tethersOfStep)
 {
   EvaluatedTrials evaluated{};
   if (stepTrials.empty()) return evaluated;

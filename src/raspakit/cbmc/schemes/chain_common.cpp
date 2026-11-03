@@ -16,6 +16,7 @@ import cbmc_grow_step;
 import cbmc_operators;
 import cbmc_external_energy;
 import interactions_cross_link;
+import cross_links;
 
 CBMC::TetherSchedule CBMC::scheduleTethers(const GrowContext &context, const Component &component,
                                            const std::vector<GrowStep> &plan)
@@ -45,7 +46,17 @@ CBMC::TetherSchedule CBMC::scheduleTethers(const GrowContext &context, const Com
         }
       }
     }
-    if (lastStep.has_value()) schedule.perStep[lastStep.value()].push_back(index);
+    if (lastStep.has_value()) schedule.perStep[lastStep.value()].tethers.push_back(index);
+
+    // the excluded pairs of the regrown atoms, exempt from the overlap test at the step that places the atom
+    for (const CrossLinkTether::Exclusion &exclusion : context.crossLinkTethers[index].exclusions)
+    {
+      if (!stepOfAtom[exclusion.atom].has_value()) continue;
+      const std::size_t seg = stepOfAtom[exclusion.atom].value();
+      const auto it = std::ranges::find(plan[seg].nextBeads, exclusion.atom);
+      schedule.perStep[seg].overlapExempt.push_back(
+          {static_cast<std::size_t>(std::distance(plan[seg].nextBeads.begin(), it)), exclusion.partnerIndex});
+    }
   }
   return schedule;
 }
@@ -53,9 +64,10 @@ CBMC::TetherSchedule CBMC::scheduleTethers(const GrowContext &context, const Com
 std::optional<CBMC::StepTrialEnergy> CBMC::evaluateStepTrial(const GrowContext &context, const Component &component,
                                                              const GrowStep &step, std::vector<Atom> &chainAtoms,
                                                              std::span<const Atom> positions,
-                                                             std::span<const std::size_t> tethersOfStep)
+                                                             const StepTethers &stepTethers)
 {
-  std::optional<RunningEnergy> external = computeExternalNonOverlappingEnergy(context, component, positions);
+  std::optional<RunningEnergy> external =
+      computeExternalNonOverlappingEnergy(context, component, positions, stepTethers.overlapExempt);
   if (!external.has_value()) return std::nullopt;
 
   // Only the external-stage share of the step's intramolecular non-bonded pairs; the short-range
@@ -66,10 +78,11 @@ std::optional<CBMC::StepTrialEnergy> CBMC::evaluateStepTrial(const GrowContext &
       context.forceField, context.simulationBox, chainAtoms);
 
   // The cross-link terms that become evaluable at this step (every atom they need is now in place).
-  if (!tethersOfStep.empty())
+  if (!stepTethers.tethers.empty())
   {
-    external.value() += Interactions::computeCrossLinkTetherEnergy(
-        context.forceField, context.simulationBox, component, chainAtoms, context.crossLinkTethers, tethersOfStep);
+    external.value() += Interactions::computeCrossLinkTetherEnergy(context.forceField, context.simulationBox,
+                                                                    component, chainAtoms, context.crossLinkTethers,
+                                                                    stepTethers.tethers);
   }
 
   return StepTrialEnergy{external.value(), intra};

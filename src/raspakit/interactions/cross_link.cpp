@@ -33,12 +33,20 @@ struct LinkGeometry
   double3 shiftB; // posB - stored position of B's site
 };
 
+// Which terms of an excluded pair a sum over links holds.
+enum class ExclusionTerms
+{
+  None,       // the pair is held by another link (or tether)
+  Full,       // the inter-molecular sum counted the pair: its pair interaction is removed, the exclusion term added
+  EwaldOnly,  // the pair was left out of the inter-molecular sum (a CBMC regrowth, see CBMC::OverlapExemption)
+};
+
 // Removes the non-bonded pair interaction of an excluded pair (x, y) that the inter-molecular sum has
-// counted, and adds what an intramolecular pair receives instead (the Ewald exclusion or the
-// shifted-potential completion). 'addGradient(onX, g)' receives the gradient on x (and -g on y).
+// counted (unless 'pairCounted' is false), and adds what an intramolecular pair receives instead (the Ewald
+// exclusion or the shifted-potential completion). 'addGradient(onX, g)' receives the gradient on x (and -g on y).
 template <std::size_t Order, typename GradientSink>
 void excludePair(const ForceField &forceField, const SimulationBox &simulationBox, const Atom &x, const Atom &y,
-                 RunningEnergy &energy, GradientSink &&addGradient, double3x3 *strain)
+                 RunningEnergy &energy, GradientSink &&addGradient, double3x3 *strain, bool pairCounted = true)
 {
   const double3 dr = simulationBox.applyPeriodicBoundaryConditions(x.position - y.position);
   const double rr = double3::dot(dr, dr);
@@ -54,7 +62,7 @@ void excludePair(const ForceField &forceField, const SimulationBox &simulationBo
     }
   };
 
-  if (!forceField.omitInterInteractions)
+  if (!forceField.omitInterInteractions && pairCounted)
   {
     const double cutOffVDWSquared = forceField.cutOffMoleculeVDW * forceField.cutOffMoleculeVDW;
     const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
@@ -83,7 +91,7 @@ void excludePair(const ForceField &forceField, const SimulationBox &simulationBo
     energy.ewald_exclusion -= scaling * prefactor * exclusion.potential;
     if constexpr (Order >= 1) accumulate(-scaling * prefactor * exclusion.firstDerivativeFactor * dr);
   }
-  else if (forceField.usesRealSpaceChargeCorrections() && !forceField.omitInterInteractions &&
+  else if (forceField.usesRealSpaceChargeCorrections() && !forceField.omitInterInteractions && pairCounted &&
            rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
   {
     // Completion of the shifted pair sum for the finite-cutoff charge methods: q_i q_j (V(r) - 1/r).
@@ -116,8 +124,8 @@ const BendPotential *linkBendOf(const Component &component, std::size_t atom)
 // 'atomA(local)' / 'atomB(local)' return the atoms of the two molecules by local index;
 // 'addGradientA(local, g)' / 'addGradientB(local, g)' receive the gradients (Order >= 1 only).
 // 'neighboursA' / 'neighboursB' are the intramolecular neighbours of the two sites.
-// 'takesExclusion(localA, localB)' tells whether these terms hold the exclusion of a pair across the link: several
-// links can reach the same pair, which the inter-molecular sum counted once.
+// 'takesExclusion(localA, localB)' tells which terms (ExclusionTerms) of the exclusion of a pair across the link
+// these terms hold: several links can reach the same pair, which the inter-molecular sum counted once.
 template <std::size_t Order, typename AtomA, typename AtomB, typename GradientA, typename GradientB,
           typename ExclusionFilter>
 void evaluateLinkTerms(const ForceField &forceField, const SimulationBox &simulationBox,
@@ -195,7 +203,8 @@ void evaluateLinkTerms(const ForceField &forceField, const SimulationBox &simula
   // Non-bonded exclusions across the link: the 1-2 pair and the 1-3 pairs.
   auto exclude = [&](std::size_t localA, std::size_t localB)
   {
-    if (!takesExclusion(localA, localB)) return;
+    const ExclusionTerms terms = takesExclusion(localA, localB);
+    if (terms == ExclusionTerms::None) return;
     excludePair<Order>(
         forceField, simulationBox, atomA(localA), atomB(localB), energy,
         [&](const double3 &g)
@@ -203,7 +212,7 @@ void evaluateLinkTerms(const ForceField &forceField, const SimulationBox &simula
           addGradientA(localA, g);
           addGradientB(localB, -g);
         },
-        strain);
+        strain, terms == ExclusionTerms::Full);
   };
   exclude(siteA, siteB);
   for (std::size_t nA : neighboursA) exclude(nA, siteB);
@@ -245,7 +254,10 @@ RunningEnergy evaluateLinkSet(const ForceField &forceField, const SimulationBox 
         [&](std::size_t local, const double3 &g) { addGradient(atomOf(link.a, local), g); },
         [&](std::size_t local, const double3 &g) { addGradient(atomOf(link.b, local), g); },
         [&](std::size_t localA, std::size_t localB)
-        { return takesExclusion(atomOf(link.a, localA), atomOf(link.b, localB)); },
+        {
+          return takesExclusion(atomOf(link.a, localA), atomOf(link.b, localB)) ? ExclusionTerms::Full
+                                                                                : ExclusionTerms::None;
+        },
         strain);
     partnersOfSite[link.a].push_back(link.b);
     partnersOfSite[link.b].push_back(link.a);
@@ -424,6 +436,25 @@ RunningEnergy Interactions::computeCrossLinkEnergyDifference(
          evaluateLinkSet<0>(forceField, simulationBox, components, table, links, atomOld, noGradient, nullptr);
 }
 
+namespace
+{
+// Whether the van der Waals energy of a pair is above the overlap criterion: a CBMC regrowth leaves such an
+// excluded pair out of its external energy (CBMC::OverlapExemption), and the tether out of the exclusion.
+bool aboveOverlapCriterion(const ForceField &forceField, const SimulationBox &simulationBox, const Atom &x,
+                           const Atom &y)
+{
+  const double cutOffVDWSquared = forceField.cutOffMoleculeVDW * forceField.cutOffMoleculeVDW;
+  const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+  bool above = false;
+  Interactions::evaluatePair<0>(
+      forceField, simulationBox, x, y, cutOffVDWSquared, cutOffChargeSquared, false,
+      [&](const Potentials::PairDerivatives<0> &factors, const double3 &)
+      { above = factors.energy > forceField.energyOverlapCriteria; },
+      [](const Potentials::PairDerivatives<0> &, const double3 &) {});
+  return above;
+}
+}  // namespace
+
 std::vector<CrossLinkTether> Interactions::makeCrossLinkTethers(
     const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
     std::span<const Atom> moleculeAtoms, const CrossLinkTable &table, std::size_t componentId,
@@ -460,7 +491,7 @@ std::vector<CrossLinkTether> Interactions::makeCrossLinkTethers(
     {
       if (excluded.insert({local, partner.componentId, partner.moleculeIndex, partnerLocal}).second)
       {
-        tether.exclusions.emplace_back(local, partnerLocal);
+        tether.exclusions.push_back({local, partnerLocal, partnerStart + partnerLocal});
       }
     };
     holdExclusion(own.atomIndex, partner.atomIndex);
@@ -504,7 +535,16 @@ RunningEnergy Interactions::computeCrossLinkTetherEnergy(const ForceField &force
         neighboursB, [&](std::size_t local) -> const Atom & { return moleculeAtoms[local]; }, atomB, energy,
         noGradient, noGradient,
         [&](std::size_t local, std::size_t partnerLocal)
-        { return std::ranges::contains(tether.exclusions, std::make_pair(local, partnerLocal)); },
+        {
+          const bool held =
+              std::ranges::any_of(tether.exclusions, [&](const CrossLinkTether::Exclusion &exclusion)
+                                  { return exclusion.atom == local && exclusion.partnerAtom == partnerLocal; });
+          if (!held) return ExclusionTerms::None;
+          // the regrowth left a pair above the overlap criterion out of the external energy
+          return aboveOverlapCriterion(forceField, simulationBox, moleculeAtoms[local], atomB(partnerLocal))
+                     ? ExclusionTerms::EwaldOnly
+                     : ExclusionTerms::Full;
+        },
         nullptr);
   }
   return energy;

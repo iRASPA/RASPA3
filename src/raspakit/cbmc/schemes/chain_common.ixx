@@ -42,14 +42,24 @@ struct StepTrialEnergy
  * Rosenbluth scheme requires (any partition of the energy over the steps is valid as long as it is the
  * same for both).
  */
+struct StepTethers
+{
+  /// The tethers evaluated at this step: indices into 'GrowContext::crossLinkTethers'.
+  std::vector<std::size_t> tethers{};
+  /// The pairs of an atom placed at this step (index in 'GrowStep::nextBeads') with a partner atom that a tether
+  /// excludes: no overlap of the step's external energy (see OverlapExemption).
+  std::vector<OverlapExemption> overlapExempt{};
+};
+
 struct TetherSchedule
 {
-  /// Per step of the plan: indices into 'GrowContext::crossLinkTethers'.
-  std::vector<std::vector<std::size_t>> perStep{};
+  /// Per step of the plan.
+  std::vector<StepTethers> perStep{};
 
-  [[nodiscard]] std::span<const std::size_t> at(std::size_t step) const noexcept
+  [[nodiscard]] const StepTethers &at(std::size_t step) const noexcept
   {
-    return step < perStep.size() ? std::span<const std::size_t>(perStep[step]) : std::span<const std::size_t>{};
+    static const StepTethers none{};
+    return step < perStep.size() ? perStep[step] : none;
   }
 };
 
@@ -58,9 +68,9 @@ struct TetherSchedule
 
 /**
  * \brief Evaluates one trial direction of a step: 'positions' (in 'step.nextBeads' order) against the
- * context's background and against the placed part of the chain, plus the cross-link tethers
- * 'tethersOfStep' scheduled for this step (their energy is external: it is booked in the chain's
- * external energies).
+ * context's background and against the placed part of the chain, plus the cross-link tethers of
+ * 'stepTethers', scheduled for this step (their energy is external: it is booked in the chain's
+ * external energies; the pairs they exclude are no overlap).
  *
  * std::nullopt when the trial lies in a blocked pocket or overlaps (a closed direction). The step's
  * next-beads of 'chainAtoms' are used as scratch for the intramolecular evaluation and are restored
@@ -69,7 +79,7 @@ struct TetherSchedule
 [[nodiscard]] std::optional<StepTrialEnergy> evaluateStepTrial(const GrowContext &context, const Component &component,
                                                                const GrowStep &step, std::vector<Atom> &chainAtoms,
                                                                std::span<const Atom> positions,
-                                                               std::span<const std::size_t> tethersOfStep = {});
+                                                               const StepTethers &stepTethers = StepTethers{});
 
 /**
  * \brief The log factor -beta u_unsampled of a step's classically not-sampled internal terms

@@ -16,6 +16,23 @@ import std;
 export namespace CBMC
 {
 /**
+ * \brief A pair of a trial atom and a background atom that the overlap test of the external energy leaves alone.
+ *
+ * The pairs a cross-link excludes (the linked sites, and the 1-3 pairs across the link) sit at bond distance, far
+ * above 'energyOverlapCriteria', while their non-bonded energy is removed again by the link's terms; an overlap
+ * flagged by such a pair would close every direction of the regrowth. An exempt pair above the criterion is left
+ * out of the external energy, and the link's terms (the tethers) leave its non-bonded energy out of the exclusion
+ * likewise, by the same rule on the same positions: counting it and subtracting it again would leave the noise of
+ * the difference of two huge numbers. 'trialAtom' indexes the evaluated trial set, 'backgroundAtom' the context's
+ * molecule atoms.
+ */
+struct OverlapExemption
+{
+  std::size_t trialAtom{};
+  std::size_t backgroundAtom{};
+};
+
+/**
  * \brief Which cut-offs a growth context evaluates the external energies with.
  *
  *  - Growth: the cut-offs the CBMC grow/retrace itself uses -- the inner 'dualCutOff' for all three

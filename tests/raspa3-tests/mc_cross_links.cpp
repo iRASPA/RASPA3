@@ -10,6 +10,7 @@ import atom;
 import atom_dynamics;
 import units;
 import forcefield;
+import vdwparameters;
 import component;
 import system;
 import simulationbox;
@@ -812,7 +813,12 @@ TEST(MC_CROSS_LINKS, monte_carlo_drift_with_cross_links)
 //   p(r, theta) ~ r^2 sin(theta) exp(-beta [u_bond(r) + u_bend(theta)])
 // exactly, with theta the junction angle. The sampled <cos theta> and <u_bend> are compared with the
 // quadrature of this density (a soft bend, so that the sin(theta) Jacobian is visible).
-TEST(MC_CROSS_LINKS, tethered_regrowth_samples_junction_angle_distribution)
+namespace
+{
+// Two B-A dimers linked at their A atoms; 'numberOfMoves' reinsertion moves regrow the B atoms, the junction angle
+// must follow its Boltzmann distribution (with the sin(theta) Jacobian) and the running energy must stay consistent.
+void expectTetheredRegrowthSamplesJunctionAngle(ForceField forceField, std::size_t numberOfMoves,
+                                                double toleranceCos, double toleranceBend, std::string_view label)
 {
   constexpr double bendK = 3000.0;      // K/rad^2
   constexpr double bendAngle = 100.0;   // degrees
@@ -843,14 +849,13 @@ TEST(MC_CROSS_LINKS, tethered_regrowth_samples_junction_angle_distribution)
   // Both chain schemes carry the tethers.
   for (const bool useRecoilGrowth : {false, true})
   {
-    ForceField forceField = makeForceField(0.0, 0.0, 0.0, false);
     forceField.settings.useRecoilGrowth = useRecoilGrowth;
 
     MCMoveProbabilities componentMoves;
     componentMoves.setProbability(Move::Types::ReinsertionCBMC, 1.0);
-    TemporaryFile file("xl-dimer-regrow.json", dimerBAJson(kBondK, kBondLength));
-    Component dimer = Component(Component::Type::Adsorbate, 0, forceField, "xl-dimer-regrow", file.stemPath().string(),
-                                5, 21, componentMoves, std::nullopt, false);
+    TemporaryFile file(std::format("xl-dimer-regrow-{}.json", label), dimerBAJson(kBondK, kBondLength));
+    Component dimer = Component(Component::Type::Adsorbate, 0, forceField, std::format("xl-dimer-regrow-{}", label),
+                                file.stemPath().string(), 5, 21, componentMoves, std::nullopt, false);
 
     // Molecule 0: B0 A0, molecule 1: B1 A1; the A atoms (the sites) sit a bond length apart and both
     // junction angles start at theta0. (Recoil growth tests openness against the absolute energy of
@@ -871,12 +876,13 @@ TEST(MC_CROSS_LINKS, tethered_regrowth_samples_junction_angle_distribution)
     double sumCos = 0.0;
     double sumBend = 0.0;
     double samples = 0.0;
-    for (std::size_t i = 0; i < 105000; ++i)
+    const std::size_t burnIn = 5000;
+    for (std::size_t i = 0; i < numberOfMoves; ++i)
     {
       const std::size_t molecule = random.uniform_integer(0, 1);
       std::optional<RunningEnergy> energy = MC_Moves::reinsertionMove(random, system, 0, molecule);
       if (energy.has_value()) system.runningEnergies += energy.value();
-      if (i < 5000) continue;  // burn-in
+      if (i < burnIn) continue;  // burn-in
 
       for (std::size_t m = 0; m < 2; ++m)
       {
@@ -897,14 +903,58 @@ TEST(MC_CROSS_LINKS, tethered_regrowth_samples_junction_angle_distribution)
     EXPECT_EQ(system.spanOfMolecule(0, 1)[1].position.x, siteA1.x);
     const MoveStatistics<double>& reinsertion =
         std::get<MoveStatistics<double>>(system.components[0].mc_moves_statistics[Move::Types::ReinsertionCBMC]);
-    EXPECT_GT(reinsertion.totalAccepted, 10000.0) << "recoil growth: " << useRecoilGrowth;
+    EXPECT_GT(reinsertion.totalAccepted, 0.1 * static_cast<double>(numberOfMoves))
+        << label << ", recoil growth: " << useRecoilGrowth;
     const RunningEnergy drift = system.runningEnergies - system.computeTotalEnergies();
-    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
+    EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6) << label << ", recoil growth: " << useRecoilGrowth;
     EXPECT_NEAR(drift.crossLink, 0.0, 1e-6);
 
-    EXPECT_NEAR(sumCos / samples, expectedCos, 0.01) << "recoil growth: " << useRecoilGrowth;
-    EXPECT_NEAR(sumBend / samples, expectedBend, 0.03 * expectedBend) << "recoil growth: " << useRecoilGrowth;
+    EXPECT_NEAR(sumCos / samples, expectedCos, toleranceCos) << label << ", recoil growth: " << useRecoilGrowth;
+    EXPECT_NEAR(sumBend / samples, expectedBend, toleranceBend * expectedBend)
+        << label << ", recoil growth: " << useRecoilGrowth;
   }
+}
+}  // namespace
+
+TEST(MC_CROSS_LINKS, tethered_regrowth_samples_junction_angle_distribution)
+{
+  expectTetheredRegrowthSamplesJunctionAngle(makeForceField(0.0, 0.0, 0.0, false), 105000, 0.01, 0.03, "plain");
+}
+
+namespace
+{
+// Lennard-Jones only between the pairs the link excludes: A-A (the linked sites, at bond distance: 5e6 K) and A-B
+// (the 1-3 pairs across the link, about 2.5 A apart: 1.6e4 K). B-B, the 1-4 pair across the link that is not
+// excluded, is zero, so the junction angle keeps the distribution of the bend alone.
+ForceField makeExcludedPairsOnlyForceField()
+{
+  ForceField forceField = makeForceField(100.0, 0.0, 0.0, false);
+  forceField(1, 1) = VDWParameters(0.0, 3.6);
+  forceField(0, 1) = VDWParameters(100.0, 3.5);
+  forceField(1, 0) = VDWParameters(100.0, 3.5);
+  forceField.preComputeCutOffDependentParameters();
+  return forceField;
+}
+}  // namespace
+
+// The dual cut-off scheme: the linked site atom of the regrown molecule sits at bond distance from its partner,
+// far above the overlap criterion, and the kept site atoms are not part of the regrowth; the correction to the
+// full cut-offs must neither reject every grow nor throw on the retrace, and must leave the sampling exact.
+TEST(MC_CROSS_LINKS, tethered_regrowth_with_dual_cut_off)
+{
+  ForceField forceField = makeExcludedPairsOnlyForceField();
+  forceField.settings.useDualCutOff = true;
+  forceField.settings.dualCutOff = 6.0;
+  expectTetheredRegrowthSamplesJunctionAngle(forceField, 45000, 0.015, 0.05, "dual-cut-off");
+}
+
+// An overlap criterion below the non-bonded energy of the 1-3 pair across the link (the regrown B with the
+// partner's site A, about 2.5 A apart: 1.6e4 K here): the pair is excluded by the link, so it is no overlap.
+TEST(MC_CROSS_LINKS, tethered_regrowth_with_excluded_pair_above_overlap_criterion)
+{
+  ForceField forceField = makeExcludedPairsOnlyForceField();
+  forceField.energyOverlapCriteria = 5000.0;
+  expectTetheredRegrowthSamplesJunctionAngle(forceField, 45000, 0.015, 0.05, "overlap-criterion");
 }
 
 // Fixed-endpoint regrowth of cross-linked chains: two B-A-A-B chains linked end to end at both ends
@@ -1163,7 +1213,10 @@ TEST(MC_CROSS_LINKS, two_links_to_one_site_from_adjacent_sites_equal_three_membe
 
 TEST(MC_CROSS_LINKS, two_links_sharing_a_neighbour_of_their_sites_equal_four_membered_ring)
 {
-  const ForceField forceField = makeForceField(100.0, 0.4, -0.4, true);
+  // the tethers are compared with the total energy below: no excluded pair may be above the overlap criterion
+  // (a tether leaves such a pair out of the exclusion, as the regrowth leaves it out of the external energy)
+  ForceField forceField = makeForceField(100.0, 0.4, -0.4, true);
+  forceField.energyOverlapCriteria = 1e300;
   Component trimer = makeComponent(forceField, 0, "xl-bridge-a", multiSiteChainJson("A", 3, {0, 2}, "X", 1));
   Component monomer = makeComponent(forceField, 1, "xl-bridge-b", multiSiteChainJson("B", 1, {0}, "Y", 2));
   const double3 a0(10.0, 10.0, 10.0);
@@ -1192,7 +1245,9 @@ TEST(MC_CROSS_LINKS, two_links_sharing_a_neighbour_of_their_sites_equal_four_mem
 
 TEST(MC_CROSS_LINKS, shared_exclusions_gradient_strain_difference_and_tethers_are_consistent)
 {
-  const ForceField forceField = makeForceField(100.0, 0.4, -0.4, true);
+  // the tethers are compared with the total energy below: no excluded pair may be above the overlap criterion
+  ForceField forceField = makeForceField(100.0, 0.4, -0.4, true);
+  forceField.energyOverlapCriteria = 1e300;
   System system = makeLadder(forceField, "xl-ladder-derivatives");
   const std::span<Atom> atoms = system.spanOfMoleculeAtoms();
 

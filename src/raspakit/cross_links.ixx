@@ -143,9 +143,19 @@ export struct CrossLinkTether
   std::size_t partnerSiteAtom{};            ///< Local atom index of the partner's site in its molecule.
   Atom partnerSite{};                       ///< The partner's site atom.
   std::vector<std::pair<std::size_t, Atom>> partnerNeighbours{};  ///< (local index, atom) of the partner's neighbours.
-  /// The pairs (local atom, partner's local atom) excluded by this tether. A pair that several links of the molecule
-  /// reach is held by one tether only, whose atoms are all in place when it is evaluated.
-  std::vector<std::pair<std::size_t, std::size_t>> exclusions{};
+  /// A non-bonded pair across the link that the tether excludes: 'atom' of the regrown molecule with the
+  /// partner's atom 'partnerAtom' (local index), which is atom 'partnerIndex' of the system's molecule-atom span.
+  struct Exclusion
+  {
+    std::size_t atom{};
+    std::size_t partnerAtom{};
+    std::size_t partnerIndex{};
+  };
+  /// The pairs excluded by this tether. A pair that several links of the molecule reach is held by one tether
+  /// only, whose atoms are all in place when it is evaluated. A pair whose van der Waals energy is above the
+  /// overlap criterion of the force field is left out of the regrowth's external energy (CBMC::OverlapExemption);
+  /// the tether then leaves it out of the exclusion as well.
+  std::vector<Exclusion> exclusions{};
 };
 
 /**

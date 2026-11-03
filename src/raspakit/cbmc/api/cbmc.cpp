@@ -12,6 +12,7 @@ import double3;
 import running_energy;
 import cbmc_results;
 import cbmc_grow_context;
+import cross_links;
 import cbmc_first_bead;
 import cbmc_chain_cbmc;
 import cbmc_chain_recoil;
@@ -139,11 +140,47 @@ RetraceResult retraceAfterFirstBead(RandomNumber &random, const GrowContext &con
 /// false when the molecule overlaps at the full cut-offs (the grow then fails like any other overlap).
 /// A no-op returning true unless the context grew at the inner cut-off: a result grown at the full
 /// cut-offs ('CutOffMode::Full') is already final and correcting it would count the outer shell twice.
-bool correctGrownToFullCutOffs(const GrowContext &context, const Component &component, GrowResult &result)
+/// The atoms the dual cut-off correction of a regrowth evaluates: the regrown atoms (the atoms of the placed set
+/// keep their positions, so their correction is the same for the grow and the retrace, as their external energy
+/// is, and is left out of both), with the pairs the cross-link tethers exclude exempt from the overlap test.
+struct CorrectionSet
+{
+  std::vector<Atom> atoms{};
+  std::vector<OverlapExemption> overlapExempt{};
+};
+
+CorrectionSet regrownAtoms(const GrowContext &context, std::span<const Atom> moleculeAtoms,
+                           std::span<const std::size_t> placed)
+{
+  CorrectionSet set{};
+  std::vector<std::optional<std::size_t>> indexOfAtom(moleculeAtoms.size());
+  for (std::size_t i = 0; i < moleculeAtoms.size(); ++i)
+  {
+    if (std::ranges::contains(placed, i)) continue;
+    indexOfAtom[i] = set.atoms.size();
+    set.atoms.push_back(moleculeAtoms[i]);
+  }
+  for (const CrossLinkTether &tether : context.crossLinkTethers)
+  {
+    for (const CrossLinkTether::Exclusion &exclusion : tether.exclusions)
+    {
+      if (exclusion.atom < indexOfAtom.size() && indexOfAtom[exclusion.atom].has_value())
+      {
+        set.overlapExempt.push_back({indexOfAtom[exclusion.atom].value(), exclusion.partnerIndex});
+      }
+    }
+  }
+  return set;
+}
+
+bool correctGrownToFullCutOffs(const GrowContext &context, const Component &component, GrowResult &result,
+                               std::span<const std::size_t> placed)
 {
   if (!context.growsAtInnerCutOff()) return true;
 
-  const std::optional<RunningEnergy> correction = computeDualCutOffCorrection(context, component, result.atoms);
+  const CorrectionSet set = regrownAtoms(context, result.atoms, placed);
+  const std::optional<RunningEnergy> correction =
+      computeDualCutOffCorrection(context, component, set.atoms, set.overlapExempt);
   if (!correction.has_value()) return false;
 
   result.energies += correction.value();
@@ -155,11 +192,14 @@ bool correctGrownToFullCutOffs(const GrowContext &context, const Component &comp
 /// inconsistent state (it was accepted with the full-cut-off energies), so no weight is defined and
 /// the retrace throws, consistent with the overlap contract of the chain schemes.
 void correctRetracedToFullCutOffs(const GrowContext &context, const Component &component,
-                                  std::span<const Atom> moleculeAtoms, RetraceResult &result)
+                                  std::span<const Atom> moleculeAtoms, RetraceResult &result,
+                                  std::span<const std::size_t> placed)
 {
   if (!context.growsAtInnerCutOff()) return;
 
-  const std::optional<RunningEnergy> correction = computeDualCutOffCorrection(context, component, moleculeAtoms);
+  const CorrectionSet set = regrownAtoms(context, moleculeAtoms, placed);
+  const std::optional<RunningEnergy> correction =
+      computeDualCutOffCorrection(context, component, set.atoms, set.overlapExempt);
   if (!correction.has_value())
   {
     throw std::runtime_error(std::format(
@@ -204,7 +244,7 @@ std::optional<CBMC::GrowResult> CBMC::growNewMolecule(RandomNumber &random, cons
   if (!firstBeadData) return std::nullopt;
 
   std::optional<GrowResult> result = growAfterFirstBead(random, context, component, templateAtoms, *firstBeadData);
-  if (!result || !correctGrownToFullCutOffs(context, component, *result)) return std::nullopt;
+  if (!result || !correctGrownToFullCutOffs(context, component, *result, {})) return std::nullopt;
   return result;
 }
 
@@ -231,7 +271,10 @@ std::optional<CBMC::GrowResult> CBMC::regrowMolecule(RandomNumber &random, const
 
     result = growAfterFirstBead(random, context, component, moleculeAtoms, *firstBeadData);
   }
-  if (!result || !correctGrownToFullCutOffs(context, component, *result)) return std::nullopt;
+  const std::span<const std::size_t> placed =
+      request.firstBead == FirstBeadScheme::AlreadyPlaced ? std::span<const std::size_t>(request.beadsAlreadyPlaced)
+                                                          : std::span<const std::size_t>{};
+  if (!result || !correctGrownToFullCutOffs(context, component, *result, placed)) return std::nullopt;
 
   // The same molecule is reinserted: it keeps its record in the system.
   result->molecule.atomIndex = molecule.atomIndex;
@@ -256,7 +299,10 @@ CBMC::RetraceResult CBMC::retraceMolecule(RandomNumber &random, const GrowContex
     result = retraceAfterFirstBead(random, context, component, moleculeAtoms, firstBeadData);
   }
 
-  correctRetracedToFullCutOffs(context, component, moleculeAtoms, result);
+  const std::span<const std::size_t> placed =
+      request.firstBead == FirstBeadScheme::AlreadyPlaced ? std::span<const std::size_t>(request.beadsAlreadyPlaced)
+                                                          : std::span<const std::size_t>{};
+  correctRetracedToFullCutOffs(context, component, moleculeAtoms, result, placed);
   return result;
 }
 

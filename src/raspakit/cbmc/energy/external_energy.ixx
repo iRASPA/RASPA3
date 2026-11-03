@@ -56,11 +56,14 @@ bool insideBlockedPockets(const std::optional<Framework> &framework, const Compo
 
 /// Inter-molecular energy of the trial atoms 'atoms' against the background 'moleculeAtoms' (pairs
 /// within the same molecule id are skipped, as are all background atoms of 'skipBackgroundMolecule'
-/// when given -- the molecule being regrown). std::nullopt on a hard overlap.
+/// when given -- the molecule being regrown). std::nullopt on a hard overlap, except for the pairs
+/// 'overlapExempt' (indices into 'atoms' and 'moleculeAtoms'): such a pair above the overlap criterion is
+/// left out of the energy instead (see OverlapExemption).
 [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergy(
     const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
     double cutOffVDW, double cutOffCoulomb, std::span<const Atom> atoms,
-    std::optional<std::size_t> skipBackgroundMolecule = std::nullopt) noexcept;
+    std::optional<std::size_t> skipBackgroundMolecule = std::nullopt,
+    std::span<const OverlapExemption> overlapExempt = {}) noexcept;
 
 /// Cell-list variant of 'computeInterMolecularEnergy': the same result (to the summation order), gathering
 /// the background within the cut-off of the trial set's bounding sphere through the cell list into a
@@ -109,9 +112,18 @@ void gatherNeighbourhood(const GrowContext& context, Interactions::Neighbourhood
 /// positions at the context's cut-offs; std::nullopt when the set lies in a blocked pocket or
 /// overlaps. The single evaluation everything else is built on: the first-bead overload above, the
 /// dual cut-off correction, and both chain schemes (one trial set at a time, no intermediate
-/// containers).
+/// containers). The pairs 'overlapExempt' (trial atom, background atom of the context) never count as an
+/// overlap: a set the fast evaluation flags is evaluated again with the exemptions, by the direct pair
+/// loop, when one of these pairs is itself above the overlap criterion (otherwise the overlap is real);
+/// the direct loop leaves such a pair out of the energy (see OverlapExemption).
 [[nodiscard]] std::optional<RunningEnergy> computeExternalNonOverlappingEnergy(
-    const GrowContext &context, const Component &component, std::span<const Atom> trialPositionSet) noexcept;
+    const GrowContext &context, const Component &component, std::span<const Atom> trialPositionSet,
+    std::span<const OverlapExemption> overlapExempt = {}) noexcept;
+
+/// True when one of the pairs 'overlapExempt' has a van der Waals energy above the overlap criterion at the
+/// context's cut-offs.
+[[nodiscard]] bool exemptPairOverlaps(const GrowContext &context, std::span<const Atom> trialPositionSet,
+                                      std::span<const OverlapExemption> overlapExempt) noexcept;
 
 /// Dual cut-off correction of a grown or retraced configuration: the external (external-field,
 /// framework-molecule, and inter-molecular) energy of 'trialPositionSet' evaluated at the full
@@ -120,6 +132,8 @@ void gatherNeighbourhood(const GrowContext& context, Interactions::Neighbourhood
 /// entry points of the 'cbmc' module fold it into their results (energies += correction,
 /// multiplyRosenbluthWeight(-beta * correction)), so a configuration behaves as if it had been grown
 /// at the full cut-offs. Returns std::nullopt when the configuration overlaps at the full cut-offs.
+/// 'overlapExempt' as for 'computeExternalNonOverlappingEnergy'.
 [[nodiscard]] std::optional<RunningEnergy> computeDualCutOffCorrection(
-    const GrowContext &context, const Component &component, std::span<const Atom> trialPositionSet) noexcept;
+    const GrowContext &context, const Component &component, std::span<const Atom> trialPositionSet,
+    std::span<const OverlapExemption> overlapExempt = {}) noexcept;
 }  // namespace CBMC

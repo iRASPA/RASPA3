@@ -468,12 +468,24 @@ bool CBMC::gatherFrameworkNeighbourhood(const GrowContext& context, Interactions
 [[nodiscard]] std::optional<RunningEnergy> CBMC::computeInterMolecularEnergy(
     const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
     double cutOffVDW, double cutOffCoulomb, std::span<const Atom> atoms,
-    std::optional<std::size_t> skipBackgroundMolecule) noexcept
+    std::optional<std::size_t> skipBackgroundMolecule, std::span<const OverlapExemption> overlapExempt) noexcept
 {
   const bool useCharge = forceField.useCharge;
   const double overlapCriteria = forceField.energyOverlapCriteria;
   const double cutOffVDWSquared = cutOffVDW * cutOffVDW;
   const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
+
+  // only consulted on a pair above the criterion, so the exemptions cost nothing on the usual path; an exempt
+  // pair above it is left out of the energy (its energy is then left out of the link's exclusion as well: a
+  // difference of two huge numbers would be noise)
+  auto exempt = [&](const Atom &backgroundAtom, const Atom &atom)
+  {
+    const std::size_t backgroundIndex = static_cast<std::size_t>(&backgroundAtom - moleculeAtoms.data());
+    const std::size_t trialIndex = static_cast<std::size_t>(&atom - atoms.data());
+    return std::ranges::any_of(overlapExempt,
+                               [&](const OverlapExemption &exemption)
+                               { return exemption.trialAtom == trialIndex && exemption.backgroundAtom == backgroundIndex; });
+  };
 
   RunningEnergy energySum;
   bool overlap = false;
@@ -488,12 +500,18 @@ bool CBMC::gatherFrameworkNeighbourhood(const GrowContext& context, Interactions
       // Atoms of the same molecule never interact (a molecule regrown under its own id).
       if (backgroundMolecule == static_cast<std::size_t>(atom.moleculeId)) continue;
 
+      bool leftOut = false;
       Interactions::evaluatePair<0>(
           forceField, simulationBox, backgroundAtom, atom, cutOffVDWSquared, cutOffChargeSquared, useCharge,
           [&](const Potentials::PairDerivatives<0> &factors, const double3 &)
           {
             if (factors.energy > overlapCriteria)
             {
+              if (exempt(backgroundAtom, atom))
+              {
+                leftOut = true;
+                return;
+              }
               overlap = true;
               return;
             }
@@ -503,7 +521,7 @@ bool CBMC::gatherFrameworkNeighbourhood(const GrowContext& context, Interactions
           },
           [&](const Potentials::PairDerivatives<0> &factors, const double3 &)
           {
-            if (overlap) return;
+            if (overlap || leftOut) return;
             energySum.moleculeMoleculeCharge += factors.energy;
             energySum.addDudlambdaCharge(backgroundAtom.groupId, atom.groupId, backgroundAtom.scalingCoulomb,
                                          atom.scalingCoulomb, factors.dUdlambda);
@@ -639,9 +657,28 @@ void CBMC::gatherNeighbourhood(const GrowContext& context, Interactions::Neighbo
   return energies;
 }
 
-std::optional<RunningEnergy> CBMC::computeExternalNonOverlappingEnergy(const GrowContext &context,
-                                                                       const Component &component,
-                                                                       std::span<const Atom> trialPositionSet) noexcept
+bool CBMC::exemptPairOverlaps(const GrowContext &context, std::span<const Atom> trialPositionSet,
+                              std::span<const OverlapExemption> overlapExempt) noexcept
+{
+  const double cutOffVDWSquared = context.cutOffMoleculeVDW * context.cutOffMoleculeVDW;
+  const double cutOffChargeSquared = context.cutOffCoulomb * context.cutOffCoulomb;
+  for (const OverlapExemption &exemption : overlapExempt)
+  {
+    bool above = false;
+    Interactions::evaluatePair<0>(
+        context.forceField, context.simulationBox, context.moleculeAtoms[exemption.backgroundAtom],
+        trialPositionSet[exemption.trialAtom], cutOffVDWSquared, cutOffChargeSquared, false,
+        [&](const Potentials::PairDerivatives<0> &factors, const double3 &)
+        { above = factors.energy > context.forceField.energyOverlapCriteria; },
+        [](const Potentials::PairDerivatives<0> &, const double3 &) {});
+    if (above) return true;
+  }
+  return false;
+}
+
+std::optional<RunningEnergy> CBMC::computeExternalNonOverlappingEnergy(
+    const GrowContext &context, const Component &component, std::span<const Atom> trialPositionSet,
+    std::span<const OverlapExemption> overlapExempt) noexcept
 {
   if (CBMC::insideBlockedPockets(context.framework, component, trialPositionSet))
   {
@@ -676,24 +713,34 @@ std::optional<RunningEnergy> CBMC::computeExternalNonOverlappingEnergy(const Gro
                                                     context.cutOffMoleculeVDW, context.cutOffCoulomb, trialPositionSet,
                                                     context.skipBackgroundMolecule);
   }
-  if (!interEnergy.has_value()) return std::nullopt;
+  if (!interEnergy.has_value())
+  {
+    // an overlap flagged by a pair that the caller exempts (a pair a cross-link excludes): the direct loop, with
+    // the exemptions, decides; a flagged set none of whose exempt pairs is above the criterion overlaps elsewhere
+    if (overlapExempt.empty() || !exemptPairOverlaps(context, trialPositionSet, overlapExempt)) return std::nullopt;
+    interEnergy = CBMC::computeInterMolecularEnergy(context.forceField, context.simulationBox, context.moleculeAtoms,
+                                                    context.cutOffMoleculeVDW, context.cutOffCoulomb, trialPositionSet,
+                                                    context.skipBackgroundMolecule, overlapExempt);
+    if (!interEnergy.has_value()) return std::nullopt;
+  }
 
   return externalFieldEnergy.value() + interEnergy.value() + frameworkEnergy.value();
 }
 
 std::optional<RunningEnergy> CBMC::computeDualCutOffCorrection(const GrowContext &context, const Component &component,
-                                                               std::span<const Atom> trialPositionSet) noexcept
+                                                               std::span<const Atom> trialPositionSet,
+                                                               std::span<const OverlapExemption> overlapExempt) noexcept
 {
   // The same configuration and background evaluated at the full and at the inner cut-offs.
   const GrowContext fullCutOffContext = context.withFullCutOffs();
   const GrowContext innerCutOffContext = context.withInnerCutOffs();
 
   std::optional<RunningEnergy> fullCutOffEnergy =
-      CBMC::computeExternalNonOverlappingEnergy(fullCutOffContext, component, trialPositionSet);
+      CBMC::computeExternalNonOverlappingEnergy(fullCutOffContext, component, trialPositionSet, overlapExempt);
   if (!fullCutOffEnergy.has_value()) return std::nullopt;
 
   std::optional<RunningEnergy> innerCutOffEnergy =
-      CBMC::computeExternalNonOverlappingEnergy(innerCutOffContext, component, trialPositionSet);
+      CBMC::computeExternalNonOverlappingEnergy(innerCutOffContext, component, trialPositionSet, overlapExempt);
   if (!innerCutOffEnergy.has_value()) return std::nullopt;
 
   return fullCutOffEnergy.value() - innerCutOffEnergy.value();
