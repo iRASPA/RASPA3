@@ -172,32 +172,6 @@ std::vector<ExposedArc> exposedArcs(const PoreAccessibility& accessibility, doub
 }
 
 
-// The shell between the accessible and the excluded surface, over the piece belonging to one arc. It is the
-// solid swept by the segment from a point of the arc to the excluded surface as the point runs along the arc
-// and the segment turns through the crease, and the integral over the turn is elementary. Where the rolling
-// circle is smaller than the probe the toroidal patch folds back on itself and meets itself at a cusp: the
-// turn then stops at the cusp on either side, and what the two stopped turns leave out is the wedge between
-// the cusp circle and the axis, added back by the second term.
-double shellArcVolume(const ExposedArc& arc, double probeRadius)
-{
-  const double s = arc.radius;
-  const double r = probeRadius;
-  const double first = std::atan2(arc.firstOffset, s);
-  const double second = std::atan2(arc.secondOffset, s);
-
-  if (s > r)
-  {
-    return arc.extent * r * r * (0.5 * s * (first + second) - r / 3.0 * (std::sin(first) + std::sin(second)));
-  }
-
-  const double cusp = std::acos(std::clamp(s / r, -1.0, 1.0));
-  return arc.extent * r * r *
-             (0.5 * s * (first + second - 2.0 * cusp) -
-              r / 3.0 * (std::sin(first) + std::sin(second) - 2.0 * std::sin(cusp))) +
-         arc.extent * s * s * std::sqrt(std::max(r * r - s * s, 0.0)) / 3.0;
-}
-
-
 // One stretch of the turn through the crease that carries excluded surface.
 struct TurnStretch
 {
@@ -231,6 +205,43 @@ std::size_t toroidalTurn(const ExposedArc& arc, double probeRadius, std::array<T
   if (begin < -cusp) turns[pieces++] = {begin, std::min(-cusp, end)};
   if (end > cusp) turns[pieces++] = {std::max(cusp, begin), end};
   return pieces;
+}
+
+
+// The shell between the accessible and the excluded surface, over the piece belonging to one arc. It is the
+// solid swept by the segment from a point of the arc to the excluded surface as the point runs along the arc
+// and the segment turns through the crease, and the integral over the turn is elementary: the triangle the
+// segment sweeps through dpsi, by Pappus, with its centroid two thirds of the way out. Where the rolling
+// circle is smaller than the probe the segment reaches across the axis for |psi| < acos(s/r), and there the
+// solid is only the part on this side of the axis: the segment cut at the axis, of length s / cos psi, with
+// its centroid a third of the way out, which over the whole of that stretch is the wedge between the cusp
+// circle and the axis. The turn is the same as the toroidal patch's: with unequal atoms the circle's plane
+// can lie behind one centre, the turn then starts beyond the cusp on that side and crosses the axis nowhere.
+double shellArcVolume(const ExposedArc& arc, double probeRadius)
+{
+  const double s = arc.radius;
+  const double r = probeRadius;
+  std::array<TurnStretch, 2> turns;
+  const std::size_t pieces = toroidalTurn(arc, r, turns);
+
+  double total = 0.0;
+  for (std::size_t piece = 0; piece < pieces; ++piece)
+  {
+    total += r * r *
+             (0.5 * s * (turns[piece].end - turns[piece].begin) -
+              r / 3.0 * (std::sin(turns[piece].end) - std::sin(turns[piece].begin)));
+  }
+
+  if (s <= r)
+  {
+    const double begin = -std::atan2(arc.firstOffset, s);
+    const double end = std::atan2(arc.secondOffset, s);
+    const double cusp = std::acos(std::clamp(s / r, -1.0, 1.0));
+    const double lower = std::max(begin, -cusp);
+    const double upper = std::min(end, cusp);
+    if (upper > lower) total += s * s * s / 6.0 * (std::tan(upper) - std::tan(lower));
+  }
+  return arc.extent * total;
 }
 
 

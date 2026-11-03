@@ -741,3 +741,84 @@ TEST(exact_solvent_excluded, the_pore_volume_falls_to_nothing_and_never_rises)
   EXPECT_NEAR(sealed.poreVolume, 0.0, 1.0e-8);
   EXPECT_NEAR(sealed.excludedVolume, box.volume, 1.0e-8 * box.volume);
 }
+
+namespace
+{
+// The excluded volume of two atoms of any radii on an axis, by revolution of the profile: each atom's bare sphere
+// up to where the probe touches it, the torus the probe sweeps in between, cut out where it reaches the axis.
+double excludedVolumeOfTwoUnequalAtoms(double bareFirst, double bareSecond, double separation, double probe)
+{
+  const double pi = std::numbers::pi;
+  const double inflatedFirst = bareFirst + probe;
+  const double inflatedSecond = bareSecond + probe;
+  // the rolling circle: at x0 from the first centre (behind it when the second sphere is the wider by far)
+  const double x0 = (inflatedFirst * inflatedFirst + separation * separation - inflatedSecond * inflatedSecond) /
+                    (2.0 * separation);
+  const double rolling = std::sqrt(inflatedFirst * inflatedFirst - x0 * x0);
+  // the tangency points along the axis
+  const double z1 = bareFirst * x0 / inflatedFirst;
+  const double z2 = separation + bareSecond * (x0 - separation) / inflatedSecond;
+  const double cusp = (rolling < probe) ? std::sqrt(probe * probe - rolling * rolling) : 0.0;
+
+  auto arcsine = [&](double u)
+  { return 0.5 * (u * std::sqrt(std::max(probe * probe - u * u, 0.0)) + probe * probe * std::asin(std::clamp(u / probe, -1.0, 1.0))); };
+  auto torus = [&](double x)
+  {
+    const double u = x - x0;
+    return (rolling * rolling + probe * probe) * u - u * u * u / 3.0 - 2.0 * rolling * arcsine(u);
+  };
+  auto sphere = [&](double bare, double centre, double from, double to)
+  {
+    auto antiderivative = [&](double x) { return bare * bare * (x - centre) - (x - centre) * (x - centre) * (x - centre) / 3.0; };
+    return antiderivative(to) - antiderivative(from);
+  };
+
+  double volume = sphere(bareFirst, 0.0, -bareFirst, z1) + sphere(bareSecond, separation, z2, separation + bareSecond);
+  const double lowerEnd = std::min(x0 - cusp, z2);
+  if (z1 < lowerEnd) volume += torus(lowerEnd) - torus(z1);
+  const double upperStart = std::max(x0 + cusp, z1);
+  if (upperStart < z2) volume += torus(z2) - torus(upperStart);
+  return pi * volume;
+}
+}  // namespace
+
+// Two atoms of unequal radii, the second so much the wider that the circle of intersection lies behind the first
+// atom's centre, with the rolling circle smaller than the probe. The turn of the crease then starts beyond the
+// cusp on the first atom's side and never folds through the axis: no wedge is cut out, and the volume and its
+// slope have to say the same.
+TEST(exact_solvent_excluded, two_unequal_atoms_with_the_circle_behind_a_centre)
+{
+  double a = 60.0;
+  UnitCell box(a, a, a);
+
+  // bare radii, separation, probe: the circle behind the first centre, and the rolling circle inside the probe
+  const std::array<std::array<double, 4>, 3> cases = {{{0.5, 2.5, 2.2, 1.0}, {0.6, 2.8, 2.3, 1.2}, {0.4, 2.0, 1.7, 0.9}}};
+  std::size_t slopes = 0;
+  for (const std::array<double, 4>& one : cases)
+  {
+    const double bareFirst = one[0], bareSecond = one[1], separation = one[2], probe = one[3];
+    const double inflatedFirst = bareFirst + probe, inflatedSecond = bareSecond + probe;
+    const double x0 = (inflatedFirst * inflatedFirst + separation * separation - inflatedSecond * inflatedSecond) /
+                      (2.0 * separation);
+    ASSERT_LT(x0, 0.0);
+    ASSERT_LT(std::sqrt(inflatedFirst * inflatedFirst - x0 * x0), probe);
+    ASSERT_LT(inflatedSecond, inflatedFirst + separation);  // the small sphere is not swallowed
+
+    std::vector<double3> positions = {double3(30.0, 30.0, 30.0), double3(30.0 + separation, 30.0, 30.0)};
+    const std::vector<double> bare = {bareFirst, bareSecond};
+    SolventExcludedGeometry geometry = solventExcludedGeometry(inflatedGeometry(box, positions, bare, probe), probe);
+    ASSERT_GT(geometry.diagnostics.numberOfArcs, 0uz);
+    EXPECT_EQ(geometry.diagnostics.cuspedArcs, geometry.diagnostics.numberOfArcs);
+
+    const double expected = excludedVolumeOfTwoUnequalAtoms(bareFirst, bareSecond, separation, probe);
+    EXPECT_NEAR(geometry.excludedVolume, expected, 1.0e-8 * expected)
+        << "bare " << bareFirst << " " << bareSecond << " separation " << separation << " probe " << probe;
+
+    DifferencedSlope differenced = differencedDistribution(box, positions, bare, probe, 0.01);
+    if (!differenced.comparable) continue;
+    ++slopes;
+    EXPECT_NEAR(geometry.distribution, differenced.slope, 2.0e-4 * std::max(1.0, std::abs(differenced.slope)))
+        << "bare " << bareFirst << " " << bareSecond << " separation " << separation << " probe " << probe;
+  }
+  EXPECT_GE(slopes, 2uz);
+}
