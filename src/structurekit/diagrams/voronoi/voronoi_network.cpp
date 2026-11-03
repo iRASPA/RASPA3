@@ -529,6 +529,27 @@ VoronoiNetwork VoronoiNetwork::create(const UnitCell& unitCell,
   constexpr std::size_t apolloniusCandidateCount = 8;
   constexpr double apolloniusConvergenceTolerance = 1.0e-12;
 
+  // Whether the segment between two points lies in the void: no atom reaches it. Measured on the
+  // atoms around its midpoint, as the edges' bottlenecks are.
+  auto segmentIsFree = [&](const double3& a, const double3& b)
+  {
+    double3 midpoint = 0.5 * (a + b);
+    double3 wrappedMidpoint = cell * double3::fract(inverseCell * midpoint);
+    double3 shift = wrappedMidpoint - midpoint;
+    double halfLength = 0.5 * (b - a).length();
+    bool free = true;
+    forEachAtomNear(wrappedMidpoint, halfLength + maximumAtomRadius,
+                    [&](std::size_t j, const double3& atomImage)
+                    {
+                      if (!free) return;
+                      double squared = distanceSquaredOriginToSegment(a + shift - atomImage, b + shift - atomImage);
+                      if (squared <= radii[j] * radii[j]) free = false;
+                    });
+    return free;
+  };
+
+  // A vertex inside an atom is no place to start from: no segment out of it is free, so the walk
+  // could not leave it, and the pocket it would have belonged to has its own vertices to walk from.
   for (VoronoiNode& node : network.nodes)
   {
     node.maximalRadius = node.radius;
@@ -542,14 +563,24 @@ VoronoiNetwork VoronoiNetwork::create(const UnitCell& unitCell,
     // Recording the clearance rather than the tangent radius is what makes this safe: a clearance
     // is by definition the radius of a sphere that touches nothing, so no step can ever claim
     // room that is not there, and no separate emptiness test is needed. Monotonicity does the
-    // rest. The walk cannot cycle because the clearance strictly increases, and it cannot wander
-    // into a neighbouring pocket because reaching one means crossing a bottleneck where the
-    // clearance is lower. It halts at a point no tangent solve improves, the local peak.
+    // rest: the walk cannot cycle because the clearance strictly increases. What it does not do
+    // by itself is keep the walk in its own pore, since a jump is a jump and not a path, and a
+    // tangent sphere solved from atoms on this side of a wall can sit on the other side of it. So
+    // a jump is taken only along a segment that stays clear of every atom, which keeps the walk
+    // inside the free space it started in and lets it go as far as that space does. A bound on the
+    // jump's length cannot do the same job: tied to the vertex's own clearance it stopped the walk
+    // dead wherever a vertex sat near a wall, and the peak of a pocket is routinely several such
+    // clearances from the vertices around it.
+    //
+    // The candidates are the atoms whose surfaces lie within the current clearance of the point,
+    // and one more atom radius beyond that: the four the next sphere touches are not all within
+    // reach of the point it is solved from, and a walk that only sees the atoms already touching
+    // it has nothing to climb with. It halts at a point no tangent solve improves, the local peak.
     double3 point = node.position;
     for (std::size_t iteration = 0; iteration < maximumApolloniusIterations; ++iteration)
     {
       candidates.clear();
-      forEachAtomNear(point, node.maximalRadius + maximumAtomRadius,
+      forEachAtomNear(point, node.maximalRadius + 2.0 * maximumAtomRadius,
                       [&](std::size_t j, const double3& atomImage)
                       {
                         candidates.push_back(Candidate{atomImage, radii[j],
@@ -585,8 +616,6 @@ VoronoiNetwork VoronoiNetwork::create(const UnitCell& unitCell,
                 // The sphere touches all four, so the clearance at its centre cannot exceed its
                 // radius; a shorter radius cannot improve on what we already have.
                 if (sphere.radius <= bestClearance) continue;
-                // Keep the jump inside the pocket rather than trusting a distant solution.
-                if ((sphere.centre - point).length() > node.radius) continue;
 
                 // Almost every sphere that gets this far is spoiled by an atom that is already in
                 // hand, since the atoms tightest at the point the sphere was solved from are the
@@ -605,7 +634,9 @@ VoronoiNetwork VoronoiNetwork::create(const UnitCell& unitCell,
                                 [&](std::size_t j, const double3& atomImage)
                                 { clearance = std::min(clearance, (wrappedCentre - atomImage).length() - radii[j]); });
 
-                if (clearance > bestClearance)
+                // Only a sphere that improves is worth the walk to it, and only one that can be
+                // walked to through the void is taken.
+                if (clearance > bestClearance && segmentIsFree(point, sphere.centre))
                 {
                   bestClearance = clearance;
                   bestPoint = wrappedCentre;
