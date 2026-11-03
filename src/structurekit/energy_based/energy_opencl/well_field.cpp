@@ -707,9 +707,16 @@ static void addPair(float rr, float epsilon4, float sigma2, float contact, float
   if(withLJ != 0 && dispersion != 0 && rr < cutOffSquared)
   {
     float clamped = fmax(rr, 1.0e-8f);
-    float ratio = sigma2 / clamped;
-    float ratio3 = ratio * ratio * ratio;
-    *energy = df_add_f(*energy, fmin(epsilon4 * ratio3 * (ratio3 - 1.0f) - shift, ceiling));
+    // A pair with no strength has no dispersion energy and is left out rather than worked out: the product is
+    // nought before the ratio is squared, and the skip keeps it from ever being otherwise under a build
+    // allowed to reorder products, and saves the work besides. The contact and the overlap are geometry and
+    // stay.
+    if(epsilon4 != 0.0f)
+    {
+      float ratio = sigma2 / clamped;
+      float ratio3 = ratio * ratio * ratio;
+      *energy = df_add_f(*energy, fmin(epsilon4 * ratio3 * (ratio3 - 1.0f) - shift, ceiling));
+    }
     if(overlapHit != 0 && rr < sigma2) *overlapHit = 1;
     if(wantClearance != 0) *nearest = fmin(*nearest, sqrt(clamped) - contact);
   }

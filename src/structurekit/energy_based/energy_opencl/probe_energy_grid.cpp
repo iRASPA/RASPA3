@@ -318,12 +318,19 @@ __kernel void ProbeEnergyField(__global const float4 *position,
           rr = fmax(rr, 1.0e-6f);
           closest = fmin(closest, rr);
 
-          float ratio = sigma2 / rr;
-          float ratio3 = ratio * ratio * ratio;
+          // A pair with no strength has no dispersion energy at any separation and is left out rather than
+          // worked out. The product below is formed left to right, so with no strength it is nought before
+          // the ratio is squared and nothing overflows; the skip keeps it that way under a build that is
+          // allowed to reorder floating-point products, and saves the work besides.
+          if(epsilon4 != 0.0f)
+          {
+            float ratio = sigma2 / rr;
+            float ratio3 = ratio * ratio * ratio;
 
-          // Each term is held down before it is added rather than the sum afterwards, so that no term ever
-          // overflows to something a later addition would turn into a value that is not a number.
-          contribution += min(epsilon4 * ratio3 * (ratio3 - 1.0f) - shift, ceiling);
+            // Each term is held down before it is added rather than the sum afterwards, so that no term ever
+            // overflows to something a later addition would turn into a value that is not a number.
+            contribution += min(epsilon4 * ratio3 * (ratio3 - 1.0f) - shift, ceiling);
+          }
         }
       }
     }

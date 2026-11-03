@@ -1,4 +1,5 @@
 add_executable(unit_tests_raspakit
+  energy_zero_epsilon.cpp
   cbmc_interactions.cpp
   cbmc_move_statistics.cpp
   replica_round_trips.cpp

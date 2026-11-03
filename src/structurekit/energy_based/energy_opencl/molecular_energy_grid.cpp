@@ -788,7 +788,10 @@ __kernel void MolecularEnergyField(__global const float4 *position,
               // ceiling and contributes nothing to the average either way.
               rr = fmax(rr, 1.0e-6f);
 
-              if(rr < cutOffSquared)
+              // A pair with no strength has no dispersion energy and is left out rather than worked out: the
+              // product is nought before the ratio is squared, and the skip keeps it from ever being
+              // otherwise under a build allowed to reorder products, and saves the work besides.
+              if(rr < cutOffSquared && epsilon4 != 0.0f)
               {
                 float ratio = sigma2 / rr;
                 float ratio3 = ratio * ratio * ratio;
@@ -932,7 +935,8 @@ static float contributionOfAtom(__global const float4 *position,
           rr = fmax(rr, 1.0e-6f);
           closest = fmin(closest, rr);
 
-          if(rr < cutOffSquared)
+          // As above: no strength, no dispersion term.
+          if(rr < cutOffSquared && epsilon4 != 0.0f)
           {
             float ratio = sigma2 / rr;
             float ratio3 = ratio * ratio * ratio;
