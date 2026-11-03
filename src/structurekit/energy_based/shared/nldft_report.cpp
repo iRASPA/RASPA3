@@ -46,20 +46,22 @@ void NLDFTIsotherm::run(const EnergyBackend &backend, const PairInteractions &in
   const ElectrostaticPotentialGrid *potentialOrNothing = wantsElectrostatics ? &potential : nullptr;
 
   const double thermalEnergy = temperature * Units::KelvinToEnergy;
-  // A linear guest (`--nldft --molecule N2`) needs U(r, ω) on the CPU field: GPU well-field kernels
-  // keep only the Helmholtz average. A spherical probe keeps the existing backend (GPU if present).
+  // A linear guest (`--nldft --molecule N2`) needs U(r, ω) orientation by orientation, which both routes
+  // keep when it fits; the backend (GPU if present) is asked first, and only a field that comes back without
+  // the orientation energies, too large for the device to hold in one piece, is fetched from the CPU instead.
   const bool wantsMolecular = probe.sites.size() > 1 && numberOfOrientations > 1;
-  if (wantsMolecular || !backend.wellField)
-  {
-    this->field = computeWellField(interactions, framework, probe, gridSize, numberOfOrientations, thermalEnergy,
-                                   blockingSpheres, blockedEnergyPerAngstrom, ceiling, potentialOrNothing,
-                                   Units::CoulombicConversionFactor);
-  }
-  else
+  if (backend.wellField)
   {
     this->field = backend.wellField(interactions, framework, probe, gridSize, numberOfOrientations, thermalEnergy,
                                     blockingSpheres, blockedEnergyPerAngstrom, ceiling, potentialOrNothing,
                                     Units::CoulombicConversionFactor);
+  }
+  if (!backend.wellField ||
+      (wantsMolecular && this->field.orientationEnergy.size() != this->field.energy.size() * numberOfOrientations))
+  {
+    this->field = computeWellField(interactions, framework, probe, gridSize, numberOfOrientations, thermalEnergy,
+                                   blockingSpheres, blockedEnergyPerAngstrom, ceiling, potentialOrNothing,
+                                   Units::CoulombicConversionFactor);
   }
 
   std::vector<float> energyKelvin(this->field.energy.size());

@@ -684,6 +684,77 @@ TEST(energy_well_surface, a_dimer_touches_broadside_on)
 }
 
 
+// The device keeps the energy of every orientation, as the CPU does, so that the molecular density functional
+// can be fed from either. Held at the ceiling orientation by orientation, and agreeing with the CPU's double
+// precision to what a float carries; the Helmholtz average and the rest of the field are checked beside it.
+TEST(energy_well_surface, the_device_keeps_the_energy_of_every_orientation)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+
+  const double edge = 16.0;
+  const uint3 gridSize{24, 24, 24};
+  const double bond = 2.4;
+  PairInteractions interactions = oneType(sigma, epsilon);
+  Crystal framework = oneAtom(edge);
+
+  LinearProbe dimer;
+  dimer.name = "dimer";
+  dimer.headTailSymmetric = true;
+  dimer.sites.push_back(LinearProbe::Site{0, -0.5 * bond, 0.0, "X"});
+  dimer.sites.push_back(LinearProbe::Site{0, 0.5 * bond, 0.0, "X"});
+  const std::size_t orientations = 16;
+
+  WellField cpu = WellFieldCPU::compute(interactions, framework, dimer, gridSize, orientations, 0.5 * epsilon, {},
+                                        1000.0, ceiling);
+  WellField gpu = WellFieldOpenCL::compute(interactions, framework, dimer, gridSize, orientations, 0.5 * epsilon, {},
+                                           1000.0, ceiling);
+
+  ASSERT_EQ(cpu.numberOfOrientations, orientations);
+  ASSERT_EQ(gpu.numberOfOrientations, orientations);
+  ASSERT_EQ(cpu.orientationEnergy.size(), cpu.numberOfVoxels() * orientations);
+  ASSERT_EQ(gpu.orientationEnergy.size(), cpu.orientationEnergy.size()) << "the device kept no orientations";
+
+  double worstOrientation = 0.0;
+  double worstEnergy = 0.0;
+  for (std::size_t i = 0; i < cpu.orientationEnergy.size(); ++i)
+  {
+    double a = static_cast<double>(cpu.orientationEnergy[i]);
+    double b = static_cast<double>(gpu.orientationEnergy[i]);
+    // Measured against the well depth: near the zero crossing of a pair sum the repulsion and the attraction
+    // cancel to a thousandth of either, which is what a float carries, and a value near nought is no yardstick.
+    worstOrientation = std::max(worstOrientation, std::abs(a - b) / std::max(epsilon, std::abs(a)));
+  }
+  for (std::size_t i = 0; i < cpu.numberOfVoxels(); ++i)
+  {
+    double a = static_cast<double>(cpu.energy[i]);
+    double b = static_cast<double>(gpu.energy[i]);
+    worstEnergy = std::max(worstEnergy, std::abs(a - b) / std::max(1.0, std::abs(a)));
+  }
+  EXPECT_LT(worstOrientation, 1.0e-4);
+  EXPECT_LT(worstEnergy, 1.0e-4);
+
+  // The Helmholtz average of the kept orientations is the field's own energy, so the two columns of the same
+  // field agree with each other as well.
+  const double beta = 1.0 / (0.5 * epsilon);
+  double worstAverage = 0.0;
+  for (std::size_t voxel = 0; voxel < gpu.numberOfVoxels(); ++voxel)
+  {
+    double least = std::numeric_limits<double>::max();
+    for (std::size_t o = 0; o < orientations; ++o)
+      least = std::min(least, static_cast<double>(gpu.orientationEnergy[voxel * orientations + o]));
+    double sum = 0.0;
+    for (std::size_t o = 0; o < orientations; ++o)
+      sum += std::exp(-beta * (static_cast<double>(gpu.orientationEnergy[voxel * orientations + o]) - least));
+    double average = least - (0.5 * epsilon) * std::log(sum / static_cast<double>(orientations));
+    average = std::min(average, ceiling);
+    worstAverage = std::max(worstAverage, std::abs(average - static_cast<double>(gpu.energy[voxel])) /
+                                              std::max(1.0, std::abs(average)));
+  }
+  EXPECT_LT(worstAverage, 1.0e-4);
+}
+
+
 // A charged probe handed the framework's potential feels it, and by how much is checkable without the
 // engine's Ewald builder: hand the field a potential whose two halves are known exactly. The far half is a
 // cosine wave, which trilinear interpolation reproduces exactly on a grid node; the split is put at an

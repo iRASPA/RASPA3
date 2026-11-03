@@ -473,11 +473,32 @@ WellField WellFieldOpenCL::compute(const PairInteractions &interactions, const C
   cl_mem distanceBuffer = bufferOf(CL_MEM_WRITE_ONLY, sizeof(cl_float) * numberOfVoxels, nullptr);
   cl_mem reliabilityBuffer = bufferOf(CL_MEM_WRITE_ONLY, sizeof(cl_float) * numberOfVoxels, nullptr);
 
+  // U(r, omega) orientation by orientation, under the same soft guard as the CPU field and, since it has to
+  // sit on the device in one piece, within the device's largest single allocation. Left out when it would
+  // not fit: the field then carries no orientation energies, and the molecular functional's caller sees
+  // that and goes to the CPU for them.
+  const std::size_t nOrient = field.numberOfOrientations;
+  bool keepOrientations = nOrient > 1 && numberOfVoxels * nOrient <= 1'000'000'000;
+  if (keepOrientations && OpenCL::clDeviceId.has_value())
+  {
+    cl_ulong largestAllocation = 0;
+    if (clGetDeviceInfo(OpenCL::clDeviceId.value(), CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(largestAllocation),
+                        &largestAllocation, nullptr) == CL_SUCCESS)
+    {
+      keepOrientations = sizeof(cl_float) * numberOfVoxels * nOrient <= largestAllocation;
+    }
+  }
+  const std::size_t orientationFloats = keepOrientations ? numberOfVoxels * nOrient : 1;
+  cl_mem orientationBuffer = bufferOf(CL_MEM_WRITE_ONLY, sizeof(cl_float) * orientationFloats, nullptr);
+  cl_int clKeepOrientations = keepOrientations ? 1 : 0;
+
   cl_int3 clGridSize = {{cl_int(gridSize.x), cl_int(gridSize.y), cl_int(gridSize.z), 0}};
   int arg = 0;
   err = clSetKernelArg(kernel, arg++, sizeof(cl_mem), &energyBuffer);
   err |= clSetKernelArg(kernel, arg++, sizeof(cl_mem), &distanceBuffer);
   err |= clSetKernelArg(kernel, arg++, sizeof(cl_mem), &reliabilityBuffer);
+  err |= clSetKernelArg(kernel, arg++, sizeof(cl_mem), &orientationBuffer);
+  err |= clSetKernelArg(kernel, arg++, sizeof(cl_int), &clKeepOrientations);
   err |= clSetKernelArg(kernel, arg++, sizeof(cl_int3), &clGridSize);
   check(err, "clSetKernelArg outputs", __LINE__);
   setCommonArgs(kernel, arg, buffers, pack);
@@ -491,11 +512,17 @@ WellField WellFieldOpenCL::compute(const PairInteractions &interactions, const C
   OpenCL::readBuffer(energyBuffer, sizeof(cl_float) * numberOfVoxels, field.energy.data());
   OpenCL::readBuffer(distanceBuffer, sizeof(cl_float) * numberOfVoxels, field.distance.data());
   OpenCL::readBuffer(reliabilityBuffer, sizeof(cl_float) * numberOfVoxels, field.reliability.data());
+  if (keepOrientations)
+  {
+    field.orientationEnergy.assign(numberOfVoxels * nOrient, 0.0f);
+    OpenCL::readBuffer(orientationBuffer, sizeof(cl_float) * numberOfVoxels * nOrient, field.orientationEnergy.data());
+  }
   clFinish(OpenCL::clCommandQueue.value());
 
   clReleaseMemObject(energyBuffer);
   clReleaseMemObject(distanceBuffer);
   clReleaseMemObject(reliabilityBuffer);
+  clReleaseMemObject(orientationBuffer);
   buffers.release();
   clReleaseKernel(kernel);
   clReleaseProgram(program);
@@ -883,6 +910,8 @@ static float smoothstepf(float edge0, float edge1, float x)
 __kernel void WellField(__global float *energyOut,
                         __global float *distanceOut,
                         __global float *reliabilityOut,
+                        __global float *orientationOut,
+                        const int keepOrientations,
                         const int3 gridSize,
                         __global const float4 *position,
                         __global const float *epsilonTimesFour,
@@ -1032,6 +1061,20 @@ __kernel void WellField(__global float *energyOut,
   int index = (iz * gridSize.y + iy) * gridSize.x + ix;
   float energy = pocket < 0.0f ? fmin(-pocket * blockedEnergyPerAngstrom, ceiling) : value;
   energyOut[index] = energy;
+
+  // U(r, omega) itself, orientation by orientation, as the CPU field keeps it: each held at the ceiling, a
+  // dummy hit put at the ceiling outright, and a point inside a blocking sphere given the pocket's energy
+  // for every orientation. The Helmholtz average above is what the well surface reads; this is what the
+  // molecular density functional reads, and without it that functional had to be fed from the CPU.
+  if(keepOrientations != 0)
+  {
+    __global float *row = orientationOut + (size_t)index * (size_t)numberOfOrientations;
+    for(int o = 0; o < numberOfOrientations; o++)
+    {
+      float held = (dummyHit[o] != 0) ? ceiling : fmin(df_hi(energies[o]), ceiling);
+      row[o] = pocket < 0.0f ? fmin(-pocket * blockedEnergyPerAngstrom, ceiling) : held;
+    }
+  }
   distanceOut[index] = fmin(bestClearance, pocket);
   reliabilityOut[index] = reliability;
   (void)invRow0; (void)invRow1; (void)invRow2;
