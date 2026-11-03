@@ -87,9 +87,11 @@ void MC_BlockingPockets::run(const SampledStructure &structure, const SampledRoa
           : 0.0;
 
   // How far the distance to the nearest reachable point can overstate the distance to the reachable region
-  // itself, which is the spacing of the reachable points alone. It is held off the cap below.
-  double channelMargin =
-      reachable.empty() ? 0.0 : std::cbrt(unitCell.volume / static_cast<double>(reachable.size()));
+  // itself, which is the spacing of the reachable points alone. It is held off the cap below. The points
+  // were thrown over the whole cell, so the ones that landed in the reachable region are as dense there as
+  // the sample is everywhere, and their spacing is the resolution above; the cell's volume over their own
+  // count overstates it by the cube root of the reachable fraction.
+  double channelMargin = reachable.empty() ? 0.0 : this->resolution;
 
   for (const auto &[poreId, points] : shutIn)
   {

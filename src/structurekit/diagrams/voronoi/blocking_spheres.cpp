@@ -183,11 +183,13 @@ std::vector<BlockingSphere> computeBlockingSpheres(const PoreAccessibility& acce
 
   // The second is the mean spacing of the accessible samples alone, which is how far the distance to
   // the nearest of them can overstate the distance to the accessible region itself. It is held off the
-  // cap below. Both lengths fall away as the sampling densifies, which is what keeps the radii a
-  // property of the structure rather than of the number of samples drawn.
-  double channelMargin = accessiblePoints.empty()
-                             ? 0.0
-                             : std::cbrt(unitCell.volume / static_cast<double>(accessiblePoints.size()));
+  // cap below. The samples were thrown over the whole cell, so the ones that landed in the accessible
+  // region are as dense there as the sampling is everywhere, and their spacing is the resolution above:
+  // the cell's volume over their own count is not it, being larger by the cube root of the accessible
+  // fraction, and a margin of that size held every pocket's spheres short of the channel by the more the
+  // less of the cell was accessible. Both lengths fall away as the sampling densifies, which is what keeps
+  // the radii a property of the structure rather than of the number of samples drawn.
+  double channelMargin = accessiblePoints.empty() ? 0.0 : resolution;
 
   for (auto& [poreId, points] : pocketPoints)
   {
