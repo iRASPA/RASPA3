@@ -56,9 +56,12 @@ bool eachCapCoveringAtom(const PoreAccessibility& accessibility, std::size_t ato
     const double distance = neighbour.delta.length();
     if (distance < 1.0e-12)
     {
-      // This sphere itself, which the query returns along with the rest, or another sitting exactly on it:
-      // only a strictly larger one covers anything, and then it covers all of it.
+      // This sphere itself, which the query returns along with the rest, or another sitting exactly on it: a
+      // larger one covers all of it, a smaller one nothing, and one of the same size is a duplicate in the
+      // input that no geometry can tell apart from this one. The surface is counted once, on the one of the
+      // two with the lower index; the same rule buries the same sphere in the volume of the union.
       if (neighbour.radius > radius) return false;
+      if (neighbour.radius == radius && neighbour.index < atomIndex) return false;
       continue;
     }
 

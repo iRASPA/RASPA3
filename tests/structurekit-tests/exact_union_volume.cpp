@@ -8,6 +8,7 @@ import randomnumbers;
 import voronoi_network;
 import pore_accessibility;
 import exact_union_volume;
+import exact_boundary_components;
 
 // The measured volume of the union of the probe-inflated atoms, which is the cell less its void.
 //
@@ -272,4 +273,40 @@ TEST(exact_union_volume, refining_the_quadrature_does_not_move_the_answer)
     double fine = unionOfBallsVolume(geometry, 6);
     EXPECT_NEAR(coarse, fine, 1.0e-8 * std::abs(fine));
   }
+}
+
+// Two atoms on the very same spot with the same radius are one ball, not two: the tie is broken on the index, so
+// that the volume counts the ball once, as the area does.
+TEST(exact_union_volume, coincident_equal_spheres_count_once)
+{
+  double a = 40.0;
+  UnitCell box(a, a, a);
+  const double radius = 2.0;
+  PoreAccessibility geometry = bareGeometry(box, {double3(0.5, 0.5, 0.5), double3(0.5, 0.5, 0.5)}, {radius, radius});
+  EXPECT_NEAR(unionOfBallsVolume(geometry), ballVolume(radius), 1.0e-9 * ballVolume(radius));
+
+  // and a third, on the same spot of an image of the cell, is the same ball again
+  PoreAccessibility images =
+      bareGeometry(box, {double3(0.5, 0.5, 0.5), double3(1.5, 0.5, 0.5), double3(0.5, 0.5, 0.5)}, {radius, radius, radius});
+  EXPECT_NEAR(unionOfBallsVolume(images), ballVolume(radius), 1.0e-9 * ballVolume(radius));
+}
+
+// The same tie in the decomposition of the boundary: the one with the higher index is buried, and the surface is
+// the one sphere's.
+TEST(exact_union_volume, coincident_equal_spheres_leave_one_surface)
+{
+  double a = 40.0;
+  UnitCell box(a, a, a);
+  const double radius = 2.0;
+  PoreAccessibility geometry =
+      bareGeometry(box, {double3(0.5, 0.5, 0.5), double3(0.5, 0.5, 0.5), double3(1.5, 0.5, 0.5)}, {radius, radius, radius});
+
+  BoundaryComponents components = boundaryComponents(geometry);
+  ASSERT_EQ(components.atoms.size(), 3uz);
+  EXPECT_FALSE(components.atoms[0].buried);
+  EXPECT_TRUE(components.atoms[1].buried);
+  EXPECT_TRUE(components.atoms[2].buried);
+  EXPECT_EQ(components.numberOfComponents, 1uz);
+  EXPECT_EQ(components.atoms[0].numberOfPatches, 1uz);
+  EXPECT_TRUE(components.atoms[0].circles.empty());
 }
