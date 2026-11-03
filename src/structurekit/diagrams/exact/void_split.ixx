@@ -63,8 +63,8 @@ export struct PocketGeometry
 {
   double3 centre{0.0, 0.0, 0.0};             // Cartesian, in the home cell
   double3 centreFractional{0.0, 0.0, 0.0};
-  double volume{0.0};                        // Å³
-  double area{0.0};                          // Å²
+  double volume{0.0};                        // Å³, less the room of any cluster of atoms standing inside it
+  double area{0.0};                          // Å², of its whole boundary, the surfaces of such clusters included
   double equivalentRadius{0.0};              // Å, of the ball of the same volume
   double freeRadius{0.0};                    // Å, of the largest ball about the centre that holds no atom
   double coveringRadius{0.0};                // Å, of the smallest ball about the centre that holds the pocket
@@ -109,6 +109,13 @@ export struct ExactVoidSplit
   // standing inside a pocket takes up room that is not part of it. None occurs in a framework, whose atoms
   // are all bonded into one network, but the sum does not need to be told so.
   std::size_t numberOfEnclosedSolids{0};
+
+  // Of those, the clusters that could not be charged to one pocket, so that their room is out of the total
+  // but still in some pocket's own entry. A cluster stands within the reach of the wall round it, which
+  // names its pocket unless two walls reach it, and then the pore it faces does; this counts the ones
+  // neither settled. The total above is right either way, and the pockets below are not, so the blocking
+  // spheres refuse them on this count.
+  std::size_t unplacedSolids{0};
 
   // Filled by the route that goes through the connected surfaces: how many there were, and how many of them
   // had their side settled by a free ball reached from the surface rather than inferred from proximity.
@@ -186,9 +193,10 @@ export ExactVoidSplit exactVoidSplit(const PoreAccessibility& accessibility, dou
 //
 // A bounded surface facing a pocket contributes the volume it encloses. The atoms of a cluster floating
 // inside a pocket carry such a surface too, with the void outside it rather than inside, and its
-// contribution comes out negative -- which is right, that volume being solid and not part of the pocket. A
-// bounded surface facing a channel is the outside of a cluster in open void and encloses no void at all, so
-// it is left out; the channels take what the subtraction leaves, as before.
+// contribution comes out negative -- which is right, that volume being solid and not part of the pocket. It
+// comes off the pocket the cluster stands in as well as off the total, and that pocket's centre and radii are
+// those of what is left. A bounded surface facing a channel is the outside of a cluster in open void and
+// encloses no void at all, so it is left out; the channels take what the subtraction leaves, as before.
 export ExactVoidSplit exactVoidSplitByComponents(const PoreAccessibility& accessibility,
                                                  const BoundaryComponents& components,
                                                  const std::vector<ComponentVerdict>& verdicts,

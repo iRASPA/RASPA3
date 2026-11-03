@@ -285,6 +285,69 @@ ExactVoidSplit exactVoidSplitByComponents(const PoreAccessibility& accessibility
     facesChannel[component] = (sides[component].side > 0) ? 1 : 0;
   }
 
+  // The shortest vector from `from` to any copy of `point`. The fractional rounding picks the copy nearest in
+  // fractional terms, which in a skewed cell is not always the nearest in Ångström, and the copies a lattice
+  // step away from that one are where the nearest can otherwise be.
+  auto nearestDelta = [&](const double3& point, const double3& from)
+  {
+    double3 best = accessibility.unitCell.applyPeriodicBoundaryConditions(point - from);
+    double bestLength = best.length();
+    for (int i = -1; i <= 1; ++i)
+      for (int j = -1; j <= 1; ++j)
+        for (int k = -1; k <= 1; ++k)
+        {
+          if (i == 0 && j == 0 && k == 0) continue;
+          double3 shifted = best + accessibility.unitCell.cell *
+                                       double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
+          double length = shifted.length();
+          if (length < bestLength)
+          {
+            bestLength = length;
+            best = shifted;
+          }
+        }
+    return best;
+  };
+
+  // Everything about a pocket that is read off its centre, from a centre given in the frame its surface was
+  // measured in. Done once with the centroid of the wall alone, and again for a pocket with a cluster inside
+  // it, whose centroid is elsewhere.
+  auto placePocket = [&](PocketGeometry& pocket, std::size_t component, const double3& centre)
+  {
+    pocket.equivalentRadius = std::cbrt(3.0 * pocket.volume / (4.0 * std::numbers::pi));
+    pocket.centreFractional = double3::fract(accessibility.unitCell.inverseCell * centre);
+    pocket.centre = accessibility.unitCell.cell * pocket.centreFractional;
+
+    // The clearance is measured against every atom, and where the centre is inside the pocket the nearest of
+    // them is one of the pocket's own walls: so it is the exact distance from the centre to the boundary and
+    // not a bound on it, and the ball of it lies within the pocket. A pocket bent round a corner can have its
+    // centroid outside itself, in the framework, where the clearance is negative, or in a channel beyond,
+    // where a ball about it would block a pore. Neither leaves a ball to write, and both say so with a zero.
+    pocket.centreInChannel = accessibility.provablyAccessible(pocket.centre);
+    pocket.freeRadius = pocket.centreInChannel ? 0.0 : std::max(0.0, accessibility.clearance(pocket.centre));
+
+    SurfaceDistances distances =
+        surfaceDistances(accessibility, components, facesChannel, static_cast<std::int32_t>(component), centre);
+    pocket.coveringRadius = distances.reach;
+    pocket.channelRadius = distances.channel;
+  };
+
+  // A cluster of atoms standing inside a pocket. Its surface encloses solid, and what it encloses is room the
+  // pocket does not have; but which pocket that is can only be asked once the pockets are known, so the
+  // clusters are kept until then.
+  struct EnclosedSolid
+  {
+    double volume;         // Å³, of the solid, positive
+    double area;           // Å², of its surface
+    double3 centre;        // its centroid, in the frame its surface was measured in
+    double3 surfacePoint;  // a point of its surface, in the same frame
+    std::int32_t poreId;   // the pore the network says the void round it belongs to
+  };
+  std::vector<EnclosedSolid> solids;
+  std::vector<std::size_t> pocketComponent;  // per pocket, in the order of `split.pockets`
+  std::vector<double3> pocketCentre;         // per pocket, the wall's centroid in the surface's own frame
+  std::vector<std::int32_t> pocketPoreId;
+
   std::size_t openBoundaries = 0;
   double worstArea = 0.0;
   for (std::size_t component = 0; component < patches.components.size(); ++component)
@@ -328,26 +391,13 @@ ExactVoidSplit exactVoidSplitByComponents(const PoreAccessibility& accessibility
       PocketGeometry pocket;
       pocket.volume = enclosed;
       pocket.area = moments.area;
-      pocket.equivalentRadius = std::cbrt(3.0 * enclosed / (4.0 * std::numbers::pi));
 
       double3 centre = origins[component] + moments.enclosedFirstMoment * (1.0 / enclosed);
-      pocket.centreFractional = double3::fract(accessibility.unitCell.inverseCell * centre);
-      pocket.centre = accessibility.unitCell.cell * pocket.centreFractional;
-
-      // The clearance is measured against every atom, and where the centre is inside the pocket the nearest of
-      // them is one of the pocket's own walls: so it is the exact distance from the centre to the boundary and
-      // not a bound on it, and the ball of it lies within the pocket. A pocket bent round a corner can have its
-      // centroid outside itself, in the framework, where the clearance is negative, or in a channel beyond,
-      // where a ball about it would block a pore. Neither leaves a ball to write, and both say so with a zero.
-      pocket.centreInChannel = accessibility.provablyAccessible(pocket.centre);
-      pocket.freeRadius =
-          pocket.centreInChannel ? 0.0 : std::max(0.0, accessibility.clearance(pocket.centre));
-
-      SurfaceDistances distances =
-          surfaceDistances(accessibility, components, facesChannel, static_cast<std::int32_t>(component), centre);
-      pocket.coveringRadius = distances.reach;
-      pocket.channelRadius = distances.channel;
+      placePocket(pocket, component, centre);
       split.pockets.push_back(pocket);
+      pocketComponent.push_back(component);
+      pocketCentre.push_back(centre);
+      pocketPoreId.push_back(answer.decided ? answer.poreId : -1);
     }
     else
     {
@@ -355,9 +405,72 @@ ExactVoidSplit exactVoidSplitByComponents(const PoreAccessibility& accessibility
       // open void, which is the one thing here the geometry of this surface alone cannot say.
       if (!answer.decided || answer.accessible) continue;
       ++split.numberOfEnclosedSolids;
+
+      const auto [atomIndex, patch] = components.componentRepresentative[component];
+      const SphereBoundary& boundary = components.atoms[atomIndex];
+      double3 surfacePoint = origins[component];
+      if (patch < boundary.patchRepresentative.size())
+      {
+        surfacePoint += boundary.patchRepresentative[patch] * accessibility.atomRadii[atomIndex];
+      }
+      solids.push_back(EnclosedSolid{-enclosed, moments.area,
+                                     origins[component] + moments.enclosedFirstMoment * (1.0 / enclosed),
+                                     surfacePoint, answer.poreId});
     }
 
     split.inaccessibleVolume += enclosed;
+  }
+
+  // Each cluster charged to the pocket it stands in. The cluster lies inside the region the pocket's wall
+  // bounds, and the farthest point of a bounded region from anywhere is on its boundary, so a point of the
+  // cluster's surface is within the wall's own reach of the wall's centroid: an exact test, which most clusters
+  // pass for one pocket only. Where the reaches of two pockets overlap, the network says which, the cluster's
+  // surface and the wall round it facing the same pore. A cluster neither settles is counted and left where it
+  // is, in the total but in no pocket, and the blocking spheres refuse the pockets on that count.
+  std::vector<std::vector<std::size_t>> solidsOfPocket(split.pockets.size());
+  for (std::size_t solid = 0; solid < solids.size(); ++solid)
+  {
+    std::vector<std::size_t> candidates;
+    for (std::size_t p = 0; p < split.pockets.size(); ++p)
+    {
+      const double within = nearestDelta(solids[solid].surfacePoint, pocketCentre[p]).length();
+      const double reach = split.pockets[p].coveringRadius;
+      if (within <= reach + 1.0e-9 * std::max(reach, 1.0)) candidates.push_back(p);
+    }
+    if (candidates.size() > 1 && solids[solid].poreId >= 0)
+    {
+      std::erase_if(candidates, [&](std::size_t p) { return pocketPoreId[p] != solids[solid].poreId; });
+    }
+    if (candidates.size() == 1)
+    {
+      solidsOfPocket[candidates.front()].push_back(solid);
+    }
+    else
+    {
+      ++split.unplacedSolids;
+    }
+  }
+
+  for (std::size_t p = 0; p < split.pockets.size(); ++p)
+  {
+    if (solidsOfPocket[p].empty()) continue;
+
+    // The region is the wall's less the clusters', so its first moment is the wall's less theirs, each cluster
+    // taken at the copy that stands inside this wall. What is read off the centre is then read off again.
+    PocketGeometry& pocket = split.pockets[p];
+    double3 moment = pocketCentre[p] * pocket.volume;
+    for (std::size_t solid : solidsOfPocket[p])
+    {
+      const EnclosedSolid& cluster = solids[solid];
+      const double3 inside = pocketCentre[p] + nearestDelta(cluster.centre, pocketCentre[p]);
+      moment -= inside * cluster.volume;
+      pocket.volume -= cluster.volume;
+      pocket.area += cluster.area;
+    }
+    if (pocket.volume > 0.0)
+    {
+      placePocket(pocket, pocketComponent[p], moment * (1.0 / pocket.volume));
+    }
   }
 
   std::string reason;

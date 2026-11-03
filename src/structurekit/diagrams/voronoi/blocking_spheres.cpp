@@ -37,6 +37,14 @@ std::string measuredSpheresRefused(const ExactVoidSplit& split)
   {
     return std::format("{} of {} pockets have their centroid in a channel", adrift, split.pockets.size());
   }
+
+  // A cluster charged to no pocket leaves its room in one of them, and that pocket's centre and radii are
+  // then those of a region larger than it is.
+  if (split.unplacedSolids > 0)
+  {
+    return std::format("{} of {} clusters inside the pockets could not be charged to one of them",
+                       split.unplacedSolids, split.numberOfEnclosedSolids);
+  }
   return {};
 }
 

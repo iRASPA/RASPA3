@@ -506,6 +506,112 @@ TEST(exact_void_split, by_components_a_ball_in_a_cavity_takes_up_room)
   const double ballVolume = 4.0 / 3.0 * std::numbers::pi * innerRadius * innerRadius * innerRadius;
   EXPECT_NEAR(withBall.inaccessibleVolume, empty.inaccessibleVolume - ballVolume,
               1.0e-6 * withBall.inaccessibleVolume);
+
+  // The room the ball takes comes off the pocket it stands in, not only off the total: the one pocket here
+  // holds the whole of the inaccessible volume, and its boundary is the cavity wall and the ball together.
+  ASSERT_EQ(withBall.pockets.size(), 1uz);
+  const PocketGeometry& pocket = withBall.pockets.front();
+  EXPECT_NEAR(pocket.volume, withBall.inaccessibleVolume, 1.0e-9 * withBall.inaccessibleVolume);
+  EXPECT_NEAR(pocket.equivalentRadius, std::cbrt(3.0 * pocket.volume / (4.0 * std::numbers::pi)), 1.0e-12);
+  EXPECT_NEAR(pocket.area, empty.pockets.front().area + 4.0 * std::numbers::pi * innerRadius * innerRadius,
+              1.0e-6 * pocket.area);
+}
+
+
+// The same ball standing off the middle of the cavity. Its room comes out of the pocket where the ball is, so
+// the pocket's centroid moves the other way, by the ball's volume over the pocket's times the offset; and the
+// radii about that centre are the radii about the corrected centre, the nearest wall now being the ball itself.
+TEST(exact_void_split, by_components_an_enclosed_cluster_moves_the_pocket_centre)
+{
+  const double a = 14.0;
+  UnitCell box(a, a, a);
+  const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
+  const double shellRadius = 3.0;
+  const double ballRadius = 1.8;
+  const double innerRadius = 0.4;
+  const double3 ballCentre = centre + double3(0.5, 0.0, 0.0);  // 0.5 + 0.4 + 1.8 < 3.0: touches no cage atom
+
+  std::vector<double3> positions = cageCentres(centre, shellRadius, 32);
+  std::vector<double> radii(positions.size(), ballRadius);
+  positions.push_back(ballCentre);
+  radii.push_back(innerRadius);
+
+  PoreAccessibility geometry = geometryWithRadii(box, positions, radii);
+  ExactVoidSplit withBall = exactVoidSplitByComponents(geometry, box.volume);
+  ExactVoidSplit empty = exactVoidSplitByComponents(
+      cageGeometry(box, cageCentres(centre, shellRadius, 32), ballRadius), box.volume);
+
+  ASSERT_TRUE(withBall.reliable) << withBall.rejection;
+  ASSERT_TRUE(empty.reliable) << empty.rejection;
+  ASSERT_EQ(withBall.pockets.size(), 1uz);
+  ASSERT_EQ(empty.pockets.size(), 1uz);
+  EXPECT_EQ(withBall.numberOfEnclosedSolids, 1uz);
+
+  const PocketGeometry& pocket = withBall.pockets.front();
+  const PocketGeometry& hollow = empty.pockets.front();
+  const double ballVolume = 4.0 / 3.0 * std::numbers::pi * innerRadius * innerRadius * innerRadius;
+
+  EXPECT_NEAR(pocket.volume, hollow.volume - ballVolume, 1.0e-6 * pocket.volume);
+  EXPECT_NEAR(pocket.volume, withBall.inaccessibleVolume, 1.0e-9 * pocket.volume);
+
+  double3 expected = (hollow.centre * hollow.volume - ballCentre * ballVolume) * (1.0 / (hollow.volume - ballVolume));
+  EXPECT_NEAR(pocket.centre.x, expected.x, 1.0e-6);
+  EXPECT_NEAR(pocket.centre.y, expected.y, 1.0e-6);
+  EXPECT_NEAR(pocket.centre.z, expected.z, 1.0e-6);
+  EXPECT_GT((pocket.centre - hollow.centre).length(), 0.01);  // it did move, and away from the ball
+  EXPECT_LT(pocket.centre.x, hollow.centre.x);
+
+  // The radii belong to the corrected centre: the nearest atom to it is the ball, and the farthest point of the
+  // wall cannot have moved by more than the centre did.
+  EXPECT_FALSE(pocket.centreInChannel);
+  EXPECT_NEAR(pocket.freeRadius, (pocket.centre - ballCentre).length() - innerRadius, 1.0e-9);
+  EXPECT_NEAR(pocket.freeRadius, geometry.clearance(pocket.centre), 1.0e-9);
+  EXPECT_LE(std::abs(pocket.coveringRadius - hollow.coveringRadius), (pocket.centre - hollow.centre).length() + 1.0e-9);
+  EXPECT_NEAR(pocket.equivalentRadius, std::cbrt(3.0 * pocket.volume / (4.0 * std::numbers::pi)), 1.0e-12);
+}
+
+
+// Two cages, a ball in one of them. The room comes off the pocket the ball stands in and off no other, which is
+// what the per-pocket entries are for: a blocking sphere is written for each.
+TEST(exact_void_split, by_components_an_enclosed_cluster_is_charged_to_its_own_pocket)
+{
+  const double a = 20.0;
+  UnitCell box(a, a, a);
+  const double shellRadius = 3.0;
+  const double ballRadius = 1.8;
+  const double innerRadius = 0.4;
+  const double3 first(5.0, 5.0, 5.0);
+  const double3 second(14.0, 14.0, 14.0);
+  const double3 ballCentre = second + double3(0.0, 0.5, 0.0);
+
+  std::vector<double3> positions = cageCentres(first, shellRadius, 32);
+  for (const double3& position : cageCentres(second, shellRadius, 32)) positions.push_back(position);
+  std::vector<double> radii(positions.size(), ballRadius);
+  positions.push_back(ballCentre);
+  radii.push_back(innerRadius);
+
+  ExactVoidSplit split = exactVoidSplitByComponents(geometryWithRadii(box, positions, radii), box.volume);
+  ExactVoidSplit one = exactVoidSplitByComponents(
+      cageGeometry(box, cageCentres(first, shellRadius, 32), ballRadius), box.volume);
+
+  ASSERT_TRUE(split.reliable) << split.rejection;
+  ASSERT_TRUE(one.reliable) << one.rejection;
+  ASSERT_EQ(split.pockets.size(), 2uz);
+  ASSERT_EQ(one.pockets.size(), 1uz);
+  EXPECT_EQ(split.numberOfEnclosedSolids, 1uz);
+
+  const double ballVolume = 4.0 / 3.0 * std::numbers::pi * innerRadius * innerRadius * innerRadius;
+  const double hollow = one.pockets.front().volume;
+  std::size_t nearFirst = ((split.pockets[0].centre - first).length() < (split.pockets[1].centre - first).length()) ? 0 : 1;
+  const PocketGeometry& untouched = split.pockets[nearFirst];
+  const PocketGeometry& charged = split.pockets[1 - nearFirst];
+
+  EXPECT_NEAR(untouched.volume, hollow, 1.0e-6 * hollow);
+  EXPECT_NEAR(charged.volume, hollow - ballVolume, 1.0e-6 * hollow);
+  EXPECT_NEAR(untouched.volume + charged.volume, split.inaccessibleVolume, 1.0e-9 * split.inaccessibleVolume);
+  EXPECT_LT((untouched.centre - one.pockets.front().centre).length(), 1.0e-6);
+  EXPECT_LT(charged.centre.y, second.y - 0.005);  // pushed away from the ball
+  EXPECT_NEAR(charged.freeRadius, (charged.centre - ballCentre).length() - innerRadius, 1.0e-9);
 }
 
 
