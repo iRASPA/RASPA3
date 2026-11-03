@@ -14,47 +14,11 @@ import structure_parallel;
 
 namespace
 {
-// Walk uphill from a point until the step is smaller than anything that could matter. At each turn the
-// twenty-six directions around the current point are tried at the current step; the best of them is taken
-// if it finds more room, and the step is halved if none does. Deterministic, so that two runs of the check
-// agree with each other as well as with what they are checking.
+// The walk uphill is the structure's own, shared with the pore-spike check, so that the two agree on where
+// a maximal sphere sits and how large it is.
 std::pair<double3, double> walkUphill(const BruteForceStructure &structure, double3 from, double startingStep)
 {
-  double3 best = from;
-  double bestClearance = structure.clearance(best);
-
-  double step = startingStep;
-
-  while (step > 1.0e-10)
-  {
-    bool moved = false;
-
-    for (std::int32_t k = -1; k <= 1; ++k)
-    {
-      for (std::int32_t j = -1; j <= 1; ++j)
-      {
-        for (std::int32_t i = -1; i <= 1; ++i)
-        {
-          if (i == 0 && j == 0 && k == 0) continue;
-
-          double3 direction(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
-          double3 trial = best + (step / direction.length()) * direction;
-
-          double clearance = structure.clearance(trial);
-          if (clearance > bestClearance)
-          {
-            bestClearance = clearance;
-            best = trial;
-            moved = true;
-          }
-        }
-      }
-    }
-
-    if (!moved) step *= 0.5;
-  }
-
-  return {best, bestClearance};
+  return structure.walkUphill(from, startingStep);
 }
 
 // Union-find over voxels carrying the lattice translation to the root, so that a second route back to a

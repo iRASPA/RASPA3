@@ -72,6 +72,94 @@ void BruteForceStructure::prepare()
   std::ranges::sort(this->imageList, {}, &Image::distance);
 }
 
+// At each turn the twenty-six lattice directions about the current point are tried at the current step, and
+// so are the directions the nearest atoms single out. The lattice directions alone are not enough. The
+// clearance is the least of the distances to the atoms, so where two or three of them are equally near it
+// rises only along the crease between them: for two, the plane they are equidistant from, and for three, the
+// line. A crease that lies between the lattice directions is one no lattice step climbs, since every such
+// step brings one of the atoms nearer faster than it takes the walk along the crease, and the walk stops on
+// the crease short of the vertex at its top, reporting a sphere smaller than the one that fits. So the
+// bisector of each pair of the nearest atoms and the line along which each triple of them stays equidistant
+// are tried as well, each with the sign that moves away from the atoms; along those the clearance rises until
+// the next atom joins in, and at a vertex, where four do, nothing rises and the walk is done. Deterministic,
+// so that two runs of the check agree with each other as well as with what they are checking.
+std::pair<double3, double> BruteForceStructure::walkUphill(const double3 &from, double startingStep) const
+{
+  double3 best = from;
+  double bestClearance = this->clearance(best);
+  double step = startingStep;
+
+  std::vector<double3> directions;
+  std::vector<std::pair<double, double3>> nearest;  // the room past an atom, and the unit vector away from it
+
+  while (step > 1.0e-10)
+  {
+    directions.clear();
+    for (std::int32_t k = -1; k <= 1; ++k)
+    {
+      for (std::int32_t j = -1; j <= 1; ++j)
+      {
+        for (std::int32_t i = -1; i <= 1; ++i)
+        {
+          if (i == 0 && j == 0 && k == 0) continue;
+          double3 direction(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
+          directions.push_back((1.0 / direction.length()) * direction);
+        }
+      }
+    }
+
+    // The atoms within a step of being the nearest, the four nearest of them.
+    nearest.clear();
+    for (std::size_t j = 0; j < this->positions.size(); ++j)
+    {
+      double3 away = -1.0 * this->nearestImage(best, this->positions[j]);
+      double length = away.length();
+      if (length <= 0.0) continue;
+      double room = length - this->radii[j];
+      if (room > bestClearance + step) continue;
+      nearest.emplace_back(room, (1.0 / length) * away);
+    }
+    std::ranges::sort(nearest, [](const auto &a, const auto &b) { return a.first < b.first; });
+    if (nearest.size() > 4) nearest.resize(4);
+
+    for (std::size_t a = 0; a < nearest.size(); ++a)
+    {
+      for (std::size_t b = a + 1; b < nearest.size(); ++b)
+      {
+        double3 bisector = nearest[a].second + nearest[b].second;
+        double bisectorLength = bisector.length();
+        if (bisectorLength > 1.0e-12) directions.push_back((1.0 / bisectorLength) * bisector);
+
+        for (std::size_t c = b + 1; c < nearest.size(); ++c)
+        {
+          double3 crease = double3::cross(nearest[a].second - nearest[b].second, nearest[a].second - nearest[c].second);
+          double creaseLength = crease.length();
+          if (creaseLength <= 1.0e-12) continue;
+          crease = (1.0 / creaseLength) * crease;
+          if (double3::dot(crease, nearest[a].second) < 0.0) crease = -1.0 * crease;
+          directions.push_back(crease);
+        }
+      }
+    }
+
+    bool moved = false;
+    for (const double3 &direction : directions)
+    {
+      double3 trial = best + step * direction;
+      double clearance = this->clearance(trial);
+      if (clearance > bestClearance)
+      {
+        bestClearance = clearance;
+        best = trial;
+        moved = true;
+      }
+    }
+    if (!moved) step *= 0.5;
+  }
+
+  return {best, bestClearance};
+}
+
 double3 BruteForceStructure::wrappedFractional(const double3 &position) const
 {
   double3 s = this->unitCell.inverseCell * position;

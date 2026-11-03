@@ -15,43 +15,16 @@ import structure_parallel;
 
 namespace
 {
-constexpr double walkStepFloor = 1.0e-10;
 constexpr double diameterMergeTol = 1.0e-4;  // Å; walks converge far below this
 constexpr double centreMergeTol = 1.0e-2;    // Å; same basin after wrapping
 constexpr double weightFloor = 1.0e-5;       // same order as the exact spike floor
 constexpr std::size_t maxFamiliesBeforeFilter = 12;
 
+// The walk uphill is the structure's own, shared with the diameter check, so that the two agree on where a
+// maximal sphere sits and how large it is.
 std::pair<double3, double> walkUphill(const BruteForceStructure &structure, double3 from, double startingStep)
 {
-  double3 best = from;
-  double bestClearance = structure.clearance(best);
-  double step = startingStep;
-
-  while (step > walkStepFloor)
-  {
-    bool moved = false;
-    for (std::int32_t k = -1; k <= 1; ++k)
-    {
-      for (std::int32_t j = -1; j <= 1; ++j)
-      {
-        for (std::int32_t i = -1; i <= 1; ++i)
-        {
-          if (i == 0 && j == 0 && k == 0) continue;
-          double3 direction(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
-          double3 trial = best + (step / direction.length()) * direction;
-          double clearance = structure.clearance(trial);
-          if (clearance > bestClearance)
-          {
-            bestClearance = clearance;
-            best = trial;
-            moved = true;
-          }
-        }
-      }
-    }
-    if (!moved) step *= 0.5;
-  }
-  return {best, bestClearance};
+  return structure.walkUphill(from, startingStep);
 }
 
 double micDistance(const BruteForceStructure &structure, const double3 &a, const double3 &b)
@@ -212,72 +185,113 @@ BruteForcePoreSpikes BruteForcePoreSpikes::compute(const BruteForceStructure &st
   }
   self.numberOfFamilies = families.size();
 
-  const std::size_t consider =
-      std::min(families.size(), std::max(maxFamiliesBeforeFilter, maxFamilies));
-  families.resize(consider);
+  // One Monte Carlo draw over a set of families, largest diameter first: how many points land in the void,
+  // and how many of those in each family's union of balls. A point's pore size is the largest covering
+  // maximal sphere, so it belongs to at most one family, the first whose ball contains it; counting it in
+  // every covering family would charge the volume of a deep cavity to every shallower spike whose ball
+  // happens to overlap that cavity.
+  struct Draw
+  {
+    std::size_t thrown{0};
+    std::size_t voidPoints{0};
+    std::vector<std::size_t> hits;
+  };
+  auto draw = [&](std::size_t points, const std::vector<BruteForceSpikeFamily> &drawn, std::size_t seedOffset)
+  {
+    const std::size_t lanes = 64;
+    const std::size_t perLane = std::max<std::size_t>(1, points / lanes);
+    std::vector<std::size_t> inVoid(lanes, 0);
+    std::vector<std::vector<std::size_t>> inUnion(lanes, std::vector<std::size_t>(drawn.size(), 0));
 
-  // One Monte Carlo draw: void membership and union membership per family.
-  const std::size_t lanes = 64;
-  const std::size_t perLane = std::max<std::size_t>(1, volumePoints / lanes);
-  std::vector<std::size_t> inVoid(lanes, 0);
-  std::vector<std::vector<std::size_t>> inUnion(lanes, std::vector<std::size_t>(families.size(), 0));
-
-  forEachIndex(lanes, workersAvailable(),
-               [&](std::size_t, std::size_t lane)
-               {
-                 RandomNumber random{lane + 17};  // offset from the pore-volume stream
-                 for (std::size_t point = 0; point < perLane; ++point)
+    forEachIndex(lanes, workersAvailable(),
+                 [&](std::size_t, std::size_t lane)
                  {
-                   double3 fractional(random.uniform(), random.uniform(), random.uniform());
-                   double3 position = structure.unitCell.cell * fractional;
-                   if (structure.clearance(position) < 0.0) continue;
-                   if (blockPockets && !reachabilityVoxels->isAccessible(*reachabilityStructure, position))
-                     continue;
-                   ++inVoid[lane];
-
-                   // A point's pore size is the largest covering maximal sphere, so it belongs to at most
-                   // one spike family — the largest-diameter family whose ball contains it. Counting it in
-                   // every covering family would charge the volume of a deep cavity to every shallower
-                   // spike whose ball happens to overlap that cavity.
-                   for (std::size_t f = 0; f < families.size(); ++f)
+                   RandomNumber random{lane + seedOffset};
+                   for (std::size_t point = 0; point < perLane; ++point)
                    {
-                     const double radius = 0.5 * families[f].diameter;
-                     bool covered = false;
-                     for (const double3 &centre : families[f].centres)
+                     double3 fractional(random.uniform(), random.uniform(), random.uniform());
+                     double3 position = structure.unitCell.cell * fractional;
+                     if (structure.clearance(position) < 0.0) continue;
+                     if (blockPockets && !reachabilityVoxels->isAccessible(*reachabilityStructure, position))
+                       continue;
+                     ++inVoid[lane];
+
+                     for (std::size_t f = 0; f < drawn.size(); ++f)
                      {
-                       if (micDistance(structure, position, centre) <= radius)
+                       const double radius = 0.5 * drawn[f].diameter;
+                       bool covered = false;
+                       for (const double3 &centre : drawn[f].centres)
                        {
-                         covered = true;
+                         if (micDistance(structure, position, centre) <= radius)
+                         {
+                           covered = true;
+                           break;
+                         }
+                       }
+                       if (covered)
+                       {
+                         ++inUnion[lane][f];
                          break;
                        }
                      }
-                     if (covered)
-                     {
-                       ++inUnion[lane][f];
-                       break;
-                     }
                    }
-                 }
-               });
+                 });
 
-  const std::size_t voidPoints = std::reduce(inVoid.begin(), inVoid.end());
+    Draw result;
+    result.thrown = perLane * lanes;
+    result.voidPoints = std::reduce(inVoid.begin(), inVoid.end());
+    result.hits.assign(drawn.size(), 0);
+    for (std::size_t lane = 0; lane < lanes; ++lane)
+    {
+      for (std::size_t f = 0; f < drawn.size(); ++f) result.hits[f] += inUnion[lane][f];
+    }
+    return result;
+  };
+
+  // The weight is what decides which families are reported: the ones below the spike floor are wall
+  // corrugation and noise, and of the rest the widest few are wanted. The full draw over every family would
+  // be paid for mostly by the points that land in no ball and are held against every centre there is, so
+  // when there are more families than are worth weighing in full, a lighter draw goes first and says which
+  // of them hold any of the void worth the name. Cutting the list to the widest families before weighing
+  // any of them is not the same thing: a cavity narrower than a dozen others, each of which holds next to
+  // nothing, would be dropped unweighed, however much of the void it held.
+  const std::size_t consider = std::max(maxFamiliesBeforeFilter, maxFamilies);
+  if (families.size() > consider)
+  {
+    const std::size_t rankingPoints = std::min(volumePoints, std::max<std::size_t>(200000, volumePoints / 10));
+    Draw ranking = draw(rankingPoints, families, 17 + 64);  // its own stream, apart from the full draw's
+
+    std::vector<std::size_t> order(families.size());
+    std::iota(order.begin(), order.end(), std::size_t{0});
+    std::ranges::stable_sort(order, [&](std::size_t a, std::size_t b) { return ranking.hits[a] > ranking.hits[b]; });
+
+    std::vector<char> shortlisted(families.size(), 0);
+    for (std::size_t i = 0; i < consider && ranking.hits[order[i]] > 0; ++i) shortlisted[order[i]] = 1;
+
+    std::vector<BruteForceSpikeFamily> worthWeighing;
+    for (std::size_t f = 0; f < families.size(); ++f)
+    {
+      if (shortlisted[f] != 0) worthWeighing.push_back(std::move(families[f]));
+    }
+    families = std::move(worthWeighing);
+  }
+
+  Draw full = draw(volumePoints, families, 17);  // offset from the pore-volume stream
   const double cellVolume = structure.unitCell.volume;
-  self.voidFraction = static_cast<double>(voidPoints) / static_cast<double>(perLane * lanes);
+  self.voidFraction = static_cast<double>(full.voidPoints) / static_cast<double>(full.thrown);
   self.voidVolume = self.voidFraction * cellVolume;
 
-  if (voidPoints > 0)
+  if (full.voidPoints > 0)
   {
     for (std::size_t f = 0; f < families.size(); ++f)
     {
-      std::size_t hits = 0;
-      for (std::size_t lane = 0; lane < lanes; ++lane) hits += inUnion[lane][f];
-      const double w = static_cast<double>(hits) / static_cast<double>(voidPoints);
+      const double w = static_cast<double>(full.hits[f]) / static_cast<double>(full.voidPoints);
       families[f].weight = w;
-      families[f].weightError = std::sqrt(w * (1.0 - w) / static_cast<double>(voidPoints));
+      families[f].weightError = std::sqrt(w * (1.0 - w) / static_cast<double>(full.voidPoints));
     }
   }
 
-  // Drop families whose union is below the spike floor (wall corrugation / noise), keep largest three.
+  // Drop families whose union is below the spike floor (wall corrugation / noise), keep the widest few.
   std::vector<BruteForceSpikeFamily> kept;
   kept.reserve(maxFamilies);
   for (auto &family : families)

@@ -245,6 +245,30 @@ double sweptAcrossArc(double circleRadius, double probeRadius, double from, doub
 }
 }  // namespace
 
+namespace
+{
+// The least of m . u over the arc of the great circle from p to q, all three unit vectors. Along the arc
+// u(t) = p cos t + n sin t with n the unit vector across from p towards q, so m . u is a cos t + b sin t, which
+// is least at the angle opposite (a, b) if the arc reaches it and at an end of the arc if not.
+double lowestAlongArc(const double3 &m, const double3 &p, const double3 &q)
+{
+  double along = std::clamp(double3::dot(p, q), -1.0, 1.0);
+  double3 across = q - along * p;
+  double acrossLength = across.length();
+  if (acrossLength < 1.0e-12) return std::min(double3::dot(m, p), double3::dot(m, q));
+  across = (1.0 / acrossLength) * across;
+
+  double a = double3::dot(m, p);
+  double b = double3::dot(m, across);
+  double lowest = std::min(a, double3::dot(m, q));
+
+  double opposite = std::atan2(-b, -a);
+  if (opposite < 0.0) opposite += 2.0 * std::numbers::pi;
+  if (opposite <= std::acos(along)) lowest = std::min(lowest, -std::sqrt(a * a + b * b));
+  return lowest;
+}
+}  // namespace
+
 BruteForceSolventExcluded BruteForceSolventExcluded::compute(const BruteForceStructure &structure,
                                                              const BruteForceStructure &inflated,
                                                              const BruteForceSurfaceArea &surface,
@@ -714,6 +738,7 @@ BruteForceSolventExcluded BruteForceSolventExcluded::compute(const BruteForceStr
                    // four or more is the edges of their spherical convex hull. Bounding it by every pair would cut the
                    // patch down to nothing wherever the probe rests on more than three atoms.
                    std::vector<double3> edges;
+                   std::vector<std::pair<std::size_t, std::size_t>> edgePairs;
                    for (std::size_t a = 0; a + 1 < corner.contact.size(); ++a)
                    {
                      for (std::size_t b = a + 1; b < corner.contact.size(); ++b)
@@ -735,12 +760,19 @@ BruteForceSolventExcluded BruteForceSolventExcluded::compute(const BruteForceStr
                        if (anyAbove && anyBelow) continue;  // the pair spans the hull rather than bounding it
 
                        edges.push_back(anyBelow ? -1.0 * normal : normal);
+                       edgePairs.emplace_back(a, b);
                      }
                    }
                    if (edges.size() < 3) return;
 
                    // Drawing over the whole sphere to find a small patch is mostly waste, so the draw is confined to a
-                   // cap that holds it and the cap's own area is what the fraction is taken of.
+                   // cap that holds it and the cap's own area is what the fraction is taken of. The cap is about the
+                   // mean contact direction and has to reach the farthest point of the patch from there, which is not
+                   // always a contact: the sides of the patch are arcs of great circles, and an arc between two
+                   // contacts that both lie beyond a right angle from the middle swings further out than either of
+                   // them, the chord between them passing nearer the centre of the sphere than its ends do. So each
+                   // side is measured along its length, and where the patch holds the direction opposite the middle
+                   // outright, the draw is over the whole sphere.
                    double3 middle(0.0, 0.0, 0.0);
                    for (const double3 &contact : corner.contact) middle += contact;
 
@@ -752,6 +784,14 @@ BruteForceSolventExcluded BruteForceSolventExcluded::compute(const BruteForceStr
                    for (const double3 &contact : corner.contact)
                    {
                      cosine = std::min(cosine, double3::dot(middle, contact));
+                   }
+                   for (const auto &[a, b] : edgePairs)
+                   {
+                     cosine = std::min(cosine, lowestAlongArc(middle, corner.contact[a], corner.contact[b]));
+                   }
+                   if (std::ranges::all_of(edges, [&](const double3 &normal) { return double3::dot(normal, middle) <= 0.0; }))
+                   {
+                     cosine = -1.0;
                    }
                    cosine = std::clamp(cosine - 1.0e-6, -1.0, 1.0);
 

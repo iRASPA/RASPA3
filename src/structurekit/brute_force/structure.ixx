@@ -88,6 +88,11 @@ export struct BruteForceStructure
   // The fractional coordinate of a Cartesian point, wrapped into the home cell.
   double3 wrappedFractional(const double3 &position) const;
 
+  // Walks uphill in the clearance from `from`, in steps starting at `startingStep` and halved whenever none
+  // of them finds more room, until the step is smaller than anything that could matter. Returns where the
+  // walk ended and the clearance there, which is the radius of the maximal sphere whose basin `from` is in.
+  std::pair<double3, double> walkUphill(const double3 &from, double startingStep) const;
+
   const std::vector<double3> &fractional() const { return this->fractionalPositions; }
   const std::vector<Image> &images() const { return this->imageList; }
 
