@@ -59,6 +59,11 @@ double nldftWrap01(double x)
   return x < 0.0 ? x + 1.0 : x;
 }
 
+// Cloud-in-cell deposit and sample on the density grid. Grid point i stands at fractional i / n, which is
+// where the energy field put its voxel too, so a site at the voxel's own position lands on that one point
+// and is read back from it alone; a site a fraction of a voxel off is shared with the next point in each
+// axis by that fraction. Asking at (i + 1/2) / n instead would put every site half a voxel off the field it
+// is to feel, and split a site that is not off at all over the eight points around it.
 void nldftCicAdd(double *grid, std::size_t nx, std::size_t ny, std::size_t nz, double fx, double fy, double fz,
                  double weight)
 {
@@ -859,9 +864,9 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
           const std::size_t iz = i / (nx * ny);
           const std::size_t iy = (i / nx) % ny;
           const std::size_t ix = i % nx;
-          const double fx = (static_cast<double>(ix) + 0.5) / static_cast<double>(nx);
-          const double fy = (static_cast<double>(iy) + 0.5) / static_cast<double>(ny);
-          const double fz = (static_cast<double>(iz) + 0.5) / static_cast<double>(nz);
+          const double fx = static_cast<double>(ix) / static_cast<double>(nx);
+          const double fy = static_cast<double>(iy) / static_cast<double>(ny);
+          const double fz = static_cast<double>(iz) / static_cast<double>(nz);
           const std::size_t nLive = endO - beginO;
           std::vector<double> logw(nLive);
           double maxLog = -1.0e300;
@@ -1008,9 +1013,9 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
             const std::size_t iz = i / (nx * ny);
             const std::size_t iy = (i / nx) % ny;
             const std::size_t ix = i % nx;
-            const double fx = (static_cast<double>(ix) + 0.5) / static_cast<double>(nx);
-            const double fy = (static_cast<double>(iy) + 0.5) / static_cast<double>(ny);
-            const double fz = (static_cast<double>(iz) + 0.5) / static_cast<double>(nz);
+            const double fx = static_cast<double>(ix) / static_cast<double>(nx);
+            const double fy = static_cast<double>(iy) / static_cast<double>(ny);
+            const double fz = static_cast<double>(iz) / static_cast<double>(nz);
             auto extraOf = [&](std::size_t o) -> double
             {
               double extra = dumbbell ? dumbbellMu(o, fx, fy, fz) : muHS[i];
