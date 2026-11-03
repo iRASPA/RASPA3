@@ -24,6 +24,46 @@ std::vector<BlockingSphere> exactBlockingSpheres(const ExactVoidSplit& split)
   return spheres;
 }
 
+std::vector<BlockingSphere> bareBlockingSpheres(const ExactVoidSplit& split, double probeRadius)
+{
+  std::vector<BlockingSphere> spheres;
+  spheres.reserve(split.pockets.size());
+  for (const PocketGeometry& pocket : split.pockets)
+  {
+    const double holds = pocket.coveringRadius + probeRadius;
+    const double clear = pocket.hasChannel() ? pocket.channelRadius - probeRadius : holds;
+    const double radius = std::min(holds, clear);
+    if (radius <= 0.0) continue;
+    spheres.push_back(BlockingSphere{pocket.centreFractional, radius});
+  }
+  return spheres;
+}
+
+std::vector<BlockingSphere> hybridBlockedBalls(const PoreAccessibility& probeAccessibility,
+                                               const ExactVoidSplit& split,
+                                               const std::vector<double3>& fractionalPositions,
+                                               const std::vector<double>& radii, double probeRadius,
+                                               std::size_t numberOfSamples)
+{
+  std::vector<BlockingSphere> spheres = measuredSpheresRefused(split).empty()
+                                            ? bareBlockingSpheres(split, probeRadius)
+                                            : computeBlockingSpheres(probeAccessibility, numberOfSamples, probeRadius);
+
+  // A ball wholly inside another adds nothing to the union the blocked diagram measures, and its centre can
+  // coincide exactly with the centre of the ball holding it: sealed symmetric structures put pocket centroids
+  // on special positions, which is where another pocket's centroid, or a framework atom, may sit to machine
+  // precision, and the diagram refuses coinciding sites. The combined list of atoms and spheres is filtered
+  // down to the balls with surface of their own.
+  std::vector<BlockingSphere> balls;
+  balls.reserve(fractionalPositions.size() + spheres.size());
+  for (std::size_t i = 0; i < fractionalPositions.size(); ++i)
+  {
+    balls.push_back(BlockingSphere{fractionalPositions[i], radii[i]});
+  }
+  balls.insert(balls.end(), spheres.begin(), spheres.end());
+  return withoutContainedSpheres(probeAccessibility.unitCell, std::move(balls));
+}
+
 std::string measuredSpheresRefused(const ExactVoidSplit& split)
 {
   if (!split.reliable) return split.rejection;
@@ -81,7 +121,7 @@ std::vector<BlockingSphere> withoutContainedSpheres(const UnitCell& unitCell, st
 }
 
 std::vector<BlockingSphere> computeBlockingSpheres(const PoreAccessibility& accessibility,
-                                                   std::size_t numberOfSamples)
+                                                   std::size_t numberOfSamples, double bareAllowance)
 {
   RandomNumber random{samplingSeed};
   const UnitCell& unitCell = accessibility.unitCell;
@@ -187,8 +227,9 @@ std::vector<BlockingSphere> computeBlockingSpheres(const PoreAccessibility& acce
         closestChannel = std::min(closestChannel, periodicDistance(unitCell, center, p));
 
       // Reaching the outermost point left to cover is all that is wanted, and there is nothing to gain
-      // by going further.
-      double wanted = furthestPocket + resolution;
+      // by going further. Among the bare atoms the cavity goes on a probe radius past the outermost
+      // position of the probe's centre, which is the allowance.
+      double wanted = furthestPocket + resolution + bareAllowance;
 
       // A sphere may not reach a position the probe can occupy from a channel, or the simulation loses
       // part of its pore rather than a pocket. Nothing else constrains it: swallowing the atoms around
@@ -196,13 +237,13 @@ std::vector<BlockingSphere> computeBlockingSpheres(const PoreAccessibility& acce
       // either. That is why a pocket with no channel anywhere in the structure gets a single sphere over
       // the whole of it.
       double admissible = accessiblePoints.empty() ? std::numeric_limits<double>::max()
-                                                   : closestChannel - channelMargin;
+                                                   : closestChannel - channelMargin - bareAllowance;
 
       // Whatever the two above say, a sphere of the clearance at the centre is always safe: it holds no
       // atom, so it lies in the free space, and being connected it cannot cross the neck that made this
       // a pocket, so it is inside the pocket by construction. That floor is what keeps a pocket from
       // being abandoned when the sampling puts an accessible point improbably close to its centre.
-      double radius = std::max(points[i].clearance, std::min(wanted, admissible));
+      double radius = std::max(points[i].clearance + bareAllowance, std::min(wanted, admissible));
 
       // Near the rim of a pocket there is no room for a sphere worth writing, and the classification
       // there is the least certain anyway. Leaving those points uncovered is what bounds the count: the

@@ -65,8 +65,10 @@ void writePoreSizeDistribution(const Crystal& framework, const std::string& diag
   std::print(report, "# Probe (blocking / accessibility): {}, radius {} [Å], diameter {} [Å]\n", probePseudoAtom,
              curve.probeRadius, 2.0 * curve.probeRadius);
   std::print(report, "# Floor radius: {} [Å] ({})\n", curve.floorRadius,
-             (curve.floorRadius <= 0.0) ? "hybrid: He pockets filled by blocking spheres, bare PSD of the rest"
-                                       : "probe-occupiable: flat below this diameter");
+             !hybridCurve(curve)        ? "probe-occupiable: flat below this diameter"
+             : (curve.floorRadius <= 0.0) ? "hybrid: He pockets filled by blocking spheres, bare PSD of the rest"
+                                          : "hybrid: He pockets filled by blocking spheres, bare PSD of the rest, "
+                                            "flat below this diameter");
   std::print(report, "# Volume of the primary curve: {} [Å³], {} of the void\n", curve.probeAccessibleVolume,
              (curve.voidVolume > 0.0) ? curve.probeAccessibleVolume / curve.voidVolume : 0.0);
   std::print(report, "# Diameters evaluated: {}, up to {} [Å]\n", curve.points.size(),
@@ -86,10 +88,11 @@ void writePoreSizeDistribution(const Crystal& framework, const std::string& diag
   std::print(report, "# Pockets sealed to the blocking probe are excluded from columns 2 to 5. By default the\n");
   std::print(report, "# floor is zero (hybrid): those pockets are filled by their helium blocking spheres and the\n");
   std::print(report, "# bare pore-size distribution of the remaining void is reported, so wall corrugation below\n");
-  std::print(report, "# the blocking probe's diameter is still shown. With a positive floor the primary curve is\n");
-  std::print(report, "# instead the probe-occupiable distribution, flat below twice that radius.\n");
+  std::print(report, "# the blocking probe's diameter is still shown. With a floor at or above the probe radius\n");
+  std::print(report, "# the primary curve is instead the probe-occupiable distribution, flat below twice that\n");
+  std::print(report, "# radius; a floor below the probe radius flattens the hybrid below twice the floor.\n");
   std::print(report, "#\n");
-  if (curve.floorRadius > 0.0)
+  if (!hybridCurve(curve))
   {
     std::print(report, "# The primary curve is flat below the floor diameter {:.5f} [Å] and normalised by the\n",
                2.0 * curve.floorRadius);
@@ -143,7 +146,7 @@ void writePoreSizeDistribution(const Crystal& framework, const std::string& diag
     std::print(report, "# framework and not a failure of the analysis.\n");
   }
   std::print(report, "#\n");
-  if (curve.floorRadius > 0.0)
+  if (!hybridCurve(curve))
   {
     std::print(report, "# The same three things for the whole void, with pockets not blocked:\n");
     std::print(report, "#\n");
@@ -173,7 +176,7 @@ void writePoreSizeDistribution(const Crystal& framework, const std::string& diag
   std::print(report, "#              reach, on surfaces sealed off from it, and on surfaces the network could\n");
   std::print(report, "#              not place\n");
   std::print(report, "# columns 9-13: arcs, of them cusped, vertices, of them clipped, of them degenerate\n");
-  if (curve.floorRadius > 0.0)
+  if (!hybridCurve(curve))
   {
     std::print(report, "# column 14: P(d) [1/Å] over the whole void, normalised to integrate to one\n");
     std::print(report, "# column 15: cumulative pore volume, as a fraction of the void volume\n");
@@ -227,8 +230,10 @@ void writePoreSizePeaks(const Crystal& framework, const std::string& diagramName
   std::print(report, "# Probe (blocking / accessibility): {}, radius {} [Å], diameter {} [Å]\n", probePseudoAtom,
              curve.probeRadius, 2.0 * curve.probeRadius);
   std::print(report, "# Floor radius: {} [Å] ({})\n", curve.floorRadius,
-             (curve.floorRadius <= 0.0) ? "hybrid: He pockets filled by blocking spheres, bare peaks of the rest"
-                                       : "probe-occupiable: peaks only above this diameter");
+             !hybridCurve(curve)        ? "probe-occupiable: peaks only above this diameter"
+             : (curve.floorRadius <= 0.0) ? "hybrid: He pockets filled by blocking spheres, bare peaks of the rest"
+                                          : "hybrid: He pockets filled by blocking spheres, bare peaks of the rest "
+                                            "above this diameter");
   std::print(report, "# Volume of the primary curve: {} [Å³], {} of the void\n", curve.probeAccessibleVolume,
              (curve.voidVolume > 0.0) ? curve.probeAccessibleVolume / curve.voidVolume : 0.0);
   std::print(report, "# Seconds: {}, over {} evaluations of the surface\n", curve.seconds, curve.numberOfEvaluations);
@@ -272,7 +277,7 @@ void writePoreSizePeaks(const Crystal& framework, const std::string& diagramName
                curve.probeAccessibleLargestDiameter);
   }
 
-  if (curve.floorRadius > 0.0)
+  if (!hybridCurve(curve))
   {
     std::print(report, "#\n");
     std::print(report, "# Whole void (pockets not blocked):\n");
@@ -299,11 +304,17 @@ void writePoreSizePeaks(const Crystal& framework, const std::string& diagramName
 }
 
 
-PoreSizeDistributionCurve hybridFromBlockedCurve(PoreSizeDistributionCurve blocked, double accessibilityRadius)
+bool hybridCurve(const PoreSizeDistributionCurve& curve)
+{
+  return curve.probeRadius > 0.0 && curve.floorRadius < curve.probeRadius;
+}
+
+PoreSizeDistributionCurve hybridFromBlockedCurve(PoreSizeDistributionCurve blocked, double accessibilityRadius,
+                                                 double floorRadius)
 {
   PoreSizeDistributionCurve curve = std::move(blocked);
   curve.probeRadius = accessibilityRadius;
-  curve.floorRadius = 0.0;
+  curve.floorRadius = std::max(0.0, floorRadius);
   // Bare PSD of the blocked network is the only curve: mirror it into the primary columns.
   // voidVolume is the remaining open-network volume after blocking spheres (zero-probe), which
   // also normalises the distribution; the He void-split volume is a different quantity and is not
@@ -345,7 +356,10 @@ void VoronoiPoreSizeDistribution::run(const PairInteractions& interactions, cons
   const double maxDiameter = maximumDiameter.value_or(20.0);
   const std::size_t bins = numberOfBins.value_or(100);
 
-  if (floorRadius > 0.0)
+  // The surfaces divide the void only from the probe's diameter up, so a floor that reaches it takes the
+  // direct route. Below it the hybrid: the pockets sealed to the probe are filled with their blocking spheres,
+  // carried into the bare structure, and what remains is swept bare, flat below the floor where one is set.
+  if (floorRadius >= probeRadius)
   {
     curve = peaksOnly ? exactPoreSizePeaks(build, cellVolume, subdivisions, probeRadius, floorRadius)
                       : exactPoreSizeDistribution(build, cellVolume, maxDiameter, bins, subdivisions, probeRadius,
@@ -353,31 +367,10 @@ void VoronoiPoreSizeDistribution::run(const PairInteractions& interactions, cons
   }
   else
   {
-    // Hybrid: fill helium-sealed pockets with their blocking spheres, then take the bare PSD of what remains.
     PoreAccessibility he = PoreAccessibility::create(framework.unitCell, fractionalPositions, radii, probeRadius);
     ExactVoidSplit split = exactVoidSplitByComponents(he, cellVolume, subdivisions);
-    std::vector<BlockingSphere> spheres;
-    if (measuredSpheresRefused(split).empty())
-    {
-      spheres = exactBlockingSpheres(split);
-    }
-    else
-    {
-      spheres = computeBlockingSpheres(he, static_cast<std::size_t>(200.0 * cellVolume));
-    }
-    // A ball wholly inside another adds nothing to the union the blocked diagram measures, and its centre can
-    // coincide exactly with the centre of the ball holding it: sealed symmetric structures put pocket centroids
-    // on special positions, which is where another pocket's centroid, or a framework atom, may sit to machine
-    // precision, and the diagram below refuses coinciding sites. Filter the combined list of atoms and spheres
-    // down to the balls with surface of their own.
-    std::vector<BlockingSphere> blockedBalls;
-    blockedBalls.reserve(fractionalPositions.size() + spheres.size());
-    for (std::size_t i = 0; i < fractionalPositions.size(); ++i)
-    {
-      blockedBalls.push_back(BlockingSphere{fractionalPositions[i], radii[i]});
-    }
-    blockedBalls.insert(blockedBalls.end(), spheres.begin(), spheres.end());
-    blockedBalls = withoutContainedSpheres(framework.unitCell, std::move(blockedBalls));
+    std::vector<BlockingSphere> blockedBalls = hybridBlockedBalls(
+        he, split, fractionalPositions, radii, probeRadius, static_cast<std::size_t>(200.0 * cellVolume));
 
     std::vector<double3> blockedPositions;
     std::vector<double> blockedRadii;
@@ -393,9 +386,10 @@ void VoronoiPoreSizeDistribution::run(const PairInteractions& interactions, cons
     { return PoreAccessibility::create(framework.unitCell, blockedPositions, blockedRadii, inflation); };
 
     PoreSizeDistributionCurve blocked =
-        peaksOnly ? exactPoreSizePeaks(buildBlocked, cellVolume, subdivisions, 0.0, 0.0)
-                  : exactPoreSizeDistribution(buildBlocked, cellVolume, maxDiameter, bins, subdivisions, 0.0, 0.0);
-    curve = hybridFromBlockedCurve(std::move(blocked), probeRadius);
+        peaksOnly ? exactPoreSizePeaks(buildBlocked, cellVolume, subdivisions, 0.0, floorRadius)
+                  : exactPoreSizeDistribution(buildBlocked, cellVolume, maxDiameter, bins, subdivisions, 0.0,
+                                              floorRadius);
+    curve = hybridFromBlockedCurve(std::move(blocked), probeRadius, floorRadius);
   }
 
   if (peaksOnly)

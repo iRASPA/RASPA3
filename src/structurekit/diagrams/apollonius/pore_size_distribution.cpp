@@ -46,7 +46,8 @@ void ApolloniusPoreSizeDistribution::run(const PairInteractions& interactions, c
   const double maxDiameter = maximumDiameter.value_or(20.0);
   const std::size_t bins = numberOfBins.value_or(100);
 
-  if (floorRadius > 0.0)
+  // The same division of the routes as the radical diagram's: see there.
+  if (floorRadius >= probeRadius)
   {
     curve = peaksOnly ? exactPoreSizePeaks(build, cellVolume, subdivisions, probeRadius, floorRadius)
                       : exactPoreSizeDistribution(build, cellVolume, maxDiameter, bins, subdivisions, probeRadius,
@@ -54,32 +55,12 @@ void ApolloniusPoreSizeDistribution::run(const PairInteractions& interactions, c
   }
   else
   {
-    // Hybrid: fill helium-sealed pockets with their blocking spheres, then take the bare PSD of what remains.
     ApolloniusAccessibility classifier =
         ApolloniusAccessibility::create(framework.unitCell, fractionalPositions, radii, probeRadius);
     ExactVoidSplit split = exactVoidSplitByComponents(classifier.accessibility, cellVolume, subdivisions);
-    std::vector<BlockingSphere> spheres;
-    if (measuredSpheresRefused(split).empty())
-    {
-      spheres = exactBlockingSpheres(split);
-    }
-    else
-    {
-      spheres = computeBlockingSpheres(classifier.accessibility, static_cast<std::size_t>(200.0 * cellVolume));
-    }
-    // A ball wholly inside another adds nothing to the union the blocked diagram measures, and its centre can
-    // coincide exactly with the centre of the ball holding it: sealed symmetric structures put pocket centroids
-    // on special positions, which is where another pocket's centroid, or a framework atom, may sit to machine
-    // precision, and the diagram below refuses coinciding sites. Filter the combined list of atoms and spheres
-    // down to the balls with surface of their own.
-    std::vector<BlockingSphere> blockedBalls;
-    blockedBalls.reserve(fractionalPositions.size() + spheres.size());
-    for (std::size_t i = 0; i < fractionalPositions.size(); ++i)
-    {
-      blockedBalls.push_back(BlockingSphere{fractionalPositions[i], radii[i]});
-    }
-    blockedBalls.insert(blockedBalls.end(), spheres.begin(), spheres.end());
-    blockedBalls = withoutContainedSpheres(framework.unitCell, std::move(blockedBalls));
+    std::vector<BlockingSphere> blockedBalls =
+        hybridBlockedBalls(classifier.accessibility, split, fractionalPositions, radii, probeRadius,
+                           static_cast<std::size_t>(200.0 * cellVolume));
 
     std::vector<double3> blockedPositions;
     std::vector<double> blockedRadii;
@@ -98,9 +79,10 @@ void ApolloniusPoreSizeDistribution::run(const PairInteractions& interactions, c
     };
 
     PoreSizeDistributionCurve blocked =
-        peaksOnly ? exactPoreSizePeaks(buildBlocked, cellVolume, subdivisions, 0.0, 0.0)
-                  : exactPoreSizeDistribution(buildBlocked, cellVolume, maxDiameter, bins, subdivisions, 0.0, 0.0);
-    curve = hybridFromBlockedCurve(std::move(blocked), probeRadius);
+        peaksOnly ? exactPoreSizePeaks(buildBlocked, cellVolume, subdivisions, 0.0, floorRadius)
+                  : exactPoreSizeDistribution(buildBlocked, cellVolume, maxDiameter, bins, subdivisions, 0.0,
+                                              floorRadius);
+    curve = hybridFromBlockedCurve(std::move(blocked), probeRadius, floorRadius);
   }
 
   if (peaksOnly)

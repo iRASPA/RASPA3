@@ -146,9 +146,12 @@ export struct PoreSizeDistributionCurve
 // Two curves come out of the one sweep. The first is the whole void: every pore of the framework, whether or
 // not anything can get into it, which is the distribution the volume of the cell is made of. The second is the
 // primary curve: pockets sealed to `probeRadius` are blocked, and what remains is given a pore-size
-// distribution. By default `floorRadius` is zero (the hybrid): that remaining volume keeps its bare local
-// clearances, so wall corrugation below the blocking probe's diameter is still shown. Setting `floorRadius`
-// to `probeRadius` restores the probe-occupiable curve, flat below 2 r_p.
+// distribution, flat below 2 `floorRadius`. With `floorRadius` at `probeRadius` that is the probe-occupiable
+// curve. A floor below a positive probe is refused: under the probe's diameter the surfaces cannot say which
+// of them seal a pocket to that probe, a pocket whose windows are still open at the row's radius being one
+// surface with the channel, so the hybrid curve that keeps bare clearances below the probe's diameter is not
+// drawn here. The drivers draw it by blocking the sealed pockets with spheres carried into the bare structure
+// and sweeping that at a vanishing probe, which this routine serves with both radii zero.
 //
 // The second is not the accessible share of the first row by row. At a diameter d the first divides the volume
 // leaving there by what a probe of that same diameter can reach, which moves along the curve; the second holds

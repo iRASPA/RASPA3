@@ -6,6 +6,8 @@ import double3;
 import unit_cell;
 import pore_accessibility;
 import exact_pore_size_distribution;
+import exact_void_split;
+import voronoi_blocking_spheres;
 
 // The pore-size distribution as a curve: the sweep over probe sizes, the spikes at the sizes that carry
 // volume of their own, and the two ways the whole of the void is accounted for.
@@ -324,4 +326,174 @@ TEST(exact_pore_size_distribution, a_convex_void_has_no_distribution_at_all)
   // The whole of the void is still open at the end of the range, which is the range stopping short and
   // is reported as such rather than as a distribution that failed to integrate to one.
   EXPECT_NEAR(curve.truncatedWeight, 1.0, 1.0e-9);
+}
+
+
+namespace
+{
+
+// A sealed cage of `count` spheres on a shell about `centre`, placed on the Fibonacci spiral.
+std::vector<double3> fibonacciShell(const double3& centre, double shellRadius, std::size_t count)
+{
+  std::vector<double3> positions;
+  const double golden = std::numbers::pi * (1.0 + std::sqrt(5.0));
+  for (std::size_t i = 0; i < count; ++i)
+  {
+    double fraction = (static_cast<double>(i) + 0.5) / static_cast<double>(count);
+    double cosinePolar = 1.0 - 2.0 * fraction;
+    double sinePolar = std::sqrt(std::max(0.0, 1.0 - cosinePolar * cosinePolar));
+    double azimuth = golden * (static_cast<double>(i) + 0.5);
+    positions.push_back(centre + double3(shellRadius * sinePolar * std::cos(azimuth),
+                                         shellRadius * sinePolar * std::sin(azimuth), shellRadius * cosinePolar));
+  }
+  return positions;
+}
+
+
+Lattice latticeOf(double edge, const std::vector<double3>& cartesian, double atomRadius)
+{
+  Lattice lattice;
+  lattice.box = UnitCell(edge, edge, edge);
+  for (const double3& position : cartesian)
+  {
+    lattice.fractionalPositions.push_back(double3::fract(lattice.box.inverseCell * position));
+  }
+  lattice.radii.assign(cartesian.size(), atomRadius);
+  return lattice;
+}
+
+
+// The hybrid route as the drivers take it: the pockets sealed to `probe` are measured on that probe's network,
+// their blocking spheres are put among the bare atoms, and the bare curve of that blocked structure is swept.
+struct Hybrid
+{
+  ExactVoidSplit split;
+  PoreSizeDistributionCurve blocked;
+};
+
+Hybrid hybridOf(const Lattice& lattice, double probe, double maximumDiameter, std::size_t bins)
+{
+  PoreAccessibility he = PoreAccessibility::create(lattice.box, lattice.fractionalPositions, lattice.radii, probe);
+  ExactVoidSplit split = exactVoidSplitByComponents(he, lattice.box.volume, 1);
+  std::vector<BlockingSphere> balls =
+      hybridBlockedBalls(he, split, lattice.fractionalPositions, lattice.radii, probe, 1000);
+
+  std::vector<double3> positions;
+  std::vector<double> radii;
+  for (const BlockingSphere& ball : balls)
+  {
+    positions.push_back(ball.centerFractional);
+    radii.push_back(ball.radius);
+  }
+  auto build = [&](double inflation) { return PoreAccessibility::create(lattice.box, positions, radii, inflation); };
+  return Hybrid{split, exactPoreSizeDistribution(build, lattice.box.volume, maximumDiameter, bins, 1, 0.0, 0.0)};
+}
+
+}  // namespace
+
+
+// A blocking sphere is drawn where the probe's centre can be, and the hybrid puts it among the bare atoms. The
+// cavity of a sealed cage reaches a probe radius beyond the wall the probe's centre sees, so a sphere of the
+// covering radius alone leaves a shell of the cavity open, and at vanishing diameter that shell is counted as
+// void of the open network: the normalisation of the whole curve is then wrong by it, and the shell shows up as
+// pores of its own thickness. Carried into the bare structure the sphere grows by the probe radius, and the
+// blocked void is the bare void less the whole cavity.
+TEST(exact_pore_size_distribution, the_hybrid_blocks_the_whole_cavity_of_a_sealed_cage)
+{
+  const double edge = 14.0;
+  const double probe = 0.5;
+  Lattice cage = latticeOf(edge, fibonacciShell(double3(7.0, 7.0, 7.0), 3.0, 32), 1.8);
+
+  PoreAccessibility bare = PoreAccessibility::create(cage.box, cage.fractionalPositions, cage.radii, 0.0);
+  ExactVoidSplit bareSplit = exactVoidSplitByComponents(bare, cage.box.volume, 1);
+  ASSERT_TRUE(bareSplit.reliable) << bareSplit.rejection;
+  ASSERT_EQ(bareSplit.pockets.size(), 1uz);
+  const double cavity = bareSplit.inaccessibleVolume;
+
+  Hybrid hybrid = hybridOf(cage, probe, 4.0, 40);
+  ASSERT_TRUE(hybrid.split.reliable) << hybrid.split.rejection;
+  ASSERT_EQ(hybrid.split.pockets.size(), 1uz);
+  ASSERT_TRUE(hybrid.split.pockets.front().coversPocket());
+
+  // The ball of the covering radius plus the probe radius holds every point of the cavity a helium atom could
+  // occupy; what it can miss is the crevice between three cage atoms that not even helium reaches, so the
+  // blocked void may exceed the bare void less the cavity by a little, and never fall short of it.
+  const double expected = bareSplit.voidVolume - cavity;
+  EXPECT_GT(hybrid.blocked.voidVolume, expected - 1.0e-6);
+  EXPECT_LT(hybrid.blocked.voidVolume, expected + 0.05 * cavity);
+}
+
+
+// The other limit goes the other way. Where the channel is nearer the pocket's centre than its own far wall,
+// the sphere is capped by the channel radius, measured to where the probe's centre can get; a molecule's
+// surface comes a probe radius nearer than that, so among the bare atoms the cap has to come down by one.
+// Left as it was, the sphere inflated by each row's radius reaches a probe radius into the channel, and the
+// blocked curve loses channel volume that the division of the same void by its surfaces keeps. Above the
+// probe's diameter the two routes measure the same thing and have to agree.
+TEST(exact_pore_size_distribution, the_hybrid_leaves_the_channel_round_a_capped_pocket_alone)
+{
+  const double edge = 24.0;
+  const double probe = 0.5;
+  const double shellRadius = 3.0;
+  const double atomRadius = 1.0;
+
+  // Three cages in a row, each shell cut where it enters a neighbour, so that the three cavities are one
+  // elongated pocket: its far walls lie farther from its centre than the channel outside its middle does.
+  std::vector<double3> centres = {double3(8.0, 12.0, 12.0), double3(12.0, 12.0, 12.0), double3(16.0, 12.0, 12.0)};
+  std::vector<double3> positions;
+  for (std::size_t cage = 0; cage < centres.size(); ++cage)
+  {
+    for (const double3& position : fibonacciShell(centres[cage], shellRadius, 64))
+    {
+      bool insideAnother = false;
+      for (std::size_t other = 0; other < centres.size(); ++other)
+      {
+        if (other != cage && (position - centres[other]).length() < shellRadius - 1.0e-9) insideAnother = true;
+      }
+      if (!insideAnother) positions.push_back(position);
+    }
+  }
+  Lattice chain = latticeOf(edge, positions, atomRadius);
+
+  Hybrid hybrid = hybridOf(chain, probe, 4.4, 44);
+  ASSERT_TRUE(hybrid.split.reliable) << hybrid.split.rejection;
+  ASSERT_EQ(hybrid.split.pockets.size(), 1uz);
+  const PocketGeometry& pocket = hybrid.split.pockets.front();
+  ASSERT_LT(pocket.channelRadius, pocket.coveringRadius) << "the test wants a pocket its channel caps";
+
+  // Above the diameter at which the capped sphere holds what is left of the pocket, the blocked curve and the
+  // division by surfaces agree: the pocket is gone from both, and the channel is whole in both.
+  PoreSizeDistributionCurve divided = curveOf(chain, 4.4, 44, probe);
+  // The sphere of the channel radius less the probe radius, inflated by r, holds what is left of the pocket at r
+  // once r reaches half the excess of the covering radius over the channel radius, plus the probe radius.
+  const double covered = pocket.coveringRadius - pocket.channelRadius + 2.0 * probe;
+  std::size_t compared = 0;
+  for (std::size_t row = 0; row < hybrid.blocked.points.size(); ++row)
+  {
+    const PoreSizeDistributionPoint& blocked = hybrid.blocked.points[row];
+    const PoreSizeDistributionPoint& reference = divided.points[row];
+    ASSERT_NEAR(blocked.diameter, reference.diameter, 1.0e-12);
+    if (blocked.diameter < covered + 0.1 || blocked.diameter > 2.0 * (shellRadius - atomRadius) - 0.1) continue;
+    ++compared;
+    EXPECT_NEAR(blocked.poreVolume, reference.probeAccessiblePoreVolume, 1.0e-4 * reference.probeAccessiblePoreVolume)
+        << "at d = " << blocked.diameter;
+  }
+  EXPECT_GT(compared, 3uz) << "covering " << pocket.coveringRadius << ", channel " << pocket.channelRadius;
+}
+
+
+// Below the probe's diameter the surfaces cannot divide the void: a pocket whose bare windows are open is one
+// surface with the channel outside it until the inflated atoms close them, so its volume would be kept until
+// then and dropped after. The drivers take the hybrid through a blocked structure instead; asking this route
+// for a floor below a positive probe is refused rather than answered wrongly.
+TEST(exact_pore_size_distribution, a_floor_below_the_probe_is_refused)
+{
+  Lattice lattice = simpleCubic(6.0, 1.5);
+  auto build = [&](double inflation)
+  { return PoreAccessibility::create(lattice.box, lattice.fractionalPositions, lattice.radii, inflation); };
+  EXPECT_THROW(exactPoreSizeDistribution(build, lattice.box.volume, 6.0, 12, 1, 0.5, 0.0), std::invalid_argument);
+  EXPECT_THROW(exactPoreSizeDistribution(build, lattice.box.volume, 6.0, 12, 1, 0.5, 0.25), std::invalid_argument);
+  EXPECT_THROW(exactPoreSizePeaks(build, lattice.box.volume, 1, 0.5, 0.0), std::invalid_argument);
+  EXPECT_NO_THROW(exactPoreSizeDistribution(build, lattice.box.volume, 6.0, 12, 1, 0.5, 0.5));
+  EXPECT_NO_THROW(exactPoreSizeDistribution(build, lattice.box.volume, 6.0, 12, 1, 0.0, 0.0));
 }

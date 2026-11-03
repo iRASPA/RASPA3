@@ -41,6 +41,28 @@ export import blocking_spheres;
 // One sphere per pocket of a measured split: at the pocket's centre, of its blocking radius.
 export std::vector<BlockingSphere> exactBlockingSpheres(const ExactVoidSplit& split);
 
+// The same pockets as balls of the bare structure, which is where the hybrid pore-size routes put them.
+//
+// A blocking sphere is drawn in the space of the probe's centre, and that is where a simulation reads it. The
+// hybrid routes set it among the bare atoms instead and inflate everything by the radius of each row, so the
+// sphere has to be carried into that space, and its two limits go opposite ways there. The cavity of a pocket
+// reaches a probe radius beyond the wall the probe's centre sees, so the radius that holds it is the covering
+// radius plus one; a molecule in a channel comes a probe radius nearer than its centre can, so the radius that
+// keeps clear of the channel is the channel radius less one. The lesser of the two, as before. Left in the
+// centre's space, a sphere would leave a shell of every cavity open below the probe's diameter and reach a
+// probe radius into the channel above it. A pocket whose two limits cross leaves no sphere at all.
+export std::vector<BlockingSphere> bareBlockingSpheres(const ExactVoidSplit& split, double probeRadius);
+
+// The sites of the blocked structure the hybrid pore-size routes sweep: the framework's atoms, and the bare
+// blocking spheres of the pockets sealed to the probe of `probeAccessibility` -- measured from `split` where
+// that can be, sampled on `numberOfSamples` points where it is refused -- with the balls hidden inside another
+// dropped, as the diagram would refuse them.
+export std::vector<BlockingSphere> hybridBlockedBalls(const PoreAccessibility& probeAccessibility,
+                                                      const ExactVoidSplit& split,
+                                                      const std::vector<double3>& fractionalPositions,
+                                                      const std::vector<double>& radii, double probeRadius,
+                                                      std::size_t numberOfSamples);
+
 // Why the measured spheres cannot be written for a structure, and empty where they can. It is the split's own
 // rejection, plus the one thing that is a reason here and nowhere else: a pocket whose centroid the classifier
 // puts in a channel, which is a centre no radius makes safe.
@@ -75,8 +97,12 @@ export std::vector<BlockingSphere> withoutContainedSpheres(const UnitCell& unitC
 // It runs over whatever accessibility classifier is handed to it, so that the same spheres can be found from a
 // network taken from the radical diagram or from the Apollonius diagram. The probe radius is not a parameter: it
 // is already in the inflated radii the classifier carries, which is what the clearance is measured against.
+//
+// `bareAllowance` is the one case where an allowance is right: the spheres are wanted among the bare atoms, as
+// `bareBlockingSpheres` gives the measured ones, and then the reach grows by it and the channel limit comes
+// down by it, for the reason given there. Zero, the default, is the probe-centre space a simulation reads.
 export std::vector<BlockingSphere> computeBlockingSpheres(const PoreAccessibility& accessibility,
-                                                          std::size_t numberOfSamples);
+                                                          std::size_t numberOfSamples, double bareAllowance = 0.0);
 
 // Writes the `.block` file a simulation reads back, which is a count and one line of fractional centre and
 // radius per sphere and nothing else, and beside it an account of where the spheres came from.

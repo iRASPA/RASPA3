@@ -20,8 +20,10 @@ export struct VoronoiPoreSizeDistribution
   PoreSizeDistributionCurve curve;
 
   // `probePseudoAtom` is the accessibility / blocking probe. `floorRadius` is the diameter floor of the
-  // primary curve (default 0 = hybrid: block sealed pockets, keep bare pore sizes on the rest).
-  // With `peaksOnly`, only room-size spikes are evaluated (see `exactPoreSizePeaks`).
+  // primary curve (default 0 = hybrid: block sealed pockets, keep bare pore sizes on the rest). A floor below
+  // the probe's radius keeps the hybrid route and flattens it below twice the floor; one at or above it takes
+  // the probe-occupiable curve from the surfaces directly. With `peaksOnly`, only room-size spikes are
+  // evaluated (see `exactPoreSizePeaks`).
   void run(const PairInteractions& interactions, const Crystal& framework, std::string probePseudoAtom,
            std::optional<double> maximumDiameter, std::optional<std::size_t> numberOfBins,
            std::size_t subdivisions = 1, double floorRadius = 0.0, bool peaksOnly = false);
@@ -37,6 +39,10 @@ export void writePoreSizePeaks(const Crystal& framework, const std::string& diag
 
 // Promote a bare PSD of the framework with He pockets filled by blocking spheres into the hybrid report
 // shape. The open-framework whole-void curve is not computed: only the blocked network is physical for
-// adsorption. `accessibilityRadius` is recorded as the blocking probe.
+// adsorption. `accessibilityRadius` is recorded as the blocking probe and `floorRadius`, below it, as the
+// floor the blocked sweep was flattened under.
 export PoreSizeDistributionCurve hybridFromBlockedCurve(PoreSizeDistributionCurve blocked,
-                                                        double accessibilityRadius);
+                                                        double accessibilityRadius, double floorRadius = 0.0);
+
+// Whether a curve is the hybrid: a blocking probe, and a floor short of it.
+export bool hybridCurve(const PoreSizeDistributionCurve& curve);

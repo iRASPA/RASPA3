@@ -157,6 +157,23 @@ struct Sampler
 // Symmetry-equivalent network maxima can differ by a few 1e-3 Å; those are one room, not many.
 constexpr double peaksDiameterMergeTol = 1.0e-2;
 
+// Below the probe's diameter the surfaces cannot divide the void by that probe: a pocket whose windows are
+// still open at the row's radius is one surface with the channel outside it, kept whole until the inflated
+// atoms close the windows and dropped whole after. So a floor short of a positive probe is a curve with a
+// cliff at the windows' size and nothing above it to stand on, and it is refused here rather than drawn. The
+// drivers reach that range through a blocked structure instead, at a vanishing probe.
+void requireFloorAtProbe(const char* route, double probeRadius, double floorRadius)
+{
+  if (probeRadius > 0.0 && floorRadius < probeRadius)
+  {
+    throw std::invalid_argument(std::format(
+        "{}: the floor radius {} lies below the probe radius {}; below the probe's diameter the surfaces cannot "
+        "divide the void by that probe, so the hybrid is taken through a blocked structure at a vanishing probe "
+        "(see the pore-size-distribution drivers) and a direct call needs a floor at or above the probe\n",
+        route, floorRadius, probeRadius));
+  }
+}
+
 void Sampler::splitByReference(const PoreAccessibility& accessibility, const BoundaryComponents& components,
                                const SolventExcludedGeometry& geometry, double& sealed, double& unplaced,
                                double& reachableDerivative) const
@@ -498,6 +515,7 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<PoreAcce
   curve.cellVolume = cellVolume;
   curve.probeRadius = std::max(0.0, probeRadius);
   curve.floorRadius = std::max(0.0, floorRadius);
+  requireFloorAtProbe("exactPoreSizeDistribution", curve.probeRadius, curve.floorRadius);
 
   const std::size_t bins = std::max<std::size_t>(1, numberOfBins);
   const double step = maximumDiameter / static_cast<double>(bins);
@@ -563,6 +581,7 @@ PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibili
   curve.cellVolume = cellVolume;
   curve.probeRadius = std::max(0.0, probeRadius);
   curve.floorRadius = std::max(0.0, floorRadius);
+  requireFloorAtProbe("exactPoreSizePeaks", curve.probeRadius, curve.floorRadius);
 
   Sampler sampler{build, subdivisions, curve.probeRadius, curve.floorRadius};
 
