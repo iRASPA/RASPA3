@@ -32,8 +32,8 @@ constexpr double closureTolerance = 1.0e-6;
 // The two are taken in different frames, which is not an inconsistency but the difference between the two
 // questions. The reach is about one surface, which closes only in its own frame, so its patches are carried
 // there by the translations the decomposition accumulated. The distance to a channel is about real space, where
-// what matters is the copy of an atom that happens to lie nearest, so those patches are taken at their nearest
-// image.
+// what matters is the copy of an atom that happens to lie nearest, so those patches are taken over every copy
+// that can come near enough.
 struct SurfaceDistances
 {
   double reach{0.0};
@@ -81,6 +81,67 @@ SurfaceDistances surfaceDistances(const PoreAccessibility& accessibility, const 
                                   const double3& centre)
 {
   SurfaceDistances result;
+
+  // The extrema of the distance from the centre to one patch of the sphere of radius `radius` about
+  // `sphereCentre`, each handed to `consider` as the unit direction from the sphere's centre. Every patch is
+  // the same on every copy of its atom, so this serves whichever copy is wanted.
+  auto forEachExtremum = [&](std::size_t atomIndex, std::size_t patch, const double3& sphereCentre, auto&& consider)
+  {
+    const SphereBoundary& boundary = components.atoms[atomIndex];
+    const double3 outward = sphereCentre - centre;
+
+    // The two directions the sphere gets farthest from and nearest to the point in. Each has to be shown to be
+    // exposed before it is asked which patch it is on: a direction is buried where it lies inside the cap some
+    // neighbour cuts off, and a sphere left with a single patch answers that patch for every direction,
+    // buried or not. Where a direction is not on the patch the extremum is on the patch's edges instead, and
+    // taking it anyway would put the answer out at the whole sphere's, most of which is buried.
+    double distance = outward.length();
+    if (distance > 1.0e-12)
+    {
+      for (double sign : {1.0, -1.0})
+      {
+        double3 along = outward * (sign / distance);
+        bool exposed = std::ranges::none_of(boundary.circles, [&](const SphereCircle& circle)
+                                           { return double3::dot(along, circle.axis) > circle.cosineHalfAngle; });
+        if (exposed && components.patchOfDirection(atomIndex, along) == static_cast<std::int32_t>(patch))
+        {
+          consider(along);
+        }
+      }
+    }
+
+    for (const SphereCircle& circle : boundary.circles)
+    {
+      for (std::size_t arc = 0; arc < circle.arcPatch.size(); ++arc)
+      {
+        if (circle.arcPatch[arc] != static_cast<std::int32_t>(patch)) continue;
+
+        // A circle no crossing cuts is one arc closing on itself, where both turning points are in range.
+        double begin = circle.cornerAngles.empty() ? 0.0 : circle.cornerAngles[arc];
+        double end = circle.cornerAngles.empty()
+                         ? 2.0 * std::numbers::pi
+                         : circle.cornerAngles[(arc + 1) % circle.cornerAngles.size()];
+        if (end <= begin) end += 2.0 * std::numbers::pi;
+
+        consider(circle.direction(begin));
+        consider(circle.direction(end));
+
+        double turning = std::atan2(double3::dot(outward, circle.second), double3::dot(outward, circle.first));
+        for (int half = 0; half < 2; ++half)
+        {
+          for (int lift = 0; lift < 3; ++lift)
+          {
+            double angle = turning + static_cast<double>(half) * std::numbers::pi +
+                           static_cast<double>(lift - 1) * 2.0 * std::numbers::pi;
+            if (angle >= begin && angle <= end) consider(circle.direction(angle));
+          }
+        }
+      }
+    }
+  };
+
+  auto facesAChannel = [&](std::int32_t of) { return of >= 0 && facesChannel[static_cast<std::size_t>(of)] != 0; };
+
   for (std::size_t atomIndex = 0; atomIndex < components.atoms.size(); ++atomIndex)
   {
     const SphereBoundary& boundary = components.atoms[atomIndex];
@@ -88,83 +149,52 @@ SurfaceDistances surfaceDistances(const PoreAccessibility& accessibility, const 
 
     const double radius = accessibility.atomRadii[atomIndex];
 
-    // The nearest copy of this atom, for the channel distance, and the least the whole of its sphere could come
-    // to the point. Where that already exceeds the nearest patch found so far, no patch of this atom can beat
-    // it, which is what keeps the search over the channels local.
-    const double3 nearestImage =
-        centre + accessibility.unitCell.applyPeriodicBoundaryConditions(accessibility.atomPositions[atomIndex] -
-                                                                            centre);
-    const double sphereFloor = std::abs((nearestImage - centre).length() - radius);
-
+    // The pocket's own surface, in the frame it was measured in.
     for (std::size_t patch = 0; patch < components.componentOfPatch[atomIndex].size(); ++patch)
     {
-      const std::int32_t of = components.componentOfPatch[atomIndex][patch];
-      const bool onSurface = (of == component);
-      const bool onChannel = of >= 0 && facesChannel[static_cast<std::size_t>(of)] != 0 && sphereFloor < result.channel;
-      if (!onSurface && !onChannel) continue;
-
+      if (components.componentOfPatch[atomIndex][patch] != component) continue;
       const int3 offset = components.offsetOfPatch[atomIndex][patch];
       const double3 inFrame =
           accessibility.atomPositions[atomIndex] +
           accessibility.unitCell.cell *
               double3(static_cast<double>(offset.x), static_cast<double>(offset.y), static_cast<double>(offset.z));
-      const double3 sphereCentre = onSurface ? inFrame : nearestImage;
-      const double3 outward = sphereCentre - centre;
+      forEachExtremum(atomIndex, patch, inFrame, [&](const double3& unitDirection)
+                      { result.reach = std::max(result.reach, (inFrame + unitDirection * radius - centre).length()); });
+    }
 
-      auto consider = [&](const double3& unitDirection)
+    // A first channel distance, from the copy of this atom that the fractional rounding puts nearest. The least
+    // the whole of that sphere could come to the point says whether it is worth asking at all.
+    const double3 nearestImage =
+        centre + accessibility.unitCell.applyPeriodicBoundaryConditions(accessibility.atomPositions[atomIndex] -
+                                                                            centre);
+    const double sphereFloor = std::abs((nearestImage - centre).length() - radius);
+    if (sphereFloor >= result.channel) continue;
+    for (std::size_t patch = 0; patch < components.componentOfPatch[atomIndex].size(); ++patch)
+    {
+      if (!facesAChannel(components.componentOfPatch[atomIndex][patch])) continue;
+      forEachExtremum(atomIndex, patch, nearestImage, [&](const double3& unitDirection)
+                      { result.channel = std::min(result.channel, (nearestImage + unitDirection * radius - centre).length()); });
+    }
+  }
+
+  // Every copy of every atom whose sphere can come nearer than that, which the first pass does not see: a patch
+  // that faces away from the point on the nearest copy faces it on the next, and in a skewed cell the copy the
+  // rounding picks is not always the nearest. The copies within the distance found so far (plus a radius) are
+  // all that can improve on it, and the walk over the cells finds exactly those.
+  if (result.channel < 0.5 * std::numeric_limits<double>::max())
+  {
+    const double reach = result.channel + accessibility.maximumAtomRadius;
+    for (const NeighbourImage& image : accessibility.neighbourAtomImages(centre, reach))
+    {
+      if (components.atoms[image.index].buried) continue;
+      const double radius = accessibility.atomRadii[image.index];
+      if (image.delta.length() - radius >= result.channel) continue;
+      const double3 sphereCentre = centre + image.delta;
+      for (std::size_t patch = 0; patch < components.componentOfPatch[image.index].size(); ++patch)
       {
-        double distance = (sphereCentre + unitDirection * radius - centre).length();
-        if (onSurface) result.reach = std::max(result.reach, distance);
-        if (onChannel) result.channel = std::min(result.channel, distance);
-      };
-
-      // The two directions the sphere gets farthest from and nearest to the point in. Each has to be shown to be
-      // exposed before it is asked which patch it is on: a direction is buried where it lies inside the cap some
-      // neighbour cuts off, and a sphere left with a single patch answers that patch for every direction,
-      // buried or not. Where a direction is not on the patch the extremum is on the patch's edges instead, and
-      // taking it anyway would put the answer out at the whole sphere's, most of which is buried.
-      double distance = outward.length();
-      if (distance > 1.0e-12)
-      {
-        for (double sign : {1.0, -1.0})
-        {
-          double3 along = outward * (sign / distance);
-          bool exposed = std::ranges::none_of(boundary.circles, [&](const SphereCircle& circle)
-                                             { return double3::dot(along, circle.axis) > circle.cosineHalfAngle; });
-          if (exposed && components.patchOfDirection(atomIndex, along) == static_cast<std::int32_t>(patch))
-          {
-            consider(along);
-          }
-        }
-      }
-
-      for (const SphereCircle& circle : boundary.circles)
-      {
-        for (std::size_t arc = 0; arc < circle.arcPatch.size(); ++arc)
-        {
-          if (circle.arcPatch[arc] != static_cast<std::int32_t>(patch)) continue;
-
-          // A circle no crossing cuts is one arc closing on itself, where both turning points are in range.
-          double begin = circle.cornerAngles.empty() ? 0.0 : circle.cornerAngles[arc];
-          double end = circle.cornerAngles.empty()
-                           ? 2.0 * std::numbers::pi
-                           : circle.cornerAngles[(arc + 1) % circle.cornerAngles.size()];
-          if (end <= begin) end += 2.0 * std::numbers::pi;
-
-          consider(circle.direction(begin));
-          consider(circle.direction(end));
-
-          double turning = std::atan2(double3::dot(outward, circle.second), double3::dot(outward, circle.first));
-          for (int half = 0; half < 2; ++half)
-          {
-            for (int lift = 0; lift < 3; ++lift)
-            {
-              double angle = turning + static_cast<double>(half) * std::numbers::pi +
-                             static_cast<double>(lift - 1) * 2.0 * std::numbers::pi;
-              if (angle >= begin && angle <= end) consider(circle.direction(angle));
-            }
-          }
-        }
+        if (!facesAChannel(components.componentOfPatch[image.index][patch])) continue;
+        forEachExtremum(image.index, patch, sphereCentre, [&](const double3& unitDirection)
+                        { result.channel = std::min(result.channel, (sphereCentre + unitDirection * radius - centre).length()); });
       }
     }
   }

@@ -3,6 +3,7 @@
 import std;
 
 import double3;
+import double3x3;
 import unit_cell;
 import randomnumbers;
 import pore_accessibility;
@@ -778,6 +779,71 @@ TEST(exact_void_split, by_components_a_blocking_sphere_holds_no_accessible_point
 
     // The nearest point of the void is an extremum of the sampling, so it comes down to its limit slowly and
     // from above; a few hundredths of an angstrom is as close as this many points get to a waist this narrow.
+    EXPECT_LT(nearest[index], split.pockets[index].channelRadius + 0.15);
+  }
+}
+
+
+// The channel radius is a distance in real space, so it cannot depend on how the lattice is spelled: the same
+// crystal in a skewed basis, where the copy of an atom the fractional rounding puts nearest is not always the
+// nearest, has to give the same pockets with the same radii, and its channel radius has to be the distance to the
+// nearest point of the void around the cages, which is sampled here as the first half of the test above does.
+TEST(exact_void_split, by_components_the_channel_radius_is_the_same_in_a_skewed_cell)
+{
+  const double a = 20.0;
+  const double shellRadius = 3.0;
+  const std::vector<double3> centres{double3(5.0, 5.0, 5.0), double3(14.0, 13.0, 15.0)};
+  std::vector<double3> positions;
+  for (const double3& centre : centres)
+  {
+    for (const double3& position : cageCentres(centre, shellRadius, 32)) positions.push_back(position);
+  }
+
+  UnitCell cubic(a, a, a);
+  // the same lattice: b' = b + a, c' = c + a + b (the cell is skewed, its perpendicular widths are still a)
+  UnitCell skewed(double3x3(double3(a, 0.0, 0.0), double3(a, a, 0.0), double3(a, a, a)));
+  ExactVoidSplit reference = exactVoidSplitByComponents(cageGeometry(cubic, positions, 1.8), cubic.volume);
+  PoreAccessibility geometry = cageGeometry(skewed, positions, 1.8);
+  ExactVoidSplit split = exactVoidSplitByComponents(geometry, skewed.volume);
+
+  ASSERT_TRUE(reference.reliable) << reference.rejection;
+  ASSERT_TRUE(split.reliable) << split.rejection;
+  ASSERT_EQ(reference.pockets.size(), 2uz);
+  ASSERT_EQ(split.pockets.size(), 2uz);
+  if ((split.pockets[0].centre - reference.pockets[0].centre).length() >
+      (split.pockets[1].centre - reference.pockets[0].centre).length())
+  {
+    std::swap(split.pockets[0], split.pockets[1]);
+  }
+  for (std::size_t index = 0; index < 2; ++index)
+  {
+    EXPECT_NEAR(split.pockets[index].volume, reference.pockets[index].volume, 1.0e-6 * reference.pockets[index].volume);
+    EXPECT_NEAR(split.pockets[index].coveringRadius, reference.pockets[index].coveringRadius, 1.0e-6);
+    ASSERT_TRUE(split.pockets[index].hasChannel());
+    EXPECT_NEAR(split.pockets[index].channelRadius, reference.pockets[index].channelRadius, 1.0e-6);
+  }
+
+  std::vector<double> nearest(2, std::numeric_limits<double>::max());
+  RandomNumber random{std::optional<std::size_t>(2029)};
+  for (std::size_t sample = 0; sample < 4000000uz; ++sample)
+  {
+    double3 point = skewed.cell * double3(random.uniform(), random.uniform(), random.uniform());
+    if (geometry.clearance(point) <= 0.0) continue;
+    for (std::size_t index = 0; index < 2; ++index)
+    {
+      // the nearest copy of the point to this pocket's centre, in the void around the cages
+      const double3 delta = skewed.applyPeriodicBoundaryConditions(point - split.pockets[index].centre);
+      const double3 moved = split.pockets[index].centre + delta;
+      const bool aroundTheCages = std::ranges::all_of(
+          centres, [&](const double3& centre)
+          { return skewed.applyPeriodicBoundaryConditions(moved - centre).length() > shellRadius; });
+      if (!aroundTheCages) continue;
+      nearest[index] = std::min(nearest[index], delta.length());
+    }
+  }
+  for (std::size_t index = 0; index < 2; ++index)
+  {
+    EXPECT_GE(nearest[index], split.pockets[index].channelRadius);
     EXPECT_LT(nearest[index], split.pockets[index].channelRadius + 0.15);
   }
 }
