@@ -49,11 +49,9 @@ export struct ApolloniusPoreNetwork
   // narrowest point measured.
   //
   // This is weaker than the diagram's own `verification.isComplete()`, which also asks that every
-  // bisector patch close into a cycle and that no branch direction come out a tie. Both fail routinely
-  // on a symmetric framework, where a sphere tangent to five sites at once is common: more than two
-  // edges of a patch then meet at one vertex, and a fifth site can recede at zero rate along a branch.
-  // Neither counts a node or an arc, and the patches are never read here. A branch sent the wrong way
-  // by such a tie would be: it would leave its triple paired once or three times, which is checked.
+  // bisector patch close into a cycle and that no branch direction come out a tie. Neither counts a node
+  // or an arc, and the patches are never read here. A branch sent the wrong way by such a tie would be:
+  // it would leave its curve paired once or three times, which is checked.
   bool networkIsComplete() const;
 
   // The size of the diagram and what its verification came to, as comment lines, for the header of an

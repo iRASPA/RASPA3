@@ -5,6 +5,7 @@ module skapolloniusdiagram;
 import std;
 
 import int3;
+import double2;
 import double3;
 import double3x3;
 import skvoronoi;
@@ -218,6 +219,15 @@ std::vector<double3> trisectorPointsAtClearance(const std::array<double3, 3>& ce
   return points;
 }
 
+// The pair of directions the angle about the axis of a bisector sheet is measured in.
+std::pair<double3, double3> sheetAngleFrame(const double3& axis)
+{
+  double3 reference = std::abs(axis.x) < 0.9 ? double3(1.0, 0.0, 0.0) : double3(0.0, 1.0, 0.0);
+  double3 inPlane = double3::cross(axis, reference);
+  inPlane = (1.0 / inPlane.length()) * inPlane;
+  return {inPlane, double3::cross(axis, inPlane)};
+}
+
 // A point of the bisector sheet of two sites, at one clearance and one angle about the axis joining their
 // centres. The sheet is one branch of a hyperboloid of revolution about that axis, so at each clearance
 // the two tangent spheres meet in a circle, and the circle shrinks to a point at the apex below which the
@@ -241,12 +251,26 @@ std::optional<double3> bisectorSheetPoint(const double3& firstCentre, double fir
   if (radialSquared < 0.0) return std::nullopt;
   double radial = std::sqrt(radialSquared);
 
-  double3 reference = std::abs(axis.x) < 0.9 ? double3(1.0, 0.0, 0.0) : double3(0.0, 1.0, 0.0);
-  double3 inPlane = double3::cross(axis, reference);
-  inPlane = (1.0 / inPlane.length()) * inPlane;
-  double3 across = double3::cross(axis, inPlane);
-
+  const auto [inPlane, across] = sheetAngleFrame(axis);
   return firstCentre + along * axis + (radial * std::cos(angle)) * inPlane + (radial * std::sin(angle)) * across;
+}
+
+// A point of a bisector sheet the other way about: the sheet laid flat as a disc, with the distance from the
+// centre the clearance above the apex and the angle the angle about the axis. The sheet is one branch of a
+// hyperboloid of revolution, or a plane, and either way this is one to one, so curves on the sheet keep their
+// nesting on the disc.
+double2 flattenedOnSheet(const double3& firstCentre, double firstRadius, const double3& secondCentre,
+                         double secondRadius, const double3& point)
+{
+  double3 axis = secondCentre - firstCentre;
+  double separation = axis.length();
+  axis = (1.0 / separation) * axis;
+  const auto [inPlane, across] = sheetAngleFrame(axis);
+  double3 offset = point - firstCentre;
+  double apex = 0.5 * (separation - firstRadius - secondRadius);
+  double height = std::max(0.0, offset.length() - firstRadius - apex);
+  double angle = std::atan2(double3::dot(offset, across), double3::dot(offset, inPlane));
+  return double2(height * std::cos(angle), height * std::sin(angle));
 }
 
 // Identifies a vertex by its four sites in a translation-invariant way, so that every periodic
@@ -254,7 +278,8 @@ std::optional<double3> bisectorSheetPoint(const double3& firstCentre, double fir
 //
 // The four sites alone are not an identity. A quadruple admits up to two distinct tangent spheres,
 // the two roots of the quadratic, and both can be empty and so both be genuine vertices; Kamarianakis
-// distinguishes them as v_ijkl and v_ikjl by the orientation of the tetrahedron of tangency points.
+// distinguishes them as v_ijkl and v_ikjl by the orientation of the tetrahedron of tangency points, taken here
+// on their directions from the centre.
 // Keying on the sites alone therefore collides two different vertices and silently drops one, which
 // leaves the arcs between them unpaired. `orientation` separates them.
 struct SiteTuple
@@ -401,6 +426,58 @@ SiteTuple canonicalTuple(const std::size_t* indices, const int3* images, std::si
   return key;
 }
 
+// Whether site m, tangent where sites i, j and k are, lies on their curve all along it. The curve is what the two
+// equations of the trisector cut out, and every one of them is a row (c_m - c_i, r_m - r_i, K_m - K_i). A site
+// tangent at a point of the curve has its K settled by its other two entries, so it adds no equation exactly when
+// its first two entries are a combination of those of the two others in the triple.
+bool onCurveOf(const std::vector<double3>& centres, const std::vector<double>& radii, std::size_t i, std::size_t j,
+               std::size_t k, std::size_t m)
+{
+  constexpr double sameCurveTolerance = 1.0e-9;
+  auto row = [&](std::size_t site)
+  {
+    double3 offset = centres[site] - centres[i];
+    return std::array<double, 4>{offset.x, offset.y, offset.z, radii[site] - radii[i]};
+  };
+  auto inner = [](const std::array<double, 4>& lhs, const std::array<double, 4>& rhs)
+  { return lhs[0] * rhs[0] + lhs[1] * rhs[1] + lhs[2] * rhs[2] + lhs[3] * rhs[3]; };
+  auto remove = [&](std::array<double, 4>& from, const std::array<double, 4>& along)
+  {
+    const double share = inner(from, along) / inner(along, along);
+    for (std::size_t c = 0; c < 4; ++c) from[c] -= share * along[c];
+  };
+
+  std::array<double, 4> first = row(j);
+  std::array<double, 4> second = row(k);
+  std::array<double, 4> candidate = row(m);
+  const double size = inner(candidate, candidate);
+  remove(second, first);
+  remove(candidate, first);
+  remove(candidate, second);
+  return inner(candidate, candidate) <= sameCurveTolerance * sameCurveTolerance * size;
+}
+
+// The sites on one curve in cyclic order round its direction, from their unit directions at a point of it.
+std::vector<std::size_t> cyclicOrder(const std::vector<double3>& unitToSite, std::vector<std::size_t> sites,
+                                     const double3& direction)
+{
+  double3 middle(0.0, 0.0, 0.0);
+  for (std::size_t s : sites) middle = middle + unitToSite[s];
+  middle = (1.0 / static_cast<double>(sites.size())) * middle;
+  double3 across = unitToSite[sites[0]] - middle;
+  across = (1.0 / across.length()) * across;
+  double3 round = double3::cross(direction, across);
+  std::vector<std::pair<double, std::size_t>> byAngle;
+  for (std::size_t s : sites)
+  {
+    double3 offset = unitToSite[s] - middle;
+    byAngle.push_back({std::atan2(double3::dot(offset, round), double3::dot(offset, across)), s});
+  }
+  std::sort(byAngle.begin(), byAngle.end());
+  for (std::size_t s = 0; s < sites.size(); ++s) sites[s] = byAngle[s].second;
+  return sites;
+}
+
 // The edges leaving a vertex: which triples of its sites carry one, and in which direction.
 //
 // Wang et al. give the tangent to the trisector of three sites at a point v as the cross product of
@@ -417,11 +494,15 @@ SiteTuple canonicalTuple(const std::size_t* indices, const int3* images, std::si
 // lose both halves, to different sites, and only those triples whose tangency points span a facet of
 // the hull of all of them keep one.
 //
-// A rate too small to have a reliable sign leaves the half undecided: the gap is then governed by
-// curvature rather than slope, which this test cannot see. Rather than guess, such a branch is admitted
-// and reported through `ambiguous`, so that a diagram resting on a guess cannot claim to be consistent.
+// A rate too small to have a reliable sign means one of two things. The site can lie on the same curve as the
+// triple, in which case it is tied with them along the whole of it and there is nothing to decide: every triple
+// of such a set names one curve, so they are one branch and it holds them all, in cyclic order round the direction.
+// The tangency points of those sites are the corners of one facet of the hull, and neighbours along that facet
+// are the cells that meet along the edge. Otherwise the gap is governed by curvature rather than slope, which
+// this test cannot see. Rather than guess, such a branch is admitted and reported through `ambiguous`, so that a
+// diagram resting on a guess cannot claim to be consistent.
 std::vector<SKApolloniusBranch> vertexBranches(const double3& centre, const std::vector<double3>& siteCentres,
-                                              std::size_t& ambiguous)
+                                              const std::vector<double>& siteRadii, std::size_t& ambiguous)
 {
   std::size_t count = siteCentres.size();
   std::vector<double3> unitToSite(count);
@@ -434,6 +515,7 @@ std::vector<SKApolloniusBranch> vertexBranches(const double3& centre, const std:
 
   constexpr double decidableRate = 1.0e-9;
   std::vector<SKApolloniusBranch> branches;
+  std::vector<std::vector<std::size_t>> facets;  // the sites of each branch by position, to know one seen before
   for (std::size_t i = 0; i < count; ++i)
     for (std::size_t j = i + 1; j < count; ++j)
       for (std::size_t k = j + 1; k < count; ++k)
@@ -448,6 +530,7 @@ std::vector<SKApolloniusBranch> vertexBranches(const double3& centre, const std:
           double3 direction = sign * tangent;
           bool outgoing = true;
           bool undecided = false;
+          std::vector<std::size_t> facet{i, j, k};
           for (std::size_t m = 0; m < count && outgoing; ++m)
           {
             if (m == i || m == j || m == k) continue;
@@ -455,31 +538,49 @@ std::vector<SKApolloniusBranch> vertexBranches(const double3& centre, const std:
             if (rate < -decidableRate)
               outgoing = false;
             else if (rate <= decidableRate)
-              undecided = true;
+            {
+              if (onCurveOf(siteCentres, siteRadii, i, j, k, m))
+                facet.push_back(m);
+              else
+                undecided = true;
+            }
           }
           if (!outgoing) continue;
+
+          // The same curve leaving the same way, reached again through another triple of its sites.
+          std::sort(facet.begin(), facet.end());
+          bool seen = false;
+          for (std::size_t b = 0; b < branches.size() && !seen; ++b)
+            seen = facets[b] == facet && double3::dot(branches[b].direction, direction) > 0.0;
+          if (seen) continue;
+
           if (undecided) ++ambiguous;
-          branches.push_back(SKApolloniusBranch{{i, j, k}, direction});
+          facets.push_back(facet);
+          branches.push_back(SKApolloniusBranch{cyclicOrder(unitToSite, facet, direction), direction});
         }
       }
   return branches;
 }
 
-// Orientation of the tetrahedron formed by the points at which a tangent sphere touches its four
-// sites, taken in canonical site order. This is the sign that distinguishes the two vertices a
-// quadruple can support.
-std::int64_t tangencyOrientation(const double3& centre, double radius, const std::array<double3, 4>& siteCentres,
+// Orientation of the tetrahedron of unit directions from the centre of a tangent sphere to its four sites,
+// taken in canonical site order. This is the sign that distinguishes the two vertices a quadruple can support.
+//
+// The directions and not the tangency points themselves, which stand at the signed radius along them. A negative
+// radius puts each point on the far side of the centre, turning the tetrahedron inside out, so one root of each
+// sign would come out with the same sign here and the second to be found be taken for the first. The roots of a
+// quadruple have opposite orientations of their directions whatever the signs of their radii.
+std::int64_t tangencyOrientation(const double3& centre, const std::array<double3, 4>& siteCentres,
                                  const std::array<std::size_t, 4>& permutation)
 {
-  std::array<double3, 4> tangency;
+  std::array<double3, 4> direction;
   for (std::size_t i = 0; i < 4; ++i)
   {
     double3 delta = siteCentres[permutation[i]] - centre;
     double length = delta.length();
-    tangency[i] = (length > 1.0e-12) ? centre + (radius / length) * delta : centre;
+    direction[i] = (length > 1.0e-12) ? (1.0 / length) * delta : double3(0.0, 0.0, 0.0);
   }
-  double determinant = double3::dot(tangency[1] - tangency[0],
-                                    double3::cross(tangency[2] - tangency[0], tangency[3] - tangency[0]));
+  double determinant = double3::dot(direction[1] - direction[0],
+                                    double3::cross(direction[2] - direction[0], direction[3] - direction[0]));
   return (determinant >= 0.0) ? 1 : -1;
 }
 
@@ -909,7 +1010,7 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
             SiteTuple key = canonicalTuple(siteIndices.data(), shiftedImages.data(), 4, unusedOffset, &permutation);
             std::array<double3, 4> shiftedCentres;
             for (std::size_t s = 0; s < 4; ++s) shiftedCentres[s] = centres[s] + latticeShift;
-            key.orientation = tangencyOrientation(wrappedCentre, sphere.radius, shiftedCentres, permutation);
+            key.orientation = tangencyOrientation(wrappedCentre, shiftedCentres, permutation);
             if (vertexLookup.contains(key)) continue;
 
             // Branches are left until the cotangent sets are known, since a vertex found here as a
@@ -924,16 +1025,23 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
         }
   }
 
-  // Each branch of a vertex runs along the trisector of three of its sites, a one-dimensional locus
-  // whose two ends are vertices. So each triple should be met by exactly two branches, and that pairing
-  // is the edge. The branch is carried alongside the vertex, since it holds the direction the arc leaves
-  // in, and since a vertex may meet one triple with two branches when the trisector passes through it.
+  // Each branch of a vertex runs along the trisector of its sites, a one-dimensional locus whose two ends
+  // are vertices. So each curve should be met by exactly two branches, and that pairing is the edge. The
+  // branch is carried alongside the vertex, since it holds the direction the arc leaves in, and since a
+  // vertex may meet one curve with two branches when the trisector passes through it.
+  //
+  // A curve with more than three sites on it is named by three of them, the first three once its sites are
+  // sorted. Sorting by site and then by image is unmoved by a lattice translation, so both ends of an arc, which
+  // see the same sites in frames a translation apart, pick the same three. `carriedTriples` has every triple of
+  // a curve's sites, for the search below for curves that carry no vertex, to which any of them would otherwise
+  // look like a curve of its own.
   struct IncidentBranch
   {
     std::size_t vertex;
     std::size_t branch;
     int3 offset;  // lattice shift canonicalisation applied to reach the key's frame
   };
+  std::unordered_set<SiteTuple, SiteTupleHash> carriedTriples;
   auto buildTripleLookup = [&]()
   {
     std::map<SiteTuple, std::vector<IncidentBranch>> lookup;
@@ -942,15 +1050,33 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       const SKApolloniusVertex& vertex = diagram.vertices[v];
       for (std::size_t b = 0; b < vertex.branches.size(); ++b)
       {
-        std::array<std::size_t, 3> indices;
-        std::array<int3, 3> images;
-        for (std::size_t s = 0; s < 3; ++s)
+        std::vector<std::pair<std::size_t, int3>> curveSites;
+        for (std::size_t position : vertex.branches[b].sites)
+          curveSites.push_back({vertex.siteIndices[position], vertex.siteImages[position]});
+        std::sort(curveSites.begin(), curveSites.end(),
+                  [](const auto& lhs, const auto& rhs)
+                  {
+                    return std::tie(lhs.first, lhs.second.x, lhs.second.y, lhs.second.z) <
+                           std::tie(rhs.first, rhs.second.x, rhs.second.y, rhs.second.z);
+                  });
+
+        auto keyOf = [&](std::size_t first, std::size_t second, std::size_t third, int3& offset)
         {
-          indices[s] = vertex.siteIndices[vertex.branches[b].sites[s]];
-          images[s] = vertex.siteImages[vertex.branches[b].sites[s]];
-        }
+          std::array<std::size_t, 3> indices{curveSites[first].first, curveSites[second].first, curveSites[third].first};
+          std::array<int3, 3> images{curveSites[first].second, curveSites[second].second, curveSites[third].second};
+          return canonicalTuple(indices.data(), images.data(), 3, offset);
+        };
+
+        for (std::size_t first = 0; first < curveSites.size(); ++first)
+          for (std::size_t second = first + 1; second < curveSites.size(); ++second)
+            for (std::size_t third = second + 1; third < curveSites.size(); ++third)
+            {
+              int3 unusedOffset;
+              carriedTriples.insert(keyOf(first, second, third, unusedOffset));
+            }
+
         int3 offset;
-        SiteTuple key = canonicalTuple(indices.data(), images.data(), 3, offset);
+        SiteTuple key = keyOf(0, 1, 2, offset);
         lookup[key].push_back(IncidentBranch{v, b, offset});
       }
     }
@@ -1104,7 +1230,7 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
         SiteTuple newKey = canonicalTuple(quadIndices.data(), shiftedImages.data(), 4, unusedOffset, &permutation);
         std::array<double3, 4> shiftedCentres;
         for (std::size_t s = 0; s < 4; ++s) shiftedCentres[s] = quadCentres[s] + latticeShift;
-        newKey.orientation = tangencyOrientation(wrappedCentre, sphere.radius, shiftedCentres, permutation);
+        newKey.orientation = tangencyOrientation(wrappedCentre, shiftedCentres, permutation);
         if (vertexLookup.contains(newKey)) continue;
 
         vertexLookup.emplace(newKey, diagram.vertices.size());
@@ -1357,13 +1483,16 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
 
       SKApolloniusVertex vertex{leader.position, leader.radius, {}, {}, {}};
       std::vector<double3> siteCentres;
+      std::vector<double> siteRadii;
       for (const auto& [index, image] : cotangent)
       {
         vertex.siteIndices.push_back(index);
         vertex.siteImages.push_back(image);
         siteCentres.push_back(grid.positions[index] + unitCell * double3(image.x, image.y, image.z));
+        siteRadii.push_back(radii[index]);
       }
-      vertex.branches = vertexBranches(vertex.position, siteCentres, diagram.verification.ambiguousBranches);
+      vertex.branches =
+          vertexBranches(vertex.position, siteCentres, siteRadii, diagram.verification.ambiguousBranches);
       if (vertex.siteIndices.size() > 4) ++diagram.verification.degenerateVertices;
       merged.push_back(std::move(vertex));
     }
@@ -1371,6 +1500,9 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
   }
 
   std::map<SiteTuple, std::vector<IncidentBranch>> tripleLookup = buildTripleLookup();
+
+  // Each arc's samples in order, in its own frame, for what the faces below need to know about where it runs.
+  std::map<std::size_t, std::vector<double3>> arcPaths;
 
   for (const auto& [key, incident] : tripleLookup)
   {
@@ -1382,6 +1514,9 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       // clearance, lying inside the spheres, at which the arc leaves the free region. Such an arc is
       // clipped rather than absent, and is counted apart from a genuine pairing failure.
       ++diagram.verification.truncatedTriples;
+      if (!incident.empty())
+        diagram.verification.truncatedSheets +=
+            diagram.vertices[incident.front().vertex].branches[incident.front().branch].sites.size();
       continue;
     }
 
@@ -1555,6 +1690,7 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
     struct OrderedVertex
     {
       std::size_t vertex;
+      std::size_t branch;
       int3 offset;
       double along;  // position along the curve, increasing the way the ordering runs
       bool forward;  // whether the edge leaves along the direction the ordering runs
@@ -1599,7 +1735,7 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
         }
       }
 
-      ordered.push_back(OrderedVertex{entry.vertex, entry.offset, along, forward});
+      ordered.push_back(OrderedVertex{entry.vertex, entry.branch, entry.offset, along, forward});
     }
     if (ordered.size() < 2)
     {
@@ -1857,8 +1993,22 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       double tangentLength = tangent.length();
       double3 direction = tangentLength > 0.0 ? tangent / tangentLength : double3(0.0, 0.0, 0.0);
 
-      diagram.edges.push_back(SKApolloniusEdge{fromVertex, toVertex, toImage, indices, images, clearance[narrowest],
-                                               curve[narrowest], direction, length, false});
+      arcPaths[diagram.edges.size()] = std::vector<double3>(curve.begin(), curve.begin() + sampleCount + 1);
+
+      // Every site on the curve rather than the three that named it, as the vertex it leaves sees them, which is
+      // the frame the edge records them in.
+      const SKApolloniusVertex& start = diagram.vertices[fromVertex];
+      std::vector<std::size_t> curveIndices;
+      std::vector<int3> curveImages;
+      for (std::size_t position : start.branches[ordered[p].branch].sites)
+      {
+        curveIndices.push_back(start.siteIndices[position]);
+        curveImages.push_back(start.siteImages[position]);
+      }
+
+      diagram.edges.push_back(SKApolloniusEdge{fromVertex, toVertex, toImage, std::move(curveIndices),
+                                               std::move(curveImages), clearance[narrowest], curve[narrowest],
+                                               direction, length, false});
     }
   }
 
@@ -1878,10 +2028,6 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
   // its own or is a hole in a larger one.
   std::map<std::size_t, double> ringTopClearance;
   {
-    double smallestRadius = std::numeric_limits<double>::max();
-    for (double radius : radii) smallestRadius = std::min(smallestRadius, radius);
-    double lowestClearance = allowNegativeRadius ? -smallestRadius : 0.0;
-
     constexpr std::size_t bracketSamples = 192;
     constexpr std::size_t traverseSamples = 96;
     constexpr std::size_t bisectionSteps = 40;
@@ -1894,7 +2040,7 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
 
     for (const SiteTuple& key : ringCandidates)
     {
-      if (tripleLookup.contains(key)) continue;  // the curve already carries vertices
+      if (carriedTriples.contains(key)) continue;  // the curve already carries vertices
 
       std::array<std::size_t, 3> indices;
       std::array<int3, 3> images;
@@ -1909,6 +2055,11 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
         centres[s] = grid.positions[indices[s]] + unitCell * double3(images[s].x, images[s].y, images[s].z);
         tripleRadii[s] = radii[indices[s]];
       }
+
+      // How deep the curve can go inside the sites is limited by its own three alone, each being tangent only
+      // as far as its own radius. Another site, however small, has no say in it.
+      double lowestClearance =
+          allowNegativeRadius ? -std::min({tripleRadii[0], tripleRadii[1], tripleRadii[2]}) : 0.0;
 
       // An open trisector reaches every clearance above its minimum, so if the curve still exists at the
       // largest clearance any empty sphere can have, it is not closed and is not what is sought here.
@@ -2012,10 +2163,74 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       }
       double chordLength = chord.length();
 
+      // Further sites on the same curve make it the curve of every triple of them, and it is one ring. They are
+      // all tied with the three at any point of it, and the triples of them are then not to be tried again.
+      const double3 onRing = previousOnBranch[0].has_value() ? firstOnBranch[0] : firstOnBranch[1];
+      const double3 wrappedOnRing = unitCell * double3::fract(inverseCell * onRing);
+      const double3 wrapFractional = inverseCell * (wrappedOnRing - onRing);
+      const int3 wrap(static_cast<std::int32_t>(std::llround(wrapFractional.x)),
+                      static_cast<std::int32_t>(std::llround(wrapFractional.y)),
+                      static_cast<std::int32_t>(std::llround(wrapFractional.z)));
+      std::vector<std::size_t> ringIndices(indices.begin(), indices.end());
+      std::vector<int3> ringImages(images.begin(), images.end());
+      std::vector<double3> ringCentres(centres.begin(), centres.end());
+      std::vector<double> ringRadii(tripleRadii.begin(), tripleRadii.end());
+      grid.forEachNear(wrappedOnRing, std::max(0.0, minimumClearance + maximumRadius) + intrusionTolerance,
+                       [&](std::size_t j, const double3& image, const int3& imageOffset)
+                       {
+                         if (std::abs((wrappedOnRing - image).length() - radii[j] - minimumClearance) > intrusionTolerance)
+                           return;
+                         int3 inFrame(imageOffset.x - wrap.x, imageOffset.y - wrap.y, imageOffset.z - wrap.z);
+                         for (std::size_t s = 0; s < 3; ++s)
+                           if (indices[s] == j && images[s].x == inFrame.x && images[s].y == inFrame.y &&
+                               images[s].z == inFrame.z)
+                             return;
+                         ringCentres.push_back(grid.positions[j] +
+                                               unitCell * double3(inFrame.x, inFrame.y, inFrame.z));
+                         ringRadii.push_back(radii[j]);
+                         if (!onCurveOf(ringCentres, ringRadii, 0, 1, 2, ringCentres.size() - 1))
+                         {
+                           ringCentres.pop_back();
+                           ringRadii.pop_back();
+                           return;
+                         }
+                         ringIndices.push_back(j);
+                         ringImages.push_back(inFrame);
+                       });
+      if (ringIndices.size() > 3)
+      {
+        for (std::size_t first = 0; first < ringIndices.size(); ++first)
+          for (std::size_t second = first + 1; second < ringIndices.size(); ++second)
+            for (std::size_t third = second + 1; third < ringIndices.size(); ++third)
+            {
+              std::array<std::size_t, 3> tripleIndices{ringIndices[first], ringIndices[second], ringIndices[third]};
+              std::array<int3, 3> tripleImages{ringImages[first], ringImages[second], ringImages[third]};
+              int3 unusedOffset;
+              carriedTriples.insert(canonicalTuple(tripleIndices.data(), tripleImages.data(), 3, unusedOffset));
+            }
+
+        std::vector<double3> unitToSite;
+        for (const double3& site : ringCentres) unitToSite.push_back(double3::normalize(onRing - site));
+        double3 tangent = double3::normalize(
+            double3::cross(unitToSite[0] - unitToSite[1], unitToSite[1] - unitToSite[2]));
+        std::vector<std::size_t> positions(ringIndices.size());
+        std::iota(positions.begin(), positions.end(), 0uz);
+        positions = cyclicOrder(unitToSite, positions, tangent);
+        std::vector<std::size_t> orderedIndices;
+        std::vector<int3> orderedImages;
+        for (std::size_t position : positions)
+        {
+          orderedIndices.push_back(ringIndices[position]);
+          orderedImages.push_back(ringImages[position]);
+        }
+        ringIndices = std::move(orderedIndices);
+        ringImages = std::move(orderedImages);
+      }
+
       ringTopClearance[diagram.edges.size()] = maximumClearance;
       diagram.edges.push_back(SKApolloniusEdge{std::numeric_limits<std::size_t>::max(),
-                                               std::numeric_limits<std::size_t>::max(), int3(0, 0, 0), indices, images,
-                                               minimumClearance, pinch,
+                                               std::numeric_limits<std::size_t>::max(), int3(0, 0, 0),
+                                               std::move(ringIndices), std::move(ringImages), minimumClearance, pinch,
                                                chordLength > 0.0 ? chord / chordLength : double3(0.0, 0.0, 0.0), length,
                                                true});
       ++diagram.verification.vertexlessLoops;
@@ -2058,11 +2273,12 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
 
   for (std::size_t e = 0; e < diagram.edges.size(); ++e)
   {
+    // Only neighbours round an edge share a surface along it. With three sites every pair is that.
     const SKApolloniusEdge& edge = diagram.edges[e];
-    for (std::size_t s = 0; s < 3; ++s)
-      for (std::size_t o = 0; o < 3; ++o)
+    const std::size_t siteCount = edge.siteIndices.size();
+    for (std::size_t s = 0; s < siteCount; ++s)
+      for (std::size_t o : {(s + 1) % siteCount, (s + siteCount - 1) % siteCount})
       {
-        if (s == o) continue;
         int3 relative(edge.siteImages[o].x - edge.siteImages[s].x, edge.siteImages[o].y - edge.siteImages[s].y,
                       edge.siteImages[o].z - edge.siteImages[s].z);
         SiteTuple key = faceKey(edge.siteIndices[s], edge.siteIndices[o], relative);
@@ -2077,7 +2293,8 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
   // A ring is a closed curve confined to the band of clearances it spans, and its own trisector is the
   // only place on the surface where the third site is exactly as near, so the parts of the surface below
   // and above that band each lie wholly on one side of the ring. The diagram keeps the side where the
-  // third site is the farther one, so testing that site just outside the band settles which side that is.
+  // third site is the farther one, so testing that site just outside the band settles which side that is. With
+  // more sites on the curve every one of the others has to be the farther.
   // If either part beyond the band is kept, the region next to the ring reaches past it and the ring is
   // one boundary component of a larger region, a hole punched in it. If neither is, the region is the disc
   // the ring encloses and the ring bounds a face on its own, which is the face hump of Wang et al.,
@@ -2088,14 +2305,11 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
     auto found = ringTopClearance.find(patchEdge.edgeIndex);
     if (found == ringTopClearance.end()) return true;
 
-    std::size_t thirdLocal = 3 - patchEdge.ownerLocal - patchEdge.otherLocal;
     auto centreOf = [&](std::size_t local)
     {
       return grid.positions[ring.siteIndices[local]] +
              unitCell * double3(ring.siteImages[local].x, ring.siteImages[local].y, ring.siteImages[local].z);
     };
-    double3 thirdCentre = centreOf(thirdLocal);
-    double thirdRadius = radii[ring.siteIndices[thirdLocal]];
 
     double margin = std::max(1.0e-6, 1.0e-3 * (found->second - ring.bottleneckRadius));
     for (double clearance : {ring.bottleneckRadius - margin, found->second + margin})
@@ -2105,7 +2319,14 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
                              centreOf(patchEdge.otherLocal), radii[ring.siteIndices[patchEdge.otherLocal]], clearance,
                              0.0);
       if (!point.has_value()) continue;
-      if ((point.value() - thirdCentre).length() - thirdRadius > clearance) return false;
+
+      bool kept = true;
+      for (std::size_t local = 0; local < ring.siteIndices.size() && kept; ++local)
+      {
+        if (local == patchEdge.ownerLocal || local == patchEdge.otherLocal) continue;
+        kept = (point.value() - centreOf(local)).length() - radii[ring.siteIndices[local]] > clearance;
+      }
+      if (kept) return false;
     }
     return true;
   };
@@ -2114,10 +2335,166 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
   // connected components of the surface's boundary. Rings meet nothing and so cannot be placed that way;
   // each is instead assigned to the region it bounds, which is either a region already found, as one more
   // boundary component of it, or a region of its own.
+  //
+  // A surface lives in the frame of its owning site, and in that frame a corner is a vertex together with the
+  // lattice image it is seen in. Edges record their sites as seen from `from` where it stands and `to` at
+  // `toImage` from it, so the owner's own image is what is taken off both. Different images of one vertex are
+  // different corners, which a small or symmetric cell can put several of on one surface: read as one corner,
+  // they would join regions that do not meet and leave a closed face looking as if four edges met at a corner.
+  using FaceCorner = std::array<std::int64_t, 4>;
+  auto cornersOf = [&](const PatchEdge& patchEdge)
+  {
+    const SKApolloniusEdge& edge = diagram.edges[patchEdge.edgeIndex];
+    const int3& owner = edge.siteImages[patchEdge.ownerLocal];
+    return std::array<FaceCorner, 2>{
+        FaceCorner{static_cast<std::int64_t>(edge.from), -owner.x, -owner.y, -owner.z},
+        FaceCorner{static_cast<std::int64_t>(edge.to), edge.toImage.x - owner.x, edge.toImage.y - owner.y,
+                   edge.toImage.z - owner.z}};
+  };
+
+  // A region of a surface can have several boundaries with vertices on them, an outer rim and a hole bitten out of
+  // the middle, and those are not connected through any corner. On the surface laid flat a closed boundary is a
+  // loop, and a loop directly inside another bounds the same region exactly when the surface between them is in
+  // the diagram, which a point just outside the inner one settles.
+  //
+  // A boundary that does not close, cut off by the free region, has no inside to speak of and is left as it is.
+  auto joinLoopsOfOneRegion = [&](const PrimitivePatch& patch, std::map<FaceCorner, FaceCorner>& parent, auto&& find)
+  {
+    std::map<FaceCorner, std::vector<std::size_t>> edgesOfComponent;
+    for (std::size_t e = 0; e < patch.edges.size(); ++e)
+      if (!diagram.edges[patch.edges[e].edgeIndex].isLoop)
+        edgesOfComponent[find(cornersOf(patch.edges[e])[0])].push_back(e);
+    if (edgesOfComponent.size() < 2) return;
+
+    const double3 ownerCentre = grid.positions[patch.owner];
+    const double3 otherCentre =
+        grid.positions[patch.other] + unitCell * double3(patch.relativeImage.x, patch.relativeImage.y, patch.relativeImage.z);
+    const double ownerRadius = radii[patch.owner];
+    const double otherRadius = radii[patch.other];
+
+    struct Loop
+    {
+      FaceCorner member;
+      std::vector<double2> outline;
+      std::vector<std::size_t> arcMiddles;  // samples in the middle of an arc, where the curve has no corner
+      double area;
+    };
+    std::vector<Loop> loops;
+    for (const auto& [root, members] : edgesOfComponent)
+    {
+      // Each corner of a closed boundary is met by two of its edges, so walking from one comes back to it.
+      std::map<FaceCorner, std::vector<std::size_t>> atCorner;
+      for (std::size_t e : members)
+        for (const FaceCorner& corner : cornersOf(patch.edges[e])) atCorner[corner].push_back(e);
+      bool closed = true;
+      for (const auto& [corner, meeting] : atCorner) closed = closed && meeting.size() == 2;
+      if (!closed) continue;
+
+      Loop loop{root, {}, {}, 0.0};
+      std::set<std::size_t> walked;
+      FaceCorner corner = cornersOf(patch.edges[members.front()])[0];
+      for (std::size_t step = 0; step < members.size(); ++step)
+      {
+        std::size_t e = walked.contains(atCorner[corner][0]) ? atCorner[corner][1] : atCorner[corner][0];
+        if (!walked.insert(e).second) break;
+        const PatchEdge& patchEdge = patch.edges[e];
+        const std::array<FaceCorner, 2> corners = cornersOf(patchEdge);
+        const bool forwards = corners[0] == corner;
+        const int3& owner = diagram.edges[patchEdge.edgeIndex].siteImages[patchEdge.ownerLocal];
+        const double3 toOwner = unitCell * double3(owner.x, owner.y, owner.z);
+        std::vector<double3> path = arcPaths.at(patchEdge.edgeIndex);
+        if (!forwards) std::reverse(path.begin(), path.end());
+        loop.arcMiddles.push_back(loop.outline.size() + path.size() / 2);
+        for (std::size_t sample = 0; sample + 1 < path.size(); ++sample)
+          loop.outline.push_back(
+              flattenedOnSheet(ownerCentre, ownerRadius, otherCentre, otherRadius, path[sample] - toOwner));
+        corner = forwards ? corners[1] : corners[0];
+      }
+      for (std::size_t i = 0; i < loop.outline.size(); ++i)
+      {
+        const double2& a = loop.outline[i];
+        const double2& b = loop.outline[(i + 1) % loop.outline.size()];
+        loop.area += 0.5 * (a.x * b.y - a.y * b.x);
+      }
+      loop.area = std::abs(loop.area);
+      loops.push_back(std::move(loop));
+    }
+
+    auto inside = [](const std::vector<double2>& outline, const double2& point)
+    {
+      bool in = false;
+      for (std::size_t i = 0, j = outline.size() - 1; i < outline.size(); j = i++)
+        if ((outline[i].y > point.y) != (outline[j].y > point.y) &&
+            point.x < outline[i].x + (outline[j].x - outline[i].x) * (point.y - outline[i].y) / (outline[j].y - outline[i].y))
+          in = !in;
+      return in;
+    };
+
+    for (const Loop& hole : loops)
+    {
+      // The smallest of the loops holding this one is the one directly around it.
+      const Loop* around = nullptr;
+      for (const Loop& candidate : loops)
+        if (&candidate != &hole && candidate.area > hole.area && inside(candidate.outline, hole.outline.front()) &&
+            (around == nullptr || candidate.area < around->area))
+          around = &candidate;
+      if (around == nullptr) continue;
+
+      // Off the loop on the side away from its inside, from where it runs longest between samples. The start has to
+      // be a sample, which is on the curve; the outline between two samples cuts inside a curved hole by more than
+      // a small step off it, so that a point just outside the outline there may still be in the hole.
+      const std::size_t count = hole.outline.size();
+      std::size_t longest = count;
+      double longestLength = 0.0;
+      for (std::size_t i : hole.arcMiddles)
+      {
+        const double2 chord = hole.outline[(i + 1) % count] - hole.outline[(i + count - 1) % count];
+        const double stretch = std::sqrt(double2::dot(chord, chord));
+        if (stretch > longestLength)
+        {
+          longestLength = stretch;
+          longest = i;
+        }
+      }
+      if (longest == count) continue;
+      const double2& onLoop = hole.outline[longest];
+      const double2 chord = hole.outline[(longest + 1) % count] - hole.outline[(longest + count - 1) % count];
+      const double stepOff = std::min(1.0e-4, 0.25 * longestLength);
+      const double2 normal(-chord.y * stepOff / longestLength, chord.x * stepOff / longestLength);
+      double2 outside = onLoop + normal;
+      if (inside(hole.outline, outside)) outside = onLoop - normal;
+
+      const double height = std::sqrt(double2::dot(outside, outside));
+      const double apex = 0.5 * ((otherCentre - ownerCentre).length() - ownerRadius - otherRadius);
+      const double clearance = apex + height;
+      std::optional<double3> point = bisectorSheetPoint(ownerCentre, ownerRadius, otherCentre, otherRadius, clearance,
+                                                        std::atan2(outside.y, outside.x));
+      if (!point.has_value()) continue;
+
+      const double3 wrapped = unitCell * double3::fract(inverseCell * point.value());
+      bool kept = true;
+      grid.forEachNear(wrapped, std::max(0.0, clearance + maximumRadius),
+                       [&](std::size_t j, const double3& image, const int3&)
+                       {
+                         if ((wrapped - image).length() - radii[j] < clearance - 1.0e-9) kept = false;
+                       });
+      if (!kept) continue;
+
+      FaceCorner left = find(hole.member);
+      FaceCorner right = find(around->member);
+      if (left != right) parent[left] = right;
+    }
+  };
+
+  // Per face, how many of its edges meet each of its corners, kept alongside the faces because only here is it
+  // known which of an edge's sites the face belongs to. An edge whose sites are images of one another can lie on
+  // the same surface twice, in two different lifts.
+  std::vector<std::map<FaceCorner, std::size_t>> cornerDegrees;
+
   for (const PrimitivePatch& patch : patches)
   {
-    std::map<std::size_t, std::size_t> parent;
-    auto find = [&parent](std::size_t node)
+    std::map<FaceCorner, FaceCorner> parent;
+    auto find = [&parent](FaceCorner node)
     {
       while (parent[node] != node) node = parent[node] = parent[parent[node]];
       return node;
@@ -2125,26 +2502,32 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
     for (const PatchEdge& patchEdge : patch.edges)
     {
       if (diagram.edges[patchEdge.edgeIndex].isLoop) continue;
-      for (std::size_t endpoint : {diagram.edges[patchEdge.edgeIndex].from, diagram.edges[patchEdge.edgeIndex].to})
-        parent.try_emplace(endpoint, endpoint);
+      for (const FaceCorner& corner : cornersOf(patchEdge)) parent.try_emplace(corner, corner);
     }
     for (const PatchEdge& patchEdge : patch.edges)
     {
       if (diagram.edges[patchEdge.edgeIndex].isLoop) continue;
-      std::size_t left = find(diagram.edges[patchEdge.edgeIndex].from);
-      std::size_t right = find(diagram.edges[patchEdge.edgeIndex].to);
+      const std::array<FaceCorner, 2> corners = cornersOf(patchEdge);
+      FaceCorner left = find(corners[0]);
+      FaceCorner right = find(corners[1]);
       if (left != right) parent[left] = right;
     }
+    joinLoopsOfOneRegion(patch, parent, find);
 
-    std::map<std::size_t, std::size_t> componentFace;
+    std::map<FaceCorner, std::size_t> componentFace;
     for (const PatchEdge& patchEdge : patch.edges)
     {
       if (diagram.edges[patchEdge.edgeIndex].isLoop) continue;
-      std::size_t root = find(diagram.edges[patchEdge.edgeIndex].from);
+      const std::array<FaceCorner, 2> corners = cornersOf(patchEdge);
+      FaceCorner root = find(corners[0]);
       auto [iterator, inserted] = componentFace.try_emplace(root, diagram.faces.size());
       if (inserted)
+      {
         diagram.faces.push_back(SKApolloniusFace{patch.owner, patch.other, patch.relativeImage, {}, false});
+        cornerDegrees.emplace_back();
+      }
       diagram.faces[iterator->second].edgeIndices.push_back(patchEdge.edgeIndex);
+      for (const FaceCorner& corner : corners) ++cornerDegrees[iterator->second][corner];
     }
 
     for (const PatchEdge& patchEdge : patch.edges)
@@ -2164,23 +2547,18 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
 
       diagram.faces.push_back(
           SKApolloniusFace{patch.owner, patch.other, patch.relativeImage, {patchEdge.edgeIndex}, true});
+      cornerDegrees.emplace_back();
     }
   }
 
   // A patch closes when every vertex on its boundary is met by exactly two of its edges. A ring carries no
   // vertex, so it neither satisfies nor violates that condition, and a face bounded only by rings is closed
   // by construction.
-  for (SKApolloniusFace& face : diagram.faces)
+  for (std::size_t f = 0; f < diagram.faces.size(); ++f)
   {
-    std::map<std::size_t, std::size_t> incidence;
-    for (std::size_t e : face.edgeIndices)
-    {
-      if (diagram.edges[e].isLoop) continue;
-      ++incidence[diagram.edges[e].from];
-      ++incidence[diagram.edges[e].to];
-    }
+    SKApolloniusFace& face = diagram.faces[f];
     face.isClosed = !face.edgeIndices.empty();
-    for (const auto& [vertex, degree] : incidence)
+    for (const auto& [corner, degree] : cornerDegrees[f])
       if (degree != 2) face.isClosed = false;
     if (!face.isClosed) ++diagram.verification.unclosedFaces;
   }

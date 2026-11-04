@@ -125,8 +125,12 @@ import double3x3;
 // case above. This is not left as an argument: a test sweeps every bisector patch in clearance and angle,
 // counts the regions on the surface itself, and requires the diagram to hold exactly one face for each.
 
-// One edge leaving a vertex: the triple of the vertex's sites whose trisector it runs along, named by
-// position in the vertex's site list, and the direction it sets off in.
+// One edge leaving a vertex: the vertex's sites whose common curve it runs along, named by position in the
+// vertex's site list, and the direction it sets off in. That is three sites in the general case. It is more
+// where further sites stay at the same clearance along the whole of the curve rather than only at the vertex,
+// as the four corners of the square round a line of a cubic lattice do, and every triple of them then names the
+// one curve. They are kept in cyclic order round `direction`, in which neighbours are the sites whose cells meet
+// along the edge; sites that are not neighbours touch only along it and share no face.
 //
 // The trisector runs through the vertex both ways but only one half need be in the diagram, since on
 // the other half a site outside the triple may be the nearer. `direction` is a half that is, following
@@ -134,8 +138,8 @@ import double3x3;
 // whose vertex record likewise carries a tangent per outgoing edge.
 export struct SKApolloniusBranch
 {
-  std::array<std::size_t, 3> sites;  // positions within the vertex's site list
-  double3 direction;                 // unit outgoing direction along the trisector
+  std::vector<std::size_t> sites;  // positions within the vertex's site list, in cyclic order
+  double3 direction;               // unit outgoing direction along the trisector
 };
 
 // A vertex of the diagram: the centre of a sphere tangent to, and outside, four or more sites. Sites
@@ -146,8 +150,10 @@ export struct SKApolloniusBranch
 // vertex of the diagram belonging to all of them, not several vertices at one point, and it is held as
 // one here: `siteIndices` carries the whole cotangent set. It is then no longer true that every triple
 // of the sites carries an edge, so the edges are listed explicitly in `branches` rather than being
-// implied by the sites. Where the tangency points are in general position on the tangent sphere their
-// convex hull is simplicial and a set of n sites yields 2n - 4 branches, which is 4 when n is 4.
+// implied by the sites. There is one branch to a facet of the convex hull of the tangency points. Where
+// those points are in general position the hull is simplicial and a set of n sites yields 2n - 4
+// branches, which is 4 when n is 4; a facet with more corners, a square of a cube say, is fewer branches
+// and more sites to each of them.
 export struct SKApolloniusVertex
 {
   double3 position;  // Cartesian, wrapped into the home unit cell [Å]
@@ -157,9 +163,10 @@ export struct SKApolloniusVertex
   std::vector<SKApolloniusBranch> branches;  // one per edge leaving the vertex
 };
 
-// An edge: the arc of the trisector curve of three sites running between two vertices. Along it
-// the clearance is stationary with respect to those three sites, so its narrowest point is the
-// bottleneck a probe must pass to travel between the two vertices.
+// An edge: the arc of the trisector curve of three or more sites running between two vertices. Along it
+// the clearance is stationary with respect to those sites, so its narrowest point is the bottleneck a
+// probe must pass to travel between the two vertices. Each geometric arc is one edge, however many sites
+// lie on its curve; those sites are in cyclic order round it, as on `SKApolloniusBranch`.
 //
 // An edge need not have endpoints. When no fourth site ever intrudes on a trisector, the curve is
 // closed and carries no vertex, and the whole of it is one edge: a ring-shaped channel. Then `isLoop`
@@ -176,13 +183,13 @@ export struct SKApolloniusEdge
   std::size_t from;
   std::size_t to;
   int3 toImage;  // lattice shift applied to `to` to place it at the far end of this arc
-  std::array<std::size_t, 3> siteIndices;
-  std::array<int3, 3> siteImages;  // images as seen from `from`
-  double bottleneckRadius;         // smallest tangent-sphere radius along the arc [Å]
-  double3 bottleneckPosition;      // where along the arc that narrowest point sits [Å]
-  double3 bottleneckDirection;     // unit tangent of the arc there, the direction the passage runs in
-  double length;                   // arc length [Å]
-  bool isLoop;                     // closed trisector carrying no vertex; `from` and `to` unused
+  std::vector<std::size_t> siteIndices;
+  std::vector<int3> siteImages;  // images as seen from `from`
+  double bottleneckRadius;       // smallest tangent-sphere radius along the arc [Å]
+  double3 bottleneckPosition;    // where along the arc that narrowest point sits [Å]
+  double3 bottleneckDirection;   // unit tangent of the arc there, the direction the passage runs in
+  double length;                 // arc length [Å]
+  bool isLoop;                   // closed trisector carrying no vertex; `from` and `to` unused
 };
 
 // A face: a connected region of the clearance bisector sheet between two sites, one face per site so
@@ -197,8 +204,9 @@ export struct SKApolloniusEdge
 // face per sheet instead of one per region is what makes Euler's formula miss.
 //
 // A region need not be a disc either. Its boundary can have several components: an outer rim of arcs
-// together with holes bitten out of its middle, each hole a closed trisector carrying no vertex. All of
-// them appear in `edgeIndices`, which is why that is a set and not a cycle.
+// together with holes bitten out of its middle, each hole a closed trisector carrying no vertex or a loop
+// of arcs with vertices on it. All of them appear in `edgeIndices`, which is why that is a set and not a
+// cycle.
 export struct SKApolloniusFace
 {
   std::size_t site1;
@@ -256,6 +264,7 @@ export struct SKApolloniusDiagram
     std::size_t verticesOfFullValence{0};  // vertices carrying an edge along every branch
     std::size_t unpairedTriples{0};        // triples that could not be paired along their trisector
     std::size_t truncatedTriples{0};       // arcs clipped by the boundary of the free region
+    std::size_t truncatedSheets{0};        // bisector sheets those arcs border, one per neighbouring pair of sites
     std::size_t overpairedTriples{0};      // triples seen more than twice, i.e. degenerate
     std::size_t coincidentVertices{0};     // distinct vertices left sharing a position, which is a defect
     std::size_t unclosedFaces{0};
@@ -280,8 +289,8 @@ export struct SKApolloniusDiagram
     // True when the complex closes as far as the free region allows: every triple is paired except
     // those clipped by the boundary, every vertex carries an edge along each of its branches except
     // where a clipped arc leaves it one short, and no face is left open except around a clipped arc. An
-    // arc lies on the trisector of three sites and so borders three bisector patches, one for each pair
-    // among them, which bounds how many faces one clipped arc can leave unclosed.
+    // arc borders one bisector patch per neighbouring pair of its sites, three of them in the general case,
+    // which bounds how many faces one clipped arc can leave unclosed.
     //
     // Two vertices at one point would be a cotangent set that failed to be gathered into the single
     // vertex it is, and a branch of undecided direction is an edge that may have been sent the wrong way,
@@ -290,7 +299,7 @@ export struct SKApolloniusDiagram
     {
       return vertexCount > 0 && coincidentVertices == 0 && ambiguousBranches == 0 && unpairedTriples == 0 &&
              overpairedTriples == 0 && unsampledArcs == 0 &&
-             verticesOfFullValence + truncatedTriples >= vertexCount && unclosedFaces <= 3 * truncatedTriples;
+             verticesOfFullValence + truncatedTriples >= vertexCount && unclosedFaces <= truncatedSheets;
     }
   };
 

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <format>
 #include <functional>
 #include <limits>
 #include <map>
@@ -9,6 +10,7 @@
 #include <optional>
 #include <random>
 #include <set>
+#include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -466,7 +468,7 @@ TEST(apollonius, complex_closes_on_well_behaved_sites)
 
   // An open face can only be one bordering a clipped arc, and an arc borders the three bisector
   // patches of the three pairs among its sites.
-  EXPECT_LE(diagram.verification.unclosedFaces, 3 * diagram.verification.truncatedTriples);
+  EXPECT_LE(diagram.verification.unclosedFaces, diagram.verification.truncatedSheets);
 }
 
 // Over all of space nothing is clipped, so the identities that the free-region diagram can only
@@ -959,7 +961,7 @@ TEST(apollonius, verification_reports_incomplete_rather_than_hiding_it)
             diagram.verification.verticesOfFullValence + diagram.verification.truncatedTriples >=
                     diagram.verification.vertexCount &&
                 diagram.verification.unpairedTriples == 0 && diagram.verification.overpairedTriples == 0 &&
-                diagram.verification.unclosedFaces <= 3 * diagram.verification.truncatedTriples);
+                diagram.verification.unclosedFaces <= diagram.verification.truncatedSheets);
 }
 
 // The deepest vertex of the diagram is the largest sphere that fits anywhere. Validated against a
@@ -1347,4 +1349,498 @@ TEST(apollonius, nearly_collinear_centres_close_the_complex_too)
               0)
         << "at displacement " << displacement;
   }
+}
+
+
+namespace
+{
+// What the faces of a diagram ought to be, worked out from its edges alone. A bisector surface lives in the frame
+// of its owning site, with the other site at `site2Image` from it, and the corner of a face in that frame is a
+// vertex together with the lattice image it is seen in. Different images of one vertex are different corners, which
+// in a small cell the same surface meets many of.
+struct LiftedFaces
+{
+  std::size_t corners{0};
+  std::size_t cornersNotMetTwice{0};
+  std::size_t expectedFaces{0};  // components of the lifted edges, over all the surfaces
+  std::size_t actualFaces{0};    // faces of the diagram with such edges
+  std::size_t surfacesSplitWrongly{0};
+  std::vector<std::tuple<std::size_t, std::size_t, int, int, int>> surfacesWithFewerFaces;
+};
+
+LiftedFaces liftedFaces(const SKApolloniusDiagram& diagram)
+{
+  using Surface = std::tuple<std::size_t, std::size_t, int, int, int>;
+  using Corner = std::tuple<std::size_t, int, int, int>;
+
+  std::map<Surface, std::vector<std::pair<Corner, Corner>>> surfaces;
+  for (const SKApolloniusEdge& edge : diagram.edges)
+  {
+    if (edge.isLoop) continue;
+    // The sites of an edge are in cyclic order round it, and only neighbours in that order share a surface.
+    const std::size_t count = edge.siteIndices.size();
+    for (std::size_t s = 0; s < count; ++s)
+      for (std::size_t o : {(s + 1) % count, (s + count - 1) % count})
+      {
+        const int3 owner = edge.siteImages[s];
+        const int3 other = edge.siteImages[o];
+        surfaces[{edge.siteIndices[s], edge.siteIndices[o], other.x - owner.x, other.y - owner.y, other.z - owner.z}]
+            .push_back({Corner{edge.from, -owner.x, -owner.y, -owner.z},
+                        Corner{edge.to, edge.toImage.x - owner.x, edge.toImage.y - owner.y, edge.toImage.z - owner.z}});
+      }
+  }
+
+  std::map<Surface, std::size_t> actual;
+  for (const SKApolloniusFace& face : diagram.faces)
+  {
+    bool hasCorners = false;
+    for (std::size_t e : face.edgeIndices) hasCorners = hasCorners || !diagram.edges[e].isLoop;
+    if (hasCorners) ++actual[{face.site1, face.site2, face.site2Image.x, face.site2Image.y, face.site2Image.z}];
+  }
+
+  LiftedFaces result;
+  for (const auto& [surface, edges] : surfaces)
+  {
+    std::map<Corner, Corner> parent;
+    std::map<Corner, std::size_t> degree;
+    std::function<Corner(const Corner&)> find = [&](const Corner& corner) -> Corner
+    {
+      const Corner up = parent.at(corner);
+      return up == corner ? corner : find(up);
+    };
+    for (const auto& [from, to] : edges)
+    {
+      parent.try_emplace(from, from);
+      parent.try_emplace(to, to);
+      ++degree[from];
+      ++degree[to];
+    }
+    for (const auto& [from, to] : edges) parent[find(from)] = find(to);
+
+    std::size_t components = 0;
+    for (const auto& [corner, up] : parent)
+      if (corner == up) ++components;
+    for (const auto& [corner, count] : degree)
+    {
+      ++result.corners;
+      if (count != 2) ++result.cornersNotMetTwice;
+    }
+
+    result.expectedFaces += components;
+    const auto found = actual.find(surface);
+    const std::size_t faces = found == actual.end() ? 0 : found->second;
+    result.actualFaces += faces;
+    if (faces != components) ++result.surfacesSplitWrongly;
+    if (faces < components) result.surfacesWithFewerFaces.push_back(surface);
+  }
+  return result;
+}
+}  // namespace
+
+// Symmetric lattices, whose corners are few in the quotient: one face of FCC, say, has its corners at different
+// images of the same few vertices. Every one of those corners is met by two edges, so every face closes and the
+// diagram is complete. Fluorite also carries regions on one surface that touch only different images of one vertex,
+// which are separate faces, and without them Euler's formula on the 3-torus misses.
+TEST(apollonius, faces_of_symmetric_lattices_close_on_their_own_images_of_a_vertex)
+{
+  const double a = 6.0;
+  const double3x3 fcc(double3(0.0, a / 2.0, a / 2.0), double3(a / 2.0, 0.0, a / 2.0), double3(a / 2.0, a / 2.0, 0.0));
+  const double3x3 hexagonal(double3(a, 0.0, 0.0), double3(-a / 2.0, a * std::sqrt(3.0) / 2.0, 0.0),
+                            double3(0.0, 0.0, 1.633 * a));
+  struct Lattice
+  {
+    const char* name;
+    double3x3 cell;
+    std::vector<double3> positions;
+    std::vector<double> radii;
+  };
+  const std::vector<Lattice> lattices = {
+      {"fcc", fcc, {double3(0.2, 0.3, 0.4)}, {1.0}},
+      {"diamond", fcc, {double3(0.0, 0.0, 0.0), double3(0.25, 0.25, 0.25)}, {1.0, 1.0}},
+      {"zincblende", fcc, {double3(0.0, 0.0, 0.0), double3(0.25, 0.25, 0.25)}, {1.3, 0.7}},
+      {"hcp", hexagonal, {double3(1.0 / 3.0, 2.0 / 3.0, 0.25), double3(2.0 / 3.0, 1.0 / 3.0, 0.75)}, {1.0, 1.0}},
+      {"fluorite",
+       fcc,
+       {double3(0.0, 0.0, 0.0), double3(0.25, 0.25, 0.25), double3(0.75, 0.75, 0.75)},
+       {1.3, 0.7, 0.7}}};
+
+  for (SKApolloniusRegion region : {SKApolloniusRegion::EntireSpace, SKApolloniusRegion::FreeSpace})
+  {
+    for (const Lattice& lattice : lattices)
+    {
+      SKApolloniusDiagram diagram = SKApolloniusDiagram::create(lattice.cell, lattice.positions, lattice.radii, 1, region);
+      LiftedFaces lifted = liftedFaces(diagram);
+
+      ASSERT_GT(lifted.corners, 0u) << lattice.name;
+      EXPECT_EQ(lifted.cornersNotMetTwice, 0u) << lattice.name;
+      EXPECT_EQ(lifted.surfacesSplitWrongly, 0u) << lattice.name;
+      EXPECT_EQ(diagram.verification.unclosedFaces, 0u) << lattice.name;
+      EXPECT_TRUE(diagram.verification.isComplete()) << lattice.name;
+      for (const SKApolloniusFace& face : diagram.faces) EXPECT_TRUE(face.isClosed) << lattice.name;
+
+      std::size_t cells = 0;
+      for (const SKApolloniusCell& cell : diagram.cells)
+        if (!cell.isEmpty) ++cells;
+      EXPECT_EQ(static_cast<long long>(diagram.vertices.size()) - static_cast<long long>(diagram.edges.size()) +
+                    static_cast<long long>(diagram.faces.size() / 2) - static_cast<long long>(cells),
+                0)
+          << lattice.name;
+    }
+  }
+}
+
+// Small cells with radii far apart cut a surface into several regions, and regions that are separate can still
+// touch different images of one vertex. The faces have to be the connected components of the surface in the
+// owner's frame, whatever the quotient makes of them.
+TEST(apollonius, separate_regions_of_a_surface_stay_separate_faces_in_a_small_cell)
+{
+  std::mt19937 generator(11);
+  std::uniform_real_distribution<double> unit(0.0, 1.0);
+  std::size_t surfacesWithSeveralFaces = 0;
+
+  for (SKApolloniusRegion region : {SKApolloniusRegion::EntireSpace, SKApolloniusRegion::FreeSpace})
+  {
+    for (std::size_t trial = 0; trial < 150; ++trial)
+    {
+      const double a = 4.0 + 5.0 * unit(generator);
+      const double3x3 cell(double3(a, 0.0, 0.0), double3(0.0, a, 0.0), double3(0.0, 0.0, a));
+      const std::size_t atoms = 2 + trial % 5;
+      std::vector<double3> positions;
+      std::vector<double> radii;
+      for (std::size_t i = 0; i < atoms; ++i)
+      {
+        positions.push_back(double3(unit(generator), unit(generator), unit(generator)));
+        radii.push_back(0.1 + 3.0 * unit(generator) * unit(generator));
+      }
+
+      SKApolloniusDiagram diagram = SKApolloniusDiagram::create(cell, positions, radii, 1, region);
+      LiftedFaces lifted = liftedFaces(diagram);
+      EXPECT_LE(lifted.actualFaces, lifted.expectedFaces) << "trial " << trial;
+
+      // Fewer faces than boundaries is right only for a region with a hole in it, which the surface itself says.
+      if (region == SKApolloniusRegion::EntireSpace)
+      {
+        for (const auto& [first, second, dx, dy, dz] : lifted.surfacesWithFewerFaces)
+        {
+          std::size_t faces = 0;
+          for (const SKApolloniusFace& face : diagram.faces)
+            if (face.site1 == first && face.site2 == second && face.site2Image.x == dx && face.site2Image.y == dy &&
+                face.site2Image.z == dz)
+              ++faces;
+          bool reachedSpanEnd = false;
+          EXPECT_EQ(bisectorRegions(cell, positions, radii, first, second, int3(dx, dy, dz), 20.0, 480, 480, reachedSpanEnd),
+                    faces)
+              << "trial " << trial;
+        }
+      }
+
+      // A face closes exactly when its corners, taken in the frame of its owner, are met twice each; there is no
+      // truncation to excuse a corner over the entire space.
+      if (region == SKApolloniusRegion::EntireSpace && lifted.cornersNotMetTwice == 0)
+        EXPECT_EQ(diagram.verification.unclosedFaces, 0u) << "trial " << trial;
+
+      std::map<std::tuple<std::size_t, std::size_t, int, int, int>, std::size_t> perSurface;
+      for (const SKApolloniusFace& face : diagram.faces)
+        if (++perSurface[{face.site1, face.site2, face.site2Image.x, face.site2Image.y, face.site2Image.z}] == 2)
+          ++surfacesWithSeveralFaces;
+    }
+  }
+  // The search is only worth anything if regions on one surface do turn up.
+  EXPECT_GT(surfacesWithSeveralFaces, 0u);
+}
+
+// Where four or more tangency points of a vertex lie on one circle, every triple of them names the same curve. It
+// is one geometric arc, with every one of those sites at the same clearance along the whole of it, and it has to be
+// held as one edge: the three lines through a simple cubic cell are three edges, not twelve, and the faces are the
+// six sides of the cube rather than those and a dozen more between sites that only touch along a line.
+TEST(apollonius, sites_on_one_curve_make_one_edge)
+{
+  const double a = 6.0;
+  struct Lattice
+  {
+    const char* name;
+    double3x3 cell;
+    std::size_t vertices;
+    std::size_t edges;
+    std::size_t faces;  // stored, one per owning site
+  };
+  const std::vector<Lattice> lattices = {
+      {"cubic", double3x3(double3(a, 0.0, 0.0), double3(0.0, a, 0.0), double3(0.0, 0.0, a)), 1, 3, 6},
+      {"tetragonal", double3x3(double3(a, 0.0, 0.0), double3(0.0, a, 0.0), double3(0.0, 0.0, 1.3 * a)), 1, 3, 6},
+      {"orthorhombic", double3x3(double3(a, 0.0, 0.0), double3(0.0, 1.1 * a, 0.0), double3(0.0, 0.0, 1.3 * a)), 1, 3, 6},
+      {"hexagonal", double3x3(double3(a, 0.0, 0.0), double3(-a / 2.0, a * std::sqrt(3.0) / 2.0, 0.0), double3(0.0, 0.0, 1.2 * a)),
+       2, 5, 8}};
+
+  for (SKApolloniusRegion region : {SKApolloniusRegion::EntireSpace, SKApolloniusRegion::FreeSpace})
+  {
+    for (const Lattice& lattice : lattices)
+    {
+      SKApolloniusDiagram diagram = SKApolloniusDiagram::create(lattice.cell, {double3(0.2, 0.3, 0.4)}, {1.0}, 1, region);
+
+      EXPECT_EQ(diagram.vertices.size(), lattice.vertices) << lattice.name;
+      EXPECT_EQ(diagram.edges.size(), lattice.edges) << lattice.name;
+      EXPECT_EQ(diagram.faces.size(), lattice.faces) << lattice.name;
+      EXPECT_EQ(diagram.verification.ambiguousBranches, 0u) << lattice.name;
+      EXPECT_EQ(diagram.verification.unclosedFaces, 0u) << lattice.name;
+      EXPECT_TRUE(diagram.verification.isComplete()) << lattice.name;
+
+      // V - E + F - C on the 3-torus.
+      EXPECT_EQ(static_cast<long long>(lattice.vertices) - static_cast<long long>(lattice.edges) +
+                    static_cast<long long>(lattice.faces / 2) - 1,
+                0)
+          << lattice.name;
+
+      LiftedFaces lifted = liftedFaces(diagram);
+      EXPECT_EQ(lifted.cornersNotMetTwice, 0u) << lattice.name;
+      EXPECT_EQ(lifted.surfacesSplitWrongly, 0u) << lattice.name;
+    }
+  }
+
+  // The cube's corner in full: eight sites, one branch per side of the cube, four sites to a branch.
+  SKApolloniusDiagram cube = SKApolloniusDiagram::create(lattices[0].cell, {double3(0.2, 0.3, 0.4)}, {1.0});
+  ASSERT_EQ(cube.vertices.size(), 1u);
+  EXPECT_EQ(cube.vertices[0].siteIndices.size(), 8u);
+  ASSERT_EQ(cube.vertices[0].branches.size(), 6u);
+  for (const SKApolloniusBranch& branch : cube.vertices[0].branches) EXPECT_EQ(branch.sites.size(), 4u);
+  for (const SKApolloniusEdge& edge : cube.edges)
+  {
+    ASSERT_EQ(edge.siteIndices.size(), 4u);
+    EXPECT_NEAR(edge.length, a, 1.0e-9);
+    EXPECT_NEAR(edge.bottleneckRadius, a * std::sqrt(2.0) / 2.0 - 1.0, 1.0e-9);
+  }
+}
+
+// What holding them as one edge must not lose: every site an edge names really is at the edge's clearance at its
+// narrowest point, in the frame the edge says, and neighbours in its order are the ones the cells actually
+// separate. No two edges are one arc. Symmetric structures with radii that differ are the test of it, since there a
+// site can be cotangent at a vertex and still leave the curve.
+TEST(apollonius, every_site_of_an_edge_is_on_its_curve)
+{
+  const double a = 6.0;
+  const double3x3 cubic(double3(a, 0.0, 0.0), double3(0.0, a, 0.0), double3(0.0, 0.0, a));
+  const double3x3 fcc(double3(0.0, a / 2.0, a / 2.0), double3(a / 2.0, 0.0, a / 2.0), double3(a / 2.0, a / 2.0, 0.0));
+  const double3x3 hexagonal(double3(a, 0.0, 0.0), double3(-a / 2.0, a * std::sqrt(3.0) / 2.0, 0.0),
+                            double3(0.0, 0.0, 1.2 * a));
+  struct Structure
+  {
+    const char* name;
+    double3x3 cell;
+    std::vector<double3> positions;
+    std::vector<double> radii;
+  };
+  const std::vector<Structure> structures = {
+      {"cubic", cubic, {double3(0.2, 0.3, 0.4)}, {1.0}},
+      {"bcc", cubic, {double3(0.0, 0.0, 0.0), double3(0.5, 0.5, 0.5)}, {1.0, 1.0}},
+      {"CsCl", cubic, {double3(0.0, 0.0, 0.0), double3(0.5, 0.5, 0.5)}, {1.3, 0.7}},
+      {"rocksalt", fcc, {double3(0.0, 0.0, 0.0), double3(0.5, 0.5, 0.5)}, {1.3, 0.7}},
+      {"hexagonal", hexagonal, {double3(0.2, 0.3, 0.4)}, {1.0}},
+      {"two on a face", cubic, {double3(0.1, 0.1, 0.1), double3(0.6, 0.1, 0.1)}, {1.2, 0.5}},
+      {"three on a line", cubic, {double3(0.0, 0.0, 0.0), double3(0.3, 0.0, 0.0), double3(0.6, 0.0, 0.0)}, {1.1, 0.4, 0.8}}};
+
+  for (const Structure& structure : structures)
+  {
+    SKApolloniusDiagram diagram =
+        SKApolloniusDiagram::create(structure.cell, structure.positions, structure.radii, 1, SKApolloniusRegion::EntireSpace);
+
+    std::set<std::tuple<std::size_t, std::size_t, int, int, int, long long, long long>> arcs;
+    for (const SKApolloniusEdge& edge : diagram.edges)
+    {
+      ASSERT_GE(edge.siteIndices.size(), 3u) << structure.name;
+      ASSERT_EQ(edge.siteIndices.size(), edge.siteImages.size()) << structure.name;
+      const double clearance = edge.bottleneckRadius;
+      for (std::size_t s = 0; s < edge.siteIndices.size(); ++s)
+      {
+        const int3& image = edge.siteImages[s];
+        double3 centre = structure.cell * (double3::fract(structure.positions[edge.siteIndices[s]]) +
+                                           double3(image.x, image.y, image.z));
+        EXPECT_NEAR((edge.bottleneckPosition - centre).length() - structure.radii[edge.siteIndices[s]], clearance, 1.0e-6)
+            << structure.name << " site " << s << " of " << edge.siteIndices.size();
+      }
+      if (edge.isLoop) continue;
+      const std::size_t low = std::min(edge.from, edge.to);
+      const std::size_t high = std::max(edge.from, edge.to);
+      const int sign = edge.from <= edge.to ? 1 : -1;
+      EXPECT_TRUE(arcs.insert({low, high, sign * edge.toImage.x, sign * edge.toImage.y, sign * edge.toImage.z,
+                               std::llround(edge.bottleneckRadius * 1.0e7), std::llround(edge.length * 1.0e6)})
+                      .second)
+          << structure.name << ": an arc held twice";
+    }
+  }
+}
+
+// Over all of space the complex closes on every arrangement, whatever it does: V - (E - L) + sum chi(face) - C = 0 on
+// the 3-torus, a ring being a closed curve and so contributing nothing, and a face being a disc with holes, so that
+// its characteristic is 2 less the number of its boundaries. It is what catches anything lost or counted twice. Small
+// cells with radii far apart are where a vertex's two roots both survive with opposite signs and a region of a
+// surface has a hole with vertices on it; orthogonal ones are where a sphere's own images make a cage.
+TEST(apollonius, entire_space_closes_on_every_small_cell)
+{
+  for (bool skew : {false, true})
+  {
+    std::mt19937 generator(23);
+    std::uniform_real_distribution<double> unit(0.0, 1.0);
+    for (std::size_t atoms : {2uz, 3uz, 4uz, 6uz, 8uz})
+    {
+      for (std::size_t trial = 0; trial < 300; ++trial)
+      {
+        const double a = 4.0 + 5.0 * unit(generator);
+        double3x3 cell = skew ? double3x3(double3(a, 0.0, 0.0),
+                                          double3(0.13 * a + 0.2 * a * unit(generator), a * (0.9 + 0.3 * unit(generator)), 0.0),
+                                          double3(0.11 * a + 0.2 * a * unit(generator), 0.07 * a + 0.2 * a * unit(generator),
+                                                  a * (0.9 + 0.3 * unit(generator))))
+                              : double3x3(double3(a, 0.0, 0.0), double3(0.0, a, 0.0), double3(0.0, 0.0, a));
+        std::vector<double3> positions;
+        std::vector<double> radii;
+        for (std::size_t i = 0; i < atoms; ++i)
+        {
+          positions.push_back(double3(unit(generator), unit(generator), unit(generator)));
+          radii.push_back(0.1 + 3.0 * unit(generator) * unit(generator));
+        }
+
+        SKApolloniusDiagram diagram = SKApolloniusDiagram::create(cell, positions, radii, 1, SKApolloniusRegion::EntireSpace);
+        const SKApolloniusDiagram::Verification& verification = diagram.verification;
+        const std::string where = std::format("skew {} atoms {} trial {}", skew, atoms, trial);
+
+        EXPECT_EQ(verification.truncatedTriples, 0u) << where;
+        EXPECT_EQ(verification.unpairedTriples, 0u) << where;
+        EXPECT_EQ(verification.overpairedTriples, 0u) << where;
+        EXPECT_EQ(verification.ambiguousBranches, 0u) << where;
+        EXPECT_EQ(verification.unclosedFaces, 0u) << where;
+        EXPECT_EQ(verification.verticesOfFullValence, verification.vertexCount) << where;
+        EXPECT_TRUE(verification.isComplete()) << where;
+
+        // Stored once per owning site, so everything over the faces counts twice.
+        const std::size_t rings = verification.vertexlessLoops;
+        std::size_t ringBoundaries = 0;
+        for (const SKApolloniusFace& face : diagram.faces)
+          for (std::size_t e : face.edgeIndices)
+            if (diagram.edges[e].isLoop) ++ringBoundaries;
+        std::size_t cells = 0;
+        for (const SKApolloniusCell& cellOfSite : diagram.cells)
+          if (!cellOfSite.isEmpty) ++cells;
+        const long long characteristicOfFacesTwice = 2 * static_cast<long long>(diagram.faces.size()) -
+                                                     static_cast<long long>(liftedFaces(diagram).expectedFaces) -
+                                                     static_cast<long long>(ringBoundaries);
+        EXPECT_EQ(2 * (static_cast<long long>(diagram.vertices.size()) - static_cast<long long>(diagram.edges.size()) +
+                       static_cast<long long>(rings) - static_cast<long long>(cells)) +
+                      characteristicOfFacesTwice,
+                  0)
+            << where;
+      }
+    }
+  }
+}
+
+namespace
+{
+// The sites of `closed_trisector_without_vertices_is_found`, whose ring runs at clearances of about -1.7 to -1.05.
+std::vector<double3> ringSitePositions()
+{
+  return {double3(9.971800, 4.331360, 8.432872), double3(10.321425, 7.695810, 6.580359),
+          double3(9.147761, 8.595773, 5.606025), double3(6.869507, 8.955868, 0.762767),
+          double3(7.762513, 8.832686, 4.785106), double3(6.086190, 2.744648, 7.802330)};
+}
+std::vector<double> ringSiteRadii() { return {5.842063, 2.142922, 3.045569, 5.403876, 3.532705, 2.818056}; }
+}  // namespace
+
+// How deep a ring runs inside the spheres is a matter for its own three sites. A far smaller site elsewhere does not
+// come into it, and must not stop the search for the ring short of where the ring is.
+TEST(apollonius, a_small_site_elsewhere_leaves_a_deep_ring_alone)
+{
+  const double edge = 12.0;
+  const double3x3 cell(double3(edge, 0.0, 0.0), double3(0.0, edge, 0.0), double3(0.0, 0.0, edge));
+  const std::vector<double3> positions = ringSitePositions();
+  std::vector<double> radii = ringSiteRadii();
+  std::vector<double3> fractionalPositions;
+  for (const double3& position : positions) fractionalPositions.push_back((1.0 / edge) * position);
+
+  SKApolloniusDiagram alone = SKApolloniusDiagram::create(cell, fractionalPositions, radii, 1, SKApolloniusRegion::EntireSpace);
+  ASSERT_EQ(alone.verification.vertexlessLoops, 1u);
+
+  fractionalPositions.push_back(double3(0.05, 0.1, 0.25));
+  radii.push_back(0.1);
+  SKApolloniusDiagram withSmallSite =
+      SKApolloniusDiagram::create(cell, fractionalPositions, radii, 1, SKApolloniusRegion::EntireSpace);
+  ASSERT_EQ(withSmallSite.verification.vertexlessLoops, 1u);
+  for (const SKApolloniusEdge& edgeOfDiagram : withSmallSite.edges)
+    if (edgeOfDiagram.isLoop) EXPECT_NEAR(edgeOfDiagram.bottleneckRadius, -1.708260, 1.0e-6);
+}
+
+// A fourth site can lie on the very curve of a ring: the pencil of tangent spheres of the ring is the same for every
+// site on a conic of centres, each with its own radius. Every triple of the four names the one curve, and it is one
+// ring holding all four, not four rings.
+TEST(apollonius, sites_on_one_closed_curve_make_one_ring)
+{
+  const double edge = 12.0;
+  const double3x3 cell(double3(edge, 0.0, 0.0), double3(0.0, edge, 0.0), double3(0.0, 0.0, edge));
+  const std::vector<double3> positions = ringSitePositions();
+  std::vector<double> radii = ringSiteRadii();
+  std::vector<double3> fractionalPositions;
+  for (const double3& position : positions) fractionalPositions.push_back((1.0 / edge) * position);
+
+  SKApolloniusDiagram alone = SKApolloniusDiagram::create(cell, fractionalPositions, radii, 1, SKApolloniusRegion::EntireSpace);
+  ASSERT_EQ(alone.verification.vertexlessLoops, 1u);
+  const auto found = std::find_if(alone.edges.begin(), alone.edges.end(), [](const SKApolloniusEdge& e) { return e.isLoop; });
+  ASSERT_NE(found, alone.edges.end());
+
+  // The rows of the curve's two equations, about its first site; a further site is a combination of them whose
+  // squared terms come out right as well, which leaves one quadratic for one coefficient given the other.
+  std::array<double3, 3> centres;
+  std::array<double, 3> ringRadii;
+  for (std::size_t s = 0; s < 3; ++s)
+  {
+    const int3& image = found->siteImages[s];
+    centres[s] = positions[found->siteIndices[s]] + cell * double3(image.x, image.y, image.z);
+    ringRadii[s] = radii[found->siteIndices[s]];
+  }
+  const double3 first = centres[1] - centres[0];
+  const double3 second = centres[2] - centres[0];
+  const double firstRate = ringRadii[1] - ringRadii[0];
+  const double secondRate = ringRadii[2] - ringRadii[0];
+  const double firstConstant = double3::dot(first, first) - ringRadii[1] * ringRadii[1] + ringRadii[0] * ringRadii[0];
+  const double secondConstant = double3::dot(second, second) - ringRadii[2] * ringRadii[2] + ringRadii[0] * ringRadii[0];
+
+  std::optional<double3> fourthCentre;
+  double fourthRadius = 0.0;
+  for (double b = -1.5; b <= 1.5; b += 0.05)
+  {
+    if (std::abs(b) < 0.1 || std::abs(b - 1.0) < 0.1) continue;
+    const double quadratic = double3::dot(first, first) - firstRate * firstRate;
+    const double linear = 2.0 * b * double3::dot(first, second) - 2.0 * firstRate * (ringRadii[0] + b * secondRate) - firstConstant;
+    const double constant = b * b * double3::dot(second, second) - (ringRadii[0] + b * secondRate) * (ringRadii[0] + b * secondRate) +
+                            ringRadii[0] * ringRadii[0] - b * secondConstant;
+    const double discriminant = linear * linear - 4.0 * quadratic * constant;
+    if (discriminant < 0.0) continue;
+    for (double sign : {1.0, -1.0})
+    {
+      const double a = (-linear + sign * std::sqrt(discriminant)) / (2.0 * quadratic);
+      const double candidate = ringRadii[0] + a * firstRate + b * secondRate;
+      if (candidate < 2.0 || std::abs(a) < 0.1 || std::abs(a - 1.0) < 0.1) continue;
+      const double3 centre = centres[0] + a * first + b * second;
+      if (std::abs((found->bottleneckPosition - centre).length() - candidate - found->bottleneckRadius) > 1.0e-9) continue;
+
+      // The smallest there is, since its images have to keep off the ring as well.
+      if (!fourthCentre.has_value() || candidate < fourthRadius)
+      {
+        fourthCentre = centre;
+        fourthRadius = candidate;
+      }
+    }
+  }
+  ASSERT_TRUE(fourthCentre.has_value());
+
+  fractionalPositions.push_back((1.0 / edge) * fourthCentre.value());
+  radii.push_back(fourthRadius);
+  SKApolloniusDiagram withFourth = SKApolloniusDiagram::create(cell, fractionalPositions, radii, 1, SKApolloniusRegion::EntireSpace);
+
+  EXPECT_EQ(withFourth.verification.vertexlessLoops, 1u);
+  std::size_t rings = 0;
+  for (const SKApolloniusEdge& ring : withFourth.edges)
+  {
+    if (!ring.isLoop) continue;
+    ++rings;
+    EXPECT_EQ(ring.siteIndices.size(), 4u);
+    EXPECT_NEAR(ring.bottleneckRadius, found->bottleneckRadius, 1.0e-6);
+  }
+  EXPECT_EQ(rings, 1u);
 }

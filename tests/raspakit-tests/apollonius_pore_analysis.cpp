@@ -9,6 +9,8 @@ import unit_cell;
 import structure_input;
 import randomnumbers;
 import forcefield;
+import atom;
+import framework;
 import skapolloniusdiagram;
 import apollonius_network;
 import apollonius_accessibility;
@@ -426,6 +428,49 @@ TEST(apollonius_pore_analysis, channel_windows_bracket_the_free_sphere)
 //   network -res -chan 1.2 -sa 1.2 1.2 2000 -vol 1.2 1.2 50000 <cif>
 // Both backends are sampled with the same seed and the same points, so a difference in area or volume
 // is a difference in what the two diagrams call accessible, not sampling noise. Disabled by default.
+// Zeolites are full of vertices with a whole ring of sites on one curve, which is what the diagram holds as one
+// edge. The arcs are counted against what is geometrically there, and the diameters are the ones recorded while
+// each such arc was still held once per triple of its sites, which the percolation walk cannot tell apart.
+TEST(apollonius_pore_analysis, zeolites_hold_each_arc_once)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  struct Expected
+  {
+    const char* name;
+    Framework framework;
+    std::size_t arcs;
+    double included;
+    double free;
+  };
+  const std::vector<Expected> frameworks = {
+      {"ITQ-29", Framework::makeITQ29(forceField, int3(1, 1, 1)), 146, 10.317568142, 3.395417820},
+      {"CHA", Framework::makeCHA(forceField, int3(1, 1, 1)), 333, 6.743345094, 3.165470354},
+      {"MFI", Framework::makeMFI(forceField, int3(1, 1, 1)), 2180, 6.127586899, 4.614860690},
+      {"FAU", Framework::makeFAU(forceField, int3(1, 1, 1)), 2000, 10.374232355, 6.564182454}};
+
+  for (const Expected& expected : frameworks)
+  {
+    UnitCell box = StructureInput::makeUnitCell(expected.framework.simulationBox);
+    std::vector<double3> fractionalPositions;
+    std::vector<double> radii;
+    for (const Atom& atom : expected.framework.unitCellAtoms)
+    {
+      fractionalPositions.push_back(box.inverseCell * atom.position);
+      const std::size_t type = static_cast<std::size_t>(atom.type);
+      radii.push_back(0.5 * forceField(type, type).sizeParameter());
+    }
+
+    ApolloniusPoreNetwork pores = ApolloniusPoreNetwork::create(box, fractionalPositions, radii);
+    EXPECT_EQ(pores.numberOfArcs, expected.arcs) << expected.name;
+    EXPECT_EQ(pores.verification.ambiguousBranches, 0uz) << expected.name;
+    EXPECT_TRUE(pores.verification.isComplete()) << expected.name;
+
+    PoreDiameters diameters = PoreDiameters::compute(pores.network);
+    EXPECT_NEAR(diameters.includedSphereDiameter, expected.included, 1.0e-8) << expected.name;
+    EXPECT_NEAR(diameters.freeSphereDiameter, expected.free, 1.0e-8) << expected.name;
+  }
+}
+
 TEST(apollonius_pore_analysis, DISABLED_compare_p1_cifs_apollonius_vs_radical)
 {
   const std::string directory = "/Users/dubbelda/Research/Codes/new-zeo";
