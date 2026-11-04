@@ -251,29 +251,32 @@ BruteForcePoreSpikes BruteForcePoreSpikes::compute(const BruteForceStructure &st
   // The weight is what decides which families are reported: the ones below the spike floor are wall
   // corrugation and noise, and of the rest the widest few are wanted. The full draw over every family would
   // be paid for mostly by the points that land in no ball and are held against every centre there is, so
-  // when there are more families than are worth weighing in full, a lighter draw goes first and says which
-  // of them hold any of the void worth the name. Cutting the list to the widest families before weighing
-  // any of them is not the same thing: a cavity narrower than a dozen others, each of which holds next to
-  // nothing, would be dropped unweighed, however much of the void it held.
+  // when there are more families than are worth weighing in full, a lighter draw goes first and says how far
+  // down the list the reported ones can lie.
+  //
+  // What can be left out of the full draw is only what lies past that. A point goes to the widest family that
+  // covers it, so a family has no say in the weight of one wider than itself, and everything narrower than the
+  // last one reported can go. Nothing wider can, however little it holds: its void would fall through to the
+  // narrower families reaching over it, and a family holding little is still reported if it is wide enough. Nor
+  // is the first draw fine enough to place a family close to the floor, where it has only a few points to go by,
+  // so it is only taken at its word well above the floor and the full draw settles the rest.
   const std::size_t consider = std::max(maxFamiliesBeforeFilter, maxFamilies);
   if (families.size() > consider)
   {
     const std::size_t rankingPoints = std::min(volumePoints, std::max<std::size_t>(200000, volumePoints / 10));
     Draw ranking = draw(rankingPoints, families, 17 + 64);  // its own stream, apart from the full draw's
 
-    std::vector<std::size_t> order(families.size());
-    std::iota(order.begin(), order.end(), std::size_t{0});
-    std::ranges::stable_sort(order, [&](std::size_t a, std::size_t b) { return ranking.hits[a] > ranking.hits[b]; });
-
-    std::vector<char> shortlisted(families.size(), 0);
-    for (std::size_t i = 0; i < consider && ranking.hits[order[i]] > 0; ++i) shortlisted[order[i]] = 1;
-
-    std::vector<BruteForceSpikeFamily> worthWeighing;
+    constexpr double clearlyAboveTheFloor = 3.0 * weightFloor;
+    const double enough = clearlyAboveTheFloor * static_cast<double>(ranking.voidPoints);
+    std::size_t clearlyAbove = 0;
     for (std::size_t f = 0; f < families.size(); ++f)
     {
-      if (shortlisted[f] != 0) worthWeighing.push_back(std::move(families[f]));
+      if (ranking.voidPoints > 0 && static_cast<double>(ranking.hits[f]) >= enough && ++clearlyAbove == maxFamilies)
+      {
+        families.resize(f + 1);
+        break;
+      }
     }
-    families = std::move(worthWeighing);
   }
 
   Draw full = draw(volumePoints, families, 17);  // offset from the pore-volume stream
@@ -291,7 +294,8 @@ BruteForcePoreSpikes BruteForcePoreSpikes::compute(const BruteForceStructure &st
     }
   }
 
-  // Drop families whose union is below the spike floor (wall corrugation / noise), keep the widest few.
+  // Drop families whose union is below the spike floor (wall corrugation / noise), keep the widest few. They are in
+  // order of diameter, widest first, whatever went before.
   std::vector<BruteForceSpikeFamily> kept;
   kept.reserve(maxFamilies);
   for (auto &family : families)

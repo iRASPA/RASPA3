@@ -166,3 +166,118 @@ TEST(brute_force_pore_spikes, families_beyond_the_dozen_widest_are_counted_and_t
   EXPECT_EQ(cages.centres.size(), 8uz);
   EXPECT_GT(cages.weight, 1.0e-3);
 }
+
+
+namespace
+{
+
+// A solid block of atoms on a cubic lattice, overlapping enough to leave no room anywhere, with single atoms taken out.
+// What is left where one was is a hole whose size is set by the radii of the six atoms around it, and the holes are
+// nothing else's business, so the void is exactly the holes and which family holds what is known beforehand.
+struct Block
+{
+  static constexpr std::int32_t sites = 12;
+  static constexpr double spacing = 3.0;
+  static constexpr double solidRadius = 2.7;
+
+  std::map<std::array<std::int32_t, 3>, double> radiusAt;
+  std::set<std::array<std::int32_t, 3>> holes;
+
+  static std::int32_t wrap(std::int32_t i) { return (i + sites) % sites; }
+
+  void hole(std::array<std::int32_t, 3> site, double room)
+  {
+    holes.insert(site);
+    for (std::size_t axis = 0; axis < 3; ++axis)
+    {
+      for (std::int32_t step : {-1, 1})
+      {
+        std::array<std::int32_t, 3> neighbour = site;
+        neighbour[axis] = wrap(neighbour[axis] + step);
+        radiusAt[neighbour] = spacing - room;
+      }
+    }
+  }
+
+  BruteForceStructure structure() const
+  {
+    std::vector<double3> positions;
+    std::vector<double> radii;
+    for (std::int32_t k = 0; k < sites; ++k)
+    {
+      for (std::int32_t j = 0; j < sites; ++j)
+      {
+        for (std::int32_t i = 0; i < sites; ++i)
+        {
+          const std::array<std::int32_t, 3> site{i, j, k};
+          if (holes.contains(site)) continue;
+          // A quarter of a voxel off the lattice, which puts a voxel centre on every site.
+          positions.push_back(double3(spacing * i + 0.25, spacing * j + 0.25, spacing * k + 0.25));
+          const auto found = radiusAt.find(site);
+          radii.push_back(found == radiusAt.end() ? solidRadius : found->second);
+        }
+      }
+    }
+    const double side = spacing * static_cast<double>(sites);
+    return BruteForceStructure::create("block", UnitCell(side, side, side), positions, radii);
+  }
+};
+
+}  // namespace
+
+
+// One wide hole, and thirteen families of narrower holes that hold more of the void each than the wide one does. The
+// widest above the floor are what is reported, and how much void a family holds is no reason to pass over a wider
+// one. Nor can its void go elsewhere when it is passed over: what each family holds is what it holds with all the
+// wider ones in place, the same as when every family is asked for.
+TEST(brute_force_pore_spikes, a_wide_family_that_holds_little_is_reported_ahead_of_narrower_ones_that_hold_more)
+{
+  constexpr double wideRoom = 1.3;
+  Block block;
+  block.hole({0, 0, 0}, wideRoom);
+
+  constexpr std::size_t holesPerFamily = 4;
+  std::int32_t slot = 1;
+  for (std::size_t family = 0; family < 13; ++family)
+  {
+    const double room = 1.2 - 0.015 * static_cast<double>(family);
+    for (std::size_t h = 0; h < holesPerFamily; ++h, ++slot)
+    {
+      block.hole({3 * (slot % 4), 3 * ((slot / 4) % 4), 3 * (slot / 16)}, room);
+    }
+  }
+
+  BruteForceStructure structure = block.structure();
+  BruteForceVoxels voxels = BruteForceVoxels::build(structure, 0.5);
+
+  constexpr std::size_t points = 300000;
+  BruteForcePoreSpikes all = BruteForcePoreSpikes::compute(structure, voxels, points, 64);
+  ASSERT_GE(all.numberOfFamilies, 14uz);
+  ASSERT_GE(all.families.size(), 14uz);
+  EXPECT_NEAR(all.families[0].diameter, 2.0 * wideRoom, 1.0e-6);
+  EXPECT_EQ(all.families[0].centres.size(), 1uz);
+
+  // Enough of the points land in the void for the weights to mean something, and the wide family really is lighter
+  // than the dozen it is wider than, which is the whole of the case.
+  ASSERT_GT(all.voidFraction * static_cast<double>(points), 1000.0);
+  std::size_t heavier = 0;
+  double total = 0.0;
+  for (const BruteForceSpikeFamily &family : all.families)
+  {
+    total += family.weight;
+    if (family.weight > all.families[0].weight + 2.0 * family.weightError) ++heavier;
+  }
+  ASSERT_GE(heavier, 12uz);
+  EXPECT_LE(total, 1.0 + 1.0e-12) << "a point of the void belongs to one family at most";
+
+  BruteForcePoreSpikes widest = BruteForcePoreSpikes::compute(structure, voxels, points, 3);
+  ASSERT_EQ(widest.families.size(), 3uz);
+  EXPECT_NEAR(widest.voidVolume, all.voidVolume, 1.0e-9 * all.voidVolume);
+  for (std::size_t f = 0; f < 3; ++f)
+  {
+    EXPECT_NEAR(widest.families[f].diameter, all.families[f].diameter, 1.0e-6) << "family " << f;
+
+    // The same stream of points and the same families down to this one, so the same count to the point.
+    EXPECT_DOUBLE_EQ(widest.families[f].weight, all.families[f].weight) << "family " << f;
+  }
+}
