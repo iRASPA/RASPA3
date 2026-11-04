@@ -34,6 +34,10 @@ export struct MC_OpenCL_PoreSizeDistribution
   MC_OpenCL_PoreSizeDistribution(std::size_t numberOfBins);
   ~MC_OpenCL_PoreSizeDistribution();
 
+  // It holds a program and a kernel it lets go of when it goes, so there can be only one of it.
+  MC_OpenCL_PoreSizeDistribution(const MC_OpenCL_PoreSizeDistribution &) = delete;
+  MC_OpenCL_PoreSizeDistribution &operator=(const MC_OpenCL_PoreSizeDistribution &) = delete;
+
   void run(const SampledStructure& structure, std::optional<std::size_t> numberOfIterations,
            std::optional<std::size_t> numberOfInnerSteps, std::optional<double> maximumRange);
 };

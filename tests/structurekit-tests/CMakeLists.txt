@@ -8,6 +8,7 @@ add_executable(unit_tests_structurekit
   grid_clearance.cpp
   sampling_backend_opencl.cpp
   sampled_roadmap.cpp
+  mc_pore_size_distribution.cpp
   hybrid_pore_size_floor.cpp
                        energy_well_surface.cpp
                        energy_bet_area.cpp

@@ -10,8 +10,10 @@ import sampled_structure;
 //
 // The size at a point of the void is the diameter of the largest sphere that fits in the void and still
 // covers that point. Here it is estimated: a point is drawn in the void, `numberOfInnerSteps` centres are
-// drawn after it, and the largest sphere among those that fits and reaches the point gives its size. The
-// whole is repeated `numberOfIterations` times and the sizes gathered into bins.
+// drawn after it, and the largest sphere among those that fits and reaches the point gives its size, the sphere
+// about the point itself being the least it can be. The whole is repeated `numberOfIterations` times and the sizes
+// gathered into bins of radius, up to `maximumRange`; a size past that is drawn in no bin and counts at every one
+// of them in the cumulative curve.
 //
 // Both counts are approximations of their own. Too few centres and the sphere that covers the point is
 // never drawn, so every size comes out too small; too few points and the histogram is noise. Neither error

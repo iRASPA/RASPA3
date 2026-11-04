@@ -21,6 +21,19 @@ import randomnumbers;
 import sampled_structure;
 import opencl;
 
+namespace
+{
+// A buffer is let go of however the scope is left, which an error thrown halfway through otherwise would not do.
+struct ReleasedOnExit
+{
+  cl_mem memory;
+
+  explicit ReleasedOnExit(cl_mem memory) : memory(memory) {}
+  ReleasedOnExit(const ReleasedOnExit &) = delete;
+  ReleasedOnExit &operator=(const ReleasedOnExit &) = delete;
+  ~ReleasedOnExit() { clReleaseMemObject(memory); }
+};
+}  // namespace
 
 MC_OpenCL_PoreSizeDistribution::MC_OpenCL_PoreSizeDistribution(std::size_t numberOfBins) : numberOfBins(numberOfBins),
              histogram(numberOfBins), histogram_cummulative(numberOfBins)
@@ -47,18 +60,22 @@ MC_OpenCL_PoreSizeDistribution::MC_OpenCL_PoreSizeDistribution(std::size_t numbe
       std::string message =
           std::format("MC_OpenCL_PoreSizeDistribution: OpenCL Failed to build program at {} (line {} error: {})\n", __FILE__,
                       __LINE__, std::string(buffer));
+      clReleaseProgram(poreSizeDistributionProgram);
       throw std::runtime_error(message);
     }
 
     poreSizeDistributionKernel = clCreateKernel(poreSizeDistributionProgram, "ComputePoreSizeDistribution", &err);
     if (err != CL_SUCCESS)
     {
+      clReleaseProgram(poreSizeDistributionProgram);
       throw std::runtime_error(std::format("MC_OpenCL_PoreSizeDistribution: OpenCL clCreateKernel failed {} : {}\n", __FILE__, __LINE__));
     }
     err = clGetKernelWorkGroupInfo(poreSizeDistributionKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
                                    sizeof(size_t), &poreSizeDistributionWorkGroupSize, nullptr);
     if (err != CL_SUCCESS)
     {
+      clReleaseKernel(poreSizeDistributionKernel);
+      clReleaseProgram(poreSizeDistributionProgram);
       throw std::runtime_error(std::format("MC_OpenCL_PoreSizeDistribution: OpenCL clGetKernelWorkGroupInfo failed at {} : {}\n", __FILE__, __LINE__));
     }
   }
@@ -86,15 +103,19 @@ void MC_OpenCL_PoreSizeDistribution::run(const SampledStructure &structure,
   std::size_t number_of_iterations = numberOfIterations.value_or(10000);
   std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(10000);
 
-  size_t global_work_size = (number_of_inner_steps + poreSizeDistributionWorkGroupSize - 1) & ~(poreSizeDistributionWorkGroupSize - 1);
+  // Up to a whole number of work groups, which need not be a power of two. The work items past the number asked for
+  // find that out for themselves.
+  size_t global_work_size = ((number_of_inner_steps + poreSizeDistributionWorkGroupSize - 1) / poreSizeDistributionWorkGroupSize) *
+                            poreSizeDistributionWorkGroupSize;
 
   double3x3 unit_cell = structure.unitCell.cell;
   double3x3 inverse_unit_cell = structure.unitCell.inverseCell;
 
   std::size_t numberOfAtoms = structure.size();
 
-  std::vector<cl_float4> framework_positions(numberOfAtoms);
-  std::vector<cl_float> sigma(numberOfAtoms);
+  // There is no buffer of no size, so a box with nothing in it has one entry that nothing reads.
+  std::vector<cl_float4> framework_positions(std::max<std::size_t>(numberOfAtoms, 1));
+  std::vector<cl_float> sigma(std::max<std::size_t>(numberOfAtoms, 1));
 
 
   time_begin = std::chrono::steady_clock::now();
@@ -115,6 +136,7 @@ void MC_OpenCL_PoreSizeDistribution::run(const SampledStructure &structure,
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
   }
+  ReleasedOnExit releaseFrameworkPositions(framework_positions_mem);
 
   err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), framework_positions_mem, CL_TRUE, 0, sizeof(float4) * framework_positions.size(),
                                framework_positions.data(), 0, nullptr, nullptr);
@@ -131,6 +153,7 @@ void MC_OpenCL_PoreSizeDistribution::run(const SampledStructure &structure,
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
   }
+  ReleasedOnExit releaseSigma(inputSigma);
 
   err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputSigma, CL_TRUE, 0, sizeof(cl_float) * sigma.size(),
                              sigma.data(), 0, nullptr, nullptr);
@@ -155,6 +178,9 @@ void MC_OpenCL_PoreSizeDistribution::run(const SampledStructure &structure,
 
   double delta_r = maximumRange.value_or(10.0) / static_cast<double>(numberOfBins);
 
+  // A second run is a run of its own and does not add to the first.
+  std::ranges::fill(histogram, 0.0);
+  std::ranges::fill(histogram_cummulative, 0.0);
 
   for(std::size_t i = 0; i < number_of_iterations; ++i)
   {
@@ -162,94 +188,100 @@ void MC_OpenCL_PoreSizeDistribution::run(const SampledStructure &structure,
     double3 cartesian_position =  unit_cell * fractional_position;
     cl_float4 posA = {{cl_float(cartesian_position.x), cl_float(cartesian_position.y), cl_float(cartesian_position.z), 0.0f}};
 
-    // upload random Cartesian positions
-    std::size_t number_of_random_position{global_work_size};
-    std::vector<cl_float4> random_cartesian_positions(number_of_random_position);
-    for (size_t j = 0; j < number_of_random_position; j++)
-    {
-      fractional_position = {random.uniform(), random.uniform(), random.uniform()};
-      cartesian_position =  unit_cell * fractional_position;
-      random_cartesian_positions[j] = {{cl_float(cartesian_position.x), cl_float(cartesian_position.y), cl_float(cartesian_position.z), 0.0f}};
-    }
-    cl_mem random_cartesian_positions_mem =
-          clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) *  random_cartesian_positions.size(), nullptr, &err);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
-    }
+    // A point of the void is covered by the sphere about itself if by no other, so that is where its size starts,
+    // and a point in an atom is no part of the curve and needs no device to say so.
+    std::optional<double> ownRadius = structure.freeRadius(cartesian_position);
+    if (!ownRadius.has_value()) continue;
+    const float seedRadius = static_cast<float>(std::min(ownRadius.value(), static_cast<double>(std::numeric_limits<float>::max())));
 
-    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), random_cartesian_positions_mem, CL_TRUE, 0, sizeof(float4) * random_cartesian_positions.size(),
-                                 random_cartesian_positions.data(), 0, nullptr, nullptr);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
-    }
+    float largest_radius[1] = {seedRadius};
 
-    // setup output array
-    cl_mem largest_radius_mem =
-          clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE, sizeof(cl_float), nullptr, &err);
-    if (err != CL_SUCCESS)
+    // With no centres to draw the sphere about the point itself is all there is.
+    if (global_work_size > 0)
     {
-      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
-    }
-
-    float largest_radius[1] = {-1.0};
-    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), largest_radius_mem, CL_TRUE, 0,
-                               sizeof(cl_float), largest_radius, 0, nullptr, nullptr);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
-    }
-
-    err = clSetKernelArg(poreSizeDistributionKernel,   0, sizeof(cl_mem), &framework_positions_mem);
-    err |= clSetKernelArg(poreSizeDistributionKernel,  1, sizeof(cl_mem), &random_cartesian_positions_mem);
-    err |= clSetKernelArg(poreSizeDistributionKernel,  2, sizeof(cl_mem), &inputSigma);
-    err |= clSetKernelArg(poreSizeDistributionKernel,  3, sizeof(cl_mem), &largest_radius_mem);
-    err |= clSetKernelArg(poreSizeDistributionKernel,  4, sizeof(cl_float4), &posA);
-    err |= clSetKernelArg(poreSizeDistributionKernel,  5, sizeof(cl_int), &number_of_atoms);
-    err |= clSetKernelArg(poreSizeDistributionKernel,  6, sizeof(cl_int), &number_of_inner_steps_parameter);
-    err |= clSetKernelArg(poreSizeDistributionKernel,  7, sizeof(cl_float4), &clCella);
-    err |= clSetKernelArg(poreSizeDistributionKernel,  8, sizeof(cl_float4), &clCellb);
-    err |= clSetKernelArg(poreSizeDistributionKernel,  9, sizeof(cl_float4), &clCellc);
-    err |= clSetKernelArg(poreSizeDistributionKernel, 10, sizeof(cl_float4), &inverse_clCella);
-    err |= clSetKernelArg(poreSizeDistributionKernel, 11, sizeof(cl_float4), &inverse_clCellb);
-    err |= clSetKernelArg(poreSizeDistributionKernel, 12, sizeof(cl_float4), &inverse_clCellc);
-
-    err |= clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), poreSizeDistributionKernel, 1, nullptr, &global_work_size,
-                                  &poreSizeDistributionWorkGroupSize, 0, nullptr, nullptr);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel failed (err: {}) {} : {}\n", err, __FILE__, __LINE__));
-    }
-
-    // Read the buffer back to the array
-    err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), largest_radius_mem, CL_TRUE, 0, sizeof(float),
-                              &largest_radius, 0, nullptr, nullptr);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error("MC_OpenCL_SurfaceArea: error in clEnqueueReadBuffer");
-    }
-
-    if(largest_radius[0] >= 0.0f)
-    {
-      std::size_t index = static_cast<std::size_t>(static_cast<double>(largest_radius[0]) / delta_r);
-      if(index < numberOfBins)
+      // upload random Cartesian positions
+      std::size_t number_of_random_position{global_work_size};
+      std::vector<cl_float4> random_cartesian_positions(number_of_random_position);
+      for (size_t j = 0; j < number_of_random_position; j++)
       {
-        histogram[index]++;
-        for(std::size_t k = 0; k <= index; ++k)
-        {
-           histogram_cummulative[k]++;
-        }
+        fractional_position = {random.uniform(), random.uniform(), random.uniform()};
+        cartesian_position =  unit_cell * fractional_position;
+        random_cartesian_positions[j] = {{cl_float(cartesian_position.x), cl_float(cartesian_position.y), cl_float(cartesian_position.z), 0.0f}};
+      }
+      cl_mem random_cartesian_positions_mem =
+            clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) *  random_cartesian_positions.size(), nullptr, &err);
+      if (err != CL_SUCCESS)
+      {
+        throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+      }
+      ReleasedOnExit releaseRandomPositions(random_cartesian_positions_mem);
+
+      err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), random_cartesian_positions_mem, CL_TRUE, 0, sizeof(float4) * random_cartesian_positions.size(),
+                                   random_cartesian_positions.data(), 0, nullptr, nullptr);
+      if (err != CL_SUCCESS)
+      {
+        throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
+      }
+
+      // setup output array
+      cl_mem largest_radius_mem =
+            clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE, sizeof(cl_float), nullptr, &err);
+      if (err != CL_SUCCESS)
+      {
+        throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+      }
+      ReleasedOnExit releaseLargestRadius(largest_radius_mem);
+
+      largest_radius[0] = seedRadius;
+      err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), largest_radius_mem, CL_TRUE, 0,
+                                 sizeof(cl_float), largest_radius, 0, nullptr, nullptr);
+      if (err != CL_SUCCESS)
+      {
+        throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
+      }
+
+      err = clSetKernelArg(poreSizeDistributionKernel,   0, sizeof(cl_mem), &framework_positions_mem);
+      err |= clSetKernelArg(poreSizeDistributionKernel,  1, sizeof(cl_mem), &random_cartesian_positions_mem);
+      err |= clSetKernelArg(poreSizeDistributionKernel,  2, sizeof(cl_mem), &inputSigma);
+      err |= clSetKernelArg(poreSizeDistributionKernel,  3, sizeof(cl_mem), &largest_radius_mem);
+      err |= clSetKernelArg(poreSizeDistributionKernel,  4, sizeof(cl_float4), &posA);
+      err |= clSetKernelArg(poreSizeDistributionKernel,  5, sizeof(cl_int), &number_of_atoms);
+      err |= clSetKernelArg(poreSizeDistributionKernel,  6, sizeof(cl_int), &number_of_inner_steps_parameter);
+      err |= clSetKernelArg(poreSizeDistributionKernel,  7, sizeof(cl_float4), &clCella);
+      err |= clSetKernelArg(poreSizeDistributionKernel,  8, sizeof(cl_float4), &clCellb);
+      err |= clSetKernelArg(poreSizeDistributionKernel,  9, sizeof(cl_float4), &clCellc);
+      err |= clSetKernelArg(poreSizeDistributionKernel, 10, sizeof(cl_float4), &inverse_clCella);
+      err |= clSetKernelArg(poreSizeDistributionKernel, 11, sizeof(cl_float4), &inverse_clCellb);
+      err |= clSetKernelArg(poreSizeDistributionKernel, 12, sizeof(cl_float4), &inverse_clCellc);
+
+      err |= clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), poreSizeDistributionKernel, 1, nullptr, &global_work_size,
+                                    &poreSizeDistributionWorkGroupSize, 0, nullptr, nullptr);
+      if (err != CL_SUCCESS)
+      {
+        throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel failed (err: {}) {} : {}\n", err, __FILE__, __LINE__));
+      }
+
+      // Read the buffer back to the array
+      err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), largest_radius_mem, CL_TRUE, 0, sizeof(float),
+                                &largest_radius, 0, nullptr, nullptr);
+      if (err != CL_SUCCESS)
+      {
+        throw std::runtime_error("MC_OpenCL_PoreSizeDistribution: error in clEnqueueReadBuffer");
       }
     }
 
-    clReleaseMemObject(random_cartesian_positions_mem);
-    clReleaseMemObject(largest_radius_mem);
+    if (!(delta_r > 0.0)) continue;
+
+    // A size past the end of the range is drawn in no bin, and is at or above every one of them.
+    const double bin = static_cast<double>(largest_radius[0]) / delta_r;
+    const std::size_t index = bin < static_cast<double>(numberOfBins) ? static_cast<std::size_t>(bin) : numberOfBins;
+    if(index < numberOfBins) histogram[index]++;
+    for(std::size_t k = 0; k <= index && k < numberOfBins; ++k)
+    {
+      histogram_cummulative[k]++;
+    }
   }
   clFinish(OpenCL::clCommandQueue.value());
-
-  clReleaseMemObject(inputSigma);
-  clReleaseMemObject(framework_positions_mem);
 
   time_end = std::chrono::steady_clock::now();
 
@@ -265,15 +297,17 @@ void MC_OpenCL_PoreSizeDistribution::run(const SampledStructure &structure,
   std::print(myfile, "# Number of inner-steps (sample points per atom): {}\n", number_of_inner_steps);
   std::print(myfile, "# GPU Timing: {} [s]\n", this->seconds);
   std::print(myfile, "# column 1: diameter d [A]\n");
-  std::print(myfile, "# column 2: pore size distribution\n");
+  std::print(myfile, "# column 2: pore size distribution, the share of the cell per unit of diameter [1/A]\n");
   std::print(myfile, "# column 3: cummulative pore volume\n");
   std::print(myfile, "# value at d=0 is related to the void-fraction\n");
 
+  // The bins are of radius and the curve is against the diameter, so a bin is twice as wide as `delta_r` here.
   double normalization = 1.0 / static_cast<double>(number_of_iterations);
+  double width = 2.0 * delta_r;
   for(std::size_t index = 0; index < numberOfBins; ++index)
   {
-    std::print(myfile, "{} {} {}\n", 2.0 * delta_r * (static_cast<double>(index) + 0.5),
-               histogram[index] * normalization,
+    std::print(myfile, "{} {} {}\n", width * (static_cast<double>(index) + 0.5),
+               width > 0.0 ? histogram[index] * normalization / width : 0.0,
                histogram_cummulative[index] * normalization);
   }
 
@@ -358,14 +392,12 @@ __kernel void ComputePoreSizeDistribution(__global float4 *frameworkPositions,
                                           const float4 inverse_cellc)
 {
   int global_id = get_global_id(0);
+  if(global_id >= numberOfInnerSteps) return;
+
   float4 ds;
 
-  // check overlap with other atoms
+  // The point itself is known to be in the void: the host looked before it came here.
   float radius = 0.0;
-  if(CheckSphereOverLap(posA, &radius, numberOfFrameworkAtoms, frameworkPositions, 
-                     inverse_cella, inverse_cellb, inverse_cellc,
-                     cella, cellb, cellc, radius_j)) return;
-
   float4 posB = randomCartesianPositions[global_id];
 
   if(CheckSphereOverLap(posB, &radius, numberOfFrameworkAtoms, frameworkPositions, 
