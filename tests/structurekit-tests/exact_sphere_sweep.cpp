@@ -260,6 +260,24 @@ TEST(exact_sphere_sweep, pruning_keeps_one_of_a_pair_of_equals_and_the_order_of_
 }
 
 
+// Two equal caps have to lose exactly one, and which comparison decides that is a question of the last bit: the
+// inner product of a unit axis with itself and the sum of the squares of a cosine and a sine both land a rounding
+// either side of one, and where the second lands above the first each cap had looked to be sticking out of the
+// other.
+TEST(exact_sphere_sweep, pruning_keeps_one_of_a_pair_of_equals_whatever_the_rounding)
+{
+  RandomNumber random{std::optional<std::size_t>(11)};
+  for (std::size_t trial = 0; trial < 20000; ++trial)
+  {
+    const double3 axis = double3::normalize(double3(random.uniform() - 0.5, random.uniform() - 0.5, random.uniform() - 0.5));
+    const double halfAngle = 0.01 + 3.1 * random.uniform();
+    std::vector<SweepCircle> circles = {capOf(axis, halfAngle), capOf(axis, halfAngle)};
+    pruneContainedDiscs(circles);
+    ASSERT_EQ(circles.size(), 1uz) << "trial " << trial << " half angle " << halfAngle;
+  }
+}
+
+
 TEST(exact_sphere_sweep, a_crossing_lies_on_both_of_the_circles_that_made_it)
 {
   RandomNumber random{std::optional<std::size_t>(5)};

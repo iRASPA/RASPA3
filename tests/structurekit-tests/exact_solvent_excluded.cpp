@@ -4,6 +4,7 @@ import std;
 
 import double3;
 import unit_cell;
+import voronoi_network;
 import pore_accessibility;
 import exact_union_volume;
 import exact_surface_patches;
@@ -866,4 +867,109 @@ TEST(exact_solvent_excluded, the_excluded_volume_divides_the_surfaces_as_the_are
   EXPECT_NEAR(reached.inaccessiblePoreVolume, 0.0, 1.0e-9);
   EXPECT_NEAR(reached.accessiblePoreVolume, sealed.accessiblePoreVolume + sealed.inaccessiblePoreVolume,
               1.0e-8 * std::max(1.0, sealed.poreVolume));
+}
+
+
+// The reentrant surface of a duplicated atom is the one atom's. Each seam is walked from the sphere that owns it,
+// and ownership goes by the index, so a third atom between the two of a pair in the input used to own the seam
+// with the copy while the original owned the same seam with the third: the crease was counted twice.
+TEST(exact_solvent_excluded, a_duplicated_atom_leaves_the_reentrant_surface_alone)
+{
+  UnitCell box(40.0, 40.0, 40.0);
+  const double3 twice(20.0, 20.0, 20.0);
+  const double3 third(23.0, 20.0, 20.0);
+  const double3 fourth(21.5, 22.5, 20.0);
+  const double bare = 1.5;
+  const double probe = 1.0;
+
+  // Straight from the atoms rather than through the diagram, which refuses a pair on one spot.
+  const auto geometryOf = [&](const std::vector<double3>& positions)
+  {
+    VoronoiNetwork network;
+    network.unitCell = box;
+    network.atomRadii.assign(positions.size(), bare + probe);
+    for (const double3& position : positions)
+    {
+      network.atomPositionsFractional.push_back(double3::fract(box.inverseCell * position));
+    }
+    network.atomNodeVectors.assign(positions.size(), {});
+    return PoreAccessibility::createFromNetwork(std::move(network), PoreAccessibility::Metric::Clearance, probe);
+  };
+
+  SolventExcludedGeometry plain = solventExcludedGeometry(geometryOf({twice, third, fourth}), probe);
+  ASSERT_GT(plain.diagnostics.numberOfVertices, 0uz);
+
+  for (const std::vector<double3>& order :
+       {std::vector<double3>{twice, twice, third, fourth}, std::vector<double3>{twice, third, twice, fourth},
+        std::vector<double3>{third, fourth, twice, twice}, std::vector<double3>{third, twice, fourth, twice}})
+  {
+    SolventExcludedGeometry doubled = solventExcludedGeometry(geometryOf(order), probe);
+
+    EXPECT_NEAR(doubled.excludedVolume, plain.excludedVolume, 1.0e-8 * plain.excludedVolume);
+    EXPECT_NEAR(doubled.shellVolume, plain.shellVolume, 1.0e-8 * plain.shellVolume);
+    EXPECT_NEAR(doubled.distribution, plain.distribution, 1.0e-8 * plain.distribution);
+    EXPECT_EQ(doubled.diagnostics.numberOfArcs, plain.diagnostics.numberOfArcs);
+    EXPECT_EQ(doubled.diagnostics.numberOfVertices, plain.diagnostics.numberOfVertices);
+    EXPECT_EQ(doubled.diagnostics.degenerateVertices, plain.diagnostics.degenerateVertices);
+    EXPECT_EQ(doubled.diagnostics.discardedCorners, plain.diagnostics.discardedCorners);
+  }
+}
+
+
+// A sphere through the circle two others meet in, with its centre between theirs, has no surface of its own: its
+// two sides lie inside the two others. The reentrant surface is the one the two others make, whether the circle
+// runs free or has a third atom cutting it.
+TEST(exact_solvent_excluded, a_sphere_through_the_circle_of_two_others_leaves_the_reentrant_surface_alone)
+{
+  UnitCell box(40.0, 40.0, 40.0);
+  const double3 direction = double3::normalize(double3(1.0, 0.7, 0.3));
+  const double3 first(20.0, 20.0, 20.0);
+  const double3 second = first + direction * 4.0;
+  const double3 middle = first + direction * 3.0;
+  const double3 sideways = double3::normalize(double3::cross(direction, double3(0.0, 0.0, 1.0)));
+  const double3 other = middle + sideways * 2.8;
+  const double probe = 0.5;
+
+  // Inflated radii: the relation the three have to satisfy is on the spheres the boundary is taken on.
+  const double firstRadius = 2.0;
+  const double secondRadius = std::sqrt(8.0);
+  const double middleRadius = 2.0;
+
+  const auto geometryOf = [&](const std::vector<double3>& positions, const std::vector<double>& inflated)
+  {
+    VoronoiNetwork network;
+    network.unitCell = box;
+    network.atomRadii = inflated;
+    for (const double3& position : positions)
+    {
+      network.atomPositionsFractional.push_back(double3::fract(box.inverseCell * position));
+    }
+    network.atomNodeVectors.assign(positions.size(), {});
+    return PoreAccessibility::createFromNetwork(std::move(network), PoreAccessibility::Metric::Clearance, probe);
+  };
+
+  for (bool cut : {false, true})
+  {
+    std::vector<double3> plainPositions{first, second};
+    std::vector<double> plainRadii{firstRadius, secondRadius};
+    std::vector<double3> morePositions{first, middle, second};
+    std::vector<double> moreRadii{firstRadius, middleRadius, secondRadius};
+    if (cut)
+    {
+      plainPositions.push_back(other);
+      plainRadii.push_back(2.0);
+      morePositions.push_back(other);
+      moreRadii.push_back(2.0);
+    }
+
+    SolventExcludedGeometry plain = solventExcludedGeometry(geometryOf(plainPositions, plainRadii), probe);
+    SolventExcludedGeometry more = solventExcludedGeometry(geometryOf(morePositions, moreRadii), probe);
+
+    EXPECT_NEAR(more.excludedVolume, plain.excludedVolume, 1.0e-8 * plain.excludedVolume) << "cut " << cut;
+    EXPECT_NEAR(more.shellVolume, plain.shellVolume, 1.0e-8 * plain.shellVolume) << "cut " << cut;
+    EXPECT_NEAR(more.distribution, plain.distribution, 1.0e-8 * plain.distribution) << "cut " << cut;
+    EXPECT_EQ(more.diagnostics.numberOfArcs, plain.diagnostics.numberOfArcs) << "cut " << cut;
+    EXPECT_EQ(more.diagnostics.numberOfVertices, plain.diagnostics.numberOfVertices) << "cut " << cut;
+    EXPECT_EQ(more.diagnostics.discardedCorners, plain.diagnostics.discardedCorners) << "cut " << cut;
+  }
 }

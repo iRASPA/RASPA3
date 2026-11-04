@@ -34,6 +34,27 @@ import pore_accessibility;
 // a component with a cycle whose translations do not cancel is the wall of a channel, and one without is
 // the boundary of something bounded.
 
+// Whether one of the images a query returned is hidden by another sitting exactly on it: a larger one, or one of
+// the same size with the lower index. It is the rule that buries an atom under a coincident one, asked from
+// outside the pair, and a sphere looking at the pair has to get the same answer as the pair does: a cap from the
+// buried one would be a seam with a sphere that carries no surface, and no prune can be relied on to drop the
+// right one of two equal caps, or indeed either of them, what they contain of each other being decided by rounding.
+//
+// `neighbours` is the whole of the query, which holds whatever coincides with an image it holds, the two being
+// the same distance from the point.
+inline bool hiddenByCoincidentImage(const std::vector<NeighbourImage>& neighbours,
+                                    const NeighbourImage& neighbour)
+{
+  for (const NeighbourImage& other : neighbours)
+  {
+    if (other.radius < neighbour.radius) continue;
+    if (other.radius == neighbour.radius && other.index >= neighbour.index) continue;
+    const double3 separation = other.delta - neighbour.delta;
+    if (double3::dot(separation, separation) < 1.0e-24) return true;
+  }
+  return false;
+}
+
 // Every sphere reaching the sphere of one atom, as the cap it cuts on it: `take(axis, cosineHalfAngle,
 // neighbourIndex, neighbourImage)` for each of them, `axis` being the unit direction from this atom's centre
 // towards that neighbour's and `cosineHalfAngle` the circle the two spheres meet in. False where a
@@ -44,14 +65,35 @@ import pore_accessibility;
 // has and in what order they come. The sweep is allowed to take the decomposition's crossings rather than
 // search for them again, and they are the same crossings only if these are the same caps; two spellings of
 // the same law of cosines in two files, agreeing by inspection today, is not something that stays true.
+//
+// Spheres with their centres on one line can all pass through one circle, and then this sphere cannot tell them
+// apart by their caps. Seen from one end of such a line, every one of them cuts the same cap, and of those only the
+// farthest is a real neighbour: beyond the plane of the circle it lies outside all the nearer ones, and each of the
+// nearer ones is inside it there and inside this sphere on the other side, so has no surface at all. Seen from the
+// middle, the two sides cut complementary caps and between them cover the sphere, which is that same statement
+// about this sphere; any pair on opposite axes whose caps meet or overlap does that, whether or not they meet in
+// one circle. Neither answer can be left to the prune or the sweep: the prune keeps either of two equal caps, and
+// the sweep would have to work out that two circles lying on top of one another leave nothing between them.
 export template <typename Take>
 bool eachCapCoveringAtom(const PoreAccessibility& accessibility, std::size_t atomIndex, Take&& take)
 {
   const double radius = accessibility.atomRadii[atomIndex];
   const double3 centre = accessibility.atomPositions[atomIndex];
 
-  for (const NeighbourImage& neighbour :
-       accessibility.neighbourAtomImages(centre, radius + accessibility.maximumAtomRadius))
+  const std::vector<NeighbourImage> neighbours =
+      accessibility.neighbourAtomImages(centre, radius + accessibility.maximumAtomRadius);
+
+  struct Cap
+  {
+    const NeighbourImage* neighbour;
+    double3 axis;
+    double cosineHalfAngle;
+    double distance;
+  };
+  std::vector<Cap> caps;
+  caps.reserve(neighbours.size());
+
+  for (const NeighbourImage& neighbour : neighbours)
   {
     const double distance = neighbour.delta.length();
     if (distance < 1.0e-12)
@@ -71,8 +113,43 @@ bool eachCapCoveringAtom(const PoreAccessibility& accessibility, std::size_t ato
         (radius * radius + distance * distance - neighbour.radius * neighbour.radius) / (2.0 * radius * distance);
     if (cosineHalfAngle >= 1.0) continue;
     if (cosineHalfAngle <= -1.0) return false;
+    if (hiddenByCoincidentImage(neighbours, neighbour)) continue;
 
-    take(neighbour.delta * (1.0 / distance), cosineHalfAngle, neighbour.index, neighbour.image);
+    caps.push_back({&neighbour, neighbour.delta * (1.0 / distance), cosineHalfAngle, distance});
+  }
+
+  // Far enough above the rounding of a cap built from fractional positions, some 1e-15, and far enough below
+  // anything a structure means by it.
+  constexpr double sameCircleTolerance = 1.0e-12;
+
+  std::vector<bool> hidden(caps.size(), false);
+  for (std::size_t i = 0; i < caps.size(); ++i)
+  {
+    for (std::size_t j = i + 1; j < caps.size(); ++j)
+    {
+      const Cap& first = caps[i];
+      const Cap& second = caps[j];
+      if (first.cosineHalfAngle + second.cosineHalfAngle <= sameCircleTolerance)
+      {
+        const double3 opposite = first.axis + second.axis;
+        if (double3::dot(opposite, opposite) < sameCircleTolerance * sameCircleTolerance) return false;
+      }
+      if (std::abs(first.cosineHalfAngle - second.cosineHalfAngle) < sameCircleTolerance)
+      {
+        const double3 apart = first.axis - second.axis;
+        if (double3::dot(apart, apart) < sameCircleTolerance * sameCircleTolerance)
+        {
+          const bool firstIsNearer = first.distance < second.distance ||
+                                     (first.distance == second.distance && first.neighbour->index > second.neighbour->index);
+          hidden[firstIsNearer ? i : j] = true;
+        }
+      }
+    }
+  }
+
+  for (std::size_t i = 0; i < caps.size(); ++i)
+  {
+    if (!hidden[i]) take(caps[i].axis, caps[i].cosineHalfAngle, caps[i].neighbour->index, caps[i].neighbour->image);
   }
   return true;
 }

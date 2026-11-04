@@ -489,7 +489,8 @@ bool gatherTangents(const PoreAccessibility& accessibility, const BoundaryCompon
     double distance = image.delta.length();
     if (distance < image.radius - touchTolerance) return false;  // buried after all, and on no surface
 
-    if (distance < image.radius + touchTolerance && distance > 1.0e-12)
+    if (distance < image.radius + touchTolerance && distance > 1.0e-12 &&
+        !components.atoms[image.index].buried)  // a sphere with no surface touches nothing
     {
       vertex.tangents.push_back(image.delta * (1.0 / distance));
       gatherComponentVotes(components, image.index, image.delta * (-1.0 / distance), votes);

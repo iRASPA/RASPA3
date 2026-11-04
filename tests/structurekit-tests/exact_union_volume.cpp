@@ -310,3 +310,228 @@ TEST(exact_union_volume, coincident_equal_spheres_leave_one_surface)
   EXPECT_EQ(components.atoms[0].numberOfPatches, 1uz);
   EXPECT_TRUE(components.atoms[0].circles.empty());
 }
+
+
+// A third sphere cutting the two of a duplicated atom sees one sphere, whichever of the three comes where in the
+// input. It used to be handed a cap from each of the pair and to keep the one the tie had buried, which left
+// the seam between it and the survivor joined to nothing, and it cut the cell of the third atom twice along the
+// one plane.
+TEST(exact_union_volume, a_third_sphere_sees_a_coincident_pair_as_one)
+{
+  const double a = 40.0;
+  UnitCell box(a, a, a);
+  const double radius = 2.0;
+  const double distance = 3.0;
+  const double3 twice(0.5, 0.5, 0.5);
+  const double3 third(0.5 + distance / a, 0.5, 0.5);
+
+  const double lens = std::numbers::pi * (4.0 * radius + distance) * (2.0 * radius - distance) *
+                      (2.0 * radius - distance) / 12.0;
+  const double expected = 2.0 * ballVolume(radius) - lens;
+
+  for (const std::vector<double3>& order : {std::vector<double3>{twice, twice, third}, std::vector<double3>{third, twice, twice},
+                                            std::vector<double3>{twice, third, twice}})
+  {
+    PoreAccessibility geometry = bareGeometry(box, order, {radius, radius, radius});
+    BoundaryComponents components = boundaryComponents(geometry);
+
+    EXPECT_EQ(components.numberOfComponents, 1uz);
+    EXPECT_EQ(components.looseEdges, 0uz);
+    EXPECT_NEAR(unionOfBallsVolume(geometry), expected, 1.0e-9 * expected);
+  }
+}
+
+// The same for a pair with a larger sphere on the same spot, which buries both: only the larger one is a cap.
+TEST(exact_union_volume, a_third_sphere_sees_only_the_largest_of_a_coincident_group)
+{
+  const double a = 40.0;
+  UnitCell box(a, a, a);
+  const double radius = 2.0;
+  const double distance = 3.0;
+  const double3 twice(0.5, 0.5, 0.5);
+  const double3 third(0.5 + distance / a, 0.5, 0.5);
+
+  const double lens = std::numbers::pi * (4.0 * radius + distance) * (2.0 * radius - distance) *
+                      (2.0 * radius - distance) / 12.0;
+  const double expected = 2.0 * ballVolume(radius) - lens;
+
+  PoreAccessibility geometry = bareGeometry(box, {twice, twice, twice, third}, {1.0, radius, 1.0, radius});
+  BoundaryComponents components = boundaryComponents(geometry);
+  EXPECT_EQ(components.numberOfComponents, 1uz);
+  EXPECT_EQ(components.looseEdges, 0uz);
+  EXPECT_NEAR(unionOfBallsVolume(geometry), expected, 1.0e-9 * expected);
+}
+
+// Duplicating atoms of a real arrangement changes nothing that can be measured, wherever in the input the copies
+// land. An arrangement dense enough that spheres meet in threes is the case with seams to lose.
+TEST(exact_union_volume, duplicating_atoms_of_an_arrangement_changes_nothing)
+{
+  UnitCell box(14.0, 15.0, 16.0);
+
+  for (std::size_t seed = 0; seed < 6; ++seed)
+  {
+    RandomNumber random{std::optional<std::size_t>(100 + seed)};
+    std::vector<double3> positions;
+    std::vector<double> radii;
+    for (std::size_t i = 0; i < 14; ++i)
+    {
+      positions.push_back(double3(random.uniform(), random.uniform(), random.uniform()));
+      radii.push_back(1.6 + random.uniform());
+    }
+
+    std::vector<double3> doubledPositions;
+    std::vector<double> doubledRadii;
+    std::vector<std::size_t> order;
+    for (std::size_t i = 0; i < positions.size(); ++i)
+    {
+      order.push_back(i);
+      if (i % 2 == 0) order.push_back(i);
+    }
+    // A shuffle of the input, so that a copy need not sit next to its original.
+    for (std::size_t i = order.size() - 1; i > 0; --i)
+    {
+      std::swap(order[i], order[static_cast<std::size_t>(random.uniform() * static_cast<double>(i + 1))]);
+    }
+    for (std::size_t i : order)
+    {
+      doubledPositions.push_back(positions[i]);
+      doubledRadii.push_back(radii[i]);
+    }
+
+    PoreAccessibility plain = bareGeometry(box, positions, radii);
+    PoreAccessibility doubled = bareGeometry(box, doubledPositions, doubledRadii);
+
+    BoundaryComponents plainComponents = boundaryComponents(plain);
+    BoundaryComponents doubledComponents = boundaryComponents(doubled);
+    EXPECT_EQ(doubledComponents.looseEdges, plainComponents.looseEdges) << "seed " << seed;
+    EXPECT_EQ(doubledComponents.numberOfComponents, plainComponents.numberOfComponents) << "seed " << seed;
+
+    const double expected = unionOfBallsVolume(plain);
+    EXPECT_NEAR(unionOfBallsVolume(doubled), expected, 1.0e-8 * expected) << "seed " << seed;
+  }
+}
+
+
+namespace
+{
+
+// A sphere through the circle two others meet in, with its centre on the line between theirs. All three cut one
+// another in that one circle: on either side of its plane the middle one lies inside one of the outer two, so it
+// has no surface and takes up no room, although neither of them holds the whole of it.
+double middleSphereRadius(const double3& first, double firstRadius, const double3& second, double secondRadius,
+                          const double3& middle)
+{
+  const double separation = (second - first).length();
+  const double plane = (separation * separation + firstRadius * firstRadius - secondRadius * secondRadius) /
+                       (2.0 * separation);
+  const double along = (middle - first).length();
+  return std::sqrt(firstRadius * firstRadius - plane * plane + (along - plane) * (along - plane));
+}
+
+PoreAccessibility cartesianGeometry(const UnitCell& box, const std::vector<double3>& positions,
+                                    const std::vector<double>& radii)
+{
+  std::vector<double3> fractional;
+  for (const double3& position : positions) fractional.push_back(box.inverseCell * position);
+  return bareGeometry(box, fractional, radii);
+}
+
+}  // namespace
+
+// The closed form: a cap of one ball and a cap of the other, meeting at the plane. Asked along a direction with no
+// exact representation, so that nothing about the three is equal to the last bit, and with the middle sphere in
+// every place in the input.
+TEST(exact_union_volume, a_sphere_through_the_circle_of_two_others_adds_nothing)
+{
+  UnitCell box(40.0, 40.0, 40.0);
+  const double3 direction = double3::normalize(double3(1.0, 0.7, 0.3));
+  const double3 first(20.0, 20.0, 20.0);
+  const double firstRadius = 2.0;
+  const double3 second = first + direction * 4.0;
+  const double secondRadius = std::sqrt(8.0);
+  const double3 middle = first + direction * 3.0;
+  const double middleRadius = middleSphereRadius(first, firstRadius, second, secondRadius, middle);
+
+  const auto cap = [](double radius, double height)
+  { return std::numbers::pi * height * height * (3.0 * radius - height) / 3.0; };
+  const double plane = 1.5;
+  const double expected = ballVolume(firstRadius) - cap(firstRadius, firstRadius - plane) +
+                          ballVolume(secondRadius) - cap(secondRadius, secondRadius - (4.0 - plane));
+
+  EXPECT_NEAR(unionOfBallsVolume(cartesianGeometry(box, {first, second}, {firstRadius, secondRadius})), expected,
+              1.0e-9 * expected);
+
+  const std::vector<std::vector<std::size_t>> orders = {{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}};
+  const std::array<double3, 3> centres{first, middle, second};
+  const std::array<double, 3> radii{firstRadius, middleRadius, secondRadius};
+  for (const std::vector<std::size_t>& order : orders)
+  {
+    std::vector<double3> positions;
+    std::vector<double> sizes;
+    for (std::size_t i : order)
+    {
+      positions.push_back(centres[i]);
+      sizes.push_back(radii[i]);
+    }
+    PoreAccessibility geometry = cartesianGeometry(box, positions, sizes);
+    BoundaryComponents components = boundaryComponents(geometry);
+
+    EXPECT_EQ(components.numberOfComponents, 1uz);
+    EXPECT_EQ(components.looseEdges, 0uz);
+    EXPECT_NEAR(unionOfBallsVolume(geometry), expected, 1.0e-9 * expected);
+  }
+}
+
+// The same inside a real arrangement, where other spheres cut the three and so meet the circle at corners shared
+// by all of them, which is where the walk round the edges has the most to get wrong.
+TEST(exact_union_volume, a_sphere_through_the_circle_of_two_others_changes_nothing_in_an_arrangement)
+{
+  UnitCell box(14.0, 15.0, 16.0);
+  std::size_t added = 0;
+
+  for (std::size_t seed = 0; seed < 8; ++seed)
+  {
+    RandomNumber random{std::optional<std::size_t>(200 + seed)};
+    std::vector<double3> positions;
+    std::vector<double> radii;
+    for (std::size_t i = 0; i < 12; ++i)
+    {
+      positions.push_back(box.cell * double3(0.2 + 0.6 * random.uniform(), 0.2 + 0.6 * random.uniform(),
+                                             0.2 + 0.6 * random.uniform()));
+      radii.push_back(1.6 + random.uniform());
+    }
+
+    std::vector<double3> morePositions = positions;
+    std::vector<double> moreRadii = radii;
+    for (std::size_t i = 0; i < positions.size(); ++i)
+    {
+      for (std::size_t j = i + 1; j < positions.size(); ++j)
+      {
+        const double separation = (positions[j] - positions[i]).length();
+        const double plane = (separation * separation + radii[i] * radii[i] - radii[j] * radii[j]) / (2.0 * separation);
+        if (separation >= radii[i] + radii[j] || std::abs(plane) >= radii[i] || added % 3 != seed % 3)
+        {
+          if (separation < radii[i] + radii[j]) ++added;
+          continue;
+        }
+        ++added;
+        const double3 middle = positions[i] + (positions[j] - positions[i]) * 0.5;
+        const std::size_t place = static_cast<std::size_t>(random.uniform() * static_cast<double>(morePositions.size() + 1));
+        morePositions.insert(morePositions.begin() + static_cast<std::ptrdiff_t>(place), middle);
+        moreRadii.insert(moreRadii.begin() + static_cast<std::ptrdiff_t>(place),
+                         middleSphereRadius(positions[i], radii[i], positions[j], radii[j], middle));
+      }
+    }
+    ASSERT_GT(morePositions.size(), positions.size());
+
+    PoreAccessibility plain = cartesianGeometry(box, positions, radii);
+    PoreAccessibility more = cartesianGeometry(box, morePositions, moreRadii);
+    BoundaryComponents plainComponents = boundaryComponents(plain);
+    BoundaryComponents moreComponents = boundaryComponents(more);
+
+    EXPECT_EQ(moreComponents.numberOfComponents, plainComponents.numberOfComponents) << "seed " << seed;
+    EXPECT_EQ(moreComponents.looseEdges, plainComponents.looseEdges) << "seed " << seed;
+    const double expected = unionOfBallsVolume(plain);
+    EXPECT_NEAR(unionOfBallsVolume(more), expected, 1.0e-8 * expected) << "seed " << seed;
+  }
+}

@@ -63,11 +63,18 @@ export std::array<double3, 3> sweepFrame(const std::vector<double3>& axes);
 // The condition is that the angle between the axes plus the inner half angle is at most the outer one, taken
 // on the cosines rather than on the angles: `acos` is the most expensive thing in a sweep, and this is asked
 // of every pair of caps on every sphere.
+//
+// Equal caps are the case the comparison has to allow rounding for. Both sides are then one, each with a few
+// units of the last place of its own, and without the allowance each of the two can look to be sticking out of
+// the other. It costs little elsewhere: the two sides only come this close where the disc really is on the edge
+// of the other, and the sliver that can be lost is of the width the rounding of the cosine already hides, some
+// 1e-8 radians where the two caps are nearly the same one and far less where they are not.
 export inline bool discWithinDisc(double cosineBetweenAxes, double cosineInner, double sineInner,
                                   double cosineOuter, double sineOuter)
 {
+  constexpr double roundingAllowance = 1.0e-15;
   if (cosineOuter > cosineInner) return false;  // the outer half angle has to be the larger
-  return cosineBetweenAxes >= cosineOuter * cosineInner + sineOuter * sineInner;
+  return cosineBetweenAxes + roundingAllowance >= cosineOuter * cosineInner + sineOuter * sineInner;
 }
 
 // Drops the caps whose discs lie inside another's. Anything carrying `axis`, `cosineHalfAngle` and

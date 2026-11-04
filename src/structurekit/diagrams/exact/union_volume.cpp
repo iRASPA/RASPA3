@@ -4,6 +4,7 @@ module exact_union_volume;
 
 import std;
 
+import int3;
 import double2;
 import double3;
 import pore_accessibility;
@@ -271,45 +272,17 @@ double unionOfBallsVolume(const PoreAccessibility& accessibility, const Measured
 {
   // Every plane that cuts an atom bounds that atom's cell there, and a plane that misses the atom cannot cut
   // a face either, since a face lies inside the atom, so the planes collected here are all the ones any face
-  // is cut by.
-  return sumOverCells(
-      accessibility, patches,
-      [&](std::size_t i, std::vector<CellPlane>& planes)
-      {
-        const double radius = accessibility.atomRadii[i];
-        const double3 centre = accessibility.atomPositions[i];
-
-        planes.clear();
-        for (const NeighbourImage& neighbour :
-             accessibility.neighbourAtomImages(centre, radius + accessibility.maximumAtomRadius))
-        {
-          const double3& delta = neighbour.delta;
-          const double neighbourRadius = neighbour.radius;
-          double distance = delta.length();
-          if (distance < 1.0e-12)
-          {
-            // The atom itself, which the query returns along with the rest. A second atom on the very same
-            // spot is a duplicate in the input rather than a geometry: a larger one buries this atom, and one
-            // of the same size is a tie that no diagram can break, broken here as in the area (see
-            // `eachCapCoveringAtom`): the one with the lower index carries the ball.
-            if (neighbourRadius > radius) return false;
-            if (neighbourRadius == radius && neighbour.index < i) return false;
-            continue;
-          }
-
-          // The plane on which this atom and the neighbour are equally far into each other's territory.
-          double planeDistance =
-              (distance * distance + radius * radius - neighbourRadius * neighbourRadius) / (2.0 * distance);
-          if (planeDistance >= radius) continue;  // the plane misses the atom and bounds nothing of it
-
-          // The whole atom is on the far side of one of its own cell's planes, so its cell holds none of it:
-          // the neighbour has swallowed it and carries the volume itself.
-          if (planeDistance <= -radius) return false;
-
-          planes.push_back({delta * (1.0 / distance), planeDistance});
-        }
-        return true;
-      });
+  // is cut by. They are the caps of the sphere seen edge-on, and an atom whose caps leave it no surface is one
+  // whose cell holds none of it, the neighbours carrying the volume themselves.
+  return sumOverCells(accessibility, patches,
+                      [&](std::size_t i, std::vector<CellPlane>& planes)
+                      {
+                        const double radius = accessibility.atomRadii[i];
+                        planes.clear();
+                        return eachCapCoveringAtom(accessibility, i,
+                                                   [&](const double3& axis, double cosineHalfAngle, std::size_t, int3)
+                                                   { planes.push_back({axis, radius * cosineHalfAngle}); });
+                      });
 }
 
 double unionOfBallsVolume(const PoreAccessibility& accessibility, const MeasuredPatches& patches,
