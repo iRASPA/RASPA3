@@ -124,6 +124,93 @@ TEST(exact_pore_size_distribution, peaks_only_finds_the_same_corner_spike)
 }
 
 
+// Refining the peaks is asking for the diameter to be measured rather than read off the network, so each spike has
+// to come back with the diameter the bisection cornered and not the one it started from, in a bracket as narrow as
+// that bisection got. And a room is one spike however the bisection fell: a cliff straddled by two of its intervals
+// leaves an excess in both, and those are one room's weight.
+TEST(exact_pore_size_distribution, refined_peaks_report_what_the_refinement_found_once_per_room)
+{
+  const std::vector<std::pair<std::string, Lattice>> cases = {
+      {"simple cubic", simpleCubic(6.0, 1.5)},
+      {"overlapping simple cubic", simpleCubic(6.0, 3.3)},
+      {"cage in an open cell", cageInAnOpenCell(14.0, 3.0, 1.8)},
+  };
+
+  for (const auto& [name, lattice] : cases)
+  {
+    auto build = [&](double probeRadius)
+    { return PoreAccessibility::create(lattice.box, lattice.fractionalPositions, lattice.radii, probeRadius); };
+
+    PoreSizeDistributionCurve coarse = exactPoreSizePeaks(build, lattice.box.volume, 1, 0.0, 0.0, 0);
+    PoreSizeDistributionCurve refined = exactPoreSizePeaks(build, lattice.box.volume, 1, 0.0, 0.0, 12);
+
+    ASSERT_FALSE(coarse.spikes.empty()) << name;
+    ASSERT_EQ(refined.spikes.size(), coarse.spikes.size()) << name;
+    ASSERT_EQ(refined.probeAccessibleSpikes.size(), coarse.probeAccessibleSpikes.size()) << name;
+
+    for (std::size_t s = 0; s < refined.spikes.size(); ++s)
+    {
+      const PoreSizeSpike& before = coarse.spikes[s];
+      const PoreSizeSpike& after = refined.spikes[s];
+
+      EXPECT_LT(after.bracket, 1.0e-2 * before.bracket) << name << ", spike " << s;
+      EXPECT_NE(after.diameter, before.diameter) << name << ", spike " << s;
+      EXPECT_NEAR(after.diameter, before.diameter, before.bracket) << name << ", spike " << s;
+      EXPECT_NEAR(after.weight, before.weight, 1.0e-3) << name << ", spike " << s;
+      if (s > 0)
+      {
+        EXPECT_GT(after.diameter, refined.spikes[s - 1].diameter) << name << ", spike " << s;
+      }
+    }
+    EXPECT_NEAR(refined.singularWeight, coarse.singularWeight, 1.0e-3) << name;
+    EXPECT_NEAR(refined.probeAccessibleSingularWeight, coarse.probeAccessibleSingularWeight, 1.0e-3) << name;
+  }
+}
+
+
+// Those lattices are symmetric enough that the bisection tends to land clear of the cliff. A disordered
+// arrangement does not oblige: on these two, the cliffs of several rooms are straddled at twelve refinements and
+// would each come back as a pair of spikes. Every room's weight has to come back together, as the one spike the
+// unrefined bracket finds there.
+TEST(exact_pore_size_distribution, a_room_whose_cliff_the_bisection_straddles_is_one_spike)
+{
+  for (unsigned seed : {35u, 38u})
+  {
+    std::mt19937 engine(seed);
+    std::uniform_real_distribution<double> unit(0.0, 1.0);
+    Lattice lattice;
+    lattice.box = UnitCell(10.0, 11.0, 12.0);
+    const std::size_t atoms = 6 + seed % 20;
+    for (std::size_t atom = 0; atom < atoms; ++atom)
+    {
+      lattice.fractionalPositions.push_back(double3(unit(engine), unit(engine), unit(engine)));
+      lattice.radii.push_back(1.2 + unit(engine));
+    }
+    auto build = [&](double probeRadius)
+    { return PoreAccessibility::create(lattice.box, lattice.fractionalPositions, lattice.radii, probeRadius); };
+
+    PoreSizeDistributionCurve coarse = exactPoreSizePeaks(build, lattice.box.volume, 1, 0.0, 0.0, 0);
+    PoreSizeDistributionCurve refined = exactPoreSizePeaks(build, lattice.box.volume, 1, 0.0, 0.0, 12);
+    ASSERT_FALSE(refined.spikes.empty()) << "seed " << seed;
+
+    for (std::size_t s = 0; s < refined.spikes.size(); ++s)
+    {
+      const PoreSizeSpike& spike = refined.spikes[s];
+
+      // The candidates are at least 1e-2 Å apart and each bracket reaches a quarter of the way to the next.
+      if (s > 0) EXPECT_GT(spike.diameter - refined.spikes[s - 1].diameter, 5.0e-3) << "seed " << seed;
+
+      auto nearest = std::ranges::min_element(coarse.spikes, {},
+                                              [&](const PoreSizeSpike& other)
+                                              { return std::abs(other.diameter - spike.diameter); });
+      ASSERT_NE(nearest, coarse.spikes.end());
+      EXPECT_NEAR(nearest->diameter, spike.diameter, 1.0e-2) << "seed " << seed << ", spike " << s;
+      EXPECT_NEAR(nearest->weight, spike.weight, 1.0e-3) << "seed " << seed << ", spike " << s;
+    }
+  }
+}
+
+
 TEST(exact_pore_size_distribution, the_continuous_part_and_the_spikes_account_for_the_void)
 {
   const double edge = 6.0;

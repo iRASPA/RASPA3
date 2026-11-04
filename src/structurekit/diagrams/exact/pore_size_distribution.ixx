@@ -175,6 +175,9 @@ export PoreSizeDistributionCurve exactPoreSizeDistribution(
 // two surface evaluations per room size rather than a dense diameter sweep plus a dozen bisections per
 // cliff. Wall corrugation is omitted on purpose. Accessibility / floor conventions match
 // `exactPoreSizeDistribution`.
+//
+// With `refinements` the bracket about each room is bisected as well, and the spike's diameter is then where
+// that found the cliff rather than the network's value. Either way a room is one spike.
 export PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibility(double)>& build,
                                                     double cellVolume, std::size_t subdivisions,
                                                     double probeRadius = 0.0, double floorRadius = 0.0,

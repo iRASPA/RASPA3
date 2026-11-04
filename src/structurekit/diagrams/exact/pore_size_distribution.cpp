@@ -653,6 +653,28 @@ PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibili
 
   // Do not reuse collectSeries here: its "sixteen brackets" merge is meant for refined intervals of ~1e-5 Å.
   // With a ±5e-3 Å peaks bracket that window is ~0.3 Å and chains every nearby MFI room into one spike.
+  //
+  // A bracket is one room instead, however its refinement fell: the candidates are further apart than the
+  // brackets are wide, and a cliff the bisection has straddled leaves an excess on either side of itself. So what
+  // a bracket's intervals hold is added up, and placed where the bisection found it.
+  auto addInterval = [](PoreSizeSpike& spike, const Sample& left, const Sample& right, double weight)
+  {
+    const double total = spike.weight + weight;
+    spike.diameter = (spike.diameter * spike.weight + 0.5 * (left.diameter + right.diameter) * weight) / total;
+    spike.bracket += right.diameter - left.diameter;
+    spike.weight = total;
+  };
+
+  // Left unrefined the bracket says only which side of the candidate the cliff is on, and the network's own
+  // diameter is the better answer.
+  auto keepSpike = [&](Collector& into, PoreSizeSpike spike, std::size_t index)
+  {
+    if (spike.weight <= 0.0) return;
+    if (refinements == 0) spike.diameter = candidates[index];
+    into.spikes.push_back(spike);
+    into.singularWeight += spike.weight;
+  };
+
   Collector whole;
   Collector reachable;
   for (std::size_t index = 0; index < brackets.size(); ++index)
@@ -660,29 +682,23 @@ PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibili
     const std::vector<Sample>& pending = brackets[index];
     if (pending.size() < 2) continue;
 
+    PoreSizeSpike wholeSpike;
+    PoreSizeSpike reachableSpike;
     for (std::size_t k = 0; k + 1 < pending.size(); ++k)
     {
       const Sample& left = pending[k];
       const Sample& right = pending[k + 1];
       const double wholeGap = unaccounted(left, right, &Sample::whole);
       if (wholeGap <= spikeFloor) continue;
-
-      PoreSizeSpike spike;
-      spike.diameter = (index < candidates.size()) ? candidates[index] : 0.5 * (left.diameter + right.diameter);
-      spike.weight = wholeGap;
-      spike.bracket = right.diameter - left.diameter;
-      whole.spikes.push_back(spike);
-      whole.singularWeight += wholeGap;
+      addInterval(wholeSpike, left, right, wholeGap);
 
       if (left.diameter < probeSample.diameter) continue;
       const double reachableGap = std::min(unaccounted(left, right, &Sample::reachable), wholeGap * allowance);
       if (reachableGap <= spikeFloor) continue;
-
-      PoreSizeSpike reachableSpike = spike;
-      reachableSpike.weight = reachableGap;
-      reachable.spikes.push_back(reachableSpike);
-      reachable.singularWeight += reachableGap;
+      addInterval(reachableSpike, left, right, reachableGap);
     }
+    keepSpike(whole, wholeSpike, index);
+    keepSpike(reachable, reachableSpike, index);
   }
 
   curve.integral = 0.0;
