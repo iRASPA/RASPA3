@@ -624,6 +624,14 @@ struct Neighbourhood
   }
 };
 
+double3 wrapUnit(double3 fractional)
+{
+  fractional.x -= std::floor(fractional.x);
+  fractional.y -= std::floor(fractional.y);
+  fractional.z -= std::floor(fractional.z);
+  return fractional;
+}
+
 Neighbourhood makeNeighbourhood(const PairInteractions &interactions, const Crystal &framework,
                                 const LinearProbe &probe, std::size_t numberOfOrientations, double thermalEnergy,
                                 std::span<const BlockingSphere> blockingSpheres, double blockedEnergyPerAngstrom,
@@ -661,9 +669,11 @@ Neighbourhood makeNeighbourhood(const PairInteractions &interactions, const Crys
   neighbourhood.positions.reserve(numberOfAtoms);
   for (std::size_t i = 0; i < numberOfAtoms; ++i)
   {
-    neighbourhood.positions.push_back(framework.fractionalPositions.empty()
-                                          ? framework.unitCell.inverseCell * framework.atoms[i].position
-                                          : framework.fractionalPositions[i]);
+    // Into the home cell, which is what the images are counted out from: they are laid out a whole number of cells
+    // either side of an atom, far enough to reach every point of the cell only from an atom that is in it.
+    neighbourhood.positions.push_back(wrapUnit(framework.fractionalPositions.empty()
+                                                   ? framework.unitCell.inverseCell * framework.atoms[i].position
+                                                   : framework.fractionalPositions[i]));
   }
 
   std::vector<std::size_t> kept;
@@ -733,14 +743,6 @@ Neighbourhood makeNeighbourhood(const PairInteractions &interactions, const Crys
 
   neighbourhood.widenFor(0.0);
   return neighbourhood;
-}
-
-double3 wrapUnit(double3 fractional)
-{
-  fractional.x -= std::floor(fractional.x);
-  fractional.y -= std::floor(fractional.y);
-  fractional.z -= std::floor(fractional.z);
-  return fractional;
 }
 
 double3 quantizeFractional(double3 fractional)
