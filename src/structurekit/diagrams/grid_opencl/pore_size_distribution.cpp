@@ -84,6 +84,13 @@ void GridPoreSizeDistribution::run(const PairInteractions &interactions, const C
     poreRadius = poreRadiusFieldOpenCL(grid.gridSize, framework.unitCell, grid.clearance, this->slack);
     std::chrono::duration<double> gpuElapsed = std::chrono::steady_clock::now() - gpu_begin;
     this->gpuSeconds = gpuElapsed.count();
+
+    // A point with no wall in reach draws no sphere and is told no size by the sweep, but it is not in a pore of
+    // no size: the room there is unlimited, and the size of the pore it is in is that.
+    for (std::size_t voxel = 0; voxel < numberOfVoxels; ++voxel)
+    {
+      if (grid.clearance[voxel] == std::numeric_limits<float>::max()) poreRadius[voxel] = grid.clearance[voxel];
+    }
   }
 
   // Which of the void a probe can reach: the pores it fits in are the channels, and the void around them is

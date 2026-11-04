@@ -159,7 +159,24 @@ ClearanceGrid ClearanceGrid::compute(const PairInteractions &interactions, const
   // Half the Lennard-Jones size parameter of the atom's own type, which is the radius the Voronoi and
   // Apollonius routes give an atom. No probe is folded in here: the field is the room for a probe centre and
   // a probe of any radius is applied afterwards by comparing against it.
+  //
+  // The fractional positions are the same atoms in the same order, and a crystal may come without them, in which
+  // case they are worked out here as the other routes do. Any other difference in length leaves no way of saying
+  // which radius goes with which position.
+  if (!framework.fractionalPositions.empty() && framework.fractionalPositions.size() != framework.atoms.size())
+  {
+    throw std::runtime_error(std::format("ClearanceGrid: {} fractional positions for {} atoms\n",
+                                         framework.fractionalPositions.size(), framework.atoms.size()));
+  }
   std::vector<double3> fractionalPositions = framework.fractionalPositions;
+  if (fractionalPositions.empty())
+  {
+    fractionalPositions.reserve(framework.atoms.size());
+    for (const CrystalAtom &atom : framework.atoms)
+    {
+      fractionalPositions.push_back(framework.unitCell.inverseCell * atom.position);
+    }
+  }
   grid.atomRadii.reserve(framework.atoms.size());
   for (const CrystalAtom &atom : framework.atoms)
   {
@@ -171,7 +188,12 @@ ClearanceGrid ClearanceGrid::compute(const PairInteractions &interactions, const
   grid.clearance.assign(numberOfVoxels, 0.0f);
   grid.closestAtom.assign(numberOfVoxels, -1);
 
-  if (fractionalPositions.empty()) return grid;
+  // With no atoms nothing limits the room anywhere, which is what the kernel starts every point from.
+  if (fractionalPositions.empty())
+  {
+    grid.clearance.assign(numberOfVoxels, std::numeric_limits<float>::max());
+    return grid;
+  }
 
   cl_int err;
 
