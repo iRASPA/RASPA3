@@ -105,8 +105,9 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
   cl_int err = 0;
 
   // make sure the the global work size is an multiple of the work group size
-  // (detected on NVIDIA)
-  std::size_t numberOfGridPoints = (temp + energyGridWorkGroupSize - 1) & ~(energyGridWorkGroupSize - 1);
+  // (detected on NVIDIA). A device may report a size that is no power of two, so this is done by dividing rather
+  // than by masking: masking off the bits of a size like that gives a count that is no multiple of it.
+  std::size_t numberOfGridPoints = ((temp + energyGridWorkGroupSize - 1) / energyGridWorkGroupSize) * energyGridWorkGroupSize;
   std::size_t energy_global_work_size = numberOfGridPoints;
 
   std::vector<cl_float4> pos(numberOfAtoms);

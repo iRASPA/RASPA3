@@ -163,3 +163,31 @@ TEST(energy_legacy_void_fraction, a_strengthless_atom_on_a_grid_point_leaves_the
   EXPECT_TRUE(std::isfinite(with.area));
   EXPECT_DOUBLE_EQ(with.area, without.area);
 }
+
+
+// A device may report a work-group size that is not a power of two, and the range has to be padded to a multiple of
+// it whatever it is, or the device refuses the work. The padding points are not on the grid, so the area is the same.
+TEST(energy_legacy_void_fraction, the_range_is_padded_to_a_work_group_size_that_is_no_power_of_two)
+{
+  if (noDevice()) GTEST_SKIP() << "no OpenCL device";
+
+  PairInteractions interactions = probeAndTwoAtoms();
+  Crystal framework = atomInTheMiddle("energy_legacy_workgroup_test");
+  const uint3 gridSize(16, 16, 16);
+
+  EnergyOpenCLSurfaceArea asReported;
+  asReported.run(interactions, framework, 1000.0, "He", gridSize);
+  ASSERT_GT(asReported.area, 0.0);
+
+  for (std::size_t workGroupSize : {3uz, 7uz, 12uz})
+  {
+    ASSERT_LE(workGroupSize, asReported.energyGridWorkGroupSize) << "the device has to allow this group";
+
+    EnergyOpenCLSurfaceArea route;
+    route.energyGridWorkGroupSize = workGroupSize;
+    EXPECT_NO_THROW(route.run(interactions, framework, 1000.0, "He", gridSize)) << "group of " << workGroupSize;
+    EXPECT_DOUBLE_EQ(route.area, asReported.area) << "group of " << workGroupSize;
+  }
+
+  std::filesystem::remove("energy_legacy_workgroup_test.energy.sa.gpu.txt");
+}
