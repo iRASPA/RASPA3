@@ -65,7 +65,8 @@ void MC_SurfaceArea::run(const SampledStructure &structure, const SampledProbe &
   this->surfaceAreaError = 0.0;
   if (number_of_iterations >= 3)
   {
-    double standard_error = std::sqrt((sum_of_squares - sum * sum / n) / (n * (n - 1.0)));
+    // Passes that all read the same have no scatter, and the two terms can then round to a difference below zero.
+    double standard_error = std::sqrt(std::max(0.0, sum_of_squares - sum * sum / n) / (n * (n - 1.0)));
     std::size_t degrees_of_freedom = number_of_iterations - 1;
     double t = degrees_of_freedom < student_t_95.size() ? student_t_95[degrees_of_freedom] : 1.959963984540054;
     this->surfaceAreaError = t * standard_error;

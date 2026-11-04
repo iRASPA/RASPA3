@@ -72,7 +72,8 @@ void Integration_OpenCL_SurfaceArea::run(const SampledStructure &structure, cons
   double3x3 inverse_unit_cell = structure.unitCell.inverseCell;
 
   std::size_t numberOfAtoms = structure.size();
-  size_t global_work_size = (numberOfAtoms + surfaceAreaWorkGroupSize - 1) & ~(surfaceAreaWorkGroupSize - 1);
+  size_t global_work_size =
+      ((numberOfAtoms + surfaceAreaWorkGroupSize - 1) / surfaceAreaWorkGroupSize) * surfaceAreaWorkGroupSize;
 
   std::vector<cl_float4> pos(numberOfAtoms);
   std::vector<cl_float> sigma(numberOfAtoms);
@@ -144,6 +145,10 @@ void Integration_OpenCL_SurfaceArea::run(const SampledStructure &structure, cons
   cl_float4 inverse_clCellb = {{cl_float(inverse_unit_cell[0][1]), cl_float(inverse_unit_cell[1][1]), cl_float(inverse_unit_cell[2][1]), cl_float(0.0)}};
   cl_float4 inverse_clCellc = {{cl_float(inverse_unit_cell[0][2]), cl_float(inverse_unit_cell[1][2]), cl_float(inverse_unit_cell[2][2]), cl_float(0.0)}};
 
+  // The widths across the cell, which bound the images of an atom that can reach a point.
+  double3 widths = structure.unitCell.perpendicularWidths();
+  cl_float4 inverseWidths = {{cl_float(1.0 / widths.x), cl_float(1.0 / widths.y), cl_float(1.0 / widths.z), cl_float(0.0)}};
+
   cl_int end_index = cl_int(numberOfAtoms);
   cl_int number_of_slices_parameter = cl_int(number_of_slices);
 
@@ -158,6 +163,7 @@ void Integration_OpenCL_SurfaceArea::run(const SampledStructure &structure, cons
   err |= clSetKernelArg(surfaceAreaKernel, 8, sizeof(cl_float4), &inverse_clCella);
   err |= clSetKernelArg(surfaceAreaKernel, 9, sizeof(cl_float4), &inverse_clCellb);
   err |= clSetKernelArg(surfaceAreaKernel, 10, sizeof(cl_float4), &inverse_clCellc);
+  err |= clSetKernelArg(surfaceAreaKernel, 11, sizeof(cl_float4), &inverseWidths);
   err |= clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), surfaceAreaKernel, 1, nullptr, &global_work_size,
                                 &surfaceAreaWorkGroupSize, 0, nullptr, nullptr);
   if (err != CL_SUCCESS)
@@ -185,10 +191,10 @@ void Integration_OpenCL_SurfaceArea::run(const SampledStructure &structure, cons
 
   std::ofstream myfile;
   myfile.open(structure.name + ".integration.sa.gpu.txt");
-  std::print(myfile, "# Surface area using Monte Carlo-based method\n");
+  std::print(myfile, "# Surface area using integration method\n");
   structure.writeHeader(myfile);
   probe.writeHeader(myfile);
-  std::print(myfile, "# Number of integration points per atom: {}\n", (number_of_slices + 1) * number_of_slices);
+  std::print(myfile, "# Number of integration points per atom: {}\n", number_of_slices * number_of_slices);
   std::print(myfile, "# GPU Timing: {} [s]\n", this->seconds);
   std::print(myfile, "{} [Å²]\n", this->surfaceArea);
   std::print(myfile, "{} [m²/cm³]\n", 1.0e4 * this->surfaceArea / structure.unitCell.volume);
@@ -197,6 +203,54 @@ void Integration_OpenCL_SurfaceArea::run(const SampledStructure &structure, cons
 }
 
 const char* Integration_OpenCL_SurfaceArea::surfaceAreaKernelSource = R"foo(
+// Whether a point lies inside an atom, other than the atom whose sphere it is on as it stands in this cell: images of
+// that one count, since a sphere can be buried by its own repeats. An image only reaches the point if its fraction
+// along an axis is within its radius over the width of the cell across that axis, a fraction f being at least f times
+// that width long whatever the shape of the cell, and that is usually the one image rounding gives or none at all.
+// The last term is allowance for rounding in these floats.
+inline bool isBuried(float4 sample, int iatom, int numberOfAtoms, __global float4 *position, __global float *sigma,
+                     float4 cella, float4 cellb, float4 cellc,
+                     float4 inverse_cella, float4 inverse_cellb, float4 inverse_cellc, float4 inverseWidths)
+{
+  for(int jatom = 0; jatom < numberOfAtoms; ++jatom)
+  {
+    float4 dr = sample - position[jatom];
+
+    float4 ds;
+    ds.x = dot(inverse_cella, dr);
+    ds.y = dot(inverse_cellb, dr);
+    ds.z = dot(inverse_cellc, dr);
+    ds.w = 0.0f;
+
+    float4 whole = rint(ds);
+    float4 t = ds - whole;
+
+    float radius_sq = sigma[jatom] * sigma[jatom];
+    float4 reach = sigma[jatom] * inverseWidths + 1.0e-4f;
+    float4 first = ceil(-reach - t);
+    float4 last = floor(reach - t);
+    for(float nz = first.z; nz <= last.z; nz += 1.0f)
+    {
+      for(float ny = first.y; ny <= last.y; ny += 1.0f)
+      {
+        for(float nx = first.x; nx <= last.x; nx += 1.0f)
+        {
+          if(jatom == iatom && nx == whole.x && ny == whole.y && nz == whole.z) continue;
+
+          float4 f = t + (float4)(nx, ny, nz, 0.0f);
+          float4 image;
+          image.x = dot(cella, f);
+          image.y = dot(cellb, f);
+          image.z = dot(cellc, f);
+          image.w = 0.0f;
+          if(dot(image, image) < radius_sq) return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 __kernel void ComputeSurfaceArea(__global float4 *position,
                                  __global float *sigma,
                                  __global float *output,
@@ -207,9 +261,9 @@ __kernel void ComputeSurfaceArea(__global float4 *position,
                                  const float4 cellc,
                                  const float4 inverse_cella,
                                  const float4 inverse_cellb,
-                                 const float4 inverse_cellc)
+                                 const float4 inverse_cellc,
+                                 const float4 inverseWidths)
 {
-  float4 dr, ds;
   int iatom = get_global_id(0);
   float counted = 0.0f;
   float total = 0.0f;
@@ -219,13 +273,15 @@ __kernel void ComputeSurfaceArea(__global float4 *position,
     float radius_i = sigma[iatom];
     float4 sphere_center = position[iatom];
 
-    for(int stackNumber = 0; stackNumber <= number_of_slices; ++stackNumber)
+    // The stacks are equal shares of the height along the axis, which are equal shares of the area, and each is
+    // taken at its middle.
+    for(int stackNumber = 0; stackNumber < number_of_slices; ++stackNumber)
     {
       for(int sliceNumber = 0; sliceNumber < number_of_slices; ++sliceNumber)
       {
         float theta = float(sliceNumber) * 2.0 * M_PI / float(number_of_slices);
 
-        float u = float(stackNumber) / float(number_of_slices);
+        float u = ((float)stackNumber + 0.5f) / (float)number_of_slices;
         float phi = acos(2.0 * u - 1.0);
 
         float sinTheta = sin(theta);
@@ -234,35 +290,8 @@ __kernel void ComputeSurfaceArea(__global float4 *position,
         float cosPhi = cos(phi);
         float4 unit_vector = (float4)(sinPhi * cosTheta, sinPhi * sinTheta, cosPhi, 0.0f);
 
-        // check overlap with other atoms
-        bool overlap = false;
-        for(int jatom = 0; jatom < numberOfAtoms; ++jatom)
-        {
-          if(jatom != iatom)
-          {
-            float4 dr = (sphere_center + radius_i * unit_vector) - position[jatom];
-
-            ds.x = dot(inverse_cella, dr);
-            ds.y = dot(inverse_cellb, dr);
-            ds.z = dot(inverse_cellc, dr);
-            ds.w = 0.0f;
-
-            float4 t = ds - rint(ds);
-
-            dr.x = dot(cella, t);
-            dr.y = dot(cellb, t);
-            dr.z = dot(cellc, t);
-            dr.w = 0.0f;
-
-            float rr = dot(dr, dr);
-
-            if(rr < sigma[jatom] * sigma[jatom])
-            {
-              overlap = true;
-              break;
-            }
-          }
-        }
+        bool overlap = isBuried(sphere_center + radius_i * unit_vector, iatom, numberOfAtoms, position, sigma,
+                                cella, cellb, cellc, inverse_cella, inverse_cellb, inverse_cellc, inverseWidths);
 
         if(!overlap)
         {

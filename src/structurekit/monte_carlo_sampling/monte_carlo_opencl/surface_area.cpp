@@ -77,7 +77,8 @@ void MC_OpenCL_SurfaceArea::run(const SampledStructure &structure, const Sampled
   double3x3 inverse_unit_cell = structure.unitCell.inverseCell;
 
   std::size_t numberOfAtoms = structure.size();
-  size_t global_work_size = (numberOfAtoms + surfaceAreaWorkGroupSize - 1) & ~(surfaceAreaWorkGroupSize - 1);
+  size_t global_work_size =
+      ((numberOfAtoms + surfaceAreaWorkGroupSize - 1) / surfaceAreaWorkGroupSize) * surfaceAreaWorkGroupSize;
 
   std::vector<cl_float4> pos(numberOfAtoms);
   std::vector<cl_float> sigma(numberOfAtoms);
@@ -149,25 +150,9 @@ void MC_OpenCL_SurfaceArea::run(const SampledStructure &structure, const Sampled
   cl_float4 inverse_clCellb = {{cl_float(inverse_unit_cell[0][1]), cl_float(inverse_unit_cell[1][1]), cl_float(inverse_unit_cell[2][1]), cl_float(0.0)}};
   cl_float4 inverse_clCellc = {{cl_float(inverse_unit_cell[0][2]), cl_float(inverse_unit_cell[1][2]), cl_float(inverse_unit_cell[2][2]), cl_float(0.0)}};
 
-  // Same image shell as SampledStructure::overlaps: MIC alone misses burials when 2r exceeds a cell edge.
-  double max_radius = structure.radii.empty() ? 0.0 : *std::ranges::max_element(structure.radii);
-  const double3x3 &cell = structure.unitCell.cell;
-  double shortest_edge = std::min({double3(cell[0][0], cell[0][1], cell[0][2]).length(),
-                                   double3(cell[1][0], cell[1][1], cell[1][2]).length(),
-                                   double3(cell[2][0], cell[2][1], cell[2][2]).length()});
-  cl_int use_minimum_image = (2.0 * max_radius <= shortest_edge) ? 1 : 0;
-
-  double3 a(cell[0][0], cell[0][1], cell[0][2]);
-  double3 b(cell[1][0], cell[1][1], cell[1][2]);
-  double3 c(cell[2][0], cell[2][1], cell[2][2]);
-  double spread = 0.5 * (a.length() + b.length() + c.length());
-  double reach = 2.0 * spread + max_radius;
+  // The widths across the cell, which bound the images of an atom that can reach a point.
   double3 widths = structure.unitCell.perpendicularWidths();
-  auto along = [&](double width)
-  { return static_cast<cl_int>(std::clamp(std::ceil(reach / std::max(width, 1.0e-9)), 1.0, 8.0)); };
-  cl_int shell_x = along(widths.x);
-  cl_int shell_y = along(widths.y);
-  cl_int shell_z = along(widths.z);
+  cl_float4 inverseWidths = {{cl_float(1.0 / widths.x), cl_float(1.0 / widths.y), cl_float(1.0 / widths.z), cl_float(0.0)}};
 
   std::size_t number_of_random_unit_vectors{number_of_inner_steps};
   std::vector<cl_float4> random_unit_vectors(number_of_random_unit_vectors);
@@ -193,10 +178,7 @@ void MC_OpenCL_SurfaceArea::run(const SampledStructure &structure, const Sampled
   err |= clSetKernelArg(surfaceAreaKernel, 9, sizeof(cl_float4), &inverse_clCella);
   err |= clSetKernelArg(surfaceAreaKernel, 10, sizeof(cl_float4), &inverse_clCellb);
   err |= clSetKernelArg(surfaceAreaKernel, 11, sizeof(cl_float4), &inverse_clCellc);
-  err |= clSetKernelArg(surfaceAreaKernel, 12, sizeof(cl_int), &use_minimum_image);
-  err |= clSetKernelArg(surfaceAreaKernel, 13, sizeof(cl_int), &shell_x);
-  err |= clSetKernelArg(surfaceAreaKernel, 14, sizeof(cl_int), &shell_y);
-  err |= clSetKernelArg(surfaceAreaKernel, 15, sizeof(cl_int), &shell_z);
+  err |= clSetKernelArg(surfaceAreaKernel, 12, sizeof(cl_float4), &inverseWidths);
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clSetKernelArg failed {} : {}\n", __FILE__, __LINE__));
@@ -263,7 +245,8 @@ void MC_OpenCL_SurfaceArea::run(const SampledStructure &structure, const Sampled
   this->surfaceAreaError = 0.0;
   if (number_of_iterations >= 3)
   {
-    double standard_error = std::sqrt((sum_of_squares - sum * sum / n) / (n * (n - 1.0)));
+    // Passes that all read the same have no scatter, and the two terms can then round to a difference below zero.
+    double standard_error = std::sqrt(std::max(0.0, sum_of_squares - sum * sum / n) / (n * (n - 1.0)));
     std::size_t degrees_of_freedom = number_of_iterations - 1;
     double t = degrees_of_freedom < student_t_95.size() ? student_t_95[degrees_of_freedom] : 1.959963984540054;
     this->surfaceAreaError = t * standard_error;
@@ -289,6 +272,54 @@ void MC_OpenCL_SurfaceArea::run(const SampledStructure &structure, const Sampled
 }
 
 const char* MC_OpenCL_SurfaceArea::surfaceAreaKernelSource = R"foo(
+// Whether a point lies inside an atom, other than the atom whose sphere it is on as it stands in this cell: images of
+// that one count, since a sphere can be buried by its own repeats. An image only reaches the point if its fraction
+// along an axis is within its radius over the width of the cell across that axis, a fraction f being at least f times
+// that width long whatever the shape of the cell, and that is usually the one image rounding gives or none at all.
+// The last term is allowance for rounding in these floats.
+inline bool isBuried(float4 sample, int iatom, int numberOfAtoms, __global float4 *position, __global float *sigma,
+                     float4 cella, float4 cellb, float4 cellc,
+                     float4 inverse_cella, float4 inverse_cellb, float4 inverse_cellc, float4 inverseWidths)
+{
+  for(int jatom = 0; jatom < numberOfAtoms; ++jatom)
+  {
+    float4 dr = sample - position[jatom];
+
+    float4 ds;
+    ds.x = dot(inverse_cella, dr);
+    ds.y = dot(inverse_cellb, dr);
+    ds.z = dot(inverse_cellc, dr);
+    ds.w = 0.0f;
+
+    float4 whole = rint(ds);
+    float4 t = ds - whole;
+
+    float radius_sq = sigma[jatom] * sigma[jatom];
+    float4 reach = sigma[jatom] * inverseWidths + 1.0e-4f;
+    float4 first = ceil(-reach - t);
+    float4 last = floor(reach - t);
+    for(float nz = first.z; nz <= last.z; nz += 1.0f)
+    {
+      for(float ny = first.y; ny <= last.y; ny += 1.0f)
+      {
+        for(float nx = first.x; nx <= last.x; nx += 1.0f)
+        {
+          if(jatom == iatom && nx == whole.x && ny == whole.y && nz == whole.z) continue;
+
+          float4 f = t + (float4)(nx, ny, nz, 0.0f);
+          float4 image;
+          image.x = dot(cella, f);
+          image.y = dot(cellb, f);
+          image.z = dot(cellc, f);
+          image.w = 0.0f;
+          if(dot(image, image) < radius_sq) return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 __kernel void ComputeSurfaceArea(__global float4 *position,
                                  __global float *sigma,
                                  __global float4 *randomCartesianPositions,
@@ -301,10 +332,7 @@ __kernel void ComputeSurfaceArea(__global float4 *position,
                                  const float4 inverse_cella,
                                  const float4 inverse_cellb,
                                  const float4 inverse_cellc,
-                                 const int use_minimum_image,
-                                 const int shell_x,
-                                 const int shell_y,
-                                 const int shell_z)
+                                 const float4 inverseWidths)
 {
   int iatom = get_global_id(0);
   float counted = 0.0f;
@@ -320,66 +348,8 @@ __kernel void ComputeSurfaceArea(__global float4 *position,
       float4 unit_vector = randomCartesianPositions[slice];
       float4 sample = sphere_center + radius_i * unit_vector;
 
-      bool overlap = false;
-      if(use_minimum_image)
-      {
-        // Large cells: one minimum-image test per other atom is enough.
-        for(int jatom = 0; jatom < numberOfAtoms; ++jatom)
-        {
-          if(jatom == iatom) continue;
-
-          float4 dr = sample - position[jatom];
-          float4 ds;
-          ds.x = dot(inverse_cella, dr);
-          ds.y = dot(inverse_cellb, dr);
-          ds.z = dot(inverse_cellc, dr);
-          ds.w = 0.0f;
-          float4 t = ds - rint(ds);
-          dr.x = dot(cella, t);
-          dr.y = dot(cellb, t);
-          dr.z = dot(cellc, t);
-          dr.w = 0.0f;
-
-          if(dot(dr, dr) < sigma[jatom] * sigma[jatom])
-          {
-            overlap = true;
-            break;
-          }
-        }
-      }
-      else
-      {
-        // Small cells: search enough lattice images that a sphere with 2r > L is still caught,
-        // including periodic copies of the atom whose sphere was sampled.
-        for(int jatom = 0; jatom < numberOfAtoms && !overlap; ++jatom)
-        {
-          float radius_sq = sigma[jatom] * sigma[jatom];
-          for(int nc = -shell_z; nc <= shell_z && !overlap; ++nc)
-          {
-            for(int nb = -shell_y; nb <= shell_y && !overlap; ++nb)
-            {
-              for(int na = -shell_x; na <= shell_x; ++na)
-              {
-                if(jatom == iatom && na == 0 && nb == 0 && nc == 0) continue;
-
-                float4 lattice = (float4)((float)na, (float)nb, (float)nc, 0.0f);
-                float4 translation;
-                translation.x = dot(cella, lattice);
-                translation.y = dot(cellb, lattice);
-                translation.z = dot(cellc, lattice);
-                translation.w = 0.0f;
-
-                float4 dr = sample - (position[jatom] + translation);
-                if(dot(dr, dr) < radius_sq)
-                {
-                  overlap = true;
-                  break;
-                }
-              }
-            }
-          }
-        }
-      }
+      bool overlap = isBuried(sample, iatom, numberOfAtoms, position, sigma,
+                              cella, cellb, cellc, inverse_cella, inverse_cellb, inverse_cellc, inverseWidths);
 
       if(!overlap)
       {

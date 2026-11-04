@@ -21,14 +21,16 @@ void Integration_SurfaceArea::run(const SampledStructure &structure, const Sampl
 
     double total_trials{};
     double counted{};
-    for (std::size_t stackNumber = 0; stackNumber <= number_of_slices; ++stackNumber)
+    // The stacks are equal shares of the height along the axis, which are equal shares of the area, and each is
+    // taken at its middle. Taken at its edges there is one stack too many, and a whole stack at each pole.
+    for (std::size_t stackNumber = 0; stackNumber < number_of_slices; ++stackNumber)
     {
       for (std::size_t sliceNumber = 0; sliceNumber < number_of_slices; ++sliceNumber)
       {
         double theta =
             static_cast<double>(sliceNumber) * 2.0 * std::numbers::pi / static_cast<double>(number_of_slices);
 
-        double u = static_cast<double>(stackNumber) / static_cast<double>(number_of_slices);
+        double u = (static_cast<double>(stackNumber) + 0.5) / static_cast<double>(number_of_slices);
         double phi = std::acos(2.0 * u - 1.0);
 
         double sinTheta = std::sin(theta);
@@ -61,7 +63,7 @@ void Integration_SurfaceArea::run(const SampledStructure &structure, const Sampl
   std::print(myfile, "# Surface area using integration method\n");
   structure.writeHeader(myfile);
   probe.writeHeader(myfile);
-  std::print(myfile, "# Number of integration points per atom: {}\n", (number_of_slices + 1) * number_of_slices);
+  std::print(myfile, "# Number of integration points per atom: {}\n", number_of_slices * number_of_slices);
   std::print(myfile, "# CPU Timing: {} [s]\n", this->seconds);
   std::print(myfile, "{} [Å²]\n", this->surfaceArea);
   std::print(myfile, "{} [m²/cm³]\n", 1.0e4 * this->surfaceArea / structure.unitCell.volume);

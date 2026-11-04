@@ -9,10 +9,11 @@ import sampled_structure;
 // The same accessible surface area as the Monte Carlo route, with the random points replaced by a regular
 // grid of latitudes and longitudes over each atom's contact sphere.
 //
-// The points of that grid are not spread evenly over the sphere -- they crowd towards the poles -- so this
-// is not a quadrature and the answer is not exact. What it is instead is deterministic: the same structure
-// gives the same number twice, and refining `numberOfSlices` moves it in one direction rather than jittering
-// it, which is what makes the two routes worth running against each other.
+// Each point of that grid stands for an equal share of the sphere: the stacks are equal steps of height along the
+// axis, which by Archimedes are equal steps of area, each taken at its middle, and the points of a stack are equally
+// spaced round it. The answer is still only as fine as the grid, since a point is either buried or not. What it is
+// besides is deterministic: the same structure gives the same number twice, without the scatter of the random
+// points, which is what makes the two routes worth running against each other.
 export struct Integration_SurfaceArea
 {
   double surfaceArea{0.0};  // Å²
