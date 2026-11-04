@@ -59,7 +59,8 @@ export std::vector<float> distanceToIsosurface(uint3 gridSize, const UnitCell &u
 
 // A sphere about every point of the void, each point keeping the largest sphere that reached it. `distance`
 // is the room at each point, as a clearance field holds it or as `distanceToIsosurface` measured it, and
-// points where it is negative take no part.
+// points where it is negative take no part. A point where it is the largest float has no boundary in reach, and
+// is given that as its size: it is what a field open everywhere comes to, one pore with no limit to it.
 //
 // None of the spheres can be dropped for sitting inside another. The field is a distance, so it gains
 // exactly one along its own gradient and less in every other direction, and one ball holds another only when
@@ -104,7 +105,8 @@ export struct PoreSizeCurve
 
 // Gathers grid points against the size found at each of them. Nothing is fitted: the cumulative curve is
 // exact for the field it was measured on, and only its derivative depends on how finely the sizes are
-// divided up. `accessible` marks the points reachable from outside, and may be empty when nothing is.
+// divided up. `accessible` marks the points reachable from outside, and may be empty when nothing is. With no
+// bins, or a range of no size, there is no curve, and only what was counted over the void is filled in.
 //
 // `weight` says how much each point counts for, and may be empty, which is every point counting for one.
 // That is the usual reading of a pore-size distribution: the share of the *space* lying in pores of a given

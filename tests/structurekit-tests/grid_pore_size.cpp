@@ -6,6 +6,8 @@ import uint3;
 import double3;
 import unit_cell;
 import grid_pore_size;
+import opencl;
+import grid_pore_size_opencl;
 
 // The two halves of a pore-size distribution, on fields whose answers are known in closed form.
 //
@@ -359,4 +361,83 @@ TEST(grid_pore_size, the_covering_slack_is_the_longest_diagonal_of_a_voxel)
 
   const UnitCell box(10.0, 20.0, 30.0);
   EXPECT_NEAR(coveringSlack(box, uint3(10, 10, 10)), std::sqrt(1.0 + 4.0 + 9.0), 1.0e-9);
+}
+
+
+// A field open everywhere has no boundary to measure from, so every point has unlimited room. That room is the size
+// of the pore it is in, and the curve has to put the void there, not at a diameter of nothing.
+TEST(grid_pore_size, a_field_open_everywhere_is_one_pore_of_unlimited_size)
+{
+  const double side = 12.0;
+  const UnitCell box(side, side, side);
+  const uint3 gridSize(12, 12, 12);
+  const float unlimited = std::numeric_limits<float>::max();
+
+  std::vector<float> openness(1728, 5.0f);
+  std::vector<float> distance = distanceToIsosurface(gridSize, box, openness, 1.0);
+  ASSERT_EQ(distance.size(), 1728uz);
+  for (float value : distance) ASSERT_EQ(value, unlimited);
+
+  std::vector<float> poreRadius = poreRadiusField(gridSize, box, distance, coveringSlack(box, gridSize));
+  for (float value : poreRadius) ASSERT_EQ(value, unlimited);
+
+  // At any range asked about, all of the void is in pores at least that wide and none of it within the range.
+  std::vector<std::uint8_t> accessible(1728, 1);
+  PoreSizeCurve ranged = binPoreSizes(poreRadius, distance, accessible, {}, 20.0, 10);
+  EXPECT_DOUBLE_EQ(ranged.largestDiameter, 2.0 * static_cast<double>(unlimited));
+  ASSERT_EQ(ranged.points.size(), 10uz);
+  for (const PoreSizeCurvePoint &point : ranged.points)
+  {
+    EXPECT_DOUBLE_EQ(point.cumulativeVoidFraction, 1.0) << "at " << point.diameter;
+    EXPECT_DOUBLE_EQ(point.cumulativeAccessibleFraction, 1.0) << "at " << point.diameter;
+    EXPECT_DOUBLE_EQ(point.distribution, 0.0) << "at " << point.diameter;
+  }
+
+  // Left to choose its own range the curve ends at that size, with the void in the last bin as ever.
+  PoreSizeCurve own = binPoreSizes(poreRadius, distance, accessible, {}, std::nullopt, 10);
+  ASSERT_EQ(own.points.size(), 10uz);
+  EXPECT_DOUBLE_EQ(own.points.front().cumulativeVoidFraction, 1.0);
+  EXPECT_DOUBLE_EQ(own.points.back().cumulativeVoidFraction, 1.0);
+  EXPECT_DOUBLE_EQ(own.points.front().distribution, 0.0);
+}
+
+// The device sweep is the same sweep: a field of unlimited room comes back as one.
+TEST(grid_pore_size, the_device_sweep_of_a_field_open_everywhere_agrees)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+
+  const double side = 12.0;
+  const UnitCell box(side, side, side);
+  const uint3 gridSize(12, 12, 12);
+  const float unlimited = std::numeric_limits<float>::max();
+  std::vector<float> distance(1728, unlimited);
+
+  std::vector<float> poreRadius = poreRadiusFieldOpenCL(gridSize, box, distance, coveringSlack(box, gridSize));
+  ASSERT_EQ(poreRadius.size(), 1728uz);
+  for (float value : poreRadius) ASSERT_EQ(value, unlimited);
+}
+
+// No bins, or no range to divide, is no curve. What was counted over the void does not depend on either and is
+// still there to be read.
+TEST(grid_pore_size, no_bins_and_no_range_give_no_curve_and_keep_the_counts)
+{
+  std::vector<float> poreRadius(100, 2.0f);
+  std::vector<float> distance(100, 1.0f);
+  std::vector<std::uint8_t> accessible(100, 1);
+
+  auto check = [&](std::optional<double> range, std::optional<std::size_t> bins)
+  {
+    PoreSizeCurve curve = binPoreSizes(poreRadius, distance, accessible, {}, range, bins);
+    EXPECT_TRUE(curve.points.empty());
+    EXPECT_DOUBLE_EQ(curve.binWidth, 0.0);
+    EXPECT_EQ(curve.numberOfVoidVoxels, 100uz);
+    EXPECT_EQ(curve.numberOfAccessibleVoxels, 100uz);
+    EXPECT_DOUBLE_EQ(curve.largestDiameter, 4.0);
+    EXPECT_DOUBLE_EQ(curve.meanDiameter, 4.0);
+  };
+  check(std::nullopt, 0uz);
+  check(8.0, 0uz);
+  check(0.0, 8uz);
+  check(-1.0, 8uz);
 }

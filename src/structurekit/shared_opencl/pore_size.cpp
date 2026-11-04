@@ -37,6 +37,16 @@ std::vector<float> poreRadiusFieldOpenCL(uint3 gridSize, const UnitCell &unitCel
   std::vector<float> poreRadius(numberOfVoxels, 0.0f);
   if (numberOfVoxels == 0) return poreRadius;
 
+  // A point with no boundary in reach draws no sphere, there being no size to give one, but it is not in a pore
+  // of no size: the room there is unlimited, and that is the size of the pore.
+  auto keepUnlimitedRoom = [&]()
+  {
+    for (std::size_t voxel = 0; voxel < numberOfVoxels; ++voxel)
+    {
+      if (distance[voxel] == std::numeric_limits<float>::max()) poreRadius[voxel] = distance[voxel];
+    }
+  };
+
   std::vector<cl_int> centres;
   centres.reserve(numberOfVoxels / 2);
   for (std::size_t voxel = 0; voxel < numberOfVoxels; ++voxel)
@@ -47,7 +57,11 @@ std::vector<float> poreRadiusFieldOpenCL(uint3 gridSize, const UnitCell &unitCel
       centres.push_back(static_cast<cl_int>(voxel));
     }
   }
-  if (centres.empty()) return poreRadius;
+  if (centres.empty())
+  {
+    keepUnlimitedRoom();
+    return poreRadius;
+  }
 
   cl_int err;
   const char *source = poreSizeKernelSource;
@@ -158,6 +172,7 @@ std::vector<float> poreRadiusFieldOpenCL(uint3 gridSize, const UnitCell &unitCel
   clReleaseKernel(kernel);
   clReleaseProgram(program);
 
+  keepUnlimitedRoom();
   return poreRadius;
 }
 

@@ -209,6 +209,13 @@ std::vector<float> poreRadiusField(uint3 gridSize, const UnitCell &unitCell,
         }
       });
 
+  // A point with no boundary in reach draws no sphere, there being no size to give one, but it is not in a pore
+  // of no size: the room there is unlimited, and that is the size of the pore.
+  for (std::size_t index = 0; index < numberOfVoxels; ++index)
+  {
+    if (distance[index] == std::numeric_limits<float>::max()) poreRadius[index] = distance[index];
+  }
+
   return poreRadius;
 }
 
@@ -245,6 +252,10 @@ PoreSizeCurve binPoreSizes(std::span<const float> poreRadius, std::span<const fl
 
   const std::size_t bins = numberOfBins.value_or(200);
   const double largest = maximumDiameter.value_or(std::max(curve.largestDiameter, 1.0));
+
+  // No bins, or no range to divide among them, is no curve. What was counted above does not depend on either.
+  if (bins == 0 || !(largest > 0.0)) return curve;
+
   const double step = largest / static_cast<double>(bins);
   curve.binWidth = step;
 
