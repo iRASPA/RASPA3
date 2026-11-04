@@ -48,9 +48,20 @@ void BruteForceStructure::prepare()
   // less the largest radius, is under `spread` as well.
   double reach = 2.0 * this->spread + this->maximumRadius;
 
+  // Which images can be in contact with an atom, which is a question the same list has to answer for whatever
+  // walks the pairs: an atom's nearest image of another is within half a cell along each axis or a little more on an
+  // oblique cell, and from there the contact reaches on by the two radii. That is not limited the way the search for
+  // the nearest atom is. A cell thin along one axis has an image in contact every step along it for as far as the
+  // radii reach, and it can have plenty of void around all of them.
+  const double contact = 2.0 * this->maximumRadius;
+
   double3 widths = this->unitCell.perpendicularWidths();
   auto along = [&](double width)
-  { return static_cast<std::int32_t>(std::clamp(std::ceil(reach / std::max(width, 1.0e-9)), 1.0, 8.0)); };
+  {
+    const double safeWidth = std::max(width, 1.0e-9);
+    return static_cast<std::int32_t>(std::max(std::clamp(std::ceil(reach / safeWidth), 1.0, 8.0),
+                                              std::ceil(contact / safeWidth) + 1.0));
+  };
 
   this->shell = int3(along(widths.x), along(widths.y), along(widths.z));
 

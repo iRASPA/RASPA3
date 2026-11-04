@@ -10,6 +10,7 @@ add_executable(unit_tests_structurekit
   sampled_roadmap.cpp
   mc_pore_size_distribution.cpp
   sampled_surface_area.cpp
+  brute_force_pore_volume.cpp
   hybrid_pore_size_floor.cpp
                        energy_well_surface.cpp
                        energy_bet_area.cpp

@@ -26,7 +26,7 @@ BruteForcePoreVolume BruteForcePoreVolume::compute(const BruteForceStructure &st
   std::vector<std::size_t> inPocket(lanes, 0);
   std::vector<std::size_t> unresolved(lanes, 0);
 
-  std::size_t perLane = numberOfPoints / lanes;
+  std::size_t perLane = std::max<std::size_t>(1, numberOfPoints / lanes);
 
   // A lane's points come from a generator seeded by the lane and land in counters of its own, so the draw is
   // the same set of points and the total the same sum however many threads the lanes were run on.
