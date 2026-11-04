@@ -300,10 +300,16 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
     forward.hasBottleneckGeometry = true;
     network.edges.push_back(forward);
 
+    // The narrowest point is in the frame where `from` is at its own position, and the other way round the hop is
+    // read from where `to` is at its own, which is one lattice translation away. It runs the other way too.
     VoronoiEdge backward = forward;
     backward.from = to;
     backward.to = from;
     backward.delta = int3(-delta.x, -delta.y, -delta.z);
+    backward.bottleneckPosition =
+        way.position -
+        cell * double3(static_cast<double>(delta.x), static_cast<double>(delta.y), static_cast<double>(delta.z));
+    backward.bottleneckDirection = -way.direction;
     network.edges.push_back(backward);
   };
 
@@ -324,6 +330,30 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
         dr - cell * double3(static_cast<double>(image.x), static_cast<double>(image.y),
                             static_cast<double>(image.z));
     return std::pair<int3, double3>{int3(-image.x, -image.y, -image.z), displacement};
+  };
+
+  // Every image of `to` within `reach` of `from`, as the image and the displacement to it, and that is one image at
+  // most unless the cell is narrower than twice the reach. A fraction f along an axis is at least f times the width
+  // of the cell across that axis long, which is what bounds the images to look at, whatever the shape of the cell.
+  const double3 widths = unitCell.perpendicularWidths();
+  auto forEachImageWithin = [&](const double3 &from, const double3 &to, double reach, auto &&take)
+  {
+    const double3 dr = to - from;
+    const double3 s = unitCell.inverseCell * dr;
+    const double3 span(reach / widths.x, reach / widths.y, reach / widths.z);
+    for (double nz = std::ceil(s.z - span.z); nz <= s.z + span.z; nz += 1.0)
+    {
+      for (double ny = std::ceil(s.y - span.y); ny <= s.y + span.y; ny += 1.0)
+      {
+        for (double nx = std::ceil(s.x - span.x); nx <= s.x + span.x; nx += 1.0)
+        {
+          const double3 displacement = dr - cell * double3(nx, ny, nz);
+          if (double3::dot(displacement, displacement) >= reach * reach) continue;
+          take(int3(-static_cast<std::int32_t>(nx), -static_cast<std::int32_t>(ny), -static_cast<std::int32_t>(nz)),
+               displacement);
+        }
+      }
+    }
   };
 
   // The bins of the grid that can hold a neighbour of a point, given where in the grid it sits.
@@ -374,14 +404,19 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
         {
           std::size_t other = grid.contents[slot];
 
-          // Each pair is looked at once, by the lower of the two.
-          if (other <= i) continue;
+          // Each pair is looked at once, by the lower of the two. A sample can be paired with itself, one image
+          // of it being in reach of another where the cell is narrow enough, and that is looked at once too, by
+          // taking the one of each image and its opposite that comes first.
+          if (other < i) continue;
 
-          auto [delta, displacement] = nearestImage(position[i], position[other]);
-          if (double3::dot(displacement, displacement) >= self.linkDistance * self.linkDistance) continue;
-
-          hops.add(Candidate{.from = i, .to = other, .delta = delta, .displacement = displacement, .seed = 0},
-                   position[i], keepOpenHop);
+          forEachImageWithin(position[i], position[other], self.linkDistance,
+                             [&](const int3 &delta, const double3 &displacement)
+                             {
+                               if (other == i && !(delta.x > 0 || (delta.x == 0 && (delta.y > 0 || (delta.y == 0 && delta.z > 0)))))
+                                 return;
+                               hops.add(Candidate{.from = i, .to = other, .delta = delta, .displacement = displacement, .seed = 0},
+                                        position[i], keepOpenHop);
+                             });
         }
       }
     }
@@ -503,11 +538,11 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
   {
     // Per pocket, its straight hops ranked by how nearly they succeeded, so that only the best of them are
     // paid for again.
-    std::vector<std::vector<std::pair<double, Candidate>>> straightOf(pocketOf.size());
+    std::vector<std::vector<std::pair<SampledWay, Candidate>>> straightOf(pocketOf.size());
 
     WayBatch straight(backend, structure, false);
     auto rank = [&](const Candidate &candidate, const SampledWay &way)
-    { straightOf[candidate.from - firstPocketNode].push_back({way.radius, candidate}); };
+    { straightOf[candidate.from - firstPocketNode].push_back({way, candidate}); };
 
     for (std::size_t a = 0; a < pocketOf.size(); ++a)
     {
@@ -554,11 +589,11 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
 
     for (std::size_t a = 0; a < pocketOf.size(); ++a)
     {
-      std::vector<std::pair<double, Candidate>> &hops = straightOf[a];
+      std::vector<std::pair<SampledWay, Candidate>> &hops = straightOf[a];
 
       std::size_t refined = std::min(refinedHopsPerPocket, hops.size());
       std::partial_sort(hops.begin(), hops.begin() + static_cast<std::ptrdiff_t>(refined), hops.end(),
-                        [](const auto &p, const auto &q) { return p.first > q.first; });
+                        [](const auto &p, const auto &q) { return p.first.radius > q.first.radius; });
 
       for (std::size_t rankIndex = 0; rankIndex < hops.size(); ++rankIndex)
       {
@@ -568,19 +603,10 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
           candidate.seed = seed++;
           bent.add(candidate, network.nodes[candidate.from].position, keepOpenHop);
         }
-        else if (hops[rankIndex].first > 0.0)
+        else
         {
-          // Nothing more will be learnt about these, so they go in as they are. The direction is the line
-          // itself and the narrowest point is where the sphere was smallest along it, which is what the
-          // straight pass already found; it is recovered from the geometry rather than kept, the ranking
-          // above having no use for it.
-          const Candidate &candidate = hops[rankIndex].second;
-          double length = candidate.displacement.length();
-          SampledWay way{.radius = hops[rankIndex].first,
-                         .position = network.nodes[candidate.from].position + 0.5 * candidate.displacement,
-                         .direction = length > 0.0 ? (1.0 / length) * candidate.displacement
-                                                   : double3(0.0, 0.0, 1.0)};
-          addLink(candidate.from, candidate.to, candidate.delta, way, length);
+          // Nothing more will be learnt about these, so they go in as the straight line left them.
+          keepOpenHop(hops[rankIndex].second, hops[rankIndex].first);
         }
       }
 
@@ -609,12 +635,12 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
         {
           std::size_t other = grid.contents[slot];
 
-          auto [delta, displacement] = nearestImage(origin, position[other]);
-          if (double3::dot(displacement, displacement) >= self.linkDistance * self.linkDistance) continue;
-
-          hops.add(
-              Candidate{.from = from, .to = other, .delta = delta, .displacement = displacement, .seed = 0},
-              origin, keepOpenHop);
+          forEachImageWithin(origin, position[other], self.linkDistance,
+                             [&](const int3 &delta, const double3 &displacement)
+                             {
+                               hops.add(Candidate{.from = from, .to = other, .delta = delta, .displacement = displacement, .seed = 0},
+                                        origin, keepOpenHop);
+                             });
         }
       }
     }
