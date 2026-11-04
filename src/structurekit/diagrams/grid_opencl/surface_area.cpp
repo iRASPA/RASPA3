@@ -42,6 +42,16 @@ void GridSurfaceArea::run(const PairInteractions &interactions, const Crystal &f
   }
   this->probeRadius = 0.5 * interactions[probeType.value()].sizeParameter;
 
+  // The totals are added to triangle by triangle below, so a second run on the same object starts them over
+  // rather than adding to what the first one left.
+  this->accessibleSurfaceArea = 0.0;
+  this->inaccessibleSurfaceArea = 0.0;
+  this->undecidedSurfaceArea = 0.0;
+  this->totalSurfaceArea = 0.0;
+  this->curvature = CurvatureAreas{};
+  this->accessibleCurvature = CurvatureAreas{};
+  this->inaccessibleCurvature = CurvatureAreas{};
+
   std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
 
   GridComponents components = GridComponents::compute(grid.gridSize, grid.clearance, this->probeRadius);
@@ -125,27 +135,46 @@ void GridSurfaceArea::run(const PairInteractions &interactions, const Crystal &f
     TriangleCurvature shape = triangleCurvature(triangleCorners, triangleNormals);
     this->curvature.add(area, shape, this->curvatureBands);
 
-    // Which pore this piece of surface faces, and which atom it belongs to, read off the corner of the cell
-    // the piece was cut from that lies on the open side.
+    // Which pore this piece of surface faces is read off the widest corner of the cell the piece was cut from,
+    // since a corner that only just clears the probe can be a speck of void of its own. Which atom it belongs
+    // to is read off the solid corner nearest the piece instead. The open corners are the wrong place to ask:
+    // in a narrow neck they can lie past the sheet midway between the walls, where the nearest atom is the one
+    // across the channel.
     double3 centre((a.x + b.x + c.x) / 3.0, (a.y + b.y + c.y) / 3.0, (a.z + b.z + c.z) / 3.0);
-    std::size_t baseI = static_cast<std::size_t>(centre.x * static_cast<double>(nx)) % nx;
-    std::size_t baseJ = static_cast<std::size_t>(centre.y * static_cast<double>(ny)) % ny;
-    std::size_t baseK = static_cast<std::size_t>(centre.z * static_cast<double>(nz)) % nz;
+    std::size_t baseI = static_cast<std::size_t>(centre.x * static_cast<double>(nx));
+    std::size_t baseJ = static_cast<std::size_t>(centre.y * static_cast<double>(ny));
+    std::size_t baseK = static_cast<std::size_t>(centre.z * static_cast<double>(nz));
 
     std::int32_t pore = -1;
     std::int32_t atom = -1;
     float widest = threshold;
-    for (std::size_t dk = 0; dk < 2 && pore < 0; ++dk)
+    double nearest = std::numeric_limits<double>::max();
+    for (std::size_t dk = 0; dk < 2; ++dk)
     {
-      for (std::size_t dj = 0; dj < 2 && pore < 0; ++dj)
+      for (std::size_t dj = 0; dj < 2; ++dj)
       {
-        for (std::size_t di = 0; di < 2 && pore < 0; ++di)
+        for (std::size_t di = 0; di < 2; ++di)
         {
           std::size_t voxel = grid.voxelIndex((baseI + di) % nx, (baseJ + dj) % ny, (baseK + dk) % nz);
-          if (grid.clearance[voxel] >= widest && components.voxelPore[voxel] >= 0)
+          if (grid.clearance[voxel] >= threshold)
           {
-            pore = components.voxelPore[voxel];
-            atom = grid.closestAtom[voxel];
+            if (grid.clearance[voxel] >= widest && components.voxelPore[voxel] >= 0)
+            {
+              widest = grid.clearance[voxel];
+              pore = components.voxelPore[voxel];
+            }
+          }
+          else
+          {
+            double3 corner(static_cast<double>(baseI + di) / static_cast<double>(nx),
+                           static_cast<double>(baseJ + dj) / static_cast<double>(ny),
+                           static_cast<double>(baseK + dk) / static_cast<double>(nz));
+            double distance = (cell * (corner - centre)).length();
+            if (distance < nearest)
+            {
+              nearest = distance;
+              atom = grid.closestAtom[voxel];
+            }
           }
         }
       }
