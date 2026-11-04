@@ -61,7 +61,8 @@ export struct AreaCurve
 
   double seconds{0.0};
 
-  // The area at a level, interpolated between the two bins that straddle it. Outside the range it is zero.
+  // The area at a level, interpolated between the two bins that straddle it. In the half bin beyond the last
+  // centre at either end of the range it is the area of that end bin, and outside the range it is zero.
   double areaAt(double level) const;
 };
 

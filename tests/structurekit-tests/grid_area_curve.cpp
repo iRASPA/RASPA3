@@ -212,3 +212,63 @@ TEST(grid_area_curve, a_wall_is_credited_only_with_the_levels_it_climbs_through)
   EXPECT_NEAR(curve.fractionBelowRange, 0.0, 1.0e-12);
   EXPECT_LE(curve.meanSpanPerVoxel, 3.0 * 1000.0) << "the resolution is read within the range, not off the wall";
 }
+
+
+// The bins span the whole of the range and their centres stop half a bin short of either end of it, but a level in
+// that last half bin is in the range all the same. It is in the end bin, and has that bin's area, not none.
+TEST(grid_area_curve, the_last_half_bin_at_either_end_of_the_range_is_read_from_the_end_bin)
+{
+  AreaCurve curve;
+  curve.lowestLevel = 0.0;
+  curve.highestLevel = 4.0;
+  curve.binWidth = 1.0;
+  curve.points = {AreaCurvePoint{0.5, 10.0, 0.0}, AreaCurvePoint{1.5, 20.0, 0.0}, AreaCurvePoint{2.5, 30.0, 0.0},
+                  AreaCurvePoint{3.5, 40.0, 0.0}};
+
+  EXPECT_DOUBLE_EQ(curve.areaAt(0.0), 10.0);
+  EXPECT_DOUBLE_EQ(curve.areaAt(0.25), 10.0);
+  EXPECT_DOUBLE_EQ(curve.areaAt(0.5), 10.0);
+  EXPECT_DOUBLE_EQ(curve.areaAt(1.0), 15.0);
+  EXPECT_DOUBLE_EQ(curve.areaAt(3.5), 40.0);
+  EXPECT_DOUBLE_EQ(curve.areaAt(3.75), 40.0);
+  EXPECT_DOUBLE_EQ(curve.areaAt(4.0), 40.0);
+
+  // Outside the range there is still nothing to read.
+  EXPECT_DOUBLE_EQ(curve.areaAt(-0.001), 0.0);
+  EXPECT_DOUBLE_EQ(curve.areaAt(4.001), 0.0);
+  EXPECT_DOUBLE_EQ(curve.areaAt(std::numeric_limits<double>::quiet_NaN()), 0.0);
+}
+
+// One bin is one number for the whole of the range, not a number at its middle and nothing either side.
+TEST(grid_area_curve, a_single_bin_answers_for_the_whole_range)
+{
+  AreaCurve curve;
+  curve.lowestLevel = 2.0;
+  curve.highestLevel = 6.0;
+  curve.binWidth = 4.0;
+  curve.points = {AreaCurvePoint{4.0, 7.0, 0.0}};
+
+  for (double level : {2.0, 3.0, 4.0, 5.0, 6.0}) EXPECT_DOUBLE_EQ(curve.areaAt(level), 7.0) << "at " << level;
+  EXPECT_DOUBLE_EQ(curve.areaAt(1.999), 0.0);
+  EXPECT_DOUBLE_EQ(curve.areaAt(6.001), 0.0);
+}
+
+// The same off a curve the pass built: a sine reads about the same at the very end of a range as just inside it.
+TEST(grid_area_curve, a_real_curve_reads_at_the_ends_of_its_range)
+{
+  const uint3 gridSize(64, 64, 64);
+  const double edge = 20.0;
+  UnitCell box(edge, edge, edge);
+  std::vector<float> field(64uz * 64uz * 64uz);
+  for (std::size_t k = 0; k < 64; ++k)
+    for (std::size_t j = 0; j < 64; ++j)
+      for (std::size_t i = 0; i < 64; ++i)
+        field[(k * 64 + j) * 64 + i] = static_cast<float>(std::sin(2.0 * std::numbers::pi * static_cast<double>(i) / 64.0));
+
+  AreaCurve curve = areaAgainstLevel(gridSize, box, field, -0.5, 0.5, 20);
+  ASSERT_EQ(curve.points.size(), 20uz);
+  EXPECT_GT(curve.areaAt(-0.5), 0.0);
+  EXPECT_GT(curve.areaAt(0.5), 0.0);
+  EXPECT_DOUBLE_EQ(curve.areaAt(-0.5), curve.points.front().area);
+  EXPECT_DOUBLE_EQ(curve.areaAt(0.5), curve.points.back().area);
+}

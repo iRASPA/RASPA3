@@ -14,7 +14,11 @@ import structure_parallel;
 double AreaCurve::areaAt(double level) const
 {
   if (this->points.empty()) return 0.0;
-  if (level < this->points.front().level || level > this->points.back().level) return 0.0;
+  if (!(level >= this->lowestLevel && level <= this->highestLevel)) return 0.0;
+
+  // The centres of the end bins stop half a bin short of the range. What lies beyond them is still in those bins,
+  // and there is no further bin to interpolate towards, so it reads as the bin it is in.
+  if (level <= this->points.front().level) return this->points.front().area;
 
   const double position = (level - this->points.front().level) / this->binWidth;
   const std::size_t below = static_cast<std::size_t>(std::floor(position));
