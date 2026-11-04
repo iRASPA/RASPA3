@@ -100,6 +100,16 @@ void writePoreSizeDistribution(const Crystal& framework, const std::string& diag
     std::print(report, "# row's own diameter can reach, which moves along the curve where the blocking probe\n");
     std::print(report, "# stands still. Columns 14 to 17 hold the bare whole-void curve from the same sweep.\n");
   }
+  else if (curve.floorRadius > 0.0)
+  {
+    std::print(report, "# The primary curve is flat below the floor diameter {:.5f} [Å]: helium-sealed pockets are\n",
+               2.0 * curve.floorRadius);
+    std::print(report, "# filled by blocking spheres and the remaining open network is given its bare\n");
+    std::print(report, "# Gelb--Gubbins distribution above that diameter, normalised by its volume at the floor.\n");
+    std::print(report, "# The open framework without blocking is not reported: sealed cages are not an adsorption\n");
+    std::print(report, "# observable. Columns 14 to 17 hold the same open network without the floor, normalised\n");
+    std::print(report, "# by the whole of its void.\n");
+  }
   else
   {
     std::print(report, "# The primary curve has no diameter floor: helium-sealed pockets are filled by blocking\n");
@@ -164,7 +174,7 @@ void writePoreSizeDistribution(const Crystal& framework, const std::string& diag
   }
   else
   {
-    std::print(report, "# The open whole-void distribution is not computed for the hybrid (no floor).\n");
+    std::print(report, "# The open whole-void distribution is not computed for the hybrid.\n");
   }
   std::print(report, "#\n");
   std::print(report, "# column 1: diameter d [Å]\n");
@@ -182,6 +192,10 @@ void writePoreSizeDistribution(const Crystal& framework, const std::string& diag
     std::print(report, "# column 15: cumulative pore volume, as a fraction of the void volume\n");
     std::print(report, "# column 16: cumulative pore volume [Å³]\n");
     std::print(report, "# column 17: the same [cm³/g]\n");
+  }
+  else if (curve.floorRadius > 0.0)
+  {
+    std::print(report, "# columns 14-17: the same open network without the floor, over the whole of its void\n");
   }
   else
   {
@@ -315,7 +329,12 @@ PoreSizeDistributionCurve hybridFromBlockedCurve(PoreSizeDistributionCurve block
   PoreSizeDistributionCurve curve = std::move(blocked);
   curve.probeRadius = accessibilityRadius;
   curve.floorRadius = std::max(0.0, floorRadius);
-  // Bare PSD of the blocked network is the only curve: mirror it into the primary columns.
+
+  // The sweep has already held the primary columns flat below a floor and normalised them by the volume left at
+  // it, and the columns of the bare curve are what that was taken from. They stay as two different curves.
+  if (curve.floorRadius > 0.0) return curve;
+
+  // Without a floor the bare PSD of the blocked network is the only curve: mirror it into the primary columns.
   // voidVolume is the remaining open-network volume after blocking spheres (zero-probe), which
   // also normalises the distribution; the He void-split volume is a different quantity and is not
   // substituted here.

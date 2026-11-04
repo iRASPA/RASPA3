@@ -40,7 +40,8 @@ export void writePoreSizePeaks(const Crystal& framework, const std::string& diag
 // Promote a bare PSD of the framework with He pockets filled by blocking spheres into the hybrid report
 // shape. The open-framework whole-void curve is not computed: only the blocked network is physical for
 // adsorption. `accessibilityRadius` is recorded as the blocking probe and `floorRadius`, below it, as the
-// floor the blocked sweep was flattened under.
+// floor the blocked sweep was flattened under. Without a floor the bare curve is mirrored into the primary
+// columns; with one, the primary columns already hold the flattened curve and are kept.
 export PoreSizeDistributionCurve hybridFromBlockedCurve(PoreSizeDistributionCurve blocked,
                                                         double accessibilityRadius, double floorRadius = 0.0);
 
