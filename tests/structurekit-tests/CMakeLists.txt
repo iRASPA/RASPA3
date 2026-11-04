@@ -6,6 +6,7 @@ add_executable(unit_tests_structurekit
                        grid_surface_curvature.cpp
   grid_surface_area.cpp
   grid_clearance.cpp
+  sampling_backend_opencl.cpp
   hybrid_pore_size_floor.cpp
                        energy_well_surface.cpp
                        energy_bet_area.cpp

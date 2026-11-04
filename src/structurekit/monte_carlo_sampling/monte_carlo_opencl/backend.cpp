@@ -24,12 +24,18 @@ import opencl;
 namespace
 {
 const char *samplingKernelSource = R"foo(
-// The void of a crystal, measured against the atoms of one unit cell under the minimum-image convention.
-// Everything below is one of two things: the distance from a point to the nearest atom surface, or the same
-// along a segment. The rest is which points and which segments.
+// The void of a crystal, measured against the atoms of one unit cell and their periodic images. Everything below is
+// one of two things: the distance from a point to the nearest atom surface, or the same along a segment. The rest
+// is which points and which segments.
+//
+// Rounding a fraction to the nearest whole cell picks the nearest image only on a rectangular cell and only for a
+// single point, so other images have to be looked at as well, and `inverseWidths` is what says how few. A fraction f
+// along an axis is at least f times the width of the cell across that axis long, whatever the shape of the cell, so
+// an image can only beat the clearance in hand if its fraction is within (clearance + radius) / width. The clearance
+// in hand falls quickly as the atoms go by, and nearly every atom has nothing beyond the image rounding gave. The
+// last term is allowance for rounding in these floats.
 
-inline float3 minimumImage(float3 dr, float4 cella, float4 cellb, float4 cellc,
-                           float4 inverse_cella, float4 inverse_cellb, float4 inverse_cellc)
+inline float4 toFractional(float3 dr, float4 inverse_cella, float4 inverse_cellb, float4 inverse_cellc)
 {
   float4 wide = (float4)(dr.x, dr.y, dr.z, 0.0f);
 
@@ -38,13 +44,15 @@ inline float3 minimumImage(float3 dr, float4 cella, float4 cellb, float4 cellc,
   ds.y = dot(inverse_cellb, wide);
   ds.z = dot(inverse_cellc, wide);
   ds.w = 0.0f;
+  return ds;
+}
 
-  float4 t = ds - rint(ds);
-
+inline float3 toCartesian(float4 ds, float4 cella, float4 cellb, float4 cellc)
+{
   float3 out;
-  out.x = dot(cella, t);
-  out.y = dot(cellb, t);
-  out.z = dot(cellc, t);
+  out.x = dot(cella, ds);
+  out.y = dot(cellb, ds);
+  out.z = dot(cellc, ds);
   return out;
 }
 
@@ -53,15 +61,30 @@ inline float3 minimumImage(float3 dr, float4 cella, float4 cellb, float4 cellc,
 // which is what a pore size is measured with.
 inline float clearanceAt(float3 position, int numberOfAtoms, __global const float4 *atoms,
                          float4 cella, float4 cellb, float4 cellc,
-                         float4 inverse_cella, float4 inverse_cellb, float4 inverse_cellc)
+                         float4 inverse_cella, float4 inverse_cellb, float4 inverse_cellc, float4 inverseWidths)
 {
   float smallest = MAXFLOAT;
   for (int j = 0; j < numberOfAtoms; ++j)
   {
     float4 atom = atoms[j];
-    float3 dr = minimumImage(position - atom.xyz, cella, cellb, cellc,
-                             inverse_cella, inverse_cellb, inverse_cellc);
-    smallest = min(smallest, length(dr) - atom.w);
+    float4 ds = toFractional(position - atom.xyz, inverse_cella, inverse_cellb, inverse_cellc);
+    ds -= rint(ds);
+    smallest = min(smallest, length(toCartesian(ds, cella, cellb, cellc)) - atom.w);
+
+    float4 reach = (smallest + atom.w) * inverseWidths + 1.0e-4f;
+    float4 first = ceil(-reach - ds);
+    float4 last = floor(reach - ds);
+    for (float nz = first.z; nz <= last.z; nz += 1.0f)
+    {
+      for (float ny = first.y; ny <= last.y; ny += 1.0f)
+      {
+        for (float nx = first.x; nx <= last.x; nx += 1.0f)
+        {
+          float3 dr = toCartesian(ds + (float4)(nx, ny, nz, 0.0f), cella, cellb, cellc);
+          smallest = min(smallest, length(dr) - atom.w);
+        }
+      }
+    }
   }
   return smallest;
 }
@@ -69,14 +92,19 @@ inline float clearanceAt(float3 position, int numberOfAtoms, __global const floa
 // The largest sphere that can travel in a straight line from `origin` to `origin + displacement`, and where
 // along the way it is hemmed in most closely, returned as the fraction of the way along. Exact rather than
 // sampled: the clearance along a segment is a minimum over atoms of a distance that is smallest somewhere
-// definite, and that place is found in closed form for each atom.
+// definite, and that place is found in closed form for each image of each atom.
+//
+// A long segment has no one nearest image of an atom. Each point of it has its own, and the image nearest the
+// middle can stand well off the line while another runs right through it near an end. So the images are taken as
+// they are for a point, reckoned from the middle, with half of what the segment spans of each axis added on.
 inline float segmentBottleneck(float3 origin, float3 displacement, int numberOfAtoms,
                                __global const float4 *atoms, float *where,
                                float4 cella, float4 cellb, float4 cellc,
-                               float4 inverse_cella, float4 inverse_cellb, float4 inverse_cellc)
+                               float4 inverse_cella, float4 inverse_cellb, float4 inverse_cellc, float4 inverseWidths)
 {
   float3 midpoint = origin + 0.5f * displacement;
   float lengthSquared = dot(displacement, displacement);
+  float4 halfSpan = 0.5f * fabs(toFractional(displacement, inverse_cella, inverse_cellb, inverse_cellc));
 
   float smallest = MAXFLOAT;
   float at = 0.0f;
@@ -84,20 +112,39 @@ inline float segmentBottleneck(float3 origin, float3 displacement, int numberOfA
   for (int j = 0; j < numberOfAtoms; ++j)
   {
     float4 atom = atoms[j];
+    float4 ds = toFractional(atom.xyz - midpoint, inverse_cella, inverse_cellb, inverse_cellc);
+    ds -= rint(ds);
 
-    // From the start of the segment to the nearest image of the atom, by way of the midpoint so that the
-    // image chosen is the one nearest the segment as a whole rather than the one nearest an end of it.
-    float3 dr = minimumImage(atom.xyz - midpoint, cella, cellb, cellc,
-                             inverse_cella, inverse_cellb, inverse_cellc) + 0.5f * displacement;
-
-    float t = lengthSquared > 0.0f ? clamp(dot(dr, displacement) / lengthSquared, 0.0f, 1.0f) : 0.0f;
-    float3 closest = dr - t * displacement;
-
-    float clearance = length(closest) - atom.w;
-    if (clearance < smallest)
+    // From the start of the segment to this image of the atom. The image rounding gave goes first, so that what is
+    // in hand when the others are bounded has this atom in it.
+    float4 first = (float4)(0.0f);
+    float4 last = (float4)(0.0f);
+    for (int pass = 0; pass < 2; ++pass)
     {
-      smallest = clearance;
-      at = t;
+      for (float nz = first.z; nz <= last.z; nz += 1.0f)
+      {
+        for (float ny = first.y; ny <= last.y; ny += 1.0f)
+        {
+          for (float nx = first.x; nx <= last.x; nx += 1.0f)
+          {
+            float3 dr = toCartesian(ds + (float4)(nx, ny, nz, 0.0f), cella, cellb, cellc) + 0.5f * displacement;
+
+            float t = lengthSquared > 0.0f ? clamp(dot(dr, displacement) / lengthSquared, 0.0f, 1.0f) : 0.0f;
+            float3 closest = dr - t * displacement;
+
+            float clearance = length(closest) - atom.w;
+            if (clearance < smallest)
+            {
+              smallest = clearance;
+              at = t;
+            }
+          }
+        }
+      }
+
+      float4 reach = (smallest + atom.w) * inverseWidths + halfSpan + 1.0e-4f;
+      first = ceil(-reach - ds);
+      last = floor(reach - ds);
     }
   }
 
@@ -157,13 +204,13 @@ __kernel void ComputeClearances(__global const float4 *atoms,
                                 const int numberOfCases,
                                 const float4 cella, const float4 cellb, const float4 cellc,
                                 const float4 inverse_cella, const float4 inverse_cellb,
-                                const float4 inverse_cellc)
+                                const float4 inverse_cellc, const float4 inverseWidths)
 {
   int id = get_global_id(0);
   if (id >= numberOfCases) return;
 
   clearances[id] = clearanceAt(positions[id].xyz, numberOfAtoms, atoms, cella, cellb, cellc,
-                               inverse_cella, inverse_cellb, inverse_cellc);
+                               inverse_cella, inverse_cellb, inverse_cellc, inverseWidths);
 }
 
 __kernel void ComputeStraightWays(__global const float4 *atoms,
@@ -174,7 +221,7 @@ __kernel void ComputeStraightWays(__global const float4 *atoms,
                                   const int numberOfCases,
                                   const float4 cella, const float4 cellb, const float4 cellc,
                                   const float4 inverse_cella, const float4 inverse_cellb,
-                                  const float4 inverse_cellc)
+                                  const float4 inverse_cellc, const float4 inverseWidths)
 {
   int id = get_global_id(0);
   if (id >= numberOfCases) return;
@@ -184,7 +231,7 @@ __kernel void ComputeStraightWays(__global const float4 *atoms,
 
   float at = 0.0f;
   float radius = segmentBottleneck(origin, displacement, numberOfAtoms, atoms, &at,
-                                   cella, cellb, cellc, inverse_cella, inverse_cellb, inverse_cellc);
+                                   cella, cellb, cellc, inverse_cella, inverse_cellb, inverse_cellc, inverseWidths);
 
   float3 position = origin + at * displacement;
   ways[id] = (float4)(position.x, position.y, position.z, radius);
@@ -200,7 +247,7 @@ __kernel void WalkUphill(__global const float4 *atoms,
                          const float shrink,
                          const float4 cella, const float4 cellb, const float4 cellc,
                          const float4 inverse_cella, const float4 inverse_cellb,
-                         const float4 inverse_cellc)
+                         const float4 inverse_cellc, const float4 inverseWidths)
 {
   int id = get_global_id(0);
   if (id >= numberOfCases) return;
@@ -216,7 +263,7 @@ __kernel void WalkUphill(__global const float4 *atoms,
   {
     float3 trial = best + step * randomOnUnitSphere(&state);
     float clearance = clearanceAt(trial, numberOfAtoms, atoms, cella, cellb, cellc,
-                                  inverse_cella, inverse_cellb, inverse_cellc);
+                                  inverse_cella, inverse_cellb, inverse_cellc, inverseWidths);
 
     if (clearance > bestRadius)
     {
@@ -263,7 +310,7 @@ __kernel void ComputeWidestWays(__global const float4 *atoms,
                                 const float bendShrink,
                                 const float4 cella, const float4 cellb, const float4 cellc,
                                 const float4 inverse_cella, const float4 inverse_cellb,
-                                const float4 inverse_cellc)
+                                const float4 inverse_cellc, const float4 inverseWidths)
 {
   int id = get_global_id(0);
   if (id >= numberOfCases) return;
@@ -292,7 +339,7 @@ __kernel void ComputeWidestWays(__global const float4 *atoms,
       float at = 0.0f;
       float straightRadius = segmentBottleneck(origin, displacement, numberOfAtoms, atoms, &at,
                                                cella, cellb, cellc,
-                                               inverse_cella, inverse_cellb, inverse_cellc);
+                                               inverse_cella, inverse_cellb, inverse_cellc, inverseWidths);
 
       float len = length(displacement);
       float3 straightDirection = len > 0.0f ? displacement / len : (float3)(0.0f, 0.0f, 1.0f);
@@ -327,7 +374,7 @@ __kernel void ComputeWidestWays(__global const float4 *atoms,
         {
           float3 trial = lifted + (step / norm) * across;
           float clearance = clearanceAt(trial, numberOfAtoms, atoms, cella, cellb, cellc,
-                                        inverse_cella, inverse_cellb, inverse_cellc);
+                                        inverse_cella, inverse_cellb, inverse_cellc, inverseWidths);
 
           if (clearance > liftedRadius)
           {
@@ -543,12 +590,13 @@ class Buffer
   cl_mem memory{nullptr};
 };
 
-// The cell, as the kernels want it: the rows of the matrix and of its inverse, so that a minimum image is
-// three dot products each way.
+// The cell, as the kernels want it: the rows of the matrix and of its inverse, so that going between fractions and
+// positions is three dot products each way, and the widths across the cell that bound which images can matter.
 struct DeviceCell
 {
   cl_float4 a, b, c;
   cl_float4 inverseA, inverseB, inverseC;
+  cl_float4 inverseWidths;
 
   explicit DeviceCell(const UnitCell &unitCell)
   {
@@ -566,6 +614,10 @@ struct DeviceCell
     inverseA = row(inverse, 0);
     inverseB = row(inverse, 1);
     inverseC = row(inverse, 2);
+
+    const double3 widths = unitCell.perpendicularWidths();
+    inverseWidths = {{static_cast<cl_float>(1.0 / widths.x), static_cast<cl_float>(1.0 / widths.y),
+                      static_cast<cl_float>(1.0 / widths.z), 0.0f}};
   }
 };
 
@@ -652,6 +704,7 @@ SamplingBackend samplingBackendOpenCL()
     err |= clSetKernelArg(gpu->clearances, 8, sizeof(cl_float4), &cell.inverseA);
     err |= clSetKernelArg(gpu->clearances, 9, sizeof(cl_float4), &cell.inverseB);
     err |= clSetKernelArg(gpu->clearances, 10, sizeof(cl_float4), &cell.inverseC);
+    err |= clSetKernelArg(gpu->clearances, 11, sizeof(cl_float4), &cell.inverseWidths);
     if (err != CL_SUCCESS) throw std::runtime_error("mc_opencl_backend: clSetKernelArg failed (clearances)\n");
 
     enqueue(gpu->clearances, staged.size(), gpu->workGroupSize);
@@ -695,6 +748,7 @@ SamplingBackend samplingBackendOpenCL()
     err |= clSetKernelArg(gpu->straightWays, 9, sizeof(cl_float4), &cell.inverseA);
     err |= clSetKernelArg(gpu->straightWays, 10, sizeof(cl_float4), &cell.inverseB);
     err |= clSetKernelArg(gpu->straightWays, 11, sizeof(cl_float4), &cell.inverseC);
+    err |= clSetKernelArg(gpu->straightWays, 12, sizeof(cl_float4), &cell.inverseWidths);
     if (err != CL_SUCCESS) throw std::runtime_error("mc_opencl_backend: clSetKernelArg failed (straight ways)\n");
 
     enqueue(gpu->straightWays, stagedOrigins.size(), gpu->workGroupSize);
@@ -760,6 +814,7 @@ SamplingBackend samplingBackendOpenCL()
     err |= clSetKernelArg(gpu->walksUphill, 11, sizeof(cl_float4), &cell.inverseA);
     err |= clSetKernelArg(gpu->walksUphill, 12, sizeof(cl_float4), &cell.inverseB);
     err |= clSetKernelArg(gpu->walksUphill, 13, sizeof(cl_float4), &cell.inverseC);
+    err |= clSetKernelArg(gpu->walksUphill, 14, sizeof(cl_float4), &cell.inverseWidths);
     if (err != CL_SUCCESS) throw std::runtime_error("mc_opencl_backend: clSetKernelArg failed (walks)\n");
 
     enqueue(gpu->walksUphill, stagedStarts.size(), gpu->workGroupSize);
@@ -822,6 +877,7 @@ SamplingBackend samplingBackendOpenCL()
     err |= clSetKernelArg(gpu->widestWays, 14, sizeof(cl_float4), &cell.inverseA);
     err |= clSetKernelArg(gpu->widestWays, 15, sizeof(cl_float4), &cell.inverseB);
     err |= clSetKernelArg(gpu->widestWays, 16, sizeof(cl_float4), &cell.inverseC);
+    err |= clSetKernelArg(gpu->widestWays, 17, sizeof(cl_float4), &cell.inverseWidths);
     if (err != CL_SUCCESS) throw std::runtime_error("mc_opencl_backend: clSetKernelArg failed (widest ways)\n");
 
     enqueue(gpu->widestWays, stagedOrigins.size(), gpu->workGroupSize);
