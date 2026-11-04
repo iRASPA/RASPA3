@@ -718,8 +718,16 @@ void SphereDecomposition::mergeLoopsByPaths()
 }
 
 
-// Two loops bound the same patch where each lies inside the other, in the sense of Quan and Stamm. This
-// decides rather than searches; see `LoopMerge::nesting`.
+// Two loops bound the same patch where each lies inside the other, in the sense of Quan and Stamm, and no third
+// loop has them on different sides of it. This decides rather than searches; see `LoopMerge::nesting`.
+//
+// Each loop on its own says little. The exposed patches and the covered regions of a sphere meet along the loops
+// in a tree, the sphere having no way round, and the inside of a loop is everything on its patch's side of that
+// edge. A loop round an island in a patch has the whole of the rest of the sphere inside it, so two such loops, in
+// two patches kept apart by a belt of caps, each lie inside the other. What keeps them apart is on the path between
+// them in the tree: the loop where the belt meets either patch, which has one of them inside it and not the other.
+// Two loops of one patch are never parted like that, a patch lying wholly on one side of any loop it does not
+// cross, so the two conditions together are exact.
 void SphereDecomposition::mergeLoopsByNesting()
 {
   constexpr std::size_t sampleLimit = 8;
@@ -764,13 +772,35 @@ void SphereDecomposition::mergeLoopsByNesting()
     return false;
   };
 
-  for (std::size_t i = 0; i < roots.size(); ++i)
+  // Every pair is wanted, each third loop being asked about the two it might part.
+  const std::size_t numberOfLoops = roots.size();
+  std::vector<std::uint8_t> inside(numberOfLoops * numberOfLoops, 0);
+  for (std::size_t loop = 0; loop < numberOfLoops; ++loop)
   {
-    for (std::size_t j = i + 1; j < roots.size(); ++j)
+    for (std::size_t of = 0; of < numberOfLoops; ++of)
+    {
+      if (loop == of) continue;
+      inside[loop * numberOfLoops + of] =
+          anyPointInside(static_cast<std::int32_t>(loop), static_cast<std::int32_t>(of)) ? 1 : 0;
+    }
+  }
+
+  auto separated = [&](std::size_t i, std::size_t j)
+  {
+    for (std::size_t k = 0; k < numberOfLoops; ++k)
+    {
+      if (k == i || k == j) continue;
+      if (inside[k * numberOfLoops + i] != inside[k * numberOfLoops + j]) return true;
+    }
+    return false;
+  };
+
+  for (std::size_t i = 0; i < numberOfLoops; ++i)
+  {
+    for (std::size_t j = i + 1; j < numberOfLoops; ++j)
     {
       if (bound.find(loopRepresentative[roots[i]]) == bound.find(loopRepresentative[roots[j]])) continue;
-      if (anyPointInside(static_cast<std::int32_t>(i), static_cast<std::int32_t>(j)) &&
-          anyPointInside(static_cast<std::int32_t>(j), static_cast<std::int32_t>(i)))
+      if (inside[i * numberOfLoops + j] != 0 && inside[j * numberOfLoops + i] != 0 && !separated(i, j))
       {
         bound.join(loopRepresentative[roots[i]], loopRepresentative[roots[j]]);
       }

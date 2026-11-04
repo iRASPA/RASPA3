@@ -275,7 +275,9 @@ export enum class LoopMerge : std::uint8_t
   // Ask instead whether each loop lies inside the other, in the sense of Quan and Stamm: from a point of the
   // one, the nearest point of the other's own circles is reached without crossing any of them, so the two
   // are on the same side of that loop, and which side is read off from whether that nearest point is on the
-  // loop or on a covered stretch of the same circle. This decides rather than searches, and it is the
+  // loop or on a covered stretch of the same circle. Lying inside one another is not enough by itself: two
+  // loops round islands in two patches a belt of caps keeps apart do that as well, so no third loop may have
+  // the two on different sides of it either. This decides rather than searches, and it is the
   // default: over the zeolite atlas it cuts the spheres the same way as the search everywhere except where
   // it merges what the search could not, and it costs a small fraction of what the search costs.
   nesting,

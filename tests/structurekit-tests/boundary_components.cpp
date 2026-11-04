@@ -164,6 +164,46 @@ double3 fromPolar(double polar, double azimuth)
   return double3(std::sin(polar) * std::cos(azimuth), std::sin(polar) * std::sin(azimuth), std::cos(polar));
 }
 
+
+// A ball of radius four at the centre of a large cell, a ring of its neighbours overlapping one another round
+// its equator, so that what is left of it is two bands with a belt of caps between them, and a further ball
+// reaching it at each of `islands`, each leaving a small covered island in whichever band it falls in. The
+// neighbours are placed so that they touch the central ball only: the islands stay islands.
+PoreAccessibility beltWithIslands(const std::vector<double3>& islands)
+{
+  UnitCell box(40.0, 40.0, 40.0);
+  const double3 centre(20.0, 20.0, 20.0);
+  const double radius = 4.0;
+
+  std::vector<double3> positions{centre};
+  const std::size_t ringBalls = 12;
+  for (std::size_t i = 0; i < ringBalls; ++i)
+  {
+    double azimuth = 2.0 * std::numbers::pi * static_cast<double>(i) / static_cast<double>(ringBalls);
+    positions.push_back(centre + fromPolar(0.5 * std::numbers::pi, azimuth) * 6.0);
+  }
+  for (const double3& direction : islands) positions.push_back(centre + direction * 7.5);
+  return geometryOf(box, positions, radius);
+}
+
+
+// That every patch of the atom is a region of its own, and every region a patch, against the raster.
+void expectPatchesToBeTheRegions(const PoreAccessibility& geometry, const BoundaryComponents& components,
+                                 std::size_t atom, std::size_t regions)
+{
+  EXPECT_EQ(patchesByFloodFill(geometry, atom), regions);
+  EXPECT_EQ(components.atoms[atom].numberOfPatches, regions);
+
+  std::vector<std::int32_t> seen;
+  for (const double3& representative : components.atoms[atom].patchRepresentative)
+  {
+    std::int32_t region = floodFillRegionOf(representative);
+    ASSERT_GE(region, 0);
+    EXPECT_EQ(std::ranges::find(seen, region), seen.end()) << "two patches in region " << region;
+    seen.push_back(region);
+  }
+}
+
 }  // namespace
 
 
@@ -459,6 +499,89 @@ TEST(boundary_components, the_nesting_rule_follows_a_winding_region)
     EXPECT_EQ(std::ranges::find(seen, region), seen.end()) << "two patches in region " << region;
     seen.push_back(region);
   }
+}
+
+
+// Two bands either side of a belt, each with a small island in it. The loop round an island has all the rest of
+// the sphere on its exposed side, the other band included, so the two islands' loops each lie inside the other
+// with nothing between them but the belt. It is the belt's loops that tell them apart: the band it has on its
+// exposed side holds one island and not the other.
+TEST(boundary_components, the_nesting_rule_does_not_merge_two_bands_across_a_belt_by_their_islands)
+{
+  PoreAccessibility geometry = beltWithIslands({double3(0.0, 0.0, 1.0), double3(0.0, 0.0, -1.0)});
+
+  BoundaryComponents byNesting = boundaryComponents(geometry, LoopMerge::nesting);
+  BoundaryComponents byPaths = boundaryComponents(geometry, LoopMerge::paths);
+
+  expectPatchesToBeTheRegions(geometry, byNesting, 0, 2);
+  EXPECT_EQ(byNesting.atoms[0].numberOfPatches, byPaths.atoms[0].numberOfPatches);
+}
+
+
+// What has to survive that: several islands in one band all belong to it, and with the belt there too each band
+// has three loops or more to bring together, none of which any loop of the other band may disturb.
+TEST(boundary_components, the_nesting_rule_keeps_every_island_of_a_band_in_that_band)
+{
+  std::vector<double3> islands{fromPolar(0.0, 0.0), fromPolar(0.75, 0.0), fromPolar(0.75, 2.1), fromPolar(0.75, 4.2),
+                               fromPolar(std::numbers::pi, 0.0), fromPolar(std::numbers::pi - 0.75, 1.0)};
+  PoreAccessibility geometry = beltWithIslands(islands);
+
+  BoundaryComponents byNesting = boundaryComponents(geometry, LoopMerge::nesting);
+
+  expectPatchesToBeTheRegions(geometry, byNesting, 0, 2);
+}
+
+
+// With no belt the same islands all lie in the one region, however many of them there are.
+TEST(boundary_components, the_nesting_rule_makes_one_patch_of_a_sphere_with_only_islands)
+{
+  UnitCell box(40.0, 40.0, 40.0);
+  const double3 centre(20.0, 20.0, 20.0);
+  std::vector<double3> positions{centre};
+  for (const double3& direction : {fromPolar(0.0, 0.0), fromPolar(1.2, 0.0), fromPolar(1.2, 2.1), fromPolar(1.2, 4.2),
+                                   fromPolar(2.2, 1.0), fromPolar(2.2, 3.1), fromPolar(2.2, 5.2),
+                                   fromPolar(std::numbers::pi, 0.0)})
+  {
+    positions.push_back(centre + direction * 7.5);
+  }
+  PoreAccessibility geometry = geometryOf(box, positions, 4.0);
+
+  BoundaryComponents byNesting = boundaryComponents(geometry, LoopMerge::nesting);
+
+  expectPatchesToBeTheRegions(geometry, byNesting, 0, 1);
+}
+
+
+// The same thing where it costs something: an atom of a cage wall with a small ball on its face in the cavity and
+// another on its face to the open. Merging its two faces joins the inside of the cage to the outside.
+TEST(boundary_components, an_island_on_each_face_of_a_wall_does_not_open_a_sealed_cage)
+{
+  const double a = 14.0;
+  UnitCell box(a, a, a);
+  const double3 centre(0.5 * a, 0.5 * a, 0.5 * a);
+  const double shell = 3.0;
+  const double atomRadius = 1.8;
+  const double islandRadius = 0.25;
+  const std::size_t count = 32;
+
+  std::vector<double3> positions = cageCentres(centre, shell, count);
+  const double3 radial = double3::normalize(positions[0] - centre);
+  positions.push_back(centre + radial * (shell - atomRadius));
+  positions.push_back(centre + radial * (shell + atomRadius));
+
+  std::vector<double3> fractionalPositions;
+  std::vector<double> radii(count, atomRadius);
+  radii.resize(positions.size(), islandRadius);
+  for (const double3& position : positions) fractionalPositions.push_back(double3::fract(box.inverseCell * position));
+  PoreAccessibility geometry = PoreAccessibility::create(box, fractionalPositions, radii, 0.0);
+
+  BoundaryComponents components = boundaryComponents(geometry);
+
+  EXPECT_EQ(patchesByFloodFill(geometry, 0), 2uz);
+  EXPECT_EQ(components.atoms[0].numberOfPatches, 2uz);
+  EXPECT_EQ(components.numberOfComponents, 2uz);
+  EXPECT_EQ(components.looseEdges, 0uz);
+  EXPECT_EQ(components.unjoinedPatches, 0uz);
 }
 
 
