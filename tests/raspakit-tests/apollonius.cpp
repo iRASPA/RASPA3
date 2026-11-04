@@ -1844,3 +1844,42 @@ TEST(apollonius, sites_on_one_closed_curve_make_one_ring)
   }
   EXPECT_EQ(rings, 1u);
 }
+
+// The narrowest point of a ring and the direction it runs in there are read where its two branches meet, and whether
+// they are seen to have met must not depend on how large the structure is. A ring is the same ring at any scale, with
+// its pinch on the curve, its direction along the curve's tangent there, and every length in proportion.
+TEST(apollonius, a_ring_measures_the_same_at_any_scale)
+{
+  std::optional<double> lengthAtOne;
+  for (double scale : {1.0, 30.0})
+  {
+    const double edge = 12.0 * scale;
+    const double3x3 cell(double3(edge, 0.0, 0.0), double3(0.0, edge, 0.0), double3(0.0, 0.0, edge));
+    std::vector<double3> fractionalPositions;
+    for (const double3& position : ringSitePositions()) fractionalPositions.push_back((1.0 / 12.0) * position);
+    std::vector<double> radii = ringSiteRadii();
+    for (double& radius : radii) radius *= scale;
+
+    SKApolloniusDiagram diagram = SKApolloniusDiagram::create(cell, fractionalPositions, radii, 1, SKApolloniusRegion::EntireSpace);
+    ASSERT_EQ(diagram.verification.vertexlessLoops, 1u) << "scale " << scale;
+    const auto ring = std::find_if(diagram.edges.begin(), diagram.edges.end(), [](const SKApolloniusEdge& e) { return e.isLoop; });
+    ASSERT_NE(ring, diagram.edges.end());
+
+    EXPECT_NEAR(ring->bottleneckRadius, -1.708260 * scale, 1.0e-6 * scale) << "scale " << scale;
+
+    std::array<double3, 3> toSite;
+    for (std::size_t s = 0; s < 3; ++s)
+    {
+      const int3& image = ring->siteImages[s];
+      const double3 centre = cell * (fractionalPositions[ring->siteIndices[s]] + double3(image.x, image.y, image.z));
+      const double3 offset = ring->bottleneckPosition - centre;
+      EXPECT_NEAR(offset.length() - radii[ring->siteIndices[s]], ring->bottleneckRadius, 1.0e-6 * scale) << "scale " << scale;
+      toSite[s] = (1.0 / offset.length()) * offset;
+    }
+    const double3 tangent = double3::normalize(double3::cross(toSite[0] - toSite[1], toSite[1] - toSite[2]));
+    EXPECT_NEAR(std::abs(double3::dot(tangent, ring->bottleneckDirection)), 1.0, 1.0e-6) << "scale " << scale;
+
+    if (!lengthAtOne.has_value()) lengthAtOne = ring->length;
+    EXPECT_NEAR(ring->length, scale * lengthAtOne.value(), 1.0e-6 * scale * lengthAtOne.value()) << "scale " << scale;
+  }
+}

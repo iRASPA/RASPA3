@@ -182,8 +182,10 @@ void tangencyRow(const double3& centre, double radius, const double3& referenceC
 std::vector<double3> trisectorPointsAtClearance(const std::array<double3, 3>& centres,
                                                 const std::array<double, 3>& radii, double clearance)
 {
+  // The conditions below are the tangencies squared, so a clearance deeper than any of the three radii would be
+  // answered with the extraneous roots of the squaring.
   double referenceDistance = radii[0] + clearance;
-  if (referenceDistance < 0.0) return {};
+  if (referenceDistance < 0.0 || radii[1] + clearance < 0.0 || radii[2] + clearance < 0.0) return {};
 
   std::array<double3, 2> rows;
   std::array<double, 2> constants;
@@ -215,7 +217,11 @@ std::vector<double3> trisectorPointsAtClearance(const std::array<double3, 3>& ce
   double root = std::sqrt(discriminant);
   std::vector<double3> points;
   points.push_back(base + ((-b + root) / (2.0 * a)) * direction);
-  if (root > 1.0e-9 * (std::abs(b) + a)) points.push_back(base + ((-b - root) / (2.0 * a)) * direction);
+
+  // The two are one where they lie within a billionth of an Ångström of each other. That is a distance and has to
+  // be asked as one: the coefficients of the quadratic are of different powers of a length, so against a sum of
+  // them how near the two have to be to count as one would depend on how large the structure is.
+  if ((root / a) * directionLength > 1.0e-9) points.push_back(base + ((-b - root) / (2.0 * a)) * direction);
   return points;
 }
 
@@ -2119,9 +2125,15 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
         double clearance = minimumClearance + (maximumClearance - minimumClearance) *
                                                   static_cast<double>(sample) / static_cast<double>(traverseSamples);
         std::vector<double3> points = trisectorPointsAtClearance(centres, tripleRadii, clearance);
-        for (std::size_t branch = 0; branch < points.size() && !intruded; ++branch)
+        if (points.empty()) continue;
+
+        // Where the two branches have met the one point is on both of them. Taken as on the first alone, the second
+        // would start a sample late and be a sample behind from there on, and what is read off the two together
+        // at the same clearance, the pinch and the direction there, would come from two different clearances.
+        for (std::size_t branch = 0; branch < 2 && !intruded; ++branch)
         {
-          double3 wrapped = unitCell * double3::fract(inverseCell * points[branch]);
+          const double3& point = points[std::min(branch, points.size() - 1)];
+          double3 wrapped = unitCell * double3::fract(inverseCell * point);
           grid.forEachNear(wrapped, std::max(0.0, clearance + maximumRadius),
                            [&](std::size_t j, const double3& image, const int3&)
                            {
@@ -2131,14 +2143,14 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
 
           if (previousOnBranch[branch].has_value())
           {
-            length += (points[branch] - previousOnBranch[branch].value()).length();
-            if (!secondOnBranch[branch].has_value()) secondOnBranch[branch] = points[branch];
+            length += (point - previousOnBranch[branch].value()).length();
+            if (!secondOnBranch[branch].has_value()) secondOnBranch[branch] = point;
           }
           else
           {
-            firstOnBranch[branch] = points[branch];
+            firstOnBranch[branch] = point;
           }
-          previousOnBranch[branch] = points[branch];
+          previousOnBranch[branch] = point;
         }
       }
       if (intruded) continue;
