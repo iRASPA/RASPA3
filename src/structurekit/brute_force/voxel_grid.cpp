@@ -231,6 +231,7 @@ BruteForceVoxels BruteForceVoxels::build(const BruteForceStructure &structure, d
   // Flood the voxels with room in them, joining each to the three neighbours ahead of it so that every pair
   // is looked at once, and noting which joins crossed a cell boundary.
   self.regionOf.assign(numberOfVoxels, -1);
+  self.imageOf.assign(numberOfVoxels, int3(0, 0, 0));
 
   std::vector<std::size_t> voidVoxels;
   for (std::size_t voxel = 0; voxel < numberOfVoxels; ++voxel)
@@ -419,7 +420,8 @@ BruteForceVoxels BruteForceVoxels::build(const BruteForceStructure &structure, d
   std::unordered_map<std::size_t, std::int32_t> numbering;
   for (std::size_t voxel : voidVoxels)
   {
-    std::size_t root = pieces.find(voxel).first;
+    auto [root, toRoot] = pieces.find(voxel);
+    self.imageOf[voxel] = toRoot;
 
     auto [entry, inserted] = numbering.try_emplace(root, static_cast<std::int32_t>(self.regions.size()));
     if (inserted)

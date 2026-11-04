@@ -48,17 +48,22 @@ BruteForceBlockingPockets BruteForceBlockingPockets::compute(const BruteForceStr
     pocket.numberOfVoxels = members.size();
     pocket.volume = static_cast<double>(members.size()) * voxels.voxelVolume;
 
-    // A pocket does not run away, but it can still straddle a boundary, so the centre is taken about one of
-    // its own voxels with everything brought to the nearest image of that. Wrapping first and averaging
-    // after would put the centre of a pocket sitting on a face somewhere in the middle of the cell.
-    double3 anchor = voxels.centre(structure, members.front());
+    // A pocket does not run away, but it can still straddle a boundary, so its voxels are taken at the images the
+    // flood reached them in, which lays it out in one piece however it wraps round the cell. Wrapping first and
+    // averaging after would put the centre of a pocket sitting on a face somewhere in the middle of the cell, and
+    // the nearest image of any one point will not do either: that folds a pocket reaching further than half a
+    // cell from the point back onto itself.
+    auto laidOut = [&](std::size_t voxel)
+    {
+      const int3 &image = voxels.imageOf[voxel];
+      return voxels.centre(structure, voxel) +
+             structure.unitCell.cell * double3(static_cast<double>(image.x), static_cast<double>(image.y),
+                                               static_cast<double>(image.z));
+    };
 
     double3 sum(0.0, 0.0, 0.0);
-    for (std::size_t voxel : members)
-    {
-      sum += structure.nearestImage(anchor, voxels.centre(structure, voxel));
-    }
-    double3 centre = anchor + (1.0 / static_cast<double>(members.size())) * sum;
+    for (std::size_t voxel : members) sum += laidOut(voxel);
+    double3 centre = (1.0 / static_cast<double>(members.size())) * sum;
 
     pocket.centreFractional = structure.wrappedFractional(centre);
     pocket.centre = structure.unitCell.cell * pocket.centreFractional;
@@ -75,7 +80,7 @@ BruteForceBlockingPockets BruteForceBlockingPockets::compute(const BruteForceStr
 
     for (std::size_t voxel : members)
     {
-      double distance = structure.nearestImage(pocket.centre, voxels.centre(structure, voxel)).length();
+      double distance = (laidOut(voxel) - centre).length();
       pocket.coveringRadius = std::max(pocket.coveringRadius, distance + halfDiagonal);
     }
 

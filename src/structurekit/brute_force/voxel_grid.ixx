@@ -58,6 +58,11 @@ export struct BruteForceVoxels
   std::vector<float> clearance;       // Å, at the centre of each voxel
   std::vector<std::int32_t> regionOf;  // -1 inside an atom, else which piece of the void
 
+  // The lattice image each voxel of the void is at once its piece is laid out in one piece, as the flood reached it.
+  // A piece that does not run away has one such layout, however it wraps round the cell. One that does has none, and
+  // what is here for its voxels depends on the way the flood went and means nothing.
+  std::vector<int3> imageOf;
+
   std::vector<BruteForceRegion> regions;
 
   std::size_t numberOfVoidVoxels{0};

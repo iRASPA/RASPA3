@@ -107,3 +107,93 @@ TEST(brute_force_blocking_pockets, the_radii_are_measured_to_the_corners_of_slan
   EXPECT_NEAR(pocket.coveringRadius, farthestOwnCorner, 1.0e-9);
   EXPECT_LE(pocket.channelRadius, nearestChannelCorner + 1.0e-9);
 }
+
+
+// A solid block of atoms on a lattice with a row of them taken out, most of the way across the cell and closed by the
+// one atom left in the row. The pocket is then a long thin tube, whose middle is known and whose far ends are further
+// from each other than half a cell. Wherever along the row it lies, straddling the boundary or not, its centre is its
+// middle and its sphere reaches its ends.
+TEST(brute_force_blocking_pockets, a_pocket_longer_than_half_the_cell_is_not_folded_onto_itself)
+{
+  constexpr std::int32_t sites = 12;
+  constexpr double spacing = 3.0;
+  constexpr double side = spacing * sites;
+  constexpr double offAxis = 0.25;  // puts a voxel centre on every site
+  constexpr std::int32_t row = 6;
+
+  for (std::int32_t closedAt : {0, 3})
+  {
+    std::vector<double3> positions;
+    std::vector<double> radii;
+    for (std::int32_t k = 0; k < sites; ++k)
+    {
+      for (std::int32_t j = 0; j < sites; ++j)
+      {
+        for (std::int32_t i = 0; i < sites; ++i)
+        {
+          if (j == row && k == row && i != closedAt) continue;
+          positions.push_back(double3(spacing * i + offAxis, spacing * j + offAxis, spacing * k + offAxis));
+          radii.push_back(2.7);
+        }
+      }
+    }
+    BruteForceStructure structure = BruteForceStructure::create("row", UnitCell(side, side, side), positions, radii);
+    BruteForceVoxels voxels = BruteForceVoxels::build(structure, 0.5);
+
+    BruteForceBlockingPockets blocking = BruteForceBlockingPockets::compute(structure, voxels);
+    ASSERT_EQ(blocking.pockets.size(), 1uz) << "closed at " << closedAt;
+    const BruteForcePocket &pocket = blocking.pockets.front();
+
+    // Half way round from the atom that closes the row, which is the middle of the rest of it.
+    const double middle = std::fmod(spacing * (closedAt + sites / 2) + offAxis, side);
+    const double3 expected(middle, spacing * row + offAxis, spacing * row + offAxis);
+    EXPECT_NEAR(structure.nearestImage(pocket.centre, expected).length(), 0.0, 0.5 * voxels.spacing.x) << "closed at " << closedAt;
+
+    // The tube runs eleven sites less the atom that closes it: its ends are the room either side of that atom.
+    EXPECT_GT(pocket.coveringRadius, 0.5 * (side - 2.0 * spacing)) << "closed at " << closedAt;
+    EXPECT_LT(pocket.coveringRadius, 0.5 * side) << "closed at " << closedAt;
+  }
+}
+
+// How the flood reached a voxel is kept with it, so that a pocket can be laid out in one piece: any two of its voxels
+// joined by a step are a step apart once each is moved to its own image.
+TEST(brute_force_blocking_pockets, the_voxels_of_a_pocket_lie_in_one_piece_once_each_is_at_its_own_image)
+{
+  constexpr std::int32_t sites = 8;
+  constexpr double spacing = 3.0;
+  constexpr double side = spacing * sites;
+  std::vector<double3> positions;
+  std::vector<double> radii;
+  for (std::int32_t k = 0; k < sites; ++k)
+    for (std::int32_t j = 0; j < sites; ++j)
+      for (std::int32_t i = 0; i < sites; ++i)
+      {
+        if (j == 0 && k == 0 && i != 2) continue;
+        positions.push_back(double3(spacing * i + 0.25, spacing * j + 0.25, spacing * k + 0.25));
+        radii.push_back(2.7);
+      }
+  BruteForceStructure structure = BruteForceStructure::create("row", UnitCell(side, side, side), positions, radii);
+  BruteForceVoxels voxels = BruteForceVoxels::build(structure, 0.5);
+  ASSERT_EQ(voxels.imageOf.size(), voxels.regionOf.size());
+
+  auto lifted = [&](std::size_t voxel)
+  {
+    const int3 &image = voxels.imageOf[voxel];
+    return voxels.centre(structure, voxel) +
+           structure.unitCell.cell * double3(static_cast<double>(image.x), static_cast<double>(image.y), static_cast<double>(image.z));
+  };
+
+  std::size_t steps = 0;
+  for (std::int32_t k = 0; k < voxels.counts.z; ++k)
+    for (std::int32_t j = 0; j < voxels.counts.y; ++j)
+      for (std::int32_t i = 0; i < voxels.counts.x; ++i)
+      {
+        const std::size_t here = voxels.indexOf(i, j, k);
+        if (voxels.regionOf[here] < 0) continue;
+        const std::size_t ahead = voxels.indexOf((i + 1) % voxels.counts.x, j, k);
+        if (voxels.regionOf[ahead] != voxels.regionOf[here]) continue;
+        ++steps;
+        EXPECT_NEAR((lifted(ahead) - lifted(here)).length(), voxels.spacing.x, 1.0e-9);
+      }
+  EXPECT_GT(steps, 40uz);
+}
