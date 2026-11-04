@@ -6,6 +6,7 @@ import std;
 
 import uint3;
 import double3;
+import double3x3;
 import unit_cell;
 import crystal;
 import pair_interactions;
@@ -28,6 +29,20 @@ std::vector<double3> trianglesOf(const EnergyBackend *backend, std::span<const f
 {
   if (backend != nullptr) return backend->isosurfaceTriangles(field, gridSize, isoValue);
   return EnergyIsosurface::trianglesOfIsosurface(field, gridSize, isoValue);
+}
+
+// The edge from fractional corner `a` to fractional corner `b`, by the nearest image, in Cartesian terms. The
+// refinement wraps every corner into the cell on its own, so a triangle straddling a face of the cell has
+// corners on both sides of it, and an edge taken between two of them as they stand runs the length of the
+// cell: the triangle then came out implausibly large and was thrown out, and the sheet lost its area along
+// every face.
+double3 nearestImageEdge(const double3x3 &cell, const double3 &a, const double3 &b)
+{
+  double3 d = b - a;
+  d.x -= std::rint(d.x);
+  d.y -= std::rint(d.y);
+  d.z -= std::rint(d.z);
+  return cell * d;
 }
 
 // Connected components of the filament mesh by periodically welded vertices; components below
@@ -100,10 +115,10 @@ std::vector<double3> removeFilamentSpecks(const UnitCell &unitCell, std::vector<
   std::unordered_map<std::size_t, double> area;
   for (std::size_t t = 0; t < triangles; ++t)
   {
-    double3 p0 = unitCell.cell * corners[3 * t];
-    double3 p1 = unitCell.cell * corners[3 * t + 1];
-    double3 p2 = unitCell.cell * corners[3 * t + 2];
-    area[findRoot(t)] += 0.5 * double3::cross(p1 - p0, p2 - p0).length();
+    area[findRoot(t)] += 0.5 *
+                         double3::cross(nearestImageEdge(unitCell.cell, corners[3 * t], corners[3 * t + 1]),
+                                        nearestImageEdge(unitCell.cell, corners[3 * t], corners[3 * t + 2]))
+                             .length();
   }
 
   std::vector<double3> kept;
@@ -803,10 +818,10 @@ void assignFilamentPacking(WellSurface &result, const WellField &field, const Un
     }
     if (votesPlanar > votesFile && votesPlanar > 0)
     {
-      double3 p0 = unitCell.cell * filamentCorners[i];
-      double3 p1 = unitCell.cell * filamentCorners[i + 1];
-      double3 p2 = unitCell.cell * filamentCorners[i + 2];
-      overlayPlanar += 0.5 * double3::cross(p1 - p0, p2 - p0).length();
+      overlayPlanar += 0.5 *
+                       double3::cross(nearestImageEdge(unitCell.cell, filamentCorners[i], filamentCorners[i + 1]),
+                                      nearestImageEdge(unitCell.cell, filamentCorners[i], filamentCorners[i + 2]))
+                           .length();
     }
   }
   double area2D = ridgeFace;
@@ -902,10 +917,10 @@ WellSurface wellSurfaceOfField(const Crystal &framework, const PairInteractions 
 
   for (std::size_t i = 0; i + 2 < corners.size(); i += 3)
   {
-    double3 p1 = framework.unitCell.cell * corners[i];
-    double3 p2 = framework.unitCell.cell * corners[i + 1];
-    double3 p3 = framework.unitCell.cell * corners[i + 2];
-    double area = 0.5 * double3::cross(p2 - p1, p3 - p1).length();
+    double area = 0.5 *
+                  double3::cross(nearestImageEdge(framework.unitCell.cell, corners[i], corners[i + 1]),
+                                 nearestImageEdge(framework.unitCell.cell, corners[i], corners[i + 2]))
+                      .length();
     if (!(std::isfinite(area) && area < largestPlausible))
     {
       ++result.numberOfRejectedTriangles;

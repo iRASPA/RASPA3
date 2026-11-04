@@ -224,6 +224,32 @@ TEST(energy_well_surface, isolated_atom_sheet_is_the_contact_sphere)
 }
 
 
+// The same sphere with the atom on the cell's corner, so that the sheet crosses all three periodic faces. The
+// triangles straddling a face have their corners wrapped into the cell by the refinement, and an edge taken
+// between two wrapped corners without the nearest image runs the length of the cell: such a triangle was thrown
+// out as implausibly large, and the sheet lost its area along every face.
+TEST(energy_well_surface, isolated_atom_on_the_cell_corner_has_the_same_sheet)
+{
+  const double edge = 16.0;
+  const uint3 gridSize{96, 96, 96};
+  PairInteractions interactions = oneType(sigma, epsilon);
+  Crystal framework = oneAtom(edge);
+  framework.atoms.front().position = double3(0.0, 0.0, 0.0);
+  framework.fractionalPositions.front() = double3(0.0, 0.0, 0.0);
+
+  WellField field =
+      computeWellField(interactions, framework, probeOf(interactions, "X"), gridSize, 1, 0.0, {}, 1000.0, ceiling);
+  WellSurface surface = wellSurfaceOfField(framework, interactions, field, 0.0, 0.001, 0.5 * epsilon, {});
+
+  ASSERT_GT(surface.numberOfTriangles, 100u);
+  const double rmin = wellContactPrefactor * sigma;
+  const double expected = 4.0 * std::numbers::pi * rmin * rmin;
+  EXPECT_NEAR(surface.area, expected, 0.08 * expected);
+  EXPECT_EQ(surface.numberOfRejectedTriangles, 0u) << "no triangle of a sphere is implausibly large";
+  EXPECT_NEAR(surface.meanDepth, -epsilon, 0.05 * epsilon);
+}
+
+
 // Every edge of a closed periodic mesh appears twice, opposite ways. Quantizing the vertices the way the
 // refinement welds them makes the pairing well-defined.
 TEST(energy_well_surface, isolated_atom_sheet_is_watertight)
