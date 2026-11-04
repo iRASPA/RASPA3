@@ -263,12 +263,13 @@ BruteForceDiameters BruteForceDiameters::compute(const BruteForceStructure &stru
   // manages it, and none narrower is, since one does not. Running on would credit the path with directions
   // it only gains at a lower width, and a path that runs one way is to be reported as running one way.
   //
-  // Only the repeats of the piece that closed the loop count. Other pieces can close loops of their own at
-  // the same width, and a vector one of them runs away along says nothing about the directions of this one.
+  // Every piece that closes a loop at that width is a way through as good as any other, but they do not add up:
+  // a vector one of them runs away along says nothing about the directions of another. So the repeats are kept
+  // piece by piece, and the dimensionality is that of the piece that runs the most ways.
   struct WayThrough
   {
-    std::size_t closedAt;       // index into hops, or hops.size() when nothing ran away
-    std::vector<int3> repeats;  // of the piece that closed the loop
+    std::size_t closedAt;  // index into hops, or hops.size() when nothing ran away
+    std::map<std::size_t, std::vector<int3>> repeatsOfPiece;  // by the root of each piece that ran away
     PeriodicUnionFind pieces;
   };
   auto widestWayThrough = [&]()
@@ -290,14 +291,7 @@ BruteForceDiameters BruteForceDiameters::compute(const BruteForceStructure &stru
 
     // Which piece a loop belongs to is settled only once every hop of the width is in, as two pieces that
     // closed loops of their own can be joined by a later hop of the same width.
-    if (way.closedAt < hops.size())
-    {
-      std::size_t root = way.pieces.find(hops[way.closedAt].from).first;
-      for (const auto &[voxel, repeat] : found)
-      {
-        if (way.pieces.find(voxel).first == root) way.repeats.push_back(repeat);
-      }
-    }
+    for (const auto &[voxel, repeat] : found) way.repeatsOfPiece[way.pieces.find(voxel).first].push_back(repeat);
 
     return way;
   };
@@ -315,28 +309,30 @@ BruteForceDiameters BruteForceDiameters::compute(const BruteForceStructure &stru
 
   self.percolates = way.closedAt < hops.size();
   double width = self.percolates ? static_cast<double>(hops[way.closedAt].width) : 0.0;
-  self.dimensionality = latticeRank(way.repeats);
+  for (const auto &[root, repeats] : way.repeatsOfPiece)
+  {
+    self.dimensionality = std::max(self.dimensionality, latticeRank(repeats));
+  }
   self.freeSphereDiameter = 2.0 * width;
   self.guaranteedFreeSphereDiameter = 2.0 * std::max(width - 0.5 * longestHop, 0.0);
 
   // Dif: the roomiest place that can be reached without ever passing anywhere narrower than the bottleneck,
-  // walked uphill from the best voxel of that component. The component is the piece the loop closed in, as
-  // the pass left it: every hop as wide as the bottleneck is in, and nothing narrower. The piece of
-  // whichever hop of that width happened to sort last is not the same thing; on a crystal with a pocket
-  // that is somewhere exactly as wide as the bottleneck, that read Dif off the pocket.
+  // walked uphill from the best voxel of those components. They are the pieces a loop closed in, as the pass
+  // left them: every hop as wide as the bottleneck is in, and nothing narrower. Only those: the piece of whichever
+  // hop of that width happened to sort last is not the same thing, and on a crystal with a pocket that is
+  // somewhere exactly as wide as the bottleneck, that read Dif off the pocket. And all of them: of two channels
+  // that never meet and share a bottleneck, a sphere of that width goes down either.
   if (self.percolates)
   {
     PeriodicUnionFind &pieces = way.pieces;
-    std::size_t seed = hops[way.closedAt].from;
-    std::size_t percolatingRoot = pieces.find(seed).first;
 
-    std::size_t best = seed;
+    std::size_t best = hops[way.closedAt].from;
     double bestClearance = -std::numeric_limits<double>::max();
     for (std::size_t voxel = 0; voxel < numberOfVoxels; ++voxel)
     {
       if (voxels.regionOf[voxel] < 0) continue;
       if (static_cast<double>(voxels.clearance[voxel]) < width) continue;
-      if (pieces.find(voxel).first != percolatingRoot) continue;
+      if (!way.repeatsOfPiece.contains(pieces.find(voxel).first)) continue;
 
       if (static_cast<double>(voxels.clearance[voxel]) > bestClearance)
       {

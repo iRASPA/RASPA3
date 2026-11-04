@@ -52,11 +52,12 @@ PercolatingPath widestPercolatingPath(const VoronoiNetwork& network, std::span<c
   std::sort(order.begin(), order.end(),
             [&](std::size_t a, std::size_t b) { return network.edges[a].radius > network.edges[b].radius; });
 
-  // The component is read off once every edge as wide as the bottleneck has been added, not when the
+  // The components are read off once every edge as wide as the bottleneck has been added, not when the
   // first of them closed the loop: a node behind a neck exactly that wide is reachable at the bottleneck's
-  // radius, so it is on the path, and which of two tied edges the sort put first cannot decide that.
+  // radius, so it is on the path, and which of two tied edges the sort put first cannot decide that. The same
+  // goes for a second channel closing a loop of its own at that radius, so every loop closed at it is kept.
   PeriodicUnionFind unionFind(network.nodes.size());
-  std::size_t percolatingMember = 0;
+  std::vector<std::size_t> percolatingMembers;
 
   for (std::size_t index : order)
   {
@@ -69,12 +70,15 @@ PercolatingPath widestPercolatingPath(const VoronoiNetwork& network, std::span<c
     if (rootFrom == rootTo)
     {
       int3 net = accFrom + edge.delta - accTo;
-      if (!path.percolates && (net.x != 0 || net.y != 0 || net.z != 0))
+      if (net.x != 0 || net.y != 0 || net.z != 0)
       {
-        path.percolates = true;
-        path.limitingEdge = index;
-        path.radius = edge.radius;
-        percolatingMember = edge.from;
+        if (!path.percolates)
+        {
+          path.percolates = true;
+          path.limitingEdge = index;
+          path.radius = edge.radius;
+        }
+        percolatingMembers.push_back(edge.from);
       }
     }
     else
@@ -86,10 +90,11 @@ PercolatingPath widestPercolatingPath(const VoronoiNetwork& network, std::span<c
 
   if (!path.percolates) return path;
 
-  const std::size_t percolatingRoot = unionFind.find(percolatingMember).first;
+  std::set<std::size_t> percolatingRoots;
+  for (std::size_t member : percolatingMembers) percolatingRoots.insert(unionFind.find(member).first);
   for (std::size_t node : nodes)
   {
-    if (unionFind.find(node).first == percolatingRoot) path.componentNodes.push_back(node);
+    if (percolatingRoots.contains(unionFind.find(node).first)) path.componentNodes.push_back(node);
   }
 
   return path;
@@ -108,7 +113,7 @@ PoreDiameters PoreDiameters::compute(const VoronoiNetwork& network)
 
   diameters.freeSphereDiameter = 2.0 * path.radius;
 
-  // Dif: the largest node radius reachable within the component that first percolated.
+  // Dif: the largest node radius reachable at the free sphere's width, in whichever channel it is.
   double maximumIncluded = 0.0;
   for (std::size_t node : path.componentNodes)
   {

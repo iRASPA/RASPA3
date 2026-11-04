@@ -49,7 +49,7 @@ export struct BruteForceDiameters
   double3 includedAlongFreePathCentre{};
 
   bool percolates{false};
-  std::size_t dimensionality{0};  // in how many directions the widest path runs away
+  std::size_t dimensionality{0};  // in how many directions the widest path runs away, the most of any where several tie
 
   double3 spacing{};              // Å, of the grid it was read off
   std::size_t numberOfVoidVoxels{0};

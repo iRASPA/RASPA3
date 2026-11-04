@@ -285,3 +285,70 @@ TEST(grid_percolation, a_channel_that_opens_alone_keeps_its_own_threshold)
   EXPECT_NEAR(sweep.opennessByDimension[0], 6.0, 1.0e-12);
   EXPECT_NEAR(sweep.opennessByDimension[2], 5.0, 1.0e-12);
 }
+
+
+// Two rods that never meet, of one width, and a wide place in one of them. Whichever rod holds it, it is reachable
+// without passing anything narrower than the threshold, so it is on the path; the sweep reaching the other rod's
+// closing point first does not change that.
+TEST(grid_percolation, a_wide_place_in_either_rod_tied_at_the_threshold_is_on_the_path)
+{
+  const uint3 gridSize(8, 8, 8);
+  for (std::size_t wider : {2uz, 6uz})
+  {
+    Field field(gridSize, 0.0f);
+    for (std::size_t i = 0; i < gridSize.x; ++i)
+    {
+      field.at(i, 2, 2) = 5.0f;
+      field.at(i, 6, 6) = 5.0f;
+    }
+    field.at(3, wider, wider) = 9.0f;
+
+    GridPercolation sweep = sweepPercolation(gridSize, field.value, 1.0f, false);
+    ASSERT_TRUE(sweep.percolates);
+    EXPECT_FLOAT_EQ(sweep.percolationOpenness, 5.0f);
+    EXPECT_FLOAT_EQ(sweep.highestOpennessOnPath, 9.0f) << "wide place in the rod at " << wider;
+    EXPECT_EQ(sweep.dimensionalityAtThreshold, 1);
+  }
+}
+
+// A rod and a sheet tied at one level: the pore system runs two ways at it, wherever the two lie in the grid. Two
+// rods along different directions that never touch still run one way each.
+TEST(grid_percolation, the_dimensionality_at_a_tied_threshold_is_that_of_the_region_that_runs_most_ways)
+{
+  const uint3 gridSize(8, 8, 8);
+  for (std::size_t rodAt : {1uz, 6uz})
+  {
+    const std::size_t sheetAt = rodAt == 1 ? 5 : 2;
+    Field field(gridSize, 0.0f);
+    for (std::size_t i = 0; i < gridSize.x; ++i) field.at(i, rodAt, rodAt) = 5.0f;
+    for (std::size_t i = 0; i < gridSize.x; ++i)
+      for (std::size_t j = 0; j < gridSize.y; ++j) field.at(i, j, sheetAt) = 5.0f;
+
+    GridPercolation sweep = sweepPercolation(gridSize, field.value, 1.0f, false);
+    ASSERT_TRUE(sweep.percolates);
+    EXPECT_EQ(sweep.dimensionalityAtThreshold, 2) << "rod at " << rodAt;
+  }
+
+  Field crossed(gridSize, 0.0f);
+  for (std::size_t i = 0; i < gridSize.x; ++i) crossed.at(i, 2, 2) = 5.0f;
+  for (std::size_t j = 0; j < gridSize.y; ++j) crossed.at(6, j, 6) = 5.0f;
+  GridPercolation sweep = sweepPercolation(gridSize, crossed.value, 1.0f, false);
+  ASSERT_TRUE(sweep.percolates);
+  EXPECT_EQ(sweep.dimensionalityAtThreshold, 1);
+}
+
+
+// Openness is whatever the caller sweeps by, and the energy analyses sweep by the negated energy, so all of it can be
+// below zero. The most open point on the path is then a negative number and has to come back as one.
+TEST(grid_percolation, the_most_open_point_on_the_path_can_be_negative)
+{
+  const uint3 gridSize(8, 8, 8);
+  Field field(gridSize, -1000.0f);
+  for (std::size_t i = 0; i < gridSize.x; ++i) field.at(i, 4, 4) = -5.0f;
+  field.at(3, 4, 4) = -2.0f;
+
+  GridPercolation sweep = sweepPercolation(gridSize, field.value, -100.0f, false);
+  ASSERT_TRUE(sweep.percolates);
+  EXPECT_FLOAT_EQ(sweep.percolationOpenness, -5.0f);
+  EXPECT_FLOAT_EQ(sweep.highestOpennessOnPath, -2.0f);
+}

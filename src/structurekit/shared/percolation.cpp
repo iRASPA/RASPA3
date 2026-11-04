@@ -195,23 +195,31 @@ GridPercolation sweepPercolation(uint3 gridSize, std::span<const float> openness
 
   PeriodicUnionFind unionFind(order.size(), recordEscape);
 
-  // The region that first ran through, by one of its points, and what is read off it once the level it
-  // closed at has been swept to the end. Closing happens at one neighbour of one point, but the level is
-  // shared by the rest of that point's neighbours and by every point of the same openness still to come,
-  // and all of them are reachable without passing anything less open than the threshold: a wider region
-  // joined at the threshold is on the path, and a second direction closed at the threshold is a direction
-  // the pore system runs in at it. So the two are taken when the level is left, not when it was reached.
-  std::int32_t percolatingMember = -1;
+  // The regions that ran through at the threshold, by one point of each, and what is read off them once the
+  // level they closed at has been swept to the end. Closing happens at one neighbour of one point, but the level
+  // is shared by the rest of that point's neighbours and by every point of the same openness still to come, and
+  // all of them are reachable without passing anything less open than the threshold: a wider region joined at
+  // the threshold is on the path, a second direction closed at the threshold is a direction the pore system
+  // runs in at it, and a second region closing on itself at the threshold is as good a path as the first. So
+  // these are taken when the level is left, not when it was reached. Regions that never meet do not add up, so
+  // what is taken is the most any one of them has, which is also what no order of the points can change.
+  std::vector<std::int32_t> percolatingMembers;
   bool thresholdSettled = false;
   auto settleThreshold = [&]()
   {
-    if (percolatingMember < 0 || thresholdSettled) return;
+    if (percolatingMembers.empty() || thresholdSettled) return;
     thresholdSettled = true;
-    int3 displacement(0, 0, 0);
-    const std::int32_t root = unionFind.find(percolatingMember, displacement);
-    result.highestOpennessOnPath = static_cast<double>(unionFind.highestOpenness[static_cast<std::size_t>(root)]);
-    std::unordered_map<std::int32_t, std::vector<int3>>::iterator windings = unionFind.windings.find(root);
-    result.dimensionalityAtThreshold = (windings == unionFind.windings.end()) ? 0 : latticeVectorRank(windings->second);
+    result.highestOpennessOnPath = result.percolationOpenness;  // every region on the path has at least this
+    for (const std::int32_t member : percolatingMembers)
+    {
+      int3 displacement(0, 0, 0);
+      const std::int32_t root = unionFind.find(member, displacement);
+      result.highestOpennessOnPath = std::max(result.highestOpennessOnPath,
+                                              static_cast<double>(unionFind.highestOpenness[static_cast<std::size_t>(root)]));
+      std::unordered_map<std::int32_t, std::vector<int3>>::iterator windings = unionFind.windings.find(root);
+      if (windings != unionFind.windings.end())
+        result.dimensionalityAtThreshold = std::max(result.dimensionalityAtThreshold, latticeVectorRank(windings->second));
+    }
   };
 
   for (std::size_t i = 0; i < order.size(); ++i)
@@ -219,7 +227,7 @@ GridPercolation sweepPercolation(uint3 gridSize, std::span<const float> openness
     const std::int32_t voxel = order[i];
     const float here = openness[static_cast<std::size_t>(voxel)];
     const std::int32_t current = static_cast<std::int32_t>(i);
-    if (percolatingMember >= 0 && static_cast<double>(here) < result.percolationOpenness) settleThreshold();
+    if (!percolatingMembers.empty() && static_cast<double>(here) < result.percolationOpenness) settleThreshold();
     unionFind.highestOpenness[i] = here;
     if (recordEscape)
     {
@@ -366,8 +374,8 @@ GridPercolation sweepPercolation(uint3 gridSize, std::span<const float> openness
       {
         result.percolates = true;
         result.percolationOpenness = static_cast<double>(here);
-        percolatingMember = current;
       }
+      if (rank >= 1 && !thresholdSettled) percolatingMembers.push_back(current);
     }
   }
   settleThreshold();

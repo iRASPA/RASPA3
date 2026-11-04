@@ -128,3 +128,81 @@ TEST(brute_force_diameters, the_guaranteed_width_allows_for_the_longest_hop_betw
   }
   EXPECT_NEAR(diameters.guaranteedFreeSphereDiameter, diameters.freeSphereDiameter - longestHop, 1.0e-9);
 }
+
+
+// Two tubes that never meet at the width of their windows, the same windows in both, and in one of them a small
+// sphere at the middle of the room. Whichever tube that is, the other still has the whole room, and it is reachable
+// at the bottleneck's width, so that is Dif. Which tube's loop the sort put first must not decide it.
+TEST(brute_force_diameters, the_room_of_either_tube_tied_at_the_bottleneck_is_on_the_path)
+{
+  for (const int3 &smaller : {int3(0, 0, 0), int3(1, 1, 0)})
+  {
+    double side = 16.0;
+    std::vector<double3> positions;
+    std::vector<double> radii;
+    for (std::int32_t a = 0; a < 2; ++a)
+    {
+      for (std::int32_t b = 0; b < 2; ++b)
+      {
+        for (double z : {3.0, 9.0})
+        {
+          positions.push_back(double3(4.0 + 8.0 * a, 4.0 + 8.0 * b, z));
+          radii.push_back(sphereRadius);
+        }
+      }
+    }
+    // Only one tube of each pair round the lattice is left whole.
+    for (const int3 &filled : {smaller, int3(smaller.x, 1 - smaller.y, 0), int3(1 - smaller.x, smaller.y, 0)})
+    {
+      // A tube has two rooms to a period, between the layers on either side.
+      for (double z : {0.0, 6.0})
+      {
+        positions.push_back(double3(8.0 * filled.x, 8.0 * filled.y, z));
+        radii.push_back(0.05);
+      }
+    }
+    BruteForceStructure structure = BruteForceStructure::create("tubes", UnitCell(side, side, 12.0), positions, radii);
+    BruteForceDiameters diameters = diametersOf(structure);
+
+    ASSERT_TRUE(diameters.percolates);
+    EXPECT_EQ(diameters.dimensionality, 1uz);
+    EXPECT_NEAR(diameters.freeSphereDiameter, 2.0 * gridWindow, 1.0e-5);
+    EXPECT_NEAR(diameters.includedAlongFreePathDiameter, 2.0 * tubeRoom, 1.0e-6) << "smaller from " << smaller.x;
+  }
+}
+
+// One piece that runs one way and one that runs two, tied at the same width. The widest path can run two ways, and
+// that is what is reported, wherever the sort puts them. Nor do two pieces add up: see the two straws below.
+TEST(brute_force_diameters, the_dimensionality_at_a_tie_is_that_of_the_piece_that_runs_most_ways)
+{
+  BruteForceStructure structure = tubes(2, {});
+  BruteForceVoxels voxels = BruteForceVoxels::build(structure, 0.5);
+  const float width = 1.0f;
+  auto carve = [&](auto &&isOpen)
+  {
+    std::size_t open = 0;
+    for (std::int32_t k = 0; k < voxels.counts.z; ++k)
+      for (std::int32_t j = 0; j < voxels.counts.y; ++j)
+        for (std::int32_t i = 0; i < voxels.counts.x; ++i)
+        {
+          std::size_t voxel = voxels.indexOf(i, j, k);
+          const bool keep = isOpen(i, j, k);
+          voxels.regionOf[voxel] = keep ? 0 : -1;
+          voxels.clearance[voxel] = keep ? width : 0.0f;
+          if (keep) ++open;
+        }
+    voxels.numberOfVoidVoxels = open;
+  };
+
+  // Hops are met from the bottom of the grid up, so a straw along x low down closes before a sheet higher up, and a
+  // sheet low down before a straw above it. Both ways round the answer is the sheet's.
+  carve([&](std::int32_t i, std::int32_t j, std::int32_t k) { return (j == 2 && k == 2) || (k == 20 && (i == 8 || j == 8)); });
+  EXPECT_EQ(BruteForceDiameters::compute(structure, voxels).dimensionality, 2uz);
+
+  carve([&](std::int32_t i, std::int32_t j, std::int32_t k) { return (j == 26 && k == 26) || (k == 4 && (i == 8 || j == 8)); });
+  EXPECT_EQ(BruteForceDiameters::compute(structure, voxels).dimensionality, 2uz);
+
+  // Two straws along different directions that never touch run one way each.
+  carve([&](std::int32_t i, std::int32_t j, std::int32_t k) { return (i == 2 && j == 2) || (j == 16 && k == 12); });
+  EXPECT_EQ(BruteForceDiameters::compute(structure, voxels).dimensionality, 1uz);
+}

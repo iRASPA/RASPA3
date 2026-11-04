@@ -15,7 +15,7 @@ import voronoi_network;
 //         path that percolates through the periodic boundary (its bottleneck is the
 //         smallest edge radius along the path).
 //   Dif : diameter of the largest sphere that can be inscribed anywhere along that same
-//         percolating (free-sphere) path.
+//         percolating (free-sphere) path, or along any of them where several tie.
 //
 // None of this is a property of any one diagram. What it asks of the network is only that a node carry the
 // room there is at it and an edge the narrowest point of the passage it stands for, and three different
@@ -39,6 +39,9 @@ export struct PoreDiameters
 // Widest is in the max-min sense, the path whose narrowest edge is as wide as possible, so the edges are
 // added widest first and the first one that closes a loop with a non-zero net lattice offset is the
 // bottleneck of the best percolating path there is.
+//
+// Channels that never meet can share that bottleneck, and then each is as good a path as the other, so
+// `componentNodes` holds the nodes of all of them. `limitingEdge` is one bottleneck among those.
 export struct PercolatingPath
 {
   bool percolates{false};
