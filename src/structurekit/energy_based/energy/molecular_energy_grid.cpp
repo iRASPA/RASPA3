@@ -17,6 +17,7 @@ import energy_shared_linear_probe;
 import energy_shared_probe_energy_grid;
 import energy_shared_molecular_energy_grid;
 import energy_shared_electrostatic_potential_grid;
+import energy_shared_well_field;
 import structure_parallel;
 
 namespace
@@ -189,6 +190,7 @@ MolecularEnergyGrid MolecularEnergyGridCPU::compute(const PairInteractions &inte
   const double beta = 1.0 / kT;
   const double alpha = grid.chargesIncluded ? potential->alpha : 0.0;
   const bool useCharges = grid.chargesIncluded;
+  const double dummyCoreSquared = wellDummyCoreRadius * wellDummyCoreRadius;
   std::span<const float> smoothPotential =
       useCharges ? std::span<const float>(potential->smoothPotential) : std::span<const float>{};
 
@@ -216,6 +218,7 @@ MolecularEnergyGrid MolecularEnergyGridCPU::compute(const PairInteractions &inte
                      for (std::size_t o = 0; o < numberOfDirections; ++o)
                      {
                        double total = 0.0;
+                       bool excluded = false;
 
                        for (std::size_t site = 0; site < numberOfSites; ++site)
                        {
@@ -265,16 +268,33 @@ MolecularEnergyGrid MolecularEnergyGridCPU::compute(const PairInteractions &inte
                                  // the ceiling and contributes nothing to the average either way.
                                  rr = std::max(rr, 1.0e-6);
 
-                                 if (rr < cutOffSquared)
+                                 // A pair pressed into its core is an overlap, and the orientation is excluded by it
+                                 // whatever else is going on. Its dispersion is held at the ceiling, which is as high
+                                 // as anything here goes, so its Coulomb term has to go with it: left in, an opposite
+                                 // charge at a vanishing separation digs a hole under the ceiling deeper than any
+                                 // well, and the Boltzmann weight of the point is infinite. A site whose only hold on
+                                 // this atom is its charge has no core of its own, so it is given the well field's,
+                                 // one Ångström about the nucleus, and an orientation that puts it inside is excluded.
+                                 bool overlapping = false;
+                                 if (epsilon4 != 0.0)
                                  {
-                                   double ratio = sigma2 / rr;
-                                   double ratio3 = ratio * ratio * ratio;
-                                   total += std::min(epsilon4 * ratio3 * (ratio3 - 1.0) - shiftForSite[iatom], ceiling);
+                                   if (rr < cutOffSquared)
+                                   {
+                                     double ratio = sigma2 / rr;
+                                     double ratio3 = ratio * ratio * ratio;
+                                     double dispersion = epsilon4 * ratio3 * (ratio3 - 1.0) - shiftForSite[iatom];
+                                     overlapping = dispersion >= ceiling;
+                                     total += std::min(dispersion, ceiling);
+                                   }
+                                 }
+                                 else if (useCharges && charges != 0.0 && rr < dummyCoreSquared)
+                                 {
+                                   excluded = true;
                                  }
 
                                  // The near half of the electrostatic sum. The dispersion has already walked to this
                                  // neighbour and worked out how far away it is, so all this costs is the erfc.
-                                 if (useCharges && rr < coulombCutOffSquared && charges != 0.0)
+                                 if (useCharges && !overlapping && rr < coulombCutOffSquared && charges != 0.0)
                                  {
                                    double r = std::sqrt(rr);
                                    total += std::min(charges * std::erfc(alpha * r) / r, ceiling);
@@ -285,7 +305,7 @@ MolecularEnergyGrid MolecularEnergyGridCPU::compute(const PairInteractions &inte
                          }
                        }
 
-                       total = std::min(total, ceiling);
+                       total = excluded ? ceiling : std::min(total, ceiling);
 
                        if (total < least)
                        {
@@ -402,12 +422,17 @@ std::vector<std::int32_t> MolecularEnergyGridCPU::strongestAtoms(const PairInter
   const double ceiling = probeEnergyCeilingInKelvin * Units::KelvinToEnergy;
   const double beta = 1.0 / (Units::KB * temperature);
   const double alpha = useCharges ? potential->alpha : 0.0;
+  const double dummyCoreSquared = wellDummyCoreRadius * wellDummyCoreRadius;
   std::span<const float> smoothPotential =
       useCharges ? std::span<const float>(potential->smoothPotential) : std::span<const float>{};
 
   // What one framework atom, over all of its images in range, does to the molecule held one way. It is the
-  // part of the energy that can be laid at one atom's door, and the label is decided on it.
-  auto contributionOf = [&](double3 centre, std::size_t orientation, std::size_t iatom, double &closestSquared)
+  // part of the energy that can be laid at one atom's door, and the label is decided on it. `excluded` is
+  // raised when a site without dispersion against this atom sits inside its core, which rules the
+  // orientation out as a whole; see the grid above for the rule and for why an overlapping pair keeps no
+  // Coulomb term.
+  auto contributionOf = [&](double3 centre, std::size_t orientation, std::size_t iatom, double &closestSquared,
+                            bool &excluded)
   {
     double contribution = 0.0;
     closestSquared = std::numeric_limits<double>::max();
@@ -446,14 +471,24 @@ std::vector<std::int32_t> MolecularEnergyGridCPU::strongestAtoms(const PairInter
             rr = std::max(rr, 1.0e-6);
             closestSquared = std::min(closestSquared, rr);
 
-            if (rr < cutOffSquared)
+            bool overlapping = false;
+            if (epsilon4 != 0.0)
             {
-              double ratio = sigma2 / rr;
-              double ratio3 = ratio * ratio * ratio;
-              contribution += std::min(epsilon4 * ratio3 * (ratio3 - 1.0) - shift, ceiling);
+              if (rr < cutOffSquared)
+              {
+                double ratio = sigma2 / rr;
+                double ratio3 = ratio * ratio * ratio;
+                double dispersion = epsilon4 * ratio3 * (ratio3 - 1.0) - shift;
+                overlapping = dispersion >= ceiling;
+                contribution += std::min(dispersion, ceiling);
+              }
+            }
+            else if (useCharges && charges != 0.0 && rr < dummyCoreSquared)
+            {
+              excluded = true;
             }
 
-            if (useCharges && rr < coulombCutOffSquared && charges != 0.0)
+            if (useCharges && !overlapping && rr < coulombCutOffSquared && charges != 0.0)
             {
               double r = std::sqrt(rr);
               contribution += std::min(charges * std::erfc(alpha * r) / r, ceiling);
@@ -491,9 +526,10 @@ std::vector<std::int32_t> MolecularEnergyGridCPU::strongestAtoms(const PairInter
                      {
                        double total = 0.0;
                        double ignored = 0.0;
+                       bool excluded = false;
                        for (std::size_t iatom = 0; iatom < numberOfAtoms; ++iatom)
                        {
-                         total += contributionOf(centre, o, iatom, ignored);
+                         total += contributionOf(centre, o, iatom, ignored, excluded);
                        }
 
                        // The reciprocal half of the electrostatic sum belongs to no one atom, so it takes no part in
@@ -507,7 +543,7 @@ std::vector<std::int32_t> MolecularEnergyGridCPU::strongestAtoms(const PairInter
                          }
                        }
 
-                       weight[o] = std::min(total, ceiling);
+                       weight[o] = excluded ? ceiling : std::min(total, ceiling);
                        least = std::min(least, weight[o]);
                      }
 
@@ -535,7 +571,8 @@ std::vector<std::int32_t> MolecularEnergyGridCPU::strongestAtoms(const PairInter
                        for (std::size_t o = 0; o < numberOfDirections; ++o)
                        {
                          double closest = 0.0;
-                         pull += weight[o] * contributionOf(centre, o, iatom, closest);
+                         bool unused = false;
+                         pull += weight[o] * contributionOf(centre, o, iatom, closest, unused);
                          closestOverOrientations = std::min(closestOverOrientations, closest);
                        }
 

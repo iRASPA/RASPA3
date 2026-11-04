@@ -394,3 +394,23 @@ TEST(grid_surface_curvature, the_bands_follow_the_grid_spacing)
   CurvatureBands anisotropic = curvatureBandsForGrid(cell, uint3{200, 100, 100});
   EXPECT_NEAR(anisotropic.sharpest, 100.0 / 40.0, 1.0e-12);
 }
+
+
+// A corner whose gradient vanished has no normal. Fitted through, it would read as a crease as sharp as the
+// grid, or as flat when all three are missing; it must read as nothing known.
+TEST(grid_surface_curvature, a_corner_without_a_normal_leaves_the_triangle_unresolved)
+{
+  Patch patch = spherePatch(10.0, 0.05, true);
+  TriangleCurvature whole = triangleCurvature(patch.corners, patch.normals);
+  ASSERT_TRUE(whole.resolved);
+
+  Patch oneMissing = patch;
+  oneMissing.normals[1] = double3(0.0, 0.0, 0.0);
+  TriangleCurvature crease = triangleCurvature(oneMissing.corners, oneMissing.normals);
+  EXPECT_FALSE(crease.resolved);
+
+  Patch allMissing = patch;
+  for (double3 &normal : allMissing.normals) normal = double3(0.0, 0.0, 0.0);
+  TriangleCurvature flat = triangleCurvature(allMissing.corners, allMissing.normals);
+  EXPECT_FALSE(flat.resolved);
+}

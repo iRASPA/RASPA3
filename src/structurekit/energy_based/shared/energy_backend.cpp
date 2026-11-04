@@ -14,9 +14,73 @@ import energy_shared_electrostatic_potential_grid;
 
 namespace
 {
-// Everything a landscape depends on. The framework is taken by name, by how many atoms are in it and by the
-// volume it occupies rather than by its contents: two frameworks agreeing on all three within one run are
-// the same framework read twice, and a run that reads a second structure changes the name.
+// A digest of a run of numbers, so that a request can say what its force field, probe and framework were
+// without holding copies of them. A collision is as unlikely as a hash collision ever is and costs a reused
+// field, so the digest is widened with the counts as well as the values.
+void stir(std::size_t &digest, double value)
+{
+  digest ^= std::hash<double>{}(value) + 0x9e3779b97f4a7c15ULL + (digest << 6) + (digest >> 2);
+}
+
+void stir(std::size_t &digest, std::size_t value)
+{
+  digest ^= std::hash<std::size_t>{}(value) + 0x9e3779b97f4a7c15ULL + (digest << 6) + (digest >> 2);
+}
+
+std::size_t digestOf(const PairInteractions &interactions)
+{
+  std::size_t digest = 0;
+  stir(digest, interactions.numberOfTypes);
+  stir(digest, interactions.cutOffVDW);
+  stir(digest, interactions.cutOffCoulomb);
+  for (double charge : interactions.charges) stir(digest, charge);
+  for (const PairParameters &pair : interactions.parameters)
+  {
+    stir(digest, pair.sizeParameter);
+    stir(digest, pair.strengthParameter);
+    stir(digest, pair.shift);
+  }
+  return digest;
+}
+
+std::size_t digestOf(const LinearProbe &probe)
+{
+  std::size_t digest = 0;
+  stir(digest, probe.sites.size());
+  stir(digest, static_cast<std::size_t>(probe.headTailSymmetric ? 1 : 0));
+  for (const LinearProbe::Site &site : probe.sites)
+  {
+    stir(digest, site.type);
+    stir(digest, site.offset);
+    stir(digest, site.charge);
+  }
+  return digest;
+}
+
+std::size_t digestOf(const Crystal &framework)
+{
+  std::size_t digest = 0;
+  stir(digest, framework.atoms.size());
+  for (std::size_t row = 0; row < 3; ++row)
+  {
+    stir(digest, framework.unitCell.cell[row].x);
+    stir(digest, framework.unitCell.cell[row].y);
+    stir(digest, framework.unitCell.cell[row].z);
+  }
+  for (const CrystalAtom &atom : framework.atoms)
+  {
+    stir(digest, atom.position.x);
+    stir(digest, atom.position.y);
+    stir(digest, atom.position.z);
+    stir(digest, atom.charge);
+    stir(digest, atom.type);
+  }
+  return digest;
+}
+
+// Everything a landscape depends on. The framework, the force field and the probe are each taken by name
+// and by a digest of their contents, so that a second structure of the same name, a changed cutoff or a
+// probe given other parameters is seen as a different request and not handed the field held from the last.
 struct FieldRequest
 {
   std::string backend;
@@ -29,6 +93,9 @@ struct FieldRequest
   double temperature{0.0};
   bool electrostatics{false};
   double relativePrecision{0.0};
+  std::size_t interactionsDigest{0};
+  std::size_t probeDigest{0};
+  std::size_t frameworkDigest{0};
 
   bool sameAs(const FieldRequest &other) const
   {
@@ -37,7 +104,9 @@ struct FieldRequest
            this->volume == other.volume && this->gridSize.x == other.gridSize.x &&
            this->gridSize.y == other.gridSize.y && this->gridSize.z == other.gridSize.z &&
            this->numberOfOrientations == other.numberOfOrientations && this->temperature == other.temperature &&
-           this->electrostatics == other.electrostatics && this->relativePrecision == other.relativePrecision;
+           this->electrostatics == other.electrostatics && this->relativePrecision == other.relativePrecision &&
+           this->interactionsDigest == other.interactionsDigest && this->probeDigest == other.probeDigest &&
+           this->frameworkDigest == other.frameworkDigest;
   }
 };
 
@@ -77,6 +146,9 @@ MolecularField buildMolecularField(const EnergyBackend &backend, const PairInter
   request.temperature = temperature;
   request.electrostatics = wantsElectrostatics;
   request.relativePrecision = relativePrecision;
+  request.interactionsDigest = digestOf(interactions);
+  request.probeDigest = digestOf(probe);
+  request.frameworkDigest = digestOf(framework);
 
   std::scoped_lock lock(heldMutex);
   if (haveHeld && heldRequest.sameAs(request))

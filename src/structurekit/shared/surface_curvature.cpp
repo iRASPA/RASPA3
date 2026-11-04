@@ -170,6 +170,15 @@ TriangleCurvature triangleCurvature(const std::array<double3, 3> &corners, const
   if (!(twiceArea > 0.0) || !std::isfinite(twiceArea)) return result;
   face = face * (1.0 / twiceArea);
 
+  // A corner whose field gradient vanished has no normal. Fitted through, a missing normal reads as a turn
+  // of a whole unit vector across one edge, which is a crease as sharp as the grid, or, when all three are
+  // missing, as no turn at all, which is flat. Neither is known, so the triangle is left unresolved.
+  for (const double3 &normal : normals)
+  {
+    double length = normal.length();
+    if (!(length > 0.0) || !std::isfinite(length)) return result;
+  }
+
   // The frame is the triangle's own, but signed to agree with the field's normals, so that the sign of a
   // curvature means the same thing on every triangle whichever way marching cubes happened to wind this one.
   double3 average = normals[0] + normals[1] + normals[2];

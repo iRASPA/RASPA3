@@ -128,6 +128,11 @@ export class MarchingCubes
    * \param originalMC true for the original Marching Cubes
    */
   inline void set_method(const bool originalMC = false) { _originalMC = originalMC; }
+  /**
+   * declares the grid periodic: its last plane along each axis repeats its first, and the gradient at either
+   * is the central difference read round the join rather than a one-sided difference stopping at it
+   */
+  inline void set_periodic(const bool periodic) { _periodic = periodic; }
 
   // Data access
   /**
@@ -288,6 +293,8 @@ export class MarchingCubes
  protected:
   bool _originalMC; /**< selects wether the algorithm will use the enhanced topologically controlled lookup table or the
                        original MarchingCubes */
+
+  bool _periodic{false}; /**< the last plane repeats the first, so gradients read round the join */
 
   int _size_x; /**< width  of the grid */
   int _size_y; /**< depth  of the grid */

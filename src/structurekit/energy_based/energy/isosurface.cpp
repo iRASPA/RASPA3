@@ -33,6 +33,9 @@ std::vector<double3> EnergyIsosurface::trianglesOfIsosurface(std::span<const flo
 
   MarchingCubes cube(static_cast<int>(extended.x), static_cast<int>(extended.y), static_cast<int>(extended.z));
   cube.init_all();
+  // The vertex normals are central differences of the field, and on the two planes at the join they have
+  // to be read round it: a one-sided difference there tilts every normal on a cell face.
+  cube.set_periodic(true);
 
   // The field is laid out with x varying fastest, which is the order every field of this route is written in.
   for (std::size_t k = 0; k < extended.z; ++k)

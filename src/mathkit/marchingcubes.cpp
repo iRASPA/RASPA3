@@ -827,6 +827,14 @@ void MarchingCubes::add_triangle(const schar *trig, char n, int v12)
 real MarchingCubes::get_x_grad(const int i, const int j, const int k) const
 //-----------------------------------------------------------------------------
 {
+  if (_periodic)
+  {
+    // The last plane repeats the first, so the period is one less than the size and both ends read round.
+    const int period = _size_x - 1;
+    const int before = (i - 1 + period) % period;
+    const int after = (i + 1) % period;
+    return (get_data(int3{after, j, k}) - get_data(int3{before, j, k})) / 2;
+  }
   if (i > 0)
   {
     if (i < _size_x - 1)
@@ -848,6 +856,13 @@ real MarchingCubes::get_x_grad(const int i, const int j, const int k) const
 real MarchingCubes::get_y_grad(const int i, const int j, const int k) const
 //-----------------------------------------------------------------------------
 {
+  if (_periodic)
+  {
+    const int period = _size_y - 1;
+    const int before = (j - 1 + period) % period;
+    const int after = (j + 1) % period;
+    return (get_data(int3{i, after, k}) - get_data(int3{i, before, k})) / 2;
+  }
   if (j > 0)
   {
     if (j < _size_y - 1)
@@ -869,6 +884,13 @@ real MarchingCubes::get_y_grad(const int i, const int j, const int k) const
 real MarchingCubes::get_z_grad(const int i, const int j, const int k) const
 //-----------------------------------------------------------------------------
 {
+  if (_periodic)
+  {
+    const int period = _size_z - 1;
+    const int before = (k - 1 + period) % period;
+    const int after = (k + 1) % period;
+    return (get_data(int3{i, j, after}) - get_data(int3{i, j, before})) / 2;
+  }
   if (k > 0)
   {
     if (k < _size_z - 1)

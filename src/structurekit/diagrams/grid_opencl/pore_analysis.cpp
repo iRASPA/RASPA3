@@ -137,7 +137,7 @@ void GridPoreAnalysis::run(const PairInteractions &interactions, const Crystal &
   for (std::size_t i = 0; i < this->channels.pores.size(); ++i)
   {
     const GridPore &pore = this->channels.pores[i];
-    std::print(channelFile, "  pore {}: {} dimensionality={} points={} widest={:.5f} [Å]\n", i,
+    std::print(channelFile, "  pore {}: {} dimensionality={} points={} widest ball diameter={:.5f} [Å]\n", i,
                pore.isChannel ? "channel" : "pocket", pore.dimensionality, pore.numberOfVoxels,
                2.0 * pore.largestOpenness);
   }

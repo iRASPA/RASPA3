@@ -83,9 +83,10 @@ static void divideAmongAtoms(EnergyTessellation &tessellation, const Crystal &fr
     share.deepestEnergy = std::min(share.deepestEnergy, here);
   }
 
-  // The surface of the void, cut up by the same labels. A triangle is given to the atom holding the grid
-  // point nearest its centre, which is the same rule the geometric route uses and is unambiguous as long as
-  // a triangle stays inside one voxel, which marching cubes guarantees.
+  // The surface of the void, cut up by the same labels. A triangle is given to the atom holding the voxel
+  // its centre lies in, read off that voxel's lower corner, which is the cube the geometric route starts
+  // from as well. Marching cubes keeps a triangle inside one cube, so the centre is in that cube, and both
+  // extractors keep their corners between nought and one, so no centre has to be brought back into the cell.
   std::vector<double3> corners = backend.isosurfaceTriangles(division.energy, gridSize, isoValue);
 
   const double3x3 cell = framework.unitCell.cell;

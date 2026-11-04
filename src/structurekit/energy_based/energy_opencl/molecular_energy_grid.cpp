@@ -736,6 +736,7 @@ __kernel void MolecularEnergyField(__global const float4 *position,
   for(int o = 0; o < numberOfOrientations; o++)
   {
     float total = 0.0f;
+    int excluded = 0;
 
     for(int site = 0; site < numberOfSites; site++)
     {
@@ -791,16 +792,32 @@ __kernel void MolecularEnergyField(__global const float4 *position,
               // A pair with no strength has no dispersion energy and is left out rather than worked out: the
               // product is nought before the ratio is squared, and the skip keeps it from ever being
               // otherwise under a build allowed to reorder products, and saves the work besides.
-              if(rr < cutOffSquared && epsilon4 != 0.0f)
+              //
+              // A pair pressed into its core is an overlap, and its dispersion is held at the ceiling, so its
+              // Coulomb term goes with it: left in, an opposite charge at a vanishing separation would dig a
+              // hole under the ceiling and the weight of the point would be infinite. A site whose only
+              // hold on this atom is its charge is given the well field's core of one Ångström about the
+              // nucleus instead, and an orientation that puts it inside is excluded as a whole.
+              int overlapping = 0;
+              if(epsilon4 != 0.0f)
               {
-                float ratio = sigma2 / rr;
-                float ratio3 = ratio * ratio * ratio;
-                total += min(epsilon4 * ratio3 * (ratio3 - 1.0f) - shiftForSite[iatom], ceiling);
+                if(rr < cutOffSquared)
+                {
+                  float ratio = sigma2 / rr;
+                  float ratio3 = ratio * ratio * ratio;
+                  float dispersion = epsilon4 * ratio3 * (ratio3 - 1.0f) - shiftForSite[iatom];
+                  overlapping = dispersion >= ceiling;
+                  total += min(dispersion, ceiling);
+                }
+              }
+              else if(useCharges != 0 && charges != 0.0f && rr < 1.0f)
+              {
+                excluded = 1;
               }
 
               // The near half of the electrostatic sum. The dispersion has already walked to this neighbour
               // and worked out how far away it is, so all this costs is the erfc.
-              if(useCharges != 0 && rr < coulombCutOffSquared && charges != 0.0f)
+              if(useCharges != 0 && !overlapping && rr < coulombCutOffSquared && charges != 0.0f)
               {
                 float r = sqrt(rr);
                 total += min(charges * erfc(alpha * r) / r, ceiling);
@@ -811,7 +828,7 @@ __kernel void MolecularEnergyField(__global const float4 *position,
       }
     }
 
-    total = min(total, ceiling);
+    total = excluded ? ceiling : min(total, ceiling);
 
     if(total < least)
     {
@@ -893,7 +910,8 @@ static float contributionOfAtom(__global const float4 *position,
                                 const float alpha,
                                 const int useCharges,
                                 const float ceiling,
-                                float *closestSquared)
+                                float *closestSquared,
+                                int *excluded)
 {
   float contribution = 0.0f;
   float closest = MAXFLOAT;
@@ -935,15 +953,26 @@ static float contributionOfAtom(__global const float4 *position,
           rr = fmax(rr, 1.0e-6f);
           closest = fmin(closest, rr);
 
-          // As above: no strength, no dispersion term.
-          if(rr < cutOffSquared && epsilon4 != 0.0f)
+          // As above: no strength, no dispersion term; an overlapping pair keeps no Coulomb term, and a
+          // site holding this atom by its charge alone, inside the one Ångström core, excludes the orientation.
+          int overlapping = 0;
+          if(epsilon4 != 0.0f)
           {
-            float ratio = sigma2 / rr;
-            float ratio3 = ratio * ratio * ratio;
-            contribution += min(epsilon4 * ratio3 * (ratio3 - 1.0f) - shift, ceiling);
+            if(rr < cutOffSquared)
+            {
+              float ratio = sigma2 / rr;
+              float ratio3 = ratio * ratio * ratio;
+              float dispersion = epsilon4 * ratio3 * (ratio3 - 1.0f) - shift;
+              overlapping = dispersion >= ceiling;
+              contribution += min(dispersion, ceiling);
+            }
+          }
+          else if(useCharges != 0 && charges != 0.0f && rr < 1.0f)
+          {
+            *excluded = 1;
           }
 
-          if(useCharges != 0 && rr < coulombCutOffSquared && charges != 0.0f)
+          if(useCharges != 0 && !overlapping && rr < coulombCutOffSquared && charges != 0.0f)
           {
             float r = sqrt(rr);
             contribution += min(charges * erfc(alpha * r) / r, ceiling);
@@ -1007,13 +1036,14 @@ __kernel void MolecularOrientationEnergies(__global const float4 *position,
   for(int o = 0; o < numberOfOrientations; o++)
   {
     float total = 0.0f;
+    int excluded = 0;
     for(int iatom = 0; iatom < numberOfAtoms; iatom++)
     {
       float closest;
       total += contributionOfAtom(position, epsilonTimesFour, sigmaSquared, chargeProduct, shiftValue, siteOffset,
                                   centre, o, iatom, cellRow0, cellRow1, cellRow2, widths, numberOfAtoms,
                                   numberOfSites, shells, cutOff, cutOffSquared, coulombCutOffSquared,
-                                  longestCutOffSquared, alpha, useCharges, ceiling, &closest);
+                                  longestCutOffSquared, alpha, useCharges, ceiling, &closest, &excluded);
     }
 
     // The reciprocal half of the electrostatic sum belongs to no one atom, so it takes no part in the label.
@@ -1027,7 +1057,7 @@ __kernel void MolecularOrientationEnergies(__global const float4 *position,
       }
     }
 
-    orientationEnergy[slabVoxel * numberOfOrientations + o] = min(total, ceiling);
+    orientationEnergy[slabVoxel * numberOfOrientations + o] = excluded ? ceiling : min(total, ceiling);
   }
 }
 
@@ -1099,11 +1129,12 @@ __kernel void MolecularStrongestAtom(__global const float4 *position,
     for(int o = 0; o < numberOfOrientations; o++)
     {
       float closest;
+      int unused = 0;
       float contribution =
           contributionOfAtom(position, epsilonTimesFour, sigmaSquared, chargeProduct, shiftValue, siteOffset,
                              centre, o, iatom, cellRow0, cellRow1, cellRow2, widths, numberOfAtoms, numberOfSites,
                              shells, cutOff, cutOffSquared, coulombCutOffSquared, longestCutOffSquared, alpha,
-                             useCharges, ceiling, &closest);
+                             useCharges, ceiling, &closest, &unused);
 
       pull += (exp(-beta * (energies[o] - least)) / normalisation) * contribution;
       closestOverOrientations = fmin(closestOverOrientations, closest);

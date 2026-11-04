@@ -7,6 +7,8 @@ add_executable(unit_tests_structurekit
                        energy_well_surface.cpp
                        energy_bet_area.cpp
                        energy_nldft.cpp
+                       energy_isosurface.cpp
+                       energy_well_field.cpp
   structure_parallel.cpp
   exact_sphere_sweep.cpp
   exact_union_volume.cpp

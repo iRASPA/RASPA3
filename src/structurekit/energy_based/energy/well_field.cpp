@@ -256,6 +256,10 @@ struct Neighbourhood
                           clearance = std::min(clearance, std::sqrt(clamped) - pair.contact);
                         });
 
+    // Each pair is held to the ceiling, and so is their sum, as the molecular route and the device both do:
+    // a voxel on top of several atoms is at the ceiling, not several times it.
+    energy = std::min(energy, this->ceiling);
+
     if (!(clearance < 1.0e9) || clearance < -0.5)
     {
       // No neighbour, or deep inside a wall: not a medial / filament voxel.

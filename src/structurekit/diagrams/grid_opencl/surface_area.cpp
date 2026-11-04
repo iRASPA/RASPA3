@@ -55,6 +55,9 @@ void GridSurfaceArea::run(const PairInteractions &interactions, const Crystal &f
   // of leaving it cut open there.
   MarchingCubes cube(static_cast<int>(nx + 1), static_cast<int>(ny + 1), static_cast<int>(nz + 1));
   cube.init_all();
+  // The normals, which the curvature is read from, are central differences and have to read round the join
+  // on the two planes that meet there rather than stop at it.
+  cube.set_periodic(true);
   for (std::size_t k = 0; k <= nz; ++k)
   {
     for (std::size_t j = 0; j <= ny; ++j)

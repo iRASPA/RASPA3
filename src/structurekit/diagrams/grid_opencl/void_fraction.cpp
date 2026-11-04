@@ -103,9 +103,10 @@ void GridVoidFraction::run(const PairInteractions &interactions, const Crystal &
     std::print(myfile, "\n");
     std::print(myfile, "# Each pocket, from the grid points in it. The centre is their mean, taken over the pocket\n");
     std::print(myfile, "# followed out of the cell, so a pocket lying across a cell boundary gets its own centre.\n");
-    std::print(myfile, "# `widest` is the largest ball that fits anywhere inside the pocket and `equivalent` is\n");
-    std::print(myfile, "# the radius of the ball of the pocket's own volume: they agree for a round cavity and\n");
-    std::print(myfile, "# spread apart for one drawn out along a passage.\n");
+    std::print(myfile, "# `widest` is the radius of the largest ball that fits anywhere inside the pocket, and\n");
+    std::print(myfile, "# `equivalent` the radius of the ball of the volume above, which is the room the probe's\n");
+    std::print(myfile, "# centre has: for a round cavity it is `widest` less the probe radius, and the two spread\n");
+    std::print(myfile, "# further apart for a pocket drawn out along a passage.\n");
     std::print(myfile, "#     s_a         s_b         s_c      volume [Å³]  points   widest [Å]  equivalent [Å]\n");
 
     double voxelVolume = grid.voxelVolume();
