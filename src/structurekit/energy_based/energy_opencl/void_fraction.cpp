@@ -92,6 +92,18 @@ EnergyOpenCLVoidFraction::EnergyOpenCLVoidFraction()
     {
       throw std::runtime_error("clGetKernelWorkGroupInfo failed");
     }
+
+    // The padding below masks the point count up to a multiple of the group size, and the reduction halves
+    // its group at every step; both take a power of two. A group may be any size up to what the device
+    // reports, so each is brought down to the largest power of two it holds.
+    auto powerOfTwoBelow = [](size_t n)
+    {
+      size_t p = 1;
+      while (p * 2 <= n) p *= 2;
+      return p;
+    };
+    energyGridWorkGroupSize = powerOfTwoBelow(std::max<size_t>(energyGridWorkGroupSize, 1));
+    energyVoidFractionWorkGroupSize = powerOfTwoBelow(std::max<size_t>(energyVoidFractionWorkGroupSize, 1));
   }
 };
 
@@ -135,9 +147,12 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
   size_t temp = static_cast<size_t>(gridSize.x * gridSize.y * gridSize.z);
   cl_int err = 0;
 
-  // make sure the the global work size is an multiple of the work group size
-  // (detected on NVIDIA)
-  size_t numberOfGridPoints = (temp + energyGridWorkGroupSize - 1) & ~(energyGridWorkGroupSize - 1);
+  // The global work size has to be a multiple of the work-group size (detected on NVIDIA). Two kernels run
+  // over the same range, so it is padded to a multiple of the larger of their two group sizes, which, both
+  // being powers of two, is a multiple of each. The padding points are never counted: the energy kernel
+  // evaluates them, harmlessly, and the reduction is told how many points are real.
+  const size_t paddingUnit = std::max(energyGridWorkGroupSize, energyVoidFractionWorkGroupSize);
+  size_t numberOfGridPoints = (temp + paddingUnit - 1) & ~(paddingUnit - 1);
   size_t global_work_size = numberOfGridPoints;
 
   std::vector<cl_float4> pos(numberOfAtoms);
@@ -360,22 +375,27 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
 
     size_t nWorkGroups = numberOfGridPoints / energyVoidFractionWorkGroupSize;
 
-    float* sumReduction = new float[nWorkGroups];
+    // Every group writes its partial sum here and nothing is sent down beforehand, so the buffer is the
+    // kernel's to write and starts empty.
+    std::vector<float> sumReduction(nWorkGroups, 0.0f);
     cl_mem reductionBuffer =
-        clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, nWorkGroups * sizeof(float), nullptr, &err);
-
-    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), reductionBuffer, CL_TRUE, 0, nWorkGroups * sizeof(float),
-                               sumReduction, 0, nullptr, nullptr);
+        clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY, nWorkGroups * sizeof(float), nullptr, &err);
     if (err != CL_SUCCESS)
     {
-      throw std::runtime_error("SKComputeVoidFraction: error in clEnqueueWriteBuffer");
+      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
     }
 
-    clSetKernelArg(energyVoidFractionKernel, 0, sizeof(cl_mem), &outputMemory);
-    clSetKernelArg(energyVoidFractionKernel, 1, sizeof(cl_mem), &reductionBuffer);
-    clSetKernelArg(energyVoidFractionKernel, 2, energyVoidFractionWorkGroupSize * sizeof(cl_float), nullptr);
+    cl_int clNumberOfPoints = cl_int(temp);
     cl_float clBeta = cl_float(1.0 / (Units::KB * temperature));
-    clSetKernelArg(energyVoidFractionKernel, 3, sizeof(cl_float), &clBeta);
+    err = clSetKernelArg(energyVoidFractionKernel, 0, sizeof(cl_mem), &outputMemory);
+    err |= clSetKernelArg(energyVoidFractionKernel, 1, sizeof(cl_mem), &reductionBuffer);
+    err |= clSetKernelArg(energyVoidFractionKernel, 2, energyVoidFractionWorkGroupSize * sizeof(cl_float), nullptr);
+    err |= clSetKernelArg(energyVoidFractionKernel, 3, sizeof(cl_float), &clBeta);
+    err |= clSetKernelArg(energyVoidFractionKernel, 4, sizeof(cl_int), &clNumberOfPoints);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error("SKComputeVoidFraction: error in clSetKernelArg");
+    }
 
     err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), energyVoidFractionKernel, 1, nullptr,
                                  &global_work_size, &energyVoidFractionWorkGroupSize, 0, nullptr, nullptr);
@@ -386,7 +406,7 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
 
     // Read the buffer back to the array
     err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), reductionBuffer, CL_TRUE, 0, nWorkGroups * sizeof(float),
-                              sumReduction, 0, nullptr, nullptr);
+                              sumReduction.data(), 0, nullptr, nullptr);
     if (err != CL_SUCCESS)
     {
       throw std::runtime_error("SKComputeVoidFraction: error in clEnqueueReadBuffer");
@@ -397,6 +417,7 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
     // Final summation with CPU
     double fraction = 0.0;
     for (size_t i = 0; i < nWorkGroups; i++) fraction += double(sumReduction[i]);
+    this->voidFraction = fraction / static_cast<double>(temp);
 
     time_end = std::chrono::steady_clock::now();
 
@@ -483,8 +504,11 @@ __kernel void ComputeEnergyGrid(__global float4 *position,
 
       float size = sigma[iatom];
 
-      float rr = dot(dr,dr);
-      if (rr<cutOffSquared)
+      // A grid point can lie on an atom's centre, where the pair energy has no value. Held off zero the
+      // separation gives an energy far above the ceiling, which is what the point is worth. A pair with no
+      // strength is skipped outright: its bracket overflows there and nought times that is not a number.
+      float rr = fmax(dot(dr,dr), 1.0e-6f);
+      if (rr<cutOffSquared && epsilon[iatom] != 0.0f)
       {
         float temp = size*size/rr;
         float rri3 = temp * temp * temp;
@@ -501,15 +525,17 @@ const char* EnergyOpenCLVoidFraction::energyVoidFractionKernelSource = R"foo(
 __kernel void ComputeVoidFraction (__global const float *input,
                            __global float *partialSums,
                            __local float *localSums,
-                           const float beta)
+                           const float beta,
+                           const int numberOfPoints)
 {
    size_t local_id = get_local_id(0);
    size_t global_id = get_global_id(0);
    size_t group_size = get_local_size(0);
    size_t group_id = get_group_id(0);
 
-   // Copy from global memory to local memory
-   localSums[local_id] = exp(-beta * input[global_id]);
+   // Copy from global memory to local memory. The range is padded out to whole groups; a point past the
+   // end of the grid is padding and weighs nothing.
+   localSums[local_id] = global_id < (size_t)numberOfPoints ? exp(-beta * input[global_id]) : 0.0f;
 
    // Loop for computing localSums
    for (uint stride = group_size/2; stride>0; stride/=2)

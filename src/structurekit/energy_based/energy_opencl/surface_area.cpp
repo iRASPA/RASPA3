@@ -345,6 +345,7 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
 
   IsosurfaceArea surface = areaOfIsosurface(framework, std::span(output).first(temp), grid_size, isoValue);
   double accumulated_surface_area = surface.area;
+  this->area = accumulated_surface_area;
 
   time_end = std::chrono::steady_clock::now();
 
@@ -436,8 +437,11 @@ __kernel void ComputeEnergyGrid(__global float4 *position,
 
       float size = sigma[iatom];
 
-      float rr = dot(dr,dr);
-      if (rr < cutOffSquared)
+      // A grid point can lie on an atom's centre, where the pair energy has no value. Held off zero the
+      // separation gives an energy far above the ceiling, which is what the point is worth. A pair with no
+      // strength is skipped outright: its bracket overflows there and nought times that is not a number.
+      float rr = fmax(dot(dr,dr), 1.0e-6f);
+      if (rr < cutOffSquared && epsilon[iatom] != 0.0f)
       {
         float temp = size * size / rr;
         float rri3 = temp * temp * temp;

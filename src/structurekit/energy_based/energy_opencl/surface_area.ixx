@@ -56,4 +56,7 @@ export struct EnergyOpenCLSurfaceArea
 
   void run(const PairInteractions &interactions, const Crystal &framework, double isoValue,
                          std::string probePseudoAtom, uint3 grid_size);
+
+  // The area of the surface, in Å² per unit cell, as last computed; also written to the output file.
+  double area{0.0};
 };

@@ -40,4 +40,7 @@ export struct EnergyOpenCLVoidFraction
   // meaningless without saying how hot, and a probe is what the average is over.
   void run(const PairInteractions& interactions, const Crystal& framework, std::string probePseudoAtom, uint3 grid_size,
            double temperature = 298.0);
+
+  // The average of exp(-U/kT) over the grid, as last computed; also written to the output file.
+  double voidFraction{0.0};
 };

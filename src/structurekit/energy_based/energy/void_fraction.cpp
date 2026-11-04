@@ -71,7 +71,9 @@ void EnergyVoidFraction::run(const PairInteractions &interactions, const Crystal
 
               double3 dr = simulation_cell * ds;
 
-              double rr = double3::dot(dr, dr);
+              // A point on an atom's centre has no pair energy; held off zero it is buried far above any
+              // weight, as in the grid routes.
+              double rr = std::max(double3::dot(dr, dr), 1.0e-6);
               if (rr < cutoff * cutoff)
               {
                 // Shifted Lennard-Jones, as everywhere else here: the pair's own mixed size and strength,
