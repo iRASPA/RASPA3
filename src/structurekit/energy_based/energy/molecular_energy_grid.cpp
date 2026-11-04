@@ -249,10 +249,12 @@ MolecularEnergyGrid MolecularEnergyGridCPU::compute(const PairInteractions &inte
                                                           static_cast<double>(c));
 
                                  // A fractional difference is at least |t_k| w_k long whatever the shape of the cell,
-                                 // so an image beyond the cutoff is thrown out here before it is built.
+                                 // so an image beyond the cutoff is thrown out here before it is built. The bound
+                                 // is held to the longer of the two cutoffs: an image past the dispersion cutoff
+                                 // but within the electrostatic one still owes the near half of its Ewald sum.
                                  double far = std::max(
                                      {std::abs(t.x) * widths.x, std::abs(t.y) * widths.y, std::abs(t.z) * widths.z});
-                                 if (far > cutOff) continue;
+                                 if (far > longestCutOff) continue;
 
                                  double3 dr = cell * t;
                                  double rr = double3::dot(dr, dr);
@@ -432,9 +434,10 @@ std::vector<std::int32_t> MolecularEnergyGridCPU::strongestAtoms(const PairInter
           {
             double3 t = ds + double3(static_cast<double>(a), static_cast<double>(b), static_cast<double>(c));
 
+            // The same lower bound as in the grid itself, held to the longer of the two cutoffs.
             double far =
                 std::max({std::abs(t.x) * widths.x, std::abs(t.y) * widths.y, std::abs(t.z) * widths.z});
-            if (far > cutOff) continue;
+            if (far > longestCutOff) continue;
 
             double3 dr = cell * t;
             double rr = double3::dot(dr, dr);
