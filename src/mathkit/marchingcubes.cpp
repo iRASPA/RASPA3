@@ -954,6 +954,7 @@ int MarchingCubes::add_vertex(const int3 &grid_coord, const int3 &dir, int corne
   double n_z = n.z;
 
   _vertices.push_back(Vertex{pos_x, pos_y, pos_z, n_x, n_y, n_z});
+  _gradients.push_back({nx, ny, nz});
   return static_cast<int>(_vertices.size() - 1);
 }
 
@@ -964,7 +965,12 @@ int MarchingCubes::add_c_vertex()
   auto pos = double3(0, 0, 0);
   auto n = double3(0, 0, 0);
 
-  // Computes the average of the intersection points of the cube
+  // Computes the average of the intersection points of the cube, and of the field's gradient at them. It is the
+  // gradients that are averaged and not the normals made of them: the gradient is close to linear across a cube, so
+  // the mean of it over the edges is the gradient at the mean of the points, which is what the normal there is.
+  // A mean of unit normals gives the edge where the field is nearly flat the same say as the one where it is
+  // steep, and since the lengths are taken per grid step it also changes with the shape of the voxel. The GPU
+  // extractor averages the gradients, and the two have to agree.
   // x-face
   for (auto t : {0, 1})
   {
@@ -975,8 +981,9 @@ int MarchingCubes::add_c_vertex()
       {
         ++u;
         const Vertex &v = _vertices[static_cast<std::size_t>(vid)];
+        const std::array<real, 3> &g = _gradients[static_cast<std::size_t>(vid)];
         pos += double3{v.x, v.y, v.z};
-        n += double3{v.nx, v.ny, v.nz};
+        n += double3{g[0], g[1], g[2]};
       }
     }
   }
@@ -991,8 +998,9 @@ int MarchingCubes::add_c_vertex()
       {
         ++u;
         const Vertex &v = _vertices[static_cast<std::size_t>(vid)];
+        const std::array<real, 3> &g = _gradients[static_cast<std::size_t>(vid)];
         pos += double3{v.x, v.y, v.z};
-        n += double3{v.nx, v.ny, v.nz};
+        n += double3{g[0], g[1], g[2]};
       }
     }
   }
@@ -1007,8 +1015,9 @@ int MarchingCubes::add_c_vertex()
       {
         ++u;
         const Vertex &v = _vertices[static_cast<std::size_t>(vid)];
+        const std::array<real, 3> &g = _gradients[static_cast<std::size_t>(vid)];
         pos += double3{v.x, v.y, v.z};
-        n += double3{v.nx, v.ny, v.nz};
+        n += double3{g[0], g[1], g[2]};
       }
     }
   }
@@ -1016,7 +1025,10 @@ int MarchingCubes::add_c_vertex()
   pos.x *= 1.0 / u;
   pos.y *= 1.0 / u;
   pos.z *= 1.0 / u;
-  // n = arma::normalise(n);
+  n.x *= 1.0 / u;
+  n.y *= 1.0 / u;
+  n.z *= 1.0 / u;
+  const std::array<real, 3> gradient{n.x, n.y, n.z};
   n = n.normalized();
 
   double pos_x = pos.x;
@@ -1028,6 +1040,7 @@ int MarchingCubes::add_c_vertex()
   double n_z = n.z;
 
   _vertices.push_back(Vertex{pos_x, pos_y, pos_z, n_x, n_y, n_z});
+  _gradients.push_back(gradient);
   return static_cast<int>(_vertices.size() - 1);
 }
 //_____________________________________________________________________________

@@ -306,6 +306,8 @@ export class MarchingCubes
   std::vector<int> _z_verts; /**< pre-computed vertex indices on the lower vertical     edge of each cube */
 
   std::vector<Vertex> _vertices;    /**< vertex   buffer */
+  /** the field's gradient at each vertex, per grid step and with its length, which the normal of a vertex drops */
+  std::vector<std::array<real, 3>> _gradients;
   std::vector<Triangle> _triangles; /**< triangle buffer */
 
   int _i; /**< abscisse of the active cube */

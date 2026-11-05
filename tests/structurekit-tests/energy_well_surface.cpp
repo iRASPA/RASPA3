@@ -1204,3 +1204,98 @@ TEST(energy_well_surface, gpu_lewiner_agrees_with_cpu)
               0.02 * static_cast<double>(cpu.size() / 3));
   EXPECT_NEAR(gpuArea.area, cpuArea.area, 0.01 * cpuArea.area);
 }
+
+// The two extractors cut the same cubes the same ways, and a cube cut one of the ambiguous ways is given a vertex of
+// its own inside it. Its normal has to be the same from both, as the normals on the edges are: the mean of the field's
+// gradients on the cube's edges. The processor one took the mean of the unit normals there instead, and on a field
+// folded tightly enough to have such vertices the two were fourteen degrees apart on average, on every one of them.
+TEST(energy_well_surface, gpu_lewiner_normals_agree_with_cpu_inside_a_cube)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value())
+  {
+    GTEST_SKIP() << "no OpenCL device";
+  }
+
+  // Two dozen plane waves under an envelope that makes the field several times steeper on one side of the cell, so
+  // that the gradients on the edges of one cube are of very different lengths.
+  const std::size_t n = 24;
+  const uint3 gridSize{24, 24, 24};
+  struct Wave
+  {
+    int a, b, c;
+    double phase, amplitude;
+  };
+  std::vector<Wave> waves;
+  std::uint64_t state = 0x9E3779B97F4A7C15ull;
+  auto next = [&]()
+  {
+    state = state * 6364136223846793005ull + 1442695040888963407ull;
+    return static_cast<double>(state >> 11) / 9007199254740992.0;
+  };
+  for (int w = 0; w < 24; ++w)
+  {
+    const int a = static_cast<int>(next() * 11.0) - 5;
+    const int b = static_cast<int>(next() * 11.0) - 5;
+    const int c = static_cast<int>(next() * 11.0) - 5;
+    const double phase = 2.0 * std::numbers::pi * next();
+    waves.push_back(Wave{a, b, c, phase, 0.2 + next()});
+  }
+  std::vector<float> field(n * n * n);
+  for (std::size_t k = 0; k < n; ++k)
+  {
+    for (std::size_t j = 0; j < n; ++j)
+    {
+      for (std::size_t i = 0; i < n; ++i)
+      {
+        double value = 0.0;
+        for (const Wave &wave : waves)
+        {
+          value += wave.amplitude * std::cos(2.0 * std::numbers::pi *
+                                                 (wave.a * static_cast<double>(i) + wave.b * static_cast<double>(j) +
+                                                  wave.c * static_cast<double>(k)) /
+                                                 static_cast<double>(n) +
+                                             wave.phase);
+        }
+        const double envelope = std::exp(1.5 * std::sin(2.0 * std::numbers::pi * static_cast<double>(i) / 24.0));
+        field[(k * n + j) * n + i] = static_cast<float>(value * envelope);
+      }
+    }
+  }
+
+  std::vector<double3> cpuGradients;
+  std::vector<double3> gpuGradients;
+  std::vector<double3> cpu = EnergyIsosurface::trianglesOfIsosurface(field, gridSize, 0.0, &cpuGradients);
+  std::vector<double3> gpu = trianglesOfLewinerIsosurface(field, gridSize, 0.0, &gpuGradients);
+  ASSERT_EQ(gpu.size(), cpu.size()) << "the two have to be one mesh for its vertices to be compared";
+  ASSERT_EQ(gpuGradients.size(), cpuGradients.size());
+
+  std::size_t inside = 0;
+  for (std::size_t v = 0; v < cpu.size(); ++v)
+  {
+    ASSERT_LT((cpu[v] - gpu[v]).length(), 1.0e-4) << "vertex " << v;
+    int onGridPlanes = 0;
+    for (double coordinate : {cpu[v].x, cpu[v].y, cpu[v].z})
+    {
+      const double steps = coordinate * static_cast<double>(n);
+      if (std::abs(steps - std::round(steps)) < 1.0e-9) ++onGridPlanes;
+    }
+    if (onGridPlanes < 2) ++inside;
+
+    const double alike =
+        double3::dot(cpuGradients[v], gpuGradients[v]) / (cpuGradients[v].length() * gpuGradients[v].length());
+    EXPECT_GT(alike, std::cos(1.0e-3)) << (onGridPlanes < 2 ? "inside a cube" : "on an edge") << ", vertex " << v;
+  }
+  EXPECT_GT(inside, 50uz) << "the surface has to have vertices inside its cubes for this to have asked anything";
+
+  // And with the normals one, the shape of the surface is read one way: the same triangles in each column.
+  const UnitCell cell(10.0, 10.0, 10.0);
+  const CurvatureAreas onProcessor =
+      accumulateTriangleAreas(cell.cell, gridSize, cpu, cpuGradients, FieldSense::GrowsIntoSolid).curvature;
+  const CurvatureAreas onGPU =
+      accumulateTriangleAreas(cell.cell, gridSize, gpu, gpuGradients, FieldSense::GrowsIntoSolid).curvature;
+  EXPECT_NEAR(onGPU.convex, onProcessor.convex, 1.0e-3 * onProcessor.total());
+  EXPECT_NEAR(onGPU.saddle, onProcessor.saddle, 1.0e-3 * onProcessor.total());
+  EXPECT_NEAR(onGPU.concave, onProcessor.concave, 1.0e-3 * onProcessor.total());
+  EXPECT_NEAR(onGPU.unresolved, onProcessor.unresolved, 1.0e-3 * onProcessor.total());
+}
