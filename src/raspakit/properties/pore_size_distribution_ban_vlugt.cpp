@@ -17,21 +17,12 @@ import std;
 import opencl;
 import int3;
 import uint3;
-import float4;
 import double2;
 import double3;
-import double4;
 import double3x3;
-import randomnumbers;
 import atom;
 import framework;
 import forcefield;
-import component;
-import system;
-import units;
-#if !(defined(__has_include) && __has_include(<mdspan>))
-import mdspan;
-#endif
 
 BanVlugtPoreSizeDistribution::BanVlugtPoreSizeDistribution(uint3 grid_size):
   grid_size(grid_size)
@@ -73,76 +64,68 @@ BanVlugtPoreSizeDistribution::~BanVlugtPoreSizeDistribution()
 
 void BanVlugtPoreSizeDistribution::run(const ForceField &forceField, const Framework &framework)
 {
-  double2 probeParameter = double2(10.9 * Units::KelvinToEnergy, 2.64);
-  double cutoff = forceField.cutOffFrameworkVDW;
-  double3x3 unitCell = framework.simulationBox.cell;
-  int3 numberOfReplicas = framework.simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
-  std::vector<double3> positions = framework.fractionalAtomPositionsUnitCell();
-  std::vector<double2> potentialParameters = framework.atomUnitCellLennardJonesPotentialParameters(forceField);
+  const double3x3 unitCell = framework.simulationBox.cell;
+  const double3 widths = framework.simulationBox.perpendicularWidths();
+  const std::vector<double3> positions = framework.fractionalAtomPositionsUnitCell();
+  const std::vector<double2> potentialParameters = framework.atomUnitCellLennardJonesPotentialParameters(forceField);
   std::chrono::steady_clock::time_point time_begin, time_end;
   cl_int err;
+
+  const std::size_t nGrid = static_cast<std::size_t>(grid_size.x) * grid_size.y * grid_size.z;
+  poreSizes.assign(nGrid, 0.0f);
 
   if(!OpenCL::clContext.has_value()) return;
 
   time_begin = std::chrono::steady_clock::now();
 
-  std::vector<cl_float4> pos(positions.size());
-  std::vector<cl_float> sigma(positions.size());
-
-  std::vector<cl_float4> output_data(static_cast<std::size_t>(grid_size.x * grid_size.y * grid_size.z));
-
-  std::size_t nGrid = grid_size.x * grid_size.y * grid_size.z;
-  std::vector<int> pore_sizes_host(nGrid, std::bit_cast<int>(0.0f));
-  cl_mem pore_sizes = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
-                                    sizeof(int) * nGrid, pore_sizes_host.data(), &err);
-  if (err != CL_SUCCESS) { throw std::runtime_error("clCreateBuffer for pore_sizes failed"); }
-
-  if (positions.size() > 0)
-  { 
-    double3 correction = double3(1.0/double(numberOfReplicas.x), 1.0/double(numberOfReplicas.y), 1.0/double(numberOfReplicas.z));
+  if (positions.size() > 0 && nGrid > 0)
+  {
+    std::vector<cl_float4> pos(positions.size());
+    std::vector<cl_float> radius(positions.size());
     for(size_t i = 0 ; i < positions.size(); ++i)
-    { 
-      double3 position = correction * positions[i];
-      double2 currentPotentialParameters = potentialParameters[i];
-        
-      // fill in the fractional position
-      pos[i] = {{cl_float(position.x),cl_float(position.y),cl_float(position.z),0.0f}};
-          
-      // mixing rule for the atom and the probe
-      sigma[i] = cl_float(currentPotentialParameters.y);
+    {
+      pos[i] = {{cl_float(positions[i].x), cl_float(positions[i].y), cl_float(positions[i].z), 0.0f}};
+
+      // An atom is a hard sphere of its Lennard-Jones size across, so what is taken off a distance to its centre
+      // is half of that. Taking the whole of it off left every pore the size of an atom too narrow.
+      radius[i] = cl_float(0.5 * potentialParameters[i].y);
     }
 
-    cl_mem inputPos = clCreateBuffer(OpenCL::clContext.value(),  CL_MEM_READ_ONLY,  sizeof(float4) * pos.size(), nullptr, &err);
+    // The sizes are floats kept as their bits, which is what lets the device swap a wider one in atomically.
+    std::vector<cl_int> pore_sizes_host(nGrid, std::bit_cast<cl_int>(0.0f));
+    cl_mem pore_sizes = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
+                                      sizeof(cl_int) * nGrid, pore_sizes_host.data(), &err);
     if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));}
 
-    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputPos, CL_TRUE, 0, sizeof(float4) * pos.size(), pos.data(), 0, nullptr, nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));}
-
-    cl_mem inputSigma = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * sigma.size(), nullptr, &err);
+    cl_mem inputPos = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                    sizeof(cl_float4) * pos.size(), pos.data(), &err);
     if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));}
 
-    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputSigma, CL_TRUE, 0, sizeof(cl_float) * sigma.size(), sigma.data(), 0, nullptr, nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));}
+    cl_mem inputRadius = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                       sizeof(cl_float) * radius.size(), radius.data(), &err);
+    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));}
 
-
-    double3x3 replicaCell = double3x3(double(numberOfReplicas.x) * unitCell[0],
-                                      double(numberOfReplicas.y) * unitCell[1],
-                                      double(numberOfReplicas.z) * unitCell[2]);
-
-    cl_float4 clCella = {{cl_float(replicaCell[0][0]), cl_float(replicaCell[1][0]), cl_float(replicaCell[2][0]), cl_float(0.0)}};
-    cl_float4 clCellb = {{cl_float(replicaCell[0][1]), cl_float(replicaCell[1][1]), cl_float(replicaCell[2][1]), cl_float(0.0)}};
-    cl_float4 clCellc = {{cl_float(replicaCell[0][2]), cl_float(replicaCell[1][2]), cl_float(replicaCell[2][2]), cl_float(0.0)}};
+    // The rows of the unit cell, which carry a fractional displacement to a Cartesian one a component at a time,
+    // and the distances between its faces, with half the least of them alongside: an image nearer than that is
+    // the nearest outright.
+    cl_float4 clRowX = {{cl_float(unitCell[0][0]), cl_float(unitCell[1][0]), cl_float(unitCell[2][0]), 0.0f}};
+    cl_float4 clRowY = {{cl_float(unitCell[0][1]), cl_float(unitCell[1][1]), cl_float(unitCell[2][1]), 0.0f}};
+    cl_float4 clRowZ = {{cl_float(unitCell[0][2]), cl_float(unitCell[1][2]), cl_float(unitCell[2][2]), 0.0f}};
+    cl_float4 clWidths = {{cl_float(widths.x), cl_float(widths.y), cl_float(widths.z),
+                           cl_float(0.5 * std::min({widths.x, widths.y, widths.z}))}};
+    cl_int4 clGridSize = {{cl_int(grid_size.x), cl_int(grid_size.y), cl_int(grid_size.z), 0}};
 
     cl_int numberOfAtoms = static_cast<cl_int>(positions.size());
-    err  = clSetKernelArg(PSDKernel,  0, sizeof(cl_mem), &inputPos);
-    err |= clSetKernelArg(PSDKernel,  1, sizeof(cl_mem), &inputSigma);
-    err |= clSetKernelArg(PSDKernel,  2, sizeof(cl_mem), &pore_sizes);
-    err |= clSetKernelArg(PSDKernel,  3, sizeof(cl_float4), &clCella);
-    err |= clSetKernelArg(PSDKernel,  4, sizeof(cl_float4), &clCellb);
-    err |= clSetKernelArg(PSDKernel,  5, sizeof(cl_float4), &clCellc);
-    err |= clSetKernelArg(PSDKernel,  6, sizeof(cl_int), &numberOfAtoms);
-    err |= clSetKernelArg(PSDKernel,  7, sizeof(cl_int3), &numberOfReplicas);
-    err |= clSetKernelArg(PSDKernel,  8, sizeof(cl_int3), &grid_size);
+    err  = clSetKernelArg(PSDKernel, 0, sizeof(cl_mem), &inputPos);
+    err |= clSetKernelArg(PSDKernel, 1, sizeof(cl_mem), &inputRadius);
+    err |= clSetKernelArg(PSDKernel, 2, sizeof(cl_mem), &pore_sizes);
+    err |= clSetKernelArg(PSDKernel, 3, sizeof(cl_float4), &clRowX);
+    err |= clSetKernelArg(PSDKernel, 4, sizeof(cl_float4), &clRowY);
+    err |= clSetKernelArg(PSDKernel, 5, sizeof(cl_float4), &clRowZ);
+    err |= clSetKernelArg(PSDKernel, 6, sizeof(cl_float4), &clWidths);
+    err |= clSetKernelArg(PSDKernel, 7, sizeof(cl_int), &numberOfAtoms);
+    err |= clSetKernelArg(PSDKernel, 8, sizeof(cl_int4), &clGridSize);
+    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clSetKernelArg failed {} : {}\n", __FILE__, __LINE__));}
 
     std::size_t global_work_size[3] = {static_cast<std::size_t>(grid_size.x), static_cast<std::size_t>(grid_size.y), static_cast<std::size_t>(grid_size.z)};
     err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), PSDKernel, 3, nullptr, global_work_size, nullptr, 0, nullptr, nullptr);
@@ -150,20 +133,14 @@ void BanVlugtPoreSizeDistribution::run(const ForceField &forceField, const Frame
 
     clFinish(OpenCL::clCommandQueue.value());
 
-    //std::size_t originRawData[3] = {0,0,0};
-    //std::size_t regionRawData[3] = {static_cast<std::size_t>(grid_size.x), static_cast<std::size_t>(grid_size.y), static_cast<std::size_t>(grid_size.z)};
-
     err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), pore_sizes, CL_TRUE, 0,
-                         sizeof(int) * nGrid, pore_sizes_host.data(), 0, nullptr, nullptr);
+                              sizeof(cl_int) * nGrid, pore_sizes_host.data(), 0, nullptr, nullptr);
+    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueReadBuffer failed {} : {}\n", __FILE__, __LINE__));}
 
-    std::vector<float> pore_sizes_float(nGrid);
-    for (std::size_t i = 0; i < nGrid; ++i)
-      pore_sizes_float[i] = *reinterpret_cast<float*>(&pore_sizes_host[i]);
-
-    clFinish(OpenCL::clCommandQueue.value());
+    for (std::size_t i = 0; i < nGrid; ++i) poreSizes[i] = std::bit_cast<float>(pore_sizes_host[i]);
 
     clReleaseMemObject(inputPos);
-    clReleaseMemObject(inputSigma);
+    clReleaseMemObject(inputRadius);
     clReleaseMemObject(pore_sizes);
   }
 
@@ -171,12 +148,10 @@ void BanVlugtPoreSizeDistribution::run(const ForceField &forceField, const Frame
 
   std::chrono::duration<double> timing = time_end - time_begin;
 
-  std::mdspan<cl_float4, std::dextents<size_t, 3>, std::layout_left> data_view(
-      output_data.data(),  grid_size.x, grid_size.y, grid_size.z);
-
   std::ofstream myfile;
   myfile.open(framework.name + ".PSD_ban_vlugt.gpu.txt");
   std::print(myfile, "# Pore size distribution using Ban, Vlugt method\n");
+  std::print(myfile, "# Grid point i of n along an axis stands at the fraction i / n of the cell\n");
   std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
   for (std::size_t k = 0; k < static_cast<std::size_t>(grid_size.z); ++k)
   {
@@ -185,8 +160,7 @@ void BanVlugtPoreSizeDistribution::run(const ForceField &forceField, const Frame
       for (std::size_t i = 0; i < static_cast<std::size_t>(grid_size.x); ++i)
       {
         std::size_t idx = i + j * grid_size.x + k * grid_size.x * grid_size.y;
-        float pore_size = std::bit_cast<float>(pore_sizes_host[idx]);
-        std::print(myfile,"{} {} {} {}\n", i, j, k, pore_size);
+        std::print(myfile,"{} {} {} {}\n", i, j, k, poreSizes[idx]);
       }
     }
   }
@@ -199,115 +173,111 @@ void BanVlugtPoreSizeDistribution::run(const ForceField &forceField, const Frame
 }
 
 const char* BanVlugtPoreSizeDistribution::PSDKernelSource = R"foo(
+// A displacement in fractions of the cell as a Cartesian one, through the rows of the cell matrix.
+static float4 cartesianOf(float4 t, float4 cellRowX, float4 cellRowY, float4 cellRowZ)
+{
+    return (float4)(dot(cellRowX, t), dot(cellRowY, t), dot(cellRowZ, t), 0.0f);
+}
+
 __kernel void PSD(
-    __global float4 *position,
-    __global float *sigma,
-    __global float *pore_sizes, // 3D grid flattened: [z*Y*X + y*X + x]
-    const float4 cella,
-    const float4 cellb,
-    const float4 cellc,
+    __global const float4 *position,   // fractional, in the unit cell
+    __global const float *radius,      // of each atom as a hard sphere
+    volatile __global int *pore_sizes, // 3D grid flattened: [z*Y*X + y*X + x], floats kept as their bits
+    const float4 cellRowX,
+    const float4 cellRowY,
+    const float4 cellRowZ,
+    const float4 widths,               // between the faces of the cell across each axis; .w half the least
     const int numberOfAtoms,
-    const int3 numberOfReplicas,
-    const int3 grid_size)
+    const int4 grid_size)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
     int iz = get_global_id(2);
 
-    int grid_idx = iz * grid_size.y * grid_size.x + iy * grid_size.x + ix;
-
-    float4 correction = (float4)(1.0f/(float)(numberOfReplicas.x), 1.0f/(float)(numberOfReplicas.y), 1.0f/(float)(numberOfReplicas.z), 0.0f);
-
-    float4 grid_position = correction * (float4)(
-        (float)(ix) / (float)(grid_size.x-1),
-        (float)(iy) / (float)(grid_size.y-1),
-        (float)(iz) / (float)(grid_size.z-1),
+    // The grid is of a periodic cell: the point after the last along an axis is the first again, so point i of n
+    // stands at i / n and no point is on the far face.
+    float4 grid_position = (float4)(
+        (float)(ix) / (float)(grid_size.x),
+        (float)(iy) / (float)(grid_size.y),
+        (float)(iz) / (float)(grid_size.z),
         0.0f);
 
-    // Step 1: Calculate distance to closest atom
+    // Step 1: the distance to the surface of the closest atom, by the closest copy of each.
     float closest_distance = 1e5f;
-    for(int i=0; i<numberOfReplicas.x; i++)
-    for(int j=0; j<numberOfReplicas.y; j++)
-    for(int k=0; k<numberOfReplicas.z; k++)
+    for(int iatom = 0; iatom < numberOfAtoms; iatom++)
     {
-        float4 replicaVector = (float4)(
-            (float)(i)/(float)(numberOfReplicas.x),
-            (float)(j)/(float)(numberOfReplicas.y),
-            (float)(k)/(float)(numberOfReplicas.z),
-            0.0f);
-        for(int iatom = 0; iatom < numberOfAtoms; iatom++)
+        float4 t = grid_position - position[iatom];
+        t -= rint(t);
+        t.w = 0.0f;
+        float size = radius[iatom];
+
+        // Every copy of this atom is at least |t_k| times the width across axis k away, the nearest whole
+        // number having been taken off already, so one that cannot come nearer than what is in hand is passed.
+        float reach = fmax(fmax(fabs(t.x) * widths.x, fabs(t.y) * widths.y), fabs(t.z) * widths.z);
+        if(reach - size >= closest_distance) continue;
+
+        float distance = length(cartesianOf(t, cellRowX, cellRowY, cellRowZ));
+        closest_distance = fmin(closest_distance, distance - size);
+
+        // The copy nearest in fractions is the nearest in Angstrom if it is nearer than half the least width.
+        // Past that, in a skewed cell or a narrow one, a copy a cell or more over can be nearer, and one nearer
+        // than this one is no more than distance / width + 1/2 cells over along any axis.
+        if(distance < widths.w) continue;
+        int na = (int)floor(distance / widths.x + 0.5f);
+        int nb = (int)floor(distance / widths.y + 0.5f);
+        int nc = (int)floor(distance / widths.z + 0.5f);
+        for(int a = -na; a <= na; a++)
+        for(int b = -nb; b <= nb; b++)
+        for(int c = -nc; c <= nc; c++)
         {
-            float4 dr = grid_position - position[iatom] - replicaVector;
-            float4 t;
-            t.x = dr.x - rint(dr.x);
-            t.y = dr.y - rint(dr.y);
-            t.z = dr.z - rint(dr.z);
-            t.w = 0.0f;
-            dr.x = dot(cella,t);
-            dr.y = dot(cellb,t);
-            dr.z = dot(cellc,t);
-            dr.w = 0.0f;
-
-          // hotfix to overwrite values of sigma for testing
-          // float size = 0.0f;
-          // if (sigma[iatom] == 2.30f){
-          //   size = 0.0f;
-          // }
-          // else if (sigma[iatom] == 3.30f){
-          //   size = 1.35f;     
-          // }
-
-            float size = sigma[iatom];
-            float r = sqrt(dot(dr,dr)) - size;
-            if(r < closest_distance)
-                closest_distance = r;
+            if(a == 0 && b == 0 && c == 0) continue;
+            float4 image = t + (float4)((float)(a), (float)(b), (float)(c), 0.0f);
+            float other = length(cartesianOf(image, cellRowX, cellRowY, cellRowZ));
+            closest_distance = fmin(closest_distance, other - size);
         }
     }
 
-    // Step 2: For all grid points inside the sphere of radius closest_distance, update their pore size if this value is larger
-    float len_a = sqrt(cella.x * cella.x + cella.y * cella.y + cella.z * cella.z);
-    float len_b = sqrt(cellb.x * cellb.x + cellb.y * cellb.y + cellb.z * cellb.z);
-    float len_c = sqrt(cellc.x * cellc.x + cellc.y * cellc.y + cellc.z * cellc.z);
+    // A point inside an atom is the centre of no sphere.
+    if(!(closest_distance > 0.0f)) return;
 
-    float dx = len_a / (float)(grid_size.x - 1);
-    float dy = len_b / (float)(grid_size.y - 1);
-    float dz = len_c / (float)(grid_size.z - 1);
+    // Step 2: every grid point inside the sphere of that radius keeps it if it is the widest laid over it yet.
+    //
+    // A step of one grid point along an axis is at least the width across that axis over the number of points
+    // along it in Angstrom, whatever the angles of the cell, so that many steps is as far as the sphere can reach.
+    // The steps are of the unit cell the grid is of. Each is taken to Angstrom through the cell matrix, so that
+    // what is compared with the radius is a distance and not a count of grid points, and the point it lands on is
+    // found round the cell: a sphere at a face covers the points behind the opposite one.
+    int num_points_x = (int)floor(closest_distance * (float)(grid_size.x) / widths.x);
+    int num_points_y = (int)floor(closest_distance * (float)(grid_size.y) / widths.y);
+    int num_points_z = (int)floor(closest_distance * (float)(grid_size.z) / widths.z);
 
-    int num_points_x = (int)(closest_distance / dx);
-    int num_points_y = (int)(closest_distance / dy);
-    int num_points_z = (int)(closest_distance / dz);
+    float radius_squared = closest_distance * closest_distance;
+    int new_val = as_int(closest_distance);
 
     for (int dz_ = -num_points_z; dz_ <= num_points_z; dz_++) {
-        int zz = iz + dz_;
-        if (zz < 0 || zz >= grid_size.z) continue;
+        int zz = ((iz + dz_) % grid_size.z + grid_size.z) % grid_size.z;
         for (int dy_ = -num_points_y; dy_ <= num_points_y; dy_++) {
-            int yy = iy + dy_;
-            if (yy < 0 || yy >= grid_size.y) continue;
+            int yy = ((iy + dy_) % grid_size.y + grid_size.y) % grid_size.y;
             for (int dx_ = -num_points_x; dx_ <= num_points_x; dx_++) {
-                int xx = ix + dx_;
-                if (xx < 0 || xx >= grid_size.x) continue;
+                int xx = ((ix + dx_) % grid_size.x + grid_size.x) % grid_size.x;
 
-                // Compute Cartesian offset from center
-                float off_x = dx_ * dx;
-                float off_y = dy_ * dy;
-                float off_z = dz_ * dz;
-                float dist = sqrt(off_x*off_x + off_y*off_y + off_z*off_z);
-                if (dist > closest_distance) continue;
+                float4 step = (float4)(
+                    (float)(dx_) / (float)(grid_size.x),
+                    (float)(dy_) / (float)(grid_size.y),
+                    (float)(dz_) / (float)(grid_size.z),
+                    0.0f);
+                float4 offset = cartesianOf(step, cellRowX, cellRowY, cellRowZ);
+                if (dot(offset, offset) > radius_squared) continue;
 
                 int neighbor_idx = zz * grid_size.y * grid_size.x + yy * grid_size.x + xx;
 
                 // Atomically update the pore size if this value is larger
-                int new_val = as_int(closest_distance);
-                int old_val = pore_sizes[neighbor_idx];
-                int assumed;
-                do {
-                    assumed = old_val;
-                    float assumed_float = as_float(assumed);
-                    if (closest_distance > assumed_float)
-                        old_val = atomic_cmpxchg(&pore_sizes[neighbor_idx], assumed, new_val);
-                    else
-                        break;
-                } while (old_val != assumed);
+                int seen = pore_sizes[neighbor_idx];
+                while (closest_distance > as_float(seen)) {
+                    int found = atomic_cmpxchg(&pore_sizes[neighbor_idx], seen, new_val);
+                    if (found == seen) break;
+                    seen = found;
+                }
             }
         }
     }

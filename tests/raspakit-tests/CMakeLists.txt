@@ -17,6 +17,7 @@ add_executable(unit_tests_raspakit
   translation_rotation_smart_mc.cpp
   integrators.cpp
   pbc.cpp
+  pore_size_distribution_ban_vlugt.cpp
   spacegroup.cpp
   dudlambda.cpp
   coulomb_real_space_methods.cpp
