@@ -138,6 +138,19 @@ export GeometricSites geometricAdsorptionSites(std::span<const SheetPatch> patch
 export GeometricSites fieldAdsorptionSites(const WellField &field,
                                            double packingDistance = nitrogenPackingDistance);
 
+// What the Rouquerol window is read off. An isotherm arrives as points, and read off the points alone the window turns
+// on where they happen to fall: its ceiling is one of them, and each candidate window is fitted to whichever of them
+// lie inside it, so the same isotherm tabulated at other pressures gives another area, by two per cent on silicalite.
+// Read off the curve through the points, the ceiling is the maximum of n(1-x) between them and every window is fitted
+// to the curve at the same places within itself, and the area is that of the isotherm. That is for an isotherm that is
+// a curve, a solved or a modelled one. A sampled one has noise on its plateau that a maximum taken between three of
+// its points would follow, which is what the ceiling of the other reading is guarded against, and it keeps that one.
+export enum class WindowReading
+{
+  Points,
+  Curve
+};
+
 export struct BETSurfaceArea
 {
   double gravimetricArea{0.0};  // m²/g, the BET number
@@ -197,7 +210,8 @@ export struct BETSurfaceArea
   // GCMC run, a measurement). Only the fit fields are filled. `crossSection` [Å²] and `liquidVolume`
   // [Å³/molecule] come from the adsorbate Component (e.g. N2: 16.2 and 57.7).
   static BETSurfaceArea fromIsotherm(std::vector<IsothermPoint> isotherm, double mass, double cellVolume,
-                                     double crossSection, double liquidVolume);
+                                     double crossSection, double liquidVolume,
+                                     WindowReading reading = WindowReading::Points);
 
   // Refit slope and intercept of the BET line inside a fixed Rouquerol window (no window search).
   // Used for block jackknife error bars on the area: the window comes from the full-data fit.

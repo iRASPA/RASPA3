@@ -283,9 +283,19 @@ void NLDFT::output()
   {
     std::print(out, "  n(x -> 1): {} / cell\n", result.isotherm.back().moleculesPerCell);
   }
+  if (result.equilibriumTransition > 0.0)
+  {
+    std::print(out, "  equilibrium transition to the filled state at x = {}\n", result.equilibriumTransition);
+  }
   if (result.unconverged > 0)
   {
     std::print(out, "  unconverged pressure points: {}\n", result.unconverged);
+  }
+  if (result.pointsWithoutASolution > 0)
+  {
+    std::print(out, "  WARNING: at {} of {} pressures no profile solved the equation; those points, and a BET fit\n",
+               result.pointsWithoutASolution, result.isotherm.size());
+    std::print(out, "  whose window reaches them, are not results of the functional\n");
   }
   std::print(out, "\n");
 }

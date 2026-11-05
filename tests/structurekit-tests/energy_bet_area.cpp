@@ -368,6 +368,107 @@ TEST(energy_bet_area, fixed_window_refit_keeps_window_and_tracks_loading)
 }
 
 
+namespace
+{
+// A micropore that fills and a second, weaker kind of site that goes on taking molecules after it: two Langmuir terms,
+// not a BET line anywhere, so the area read off it depends on the window, and n(1-x) has its maximum inside the range
+// a window is taken from, flat as a maximum is.
+double fillingThenRising(double x) { return 14.0 * 1.0e4 * x / (1.0 + 1.0e4 * x) + 6.0 * 30.0 * x / (1.0 + 30.0 * x); }
+
+// The same isotherm at `points` pressures evenly apart in ln x from 1e-5 up, begun `shift` of a step later.
+std::vector<IsothermPoint> tabulated(std::size_t points, double shift)
+{
+  const double step = std::log(1.0 / 1.0e-5) / static_cast<double>(points - 1);
+  std::vector<IsothermPoint> isotherm;
+  for (std::size_t index = 0; index < points; ++index)
+  {
+    const double x = 1.0e-5 * std::exp(step * (static_cast<double>(index) + shift));
+    if (x > 1.0) break;
+    isotherm.push_back(IsothermPoint{x, fillingThenRising(x)});
+  }
+  return isotherm;
+}
+}  // namespace
+
+// An isotherm is a curve and the pressures it is tabulated at are a choice, so the area read off it should not turn on
+// the choice. Read off the curve it does not: the ceiling of the window is where n(1-x) has its maximum, wherever the
+// pressures fall around it, and the area is the same to a part in ten thousand over grids begun a tenth of a step
+// apart and grids of other sizes. Read off the points, the ceiling is one of the points, and moves with them.
+TEST(energy_bet_area, a_window_read_off_the_curve_does_not_turn_on_where_the_pressures_fall)
+{
+  const double mass = 5768.0;
+  const double cellVolume = 5332.0;
+
+  double ceiling = 0.0;
+  double highest = 0.0;
+  for (double x = 0.01; x < 0.3; x += 1.0e-5)
+  {
+    if (fillingThenRising(x) * (1.0 - x) > highest)
+    {
+      highest = fillingThenRising(x) * (1.0 - x);
+      ceiling = x;
+    }
+  }
+  ASSERT_GT(ceiling, 0.02);
+  ASSERT_LT(ceiling, 0.2);
+
+  std::vector<std::vector<IsothermPoint>> tabulations;
+  for (int tenth = 0; tenth < 10; ++tenth) tabulations.push_back(tabulated(80, 0.1 * static_cast<double>(tenth)));
+  for (std::size_t points : {60uz, 100uz, 120uz}) tabulations.push_back(tabulated(points, 0.0));
+
+  const BETSurfaceArea first = BETSurfaceArea::fromIsotherm(tabulations.front(), mass, cellVolume, nitrogenCrossSection,
+                                                            nitrogenLiquidVolume, WindowReading::Curve);
+  ASSERT_GT(first.gravimetricArea, 0.0);
+  double lowestCeilingOffPoints = 1.0;
+  double highestCeilingOffPoints = 0.0;
+  for (const std::vector<IsothermPoint> &isotherm : tabulations)
+  {
+    const BETSurfaceArea offCurve = BETSurfaceArea::fromIsotherm(isotherm, mass, cellVolume, nitrogenCrossSection,
+                                                               nitrogenLiquidVolume, WindowReading::Curve);
+    EXPECT_FALSE(offCurve.plateauReading);
+    EXPECT_NEAR(offCurve.windowHigh, ceiling, 0.01 * ceiling) << isotherm.size() << " points";
+    EXPECT_NEAR(offCurve.gravimetricArea, first.gravimetricArea, 2.0e-4 * first.gravimetricArea)
+        << isotherm.size() << " points from x = " << isotherm.front().relativePressure;
+
+    const BETSurfaceArea offPoints =
+        BETSurfaceArea::fromIsotherm(isotherm, mass, cellVolume, nitrogenCrossSection, nitrogenLiquidVolume);
+    lowestCeilingOffPoints = std::min(lowestCeilingOffPoints, offPoints.windowHigh);
+    highestCeilingOffPoints = std::max(highestCeilingOffPoints, offPoints.windowHigh);
+  }
+  EXPECT_GT(highestCeilingOffPoints, 1.05 * lowestCeilingOffPoints)
+      << "the points have to move the other reading's ceiling for this to have asked anything";
+}
+
+// On an isotherm that is a BET line the curve reading finds the line: the monolayer and C it was drawn with, to what
+// a straight line in ln x between neighbouring points leaves of them. And an isotherm that is not in order of
+// pressure has no curve through it, and is read off its points.
+TEST(energy_bet_area, the_curve_reading_recovers_a_classical_isotherm)
+{
+  const double nMono = 20.0;
+  const double C = 100.0;
+  std::vector<IsothermPoint> isotherm;
+  for (int i = 0; i < 80; ++i)
+  {
+    const double x = std::exp(std::log(1.0e-5) + (std::log(0.9) - std::log(1.0e-5)) * static_cast<double>(i) / 79.0);
+    isotherm.push_back(IsothermPoint{x, nMono * C * x / ((1.0 - x) * (1.0 - x + C * x))});
+  }
+  const BETSurfaceArea fit = BETSurfaceArea::fromIsotherm(isotherm, 100.0, 1000.0, nitrogenCrossSection,
+                                                          nitrogenLiquidVolume, WindowReading::Curve);
+  EXPECT_FALSE(fit.plateauReading);
+  EXPECT_NEAR(fit.monolayerCapacity, nMono, 5.0e-4 * nMono);
+  EXPECT_NEAR(fit.cConstant, C, 2.0e-3 * C);
+  EXPECT_LE(fit.windowHigh, 0.30);
+
+  std::vector<IsothermPoint> backwards(isotherm.rbegin(), isotherm.rend());
+  const BETSurfaceArea offPoints =
+      BETSurfaceArea::fromIsotherm(backwards, 100.0, 1000.0, nitrogenCrossSection, nitrogenLiquidVolume);
+  const BETSurfaceArea asked = BETSurfaceArea::fromIsotherm(backwards, 100.0, 1000.0, nitrogenCrossSection,
+                                                            nitrogenLiquidVolume, WindowReading::Curve);
+  EXPECT_DOUBLE_EQ(asked.monolayerCapacity, offPoints.monolayerCapacity);
+  EXPECT_DOUBLE_EQ(asked.windowHigh, offPoints.windowHigh);
+}
+
+
 // Finite-layer (n-layer) BET recovers n_m, C and n from a synthetic isotherm.
 TEST(energy_bet_area, finite_layer_bet_recovers_synthetic_isotherm)
 {

@@ -242,9 +242,15 @@ void NLDFTIsotherm::run(const EnergyBackend &backend, const PairInteractions &in
   this->bulk = grid.bulk;
   this->unconverged = grid.unconverged;
   this->isotherm = std::move(grid.isotherm);
+  this->adsorptionIsotherm = std::move(grid.adsorptionIsotherm);
+  this->desorptionIsotherm = std::move(grid.desorptionIsotherm);
+  this->equilibriumTransition = grid.equilibriumTransition;
+  this->pointsWithoutASolution = grid.pointsWithoutASolution;
 
+  // The isotherm is a curve, of which the pressures solved at are a sample, so the window is read off the curve: the
+  // area is then that of the isotherm and not of where the pressures fell.
   this->fit = BETSurfaceArea::fromIsotherm(this->isotherm, framework.mass, framework.unitCell.volume,
-                                           nitrogenCrossSection, nitrogenLiquidVolume);
+                                           nitrogenCrossSection, nitrogenLiquidVolume, WindowReading::Curve);
 
   std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - time_begin;
   this->seconds = elapsed.count();
@@ -332,9 +338,14 @@ void NLDFTIsotherm::run(const EnergyBackend &backend, const PairInteractions &in
   std::print(myfile, "# The grand potential is the standard NLDFT functional: fundamental-measure hard spheres\n");
   std::print(myfile, "# (White Bear; the uniform limit is Carnahan-Starling) plus a mean-field attraction,\n");
   std::print(myfile, "# in the framework's own dispersion+Ewald field --- no slit or cylinder wall model. The\n");
-  std::print(myfile, "# Euler-Lagrange equation is solved by Picard iteration, all convolutions by FFT over the\n");
-  std::print(myfile, "# periodic cell; each pressure is warm-started from the one below it, which keeps the\n");
-  std::print(myfile, "# profile on the adsorption branch through condensation.\n");
+  std::print(myfile, "# Euler-Lagrange equation is solved by going down Omega, every step held to lowering it,\n");
+  std::print(myfile, "# all convolutions by FFT over the periodic cell. Pressures are swept upwards, each\n");
+  std::print(myfile, "# warm-started from the one below it, and where\n");
+  std::print(myfile, "# that fills a pore they are swept back down from the filled profile. Across a hysteresis loop\n");
+  std::print(myfile, "# both are metastable, in opposite directions, so the isotherm is the equilibrium one: at each\n");
+  std::print(myfile, "# pressure the branch of lower grand potential. The BET fit is read from that. The table below\n");
+  std::print(myfile, "# has both branches and their grand potentials; a grand potential of nan is a point\n");
+  std::print(myfile, "# that did not solve the equation at its own pressure and took no part in the comparison.\n");
   std::print(myfile, "#\n");
   if (this->molecular && !options.attractiveSiteOffsets.empty())
   {
@@ -465,10 +476,28 @@ void NLDFTIsotherm::run(const EnergyBackend &backend, const PairInteractions &in
   }
   std::print(myfile, "# Timing: {} [s] for the field and the {} pressure points\n", this->seconds,
              this->isotherm.size());
+  if (this->pointsWithoutASolution > 0)
+  {
+    std::print(myfile, "# WARNING: at {} of the {} pressures neither branch solved the equation.\n",
+               this->pointsWithoutASolution, this->isotherm.size());
+    std::print(myfile, "# Those points carry the sweep up's\n");
+    std::print(myfile, "# loading and are not results of the functional, nor is a BET fit whose window reaches them.\n");
+  }
+  if (this->equilibriumTransition > 0.0)
+  {
+    std::print(myfile, "# The equilibrium isotherm leaves the sweep up for the sweep down at x = {:.6g}\n",
+               this->equilibriumTransition);
+  }
+  else
+  {
+    std::print(myfile, "# The equilibrium isotherm follows the sweep up throughout\n");
+  }
   std::print(myfile, "\n");
 
-  std::print(myfile, "# The Rouquerol/BET read of this isotherm, fitted exactly as it would be to a measured or\n");
-  std::print(myfile, "# GCMC isotherm.\n");
+  std::print(myfile, "# The Rouquerol/BET read of this isotherm, by the criteria a measured or GCMC isotherm is\n");
+  std::print(myfile, "# read by. The window is read off the curve through the pressures below, not off the\n");
+  std::print(myfile, "# pressures: its ceiling is the maximum of n(1-x) between them, and the line is fitted to\n");
+  std::print(myfile, "# the curve.\n");
   std::print(myfile, "{:34} {:14.4f} [m²/g] {:12.4f} [m²/cm³]\n",
              "BET area:", this->fit.gravimetricArea, this->fit.volumetricArea);
   std::print(myfile, "{:34} {:14.4f} [molecules / cell]\n", "Monolayer capacity n_m:", this->fit.monolayerCapacity);
@@ -478,13 +507,19 @@ void NLDFTIsotherm::run(const EnergyBackend &backend, const PairInteractions &in
   writeIsothermDerivedProperties(myfile, this->fit);
   std::print(myfile, "\n");
 
-  std::print(myfile, "# {:>12} {:>16} {:>16} {:>16}\n", "x = P/P0", "n [molec/cell]", "n(1-x)", "x/(n(1-x))");
-  for (const IsothermPoint &point : this->isotherm)
+  std::print(myfile, "# {:>12} {:>16} {:>16} {:>16} {:>16} {:>16} {:>18} {:>18}\n", "x = P/P0", "n [molec/cell]",
+             "n(1-x)", "x/(n(1-x))", "n adsorption", "n desorption", "Omega ads [kT]", "Omega des [kT]");
+  auto omegaText = [](const NLDFTBranchPoint &point)
+  { return point.stationary ? std::format("{:.10g}", point.grandPotential) : std::string("nan"); };
+  for (std::size_t index = 0; index < this->isotherm.size(); ++index)
   {
+    const IsothermPoint &point = this->isotherm[index];
     double g = point.moleculesPerCell * (1.0 - point.relativePressure);
     double y = (g > 0.0) ? point.relativePressure / g : 0.0;
-    std::print(myfile, "  {:>12.6g} {:>16.8g} {:>16.8g} {:>16.8g}\n", point.relativePressure, point.moleculesPerCell,
-               g, y);
+    std::print(myfile, "  {:>12.6g} {:>16.8g} {:>16.8g} {:>16.8g} {:>16.8g} {:>16.8g} {:>18} {:>18}\n",
+               point.relativePressure, point.moleculesPerCell, g, y, this->adsorptionIsotherm[index].moleculesPerCell,
+               this->desorptionIsotherm[index].moleculesPerCell, omegaText(this->adsorptionIsotherm[index]),
+               omegaText(this->desorptionIsotherm[index]));
   }
   myfile.close();
 }

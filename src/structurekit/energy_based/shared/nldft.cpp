@@ -64,10 +64,9 @@ double nldftWrap01(double x)
 // and is read back from it alone; a site a fraction of a voxel off is shared with the next point in each
 // axis by that fraction. Asking at (i + 1/2) / n instead would put every site half a voxel off the field it
 // is to feel, and split a site that is not off at all over the eight points around it.
-void nldftCicAdd(double *grid, std::size_t nx, std::size_t ny, std::size_t nz, double fx, double fy, double fz,
-                 double weight)
+void nldftCicDeposit(double *grid, std::size_t nx, std::size_t ny, std::size_t nz, double fx, double fy, double fz,
+                     double weight)
 {
-  if (!(weight > 0.0) || !(weight < 1.0e300)) return;
   fx = nldftWrap01(fx);
   fy = nldftWrap01(fy);
   fz = nldftWrap01(fz);
@@ -107,6 +106,13 @@ void nldftCicAdd(double *grid, std::size_t nx, std::size_t ny, std::size_t nz, d
   at(ii1, jj0, kk1) += weight * w101;
   at(ii0, jj1, kk1) += weight * w011;
   at(ii1, jj1, kk1) += weight * w111;
+}
+
+void nldftCicAdd(double *grid, std::size_t nx, std::size_t ny, std::size_t nz, double fx, double fy, double fz,
+                 double weight)
+{
+  if (!(weight > 0.0) || !(weight < 1.0e300)) return;
+  nldftCicDeposit(grid, nx, ny, nz, fx, fy, fz, weight);
 }
 
 double nldftCicSample(const double *grid, std::size_t nx, std::size_t ny, std::size_t nz, double fx, double fy,
@@ -605,12 +611,9 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
   double highSpinodal = 0.0;
   const bool hasLoop = findSpinodals(model, lowSpinodal, highSpinodal);
   const double rhoGasCap = hasLoop ? lowSpinodal : std::max(result.bulk.liquidDensity, 1.0e-6);
-  // Contact peaks on a coarse voxel can be several times the bulk liquid (a 1-D file is a few voxels
-  // across). They cannot be hundreds of times: rhoPeakCap = 4 /Å³ was 200× liquid and let a single
-  // well voxel hold a molecule, which is how TraPPE N2 reached 280 / cell. The cell-mean density
-  // cannot: eta = rho * pi d³ / 6 lives below 1, and 0.85 is already past any physical pore fill.
-  const double rhoPeakCap = 8.0 * std::max(result.bulk.liquidDensity, 0.017);
-  const double rhoMeanCap = 0.85 / (model.sites * model.packingFactor);
+  // How close the packing may come to one before the functional gives up on it. A site holding one molecule has n3
+  // exponentially close to one in the chemical potential, so this is well past any occupancy that shows in a loading.
+  constexpr double largestPacking = 1.0 - 1.0e-6;
 
   std::call_once(fftwThreadsFlag,
                  []
@@ -650,8 +653,7 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
   fftw_plan inverse = fftw_plan_dft_c2r_3d(static_cast<int>(nz), static_cast<int>(ny), static_cast<int>(nx),
                                            scratch.get(), muHS.get(), FFTW_MEASURE);
 
-  // The weight spectra: radial transforms evaluated on the reciprocal lattice of whatever cell this is.
-  std::vector<double> w2Hat(nC), w3Hat(nC), uHat(nC), kX(nC), kY(nC), kZ(nC), kAbs(nC);
+  std::vector<double> w2Hat(nC), w3Hat(nC), uHat(nC), vHatX(nC), vHatY(nC), vHatZ(nC), kAbs(nC);
   double kMax = 0.0;
   for (std::size_t iz = 0; iz < nz; ++iz)
   {
@@ -664,25 +666,99 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
         std::size_t index = (iz * ny + iy) * nComplexX + ix;
         double3 m(static_cast<double>(ix), my, mz);
         double3 k = 2.0 * std::numbers::pi * transposedMultiply(cell.inverseCell, m);
-        kX[index] = k.x;
-        kY[index] = k.y;
-        kZ[index] = k.z;
         double kk = std::sqrt(k.x * k.x + k.y * k.y + k.z * k.z);
         kAbs[index] = kk;
         kMax = std::max(kMax, kk);
-        if (kk < 1.0e-12)
-        {
-          w3Hat[index] = 4.0 * std::numbers::pi * R * R * R / 3.0;
-          w2Hat[index] = 4.0 * std::numbers::pi * R * R;
-        }
-        else
-        {
-          double kR = kk * R;
-          w3Hat[index] = 4.0 * std::numbers::pi * (std::sin(kR) - kR * std::cos(kR)) / (kk * kk * kk);
-          w2Hat[index] = 4.0 * std::numbers::pi * R * std::sin(kR) / kk;
-        }
       }
     }
+  }
+
+  // The weights of the hard-sphere functional, laid onto the grid in real space and transformed from there.
+  //
+  // The obvious alternative is their analytic radial transforms on the reciprocal lattice, which is what a grid cannot
+  // take: the transform of the shell, 4 pi R sin(kR) / k, has hardly decayed by the grid's last wavevector, and cutting
+  // it off there rings. On a zeolite that left n2 negative over a quarter of the cell and |n2v| at six times n2. The
+  // functional's repulsion is carried by n2, so where n2 had gone negative the fluid felt none, whatever the packing,
+  // and the density went there. No solution was to be had past a few molecules per cage.
+  //
+  // A kernel of non-negative weights cannot do that. With rho >= 0, each of n3 and n2 is a sum of non-negative terms,
+  // and because the vector weight is the same shell samples times their unit vectors, |n2v| <= n2 by the triangle
+  // inequality, exactly, on any grid. Samples come in antipodal pairs, so the scalar kernels transform to a real
+  // spectrum and the vector kernel to an imaginary one, and each is normalised at k = 0, so the uniform fluid and with
+  // it the whole of the bulk are untouched. Sharing a sample among its eight grid points smooths the kernel by about a
+  // voxel, which is second order in the spacing.
+  {
+    const double spacing = std::min({cell.lengthA / static_cast<double>(nx), cell.lengthB / static_cast<double>(ny),
+                                     cell.lengthC / static_cast<double>(nz)});
+    const double sampleSpacing = 0.25 * spacing;
+    auto forEachOnShell = [&](double radius, auto &&visit)
+    {
+      const std::size_t pairs = std::max<std::size_t>(
+          64, static_cast<std::size_t>(2.0 * std::numbers::pi * radius * radius / (sampleSpacing * sampleSpacing)));
+      const double goldenAngle = std::numbers::pi * (3.0 - std::sqrt(5.0));
+      for (std::size_t q = 0; q < pairs; ++q)
+      {
+        const double z = (static_cast<double>(q) + 0.5) / static_cast<double>(pairs);
+        const double r = std::sqrt(std::max(0.0, 1.0 - z * z));
+        const double angle = goldenAngle * static_cast<double>(q);
+        const double3 direction(r * std::cos(angle), r * std::sin(angle), z);
+        const double share = 0.5 / static_cast<double>(pairs);
+        visit(direction, share);
+        visit(-1.0 * direction, share);
+      }
+    };
+
+    RealArray shell = makeReal();
+    RealArray ball = makeReal();
+    RealArray shellX = makeReal();
+    RealArray shellY = makeReal();
+    RealArray shellZ = makeReal();
+    for (std::size_t i = 0; i < N; ++i)
+    {
+      shell[i] = 0.0;
+      ball[i] = 0.0;
+      shellX[i] = 0.0;
+      shellY[i] = 0.0;
+      shellZ[i] = 0.0;
+    }
+    auto depositAt = [&](RealArray &grid, const double3 &position, double weight)
+    {
+      const double3 f = cell.inverseCell * position;
+      nldftCicDeposit(grid.get(), nx, ny, nz, f.x, f.y, f.z, weight);
+    };
+    const double shellArea = 4.0 * std::numbers::pi * R * R;
+    forEachOnShell(R, [&](const double3 &direction, double share)
+    {
+      const double3 position = R * direction;
+      depositAt(shell, position, shellArea * share);
+      depositAt(shellX, position, shellArea * share * direction.x);
+      depositAt(shellY, position, shellArea * share * direction.y);
+      depositAt(shellZ, position, shellArea * share * direction.z);
+    });
+    const std::size_t radii = std::max<std::size_t>(16, static_cast<std::size_t>(2.0 * R / spacing));
+    double ballVolume = 0.0;
+    for (std::size_t q = 0; q < radii; ++q)
+    {
+      const double r = R * (static_cast<double>(q) + 0.5) / static_cast<double>(radii);
+      const double volume = 4.0 * std::numbers::pi * r * r * R / static_cast<double>(radii);
+      ballVolume += volume;
+      forEachOnShell(r, [&](const double3 &direction, double share)
+                     { depositAt(ball, r * direction, volume * share); });
+    }
+    const double ballScale = (4.0 * std::numbers::pi * R * R * R / 3.0) / ballVolume;
+    for (std::size_t i = 0; i < N; ++i) ball[i] *= ballScale;
+
+    // A kernel transforms as a sum over e^{-ikr}, so an odd one is purely imaginary; vectorWeightTo takes c in -i c.
+    auto transform = [&](RealArray &grid, std::vector<double> &spectrum, int part, double sign)
+    {
+      fftw_execute_dft_r2c(forward, grid.get(), rhoHat.get());
+      for (std::size_t index = 0; index < nC; ++index) spectrum[index] = sign * rhoHat[index][part];
+    };
+    transform(shell, w2Hat, 0, 1.0);
+    transform(ball, w3Hat, 0, 1.0);
+    transform(shellX, vHatX, 1, -1.0);
+    transform(shellY, vHatY, 1, -1.0);
+    transform(shellZ, vHatZ, 1, -1.0);
   }
 
   // The pair's radial transform, tabulated once over |k| and read back per lattice point:
@@ -727,25 +803,27 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
   // wellFloorInKT: a Helmholtz PMF can be a Coulomb hole a spherical density cannot occupy. Molecular
   // ρ(r, ω) keeps the TraPPE well (FMT packing is the bound); clipping it at 12 kT made every μ see
   // the same e^12 contact layer and stalled FER at ~4 / cell against GCMC ~10. Henry is always unclipped.
+  //
+  // A molecular density is a density of states, one for each orientation at each voxel, and only those a molecule can
+  // be found in are kept. One that lies more than largestLiveBetaU above zero is not among them: the field of the
+  // other molecules lowers it by ten kT at the most and the reservoir is no denser than the saturated gas, so every
+  // such state in a cell together holds less than e^-40 of a molecule. On a framework that is most of the states there
+  // are, the walls being most of the cell, and what is left is what the descent has to carry.
+  constexpr double largestLiveBetaU = 50.0;
   const double wellFloor = options.wellFloorInKT > 0.0 ? options.wellFloorInKT : nldftWellFloorInKT;
-  std::vector<double> betaU(N * M);
-  std::vector<char> accessible(N, 0);
+  std::vector<double> betaU(molecular ? 0 : N);
   std::vector<std::size_t> liveStart(N + 1, 0);
   std::vector<double> liveLogWeight;
   std::vector<std::uint16_t> liveOrient;
   if (molecular)
   {
-    liveLogWeight.reserve(N * M / 8);
-    liveOrient.reserve(N * M / 8);
     for (std::size_t i = 0; i < N; ++i)
     {
       liveStart[i] = liveLogWeight.size();
       for (std::size_t o = 0; o < M; ++o)
       {
-        const double bu = std::min(beta * static_cast<double>(orientView[i * M + o]), 700.0);
-        betaU[i * M + o] = bu;
-        if (bu < 699.0) accessible[i] = 1;
-        if (bu > 690.0) continue;
+        const double bu = beta * static_cast<double>(orientView[i * M + o]);
+        if (!(bu <= largestLiveBetaU)) continue;
         liveLogWeight.push_back(-bu);
         liveOrient.push_back(static_cast<std::uint16_t>(o));
       }
@@ -758,9 +836,10 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
     {
       const double bu = std::min(beta * static_cast<double>(energyView[i]), 700.0);
       betaU[i] = std::max(bu, -wellFloor);
-      accessible[i] = bu < 699.0 ? 1 : 0;
     }
   }
+  const std::size_t K = liveLogWeight.size();
+  const double logM = std::log(static_cast<double>(M));
 
   const bool needDeposit = dumbbell || siteAtt;
   const std::vector<double> &geomOffsets =
@@ -794,9 +873,6 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
     }
   }
   for (std::size_t i = 0; i < N; ++i) muHS[i] = 0.0;
-  RealArray muHSPrev = makeReal();
-  for (std::size_t i = 0; i < N; ++i) muHSPrev[i] = 0.0;
-  bool haveMuHS = false;
 
   auto sampleSites = [&](const double *grid, std::size_t o, double fx, double fy, double fz) -> double
   {
@@ -808,8 +884,6 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
     }
     return sum;
   };
-  auto dumbbellMu = [&](std::size_t o, double fx, double fy, double fz) -> double
-  { return siteScale * sampleSites(muHS.get(), o, fx, fy, fz); };
 
   const unsigned workers = nldftWorkerCount();
   std::vector<std::vector<double>> siteLocal;
@@ -818,6 +892,33 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
     siteLocal.resize(workers);
     for (auto &local : siteLocal) local.assign(N, 0.0);
   }
+
+  // Sums and loops over the voxels, or over the states, shared among the workers.
+  auto workerOf = [&](std::size_t begin, std::size_t count) -> std::size_t
+  {
+    const std::size_t chunk = (count + workers - 1) / std::max(workers, 1u);
+    return std::min(begin / std::max(chunk, std::size_t{1}), static_cast<std::size_t>(workers - 1));
+  };
+  auto sumOf = [&](std::size_t count, auto &&term) -> double
+  {
+    std::vector<double> sums(workers, 0.0);
+    nldftParallelFor(count, workers, [&](std::size_t begin, std::size_t end)
+    {
+      double sum = 0.0;
+      for (std::size_t i = begin; i < end; ++i) sum += term(i);
+      sums[workerOf(begin, count)] = sum;
+    });
+    return std::accumulate(sums.begin(), sums.end(), 0.0);
+  };
+  auto eachOf = [&](std::size_t count, auto &&apply)
+  {
+    nldftParallelFor(count, workers, [&](std::size_t begin, std::size_t end)
+    {
+      for (std::size_t i = begin; i < end; ++i) apply(i);
+    });
+  };
+  auto sumOver = [&](auto &&term) -> double { return sumOf(N, term); };
+  auto eachVoxel = [&](auto &&apply) { eachOf(N, apply); };
 
   const double inverseN = 1.0 / static_cast<double>(N);
   auto convolveTo = [&](const std::vector<double> &spectrum, double *out)
@@ -829,102 +930,122 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
     }
     fftw_execute_dft_c2r(inverse, scratch.get(), out);
   };
-  // n2v_j = IFFT( -i k_j w3 rho ): (a + b i)(-i c) = b c - a c i.
-  auto vectorWeightTo = [&](const std::vector<double> &kComponent, double *out)
+  // n2v_j = IFFT( -i c_j rho ): (a + b i)(-i c) = b c - a c i.
+  auto vectorWeightTo = [&](const std::vector<double> &spectrum, double *out)
   {
     for (std::size_t index = 0; index < nC; ++index)
     {
-      double c = w3Hat[index] * kComponent[index] * inverseN;
+      double c = spectrum[index] * inverseN;
       scratch[index][0] = rhoHat[index][1] * c;
       scratch[index][1] = -rhoHat[index][0] * c;
     }
     fftw_execute_dft_c2r(inverse, scratch.get(), out);
   };
 
-  auto eulerLagrange = [&](double muOverT, std::vector<double> &updated) -> double
+  // The molecular density itself is the molecules in each live state. The density at a voxel, rho, is their sum there,
+  // and the density of sites, rhoSite, is each state laid down at its sites. Placing the states makes the three one,
+  // and nothing else changes any of them, so the orientations a field is worked out from are those of the density it
+  // is the field of. Sharing the molecules at a voxel among the orientations by the fields of the step before, as an
+  // iteration in rho alone has to, left them a function of the path until it had converged.
+  std::vector<double> rhoState(K, 0.0);
+  RealArray siteField = needDeposit ? makeReal() : RealArray(nullptr, realFree);
+  constexpr double smallestDeposit = 1.0e-40;  // molecules / Å³ in one state, below which it is laid down nowhere
+  auto fractionOf = [&](std::size_t i) -> double3
+  {
+    return double3(static_cast<double>(i % nx) / static_cast<double>(nx),
+                   static_cast<double>((i / nx) % ny) / static_cast<double>(ny),
+                   static_cast<double>(i / (nx * ny)) / static_cast<double>(nz));
+  };
+  auto placeStates = [&]()
+  {
+    eachVoxel([&](std::size_t i)
+    {
+      double sum = 0.0;
+      for (std::size_t k = liveStart[i]; k < liveStart[i + 1]; ++k) sum += rhoState[k];
+      rho[i] = sum;
+    });
+    if (!needDeposit) return;
+
+    for (auto &local : siteLocal) std::fill(local.begin(), local.end(), 0.0);
+    nldftParallelFor(N, workers, [&](std::size_t begin, std::size_t end)
+    {
+      double *local = siteLocal[workerOf(begin, N)].data();
+      for (std::size_t i = begin; i < end; ++i)
+      {
+        if (liveStart[i] == liveStart[i + 1]) continue;
+        const double3 f = fractionOf(i);
+        for (std::size_t k = liveStart[i]; k < liveStart[i + 1]; ++k)
+        {
+          const double held = rhoState[k];
+          if (!(held > smallestDeposit)) continue;
+          const std::size_t o = liveOrient[k];
+          for (std::size_t s = 0; s < nSites; ++s)
+          {
+            const double3 df = siteDelta[o * nSites + s];
+            nldftCicAdd(local, nx, ny, nz, f.x + df.x, f.y + df.y, f.z + df.z, depositScale * held);
+          }
+        }
+      }
+    });
+    eachVoxel([&](std::size_t i)
+    {
+      double sum = 0.0;
+      for (unsigned t = 0; t < workers; ++t) sum += siteLocal[t][i];
+      rhoSite[i] = sum;
+    });
+  };
+
+  // The third term of the free energy density is phi3(n3) n2^3 (1 - xi^2)^3, with xi = |n2v| / n2, the form of
+  // Rosenfeld, Schmidt, Lowen and Tarazona (Phys. Rev. E 55, 4245 (1997)), rather than phi3(n3) (n2^3 - 3 n2 n2v^2).
+  // The two agree where xi is small, and in the uniform fluid exactly. They part where a density peak is narrow, and
+  // that is what a zeolite makes: phi3 diverges as n3 goes to one, and past xi^2 = 1/3 the other form goes with it to
+  // minus infinity, so the more tightly the fluid packs the lower the free energy, with no bottom to it. Here every
+  // term of the density is non-negative, the functional is bounded below, and a pocket that fits one molecule holds
+  // one.
+  //
+  // The weights keep n2^2 - n2v^2 from going negative but for rounding, which is the one thing the guard here is for.
+  struct ThirdTerm
+  {
+    double value{0.0};
+    double byN2{0.0};
+    double byVector{0.0};  // the derivative by n2v_j is this times n2v_j
+  };
+  auto thirdTermOf = [](double n2, double vSquared) -> ThirdTerm
+  {
+    if (!(n2 > 1.0e-100)) return {};
+    const double gap = std::max(n2 * n2 - vSquared, 0.0);
+    const double inverse = 1.0 / n2;
+    const double gapOverN2Squared = gap * inverse * inverse;
+    const double gapSquaredOverN2Cubed = gap * gapOverN2Squared * inverse;
+    return {.value = gap * gapSquaredOverN2Cubed,
+            .byN2 = 3.0 * gapOverN2Squared * gapOverN2Squared * (n2 * n2 + vSquared),
+            .byVector = -6.0 * gapSquaredOverN2Cubed};
+  };
+
+  // The fields of the density in hand: the attractive one, and the hard-sphere one, which is the derivative of the
+  // White Bear free energy by the density it is a functional of. For a dumbbell that is the density of sites.
+  auto fieldsOf = [&]()
   {
     fftw_execute_dft_r2c(forward, rho.get(), rhoHat.get());
     if (!siteAtt) convolveTo(uHat, phiAtt.get());
-    if (needDeposit)
-    {
-      std::fill(rhoSite.get(), rhoSite.get() + static_cast<std::ptrdiff_t>(N), 0.0);
-      for (auto &local : siteLocal) std::fill(local.begin(), local.end(), 0.0);
-      const std::size_t depositChunk = (N + workers - 1) / std::max(workers, 1u);
-      nldftParallelFor(N, workers, [&](std::size_t begin, std::size_t end)
-      {
-        const unsigned thread = static_cast<unsigned>(
-            std::min(begin / std::max(depositChunk, std::size_t{1}), static_cast<std::size_t>(workers - 1)));
-        double *local = siteLocal[thread].data();
-        for (std::size_t i = begin; i < end; ++i)
-        {
-          if (rho[i] < 1.0e-18) continue;
-          const std::size_t beginO = liveStart[i];
-          const std::size_t endO = liveStart[i + 1];
-          if (beginO >= endO) continue;
-          const std::size_t iz = i / (nx * ny);
-          const std::size_t iy = (i / nx) % ny;
-          const std::size_t ix = i % nx;
-          const double fx = static_cast<double>(ix) / static_cast<double>(nx);
-          const double fy = static_cast<double>(iy) / static_cast<double>(ny);
-          const double fz = static_cast<double>(iz) / static_cast<double>(nz);
-          const std::size_t nLive = endO - beginO;
-          std::vector<double> logw(nLive);
-          double maxLog = -1.0e300;
-          for (std::size_t k = beginO; k < endO; ++k)
-          {
-            const std::size_t o = liveOrient[k];
-            double extra = 0.0;
-            if (dumbbell) extra += dumbbellMu(o, fx, fy, fz);
-            if (siteAtt) extra += beta * sampleSites(phiAtt.get(), o, fx, fy, fz);
-            logw[k - beginO] = liveLogWeight[k] - extra;
-            maxLog = std::max(maxLog, logw[k - beginO]);
-          }
-          double Z = 0.0;
-          for (double lw : logw) Z += std::exp(std::min(lw - maxLog, 80.0));
-          const double invZ = (Z > 0.0) ? 1.0 / Z : 0.0;
-          for (std::size_t k = beginO; k < endO; ++k)
-          {
-            const double occ = rho[i] * std::exp(std::min(logw[k - beginO] - maxLog, 80.0)) * invZ;
-            if (!(occ > 0.0)) continue;
-            const std::size_t o = liveOrient[k];
-            for (std::size_t s = 0; s < nSites; ++s)
-            {
-              const double3 df = siteDelta[o * nSites + s];
-              nldftCicAdd(local, nx, ny, nz, fx + df.x, fy + df.y, fz + df.z, depositScale * occ);
-            }
-          }
-        }
-      });
-      for (unsigned t = 0; t < workers; ++t)
-        for (std::size_t i = 0; i < N; ++i) rhoSite[i] += siteLocal[t][i];
-      if (dumbbell) fftw_execute_dft_r2c(forward, rhoSite.get(), rhoHat.get());
-      if (siteAtt && dumbbell) convolveTo(uHatSites, phiAtt.get());
-    }
+    if (dumbbell) fftw_execute_dft_r2c(forward, rhoSite.get(), rhoHat.get());
+    if (siteAtt && dumbbell) convolveTo(uHatSites, phiAtt.get());
     convolveTo(w3Hat, n3B.get());
     convolveTo(w2Hat, n2A.get());
-    vectorWeightTo(kX, vx.get());
-    vectorWeightTo(kY, vy.get());
-    vectorWeightTo(kZ, vz.get());
+    vectorWeightTo(vHatX, vx.get());
+    vectorWeightTo(vHatY, vy.get());
+    vectorWeightTo(vHatZ, vz.get());
 
     nldftParallelFor(N, workers, [&](std::size_t begin, std::size_t end)
     {
       for (std::size_t i = begin; i < end; ++i)
       {
-        double n3 = std::clamp(n3B[i], 0.0, 0.999);
+        double n3 = std::clamp(n3B[i], 0.0, largestPacking);
         double n2 = std::max(n2A[i], 0.0);
         double wx = vx[i];
         double wy = vy[i];
         double wz = vz[i];
         double vSquared = wx * wx + wy * wy + wz * wz;
-        double n2Squared = n2 * n2;
-        if (vSquared > 0.99 * n2Squared)
-        {
-          double scale = (n2Squared > 0.0) ? std::sqrt(0.99 * n2Squared / vSquared) : 0.0;
-          wx *= scale;
-          wy *= scale;
-          wz *= scale;
-          vSquared = 0.99 * n2Squared;
-        }
         double o = 1.0 / (1.0 - n3);
         double phi3 = 0.0;
         double phi3Prime = 0.0;
@@ -934,13 +1055,13 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
         double n1 = s1 * n2;
         double dPhi0 = -std::log(1.0 - n3);
         double dPhi1 = n2 * o;
-        double dPhi2 = n1 * o + 3.0 * (n2Squared - vSquared) * phi3;
-        double dPhi3 = n0 * o + (n1 * n2 - s1 * vSquared) * o * o +
-                       (n2 * n2Squared - 3.0 * n2 * vSquared) * phi3Prime;
+        const ThirdTerm third = thirdTermOf(n2, vSquared);
+        double dPhi2 = n1 * o + third.byN2 * phi3;
+        double dPhi3 = n0 * o + (n1 * n2 - s1 * vSquared) * o * o + third.value * phi3Prime;
 
         n2A[i] = s0 * dPhi0 + s1 * dPhi1 + dPhi2;
         n3B[i] = dPhi3;
-        double vectorFactor = -2.0 * s1 * o - 6.0 * n2 * phi3;
+        double vectorFactor = -2.0 * s1 * o + third.byVector * phi3;
         vx[i] = vectorFactor * wx;
         vy[i] = vectorFactor * wy;
         vz[i] = vectorFactor * wz;
@@ -959,15 +1080,15 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
       acc[index][0] += scratch[index][0] * w3Hat[index];
       acc[index][1] += scratch[index][1] * w3Hat[index];
     }
-    const std::vector<double> *kComponents[3] = {&kX, &kY, &kZ};
+    const std::vector<double> *vectorSpectra[3] = {&vHatX, &vHatY, &vHatZ};
     double *vectorFields[3] = {vx.get(), vy.get(), vz.get()};
     for (int component = 0; component < 3; ++component)
     {
       fftw_execute_dft_r2c(forward, vectorFields[component], scratch.get());
-      const std::vector<double> &kc = *kComponents[component];
+      const std::vector<double> &spectrum = *vectorSpectra[component];
       for (std::size_t index = 0; index < nC; ++index)
       {
-        double c = w3Hat[index] * kc[index];
+        double c = spectrum[index];
         acc[index][0] += -scratch[index][1] * c;
         acc[index][1] += scratch[index][0] * c;
       }
@@ -978,94 +1099,145 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
       scratch[index][1] = acc[index][1] * inverseN;
     }
     fftw_execute_dft_c2r(inverse, scratch.get(), muHS.get());
-    if (dumbbell)
-    {
-      if (haveMuHS)
-      {
-        for (std::size_t i = 0; i < N; ++i) muHS[i] = 0.5 * muHS[i] + 0.5 * muHSPrev[i];
-      }
-      for (std::size_t i = 0; i < N; ++i) muHSPrev[i] = muHS[i];
-      haveMuHS = true;
-    }
     if (siteAtt && !dumbbell)
     {
       fftw_execute_dft_r2c(forward, rhoSite.get(), rhoHat.get());
       convolveTo(uHat, phiAtt.get());
     }
+  };
 
+  constexpr double logDensityFloor = -690.0;
+
+  // What the Euler-Lagrange equation makes of a spherical density, and how far from it the density is.
+  auto eulerLagrange = [&](double muOverT, std::vector<double> &updated) -> double
+  {
+    fieldsOf();
     constexpr double tiny = 1.0e-300;
-    constexpr double logTiny = -690.0;
-    std::vector<double> threadSumSq(workers, 0.0);
-    const std::size_t chunk = (N + workers - 1) / std::max(workers, 1u);
+    return std::sqrt(sumOver([&](std::size_t i)
+    {
+      const double exponent = muOverT - beta * phiAtt[i] - muHS[i] - betaU[i];
+      const double value = (exponent < logDensityFloor) ? tiny : std::exp(std::min(exponent, 80.0));
+      const double difference = value - rho[i];
+      updated[i] = value;
+      return difference * difference;
+    }) / static_cast<double>(N));
+  };
+
+  // The same for a molecular density, state by state: the logarithm of what the equation makes of each, the gradient
+  // of the grand potential by the logarithm of what it holds, and how far the two are apart over all of them, against
+  // the density itself. A state feels the fields at its sites where the functional is one of sites and at its centre
+  // where it is one of centres.
+  auto stateGradientAt = [&](double muOverT, const std::vector<double> &logValues, std::vector<double> &out,
+                             std::vector<double> &logUpdate) -> double
+  {
+    fieldsOf();
+    if (needDeposit)
+    {
+      eachVoxel([&](std::size_t i)
+      {
+        siteField[i] = (dumbbell ? siteScale * muHS[i] : 0.0) + (siteAtt ? beta * phiAtt[i] : 0.0);
+      });
+    }
+    std::vector<double> apart(workers, 0.0);
+    std::vector<double> held(workers, 0.0);
     nldftParallelFor(N, workers, [&](std::size_t begin, std::size_t end)
     {
-      double sumSq = 0.0;
+      double sumApart = 0.0;
+      double sumHeld = 0.0;
       for (std::size_t i = begin; i < end; ++i)
       {
-        const double shiftAtt = (siteAtt && molecular) ? muOverT : muOverT - beta * phiAtt[i];
-        double value = tiny;
-        if (molecular)
+        if (liveStart[i] == liveStart[i + 1]) continue;
+        const double3 f = fractionOf(i);
+        const double atTheCentre = (dumbbell ? 0.0 : muHS[i]) + (siteAtt ? 0.0 : beta * phiAtt[i]);
+        for (std::size_t k = liveStart[i]; k < liveStart[i + 1]; ++k)
         {
-          const std::size_t beginO = liveStart[i];
-          const std::size_t endO = liveStart[i + 1];
-          if (beginO < endO)
-          {
-            const std::size_t iz = i / (nx * ny);
-            const std::size_t iy = (i / nx) % ny;
-            const std::size_t ix = i % nx;
-            const double fx = static_cast<double>(ix) / static_cast<double>(nx);
-            const double fy = static_cast<double>(iy) / static_cast<double>(ny);
-            const double fz = static_cast<double>(iz) / static_cast<double>(nz);
-            auto extraOf = [&](std::size_t o) -> double
-            {
-              double extra = dumbbell ? dumbbellMu(o, fx, fy, fz) : muHS[i];
-              if (siteAtt) extra += beta * sampleSites(phiAtt.get(), o, fx, fy, fz);
-              return extra;
-            };
-            double maxLog = -1.0e300;
-            for (std::size_t k = beginO; k < endO; ++k)
-              maxLog = std::max(maxLog, shiftAtt + liveLogWeight[k] - extraOf(liveOrient[k]));
-            double sum = 0.0;
-            for (std::size_t k = beginO; k < endO; ++k)
-            {
-              const double extra = extraOf(liveOrient[k]);
-              sum += std::exp(std::min(shiftAtt + liveLogWeight[k] - extra - maxLog, 80.0));
-            }
-            const double logVal = maxLog + std::log(std::max(sum, tiny)) - std::log(static_cast<double>(M));
-            value = (logVal >= 80.0) ? rhoPeakCap : std::max(std::exp(logVal), tiny);
-          }
+          const double field =
+              atTheCentre + (needDeposit ? sampleSites(siteField.get(), liveOrient[k], f.x, f.y, f.z) : 0.0);
+          const double logValue = std::clamp(muOverT - logM + liveLogWeight[k] - field, logDensityFloor, 80.0);
+          const double difference = std::exp(logValue) - rhoState[k];
+          sumApart += difference * difference;
+          sumHeld += rhoState[k] * rhoState[k];
+          logUpdate[k] = logValue;
+          out[k] = rhoState[k] * dV * (logValues[k] - logValue);
         }
-        else
-        {
-          double exponent = shiftAtt - muHS[i] - betaU[i];
-          value = (exponent < logTiny) ? tiny : std::exp(std::min(exponent, 80.0));
-        }
-        value = std::min(value, rhoPeakCap);
-        const double diff = value - rho[i];
-        sumSq += diff * diff;
-        updated[i] = value;
       }
-      const unsigned thread = static_cast<unsigned>(std::min(begin / std::max(chunk, std::size_t{1}),
-                                                            static_cast<std::size_t>(workers - 1)));
-      threadSumSq[thread] = sumSq;
+      apart[workerOf(begin, N)] = sumApart;
+      held[workerOf(begin, N)] = sumHeld;
     });
-    double sumSq = 0.0;
-    for (unsigned t = 0; t < workers; ++t) sumSq += threadSumSq[t];
-    return std::sqrt(sumSq / static_cast<double>(N));
+    return std::sqrt(std::accumulate(apart.begin(), apart.end(), 0.0) /
+                     std::max(std::accumulate(held.begin(), held.end(), 0.0), 1.0e-300));
   };
 
-  auto meanDensity = [&]()
-  {
-    double sum = 0.0;
-    for (std::size_t i = 0; i < N; ++i) sum += rho[i];
-    return sum / static_cast<double>(N);
-  };
   auto loadingOf = [&]()
   {
     double sum = 0.0;
     for (std::size_t i = 0; i < N; ++i) sum += rho[i];
     return sum * dV;
   };
+
+  // The grand potential of the profile in hand, in kT per cell, the functional the updates above are the stationary
+  // point of, term by term:
+  //
+  //   Omega = sum_w int rho_w (ln(M rho_w) - 1 + beta U_w - mu) + int Phi(n[rho_site]) + 1/2 beta int rho_att phi
+  //
+  // rho_w being the molecules in orientation w, Phi the White Bear free energy density of the same weighted densities
+  // the update differentiates, under the same clamps, and phi the attractive field. Differentiating this with respect
+  // to rho_w gives back that update, which is what lets a descent be held to it. The sites of the attraction count in
+  // full where those of the hard-sphere deposit are scaled, so the scale comes back out here as the update takes it out
+  // of the pair spectrum.
+  RealArray omegaPhi = makeReal();
+  auto grandPotentialOf = [&](double muOverT) -> double
+  {
+    fftw_execute_dft_r2c(forward, dumbbell ? rhoSite.get() : rho.get(), rhoHat.get());
+    convolveTo(w3Hat, n3B.get());
+    convolveTo(w2Hat, n2A.get());
+    vectorWeightTo(vHatX, vx.get());
+    vectorWeightTo(vHatY, vy.get());
+    vectorWeightTo(vHatZ, vz.get());
+
+    const double hardSphere = sumOver([&](std::size_t i)
+    {
+      double n3 = std::clamp(n3B[i], 0.0, largestPacking);
+      double n2 = std::max(n2A[i], 0.0);
+      double vSquared = vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i];
+      double phi3 = 0.0;
+      double phi3Prime = 0.0;
+      phi3Of(n3, phi3, phi3Prime);
+      double n0 = s0 * n2;
+      double n1 = s1 * n2;
+      return -n0 * std::log(1.0 - n3) + (n1 * n2 - s1 * vSquared) / (1.0 - n3) +
+             thirdTermOf(n2, vSquared).value * phi3;
+    });
+
+    double attraction = 0.0;
+    if (siteAtt)
+    {
+      if (!dumbbell) fftw_execute_dft_r2c(forward, rhoSite.get(), rhoHat.get());
+      convolveTo(dumbbell ? uHatSites : uHat, omegaPhi.get());
+      attraction = sumOver([&](std::size_t i) { return rhoSite[i] * omegaPhi[i]; }) / depositScale;
+    }
+    else
+    {
+      if (dumbbell) fftw_execute_dft_r2c(forward, rho.get(), rhoHat.get());
+      convolveTo(uHat, omegaPhi.get());
+      attraction = sumOver([&](std::size_t i) { return rho[i] * omegaPhi[i]; });
+    }
+
+    const double idealAndField =
+        molecular ? sumOf(K, [&](std::size_t k)
+                    {
+                      const double held = rhoState[k];
+                      return held > 0.0 ? held * (std::log(held) + logM - 1.0 - liveLogWeight[k] - muOverT) : 0.0;
+                    })
+                  : sumOver([&](std::size_t i)
+                    {
+                      return rho[i] > 0.0 ? rho[i] * (std::log(rho[i]) - 1.0 + betaU[i] - muOverT) : 0.0;
+                    });
+    return dV * (idealAndField + hardSphere + 0.5 * beta * attraction);
+  };
+
+  // How far the profile last solved for was from the equation, against the density it is measured by.
+  double relativeResidual = 0.0;
 
   std::deque<double> targets;
   {
@@ -1081,9 +1253,22 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
   const double minLogStep = (std::log(options.xHigh) - std::log(options.xLow)) /
                             static_cast<double>(4 * std::max(options.pressurePoints, 1));
 
-  std::vector<double> updated(N);
-  std::vector<double> lastConverged(N);
-  std::vector<double> trial(N);
+  // What the descent goes down in: the logarithm of the density at each voxel, or for a molecular density of what each
+  // live state holds.
+  const std::size_t unknowns = molecular ? K : N;
+  double *const density = molecular ? rhoState.data() : rho.get();
+
+  // The last converged profile, which is all a warm start starts from. The fields are worked out from the density each
+  // time they are wanted, so there is nothing else to carry from one pressure to the next, and nothing a point that
+  // failed can leave behind for the one after it.
+  std::vector<double> updated(molecular ? 0 : N);
+  std::vector<double> lastConverged(unknowns);
+  auto keepConverged = [&]() { eachOf(unknowns, [&](std::size_t v) { lastConverged[v] = density[v]; }); };
+  auto restoreConverged = [&]()
+  {
+    eachOf(unknowns, [&](std::size_t v) { density[v] = lastConverged[v]; });
+    if (molecular) placeStates();
+  };
 
   bool haveProfile = false;
   bool hasPrev = false;
@@ -1091,30 +1276,250 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
   double nPrev = 0.0;
   std::size_t extraPoints = 0;
   const std::size_t maxExtra = static_cast<std::size_t>(std::max(options.pressurePoints, 1));
-  result.isotherm.reserve(targets.size() + maxExtra);
+  std::vector<NLDFTBranchPoint> adsorption;
+  adsorption.reserve(targets.size() + maxExtra);
 
-  auto orientationBoltzmann = [&](std::size_t i, double cap) -> double
-  {
-    if (!molecular) return std::exp(std::min(-betaU[i], cap));
-    double sum = 0.0;
-    for (std::size_t k = liveStart[i]; k < liveStart[i + 1]; ++k)
-      sum += std::exp(std::min(liveLogWeight[k], cap));
-    return sum / static_cast<double>(M);
-  };
-
+  // The Henry profile of the gas, or the liquid's with the wells taken out, which is what a sweep starts from. A deep
+  // well is held to e^8 of the gas: the descent backs a start off until it does not overlap itself, and there is no
+  // call to make it back off far.
   auto seedDensity = [&](double rhoBulk)
   {
-    for (std::size_t i = 0; i < N; ++i)
+    const double base = options.seedLiquid ? result.bulk.liquidDensity : rhoBulk;
+    const double deepest = options.seedLiquid ? 0.0 : 8.0;
+    if (molecular)
     {
-      if (options.seedLiquid)
+      eachOf(K, [&](std::size_t k)
       {
-        rho[i] = std::min(result.bulk.liquidDensity * orientationBoltzmann(i, 0.0), rhoPeakCap);
-      }
-      else
-      {
-        rho[i] = std::min(rhoBulk * orientationBoltzmann(i, 8.0), rhoPeakCap);
-      }
+        rhoState[k] = base / static_cast<double>(M) * std::exp(std::min(liveLogWeight[k], deepest));
+      });
+      placeStates();
+      return;
     }
+    eachVoxel([&](std::size_t i) { rho[i] = base * std::exp(std::min(-betaU[i], deepest)); });
+  };
+
+  // The solve: going down the grand potential itself with L-BFGS over the logarithm of the density. Omega is a true
+  // functional of the density, with the gradient rho dV (ln rho - ln rho_update), so every step can be held to it: a
+  // step that does not lower Omega is cut, and that keeps the profile on the right side of the barrier at n3 = 1, where
+  // the functional gets steeper than any fixed-point iteration can follow. The first direction, scaled by the ideal
+  // part of the Hessian, is simply a step to the update in ln rho. Log variables let a pore fill in a few steps, which
+  // damping in rho takes many to do.
+  //
+  // A molecular density goes down the same way, in what each of its states holds. An iteration in the density at a
+  // voxel has to share that density among the orientations by fields that are not yet those of the density it will
+  // make, which is no functional of anything until it has converged, and past a few molecules a cell it stopped moving
+  // well short of that. With the states as the unknowns there is nothing to share out.
+  constexpr std::size_t deepestHistory = 10;
+  constexpr double historyBytes = 4.0e9;  // ten pairs over the states of a large cell would be most of a machine
+  const std::size_t historyDepth = std::clamp(
+      static_cast<std::size_t>(historyBytes / (16.0 * static_cast<double>(std::max(unknowns, 1uz)))), 3uz,
+      deepestHistory);
+  constexpr double largestRise = 2.0;
+  // molecules / Å³, a part in a million of the liquid, and for a state its share of that
+  const double thatCounts = 1.0e-8 / static_cast<double>(M);
+  const double logThatCounts = std::log(thatCounts);
+  std::vector<std::vector<double>> stepHistory(historyDepth, std::vector<double>(unknowns));
+  std::vector<std::vector<double>> gradientHistory(historyDepth, std::vector<double>(unknowns));
+  std::vector<double> logRho(unknowns), gradient(unknowns), direction(unknowns), logTrial(unknowns),
+      gradientTrial(unknowns), logUpdate(unknowns);
+  std::array<double, deepestHistory> curvature{};
+  std::array<double, deepestHistory> projection{};
+
+  // Putting a set of logarithms in as the density, with all that is kept in step with it.
+  auto place = [&](const std::vector<double> &logValues)
+  {
+    eachOf(unknowns, [&](std::size_t v) { density[v] = std::exp(logValues[v]); });
+    if (molecular) placeStates();
+  };
+
+  auto packingIsPossible = [&]() -> bool
+  {
+    fftw_execute_dft_r2c(forward, dumbbell ? rhoSite.get() : rho.get(), rhoHat.get());
+    convolveTo(w3Hat, omegaPhi.get());
+    return *std::max_element(omegaPhi.get(), omegaPhi.get() + static_cast<std::ptrdiff_t>(N)) < largestPacking;
+  };
+
+  // The gradient of the grand potential by the logarithms, with the logarithm of the update of each alongside it, and
+  // what comes back is the residual: how far the density is from its update, against the density.
+  auto gradientAt = [&](double muOverT, const std::vector<double> &logValues, std::vector<double> &out) -> double
+  {
+    if (molecular) return stateGradientAt(muOverT, logValues, out, logUpdate);
+    const double residual = eulerLagrange(muOverT, updated);
+    eachVoxel([&](std::size_t i)
+    {
+      logUpdate[i] = std::max(std::log(std::max(updated[i], 1.0e-300)), logDensityFloor);
+      out[i] = rho[i] * dV * (logValues[i] - logUpdate[i]);
+    });
+    const double scale = std::sqrt(sumOver([&](std::size_t i) { return rho[i] * rho[i]; }) / static_cast<double>(N));
+    return residual / std::max(scale, 1.0e-300);
+  };
+
+  constexpr std::size_t steadyWindow = 100;
+  const double steadyTolerance = options.steadyTolerance > 0.0 ? options.steadyTolerance : 0.1 * options.tolerance;
+  auto descend = [&](double muOverT) -> bool
+  {
+    eachOf(unknowns, [&](std::size_t v)
+    {
+      logRho[v] = std::max(std::log(std::max(density[v], 1.0e-300)), logDensityFloor);
+    });
+    place(logRho);
+
+    // A starting guess can overlap itself, which a seed at a deep well does: back the whole profile off until it does
+    // not.
+    while (!packingIsPossible())
+    {
+      eachOf(unknowns, [&](std::size_t v) { logRho[v] -= 0.1; });
+      place(logRho);
+    }
+
+    // What holds next to nothing feels the rest and is not felt by it, so its minimum, the rest as it is, is the update
+    // itself, and that is where it is sent. It cannot be left to the gradient: that is its density times how far it is
+    // from the update, and a density that has gone to nothing has none, however far off it is. A pore that fills
+    // pushes the density between its molecules down by tens of orders of magnitude on the way, and on the way back
+    // down in pressure those voxels stayed where they were, the residual with them, for as long as the iteration was
+    // let run. The update is that of the profile in hand, since the last gradient taken is always the one kept.
+    auto toTheUpdateWhereNothingIsHeld = [&]()
+    {
+      eachOf(unknowns, [&](std::size_t v)
+      {
+        if (logRho[v] > logThatCounts) return;
+        direction[v] = logUpdate[v] - logRho[v];
+      });
+    };
+
+    std::size_t stored = 0;
+    std::size_t head = 0;
+    double hessianScale = 1.0;
+    double residual = gradientAt(muOverT, logRho, gradient);
+    double omega = grandPotentialOf(muOverT);
+    double omegaBefore = omega;
+    double loadingBefore = loadingOf();
+    for (std::size_t iteration = 0; iteration < options.maxIterations; ++iteration)
+    {
+      relativeResidual = residual;
+      if (relativeResidual < options.tolerance) return true;
+      // A molecule packed close to solid has a mode stiff enough that the residual, the exponential of what is left,
+      // is still coming down hundreds of steps after Omega and the loading have stopped showing it, and there is one
+      // such mode per molecule, more than the history holds. So this does not wait for the residual. What it ends on is
+      // short of where the residual would have ended by more than the change it watches: that is over a hundred steps,
+      // and the tail can be several hundred long, which on a cage packed to solid left the loading a part and a half in
+      // ten thousand out. It is for a profile that is still moving, slowly. One that has stopped because it cannot move
+      // is not converged, and what did that is dealt with where the direction is set.
+      if (iteration > 0 && iteration % steadyWindow == 0)
+      {
+        const double loadingNow = loadingOf();
+        const double allowed = steadyTolerance * std::max(loadingNow, 1.0);
+        if (std::fabs(omega - omegaBefore) < allowed && std::fabs(loadingNow - loadingBefore) < allowed) return true;
+        omegaBefore = omega;
+        loadingBefore = loadingNow;
+      }
+
+      eachOf(unknowns, [&](std::size_t v) { direction[v] = gradient[v]; });
+      for (std::size_t k = 0; k < stored; ++k)
+      {
+        const std::size_t j = (head + historyDepth - 1 - k) % historyDepth;
+        const std::vector<double> &step = stepHistory[j];
+        const std::vector<double> &change = gradientHistory[j];
+        projection[j] = curvature[j] * sumOf(unknowns, [&](std::size_t v) { return step[v] * direction[v]; });
+        eachOf(unknowns, [&](std::size_t v) { direction[v] -= projection[j] * change[v]; });
+      }
+      const double scale = stored > 0 ? hessianScale : 1.0;
+      eachOf(unknowns, [&](std::size_t v) { direction[v] *= scale / (std::max(density[v], 1.0e-300) * dV); });
+      for (std::size_t k = stored; k-- > 0;)
+      {
+        const std::size_t j = (head + historyDepth - 1 - k) % historyDepth;
+        const std::vector<double> &step = stepHistory[j];
+        const std::vector<double> &change = gradientHistory[j];
+        const double back = curvature[j] * sumOf(unknowns, [&](std::size_t v) { return change[v] * direction[v]; });
+        eachOf(unknowns, [&](std::size_t v) { direction[v] += (projection[j] - back) * step[v]; });
+      }
+      eachOf(unknowns, [&](std::size_t v) { direction[v] = -direction[v]; });
+      toTheUpdateWhereNothingIsHeld();
+
+      double slope = sumOf(unknowns, [&](std::size_t v) { return gradient[v] * direction[v]; });
+      if (!(slope < 0.0))
+      {
+        stored = 0;
+        eachOf(unknowns, [&](std::size_t v) { direction[v] = logUpdate[v] - logRho[v]; });
+        slope = sumOf(unknowns, [&](std::size_t v) { return gradient[v] * direction[v]; });
+      }
+
+      // The step is measured by what holds anything. One state of no account, with a direction as large as its density
+      // is small, could otherwise have every other taking steps too small to see.
+      double largestChange = 0.0;
+      for (std::size_t v = 0; v < unknowns; ++v)
+      {
+        if (logRho[v] > logThatCounts) largestChange = std::max(largestChange, std::fabs(direction[v]));
+      }
+
+      double stepLength = std::min(1.0, largestRise / std::max(largestChange, 1.0e-12));
+      bool accepted = false;
+      double omegaTrial = omega;
+      double residualTrial = residual;
+      for (int trial = 0; trial < 40; ++trial)
+      {
+        eachOf(unknowns, [&](std::size_t v)
+        {
+          // What holds next to nothing may come up as far as where it starts to count in a single step, being of no
+          // account until then, and no further than any other from there on. It must not overflow: the release build
+          // has no NaNs to catch, and a comparison of Omega against one says nothing.
+          const double rise = std::max(largestRise, logThatCounts - logRho[v]);
+          const double change = std::clamp(stepLength * direction[v], -largestRise, rise);
+          logTrial[v] = std::max(logRho[v] + change, logDensityFloor);
+        });
+        place(logTrial);
+        if (packingIsPossible())
+        {
+          omegaTrial = grandPotentialOf(muOverT);
+          if (omegaTrial <= omega + 1.0e-4 * stepLength * slope + 1.0e-11 * std::fabs(omega))
+          {
+            residualTrial = gradientAt(muOverT, logTrial, gradientTrial);
+            accepted = true;
+            break;
+          }
+        }
+        stepLength *= 0.5;
+      }
+
+      if (!accepted)
+      {
+        place(logRho);
+        if (stored == 0) return false;
+        stored = 0;
+        residual = gradientAt(muOverT, logRho, gradient);
+        continue;
+      }
+
+      // The history is of what counts. The rest is sent to the update whatever the history says, and the ideal term in
+      // ln rho curves the wrong way that far below its minimum, which is no curvature to learn from.
+      std::vector<double> &step = stepHistory[head];
+      std::vector<double> &change = gradientHistory[head];
+      eachOf(unknowns, [&](std::size_t v)
+      {
+        const bool counts = logRho[v] > logThatCounts;
+        step[v] = counts ? logTrial[v] - logRho[v] : 0.0;
+        change[v] = counts ? gradientTrial[v] - gradient[v] : 0.0;
+      });
+      const double stepAlongChange = sumOf(unknowns, [&](std::size_t v) { return step[v] * change[v]; });
+      if (stepAlongChange > 1.0e-14)
+      {
+        // The ideal curvature alone is too soft by orders of magnitude at high density, so the first step of every
+        // iteration would otherwise be cut back many times over, and every cut costs a grand potential.
+        const double changeSquared = sumOf(unknowns, [&](std::size_t v)
+        {
+          return change[v] * change[v] / (std::max(density[v], 1.0e-300) * dV);
+        });
+        hessianScale = stepAlongChange / std::max(changeSquared, 1.0e-300);
+        curvature[head] = 1.0 / stepAlongChange;
+        head = (head + 1) % historyDepth;
+        stored = std::min(stored + 1, historyDepth);
+      }
+      logRho.swap(logTrial);
+      gradient.swap(gradientTrial);
+      omega = omegaTrial;
+      residual = residualTrial;
+    }
+    return false;
   };
 
   while (!targets.empty())
@@ -1126,79 +1531,15 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
     double muOverT = model.muOf(rhoBulk) / T;
 
     if (!haveProfile)
-      seedDensity(rhoBulk);
-    else
-      for (std::size_t i = 0; i < N; ++i) rho[i] = lastConverged[i];
-
-    double mixing = options.mixing;
-    double acceptedResidual = std::numeric_limits<double>::max();
-    bool converged = false;
-    for (std::size_t iteration = 0; iteration < options.maxIterations; ++iteration)
     {
-      double residual = eulerLagrange(muOverT, updated);
-      double densityScale = std::max(result.bulk.liquidDensity, meanDensity());
-      double nUpdated = 0.0;
-      for (std::size_t i = 0; i < N; ++i) nUpdated += updated[i];
-      nUpdated *= dV;
-      const double nNow = loadingOf();
-      const double nScale = std::max(std::max(nNow, nUpdated), 1.0e-12);
-      if (residual < options.tolerance * densityScale || std::fabs(nUpdated - nNow) < 1.0e-3 * nScale)
-      {
-        converged = true;
-        break;
-      }
-
-      double currentMean = meanDensity();
-      if (residual < acceptedResidual)
-      {
-        acceptedResidual = residual;
-        mixing = std::min(mixing * 1.05, 0.5);
-      }
-      else
-      {
-        mixing = std::max(mixing * 0.5, 0.02);
-      }
-
-      double updatedMean = 0.0;
-      for (std::size_t i = 0; i < N; ++i) updatedMean += updated[i];
-      updatedMean /= static_cast<double>(N);
-      if (updatedMean > 1.5 * currentMean)
-        mixing = std::min(std::max(mixing, 0.2), 0.5);
-
-      double trialMean = 0.0;
-      double accessibleMean = 0.0;
-      std::size_t accessibleCount = 0;
-      for (std::size_t i = 0; i < N; ++i)
-      {
-        trial[i] = std::min((1.0 - mixing) * rho[i] + mixing * updated[i], rhoPeakCap);
-        if (trial[i] < 0.0) trial[i] = 0.0;
-        trialMean += trial[i];
-        if (accessible[i])
-        {
-          accessibleMean += trial[i];
-          ++accessibleCount;
-        }
-      }
-      trialMean /= static_cast<double>(N);
-      if (accessibleCount > 0)
-      {
-        accessibleMean /= static_cast<double>(accessibleCount);
-        if (accessibleMean > rhoMeanCap)
-        {
-          double scale = rhoMeanCap / accessibleMean;
-          for (std::size_t i = 0; i < N; ++i)
-          {
-            if (accessible[i]) trial[i] *= scale;
-          }
-        }
-      }
-      else if (trialMean > rhoMeanCap && trialMean > 0.0)
-      {
-        double scale = rhoMeanCap / trialMean;
-        for (std::size_t i = 0; i < N; ++i) trial[i] *= scale;
-      }
-      for (std::size_t i = 0; i < N; ++i) rho[i] = trial[i];
+      seedDensity(rhoBulk);
     }
+    else
+    {
+      restoreConverged();
+    }
+
+    const bool converged = descend(muOverT);
 
     double loading = loadingOf();
     if (!converged)
@@ -1206,7 +1547,7 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
       ++result.unconverged;
       if (haveProfile)
       {
-        for (std::size_t i = 0; i < N; ++i) rho[i] = lastConverged[i];
+        restoreConverged();
         loading = loadingOf();
       }
     }
@@ -1220,105 +1561,109 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
         targets.push_front(x);
         targets.push_front(std::exp(0.5 * (std::log(x) + std::log(xPrev))));
         ++extraPoints;
-        if (haveProfile)
-          for (std::size_t i = 0; i < N; ++i) rho[i] = lastConverged[i];
+        if (haveProfile) restoreConverged();
         continue;
       }
     }
 
-    // Adsorption sweep: a capillary fill that Picard then desorbs is kept. FER reached n ≈ 10 (the
-    // GCMC plateau) and the next x fell back to the four-molecule single-file branch.
+    // Adsorption sweep: a fill that the next pressure then lets go of is kept, and that pressure is given no state of
+    // its own. FER reached n ≈ 10 (the GCMC plateau) and the next x fell back to the four-molecule single-file branch.
     bool heldAdsorption = false;
     if (hasPrev && haveProfile && nPrev - loading > std::max(0.2 * nPrev, 0.05))
     {
-      for (std::size_t i = 0; i < N; ++i) rho[i] = lastConverged[i];
+      restoreConverged();
       loading = nPrev;
       heldAdsorption = true;
     }
 
-    if (!heldAdsorption && converged && meanDensity() <= rhoMeanCap * 1.01)
+    NLDFTBranchPoint point{.relativePressure = x, .moleculesPerCell = loading, .chemicalPotential = muOverT};
+    if (!heldAdsorption && converged)
     {
-      for (std::size_t i = 0; i < N; ++i) lastConverged[i] = rho[i];
+      point.grandPotential = grandPotentialOf(muOverT);
+      point.residual = relativeResidual;
+      point.stationary = true;
+      keepConverged();
       haveProfile = true;
     }
 
-    result.isotherm.push_back(IsothermPoint{x, loading});
+    adsorption.push_back(point);
     xPrev = x;
     nPrev = loading;
     hasPrev = true;
   }
 
-  // Desorption / equilibrium branch. GCMC samples the equilibrium state; the adsorption sweep of
-  // mean-field DFT delays 10-ring fill until the pore spinodal (FER: n ≈ 4 until x ≈ 0.27, then 11).
-  // Walking down from the filled profile keeps that loading into the BET window, which is the
-  // comparison GCMC BET 250–350 m²/g is making.
-  if (haveProfile && result.isotherm.size() > 4 &&
-      result.isotherm.back().moleculesPerCell >
-          1.5 * result.isotherm.front().moleculesPerCell + 1.0)
+  result.adsorptionIsotherm = adsorption;
+  result.desorptionIsotherm = adsorption;
+
+  // Desorption branch, walked down from the filled profile. The sweep up of mean-field DFT delays a fill until the
+  // pore's spinodal (FER: n = 4 until x = 0.27, then 11), and the sweep down delays the emptying just as far the other
+  // way, so neither is the state GCMC samples. Between them they hold the two states the comparison below is among.
+  if (haveProfile && adsorption.size() > 4 &&
+      adsorption.back().moleculesPerCell > 1.5 * adsorption.front().moleculesPerCell + 1.0)
   {
     std::vector<double> xDown;
-    xDown.reserve(result.isotherm.size());
-    for (auto it = result.isotherm.rbegin(); it != result.isotherm.rend(); ++it)
-      xDown.push_back(it->relativePressure);
-    std::vector<IsothermPoint> desorption;
+    xDown.reserve(adsorption.size());
+    for (auto it = adsorption.rbegin(); it != adsorption.rend(); ++it) xDown.push_back(it->relativePressure);
+    std::vector<NLDFTBranchPoint> desorption;
     desorption.reserve(xDown.size());
-    desorption.push_back(result.isotherm.back());
+    desorption.push_back(adsorption.back());
     for (std::size_t k = 1; k < xDown.size(); ++k)
     {
       const double x = xDown[k];
       const double pressure = x * result.bulk.saturationPressure / pressureKA3ToPascal;
       const double rhoBulk = gasDensityAtPressure(model, pressure, rhoGasCap);
       const double muOverT = model.muOf(rhoBulk) / T;
-      for (std::size_t i = 0; i < N; ++i) rho[i] = lastConverged[i];
+      restoreConverged();
 
-      double mixing = options.mixing;
-      double acceptedResidual = std::numeric_limits<double>::max();
-      bool converged = false;
-      for (std::size_t iteration = 0; iteration < options.maxIterations; ++iteration)
-      {
-        double residual = eulerLagrange(muOverT, updated);
-        double densityScale = std::max(result.bulk.liquidDensity, meanDensity());
-        double nUpdated = 0.0;
-        for (std::size_t i = 0; i < N; ++i) nUpdated += updated[i];
-        nUpdated *= dV;
-        const double nNow = loadingOf();
-        const double nScale = std::max(std::max(nNow, nUpdated), 1.0e-12);
-        if (residual < options.tolerance * densityScale || std::fabs(nUpdated - nNow) < 1.0e-3 * nScale)
-        {
-          converged = true;
-          break;
-        }
-        if (residual < acceptedResidual)
-        {
-          acceptedResidual = residual;
-          mixing = std::min(mixing * 1.05, 0.5);
-        }
-        else
-        {
-          mixing = std::max(mixing * 0.5, 0.02);
-        }
-        for (std::size_t i = 0; i < N; ++i)
-        {
-          trial[i] = std::min((1.0 - mixing) * rho[i] + mixing * updated[i], rhoPeakCap);
-          if (trial[i] < 0.0) trial[i] = 0.0;
-        }
-        for (std::size_t i = 0; i < N; ++i) rho[i] = trial[i];
-      }
+      const bool converged = descend(muOverT);
       double loading = loadingOf();
+      NLDFTBranchPoint point{.relativePressure = x, .chemicalPotential = muOverT};
       if (!converged)
       {
         ++result.unconverged;
-        for (std::size_t i = 0; i < N; ++i) rho[i] = lastConverged[i];
+        restoreConverged();
         loading = loadingOf();
       }
-      else if (meanDensity() <= rhoMeanCap * 1.01)
+      else
       {
-        for (std::size_t i = 0; i < N; ++i) lastConverged[i] = rho[i];
+        point.grandPotential = grandPotentialOf(muOverT);
+        point.residual = relativeResidual;
+        point.stationary = true;
+        keepConverged();
       }
-      desorption.push_back(IsothermPoint{x, loading});
+      point.moleculesPerCell = loading;
+      desorption.push_back(point);
     }
     std::reverse(desorption.begin(), desorption.end());
-    result.isotherm = std::move(desorption);
+    result.desorptionIsotherm = std::move(desorption);
+  }
+
+  // The equilibrium isotherm: at each pressure, the state of lower grand potential. A point that is not a state at its
+  // own pressure has no say, and where a branch has none the other answers.
+  //
+  // Only two different states are there to choose between. Away from a loop the sweeps are one curve, apart by no more
+  // than the tolerance they converged to, and then the rounding in Omega has nothing to say and the sweep up is kept,
+  // so that the isotherm does not hop between two readings of the same state.
+  constexpr double sameStateTolerance = 1.0e-3;
+  result.isotherm.reserve(adsorption.size());
+  for (std::size_t p = 0; p < adsorption.size(); ++p)
+  {
+    const NLDFTBranchPoint &up = result.adsorptionIsotherm[p];
+    const NLDFTBranchPoint &down = result.desorptionIsotherm[p];
+    const bool apart = std::fabs(down.moleculesPerCell - up.moleculesPerCell) >
+                       sameStateTolerance * std::max(up.moleculesPerCell, 1.0e-12);
+
+    bool takeDown = false;
+    if (up.stationary && down.stationary)
+      takeDown = apart && down.grandPotential < up.grandPotential;
+    else
+      takeDown = down.stationary && !up.stationary;
+
+    if (!up.stationary && !down.stationary) ++result.pointsWithoutASolution;
+
+    const NLDFTBranchPoint &chosen = takeDown ? down : up;
+    result.isotherm.push_back(IsothermPoint{chosen.relativePressure, chosen.moleculesPerCell});
+    if (takeDown && apart && result.equilibriumTransition == 0.0) result.equilibriumTransition = chosen.relativePressure;
   }
 
   fftw_destroy_plan(forward);

@@ -130,6 +130,65 @@ LinearFit fitLine(std::span<const IsothermPoint> points, double xLow, double xHi
   return fit;
 }
 
+// The loading at a relative pressure between those tabulated, along the straight line in ln x through the two either
+// side of it, which is how an isotherm over decades of pressure is drawn. The pressures have to rise.
+double loadingOnCurve(std::span<const IsothermPoint> points, double x)
+{
+  if (x <= points.front().relativePressure) return points.front().moleculesPerCell;
+  if (x >= points.back().relativePressure) return points.back().moleculesPerCell;
+  const auto above = std::upper_bound(points.begin(), points.end(), x, [](double value, const IsothermPoint &point)
+                                      { return value < point.relativePressure; });
+  const IsothermPoint &high = *above;
+  const IsothermPoint &low = *(above - 1);
+  const double fraction = std::log(x / low.relativePressure) / std::log(high.relativePressure / low.relativePressure);
+  return low.moleculesPerCell + fraction * (high.moleculesPerCell - low.moleculesPerCell);
+}
+
+// The BET line of a window, fitted to the curve through the points rather than to the points inside it: at the same
+// number of places, evenly apart in ln x as the points of an isotherm are, wherever the window lies among them.
+constexpr std::size_t placesOnCurve = 32;
+LinearFit fitLineOnCurve(std::span<const IsothermPoint> points, double xLow, double xHigh)
+{
+  xLow = std::max(xLow, points.front().relativePressure);
+  xHigh = std::min(xHigh, points.back().relativePressure);
+  if (!(xHigh > xLow)) return {};
+  std::vector<IsothermPoint> places(placesOnCurve);
+  const double logStep = std::log(xHigh / xLow) / static_cast<double>(placesOnCurve - 1);
+  for (std::size_t place = 0; place < placesOnCurve; ++place)
+  {
+    const double x = place == 0                   ? xLow
+                     : place + 1 == placesOnCurve ? xHigh
+                                                  : xLow * std::exp(logStep * static_cast<double>(place));
+    places[place] = IsothermPoint{x, loadingOnCurve(points, x)};
+  }
+  return fitLine(places, xLow, xHigh);
+}
+
+// Where n(1-x) is at its maximum, between the points: the top of the parabola in ln x through the highest of them
+// and the two beside it. A maximum is flat, on silicalite to a part in a thousand over three points, so which point
+// is the highest turns on the last digits of the loading, and the top of the curve through them does not.
+double maximumOnCurve(std::span<const IsothermPoint> points)
+{
+  auto rise = [&](std::size_t index)
+  { return points[index].moleculesPerCell * (1.0 - points[index].relativePressure); };
+  std::size_t highest = 0;
+  for (std::size_t index = 1; index < points.size(); ++index)
+  {
+    if (rise(index) > rise(highest)) highest = index;
+  }
+  if (highest == 0 || highest + 1 == points.size()) return points[highest].relativePressure;
+
+  const double before = std::log(points[highest - 1].relativePressure);
+  const double at = std::log(points[highest].relativePressure);
+  const double after = std::log(points[highest + 1].relativePressure);
+  const double fallBefore = rise(highest) - rise(highest - 1);
+  const double fallAfter = rise(highest) - rise(highest + 1);
+  const double denominator = (at - before) * fallAfter + (after - at) * fallBefore;
+  if (!(denominator > 0.0)) return points[highest].relativePressure;
+  const double numerator = (at - before) * (at - before) * fallAfter - (after - at) * (after - at) * fallBefore;
+  return std::exp(std::clamp(at - 0.5 * numerator / denominator, before, after));
+}
+
 constexpr double angstromSquaredToSquareMetrePerMol = 6.0221419947e3;
 
 // The Rouquerol window and the BET line, fitted to whatever isotherm sits in `result.isotherm`. Fills the
@@ -241,9 +300,21 @@ void applyTPlot(BETSurfaceArea &result, double mass, double liquidVolume)
   result.tPlotNumberOfPoints = plot.size();
 }
 
-void applyWindowFit(BETSurfaceArea &result, double mass, double cellVolume, double crossSection, double liquidVolume)
+void applyWindowFit(BETSurfaceArea &result, double mass, double cellVolume, double crossSection, double liquidVolume,
+                    WindowReading reading = WindowReading::Points)
 {
   if (result.isotherm.empty()) return;
+
+  // A curve through the points needs them in order, at pressures a logarithm can be taken of. An isotherm that is not
+  // is read off its points.
+  bool onCurve = reading == WindowReading::Curve && result.isotherm.size() >= 3 &&
+                 result.isotherm.front().relativePressure > 0.0;
+  for (std::size_t index = 1; onCurve && index < result.isotherm.size(); ++index)
+  {
+    onCurve = result.isotherm[index].relativePressure > result.isotherm[index - 1].relativePressure;
+  }
+  auto lineOf = [&](double low, double high)
+  { return onCurve ? fitLineOnCurve(result.isotherm, low, high) : fitLine(result.isotherm, low, high); };
 
   // The Gurvich reading: whatever the isotherm holds where it has stopped rising, taken as liquid.
   // It is the number reported next to every BET area, and unlike the area it rests on no fit --- the pore
@@ -269,6 +340,11 @@ void applyWindowFit(BETSurfaceArea &result, double mass, double cellVolume, doub
   // straight line through the origin, and the fit turns on the sign of an intercept that is numerically
   // zero: the same isotherm reads either the Gurvich capacity or nothing at all.
   double xCap = 0.0;
+  if (onCurve)
+  {
+    xCap = maximumOnCurve(result.isotherm);
+  }
+  else
   {
     // n(1-x) is nonnegative, so -1 is below every value the scan can see (an infinity sentinel is not safe
     // under this build's fast-math flags).
@@ -310,7 +386,7 @@ void applyWindowFit(BETSurfaceArea &result, double mass, double cellVolume, doub
     for (double lowFraction : {1.0 / 6.0, 0.1, 1.0 / 30.0, 0.01, 1.0e-3})
     {
       double low = high * lowFraction;
-      LinearFit fit = fitLine(result.isotherm, low, high);
+      LinearFit fit = lineOf(low, high);
       if (!fit.ok || !(fit.intercept > 0.0)) continue;
       if (!(1.0 / (fit.slope + fit.intercept) > 0.0)) continue;
       if (!(1.0 + fit.slope / fit.intercept > 0.0)) continue;
@@ -358,7 +434,7 @@ void applyWindowFit(BETSurfaceArea &result, double mass, double cellVolume, doub
   {
     // No admissible window at all: fit the whole rising region, which is Walton and Snurr's reading of the
     // criteria when the step and the monolayer cannot be told apart. A negative C is not a BET number.
-    LinearFit fit = fitLine(result.isotherm, xLow, xCap);
+    LinearFit fit = lineOf(xLow, xCap);
     chosen = fit;
     xHigh = xCap;
     if (fit.ok && fit.intercept > 0.0 && std::fabs(fit.slope + fit.intercept) > 0.0)
@@ -876,11 +952,11 @@ LatticeIsotherm latticeGasIsotherm(std::span<const LatticeSite> sites, double he
 
 
 BETSurfaceArea BETSurfaceArea::fromIsotherm(std::vector<IsothermPoint> isotherm, double mass, double cellVolume,
-                                            double crossSection, double liquidVolume)
+                                            double crossSection, double liquidVolume, WindowReading reading)
 {
   BETSurfaceArea result;
   result.isotherm = std::move(isotherm);
-  applyWindowFit(result, mass, cellVolume, crossSection, liquidVolume);
+  applyWindowFit(result, mass, cellVolume, crossSection, liquidVolume, reading);
   return result;
 }
 
