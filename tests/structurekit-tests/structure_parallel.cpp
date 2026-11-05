@@ -3,17 +3,19 @@
 import std;
 
 import structure_parallel;
+import threadpool;
 
 // The two loops the structural analyses hand their independent work to: `forEachIndex`, which deals the indices
 // out interleaved, and `forEachBlock`, which gives each worker a contiguous stretch.
 //
-// The threaded route cannot be run from here: the thread pool is a singleton that cannot be put back the way it
-// was found, so starting one would leave every test after this one running on it. What can be run from here,
+// The threaded route cannot be run in this process: the thread pool is a singleton that cannot be put back the
+// way it was found, so starting one would leave every test after this one running on it. What can be run here,
 // and is, is the arithmetic those routes are built out of. `laneCount`, `forEachIndexOfLane` and `blockOfLane`
 // are the whole of the dealing-out and are functions of their arguments alone, so the promises that matter ---
 // every index taken, none of them twice, and the same lane taking the same ones every time --- are checked
-// below at every shape of loop the analyses can present, with no threads involved. What is left untested is the
-// dispatch itself, which is a handful of lines around a pool that the analyses exercise end to end.
+// below at every shape of loop the analyses can present, with no threads involved. The dispatch itself, a
+// handful of lines around the pool, is run at the end of this file in a process of its own, which can start a
+// pool and be left to die with it.
 //
 // The serial route through either loop is the one every run takes unless threads were asked for, and the
 // promise it makes is the stronger one: every index is visited, exactly once, in order, by the calling thread.
@@ -276,4 +278,96 @@ TEST(structure_parallel, an_exception_from_one_index_comes_back_out)
                               if (index == 3) throw std::runtime_error("index three");
                             }),
                std::runtime_error);
+}
+
+namespace
+{
+
+// A loop inside a loop, on a pool of four, with the number of workers read before the outer one began: the count
+// a caller holds in a variable, or was handed. Every lane of the outer loop waits until all of them are under
+// way, so every thread of the pool is busy when the inner loops start, and each inner loop is asked for as many
+// workers as the outer one has. What comes back is nothing if the inner loops ran on the calling thread and
+// visited everything, and otherwise what went wrong. It does not come back at all if an inner loop queued its
+// lanes behind threads that are waiting for it, so a watchdog ends the process instead.
+template <typename Loop>
+const char* nestedLoopFault(Loop&& innerLoop)
+{
+  constexpr std::size_t threads = 4;
+  constexpr std::size_t inner = 8;
+  const std::size_t workers = workersAvailable();
+  if (workers != threads) return "the pool did not start";
+
+  std::latch underWay(static_cast<std::ptrdiff_t>(threads));
+  std::atomic<std::size_t> visited{0};
+  std::atomic<bool> onAnotherLane{false};
+  std::atomic<bool> threadsOffered{false};
+  forEachIndex(threads, workers,
+               [&](std::size_t, std::size_t)
+               {
+                 underWay.count_down();
+                 underWay.wait();
+                 if (workersAvailable() != 1) threadsOffered = true;
+                 innerLoop(inner, workers, visited, onAnotherLane);
+               });
+
+  if (threadsOffered) return "a loop inside a loop was offered threads";
+  if (onAnotherLane) return "a loop inside a loop ran on more than the calling thread";
+  if (visited != threads * inner) return "a loop inside a loop did not visit every index once";
+  return nullptr;
+}
+
+[[noreturn]] void runNestedLoopsAndExit()
+{
+  ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance().init(
+      4, ThreadPool::ThreadingType::ThreadPool);
+  std::thread([]
+              {
+                std::this_thread::sleep_for(std::chrono::seconds(20));
+                std::fputs("a loop inside a loop never finished\n", stderr);
+                std::_Exit(3);
+              }).detach();
+
+  const char* fault = nestedLoopFault(
+      [](std::size_t count, std::size_t workers, std::atomic<std::size_t>& visited, std::atomic<bool>& onAnotherLane)
+      {
+        forEachIndex(count, workers,
+                     [&](std::size_t worker, std::size_t)
+                     {
+                       if (worker != 0) onAnotherLane = true;
+                       ++visited;
+                     });
+      });
+  if (fault == nullptr)
+  {
+    fault = nestedLoopFault(
+        [](std::size_t count, std::size_t workers, std::atomic<std::size_t>& visited, std::atomic<bool>& onAnotherLane)
+        {
+          forEachBlock(count, workers,
+                       [&](std::size_t worker, std::size_t begin, std::size_t end)
+                       {
+                         if (worker != 0) onAnotherLane = true;
+                         visited += end - begin;
+                       });
+        });
+  }
+  if (fault != nullptr)
+  {
+    std::fputs(fault, stderr);
+    std::fputs("\n", stderr);
+    std::_Exit(2);
+  }
+  std::_Exit(0);
+}
+
+}  // namespace
+
+// The pool has a fixed number of threads and a thread waiting on a task does not run one. So a loop reached from
+// inside another has nowhere to put its lanes: every thread is in a lane of the outer loop, each of those waits
+// for the lanes of its own inner loop, and the lanes sit in the queue behind them. `workersAvailable` says one
+// from inside a loop for this reason, but a count read before the outer loop began, or handed down, is not one,
+// and the loops have to hold to it themselves whatever they are asked for.
+TEST(structure_parallel_death, a_loop_inside_a_loop_runs_on_the_calling_thread_whatever_it_is_asked_for)
+{
+  GTEST_FLAG_SET(death_test_style, "threadsafe");
+  EXPECT_EXIT(runNestedLoopsAndExit(), ::testing::ExitedWithCode(0), "");
 }

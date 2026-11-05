@@ -63,6 +63,10 @@ export std::pair<std::size_t, std::size_t> blockOfLane(std::size_t count, std::s
 // `worker` is below `workers` and no two calls with the same worker run at the same time, so a caller may
 // give each worker scratch of its own and an accumulator of its own and share nothing else.
 //
+// `workers` is the most that will be used and not a promise of that many: it is held to what there is to run
+// them on, and to one from inside a loop that is already running here, however many were asked for. A caller
+// need not have asked `workersAvailable` in the right place to be safe from queueing lanes behind itself.
+//
 // Indices are dealt out one at a time and interleaved. Use this where one index can cost an order of magnitude
 // more than another and the expensive ones come in runs, which is most of the geometry: a lane that draws a
 // hard stretch is left with only its share of it.

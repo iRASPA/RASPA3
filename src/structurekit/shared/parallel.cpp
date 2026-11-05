@@ -43,9 +43,18 @@ class FirstError
 };
 
 // How many lanes are actually run, given what the caller asked for: one where there is no pool to run them on,
-// which is also the route a serial run takes.
+// which is also the route a serial run takes, and one inside a loop that is already running here, whatever was
+// asked for.
+//
+// That last is not left to the caller. `workersAvailable` says one from inside a loop, but a count read before
+// the outer loop began, or handed down from somewhere that did not know, says more. The pool has a fixed number
+// of threads and a thread waiting on a task does not run one: with every thread in a lane of the outer loop,
+// each waiting for the lanes of its own inner loop, those lanes sit in the queue behind the threads that are
+// waiting for them, and nothing moves again.
 std::size_t runnableLanes(std::size_t workers)
 {
+  if (insideParallelLoop) return 1;
+
   auto& pool = threadPool();
   const std::size_t runnable =
       pool.getThreadingType() == ThreadPool::ThreadingType::ThreadPool ? pool.getThreadCount() + 1 : 1uz;
