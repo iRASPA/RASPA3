@@ -322,13 +322,10 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
   // The image of one sample that lies nearest another, and which image that is.
   auto nearestImage = [&](const double3 &from, const double3 &to)
   {
-    double3 dr = to - from;
-    double3 s = unitCell.inverseCell * dr;
-    int3 image(static_cast<std::int32_t>(std::rint(s.x)), static_cast<std::int32_t>(std::rint(s.y)),
-               static_cast<std::int32_t>(std::rint(s.z)));
-    double3 displacement =
-        dr - cell * double3(static_cast<double>(image.x), static_cast<double>(image.y),
-                            static_cast<double>(image.z));
+    // Nearest in Ångström. The copy nearest in fractions of the cell is another one, in a skewed cell, as
+    // often as the two ends are most of a cell apart.
+    int3 image(0, 0, 0);
+    double3 displacement = unitCell.shortestImage(to - from, &image);
     return std::pair<int3, double3>{int3(-image.x, -image.y, -image.z), displacement};
   };
 

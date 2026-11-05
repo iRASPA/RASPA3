@@ -26,8 +26,10 @@ import double3x3;
 // rebuilds the cell from them, in the canonical orientation with a along x and b in the xy-plane.
 export struct UnitCell
 {
-  // Whether the cell is a box. It only decides which form of the minimum image convention is used, the
-  // cheap one being available when the axes are orthogonal.
+  // Whether the cell is a box lying along the axes: three right angles, and the matrix the three lengths down
+  // its diagonal. It only decides which form of the minimum image convention is used, the cheap one reading
+  // nothing but that diagonal. A box that is turned, or has its axes in another order, or has one pointing
+  // backwards, has the right angles and not the diagonal, and is wrapped the general way.
   enum class Type : int
   {
     Rectangular = 0,
@@ -45,12 +47,13 @@ export struct UnitCell
   explicit UnitCell(double a, double b, double c, double alpha, double beta, double gamma);
   explicit UnitCell(double a, double b, double c, double alpha, double beta, double gamma, Type type);
 
-  // From a cell matrix, with the type read off the angles: a cell whose three angles are right to within
-  // 1e-5 radians is treated as rectangular.
+  // From a cell matrix, with the type read off it: a cell whose three angles are right to within 1e-5 radians
+  // and whose vectors lie along x, y and z to the same, pointing forwards, is treated as rectangular.
   explicit UnitCell(double3x3 cell);
 
   // From a cell matrix whose type is already known, for a caller that has been told rather than having to
-  // guess.
+  // guess. Told rectangular of a cell that is not a box along the axes, it is taken as triclinic, the quick
+  // form being wrong for it.
   explicit UnitCell(double3x3 cell, Type type);
 
   bool operator==(UnitCell const&) const = default;
@@ -68,8 +71,22 @@ export struct UnitCell
 
   Type type{Type::Triclinic};
 
+  // The same lattice by three vectors that, with minus their sum for a fourth, meet one another at no acute
+  // angle: an obtuse superbase, which every lattice in three dimensions has (Selling). It is what the shortest
+  // image is found in. In fractions of the cell as given, the image nearest in fractions is the one inside the
+  // cell-shaped box around the origin, and that box is not the set of points nearer the origin than any other
+  // lattice point unless the cell is a rectangular one: with two axes at sixty degrees the corner of it is half
+  // as far again from the origin as from the lattice point next door. In this base the lattice points that
+  // bound that set are known outright, the three vectors, their sums in pairs and the sum of all three, and
+  // their opposites (Conway and Sloane, Proc. R. Soc. A 436, 55 (1992)), so a vector that none of those seven
+  // shortens is the shortest there is, whatever cell of the lattice was handed in.
+  double3x3 obtuseCell{};
+  double3x3 obtuseInverse{};
+  double3x3 obtuseSteps{};                       // whole numbers: obtuseCell = cell * obtuseSteps
+  std::array<double, 7> obtuseHalfSquares{};     // half the squared length of each of the seven
+
   // The shortest of the images of `dr`, which is the separation to use for a pair when the structure repeats
-  // for ever. Hot enough to be worth writing out for both cell shapes.
+  // for ever, and it is the shortest in Ångström, in a cell of any shape.
   ALWAYS_INLINE inline double3 applyPeriodicBoundaryConditions(const double3& dr) const
   {
     switch (type)
@@ -90,17 +107,19 @@ export struct UnitCell
       }
       default:
       {
-        double3 s = inverseCell * dr;
-        s.x -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.x + ((s.x >= 0.0) ? 0.5 : -0.5)));
-        s.y -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.y + ((s.y >= 0.0) ? 0.5 : -0.5)));
-        s.z -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.z + ((s.z >= 0.0) ? 0.5 : -0.5)));
-
         // compute value in variable first to avoid microsoft compiler bug
-        double3 r = cell * s;
+        double3 r = shortestImage(dr, nullptr);
         return r;
       }
     }
   }
+
+  // The same, for a cell of either type, with which image it is: the whole cell vectors taken off `dr` to
+  // leave it, so that `dr - cell * translation` is what comes back.
+  double3 shortestImage(const double3& dr, int3* translation) const;
+
+  // Those whole cell vectors alone, for a caller that has to know where the other end went.
+  int3 translationToShortestImage(const double3& dr) const;
 
   // The distance between the two faces of the cell perpendicular to each axis. A fractional displacement of
   // t along an axis is at least |t| times this in Cartesian terms, which is how far a search over images has
@@ -120,4 +139,8 @@ export struct UnitCell
 
   // The same cell repeated `scale` times along each axis.
   UnitCell scaled(int3 scale) const;
+
+ private:
+  // What every constructor ends with: the type held to what the matrix can bear, and the superbase.
+  void settle();
 };

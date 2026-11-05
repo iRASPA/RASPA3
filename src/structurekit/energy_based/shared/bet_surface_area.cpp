@@ -747,11 +747,9 @@ GeometricSites fieldAdsorptionSites(const WellField &field, double packingDistan
     {
       for (std::uint32_t other : bins[bin])
       {
-        double3 ds = point - placed[other];
-        ds.x -= std::round(ds.x);
-        ds.y -= std::round(ds.y);
-        ds.z -= std::round(ds.z);
-        if ((cell * ds).length_squared() < packingSquared)
+        // by the nearest copy of the other in Ångström, which is the one that can be too close
+        const double3 dr = field.unitCell.applyPeriodicBoundaryConditions(cell * (point - placed[other]));
+        if (dr.length_squared() < packingSquared)
         {
           clash = true;
           break;

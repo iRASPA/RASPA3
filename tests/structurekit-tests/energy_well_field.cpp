@@ -10,6 +10,7 @@ import pair_interactions;
 import blocking_spheres;
 import energy_shared_linear_probe;
 import energy_shared_well_field;
+import energy_shared_blocking_mask;
 import energy_well_field;
 import energy_opencl_well_field;
 import opencl;
@@ -147,4 +148,100 @@ TEST(energy_well_field, the_processor_and_the_device_agree_about_an_atom_given_o
     }
     EXPECT_EQ(different, 0uz) << "shift " << shift.x << " " << shift.y << " " << shift.z;
   }
+}
+
+namespace
+{
+
+// A cell with two of its axes at sixty degrees, an atom well away from everything, and one blocking sphere at the
+// origin wide enough to reach past the middle of the cell's short diagonal. The point at fractions (0.45, 0.45)
+// is 7.8 from the copy of the sphere nearest it in fractions and 5.1 from the one a cell back along a, which is
+// inside the sphere.
+const UnitCell skewedCell(10.0, 10.0, 10.0, 0.5 * std::numbers::pi, 0.5 * std::numbers::pi, std::numbers::pi / 3.0);
+const uint3 skewedGrid{20, 20, 4};
+const BlockingSphere wideSphere{double3(0.0, 0.0, 0.0), 5.5};
+
+Crystal oneAtomInASkewedCell()
+{
+  Crystal framework;
+  framework.name = "skewed";
+  framework.unitCell = skewedCell;
+  framework.mass = 16.0;
+  // off the grid, so that no voxel is at the cutoff from it to the last digit and counted by one and not the other
+  const double3 fractional(0.52, 0.47, 0.55);
+  framework.atoms.push_back(CrystalAtom{skewedCell.cell * fractional, 0.0, 1});
+  framework.fractionalPositions.push_back(fractional);
+  return framework;
+}
+
+// The distance to the sphere's surface by every copy of it for two cells around, one at a time.
+double distanceBySearch(const double3 &fractional)
+{
+  double nearest = 1.0e10;
+  for (int i = -2; i <= 2; ++i)
+    for (int j = -2; j <= 2; ++j)
+      for (int k = -2; k <= 2; ++k)
+      {
+        const double3 dr = skewedCell.cell * (fractional - wideSphere.centerFractional + double3(i, j, k));
+        nearest = std::min(nearest, dr.length() - wideSphere.radius);
+      }
+  return nearest;
+}
+
+}  // namespace
+
+// How far a point is from a blocking sphere is by the nearest copy of the sphere, and in a skewed cell that is not
+// always the copy nearest in fractions of the cell. Taking that one left points inside a wide sphere outside it.
+TEST(energy_well_field, a_point_is_inside_a_blocking_sphere_by_whichever_copy_of_it_is_nearest)
+{
+  const std::vector<BlockingSphere> spheres{wideSphere};
+  EXPECT_LT(blockingSphereDistance(double3(0.45, 0.45, 0.0), skewedCell, spheres), -0.4);
+
+  std::size_t inside = 0;
+  for (std::size_t iy = 0; iy < skewedGrid.y; ++iy)
+  {
+    for (std::size_t ix = 0; ix < skewedGrid.x; ++ix)
+    {
+      const double3 fractional(static_cast<double>(ix) / static_cast<double>(skewedGrid.x),
+                               static_cast<double>(iy) / static_cast<double>(skewedGrid.y), 0.25);
+      const double distance = blockingSphereDistance(fractional, skewedCell, spheres);
+      EXPECT_NEAR(distance, distanceBySearch(fractional), 1.0e-9)
+          << "at fractions " << fractional.x << ", " << fractional.y;
+      if (distance < 0.0) ++inside;
+    }
+  }
+  EXPECT_GT(inside, 100uz);
+}
+
+// And the device finds the same copy: the field it makes of a skewed cell with a wide sphere in it is the
+// processor's, blocked at the same voxels by the same amount.
+TEST(energy_well_field, the_processor_and_the_device_block_the_same_voxels_of_a_skewed_cell)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+
+  PairInteractions interactions = probeAndAtom();
+  LinearProbe probe = LinearProbe::singleSite(interactions, "X").value();
+  const std::vector<BlockingSphere> spheres{wideSphere};
+  Crystal framework = oneAtomInASkewedCell();
+
+  WellField cpu =
+      WellFieldCPU::compute(interactions, framework, probe, skewedGrid, 1, 0.0, spheres, 1000.0, ceiling);
+  WellField gpu =
+      WellFieldOpenCL::compute(interactions, framework, probe, skewedGrid, 1, 0.0, spheres, 1000.0, ceiling);
+  ASSERT_EQ(gpu.numberOfVoxels(), cpu.numberOfVoxels());
+
+  // the voxel at fractions (0.45, 0.45, 0), which the copy nearest in fractions leaves outside the sphere
+  const std::size_t told = 9 * skewedGrid.x + 9;
+  const float expected = static_cast<float>(-1000.0 * distanceBySearch(double3(0.45, 0.45, 0.0)));
+  EXPECT_NEAR(cpu.energy[told], expected, 1.0e-3f * expected);
+  EXPECT_NEAR(gpu.energy[told], expected, 1.0e-3f * expected);
+
+  std::size_t different = 0;
+  for (std::size_t voxel = 0; voxel < cpu.numberOfVoxels(); ++voxel)
+  {
+    if (std::abs(gpu.energy[voxel] - cpu.energy[voxel]) > 1.0e-3f * std::max(std::abs(cpu.energy[voxel]), 1.0f))
+      ++different;
+  }
+  EXPECT_EQ(different, 0uz);
 }

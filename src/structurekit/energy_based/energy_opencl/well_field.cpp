@@ -89,6 +89,14 @@ struct GpuPack
   cl_float4 invRow1{};
   cl_float4 invRow2{};
   cl_float4 widths{};
+  // the cell's obtuse superbase, three vectors and the rows of their inverse, which the nearest copy of a
+  // blocking sphere is found in
+  cl_float4 obtuseA{};
+  cl_float4 obtuseB{};
+  cl_float4 obtuseC{};
+  cl_float4 obtuseInv0{};
+  cl_float4 obtuseInv1{};
+  cl_float4 obtuseInv2{};
   cl_int3 shells{};
   cl_int numberOfAtoms{0};
   cl_int numberOfSites{0};
@@ -286,6 +294,14 @@ GpuPack packNeighbourhood(const PairInteractions &interactions, const Crystal &f
   pack.invRow0 = {{cl_float(inverse[0][0]), cl_float(inverse[1][0]), cl_float(inverse[2][0]), 0.0f}};
   pack.invRow1 = {{cl_float(inverse[0][1]), cl_float(inverse[1][1]), cl_float(inverse[2][1]), 0.0f}};
   pack.invRow2 = {{cl_float(inverse[0][2]), cl_float(inverse[1][2]), cl_float(inverse[2][2]), 0.0f}};
+  double3x3 obtuse = framework.unitCell.obtuseCell;
+  pack.obtuseA = {{cl_float(obtuse[0][0]), cl_float(obtuse[0][1]), cl_float(obtuse[0][2]), 0.0f}};
+  pack.obtuseB = {{cl_float(obtuse[1][0]), cl_float(obtuse[1][1]), cl_float(obtuse[1][2]), 0.0f}};
+  pack.obtuseC = {{cl_float(obtuse[2][0]), cl_float(obtuse[2][1]), cl_float(obtuse[2][2]), 0.0f}};
+  double3x3 back = framework.unitCell.obtuseInverse;
+  pack.obtuseInv0 = {{cl_float(back[0][0]), cl_float(back[1][0]), cl_float(back[2][0]), 0.0f}};
+  pack.obtuseInv1 = {{cl_float(back[0][1]), cl_float(back[1][1]), cl_float(back[2][1]), 0.0f}};
+  pack.obtuseInv2 = {{cl_float(back[0][2]), cl_float(back[1][2]), cl_float(back[2][2]), 0.0f}};
   return pack;
 }
 
@@ -391,6 +407,12 @@ int setCommonArgs(cl_kernel kernel, int start, const DeviceBuffers &buffers, con
   err |= clSetKernelArg(kernel, a++, sizeof(cl_float4), &pack.invRow1);
   err |= clSetKernelArg(kernel, a++, sizeof(cl_float4), &pack.invRow2);
   err |= clSetKernelArg(kernel, a++, sizeof(cl_float4), &pack.widths);
+  err |= clSetKernelArg(kernel, a++, sizeof(cl_float4), &pack.obtuseA);
+  err |= clSetKernelArg(kernel, a++, sizeof(cl_float4), &pack.obtuseB);
+  err |= clSetKernelArg(kernel, a++, sizeof(cl_float4), &pack.obtuseC);
+  err |= clSetKernelArg(kernel, a++, sizeof(cl_float4), &pack.obtuseInv0);
+  err |= clSetKernelArg(kernel, a++, sizeof(cl_float4), &pack.obtuseInv1);
+  err |= clSetKernelArg(kernel, a++, sizeof(cl_float4), &pack.obtuseInv2);
   err |= clSetKernelArg(kernel, a++, sizeof(cl_int), &pack.numberOfAtoms);
   err |= clSetKernelArg(kernel, a++, sizeof(cl_int), &pack.numberOfSites);
   err |= clSetKernelArg(kernel, a++, sizeof(cl_int), &pack.numberOfOrientations);
@@ -710,16 +732,54 @@ static float4 cartesianOf(float4 t, float4 cellRow0, float4 cellRow1, float4 cel
   return dr;
 }
 
+// How far the point is from the nearest blocking sphere's surface, by the nearest copy of each in Angstrom. That
+// is not always the copy nearest in fractions of the cell: in a skewed cell the two part company, and a point
+// inside a wide sphere was put outside it. The displacement is brought to the image nearest in fractions of the
+// cell's obtuse superbase, and whichever of that base's seven vectors shortens it most is then taken off until
+// none does, which leaves the shortest there is, as UnitCell::shortestImage does on the processor.
 static float blockingPocket(float4 centre, __global const float4 *spheres, int numberOfSpheres,
-                            float4 cellRow0, float4 cellRow1, float4 cellRow2)
+                            float4 cellRow0, float4 cellRow1, float4 cellRow2,
+                            float4 obtuseA, float4 obtuseB, float4 obtuseC,
+                            float4 obtuseInv0, float4 obtuseInv1, float4 obtuseInv2)
 {
+  float4 shorteners[7];
+  shorteners[0] = obtuseA;
+  shorteners[1] = obtuseB;
+  shorteners[2] = obtuseC;
+  shorteners[3] = obtuseA + obtuseB;
+  shorteners[4] = obtuseA + obtuseC;
+  shorteners[5] = obtuseB + obtuseC;
+  shorteners[6] = obtuseA + obtuseB + obtuseC;
+  float halfSquares[7];
+  for(int k = 0; k < 7; k++) halfSquares[k] = 0.5f * dot(shorteners[k], shorteners[k]);
+
   float nearest = 1.0e10f;
   for(int i = 0; i < numberOfSpheres; i++)
   {
     float4 ds = centre - spheres[i];
-    ds -= rint(ds);
     ds.w = 0.0f;
     float4 dr = cartesianOf(ds, cellRow0, cellRow1, cellRow2);
+    dr -= rint(dot(obtuseInv0, dr)) * obtuseA + rint(dot(obtuseInv1, dr)) * obtuseB +
+          rint(dot(obtuseInv2, dr)) * obtuseC;
+    for(int step = 0; step < 16; step++)
+    {
+      int best = -1;
+      float mostGained = 0.0f;
+      float sign = 1.0f;
+      for(int k = 0; k < 7; k++)
+      {
+        float along = dot(dr, shorteners[k]);
+        float gained = fabs(along) - halfSquares[k];
+        if(gained > mostGained && gained > 1.0e-5f * halfSquares[k])
+        {
+          mostGained = gained;
+          best = k;
+          sign = along > 0.0f ? 1.0f : -1.0f;
+        }
+      }
+      if(best < 0) break;
+      dr -= sign * shorteners[best];
+    }
     nearest = fmin(nearest, sqrt(dot(dr, dr)) - spheres[i].w);
   }
   return nearest;
@@ -934,6 +994,12 @@ __kernel void WellField(__global float *energyOut,
                         const float4 invRow1,
                         const float4 invRow2,
                         const float4 widths,
+                        const float4 obtuseA,
+                        const float4 obtuseB,
+                        const float4 obtuseC,
+                        const float4 obtuseInv0,
+                        const float4 obtuseInv1,
+                        const float4 obtuseInv2,
                         const int numberOfAtoms,
                         const int numberOfSites,
                         const int numberOfOrientations,
@@ -1057,7 +1123,8 @@ __kernel void WellField(__global float *energyOut,
     }
   }
 
-  float pocket = blockingPocket(centre, spheres, numberOfSpheres, cellRow0, cellRow1, cellRow2);
+  float pocket = blockingPocket(centre, spheres, numberOfSpheres, cellRow0, cellRow1, cellRow2, obtuseA, obtuseB,
+                                obtuseC, obtuseInv0, obtuseInv1, obtuseInv2);
   int index = (iz * gridSize.y + iy) * gridSize.x + ix;
   float energy = pocket < 0.0f ? fmin(-pocket * blockedEnergyPerAngstrom, ceiling) : value;
   energyOut[index] = energy;
@@ -1184,6 +1251,12 @@ __kernel void RefineWellVertices(__global float4 *corners,
                                  const float4 invRow1,
                                  const float4 invRow2,
                                  const float4 widths,
+                                 const float4 obtuseA,
+                                 const float4 obtuseB,
+                                 const float4 obtuseC,
+                                 const float4 obtuseInv0,
+                                 const float4 obtuseInv1,
+                                 const float4 obtuseInv2,
                                  const int numberOfAtoms,
                                  const int numberOfSites,
                                  const int numberOfOrientations,
@@ -1221,7 +1294,8 @@ __kernel void RefineWellVertices(__global float4 *corners,
   energies[vertex] = energyHere;
   if(energyHere > iso - 0.02f * fabs(iso)) return;
 
-  float pocket = blockingPocket(point, spheres, numberOfSpheres, cellRow0, cellRow1, cellRow2);
+  float pocket = blockingPocket(point, spheres, numberOfSpheres, cellRow0, cellRow1, cellRow2, obtuseA, obtuseB,
+                                obtuseC, obtuseInv0, obtuseInv1, obtuseInv2);
 
   df energiesO[MAX_ORIENT];
   float clearancesO[MAX_ORIENT];

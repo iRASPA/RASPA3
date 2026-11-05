@@ -165,3 +165,68 @@ TEST(mc_pore_size_distribution, no_centres_and_an_empty_box_on_the_device)
 
   std::filesystem::remove("mc_psd_test_device.mc.psd.gpu.txt");
 }
+
+namespace
+{
+
+// One small atom to a cell whose a and b are at sixty degrees: columns of atoms on a triangular net, ten apart, in
+// layers ten apart. The point farthest from all of them is over the middle of a triangle and half way between two
+// layers, 10/sqrt(3) from three columns and five from each layer, so no sphere that misses the atoms has a radius
+// above sqrt(100/3 + 25) less the atom's own, and no point of the void is in a larger one.
+constexpr double skewedAtomRadius = 1.0;
+const double largestFreeRadius = std::sqrt(100.0 / 3.0 + 25.0) - skewedAtomRadius;
+
+SampledStructure oneAtomInASkewedCell(const std::string &name)
+{
+  SampledStructure structure;
+  structure.name = name;
+  structure.unitCell =
+      UnitCell(10.0, 10.0, 10.0, 0.5 * std::numbers::pi, 0.5 * std::numbers::pi, std::numbers::pi / 3.0);
+  structure.positions.push_back(double3(0.0, 0.0, 0.0));
+  structure.radii.push_back(skewedAtomRadius);
+  return structure;
+}
+
+// In a skewed cell the copy of an atom nearest a point in fractions of the cell is not always the nearest in
+// Ångström, and a sphere measured against that copy comes out wider than the room there is. So nothing is drawn
+// above the largest radius the cell has room for, and nothing past the range, which is wider still.
+template <typename Route>
+void checkNothingIsWiderThanTheRoom(Route &route, const SampledStructure &structure, const std::string &file,
+                                    std::size_t iterations)
+{
+  constexpr std::size_t bins = 45;
+  constexpr double range = 9.0;
+  route.run(structure, iterations, std::size_t{64}, range);
+  std::filesystem::remove(file);
+
+  const std::size_t firstBinPastTheRoom = static_cast<std::size_t>(std::ceil(largestFreeRadius / (range / bins))) + 1;
+  ASSERT_LT(firstBinPastTheRoom, bins);
+  double drawn = 0.0;
+  double pastTheRoom = 0.0;
+  for (std::size_t bin = 0; bin < bins; ++bin)
+  {
+    drawn += route.histogram[bin];
+    if (bin >= firstBinPastTheRoom) pastTheRoom += route.histogram[bin];
+  }
+  EXPECT_EQ(pastTheRoom, 0.0) << "points were put in spheres wider than any the cell has room for";
+  EXPECT_DOUBLE_EQ(drawn, route.histogram_cummulative[0]) << "and none can be past a range that is wider still";
+  EXPECT_GT(drawn, 0.9 * static_cast<double>(iterations));
+}
+
+}  // namespace
+
+TEST(mc_pore_size_distribution, no_sphere_is_wider_than_the_room_in_a_skewed_cell_on_the_processor)
+{
+  MC_PoreSizeDistribution route(45);
+  checkNothingIsWiderThanTheRoom(route, oneAtomInASkewedCell("mc_psd_skewed_cpu"), "mc_psd_skewed_cpu.mc.psd.cpu.txt",
+                                 2000);
+}
+
+TEST(mc_pore_size_distribution, no_sphere_is_wider_than_the_room_in_a_skewed_cell_on_the_device)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+  MC_OpenCL_PoreSizeDistribution route(45);
+  checkNothingIsWiderThanTheRoom(route, oneAtomInASkewedCell("mc_psd_skewed_gpu"), "mc_psd_skewed_gpu.mc.psd.gpu.txt",
+                                 500);
+}

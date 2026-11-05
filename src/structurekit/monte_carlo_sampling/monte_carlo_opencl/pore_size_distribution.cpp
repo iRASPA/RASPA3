@@ -109,7 +109,12 @@ void MC_OpenCL_PoreSizeDistribution::run(const SampledStructure &structure,
                             poreSizeDistributionWorkGroupSize;
 
   double3x3 unit_cell = structure.unitCell.cell;
-  double3x3 inverse_unit_cell = structure.unitCell.inverseCell;
+
+  // The kernel is handed the cell's obtuse superbase and not the cell as given. It works in Cartesian positions
+  // and uses a cell only to bring a displacement to its shortest image, which is found in that base; see
+  // `UnitCell::shortestImage`. The two are one lattice. The points are still drawn in the cell as given.
+  double3x3 image_cell = structure.unitCell.obtuseCell;
+  double3x3 inverse_image_cell = structure.unitCell.obtuseInverse;
 
   std::size_t numberOfAtoms = structure.size();
 
@@ -165,13 +170,13 @@ void MC_OpenCL_PoreSizeDistribution::run(const SampledStructure &structure,
 
 
   // setup unit cell matrix
-  cl_float4 clCella = {{cl_float(unit_cell[0][0]), cl_float(unit_cell[1][0]), cl_float(unit_cell[2][0]), cl_float(0.0)}};
-  cl_float4 clCellb = {{cl_float(unit_cell[0][1]), cl_float(unit_cell[1][1]), cl_float(unit_cell[2][1]), cl_float(0.0)}};
-  cl_float4 clCellc = {{cl_float(unit_cell[0][2]), cl_float(unit_cell[1][2]), cl_float(unit_cell[2][2]), cl_float(0.0)}};
+  cl_float4 clCella = {{cl_float(image_cell[0][0]), cl_float(image_cell[1][0]), cl_float(image_cell[2][0]), cl_float(0.0)}};
+  cl_float4 clCellb = {{cl_float(image_cell[0][1]), cl_float(image_cell[1][1]), cl_float(image_cell[2][1]), cl_float(0.0)}};
+  cl_float4 clCellc = {{cl_float(image_cell[0][2]), cl_float(image_cell[1][2]), cl_float(image_cell[2][2]), cl_float(0.0)}};
 
-  cl_float4 inverse_clCella = {{cl_float(inverse_unit_cell[0][0]), cl_float(inverse_unit_cell[1][0]), cl_float(inverse_unit_cell[2][0]), cl_float(0.0)}};
-  cl_float4 inverse_clCellb = {{cl_float(inverse_unit_cell[0][1]), cl_float(inverse_unit_cell[1][1]), cl_float(inverse_unit_cell[2][1]), cl_float(0.0)}};
-  cl_float4 inverse_clCellc = {{cl_float(inverse_unit_cell[0][2]), cl_float(inverse_unit_cell[1][2]), cl_float(inverse_unit_cell[2][2]), cl_float(0.0)}};
+  cl_float4 inverse_clCella = {{cl_float(inverse_image_cell[0][0]), cl_float(inverse_image_cell[1][0]), cl_float(inverse_image_cell[2][0]), cl_float(0.0)}};
+  cl_float4 inverse_clCellb = {{cl_float(inverse_image_cell[0][1]), cl_float(inverse_image_cell[1][1]), cl_float(inverse_image_cell[2][1]), cl_float(0.0)}};
+  cl_float4 inverse_clCellc = {{cl_float(inverse_image_cell[0][2]), cl_float(inverse_image_cell[1][2]), cl_float(inverse_image_cell[2][2]), cl_float(0.0)}};
 
   cl_int number_of_atoms = cl_int(numberOfAtoms);
   cl_int number_of_inner_steps_parameter = cl_int(number_of_inner_steps);
@@ -338,28 +343,59 @@ inline void AtomicMax(volatile __global float *source, const float operand)
   } while (atomic_cmpxchg((volatile __global unsigned int *)source, prevVal.intVal, newVal.intVal) != prevVal.intVal);
 }
 
+// The shortest image of a displacement, in Angstrom. The cell handed in is an obtuse superbase of the lattice:
+// the image nearest in fractions of it to begin with, and then whichever of its three vectors, their sums in
+// pairs and the sum of all three shortens it most is taken off, until none does. In a skewed cell the image
+// nearest in fractions alone is not the shortest, and a sphere reaching more than half way across the cell was
+// measured against the wrong copy of an atom.
+float4 ShortestImage(float4 dr, float4 inverse_cella, float4 inverse_cellb, float4 inverse_cellc,
+                     float4 cella, float4 cellb, float4 cellc)
+{
+  float4 shorteners[7];
+  shorteners[0] = (float4)(cella.x, cellb.x, cellc.x, 0.0f);
+  shorteners[1] = (float4)(cella.y, cellb.y, cellc.y, 0.0f);
+  shorteners[2] = (float4)(cella.z, cellb.z, cellc.z, 0.0f);
+  shorteners[3] = shorteners[0] + shorteners[1];
+  shorteners[4] = shorteners[0] + shorteners[2];
+  shorteners[5] = shorteners[1] + shorteners[2];
+  shorteners[6] = shorteners[3] + shorteners[2];
+
+  dr.w = 0.0f;
+  dr -= rint(dot(inverse_cella, dr)) * shorteners[0] + rint(dot(inverse_cellb, dr)) * shorteners[1] +
+        rint(dot(inverse_cellc, dr)) * shorteners[2];
+  for(int step = 0; step < 16; step++)
+  {
+    int best = -1;
+    float mostGained = 0.0f;
+    float sign = 1.0f;
+    for(int k = 0; k < 7; k++)
+    {
+      float halfSquare = 0.5f * dot(shorteners[k], shorteners[k]);
+      float along = dot(dr, shorteners[k]);
+      float gained = fabs(along) - halfSquare;
+      if(gained > mostGained && gained > 1.0e-5f * halfSquare)
+      {
+        mostGained = gained;
+        best = k;
+        sign = along > 0.0f ? 1.0f : -1.0f;
+      }
+    }
+    if(best < 0) break;
+    dr -= sign * shorteners[best];
+  }
+  return dr;
+}
+
 // check overlap with other atoms
 int CheckSphereOverLap(float4 posA, float *smallest_radius, int numberOfFrameworkAtoms, __global float4 *frameworkPositions, 
                        float4 inverse_cella, float4 inverse_cellb, float4 inverse_cellc,
                        float4 cella, float4 cellb, float4 cellc, __global float *radius_j)
 {
-  float4 ds;
   *smallest_radius = 1000.0;
   for(int jatom = 0; jatom < numberOfFrameworkAtoms; ++jatom)
   {
-    float4 dr = posA - frameworkPositions[jatom];
-
-    ds.x = dot(inverse_cella, dr);
-    ds.y = dot(inverse_cellb, dr);
-    ds.z = dot(inverse_cellc, dr);
-    ds.w = 0.0f;
-
-    float4 t = ds - rint(ds);
-
-    dr.x = dot(cella, t);
-    dr.y = dot(cellb, t);
-    dr.z = dot(cellc, t);
-    dr.w = 0.0f;
+    float4 dr = ShortestImage(posA - frameworkPositions[jatom], inverse_cella, inverse_cellb, inverse_cellc,
+                              cella, cellb, cellc);
 
     float rr = dot(dr, dr);
 
@@ -394,8 +430,6 @@ __kernel void ComputePoreSizeDistribution(__global float4 *frameworkPositions,
   int global_id = get_global_id(0);
   if(global_id >= numberOfInnerSteps) return;
 
-  float4 ds;
-
   // The point itself is known to be in the void: the host looked before it came here.
   float radius = 0.0;
   float4 posB = randomCartesianPositions[global_id];
@@ -404,19 +438,7 @@ __kernel void ComputePoreSizeDistribution(__global float4 *frameworkPositions,
                      inverse_cella, inverse_cellb, inverse_cellc,
                      cella, cellb, cellc, radius_j)) return;
 
-  float4 dr = posA - posB;
-
-  ds.x = dot(inverse_cella, dr);
-  ds.y = dot(inverse_cellb, dr);
-  ds.z = dot(inverse_cellc, dr);
-  ds.w = 0.0f;
-
-  float4 t = ds - rint(ds);
-
-  dr.x = dot(cella, t);
-  dr.y = dot(cellb, t);
-  dr.z = dot(cellc, t);
-  dr.w = 0.0f;
+  float4 dr = ShortestImage(posA - posB, inverse_cella, inverse_cellb, inverse_cellc, cella, cellb, cellc);
 
   float rr = dot(dr, dr);
 

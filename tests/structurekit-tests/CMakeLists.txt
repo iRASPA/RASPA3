@@ -18,6 +18,7 @@ add_executable(unit_tests_structurekit
                        energy_isosurface.cpp
                        energy_well_field.cpp
   structure_parallel.cpp
+  unit_cell.cpp
   exact_sphere_sweep.cpp
   exact_union_volume.cpp
   exact_void_split.cpp

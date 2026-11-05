@@ -357,18 +357,14 @@ int3 PoreAccessibility::nearestLift(const double3& point, std::int32_t poreId) c
   for (std::size_t nodeIndex : pore.nodeIndices)
   {
     // Where this node sits in the lift the pore is assembled in, and the translation carrying that to the
-    // copy of it nearest the point, which is the minimum image and needs no search.
+    // copy of it nearest the point: the shortest image, which the cell finds, and which in a skewed cell is
+    // not the one nearest in fractions.
     const int3& offset = channels.nodeLatticeOffset[nodeIndex];
     double3 assembled = network.nodes[nodeIndex].position +
                         unitCell.cell * double3(static_cast<double>(offset.x), static_cast<double>(offset.y),
                                                      static_cast<double>(offset.z));
-    double3 fractional = unitCell.inverseCell * (point - assembled);
-    int3 translation(static_cast<int>(std::lround(fractional.x)), static_cast<int>(std::lround(fractional.y)),
-                     static_cast<int>(std::lround(fractional.z)));
-    double3 shift = unitCell.cell * double3(static_cast<double>(translation.x),
-                                                static_cast<double>(translation.y),
-                                                static_cast<double>(translation.z));
-    double distance = (point - (assembled + shift)).length();
+    int3 translation(0, 0, 0);
+    double distance = unitCell.shortestImage(point - assembled, &translation).length();
     if (distance < nearest)
     {
       nearest = distance;

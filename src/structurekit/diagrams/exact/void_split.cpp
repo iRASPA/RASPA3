@@ -285,29 +285,10 @@ ExactVoidSplit exactVoidSplitByComponents(const PoreAccessibility& accessibility
     facesChannel[component] = (sides[component].side > 0) ? 1 : 0;
   }
 
-  // The shortest vector from `from` to any copy of `point`. The fractional rounding picks the copy nearest in
-  // fractional terms, which in a skewed cell is not always the nearest in Ångström, and the copies a lattice
-  // step away from that one are where the nearest can otherwise be.
+  // The shortest vector from `from` to any copy of `point`, which is the cell's to find: in a skewed cell it is
+  // not always the copy nearest in fractions.
   auto nearestDelta = [&](const double3& point, const double3& from)
-  {
-    double3 best = accessibility.unitCell.applyPeriodicBoundaryConditions(point - from);
-    double bestLength = best.length();
-    for (int i = -1; i <= 1; ++i)
-      for (int j = -1; j <= 1; ++j)
-        for (int k = -1; k <= 1; ++k)
-        {
-          if (i == 0 && j == 0 && k == 0) continue;
-          double3 shifted = best + accessibility.unitCell.cell *
-                                       double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
-          double length = shifted.length();
-          if (length < bestLength)
-          {
-            bestLength = length;
-            best = shifted;
-          }
-        }
-    return best;
-  };
+  { return accessibility.unitCell.applyPeriodicBoundaryConditions(point - from); };
 
   // Everything about a pocket that is read off its centre, from a centre given in the frame its surface was
   // measured in. Done once with the centroid of the wall alone, and again for a pocket with a cluster inside

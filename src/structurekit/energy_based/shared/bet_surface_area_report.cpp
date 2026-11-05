@@ -371,11 +371,8 @@ void BETSurfaceArea::run(const EnergyBackend &backend, const PairInteractions &i
       std::size_t nearestAtom = 0uz;
       for (std::size_t iatom = 0; iatom < framework.fractionalPositions.size(); ++iatom)
       {
-        double3 ds = point - framework.fractionalPositions[iatom];
-        ds.x -= std::rint(ds.x);
-        ds.y -= std::rint(ds.y);
-        ds.z -= std::rint(ds.z);
-        const double3 dr = cell * ds;
+        const double3 dr =
+            framework.unitCell.applyPeriodicBoundaryConditions(cell * (point - framework.fractionalPositions[iatom]));
         const double rr = double3::dot(dr, dr);
         if (rr < nearestSquared)
         {

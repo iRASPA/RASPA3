@@ -24,11 +24,10 @@ double blockingSphereDistance(double3 fractional, const UnitCell &unitCell, std:
   double nearest = 1.0e10;
   for (const BlockingSphere &sphere : spheres)
   {
-    double3 dr = fractional - sphere.centerFractional;
-    dr.x -= std::rint(dr.x);
-    dr.y -= std::rint(dr.y);
-    dr.z -= std::rint(dr.z);
-    nearest = std::min(nearest, (unitCell.cell * dr).length() - sphere.radius);
+    // The nearest copy of the sphere in Ångström, which in a skewed cell is not always the one nearest in
+    // fractions: taking that one put a point inside a wide sphere outside it.
+    const double3 dr = unitCell.applyPeriodicBoundaryConditions(unitCell.cell * (fractional - sphere.centerFractional));
+    nearest = std::min(nearest, dr.length() - sphere.radius);
   }
   return nearest;
 }
