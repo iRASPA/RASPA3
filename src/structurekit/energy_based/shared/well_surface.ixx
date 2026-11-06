@@ -84,6 +84,11 @@ export struct FilamentVoxel
   double energy{0.0};
 };
 
+// How far apart the molecules of a single file stand: the cube root of the volume a molecule has in liquid
+// nitrogen. A file is counted in whole molecules at this spacing and handed on as that many spacings, so
+// this is the one figure the count is made with and read back with.
+export inline constexpr double filamentFileSpacing = 3.864107;  // Å
+
 export struct WellSurface
 {
   double area{0.0};  // Å² per unit cell, the refined sheet
@@ -96,7 +101,7 @@ export struct WellSurface
   double filamentArea{0.0};
   double filamentVolume{0.0};  // Å³ of voxels that belong to the merged-well filament
   double filamentLength{0.0};  // Å, cylinder A²/(4πV) of the whole overlay; diagnostic only
-  double filamentRidgeLength{0.0};  // Å, 1-D packing: graph length of the medial ridge
+  double filamentRidgeLength{0.0};  // Å, 1-D packing: whole molecules in the files, filamentFileSpacing to each
   double filamentMedialArea{0.0};  // Å², 2-D packing: half the planar overlay (area / 16.2 in BET)
 
   std::size_t numberOfTriangles{0};

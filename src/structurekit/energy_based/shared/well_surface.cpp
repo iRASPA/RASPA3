@@ -647,22 +647,23 @@ void assignFilamentPacking(WellSurface &result, const WellField &field, const Un
     return sum / static_cast<double>(nUsed);
   };
 
-  constexpr double fileSpacing = 3.864107;
-  auto packedLength = [&](double nFilesMean, double period, double transverseA, double transverseB) -> double
+  // What a file is worth is not the length of its channel but the molecules that stand in it: a channel
+  // repeats with the cell, so along one cell edge it holds a whole number of them, the number that fits at
+  // the spacing of the liquid, and never fewer than one. That count is handed on as a length, a spacing to
+  // a molecule, which is what the BET route divides by the same spacing to have the count back. The spacing
+  // is nitrogen's, this being the capacity the nitrogen BET area is read from, whatever probe drew the well.
+  constexpr double fileSpacing = filamentFileSpacing;
+  auto packedLength = [&](double nFiles, double period) -> double
   {
-    if (!(period > 0.0) || !(nFilesMean > 0.0)) return 0.0;
-    double nFiles = std::round(nFilesMean);
-    if (nFiles < 1.0) nFiles = 1.0;
-    const double maxFiles =
-        std::max(1.0, std::round(std::min(transverseA, transverseB) / fileSpacing));
-    nFiles = std::min(nFiles, maxFiles);
+    if (!(period > 0.0) || !(nFiles > 0.0)) return 0.0;
     const double sites = std::max(1.0, std::round(period / fileSpacing));
-    return nFiles * sites * fileSpacing;
+    return std::max(1.0, std::round(nFiles)) * sites * fileSpacing;
   };
 
   std::vector<std::uint8_t> kind(nFilament, 1);
   std::vector<std::uint8_t> slitComponent(componentWraps.size(), 0);
   double nFilesA = 0.0, nFilesB = 0.0, nFilesC = 0.0;
+  double pockets = 0.0;
   const double a = unitCell.lengthA, b = unitCell.lengthB, cLen = unitCell.lengthC;
   for (std::size_t c = 0; c < componentWraps.size(); ++c)
   {
@@ -682,6 +683,12 @@ void assignFilamentPacking(WellSurface &result, const WellField &field, const Un
       if (componentOf[s] == static_cast<int>(c)) hasWell = true;
     }
     if (!hasWell) continue;
+    if (nWrap == 0)
+    {
+      // A component that wraps nothing is a pocket and no file, and is counted further down.
+      pockets += 1.0;
+      continue;
+    }
     auto addFiles = [&](double n) -> double
     {
       double f = std::round(n);
@@ -727,17 +734,33 @@ void assignFilamentPacking(WellSurface &result, const WellField &field, const Un
       }
     }
   }
-  auto capFiles = [&](double n, double t0, double t1) -> double
+  // No more files run side by side than there is room for, a spacing apart each way, in the cross-section
+  // they run through. That is an area, the volume of the cell over the edge the files run along, whatever
+  // the angles of the cell, and the files fill it in both of its dimensions: holding them to what fits
+  // along the shorter of the two other edges counted a row of channels across a flat cell as the one or two
+  // that fit along its short side.
+  auto roomAcross = [&](double period) -> double
   {
-    if (!(n > 0.0)) return 0.0;
-    const double maxFiles = std::max(1.0, std::round(std::min(t0, t1) / fileSpacing));
-    return std::min(n, maxFiles);
+    if (!(period > 0.0)) return 0.0;
+    return std::max(1.0, std::round(unitCell.volume / period / (fileSpacing * fileSpacing)));
   };
-  nFilesA = capFiles(nFilesA, b, cLen);
-  nFilesB = capFiles(nFilesB, a, cLen);
-  nFilesC = capFiles(nFilesC, a, b);
-  const double length1D = packedLength(nFilesA, a, b, cLen) + packedLength(nFilesB, b, a, cLen) +
-                          packedLength(nFilesC, cLen, a, b);
+  const double wrappingAlongA = nFilesA;
+  nFilesA = std::min(nFilesA, roomAcross(a));
+  nFilesB = std::min(nFilesB, roomAcross(b));
+  nFilesC = std::min(nFilesC, roomAcross(cLen));
+
+  // The pockets. One that wraps nothing has all along been counted as a file all the same, along a and with
+  // the whole of that edge for its length, and the files along a were held to what fits along the shorter
+  // of the other two edges. On real frameworks it is that allowance and not the count that sets the figure:
+  // silicalite's two dozen specks come to three files. Nothing of that is changed here, where it is the
+  // count of the files that do wrap that was wrong: the pockets are given what the old allowance leaves
+  // over once those are counted, which is what they had.
+  if (pockets > 0.0)
+  {
+    const double allowance = std::max(1.0, std::round(std::min(b, cLen) / fileSpacing));
+    nFilesA += std::min(pockets, std::max(0.0, allowance - wrappingAlongA));
+  }
+  const double length1D = packedLength(nFilesA, a) + packedLength(nFilesB, b) + packedLength(nFilesC, cLen);
 
   for (std::size_t s = 0; s < nFilament; ++s)
   {

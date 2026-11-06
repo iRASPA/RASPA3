@@ -45,7 +45,7 @@ import energy_shared_well_surface;
 
 export inline constexpr double nitrogenCrossSection = 16.2;          // Å²
 export inline constexpr double nitrogenLiquidVolume = 57.7;          // Å³ / molecule
-export inline constexpr double nitrogenLinearSpacing = 3.864107;      // Å, cbrt(v_L), 1-D file along a filament
+export inline constexpr double nitrogenLinearSpacing = filamentFileSpacing;  // Å, cbrt(v_L), 1-D file along a filament
 // How close two nitrogen centres are allowed in the packing that reads the capacity off the field. This is
 // the first peak of liquid nitrogen's pair distribution, not v_L^{1/3}: that is the spacing of a simple
 // cubic lattice at liquid density, and a greedy packing at that distance leaves gaps a thermal liquid

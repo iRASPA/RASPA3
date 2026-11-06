@@ -57,8 +57,11 @@ void writeWellSurface(std::ostream &stream, const WellSurface &surface)
   std::print(stream, "# a line, not a surface. That region is reported separately as the filament, a thin tube\n");
   std::print(stream, "# along the medial set. The ridge of that tube is the Gelb-Gubbins inscribed radius of\n");
   std::print(stream, "# the energy iso (distance to U = iso), the same field the energy PSD starts from, not\n");
-  std::print(stream, "# the distance transform of the reliability overlay. A 1-D file packs along the graph\n");
-  std::print(stream, "# length of that ridge (over the liquid diameter); a 2-D slit packs on the planar ridge\n");
+  std::print(stream, "# the distance transform of the reliability overlay. A 1-D file holds whole molecules\n");
+  std::print(stream, "# along the cell edge it runs along, as many as fit at the spacing of liquid nitrogen\n");
+  std::print(stream, "# ({:.3f} Å, whatever the probe), and is reported as that many spacings, not as the length\n",
+             filamentFileSpacing);
+  std::print(stream, "# of the channel; a 2-D slit packs on the planar ridge\n");
   std::print(stream, "# (area / 16.2 Å²). A² / (4π V) of the whole tube is a cylinder check, not the packing\n");
   std::print(stream, "# of a mixed 1-D/2-D well. A tight-fitting probe therefore reports less sheet area than\n");
   std::print(stream, "# rolling it over the wall would, which is the honest answer for a surface that is not\n");

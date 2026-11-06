@@ -558,6 +558,44 @@ TEST(energy_well_surface, two_parallel_tubes_pack_as_two_files)
 }
 
 
+// Files that run side by side fill a cross-section, which has two dimensions: how many there may be is
+// set by its area and not by the shorter of its two edges. Four tubes along z stand in a row along x, in a
+// cell that is long that way and only six Ångström the other. Held to what fits along the six Ångström,
+// which is two, half of them went uncounted.
+TEST(energy_well_surface, tubes_in_a_row_across_a_flat_cell_are_all_counted)
+{
+  const double lx = 24.0, ly = 6.0, lz = 16.0;
+  const uint3 gridSize{64, 16, 32};
+  PairInteractions interactions = oneType(sigma, epsilon);
+  Crystal framework = emptyBox(UnitCell(lx, ly, lz));
+  addAtom(framework, 0.5, 0.5, 0.5);
+
+  WellField field = blankField(gridSize, framework.unitCell);
+  field.probe = probeOf(interactions, "X");
+  for (std::size_t k = 0; k < gridSize.z; ++k)
+  {
+    for (std::size_t j = 6; j <= 10; ++j)
+    {
+      for (std::size_t tube = 0; tube < 4; ++tube)
+      {
+        for (std::size_t i = 6 + 16 * tube; i <= 10 + 16 * tube; ++i)
+        {
+          markFilament(field, field.voxelIndex(i, j, k));
+        }
+      }
+    }
+  }
+
+  WellSurface surface = wellSurfaceOfField(framework, interactions, field, 0.0, 0.001, 0.0, {});
+
+  // four files of four sites each, the sixteen Ångström holding four
+  const double expected = 4.0 * 4.0 * nitrogenLinearSpacing;
+  EXPECT_GT(surface.filamentVolume, 0.0);
+  EXPECT_NEAR(surface.filamentRidgeLength, expected, 1.0e-9);
+  EXPECT_NEAR(packingLength(surface), surface.filamentRidgeLength, 1.0e-9);
+}
+
+
 // Reliability noise punches holes in the overlay; the hop-count ridge of that swiss cheese is the whole
 // blob. The energy void is still a solid 5×5 tube, and the Gelb-Gubbins inscribed radius of U = iso is the
 // channel axis, so packing stays one file of length lz.
