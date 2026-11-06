@@ -290,8 +290,24 @@ int3 UnitCell::smallestNumberOfUnitCellsForMinimumImagesConvention(double cutOff
 
 UnitCell UnitCell::scaled(int3 scale) const
 {
-  // Rebuilt from the lengths and the angles, in the canonical orientation, and by the constructor, so that what
-  // the constructors work out of the matrix is worked out of this one.
-  return UnitCell(static_cast<double>(scale.x) * lengthA, static_cast<double>(scale.y) * lengthB,
-                  static_cast<double>(scale.z) * lengthC, angleAlpha, angleBeta, angleGamma, type);
+  // The cell's own vectors, each so many times over, and built by the constructor so that what the constructors
+  // work out of a matrix is worked out of this one.
+  //
+  // It was rebuilt from the lengths and the angles before, which say what shape a cell is and nothing of how
+  // it lies: the repeated cell came out with its first vector along x and its second in the xy-plane, and
+  // right-handed, whatever the cell itself was. For a cell that lies that way already it is the same cell.
+  // For one given by a matrix turned any other way, or left-handed, it was the right shape somewhere else, and
+  // an atom placed in it by its position in space was placed in the wrong cell.
+  const double3 counts(static_cast<double>(scale.x), static_cast<double>(scale.y), static_cast<double>(scale.z));
+  UnitCell repeated(double3x3(counts.x * cell[0], counts.y * cell[1], counts.z * cell[2]), type);
+
+  // The lengths and the angles are known without reading them back off the matrix, which would return them
+  // a rounding out: the lengths are the cell's so many times over, and repeating a cell turns nothing.
+  repeated.lengthA = counts.x * lengthA;
+  repeated.lengthB = counts.y * lengthB;
+  repeated.lengthC = counts.z * lengthC;
+  repeated.angleAlpha = angleAlpha;
+  repeated.angleBeta = angleBeta;
+  repeated.angleGamma = angleGamma;
+  return repeated;
 }

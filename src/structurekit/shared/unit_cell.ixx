@@ -22,8 +22,8 @@ import double3x3;
 // a pore diameter or a surface area is measured against. Keeping it separate from the engine's box is what
 // lets the whole library be built and tested without the engine, in the way the symmetry code already is.
 //
-// The lengths and angles are carried alongside the matrix rather than derived on demand because `scaled`
-// rebuilds the cell from them, in the canonical orientation with a along x and b in the xy-plane.
+// The lengths and angles are carried alongside the matrix rather than derived on demand, so that a cell built
+// from them reports the ones it was given and not those a matrix returns a rounding out.
 export struct UnitCell
 {
   // Whether the cell is a box lying along the axes: three right angles, and the matrix the three lengths down
@@ -137,7 +137,8 @@ export struct UnitCell
   // which is the condition for the minimum image convention to be the whole interaction.
   int3 smallestNumberOfUnitCellsForMinimumImagesConvention(double cutOff) const;
 
-  // The same cell repeated `scale` times along each axis.
+  // The same cell repeated `scale` times along each axis: its own three vectors, each that many times over,
+  // so it lies as the cell lies and is the same hand, and a point of the cell is where it was.
   UnitCell scaled(int3 scale) const;
 
  private:

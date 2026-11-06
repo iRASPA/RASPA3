@@ -219,6 +219,64 @@ TEST(unit_cell, a_repeated_cell_wraps_as_the_larger_cell_it_is)
   expectShortestEverywhere(repeated, repeated.cell, 41ull, "a repeated cell");
 }
 
+// A cell repeated stands where the cell stood. Its vectors are whole multiples of the cell's own, so an atom at
+// some fraction of the cell is at that fraction, divided by the count, of the repeated one, and at the same
+// place in space; and it is the same hand. The repeated cell used to be rebuilt from the lengths and the angles
+// alone, which put it with its first vector along x and its second in the xy-plane whatever way the cell itself
+// was turned: the same shape, somewhere else, and right-handed whether or not the cell was.
+TEST(unit_cell, a_repeated_cell_stands_where_the_cell_stood)
+{
+  const int3 counts(2, 1, 3);
+
+  // The cell as its lengths and angles put it, the same cell turned, and the same with two vectors changed over.
+  const UnitCell canonical(7.0, 9.0, 11.0, 50.0 * degrees, 70.0 * degrees, 115.0 * degrees);
+  auto turned = [](const double3 &v)
+  {
+    const double aboutZ = 0.7;
+    const double aboutX = 0.4;
+    const double3 first(std::cos(aboutZ) * v.x - std::sin(aboutZ) * v.y,
+                        std::sin(aboutZ) * v.x + std::cos(aboutZ) * v.y, v.z);
+    return double3(first.x, std::cos(aboutX) * first.y - std::sin(aboutX) * first.z,
+                   std::sin(aboutX) * first.y + std::cos(aboutX) * first.z);
+  };
+  const std::vector<std::pair<std::string, UnitCell>> cells{
+      {"as its lengths and angles put it", canonical},
+      {"turned", UnitCell(double3x3(turned(canonical.cell[0]), turned(canonical.cell[1]), turned(canonical.cell[2])))},
+      {"left-handed", UnitCell(double3x3(canonical.cell[1], canonical.cell[0], canonical.cell[2]))},
+      {"a box along the axes", UnitCell(7.0, 9.0, 11.0)},
+  };
+
+  for (const auto &[name, unitCell] : cells)
+  {
+    const UnitCell repeated = unitCell.scaled(counts);
+
+    // Each vector the cell's own, so many times over.
+    EXPECT_LT((repeated.cell[0] - 2.0 * unitCell.cell[0]).length(), 1.0e-12) << name;
+    EXPECT_LT((repeated.cell[1] - 1.0 * unitCell.cell[1]).length(), 1.0e-12) << name;
+    EXPECT_LT((repeated.cell[2] - 3.0 * unitCell.cell[2]).length(), 1.0e-12) << name;
+
+    // So a point of the cell is where it was.
+    for (const double3 &fractional : {double3(0.1, 0.2, 0.3), double3(0.9, 0.5, 0.05), double3(1.7, -0.4, 2.2)})
+    {
+      const double3 inRepeated(fractional.x / 2.0, fractional.y / 1.0, fractional.z / 3.0);
+      EXPECT_LT((repeated.cell * inRepeated - unitCell.cell * fractional).length(), 1.0e-12) << name;
+    }
+
+    // The same hand, six times the room, and the lengths and angles it had, to the last digit.
+    EXPECT_GT(repeated.cell.determinant() * unitCell.cell.determinant(), 0.0) << name;
+    EXPECT_NEAR(repeated.volume, 6.0 * unitCell.volume, 1.0e-9 * unitCell.volume) << name;
+    EXPECT_DOUBLE_EQ(repeated.lengthA, 2.0 * unitCell.lengthA) << name;
+    EXPECT_DOUBLE_EQ(repeated.lengthB, 1.0 * unitCell.lengthB) << name;
+    EXPECT_DOUBLE_EQ(repeated.lengthC, 3.0 * unitCell.lengthC) << name;
+    EXPECT_DOUBLE_EQ(repeated.angleAlpha, unitCell.angleAlpha) << name;
+    EXPECT_DOUBLE_EQ(repeated.angleBeta, unitCell.angleBeta) << name;
+    EXPECT_DOUBLE_EQ(repeated.angleGamma, unitCell.angleGamma) << name;
+    EXPECT_EQ(repeated.type, unitCell.type) << name;
+
+    expectShortestEverywhere(repeated, repeated.cell, 41ull, name.c_str());
+  }
+}
+
 // The same in cells nobody would choose: lengths from two to sixty, angles from twenty degrees to a hundred and
 // sixty, and each then sheared by whole numbers of its own vectors a few times over, which leaves the lattice
 // what it was and the cell long and thin. The search it is held against is run in the cell before the shearing.
