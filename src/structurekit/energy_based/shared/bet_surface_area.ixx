@@ -92,9 +92,10 @@ export struct LatticeIsotherm
 // units; henryMoleculesPerCell the exact x -> 0 anchor (P0 V / kT) <exp(-U/kT)>.
 //
 // With `neighbours` the attraction acts between sites rather than within them: each site carries one
-// molecule, the field it feels is q_L / z_L per occupied neighbour, and the occupancies are the solution
-// of the Bragg–Williams equations on that graph, chosen between the empty and the full start by grand
-// potential. A molecule with a bulk liquid's worth of neighbours then condenses at P0 exactly as before,
+// molecule, or its capacity of them in the one place, which count as that many to its neighbours and not
+// at all to each other. The field it feels is q_L / z_L per occupied neighbour, and the occupancies are
+// the solution of the Bragg–Williams equations on that graph, chosen between the empty and the full start
+// by grand potential. A molecule with a bulk liquid's worth of neighbours then condenses at P0 as before,
 // while one in a file of two does not condense at all --- the mean-field transition temperature falls
 // with the coordination, and at z = 2 it is 59 K, below the 77 K the isotherm is measured at. Without a
 // graph the older per-site form is used: the site is a patch of wall holding many molecules and the

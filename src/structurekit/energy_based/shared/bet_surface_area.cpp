@@ -855,6 +855,24 @@ LatticeIsotherm latticeGasIsotherm(std::span<const LatticeSite> sites, double he
   // site with fewer neighbours is bound by proportionately less and fills at a higher pressure.
   const double pairEnergy = W / nitrogenLiquidCoordination;
 
+  // A site holds its capacity in molecules, all in the one place and all filled to the same degree, so it
+  // counts for that many wherever a molecule is counted: in the loading, in the field its neighbours feel,
+  // and in the grand potential, which is
+  //
+  //   sum_i c_i [(U_i - mu) theta_i + kT (theta_i ln theta_i + (1 - theta_i) ln(1 - theta_i))]
+  //     + (epsilon / 2) sum_i sum_j c_i c_j theta_i theta_j,   j over the neighbours of i.
+  //
+  // The occupancies below are where that is stationary and the loading is minus its slope in mu. Counting
+  // the capacity in the loading alone, as was done, left the three describing different systems as soon as
+  // a capacity was not one. The lists of neighbours have to be mutual for any of this to hold, which those
+  // of a packing are.
+  auto fieldAt = [&](const std::vector<double> &theta, std::size_t i)
+  {
+    double field = 0.0;
+    for (std::uint32_t j : neighbours[i]) field += sites[j].capacity * theta[j];
+    return field;
+  };
+
   auto relax = [&](std::vector<double> &theta, double mu)
   {
     constexpr std::size_t maximumIterations = 1000uz;
@@ -865,8 +883,7 @@ LatticeIsotherm latticeGasIsotherm(std::span<const LatticeSite> sites, double he
       double largestChange = 0.0;
       for (std::size_t i = 0uz; i < sites.size(); ++i)
       {
-        double field = 0.0;
-        for (std::uint32_t j : neighbours[i]) field += theta[j];
+        const double field = fieldAt(theta, i);
         const double argument = std::clamp((mu - sites[i].energy - pairEnergy * field) / kT, -700.0, 700.0);
         const double target = 1.0 / (1.0 + std::exp(-argument));
         largestChange = std::max(largestChange, std::fabs(target - theta[i]));
@@ -886,11 +903,10 @@ LatticeIsotherm latticeGasIsotherm(std::span<const LatticeSite> sites, double he
     for (std::size_t i = 0uz; i < sites.size(); ++i)
     {
       const double t = std::clamp(theta[i], 1e-300, 1.0 - 1e-16);
-      omega += (sites[i].energy - mu) * t;
-      omega += kT * (t * std::log(t) + (1.0 - t) * std::log(1.0 - t));
-      double field = 0.0;
-      for (std::uint32_t j : neighbours[i]) field += theta[j];
-      omega += 0.5 * pairEnergy * t * field;
+      const double capacity = sites[i].capacity;
+      omega += capacity * (sites[i].energy - mu) * t;
+      omega += capacity * kT * (t * std::log(t) + (1.0 - t) * std::log(1.0 - t));
+      omega += 0.5 * pairEnergy * capacity * t * fieldAt(theta, i);
     }
     return omega;
   };

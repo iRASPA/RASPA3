@@ -280,6 +280,137 @@ TEST(energy_bet_area, lattice_isotherm_is_henry_anchored_and_condenses_at_the_we
 }
 
 
+// The lattice gas on a graph, where the attraction is between sites. A site that holds several molecules is
+// that many molecules in one place, alike in everything and no neighbours of each other, and that is all it
+// is: the isotherm of a graph with such sites in it is the isotherm of the graph with each of them written
+// out as its molecules. That holds only if a site counts for its capacity everywhere a molecule is counted,
+// in the loading, in the field its neighbours feel and in the grand potential that picks between the dilute
+// branch and the filled one. The capacities here are unequal, so that leaving them out of the grand
+// potential is not just a scale on it, and the wells are of different depths.
+namespace
+{
+struct LatticeGraph
+{
+  std::vector<LatticeSite> sites;
+  std::vector<std::vector<std::uint32_t>> neighbours;
+};
+
+// Groups of sites, every site a neighbour of every site outside its own group and of none inside it. With
+// `merged` each group is one site holding as many molecules as the group has; without it the group is
+// written out, a site to a molecule.
+LatticeGraph groupsOf(std::span<const std::size_t> sizes, std::span<const double> energies, bool merged)
+{
+  LatticeGraph graph;
+  std::vector<std::size_t> groupOfSite;
+  for (std::size_t group = 0; group < sizes.size(); ++group)
+  {
+    if (merged)
+    {
+      graph.sites.push_back(LatticeSite{static_cast<double>(sizes[group]), energies[group]});
+      groupOfSite.push_back(group);
+      continue;
+    }
+    for (std::size_t member = 0; member < sizes[group]; ++member)
+    {
+      graph.sites.push_back(LatticeSite{1.0, energies[group]});
+      groupOfSite.push_back(group);
+    }
+  }
+  graph.neighbours.resize(graph.sites.size());
+  for (std::size_t i = 0; i < graph.sites.size(); ++i)
+  {
+    for (std::size_t j = 0; j < graph.sites.size(); ++j)
+    {
+      if (groupOfSite[i] != groupOfSite[j]) graph.neighbours[i].push_back(static_cast<std::uint32_t>(j));
+    }
+  }
+  return graph;
+}
+}  // namespace
+
+TEST(energy_bet_area, a_site_that_holds_several_molecules_is_that_many_sites_of_one)
+{
+  const double kT = 1.0;
+  const double qL = 8.0;
+  const std::vector<std::size_t> sizes{3, 1, 2, 1, 3, 2};
+  const std::vector<double> energies{-4.0, -7.0, -5.0, -6.5, -4.5, -5.5};
+
+  double henry = 0.0;
+  for (std::size_t group = 0; group < sizes.size(); ++group)
+  {
+    henry += static_cast<double>(sizes[group]) * std::exp((-qL - energies[group]) / kT);
+  }
+
+  const LatticeGraph merged = groupsOf(sizes, energies, true);
+  const LatticeGraph writtenOut = groupsOf(sizes, energies, false);
+  ASSERT_EQ(merged.sites.size(), 6uz);
+  ASSERT_EQ(writtenOut.sites.size(), 12uz);
+
+  const LatticeIsotherm one = latticeGasIsotherm(merged.sites, henry, kT, qL, merged.neighbours);
+  const LatticeIsotherm other = latticeGasIsotherm(writtenOut.sites, henry, kT, qL, writtenOut.neighbours);
+
+  EXPECT_NEAR(one.saturationCapacity, 12.0, 1.0e-12);
+  EXPECT_NEAR(other.saturationCapacity, 12.0, 1.0e-12);
+  ASSERT_EQ(one.isotherm.size(), other.isotherm.size());
+  ASSERT_FALSE(one.isotherm.empty());
+
+  // There is a step in it, the graph being as well connected as a liquid: this is asked across a
+  // transition, where the grand potential has a choice to make.
+  double largestStep = 0.0;
+  for (std::size_t k = 1; k < other.isotherm.size(); ++k)
+  {
+    largestStep = std::max(largestStep, other.isotherm[k].moleculesPerCell - other.isotherm[k - 1].moleculesPerCell);
+  }
+  EXPECT_GT(largestStep, 3.0);
+
+  for (std::size_t k = 0; k < one.isotherm.size(); ++k)
+  {
+    EXPECT_DOUBLE_EQ(one.isotherm[k].relativePressure, other.isotherm[k].relativePressure);
+    EXPECT_NEAR(one.isotherm[k].moleculesPerCell, other.isotherm[k].moleculesPerCell, 1.0e-6)
+        << "at x = " << one.isotherm[k].relativePressure;
+  }
+}
+
+
+// A site with no room in it holds nothing, and is as good as not there: it adds nothing to the loading, and
+// nothing to the field of its neighbours or to the grand potential either, however deep its well.
+TEST(energy_bet_area, a_site_with_no_room_in_it_changes_nothing_on_the_graph)
+{
+  const double kT = 1.0;
+  const double qL = 8.0;
+  const std::vector<std::size_t> sizes{1, 1, 1, 1, 1, 1, 1, 1};
+  const std::vector<double> energies{-4.0, -7.0, -5.0, -6.5, -4.5, -5.5, -6.0, -5.0};
+
+  double henry = 0.0;
+  for (double energy : energies) henry += std::exp((-qL - energy) / kT);
+
+  const LatticeGraph without = groupsOf(sizes, energies, true);
+
+  // The same, and a site of no capacity in a deep well that is a neighbour of them all.
+  LatticeGraph with = without;
+  const std::uint32_t empty = static_cast<std::uint32_t>(with.sites.size());
+  with.sites.push_back(LatticeSite{0.0, -9.0});
+  with.neighbours.emplace_back();
+  for (std::uint32_t i = 0; i < empty; ++i)
+  {
+    with.neighbours[i].push_back(empty);
+    with.neighbours[empty].push_back(i);
+  }
+
+  const LatticeIsotherm one = latticeGasIsotherm(without.sites, henry, kT, qL, without.neighbours);
+  const LatticeIsotherm other = latticeGasIsotherm(with.sites, henry, kT, qL, with.neighbours);
+
+  ASSERT_EQ(one.isotherm.size(), other.isotherm.size());
+  ASSERT_FALSE(one.isotherm.empty());
+  EXPECT_GT(one.isotherm.back().moleculesPerCell, 7.0);  // filled by the top of the range, so across a step
+  for (std::size_t k = 0; k < one.isotherm.size(); ++k)
+  {
+    EXPECT_NEAR(one.isotherm[k].moleculesPerCell, other.isotherm[k].moleculesPerCell, 1.0e-6)
+        << "at x = " << one.isotherm[k].relativePressure;
+  }
+}
+
+
 // A heterogeneous micropore (a spread of well depths) through the full pipeline: the isotherm is type I,
 // the Rouquerol cap lands at the filling step, and the fitted n_m reads near the geometric capacity.
 TEST(energy_bet_area, lattice_micropore_reads_the_filling_capacity_as_the_monolayer)
