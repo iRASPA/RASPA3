@@ -507,3 +507,107 @@ TEST(brute_force_structure, the_atoms_within_reach_are_those_a_search_over_every
   EXPECT_FALSE(structure.atomsWithin(positions.front(), 1.0e3, found));
   EXPECT_TRUE(found.empty());
 }
+
+
+// A ray leaves the atoms it starts inside in the direction it was sent. The start is put off the centre of an
+// atom, so that the way out is shorter one way than the other and the two cannot be taken for each other: sent
+// along +x from a point one Ångström that side of the centre of a sphere of radius two, the ray is out after
+// one, and sent along -x after three. It used to be the other way round. The displacement worked out for each
+// atom runs from the atom to the ray's start, and it was turned round before the ray was laid along it, which
+// is the ray laid the other way.
+TEST(brute_force_structure, a_ray_leaves_the_atoms_the_way_it_was_sent)
+{
+  const UnitCell cell(20.0, 20.0, 20.0);
+  const double3 centre(5.0, 5.0, 5.0);
+
+  // One sphere, the start a step off its centre along each axis in turn.
+  {
+    BruteForceStructure structure = BruteForceStructure::create("one sphere", cell, {centre}, {2.0});
+    const std::array<double3, 3> axes{double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, 1.0)};
+    for (const double3 &axis : axes)
+    {
+      const double3 start = centre + 1.0 * axis;
+      const std::optional<double> forward = structure.firstExit(start, axis, 10.0);
+      const std::optional<double> backward = structure.firstExit(start, -1.0 * axis, 10.0);
+      ASSERT_TRUE(forward.has_value());
+      ASSERT_TRUE(backward.has_value());
+      EXPECT_NEAR(forward.value(), 1.0, 1.0e-12);
+      EXPECT_NEAR(backward.value(), 3.0, 1.0e-12);
+    }
+
+    // In any direction, where it comes out is on the sphere and it was inside all the way there.
+    RandomNumber random{11};
+    for (std::size_t n = 0; n < 200; ++n)
+    {
+      const double3 start = centre + double3(0.9 * (random.uniform() - 0.5), 1.1 * (random.uniform() - 0.5),
+                                             1.3 * (random.uniform() - 0.5));
+      const double3 direction = random.randomVectorOnUnitSphere();
+      const std::optional<double> out = structure.firstExit(start, direction, 10.0);
+      ASSERT_TRUE(out.has_value());
+      EXPECT_NEAR((start + out.value() * direction - centre).length(), 2.0, 1.0e-9) << "ray " << n;
+      EXPECT_LT((start + 0.5 * out.value() * direction - centre).length(), 2.0) << "ray " << n;
+    }
+
+    // A start outside every atom is out already, whichever way it looks.
+    EXPECT_EQ(structure.firstExit(centre + double3(3.0, 0.0, 0.0), double3(-1.0, 0.0, 0.0), 10.0).value(), 0.0);
+
+    // And one that is not out within the length allowed is not out.
+    EXPECT_FALSE(structure.firstExit(centre + double3(1.0, 0.0, 0.0), double3(-1.0, 0.0, 0.0), 2.5).has_value());
+    EXPECT_TRUE(structure.firstExit(centre + double3(1.0, 0.0, 0.0), double3(1.0, 0.0, 0.0), 2.5).has_value());
+  }
+
+  // Two spheres in a row that overlap, and a third further on that does not: sent towards them the ray is
+  // inside the first two without a break and comes out between the second and the third; sent away it comes
+  // out of the first alone.
+  {
+    BruteForceStructure structure = BruteForceStructure::create(
+        "a row", cell, {centre, centre + double3(3.0, 0.0, 0.0), centre + double3(9.0, 0.0, 0.0)}, {2.0, 2.0, 2.0});
+    const std::optional<double> along = structure.firstExit(centre, double3(1.0, 0.0, 0.0), 15.0);
+    const std::optional<double> away = structure.firstExit(centre, double3(-1.0, 0.0, 0.0), 15.0);
+    ASSERT_TRUE(along.has_value());
+    ASSERT_TRUE(away.has_value());
+    EXPECT_NEAR(along.value(), 5.0, 1.0e-12);
+    EXPECT_NEAR(away.value(), 2.0, 1.0e-12);
+  }
+
+  // The copies of an atom count: a sphere across the face of the cell is met by a ray that leaves the cell.
+  {
+    BruteForceStructure structure =
+        BruteForceStructure::create("across the face", cell, {double3(1.0, 5.0, 5.0), double3(18.0, 5.0, 5.0)},
+                                    {2.0, 2.0});
+    // From inside the first, towards -x: out of it at x = -1, which is inside the copy of the second at x = -2
+    // reaching from -4 to 0, so the ray is not out until x = -4.
+    const std::optional<double> out = structure.firstExit(double3(1.5, 5.0, 5.0), double3(-1.0, 0.0, 0.0), 15.0);
+    ASSERT_TRUE(out.has_value());
+    EXPECT_NEAR(out.value(), 5.5, 1.0e-12);
+    // The other way there is nothing but the first sphere.
+    const std::optional<double> other = structure.firstExit(double3(1.5, 5.0, 5.0), double3(1.0, 0.0, 0.0), 15.0);
+    ASSERT_TRUE(other.has_value());
+    EXPECT_NEAR(other.value(), 1.5, 1.0e-12);
+  }
+}
+
+// The displacement an atom is reported with runs from the atom to the point, so the point less it is where
+// the atom is.
+TEST(brute_force_structure, an_atom_within_reach_is_reported_from_its_centre_to_the_point)
+{
+  const UnitCell cell(12.0, 13.0, 14.0);
+  const std::vector<double3> positions{double3(1.0, 2.0, 3.0), double3(11.5, 12.0, 0.5)};
+  BruteForceStructure structure = BruteForceStructure::create("two", cell, positions, {1.0, 1.0});
+
+  const double3 point(0.5, 0.5, 13.5);
+  std::vector<BruteForceStructure::Neighbour> found;
+  ASSERT_TRUE(structure.atomsWithin(point, 3.0, found));
+  ASSERT_FALSE(found.empty());
+  for (const BruteForceStructure::Neighbour &atom : found)
+  {
+    // Some copy of one of the two atoms stands exactly there.
+    const double3 where = point - atom.fromCentre;
+    double nearest = std::numeric_limits<double>::max();
+    for (const double3 &position : positions)
+    {
+      nearest = std::min(nearest, structure.nearestImage(position, where).length());
+    }
+    EXPECT_LT(nearest, 1.0e-9);
+  }
+}

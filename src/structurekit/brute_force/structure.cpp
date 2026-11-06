@@ -184,8 +184,10 @@ double3 BruteForceStructure::wrappedFractional(const double3 &position) const
   return double3(s.x - std::floor(s.x), s.y - std::floor(s.y), s.z - std::floor(s.z));
 }
 
-// The displacement from `position` to atom `j`, with the fractional difference brought into [-1/2, 1/2)
-// along each axis. Every image of that atom is this plus a lattice translation.
+// The displacement to `position` from atom `j`, the position less the atom, with the fractional difference
+// brought into [-1/2, 1/2) along each axis. From every other image of that atom it is this plus a lattice
+// translation. Which way it runs matters wherever a direction is laid against it: the atom is at minus this
+// from the position.
 double3 BruteForceStructure::baseDisplacement(const double3 &fractional, std::size_t j) const
 {
   double3 ds = fractional - this->fractionalPositions[j];
@@ -344,7 +346,10 @@ std::optional<double> BruteForceStructure::firstExit(const double3 &origin, cons
     {
       if (image.distance >= reach) break;
 
-      double3 toOrigin = -1.0 * (base + image.translation);  // from the atom to the ray's origin
+      // From the atom to the ray's origin, which is the way the displacement already runs. Turned round, as
+      // it was here, it is from the origin to the atom, and the ray laid along it below is the ray sent the
+      // other way: the distance came back for the direction opposite the one asked.
+      double3 toOrigin = base + image.translation;
 
       // |toOrigin + t d|² = r², solved for t.
       double b = double3::dot(toOrigin, direction);
