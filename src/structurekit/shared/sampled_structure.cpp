@@ -42,44 +42,73 @@ int3 binOfUnwrappedFractional(const double3 &fractional, const int3 &gridSize)
               static_cast<int>(std::floor(fractional.z * static_cast<double>(gridSize.z))));
 }
 
-void ensureNeighborGrid(const SampledStructure &structure)
+// The bins, built if they are not there or are not this structure's.
+//
+// Nearly every call finds them there, and many threads call at once from inside their own loops, so that way
+// through takes no lock. It used to be a flag saying the bins were ready, followed by a look at what they
+// were built for. That is sound for bins built once. It is not for bins built a second time: a thread that
+// read the flag just before another began rebuilding went on to read the fields the builder was by then
+// writing, could find them already those of the new build, and walked off into bins that were half made.
+// Thousands of queries from eight threads after each change to a structure gave a few wrong answers in every
+// thousand.
+//
+// So the flag is the number of the build, nothing while one is running, and it is read on both sides of the
+// look. The builder puts it to nothing before it writes anything else, and each thing a reader looks at is
+// handed over the way the number is, so a reader that saw anything of a new build cannot then read the old
+// number again: it finds nothing, or a later number, and goes to the lock like any other that found the bins
+// wanting. One that reads the same number twice with the fields right has the bins of a build that was
+// finished before it looked and was not begun again while it looked.
+//
+// What comes back is the largest radius of the structure, which every query bounds its search by and which
+// has been worked out here already. The queries take it from here and not from the grid, where it is one of
+// the fields read on the way in and so is not to be read any other way.
+double ensureNeighborGrid(const SampledStructure &structure)
 {
   SampledNeighborGrid &grid = structure.neighborGrid;
   const double maxRadius = maximumRadiusOf(structure.radii);
+  const std::size_t atomCount = structure.positions.size();
+
   std::atomic_ref<std::uint32_t> published{grid.published};
-  if (published.load(std::memory_order_acquire) != 0 && grid.atomCount == structure.positions.size() &&
-      grid.maximumRadius == maxRadius && !grid.bins.empty())
+  std::atomic_ref<std::size_t> builtForAtoms{grid.atomCount};
+  std::atomic_ref<double> builtForRadius{grid.maximumRadius};
+
+  const std::uint32_t build = published.load(std::memory_order_acquire);
+  if (build != 0 && builtForAtoms.load(std::memory_order_acquire) == atomCount &&
+      builtForRadius.load(std::memory_order_acquire) == maxRadius &&
+      published.load(std::memory_order_acquire) == build)
   {
-    return;
+    return maxRadius;
   }
 
-  // Only the first build of a grid is serialized. Later clearances on a published grid stay on the
-  // acquire path above, so the worker threads in SampledRoadmap::build do not share this mutex.
+  // Building is serialized, and so is finding out under the lock that another thread has built meanwhile.
+  // Queries on bins that are there stay on the way above, so the worker threads in SampledRoadmap::build do
+  // not share this mutex.
   static std::mutex buildMutex;
   std::lock_guard<std::mutex> lock(buildMutex);
-  if (published.load(std::memory_order_relaxed) != 0 && grid.atomCount == structure.positions.size() &&
-      grid.maximumRadius == maxRadius && !grid.bins.empty())
+  if (published.load(std::memory_order_acquire) != 0 &&
+      builtForAtoms.load(std::memory_order_acquire) == atomCount &&
+      builtForRadius.load(std::memory_order_acquire) == maxRadius)
   {
-    return;
+    return maxRadius;
   }
 
-  published.store(0, std::memory_order_relaxed);
-  grid.atomCount = structure.positions.size();
-  grid.maximumRadius = maxRadius;
+  published.store(0, std::memory_order_release);
+  builtForAtoms.store(atomCount, std::memory_order_release);
+  builtForRadius.store(maxRadius, std::memory_order_release);
 
+  // The widths across the cell, as the cell gives them, which is the same for a left-handed set of vectors as
+  // for a right-handed one. Worked out here from a volume that carried the sign of the determinant they came
+  // out negative for a left-handed cell, the least bin width with them, and the searches below, which stop
+  // once a shell is further off than matters, had shells that were never any distance off.
   const UnitCell &unitCell = structure.unitCell;
   const double3x3 &cell = unitCell.cell;
-  const double volume = unitCell.volume;
-  double3 a(cell[0][0], cell[0][1], cell[0][2]);
-  double3 b(cell[1][0], cell[1][1], cell[1][2]);
-  double3 c(cell[2][0], cell[2][1], cell[2][2]);
-  double3 perpendicularWidths(volume / double3::cross(b, c).length(), volume / double3::cross(c, a).length(),
-                              volume / double3::cross(a, b).length());
+  const double volume = std::fabs(unitCell.volume);
+  const double3 perpendicularWidths = unitCell.perpendicularWidths();
 
   // Roughly four atoms per bin; bin counts proportional to the perpendicular widths so the bins are
   // approximately metrically cubic (same construction as PoreAccessibility / SKVoronoi).
   const double targetBinSize =
-      std::cbrt(volume / std::max(1.0, static_cast<double>(grid.atomCount) / 4.0));
+      std::cbrt(volume / std::max(1.0, static_cast<double>(atomCount) / 4.0));
   grid.gridSize = int3(std::max(1, static_cast<int>(perpendicularWidths.x / targetBinSize)),
                        std::max(1, static_cast<int>(perpendicularWidths.y / targetBinSize)),
                        std::max(1, static_cast<int>(perpendicularWidths.z / targetBinSize)));
@@ -99,7 +128,11 @@ void ensureNeighborGrid(const SampledStructure &structure)
     int3 bin = binOfFractional(fractional, gridSize);
     grid.bins[static_cast<std::size_t>((bin.z * gridSize.y + bin.y) * gridSize.x + bin.x)].push_back(i);
   }
-  published.store(1, std::memory_order_release);
+
+  // The next number, passing over the one that stands for nothing.
+  grid.lastBuild = (grid.lastBuild + 1 == 0) ? 1 : grid.lastBuild + 1;
+  published.store(grid.lastBuild, std::memory_order_release);
+  return maxRadius;
 }
 }  // namespace
 
@@ -124,7 +157,7 @@ bool SampledStructure::overlaps(const double3 &position, std::size_t skip) const
 {
   if (this->positions.empty()) return false;
 
-  ensureNeighborGrid(*this);
+  const double maximumRadius = ensureNeighborGrid(*this);
   const SampledNeighborGrid &grid = this->neighborGrid;
   const int3 gridSize = grid.gridSize;
   const double3x3 &cell = this->unitCell.cell;
@@ -139,7 +172,7 @@ bool SampledStructure::overlaps(const double3 &position, std::size_t skip) const
   for (int k = 0;; ++k)
   {
     double lowerBound = static_cast<double>(k - 1) * grid.minimumBinWidth;
-    if (lowerBound > grid.maximumRadius) break;
+    if (lowerBound > maximumRadius) break;
 
     for (int ox = -k; ox <= k; ++ox)
     {
@@ -186,7 +219,7 @@ double SampledStructure::clearance(const double3 &position) const
 {
   if (this->positions.empty()) return std::numeric_limits<double>::max();
 
-  ensureNeighborGrid(*this);
+  const double maximumRadius = ensureNeighborGrid(*this);
   const SampledNeighborGrid &grid = this->neighborGrid;
   const int3 gridSize = grid.gridSize;
   const double3x3 &cell = this->unitCell.cell;
@@ -199,7 +232,7 @@ double SampledStructure::clearance(const double3 &position) const
   {
     double lowerBound = static_cast<double>(k - 1) * grid.minimumBinWidth;
     // Clearance to any atom in this shell is at least lowerBound - maxRadius.
-    if (k > 0 && lowerBound - grid.maximumRadius > smallest) break;
+    if (k > 0 && lowerBound - maximumRadius > smallest) break;
 
     for (int ox = -k; ox <= k; ++ox)
     {
@@ -232,7 +265,7 @@ SegmentBottleneck SampledStructure::segmentBottleneck(const double3 &position, c
   SegmentBottleneck bottleneck{.radius = std::numeric_limits<double>::max(), .position = position};
   if (this->positions.empty()) return bottleneck;
 
-  ensureNeighborGrid(*this);
+  const double maximumRadius = ensureNeighborGrid(*this);
   const SampledNeighborGrid &grid = this->neighborGrid;
   const int3 gridSize = grid.gridSize;
   const double3x3 &cell = this->unitCell.cell;
@@ -248,7 +281,7 @@ SegmentBottleneck SampledStructure::segmentBottleneck(const double3 &position, c
   {
     double lowerBound = static_cast<double>(k - 1) * grid.minimumBinWidth;
     // dist(atom, segment) ≥ dist(atom, midpoint) - length/2, so clearance ≥ that − maxRadius.
-    if (k > 0 && lowerBound - 0.5 * length - grid.maximumRadius > bottleneck.radius) break;
+    if (k > 0 && lowerBound - 0.5 * length - maximumRadius > bottleneck.radius) break;
 
     for (int ox = -k; ox <= k; ++ox)
     {

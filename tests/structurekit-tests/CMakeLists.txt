@@ -8,6 +8,7 @@ add_executable(unit_tests_structurekit
   grid_clearance.cpp
   sampling_backend_opencl.cpp
   sampled_roadmap.cpp
+  sampled_structure.cpp
   mc_pore_size_distribution.cpp
   sampled_surface_area.cpp
   brute_force_pore_volume.cpp

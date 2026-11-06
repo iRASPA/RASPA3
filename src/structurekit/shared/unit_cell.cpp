@@ -60,7 +60,7 @@ UnitCell::UnitCell(double a, double b, double c)
   if (a != 0.0 && b != 0.0 && c != 0.0)
   {
     this->inverseCell = this->cell.inverse();
-    this->volume = this->cell.determinant();
+    this->volume = std::fabs(this->cell.determinant());
   }
   settle();
 }
@@ -79,7 +79,7 @@ UnitCell::UnitCell(double a, double b, double c, double alpha, double beta, doub
   if (a != 0.0 && b != 0.0 && c != 0.0)
   {
     this->inverseCell = this->cell.inverse();
-    this->volume = this->cell.determinant();
+    this->volume = std::fabs(this->cell.determinant());
   }
   settle();
 }
@@ -91,7 +91,10 @@ UnitCell::UnitCell(double3x3 cell) : UnitCell(cell, Type::Triclinic)
 
 UnitCell::UnitCell(double3x3 cell, Type type) : cell(cell), type(type)
 {
-  this->volume = cell.determinant();
+  // The size of the determinant, which is the volume. Its sign is which hand the three vectors are, and that
+  // is the order they were named in and nothing about the cell: a volume that came out below zero for half the
+  // orders made every width, spacing and density taken from it negative as well.
+  this->volume = std::fabs(cell.determinant());
   // a cell of no volume has no inverse, and dividing by its determinant would fill one with what is not a number
   if (std::fabs(this->volume) > 0.0) this->inverseCell = cell.inverse();
 

@@ -60,7 +60,7 @@ export struct UnitCell
 
   double3x3 cell{};
   double3x3 inverseCell{};
-  double volume{0.0};
+  double volume{0.0};  // Å³, never negative, whichever hand the three vectors are
 
   double lengthA{0.0};
   double lengthB{0.0};

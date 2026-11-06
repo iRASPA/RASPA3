@@ -16,19 +16,31 @@ export struct SegmentBottleneck
 };
 
 // Periodic cell list over the atoms of one unit cell. Built on demand for the overlap and clearance
-// queries; leave it empty (the default) and the next query rebuilds it. Mutating `positions` or
-// `radii` after a query requires clearing `bins` (or the whole grid) so the next call rebuilds.
+// queries; leave it as it starts and the first query builds it.
+//
+// It is built again by itself when the number of atoms or the largest radius is no longer what it was built
+// for. Any other change to `positions` or `radii` after a query has to be followed by putting a fresh grid in
+// its place, `neighborGrid = {}`, before the next one, there being nothing cheap that would show it. Either
+// way the change is made while no query is running: the queries may be asked from many threads at once, and
+// what they share is a structure that is standing still.
 export struct SampledNeighborGrid
 {
-  std::size_t atomCount{0};
-  double maximumRadius{0.0};
+  // What the bins were built for. Read by every query on its way in, so they are read and written as atomics.
+  alignas(std::atomic_ref<std::size_t>::required_alignment) std::size_t atomCount{0};
+  alignas(std::atomic_ref<double>::required_alignment) double maximumRadius{0.0};
+
   int3 gridSize{1, 1, 1};
   double minimumBinWidth{0.0};
   // Cartesian centres folded into the primary cell; bins and image shifts refer to these.
   std::vector<double3> wrappedPositions;
   std::vector<std::vector<std::size_t>> bins;
-  // 1 once the bins above are safe to read. Readers take an acquire load; the builder release-stores.
+
+  // Nothing while the bins are not there or are being built, and otherwise which building of them this is: a
+  // number that is never the same for two builds running. A query reads it, reads what the bins were built
+  // for, and reads it again; only if it is the same number both times, and not nothing, are the bins the ones
+  // it took them for.
   alignas(std::atomic_ref<std::uint32_t>::required_alignment) std::uint32_t published{0};
+  std::uint32_t lastBuild{0};  // the number the last build was given; touched only by a builder
 };
 
 // A crystal as the samplers see it: a cell, the centres of the atoms of one unit cell, and the radius of
