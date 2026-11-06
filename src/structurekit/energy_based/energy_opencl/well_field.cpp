@@ -244,7 +244,12 @@ GpuPack packNeighbourhood(const PairInteractions &interactions, const Crystal &f
   {
     for (std::size_t s = 0; s < numberOfSites; ++s)
     {
-      if (!sites[s].dispersion) pack.sigmaSquared[s * numberOfAtoms + i] = dummyCore2;
+      // A charge with no dispersion against the atom is held off its nucleus by this floor and nothing else.
+      // For a pair like that sigma has no other use on the device, so the floor is kept in its place.
+      const std::size_t index = s * numberOfAtoms + i;
+      const bool chargeOnly =
+          !sites[s].dispersion || (pack.epsilonTimesFour[index] == 0.0f && pack.chargeProduct[index] != 0.0f);
+      if (chargeOnly) pack.sigmaSquared[index] = dummyCore2;
     }
   }
 
@@ -796,18 +801,24 @@ static void addPair(float rr, float epsilon4, float sigma2, float contact, float
     float clamped = fmax(rr, 1.0e-8f);
     // A pair with no strength has no dispersion energy and is left out rather than worked out: the product is
     // nought before the ratio is squared, and the skip keeps it from ever being otherwise under a build
-    // allowed to reorder products, and saves the work besides. The contact and the overlap are geometry and
-    // stay.
+    // allowed to reorder products, and saves the work besides. The contact is geometry and stays.
     if(epsilon4 != 0.0f)
     {
       float ratio = sigma2 / clamped;
       float ratio3 = ratio * ratio * ratio;
-      *energy = df_add_f(*energy, fmin(epsilon4 * ratio3 * (ratio3 - 1.0f) - shift, ceiling));
+      float pairEnergy = epsilon4 * ratio3 * (ratio3 - 1.0f) - shift;
+      *energy = df_add_f(*energy, fmin(pairEnergy, ceiling));
+      // A pair is an overlap when its dispersion has reached the ceiling, and not before: sigma is where the
+      // pair energy crosses nought, not a wall, and a pose a little inside it keeps its electrostatics.
+      if(overlapHit != 0 && pairEnergy >= ceiling) *overlapHit = 1;
     }
-    if(overlapHit != 0 && rr < sigma2) *overlapHit = 1;
     if(wantClearance != 0) *nearest = fmin(*nearest, sqrt(clamped) - contact);
   }
-  int inCore = (dispersion == 0 && sigma2 > 0.0f && rr < sigma2) ? 1 : 0;
+  // A charge with no dispersion against this atom has no wall of its own, so it is given a floor of one
+  // Ångström, which the host has put in sigma2 for it: a massless charge site against every atom, and a
+  // dispersing site against an atom it has only charge in common with.
+  int chargeOnly = (dispersion == 0 || (epsilon4 == 0.0f && charges != 0.0f)) ? 1 : 0;
+  int inCore = (chargeOnly != 0 && sigma2 > 0.0f && rr < sigma2) ? 1 : 0;
   if(inCore != 0 && skipSmooth != 0) *skipSmooth = 1;
   if(useCharges != 0 && inCore == 0 && rr < coulombCutOffSquared && charges != 0.0f)
   {
@@ -891,7 +902,7 @@ static void visitPairs(float4 centre,
         }
       }
     }
-    if(dispersion == 0 && skipSmooth != 0) *dummyHit = 1;
+    if(skipSmooth != 0) *dummyHit = 1;
     if(withCharges != 0 && siteCharge[site] != 0.0f && skipSmooth == 0)
     {
       *energy = df_add_f(*energy, siteCharge[site] * smoothPotentialAt(smoothPotential, s.xyz, potentialGridSize));

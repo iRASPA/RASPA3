@@ -345,18 +345,24 @@ struct Neighbourhood
         double clamped = std::max(rr, 1.0e-8);
         double ratio = pair.sigma2 / clamped;
         double ratio3 = ratio * ratio * ratio;
-        total += std::min(pair.epsilon4 * ratio3 * (ratio3 - 1.0) - pair.shift, this->ceiling);
+        const double pairEnergy = pair.epsilon4 * ratio3 * (ratio3 - 1.0) - pair.shift;
+        total += std::min(pairEnergy, this->ceiling);
 
-        // r < σ is the TraPPE overlap (U_LJ > 0). rmin = 2^{1/6}σ is the well, not a wall.
-        if (overlapHit != nullptr && rr < pair.sigma2) *overlapHit = 1;
+        // A pair is an overlap when its dispersion has reached the ceiling, and not before. Sigma is where the
+        // pair energy crosses nought, not a wall: a site a little inside it costs a few epsilon, a pose like
+        // that is sampled, and its electrostatics belong to it as much as its dispersion does.
+        if (overlapHit != nullptr && pairEnergy >= this->ceiling) *overlapHit = 1;
 
         if constexpr (WantClearance) nearest = std::min(nearest, std::sqrt(clamped) - pair.contact);
       }
     }
 
-    // Massless charge sites (N_com) have no VDW. A 1 Å floor is only to keep 1/r off the nucleus;
-    // it is not a contact wall. Dispersing N atoms gate Coulomb at r < σ, not at rmin.
-    const bool dummyCore = !dispersion && rr < this->dummyCore2;
+    // A charge with no dispersion against this atom has no wall of its own to keep its 1/r off the nucleus,
+    // so it is given a floor of one Ångström, which is not a contact wall. That is a massless charge site
+    // (N_com) against every atom, and a dispersing site against an atom it has only charge in common with.
+    // A pair that does have dispersion needs none: its r^-12 outruns any 1/r long before the ceiling.
+    const bool chargeOnly = !dispersion || (pair.epsilon4 == 0.0 && pair.chargeProduct != 0.0);
+    const bool dummyCore = chargeOnly && rr < this->dummyCore2;
     if (dummyCore)
     {
       if (dummyHit != nullptr) *dummyHit = 1;
@@ -494,10 +500,14 @@ struct Neighbourhood
   {
     auto [energies, clearances] = this->scratch();
 
-    // Soft TraPPE: rmin is the LJ well, not a wall. Keep U_LJ for r ≥ σ (including the inner
-    // shoulder σ < r < rmin that GCMC samples). Gate Coulomb only at true overlap — either N
-    // inside σ, or the dummy inside 1 Å — so a quadrupole cannot be evaluated with one N buried
-    // and N_com still on. Overlapping poses keep the repulsive LJ; they are not ceilinged.
+    // The energy of an orientation is its dispersion and its electrostatics together, everywhere the model
+    // has an energy: on the inner shoulder between sigma and rmin, and inside sigma too, where the dispersion
+    // is only a few epsilon and the pose is still one a simulation visits. The electrostatics are refused in
+    // two places only, and for the whole orientation at once, so that a quadrupole is never summed with one
+    // of its charges left out. One is a pair whose dispersion has reached the ceiling: the orientation is as
+    // high as anything here goes, and a Coulomb term left in would dig a hole under it at a vanishing
+    // separation. The other is a charge with no dispersion inside its one Ångström floor, which is put at
+    // the ceiling outright. This is the rule the molecular energy grid goes by.
     static thread_local std::vector<char> dummyHit;
     static thread_local std::vector<char> overlapHit;
     static thread_local std::vector<char> skipElectro;

@@ -881,17 +881,156 @@ TEST(energy_well_surface, a_charged_probe_feels_the_framework)
 }
 
 
-// TraPPE N2 puts the compensating charge on a massless site with no Lennard-Jones of its own. Place a
-// dispersing N just inside σ of an opposite framework charge: Coulomb is gated (otherwise the dummy's
-// 1/r through the atom is a well of tens of thousands of kelvin). The contact-distance field must not
-// move; only electrostatics are refused. The dummy's own 1 Å floor does not fire here.
-TEST(energy_well_surface, a_bare_charge_cannot_see_through_the_core)
+// The charged probes of the tests below, and what they are run on. The nitrogen model is TraPPE's in shape:
+// two dispersing sites that carry charge, and the charge that balances them on a massless site between
+// them with no Lennard-Jones of its own.
+namespace
+{
+constexpr double coulombConversion = 167101.0;
+constexpr double nitrogenSigma = 3.30;
+constexpr double nitrogenBond = 0.55;
+constexpr double nitrogenCharge = -0.405;
+constexpr double oxygenCharge = -1.025;
+
+PairInteractions nitrogenInteractions()
+{
+  PairInteractions interactions;
+  interactions.numberOfTypes = 2;
+  interactions.names = {"X", "Q"};
+  interactions.charges = {0.0, -2.0 * nitrogenCharge};
+  interactions.parameters = {PairParameters{nitrogenSigma, epsilon, 0.0}, PairParameters{0.0, 0.0, 0.0},
+                             PairParameters{0.0, 0.0, 0.0}, PairParameters{0.0, 0.0, 0.0}};
+  interactions.cutOffVDW = 12.0;
+  interactions.cutOffCoulomb = 12.0;
+  return interactions;
+}
+
+LinearProbe nitrogenProbe()
+{
+  LinearProbe probe;
+  probe.name = "N2";
+  probe.headTailSymmetric = true;
+  probe.sites.push_back(LinearProbe::Site{0, -nitrogenBond, nitrogenCharge, "X"});
+  probe.sites.push_back(LinearProbe::Site{1, 0.0, -2.0 * nitrogenCharge, "Q"});
+  probe.sites.push_back(LinearProbe::Site{0, nitrogenBond, nitrogenCharge, "X"});
+  return probe;
+}
+
+// One atom of the given charge at the middle of a cube 40 Å on a side.
+Crystal oneChargedAtom(double charge)
+{
+  Crystal framework = oneAtom(40.0);
+  framework.atoms[0].charge = charge;
+  return framework;
+}
+
+// A potential with all of the electrostatics in its near half: no screening to speak of, and a smooth half
+// that is the same everywhere.
+ElectrostaticPotentialGrid unscreenedPotential(const Crystal &framework, uint3 gridSize, float smooth)
+{
+  ElectrostaticPotentialGrid potential;
+  potential.gridSize = gridSize;
+  potential.unitCell = framework.unitCell;
+  potential.alpha = 1.0e-6;
+  potential.cutOff = 12.0;
+  const std::size_t points = static_cast<std::size_t>(gridSize.x) * static_cast<std::size_t>(gridSize.y) *
+                             static_cast<std::size_t>(gridSize.z);
+  potential.smoothPotential.assign(points, smooth);
+  return potential;
+}
+
+// The field of one orientation, along z, from the host and from the device where there is one.
+std::vector<std::pair<std::string, WellField>> onHostAndDevice(const PairInteractions &interactions,
+                                                               const Crystal &framework, const LinearProbe &probe,
+                                                               uint3 gridSize,
+                                                               const ElectrostaticPotentialGrid &potential)
+{
+  std::vector<std::pair<std::string, WellField>> fields;
+  fields.emplace_back("host", WellFieldCPU::compute(interactions, framework, probe, gridSize, 1, 0.0, {}, 1000.0,
+                                                    ceiling, &potential, coulombConversion));
+  OpenCL::initialize();
+  if (OpenCL::clContext.has_value())
+  {
+    fields.emplace_back("device", WellFieldOpenCL::compute(interactions, framework, probe, gridSize, 1, 0.0, {},
+                                                           1000.0, ceiling, &potential, coulombConversion));
+  }
+  return fields;
+}
+
+double lennardJones(double size, double strength, double r)
+{
+  const double ratio6 = std::pow(size / r, 6);
+  return 4.0 * strength * ratio6 * (ratio6 - 1.0);
+}
+}  // namespace
+
+
+// Sigma is where a pair's dispersion crosses nought, not a wall: a site a little inside it costs a few
+// epsilon, and a pose like that is one a simulation visits. So the energy there is the model's energy, the
+// dispersion and the electrostatics together, and it runs through sigma without a step. Refusing the
+// electrostatics from sigma inwards, as this field once did, takes the whole electrostatic energy of the
+// orientation out at once: several hundred kelvin here, with a barrier turned into a well end on and a well
+// cut off broadside.
+//
+// A nitrogen is brought up to one charged atom along its own axis and across it, a tenth of an Ångström at a
+// time, from well outside sigma to deep inside it, and the field is held to the sum over its three sites.
+TEST(energy_well_surface, the_energy_of_a_charged_probe_runs_through_sigma_without_a_step)
+{
+  const PairInteractions interactions = nitrogenInteractions();
+  const Crystal framework = oneChargedAtom(oxygenCharge);
+  const LinearProbe probe = nitrogenProbe();
+
+  auto coulomb = [](double charge, double r) { return coulombConversion * charge * oxygenCharge / r; };
+
+  for (bool endOn : {true, false})
+  {
+    // The axis of the probe is z. The fine direction of the grid is the one it is brought up along.
+    const uint3 gridSize = endOn ? uint3{40, 40, 400} : uint3{400, 40, 40};
+    const ElectrostaticPotentialGrid potential = unscreenedPotential(framework, gridSize, 0.0f);
+
+    for (const auto &[backend, field] : onHostAndDevice(interactions, framework, probe, gridSize, potential))
+    {
+      bool wentInsideSigma = false;
+      bool stayedOutsideSigma = false;
+      for (std::size_t step = 28; step <= 50; ++step)
+      {
+        const double distance = 0.1 * static_cast<double>(step);
+        const double nearer = endOn ? distance - nitrogenBond
+                                    : std::sqrt(distance * distance + nitrogenBond * nitrogenBond);
+        const double further = endOn ? distance + nitrogenBond : nearer;
+        wentInsideSigma = wentInsideSigma || nearer < 0.9 * nitrogenSigma;
+        stayedOutsideSigma = stayedOutsideSigma || nearer > 1.1 * nitrogenSigma;
+
+        const double dispersion = lennardJones(nitrogenSigma, epsilon, nearer) +
+                                  lennardJones(nitrogenSigma, epsilon, further);
+        const double electrostatics = coulomb(nitrogenCharge, nearer) + coulomb(nitrogenCharge, further) +
+                                      coulomb(-2.0 * nitrogenCharge, distance);
+        const double expected = dispersion + electrostatics;
+
+        const std::size_t voxel = endOn ? ((200 + step) * gridSize.y + 20) * gridSize.x + 20
+                                        : (20 * gridSize.y + 20) * gridSize.x + 200 + step;
+        EXPECT_NEAR(static_cast<double>(field.energy[voxel]), expected, 0.5 + 1.0e-3 * std::abs(expected))
+            << backend << (endOn ? ", end on, " : ", broadside, ") << distance << " Å off, nearer site at "
+            << nearer / nitrogenSigma << " sigma, electrostatics " << electrostatics << " K";
+      }
+      EXPECT_TRUE(wentInsideSigma && stayedOutsideSigma);
+    }
+  }
+}
+
+
+// The same, with the smooth half of the potential in it and a probe that has a net charge, so that there is
+// no mistaking whether the electrostatics were counted: one bare charge between two uncharged dispersing
+// sites, both of them a little inside sigma of an atom of the opposite charge. The near half and the smooth
+// half are both there in full, and the contact distance has not moved, since charges change how deep a well
+// is and not where the wall stands.
+TEST(energy_well_surface, a_pose_inside_sigma_keeps_its_electrostatics)
 {
   const double edge = 40.0;
   const uint3 gridSize{40, 40, 40};
-  const double conversionFactor = 167101.0;
   const double coreSigma = 3.10;
   const double bond = 0.55;
+  const float smooth = 1.0e5f;
 
   PairInteractions interactions;
   interactions.numberOfTypes = 2;
@@ -902,12 +1041,7 @@ TEST(energy_well_surface, a_bare_charge_cannot_see_through_the_core)
   interactions.cutOffVDW = 12.0;
   interactions.cutOffCoulomb = 12.0;
 
-  Crystal framework;
-  framework.name = "core";
-  framework.unitCell = UnitCell(edge, edge, edge);
-  framework.mass = 1.0;
-  framework.atoms.push_back(CrystalAtom{double3(20.0, 20.0, 20.0), -1.0, 0});
-  framework.fractionalPositions.push_back(double3(0.5, 0.5, 0.5));
+  const Crystal framework = oneChargedAtom(-1.0);
 
   LinearProbe probe;
   probe.name = "N2";
@@ -916,83 +1050,58 @@ TEST(energy_well_surface, a_bare_charge_cannot_see_through_the_core)
   probe.sites.push_back(LinearProbe::Site{1, 0.0, 1.0, "Q"});
   probe.sites.push_back(LinearProbe::Site{0, bond, 0.0, "X"});
 
-  ElectrostaticPotentialGrid potential;
-  potential.gridSize = gridSize;
-  potential.unitCell = framework.unitCell;
-  potential.alpha = 1.0e-6;
-  potential.cutOff = interactions.cutOffCoulomb;
-  potential.smoothPotential.assign(40u * 40u * 40u, 1.0e5f);
+  const ElectrostaticPotentialGrid potential = unscreenedPotential(framework, gridSize, smooth);
 
   WellField without = computeWellField(interactions, framework, probe, gridSize, 1, 0.0, {}, 1000.0, ceiling);
-  WellField with = computeWellField(interactions, framework, probe, gridSize, 1, 0.0, {}, 1000.0, ceiling,
-                                    &potential, conversionFactor);
 
+  // The centre 3 Å off along x, across the axis: both dispersing sites at 3.05 Å, inside a sigma of 3.10.
   const std::size_t voxel = voxelOf(gridSize, double3(23.0 / edge, 0.5, 0.5));
   const double uncharged = static_cast<double>(without.energy[voxel]);
-  const double charged = static_cast<double>(with.energy[voxel]);
-  const double leaked = conversionFactor / 3.0;
+  const double electrostatics = -coulombConversion / 3.0 + static_cast<double>(smooth);
+  EXPECT_NEAR(uncharged, 2.0 * lennardJones(coreSigma, epsilon, std::sqrt(9.0 + bond * bond)), 1.0e-2);
 
-  EXPECT_GT(uncharged, -2.0 * epsilon);
-  EXPECT_NEAR(charged, uncharged, 1.0e-2 * std::max(1.0, std::abs(uncharged)));
-  EXPECT_GT(charged, uncharged - 0.05 * leaked);
-  EXPECT_EQ(with.distance[voxel], without.distance[voxel]);
+  for (const auto &[backend, with] : onHostAndDevice(interactions, framework, probe, gridSize, potential))
+  {
+    const double charged = static_cast<double>(with.energy[voxel]);
+    EXPECT_NEAR(charged - uncharged, electrostatics, 1.0e-3 * std::abs(electrostatics)) << backend;
+    EXPECT_NEAR(with.distance[voxel], without.distance[voxel], backend == "host" ? 0.0f : 1.0e-4f) << backend;
+  }
 }
 
 
-// Soft TraPPE: rmin is the well, Coulomb is gated at r < σ. One N inside σ while N_com is not:
-// skip electrostatics (otherwise q_COM · q_O / r is a fake monopole) but keep the repulsive LJ —
-// do not ceiling the pose. Between σ and rmin the inner well shoulder is legal, quadrupole on.
+// A nitrogen pressed end on into an oxygen, the nearer site at three quarters of sigma, is high on the
+// repulsive wall and nothing else: twelve thousand kelvin of dispersion, and the electrostatics of the whole
+// quadrupole on top of it, which against a negative atom end on are repulsive as well. It is not at the
+// ceiling, which is for overlaps, and it is not a well, which is what the charge at the centre would make
+// of it if it were counted and the two it balances were not.
 TEST(energy_well_surface, an_overlapping_n2_orientation_is_not_a_coulomb_well)
 {
   const double edge = 40.0;
   const uint3 gridSize{40, 40, 40};
-  const double conversionFactor = 167101.0;
-  const double nSigma = 3.30;
-  const double bond = 0.55;
 
-  PairInteractions interactions;
-  interactions.numberOfTypes = 2;
-  interactions.names = {"X", "Q"};
-  interactions.charges = {0.0, 0.810};
-  interactions.parameters = {PairParameters{nSigma, epsilon, 0.0}, PairParameters{0.0, 0.0, 0.0},
-                             PairParameters{0.0, 0.0, 0.0}, PairParameters{0.0, 0.0, 0.0}};
-  interactions.cutOffVDW = 12.0;
-  interactions.cutOffCoulomb = 12.0;
-
-  Crystal framework;
-  framework.name = "oxygen";
-  framework.unitCell = UnitCell(edge, edge, edge);
-  framework.mass = 1.0;
-  framework.atoms.push_back(CrystalAtom{double3(20.0, 20.0, 20.0), -1.025, 0});
-  framework.fractionalPositions.push_back(double3(0.5, 0.5, 0.5));
-
-  LinearProbe probe;
-  probe.name = "N2";
-  probe.headTailSymmetric = true;
-  probe.sites.push_back(LinearProbe::Site{0, -bond, -0.405, "X"});
-  probe.sites.push_back(LinearProbe::Site{1, 0.0, 0.810, "Q"});
-  probe.sites.push_back(LinearProbe::Site{0, bond, -0.405, "X"});
-
-  ElectrostaticPotentialGrid potential;
-  potential.gridSize = gridSize;
-  potential.unitCell = framework.unitCell;
-  potential.alpha = 1.0e-6;
-  potential.cutOff = interactions.cutOffCoulomb;
-  potential.smoothPotential.assign(40u * 40u * 40u, 0.0f);
+  const PairInteractions interactions = nitrogenInteractions();
+  const Crystal framework = oneChargedAtom(oxygenCharge);
+  const LinearProbe probe = nitrogenProbe();
+  const ElectrostaticPotentialGrid potential = unscreenedPotential(framework, gridSize, 0.0f);
 
   WellField field = computeWellField(interactions, framework, probe, gridSize, 1, 0.0, {}, 1000.0, ceiling,
-                                     &potential, conversionFactor);
+                                     &potential, coulombConversion);
 
-  // Default axis is z. COM 3 Å along z: closer N at 2.45 Å < σ, N_com at 3 Å >> 1 Å.
-  // Coulomb is skipped; repulsive LJ is kept (not ceilinged, not a monopole well).
+  // The axis is z. The centre 3 Å off along it: the nearer site at 2.45 Å, the centre well outside its floor.
   const std::size_t overlapping = voxelOf(gridSize, double3(0.5, 0.5, 23.0 / edge));
   const double overlapEnergy = static_cast<double>(field.energy[overlapping]);
-  const double leaked = conversionFactor * 0.810 * 1.025 / 3.0;
-  EXPECT_GT(overlapEnergy, 0.0);
+  const double dispersion = lennardJones(nitrogenSigma, epsilon, 3.0 - nitrogenBond) +
+                            lennardJones(nitrogenSigma, epsilon, 3.0 + nitrogenBond);
+  const double quadrupole = coulombConversion * oxygenCharge * nitrogenCharge *
+                            (1.0 / (3.0 - nitrogenBond) + 1.0 / (3.0 + nitrogenBond) - 2.0 / 3.0);
+  const double monopole = coulombConversion * oxygenCharge * -2.0 * nitrogenCharge / 3.0;
+  ASSERT_GT(quadrupole, 0.0);
+  ASSERT_LT(monopole, -40000.0);
+  EXPECT_NEAR(overlapEnergy, dispersion + quadrupole, 1.0e-3 * (dispersion + quadrupole));
+  EXPECT_GT(overlapEnergy, dispersion);
   EXPECT_LT(overlapEnergy, ceiling * 0.5);
-  EXPECT_GT(overlapEnergy, -0.05 * leaked);
 
-  // σ < r < rmin: inner LJ well, full quadrupole. GCMC samples this; it is not a wall.
+  // Between sigma and the bottom of the well, and beyond it: the full quadrupole, and nothing drastic.
   const std::size_t shoulder = voxelOf(gridSize, double3(0.5, 0.5, 24.0 / edge));
   const double shoulderEnergy = static_cast<double>(field.energy[shoulder]);
   EXPECT_LT(shoulderEnergy, ceiling * 0.5);
@@ -1002,6 +1111,108 @@ TEST(energy_well_surface, an_overlapping_n2_orientation_is_not_a_coulomb_well)
   const double clearEnergy = static_cast<double>(field.energy[clear]);
   EXPECT_LT(clearEnergy, ceiling * 0.5);
   EXPECT_GT(clearEnergy, -5000.0);
+}
+
+
+// Where the electrostatics are refused is at an overlap, a pair whose dispersion has reached the ceiling,
+// and what the refusal is for is this. The dispersion of such a pair is held at the ceiling and can go no
+// higher, while the Coulomb term of two opposite charges goes on down without limit as they close, so that
+// left in it digs a hole under the ceiling deeper than any well in the field.
+//
+// Two dispersing sites that carry charge, and no site between them to be caught by its own floor. One of
+// them is put on top of an atom of the opposite charge.
+TEST(energy_well_surface, a_charge_pressed_onto_an_atom_does_not_dig_under_the_ceiling)
+{
+  const uint3 gridSize{40, 40, 80};
+  const double siteCharge = -0.5;
+  const double bond = 0.5;
+
+  PairInteractions interactions = oneType(sigma, epsilon);
+  interactions.cutOffVDW = 12.0;
+  interactions.cutOffCoulomb = 12.0;
+
+  const Crystal framework = oneChargedAtom(1.0);
+
+  LinearProbe probe;
+  probe.name = "dumbbell";
+  probe.headTailSymmetric = true;
+  probe.sites.push_back(LinearProbe::Site{0, -bond, siteCharge, "X"});
+  probe.sites.push_back(LinearProbe::Site{0, bond, siteCharge, "X"});
+
+  const ElectrostaticPotentialGrid potential = unscreenedPotential(framework, gridSize, 0.0f);
+
+  // What the pair would come to at the separation the screened term is held off nought by.
+  const double hole = coulombConversion * siteCharge / 1.0e-4;
+  ASSERT_LT(hole, -10.0 * ceiling);
+
+  // The deepest the field can honestly be: both sites at the bottom of their wells, and closer to the atom
+  // than either can get without paying for it.
+  const double deepestHonestWell = -2.0 * epsilon + 2.0 * coulombConversion * siteCharge / (0.8 * sigma);
+
+  for (const auto &[backend, field] : onHostAndDevice(interactions, framework, probe, gridSize, potential))
+  {
+    // Half an Ångström along the axis from the atom, which is where one of the sites is.
+    const std::size_t onTop = (41 * gridSize.y + 20) * gridSize.x + 20;
+    EXPECT_FLOAT_EQ(field.energy[onTop], static_cast<float>(ceiling)) << backend;
+    EXPECT_GT(field.deepestEnergy(), deepestHonestWell) << backend;
+    EXPECT_LT(field.deepestEnergy(), -epsilon) << backend;
+  }
+}
+
+
+// A site may have dispersion, and still have none against one of the atoms: a framework atom that is given
+// a charge and no Lennard-Jones, as the silicon of a zeolite often is, with the oxygens around it left to
+// keep everything off. Against that atom the site is a bare charge, with no wall of its own to keep its 1/r
+// off the nucleus, so there it has the one Ångström floor a massless charge site has everywhere. Outside
+// the floor the pair is its Coulomb term and nothing else, whatever size the mixing rules gave it.
+TEST(energy_well_surface, a_site_with_only_charge_against_an_atom_is_held_off_its_nucleus)
+{
+  const uint3 gridSize{40, 40, 80};
+  const double siteCharge = -0.5;
+  const double bond = 0.5;
+
+  // X, the probe; A, an atom it has dispersion with; B, an atom it has a size with and no strength.
+  PairInteractions interactions;
+  interactions.numberOfTypes = 3;
+  interactions.names = {"X", "A", "B"};
+  interactions.charges = {0.0, 0.0, 1.0};
+  interactions.parameters.assign(9, PairParameters{sigma, 0.0, 0.0});
+  interactions.parameters[0 * 3 + 1] = PairParameters{sigma, epsilon, 0.0};
+  interactions.parameters[1 * 3 + 0] = PairParameters{sigma, epsilon, 0.0};
+  interactions.cutOffVDW = 12.0;
+  interactions.cutOffCoulomb = 12.0;
+
+  // B at the middle of the cell, A ten Ångström above it.
+  Crystal framework = oneChargedAtom(1.0);
+  framework.atoms[0].type = 2;
+  framework.atoms.push_back(CrystalAtom{double3(20.0, 20.0, 30.0), 0.0, 1});
+  framework.fractionalPositions.push_back(double3(0.5, 0.5, 0.75));
+
+  LinearProbe probe;
+  probe.name = "dumbbell";
+  probe.headTailSymmetric = true;
+  probe.sites.push_back(LinearProbe::Site{0, -bond, siteCharge, "X"});
+  probe.sites.push_back(LinearProbe::Site{0, bond, siteCharge, "X"});
+
+  const ElectrostaticPotentialGrid potential = unscreenedPotential(framework, gridSize, 0.0f);
+
+  for (const auto &[backend, field] : onHostAndDevice(interactions, framework, probe, gridSize, potential))
+  {
+    // One site on top of B: inside the floor, and at the ceiling for it.
+    const std::size_t onTop = (41 * gridSize.y + 20) * gridSize.x + 20;
+    EXPECT_FLOAT_EQ(field.energy[onTop], static_cast<float>(ceiling)) << backend;
+
+    // The centre 2.5 Å above B: the sites 2 and 3 Å from it, inside the size of the pair and outside the
+    // floor, and 8 and 7 Å below A.
+    const std::size_t outside = (45 * gridSize.y + 20) * gridSize.x + 20;
+    const double expected = coulombConversion * siteCharge * (1.0 / 2.0 + 1.0 / 3.0) +
+                            lennardJones(sigma, epsilon, 8.0) + lennardJones(sigma, epsilon, 7.0);
+    EXPECT_NEAR(static_cast<double>(field.energy[outside]), expected, 1.0e-3 * std::abs(expected)) << backend;
+
+    // And nowhere is there a hole: the deepest point is no deeper than both sites a floor away from B.
+    EXPECT_GT(field.deepestEnergy(), 2.0 * coulombConversion * siteCharge / wellDummyCoreRadius - 2.0 * epsilon)
+        << backend;
+  }
 }
 
 
