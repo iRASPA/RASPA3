@@ -57,7 +57,10 @@ export struct EnergyOpenCLSurfaceArea
 
   // The surface one probe atom sees. Blocking spheres are written onto the energy field before the surface is
   // drawn through it, as the backend writes them onto every field it returns: a pocket the probe cannot reach
-  // is then walled off, and its inside is no part of the area.
+  // is then walled off, and its inside is no part of the area. A point inside a sphere is given
+  // `blockedEnergyPerAngstrom` for every Ångström it is inside and no more than `ceiling`; nought for either
+  // is the usual figure, the ramp of `blockedEnergyPerAngstromInKelvin` and the ceiling every energy field
+  // is held at. A cell with no atoms in it has no surface, and is reported as having none.
   void run(const PairInteractions &interactions, const Crystal &framework, double isoValue,
            std::string probePseudoAtom, uint3 grid_size, std::span<const BlockingSphere> blockingSpheres = {},
            double blockedEnergyPerAngstrom = 0.0, double ceiling = 0.0);

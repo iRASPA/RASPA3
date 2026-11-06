@@ -27,6 +27,7 @@ import surface_curvature;
 
 import blocking_spheres;
 import energy_shared_blocking_mask;
+import energy_shared_probe_energy_grid;
 import energy_shared_isosurface;
 import energy_opencl_lewiner_isosurface;
 
@@ -91,6 +92,14 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
   {
     throw std::runtime_error(std::format("MC_SurfaceArea: Unknown probe-atom type\n"));
   }
+  // Nought for either is the usual figure, as on the well-surface and BET routes: a ramp of nought and a
+  // ceiling of nought make a pocket worth nothing at all, which is open void, and nobody who hands over
+  // spheres is asking for that.
+  if (blockedEnergyPerAngstrom == 0.0)
+  {
+    blockedEnergyPerAngstrom = blockedEnergyPerAngstromInKelvin * Units::KelvinToEnergy;
+  }
+  if (ceiling == 0.0) ceiling = probeEnergyCeilingInKelvin * Units::KelvinToEnergy;
 
   double cutoff = interactions.cutOffVDW;
   double3x3 unitCell = framework.unitCell.cell;
@@ -114,21 +123,20 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
   std::size_t numberOfGridPoints = ((temp + energyGridWorkGroupSize - 1) / energyGridWorkGroupSize) * energyGridWorkGroupSize;
   std::size_t energy_global_work_size = numberOfGridPoints;
 
-  std::vector<cl_float4> pos(numberOfAtoms);
-  std::vector<cl_float> epsilon(numberOfAtoms);
-  std::vector<cl_float> sigma(numberOfAtoms);
-  std::vector<cl_float> shift(numberOfAtoms);
+  // A cell with no atoms in it is a field of nought everywhere, with no surface in it unless a pocket is
+  // written onto it. It goes the way every other cell goes, with no batch of atoms to run: the device will
+  // not make a buffer of no size, so the atoms' buffers are given room for one that is never read.
+  const std::size_t roomForAtoms = std::max<std::size_t>(numberOfAtoms, 1);
+  std::vector<cl_float4> pos(roomForAtoms);
+  std::vector<cl_float> epsilon(roomForAtoms);
+  std::vector<cl_float> sigma(roomForAtoms);
+  std::vector<cl_float> shift(roomForAtoms);
 
   std::vector<cl_float4> gridPositions(numberOfGridPoints);
   std::vector<cl_float> output(numberOfGridPoints);
 
   double3 correction =
       double3(1.0 / double(numberOfReplicas.x), 1.0 / double(numberOfReplicas.y), 1.0 / double(numberOfReplicas.z));
-
-  if (numberOfAtoms == 0)
-  {
-    return;
-  }
 
   for (std::size_t i = 0; i < numberOfAtoms; i++)
   {
@@ -299,12 +307,17 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
 
   cl_float clCutOffSquared = cl_float(cutoff * cutoff);
 
+  // The ceiling every builder of an energy field holds an overlap at, so that this field is comparable with
+  // theirs and the pockets written onto it below are no higher than its own walls.
+  cl_float clCeiling = cl_float(probeEnergyCeilingInKelvin * Units::KelvinToEnergy);
+
   std::size_t unitsOfWorkDone = 0;
   std::size_t sizeOfWorkBatch = 4096;
   while (unitsOfWorkDone < positions.size())
   {
     cl_int startIndex = cl_int(unitsOfWorkDone);
     cl_int endIndex = cl_int(std::min(unitsOfWorkDone + sizeOfWorkBatch, positions.size()));
+    cl_int lastBatch = (unitsOfWorkDone + sizeOfWorkBatch >= positions.size()) ? 1 : 0;
     err = clSetKernelArg(energyGridKernel, 0, sizeof(cl_mem), &inputPos);
     err |= clSetKernelArg(energyGridKernel, 1, sizeof(cl_mem), &inputGridPos);
     err |= clSetKernelArg(energyGridKernel, 2, sizeof(cl_mem), &inputEpsilon);
@@ -319,6 +332,8 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
     err |= clSetKernelArg(energyGridKernel, 11, sizeof(cl_int), &endIndex);
     err |= clSetKernelArg(energyGridKernel, 12, sizeof(cl_float), &clCutOffSquared);
     err |= clSetKernelArg(energyGridKernel, 13, sizeof(cl_mem), &inputShift);
+    err |= clSetKernelArg(energyGridKernel, 14, sizeof(cl_float), &clCeiling);
+    err |= clSetKernelArg(energyGridKernel, 15, sizeof(cl_int), &lastBatch);
     err |= clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), energyGridKernel, 1, nullptr,
                                   &energy_global_work_size, &energyGridWorkGroupSize, 0, nullptr, nullptr);
     if (err != CL_SUCCESS)
@@ -380,8 +395,11 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
              surface.numberOfRejectedTriangles);
   std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
   myfile << accumulated_surface_area << " [A^2]" << std::endl;
-  myfile << accumulated_surface_area * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant /
-                framework.mass
+  // An area for every gram of a cell that weighs nothing is not a number; a cell with no atoms has no area
+  // either, and nought is what is written.
+  myfile << (framework.mass > 0.0 ? accumulated_surface_area * Units::Angstrom * Units::Angstrom *
+                                        Units::AvogadroConstant / framework.mass
+                                  : 0.0)
          << " [m^2/g]" << std::endl;
   myfile << 1.0e4 * accumulated_surface_area / framework.unitCell.volume << " [m^2/cm^3]" << std::endl;
   writeIsosurfaceCurvature(myfile, surface, "Curvature split:");
@@ -418,7 +436,9 @@ __kernel void ComputeEnergyGrid(__global float4 *position,
                                 const int startIndexAtoms,
                                 const int endIndexAtoms,
                                 const float cutOffSquared,
-                                __global float *shift)
+                                __global float *shift,
+                                const float ceiling,
+                                const int lastBatch)
 {
   int igrid = get_global_id(0);
   int lsize = get_local_size(0);
@@ -455,11 +475,18 @@ __kernel void ComputeEnergyGrid(__global float4 *position,
       {
         float temp = size * size / rr;
         float rri3 = temp * temp * temp;
-        value += epsilon[iatom] * (rri3 * (rri3 - 1.0f)) - shift[iatom];
+        // Each term is held down before it is added, so that none overflows to something a later addition
+        // would turn into a value that is not a number.
+        value += min(epsilon[iatom] * (rri3 * (rri3 - 1.0f)) - shift[iatom], ceiling);
       }
     }
   }
 
-  output[ igrid ] += min(value,10000000.0f);
+  // The atoms come a batch at a time and the field is their sum over all of the batches, so it is the sum
+  // that is held at the ceiling, once, when the last of them is in. Holding each batch down by itself made
+  // the field depend on which atoms happened to share a batch: two overlaps in two batches came to twice
+  // the ceiling, and in one batch to once.
+  float total = output[ igrid ] + value;
+  output[ igrid ] = (lastBatch != 0) ? min(total, ceiling) : total;
 }
 )foo";

@@ -220,3 +220,79 @@ TEST(energy_single_site_routes, the_device_void_fraction_leaves_out_a_blocked_po
   EXPECT_NEAR(blocked.voidFraction, summed(true), 1.0e-3 * summed(true));
   EXPECT_GT(open.voidFraction - blocked.voidFraction, 0.5 * sphereShareOfCell());
 }
+
+
+// A caller that hands over the pockets and says nothing of what a point inside one is worth gets the usual
+// figures, the ramp the backend writes with and the ceiling every field is held at. The arguments are nought
+// when they are left out, and nought taken at its word is a pocket whose every point is worth exactly
+// nothing: open void, weighing one, where the pocket was to weigh nothing.
+TEST(energy_single_site_routes, pockets_handed_over_without_an_energy_are_blocked_all_the_same)
+{
+  const double usualRamp = blockedEnergyPerAngstromInKelvin * Units::KelvinToEnergy;
+  const double usualCeiling = probeEnergyCeilingInKelvin * Units::KelvinToEnergy;
+
+  // By insertion, with the sphere at the corner where every point is otherwise worth one.
+  {
+    Crystal framework = oneAtom("widom_blocked_by_default");
+    const BlockingSphere corner{double3(0.0, 0.0, 0.0), 7.0};
+    const std::vector<BlockingSphere> spheres{corner};
+    const double share =
+        4.0 / 3.0 * std::numbers::pi * corner.radius * corner.radius * corner.radius / (edge * edge * edge);
+
+    EnergyVoidFraction open;
+    open.run(probeAndAtom(), framework, "X", 80, 500, 300.0);
+    EnergyVoidFraction blocked;
+    blocked.run(probeAndAtom(), framework, "X", 80, 500, 300.0, spheres);
+    std::filesystem::remove(framework.name + ".energy.vf.cpu.txt");
+
+    // The usual ramp is a thousand kelvin to the Ångström, so at this temperature a point keeps a weight of
+    // exp(-depth / skin) with a skin of three tenths of an Ångström, and what the sphere takes out of the
+    // average is its volume less the integral of that over it.
+    const double skin = 300.0 / blockedEnergyPerAngstromInKelvin;
+    const double radius = corner.radius;
+    const double kept = 4.0 * std::numbers::pi *
+                        (skin * radius * radius - 2.0 * skin * skin * radius +
+                         2.0 * skin * skin * skin * (1.0 - std::exp(-radius / skin))) /
+                        (edge * edge * edge);
+    ASSERT_GT(share - kept, 0.15);
+    EXPECT_NEAR(open.boltzmannAverage - blocked.boltzmannAverage, share - kept, 0.02);
+  }
+
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+
+  const std::vector<BlockingSphere> spheres{pocket};
+  {
+    Crystal framework = oneAtom("device_void_blocked_by_default");
+    const uint3 gridSize{40, 40, 40};
+
+    EnergyOpenCLVoidFraction open;
+    open.run(probeAndAtom(), framework, "X", gridSize, 300.0);
+    EnergyOpenCLVoidFraction byDefault;
+    byDefault.run(probeAndAtom(), framework, "X", gridSize, 300.0, spheres);
+    EnergyOpenCLVoidFraction asUsual;
+    asUsual.run(probeAndAtom(), framework, "X", gridSize, 300.0, spheres, usualRamp, usualCeiling);
+    std::filesystem::remove(framework.name + ".energy.vf.gpu.txt");
+
+    // most of the pocket's share of the cell, the rest being the skin of it that still has some weight
+    EXPECT_DOUBLE_EQ(byDefault.voidFraction, asUsual.voidFraction);
+    EXPECT_LT(byDefault.voidFraction, open.voidFraction - 0.5 * sphereShareOfCell());
+  }
+  {
+    Crystal framework = oneAtom("device_surface_blocked_by_default");
+    const uint3 gridSize{64, 64, 64};
+    const double isoValue = -2.0;
+
+    EnergyOpenCLSurfaceArea open;
+    open.run(probeAndAtom(), framework, isoValue, "X", gridSize);
+    EnergyOpenCLSurfaceArea byDefault;
+    byDefault.run(probeAndAtom(), framework, isoValue, "X", gridSize, spheres);
+    EnergyOpenCLSurfaceArea asUsual;
+    asUsual.run(probeAndAtom(), framework, isoValue, "X", gridSize, spheres, usualRamp, usualCeiling);
+    std::filesystem::remove(framework.name + ".energy.sa.gpu.txt");
+
+    const double wall = 4.0 * std::numbers::pi * pocket.radius * pocket.radius;
+    EXPECT_DOUBLE_EQ(byDefault.area, asUsual.area);
+    EXPECT_NEAR(byDefault.area - open.area, wall, 0.25 * wall);
+  }
+}

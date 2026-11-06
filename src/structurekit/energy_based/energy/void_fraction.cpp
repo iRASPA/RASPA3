@@ -16,6 +16,7 @@ import unit_cell;
 import units;
 import blocking_spheres;
 import energy_shared_blocking_mask;
+import energy_shared_probe_energy_grid;
 #if !(defined(__has_include) && __has_include(<mdspan>))
 //import mdspan;
 #endif
@@ -29,6 +30,14 @@ void EnergyVoidFraction::run(const PairInteractions &interactions, const Crystal
   {
     throw std::runtime_error("EnergyVoidFraction: a Boltzmann average needs a temperature above zero\n");
   }
+  // Nought for either is the usual figure, as on the well-surface and BET routes: a ramp of nought and a
+  // ceiling of nought make a pocket worth nothing at all, which is open void, and nobody who hands over
+  // spheres is asking for that.
+  if (blockedEnergyPerAngstrom == 0.0)
+  {
+    blockedEnergyPerAngstrom = blockedEnergyPerAngstromInKelvin * Units::KelvinToEnergy;
+  }
+  if (ceiling == 0.0) ceiling = probeEnergyCeilingInKelvin * Units::KelvinToEnergy;
   const double beta = 1.0 / (Units::KB * temperature);
   RandomNumber random{std::nullopt};
   std::chrono::steady_clock::time_point time_begin, time_end;

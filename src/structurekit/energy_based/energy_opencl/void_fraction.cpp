@@ -24,6 +24,7 @@ import crystal;
 import units;
 import blocking_spheres;
 import energy_shared_blocking_mask;
+import energy_shared_probe_energy_grid;
 #if !(defined(__has_include) && __has_include(<mdspan>))
 //import mdspan;
 #endif
@@ -123,6 +124,14 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
   {
     throw std::runtime_error("EnergyOpenCLVoidFraction: a Boltzmann average needs a temperature above zero\n");
   }
+  // Nought for either is the usual figure, as on the well-surface and BET routes: a ramp of nought and a
+  // ceiling of nought make a pocket worth nothing at all, which is open void, and nobody who hands over
+  // spheres is asking for that.
+  if (blockedEnergyPerAngstrom == 0.0)
+  {
+    blockedEnergyPerAngstrom = blockedEnergyPerAngstromInKelvin * Units::KelvinToEnergy;
+  }
+  if (ceiling == 0.0) ceiling = probeEnergyCeilingInKelvin * Units::KelvinToEnergy;
 
   double cutoff = interactions.cutOffVDW;
   double3x3 unitCell = framework.unitCell.cell;
@@ -153,10 +162,14 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
   size_t numberOfGridPoints = ((temp + paddingUnit - 1) / paddingUnit) * paddingUnit;
   size_t global_work_size = numberOfGridPoints;
 
-  std::vector<cl_float4> pos(numberOfAtoms);
-  std::vector<cl_float> epsilon(numberOfAtoms);
-  std::vector<cl_float> sigma(numberOfAtoms);
-  std::vector<cl_float> shift(numberOfAtoms);
+  // A cell with no atoms in it is a field of nought everywhere, and an average of one. It goes the way every
+  // other cell goes, with no batch of atoms to run: the device will not make a buffer of no size, so the
+  // atoms' buffers are given room for one that is never read.
+  const size_t roomForAtoms = std::max<size_t>(numberOfAtoms, 1);
+  std::vector<cl_float4> pos(roomForAtoms);
+  std::vector<cl_float> epsilon(roomForAtoms);
+  std::vector<cl_float> sigma(roomForAtoms);
+  std::vector<cl_float> shift(roomForAtoms);
 
   // std::vector<cl_float> outputData = std::vector<cl_float>(numberOfGridPoints);
 
@@ -166,318 +179,322 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
   double3 correction =
       double3(1.0 / double(numberOfReplicas.x), 1.0 / double(numberOfReplicas.y), 1.0 / double(numberOfReplicas.z));
 
-  if (numberOfAtoms > 0)
+  for (size_t i = 0; i < numberOfAtoms; i++)
   {
-    for (size_t i = 0; i < numberOfAtoms; i++)
+    double3 position = correction * positions[i];
+
+    // Asking the force field for the pair rather than mixing here means its own rule is the one applied,
+    // whichever that is, and the probe named on the command line is the one actually used.
+    std::size_t atomType = framework.atoms[i].type;
+    double sizeParameter = interactions(probeType.value(), atomType).sizeParameter;
+    double strengthParameter = interactions(probeType.value(), atomType).strengthParameter;
+
+    pos[i] = {{cl_float(position.x), cl_float(position.y), cl_float(position.z), 0.0f}};
+    epsilon[i] = cl_float(4.0 * strengthParameter);
+    sigma[i] = cl_float(sizeParameter);
+
+    // A truncated potential is usually shifted so that it reaches the cutoff at zero rather than stepping
+    // there. The force field says whether it is, and leaving the step in puts the energy out by however
+    // many neighbours happen to be in range, which is not the same everywhere.
+    shift[i] = cl_float(interactions(probeType.value(), atomType).shift);
+  }
+
+  size_t index = 0;
+  for (std::size_t k = 0; k < gridSize.z; ++k)
+  {
+    for (std::size_t j = 0; j < gridSize.y; ++j)
     {
-      double3 position = correction * positions[i];
-
-      // Asking the force field for the pair rather than mixing here means its own rule is the one applied,
-      // whichever that is, and the probe named on the command line is the one actually used.
-      std::size_t atomType = framework.atoms[i].type;
-      double sizeParameter = interactions(probeType.value(), atomType).sizeParameter;
-      double strengthParameter = interactions(probeType.value(), atomType).strengthParameter;
-
-      pos[i] = {{cl_float(position.x), cl_float(position.y), cl_float(position.z), 0.0f}};
-      epsilon[i] = cl_float(4.0 * strengthParameter);
-      sigma[i] = cl_float(sizeParameter);
-
-      // A truncated potential is usually shifted so that it reaches the cutoff at zero rather than stepping
-      // there. The force field says whether it is, and leaving the step in puts the energy out by however
-      // many neighbours happen to be in range, which is not the same everywhere.
-      shift[i] = cl_float(interactions(probeType.value(), atomType).shift);
-    }
-
-    size_t index = 0;
-    for (std::size_t k = 0; k < gridSize.z; ++k)
-    {
-      for (std::size_t j = 0; j < gridSize.y; ++j)
+      // X various the fastest (contiguous in x)
+      for (std::size_t i = 0; i < gridSize.x; ++i)
       {
-        // X various the fastest (contiguous in x)
-        for (std::size_t i = 0; i < gridSize.x; ++i)
-        {
-          // Dividing by the count rather than one less leaves the far face out, which is the near face of the
-          // next cell along. Including both counts that plane twice and thins every other one, which biases
-          // the average towards whatever happens to lie on an arbitrary plane of the structure.
-          double3 position = correction * double3(double(i) / double(gridSize.x), double(j) / double(gridSize.y),
-                                                  double(k) / double(gridSize.z));
-          gridPositions[index] = {{cl_float(position.x), cl_float(position.y), cl_float(position.z), cl_float(0.0)}};
-          ++index;
-        }
+        // Dividing by the count rather than one less leaves the far face out, which is the near face of the
+        // next cell along. Including both counts that plane twice and thins every other one, which biases
+        // the average towards whatever happens to lie on an arbitrary plane of the structure.
+        double3 position = correction * double3(double(i) / double(gridSize.x), double(j) / double(gridSize.y),
+                                                double(k) / double(gridSize.z));
+        gridPositions[index] = {{cl_float(position.x), cl_float(position.y), cl_float(position.z), cl_float(0.0)}};
+        ++index;
       }
     }
+  }
 
-    cl_mem inputPos =
-        clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) * pos.size(), nullptr, &err);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
-    }
+  cl_mem inputPos =
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) * pos.size(), nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputPos, CL_TRUE, 0, sizeof(float4) * pos.size(),
-                               pos.data(), 0, nullptr, nullptr);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
-    }
+  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputPos, CL_TRUE, 0, sizeof(float4) * pos.size(),
+                             pos.data(), 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-    cl_mem inputGridPos = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                         sizeof(cl_float4) * gridPositions.size(), nullptr, &err);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
-    }
+  cl_mem inputGridPos = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                       sizeof(cl_float4) * gridPositions.size(), nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputGridPos, CL_TRUE, 0,
-                               sizeof(cl_float4) * gridPositions.size(), gridPositions.data(), 0, nullptr, nullptr);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
-    }
+  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputGridPos, CL_TRUE, 0,
+                             sizeof(cl_float4) * gridPositions.size(), gridPositions.data(), 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-    cl_mem inputEpsilon =
-        clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * epsilon.size(), nullptr, &err);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
-    }
+  cl_mem inputEpsilon =
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * epsilon.size(), nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputEpsilon, CL_TRUE, 0,
-                               sizeof(cl_float) * epsilon.size(), epsilon.data(), 0, nullptr, nullptr);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
-    }
+  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputEpsilon, CL_TRUE, 0,
+                             sizeof(cl_float) * epsilon.size(), epsilon.data(), 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-    cl_mem inputShift =
-        clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * shift.size(), nullptr, &err);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
-    }
+  cl_mem inputShift =
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * shift.size(), nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputShift, CL_TRUE, 0, sizeof(cl_float) * shift.size(),
-                               shift.data(), 0, nullptr, nullptr);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
-    }
+  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputShift, CL_TRUE, 0, sizeof(cl_float) * shift.size(),
+                             shift.data(), 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-    cl_mem inputSigma =
-        clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * sigma.size(), nullptr, &err);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
-    }
+  cl_mem inputSigma =
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * sigma.size(), nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputSigma, CL_TRUE, 0, sizeof(cl_float) * sigma.size(),
-                               sigma.data(), 0, nullptr, nullptr);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
-    }
+  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputSigma, CL_TRUE, 0, sizeof(cl_float) * sigma.size(),
+                             sigma.data(), 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-    size_t totalNumberOfReplicas = static_cast<size_t>(numberOfReplicas.x * numberOfReplicas.y * numberOfReplicas.z);
-    cl_int clNumberOfReplicas = cl_int(totalNumberOfReplicas);
-    std::vector<cl_float4> replicaVector(totalNumberOfReplicas);
-    index = 0;
-    for (int i = 0; i < numberOfReplicas.x; i++)
+  size_t totalNumberOfReplicas = static_cast<size_t>(numberOfReplicas.x * numberOfReplicas.y * numberOfReplicas.z);
+  cl_int clNumberOfReplicas = cl_int(totalNumberOfReplicas);
+  std::vector<cl_float4> replicaVector(totalNumberOfReplicas);
+  index = 0;
+  for (int i = 0; i < numberOfReplicas.x; i++)
+  {
+    for (int j = 0; j < numberOfReplicas.y; j++)
     {
-      for (int j = 0; j < numberOfReplicas.y; j++)
+      for (int k = 0; k < numberOfReplicas.z; k++)
       {
-        for (int k = 0; k < numberOfReplicas.z; k++)
-        {
-          replicaVector[index] = {{cl_float(double(i) / double(numberOfReplicas.x)),
-                                   cl_float(double(j) / double(numberOfReplicas.y)),
-                                   cl_float(double(k) / double(numberOfReplicas.z)), cl_float(0.0)}};
-          index += 1;
-        }
+        replicaVector[index] = {{cl_float(double(i) / double(numberOfReplicas.x)),
+                                 cl_float(double(j) / double(numberOfReplicas.y)),
+                                 cl_float(double(k) / double(numberOfReplicas.z)), cl_float(0.0)}};
+        index += 1;
       }
     }
+  }
 
-    cl_mem replicaCellBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                              sizeof(cl_float4) * replicaVector.size(), nullptr, &err);
+  cl_mem replicaCellBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                            sizeof(cl_float4) * replicaVector.size(), nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
+
+  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), replicaCellBuffer, CL_TRUE, 0,
+                             sizeof(cl_float4) * replicaVector.size(), replicaVector.data(), 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
+
+  cl_mem outputMemory =
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE, sizeof(cl_float) * output.size(), nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
+
+  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), outputMemory, CL_TRUE, 0,
+                             sizeof(cl_float) * output.size(), output.data(), 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
+
+  double3x3 replicaCell =
+      double3x3(double(numberOfReplicas.x) * unitCell[0], double(numberOfReplicas.y) * unitCell[1],
+                double(numberOfReplicas.z) * unitCell[2]);
+
+  cl_float4 clCella = {
+      {cl_float(replicaCell[0][0]), cl_float(replicaCell[1][0]), cl_float(replicaCell[2][0]), cl_float(0.0)}};
+  cl_float4 clCellb = {
+      {cl_float(replicaCell[0][1]), cl_float(replicaCell[1][1]), cl_float(replicaCell[2][1]), cl_float(0.0)}};
+  cl_float4 clCellc = {
+      {cl_float(replicaCell[0][2]), cl_float(replicaCell[1][2]), cl_float(replicaCell[2][2]), cl_float(0.0)}};
+
+  cl_float clCutOffSquared = cl_float(cutoff * cutoff);
+
+  // The ceiling every builder of an energy field holds an overlap at, so that this field is comparable with
+  // theirs and the pockets written onto it below are no higher than its own walls.
+  cl_float clCeiling = cl_float(probeEnergyCeilingInKelvin * Units::KelvinToEnergy);
+
+  size_t unitsOfWorkDone = 0;
+  size_t sizeOfWorkBatch = 4096;
+  while (unitsOfWorkDone < positions.size())
+  {
+    cl_int startIndex = cl_int(unitsOfWorkDone);
+    cl_int endIndex = cl_int(std::min(unitsOfWorkDone + sizeOfWorkBatch, positions.size()));
+    cl_int lastBatch = (unitsOfWorkDone + sizeOfWorkBatch >= positions.size()) ? 1 : 0;
+    err = clSetKernelArg(energyGridKernel, 0, sizeof(cl_mem), &inputPos);
+    err |= clSetKernelArg(energyGridKernel, 1, sizeof(cl_mem), &inputGridPos);
+    err |= clSetKernelArg(energyGridKernel, 2, sizeof(cl_mem), &inputEpsilon);
+    err |= clSetKernelArg(energyGridKernel, 3, sizeof(cl_mem), &inputSigma);
+    err |= clSetKernelArg(energyGridKernel, 4, sizeof(cl_mem), &replicaCellBuffer);
+    err |= clSetKernelArg(energyGridKernel, 5, sizeof(cl_mem), &outputMemory);
+    err |= clSetKernelArg(energyGridKernel, 6, sizeof(cl_int), &clNumberOfReplicas);
+    err |= clSetKernelArg(energyGridKernel, 7, sizeof(cl_float4), &clCella);
+    err |= clSetKernelArg(energyGridKernel, 8, sizeof(cl_float4), &clCellb);
+    err |= clSetKernelArg(energyGridKernel, 9, sizeof(cl_float4), &clCellc);
+    err |= clSetKernelArg(energyGridKernel, 10, sizeof(cl_int), &startIndex);
+    err |= clSetKernelArg(energyGridKernel, 11, sizeof(cl_int), &endIndex);
+    err |= clSetKernelArg(energyGridKernel, 12, sizeof(cl_float), &clCutOffSquared);
+    err |= clSetKernelArg(energyGridKernel, 13, sizeof(cl_mem), &inputShift);
+    err |= clSetKernelArg(energyGridKernel, 14, sizeof(cl_float), &clCeiling);
+    err |= clSetKernelArg(energyGridKernel, 15, sizeof(cl_int), &lastBatch);
+    err |= clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), energyGridKernel, 1, nullptr, &global_work_size,
+                                  &energyGridWorkGroupSize, 0, nullptr, nullptr);
     if (err != CL_SUCCESS)
     {
-      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+      throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel failed {} : {}\n", __FILE__, __LINE__));
     }
 
-    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), replicaCellBuffer, CL_TRUE, 0,
-                               sizeof(cl_float4) * replicaVector.size(), replicaVector.data(), 0, nullptr, nullptr);
+    clFinish(OpenCL::clCommandQueue.value());
+
+    unitsOfWorkDone += sizeOfWorkBatch;
+  }
+
+  // The pockets the probe cannot reach, written onto the field the way the backend writes them onto its own.
+  // The field is on the device, so it is fetched, marked and sent back; with no spheres it stays where it is.
+  if (!blockingSpheres.empty())
+  {
+    err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), outputMemory, CL_TRUE, 0,
+                              sizeof(cl_float) * output.size(), output.data(), 0, nullptr, nullptr);
     if (err != CL_SUCCESS)
     {
-      throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
+      throw std::runtime_error(std::format("OpenCL clEnqueueReadBuffer failed {} : {}\n", __FILE__, __LINE__));
     }
-
-    cl_mem outputMemory =
-        clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE, sizeof(cl_float) * output.size(), nullptr, &err);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
-    }
-
+    applyBlockingSpheresToEnergy(std::span(output).first(temp), gridSize, framework.unitCell, blockingSpheres,
+                                 blockedEnergyPerAngstrom, ceiling);
     err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), outputMemory, CL_TRUE, 0,
                                sizeof(cl_float) * output.size(), output.data(), 0, nullptr, nullptr);
     if (err != CL_SUCCESS)
     {
       throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
     }
-
-    double3x3 replicaCell =
-        double3x3(double(numberOfReplicas.x) * unitCell[0], double(numberOfReplicas.y) * unitCell[1],
-                  double(numberOfReplicas.z) * unitCell[2]);
-
-    cl_float4 clCella = {
-        {cl_float(replicaCell[0][0]), cl_float(replicaCell[1][0]), cl_float(replicaCell[2][0]), cl_float(0.0)}};
-    cl_float4 clCellb = {
-        {cl_float(replicaCell[0][1]), cl_float(replicaCell[1][1]), cl_float(replicaCell[2][1]), cl_float(0.0)}};
-    cl_float4 clCellc = {
-        {cl_float(replicaCell[0][2]), cl_float(replicaCell[1][2]), cl_float(replicaCell[2][2]), cl_float(0.0)}};
-
-    cl_float clCutOffSquared = cl_float(cutoff * cutoff);
-
-    size_t unitsOfWorkDone = 0;
-    size_t sizeOfWorkBatch = 4096;
-    while (unitsOfWorkDone < positions.size())
-    {
-      cl_int startIndex = cl_int(unitsOfWorkDone);
-      cl_int endIndex = cl_int(std::min(unitsOfWorkDone + sizeOfWorkBatch, positions.size()));
-      err = clSetKernelArg(energyGridKernel, 0, sizeof(cl_mem), &inputPos);
-      err |= clSetKernelArg(energyGridKernel, 1, sizeof(cl_mem), &inputGridPos);
-      err |= clSetKernelArg(energyGridKernel, 2, sizeof(cl_mem), &inputEpsilon);
-      err |= clSetKernelArg(energyGridKernel, 3, sizeof(cl_mem), &inputSigma);
-      err |= clSetKernelArg(energyGridKernel, 4, sizeof(cl_mem), &replicaCellBuffer);
-      err |= clSetKernelArg(energyGridKernel, 5, sizeof(cl_mem), &outputMemory);
-      err |= clSetKernelArg(energyGridKernel, 6, sizeof(cl_int), &clNumberOfReplicas);
-      err |= clSetKernelArg(energyGridKernel, 7, sizeof(cl_float4), &clCella);
-      err |= clSetKernelArg(energyGridKernel, 8, sizeof(cl_float4), &clCellb);
-      err |= clSetKernelArg(energyGridKernel, 9, sizeof(cl_float4), &clCellc);
-      err |= clSetKernelArg(energyGridKernel, 10, sizeof(cl_int), &startIndex);
-      err |= clSetKernelArg(energyGridKernel, 11, sizeof(cl_int), &endIndex);
-      err |= clSetKernelArg(energyGridKernel, 12, sizeof(cl_float), &clCutOffSquared);
-      err |= clSetKernelArg(energyGridKernel, 13, sizeof(cl_mem), &inputShift);
-      err |= clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), energyGridKernel, 1, nullptr, &global_work_size,
-                                    &energyGridWorkGroupSize, 0, nullptr, nullptr);
-      if (err != CL_SUCCESS)
-      {
-        throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel failed {} : {}\n", __FILE__, __LINE__));
-      }
-
-      clFinish(OpenCL::clCommandQueue.value());
-
-      unitsOfWorkDone += sizeOfWorkBatch;
-    }
-
-    // The pockets the probe cannot reach, written onto the field the way the backend writes them onto its own.
-    // The field is on the device, so it is fetched, marked and sent back; with no spheres it stays where it is.
-    if (!blockingSpheres.empty())
-    {
-      err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), outputMemory, CL_TRUE, 0,
-                                sizeof(cl_float) * output.size(), output.data(), 0, nullptr, nullptr);
-      if (err != CL_SUCCESS)
-      {
-        throw std::runtime_error(std::format("OpenCL clEnqueueReadBuffer failed {} : {}\n", __FILE__, __LINE__));
-      }
-      applyBlockingSpheresToEnergy(std::span(output).first(temp), gridSize, framework.unitCell, blockingSpheres,
-                                   blockedEnergyPerAngstrom, ceiling);
-      err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), outputMemory, CL_TRUE, 0,
-                                 sizeof(cl_float) * output.size(), output.data(), 0, nullptr, nullptr);
-      if (err != CL_SUCCESS)
-      {
-        throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
-      }
-    }
-
-    // Accumulation step
-    // ==================================================================================================================================================================
-
-    size_t nWorkGroups = numberOfGridPoints / energyVoidFractionWorkGroupSize;
-
-    // Every group writes its partial sum here and nothing is sent down beforehand, so the buffer is the
-    // kernel's to write and starts empty.
-    std::vector<float> sumReduction(nWorkGroups, 0.0f);
-    cl_mem reductionBuffer =
-        clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY, nWorkGroups * sizeof(float), nullptr, &err);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
-    }
-
-    cl_int clNumberOfPoints = cl_int(temp);
-    cl_float clBeta = cl_float(1.0 / (Units::KB * temperature));
-    err = clSetKernelArg(energyVoidFractionKernel, 0, sizeof(cl_mem), &outputMemory);
-    err |= clSetKernelArg(energyVoidFractionKernel, 1, sizeof(cl_mem), &reductionBuffer);
-    err |= clSetKernelArg(energyVoidFractionKernel, 2, energyVoidFractionWorkGroupSize * sizeof(cl_float), nullptr);
-    err |= clSetKernelArg(energyVoidFractionKernel, 3, sizeof(cl_float), &clBeta);
-    err |= clSetKernelArg(energyVoidFractionKernel, 4, sizeof(cl_int), &clNumberOfPoints);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error("SKComputeVoidFraction: error in clSetKernelArg");
-    }
-
-    err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), energyVoidFractionKernel, 1, nullptr,
-                                 &global_work_size, &energyVoidFractionWorkGroupSize, 0, nullptr, nullptr);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error("SKComputeVoidFraction: error in clEnqueueNDRangeKernel");
-    }
-
-    // Read the buffer back to the array
-    err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), reductionBuffer, CL_TRUE, 0, nWorkGroups * sizeof(float),
-                              sumReduction.data(), 0, nullptr, nullptr);
-    if (err != CL_SUCCESS)
-    {
-      throw std::runtime_error("SKComputeVoidFraction: error in clEnqueueReadBuffer");
-    }
-
-    clFinish(OpenCL::clCommandQueue.value());
-
-    // Final summation with CPU
-    double fraction = 0.0;
-    for (size_t i = 0; i < nWorkGroups; i++) fraction += double(sumReduction[i]);
-    this->voidFraction = fraction / static_cast<double>(temp);
-
-    time_end = std::chrono::steady_clock::now();
-
-    std::chrono::duration<double> timing = time_end - time_begin;
-
-    std::ofstream myfile;
-    myfile.open(framework.name + ".energy.vf.gpu.txt");
-    std::print(myfile, "# Void-fraction using energy-based method\n");
-    std::print(myfile, "# Crystal: {}\n", framework.name);
-    std::print(myfile, "# Space-group Hall-number: {}\n", framework.spaceGroupHallNumber);
-    std::print(myfile, "# Space-group Hall-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HallString());
-    std::print(myfile, "# Space-group HM-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
-    std::print(myfile, "# Space-group IT number: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].number());
-    std::print(myfile, "# Number of framework atoms: {}\n", framework.atoms.size());
-    std::print(myfile, "# Crystal volume: {} [Å³]\n", framework.unitCell.volume);
-    std::print(myfile, "# Crystal mass: {} [g/mol]\n", framework.mass);
-    std::print(myfile, "# Crystal density: {} [kg/m³]\n", 1e-3 * framework.mass /
-        (framework.unitCell.volume * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant));
-    std::print(myfile, "# Probe atom: {} strength/kʙ: {} [K] size: {} [Å]\n", probePseudoAtom,
-               interactions[probeType.value()].strengthParameter * Units::EnergyToKelvin,
-               interactions[probeType.value()].sizeParameter);
-    std::print(myfile, "# Temperature: {} [K]\n", temperature);
-    std::print(myfile, "# Blocking spheres: {}\n", blockingSpheres.size());
-    std::print(myfile, "# Cutoff: {} [Å], replicas: {}x{}x{}\n", cutoff, numberOfReplicas.x, numberOfReplicas.y,
-               numberOfReplicas.z);
-    std::print(myfile, "# Grid: {} x {} x {} points, sampled without the far face\n", gridSize.x, gridSize.y,
-               gridSize.z);
-    std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
-    myfile << fraction / (static_cast<double>(gridSize.x) * static_cast<double>(gridSize.y) *
-                          static_cast<double>(gridSize.z))
-           << std::endl;
-    myfile.close();
-
-    clReleaseMemObject(inputPos);
-    clReleaseMemObject(inputGridPos);
-    clReleaseMemObject(inputEpsilon);
-    clReleaseMemObject(inputSigma);
-    clReleaseMemObject(inputShift);
-    clReleaseMemObject(replicaCellBuffer);
-    clReleaseMemObject(outputMemory);
-    clReleaseMemObject(reductionBuffer);
   }
+
+  // Accumulation step
+  // ==================================================================================================================================================================
+
+  size_t nWorkGroups = numberOfGridPoints / energyVoidFractionWorkGroupSize;
+
+  // Every group writes its partial sum here and nothing is sent down beforehand, so the buffer is the
+  // kernel's to write and starts empty.
+  std::vector<float> sumReduction(nWorkGroups, 0.0f);
+  cl_mem reductionBuffer =
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY, nWorkGroups * sizeof(float), nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
+
+  cl_int clNumberOfPoints = cl_int(temp);
+  cl_float clBeta = cl_float(1.0 / (Units::KB * temperature));
+  err = clSetKernelArg(energyVoidFractionKernel, 0, sizeof(cl_mem), &outputMemory);
+  err |= clSetKernelArg(energyVoidFractionKernel, 1, sizeof(cl_mem), &reductionBuffer);
+  err |= clSetKernelArg(energyVoidFractionKernel, 2, energyVoidFractionWorkGroupSize * sizeof(cl_float), nullptr);
+  err |= clSetKernelArg(energyVoidFractionKernel, 3, sizeof(cl_float), &clBeta);
+  err |= clSetKernelArg(energyVoidFractionKernel, 4, sizeof(cl_int), &clNumberOfPoints);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error("SKComputeVoidFraction: error in clSetKernelArg");
+  }
+
+  err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), energyVoidFractionKernel, 1, nullptr,
+                               &global_work_size, &energyVoidFractionWorkGroupSize, 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error("SKComputeVoidFraction: error in clEnqueueNDRangeKernel");
+  }
+
+  // Read the buffer back to the array
+  err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), reductionBuffer, CL_TRUE, 0, nWorkGroups * sizeof(float),
+                            sumReduction.data(), 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error("SKComputeVoidFraction: error in clEnqueueReadBuffer");
+  }
+
+  clFinish(OpenCL::clCommandQueue.value());
+
+  // Final summation with CPU
+  double fraction = 0.0;
+  for (size_t i = 0; i < nWorkGroups; i++) fraction += double(sumReduction[i]);
+  this->voidFraction = fraction / static_cast<double>(temp);
+
+  time_end = std::chrono::steady_clock::now();
+
+  std::chrono::duration<double> timing = time_end - time_begin;
+
+  std::ofstream myfile;
+  myfile.open(framework.name + ".energy.vf.gpu.txt");
+  std::print(myfile, "# Void-fraction using energy-based method\n");
+  std::print(myfile, "# Crystal: {}\n", framework.name);
+  std::print(myfile, "# Space-group Hall-number: {}\n", framework.spaceGroupHallNumber);
+  std::print(myfile, "# Space-group Hall-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HallString());
+  std::print(myfile, "# Space-group HM-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
+  std::print(myfile, "# Space-group IT number: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].number());
+  std::print(myfile, "# Number of framework atoms: {}\n", framework.atoms.size());
+  std::print(myfile, "# Crystal volume: {} [Å³]\n", framework.unitCell.volume);
+  std::print(myfile, "# Crystal mass: {} [g/mol]\n", framework.mass);
+  std::print(myfile, "# Crystal density: {} [kg/m³]\n", 1e-3 * framework.mass /
+      (framework.unitCell.volume * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant));
+  std::print(myfile, "# Probe atom: {} strength/kʙ: {} [K] size: {} [Å]\n", probePseudoAtom,
+             interactions[probeType.value()].strengthParameter * Units::EnergyToKelvin,
+             interactions[probeType.value()].sizeParameter);
+  std::print(myfile, "# Temperature: {} [K]\n", temperature);
+  std::print(myfile, "# Blocking spheres: {}\n", blockingSpheres.size());
+  std::print(myfile, "# Cutoff: {} [Å], replicas: {}x{}x{}\n", cutoff, numberOfReplicas.x, numberOfReplicas.y,
+             numberOfReplicas.z);
+  std::print(myfile, "# Grid: {} x {} x {} points, sampled without the far face\n", gridSize.x, gridSize.y,
+             gridSize.z);
+  std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
+  myfile << fraction / (static_cast<double>(gridSize.x) * static_cast<double>(gridSize.y) *
+                        static_cast<double>(gridSize.z))
+         << std::endl;
+  myfile.close();
+
+  clReleaseMemObject(inputPos);
+  clReleaseMemObject(inputGridPos);
+  clReleaseMemObject(inputEpsilon);
+  clReleaseMemObject(inputSigma);
+  clReleaseMemObject(inputShift);
+  clReleaseMemObject(replicaCellBuffer);
+  clReleaseMemObject(outputMemory);
+  clReleaseMemObject(reductionBuffer);
 }
 
 const char* EnergyOpenCLVoidFraction::energyGridKernelSource = R"foo(
@@ -494,7 +511,9 @@ __kernel void ComputeEnergyGrid(__global float4 *position,
                                 const int startIndexAtoms,
                                 const int endIndexAtoms,
                                 const float cutOffSquared,
-                                __global float *shift)
+                                __global float *shift,
+                                const float ceiling,
+                                const int lastBatch)
 {
   int igrid = get_global_id(0);
   int lsize = get_local_size(0);
@@ -531,12 +550,19 @@ __kernel void ComputeEnergyGrid(__global float4 *position,
       {
         float temp = size*size/rr;
         float rri3 = temp * temp * temp;
-        value += epsilon[iatom]*(rri3*(rri3-1.0f)) - shift[iatom];
+        // Each term is held down before it is added, so that none overflows to something a later addition
+        // would turn into a value that is not a number.
+        value += min(epsilon[iatom]*(rri3*(rri3-1.0f)) - shift[iatom], ceiling);
       }
     }
   }
 
-  output[ igrid ] += min(value,10000000.0f);
+  // The atoms come a batch at a time and the field is their sum over all of the batches, so it is the sum
+  // that is held at the ceiling, once, when the last of them is in. Holding each batch down by itself made
+  // the field depend on which atoms happened to share a batch: two overlaps in two batches came to twice
+  // the ceiling, and in one batch to once.
+  float total = output[ igrid ] + value;
+  output[ igrid ] = (lastBatch != 0) ? min(total, ceiling) : total;
 }
 )foo";
 

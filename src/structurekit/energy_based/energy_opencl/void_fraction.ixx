@@ -40,7 +40,10 @@ export struct EnergyOpenCLVoidFraction
   // The void fraction the probe named sees, at the temperature given. Both matter: a Boltzmann average is
   // meaningless without saying how hot, and a probe is what the average is over.
   // Blocking spheres are written onto the energy field before it is averaged, as the backend writes them onto
-  // every field it returns, so a pocket the probe cannot reach adds nothing to the average.
+  // every field it returns, so a pocket the probe cannot reach adds nothing to the average. A point inside a
+  // sphere is given `blockedEnergyPerAngstrom` for every Ångström it is inside and no more than `ceiling`;
+  // nought for either is the usual figure, the ramp of `blockedEnergyPerAngstromInKelvin` and the ceiling
+  // every energy field is held at. A cell with no atoms in it is all void, and the average is one.
   void run(const PairInteractions& interactions, const Crystal& framework, std::string probePseudoAtom, uint3 grid_size,
            double temperature = 298.0, std::span<const BlockingSphere> blockingSpheres = {},
            double blockedEnergyPerAngstrom = 0.0, double ceiling = 0.0);
