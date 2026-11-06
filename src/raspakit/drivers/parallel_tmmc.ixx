@@ -92,6 +92,20 @@ export struct ParallelTMMCParameters
   std::optional<std::size_t> randomSeed{};
 };
 
+/**
+ * \brief The window partition that is left when the box can be packed no fuller than \p packed
+ *        molecules, which is below the top of the macrostate range.
+ *
+ * The range then ends at \p packed. A window is kept when its own segment of the partition starts
+ * below that, and the last one kept is closed there; a window whose segment starts at or above the
+ * packing is dropped even where its overlap with the window below reaches under it, since all it
+ * could cover is covered by that window already, and at the packing itself it would be a window of
+ * a single macrostate in which no move can be accepted. \p boundaries is the partition of the full
+ * range, in increasing order, and \p packed lies above its first entry.
+ */
+export std::vector<std::size_t> tmmcWindowBoundariesWithinPacking(const std::vector<std::size_t>& boundaries,
+                                                                  std::size_t packed);
+
 /// One point of a TMMC-reweighted isotherm, after the analysis has run.
 export struct TMMCIsothermPoint
 {

@@ -187,6 +187,20 @@ WindowRange overlappedWindow(std::size_t windowIndex, std::size_t numberOfWindow
 }
 }  // namespace
 
+std::vector<std::size_t> tmmcWindowBoundariesWithinPacking(const std::vector<std::size_t>& boundaries,
+                                                           std::size_t packed)
+{
+  std::vector<std::size_t> kept;
+  if (boundaries.empty()) return kept;
+  kept.push_back(boundaries.front());
+  for (std::size_t index = 1uz; index + 1uz < boundaries.size() && boundaries[index] < packed; ++index)
+  {
+    kept.push_back(boundaries[index]);
+  }
+  kept.push_back(packed);
+  return kept;
+}
+
 ParallelTMMC::ParallelTMMC(InputReader& reader)
     : random(reader.randomSeed),
       numberOfProductionCycles(reader.numberOfProductionCycles),
@@ -468,29 +482,36 @@ void ParallelTMMC::setup()
   // Grow windows in increasing-N order per temperature: copy the previous walker's configuration
   // and insert the extra molecules. Independent growth from empty into a high window hangs when
   // that window's lower bound exceeds the physical packing. If packing stops short of Nmax, the
-  // remaining windows are dropped and the last used window is closed at the packed N.
+  // macrostate range ends at the packing and the windows above it are dropped.
+  //
+  // Every temperature is grown into the layout the constructor made, and the range, the windows
+  // and the bounds of the walkers are settled once, after the last of them. Settling them as the
+  // first temperature ran out of room left the layout half changed: the walkers already pinned
+  // (the lower windows of that temperature, and every window of the temperatures before it) kept
+  // upper bounds above the new maximum, and the temperatures after it were laid out against a
+  // range that was no longer the one the others had.
   if (!resumedFromBinaryRestart)
   {
     std::print(stream, "Growing the initial configurations into their windows (CBMC)\n");
     std::flush(stream);
 
     const std::size_t layoutWindows = numberOfWindows;
+    std::size_t windowsToGrow = layoutWindows;
+    std::optional<std::size_t> packing{};
     for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
     {
-      for (std::size_t windowIndex = 0; windowIndex < numberOfWindows; ++windowIndex)
+      for (std::size_t windowIndex = 0; windowIndex < windowsToGrow; ++windowIndex)
       {
         const std::size_t walkerId = temperatureIndex * layoutWindows + windowIndex;
+        const WindowRange range =
+            overlappedWindow(windowIndex, layoutWindows, minMacrostate, maxMacrostate, windowBoundaries);
         if (windowIndex > 0)
         {
           const std::size_t previousId = temperatureIndex * layoutWindows + windowIndex - 1uz;
           systems[walkerId] = systems[previousId];
-          const WindowRange range =
-              overlappedWindow(windowIndex, layoutWindows, minMacrostate, maxMacrostate, windowBoundaries);
           pinWalkerWindow(systems[walkerId], temperatures[temperatureIndex], windowIndex, range.lo, range.hi);
         }
-        const WindowRange growRange =
-            overlappedWindow(windowIndex, layoutWindows, minMacrostate, maxMacrostate, windowBoundaries);
-        if (growToMacrostate(systems[walkerId], randoms[walkerId], growRange.lo)) continue;
+        if (growToMacrostate(systems[walkerId], randoms[walkerId], range.lo)) continue;
 
         const std::size_t packed = systems[walkerId].numberOfIntegerMoleculesPerComponent[0];
         if (windowIndex == 0uz || packed <= minMacrostate)
@@ -499,16 +520,20 @@ void ParallelTMMC::setup()
               "[ParallelTMMC]: CBMC could not place a molecule in the empty box; the macrostate range is empty\n");
         }
 
-        maxMacrostate = packed;
-        numberOfWindows = windowIndex;
-        windowBoundaries.resize(numberOfWindows + 1uz);
-        windowBoundaries[numberOfWindows] = maxMacrostate;
-        const std::size_t lastId = temperatureIndex * layoutWindows + windowIndex - 1uz;
-        pinWalkerWindow(systems[lastId], temperatures[temperatureIndex], windowIndex - 1uz,
-                        systems[lastId].tmmc.minMacrostate, maxMacrostate);
-        std::print(stream, "Physical packing is {} molecules; dropping windows above that bound\n", packed);
+        // the temperatures share one macrostate grid, so the range ends where the first of them
+        // does; no temperature after this one needs the windows this one could not reach
+        packing = std::min(packing.value_or(packed), packed);
+        windowsToGrow = windowIndex;
         break;
       }
+    }
+
+    if (packing.has_value())
+    {
+      maxMacrostate = packing.value();
+      windowBoundaries = tmmcWindowBoundariesWithinPacking(windowBoundaries, maxMacrostate);
+      numberOfWindows = windowBoundaries.size() - 1uz;
+      std::print(stream, "Physical packing is {} molecules; dropping windows above that bound\n", maxMacrostate);
     }
 
     if (numberOfWindows < layoutWindows)
@@ -529,6 +554,20 @@ void ParallelTMMC::setup()
       systems = std::move(compacted);
       randoms = std::move(compactedRandoms);
       numberOfWalkers = systems.size();
+
+      // no window reaches past the packing: the upper bound of every walker left is brought down
+      // to it, at every temperature alike. A walker keeps its lower bound, which is where it was
+      // grown to and lies below the packing for every window that was kept.
+      for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)
+      {
+        for (std::size_t windowIndex = 0; windowIndex < numberOfWindows; ++windowIndex)
+        {
+          System& system = systems[walkerIndex(temperatureIndex, windowIndex)];
+          if (system.tmmc.maxMacrostate <= maxMacrostate) continue;
+          pinWalkerWindow(system, temperatures[temperatureIndex], windowIndex, system.tmmc.minMacrostate,
+                          maxMacrostate);
+        }
+      }
       blockCollectionMatrices.resize(numberOfWalkers);
       stepsPerWalker.assign(numberOfWalkers, 0uz);
 
