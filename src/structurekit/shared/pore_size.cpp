@@ -50,8 +50,17 @@ std::vector<float> distanceToIsosurface(uint3 gridSize, const UnitCell &unitCell
   const double longestStep =
       std::max({axisStep[0].length(), axisStep[1].length(), axisStep[2].length()});
 
-  // A void filling the whole cell has no boundary to find, and the search would otherwise walk the grid.
-  const std::int64_t largestReach = std::max({nx, ny, nz}) / 2 + 1;
+  // A void filling the whole cell has no boundary to find, and the search would otherwise walk the grid for
+  // ever. By half the longest axis every point of the grid has been looked at, in one copy or another, so a
+  // search that has found nothing by then has nothing to find.
+  //
+  // That is all this is for. It does not say the nearest copy of a boundary point has been seen: the shells
+  // are cubes in grid steps, and in an oblique cell the copy nearest in Ångström can be further out in steps
+  // than the copy nearest in steps. In a cell with an angle of 120 degrees a point 55 hundredths of the grid
+  // off along one axis and 45 along the other is 0.51 of an edge away, and its copy 45 off along both is 0.78.
+  // So once a boundary is in hand the search is ended by the bound below and by nothing else, which ends it
+  // as soon as no shell left could hold anything nearer.
+  const std::int64_t reachOfEveryPoint = std::max({nx, ny, nz}) / 2 + 1;
 
   // How far the search has to walk before it meets the boundary is what varies here, from one shell in a narrow
   // pore to a good many in a wide one, so the voxels are dealt out one at a time rather than in stretches. Each
@@ -70,11 +79,14 @@ std::vector<float> distanceToIsosurface(uint3 gridSize, const UnitCell &unitCell
 
                  double best = std::numeric_limits<double>::max();
 
-                 for (std::int64_t reach = 1; reach <= largestReach; ++reach)
+                 for (std::int64_t reach = 1;; ++reach)
                  {
                    // Nothing at this radius or beyond can beat what is already in hand. A crossing found from a point
                    // at this radius can lie a step nearer than the point itself, which the bound has to allow for.
                    if (static_cast<double>(reach - 1) * shortestStep - longestStep >= best) break;
+
+                   // And with nothing in hand once every point has been looked at, there is no boundary.
+                   if (best == std::numeric_limits<double>::max() && reach > reachOfEveryPoint) break;
 
                    for (std::int64_t dk = -reach; dk <= reach; ++dk)
                    {

@@ -441,3 +441,100 @@ TEST(grid_pore_size, no_bins_and_no_range_give_no_curve_and_keep_the_counts)
   check(0.0, 8uz);
   check(-1.0, 8uz);
 }
+
+
+// A thin rod along c in a hexagonal cell, and the open space round it, which is nearly all of the cell: a pore
+// as wide as the cell itself. The point of the void furthest from the rod is then about half a cell from it,
+// and in a cell with an angle of 120 degrees the copy of the rod that is nearest such a point in Ångström is not
+// the one nearest it in grid steps. From the point at fractions (0.45, 0.55) the rods at the two ends of the
+// short diagonal are 0.507 of an edge away and 55 hundredths of the grid off along one axis; the rod 45
+// hundredths off along both is 0.779 of an edge away.
+//
+// The search walks outward shell by shell in grid steps, and used to be stopped at half the grid whatever it
+// had found, so it never came to the nearer copies and gave the further one's distance, half as much again.
+// The stop was meant for a void with no boundary at all, and is now only that: once a boundary is in hand the
+// search goes on for as long as a shell could still hold something nearer.
+TEST(grid_pore_size, in_an_oblique_cell_the_nearest_copy_of_a_wall_is_found_beyond_half_the_grid)
+{
+  const double edge = 10.0;
+  const double height = 1.2;
+  const double rodRadius = 0.35;
+  const UnitCell box(edge, edge, height, 0.5 * std::numbers::pi, 0.5 * std::numbers::pi,
+                     2.0 * std::numbers::pi / 3.0);
+  const uint3 gridSize(36, 36, 2);
+
+  // The distance in the plane to the nearest copy of the rod, by looking at every copy near enough to be it.
+  auto room = [&](double3 position)
+  {
+    double nearest = std::numeric_limits<double>::max();
+    for (int a = -2; a <= 2; ++a)
+    {
+      for (int b = -2; b <= 2; ++b)
+      {
+        const double3 toRod = position - box.cell * double3(static_cast<double>(a), static_cast<double>(b), 0.0);
+        nearest = std::min(nearest, std::sqrt(toRod.x * toRod.x + toRod.y * toRod.y));
+      }
+    }
+    return nearest - rodRadius;
+  };
+  std::vector<float> openness = sample(box, gridSize, room);
+
+  std::vector<float> distance = distanceToIsosurface(gridSize, box, openness, 0.0);
+
+  const double spacing = edge / 36.0;
+  double worst = 0.0;
+  double widest = 0.0;
+  for (std::size_t k = 0; k < gridSize.z; ++k)
+  {
+    for (std::size_t j = 0; j < gridSize.y; ++j)
+    {
+      for (std::size_t i = 0; i < gridSize.x; ++i)
+      {
+        const std::size_t voxel = (k * gridSize.y + j) * gridSize.x + i;
+        const double expected = room(positionOf(box, gridSize, i, j, k));
+        if (expected < 0.0) continue;
+        widest = std::max(widest, expected);
+        worst = std::max(worst, std::abs(static_cast<double>(distance[voxel]) - expected));
+      }
+    }
+  }
+
+  // The test is of points more than half the cell's width from the rod, so there have to be some.
+  EXPECT_GT(widest + rodRadius, 0.5 * edge * std::sin(std::numbers::pi / 3.0));
+  EXPECT_LT(worst, spacing) << "the distance is off by " << worst << " Å where the grid is " << spacing << " Å";
+}
+
+
+// A grid much finer along one axis than along the others. Walking outward by as many steps as the fine axis
+// asks for goes round the coarse ones several times over, and each time round is a further copy of the same
+// points, at its own distance: more than is needed, and nothing wrong.
+TEST(grid_pore_size, a_grid_finer_along_one_axis_gives_the_same_distances)
+{
+  const double side = 16.0;
+  const double radius = 5.0;
+  const UnitCell box(side, side, side);
+  const uint3 gridSize(16, 16, 96);
+  const double3 centre(0.5 * side, 0.5 * side, 0.5 * side);
+  const double coarseSpacing = side / 16.0;
+
+  auto sphere = [&](double3 position) { return radius - nearestImage(position - centre, side).length(); };
+  std::vector<float> openness = sample(box, gridSize, sphere);
+
+  std::vector<float> distance = distanceToIsosurface(gridSize, box, openness, 0.0);
+
+  double worst = 0.0;
+  for (std::size_t k = 0; k < gridSize.z; ++k)
+  {
+    for (std::size_t j = 0; j < gridSize.y; ++j)
+    {
+      for (std::size_t i = 0; i < gridSize.x; ++i)
+      {
+        const std::size_t voxel = (k * gridSize.y + j) * gridSize.x + i;
+        const double expected = sphere(positionOf(box, gridSize, i, j, k));
+        if (expected < 0.0) continue;
+        worst = std::max(worst, std::abs(static_cast<double>(distance[voxel]) - expected));
+      }
+    }
+  }
+  EXPECT_LT(worst, coarseSpacing) << "the distance is off by " << worst << " Å";
+}
