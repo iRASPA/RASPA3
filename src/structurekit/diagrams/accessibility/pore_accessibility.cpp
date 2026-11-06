@@ -155,6 +155,19 @@ PointClassification PoreAccessibility::classify(const double3& point) const
     classification.latticeOffset = -nearestLift(wrappedPoint, classification.poreId) - wrap;
   };
 
+  // With no atoms there is no cell for the point to fall in and no atom for it to be inside, and the walk
+  // below, which goes on until it has found an atom and no nearer one can follow, would never return. All
+  // that is left to ask is whether a node's free ball holds the point, and a network of no atoms has no
+  // nodes either unless it was made by hand; failing that there is nothing to decide it with.
+  if (atomPositions.empty())
+  {
+    if (std::optional<std::size_t> holder = containingNode(wrappedPoint); holder.has_value())
+      decideFrom(holder.value());
+    else
+      classification.resample = true;
+    return classification;
+  }
+
   // The cell containing the point is the one nearest in the metric the network's cells are cut by:
   // the power distance |x-x_i|^2 - r_i^2 for a radical diagram, the clearance |x-x_i| - r_i for an
   // Apollonius diagram. Picking the Euclidean-nearest atom instead can land on a site whose cell is
@@ -307,6 +320,9 @@ PointClassification PoreAccessibility::classify(const double3& point) const
 
 std::optional<std::size_t> PoreAccessibility::containingNode(const double3& point, bool accessibleOnly) const
 {
+  // No nodes, no ball to hold the point; and a classifier that was never built has no bins to look in.
+  if (network.nodes.empty() || nodeBins.empty()) return std::nullopt;
+
   double3 fractional = double3::fract(unitCell.inverseCell * point);
   double3 wrappedPoint = unitCell.cell * fractional;
   const int3 pointBin = binOfFractional(fractional, gridSize);
@@ -390,6 +406,10 @@ bool PoreAccessibility::provablyAccessible(const double3& point) const
 
 double PoreAccessibility::clearance(const double3& point) const
 {
+  // Nothing to be near. The walk below stops once it has an atom and no shell left can hold a nearer one,
+  // so with no atom at all it would not stop.
+  if (atomPositions.empty()) return std::numeric_limits<double>::max();
+
   double3 fractional = double3::fract(unitCell.inverseCell * point);
   double3 wrappedPoint = unitCell.cell * fractional;
   const int3 pointBin = binOfFractional(fractional, gridSize);
@@ -434,6 +454,8 @@ double PoreAccessibility::clearance(const double3& point) const
 
 std::vector<std::pair<double3, double>> PoreAccessibility::neighbourAtoms(const double3& point, double reach) const
 {
+  if (atomPositions.empty()) return {};
+
   double3 fractional = double3::fract(unitCell.inverseCell * point);
   double3 wrappedPoint = unitCell.cell * fractional;
   const int3 pointBin = binOfFractional(fractional, gridSize);
@@ -478,6 +500,8 @@ std::vector<std::pair<double3, double>> PoreAccessibility::neighbourAtoms(const 
 
 std::vector<NeighbourImage> PoreAccessibility::neighbourAtomImages(const double3& point, double reach) const
 {
+  if (atomPositions.empty()) return {};
+
   // The same walk as `neighbourAtoms`, keeping what that one drops: which atom each image is of, and
   // which image. The bin walk knows both -- the atom by its index in the bin, the image by how far the
   // shell reached outside the cell -- and the only correction is the wrap the query point itself went
@@ -533,6 +557,8 @@ std::vector<NeighbourImage> PoreAccessibility::neighbourAtomImages(const double3
 
 bool PoreAccessibility::overlapsAtom(const double3& point, std::size_t excludedAtom) const
 {
+  if (atomPositions.empty()) return false;
+
   // The point is drawn on the home-cell image of `excludedAtom` and may spill over a face of the cell.
   // Once it is wrapped back by the lattice translation `wrap`, that image is no longer the one at lattice
   // shift zero but the one at `-wrap`, and that is the image to leave out. Leaving out shift zero instead
