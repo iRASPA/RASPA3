@@ -91,13 +91,15 @@ export struct ChannelWindow
 
 // The window at the bottleneck that sets the structure's own Df, taken over every node of the network.
 // This is the one that sits next to Df itself, and like Df it is a property of the structure rather than
-// of a probe. `measured` comes back false where the structure does not percolate at all.
+// of a probe. `measured` comes back false where the structure does not percolate at all, and where the
+// network does not say where its bottleneck is, as below.
 export PoreWindow freeSphereWindow(const VoronoiNetwork& network);
 
 // The windows of every channel found by the channel analysis. Pockets are left out, having no
 // percolating path to be limited by.
 //
 // A channel whose bottleneck the network does not locate is reported with `window.measured` false:
-// which edge is the bottleneck is always known, but where along that edge it sits is known only for a
-// network built from an Apollonius diagram. See VoronoiEdge::hasBottleneckGeometry.
+// which edge is the bottleneck is always known, but where along that edge it sits is for the network's
+// builder to have said. The radical, the Apollonius and the sampled networks all say it, so this is left
+// for a network put together by hand. See VoronoiEdge::hasBottleneckGeometry.
 export std::vector<ChannelWindow> channelWindows(const VoronoiNetwork& network, const ChannelAnalysis& channels);

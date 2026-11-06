@@ -59,10 +59,13 @@ export struct VoronoiEdge
   // which `from` is the node in the home cell. Together they cut the window a probe has to get
   // through: the plane through the position, perpendicular to the direction.
   //
-  // Only the Apollonius builder fills them, and `hasBottleneckGeometry` says whether it did. Its
-  // radius is the clearance at a sampled point of the arc, so it has a point to name; the radical
-  // builder's radius is a bound taken over the whole segment at once, min over atoms of the distance
-  // from that atom to the segment, and belongs to no point of it.
+  // Both builders fill them, and `hasBottleneckGeometry` says that they did; it is false only on an
+  // edge put together by hand. The Apollonius builder's radius is the clearance at a sampled point of
+  // the arc, and that point is the position. The radical builder's radius is the least, over the
+  // atoms, of the distance from the atom to the straight segment less its radius, which is the least
+  // clearance along the segment, and the position is the point of the segment where that is taken.
+  // There the clearance is the radius, or more than it by less than the distance vertices are merged
+  // over where an end of the edge was merged with a neighbour.
   double3 bottleneckPosition{};
   double3 bottleneckDirection{};
   bool hasBottleneckGeometry{false};

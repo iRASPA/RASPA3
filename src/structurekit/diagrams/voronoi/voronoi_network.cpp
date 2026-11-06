@@ -12,13 +12,18 @@ import skvoronoi;
 
 constexpr double mergeTolerance = 0.02;  // Å; zeo++ VOR_NODE_MERGE_THRESHOLD
 
-// Squared distance from the origin to the segment [a, b].
-double distanceSquaredOriginToSegment(const double3& a, const double3& b)
+// How far along the segment [a, b] its point nearest the origin is, from 0 at a to 1 at b.
+double parameterNearestOriginOnSegment(const double3& a, const double3& b)
 {
   double3 ab = b - a;
   double denominator = double3::dot(ab, ab);
-  double t = (denominator > 0.0) ? std::clamp(-double3::dot(a, ab) / denominator, 0.0, 1.0) : 0.0;
-  double3 closest = a + t * ab;
+  return (denominator > 0.0) ? std::clamp(-double3::dot(a, ab) / denominator, 0.0, 1.0) : 0.0;
+}
+
+// Squared distance from the origin to the segment [a, b].
+double distanceSquaredOriginToSegment(const double3& a, const double3& b)
+{
+  double3 closest = a + parameterNearestOriginOnSegment(a, b) * (b - a);
   return double3::dot(closest, closest);
 }
 
@@ -510,16 +515,49 @@ VoronoiNetwork VoronoiNetwork::create(const UnitCell& unitCell,
     double3 shift = wrappedMidpoint - midpoint;
     double halfLength = 0.5 * (q - p).length();
 
+    // Where the edge is narrowest goes with how narrow it is. The radius is the least, over the atoms, of
+    // the distance from an atom to the segment less its radius, and the least over the atoms of a least
+    // over the segment is the least clearance anywhere on the segment: it is the clearance at the point of
+    // the segment nearest the atom that sets it. So the edge has a narrowest point after all, and that
+    // point is kept, with the direction of the segment, which is the way the passage runs there.
+    //
+    // The radius coming in was taken on the segment as each cell saw it, between its own vertices, and
+    // this pass is on the segment between the nodes those vertices were merged into. The two are the same
+    // segment unless a vertex was merged with a neighbour, and then they differ by less than the merging
+    // distance and the radius kept is the smaller. So the clearance at the point kept is the radius, or
+    // more than it by that little.
     double clearance = forward.radius;
+    double narrowest = std::numeric_limits<double>::max();
+    double along = 0.0;
     forEachAtomNear(wrappedMidpoint, halfLength + forward.radius + maximumAtomRadius,
                     [&](std::size_t j, const double3& atomImage)
                     {
-                      double distance = std::sqrt(
-                          distanceSquaredOriginToSegment(p + shift - atomImage, q + shift - atomImage));
-                      clearance = std::min(clearance, distance - radii[j]);
+                      double3 a = p + shift - atomImage;
+                      double3 b = q + shift - atomImage;
+                      double t = parameterNearestOriginOnSegment(a, b);
+                      double distance = (a + t * (b - a)).length() - radii[j];
+                      if (distance < narrowest)
+                      {
+                        narrowest = distance;
+                        along = t;
+                      }
+                      clearance = std::min(clearance, distance);
                     });
     forward.radius = clearance;
     network.edges[i + 1].radius = clearance;
+
+    // In the frame where `from` is in the home cell, which for the edge taken the other way round is one
+    // lattice translation away and runs the other way.
+    if (narrowest < std::numeric_limits<double>::max() && halfLength > 0.0)
+    {
+      VoronoiEdge& backward = network.edges[i + 1];
+      forward.bottleneckPosition = p + along * (q - p);
+      forward.bottleneckDirection = (q - p) / (2.0 * halfLength);
+      forward.hasBottleneckGeometry = true;
+      backward.bottleneckPosition = forward.bottleneckPosition - (q - network.nodes[forward.to].position);
+      backward.bottleneckDirection = -forward.bottleneckDirection;
+      backward.hasBottleneckGeometry = true;
+    }
   }
 
   // The radii above are now honest, but they are measured at the radical vertices, and that is

@@ -28,6 +28,7 @@ add_executable(unit_tests_structurekit
   apollonius_surface_area.cpp
   voronoi_network_peaks.cpp
   voronoi_network_cell_vertices.cpp
+  voronoi_network_windows.cpp
   pore_accessibility_pruned_nodes.cpp
   pore_diameters.cpp
   brute_force_diameters.cpp

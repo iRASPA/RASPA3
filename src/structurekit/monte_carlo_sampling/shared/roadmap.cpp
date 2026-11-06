@@ -285,8 +285,8 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
   }
 
   // Every hop goes in both ways round, as the network's own builders store theirs, and carries where its
-  // narrowest point is and which way it runs there. The diagram routes can only supply that for an
-  // Apollonius edge; here every hop has it, because every hop was measured along rather than solved for.
+  // narrowest point is and which way it runs there, as the edges of the diagram routes do. Here it comes
+  // from having measured along every hop rather than from solving for it.
   auto addLink = [&](std::size_t from, std::size_t to, const int3 &delta, const SampledWay &way, double length)
   {
     VoronoiEdge forward;

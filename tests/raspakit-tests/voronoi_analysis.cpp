@@ -15,6 +15,8 @@ import voronoi_network;
 import voronoi_pore_diameters;
 import voronoi_channels;
 import pore_accessibility;
+import apollonius_network;
+import pore_window;
 
 // Simple-cubic lattice of one atom per cell (lattice a, atom radius r). The Voronoi cell
 // is a cube; all corners are periodic images of a single node at the cube centre.
@@ -910,5 +912,59 @@ TEST(voronoi_analysis, DISABLED_compare_all_cifs_vs_zeopp)
     }
     std::cout << std::format("        node clearance : Di={:.5f} Di_corrected={:.5f}  worst overestimate={:.3e} A\n",
                              diameters.includedSphereDiameter, 2.0 * correctedMaximumRadius, worstOverestimate);
+  }
+}
+
+// The window that sits next to Df, measured on the radical network. A zeolite's apertures are rings of
+// oxygen, all of one radius, so across a ring the radical diagram and the Apollonius diagram are the same
+// and the two networks have to find the same window: as wide, as round, ringed by as many atoms. The
+// radical network used to find none, having kept how narrow each of its edges is and not where.
+TEST(voronoi_analysis, the_free_sphere_window_of_a_zeolite_is_the_one_the_apollonius_network_finds)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+
+  struct Expected
+  {
+    Framework framework;
+    std::size_t ring;
+  };
+  std::vector<Expected> zeolites;
+  zeolites.push_back({Framework::makeITQ29(forceField, int3(1, 1, 1)), 8});
+  zeolites.push_back({Framework::makeMFI(forceField, int3(1, 1, 1)), 10});
+  zeolites.push_back({Framework::makeFAU(forceField, int3(1, 1, 1)), 12});
+  zeolites.push_back({Framework::makeCHA(forceField, int3(1, 1, 1)), 8});
+
+  for (std::size_t z = 0; z < zeolites.size(); ++z)
+  {
+    const Framework& framework = zeolites[z].framework;
+    UnitCell frameworkCell = StructureInput::makeUnitCell(framework.simulationBox);
+
+    std::vector<double3> fractionalPositions;
+    std::vector<double> radii;
+    for (const Atom& atom : framework.unitCellAtoms)
+    {
+      fractionalPositions.push_back(frameworkCell.inverseCell * atom.position);
+      std::size_t type = static_cast<std::size_t>(atom.type);
+      radii.push_back(0.5 * forceField(type, type).sizeParameter());
+    }
+
+    VoronoiNetwork radical = VoronoiNetwork::create(frameworkCell, fractionalPositions, radii);
+    ApolloniusPoreNetwork apollonius = ApolloniusPoreNetwork::create(frameworkCell, fractionalPositions, radii);
+
+    PoreWindow mine = freeSphereWindow(radical);
+    PoreWindow theirs = freeSphereWindow(apollonius.network);
+    ASSERT_TRUE(theirs.measured) << "zeolite " << z;
+    ASSERT_TRUE(mine.measured) << "zeolite " << z;
+
+    const double freeSphereDiameter = PoreDiameters::compute(radical).freeSphereDiameter;
+    EXPECT_NEAR(2.0 * mine.freeRadius, freeSphereDiameter, 1.0e-3) << "zeolite " << z;
+    EXPECT_NEAR(mine.freeRadius, theirs.freeRadius, 1.0e-3) << "zeolite " << z;
+    EXPECT_NEAR(mine.smallestFreeWidth, theirs.smallestFreeWidth, 2.0e-2) << "zeolite " << z;
+    EXPECT_NEAR(mine.largestFreeWidth, theirs.largestFreeWidth, 5.0e-2) << "zeolite " << z;
+    EXPECT_NEAR(mine.minorAxis, theirs.minorAxis, 2.0e-2) << "zeolite " << z;
+    EXPECT_NEAR(mine.majorAxis, theirs.majorAxis, 5.0e-2) << "zeolite " << z;
+    EXPECT_FALSE(mine.clipped) << "zeolite " << z;
+    EXPECT_EQ(mine.boundingAtoms, zeolites[z].ring) << "zeolite " << z;
+    EXPECT_EQ(theirs.boundingAtoms, zeolites[z].ring) << "zeolite " << z;
   }
 }
