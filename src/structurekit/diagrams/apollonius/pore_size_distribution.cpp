@@ -67,7 +67,10 @@ void ApolloniusPoreSizeDistribution::run(const PairInteractions& interactions, c
 
     this->sweptSpheres = blockedBalls;
 
-    // The atoms come back in another order, widest first, so the two lists are compared sorted alike.
+    // A pocket was filled if one of those spheres is not an atom. The atoms come back as they went in,
+    // position and radius untouched, in another order and without the ones wholly inside another sphere:
+    // so the list differing from the atoms says nothing, an atom buried in its neighbour being left off it
+    // with no pocket anywhere, and what is asked is whether every sphere on it is to be found among the atoms.
     auto sorted = [](std::vector<std::array<double, 4>> spheres)
     {
       std::ranges::sort(spheres);
@@ -85,7 +88,7 @@ void ApolloniusPoreSizeDistribution::run(const PairInteractions& interactions, c
     {
       ofBalls.push_back({ball.radius, ball.centerFractional.x, ball.centerFractional.y, ball.centerFractional.z});
     }
-    this->pocketsFilled = sorted(std::move(ofAtoms)) != sorted(std::move(ofBalls));
+    this->pocketsFilled = !std::ranges::includes(sorted(std::move(ofAtoms)), sorted(std::move(ofBalls)));
 
     std::vector<double3> blockedPositions;
     std::vector<double> blockedRadii;

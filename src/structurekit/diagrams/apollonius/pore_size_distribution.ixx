@@ -25,8 +25,10 @@ export struct ApolloniusPoreSizeDistribution
   // checked by something that takes the same spheres and works the pore sizes out another way.
   std::vector<BlockingSphere> sweptSpheres;
 
-  // Whether those are more than the atoms: whether any pocket got a ball. Their number does not say, a ball
-  // that swallows an atom taking one off the list as it adds itself.
+  // Whether those are more than the atoms: whether any pocket got a ball, which is whether one of them is
+  // not an atom. Neither their number nor their being another list than the atoms says so: a ball that
+  // swallows an atom takes one off the list as it adds itself, and an atom wholly inside another atom is
+  // left off it where nothing was filled at all.
   bool pocketsFilled{false};
 
   // `probePseudoAtom` is the accessibility / blocking probe. `floorRadius` is the diameter floor of the
