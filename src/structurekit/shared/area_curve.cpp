@@ -196,11 +196,21 @@ AreaCurve areaAgainstLevel(uint3 gridSize, const UnitCell &unitCell, std::span<c
           localUnder += std::clamp(lowestLevel - lowest, 0.0, span) / span;
           localOver += std::clamp(highest - highestLevel, 0.0, span) / span;
 
+          // The bins the band reaches. Where it runs out of the range the answer is the end bin, and it is
+          // given as that and not worked out: a band beside a wall reaches as far as the wall is high, and
+          // divided by the width of a bin that is more bins than an integer can count, a field held at the
+          // largest float making it 1e37 of them. Turning such a number into an integer is not defined. Some
+          // machines give the largest integer, which the clamp then put right, and others the most negative,
+          // which put the last bin before the first and left the voxel out of every bin it belonged in.
+          // Inside the range both ends are within the range's own count of bins, and a voxel that got this
+          // far is within the guard, so the end not clamped is no further out than that either.
           const std::int64_t first =
-              std::max<std::int64_t>(0, static_cast<std::int64_t>(std::floor((lowest - lowestLevel) / step)));
+              (lowest <= lowestLevel) ? 0 : static_cast<std::int64_t>(std::floor((lowest - lowestLevel) / step));
           const std::int64_t last =
-              std::min<std::int64_t>(static_cast<std::int64_t>(bins) - 1,
-                                     static_cast<std::int64_t>(std::floor((highest - lowestLevel) / step)));
+              (highest >= highestLevel)
+                  ? static_cast<std::int64_t>(bins) - 1
+                  : std::min<std::int64_t>(static_cast<std::int64_t>(bins) - 1,
+                                           static_cast<std::int64_t>(std::floor((highest - lowestLevel) / step)));
 
           for (std::int64_t bin = first; bin <= last; ++bin)
           {

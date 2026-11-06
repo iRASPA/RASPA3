@@ -214,6 +214,98 @@ TEST(grid_area_curve, a_wall_is_credited_only_with_the_levels_it_climbs_through)
 }
 
 
+// The same wall held at whatever a float can hold. What a voxel beside the wall gives each level does not depend
+// on how high the wall stands: its gradient and the band of values it covers both grow with the wall, and what a
+// bin gets is the one over the other. So the curve has to be the same for a wall at ten million as for one at
+// the largest float there is.
+//
+// Which bins the band reaches is worked out by dividing how far the band extends by the width of a bin, and a
+// band that reaches 1e38 past a range a thousand wide is 1e37 bins long, which no integer holds. Turned into one
+// regardless, the number is whatever the machine makes of it: the largest integer on some, which happens to be
+// right, and the most negative on others, which puts the last bin before the first and leaves the voxel out of
+// every bin. The wall is then there in the field and gone from the curve.
+TEST(grid_area_curve, a_wall_as_high_as_a_float_goes_is_the_same_wall)
+{
+  const double side = 20.0;
+  const UnitCell box(side, side, side);
+  const uint3 gridSize(32, 32, 32);
+  const double twoPlanes = 2.0 * side * side;
+
+  auto curveWithWallAt = [&](float ceiling)
+  {
+    std::vector<float> field(32 * 32 * 32, -10.0f);
+    for (std::size_t k = 16; k < 32; ++k)
+    {
+      for (std::size_t j = 0; j < 32; ++j)
+      {
+        for (std::size_t i = 0; i < 32; ++i) field[(k * 32 + j) * 32 + i] = ceiling;
+      }
+    }
+    return areaAgainstLevel(gridSize, box, field, -500.0, 500.0, 100);
+  };
+
+  const AreaCurve reference = curveWithWallAt(1.0e7f);
+  ASSERT_NEAR(reference.areaAt(200.0), twoPlanes, 0.05 * twoPlanes);
+
+  for (const float ceiling : {1.0e12f, 1.0e20f, 1.0e30f, std::numeric_limits<float>::max()})
+  {
+    const AreaCurve curve = curveWithWallAt(ceiling);
+    ASSERT_EQ(curve.points.size(), reference.points.size());
+    for (const double level : {-5.0, 5.0, 200.0, 495.0})
+    {
+      EXPECT_NEAR(curve.areaAt(level), reference.areaAt(level), 1.0e-4 * twoPlanes)
+          << "wall at " << ceiling << ", level " << level;
+    }
+    EXPECT_NEAR(curve.areaAt(-300.0), 0.0, 1.0e-9) << "wall at " << ceiling;
+    EXPECT_NEAR(curve.fractionBelowRange, 0.0, 1.0e-12) << "wall at " << ceiling;
+    EXPECT_NEAR(curve.fractionAboveRange, reference.fractionAboveRange, 1.0e-4) << "wall at " << ceiling;
+    EXPECT_NEAR(curve.points.back().fractionBelow, reference.points.back().fractionBelow, 1.0e-4)
+        << "wall at " << ceiling;
+  }
+}
+
+// And the other way down: a pit as deep as a float goes beside voxels in the range. Every level between the
+// pit and the voxels' own value is crossed in the voxel beside it, so each of those is two planes, and none
+// above that value is crossed anywhere. Here it is the first bin that is worked out from a number no integer
+// holds.
+TEST(grid_area_curve, a_pit_as_deep_as_a_float_goes_is_the_same_pit)
+{
+  const double side = 20.0;
+  const UnitCell box(side, side, side);
+  const uint3 gridSize(32, 32, 32);
+  const double twoPlanes = 2.0 * side * side;
+
+  auto curveWithPitAt = [&](float floor)
+  {
+    std::vector<float> field(32 * 32 * 32, 10.0f);
+    for (std::size_t k = 16; k < 32; ++k)
+    {
+      for (std::size_t j = 0; j < 32; ++j)
+      {
+        for (std::size_t i = 0; i < 32; ++i) field[(k * 32 + j) * 32 + i] = floor;
+      }
+    }
+    return areaAgainstLevel(gridSize, box, field, -500.0, 500.0, 100);
+  };
+
+  const AreaCurve reference = curveWithPitAt(-1.0e7f);
+  ASSERT_NEAR(reference.areaAt(-200.0), twoPlanes, 0.05 * twoPlanes);
+
+  for (const float floor : {-1.0e12f, -1.0e20f, -1.0e30f, -std::numeric_limits<float>::max()})
+  {
+    const AreaCurve curve = curveWithPitAt(floor);
+    for (const double level : {-495.0, -200.0, -5.0, 5.0})
+    {
+      EXPECT_NEAR(curve.areaAt(level), reference.areaAt(level), 1.0e-4 * twoPlanes)
+          << "pit at " << floor << ", level " << level;
+    }
+    EXPECT_NEAR(curve.areaAt(300.0), 0.0, 1.0e-9) << "pit at " << floor;
+    EXPECT_NEAR(curve.fractionAboveRange, 0.0, 1.0e-12) << "pit at " << floor;
+    EXPECT_NEAR(curve.fractionBelowRange, reference.fractionBelowRange, 1.0e-4) << "pit at " << floor;
+  }
+}
+
+
 // The bins span the whole of the range and their centres stop half a bin short of either end of it, but a level in
 // that last half bin is in the range all the same. It is in the end bin, and has that bin's area, not none.
 TEST(grid_area_curve, the_last_half_bin_at_either_end_of_the_range_is_read_from_the_end_bin)
