@@ -27,6 +27,7 @@ add_executable(unit_tests_structurekit
   boundary_components.cpp
   apollonius_surface_area.cpp
   voronoi_network_peaks.cpp
+  voronoi_network_cell_vertices.cpp
   pore_diameters.cpp
   brute_force_diameters.cpp
   blocking_spheres.cpp

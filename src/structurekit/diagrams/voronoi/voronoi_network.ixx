@@ -74,7 +74,9 @@ export struct VoronoiNetwork
   std::vector<VoronoiEdge> edges;  // directed; every undirected edge is stored both ways
 
   // Per atom, the nodes of its own Voronoi cell together with the Cartesian vector from
-  // the atom centre to that vertex (used by the accessibility line-of-sight test).
+  // the atom centre to that vertex (used by the accessibility line-of-sight test). There is one
+  // entry per vertex of the cell, not per node: in a crystal several vertices of one cell can be
+  // periodic images of the same node, and each is listed with its own vector.
   std::vector<std::vector<std::pair<std::size_t, double3>>> atomNodeVectors;
 
   UnitCell unitCell;
