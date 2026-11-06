@@ -4,6 +4,7 @@ import std;
 
 import uint3;
 import double3;
+import double3x3;
 import unit_cell;
 import crystal;
 import pair_interactions;
@@ -177,5 +178,67 @@ TEST(grid_clearance, the_analyses_of_an_empty_box_agree_that_it_is_all_room)
     EXPECT_DOUBLE_EQ(point.cumulativeVoidFraction, 1.0) << "at " << point.diameter;
     EXPECT_DOUBLE_EQ(point.cumulativeAccessibleFraction, 1.0) << "at " << point.diameter;
     EXPECT_DOUBLE_EQ(point.distribution, 0.0) << "at " << point.diameter;
+  }
+}
+
+
+// The same lattice can be handed in by any three of its vectors that span it, and a cell as given need not be
+// the compact one: here the second vector leans two lengths of the first along it, and in the last cell the
+// third leans further still. The room at a point is the distance to the nearest copy of the nearest atom, and
+// in such a cell the nearest copy is not among the neighbours of the one nearest in fractions of the cell:
+// bringing a difference into half a cell either way along each axis and then trying one cell more either way
+// reaches offsets of one, and the copy wanted can be two or three away along the first axis.
+//
+// One atom, so that no other can stand in for a copy that was missed, and the room at every point held against
+// the shortest image the unit cell finds, which the cell has its own tests for. It has to be the same in the
+// compact cell and in the leaning ones, to the precision of a float.
+TEST(grid_clearance, the_room_in_a_cell_given_by_leaning_vectors_is_to_the_nearest_copy)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+
+  ReportCleanup cleanup;
+  PairInteractions interactions = probeOfRadiusOne();
+  const uint3 points(16, 16, 16);
+
+  const double3 a(10.0, 0.0, 0.0);
+  const double3 b(4.0, 10.0, 0.0);
+  const double3 c(1.0, -3.0, 9.0);
+  const std::vector<std::pair<std::string, UnitCell>> cells{
+      {"compact", UnitCell(double3x3(a, b, c))},
+      {"third vector leaning", UnitCell(double3x3(a, b, c + 2.0 * a))},
+      {"second vector leaning", UnitCell(double3x3(a, b + 2.0 * a, c))},
+      {"both leaning", UnitCell(double3x3(a, b + 5.0 * a, c + 5.0 * (b + 5.0 * a) + 2.0 * a))},
+  };
+
+  for (const auto &[name, cell] : cells)
+  {
+    Crystal framework;
+    framework.name = "grid_clearance_test";
+    framework.unitCell = cell;
+    framework.mass = 1.0;
+    const double3 fractional(0.1, 0.2, 0.3);
+    framework.atoms.push_back(CrystalAtom{cell.cell * fractional, 0.0, 0});
+    framework.fractionalPositions.push_back(fractional);
+
+    ClearanceGrid grid = ClearanceGrid::compute(interactions, framework, points);
+    ASSERT_EQ(grid.numberOfVoxels(), 4096uz) << name;
+
+    double worst = 0.0;
+    for (std::size_t k = 0; k < points.z; ++k)
+    {
+      for (std::size_t j = 0; j < points.y; ++j)
+      {
+        for (std::size_t i = 0; i < points.x; ++i)
+        {
+          const double3 fromAtom = grid.cartesianPosition(i, j, k) - framework.atoms[0].position;
+          const double room = cell.shortestImage(fromAtom, nullptr).length() - 1.0;
+          const std::size_t voxel = grid.voxelIndex(i, j, k);
+          worst = std::max(worst, std::abs(static_cast<double>(grid.clearance[voxel]) - room));
+          EXPECT_EQ(grid.closestAtom[voxel], 0) << name;
+        }
+      }
+    }
+    EXPECT_LT(worst, 1.0e-4) << name << ": the room is off by " << worst << " Å somewhere";
   }
 }

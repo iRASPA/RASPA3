@@ -255,17 +255,41 @@ ClearanceGrid ClearanceGrid::compute(const PairInteractions &interactions, const
     throw std::runtime_error(std::format("ClearanceGrid: OpenCL clEnqueueWriteBuffer failed at {}\n", __LINE__));
   }
 
-  // The rows of the matrix that turns a fractional difference into a Cartesian one, so that the kernel can
-  // build a distance with three dot products.
-  double3x3 cell = framework.unitCell.cell;
+  // The nearest copy of an atom is looked for in the compact cell of the lattice and not in the cell as
+  // given. The two are the same lattice, and the grid and the atoms keep the fractions of the cell they came
+  // in; but a cell may be given by any three vectors that span the lattice, leaning as far along one another
+  // as they like, and then the copy nearest in fractions of it, and that copy's neighbours a cell either way,
+  // need not include the copy nearest in Ångström. With one vector leaning two lengths of another the room
+  // came out wrong by up to two Ångström at one point in thirty, and by tens of Ångström for a steeper lean.
+  //
+  // The compact cell is the obtuse superbase the unit cell already keeps for its own shortest image. In it
+  // the lattice points that can be nearest are known, the three vectors, their sums and their opposites
+  // (Conway and Sloane), and all of them are among the neighbours one cell either way of the copy nearest in
+  // fractions: so one shell there is enough for a cell of any shape, which it was not in the cell as given.
+  //
+  // A difference in fractions of the given cell is carried into fractions of the compact one by a matrix of
+  // whole numbers, the two cells being bases of one lattice. Its rows go to the kernel, with the rows of the
+  // matrix that turns a fractional difference in the compact cell into a Cartesian one, so that the kernel
+  // can build both with three dot products each.
+  const UnitCell compact(framework.unitCell.obtuseCell);
+  double3x3 toCompact = framework.unitCell.obtuseInverse * framework.unitCell.cell;
+  for (std::size_t column = 0; column < 3; ++column)
+  {
+    toCompact[column] = double3(std::round(toCompact[column].x), std::round(toCompact[column].y),
+                                std::round(toCompact[column].z));
+  }
+  cl_float4 compactRow0 = {{cl_float(toCompact[0][0]), cl_float(toCompact[1][0]), cl_float(toCompact[2][0]), 0.0f}};
+  cl_float4 compactRow1 = {{cl_float(toCompact[0][1]), cl_float(toCompact[1][1]), cl_float(toCompact[2][1]), 0.0f}};
+  cl_float4 compactRow2 = {{cl_float(toCompact[0][2]), cl_float(toCompact[1][2]), cl_float(toCompact[2][2]), 0.0f}};
+
+  double3x3 cell = compact.cell;
   cl_float4 cellRow0 = {{cl_float(cell[0][0]), cl_float(cell[1][0]), cl_float(cell[2][0]), 0.0f}};
   cl_float4 cellRow1 = {{cl_float(cell[0][1]), cl_float(cell[1][1]), cl_float(cell[2][1]), 0.0f}};
   cl_float4 cellRow2 = {{cl_float(cell[0][2]), cl_float(cell[1][2]), cl_float(cell[2][2]), 0.0f}};
 
   // Wrapping a fractional difference into [-1/2, 1/2) picks the nearest image outright when the cell is
   // rectangular, because then each axis is independent. Once the cell is oblique it need not, so the
-  // neighbouring images are visited too; one shell either way is enough for the reduced lattice vectors a
-  // CIF supplies, and it costs nothing on the rectangular cells that do not need it.
+  // neighbouring images are visited too, and it costs nothing on the rectangular cells that do not need it.
   double longest = std::max({cell[0].length(), cell[1].length(), cell[2].length()});
   double skew = std::max({std::fabs(cell[0].y), std::fabs(cell[0].z), std::fabs(cell[1].x), std::fabs(cell[1].z),
                           std::fabs(cell[2].x), std::fabs(cell[2].y)});
@@ -277,8 +301,9 @@ ClearanceGrid ClearanceGrid::compute(const PairInteractions &interactions, const
   // whatever the cell, because w_k is by definition the part of the axis that stands off that plane. The
   // kernel leans on this twice, once to dismiss a distant atom without a square root and once to settle the
   // nearest image without visiting the neighbouring cells; the fourth slot carries half the least of the
-  // three, which is the threshold the second of those tests wants.
-  double3 widths = framework.unitCell.perpendicularWidths();
+  // three, which is the threshold the second of those tests wants. Both are tests on the difference in the
+  // compact cell, so these are that cell's widths.
+  double3 widths = compact.perpendicularWidths();
   cl_float4 clWidths = {{cl_float(widths.x), cl_float(widths.y), cl_float(widths.z),
                          cl_float(0.5 * std::min({widths.x, widths.y, widths.z}))}};
   cl_int3 clGridSize = {{cl_int(gridSize.x), cl_int(gridSize.y), cl_int(gridSize.z), 0}};
@@ -295,6 +320,9 @@ ClearanceGrid ClearanceGrid::compute(const PairInteractions &interactions, const
   err |= clSetKernelArg(kernel, 8, sizeof(cl_int), &numberOfAtoms);
   err |= clSetKernelArg(kernel, 9, sizeof(cl_int3), &clShells);
   err |= clSetKernelArg(kernel, 10, sizeof(cl_int3), &clGridSize);
+  err |= clSetKernelArg(kernel, 11, sizeof(cl_float4), &compactRow0);
+  err |= clSetKernelArg(kernel, 12, sizeof(cl_float4), &compactRow1);
+  err |= clSetKernelArg(kernel, 13, sizeof(cl_float4), &compactRow2);
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("ClearanceGrid: OpenCL clSetKernelArg failed at {}\n", __LINE__));
@@ -345,7 +373,10 @@ __kernel void ClearanceField(__global const float4 *position,
                              const float4 widths,
                              const int numberOfAtoms,
                              const int3 shells,
-                             const int3 gridSize)
+                             const int3 gridSize,
+                             const float4 compactRow0,
+                             const float4 compactRow1,
+                             const float4 compactRow2)
 {
   int ix = get_global_id(0);
   int iy = get_global_id(1);
@@ -365,9 +396,19 @@ __kernel void ClearanceField(__global const float4 *position,
 
   for(int iatom = 0; iatom < numberOfAtoms; iatom++)
   {
-    float4 ds = s - position[iatom];
-    ds -= rint(ds);
+    // The difference in fractions of the cell as given, brought near the origin first so that the whole
+    // numbers it is multiplied by next have little to magnify, and then carried into fractions of the compact
+    // cell of the same lattice and brought near the origin there. Everything below is in that cell.
+    float4 given = s - position[iatom];
+    given -= rint(given);
+    given.w = 0.0f;
+
+    float4 ds;
+    ds.x = dot(compactRow0, given);
+    ds.y = dot(compactRow1, given);
+    ds.z = dot(compactRow2, given);
     ds.w = 0.0f;
+    ds -= rint(ds);
 
     // Every image of this atom lies at least |ds_k| w_k away, for each of the three axes, since reducing into
     // [-1/2, 1/2) has already put the nearest integer at zero and stepping to another only lengthens the
