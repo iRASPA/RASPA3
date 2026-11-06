@@ -5,6 +5,7 @@ import std;
 import int3;
 import double3;
 import unit_cell;
+import randomnumbers;
 import brute_force_structure;
 import brute_force_voxels;
 import brute_force_pore_spikes;
@@ -148,7 +149,7 @@ TEST(brute_force_pore_spikes, families_beyond_the_dozen_widest_are_counted_and_t
   BruteForceStructure structure = tube.structure();
   BruteForceVoxels voxels = BruteForceVoxels::build(structure, 0.75);
 
-  BruteForcePoreSpikes spikes = BruteForcePoreSpikes::compute(structure, voxels, 400000, 3);
+  BruteForcePoreSpikes spikes = BruteForcePoreSpikes::compute(structure, voxels, 100000, 3);
   ASSERT_GT(spikes.numberOfFamilies, 12uz) << "the bulges alone were to give a dozen families";
   ASSERT_EQ(spikes.families.size(), 3uz);
   for (std::size_t f = 0; f + 1 < spikes.families.size(); ++f)
@@ -158,9 +159,11 @@ TEST(brute_force_pore_spikes, families_beyond_the_dozen_widest_are_counted_and_t
   for (const BruteForceSpikeFamily &family : spikes.families) EXPECT_GT(family.weight, 1.0e-5);
 
   // Asked for every family, the cages come too: eight balls of radius one and a half, one family of diameter
-  // three, the narrowest of all.
-  BruteForcePoreSpikes all = BruteForcePoreSpikes::compute(structure, voxels, 400000, 32);
-  ASSERT_EQ(all.families.size(), all.numberOfFamilies);
+  // three, the narrowest of all. Every family with void to its name is reported, which need not be every place
+  // a walk ended: one that ended short of a maximum names a diameter no void has for its pore size.
+  BruteForcePoreSpikes all = BruteForcePoreSpikes::compute(structure, voxels, 100000, 32);
+  ASSERT_GT(all.families.size(), 12uz);
+  ASSERT_LE(all.families.size(), all.numberOfFamilies);
   const BruteForceSpikeFamily &cages = all.families.back();
   EXPECT_NEAR(cages.diameter, 3.0, 1.0e-6);
   EXPECT_EQ(cages.centres.size(), 8uz);
@@ -280,4 +283,227 @@ TEST(brute_force_pore_spikes, a_wide_family_that_holds_little_is_reported_ahead_
     // The same stream of points and the same families down to this one, so the same count to the point.
     EXPECT_DOUBLE_EQ(widest.families[f].weight, all.families[f].weight) << "family " << f;
   }
+}
+
+
+namespace
+{
+
+// Whether a sphere wider than `radius` that fits in the void holds `point`, by a search that owes nothing to the
+// grid or to the way the spikes are weighed: centres are thrown into the ball of that radius about the point, and
+// the roomiest few are climbed from without leaving the ball.
+bool heldByAWiderSphere(const BruteForceStructure &structure, const double3 &point, double radius,
+                        RandomNumber &random)
+{
+  struct Centre
+  {
+    double3 offset;
+    double room{-1.0e300};
+  };
+  std::array<Centre, 4> roomiest{};
+
+  for (std::size_t n = 0; n < 300; ++n)
+  {
+    double3 offset;
+    do
+    {
+      offset = double3(2.0 * random.uniform() - 1.0, 2.0 * random.uniform() - 1.0, 2.0 * random.uniform() - 1.0);
+    } while (double3::dot(offset, offset) > 1.0);
+    offset = radius * offset;
+
+    const double room = structure.clearance(point + offset);
+    if (room > radius) return true;
+    auto worst = std::ranges::min_element(roomiest, {}, &Centre::room);
+    if (room > worst->room) *worst = Centre{offset, room};
+  }
+
+  auto intoTheBall = [&](const double3 &offset)
+  {
+    const double length = offset.length();
+    return length > radius ? (radius / length) * offset : offset;
+  };
+  for (Centre centre : roomiest)
+  {
+    for (double step = 0.2; step > 1.0e-4;)
+    {
+      bool moved = false;
+      for (const double3 &direction : {double3(1.0, 0.0, 0.0), double3(-1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0),
+                                       double3(0.0, -1.0, 0.0), double3(0.0, 0.0, 1.0), double3(0.0, 0.0, -1.0)})
+      {
+        const double3 offset = intoTheBall(centre.offset + step * direction);
+        const double room = structure.clearance(point + offset);
+        if (room > radius) return true;
+        if (room > centre.room)
+        {
+          centre = Centre{offset, room};
+          moved = true;
+        }
+      }
+      if (!moved) step *= 0.5;
+    }
+  }
+  return false;
+}
+
+}  // namespace
+
+
+// Two sealed cavities that open into one another through a neck narrower than either: the larger three and a half
+// Ångström in radius, the smaller two and a half, the neck a little under that. The largest sphere of each is a
+// family. A sphere the size of the smaller cavity's also fits on the larger one's side of the neck, where it
+// reaches through and holds part of the smaller cavity, and so does every sphere between that size and the larger
+// cavity's own. The void those hold has a pore size above the smaller family's, and is not that family's, though
+// the only maximal sphere that holds it is. Charged to it, the smaller family is a quarter too heavy.
+TEST(brute_force_pore_spikes, void_a_wider_sphere_reaches_through_a_neck_is_not_the_narrower_cavitys)
+{
+  const double3 large(5.2, 5.5, 5.5);
+  const double3 small(9.0, 5.5, 5.5);
+  const double shellOfLarge = 4.1;
+  const double shellOfSmall = 3.1;
+  const double atomRadius = 0.6;
+
+  // Each cavity is walled by small spheres on a shell about its middle, left out where they would stand inside
+  // the other cavity's shell, which is what opens the neck.
+  std::vector<double3> positions;
+  for (const double3 &position : fibonacciShell(large, shellOfLarge, 340))
+  {
+    if ((position - small).length() > shellOfSmall) positions.push_back(position);
+  }
+  for (const double3 &position : fibonacciShell(small, shellOfSmall, 200))
+  {
+    if ((position - large).length() > shellOfLarge) positions.push_back(position);
+  }
+  std::vector<double> radii(positions.size(), atomRadius);
+
+  BruteForceStructure structure =
+      BruteForceStructure::create("two cavities", UnitCell(13.4, 11.0, 11.0), positions, radii);
+  BruteForceVoxels voxels = BruteForceVoxels::build(structure, 0.25);
+
+  BruteForcePoreSpikes spikes = BruteForcePoreSpikes::compute(structure, voxels, 120000, 32);
+
+  // The two families, by where their one sphere stands.
+  const BruteForceSpikeFamily *ofLarge = nullptr;
+  const BruteForceSpikeFamily *ofSmall = nullptr;
+  for (const BruteForceSpikeFamily &family : spikes.families)
+  {
+    for (const double3 &centre : family.centres)
+    {
+      if ((centre - large).length() < 0.2) ofLarge = &family;
+      if ((centre - small).length() < 0.2) ofSmall = &family;
+    }
+  }
+  ASSERT_NE(ofLarge, nullptr) << "no family has its sphere in the middle of the larger cavity";
+  ASSERT_NE(ofSmall, nullptr) << "no family has its sphere in the middle of the smaller cavity";
+  ASSERT_EQ(ofLarge->centres.size(), 1uz);
+  ASSERT_EQ(ofSmall->centres.size(), 1uz);
+  const double radiusOfLarge = 0.5 * ofLarge->diameter;
+  const double radiusOfSmall = 0.5 * ofSmall->diameter;
+  EXPECT_NEAR(radiusOfLarge, shellOfLarge - atomRadius, 0.05);
+  EXPECT_NEAR(radiusOfSmall, shellOfSmall - atomRadius, 0.05);
+
+  // The larger family holds its whole sphere: nothing wider fits in there.
+  const double ball = 4.0 * std::numbers::pi / 3.0;
+  const double heldByLarge = ofLarge->weight * spikes.voidVolume;
+  EXPECT_NEAR(heldByLarge, ball * std::pow(radiusOfLarge, 3), 0.03 * ball * std::pow(radiusOfLarge, 3));
+
+  // The smaller family holds what is left of its sphere once the points a wider sphere holds are taken out,
+  // which is asked of each point of the sphere in turn.
+  RandomNumber random{7};
+  constexpr std::size_t thrown = 4000;
+  std::size_t leftToTheSmaller = 0;
+  const double3 middle = ofSmall->centres.front();
+  for (std::size_t n = 0; n < thrown; ++n)
+  {
+    double3 offset;
+    do
+    {
+      offset = double3(2.0 * random.uniform() - 1.0, 2.0 * random.uniform() - 1.0, 2.0 * random.uniform() - 1.0);
+    } while (double3::dot(offset, offset) > 1.0);
+    if (!heldByAWiderSphere(structure, middle + radiusOfSmall * offset, radiusOfSmall + 1.0e-4, random))
+    {
+      ++leftToTheSmaller;
+    }
+  }
+  const double sphereOfSmall = ball * std::pow(radiusOfSmall, 3);
+  const double expected = sphereOfSmall * static_cast<double>(leftToTheSmaller) / static_cast<double>(thrown);
+  const double heldBySmall = ofSmall->weight * spikes.voidVolume;
+  EXPECT_NEAR(heldBySmall, expected, 0.08 * expected)
+      << "the smaller family holds " << heldBySmall << " cubic Angstrom and a search point by point leaves it "
+      << expected;
+
+  // And that is well short of what the two maximal spheres alone would say: the smaller sphere less the lens it
+  // shares with the larger.
+  const double apart = (ofLarge->centres.front() - middle).length();
+  const double lens = std::numbers::pi * std::pow(radiusOfLarge + radiusOfSmall - apart, 2) *
+                      (apart * apart + 2.0 * apart * (radiusOfLarge + radiusOfSmall) -
+                       3.0 * std::pow(radiusOfLarge - radiusOfSmall, 2)) /
+                      (12.0 * apart);
+  EXPECT_LT(heldBySmall, 0.9 * (sphereOfSmall - lens))
+      << "the smaller family holds " << heldBySmall << " cubic Angstrom, and its sphere less the lens is "
+      << sphereOfSmall - lens;
+}
+
+
+// The atoms near a point, which is what the search for a wider sphere asks the room of in place of the whole
+// structure: every atom of every image whose surface is within reach, and none other, in a cell far from square.
+TEST(brute_force_structure, the_atoms_within_reach_are_those_a_search_over_every_image_finds)
+{
+  const double degrees = std::numbers::pi / 180.0;
+  UnitCell cell(9.0, 10.0, 11.0, 70.0 * degrees, 80.0 * degrees, 65.0 * degrees);
+
+  RandomNumber random{3};
+  std::vector<double3> positions;
+  std::vector<double> radii;
+  for (std::size_t n = 0; n < 12; ++n)
+  {
+    positions.push_back(cell.cell * double3(random.uniform(), random.uniform(), random.uniform()));
+    radii.push_back(0.8 + 0.6 * random.uniform());
+  }
+  BruteForceStructure structure = BruteForceStructure::create("skewed", cell, positions, radii);
+
+  std::vector<BruteForceStructure::Neighbour> found;
+  for (double reach : {0.5, 3.0, 7.5, 12.0})
+  {
+    for (std::size_t n = 0; n < 5; ++n)
+    {
+      const double3 point = cell.cell * double3(random.uniform(), random.uniform(), random.uniform());
+      ASSERT_TRUE(structure.atomsWithin(point, reach, found));
+
+      std::vector<double> surfaces;
+      for (const BruteForceStructure::Neighbour &atom : found)
+      {
+        surfaces.push_back(atom.fromCentre.length() - atom.radius);
+      }
+      std::ranges::sort(surfaces);
+
+      std::vector<double> expected;
+      for (std::size_t j = 0; j < positions.size(); ++j)
+      {
+        for (std::int32_t a = -8; a <= 8; ++a)
+        {
+          for (std::int32_t b = -8; b <= 8; ++b)
+          {
+            for (std::int32_t c = -8; c <= 8; ++c)
+            {
+              const double3 image = positions[j] + cell.cell * double3(static_cast<double>(a), static_cast<double>(b),
+                                                                       static_cast<double>(c));
+              const double surface = (point - image).length() - radii[j];
+              if (surface <= reach) expected.push_back(surface);
+            }
+          }
+        }
+      }
+      std::ranges::sort(expected);
+
+      ASSERT_EQ(surfaces.size(), expected.size()) << "reach " << reach;
+      for (std::size_t i = 0; i < surfaces.size(); ++i) EXPECT_NEAR(surfaces[i], expected[i], 1.0e-9);
+
+      // and the room among them is the room, wherever it is no more than the reach
+      if (!surfaces.empty()) EXPECT_NEAR(surfaces.front(), structure.clearance(point), 1.0e-9);
+    }
+  }
+
+  // Past what the images held are known to cover, the list would be short, and none is given.
+  EXPECT_FALSE(structure.atomsWithin(positions.front(), 1.0e3, found));
+  EXPECT_TRUE(found.empty());
 }

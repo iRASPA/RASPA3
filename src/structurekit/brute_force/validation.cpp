@@ -169,34 +169,91 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
 
     if (!settings.skipPoreSpikes)
     {
-      // Local clearance maxima on the bare grid, clustered by diameter, with a Monte Carlo union weight.
-      // Pockets sealed to the void probe are blocked out, and the last three spikes of the accessible
-      // exact PSD are compared.
+      // Local clearance maxima on the grid, clustered by diameter, each weighed by the void whose pore size
+      // is its diameter, and the last three spikes of the exact curve compared with them.
+      //
+      // The exact curve is of the void left once the pockets sealed to the void probe are filled, each by
+      // one ball, and it says which spheres that left it measuring. The spikes are worked out again on
+      // those same spheres, so that the two are fractions of one void. Keeping instead only the points at
+      // which the probe's centre can stand compared a fraction of the void with a fraction of the part of it
+      // more than a probe radius from every wall, which is under a fifth of it on silicalite.
       const std::size_t spikePoints =
           settings.spikeVolumePoints > 0 ? settings.spikeVolumePoints : settings.volumePoints;
-      BruteForceStructure reachInflated = structureWith(framework, inflatedBy(bareRadii, voidProbeRadius));
-      BruteForceVoxels reachVoxels = BruteForceVoxels::build(reachInflated, settings.spacing);
-      this->poreSpikes = BruteForcePoreSpikes::compute(bare, voxels, spikePoints, 3, &reachInflated,
-                                                       &reachVoxels);
+
+      // More families are weighed than the three spikes compared, so that a spike is set against the family
+      // of its own diameter and not against whichever comes at the same place in the other list.
+      constexpr std::size_t familiesWeighed = 12;
 
       const double maxDiameter = std::max(20.0, this->diameters.includedSphereDiameter + 1.0);
       ApolloniusPoreSizeDistribution exactPsd;
       exactPsd.run(interactions, framework, voidProbe, maxDiameter, 100, panels, /*floorRadius*/ 0.0);
       const PoreSizeDistributionCurve& curve = exactPsd.curve;
 
+      if (exactPsd.pocketsFilled)
+      {
+        std::vector<double3> centres;
+        std::vector<double> radii;
+        centres.reserve(exactPsd.sweptSpheres.size());
+        radii.reserve(exactPsd.sweptSpheres.size());
+        for (const BlockingSphere& sphere : exactPsd.sweptSpheres)
+        {
+          centres.push_back(framework.unitCell.cell * sphere.centerFractional);
+          radii.push_back(sphere.radius);
+        }
+        BruteForceStructure filled =
+            BruteForceStructure::create(framework.name, framework.unitCell, std::move(centres), std::move(radii));
+        BruteForceVoxels filledVoxels = BruteForceVoxels::build(filled, settings.spacing);
+        this->poreSpikes = BruteForcePoreSpikes::compute(filled, filledVoxels, spikePoints, familiesWeighed);
+      }
+      else
+      {
+        // no pocket to fill, so the spheres are the atoms and the grid already built for them serves
+        this->poreSpikes = BruteForcePoreSpikes::compute(bare, voxels, spikePoints, familiesWeighed);
+      }
+
+      // The last three spikes of the exact curve, each against the family nearest it in diameter. Taken in
+      // order instead, one spike that only one of the two lists has sets every spike after it against the
+      // wrong family, and a single difference reads as three.
       const std::size_t nExact = curve.probeAccessibleSpikes.size();
+      const std::vector<BruteForceSpikeFamily> &families = this->poreSpikes.families;
+      std::vector<bool> matched(families.size(), false);
+      double narrowestCompared = std::numeric_limits<double>::max();
 
       for (std::size_t rank = 0; rank < 3; ++rank)
       {
         const bool haveExact = rank < nExact;
-        const bool haveBrute = rank < this->poreSpikes.families.size();
         const PoreSizeSpike exactSpike =
             haveExact ? curve.probeAccessibleSpikes[nExact - 1 - rank] : PoreSizeSpike{};
-        const BruteForceSpikeFamily bruteFamily =
-            haveBrute ? this->poreSpikes.families[rank] : BruteForceSpikeFamily{};
-
         const double diameterTol =
             haveExact ? std::max({exactSpike.bracket, 1.0e-3, 2.0 * grain}) : 2.0 * grain;
+
+        std::optional<std::size_t> nearest;
+        if (haveExact)
+        {
+          narrowestCompared = std::min(narrowestCompared, exactSpike.diameter);
+          for (std::size_t f = 0; f < families.size(); ++f)
+          {
+            if (matched[f]) continue;
+            const double apart = std::abs(families[f].diameter - exactSpike.diameter);
+            if (apart > diameterTol) continue;
+            if (!nearest || apart < std::abs(families[*nearest].diameter - exactSpike.diameter)) nearest = f;
+          }
+        }
+        const bool haveBrute = nearest.has_value();
+        if (haveBrute) matched[*nearest] = true;
+        const BruteForceSpikeFamily bruteFamily = haveBrute ? families[*nearest] : BruteForceSpikeFamily{};
+
+        std::string nothingToCompare;
+        if (!haveExact)
+        {
+          nothingToCompare = "no exact spike at this rank";
+        }
+        else if (!haveBrute)
+        {
+          nothingToCompare = std::format("exact {:.6f} Å holding {:.6f}, and no brute-force family within {:.3f} Å "
+                                         "of it (reported, not judged)",
+                                         exactSpike.diameter, exactSpike.weight, diameterTol);
+        }
 
         this->checks.push_back(BruteForceCheck{
             .property = std::format("PSD spike {}, diameter", rank + 1),
@@ -204,9 +261,9 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
             .exact = haveExact ? exactSpike.diameter : 0.0,
             .bruteForce = haveBrute ? bruteFamily.diameter : 0.0,
             .tolerance = diameterTol,
-            .basis = haveExact ? std::format("exact spike bracket {:.3e} Å, and two grid steps",
-                                             exactSpike.bracket)
-                               : "no exact spike at this rank",
+            .basis = haveExact && haveBrute ? std::format("exact spike bracket {:.3e} Å, and two grid steps",
+                                                          exactSpike.bracket)
+                                            : nothingToCompare,
             .applicable = haveExact && haveBrute});
 
         const double weightTol = haveBrute ? (4.0 * bruteFamily.weightError + 1.0e-4) : 1.0e-4;
@@ -217,21 +274,26 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
             .exact = haveExact ? exactSpike.weight : 0.0,
             .bruteForce = haveBrute ? bruteFamily.weight : 0.0,
             .tolerance = weightTol,
-            .basis = "four standard errors of the void-point sample, and 1e-4",
+            .basis = haveExact && haveBrute ? "four standard errors of the void-point sample, and 1e-4"
+                                            : nothingToCompare,
             .applicable = haveExact && haveBrute});
       }
 
-      // Record how many were available when the two sides disagree on the count.
-      if (std::min<std::size_t>(3, nExact) != this->poreSpikes.families.size())
+      // The families among those spikes that the exact curve has no spike for. Not judged: the exact search
+      // finds a spike by the volume lost across a step being more than the slope accounts for, and a spike
+      // holding a thousandth of the void where the curve is steep can stay under that.
+      for (std::size_t f = 0; f < families.size(); ++f)
       {
+        if (matched[f] || nExact == 0 || families[f].diameter <= narrowestCompared) continue;
         this->checks.push_back(BruteForceCheck{
-            .property = "PSD spikes, how many of the last three",
-            .units = "",
-            .exact = static_cast<double>(std::min<std::size_t>(3, nExact)),
-            .bruteForce = static_cast<double>(this->poreSpikes.families.size()),
-            .basis = std::format("exact {}, brute force {} (reported, not judged: a shallow maximum may "
-                                 "fail the weight floor, and the exact search may merge brackets)",
-                                 std::min<std::size_t>(3, nExact), this->poreSpikes.families.size()),
+            .property = "PSD spike the exact curve does not list",
+            .units = "Å",
+            .exact = 0.0,
+            .bruteForce = families[f].diameter,
+            .basis = std::format("brute force {:.6f} Å holding {:.6f} ± {:.6f}, {} centre(s) (reported, not "
+                                 "judged: the exact search can leave a light spike in the continuous part)",
+                                 families[f].diameter, families[f].weight, families[f].weightError,
+                                 families[f].centres.size()),
             .applicable = false});
       }
     }
@@ -546,7 +608,8 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
     {
       const auto &family = this->poreSpikes.families[i];
       std::print(report,
-                 "  spike family {}: diameter {} Å, {} centre(s), weight {} ± {} of the reachable void\n",
+                 "  spike family {}: diameter {} Å, {} centre(s), weight {} ± {} of the void with the sealed "
+                 "pockets filled\n",
                  i + 1,
                  family.diameter, family.centres.size(), family.weight, family.weightError);
     }

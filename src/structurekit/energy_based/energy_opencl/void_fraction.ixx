@@ -20,6 +20,7 @@ import double3;
 import double3x3;
 import pair_interactions;
 import crystal;
+import blocking_spheres;
 
 export struct EnergyOpenCLVoidFraction
 {
@@ -38,8 +39,11 @@ export struct EnergyOpenCLVoidFraction
 
   // The void fraction the probe named sees, at the temperature given. Both matter: a Boltzmann average is
   // meaningless without saying how hot, and a probe is what the average is over.
+  // Blocking spheres are written onto the energy field before it is averaged, as the backend writes them onto
+  // every field it returns, so a pocket the probe cannot reach adds nothing to the average.
   void run(const PairInteractions& interactions, const Crystal& framework, std::string probePseudoAtom, uint3 grid_size,
-           double temperature = 298.0);
+           double temperature = 298.0, std::span<const BlockingSphere> blockingSpheres = {},
+           double blockedEnergyPerAngstrom = 0.0, double ceiling = 0.0);
 
   // The average of exp(-U/kT) over the grid, as last computed; also written to the output file.
   double voidFraction{0.0};

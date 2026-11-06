@@ -191,3 +191,41 @@ TEST(energy_legacy_void_fraction, the_range_is_padded_to_a_work_group_size_that_
 
   std::filesystem::remove("energy_legacy_workgroup_test.energy.sa.gpu.txt");
 }
+
+
+// The same for the void fraction, which has more to get right. Two kernels run over the one range, each with a
+// group size of its own, so the range has to be a multiple of both; and the second adds each group up by folding
+// it onto itself, which has to reach every point of a group of any size. A group of twelve on a grid of twelve
+// cubed is the case that says nothing when it goes wrong: twelve divides the range, the device takes the work, and
+// a fold that halves twelve to six to three to one leaves every third partial sum out of the average.
+TEST(energy_legacy_void_fraction, the_average_is_the_same_whatever_the_two_work_group_sizes)
+{
+  if (noDevice()) GTEST_SKIP() << "no OpenCL device";
+
+  PairInteractions interactions = probeAndTwoAtoms();
+  Crystal framework = atomInTheMiddle("energy_legacy_vf_workgroup_test");
+  const uint3 gridSize(12, 12, 12);
+
+  EnergyOpenCLVoidFraction asReported;
+  asReported.run(interactions, framework, "He", gridSize, temperature);
+  ASSERT_GT(asReported.voidFraction, 0.0);
+
+  const std::vector<std::pair<std::size_t, std::size_t>> groupSizes{{12, 12}, {3, 7}, {7, 3}, {5, 12}, {16, 6}, {1, 1}};
+  for (auto [ofTheGrid, ofTheSum] : groupSizes)
+  {
+    ASSERT_LE(ofTheGrid, asReported.energyGridWorkGroupSize) << "the device has to allow this group";
+    ASSERT_LE(ofTheSum, asReported.energyVoidFractionWorkGroupSize) << "the device has to allow this group";
+
+    EnergyOpenCLVoidFraction route;
+    route.energyGridWorkGroupSize = ofTheGrid;
+    route.energyVoidFractionWorkGroupSize = ofTheSum;
+    EXPECT_NO_THROW(route.run(interactions, framework, "He", gridSize, temperature))
+        << "groups of " << ofTheGrid << " and " << ofTheSum;
+
+    // the partial sums are single precision and are added up in another order
+    EXPECT_NEAR(route.voidFraction, asReported.voidFraction, 1.0e-5 * asReported.voidFraction)
+        << "groups of " << ofTheGrid << " and " << ofTheSum;
+  }
+
+  std::filesystem::remove("energy_legacy_vf_workgroup_test.energy.vf.gpu.txt");
+}

@@ -46,6 +46,9 @@ void ApolloniusPoreSizeDistribution::run(const PairInteractions& interactions, c
   const double maxDiameter = maximumDiameter.value_or(20.0);
   const std::size_t bins = numberOfBins.value_or(100);
 
+  this->sweptSpheres.clear();
+  this->pocketsFilled = false;
+
   // The same division of the routes as the radical diagram's: see there.
   if (floorRadius >= probeRadius)
   {
@@ -61,6 +64,28 @@ void ApolloniusPoreSizeDistribution::run(const PairInteractions& interactions, c
     std::vector<BlockingSphere> blockedBalls =
         hybridBlockedBalls(classifier.accessibility, split, fractionalPositions, radii, probeRadius,
                            static_cast<std::size_t>(200.0 * cellVolume));
+
+    this->sweptSpheres = blockedBalls;
+
+    // The atoms come back in another order, widest first, so the two lists are compared sorted alike.
+    auto sorted = [](std::vector<std::array<double, 4>> spheres)
+    {
+      std::ranges::sort(spheres);
+      return spheres;
+    };
+    std::vector<std::array<double, 4>> ofAtoms;
+    std::vector<std::array<double, 4>> ofBalls;
+    ofAtoms.reserve(radii.size());
+    ofBalls.reserve(blockedBalls.size());
+    for (std::size_t i = 0; i < radii.size(); ++i)
+    {
+      ofAtoms.push_back({radii[i], fractionalPositions[i].x, fractionalPositions[i].y, fractionalPositions[i].z});
+    }
+    for (const BlockingSphere& ball : blockedBalls)
+    {
+      ofBalls.push_back({ball.radius, ball.centerFractional.x, ball.centerFractional.y, ball.centerFractional.z});
+    }
+    this->pocketsFilled = sorted(std::move(ofAtoms)) != sorted(std::move(ofBalls));
 
     std::vector<double3> blockedPositions;
     std::vector<double> blockedRadii;

@@ -22,6 +22,8 @@ import skspacegroupdatabase;
 import pair_interactions;
 import crystal;
 import units;
+import blocking_spheres;
+import energy_shared_blocking_mask;
 #if !(defined(__has_include) && __has_include(<mdspan>))
 //import mdspan;
 #endif
@@ -92,18 +94,6 @@ EnergyOpenCLVoidFraction::EnergyOpenCLVoidFraction()
     {
       throw std::runtime_error("clGetKernelWorkGroupInfo failed");
     }
-
-    // The padding below masks the point count up to a multiple of the group size, and the reduction halves
-    // its group at every step; both take a power of two. A group may be any size up to what the device
-    // reports, so each is brought down to the largest power of two it holds.
-    auto powerOfTwoBelow = [](size_t n)
-    {
-      size_t p = 1;
-      while (p * 2 <= n) p *= 2;
-      return p;
-    };
-    energyGridWorkGroupSize = powerOfTwoBelow(std::max<size_t>(energyGridWorkGroupSize, 1));
-    energyVoidFractionWorkGroupSize = powerOfTwoBelow(std::max<size_t>(energyVoidFractionWorkGroupSize, 1));
   }
 };
 
@@ -120,7 +110,9 @@ EnergyOpenCLVoidFraction::~EnergyOpenCLVoidFraction()
 }
 
 void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const Crystal& framework,
-                                   std::string probePseudoAtom, uint3 gridSize, double temperature)
+                                   std::string probePseudoAtom, uint3 gridSize, double temperature,
+                                   std::span<const BlockingSphere> blockingSpheres, double blockedEnergyPerAngstrom,
+                                   double ceiling)
 {
   std::optional<std::size_t> probeType = interactions.findType(probePseudoAtom);
   if (!probeType.has_value())
@@ -148,11 +140,17 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
   cl_int err = 0;
 
   // The global work size has to be a multiple of the work-group size (detected on NVIDIA). Two kernels run
-  // over the same range, so it is padded to a multiple of the larger of their two group sizes, which, both
-  // being powers of two, is a multiple of each. The padding points are never counted: the energy kernel
-  // evaluates them, harmlessly, and the reduction is told how many points are real.
-  const size_t paddingUnit = std::max(energyGridWorkGroupSize, energyVoidFractionWorkGroupSize);
-  size_t numberOfGridPoints = (temp + paddingUnit - 1) & ~(paddingUnit - 1);
+  // over the same range, so it is padded to a multiple of both their group sizes, which a device may report
+  // as any number and not only a power of two: to the least number both divide, by division and not by a
+  // mask, which is only a multiple of anything when the unit is a power of two. The padding points are
+  // never counted: the energy kernel evaluates them, harmlessly, and the reduction is told how many points
+  // are real.
+  if (energyGridWorkGroupSize == 0 || energyVoidFractionWorkGroupSize == 0)
+  {
+    throw std::runtime_error("EnergyOpenCLVoidFraction: a work group of no points\n");
+  }
+  const size_t paddingUnit = std::lcm(energyGridWorkGroupSize, energyVoidFractionWorkGroupSize);
+  size_t numberOfGridPoints = ((temp + paddingUnit - 1) / paddingUnit) * paddingUnit;
   size_t global_work_size = numberOfGridPoints;
 
   std::vector<cl_float4> pos(numberOfAtoms);
@@ -370,6 +368,26 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
       unitsOfWorkDone += sizeOfWorkBatch;
     }
 
+    // The pockets the probe cannot reach, written onto the field the way the backend writes them onto its own.
+    // The field is on the device, so it is fetched, marked and sent back; with no spheres it stays where it is.
+    if (!blockingSpheres.empty())
+    {
+      err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), outputMemory, CL_TRUE, 0,
+                                sizeof(cl_float) * output.size(), output.data(), 0, nullptr, nullptr);
+      if (err != CL_SUCCESS)
+      {
+        throw std::runtime_error(std::format("OpenCL clEnqueueReadBuffer failed {} : {}\n", __FILE__, __LINE__));
+      }
+      applyBlockingSpheresToEnergy(std::span(output).first(temp), gridSize, framework.unitCell, blockingSpheres,
+                                   blockedEnergyPerAngstrom, ceiling);
+      err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), outputMemory, CL_TRUE, 0,
+                                 sizeof(cl_float) * output.size(), output.data(), 0, nullptr, nullptr);
+      if (err != CL_SUCCESS)
+      {
+        throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
+      }
+    }
+
     // Accumulation step
     // ==================================================================================================================================================================
 
@@ -440,6 +458,7 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
                interactions[probeType.value()].strengthParameter * Units::EnergyToKelvin,
                interactions[probeType.value()].sizeParameter);
     std::print(myfile, "# Temperature: {} [K]\n", temperature);
+    std::print(myfile, "# Blocking spheres: {}\n", blockingSpheres.size());
     std::print(myfile, "# Cutoff: {} [Å], replicas: {}x{}x{}\n", cutoff, numberOfReplicas.x, numberOfReplicas.y,
                numberOfReplicas.z);
     std::print(myfile, "# Grid: {} x {} x {} points, sampled without the far face\n", gridSize.x, gridSize.y,
@@ -537,16 +556,19 @@ __kernel void ComputeVoidFraction (__global const float *input,
    // end of the grid is padding and weighs nothing.
    localSums[local_id] = global_id < (size_t)numberOfPoints ? exp(-beta * input[global_id]) : 0.0f;
 
-   // Loop for computing localSums
-   for (uint stride = group_size/2; stride>0; stride/=2)
+   // Fold the upper part of what is left onto the lower, until one sum is left. A group may be of any size,
+   // so the part kept is the larger half, and the one in the middle of an odd count stays where it is to be
+   // folded the next time round. Halving the size and adding element for element only reaches every element
+   // when the size is a power of two: a group of twelve comes down to three, and the third is never added.
+   for (size_t left = group_size; left > 1; )
    {
-      // Waiting for each 2x2 addition into given workgroup
+      // Waiting for each addition into the given workgroup
       barrier(CLK_LOCAL_MEM_FENCE);
 
-      // Divide WorkGroup into 2 parts and add elements 2 by 2
-      // between local_id and local_id + stride
-      if (local_id < stride)
-        localSums[local_id] += localSums[local_id + stride];
+      size_t kept = (left + 1) / 2;
+      if (local_id + kept < left)
+        localSums[local_id] += localSums[local_id + kept];
+      left = kept;
    }
 
    // Write result into partialSums[nWorkGroups]

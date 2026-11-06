@@ -119,7 +119,6 @@ void CommandLine::run(int argc, char *argv[])
   std::optional<double> probe_strength{};
   // Ephemeral analysis probe (option B): type name in PairInteractions, display/file label.
   std::optional<std::string> ephemeral_probe_type{};
-  std::optional<std::string> ephemeral_probe_label{};
   double well_depth_factor{ 1.0 };
   double iso_value{ 0.0 };
   double temperature{ 298.0 };
@@ -570,6 +569,13 @@ void CommandLine::run(int argc, char *argv[])
   // the backend is chosen once here and handed down. Asking for the other one changes nothing but the
   // precision of the field and the time it takes to build. Blocking spheres, when they have been computed for
   // this structure, are written onto every energy field the backend returns.
+  // The same spheres for a route that builds its field itself and so does not go through the backend.
+  auto blockedPockets = [&]() -> std::span<const BlockingSphere>
+  {
+    if (!apply_blocking) return {};
+    return analysis_blocking;
+  };
+
   auto energyBackend = [&]
   {
     EnergyBackend backend = use_gpu ? openCLEnergyBackend() : cpuEnergyBackend();
@@ -655,7 +661,7 @@ void CommandLine::run(int argc, char *argv[])
         ForceField trial_mof_force_field =
             ForceField::makeMetalOrganicFrameworkForceField(12.0, true, false, false);
         if(const auto mof_cif = CIFReader::readCIFString(file_content, trial_mof_force_field,
-                                                        CIFReader::UseChargesFrom::CIF_File); mof_cif.has_value())
+                                                        charges_from); mof_cif.has_value())
         {
           forceField = trial_mof_force_field;
           auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = mof_cif.value();
@@ -688,7 +694,6 @@ void CommandLine::run(int argc, char *argv[])
     PairInteractions interactions = StructureInput::makeInteractions(forceField.value());
 
     ephemeral_probe_type.reset();
-    ephemeral_probe_label.reset();
 
     auto stripProbePrefix = [](std::string name) -> std::string
     {
@@ -731,17 +736,26 @@ void CommandLine::run(int argc, char *argv[])
         if (!probe_size.has_value()) sigma = alias->second;
       }
 
-      constexpr std::string_view typeName = "custom";
-      interactions.addSphericalProbe(std::string(typeName), epsilonKelvin * Units::KelvinToEnergy, sigma);
-      ephemeral_probe_type = std::string(typeName);
-      ephemeral_probe_label = label;
+      // The probe is entered in the table under the name it was given, because the name a route is handed is
+      // both how it finds the probe and what it calls it in its report and in the name of its file. Entered
+      // under a name of its own and relabelled afterwards, it was relabelled only on the routes that had been
+      // taught to, and the rest reported a probe called "custom"; and the relabelling was by whether there was
+      // an ephemeral probe and not by whether it was the one in hand, so a route that had been given helium
+      // wrote helium's numbers under this one's name.
+      //
+      // A name the table already has is something else's, a framework atom's or one of the force field's own
+      // probes, and adding a probe under it would overwrite that row, so a name that is taken is told apart.
+      std::string typeName = label;
+      while (interactions.findType(typeName).has_value()) typeName += "-custom";
+      interactions.addSphericalProbe(typeName, epsilonKelvin * Units::KelvinToEnergy, sigma);
+      ephemeral_probe_type = typeName;
     }
 
     // The probe the geometric analyses sample with. Not every force field defines every probe, a
     // custom one read from a file need define none of them, so an unchosen default falls back to
     // nitrogen rather than aborting the run over a name the user never asked for. A probe named on
     // the command line overrides the surface / occupancy probe, but never the helium accessibility
-    // label: reachable vs sealed is always He. An ephemeral σ/ε probe is the type "custom".
+    // label: reachable vs sealed is always He. An ephemeral σ/ε probe is the type it was entered as.
     auto geometricProbe = [&](const std::string &preferred) -> std::string
     {
       if (preferred == "probe-He")
@@ -778,8 +792,6 @@ void CommandLine::run(int argc, char *argv[])
           throw std::runtime_error(std::format("Unknown ephemeral probe '{}' for the {}\n",
                                                ephemeral_probe_type.value(), what));
         }
-        probe->name = ephemeral_probe_label.value_or(ephemeral_probe_type.value());
-        if (!probe->sites.empty()) probe->sites.front().name = probe->name;
         return probe.value();
       }
 
@@ -795,6 +807,20 @@ void CommandLine::run(int argc, char *argv[])
 
     // A molecule with a shape has to be averaged over its orientations; a single site has only the one.
     auto energyOrientations = [&] { return molecule_name.has_value() ? number_of_orientations : std::size_t{1}; };
+
+    // What the geometric routes read their sizes from. With --use-well-depth-as-size an atom is as large as the
+    // distance at which its well is deepest, 2^(1/6) σ, and that holds for every route that measures the
+    // structure as hard spheres: the diagrams, the grids and the brute-force check as much as the sampled
+    // routes, which scale their own radii further down. A mixed size is a mean of two sizes, so scaling the
+    // table scales the contact distance of every pair and with it every radius these routes derive. The
+    // energy routes are not handed this table: an energy is of the sizes the force field has.
+    const PairInteractions geometry =
+        well_depth_factor == 1.0 ? interactions : interactions.withSizesScaledBy(well_depth_factor);
+    if (well_depth_factor != 1.0)
+    {
+      std::cout << "Atom sizes for the geometric routes are taken at the well depth, " << well_depth_factor
+                << " times sigma" << std::endl;
+    }
 
     analysis_blocking.clear();
     forgetMolecularField();
@@ -897,7 +923,7 @@ void CommandLine::run(int argc, char *argv[])
         {
           // The clearance field already names the nearest atom at every point, that being what its distance is
           // measured to, so the tessellation is a report on the field rather than a computation of its own.
-          ClearanceGrid grid = ClearanceGrid::compute(interactions, crystal, gridSize);
+          ClearanceGrid grid = ClearanceGrid::compute(geometry, crystal, gridSize);
           grid.writeTessellation(crystal);
         }
       }
@@ -952,7 +978,7 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute the accessible surface area from the clearance grid" << std::endl;
 
         GridSurfaceArea sa;
-        sa.run(interactions, crystal, geometricProbe("probe-N2"), gridSize);
+        sa.run(geometry, crystal, geometricProbe("probe-N2"), gridSize);
       }
 
       if (use_apollonius)
@@ -962,7 +988,7 @@ void CommandLine::run(int argc, char *argv[])
         // Nitrogen for the surface geometry; helium labels which of that area is reachable from outside
         // (same hybrid as the atlas brute-force check).
         ApolloniusSurfaceArea sa;
-        sa.run(interactions, crystal, geometricProbe("probe-N2"),
+        sa.run(geometry, crystal, geometricProbe("probe-N2"),
                use_monte_carlo_methods ? ApolloniusSurfaceArea::Method::Sampled
                                        : ApolloniusSurfaceArea::Method::Exact,
                number_of_iterations, number_of_slices, geometricProbe("probe-He"));
@@ -972,7 +998,7 @@ void CommandLine::run(int argc, char *argv[])
         // The area is measured against the radical network too: it is the same union of atoms and comes
         // to the same total, and what the network then decides is only how that total divides.
         VoronoiSurfaceArea sa;
-        sa.run(interactions, crystal, geometricProbe("probe-N2"),
+        sa.run(geometry, crystal, geometricProbe("probe-N2"),
                use_monte_carlo_methods ? VoronoiSurfaceArea::Method::Sampled
                                        : VoronoiSurfaceArea::Method::Exact,
                number_of_iterations, number_of_slices, geometricProbe("probe-He"));
@@ -1044,8 +1070,11 @@ void CommandLine::run(int argc, char *argv[])
         }
         else if (use_gpu)
         {
+          // This route builds its field itself and not through the backend, so the blocked pockets the
+          // backend would have written onto the field are handed to it to write.
           EnergyOpenCLSurfaceArea sa;
-          sa.run(interactions, crystal, iso_value, geometricProbe("probe-N2"), gridSize);
+          sa.run(interactions, crystal, iso_value, geometricProbe("probe-N2"), gridSize, blockedPockets(),
+                 blocking_ramp, blocking_ceiling);
         }
         else
         {
@@ -1056,11 +1085,6 @@ void CommandLine::run(int argc, char *argv[])
           if (!single.has_value())
           {
             throw std::runtime_error(std::format("Unknown probe atom '{}' for the surface area\n", probe));
-          }
-          if (ephemeral_probe_label.has_value())
-          {
-            single->name = ephemeral_probe_label.value();
-            if (!single->sites.empty()) single->sites.front().name = single->name;
           }
 
           MolecularSurfaceArea sa;
@@ -1119,7 +1143,7 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute the void volume from the clearance grid" << std::endl;
 
         GridVoidFraction vf;
-        vf.run(interactions, crystal, geometricProbe("probe-He"), gridSize);
+        vf.run(geometry, crystal, geometricProbe("probe-He"), gridSize);
       }
 
       if (use_apollonius)
@@ -1128,7 +1152,7 @@ void CommandLine::run(int argc, char *argv[])
         // rather than sampled, unless the sampled estimate is asked for by name. The division falls
         // back on sampling only where the surface cannot supply it, and says so when it does.
         ApolloniusAccessibleVolume av;
-        av.run(interactions, crystal, geometricProbe("probe-He"),
+        av.run(geometry, crystal, geometricProbe("probe-He"),
                use_monte_carlo_methods ? ApolloniusAccessibleVolume::Method::Sampled
                                        : ApolloniusAccessibleVolume::Method::Exact,
                number_of_iterations, number_of_slices);
@@ -1136,7 +1160,7 @@ void CommandLine::run(int argc, char *argv[])
       else if (use_voronoi)
       {
         VoronoiAccessibleVolume av;
-        av.run(interactions, crystal, geometricProbe("probe-He"),
+        av.run(geometry, crystal, geometricProbe("probe-He"),
                use_monte_carlo_methods ? VoronoiAccessibleVolume::Method::Sampled
                                        : VoronoiAccessibleVolume::Method::Exact,
                number_of_iterations, number_of_slices);
@@ -1170,8 +1194,10 @@ void CommandLine::run(int argc, char *argv[])
         // properties. It shares no arithmetic with the field routes, so its agreeing with them is worth
         // something.
         EnergyVoidFraction vf;
-        vf.run(interactions, crystal, geometricProbe("probe-He"), number_of_iterations,
-               number_of_inner_steps);
+        vf.run(interactions, crystal, geometricProbe("probe-He"), number_of_iterations, number_of_inner_steps,
+               temperature, blockedPockets(), blocking_ramp, blocking_ceiling);
+        std::cout << "average of exp(-U/kT): " << vf.boltzmannAverage << " at " << temperature << " K, over "
+                  << vf.numberOfInsertions << " insertions" << std::endl;
       }
       else if (use_energy_methods)
       {
@@ -1201,8 +1227,10 @@ void CommandLine::run(int argc, char *argv[])
         }
         else if (use_gpu)
         {
+          // As with the surface area: the field is this route's own, so the blocked pockets go with it.
           EnergyOpenCLVoidFraction vf;
-          vf.run(interactions, crystal, geometricProbe("probe-He"), gridSize, temperature);
+          vf.run(interactions, crystal, geometricProbe("probe-He"), gridSize, temperature, blockedPockets(),
+                 blocking_ramp, blocking_ceiling);
         }
         else
         {
@@ -1213,11 +1241,6 @@ void CommandLine::run(int argc, char *argv[])
           if (!single.has_value())
           {
             throw std::runtime_error(std::format("Unknown probe atom '{}' for the void fraction\n", probe));
-          }
-          if (ephemeral_probe_label.has_value())
-          {
-            single->name = ephemeral_probe_label.value();
-            if (!single->sites.empty()) single->sites.front().name = single->name;
           }
 
           MolecularVoidFraction vf;
@@ -1256,13 +1279,13 @@ void CommandLine::run(int argc, char *argv[])
       {
         std::string floorName = psd_floor_probe.value();
         if (!floorName.starts_with("probe-")) floorName = "probe-" + floorName;
-        std::optional<std::size_t> floorType = interactions.findType(floorName);
+        std::optional<std::size_t> floorType = geometry.findType(floorName);
         if (!floorType.has_value())
         {
           throw std::runtime_error(
               std::format("Unknown probe '{}' for --pore-size-distribution-probe-floor\n", floorName));
         }
-        psdFloorRadius = 0.5 * interactions[floorType.value()].sizeParameter;
+        psdFloorRadius = 0.5 * geometry[floorType.value()].sizeParameter;
       }
       if (use_gridbased_methods && use_gpu)
       {
@@ -1274,7 +1297,7 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute the pore-size distribution from the clearance grid" << std::endl;
 
         GridPoreSizeDistribution psd;
-        psd.run(interactions, crystal, psdAccessProbe, gridSize, maximum_range, number_of_bins);
+        psd.run(geometry, crystal, psdAccessProbe, gridSize, maximum_range, number_of_bins);
       }
 
       if (use_apollonius)
@@ -1283,7 +1306,7 @@ void CommandLine::run(int argc, char *argv[])
                                 : "Compute the pore-size distribution from the Apollonius diagram")
                   << std::endl;
         ApolloniusPoreSizeDistribution psd;
-        psd.run(interactions, crystal, psdAccessProbe, maximum_range, number_of_bins,
+        psd.run(geometry, crystal, psdAccessProbe, maximum_range, number_of_bins,
                 number_of_slices.value_or(1), psdFloorRadius, peaksOnly);
         if (peaksOnly)
         {
@@ -1298,7 +1321,7 @@ void CommandLine::run(int argc, char *argv[])
                                 : "Compute the pore-size distribution from the radical (Voronoi) network")
                   << std::endl;
         VoronoiPoreSizeDistribution psd;
-        psd.run(interactions, crystal, psdAccessProbe, maximum_range, number_of_bins,
+        psd.run(geometry, crystal, psdAccessProbe, maximum_range, number_of_bins,
                 number_of_slices.value_or(1), psdFloorRadius, peaksOnly);
         if (peaksOnly)
         {
@@ -1372,7 +1395,7 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute pore diameters and channels from the clearance grid" << std::endl;
 
         GridPoreAnalysis analysis;
-        analysis.run(interactions, crystal, probe, gridSize);
+        analysis.run(geometry, crystal, probe, gridSize);
       }
 
       if (use_energy_methods)
@@ -1465,7 +1488,7 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute pore diameters and channels from the Apollonius diagram" << std::endl;
 
         ApolloniusPoreAnalysis analysis;
-        analysis.run(interactions, crystal, probe);
+        analysis.run(geometry, crystal, probe);
       }
       else if (!onTheGrid && (use_voronoi || !(use_energy_methods || use_monte_carlo_methods)))
       {
@@ -1474,11 +1497,11 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute pore diameters and channels from the Voronoi network" << std::endl;
 
         VoronoiPoreDiameters diameters;
-        diameters.run(interactions, crystal);
+        diameters.run(geometry, crystal);
 
         // Both analyses read the same network, and building it costs more than either of them.
         VoronoiChannels channels;
-        channels.run(interactions, crystal, probe, diameters.network);
+        channels.run(geometry, crystal, probe, diameters.network);
       }
     }
 
@@ -1504,7 +1527,7 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute blocking spheres from the clearance grid" << std::endl;
 
         GridBlockingSpheres blocks;
-        blocks.run(interactions, crystal, probe, gridSize);
+        blocks.run(geometry, crystal, probe, gridSize);
         std::cout << blocks.spheres.size() << " spheres, covering " << blocks.numberOfPockets << " pockets"
                   << std::endl;
       }
@@ -1552,7 +1575,7 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute blocking spheres from the Apollonius diagram" << std::endl;
 
         ApolloniusBlockingSpheres blocks;
-        blocks.run(interactions, crystal, probe);
+        blocks.run(geometry, crystal, probe);
         report(blocks.spheres.size(), blocks.measured, blocks.fallbackReason);
       }
       else if (!onTheGrid && !use_monte_carlo_methods && (use_voronoi || !use_energy_methods))
@@ -1562,7 +1585,7 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute blocking spheres from the Voronoi network" << std::endl;
 
         VoronoiBlockingSpheres blocks;
-        blocks.run(interactions, crystal, probe);
+        blocks.run(geometry, crystal, probe);
         report(blocks.spheres.size(), blocks.measured, blocks.fallbackReason);
       }
     }
@@ -1581,7 +1604,7 @@ void CommandLine::run(int argc, char *argv[])
       // reachable from outside (N₂ walls He can reach), and also defines the excluded surface, the blocking
       // spheres, and the void — so sealed for blocking matches the accessible void.
       BruteForceValidation validation;
-      validation.run(interactions, crystal, geometricProbe("probe-N2"), geometricProbe("probe-He"),
+      validation.run(geometry, crystal, geometricProbe("probe-N2"), geometricProbe("probe-He"),
                      settings);
 
       std::size_t disagreements = validation.numberOfDisagreements();

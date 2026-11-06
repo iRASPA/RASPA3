@@ -55,4 +55,14 @@ export struct PairInteractions
   // `strength` and `shift` use the same energy units as the rest of the table. Returns the new type index.
   // If `name` is already present it is replaced in place so a CLI can rebuild the ephemeral probe once.
   std::size_t addSphericalProbe(std::string name, double strength, double size);
+
+  // The same table with every size multiplied by `factor`: for a geometric analysis that takes an atom to be as
+  // large as the distance at which its well is deepest, 2^(1/6) σ, rather than the distance at which its
+  // potential crosses zero. A mixed size is a mean of two sizes under any of the mixing rules, so scaling the
+  // table scales every contact distance and every radius read off it, the probe's with the atoms'.
+  //
+  // It is a table of sizes and no longer one of interactions: the strengths and the shifts are left as they
+  // were and belong to the sizes they were mixed with, so an energy worked out from what comes back is the
+  // energy of nothing. It is for the routes that read sizes alone.
+  PairInteractions withSizesScaledBy(double factor) const;
 };

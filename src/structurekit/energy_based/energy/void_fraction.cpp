@@ -14,13 +14,22 @@ import pair_interactions;
 import crystal;
 import unit_cell;
 import units;
+import blocking_spheres;
+import energy_shared_blocking_mask;
 #if !(defined(__has_include) && __has_include(<mdspan>))
 //import mdspan;
 #endif
 
 void EnergyVoidFraction::run(const PairInteractions &interactions, const Crystal &framework, std::string probePseudoAtom, 
-                             std::optional<std::size_t> numberOfIterations, std::optional<std::size_t> numberOfInnersteps)
+                             std::optional<std::size_t> numberOfIterations, std::optional<std::size_t> numberOfInnersteps,
+                             double temperature, std::span<const BlockingSphere> blockingSpheres,
+                             double blockedEnergyPerAngstrom, double ceiling)
 {
+  if (temperature <= 0.0)
+  {
+    throw std::runtime_error("EnergyVoidFraction: a Boltzmann average needs a temperature above zero\n");
+  }
+  const double beta = 1.0 / (Units::KB * temperature);
   RandomNumber random{std::nullopt};
   std::chrono::steady_clock::time_point time_begin, time_end;
 
@@ -47,6 +56,18 @@ void EnergyVoidFraction::run(const PairInteractions &interactions, const Crystal
     for (std::size_t m = 0; m < number_of_inner_steps; ++m)
     {
       double3 random_position = {random.uniform(), random.uniform(), random.uniform()};
+
+      // A point in a pocket the probe cannot reach has the pocket's energy, as it has on the grids, and what the
+      // atoms round it would have made of it is not asked.
+      const double pocket = blockingSpheres.empty()
+                                ? 1.0
+                                : blockingSphereDistance(random_position, framework.unitCell, blockingSpheres);
+      if (pocket < 0.0)
+      {
+        sumBoltzmannWeight += std::exp(-beta * std::min(-pocket * blockedEnergyPerAngstrom, ceiling));
+        count++;
+        continue;
+      }
 
       double energy = 0.0;
       for (std::size_t atomIndex = 0; atomIndex < framework.size(); ++atomIndex)
@@ -88,7 +109,7 @@ void EnergyVoidFraction::run(const PairInteractions &interactions, const Crystal
         }
       }
 
-      sumBoltzmannWeight += std::exp(-(1.0 / (Units::KB * 298.0) * energy));
+      sumBoltzmannWeight += std::exp(-beta * energy);
       count++;
     }
   }
@@ -96,6 +117,9 @@ void EnergyVoidFraction::run(const PairInteractions &interactions, const Crystal
   time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
+
+  this->numberOfInsertions = count;
+  this->boltzmannAverage = count > 0 ? sumBoltzmannWeight / static_cast<double>(count) : 0.0;
 
   std::ofstream myfile;
   myfile.open(framework.name + ".energy.vf.cpu.txt");
@@ -115,7 +139,9 @@ void EnergyVoidFraction::run(const PairInteractions &interactions, const Crystal
       interactions[probe_type.value()].sizeParameter);
   std::print(myfile, "# Cutoff: {} Å\n", cutoff);
   std::print(myfile, "# Number of unit cells: {}x{}x{}\n", numberOfReplicas.x, numberOfReplicas.y, numberOfReplicas.z);
+  std::print(myfile, "# Temperature: {} [K]\n", temperature);
+  std::print(myfile, "# Blocking spheres: {}\n", blockingSpheres.size());
   std::print(myfile, "# CPU Timing: {} [s]\n", timing.count());
-  myfile << sumBoltzmannWeight / static_cast<double>(count) << std::endl;
+  myfile << this->boltzmannAverage << std::endl;
   myfile.close();
 }

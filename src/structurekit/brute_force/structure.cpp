@@ -81,6 +81,13 @@ void BruteForceStructure::prepare()
   }
 
   std::ranges::sort(this->imageList, {}, &Image::distance);
+
+  // An image left out is at least one step past the shell along some axis, which is that many widths of the
+  // cell away, and an atom in it is nearer by no more than the ordinary displacement and its own radius.
+  const double nearestLeftOut = std::min({static_cast<double>(this->shell.x + 1) * widths.x,
+                                          static_cast<double>(this->shell.y + 1) * widths.y,
+                                          static_cast<double>(this->shell.z + 1) * widths.z});
+  this->covered = nearestLeftOut - this->spread - this->maximumRadius;
 }
 
 // At each turn the twenty-six lattice directions about the current point are tried at the current step, and
@@ -208,6 +215,31 @@ double BruteForceStructure::clearance(const double3 &position) const
   }
 
   return smallest;
+}
+
+bool BruteForceStructure::atomsWithin(const double3 &position, double reach, std::vector<Neighbour> &found) const
+{
+  found.clear();
+  if (reach > this->covered) return false;
+
+  double3 s = this->unitCell.inverseCell * position;
+
+  for (std::size_t j = 0; j < this->positions.size(); ++j)
+  {
+    double3 base = this->baseDisplacement(s, j);
+    double nearest = base.length() + this->radii[j];
+
+    for (const Image &image : this->imageList)
+    {
+      // Every image from here on is at least this far off, and they are in order.
+      if (image.distance - nearest > reach) break;
+
+      double3 dr = base + image.translation;
+      if (dr.length() - this->radii[j] <= reach) found.push_back(Neighbour{dr, this->radii[j]});
+    }
+  }
+
+  return true;
 }
 
 bool BruteForceStructure::hasRoomFor(const double3 &position, double bound) const

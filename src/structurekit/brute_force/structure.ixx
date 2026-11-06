@@ -68,6 +68,20 @@ export struct BruteForceStructure
   // to know whether there is room, not how much.
   bool hasRoomFor(const double3 &position, double bound) const;
 
+  // An atom of some image as a point sees it: where the point is from the atom's centre, and the atom's radius.
+  struct Neighbour
+  {
+    double3 fromCentre;
+    double radius;
+  };
+
+  // Every atom of every image whose surface is within `reach` of `position`, put in `found` in place of what
+  // was there. For a question asked many times over about the same neighbourhood, which the atoms far off
+  // have no say in: the room at any point within d of `position`, where it is no more than `reach` - d, is the
+  // room among these alone. Says false, and finds nothing, when `reach` goes further than the images held
+  // here are known to cover, and the caller is left to ask `clearance` instead.
+  bool atomsWithin(const double3 &position, double reach, std::vector<Neighbour> &found) const;
+
   // The nearest image displacement from `from` to `to`, searched over the shell rather than assumed.
   double3 nearestImage(const double3 &from, const double3 &to) const;
 
@@ -107,4 +121,5 @@ export struct BruteForceStructure
   std::vector<Image> imageList;  // in order of how far off they are, the home cell first
   double maximumRadius{0.0};
   double spread{0.0};  // Å, the longest an ordinary nearest-image displacement can be
+  double covered{0.0};  // how far from a point an atom's surface can be and its image still be in the list
 };

@@ -12,6 +12,13 @@ std::optional<std::size_t> PairInteractions::findType(const std::string& name) c
   return static_cast<std::size_t>(std::distance(this->names.begin(), match));
 }
 
+PairInteractions PairInteractions::withSizesScaledBy(double factor) const
+{
+  PairInteractions scaled = *this;
+  for (PairParameters &pair : scaled.parameters) pair.sizeParameter *= factor;
+  return scaled;
+}
+
 namespace
 {
 double lennardJonesShift(double strength, double size, double cutOff)

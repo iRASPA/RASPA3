@@ -19,6 +19,10 @@ constexpr double diameterMergeTol = 1.0e-4;  // Å; walks converge far below thi
 constexpr double centreMergeTol = 1.0e-2;    // Å; same basin after wrapping
 constexpr double weightFloor = 1.0e-5;       // same order as the exact spike floor
 constexpr std::size_t maxFamiliesBeforeFilter = 12;
+// One walk is started from a point thrown at the cell for every so many points of the draw: eight thousand of
+// them at the four million points the check throws by default, at which a family whose basins take up a
+// thousandth of the cell gets eight and is missed about once in three thousand structures.
+constexpr std::size_t pointsPerRandomWalk = 500;
 
 // The walk uphill is the structure's own, shared with the diameter check, so that the two agree on where a
 // maximal sphere sits and how large it is.
@@ -35,6 +39,273 @@ double micDistance(const BruteForceStructure &structure, const double3 &a, const
 double3 wrapCentre(const BruteForceStructure &structure, const double3 &position)
 {
   return structure.unitCell.cell * structure.wrappedFractional(position);
+}
+
+// The grid in blocks of this many voxels along each axis, and the most room at the middle of any voxel of each
+// block: what lets a search for room pass over the greater part of the grid without reading it.
+constexpr std::int32_t blockEdge = 4;
+struct RoomiestOfBlocks
+{
+  int3 blocks;
+  std::vector<float> most;
+
+  explicit RoomiestOfBlocks(const BruteForceVoxels &voxels)
+      : blocks((voxels.counts.x + blockEdge - 1) / blockEdge, (voxels.counts.y + blockEdge - 1) / blockEdge,
+               (voxels.counts.z + blockEdge - 1) / blockEdge),
+        most(static_cast<std::size_t>(blocks.x) * static_cast<std::size_t>(blocks.y) *
+                 static_cast<std::size_t>(blocks.z),
+             std::numeric_limits<float>::lowest())
+  {
+    for (std::int32_t k = 0; k < voxels.counts.z; ++k)
+    {
+      for (std::int32_t j = 0; j < voxels.counts.y; ++j)
+      {
+        for (std::int32_t i = 0; i < voxels.counts.x; ++i)
+        {
+          float &kept = this->most[this->indexOf(i / blockEdge, j / blockEdge, k / blockEdge)];
+          kept = std::max(kept, voxels.clearance[voxels.indexOf(i, j, k)]);
+        }
+      }
+    }
+  }
+
+  std::size_t indexOf(std::int32_t i, std::int32_t j, std::int32_t k) const
+  {
+    return static_cast<std::size_t>(i) +
+           static_cast<std::size_t>(this->blocks.x) *
+               (static_cast<std::size_t>(j) + static_cast<std::size_t>(this->blocks.y) * static_cast<std::size_t>(k));
+  }
+};
+
+// What one lane of the draw keeps from point to point, so that nothing is allocated for each.
+struct Workspace
+{
+  // A stretch of voxels along one axis that lies in one block of one copy of the cell: the first of them as
+  // counted from the home cell, which may be before its start or past its end, and the same one wrapped.
+  struct Run
+  {
+    std::int32_t first;
+    std::int32_t wrapped;
+    std::int32_t length;
+    std::int32_t block;
+  };
+
+  // A voxel the grid leaves open: the room at its middle, and the atoms that have a say in the room anywhere
+  // in it.
+  struct Voxel
+  {
+    double room;
+    std::size_t firstAtom;
+    std::size_t numberOfAtoms;
+    std::size_t lastToRule;
+  };
+
+  // A voxel or a part of one: where its middle is from the point, in fractions of the cell, how many times the
+  // voxel has been halved to make it, and which voxel that was.
+  struct Box
+  {
+    double3 middle;
+    std::int32_t level;
+    std::uint32_t voxel;
+  };
+
+  std::array<std::vector<Run>, 3> runs;
+  std::vector<BruteForceStructure::Neighbour> atoms;
+  std::vector<BruteForceStructure::Neighbour> atomsOfVoxels;
+  std::vector<Voxel> voxels;
+  std::vector<Box> boxes;
+};
+
+void runsAlong(std::int32_t first, std::int32_t last, std::int32_t count, std::vector<Workspace::Run> &runs)
+{
+  runs.clear();
+  for (std::int32_t i = first; i <= last;)
+  {
+    const std::int32_t wrapped = ((i % count) + count) % count;
+    const std::int32_t block = wrapped / blockEdge;
+    const std::int32_t endOfBlock = std::min((block + 1) * blockEdge, count);
+    const std::int32_t length = std::min(last - i + 1, endOfBlock - wrapped);
+    runs.push_back(Workspace::Run{i, wrapped, length, block});
+    i += length;
+  }
+}
+
+// No more boxes than this are made by halving for one point. It is far more than a point needs unless the room
+// is level over a stretch, as along the middle of a straight tube, where the question has no margin to find.
+constexpr std::size_t mostBoxesHalved = 4096;
+
+// Whether a sphere wider than `radius` that fits in the void holds `position`.
+//
+// A sphere of any size that fits is a union of spheres of a smaller size that fit, so one wider than the
+// radius holds the point exactly when there is a centre within the radius of the point with more room than
+// the radius round it. The room changes by no more than the distance moved, so a box with its middle too
+// far from the point, or with too little room at its middle, for either to be made up within the box has no
+// such centre in it, and a box with such a centre at its middle settles the matter. The grid gives the room at
+// the middle of each voxel, which settles most points outright. The voxels it leaves open are halved along
+// each axis, the room at the middle of each part taken from the atoms, and so on down, a level at a time, until
+// a centre is found, or no box is left, or the boxes are smaller than `resolution` and whatever sphere there
+// may still be is wider than the radius by less than that. `slack` is half the diagonal of a voxel, and
+// `roomAtPosition` the room at the point, which the caller has already.
+//
+// Nothing is left to a search that could stop short: every box is either shown to hold no centre or opened.
+bool aWiderSphereHolds(const BruteForceStructure &structure, const BruteForceVoxels &voxels,
+                       const RoomiestOfBlocks &roomiest, const double3 &position, double roomAtPosition,
+                       double radius, double resolution, double slack, const double3 &widths, Workspace &workspace)
+{
+  // the sphere about the point itself
+  if (roomAtPosition > radius) return true;
+
+  const double3 s = structure.unitCell.inverseCell * position;
+  const double3 counts(static_cast<double>(voxels.counts.x), static_cast<double>(voxels.counts.y),
+                       static_cast<double>(voxels.counts.z));
+  const double reach = radius + slack;
+
+  // A step of one voxel along an axis is at least the width across that axis over the count in Ångström.
+  const std::int32_t spanX = static_cast<std::int32_t>(std::ceil(reach * counts.x / widths.x));
+  const std::int32_t spanY = static_cast<std::int32_t>(std::ceil(reach * counts.y / widths.y));
+  const std::int32_t spanZ = static_cast<std::int32_t>(std::ceil(reach * counts.z / widths.z));
+  const std::int32_t homeX = static_cast<std::int32_t>(std::floor(s.x * counts.x));
+  const std::int32_t homeY = static_cast<std::int32_t>(std::floor(s.y * counts.y));
+  const std::int32_t homeZ = static_cast<std::int32_t>(std::floor(s.z * counts.z));
+  runsAlong(homeX - spanX, homeX + spanX, voxels.counts.x, workspace.runs[0]);
+  runsAlong(homeY - spanY, homeY + spanY, voxels.counts.y, workspace.runs[1]);
+  runsAlong(homeZ - spanZ, homeZ + spanZ, voxels.counts.z, workspace.runs[2]);
+
+  std::vector<Workspace::Box> &boxes = workspace.boxes;
+  boxes.clear();
+  workspace.voxels.clear();
+  double furthest = 0.0;  // of the atoms that have a say in a voxel left open, from the point
+  for (const Workspace::Run &runZ : workspace.runs[2])
+  {
+    for (const Workspace::Run &runY : workspace.runs[1])
+    {
+      for (const Workspace::Run &runX : workspace.runs[0])
+      {
+        const float most = roomiest.most[roomiest.indexOf(runX.block, runY.block, runZ.block)];
+        if (static_cast<double>(most) + slack <= radius) continue;
+
+        // nor is a block read that lies beyond reach altogether: its middle, and no voxel of it further from
+        // that than a whole block's half diagonal
+        const double3 middleOfRuns(
+            (static_cast<double>(runX.first) + 0.5 * static_cast<double>(runX.length)) / counts.x - s.x,
+            (static_cast<double>(runY.first) + 0.5 * static_cast<double>(runY.length)) / counts.y - s.y,
+            (static_cast<double>(runZ.first) + 0.5 * static_cast<double>(runZ.length)) / counts.z - s.z);
+        const double tooFar = reach + static_cast<double>(blockEdge) * slack;
+        const double3 toRuns = structure.unitCell.cell * middleOfRuns;
+        if (double3::dot(toRuns, toRuns) > tooFar * tooFar) continue;
+
+        for (std::int32_t dk = 0; dk < runZ.length; ++dk)
+        {
+          for (std::int32_t dj = 0; dj < runY.length; ++dj)
+          {
+            for (std::int32_t di = 0; di < runX.length; ++di)
+            {
+              const double room = static_cast<double>(
+                  voxels.clearance[voxels.indexOf(runX.wrapped + di, runY.wrapped + dj, runZ.wrapped + dk)]);
+              if (room + slack <= radius) continue;
+
+              const double3 middle((static_cast<double>(runX.first + di) + 0.5) / counts.x - s.x,
+                                   (static_cast<double>(runY.first + dj) + 0.5) / counts.y - s.y,
+                                   (static_cast<double>(runZ.first + dk) + 0.5) / counts.z - s.z);
+              const double3 offset = structure.unitCell.cell * middle;
+              const double distanceSquared = double3::dot(offset, offset);
+              if (distanceSquared > reach * reach) continue;
+              if (room > radius && distanceSquared <= radius * radius) return true;
+              boxes.push_back(Workspace::Box{middle, 0, static_cast<std::uint32_t>(boxes.size())});
+              workspace.voxels.push_back(Workspace::Voxel{room, 0, 0, 0});
+              furthest = std::max(furthest, std::sqrt(distanceSquared) + room);
+            }
+          }
+        }
+      }
+    }
+  }
+  if (boxes.empty()) return false;
+
+  // Anywhere in a voxel the nearest atom is no further than the room at the voxel's middle and half its
+  // diagonal, and an atom further from the middle than that by another half is nearer nowhere in the voxel
+  // than the one that is nearest at the middle. So each voxel left open gets the few atoms within its own
+  // diagonal of being nearest at its middle, the room among those is the room everywhere in it, and the parts
+  // it is halved into ask only those. The grid keeps the room in single precision, which the margin allows for.
+  constexpr double roundingOfTheGrid = 1.0e-5;
+  std::vector<BruteForceStructure::Neighbour> &atoms = workspace.atoms;
+  const bool nearbyOnly = structure.atomsWithin(position, furthest + 2.0 * slack + roundingOfTheGrid, atoms);
+  if (nearbyOnly && atoms.empty()) return true;
+
+  workspace.atomsOfVoxels.clear();
+  if (nearbyOnly)
+  {
+    for (std::size_t v = 0; v < workspace.voxels.size(); ++v)
+    {
+      Workspace::Voxel &voxel = workspace.voxels[v];
+      const double3 offset = structure.unitCell.cell * boxes[v].middle;
+      const double within = voxel.room + 2.0 * slack + roundingOfTheGrid;
+      voxel.firstAtom = workspace.atomsOfVoxels.size();
+      for (const BruteForceStructure::Neighbour &atom : atoms)
+      {
+        const double3 fromCentre = atom.fromCentre + offset;
+        const double limit = within + atom.radius;
+        if (limit >= 0.0 && double3::dot(fromCentre, fromCentre) <= limit * limit)
+        {
+          workspace.atomsOfVoxels.push_back(atom);
+        }
+      }
+      voxel.numberOfAtoms = workspace.atomsOfVoxels.size() - voxel.firstAtom;
+    }
+  }
+
+  // The room at an offset from the point, in a part of the given voxel, or, once it is known to be no more than
+  // `enough`, whatever it has come down to by then. The atom that ended the last look in the voxel is the first
+  // asked in the next: boxes side by side are mostly ruled out by the same one.
+  auto roomAt = [&](const double3 &offset, double enough, std::uint32_t voxel)
+  {
+    if (!nearbyOnly) return structure.clearance(position + offset);
+
+    Workspace::Voxel &home = workspace.voxels[voxel];
+    if (home.numberOfAtoms == 0) return std::numeric_limits<double>::max();
+    const BruteForceStructure::Neighbour *list = workspace.atomsOfVoxels.data() + home.firstAtom;
+
+    double least = (list[home.lastToRule].fromCentre + offset).length() - list[home.lastToRule].radius;
+    if (least <= enough) return least;
+    for (std::size_t n = 0; n < home.numberOfAtoms; ++n)
+    {
+      const double here = (list[n].fromCentre + offset).length() - list[n].radius;
+      if (here < least)
+      {
+        least = here;
+        if (least <= enough)
+        {
+          home.lastToRule = n;
+          break;
+        }
+      }
+    }
+    return least;
+  };
+
+  const double3 quarter(0.25 / counts.x, 0.25 / counts.y, 0.25 / counts.z);
+  const std::size_t voxelsLeftOpen = boxes.size();
+  for (std::size_t next = 0; next < boxes.size(); ++next)
+  {
+    const Workspace::Box box = boxes[next];
+    const double scale = std::ldexp(1.0, -box.level);
+    const double halfDiagonal = 0.5 * slack * scale;  // of each of the eight parts
+    for (std::int32_t part = 0; part < 8; ++part)
+    {
+      const double3 middle(box.middle.x + ((part & 1) ? quarter.x : -quarter.x) * scale,
+                           box.middle.y + ((part & 2) ? quarter.y : -quarter.y) * scale,
+                           box.middle.z + ((part & 4) ? quarter.z : -quarter.z) * scale);
+      const double3 offset = structure.unitCell.cell * middle;
+      const double distance = offset.length();
+      if (distance - halfDiagonal > radius) continue;
+      const double room = roomAt(offset, radius - halfDiagonal, box.voxel);
+      if (room > radius && distance <= radius) return true;
+      if (room + halfDiagonal <= radius) continue;
+      if (halfDiagonal > resolution) boxes.push_back(Workspace::Box{middle, box.level + 1, box.voxel});
+    }
+    if (boxes.size() - voxelsLeftOpen > mostBoxesHalved) return false;
+  }
+  return false;
 }
 
 bool isGridLocalMaximum(const BruteForceVoxels &voxels, std::size_t voxel)
@@ -78,12 +349,8 @@ bool isGridLocalMaximum(const BruteForceVoxels &voxels, std::size_t voxel)
 
 BruteForcePoreSpikes BruteForcePoreSpikes::compute(const BruteForceStructure &structure,
                                                    const BruteForceVoxels &voxels, std::size_t volumePoints,
-                                                   std::size_t maxFamilies,
-                                                   const BruteForceStructure *reachabilityStructure,
-                                                   const BruteForceVoxels *reachabilityVoxels)
+                                                   std::size_t maxFamilies)
 {
-  const bool blockPockets =
-      reachabilityStructure != nullptr && reachabilityVoxels != nullptr;
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   BruteForcePoreSpikes self;
 
@@ -119,16 +386,52 @@ BruteForcePoreSpikes BruteForcePoreSpikes::compute(const BruteForceStructure &st
   const std::size_t workers = workersAvailable();
   std::vector<std::vector<std::pair<double3, double>>> maximaOfWorker(workers);
 
+  // Each seed is walked from twice. A walk that starts with a step of a whole voxel strides over whatever is
+  // narrower than that, which is what takes it past the ripples of a wall to the sphere worth finding, and
+  // also what takes it out of a small pore into the larger one beside it: a crevice half an Ångström across
+  // is a family of its own and no stride of that length ends in it. So a second walk starts with a step too
+  // short to leave the basin the seed is in.
+  const std::array<double, 2> startingSteps{step, 0.125 * step};
   forEachIndex(seeds.size(), workers,
                [&](std::size_t worker, std::size_t index)
                {
-                 auto [position, clearance] =
-                     walkUphill(structure, voxels.centre(structure, seeds[index]), step);
-                 if (clearance <= 0.0) return;
-                 const double3 centre = wrapCentre(structure, position);
-                 if (blockPockets && !reachabilityVoxels->isAccessible(*reachabilityStructure, centre)) return;
-                 maximaOfWorker[worker].emplace_back(centre, clearance);
+                 for (double startingStep : startingSteps)
+                 {
+                   auto [position, clearance] =
+                       walkUphill(structure, voxels.centre(structure, seeds[index]), startingStep);
+                   if (clearance <= 0.0) continue;
+                   const double3 centre = wrapCentre(structure, position);
+                   maximaOfWorker[worker].emplace_back(centre, clearance);
+                 }
                });
+
+  // And walks from points thrown at the void, for the maxima the grid has no seed in. A voxel is a seed when
+  // none of its neighbours has more room, and a rise of a few hundredths beside the slope up to something
+  // larger never has such a voxel: the neighbour on the slope always has more. A point thrown into its basin
+  // climbs to it all the same, so long as its first step is too short to leave.
+  {
+    const std::size_t lanes = 64;
+    const std::size_t perLane = (volumePoints / pointsPerRandomWalk + lanes - 1) / lanes;
+    std::vector<std::vector<std::pair<double3, double>>> maximaOfLane(lanes);
+    forEachIndex(lanes, workers,
+                 [&](std::size_t, std::size_t lane)
+                 {
+                   RandomNumber random{lane + 17 + 2 * 64};  // apart from the streams of the draws
+                   for (std::size_t walk = 0; walk < perLane; ++walk)
+                   {
+                     const double3 from =
+                         structure.unitCell.cell * double3(random.uniform(), random.uniform(), random.uniform());
+                     if (structure.clearance(from) <= 0.0) continue;
+                     auto [position, clearance] = walkUphill(structure, from, 0.25 * step);
+                     if (clearance <= 0.0) continue;
+                     maximaOfLane[lane].emplace_back(wrapCentre(structure, position), clearance);
+                   }
+                 });
+    for (auto &bucket : maximaOfLane)
+    {
+      maximaOfWorker.front().insert(maximaOfWorker.front().end(), bucket.begin(), bucket.end());
+    }
+  }
 
   std::vector<std::pair<double3, double>> maxima;
   for (auto &bucket : maximaOfWorker)
@@ -186,10 +489,22 @@ BruteForcePoreSpikes BruteForcePoreSpikes::compute(const BruteForceStructure &st
   self.numberOfFamilies = families.size();
 
   // One Monte Carlo draw over a set of families, largest diameter first: how many points land in the void,
-  // and how many of those in each family's union of balls. A point's pore size is the largest covering
-  // maximal sphere, so it belongs to at most one family, the first whose ball contains it; counting it in
-  // every covering family would charge the volume of a deep cavity to every shallower spike whose ball
-  // happens to overlap that cavity.
+  // and how many of those have each family's diameter for their pore size. A point's pore size is that of the
+  // widest sphere that fits in the void and holds it, so it has a family's diameter when a sphere as wide as
+  // the family's holds it and no wider one does, and it can have one family's at most.
+  //
+  // The centres the walks found are only where the question is answered at once. A sphere of a family's size
+  // may stand where no walk ended: two maxima a tenth of an Ångström apart, or one whose rise is a few
+  // thousandths, are less than the grid the walks start from can tell apart, and the void they hold is still
+  // void of that pore size. So a point no centre of the family reaches is asked about directly, and what the
+  // walks are relied on for is the diameters and not every place they occur. For the widest family of all
+  // there is no wider sphere to ask about.
+  const double3 widths = structure.unitCell.perpendicularWidths();
+  const double halfVoxelDiagonal =
+      0.5 * structure.unitCell.longestDiagonal(double3(1.0 / static_cast<double>(voxels.counts.x),
+                                                       1.0 / static_cast<double>(voxels.counts.y),
+                                                       1.0 / static_cast<double>(voxels.counts.z)));
+  const RoomiestOfBlocks roomiest(voxels);
   struct Draw
   {
     std::size_t thrown{0};
@@ -207,33 +522,50 @@ BruteForcePoreSpikes BruteForcePoreSpikes::compute(const BruteForceStructure &st
                  [&](std::size_t, std::size_t lane)
                  {
                    RandomNumber random{lane + seedOffset};
+                   Workspace workspace;
                    for (std::size_t point = 0; point < perLane; ++point)
                    {
                      double3 fractional(random.uniform(), random.uniform(), random.uniform());
                      double3 position = structure.unitCell.cell * fractional;
-                     if (structure.clearance(position) < 0.0) continue;
-                     if (blockPockets && !reachabilityVoxels->isAccessible(*reachabilityStructure, position))
-                       continue;
+                     const double room = structure.clearance(position);
+                     if (room < 0.0) continue;
                      ++inVoid[lane];
 
-                     for (std::size_t f = 0; f < drawn.size(); ++f)
+                     // Whether a sphere as wide as the family's holds the point: as wide to within what the
+                     // walks agree to, so that a family does not miss itself.
+                     auto heldBy = [&](std::size_t f)
                      {
                        const double radius = 0.5 * drawn[f].diameter;
-                       bool covered = false;
                        for (const double3 &centre : drawn[f].centres)
                        {
-                         if (micDistance(structure, position, centre) <= radius)
-                         {
-                           covered = true;
-                           break;
-                         }
+                         if (micDistance(structure, position, centre) <= radius) return true;
                        }
-                       if (covered)
-                       {
-                         ++inUnion[lane][f];
-                         break;
-                       }
+                       return aWiderSphereHolds(structure, voxels, roomiest, position, room,
+                                                radius - diameterMergeTol, 0.5 * diameterMergeTol,
+                                                halfVoxelDiagonal, widths, workspace);
+                     };
+
+                     // A point held by a sphere of one size is held by one of every smaller size, so down the
+                     // list the families say no and then yes, and the first to say yes is found by halving.
+                     std::size_t first = 0;
+                     std::size_t beyond = drawn.size();
+                     while (first < beyond)
+                     {
+                       const std::size_t middle = first + (beyond - first) / 2;
+                       if (heldBy(middle))
+                         beyond = middle;
+                       else
+                         first = middle + 1;
                      }
+                     if (first == drawn.size()) continue;
+
+                     // and wider than the family's by more than the walks agree to, so that it is not held by
+                     // itself
+                     const bool heldWider =
+                         first > 0 && aWiderSphereHolds(structure, voxels, roomiest, position, room,
+                                                        0.5 * drawn[first].diameter + diameterMergeTol,
+                                                        0.5 * diameterMergeTol, halfVoxelDiagonal, widths, workspace);
+                     if (!heldWider) ++inUnion[lane][first];
                    }
                  });
 

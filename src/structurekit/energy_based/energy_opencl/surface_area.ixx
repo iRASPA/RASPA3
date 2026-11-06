@@ -22,6 +22,7 @@ import float4;
 import double3x3;
 import pair_interactions;
 import crystal;
+import blocking_spheres;
 
 import energy_shared_isosurface;
 
@@ -54,8 +55,12 @@ export struct EnergyOpenCLSurfaceArea
   IsosurfaceArea areaOfIsosurface(const Crystal &framework, std::span<const float> field, uint3 grid_size,
                                   double isoValue);
 
+  // The surface one probe atom sees. Blocking spheres are written onto the energy field before the surface is
+  // drawn through it, as the backend writes them onto every field it returns: a pocket the probe cannot reach
+  // is then walled off, and its inside is no part of the area.
   void run(const PairInteractions &interactions, const Crystal &framework, double isoValue,
-                         std::string probePseudoAtom, uint3 grid_size);
+           std::string probePseudoAtom, uint3 grid_size, std::span<const BlockingSphere> blockingSpheres = {},
+           double blockedEnergyPerAngstrom = 0.0, double ceiling = 0.0);
 
   // The area of the surface, in Å² per unit cell, as last computed; also written to the output file.
   double area{0.0};

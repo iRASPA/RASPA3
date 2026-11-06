@@ -6,6 +6,7 @@ import std;
 
 import crystal;
 import pair_interactions;
+import blocking_spheres;
 import exact_pore_size_distribution;
 
 // The same pore-size distribution, with the pores taken from the Apollonius diagram.
@@ -17,6 +18,16 @@ import exact_pore_size_distribution;
 export struct ApolloniusPoreSizeDistribution
 {
   PoreSizeDistributionCurve curve;
+
+  // The spheres the default curve was measured on: the framework's atoms at their own radii, and one ball over
+  // each pocket sealed to the probe, which is how those pockets are left out. Empty where the curve was asked
+  // for with a floor at the probe, which is measured on the atoms alone. It is kept so that the curve can be
+  // checked by something that takes the same spheres and works the pore sizes out another way.
+  std::vector<BlockingSphere> sweptSpheres;
+
+  // Whether those are more than the atoms: whether any pocket got a ball. Their number does not say, a ball
+  // that swallows an atom taking one off the list as it adds itself.
+  bool pocketsFilled{false};
 
   // `probePseudoAtom` is the accessibility / blocking probe. `floorRadius` is the diameter floor of the
   // primary curve (default 0 = hybrid: block sealed pockets, keep bare pore sizes on the rest).

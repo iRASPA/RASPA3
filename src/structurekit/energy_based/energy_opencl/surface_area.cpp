@@ -25,6 +25,8 @@ import crystal;
 import units;
 import surface_curvature;
 
+import blocking_spheres;
+import energy_shared_blocking_mask;
 import energy_shared_isosurface;
 import energy_opencl_lewiner_isosurface;
 
@@ -80,7 +82,9 @@ EnergyOpenCLSurfaceArea::~EnergyOpenCLSurfaceArea()
 }
 
 void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Crystal &framework, double isoValue,
-                         std::string probePseudoAtom, uint3 grid_size)
+                                  std::string probePseudoAtom, uint3 grid_size,
+                                  std::span<const BlockingSphere> blockingSpheres, double blockedEnergyPerAngstrom,
+                                  double ceiling)
 {
   std::optional<std::size_t> probeType = interactions.findType(probePseudoAtom);
   if (!probeType.has_value())
@@ -344,6 +348,10 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
   clFinish(OpenCL::clCommandQueue.value());
   clReleaseMemObject(outputMemory);
 
+  // The pockets the probe cannot reach, written onto the field the way the backend writes them onto its own.
+  applyBlockingSpheresToEnergy(std::span(output).first(temp), grid_size, framework.unitCell, blockingSpheres,
+                               blockedEnergyPerAngstrom, ceiling);
+
   IsosurfaceArea surface = areaOfIsosurface(framework, std::span(output).first(temp), grid_size, isoValue);
   double accumulated_surface_area = surface.area;
   this->area = accumulated_surface_area;
@@ -367,6 +375,7 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
       (framework.unitCell.volume * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant));
   std::print(myfile, "# Probe atom: {} iso-value: {} sigma: {}\n", probePseudoAtom, isoValue, interactions[probeType.value()].sizeParameter);
   std::print(myfile, "# Grid size: {}x{}x{}\n", grid_size.x, grid_size.y, grid_size.z);
+  std::print(myfile, "# Blocking spheres: {}\n", blockingSpheres.size());
   std::print(myfile, "# Triangles: {} (discarded as implausibly large: {})\n", surface.numberOfTriangles,
              surface.numberOfRejectedTriangles);
   std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
