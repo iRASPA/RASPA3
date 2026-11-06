@@ -20,15 +20,20 @@ import sampled_structure;
 // what it costs in accuracy; the whole sweep is one kernel launch, there being nothing random to redraw.
 export struct Integration_OpenCL_SurfaceArea
 {
-  cl_program surfaceAreaProgram;
-  cl_kernel surfaceAreaKernel;
+  // Made once, when the route is, and let go of when the route goes. They are nothing where there is no
+  // device, and a route is not copied, there being one program and one kernel to let go of once.
+  cl_program surfaceAreaProgram{nullptr};
+  cl_kernel surfaceAreaKernel{nullptr};
   static const char* surfaceAreaKernelSource;
-  size_t surfaceAreaWorkGroupSize;
+  size_t surfaceAreaWorkGroupSize{0};
 
   double surfaceArea{0.0};  // Å²
   double seconds{0.0};
 
   Integration_OpenCL_SurfaceArea();
+  ~Integration_OpenCL_SurfaceArea();
+  Integration_OpenCL_SurfaceArea(const Integration_OpenCL_SurfaceArea&) = delete;
+  Integration_OpenCL_SurfaceArea& operator=(const Integration_OpenCL_SurfaceArea&) = delete;
 
   void run(const SampledStructure& structure, const SampledProbe& probe, std::optional<std::size_t> numberOfSlices);
 };

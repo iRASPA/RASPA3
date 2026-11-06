@@ -62,13 +62,30 @@ MC_OpenCL_SurfaceArea::MC_OpenCL_SurfaceArea()
   }
 }
 
+MC_OpenCL_SurfaceArea::~MC_OpenCL_SurfaceArea()
+{
+  if (surfaceAreaKernel != nullptr) clReleaseKernel(surfaceAreaKernel);
+  if (surfaceAreaProgram != nullptr) clReleaseProgram(surfaceAreaProgram);
+}
+
 void MC_OpenCL_SurfaceArea::run(const SampledStructure &structure, const SampledProbe &probe,
                                 std::optional<std::size_t> numberOfIterations,
                                 std::optional<std::size_t> numberOfInnerSteps)
 {
   RandomNumber random{std::nullopt};
+  // A route made where there was no device has no kernel to run.
+  if (!OpenCL::clContext.has_value() || !OpenCL::clCommandQueue.has_value() || surfaceAreaKernel == nullptr ||
+      surfaceAreaWorkGroupSize == 0)
+  {
+    throw std::runtime_error("MC_OpenCL_SurfaceArea: no OpenCL device found\n");
+  }
+
   cl_int err;
   std::chrono::steady_clock::time_point time_begin, time_end;
+
+  // The buffers of this run, let go of when the run is left, by its last line or by a failure before it. They
+  // used to be let go of by neither, and every run left three of them on the device.
+  OpenCL::Handles made;
 
   std::size_t number_of_iterations = numberOfIterations.value_or(100);
   std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(10000);
@@ -95,139 +112,143 @@ void MC_OpenCL_SurfaceArea::run(const SampledStructure &structure, const Sampled
     sigma[i] = cl_float(structure.radii[i]);
   }
 
-  // upload position array
-  cl_mem inputPos =
-        clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) * pos.size(), nullptr, &err);
-  if (err != CL_SUCCESS)
-  {
-    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
-  }
-
-  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputPos, CL_TRUE, 0, sizeof(float4) * pos.size(),
-                               pos.data(), 0, nullptr, nullptr);
-  if (err != CL_SUCCESS)
-  {
-    throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
-  }
-
-  // upload equilibrium size array
-  cl_mem inputSigma =
-      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * sigma.size(), nullptr, &err);
-  if (err != CL_SUCCESS)
-  {
-    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
-  }
-
-  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputSigma, CL_TRUE, 0, sizeof(cl_float) * sigma.size(),
-                             sigma.data(), 0, nullptr, nullptr);
-  if (err != CL_SUCCESS)
-  {
-    throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
-  }
-
-  // setup output array
-  cl_mem outputArray =
-        clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE, sizeof(cl_float) * output.size(), nullptr, &err);
-  if (err != CL_SUCCESS)
-  {
-    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
-  }
-
-  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), outputArray, CL_TRUE, 0,
-                             sizeof(cl_float) * output.size(), output.data(), 0, nullptr, nullptr);
-  if (err != CL_SUCCESS)
-  {
-    throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
-  }
-
-
-  // setup unit cell matrix
-  cl_float4 clCella = {{cl_float(unit_cell[0][0]), cl_float(unit_cell[1][0]), cl_float(unit_cell[2][0]), cl_float(0.0)}};
-  cl_float4 clCellb = {{cl_float(unit_cell[0][1]), cl_float(unit_cell[1][1]), cl_float(unit_cell[2][1]), cl_float(0.0)}};
-  cl_float4 clCellc = {{cl_float(unit_cell[0][2]), cl_float(unit_cell[1][2]), cl_float(unit_cell[2][2]), cl_float(0.0)}};
-
-  cl_float4 inverse_clCella = {{cl_float(inverse_unit_cell[0][0]), cl_float(inverse_unit_cell[1][0]), cl_float(inverse_unit_cell[2][0]), cl_float(0.0)}};
-  cl_float4 inverse_clCellb = {{cl_float(inverse_unit_cell[0][1]), cl_float(inverse_unit_cell[1][1]), cl_float(inverse_unit_cell[2][1]), cl_float(0.0)}};
-  cl_float4 inverse_clCellc = {{cl_float(inverse_unit_cell[0][2]), cl_float(inverse_unit_cell[1][2]), cl_float(inverse_unit_cell[2][2]), cl_float(0.0)}};
-
-  // The widths across the cell, which bound the images of an atom that can reach a point.
-  double3 widths = structure.unitCell.perpendicularWidths();
-  cl_float4 inverseWidths = {{cl_float(1.0 / widths.x), cl_float(1.0 / widths.y), cl_float(1.0 / widths.z), cl_float(0.0)}};
-
-  std::size_t number_of_random_unit_vectors{number_of_inner_steps};
-  std::vector<cl_float4> random_unit_vectors(number_of_random_unit_vectors);
-  cl_mem random_unit_vectors_mem =
-          clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) *  random_unit_vectors.size(), nullptr, &err);
-  if (err != CL_SUCCESS)
-  {
-    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
-  }
-
-  cl_int end_index = cl_int(numberOfAtoms);
-  cl_int number_of_slices = cl_int(number_of_inner_steps);
-
-  err = clSetKernelArg(surfaceAreaKernel, 0, sizeof(cl_mem), &inputPos);
-  err |= clSetKernelArg(surfaceAreaKernel, 1, sizeof(cl_mem), &inputSigma);
-  err |= clSetKernelArg(surfaceAreaKernel, 2, sizeof(cl_mem), &random_unit_vectors_mem);
-  err |= clSetKernelArg(surfaceAreaKernel, 3, sizeof(cl_mem), &outputArray);
-  err |= clSetKernelArg(surfaceAreaKernel, 4, sizeof(cl_int), &end_index);
-  err |= clSetKernelArg(surfaceAreaKernel, 5, sizeof(cl_int), &number_of_slices);
-  err |= clSetKernelArg(surfaceAreaKernel, 6, sizeof(cl_float4), &clCella);
-  err |= clSetKernelArg(surfaceAreaKernel, 7, sizeof(cl_float4), &clCellb);
-  err |= clSetKernelArg(surfaceAreaKernel, 8, sizeof(cl_float4), &clCellc);
-  err |= clSetKernelArg(surfaceAreaKernel, 9, sizeof(cl_float4), &inverse_clCella);
-  err |= clSetKernelArg(surfaceAreaKernel, 10, sizeof(cl_float4), &inverse_clCellb);
-  err |= clSetKernelArg(surfaceAreaKernel, 11, sizeof(cl_float4), &inverse_clCellc);
-  err |= clSetKernelArg(surfaceAreaKernel, 12, sizeof(cl_float4), &inverseWidths);
-  if (err != CL_SUCCESS)
-  {
-    throw std::runtime_error(std::format("OpenCL clSetKernelArg failed {} : {}\n", __FILE__, __LINE__));
-  }
-
-
   double sum{};
   double sum_of_squares{};
-  for(std::size_t i = 0; i < number_of_iterations; ++i)
+
+  // A structure of no atoms has no surface, and the device is not asked about it: it will not make a buffer of
+  // no size, and there is nothing for it to work out. What follows the block is the same either way.
+  if (numberOfAtoms > 0)
   {
-    for (size_t j = 0; j < number_of_random_unit_vectors; j++)
+    // upload position array
+    cl_mem inputPos = made.keep(
+        clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) * pos.size(), nullptr, &err));
+    if (err != CL_SUCCESS)
     {
-      double3 vec = random.randomVectorOnUnitSphere();
-      random_unit_vectors[j] = {{cl_float(vec.x), cl_float(vec.y), cl_float(vec.z), 0.0f}};
+      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
     }
 
-    // upload random Cartesian positions
-    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), random_unit_vectors_mem, CL_TRUE, 0, sizeof(float4) * random_unit_vectors.size(),
-                                 random_unit_vectors.data(), 0, nullptr, nullptr);
+    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputPos, CL_TRUE, 0, sizeof(float4) * pos.size(),
+                                 pos.data(), 0, nullptr, nullptr);
     if (err != CL_SUCCESS)
     {
       throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
     }
 
-    err |= clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), surfaceAreaKernel, 1, nullptr, &global_work_size,
-                                  &surfaceAreaWorkGroupSize, 0, nullptr, nullptr);
+    // upload equilibrium size array
+    cl_mem inputSigma = made.keep(
+        clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * sigma.size(), nullptr, &err));
     if (err != CL_SUCCESS)
     {
-      throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel failed (err: {}) {} : {}\n", err, __FILE__, __LINE__));
+      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
     }
 
-    // Read the buffer back to the array
-    err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), outputArray, CL_TRUE, 0, output.size() * sizeof(float),
-                              output.data(), 0, nullptr, nullptr);
+    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputSigma, CL_TRUE, 0, sizeof(cl_float) * sigma.size(),
+                               sigma.data(), 0, nullptr, nullptr);
     if (err != CL_SUCCESS)
     {
-      throw std::runtime_error("MC_OpenCL_SurfaceArea: error in clEnqueueReadBuffer");
+      throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
     }
 
-    // One independent reading of the total area: keep sum and sum of squares for the mean and its error.
-    double surface_area = std::accumulate(output.begin(), output.end(), 0.0);
-    sum += surface_area;
-    sum_of_squares += surface_area * surface_area;
+    // setup output array
+    cl_mem outputArray = made.keep(
+        clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE, sizeof(cl_float) * output.size(), nullptr, &err));
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+    }
 
+    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), outputArray, CL_TRUE, 0,
+                               sizeof(cl_float) * output.size(), output.data(), 0, nullptr, nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
+    }
+
+
+    // setup unit cell matrix
+    cl_float4 clCella = {{cl_float(unit_cell[0][0]), cl_float(unit_cell[1][0]), cl_float(unit_cell[2][0]), cl_float(0.0)}};
+    cl_float4 clCellb = {{cl_float(unit_cell[0][1]), cl_float(unit_cell[1][1]), cl_float(unit_cell[2][1]), cl_float(0.0)}};
+    cl_float4 clCellc = {{cl_float(unit_cell[0][2]), cl_float(unit_cell[1][2]), cl_float(unit_cell[2][2]), cl_float(0.0)}};
+
+    cl_float4 inverse_clCella = {{cl_float(inverse_unit_cell[0][0]), cl_float(inverse_unit_cell[1][0]), cl_float(inverse_unit_cell[2][0]), cl_float(0.0)}};
+    cl_float4 inverse_clCellb = {{cl_float(inverse_unit_cell[0][1]), cl_float(inverse_unit_cell[1][1]), cl_float(inverse_unit_cell[2][1]), cl_float(0.0)}};
+    cl_float4 inverse_clCellc = {{cl_float(inverse_unit_cell[0][2]), cl_float(inverse_unit_cell[1][2]), cl_float(inverse_unit_cell[2][2]), cl_float(0.0)}};
+
+    // The widths across the cell, which bound the images of an atom that can reach a point.
+    double3 widths = structure.unitCell.perpendicularWidths();
+    cl_float4 inverseWidths = {{cl_float(1.0 / widths.x), cl_float(1.0 / widths.y), cl_float(1.0 / widths.z), cl_float(0.0)}};
+
+    std::size_t number_of_random_unit_vectors{number_of_inner_steps};
+    std::vector<cl_float4> random_unit_vectors(number_of_random_unit_vectors);
+    cl_mem random_unit_vectors_mem = made.keep(clCreateBuffer(
+        OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) * random_unit_vectors.size(), nullptr, &err));
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+    }
+
+    cl_int end_index = cl_int(numberOfAtoms);
+    cl_int number_of_slices = cl_int(number_of_inner_steps);
+
+    err = clSetKernelArg(surfaceAreaKernel, 0, sizeof(cl_mem), &inputPos);
+    err |= clSetKernelArg(surfaceAreaKernel, 1, sizeof(cl_mem), &inputSigma);
+    err |= clSetKernelArg(surfaceAreaKernel, 2, sizeof(cl_mem), &random_unit_vectors_mem);
+    err |= clSetKernelArg(surfaceAreaKernel, 3, sizeof(cl_mem), &outputArray);
+    err |= clSetKernelArg(surfaceAreaKernel, 4, sizeof(cl_int), &end_index);
+    err |= clSetKernelArg(surfaceAreaKernel, 5, sizeof(cl_int), &number_of_slices);
+    err |= clSetKernelArg(surfaceAreaKernel, 6, sizeof(cl_float4), &clCella);
+    err |= clSetKernelArg(surfaceAreaKernel, 7, sizeof(cl_float4), &clCellb);
+    err |= clSetKernelArg(surfaceAreaKernel, 8, sizeof(cl_float4), &clCellc);
+    err |= clSetKernelArg(surfaceAreaKernel, 9, sizeof(cl_float4), &inverse_clCella);
+    err |= clSetKernelArg(surfaceAreaKernel, 10, sizeof(cl_float4), &inverse_clCellb);
+    err |= clSetKernelArg(surfaceAreaKernel, 11, sizeof(cl_float4), &inverse_clCellc);
+    err |= clSetKernelArg(surfaceAreaKernel, 12, sizeof(cl_float4), &inverseWidths);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clSetKernelArg failed {} : {}\n", __FILE__, __LINE__));
+    }
+
+
+    for(std::size_t i = 0; i < number_of_iterations; ++i)
+    {
+      for (size_t j = 0; j < number_of_random_unit_vectors; j++)
+      {
+        double3 vec = random.randomVectorOnUnitSphere();
+        random_unit_vectors[j] = {{cl_float(vec.x), cl_float(vec.y), cl_float(vec.z), 0.0f}};
+      }
+
+      // upload random Cartesian positions
+      err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), random_unit_vectors_mem, CL_TRUE, 0, sizeof(float4) * random_unit_vectors.size(),
+                                   random_unit_vectors.data(), 0, nullptr, nullptr);
+      if (err != CL_SUCCESS)
+      {
+        throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
+      }
+
+      err |= clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), surfaceAreaKernel, 1, nullptr, &global_work_size,
+                                    &surfaceAreaWorkGroupSize, 0, nullptr, nullptr);
+      if (err != CL_SUCCESS)
+      {
+        throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel failed (err: {}) {} : {}\n", err, __FILE__, __LINE__));
+      }
+
+      // Read the buffer back to the array
+      err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), outputArray, CL_TRUE, 0, output.size() * sizeof(float),
+                                output.data(), 0, nullptr, nullptr);
+      if (err != CL_SUCCESS)
+      {
+        throw std::runtime_error("MC_OpenCL_SurfaceArea: error in clEnqueueReadBuffer");
+      }
+
+      // One independent reading of the total area: keep sum and sum of squares for the mean and its error.
+      double surface_area = std::accumulate(output.begin(), output.end(), 0.0);
+      sum += surface_area;
+      sum_of_squares += surface_area * surface_area;
+
+    }
+
+    clFinish(OpenCL::clCommandQueue.value());
   }
-
-  clFinish(OpenCL::clCommandQueue.value());
-
-  clReleaseMemObject(random_unit_vectors_mem);
 
 
   time_end = std::chrono::steady_clock::now();

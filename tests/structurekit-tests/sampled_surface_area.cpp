@@ -2,6 +2,16 @@
 
 #include <cstring>
 
+#define CL_TARGET_OPENCL_VERSION 120
+#define CL_SILENCE_DEPRECATION
+#ifdef __APPLE__
+#include <OpenCL/cl.h>
+#elif _WIN32
+#include <CL/cl.h>
+#else
+#include <CL/opencl.h>
+#endif
+
 import std;
 
 import double3;
@@ -180,4 +190,166 @@ TEST(sampled_surface_area, passes_that_all_read_the_same_have_no_error)
     else EXPECT_LT(route.surfaceAreaError, 1.0e-6 * area);
   }
   EXPECT_EQ(notANumber, 0uz);
+}
+
+
+// What the two device routes leave behind them, which should be nothing.
+
+namespace
+{
+
+// How many holders the device's context has. Whatever is made on a context holds it for as long as it lives, so
+// this goes up by one for every program, kernel and buffer that is made and comes back down when each is let
+// go; one that is never let go leaves it up.
+cl_uint holdersOfTheContext()
+{
+  cl_uint count = 0;
+  clGetContextInfo(OpenCL::clContext.value(), CL_CONTEXT_REFERENCE_COUNT, sizeof(count), &count, nullptr);
+  return count;
+}
+
+SampledStructure twoSpheres()
+{
+  return structureOf(UnitCell(30.0, 30.0, 30.0), {double3(15.0, 15.0, 14.0), double3(15.0, 15.0, 16.0)}, 2.0);
+}
+
+// The floating-point constants in a kernel that are not of single precision, the names it uses that only a
+// device with double precision has, and the casts written as a call, which C does not have.
+std::vector<std::string> notForADeviceWithoutDoubles(const std::string &source)
+{
+  // Without the comments, where a number or a name is only being talked about.
+  std::string code;
+  for (std::size_t at = 0; at < source.size();)
+  {
+    if (source.compare(at, 2, "//") == 0)
+    {
+      while (at < source.size() && source[at] != '\n') ++at;
+    }
+    else
+    {
+      code.push_back(source[at++]);
+    }
+  }
+
+  auto partOfAName = [](char c) { return std::isalnum(static_cast<unsigned char>(c)) != 0 || c == '_'; };
+
+  std::vector<std::string> found;
+  for (std::size_t at = 0; at < code.size(); ++at)
+  {
+    const bool startsAToken = at == 0 || !partOfAName(code[at - 1]);
+    if (!startsAToken) continue;
+
+    // A number with a point in it, and whatever exponent and suffix follow.
+    if (std::isdigit(static_cast<unsigned char>(code[at])) != 0 && (at == 0 || code[at - 1] != '.'))
+    {
+      std::size_t end = at;
+      bool point = false;
+      while (end < code.size() && (std::isdigit(static_cast<unsigned char>(code[end])) != 0 || code[end] == '.'))
+      {
+        if (code[end] == '.') point = true;
+        ++end;
+      }
+      if (end < code.size() && (code[end] == 'e' || code[end] == 'E'))
+      {
+        point = true;
+        ++end;
+        if (end < code.size() && (code[end] == '+' || code[end] == '-')) ++end;
+        while (end < code.size() && std::isdigit(static_cast<unsigned char>(code[end])) != 0) ++end;
+      }
+      const bool single = end < code.size() && (code[end] == 'f' || code[end] == 'F');
+      if (point && !single) found.push_back("a constant of double precision: " + code.substr(at, end - at));
+      at = end;
+      continue;
+    }
+
+    for (const char *name : {"M_PI", "M_E", "M_SQRT2", "double"})
+    {
+      const std::size_t length = std::strlen(name);
+      if (code.compare(at, length, name) == 0 && (at + length == code.size() || !partOfAName(code[at + length])))
+      {
+        found.push_back(std::string("a name only double precision has: ") + name);
+      }
+    }
+    for (const char *type : {"float(", "int("})
+    {
+      if (code.compare(at, std::strlen(type), type) == 0)
+      {
+        found.push_back(std::string("a cast written as a call: ") + type);
+      }
+    }
+  }
+  return found;
+}
+
+}  // namespace
+
+// A kernel has to build on a device that has no double precision, which is most of the ones a laptop has. A
+// constant written without an f is a double there, the constants of the mathematics library that are doubles
+// are not defined at all, and a cast written float(x) is not C. One compiler lets all three through, and that
+// is the one these were only ever built with.
+TEST(sampled_surface_area, the_kernels_ask_nothing_of_a_device_that_has_no_doubles)
+{
+  // The check itself, on a line that has every fault and on one that has none.
+  const std::string faulty = "float t = float(i) * 2.0 * M_PI; // 3.0 and M_PI here are talk";
+  EXPECT_EQ(notForADeviceWithoutDoubles(faulty).size(), 3uz);
+  const std::string sound = "float t = (float)(i) * 2.0f * M_PI_F + 1.0e-4f; int n = 2; x[3].y;";
+  EXPECT_TRUE(notForADeviceWithoutDoubles(sound).empty());
+
+  const char *ofTheGrid = Integration_OpenCL_SurfaceArea::surfaceAreaKernelSource;
+  for (const std::string &fault : notForADeviceWithoutDoubles(ofTheGrid))
+  {
+    ADD_FAILURE() << "the integration kernel has " << fault;
+  }
+  for (const std::string &fault : notForADeviceWithoutDoubles(MC_OpenCL_SurfaceArea::surfaceAreaKernelSource))
+  {
+    ADD_FAILURE() << "the Monte Carlo kernel has " << fault;
+  }
+}
+
+// A structure with no atoms has no surface, and that is an answer: nothing, with nothing asked of the device,
+// which will not make a buffer of no size.
+TEST(sampled_surface_area, a_structure_of_no_atoms_has_no_area_on_the_device)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+  ReportCleanup cleanup;
+
+  const SampledStructure empty = structureOf(UnitCell(10.0, 10.0, 10.0), {}, 1.0);
+
+  Integration_OpenCL_SurfaceArea integration;
+  EXPECT_NO_THROW(integration.run(empty, SampledProbe{}, 16));
+  EXPECT_EQ(integration.surfaceArea, 0.0);
+
+  MC_OpenCL_SurfaceArea sampled;
+  EXPECT_NO_THROW(sampled.run(empty, SampledProbe{}, 5, 100));
+  EXPECT_EQ(sampled.surfaceArea, 0.0);
+  EXPECT_EQ(sampled.surfaceAreaError, 0.0);
+}
+
+// Running a route leaves nothing on the device, and neither does having had one: the buffers of a run are let
+// go at the end of it, and the program and the kernel when the route itself goes.
+TEST(sampled_surface_area, the_device_routes_leave_nothing_on_the_device)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+  ReportCleanup cleanup;
+
+  const SampledStructure pair = twoSpheres();
+  const cl_uint before = holdersOfTheContext();
+
+  {
+    Integration_OpenCL_SurfaceArea integration;
+    const cl_uint built = holdersOfTheContext();
+    for (int run = 0; run < 4; ++run) integration.run(pair, SampledProbe{}, 16);
+    EXPECT_EQ(holdersOfTheContext(), built) << "four runs of the grid left buffers behind";
+  }
+  EXPECT_EQ(holdersOfTheContext(), before) << "the grid route left its program or its kernel behind";
+
+  {
+    MC_OpenCL_SurfaceArea sampled;
+    const cl_uint built = holdersOfTheContext();
+    for (int run = 0; run < 4; ++run) sampled.run(pair, SampledProbe{}, 3, 100);
+    EXPECT_EQ(holdersOfTheContext(), built) << "four runs of the sampling left buffers behind";
+  }
+  EXPECT_EQ(holdersOfTheContext(), before) << "the sampling route left its program or its kernel behind";
 }
