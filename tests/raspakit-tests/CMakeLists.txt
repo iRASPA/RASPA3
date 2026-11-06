@@ -4,6 +4,7 @@ add_executable(unit_tests_raspakit
   energy_legacy_void_fraction.cpp
   energy_single_site_routes.cpp
   energy_field_cache.cpp
+  energy_field_check.cpp
   energy_coulomb_hole.cpp
   cbmc_interactions.cpp
   cbmc_move_statistics.cpp

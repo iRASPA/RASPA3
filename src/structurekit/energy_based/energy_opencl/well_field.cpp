@@ -952,7 +952,12 @@ static df reduceOrientations(df *energies, float *clearances, int *dummyHit, int
   *bestClearance = best;
   if(beta > 0.0f)
   {
-    return df_add_f(leastDf, -kT * log(sum / (float)(numberOfOrientations)));
+    // The free energy of the orientations is no higher than the highest of them, which is no higher than
+    // the ceiling, but that is arithmetic and this is a sum and a logarithm in single precision. It is held
+    // to the ceiling as the processor's is, so that nothing rounding does can put a point above it.
+    df freeEnergy = df_add_f(leastDf, -kT * log(sum / (float)(numberOfOrientations)));
+    if(df_lt((df)(ceiling, 0.0f), freeEnergy)) freeEnergy = (df)(ceiling, 0.0f);
+    return freeEnergy;
   }
   return leastDf;
 }

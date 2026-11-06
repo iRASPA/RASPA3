@@ -75,6 +75,16 @@ std::size_t digestOf(const Crystal &framework)
     stir(digest, atom.charge);
     stir(digest, atom.type);
   }
+  // Where the atoms are is held twice, in Ångström and in fractions of the cell, and it is the fractions
+  // the builders of the fields read. The two agree in a framework that was read from a file, but nothing
+  // makes them, and a framework changed in the one and not in the other is a different landscape.
+  stir(digest, framework.fractionalPositions.size());
+  for (const auto &fractional : framework.fractionalPositions)
+  {
+    stir(digest, fractional.x);
+    stir(digest, fractional.y);
+    stir(digest, fractional.z);
+  }
   return digest;
 }
 

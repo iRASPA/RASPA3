@@ -144,7 +144,7 @@ ProbeEnergyGrid ProbeEnergyGridOpenCL::compute(const PairInteractions &interacti
   cl_mem strongestBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY,
                                           sizeof(cl_int) * numberOfVoxels, nullptr, &strongestError);
   if (positionError != CL_SUCCESS || epsilonError != CL_SUCCESS || sigmaError != CL_SUCCESS ||
-      energyError != CL_SUCCESS || strongestError != CL_SUCCESS)
+      shiftError != CL_SUCCESS || energyError != CL_SUCCESS || strongestError != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("ProbeEnergyGridOpenCL: OpenCL clCreateBuffer failed at {}\n", __LINE__));
   }

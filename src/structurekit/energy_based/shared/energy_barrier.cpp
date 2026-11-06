@@ -48,6 +48,10 @@ void writeFieldCheck(const PairInteractions &interactions, const Crystal &framew
           std::size_t atomType = framework.atoms[atom].type;
           double sigma = interactions(probeType.value(), atomType).sizeParameter;
           double epsilon = interactions(probeType.value(), atomType).strengthParameter;
+          // What a truncated potential is shifted by, so that it reaches the cutoff at nought. The builders
+          // take it off every pair in range and so must this, or a field that is right is reported out by
+          // the shift times however many neighbours a point has.
+          double shift = interactions(probeType.value(), atomType).shift;
 
           double3 ds = s - fractionalPositions[atom];
           ds.x -= std::rint(ds.x);
@@ -70,7 +74,7 @@ void writeFieldCheck(const PairInteractions &interactions, const Crystal &framew
                 rr = std::max(rr, 1.0e-6);
 
                 double ratio3 = (sigma * sigma / rr) * (sigma * sigma / rr) * (sigma * sigma / rr);
-                reference += std::min(4.0 * epsilon * ratio3 * (ratio3 - 1.0), energyGrid.ceiling);
+                reference += std::min(4.0 * epsilon * ratio3 * (ratio3 - 1.0) - shift, energyGrid.ceiling);
               }
             }
           }

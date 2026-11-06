@@ -81,6 +81,17 @@ TEST(energy_field_cache, the_same_landscape_is_handed_back_and_a_changed_one_is_
   moved.fractionalPositions[0] = double3(0.25, 0.5, 0.5);
   EXPECT_FALSE(build(interactions, moved, probe).reused);
 
+  // The atom moved in the fractions of the cell and left where it was in Ångström. A framework holds both,
+  // nothing keeps them in step, and it is the fractions a field is built from. The field held when this is
+  // asked for is that of the framework as it was, which is the one it could be mistaken for.
+  const MolecularField ofTheOriginal = build(interactions, framework, probe);
+  EXPECT_FALSE(ofTheOriginal.reused);
+  Crystal movedInFractions = framework;
+  movedInFractions.fractionalPositions[0] = double3(0.25, 0.5, 0.5);
+  const MolecularField ofTheMoved = build(interactions, movedInFractions, probe);
+  EXPECT_FALSE(ofTheMoved.reused);
+  EXPECT_NE(ofTheMoved.grid.minimumEnergy, ofTheOriginal.grid.minimumEnergy);
+
   // The same probe name, a site hung off the centre.
   LinearProbe longer = probe;
   longer.sites[0].offset = 0.5;
