@@ -458,7 +458,6 @@ TEST(apollonius, complex_closes_on_well_behaved_sites)
       SKApolloniusDiagram::create(sites.cell, sites.fractionalPositions, sites.radii);
 
   EXPECT_EQ(diagram.verification.unpairedTriples, 0u);
-  EXPECT_EQ(diagram.verification.overpairedTriples, 0u);
   EXPECT_TRUE(diagram.verification.isComplete());
 
   // Every vertex is four-valent except where a clipped arc leaves it one short, and each clipped arc
@@ -482,7 +481,6 @@ TEST(apollonius, entire_space_diagram_closes_exactly)
 
   EXPECT_EQ(diagram.verification.truncatedTriples, 0u);
   EXPECT_EQ(diagram.verification.unpairedTriples, 0u);
-  EXPECT_EQ(diagram.verification.overpairedTriples, 0u);
   EXPECT_EQ(diagram.verification.unclosedFaces, 0u);
   EXPECT_EQ(diagram.verification.verticesOfFullValence, diagram.verification.vertexCount);
   EXPECT_TRUE(diagram.verification.isComplete());
@@ -753,7 +751,6 @@ TEST(apollonius, diagram_is_independent_of_the_lattice_basis)
     EXPECT_EQ(skewed.faces.size(), upright.faces.size());
     EXPECT_EQ(skewed.verification.verticesOfFullValence, upright.verification.verticesOfFullValence);
     EXPECT_EQ(skewed.verification.unpairedTriples, upright.verification.unpairedTriples);
-    EXPECT_EQ(skewed.verification.overpairedTriples, upright.verification.overpairedTriples);
     EXPECT_EQ(skewed.verification.vertexlessLoops, upright.verification.vertexlessLoops);
     EXPECT_NEAR(skewed.largestEmptySphereRadius(), upright.largestEmptySphereRadius(), 1.0e-9);
 
@@ -905,7 +902,6 @@ TEST(apollonius, degenerate_vertex_is_one_vertex_of_higher_degree)
   // edge, every triple pairs, and Euler's formula gives zero on the 3-torus.
   EXPECT_EQ(diagram.verification.ambiguousBranches, 0u);
   EXPECT_EQ(diagram.verification.unpairedTriples, 0u);
-  EXPECT_EQ(diagram.verification.overpairedTriples, 0u);
   EXPECT_EQ(diagram.verification.truncatedTriples, 0u);
   EXPECT_EQ(diagram.verification.unclosedFaces, 0u);
   EXPECT_EQ(diagram.verification.verticesOfFullValence, diagram.verification.vertexCount);
@@ -960,7 +956,7 @@ TEST(apollonius, verification_reports_incomplete_rather_than_hiding_it)
   EXPECT_EQ(diagram.verification.isComplete(),
             diagram.verification.verticesOfFullValence + diagram.verification.truncatedTriples >=
                     diagram.verification.vertexCount &&
-                diagram.verification.unpairedTriples == 0 && diagram.verification.overpairedTriples == 0 &&
+                diagram.verification.unpairedTriples == 0 &&
                 diagram.verification.unclosedFaces <= diagram.verification.truncatedSheets);
 }
 
@@ -1067,7 +1063,6 @@ TEST(apollonius, equal_radii_close_the_complex_too)
     ASSERT_FALSE(diagram.edges.empty());
 
     EXPECT_EQ(diagram.verification.unpairedTriples, 0u);
-    EXPECT_EQ(diagram.verification.overpairedTriples, 0u);
     EXPECT_EQ(diagram.verification.truncatedTriples, 0u);
     EXPECT_EQ(diagram.verification.unclosedFaces, 0u);
     EXPECT_EQ(diagram.verification.verticesOfFullValence, diagram.verification.vertexCount);
@@ -1703,7 +1698,6 @@ TEST(apollonius, entire_space_closes_on_every_small_cell)
 
         EXPECT_EQ(verification.truncatedTriples, 0u) << where;
         EXPECT_EQ(verification.unpairedTriples, 0u) << where;
-        EXPECT_EQ(verification.overpairedTriples, 0u) << where;
         EXPECT_EQ(verification.ambiguousBranches, 0u) << where;
         EXPECT_EQ(verification.unclosedFaces, 0u) << where;
         EXPECT_EQ(verification.verticesOfFullValence, verification.vertexCount) << where;
@@ -1881,5 +1875,111 @@ TEST(apollonius, a_ring_measures_the_same_at_any_scale)
 
     if (!lengthAtOne.has_value()) lengthAtOne = ring->length;
     EXPECT_NEAR(ring->length, scale * lengthAtOne.value(), 1.0e-6 * scale * lengthAtOne.value()) << "scale " << scale;
+  }
+}
+
+
+// The diagram's own tangency solve on four spheres standing on a table, one of them lifted off it by a little:
+// the table is then a tangent sphere of enormous radius and the sphere nestled above the four is the small root
+// of a quadratic whose leading coefficient the lift made tiny. Written out as (-b ± root) / 2a that root is a
+// difference of two numbers nearly alike. It missed the four spheres by a millionth of an Ångström at a lift of
+// 1e-10, and at 1e-12 it was not returned at all.
+TEST(apollonius, the_tangent_sphere_is_as_exact_when_its_twin_is_nearly_a_plane)
+{
+  for (const double lift :
+       {1.0e-2, 1.0e-4, 1.0e-6, 1.0e-8, 1.0e-10, 1.0e-11, 1.0e-12, 1.0e-13, 0.0, -1.0e-10, -1.0e-8})
+  {
+    const std::array<double, 4> radii{1.0, 1.3, 0.8, 1.1};
+    const std::array<double3, 4> centres{double3(0.0, 0.0, radii[0]), double3(3.1, 0.2, radii[1]),
+                                         double3(0.4, 2.9, radii[2]), double3(3.3, 3.4, radii[3] + lift)};
+
+    std::size_t nestled = 0;
+    for (const SKApolloniusTangentSphere& sphere : skApolloniusTangentSpheres(centres, radii))
+    {
+      if (sphere.radius > 100.0) continue;
+      ++nestled;
+      EXPECT_NEAR(sphere.radius, 21.7437, 2.3) << "lift " << lift;
+      for (std::size_t i = 0; i < 4; ++i)
+      {
+        EXPECT_NEAR((sphere.centre - centres[i]).length(), radii[i] + sphere.radius, 1.0e-12)
+            << "lift " << lift << ", sphere " << i;
+      }
+    }
+    EXPECT_EQ(nestled, 1uz) << "lift " << lift;
+  }
+}
+
+// A trisector that is a parabola, and the conics either side of it. Two equal spheres and a smaller one set so
+// that the clearance changes along the plane of the curve at a rate of exactly one: the curve is then the
+// parabola between an ellipse, at a rate just under one, and a hyperbola just over. The curve itself hardly
+// moves as the smaller radius is changed in its thirteenth digit, so neither may the edge on it: its narrowest
+// point is the parabola's own vertex, a^2 / 4L - r inside the spheres, and its length is what it is a millionth
+// away. Both used to be read off points placed from the centre of the conic, which at a rate within 1e-12 of
+// one is further off than the digits of a double reach, and on the ellipse's side there was no allowance for
+// that at all: the narrowest point came out three hundredths of an Ångström wide of where it is, at the
+// parabola itself included.
+TEST(apollonius, an_edge_on_a_nearly_parabolic_trisector_does_not_move_as_the_curve_passes_through_the_parabola)
+{
+  const double edge = 40.0;
+  const double3x3 cell(double3(edge, 0.0, 0.0), double3(0.0, edge, 0.0), double3(0.0, 0.0, edge));
+  const double3 middle(20.0, 14.0, 20.0);
+  const double halfSeparation = 2.5;  // a: the two equal spheres stand this far either side of the curve's plane
+  const double height = 2.0;          // L: how far along that plane the smaller sphere stands
+  const double smallRadius = 1.0;     // r, the larger being r + L
+
+  struct OnTheCurve
+  {
+    double bottleneck{0.0};
+    double length{0.0};
+    double3 position{};
+    std::size_t edges{0};
+  };
+  auto edgeOnTheCurve = [&](double delta)
+  {
+    // The rate is L over the difference of the radii, so a difference of L (1 + delta) puts it delta under one.
+    const std::vector<double3> positions{
+        middle + double3(-halfSeparation, 0.0, 0.0), middle + double3(halfSeparation, 0.0, 0.0),
+        middle + double3(0.0, height, 0.0),          middle + double3(0.3, 7.0, 3.5),
+        middle + double3(-0.2, 7.5, -3.3),           middle + double3(0.4, 11.0, 0.3)};
+    const double largeRadius = smallRadius + height;
+    const std::vector<double> radii{largeRadius, largeRadius, largeRadius - height * (1.0 + delta),
+                                    1.0,         1.1,         1.6};
+    std::vector<double3> fractionalPositions;
+    for (const double3& position : positions) fractionalPositions.push_back(position * (1.0 / edge));
+
+    const SKApolloniusDiagram diagram = SKApolloniusDiagram::create(cell, fractionalPositions, radii);
+    EXPECT_TRUE(diagram.verification.isComplete()) << "delta " << delta;
+
+    OnTheCurve found;
+    for (const SKApolloniusEdge& candidate : diagram.edges)
+    {
+      std::vector<std::size_t> sites = candidate.siteIndices;
+      std::ranges::sort(sites);
+      if (!std::ranges::includes(sites, std::vector<std::size_t>{0, 1, 2})) continue;
+      ++found.edges;
+      found.bottleneck = candidate.bottleneckRadius;
+      found.length = candidate.length;
+      found.position = candidate.bottleneckPosition;
+    }
+    return found;
+  };
+
+  // Far enough from the parabola that the curve is an ordinary conic, near enough that it has not moved.
+  const OnTheCurve reference = edgeOnTheCurve(1.0e-9);
+  ASSERT_EQ(reference.edges, 1uz);
+  const double vertexClearance = halfSeparation * halfSeparation / (4.0 * height) - smallRadius;
+  const double3 vertexOfTheParabola =
+      middle + double3(0.0, height - halfSeparation * halfSeparation / (4.0 * height), 0.0);
+  EXPECT_NEAR(reference.bottleneck, vertexClearance, 1.0e-7);
+  EXPECT_LT((reference.position - vertexOfTheParabola).length(), 1.0e-5);
+
+  for (const double delta : {1.0e-11, 1.0e-12, 3.0e-13, 1.0e-13, 1.0e-14, 1.0e-15, 0.0, -1.0e-15, -1.0e-14, -1.0e-13,
+                             -3.0e-13, -1.0e-12, -1.0e-11, -1.0e-9})
+  {
+    const OnTheCurve found = edgeOnTheCurve(delta);
+    ASSERT_EQ(found.edges, 1uz) << "delta " << delta;
+    EXPECT_NEAR(found.bottleneck, reference.bottleneck, 1.0e-7) << "delta " << delta;
+    EXPECT_NEAR(found.length, reference.length, 1.0e-6) << "delta " << delta;
+    EXPECT_LT((found.position - reference.position).length(), 1.0e-5) << "delta " << delta;
   }
 }

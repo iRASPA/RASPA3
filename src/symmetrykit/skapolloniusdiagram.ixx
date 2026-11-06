@@ -262,10 +262,14 @@ export struct SKApolloniusDiagram
   {
     std::size_t vertexCount{0};
     std::size_t verticesOfFullValence{0};  // vertices carrying an edge along every branch
-    std::size_t unpairedTriples{0};        // triples that could not be paired along their trisector
-    std::size_t truncatedTriples{0};       // arcs clipped by the boundary of the free region
+    // Triples that could not be paired along their trisector. Over `EntireSpace` that includes a triple
+    // carrying a single vertex: nothing is clipped there, so an arc with one end found is an arc whose
+    // other end was missed. A triple may carry more than two vertices and that is no defect, several
+    // arcs of one curve being several edges; what would be one, a vertex whose branch along the curve
+    // ends up in no edge, shows as that vertex falling short of full valence.
+    std::size_t unpairedTriples{0};
+    std::size_t truncatedTriples{0};       // arcs clipped by the boundary of the free region; none over all of space
     std::size_t truncatedSheets{0};        // bisector sheets those arcs border, one per neighbouring pair of sites
-    std::size_t overpairedTriples{0};      // triples seen more than twice, i.e. degenerate
     std::size_t coincidentVertices{0};     // distinct vertices left sharing a position, which is a defect
     std::size_t unclosedFaces{0};
     std::size_t vertexlessLoops{0};       // closed trisectors carrying no vertex, recovered separately
@@ -298,8 +302,8 @@ export struct SKApolloniusDiagram
     bool isComplete() const
     {
       return vertexCount > 0 && coincidentVertices == 0 && ambiguousBranches == 0 && unpairedTriples == 0 &&
-             overpairedTriples == 0 && unsampledArcs == 0 &&
-             verticesOfFullValence + truncatedTriples >= vertexCount && unclosedFaces <= truncatedSheets;
+             unsampledArcs == 0 && verticesOfFullValence + truncatedTriples >= vertexCount &&
+             unclosedFaces <= truncatedSheets;
     }
   };
 

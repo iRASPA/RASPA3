@@ -111,9 +111,9 @@ TEST(voronoi_network, every_edge_knows_where_it_is_narrowest_and_is_that_narrow_
       EXPECT_GE(clearanceAt(network, from + (step / 20.0) * span), there - 1.0e-9) << "edge " << e;
     }
 
-    // And the edge is as narrow as that. Its radius is never more, and is less only where a vertex the
-    // edge ends on was merged with another close by: the radius is then also held to the segment as each
-    // cell saw it before the merging, which lies within the merging distance of this one.
+    // And the edge is as narrow as that. Its radius is never more, and is less only where a node the edge
+    // ends on is several vertices close together: the radius is then also held to the segment as each cell
+    // saw it between its own vertices, which lies about the gathering distance from this one.
     EXPECT_LE(edge.radius, there + 1.0e-9) << "edge " << e;
     EXPECT_GE(edge.radius, there - 0.04) << "edge " << e;
     if (std::abs(edge.radius - there) < 1.0e-9) ++exactlyAsNarrow;

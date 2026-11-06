@@ -62,6 +62,21 @@ struct TangentSpheres
 // spheres share. It is the same line either way, so reading it off the null space treats the arrangements
 // alike, and the arrangement that has no c as a function of t is not special: it is simply the one whose
 // null vector has no component along t.
+// The two roots of a s^2 + b s + c = 0, the one written (-b + root) / 2a first and the one with the root
+// taken away second, for a not zero and `squareRoot` the root of the discriminant.
+//
+// Written that way, one of the two is a difference of numbers nearly alike whenever a c is small beside b^2,
+// and what is left of it is the rounding of the other. A small a is that case: one root goes off to infinity
+// and the one that stays, the tangent sphere there actually is, came out with the digits that the size of
+// 1/a had taken from it, a millionth of an Ångström gone at an a of 1e-10. So the sum that does not cancel is
+// formed once, and gives one root divided by a and the other as c divided by it.
+std::pair<double, double> quadraticRoots(double a, double b, double c, double squareRoot)
+{
+  double sum = -0.5 * (b + std::copysign(squareRoot, b));
+  if (sum == 0.0) return {0.0, 0.0};  // b and the discriminant both nothing, so c is too: a double root at zero
+  return (b >= 0.0) ? std::pair{c / sum, sum / a} : std::pair{sum / a, c / sum};
+}
+
 TangentSpheres solveTangencyRows(const std::array<double3, 3>& rows, const double3& timeCoefficients,
                                  const double3& constants, const double3& referenceCentre, double referenceRadius,
                                  bool allowNegativeRadius = false)
@@ -139,9 +154,9 @@ TangentSpheres solveTangencyRows(const std::array<double3, 3>& rows, const doubl
   {
     double discriminant = b * b - 4.0 * a * c;
     if (discriminant < 0.0) return {};
-    double squareRoot = std::sqrt(discriminant);
-    roots[rootCount++] = (-b + squareRoot) / (2.0 * a);
-    roots[rootCount++] = (-b - squareRoot) / (2.0 * a);
+    const auto [withRootAdded, withRootTaken] = quadraticRoots(a, b, c, std::sqrt(discriminant));
+    roots[rootCount++] = withRootAdded;
+    roots[rootCount++] = withRootTaken;
   }
 
   TangentSpheres spheres;
@@ -1519,6 +1534,16 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       // missing end cannot be one this construction was entitled to find: it is a vertex of negative
       // clearance, lying inside the spheres, at which the arc leaves the free region. Such an arc is
       // clipped rather than absent, and is counted apart from a genuine pairing failure.
+      //
+      // That is the free region's excuse and no other's. Over all of space the vertices of negative
+      // clearance are in the diagram, nothing is clipped, and an arc with one end is an arc whose other end
+      // was not found. Counted as clipped it was forgiven twice over, as a triple and as the valence its
+      // vertex is short of, and the diagram came back complete.
+      if (region == SKApolloniusRegion::EntireSpace)
+      {
+        ++diagram.verification.unpairedTriples;
+        continue;
+      }
       ++diagram.verification.truncatedTriples;
       if (!incident.empty())
         diagram.verification.truncatedSheets +=
@@ -1611,6 +1636,7 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
     double flattening = 0.0;
     double extent = 0.0;
     double heightSquared = 0.0;  // |planeOrigin - c_0|^2, the offset of the plane from site 0
+    bool nearlyParabolic = false;  // the conic's centre is too far off to measure from; see below
 
     double radiusScale = std::max({tangentRadii[0], tangentRadii[1], tangentRadii[2], 1.0});
     if (std::abs(radiusDifference[0]) < 1.0e-14 * radiusScale)
@@ -1660,7 +1686,33 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       heightSquared = double3::dot(fromSite, fromSite);
       flattening = 1.0 - rate * rate;
 
-      if (rate < 1.0)
+      // Both closed forms below measure along the first axis from the centre of the conic, which stands at
+      // h g / (1 - g^2) for h the reach. As g comes to one that runs off to infinity, on the ellipse's side
+      // as on the hyperbola's, and a coordinate of a few Ångström taken as the difference of two numbers
+      // that large has no digits left: with g within 1e-12 of one a point of the curve was misplaced by
+      // hundredths of an Ångström, and a bottleneck read off it by as much. The parabola at exactly one is
+      // not a case apart but the middle of a stretch where the centre is no use, and the stretch is told
+      // by what goes wrong in it: the centre being further off than ten thousand times as far as any
+      // vertex on the curve is from the plane's origin. Short of that the centre costs twelve digits at
+      // most of sixteen. Past it every vertex is on the one part of the conic that passes near the origin,
+      // the near half of a long ellipse or the near branch of a hyperbola, the rest being that much further
+      // away again than anything in the crystal; that part is a graph over the second axis, which orders
+      // it, and it is placed from the tangency to site 0 directly, with no centre in it.
+      double span = radiusScale;
+      for (const IncidentBranch& entry : incident)
+      {
+        double3 position = diagram.vertices[entry.vertex].position -
+                           unitCell * double3(entry.offset.x, entry.offset.y, entry.offset.z);
+        span = std::max(span, (position - planeOrigin).length());
+      }
+      constexpr double centreTooFarOff = 1.0e4;
+      nearlyParabolic = std::abs(reach * rate) >= centreTooFarOff * span * std::abs(flattening);
+
+      if (nearlyParabolic)
+      {
+        shape = Shape::Branch;
+      }
+      else if (rate < 1.0)
       {
         // (1 - g^2)(u - u_c)^2 + v^2 = C, an ellipse, and a circle when the clearance does not vary at all.
         shape = Shape::Ellipse;
@@ -1682,14 +1734,9 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
         // be a trisector, the other being where the tangency holds with its sign reversed, so there is one
         // curve to order here as much as in the other cases.
         shape = Shape::Branch;
-        // The same constants as the ellipse's, and used the same way to place a point on the curve. At
-        // exactly one they are not there to be had, the conic being a parabola, which is carried by its
-        // own form below rather than by a case of its own.
-        if (std::abs(flattening) > 1.0e-12)
-        {
-          centreOffset = reach * rate / flattening;
-          extent = reach * reach / flattening - heightSquared;
-        }
+        // The same constants as the ellipse's, and used the same way to place a point on the curve.
+        centreOffset = reach * rate / flattening;
+        extent = reach * reach / flattening - heightSquared;
       }
     }
 
@@ -1769,7 +1816,7 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       {
         lineBase = referencePosition - reference.along * lineDirection;
       }
-      else if (shape == Shape::Branch && std::abs(flattening) > 1.0e-12)
+      else if (shape == Shape::Branch && !nearlyParabolic)
       {
         // Which of the hyperbola's two branches is the trisector, the other holding the tangency with
         // its sign reversed. The whole curve is on one of them, so one vertex settles it.
@@ -1796,7 +1843,7 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       else
       {
         second = along;
-        if (std::abs(flattening) > 1.0e-12)
+        if (!nearlyParabolic)
         {
           double squared = (extent - second * second) / flattening;
           if (squared < 0.0) return std::nullopt;
@@ -1804,10 +1851,17 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
         }
         else
         {
-          // Equal to one the conic is a parabola, which has no centre to measure from: 2 h u = v^2 +
-          // |c_0 - o|^2 - h^2 for h the reach, straight from the tangency to site 0.
-          if (std::abs(reach) < 1.0e-12) return std::nullopt;
-          first = (second * second + heightSquared - reach * reach) / (2.0 * reach);
+          // With no centre to measure from, straight from the tangency to site 0: u^2 + v^2 + |c_0 - o|^2 =
+          // (h + g u)^2 for h the reach, which is (1 - g^2) u^2 - 2 h g u + w = 0 with w = v^2 + |c_0 - o|^2
+          // - h^2. Of its two roots the one wanted is the one that stays where it is as g goes to one, where
+          // the other goes to infinity; it is taken as w over the larger of the two sums the formula offers,
+          // which loses nothing however small 1 - g^2 is and is the parabola's own 2 h u = w when it is zero.
+          double remainder = second * second + heightSquared - reach * reach;
+          double discriminant = reach * reach * rate * rate - flattening * remainder;
+          if (discriminant < 0.0) return std::nullopt;
+          double denominator = reach * rate + std::copysign(std::sqrt(discriminant), reach);
+          if (std::abs(denominator) < 1.0e-12) return std::nullopt;
+          first = remainder / denominator;
         }
       }
 

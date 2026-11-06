@@ -14,7 +14,7 @@ import voronoi_network;
 bool ApolloniusPoreNetwork::networkIsComplete() const
 {
   return verification.vertexCount > 0 && verification.coincidentVertices == 0 && verification.unpairedTriples == 0 &&
-         verification.overpairedTriples == 0 && verification.unsampledArcs == 0 &&
+         verification.unsampledArcs == 0 &&
          verification.verticesOfFullValence + verification.truncatedTriples >= verification.vertexCount;
 }
 
@@ -31,8 +31,8 @@ void ApolloniusPoreNetwork::writeHeader(std::ostream& stream) const
   {
     std::print(stream, "# WARNING: the network did not verify as consistent, so peaks or passages may be\n");
     std::print(stream, "#          missing and what is read from it below is a lower bound\n");
-    std::print(stream, "#          unpaired triples: {}, overpaired: {}, coincident vertices: {}\n",
-               verification.unpairedTriples, verification.overpairedTriples, verification.coincidentVertices);
+    std::print(stream, "#          unpaired triples: {}, coincident vertices: {}\n", verification.unpairedTriples,
+               verification.coincidentVertices);
     std::print(stream, "#          vertices: {}, of full valence: {}, arcs clipped by the free region: {}\n",
                verification.vertexCount, verification.verticesOfFullValence, verification.truncatedTriples);
     if (verification.unsampledArcs > 0)

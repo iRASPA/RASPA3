@@ -64,8 +64,8 @@ export struct VoronoiEdge
   // the arc, and that point is the position. The radical builder's radius is the least, over the
   // atoms, of the distance from the atom to the straight segment less its radius, which is the least
   // clearance along the segment, and the position is the point of the segment where that is taken.
-  // There the clearance is the radius, or more than it by less than the distance vertices are merged
-  // over where an end of the edge was merged with a neighbour.
+  // There the clearance is the radius, or more than it, by about the distance vertices are gathered
+  // over, where an end of the edge is a node made of several vertices.
   double3 bottleneckPosition{};
   double3 bottleneckDirection{};
   bool hasBottleneckGeometry{false};
