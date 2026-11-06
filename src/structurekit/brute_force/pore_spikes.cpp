@@ -132,6 +132,7 @@ void runsAlong(std::int32_t first, std::int32_t last, std::int32_t count, std::v
 
 // No more boxes than this are made by halving for one point. It is far more than a point needs unless the room
 // is level over a stretch, as along the middle of a straight tube, where the question has no margin to find.
+// A point that uses them up is settled by climbing instead; see below.
 constexpr std::size_t mostBoxesHalved = 4096;
 
 // Whether a sphere wider than `radius` that fits in the void holds `position`.
@@ -148,6 +149,15 @@ constexpr std::size_t mostBoxesHalved = 4096;
 // `roomAtPosition` the room at the point, which the caller has already.
 //
 // Nothing is left to a search that could stop short: every box is either shown to hold no centre or opened.
+//
+// Except where the boxes run out. That happens where the room stays within a hair of the radius over a stretch,
+// which is one point in ten thousand on a zeolite, and the halving has by then shown only that no sphere much
+// wider than the radius holds the point. Answered no, as it used to be, the question went one way for both of
+// the things asked of it: a family lost the points it held by so little, and a point held by a slightly wider
+// sphere was taken not to be and counted for the family below. So the roomiest centre the halving came across
+// is walked uphill inside the sphere of the radius about the point, and the answer is whether that gets above
+// the radius, looked at once more by every atom of the structure before it is believed. Where the room is level
+// the climb is at the level at once, and which side of the radius that is is the answer.
 bool aWiderSphereHolds(const BruteForceStructure &structure, const BruteForceVoxels &voxels,
                        const RoomiestOfBlocks &roomiest, const double3 &position, double roomAtPosition,
                        double radius, double resolution, double slack, const double3 &widths, Workspace &workspace)
@@ -283,8 +293,13 @@ bool aWiderSphereHolds(const BruteForceStructure &structure, const BruteForceVox
     return least;
   };
 
+  // The roomiest centre inside the sphere that the halving comes across, for the climb if the boxes run out.
+  double roomiestSeen = roomAtPosition;
+  double3 roomiestOffset(0.0, 0.0, 0.0);
+
   const double3 quarter(0.25 / counts.x, 0.25 / counts.y, 0.25 / counts.z);
   const std::size_t voxelsLeftOpen = boxes.size();
+  bool boxesRanOut = false;
   for (std::size_t next = 0; next < boxes.size(); ++next)
   {
     const Workspace::Box box = boxes[next];
@@ -301,11 +316,64 @@ bool aWiderSphereHolds(const BruteForceStructure &structure, const BruteForceVox
       const double room = roomAt(offset, radius - halfDiagonal, box.voxel);
       if (room > radius && distance <= radius) return true;
       if (room + halfDiagonal <= radius) continue;
+      if (distance <= radius && room > roomiestSeen)
+      {
+        roomiestSeen = room;
+        roomiestOffset = offset;
+      }
       if (halfDiagonal > resolution) boxes.push_back(Workspace::Box{middle, box.level + 1, box.voxel});
     }
-    if (boxes.size() - voxelsLeftOpen > mostBoxesHalved) return false;
+    if (boxes.size() - voxelsLeftOpen > mostBoxesHalved)
+    {
+      boxesRanOut = true;
+      break;
+    }
   }
-  return false;
+  if (!boxesRanOut) return false;
+
+  // The room at any offset inside the sphere, by every atom gathered for it.
+  auto roomAnywhere = [&](const double3 &offset)
+  {
+    if (!nearbyOnly) return structure.clearance(position + offset);
+    double least = std::numeric_limits<double>::max();
+    for (const BruteForceStructure::Neighbour &atom : atoms)
+    {
+      least = std::min(least, (atom.fromCentre + offset).length() - atom.radius);
+    }
+    return least;
+  };
+
+  double3 best = roomiestOffset;
+  double bestRoom = roomAnywhere(best);
+  for (double step = slack; step > 0.25 * resolution && bestRoom <= radius;)
+  {
+    bool moved = false;
+    for (std::int32_t k = -1; k <= 1 && bestRoom <= radius; ++k)
+    {
+      for (std::int32_t j = -1; j <= 1 && bestRoom <= radius; ++j)
+      {
+        for (std::int32_t i = -1; i <= 1 && bestRoom <= radius; ++i)
+        {
+          if (i == 0 && j == 0 && k == 0) continue;
+          const double3 direction(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
+          const double3 trial = best + (step / direction.length()) * direction;
+          if (double3::dot(trial, trial) > radius * radius) continue;
+          const double room = roomAnywhere(trial);
+          if (room > bestRoom)
+          {
+            bestRoom = room;
+            best = trial;
+            moved = true;
+          }
+        }
+      }
+    }
+    if (!moved) step *= 0.5;
+  }
+
+  // The atoms gathered are those that have a say where the halving looked, and the climb may have left there:
+  // so what it found is asked of the whole structure before it is taken for a sphere that fits.
+  return bestRoom > radius && structure.clearance(position + best) > radius;
 }
 
 bool isGridLocalMaximum(const BruteForceVoxels &voxels, std::size_t voxel)
@@ -523,6 +591,11 @@ BruteForcePoreSpikes BruteForcePoreSpikes::compute(const BruteForceStructure &st
                  {
                    RandomNumber random{lane + seedOffset};
                    Workspace workspace;
+
+                   // How finely the search for a wider sphere looks, and by how much a radius is eased so that a
+                   // family is found by it: the spread of a family's radii and the resolution together.
+                   constexpr double searchResolution = 0.5 * diameterMergeTol;
+                   constexpr double radiusAllowance = 0.5 * diameterMergeTol + searchResolution;
                    for (std::size_t point = 0; point < perLane; ++point)
                    {
                      double3 fractional(random.uniform(), random.uniform(), random.uniform());
@@ -533,6 +606,12 @@ BruteForcePoreSpikes BruteForcePoreSpikes::compute(const BruteForceStructure &st
 
                      // Whether a sphere as wide as the family's holds the point: as wide to within what the
                      // walks agree to, so that a family does not miss itself.
+                     //
+                     // The allowance is a radius, and it is made of two halves of the tolerance on a diameter. The
+                     // spheres of one family differ in diameter by that tolerance at most, so in radius by half
+                     // of it; and the search answers for spheres wider than the radius asked by more than its
+                     // own resolution, which is the other half. A sphere of the family is therefore always wider
+                     // than what is asked here by enough to be found, and no allowance smaller than this does that.
                      auto heldBy = [&](std::size_t f)
                      {
                        const double radius = 0.5 * drawn[f].diameter;
@@ -541,8 +620,8 @@ BruteForcePoreSpikes BruteForcePoreSpikes::compute(const BruteForceStructure &st
                          if (micDistance(structure, position, centre) <= radius) return true;
                        }
                        return aWiderSphereHolds(structure, voxels, roomiest, position, room,
-                                                radius - diameterMergeTol, 0.5 * diameterMergeTol,
-                                                halfVoxelDiagonal, widths, workspace);
+                                                radius - radiusAllowance, searchResolution, halfVoxelDiagonal,
+                                                widths, workspace);
                      };
 
                      // A point held by a sphere of one size is held by one of every smaller size, so down the
@@ -563,8 +642,8 @@ BruteForcePoreSpikes BruteForcePoreSpikes::compute(const BruteForceStructure &st
                      // itself
                      const bool heldWider =
                          first > 0 && aWiderSphereHolds(structure, voxels, roomiest, position, room,
-                                                        0.5 * drawn[first].diameter + diameterMergeTol,
-                                                        0.5 * diameterMergeTol, halfVoxelDiagonal, widths, workspace);
+                                                        0.5 * drawn[first].diameter + radiusAllowance,
+                                                        searchResolution, halfVoxelDiagonal, widths, workspace);
                      if (!heldWider) ++inUnion[lane][first];
                    }
                  });

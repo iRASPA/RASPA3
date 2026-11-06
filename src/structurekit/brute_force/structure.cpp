@@ -109,6 +109,7 @@ std::pair<double3, double> BruteForceStructure::walkUphill(const double3 &from, 
 
   std::vector<double3> directions;
   std::vector<std::pair<double, double3>> nearest;  // the room past an atom, and the unit vector away from it
+  std::vector<Neighbour> within;
 
   while (step > 1.0e-10)
   {
@@ -126,16 +127,36 @@ std::pair<double3, double> BruteForceStructure::walkUphill(const double3 &from, 
       }
     }
 
-    // The atoms within a step of being the nearest, the four nearest of them.
+    // The atoms within a step of being the nearest, the four nearest of them, and an atom here is a copy of
+    // one: two copies of the same atom bound the room as two atoms do, and the ridge between them is a ridge.
+    // Taking each atom by its nearest copy alone left those ridges out, and in a cell of one atom, or of few,
+    // where the room at a point is bounded by copies of the same one, a walk that came onto such a ridge had
+    // only the fixed directions to follow it by and stopped wherever none of them ran near enough along it:
+    // in a cubic cell of one atom turned off the axes, one walk in nine stopped short, by up to a quarter of
+    // the room at the peak.
     nearest.clear();
-    for (std::size_t j = 0; j < this->positions.size(); ++j)
+    if (this->atomsWithin(best, bestClearance + step, within))
     {
-      double3 away = -1.0 * this->nearestImage(best, this->positions[j]);
-      double length = away.length();
-      if (length <= 0.0) continue;
-      double room = length - this->radii[j];
-      if (room > bestClearance + step) continue;
-      nearest.emplace_back(room, (1.0 / length) * away);
+      for (const Neighbour &atom : within)
+      {
+        double length = atom.fromCentre.length();
+        if (length <= 0.0) continue;
+        nearest.emplace_back(length - atom.radius, (1.0 / length) * atom.fromCentre);
+      }
+    }
+    else
+    {
+      // Further than the copies kept reach, which is further than any walk in a void goes: each atom by its
+      // nearest copy, as before.
+      for (std::size_t j = 0; j < this->positions.size(); ++j)
+      {
+        double3 away = -1.0 * this->nearestImage(best, this->positions[j]);
+        double length = away.length();
+        if (length <= 0.0) continue;
+        double room = length - this->radii[j];
+        if (room > bestClearance + step) continue;
+        nearest.emplace_back(room, (1.0 / length) * away);
+      }
     }
     std::ranges::sort(nearest, [](const auto &a, const auto &b) { return a.first < b.first; });
     if (nearest.size() > 4) nearest.resize(4);

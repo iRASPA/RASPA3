@@ -135,36 +135,36 @@ BruteForceDiameters BruteForceDiameters::compute(const BruteForceStructure &stru
   std::size_t numberOfVoxels = voxels.clearance.size();
   if (numberOfVoxels == 0) return self;
 
-  // Di: the roomiest few voxels, each walked uphill. Starting from more than one guards against the best
-  // voxel sitting in a basin that is not the deepest.
+  // The roomiest few of a set of voxels, each walked uphill, and the best of where the walks ended. Starting
+  // from more than one guards against the best voxel sitting in a basin that is not the deepest: the room at
+  // the middle of a voxel is short of the room at the peak beside it by as much as the peak is off the middle,
+  // so the roomiest voxel is in the deepest basin only if the basins differ by more than a voxel.
+  //
+  // One walk consults nothing but the structure, and how far each climbs varies, so the starts are dealt out
+  // one at a time. Each worker keeps the best of its own walks and the best of those is taken afterwards in
+  // worker order, so which start wins a tie is settled by arithmetic rather than by which walk finished
+  // first.
+  constexpr std::size_t mostStarts = 64;
+  const double firstStep = std::max({voxels.spacing.x, voxels.spacing.y, voxels.spacing.z});
+  auto bestOfTheWalksFrom = [&](std::vector<std::size_t> &ranked) -> std::pair<double3, double>
   {
-    std::vector<std::size_t> ranked;
-    ranked.reserve(voxels.numberOfVoidVoxels);
-    for (std::size_t voxel = 0; voxel < numberOfVoxels; ++voxel)
-    {
-      if (voxels.regionOf[voxel] >= 0) ranked.push_back(voxel);
-    }
-
-    const std::size_t starts = std::min<std::size_t>(64, ranked.size());
+    const std::size_t starts = std::min<std::size_t>(mostStarts, ranked.size());
     std::partial_sort(ranked.begin(), ranked.begin() + static_cast<std::ptrdiff_t>(starts), ranked.end(),
-                      [&](std::size_t a, std::size_t b) { return voxels.clearance[a] > voxels.clearance[b]; });
+                      [&](std::size_t a, std::size_t b)
+                      {
+                        return voxels.clearance[a] > voxels.clearance[b] ||
+                               (voxels.clearance[a] == voxels.clearance[b] && a < b);
+                      });
 
-    double bestOnTheGrid = ranked.empty() ? 0.0 : static_cast<double>(voxels.clearance[ranked.front()]);
-
-    double step = std::max({voxels.spacing.x, voxels.spacing.y, voxels.spacing.z});
-
-    // One walk consults nothing but the structure, and how far each climbs varies, so the starts are dealt out
-    // one at a time. Each worker keeps the best of its own walks and the best of those is taken afterwards in
-    // worker order, so which start wins a tie is settled by arithmetic rather than by which walk finished
-    // first.
     const std::size_t workers = workersAvailable();
-    std::vector<double> bestClearanceOfWorker(workers, 0.0);
+    std::vector<double> bestClearanceOfWorker(workers, -std::numeric_limits<double>::max());
     std::vector<double3> bestPositionOfWorker(workers);
 
     forEachIndex(starts, workers,
                  [&](std::size_t worker, std::size_t index)
                  {
-                   auto [position, clearance] = walkUphill(structure, voxels.centre(structure, ranked[index]), step);
+                   auto [position, clearance] =
+                       walkUphill(structure, voxels.centre(structure, ranked[index]), firstStep);
 
                    if (clearance > bestClearanceOfWorker[worker])
                    {
@@ -173,7 +173,7 @@ BruteForceDiameters BruteForceDiameters::compute(const BruteForceStructure &stru
                    }
                  });
 
-    double bestClearance = 0.0;
+    double bestClearance = -std::numeric_limits<double>::max();
     double3 bestPosition{};
     for (std::size_t worker = 0; worker < workers; ++worker)
     {
@@ -183,10 +183,33 @@ BruteForceDiameters BruteForceDiameters::compute(const BruteForceStructure &stru
         bestPosition = bestPositionOfWorker[worker];
       }
     }
+    return {bestPosition, bestClearance};
+  };
 
-    self.includedSphereDiameter = 2.0 * bestClearance;
-    self.includedSphereCentre = bestPosition;
-    self.walkGainedForDi = bestClearance - bestOnTheGrid;
+  // Di: the roomiest few voxels of the void, each walked uphill.
+  {
+    std::vector<std::size_t> ranked;
+    ranked.reserve(voxels.numberOfVoidVoxels);
+    for (std::size_t voxel = 0; voxel < numberOfVoxels; ++voxel)
+    {
+      if (voxels.regionOf[voxel] >= 0) ranked.push_back(voxel);
+    }
+
+    double bestOnTheGrid = 0.0;
+    for (std::size_t voxel : ranked)
+    {
+      bestOnTheGrid = std::max(bestOnTheGrid, static_cast<double>(voxels.clearance[voxel]));
+    }
+
+    if (!ranked.empty())
+    {
+      auto [bestPosition, bestClearance] = bestOfTheWalksFrom(ranked);
+      bestClearance = std::max(bestClearance, 0.0);
+
+      self.includedSphereDiameter = 2.0 * bestClearance;
+      self.includedSphereCentre = bestPosition;
+      self.walkGainedForDi = bestClearance - bestOnTheGrid;
+    }
   }
 
   // Df: every pair of neighbouring void voxels is a hop, and the hops are taken widest first until the
@@ -317,32 +340,30 @@ BruteForceDiameters BruteForceDiameters::compute(const BruteForceStructure &stru
   self.guaranteedFreeSphereDiameter = 2.0 * std::max(width - 0.5 * longestHop, 0.0);
 
   // Dif: the roomiest place that can be reached without ever passing anywhere narrower than the bottleneck,
-  // walked uphill from the best voxel of those components. They are the pieces a loop closed in, as the pass
-  // left them: every hop as wide as the bottleneck is in, and nothing narrower. Only those: the piece of whichever
-  // hop of that width happened to sort last is not the same thing, and on a crystal with a pocket that is
-  // somewhere exactly as wide as the bottleneck, that read Dif off the pocket. And all of them: of two channels
+  // walked uphill from the roomiest few voxels of those components. They are the pieces a loop closed in, as the
+  // pass left them: every hop as wide as the bottleneck is in, and nothing narrower. Only those: the piece of
+  // whichever hop of that width happened to sort last is not the same thing, and on a crystal with a pocket that
+  // is somewhere exactly as wide as the bottleneck, that read Dif off the pocket. And all of them: of two channels
   // that never meet and share a bottleneck, a sphere of that width goes down either.
+  //
+  // The roomiest few and not the roomiest one, for the reason given for Di, which holds as well of the cavities
+  // along a path as of the cavities of the whole void: two of them a hair apart in size are told apart by the
+  // walks and not by which had a voxel nearer its middle.
   if (self.percolates)
   {
     PeriodicUnionFind &pieces = way.pieces;
 
-    std::size_t best = hops[way.closedAt].from;
-    double bestClearance = -std::numeric_limits<double>::max();
+    std::vector<std::size_t> onThePath;
     for (std::size_t voxel = 0; voxel < numberOfVoxels; ++voxel)
     {
       if (voxels.regionOf[voxel] < 0) continue;
       if (static_cast<double>(voxels.clearance[voxel]) < width) continue;
       if (!way.repeatsOfPiece.contains(pieces.find(voxel).first)) continue;
-
-      if (static_cast<double>(voxels.clearance[voxel]) > bestClearance)
-      {
-        bestClearance = voxels.clearance[voxel];
-        best = voxel;
-      }
+      onThePath.push_back(voxel);
     }
+    if (onThePath.empty()) onThePath.push_back(hops[way.closedAt].from);
 
-    double step = std::max({voxels.spacing.x, voxels.spacing.y, voxels.spacing.z});
-    auto [position, clearance] = walkUphill(structure, voxels.centre(structure, best), step);
+    auto [position, clearance] = bestOfTheWalksFrom(onThePath);
 
     self.includedAlongFreePathDiameter = 2.0 * clearance;
     self.includedAlongFreePathCentre = position;

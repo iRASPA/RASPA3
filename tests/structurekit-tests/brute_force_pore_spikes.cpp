@@ -4,6 +4,7 @@ import std;
 
 import int3;
 import double3;
+import double3x3;
 import unit_cell;
 import randomnumbers;
 import brute_force_structure;
@@ -610,4 +611,56 @@ TEST(brute_force_structure, an_atom_within_reach_is_reported_from_its_centre_to_
     }
     EXPECT_LT(nearest, 1.0e-9);
   }
+}
+
+
+// A walk uphill gets to the top from wherever it starts, in a cell of one atom as in any other. There the room at
+// a point is bounded by copies of the one atom, and the ridges of it, where two copies or four are equally near,
+// run between copies: a walk follows a ridge by the directions the nearest atoms give it, and given each atom by
+// its nearest copy alone it had none to follow these by but the fixed ones, which in a cell turned off the axes
+// run along no ridge. One walk in nine then stopped short of the peak, by up to a quarter of the room there.
+TEST(brute_force_structure, a_walk_uphill_reaches_the_peak_along_a_ridge_between_copies_of_one_atom)
+{
+  const double edge = 6.0;
+  const double radius = 1.5;
+  const double peak = 0.5 * std::sqrt(3.0) * edge - radius;
+
+  RandomNumber random{4};
+  std::size_t walks = 0;
+  for (int turn = 0; turn < 12; ++turn)
+  {
+    // The cubic cell turned by angles of no particular kind, about z, then x, then y.
+    const double aboutZ = 6.28 * random.uniform();
+    const double aboutX = 3.14 * random.uniform();
+    const double aboutY = 6.28 * random.uniform();
+    auto turned = [&](const double3 &v)
+    {
+      const double3 first(std::cos(aboutZ) * v.x - std::sin(aboutZ) * v.y,
+                          std::sin(aboutZ) * v.x + std::cos(aboutZ) * v.y, v.z);
+      const double3 second(first.x, std::cos(aboutX) * first.y - std::sin(aboutX) * first.z,
+                           std::sin(aboutX) * first.y + std::cos(aboutX) * first.z);
+      return double3(std::cos(aboutY) * second.x + std::sin(aboutY) * second.z, second.y,
+                     -std::sin(aboutY) * second.x + std::cos(aboutY) * second.z);
+    };
+    const UnitCell cell(double3x3(turned(double3(edge, 0.0, 0.0)), turned(double3(0.0, edge, 0.0)),
+                                  turned(double3(0.0, 0.0, edge))));
+    BruteForceStructure structure = BruteForceStructure::create("one atom", cell, {double3(0.0, 0.0, 0.0)}, {radius});
+
+    for (int n = 0; n < 8; ++n)
+    {
+      // On the line four copies are equally near, on a plane two are, and anywhere.
+      const double3 onTheLine = cell.cell * double3(0.5, 0.5, 0.05 + 0.4 * random.uniform());
+      const double3 onThePlane = cell.cell * double3(0.5, 0.1 + 0.3 * random.uniform(), 0.1 + 0.3 * random.uniform());
+      const double3 anywhere = cell.cell * double3(random.uniform(), random.uniform(), random.uniform());
+      for (const double3 &start : {onTheLine, onThePlane, anywhere})
+      {
+        if (structure.clearance(start) <= 0.0) continue;
+        const auto [where, room] = structure.walkUphill(start, 0.2);
+        ++walks;
+        EXPECT_NEAR(room, peak, 1.0e-6) << "turn " << turn << ", walk " << n;
+        EXPECT_NEAR(structure.clearance(where), room, 1.0e-12);
+      }
+    }
+  }
+  EXPECT_GT(walks, 200uz);
 }

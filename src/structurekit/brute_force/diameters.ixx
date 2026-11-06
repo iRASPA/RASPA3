@@ -22,17 +22,19 @@ import brute_force_voxels;
 //
 //   Df is the widest bottleneck of a path that leaves the cell and comes back to where it started as a
 //   different image of itself, which is what percolation is. Every pair of neighbouring void voxels is an
-//   edge whose width is the narrowest room along the straight line between them -- measured, not
-//   interpolated -- and the edges are then added widest first until the piece they are in repeats itself
-//   under some lattice vector. The width at which that happens is Df/2. This is limited by the spacing:
-//   the true bottleneck lies wherever it lies, and a grid line passes near it but not through it, so Df
-//   comes out slightly small and creeps up as the grid is refined.
+//   edge, as wide as the room at its narrower end, and the edges are then added widest first until the piece
+//   they are in repeats itself under some lattice vector. The width at which that happens is Df/2. This is
+//   limited by the spacing, and both ways: the true bottleneck lies wherever it lies, and a grid line passes
+//   near it but not through it, which makes Df come out small; and the room along an edge can be less than at
+//   its ends, by half its length at most, which lets it come out large. `guaranteedFreeSphereDiameter` is the
+//   same pass with that half length taken off every edge, a width every sphere is shown to manage, and the true
+//   Df is at least that.
 //
 //   Dif is the roomiest point reachable without ever passing anywhere narrower than Df/2, found on the same
-//   pass and then walked uphill within its own component.
+//   pass and then walked uphill from the roomiest few voxels of that part of the void.
 //
-// So Di should agree with a correct diagram to the last few digits, and Df and Dif to about the spacing.
-// Both errs one way only: a grid can miss the widest path but never invent one, so these are lower bounds.
+// So Di should agree with a correct diagram to the last few digits, and Df and Dif to about the spacing. Di
+// and Dif err one way only, a grid being able to miss a cavity but not to invent one; Df is bracketed.
 export struct BruteForceDiameters
 {
   double includedSphereDiameter{0.0};          // Di, Å

@@ -204,8 +204,11 @@ void MC_OpenCL_PoreSizeDistribution::run(const SampledStructure &structure,
     // With no centres to draw the sphere about the point itself is all there is.
     if (global_work_size > 0)
     {
-      // upload random Cartesian positions
-      std::size_t number_of_random_position{global_work_size};
+      // The centres tried for this point: as many as were asked for. The work is rounded up to a whole number
+      // of groups, but the items past the number asked for stop at once and read nothing, so nothing is drawn
+      // for them. Drawing for them as well took a few more numbers from the generator for every point, how
+      // many depending on the device's group size, and so made what a seed gives depend on the device.
+      std::size_t number_of_random_position{number_of_inner_steps};
       std::vector<cl_float4> random_cartesian_positions(number_of_random_position);
       for (size_t j = 0; j < number_of_random_position; j++)
       {
@@ -391,7 +394,9 @@ int CheckSphereOverLap(float4 posA, float *smallest_radius, int numberOfFramewor
                        float4 inverse_cella, float4 inverse_cellb, float4 inverse_cellc,
                        float4 cella, float4 cellb, float4 cellc, __global float *radius_j)
 {
-  *smallest_radius = 1000.0;
+  // No atom, no limit to the room: the largest float, as everywhere else, and a constant of single precision,
+  // a device being under no obligation to have doubles. It was a thousand Ångström, written as a double.
+  *smallest_radius = MAXFLOAT;
   for(int jatom = 0; jatom < numberOfFrameworkAtoms; ++jatom)
   {
     float4 dr = ShortestImage(posA - frameworkPositions[jatom], inverse_cella, inverse_cellb, inverse_cellc,
@@ -431,7 +436,7 @@ __kernel void ComputePoreSizeDistribution(__global float4 *frameworkPositions,
   if(global_id >= numberOfInnerSteps) return;
 
   // The point itself is known to be in the void: the host looked before it came here.
-  float radius = 0.0;
+  float radius = 0.0f;
   float4 posB = randomCartesianPositions[global_id];
 
   if(CheckSphereOverLap(posB, &radius, numberOfFrameworkAtoms, frameworkPositions, 
@@ -442,7 +447,8 @@ __kernel void ComputePoreSizeDistribution(__global float4 *frameworkPositions,
 
   float rr = dot(dr, dr);
 
-  if(rr > radius * radius) return;
+  // Compared as distances and not as squares: room without limit squared is past what a float holds.
+  if(sqrt(rr) > radius) return;
 
   AtomicMax(largest_radius, radius);
 }

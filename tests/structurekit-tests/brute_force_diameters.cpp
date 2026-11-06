@@ -5,6 +5,7 @@ import std;
 import int3;
 import double3;
 import unit_cell;
+import randomnumbers;
 import brute_force_structure;
 import brute_force_voxels;
 import brute_force_diameters;
@@ -205,4 +206,48 @@ TEST(brute_force_diameters, the_dimensionality_at_a_tie_is_that_of_the_piece_tha
   // Two straws along different directions that never touch run one way each.
   carve([&](std::int32_t i, std::int32_t j, std::int32_t k) { return (i == 2 && j == 2) || (j == 16 && k == 12); });
   EXPECT_EQ(BruteForceDiameters::compute(structure, voxels).dimensionality, 1uz);
+}
+
+
+// The roomiest place along the widest way through is found by walking uphill from the roomiest few voxels of
+// that part of the void, as the roomiest place anywhere is from the roomiest few of all of it. The room at the
+// middle of a voxel is short of the room at the peak beside it by as much as the peak is off the middle, so
+// which cavity has the roomiest voxel is settled by where the grid fell and not by which is the larger, wherever
+// two are within a voxel of each other in size. Walked from the one roomiest voxel alone, the roomiest place on
+// the path came out smaller than the largest sphere of the crystal in crystals where that sphere is on the path:
+// by a quarter of an Ångström in the last of these.
+TEST(brute_force_diameters, the_roomiest_place_on_the_path_is_walked_to_from_more_than_one_voxel)
+{
+  // Atoms of several sizes scattered in a cell, on a grid coarse enough for neighbouring cavities to be told
+  // apart wrongly by their voxels. In each the largest cavity is on the widest way through.
+  struct Case
+  {
+    std::size_t seed;
+    double fromOneVoxel;  // what the walk from the roomiest voxel alone came to, as a diameter
+  };
+  for (const Case &entry : {Case{23, 6.311101}, Case{38, 6.331454}, Case{44, 6.417676}})
+  {
+    RandomNumber random{std::optional<std::size_t>(entry.seed)};
+    const UnitCell cell(11.0, 12.0, 13.0);
+    std::vector<double3> positions;
+    std::vector<double> radii;
+    for (std::size_t i = 0; i < 26; ++i)
+    {
+      positions.push_back(cell.cell * double3(random.uniform(), random.uniform(), random.uniform()));
+      radii.push_back(0.9 + 0.9 * random.uniform());
+    }
+    BruteForceStructure structure = BruteForceStructure::create("scattered", cell, positions, radii);
+    BruteForceVoxels voxels = BruteForceVoxels::build(structure, 0.4);
+    const BruteForceDiameters diameters = BruteForceDiameters::compute(structure, voxels);
+
+    ASSERT_TRUE(diameters.percolates) << "seed " << entry.seed;
+    EXPECT_NEAR(diameters.includedAlongFreePathDiameter, diameters.includedSphereDiameter, 1.0e-9)
+        << "seed " << entry.seed;
+    EXPECT_GT(diameters.includedAlongFreePathDiameter, entry.fromOneVoxel + 0.05) << "seed " << entry.seed;
+
+    // And it is where it is said to be: the room there is half the diameter.
+    EXPECT_NEAR(2.0 * structure.clearance(diameters.includedAlongFreePathCentre),
+                diameters.includedAlongFreePathDiameter, 1.0e-9)
+        << "seed " << entry.seed;
+  }
 }

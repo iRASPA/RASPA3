@@ -22,6 +22,7 @@ import opencl;
 import sampled_structure;
 import mc_surface_area;
 import mc_opencl_surface_area;
+import mc_opencl_pore_size_distribution;
 import integration_surface_area;
 import integration_opencl_surface_area;
 
@@ -303,6 +304,11 @@ TEST(sampled_surface_area, the_kernels_ask_nothing_of_a_device_that_has_no_doubl
   for (const std::string &fault : notForADeviceWithoutDoubles(MC_OpenCL_SurfaceArea::surfaceAreaKernelSource))
   {
     ADD_FAILURE() << "the Monte Carlo kernel has " << fault;
+  }
+  const char *ofThePoreSizes = MC_OpenCL_PoreSizeDistribution::poreSizeDistributionKernelSource;
+  for (const std::string &fault : notForADeviceWithoutDoubles(ofThePoreSizes))
+  {
+    ADD_FAILURE() << "the pore-size kernel has " << fault;
   }
 }
 
