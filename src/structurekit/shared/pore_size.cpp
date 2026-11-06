@@ -21,6 +21,12 @@ double coveringSlack(const UnitCell &unitCell, uint3 gridSize)
 }
 
 
+std::string poreDiameterText(double diameter)
+{
+  return poreSizeIsUnlimited(diameter) ? std::string("unlimited") : std::format("{:.5f}", diameter);
+}
+
+
 std::vector<float> distanceToIsosurface(uint3 gridSize, const UnitCell &unitCell,
                                         std::span<const float> openness, double lowestOpenness)
 {
@@ -143,7 +149,7 @@ std::vector<float> distanceToIsosurface(uint3 gridSize, const UnitCell &unitCell
                    }
                  }
 
-                 distance[index] = (best == std::numeric_limits<double>::max()) ? std::numeric_limits<float>::max()
+                 distance[index] = (best == std::numeric_limits<double>::max()) ? unlimitedRoom
                                                                                 : static_cast<float>(best);
                });
 
@@ -181,7 +187,7 @@ std::vector<float> poreRadiusField(uint3 gridSize, const UnitCell &unitCell,
         const std::int64_t voxel = static_cast<std::int64_t>(index);
 
         const float radius = distance[index];
-        if (!(radius > 0.0f) || radius == std::numeric_limits<float>::max()) return;
+        if (!(radius > 0.0f) || radius == unlimitedRoom) return;
 
         const std::int64_t k = voxel / (nx * ny);
         const std::int64_t j = (voxel / nx) % ny;
@@ -225,7 +231,7 @@ std::vector<float> poreRadiusField(uint3 gridSize, const UnitCell &unitCell,
   // of no size: the room there is unlimited, and that is the size of the pore.
   for (std::size_t index = 0; index < numberOfVoxels; ++index)
   {
-    if (distance[index] == std::numeric_limits<float>::max()) poreRadius[index] = distance[index];
+    if (distance[index] == unlimitedRoom) poreRadius[index] = unlimitedRoom;
   }
 
   return poreRadius;
@@ -241,6 +247,8 @@ PoreSizeCurve binPoreSizes(std::span<const float> poreRadius, std::span<const fl
 
   auto weightOf = [&](std::size_t v) { return weight.empty() ? 1.0 : weight[v]; };
 
+  // Points of unlimited room are counted and nothing more is done with them: the mark they carry is not a
+  // size, so it is not averaged, not compared for the largest, and not divided by the width of a bin.
   double weightedDiameter = 0.0;
   for (std::size_t v = 0; v < numberOfVoxels; ++v)
   {
@@ -256,14 +264,25 @@ PoreSizeCurve binPoreSizes(std::span<const float> poreRadius, std::span<const fl
       curve.totalAccessibleWeight += w;
     }
 
+    if (poreRadius[v] == unlimitedRoom)
+    {
+      curve.unlimitedWeight += w;
+      curve.largestDiameter = unlimitedPoreDiameter;
+      continue;
+    }
+
     const double diameter = 2.0 * static_cast<double>(poreRadius[v]);
-    curve.largestDiameter = std::max(curve.largestDiameter, diameter);
+    curve.largestBoundedDiameter = std::max(curve.largestBoundedDiameter, diameter);
     weightedDiameter += w * diameter;
   }
-  if (curve.totalWeight > 0.0) curve.meanDiameter = weightedDiameter / curve.totalWeight;
+  curve.largestDiameter = std::max(curve.largestDiameter, curve.largestBoundedDiameter);
+  if (curve.unlimitedWeight > 0.0)
+    curve.meanDiameter = unlimitedPoreDiameter;
+  else if (curve.totalWeight > 0.0)
+    curve.meanDiameter = weightedDiameter / curve.totalWeight;
 
   const std::size_t bins = numberOfBins.value_or(200);
-  const double largest = maximumDiameter.value_or(std::max(curve.largestDiameter, 1.0));
+  const double largest = maximumDiameter.value_or(std::max(curve.largestBoundedDiameter, 1.0));
 
   // No bins, or no range to divide among them, is no curve. What was counted above does not depend on either.
   if (bins == 0 || !(largest > 0.0)) return curve;
@@ -276,14 +295,25 @@ PoreSizeCurve binPoreSizes(std::span<const float> poreRadius, std::span<const fl
   for (std::size_t v = 0; v < numberOfVoxels; ++v)
   {
     if (distance[v] < 0.0f) continue;
-    const double diameter = 2.0 * static_cast<double>(poreRadius[v]);
-    std::size_t bin = static_cast<std::size_t>(std::floor(diameter / step));
 
-    // The top of the range belongs to the last bin. By default the range is the largest sphere itself, and
+    // Which bin, with the two cases that are not a matter of dividing settled before anything is divided. A
+    // size past the range is past every bin, and so is unlimited room, which is past any range there could be;
+    // the quotient for either is not a count of bins an integer need hold, and for the mark it is 1e39 or so,
+    // which none does.
+    //
+    // The top of the range itself belongs to the last bin. By default the range is the largest sphere, and
     // the family of pores at exactly that size is the one spike the curve is certain to have, so it has to
     // land in a bin that is drawn; past the end of the range it would be counted at or above every bin and
     // drawn in none. Only sizes beyond an explicitly shorter range go there.
-    if (bin >= bins) bin = (diameter <= largest) ? bins - 1 : bins;
+    std::size_t bin = bins;
+    if (poreRadius[v] != unlimitedRoom)
+    {
+      const double diameter = 2.0 * static_cast<double>(poreRadius[v]);
+      if (diameter < largest)
+        bin = std::min(bins - 1, static_cast<std::size_t>(std::floor(std::max(diameter, 0.0) / step)));
+      else if (diameter == largest)
+        bin = bins - 1;
+    }
 
     const double w = weightOf(v);
     voidAtLeast[bin] += w;

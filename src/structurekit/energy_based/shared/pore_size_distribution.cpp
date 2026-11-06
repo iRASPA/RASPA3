@@ -38,12 +38,14 @@ struct SweptField
   std::vector<std::uint8_t> accessible;
   int dimensionality{0};
 
-  double largestDiameter() const
+  // The largest sphere of limited size, which is what a range for the curves is taken from: a point of
+  // unlimited room has no size to stretch a range to, and lies beyond whatever range there is.
+  double largestBoundedDiameter() const
   {
     double largest = 0.0;
     for (std::size_t v = 0; v < this->distance.size(); ++v)
     {
-      if (this->distance[v] < 0.0f) continue;
+      if (this->distance[v] < 0.0f || this->poreRadius[v] == unlimitedRoom) continue;
       largest = std::max(largest, 2.0 * static_cast<double>(this->poreRadius[v]));
     }
     return largest;
@@ -215,7 +217,8 @@ void EnergyPoreSizeDistribution::run(const EnergyBackend &backend, const PairInt
   // puts the reference contour outside them both. All the curves are binned over whichever reaches furthest,
   // since curves on different bins cannot be read off against each other.
   const double widest =
-      std::max({free.largestDiameter(), least.largestDiameter(), onReference.largestDiameter(), 1.0});
+      std::max({free.largestBoundedDiameter(), least.largestBoundedDiameter(),
+                onReference.largestBoundedDiameter(), 1.0});
   PoreSizeCurve freeCurve = binPoreSizes(free.poreRadius, free.distance, free.accessible, {},
                                          maximumDiameter.value_or(widest), numberOfBins);
   PoreSizeCurve leastCurve = binPoreSizes(least.poreRadius, least.distance, least.accessible, {},
@@ -304,16 +307,19 @@ void EnergyPoreSizeDistribution::run(const EnergyBackend &backend, const PairInt
              this->thresholdInKT);
   std::print(myfile, "# the level but open a little above it holds gas in any experiment, and counting it out\n");
   std::print(myfile, "# because no path exists at one chosen level would throw that uptake away.\n");
-  std::print(myfile, "{:44} {:14.5f} [Å]\n", "Largest sphere the void holds:", this->largestDiameter);
+  std::print(myfile, "{:44} {:>14} [Å]\n", "Largest sphere the void holds:",
+             poreDiameterText(this->largestDiameter));
   std::print(myfile, "{:44} {:14}\n", "Directions the void runs in:", this->dimensionality);
   std::print(myfile, "{:44} {:14.8f}\n",
              "Void fraction at this level (minimum energy):", this->minimumEnergyVoidFraction);
-  std::print(myfile, "{:44} {:14.5f} [Å]\n",
-             "Largest sphere that void holds:", this->minimumEnergyLargestDiameter);
+  std::print(myfile, "{:44} {:>14} [Å]\n",
+             "Largest sphere that void holds:", poreDiameterText(this->minimumEnergyLargestDiameter));
   std::print(myfile, "\n");
 
-  std::print(myfile, "{:44} {:14.5f} [Å]\n", "Mean pore, per unit of volume:", this->volumetricMeanDiameter);
-  std::print(myfile, "{:44} {:14.5f} [Å]\n", "Mean pore, per molecule:", this->occupancyMeanDiameter);
+  std::print(myfile, "{:44} {:>14} [Å]\n", "Mean pore, per unit of volume:",
+             poreDiameterText(this->volumetricMeanDiameter));
+  std::print(myfile, "{:44} {:>14} [Å]\n", "Mean pore, per molecule:",
+             poreDiameterText(this->occupancyMeanDiameter));
   std::print(myfile, "{:44} {:14.8f}\n",
              "Of the molecules, in reachable void:", this->reachableOccupancyFraction);
   std::print(myfile, "{:44} {:14.8f}\n",

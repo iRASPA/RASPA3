@@ -154,7 +154,8 @@ void GridPoreSizeDistribution::run(const PairInteractions &interactions, const C
   std::print(report, "# Spheres drawn: {}, one about every point of the void\n", this->numberOfCentres);
   std::print(report, "# A sphere covers a point when it comes within {:.5f} [Å] of it, half a voxel diagonal twice\n",
              this->slack);
-  std::print(report, "# The largest sphere that fits in the void is {:.5f} [Å] across\n", this->largestDiameter);
+  std::print(report, "# The largest sphere that fits in the void is {} [Å] across\n",
+             poreDiameterText(this->largestDiameter));
   std::print(report, "# Diameters evaluated: {}, up to {} [Å]\n", curve.points.size(),
              static_cast<double>(curve.points.size()) * curve.binWidth);
   std::print(report, "# GPU Timing: {} [s] for the spheres, {} [s] for the clearance field\n", this->gpuSeconds,

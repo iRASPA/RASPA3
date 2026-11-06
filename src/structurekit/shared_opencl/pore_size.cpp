@@ -19,6 +19,7 @@ import uint3;
 import double3;
 import double3x3;
 import unit_cell;
+import grid_pore_size;
 
 
 std::vector<float> poreRadiusFieldOpenCL(uint3 gridSize, const UnitCell &unitCell,
@@ -43,7 +44,7 @@ std::vector<float> poreRadiusFieldOpenCL(uint3 gridSize, const UnitCell &unitCel
   {
     for (std::size_t voxel = 0; voxel < numberOfVoxels; ++voxel)
     {
-      if (distance[voxel] == std::numeric_limits<float>::max()) poreRadius[voxel] = distance[voxel];
+      if (distance[voxel] == unlimitedRoom) poreRadius[voxel] = unlimitedRoom;
     }
   };
 
@@ -52,7 +53,7 @@ std::vector<float> poreRadiusFieldOpenCL(uint3 gridSize, const UnitCell &unitCel
   for (std::size_t voxel = 0; voxel < numberOfVoxels; ++voxel)
   {
     const float radius = distance[voxel];
-    if (radius > 0.0f && radius != std::numeric_limits<float>::max())
+    if (radius > 0.0f && radius != unlimitedRoom)
     {
       centres.push_back(static_cast<cl_int>(voxel));
     }

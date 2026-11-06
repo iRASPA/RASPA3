@@ -382,10 +382,17 @@ TEST(grid_pore_size, a_field_open_everywhere_is_one_pore_of_unlimited_size)
   for (float value : poreRadius) ASSERT_EQ(value, unlimited);
 
   // At any range asked about, all of the void is in pores at least that wide and none of it within the range.
+  // The largest sphere and the mean have no limit either, and say so by the mark that stands for it.
   std::vector<std::uint8_t> accessible(1728, 1);
   PoreSizeCurve ranged = binPoreSizes(poreRadius, distance, accessible, {}, 20.0, 10);
   EXPECT_DOUBLE_EQ(ranged.largestDiameter, 2.0 * static_cast<double>(unlimited));
+  EXPECT_EQ(ranged.largestDiameter, unlimitedPoreDiameter);
+  EXPECT_EQ(ranged.meanDiameter, unlimitedPoreDiameter);
+  EXPECT_TRUE(poreSizeIsUnlimited(ranged.largestDiameter));
+  EXPECT_DOUBLE_EQ(ranged.largestBoundedDiameter, 0.0);
+  EXPECT_DOUBLE_EQ(ranged.unlimitedWeight, 1728.0);
   ASSERT_EQ(ranged.points.size(), 10uz);
+  EXPECT_DOUBLE_EQ(ranged.binWidth, 2.0);
   for (const PoreSizeCurvePoint &point : ranged.points)
   {
     EXPECT_DOUBLE_EQ(point.cumulativeVoidFraction, 1.0) << "at " << point.diameter;
@@ -393,12 +400,92 @@ TEST(grid_pore_size, a_field_open_everywhere_is_one_pore_of_unlimited_size)
     EXPECT_DOUBLE_EQ(point.distribution, 0.0) << "at " << point.diameter;
   }
 
-  // Left to choose its own range the curve ends at that size, with the void in the last bin as ever.
+  // Left to choose its own range the curve has no size to run to, and runs to one Ångström as it does for a
+  // void of no size at all: the same curve as at any other range, and not an axis of 1e38 Ångström with the
+  // void in its last bin.
   PoreSizeCurve own = binPoreSizes(poreRadius, distance, accessible, {}, std::nullopt, 10);
   ASSERT_EQ(own.points.size(), 10uz);
-  EXPECT_DOUBLE_EQ(own.points.front().cumulativeVoidFraction, 1.0);
-  EXPECT_DOUBLE_EQ(own.points.back().cumulativeVoidFraction, 1.0);
-  EXPECT_DOUBLE_EQ(own.points.front().distribution, 0.0);
+  EXPECT_DOUBLE_EQ(own.binWidth, 0.1);
+  for (const PoreSizeCurvePoint &point : own.points)
+  {
+    EXPECT_LT(point.diameter, 1.0);
+    EXPECT_DOUBLE_EQ(point.cumulativeVoidFraction, 1.0) << "at " << point.diameter;
+    EXPECT_DOUBLE_EQ(point.distribution, 0.0) << "at " << point.diameter;
+  }
+}
+
+// Unlimited room is a mark and not a size, so where only part of the void has it nothing is worked out from
+// it. The half that has sizes is binned by them; the half that has none is at or above every diameter and in
+// no bin; the range is the bounded half's; and the largest sphere and the mean are without limit, the mean
+// not being some number between four Ångström and the largest float.
+TEST(grid_pore_size, unlimited_room_beside_pores_of_a_size_is_counted_and_not_averaged)
+{
+  const std::size_t numberOfVoxels = 1000;
+  std::vector<float> distance(numberOfVoxels, 1.0f);
+  std::vector<float> poreRadius(numberOfVoxels, 2.0f);
+  for (std::size_t v = 0; v < numberOfVoxels / 2; ++v)
+  {
+    distance[v] = unlimitedRoom;
+    poreRadius[v] = unlimitedRoom;
+  }
+  // A tenth of the cell is wall, and takes no part.
+  for (std::size_t v = 900; v < numberOfVoxels; ++v) distance[v] = -1.0f;
+
+  // A range that holds the four Ångström, the curve's own, and one that stops short of them.
+  const std::vector<std::optional<double>> ranges{20.0, std::nullopt, 3.0};
+  for (const std::optional<double> &range : ranges)
+  {
+    const PoreSizeCurve curve = binPoreSizes(poreRadius, distance, {}, {}, range, 10);
+    const std::string which = range.has_value() ? std::format("range {}", range.value()) : "range of its own";
+    const double reach = range.value_or(4.0);
+
+    EXPECT_EQ(curve.numberOfVoidVoxels, 900uz) << which;
+    EXPECT_DOUBLE_EQ(curve.unlimitedWeight, 500.0) << which;
+    EXPECT_DOUBLE_EQ(curve.largestBoundedDiameter, 4.0) << which;
+    EXPECT_EQ(curve.largestDiameter, unlimitedPoreDiameter) << which;
+    EXPECT_EQ(curve.meanDiameter, unlimitedPoreDiameter) << which;
+
+    ASSERT_EQ(curve.points.size(), 10uz) << which;
+    EXPECT_DOUBLE_EQ(curve.binWidth, reach / 10.0) << which;
+
+    double shareInBins = 0.0;
+    for (const PoreSizeCurvePoint &point : curve.points)
+    {
+      // Up to the bin that holds four Ångström all of the void is at least that wide, and past it only the
+      // part with no limit is. A range that stops short of four has all of it past every bin.
+      const double binStartsAt = point.diameter - 0.5 * curve.binWidth;
+      const double atLeast = (reach < 4.0 || binStartsAt <= 4.0) ? 1.0 : 500.0 / 900.0;
+      EXPECT_DOUBLE_EQ(point.cumulativeVoidFraction, atLeast) << which << ", at " << point.diameter;
+      shareInBins += point.distribution * curve.binWidth;
+    }
+    // What the bins hold is the bounded part, where the range reaches it, and never the unbounded one.
+    EXPECT_NEAR(shareInBins, (reach >= 4.0) ? 400.0 / 900.0 : 0.0, 1.0e-12) << which;
+  }
+
+  // Weighted, the mark still weighs as it is told and is still not averaged.
+  std::vector<double> weight(numberOfVoxels, 2.5);
+  const PoreSizeCurve weighted = binPoreSizes(poreRadius, distance, {}, weight, 20.0, 10);
+  EXPECT_DOUBLE_EQ(weighted.unlimitedWeight, 1250.0);
+  EXPECT_EQ(weighted.meanDiameter, unlimitedPoreDiameter);
+
+  // With none of it unlimited the mean is the mean, as it always was.
+  std::vector<float> bounded(numberOfVoxels, 2.0f);
+  std::vector<float> room(numberOfVoxels, 1.0f);
+  const PoreSizeCurve ordinary = binPoreSizes(bounded, room, {}, {}, 20.0, 10);
+  EXPECT_DOUBLE_EQ(ordinary.meanDiameter, 4.0);
+  EXPECT_DOUBLE_EQ(ordinary.largestDiameter, 4.0);
+  EXPECT_DOUBLE_EQ(ordinary.unlimitedWeight, 0.0);
+  EXPECT_FALSE(poreSizeIsUnlimited(ordinary.largestDiameter));
+}
+
+// A diameter is written as a number, and the mark for none as a word: a report of a cell with nothing in it
+// used to give its largest sphere as a figure of thirty-nine digits.
+TEST(grid_pore_size, a_diameter_without_limit_is_written_as_a_word)
+{
+  EXPECT_EQ(poreDiameterText(6.588891), "6.58889");
+  EXPECT_EQ(poreDiameterText(0.0), "0.00000");
+  EXPECT_EQ(poreDiameterText(unlimitedPoreDiameter), "unlimited");
+  EXPECT_EQ(poreDiameterText(2.0 * static_cast<double>(std::numeric_limits<float>::max())), "unlimited");
 }
 
 // The device sweep is the same sweep: a field of unlimited room comes back as one.

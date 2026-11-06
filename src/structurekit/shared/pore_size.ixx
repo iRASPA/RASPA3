@@ -35,6 +35,22 @@ import unit_cell;
 // covered. Without it that shell reports the size of nothing at all and the curve grows a spurious tail.
 export double coveringSlack(const UnitCell &unitCell, uint3 gridSize);
 
+// Room with no limit to it. A point of a void that has no boundary anywhere, a field open throughout or a cell
+// with no atoms in it, is no distance from one, and the size of the pore it is in is no diameter. Both are
+// held as the largest float, the fields being of floats and the build having no infinity to give, and a
+// diameter with no limit is twice that, as every diameter is twice a radius.
+//
+// It is a mark and not a measurement, so nothing is to be worked out from it: it is not averaged with sizes
+// that are sizes, it is not divided into bins, and it is not printed as a number of Ångström. `binPoreSizes`
+// keeps to that, and what it reports as unlimited is exactly `unlimitedPoreDiameter`, to be asked after with
+// `poreSizeIsUnlimited` and written with `poreDiameterText`.
+export inline constexpr float unlimitedRoom = std::numeric_limits<float>::max();
+export inline constexpr double unlimitedPoreDiameter = 2.0 * static_cast<double>(unlimitedRoom);
+export inline bool poreSizeIsUnlimited(double diameter) { return diameter >= unlimitedPoreDiameter; }
+
+// A diameter as a report writes it: to five places, or the word where there is no number to write.
+export std::string poreDiameterText(double diameter);
+
 // The distance from every grid point to the surface where `openness` falls to `lowestOpenness`, positive
 // inside the void and negative outside it, so that the result can be read wherever a clearance field is.
 //
@@ -86,11 +102,21 @@ export struct PoreSizeCurve
 {
   std::vector<PoreSizeCurvePoint> points;
 
-  // The largest sphere that fits in the void anywhere, which is the same quantity as Di.
+  // The largest sphere that fits in the void anywhere, which is the same quantity as Di. Where any of the
+  // void has unlimited room it is `unlimitedPoreDiameter`.
   double largestDiameter{0.0};
 
-  // The mean size, over whatever the curve was weighted by.
+  // The largest sphere among the points whose room is limited, which is what the range of the curve is
+  // taken from when none is given. The same as the above wherever the void has a boundary.
+  double largestBoundedDiameter{0.0};
+
+  // The mean size, over whatever the curve was weighted by. A mean over sizes of which some have no limit
+  // has none either, and is `unlimitedPoreDiameter`, not an average of that mark with the sizes beside it.
   double meanDiameter{0.0};
+
+  // How much of the weight lies at points of unlimited room. It is counted in every bin's share of the void
+  // in pores at least that wide, and is in no bin of the distribution, whatever the range.
+  double unlimitedWeight{0.0};
 
   std::size_t numberOfVoidVoxels{0};
   std::size_t numberOfAccessibleVoxels{0};
@@ -107,6 +133,10 @@ export struct PoreSizeCurve
 // exact for the field it was measured on, and only its derivative depends on how finely the sizes are
 // divided up. `accessible` marks the points reachable from outside, and may be empty when nothing is. With no
 // bins, or a range of no size, there is no curve, and only what was counted over the void is filled in.
+//
+// With no range given it runs to the largest sphere of limited size, and to one Ångström where there is none.
+// Points of unlimited room lie beyond any range: at or above every diameter of the curve, and in none of its
+// bins.
 //
 // `weight` says how much each point counts for, and may be empty, which is every point counting for one.
 // That is the usual reading of a pore-size distribution: the share of the *space* lying in pores of a given

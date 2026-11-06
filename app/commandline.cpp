@@ -48,6 +48,7 @@ import interpolation_energy_grid;
 import lammps_reader;
 import amber_prmtop_reader;
 import pore_size_distribution_ban_vlugt;
+import grid_pore_size;
 import opencl_clearance_grid;
 import grid_connected_components;
 import opencl_pore_analysis;
@@ -1372,10 +1373,12 @@ void CommandLine::run(int argc, char *argv[])
           EnergyPoreSizeDistribution psd;
           psd.run(energyBackend(), interactions, crystal, molecule, iso_value, gridSize, orientations,
                   temperature, blocking_threshold, true, 1e-6, maximum_range, number_of_bins);
-          std::cout << "largest sphere the void holds: " << psd.largestDiameter << " A, void fraction at this level "
+          std::cout << "largest sphere the void holds: " << poreDiameterText(psd.largestDiameter)
+                    << " A, void fraction at this level "
                     << psd.voidFraction << ", running in " << psd.dimensionality << " directions" << std::endl;
-          std::cout << "mean pore per unit volume " << psd.volumetricMeanDiameter << " A, per molecule "
-                    << psd.occupancyMeanDiameter << " A, with " << psd.reachableOccupancyFraction
+          std::cout << "mean pore per unit volume " << poreDiameterText(psd.volumetricMeanDiameter)
+                    << " A, per molecule " << poreDiameterText(psd.occupancyMeanDiameter) << " A, with "
+                    << psd.reachableOccupancyFraction
                     << " of the molecules in reachable void" << std::endl;
         }
       }
