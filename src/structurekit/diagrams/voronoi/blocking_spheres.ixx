@@ -101,6 +101,9 @@ export std::vector<BlockingSphere> withoutContainedSpheres(const UnitCell& unitC
 // `bareAllowance` is the one case where an allowance is right: the spheres are wanted among the bare atoms, as
 // `bareBlockingSpheres` gives the measured ones, and then the reach grows by it and the channel limit comes
 // down by it, for the reason given there. Zero, the default, is the probe-centre space a simulation reads.
+// The spheres are then those the same covering gives among the positions of the probe's centre, with the
+// channel limit brought in by twice the allowance, each made the allowance wider: a sampled position is done
+// with when the ball of that radius about it is inside a sphere, not when the position is.
 export std::vector<BlockingSphere> computeBlockingSpheres(const PoreAccessibility& accessibility,
                                                           std::size_t numberOfSamples, double bareAllowance = 0.0);
 

@@ -247,13 +247,27 @@ std::vector<BlockingSphere> computeBlockingSpheres(const PoreAccessibility& acce
       // being abandoned when the sampling puts an accessible point improbably close to its centre.
       double radius = std::max(points[i].clearance + bareAllowance, std::min(wanted, admissible));
 
+      // How far the sphere reaches among the positions of the probe's centre, which is what the points
+      // are. Among the bare atoms a position stands for the whole ball of the probe's radius about it, the
+      // cavity going on that far past it, and the sphere holds that ball only where the position is the
+      // allowance short of the sphere's surface. So that is how far the sphere counts, below, both for
+      // whether it is worth writing and for which points it has dealt with. With no allowance it is the
+      // radius.
+      double reach = radius - bareAllowance;
+
       // Near the rim of a pocket there is no room for a sphere worth writing, and the classification
       // there is the least certain anyway. Leaving those points uncovered is what bounds the count: the
       // clearance falls to zero at the boundary, so insisting on covering the last of it would take
       // unboundedly many ever smaller spheres. What is given up are positions where the probe is already
       // touching an atom. The first sphere of a pocket is exempt, since a pocket narrow throughout is
       // still a pocket and closing it is the whole point.
-      if (radius < resolution && !first)
+      //
+      // It is the reach that is held to the resolution and not the radius. A sphere among the bare atoms
+      // is never thinner than the allowance, so its radius would pass every time, and a sphere at each
+      // point of the rim then follows, as near to the last as the samples are to each other: sites a
+      // diagram is then asked to tell apart. Held to its reach, a sphere written deals with every point
+      // within a sample's spacing of it, and no later centre is nearer than that.
+      if (reach < resolution && !first)
       {
         covered[i] = 1;
         continue;
@@ -262,9 +276,13 @@ std::vector<BlockingSphere> computeBlockingSpheres(const PoreAccessibility& acce
 
       spheres.push_back(BlockingSphere{double3::fract(unitCell.inverseCell * center), radius});
 
+      // A point is dealt with once its whole ball is inside the sphere. Counting it as soon as the point
+      // itself was inside left, wherever the channel had held the sphere short, a rind of the cavity as
+      // thick as the allowance outside every sphere: the points in the last of the sphere were struck off
+      // with their balls standing out of it, and nothing was ever centred there to take them in.
       for (std::size_t j = i; j < points.size(); ++j)
       {
-        if (covered[j] == 0 && periodicDistance(unitCell, center, points[j].position) < radius) covered[j] = 1;
+        if (covered[j] == 0 && periodicDistance(unitCell, center, points[j].position) < reach) covered[j] = 1;
       }
     }
   }
