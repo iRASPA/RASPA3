@@ -182,6 +182,33 @@ class WayBatch
 };
 }  // namespace
 
+std::vector<std::uint8_t> hopsToBend(std::size_t numberOfPockets, std::span<const PocketHop> hops,
+                                     std::size_t perPocket)
+{
+  std::vector<std::uint8_t> bend(hops.size(), 0);
+  if (perPocket == 0) return bend;
+
+  // The ways that end at each pocket, at either end.
+  std::vector<std::vector<std::size_t>> endingAt(numberOfPockets);
+  for (std::size_t h = 0; h < hops.size(); ++h)
+  {
+    if (hops[h].from < numberOfPockets) endingAt[hops[h].from].push_back(h);
+    if (hops[h].to != hops[h].from && hops[h].to < numberOfPockets) endingAt[hops[h].to].push_back(h);
+  }
+
+  // The widest of them for each, the earlier of two as wide as each other, so that which are chosen is settled
+  // by the ways and not by how the sort happened to leave them.
+  for (std::vector<std::size_t> &own : endingAt)
+  {
+    const std::size_t chosen = std::min(perPocket, own.size());
+    std::partial_sort(own.begin(), own.begin() + static_cast<std::ptrdiff_t>(chosen), own.end(),
+                      [&](std::size_t p, std::size_t q)
+                      { return hops[p].radius > hops[q].radius || (hops[p].radius == hops[q].radius && p < q); });
+    for (std::size_t n = 0; n < chosen; ++n) bend[own[n]] = 1;
+  }
+  return bend;
+}
+
 SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const SamplingBackend &backend,
                                      std::optional<std::size_t> numberOfIterations,
                                      std::optional<std::size_t> numberOfInnerSteps)
@@ -533,13 +560,33 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
   // are the ones that stand for a real passage, open or merely bent, so those are the ones tried again with
   // the line allowed to bend.
   {
-    // Per pocket, its straight hops ranked by how nearly they succeeded, so that only the best of them are
-    // paid for again.
-    std::vector<std::vector<std::pair<SampledWay, Candidate>>> straightOf(pocketOf.size());
+    // Every straight way tried, with what came of it.
+    struct StraightHop
+    {
+      SampledWay way;
+      Candidate candidate;
+    };
+    std::vector<StraightHop> straightHops;
 
     WayBatch straight(backend, structure, false);
     auto rank = [&](const Candidate &candidate, const SampledWay &way)
-    { straightOf[candidate.from - firstPocketNode].push_back({way, candidate}); };
+    { straightHops.push_back(StraightHop{way, candidate}); };
+
+    // The copies of the far pocket that are tried: the one nearest in Ångström and the ones next to it, a step
+    // either way along each vector of the compact cell of the lattice, which is the obtuse superbase the unit
+    // cell keeps. For a pocket and itself they are its own next repeats.
+    //
+    // They used to be the copies one cell either way along the vectors of the cell as given. In a compact cell
+    // those are the same copies. In a cell given by vectors that lean along one another they are not the near
+    // ones: the next repeat of a pocket along a direction of the lattice may be two cells back along one vector
+    // and one along another, and was then never tried, the way through the crystal in that direction being
+    // left to the hops between scattered points.
+    //
+    // One step is all, and not every copy within the distance above. In a cell much shorter one way than
+    // another that would be the same straight channel tried at every multiple of its repeat, each as wide as
+    // the last, and those would take the places among a pocket's best that are there for the ways worth bending.
+    const double3x3 &compact = unitCell.obtuseCell;
+    const double3x3 &inGivenCells = unitCell.obtuseSteps;  // whole numbers: compact = cell * inGivenCells
 
     for (std::size_t a = 0; a < pocketOf.size(); ++a)
     {
@@ -549,6 +596,10 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
       for (std::size_t b = a; b < pocketOf.size(); ++b)
       {
         std::size_t to = firstPocketNode + b;
+
+        // The nearest copy, which for a pocket and itself is the pocket.
+        std::pair<int3, double3> nearest{int3(0, 0, 0), double3(0.0, 0.0, 0.0)};
+        if (a != b) nearest = nearestImage(origin, network.nodes[to].position);
 
         for (std::int32_t nz = -1; nz <= 1; ++nz)
         {
@@ -560,18 +611,17 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
               // other way round is the hop already made.
               if (a == b && (nx < 0 || (nx == 0 && (ny < 0 || (ny == 0 && nz <= 0))))) continue;
 
-              double3 displacement = network.nodes[to].position +
-                                     cell * double3(static_cast<double>(nx), static_cast<double>(ny),
-                                                    static_cast<double>(nz)) -
-                                     origin;
+              const double3 steps(static_cast<double>(nx), static_cast<double>(ny), static_cast<double>(nz));
+              const double3 displacement = nearest.second + compact * steps;
 
               if (double3::dot(displacement, displacement) > pocketLinkDistance * pocketLinkDistance) continue;
 
-              straight.add(Candidate{.from = from,
-                                     .to = to,
-                                     .delta = int3(nx, ny, nz),
-                                     .displacement = displacement,
-                                     .seed = 0},
+              const double3 cells = inGivenCells * steps;
+              const int3 delta(nearest.first.x + static_cast<std::int32_t>(std::lround(cells.x)),
+                               nearest.first.y + static_cast<std::int32_t>(std::lround(cells.y)),
+                               nearest.first.z + static_cast<std::int32_t>(std::lround(cells.z)));
+
+              straight.add(Candidate{.from = from, .to = to, .delta = delta, .displacement = displacement, .seed = 0},
                            origin, rank);
             }
           }
@@ -580,35 +630,35 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
     }
     straight.flush(rank);
 
-    // The best few of each pocket's hops, bent; the rest kept as the straight line left them.
+    // The best few of each pocket's hops, bent; the rest kept as the straight line left them. A hop is one of
+    // a pocket's whichever end of it the pocket is. Filed under the roomier end alone, as they were, a hop was
+    // bent or not by how it stood among that pocket's hops, and the smaller pocket's own best way out was left
+    // straight wherever the roomier one had enough wider ways of its own.
+    std::vector<PocketHop> tried;
+    tried.reserve(straightHops.size());
+    for (const StraightHop &hop : straightHops)
+    {
+      tried.push_back(PocketHop{.from = hop.candidate.from - firstPocketNode,
+                                .to = hop.candidate.to - firstPocketNode,
+                                .radius = hop.way.radius});
+    }
+    const std::vector<std::uint8_t> bend = hopsToBend(pocketOf.size(), tried, refinedHopsPerPocket);
+
     WayBatch bent(backend, structure, true);
     std::uint32_t seed = 0;
-
-    for (std::size_t a = 0; a < pocketOf.size(); ++a)
+    for (std::size_t h = 0; h < straightHops.size(); ++h)
     {
-      std::vector<std::pair<SampledWay, Candidate>> &hops = straightOf[a];
-
-      std::size_t refined = std::min(refinedHopsPerPocket, hops.size());
-      std::partial_sort(hops.begin(), hops.begin() + static_cast<std::ptrdiff_t>(refined), hops.end(),
-                        [](const auto &p, const auto &q) { return p.first.radius > q.first.radius; });
-
-      for (std::size_t rankIndex = 0; rankIndex < hops.size(); ++rankIndex)
+      if (bend[h] != 0)
       {
-        if (rankIndex < refined)
-        {
-          Candidate candidate = hops[rankIndex].second;
-          candidate.seed = seed++;
-          bent.add(candidate, network.nodes[candidate.from].position, keepOpenHop);
-        }
-        else
-        {
-          // Nothing more will be learnt about these, so they go in as the straight line left them.
-          keepOpenHop(hops[rankIndex].second, hops[rankIndex].first);
-        }
+        Candidate candidate = straightHops[h].candidate;
+        candidate.seed = seed++;
+        bent.add(candidate, network.nodes[candidate.from].position, keepOpenHop);
       }
-
-      hops.clear();
-      hops.shrink_to_fit();
+      else
+      {
+        // Nothing more will be learnt about these, so they go in as the straight line left them.
+        keepOpenHop(straightHops[h].candidate, straightHops[h].way);
+      }
     }
     bent.flush(keepOpenHop);
   }

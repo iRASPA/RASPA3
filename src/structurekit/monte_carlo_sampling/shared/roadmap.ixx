@@ -46,6 +46,23 @@ import sampling_backend;
 // the way between the two pocket centres does not, being the way the passage was built around. Where a
 // passage curves and the straight line between the centres clips a wall, the line is bent -- its most
 // hemmed-in point is walked out sideways and the two halves are put through the same again.
+// A straight way tried between two pockets: which two, numbered as the pockets are, and how wide it came out,
+// negative where the line is shut and by how much.
+export struct PocketHop
+{
+  std::size_t from{0};
+  std::size_t to{0};
+  double radius{0.0};
+};
+
+// Which of those ways are tried again with the line allowed to bend: for each pocket the `perPocket` widest of
+// the ways that end at it, at either end, a way being bent if either of its pockets has it among its best. One
+// entry per way, in the order given, not nothing where the way is to be bent.
+//
+// A way from a pocket to its own repeat ends at the one pocket twice and is counted for it once.
+export std::vector<std::uint8_t> hopsToBend(std::size_t numberOfPockets, std::span<const PocketHop> hops,
+                                            std::size_t perPocket);
+
 export struct SampledRoadmap
 {
   // The graph itself. Nodes `[0, numberOfVoidSamples)` are the points that landed in the void, in the order

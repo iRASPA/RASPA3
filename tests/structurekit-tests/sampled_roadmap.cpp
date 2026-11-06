@@ -4,6 +4,7 @@ import std;
 
 import int3;
 import double3;
+import double3x3;
 import unit_cell;
 import randomnumbers;
 import voronoi_network;
@@ -11,6 +12,7 @@ import sampled_structure;
 import sampling_backend;
 import mc_backend;
 import sampled_roadmap;
+import voronoi_pore_diameters;
 
 // The roadmap draws its points afresh on every build, so what is checked here is what has to hold of any roadmap,
 // whichever points it drew.
@@ -133,4 +135,125 @@ TEST(sampled_roadmap, a_thin_cell_links_a_sample_to_its_own_images_and_to_every_
   for (const auto &[pair, hops] : hopsOfPair)
     if (pair.first != pair.second && hops > 1) ++reachedTwice;
   EXPECT_GT(reachedTwice, 0uz);
+}
+
+
+// A pocket is tried against the nearest copy of every other pocket and against that copy's neighbours, and
+// against its own next repeats, in the compact cell of the lattice and not in the cell as given. A cell may be
+// given by vectors that lean along one another, and then the copies one cell either way along each of those
+// vectors are not the near ones: in a cubic lattice described with its second vector leaning two lengths of the
+// first, the repeat along y is two cells back along the first and one along the second, which a search of one
+// cell either way never tries. The way from a pocket to its own repeat is the straight channel through the
+// crystal, and the middle of it is the window: left to the hops between scattered points, the window is found
+// only as nearly as the points happen to fall.
+//
+// Simple cubic, one atom to a cell: one pocket at the body centre, a window in each face, and a free sphere
+// that is the window's inscribed circle exactly, sqrt(2) a - 2 r, in whatever cell the lattice is given.
+TEST(sampled_roadmap, a_pocket_reaches_its_own_next_repeat_in_a_cell_given_by_leaning_vectors)
+{
+  const double edge = 8.0;
+  const double radius = 2.5;
+  const double window = edge / std::sqrt(2.0) - radius;
+
+  const double3 a(edge, 0.0, 0.0);
+  const double3 b(0.0, edge, 0.0);
+  const double3 c(0.0, 0.0, edge);
+  const std::vector<std::pair<std::string, UnitCell>> cells{
+      {"compact", UnitCell(double3x3(a, b, c))},
+      {"leaning", UnitCell(double3x3(a, b + 2.0 * a, c + 2.0 * (b + 2.0 * a)))},
+  };
+
+  for (const auto &[name, cell] : cells)
+  {
+    SampledStructure structure;
+    structure.name = "sampled_roadmap_test";
+    structure.unitCell = cell;
+    structure.positions.push_back(double3(0.0, 0.0, 0.0));
+    structure.radii.push_back(radius);
+
+    // The points are drawn afresh on every build, so what is asked is what holds of any of them. The roomiest
+    // pocket is the one at the body centre and is the first of the pocket nodes; a walk that stalled on an edge
+    // of the cube now and then leaves a second, which is nothing to do with this.
+    const SampledRoadmap roadmap = SampledRoadmap::build(structure, samplingBackendCPU(), 2000, 2000);
+    ASSERT_GE(roadmap.numberOfPocketCentres, 1uz) << name;
+    const std::size_t pocket = roadmap.firstPocketNode;
+    EXPECT_NEAR(roadmap.network.nodes[pocket].radius, 0.5 * std::sqrt(3.0) * edge - radius, 1.0e-2) << name;
+
+    // That pocket's hops to its own repeats, by which way each runs.
+    std::array<bool, 3> alongAxis{false, false, false};
+    for (const VoronoiEdge &hop : roadmap.network.edges)
+    {
+      if (hop.from != pocket || hop.to != pocket) continue;
+      const double3 reach = cell.cell * double3(static_cast<double>(hop.delta.x), static_cast<double>(hop.delta.y),
+                                                static_cast<double>(hop.delta.z));
+      for (std::size_t axis = 0; axis < 3; ++axis)
+      {
+        const double3 repeat = (axis == 0) ? a : ((axis == 1) ? b : c);
+        if ((reach - repeat).length() < 1.0e-9 || (reach + repeat).length() < 1.0e-9)
+        {
+          alongAxis[axis] = true;
+
+          // No way through a face is wider than the face's window, and the line from the pocket to its repeat
+          // misses the middle of the window only by as much as the walk uphill left the pocket off the body
+          // centre.
+          EXPECT_LE(hop.radius, window + 1.0e-9) << name << ", along axis " << axis;
+          EXPECT_GT(hop.radius, window - 5.0e-2) << name << ", along axis " << axis;
+        }
+      }
+    }
+    EXPECT_TRUE(alongAxis[0]) << name << ": no hop from the pocket to its repeat along x";
+    EXPECT_TRUE(alongAxis[1]) << name << ": no hop from the pocket to its repeat along y";
+    EXPECT_TRUE(alongAxis[2]) << name << ": no hop from the pocket to its repeat along z";
+
+    const PoreDiameters diameters = PoreDiameters::compute(roadmap.network);
+    EXPECT_LE(diameters.freeSphereDiameter, 2.0 * window + 1.0e-9) << name;
+    EXPECT_GT(diameters.freeSphereDiameter, 2.0 * window - 1.0e-1) << name;
+  }
+}
+
+// Which of the hops between pockets are tried again with the line allowed to bend: the best few of every
+// pocket, counting a hop for both of the pockets it joins. Counted only for the roomier of its two ends, a hop
+// was bent or not by how it stood among that pocket's hops alone, and a small pocket beside a roomy one that has
+// sixteen wider ways out got none of its own bent, though the one way it has may be the one that needs it.
+TEST(sampled_roadmap, the_hops_bent_are_the_best_of_each_pocket_whichever_end_it_is)
+{
+  // Pocket 0 is roomy and has twenty wide ways to pockets 1 to 20; pocket 21 is small, and its one way out is
+  // a narrow one to pocket 0, the narrowest of all of them.
+  std::vector<PocketHop> hops;
+  for (std::size_t other = 1; other <= 20; ++other)
+  {
+    hops.push_back(PocketHop{.from = 0, .to = other, .radius = 3.0 - 0.01 * static_cast<double>(other)});
+  }
+  hops.push_back(PocketHop{.from = 0, .to = 21, .radius = -0.2});
+  const std::size_t theSmallPocketsOnlyWay = hops.size() - 1;
+
+  const std::vector<std::uint8_t> bent = hopsToBend(22, hops, 16);
+  ASSERT_EQ(bent.size(), hops.size());
+
+  // Every one of them is the best its far end has, so every one is bent: the twenty for pockets 1 to 20, and the
+  // narrow one for pocket 21.
+  for (std::size_t h = 0; h < hops.size(); ++h) EXPECT_EQ(bent[h], 1) << "hop " << h;
+  EXPECT_EQ(bent[theSmallPocketsOnlyWay], 1);
+
+  // A pocket with more ways than are bent has only its best ones bent on its own account.
+  std::vector<PocketHop> spokes;
+  for (std::size_t n = 0; n < 40; ++n)
+  {
+    // forty ways from pocket 0 to its own repeats and to pocket 1, each wider than the last
+    spokes.push_back(PocketHop{.from = 0, .to = n % 2, .radius = 0.1 * static_cast<double>(n)});
+  }
+  const std::vector<std::uint8_t> chosen = hopsToBend(2, spokes, 16);
+  // The sixteen widest for pocket 0 are the last sixteen. Pocket 1 has the twenty odd ones, and its sixteen
+  // widest of those reach down to the ninth: so from the ninth on the odd ones are bent, and from the
+  // twenty-fourth on all of them.
+  for (std::size_t n = 0; n < 40; ++n)
+  {
+    const bool forTheRoomyEnd = n >= 24;
+    const bool forTheOtherEnd = (n % 2 == 1) && n >= 9;
+    EXPECT_EQ(chosen[n] != 0, forTheRoomyEnd || forTheOtherEnd) << "way " << n;
+  }
+
+  // And none at all where none are asked for, or there are none.
+  EXPECT_TRUE(hopsToBend(3, {}, 16).empty());
+  for (std::uint8_t one : hopsToBend(22, hops, 0)) EXPECT_EQ(one, 0);
 }
