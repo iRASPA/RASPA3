@@ -515,81 +515,71 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
   const std::size_t strideX = strideFor(nx, cell.lengthA);
   const std::size_t strideY = strideFor(ny, cell.lengthB);
   const std::size_t strideZ = strideFor(nz, cell.lengthC);
-  std::vector<float> decimated;
-  std::span<const float> energyView = energyKelvin;
-  if (strideX * strideY * strideZ > 1)
-  {
-    std::size_t fullX = nx;
-    std::size_t fullY = ny;
-    nx /= strideX;
-    ny /= strideY;
-    nz /= strideZ;
-    decimated.resize(nx * ny * nz);
-    const double blockCount = static_cast<double>(strideX * strideY * strideZ);
-    for (std::size_t k = 0; k < nz; ++k)
-    {
-      for (std::size_t j = 0; j < ny; ++j)
-      {
-        for (std::size_t i = 0; i < nx; ++i)
-        {
-          double weight = 0.0;
-          for (std::size_t dk = 0; dk < strideZ; ++dk)
-          {
-            for (std::size_t dj = 0; dj < strideY; ++dj)
-            {
-              for (std::size_t di = 0; di < strideX; ++di)
-              {
-                double u = static_cast<double>(
-                    energyKelvin[((k * strideZ + dk) * fullY + j * strideY + dj) * fullX + i * strideX + di]);
-                weight += std::exp(std::max(-u / options.temperature, -700.0));
-              }
-            }
-          }
-          decimated[(k * ny + j) * nx + i] =
-              static_cast<float>(-options.temperature * std::log(std::max(weight / blockCount, 1.0e-300)));
-        }
-      }
-    }
-    energyView = decimated;
-  }
-
-  std::vector<float> decimatedOrient;
-  std::span<const float> orientView = orientationKelvin;
-  if (molecular && strideX * strideY * strideZ > 1)
+  // The block's free energy is worked out from its lowest energy down: u_min - kT ln <exp(-(u - u_min)/kT)>.
+  // Every term of the average is then between nought and one and the lowest is one itself, so nothing
+  // overflows and the average is never nought, however deep a well is and however high a wall. Summing
+  // exp(-u/kT) as it stands overflows where a state lies more than 709 kT down, which is no depth a real
+  // well has but is one an orientation energy with a charge in it is free to have, and the block came out at
+  // minus infinity. It also made a block that is wall all through 691 kT high, where the wall itself is at
+  // the ceiling.
+  const std::size_t voxelsInBlock = strideX * strideY * strideZ;
+  auto blockFreeEnergies = [&](std::span<const float> fine, std::size_t states)
   {
     const std::size_t fullX = gridSize.x;
     const std::size_t fullY = gridSize.y;
-    decimatedOrient.resize(nx * ny * nz * M);
-    const double blockCount = static_cast<double>(strideX * strideY * strideZ);
+    std::vector<float> coarse(nx * ny * nz * states);
+    const double blockCount = static_cast<double>(voxelsInBlock);
+    auto eachOfBlock = [&](std::size_t i, std::size_t j, std::size_t k, std::size_t state, auto &&take)
+    {
+      for (std::size_t dk = 0; dk < strideZ; ++dk)
+      {
+        for (std::size_t dj = 0; dj < strideY; ++dj)
+        {
+          for (std::size_t di = 0; di < strideX; ++di)
+          {
+            const std::size_t voxel = ((k * strideZ + dk) * fullY + j * strideY + dj) * fullX + i * strideX + di;
+            take(static_cast<double>(fine[voxel * states + state]));
+          }
+        }
+      }
+    };
     for (std::size_t k = 0; k < nz; ++k)
     {
       for (std::size_t j = 0; j < ny; ++j)
       {
         for (std::size_t i = 0; i < nx; ++i)
         {
-          for (std::size_t o = 0; o < M; ++o)
+          for (std::size_t state = 0; state < states; ++state)
           {
+            double lowest = std::numeric_limits<double>::max();
+            eachOfBlock(i, j, k, state, [&](double u) { lowest = std::min(lowest, u); });
             double weight = 0.0;
-            for (std::size_t dk = 0; dk < strideZ; ++dk)
-            {
-              for (std::size_t dj = 0; dj < strideY; ++dj)
-              {
-                for (std::size_t di = 0; di < strideX; ++di)
-                {
-                  const std::size_t vox =
-                      ((k * strideZ + dk) * fullY + j * strideY + dj) * fullX + i * strideX + di;
-                  double u = static_cast<double>(orientationKelvin[vox * nOrientations + o]);
-                  weight += std::exp(std::max(-u / options.temperature, -700.0));
-                }
-              }
-            }
-            decimatedOrient[((k * ny + j) * nx + i) * M + o] =
-                static_cast<float>(-options.temperature * std::log(std::max(weight / blockCount, 1.0e-300)));
+            eachOfBlock(i, j, k, state, [&](double u) { weight += std::exp(-(u - lowest) / options.temperature); });
+            coarse[((k * ny + j) * nx + i) * states + state] =
+                static_cast<float>(lowest - options.temperature * std::log(weight / blockCount));
           }
         }
       }
     }
-    orientView = decimatedOrient;
+    return coarse;
+  };
+
+  std::vector<float> decimated;
+  std::span<const float> energyView = energyKelvin;
+  std::vector<float> decimatedOrient;
+  std::span<const float> orientView = orientationKelvin;
+  if (voxelsInBlock > 1)
+  {
+    nx /= strideX;
+    ny /= strideY;
+    nz /= strideZ;
+    decimated = blockFreeEnergies(energyKelvin, 1);
+    energyView = decimated;
+    if (molecular)
+    {
+      decimatedOrient = blockFreeEnergies(orientationKelvin, nOrientations);
+      orientView = decimatedOrient;
+    }
   }
 
   const std::size_t N = nx * ny * nz;

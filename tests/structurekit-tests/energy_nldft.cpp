@@ -990,3 +990,127 @@ TEST(energy_nldft, a_skew_empty_box_holds_the_bulk_gas)
     EXPECT_NEAR(point.moleculesPerCell, expected, 1.0e-3 * expected);
   }
 }
+
+
+// A field finer than the density needs is brought down to the spacing it does need, a block of voxels to
+// one, and each block is given the free energy -kT ln <exp(-U/kT)> of its voxels, so that the Boltzmann
+// weight of the cell is what it was: a well one fine voxel wide is drawn wider and no deeper in total, and a
+// block that is wall all through is wall. Here every block is of eight voxels. Half the box is wall, one
+// voxel in eight of the rest is a well, and the gas is thin enough that the loading is the Henry limit.
+TEST(energy_nldft, a_field_brought_down_to_a_coarser_grid_keeps_its_boltzmann_weight)
+{
+  NLDFTOptions options;
+  options.pressurePoints = 1;
+  options.xLow = 1.0e-5;
+  options.xHigh = 1.0e-5;
+  options.targetSpacing = 1.3;  // two voxels of 0.625 Å to a block along every axis
+
+  const std::size_t n = 32;
+  const uint3 gridSize{32, 32, 32};
+  const UnitCell cell(20.0, 20.0, 20.0);
+  const std::size_t N = n * n * n;
+  const std::size_t M = 4;
+  const float wall = 1.0e10f;
+  const float well = -150.0f;
+
+  std::vector<float> energy(N, 0.0f);
+  std::vector<float> orientations(N * M, 0.0f);
+  for (std::size_t k = 0; k < n; ++k)
+  {
+    for (std::size_t j = 0; j < n; ++j)
+    {
+      for (std::size_t i = 0; i < n; ++i)
+      {
+        const std::size_t voxel = (k * n + j) * n + i;
+        if (k < n / 2)
+        {
+          energy[voxel] = wall;
+          for (std::size_t o = 0; o < M; ++o) orientations[voxel * M + o] = wall;
+        }
+        else if (i % 2 == 1 && j % 2 == 0 && k % 2 == 1)
+        {
+          // one corner of its block, and for the molecule one way round only
+          energy[voxel] = well;
+          orientations[voxel * M + 1] = well;
+        }
+      }
+    }
+  }
+
+  auto boltzmannOf = [&](std::span<const float> field)
+  {
+    double sum = 0.0;
+    for (float u : field) sum += std::exp(-static_cast<double>(u) / options.temperature);
+    return sum / static_cast<double>(field.size());
+  };
+
+  NLDFTGridIsotherm spherical = nldftIsothermOnGrid(energy, gridSize, cell, options);
+  ASSERT_EQ(spherical.isotherm.size(), 1u);
+  EXPECT_EQ(spherical.pointsWithoutASolution, 0u);
+  const double rhoBulk = nldftGasDensity(options, spherical.bulk, 1.0e-5);
+  const double expectedSpherical = rhoBulk * cell.volume * boltzmannOf(energy);
+  EXPECT_NEAR(spherical.isotherm.front().moleculesPerCell, expectedSpherical, 0.01 * expectedSpherical);
+
+  NLDFTGridIsotherm molecular = nldftIsothermOnGrid(energy, gridSize, cell, options, orientations, M);
+  ASSERT_EQ(molecular.isotherm.size(), 1u);
+  EXPECT_TRUE(molecular.molecular);
+  EXPECT_EQ(molecular.pointsWithoutASolution, 0u);
+  const double expectedMolecular = rhoBulk * cell.volume * boltzmannOf(orientations);
+  EXPECT_NEAR(molecular.isotherm.front().moleculesPerCell, expectedMolecular, 0.01 * expectedMolecular);
+
+  // the wells are worth something here, or this has asked nothing
+  EXPECT_GT(boltzmannOf(energy), 1.2 * 0.5);
+}
+
+
+// The free energy of a block is a number however far down one of its states lies. An orientation energy is
+// not held to any floor, and exp(-U/kT) of one more than 709 kT down is past what a double holds: summed as
+// it stood the block's weight was infinite and its free energy minus infinity, and no pressure could be
+// solved for. Worked out from the lowest energy of the block down, the weights are all between nought and
+// one. A state like that is a site that holds its one molecule at any pressure at all, and how far past
+// 709 kT it lies changes nothing.
+TEST(energy_nldft, a_state_past_what_an_exponential_holds_is_still_a_site_for_one_molecule)
+{
+  const std::size_t n = 32;
+  const uint3 gridSize{32, 32, 32};
+  const UnitCell cell(20.0, 20.0, 20.0);
+  const std::size_t N = n * n * n;
+  const std::size_t M = 4;
+  const std::size_t voxel = (16 * n + 16) * n + 16;
+
+  auto loadingsWith = [&](double depthInKT)
+  {
+    NLDFTOptions options;
+    options.pressurePoints = 2;
+    options.xLow = 1.0e-5;
+    options.xHigh = 1.0e-3;
+    options.targetSpacing = 1.3;  // two voxels to a block along every axis
+
+    std::vector<float> energy(N, 0.0f);
+    std::vector<float> orientations(N * M, 0.0f);
+    orientations[voxel * M + 0] = static_cast<float>(-depthInKT * options.temperature);
+
+    NLDFTGridIsotherm result = nldftIsothermOnGrid(energy, gridSize, cell, options, orientations, M);
+    EXPECT_EQ(result.pointsWithoutASolution, 0u) << depthInKT << " kT down";
+    EXPECT_EQ(result.unconverged, 0u) << depthInKT << " kT down";
+    std::vector<double> loadings;
+    for (const IsothermPoint &point : result.isotherm) loadings.push_back(point.moleculesPerCell);
+    return loadings;
+  };
+
+  ASSERT_LT(std::exp(705.0), std::numeric_limits<double>::max());
+  const std::vector<double> within = loadingsWith(705.0);
+  const std::vector<double> past = loadingsWith(720.0);
+  const std::vector<double> farPast = loadingsWith(5000.0);
+
+  ASSERT_EQ(within.size(), 2u);
+  ASSERT_EQ(past.size(), 2u);
+  ASSERT_EQ(farPast.size(), 2u);
+  for (std::size_t point = 0; point < 2; ++point)
+  {
+    // one molecule, to what the descent is stopped at
+    EXPECT_NEAR(within[point], 1.0, 0.01);
+    EXPECT_NEAR(past[point], within[point], 1.0e-3);
+    EXPECT_NEAR(farPast[point], within[point], 1.0e-3);
+  }
+}
