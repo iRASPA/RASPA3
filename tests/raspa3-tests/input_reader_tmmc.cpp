@@ -79,6 +79,34 @@ nlohmann::json readTMMCExample() { return nlohmann::json::parse(input_reader_fix
 
 nlohmann::json readNVTExample() { return nlohmann::json::parse(input_reader_fixtures::kNvtSimulationJson); }
 
+// The transition-matrix example run as 'ParallelTMMC' instead: the same framework, component and macrostate
+// range, two windows, and nothing created (the walkers are grown into their windows).
+nlohmann::json readParallelTMMCExample()
+{
+  nlohmann::json input = readTMMCExample();
+  input["SimulationType"] = "ParallelTMMC";
+  input["NumberOfWindows"] = 2;
+  input["Components"][0].erase("CreateNuMberofmolecules");
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  return input;
+}
+
+// What reading the input says when it refuses it, or nothing when it does not.
+std::string refusalOf(nlohmann::json input, std::string_view suffix, const std::filesystem::path& directory)
+{
+  TemporaryInput temporary(std::move(input), suffix, directory);
+  try
+  {
+    InputReader reader(temporary.path().filename().string());
+    static_cast<void>(reader);
+  }
+  catch (const std::runtime_error& error)
+  {
+    return error.what();
+  }
+  return {};
+}
+
 }  // namespace
 
 TEST(INPUT_READER, rejects_component_name_with_directory_separator)
@@ -217,6 +245,48 @@ TEST(INPUT_READER_TMMC, rejects_non_nearest_neighbor_system_moves)
         static_cast<void>(reader);
       },
       std::runtime_error);
+}
+
+// 'ParallelTMMC' samples the same nearest-neighbour transition matrix, and the moves that do not fit it are
+// refused for it as they are for 'MonteCarloTransitionMatrix'. It turns the transition matrix on after the
+// moves are looked at, and they used to go through unlooked at.
+TEST(INPUT_READER_TMMC, parallel_tmmc_rejects_the_moves_the_transition_matrix_cannot_hold)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  ScopedCurrentPath currentPath(workspace.path());
+
+  EXPECT_EQ(refusalOf(readParallelTMMCExample(), "ptmmc_plain", workspace.path()), "");
+
+  nlohmann::json identity = readParallelTMMCExample();
+  identity["Components"][0]["IdentityChangeProbability"] = 1.0;
+  const std::string identityRefusal = refusalOf(std::move(identity), "ptmmc_identity", workspace.path());
+  EXPECT_NE(identityRefusal.find("IdentityChangeProbability"), std::string::npos) << identityRefusal;
+  EXPECT_NE(identityRefusal.find("must be zero"), std::string::npos) << identityRefusal;
+
+  nlohmann::json tempering = readParallelTMMCExample();
+  tempering["Systems"][0]["ParallelTemperingSwapProbability"] = 1.0;
+  const std::string temperingRefusal = refusalOf(std::move(tempering), "ptmmc_tempering", workspace.path());
+  EXPECT_NE(temperingRefusal.find("ParallelTemperingSwapProbability"), std::string::npos) << temperingRefusal;
+  EXPECT_NE(temperingRefusal.find("must be zero"), std::string::npos) << temperingRefusal;
+}
+
+// Its walkers are grown into their windows, so what is created may lie below the macrostate range, which
+// for a single transition-matrix run it may not.
+TEST(INPUT_READER_TMMC, parallel_tmmc_may_create_fewer_molecules_than_the_range_starts_at)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  ScopedCurrentPath currentPath(workspace.path());
+
+  nlohmann::json parallel = readParallelTMMCExample();
+  parallel["Systems"][0]["MacroStateMinimumNumberOfMolecules"] = 5;
+  EXPECT_EQ(refusalOf(std::move(parallel), "ptmmc_below_range", workspace.path()), "");
+
+  nlohmann::json single = readTMMCExample();
+  single["Systems"][0]["MacroStateMinimumNumberOfMolecules"] = 5;
+  single["Components"][0].erase("CreateNuMberofmolecules");
+  single["Components"][0]["CreateNumberOfMolecules"] = 0;
+  EXPECT_NE(refusalOf(std::move(single), "tmmc_below_range", workspace.path()).find("macrostate"),
+            std::string::npos);
 }
 
 TEST(INPUT_READER_TMMC, enables_lambda_chain_for_cfcmc_swap)
@@ -486,6 +556,49 @@ TEST(INPUT_READER, compute_bet_omitted_range_implies_auto_for_tmmc)
   EXPECT_TRUE(reader.computeBET);
   EXPECT_TRUE(reader.autoReweightingPressureRange);
   EXPECT_FALSE(reader.reweightingPressureRange.has_value());
+}
+
+// With 'ComputeBET' on a framework a macrostate maximum that is left out is automatic, placed by a scout
+// once the system exists. The checks of the range have to know that when they run: they used to run first,
+// against the transition matrix's default maximum of a hundred, and refused more than a hundred windows, or
+// a minimum of a hundred or more, in an input that had given no maximum to hold them to.
+TEST(INPUT_READER, compute_bet_omitted_maximum_is_automatic_before_the_range_is_checked)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  ScopedCurrentPath currentPath(workspace.path());
+
+  auto withoutMaximum = []()
+  {
+    nlohmann::json input = readParallelTMMCExample();
+    input["ComputeBET"] = true;
+    input["Systems"][0].erase("MacroStateMaximumNumberOfMolecules");
+    setBETProbeProperties(input["Components"][0]);
+    return input;
+  };
+
+  {
+    nlohmann::json input = withoutMaximum();
+    input["NumberOfWindows"] = 150;
+    TemporaryInput temporary(std::move(input), "ptmmc_many_windows", workspace.path());
+    InputReader reader(temporary.path().filename().string());
+    EXPECT_TRUE(reader.autoMacroStateMaximum);
+    EXPECT_EQ(reader.tmmcNumberOfWindows, 150uz);
+  }
+  {
+    nlohmann::json input = withoutMaximum();
+    input["Systems"][0]["MacroStateMinimumNumberOfMolecules"] = 120;
+    TemporaryInput temporary(std::move(input), "ptmmc_high_minimum", workspace.path());
+    InputReader reader(temporary.path().filename().string());
+    EXPECT_TRUE(reader.autoMacroStateMaximum);
+  }
+
+  // A maximum that is given is still held to: more windows than it has macrostates for are refused.
+  nlohmann::json given = readParallelTMMCExample();
+  given["ComputeBET"] = true;
+  setBETProbeProperties(given["Components"][0]);
+  given["NumberOfWindows"] = 150;
+  EXPECT_NE(refusalOf(std::move(given), "ptmmc_given_maximum", workspace.path()).find("NumberOfWindows"),
+            std::string::npos);
 }
 
 TEST(INPUT_READER, auto_reweighting_range_rejected_without_compute_bet)

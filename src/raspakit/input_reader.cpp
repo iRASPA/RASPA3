@@ -5213,11 +5213,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   //  }
   //}
 
+  // 'ParallelTMMC' samples the same one-dimensional transition matrix, so the moves that do not fit
+  // it are refused there as well. It only switches tmmc.doTMMC on further down, with its own checks of
+  // the components and of the molecules created (its walkers are grown into their windows, so what is
+  // created need not lie in the macrostate range), which is why it is named here and not left to the flag.
+  const bool parallelTMMC = simulationType == SimulationType::ParallelTMMC;
   for (std::size_t i = 0uz; i < systems.size(); ++i)
   {
-    if (systems[i].tmmc.doTMMC)
+    if (systems[i].tmmc.doTMMC || parallelTMMC)
     {
-      if (systems[i].numerOfAdsorbateComponents() > 1)
+      if (!parallelTMMC && systems[i].numerOfAdsorbateComponents() > 1)
       {
         throw std::runtime_error("Error: Multiple components for TMMC not yet implemented.\n");
       }
@@ -5261,7 +5266,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
 
       // check initial number of molecules is in the range of the TMMC macrostates
-      for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
+      for (std::size_t j = 0uz; !parallelTMMC && j < systems[i].components.size(); ++j)
       {
         if (systems[i].components[j].type == Component::Type::Adsorbate)
         {
@@ -5556,6 +5561,23 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
   }
 
+  // With 'ComputeBET' on a framework, leaving 'MacroStateMaximumNumberOfMolecules' out means 'auto': the
+  // ceiling is placed by an occupancy scout once the system exists. This is settled here, ahead of the
+  // checks of the macrostate range below: they are skipped for an automatic ceiling, and settled after
+  // them they held the default ceiling of the transition matrix against the windows and the minimum.
+  const bool hasFramework = !systems.empty() && systems.front().framework.has_value();
+  if (computeBET && hasFramework &&
+      (simulationType == SimulationType::ReweightedHistogram || simulationType == SimulationType::ParallelTMMC))
+  {
+    const bool maxSpecified =
+        !systems.empty() && parsed_data.contains("Systems") && parsed_data["Systems"].is_array() &&
+        !parsed_data["Systems"].empty() && parsed_data["Systems"][0].contains("MacroStateMaximumNumberOfMolecules");
+    if (!maxSpecified)
+    {
+      autoMacroStateMaximum = true;
+    }
+  }
+
   // Reweighted histogram: a single declared system is replicated by the driver into one replica per
   // (temperature, pressure) grid point and the collected (N, U) samples are combined by
   // multiple-histogram reweighting into a continuous isotherm surface
@@ -5737,21 +5759,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           probe.name));
     }
   }
-  const bool hasFramework = !systems.empty() && systems.front().framework.has_value();
   if (computeBET && hasFramework && !reweightingPressureRange.has_value() && !autoReweightingPressureRange)
   {
     autoReweightingPressureRange = true;
-  }
-  if (computeBET && hasFramework &&
-      (simulationType == SimulationType::ReweightedHistogram || simulationType == SimulationType::ParallelTMMC))
-  {
-    const bool maxSpecified =
-        !systems.empty() && parsed_data.contains("Systems") && parsed_data["Systems"].is_array() &&
-        !parsed_data["Systems"].empty() && parsed_data["Systems"][0].contains("MacroStateMaximumNumberOfMolecules");
-    if (!maxSpecified)
-    {
-      autoMacroStateMaximum = true;
-    }
   }
   if ((autoExternalPressures || autoReweightingPressureRange || autoMacroStateMaximum) && !hasFramework)
   {
