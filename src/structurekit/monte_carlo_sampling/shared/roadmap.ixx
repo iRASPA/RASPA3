@@ -63,6 +63,16 @@ export struct PocketHop
 export std::vector<std::uint8_t> hopsToBend(std::size_t numberOfPockets, std::span<const PocketHop> hops,
                                             std::size_t perPocket);
 
+// Which ways the last stage of the roadmap seeks between the pieces the rest of it left apart, given which of
+// the pieces already run through the crystal: each as the piece it starts from and the piece it is sought to.
+//
+// A way is sought from every piece that runs nowhere. First to its own next repeats, which is the pair of a
+// piece with itself: a piece may be a stretch of channel whose continuation is its own copy in the next cell,
+// and that is the one thing no other piece can show. Then to every other piece, a pair of two pieces that run
+// nowhere being sought once and not from each end.
+export std::vector<std::pair<std::size_t, std::size_t>> waysToSeekBetweenPieces(
+    std::span<const std::uint8_t> runsThrough);
+
 export struct SampledRoadmap
 {
   // The graph itself. Nodes `[0, numberOfVoidSamples)` are the points that landed in the void, in the order

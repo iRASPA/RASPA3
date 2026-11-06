@@ -209,6 +209,26 @@ std::vector<std::uint8_t> hopsToBend(std::size_t numberOfPockets, std::span<cons
   return bend;
 }
 
+std::vector<std::pair<std::size_t, std::size_t>> waysToSeekBetweenPieces(std::span<const std::uint8_t> runsThrough)
+{
+  std::vector<std::pair<std::size_t, std::size_t>> ways;
+  for (std::size_t piece = 0; piece < runsThrough.size(); ++piece)
+  {
+    if (runsThrough[piece] != 0) continue;
+
+    ways.emplace_back(piece, piece);
+    for (std::size_t other = 0; other < runsThrough.size(); ++other)
+    {
+      if (other == piece) continue;
+      // Two pieces that run nowhere are each a place to start from, and the lower of the two is the one that
+      // does.
+      if (runsThrough[other] == 0 && other < piece) continue;
+      ways.emplace_back(piece, other);
+    }
+  }
+  return ways;
+}
+
 SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const SamplingBackend &backend,
                                      std::optional<std::size_t> numberOfIterations,
                                      std::optional<std::size_t> numberOfInnerSteps)
@@ -706,16 +726,25 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
   // a pocket; a way that stays shut leaves the pocket a pocket, and now for a reason rather than for want
   // of a hop. Joining changes what the components are, so it is done twice over.
   //
+  // A way is sought from each such component to its own next repeats as well. A stretch of channel whose
+  // continuation is its own copy in the next cell runs nowhere until that way is found, and no other
+  // component can show it: where the whole of the void came out as one piece that ran nowhere there was no
+  // other component at all, nothing was tried, and the void went down as one pocket nothing can reach. The
+  // pockets were tried against their own repeats above, but bent only where that was among a pocket's best
+  // hops, and a piece with no pocket in it was never tried at this range at all.
+  //
   // No way is ever invented, every one of them being measured, so this can only ever join and never split.
   for (std::size_t round = 0; round < 2; ++round)
   {
     ChannelAnalysis components = ChannelAnalysis::compute(network, 0.0);
-    if (components.numberOfPockets == 0 || components.pores.size() < 2) break;
+    if (components.numberOfPockets == 0) break;
 
     // One node stands for each component: the roomiest of them, which is the likeliest end of a way and the
     // furthest from the walls at either end of it.
     std::vector<std::size_t> representative;
+    std::vector<std::uint8_t> runsThrough;
     representative.reserve(components.pores.size());
+    runsThrough.reserve(components.pores.size());
     for (const VoronoiPore &pore : components.pores)
     {
       std::size_t best = pore.nodeIndices.front();
@@ -724,6 +753,7 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
         if (network.nodes[node].radius > network.nodes[best].radius) best = node;
       }
       representative.push_back(best);
+      runsThrough.push_back(pore.isChannel ? 1 : 0);
     }
 
     std::size_t joined = 0;
@@ -737,25 +767,51 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
     WayBatch ways(backend, structure, true);
     std::uint32_t seed = static_cast<std::uint32_t>(numberOfNodes + round * components.pores.size());
 
-    for (std::size_t pore = 0; pore < components.pores.size(); ++pore)
-    {
-      if (components.pores[pore].isChannel) continue;
+    const double3x3 &compact = unitCell.obtuseCell;
+    const double3x3 &inGivenCells = unitCell.obtuseSteps;  // whole numbers: compact = cell * inGivenCells
 
+    // Each pair of pieces is in here once, so no way goes in twice. Two pieces that run nowhere used to be
+    // tried from each of them, and a way that opened between them was put in from both and counted as two.
+    for (const auto &[pore, other] : waysToSeekBetweenPieces(runsThrough))
+    {
       std::size_t from = representative[pore];
+      std::size_t to = representative[other];
       const double3 &origin = network.nodes[from].position;
 
-      for (std::size_t other = 0; other < components.pores.size(); ++other)
+      if (other != pore)
       {
-        if (other == pore) continue;
-
-        std::size_t to = representative[other];
-
         auto [delta, displacement] = nearestImage(origin, network.nodes[to].position);
         if (double3::dot(displacement, displacement) > pocketLinkDistance * pocketLinkDistance) continue;
 
         ways.add(
             Candidate{.from = from, .to = to, .delta = delta, .displacement = displacement, .seed = seed++},
             origin, keepJoin);
+        continue;
+      }
+
+      // Its own next repeats: a step either way along each vector of the compact cell, one of each repeat and
+      // its opposite, as for a pocket and itself above.
+      for (std::int32_t nz = -1; nz <= 1; ++nz)
+      {
+        for (std::int32_t ny = -1; ny <= 1; ++ny)
+        {
+          for (std::int32_t nx = -1; nx <= 1; ++nx)
+          {
+            if (nx < 0 || (nx == 0 && (ny < 0 || (ny == 0 && nz <= 0)))) continue;
+
+            const double3 steps(static_cast<double>(nx), static_cast<double>(ny), static_cast<double>(nz));
+            const double3 displacement = compact * steps;
+            if (double3::dot(displacement, displacement) > pocketLinkDistance * pocketLinkDistance) continue;
+
+            const double3 cells = inGivenCells * steps;
+            const int3 delta(static_cast<std::int32_t>(std::lround(cells.x)),
+                             static_cast<std::int32_t>(std::lround(cells.y)),
+                             static_cast<std::int32_t>(std::lround(cells.z)));
+            ways.add(
+                Candidate{.from = from, .to = from, .delta = delta, .displacement = displacement, .seed = seed++},
+                origin, keepJoin);
+          }
+        }
       }
     }
     ways.flush(keepJoin);

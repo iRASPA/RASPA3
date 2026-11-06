@@ -257,3 +257,82 @@ TEST(sampled_roadmap, the_hops_bent_are_the_best_of_each_pocket_whichever_end_it
   EXPECT_TRUE(hopsToBend(3, {}, 16).empty());
   for (std::uint8_t one : hopsToBend(22, hops, 0)) EXPECT_EQ(one, 0);
 }
+
+
+// Which ways the last stage seeks between the pieces left apart. A piece that runs nowhere is tried against its
+// own next repeats, whether or not there is any other piece: the whole of the void as one piece running nowhere
+// used to be left at that, with nothing tried, and a channel whose only continuation is its own copy in the
+// next cell went down as a pocket. And two pieces that run nowhere are tried against each other once: tried from
+// both, a way that opened between them went into the roadmap twice and was counted as two joins.
+TEST(sampled_roadmap, a_piece_that_runs_nowhere_is_tried_against_its_own_repeats_and_each_other_piece_once)
+{
+  using Ways = std::vector<std::pair<std::size_t, std::size_t>>;
+
+  // One piece, running nowhere: itself.
+  EXPECT_EQ(waysToSeekBetweenPieces(std::vector<std::uint8_t>{0}), (Ways{{0, 0}}));
+
+  // One piece that runs through, or none: nothing to seek.
+  EXPECT_TRUE(waysToSeekBetweenPieces(std::vector<std::uint8_t>{1}).empty());
+  EXPECT_TRUE(waysToSeekBetweenPieces(std::vector<std::uint8_t>{}).empty());
+
+  // Two that run nowhere: each itself, and the pair once.
+  EXPECT_EQ(waysToSeekBetweenPieces(std::vector<std::uint8_t>{0, 0}), (Ways{{0, 0}, {0, 1}, {1, 1}}));
+
+  // A channel between two pockets: each pocket itself, each to the channel, the two pockets once, and nothing
+  // from the channel.
+  EXPECT_EQ(waysToSeekBetweenPieces(std::vector<std::uint8_t>{0, 1, 0}),
+            (Ways{{0, 0}, {0, 1}, {0, 2}, {2, 2}, {2, 1}}));
+
+  // Whatever the pieces, no pair is there twice, either way round, and every piece that runs nowhere has itself.
+  const std::vector<std::uint8_t> many{0, 1, 0, 0, 1, 1, 0};
+  std::set<std::pair<std::size_t, std::size_t>> seen;
+  for (const auto &[from, to] : waysToSeekBetweenPieces(many))
+  {
+    EXPECT_EQ(many[from], 0) << "a way sought from a piece that already runs through";
+    EXPECT_TRUE(seen.insert({std::min(from, to), std::max(from, to)}).second) << from << " and " << to << " twice";
+  }
+  for (std::size_t piece = 0; piece < many.size(); ++piece)
+  {
+    EXPECT_EQ(seen.contains({piece, piece}), many[piece] == 0) << "piece " << piece;
+  }
+  // Every pair with a piece that runs nowhere in it is there.
+  for (std::size_t first = 0; first < many.size(); ++first)
+  {
+    for (std::size_t second = first + 1; second < many.size(); ++second)
+    {
+      EXPECT_EQ(seen.contains({first, second}), many[first] == 0 || many[second] == 0)
+          << first << " and " << second;
+    }
+  }
+}
+
+// No way is in the roadmap twice, whichever stage put it there and whichever end it was put in from. Held of
+// every way of roadmaps built on few points in cells of many small cavities, where the sample leaves pieces
+// apart.
+TEST(sampled_roadmap, no_way_is_in_the_roadmap_twice)
+{
+  const UnitCell cell(16.0, 17.0, 18.0);
+  std::size_t builds = 0;
+  std::size_t twice = 0;
+  for (std::size_t seed : {3uz, 5uz, 8uz, 13uz})
+  {
+    SampledStructure structure = scattered(cell, 60, 1.5, seed);
+    for (int repeat = 0; repeat < 3; ++repeat)
+    {
+      const SampledRoadmap roadmap = SampledRoadmap::build(structure, samplingBackendCPU(), 400, 50);
+      ++builds;
+
+      // Each way is stored forward and then backward; the forward ones are every other entry.
+      std::set<std::tuple<std::size_t, std::size_t, int, int, int>> seen;
+      for (std::size_t i = 0; i < roadmap.network.edges.size(); i += 2)
+      {
+        const VoronoiEdge &way = roadmap.network.edges[i];
+        const bool again = seen.contains({way.from, way.to, way.delta.x, way.delta.y, way.delta.z}) ||
+                           seen.contains({way.to, way.from, -way.delta.x, -way.delta.y, -way.delta.z});
+        if (again) ++twice;
+        seen.insert({way.from, way.to, way.delta.x, way.delta.y, way.delta.z});
+      }
+    }
+  }
+  EXPECT_EQ(twice, 0uz) << "over " << builds << " roadmaps";
+}
