@@ -473,3 +473,20 @@ bool OpenCL::supportsImageFormatCapabilities(cl_context &trial_clContext, cl_dev
 
   return true;
 }
+
+OpenCL::Handles::~Handles()
+{
+  // The buffers first and the program last, the other way round from the order they were made in.
+  for (cl_mem buffer : this->buffers)
+  {
+    if (buffer != nullptr) clReleaseMemObject(buffer);
+  }
+  if (this->kernel != nullptr) clReleaseKernel(this->kernel);
+  if (this->program != nullptr) clReleaseProgram(this->program);
+}
+
+cl_mem OpenCL::Handles::keep(cl_mem buffer)
+{
+  this->buffers.push_back(buffer);
+  return buffer;
+}

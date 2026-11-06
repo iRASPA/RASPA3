@@ -65,13 +65,17 @@ void GridPoreSizeDistribution::run(const PairInteractions &interactions, const C
 
   const std::size_t numberOfVoxels = grid.numberOfVoxels();
 
-  // A sphere is drawn about every point of the void.
+  // The points of the void, and the ones among them a sphere is drawn about, which is all that have room of
+  // some size: a point on a surface has none to draw with, and a point with no boundary in reach has no size
+  // to give one. The sweep leaves those two out, so the count of spheres has to as well.
   std::size_t voidVoxels = 0;
+  std::size_t centres = 0;
   for (std::size_t voxel = 0; voxel < numberOfVoxels; ++voxel)
   {
     if (grid.clearance[voxel] >= 0.0f) ++voidVoxels;
+    if (grid.clearance[voxel] > 0.0f && grid.clearance[voxel] != unlimitedRoom) ++centres;
   }
-  this->numberOfCentres = voidVoxels;
+  this->numberOfCentres = centres;
   this->numberOfVoidVoxels = voidVoxels;
 
   this->slack = coveringSlack(framework.unitCell, grid.gridSize);
@@ -151,7 +155,8 @@ void GridPoreSizeDistribution::run(const PairInteractions &interactions, const C
              2.0 * this->probeRadius);
   std::print(report, "# Of the void, the probe reaches {} [Å³], {} of it\n", this->accessibleVoidFraction * volume,
              (this->voidFraction > 0.0) ? this->accessibleVoidFraction / this->voidFraction : 0.0);
-  std::print(report, "# Spheres drawn: {}, one about every point of the void\n", this->numberOfCentres);
+  std::print(report, "# Spheres drawn: {}, one about every point of the void with room of some size\n",
+             this->numberOfCentres);
   std::print(report, "# A sphere covers a point when it comes within {:.5f} [Å] of it, half a voxel diagonal twice\n",
              this->slack);
   std::print(report, "# The largest sphere that fits in the void is {} [Å] across\n",

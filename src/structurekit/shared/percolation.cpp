@@ -277,9 +277,15 @@ GridPercolation sweepPercolation(uint3 gridSize, std::span<const float> openness
         crossed.z = 1;
       }
 
+      // A neighbour switched on before this point, or this point itself. Along an axis the grid is one point
+      // thick, the step comes back to the point it left, one cell over: the point is its own neighbour across
+      // the face of the cell, and that is a way through the crystal as much as any other loop that returns a
+      // cell away. It falls to the case below of two points already in one region, where the cell crossed is
+      // the translation the region returns to itself by. Passed over, as a neighbour not yet switched on, it
+      // left a grid one point thick with nothing running through it that way, whatever was open.
       const std::size_t neighbourVoxel = static_cast<std::size_t>((nk * ny + nj) * nx + ni);
       const std::int32_t neighbour = label[neighbourVoxel];
-      if (neighbour < 0 || neighbour >= current) continue;
+      if (neighbour < 0 || neighbour > current) continue;
 
       int3 displacementHere(0, 0, 0);
       int3 displacementThere(0, 0, 0);

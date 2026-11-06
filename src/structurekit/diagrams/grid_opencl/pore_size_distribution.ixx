@@ -62,8 +62,8 @@ export struct GridPoreSizeDistribution
   // shell of void nearest the atoms be given a size at all.
   double slack{0.0};
 
-  std::size_t numberOfCentres{0};
-  std::size_t numberOfVoidVoxels{0};
+  std::size_t numberOfCentres{0};     // spheres drawn: the points of the void with room of some size
+  std::size_t numberOfVoidVoxels{0};  // every point of the void, those with no room or no limit to it included
   double gpuSeconds{0.0};
   double seconds{0.0};
 

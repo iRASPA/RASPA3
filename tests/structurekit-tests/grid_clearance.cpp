@@ -172,6 +172,9 @@ TEST(grid_clearance, the_analyses_of_an_empty_box_agree_that_it_is_all_room)
   EXPECT_DOUBLE_EQ(distribution.voidFraction, 1.0);
   EXPECT_DOUBLE_EQ(distribution.accessibleVoidFraction, 1.0);
   EXPECT_DOUBLE_EQ(distribution.largestDiameter, unlimited);
+  // All of it void, and not one sphere drawn: no point has a boundary to give a sphere its size.
+  EXPECT_EQ(distribution.numberOfVoidVoxels, grid.numberOfVoxels());
+  EXPECT_EQ(distribution.numberOfCentres, 0uz);
   ASSERT_EQ(distribution.points.size(), 10uz);
   for (const GridPoreSizeDistributionPoint &point : distribution.points)
   {
@@ -179,6 +182,38 @@ TEST(grid_clearance, the_analyses_of_an_empty_box_agree_that_it_is_all_room)
     EXPECT_DOUBLE_EQ(point.cumulativeAccessibleFraction, 1.0) << "at " << point.diameter;
     EXPECT_DOUBLE_EQ(point.distribution, 0.0) << "at " << point.diameter;
   }
+}
+
+
+// The spheres said to have been drawn are the spheres drawn: one about each point with room of some size. A
+// point with no room, on a surface or inside an atom, draws none, and is void only if its room is not below
+// nothing.
+TEST(grid_clearance, the_spheres_counted_are_the_points_with_room_of_some_size)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+
+  ReportCleanup cleanup;
+  PairInteractions interactions = probeOfRadiusOne();
+  Crystal framework = oneAtom();
+  ClearanceGrid grid = ClearanceGrid::compute(interactions, framework, gridSize);
+
+  // A point put exactly on a surface, which a grid seldom does for itself.
+  grid.clearance[0] = 0.0f;
+
+  std::size_t withRoom = 0;
+  std::size_t notBelowNothing = 0;
+  for (float room : grid.clearance)
+  {
+    if (room > 0.0f) ++withRoom;
+    if (room >= 0.0f) ++notBelowNothing;
+  }
+  ASSERT_EQ(notBelowNothing, withRoom + 1);
+
+  GridPoreSizeDistribution distribution;
+  distribution.run(interactions, framework, "X", grid, 20.0, 10uz);
+  EXPECT_EQ(distribution.numberOfCentres, withRoom);
+  EXPECT_EQ(distribution.numberOfVoidVoxels, notBelowNothing);
 }
 
 

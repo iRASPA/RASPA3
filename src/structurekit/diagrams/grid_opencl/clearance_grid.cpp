@@ -197,12 +197,16 @@ ClearanceGrid ClearanceGrid::compute(const PairInteractions &interactions, const
 
   cl_int err;
 
+  // Everything made on the device from here on is let go of when this is, however the routine is left.
+  OpenCL::Handles made;
+
   const char *source = ClearanceGrid::clearanceKernelSource;
   cl_program program = clCreateProgramWithSource(OpenCL::clContext.value(), 1, &source, nullptr, &err);
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("ClearanceGrid: OpenCL clCreateProgramWithSource failed at {}\n", __LINE__));
   }
+  made.program = program;
 
   err = clBuildProgram(program, 0, nullptr, nullptr, nullptr, nullptr);
   if (err != CL_SUCCESS)
@@ -218,9 +222,9 @@ ClearanceGrid ClearanceGrid::compute(const PairInteractions &interactions, const
   cl_kernel kernel = clCreateKernel(program, "ClearanceField", &err);
   if (err != CL_SUCCESS)
   {
-    clReleaseProgram(program);
     throw std::runtime_error(std::format("ClearanceGrid: OpenCL clCreateKernel failed at {}\n", __LINE__));
   }
+  made.kernel = kernel;
 
   std::vector<cl_float4> positions(fractionalPositions.size());
   std::vector<cl_float> radii(fractionalPositions.size());
@@ -232,14 +236,14 @@ ClearanceGrid ClearanceGrid::compute(const PairInteractions &interactions, const
   }
 
   cl_int positionError, radiusError, clearanceError, atomError;
-  cl_mem positionBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                         sizeof(cl_float4) * positions.size(), nullptr, &positionError);
-  cl_mem radiusBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * radii.size(),
-                                       nullptr, &radiusError);
-  cl_mem clearanceBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY,
-                                          sizeof(cl_float) * numberOfVoxels, nullptr, &clearanceError);
-  cl_mem atomBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY, sizeof(cl_int) * numberOfVoxels,
-                                     nullptr, &atomError);
+  cl_mem positionBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                   sizeof(cl_float4) * positions.size(), nullptr, &positionError));
+  cl_mem radiusBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                 sizeof(cl_float) * radii.size(), nullptr, &radiusError));
+  cl_mem clearanceBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY,
+                                                    sizeof(cl_float) * numberOfVoxels, nullptr, &clearanceError));
+  cl_mem atomBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY,
+                                               sizeof(cl_int) * numberOfVoxels, nullptr, &atomError));
   if (positionError != CL_SUCCESS || radiusError != CL_SUCCESS || clearanceError != CL_SUCCESS ||
       atomError != CL_SUCCESS)
   {
@@ -347,13 +351,6 @@ ClearanceGrid ClearanceGrid::compute(const PairInteractions &interactions, const
   }
 
   clFinish(OpenCL::clCommandQueue.value());
-
-  clReleaseMemObject(positionBuffer);
-  clReleaseMemObject(radiusBuffer);
-  clReleaseMemObject(clearanceBuffer);
-  clReleaseMemObject(atomBuffer);
-  clReleaseKernel(kernel);
-  clReleaseProgram(program);
 
   std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - time_begin;
   grid.seconds = elapsed.count();

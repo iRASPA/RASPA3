@@ -65,6 +65,10 @@ std::vector<float> poreRadiusFieldOpenCL(uint3 gridSize, const UnitCell &unitCel
   }
 
   cl_int err;
+
+  // Everything made on the device from here on is let go of when this is, however the routine is left.
+  OpenCL::Handles made;
+
   const char *source = poreSizeKernelSource;
   cl_program program = clCreateProgramWithSource(OpenCL::clContext.value(), 1, &source, nullptr, &err);
   if (err != CL_SUCCESS)
@@ -72,6 +76,7 @@ std::vector<float> poreRadiusFieldOpenCL(uint3 gridSize, const UnitCell &unitCel
     throw std::runtime_error(
         std::format("poreRadiusFieldOpenCL: OpenCL clCreateProgramWithSource failed at {}\n", __LINE__));
   }
+  made.program = program;
 
   err = clBuildProgram(program, 0, nullptr, nullptr, nullptr, nullptr);
   if (err != CL_SUCCESS)
@@ -79,7 +84,6 @@ std::vector<float> poreRadiusFieldOpenCL(uint3 gridSize, const UnitCell &unitCel
     std::size_t length;
     char buffer[2048];
     clGetProgramBuildInfo(program, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &length);
-    clReleaseProgram(program);
     throw std::runtime_error(
         std::format("poreRadiusFieldOpenCL: OpenCL failed to build program (error: {})\n", std::string(buffer)));
   }
@@ -87,20 +91,20 @@ std::vector<float> poreRadiusFieldOpenCL(uint3 gridSize, const UnitCell &unitCel
   cl_kernel kernel = clCreateKernel(program, "PoreSize", &err);
   if (err != CL_SUCCESS)
   {
-    clReleaseProgram(program);
     throw std::runtime_error(std::format("poreRadiusFieldOpenCL: OpenCL clCreateKernel failed at {}\n", __LINE__));
   }
+  made.kernel = kernel;
 
   std::vector<cl_float> field(numberOfVoxels);
   for (std::size_t v = 0; v < numberOfVoxels; ++v) field[v] = distance[v];
 
   cl_int centreError, distanceError, poreError;
-  cl_mem centreBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_int) * centres.size(),
-                                       nullptr, &centreError);
-  cl_mem distanceBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * numberOfVoxels,
-                                         nullptr, &distanceError);
-  cl_mem poreBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE, sizeof(cl_float) * numberOfVoxels,
-                                     nullptr, &poreError);
+  cl_mem centreBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                 sizeof(cl_int) * centres.size(), nullptr, &centreError));
+  cl_mem distanceBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                   sizeof(cl_float) * numberOfVoxels, nullptr, &distanceError));
+  cl_mem poreBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE,
+                                               sizeof(cl_float) * numberOfVoxels, nullptr, &poreError));
   if (centreError != CL_SUCCESS || distanceError != CL_SUCCESS || poreError != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("poreRadiusFieldOpenCL: OpenCL clCreateBuffer failed at {}\n", __LINE__));
@@ -166,12 +170,6 @@ std::vector<float> poreRadiusFieldOpenCL(uint3 gridSize, const UnitCell &unitCel
   }
 
   clFinish(OpenCL::clCommandQueue.value());
-
-  clReleaseMemObject(centreBuffer);
-  clReleaseMemObject(distanceBuffer);
-  clReleaseMemObject(poreBuffer);
-  clReleaseKernel(kernel);
-  clReleaseProgram(program);
 
   keepUnlimitedRoom();
   return poreRadius;

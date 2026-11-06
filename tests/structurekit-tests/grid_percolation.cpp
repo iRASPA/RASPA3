@@ -352,3 +352,46 @@ TEST(grid_percolation, the_most_open_point_on_the_path_can_be_negative)
   EXPECT_FLOAT_EQ(sweep.percolationOpenness, -5.0f);
   EXPECT_FLOAT_EQ(sweep.highestOpennessOnPath, -2.0f);
 }
+
+
+// A grid one point thick along an axis. Stepping that way from a point comes straight back to the point itself,
+// one cell over: the point is its own neighbour across the face of the cell, and an open point there is a rod
+// running through the crystal along that axis, made of copies of itself. The sweep used to look only at
+// neighbours switched on before the point, and a point is not switched on before itself, so it never saw the
+// rod; the labelling of the connected pieces, which asks the same question at one level, did.
+TEST(grid_percolation, a_point_that_is_its_own_neighbour_across_the_cell_runs_through_it)
+{
+  struct Thin
+  {
+    uint3 gridSize;
+    int directions;  // how many axes the grid is one point thick along
+  };
+  for (const Thin &thin : {Thin{uint3(1, 4, 4), 1}, Thin{uint3(4, 1, 4), 1}, Thin{uint3(4, 4, 1), 1},
+                           Thin{uint3(1, 1, 4), 2}, Thin{uint3(1, 1, 1), 3}})
+  {
+    const std::string which = std::format("{} x {} x {}", thin.gridSize.x, thin.gridSize.y, thin.gridSize.z);
+
+    // One open point and everything else shut, so nothing else can make a way through.
+    Field field(thin.gridSize, 0.0f);
+    field.at(0, 0, 0) = 5.0f;
+
+    const GridPercolation sweep = sweepPercolation(thin.gridSize, field.value, 1.0f, true);
+    EXPECT_TRUE(sweep.percolates) << which;
+    EXPECT_DOUBLE_EQ(sweep.percolationOpenness, 5.0) << which;
+    EXPECT_EQ(sweep.dimensionalityAtThreshold, thin.directions) << which;
+    for (int dimension = 0; dimension < 3; ++dimension)
+    {
+      if (dimension < thin.directions)
+        EXPECT_DOUBLE_EQ(sweep.opennessByDimension[static_cast<std::size_t>(dimension)], 5.0) << which;
+      else
+        EXPECT_LT(sweep.opennessByDimension[static_cast<std::size_t>(dimension)], 0.0) << which;
+    }
+    EXPECT_FLOAT_EQ(escapeAt(sweep, thin.gridSize, 0, 0, 0), 5.0f) << which;
+
+    // And the pieces at that level say the same of it.
+    const GridComponents components = GridComponents::compute(thin.gridSize, field.value, 1.0);
+    ASSERT_EQ(components.pores.size(), 1uz) << which;
+    EXPECT_TRUE(components.pores[0].isChannel) << which;
+    EXPECT_EQ(components.pores[0].dimensionality, thin.directions) << which;
+  }
+}
