@@ -692,10 +692,16 @@ PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibili
       if (wholeGap <= spikeFloor) continue;
       addInterval(wholeSpike, left, right, wholeGap);
 
-      if (left.diameter < probeSample.diameter) continue;
-      const double reachableGap = std::min(unaccounted(left, right, &Sample::reachable), wholeGap * allowance);
+      // The primary curve turns a corner at the floor diameter: flat below it, losing volume above. An interval
+      // wholly below the floor holds nothing of it. One that reaches across the floor holds what is lost from
+      // the floor up, and for that the floor is where it starts: the sample there is in hand, and is the one the
+      // sweep makes a point of its grid for the same reason. Passing such an interval over, as one below the
+      // floor, lost the spike of a room only just wider than the floor, whose bracket starts under it.
+      if (right.diameter <= probeSample.diameter) continue;
+      const Sample& from = (left.diameter < probeSample.diameter) ? probeSample : left;
+      const double reachableGap = std::min(unaccounted(from, right, &Sample::reachable), wholeGap * allowance);
       if (reachableGap <= spikeFloor) continue;
-      addInterval(reachableSpike, left, right, reachableGap);
+      addInterval(reachableSpike, from, right, reachableGap);
     }
     keepSpike(whole, wholeSpike, index);
     keepSpike(reachable, reachableSpike, index);

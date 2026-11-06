@@ -638,3 +638,63 @@ TEST(exact_pore_size_distribution, a_short_estimate_of_the_largest_sphere_does_n
     EXPECT_NEAR(curve.points[row].poreVolume, reference.points[row].poreVolume, 1.0e-9) << "row " << row;
   }
 }
+
+
+// A room only just wider than the floor. The peaks route samples once below and once above each room, five
+// thousandths of an Ångström either way, and the primary curve is collected only from the floor diameter up: so
+// a room within that distance above the floor had the lower of its two samples under the floor, and its spike
+// was left out of the primary curve altogether, though the room is in it and here is nearly all of it. The floor
+// is the point the primary curve turns at, and what a bracket reaching across it holds of that curve is taken
+// from the floor.
+TEST(exact_pore_size_distribution, peaks_only_keeps_a_room_that_is_only_just_wider_than_the_floor)
+{
+  const double edge = 6.0;
+  const double radius = 1.5;
+  const double corner = std::sqrt(3.0) * edge - 2.0 * radius;
+  const Lattice lattice = simpleCubic(edge, radius);
+
+  auto build = [&](double probeRadius)
+  { return PoreAccessibility::create(lattice.box, lattice.fractionalPositions, lattice.radii, probeRadius); };
+
+  // The whole void does not know of the floor, so its one spike is the same whatever the floor is.
+  const PoreSizeDistributionCurve unfloored = exactPoreSizePeaks(build, lattice.box.volume, 1, 0.0, 0.0);
+  ASSERT_EQ(unfloored.spikes.size(), 1uz);
+
+  // From a room well clear of the floor, where nothing was ever wrong, down to one half a thousandth above it.
+  for (const double above : {0.02, 0.004, 0.002, 0.0005})
+  {
+    std::array<double, 2> weights{};
+    for (const std::size_t refinements : {0uz, 12uz})
+    {
+      const std::string which = std::format("room {} Å above the floor, {} refinements", above, refinements);
+      const PoreSizeDistributionCurve peaks =
+          exactPoreSizePeaks(build, lattice.box.volume, 1, 0.0, 0.5 * (corner - above), refinements);
+
+      ASSERT_EQ(peaks.spikes.size(), 1uz) << which;
+      EXPECT_NEAR(peaks.spikes.back().weight, unfloored.spikes.back().weight, 1.0e-6) << which;
+
+      // What is left at the floor is the corner room and next to nothing else, so its spike is all but the
+      // whole of the primary curve.
+      EXPECT_GT(peaks.probeAccessibleVolume, 0.0) << which;
+      ASSERT_EQ(peaks.probeAccessibleSpikes.size(), 1uz) << which;
+      const PoreSizeSpike& spike = peaks.probeAccessibleSpikes.back();
+      EXPECT_NEAR(spike.diameter, corner, 1.0e-3) << which;
+      EXPECT_GT(spike.weight, 0.998) << which;
+      EXPECT_LE(spike.weight, 1.0 + 1.0e-9) << which;
+      EXPECT_DOUBLE_EQ(peaks.probeAccessibleSingularWeight, spike.weight) << which;
+      EXPECT_NEAR(peaks.probeAccessibleLargestDiameter, corner, 1.0e-3) << which;
+      weights[refinements == 0 ? 0 : 1] = spike.weight;
+    }
+    // Refining the bracket corners the same cliff, so the weight does not depend on it.
+    EXPECT_NEAR(weights[0], weights[1], 5.0e-4) << "room " << above << " Å above the floor";
+  }
+
+  // The floor above the room instead: nothing is left at the floor, and nothing of the primary curve is the
+  // room's, while the whole void still has it.
+  const PoreSizeDistributionCurve below =
+      exactPoreSizePeaks(build, lattice.box.volume, 1, 0.0, 0.5 * (corner + 0.002));
+  EXPECT_EQ(below.probeAccessibleVolume, 0.0);
+  EXPECT_TRUE(below.probeAccessibleSpikes.empty());
+  ASSERT_EQ(below.spikes.size(), 1uz);
+  EXPECT_NEAR(below.spikes.back().weight, unfloored.spikes.back().weight, 1.0e-6);
+}
