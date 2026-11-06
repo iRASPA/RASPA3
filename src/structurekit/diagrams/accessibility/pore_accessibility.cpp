@@ -229,12 +229,21 @@ PointClassification PoreAccessibility::classify(const double3& point) const
 
   // Line-of-sight test against the Voronoi nodes of the nearest atom's cell, for the points no ball
   // holds: those nearer to an atom than any node has room, which is most of a surface-area sweep.
+  //
+  // A node too narrow for the probe carries no pore and is passed over here as it is in the two other
+  // tests. Geometry all but does that already: a vertex beyond the point as seen from the atom is further
+  // from the atom than the point is, so outside that atom, and a vertex of an atom's cell that is outside
+  // its own atom is outside every atom and has room. What geometry does not cover is a node several
+  // vertices were merged into, which has the least room of them and may have none while the cell's own
+  // vertex still has a little. A point in the sliver between was then decided by a node of no pore, and
+  // came back as void that is in no pore at all, which nothing downstream has a place for.
   double3 sampleRay = wrappedPoint - nearestAtomImage;
   double bestDistanceSquared = std::numeric_limits<double>::max();
   bool decided = false;
   std::size_t bestNode = 0;
   for (const auto& [nodeIndex, vertexRelative] : network.atomNodeVectors[nearestAtom])
   {
+    if (channels.nodePoreId[nodeIndex] < 0) continue;
     double3 nodePosition = nearestAtomImage + vertexRelative;
     double3 otherRay = wrappedPoint - nodePosition;
     double distanceSquared = double3::dot(otherRay, otherRay);
