@@ -538,6 +538,24 @@ export struct System
   {
     return tmmcTracks(componentId) ? tmmc.biasFactor(newN, oldN) : 1.0;
   }
+  /// Whether the integer swaps of 'componentId' (Swap, SwapCBMC, SwapMultiTrialCBMC, the pair, group and
+  /// Gibbs transfers: N -> N +/- 1 with the lambda of the fractional molecule unchanged) are steps of the
+  /// transition matrix. On a plain N chain they are. On the (N, lambda) chain of SwapCFCMC/SwapCBCFCMC the
+  /// only steps are the lambda hops (N, k) -> (N, k +/- 1) and the endpoint crossings (N, last) <-> (N+1, 0);
+  /// an integer swap jumps (N, k) -> (N +/- 1, k), which the tridiagonal matrix cannot hold, so such a move
+  /// is refused and not recorded (the input reader refuses the mix up front).
+  [[nodiscard]] bool tmmcTracksIntegerSwap(std::size_t componentId) const
+  {
+    return tmmcTracks(componentId) && !tmmc.lambdaChain();
+  }
+  /// The transition-matrix bias of an integer swap of 'componentId' from 'oldN' to 'newN' molecules: 1 when
+  /// the matrix does not track that component, 0 (refused) on an (N, lambda) chain.
+  [[nodiscard]] double tmmcIntegerSwapBiasFactor(std::size_t componentId, std::size_t newN, std::size_t oldN)
+  {
+    if (!tmmcTracks(componentId)) return 1.0;
+    if (tmmc.lambdaChain()) return 0.0;
+    return tmmc.biasFactor(newN, oldN);
+  }
   /// The change of the molecule count of 'componentId' by one group insertion of the group of
   /// 'centralComponent' (the central molecule and its satellites; a group deletion removes the same).
   [[nodiscard]] std::size_t groupMoleculeCountChange(std::size_t centralComponent, std::size_t componentId) const

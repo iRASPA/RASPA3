@@ -182,7 +182,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   }
 
   const std::size_t newN = oldN == std::numeric_limits<std::size_t>::max() ? oldN : oldN + 1;
-  double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
+  double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
 
   // apply acceptance/rejection rule
   if (random.uniform() < biasTransitionMatrix * Pacc)

@@ -874,7 +874,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -888,7 +888,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -902,7 +902,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -915,7 +915,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -930,7 +930,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -943,7 +943,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -984,7 +984,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -997,7 +997,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -1008,7 +1008,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
     case Move::Types::PairSwapCBCFCMC:
@@ -1019,7 +1019,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
     case Move::Types::PairSwap:
@@ -1032,7 +1032,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -1045,7 +1045,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -1059,7 +1059,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -1074,7 +1074,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -1089,7 +1089,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -1104,7 +1104,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -1115,7 +1115,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
     case Move::Types::GroupSwapCBCFCMC:
@@ -1126,7 +1126,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
     case Move::Types::TetheredProtonHop:
@@ -1850,7 +1850,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -1864,7 +1864,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -1878,7 +1878,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -1891,7 +1891,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -1906,7 +1906,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -1919,7 +1919,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -1956,7 +1956,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
     case Move::Types::PairSwapCBCFCMC:
@@ -1967,7 +1967,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
     case Move::Types::PairSwapCBMC:
@@ -1981,7 +1981,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -1994,7 +1994,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -2008,7 +2008,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -2021,7 +2021,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -2035,7 +2035,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -2050,7 +2050,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -2065,7 +2065,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -2080,7 +2080,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -2091,7 +2091,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
     case Move::Types::GroupSwapCBCFCMC:
@@ -2102,7 +2102,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
     case Move::Types::TetheredProtonHop:
@@ -2804,7 +2804,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
 
         // extra time keeping for insertion / deletion split
         std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
@@ -2822,7 +2822,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
 
         // extra time keeping for insertion / deletion split
         std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
@@ -2842,7 +2842,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
 
         // extra time keeping for insertion / deletion split
         std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
@@ -2861,7 +2861,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
 
         // extra time keeping for insertion / deletion split
         std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
@@ -2882,7 +2882,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
 
         std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
         selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::InsertionTotal] +=
@@ -2900,7 +2900,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
 
         std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
         selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::DeletionTotal] +=
@@ -2941,7 +2941,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
     case Move::Types::PairSwapCBCFCMC:
@@ -2952,7 +2952,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
     case Move::Types::PairSwapCBMC:
@@ -2966,7 +2966,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -2979,7 +2979,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -2993,7 +2993,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -3006,7 +3006,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -3020,7 +3020,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -3035,7 +3035,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -3050,7 +3050,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -3065,7 +3065,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -3076,7 +3076,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
     case Move::Types::GroupSwapCBCFCMC:
@@ -3087,7 +3087,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracks(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
       break;
     }
     case Move::Types::TetheredProtonHop:

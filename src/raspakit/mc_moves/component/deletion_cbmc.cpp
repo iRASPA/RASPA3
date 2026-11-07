@@ -145,7 +145,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     }
 
     const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-    double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
+    double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
 
     // Apply acceptance/rejection rule
     if (random.uniform() < biasTransitionMatrix * Pacc)

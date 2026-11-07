@@ -305,6 +305,40 @@ TEST(INPUT_READER_TMMC, enables_lambda_chain_for_cfcmc_swap)
   EXPECT_EQ(reader.systems[0].tmmc.numberOfLambdaBins, 7uz);
 }
 
+// An integer swap beside the CFCMC swap on a lambda chain jumps (N, k) -> (N +/- 1, k), which the (N, lambda)
+// matrix cannot hold; the mix is refused. With a single lambda bin the chain is plain N and the mix is fine.
+TEST(INPUT_READER_TMMC, rejects_integer_swaps_beside_a_cfcmc_swap_on_a_lambda_chain)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  {
+    nlohmann::json input = readTMMCExample();
+    input["NumberOfLambdaBins"] = 7;
+    input["Components"][0]["SwapProbability"] = 1.0;
+    input["Components"][0]["CFCMC_CBMC_SwapProbability"] = 1.0;
+    TemporaryInput temporary(std::move(input), "lambda_chain_mix", workspace.path());
+    ScopedCurrentPath currentPath(workspace.path());
+
+    EXPECT_THROW(
+        {
+          InputReader reader(temporary.path().filename().string());
+          static_cast<void>(reader);
+        },
+        std::runtime_error);
+  }
+  {
+    nlohmann::json input = readTMMCExample();
+    input["NumberOfLambdaBins"] = 1;
+    input["Components"][0]["SwapProbability"] = 1.0;
+    input["Components"][0]["CFCMC_CBMC_SwapProbability"] = 1.0;
+    TemporaryInput temporary(std::move(input), "plain_chain_mix", workspace.path());
+    ScopedCurrentPath currentPath(workspace.path());
+
+    InputReader reader(temporary.path().filename().string());
+    ASSERT_EQ(reader.systems.size(), 1uz);
+    EXPECT_FALSE(reader.systems[0].tmmc.lambdaChain());
+  }
+}
+
 TEST(INPUT_READER_TMMC, accepts_elastic_constant_minimization_options)
 {
   TemporaryDirectory workspace = makeTmmcWorkspace();

@@ -294,7 +294,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   }
 
   const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-  const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
+  const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwapCBMC, 1);
 
@@ -531,7 +531,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   }
 
   const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-  const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
+  const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwap, 1);
 

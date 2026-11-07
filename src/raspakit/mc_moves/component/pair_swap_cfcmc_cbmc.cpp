@@ -498,7 +498,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     }
 
     const std::size_t newN_A = oldN_A == std::numeric_limits<std::size_t>::max() ? oldN_A : oldN_A + 1;
-    const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN_A, oldN_A);
+    const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN_A, oldN_A);
 
     if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {
@@ -875,7 +875,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     }
 
     const std::size_t newN_A = oldN_A == 0 ? 0 : oldN_A - 1;
-    const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN_A, oldN_A);
+    const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN_A, oldN_A);
 
     if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {

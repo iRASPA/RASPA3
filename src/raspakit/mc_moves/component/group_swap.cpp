@@ -384,7 +384,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
   }
 
   const std::size_t newN = oldN == std::numeric_limits<std::size_t>::max() ? oldN : oldN + 1;
-  const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
+  const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
 
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
@@ -744,7 +744,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
   }
 
   const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-  const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
+  const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
 
   centralComponent.mc_moves_statistics.addConstructed(move, 1);
 

@@ -68,7 +68,8 @@ System makeCationAdsorbateSystem(const MCMoveProbabilities& cationMoves, const M
                 {cations, adsorbates}, 5);
 }
 
-void enableTMMC(System& system, std::size_t minMacrostate, std::size_t maxMacrostate)
+void enableTMMC(System& system, std::size_t minMacrostate, std::size_t maxMacrostate,
+                std::size_t numberOfLambdaBins = 1)
 {
   system.tmmc.doTMMC = true;
   system.tmmc.useBias = true;
@@ -76,7 +77,16 @@ void enableTMMC(System& system, std::size_t minMacrostate, std::size_t maxMacros
   system.tmmc.rejectOutOfBound = true;
   system.tmmc.minMacrostate = minMacrostate;
   system.tmmc.maxMacrostate = maxMacrostate;
+  system.tmmc.numberOfLambdaBins = numberOfLambdaBins;
   system.tmmc.initialize();
+}
+
+// one adsorbate alone, with the given moves
+System makeAdsorbateSystem(const MCMoveProbabilities& moves, std::size_t adsorbates, double pressure)
+{
+  const ForceField forceField = makeForceField();
+  return System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, pressure, 1.0, {},
+                {makeMethane(forceField, moves)}, {}, {adsorbates}, 5);
 }
 
 bool allZero(const std::vector<double3>& matrix)
@@ -177,4 +187,62 @@ TEST(TMMC_COMPONENT_TRACKING, cation_swaps_are_neither_refused_by_the_window_nor
   ASSERT_EQ(histogram.size(), 3uz);
   EXPECT_GT(histogram[0], 0uz);
   EXPECT_EQ(histogram[1] + histogram[2], 0uz);
+}
+
+// The integer swaps (N -> N +/- 1 with lambda unchanged) are steps of a plain N chain but not of the (N, lambda)
+// chain of the CFCMC swap: there they would be recorded on the (N, k) row as lambda steps and biased by the
+// endpoint crossing.
+TEST(TMMC_COMPONENT_TRACKING, integer_swaps_are_steps_of_a_plain_chain_but_not_of_a_lambda_chain)
+{
+  System plain = makeAdsorbateSystem(swapping(), 10, 1e4);
+  enableTMMC(plain, 0, 40, 1);
+  EXPECT_TRUE(plain.tmmcTracksIntegerSwap(0));
+  EXPECT_DOUBLE_EQ(plain.tmmcIntegerSwapBiasFactor(0, 11, 10), plain.tmmc.biasFactor(11, 10));
+
+  System chain = makeAdsorbateSystem(swapping(), 10, 1e4);
+  enableTMMC(chain, 0, 40, 21);
+  ASSERT_TRUE(chain.tmmc.lambdaChain());
+  EXPECT_TRUE(chain.tmmcTracks(0));
+  EXPECT_FALSE(chain.tmmcTracksIntegerSwap(0));
+  EXPECT_DOUBLE_EQ(chain.tmmcIntegerSwapBiasFactor(0, 11, 10), 0.0);
+  EXPECT_DOUBLE_EQ(chain.tmmcIntegerSwapBiasFactor(0, 9, 10), 0.0);
+  // the CFCMC endpoint crossing keeps the chain's own bias
+  EXPECT_DOUBLE_EQ(chain.tmmcBiasFactor(0, 11, 10), chain.tmmc.biasFactor(11, 10));
+
+  // a cation is never the matrix's business, chain or not
+  System mixed = makeCationAdsorbateSystem(swapping(), translating(), 9, 0, 1e4);
+  enableTMMC(mixed, 0, 2, 21);
+  EXPECT_FALSE(mixed.tmmcTracksIntegerSwap(0));
+  EXPECT_DOUBLE_EQ(mixed.tmmcIntegerSwapBiasFactor(0, 10, 9), 1.0);
+}
+
+// Ten molecules swapping by the plain insertion/deletion move while the matrix is an (N, lambda) chain: every
+// such swap is refused and nothing is recorded, so the count stays at ten and the matrix stays empty (before,
+// the swaps went through, biased by the endpoint crossing, and their acceptances landed on lambda-step entries).
+TEST(TMMC_COMPONENT_TRACKING, integer_swaps_on_a_lambda_chain_are_refused_and_not_recorded)
+{
+  std::vector<System> systems{makeAdsorbateSystem(swapping(), 10, 1e7)};
+  enableTMMC(systems[0], 0, 40, 21);
+
+  RandomNumber random(9);
+  SimulationSchedule schedule{0, 0, 3, 0, 1000, 10000, 5000, 5000};
+  MonteCarloTransitionMatrix tmmc(schedule, systems, random, 5);
+  for (System& walker : tmmc.systems) walker.runningEnergies = walker.computeTotalEnergies();
+  tmmc.simulationStage = MonteCarloTransitionMatrix::SimulationStage::Initialization;
+  for (std::size_t cycle = 0; cycle < 3; ++cycle) tmmc.performCycle();
+
+  const System& system = tmmc.systems[0];
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 10uz);
+  EXPECT_TRUE(allZero(system.tmmc.cmatrix));
+
+  // the same swaps on a plain chain do move the count and do record
+  std::vector<System> plainSystems{makeAdsorbateSystem(swapping(), 10, 1e7)};
+  enableTMMC(plainSystems[0], 0, 40, 1);
+  RandomNumber plainRandom(9);
+  MonteCarloTransitionMatrix plain(schedule, plainSystems, plainRandom, 5);
+  for (System& walker : plain.systems) walker.runningEnergies = walker.computeTotalEnergies();
+  plain.simulationStage = MonteCarloTransitionMatrix::SimulationStage::Initialization;
+  for (std::size_t cycle = 0; cycle < 3; ++cycle) plain.performCycle();
+  EXPECT_NE(plain.systems[0].numberOfIntegerMoleculesPerComponent[0], 10uz);
+  EXPECT_FALSE(allZero(plain.systems[0].tmmc.cmatrix));
 }

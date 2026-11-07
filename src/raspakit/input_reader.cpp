@@ -5269,6 +5269,47 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      // On the (N, lambda) chain of SwapCFCMC/SwapCBCFCMC the only steps are the lambda hops and the
+      // endpoint crossings; an integer swap (N -> N +/- 1 with lambda unchanged) jumps (N, k) -> (N +/- 1, k),
+      // which the tridiagonal matrix cannot hold: it would be recorded on the (N, k) row as a lambda step and
+      // biased by the endpoint crossing. The chain is decided here from the moves (ParallelTMMC sets the bins
+      // further down), so that both drivers refuse the mix.
+      const std::size_t trackedComponent = systems[i].tmmcComponent();
+      if (trackedComponent < systems[i].components.size())
+      {
+        const Component& tracked = systems[i].components[trackedComponent];
+        const bool lambdaChain = (tracked.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
+                                  tracked.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0) &&
+                                 tracked.lambdaGC.numberOfSamplePoints > 1uz;
+        const std::array integerSwapMoves{
+            std::pair{Move::Types::Swap, "SwapConventionalProbability"},
+            std::pair{Move::Types::SwapCBMC, "SwapProbability"},
+            std::pair{Move::Types::SwapMultiTrialCBMC, "SwapMultiTrialProbability"},
+            std::pair{Move::Types::PairSwap, "PairSwapConventionalProbability"},
+            std::pair{Move::Types::PairSwapCBMC, "PairSwapProbability"},
+            std::pair{Move::Types::PairSwapCFCMC, "CFCMC_PairSwapProbability"},
+            std::pair{Move::Types::PairSwapCBCFCMC, "CFCMC_CBMC_PairSwapProbability"},
+            std::pair{Move::Types::GroupSwap, "GroupSwapConventionalProbability"},
+            std::pair{Move::Types::GroupSwapCBMC, "GroupSwapProbability"},
+            std::pair{Move::Types::GroupSwapCFCMC, "CFCMC_GroupSwapProbability"},
+            std::pair{Move::Types::GroupSwapCBCFCMC, "CFCMC_CBMC_GroupSwapProbability"},
+            std::pair{Move::Types::GibbsSwapCBMC, "GibbsSwapCBMCProbability"},
+            std::pair{Move::Types::GibbsSwapMultiTrialCBMC, "GibbsSwapMultiTrialProbability"}};
+        for (const auto& [move, keyword] : integerSwapMoves)
+        {
+          if (lambdaChain && tracked.mc_moves_probabilities.getProbability(move) != 0.0)
+          {
+            throw std::runtime_error(std::format(
+                "Error [TMMC, system {}, component {} ('{}')]: '{}' must be zero together with a CFCMC swap on "
+                "{} lambda bins; move '{}' changes N with lambda unchanged, a (N, k) -> (N +/- 1, k) jump that "
+                "the (N, lambda) transition matrix of the CFCMC swap cannot hold (its steps are the lambda hops "
+                "and the endpoint crossings only). Use the CFCMC swap alone, or set 'NumberOfLambdaBins' to 1.\n",
+                i, trackedComponent, tracked.name, keyword, tracked.lambdaGC.numberOfSamplePoints,
+                Move::moveNames[std::to_underlying(move)]));
+          }
+        }
+      }
+
       // a group swap moves the macrostate by the number of tracked molecules in its group: only a group
       // that changes the tracked count by exactly its central molecule, or not at all, fits the
       // nearest-neighbor matrix (satellites of the tracked component would record N -> N +/- m as N -> N +/- 1)
@@ -5276,7 +5317,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                                       std::pair{Move::Types::GroupSwapCBMC, "GroupSwapProbability"},
                                       std::pair{Move::Types::GroupSwapCFCMC, "CFCMC_GroupSwapProbability"},
                                       std::pair{Move::Types::GroupSwapCBCFCMC, "CFCMC_CBMC_GroupSwapProbability"}};
-      const std::size_t trackedComponent = systems[i].tmmcComponent();
       for (std::size_t componentId = 0uz; componentId < systems[i].components.size(); ++componentId)
       {
         const Component& component = systems[i].components[componentId];

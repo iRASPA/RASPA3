@@ -86,7 +86,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveMultiTri
     return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
   }
   const std::size_t newN = oldN == std::numeric_limits<std::size_t>::max() ? oldN : oldN + 1;
-  const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
+  const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
 
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
@@ -161,7 +161,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveMultiTria
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }
   const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-  const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
+  const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
 
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
