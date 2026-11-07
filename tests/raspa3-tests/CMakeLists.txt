@@ -54,6 +54,7 @@ add_executable(unit_tests_raspa3
   mc_cfcmc_flexible_charged_drift.cpp
   parallel_tempering_unsupported.cpp
   cbmc_thread_pool_grids.cpp
+  gibbs_empty_box_statistics.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

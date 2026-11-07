@@ -88,10 +88,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMoveMu
   checkMultiTrialSupported(systemB, "Gibbs swap multi-trial (CBMC)");
   DualTMMCTrial tmmcTrial(systemA, systemB, selectedComponent);
 
-  if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;
-
+  // an attempt out of an empty box B is counted, as the transition matrix records it (see GibbsSwapMove_CBMC)
   componentA.mc_moves_statistics.addTrial(move);
   componentB.mc_moves_statistics.addTrial(move);
+
+  if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;
 
   const std::size_t numberOfTrials = std::max<std::size_t>(1, componentA.numberOfTrialMolecules);
 

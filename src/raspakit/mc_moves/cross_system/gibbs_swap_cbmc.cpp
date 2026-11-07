@@ -92,15 +92,17 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   Component& componentB = systemB.components[selectedComponent];
   DualTMMCTrial tmmcTrial(systemA, systemB, selectedComponent);
 
+  // Update move counts statistics for both systems. An attempt out of an empty box B is an attempt too: it is
+  // counted here, as the transition matrix records it (a rejected transfer) and as the grand-canonical deletion
+  // counts an attempt on an empty component.
+  componentA.mc_moves_statistics.addTrial(move);
+  componentB.mc_moves_statistics.addTrial(move);
+
   // Return if there are no molecules of the selected component in system B
   if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;
 
   // Index for the new molecule in system A
   std::size_t newMoleculeIndex = systemA.numberOfMolecules();
-
-  // Update move counts statistics for both systems
-  componentA.mc_moves_statistics.addTrial(move);
-  componentB.mc_moves_statistics.addTrial(move);
 
   const CBMC::GrowContext growContext = systemA.makeGrowContext();
 
