@@ -1617,16 +1617,17 @@ void PolymerLinkTable::rebuild(const ForceField &forceField, const std::vector<C
       auto hasBoth = [&](std::span<const std::size_t> identifiers)
       { return std::ranges::contains(identifiers, pair[0]) && std::ranges::contains(identifiers, pair[1]); };
       const bool unsupported =
-          std::ranges::any_of(intra.ureyBradleys, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
-          std::ranges::any_of(intra.inversionBends, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
-          std::ranges::any_of(intra.outOfPlaneBends, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
-          std::ranges::any_of(intra.improperTorsions, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
-          std::ranges::any_of(intra.bondBonds, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
-          std::ranges::any_of(intra.bondBends, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
-          std::ranges::any_of(intra.bondTorsions, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
-          std::ranges::any_of(intra.bendBends, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
-          std::ranges::any_of(intra.bendTorsions, [&](const auto &t) { return hasBoth(t.identifiers); }) ||
-          std::ranges::any_of(intra.cmaps, [&](const auto &t) { return hasBoth(t.identifiers); });
+          std::ranges::any_of(intra.ureyBradleys, [&](const auto& t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.inversionBends, [&](const auto& t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.outOfPlaneBends, [&](const auto& t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.improperTorsions, [&](const auto& t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.bondBonds, [&](const auto& t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.bondBends, [&](const auto& t)
+                              { return hasBoth(std::span<const std::size_t>(t.identifiers).first(3)); }) ||
+          std::ranges::any_of(intra.bondTorsions, [&](const auto& t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.bendBends, [&](const auto& t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.bendTorsions, [&](const auto& t) { return hasBoth(t.identifiers); }) ||
+          std::ranges::any_of(intra.cmaps, [&](const auto& t) { return hasBoth(t.identifiers); });
       if (unsupported)
       {
         throw std::runtime_error(std::format(

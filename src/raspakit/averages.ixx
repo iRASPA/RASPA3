@@ -61,7 +61,7 @@ export inline double studentTCriticalValue(std::size_t degreesOfFreedom)
 {
   if (degreesOfFreedom < standardNormalDeviates.size())
   {
-    return studentTCriticalValue(degreesOfFreedom);
+    return standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
   }
   // two-sided normal quantiles for the 80, 90, 95, 98, and 99% confidence levels
   constexpr std::array<double, 5> normalQuantiles{1.2815515655446004, 1.6448536269514722, 1.959963984540054,

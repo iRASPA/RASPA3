@@ -60,6 +60,7 @@ add_executable(unit_tests_raspa3
   external_field_grid.cpp
   simulationbox_block_average.cpp
   uninitialized_members_and_table_bounds.cpp
+  spatial_decomposition_bond_bend_split.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

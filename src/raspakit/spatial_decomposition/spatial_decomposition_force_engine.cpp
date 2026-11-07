@@ -234,7 +234,8 @@ std::size_t hostTermAtoms(const Potentials::IntraMolecularPotentials& potentials
     case 7:
       return copy(potentials.bondBonds[index].identifiers);
     case 8:
-      return copy(potentials.bondBends[index].identifiers);
+      // a bond-bend term acts on three atoms (and has three gradients); its fourth identifier is unused
+      return copy(std::span(potentials.bondBends[index].identifiers).first<3>());
     case 9:
       return copy(potentials.bondTorsions[index].identifiers);
     case 10:
