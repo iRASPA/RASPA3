@@ -164,6 +164,16 @@ export struct DcTSTWindowState
   std::size_t cageB{0};
 };
 
+/// Cycle counts and output controls for a programmatic (no input-file) construction of the driver.
+export struct DcTSTFreeEnergyParameters
+{
+  std::size_t numberOfInitializationCycles{0};
+  std::size_t printEvery{5000};
+  std::size_t optimizeMCMovesEvery{5000};
+  std::size_t numberOfBlocks{5};
+  std::optional<std::size_t> randomSeed{};
+};
+
 /**
  * \brief dcTST free-energy driver: the free-energy profile F(q) of a tagged component along the barrier
  * normal, the probability density P(q*) at the dividing plane and the transition-state rate k^TST, from
@@ -184,6 +194,13 @@ export struct DynamicallyCorrectedTSTFreeEnergy
   DynamicallyCorrectedTSTFreeEnergy& operator=(const DynamicallyCorrectedTSTFreeEnergy&) = delete;
 
   DynamicallyCorrectedTSTFreeEnergy(InputReader& reader);
+  /**
+   * \brief Constructs the driver from a template system and settings, without an input file (the
+   *        InputReader constructor delegates here). 'settings.taggedComponent' is the component index;
+   *        the template system is replicated into 'settings.numberOfReplicas' replicas.
+   */
+  DynamicallyCorrectedTSTFreeEnergy(System templateSystem, DcTSTFreeEnergySettings settings,
+                                    DcTSTFreeEnergyParameters parameters);
 
   RandomNumber random;
   DcTSTFreeEnergySettings settings;
