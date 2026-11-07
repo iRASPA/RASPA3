@@ -106,6 +106,29 @@ export struct ParallelTMMCParameters
 export std::vector<std::size_t> tmmcWindowBoundariesWithinPacking(const std::vector<std::size_t>& boundaries,
                                                                   std::size_t packed);
 
+/**
+ * \brief ln Pi over a macrostate grid from a pooled collection matrix and the Widom anchor.
+ *
+ * \p collectionMatrix is the chain of (down, stay, up) acceptance-probability sums, one row per state
+ * of the 1D chain: the macrostates themselves for 1D TMMC, the flattened (N, λ) walk of \p nLambda
+ * bins per macrostate otherwise (the λ = 0 slice is the macrostate distribution). Every link gives
+ * the detailed-balance increment ln Pi(i+1) - ln Pi(i) = ln P(i -> i+1) - ln P(i+1 -> i) when both
+ * directions were accepted at least once; the increment out of macrostate N is the walk from (N, 0)
+ * to (N+1, 0). Inside the Widom block (the increments out of the macrostates below \p widomAnchorEnd
+ * that have a counted test-insertion mean, \p widomHasIncrement) the exact \p widomLogIncrement
+ * replaces the collection-matrix increment whether that link is supported or not, so a link the
+ * collection matrix cannot support at low N (no accepted deletion in a strongly binding adsorbent,
+ * a starved λ hop) is bridged by the anchor instead of cutting off every macrostate above it. ln Pi
+ * is gauged to zero at the lowest macrostate that was visited or has an increment out of it, and the
+ * recursion runs upward to the first increment nothing supports; the states above that, and all
+ * others never reached, carry the finite sentinel \p logZero (tested against \p logZeroThreshold).
+ */
+export std::vector<double> tmmcReconstructLogPi(const std::vector<double3>& collectionMatrix,
+                                                std::size_t numberOfMacrostates, std::size_t nLambda,
+                                                const std::vector<double>& widomLogIncrement,
+                                                const std::vector<bool>& widomHasIncrement, std::size_t widomAnchorEnd,
+                                                double logZero, double logZeroThreshold);
+
 /// One point of a TMMC-reweighted isotherm, after the analysis has run.
 export struct TMMCIsothermPoint
 {

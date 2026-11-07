@@ -201,6 +201,95 @@ std::vector<std::size_t> tmmcWindowBoundariesWithinPacking(const std::vector<std
   return kept;
 }
 
+std::vector<double> tmmcReconstructLogPi(const std::vector<double3>& collectionMatrix, std::size_t numberOfMacrostates,
+                                         std::size_t nLambda, const std::vector<double>& widomLogIncrement,
+                                         const std::vector<bool>& widomHasIncrement, std::size_t widomAnchorEnd,
+                                         double logZero, double logZeroThreshold)
+{
+  const std::size_t nChain = collectionMatrix.size();
+  nLambda = std::max(1uz, nLambda);
+  std::vector<double> logPi(numberOfMacrostates, logZero);
+  if (numberOfMacrostates == 0uz) return logPi;
+
+  auto rowTotal = [&](std::size_t index) -> double
+  { return collectionMatrix[index].x + collectionMatrix[index].y + collectionMatrix[index].z; };
+
+  // the detailed-balance increment of every chain link, ln P(i -> i+1) - ln P(i+1 -> i); a link
+  // without an accepted transition in one of its directions, or out of an unvisited row, has none
+  std::size_t firstVisited = nChain;
+  std::vector<double> chainIncrement(nChain > 0uz ? nChain - 1uz : 0uz, logZero);
+  for (std::size_t index = 0; index < nChain; ++index)
+  {
+    if (rowTotal(index) > 0.0) firstVisited = std::min(firstVisited, index);
+    if (index + 1uz >= nChain) continue;
+    const double forwardTotal = rowTotal(index);
+    const double reverseTotal = rowTotal(index + 1uz);
+    if (collectionMatrix[index].z > 0.0 && collectionMatrix[index + 1uz].x > 0.0 && forwardTotal > 0.0 &&
+        reverseTotal > 0.0)
+    {
+      chainIncrement[index] = std::log(collectionMatrix[index].z) - std::log(forwardTotal) -
+                              std::log(collectionMatrix[index + 1uz].x) + std::log(reverseTotal);
+    }
+  }
+
+  // the macrostate increment ln Pi(N+1) - ln Pi(N) is the walk from (N, 0) to (N+1, 0) along the
+  // chain (one link for 1D TMMC, nLambda links for (N, λ)), supported when every link on it is
+  std::vector<double> increment(numberOfMacrostates - 1uz, logZero);
+  for (std::size_t n = 0; n + 1uz < numberOfMacrostates; ++n)
+  {
+    double sum = 0.0;
+    bool supported = true;
+    for (std::size_t k = 0; k < nLambda; ++k)
+    {
+      const std::size_t index = n * nLambda + k;
+      if (index >= chainIncrement.size() || chainIncrement[index] <= logZeroThreshold)
+      {
+        supported = false;
+        break;
+      }
+      sum += chainIncrement[index];
+    }
+    if (supported) increment[n] = sum;
+  }
+
+  // the Widom anchor replaces every counted increment inside its block, whether or not the
+  // collection matrix supports that link: an unsupported link there (no accepted deletion at low
+  // N in a strongly binding adsorbent, a starved λ hop) is exactly what the anchor is for, and
+  // it must not cut off the collection-matrix chain above the block
+  for (std::size_t n = 0; n < std::min(widomAnchorEnd, increment.size()); ++n)
+  {
+    if (n < widomHasIncrement.size() && n < widomLogIncrement.size() && widomHasIncrement[n])
+    {
+      increment[n] = widomLogIncrement[n];
+    }
+  }
+
+  // gauge ln Pi = 0 at the lowest macrostate that was visited or has an increment out of it
+  // (a counted test-insertion mean at the first macrostate supplies its own gauge even when the
+  // collection-matrix chain is disconnected there), then run the recursion upward until the first
+  // increment that nothing supports: above that, nothing ties the gauge, and those states stay
+  // at the 'log of zero' sentinel
+  std::size_t seed = numberOfMacrostates;
+  if (firstVisited < nChain) seed = std::min(seed, firstVisited / nLambda);
+  for (std::size_t n = 0; n < increment.size(); ++n)
+  {
+    if (increment[n] > logZeroThreshold)
+    {
+      seed = std::min(seed, n);
+      break;
+    }
+  }
+  if (seed >= numberOfMacrostates) return logPi;
+
+  logPi[seed] = 0.0;
+  for (std::size_t n = seed; n + 1uz < numberOfMacrostates; ++n)
+  {
+    if (increment[n] <= logZeroThreshold) break;
+    logPi[n + 1uz] = logPi[n] + increment[n];
+  }
+  return logPi;
+}
+
 ParallelTMMC::ParallelTMMC(InputReader& reader)
     : random(reader.randomSeed),
       numberOfProductionCycles(reader.numberOfProductionCycles),
@@ -1323,58 +1412,11 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
   constexpr double logZero = -1e300;
   constexpr double logZeroThreshold = -1e299;
 
-  // ln Pi from a collection matrix over a 1D chain by the detailed-balance recursion
-  // ln Pi(i+1) = ln Pi(i) + ln P(i -> i+1) - ln P(i+1 -> i). For 1D TMMC the chain is N;
-  // for (N, λ) it is the flattened nearest-neighbour walk. States outside the visited
-  // range stay at the 'log of zero' sentinel.
-  auto computeLogPi = [&](const std::vector<double3>& collectionMatrix) -> std::vector<double>
-  {
-    const std::size_t nStates = collectionMatrix.size();
-    std::vector<double> logPi(nStates, logZero);
-
-    auto rowTotal = [&](std::size_t index) -> double
-    { return collectionMatrix[index].x + collectionMatrix[index].y + collectionMatrix[index].z; };
-
-    std::size_t first = nStates;
-    std::size_t last = 0uz;
-    for (std::size_t index = 0; index < nStates; ++index)
-    {
-      if (rowTotal(index) > 0.0)
-      {
-        first = std::min(first, index);
-        last = std::max(last, index);
-      }
-    }
-    if (first >= nStates) return logPi;
-
-    logPi[first] = 0.0;
-    for (std::size_t index = first; index < last; ++index)
-    {
-      const double forwardTotal = rowTotal(index);
-      const double reverseTotal = rowTotal(index + 1uz);
-      const bool supportedLink = logPi[index] > logZeroThreshold && collectionMatrix[index].z > 0.0 &&
-                                 collectionMatrix[index + 1uz].x > 0.0 && forwardTotal > 0.0 &&
-                                 reverseTotal > 0.0;
-      if (!supportedLink) continue;
-
-      logPi[index + 1uz] = logPi[index] + std::log(collectionMatrix[index].z) - std::log(forwardTotal) -
-                           std::log(collectionMatrix[index + 1uz].x) + std::log(reverseTotal);
-    }
-    return logPi;
-  };
-
-  // WHAM samples (N, U) only at λ = 0 (decoupled). Π_GC(N) ∝ Π_EE(N, k = 0).
-  auto toMoleculeLogPi = [&](const std::vector<double>& chainLogPi) -> std::vector<double>
-  {
-    if (nLambda <= 1uz) return chainLogPi;
-    std::vector<double> moleculeLogPi(numberOfMacrostates, logZero);
-    for (std::size_t n = 0; n < numberOfMacrostates; ++n)
-    {
-      const std::size_t index = n * nLambda;
-      if (index < chainLogPi.size()) moleculeLogPi[n] = chainLogPi[index];
-    }
-    return moleculeLogPi;
-  };
+  // ln Pi over the macrostate grid comes from tmmcReconstructLogPi: the detailed-balance recursion
+  // ln Pi(i+1) = ln Pi(i) + ln P(i -> i+1) - ln P(i+1 -> i) along the 1D chain (for (N, λ) the
+  // flattened nearest-neighbour walk, of which WHAM samples the λ = 0 slice: Π_GC(N) ∝ Π_EE(N, k = 0)),
+  // with the Widom-anchored increments in place of the collection-matrix ones inside the anchored
+  // block. States the chain cannot reach stay at the 'log of zero' sentinel.
 
   auto logSumExpRange = [&](const std::vector<double>& values, std::size_t begin, std::size_t end) -> double
   {
@@ -1540,29 +1582,6 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
       return scattered;
     };
 
-    // Pool the collection matrices of all windows on the global chain and reconstruct one
-    // ln Π by the detailed-balance recursion. Every row entry is an accumulated sum of
-    // unbiased acceptance probabilities, so summing rows across windows yields the
-    // attempt-count weighted combination of their estimates of the same physical transition
-    // probabilities. No gauge matching is needed and no seams appear at the window walls;
-    // per-window reconstruction with overlap matching left ln Π discontinuities where the
-    // poorly-sampled edge of one window met the well-sampled interior of the next.
-    auto stitchLogPi = [&](auto localMatrixOfWalker) -> std::vector<double>
-    {
-      std::vector<double3> pooled(nChain, double3(0.0, 0.0, 0.0));
-      for (std::size_t windowIndex = 0; windowIndex < numberOfWindows; ++windowIndex)
-      {
-        const std::size_t walkerId = walkerIndex(temperatureIndex, windowIndex);
-        const System& system = systems[walkerId];
-        const std::vector<double3> scattered = scatterWindow(system, localMatrixOfWalker(walkerId));
-        for (std::size_t index = 0; index < nChain; ++index)
-        {
-          pooled[index] += scattered[index];
-        }
-      }
-      return toMoleculeLogPi(computeLogPi(pooled));
-    };
-
     // The Widom anchor. Pool the production test insertions of all windows per macrostate (they
     // are accumulated on the global N grid already) and turn them into the exact increment
     //
@@ -1642,33 +1661,32 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
                  temperature);
     }
 
-    // Replace the anchored increments and carry the accumulated correction into every macrostate
-    // above them, which leaves all collection-matrix increments outside the block untouched.
-    auto applyWidomAnchor = [&](std::vector<double>& logPi)
+    // Pool the collection matrices of all windows on the global chain and reconstruct one
+    // ln Π by the detailed-balance recursion. Every row entry is an accumulated sum of
+    // unbiased acceptance probabilities, so summing rows across windows yields the
+    // attempt-count weighted combination of their estimates of the same physical transition
+    // probabilities. No gauge matching is needed and no seams appear at the window walls;
+    // per-window reconstruction with overlap matching left ln Π discontinuities where the
+    // poorly-sampled edge of one window met the well-sampled interior of the next. The anchored
+    // increments replace the collection-matrix ones inside the Widom block before the recursion
+    // runs (an unsupported low-N link inside the block no longer cuts off everything above it);
+    // the accumulated correction carries into every macrostate above the block, which leaves all
+    // collection-matrix increments outside it untouched.
+    auto stitchLogPi = [&](auto localMatrixOfWalker) -> std::vector<double>
     {
-      double shift = 0.0;
-      // A valid insertion measurement at the first macrostate supplies its own gauge even when
-      // the collection-matrix chain is disconnected there.
-      if (!logPi.empty() && logPi[0] <= logZeroThreshold && widomAnchorEnd > 0uz && widomHasIncrement[0])
+      std::vector<double3> pooled(nChain, double3(0.0, 0.0, 0.0));
+      for (std::size_t windowIndex = 0; windowIndex < numberOfWindows; ++windowIndex)
       {
-        logPi[0] = 0.0;
-      }
-      for (std::size_t index = 0; index + 1uz < numberOfMacrostates; ++index)
-      {
-        if (logPi[index] <= logZeroThreshold) continue;
-
-        if (index < widomAnchorEnd && widomHasIncrement[index])
+        const std::size_t walkerId = walkerIndex(temperatureIndex, windowIndex);
+        const System& system = systems[walkerId];
+        const std::vector<double3> scattered = scatterWindow(system, localMatrixOfWalker(walkerId));
+        for (std::size_t index = 0; index < nChain; ++index)
         {
-          const double rawNext = logPi[index + 1uz];
-          const double anchoredNext = logPi[index] + widomLogIncrement[index];
-          logPi[index + 1uz] = anchoredNext;
-          if (rawNext > logZeroThreshold) shift = anchoredNext - rawNext;
-        }
-        else if (logPi[index + 1uz] > logZeroThreshold)
-        {
-          logPi[index + 1uz] += shift;
+          pooled[index] += scattered[index];
         }
       }
+      return tmmcReconstructLogPi(pooled, numberOfMacrostates, nLambda, widomLogIncrement, widomHasIncrement,
+                                  widomAnchorEnd, logZero, logZeroThreshold);
     };
 
     std::size_t availableBlocks = numberOfBlocks;
@@ -1687,7 +1705,6 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
     // from the readout (the bias keeps using the cumulative matrix) removes that transient.
     std::vector<double> logPi =
         stitchLogPi([&](std::size_t walkerId) { return productionCollectionMatrix(walkerId); });
-    applyWidomAnchor(logPi);
 
     // The blocks are anchored with the same (whole-production) test-insertion increments, so the
     // reported error over the anchored block carries the spread of the collection-matrix
@@ -1710,7 +1727,6 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
         }
         return increment;
       }));
-      applyWidomAnchor(blockLogPi.back());
     }
 
     // total visit histogram over the windows (a pure diagnostic); (N, λ) visits are summed over λ

@@ -36,6 +36,7 @@ add_executable(unit_tests_raspa3
   parallel_tmmc_windows.cpp
   equation_of_state_critical_constants.cpp
   macrostate_phase_split.cpp
+  tmmc_logpi_reconstruction.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)
