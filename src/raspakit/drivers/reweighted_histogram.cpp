@@ -1916,48 +1916,11 @@ void ReweightedHistogram::performReweightingAnalysis()
       return logProbability;
     };
 
-    // Places the phase cut at the deepest valley of ln P(N): the cut maximizing
-    // min(peak left, peak right) - valley. Returns (cut, depth) or nothing when the distribution
-    // is not bimodal (depth below threshold). Unsampled N are treated as deep-valley entries.
+    // The phase cut at the deepest valley of ln P(N), or nothing when the distribution is one phase; see
+    // findMacrostatePhaseSplit for what an unsampled N counts as.
     constexpr double bimodalDepthThreshold = 0.2;
     auto findPhaseSplit = [&](const std::vector<double>& logProbability)
-        -> std::optional<std::pair<std::size_t, double>>
-    {
-      const std::size_t size = logProbability.size();
-      double lowestSampled = 1e300;
-      for (const double value : logProbability)
-      {
-        if (value > logZeroThreshold) lowestSampled = std::min(lowestSampled, value);
-      }
-      std::vector<double> filled(size);
-      for (std::size_t n = 0; n < size; ++n)
-      {
-        filled[n] = logProbability[n] > logZeroThreshold ? logProbability[n] : lowestSampled - 20.0;
-      }
-
-      std::vector<double> prefixMaximum(size), suffixMaximum(size);
-      prefixMaximum[0] = filled[0];
-      for (std::size_t n = 1; n < size; ++n) prefixMaximum[n] = std::max(prefixMaximum[n - 1], filled[n]);
-      suffixMaximum[size - 1] = filled[size - 1];
-      for (std::size_t n = size - 1; n > 0; --n) suffixMaximum[n - 1] = std::max(suffixMaximum[n], filled[n - 1]);
-
-      std::size_t bestCut = 0uz;
-      double bestDepth = -1e300;
-      for (std::size_t cut = 1; cut + 1 < size; ++cut)
-      {
-        const double depth = std::min(prefixMaximum[cut - 1], suffixMaximum[cut + 1]) - filled[cut];
-        if (depth > bestDepth)
-        {
-          bestDepth = depth;
-          bestCut = cut;
-        }
-      }
-      if (bestCut == 0uz || bestDepth < bimodalDepthThreshold)
-      {
-        return std::nullopt;
-      }
-      return std::make_pair(bestCut, bestDepth);
-    };
+    { return findMacrostatePhaseSplit(logProbability, logZeroThreshold, bimodalDepthThreshold); };
 
     auto logSumExpRange = [&](const std::vector<double>& logProbability, std::size_t begin,
                               std::size_t end) -> double

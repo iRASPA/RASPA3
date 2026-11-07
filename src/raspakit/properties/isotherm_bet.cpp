@@ -385,6 +385,61 @@ void writeNitrogenBETPressurePlan(std::ostream& stream, const NitrogenBETPressur
              ladderBottomFillFraction, nitrogenBETMaxLogSpacingMultiplier, nitrogenBETMaxGradientExtrasPerInterval);
 }
 
+std::optional<std::pair<std::size_t, double>> findMacrostatePhaseSplit(std::span<const double> logProbability,
+                                                                      double logZeroThreshold,
+                                                                      double bimodalDepthThreshold)
+{
+  const std::size_t size = logProbability.size();
+  if (size < 3uz) return std::nullopt;
+  auto sampled = [&](std::size_t n) { return logProbability[n] > logZeroThreshold; };
+  if (std::none_of(logProbability.begin(), logProbability.end(),
+                   [&](double value) { return value > logZeroThreshold; }))
+  {
+    return std::nullopt;
+  }
+
+  // the nearest sampled value to the left of each N and to the right of it, carried along in two passes
+  constexpr double none = 1e300;
+  std::vector<double> fromLeft(size, none), fromRight(size, none);
+  double carried = none;
+  for (std::size_t n = 0; n < size; ++n)
+  {
+    if (sampled(n)) carried = logProbability[n];
+    fromLeft[n] = carried;
+  }
+  carried = none;
+  for (std::size_t n = size; n-- > 0uz;)
+  {
+    if (sampled(n)) carried = logProbability[n];
+    fromRight[n] = carried;
+  }
+  std::vector<double> filled(size);
+  for (std::size_t n = 0; n < size; ++n)
+  {
+    filled[n] = sampled(n) ? logProbability[n] : std::min(fromLeft[n], fromRight[n]);
+  }
+
+  std::vector<double> prefixMaximum(size), suffixMaximum(size);
+  prefixMaximum[0] = filled[0];
+  for (std::size_t n = 1; n < size; ++n) prefixMaximum[n] = std::max(prefixMaximum[n - 1], filled[n]);
+  suffixMaximum[size - 1] = filled[size - 1];
+  for (std::size_t n = size - 1; n > 0; --n) suffixMaximum[n - 1] = std::max(suffixMaximum[n], filled[n - 1]);
+
+  std::size_t bestCut = 0uz;
+  double bestDepth = -1e300;
+  for (std::size_t cut = 1; cut + 1 < size; ++cut)
+  {
+    const double depth = std::min(prefixMaximum[cut - 1], suffixMaximum[cut + 1]) - filled[cut];
+    if (depth > bestDepth)
+    {
+      bestDepth = depth;
+      bestCut = cut;
+    }
+  }
+  if (bestCut == 0uz || bestDepth < bimodalDepthThreshold) return std::nullopt;
+  return std::make_pair(bestCut, bestDepth);
+}
+
 void pinSystemPengRobinsonPressure(System& system, double pressurePa)
 {
   const double T = system.temperature;

@@ -194,6 +194,20 @@ export std::vector<double> placePressuresByLangmuirEqualOccupancy(double lowestP
                                                                   double henryCoefficientPerCell,
                                                                   double saturationLoadingPerCell);
 
+/// The phase cut of a macrostate distribution ln P(N): the N at the deepest valley, the one that maximizes
+/// min(highest point left of it, highest point right of it) - ln P(N), with that depth; nothing when the
+/// depth is below `bimodalDepthThreshold` and the distribution is one phase.
+///
+/// An N that was never sampled (ln P at or below `logZeroThreshold`) is given the lower of its nearest
+/// sampled neighbours, the one nearest sampled value where it has neighbours on one side only. It is then
+/// never a valley by itself: an N that happened to go unvisited inside a peak (sparse sampling high up,
+/// or one block of many) is read as the peak around it, and a gap between two peaks is as deep as the
+/// sampled flanks on either side of it have come down, no deeper. Filling such an N far below everything
+/// sampled, as was done, cut a one-phase distribution in two at the first hole in it.
+export std::optional<std::pair<std::size_t, double>> findMacrostatePhaseSplit(std::span<const double> logProbability,
+                                                                             double logZeroThreshold,
+                                                                             double bimodalDepthThreshold);
+
 /// Pin T, P and Peng–Robinson fugacity coefficients on a system (WHAM replica re-placement).
 export void pinSystemPengRobinsonPressure(System& system, double pressurePa);
 
