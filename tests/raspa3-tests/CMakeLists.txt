@@ -37,6 +37,7 @@ add_executable(unit_tests_raspa3
   equation_of_state_critical_constants.cpp
   macrostate_phase_split.cpp
   tmmc_logpi_reconstruction.cpp
+  dctst_mirror_reinsertion.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

@@ -56,6 +56,27 @@ export struct DcTSTWindow
 };
 
 /**
+ * \brief The reinsertion support [low, high) of a non-periodic (occupancy or mirror) window on the folded
+ *        coordinate: the interval of half-width \p supportHalfWidth about \p center, clipped to the grid.
+ *
+ * In mirror mode the folded coordinate is |x| >= 0, so the support is clipped at 0 as well. A support that
+ * reached below 0 (a near-barrier window with center < supportHalfWidth) would be hit by both sign branches
+ * of the mirrored draw, which gave |x| <= -low twice the proposal density of the rest of the support while
+ * the acceptance rule assumes a uniform proposal; that biased the histograms of those windows towards the
+ * barrier.
+ */
+export std::pair<double, double> dctstFoldedReinsertionSupport(double center, double supportHalfWidth,
+                                                               double gridBegin, double gridEnd, bool mirror);
+
+/**
+ * \brief A uniformly random coordinate of the reinsertion support [low, high): uniform on the interval and,
+ *        in mirror mode, with equal weight on its mirror image (-high, -low], so that the proposal density is
+ *        uniform over the support in x and the acceptance rule needs no proposal correction. \p low is at
+ *        least 0 in mirror mode (see dctstFoldedReinsertionSupport).
+ */
+export double dctstSampleReinsertionCoordinate(RandomNumber& rng, double low, double high, bool mirror);
+
+/**
  * \brief Per-window accumulators.
  */
 export struct DcTSTWindowAccumulator

@@ -194,6 +194,20 @@ QuadraticFit fitQuadratic(std::span<const double> t, std::span<const double> y, 
 }
 }  // namespace
 
+std::pair<double, double> dctstFoldedReinsertionSupport(double center, double supportHalfWidth, double gridBegin,
+                                                        double gridEnd, bool mirror)
+{
+  const double low = std::max(mirror ? std::max(0.0, gridBegin) : gridBegin, center - supportHalfWidth);
+  const double high = std::min(gridEnd, center + supportHalfWidth);
+  return {low, high};
+}
+
+double dctstSampleReinsertionCoordinate(RandomNumber& rng, double low, double high, bool mirror)
+{
+  const double x = low + (high - low) * rng.uniform();
+  return (mirror && rng.uniform() < 0.5) ? -x : x;
+}
+
 // =================================================================================================
 // Construction and setup
 // =================================================================================================
@@ -1269,11 +1283,13 @@ std::optional<RunningEnergy> DynamicallyCorrectedTSTFreeEnergy::biasedReinsertio
   // random in-plane position; the old bead must lie in the same support for the move to be reversible.
   // Unconditioned windows are periodic on [−λ/2, λ/2): the support is the circle-arc of radius
   // supportHalfWidth about the center (so a window that straddles ±λ/2 is the union of two intervals).
-  // Occupancy and mirror windows are not periodic; their support is clipped to the grid.
+  // Occupancy and mirror windows are not periodic; their support is clipped to the grid, and in mirror mode
+  // to |x| >= 0 as well: the draw below mirrors the support, and a support reaching below 0 would be hit by
+  // both signs (twice the proposal density there, which the acceptance rule does not correct for).
   const bool mirror = settings.mirrorSymmetry && !occupancyMode;
   const bool periodicSupport = !occupancyMode && !mirror;
-  const double low = std::max(grid.begin, window.center - window.supportHalfWidth);
-  const double high = std::min(grid.end, window.center + window.supportHalfWidth);
+  const auto [low, high] =
+      dctstFoldedReinsertionSupport(window.center, window.supportHalfWidth, grid.begin, grid.end, mirror);
   const double xOld = coordinate(system, state, moleculeAtoms[component.startingBead].position);
   const double xOldFolded = foldedCoordinate(xOld);
   const bool oldInside = periodicSupport ? barrier.inPeriodicWindow(xOld, window.center, window.supportHalfWidth)
@@ -1288,8 +1304,7 @@ std::optional<RunningEnergy> DynamicallyCorrectedTSTFreeEnergy::biasedReinsertio
   else
   {
     if (high <= low) return std::nullopt;
-    xNew = low + (high - low) * rng.uniform();
-    if (mirror && rng.uniform() < 0.5) xNew = -xNew;
+    xNew = dctstSampleReinsertionCoordinate(rng, low, high, mirror);
   }
   if (!occupancyMode) xNew = barrier.reducedCoordinate(xNew);
   if (!grid.contains(xNew)) return std::nullopt;
