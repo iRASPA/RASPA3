@@ -12,6 +12,41 @@ import averages;
 import json;
 import averages;
 
+// The total enthalpy of adsorption per block, in internal energy units: the components' enthalpies (ideal-gas
+// term subtracted) weighted by the adsorbed-phase mole fractions of the block. A block with a singular
+// particle-number covariance has no enthalpy and no total.
+std::vector<std::optional<double>> PropertyEnthalpy::blockTotalEnthalpies(
+    const std::vector<std::size_t>& swappableComponents, const std::vector<Component>& components) const
+{
+  std::vector<std::optional<double>> totals(numberOfBlocks);
+  for (std::size_t i = 0; i < numberOfBlocks; ++i)
+  {
+    const EnthalpyOfAdsorptionData average = averaged(i);
+    if (!average.defined) continue;
+    const std::vector<double> fractions = blockAdsorbedMoleFractions(i);
+    double total = 0.0;
+    for (std::size_t k = 0; k < swappableComponents.size(); k++)
+    {
+      const std::size_t index = swappableComponents[k];
+      const double idealGasTerm = components[index].idealGasEnergy.value_or(0.0);
+      total += fractions[k] * (average.values[k] - idealGasTerm);
+    }
+    totals[i] = total;
+  }
+  return totals;
+}
+
+// the defined block totals, for the mean and its error
+static std::vector<double> definedTotals(const std::vector<std::optional<double>>& totals)
+{
+  std::vector<double> defined;
+  for (const std::optional<double>& total : totals)
+  {
+    if (total.has_value()) defined.push_back(total.value());
+  }
+  return defined;
+}
+
 std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &swappableComponents,
                                                       std::vector<Component> &components) const
 {
@@ -57,21 +92,18 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
       std::print(stream, "Total enthalpy of adsorption\n");
       std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
 
-      std::vector<double> totalEnthalpyBlocks(numberOfBlocks);
+      // per block, weighted by the adsorbed-phase mole fractions of that block
+      const std::vector<std::optional<double>> totalEnthalpyBlocks =
+          blockTotalEnthalpies(swappableComponents, components);
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
-        double totalEnthalpyOfAdsorption = 0.0;
-        EnthalpyOfAdsorptionData average = averaged(i);
-        for (std::size_t k = 0; k < swappableComponents.size(); k++)
-        {
-          std::size_t index = swappableComponents[k];
-          double idealGasTerm = components[index].idealGasEnergy.value_or(0.0);
-          totalEnthalpyOfAdsorption += components[index].molFraction * (average.values[k] - idealGasTerm);
-        }
-        totalEnthalpyBlocks[i] = totalEnthalpyOfAdsorption;
-        std::print(stream, "    Block[ {:2d}] {}\n", i, Units::EnergyToKelvin * totalEnthalpyOfAdsorption);
+        if (totalEnthalpyBlocks[i].has_value())
+          std::print(stream, "    Block[ {:2d}] {}\n", i, Units::EnergyToKelvin * totalEnthalpyBlocks[i].value());
+        else
+          std::print(stream, "    Block[ {:2d}] undefined (singular particle-number covariance)\n", i);
       }
-      std::pair<double, double> totalEnthalpy = meanConfidence(totalEnthalpyBlocks);
+      std::vector<double> definedBlocks = definedTotals(totalEnthalpyBlocks);
+      std::pair<double, double> totalEnthalpy = meanConfidence(definedBlocks);
       std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Enthalpy of adsorption: {: .6e} +/- {: .6e} [K]\n",
                  Units::EnergyToKelvin * totalEnthalpy.first, Units::EnergyToKelvin * totalEnthalpy.second);
@@ -125,21 +157,22 @@ nlohmann::json PropertyEnthalpy::jsonAveragesStatistics(std::vector<std::size_t>
     }
     if (swappableComponents.size() > 1)
     {
-      std::vector<double> blockTotalEnthalpy(numberOfBlocks);
-
-      for (std::size_t k = 0; k < swappableComponents.size(); k++)
+      // in internal energy units, converted once below (the per-component block values of blockEnthalpies are
+      // in Kelvin already; summing those and converting again, as was done, scaled the total twice)
+      const std::vector<std::optional<double>> blockTotalEnthalpy =
+          blockTotalEnthalpies(swappableComponents, components);
+      nlohmann::json blockTotalEnthalpyInKelvin = nlohmann::json::array();
+      for (std::size_t i = 0; i < numberOfBlocks; i++)
       {
-        std::size_t index = swappableComponents[k];
-        double idealGasTerm = components[index].idealGasEnergy.value_or(0.0);
-        std::vector<double> blockEnthalpy = blockEnthalpies(k, idealGasTerm);
-        for (std::size_t i = 0; i < numberOfBlocks; i++)
-        {
-          blockTotalEnthalpy[i] += components[index].molFraction * blockEnthalpy[i];
-        }
+        if (blockTotalEnthalpy[i].has_value())
+          blockTotalEnthalpyInKelvin.push_back(Units::EnergyToKelvin * blockTotalEnthalpy[i].value());
+        else
+          blockTotalEnthalpyInKelvin.push_back(nullptr);
       }
 
-      std::pair<double, double> totalEnthalpy = meanConfidence(blockTotalEnthalpy);
-      status["total"]["block"] = blockTotalEnthalpy;
+      std::vector<double> definedBlocks = definedTotals(blockTotalEnthalpy);
+      std::pair<double, double> totalEnthalpy = meanConfidence(definedBlocks);
+      status["total"]["block"] = blockTotalEnthalpyInKelvin;
       status["total"]["mean"]["[K]"] = Units::EnergyToKelvin * totalEnthalpy.first;
       status["total"]["confidence"]["[K]"] = Units::EnergyToKelvin * totalEnthalpy.second;
       status["total"]["mean"]["[kJ/mol]"] = Units::EnergyToKJPerMol * totalEnthalpy.first;

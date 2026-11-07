@@ -104,8 +104,24 @@ struct BlockAverage
     }
   }
 
+  /// Whether a block value takes part in the statistics: a composite property may be undefined for a
+  /// block (a singular particle-number covariance, say) and says so through an isFinite overload of its
+  /// data type; a value without one always takes part.
+  template <typename Value>
+  static bool usable(const Value& value)
+  {
+    if constexpr (requires { isFinite(value); })
+    {
+      return isFinite(value);
+    }
+    else
+    {
+      return true;
+    }
+  }
+
   /// Overall average: pooled weighted mean (direct) or mean of the sufficiently-filled block
-  /// composites (composite).
+  /// composites (composite); a composite that is undefined for a block (see usable) is left out.
   Data averaged() const
   {
     if constexpr (CompositePropertyTerms<Sample>)
@@ -117,7 +133,9 @@ struct BlockAverage
       {
         if (bookKeeping[blockIndex].second / reference > 0.5)
         {
-          accumulated += averaged(blockIndex);
+          Data block = averaged(blockIndex);
+          if (!usable(block)) continue;
+          accumulated += block;
           ++numberOfSamples;
         }
       }
@@ -139,8 +157,19 @@ struct BlockAverage
   auto statistics(Transform transform) const
   {
     auto mean = transform(averaged());
-    auto confidenceIntervalError =
-        blockErrorEstimate(bookKeeping, mean, [&](std::size_t i) { return transform(averaged(i)); });
+    // the sufficiently-filled blocks (more than half the weight of the first), those whose value is defined
+    using Result = decltype(mean);
+    std::vector<Result> blockAverages;
+    const double reference = std::max(1.0, bookKeeping.empty() ? 1.0 : bookKeeping.front().second);
+    for (std::size_t blockIndex = 0; blockIndex != bookKeeping.size(); ++blockIndex)
+    {
+      if (bookKeeping[blockIndex].second / reference > 0.5)
+      {
+        Result value = transform(averaged(blockIndex));
+        if (usable(value)) blockAverages.push_back(value);
+      }
+    }
+    auto confidenceIntervalError = blockErrorEstimate<Result>(blockAverages, mean);
     return std::make_pair(mean, confidenceIntervalError);
   }
 

@@ -35,22 +35,32 @@ export class Matrix
   //     a positive number whose meaning depends on the routine being called.
   //     For some routines, additional error information is encoded in arrays, often in allocated work, lwork or rwork
   //     arrays.
-  inline void inverse()
+  /// Inverts the matrix in place. Returns false when the matrix is singular (a zero pivot in the LU
+  /// factorization): the contents are then not an inverse (the LU factors, or a zero for a 1 x 1 matrix)
+  /// and must not be used.
+  [[nodiscard]] inline bool inverse()
   {
     std::size_t N = _rows;
+    bool invertible = true;
     if (N > 0)
     {
       int* IPIV = new int[N];
       std::size_t LWORK = N * N;
       double* WORK = new double[LWORK];
-      int INFO;
+      int INFO = 0;
 
       dgetrf_(&N, &N, _grid.data(), &N, IPIV, &INFO);
-      dgetri_(&N, _grid.data(), &N, IPIV, WORK, &LWORK, &INFO);
+      invertible = (INFO == 0);
+      if (invertible)
+      {
+        dgetri_(&N, _grid.data(), &N, IPIV, WORK, &LWORK, &INFO);
+        invertible = (INFO == 0);
+      }
 
       delete[] IPIV;
       delete[] WORK;
     }
+    return invertible;
   }
 
  private:

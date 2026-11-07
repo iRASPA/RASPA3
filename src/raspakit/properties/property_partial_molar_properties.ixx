@@ -29,6 +29,9 @@ export struct PartialMolarPropertiesData
   std::size_t size;
   std::vector<double> partialMolarEnergy;
   std::vector<double> partialMolarVolume;
+  /// False for a block whose particle-number covariance is singular: no partial molar properties (built with
+  /// fast math, a not-a-number cannot be tested for; this flag marks the block).
+  bool defined{true};
 
   inline PartialMolarPropertiesData& operator+=(const PartialMolarPropertiesData& b)
   {
@@ -43,6 +46,9 @@ export struct PartialMolarPropertiesData
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const PartialMolarPropertiesData& p);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, PartialMolarPropertiesData& p);
 };
+
+/// Whether a block's partial molar properties are defined (a singular particle-number covariance gives none).
+export inline bool isFinite(const PartialMolarPropertiesData& data) { return data.defined; }
 
 export inline PartialMolarPropertiesData operator-(const PartialMolarPropertiesData& a,
                                                    const PartialMolarPropertiesData& b)
@@ -203,7 +209,13 @@ export struct PartialMolarPropertiesTerms
         }
       }
 
-      m.inverse();
+      // a singular covariance has no partial molar properties: the block is marked undefined and skipped by
+      // the block statistics (see isFinite)
+      if (!m.inverse())
+      {
+        v.defined = false;
+        return v;
+      }
 
       for (std::size_t i = 0; i < size; ++i)
       {

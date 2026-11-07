@@ -24,6 +24,9 @@ export struct EnthalpyOfAdsorptionData
 
   std::size_t size;
   std::vector<double> values;
+  /// False for a block whose particle-number covariance is singular: it has no enthalpy (the code base is
+  /// built with fast math, so a not-a-number cannot be tested for; this flag is what marks the block).
+  bool defined{true};
 
   inline EnthalpyOfAdsorptionData& operator+=(const EnthalpyOfAdsorptionData& b)
   {
@@ -37,6 +40,9 @@ export struct EnthalpyOfAdsorptionData
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const EnthalpyOfAdsorptionData& p);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, EnthalpyOfAdsorptionData& p);
 };
+
+/// Whether a block's enthalpies are defined (a block with a singular particle-number covariance has none).
+export inline bool isFinite(const EnthalpyOfAdsorptionData& data) { return data.defined; }
 
 export inline EnthalpyOfAdsorptionData operator+(const EnthalpyOfAdsorptionData& a, const EnthalpyOfAdsorptionData& b)
 {
@@ -189,7 +195,15 @@ export struct EnthalpyOfAdsorptionTerms
         }
       }
 
-      m.inverse();
+      // a singular covariance (a component whose count did not fluctuate in this block, or counts that
+      // are collinear, as with pair or group swaps) has no enthalpy: the block is marked undefined and
+      // skipped by the block statistics (see isFinite); using the failed inverse gave -RT for one
+      // component and the LU factors for several
+      if (!m.inverse())
+      {
+        v.defined = false;
+        return v;
+      }
 
       for (std::size_t i = 0; i < size; ++i)
       {
@@ -300,6 +314,22 @@ export struct PropertyEnthalpy : BlockAverage<EnthalpyOfAdsorptionTerms>
     return data;
   }
 
+  /// The adsorbed-phase mole fractions <N_k> / sum_j <N_j> of the swappable components in a block (all zero
+  /// when nothing was adsorbed): the weights of the total enthalpy of adsorption, which is per adsorbed
+  /// molecule; the bulk gas fractions, used before, weigh the reservoir instead.
+  std::vector<double> blockAdsorbedMoleFractions(std::size_t blockIndex) const
+  {
+    const EnthalpyOfAdsorptionTerms normalized =
+        bookKeeping[blockIndex].first / std::max(1.0, bookKeeping[blockIndex].second);
+    std::vector<double> fractions(normalized.size, 0.0);
+    const double total = std::accumulate(normalized.numberOfMolecules.begin(), normalized.numberOfMolecules.end(), 0.0);
+    if (total > 0.0)
+    {
+      for (std::size_t k = 0; k < normalized.size; ++k) fractions[k] = normalized.numberOfMolecules[k] / total;
+    }
+    return fractions;
+  }
+
   std::vector<double> blockEnthalpies(std::size_t &k, double &idealGasTerm) const
   {
     std::vector<double> enthalpy(numberOfBlocks);
@@ -313,6 +343,10 @@ export struct PropertyEnthalpy : BlockAverage<EnthalpyOfAdsorptionTerms>
     return enthalpy;
   }
 
+  /// The total enthalpy of adsorption per block, in internal energy units; nothing for a block whose
+  /// enthalpies are undefined (see enthalpy.cpp).
+  std::vector<std::optional<double>> blockTotalEnthalpies(const std::vector<std::size_t>& swappableComponents,
+                                                          const std::vector<Component>& components) const;
   std::string writeAveragesStatistics(std::vector<std::size_t> &swappableComponents,
                                       std::vector<Component> &components) const;
   nlohmann::json jsonAveragesStatistics(std::vector<std::size_t> &swappableComponents,
