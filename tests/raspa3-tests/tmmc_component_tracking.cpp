@@ -246,3 +246,55 @@ TEST(TMMC_COMPONENT_TRACKING, integer_swaps_on_a_lambda_chain_are_refused_and_no
   EXPECT_NE(plain.systems[0].numberOfIntegerMoleculesPerComponent[0], 10uz);
   EXPECT_FALSE(allZero(plain.systems[0].tmmc.cmatrix));
 }
+
+// The Gibbs CFCMC transfer turns the fractional molecule whole at its lambda bin and makes a molecule of the
+// other box fractional at that same bin: on an (N, lambda) chain that is an off-chain jump in both boxes, like
+// an integer swap, and is refused and not recorded. On a plain chain the transfers run and record as usual.
+TEST(TMMC_COMPONENT_TRACKING, gibbs_cfcmc_transfers_on_a_lambda_chain_are_refused_and_not_recorded)
+{
+  // the driver writes its output files relative to the working directory
+  const std::filesystem::path previous = std::filesystem::current_path();
+  const std::filesystem::path scratch =
+      std::filesystem::temp_directory_path() /
+      std::format("raspa3_tmmc_gibbs_chain_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+  std::filesystem::create_directories(scratch);
+  std::filesystem::current_path(scratch);
+
+  for (const std::size_t numberOfLambdaBins : {21uz, 1uz})
+  {
+    MCMoveProbabilities transferring;
+    transferring.setProbability(Move::Types::Translation, 1.0);
+    transferring.setProbability(Move::Types::GibbsSwapCFCMC, 1.0);
+    std::vector<System> systems{makeAdsorbateSystem(transferring, 10, 1e4), makeAdsorbateSystem(transferring, 10, 1e4)};
+    for (System& system : systems) enableTMMC(system, 0, 40, numberOfLambdaBins);
+    const bool chain = numberOfLambdaBins > 1uz;
+    ASSERT_EQ(systems[0].tmmc.lambdaChain(), chain);
+
+    RandomNumber random(13);
+    SimulationSchedule schedule{0, 0, 0, 4, 1000, 10000, 5000, 5000};
+    MonteCarloTransitionMatrix tmmc(schedule, systems, random, 5);
+    tmmc.setup();
+    for (System& system : tmmc.systems) system.runningEnergies = system.computeTotalEnergies();
+    tmmc.simulationStage = MonteCarloTransitionMatrix::SimulationStage::Equilibration;
+    for (std::size_t cycle = 0; cycle < 4; ++cycle) tmmc.performCycle();
+
+    const std::size_t nA = tmmc.systems[0].numberOfIntegerMoleculesPerComponent[0];
+    const std::size_t nB = tmmc.systems[1].numberOfIntegerMoleculesPerComponent[0];
+    const bool recorded = !allZero(tmmc.systems[0].tmmc.cmatrix) || !allZero(tmmc.systems[1].tmmc.cmatrix);
+    if (chain)
+    {
+      // the transfers are refused and nothing is recorded (the fractional molecule, which the setup adds on
+      // top of the ten integer ones, only moves in lambda)
+      EXPECT_EQ(nA, 10uz) << "on the chain";
+      EXPECT_EQ(nB, 10uz) << "on the chain";
+      EXPECT_FALSE(recorded) << "on the chain";
+    }
+    else
+    {
+      EXPECT_TRUE(recorded) << "on the plain chain";
+    }
+  }
+
+  std::filesystem::current_path(previous);
+  std::filesystem::remove_all(scratch);
+}

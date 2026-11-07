@@ -538,12 +538,14 @@ export struct System
   {
     return tmmcTracks(componentId) ? tmmc.biasFactor(newN, oldN) : 1.0;
   }
-  /// Whether the integer swaps of 'componentId' (Swap, SwapCBMC, SwapMultiTrialCBMC, the pair, group and
-  /// Gibbs transfers: N -> N +/- 1 with the lambda of the fractional molecule unchanged) are steps of the
+  /// Whether the integer swaps of 'componentId' (Swap, SwapCBMC, SwapMultiTrialCBMC, the pair and group
+  /// swaps, and every Gibbs transfer: N -> N +/- 1 with the lambda of the chain unchanged) are steps of the
   /// transition matrix. On a plain N chain they are. On the (N, lambda) chain of SwapCFCMC/SwapCBCFCMC the
   /// only steps are the lambda hops (N, k) -> (N, k +/- 1) and the endpoint crossings (N, last) <-> (N+1, 0);
   /// an integer swap jumps (N, k) -> (N +/- 1, k), which the tridiagonal matrix cannot hold, so such a move
-  /// is refused and not recorded (the input reader refuses the mix up front).
+  /// is refused and not recorded (the input reader refuses the mix up front). The Gibbs CFCMC transfers are
+  /// such jumps too: the direct ones turn the fractional molecule whole at its bin and make a molecule of the
+  /// other box fractional at that same bin, and the conventional ones drive the Gibbs lambda, not the chain's.
   [[nodiscard]] bool tmmcTracksIntegerSwap(std::size_t componentId) const
   {
     return tmmcTracks(componentId) && !tmmc.lambdaChain();

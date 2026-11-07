@@ -5270,9 +5270,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
 
       // On the (N, lambda) chain of SwapCFCMC/SwapCBCFCMC the only steps are the lambda hops and the
-      // endpoint crossings; an integer swap (N -> N +/- 1 with lambda unchanged) jumps (N, k) -> (N +/- 1, k),
-      // which the tridiagonal matrix cannot hold: it would be recorded on the (N, k) row as a lambda step and
-      // biased by the endpoint crossing. The chain is decided here from the moves (ParallelTMMC sets the bins
+      // endpoint crossings; an integer swap (N -> N +/- 1 with the chain's lambda unchanged) jumps
+      // (N, k) -> (N +/- 1, k), which the tridiagonal matrix cannot hold: it would be recorded on the (N, k) row
+      // as a lambda step and biased by the endpoint crossing. The Gibbs transfers are such jumps as well (see
+      // System::tmmcTracksIntegerSwap). The chain is decided here from the moves (ParallelTMMC sets the bins
       // further down), so that both drivers refuse the mix.
       const std::size_t trackedComponent = systems[i].tmmcComponent();
       if (trackedComponent < systems[i].components.size())
@@ -5294,14 +5295,19 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             std::pair{Move::Types::GroupSwapCFCMC, "CFCMC_GroupSwapProbability"},
             std::pair{Move::Types::GroupSwapCBCFCMC, "CFCMC_CBMC_GroupSwapProbability"},
             std::pair{Move::Types::GibbsSwapCBMC, "GibbsSwapCBMCProbability"},
-            std::pair{Move::Types::GibbsSwapMultiTrialCBMC, "GibbsSwapMultiTrialProbability"}};
+            std::pair{Move::Types::GibbsSwapMultiTrialCBMC, "GibbsSwapMultiTrialProbability"},
+            std::pair{Move::Types::GibbsSwapCFCMC, "GibbsSwapCFCMCProbability"},
+            std::pair{Move::Types::GibbsSwapCBCFCMC, "GibbsSwapCBCFCMCProbability"},
+            std::pair{Move::Types::GibbsConventionalCFCMC, "GibbsConventionalCFCMCProbability"},
+            std::pair{Move::Types::GibbsConventionalCBCFCMC, "GibbsConventionalCBCFCMCProbability"}};
         for (const auto& [move, keyword] : integerSwapMoves)
         {
           if (lambdaChain && tracked.mc_moves_probabilities.getProbability(move) != 0.0)
           {
             throw std::runtime_error(std::format(
                 "Error [TMMC, system {}, component {} ('{}')]: '{}' must be zero together with a CFCMC swap on "
-                "{} lambda bins; move '{}' changes N with lambda unchanged, a (N, k) -> (N +/- 1, k) jump that "
+                "{} lambda bins; move '{}' changes N with the chain's lambda unchanged, a (N, k) -> (N +/- 1, k) jump "
+                "that "
                 "the (N, lambda) transition matrix of the CFCMC swap cannot hold (its steps are the lambda hops "
                 "and the endpoint crossings only). Use the CFCMC swap alone, or set 'NumberOfLambdaBins' to 1.\n",
                 i, trackedComponent, tracked.name, keyword, tracked.lambdaGC.numberOfSamplePoints,

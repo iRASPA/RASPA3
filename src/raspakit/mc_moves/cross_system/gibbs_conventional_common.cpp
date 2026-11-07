@@ -50,8 +50,10 @@ class DualTMMCTrial
   {
     if (!recorded_)
     {
-      if (systemA_.tmmcTracks(selectedComponent_)) systemA_.tmmc.updateMatrix(transitionVector(0.0, deltaA_), oldNA_);
-      if (systemB_.tmmcTracks(selectedComponent_)) systemB_.tmmc.updateMatrix(transitionVector(0.0, deltaB_), oldNB_);
+      if (systemA_.tmmcTracksIntegerSwap(selectedComponent_))
+        systemA_.tmmc.updateMatrix(transitionVector(0.0, deltaA_), oldNA_);
+      if (systemB_.tmmcTracksIntegerSwap(selectedComponent_))
+        systemB_.tmmc.updateMatrix(transitionVector(0.0, deltaB_), oldNB_);
     }
   }
 
@@ -75,9 +77,9 @@ class DualTMMCTrial
 
   void record(double physicalAcceptance, int deltaA, int deltaB)
   {
-    if (systemA_.tmmcTracks(selectedComponent_))
+    if (systemA_.tmmcTracksIntegerSwap(selectedComponent_))
       systemA_.tmmc.updateMatrix(transitionVector(physicalAcceptance, deltaA), oldNA_);
-    if (systemB_.tmmcTracks(selectedComponent_))
+    if (systemB_.tmmcTracksIntegerSwap(selectedComponent_))
       systemB_.tmmc.updateMatrix(transitionVector(physicalAcceptance, deltaB), oldNB_);
     recorded_ = true;
   }
@@ -85,15 +87,15 @@ class DualTMMCTrial
  private:
   static bool transitionIsInBounds(const System& system, std::size_t componentId, std::size_t oldN, int delta)
   {
-    if (!system.tmmcTracks(componentId) || !system.tmmc.rejectOutOfBound || delta == 0) return true;
+    if (!system.tmmcTracksIntegerSwap(componentId) || !system.tmmc.rejectOutOfBound || delta == 0) return true;
     if (delta > 0) return oldN < system.tmmc.maxMacrostate;
     return oldN > 0 && oldN - 1 >= system.tmmc.minMacrostate;
   }
 
   static double transitionBias(System& system, std::size_t componentId, std::size_t oldN, int delta)
   {
-    if (delta > 0) return system.tmmcBiasFactor(componentId, oldN + 1, oldN);
-    if (delta < 0) return system.tmmcBiasFactor(componentId, oldN - 1, oldN);
+    if (delta > 0) return system.tmmcIntegerSwapBiasFactor(componentId, oldN + 1, oldN);
+    if (delta < 0) return system.tmmcIntegerSwapBiasFactor(componentId, oldN - 1, oldN);
     return 1.0;
   }
 
