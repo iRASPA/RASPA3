@@ -1299,7 +1299,7 @@ std::string ForceField::printCutOffAutoStatus() const
   }
   if (cutOffMoleculeVDWAutomatic)
   {
-    std::print(stream, "Cutoff Molecule-Molecule VDW: {:9.5f} [{}]\n", cutOffFrameworkVDW,
+    std::print(stream, "Cutoff Molecule-Molecule VDW: {:9.5f} [{}]\n", cutOffMoleculeVDW,
                Units::displayedUnitOfLengthString);
   }
   if (cutOffCoulombAutomatic)
@@ -1310,7 +1310,7 @@ std::string ForceField::printCutOffAutoStatus() const
     std::print(stream, "Ewald k-vectors: {} {} {}\n", numberOfWaveVectors.x, numberOfWaveVectors.y,
                numberOfWaveVectors.z);
   }
-  if (cutOffFrameworkVDWAutomatic || cutOffFrameworkVDWAutomatic || cutOffCoulombAutomatic)
+  if (cutOffFrameworkVDWAutomatic || cutOffMoleculeVDWAutomatic || cutOffCoulombAutomatic)
   {
     std::print(stream, "\n");
   }
@@ -1340,7 +1340,7 @@ std::string ForceField::printForceFieldStatus() const
   }
   else
   {
-    std::print(stream, "Cutoff Molecule-Molecule VDW:  {:9.5f} [{}]\n", cutOffFrameworkVDW,
+    std::print(stream, "Cutoff Molecule-Molecule VDW:  {:9.5f} [{}]\n", cutOffMoleculeVDW,
                Units::displayedUnitOfLengthString);
   }
   if (cutOffCoulombAutomatic)
@@ -1619,10 +1619,14 @@ void ForceField::initializeAutomaticCutOff(const SimulationBox& simulationBox)
     preComputeCutOffDependentParameters();
   }
 
-  if (cutOffCoulombAutomatic && automaticEwald)
+  if (cutOffCoulombAutomatic)
   {
     cutOffCoulomb = 0.5 * smallest_perpendicular_width - std::numeric_limits<double>::epsilon();
+  }
 
+  // explicitly given 'EwaldParameters' are kept, also with an automatic Coulomb cutoff
+  if (cutOffCoulombAutomatic && automaticEwald)
+  {
     // compute the alpha-parameter and max k-vectors from the relative precision
     double eps = std::min(std::fabs(EwaldPrecision), 0.5);
 

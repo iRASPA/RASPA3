@@ -151,9 +151,13 @@ static double getJ(const SimulationBox& simulationBox, std::span<Atom> framework
     {
       double minCellLength = 250;
       double3x3 box = simulationBox.cell;
-      long long aVnum = static_cast<long long>(std::ceil(minCellLength / (2.0 * box.ax))) - 1;
-      long long bVnum = static_cast<long long>(std::ceil(minCellLength / (2.0 * box.by))) - 1;
-      long long cVnum = static_cast<long long>(std::ceil(minCellLength / (2.0 * box.cz))) - 1;
+      // the replicas along each lattice vector follow from the perpendicular width of the cell (the diagonal of a
+      // triclinic cell is not), and at least the neighboring cells are included so a large cell still sees the
+      // periodic images
+      const double3 widths = simulationBox.perpendicularWidths();
+      long long aVnum = std::max(1LL, static_cast<long long>(std::ceil(minCellLength / (2.0 * widths.x))) - 1);
+      long long bVnum = std::max(1LL, static_cast<long long>(std::ceil(minCellLength / (2.0 * widths.y))) - 1);
+      long long cVnum = std::max(1LL, static_cast<long long>(std::ceil(minCellLength / (2.0 * widths.z))) - 1);
       double3 dr;
 
       if (i == j)
@@ -241,6 +245,17 @@ void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceFiel
   {
     std::size_t pseudo_atom_type = static_cast<std::size_t>(atom.type);
     std::size_t element_index = forceField.pseudoAtoms[pseudo_atom_type].atomicNumber;
+
+    // the reference table holds the elements up to polonium (Z = 84) and ten ionization energies per element
+    const std::size_t oxidationState =
+        static_cast<std::size_t>(std::abs(forceField.pseudoAtoms[pseudo_atom_type].oxidationState));
+    if (element_index >= chargeEquilibrationElementData.size() ||
+        oxidationState >= chargeEquilibrationElementData[element_index].ionizationEnergy.size())
+    {
+      throw std::runtime_error(std::format(
+          "[charge equilibration]: no reference data for pseudo-atom '{}' (atomic number {}, oxidation state {})\n",
+          forceField.pseudoAtoms[pseudo_atom_type].name, element_index, oxidationState));
+    }
 
     if (element_index == 1)
     {

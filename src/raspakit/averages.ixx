@@ -51,6 +51,29 @@ export const int chosenConfidenceLevel = int(confidenceLevel::percent_95);
 constexpr double standardNormalDeviate = standardNormalDeviates[numberOfBins - 1][chosenConfidenceLevel];
 
 /**
+ * \brief Two-sided critical value of the Student t-distribution for the chosen confidence level.
+ *
+ * Taken from 'standardNormalDeviates' up to 20 degrees of freedom; beyond the table (more than 21 blocks) from the
+ * Cornish-Fisher expansion of the t quantile around the normal quantile z, which agrees with the tabulated values
+ * to about 1e-4 at 21 degrees of freedom and improves as the number of degrees of freedom grows.
+ */
+export inline double studentTCriticalValue(std::size_t degreesOfFreedom)
+{
+  if (degreesOfFreedom < standardNormalDeviates.size())
+  {
+    return studentTCriticalValue(degreesOfFreedom);
+  }
+  // two-sided normal quantiles for the 80, 90, 95, 98, and 99% confidence levels
+  constexpr std::array<double, 5> normalQuantiles{1.2815515655446004, 1.6448536269514722, 1.959963984540054,
+                                                  2.3263478740408408, 2.5758293035489004};
+  const double z = normalQuantiles[chosenConfidenceLevel];
+  const double z2 = z * z;
+  const double nu = static_cast<double>(degreesOfFreedom);
+  return z + z * (z2 + 1.0) / (4.0 * nu) + z * ((5.0 * z2 + 16.0) * z2 + 3.0) / (96.0 * nu * nu) +
+         z * (((3.0 * z2 + 19.0) * z2 + 17.0) * z2 - 15.0) / (384.0 * nu * nu * nu);
+}
+
+/**
  * \brief Component-wise sum of two pairs.
  *
  * Adds the corresponding members of two \c std::pair values. Serves as the reduction operator for
@@ -161,7 +184,7 @@ T blockErrorEstimate(const std::vector<T> &blockAverages, const T &average)
     std::size_t degreesOfFreedom = numberOfSamples - 1;
     T standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
     T standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+    double intermediateStandardNormalDeviate = studentTCriticalValue(degreesOfFreedom);
     confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
   }
 
@@ -224,7 +247,7 @@ std::vector<T> blockErrorEstimate(const std::vector<std::vector<T>> &blockAverag
   if (numberOfSamples >= 3)
   {
     std::size_t degreesOfFreedom = numberOfSamples - 1;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+    double intermediateStandardNormalDeviate = studentTCriticalValue(degreesOfFreedom);
     for (std::size_t binIndex = 0; binIndex != average.size(); ++binIndex)
     {
       T sumOfSquares = 0.0 * average[binIndex];

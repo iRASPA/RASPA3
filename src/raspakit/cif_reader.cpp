@@ -415,7 +415,15 @@ std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]]
     {
       if ((value1 = parseValue()))
       {
-        dictionary[tag] = *value1;
+        // the DDL2 tags (_atom_site.fract_x) are read as their DDL1 equivalents (_atom_site_fract_x)
+        if (tag.starts_with("_atom_site."))
+        {
+          dictionary["_atom_site_" + tag.substr(std::string_view("_atom_site.").size())] = *value1;
+        }
+        else
+        {
+          dictionary[tag] = *value1;
+        }
       }
     }
 
@@ -523,55 +531,6 @@ std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]]
         }
 
         fractionalAtoms.push_back(atom);
-      }
-      else
-      {
-        if (std::map<std::string, std::string>::iterator index2 =
-                dictionary.find(std::string("_atom_site.type_symbol"));
-            (index2 != dictionary.end()))
-        {
-          Atom atom = Atom();
-
-          if (std::map<std::string, std::string>::iterator atomSiteIndex =
-                  dictionary.find(std::string("_atom_site.id"));
-              (atomSiteIndex != dictionary.end()))
-          {
-            // atom->setDisplayName(atomSiteIndex->second);
-            // atom->setUniqueForceFieldName(atomSiteIndex->second);
-          }
-
-          if (std::map<std::string, std::string>::iterator atomSiteForceFieldIndex =
-                  dictionary.find(std::string("_atom_site.forcefield_label"));
-              (atomSiteForceFieldIndex != dictionary.end()))
-          {
-            // atom->setUniqueForceFieldName(atomSiteForceFieldIndex->second);
-          }
-
-          std::map<std::string, std::string>::iterator atom_site_x = dictionary.find(std::string("_atom_site.fract_x"));
-          std::map<std::string, std::string>::iterator atom_site_y = dictionary.find(std::string("_atom_site.fract_y"));
-          std::map<std::string, std::string>::iterator atom_site_z = dictionary.find(std::string("_atom_site.fract_z"));
-          if ((atom_site_x != dictionary.end()) && (atom_site_y != dictionary.end()) &&
-              (atom_site_z != dictionary.end()))
-          {
-            // double3 position;
-            // bool succes = false;
-            // position.x = atom_site_x->second.split('(').at(0).toDouble(&succes);
-            // position.y = atom_site_y->second.split('(').at(0).toDouble(&succes);
-            // position.z = atom_site_z->second.split('(').at(0).toDouble(&succes);
-            // atom->setPosition(position);
-          }
-
-          std::map<std::string, std::string>::iterator atom_charge = dictionary.find(std::string("_atom_site.charge"));
-          if (atom_charge != dictionary.end())
-          {
-            // double charge = 0.0;
-            // bool succes = false;
-            // charge = atom_charge->second.split('(').at(0).toDouble(&succes);
-            // atom->setCharge(charge);
-          }
-
-          fractionalAtoms.push_back(atom);
-        }
       }
     }
   } while (value1);

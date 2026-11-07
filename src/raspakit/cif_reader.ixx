@@ -193,10 +193,10 @@ export struct CIFReader
   std::optional<std::size_t> spaceGroupInternationalNumber;
   std::string hmSymbol;
   std::vector<std::string> symmetryOperationStrings;
-  double a;                                         ///< Cell length a.
-  double b;                                         ///< Cell length b.
-  double c;                                         ///< Cell length c.
-  double alpha;                                     ///< Cell angle alpha in degrees.
-  double beta;                                      ///< Cell angle beta in degrees.
-  double gamma;                                     ///< Cell angle gamma in degrees.
+  double a{0.0};                                    ///< Cell length a.
+  double b{0.0};                                    ///< Cell length b.
+  double c{0.0};                                    ///< Cell length c.
+  double alpha{90.0};                               ///< Cell angle alpha in degrees.
+  double beta{90.0};                                ///< Cell angle beta in degrees.
+  double gamma{90.0};                               ///< Cell angle gamma in degrees.
 };

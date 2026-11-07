@@ -390,7 +390,7 @@ std::pair<double, double> PropertyMoleculeBackbone::statistics(
   double mean = function(overall);
 
   std::size_t degreesOfFreedom = numberOfBlocks - 1;
-  double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+  double intermediateStandardNormalDeviate = studentTCriticalValue(degreesOfFreedom);
   double sumOfSquares{0.0};
   std::size_t numberOfSamples{0};
   for (std::size_t block = 0; block < numberOfBlocks; ++block)

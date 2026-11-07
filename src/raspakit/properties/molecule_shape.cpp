@@ -443,7 +443,7 @@ std::pair<double, double> PropertyMoleculeShape::blockStatistics(
   double mean = function(overall);
 
   std::size_t degreesOfFreedom = numberOfBlocks - 1;
-  double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+  double intermediateStandardNormalDeviate = studentTCriticalValue(degreesOfFreedom);
   double sumOfSquares{0.0};
   std::size_t numberOfSamples{0};
   for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
@@ -507,7 +507,7 @@ std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> Proper
   }
 
   std::size_t degreesOfFreedom = numberOfBlocks - 1;
-  double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+  double intermediateStandardNormalDeviate = studentTCriticalValue(degreesOfFreedom);
 
   std::vector<double> sumOfSquares(numberOfBins);
   std::size_t numberOfSamples{0};

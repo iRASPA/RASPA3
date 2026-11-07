@@ -71,7 +71,7 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
       double Tr = temperature / Tc;
       double temp = 0.0;
       double kappa, alpha;
-      switch (equationOfState)
+      switch (type)
       {
         case EquationOfState::Type::SoaveRedlichKwong:
           kappa = 0.480 + 1.574 * w - 0.176 * w * w;
@@ -217,7 +217,7 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
 
   std::vector<std::vector<double>> fugacityCoefficients(
       components.size(), std::vector<double>(static_cast<std::size_t>(numberOfSolutions)));
-  switch (equationOfState)
+  switch (type)
   {
     case EquationOfState::Type::SoaveRedlichKwong:
       for (std::size_t i = 0; i < components.size(); i++)

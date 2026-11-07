@@ -28,14 +28,14 @@ import scaling;
 export struct Atom
 {
   double3 position;               ///< The position of the atom in 3D space.
-  double charge;                  ///< The electric charge of the atom.
+  double charge{0.0};             ///< The electric charge of the atom.
   double scalingVDW{1.0};         ///< Scaling factor for van der Waals interactions.
   double scalingCoulomb{1.0};     ///< Scaling factor for Coulomb interactions.
   std::uint32_t moleculeId{0};    ///< Identifier for the molecule this atom belongs to.
   std::uint16_t type{0};          ///< Pseudo-atom type identifier of the atom.
   std::uint8_t componentId{0};    ///< Component identifier within the system.
-  std::uint8_t groupId : 4;       ///< 1-based dU/dlambda group id (0 = not tracked).
-  std::uint8_t isFractional : 4;  ///< Fractional or not, defaults to false.
+  std::uint8_t groupId : 4 {0};   ///< 1-based dU/dlambda group id (0 = not tracked).
+  std::uint8_t isFractional : 4 {0};  ///< Fractional or not, defaults to false.
 
   /**
    * \brief Default constructor for the Atom struct.

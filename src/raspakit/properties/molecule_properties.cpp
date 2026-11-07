@@ -304,7 +304,7 @@ std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> Proper
 
   // Block averages for the confidence interval.
   std::size_t degreesOfFreedom = numberOfBlocks - 1;
-  double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+  double intermediateStandardNormalDeviate = studentTCriticalValue(degreesOfFreedom);
 
   std::vector<double> sumOfSquares(numberOfBins);
   std::size_t numberOfSamples{0};
@@ -431,7 +431,7 @@ void PropertyMoleculeProperties::writeOutput(std::size_t systemId, const std::ve
         double mean = totalSamples > 0.0 ? totalSum / totalSamples : 0.0;
 
         std::size_t degreesOfFreedom = numberOfBlocks - 1;
-        double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+        double intermediateStandardNormalDeviate = studentTCriticalValue(degreesOfFreedom);
         double sumOfSquares{0.0};
         std::size_t numberOfSamples{0};
         for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)

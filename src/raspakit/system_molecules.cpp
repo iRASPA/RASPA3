@@ -590,21 +590,21 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       {
         std::span<double3> position_view = std::span<double3>(&positions[i], component.atoms.size());
 
+        // the center of mass, for flexible molecules too
         double3 com(0.0, 0.0, 0.0);
+        double totalMass = 0.0;
+        for (std::size_t k = 0; k < position_view.size(); ++k)
+        {
+          double mass = forceField.pseudoAtoms[static_cast<std::size_t>(components[componentId].atoms[k].type)].mass;
+          com += mass * position_view[k];
+          totalMass += mass;
+        }
+        com /= totalMass;
+
         simd_quatd orientation{};
 
         if (components[componentId].rigid)
         {
-          // Compute center of mass
-          double totalMass = 0.0;
-          for (std::size_t k = 0; k < position_view.size(); ++k)
-          {
-            double mass = forceField.pseudoAtoms[static_cast<std::size_t>(components[componentId].atoms[k].type)].mass;
-            com += mass * position_view[k];
-            totalMass += mass;
-          }
-          com /= totalMass;
-
           double3 reference_com = double3{0.0, 0.0, 0.0};
 
           std::vector<double3> reference_positions =
