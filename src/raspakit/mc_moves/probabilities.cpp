@@ -57,6 +57,9 @@ const std::vector<double> MCMoveProbabilities::normalizedMap() const
     totalProbability += probability;
   }
 
+  // a component without any move (all probabilities zero) has no distribution to normalize: all zeros, not 0/0
+  if (!(totalProbability > 0.0)) return normalizedMap;
+
   for (auto &probability : normalizedMap)
   {
     probability /= totalProbability;

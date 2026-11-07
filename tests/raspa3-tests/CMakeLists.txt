@@ -55,6 +55,7 @@ add_executable(unit_tests_raspa3
   parallel_tempering_unsupported.cpp
   cbmc_thread_pool_grids.cpp
   gibbs_empty_box_statistics.cpp
+  mc_move_probabilities_normalized.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)
