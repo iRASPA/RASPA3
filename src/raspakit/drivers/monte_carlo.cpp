@@ -472,14 +472,7 @@ void MonteCarlo::preInitialize(std::function<void()> call_back_function, std::si
 
     for (std::size_t system_id{0}; System& system : systems)
     {
-      if (system.propertyNumberOfMoleculesEvolution.has_value())
-      {
-        system.propertyNumberOfMoleculesEvolution->writeOutput(system_id, absoluteCurrentCycle);
-      }
-      if (system.propertyVolumeEvolution.has_value())
-      {
-        system.propertyVolumeEvolution->writeOutput(system_id, absoluteCurrentCycle);
-      }
+      system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
 
       ++system_id;
     }
@@ -592,14 +585,7 @@ void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_
 
     for (std::size_t system_id{0}; System& system : systems)
     {
-      if(system.propertyNumberOfMoleculesEvolution.has_value())
-      {
-        system.propertyNumberOfMoleculesEvolution->writeOutput(system_id, absoluteCurrentCycle);
-      }
-      if(system.propertyVolumeEvolution.has_value())
-      {
-        system.propertyVolumeEvolution->writeOutput(system_id, absoluteCurrentCycle);
-      }
+      system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
 
       ++system_id;
     }
@@ -754,14 +740,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
 
     for (std::size_t system_id{0}; System& system : systems)
     {
-      if(system.propertyNumberOfMoleculesEvolution.has_value())
-      {
-        system.propertyNumberOfMoleculesEvolution->writeOutput(system_id, absoluteCurrentCycle);
-      }
-      if(system.propertyVolumeEvolution.has_value())
-      {
-        system.propertyVolumeEvolution->writeOutput(system_id, absoluteCurrentCycle);
-      }
+      system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
 
       ++system_id;
     }
@@ -998,14 +977,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
 
     for (std::size_t system_id{0}; System& system : systems)
     {
-      if(system.propertyNumberOfMoleculesEvolution.has_value())
-      {
-        system.propertyNumberOfMoleculesEvolution->writeOutput(system_id, absoluteCurrentCycle);
-      }
-      if(system.propertyVolumeEvolution.has_value())
-      {
-        system.propertyVolumeEvolution->writeOutput(system_id, absoluteCurrentCycle);
-      }
+      system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
 
       ++system_id;
     }
@@ -1077,6 +1049,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       std::flush(stream);
 
       system.writeSampledPropertiesMC(system_id, currentCycle);
+      system.writePropertiesEvolution(system_id, absoluteCurrentCycle, true);
 
       ++system_id;
     }

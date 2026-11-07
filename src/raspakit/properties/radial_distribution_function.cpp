@@ -128,7 +128,8 @@ void PropertyRadialDistributionFunction::writeOutput(const ForceField &forceFiel
         [[maybe_unused]] double avg_n_pairs =
             static_cast<double>(pairCount[channel(atomTypeA, atomTypeB)] + pairCount[channel(atomTypeB, atomTypeA)]) /
             histogram.totalNumberOfCounts;
-        double normalization = 1.0 / std::abs(average[0]);
+        // pairs counted outside the range (or a vanishing force signal) leave every bin zero: g(r) = 1
+        double normalization = average[0] != 0.0 ? 1.0 / std::abs(average[0]) : 0.0;
 
         for (std::size_t bin = 0; bin != numberOfBins; ++bin)
         {

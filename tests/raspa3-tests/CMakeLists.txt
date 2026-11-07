@@ -66,6 +66,7 @@ add_executable(unit_tests_raspa3
   intramolecular_potential_fixes.cpp
   dctst_transmission_polarization_drift.cpp
   tmmc_property_output.cpp
+  property_output_fixes.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

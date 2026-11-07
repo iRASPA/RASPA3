@@ -24,18 +24,24 @@ void PropertyNumberOfMoleculesEvolution::addSample(std::size_t absoluteCurrentCy
   }
 }
 
-void PropertyNumberOfMoleculesEvolution::writeOutput(std::size_t systemId, std::size_t absoluteCurrentCycle)
+void PropertyNumberOfMoleculesEvolution::writeOutput(std::size_t systemId, std::size_t absoluteCurrentCycle,
+                                                     bool lastWrite)
 {
   if(!writeEvery.has_value()) return;
 
-  if (absoluteCurrentCycle % writeEvery.value() != 0uz) return;
+  if (!lastWrite && absoluteCurrentCycle % writeEvery.value() != 0uz) return;
 
   std::filesystem::create_directory("number_of_molecules_evolution");
 
   std::ofstream stream_output(std::format("number_of_molecules_evolution/number_of_molecules_evolution.s{}.txt", systemId));
 
-  std::size_t currentIndex = absoluteCurrentCycle / sampleEvery;
-  for(std::size_t index = 0; index < std::min(currentIndex, result[0].size()); ++index)
+  // the samples are taken at the multiples of 'sampleEvery': after the last of 'absoluteCurrentCycle' completed cycles
+  // there are ceil(absoluteCurrentCycle / sampleEvery) of them
+  std::size_t currentIndex =
+      lastWrite ? (absoluteCurrentCycle + sampleEvery - 1uz) / sampleEvery : absoluteCurrentCycle / sampleEvery;
+  // without components there is nothing to write (and no result[0])
+  const std::size_t numberOfSamples = result.empty() ? 0uz : result[0].size();
+  for(std::size_t index = 0; index < std::min(currentIndex, numberOfSamples); ++index)
   {
     for(std::size_t i = 0; i < numberOfComponents; ++i)
     {

@@ -11,6 +11,7 @@ import units;
 import atom;
 import atom_dynamics;
 import molecule;
+import simd_quatd;
 import component;
 import simulationbox;
 import forcefield;
@@ -931,7 +932,18 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
           double3 velocity{};
           if (component.rigid && moleculeIndex < moleculeData.size())
           {
-            velocity = moleculeData[moleculeIndex].velocity;
+            // a rigid molecule moves as a body: v_i = v_com + omega x (r_i - r_com), with the body-frame angular
+            // velocity omega = (1/2) I^-1 vec(p^* q) of the quaternion momentum (as in the rotational kinetic
+            // energy) turned into the laboratory frame
+            const Molecule& molecule = moleculeData[moleculeIndex];
+            simd_quatd p = molecule.orientationMomentum;
+            p.r = -p.r;
+            const simd_quatd pq = p * molecule.orientation;
+            const double3 bodyAngularVelocity = 0.5 * double3(pq.ix, pq.iy, pq.iz) * component.inverseInertiaVector;
+            const double3 angularVelocity =
+                double3x3::buildRotationMatrixInverse(molecule.orientation) * bodyAngularVelocity;
+            velocity = molecule.velocity +
+                       double3::cross(angularVelocity, atomData[a].position - molecule.centerOfMassPosition);
           }
           else if (a < atomDynamics.size())
           {

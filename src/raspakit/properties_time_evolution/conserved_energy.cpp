@@ -21,21 +21,27 @@ void PropertyConservedEnergyEvolution::addSample(std::size_t absoluteCurrentCycl
   }
 }
 
-void PropertyConservedEnergyEvolution::writeOutput(std::size_t systemId, std::size_t absoluteCurrentCycle)
+void PropertyConservedEnergyEvolution::writeOutput(std::size_t systemId, std::size_t absoluteCurrentCycle,
+                                                   bool lastWrite)
 {
   if(!writeEvery.has_value()) return;
 
-  if (absoluteCurrentCycle % writeEvery.value() != 0uz) return;
+  if (!lastWrite && absoluteCurrentCycle % writeEvery.value() != 0uz) return;
 
   std::filesystem::create_directory("conserved_energy");
 
   std::ofstream stream_output(std::format("conserved_energy/conserved_energy.s{}.txt", systemId));
 
-  std::size_t currentIndex = absoluteCurrentCycle / sampleEvery;
+  // the samples are taken at the multiples of 'sampleEvery': after the last of 'absoluteCurrentCycle' completed cycles
+  // there are ceil(absoluteCurrentCycle / sampleEvery) of them
+  std::size_t currentIndex =
+      lastWrite ? (absoluteCurrentCycle + sampleEvery - 1uz) / sampleEvery : absoluteCurrentCycle / sampleEvery;
   for(std::size_t index = 0; index < std::min(currentIndex, data.size()); ++index)
   {
-    stream_output << std::format("{} {} {} {} {}\n", index, data[index].conservedEnergy(),
-       data[index].potentialEnergy(), data[index].kineticEnergy(), data[index].NoseHooverEnergy);
+    stream_output << std::format("{} {} {} {} {}\n", index, data[index].conservedEnergy() * Units::EnergyToKelvin,
+                                 data[index].potentialEnergy() * Units::EnergyToKelvin,
+                                 data[index].kineticEnergy() * Units::EnergyToKelvin,
+                                 data[index].NoseHooverEnergy * Units::EnergyToKelvin);
   }
 }
 

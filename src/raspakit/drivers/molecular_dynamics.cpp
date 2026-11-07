@@ -1310,9 +1310,11 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
       }
     }
 
-    for (System& system : systems)
+    for (std::size_t system_id{0}; System& system : systems)
     {
       system.samplePropertiesEvolution(absoluteCurrentCycle);
+      system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
+      ++system_id;
     }
 
     // sample properties
@@ -1416,6 +1418,13 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     t2 = std::chrono::steady_clock::now();
     totalSimulationTime += (t2 - t1);
   continueProductionStage:;
+  }
+
+  // the samples of the time-evolution properties collected over all stages
+  for (std::size_t system_id{0}; System& system : systems)
+  {
+    system.writePropertiesEvolution(system_id, absoluteCurrentCycle, true);
+    ++system_id;
   }
 
   // output properties to files

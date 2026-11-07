@@ -15,12 +15,12 @@ export struct PropertyNumberOfMoleculesEvolution
 {
   PropertyNumberOfMoleculesEvolution() {};
 
-  PropertyNumberOfMoleculesEvolution(std::size_t numberOfProductionCycles, std::size_t numberOfComponents, 
+  PropertyNumberOfMoleculesEvolution(std::size_t numberOfProductionCycles, std::size_t numberOfComponents,
                                      std::size_t sampleEvery, std::optional<std::size_t> writeEvery)
       : numberOfComponents(numberOfComponents),
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
-        totalSamples(numberOfProductionCycles / sampleEvery),
+        totalSamples((numberOfProductionCycles + sampleEvery - 1) / sampleEvery),
         result(numberOfComponents, std::vector<std::size_t>(totalSamples))
   {
   }
@@ -35,7 +35,9 @@ export struct PropertyNumberOfMoleculesEvolution
 
   void addSample(std::size_t absoluteCurrentCycle, const std::vector<std::size_t> &numberOfIntegerMoleculesPerComponent);
 
-  void writeOutput(std::size_t systemId, std::size_t absoluteCurrentCycle);
+  /// Writes the samples collected up to 'absoluteCurrentCycle' when it is a multiple of 'writeEvery'; the last write
+  /// ('lastWrite', with the number of cycles completed) skips that check and writes every collected sample.
+  void writeOutput(std::size_t systemId, std::size_t absoluteCurrentCycle, bool lastWrite = false);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
                                             const PropertyNumberOfMoleculesEvolution &hist);

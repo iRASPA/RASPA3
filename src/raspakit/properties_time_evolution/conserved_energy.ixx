@@ -19,11 +19,11 @@ export struct PropertyConservedEnergyEvolution
   {
   }
 
-
-  PropertyConservedEnergyEvolution(std::size_t numberOfProductionCycles, std::size_t sampleEvery, std::optional<std::size_t> writeEvery)
+  PropertyConservedEnergyEvolution(std::size_t numberOfProductionCycles, std::size_t sampleEvery,
+                                   std::optional<std::size_t> writeEvery)
       : sampleEvery(sampleEvery),
         writeEvery(writeEvery),
-        totalSamples(numberOfProductionCycles / sampleEvery),
+        totalSamples((numberOfProductionCycles + sampleEvery - 1) / sampleEvery),
         data(totalSamples)
   {
   }
@@ -39,7 +39,9 @@ export struct PropertyConservedEnergyEvolution
 
   void addSample(std::size_t absoluteCurrentCycle, const RunningEnergy &data);
 
-  void writeOutput(std::size_t systemId, std::size_t absoluteCurrentCycle);
+  /// Writes the samples collected up to 'absoluteCurrentCycle' when it is a multiple of 'writeEvery'; the last write
+  /// ('lastWrite', with the number of cycles completed) skips that check and writes every collected sample.
+  void writeOutput(std::size_t systemId, std::size_t absoluteCurrentCycle, bool lastWrite = false);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
                                             const PropertyConservedEnergyEvolution &hist);

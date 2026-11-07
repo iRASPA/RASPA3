@@ -702,6 +702,22 @@ void System::writeSampledPropertiesMC(std::size_t systemId, std::size_t currentC
   }
 }
 
+void System::writePropertiesEvolution(std::size_t systemId, std::size_t absoluteCurrentCycle, bool lastWrite)
+{
+  if (propertyNumberOfMoleculesEvolution.has_value())
+  {
+    propertyNumberOfMoleculesEvolution->writeOutput(systemId, absoluteCurrentCycle, lastWrite);
+  }
+  if (propertyVolumeEvolution.has_value())
+  {
+    propertyVolumeEvolution->writeOutput(systemId, absoluteCurrentCycle, lastWrite);
+  }
+  if (propertyConservedEnergyEvolution.has_value())
+  {
+    propertyConservedEnergyEvolution->writeOutput(systemId, absoluteCurrentCycle, lastWrite);
+  }
+}
+
 std::string System::writeProductionStatusReportMC(const std::string& statusLine,
                                                   std::optional<std::pair<std::size_t, std::size_t>> progress) const
 {

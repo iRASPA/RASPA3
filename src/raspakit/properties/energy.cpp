@@ -947,7 +947,7 @@ std::string PropertyEnergy::repr() const
 {
   std::ostringstream stream;
 
-  std::print("{}\n", bookKeeping[0].first.repr());
+  std::print(stream, "{}\n", bookKeeping[0].first.repr());
 
   return stream.str();
 }

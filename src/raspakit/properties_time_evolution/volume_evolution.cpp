@@ -20,17 +20,20 @@ void PropertyVolumeEvolution::addSample(std::size_t absoluteCurrentCycle, double
   }
 }
 
-void PropertyVolumeEvolution::writeOutput(std::size_t systemId, std::size_t absoluteCurrentCycle)
+void PropertyVolumeEvolution::writeOutput(std::size_t systemId, std::size_t absoluteCurrentCycle, bool lastWrite)
 {
   if(!writeEvery.has_value()) return;
 
-  if (absoluteCurrentCycle % writeEvery.value() != 0uz) return;
+  if (!lastWrite && absoluteCurrentCycle % writeEvery.value() != 0uz) return;
 
   std::filesystem::create_directory("volume_evolution");
 
   std::ofstream stream_output(std::format("volume_evolution/volume_evolution.s{}.txt", systemId));
 
-  std::size_t currentIndex = absoluteCurrentCycle / sampleEvery;
+  // the samples are taken at the multiples of 'sampleEvery': after the last of 'absoluteCurrentCycle' completed cycles
+  // there are ceil(absoluteCurrentCycle / sampleEvery) of them
+  std::size_t currentIndex =
+      lastWrite ? (absoluteCurrentCycle + sampleEvery - 1uz) / sampleEvery : absoluteCurrentCycle / sampleEvery;
   for(std::size_t index = 0; index < std::min(currentIndex, result.size()); ++index)
   {
     stream_output << std::format("{}\n", result[index]);

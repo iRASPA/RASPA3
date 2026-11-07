@@ -980,6 +980,9 @@ export struct System
   /// Writes the files of the properties sampled by the Monte Carlo drivers (radial distribution functions, density
   /// grid, energy and number-of-molecules histograms, molecule properties, end-to-end ACF, shape and backbone).
   void writeSampledPropertiesMC(std::size_t systemId, std::size_t currentCycle);
+  /// Writes the time-evolution properties (number of molecules, volume, conserved energy) at 'absoluteCurrentCycle';
+  /// 'lastWrite' (with the number of cycles completed) writes every collected sample.
+  void writePropertiesEvolution(std::size_t systemId, std::size_t absoluteCurrentCycle, bool lastWrite = false);
   std::string writeSystemStatus() const;
   std::string writeComponentStatus() const;
   std::string writeMCMoveStatistics() const;

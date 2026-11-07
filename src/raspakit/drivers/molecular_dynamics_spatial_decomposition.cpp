@@ -1360,9 +1360,11 @@ void MolecularDynamicsSpatialDecomposition::production()
       }
     }
 
-    for (System& system : systems)
+    for (std::size_t system_id{0}; System& system : systems)
     {
       system.samplePropertiesEvolution(absoluteCurrentCycle);
+      system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
+      ++system_id;
     }
 
     for (std::size_t system_id{0}; System& system : systems)
@@ -1450,6 +1452,13 @@ void MolecularDynamicsSpatialDecomposition::production()
     t2 = std::chrono::steady_clock::now();
     totalSimulationTime += (t2 - t1);
   continueProductionStage:;
+  }
+
+  // the samples of the time-evolution properties collected over all stages
+  for (std::size_t system_id{0}; System& system : systems)
+  {
+    system.writePropertiesEvolution(system_id, absoluteCurrentCycle, true);
+    ++system_id;
   }
   for (std::size_t system_id{0}; system_id < systems.size(); ++system_id) refreshHostState(system_id, true, true);
 

@@ -303,8 +303,6 @@ std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> Proper
   }
 
   // Block averages for the confidence interval.
-  std::size_t degreesOfFreedom = numberOfBlocks - 1;
-  double intermediateStandardNormalDeviate = studentTCriticalValue(degreesOfFreedom);
 
   std::vector<double> sumOfSquares(numberOfBins);
   std::size_t numberOfSamples{0};
@@ -326,10 +324,13 @@ std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> Proper
   std::vector<double> confidenceIntervalError(numberOfBins);
   if (numberOfSamples >= 3)
   {
+    // the blocks without samples do not take part: the statistics are of the numberOfSamples blocks
+    const std::size_t degreesOfFreedom = numberOfSamples - 1;
+    const double intermediateStandardNormalDeviate = studentTCriticalValue(degreesOfFreedom);
     for (std::size_t bin = 0; bin != numberOfBins; ++bin)
     {
       double standardDeviation = std::sqrt(sumOfSquares[bin] / static_cast<double>(degreesOfFreedom));
-      double standardError = standardDeviation / std::sqrt(static_cast<double>(numberOfBlocks));
+      double standardError = standardDeviation / std::sqrt(static_cast<double>(numberOfSamples));
       confidenceIntervalError[bin] = intermediateStandardNormalDeviate * standardError;
     }
   }
@@ -430,8 +431,6 @@ void PropertyMoleculeProperties::writeOutput(std::size_t systemId, const std::ve
         }
         double mean = totalSamples > 0.0 ? totalSum / totalSamples : 0.0;
 
-        std::size_t degreesOfFreedom = numberOfBlocks - 1;
-        double intermediateStandardNormalDeviate = studentTCriticalValue(degreesOfFreedom);
         double sumOfSquares{0.0};
         std::size_t numberOfSamples{0};
         for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
@@ -446,8 +445,11 @@ void PropertyMoleculeProperties::writeOutput(std::size_t systemId, const std::ve
         double confidenceIntervalError{0.0};
         if (numberOfSamples >= 3)
         {
+          // the blocks without samples do not take part: the statistics are of the numberOfSamples blocks
+          const std::size_t degreesOfFreedom = numberOfSamples - 1;
+          const double intermediateStandardNormalDeviate = studentTCriticalValue(degreesOfFreedom);
           double standardDeviation = std::sqrt(sumOfSquares / static_cast<double>(degreesOfFreedom));
-          double standardError = standardDeviation / std::sqrt(static_cast<double>(numberOfBlocks));
+          double standardError = standardDeviation / std::sqrt(static_cast<double>(numberOfSamples));
           confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
         }
         return {mean, confidenceIntervalError};
