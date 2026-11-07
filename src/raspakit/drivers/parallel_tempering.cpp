@@ -97,6 +97,11 @@ ParallelTempering::ParallelTempering(InputReader& reader)
   // the single declared system is replicated into one replica per temperature of the ladder
   System templateSystem = std::move(reader.systems.front());
   reader.systems.clear();
+  if (const std::optional<std::string> reason =
+          MC_Moves::parallelTemperingUnsupportedReason(templateSystem, !soluteTemperingComponent.empty()))
+  {
+    throw std::runtime_error(std::format("[ParallelTempering]: {}\n", reason.value()));
+  }
 
   // solute tempering without a temperature ladder: all replicas share the thermostat temperature,
   // only the solute Hamiltonian differs between them

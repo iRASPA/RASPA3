@@ -33,6 +33,15 @@ export namespace MC_Moves
 std::optional<std::pair<RunningEnergy, RunningEnergy>> ParallelTemperingSwap(RandomNumber &random, System &systemA,
                                                                              System &systemB);
 
+/// Why replica-exchange swaps can not be done for replicas of 'system' (nothing when they can). The parallel
+/// tempering drivers refuse such a system up front; the swap itself refuses it as well. The cases:
+///  - a framework with mobile atoms: the swap exchanges the adsorbates only, and a replica would keep its own
+///    framework configuration with the partner's energies;
+///  - a temperature-dependent pair potential (Feynman-Hibbs): the replicas then have different Hamiltonians,
+///    and the acceptance rule needs the energy of each configuration under the partner's potential;
+///  - solute tempering with polarization: the solute Hamiltonian change has no polarization term.
+std::optional<std::string> parallelTemperingUnsupportedReason(const System& system, bool soluteTempering);
+
 /// Log acceptance ratio for X_A ↔ X_B. Empty when the pair is incompatible
 /// (no RNG should be consumed). Exposed so tests can check the ratio.
 std::optional<double> ParallelTemperingLogAcceptance(const System &systemA, const System &systemB);

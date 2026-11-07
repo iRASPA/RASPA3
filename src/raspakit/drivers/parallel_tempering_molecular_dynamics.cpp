@@ -129,6 +129,10 @@ ParallelTemperingMolecularDynamics::ParallelTemperingMolecularDynamics(InputRead
   // the single declared system is replicated into one replica per temperature of the ladder
   System templateSystem = std::move(reader.systems.front());
   reader.systems.clear();
+  if (const std::optional<std::string> reason = MC_Moves::parallelTemperingUnsupportedReason(templateSystem, false))
+  {
+    throw std::runtime_error(std::format("[ParallelTemperingMolecularDynamics]: {}\n", reason.value()));
+  }
 
   systems.reserve(numberOfReplicas);
   for (std::size_t replicaId = 0; replicaId + 1 < numberOfReplicas; ++replicaId)

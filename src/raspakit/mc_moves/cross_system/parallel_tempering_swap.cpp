@@ -24,6 +24,7 @@ import property_widom;
 import property_loading;
 import averages;
 import forcefield;
+import vdwparameters;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_internal;
@@ -435,8 +436,43 @@ void rebuildMolecularDynamicsState(System& system, double velocityScaling)
 
 }  // namespace
 
+std::optional<std::string> MC_Moves::parallelTemperingUnsupportedReason(const System& system, bool soluteTempering)
+{
+  if (system.framework.has_value() && system.framework->hasMobileAtoms())
+  {
+    return std::string(
+        "a framework with mobile (flexible) atoms is not supported: the replica-exchange swap "
+        "exchanges the adsorbates only, and a replica would keep its own framework configuration "
+        "with the energies of its partner");
+  }
+  for (const VDWParameters& parameter : system.forceField.data)
+  {
+    if (parameter.type == VDWParameters::Type::FeynmannHibbs)
+    {
+      return std::string(
+          "temperature-dependent pair potentials (Feynman-Hibbs) are not supported: the replicas "
+          "then have different Hamiltonians, and the acceptance rule of the swap would need the "
+          "energy of each configuration under the potential of the other temperature");
+    }
+  }
+  if (soluteTempering && system.forceField.computePolarization)
+  {
+    return std::string(
+        "solute tempering is not supported together with polarization: the change of the solute "
+        "Hamiltonian at a swap has no polarization term");
+  }
+  return std::nullopt;
+}
+
 std::optional<double> MC_Moves::ParallelTemperingLogAcceptance(const System& systemA, const System& systemB)
 {
+  // the cases the drivers refuse up front (see parallelTemperingUnsupportedReason)
+  const bool soluteTempering = temperedComponent(systemA, systemB).has_value();
+  if (MC_Moves::parallelTemperingUnsupportedReason(systemA, soluteTempering).has_value() ||
+      MC_Moves::parallelTemperingUnsupportedReason(systemB, soluteTempering).has_value())
+  {
+    return std::nullopt;
+  }
   if (!compatibleMobileTopology(systemA, systemB))
   {
     return std::nullopt;
