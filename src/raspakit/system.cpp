@@ -460,13 +460,16 @@ void System::rescaleMolarFractions()
       }
     }
   }
-  else
+  else if (numberOfSwappableComponents > 0.0)
   {
+    // no mole fractions given: the swappable components share the gas phase equally (dividing the zero
+    // fractions by the count, as was done, left them zero, which made every insertion prefactor beta f V
+    // vanish and every deletion divide by zero)
     for (Component& component : components)
     {
       if (component.swappable)
       {
-        component.molFraction /= numberOfSwappableComponents;
+        component.molFraction = 1.0 / numberOfSwappableComponents;
       }
     }
   }
