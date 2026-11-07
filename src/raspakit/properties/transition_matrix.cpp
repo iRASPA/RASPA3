@@ -179,7 +179,14 @@ void TransitionMatrix::recomputeLnPiAndBias()
       1);
   [[maybe_unused]] std::size_t nonzeroCount = maxVisitedN - minVisitedN + 1;
 
+  // ln Pi by the detailed-balance recursion from the lowest visited state; forward_lnpi and reverse_lnpi
+  // are the running sums of the forward and reverse transition log-probabilities along the same walk
+  // (diagnostic columns of the statistics file), so that lnpi = forward_lnpi - reverse_lnpi up to the
+  // normalization below. All three start at zero at the lowest visited state: a value left there from an
+  // earlier rebuild with another visited range would otherwise be carried into every state above it.
   lnpi[minVisitedN] = 0.0;
+  forward_lnpi[minVisitedN] = 0.0;
+  reverse_lnpi[minVisitedN] = 0.0;
   double maxlnpi = lnpi[minVisitedN];
   // Update the lnpi for the sampled region//
   // x: -1; y: 0; z: +1//
@@ -193,7 +200,8 @@ void TransitionMatrix::recomputeLnPiAndBias()
     {
       const double forward = std::log(cmatrix[i].z) - std::log(forwardTotal);
       const double reverse = std::log(cmatrix[i + 1].x) - std::log(reverseTotal);
-      forward_lnpi[i + 1] = lnpi[i] + forward;
+      forward_lnpi[i + 1] = forward_lnpi[i] + forward;
+      reverse_lnpi[i + 1] = reverse_lnpi[i] + reverse;
       lnpi[i + 1] = lnpi[i] + forward - reverse;
     }
     else
@@ -202,9 +210,9 @@ void TransitionMatrix::recomputeLnPiAndBias()
       // across it until both directions have support; applying only the reverse term invents a
       // free-energy step and can create a wall before the walker has sampled the forward hop.
       lnpi[i + 1] = lnpi[i];
-      forward_lnpi[i + 1] = lnpi[i];
+      forward_lnpi[i + 1] = forward_lnpi[i];
+      reverse_lnpi[i + 1] = reverse_lnpi[i];
     }
-    reverse_lnpi[i + 1] = lnpi[i + 1];
     if (lnpi[i + 1] > maxlnpi)
     {
       maxlnpi = lnpi[i + 1];
@@ -215,10 +223,14 @@ void TransitionMatrix::recomputeLnPiAndBias()
   for (std::size_t i = 0; i < minVisitedN; ++i)
   {
     lnpi[i] = lnpi[minVisitedN];
+    forward_lnpi[i] = forward_lnpi[minVisitedN];
+    reverse_lnpi[i] = reverse_lnpi[minVisitedN];
   }
   for (std::size_t i = maxVisitedN; i < lnpi.size(); ++i)
   {
     lnpi[i] = lnpi[maxVisitedN];
+    forward_lnpi[i] = forward_lnpi[maxVisitedN];
+    reverse_lnpi[i] = reverse_lnpi[maxVisitedN];
   }
 
   // Normalize
@@ -253,6 +265,7 @@ void TransitionMatrix::clearStatisticsKeepBias()
   if (!doTMMC) return;
 
   numberOfSteps = 0;
+  numberOfUpdates = 0;
   std::fill(cmatrix.begin(), cmatrix.end(), double3(0.0, 0.0, 0.0));
   std::fill(histogram.begin(), histogram.end(), 0uz);
 };
@@ -263,10 +276,13 @@ void TransitionMatrix::clearCMatrix()
   if (!doTMMC || !rezeroAfterInitialization) return;
 
   numberOfSteps = 0;
+  numberOfUpdates = 0;
   double3 temp = {0.0, 0.0, 0.0};
   std::fill(cmatrix.begin(), cmatrix.end(), temp);
   std::fill(histogram.begin(), histogram.end(), 0.0);
   std::fill(lnpi.begin(), lnpi.end(), 0.0);
+  std::fill(forward_lnpi.begin(), forward_lnpi.end(), 0.0);
+  std::fill(reverse_lnpi.begin(), reverse_lnpi.end(), 0.0);
   std::fill(bias.begin(), bias.end(), 1.0);
   std::fill(wangLandauHistogram.begin(), wangLandauHistogram.end(), 0.0);
   wangLandauVisits = 0uz;

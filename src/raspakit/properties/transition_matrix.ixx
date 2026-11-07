@@ -26,8 +26,8 @@ export struct TransitionMatrix
   std::vector<double3> cmatrix;        ///< Collection matrix: x=deletion, y=no change, z=insertion.
   std::vector<double> bias;            ///< Bias factors for each macrostate.
   std::vector<double> lnpi;            ///< Natural logarithm of the probability distribution.
-  std::vector<double> forward_lnpi;    ///< Forward ln(pi) for debugging purposes.
-  std::vector<double> reverse_lnpi;    ///< Reverse ln(pi) for debugging purposes.
+  std::vector<double> forward_lnpi;    ///< Running sum of the forward transition log-probabilities (diagnostic).
+  std::vector<double> reverse_lnpi;    ///< Running sum of the reverse ones; lnpi = forward - reverse (diagnostic).
   std::vector<std::size_t> histogram;  ///< Histogram of macrostate visits.
 
   std::size_t numberOfSteps = {0};        ///< Number of steps performed in the TMMC simulation.
@@ -54,7 +54,7 @@ export struct TransitionMatrix
     return (N - minMacrostate) * nLambda + k;
   }
   std::size_t updateTMEvery = {1000000};  ///< Number of steps between bias updates.
-  std::size_t numberOfUpdates = {0};      ///< Number of times the bias has been updated.
+  std::size_t numberOfUpdates = {0};      ///< Rebuilds of ln Pi from the current statistics (reset with them).
 
   bool doTMMC = {false};   ///< Flag indicating whether to perform TMMC simulation.
   bool useBias = {false};  ///< Flag indicating whether to use bias for changing macrostates.
