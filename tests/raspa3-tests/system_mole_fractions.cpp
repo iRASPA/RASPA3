@@ -99,9 +99,18 @@ TEST(SYSTEM_MOLE_FRACTIONS, the_partner_of_a_pair_swap_on_one_ion_is_swappable_t
   const System system = makeSystem({cation, anion});
   EXPECT_TRUE(system.components[0].swappable);
   EXPECT_TRUE(system.components[1].swappable);
-  EXPECT_DOUBLE_EQ(system.components[0].molFraction, 0.5);
-  EXPECT_DOUBLE_EQ(system.components[1].molFraction, 0.5);
+  // the pair is one species: the salt alone has the whole gas phase, and both ions carry its fraction (the
+  // pair moves use f_A f_B); the partner does not count in the normalization
+  EXPECT_DOUBLE_EQ(system.components[0].molFraction, 1.0);
+  EXPECT_DOUBLE_EQ(system.components[1].molFraction, 1.0);
   EXPECT_EQ(system.swappableComponents, (std::vector<std::size_t>{0, 1}));
+
+  // beside another adsorbate the salt and that adsorbate share the gas phase, and the partner follows its driver
+  Component carbonDioxide = makeComponent(forceField, "co2", true, 1.0);
+  const System mixture = makeSystem({cation, anion, carbonDioxide});
+  EXPECT_DOUBLE_EQ(mixture.components[0].molFraction, 0.5);
+  EXPECT_DOUBLE_EQ(mixture.components[1].molFraction, 0.5);
+  EXPECT_DOUBLE_EQ(mixture.components[2].molFraction, 0.5);
 }
 
 TEST(SYSTEM_MOLE_FRACTIONS, the_target_of_an_identity_change_is_swappable_too)

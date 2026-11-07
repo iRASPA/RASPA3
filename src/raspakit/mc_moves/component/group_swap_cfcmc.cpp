@@ -56,21 +56,26 @@ struct GroupMember
 };
 
 // central molecule first, then the satellites in the order listed in GroupComponents; a component
-// occurring multiple times receives consecutive sub-slots
+// occurring multiple times receives consecutive sub-slots. The sub-slots start where this group's range
+// within the member begins (System::groupSwapFractionalSubSlotRange): a member shared with another group
+// (a counter-ion of two salts) has that group's sub-slots before or after ours.
 std::vector<GroupMember> buildGroupMembers(const System& system, std::size_t selectedComponent, Move::Types move)
 {
   const Component& central = system.components[selectedComponent];
   std::vector<GroupMember> members;
   members.reserve(1 + central.groupComponentIds.size());
   std::vector<std::size_t> occurrence(system.components.size(), 0);
-  members.push_back(
-      {selectedComponent, system.indexOfFractionalMoleculeForMove(move, selectedComponent, occurrence[selectedComponent])});
-  ++occurrence[selectedComponent];
+  auto subSlot = [&](std::size_t componentId)
+  {
+    const std::size_t first = system.groupSwapFractionalSubSlotRange(componentId, selectedComponent, move).first;
+    return first + occurrence[componentId]++;
+  };
+  members.push_back({selectedComponent,
+                     system.indexOfFractionalMoleculeForMove(move, selectedComponent, subSlot(selectedComponent))});
   for (std::size_t satelliteComponentId : central.groupComponentIds)
   {
-    members.push_back({satelliteComponentId, system.indexOfFractionalMoleculeForMove(
-                                                 move, satelliteComponentId, occurrence[satelliteComponentId])});
-    ++occurrence[satelliteComponentId];
+    members.push_back({satelliteComponentId, system.indexOfFractionalMoleculeForMove(move, satelliteComponentId,
+                                                                                     subSlot(satelliteComponentId))});
   }
   return members;
 }

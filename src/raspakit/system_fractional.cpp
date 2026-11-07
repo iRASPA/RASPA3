@@ -550,15 +550,13 @@ void System::initializeFixedLambdaFractionalMolecules()
       case Component::FixedLambdaCoordinate::GroupSwap:
       {
         // all fractional molecules of the group (the central component and every satellite
-        // occurrence) are coupled to the central component's histogram
+        // occurrence) are coupled to the central component's histogram: those sub-slots of every member
+        // that belong to this group, and no other group's
         for (std::size_t member = 0; member < components.size(); ++member)
         {
-          if (groupSwapLambdaDriver(member, Move::Types::GroupSwapCFCMC) != componentId)
-          {
-            continue;
-          }
-          const std::size_t begin = indexOfGroupSwapFractionalMoleculesPerComponent_CFCMC(member);
-          for (std::size_t k = 0; k < numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC[member]; ++k)
+          const auto [first, count] = groupSwapFractionalSubSlotRange(member, componentId, Move::Types::GroupSwapCFCMC);
+          const std::size_t begin = indexOfGroupSwapFractionalMoleculesPerComponent_CFCMC(member) + first;
+          for (std::size_t k = 0; k < count; ++k)
           {
             rescale(member, begin + k, lambda, histogram.dUdlambdaGroupId);
           }
@@ -869,28 +867,50 @@ bool System::componentDrivesGroupSwapLambda(std::size_t componentId, Move::Types
           pinsFixedLambda(component, Component::FixedLambdaCoordinate::GroupSwap));
 }
 
-// The driving component of the group fractional slots held by 'componentId': either the component
-// itself (when it drives a group CFCMC move) or the first component listing it among its satellites.
-// A component can participate in at most one CFCMC group per move flavor.
-std::optional<std::size_t> System::groupSwapLambdaDriver(std::size_t componentId, Move::Types move) const noexcept
+// The group fractional sub-slots of a component are allocated (determineFractionalComponents) driver by
+// driver in component order: for each driving component, one slot when the component is the driver itself,
+// then one per occurrence of the component among that driver's satellites. A component may be in several
+// groups (a counter-ion shared by two salts), so a sub-slot belongs to one driver and a driver owns a
+// contiguous range of sub-slots; reading every group through sub-slot 0, as was done, had two groups move
+// the same fractional molecule and left the other one orphaned at its initial lambda.
+std::pair<std::size_t, std::size_t> System::groupSwapFractionalSubSlotRange(std::size_t componentId,
+                                                                            std::size_t driverComponentId,
+                                                                            Move::Types move) const noexcept
 {
-  if (componentDrivesGroupSwapLambda(componentId, move))
+  auto slotsOfDriver = [&](std::size_t driver) -> std::size_t
   {
-    return componentId;
+    const std::vector<std::size_t>& satellites = components[driver].groupComponentIds;
+    return (driver == componentId ? 1uz : 0uz) +
+           static_cast<std::size_t>(std::count(satellites.begin(), satellites.end(), componentId));
+  };
+  std::size_t first = 0;
+  for (std::size_t i = 0; i < components.size() && i < driverComponentId; ++i)
+  {
+    if (componentDrivesGroupSwapLambda(i, move)) first += slotsOfDriver(i);
   }
+  const std::size_t count =
+      (driverComponentId < components.size() && componentDrivesGroupSwapLambda(driverComponentId, move))
+          ? slotsOfDriver(driverComponentId)
+          : 0uz;
+  return {first, count};
+}
+
+std::optional<std::size_t> System::groupSwapLambdaDriverOfSubSlot(std::size_t componentId, std::size_t subIndex,
+                                                                  Move::Types move) const noexcept
+{
   for (std::size_t i = 0; i < components.size(); ++i)
   {
-    if (!componentDrivesGroupSwapLambda(i, move))
-    {
-      continue;
-    }
-    if (std::find(components[i].groupComponentIds.begin(), components[i].groupComponentIds.end(), componentId) !=
-        components[i].groupComponentIds.end())
-    {
-      return i;
-    }
+    if (!componentDrivesGroupSwapLambda(i, move)) continue;
+    const auto [first, count] = groupSwapFractionalSubSlotRange(componentId, i, move);
+    if (count > 0 && subIndex >= first && subIndex < first + count) return i;
   }
   return std::nullopt;
+}
+
+// The driving component of the first group fractional sub-slot of 'componentId'.
+std::optional<std::size_t> System::groupSwapLambdaDriver(std::size_t componentId, Move::Types move) const noexcept
+{
+  return groupSwapLambdaDriverOfSubSlot(componentId, 0uz, move);
 }
 
 // Assigns sequential 1-based thermodynamic-integration group ids to all lambda histograms with
@@ -1034,13 +1054,15 @@ std::uint8_t System::fractionalSlotDUdlambdaGroupId(std::size_t componentId, std
 
   if (slotIndex >= groupSwapBegin && slotIndex < groupSwapEnd)
   {
-    const std::optional<std::size_t> groupDriver = groupSwapLambdaDriver(componentId, Move::Types::GroupSwapCFCMC);
+    const std::optional<std::size_t> groupDriver =
+        groupSwapLambdaDriverOfSubSlot(componentId, slotIndex - groupSwapBegin, Move::Types::GroupSwapCFCMC);
     return groupDriver.has_value() ? components[groupDriver.value()].lambdaGroupSwap.dUdlambdaGroupId
                                    : std::uint8_t{0};
   }
   if (slotIndex >= groupSwapEnd && slotIndex < groupSwapCBEnd)
   {
-    const std::optional<std::size_t> groupDriver = groupSwapLambdaDriver(componentId, Move::Types::GroupSwapCBCFCMC);
+    const std::optional<std::size_t> groupDriver =
+        groupSwapLambdaDriverOfSubSlot(componentId, slotIndex - groupSwapEnd, Move::Types::GroupSwapCBCFCMC);
     return groupDriver.has_value() ? components[groupDriver.value()].lambdaGroupSwapCB.dUdlambdaGroupId
                                    : std::uint8_t{0};
   }

@@ -45,6 +45,7 @@ add_executable(unit_tests_raspa3
   transition_matrix_bookkeeping.cpp
   system_mole_fractions.cpp
   mc_omit_inter_interactions_drift.cpp
+  group_fractional_slots.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

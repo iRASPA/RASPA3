@@ -874,11 +874,22 @@ export struct System
   void reactionLambdaFinalize() noexcept;
   [[nodiscard]] bool componentDrivesPairSwapLambda(std::size_t componentId, Move::Types move) const noexcept;
   [[nodiscard]] bool componentDrivesGroupSwapLambda(std::size_t componentId, Move::Types move) const noexcept;
-  /// The component whose group-swap lambda histogram drives the group fractional slots of
-  /// 'componentId' for the given group CFCMC move (the driver itself or a component listing
-  /// 'componentId' among its GroupComponents). Returns std::nullopt when there is none.
+  /// The component whose group-swap lambda histogram drives the first group fractional sub-slot of
+  /// 'componentId' for the given group CFCMC move (the driver itself or the first component listing
+  /// 'componentId' among its GroupComponents). Returns std::nullopt when there is none. A component may
+  /// belong to several groups (a counter-ion shared by two salts): its group sub-slots are laid out
+  /// driver by driver in component order, each driver's central slot first and then one per occurrence
+  /// among that driver's satellites; see groupSwapFractionalSubSlotRange and groupSwapLambdaDriverOfSubSlot.
   [[nodiscard]] std::optional<std::size_t> groupSwapLambdaDriver(std::size_t componentId,
                                                                  Move::Types move) const noexcept;
+  /// The group fractional sub-slots of 'componentId' that belong to the group of 'driverComponentId' for
+  /// the given group CFCMC move: {first sub-slot, count} (count 0 when the component is not in that group).
+  [[nodiscard]] std::pair<std::size_t, std::size_t> groupSwapFractionalSubSlotRange(std::size_t componentId,
+                                                                                    std::size_t driverComponentId,
+                                                                                    Move::Types move) const noexcept;
+  /// The driver whose group owns the group fractional sub-slot 'subIndex' of 'componentId'.
+  [[nodiscard]] std::optional<std::size_t> groupSwapLambdaDriverOfSubSlot(std::size_t componentId, std::size_t subIndex,
+                                                                          Move::Types move) const noexcept;
   void assignDUdlambdaGroups();
   [[nodiscard]] std::uint8_t fractionalSlotDUdlambdaGroupId(std::size_t componentId,
                                                             std::size_t slotIndex) const noexcept;

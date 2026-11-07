@@ -458,25 +458,46 @@ void System::optimizeMCMoves()
 
 void System::rescaleMolarFractions()
 {
+  // The partner ion of a pair swap is one species with its driver (the salt): the pair moves use the product
+  // f_A f_B, and both carry the salt's fraction. The partner therefore takes the driver's fraction and does
+  // not count in the normalization (counting it halved both fugacities of a salt inserted alone).
+  std::vector<std::optional<std::size_t>> pairDriverOf(components.size());
+  auto drivesPairSwap = [](const Component& component)
+  {
+    return component.mc_moves_probabilities.getProbability(Move::Types::PairSwap) > 0.0 ||
+           component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCBMC) > 0.0 ||
+           component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCFCMC) > 0.0 ||
+           component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCBCFCMC) > 0.0;
+  };
+  for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+  {
+    const Component& component = components[componentId];
+    if (!component.pairComponentId.has_value() || !drivesPairSwap(component)) continue;
+    const std::size_t partner = component.pairComponentId.value();
+    if (partner < components.size() && partner != componentId && !drivesPairSwap(components[partner]))
+    {
+      pairDriverOf[partner] = componentId;
+    }
+  }
+  auto normalizes = [&](std::size_t componentId)
+  { return components[componentId].swappable && !pairDriverOf[componentId].has_value(); };
+
   double totalMolfraction = 0.0;
   double numberOfSwappableComponents = 0.0;
-  for (const Component& component : components)
+  for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
   {
-    if (component.swappable)
+    if (normalizes(componentId))
     {
-      totalMolfraction += component.molFraction;
+      totalMolfraction += components[componentId].molFraction;
       numberOfSwappableComponents += 1.0;
     }
   }
 
   if (totalMolfraction > 0.0)
   {
-    for (Component& component : components)
+    for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
     {
-      if (component.swappable)
-      {
-        component.molFraction /= totalMolfraction;
-      }
+      if (normalizes(componentId)) components[componentId].molFraction /= totalMolfraction;
     }
   }
   else if (numberOfSwappableComponents > 0.0)
@@ -484,12 +505,17 @@ void System::rescaleMolarFractions()
     // no mole fractions given: the swappable components share the gas phase equally (dividing the zero
     // fractions by the count, as was done, left them zero, which made every insertion prefactor beta f V
     // vanish and every deletion divide by zero)
-    for (Component& component : components)
+    for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
     {
-      if (component.swappable)
-      {
-        component.molFraction = 1.0 / numberOfSwappableComponents;
-      }
+      if (normalizes(componentId)) components[componentId].molFraction = 1.0 / numberOfSwappableComponents;
+    }
+  }
+
+  for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+  {
+    if (pairDriverOf[componentId].has_value())
+    {
+      components[componentId].molFraction = components[pairDriverOf[componentId].value()].molFraction;
     }
   }
 }

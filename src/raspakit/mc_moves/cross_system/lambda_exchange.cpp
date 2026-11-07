@@ -66,12 +66,11 @@ static std::vector<std::pair<std::size_t, std::size_t>> pinnedFractionalMolecule
     {
       for (std::size_t member = 0; member < system.components.size(); ++member)
       {
-        if (system.groupSwapLambdaDriver(member, Move::Types::GroupSwapCFCMC) != tiComponentId)
-        {
-          continue;
-        }
-        const std::size_t begin = system.indexOfGroupSwapFractionalMoleculesPerComponent_CFCMC(member);
-        for (std::size_t k = 0; k < system.numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC[member]; ++k)
+        // the sub-slots of this member that belong to this group (a member may be shared with another group)
+        const auto [first, count] =
+            system.groupSwapFractionalSubSlotRange(member, tiComponentId, Move::Types::GroupSwapCFCMC);
+        const std::size_t begin = system.indexOfGroupSwapFractionalMoleculesPerComponent_CFCMC(member) + first;
+        for (std::size_t k = 0; k < count; ++k)
         {
           molecules.emplace_back(member, begin + k);
         }
