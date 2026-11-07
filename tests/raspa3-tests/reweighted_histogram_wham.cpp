@@ -71,10 +71,10 @@ void addBalancedSamples(ReweightedHistogram& simulation)
   {
     for (std::size_t sample = 0; sample < 20uz; ++sample)
     {
-      simulation.reweightingSamples.front().push_back(
-          ReweightedHistogram::Sample{.energy = 0.0, .numberOfMolecules = 0, .block = static_cast<std::uint32_t>(block)});
-      simulation.reweightingSamples.front().push_back(
-          ReweightedHistogram::Sample{.energy = 0.0, .numberOfMolecules = 1, .block = static_cast<std::uint32_t>(block)});
+      simulation.reweightingSamples.front().push_back(ReweightedHistogram::Sample{
+          .energy = 0.0, .numberOfMolecules = 0, .block = static_cast<std::uint32_t>(block)});
+      simulation.reweightingSamples.front().push_back(ReweightedHistogram::Sample{
+          .energy = 0.0, .numberOfMolecules = 1, .block = static_cast<std::uint32_t>(block)});
     }
   }
 }
@@ -134,8 +134,8 @@ TEST(REWEIGHTED_HISTOGRAM_WHAM, molecules_per_cell_is_box_total_without_framewor
   {
     for (std::size_t sample = 0; sample < 10uz; ++sample)
     {
-      simulation.reweightingSamples.front().push_back(
-          ReweightedHistogram::Sample{.energy = 0.0, .numberOfMolecules = 4, .block = static_cast<std::uint32_t>(block)});
+      simulation.reweightingSamples.front().push_back(ReweightedHistogram::Sample{
+          .energy = 0.0, .numberOfMolecules = 4, .block = static_cast<std::uint32_t>(block)});
     }
   }
   simulation.setup();
@@ -144,6 +144,52 @@ TEST(REWEIGHTED_HISTOGRAM_WHAM, molecules_per_cell_is_box_total_without_framewor
   ASSERT_FALSE(simulation.reweightedIsotherms.empty());
   ASSERT_FALSE(simulation.reweightedIsotherms.front().points.empty());
   EXPECT_NEAR(simulation.reweightedIsotherms.front().points.front().moleculesPerCell, 4.0, 1.0e-12);
+}
+
+TEST(REWEIGHTED_HISTOGRAM_WHAM, reweighting_at_the_sampled_state_of_a_mixture_component_recovers_its_mean)
+{
+  // The front component of an equimolar ideal mixture: the walker ran at the fugacity y phi P, so reweighting to
+  // its own temperature and pressure must reproduce the sampled mean (a target fugacity without the mole fraction
+  // doubles it, and the reweighted loading of N = 0, 1 becomes 2/3).
+  TemporaryDirectory workspace;
+  ScopedCurrentPath currentPath(workspace.path());
+
+  const ForceField forceField({{"X", false, 1.0, 0.0, 0.0, 1, false}}, {{0.0, 1.0}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  const Component first(forceField, "first", 0.0, 0.0, 0.0, {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)},
+                        {}, {}, 5, 21);
+  const Component second(forceField, "second", 0.0, 0.0, 0.0, {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 1, false, false)},
+                         {}, {}, 5, 21);
+  System system(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {first, second}, {}, {0, 0},
+                5);
+  system.components[0].molFraction = 0.5;
+  system.components[1].molFraction = 0.5;
+  system.tmmc.maxMacrostate = 50;
+
+  ReweightedHistogramParameters parameters;
+  parameters.numberOfPreInitializationCycles = 0;
+  parameters.numberOfInitializationCycles = 0;
+  parameters.numberOfEquilibrationCycles = 0;
+  parameters.numberOfProductionCycles = 10;
+  parameters.numberOfBlocks = 5;
+  parameters.parallelTemperingSwapEvery = 0;
+  parameters.writeBinaryRestartEvery = 0;
+  parameters.reweightingTemperatures = {300.0};
+  parameters.reweightingPressureRange = std::make_pair(1e4, 1e4);
+  parameters.reweightingNumberOfPressures = 1;
+  ReweightedHistogram simulation(std::move(system), {300.0}, {1e4}, parameters);
+  addBalancedSamples(simulation);
+  simulation.setup();
+  for (System& replica : simulation.systems)
+  {
+    for (Component& component : replica.components) component.fugacityCoefficient = 1.0;
+  }
+  simulation.performReweightingAnalysis();
+
+  ASSERT_FALSE(simulation.reweightedIsotherms.empty());
+  ASSERT_FALSE(simulation.reweightedIsotherms.front().points.empty());
+  EXPECT_NEAR(simulation.reweightedIsotherms.front().points.front().moleculesPerCell, 0.5, 1.0e-8);
+  EXPECT_NEAR(simulation.reweightedIsotherms.front().points.front().fugacity, 0.5e4, 1.0e-6);
 }
 
 TEST(REWEIGHTED_HISTOGRAM_WHAM, inner_steps_equal_filling_ceiling)
@@ -184,10 +230,10 @@ TEST(REWEIGHTED_HISTOGRAM_WHAM, weight_includes_pair_and_group_swap_lambda_bias)
   const ForceField forceField({{"A", false, 1.0, 1.0, 0.0, 1, false}, {"B", false, 1.0, -1.0, 0.0, 2, false}},
                               {{0.0, 1.0}, {0.0, 1.0}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0,
                               true, false, false);
-  const Component a(forceField, "A", 1.0, 1.0, 0.0, {Atom({0.0, 0.0, 0.0}, 1.0, 1.0, 0, 0, 0, false, false)}, {},
-                    {}, 5, 21);
-  const Component b(forceField, "B", 1.0, 1.0, 0.0, {Atom({0.0, 0.0, 0.0}, -1.0, 1.0, 0, 1, 1, false, false)}, {},
-                    {}, 5, 21);
+  const Component a(forceField, "A", 1.0, 1.0, 0.0, {Atom({0.0, 0.0, 0.0}, 1.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5,
+                    21);
+  const Component b(forceField, "B", 1.0, 1.0, 0.0, {Atom({0.0, 0.0, 0.0}, -1.0, 1.0, 0, 1, 1, false, false)}, {}, {},
+                    5, 21);
   System system(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {a, b}, {}, {0, 0}, 5);
 
   // component 0 drives an ion-pair with component 1 and a group with two satellites of component 1
@@ -321,8 +367,7 @@ TEST(REWEIGHTED_HISTOGRAM_WHAM, langmuir_equal_occupancy_clusters_rungs_at_half_
   const double henry = 600.0;
   const double nSat = 23.0;
   const double halfFilling = nSat / henry;
-  const std::vector<double> placed =
-      placePressuresByLangmuirEqualOccupancy(1.0e-4, 1.0e5, 16uz, henry, nSat);
+  const std::vector<double> placed = placePressuresByLangmuirEqualOccupancy(1.0e-4, 1.0e5, 16uz, henry, nSat);
 
   std::size_t nearStep = 0uz;
   for (std::size_t i = 1; i + 1 < placed.size(); ++i)
@@ -334,19 +379,16 @@ TEST(REWEIGHTED_HISTOGRAM_WHAM, langmuir_equal_occupancy_clusters_rungs_at_half_
   }
   EXPECT_GE(nearStep, 3uz);
 
-  const double maxLogGap =
-      nitrogenBETMaxLogSpacingMultiplier * std::log(placed.back() / placed.front()) / 15.0;
+  const double maxLogGap = nitrogenBETMaxLogSpacingMultiplier * std::log(placed.back() / placed.front()) / 15.0;
   EXPECT_GT(placed[placed.size() - 2], std::exp(std::log(placed.back()) - maxLogGap * 1.000001));
 }
 
 TEST(REWEIGHTED_HISTOGRAM_WHAM, langmuir_log_gap_at_most_twice_equal_spacing)
 {
-  const std::vector<double> placed =
-      placePressuresByLangmuirEqualOccupancy(1.0e-4, 1.0e5, 16uz, 600.0, 23.0);
+  const std::vector<double> placed = placePressuresByLangmuirEqualOccupancy(1.0e-4, 1.0e5, 16uz, 600.0, 23.0);
   ASSERT_EQ(placed.size(), 16uz);
 
-  const double maxLogGap =
-      nitrogenBETMaxLogSpacingMultiplier * std::log(placed.back() / placed.front()) / 15.0;
+  const double maxLogGap = nitrogenBETMaxLogSpacingMultiplier * std::log(placed.back() / placed.front()) / 15.0;
   double largest = 0.0;
   for (std::size_t i = 1; i < placed.size(); ++i)
   {
@@ -442,8 +484,7 @@ TEST(REWEIGHTED_HISTOGRAM_WHAM, sips_fisher_shifts_interior_rungs_up)
   sips.affinity = 8.5;
   sips.exponent = 0.63;
 
-  const std::vector<double> langmuirPlaced =
-      placePressuresByPreIsothermFisher(1.0e-4, 1.0e5, 16uz, langmuir);
+  const std::vector<double> langmuirPlaced = placePressuresByPreIsothermFisher(1.0e-4, 1.0e5, 16uz, langmuir);
   const std::vector<double> sipsPlaced = placePressuresByPreIsothermFisher(1.0e-4, 1.0e5, 16uz, sips);
   ASSERT_EQ(langmuirPlaced.size(), 16uz);
   ASSERT_EQ(sipsPlaced.size(), 16uz);

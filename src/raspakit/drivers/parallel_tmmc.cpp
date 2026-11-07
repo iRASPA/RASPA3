@@ -1502,8 +1502,14 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
     toMgPerG = 1000.0 * frontComponent.totalMass / frameworkMass;
   }
 
-  const std::vector<EquationOfState::FluidInput> fluidInputs = {
-      {frontComponent.criticalTemperature, frontComponent.criticalPressure, frontComponent.acentricFactor, 1.0, true}};
+  // the fluid the walkers ran with: every component at its mole fraction, so that the reweighted fugacity of the
+  // front component, y phi(P) P, reproduces the walkers' own y phi P at their pressure
+  std::vector<EquationOfState::FluidInput> fluidInputs;
+  for (const Component& component : front.components)
+  {
+    fluidInputs.push_back({component.criticalTemperature, component.criticalPressure, component.acentricFactor,
+                           component.molFraction, component.swappable});
+  }
   // A component without critical constants has no Peng-Robinson: its walkers ran with the fugacity
   // coefficient it was given (or the ideal gas's one), and the reweighting uses that same coefficient at
   // every pressure, so that the two sides of it are one fluid.
@@ -1578,7 +1584,8 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
       const std::vector<EquationOfState::FluidResult> fluidResults = EquationOfState::computeFluidProperties(
           temperature, pressurePa, fluidInputs, EquationOfState::Type::PengRobinson,
           EquationOfState::MixingRules::VanDerWaals);
-      return (recomputesFugacityCoefficient ? fluidResults.front().fugacityCoefficient.value_or(1.0)
+      return frontComponent.molFraction *
+             (recomputesFugacityCoefficient ? fluidResults.front().fugacityCoefficient.value_or(1.0)
                                             : keptFugacityCoefficient) *
              pressurePa / Units::PressureConversionFactor;
     };
