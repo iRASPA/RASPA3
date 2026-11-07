@@ -82,3 +82,43 @@ TEST(SYSTEM_MOLE_FRACTIONS, a_component_that_is_not_swappable_is_left_alone)
   const System none = makeSystem({makeComponent(forceField, "fixed", false, 0.0)});
   EXPECT_DOUBLE_EQ(none.components[0].molFraction, 0.0);
 }
+
+// A component whose count another component's move changes is swappable too: the partner of a pair swap
+// configured on one ion only, and the target of an identity change. Its mole fraction is then normalized
+// with the others (the pair fugacity product and the identity-change fugacity ratio use it) and it is in
+// the list of swappable components (enthalpy and partial molar properties).
+TEST(SYSTEM_MOLE_FRACTIONS, the_partner_of_a_pair_swap_on_one_ion_is_swappable_too)
+{
+  const ForceField forceField = makeForceField();
+  Component cation = makeComponent(forceField, "cation", false, 1.0);
+  cation.mc_moves_probabilities.setProbability(Move::Types::PairSwapCBMC, 1.0);
+  cation.pairComponentId = 1;
+  cation.maximumPairDistance = 5.0;
+  const Component anion = makeComponent(forceField, "anion", false, 1.0);
+
+  const System system = makeSystem({cation, anion});
+  EXPECT_TRUE(system.components[0].swappable);
+  EXPECT_TRUE(system.components[1].swappable);
+  EXPECT_DOUBLE_EQ(system.components[0].molFraction, 0.5);
+  EXPECT_DOUBLE_EQ(system.components[1].molFraction, 0.5);
+  EXPECT_EQ(system.swappableComponents, (std::vector<std::size_t>{0, 1}));
+}
+
+TEST(SYSTEM_MOLE_FRACTIONS, the_target_of_an_identity_change_is_swappable_too)
+{
+  const ForceField forceField = makeForceField();
+  Component source = makeComponent(forceField, "source", false, 1.0);
+  source.mc_moves_probabilities.setProbability(Move::Types::IdentityChangeCBMC, 1.0);
+  source.identityChanges = {1};
+  const Component target = makeComponent(forceField, "target", false, 1.0);
+  const Component bystander = makeComponent(forceField, "bystander", false, 1.0);
+
+  const System system = makeSystem({source, target, bystander});
+  EXPECT_TRUE(system.components[0].swappable);
+  EXPECT_TRUE(system.components[1].swappable);
+  EXPECT_FALSE(system.components[2].swappable);
+  EXPECT_DOUBLE_EQ(system.components[0].molFraction, 0.5);
+  EXPECT_DOUBLE_EQ(system.components[1].molFraction, 0.5);
+  EXPECT_DOUBLE_EQ(system.components[2].molFraction, 1.0);
+  EXPECT_EQ(system.swappableComponents, (std::vector<std::size_t>{0, 1}));
+}

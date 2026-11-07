@@ -346,8 +346,15 @@ void System::rebuildForFramework(const Framework& newFramework, const Simulation
 
 void System::determineSwappableComponents()
 {
-  // Satellite components of a group-swap move are swappable even when they carry no swap
-  // probability themselves: the group move inserts/deletes their molecules.
+  // A component whose molecule count a move of another component changes is swappable even when it
+  // carries no swap probability itself: the satellites of a group swap, the partner of a pair swap (the
+  // move may be configured on one ion of the pair only) and the targets of an identity change. Its count
+  // then fluctuates (enthalpy and partial molar properties), and its mole fraction is normalized together
+  // with the others (the pair fugacity product and the identity-change fugacity ratio use it).
+  auto markSwappable = [this](std::size_t targetComponentId)
+  {
+    if (targetComponentId < components.size()) components[targetComponentId].swappable = true;
+  };
   for (const Component& component : components)
   {
     if (component.mc_moves_probabilities.getProbability(Move::Types::GroupSwap) > 0.0 ||
@@ -355,13 +362,23 @@ void System::determineSwappableComponents()
         component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCBCFCMC) > 0.0)
     {
-      for (std::size_t satelliteComponentId : component.groupComponentIds)
-      {
-        if (satelliteComponentId < components.size())
-        {
-          components[satelliteComponentId].swappable = true;
-        }
-      }
+      for (std::size_t satelliteComponentId : component.groupComponentIds) markSwappable(satelliteComponentId);
+    }
+    if (component.pairComponentId.has_value() &&
+        (component.mc_moves_probabilities.getProbability(Move::Types::PairSwap) > 0.0 ||
+         component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCBMC) > 0.0 ||
+         component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCFCMC) > 0.0 ||
+         component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCBCFCMC) > 0.0))
+    {
+      markSwappable(component.pairComponentId.value());
+    }
+    if (component.mc_moves_probabilities.getProbability(Move::Types::IdentityChangeCBMC) > 0.0)
+    {
+      for (std::size_t targetComponentId : component.identityChanges) markSwappable(targetComponentId);
+    }
+    if (component.mc_moves_probabilities.getProbability(Move::Types::GibbsIdentityChangeCBMC) > 0.0)
+    {
+      for (std::size_t targetComponentId : component.gibbsIdentityChanges) markSwappable(targetComponentId);
     }
   }
 
@@ -379,7 +396,8 @@ void System::determineSwappableComponents()
         component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCBCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
-        component.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0)
+        component.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::IdentityChangeCBMC) > 0.0)
     {
       component.swappable = true;
     }
@@ -389,7 +407,8 @@ void System::determineSwappableComponents()
         component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCBCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMC) > 0.0 ||
-        component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCBCFCMC) > 0.0)
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCBCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsIdentityChangeCBMC) > 0.0)
     {
       component.swappable = true;
     }
