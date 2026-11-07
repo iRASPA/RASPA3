@@ -238,24 +238,31 @@ export struct PropertyLambdaProbabilityHistogram
   }
 
   //====================================================================================================================
-  // Landau free-energy profile: -ln(P(lambda))/beta per bin
+  // Landau free-energy profile: -ln(P(lambda))/beta per bin. The histogram is sampled under the bias eta_i
+  // (P_biased(i) ~ P(i) exp(eta_i), see weight()), so the unbiased profile is -ln(count_i)/beta + eta_i/beta;
+  // the bias was left out, which made the profile flat (the Wang-Landau bias flattens the sampled
+  // histogram) instead of showing the barrier. The excess chemical potential below adds the same
+  // eta_last - eta_0 difference.
 
-  static std::vector<double> landauFreeEnergyTransform(const std::vector<double> &bins, double beta)
+  static std::vector<double> landauFreeEnergyTransform(const std::vector<double>& bins, const std::vector<double>& bias,
+                                                       double beta)
   {
     std::vector<double> freeEnergy(bins.size());
-    std::transform(bins.cbegin(), bins.cend(), freeEnergy.begin(),
-                   [beta](double count) { return -std::log(count) / beta; });
+    for (std::size_t i = 0; i < bins.size(); ++i)
+    {
+      freeEnergy[i] = (-std::log(bins[i]) + bias[i]) / beta;
+    }
     return freeEnergy;
   }
 
   std::vector<double> averagedLandauFreeEnergyHistogram(std::size_t blockIndex, double beta) const
   {
-    return landauFreeEnergyTransform(bookKeepingLambda[blockIndex], beta);
+    return landauFreeEnergyTransform(bookKeepingLambda[blockIndex], biasFactor, beta);
   }
 
   std::vector<double> averagedLandauFreeEnergyHistogram(double beta) const
   {
-    return landauFreeEnergyTransform(averagedProbabilityHistogram(), beta);
+    return landauFreeEnergyTransform(averagedProbabilityHistogram(), biasFactor, beta);
   }
 
   std::pair<std::vector<double>, std::vector<double>> averageLandauFreeEnergyHistogram(double beta) const
@@ -273,7 +280,8 @@ export struct PropertyLambdaProbabilityHistogram
   }
 
   //====================================================================================================================
-  // excess chemical potential from the histogram: -ln(P(lambda=1)/P(lambda=0))/beta
+  // excess chemical potential from the histogram: -ln(P(lambda=1)/P(lambda=0))/beta of the sampled (biased)
+  // histogram; the callers add the bias difference (eta_last - eta_0)/beta (see landauFreeEnergyTransform)
 
   static double excessChemicalPotentialTransform(const std::vector<double> &bins, double beta)
   {

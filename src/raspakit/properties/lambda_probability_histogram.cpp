@@ -120,11 +120,13 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
   std::print(stream, "    Lambda statistics:\n");
   std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
 
+  // the profile is reported relative to its minimum; the minimum is kept in internal energy units and
+  // converted with the profile (converting it alone, as was done, mixed units in the reduced-units branch)
   double minimum_free_energy = 0.0;
   auto minimum_iterator = std::ranges::min_element(freeEnergy.first);
   if (minimum_iterator != freeEnergy.first.end())
   {
-    minimum_free_energy = conv * (*minimum_iterator);
+    minimum_free_energy = *minimum_iterator;
   }
 
   switch (Units::unitSystem)
@@ -134,7 +136,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
       for (std::size_t i = 0; i < numberOfSamplePoints; ++i)
       {
         std::print(stream, "{}{:2d}-{:4f} (lambda) Free energy: {:.6e} +/- {:.6e} [K]\n", "    ", i,
-                   static_cast<double>(i) * delta, conv * freeEnergy.first[i] - minimum_free_energy,
+                   static_cast<double>(i) * delta, conv * (freeEnergy.first[i] - minimum_free_energy),
                    conv * freeEnergy.second[i]);
       }
       std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");

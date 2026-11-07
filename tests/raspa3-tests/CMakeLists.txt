@@ -49,6 +49,7 @@ add_executable(unit_tests_raspa3
   serial_reaction_fractional_layout.cpp
   swap_cfcmc_blocked_pockets.cpp
   enthalpy_of_adsorption.cpp
+  lambda_histogram_free_energy.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)
