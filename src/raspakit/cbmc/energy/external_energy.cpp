@@ -343,7 +343,25 @@ void prefetchGridEnergies(const ForceField& forceField,
       return computeFrameworkSerial(forceField, simulationBox, interpolationGrids, frameworkAtoms, cutOffVDW,
                                     cutOffCoulomb, atoms);
     case ThreadPool::ThreadingType::ThreadPool:
+    {
+      // The threaded kernel evaluates framework pairs only. An atom that reads its energy from an interpolation
+      // grid (one exists for its type and the atom is fully coupled) has to get the grid value, as in the full
+      // evaluation and in the moves; dispatching it to the pair kernel, as was done, gave CBMC a different
+      // framework energy than the rest of the code under the thread pool, and the running energies drifted.
+      const bool anyGridAtom = std::ranges::any_of(
+          atoms,
+          [&](const Atom& atom)
+          {
+            const std::size_t type = static_cast<std::size_t>(atom.type);
+            return type < interpolationGrids.size() && interpolationGrids[type].has_value() && atom.isFullyCoupled();
+          });
+      if (anyGridAtom)
+      {
+        return computeFrameworkSerial(forceField, simulationBox, interpolationGrids, frameworkAtoms, cutOffVDW,
+                                      cutOffCoulomb, atoms);
+      }
       return computeFrameworkThreaded(forceField, simulationBox, frameworkAtoms, cutOffVDW, cutOffCoulomb, atoms);
+    }
   }
 }
 

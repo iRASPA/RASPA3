@@ -53,6 +53,7 @@ add_executable(unit_tests_raspa3
   cbmc_first_bead_log_space.cpp
   mc_cfcmc_flexible_charged_drift.cpp
   parallel_tempering_unsupported.cpp
+  cbmc_thread_pool_grids.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)
