@@ -33,22 +33,36 @@ RunningEnergy existingFirstBeadEnergy(const GrowContext &context, const Componen
   return energy.value();
 }
 
-/// Sum of the Boltzmann factors of a set of trial positions (overlapping trials contribute zero).
-double sumOfBoltzmannFactors(const GrowContext &context, const std::vector<FirstBeadTrial> &trials)
+/// log(sum_i exp(x_i)), shifted by the largest term. The Rosenbluth sums here are formed in log space: the
+/// Boltzmann factor of a single bead at a strongly repulsive site (-beta U below about -745, well inside the
+/// overlap criterion) is zero in double precision, and a sum of such terms, or of an existing bead alone, gave
+/// log(0) = -infinity, an acceptance probability of 0/0 or x/0 in the move that used it. (The same helper
+/// exists in the multi-trial module, which sits above this one in the module graph.) Precondition: not empty.
+double logSumExp(std::span<const double> values)
 {
-  return std::accumulate(trials.begin(), trials.end(), 0.0,
-                         [&](double acc, const FirstBeadTrial &trial)
-                         { return acc + std::exp(-context.beta * trial.energy.potentialEnergy()); });
+  const double maximum = *std::ranges::max_element(values);
+  double sum = 0.0;
+  for (double value : values) sum += std::exp(value - maximum);
+  return maximum + std::log(sum);
 }
 
-/// Rosenbluth selection among random trial positions: the selected trial, the sum of the Boltzmann
-/// factors, and the Boltzmann factor of the selected trial. std::nullopt when every trial overlaps
-/// or the weight falls below 'minimumRosenbluthFactor'.
+/// The log-Boltzmann factors -beta U of a set of trial positions (overlapping trials are not among them).
+std::vector<double> logBoltzmannFactorsOf(const GrowContext& context, const std::vector<FirstBeadTrial>& trials)
+{
+  std::vector<double> logFactors(trials.size());
+  std::transform(trials.begin(), trials.end(), logFactors.begin(),
+                 [&](const FirstBeadTrial& trial) { return -context.beta * trial.energy.potentialEnergy(); });
+  return logFactors;
+}
+
+/// Rosenbluth selection among random trial positions: the selected trial, the logarithm of the sum of the
+/// Boltzmann factors, and the log-Boltzmann factor of the selected trial. std::nullopt when every trial
+/// overlaps or the weight falls below 'minimumRosenbluthFactor'.
 struct MultipleFirstBeadSelection
 {
   FirstBeadTrial selected;
-  double rosenbluthSum;
-  double selectedBoltzmannFactor;
+  double logRosenbluthSum;
+  double logSelectedBoltzmannFactor;
 };
 
 std::optional<MultipleFirstBeadSelection> selectAmongRandomPositions(RandomNumber &random, const GrowContext &context,
@@ -60,17 +74,15 @@ std::optional<MultipleFirstBeadSelection> selectAmongRandomPositions(RandomNumbe
   const std::vector<FirstBeadTrial> trials = computeExternalNonOverlappingEnergies(context, component, trialPositions);
   if (trials.empty()) return std::nullopt;
 
-  std::vector<double> logBoltzmannFactors(trials.size());
-  std::transform(trials.begin(), trials.end(), logBoltzmannFactors.begin(),
-                 [&](const FirstBeadTrial &trial) { return -context.beta * trial.energy.potentialEnergy(); });
+  const std::vector<double> logBoltzmannFactors = logBoltzmannFactorsOf(context, trials);
 
   const std::size_t selected = selectTrialPosition(random, logBoltzmannFactors);
 
-  const double rosenbluthSum = std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
-                                               [](double acc, double logFactor) { return acc + std::exp(logFactor); });
-  if (rosenbluthSum < context.settings.minimumRosenbluthFactor) return std::nullopt;
+  const double logRosenbluthSum = logSumExp(logBoltzmannFactors);
+  // (the exponential of a very negative log-sum is zero, below any positive minimum, as before)
+  if (std::exp(logRosenbluthSum) < context.settings.minimumRosenbluthFactor) return std::nullopt;
 
-  return MultipleFirstBeadSelection{trials[selected], rosenbluthSum, std::exp(logBoltzmannFactors[selected])};
+  return MultipleFirstBeadSelection{trials[selected], logRosenbluthSum, logBoltzmannFactors[selected]};
 }
 
 // --- Multiple first bead: 'numberOfFirstBeadPositions' random positions, weight = sum / number ------
@@ -82,7 +94,8 @@ std::optional<FirstBeadData> growMultipleFirstBead(RandomNumber &random, const G
   if (!selection) return std::nullopt;
 
   return FirstBeadData(selection->selected.position, selection->selected.energy,
-                       std::log(selection->rosenbluthSum / double(context.settings.numberOfFirstBeadPositions)), 0.0);
+                       selection->logRosenbluthSum - std::log(double(context.settings.numberOfFirstBeadPositions)),
+                       0.0);
 }
 
 FirstBeadData retraceMultipleFirstBead(RandomNumber &random, const GrowContext &context, const Component &component,
@@ -96,10 +109,13 @@ FirstBeadData retraceMultipleFirstBead(RandomNumber &random, const GrowContext &
 
   const std::vector<FirstBeadTrial> trials = computeExternalNonOverlappingEnergies(context, component, trialPositions);
 
-  const double rosenbluthSum =
-      std::exp(-context.beta * oldEnergy.potentialEnergy()) + sumOfBoltzmannFactors(context, trials);
+  // the existing bead is always among the terms: a sum of Boltzmann factors that underflows (a strongly
+  // repulsive existing bead, every random trial overlapping) is kept in log space
+  std::vector<double> logBoltzmannFactors = logBoltzmannFactorsOf(context, trials);
+  logBoltzmannFactors.push_back(-context.beta * oldEnergy.potentialEnergy());
 
-  return FirstBeadData(atom, oldEnergy, std::log(rosenbluthSum / double(context.settings.numberOfFirstBeadPositions)),
+  return FirstBeadData(atom, oldEnergy,
+                       logSumExp(logBoltzmannFactors) - std::log(double(context.settings.numberOfFirstBeadPositions)),
                        0.0);
 }
 
@@ -111,11 +127,14 @@ std::optional<FirstBeadData> growMultipleFirstBeadReinsertion(RandomNumber &rand
   const std::optional<MultipleFirstBeadSelection> selection = selectAmongRandomPositions(random, context, component, atom);
   if (!selection) return std::nullopt;
 
-  // r = w(n) - exp(-beta U[h_n]), Eq. 16 of Esselink et al. (kept linear, see FirstBeadData::storedR)
-  const double storedR = selection->rosenbluthSum - selection->selectedBoltzmannFactor;
+  // r = w(n) - exp(-beta U[h_n]), Eq. 16 of Esselink et al. (kept linear, see FirstBeadData::storedR; the
+  // sum of the trials other than the selected one is formed by the shift, so it does not underflow when all
+  // of them are strongly repulsive, and is zero when there are none)
+  const double storedR = std::exp(selection->logRosenbluthSum) *
+                         (1.0 - std::exp(selection->logSelectedBoltzmannFactor - selection->logRosenbluthSum));
 
   return FirstBeadData(selection->selected.position, selection->selected.energy,
-                       std::log(selection->rosenbluthSum / double(context.settings.numberOfFirstBeadPositions)),
+                       selection->logRosenbluthSum - std::log(double(context.settings.numberOfFirstBeadPositions)),
                        storedR);
 }
 
@@ -124,11 +143,13 @@ FirstBeadData retraceMultipleFirstBeadReinsertion(const GrowContext &context, co
 {
   const RunningEnergy oldEnergy = existingFirstBeadEnergy(context, component, atom);
 
-  // w(o) = exp(-beta u(o)) + r, Eq. 18 of Esselink et al.
-  const double rosenbluthSum = std::exp(-context.beta * oldEnergy.potentialEnergy()) + storedR;
+  // w(o) = exp(-beta u(o)) + r, Eq. 18 of Esselink et al., in log space: the Boltzmann factor of a strongly
+  // repulsive existing bead is zero in double precision, and with r = 0 (no other trial) the sum was log(0)
+  std::vector<double> logTerms{-context.beta * oldEnergy.potentialEnergy()};
+  if (storedR > 0.0) logTerms.push_back(std::log(storedR));
 
-  return FirstBeadData(atom, oldEnergy, std::log(rosenbluthSum / double(context.settings.numberOfFirstBeadPositions)),
-                       0.0);
+  return FirstBeadData(atom, oldEnergy,
+                       logSumExp(logTerms) - std::log(double(context.settings.numberOfFirstBeadPositions)), 0.0);
 }
 
 // --- Pinned first bead: a single trial at the given position, its Boltzmann factor as weight --------
