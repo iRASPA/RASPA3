@@ -162,6 +162,7 @@ void System::rebuildConfigurationDerivedState()
   checkMoleculeIds();
   if (tmmc.doTMMC && !components.empty())
   {
-    tmmc.currentLambdaBin = components.front().lambdaGC.currentBin;
+    // the chain is of the tracked component (the adsorbate), not of whatever component comes first
+    tmmc.currentLambdaBin = components[tmmcComponent()].lambdaGC.currentBin;
   }
 }

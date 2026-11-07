@@ -5316,6 +5316,33 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      // a pair swap changes the count of its partner too: when the partner is the TMMC component and the
+      // driving component is not, the macrostate moves on a move the matrix neither biases nor records
+      for (std::size_t componentId = 0uz; componentId < systems[i].components.size(); ++componentId)
+      {
+        const Component& component = systems[i].components[componentId];
+        if (!component.pairComponentId.has_value() || componentId == trackedComponent ||
+            component.pairComponentId.value() != trackedComponent)
+        {
+          continue;
+        }
+        const std::array pairSwapMoves{std::pair{Move::Types::PairSwap, "PairSwapConventionalProbability"},
+                                       std::pair{Move::Types::PairSwapCBMC, "PairSwapProbability"},
+                                       std::pair{Move::Types::PairSwapCFCMC, "CFCMC_PairSwapProbability"},
+                                       std::pair{Move::Types::PairSwapCBCFCMC, "CFCMC_CBMC_PairSwapProbability"}};
+        for (const auto& [move, keyword] : pairSwapMoves)
+        {
+          if (component.mc_moves_probabilities.getProbability(move) != 0.0)
+          {
+            throw std::runtime_error(std::format(
+                "Error [TMMC, system {}, component {} ('{}')]: '{}' must be zero; the partner of this pair swap is "
+                "the TMMC component '{}', whose count then changes on a move the transition matrix does not see. "
+                "Put the pair swap on the TMMC component instead.\n",
+                i, componentId, component.name, keyword, systems[i].components[trackedComponent].name));
+          }
+        }
+      }
+
       // a group swap moves the macrostate by the number of tracked molecules in its group: only a group
       // that changes the tracked count by exactly its central molecule, or not at all, fits the
       // nearest-neighbor matrix (satellites of the tracked component would record N -> N +/- m as N -> N +/- 1)

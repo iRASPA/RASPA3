@@ -65,8 +65,10 @@ TEST(TRANSITION_MATRIX_BOOKKEEPING, forward_and_reverse_sums_start_at_the_lowest
   matrix.recomputeLnPiAndBias();
   EXPECT_EQ(matrix.numberOfUpdates, 1uz);
 
-  EXPECT_DOUBLE_EQ(matrix.forward_lnpi[1], 0.0);
+  // the reverse sum starts at zero at the lowest visited state; the forward sum carries the normalization
+  // of ln Pi, so that ln Pi = forward - reverse holds exactly
   EXPECT_DOUBLE_EQ(matrix.reverse_lnpi[1], 0.0);
+  EXPECT_DOUBLE_EQ(matrix.forward_lnpi[1], matrix.lnpi[1]);
   for (std::size_t i = 1; i < 3; ++i)
   {
     const double forward = std::log(matrix.cmatrix[i].z / total(matrix.cmatrix[i]));
@@ -74,12 +76,13 @@ TEST(TRANSITION_MATRIX_BOOKKEEPING, forward_and_reverse_sums_start_at_the_lowest
     EXPECT_NEAR(matrix.forward_lnpi[i + 1] - matrix.forward_lnpi[i], forward, 1e-12) << "link " << i;
     EXPECT_NEAR(matrix.reverse_lnpi[i + 1] - matrix.reverse_lnpi[i], reverse, 1e-12) << "link " << i;
   }
-  // the difference of the sums is ln Pi (up to its normalization)
-  for (std::size_t i = 1; i <= 3; ++i)
+  // the difference of the sums is ln Pi, normalization included
+  for (std::size_t i = 0; i < 5; ++i)
   {
-    EXPECT_NEAR(matrix.lnpi[i] - matrix.lnpi[1], (matrix.forward_lnpi[i] - matrix.reverse_lnpi[i]), 1e-12)
-        << "state " << i;
+    EXPECT_NEAR(matrix.lnpi[i], matrix.forward_lnpi[i] - matrix.reverse_lnpi[i], 1e-12) << "state " << i;
   }
+  // the bias is -ln Pi after the rebuild
+  for (std::size_t i = 0; i < 5; ++i) EXPECT_DOUBLE_EQ(matrix.bias[i], -matrix.lnpi[i]) << "state " << i;
   // flat outside the visited range, like ln Pi
   EXPECT_DOUBLE_EQ(matrix.forward_lnpi[0], matrix.forward_lnpi[1]);
   EXPECT_DOUBLE_EQ(matrix.reverse_lnpi[0], matrix.reverse_lnpi[1]);
@@ -90,11 +93,27 @@ TEST(TRANSITION_MATRIX_BOOKKEEPING, forward_and_reverse_sums_start_at_the_lowest
   matrix.histogram[1] = 0uz;
   matrix.recomputeLnPiAndBias();
   EXPECT_EQ(matrix.numberOfUpdates, 2uz);
-  EXPECT_DOUBLE_EQ(matrix.forward_lnpi[2], 0.0);
   EXPECT_DOUBLE_EQ(matrix.reverse_lnpi[2], 0.0);
-  EXPECT_DOUBLE_EQ(matrix.forward_lnpi[1], 0.0);
-  EXPECT_DOUBLE_EQ(matrix.forward_lnpi[0], 0.0);
-  EXPECT_NEAR(matrix.forward_lnpi[3], std::log(matrix.cmatrix[2].z / total(matrix.cmatrix[2])), 1e-12);
+  EXPECT_DOUBLE_EQ(matrix.forward_lnpi[2], matrix.lnpi[2]);
+  EXPECT_DOUBLE_EQ(matrix.forward_lnpi[1], matrix.forward_lnpi[2]);
+  EXPECT_DOUBLE_EQ(matrix.forward_lnpi[0], matrix.forward_lnpi[2]);
+  EXPECT_NEAR(matrix.forward_lnpi[3] - matrix.forward_lnpi[2], std::log(matrix.cmatrix[2].z / total(matrix.cmatrix[2])),
+              1e-12);
+}
+
+// The bias is a logarithm (the bias factor of a move is exp(bias[new] - bias[old]) and a rebuild sets it to
+// -ln Pi): a fresh or cleared matrix has a bias of zero, consistent with its ln Pi of zero, not one.
+TEST(TRANSITION_MATRIX_BOOKKEEPING, a_fresh_or_cleared_matrix_has_a_zero_bias)
+{
+  ScopedCurrentPath scratch(std::filesystem::temp_directory_path() /
+                            std::format("raspa3_test_{}_transition_matrix_bias", test_support::uniqueSuffix()));
+  TransitionMatrix matrix = makeMatrix();
+  for (double bias : matrix.bias) EXPECT_DOUBLE_EQ(bias, 0.0);
+  matrix.recomputeLnPiAndBias();
+  EXPECT_NE(matrix.bias[2], 0.0);
+  matrix.rezeroAfterInitialization = true;
+  matrix.clearCMatrix();
+  for (double bias : matrix.bias) EXPECT_DOUBLE_EQ(bias, 0.0);
 }
 
 TEST(TRANSITION_MATRIX_BOOKKEEPING, clearing_the_statistics_resets_the_derived_columns_and_the_update_count)

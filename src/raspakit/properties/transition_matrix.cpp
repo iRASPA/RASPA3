@@ -18,7 +18,9 @@ void TransitionMatrix::initialize()
 
   const std::size_t numberOfChainStates = this->numberOfChainStates();
   cmatrix.assign(numberOfChainStates, double3(0.0, 0.0, 0.0));
-  bias.assign(numberOfChainStates, 1.0);
+  // the bias is a logarithm (biasFactor is exp(bias[new] - bias[old]) and the rebuild sets bias = -ln Pi): it
+  // starts at zero, like ln Pi
+  bias.assign(numberOfChainStates, 0.0);
   lnpi.assign(numberOfChainStates, 0.0);
   forward_lnpi.assign(numberOfChainStates, 0.0);
   reverse_lnpi.assign(numberOfChainStates, 0.0);
@@ -181,9 +183,9 @@ void TransitionMatrix::recomputeLnPiAndBias()
 
   // ln Pi by the detailed-balance recursion from the lowest visited state; forward_lnpi and reverse_lnpi
   // are the running sums of the forward and reverse transition log-probabilities along the same walk
-  // (diagnostic columns of the statistics file), so that lnpi = forward_lnpi - reverse_lnpi up to the
-  // normalization below. All three start at zero at the lowest visited state: a value left there from an
-  // earlier rebuild with another visited range would otherwise be carried into every state above it.
+  // (diagnostic columns of the statistics file); the forward sum takes the normalization shift below, so
+  // that lnpi = forward_lnpi - reverse_lnpi exactly. All three start at zero at the lowest visited state: a value left
+  // there from an earlier rebuild with another visited range would otherwise be carried into every state above it.
   lnpi[minVisitedN] = 0.0;
   forward_lnpi[minVisitedN] = 0.0;
   reverse_lnpi[minVisitedN] = 0.0;
@@ -242,6 +244,12 @@ void TransitionMatrix::recomputeLnPiAndBias()
       std::accumulate(lnpi.begin(), lnpi.end(), 0.0, [](double sum, double item) { return sum + std::exp(item); });
   double normalFactor = -std::log(sumExps);
 
+  // the forward sum carries the same shift, so that lnpi = forward_lnpi - reverse_lnpi holds exactly in the
+  // statistics file (the reverse sum is the raw running sum, zero at the lowest visited state)
+  for (std::size_t i = 0; i < lnpi.size(); ++i)
+  {
+    forward_lnpi[i] += normalFactor - maxlnpi;
+  }
   for (std::size_t i = 0; i < lnpi.size(); ++i)
   {
     lnpi[i] += normalFactor;  // Zhao's note: mind the sign
@@ -283,7 +291,7 @@ void TransitionMatrix::clearCMatrix()
   std::fill(lnpi.begin(), lnpi.end(), 0.0);
   std::fill(forward_lnpi.begin(), forward_lnpi.end(), 0.0);
   std::fill(reverse_lnpi.begin(), reverse_lnpi.end(), 0.0);
-  std::fill(bias.begin(), bias.end(), 1.0);
+  std::fill(bias.begin(), bias.end(), 0.0);
   std::fill(wangLandauHistogram.begin(), wangLandauHistogram.end(), 0.0);
   wangLandauVisits = 0uz;
 };
