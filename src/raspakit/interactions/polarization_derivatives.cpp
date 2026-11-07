@@ -215,13 +215,33 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
           moleculeAtomOffset[index] = moleculeAtoms[index].position - com;
         }
       }
-      else
+      else if (const Component& component = system.components[molecule.componentId]; component.rigid)
       {
-        if (!system.components[molecule.componentId].rigid) continue;
         for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
         {
           const std::size_t index = molecule.atomIndex + localAtom;
           moleculeAtomOffset[index] = moleculeAtoms[index].position - molecule.centerOfMassPosition;
+        }
+      }
+      else if (component.isSemiFlexible())
+      {
+        // the atoms of a rigid group of a semi-flexible molecule move with the group's center of mass
+        // (matching Minimization::RigidDerivativeCache)
+        for (const auto& group : component.fragmentGraph.fragments)
+        {
+          if (!group.isRigidBody()) continue;
+          double3 centerOfMass{};
+          for (const std::size_t localAtom : group.atoms)
+          {
+            centerOfMass +=
+                component.definedAtoms[localAtom].second * moleculeAtoms[molecule.atomIndex + localAtom].position;
+          }
+          centerOfMass = centerOfMass / group.mass;
+          for (const std::size_t localAtom : group.atoms)
+          {
+            const std::size_t index = molecule.atomIndex + localAtom;
+            moleculeAtomOffset[index] = moleculeAtoms[index].position - centerOfMass;
+          }
         }
       }
     }

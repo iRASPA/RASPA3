@@ -376,7 +376,7 @@ void addPolarizationDerivatives(System& system, const MinimizationDofLayout& lay
       movable[global] = 1;
       if (const auto comBase = layout.atomRigidComDof(moleculeIndex, localAtom))
       {
-        const std::size_t orientationBase = *comBase + 3;
+        const std::size_t orientationBase = *layout.atomRigidOrientationDof(moleculeIndex, localAtom);
         const Minimization::RigidAtomDerivatives& derivatives = rigidCache.atom(moleculeIndex, localAtom);
         sites[global] = PolarizationSiteDof{.hasDof = true,
                                             .rigid = true,
@@ -392,11 +392,11 @@ void addPolarizationDerivatives(System& system, const MinimizationDofLayout& lay
     }
   }
 
-  // Cell-strain derivatives are needed only when a Hessian with active cell degrees of freedom is
-  // requested (variable-cell minimization / elastic constants).
+  // Cell-strain derivatives are needed whenever cell degrees of freedom are active and their gradient or a
+  // Hessian is requested (variable-cell minimization / elastic constants).
   const bool wantStrain = layout.numberOfCellDofs() > 0 &&
-                          (capabilities.hessianPositionPosition || capabilities.hessianPositionStrain ||
-                           capabilities.hessianStrainStrain);
+                          (capabilities.gradient || capabilities.hessianPositionPosition ||
+                           capabilities.hessianPositionStrain || capabilities.hessianStrainStrain);
   const CellMinimizationLayout cellLayout =
       wantStrain ? makeCellMinimizationLayout(system.cellMinimizationType, system.monoclinicAngleType)
                  : CellMinimizationLayout{};
@@ -416,6 +416,16 @@ void addPolarizationDerivatives(System& system, const MinimizationDofLayout& lay
   for (std::size_t atom = 0; atom < numberOfMoleculeAtoms; ++atom)
   {
     moleculeDynamics[atom].gradient += derivatives.gradient[numberOfFrameworkAtoms + atom];
+  }
+
+  // The cell-DOF gradient (polarization stress) is added on top of the value already assembled from
+  // strainGradient(), also when no Hessian is requested.
+  if (wantStrain && capabilities.gradient && !results.gradient.empty())
+  {
+    for (std::size_t a = 0; a < derivatives.numberOfStrainBases; ++a)
+    {
+      results.gradient[*layout.cellDof(a)] += derivatives.cellGradient[a];
+    }
   }
 
   if (!(capabilities.hessianPositionPosition || capabilities.hessianPositionStrain ||
@@ -441,14 +451,16 @@ void addPolarizationDerivatives(System& system, const MinimizationDofLayout& lay
     }
   }
 
-  // Gradient-curvature term: rigid orientation blocks pick up Sum_i grad_i . ddVec_i (k-independent, on-site).
+  // Gradient-curvature term: rigid orientation blocks (whole rigid molecules and rigid groups of semi-flexible
+  // molecules) pick up Sum_i grad_i . ddVec_i (k-independent, on-site).
   for (std::size_t moleculeIndex = 0; moleculeIndex < system.moleculeData.size(); ++moleculeIndex)
   {
     const Molecule& molecule = system.moleculeData[moleculeIndex];
-    if (!system.components[molecule.componentId].rigid) continue;
-    const std::size_t orientationBase = *layout.rigidMoleculeDof(moleculeIndex, RigidDof::OriX);
     for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
     {
+      const std::optional<std::size_t> orientation = layout.atomRigidOrientationDof(moleculeIndex, localAtom);
+      if (!orientation.has_value()) continue;
+      const std::size_t orientationBase = *orientation;
       const std::size_t global = numberOfFrameworkAtoms + molecule.atomIndex + localAtom;
       const double3 gradient = derivatives.gradient[global];
       const Minimization::RigidAtomDerivatives& rigidDerivatives = rigidCache.atom(moleculeIndex, localAtom);
@@ -467,9 +479,8 @@ void addPolarizationDerivatives(System& system, const MinimizationDofLayout& lay
     }
   }
 
-  // Cell-strain contributions (variable-cell minimization / elastic constants). The cell-DOF gradient
-  // (polarization stress) is added on top of the value already assembled from strainGradient(); the
-  // strain-strain block is scattered directly onto the cell degrees of freedom.
+  // Cell-strain contributions (variable-cell minimization / elastic constants); the strain-strain block is
+  // scattered directly onto the cell degrees of freedom.
   //
   // The position-strain block d^2U/dq ds_a = Sum_j J_j(q) . G_j^a + Sum_j grad_j . d^2 y_j/dq ds_a splits
   // into the projected *pure* force change G_j^a (returned in `positionStrain`, projected here exactly like
@@ -480,13 +491,6 @@ void addPolarizationDerivatives(System& system, const MinimizationDofLayout& lay
   if (wantStrain)
   {
     const std::size_t numberOfStrainBases = derivatives.numberOfStrainBases;
-    if (capabilities.gradient && !results.gradient.empty())
-    {
-      for (std::size_t a = 0; a < numberOfStrainBases; ++a)
-      {
-        results.gradient[*layout.cellDof(a)] += derivatives.cellGradient[a];
-      }
-    }
 
     for (std::size_t global = 0; global < numberOfAtoms; ++global)
     {
