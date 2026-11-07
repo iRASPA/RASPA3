@@ -15,6 +15,7 @@ import system;
 import simulationbox;
 import monte_carlo;
 import monte_carlo_transition_matrix;
+import transition_matrix;
 import simulation_schedule;
 import mc_moves_move_types;
 import mc_moves_probabilities;
@@ -277,6 +278,51 @@ TEST(MC_DRIVER_BOOKKEEPING, transition_matrix_on_a_lambda_chain_leaves_the_lambd
     const bool moved = std::ranges::any_of(biasFactor, [](double value) { return value != 0.0; });
     EXPECT_EQ(moved, !chain) << (chain ? "on the chain" : "without the chain");
   }
+}
+
+// Wang-Landau on the transition matrix itself (tmmc.useWangLandau): while it owns the bias, every visit
+// lowers the bias of the visited state and the collection-matrix rebuild leaves the bias alone; production
+// starts by handing the bias to the transition matrix, -ln Pi from the collection matrix. Before, this driver
+// never visited and never switched, so a system with the flag set ran with a bias of zero throughout.
+TEST(MC_DRIVER_BOOKKEEPING, transition_matrix_wang_landau_is_driven_and_handed_over_at_production)
+{
+  std::vector<System> systems{makeTMMCChainSystem(1uz)};
+  systems[0].tmmc.useWangLandau = true;
+
+  const std::filesystem::path previous = std::filesystem::current_path();
+  const std::filesystem::path scratch = std::filesystem::temp_directory_path() / "raspa3_tmmc_wang_landau_test";
+  std::filesystem::create_directories(scratch);
+  std::filesystem::current_path(scratch);
+  {
+    RandomNumber random(21);
+    MonteCarloTransitionMatrix tmmc(makeSchedule(0, 0, 2), systems, random, 5);
+    tmmc.setup();
+    for (System& system : tmmc.systems) system.runningEnergies = system.computeTotalEnergies();
+    tmmc.simulationStage = MonteCarloTransitionMatrix::SimulationStage::Equilibration;
+    for (std::size_t cycle = 0; cycle < 2; ++cycle) tmmc.performCycle();
+
+    const TransitionMatrix& matrix = tmmc.systems[0].tmmc;
+    EXPECT_TRUE(matrix.useWangLandau);
+    bool visitedStatesArePenalized = false;
+    for (std::size_t i = 0; i < matrix.histogram.size(); ++i)
+    {
+      if (matrix.histogram[i] > 0uz)
+      {
+        EXPECT_LT(matrix.bias[i], 0.0) << "visited state " << i << " carries no Wang-Landau penalty";
+        visitedStatesArePenalized = true;
+      }
+    }
+    EXPECT_TRUE(visitedStatesArePenalized);
+
+    tmmc.production();
+    EXPECT_FALSE(matrix.useWangLandau);
+    for (std::size_t i = 0; i < matrix.bias.size(); ++i)
+    {
+      EXPECT_DOUBLE_EQ(matrix.bias[i], -matrix.lnpi[i]) << "state " << i;
+    }
+  }
+  std::filesystem::current_path(previous);
+  std::filesystem::remove_all(scratch);
 }
 
 // The macrostate is the count of the adsorbate. A cation beside it is a component too, picked for its own

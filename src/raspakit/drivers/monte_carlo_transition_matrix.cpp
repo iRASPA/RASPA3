@@ -70,6 +70,10 @@ void sampleTMMCState(System& system, std::size_t componentId, bool adjustBias)
           : 0uz;
   system.tmmc.updateHistogram(N, lambdaBin);
   system.tmmc.numberOfSteps++;
+  // While Wang-Landau owns the bias (tmmc.useWangLandau, off unless set on the system) every visit lowers
+  // the bias of the visited state and the collection-matrix rebuild of adjustBias leaves the bias alone;
+  // production hands the bias to the transition matrix (switchToTMBias). Without the flag the visit is inert.
+  system.tmmc.visitWangLandau(N, lambdaBin);
   if (adjustBias)
   {
     system.tmmc.adjustBias();
@@ -663,6 +667,10 @@ void MonteCarloTransitionMatrix::production()
     system.runningEnergies = system.computeTotalEnergies();
 
     system.tmmc.numberOfSteps = 0;
+    // Wang-Landau, when it owned the bias, has explored the range during initialization and equilibration;
+    // from here on the bias is -ln Pi from the collection matrix (which is not reset here, so it carries
+    // those stages' statistics). Inert when Wang-Landau was never on.
+    system.tmmc.switchToTMBias();
 
     system.mc_moves_statistics.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
