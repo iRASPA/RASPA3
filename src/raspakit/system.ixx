@@ -379,6 +379,10 @@ export struct System
       std::size_t selectedComponent) const noexcept;
   [[nodiscard]] std::size_t indexOfSerialReactionFractionalMoleculesPerComponent_CFCMC(
       std::size_t selectedComponent) const noexcept;
+  /// The serial-reaction fractional molecules of a component that are present (the active side of each
+  /// serial reaction); the Gibbs-conventional region starts after them.
+  [[nodiscard]] std::size_t numberOfPresentSerialReactionFractionalMolecules(
+      std::size_t selectedComponent) const noexcept;
   [[nodiscard]] std::size_t indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(
       std::size_t selectedComponent) const noexcept;
   [[nodiscard]] std::size_t indexOfGibbsFractionalMoleculesPerComponent_CFCMC(

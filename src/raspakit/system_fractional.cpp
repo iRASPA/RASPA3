@@ -45,6 +45,27 @@ import scaling;
          system.components[componentId].intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, atoms);
 }
 
+// The fractional molecules created so far sit in the system decoupled (or nearly so) and are invisible to
+// the overlap check of the next candidate; 'placed' holds their copies at full coupling, and a candidate
+// (itself at full coupling) that overlaps one of them is grown again.
+[[nodiscard]] static bool overlapsPlacedFractionalMolecules(const System& system, std::span<const Atom> placed,
+                                                            std::span<const Atom> candidate) noexcept
+{
+  if (placed.empty()) return false;
+  const std::optional<RunningEnergy> energy = Interactions::computeInterMolecularEnergyDifference(
+      system.forceField, system.simulationBox, placed, candidate, {});
+  return !energy.has_value() || energy->potentialEnergy() > system.forceField.energyOverlapCriteria;
+}
+
+static void appendAtFullCoupling(std::vector<Atom>& placed, std::span<const Atom> atoms)
+{
+  for (Atom atom : atoms)
+  {
+    atom.setScaling(1.0);
+    placed.push_back(atom);
+  }
+}
+
 // Whether the component pins the given lambda coordinate at a fixed bin (fixed-lambda
 // thermodynamic integration, "SimulationType": "ThermodynamicIntegration"). The corresponding
 // fractional molecules then exist without any lambda-changing move being enabled.
@@ -229,11 +250,35 @@ std::size_t System::indexOfSerialReactionFractionalMoleculesPerComponent_CFCMC(
          numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC[selectedComponent];
 }
 
+// The serial-reaction fractional molecules physically present for a component: the active side of every
+// serial reaction (numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC is the capacity, the larger
+// side of each reaction, and overstates the count whenever the two sides differ).
+std::size_t System::numberOfPresentSerialReactionFractionalMolecules(std::size_t selectedComponent) const noexcept
+{
+  if (!usesSerialReactionCFCMC()) return 0uz;
+  std::size_t count = 0uz;
+  for (std::size_t r = 0; r < reactions.list.size(); ++r)
+  {
+    const Reaction& reaction = reactions.list[r];
+    if (!reaction.isSerialRxCFC() || r >= numberOfReactionFractionalMoleculesPerComponent_CFCMC.size() ||
+        numberOfReactionFractionalMoleculesPerComponent_CFCMC[r][selectedComponent] == 0)
+    {
+      continue;
+    }
+    count += reaction.fractionalSideIsReactants ? reaction.reactantStoichiometry[selectedComponent]
+                                                : reaction.productStoichiometry[selectedComponent];
+  }
+  return count;
+}
+
 std::size_t System::indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(
     std::size_t selectedComponent) const noexcept
 {
+  // the region follows the serial-reaction molecules that are present, not the capacity: with a capacity
+  // offset the Gibbs-conventional slot pointed past the fractional molecules into the integer ones
+  // whenever a serial reaction's two sides differ in stoichiometry
   return indexOfSerialReactionFractionalMoleculesPerComponent_CFCMC(selectedComponent) +
-         numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC[selectedComponent];
+         numberOfPresentSerialReactionFractionalMolecules(selectedComponent);
 }
 
 std::size_t System::indexOfFractionalMoleculeForMove(Move::Types move, std::size_t selectedComponent,
@@ -1316,6 +1361,9 @@ void System::createParallelReactionFractionalMolecules()
 
   RandomNumber random(1200);
 
+  // copies at full coupling of the fractional molecules placed so far (see createSerialReactionFractionalMolecules)
+  std::vector<Atom> placedAtFullCoupling;
+
   for (std::size_t reactionId = 0; reactionId < reactions.list.size(); ++reactionId)
   {
     Reaction& reaction = reactions.list[reactionId];
@@ -1331,7 +1379,8 @@ void System::createParallelReactionFractionalMolecules()
     for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
     {
       // grow at the actual effective coupling (reactants: 1 - lambda, products: lambda) so that the
-      // overlap check is meaningful for fractional molecules that start (nearly) fully coupled
+      // overlap check is meaningful for fractional molecules that start (nearly) fully coupled; against
+      // the fractional molecules placed before (decoupled or nearly so) the check is made at full coupling
       const double reactantScaling = 1.0 - reaction.currentLambda;
       for (std::size_t k = 0; k < reaction.reactantStoichiometry[componentId]; ++k)
       {
@@ -1363,8 +1412,10 @@ void System::createParallelReactionFractionalMolecules()
             }
           }
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria ||
-                 insideBlockedPockets(components[componentId], growData->atoms));
+                 insideBlockedPockets(components[componentId], growData->atoms) ||
+                 overlapsPlacedFractionalMolecules(*this, placedAtFullCoupling, growData->atoms));
 
+        appendAtFullCoupling(placedAtFullCoupling, growData->atoms);
         const std::size_t moleculeIndex =
             parallelReactionFractionalMoleculeIndex(reactionId, componentId, false, k);
         insertReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atoms, true,
@@ -1402,8 +1453,10 @@ void System::createParallelReactionFractionalMolecules()
             }
           }
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria ||
-                 insideBlockedPockets(components[componentId], growData->atoms));
+                 insideBlockedPockets(components[componentId], growData->atoms) ||
+                 overlapsPlacedFractionalMolecules(*this, placedAtFullCoupling, growData->atoms));
 
+        appendAtFullCoupling(placedAtFullCoupling, growData->atoms);
         const std::size_t moleculeIndex = parallelReactionFractionalMoleculeIndex(reactionId, componentId, true, k);
         insertReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atoms, false,
                                          reaction.currentLambda, reaction.dUdlambdaGroup(false));
@@ -1425,6 +1478,11 @@ void System::createSerialReactionFractionalMolecules()
   }
 
   RandomNumber random(1200);
+
+  // The molecules placed so far sit in the system at lambda = 0, invisible to the overlap check of the next
+  // candidate; their copies at full coupling are kept here so that no candidate is grown on top of one of
+  // them (which produced an astronomically high energy as soon as lambda was raised).
+  std::vector<Atom> placedAtFullCoupling;
 
   for (std::size_t reactionId = 0; reactionId < reactions.list.size(); ++reactionId)
   {
@@ -1475,8 +1533,10 @@ void System::createSerialReactionFractionalMolecules()
             }
           }
         } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria ||
-                 insideBlockedPockets(components[componentId], growData->atoms));
+                 insideBlockedPockets(components[componentId], growData->atoms) ||
+                 overlapsPlacedFractionalMolecules(*this, placedAtFullCoupling, growData->atoms));
 
+        appendAtFullCoupling(placedAtFullCoupling, growData->atoms);
         const std::size_t moleculeIndex = serialReactionFractionalMoleculeIndex(reactionId, componentId, k);
         insertSerialReactionFractionalMolecule(componentId, moleculeIndex, growData->molecule, growData->atoms, 0.0,
                                                reaction.lambda.dUdlambdaGroupId);
