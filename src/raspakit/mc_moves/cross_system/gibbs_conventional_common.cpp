@@ -207,7 +207,9 @@ std::optional<RunningEnergy> computeMoleculeEnergyDifference(
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, system.components, trialAtoms, oldAtoms, runningNetCharge);
-  runningNetCharge += Interactions::scaledNetChargeDifference(trialAtoms, oldAtoms);
+  // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
+  if (!system.forceField.omitInterInteractions)
+    runningNetCharge += Interactions::scaledNetChargeDifference(trialAtoms, oldAtoms);
 
   RunningEnergy tailDifference =
       computeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, trialAtoms, oldAtoms);

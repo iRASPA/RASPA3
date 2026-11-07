@@ -236,7 +236,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
                 groupChargeSum(fractionalMoleculeB));
             energyDifference += system.intraCoulombRescaleDifference(fractionalMoleculeA, oldFractionalMoleculeA);
           });
-    runningNetCharge += scaledChargeDifference(fractionalMoleculeA, oldFractionalMoleculeA);
+    // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
+    if (!system.forceField.omitInterInteractions)
+      runningNetCharge += scaledChargeDifference(fractionalMoleculeA, oldFractionalMoleculeA);
 
     timed(system, componentA, move, Move::Timing::InsertionTail,
           [&]
@@ -277,7 +279,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
                 groupChargeSum(fractionalMoleculeA));
             energyDifference += system.intraCoulombRescaleDifference(fractionalMoleculeB, oldFractionalMoleculeB);
           });
-    runningNetCharge += scaledChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
+    // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
+    if (!system.forceField.omitInterInteractions)
+      runningNetCharge += scaledChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
 
     timed(system, componentA, move, Move::Timing::InsertionTail,
           [&]
@@ -352,7 +356,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
                 system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
                 system.forceField, system.simulationBox, system.components, trialMoleculeA.second, {}, runningNetCharge);
           });
-    runningNetCharge += scaledChargeDifference(trialMoleculeA.second, {});
+    // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
+    if (!system.forceField.omitInterInteractions) runningNetCharge += scaledChargeDifference(trialMoleculeA.second, {});
 
     timed(system, componentA, move, Move::Timing::InsertionTail,
           [&]
@@ -683,7 +688,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
                 system.forceField, system.simulationBox, system.components, fractionalMoleculeA, oldFractionalMoleculeA, runningNetCharge,
                 groupChargeSum(fractionalMoleculeB));
           });
-    runningNetCharge += scaledChargeDifference(fractionalMoleculeA, oldFractionalMoleculeA);
+    // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
+    if (!system.forceField.omitInterInteractions)
+      runningNetCharge += scaledChargeDifference(fractionalMoleculeA, oldFractionalMoleculeA);
 
     timed(system, componentA, move, Move::Timing::DeletionTail,
           [&]
@@ -719,7 +726,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
                 system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
                 system.forceField, system.simulationBox, system.components, fractionalMoleculeB, oldFractionalMoleculeB, runningNetCharge);
           });
-    runningNetCharge += scaledChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
+    // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
+    if (!system.forceField.omitInterInteractions)
+      runningNetCharge += scaledChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
 
     timed(system, componentA, move, Move::Timing::DeletionTail,
           [&]
@@ -764,7 +773,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
                 runningNetCharge, groupChargeSum(fractionalMoleculeB));
             energyDifference += system.intraCoulombRescaleDifference(newFractionalMoleculeA, oldNewFractionalMoleculeA);
           });
-    runningNetCharge += scaledChargeDifference(newFractionalMoleculeA, oldNewFractionalMoleculeA);
+    // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
+    if (!system.forceField.omitInterInteractions)
+      runningNetCharge += scaledChargeDifference(newFractionalMoleculeA, oldNewFractionalMoleculeA);
 
     timed(system, componentA, move, Move::Timing::DeletionTail,
           [&]
@@ -999,7 +1010,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
                 groupChargeSum(fractionalMoleculeB));
             energyDifference += system.intraCoulombRescaleDifference(fractionalMoleculeA, oldFractionalMoleculeA);
           });
-    runningNetCharge += scaledChargeDifference(fractionalMoleculeA, oldFractionalMoleculeA);
+    // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
+    if (!system.forceField.omitInterInteractions)
+      runningNetCharge += scaledChargeDifference(fractionalMoleculeA, oldFractionalMoleculeA);
 
     timed(system, componentA, move, Move::Timing::LambdaTail,
           [&]

@@ -220,7 +220,8 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
         system.simulationBox, system.components, member.atoms, {}, runningNetCharge);
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
-    runningNetCharge += system.components[member.componentId].netCharge;
+    // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
+    if (!system.forceField.omitInterInteractions) runningNetCharge += system.components[member.componentId].netCharge;
   }
   system.storedEik = savedStoredEik;
   system.trialEik = savedTrialEik;
@@ -619,7 +620,9 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
         system.simulationBox, system.components, {}, members[i].atoms, runningNetCharge);
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
-    runningNetCharge -= system.components[members[i].componentId].netCharge;
+    // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
+    if (!system.forceField.omitInterInteractions)
+      runningNetCharge -= system.components[members[i].componentId].netCharge;
   }
   system.storedEik = savedStoredEik;
   system.trialEik = savedTrialEik;

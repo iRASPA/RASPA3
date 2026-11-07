@@ -172,7 +172,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                     oldFractionalMolecule, runningNetCharge);
               });
     EwaldEnergyDifferenceStep1 += system.intraCoulombRescaleDifference(fractionalMolecule, oldFractionalMolecule);
-    runningNetCharge += Interactions::scaledNetChargeDifference(fractionalMolecule, oldFractionalMolecule);
+    // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
+    if (!system.forceField.omitInterInteractions)
+      runningNetCharge += Interactions::scaledNetChargeDifference(fractionalMolecule, oldFractionalMolecule);
 
     // Compute tail-correction energy contribution (Brick-CFCMC-style aggregated accounting).
     // Snapshot the committed effective type counts and thread them across the sequential sub-steps.
@@ -539,7 +541,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                   // (no intramolecular Coulomb difference here: this molecule leaves the system, and its whole internal
                   // energy at the old coupling, kernel included, is removed below with 'internalEnergyOld')
                 });
-      runningNetCharge += Interactions::scaledNetChargeDifference(fractionalMolecule, oldFractionalMolecule);
+      // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
+      if (!system.forceField.omitInterInteractions)
+        runningNetCharge += Interactions::scaledNetChargeDifference(fractionalMolecule, oldFractionalMolecule);
 
       // Compute tail-correction energy contribution (Brick-CFCMC-style aggregated accounting).
       // Snapshot the committed effective type counts and thread them across the sequential sub-steps.

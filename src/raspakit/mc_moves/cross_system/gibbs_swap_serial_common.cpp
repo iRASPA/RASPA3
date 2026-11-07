@@ -105,7 +105,9 @@ std::optional<RunningEnergy> computeFractionalMoleculesEnergyDifference(
       system.trialEik, system.forceField, system.simulationBox, system.components, newAtomsCombined, oldAtomsCombined,
       runningNetCharge);
   ewaldDifference += system.intraCoulombRescaleDifference(newAtomsCombined, oldAtomsCombined);
-  runningNetCharge += Interactions::scaledNetChargeDifference(newAtomsCombined, oldAtomsCombined);
+  // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
+  if (!system.forceField.omitInterInteractions)
+    runningNetCharge += Interactions::scaledNetChargeDifference(newAtomsCombined, oldAtomsCombined);
 
   RunningEnergy tailDifference =
       computeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, newAtomsCombined, oldAtomsCombined);
