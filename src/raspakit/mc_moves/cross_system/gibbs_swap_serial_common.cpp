@@ -104,6 +104,7 @@ std::optional<RunningEnergy> computeFractionalMoleculesEnergyDifference(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, chainedOnTrialEik ? system.trialEik : system.storedEik,
       system.trialEik, system.forceField, system.simulationBox, system.components, newAtomsCombined, oldAtomsCombined,
       runningNetCharge);
+  ewaldDifference += system.intraCoulombRescaleDifference(newAtomsCombined, oldAtomsCombined);
   runningNetCharge += Interactions::scaledNetChargeDifference(newAtomsCombined, oldAtomsCombined);
 
   RunningEnergy tailDifference =

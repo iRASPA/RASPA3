@@ -223,6 +223,8 @@ static std::optional<LambdaRescaleTrial> rescaleToLambda(System &system, std::si
         (i == 0) ? system.storedEik : system.trialEik, system.trialEik, system.forceField, system.simulationBox, system.components,
         molecule, oldMolecule, runningNetCharge, externalGroupCharge);
     runningNetCharge += scaledChargeDifference(molecule, oldMolecule);
+    // the molecule is rescaled in place: its intramolecular Coulomb kernel changes with the Fourier term
+    trial.energyDifference += system.intraCoulombRescaleDifference(molecule, oldMolecule);
 
     trial.energyDifference +=
         computeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, molecule, oldMolecule);

@@ -303,6 +303,8 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
                   firstEwaldCall ? system.storedEik : system.trialEik, system.trialEik, system.forceField,
                   system.simulationBox, system.components, fractionalMolecules[i], oldFractionalMolecules[i], runningNetCharge,
                   groupChargeSumOfOthers(i));
+              energyDifference +=
+                  system.intraCoulombRescaleDifference(fractionalMolecules[i], oldFractionalMolecules[i]);
             });
       firstEwaldCall = false;
       runningNetCharge += scaledChargeDifference(fractionalMolecules[i], oldFractionalMolecules[i]);
@@ -925,6 +927,8 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
                   system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
                   system.forceField, system.simulationBox, system.components, newFractionalMolecules[i], oldNewFractionalMolecules[i],
                   runningNetCharge, groupChargeSumOfSpans(earlierMembers));
+              energyDifference +=
+                  system.intraCoulombRescaleDifference(newFractionalMolecules[i], oldNewFractionalMolecules[i]);
             });
       runningNetCharge += scaledChargeDifference(newFractionalMolecules[i], oldNewFractionalMolecules[i]);
 
@@ -1128,6 +1132,8 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
                   firstEwaldCall ? system.storedEik : system.trialEik, system.trialEik, system.forceField,
                   system.simulationBox, system.components, fractionalMolecules[i], oldFractionalMolecules[i], runningNetCharge,
                   groupChargeSumOfOthers(i));
+              energyDifference +=
+                  system.intraCoulombRescaleDifference(fractionalMolecules[i], oldFractionalMolecules[i]);
             });
       firstEwaldCall = false;
       runningNetCharge += scaledChargeDifference(fractionalMolecules[i], oldFractionalMolecules[i]);

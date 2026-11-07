@@ -622,6 +622,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                     systemB.forceField, systemB.simulationBox, systemB.components, fractionalMoleculeB,
                     oldFractionalMoleculeB, netChargeB);
               });
+    EwaldEnergyDifferenceB += systemB.intraCoulombRescaleDifference(fractionalMoleculeB, oldFractionalMoleculeB);
     if (!systemB.forceField.omitInterInteractions)
       netChargeB += Interactions::scaledNetChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
 
@@ -764,6 +765,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                     systemA.forceField, systemA.simulationBox, systemA.components, trialPositions, fractionalMoleculeA,
                     systemA.ewaldMoveNetCharge());
               });
+    EwaldFourierDifference += systemA.intraCoulombRescaleDifference(trialPositions, fractionalMoleculeA);
 
     RunningEnergy tailEnergyDifference = timed(
         systemA, componentA, move, Move::Timing::LambdaChangeTail, [&]

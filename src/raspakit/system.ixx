@@ -517,6 +517,46 @@ export struct System
     return count;
   }
 
+  /// The change of the intramolecular Coulomb energy when molecules are rescaled in place (same positions, new
+  /// Coulomb scaling: a CFCMC lambda change, a fractional molecule made whole or a whole one made fractional).
+  /// For a flexible molecule the non-excluded intramolecular pairs carry the scaled exclusion kernel
+  /// lambda_A lambda_B C q_A q_B K(r) (Potentials::intraMolecularCoulomb), which compensates the scaled pair the
+  /// Ewald Fourier sum counts; the Fourier difference of such a move changes by the opposite amount, so a move
+  /// that adds only that difference drifts in both terms. 'newAtoms' and 'oldAtoms' hold the same slots in the
+  /// same order (several molecules are split by their molecule id); only a molecule whose positions are unchanged
+  /// is rescaled in place and counted (a slot that receives another conformation, as in the Gibbs transfers, has
+  /// its internal energies accounted by the move itself); zero for rigid molecules.
+  [[nodiscard]] RunningEnergy intraCoulombRescaleDifference(std::span<const Atom> newAtoms,
+                                                            std::span<const Atom> oldAtoms) const
+  {
+    RunningEnergy difference{};
+    if (!forceField.useCharge || newAtoms.size() != oldAtoms.size()) return difference;
+    std::size_t begin = 0;
+    while (begin < newAtoms.size())
+    {
+      std::size_t end = begin + 1;
+      while (end < newAtoms.size() && newAtoms[end].moleculeId == newAtoms[begin].moleculeId) ++end;
+      const std::size_t componentId = static_cast<std::size_t>(newAtoms[begin].componentId);
+      bool inPlace = true;
+      for (std::size_t a = begin; a < end && inPlace; ++a)
+      {
+        const double3 d = newAtoms[a].position - oldAtoms[a].position;
+        inPlace = d.x == 0.0 && d.y == 0.0 && d.z == 0.0;
+      }
+      if (inPlace && componentId < components.size())
+      {
+        const auto& potentials = components[componentId].intraMolecularPotentials;
+        difference = difference +
+                     potentials.computeInternalIntraCoulombEnergies(forceField, simulationBox,
+                                                                    newAtoms.subspan(begin, end - begin)) -
+                     potentials.computeInternalIntraCoulombEnergies(forceField, simulationBox,
+                                                                    oldAtoms.subspan(begin, end - begin));
+      }
+      begin = end;
+    }
+    return difference;
+  }
+
   /// The net charge the Monte Carlo moves hand to the Ewald energy difference for its net-charge correction:
   /// the whole system's, or under 'omitInterInteractions' the framework's alone (the correction is then the
   /// cross term of the moved charge with the framework, as in the full evaluations).

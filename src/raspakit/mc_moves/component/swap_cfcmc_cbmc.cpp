@@ -197,6 +197,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                     system.forceField, system.simulationBox, system.components, fractionalMolecule,
                     oldFractionalMolecule, runningNetCharge);
               });
+    EwaldEnergyDifference += system.intraCoulombRescaleDifference(fractionalMolecule, oldFractionalMolecule);
     runningNetCharge += Interactions::scaledNetChargeDifference(fractionalMolecule, oldFractionalMolecule);
 
     // Compute tail-correction energy contribution (Brick-CFCMC-style aggregated accounting).
@@ -602,6 +603,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                       system.forceField, system.simulationBox, system.components, newFractionalMolecule,
                       savedFractionalMolecule, runningNetCharge);
                 });
+      EwaldEnergyDifference += system.intraCoulombRescaleDifference(newFractionalMolecule, savedFractionalMolecule);
 
       // Compute tail-correction energy contribution for the new fractional molecule (threaded counts include step 1).
       RunningEnergy tailEnergyDifference =
@@ -856,6 +858,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     RunningEnergy EwaldFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
         system.simulationBox, system.components, trialPositions, molecule, system.ewaldMoveNetCharge());
+    EwaldFourierDifference += system.intraCoulombRescaleDifference(trialPositions, molecule);
     time_end = std::chrono::steady_clock::now();
     if (insertionDisabled || deletionDisabled)
     {

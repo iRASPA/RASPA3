@@ -846,6 +846,10 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
       {
         scalingDifference = scalingDifference.value() + computeChargedGroupEwaldDifference(system, newAtoms, oldAtoms);
       }
+      // the fractional molecules are rescaled in place: their intramolecular Coulomb kernels change with the
+      // Fourier term (the other sub-moves add the full internal-energy difference of the molecules they change)
+      if (scalingDifference)
+        scalingDifference = scalingDifference.value() + system.intraCoulombRescaleDifference(newAtoms, oldAtoms);
     }
 
     const double acceptanceProbability =

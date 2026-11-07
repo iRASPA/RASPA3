@@ -255,6 +255,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                     systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.trialEik, systemA.trialEik,
                     systemA.forceField, systemA.simulationBox, systemA.components, newMolecule, {}, netChargeA);
               });
+    // the old fractional conformation stays in A as a whole molecule: its intramolecular Coulomb kernel changes
+    // from lambda to one with the Fourier term (its other internal energies are unchanged)
+    EwaldFourierDifferenceA2 += systemA.intraCoulombRescaleDifference(newMolecule, oldFractionalMoleculeA);
     if (!systemA.forceField.omitInterInteractions)
       netChargeA += Interactions::scaledNetChargeDifference(newMolecule, {});
 
@@ -431,6 +434,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                     systemB.forceField, systemB.simulationBox, systemB.components, fractionalMoleculeB,
                     oldFractionalMoleculeB, netChargeB);
               });
+    // the selected conformation stays in B, now the fractional molecule at lambda instead of a whole one: its
+    // intramolecular Coulomb kernel changes with the Fourier term (from scaling one to lambda)
+    EwaldFourierDifferenceB2 += systemB.intraCoulombRescaleDifference(fractionalMoleculeB, oldSelectedIntegerMoleculeB);
     if (!systemB.forceField.omitInterInteractions)
       netChargeB += Interactions::scaledNetChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
 
@@ -708,6 +714,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                     systemB.forceField, systemB.simulationBox, systemB.components, fractionalMoleculeB,
                     oldFractionalMoleculeB, netChargeB);
               });
+    EwaldEnergyDifferenceB += systemB.intraCoulombRescaleDifference(fractionalMoleculeB, oldFractionalMoleculeB);
     if (!systemB.forceField.omitInterInteractions)
       netChargeB += Interactions::scaledNetChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
 
@@ -844,6 +851,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                     systemA.forceField, systemA.simulationBox, systemA.components, trialPositions, fractionalMoleculeA,
                     systemA.ewaldMoveNetCharge());
               });
+    EwaldFourierDifference += systemA.intraCoulombRescaleDifference(trialPositions, fractionalMoleculeA);
 
     RunningEnergy tailEnergyDifference = timed(
         systemA, componentA, move, Move::Timing::LambdaChangeTail, [&]

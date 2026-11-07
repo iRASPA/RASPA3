@@ -466,6 +466,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   if (systemA.insideBlockedPockets(componentA, trialFractionalA)) return std::nullopt;
   std::optional<RunningEnergy> energyFirstStepA =
       computeMoleculeEnergyDifference(systemA, tailEffA, tailGroupA, netChargeA, trialFractionalA, fractionalMoleculeA);
+  // the fractional molecule is rescaled in place and stays, unless this box deletes it (its whole internal energy
+  // at the old coupling then leaves with it, see prepareDeletion)
+  if (energyFirstStepA.has_value() && moveKindA != GibbsMoveKind::Delete)
+  {
+    *energyFirstStepA += systemA.intraCoulombRescaleDifference(trialFractionalA, fractionalMoleculeA);
+  }
   if (!energyFirstStepA.has_value())
   {
     restoreEwaldState();
@@ -481,6 +487,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   }
   std::optional<RunningEnergy> energyFirstStepB =
       computeMoleculeEnergyDifference(systemB, tailEffB, tailGroupB, netChargeB, trialFractionalB, fractionalMoleculeB);
+  if (energyFirstStepB.has_value() && moveKindB != GibbsMoveKind::Delete)
+  {
+    *energyFirstStepB += systemB.intraCoulombRescaleDifference(trialFractionalB, fractionalMoleculeB);
+  }
   if (!energyFirstStepB.has_value())
   {
     restoreEwaldState();
@@ -613,6 +623,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     }
     std::optional<RunningEnergy> deletionEnergy = computeMoleculeEnergyDifference(
         system, tailEffectiveCounts, tailGroupCounts, runningNetCharge, trialSelected, selectedMolecule);
+    // the selected whole molecule becomes the fractional one in place and stays
+    if (deletionEnergy.has_value())
+      *deletionEnergy += system.intraCoulombRescaleDifference(trialSelected, selectedMolecule);
     if (!deletionEnergy.has_value())
     {
       return false;
