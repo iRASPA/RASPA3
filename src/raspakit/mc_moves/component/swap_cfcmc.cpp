@@ -161,7 +161,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
 
     // Compute Ewald energy contribution. The net charge the net-charge correction expands around is threaded
     // across the two sub-steps: step 2 starts from the configuration after step 1.
-    double runningNetCharge = system.netCharge;
+    double runningNetCharge = system.ewaldMoveNetCharge();
     RunningEnergy EwaldEnergyDifferenceStep1 =
         timed(system, component, move, Move::Timing::InsertionEwald,
               [&]
@@ -538,7 +538,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       }
 
       // Compute Ewald energy contribution (net charge threaded across the two sub-steps, see insertion)
-      double runningNetCharge = system.netCharge;
+      double runningNetCharge = system.ewaldMoveNetCharge();
       RunningEnergy EwaldEnergyDifferenceStep1 =
           timed(system, component, move, Move::Timing::DeletionEwald,
                 [&]
@@ -891,7 +891,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     time_begin = std::chrono::steady_clock::now();
     RunningEnergy EwaldFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, system.components, trialPositions, molecule, system.netCharge);
+        system.simulationBox, system.components, trialPositions, molecule, system.ewaldMoveNetCharge());
     time_end = std::chrono::steady_clock::now();
     if (insertionDisabled || deletionDisabled)
     {

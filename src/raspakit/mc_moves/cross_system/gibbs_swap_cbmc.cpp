@@ -128,7 +128,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
             {
               return Interactions::energyDifferenceEwaldFourier(
                   systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
-                  systemA.forceField, systemA.simulationBox, systemA.components, newMolecule, {}, systemA.netCharge);
+                  systemA.forceField, systemA.simulationBox, systemA.components, newMolecule, {},
+                  systemA.ewaldMoveNetCharge());
             });
 
   // Compute tail energy difference for system A
@@ -163,14 +164,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
             [&] { return CBMC::retraceMolecule(random, retraceContext, componentB, molecule); });
 
   // Compute Ewald Fourier energy difference for system B
-  RunningEnergy energyFourierDifferenceB =
-      timed(systemA, componentA, move, Move::Timing::Ewald,
-            [&]
-            {
-              return Interactions::energyDifferenceEwaldFourier(
-                  systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.trialEik,
-                  systemB.forceField, systemB.simulationBox, systemB.components, {}, molecule, systemB.netCharge);
-            });
+  RunningEnergy energyFourierDifferenceB = timed(
+      systemA, componentA, move, Move::Timing::Ewald,
+      [&]
+      {
+        return Interactions::energyDifferenceEwaldFourier(
+            systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.trialEik,
+            systemB.forceField, systemB.simulationBox, systemB.components, {}, molecule, systemB.ewaldMoveNetCharge());
+      });
 
   // Compute tail energy difference for system B
   [[maybe_unused]] RunningEnergy tailEnergyDifferenceB =

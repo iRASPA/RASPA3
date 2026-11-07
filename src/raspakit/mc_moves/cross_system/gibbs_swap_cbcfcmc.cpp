@@ -158,8 +158,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupB =
         systemB.fractionalPseudoAtomCountsPerGroup;
     // Coulomb-scaled net charge of each box, threaded across the chained Ewald sub-steps like the tail counts.
-    double netChargeA = systemA.netCharge;
-    double netChargeB = systemB.netCharge;
+    double netChargeA = systemA.ewaldMoveNetCharge();
+    double netChargeB = systemB.ewaldMoveNetCharge();
 
     // System A, step 1: Ewald and tail contributions of removing the fractional molecule at lambda (the first Ewald
     // sub-step of the move in A: storedEik -> trialEik). Its short-range and intra-molecular energies come from the
@@ -172,7 +172,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
               systemA.forceField, systemA.simulationBox, systemA.components, {}, oldFractionalMoleculeA, netChargeA);
         });
-    netChargeA += Interactions::scaledNetChargeDifference({}, oldFractionalMoleculeA);
+    if (!systemA.forceField.omitInterInteractions)
+      netChargeA += Interactions::scaledNetChargeDifference({}, oldFractionalMoleculeA);
 
     RunningEnergy tailEnergyDifferenceRetraceA =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeTail,
@@ -242,7 +243,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                     systemA.forceField, systemA.simulationBox, systemA.components,
                     std::span(growDataA->atoms.begin(), growDataA->atoms.end()), {}, netChargeA);
               });
-    netChargeA += Interactions::scaledNetChargeDifference(growDataA->atoms, {});
+    if (!systemA.forceField.omitInterInteractions)
+      netChargeA += Interactions::scaledNetChargeDifference(growDataA->atoms, {});
 
     RunningEnergy tailEnergyDifferenceGrowA =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeTail,
@@ -300,7 +302,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.trialEik,
               systemB.forceField, systemB.simulationBox, systemB.components, {}, selectedIntegerMoleculeB, netChargeB);
         });
-    netChargeB += Interactions::scaledNetChargeDifference({}, selectedIntegerMoleculeB);
+    if (!systemB.forceField.omitInterInteractions)
+      netChargeB += Interactions::scaledNetChargeDifference({}, selectedIntegerMoleculeB);
 
     RunningEnergy tailEnergyDifferenceRetraceB =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeTail,
@@ -358,7 +361,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                     systemB.forceField, systemB.simulationBox, systemB.components, fractionalMoleculeB,
                     oldFractionalMoleculeB, netChargeB);
               });
-    netChargeB += Interactions::scaledNetChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
+    if (!systemB.forceField.omitInterInteractions)
+      netChargeB += Interactions::scaledNetChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
 
     RunningEnergy tailEnergyDifferenceGrowB =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeTail,
@@ -491,8 +495,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupB =
         systemB.fractionalPseudoAtomCountsPerGroup;
     // Coulomb-scaled net charge of each box, threaded across the chained Ewald sub-steps like the tail counts.
-    double netChargeA = systemA.netCharge;
-    double netChargeB = systemB.netCharge;
+    double netChargeA = systemA.ewaldMoveNetCharge();
+    double netChargeB = systemB.ewaldMoveNetCharge();
 
     // System A, step 1: Ewald and tail contributions of removing the fractional molecule at lambda (the first Ewald
     // sub-step of the move in A: storedEik -> trialEik). Its short-range and intra-molecular energies come from the
@@ -505,7 +509,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
               systemA.forceField, systemA.simulationBox, systemA.components, {}, oldFractionalMoleculeA, netChargeA);
         });
-    netChargeA += Interactions::scaledNetChargeDifference({}, oldFractionalMoleculeA);
+    if (!systemA.forceField.omitInterInteractions)
+      netChargeA += Interactions::scaledNetChargeDifference({}, oldFractionalMoleculeA);
 
     RunningEnergy tailEnergyDifferenceRetraceA =
         timed(systemA, componentA, move, Move::Timing::LambdaShuffleTail,
@@ -617,7 +622,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                     systemB.forceField, systemB.simulationBox, systemB.components, fractionalMoleculeB,
                     oldFractionalMoleculeB, netChargeB);
               });
-    netChargeB += Interactions::scaledNetChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
+    if (!systemB.forceField.omitInterInteractions)
+      netChargeB += Interactions::scaledNetChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
 
     RunningEnergy tailEnergyDifferenceB =
         timed(systemA, componentA, move, Move::Timing::LambdaShuffleTail,
@@ -756,7 +762,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                 return Interactions::energyDifferenceEwaldFourier(
                     systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
                     systemA.forceField, systemA.simulationBox, systemA.components, trialPositions, fractionalMoleculeA,
-                    systemA.netCharge);
+                    systemA.ewaldMoveNetCharge());
               });
 
     RunningEnergy tailEnergyDifference = timed(

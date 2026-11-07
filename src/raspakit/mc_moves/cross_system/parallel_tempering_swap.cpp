@@ -360,8 +360,8 @@ std::optional<double> soluteHamiltonianChange(const System& holder, const System
     EwaldStructureFactor storedEik = holder.storedEik;
     EwaldStructureFactor trialEik{};
     change += Interactions::energyDifferenceEwaldFourier(eik_x, eik_y, eik_z, eik_xy, storedEik, trialEik,
-                                                        holder.forceField, holder.simulationBox, holder.components, soluteTarget,
-                                                        soluteHolder, holder.netCharge)
+                                                         holder.forceField, holder.simulationBox, holder.components,
+                                                         soluteTarget, soluteHolder, holder.ewaldMoveNetCharge())
                   .potentialEnergy();
   }
 

@@ -64,14 +64,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   system.components[selectedComponent].mc_moves_statistics.addConstructed(move, 0);
 
   // Compute energy difference due to Ewald Fourier components
-  RunningEnergy energyFourierDifference =
-      timed(system, component, move, Move::Timing::Ewald,
-            [&]
-            {
-              return Interactions::energyDifferenceEwaldFourier(
-                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                  system.forceField, system.simulationBox, system.components, newMolecule, {}, system.netCharge);
-            });
+  RunningEnergy energyFourierDifference = timed(
+      system, component, move, Move::Timing::Ewald,
+      [&]
+      {
+        return Interactions::energyDifferenceEwaldFourier(
+            system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+            system.forceField, system.simulationBox, system.components, newMolecule, {}, system.ewaldMoveNetCharge());
+      });
 
   // Compute tail energy difference due to long-range corrections
   RunningEnergy tailEnergyDifference =

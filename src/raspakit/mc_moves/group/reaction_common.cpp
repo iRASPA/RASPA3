@@ -86,7 +86,7 @@ void acceptChargedEwaldMove(System& system) noexcept
 
   RunningEnergy ewaldCombined = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, newAtoms, oldAtoms, system.netCharge);
+      system.simulationBox, system.components, newAtoms, oldAtoms, system.ewaldMoveNetCharge());
 
   // The combined difference matches exclusion pairs on moleculeId, so multi-molecule spans yield
   // the intra-molecular exclusion terms directly and need no correction here.
@@ -532,7 +532,7 @@ void setReactionFractionalScaling(System& system, Reaction& reaction, double lam
   {
     RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, system.components, newAtoms, oldAtoms, system.netCharge);
+        system.simulationBox, system.components, newAtoms, oldAtoms, system.ewaldMoveNetCharge());
     energyDifference += ewaldDifference;
   }
 

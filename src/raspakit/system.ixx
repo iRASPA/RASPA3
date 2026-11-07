@@ -513,6 +513,14 @@ export struct System
     return count;
   }
 
+  /// The net charge the Monte Carlo moves hand to the Ewald energy difference for its net-charge correction:
+  /// the whole system's, or under 'omitInterInteractions' the framework's alone (the correction is then the
+  /// cross term of the moved charge with the framework, as in the full evaluations).
+  [[nodiscard]] double ewaldMoveNetCharge() const
+  {
+    return forceField.omitInterInteractions ? netChargeFramework : netCharge;
+  }
+
   // --- transition-matrix Monte Carlo (TMMC) ------------------------------------------------------
   // The macrostate is the molecule count of one component, the adsorbate. A cation beside it is a
   // component too, picked for its own moves, but the matrix is not of its count: its moves must neither

@@ -200,7 +200,10 @@ std::optional<CBMC::MultiTrialGrowResult> CBMC::DeviceMultiTrialGrower::growBatc
   {
     std::scoped_lock lock(environmentMutex);
     environment->setForceField(context.forceField, context.simulationBox);
-    environment->setBackground(context.frameworkAtoms, context.moleculeAtoms);
+    // under 'omitInterInteractions' the other molecules are not part of the energy (nor of the overlaps)
+    environment->setBackground(context.frameworkAtoms, context.forceField.omitInterInteractions
+                                                           ? std::span<const Atom>{}
+                                                           : context.moleculeAtoms);
     environment->evaluate(batch, n, templateAtoms.front().moleculeId, context.skipBackgroundMolecule, energies);
   }
 
@@ -270,7 +273,10 @@ CBMC::MultiTrialRetraceResult CBMC::DeviceMultiTrialGrower::retraceBatch(
   {
     std::scoped_lock lock(environmentMutex);
     environment->setForceField(context.forceField, context.simulationBox);
-    environment->setBackground(context.frameworkAtoms, context.moleculeAtoms);
+    // under 'omitInterInteractions' the other molecules are not part of the energy (nor of the overlaps)
+    environment->setBackground(context.frameworkAtoms, context.forceField.omitInterInteractions
+                                                           ? std::span<const Atom>{}
+                                                           : context.moleculeAtoms);
     environment->evaluate(batch, n, moleculeAtoms.front().moleculeId, context.skipBackgroundMolecule, energies);
   }
 

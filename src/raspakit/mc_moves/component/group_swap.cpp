@@ -213,7 +213,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
 
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifference{};
-  double runningNetCharge = system.netCharge;
+  double runningNetCharge = system.ewaldMoveNetCharge();
   for (const GroupMemberView& member : members)
   {
     energyFourierDifference += Interactions::energyDifferenceEwaldFourier(
@@ -612,7 +612,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
 
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifference{};
-  double runningNetCharge = system.netCharge;
+  double runningNetCharge = system.ewaldMoveNetCharge();
   for (std::size_t i = groupSize; i-- > 0;)
   {
     energyFourierDifference += Interactions::energyDifferenceEwaldFourier(

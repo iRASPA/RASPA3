@@ -95,12 +95,13 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
                            });
   data.energyFourierDifference =
       MC_Moves::timed(system, oldComponentData, move, Move::Timing::Ewald,
-            [&]
-            {
-              return Interactions::energyDifferenceEwaldFourier(
-                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                  system.forceField, system.simulationBox, system.components, newMolecule, data.oldMoleculeAtoms, system.netCharge);
-            });
+                      [&]
+                      {
+                        return Interactions::energyDifferenceEwaldFourier(
+                            system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                            system.forceField, system.simulationBox, system.components, newMolecule,
+                            data.oldMoleculeAtoms, system.ewaldMoveNetCharge());
+                      });
 
   // Tail correction from the scaled (scalingVDW) pseudo-atom composition of the box, so that coexisting
   // fractional molecules count with their coupling and their dU/dlambda is carried along.

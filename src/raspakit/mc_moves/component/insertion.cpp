@@ -118,14 +118,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   {
     energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.trialEik, system.forceField, system.simulationBox, system.components, electricFieldMoleculeNew, {}, trialMolecule.second,
-        {}, system.netCharge);
+        system.trialEik, system.forceField, system.simulationBox, system.components, electricFieldMoleculeNew, {},
+        trialMolecule.second, {}, system.ewaldMoveNetCharge());
   }
   else
   {
     energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, system.components, trialMolecule.second, {}, system.netCharge);
+        system.simulationBox, system.components, trialMolecule.second, {}, system.ewaldMoveNetCharge());
   }
   time_end = std::chrono::steady_clock::now();
 

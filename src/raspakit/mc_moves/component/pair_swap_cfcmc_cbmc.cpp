@@ -207,7 +207,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     };
 
     RunningEnergy energyDifference{};
-    double runningNetCharge = system.netCharge;
+    double runningNetCharge = system.ewaldMoveNetCharge();
 
     // (1a) fractional molecule of component A becomes integer
     for (Atom& atom : fractionalMoleculeA) atom.setScalingToInteger();
@@ -665,7 +665,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     time_end = std::chrono::steady_clock::now();
     componentA.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
     system.mc_moves_cputime[move][Move::Timing::DeletionNonEwald] += (time_end - time_begin);
-    double runningNetCharge = system.netCharge;
+    double runningNetCharge = system.ewaldMoveNetCharge();
 
     // Ewald and tail-correction energy contributions of removing the fractional pair
     time_begin = std::chrono::steady_clock::now();
@@ -950,7 +950,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     };
 
     RunningEnergy energyDifference{};
-    double runningNetCharge = system.netCharge;
+    double runningNetCharge = system.ewaldMoveNetCharge();
 
     // rescale the fractional molecule of component A
     for (Atom& atom : fractionalMoleculeA) atom.setScaling(newLambda);

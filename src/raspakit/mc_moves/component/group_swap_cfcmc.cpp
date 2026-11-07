@@ -262,7 +262,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     // group diffuses apart at low lambda and would otherwise block both endpoint crossings.
 
     RunningEnergy energyDifference{};
-    double runningNetCharge = system.netCharge;
+    double runningNetCharge = system.ewaldMoveNetCharge();
     bool firstEwaldCall = true;
 
     // (1) the fractional molecules of the group become integer, sequentially in place
@@ -772,7 +772,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     };
 
     RunningEnergy energyDifference{};
-    double runningNetCharge = system.netCharge;
+    double runningNetCharge = system.ewaldMoveNetCharge();
 
     // (1a, CB variant) retrace the fractional group; the growth order of the reverse (insertion)
     // move is member 0 first, then 1, ..., each with the earlier members in the background, so
@@ -1087,7 +1087,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     central.mc_moves_statistics.addTrial(move, 2);
 
     RunningEnergy energyDifference{};
-    double runningNetCharge = system.netCharge;
+    double runningNetCharge = system.ewaldMoveNetCharge();
     bool firstEwaldCall = true;
 
     // rescale the fractional molecules of the group, sequentially in place

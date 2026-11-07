@@ -185,7 +185,7 @@ static std::optional<LambdaRescaleTrial> rescaleToLambda(System &system, std::si
   std::vector<double> tailEffectiveCounts = system.effectiveNumberOfPseudoAtomsVDW;
   std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupCounts =
       system.fractionalPseudoAtomCountsPerGroup;
-  double runningNetCharge = system.netCharge;
+  double runningNetCharge = system.ewaldMoveNetCharge();
 
   for (std::size_t i = 0; i < trial.molecules.size(); ++i)
   {

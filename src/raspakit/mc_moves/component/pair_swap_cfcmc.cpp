@@ -202,7 +202,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     };
 
     RunningEnergy energyDifference{};
-    double runningNetCharge = system.netCharge;
+    double runningNetCharge = system.ewaldMoveNetCharge();
 
     // (1a) fractional molecule of component A becomes integer
     for (Atom& atom : fractionalMoleculeA) atom.setScalingToInteger();
@@ -651,7 +651,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     };
 
     RunningEnergy energyDifference{};
-    double runningNetCharge = system.netCharge;
+    double runningNetCharge = system.ewaldMoveNetCharge();
 
     // (1a) fractional molecule of component A is switched off (lambda=0)
     for (Atom& atom : fractionalMoleculeA)
@@ -961,7 +961,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     };
 
     RunningEnergy energyDifference{};
-    double runningNetCharge = system.netCharge;
+    double runningNetCharge = system.ewaldMoveNetCharge();
 
     // rescale the fractional molecule of component A
     for (Atom& atom : fractionalMoleculeA) atom.setScaling(newLambda);

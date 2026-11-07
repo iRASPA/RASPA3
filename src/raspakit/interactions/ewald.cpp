@@ -594,10 +594,13 @@ static inline void addFourierDUdlambda(RunningEnergy& energy, double factor, con
 // charge of group-tagged atoms outside 'oldatoms'/'newatoms' (nonzero when other dU/dlambda-tagged
 // molecules exist, e.g. the partner molecule in chained pair moves), and 'singleIonFourierSum' is
 // the Fourier sum of a single unit charge for the current box and wave vectors.
+// With 'omitInterInteractions' the adsorbate-adsorbate part of the correction is left out (as in the full
+// evaluations), 'netCharge' is then the charge of the rigid framework, and the difference is linear in the
+// moved charge: 2 uIon Q_framework (Q_new - Q_old).
 static void addNetChargeCorrectionDifference(
     RunningEnergy& energy, double singleIonFourierSum, double alpha, double netCharge,
     const std::array<double, maximumNumberOfDUDlambdaGroups>& netChargeDerivativeExternal,
-    std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
+    std::span<const Atom> newatoms, std::span<const Atom> oldatoms, bool omitInterInteractions)
 {
   double deltaCharge = 0.0;
   std::array<double, maximumNumberOfDUDlambdaGroups> chargeDerivativeNew = netChargeDerivativeExternal;
@@ -614,6 +617,15 @@ static void addNetChargeCorrectionDifference(
   }
 
   double uIon = -(singleIonFourierSum - Units::CoulombicConversionFactor * alpha / std::sqrt(std::numbers::pi));
+  if (omitInterInteractions)
+  {
+    energy.ewald_fourier += 2.0 * uIon * netCharge * deltaCharge;
+    for (std::size_t g = 0; g != maximumNumberOfDUDlambdaGroups; ++g)
+    {
+      energy.dudlambdaEwald[g] += 2.0 * uIon * netCharge * (chargeDerivativeNew[g] - chargeDerivativeOld[g]);
+    }
+    return;
+  }
   double netChargeNew = netCharge + deltaCharge;
   energy.ewald_fourier += uIon * (netChargeNew * netChargeNew - netCharge * netCharge);
   for (std::size_t g = 0; g != maximumNumberOfDUDlambdaGroups; ++g)
@@ -915,8 +927,18 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
 
           addFourierDUdlambda(energySum, 2.0 * temp, total.first, total.second);
           addFourierDUdlambda(energySum, -2.0 * temp, rigid.first, rigid.second);
-
-          storedEik.set(nvec, total.first, total.second);
+          if (omitInterInteractions)
+          {
+            // the adsorbate-adsorbate part of d|S|^2/dlambda goes with the energy term above
+            addFourierDUdlambda(energySum, -2.0 * temp, cksum.first, cksum.second);
+            // the stored structure factor holds the rigid framework only: an incremental move then sees the
+            // cross term with the framework and nothing of the other molecules (see fourierSelfNetChargeDifference)
+            storedEik.set(nvec, rigid.first, rigid.second);
+          }
+          else
+          {
+            storedEik.set(nvec, total.first, total.second);
+          }
           ++nvec;
         }
       }
@@ -1160,6 +1182,10 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
 
           if (forceField.omitInterInteractions)
           {
+            // the adsorbate-adsorbate part of d|S|^2/dlambda goes with the energy term above; the gradient and
+            // the stored structure factor are those of the rigid framework only (the convention of every
+            // evaluation under 'omitInterInteractions')
+            addFourierDUdlambda(energySum, -2.0 * temp, cksum.first, cksum.second);
             total.first -= cksum.first;
             total.second -= cksum.second;
           }
@@ -1371,7 +1397,8 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
                                                         simulationBox, newatoms, oldatoms, netCharge,
                                                         netChargeDerivativeExternal);
   if (!forceField.useCharge) return energy;
-  if (!forceField.usesEwaldFourier() && forceField.omitInterInteractions) return energy;
+  // the exclusions are not part of the energy under 'omitInterInteractions' (see computeEwaldFourierEnergy)
+  if (forceField.omitInterInteractions) return energy;
   // Intramolecular exclusion difference: add the new configuration, remove the old one.
   addChargeExclusionEnergy(energy, forceField, simulationBox, components, newatoms, 1.0);
   addChargeExclusionEnergy(energy, forceField, simulationBox, components, oldatoms, -1.0);
@@ -1397,6 +1424,11 @@ RunningEnergy fourierSelfNetChargeDifference(
     if (!forceField.usesRealSpaceChargeCorrections()) return RunningEnergy{};
     return realSpaceSelfEnergyDifference(forceField, newatoms, oldatoms);
   }
+  // Under 'omitInterInteractions' the energy is the cross term 2 Re[S_framework^* S_molecules] alone (the full
+  // evaluations leave |S_molecules|^2, the self energy and the exclusions out), and the stored structure
+  // factor holds the rigid framework only: the difference is 2 temp Re[S_framework^* dS] with dS the change of
+  // the moved atoms, the stored sums do not change, and the self energy does not enter.
+  const bool omitInterInteractions = forceField.omitInterInteractions;
 
   double alpha = forceField.EwaldAlpha;
   std::size_t recip_integer_cutoff_squared = forceField.reciprocalIntegerCutOffSquared;
@@ -1498,9 +1530,17 @@ RunningEnergy fourierSelfNetChargeDifference(
             const double temp = prefactors[nvec];
             singleIonFourierSum += temp;
             const std::complex<double> stored = storedSums[nvec];
-            const std::complex<double> updated = stored + delta;
-            energy.ewald_fourier += temp * (std::norm(updated) - std::norm(stored));
-            trialSums[nvec] = updated;
+            if (omitInterInteractions)
+            {
+              energy.ewald_fourier += 2.0 * temp * (stored.real() * delta.real() + stored.imag() * delta.imag());
+              trialSums[nvec] = stored;
+            }
+            else
+            {
+              const std::complex<double> updated = stored + delta;
+              energy.ewald_fourier += temp * (std::norm(updated) - std::norm(stored));
+              trialSums[nvec] = updated;
+            }
             if (storedHasGroups)
             {
               // 2 temp Re[(S_new - S_old) conj(dS)] with the unchanged group sums dS
@@ -1545,6 +1585,17 @@ RunningEnergy fourierSelfNetChargeDifference(
 
           const std::complex<double>& storedSum = storedEik.sum[nvec];
           const GroupComplexSums& storedGroups = storedEik.groups(nvec);
+          if (omitInterInteractions)
+          {
+            const std::complex<double> delta = cksum_new.first - cksum_old.first;
+            const GroupComplexSums deltaGroups = cksum_new.second - cksum_old.second;
+            energy.ewald_fourier += 2.0 * temp * (storedSum.real() * delta.real() + storedSum.imag() * delta.imag());
+            addFourierDUdlambda(energy, 2.0 * temp, storedSum, deltaGroups);
+            addFourierDUdlambda(energy, 2.0 * temp, delta, storedGroups);
+            trialEik.set(nvec, storedSum, storedGroups);
+            ++nvec;
+            continue;
+          }
           const std::complex<double> updatedSum = storedSum + cksum_new.first - cksum_old.first;
           const GroupComplexSums updatedGroups = storedGroups + cksum_new.second - cksum_old.second;
           energy.ewald_fourier += temp * std::norm(updatedSum);
@@ -1561,9 +1612,9 @@ RunningEnergy fourierSelfNetChargeDifference(
     }
   }
 
-  // Subtract self-energy
+  // Subtract self-energy (not part of the energy under 'omitInterInteractions')
   double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
-  for (std::size_t i = 0; i != oldatoms.size(); ++i)
+  for (std::size_t i = 0; i != oldatoms.size() && !omitInterInteractions; ++i)
   {
     double charge = oldatoms[i].charge;
     double scaling = oldatoms[i].scalingCoulomb;
@@ -1571,7 +1622,7 @@ RunningEnergy fourierSelfNetChargeDifference(
     energy.ewald_self += prefactor_self * scaling * charge * scaling * charge;
     if (groupIdA != 0) energy.dudlambdaEwald[groupIdA - 1] += 2.0 * prefactor_self * scaling * charge * charge;
   }
-  for (std::size_t i = 0; i != newatoms.size(); ++i)
+  for (std::size_t i = 0; i != newatoms.size() && !omitInterInteractions; ++i)
   {
     double charge = newatoms[i].charge;
     double scaling = newatoms[i].scalingCoulomb;
@@ -1581,7 +1632,7 @@ RunningEnergy fourierSelfNetChargeDifference(
   }
 
   addNetChargeCorrectionDifference(energy, singleIonFourierSum, alpha, netCharge, netChargeDerivativeExternal, newatoms,
-                                   oldatoms);
+                                   oldatoms, omitInterInteractions);
 
   return energy;
 }
@@ -1645,8 +1696,8 @@ RunningEnergy Interactions::energyDifferenceEwaldFourierMovedAtoms(
 
   // The excluded intramolecular pairs with at least one moved atom: new configuration with sign +1, old
   // configuration with sign -1 (the convention of energyDifferenceEwaldFourier).
-  if (!forceField.usesEwaldFourier() &&
-      (!forceField.usesRealSpaceChargeCorrections() || forceField.omitInterInteractions))
+  if (forceField.omitInterInteractions ||
+      (!forceField.usesEwaldFourier() && !forceField.usesRealSpaceChargeCorrections()))
   {
     return energy;
   }
@@ -1694,7 +1745,9 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
   double alpha_squared = alpha * alpha;
   std::size_t recip_integer_cutoff_squared = forceField.reciprocalIntegerCutOffSquared;
   double recip_cutoff_squared = forceField.reciprocalCutOffSquared;
-  // bool omitInterInteractions = forceField.omitInterInteractions;
+  // see fourierSelfNetChargeDifference: under 'omitInterInteractions' the energy is the cross term with the rigid
+  // framework alone, the stored sums do not change, and the self energy and the exclusions do not enter
+  const bool omitInterInteractions = forceField.omitInterInteractions;
   double3x3 inv_box = simulationBox.inverseCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
@@ -1783,6 +1836,17 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
           singleIonFourierSum += temp;
           const std::complex<double>& storedSum = storedEik.sum[nvec];
           const GroupComplexSums& storedGroups = storedEik.groups(nvec);
+          if (omitInterInteractions)
+          {
+            const std::complex<double> delta = cksum_new.first - cksum_old.first;
+            const GroupComplexSums deltaGroups = cksum_new.second - cksum_old.second;
+            energy.ewald_fourier += 2.0 * temp * (storedSum.real() * delta.real() + storedSum.imag() * delta.imag());
+            addFourierDUdlambda(energy, 2.0 * temp, storedSum, deltaGroups);
+            addFourierDUdlambda(energy, 2.0 * temp, delta, storedGroups);
+            trialEik.set(nvec, storedSum, storedGroups);
+            ++nvec;
+            continue;
+          }
           const std::complex<double> updatedSum = storedSum + cksum_new.first - cksum_old.first;
           const GroupComplexSums updatedGroups = storedGroups + cksum_new.second - cksum_old.second;
           energy.ewald_fourier += temp * std::norm(updatedSum);
@@ -1799,13 +1863,16 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     }
   }
 
-  // Intramolecular exclusion difference (the excluded pairs only): add the new configuration, remove the old one.
-  addChargeExclusionEnergy(energy, forceField, simulationBox, components, newatoms, 1.0);
-  addChargeExclusionEnergy(energy, forceField, simulationBox, components, oldatoms, -1.0);
+  if (!omitInterInteractions)
+  {
+    // Intramolecular exclusion difference (the excluded pairs only): add the new configuration, remove the old one.
+    addChargeExclusionEnergy(energy, forceField, simulationBox, components, newatoms, 1.0);
+    addChargeExclusionEnergy(energy, forceField, simulationBox, components, oldatoms, -1.0);
+  }
 
-  // Subtract self-energy
+  // Subtract self-energy (not part of the energy under 'omitInterInteractions')
   double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
-  for (std::size_t i = 0; i != oldatoms.size(); ++i)
+  for (std::size_t i = 0; i != oldatoms.size() && !omitInterInteractions; ++i)
   {
     double charge = oldatoms[i].charge;
     double scaling = oldatoms[i].scalingCoulomb;
@@ -1814,7 +1881,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     if (groupIdA != 0) energy.dudlambdaEwald[groupIdA - 1] += 2.0 * prefactor_self * scaling * charge * charge;
   }
 
-  for (std::size_t i = 0; i != newatoms.size(); ++i)
+  for (std::size_t i = 0; i != newatoms.size() && !omitInterInteractions; ++i)
   {
     double charge = newatoms[i].charge;
     double scaling = newatoms[i].scalingCoulomb;
@@ -1824,7 +1891,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
   }
 
   addNetChargeCorrectionDifference(energy, singleIonFourierSum, alpha, netCharge, netChargeDerivativeExternal, newatoms,
-                                   oldatoms);
+                                   oldatoms, omitInterInteractions);
 
   return energy;
 }
@@ -2485,6 +2552,7 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
 
           addFourierDUdlambda(energySum, 2.0 * temp, total.first, total.second);
           addFourierDUdlambda(energySum, -2.0 * temp, rigid.first, rigid.second);
+          if (omitInterInteractions) addFourierDUdlambda(energySum, -2.0 * temp, cksum.first, cksum.second);
 
           for (std::size_t i = 0; i != numberOfAtoms; ++i)
           {
@@ -2496,7 +2564,15 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
                 2.0 * temp * (cki.imag() * rigid.first.real() - cki.real() * rigid.first.imag()) * rk;
           }
 
-          storedEik.set(nvec, total.first, total.second);
+          // under 'omitInterInteractions' the stored structure factor holds the rigid framework only
+          if (omitInterInteractions)
+          {
+            storedEik.set(nvec, rigid.first, rigid.second);
+          }
+          else
+          {
+            storedEik.set(nvec, total.first, total.second);
+          }
           ++nvec;
         }
       }

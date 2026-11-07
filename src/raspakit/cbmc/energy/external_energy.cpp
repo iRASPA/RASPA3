@@ -695,8 +695,14 @@ std::optional<RunningEnergy> CBMC::computeExternalNonOverlappingEnergy(
   if (!frameworkEnergy.has_value()) return std::nullopt;
 
   std::optional<RunningEnergy> interEnergy;
-  if (context.neighbourhood && context.neighbourhood->covers(trialPositionSet, context.cutOffMoleculeVDW,
-                                                             context.cutOffCoulomb, context.forceField.useCharge))
+  if (context.forceField.omitInterInteractions)
+  {
+    // the other molecules are not part of the energy, nor of the overlaps: a grown molecule sees the framework
+    // and the external field only (as the full evaluation and the single-molecule moves do)
+    interEnergy = RunningEnergy{};
+  }
+  else if (context.neighbourhood && context.neighbourhood->covers(trialPositionSet, context.cutOffMoleculeVDW,
+                                                                  context.cutOffCoulomb, context.forceField.useCharge))
   {
     interEnergy = CBMC::computeInterMolecularEnergy(context.forceField, context.simulationBox, *context.neighbourhood,
                                                     context.cutOffMoleculeVDW, context.cutOffCoulomb, trialPositionSet);

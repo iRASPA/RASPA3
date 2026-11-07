@@ -223,11 +223,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, {}, oldMoleculeB, system.netCharge);
+      system.simulationBox, system.components, {}, oldMoleculeB, system.ewaldMoveNetCharge());
   Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, {}, oldMoleculeA, system.netCharge - system.components[componentB].netCharge);
+      system.simulationBox, system.components, {}, oldMoleculeA,
+      system.ewaldMoveNetCharge() -
+          (system.forceField.omitInterInteractions ? 0.0 : system.components[componentB].netCharge));
   system.storedEik = savedStoredEik;
   system.trialEik = savedTrialEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
@@ -462,11 +464,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, {}, oldMoleculeB, system.netCharge);
+      system.simulationBox, system.components, {}, oldMoleculeB, system.ewaldMoveNetCharge());
   Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, {}, oldMoleculeA, system.netCharge - system.components[componentB].netCharge);
+      system.simulationBox, system.components, {}, oldMoleculeA,
+      system.ewaldMoveNetCharge() -
+          (system.forceField.omitInterInteractions ? 0.0 : system.components[componentB].netCharge));
   system.storedEik = savedStoredEik;
   system.trialEik = savedTrialEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;

@@ -418,8 +418,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupB =
       systemB.fractionalPseudoAtomCountsPerGroup;
   // Coulomb-scaled net charge of each box, threaded across the sub-steps like the tail counts.
-  double netChargeA = systemA.netCharge;
-  double netChargeB = systemB.netCharge;
+  double netChargeA = systemA.ewaldMoveNetCharge();
+  double netChargeB = systemB.ewaldMoveNetCharge();
 
   // Deletion prelude (lambda < 0): upon acceptance the fractional molecule leaves its box. Its intra-molecular
   // energy leaves the running energies (not the acceptance rule: the reverse insertion draws the conformation from
@@ -445,7 +445,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       CBMC::RetraceResult retraceData = CBMC::retraceMolecule(random, context, component, fractionalMolecule);
       prelude.logRosenbluthWeight = retraceData.logRosenbluthWeight;
       prelude.retraceEwaldTail = retraceEwaldTailDifference(system, tailEffectiveCounts, tailGroupCounts,
-                                                            system.netCharge, fractionalMolecule);
+                                                            system.ewaldMoveNetCharge(), fractionalMolecule);
     }
     return prelude;
   };
