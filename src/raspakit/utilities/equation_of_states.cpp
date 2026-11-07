@@ -39,6 +39,9 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
       double Tc = components[i].criticalTemperature;
       double Pc = components[i].criticalPressure;
       double w = components[i].acentricFactor;
+      // no critical constants, no equation of state: the component is an ideal gas, with no attraction and
+      // no volume of its own (its a and b stay zero)
+      if (!hasCriticalConstants(Tc, Pc)) continue;
       double Tr = temperature / Tc;
       double temp = 0.0;
       double kappa, alpha;
@@ -140,10 +143,21 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
       break;
   }
 
-  // solve equation-of-state
+  // solve equation-of-state; with no component that has one the mixture is an ideal gas, whose
+  // compressibility is one and whose fugacity coefficients are one (the general expressions divide by the
+  // co-volume of the mixture, which is then zero)
+  const bool idealGas = !(Bmix > 0.0);
   std::vector<double> compressibility(3);
   int numberOfSolutions = 0;
-  cubic(coefficients.data(), compressibility.data(), &numberOfSolutions);
+  if (idealGas)
+  {
+    compressibility[0] = 1.0;
+    numberOfSolutions = 1;
+  }
+  else
+  {
+    cubic(coefficients.data(), compressibility.data(), &numberOfSolutions);
+  }
 
   // sort the compressibilities, Compressibility[0] the highest, Compressibility[2] the lowest
   if (compressibility[0] < compressibility[1])
@@ -190,8 +204,11 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
             for (std::size_t k = 0; k < components.size(); k++) temp += 2.0 * components[k].molFraction * Aij[i][k];
 
             fugacityCoefficients[i][j] =
-                std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) - std::log(compressibility[j] - Bmix) -
-                         Amix * (temp / Amix - B[i] / Bmix) * std::log(1.0 + Bmix / compressibility[j]) / Bmix);
+                idealGas ? 1.0
+                         : std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) -
+                                    std::log(compressibility[j] - Bmix) -
+                                    Amix * (temp / Amix - B[i] / Bmix) * std::log(1.0 + Bmix / compressibility[j]) /
+                                        Bmix);
           }
         }
       }
@@ -209,10 +226,12 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
             for (std::size_t k = 0; k < components.size(); ++k) temp += 2.0 * components[k].molFraction * Aij[i][k];
 
             fugacityCoefficients[i][j] =
-                std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) - std::log(compressibility[j] - Bmix) -
-                         (Amix / (2.0 * std::sqrt(2.0) * Bmix)) * (temp / Amix - B[i] / Bmix) *
-                             std::log((compressibility[j] + (1.0 + std::sqrt(2.0)) * Bmix) /
-                                      (compressibility[j] + (1.0 - std::sqrt(2)) * Bmix)));
+                idealGas ? 1.0
+                         : std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) -
+                                    std::log(compressibility[j] - Bmix) -
+                                    (Amix / (2.0 * std::sqrt(2.0) * Bmix)) * (temp / Amix - B[i] / Bmix) *
+                                        std::log((compressibility[j] + (1.0 + std::sqrt(2.0)) * Bmix) /
+                                                 (compressibility[j] + (1.0 - std::sqrt(2)) * Bmix)));
           }
         }
       }
@@ -356,7 +375,9 @@ std::vector<EquationOfState::FluidResult> EquationOfState::computeFluidPropertie
     double Pc = equationOfStateProperties[i].criticalPressure;
     double w = equationOfStateProperties[i].acentricFactor;
 
-    if (equationOfStateProperties[i].swappable)
+    // no critical constants, no equation of state: the component is an ideal gas, with no attraction and
+    // no volume of its own (its a and b stay zero)
+    if (equationOfStateProperties[i].swappable && hasCriticalConstants(Tc, Pc))
     {
       double Tr = temperature / Tc;
       double temp = 0.0;
@@ -461,10 +482,21 @@ std::vector<EquationOfState::FluidResult> EquationOfState::computeFluidPropertie
       break;
   }
 
-  // solve equation-of-state
+  // solve equation-of-state; with no component that has one the mixture is an ideal gas, whose
+  // compressibility is one and whose fugacity coefficients are one (the general expressions divide by the
+  // co-volume of the mixture, which is then zero)
+  const bool idealGas = !(Bmix > 0.0);
   std::vector<double> compressibility(3);
   int numberOfSolutions = 0;
-  cubic(coefficients.data(), compressibility.data(), &numberOfSolutions);
+  if (idealGas)
+  {
+    compressibility[0] = 1.0;
+    numberOfSolutions = 1;
+  }
+  else
+  {
+    cubic(coefficients.data(), compressibility.data(), &numberOfSolutions);
+  }
 
   // sort the compressibilities, Compressibility[0] the highest, Compressibility[2] the lowest
   if (compressibility[0] < compressibility[1])
@@ -514,8 +546,11 @@ std::vector<EquationOfState::FluidResult> EquationOfState::computeFluidPropertie
             }
 
             fugacityCoefficients[i][j] =
-                std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) - std::log(compressibility[j] - Bmix) -
-                         Amix * (temp / Amix - B[i] / Bmix) * std::log(1.0 + Bmix / compressibility[j]) / Bmix);
+                idealGas ? 1.0
+                         : std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) -
+                                    std::log(compressibility[j] - Bmix) -
+                                    Amix * (temp / Amix - B[i] / Bmix) * std::log(1.0 + Bmix / compressibility[j]) /
+                                        Bmix);
           }
         }
       }
@@ -536,10 +571,12 @@ std::vector<EquationOfState::FluidResult> EquationOfState::computeFluidPropertie
             }
 
             fugacityCoefficients[i][j] =
-                std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) - std::log(compressibility[j] - Bmix) -
-                         (Amix / (2.0 * std::sqrt(2.0) * Bmix)) * (temp / Amix - B[i] / Bmix) *
-                             std::log((compressibility[j] + (1.0 + std::sqrt(2.0)) * Bmix) /
-                                      (compressibility[j] + (1.0 - std::sqrt(2)) * Bmix)));
+                idealGas ? 1.0
+                         : std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) -
+                                    std::log(compressibility[j] - Bmix) -
+                                    (Amix / (2.0 * std::sqrt(2.0) * Bmix)) * (temp / Amix - B[i] / Bmix) *
+                                        std::log((compressibility[j] + (1.0 + std::sqrt(2.0)) * Bmix) /
+                                                 (compressibility[j] + (1.0 - std::sqrt(2)) * Bmix)));
           }
         }
       }

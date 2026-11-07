@@ -139,6 +139,12 @@ HyperParallelTempering::HyperParallelTempering(InputReader& reader)
       // (an explicitly given 'FugacityCoefficient' would only be valid at one state point)
       for (Component& component : system.components)
       {
+        // A component without critical constants has no Peng-Robinson to take a coefficient from:
+        // the one it was given (or the ideal gas's one) is kept, the same at every state point.
+        if (!EquationOfState::hasCriticalConstants(component.criticalTemperature, component.criticalPressure))
+        {
+          continue;
+        }
         component.fugacityCoefficient = std::nullopt;
       }
       system.equationOfState = EquationOfState(EquationOfState::Type::PengRobinson,

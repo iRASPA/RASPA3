@@ -536,7 +536,7 @@ TEST(BAROSTAT_VIRIAL, propagate_cell_follows_the_automatic_cutoff)
   forceField.cutOffMoleculeVDWAutomatic = true;
 
   Component methane =
-      Component(forceField, "methane", 190.564, 45599200, 0.01142, {Atom({0, 0, 0}, 0.0, 1.0, 0, 6, 0, false, false)},
+      Component(forceField, "methane", 190.564, 4599200, 0.01142, {Atom({0, 0, 0}, 0.0, 1.0, 0, 6, 0, false, false)},
                 {}, {}, 5, 21, {}, std::nullopt, false);
   const SimulationBox box(20.0, 20.0, 20.0);
   System system(forceField, box, false, 300.0, 1.0e4, 1.0, {}, {methane}, {}, {30}, 5);

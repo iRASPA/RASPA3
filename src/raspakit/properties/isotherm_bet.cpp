@@ -394,6 +394,12 @@ void pinSystemPengRobinsonPressure(System& system, double pressurePa)
   system.pressureTensorDiagonal = double3(system.pressure, system.pressure, system.pressure);
   for (Component& component : system.components)
   {
+    // A component without critical constants has no Peng-Robinson to take a coefficient from:
+    // the one it was given (or the ideal gas's one) is kept, the same at every state point.
+    if (!EquationOfState::hasCriticalConstants(component.criticalTemperature, component.criticalPressure))
+    {
+      continue;
+    }
     component.fugacityCoefficient = std::nullopt;
   }
   system.equationOfState =

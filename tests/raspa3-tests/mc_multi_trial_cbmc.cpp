@@ -107,10 +107,13 @@ Component makeCO2(const ForceField &forceField, const MCMoveProbabilities &proba
                    {}, {}, 5, 21, probabilities, std::nullopt, false);
 }
 
+// Water, with the critical constants of water. They matter where it is given a swap move: the fugacities of
+// a mixture come from an equation of state, and a component without the constants has none and is taken as
+// an ideal gas, which for water at room temperature is a vapour ten times past saturation.
 Component makeWater(const ForceField &forceField, const MCMoveProbabilities &probabilities, std::uint8_t componentId)
 {
   return Component(
-      forceField, "water", 0.0, 0.0, 0.0,
+      forceField, "water", 647.096, 22064000.0, 0.3443,
       {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, componentId, false, false),
        Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, componentId, false,
             false),
@@ -174,7 +177,7 @@ TEST(MC_MULTI_TRIAL_CBMC, cpu_grower_mean_weight_shift_invariance)
   const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
 
-  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
+  Component methane = Component(forceField, "methane", 190.564, 4599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 0, false, false)}, {}, {}, 5, 21,
                                 MCMoveProbabilities(), std::nullopt, false);
 
@@ -240,7 +243,7 @@ TEST(MC_MULTI_TRIAL_CBMC, swap_and_reinsertion_drift_rigid_ewald_fau)
                             {}, {}, 5, 21, probabilities, std::nullopt, false);
   co2.numberOfTrialMolecules = 8;
 
-  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
+  Component methane = Component(forceField, "methane", 190.564, 4599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities,
                                 std::nullopt, false);
   methane.numberOfTrialMolecules = 5;
@@ -378,7 +381,7 @@ TEST(MC_MULTI_TRIAL_CBMC, loading_matches_single_trial_swap_methane_fau)
     probabilities.setProbability(Move::Types::Translation, 1.0);
     probabilities.setProbability(swapMove, 2.0);
 
-    Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
+    Component methane = Component(forceField, "methane", 190.564, 4599200, 0.01142,
                                   {Atom({0, 0, 0}, 0.0, 1.0, 0, 6, 0, false, false)}, {}, {}, 5, 21, probabilities,
                                   std::nullopt, false);
     methane.numberOfTrialMolecules = numberOfTrialMolecules;
@@ -570,15 +573,19 @@ TEST(MC_MULTI_TRIAL_CBMC, device_swap_and_reinsertion_drift_rigid_ewald_fau)
 
   Component co2 = makeCO2(forceField, probabilities, 0);
   co2.numberOfTrialMolecules = 8;
-  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
+  Component methane = Component(forceField, "methane", 190.564, 4599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities,
                                 std::nullopt, false);
   methane.numberOfTrialMolecules = 5;
   Component water = makeWater(forceField, probabilities, 2);
   water.numberOfTrialMolecules = 4;
 
+  // At a hundred bar all three stay in the zeolite, which the checks of their moves below need: at one bar
+  // the methane is driven out by the other two before the production cycles start, and has no reinsertion
+  // to show. (This used to pass at one bar because the water had no critical constants, which made every
+  // fugacity coefficient of the mixture not a number and the swaps of all three meaningless.)
   System system =
-      System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
+      System(forceField, std::nullopt, false, 300.0, 1e7, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
   system.cbmcDevice = device.value();
 
   // all three components are grown on the device
@@ -628,7 +635,7 @@ TEST(MC_MULTI_TRIAL_CBMC, device_grower_declines_a_background_with_a_fractional_
 
   auto makeMethane = [&](const MCMoveProbabilities &probabilities)
   {
-    return Component(forceField, "methane", 190.564, 45599200, 0.01142,
+    return Component(forceField, "methane", 190.564, 4599200, 0.01142,
                      {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 0, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt,
                      false);
   };
@@ -678,7 +685,7 @@ TEST(MC_MULTI_TRIAL_CBMC, device_grower_falls_back_to_the_cpu_grower_next_to_a_f
   cfcmc.setProbability(Move::Types::Rotation, 1.0);
   cfcmc.setProbability(Move::Types::SwapCFCMC, 1.0);
 
-  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
+  Component methane = Component(forceField, "methane", 190.564, 4599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 0, false, false)}, {}, {}, 5, 21, multiTrial,
                                 std::nullopt, false);
   methane.numberOfTrialMolecules = 5;
@@ -722,7 +729,7 @@ TEST(MC_MULTI_TRIAL_CBMC, device_loading_matches_cpu_grower_methane_fau)
     probabilities.setProbability(Move::Types::Translation, 1.0);
     probabilities.setProbability(Move::Types::SwapMultiTrialCBMC, 2.0);
 
-    Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
+    Component methane = Component(forceField, "methane", 190.564, 4599200, 0.01142,
                                   {Atom({0, 0, 0}, 0.0, 1.0, 0, 6, 0, false, false)}, {}, {}, 5, 21, probabilities,
                                   std::nullopt, false);
     methane.numberOfTrialMolecules = 16;
@@ -844,7 +851,7 @@ TEST(MC_MULTI_TRIAL_CBMC, device_environment_tracks_in_place_changes_of_the_forc
 
   ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
   Framework f = Framework::makeFAU(forceField, int3(1, 1, 1));
-  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
+  Component methane = Component(forceField, "methane", 190.564, 4599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 6, 0, false, false)}, {}, {}, 5, 21,
                                 MCMoveProbabilities(), std::nullopt, false);
   // no molecules: the background is the framework alone

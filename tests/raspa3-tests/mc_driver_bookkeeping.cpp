@@ -33,7 +33,7 @@ System makeMethaneCFCMCSystem(std::size_t numberOfMolecules)
   MCMoveProbabilities probabilities;
   probabilities.setProbability(Move::Types::Translation, 1.0);
   probabilities.setProbability(Move::Types::SwapCFCMC, 1.0);
-  Component methane(forceField, "methane", 190.564, 45599200, 0.01142,
+  Component methane(forceField, "methane", 190.564, 4599200, 0.01142,
                     {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt,
                     false);
   methane.lambdaGC.computeDUdlambda = true;
@@ -82,7 +82,7 @@ TEST(MC_DRIVER_BOOKKEEPING, system_level_move_probabilities_drive_the_fractional
 {
   const ForceField forceField({{"CH4", false, 16.04246, 0.0, 0.0, 6, false}}, {{158.5, 3.72}},
                               ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
-  Component methane(forceField, "methane", 190.564, 45599200, 0.01142,
+  Component methane(forceField, "methane", 190.564, 4599200, 0.01142,
                     {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21, MCMoveProbabilities(),
                     std::nullopt, false);
   methane.lambdaGC.computeDUdlambda = true;
@@ -112,7 +112,7 @@ TEST(MC_DRIVER_BOOKKEEPING, transition_matrix_samples_the_gibbs_lambda_histogram
   MCMoveProbabilities probabilities;
   probabilities.setProbability(Move::Types::Translation, 1.0);
   probabilities.setProbability(Move::Types::GibbsConventionalCFCMC, 1.0);
-  Component methane(forceField, "methane", 190.564, 45599200, 0.01142,
+  Component methane(forceField, "methane", 190.564, 4599200, 0.01142,
                     {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt,
                     false);
   methane.lambdaGibbs.computeDUdlambda = true;

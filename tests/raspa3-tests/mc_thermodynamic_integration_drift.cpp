@@ -201,7 +201,7 @@ std::tuple<Component, Component, Component> makeMuvtComponents(const ForceField&
   probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(swapMove, 1.0);
 
-  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
+  Component methane = Component(forceField, "methane", 190.564, 4599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
                                 probabilities_methane, std::nullopt, methaneTi);
 

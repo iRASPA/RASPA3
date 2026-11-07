@@ -39,7 +39,7 @@ TEST(MC_NVT_GRIDS_DRIFT, translation)
                             {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
-      Component(forceField, "methane", 190.564, 45599200, 0.01142,
+      Component(forceField, "methane", 190.564, 4599200, 0.01142,
                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component water = Component(
@@ -112,7 +112,7 @@ TEST(MC_NVT_GRIDS_DRIFT, random_translation)
                             {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
-      Component(forceField, "methane", 190.564, 45599200, 0.01142,
+      Component(forceField, "methane", 190.564, 4599200, 0.01142,
                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component water = Component(
@@ -185,7 +185,7 @@ TEST(MC_NVT_GRIDS_DRIFT, rotation)
                             {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
-      Component(forceField, "methane", 190.564, 45599200, 0.01142,
+      Component(forceField, "methane", 190.564, 4599200, 0.01142,
                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component water = Component(
@@ -258,7 +258,7 @@ TEST(MC_NVT_GRIDS_DRIFT, random_rotation)
                             {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
-      Component(forceField, "methane", 190.564, 45599200, 0.01142,
+      Component(forceField, "methane", 190.564, 4599200, 0.01142,
                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component water = Component(
@@ -331,7 +331,7 @@ TEST(MC_NVT_GRIDS_DRIFT, reinsertion)
                             {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
-      Component(forceField, "methane", 190.564, 45599200, 0.01142,
+      Component(forceField, "methane", 190.564, 4599200, 0.01142,
                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component water = Component(
@@ -406,7 +406,7 @@ TEST(MC_NVT_GRIDS_DRIFT, translation_rotation_reinsertion)
                             {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
-      Component(forceField, "methane", 190.564, 45599200, 0.01142,
+      Component(forceField, "methane", 190.564, 4599200, 0.01142,
                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component water = Component(
@@ -481,7 +481,7 @@ TEST(MC_NVT_GRIDS_DRIFT, random_translation_random_rotation_reinsertion)
                             {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
-      Component(forceField, "methane", 190.564, 45599200, 0.01142,
+      Component(forceField, "methane", 190.564, 4599200, 0.01142,
                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component water = Component(

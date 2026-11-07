@@ -53,7 +53,7 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertion)
   probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(Move::Types::Swap, 1.0);
 
-  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
+  Component methane = Component(forceField, "methane", 190.564, 4599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
                                 probabilities_methane, std::nullopt, false);
 
@@ -140,7 +140,7 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBMC)
   probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(Move::Types::SwapCBMC, 1.0);
 
-  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
+  Component methane = Component(forceField, "methane", 190.564, 4599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
                                 probabilities_methane, std::nullopt, false);
 
@@ -227,7 +227,7 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCFCMC)
   probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(Move::Types::SwapCFCMC, 1.0);
 
-  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
+  Component methane = Component(forceField, "methane", 190.564, 4599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
                                 probabilities_methane, std::nullopt, false);
 
@@ -314,7 +314,7 @@ TEST(MC_MUVT_GRIDS_DRIFT, insertionCBCFCMC)
   probabilities_methane.setProbability(Move::Types::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(Move::Types::SwapCBCFCMC, 1.0);
 
-  Component methane = Component(forceField, "methane", 190.564, 45599200, 0.01142,
+  Component methane = Component(forceField, "methane", 190.564, 4599200, 0.01142,
                                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21,
                                 probabilities_methane, std::nullopt, false);
 

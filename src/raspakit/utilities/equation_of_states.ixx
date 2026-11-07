@@ -49,6 +49,18 @@ export struct EquationOfState
     VaporLiquid = 4          ///< Vapor-liquid coexistence.
   };
 
+  /**
+   * \brief Whether a component has the critical constants a cubic equation of state is built from.
+   *
+   * They are optional in a molecule file and zero when left out. A component without both has no
+   * equation of state of its own and is taken as an ideal gas: no attraction and no co-volume in a
+   * mixture, a compressibility of one and a fugacity coefficient of one by itself.
+   */
+  static bool hasCriticalConstants(double criticalTemperature, double criticalPressure)
+  {
+    return criticalTemperature > 0.0 && criticalPressure > 0.0;
+  }
+
   struct FluidInput
   {
     double criticalTemperature;

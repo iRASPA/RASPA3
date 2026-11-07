@@ -34,6 +34,7 @@ add_executable(unit_tests_raspa3
   input_reader_tmmc.cpp
   reweighted_histogram_wham.cpp
   parallel_tmmc_windows.cpp
+  equation_of_state_critical_constants.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

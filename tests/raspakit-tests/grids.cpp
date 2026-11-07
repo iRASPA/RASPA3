@@ -69,7 +69,7 @@ TEST(grids, Test_CHA_grid)
                                       Atom(double3(0.3049, 0.1951, 0.0448), 0.15, 1.0, 0, 6, 0, 0),
                                   },
                                   int3(1, 1, 1));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
+  Component c = Component(0, forceField, "methane", 190.564, 4599200, 0.01142,
                           {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                            // uint8_t componentId, uint8_t groupId
                            Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 0, 0)},

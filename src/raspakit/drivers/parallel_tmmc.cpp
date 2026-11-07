@@ -390,6 +390,12 @@ void ParallelTMMC::initializeWalkers(System templateSystem)
       // (an explicitly given 'FugacityCoefficient' would only be valid at one temperature)
       for (Component& component : system.components)
       {
+        // A component without critical constants has no Peng-Robinson to take a coefficient from:
+        // the one it was given (or the ideal gas's one) is kept, the same at every state point.
+        if (!EquationOfState::hasCriticalConstants(component.criticalTemperature, component.criticalPressure))
+        {
+          continue;
+        }
         component.fugacityCoefficient = std::nullopt;
       }
       system.equationOfState =
@@ -1476,6 +1482,12 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
 
   const std::vector<EquationOfState::FluidInput> fluidInputs = {
       {frontComponent.criticalTemperature, frontComponent.criticalPressure, frontComponent.acentricFactor, 1.0, true}};
+  // A component without critical constants has no Peng-Robinson: its walkers ran with the fugacity
+  // coefficient it was given (or the ideal gas's one), and the reweighting uses that same coefficient at
+  // every pressure, so that the two sides of it are one fluid.
+  const bool recomputesFugacityCoefficient =
+      EquationOfState::hasCriticalConstants(frontComponent.criticalTemperature, frontComponent.criticalPressure);
+  const double keptFugacityCoefficient = frontComponent.fugacityCoefficient.value_or(1.0);
   const double logPressureMinimum = std::log(reweightingPressureRange.first);
   const double logPressureMaximum = std::log(reweightingPressureRange.second);
 
@@ -1544,7 +1556,9 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
       const std::vector<EquationOfState::FluidResult> fluidResults = EquationOfState::computeFluidProperties(
           temperature, pressurePa, fluidInputs, EquationOfState::Type::PengRobinson,
           EquationOfState::MixingRules::VanDerWaals);
-      return fluidResults.front().fugacityCoefficient.value_or(1.0) * pressurePa / Units::PressureConversionFactor;
+      return (recomputesFugacityCoefficient ? fluidResults.front().fugacityCoefficient.value_or(1.0)
+                                            : keptFugacityCoefficient) *
+             pressurePa / Units::PressureConversionFactor;
     };
 
     // Scatter one walker's collection matrix onto the global chain (zeros elsewhere).

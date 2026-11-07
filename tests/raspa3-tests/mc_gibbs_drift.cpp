@@ -258,7 +258,7 @@ TEST(MC_GIBBS_DRIFT, translation_rotation_reinsertion_volume)
                             {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
-      Component(forceField, "methane", 190.564, 45599200, 0.01142,
+      Component(forceField, "methane", 190.564, 4599200, 0.01142,
                 {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt,
                 false);
 

@@ -78,7 +78,7 @@ TEST(MC_NPT_DRIFT, isotropic_volume_change)
                             {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   Component methane =
-      Component(forceField, "methane", 190.564, 45599200, 0.01142, {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)},
+      Component(forceField, "methane", 190.564, 4599200, 0.01142, {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)},
                 {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   SimulationBox box = SimulationBox(30.0, 30.0, 30.0, 100.0 * (std::numbers::pi / 180.0),
@@ -122,7 +122,7 @@ TEST(MC_NPT_DRIFT, automatic_cutoff_follows_the_volume_moves)
   probabilities.setProbability(Move::Types::Translation, 1.0);
 
   Component methane =
-      Component(forceField, "methane", 190.564, 45599200, 0.01142, {Atom({0, 0, 0}, 0.0, 1.0, 0, 6, 0, false, false)},
+      Component(forceField, "methane", 190.564, 4599200, 0.01142, {Atom({0, 0, 0}, 0.0, 1.0, 0, 6, 0, false, false)},
                 {}, {}, 5, 21, probabilities, std::nullopt, false);
 
   // dense (liquid-like) state: the box stays small so the automatic cut-off is short and the shifts are sizeable

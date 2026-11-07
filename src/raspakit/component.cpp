@@ -3902,7 +3902,7 @@ Component Component::makeMethane(const ForceField &forceField, std::size_t id)
         std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "CH4"));
   }
 
-  return Component(forceField, "methane", 190.564, 45599200, 0.01142, 
+  return Component(forceField, "methane", 190.564, 4599200, 0.01142, 
                    {Atom({0, 0, 0}, 0.0, 1.0, 0, static_cast<std::uint16_t>(type_ch4.value()), static_cast<std::uint8_t>(id), false, false)},
                    {}, {}, 5, 21);
 }
