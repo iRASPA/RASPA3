@@ -51,7 +51,7 @@ export struct UreyBradleyPotential
   std::array<std::size_t, 2> identifiers;  ///< Identifiers of the two particles forming the ureyBradley.
   UreyBradleyType type;                    ///< The type of ureyBradley potential.
   std::array<double, maximumNumberOfUreyBradleyParameters>
-      parameters;  ///< Parameters associated with the ureyBradley potential.
+      parameters{};  ///< Parameters associated with the ureyBradley potential.
 
   /**
    * \brief Default constructor for UreyBradleyPotential.

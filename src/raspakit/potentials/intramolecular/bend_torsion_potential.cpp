@@ -311,7 +311,7 @@ std::tuple<double, std::array<double3, 4>, double3x3> BendTorsionPotential::pote
       DCos = (0.5 * parameters[0] - 2.0 * parameters[1] * cos_phi + 1.5 * parameters[2] * (4.0 * cos_phi2 - 1.0)) * s1 *
              s2;
       DTheta1 = torsion_part * ds1 * s2 / sin_theta1;
-      DTheta2 = torsion_part * s2 * ds2 * s1 / sin_theta2;
+      DTheta2 = torsion_part * s1 * ds2 / sin_theta2;
       break;
     }
     case BendTorsionType::Nicholas:

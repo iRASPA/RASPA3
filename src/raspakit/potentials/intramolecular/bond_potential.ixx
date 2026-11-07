@@ -11,6 +11,33 @@ import double3;
 import double3x3;
 import units;
 
+// Exact rejection sampling of the bond-length density p(r) ~ r^2 exp(-beta u(r)) on [lo, hi] (also used for the
+// Urey-Bradley 1-3 distances):
+// uniform proposals against a grid-estimated envelope (the 10% headroom covers the discretization
+// error of the grid maximum for these smooth one-dimensional densities). The former samplers
+// accepted with r^2 exp(-beta u) directly, which exceeds one for r > 1 or u < 0 and silently
+// truncates -- not a valid rejection scheme for the anharmonic bond types.
+export template <typename EnergyFunction>
+double sampleBondLengthRejection(RandomNumber& random, double lo, double hi, double beta, EnergyFunction energy)
+{
+  constexpr std::size_t numberOfGridPoints = 1024;
+  double envelope = 0.0;
+  for (std::size_t i = 0; i != numberOfGridPoints; ++i)
+  {
+    double r = lo + (hi - lo) * (static_cast<double>(i) + 0.5) / static_cast<double>(numberOfGridPoints);
+    envelope = std::max(envelope, r * r * std::exp(-beta * energy(r)));
+  }
+  envelope *= 1.1;
+
+  double bond_length, density;
+  do
+  {
+    bond_length = lo + (hi - lo) * random.uniform();
+    density = bond_length * bond_length * std::exp(-beta * energy(bond_length));
+  } while (random.uniform() > density / envelope);
+  return bond_length;
+}
+
 /**
  * \brief Maximum number of parameters allowed for bond potentials.
  *

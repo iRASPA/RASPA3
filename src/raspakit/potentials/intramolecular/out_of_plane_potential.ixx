@@ -39,7 +39,7 @@ export struct OutOfPlaneBendPotential
   std::array<std::size_t, 4> identifiers;  ///< Identifiers of the two particles forming the out_of_plane_bend.
   OutOfPlaneBendType type;                 ///< The type of out_of_plane_bend potential.
   std::array<double, maximumNumberOfOutOfPlaneBendParameters>
-      parameters;  ///< Parameters associated with the out_of_plane_bend potential.
+      parameters{};  ///< Parameters associated with the out_of_plane_bend potential.
 
   /**
    * \brief Default constructor for OutOfPlaneBendPotential.

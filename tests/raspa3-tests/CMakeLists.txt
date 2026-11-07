@@ -63,6 +63,7 @@ add_executable(unit_tests_raspa3
   spatial_decomposition_bond_bend_split.cpp
   polarization_minimization_derivatives.cpp
   mixed_framework_rigid_group_exclusions.cpp
+  intramolecular_potential_fixes.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

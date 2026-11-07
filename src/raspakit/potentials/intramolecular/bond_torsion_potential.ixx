@@ -39,7 +39,7 @@ export struct BondTorsionPotential
   std::array<std::size_t, 4> identifiers;  ///< Identifiers of the two particles forming the bond_torsion.
   BondTorsionType type;                    ///< The type of bond_torsion potential.
   std::array<double, maximumNumberOfBondTorsionParameters>
-      parameters;  ///< Parameters associated with the bond_torsion potential.
+      parameters{};  ///< Parameters associated with the bond_torsion potential.
 
   /**
    * \brief Default constructor for BondTorsionPotential.

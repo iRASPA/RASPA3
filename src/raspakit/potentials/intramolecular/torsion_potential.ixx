@@ -57,7 +57,7 @@ export struct TorsionPotential
   std::array<std::size_t, 4> identifiers;  ///< Identifiers of the two particles forming the torsion.
   TorsionType type;                        ///< The type of torsion potential.
   std::array<double, maximumNumberOfTorsionParameters>
-      parameters;  ///< Parameters associated with the torsion potential.
+      parameters{};  ///< Parameters associated with the torsion potential.
 
   /**
    * \brief Default constructor for TorsionPotential.

@@ -39,7 +39,7 @@ export struct BondBondPotential
   std::array<std::size_t, 3> identifiers;  ///< Identifiers of the two particles forming the bond_bond.
   BondBondType type;                       ///< The type of bond_bond potential.
   std::array<double, maximumNumberOfBondBondParameters>
-      parameters;  ///< Parameters associated with the bond_bond potential.
+      parameters{};  ///< Parameters associated with the bond_bond potential.
 
   /**
    * \brief Default constructor for BondBondPotential.

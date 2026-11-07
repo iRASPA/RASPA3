@@ -140,11 +140,11 @@ std::string UreyBradleyPotential::print() const
   }
 }
 
-double UreyBradleyPotential::generateUreyBradleyLength(RandomNumber &random, double beta) const
+double UreyBradleyPotential::generateUreyBradleyLength(RandomNumber& random, double beta) const
 {
-  double ureyBradley_length, ran1, ran2;
-  double temp, temp2, exp_term;
-  double r1, energy;
+  // The same samplers as BondPotential::generateBondLength: the density r^2 exp(-beta u(r)) is sampled by
+  // rejection against a normalized envelope.
+  double ureyBradley_length, sigma, envelope;
 
   switch (type)
   {
@@ -155,71 +155,66 @@ double UreyBradleyPotential::generateUreyBradleyLength(RandomNumber &random, dou
       // ===============================================
       // p_0/k_B [K/Å^2]   force constant
       // p_1     [Å]       reference ureyBradley distance
-      ran1 = 1.0 / std::sqrt(beta * parameters[0]);
-      ran2 = 1.0 / (parameters[1] + 3.0 * ran1) * (parameters[1] + 3.0 * ran1);
-      do ureyBradley_length = parameters[1] + ran1 * random.Gaussian();
-      while ((random.uniform() > ureyBradley_length * ureyBradley_length * ran2) || (ureyBradley_length <= 0.0));
+      //
+      // Stiff terms: Gaussian proposals against the r^2 Jacobian with the envelope (p_1 + 6 sigma)^2; soft or
+      // zero-strength terms use the grid-envelope sampler on a bounded interval instead.
+      sigma = std::sqrt(1.0 / (beta * parameters[0]));
+      if (!(sigma < 0.5 * std::max(parameters[1], 1.0)))
+      {
+        return sampleBondLengthRejection(random, 0.0, parameters[1] + 3.0, beta, [&](double r)
+                                         { return 0.5 * parameters[0] * (r - parameters[1]) * (r - parameters[1]); });
+      }
+      envelope = (parameters[1] + 6.0 * sigma) * (parameters[1] + 6.0 * sigma);
+      do ureyBradley_length = random.Gaussian(parameters[1], sigma);
+      while ((ureyBradley_length <= 0.0) || (random.uniform() > ureyBradley_length * ureyBradley_length / envelope));
       return ureyBradley_length;
     case UreyBradleyType::CoreShellSpring:
       // 0.5 * p0 * SQR(r);
       // ===============================================
       // p_0/k_B [K/Å^2]   force constant
-      ran1 = 1.0 / std::sqrt(beta * parameters[0]);
-      ran2 = 1.0 / (parameters[1] + 3.0 * ran1) * (parameters[1] + 3.0 * ran1);
-      do ureyBradley_length = ran1 * random.Gaussian();
-      while ((random.uniform() > ureyBradley_length * ureyBradley_length * ran2) || (ureyBradley_length <= 0.0));
-      return ureyBradley_length;
+      sigma = std::sqrt(1.0 / (beta * parameters[0]));
+      return sampleBondLengthRejection(random, 0.0, 6.0 * sigma, beta,
+                                       [&](double r) { return 0.5 * parameters[0] * r * r; });
     case UreyBradleyType::Morse:
       // p_0*[(1.0-{exp(-p_1*(r-p_2))})^2-1.0]
       // ===============================================
       // p_0/k_B [K]       force constant
       // p_1     [Å^-1]    parameter
       // p_2     [Å]       reference ureyBradley distance
-      do
-      {
-        ureyBradley_length = 3.0 * random.uniform();
-        energy =
-            parameters[0] * (std::pow(1.0 - std::exp(-parameters[1] * (ureyBradley_length - parameters[2])), 2) - 1.0);
-      } while (random.uniform() > (ureyBradley_length * ureyBradley_length) * std::exp(-beta * energy));
-      return ureyBradley_length;
+      return sampleBondLengthRejection(
+          random, 0.0, 3.0, beta, [&](double r)
+          { return parameters[0] * (std::pow(1.0 - std::exp(-parameters[1] * (r - parameters[2])), 2) - 1.0); });
     case UreyBradleyType::LJ_12_6:
       // A/r_ij^12-B/r_ij^6
       // ===============================================
       // p_0/k_B [K Å^12]
       // p_1/k_B [K Å^6]
-      do
-      {
-        ureyBradley_length = 3.0 * random.uniform();
-        temp = std::pow(1.0 / (ureyBradley_length * ureyBradley_length), 3);
-        energy = parameters[0] * temp * temp - parameters[1] * temp;
-      } while (random.uniform() > (ureyBradley_length * ureyBradley_length) * std::exp(-beta * energy));
-      return ureyBradley_length;
+      return sampleBondLengthRejection(random, 0.0, 3.0, beta,
+                                       [&](double r)
+                                       {
+                                         double temp = std::pow(1.0 / (r * r), 3);
+                                         return parameters[0] * temp * temp - parameters[1] * temp;
+                                       });
     case UreyBradleyType::LennardJones:
       // 4*p_0*((p_1/r)^12-(p_1/r)^6)
       // ===============================================
       // p_0/k_B [K]
       // p_1     [Å]
-      do
-      {
-        ureyBradley_length = 3.0 * random.uniform();
-        temp = std::pow((parameters[1] * parameters[1]) / (ureyBradley_length * ureyBradley_length), 3);
-        energy = 4.0 * parameters[0] * (temp * (temp - 1.0));
-      } while (random.uniform() > (ureyBradley_length * ureyBradley_length) * std::exp(-beta * energy));
-      return ureyBradley_length;
+      return sampleBondLengthRejection(random, 0.0, 3.0, beta,
+                                       [&](double r)
+                                       {
+                                         double temp = std::pow((parameters[1] * parameters[1]) / (r * r), 3);
+                                         return 4.0 * parameters[0] * (temp * (temp - 1.0));
+                                       });
     case UreyBradleyType::Buckingham:
       // p_0*exp(-p_1 r)-p_2/r^6
       // ===============================================
       // p_0/k_B [K]
       // p_1     [Å^-1]
       // p_2/k_B [K Å^6]
-      do
-      {
-        ureyBradley_length = 3.0 * random.uniform() + 0.8;
-        temp = parameters[2] * std::pow(1.0 / (ureyBradley_length * ureyBradley_length), 3);
-        exp_term = parameters[0] * std::exp(-parameters[1] * ureyBradley_length);
-        energy = exp_term - temp;
-      } while (random.uniform() > (ureyBradley_length * ureyBradley_length) * std::exp(-beta * energy));
-      return ureyBradley_length;
+      return sampleBondLengthRejection(
+          random, 0.8, 3.8, beta, [&](double r)
+          { return parameters[0] * std::exp(-parameters[1] * r) - parameters[2] * std::pow(1.0 / (r * r), 3); });
     case UreyBradleyType::RestrainedHarmonic:
       // 0.5*p_0*(r-p_1)^2                   |r-p_1|<=p_2
       // 0.5*p_0*p_2^2+p_0*p_2*(|r-p_1|-p_2) |r-p_1|>p_2
@@ -227,14 +222,14 @@ double UreyBradleyPotential::generateUreyBradleyLength(RandomNumber &random, dou
       // p_0/k_B [K/Å^2]
       // p_1     [Å]
       // p_2     [Å]
-      do
-      {
-        ureyBradley_length = 3.0 * random.uniform();
-        r1 = ureyBradley_length - parameters[1];
-        energy = 0.5 * parameters[0] * std::pow(std::min(std::fabs(r1), parameters[2]), 2) +
-                 parameters[0] * parameters[2] * std::max(std::fabs(r1) - parameters[2], 0.0);
-      } while (random.uniform() > (ureyBradley_length * ureyBradley_length) * std::exp(-beta * energy));
-      return ureyBradley_length;
+      return sampleBondLengthRejection(
+          random, 0.0, 3.0, beta,
+          [&](double r)
+          {
+            double r1 = r - parameters[1];
+            return 0.5 * parameters[0] * std::pow(std::min(std::fabs(r1), parameters[2]), 2) +
+                   parameters[0] * parameters[2] * std::max(std::fabs(r1) - parameters[2], 0.0);
+          });
     case UreyBradleyType::Quartic:
       // (1/2)*p_0*(r-p_1)^2+(1/3)*p_2*(r-p_1)^3+(1/4)*p_3*(r-p_1)^4
       // ===========================================================
@@ -242,15 +237,15 @@ double UreyBradleyPotential::generateUreyBradleyLength(RandomNumber &random, dou
       // p_1     [Å]
       // p_2/k_B [K/Å^3]
       // p_3/k_B [K/Å^4]
-      do
-      {
-        ureyBradley_length = 3.0 * random.uniform();
-        temp = ureyBradley_length - parameters[1];
-        temp2 = temp * temp;
-        energy = 0.5 * parameters[0] * temp2 + (1.0 / 3.0) * parameters[2] * temp * temp2 +
-                 0.25 * parameters[3] * temp2 * temp2;
-      } while (random.uniform() > (ureyBradley_length * ureyBradley_length) * std::exp(-beta * energy));
-      return ureyBradley_length;
+      return sampleBondLengthRejection(random, 0.0, 3.0, beta,
+                                       [&](double r)
+                                       {
+                                         double temp = r - parameters[1];
+                                         double temp2 = temp * temp;
+                                         return 0.5 * parameters[0] * temp2 +
+                                                (1.0 / 3.0) * parameters[2] * temp * temp2 +
+                                                0.25 * parameters[3] * temp2 * temp2;
+                                       });
     case UreyBradleyType::CFF_Quartic:
       // p_0*(r-p_1)^2+p_2*(r-p_1)^3+p_3*(r-p_1)^4
       // ===============================================
@@ -258,33 +253,33 @@ double UreyBradleyPotential::generateUreyBradleyLength(RandomNumber &random, dou
       // p_1     [Å]
       // p_2/k_B [K/Å^3]
       // p_3/k_B [K/Å^4]
-      do
-      {
-        ureyBradley_length = 3.0 * random.uniform();
-        temp = ureyBradley_length - parameters[1];
-        temp2 = temp * temp;
-        energy = parameters[0] * temp2 + parameters[2] * temp * temp2 + parameters[3] * temp2 * temp2;
-      } while (random.uniform() > (ureyBradley_length * ureyBradley_length) * std::exp(-beta * energy));
-      return ureyBradley_length;
+      return sampleBondLengthRejection(random, 0.0, 3.0, beta,
+                                       [&](double r)
+                                       {
+                                         double temp = r - parameters[1];
+                                         double temp2 = temp * temp;
+                                         return parameters[0] * temp2 + parameters[2] * temp * temp2 +
+                                                parameters[3] * temp2 * temp2;
+                                       });
     case UreyBradleyType::MM3:
       // p_0*(r-p_1)^2*(1.0-2.55*(r-p_1)+(7.0/12.0)*2.55^2*(r-p_1)^2)
       // =================================================================
       // p_0     [mdyne/Å molecule]
       // p_1     [Å]
-      do
-      {
-        ureyBradley_length = 3.0 * random.uniform();
-        temp = ureyBradley_length - parameters[1];
-        temp2 = std::pow(ureyBradley_length - parameters[1], 2);
-        energy = parameters[0] * temp2 * (1.0 - 2.55 * temp + (7.0 / 12.0) * 2.55 * 2.55 * temp2);
-      } while (random.uniform() > (ureyBradley_length * ureyBradley_length) * std::exp(-beta * energy));
-      return ureyBradley_length;
+      return sampleBondLengthRejection(random, 0.0, 3.0, beta,
+                                       [&](double r)
+                                       {
+                                         double temp = r - parameters[1];
+                                         double temp2 = temp * temp;
+                                         return parameters[0] * temp2 *
+                                                (1.0 - 2.55 * temp + (7.0 / 12.0) * 2.55 * 2.55 * temp2);
+                                       });
     default:
       std::unreachable();
   }
 }
 
-double UreyBradleyPotential::calculateEnergy(const double3 &posA, const double3 &posB) const
+double UreyBradleyPotential::calculateEnergy(const double3& posA, const double3& posB) const
 {
   double temp, temp2;
   double r1, rri;

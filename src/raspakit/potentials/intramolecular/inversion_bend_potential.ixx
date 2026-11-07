@@ -47,7 +47,7 @@ export struct InversionBendPotential
   std::array<std::size_t, 4> identifiers;  ///< Identifiers of the two particles forming the inversion_bend.
   InversionBendType type;                  ///< The type of inversion_bend potential.
   std::array<double, maximumNumberOfInversionBendParameters>
-      parameters;  ///< Parameters associated with the inversion_bend potential.
+      parameters{};  ///< Parameters associated with the inversion_bend potential.
 
   /**
    * \brief Default constructor for InversionBendPotential.

@@ -47,7 +47,7 @@ export struct BondBendPotential
   std::array<std::size_t, 4> identifiers;  ///< Identifiers of the two particles forming the bond_bend.
   BondBendType type;                       ///< The type of bond_bend potential.
   std::array<double, maximumNumberOfBondBendParameters>
-      parameters;  ///< Parameters associated with the bond_bend potential.
+      parameters{};  ///< Parameters associated with the bond_bend potential.
 
   /**
    * \brief Default constructor for BondBendPotential.
