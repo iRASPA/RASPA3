@@ -48,15 +48,13 @@ bool sensible(double value) { return value > 0.1 && value < 10.0; }
 
 }  // namespace
 
-
 TEST(EQUATION_OF_STATE, a_component_without_critical_constants_is_an_ideal_gas)
 {
   const std::vector<EquationOfState::FluidInput> alone = {{0.0, 0.0, 0.0, 1.0, true}};
   for (double pressure : {1.0, 1.0e5, 1.0e7})
   {
-    const std::vector<EquationOfState::FluidResult> result =
-        EquationOfState::computeFluidProperties(300.0, pressure, alone, EquationOfState::Type::PengRobinson,
-                                                EquationOfState::MixingRules::VanDerWaals);
+    const std::vector<EquationOfState::FluidResult> result = EquationOfState::computeFluidProperties(
+        300.0, pressure, alone, EquationOfState::Type::PengRobinson, EquationOfState::MixingRules::VanDerWaals);
     ASSERT_EQ(result.size(), 1uz);
     ASSERT_TRUE(result.front().fugacityCoefficient.has_value());
     EXPECT_DOUBLE_EQ(result.front().fugacityCoefficient.value(), 1.0) << "at " << pressure << " Pa";
@@ -74,7 +72,6 @@ TEST(EQUATION_OF_STATE, a_component_without_critical_constants_is_an_ideal_gas)
     EXPECT_DOUBLE_EQ(result.front().fugacityCoefficient.value(), 1.0);
   }
 }
-
 
 // In a mixture it takes no part in the attraction and has no volume of its own, and leaves the component
 // that has an equation of state with a coefficient that is a number.
@@ -101,7 +98,6 @@ TEST(EQUATION_OF_STATE, an_ideal_component_does_not_spoil_the_mixture_it_is_in)
   EXPECT_NEAR(pure.front().fugacityCoefficient.value(), 0.998, 0.001);
 }
 
-
 // A system is given its fugacity coefficients as it is built. Without critical constants the coefficient is
 // one, or what the input gave; with them it is Peng-Robinson's, or what the input gave.
 TEST(EQUATION_OF_STATE, a_system_without_critical_constants_has_a_coefficient_that_is_a_number)
@@ -120,7 +116,6 @@ TEST(EQUATION_OF_STATE, a_system_without_critical_constants_has_a_coefficient_th
   const System real = makeSystem(methaneCriticalTemperature, methaneCriticalPressure, std::nullopt);
   EXPECT_NEAR(real.components.front().fugacityCoefficient.value(), 0.998, 0.001);
 }
-
 
 // The drivers that run one system at many state points take the coefficient from Peng-Robinson at each of
 // them, and put aside one the input gives: it would be right at one state point only. That holds where
@@ -167,4 +162,44 @@ TEST(EQUATION_OF_STATE, a_driver_keeps_the_coefficient_of_a_component_it_cannot_
   EXPECT_NEAR(dilute, 1.0, 1.0e-4);
   EXPECT_LT(dense, 0.99);
   EXPECT_GT(dense, 0.95);
+}
+
+// In the three-root regime the mixture is one bulk phase: every component takes the same root, the one with the
+// lower molar Gibbs energy of the mixture. Methane with n-butane at 260 K and 5 bar: methane alone would prefer
+// the vapor root and butane the liquid root, and the mixture's choice depends on the composition.
+TEST(EQUATION_OF_STATE, a_mixture_takes_one_compressibility_root_for_all_its_components)
+{
+  constexpr double butaneCriticalTemperature = 425.125;
+  constexpr double butaneCriticalPressure = 3796000.0;
+  constexpr double butaneAcentricFactor = 0.2002;
+  constexpr double temperature = 260.0;
+  constexpr double pressure = 5.0e5;
+
+  auto mixture = [&](double methaneFraction)
+  {
+    const std::vector<EquationOfState::FluidInput> inputs = {
+        {methaneCriticalTemperature, methaneCriticalPressure, methaneAcentricFactor, methaneFraction, true},
+        {butaneCriticalTemperature, butaneCriticalPressure, butaneAcentricFactor, 1.0 - methaneFraction, true}};
+    return EquationOfState::computeFluidProperties(temperature, pressure, inputs, EquationOfState::Type::PengRobinson,
+                                                   EquationOfState::MixingRules::VanDerWaals);
+  };
+
+  // butane-rich: the liquid root for both
+  {
+    const std::vector<EquationOfState::FluidResult> results = mixture(0.1);
+    ASSERT_EQ(results.size(), 2uz);
+    EXPECT_DOUBLE_EQ(results[0].compressibility, results[1].compressibility);
+    EXPECT_EQ(results[0].fluidState, results[1].fluidState);
+    EXPECT_EQ(results[0].fluidState, EquationOfState::FluidState::Liquid);
+    EXPECT_LT(results[0].compressibility, 0.1);
+  }
+  // half methane: the vapor root for both
+  {
+    const std::vector<EquationOfState::FluidResult> results = mixture(0.5);
+    ASSERT_EQ(results.size(), 2uz);
+    EXPECT_DOUBLE_EQ(results[0].compressibility, results[1].compressibility);
+    EXPECT_EQ(results[0].fluidState, results[1].fluidState);
+    EXPECT_EQ(results[0].fluidState, EquationOfState::FluidState::Vapor);
+    EXPECT_GT(results[0].compressibility, 0.5);
+  }
 }

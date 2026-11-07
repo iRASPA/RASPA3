@@ -21,6 +21,32 @@ EquationOfState::EquationOfState(EquationOfState::Type type, EquationOfState::Mi
 
 // T in Kelvin
 // p in Pascal
+// The stable bulk phase of a mixture in the three-root regime (vapor root compressibility[0], liquid root
+// compressibility[2]): one root for every component, the one with the lower molar Gibbs energy of the mixture,
+// sum_i y_i ln phi_i. Choosing per component, as was done, could hand the volatile component the vapor root and
+// the heavy component the liquid root in the same reservoir. Equal Gibbs energies are coexistence.
+struct StableRootSelection
+{
+  std::size_t root;
+  EquationOfState::FluidState state;
+};
+
+template <typename MolFractionOf>
+static StableRootSelection selectStableRoot(const std::vector<std::vector<double>>& fugacityCoefficients,
+                                            std::size_t numberOfComponents, MolFractionOf molFractionOf)
+{
+  double gibbsDifference = 0.0;  // vapor minus liquid, in units of RT
+  for (std::size_t i = 0; i < numberOfComponents; ++i)
+  {
+    const double y = molFractionOf(i);
+    if (!(y > 0.0)) continue;
+    gibbsDifference += y * (std::log(fugacityCoefficients[i][0]) - std::log(fugacityCoefficients[i][2]));
+  }
+  if (gibbsDifference < 0.0) return {0uz, EquationOfState::FluidState::Vapor};
+  if (gibbsDifference > 0.0) return {2uz, EquationOfState::FluidState::Liquid};
+  return {0uz, EquationOfState::FluidState::VaporLiquid};
+}
+
 void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type,
                                                       EquationOfState::MixingRules rules,
                                                       double temperature, double pressure,
@@ -246,6 +272,12 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
     */
   double excess_volume = simulationBox.volume * heliumVoidFraction;
 
+  const StableRootSelection stableRoot =
+      (numberOfSolutions != 1 && compressibility[2] > 0.0)
+          ? selectStableRoot(fugacityCoefficients, components.size(),
+                             [&](std::size_t i) { return components[i].swappable ? components[i].molFraction : 0.0; })
+          : StableRootSelection{0uz, FluidState::Unknown};
+
   // get the gas-phase fugacity coefficient
   for (std::size_t i = 0; i < components.size(); ++i)
   {
@@ -275,54 +307,20 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
       {
         if (compressibility[2] > 0.0)
         {
-          if (fugacityCoefficients[i][0] < fugacityCoefficients[i][2])
+          // one root for the whole mixture (see selectStableRoot above the function)
+          const std::size_t root = stableRoot.root;
+          fluidState = stableRoot.state;
+          if (!components[i].fugacityCoefficient.has_value())
           {
-            // vapour (stable) and liquid (metastable)
-            fluidState = FluidState::Vapor;
-            if (!components[i].fugacityCoefficient.has_value())
-            {
-              components[i].fugacityCoefficient = fugacityCoefficients[i][0];
-            }
-            components[i].amountOfExcessMolecules = components[i].molFraction * Units::AvogadroConstant *
-                                                    excess_volume * Units::AngstromCubed * pressure /
-                                                    (compressibility[0] * Units::MolarGasConstant * temperature);
-            components[i].bulkFluidDensity =
-                (components[i].molFraction * pressure / (compressibility[0] * Units::MolarGasConstant * temperature)) *
-                components[i].totalMass / 1000.0;
-            components[i].compressibility = compressibility[0];
+            components[i].fugacityCoefficient = fugacityCoefficients[i][root];
           }
-          else if (fugacityCoefficients[i][0] > fugacityCoefficients[i][2])
-          {
-            // vapour (metastable) and liquid (stable)
-            fluidState = FluidState::Liquid;
-            if (!components[i].fugacityCoefficient.has_value())
-            {
-              components[i].fugacityCoefficient = fugacityCoefficients[i][2];
-            }
-            components[i].amountOfExcessMolecules = components[i].molFraction * Units::AvogadroConstant *
-                                                    excess_volume * Units::AngstromCubed * pressure /
-                                                    (compressibility[2] * Units::MolarGasConstant * temperature);
-            components[i].bulkFluidDensity =
-                (components[i].molFraction * pressure / (compressibility[2] * Units::MolarGasConstant * temperature)) *
-                components[i].totalMass / 1000.0;
-            components[i].compressibility = compressibility[2];
-          }
-          else
-          {
-            // vapour (stable) and liquid (stable)
-            fluidState = FluidState::VaporLiquid;
-            if (!components[i].fugacityCoefficient.has_value())
-            {
-              components[i].fugacityCoefficient = fugacityCoefficients[i][0];
-            }
-            components[i].amountOfExcessMolecules = components[i].molFraction * Units::AvogadroConstant *
-                                                    excess_volume * Units::AngstromCubed * pressure /
-                                                    (compressibility[0] * Units::MolarGasConstant * temperature);
-            components[i].bulkFluidDensity =
-                (components[i].molFraction * pressure / (compressibility[0] * Units::MolarGasConstant * temperature)) *
-                components[i].totalMass / 1000.0;
-            components[i].compressibility = compressibility[0];
-          }
+          components[i].amountOfExcessMolecules = components[i].molFraction * Units::AvogadroConstant * excess_volume *
+                                                  Units::AngstromCubed * pressure /
+                                                  (compressibility[root] * Units::MolarGasConstant * temperature);
+          components[i].bulkFluidDensity =
+              (components[i].molFraction * pressure / (compressibility[root] * Units::MolarGasConstant * temperature)) *
+              components[i].totalMass / 1000.0;
+          components[i].compressibility = compressibility[root];
         }
         else
         {
@@ -591,6 +589,13 @@ std::vector<EquationOfState::FluidResult> EquationOfState::computeFluidPropertie
     */
   //double excess_volume = simulationBox.volume * heliumVoidFraction;
 
+  const StableRootSelection stableRoot =
+      (numberOfSolutions != 1 && compressibility[2] > 0.0)
+          ? selectStableRoot(
+                fugacityCoefficients, equationOfStateProperties.size(), [&](std::size_t i)
+                { return equationOfStateProperties[i].swappable ? equationOfStateProperties[i].molFraction : 0.0; })
+          : StableRootSelection{0uz, FluidState::Unknown};
+
   // get the gas-phase fugacity coefficient
   for (std::size_t i = 0; i < equationOfStateProperties.size(); ++i)
   {
@@ -620,54 +625,14 @@ std::vector<EquationOfState::FluidResult> EquationOfState::computeFluidPropertie
       {
         if (compressibility[2] > 0.0)
         {
-          if (fugacityCoefficients[i][0] < fugacityCoefficients[i][2])
+          // one root for the whole mixture (see selectStableRoot above computeComponentFluidProperties)
+          const std::size_t root = stableRoot.root;
+          result[i].fluidState = stableRoot.state;
+          if (!result[i].fugacityCoefficient.has_value())
           {
-            // vapour (stable) and liquid (metastable)
-            result[i].fluidState = FluidState::Vapor;
-            if (!result[i].fugacityCoefficient.has_value())
-            {
-              result[i].fugacityCoefficient = fugacityCoefficients[i][0];
-            }
-            //components[i].amountOfExcessMolecules = components[i].molFraction * Units::AvogadroConstant *
-            //                                        excess_volume * Units::AngstromCubed * pressure /
-            //                                        (compressibility[0] * Units::MolarGasConstant * temperature);
-            //components[i].bulkFluidDensity =
-            //    (components[i].molFraction * pressure / (compressibility[0] * Units::MolarGasConstant * temperature)) *
-            //    components[i].totalMass / 1000.0;
-            result[i].compressibility = compressibility[0];
+            result[i].fugacityCoefficient = fugacityCoefficients[i][root];
           }
-          else if (fugacityCoefficients[i][0] > fugacityCoefficients[i][2])
-          {
-            // vapour (metastable) and liquid (stable)
-            result[i].fluidState = FluidState::Liquid;
-            if (!result[i].fugacityCoefficient.has_value())
-            {
-              result[i].fugacityCoefficient = fugacityCoefficients[i][2];
-            }
-            //components[i].amountOfExcessMolecules = components[i].molFraction * Units::AvogadroConstant *
-            //                                        excess_volume * Units::AngstromCubed * pressure /
-            //                                        (compressibility[2] * Units::MolarGasConstant * temperature);
-            //components[i].bulkFluidDensity =
-            //    (components[i].molFraction * pressure / (compressibility[2] * Units::MolarGasConstant * temperature)) *
-            //    components[i].totalMass / 1000.0;
-            result[i].compressibility = compressibility[2];
-          }
-          else
-          {
-            // vapour (stable) and liquid (stable)
-            result[i].fluidState = FluidState::VaporLiquid;
-            if (!result[i].fugacityCoefficient.has_value())
-            {
-              result[i].fugacityCoefficient = fugacityCoefficients[i][0];
-            }
-            //components[i].amountOfExcessMolecules = components[i].molFraction * Units::AvogadroConstant *
-            //                                        excess_volume * Units::AngstromCubed * pressure /
-            //                                        (compressibility[0] * Units::MolarGasConstant * temperature);
-            //components[i].bulkFluidDensity =
-            //    (components[i].molFraction * pressure / (compressibility[0] * Units::MolarGasConstant * temperature)) *
-            //    components[i].totalMass / 1000.0;
-            result[i].compressibility = compressibility[0];
-          }
+          result[i].compressibility = compressibility[root];
         }
         else
         {
