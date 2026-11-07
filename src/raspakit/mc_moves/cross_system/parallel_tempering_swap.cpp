@@ -245,9 +245,12 @@ std::optional<double> tmmcLogBias(const System& replica, const System& configura
   if (!replica.tmmc.useTMBias && !replica.tmmc.useWangLandau) return 0.0;
   if (replica.components.empty() || configuration.components.empty()) return 0.0;
 
-  const std::size_t moleculeCount = configuration.numberOfIntegerMoleculesPerComponent.front();
+  // the chain is of the tracked component (the adsorbate), not of whatever component comes first
+  const std::size_t componentId = replica.tmmcComponent();
+  if (componentId >= configuration.components.size()) return 0.0;
+  const std::size_t moleculeCount = configuration.numberOfIntegerMoleculesPerComponent[componentId];
   const std::size_t lambdaBin =
-      replica.tmmc.lambdaChain() ? configuration.components.front().lambdaGC.currentBin : 0uz;
+      replica.tmmc.lambdaChain() ? configuration.components[componentId].lambdaGC.currentBin : 0uz;
   const std::size_t index = replica.tmmc.chainIndex(moleculeCount, lambdaBin);
   if (index >= replica.tmmc.bias.size()) return std::nullopt;
   return replica.tmmc.bias[index];

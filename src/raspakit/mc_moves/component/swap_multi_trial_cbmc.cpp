@@ -81,12 +81,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveMultiTri
   const double Pacc = std::exp(logPreFactor + growData->logMeanWeight - std::log(idealGasRosenbluthWeight) +
                                growData->logProposalCorrection);
 
-  if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
+  if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
   {
     return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
   }
   const std::size_t newN = oldN == std::numeric_limits<std::size_t>::max() ? oldN : oldN + 1;
-  const double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+  const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
 
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
@@ -156,12 +156,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveMultiTria
   const double Pacc = std::exp(logPreFactor + std::log(idealGasRosenbluthWeight) - retraceData.logMeanWeight +
                                retraceData.logProposalCorrection);
 
-  if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
+  if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
   {
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }
   const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-  const double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+  const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
 
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {

@@ -491,14 +491,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
                  system.beta * energyDifference.potentialEnergy());
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
-    if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN_A >= system.tmmc.maxMacrostate)
+    if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN_A >= system.tmmc.maxMacrostate)
     {
       restoreFractionalPair();
       return {std::nullopt, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
     }
 
     const std::size_t newN_A = oldN_A == std::numeric_limits<std::size_t>::max() ? oldN_A : oldN_A + 1;
-    const double biasTransitionMatrix = system.tmmc.biasFactor(newN_A, oldN_A);
+    const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN_A, oldN_A);
 
     if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {
@@ -868,14 +868,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
                  system.beta * energyDifference.potentialEnergy());
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
-    if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN_A <= system.tmmc.minMacrostate)
+    if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN_A <= system.tmmc.minMacrostate)
     {
       restoreMolecules();
       return {std::nullopt, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
     }
 
     const std::size_t newN_A = oldN_A == 0 ? 0 : oldN_A - 1;
-    const double biasTransitionMatrix = system.tmmc.biasFactor(newN_A, oldN_A);
+    const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN_A, oldN_A);
 
     if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {

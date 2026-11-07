@@ -38,7 +38,8 @@ class DualTMMCTrial
       : systemA_(systemA),
         systemB_(systemB),
         oldNA_(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent]),
-        oldNB_(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent])
+        oldNB_(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]),
+        selectedComponent_(selectedComponent)
   {
   }
 
@@ -49,8 +50,8 @@ class DualTMMCTrial
   {
     if (!recorded_)
     {
-      systemA_.tmmc.updateMatrix(transitionVector(0.0, deltaA_), oldNA_);
-      systemB_.tmmc.updateMatrix(transitionVector(0.0, deltaB_), oldNB_);
+      if (systemA_.tmmcTracks(selectedComponent_)) systemA_.tmmc.updateMatrix(transitionVector(0.0, deltaA_), oldNA_);
+      if (systemB_.tmmcTracks(selectedComponent_)) systemB_.tmmc.updateMatrix(transitionVector(0.0, deltaB_), oldNB_);
     }
   }
 
@@ -62,33 +63,37 @@ class DualTMMCTrial
 
   bool transitionsAreInBounds(int deltaA, int deltaB) const
   {
-    return transitionIsInBounds(systemA_, oldNA_, deltaA) && transitionIsInBounds(systemB_, oldNB_, deltaB);
+    return transitionIsInBounds(systemA_, selectedComponent_, oldNA_, deltaA) &&
+           transitionIsInBounds(systemB_, selectedComponent_, oldNB_, deltaB);
   }
 
   double biasFactor(int deltaA, int deltaB) const
   {
-    return transitionBias(systemA_, oldNA_, deltaA) * transitionBias(systemB_, oldNB_, deltaB);
+    return transitionBias(systemA_, selectedComponent_, oldNA_, deltaA) *
+           transitionBias(systemB_, selectedComponent_, oldNB_, deltaB);
   }
 
   void record(double physicalAcceptance, int deltaA, int deltaB)
   {
-    systemA_.tmmc.updateMatrix(transitionVector(physicalAcceptance, deltaA), oldNA_);
-    systemB_.tmmc.updateMatrix(transitionVector(physicalAcceptance, deltaB), oldNB_);
+    if (systemA_.tmmcTracks(selectedComponent_))
+      systemA_.tmmc.updateMatrix(transitionVector(physicalAcceptance, deltaA), oldNA_);
+    if (systemB_.tmmcTracks(selectedComponent_))
+      systemB_.tmmc.updateMatrix(transitionVector(physicalAcceptance, deltaB), oldNB_);
     recorded_ = true;
   }
 
  private:
-  static bool transitionIsInBounds(const System& system, std::size_t oldN, int delta)
+  static bool transitionIsInBounds(const System& system, std::size_t componentId, std::size_t oldN, int delta)
   {
-    if (!system.tmmc.doTMMC || !system.tmmc.rejectOutOfBound || delta == 0) return true;
+    if (!system.tmmcTracks(componentId) || !system.tmmc.rejectOutOfBound || delta == 0) return true;
     if (delta > 0) return oldN < system.tmmc.maxMacrostate;
     return oldN > 0 && oldN - 1 >= system.tmmc.minMacrostate;
   }
 
-  static double transitionBias(System& system, std::size_t oldN, int delta)
+  static double transitionBias(System& system, std::size_t componentId, std::size_t oldN, int delta)
   {
-    if (delta > 0) return system.tmmc.biasFactor(oldN + 1, oldN);
-    if (delta < 0) return system.tmmc.biasFactor(oldN - 1, oldN);
+    if (delta > 0) return system.tmmcBiasFactor(componentId, oldN + 1, oldN);
+    if (delta < 0) return system.tmmcBiasFactor(componentId, oldN - 1, oldN);
     return 1.0;
   }
 
@@ -104,6 +109,7 @@ class DualTMMCTrial
   System& systemB_;
   std::size_t oldNA_;
   std::size_t oldNB_;
+  std::size_t selectedComponent_;
   int deltaA_{0};
   int deltaB_{0};
   bool recorded_{false};

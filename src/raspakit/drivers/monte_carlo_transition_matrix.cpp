@@ -61,19 +61,6 @@ bool isTMMCCrossSystemMove(Move::Types moveType)
   }
 }
 
-// The component whose molecule count is the macrostate: the one adsorbate. The input reader admits no second
-// component to this driver, but a system built in code may carry a cation beside the adsorbate, which is
-// picked for its own moves and is not what the transition matrix is of; sampling the count of whatever
-// component had just moved would put the cations' count into the adsorbate's histogram.
-std::size_t tmmcComponentOf(const System& system)
-{
-  for (std::size_t componentId = 0uz; componentId < system.components.size(); ++componentId)
-  {
-    if (system.components[componentId].type == Component::Type::Adsorbate) return componentId;
-  }
-  return 0uz;
-}
-
 void sampleTMMCState(System& system, std::size_t componentId, bool adjustBias)
 {
   const std::size_t N = system.numberOfIntegerMoleculesPerComponent[componentId];
@@ -346,20 +333,20 @@ void MonteCarloTransitionMatrix::performCycle()
         performedMove = MC_Moves::performRandomMoveInitialization(random, selectedSystem, selectedSecondSystem,
                                                                   selectedComponent, fractionalMoleculeSystem);
 
-        sampleTMMCState(selectedSystem, tmmcComponentOf(selectedSystem), false);
+        sampleTMMCState(selectedSystem, selectedSystem.tmmcComponent(), false);
         if (isTMMCCrossSystemMove(performedMove) && hasSecondSystem)
         {
-          sampleTMMCState(selectedSecondSystem, tmmcComponentOf(selectedSecondSystem), false);
+          sampleTMMCState(selectedSecondSystem, selectedSecondSystem.tmmcComponent(), false);
         }
         break;
       case SimulationStage::Equilibration:
         performedMove = MC_Moves::performRandomMoveEquilibration(random, selectedSystem, selectedSecondSystem,
                                                                  selectedComponent, fractionalMoleculeSystem);
 
-        sampleTMMCState(selectedSystem, tmmcComponentOf(selectedSystem), true);
+        sampleTMMCState(selectedSystem, selectedSystem.tmmcComponent(), true);
         if (isTMMCCrossSystemMove(performedMove) && hasSecondSystem)
         {
-          sampleTMMCState(selectedSecondSystem, tmmcComponentOf(selectedSecondSystem), true);
+          sampleTMMCState(selectedSecondSystem, selectedSecondSystem.tmmcComponent(), true);
         }
 
         // Wang-Landau biasing of the CFCMC lambda moves. Off when the transition matrix is of the (N, lambda)
@@ -401,10 +388,10 @@ void MonteCarloTransitionMatrix::performCycle()
             MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent,
                                                   fractionalMoleculeSystem, estimation.currentBin);
 
-        sampleTMMCState(selectedSystem, tmmcComponentOf(selectedSystem), true);
+        sampleTMMCState(selectedSystem, selectedSystem.tmmcComponent(), true);
         if (isTMMCCrossSystemMove(performedMove) && hasSecondSystem)
         {
-          sampleTMMCState(selectedSecondSystem, tmmcComponentOf(selectedSecondSystem), true);
+          sampleTMMCState(selectedSecondSystem, selectedSecondSystem.tmmcComponent(), true);
         }
 
         numberOfSteps++;

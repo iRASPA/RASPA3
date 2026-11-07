@@ -29,7 +29,8 @@ class DualTMMCTrial
       : systemA_(systemA),
         systemB_(systemB),
         oldNA_(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent]),
-        oldNB_(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent])
+        oldNB_(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]),
+        selectedComponent_(selectedComponent)
   {
   }
 
@@ -37,27 +38,31 @@ class DualTMMCTrial
   {
     if (!recorded_)
     {
-      systemA_.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNA_);
-      systemB_.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNB_);
+      if (systemA_.tmmcTracks(selectedComponent_)) systemA_.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNA_);
+      if (systemB_.tmmcTracks(selectedComponent_)) systemB_.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNB_);
     }
   }
 
   bool transferIsInBounds() const
   {
-    return (!systemA_.tmmc.doTMMC || !systemA_.tmmc.rejectOutOfBound || oldNA_ < systemA_.tmmc.maxMacrostate) &&
-           (!systemB_.tmmc.doTMMC || !systemB_.tmmc.rejectOutOfBound ||
+    return (!systemA_.tmmcTracks(selectedComponent_) || !systemA_.tmmc.rejectOutOfBound ||
+            oldNA_ < systemA_.tmmc.maxMacrostate) &&
+           (!systemB_.tmmcTracks(selectedComponent_) || !systemB_.tmmc.rejectOutOfBound ||
             (oldNB_ > 0 && oldNB_ - 1 >= systemB_.tmmc.minMacrostate));
   }
 
   double biasFactor() const
   {
-    return systemA_.tmmc.biasFactor(oldNA_ + 1, oldNA_) * systemB_.tmmc.biasFactor(oldNB_ - 1, oldNB_);
+    return systemA_.tmmcBiasFactor(selectedComponent_, oldNA_ + 1, oldNA_) *
+           systemB_.tmmcBiasFactor(selectedComponent_, oldNB_ - 1, oldNB_);
   }
 
   void recordTransfer(double physicalAcceptance)
   {
-    systemA_.tmmc.updateMatrix(double3(0.0, 1.0 - physicalAcceptance, physicalAcceptance), oldNA_);
-    systemB_.tmmc.updateMatrix(double3(physicalAcceptance, 1.0 - physicalAcceptance, 0.0), oldNB_);
+    if (systemA_.tmmcTracks(selectedComponent_))
+      systemA_.tmmc.updateMatrix(double3(0.0, 1.0 - physicalAcceptance, physicalAcceptance), oldNA_);
+    if (systemB_.tmmcTracks(selectedComponent_))
+      systemB_.tmmc.updateMatrix(double3(physicalAcceptance, 1.0 - physicalAcceptance, 0.0), oldNB_);
     recorded_ = true;
   }
 
@@ -66,6 +71,7 @@ class DualTMMCTrial
   System& systemB_;
   std::size_t oldNA_;
   std::size_t oldNB_;
+  std::size_t selectedComponent_;
   bool recorded_{false};
 };
 }  // namespace

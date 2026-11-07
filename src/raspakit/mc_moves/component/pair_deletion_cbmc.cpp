@@ -288,13 +288,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
-  if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
+  if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
   {
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }
 
   const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-  const double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+  const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwapCBMC, 1);
 
@@ -525,13 +525,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
-  if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
+  if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
   {
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }
 
   const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-  const double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+  const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwap, 1);
 

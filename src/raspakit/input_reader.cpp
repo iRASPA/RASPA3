@@ -5072,9 +5072,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       systems[i].tmmc.doTMMC = true;
       systems[i].tmmc.useBias = true;
       systems[i].tmmc.useTMBias = true;
-      if (systems[i].components.size() == 1uz)
+      // the (N, lambda) chain is that of the tracked component, the adsorbate (a cation beside it is a
+      // component too, but not what the matrix is of)
+      if (!systems[i].components.empty())
       {
-        const Component& component = systems[i].components.front();
+        const Component& component = systems[i].components[systems[i].tmmcComponent()];
         const bool usesCFCMCSwap =
             component.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
             component.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0;
@@ -5222,9 +5224,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   {
     if (systems[i].tmmc.doTMMC || parallelTMMC)
     {
-      if (!parallelTMMC && systems[i].numerOfAdsorbateComponents() > 1)
+      // the macrostate is the count of the one adsorbate; cations beside it are allowed (their moves are
+      // neither biased by nor recorded in the matrix, see System::tmmcTracks)
+      if (!parallelTMMC && systems[i].adsorbateComponentCount() > 1)
       {
-        throw std::runtime_error("Error: Multiple components for TMMC not yet implemented.\n");
+        throw std::runtime_error("Error: Multiple adsorbate components for TMMC not yet implemented.\n");
       }
 
       const std::array unsupportedSystemMoves{
@@ -5261,6 +5265,34 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                             "incompatible with the current one-dimensional nearest-neighbor TMMC macrostate "
                             "(only N -> N and N -> N +/- 1 transitions are supported).\n",
                             i, componentId, component.name, keyword, Move::moveNames[std::to_underlying(move)]));
+          }
+        }
+      }
+
+      // a group swap moves the macrostate by the number of tracked molecules in its group: only a group
+      // that changes the tracked count by exactly its central molecule, or not at all, fits the
+      // nearest-neighbor matrix (satellites of the tracked component would record N -> N +/- m as N -> N +/- 1)
+      const std::array groupSwapMoves{std::pair{Move::Types::GroupSwap, "GroupSwapConventionalProbability"},
+                                      std::pair{Move::Types::GroupSwapCBMC, "GroupSwapProbability"},
+                                      std::pair{Move::Types::GroupSwapCFCMC, "CFCMC_GroupSwapProbability"},
+                                      std::pair{Move::Types::GroupSwapCBCFCMC, "CFCMC_CBMC_GroupSwapProbability"}};
+      const std::size_t trackedComponent = systems[i].tmmcComponent();
+      for (std::size_t componentId = 0uz; componentId < systems[i].components.size(); ++componentId)
+      {
+        const Component& component = systems[i].components[componentId];
+        for (const auto& [move, keyword] : groupSwapMoves)
+        {
+          if (component.mc_moves_probabilities.getProbability(move) != 0.0 &&
+              !systems[i].groupSwapFitsTMMC(componentId, trackedComponent))
+          {
+            throw std::runtime_error(std::format(
+                "Error [TMMC, system {}, component {} ('{}')]: '{}' must be zero; the group of move '{}' changes "
+                "the number of molecules of the TMMC component '{}' by {} per move, which is incompatible with "
+                "the current one-dimensional nearest-neighbor TMMC macrostate (only N -> N and N -> N +/- 1 "
+                "transitions of that component are supported).\n",
+                i, componentId, component.name, keyword, Move::moveNames[std::to_underlying(move)],
+                systems[i].components[trackedComponent].name,
+                systems[i].groupMoleculeCountChange(componentId, trackedComponent)));
           }
         }
       }

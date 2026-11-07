@@ -502,6 +502,69 @@ export struct System
     return std::size_t(random.uniform() * static_cast<double>(components.size()));
   }
   std::size_t numerOfAdsorbateComponents() { return components.size(); }
+  /// The number of components of type Adsorbate (the cations are not counted).
+  [[nodiscard]] std::size_t adsorbateComponentCount() const
+  {
+    std::size_t count = 0uz;
+    for (const Component& component : components)
+    {
+      if (component.type == Component::Type::Adsorbate) ++count;
+    }
+    return count;
+  }
+
+  // --- transition-matrix Monte Carlo (TMMC) ------------------------------------------------------
+  // The macrostate is the molecule count of one component, the adsorbate. A cation beside it is a
+  // component too, picked for its own moves, but the matrix is not of its count: its moves must neither
+  // see the bias (a cation count outside the adsorbate's window would be refused as out of bound, and
+  // biased by the adsorbate's ln Pi otherwise) nor write into the collection matrix.
+
+  /// The component whose molecule count is the TMMC macrostate: the first adsorbate (component 0 when
+  /// there is none).
+  [[nodiscard]] std::size_t tmmcComponent() const
+  {
+    for (std::size_t componentId = 0uz; componentId < components.size(); ++componentId)
+    {
+      if (components[componentId].type == Component::Type::Adsorbate) return componentId;
+    }
+    return 0uz;
+  }
+  /// Whether the transition matrix biases and records the moves of 'componentId': TMMC is on and the
+  /// component is the one whose count is the macrostate.
+  [[nodiscard]] bool tmmcTracks(std::size_t componentId) const { return tmmc.doTMMC && componentId == tmmcComponent(); }
+  /// The transition-matrix bias of a move of 'componentId' from 'oldN' to 'newN' molecules; 1 when the
+  /// matrix does not track that component.
+  [[nodiscard]] double tmmcBiasFactor(std::size_t componentId, std::size_t newN, std::size_t oldN)
+  {
+    return tmmcTracks(componentId) ? tmmc.biasFactor(newN, oldN) : 1.0;
+  }
+  /// The change of the molecule count of 'componentId' by one group insertion of the group of
+  /// 'centralComponent' (the central molecule and its satellites; a group deletion removes the same).
+  [[nodiscard]] std::size_t groupMoleculeCountChange(std::size_t centralComponent, std::size_t componentId) const
+  {
+    std::size_t change = (centralComponent == componentId) ? 1uz : 0uz;
+    for (std::size_t satelliteComponent : components[centralComponent].groupComponentIds)
+    {
+      if (satelliteComponent == componentId) ++change;
+    }
+    return change;
+  }
+  /// Whether a group swap of 'centralComponent' fits the one-dimensional nearest-neighbour transition
+  /// matrix of the tracked component 'trackedComponent': the group changes the tracked count by exactly
+  /// its central molecule (a tracked central molecule without tracked satellites), or not at all (an
+  /// untracked central molecule without tracked satellites). Any other group moves the macrostate by
+  /// more than one, or by one on a move the matrix does not see (and the matrix would record a N -> N
+  /// +/- m transition as N -> N +/- 1).
+  [[nodiscard]] bool groupSwapFitsTMMC(std::size_t centralComponent, std::size_t trackedComponent) const
+  {
+    return groupMoleculeCountChange(centralComponent, trackedComponent) ==
+           (centralComponent == trackedComponent ? 1uz : 0uz);
+  }
+  /// The same for the tracked component of this system; true when TMMC is off.
+  [[nodiscard]] bool groupSwapFitsTMMC(std::size_t centralComponent) const
+  {
+    return !tmmc.doTMMC || groupSwapFitsTMMC(centralComponent, tmmcComponent());
+  }
   std::size_t randomMoleculeOfComponent(RandomNumber& random, std::size_t selectedComponent);
   std::size_t randomIntegerMoleculeOfComponent(RandomNumber& random, std::size_t selectedComponent);
 

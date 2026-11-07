@@ -1,0 +1,180 @@
+#include <gtest/gtest.h>
+
+import std;
+
+import double3;
+import randomnumbers;
+import atom;
+import forcefield;
+import component;
+import system;
+import simulationbox;
+import monte_carlo_transition_matrix;
+import simulation_schedule;
+import mc_moves_move_types;
+import mc_moves_probabilities;
+
+// The transition matrix is of the molecule count of one component, the adsorbate. A cation beside it is a
+// component too, picked for its own moves: those moves must neither see the adsorbate's bias (a cation count
+// outside the adsorbate's window would be refused as out of bound) nor write into the collection matrix.
+// A group swap whose group holds more than one molecule of the tracked component moves the macrostate by
+// more than one and does not fit the nearest-neighbour matrix.
+
+namespace
+{
+
+ForceField makeForceField()
+{
+  return ForceField({{"CH4", false, 16.04246, 0.0, 0.0, 6, false}}, {{158.5, 3.72}},
+                    ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+}
+
+Component makeMethane(const ForceField& forceField, const MCMoveProbabilities& probabilities)
+{
+  return Component(forceField, "methane", 190.564, 4599200, 0.01142, {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 0, false, false)},
+                   {}, {}, 5, 21, probabilities, std::nullopt, false);
+}
+
+Component makeCation(const ForceField& forceField, const MCMoveProbabilities& probabilities)
+{
+  Component cation(forceField, "cation", 190.564, 4599200, 0.01142, {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 1, false, false)},
+                   {}, {}, 5, 21, probabilities, std::nullopt, false);
+  cation.type = Component::Type::Cation;
+  return cation;
+}
+
+MCMoveProbabilities translating()
+{
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  return probabilities;
+}
+
+MCMoveProbabilities swapping()
+{
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  probabilities.setProbability(Move::Types::Swap, 1.0);
+  return probabilities;
+}
+
+// the cation first, so that "the first component" and "the adsorbate" differ
+System makeCationAdsorbateSystem(const MCMoveProbabilities& cationMoves, const MCMoveProbabilities& adsorbateMoves,
+                                 std::size_t cations, std::size_t adsorbates, double pressure)
+{
+  const ForceField forceField = makeForceField();
+  return System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, pressure, 1.0, {},
+                {makeCation(forceField, cationMoves), makeMethane(forceField, adsorbateMoves)}, {},
+                {cations, adsorbates}, 5);
+}
+
+void enableTMMC(System& system, std::size_t minMacrostate, std::size_t maxMacrostate)
+{
+  system.tmmc.doTMMC = true;
+  system.tmmc.useBias = true;
+  system.tmmc.useTMBias = true;
+  system.tmmc.rejectOutOfBound = true;
+  system.tmmc.minMacrostate = minMacrostate;
+  system.tmmc.maxMacrostate = maxMacrostate;
+  system.tmmc.initialize();
+}
+
+bool allZero(const std::vector<double3>& matrix)
+{
+  return std::ranges::all_of(matrix, [](const double3& row) { return row.x == 0.0 && row.y == 0.0 && row.z == 0.0; });
+}
+
+}  // namespace
+
+TEST(TMMC_COMPONENT_TRACKING, the_matrix_is_of_the_first_adsorbate_and_tracks_only_that_component)
+{
+  System system = makeCationAdsorbateSystem(translating(), translating(), 4, 2, 1e4);
+  EXPECT_EQ(system.adsorbateComponentCount(), 1uz);
+  EXPECT_EQ(system.tmmcComponent(), 1uz);
+
+  // nothing is tracked while TMMC is off
+  EXPECT_FALSE(system.tmmcTracks(0));
+  EXPECT_FALSE(system.tmmcTracks(1));
+
+  enableTMMC(system, 0, 10);
+  EXPECT_FALSE(system.tmmcTracks(0));
+  EXPECT_TRUE(system.tmmcTracks(1));
+}
+
+TEST(TMMC_COMPONENT_TRACKING, an_untracked_component_sees_no_bias_even_outside_the_window)
+{
+  System system = makeCationAdsorbateSystem(translating(), translating(), 9, 0, 1e4);
+  enableTMMC(system, 0, 2);
+
+  // the raw matrix refuses a 9 -> 10 transition as out of bound; a cation move is not its business
+  EXPECT_DOUBLE_EQ(system.tmmc.biasFactor(10, 9), 0.0);
+  EXPECT_DOUBLE_EQ(system.tmmcBiasFactor(0, 10, 9), 1.0);
+  EXPECT_DOUBLE_EQ(system.tmmcBiasFactor(0, 8, 9), 1.0);
+
+  // the tracked component gets the matrix's own answer
+  EXPECT_DOUBLE_EQ(system.tmmcBiasFactor(1, 1, 0), system.tmmc.biasFactor(1, 0));
+  EXPECT_DOUBLE_EQ(system.tmmcBiasFactor(1, 3, 2), 0.0);
+}
+
+TEST(TMMC_COMPONENT_TRACKING, a_group_with_tracked_satellites_does_not_fit_the_matrix)
+{
+  System system = makeCationAdsorbateSystem(translating(), translating(), 4, 2, 1e4);
+  enableTMMC(system, 0, 10);
+  Component& cation = system.components[0];
+  Component& adsorbate = system.components[1];
+  cation.maximumGroupDistance = 5.0;
+  adsorbate.maximumGroupDistance = 5.0;
+
+  // an adsorbate with two adsorbate satellites: N -> N +/- 3
+  adsorbate.groupComponentIds = {1, 1};
+  EXPECT_EQ(system.groupMoleculeCountChange(1, 1), 3uz);
+  EXPECT_FALSE(system.groupSwapFitsTMMC(1));
+
+  // an adsorbate with cation satellites only: N -> N +/- 1, the ordinary swap of the tracked count
+  adsorbate.groupComponentIds = {0, 0};
+  EXPECT_EQ(system.groupMoleculeCountChange(1, 1), 1uz);
+  EXPECT_TRUE(system.groupSwapFitsTMMC(1));
+
+  // a cation with an adsorbate satellite: the tracked count changes on a move the matrix does not see
+  cation.groupComponentIds = {1};
+  EXPECT_EQ(system.groupMoleculeCountChange(0, 1), 1uz);
+  EXPECT_FALSE(system.groupSwapFitsTMMC(0));
+
+  // a cation with cation satellites: the tracked count is untouched
+  cation.groupComponentIds = {0, 0};
+  EXPECT_EQ(system.groupMoleculeCountChange(0, 1), 0uz);
+  EXPECT_TRUE(system.groupSwapFitsTMMC(0));
+
+  // with TMMC off every group fits
+  system.tmmc.doTMMC = false;
+  adsorbate.groupComponentIds = {1, 1};
+  EXPECT_TRUE(system.groupSwapFitsTMMC(1));
+}
+
+// Nine cations beside an adsorbate whose window is 0--2: the cations swap at a pressure where insertions are
+// accepted, so their count must move away from nine (before, every cation insertion was refused as out of the
+// adsorbate's window and every deletion was biased to zero), while the collection matrix, which is of the
+// adsorbate that never moves, stays empty and the histogram only ever sees the adsorbate at zero.
+TEST(TMMC_COMPONENT_TRACKING, cation_swaps_are_neither_refused_by_the_window_nor_written_into_the_matrix)
+{
+  std::vector<System> systems{makeCationAdsorbateSystem(swapping(), translating(), 9, 0, 1e7)};
+  enableTMMC(systems[0], 0, 2);
+  ASSERT_EQ(systems[0].numberOfIntegerMoleculesPerComponent[0], 9uz);
+
+  RandomNumber random(5);
+  SimulationSchedule schedule{0, 0, 3, 0, 1000, 10000, 5000, 5000};
+  MonteCarloTransitionMatrix tmmc(schedule, systems, random, 5);
+  for (System& walker : tmmc.systems) walker.runningEnergies = walker.computeTotalEnergies();
+  tmmc.simulationStage = MonteCarloTransitionMatrix::SimulationStage::Initialization;
+  for (std::size_t cycle = 0; cycle < 3; ++cycle) tmmc.performCycle();
+
+  const System& system = tmmc.systems[0];
+  EXPECT_NE(system.numberOfIntegerMoleculesPerComponent[0], 9uz) << "no cation swap was accepted";
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 0uz);
+  EXPECT_TRUE(allZero(system.tmmc.cmatrix)) << "cation swaps were recorded into the adsorbate's matrix";
+
+  const std::vector<std::size_t>& histogram = system.tmmc.histogram;
+  ASSERT_EQ(histogram.size(), 3uz);
+  EXPECT_GT(histogram[0], 0uz);
+  EXPECT_EQ(histogram[1] + histogram[2], 0uz);
+}

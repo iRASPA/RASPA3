@@ -155,6 +155,13 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
                                                                                   std::size_t selectedComponent,
                                                                                   bool useCBMC)
 {
+  // a group that changes the tracked count by more than its central molecule (satellites of the tracked
+  // component), or by one on a move the matrix does not see, does not fit the nearest-neighbour transition
+  // matrix: refused and not recorded (the input reader refuses such a group up front)
+  if (!system.groupSwapFitsTMMC(selectedComponent))
+  {
+    return {std::nullopt, double3(0.0, 0.0, 0.0)};
+  }
   std::chrono::steady_clock::time_point time_begin, time_end;
   const Move::Types move = useCBMC ? Move::Types::GroupSwapCBCFCMC : Move::Types::GroupSwapCFCMC;
   Component& central = system.components[selectedComponent];
@@ -572,14 +579,14 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
                                 polarizationDifference.potentialEnergy()));
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
-    if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
+    if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
     {
       restoreFractionalGroup();
       return {std::nullopt, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
     }
 
     const std::size_t newN = oldN == std::numeric_limits<std::size_t>::max() ? oldN : oldN + 1;
-    const double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+    const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
 
     if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {
@@ -1002,14 +1009,14 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
                                 polarizationDifference.potentialEnergy()));
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
-    if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
+    if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
     {
       restoreMolecules();
       return {std::nullopt, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
     }
 
     const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-    const double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+    const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
 
     if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {

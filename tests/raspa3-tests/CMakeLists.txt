@@ -39,6 +39,7 @@ add_executable(unit_tests_raspa3
   tmmc_logpi_reconstruction.cpp
   dctst_mirror_reinsertion.cpp
   dctst_polarization_drift.cpp
+  tmmc_component_tracking.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

@@ -121,6 +121,13 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
+  // a group that changes the tracked count by more than its central molecule (satellites of the tracked
+  // component), or by one on a move the matrix does not see, does not fit the nearest-neighbour transition
+  // matrix: refused and not recorded (the input reader refuses such a group up front)
+  if (!system.groupSwapFitsTMMC(selectedComponent))
+  {
+    return {std::nullopt, double3(0.0, 0.0, 0.0)};
+  }
 
   const std::vector<std::size_t>& satelliteComponentIds = centralComponent.groupComponentIds;
   const std::size_t numberOfSatellites = satelliteComponentIds.size();
@@ -371,13 +378,13 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
-  if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
+  if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
   {
     return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
   }
 
   const std::size_t newN = oldN == std::numeric_limits<std::size_t>::max() ? oldN : oldN + 1;
-  const double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+  const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
 
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
@@ -434,6 +441,13 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
   if (!validGroupDefinition(system, centralComponent))
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
+  }
+  // a group that changes the tracked count by more than its central molecule (satellites of the tracked
+  // component), or by one on a move the matrix does not see, does not fit the nearest-neighbour transition
+  // matrix: refused and not recorded (the input reader refuses such a group up front)
+  if (!system.groupSwapFitsTMMC(selectedComponent))
+  {
+    return {std::nullopt, double3(0.0, 0.0, 0.0)};
   }
 
   const std::vector<std::size_t>& satelliteComponentIds = centralComponent.groupComponentIds;
@@ -724,13 +738,13 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
-  if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
+  if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
   {
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }
 
   const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-  const double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+  const double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
 
   centralComponent.mc_moves_statistics.addConstructed(move, 1);
 

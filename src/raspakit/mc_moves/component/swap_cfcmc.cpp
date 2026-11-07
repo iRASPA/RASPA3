@@ -33,15 +33,17 @@ import intra_molecular_potentials;
 
 namespace
 {
-bool recordsLambdaChain(const System& system, bool insertionDisabled, bool deletionDisabled)
+bool recordsLambdaChain(const System& system, std::size_t selectedComponent, bool insertionDisabled,
+                        bool deletionDisabled)
 {
-  return system.tmmc.doTMMC && system.tmmc.lambdaChain() && !insertionDisabled && !deletionDisabled;
+  return system.tmmcTracks(selectedComponent) && system.tmmc.lambdaChain() && !insertionDisabled && !deletionDisabled;
 }
 
-double3 lambdaHopTMMCPacc(const System& system, bool insertionDisabled, bool deletionDisabled, std::size_t newBin,
-                          std::size_t oldBin, double physicalPacc)
+double3 lambdaHopTMMCPacc(const System& system, std::size_t selectedComponent, bool insertionDisabled,
+                          bool deletionDisabled, std::size_t newBin, std::size_t oldBin, double physicalPacc)
 {
-  if (!recordsLambdaChain(system, insertionDisabled, deletionDisabled)) return double3(0.0, 0.0, 0.0);
+  if (!recordsLambdaChain(system, selectedComponent, insertionDisabled, deletionDisabled))
+    return double3(0.0, 0.0, 0.0);
   if (newBin >= oldBin) return double3(0.0, 1.0 - physicalPacc, physicalPacc);
   return double3(physicalPacc, 1.0 - physicalPacc, 0.0);
 }
@@ -62,7 +64,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
   double deltaLambda = lambda.delta;
   double maxChange = component.mc_moves_statistics.getMaxChange(move, 2);
   std::make_signed_t<std::size_t> selectedNewBin = lambda.selectNewBin(random, maxChange);
-  if (recordsLambdaChain(system, insertionDisabled, deletionDisabled))
+  if (recordsLambdaChain(system, selectedComponent, insertionDisabled, deletionDisabled))
   {
     selectedNewBin = static_cast<std::make_signed_t<std::size_t>>(oldBin) + (random.uniform() < 0.5 ? 1 : -1);
   }
@@ -366,7 +368,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     double preFactor = system.beta * fugacity * system.simulationBox.volume / static_cast<double>(1 + oldN);
     // On a TMMC (N, lambda) chain the transition matrix biases the whole chain, the endpoint jumps
     // included, and the lambda Wang-Landau bias is off, as it is for the lambda hops.
-    double biasTerm = (system.tmmc.doTMMC && system.tmmc.lambdaChain())
+    double biasTerm = (system.tmmcTracks(selectedComponent) && system.tmmc.lambdaChain())
                           ? 0.0
                           : lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     double physicalPacc = preFactor * std::exp(-system.beta * (energyDifferenceStep1.potentialEnergy() +
@@ -374,7 +376,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                                                                polarizationDifference.potentialEnergy()));
     double samplingPacc = physicalPacc * std::exp(biasTerm);
 
-    if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
+    if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
     {
       // Evaluating the boundary transition temporarily made the fractional slot integer.
       // Keep the physical probability for C, but leave the sampled configuration untouched.
@@ -383,7 +385,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     }
 
     const std::size_t newN = oldN == std::numeric_limits<std::size_t>::max() ? oldN : oldN + 1;
-    double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+    double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
 
     // Apply acceptance/rejection rule
     if (random.uniform() < biasTransitionMatrix * samplingPacc)
@@ -739,7 +741,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       double preFactor = double(oldN) / (system.beta * component.molFraction * fugacity * system.simulationBox.volume);
       // On a TMMC (N, lambda) chain the transition matrix biases the whole chain, the endpoint jumps
       // included, and the lambda Wang-Landau bias is off, as it is for the lambda hops.
-      double biasTerm = (system.tmmc.doTMMC && system.tmmc.lambdaChain())
+      double biasTerm = (system.tmmcTracks(selectedComponent) && system.tmmc.lambdaChain())
                             ? 0.0
                             : lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
       double physicalPacc = preFactor * std::exp(-system.beta * (energyDifferenceStep1.potentialEnergy() +
@@ -747,7 +749,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                                                                  polarizationDifference.potentialEnergy()));
       double samplingPacc = physicalPacc * std::exp(biasTerm);
 
-      if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
+      if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
       {
         // Restore both molecules modified while evaluating the forbidden deletion.
         std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
@@ -756,7 +758,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       }
 
       const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-      double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+      double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
 
       // Apply acceptance/rejection rule
       if (random.uniform() < biasTransitionMatrix * samplingPacc)
@@ -808,7 +810,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     // real ±1 step: record the unbiased Metropolis Pacc, and sample with the TMMC bias
     // instead of the component lambda Wang-Landau (that WL is off when the chain is on).
     const double3 skipTMMC{};
-    const bool chain = recordsLambdaChain(system, insertionDisabled, deletionDisabled);
+    const bool chain = recordsLambdaChain(system, selectedComponent, insertionDisabled, deletionDisabled);
     const double3 hopReject = chain ? double3(0.0, 1.0, 0.0) : skipTMMC;
 
     std::size_t newBin = static_cast<std::size_t>(selectedNewBin);
@@ -958,7 +960,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     const double physicalPacc = std::min(1.0, std::exp(energyTerm));
     const double biasTerm = chain ? 0.0 : (lambda.biasFactor[newBin] - lambda.biasFactor[oldBin]);
     const double tmmcBias = chain ? system.tmmc.biasFactor(oldN, oldN, newBin, oldBin) : 1.0;
-    const double3 hopPacc = lambdaHopTMMCPacc(system, insertionDisabled, deletionDisabled, newBin, oldBin, physicalPacc);
+    const double3 hopPacc =
+        lambdaHopTMMCPacc(system, selectedComponent, insertionDisabled, deletionDisabled, newBin, oldBin, physicalPacc);
 
     // Apply acceptance/rejection rule
     if (random.uniform() < tmmcBias * std::exp(energyTerm + biasTerm))

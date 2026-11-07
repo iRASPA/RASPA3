@@ -141,13 +141,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
   // Check if TMMC is enabled and macrostate limit is not exceeded
-  if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
+  if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
   {
     return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
   }
 
   const std::size_t newN = oldN == std::numeric_limits<std::size_t>::max() ? oldN : oldN + 1;
-  double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+  double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
 
   // Apply acceptance/rejection criterion
   if (random.uniform() < biasTransitionMatrix * Pacc)
