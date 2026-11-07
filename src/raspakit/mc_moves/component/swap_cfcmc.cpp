@@ -200,13 +200,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     std::pair<Molecule, std::vector<Atom>> trialMolecule =
         system.equilibratedIdealGasMoleculeRandomInBox(random, selectedComponent);
 
-    if ((system.insideBlockedPockets(component, trialMolecule.second)))
-    {
-      // Reject, set fractional molecule back to old state
-      std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-      return {std::nullopt, double3(0.0, 1.0, 0.0)};
-    }
-
     // Copy atoms from the old fractional molecule, including the groupIds
     std::size_t upcomingMoleculeId = system.numberOfMolecules();
 
@@ -219,6 +212,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                     atom.setScalingToFractional(newLambda, groupId);
                   });
 
+    // the pocket radius scales with scalingVDW: the new fractional molecule is tested at its own coupling
+    // (newLambda), the same test the reverse crossing applies to the molecule it demotes
     if ((system.insideBlockedPockets(component, trialMolecule.second)))
     {
       // Reject, set fractional molecule back to old state
@@ -481,13 +476,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
         atom.setScalingToInactiveFractional();
       }
 
-      if ((system.insideBlockedPockets(component, fractionalMolecule)))
-      {
-        // Reject, set fractional molecule back to old state
-        std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-        return {std::nullopt, double3(0.0, 1.0, 0.0)};
-      }
-
       // Compute external field energy contribution
       std::optional<RunningEnergy> externalFieldDifferenceStep1 =
           timed(system, component, move, Move::Timing::DeletionExternalField,
@@ -585,6 +573,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       for (Atom& atom : newFractionalMolecule)
       {
         atom.setScalingToFractional(newLambda, groupId);
+      }
+
+      // The demoted molecule at its new coupling is what the reverse crossing (an insertion at newLambda)
+      // tests against the pockets; testing the deleted molecule at scaling zero, as was done, tested nothing
+      // (the pocket radius scales with scalingVDW), which broke the reversibility of the two crossings.
+      if ((system.insideBlockedPockets(component, newFractionalMolecule)))
+      {
+        // Restore molecules and reject
+        std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+        std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
+
+        return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
 
       // Compute external field energy contribution

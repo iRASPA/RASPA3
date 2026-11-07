@@ -47,6 +47,7 @@ add_executable(unit_tests_raspa3
   mc_omit_inter_interactions_drift.cpp
   group_fractional_slots.cpp
   serial_reaction_fractional_layout.cpp
+  swap_cfcmc_blocked_pockets.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)
