@@ -169,18 +169,31 @@ void runSimulation(InputReader& inputReader)
     }
     case InputReader::SimulationType::NLDFT:
     {
+      if (inputReader.restartFromBinary)
+      {
+        throw std::runtime_error("[Input reader]: 'NLDFT' does not support 'RestartFromBinary'\n");
+      }
       NLDFT nldft(inputReader);
       nldft.run();
       break;
     }
     case InputReader::SimulationType::DynamicallyCorrectedTST:
     {
+      if (inputReader.restartFromBinary)
+      {
+        throw std::runtime_error("[Input reader]: 'DynamicallyCorrectedTST' does not support 'RestartFromBinary'\n");
+      }
       DynamicallyCorrectedTST dctst(inputReader);
       dctst.run();
       break;
     }
     case InputReader::SimulationType::DynamicallyCorrectedTSTFreeEnergy:
     {
+      if (inputReader.restartFromBinary)
+      {
+        throw std::runtime_error(
+            "[Input reader]: 'DynamicallyCorrectedTSTFreeEnergy' does not support 'RestartFromBinary'\n");
+      }
       DynamicallyCorrectedTSTFreeEnergy dctst(inputReader);
       dctst.run();
       break;

@@ -4,6 +4,7 @@ module isotherm_bet;
 
 import std;
 
+import archive;
 import energy_shared_bet_surface_area;
 import json;
 import int3;
@@ -1497,4 +1498,74 @@ void writeNitrogenBETFillingCeiling(std::ostream& stream, const NitrogenBETFilli
              ceiling.converged ? "" : " (did not plateau; 1.5× margin applied)");
   std::print(stream, "    Gurvich cap:                           {}\n", ceiling.gurvichCap);
   std::print(stream, "    Macrostate / cycle-length ceiling:     {} molecules\n\n", ceiling.maxMacrostate);
+}
+
+// The BET auto-setup state is part of a driver's binary restart: the scouts that produce it are not rerun on a
+// restart (see the ParallelTMMC and ReweightedHistogram constructors), so the restart file carries their result.
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const BETProbeProperties& probe)
+{
+  archive << probe.crossSection;
+  archive << probe.liquidVolume;
+  archive << probe.saturationPressure;
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, BETProbeProperties& probe)
+{
+  archive >> probe.crossSection;
+  archive >> probe.liquidVolume;
+  archive >> probe.saturationPressure;
+  return archive;
+}
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const NitrogenBETPressurePlan& plan)
+{
+  archive << plan.henryCoefficientPerCell;
+  archive << plan.packingCapacity;
+  archive << plan.lowestPressure;
+  archive << plan.highestPressure;
+  archive << plan.samplingPressures;
+  archive << plan.whamReweightingNumberOfPressures;
+  archive << plan.tmmcReweightingNumberOfPressures;
+  archive << plan.probe;
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, NitrogenBETPressurePlan& plan)
+{
+  archive >> plan.henryCoefficientPerCell;
+  archive >> plan.packingCapacity;
+  archive >> plan.lowestPressure;
+  archive >> plan.highestPressure;
+  archive >> plan.samplingPressures;
+  archive >> plan.whamReweightingNumberOfPressures;
+  archive >> plan.tmmcReweightingNumberOfPressures;
+  archive >> plan.probe;
+  return archive;
+}
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const NitrogenBETFillingCeiling& ceiling)
+{
+  archive << ceiling.maxMacrostate;
+  archive << ceiling.meanOccupancy;
+  archive << ceiling.standardDeviation;
+  archive << ceiling.peakOccupancy;
+  archive << ceiling.cycles;
+  archive << ceiling.converged;
+  archive << ceiling.gurvichCap;
+  archive << ceiling.saturationPressure;
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, NitrogenBETFillingCeiling& ceiling)
+{
+  archive >> ceiling.maxMacrostate;
+  archive >> ceiling.meanOccupancy;
+  archive >> ceiling.standardDeviation;
+  archive >> ceiling.peakOccupancy;
+  archive >> ceiling.cycles;
+  archive >> ceiling.converged;
+  archive >> ceiling.gurvichCap;
+  archive >> ceiling.saturationPressure;
+  return archive;
 }

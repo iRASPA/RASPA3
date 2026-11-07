@@ -4,6 +4,7 @@ export module isotherm_bet;
 
 import std;
 
+import archive;
 import json;
 import system;
 import component;
@@ -28,6 +29,9 @@ export struct BETProbeProperties
   double liquidVolume{0.0};        ///< [Å³ / molecule]
   double saturationPressure{0.0};  ///< P0 [Pa]
 };
+
+export Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const BETProbeProperties& probe);
+export Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, BETProbeProperties& probe);
 
 /// Read CrossSection, LiquidVolume and SaturationPressure from a component; throws if any is missing or ≤ 0.
 export BETProbeProperties requireBETProbeProperties(const Component& component);
@@ -98,6 +102,9 @@ export struct NitrogenBETPressurePlan
   std::size_t tmmcReweightingNumberOfPressures{100};   ///< TMMC grid: 12 points/decade, at least 100.
   BETProbeProperties probe{};                          ///< Cross-section, liquid volume, P0 from Component.
 };
+
+export Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const NitrogenBETPressurePlan& plan);
+export Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, NitrogenBETPressurePlan& plan);
 
 /// Place the nitrogen BET pressure span from a Widom Henry coefficient of the empty framework.
 /// `numberOfThreads` sizes the WHAM sampling ladder (8–32 rungs), matching raspa3 `--threads`.
@@ -223,6 +230,9 @@ export struct NitrogenBETFillingCeiling
   std::size_t gurvichCap{0};      ///< Hard upper bound (helium-void Gurvich, else V / v_L).
   double saturationPressure{0.0}; ///< P0 used for the scout [Pa].
 };
+
+export Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const NitrogenBETFillingCeiling& ceiling);
+export Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, NitrogenBETFillingCeiling& ceiling);
 
 /// Scout occupancy at P0 with the system's own swap moves and return N_max.
 /// The input system is copied; TMMC window bounds on the original are not used (the scout must

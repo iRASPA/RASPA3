@@ -322,6 +322,16 @@ ParallelTMMC::ParallelTMMC(InputReader& reader)
   System templateSystem = std::move(reader.systems.front());
   reader.systems.clear();
 
+  // On a binary restart the restart file carries everything built below: the scouted pressure plan and
+  // filling ceiling, the macrostate range, the window partition and the walkers themselves. The Henry and
+  // occupancy scouts are minutes of GCMC whose only product the restart file would then overwrite, and a
+  // range placed by the scout is not there to validate before the file is read.
+  if (reader.restartFromBinary)
+  {
+    systems.push_back(std::move(templateSystem));
+    return;
+  }
+
   if (autoReweightingPressureRange || autoMacroStateMaximum)
   {
     const NitrogenBETAutoSetupResult betSetup =
@@ -2575,6 +2585,13 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Parall
   archive << ptmmc.totalAnalysisTime;
   archive << ptmmc.totalSimulationTime;
 
+  // version 2: the BET auto-setup state (the scouts are not rerun on a restart)
+  archive << ptmmc.computeBET;
+  archive << ptmmc.autoReweightingPressureRange;
+  archive << ptmmc.autoMacroStateMaximum;
+  archive << ptmmc.nitrogenBETPressurePlan;
+  archive << ptmmc.nitrogenBETFillingCeiling;
+
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 
   return archive;
@@ -2642,6 +2659,15 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTMMC
   archive >> ptmmc.totalProductionSimulationTime;
   archive >> ptmmc.totalAnalysisTime;
   archive >> ptmmc.totalSimulationTime;
+
+  if (versionNumber >= 2)
+  {
+    archive >> ptmmc.computeBET;
+    archive >> ptmmc.autoReweightingPressureRange;
+    archive >> ptmmc.autoMacroStateMaximum;
+    archive >> ptmmc.nitrogenBETPressurePlan;
+    archive >> ptmmc.nitrogenBETFillingCeiling;
+  }
 
   std::uint64_t magicNumber;
   archive >> magicNumber;

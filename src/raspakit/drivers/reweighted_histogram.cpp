@@ -120,6 +120,16 @@ ReweightedHistogram::ReweightedHistogram(InputReader& reader)
   System templateSystem = std::move(reader.systems.front());
   reader.systems.clear();
 
+  // On a binary restart the restart file carries everything built below: the scouted pressure plan and
+  // filling ceiling, the pressure ladder, the reweighting span and the replicas themselves. The Henry and
+  // occupancy scouts are minutes of GCMC whose only product the restart file would then overwrite, and a
+  // ladder placed by the scout is not there to validate before the file is read.
+  if (reader.restartFromBinary)
+  {
+    systems.push_back(std::move(templateSystem));
+    return;
+  }
+
   if (temperatures.empty())
   {
     temperatures.push_back(templateSystem.temperature);
@@ -2411,6 +2421,14 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Reweig
   archive << rh.totalReweightingAnalysisTime;
   archive << rh.totalSimulationTime;
 
+  // version 2: the BET auto-setup state (the scouts are not rerun on a restart)
+  archive << rh.computeBET;
+  archive << rh.autoExternalPressures;
+  archive << rh.autoReweightingPressureRange;
+  archive << rh.autoMacroStateMaximum;
+  archive << rh.nitrogenBETPressurePlan;
+  archive << rh.nitrogenBETFillingCeiling;
+
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 
   return archive;
@@ -2481,6 +2499,16 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ReweightedHi
   archive >> rh.totalProductionSimulationTime;
   archive >> rh.totalReweightingAnalysisTime;
   archive >> rh.totalSimulationTime;
+
+  if (versionNumber >= 2)
+  {
+    archive >> rh.computeBET;
+    archive >> rh.autoExternalPressures;
+    archive >> rh.autoReweightingPressureRange;
+    archive >> rh.autoMacroStateMaximum;
+    archive >> rh.nitrogenBETPressurePlan;
+    archive >> rh.nitrogenBETFillingCeiling;
+  }
 
   std::uint64_t magicNumber;
   archive >> magicNumber;
