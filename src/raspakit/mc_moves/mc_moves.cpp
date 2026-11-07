@@ -99,7 +99,12 @@ namespace
 // same factor, which cancels. Leaving it out makes the matrix independent of the move mix and removes the
 // need to account for neutral trials that are skipped (e.g. a translation drawn for an empty component).
 // Rejected insertions and deletions still record (0, 1 - Pacc, Pacc) / (Pacc, 1 - Pacc, 0): their diagonal
-// share is part of the acceptance-probability average.
+// share is part of the acceptance-probability average. That includes the attempts that could not be
+// proposed at all, a deletion from an empty component or a Gibbs transfer out of an empty partner box,
+// recorded as the rejected stay (0, 1, 0): half of the swap attempts at the end state are such attempts,
+// and the row total has to count them, or P(N -> N +/- 1) at that state comes out twice too large and
+// ln Pi there is off by ln 2. Only the window refusal (rejectOutOfBound) is not part of the physics: a
+// move it refuses is recorded with the acceptance probability it would have had.
 
 // The bin is that of the tracked component (the chain is of its count and lambda), whichever component
 // the step moves; only the moves of the tracked component record into the matrix (System::tmmcTracks).
