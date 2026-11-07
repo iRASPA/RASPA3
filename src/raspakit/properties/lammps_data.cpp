@@ -57,6 +57,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const WriteL
   archive << m.versionNumber;
 
   archive << m.sampleEvery;
+  archive << m.systemId;     // version 2
+  archive << m.modelNumber;  // version 2
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -77,6 +79,11 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, WriteLammpsD
   }
 
   archive >> m.sampleEvery;
+  if (versionNumber >= 2)
+  {
+    archive >> m.systemId;
+    archive >> m.modelNumber;
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

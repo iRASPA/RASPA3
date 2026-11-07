@@ -12,7 +12,7 @@ import forcefield;
 
 export struct SampleMovie
 {
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};  ///< 2: the box restriction, tag and model number
 
   SampleMovie() {};
   SampleMovie(std::size_t systemId, std::size_t sampleEvery, bool restrictToBox, std::optional<std::string> tag);
@@ -23,7 +23,7 @@ export struct SampleMovie
               std::size_t currentCycle, std::span<const Atom> frameworkAtoms = {});
 
   std::size_t sampleEvery{10};
-  bool restrictToBox;
+  bool restrictToBox{false};
   std::optional<std::string> tag{};
 
   int modelNumber{1};

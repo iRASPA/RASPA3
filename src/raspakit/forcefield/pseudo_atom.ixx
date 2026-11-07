@@ -49,7 +49,7 @@ export struct PseudoAtom
         printToPDB(printToPDB),
         source(source) {};
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization compatibility.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization compatibility (2: the source).
 
   std::string name{"C"};           ///< The name of the pseudo-atom.
   bool framework{false};           ///< Indicates if the atom is part of the framework.

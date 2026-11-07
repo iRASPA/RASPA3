@@ -90,7 +90,7 @@ export struct ForceField
     RectangleZ = 16
   };
 
-  std::uint64_t versionNumber{1};  ///< Version number of the force field format.
+  std::uint64_t versionNumber{2};  ///< Version number of the force field format (2: the mixing rule).
 
   std::vector<VDWParameters>
       data{};  ///< Interaction parameters between pseudo-atoms; size is numberOfPseudoAtoms squared.

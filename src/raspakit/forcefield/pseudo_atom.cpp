@@ -18,6 +18,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Pseudo
   archive << a.atomicNumber;
   archive << a.oxidationState;
   archive << a.printToPDB;
+  archive << a.source;  // version 2
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -45,6 +46,10 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PseudoAtom &
   archive >> a.atomicNumber;
   archive >> a.oxidationState;
   archive >> a.printToPDB;
+  if (versionNumber >= 2)
+  {
+    archive >> a.source;
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
@@ -61,6 +66,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PseudoAtom &
 bool PseudoAtom::operator==(const PseudoAtom &other) const
 {
   return (versionNumber == other.versionNumber && framework == other.framework && name == other.name &&
-          mass == other.mass && charge == other.charge && atomicNumber == other.atomicNumber &&
+          mass == other.mass && charge == other.charge && polarizability == other.polarizability &&
+          atomicNumber == other.atomicNumber && oxidationState == other.oxidationState &&
           printToPDB == other.printToPDB && source == other.source);
 }

@@ -1736,6 +1736,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
   archive << f.externalFieldGeometryParameters;
 
   archive << f.settings;
+  // version 2: the mixing rule, used again whenever the pair tables are re-mixed after a restart
+  archive << f.mixingRule;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -1798,6 +1800,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
   archive >> f.externalFieldGeometryParameters;
 
   archive >> f.settings;
+  if (versionNumber >= 2)
+  {
+    archive >> f.mixingRule;
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

@@ -124,6 +124,10 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Sample
   archive << m.versionNumber;
 
   archive << m.sampleEvery;
+  // version 2: the file name and the frame numbering continue where the interrupted run left off
+  archive << m.restrictToBox;
+  archive << m.tag;
+  archive << m.modelNumber;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -144,6 +148,12 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, SampleMovie 
   }
 
   archive >> m.sampleEvery;
+  if (versionNumber >= 2)
+  {
+    archive >> m.restrictToBox;
+    archive >> m.tag;
+    archive >> m.modelNumber;
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

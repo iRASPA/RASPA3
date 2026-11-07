@@ -2026,6 +2026,19 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   // estimates), which are not stored in the archive.
   s.computeTailCorrectionCounts();
   s.prepareGrowthPlans();
+  // The CBMC conformation reservoirs and the recoil-growth reference conformations are not stored either
+  // (Component), and the components read above are fresh objects: rebuild them, as the constructor does. Both
+  // builds use fixed seeds and isolated molecules, so they give back the conformations of the original run.
+  s.buildConformationReservoirs();
+  s.buildRecoilReferenceConformations();
+  // An activated polymerization table stores its state only: the per-group types and initial states and the
+  // derived term lists are rebuilt from the components and the restored atoms (as the Polymerization driver
+  // does on its restart path), so a System read on its own evaluates its polymer terms.
+  if (s.polymerLinks.activated)
+  {
+    s.polymerLinks.activate(s.components, s.numberOfMoleculesPerComponent);
+    s.polymerLinks.rebuild(s.forceField, s.components, s.numberOfMoleculesPerComponent, s.spanOfMoleculeAtoms());
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

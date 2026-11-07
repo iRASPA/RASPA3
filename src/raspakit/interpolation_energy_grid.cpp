@@ -1051,15 +1051,16 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Interp
 {
   archive << s.versionNumber;
 
-#if DEBUG_ARCHIVE
-  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
-#endif
-
   archive << s.unitCellBox;
   archive << s.origin;
   archive << s.numberOfGridPoints;
   archive << s.numberOfCells;
   archive << s.order;
+
+  // the end marker after the fields, where the reader looks for it
+#if DEBUG_ARCHIVE
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+#endif
 
   return archive;
 }

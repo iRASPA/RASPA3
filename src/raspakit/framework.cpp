@@ -1427,6 +1427,10 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framew
   archive << c.flexibleAtomCount;
   archive << c.rigidGroupCount;
   archive << c.mixed;
+  // version 2: the unit-cell data the loading conversions and the void fraction use
+  archive << c.unitCellMass;
+  archive << c.fractionalUnitCellAtoms;
+  archive << std::vector<std::size_t>(c.uniqueAtomTypes.begin(), c.uniqueAtomTypes.end());
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -1481,6 +1485,14 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c
   archive >> c.flexibleAtomCount;
   archive >> c.rigidGroupCount;
   archive >> c.mixed;
+  if (versionNumber >= 2)
+  {
+    archive >> c.unitCellMass;
+    archive >> c.fractionalUnitCellAtoms;
+    std::vector<std::size_t> uniqueAtomTypes;
+    archive >> uniqueAtomTypes;
+    c.uniqueAtomTypes = std::unordered_set<std::size_t>(uniqueAtomTypes.begin(), uniqueAtomTypes.end());
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

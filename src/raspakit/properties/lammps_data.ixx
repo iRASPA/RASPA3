@@ -23,7 +23,7 @@ import molecule;
  */
 export struct WriteLammpsData
 {
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};  ///< 2: the system id and model number
 
   WriteLammpsData() {};
 
@@ -38,7 +38,7 @@ export struct WriteLammpsData
               std::vector<std::size_t> numberOfIntegerMoleculesPerComponent, std::optional<Framework> framework);
 
   std::size_t sampleEvery{10};  ///< Writing frequency.
-  std::size_t systemId;         ///< Necessary for determining filename.
+  std::size_t systemId{0};      ///< Necessary for determining filename.
 
   int modelNumber{1};
 
