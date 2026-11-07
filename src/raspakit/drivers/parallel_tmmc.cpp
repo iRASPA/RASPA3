@@ -1106,8 +1106,14 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
             // freshly reset collection matrix fills with relaxed-configuration statistics;
             // afterwards the bias becomes the transition-matrix bias -ln Pi derived from those
             // rows, which flattens the walk over the whole window (on a binary-restart resume
-            // past this point the switched flag is part of the checkpointed TMMC state)
-            const std::size_t wangLandauProductionCycles = numberOfCycles / 4uz;
+            // past this point the switched flag is part of the checkpointed TMMC state).
+            // At least one production cycle comes first: the switch rebuilds the bias from the
+            // production histogram, and at cycle 0 that histogram has just been emptied, so a
+            // switch there retired Wang-Landau without a bias to replace it (the un-annealed
+            // Wang-Landau bias then stayed frozen until the next 'TMMCUpdateEvery' rebuild).
+            // With a single production cycle the switch never comes and Wang-Landau keeps
+            // driving the walk; the collection matrix is unbiased under any bias.
+            const std::size_t wangLandauProductionCycles = std::max(1uz, numberOfCycles / 4uz);
 
             for (std::size_t cycle = startCycle; cycle != numberOfCycles; ++cycle)
             {

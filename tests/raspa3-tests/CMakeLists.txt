@@ -41,6 +41,7 @@ add_executable(unit_tests_raspa3
   dctst_polarization_drift.cpp
   tmmc_component_tracking.cpp
   tmmc_restart_state.cpp
+  parallel_tmmc_wang_landau_switch.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)
