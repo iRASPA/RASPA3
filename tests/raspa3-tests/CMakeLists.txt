@@ -58,6 +58,7 @@ add_executable(unit_tests_raspa3
   mc_move_probabilities_normalized.cpp
   binary_restart_round_trip.cpp
   external_field_grid.cpp
+  simulationbox_block_average.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

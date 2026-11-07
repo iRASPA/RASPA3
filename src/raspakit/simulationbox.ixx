@@ -467,7 +467,7 @@ export inline SimulationBox operator*(const SimulationBox& a, const SimulationBo
   m.angleAlpha = a.angleAlpha * b.angleAlpha;
   m.angleBeta = a.angleBeta * b.angleBeta;
   m.angleGamma = a.angleGamma * b.angleGamma;
-  m.cell = a.cell * b.cell;
+  m.cell = double3x3::multiplyElementWise(a.cell, b.cell);
   m.volume = a.volume * b.volume;
   return m;
 }
