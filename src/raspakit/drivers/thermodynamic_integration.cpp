@@ -345,6 +345,8 @@ void ThermodynamicIntegration::production()
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
       }
 
+      system.writeSampledPropertiesMC(system_id, currentCycle);
+
       ++system_id;
     }
 
@@ -405,6 +407,8 @@ void ThermodynamicIntegration::production()
     std::string status_line{std::format("Final state after {} cycles\n", numberOfProductionCycles)};
     std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
     std::flush(stream);
+
+    system.writeSampledPropertiesMC(system_id, numberOfProductionCycles);
 
     ++system_id;
   }

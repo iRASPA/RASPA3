@@ -9,6 +9,7 @@ import hardware_info;
 import archive;
 import graceful_shutdown;
 import system;
+import framework;
 import randomnumbers;
 import input_reader;
 import component;
@@ -773,6 +774,8 @@ void MonteCarloTransitionMatrix::production()
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
       }
 
+      system.writeSampledPropertiesMC(system_id, currentCycle);
+
       ++system_id;
     }
 
@@ -804,10 +807,12 @@ void MonteCarloTransitionMatrix::production()
   continueProductionStage:;
   }
 
-  // Write the collection matrix
-  for (System& system : systems)
+  // Write the collection matrix and the last state of the sampled properties
+  for (std::size_t system_id{0}; System& system : systems)
   {
     system.tmmc.writeStatistics();
+    system.writeSampledPropertiesMC(system_id, currentCycle);
+    ++system_id;
   }
 }
 
@@ -869,6 +874,25 @@ void MonteCarloTransitionMatrix::output()
     std::print(stream, "Total simulation time:          {:14f} [s]\n", totalSimulationTime.count());
     std::print(stream, "\n\n");
 
+    std::print(
+        stream, "{}",
+        system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework, system.components));
+    if (!(system.framework.has_value() && system.framework->rigid))
+    {
+      std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
+    }
+    std::print(
+        stream, "{}",
+        system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swappableComponents, system.components));
+    std::print(
+        stream, "{}",
+        system.averagePartialMolarProperties.writeAveragesStatistics(system.swappableComponents, system.components));
+    std::print(stream, "{}",
+               system.averageLoadings.writeAveragesStatistics(
+                   system.components, system.frameworkMass(),
+                   system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
+    std::flush(stream);
+
     // json statistics
     outputJsons[system_id]["output"]["runningEnergies"] = system.runningEnergies.jsonMC();
     outputJsons[system_id]["output"]["recomputedEnergies"] = recomputedEnergies.jsonMC();
@@ -895,6 +919,14 @@ void MonteCarloTransitionMatrix::output()
       outputJsons[system_id]["output"]["cpuTimings"][component.name] =
           component.mc_moves_cputime.jsonComponentMCMoveCPUTimeStatistics();
     }
+
+    outputJsons[system_id]["properties"]["averageEnergies"] =
+        system.averageEnergies.jsonAveragesStatistics(system.hasExternalField, system.framework, system.components);
+    outputJsons[system_id]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
+    outputJsons[system_id]["properties"]["averageEnthalpy"] =
+        system.averageEnthalpiesOfAdsorption.jsonAveragesStatistics(system.swappableComponents, system.components);
+    outputJsons[system_id]["properties"]["averagePartialMolarProperties"] =
+        system.averagePartialMolarProperties.jsonAveragesStatistics(system.swappableComponents, system.components);
 
     std::ofstream json(outputJsonFileNames[system_id]);
     json << outputJsons[system_id].dump(4);

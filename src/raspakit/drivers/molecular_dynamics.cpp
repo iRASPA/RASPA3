@@ -1542,13 +1542,16 @@ void MolecularDynamics::output()
                    system.components, system.frameworkMass(),
                    system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
 
-    if (system.propertyElasticConstantsFluctuation)
-    {
-      const std::string jsonFileName =
-          std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system_id);
-      std::ofstream json(jsonFileName);
-      json << outputJsons[system_id].dump(4);
-    }
+    outputJsons[system_id]["properties"]["averageEnergies"] =
+        system.averageEnergies.jsonAveragesStatistics(system.hasExternalField, system.framework, system.components);
+    outputJsons[system_id]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
+    outputJsons[system_id]["properties"]["averageEnthalpy"] =
+        system.averageEnthalpiesOfAdsorption.jsonAveragesStatistics(system.swappableComponents, system.components);
+    outputJsons[system_id]["properties"]["averagePartialMolarProperties"] =
+        system.averagePartialMolarProperties.jsonAveragesStatistics(system.swappableComponents, system.components);
+    std::ofstream json(
+        std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system_id));
+    json << outputJsons[system_id].dump(4);
 
     ++system_id;
   }

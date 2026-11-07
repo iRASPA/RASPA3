@@ -991,48 +991,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
 
     for (std::size_t system_id{0}; System& system : systems)
     {
-      if (system.propertyConventionalRadialDistributionFunction.has_value())
-      {
-        system.propertyConventionalRadialDistributionFunction->writeOutput(
-            system.forceField, system_id, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
-            currentCycle);
-      }
-
-      if (system.propertyRadialDistributionFunction.has_value())
-      {
-        system.propertyRadialDistributionFunction->writeOutput(system.forceField, system_id,
-                                                               system.simulationBox.volume,
-                                                               system.totalNumberOfPseudoAtoms, currentCycle);
-      }
-      if (system.propertyDensityGrid.has_value())
-      {
-        system.propertyDensityGrid->writeOutput(system_id, system.simulationBox, system.forceField,
-                                                system.framework, system.components, currentCycle);
-      }
-      if (system.averageEnergyHistogram.has_value())
-      {
-        system.averageEnergyHistogram->writeOutput(system_id, currentCycle);
-      }
-      if (system.averageNumberOfMoleculesHistogram.has_value())
-      {
-        system.averageNumberOfMoleculesHistogram->writeOutput(system_id, system.components, currentCycle);
-      }
-      if (system.propertyMoleculeProperties.has_value())
-      {
-        system.propertyMoleculeProperties->writeOutput(system_id, system.components, currentCycle);
-      }
-      if (system.propertyEndToEndACF.has_value())
-      {
-        system.propertyEndToEndACF->writeOutput(system_id, system.components, currentCycle);
-      }
-      if (system.propertyMoleculeShape.has_value())
-      {
-        system.propertyMoleculeShape->writeOutput(system_id, system.components, currentCycle);
-      }
-      if (system.propertyMoleculeBackbone.has_value())
-      {
-        system.propertyMoleculeBackbone->writeOutput(system_id, system.components, currentCycle);
-      }
+      system.writeSampledPropertiesMC(system_id, currentCycle);
 
       ++system_id;
     }
@@ -1117,48 +1076,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
       std::flush(stream);
 
-      if (system.propertyConventionalRadialDistributionFunction.has_value())
-      {
-        system.propertyConventionalRadialDistributionFunction->writeOutput(
-            system.forceField, system_id, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
-            currentCycle);
-      }
-
-      if (system.propertyRadialDistributionFunction.has_value())
-      {
-        system.propertyRadialDistributionFunction->writeOutput(system.forceField, system_id,
-                                                               system.simulationBox.volume,
-                                                               system.totalNumberOfPseudoAtoms, currentCycle);
-      }
-      if (system.propertyDensityGrid.has_value())
-      {
-        system.propertyDensityGrid->writeOutput(system_id, system.simulationBox, system.forceField,
-                                                system.framework, system.components, currentCycle);
-      }
-      if (system.averageEnergyHistogram.has_value())
-      {
-        system.averageEnergyHistogram->writeOutput(system_id, currentCycle);
-      }
-      if (system.averageNumberOfMoleculesHistogram.has_value())
-      {
-        system.averageNumberOfMoleculesHistogram->writeOutput(system_id, system.components, currentCycle);
-      }
-      if (system.propertyMoleculeProperties.has_value())
-      {
-        system.propertyMoleculeProperties->writeOutput(system_id, system.components, currentCycle);
-      }
-      if (system.propertyEndToEndACF.has_value())
-      {
-        system.propertyEndToEndACF->writeOutput(system_id, system.components, currentCycle);
-      }
-      if (system.propertyMoleculeShape.has_value())
-      {
-        system.propertyMoleculeShape->writeOutput(system_id, system.components, currentCycle);
-      }
-      if (system.propertyMoleculeBackbone.has_value())
-      {
-        system.propertyMoleculeBackbone->writeOutput(system_id, system.components, currentCycle);
-      }
+      system.writeSampledPropertiesMC(system_id, currentCycle);
 
       ++system_id;
     }

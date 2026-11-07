@@ -660,6 +660,48 @@ std::string System::writeProgressLine(std::size_t currentCycle, std::size_t numb
   return text;
 }
 
+void System::writeSampledPropertiesMC(std::size_t systemId, std::size_t currentCycle)
+{
+  if (propertyConventionalRadialDistributionFunction.has_value())
+  {
+    propertyConventionalRadialDistributionFunction->writeOutput(forceField, systemId, simulationBox.volume,
+                                                                totalNumberOfPseudoAtoms, currentCycle);
+  }
+  if (propertyRadialDistributionFunction.has_value())
+  {
+    propertyRadialDistributionFunction->writeOutput(forceField, systemId, simulationBox.volume,
+                                                    totalNumberOfPseudoAtoms, currentCycle);
+  }
+  if (propertyDensityGrid.has_value())
+  {
+    propertyDensityGrid->writeOutput(systemId, simulationBox, forceField, framework, components, currentCycle);
+  }
+  if (averageEnergyHistogram.has_value())
+  {
+    averageEnergyHistogram->writeOutput(systemId, currentCycle);
+  }
+  if (averageNumberOfMoleculesHistogram.has_value())
+  {
+    averageNumberOfMoleculesHistogram->writeOutput(systemId, components, currentCycle);
+  }
+  if (propertyMoleculeProperties.has_value())
+  {
+    propertyMoleculeProperties->writeOutput(systemId, components, currentCycle);
+  }
+  if (propertyEndToEndACF.has_value())
+  {
+    propertyEndToEndACF->writeOutput(systemId, components, currentCycle);
+  }
+  if (propertyMoleculeShape.has_value())
+  {
+    propertyMoleculeShape->writeOutput(systemId, components, currentCycle);
+  }
+  if (propertyMoleculeBackbone.has_value())
+  {
+    propertyMoleculeBackbone->writeOutput(systemId, components, currentCycle);
+  }
+}
+
 std::string System::writeProductionStatusReportMC(const std::string& statusLine,
                                                   std::optional<std::pair<std::size_t, std::size_t>> progress) const
 {

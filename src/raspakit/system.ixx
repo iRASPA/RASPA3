@@ -977,6 +977,9 @@ export struct System
   std::string writeProductionStatusReportMC(
       const std::string& statusLine, std::optional<std::pair<std::size_t, std::size_t>> progress = std::nullopt) const;
   std::string writeProductionStatusReportMD(std::size_t currentCycle, std::size_t numberOfProductionCycles) const;
+  /// Writes the files of the properties sampled by the Monte Carlo drivers (radial distribution functions, density
+  /// grid, energy and number-of-molecules histograms, molecule properties, end-to-end ACF, shape and backbone).
+  void writeSampledPropertiesMC(std::size_t systemId, std::size_t currentCycle);
   std::string writeSystemStatus() const;
   std::string writeComponentStatus() const;
   std::string writeMCMoveStatistics() const;

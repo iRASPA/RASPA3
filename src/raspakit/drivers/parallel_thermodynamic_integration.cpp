@@ -436,6 +436,9 @@ void ParallelThermodynamicIntegration::runStage(SimulationStage stage, std::size
                   system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
                   system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
                 }
+
+                // each replica writes its own property files (named by the replica id)
+                system.writeSampledPropertiesMC(replicaId, cycle);
               }
 
               if (cycle % optimizeMCMovesEvery == 0uz)
@@ -701,6 +704,7 @@ void ParallelThermodynamicIntegration::writeReplicaFinalReports(std::vector<Runn
         std::format("Final state after {} cycles (ended at lambda-bin {})\n", numberOfProductionCycles,
                     system.components[tiComponentId].fixedLambdaBin.value());
     std::print(replicaStream, "{}", system.writeProductionStatusReportMC(status_line));
+    system.writeSampledPropertiesMC(replicaId, numberOfProductionCycles);
 
     const RunningEnergy drift = system.runningEnergies - recomputed[replicaId];
     replicaStream << system.runningEnergies.printMCDiff(recomputed[replicaId]);
