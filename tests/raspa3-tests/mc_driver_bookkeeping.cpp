@@ -239,3 +239,87 @@ TEST(MC_DRIVER_BOOKKEEPING, transition_matrix_setup_prepares_fractional_molecule
   std::filesystem::current_path(previous);
   std::filesystem::remove_all(scratch);
 }
+
+
+// Equipped for a transition matrix over the (N, lambda) chain: the matrix biases the chain, lambda included.
+System makeTMMCChainSystem(std::size_t numberOfLambdaBins)
+{
+  System system = makeMethaneCFCMCSystem(10);
+  system.tmmc.doTMMC = true;
+  system.tmmc.useBias = true;
+  system.tmmc.useTMBias = true;
+  system.tmmc.minMacrostate = 0;
+  system.tmmc.maxMacrostate = 40;
+  system.tmmc.numberOfLambdaBins = numberOfLambdaBins;
+  system.tmmc.updateTMEvery = 100;
+  system.tmmc.initialize();
+  return system;
+}
+
+// On an (N, lambda) chain the transition-matrix bias flattens lambda itself, and the Wang-Landau bias of the
+// lambda moves has to stay off: the endpoint jumps of the chain carried both, and were biased twice. Without
+// the chain the lambda Wang-Landau bias is what flattens lambda, and it has to move.
+TEST(MC_DRIVER_BOOKKEEPING, transition_matrix_on_a_lambda_chain_leaves_the_lambda_wang_landau_bias_alone)
+{
+  for (bool chain : {true, false})
+  {
+    std::vector<System> systems{makeTMMCChainSystem(chain ? 21uz : 1uz)};
+    ASSERT_EQ(systems[0].tmmc.lambdaChain(), chain);
+    ASSERT_TRUE(systems[0].lambdaWangLandauIsActive(0uz));
+
+    RandomNumber random(11);
+    MonteCarloTransitionMatrix tmmc(makeSchedule(0, 0, 3), systems, random, 5);
+    for (System& system : tmmc.systems) system.runningEnergies = system.computeTotalEnergies();
+    tmmc.simulationStage = MonteCarloTransitionMatrix::SimulationStage::Equilibration;
+    for (std::size_t cycle = 0; cycle < 3; ++cycle) tmmc.performCycle();
+
+    const std::vector<double>& biasFactor = tmmc.systems[0].components[0].lambdaGC.biasFactor;
+    const bool moved = std::ranges::any_of(biasFactor, [](double value) { return value != 0.0; });
+    EXPECT_EQ(moved, !chain) << (chain ? "on the chain" : "without the chain");
+  }
+}
+
+// The macrostate is the count of the adsorbate. A cation beside it is a component too, picked for its own
+// moves; what it counts to must not be written into the adsorbate's histogram. Nine cations in a range of
+// twelve, and an adsorbate at a pressure where it stays below five: the histogram above five is empty.
+TEST(MC_DRIVER_BOOKKEEPING, transition_matrix_samples_the_count_of_the_adsorbate_and_not_of_a_cation)
+{
+  const ForceField forceField({{"CH4", false, 16.04246, 0.0, 0.0, 6, false}}, {{158.5, 3.72}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  MCMoveProbabilities swapping;
+  swapping.setProbability(Move::Types::Translation, 1.0);
+  swapping.setProbability(Move::Types::Swap, 1.0);
+  const Component methane(forceField, "methane", 190.564, 4599200, 0.01142,
+                          {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21, swapping, std::nullopt,
+                          false);
+  MCMoveProbabilities moving;
+  moving.setProbability(Move::Types::Translation, 1.0);
+  Component cation(forceField, "cation", 190.564, 4599200, 0.01142, {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 1, false, false)},
+                   {}, {}, 5, 21, moving, std::nullopt, false);
+  cation.type = Component::Type::Cation;
+
+  std::vector<System> systems{System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1.0, 1.0, {},
+                                     {methane, cation}, {}, {0, 9}, 5)};
+  System& system = systems[0];
+  system.tmmc.doTMMC = true;
+  system.tmmc.useBias = true;
+  system.tmmc.useTMBias = true;
+  system.tmmc.minMacrostate = 0;
+  system.tmmc.maxMacrostate = 12;
+  system.tmmc.initialize();
+  ASSERT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 9uz);
+
+  RandomNumber random(3);
+  MonteCarloTransitionMatrix tmmc(makeSchedule(0, 2, 0), systems, random, 5);
+  for (System& walker : tmmc.systems) walker.runningEnergies = walker.computeTotalEnergies();
+  tmmc.simulationStage = MonteCarloTransitionMatrix::SimulationStage::Initialization;
+  for (std::size_t cycle = 0; cycle < 2; ++cycle) tmmc.performCycle();
+
+  const std::vector<std::size_t>& histogram = tmmc.systems[0].tmmc.histogram;
+  ASSERT_EQ(histogram.size(), 13uz);
+  std::size_t low = 0, high = 0;
+  for (std::size_t n = 0; n < histogram.size(); ++n) (n < 5 ? low : high) += histogram[n];
+  EXPECT_GT(low, 0uz);
+  EXPECT_EQ(high, 0uz) << "visits above five: " << high;
+  EXPECT_LT(tmmc.systems[0].numberOfIntegerMoleculesPerComponent[0], 5uz);
+}

@@ -337,7 +337,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
     double preFactor = system.beta * fugacity * system.simulationBox.volume /
                        static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
-    double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
+    // On a TMMC (N, lambda) chain the transition matrix biases the whole chain, the endpoint jumps
+    // included, and the lambda Wang-Landau bias is off, as it is for the lambda hops.
+    double biasTerm = (system.tmmc.doTMMC && system.tmmc.lambdaChain())
+                          ? 0.0
+                          : lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero).
     double physicalPacc = std::exp(logCorrectionFactorEwald + std::log(preFactor) + growData->logRosenbluthWeight -
                                    std::log(idealGasRosenbluthWeight) - system.beta * energyDifference.potentialEnergy());
@@ -675,7 +679,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
       double preFactor = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                          (system.beta * component.molFraction * fugacity * system.simulationBox.volume);
-      double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
+      // On a TMMC (N, lambda) chain the transition matrix biases the whole chain, the endpoint jumps
+      // included, and the lambda Wang-Landau bias is off, as it is for the lambda hops.
+      double biasTerm = (system.tmmc.doTMMC && system.tmmc.lambdaChain())
+                            ? 0.0
+                            : lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
       // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero,
       // which would turn this quotient into +inf).
       double physicalPacc = std::exp(

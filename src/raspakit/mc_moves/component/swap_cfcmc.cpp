@@ -364,7 +364,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     // Calculate acceptance probability
     double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
     double preFactor = system.beta * fugacity * system.simulationBox.volume / static_cast<double>(1 + oldN);
-    double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
+    // On a TMMC (N, lambda) chain the transition matrix biases the whole chain, the endpoint jumps
+    // included, and the lambda Wang-Landau bias is off, as it is for the lambda hops.
+    double biasTerm = (system.tmmc.doTMMC && system.tmmc.lambdaChain())
+                          ? 0.0
+                          : lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     double physicalPacc = preFactor * std::exp(-system.beta * (energyDifferenceStep1.potentialEnergy() +
                                                                energyDifferenceStep2.potentialEnergy() +
                                                                polarizationDifference.potentialEnergy()));
@@ -733,7 +737,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       // Calculate acceptance probability
       double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
       double preFactor = double(oldN) / (system.beta * component.molFraction * fugacity * system.simulationBox.volume);
-      double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
+      // On a TMMC (N, lambda) chain the transition matrix biases the whole chain, the endpoint jumps
+      // included, and the lambda Wang-Landau bias is off, as it is for the lambda hops.
+      double biasTerm = (system.tmmc.doTMMC && system.tmmc.lambdaChain())
+                            ? 0.0
+                            : lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
       double physicalPacc = preFactor * std::exp(-system.beta * (energyDifferenceStep1.potentialEnergy() +
                                                                  energyDifferenceStep2.potentialEnergy() +
                                                                  polarizationDifference.potentialEnergy()));
