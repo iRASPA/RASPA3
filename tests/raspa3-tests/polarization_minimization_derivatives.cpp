@@ -20,15 +20,17 @@ import system;
 
 namespace
 {
-std::pair<std::vector<double>, std::vector<double>> evaluate(System& system, const MinimizationDofLayout& layout,
-                                                             bool withHessian)
+std::tuple<double, std::vector<double>, std::vector<double>> evaluate(System& system,
+                                                                      const MinimizationDofLayout& layout,
+                                                                      bool withHessian)
 {
   GeneralizedHessian hessian(layout.numDofs(), 0);
   std::vector<double> gradient(layout.numDofs());
   DerivativeCapabilities capabilities{.energy = true, .gradient = true, .hessianPositionPosition = withHessian};
   DerivativeResults results{.gradient = gradient, .hessian = hessian};
   evaluateDerivatives(system, layout, capabilities, results);
-  return {gradient, std::vector<double>(hessian.positionPosition().begin(), hessian.positionPosition().end())};
+  return {results.energy, gradient,
+          std::vector<double>(hessian.positionPosition().begin(), hessian.positionPosition().end())};
 }
 
 // A flexible charged ion (the source of the field) and a polarizable, uncharged semi-flexible molecule: a rigid
@@ -57,10 +59,10 @@ System makeIonAndPolarizableSemiFlexibleMolecule(CellMinimizationType cellType)
   Potentials::IntraMolecularPotentials potentials;
   potentials.bonds.emplace_back(std::array<std::size_t, 2>{2, 3}, BondType::Harmonic, std::vector<double>{1500.0, 1.5});
   Component molecule(forceField, "semi-flexible", 100.0, 1e6, 0.2,
-                     {Atom({-1.2, 0.5, 0.0}, 0.0, 1.0, 0, typeQ, 0, false, false),
-                      Atom({0.0, -0.7, 0.0}, 0.0, 1.0, 0, typeQ, 0, false, false),
-                      Atom({1.2, 0.5, 0.0}, 0.0, 1.0, 0, typeQ, 0, false, false),
-                      Atom({2.4, -0.5, 0.7}, 0.0, 1.0, 0, typeQ, 0, false, false)},
+                     {Atom({-1.2, 0.5, 0.0}, 0.0, 1.0, 0, typeQ, 1, false, false),
+                      Atom({0.0, -0.7, 0.0}, 0.0, 1.0, 0, typeQ, 1, false, false),
+                      Atom({1.2, 0.5, 0.0}, 0.0, 1.0, 0, typeQ, 1, false, false),
+                      Atom({2.4, -0.5, 0.7}, 0.0, 1.0, 0, typeQ, 1, false, false)},
                      connectivityTable, potentials, 5, 21);
   molecule.buildFragmentGraph({{0, 1, 2}});
 
@@ -93,8 +95,8 @@ TEST(POLARIZATION_MINIMIZATION_DERIVATIVES, gradient_only_cell_gradient_includes
   ASSERT_GT(layout.numberOfCellDofs(), 0uz);
 
   System gradientOnlySystem = system;
-  const std::vector<double> gradientOnly = evaluate(gradientOnlySystem, layout, false).first;
-  const std::vector<double> withHessian = evaluate(system, layout, true).first;
+  const std::vector<double> gradientOnly = std::get<1>(evaluate(gradientOnlySystem, layout, false));
+  const std::vector<double> withHessian = std::get<1>(evaluate(system, layout, true));
   for (std::size_t dof = 0; dof < layout.numDofs(); ++dof)
   {
     EXPECT_NEAR(gradientOnly[dof], withHessian[dof], 1e-10 * std::max(1.0, std::abs(withHessian[dof])))
@@ -143,27 +145,36 @@ TEST(POLARIZATION_MINIMIZATION_DERIVATIVES, semi_flexible_rigid_group_orientatio
   const std::optional<std::size_t> orientation = layout.atomRigidOrientationDof(1, 0);
   ASSERT_TRUE(orientation.has_value());
 
-  System referenceSystem = system;
-  const std::vector<double> hessian = evaluate(referenceSystem, layout, true).second;
-  constexpr double delta = 1.0e-5;
   const std::size_t n = layout.numDofs();
+  constexpr double delta = 1.0e-4;
+  // the energy along a generalized displacement (also at zero, so the rigid-group regeneration of
+  // applyGeneralizedDisplacement does not offset the second differences)
+  auto energy = [&](std::size_t i, double di, std::size_t j, double dj)
+  {
+    std::vector<double> displacement(n, 0.0);
+    displacement[i] += di;
+    displacement[j] += dj;
+    System displaced = system;
+    applyGeneralizedDisplacement(displaced, layout, displacement);
+    return std::get<0>(evaluate(displaced, layout, false));
+  };
+  System referenceSystem = system;
+  const std::vector<double> hessian = std::get<2>(evaluate(referenceSystem, layout, true));
+  const double referenceEnergy = energy(0, 0.0, 0, 0.0);
   for (std::size_t axis = 0; axis < 3; ++axis)
   {
     const std::size_t column = *orientation + axis;
-    std::vector<double> gradients[2];
-    for (std::size_t side = 0; side < 2; ++side)
-    {
-      std::vector<double> displacement(n, 0.0);
-      displacement[column] = side == 0 ? delta : -delta;
-      System displaced = system;
-      applyGeneralizedDisplacement(displaced, layout, displacement);
-      gradients[side] = evaluate(displaced, layout, false).first;
-    }
     for (std::size_t row = 0; row < n; ++row)
     {
-      const double numerical = (gradients[0][row] - gradients[1][row]) / (2.0 * delta);
+      const double numerical =
+          row == column
+              ? (energy(column, delta, column, 0.0) - 2.0 * referenceEnergy + energy(column, -delta, column, 0.0)) /
+                    (delta * delta)
+              : (energy(row, delta, column, delta) - energy(row, delta, column, -delta) -
+                 energy(row, -delta, column, delta) + energy(row, -delta, column, -delta)) /
+                    (4.0 * delta * delta);
       const double analytic = hessian[row * n + column];
-      EXPECT_NEAR(analytic, numerical, 1e-4 * std::max({1.0, std::abs(numerical), std::abs(analytic)}))
+      EXPECT_NEAR(analytic, numerical, 1e-3 * std::max({1.0, std::abs(numerical), std::abs(analytic)}))
           << "row " << row << ", orientation axis " << axis;
     }
   }

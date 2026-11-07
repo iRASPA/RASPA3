@@ -383,8 +383,10 @@ void addChargeExclusionStrainDerivative(EnergyStatus& energy, double3x3& strainD
 
 // Excluded Coulomb pairs of a flexible framework: the bonded 1-2, 1-3 and 1-4 pairs of the connectivity table
 // that are not evaluated as unscaled intramolecular Coulomb pairs of the framework (those pairs carry their own
-// Ewald/shifted-potential completion in the framework intramolecular routines). A pair of two lab-fixed atoms is
-// left out: it has no Coulomb energy to complete, its Fourier energy is subtracted with the stored structure factor.
+// Ewald/shifted-potential completion in the framework intramolecular routines), and every pair inside a Rigid group
+// of a mixed framework (like the pairs of a rigid molecule they have no real-space Coulomb term). A pair of two
+// lab-fixed atoms is left out: it has no Coulomb energy to complete, its Fourier energy is subtracted with the stored
+// structure factor.
 std::set<std::array<std::size_t, 2>> frameworkExcludedChargePairs(const Framework& framework)
 {
   std::set<std::array<std::size_t, 2>> excludedPairs;
@@ -413,6 +415,17 @@ std::set<std::array<std::size_t, 2>> frameworkExcludedChargePairs(const Framewor
     for (const std::array<std::size_t, 4>& torsion : framework.connectivityTable.findAllTorsions())
     {
       excludeIfAbsentOrScaled({std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])});
+    }
+  }
+  for (const FrameworkGroup& group : framework.groups)
+  {
+    if (!group.isRigidBody()) continue;
+    for (std::size_t a = 0; a < group.atoms.size(); ++a)
+    {
+      for (std::size_t b = a + 1; b < group.atoms.size(); ++b)
+      {
+        excludedPairs.insert({std::min(group.atoms[a], group.atoms[b]), std::max(group.atoms[a], group.atoms[b])});
+      }
     }
   }
   return excludedPairs;

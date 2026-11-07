@@ -14,6 +14,7 @@ import molecule;
 import component;
 import forcefield;
 import framework;
+import interactions_ewald;
 import simulationbox;
 import connectivity_table;
 import intra_molecular_potentials;
@@ -338,49 +339,22 @@ void addMoleculeEwaldExclusion(const System& system, ForceConstants& forceConsta
 }
 
 // Ewald intramolecular exclusion correction for a flexible framework. Unlike molecules, a framework
-// keeps its nonbonded intraframework Coulomb, so only the bonded/excluded pairs (bonds, 1-3 bends and
-// 1-4 torsions that are absent from the Coulomb list or scaled away) receive the -C q_i q_j erf/r
-// correction. Mirrors the framework branch of Interactions::computeEwaldFourierHessian; framework atoms
-// are the leading force-constant sites, so their site index equals the atom index.
-void addFrameworkEwaldExclusion(const System& system, ForceConstants& forceConstants)
+// keeps its nonbonded intraframework Coulomb, so only the excluded pairs (Interactions::frameworkExcludedChargePairs:
+// bonds, 1-3 bends and 1-4 torsions that are absent from the Coulomb list or scaled away, and the pairs inside a
+// Rigid group) receive the -C q_i q_j erf/r correction. Mirrors the framework branch of
+// Interactions::computeEwaldFourierHessian; framework atoms are the leading force-constant sites, so their site
+// index equals the atom index.
+void addFrameworkEwaldExclusion(const System& system, ForceConstants& forceConstants,
+                                const std::set<std::array<std::size_t, 2>>& excludedPairs)
 {
   const ForceField& forceField = system.forceField;
   if (!forceField.useCharge || !forceField.usesEwaldFourier()) return;
   if (!system.framework.has_value() || system.framework->rigid) return;
 
-  const Framework& framework = *system.framework;
   const SimulationBox& box = system.simulationBox;
   const std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   const double alpha = forceField.EwaldAlpha;
   const double alphaSquared = alpha * alpha;
-
-  std::set<std::array<std::size_t, 2>> excludedPairs;
-  std::map<std::array<std::size_t, 2>, double> coulombScaling;
-  for (const CoulombPotential& potential : framework.intraMolecularPotentials.coulombs)
-  {
-    coulombScaling[{std::min(potential.identifiers[0], potential.identifiers[1]),
-                    std::max(potential.identifiers[0], potential.identifiers[1])}] = potential.scaling;
-  }
-  const auto excludeIfAbsentOrScaled = [&](const std::array<std::size_t, 2>& pair)
-  {
-    const auto scaling = coulombScaling.find(pair);
-    if (scaling == coulombScaling.end() || scaling->second != 1.0) excludedPairs.insert(pair);
-  };
-  if (!framework.connectivityTable.table.empty())
-  {
-    for (const std::array<std::size_t, 2>& bond : framework.connectivityTable.findAllBonds())
-    {
-      excludeIfAbsentOrScaled({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
-    }
-    for (const std::array<std::size_t, 3>& bend : framework.connectivityTable.findAllBends())
-    {
-      excludeIfAbsentOrScaled({std::min(bend[0], bend[2]), std::max(bend[0], bend[2])});
-    }
-    for (const std::array<std::size_t, 4>& torsion : framework.connectivityTable.findAllTorsions())
-    {
-      excludeIfAbsentOrScaled({std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])});
-    }
-  }
 
   for (const std::array<std::size_t, 2>& pair : excludedPairs)
   {
@@ -454,7 +428,8 @@ std::vector<double> ForceConstants::foldToGamma() const
   return folded;
 }
 
-ForceConstants computeRealSpaceForceConstants(const System& system)
+ForceConstants computeRealSpaceForceConstants(
+    const System& system, std::optional<std::set<std::array<std::size_t, 2>>> frameworkExcludedChargePairs)
 {
   for (const Component& component : system.components)
   {
@@ -542,7 +517,10 @@ ForceConstants computeRealSpaceForceConstants(const System& system)
   if (flexibleFramework)
   {
     addFrameworkIntramolecular(system, forceConstants);
-    addFrameworkEwaldExclusion(system, forceConstants);
+    addFrameworkEwaldExclusion(system, forceConstants,
+                               frameworkExcludedChargePairs.has_value()
+                                   ? *frameworkExcludedChargePairs
+                                   : Interactions::frameworkExcludedChargePairs(*system.framework));
   }
 
   // Molecule intramolecular terms (image-free, home cell).

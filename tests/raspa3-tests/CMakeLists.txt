@@ -62,6 +62,7 @@ add_executable(unit_tests_raspa3
   uninitialized_members_and_table_bounds.cpp
   spatial_decomposition_bond_bend_split.cpp
   polarization_minimization_derivatives.cpp
+  mixed_framework_rigid_group_exclusions.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

@@ -14,6 +14,7 @@ import molecule;
 import component;
 import intra_molecular_exclusions;
 import framework;
+import interactions_ewald;
 import forcefield;
 import simulationbox;
 import system;
@@ -400,16 +401,20 @@ std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std:
   // flexible terms are kept. The generalized projection below maps the Fixed/Rigid atoms back onto
   // their true degrees of freedom (none for Fixed, six for each Rigid group).
   const bool mixedFramework = system.framework && system.framework->isMixed();
+  // the pairs inside a Rigid group keep their Ewald exclusion after the flattening
+  std::optional<std::set<std::array<std::size_t, 2>>> frameworkExcludedChargePairs;
   if (mixedFramework)
   {
+    frameworkExcludedChargePairs = Interactions::frameworkExcludedChargePairs(*system.framework);
     cartesianSystem.framework->groups.clear();
+    cartesianSystem.framework->atomGroupIds.clear();
     cartesianSystem.framework->mixed = false;
     cartesianSystem.framework->fixedAtomCount = 0;
     cartesianSystem.frameworkGroupData.clear();
     cartesianSystem.numberOfRigidFrameworkAtoms = 0;
   }
 
-  const ForceConstants forceConstants = computeRealSpaceForceConstants(cartesianSystem);
+  const ForceConstants forceConstants = computeRealSpaceForceConstants(cartesianSystem, frameworkExcludedChargePairs);
   const std::size_t numberOfSites = forceConstants.numberOfAtoms();
   const std::size_t cartesianDimension = forceConstants.dimension();
 

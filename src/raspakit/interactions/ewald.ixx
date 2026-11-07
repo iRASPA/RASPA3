@@ -104,8 +104,9 @@ RunningEnergy computeEwaldFourierEnergy(std::vector<std::complex<double>>& eik_x
                                         const std::optional<Framework>& framework = std::nullopt,
                                         std::span<const Atom> frameworkAtoms = {});
 
-/// The bonded framework pairs that need an exclusion correction: the 1-2, 1-3 and 1-4 pairs of the connectivity table
-/// without an unscaled intramolecular Coulomb term, except the pairs of two lab-fixed atoms.
+/// The framework pairs that need an exclusion correction: the 1-2, 1-3 and 1-4 pairs of the connectivity table
+/// without an unscaled intramolecular Coulomb term and the pairs inside a Rigid group, except the pairs of two
+/// lab-fixed atoms.
 std::set<std::array<std::size_t, 2>> frameworkExcludedChargePairs(const Framework& framework);
 
 /**
