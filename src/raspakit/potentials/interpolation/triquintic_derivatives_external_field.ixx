@@ -49,4 +49,11 @@ std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>,
            std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>>
 potentialTriquinticExponentialNonPolynomialTestFunction(const double3 &pos);
+
+std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
+           std::array<std::array<std::array<double, 3>, 3>, 3>,
+           std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>,
+           std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>,
+           std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>>
+potentialTriquinticMullerBrown(const double3 &pos);
 }  // namespace Potentials

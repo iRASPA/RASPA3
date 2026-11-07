@@ -3282,3 +3282,122 @@ Potentials::potentialTriquinticExponentialNonPolynomialTestFunction(const double
                   360 * exp_term - 2880 * exp_z2 + 2400 * exp_term_z4 - 384 * exp_term * z6 - 120 * exp_r2 +
                       720 * exp_z2_r2 - 480 * exp_term_z4 * r2 + 64 * exp_term * z6 * r2}}}}}}}}}}}}};
 }
+
+// The Muller-Brown surface U(x, y) = sum_i A_i exp(a_i dx^2 + b_i dx dy + c_i dy^2), with dx = x - x0_i and
+// dy = y - y0_i, is independent of z. Its mixed partial derivative d^m/dx^m d^n/dy^n of a term follows from the
+// Taylor expansion exp(Q(x + h, y + k)) = exp(Q) exp(Qx h + Qy k + a h^2 + b h k + c k^2): it is m! n! exp(Q)
+// times the coefficient of h^m k^n of the second exponential, expanded as a power series up to total order six.
+std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
+           std::array<std::array<std::array<double, 3>, 3>, 3>,
+           std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>,
+           std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>,
+           std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>>
+Potentials::potentialTriquinticMullerBrown(const double3& pos)
+{
+  constexpr std::size_t maxOrder = 6;
+  // coefficients of h^m k^n (m + n <= maxOrder)
+  using Series = std::array<std::array<double, maxOrder + 1>, maxOrder + 1>;
+
+  constexpr std::array<double, 4> A{-200.0, -100.0, -170.0, -15.0};
+  constexpr std::array<double, 4> a{-1.0, -1.0, -6.5, -0.7};
+  constexpr std::array<double, 4> x0{1.0, 0.0, -0.5, -1.0};
+  constexpr std::array<double, 4> b{0.0, 0.0, 11.0, 0.6};
+  constexpr std::array<double, 4> y0{0.0, 0.5, 1.5, 1.0};
+  constexpr std::array<double, 4> c{-10.0, -10.0, -6.5, 0.7};
+  constexpr std::array<double, maxOrder + 1> factorial{1.0, 1.0, 2.0, 6.0, 24.0, 120.0, 720.0};
+
+  // D[m][n] = d^m/dx^m d^n/dy^n U
+  Series D{};
+  for (std::size_t i = 0; i < 4; ++i)
+  {
+    const double dx = pos.x - x0[i];
+    const double dy = pos.y - y0[i];
+    Series exponent{};
+    exponent[1][0] = 2.0 * a[i] * dx + b[i] * dy;
+    exponent[0][1] = b[i] * dx + 2.0 * c[i] * dy;
+    exponent[2][0] = a[i];
+    exponent[1][1] = b[i];
+    exponent[0][2] = c[i];
+
+    // exp(exponent) = sum_l exponent^l / l!; the exponent has no constant term, so the terms beyond l = maxOrder
+    // only contribute beyond total order maxOrder
+    Series term{};
+    term[0][0] = 1.0;
+    Series sum = term;
+    for (std::size_t l = 1; l <= maxOrder; ++l)
+    {
+      Series next{};
+      for (std::size_t m = 0; m <= maxOrder; ++m)
+      {
+        for (std::size_t n = 0; m + n <= maxOrder; ++n)
+        {
+          for (std::size_t p = 0; p <= 2; ++p)
+          {
+            for (std::size_t q = 0; p + q <= 2 && m + p + n + q <= maxOrder; ++q)
+            {
+              next[m + p][n + q] += term[m][n] * exponent[p][q] / static_cast<double>(l);
+            }
+          }
+        }
+      }
+      term = next;
+      for (std::size_t m = 0; m <= maxOrder; ++m)
+      {
+        for (std::size_t n = 0; m + n <= maxOrder; ++n)
+        {
+          sum[m][n] += term[m][n];
+        }
+      }
+    }
+
+    const double weight = A[i] * std::exp(a[i] * dx * dx + b[i] * dx * dy + c[i] * dy * dy);
+    for (std::size_t m = 0; m <= maxOrder; ++m)
+    {
+      for (std::size_t n = 0; m + n <= maxOrder; ++n)
+      {
+        D[m][n] += weight * factorial[m] * factorial[n] * sum[m][n];
+      }
+    }
+  }
+
+  // the derivative with respect to the Cartesian components 'indices' (0: x, 1: y, 2: z)
+  auto derivative = [&D](auto... indices)
+  {
+    if (((indices == 2) || ...)) return 0.0;
+    return D[((indices == 0) + ... + 0)][((indices == 1) + ... + 0)];
+  };
+
+  std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
+             std::array<std::array<std::array<double, 3>, 3>, 3>,
+             std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>,
+             std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>,
+             std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>>
+      result{};
+  auto& [energy, first, second, third, fourth, fifth, sixth] = result;
+  energy = D[0][0];
+  for (std::size_t p = 0; p < 3; ++p)
+  {
+    first[p] = derivative(p);
+    for (std::size_t q = 0; q < 3; ++q)
+    {
+      second[p][q] = derivative(p, q);
+      for (std::size_t r = 0; r < 3; ++r)
+      {
+        third[p][q][r] = derivative(p, q, r);
+        for (std::size_t s = 0; s < 3; ++s)
+        {
+          fourth[p][q][r][s] = derivative(p, q, r, s);
+          for (std::size_t t = 0; t < 3; ++t)
+          {
+            fifth[p][q][r][s][t] = derivative(p, q, r, s, t);
+            for (std::size_t u = 0; u < 3; ++u)
+            {
+              sixth[p][q][r][s][t][u] = derivative(p, q, r, s, t, u);
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
+}

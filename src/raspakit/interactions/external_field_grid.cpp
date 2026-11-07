@@ -49,6 +49,11 @@ Interactions::calculateThirdDerivativeAtPositionExternalField(const ForceField &
         return Potentials::potentialTricubicSixthOrderPolynomialTestFunction(pos);
       case ForceField::PotentialEnergySurfaceType::ExponentialNonPolynomialTestFunction:
         return Potentials::potentialTricubicExponentialNonPolynomialTestFunction(pos);
+      case ForceField::PotentialEnergySurfaceType::MullerBrown:
+      {
+        const auto derivatives = Potentials::potentialTriquinticMullerBrown(pos);
+        return {std::get<0>(derivatives), std::get<1>(derivatives), std::get<2>(derivatives), std::get<3>(derivatives)};
+      }
       default:
         break;
     }
@@ -133,6 +138,8 @@ Interactions::calculateSixthOrderDerivativeAtPositionExternalField(const ForceFi
         return Potentials::potentialTriquinticSixthOrderPolynomialTestFunction(pos);
       case ForceField::PotentialEnergySurfaceType::ExponentialNonPolynomialTestFunction:
         return Potentials::potentialTriquinticExponentialNonPolynomialTestFunction(pos);
+      case ForceField::PotentialEnergySurfaceType::MullerBrown:
+        return Potentials::potentialTriquinticMullerBrown(pos);
       default:
         break;
     }

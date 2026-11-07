@@ -35,8 +35,11 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream, std::siz
   {
     if(forceField.settings.useExternalFieldGrid)
     {
-      // int3 numberOfExternalFieldGridPoints  = forceField.settings.numberOfExternalFieldGridPoints;
-      uint3 numberOfExternalFieldGridPoints = InterpolationEnergyGrid::parseExternalFieldGridDimensions(forceField.externalFieldGridFileName);
+      // a field read from file sets the grid dimensions, an analytic field is tabulated on the requested grid
+      const bool fieldFromFile = forceField.potentialEnergySurfaceType == ForceField::PotentialEnergySurfaceType::GridFile;
+      uint3 numberOfExternalFieldGridPoints =
+          fieldFromFile ? InterpolationEnergyGrid::parseExternalFieldGridDimensions(forceField.externalFieldGridFileName)
+                        : forceField.settings.numberOfExternalFieldGridPoints;
 
       externalFieldInterpolationGrid = InterpolationEnergyGrid(simulationBox, forceField.potentialEnergySurfaceOrigin,
                                                       numberOfExternalFieldGridPoints, forceField.settings.interpolationScheme);
@@ -48,122 +51,126 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream, std::siz
       std::print(stream, "========================================================================================================================\n");
       externalFieldInterpolationGrid->makeExternalFieldInterpolationGrid(stream, forceField, simulationBox);
 
-      double count{};
-      double summed_errors{};
-      double boltzmann_weighted_difference_squared_summed{};
-      double boltzmann_weighted_full_squared_summed{};
-
-      for (std::size_t i = 0; i < numberOfGridTestPoints; ++i)
+      // a field read from file has no analytic expression to test the grid against
+      if (!fieldFromFile)
       {
-        // generate random position in super cell
-        double3 s = double3(random.uniform(), random.uniform(), random.uniform());
-        double3 pos = simulationBox.cell * s;
+        double count{};
+        double summed_errors{};
+        double boltzmann_weighted_difference_squared_summed{};
+        double boltzmann_weighted_full_squared_summed{};
 
-        auto [interpolated_energy, interpolated_gradient, interpolated_hessian] =
-            externalFieldInterpolationGrid->interpolateHessian(pos);
-
-        // convert to Kelvin
-        interpolated_energy *= Units::EnergyToKelvin;
-
-        interpolated_gradient.x *= Units::EnergyToKelvin;
-        interpolated_gradient.y *= Units::EnergyToKelvin;
-        interpolated_gradient.z *= Units::EnergyToKelvin;
-
-        interpolated_hessian.ax *= Units::EnergyToKelvin;
-        interpolated_hessian.ay *= Units::EnergyToKelvin;
-        interpolated_hessian.az *= Units::EnergyToKelvin;
-        interpolated_hessian.bx *= Units::EnergyToKelvin;
-        interpolated_hessian.by *= Units::EnergyToKelvin;
-        interpolated_hessian.bz *= Units::EnergyToKelvin;
-        interpolated_hessian.cx *= Units::EnergyToKelvin;
-        interpolated_hessian.cy *= Units::EnergyToKelvin;
-        interpolated_hessian.cz *= Units::EnergyToKelvin;
-
-        double analytical_energy{};
-        double3 analytical_gradient{};
-        double3x3 analytical_hessian{};
-        switch (forceField.settings.interpolationScheme)
+        for (std::size_t i = 0; i < numberOfGridTestPoints; ++i)
         {
-          case ForceFieldSettings::InterpolationScheme::Polynomial:
+          // generate random position in super cell
+          double3 s = double3(random.uniform(), random.uniform(), random.uniform());
+          double3 pos = simulationBox.cell * s;
+
+          auto [interpolated_energy, interpolated_gradient, interpolated_hessian] =
+              externalFieldInterpolationGrid->interpolateHessian(pos);
+
+          // convert to Kelvin
+          interpolated_energy *= Units::EnergyToKelvin;
+
+          interpolated_gradient.x *= Units::EnergyToKelvin;
+          interpolated_gradient.y *= Units::EnergyToKelvin;
+          interpolated_gradient.z *= Units::EnergyToKelvin;
+
+          interpolated_hessian.ax *= Units::EnergyToKelvin;
+          interpolated_hessian.ay *= Units::EnergyToKelvin;
+          interpolated_hessian.az *= Units::EnergyToKelvin;
+          interpolated_hessian.bx *= Units::EnergyToKelvin;
+          interpolated_hessian.by *= Units::EnergyToKelvin;
+          interpolated_hessian.bz *= Units::EnergyToKelvin;
+          interpolated_hessian.cx *= Units::EnergyToKelvin;
+          interpolated_hessian.cy *= Units::EnergyToKelvin;
+          interpolated_hessian.cz *= Units::EnergyToKelvin;
+
+          double analytical_energy{};
+          double3 analytical_gradient{};
+          double3x3 analytical_hessian{};
+          switch (forceField.settings.interpolationScheme)
           {
-            std::array<double, 8> analytical_polynomial = Interactions::calculateTricubicFractionalAtPositionExternalField(
-                 forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
+            case ForceFieldSettings::InterpolationScheme::Polynomial:
+            {
+              std::array<double, 8> analytical_polynomial = Interactions::calculateTricubicFractionalAtPositionExternalField(
+                   forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
 
-            analytical_energy = analytical_polynomial[0] * Units::EnergyToKelvin;
+              analytical_energy = analytical_polynomial[0] * Units::EnergyToKelvin;
+            }
+            break;
+            case ForceFieldSettings::InterpolationScheme::Tricubic:
+            {
+              std::array<double, 8> analytical_tricubic = Interactions::calculateTricubicFractionalAtPositionExternalField(
+                   forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
+
+              analytical_energy = analytical_tricubic[0] * Units::EnergyToKelvin;
+
+              // convert gradient from fractional to Cartesian
+              analytical_gradient =
+                  simulationBox.inverseCell.transpose() *
+                  double3(analytical_tricubic[1], analytical_tricubic[2], analytical_tricubic[3]);
+
+              analytical_gradient.x *= Units::EnergyToKelvin;
+              analytical_gradient.y *= Units::EnergyToKelvin;
+              analytical_gradient.z *= Units::EnergyToKelvin;
+            }
+            break;
+            case ForceFieldSettings::InterpolationScheme::Triquintic:
+            {
+              std::array<double, 27> analytical_triquintic = Interactions::calculateTriquinticFractionalAtPositionExternalField(
+                   forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
+
+              analytical_energy = analytical_triquintic[0] * Units::EnergyToKelvin;
+
+              // convert gradient from fractional to Cartesian
+              analytical_gradient =
+                  simulationBox.inverseCell.transpose() *
+                  double3(analytical_triquintic[1], analytical_triquintic[2], analytical_triquintic[3]);
+
+              analytical_gradient.x *= Units::EnergyToKelvin;
+              analytical_gradient.y *= Units::EnergyToKelvin;
+              analytical_gradient.z *= Units::EnergyToKelvin;
+
+              double3x3 hessian =
+                  double3x3(analytical_triquintic[4], analytical_triquintic[5], analytical_triquintic[6],
+                            analytical_triquintic[5], analytical_triquintic[7], analytical_triquintic[8],
+                            analytical_triquintic[6], analytical_triquintic[8], analytical_triquintic[9]);
+              analytical_hessian =
+                  simulationBox.inverseCell.transpose() * hessian * simulationBox.inverseCell;
+
+              analytical_hessian.ax *= Units::EnergyToKelvin;
+              analytical_hessian.ay *= Units::EnergyToKelvin;
+              analytical_hessian.az *= Units::EnergyToKelvin;
+              analytical_hessian.bx *= Units::EnergyToKelvin;
+              analytical_hessian.by *= Units::EnergyToKelvin;
+              analytical_hessian.bz *= Units::EnergyToKelvin;
+              analytical_hessian.cx *= Units::EnergyToKelvin;
+              analytical_hessian.cy *= Units::EnergyToKelvin;
+              analytical_hessian.cz *= Units::EnergyToKelvin;
+            }
+            break;
           }
-          break;
-          case ForceFieldSettings::InterpolationScheme::Tricubic:
-          {
-            std::array<double, 8> analytical_tricubic = Interactions::calculateTricubicFractionalAtPositionExternalField(
-                 forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
 
-            analytical_energy = analytical_tricubic[0] * Units::EnergyToKelvin;
+          double boltzmann_weight_value = std::exp(-beta * analytical_energy * Units::KelvinToEnergy);
+          double difference = analytical_energy - interpolated_energy;
 
-            // convert gradient from fractional to Cartesian
-            analytical_gradient =
-                simulationBox.inverseCell.transpose() *
-                double3(analytical_tricubic[1], analytical_tricubic[2], analytical_tricubic[3]);
+          summed_errors += std::fabs(difference);
+          count += 1.0;
 
-            analytical_gradient.x *= Units::EnergyToKelvin;
-            analytical_gradient.y *= Units::EnergyToKelvin;
-            analytical_gradient.z *= Units::EnergyToKelvin;
-          }
-          break;
-          case ForceFieldSettings::InterpolationScheme::Triquintic:
-          {
-            std::array<double, 27> analytical_triquintic = Interactions::calculateTriquinticFractionalAtPositionExternalField(
-                 forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
-
-            analytical_energy = analytical_triquintic[0] * Units::EnergyToKelvin;
-
-            // convert gradient from fractional to Cartesian
-            analytical_gradient =
-                simulationBox.inverseCell.transpose() *
-                double3(analytical_triquintic[1], analytical_triquintic[2], analytical_triquintic[3]);
-
-            analytical_gradient.x *= Units::EnergyToKelvin;
-            analytical_gradient.y *= Units::EnergyToKelvin;
-            analytical_gradient.z *= Units::EnergyToKelvin;
-
-            double3x3 hessian =
-                double3x3(analytical_triquintic[4], analytical_triquintic[5], analytical_triquintic[6],
-                          analytical_triquintic[5], analytical_triquintic[7], analytical_triquintic[8],
-                          analytical_triquintic[6], analytical_triquintic[8], analytical_triquintic[9]);
-            analytical_hessian =
-                simulationBox.inverseCell.transpose() * hessian * simulationBox.inverseCell;
-
-            analytical_hessian.ax *= Units::EnergyToKelvin;
-            analytical_hessian.ay *= Units::EnergyToKelvin;
-            analytical_hessian.az *= Units::EnergyToKelvin;
-            analytical_hessian.bx *= Units::EnergyToKelvin;
-            analytical_hessian.by *= Units::EnergyToKelvin;
-            analytical_hessian.bz *= Units::EnergyToKelvin;
-            analytical_hessian.cx *= Units::EnergyToKelvin;
-            analytical_hessian.cy *= Units::EnergyToKelvin;
-            analytical_hessian.cz *= Units::EnergyToKelvin;
-          }
-          break;
+          boltzmann_weighted_difference_squared_summed += difference * difference * boltzmann_weight_value;
+          boltzmann_weighted_full_squared_summed += boltzmann_weight_value;
         }
 
-        double boltzmann_weight_value = std::exp(-beta * analytical_energy);
-        double difference = analytical_energy - interpolated_energy;
+        std::print(stream, "Testing external-field interpolation grid ({}x{}x{})\n", numberOfExternalFieldGridPoints.x,
+                   numberOfExternalFieldGridPoints.y, numberOfExternalFieldGridPoints.z);
+        std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
+        std::print(stream, "(Using {} points for testing)\n\n", numberOfGridTestPoints);
 
-        summed_errors += std::fabs(difference);
-        count += 1.0;
-
-        boltzmann_weighted_difference_squared_summed += difference * difference * boltzmann_weight_value;
-        boltzmann_weighted_full_squared_summed += boltzmann_weight_value;
+        std::print(stream, "Absolute error energy:                  {}\n\n", summed_errors / count);
+        std::print(stream, "Boltzmann weighted error energy:        {}\n\n",
+                          std::sqrt(boltzmann_weighted_difference_squared_summed / 
+                                    boltzmann_weighted_full_squared_summed));
       }
-
-      std::print(stream, "Testing external-field interpolation grid ({}x{}x{})\n", numberOfExternalFieldGridPoints.x,
-                 numberOfExternalFieldGridPoints.y, numberOfExternalFieldGridPoints.z);
-      std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
-      std::print(stream, "(Using {} points for testing)\n\n", numberOfGridTestPoints);
-
-      std::print(stream, "Absolute error energy:                  {}\n\n", summed_errors / count);
-      std::print(stream, "Boltzmann weighted error energy:        {}\n\n",
-                        std::sqrt(boltzmann_weighted_difference_squared_summed / 
-                                  boltzmann_weighted_full_squared_summed));
     }
   }
 
@@ -373,7 +380,7 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
           break;
         }
 
-        double boltzmann_weight_vdw = std::exp(-beta * analytical_vdw_energy);
+        double boltzmann_weight_vdw = std::exp(-beta * analytical_vdw_energy * Units::KelvinToEnergy);
 
         boltzmann_weight_summed_vdw += boltzmann_weight_vdw;
 
@@ -460,7 +467,7 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
 
         // test charges when no VDW overlap detected (putting a unit charge on top of negative framework atom can lead
         // to very negative energies)
-        if (forceField.useCharge && analytical_vdw_energy < forceField.energyOverlapCriteria)
+        if (forceField.useCharge && analytical_vdw_energy * Units::KelvinToEnergy < forceField.energyOverlapCriteria)
         {
           double charge = forceField.pseudoAtoms[index].charge;
           auto [interpolated_value_real_ewald, interpolated_gradient_real_ewald, interpolated_hessian_real_ewald] =
@@ -553,7 +560,7 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
             break;
           }
 
-          double boltzmann_weight_real_ewald = std::exp(-beta * analytical_vdw_energy);
+          double boltzmann_weight_real_ewald = std::exp(-beta * analytical_vdw_energy * Units::KelvinToEnergy);
 
           boltzmann_weight_summed_real_ewald += boltzmann_weight_real_ewald;
 

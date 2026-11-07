@@ -290,8 +290,9 @@ const uint3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std:
  * This function extracts parameters specific to external field grids,
  * allowing to use this data in construction of external field interpolation grid in simulations.
  *
- * \param filename The name of the CUBE file containing the external field data. The file is expected to be column-major ordered
- * \return A pair containing the 3D grid of external field values and the grid dimensions.
+ * \param filename The name of the CUBE file containing the external field data (in Kelvin). As in the CUBE format,
+ * the voxels are listed with x as the slowest and z as the fastest index.
+ * \return The energies of the grid points stored with x as the fastest index (std::layout_left), like the grid.
  */
 const std::vector<double> InterpolationEnergyGrid::parseExternalFieldGridCube(const std::string& filename)
 {
@@ -299,27 +300,44 @@ const std::vector<double> InterpolationEnergyGrid::parseExternalFieldGridCube(co
 
   std::ifstream infile(filename);
 
-  // skip comments and already read lines
+  // skip the two comment lines, read the number of atoms from the origin line, and skip the three grid lines
   std::string line;
-  for (int i = 0; i < 6; ++i) {
-      std::getline(infile, line);
+  std::getline(infile, line);
+  std::getline(infile, line);
+  std::getline(infile, line);
+  std::int64_t numberOfAtoms{};
+  if (!(std::istringstream(line) >> numberOfAtoms))
+  {
+    throw std::runtime_error("Invalid cube file (missing number of atoms): " + filename);
+  }
+  for (int i = 0; i < 3; ++i)
+  {
+    std::getline(infile, line);
+  }
+
+  // skip the atom lines; a negative number of atoms announces one more line (the data-set identifiers)
+  const std::int64_t numberOfAtomLines = numberOfAtoms < 0 ? 1 - numberOfAtoms : numberOfAtoms;
+  for (std::int64_t i = 0; i < numberOfAtomLines; ++i)
+  {
+    if (!std::getline(infile, line))
+    {
+      throw std::runtime_error("Invalid cube file (missing atom lines): " + filename);
+    }
   }
 
   std::vector<double> gridFlat(gridDims.x * gridDims.y * gridDims.z);
   double value{};
 
-  for (std::size_t iz = 0; iz < gridDims.z; iz++)
+  for (std::size_t ix = 0; ix < gridDims.x; ix++)
   {
     for (std::size_t iy = 0; iy < gridDims.y; iy++)
     {
-      for (std::size_t ix = 0; ix < gridDims.x; ix++)
+      for (std::size_t iz = 0; iz < gridDims.z; iz++)
       {
         if (!(infile >> value)){
           throw std::runtime_error("Unexpected end of cube data: " + filename);
         }
-        std::size_t idx = ix * (gridDims.y * gridDims.z) 
-                        + iy * gridDims.z
-                        + iz;
+        std::size_t idx = ix + gridDims.x * (iy + gridDims.y * iz);
 
         gridFlat[idx] = value * Units::KelvinToEnergy;
       }
@@ -333,6 +351,13 @@ void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& s
 {
   if (forceField.potentialEnergySurfaceType == ForceField::PotentialEnergySurfaceType::GridFile)
   {
+    // the file holds only the energies, while the Hermite schemes store the derivatives at every node as well
+    if (order != ForceFieldSettings::InterpolationScheme::Polynomial)
+    {
+      throw std::runtime_error(
+          "External field 'GridFile' holds energies only and requires 'InterpolationScheme' 'Polynomial' (no "
+          "molecular dynamics or gradient-based Monte Carlo moves)\n");
+    }
     data = InterpolationEnergyGrid::parseExternalFieldGridCube(forceField.externalFieldGridFileName);
   }
   else
@@ -1023,11 +1048,12 @@ void InterpolationEnergyGrid::writeOutput(std::size_t systemId, const Simulation
   std::print(ostream, "Written by RASPA-3\n");
   std::print(ostream, "{} {} {} {}\n", 1, origin.x, origin.y, origin.z);
 
-  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.x, cell.ax / static_cast<double>(numberOfCells.x), 
+  // negative numbers of grid points: the vectors are in Angstrom
+  std::print(ostream, "{} {} {} {}\n", -static_cast<std::int64_t>(numberOfGridPoints.x), cell.ax / static_cast<double>(numberOfCells.x), 
       cell.ay / static_cast<double>(numberOfCells.x), cell.az / static_cast<double>(numberOfCells.x));
-  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.y, cell.bx / static_cast<double>(numberOfCells.y), 
+  std::print(ostream, "{} {} {} {}\n", -static_cast<std::int64_t>(numberOfGridPoints.y), cell.bx / static_cast<double>(numberOfCells.y), 
       cell.by / static_cast<double>(numberOfCells.y), cell.bz / static_cast<double>(numberOfCells.y));
-  std::print(ostream, "{} {} {} {}\n", -numberOfGridPoints.z, cell.cx / static_cast<double>(numberOfCells.z), 
+  std::print(ostream, "{} {} {} {}\n", -static_cast<std::int64_t>(numberOfGridPoints.z), cell.cx / static_cast<double>(numberOfCells.z), 
       cell.cy / static_cast<double>(numberOfCells.z), cell.cz / static_cast<double>(numberOfCells.z));
 
   // work around: needs to be 1 atom for iRASPA
