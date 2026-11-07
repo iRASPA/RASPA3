@@ -41,6 +41,7 @@ import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import interactions_polarization;
 import thermostat;
 import json;
 import graceful_shutdown;
@@ -1068,6 +1069,24 @@ void fitOccupancyRates(DynamicallyCorrectedTST::OccupancyRates& rates)
   }
   rates.fitRms = std::sqrt(residual / std::max(weightSum, 1e-300));
 }
+
+// An accepted move of the tagged molecule commits its new electric field and, with molecule-molecule polarization,
+// the change of the field on every other atom into the stored field (the same commit as the standard moves).
+void commitElectricField(System& system, std::size_t selectedComponent, std::size_t selectedMolecule,
+                         std::span<const double3> electricFieldMoleculeNew,
+                         std::span<const double3> electricFieldNeighborDelta)
+{
+  if (!system.forceField.omitInterPolarization)
+  {
+    std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+    for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+    {
+      storedElectricField[i] += electricFieldNeighborDelta[i];
+    }
+  }
+  std::span<double3> electricFieldMolecule = system.spanElectricFieldOld(selectedComponent, selectedMolecule);
+  std::copy(electricFieldMoleculeNew.begin(), electricFieldMoleculeNew.end(), electricFieldMolecule.begin());
+}
 }  // namespace
 
 
@@ -1477,27 +1496,73 @@ std::optional<RunningEnergy> DynamicallyCorrectedTST::translationInPlaneMove(std
     }
   }
 
+  // Polarization follows the bookkeeping of MC_Moves::translationMove (and DynamicallyCorrectedTSTFreeEnergy): the
+  // field on the moved molecule (new and old) from the framework, the reciprocal space and, with molecule-molecule
+  // polarization, the other molecules, plus the change of the field on every other atom; an accepted move commits
+  // both into the stored field so that the running polarization energy stays consistent with a full recomputation.
+  const bool polarization = system.forceField.computePolarization;
+  const bool interPolarization = polarization && !system.forceField.omitInterPolarization;
+  std::vector<double3> electricFieldMoleculeNew(moleculeAtoms.size());
+  std::vector<double3> electricFieldMoleculeOld(moleculeAtoms.size());
+  std::vector<double3> electricFieldNeighborDelta;
+
   std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
       system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
       trialMolecule.second, moleculeAtoms);
   if (!externalFieldMolecule.has_value()) return std::nullopt;
 
-  std::optional<RunningEnergy> frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
-      system.forceField, system.simulationBox, system.interpolationGrids, system.framework, system.frameworkCellList(),
-      system.spanOfFrameworkAtoms(), trialMolecule.second, moleculeAtoms);
+  std::optional<RunningEnergy> frameworkMolecule =
+      polarization
+          ? Interactions::computeFrameworkMoleculeEnergyDifference(
+                system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+                system.spanOfFrameworkAtoms(), electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second,
+                moleculeAtoms)
+          : Interactions::computeFrameworkMoleculeEnergyDifference(
+                system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+                system.frameworkCellList(), system.spanOfFrameworkAtoms(), trialMolecule.second, moleculeAtoms);
   if (!frameworkMolecule.has_value()) return std::nullopt;
 
-  std::optional<RunningEnergy> interMolecule = Interactions::computeInterMolecularEnergyDifference(
-      system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), trialMolecule.second,
-      moleculeAtoms);
+  std::optional<RunningEnergy> interMolecule;
+  if (interPolarization)
+  {
+    electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+    interMolecule = Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+        system.forceField, system.simulationBox, electricFieldNeighborDelta, electricFieldMoleculeNew,
+        electricFieldMoleculeOld, system.spanOfMoleculeAtoms(), trialMolecule.second, moleculeAtoms);
+  }
+  else
+  {
+    interMolecule = Interactions::computeInterMolecularEnergyDifference(system.forceField, system.simulationBox,
+                                                                        system.cellList(), system.spanOfMoleculeAtoms(),
+                                                                        trialMolecule.second, moleculeAtoms);
+  }
   if (!interMolecule.has_value()) return std::nullopt;
 
-  const RunningEnergy ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, trialMolecule.second, moleculeAtoms);
+  const RunningEnergy ewaldFourierEnergy =
+      polarization
+          ? Interactions::energyDifferenceEwaldFourier(
+                system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik,
+                system.storedEik, system.trialEik, system.forceField, system.simulationBox, system.components,
+                electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second, moleculeAtoms)
+          : Interactions::energyDifferenceEwaldFourier(
+                system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                system.forceField, system.simulationBox, system.components, trialMolecule.second, moleculeAtoms);
 
-  const RunningEnergy energyDifference =
-      externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy;
+  RunningEnergy polarizationDifference;
+  if (polarization)
+  {
+    polarizationDifference = Interactions::computePolarizationEnergyDifference(
+        system.forceField, electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second, moleculeAtoms);
+    if (interPolarization)
+    {
+      polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+          system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+          system.spanOfMoleculeAtoms());
+    }
+  }
+
+  const RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() +
+                                         interMolecule.value() + ewaldFourierEnergy + polarizationDifference;
 
   if (rng.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
   {
@@ -1506,6 +1571,10 @@ std::optional<RunningEnergy> DynamicallyCorrectedTST::translationInPlaneMove(std
     std::copy(trialMolecule.second.cbegin(), trialMolecule.second.cend(), moleculeAtoms.begin());
     system.cellListAtomsMoved(moleculeAtoms);
     molecule = trialMolecule.first;
+    if (polarization)
+    {
+      commitElectricField(system, selectedComponent, 0uz, electricFieldMoleculeNew, electricFieldNeighborDelta);
+    }
     if (state.active)
     {
       state.cageA = trialCages.first;
@@ -1567,8 +1636,47 @@ std::optional<RunningEnergy> DynamicallyCorrectedTST::reinsertionInPlaneMove(std
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, system.components, growData->atoms, moleculeAtoms);
 
-  const double logAcceptance = -system.beta * energyFourierDifference.potentialEnergy() +
-                               growData->logRosenbluthWeight - retraceData.logRosenbluthWeight;
+  // Polarization follows the bookkeeping of MC_Moves::reinsertionMove (and DynamicallyCorrectedTSTFreeEnergy): the
+  // field on the reinserted molecule (new and old) from the framework, the reciprocal space and, with
+  // molecule-molecule polarization, the other molecules (whose inter-molecular energy is in the Rosenbluth weights
+  // already, so that energy is discarded), plus the change of the field on every other atom; an accepted move
+  // commits both into the stored field.
+  const bool polarization = system.forceField.computePolarization;
+  const bool interPolarization = polarization && !system.forceField.omitInterPolarization;
+  std::vector<double3> electricFieldMoleculeNew(moleculeAtoms.size());
+  std::vector<double3> electricFieldMoleculeOld(moleculeAtoms.size());
+  std::vector<double3> electricFieldNeighborDelta;
+  RunningEnergy polarizationDifference;
+  if (polarization)
+  {
+    Interactions::computeFrameworkMoleculeElectricFieldDifference(
+        system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), electricFieldMoleculeNew,
+        electricFieldMoleculeOld, growData->atoms, moleculeAtoms);
+    Interactions::computeEwaldFourierElectricFieldDifference(
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+        system.trialEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, electricFieldMoleculeOld,
+        growData->atoms, moleculeAtoms);
+    if (interPolarization)
+    {
+      electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+      [[maybe_unused]] const std::optional<RunningEnergy> interPolarizationEnergy =
+          Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+              system.forceField, system.simulationBox, electricFieldNeighborDelta, electricFieldMoleculeNew,
+              electricFieldMoleculeOld, system.spanOfMoleculeAtoms(), growData->atoms, moleculeAtoms);
+    }
+    polarizationDifference = Interactions::computePolarizationEnergyDifference(
+        system.forceField, electricFieldMoleculeNew, electricFieldMoleculeOld, growData->atoms, moleculeAtoms);
+    if (interPolarization)
+    {
+      polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+          system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+          system.spanOfMoleculeAtoms());
+    }
+  }
+
+  const double logAcceptance =
+      -system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()) +
+      growData->logRosenbluthWeight - retraceData.logRosenbluthWeight;
 
   if (rng.uniform() < std::exp(logAcceptance))
   {
@@ -1584,13 +1692,17 @@ std::optional<RunningEnergy> DynamicallyCorrectedTST::reinsertionInPlaneMove(std
     record.atomIndex = molecule.atomIndex;
     record.numberOfAtoms = molecule.numberOfAtoms;
     molecule = record;
+    if (polarization)
+    {
+      commitElectricField(system, selectedComponent, 0uz, electricFieldMoleculeNew, electricFieldNeighborDelta);
+    }
     if (state.active)
     {
       state.cageA = trialCages.first;
       state.cageB = trialCages.second;
     }
 
-    return (growData->energies - retraceData.energies) + energyFourierDifference;
+    return (growData->energies - retraceData.energies) + energyFourierDifference + polarizationDifference;
   }
   return std::nullopt;
 }
