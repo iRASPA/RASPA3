@@ -14,7 +14,6 @@ import molecule;
 import component;
 import intra_molecular_exclusions;
 import framework;
-import interactions_ewald;
 import forcefield;
 import simulationbox;
 import system;
@@ -399,13 +398,13 @@ std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std:
   // becomes an independent Cartesian site. The reduced framework potentials already omit intra-
   // rigid-group terms (rigid internal geometry is a constraint, not a stiffness); the junction and
   // flexible terms are kept. The generalized projection below maps the Fixed/Rigid atoms back onto
-  // their true degrees of freedom (none for Fixed, six for each Rigid group).
+  // their true degrees of freedom (none for Fixed, six for each Rigid group). The Ewald exclusion of the
+  // pairs inside a Rigid group is dropped with the groups, from the force constants and from the Cartesian
+  // gradients alike: such a pair keeps its distance under every rigid-body motion, so its Hessian and
+  // gradient-curvature contributions cancel in the projection.
   const bool mixedFramework = system.framework && system.framework->isMixed();
-  // the pairs inside a Rigid group keep their Ewald exclusion after the flattening
-  std::optional<std::set<std::array<std::size_t, 2>>> frameworkExcludedChargePairs;
   if (mixedFramework)
   {
-    frameworkExcludedChargePairs = Interactions::frameworkExcludedChargePairs(*system.framework);
     cartesianSystem.framework->groups.clear();
     cartesianSystem.framework->atomGroupIds.clear();
     cartesianSystem.framework->mixed = false;
@@ -414,7 +413,7 @@ std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std:
     cartesianSystem.numberOfRigidFrameworkAtoms = 0;
   }
 
-  const ForceConstants forceConstants = computeRealSpaceForceConstants(cartesianSystem, frameworkExcludedChargePairs);
+  const ForceConstants forceConstants = computeRealSpaceForceConstants(cartesianSystem);
   const std::size_t numberOfSites = forceConstants.numberOfAtoms();
   const std::size_t cartesianDimension = forceConstants.dimension();
 

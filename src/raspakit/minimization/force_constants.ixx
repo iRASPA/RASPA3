@@ -73,9 +73,4 @@ export class ForceConstants
  * Summed over images, the result reproduces the position-position block of the analytic generalized
  * Hessian for such a system (see the fold-consistency tests).
  */
-/// `frameworkExcludedChargePairs` overrides the framework pairs that receive the Ewald exclusion correction
-/// (by default Interactions::frameworkExcludedChargePairs of the system's framework); computePhononDispersion passes
-/// those of the original mixed framework when it flattens the framework to independent Cartesian sites.
-export ForceConstants computeRealSpaceForceConstants(
-    const System& system,
-    std::optional<std::set<std::array<std::size_t, 2>>> frameworkExcludedChargePairs = std::nullopt);
+export ForceConstants computeRealSpaceForceConstants(const System& system);

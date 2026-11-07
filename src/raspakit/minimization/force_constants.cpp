@@ -344,8 +344,7 @@ void addMoleculeEwaldExclusion(const System& system, ForceConstants& forceConsta
 // Rigid group) receive the -C q_i q_j erf/r correction. Mirrors the framework branch of
 // Interactions::computeEwaldFourierHessian; framework atoms are the leading force-constant sites, so their site
 // index equals the atom index.
-void addFrameworkEwaldExclusion(const System& system, ForceConstants& forceConstants,
-                                const std::set<std::array<std::size_t, 2>>& excludedPairs)
+void addFrameworkEwaldExclusion(const System& system, ForceConstants& forceConstants)
 {
   const ForceField& forceField = system.forceField;
   if (!forceField.useCharge || !forceField.usesEwaldFourier()) return;
@@ -356,7 +355,7 @@ void addFrameworkEwaldExclusion(const System& system, ForceConstants& forceConst
   const double alpha = forceField.EwaldAlpha;
   const double alphaSquared = alpha * alpha;
 
-  for (const std::array<std::size_t, 2>& pair : excludedPairs)
+  for (const std::array<std::size_t, 2>& pair : Interactions::frameworkExcludedChargePairs(*system.framework))
   {
     const std::size_t i = pair[0];
     const std::size_t j = pair[1];
@@ -428,8 +427,7 @@ std::vector<double> ForceConstants::foldToGamma() const
   return folded;
 }
 
-ForceConstants computeRealSpaceForceConstants(
-    const System& system, std::optional<std::set<std::array<std::size_t, 2>>> frameworkExcludedChargePairs)
+ForceConstants computeRealSpaceForceConstants(const System& system)
 {
   for (const Component& component : system.components)
   {
@@ -517,10 +515,7 @@ ForceConstants computeRealSpaceForceConstants(
   if (flexibleFramework)
   {
     addFrameworkIntramolecular(system, forceConstants);
-    addFrameworkEwaldExclusion(system, forceConstants,
-                               frameworkExcludedChargePairs.has_value()
-                                   ? *frameworkExcludedChargePairs
-                                   : Interactions::frameworkExcludedChargePairs(*system.framework));
+    addFrameworkEwaldExclusion(system, forceConstants);
   }
 
   // Molecule intramolecular terms (image-free, home cell).
