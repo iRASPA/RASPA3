@@ -576,3 +576,27 @@ TEST(SYMMETRY_STRUCTURE_FIXES, cell_setters_constructors_and_replica_indices_sta
         << index;
   }
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, delaunay_reduction_sorts_near_equal_lengths_safely)
+{
+  // a cubic cell: all seven candidate vectors have the same length up to rounding, the case in which the former
+  // "a + 1e-10 < b" comparator was not a strict weak ordering; the reduced cell is a right-handed cell of the same
+  // volume with edges of the same length
+  const double3x3 cubic(double3(10.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 10.0));
+  const std::optional<double3x3> reducedCubic = SKSymmetryCell::computeDelaunayReducedCell(cubic, 1e-2);
+  ASSERT_TRUE(reducedCubic.has_value());
+  EXPECT_NEAR(reducedCubic->determinant(), 1000.0, 1e-9);
+  for (std::size_t i = 0; i < 3; ++i) EXPECT_NEAR((*reducedCubic)[i].length(), 10.0, 1e-9) << i;
+
+  // a skewed cell reduces to one of the same volume whose edges are no longer than the originals
+  const double3x3 skewed(double3(10.0, 0.0, 0.0), double3(9.0, 1.0, 0.0), double3(0.0, 0.0, 10.0));
+  const std::optional<double3x3> reducedSkewed = SKSymmetryCell::computeDelaunayReducedCell(skewed, 1e-2);
+  ASSERT_TRUE(reducedSkewed.has_value());
+  EXPECT_NEAR(std::fabs(reducedSkewed->determinant()), 100.0, 1e-9);
+  for (std::size_t i = 0; i < 3; ++i) EXPECT_LE((*reducedSkewed)[i].length(), 10.0 + 1e-9) << i;
+
+  // the two-dimensional reduction (the b axis kept) of the same cells
+  const std::optional<double3x3> reduced2D = SKSymmetryCell::computeDelaunayReducedCell2D(cubic, 1e-2);
+  ASSERT_TRUE(reduced2D.has_value());
+  EXPECT_NEAR(std::fabs(reduced2D->determinant()), 1000.0, 1e-9);
+}

@@ -373,6 +373,34 @@ std::vector<double3> SKSymmetryCell::primitiveTranslationVectors(
 ///   maximal set of faces of the Dirichlet domain (14 faces).
 ///
 ///   Reference: International Tables for Crystallography, Vol.A: Space Group Symmetry, page 747
+namespace
+{
+// Sorts vectors by length, with lengths within 1e-10 (squared) of each other counting as equal. The vectors are
+// ranked by exact length, consecutive ranks closer than the tolerance form one group, and std::sort then orders
+// the vectors by group: a strict weak ordering that decides every pair as the former comparator "a + 1e-10 < b"
+// did whenever that one was consistent, so the arrangement of equal lengths is unchanged. The former comparator
+// was not a strict weak ordering (intransitive for lengths in steps smaller than the tolerance), which std::sort
+// may answer with garbage.
+void sortByLengthWithinTolerance(std::vector<double3>& vectors)
+{
+  std::vector<std::size_t> ranked(vectors.size());
+  std::iota(ranked.begin(), ranked.end(), 0uz);
+  std::sort(ranked.begin(), ranked.end(), [&vectors](std::size_t a, std::size_t b)
+            { return vectors[a].length_squared() < vectors[b].length_squared(); });
+  std::vector<std::size_t> group(vectors.size());
+  for (std::size_t i = 1; i < ranked.size(); ++i)
+  {
+    const bool separate = vectors[ranked[i]].length_squared() - vectors[ranked[i - 1]].length_squared() >= 1e-10;
+    group[ranked[i]] = group[ranked[i - 1]] + (separate ? 1 : 0);
+  }
+  std::vector<std::pair<std::size_t, double3>> keyed;
+  keyed.reserve(vectors.size());
+  for (std::size_t i = 0; i < vectors.size(); ++i) keyed.emplace_back(group[i], vectors[i]);
+  std::sort(keyed.begin(), keyed.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+  for (std::size_t i = 0; i < vectors.size(); ++i) vectors[i] = keyed[i].second;
+}
+}  // namespace
+
 std::optional<double3x3> SKSymmetryCell::computeDelaunayReducedCell(double3x3 unitCell, double symmetryPrecision = 1e-2)
 {
   double3 additionalBasisVector = -(unitCell[0] + unitCell[1] + unitCell[2]);
@@ -402,8 +430,7 @@ std::optional<double3x3> SKSymmetryCell::computeDelaunayReducedCell(double3x3 un
     }
   } while (somePositive);
 
-  // Search in the array {b1, b2, b3, b4, b1+b2, b2+b3, b3+b1}, sorted by length (using a small epsilon to amke sure
-  // they are really different)
+  // Search in the array {b1, b2, b3, b4, b1+b2, b2+b3, b3+b1}, sorted by length
   std::vector<double3> b = {extendedBasis[0],
                             extendedBasis[1],
                             extendedBasis[2],
@@ -412,8 +439,7 @@ std::optional<double3x3> SKSymmetryCell::computeDelaunayReducedCell(double3x3 un
                             extendedBasis[1] + extendedBasis[2],
                             extendedBasis[2] + extendedBasis[0]};
 
-  sort(b.begin(), b.end(),
-       [](const double3& a, const double3& b) -> bool { return a.length_squared() + 1e-10 < b.length_squared(); });
+  sortByLengthWithinTolerance(b);
 
   // take the first two vectors, combined with a vector that has a non-zero, positive volume
   for (std::size_t i = 2; i < 7; i++)
@@ -462,8 +488,7 @@ std::optional<double3x3> SKSymmetryCell::computeDelaunayReducedCell2D(double3x3 
 
   // Search in the set {b1, b2, b3, b1+b2}
   std::vector<double3> b = {extendedBasis[0], extendedBasis[1], extendedBasis[2], extendedBasis[0] + extendedBasis[1]};
-  sort(b.begin(), b.end(),
-       [](const double3& a, const double3& b) -> bool { return a.length_squared() + 1e-10 < b.length_squared(); });
+  sortByLengthWithinTolerance(b);
 
   for (std::size_t i = 1; i < 4; i++)
   {
