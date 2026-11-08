@@ -151,3 +151,21 @@ TEST(MATHKIT_FIXES, matrix_inverse_inverts_and_refuses_singular_and_non_square_m
   Matrix nonSquare(2, 3, 1.0);
   EXPECT_FALSE(nonSquare.inverse());
 }
+
+TEST(MATHKIT_FIXES, cubic_linear_and_repeated_quadratic_roots)
+{
+  // 2 + 4 x = 0
+  double linear[4] = {2.0, 4.0, 0.0, 0.0};
+  double roots[3] = {0.0, 0.0, 0.0};
+  int numberOfRoots = 0;
+  cubic(linear, roots, &numberOfRoots);
+  ASSERT_EQ(numberOfRoots, 1);
+  EXPECT_DOUBLE_EQ(roots[0], -0.5);
+
+  // x^2 - 2 x + 1 = 0: the repeated root 1
+  double quadratic[4] = {1.0, -2.0, 1.0, 0.0};
+  cubic(quadratic, roots, &numberOfRoots);
+  ASSERT_EQ(numberOfRoots, 2);
+  EXPECT_DOUBLE_EQ(roots[0], 1.0);
+  EXPECT_DOUBLE_EQ(roots[1], 1.0);
+}

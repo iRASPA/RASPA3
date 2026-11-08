@@ -76,9 +76,9 @@ int cubic(double A[4], double X[3], int* L)
     // quadratic problem
     P = 0.5 * A[1] / A[2];
     DIS = std::pow(P, 2) - A[0] / A[2];
-    if (DIS > 0.0)
+    if (DIS >= 0.0)
     {
-      // 2 real solutions
+      // 2 real solutions (equal ones for DIS == 0, a repeated root)
       X[0] = -P - std::sqrt(DIS);
       X[1] = -P + std::sqrt(DIS);
       *L = 2;
@@ -91,8 +91,8 @@ int cubic(double A[4], double X[3], int* L)
   }
   else if (A[1] != 0.0)
   {
-    // linear equation
-    X[0] = A[0] / A[1];
+    // linear equation A[0] + A[1] x = 0
+    X[0] = -A[0] / A[1];
     *L = 1;
   }
   else
