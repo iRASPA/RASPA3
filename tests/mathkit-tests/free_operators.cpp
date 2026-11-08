@@ -4,6 +4,7 @@ import std;
 
 import float2;
 import double2;
+import double4;
 import float4;
 import float4x4;
 import double4x4;
@@ -40,4 +41,9 @@ TEST(free_operators, Test_stream_operators)
   std::ostringstream matrices;
   matrices << double4x4::Identity() << " " << float4x4::Identity();
   EXPECT_EQ(matrices.str(), "1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1 1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1");
+}
+
+TEST(free_operators, Test_double4_formatter)
+{
+  EXPECT_EQ(std::format("{}", double4(1.0, 2.5, -3.0, 4.0)), "(1, 2.5, -3, 4)");
 }

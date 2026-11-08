@@ -101,7 +101,7 @@ struct std::formatter<double4> : std::formatter<std::string_view>
   auto format(const double4& v, std::format_context& ctx) const
   {
     std::string temp{};
-    std::format_to(std::back_inserter(temp), "({}, {}, {} {})", v.x, v.y, v.z, v.w);
+    std::format_to(std::back_inserter(temp), "({}, {}, {}, {})", v.x, v.y, v.z, v.w);
     return std::formatter<std::string_view>::format(temp, ctx);
   }
 };
