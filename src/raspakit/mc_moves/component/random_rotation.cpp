@@ -43,7 +43,9 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber& random, 
   component.mc_moves_statistics.addTrial(move, statisticsChannel);
 
   // Construct the trial positions by rotating the molecule
-  const simd_quatd q = random.randomRotationMatrix().quaternion();
+  // the transpose keeps the drawn rotation identical to the one before 'quaternion' became the inverse of
+  // 'double3x3(simd_quatd)'; the inverse of a uniform rotation is uniform as well
+  const simd_quatd q = random.randomRotationMatrix().transpose().quaternion();
   std::pair<Molecule, std::vector<Atom>> trialMolecule = component.rotate(molecule, molecule_atoms, q);
 
   // Check if the trial molecule is inside any blocked pockets

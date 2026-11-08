@@ -65,6 +65,33 @@ TEST(double3x3, Test_multiplication_with_row_based_array)
     }
 }
 
+TEST(double3x3, Test_quaternion_is_the_inverse_of_the_quaternion_constructor)
+{
+  RandomNumber random(10);
+
+  for (std::size_t i = 0; i < 10000; ++i)
+  {
+    simd_quatd q = random.randomSimdQuatd();
+    double3x3 rotationMatrix(q);
+
+    // q and -q are the same rotation
+    simd_quatd p = rotationMatrix.quaternion();
+    double sign = (p.r * q.r + p.ix * q.ix + p.iy * q.iy + p.iz * q.iz) < 0.0 ? -1.0 : 1.0;
+    EXPECT_NEAR(sign * p.ix, q.ix, 1e-10);
+    EXPECT_NEAR(sign * p.iy, q.iy, 1e-10);
+    EXPECT_NEAR(sign * p.iz, q.iz, 1e-10);
+    EXPECT_NEAR(sign * p.r, q.r, 1e-10);
+
+    // the matrix rotates a vector as the quaternion does
+    double3 v = random.randomVectorOnUnitSphere();
+    double3 w = rotationMatrix * v;
+    double3 u = q * v;
+    EXPECT_NEAR(w.x, u.x, 1e-10);
+    EXPECT_NEAR(w.y, u.y, 1e-10);
+    EXPECT_NEAR(w.z, u.z, 1e-10);
+  }
+}
+
 TEST(double3x3, Test_inverse)
 {
   double3x3 m{double3{25.0, 2.5e-6, 0.0}, double3{0.0, 25.0, 0.0}, double3{0.0, 0.0, 25.0}};

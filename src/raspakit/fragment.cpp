@@ -130,7 +130,7 @@ GroupState Fragment::deriveState(std::span<const Atom> moleculeAtoms) const
   // Orientation by an orthogonal Procrustes fit of the body-fixed positions onto the laboratory
   // positions: 'computeRotationMatrix' returns R with p_k - com = R * bodyFixed_k. The stored
   // quaternion follows the fully rigid molecule convention p = com + buildRotationMatrixInverse(q) *
-  // bodyFixed, so buildRotationMatrixInverse(q) = R and buildRotationMatrix(q) = R^T.
+  // bodyFixed, so buildRotationMatrixInverse(q) = R and q is the quaternion of R.
   std::vector<double3> bodyPositions(bodyFixedPositions.begin(), bodyFixedPositions.end());
   std::vector<double3> labPositions(atoms.size());
   for (std::size_t k = 0; k != atoms.size(); ++k)
@@ -140,8 +140,7 @@ GroupState Fragment::deriveState(std::span<const Atom> moleculeAtoms) const
 
   double3x3 rotation = double3x3::computeRotationMatrix(double3(0.0, 0.0, 0.0), bodyPositions,
                                                         state.centerOfMassPosition, labPositions);
-  double3x3 rotationTranspose = rotation.transpose();
-  state.orientation = rotationTranspose.quaternion().normalized();
+  state.orientation = rotation.quaternion().normalized();
   return state;
 }
 

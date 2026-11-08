@@ -164,7 +164,7 @@ export union double3x3
 
   static double3x3 buildRotationMatrix(const simd_quatd& q);
   static double3x3 buildRotationMatrixInverse(const simd_quatd& q);
-  simd_quatd quaternion();
+  simd_quatd quaternion() const;
 
   inline double3x3 operator-() const { return double3x3(-this->v[0], -this->v[1], -this->v[2]); }
 

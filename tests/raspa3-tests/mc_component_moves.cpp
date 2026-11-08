@@ -607,7 +607,7 @@ TEST(MC_COMPONENT_MOVES, random_rotation_uses_uniform_rotation_matrix)
   std::vector<Atom> oldAtoms(system.spanOfMolecule(0, 0).begin(), system.spanOfMolecule(0, 0).end());
   RandomNumber expectedRandom(1234);
   const auto expected =
-      system.components[0].rotate(oldMolecule, oldAtoms, expectedRandom.randomRotationMatrix().quaternion());
+      system.components[0].rotate(oldMolecule, oldAtoms, expectedRandom.randomRotationMatrix().transpose().quaternion());
 
   RandomNumber moveRandom(1234);
   ASSERT_TRUE(MC_Moves::randomRotationMove(moveRandom, system, 0, 0).has_value());

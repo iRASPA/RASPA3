@@ -298,9 +298,11 @@ double3x3 double3x3::buildRotationMatrixInverse(const simd_quatd& q)
 // Function   | Transform a rotation matrix to a quaternion
 // Parameters | The 3x3 rotation matrix R
 // Note       | The algorithm returns a single quaternion q, but -q represents the same rotation
+// Note       | The inverse of 'double3x3(simd_quatd q)': double3x3(q).quaternion() is q (or -q), and
+//            | buildRotationMatrixInverse(R.quaternion()) is R
 // Ref.       | Page 305 "3-D Computer Graphics A Mathematical Introduction with OpenGL", Samuel R. Buss
 
-simd_quatd double3x3::quaternion()
+simd_quatd double3x3::quaternion() const
 {
   simd_quatd q;
 
@@ -328,25 +330,25 @@ simd_quatd double3x3::quaternion()
   {
     case 0:
       q.r = 0.5 * std::sqrt(trace + 1.0);
-      q.ix = (this->cy - this->bz) / (4.0 * q.r);
-      q.iy = (this->az - this->cx) / (4.0 * q.r);
-      q.iz = (this->bx - this->ay) / (4.0 * q.r);
+      q.ix = (this->bz - this->cy) / (4.0 * q.r);
+      q.iy = (this->cx - this->az) / (4.0 * q.r);
+      q.iz = (this->ay - this->bx) / (4.0 * q.r);
       break;
     case 1:
       q.ix = 0.5 * std::sqrt(2.0 * this->ax - trace + 1.0);
-      q.r = (this->cy - this->bz) / (4.0 * q.ix);
+      q.r = (this->bz - this->cy) / (4.0 * q.ix);
       q.iy = (this->bx + this->ay) / (4.0 * q.ix);
       q.iz = (this->az + this->cx) / (4.0 * q.ix);
       break;
     case 2:
       q.iy = 0.5 * std::sqrt(2.0 * this->by - trace + 1.0);
-      q.r = (this->az - this->cx) / (4.0 * q.iy);
+      q.r = (this->cx - this->az) / (4.0 * q.iy);
       q.ix = (this->bx + this->ay) / (4.0 * q.iy);
       q.iz = (this->cy + this->bz) / (4.0 * q.iy);
       break;
     case 3:
       q.iz = 0.5 * std::sqrt(2.0 * this->cz - trace + 1.0);
-      q.r = (this->bx - this->ay) / (4.0 * q.iz);
+      q.r = (this->ay - this->bx) / (4.0 * q.iz);
       q.ix = (this->az + this->cx) / (4.0 * q.iz);
       q.iy = (this->cy + this->bz) / (4.0 * q.iz);
       break;

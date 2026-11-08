@@ -1657,7 +1657,7 @@ Molecule Component::createMoleculeRecord(std::span<const Atom> moleculeAtoms) co
     // 'atoms' is the COM-centered principal-frame reference geometry, so the Procrustes fit returns
     // R with p_i - com = R * atoms[i].position. The stored quaternion follows the rigid-molecule
     // convention p = com + buildRotationMatrixInverse(q) * atoms[i].position, so
-    // buildRotationMatrixInverse(q) = R and q is the quaternion of R^T.
+    // buildRotationMatrixInverse(q) = R and q is the quaternion of R.
     std::vector<double3> referencePositions(moleculeAtoms.size());
     std::vector<double3> labPositions(moleculeAtoms.size());
     for (std::size_t i = 0; i != moleculeAtoms.size(); ++i)
@@ -1667,8 +1667,7 @@ Molecule Component::createMoleculeRecord(std::span<const Atom> moleculeAtoms) co
     }
     double3x3 rotation =
         double3x3::computeRotationMatrix(double3(0.0, 0.0, 0.0), referencePositions, com, labPositions);
-    double3x3 rotationTranspose = rotation.transpose();
-    orientation = rotationTranspose.quaternion().normalized();
+    orientation = rotation.quaternion().normalized();
   }
 
   return Molecule(com, orientation, totalMass, static_cast<std::size_t>(moleculeAtoms.front().componentId),

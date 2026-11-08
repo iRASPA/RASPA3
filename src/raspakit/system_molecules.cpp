@@ -614,8 +614,9 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
           double3x3 rotation_matrix =
               double3x3::computeRotationMatrix(com, position_view, reference_com, reference_positions);
 
-          // Get orientation
-          orientation = rotation_matrix.quaternion();
+          // Get orientation: buildRotationMatrix(q) is the space-to-body rotation, so q is the quaternion of its
+          // transpose
+          orientation = rotation_matrix.transpose().quaternion();
         }
 
         Molecule molecule =

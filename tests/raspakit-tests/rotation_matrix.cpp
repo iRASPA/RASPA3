@@ -54,7 +54,7 @@ TEST(rotation_matrix_reconstruction, Test_2_CO2_in_ITQ_29_2x2x2)
     double3x3 rotation_matrix = double3x3::computeRotationMatrix(system.moleculeData[i].centerOfMassPosition, positions,
                                                                  double3{0.0, 0.0, 0.0}, reference_positions);
 
-    simd_quatd computed_quaternion = rotation_matrix.quaternion();
+    simd_quatd computed_quaternion = rotation_matrix.transpose().quaternion();
 
     double3x3 finalRotationMatrix = double3x3::buildRotationMatrixInverse(computed_quaternion);
 
@@ -122,7 +122,7 @@ TEST(rotation_matrix_reconstruction, Test_2_Water_in_ITQ_29_2x2x2)
     double3x3 rotation_matrix = double3x3::computeRotationMatrix(system.moleculeData[i].centerOfMassPosition, positions,
                                                                  double3{0.0, 0.0, 0.0}, reference_positions);
 
-    simd_quatd computed_quaternion = rotation_matrix.quaternion();
+    simd_quatd computed_quaternion = rotation_matrix.transpose().quaternion();
 
     double3x3 finalRotationMatrix = double3x3::buildRotationMatrixInverse(computed_quaternion);
 
