@@ -16,6 +16,7 @@ import ringmatrix;
 import cubic;
 import randomnumbers;
 import marching_cubes;
+import special_functions;
 
 TEST(MATHKIT_FIXES, normalise_divides_by_the_four_dimensional_length)
 {
@@ -252,6 +253,34 @@ TEST(MATHKIT_FIXES, marching_cubes_periodic_single_plane_has_a_finite_gradient)
     EXPECT_TRUE(std::isfinite(vertex.nx) && std::isfinite(vertex.ny) && std::isfinite(vertex.nz)) << "vertex " << v;
     EXPECT_NEAR(vertex.ny, 1.0, 1e-12) << "vertex " << v;
   }
+}
+
+TEST(MATHKIT_FIXES, hypergeometric_series_sums_to_machine_precision)
+{
+  // 2F1(1, 1; 2; x) = -log(1 - x) / x: the old absolute tolerance of 1e-3 stopped after a few terms
+  EXPECT_NEAR(hypergeometric(1.0, 1.0, 2.0, 0.3), -std::log(0.7) / 0.3, 1e-14);
+  // a first term below 1e-3 with a slowly decaying tail: (1 - x)^(-a) with a = 0.001, x = 0.9
+  EXPECT_NEAR(hypergeometric(0.001, 1.0, 1.0, 0.9), std::pow(0.1, -0.001), 1e-14);
+  // terminating series: 2F1(-2, 1; 1; x) = (1 - x)^2
+  EXPECT_NEAR(hypergeometric(-2.0, 1.0, 1.0, 0.4), 0.36, 1e-15);
+  EXPECT_EQ(hypergeometric(0.0, 5.0, 2.0, 0.9), 1.0);
+}
+
+TEST(MATHKIT_FIXES, hypergeometric_2F1_at_unit_argument_follows_gauss)
+{
+  // Gauss: Gamma(c) Gamma(c-a-b) / (Gamma(c-a) Gamma(c-b)) for c - a - b > 0; the recurrence divided by z - 1
+  EXPECT_NEAR(hypergeometric2F1(1.0, 1.0, 3.0, 1.0), 2.0, 1e-14);
+  EXPECT_NEAR(hypergeometric2F1(0.5, 0.5, 2.0, 1.0), 4.0 / std::numbers::pi, 1e-14);
+  // terminating series are finite for any c - a - b: 2F1(-1, 3; 2; z) = 1 - 1.5 z and 2F1(-2, 1; 1; z) = (1 - z)^2
+  EXPECT_NEAR(hypergeometric2F1(-1.0, 3.0, 2.0, 1.0), -0.5, 1e-15);
+  EXPECT_EQ(hypergeometric2F1(-2.0, 1.0, 1.0, 1.0), 0.0);
+  // unbounded for c - a - b <= 0: -log(1 - z) / z and (1 - z)^(-1/2)
+  EXPECT_EQ(hypergeometric2F1(1.0, 1.0, 2.0, 1.0), std::numeric_limits<double>::infinity());
+  EXPECT_EQ(hypergeometric2F1(0.5, 0.5, 0.5, 1.0), std::numeric_limits<double>::infinity());
+  // the recurrence itself, below and above the series switch at |z| = 1/2
+  EXPECT_NEAR(hypergeometric2F1(1.0, 1.0, 2.0, 0.3), -std::log(0.7) / 0.3, 1e-14);
+  EXPECT_NEAR(hypergeometric2F1(1.0, 1.0, 2.0, 0.75), -std::log(0.25) / 0.75, 1e-14);
+  EXPECT_NEAR(hypergeometric2F1(1.0, 1.0, 2.0, -3.0), std::log(4.0) / 3.0, 1e-14);
 }
 
 TEST(MATHKIT_FIXES, int3x3_from_a_value_is_diagonal)

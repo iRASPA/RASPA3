@@ -81,18 +81,21 @@ double li2(double x)
 }
 
 // Note convergence restrictions: abs(x) < 1 and c not a negative integer or zero
+// the direct series sum_n (a)_n (b)_n / (c)_n x^n / n!, which converges for |x| < 1 (and for a terminating series)
 double hypergeometric(double a, double b, double c, double x)
 {
-  const double TOLERANCE = 1.0e-3;
-  double term = a * b * x / c;
-  double value = 1.0 + term;
-  int n = 1;
+  const int nMax = 2000;
+  double term = 1.0;
+  double value = 1.0;
 
-  while (std::fabs(term) > TOLERANCE)
+  for (int n = 0; n < nMax; ++n)
   {
-    a++, b++, c++, n++;
-    term *= a * b * x / c / n;
+    // the ratio of successive terms tends to x, but for large a or b the early terms grow before they decay
+    const double ratio = (a + n) * (b + n) * x / ((c + n) * (n + 1.0));
+    term *= ratio;
+    if (term == 0.0) break;
     value += term;
+    if (std::fabs(ratio) < 1.0 && std::fabs(term) <= std::numeric_limits<double>::epsilon() * std::fabs(value)) break;
   }
 
   return value;
@@ -195,12 +198,25 @@ double hypergeometric2F1(double a, double b, double c, double z)
     return (result);
   }
 
+  mu = c - a - b;
+  if (z == 1.0)
+  {
+    // the recurrence below divides by z - 1; at z = 1 a terminating series (a or b a non-positive integer) is
+    // summed directly, otherwise Gauss's theorem gives Gamma(c) Gamma(c-a-b) / (Gamma(c-a) Gamma(c-b)) for
+    // c - a - b > 0 and the function is unbounded for c - a - b <= 0, with the sign of its prefactor
+    // Gamma(c) Gamma(a+b-c) / (Gamma(a) Gamma(b)) (of -Gamma(c) log(1-z) / (Gamma(a) Gamma(b)) for c - a - b = 0)
+    if ((a <= 0.0 && a == std::floor(a)) || (b <= 0.0 && b == std::floor(b))) return hypergeometric(a, b, c, 1.0);
+    if (mu > 0.0) return std::tgamma(c) * std::tgamma(mu) / (std::tgamma(c - a) * std::tgamma(c - b));
+    const double prefactor = std::tgamma(c) * (mu < 0.0 ? std::tgamma(-mu) : 1.0) / (std::tgamma(a) * std::tgamma(b));
+    return std::copysign(std::numeric_limits<double>::infinity(), prefactor);
+  }
+
   kMax = 2000;
   xi = z / (z - 1.0);
-  mu = c - a - b;
   d_k = 0.0;
   e_k = 1.0;
   f_k = 0.0;
+  f_k1 = 0.0;
   for (k = 0; k <= kMax; k++)
   {
     lambda = (static_cast<double>(k) + a) * (static_cast<double>(k) + b) / (static_cast<double>(k) + 1.0) /
@@ -216,7 +232,8 @@ double hypergeometric2F1(double a, double b, double c, double z)
     e_k = (e_k1);
     f_k = (f_k1);
   }
-  result = f_k;
+  // the partial sum including the last term, which the break above skips assigning to f_k
+  result = f_k1;
 
   return (result);
 }
