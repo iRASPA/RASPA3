@@ -75,6 +75,49 @@ TEST(MATHKIT_FIXES, euler_angles_return_the_attitude_angle)
   EXPECT_NEAR(q.EulerAngles().y, angle, 1e-12);
 }
 
+TEST(MATHKIT_FIXES, zero_vector_and_zero_quaternion_normalize_to_zero_instead_of_nan)
+{
+  const double3 v = double3::normalize(double3(0.0, 0.0, 0.0));
+  EXPECT_EQ(v.x, 0.0);
+  EXPECT_EQ(v.y, 0.0);
+  EXPECT_EQ(v.z, 0.0);
+  const double3 unit = double3::normalize(double3(0.0, 3.0, 4.0));
+  EXPECT_NEAR(unit.y, 0.6, 1e-15);
+  EXPECT_NEAR(unit.z, 0.8, 1e-15);
+
+  const simd_quatd q = simd_quatd(0.0, 0.0, 0.0, 0.0).normalized();
+  for (std::size_t i = 0; i < 4; ++i) EXPECT_EQ(q.v[i], 0.0) << "component " << i;
+  const simd_quatd u = simd_quatd(0.0, 3.0, 0.0, 4.0).normalized();
+  EXPECT_NEAR(u.iy, 0.6, 1e-15);
+  EXPECT_NEAR(u.r, 0.8, 1e-15);
+
+  // the Euler angles of the zero quaternion were asin(0 / 0)
+  const double3 angles = simd_quatd().EulerAngles();
+  EXPECT_EQ(angles.x, 0.0);
+  EXPECT_EQ(angles.y, 0.0);
+  EXPECT_EQ(angles.z, 0.0);
+}
+
+TEST(MATHKIT_FIXES, quaternion_inverse_of_a_non_unit_quaternion_gives_the_identity_product)
+{
+  // the inverse used to be the conjugate, which is the inverse only for a unit quaternion
+  const simd_quatd q(1.0, -2.0, 3.0, 4.0);
+  for (const simd_quatd& product : {q * q.inverse(), q.inverse() * q})
+  {
+    EXPECT_NEAR(product.ix, 0.0, 1e-14);
+    EXPECT_NEAR(product.iy, 0.0, 1e-14);
+    EXPECT_NEAR(product.iz, 0.0, 1e-14);
+    EXPECT_NEAR(product.r, 1.0, 1e-14);
+  }
+  // a unit quaternion keeps its conjugate as inverse
+  const simd_quatd unit = q.normalized();
+  const simd_quatd inverse = unit.inverse();
+  EXPECT_NEAR(inverse.ix, -unit.ix, 1e-15);
+  EXPECT_NEAR(inverse.iy, -unit.iy, 1e-15);
+  EXPECT_NEAR(inverse.iz, -unit.iz, 1e-15);
+  EXPECT_NEAR(inverse.r, unit.r, 1e-15);
+}
+
 TEST(MATHKIT_FIXES, cubic_returns_a_double_root_twice)
 {
   // (x - 1)^2 (x + 2) = x^3 - 3x + 2: discriminant exactly zero

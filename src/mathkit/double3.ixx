@@ -81,8 +81,10 @@ export union double3
   }
   inline static double3 normalize(const double3& v)
   {
-    double f = 1.0 / std::sqrt((v.x * v.x) + (v.y * v.y) + (v.z * v.z));
-    return double3(f * v.x, f * v.y, f * v.z);
+    // a zero vector stays zero, as in 'normalized()', instead of becoming NaN
+    double length = std::sqrt((v.x * v.x) + (v.y * v.y) + (v.z * v.z));
+    if (length == 0.0) return v;
+    return double3(v.x / length, v.y / length, v.z / length);
   }
   inline static double3 flip(double3 v, bool3 flip, double3 boundary)
   {

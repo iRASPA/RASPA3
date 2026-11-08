@@ -23,8 +23,8 @@ export union simd_quatd
   static simd_quatd fromAxisAngle(double angle, double3 axis);
   static simd_quatd fromTwoVectors(double3 a, double3 b);
   double3 EulerAngles();
-  simd_quatd normalized();
-  simd_quatd inverse() { return simd_quatd(-ix, -iy, -iz, r); }
+  simd_quatd normalized() const;
+  simd_quatd inverse() const;
   static simd_quatd yaw(double angle);
   static simd_quatd pitch(double angle);
   static simd_quatd roll(double angle);

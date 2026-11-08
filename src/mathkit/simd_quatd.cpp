@@ -59,10 +59,22 @@ simd_quatd simd_quatd::fromTwoVectors(double3 a, double3 b)
   return simd_quatd(-double3::dot(v, p), s * p + double3::cross(v, p)).normalized();
 }
 
-simd_quatd simd_quatd::normalized()
+simd_quatd simd_quatd::normalized() const
 {
-  double inv_length = 1.0 / std::sqrt(r * r + ix * ix + iy * iy + iz * iz);
-  return simd_quatd(inv_length * ix, inv_length * iy, inv_length * iz, inv_length * r);
+  // the zero quaternion stays zero, as a zero double3 does under 'normalized()', instead of becoming NaN
+  double length = std::sqrt(r * r + ix * ix + iy * iy + iz * iz);
+  if (length == 0.0) return *this;
+  return simd_quatd(ix / length, iy / length, iz / length, r / length);
+}
+
+simd_quatd simd_quatd::inverse() const
+{
+  // the conjugate over the squared norm, so that q * q.inverse() is the identity for a non-unit q as well (the
+  // rotation matrices built from a quaternion also divide by the squared norm); the zero quaternion has no
+  // inverse and is returned as is
+  double norm2 = r * r + ix * ix + iy * iy + iz * iz;
+  if (norm2 == 0.0) return *this;
+  return simd_quatd(-ix / norm2, -iy / norm2, -iz / norm2, r / norm2);
 }
 
 simd_quatd::simd_quatd(double3 EulerAngles)
@@ -88,6 +100,8 @@ double3 simd_quatd::EulerAngles()
   double sqy = iy * iy;
   double sqz = iz * iz;
   double unit = sqx + sqy + sqz + sqw;  // if normalised is one, otherwise is correction factor
+  // the zero quaternion has no orientation: zero angles rather than the NaN of asin(0 / 0)
+  if (unit == 0.0) return double3(0.0, 0.0, 0.0);
   double test = ix * iy + iz * r;
   if (test > 0.49999 * unit)
   {
