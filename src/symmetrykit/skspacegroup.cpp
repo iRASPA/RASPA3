@@ -721,7 +721,7 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
               return SKSpaceGroup::FoundSpaceGroupInfo{HallNumber,
                                                        origin,
                                                        cell,
-                                                       SKRotationalChangeOfBasis(SKRotationMatrix()),
+                                                       changeOfBasis,
                                                        transformationMatrix,
                                                        rotationMatrix,
                                                        symmetrizedAtomsInConventionalCell,
@@ -760,8 +760,8 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
                            std::back_inserter(atomsInConventionalCell),
                            [transform, origin](const std::tuple<double3, std::size_t, double>& tuple)
                            {
-                             return std::make_tuple(transform * std::get<0>(tuple) + origin, std::get<1>(tuple),
-                                                    std::get<2>(tuple));
+                             return std::make_tuple(double3::fract(transform * std::get<0>(tuple) + origin),
+                                                    std::get<1>(tuple), std::get<2>(tuple));
                            });
 
             std::vector<std::tuple<double3, std::size_t, double>> symmetrizedAtomsInConventionalCell =
@@ -784,7 +784,7 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
             return SKSpaceGroup::FoundSpaceGroupInfo{HallNumber,
                                                      origin,
                                                      cell,
-                                                     SKRotationalChangeOfBasis(SKRotationMatrix()),
+                                                     changeOfBasis,
                                                      transformationMatrix,
                                                      rotationMatrix,
                                                      symmetrizedAtomsInConventionalCell,

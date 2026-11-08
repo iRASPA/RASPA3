@@ -283,3 +283,49 @@ TEST(SYMMETRY_STRUCTURE_FIXES, asymmetric_unit_bounds_are_open_at_one_and_may_li
   EXPECT_FALSE(skewed.contains(double3(0.3, 0.1, 0.1)));  // 0.3 > 1/6 and -0.7 < -2/3
   EXPECT_FALSE(skewed.contains(double3(0.2, 0.1, 0.1)));
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, found_space_group_carries_its_change_of_basis_and_wrapped_atoms)
+{
+  // the result used to carry a default-constructed (zero) change of basis instead of the one found
+  const double3x3 cubic(double3(10.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 10.0));
+  const auto generate = [&](std::size_t hallNumber, double3 site)
+  {
+    std::vector<std::tuple<double3, std::size_t, double>> atoms;
+    for (const SKSeitzIntegerMatrix& m : SKSpaceGroup(hallNumber).spaceGroupSetting().fullSeitzMatrices().operations)
+    {
+      const double3 position = double3::fract(m * site);
+      if (std::none_of(atoms.begin(), atoms.end(),
+                       [&](const auto& atom)
+                       {
+                         const double3 d = std::get<0>(atom) - position;
+                         return (d - double3(std::rint(d.x), std::rint(d.y), std::rint(d.z))).length_squared() < 1e-12;
+                       }))
+      {
+        atoms.emplace_back(position, 1, 1.0);
+      }
+    }
+    return atoms;
+  };
+
+  // P m -3 m from one atom at the origin, and P a -3 (the special case of the search) from its 8c site (x, x, x)
+  for (const std::size_t number : {221uz, 205uz})
+  {
+    const std::size_t hallNumber = SKSpaceGroupDataBase::spaceGroupHallData[number].front();
+    const double3 site = number == 221 ? double3(0.0, 0.0, 0.0) : double3(0.1, 0.1, 0.1);
+    const std::optional<SKSpaceGroup::FoundSpaceGroupInfo> found =
+        SKSpaceGroup::findSpaceGroup(cubic, generate(hallNumber, site), false, 1e-2);
+    ASSERT_TRUE(found.has_value()) << number;
+    EXPECT_EQ(SKSpaceGroup(found->HallNumber).spaceGroupSetting().number(), number);
+    // a change of basis is a rotation with an inverse, not a zero matrix
+    EXPECT_TRUE(found->changeOfBasis.rotationMatrix * found->changeOfBasis.inverseRotationMatrix ==
+                SKRotationMatrix::identity)
+        << number;
+    for (const auto& atom : found->atoms)
+    {
+      const double3 p = std::get<0>(atom);
+      EXPECT_TRUE(p.x >= -1e-2 && p.x < 1.0 + 1e-2 && p.y >= -1e-2 && p.y < 1.0 + 1e-2 && p.z >= -1e-2 &&
+                  p.z < 1.0 + 1e-2)
+          << number << " " << p.x << " " << p.y << " " << p.z;
+    }
+  }
+}
