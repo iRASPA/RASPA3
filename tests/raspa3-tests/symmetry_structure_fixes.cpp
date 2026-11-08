@@ -518,3 +518,20 @@ TEST(SYMMETRY_STRUCTURE_FIXES, coincident_groups_merge_transitively)
       coincidentGroups(cell, cell.inverse(), double3(10.0, 10.0, 10.0), wrapped, tolerance);
   EXPECT_EQ(wrappedGroup[0], wrappedGroup[1]);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, largest_empty_sphere_radius_and_position_describe_the_same_vertex)
+{
+  // in the diagram of the entire space every vertex can lie inside the spheres, with a negative radius; the radius
+  // used to start from 0 and the position from -1, so they could describe no vertex or different ones
+  SKApolloniusDiagram diagram;
+  diagram.vertices.push_back(SKApolloniusVertex{double3(1.0, 1.0, 1.0), -2.0, {}, {}, {}});
+  diagram.vertices.push_back(SKApolloniusVertex{double3(3.0, 3.0, 3.0), -0.5, {}, {}, {}});
+  diagram.vertices.push_back(SKApolloniusVertex{double3(5.0, 5.0, 5.0), -1.5, {}, {}, {}});
+  EXPECT_DOUBLE_EQ(diagram.largestEmptySphereRadius(), -0.5);
+  EXPECT_EQ(diagram.largestEmptySpherePosition(), double3(3.0, 3.0, 3.0));
+
+  // without vertices there is no sphere: a radius of zero at the origin
+  const SKApolloniusDiagram empty;
+  EXPECT_DOUBLE_EQ(empty.largestEmptySphereRadius(), 0.0);
+  EXPECT_EQ(empty.largestEmptySpherePosition(), double3(0.0, 0.0, 0.0));
+}

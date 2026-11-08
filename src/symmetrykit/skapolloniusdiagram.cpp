@@ -872,16 +872,20 @@ std::optional<SKApolloniusTangentSphere> skApolloniusTrisectorPoint(const std::a
   return best;
 }
 
+// The radius and the position describe the same vertex, the one of largest radius, whatever its sign: in the
+// diagram of the entire space the radii are negative inside the spheres, and the two used to start from different
+// floors (0 and -1), so that the radius could belong to no vertex and the position to another one. The floor is
+// the lowest finite double: the code is compiled with fast math, under which an infinity is folded away.
 double SKApolloniusDiagram::largestEmptySphereRadius() const
 {
-  double maximum = 0.0;
+  double maximum = std::numeric_limits<double>::lowest();
   for (const SKApolloniusVertex& vertex : vertices) maximum = std::max(maximum, vertex.radius);
-  return maximum;
+  return vertices.empty() ? 0.0 : maximum;
 }
 
 double3 SKApolloniusDiagram::largestEmptySpherePosition() const
 {
-  double maximum = -1.0;
+  double maximum = std::numeric_limits<double>::lowest();
   double3 position(0.0, 0.0, 0.0);
   for (const SKApolloniusVertex& vertex : vertices)
     if (vertex.radius > maximum)
