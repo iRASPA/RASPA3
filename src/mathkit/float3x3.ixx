@@ -25,8 +25,8 @@ export union float3x3
         cx, cy, cz;    // 3rd column
   };
 
-  inline float3 operator[](int i) { return v[i]; }
-  inline const float3 operator[](int i) const { return v[i]; }
+  inline float3& operator[](int i) { return v[i]; }
+  inline const float3& operator[](int i) const { return v[i]; }
 
   float3x3(float m11 = 0.0, float m21 = 0.0, float m31 = 0.0, float m12 = 0.0, float m22 = 0.0, float m32 = 0.0,
            float m13 = 0.0, float m23 = 0.0, float m33 = 0.0)

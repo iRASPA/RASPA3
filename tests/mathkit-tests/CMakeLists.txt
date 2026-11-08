@@ -1,6 +1,7 @@
 add_executable(unit_tests_mathkit
   double3x3.cpp
   double3.cpp
+  float3x3.cpp
   float4x4.cpp
   int3.cpp
   symmetric_eigensolver.cpp
