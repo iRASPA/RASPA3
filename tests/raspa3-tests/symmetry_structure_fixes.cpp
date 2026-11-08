@@ -12,6 +12,8 @@ import skrotationmatrix;
 import skseitzintegermatrix;
 import skseitzmatrix;
 import sksymmetryoperationset;
+import skintegersymmetryoperationset;
+import skspacegroupsetting;
 import skspacegroupdatabase;
 import skspacegroup;
 import skstructure;
@@ -149,4 +151,51 @@ TEST(SYMMETRY_STRUCTURE_FIXES, h_centring_adds_the_two_ab_plane_translations)
     EXPECT_NEAR(centred.operations[i].translation.y, expected[i].y, 1e-12) << "shift " << i;
     EXPECT_NEAR(centred.operations[i].translation.z, expected[i].z, 1e-12) << "shift " << i;
   }
+}
+
+namespace
+{
+// the operations of a tabulated setting, as a CIF would list them (translations in fractions of the cell)
+std::vector<SKSeitzMatrix> operationsOfSetting(std::size_t hallNumber)
+{
+  std::vector<SKSeitzMatrix> operations;
+  for (const SKSeitzIntegerMatrix& m : SKSpaceGroup(hallNumber).spaceGroupSetting().fullSeitzMatrices().operations)
+  {
+    operations.emplace_back(m.rotation, double3(m.translation.x, m.translation.y, m.translation.z) / 24.0);
+  }
+  return operations;
+}
+}  // namespace
+
+TEST(SYMMETRY_STRUCTURE_FIXES, hall_number_search_requires_the_order_and_prefers_the_listed_setting)
+{
+  const double3x3 cubic(double3(10.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 10.0));
+  const double3x3 orthorhombic(double3(5.0, 0.0, 0.0), double3(0.0, 6.0, 0.0), double3(0.0, 0.0, 7.0));
+
+  // P -1 (Hall 2) without an international number: P 1 has no generators and used to match every primitive group
+  const std::vector<SKSeitzMatrix> pBar1 = operationsOfSetting(2);
+  ASSERT_EQ(pBar1.size(), 2uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(pBar1, cubic, Centring::primitive, std::nullopt), 2uz);
+
+  // F d -3 m: origin choice 1 (Hall 525) and 2 (Hall 526) differ by an origin shift; the listed one is returned,
+  // where the standard setting (choice 2) used to win for both
+  const std::vector<SKSeitzMatrix> origin1 = operationsOfSetting(525);
+  const std::vector<SKSeitzMatrix> origin2 = operationsOfSetting(526);
+  ASSERT_EQ(origin1.size(), 192uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(origin1, cubic, Centring::face, std::nullopt), 525uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(origin2, cubic, Centring::face, std::nullopt), 526uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(origin1, cubic, Centring::face, 227), 525uz);
+
+  // the generators of F d -3 (227's subgroup 203) are among the operations of F d -3 m, but the order differs
+  EXPECT_FALSE(SKSpaceGroup::HallNumberFromSymmetryOperations(origin2, cubic, Centring::face, 203).has_value());
+
+  // P b n m (Hall 294) is P n m a (Hall 292, standard) in another axis setting: the listed setting is returned
+  const std::vector<SKSeitzMatrix> pbnm = operationsOfSetting(294);
+  ASSERT_EQ(pbnm.size(), 8uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(pbnm, orthorhombic, Centring::primitive, std::nullopt),
+            294uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(pbnm, orthorhombic, Centring::primitive, 62), 294uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(operationsOfSetting(292), orthorhombic, Centring::primitive,
+                                                           std::nullopt),
+            292uz);
 }

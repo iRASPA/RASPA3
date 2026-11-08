@@ -392,7 +392,12 @@ std::optional<std::size_t> SKSpaceGroup::HallNumberFromSymmetryOperations(
     }
   }
 
-  std::optional<std::size_t> matchedHallNumber;
+  // Preference among the settings that match up to an origin shift and a change of basis (origin choice 1 and 2,
+  // or the axis permutations of a monoclinic or orthorhombic group, all match): the setting that reproduces the
+  // operations as listed, with no origin shift in the given basis; otherwise the standard setting; otherwise the
+  // first match.
+  std::optional<std::size_t> standardMatch;
+  std::optional<std::size_t> firstMatch;
   for (std::size_t hallNumber : hallNumbers)
   {
     if (!matchSpaceGroup(hallNumber, lattice, centering, operations, symmetryPrecision))
@@ -400,14 +405,23 @@ std::optional<std::size_t> SKSpaceGroup::HallNumberFromSymmetryOperations(
       continue;
     }
 
-    matchedHallNumber = hallNumber;
-    if (SKSpaceGroupDataBase::spaceGroupData[hallNumber].standardSetting())
+    const std::optional<double3> shift =
+        getOriginShift(hallNumber, centering, SKRotationalChangeOfBasis::identity, operations, symmetryPrecision);
+    if (shift && std::fabs(shift->x - std::rint(shift->x)) < symmetryPrecision &&
+        std::fabs(shift->y - std::rint(shift->y)) < symmetryPrecision &&
+        std::fabs(shift->z - std::rint(shift->z)) < symmetryPrecision)
     {
       return hallNumber;
     }
+
+    if (!firstMatch) firstMatch = hallNumber;
+    if (!standardMatch && SKSpaceGroupDataBase::spaceGroupData[hallNumber].standardSetting())
+    {
+      standardMatch = hallNumber;
+    }
   }
 
-  return matchedHallNumber;
+  return standardMatch ? standardMatch : firstMatch;
 }
 
 std::vector<double3> SKSpaceGroup::listOfSymmetricPositions(double3 pos)
@@ -1056,6 +1070,18 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
   double3x3 translationsnew = double3x3();
 
   SKSpaceGroup dataBaseSpaceGroup = SKSpaceGroup(HallNumber);
+
+  // the operations must have the order of the candidate: its generators are found in every supergroup as well, and
+  // the empty generator list of P 1 in every group; the operations may be listed with the centring translations
+  // (the full order) or without them
+  const std::size_t order = dataBaseSpaceGroup.spaceGroupSetting().order();
+  const std::size_t centringTranslations =
+      std::max(std::size_t{1}, dataBaseSpaceGroup.spaceGroupSetting().latticeTranslations().size());
+  if (seitzMatrices.size() != order && seitzMatrices.size() * centringTranslations != order)
+  {
+    return std::nullopt;
+  }
+
   const std::string& encodedGenerators = dataBaseSpaceGroup.spaceGroupSetting().encodedGenerators();
   if (encodedGenerators.empty())
   {
@@ -1110,14 +1136,6 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
   if (centering != dataBaseSpaceGroupCentering)
   {
     return std::nullopt;
-  }
-
-  // apply change-of-basis to the Seitz-matrices
-  std::vector<SKSeitzIntegerMatrix> dataBaseSpaceGroupSeitzMatrices =
-      dataBaseSpaceGroup.spaceGroupSetting().SeitzMatricesWithoutTranslation();
-  for (std::size_t i = 0; i < dataBaseSpaceGroupSeitzMatrices.size(); i++)
-  {
-    dataBaseSpaceGroupSeitzMatrices[i] = changeOfBasis * dataBaseSpaceGroupSeitzMatrices[i];
   }
 
   for (std::size_t i = 0; i < dataBaseSpaceGroupGenerators.size(); i++)
@@ -1240,5 +1258,56 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
 
   double3 originShift = double3::fract(double3(cp(0, 0), cp(1, 0), cp(2, 0)));
   SKIntegerChangeOfBasis basis = SKIntegerChangeOfBasis(changeToPrimitive).inverse();
-  return double3::fract(changeOfBasis.inverse() * (basis * originShift));
+  // the shift in the basis of the given operations, and (the returned value) in the basis of the candidate setting
+  const double3 shift = double3::fract(basis * originShift);
+  const double3 shiftInSettingBasis = double3::fract(changeOfBasis.inverse() * shift);
+
+  // The generators and a consistent shift are also found in a supergroup, and a centred subgroup has the same
+  // order as a primitive group with as many operations: the groups are equal only when every operation of the
+  // one is an operation of the other. An operation is compared by its rotation and by where it takes a probe
+  // point, modulo lattice translations; the candidate's operation m acts in the given coordinates as
+  // x -> m(x + s) - s with the origin shift s.
+  const double3 probe(0.1234, 0.2345, 0.3456);
+  std::vector<std::pair<SKRotationMatrix, double3>> candidateOperations{};
+  for (const SKSeitzIntegerMatrix& operation : dataBaseSpaceGroup.spaceGroupSetting().fullSeitzMatrices().operations)
+  {
+    const SKSeitzIntegerMatrix transformed = changeOfBasis * operation;
+    candidateOperations.emplace_back(transformed.rotation, transformed * (probe + shift) - shift);
+  }
+  const auto sameOperation =
+      [&probe, symmetryPrecision](const std::pair<SKRotationMatrix, double3>& candidate, const SKSeitzMatrix& given)
+  {
+    if (!(candidate.first == given.rotation)) return false;
+    const double3 difference = candidate.second - (given.rotation * probe + given.translation);
+    return std::fabs(difference.x - std::rint(difference.x)) < symmetryPrecision &&
+           std::fabs(difference.y - std::rint(difference.y)) < symmetryPrecision &&
+           std::fabs(difference.z - std::rint(difference.z)) < symmetryPrecision;
+  };
+  if (seitzMatrices.size() == order)
+  {
+    // the full groups: every operation of the candidate is given
+    for (const std::pair<SKRotationMatrix, double3>& candidate : candidateOperations)
+    {
+      if (std::none_of(seitzMatrices.begin(), seitzMatrices.end(),
+                       [&](const SKSeitzMatrix& given) { return sameOperation(candidate, given); }))
+      {
+        return std::nullopt;
+      }
+    }
+  }
+  else
+  {
+    // the operations are given without the centring translations: every given operation is in the candidate,
+    // which then is the given operations combined with its centring
+    for (const SKSeitzMatrix& given : seitzMatrices)
+    {
+      if (std::none_of(candidateOperations.begin(), candidateOperations.end(),
+                       [&](const std::pair<SKRotationMatrix, double3>& candidate)
+                       { return sameOperation(candidate, given); }))
+      {
+        return std::nullopt;
+      }
+    }
+  }
+  return shiftInSettingBasis;
 }
