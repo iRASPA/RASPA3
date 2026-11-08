@@ -4,6 +4,7 @@ import std;
 
 import bool3;
 import double3;
+import float3;
 import double4;
 import float4;
 import double3x3;
@@ -117,6 +118,34 @@ TEST(MATHKIT_FIXES, quaternion_inverse_of_a_non_unit_quaternion_gives_the_identi
   EXPECT_NEAR(inverse.iy, -unit.iy, 1e-15);
   EXPECT_NEAR(inverse.iz, -unit.iz, 1e-15);
   EXPECT_NEAR(inverse.r, unit.r, 1e-15);
+}
+
+TEST(MATHKIT_FIXES, member_and_static_fract_agree_bit_for_bit)
+{
+  // the member delegates to the static form; both land in [0, 1) for values near integers and half-integers
+  for (int k = -50; k <= 50; ++k)
+  {
+    for (double offset : {0.0, 1e-17, -1e-17, 1e-12, -1e-12, 0.25, 0.5, 0.5 + 1e-16, 0.5 - 1e-16, 0.75, 0.999999})
+    {
+      const double3 v(k + offset, -(k + offset) * 1e3, (k + offset) * 1e-3);
+      const double3 member = v.fract();
+      const double3 fixed = double3::fract(v);
+      EXPECT_EQ(member.x, fixed.x) << v.x;
+      EXPECT_EQ(member.y, fixed.y) << v.y;
+      EXPECT_EQ(member.z, fixed.z) << v.z;
+      for (double f : {member.x, member.y, member.z})
+      {
+        EXPECT_GE(f, 0.0) << v.x;
+        EXPECT_LT(f, 1.0) << v.x;
+      }
+    }
+  }
+  EXPECT_EQ(double3(-0.25, -5e-17, 3.0).fract(), double3(0.75, 0.0, 0.0));
+
+  const float3 f = float3(-0.25f, -1e-9f, 3.75f).fract();
+  EXPECT_EQ(f.x, 0.75f);
+  EXPECT_EQ(f.y, 0.0f);
+  EXPECT_EQ(f.z, 0.75f);
 }
 
 TEST(MATHKIT_FIXES, cubic_returns_a_double_root_twice)

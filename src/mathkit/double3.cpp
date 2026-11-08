@@ -19,38 +19,8 @@ double3 double3::normalized() const
 
 double3 double3::fract() const
 {
-  double3 s = double3(x, y, z);
-  s.x -= std::rint(x);
-  s.y -= std::rint(y);
-  s.z -= std::rint(z);
-
-  if (s.x < 0.0)
-  {
-    s.x += 1.0;
-  }
-  if (s.x >= 1.0)
-  {
-    s.x -= 1.0;
-  }
-
-  if (s.y < 0.0)
-  {
-    s.y += 1.0;
-  }
-  if (s.y >= 1.0)
-  {
-    s.y -= 1.0;
-  }
-
-  if (s.z < 0.0)
-  {
-    s.z += 1.0;
-  }
-  if (s.z >= 1.0)
-  {
-    s.z -= 1.0;
-  }
-  return s;
+  // one implementation: x - floor(x), with 1.0 (the rounding of a tiny negative x plus one) wrapped to 0.0
+  return double3::fract(*this);
 }
 
 std::string double3::to_string()

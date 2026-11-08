@@ -19,37 +19,12 @@ float3 float3::normalise()
 
 float3 float3::fract()
 {
-  float3 s = float3(x, y, z);
-  s.x -= std::rint(x);
-  s.y -= std::rint(y);
-  s.z -= std::rint(z);
-
-  if (s.x < 0.0f)
-  {
-    s.x += 1.0f;
-  }
-  if (s.x >= 1.0f)
-  {
-    s.x -= 1.0f;
-  }
-
-  if (s.y < 0.0f)
-  {
-    s.y += 1.0f;
-  }
-  if (s.y >= 1.0f)
-  {
-    s.y -= 1.0f;
-  }
-
-  if (s.z < 0.0f)
-  {
-    s.z += 1.0f;
-  }
-  if (s.z >= 1.0f)
-  {
-    s.z -= 1.0f;
-  }
+  // the same form as double3::fract: x - floor(x), with 1.0f (the rounding of a tiny negative x plus one)
+  // wrapped to 0.0f
+  float3 s(x - std::floor(x), y - std::floor(y), z - std::floor(z));
+  if (s.x >= 1.0f) s.x = 0.0f;
+  if (s.y >= 1.0f) s.y = 0.0f;
+  if (s.z >= 1.0f) s.z = 0.0f;
   return s;
 }
 
