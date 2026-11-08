@@ -294,7 +294,8 @@ class argparser
           }
           case optional_argument:
           {
-            if (std::next(arg) != std::end(args_) && find(*std::next(arg)))
+            // the next argument is the value unless it is an option itself
+            if (std::next(arg) != std::end(args_) && !find(*std::next(arg)))
             {
               opt.handler(*(++arg));
             }

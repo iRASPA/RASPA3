@@ -20,7 +20,8 @@ CharacterSet CharacterSet::newlineCharacterSet() { return CharacterSet(std::stri
 
 CharacterSet CharacterSet::whitespaceAndNewlineCharacterSet()
 {
-  return CharacterSet(std::string("\x0A\x0B\x0C\x0D\x85\x0D\x85\x20\x09\xA0", 8));
+  // the newline set and the whitespace set together
+  return CharacterSet(std::string("\x0A\x0B\x0C\x0D\x85\x20\x09\xA0", 8));
 }
 
 CharacterSet CharacterSet::whitespaceCharacterSet() { return CharacterSet(std::string("\x20\x09\xA0", 3)); }

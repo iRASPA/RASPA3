@@ -45,23 +45,15 @@ bool Scanner::scanCharacters(CharacterSet set, std::string& into)
 {
   std::string::const_iterator found = find_first_not_of(set.string(), _string, _scanLocation);
 
-  if (found >= _string.cend())
+  // the characters of the set up to the next other character, or up to the end of the string
+  if (found >= _string.cend() && _scanLocation >= _string.cend())
   {
-    _scanLocation = _string.cend();
     into = std::string("");
     return false;
   }
-
-  if (found < _string.cend())
-  {
-    into = std::string(_scanLocation, found);
-    // into = std::string(_scanLocation, int(found - _scanLocation));
-    _scanLocation = found;
-    return true;
-  }
-  _scanLocation = _string.cend();
-  into = std::string("");
-  return false;
+  into = std::string(_scanLocation, found);
+  _scanLocation = found;
+  return true;
 }
 
 bool Scanner::scanLine(std::string& into)
@@ -69,27 +61,24 @@ bool Scanner::scanLine(std::string& into)
   std::string::const_iterator newlineLocation =
       find_first_of(CharacterSet::newlineCharacter().string(), _string, _scanLocation);
 
-  // not found
-  if (newlineLocation >= _string.cend())
+  // nothing left
+  if (_scanLocation >= _string.cend())
   {
-    _scanLocation = _string.cend();
     into = std::string("");
     return false;
   }
 
-  // found
-  if (newlineLocation < _string.cend())
+  // the last line need not end with a newline
+  if (newlineLocation >= _string.cend())
   {
-    // into = std::string(_scanLocation, newlineLocation - _scanLocation);
-    into = std::string(_scanLocation, newlineLocation);
-    _scanLocation = newlineLocation + 1;
+    into = std::string(_scanLocation, _string.cend());
+    _scanLocation = _string.cend();
     return true;
   }
 
-  // found newline as the last character
-  _scanLocation = _string.cend();
-  into = std::string("");
-  return false;
+  into = std::string(_scanLocation, newlineLocation);
+  _scanLocation = newlineLocation + 1;
+  return true;
 }
 
 bool Scanner::scanUpToCharacters(CharacterSet set, std::string& into)
@@ -105,18 +94,12 @@ bool Scanner::scanUpToCharacters(CharacterSet set, std::string& into)
 
   _scanLocation = found;
 
+  // up to the next character of the set, or up to the end of the string (the last token need not be followed by
+  // a delimiter)
   found = find_first_of(set.string(), _string, _scanLocation);
-
-  if (found < _string.cend())
-  {
-    // into = std::string(_scanLocation, found - _scanLocation);
-    into = std::string(_scanLocation, found);
-    _scanLocation = found;
-    return true;
-  }
-  _scanLocation = _string.cend();
-  into = std::string("");
-  return false;
+  into = std::string(_scanLocation, found);
+  _scanLocation = found;
+  return true;
 }
 
 bool Scanner::isAtEnd() { return _scanLocation >= _string.cend(); }
@@ -133,31 +116,23 @@ bool Scanner::scanDouble(double& value)
 
   _scanLocation = found;
 
+  // the token runs up to the next skipped character or to the end of the string
   found = find_first_of(_charactersToBeSkipped.string(), _string, _scanLocation);
-
-  if (found < _string.cend())
+  std::string into = std::string(_scanLocation, found);
+  _scanLocation = found;
+  try
   {
-    // std::string into = std::string(_scanLocation, found - _scanLocation);
-    std::string into = std::string(_scanLocation, found);
-    _scanLocation = found;
-    bool success = false;
-    // value = into.toDouble(&success);
-    try
-    {
-      value = std::stod(into);
-    }
-    catch ([[maybe_unused]] std::invalid_argument const& e)
-    {
-      return false;
-    }
-    catch ([[maybe_unused]] std::out_of_range const& e)
-    {
-      return false;
-    }
-    return success;
+    value = std::stod(into);
   }
-  _scanLocation = _string.cend();
-  return false;
+  catch ([[maybe_unused]] std::invalid_argument const& e)
+  {
+    return false;
+  }
+  catch ([[maybe_unused]] std::out_of_range const& e)
+  {
+    return false;
+  }
+  return true;
 }
 
 bool Scanner::scanInt(int& value)
@@ -172,29 +147,21 @@ bool Scanner::scanInt(int& value)
 
   _scanLocation = found;
 
+  // the token runs up to the next skipped character or to the end of the string
   found = find_first_of(_charactersToBeSkipped.string(), _string, _scanLocation);
-
-  if (found < _string.cend())
+  std::string into = std::string(_scanLocation, found);
+  _scanLocation = found;
+  try
   {
-    // std::string into = std::string(_scanLocation, found - _scanLocation);
-    std::string into = std::string(_scanLocation, found);
-    _scanLocation = found;
-    bool success = false;
-    // value = into.toInt(&success);
-    try
-    {
-      value = std::stoi(into);
-    }
-    catch ([[maybe_unused]] std::invalid_argument const& e)
-    {
-      return false;
-    }
-    catch ([[maybe_unused]] std::out_of_range const& e)
-    {
-      return false;
-    }
-    return success;
+    value = std::stoi(into);
   }
-  _scanLocation = _string.cend();
-  return false;
+  catch ([[maybe_unused]] std::invalid_argument const& e)
+  {
+    return false;
+  }
+  catch ([[maybe_unused]] std::out_of_range const& e)
+  {
+    return false;
+  }
+  return true;
 }

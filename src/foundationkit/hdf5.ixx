@@ -75,8 +75,10 @@ export class HDF5Writer
     H5::DataSet dataset = group.openDataSet(datasetName.c_str());
     H5::DataSpace dataspace = dataset.getSpace();
 
-    H5::DataSpace memspace(1, &indices[indices.size() - 1], NULL);
-    dataspace.selectElements(H5S_SELECT_SET, indices.size(), indices.data());
+    // one element: 'indices' holds its coordinate, one entry per dimension of the dataset
+    const hsize_t oneElement = 1;
+    H5::DataSpace memspace(1, &oneElement, NULL);
+    dataspace.selectElements(H5S_SELECT_SET, 1, indices.data());
     dataset.write(&value, getH5Type<T>(), memspace, dataspace);
   }
 
@@ -134,11 +136,12 @@ export class HDF5Writer
     }
     else if (std::is_same<T, size_t>::value)
     {
-      return H5::PredType::NATIVE_UINT;
+      static_assert(sizeof(std::size_t) == 8 || sizeof(std::size_t) == 4);
+      return sizeof(std::size_t) == 8 ? H5::PredType::NATIVE_UINT64 : H5::PredType::NATIVE_UINT32;
     }
     else
     {
-      //throw std::runtime_error("Unsupported data type");
+      throw std::runtime_error("HDF5Writer: unsupported data type");
     }
   }
 };

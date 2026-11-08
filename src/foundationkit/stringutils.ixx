@@ -42,19 +42,11 @@ export inline bool startsWith(const std::string& str, const std::string& prefix)
 
 export inline std::string trim(const std::string& s)
 {
-  auto start = s.begin();
-  while (start != s.end() && std::isspace(*start))
-  {
-    start++;
-  }
-
-  auto end = s.end();
-  do
-  {
-    end--;
-  } while (std::distance(start, end) > 0 && std::isspace(*end));
-
-  return std::string(start, end + 1);
+  const auto isSpace = [](char c) { return std::isspace(static_cast<unsigned char>(c)) != 0; };
+  const auto start = std::find_if_not(s.begin(), s.end(), isSpace);
+  const auto end = std::find_if_not(s.rbegin(), s.rend(), isSpace).base();
+  // an empty or all-whitespace string has nothing left
+  return start < end ? std::string(start, end) : std::string();
 }
 
 /// Maximum number of columns of a line in the output file.

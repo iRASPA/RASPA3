@@ -165,7 +165,16 @@ class ThreadPool
       return;
     }
 
-    number_of_threads = nthreads > 0 ? nthreads - 1 : std::thread::hardware_concurrency() - 1;
+    // the calling thread works too: the pool has one thread fewer than requested. Without any worker (one thread
+    // requested, or a single core) the pool would drop every task, so the work is done serially instead.
+    const std::size_t requested = nthreads > 0 ? nthreads : std::max(1u, std::thread::hardware_concurrency());
+    if (requested <= 1)
+    {
+      threadingType = ThreadingType::Serial;
+      number_of_threads = 0;
+      return;
+    }
+    number_of_threads = requested - 1;
     // number_of_threads =  nthreads > 0 ? nthreads:  std::thread::hardware_concurrency();
     tasks_ = std::deque<task_item>(number_of_threads);
     InitializationFunction init = [](std::size_t) {};
@@ -189,15 +198,16 @@ class ThreadPool
                   // invoke the task
                   while (auto task = tasks_[id].tasks.pop_front())
                   {
+                    unassigned_tasks_.fetch_sub(1, std::memory_order_release);
                     try
                     {
-                      unassigned_tasks_.fetch_sub(1, std::memory_order_release);
                       std::invoke(std::move(task.value()));
-                      task_completed();
                     }
                     catch (...)
                     {
                     }
+                    // a task that throws is finished too, or wait_for_tasks() would block forever
+                    task_completed();
                   }
 
                   // try to steal a task
@@ -208,7 +218,13 @@ class ThreadPool
                     {
                       // steal a task
                       unassigned_tasks_.fetch_sub(1, std::memory_order_release);
-                      std::invoke(std::move(task.value()));
+                      try
+                      {
+                        std::invoke(std::move(task.value()));
+                      }
+                      catch (...)
+                      {
+                      }
                       task_completed();
                       // stop stealing once we have invoked a stolen task
                       break;

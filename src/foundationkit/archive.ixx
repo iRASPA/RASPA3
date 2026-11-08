@@ -273,6 +273,8 @@ class Archive
   {
     std::size_t len;
     *this >> len;
+    // the archive holds the whole map: what was in it before is replaced, not merged
+    v.clear();
     for (std::size_t i = 0; i < len; ++i)
     {
       std::pair<T1, T2> value;
@@ -300,6 +302,8 @@ class Archive
   {
     std::size_t len;
     *this >> len;
+    // the archive holds the whole map: what was in it before is replaced, not merged
+    v.clear();
     for (std::size_t i = 0; i < len; ++i)
     {
       std::pair<T1, T2> value;

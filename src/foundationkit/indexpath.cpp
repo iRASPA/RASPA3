@@ -149,5 +149,5 @@ bool IndexPath::operator==(const IndexPath& otherObject) const
   {
     return false;
   }
-  return false;
+  return true;
 }
