@@ -25,3 +25,29 @@ TEST(double3, Test_Perpendicular)
         << std::format("{} {} {}     {} {} {}\n", u.x, u.y, u.z, v.x, v.y, v.z);
   }
 }
+
+TEST(double3, Test_Perpendicular_small_norm_and_zero_vectors)
+{
+  // orthogonal vectors of small length are not collinear; the result is perpendicular to both
+  double3 u{0.0, 0.0, 1e-6};
+  double3 v{1e-6, 1e-6, 0.0};
+  double3 w = double3::perpendicular(u, v);
+  EXPECT_NEAR(w.length(), 1.0, 1e-12);
+  EXPECT_NEAR(double3::dot(w, u.normalized()), 0.0, 1e-12);
+  EXPECT_NEAR(double3::dot(w, v.normalized()), 0.0, 1e-12);
+
+  // a zero vector imposes no constraint; the result is a unit vector perpendicular to the other one
+  for (std::pair<double3, double3> pair : std::vector<std::pair<double3, double3>>{
+           {{0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}}, {{0.0, 0.0, 2.0}, {0.0, 0.0, 0.0}}, {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}})
+  {
+    w = double3::perpendicular(pair.first, pair.second);
+    EXPECT_NEAR(w.length(), 1.0, 1e-12);
+    EXPECT_NEAR(double3::dot(w, pair.first), 0.0, 1e-12);
+    EXPECT_NEAR(double3::dot(w, pair.second), 0.0, 1e-12);
+  }
+
+  // parallel vectors of different lengths
+  w = double3::perpendicular(double3(1e-6, 2e-6, 3e-6), double3(2.0, 4.0, 6.0));
+  EXPECT_NEAR(w.length(), 1.0, 1e-12);
+  EXPECT_NEAR(double3::dot(w, double3(1.0, 2.0, 3.0)), 0.0, 1e-12);
+}

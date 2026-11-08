@@ -103,48 +103,29 @@ export union double3
 
   inline static double3 perpendicular(double3 u, double3 v)
   {
-    double3 w;
+    // normalize first, so that the collinearity test does not depend on the lengths of 'u' and 'v'
+    double length_u = u.length();
+    double length_v = v.length();
+    if (length_u > 0.0) u /= length_u;
+    if (length_v > 0.0) v /= length_v;
 
-    std::array<double, 3> denominator = {std::fabs(u.z * v.y - u.y * v.z), std::fabs(u.z * v.x - u.x * v.z),
-                                         std::fabs(u.y * v.x - u.x * v.y)};
-
-    std::array<double, 3>::iterator maximum = std::max_element(denominator.begin(), denominator.end());
-
-    if (*maximum < 1e-10)
+    double3 w = double3::cross(u, v);
+    double length_w = w.length();
+    if (length_w >= 1e-10)
     {
-      // u and v are parallel
-      // https://math.stackexchange.com/questions/137362/how-to-find-perpendicular-vector-to-another-vector
-      w = double3(std::copysign(u[2], u[0]), std::copysign(u[2], u[1]),
-                  -std::copysign(u[0], u[2]) - std::copysign(u[1], u[2]));
-      return w.normalized();
+      w /= length_w;
+      return w;
     }
 
-    auto choise = std::distance(denominator.begin(), maximum);
-
-    switch (choise)
+    // u and v are parallel, or one of them is zero and imposes no constraint: take a vector perpendicular to
+    // the nonzero one, and any unit vector when both are zero
+    // https://math.stackexchange.com/questions/137362/how-to-find-perpendicular-vector-to-another-vector
+    double3 a = length_u > 0.0 ? u : v;
+    if (a == double3(0.0, 0.0, 0.0))
     {
-      case 0:
-        // u * z == 0 && v * z == 0, solving for y and z (and x can be chosen freely)
-        w.x = 1.0;
-        w.y = (u.x * v.z - u.z * v.x) / (u.z * v.y - u.y * v.z);
-        w.z = (u.y * v.x - u.x * v.y) / (u.z * v.y - u.y * v.z);
-        break;
-      case 1:
-        // u * z == 0 && v * z == 0, solving for x and z (and y can be chosen freely)
-        w.x = (u.y * v.z - u.z * v.y) / (u.z * v.x - u.x * v.z);
-        w.y = 1.0;
-        w.z = (u.x * v.y - u.y * v.x) / (u.z * v.x - u.x * v.z);
-        break;
-      case 2:
-        // u * z == 0 && v * z == 0, solving for x and y (and z can be chosen freely)
-        w.x = (u.z * v.y - u.y * v.z) / (u.y * v.x - u.x * v.y);
-        w.y = (u.x * v.z - u.z * v.x) / (u.y * v.x - u.x * v.y);
-        w.z = 1.0;
-        break;
-      default:
-        std::unreachable();
+      return double3(1.0, 0.0, 0.0);
     }
-
+    w = double3(std::copysign(a.z, a.x), std::copysign(a.z, a.y), -std::copysign(a.x, a.z) - std::copysign(a.y, a.z));
     return w.normalized();
   }
 
