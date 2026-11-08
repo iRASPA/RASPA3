@@ -33,15 +33,16 @@ void IndexPath::increaseValueAtLastIndex()
 
 void IndexPath::decreaseValueAtLastIndex()
 {
-  if (!_path.empty())
+  // an index of zero stays zero: the subtraction would wrap to the largest std::size_t
+  if (!_path.empty() && _path.back() > 0)
   {
     _path.back() -= 1;
   }
 }
 
-std::size_t IndexPath::size() { return _path.size(); }
+std::size_t IndexPath::size() const { return _path.size(); }
 
-IndexPath IndexPath::appending(std::size_t index)
+IndexPath IndexPath::appending(std::size_t index) const
 {
   IndexPath indexpath{};
   indexpath._path.insert(indexpath._path.end(), _path.begin(), _path.end());
@@ -60,7 +61,7 @@ IndexPath IndexPath::removingLastIndex() const
   return indexPath;
 }
 
-const IndexPath IndexPath::operator+(const IndexPath& rhs)
+const IndexPath IndexPath::operator+(const IndexPath& rhs) const
 {
   IndexPath indexpath{};
   indexpath._path.insert(indexpath._path.end(), _path.begin(), _path.end());

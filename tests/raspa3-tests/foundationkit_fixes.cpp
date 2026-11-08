@@ -327,3 +327,38 @@ TEST(FOUNDATIONKIT_FIXES, read_file_content_rejects_a_directory)
   EXPECT_THROW(readFileContent(workspace.path().string(), ""), std::runtime_error);
   EXPECT_THROW(readFileContent((workspace.path() / "missing").string(), ".txt"), std::runtime_error);
 }
+
+TEST(FOUNDATIONKIT_FIXES, index_path_decrement_stops_at_zero_and_const_paths_compose)
+{
+  IndexPath path(0);
+  path.decreaseValueAtLastIndex();  // used to wrap to the largest std::size_t
+  EXPECT_EQ(path.lastIndex(), 0uz);
+  IndexPath two(2);
+  two.decreaseValueAtLastIndex();
+  EXPECT_EQ(two.lastIndex(), 1uz);
+
+  // size, appending and + are usable on a const path
+  const IndexPath base = IndexPath(1).appending(2);
+  EXPECT_EQ(base.size(), 2uz);
+  EXPECT_EQ(base.appending(3).size(), 3uz);
+  EXPECT_EQ((base + IndexPath(7)).lastIndex(), 7uz);
+}
+
+TEST(FOUNDATIONKIT_FIXES, argparser_tolerates_a_negative_count_and_shows_help_from_the_parsed_instance)
+{
+  // a negative argc wrapped into a huge reservation
+  argparser::argparser empty(-1, nullptr);
+  EXPECT_TRUE(empty());
+
+  std::array<std::string, 2> storage{"raspa3", "--help"};
+  std::array<char*, 2> argv{};
+  for (std::size_t i = 0; i < storage.size(); ++i) argv[i] = storage[i].data();
+  argparser::argparser parser(static_cast<int>(argv.size()), argv.data());
+  parser.info("test", "raspa3").help({"-h", "--help"}, "show this help");
+  // the help option no longer binds the address of the registering instance: a copy works as well
+  argparser::argparser copy = parser;
+  testing::internal::CaptureStdout();
+  EXPECT_THROW(copy(), argparser::help_requested_exception);
+  const std::string shown = testing::internal::GetCapturedStdout();
+  EXPECT_NE(shown.find("Usage:"), std::string::npos);
+}

@@ -108,6 +108,9 @@ class argparser
     std::string arg_name{};
     callback_t handler{nullptr};
     arg_type_t arg_type{invalid_argument};
+    // the help option: handled by the parser that is run, so no handler has to hold the address of the parser
+    // that registered it (a copy or move of the parser would leave such a handler dangling)
+    bool shows_help{false};
 
     operator bool() const { return handler != nullptr; }
   };
@@ -121,7 +124,8 @@ class argparser
   argparser() = delete;
   argparser(int argc, char *argv[])
   {
-    const std::size_t n = static_cast<std::size_t>(argc);
+    // a negative count (not produced by a hosted main, but allowed by the signature) would wrap to a huge reserve
+    const std::size_t n = argc > 0 ? static_cast<std::size_t>(argc) : 0;
     args_.reserve(n);
     for (std::size_t i = 1; i < n; ++i)
     {
@@ -233,8 +237,8 @@ class argparser
 
   argparser &help(std::vector<std::string> const &options, std::string const &help)
   {
-    options_.emplace(std::make_pair(
-        options, arg_options{help, std::string{}, std::bind(&argparser::display_help, this), no_argument}));
+    options_.emplace(
+        std::make_pair(options, arg_options{help, std::string{}, [](std::string const&) {}, no_argument, true}));
     return *this;
   }
 
@@ -278,7 +282,10 @@ class argparser
         switch (opt.arg_type)
         {
           case no_argument:
-            opt.handler(std::string());
+            if (opt.shows_help)
+              display_help();
+            else
+              opt.handler(std::string());
             break;
           case required_argument:
           {
