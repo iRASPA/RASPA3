@@ -1,5 +1,7 @@
 module;
 
+#include <cassert>
+
 export module symmetric_matrix_layout;
 
 import std;

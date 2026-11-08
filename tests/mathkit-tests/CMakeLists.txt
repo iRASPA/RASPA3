@@ -3,6 +3,7 @@ add_executable(unit_tests_mathkit
   double3.cpp
   int3.cpp
   symmetric_eigensolver.cpp
+  symmetric_matrix_layout.cpp
   random.cpp
   random_archive.cpp
   main.cpp)
