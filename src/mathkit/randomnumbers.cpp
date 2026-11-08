@@ -79,9 +79,17 @@ double3 RandomNumber::randomVectorOnCone(double3 v, double angle)
 {
   double3 normalized_v = v.normalized();
 
-  double3 w = randomVectorOnUnitSphere();
-
-  w -= double3::dot(normalized_v, w) * normalized_v;
+  // the component of a random unit vector perpendicular to v has a uniform azimuth, and rejecting the (nearly)
+  // parallel draws does not bias it; there that component vanishes and normalizing it returns zero or rounding
+  // noise, which would yield +-v (an angle of 0 or pi) instead of a vector at the requested angle; the threshold
+  // keeps the perpendicular component above 1e-4, so its direction is accurate to about 1e-12, and it rejects a
+  // draw with probability about 5e-9, so seeded random streams are unchanged in practice
+  double3 w;
+  do
+  {
+    w = randomVectorOnUnitSphere();
+    w -= double3::dot(normalized_v, w) * normalized_v;
+  } while (w.length_squared() < 1e-8);
 
   return (std::sin(angle) * w.normalized() + std::cos(angle) * normalized_v).normalized();
 }

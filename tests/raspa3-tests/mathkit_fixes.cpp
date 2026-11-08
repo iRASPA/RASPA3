@@ -13,6 +13,7 @@ import matrix;
 import simd_quatd;
 import ringmatrix;
 import cubic;
+import randomnumbers;
 
 TEST(MATHKIT_FIXES, normalise_divides_by_the_four_dimensional_length)
 {
@@ -148,6 +149,22 @@ TEST(MATHKIT_FIXES, cubic_keeps_three_distinct_and_single_real_roots)
   cubic(single, roots, &numberOfRoots);
   ASSERT_EQ(numberOfRoots, 1);
   EXPECT_NEAR(roots[0], 2.0, 1e-12);
+}
+
+TEST(MATHKIT_FIXES, random_vector_on_cone_redraws_a_direction_parallel_to_the_axis)
+{
+  // the axis is the unit vector the seeded generator draws first, so the sampler's first draw is exactly
+  // (anti)parallel to it and its perpendicular component vanishes; it used to return +-axis
+  for (const double sign : {1.0, -1.0})
+  {
+    RandomNumber draw(7);
+    const double3 axis = sign * draw.randomVectorOnUnitSphere();
+    RandomNumber random(7);
+    const double angle = 0.4;
+    const double3 w = random.randomVectorOnCone(axis, angle);
+    EXPECT_NEAR(double3::angle(axis, w), angle, 1e-10) << "sign " << sign;
+    EXPECT_NEAR(w.length(), 1.0, 1e-12) << "sign " << sign;
+  }
 }
 
 TEST(MATHKIT_FIXES, int3x3_from_a_value_is_diagonal)
