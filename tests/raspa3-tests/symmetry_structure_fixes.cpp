@@ -14,6 +14,7 @@ import skseitzmatrix;
 import sksymmetryoperationset;
 import skintegersymmetryoperationset;
 import skspacegroupsetting;
+import skasymmetricunit;
 import skrotationalchangeofbasis;
 import skspacegroupdatabase;
 import skspacegroup;
@@ -255,4 +256,30 @@ TEST(SYMMETRY_STRUCTURE_FIXES, lattice_translation_and_inversion_centre_strings_
             (std::vector<std::string>{"(0,0,0)", "(2/3,1/3,1/3)", "(1/3,2/3,2/3)", ""}));
   EXPECT_EQ(SKSpaceGroup::inversionCenterString(525), "(1/8,1/8,1/8)");
   EXPECT_EQ(SKSpaceGroup::inversionCenterString(526), "(0,0,0)");
+}
+
+TEST(SYMMETRY_STRUCTURE_FIXES, asymmetric_unit_bounds_are_open_at_one_and_may_lie_below_minus_one_half)
+{
+  // bounds in 1/48 with an odd value for an open boundary: {24, 49} is [1/2, 1); 49 used to be read as 49/48
+  SKAsymmetricUnit upperHalf({24, 49}, {0, 24}, {0, 24});
+  EXPECT_TRUE(upperHalf.contains(double3(0.5, 0.1, 0.1)));
+  EXPECT_TRUE(upperHalf.contains(double3(0.999, 0.1, 0.1)));
+  EXPECT_FALSE(upperHalf.contains(double3(1.0, 0.1, 0.1)));
+  EXPECT_FALSE(upperHalf.contains(double3(0.0, 0.1, 0.1)));
+  EXPECT_FALSE(upperHalf.contains(double3(0.49, 0.1, 0.1)));
+
+  // {-48, 0} is [-1, 0], the whole cell: points whose image lies below -1/2 used to be rejected
+  SKAsymmetricUnit wholeCell({-48, 0}, {0, 24}, {0, 24});
+  for (const double x : {0.1, 0.25, 0.5, 0.75, -0.75, 1.3})
+  {
+    EXPECT_TRUE(wholeCell.contains(double3(x, 0.1, 0.1))) << x;
+  }
+
+  // {-32, 8} is [-2/3, 1/6]
+  SKAsymmetricUnit skewed({-32, 8}, {0, 24}, {0, 24});
+  EXPECT_TRUE(skewed.contains(double3(0.5, 0.1, 0.1)));   // image -1/2
+  EXPECT_TRUE(skewed.contains(double3(0.4, 0.1, 0.1)));   // image -0.6
+  EXPECT_TRUE(skewed.contains(double3(0.1, 0.1, 0.1)));   // itself
+  EXPECT_FALSE(skewed.contains(double3(0.3, 0.1, 0.1)));  // 0.3 > 1/6 and -0.7 < -2/3
+  EXPECT_FALSE(skewed.contains(double3(0.2, 0.1, 0.1)));
 }
