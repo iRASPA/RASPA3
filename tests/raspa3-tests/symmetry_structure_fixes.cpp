@@ -69,6 +69,21 @@ TEST(SYMMETRY_STRUCTURE_FIXES, b_centred_settings_are_b_face_centred)
   EXPECT_EQ(SKSpaceGroupDataBase::spaceGroupData[13].centring(), Centring::b_face);
   EXPECT_EQ(SKSpaceGroupDataBase::spaceGroupData[15].HallNumber(), 15uz);
   EXPECT_EQ(SKSpaceGroupDataBase::spaceGroupData[15].centring(), Centring::b_face);
+
+  // every setting's centring agrees with the lattice letter of its Hermann-Mauguin symbol; 38 B settings were
+  // stored as primitive. R is left out: in rhombohedral axes an R lattice is primitive.
+  const std::map<char, Centring> letters{{'P', Centring::primitive}, {'A', Centring::a_face}, {'B', Centring::b_face},
+                                         {'C', Centring::c_face},    {'I', Centring::body},   {'F', Centring::face}};
+  std::size_t bSettings = 0;
+  for (std::size_t hallNumber = 1; hallNumber <= 530; ++hallNumber)
+  {
+    const SKSpaceGroupSetting& setting = SKSpaceGroupDataBase::spaceGroupData[hallNumber];
+    const std::string symbol = setting.HMString();
+    if (symbol.empty() || !letters.contains(symbol.front())) continue;
+    EXPECT_EQ(setting.centring(), letters.at(symbol.front())) << "Hall " << hallNumber << " " << symbol;
+    bSettings += symbol.front() == 'B';
+  }
+  EXPECT_EQ(bSettings, 40uz);
 }
 
 TEST(SYMMETRY_STRUCTURE_FIXES, space_group_search_without_atoms_finds_nothing)
