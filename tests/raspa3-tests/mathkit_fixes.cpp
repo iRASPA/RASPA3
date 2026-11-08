@@ -2,6 +2,7 @@
 
 import std;
 
+import bool3;
 import double3;
 import double4;
 import float4;
@@ -118,4 +119,15 @@ TEST(MATHKIT_FIXES, hermite_and_smith_normal_forms_transform_the_matrix)
       }
     }
   }
+}
+
+TEST(MATHKIT_FIXES, bool3_indices_are_its_components)
+{
+  const bool3 flags(true, false, true);
+  EXPECT_TRUE(flags[0]);
+  EXPECT_FALSE(flags[1]);
+  EXPECT_TRUE(flags[2]);
+  const bool3 cleared;
+  EXPECT_FALSE(cleared.x || cleared.y || cleared.z);
+  EXPECT_EQ(sizeof(bool3), 3uz);
 }
