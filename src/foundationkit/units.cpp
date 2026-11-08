@@ -43,7 +43,7 @@ double Units::ForceConversionFactor = Units::EnergyConversionFactor / Units::Len
 /// Conversion factor for diffusion from simulation units to square meters per second.
 double Units::DiffusionConversionFactor = Units::LengthUnit * Units::LengthUnit / Units::TimeUnit;  // m^2/s
 /// Conversion factor for acceleration from simulation units to meters per square second.
-double Units::AccelerationConversionFactor = Units::LengthUnit * Units::LengthUnit / Units::TimeUnit;  // m^2/s
+double Units::AccelerationConversionFactor = Units::LengthUnit / (Units::TimeUnit * Units::TimeUnit);  // m/s^2
 /// Conversion factor for torque from simulation units to Newton meters.
 double Units::TorqueConversionFactor =
     Units::MassUnit * Units::LengthUnit * Units::LengthUnit / (Units::TimeUnit * Units::TimeUnit);  // kg.m^2.s^-2
@@ -121,7 +121,7 @@ std::string Units::displayedUnitOfEnergyConversionString = "/kʙ";
 std::string Units::unitOfVelocityString{"m.s⁻¹"};
 std::string Units::unitOfForceString{"N"};
 std::string Units::unitOfDiffusionString{"m².s⁻¹"};
-std::string Units::unitOfAccelerationString{"m².s⁻¹"};
+std::string Units::unitOfAccelerationString{"m.s⁻²"};
 std::string Units::unitOfTorqueString{"N.m"};
 std::string Units::unitOfTemperatureString{"K"};
 std::string Units::unitOfBoltzmannFactorString{"m².kg.s⁻².K⁻¹"};
@@ -163,7 +163,7 @@ void Units::setUnits(Units::System unit_system)
       VelocityConversionFactor = LengthUnit / TimeUnit;                                     // m/s
       ForceConversionFactor = EnergyConversionFactor / LengthUnit;                          // N (=m/s^2)
       DiffusionConversionFactor = LengthUnit * LengthUnit / TimeUnit;                       // m^2/s
-      AccelerationConversionFactor = LengthUnit * LengthUnit / TimeUnit;                    // m^2/s
+      AccelerationConversionFactor = LengthUnit / (TimeUnit * TimeUnit);                    // m/s^2
       TorqueConversionFactor = MassUnit * LengthUnit * LengthUnit / (TimeUnit * TimeUnit);  // kg.m^2.s^-2
       TemperatureConversionFactor = 1.0;
 
@@ -210,7 +210,7 @@ void Units::setUnits(Units::System unit_system)
       unitOfVelocityString = "m.s⁻¹";
       unitOfForceString = "N";
       unitOfDiffusionString = "m².s⁻¹";
-      unitOfAccelerationString = "m².s⁻¹";
+      unitOfAccelerationString = "m.s⁻²";
       unitOfTorqueString = "N.m";
       unitOfTemperatureString = "K";
       unitOfBoltzmannFactorString = "m².kg.s⁻².K⁻¹";
@@ -277,6 +277,7 @@ void Units::setUnits(Units::System unit_system)
 
       unitOfLengthString = "σ";
       unitOfEnergyString = "ε";
+      unitOfEnergyPerMolString = "";
       unitOfMassString = "m";
       unitOfChargeString = "q′";
       unitOfTimeString = "𝜏=σ√(m/ε)";
@@ -287,7 +288,7 @@ void Units::setUnits(Units::System unit_system)
 
       unitOfVelocityString = "σ.𝜏⁻¹";
       unitOfForceString = "ε.σ⁻¹";
-      unitOfDiffusionString = "ε.σ⁻¹.m⁻¹";
+      unitOfDiffusionString = "σ².𝜏⁻¹";
       unitOfAccelerationString = "ε.σ⁻¹.m⁻¹";
       unitOfTorqueString = "ε";
       unitOfTemperatureString = "ε.kʙ⁻¹";
@@ -462,18 +463,13 @@ nlohmann::json Units::jsonStatus()
   units["force [N]"] = Units::ForceConversionFactor;
   units["pressure [Pa]"] = Units::PressureConversionFactor;
   units["velocity [m/s]"] = Units::VelocityConversionFactor;
-  units["acceleration [m²/s]"] = Units::AccelerationConversionFactor;
+  units["acceleration [m/s²]"] = Units::AccelerationConversionFactor;
   units["diffusion [m²/s]"] = Units::DiffusionConversionFactor;
   units["dipole moment [C.m]"] = Units::DipoleMomentConversionFactor;
   units["electric potential [V]"] = Units::ElectricPotentialConversionFactor;
   units["electric field [V]"] = Units::ElectricFieldConversionFactor;
   units["polarizability [-]"] = Units::PolarizabilityConversionFactor;
   units["dielectric constant [s² C²/(kg m³)]"] = Units::DielectricConstantConversionFactor;
-  units["Boltzmann constant [-]"] = Units::KB;
-  units["energy [J]"] = Units::EnergyConversionFactor;
-  units["force [N]"] = Units::ForceConversionFactor;
-  units["pressure [Pa]"] = Units::PressureConversionFactor;
-  units["velocity [m/s]"] = Units::VelocityConversionFactor;
   units["Coulomb potential [K]"] = Units::CoulombicConversionFactor * Units::EnergyToKelvin;
   units["Energy to Kelvin [-]"] = Units::EnergyToKelvin;
   units["Kelvin to energy [-]"] = Units::KelvinToEnergy;

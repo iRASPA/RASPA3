@@ -10,6 +10,8 @@ import getopt;
 import indexpath;
 import scanner;
 import stringutils;
+import units;
+import json;
 
 TEST(FOUNDATIONKIT_FIXES, scanner_reads_numbers_and_the_last_token_and_line)
 {
@@ -104,4 +106,33 @@ TEST(FOUNDATIONKIT_FIXES, reading_a_map_replaces_its_contents)
   }
   EXPECT_EQ(map, (std::map<int, double>{{1, 1.5}}));
   EXPECT_EQ(unorderedMap, (std::unordered_map<int, double>{{2, 2.5}}));
+}
+
+TEST(FOUNDATIONKIT_FIXES, acceleration_unit_is_length_per_time_squared)
+{
+  // the acceleration factor and strings carried the diffusion unit m^2/s
+  Units::setUnits(Units::System::RASPA);
+  EXPECT_DOUBLE_EQ(Units::AccelerationConversionFactor, Units::LengthUnit / (Units::TimeUnit * Units::TimeUnit));
+  EXPECT_DOUBLE_EQ(Units::DiffusionConversionFactor, Units::LengthUnit * Units::LengthUnit / Units::TimeUnit);
+  EXPECT_EQ(Units::unitOfAccelerationString, "m.s⁻²");
+  EXPECT_EQ(Units::unitOfDiffusionString, "m².s⁻¹");
+
+  const nlohmann::json status = Units::jsonStatus();
+  EXPECT_TRUE(status.contains("acceleration [m/s²]"));
+  EXPECT_FALSE(status.contains("acceleration [m²/s]"));
+  EXPECT_DOUBLE_EQ(status["acceleration [m/s²]"].get<double>(), Units::AccelerationConversionFactor);
+}
+
+TEST(FOUNDATIONKIT_FIXES, reduced_units_set_the_diffusion_and_energy_per_mol_strings)
+{
+  Units::setUnits(Units::System::ReducedUnits);
+  EXPECT_EQ(Units::unitOfDiffusionString, "σ².𝜏⁻¹");
+  EXPECT_EQ(Units::unitOfAccelerationString, "ε.σ⁻¹.m⁻¹");
+  // used to keep the SI string of the previous unit system
+  EXPECT_NE(Units::unitOfEnergyPerMolString, "J.mol⁻¹");
+  EXPECT_EQ(Units::unitOfEnergyPerMolString, Units::unitOfEnthalpyPerMolString);
+
+  Units::setUnits(Units::System::RASPA);
+  EXPECT_EQ(Units::unitOfEnergyPerMolString, "J.mol⁻¹");
+  EXPECT_EQ(Units::unitOfAccelerationString, "m.s⁻²");
 }
