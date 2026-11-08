@@ -198,11 +198,13 @@ export union double3
     }
   };
 
+  // exact, as 'KeyHash' hashes the exact values; a tolerance cannot be used, since keys that compare equal must
+  // have equal hashes
   struct KeyEqual
   {
     bool operator()(const double3& lhs, const double3& rhs) const
     {
-      return (std::fabs(lhs.x - rhs.x) < 1e-3) && std::fabs(lhs.y - rhs.y) < 1e-3 && std::fabs(lhs.z - rhs.z) < 1e-3;
+      return (lhs.x == rhs.x) && (lhs.y == rhs.y) && (lhs.z == rhs.z);
     }
   };
 

@@ -51,3 +51,23 @@ TEST(double3, Test_Perpendicular_small_norm_and_zero_vectors)
   EXPECT_NEAR(w.length(), 1.0, 1e-12);
   EXPECT_NEAR(double3::dot(w, double3(1.0, 2.0, 3.0)), 0.0, 1e-12);
 }
+
+TEST(double3, Test_KeyHash_and_KeyEqual_are_consistent)
+{
+  std::unordered_set<double3, double3::KeyHash, double3::KeyEqual> keys;
+  keys.insert(double3(1.0, 2.0, 3.0));
+  keys.insert(double3(1.0, 2.0, 3.0 + 1e-4));
+  keys.insert(double3(1.0, 2.0, 3.0));
+  EXPECT_EQ(keys.size(), 2uz);
+
+  // keys that compare equal must have equal hashes
+  double3 a(1.0, 2.0, 3.0);
+  double3 b(1.0, 2.0, 3.0 + 1e-4);
+  EXPECT_TRUE(double3::KeyEqual()(a, double3(1.0, 2.0, 3.0)));
+  EXPECT_EQ(double3::KeyHash()(a), double3::KeyHash()(double3(1.0, 2.0, 3.0)));
+  EXPECT_FALSE(double3::KeyEqual()(a, b));
+
+  EXPECT_TRUE(keys.contains(double3(1.0, 2.0, 3.0)));
+  EXPECT_TRUE(keys.contains(double3(1.0, 2.0, 3.0 + 1e-4)));
+  EXPECT_FALSE(keys.contains(double3(1.0, 2.0, 3.0 + 5e-4)));
+}
