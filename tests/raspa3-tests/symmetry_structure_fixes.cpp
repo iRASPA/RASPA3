@@ -10,6 +10,8 @@ import skcell;
 import sksymmetrycell;
 import skrotationmatrix;
 import skseitzintegermatrix;
+import skseitzmatrix;
+import sksymmetryoperationset;
 import skspacegroupdatabase;
 import skspacegroup;
 import skstructure;
@@ -122,4 +124,20 @@ TEST(SYMMETRY_STRUCTURE_FIXES, overlap_test_keeps_the_signs_of_the_fractional_di
   using Atom = std::tuple<double3, std::size_t, double>;
   EXPECT_EQ(SKSymmetryCell::trim({Atom{a, 1, 1.0}, Atom{b, 1, 1.0}}, lattice, lattice, false, precision).size(), 1uz);
   EXPECT_EQ(SKSymmetryCell::trim({Atom{c, 1, 1.0}, Atom{d, 1, 1.0}}, lattice, lattice, false, precision).size(), 2uz);
+}
+
+TEST(SYMMETRY_STRUCTURE_FIXES, h_centring_adds_the_two_ab_plane_translations)
+{
+  // the third H-centring shift was (0, 2/3, 1/3), its components shifted by one slot out of the ab-plane
+  const SKSymmetryOperationSet identity({SKSeitzMatrix(SKRotationMatrix::identity, double3(0.0, 0.0, 0.0))});
+  const SKSymmetryOperationSet centred = identity.addingCenteringOperations(Centring::h);
+  ASSERT_EQ(centred.operations.size(), 3uz);
+  const double3 expected[3] = {double3(0.0, 0.0, 0.0), double3(2.0 / 3.0, 1.0 / 3.0, 0.0),
+                               double3(1.0 / 3.0, 2.0 / 3.0, 0.0)};
+  for (std::size_t i = 0; i < 3; ++i)
+  {
+    EXPECT_NEAR(centred.operations[i].translation.x, expected[i].x, 1e-12) << "shift " << i;
+    EXPECT_NEAR(centred.operations[i].translation.y, expected[i].y, 1e-12) << "shift " << i;
+    EXPECT_NEAR(centred.operations[i].translation.z, expected[i].z, 1e-12) << "shift " << i;
+  }
 }

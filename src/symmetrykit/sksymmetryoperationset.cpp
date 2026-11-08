@@ -71,7 +71,9 @@ const SKSymmetryOperationSet SKSymmetryOperationSet::addingCenteringOperations(C
                 double3(4.0 / 12.0, 8.0 / 12.0, 8.0 / 12.0)};
       break;
     case Centring::h:
-      shifts = {double3(0, 0, 0), double3(8.0 / 12.0, 4.0 / 12.0, 0), double3(0, 8.0 / 12.0, 4.0 / 12.0)};
+      // the H-centring translations lie in the ab-plane: (2/3, 1/3, 0) and (1/3, 2/3, 0); the third one had its
+      // components shifted by one slot to (0, 2/3, 1/3)
+      shifts = {double3(0, 0, 0), double3(8.0 / 12.0, 4.0 / 12.0, 0), double3(4.0 / 12.0, 8.0 / 12.0, 0)};
       break;
     case Centring::d:
       shifts = {double3(0, 0, 0), double3(4.0 / 12.0, 4.0 / 12.0, 4.0 / 12.0),
