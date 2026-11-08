@@ -49,7 +49,7 @@ export class SKAtomCopy
   double3 _position;
   std::int64_t _tag;
   AtomCopyType _type;
-  std::int64_t _asymmetricIndex;
+  std::int64_t _asymmetricIndex = -1;  // no asymmetric atom yet (it used to be left indeterminate)
 };
 
 SKAtomCopy::SKAtomCopy(const SKAtomCopy& atomCopy)

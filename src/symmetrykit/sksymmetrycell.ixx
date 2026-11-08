@@ -57,12 +57,13 @@ export class SKSymmetryCell
   double gamma() const { return _gamma; }
 
  private:
-  double _a;
-  double _b;
-  double _c;
-  double _alpha;
-  double _beta;
-  double _gamma;
+  // a default cell is empty (zero lengths) with right angles, instead of carrying indeterminate values
+  double _a = 0.0;
+  double _b = 0.0;
+  double _c = 0.0;
+  double _alpha = std::numbers::pi / 2.0;
+  double _beta = std::numbers::pi / 2.0;
+  double _gamma = std::numbers::pi / 2.0;
 
   static bool isSmallerThen(double x, double y);
   static bool isLargerThen(double x, double y);

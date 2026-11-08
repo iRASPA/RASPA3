@@ -8,6 +8,7 @@ import double3x3;
 import float4;
 import skdefinitions;
 import skcell;
+import skatom;
 import skboundingbox;
 import sksymmetrycell;
 import skpointsymmetryset;
@@ -612,4 +613,27 @@ TEST(SYMMETRY_STRUCTURE_FIXES, orthogonal_axis_directions_of_low_rotation_orders
   const std::vector<int3> perpendicular = SKRotationMatrix::r_2_100.orthogonalToAxisDirection(2);
   ASSERT_FALSE(perpendicular.empty());
   for (const int3& axis : perpendicular) EXPECT_EQ(axis.x, 0) << axis.x << " " << axis.y << " " << axis.z;
+}
+
+TEST(SYMMETRY_STRUCTURE_FIXES, default_constructed_symmetry_objects_have_defined_members)
+{
+  // these members used to be left indeterminate by the default constructors
+  const SKSymmetryCell cell;
+  EXPECT_EQ(cell.a(), 0.0);
+  EXPECT_EQ(cell.b(), 0.0);
+  EXPECT_EQ(cell.c(), 0.0);
+  EXPECT_DOUBLE_EQ(cell.alpha(), std::numbers::pi / 2.0);
+  EXPECT_DOUBLE_EQ(cell.beta(), std::numbers::pi / 2.0);
+  EXPECT_DOUBLE_EQ(cell.gamma(), std::numbers::pi / 2.0);
+
+  SKAsymmetricAtom atom;
+  EXPECT_EQ(atom.asymmetricIndex(), 0uz);
+  SKAsymmetricAtom carbon("C", 6);
+  EXPECT_EQ(carbon.asymmetricIndex(), 0uz);
+  carbon.setAsymmetricIndex(7);
+  SKAsymmetricAtom copy(carbon);
+  EXPECT_EQ(copy.asymmetricIndex(), 7uz);
+
+  SKAtomCopy atomCopy;
+  EXPECT_EQ(atomCopy.asymmetricIndex(), -1);
 }

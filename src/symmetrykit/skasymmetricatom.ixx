@@ -115,7 +115,7 @@ export class SKAsymmetricAtom
 
  private:
   std::size_t _versionNumber{2};
-  std::size_t _asymmetricIndex;
+  std::size_t _asymmetricIndex = 0;
   std::string _displayName = std::string("Default");
   double3 _position = double3(0, 0, 0);
   double _charge = 0;
@@ -209,6 +209,8 @@ SKAsymmetricAtom::SKAsymmetricAtom(const SKAsymmetricAtom& asymmetricAtom)
   _backBoneAtom = asymmetricAtom._backBoneAtom;
   _fractional = asymmetricAtom._fractional;
   _solvent = asymmetricAtom._solvent;
+  _symmetryType = asymmetricAtom._symmetryType;
+  _displacement = asymmetricAtom._displacement;
 
   _copies = std::vector<std::shared_ptr<SKAtomCopy>>{};
 }
