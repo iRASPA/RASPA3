@@ -382,3 +382,33 @@ TEST(SYMMETRY_STRUCTURE_FIXES, smallest_primitive_cell_of_left_handed_and_small_
   EXPECT_NEAR(std::fabs(SKSymmetryCell::findSmallestPrimitiveCell(atoms, atoms, cell, false, 1e-2).determinant()),
               1000.0, 1e-6);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, stored_inversion_centres_match_the_inversion_operation)
+{
+  // inversion through c is the operation (-1, 2c): every centrosymmetric setting must list an operation with the
+  // inversion rotation whose translation is twice the stored centre, modulo lattice translations (units of 1/24)
+  const SKRotationMatrix inversion(int3(-1, 0, 0), int3(0, -1, 0), int3(0, 0, -1));
+  for (std::size_t hallNumber = 1; hallNumber <= 530; ++hallNumber)
+  {
+    const SKSpaceGroupSetting& setting = SKSpaceGroupDataBase::spaceGroupData[hallNumber];
+    const int3 centre = setting.inversionCenter();
+    const SKSeitzIntegerMatrix expected(inversion, int3(2 * centre.x, 2 * centre.y, 2 * centre.z));
+    const auto operations = setting.fullSeitzMatrices().operations;
+    const bool centrosymmetric = std::any_of(operations.begin(), operations.end(),
+                                             [&](const SKSeitzIntegerMatrix& m) { return m.rotation == inversion; });
+    if (!centrosymmetric)
+    {
+      EXPECT_EQ(centre, int3(0, 0, 0)) << "Hall " << hallNumber;
+      continue;
+    }
+    // lattice translations: the stored list, all in 1/24 units
+    bool found = false;
+    for (const int3& translation : setting.latticeTranslations())
+    {
+      const SKSeitzIntegerMatrix shifted(inversion, expected.translation + translation);
+      found = found || operations.contains(shifted);
+    }
+    EXPECT_TRUE(found) << "Hall " << hallNumber << " " << setting.HMString() << ": centre (" << centre.x << ", "
+                       << centre.y << ", " << centre.z << ")";
+  }
+}
