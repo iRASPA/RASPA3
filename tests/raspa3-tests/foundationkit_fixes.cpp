@@ -1,3 +1,4 @@
+#include <H5Cpp.h>
 #include <gtest/gtest.h>
 
 #include "../test_support.hpp"
@@ -11,6 +12,7 @@ import indexpath;
 import scanner;
 import stringutils;
 import threadpool;
+import hdf5;
 import units;
 import json;
 
@@ -230,4 +232,41 @@ TEST(FOUNDATIONKIT_FIXES, a_restart_file_shorter_than_its_header_is_reported_as_
     EXPECT_NE(message.find(file.string()), std::string::npos) << message;
     EXPECT_NE(message.find("truncated"), std::string::npos) << message;
   }
+}
+
+TEST(FOUNDATIONKIT_FIXES, hdf5_writer_refuses_short_buffers_and_writes_bools_as_hbool)
+{
+  TemporaryDirectory workspace;
+  const std::filesystem::path file = workspace.path() / "data.h5";
+  {
+    HDF5Writer writer(file.string());
+    writer.createGroup("/g");
+    writer.createDataset<double>("/g", "d", {3}, {});
+    writer.createDataset<bool>("/g", "b", {3}, {});
+    writer.createDataset<int>("/g", "m", {2, 2}, {});
+
+    // a whole-dataset write reads as many elements as the dataset holds: a shorter vector was read past its end
+    EXPECT_THROW(writer.writeVector<double>("/g", "d", std::vector<double>{1.0, 2.0}), std::invalid_argument);
+    EXPECT_THROW(writer.writeVector<bool>("/g", "b", std::vector<bool>{true}), std::invalid_argument);
+    writer.writeVector<double>("/g", "d", std::vector<double>{1.0, 2.0, 3.0});
+    writer.writeVector<bool>("/g", "b", std::vector<bool>{true, false, true});
+
+    // one coordinate per dimension: fewer indices were read past the end of the index vector
+    EXPECT_THROW(writer.writeSingleValue<int>("/g", "m", std::vector<hsize_t>{1}, 5), std::invalid_argument);
+    EXPECT_THROW(writer.writeSingleValue<int>("/g", "m", std::vector<hsize_t>{}, 5), std::invalid_argument);
+    writer.writeSingleValue<int>("/g", "m", std::vector<hsize_t>{1, 0}, 5);
+  }
+
+  H5::H5File reader(file.string(), H5F_ACC_RDONLY);
+  std::vector<double> d(3);
+  reader.openDataSet("/g/d").read(d.data(), H5::PredType::NATIVE_DOUBLE);
+  EXPECT_EQ(d, (std::vector<double>{1.0, 2.0, 3.0}));
+  hbool_t b[3] = {false, false, false};
+  reader.openDataSet("/g/b").read(b, H5::PredType::NATIVE_HBOOL);
+  EXPECT_TRUE(b[0]);
+  EXPECT_FALSE(b[1]);
+  EXPECT_TRUE(b[2]);
+  std::vector<int> m(4);
+  reader.openDataSet("/g/m").read(m.data(), H5::PredType::NATIVE_INT);
+  EXPECT_EQ(m, (std::vector<int>{0, 0, 5, 0}));
 }

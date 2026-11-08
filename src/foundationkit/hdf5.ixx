@@ -75,7 +75,14 @@ export class HDF5Writer
     H5::DataSet dataset = group.openDataSet(datasetName.c_str());
     H5::DataSpace dataspace = dataset.getSpace();
 
-    // one element: 'indices' holds its coordinate, one entry per dimension of the dataset
+    // one element: 'indices' holds its coordinate, one entry per dimension of the dataset (the selection reads
+    // that many coordinates from 'indices', so fewer would be read past its end)
+    if (indices.size() != static_cast<std::size_t>(dataspace.getSimpleExtentNdims()))
+    {
+      throw std::invalid_argument(
+          std::format("HDF5Writer: dataset '{}/{}' has {} dimensions, but {} indices were given", groupName,
+                      datasetName, dataspace.getSimpleExtentNdims(), indices.size()));
+    }
     const hsize_t oneElement = 1;
     H5::DataSpace memspace(1, &oneElement, NULL);
     dataspace.selectElements(H5S_SELECT_SET, 1, indices.data());
@@ -115,6 +122,19 @@ export class HDF5Writer
  private:
   H5::H5File file;
 
+  // a whole-dataset write reads as many elements from the buffer as the dataset holds: a shorter vector would be
+  // read past its end
+  void checkElementCount(const std::string& groupName, const std::string& datasetName, const H5::DataSpace& dataspace,
+                         std::size_t count)
+  {
+    const std::size_t points = static_cast<std::size_t>(dataspace.getSimpleExtentNpoints());
+    if (count != points)
+    {
+      throw std::invalid_argument(std::format("HDF5Writer: dataset '{}/{}' holds {} elements, but {} were given",
+                                              groupName, datasetName, points, count));
+    }
+  }
+
   template <typename T>
   H5::PredType getH5Type()
   {
@@ -153,6 +173,7 @@ void HDF5Writer::writeVector(const std::string& groupName, const std::string& da
   H5::DataSet dataset = group.openDataSet(datasetName.c_str());
   H5::DataSpace dataspace = dataset.getSpace();
   H5::PredType datatype = getH5Type<T>();
+  checkElementCount(groupName, datasetName, dataspace, data.size());
   dataset.write(data.data(), datatype);
 }
 
@@ -163,10 +184,13 @@ void HDF5Writer::writeVector<bool>(const std::string& groupName, const std::stri
   H5::DataSet dataset = group.openDataSet(datasetName.c_str());
   H5::DataSpace dataspace = dataset.getSpace();
   H5::PredType datatype = getH5Type<bool>();
+  checkElementCount(groupName, datasetName, dataspace, data.size());
 
-  std::vector<char> converted(data.size());
-  std::transform(data.begin(), data.end(), converted.begin(), [](bool b) { return static_cast<char>(b); });
-  dataset.write(converted.data(), datatype);
+  // the memory type is NATIVE_HBOOL, so the buffer holds hbool_t, whatever its size in this HDF5 build (an array,
+  // since hbool_t may be bool, whose std::vector has no contiguous buffer)
+  std::unique_ptr<hbool_t[]> converted = std::make_unique_for_overwrite<hbool_t[]>(data.size());
+  std::transform(data.begin(), data.end(), converted.get(), [](bool b) { return static_cast<hbool_t>(b); });
+  dataset.write(converted.get(), datatype);
 }
 
 template <>
@@ -178,6 +202,7 @@ void HDF5Writer::writeVector<std::string>(const std::string& groupName, const st
   H5::DataSpace dataspace = dataset.getSpace();
   H5::StrType strtype = dataset.getStrType();
   size_t maxLength = strtype.getSize();
+  checkElementCount(groupName, datasetName, dataspace, data.size());
 
   std::vector<char> buffer(data.size() * maxLength, '\0');
   for (size_t i = 0; i < data.size(); ++i)
