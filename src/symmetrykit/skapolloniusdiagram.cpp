@@ -2295,8 +2295,12 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
 
         std::vector<double3> unitToSite;
         for (const double3& site : ringCentres) unitToSite.push_back(double3::normalize(onRing - site));
-        double3 tangent = double3::normalize(
-            double3::cross(unitToSite[0] - unitToSite[1], unitToSite[1] - unitToSite[2]));
+        // the loop's direction at this point, for ordering the sites around it; the cross product vanishes when
+        // the three unit vectors are coplanar, and the loop's chord stands in then, as for the bottleneck tangent
+        // of an edge (a zero tangent would leave the order undecided)
+        double3 tangent = double3::cross(unitToSite[0] - unitToSite[1], unitToSite[1] - unitToSite[2]);
+        if (tangent.length() < 1.0e-10) tangent = chord;
+        tangent = double3::normalize(tangent);
         std::vector<std::size_t> positions(ringIndices.size());
         std::iota(positions.begin(), positions.end(), 0uz);
         positions = cyclicOrder(unitToSite, positions, tangent);
