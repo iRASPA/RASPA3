@@ -85,6 +85,71 @@ TEST(MATHKIT_FIXES, cubic_returns_a_double_root_twice)
   EXPECT_NEAR(roots[2], 1.0, 1e-12);
 }
 
+TEST(MATHKIT_FIXES, cubic_newton_step_leaves_a_double_root_in_place)
+{
+  // (x - 5)^2 (x - 2) = x^3 - 12x^2 + 45x - 50: the trigonometric form lands a few ulps from the double root,
+  // where the derivative is rounding noise; the Newton step used to jump that root from 5 to 7
+  double coefficients[4] = {-50.0, 45.0, -12.0, 1.0};
+  double roots[3] = {0.0, 0.0, 0.0};
+  int numberOfRoots = 0;
+  cubic(coefficients, roots, &numberOfRoots);
+  ASSERT_EQ(numberOfRoots, 3);
+  EXPECT_NEAR(roots[0], 2.0, 1e-12);
+  EXPECT_NEAR(roots[1], 5.0, 1e-12);
+  EXPECT_NEAR(roots[2], 5.0, 1e-12);
+  EXPECT_LE(roots[0], roots[1]);
+  EXPECT_LE(roots[1], roots[2]);
+}
+
+TEST(MATHKIT_FIXES, cubic_finds_a_double_root_whose_discriminant_rounds_positive)
+{
+  // (x - 3)^2 (x + 1) = x^3 - 5x^2 + 3x + 9: A[2] / 3 rounds, the discriminant comes out +1e-14 and the
+  // solver used to return the single root -1
+  double coefficients[4] = {9.0, 3.0, -5.0, 1.0};
+  double roots[3] = {0.0, 0.0, 0.0};
+  int numberOfRoots = 0;
+  cubic(coefficients, roots, &numberOfRoots);
+  ASSERT_EQ(numberOfRoots, 3);
+  EXPECT_NEAR(roots[0], -1.0, 1e-12);
+  EXPECT_NEAR(roots[1], 3.0, 1e-12);
+  EXPECT_NEAR(roots[2], 3.0, 1e-12);
+}
+
+TEST(MATHKIT_FIXES, cubic_returns_a_triple_root_three_times)
+{
+  // (x - 1)^3 and (3x - 1)^3, the latter with non-dyadic root and rounded intermediates
+  double dyadic[4] = {-1.0, 3.0, -3.0, 1.0};
+  double roots[3] = {0.0, 0.0, 0.0};
+  int numberOfRoots = 0;
+  cubic(dyadic, roots, &numberOfRoots);
+  ASSERT_EQ(numberOfRoots, 3);
+  for (std::size_t i = 0; i < 3; ++i) EXPECT_DOUBLE_EQ(roots[i], 1.0) << "root " << i;
+
+  double nonDyadic[4] = {-1.0, 9.0, -27.0, 27.0};
+  cubic(nonDyadic, roots, &numberOfRoots);
+  ASSERT_EQ(numberOfRoots, 3);
+  for (std::size_t i = 0; i < 3; ++i) EXPECT_NEAR(roots[i], 1.0 / 3.0, 1e-15) << "root " << i;
+}
+
+TEST(MATHKIT_FIXES, cubic_keeps_three_distinct_and_single_real_roots)
+{
+  // (x + 2)(x - 1)(x - 4) = x^3 - 3x^2 - 6x + 8
+  double distinct[4] = {8.0, -6.0, -3.0, 1.0};
+  double roots[3] = {0.0, 0.0, 0.0};
+  int numberOfRoots = 0;
+  cubic(distinct, roots, &numberOfRoots);
+  ASSERT_EQ(numberOfRoots, 3);
+  EXPECT_NEAR(roots[0], -2.0, 1e-12);
+  EXPECT_NEAR(roots[1], 1.0, 1e-12);
+  EXPECT_NEAR(roots[2], 4.0, 1e-12);
+
+  // (x - 2)(x^2 + 1) = x^3 - 2x^2 + x - 2: one real root
+  double single[4] = {-2.0, 1.0, -2.0, 1.0};
+  cubic(single, roots, &numberOfRoots);
+  ASSERT_EQ(numberOfRoots, 1);
+  EXPECT_NEAR(roots[0], 2.0, 1e-12);
+}
+
 TEST(MATHKIT_FIXES, int3x3_from_a_value_is_diagonal)
 {
   const int3x3 m(5);
