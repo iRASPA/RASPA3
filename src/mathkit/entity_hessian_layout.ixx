@@ -15,6 +15,9 @@ export struct layout_entity_hessian
   {
     using extents_type = Extents;
     using size_type = typename extents_type::size_type;
+    using index_type = typename extents_type::index_type;
+    using rank_type = typename extents_type::rank_type;
+    using layout_type = layout_entity_hessian;
 
     std::size_t nDofs{};
 
@@ -33,6 +36,17 @@ export struct layout_entity_hessian
     constexpr size_type required_span_size() const noexcept { return nDofs * nDofs; }
 
     constexpr size_type operator()(size_type i, size_type j) const noexcept { return i * nDofs + j; }
+
+    // the LayoutMapping observers: row-major storage of every element exactly once, with strides (nDofs, 1)
+    static constexpr bool is_always_unique() noexcept { return true; }
+    static constexpr bool is_always_exhaustive() noexcept { return true; }
+    static constexpr bool is_always_strided() noexcept { return true; }
+
+    static constexpr bool is_unique() noexcept { return true; }
+    static constexpr bool is_exhaustive() noexcept { return true; }
+    static constexpr bool is_strided() noexcept { return true; }
+
+    constexpr size_type stride(rank_type r) const noexcept { return r == 0 ? nDofs : 1; }
 
    private:
     extents_type _extents{};

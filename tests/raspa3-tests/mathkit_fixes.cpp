@@ -18,6 +18,7 @@ import cubic;
 import randomnumbers;
 import marching_cubes;
 import special_functions;
+import entity_hessian_layout;
 
 TEST(MATHKIT_FIXES, normalise_divides_by_the_four_dimensional_length)
 {
@@ -310,6 +311,30 @@ TEST(MATHKIT_FIXES, hypergeometric_2F1_at_unit_argument_follows_gauss)
   EXPECT_NEAR(hypergeometric2F1(1.0, 1.0, 2.0, 0.3), -std::log(0.7) / 0.3, 1e-14);
   EXPECT_NEAR(hypergeometric2F1(1.0, 1.0, 2.0, 0.75), -std::log(0.25) / 0.75, 1e-14);
   EXPECT_NEAR(hypergeometric2F1(1.0, 1.0, 2.0, -3.0), std::log(4.0) / 3.0, 1e-14);
+}
+
+TEST(MATHKIT_FIXES, entity_hessian_layout_reports_its_row_major_properties)
+{
+  // the mapping lacked the LayoutMapping observers; row-major storage is unique, exhaustive and strided
+  using extents = std::dextents<std::size_t, 2>;
+  const layout_entity_hessian::mapping<extents> mapping(extents(3, 3));
+  EXPECT_EQ(mapping.required_span_size(), 9uz);
+  EXPECT_EQ(mapping(1, 2), 5uz);
+  EXPECT_TRUE(mapping.is_always_unique());
+  EXPECT_TRUE(mapping.is_always_exhaustive());
+  EXPECT_TRUE(mapping.is_always_strided());
+  EXPECT_TRUE(mapping.is_unique());
+  EXPECT_TRUE(mapping.is_exhaustive());
+  EXPECT_TRUE(mapping.is_strided());
+  EXPECT_EQ(mapping.stride(0), 3uz);
+  EXPECT_EQ(mapping.stride(1), 1uz);
+  static_assert(std::is_same_v<layout_entity_hessian::mapping<extents>::layout_type, layout_entity_hessian>);
+
+  std::vector<double> storage(mapping.required_span_size());
+  std::mdspan<double, extents, layout_entity_hessian> hessian(storage.data(), extents(3, 3));
+  hessian[2, 1] = 7.0;
+  EXPECT_EQ(storage[7], 7.0);
+  EXPECT_EQ((hessian[1, 2]), 0.0);
 }
 
 TEST(MATHKIT_FIXES, int3x3_from_a_value_is_diagonal)
