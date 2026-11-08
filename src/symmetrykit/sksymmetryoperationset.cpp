@@ -16,6 +16,9 @@ SKSymmetryOperationSet::SKSymmetryOperationSet() {}
 
 SKSymmetryOperationSet::SKSymmetryOperationSet(std::vector<SKSeitzMatrix> operations) { this->operations = operations; }
 
+// a set holds all of its operations already; this was declared and never defined
+SKSymmetryOperationSet SKSymmetryOperationSet::fullSeitzMatrices() { return *this; }
+
 const std::vector<SKRotationMatrix> SKSymmetryOperationSet::rotations() const
 {
   std::vector<SKRotationMatrix> rotationMatrices{};

@@ -12,6 +12,7 @@ import double3x3;
 import sksymmetrycell;
 import skrotationmatrix;
 import skseitzintegermatrix;
+import skasymmetricunit;
 
 SKIntegerSymmetryOperationSet::SKIntegerSymmetryOperationSet() {}
 
@@ -27,10 +28,9 @@ SKIntegerSymmetryOperationSet::SKIntegerSymmetryOperationSet(std::vector<SKSeitz
                                                                                                   operations.end());
 }
 
-SKIntegerSymmetryOperationSet SKIntegerSymmetryOperationSet::fullSeitzMatrices()
-{
-  return SKIntegerSymmetryOperationSet();
-}
+// A set holds all of its operations already (the setting's version of this decodes the whole group from the
+// database); this returned an empty set
+SKIntegerSymmetryOperationSet SKIntegerSymmetryOperationSet::fullSeitzMatrices() { return *this; }
 
 std::vector<std::tuple<double3, std::size_t, double>> SKIntegerSymmetryOperationSet::symmetrize(
     double3x3 lattice, std::vector<std::tuple<double3, std::size_t, double>> atoms, double symmetryPrecision = 1e-2)
@@ -72,7 +72,7 @@ std::vector<std::tuple<double3, std::size_t, double>> SKIntegerSymmetryOperation
 }
 
 std::vector<std::tuple<double3, std::size_t, double>> SKIntegerSymmetryOperationSet::asymmetricAtoms(
-    [[maybe_unused]] std::size_t HallNumber, std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+    const SKAsymmetricUnit& asymmetricUnit, std::vector<std::tuple<double3, std::size_t, double>>& atoms,
     double3x3 lattice, [[maybe_unused]] bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
   std::vector<std::tuple<double3, std::size_t, double, std::make_signed_t<std::size_t>>> atomData{};
@@ -124,42 +124,21 @@ loop:
     }
   }
 
+  // move each representative to the image of its orbit that lies in the asymmetric unit of the setting. The check
+  // had been disabled, which left the loop computing images and discarding them; the unit is passed in, since the
+  // space-group modules depend on this one, and the containment test was repaired (open bounds at 1, images below
+  // -1/2).
   for (std::size_t i = 0; i < asymmetricAtoms.size(); i++)
   {
-    bool found = false;
     for (const SKSeitzIntegerMatrix& operation : operations)
     {
-      [[maybe_unused]] double3 position =
-          operation.rotation * std::get<0>(asymmetricAtoms[i]) + double3(double(operation.translation.x) / 24.0,
-                                                                         double(operation.translation.y) / 24.0,
-                                                                         double(operation.translation.z) / 24.0);
-
-      // if directly inside the asymmetric unit cell, overwrite the position and break
-      // FIX 27-jan 2023
-      // if (SKSpaceGroup(HallNumber).spaceGroupSetting().asymmetricUnit().contains(position))
-      //{
-      //    std::get<0>(asymmetricAtoms[i]) = double3::fract(position);
-      //    found = true;
-      //    break;
-      //}
-    }
-
-    // if directly inside the asymmetric unit cell including a small epsilon, overwrite the position and break
-    if (!found)
-    {
-      for (const SKSeitzIntegerMatrix& operation : operations)
+      double3 position = operation.rotation * std::get<0>(asymmetricAtoms[i]) +
+                         double3(double(operation.translation.x) / 24.0, double(operation.translation.y) / 24.0,
+                                 double(operation.translation.z) / 24.0);
+      if (asymmetricUnit.contains(position))
       {
-        [[maybe_unused]] double3 position =
-            operation.rotation * std::get<0>(asymmetricAtoms[i]) + double3(double(operation.translation.x) / 24.0,
-                                                                           double(operation.translation.y) / 24.0,
-                                                                           double(operation.translation.z) / 24.0);
-
-        // FIX 27-jan 2023
-        // if (SKSpaceGroup(HallNumber).spaceGroupSetting().asymmetricUnit().contains(position))
-        //{
-        //    std::get<0>(asymmetricAtoms[i]) = double3::fract(position);
-        //    break;
-        //}
+        std::get<0>(asymmetricAtoms[i]) = double3::fract(position);
+        break;
       }
     }
   }

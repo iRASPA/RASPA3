@@ -682,3 +682,41 @@ TEST(SYMMETRY_STRUCTURE_FIXES, cif_symmetry_operations_accept_decimal_translatio
   EXPECT_DOUBLE_EQ(fraction->translation.y, -1.0);
   EXPECT_FALSE(SKSpaceGroup::parseCifSymmetryOperation("x+., y, z").has_value());
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, operation_sets_return_themselves_and_asymmetric_atoms_lie_in_the_unit)
+{
+  // the full operations of a set are the set (the integer version returned an empty set, the other was undefined)
+  const SKSpaceGroupSetting setting =
+      SKSpaceGroup(SKSpaceGroupDataBase::spaceGroupHallData[221].front()).spaceGroupSetting();  // P m -3 m
+  SKIntegerSymmetryOperationSet integerSet = setting.fullSeitzMatrices();
+  EXPECT_EQ(integerSet.fullSeitzMatrices().operations.size(), setting.order());
+  SKSymmetryOperationSet set({SKSeitzMatrix(SKRotationMatrix::identity, double3(0.0, 0.0, 0.0))});
+  EXPECT_EQ(set.fullSeitzMatrices().operations.size(), 1uz);
+
+  // the orbit of (0.9, 0.9, 0.9) in P m -3 m is one asymmetric atom; its representative is moved into the
+  // asymmetric unit of the setting, which the disabled containment check never did
+  const double3x3 cubic(double3(10.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 10.0));
+  std::vector<std::tuple<double3, std::size_t, double>> atoms;
+  for (const SKSeitzIntegerMatrix& m : integerSet.operations)
+  {
+    const double3 position = double3::fract(m * double3(0.9, 0.9, 0.9));
+    if (std::none_of(atoms.begin(), atoms.end(),
+                     [&](const auto& atom)
+                     {
+                       const double3 d = std::get<0>(atom) - position;
+                       return (d - double3(std::rint(d.x), std::rint(d.y), std::rint(d.z))).length_squared() < 1e-12;
+                     }))
+    {
+      atoms.emplace_back(position, 1, 1.0);
+    }
+  }
+  ASSERT_EQ(atoms.size(), 8uz);
+  const std::vector<std::tuple<double3, std::size_t, double>> asymmetric =
+      integerSet.asymmetricAtoms(setting.asymmetricUnit(), atoms, cubic, false, 1e-2);
+  ASSERT_EQ(asymmetric.size(), 1uz);
+  SKAsymmetricUnit unit = setting.asymmetricUnit();
+  EXPECT_TRUE(unit.contains(std::get<0>(asymmetric.front())));
+  EXPECT_NEAR(std::get<0>(asymmetric.front()).x, 0.1, 1e-12);
+  EXPECT_NEAR(std::get<0>(asymmetric.front()).y, 0.1, 1e-12);
+  EXPECT_NEAR(std::get<0>(asymmetric.front()).z, 0.1, 1e-12);
+}

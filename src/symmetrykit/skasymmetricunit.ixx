@@ -33,6 +33,6 @@ export struct SKAsymmetricUnit
     return *this;
   }
 
-  bool contains(double3 point);
-  bool isInsideRange(double point, double leftBoundary, int equalLeft, double rightBoundary, int equalRight);
+  bool contains(double3 point) const;
+  bool isInsideRange(double point, double leftBoundary, int equalLeft, double rightBoundary, int equalRight) const;
 };

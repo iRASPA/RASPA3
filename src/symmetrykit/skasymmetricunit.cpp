@@ -11,7 +11,7 @@ import double3x3;
 
 SKAsymmetricUnit::SKAsymmetricUnit() {}
 
-bool SKAsymmetricUnit::contains(double3 point)
+bool SKAsymmetricUnit::contains(double3 point) const
 {
   // the bounds are in units of 1/48; an odd value marks an open boundary one unit above the even bound it encodes
   // (49 is the open boundary at 48/48 = 1), so the parity is both the flag and an offset to strip
@@ -24,7 +24,7 @@ bool SKAsymmetricUnit::contains(double3 point)
 }
 
 bool SKAsymmetricUnit::isInsideRange(double point, double leftBoundary, int equalLeft, double rightBoundary,
-                                     int equalRight)
+                                     int equalRight) const
 {
   // the range may lie anywhere within [-1, 1] (42 settings have a lower bound below -1/2), so the point is tested
   // in all three of its images that can fall there; the image below used to be left out

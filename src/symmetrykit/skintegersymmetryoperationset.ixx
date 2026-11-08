@@ -10,6 +10,7 @@ import double3;
 import double3x3;
 import skdefinitions;
 import skseitzintegermatrix;
+import skasymmetricunit;
 
 export struct SKIntegerSymmetryOperationSet
 {
@@ -26,6 +27,6 @@ export struct SKIntegerSymmetryOperationSet
   std::vector<std::tuple<double3, std::size_t, double>> symmetrize(
       double3x3 lattice, std::vector<std::tuple<double3, std::size_t, double>> atoms, double symmetryPrecision);
   std::vector<std::tuple<double3, std::size_t, double>> asymmetricAtoms(
-      std::size_t HallNumber, std::vector<std::tuple<double3, std::size_t, double>>& atoms, double3x3 lattice,
-      bool allowPartialOccupancies, double symmetryPrecision);
+      const SKAsymmetricUnit& asymmetricUnit, std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+      double3x3 lattice, bool allowPartialOccupancies, double symmetryPrecision);
 };

@@ -729,9 +729,9 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
                                                           symmetryPrecision);
 
               std::vector<std::tuple<double3, std::size_t, double>> asymmetricAtoms =
-                  dataBaseSpaceGroupSymmetries.asymmetricAtoms(HallNumber, symmetrizedAtomsInConventionalCell,
-                                                               conventionalBravaisLattice, allowPartialOccupancies,
-                                                               symmetryPrecision);
+                  dataBaseSpaceGroupSymmetries.asymmetricAtoms(
+                      spaceGroup.spaceGroupSetting().asymmetricUnit(), symmetrizedAtomsInConventionalCell,
+                      conventionalBravaisLattice, allowPartialOccupancies, symmetryPrecision);
 
               SKSymmetryCell temp = SKSymmetryCell::createFromUnitCell(conventionalBravaisLattice);
               SKSymmetryCell cell = temp.idealized(spaceGroup.spaceGroupSetting().pointGroupNumber(),
@@ -792,9 +792,9 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
                                                         symmetryPrecision);
 
             std::vector<std::tuple<double3, std::size_t, double>> asymmetricAtoms =
-                dataBaseSpaceGroupSymmetries.asymmetricAtoms(HallNumber, symmetrizedAtomsInConventionalCell,
-                                                             conventionalBravaisLattice, allowPartialOccupancies,
-                                                             symmetryPrecision);
+                dataBaseSpaceGroupSymmetries.asymmetricAtoms(
+                    spaceGroup.spaceGroupSetting().asymmetricUnit(), symmetrizedAtomsInConventionalCell,
+                    conventionalBravaisLattice, allowPartialOccupancies, symmetryPrecision);
 
             SKSymmetryCell temp = SKSymmetryCell::createFromUnitCell(conventionalBravaisLattice);
             SKSymmetryCell cell = temp.idealized(spaceGroup.spaceGroupSetting().pointGroupNumber(),
@@ -931,9 +931,9 @@ std::optional<SKSpaceGroup::FoundNiggliCellInfo> SKSpaceGroup::findNiggliCell(
                                                       symmetryPrecision);
 
           std::vector<std::tuple<double3, std::size_t, double>> asymmetricAtoms =
-              dataBaseSpaceGroupSymmetries.asymmetricAtoms(HallNumber, symmetrizedAtomsInConventionalCell,
-                                                           conventionalBravaisLattice, allowPartialOccupancies,
-                                                           symmetryPrecision);
+              dataBaseSpaceGroupSymmetries.asymmetricAtoms(
+                  spaceGroup.spaceGroupSetting().asymmetricUnit(), symmetrizedAtomsInConventionalCell,
+                  conventionalBravaisLattice, allowPartialOccupancies, symmetryPrecision);
 
           SKSymmetryCell temp = SKSymmetryCell::createFromUnitCell(conventionalBravaisLattice);
           SKSymmetryCell cell = temp.idealized(spaceGroup.spaceGroupSetting().pointGroupNumber(),
