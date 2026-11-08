@@ -30,7 +30,7 @@ double3 double3::fract() const
   {
     s.x += 1.0;
   }
-  if (s.x > 1.0)
+  if (s.x >= 1.0)
   {
     s.x -= 1.0;
   }
@@ -39,7 +39,7 @@ double3 double3::fract() const
   {
     s.y += 1.0;
   }
-  if (s.y > 1.0)
+  if (s.y >= 1.0)
   {
     s.y -= 1.0;
   }
@@ -48,7 +48,7 @@ double3 double3::fract() const
   {
     s.z += 1.0;
   }
-  if (s.z > 1.0)
+  if (s.z >= 1.0)
   {
     s.z -= 1.0;
   }

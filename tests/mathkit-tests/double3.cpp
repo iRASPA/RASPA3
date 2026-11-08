@@ -3,6 +3,7 @@
 import std;
 
 import double3;
+import float3;
 import double4;
 import double3x3;
 import double4x4;
@@ -70,4 +71,38 @@ TEST(double3, Test_KeyHash_and_KeyEqual_are_consistent)
   EXPECT_TRUE(keys.contains(double3(1.0, 2.0, 3.0)));
   EXPECT_TRUE(keys.contains(double3(1.0, 2.0, 3.0 + 1e-4)));
   EXPECT_FALSE(keys.contains(double3(1.0, 2.0, 3.0 + 5e-4)));
+}
+
+TEST(double3, Test_fract_stays_below_one)
+{
+  // -5e-17 + 1.0 rounds to 1.0, which wraps to 0.0
+  for (double value : {-5e-17, -1e-300, 5e-17, -0.25, 0.75, 3.0, -2.0, 0.999999})
+  {
+    double3 v(value, value, value);
+    for (double3 f : {v.fract(), double3::fract(v)})
+    {
+      EXPECT_GE(f.x, 0.0) << value;
+      EXPECT_LT(f.x, 1.0) << value;
+      EXPECT_GE(f.y, 0.0) << value;
+      EXPECT_LT(f.y, 1.0) << value;
+      EXPECT_GE(f.z, 0.0) << value;
+      EXPECT_LT(f.z, 1.0) << value;
+    }
+  }
+  EXPECT_EQ(double3(-5e-17, 0.0, 0.0).fract().x, 0.0);
+  EXPECT_EQ(double3::fract(double3(-5e-17, 0.0, 0.0)).x, 0.0);
+  EXPECT_EQ(double3(-0.25, 0.0, 0.0).fract().x, 0.75);
+}
+
+TEST(float3, Test_fract_stays_below_one)
+{
+  for (float value : {-1e-9f, -0.25f, 0.75f, 3.0f})
+  {
+    float3 f = float3(value, value, value).fract();
+    EXPECT_GE(f.x, 0.0f) << value;
+    EXPECT_LT(f.x, 1.0f) << value;
+    EXPECT_GE(f.z, 0.0f) << value;
+    EXPECT_LT(f.z, 1.0f) << value;
+  }
+  EXPECT_EQ(float3(-1e-9f, 0.0f, 0.0f).fract().x, 0.0f);
 }

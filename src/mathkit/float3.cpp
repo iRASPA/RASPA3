@@ -28,7 +28,7 @@ float3 float3::fract()
   {
     s.x += 1.0f;
   }
-  if (s.x > 1.0f)
+  if (s.x >= 1.0f)
   {
     s.x -= 1.0f;
   }
@@ -37,7 +37,7 @@ float3 float3::fract()
   {
     s.y += 1.0f;
   }
-  if (s.y > 1.0f)
+  if (s.y >= 1.0f)
   {
     s.y -= 1.0f;
   }
@@ -46,7 +46,7 @@ float3 float3::fract()
   {
     s.z += 1.0f;
   }
-  if (s.z > 1.0f)
+  if (s.z >= 1.0f)
   {
     s.z -= 1.0f;
   }

@@ -44,9 +44,14 @@ export union double3
   inline double length() const { return std::sqrt(x * x + y * y + z * z); }
   inline static double3 abs(double3 v1) { return double3(std::abs(v1.x), std::abs(v1.y), std::abs(v1.z)); }
   inline static double3 rint(double3 const& v) { return double3(std::rint(v.x), std::rint(v.y), std::rint(v.z)); }
+  // v - floor(v) rounds to 1.0 for tiny negative components (e.g. -5e-17); map that to 0.0 to stay in [0, 1)
   inline static double3 fract(double3 const& v)
   {
-    return double3(v.x - std::floor(v.x), v.y - std::floor(v.y), v.z - std::floor(v.z));
+    double3 s(v.x - std::floor(v.x), v.y - std::floor(v.y), v.z - std::floor(v.z));
+    if (s.x >= 1.0) s.x = 0.0;
+    if (s.y >= 1.0) s.y = 0.0;
+    if (s.z >= 1.0) s.z = 0.0;
+    return s;
   }
   inline static double dot(const double3& v1, const double3& v2)
   {
