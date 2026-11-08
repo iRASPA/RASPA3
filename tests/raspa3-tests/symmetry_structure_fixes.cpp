@@ -14,6 +14,7 @@ import skseitzmatrix;
 import sksymmetryoperationset;
 import skintegersymmetryoperationset;
 import skspacegroupsetting;
+import skrotationalchangeofbasis;
 import skspacegroupdatabase;
 import skspacegroup;
 import skstructure;
@@ -198,4 +199,29 @@ TEST(SYMMETRY_STRUCTURE_FIXES, hall_number_search_requires_the_order_and_prefers
   EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(operationsOfSetting(292), orthorhombic, Centring::primitive,
                                                            std::nullopt),
             292uz);
+}
+
+TEST(SYMMETRY_STRUCTURE_FIXES, monoclinic_change_of_basis_relabels_c_and_i_centrings)
+{
+  // space group 5: C 1 2 1 (Hall 9, C-centred) and I 1 2 1 (Hall 11, I-centred) are the same group in two of the
+  // monoclinic bases; the centring of a transformed setting used to stay C or I, so neither matched the other
+  const std::vector<SKSeitzMatrix> cCentred = operationsOfSetting(9);
+  const std::vector<SKSeitzMatrix> iCentred = operationsOfSetting(11);
+  ASSERT_EQ(cCentred.size(), 4uz);
+  ASSERT_EQ(iCentred.size(), 4uz);
+  const auto& bases = SKRotationalChangeOfBasis::changeOfMonoclinicCentering;
+
+  EXPECT_FALSE(
+      SKSpaceGroup::getOriginShift(9, Centring::body, SKRotationalChangeOfBasis::identity, iCentred, 1e-2).has_value());
+  EXPECT_TRUE(
+      std::any_of(bases.begin(), bases.end(), [&](const SKRotationalChangeOfBasis& basis)
+                  { return SKSpaceGroup::getOriginShift(9, Centring::body, basis, iCentred, 1e-2).has_value(); }));
+  EXPECT_TRUE(
+      std::any_of(bases.begin(), bases.end(), [&](const SKRotationalChangeOfBasis& basis)
+                  { return SKSpaceGroup::getOriginShift(11, Centring::c_face, basis, cCentred, 1e-2).has_value(); }));
+
+  // each setting is still identified as listed
+  const double3x3 monoclinic(double3(5.0, 0.0, 0.0), double3(0.0, 6.0, 0.0), double3(-1.5, 0.0, 7.0));
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(iCentred, monoclinic, Centring::body, 5), 11uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(cCentred, monoclinic, Centring::c_face, 5), 9uz);
 }

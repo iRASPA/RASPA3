@@ -1108,26 +1108,39 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
     spaceGroupLatticeTranslations[i] = changeOfBasis * spaceGroupLatticeTranslations[i];
   }
 
-  // apply change-of-basis to centring
+  // apply change-of-basis to centring: the transformed second lattice translation names it. A zero component is
+  // the face the translation lies in, and three non-zero components are a body centring: the monoclinic changes of
+  // basis turn a C centring into an I centring and back, which used to be left labelled as C (and I as I)
   Centring dataBaseSpaceGroupCentering = dataBaseSpaceGroup.spaceGroupSetting().centring();
   switch (dataBaseSpaceGroupCentering)
   {
     case Centring::a_face:
     case Centring::b_face:
     case Centring::c_face:
-      if (spaceGroupLatticeTranslations[1].x == 0)
+    case Centring::body:
+    {
+      const int3 translation = spaceGroupLatticeTranslations[1];
+      const bool x = translation.x % 24 != 0;
+      const bool y = translation.y % 24 != 0;
+      const bool z = translation.z % 24 != 0;
+      if (x && y && z)
+      {
+        dataBaseSpaceGroupCentering = Centring::body;
+      }
+      else if (!x)
       {
         dataBaseSpaceGroupCentering = Centring::a_face;
       }
-      if (spaceGroupLatticeTranslations[1].y == 0)
+      else if (!y)
       {
         dataBaseSpaceGroupCentering = Centring::b_face;
       }
-      if (spaceGroupLatticeTranslations[1].z == 0)
+      else
       {
         dataBaseSpaceGroupCentering = Centring::c_face;
       }
       break;
+    }
     default:
       break;
   }
