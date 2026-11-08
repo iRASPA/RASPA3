@@ -245,6 +245,13 @@ export enum class SKApolloniusRegion
   EntireSpace
 };
 
+/// The representative of the group of coincident positions each position belongs to (positions within
+/// 'tolerance' of each other, modulo the cell, taken transitively); a position alone in its group is its own.
+/// Exposed for testing.
+export std::vector<std::size_t> coincidentGroups(const double3x3& unitCell, const double3x3& inverseCell,
+                                                 const double3& perpendicularWidths,
+                                                 const std::vector<double3>& positions, double tolerance);
+
 export struct SKApolloniusDiagram
 {
   // Whether the complex came out combinatorially consistent. In the diagram over `EntireSpace` every

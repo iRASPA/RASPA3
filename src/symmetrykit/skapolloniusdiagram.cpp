@@ -315,19 +315,23 @@ struct SiteTuple
   bool operator==(const SiteTuple& other) const { return data == other.data && orientation == other.orientation; }
 };
 
+}  // namespace
+
 // For each position, one of the positions it coincides with to within `tolerance`, the same one for all of
 // a coinciding set, so that what shares an answer is what is the same point. Coincidence is periodic: a
 // point near a face of the cell coincides with one near the opposite face.
 //
 // A grid of the tolerance's own size is laid over the cell and the points are dropped into it, so a point
 // can only coincide with the points in its own cell of the grid or in one of the twenty-six around it, and
-// what has to be searched does not grow with how many points coincide. Nothing is gained by looking further
-// than the first match, the rest of the set being reached through it.
+// what has to be searched does not grow with how many points coincide. Every match is united, not only the
+// first: two copies slightly further apart than the tolerance belong to one set when a third lies between them.
 //
 // The grid may be coarser than the tolerance and still be right, since what it has to do is put every pair
 // closer than the tolerance within a cell of each other, which a coarser grid also does; that is what lets
 // the division count be capped, and it is capped so that a very large cell cannot ask for more divisions
 // than there are numbers to count them with. Only the occupied cells are held, so the count costs nothing.
+//
+// Declared in the interface, so that the grouping can be tested on its own.
 std::vector<std::size_t> coincidentGroups(const double3x3& unitCell, const double3x3& inverseCell,
                                           const double3& perpendicularWidths, const std::vector<double3>& positions,
                                           double tolerance)
@@ -357,16 +361,23 @@ std::vector<std::size_t> coincidentGroups(const double3x3& unitCell, const doubl
   };
   std::unordered_map<std::array<std::int32_t, 3>, std::vector<std::size_t>, CellHash> occupants;
 
-  std::vector<std::size_t> group(positions.size());
+  // Coincidence is transitive: a vertex within tolerance of two earlier copies that are slightly further apart
+  // than the tolerance from each other joins them into one group. Every match is united (union-find), not only
+  // the first, which used to leave such copies in separate groups.
+  std::vector<std::size_t> parent(positions.size());
+  for (std::size_t p = 0; p < positions.size(); ++p) parent[p] = p;
+  auto find = [&parent](std::size_t node)
+  {
+    while (parent[node] != node) node = parent[node] = parent[parent[node]];
+    return node;
+  };
   for (std::size_t p = 0; p < positions.size(); ++p)
   {
-    group[p] = p;
     int3 own = cellOf(positions[p]);
 
-    bool found = false;
-    for (std::int32_t ox = -1; ox <= 1 && !found; ++ox)
-      for (std::int32_t oy = -1; oy <= 1 && !found; ++oy)
-        for (std::int32_t oz = -1; oz <= 1 && !found; ++oz)
+    for (std::int32_t ox = -1; ox <= 1; ++ox)
+      for (std::int32_t oy = -1; oy <= 1; ++oy)
+        for (std::int32_t oz = -1; oz <= 1; ++oz)
         {
           std::array<std::int32_t, 3> neighbour{(own.x + ox + divisions.x) % divisions.x,
                                                 (own.y + oy + divisions.y) % divisions.y,
@@ -380,17 +391,24 @@ std::vector<std::size_t> coincidentGroups(const double3x3& unitCell, const doubl
                             delta.z - std::round(delta.z));
             if ((unitCell * delta).length() < tolerance)
             {
-              group[p] = other;
-              found = true;
-              break;
+              std::size_t left = find(p);
+              std::size_t right = find(other);
+              if (left != right) parent[left] = right;
             }
           }
         }
 
     occupants[{own.x, own.y, own.z}].push_back(p);
   }
+
+  // the representative of each vertex's group (a vertex alone in its group is its own)
+  std::vector<std::size_t> group(positions.size());
+  for (std::size_t p = 0; p < positions.size(); ++p) group[p] = find(p);
   return group;
 }
+
+namespace
+{
 
 // For the sets that are asked about a key far more often than they are read in order. Ordinary FNV-1a
 // over the words of the key.

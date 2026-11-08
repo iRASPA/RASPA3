@@ -19,6 +19,7 @@ import sktransformationmatrix;
 import skasymmetricunit;
 import skrotationalchangeofbasis;
 import skspacegroupdatabase;
+import skapolloniusdiagram;
 import stringutils;
 import skelement;
 import skpointgroup;
@@ -493,4 +494,27 @@ TEST(SYMMETRY_STRUCTURE_FIXES, point_group_symbol_element_periods_and_residue_ta
     for (const std::string& name : bonded) EXPECT_EQ(name, trim(name)) << key;
   }
   EXPECT_EQ(PredefinedElements::residueDefinitionsBondedAtoms.at("ALA+CA"), (std::vector<std::string>{"N", "CB", "C"}));
+}
+
+TEST(SYMMETRY_STRUCTURE_FIXES, coincident_groups_merge_transitively)
+{
+  const double3x3 cell(double3(10.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 10.0));
+  const double tolerance = 1.0e-3;
+  // two early copies 1.05 tolerances apart, and a third between them within 0.55 tolerances of both: the third
+  // used to be linked to the first only, which left the first two in separate groups
+  const std::vector<double3> positions{double3(5.0, 5.0, 5.0), double3(5.0 + 1.05 * tolerance, 5.0, 5.0),
+                                       double3(5.0 + 0.525 * tolerance, 5.0, 5.0), double3(2.0, 2.0, 2.0)};
+  const std::vector<std::size_t> group =
+      coincidentGroups(cell, cell.inverse(), double3(10.0, 10.0, 10.0), positions, tolerance);
+  ASSERT_EQ(group.size(), 4uz);
+  EXPECT_EQ(group[0], group[1]);
+  EXPECT_EQ(group[1], group[2]);
+  EXPECT_NE(group[3], group[0]);
+  EXPECT_EQ(group[3], 3uz);
+
+  // coincidence across the periodic boundary still counts
+  const std::vector<double3> wrapped{double3(0.0001, 5.0, 5.0), double3(9.9995, 5.0, 5.0)};
+  const std::vector<std::size_t> wrappedGroup =
+      coincidentGroups(cell, cell.inverse(), double3(10.0, 10.0, 10.0), wrapped, tolerance);
+  EXPECT_EQ(wrappedGroup[0], wrappedGroup[1]);
 }
