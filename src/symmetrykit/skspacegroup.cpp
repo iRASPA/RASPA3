@@ -553,6 +553,9 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
     double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
     double symmetryPrecision = 1e-2)
 {
+  // without atoms there is no least-occurring atom type to start from
+  if (atoms.empty()) return std::nullopt;
+
   std::vector<std::tuple<double3, std::size_t, double>> reducedAtoms{};
 
   if (allowPartialOccupancies)
@@ -783,6 +786,9 @@ std::optional<SKSpaceGroup::FoundNiggliCellInfo> SKSpaceGroup::findNiggliCell(
     double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
     double symmetryPrecision = 1e-2)
 {
+  // without atoms there is no least-occurring atom type to start from
+  if (atoms.empty()) return std::nullopt;
+
   std::vector<std::tuple<double3, std::size_t, double>> reducedAtoms{};
 
   std::size_t leastOccurringAtomType{};
@@ -906,6 +912,9 @@ std::optional<SKPointGroup> SKSpaceGroup::findPointGroup(double3x3 unitCell,
                                                          std::vector<std::tuple<double3, std::size_t, double>> atoms,
                                                          bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
+  // without atoms there is no least-occurring atom type to start from
+  if (atoms.empty()) return std::nullopt;
+
   std::vector<std::tuple<double3, std::size_t, double>> reducedAtoms{};
 
   if (allowPartialOccupancies)

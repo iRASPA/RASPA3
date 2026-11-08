@@ -46,9 +46,10 @@ export struct SKSeitzIntegerMatrix
       hash_combine(h, k.rotation.int3x3_m.m31);
       hash_combine(h, k.rotation.int3x3_m.m32);
       hash_combine(h, k.rotation.int3x3_m.m33);
-      hash_combine(h, k.translation.x);
-      hash_combine(h, k.translation.y);
-      hash_combine(h, k.translation.z);
+      // the translation as operator== compares it (modulo 24), so that equal matrices hash equally
+      hash_combine(h, k.translation.x % 24);
+      hash_combine(h, k.translation.y % 24);
+      hash_combine(h, k.translation.z % 24);
       return h;
     }
   };

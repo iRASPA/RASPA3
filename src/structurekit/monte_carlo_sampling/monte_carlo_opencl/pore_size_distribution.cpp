@@ -83,11 +83,8 @@ MC_OpenCL_PoreSizeDistribution::MC_OpenCL_PoreSizeDistribution(std::size_t numbe
 
 MC_OpenCL_PoreSizeDistribution::~MC_OpenCL_PoreSizeDistribution()
 {
-  if (OpenCL::clContext.has_value() && OpenCL::clDeviceId.has_value())
-  {
-    clReleaseKernel(poreSizeDistributionKernel);
-    clReleaseProgram(poreSizeDistributionProgram);
-  }
+  if (poreSizeDistributionKernel != nullptr) clReleaseKernel(poreSizeDistributionKernel);
+  if (poreSizeDistributionProgram != nullptr) clReleaseProgram(poreSizeDistributionProgram);
 }
 
 
@@ -97,6 +94,12 @@ void MC_OpenCL_PoreSizeDistribution::run(const SampledStructure &structure,
                                          std::optional<double> maximumRange)
 {
   RandomNumber random{std::nullopt};
+  // A route made where there was no device has no kernel to run.
+  if (!OpenCL::clContext.has_value() || !OpenCL::clCommandQueue.has_value() || poreSizeDistributionKernel == nullptr ||
+      poreSizeDistributionWorkGroupSize == 0)
+  {
+    throw std::runtime_error("MC_OpenCL_PoreSizeDistribution: no OpenCL device found\n");
+  }
   cl_int err;
   std::chrono::steady_clock::time_point time_begin, time_end;
 

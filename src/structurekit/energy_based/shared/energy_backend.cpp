@@ -94,6 +94,7 @@ std::size_t digestOf(const Crystal &framework)
 struct FieldRequest
 {
   std::string backend;
+  std::string blocking;
   std::string frameworkName;
   std::string probeName;
   std::size_t numberOfAtoms{0};
@@ -109,14 +110,14 @@ struct FieldRequest
 
   bool sameAs(const FieldRequest &other) const
   {
-    return this->backend == other.backend && this->frameworkName == other.frameworkName &&
-           this->probeName == other.probeName && this->numberOfAtoms == other.numberOfAtoms &&
-           this->volume == other.volume && this->gridSize.x == other.gridSize.x &&
-           this->gridSize.y == other.gridSize.y && this->gridSize.z == other.gridSize.z &&
-           this->numberOfOrientations == other.numberOfOrientations && this->temperature == other.temperature &&
-           this->electrostatics == other.electrostatics && this->relativePrecision == other.relativePrecision &&
-           this->interactionsDigest == other.interactionsDigest && this->probeDigest == other.probeDigest &&
-           this->frameworkDigest == other.frameworkDigest;
+    return this->backend == other.backend && this->blocking == other.blocking &&
+           this->frameworkName == other.frameworkName && this->probeName == other.probeName &&
+           this->numberOfAtoms == other.numberOfAtoms && this->volume == other.volume &&
+           this->gridSize.x == other.gridSize.x && this->gridSize.y == other.gridSize.y &&
+           this->gridSize.z == other.gridSize.z && this->numberOfOrientations == other.numberOfOrientations &&
+           this->temperature == other.temperature && this->electrostatics == other.electrostatics &&
+           this->relativePrecision == other.relativePrecision && this->interactionsDigest == other.interactionsDigest &&
+           this->probeDigest == other.probeDigest && this->frameworkDigest == other.frameworkDigest;
   }
 };
 
@@ -147,6 +148,7 @@ MolecularField buildMolecularField(const EnergyBackend &backend, const PairInter
 
   FieldRequest request;
   request.backend = backend.name;
+  request.blocking = backend.blocking;
   request.frameworkName = framework.name;
   request.probeName = probe.name;
   request.numberOfAtoms = framework.atoms.size();

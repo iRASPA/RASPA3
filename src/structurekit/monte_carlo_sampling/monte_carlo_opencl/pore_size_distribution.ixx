@@ -20,10 +20,10 @@ import sampled_structure;
 // each reporting the radius it found to a single atomic maximum.
 export struct MC_OpenCL_PoreSizeDistribution
 {
-  cl_program poreSizeDistributionProgram;
-  cl_kernel poreSizeDistributionKernel;
+  cl_program poreSizeDistributionProgram{nullptr};
+  cl_kernel poreSizeDistributionKernel{nullptr};
   static const char* poreSizeDistributionKernelSource;
-  size_t poreSizeDistributionWorkGroupSize;
+  size_t poreSizeDistributionWorkGroupSize{0};
 
   std::size_t numberOfBins;
   std::vector<double> histogram;

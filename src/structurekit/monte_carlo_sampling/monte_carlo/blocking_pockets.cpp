@@ -33,6 +33,7 @@ void MC_BlockingPockets::run(const SampledStructure &structure, const SampledRoa
 
   this->roadmap = roadmap;
   this->spheres.clear();
+  this->numberOfCoveredPockets = 0;
 
   const UnitCell &unitCell = structure.unitCell;
   const VoronoiNetwork &network = roadmap.network;

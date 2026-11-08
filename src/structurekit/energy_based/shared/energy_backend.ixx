@@ -40,6 +40,10 @@ export struct EnergyBackend
                                     double, const ElectrostaticPotentialGrid *)>
       molecularEnergyGrid;
 
+  // The blocked pockets of 'withBlockedPockets' (spheres, ramp and ceiling), empty without: the grids of a backend
+  // with blocked pockets differ from those of the same backend without, so the held molecular field keys on it.
+  std::string blocking;
+
   // Which framework atom holds each point of the cell, for a molecule rather than a single site: the one
   // whose own contribution to the energy there is the most negative, averaged over how the molecule is
   // turned. The average is Boltzmann-weighted, not plain, and that is the whole of the definition worth

@@ -69,6 +69,7 @@ add_executable(unit_tests_raspa3
   property_output_fixes.cpp
   foundationkit_fixes.cpp
   mathkit_fixes.cpp
+  symmetry_structure_fixes.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

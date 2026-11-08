@@ -89,6 +89,15 @@ EnergyBackend withBlockedPockets(EnergyBackend backend, std::span<const Blocking
 
   std::vector<BlockingSphere> held(spheres.begin(), spheres.end());
 
+  // what is blocked, for the key of the held molecular field (exact values: another set of spheres is another field)
+  backend.blocking += std::format("ramp {} ceiling {}:", energyPerAngstrom, ceiling);
+  for (const BlockingSphere& sphere : held)
+  {
+    backend.blocking += std::format(" {} {} {} {}", sphere.centerFractional.x, sphere.centerFractional.y,
+                                    sphere.centerFractional.z, sphere.radius);
+  }
+  backend.blocking += ";";
+
   std::function<ProbeEnergyGrid(const PairInteractions &, const Crystal &, std::string, uint3)> originalProbe =
       backend.probeEnergyGrid;
   backend.probeEnergyGrid = [originalProbe, held, energyPerAngstrom, ceiling](

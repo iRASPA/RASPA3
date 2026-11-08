@@ -332,9 +332,15 @@ SKPOSCARParser SKPOSCARParser::fromContent(const std::string& content, bool only
 
 void SKPOSCARParser::startParsing() noexcept(false)
 {
-  readRequiredLine(_scanner, "missing comment line");
-  const double scale = readScaleFactor(_scanner);
-  const double3x3 unitCell = readLatticeVectors(_scanner, scale);
+  // the first line is the comment, which may be empty (reading it as a token would skip a blank line and take the
+  // scaling factor for the comment)
+  std::string comment;
+  _scanner.scanLine(comment);
+  const double scaleFactor = readScaleFactor(_scanner);
+  // a negative scaling factor is the volume of the cell: the lattice vectors are scaled to it
+  const double3x3 rawUnitCell = readLatticeVectors(_scanner, 1.0);
+  const double scale = scaleFactor < 0.0 ? std::cbrt(-scaleFactor / std::abs(rawUnitCell.determinant())) : scaleFactor;
+  const double3x3 unitCell = scale * rawUnitCell;
   const auto [elementLabels, speciesCounts] = readSpeciesLines(_scanner);
 
   bool cartesian = false;
@@ -360,7 +366,8 @@ void SKPOSCARParser::startParsing() noexcept(false)
 
       std::shared_ptr<SKAsymmetricAtom> atom = std::make_shared<SKAsymmetricAtom>();
       assignAtomElement(atom, chemicalElementString, speciesIndex);
-      atom->setPosition(cartesian ? inverseUnitCell * position : position);
+      // Cartesian positions are scaled by the scaling factor like the lattice vectors
+      atom->setPosition(cartesian ? inverseUnitCell * (scale * position) : position);
       _frame->atoms.push_back(atom);
     }
   }

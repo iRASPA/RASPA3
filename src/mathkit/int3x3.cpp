@@ -7,7 +7,7 @@ import std;
 import ring;
 import int3;
 
-int3x3::int3x3() {}
+int3x3::int3x3() : m{} {}
 
 int3x3::int3x3(int value) : m{}
 {
