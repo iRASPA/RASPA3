@@ -33,19 +33,30 @@ simd_quatd simd_quatd::fromAxisAngle(double angle, double3 axis)
 // https://www.euclideanspace.com/maths/algebra/vectors/angleBetween/minorlogic.htm
 simd_quatd simd_quatd::fromTwoVectors(double3 a, double3 b)
 {
-  double d = double3::dot(a, b);
-  double3 w = double3::cross(a, b);
-
-  double qw = d + std::sqrt(double3::dot(a,a) * double3::dot(b,b));
-
-  if(qw < 1e-8) // close to opposite and parallel
+  // normalize first, so that the result does not depend on the lengths of 'a' and 'b'
+  double length_a = std::sqrt(double3::dot(a, a));
+  double length_b = std::sqrt(double3::dot(b, b));
+  if (length_a == 0.0 || length_b == 0.0)
   {
-    w = double3(std::copysign(a[2], a[0]), std::copysign(a[2], a[1]),
-                -std::copysign(a[0], a[2]) - std::copysign(a[1], a[2]));
-    return simd_quatd(0.0, w).normalized();
+    return simd_quatd(0.0, 0.0, 0.0, 1.0);
+  }
+  a = a / length_a;
+  b = b / length_b;
+
+  double d = double3::dot(a, b);
+  if (d >= 0.0)
+  {
+    return simd_quatd(1.0 + d, double3::cross(a, b)).normalized();
   }
 
-  return simd_quatd(qw, w).normalized();
+  // for obtuse angles '1 + d' loses its precision; rotate 'a' onto '-a' by 180 degrees about an axis 'p'
+  // perpendicular to 'a', followed by the acute rotation (s, v) = (1 - d, -a x b) of '-a' onto 'b'
+  // the combined rotation is the quaternion product (s, v) * (0, p)
+  double3 p = double3(std::copysign(a.z, a.x), std::copysign(a.z, a.y),
+                      -std::copysign(a.x, a.z) - std::copysign(a.y, a.z)).normalized();
+  double s = 1.0 - d;
+  double3 v = double3::cross(b, a);
+  return simd_quatd(-double3::dot(v, p), s * p + double3::cross(v, p)).normalized();
 }
 
 simd_quatd simd_quatd::normalized()

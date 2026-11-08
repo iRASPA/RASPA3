@@ -141,9 +141,9 @@ TEST(double3x3, Test_rotation_matrix)
 
     double3 c = rotation_matrix * a;
 
-    EXPECT_NEAR(c.x, b.x, 1e-4);
-    EXPECT_NEAR(c.y, b.y, 1e-4);
-    EXPECT_NEAR(c.z, b.z, 1e-4);
+    EXPECT_NEAR(c.x, b.x, 1e-12);
+    EXPECT_NEAR(c.y, b.y, 1e-12);
+    EXPECT_NEAR(c.z, b.z, 1e-12);
   }
 
 
@@ -164,9 +164,50 @@ TEST(double3x3, Test_rotation_matrix)
 
     double3 c = rotation_matrix * a;
 
-    EXPECT_NEAR(c.x, b.x, 1e-4);
-    EXPECT_NEAR(c.y, b.y, 1e-4);
-    EXPECT_NEAR(c.z, b.z, 1e-4);
+    EXPECT_NEAR(c.x, b.x, 1e-12);
+    EXPECT_NEAR(c.y, b.y, 1e-12);
+    EXPECT_NEAR(c.z, b.z, 1e-12);
+  }
+}
+
+TEST(double3x3, Test_rotation_matrix_small_norm_vectors)
+{
+  // parallel vectors of small length map onto each other by the identity, not by a 180 degree rotation
+  double3 a = 1e-5 * double3(1.0, 2.0, 3.0).normalized();
+  double3x3 rotation_matrix = double3x3::computeRotationMatrix(a, a);
+
+  EXPECT_NEAR(rotation_matrix.m11, 1.0, 1e-12);
+  EXPECT_NEAR(rotation_matrix.m22, 1.0, 1e-12);
+  EXPECT_NEAR(rotation_matrix.m33, 1.0, 1e-12);
+  EXPECT_NEAR(rotation_matrix.m12, 0.0, 1e-12);
+  EXPECT_NEAR(rotation_matrix.m13, 0.0, 1e-12);
+  EXPECT_NEAR(rotation_matrix.m23, 0.0, 1e-12);
+
+  // the direction of 'a' is mapped onto the direction of 'b' regardless of their lengths
+  double3 b = 3e-6 * double3(-2.0, 0.5, 1.0).normalized();
+  double3 c = double3x3::computeRotationMatrix(a, b) * a.normalized();
+  double3 b_unit = b.normalized();
+
+  EXPECT_NEAR(c.x, b_unit.x, 1e-12);
+  EXPECT_NEAR(c.y, b_unit.y, 1e-12);
+  EXPECT_NEAR(c.z, b_unit.z, 1e-12);
+}
+
+TEST(double3x3, Test_rotation_matrix_near_antiparallel)
+{
+  // unit vectors at angles within 2e-4 of 180 degrees are mapped onto each other, not onto '-a'
+  double3 a = double3(1.0, 2.0, 3.0).normalized();
+  double3 n = double3::cross(a, double3(0.0, 0.0, 1.0)).normalized();
+  double3 m = double3::cross(n, a);
+
+  for (double delta : {1e-4, 1e-5, 1e-6, 1e-8, 1e-10})
+  {
+    double3 b = -std::cos(delta) * a + std::sin(delta) * m;
+    double3 c = double3x3::computeRotationMatrix(a, b) * a;
+
+    EXPECT_NEAR(c.x, b.x, 1e-12);
+    EXPECT_NEAR(c.y, b.y, 1e-12);
+    EXPECT_NEAR(c.z, b.z, 1e-12);
   }
 }
 
