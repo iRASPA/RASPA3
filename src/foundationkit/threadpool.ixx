@@ -157,6 +157,17 @@ class ThreadPool
       return;
     }
 
+    // the calling thread works too: the pool has one thread fewer than requested. Without any worker (one thread
+    // requested, or a single core) the work is done serially instead; this comes before the running-pool check,
+    // so that a pool started with more threads switches to serial when one thread is asked for later
+    const std::size_t requested = nthreads > 0 ? nthreads : std::max(1u, std::thread::hardware_concurrency());
+    if (requested <= 1)
+    {
+      threadingType = ThreadingType::Serial;
+      number_of_threads = 0;
+      return;
+    }
+
     // Already running: the workers hold references into tasks_, so it cannot be rebuilt and
     // the existing thread count stays authoritative. Only the threading type is updated.
     if (!threads_.empty())
@@ -165,15 +176,6 @@ class ThreadPool
       return;
     }
 
-    // the calling thread works too: the pool has one thread fewer than requested. Without any worker (one thread
-    // requested, or a single core) the pool would drop every task, so the work is done serially instead.
-    const std::size_t requested = nthreads > 0 ? nthreads : std::max(1u, std::thread::hardware_concurrency());
-    if (requested <= 1)
-    {
-      threadingType = ThreadingType::Serial;
-      number_of_threads = 0;
-      return;
-    }
     number_of_threads = requested - 1;
     // number_of_threads =  nthreads > 0 ? nthreads:  std::thread::hardware_concurrency();
     tasks_ = std::deque<task_item>(number_of_threads);
@@ -244,15 +246,15 @@ class ThreadPool
       }
       catch (...)
       {
-        // catch all
-
-        // remove one item from the tasks
-        tasks_.pop_back();
-
-        // remove our thread from the priority queue
+        // a thread could not be started: stop adding workers. tasks_ is left at its size, because the workers
+        // already running read it in their stealing loop (the queues without a worker never receive a task, since
+        // only ids in the priority queue are dispatched to); the id just pushed is still at the back of the queue
         std::ignore = priority_queue_.pop_back();
+        break;
       }
     }
+    number_of_threads = threads_.size();
+    if (number_of_threads == 0) threadingType = ThreadingType::Serial;
   }
 
   ~ThreadPool()
@@ -415,7 +417,9 @@ class ThreadPool
     auto i_opt = priority_queue_.copy_front_and_rotate_to_back();
     if (!i_opt.has_value())
     {
-      // would only be a problem if there are zero threads
+      // no worker thread (a serial pool): run the task on the calling thread, so that it is not dropped and its
+      // promise is kept (a dropped task made the future throw broken_promise)
+      std::invoke(std::forward<Function>(f));
       return;
     }
     auto i = *(i_opt);
@@ -428,7 +432,9 @@ class ThreadPool
   struct task_item
   {
     thread_safe_queue<FunctionType> tasks{};
-    std::binary_semaphore signal{0};
+    // one permit per enqueued task (and one for the shutdown): a binary semaphore may not be released again
+    // while it still holds its permit, which happened whenever tasks were queued faster than the worker woke
+    std::counting_semaphore<> signal{0};
   };
 
   std::vector<ThreadType> threads_;

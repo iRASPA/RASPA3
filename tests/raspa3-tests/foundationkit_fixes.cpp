@@ -10,6 +10,7 @@ import getopt;
 import indexpath;
 import scanner;
 import stringutils;
+import threadpool;
 import units;
 import json;
 
@@ -135,4 +136,49 @@ TEST(FOUNDATIONKIT_FIXES, reduced_units_set_the_diffusion_and_energy_per_mol_str
   Units::setUnits(Units::System::RASPA);
   EXPECT_EQ(Units::unitOfEnergyPerMolString, "J.mol⁻¹");
   EXPECT_EQ(Units::unitOfAccelerationString, "m.s⁻²");
+}
+
+TEST(FOUNDATIONKIT_FIXES, serial_thread_pool_runs_enqueued_tasks_inline)
+{
+  // one thread requested: no worker; the task used to be dropped and the future threw broken_promise
+  auto& pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
+  pool.init(1, ThreadPool::ThreadingType::ThreadPool);
+  EXPECT_EQ(pool.getThreadingType(), ThreadPool::ThreadingType::Serial);
+  EXPECT_EQ(pool.getThreadCount(), 0uz);
+
+  std::future<int> future = pool.enqueue([](int a, int b) { return a * b; }, 6, 7);
+  EXPECT_EQ(future.get(), 42);
+
+  std::atomic<int> counter{0};
+  pool.enqueue_detach([&counter] { counter.fetch_add(1); });
+  pool.wait_for_tasks();
+  EXPECT_EQ(counter.load(), 1);
+
+  std::future<void> failing = pool.enqueue([] { throw std::runtime_error("inside the task"); });
+  EXPECT_THROW(failing.get(), std::runtime_error);
+}
+
+TEST(FOUNDATIONKIT_FIXES, thread_pool_completes_tasks_queued_faster_than_its_workers_wake)
+{
+  // many tasks land on a worker before it wakes: the signal used to be a binary semaphore released past its
+  // single permit
+  auto& pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
+  pool.init(3, ThreadPool::ThreadingType::ThreadPool);
+  ASSERT_EQ(pool.getThreadingType(), ThreadPool::ThreadingType::ThreadPool);
+  ASSERT_EQ(pool.getThreadCount(), 2uz);
+
+  std::vector<std::future<std::size_t>> futures;
+  for (std::size_t i = 0; i < 2000; ++i) futures.push_back(pool.enqueue([i] { return i * i; }));
+  pool.wait_for_tasks();
+  for (std::size_t i = 0; i < futures.size(); ++i) EXPECT_EQ(futures[i].get(), i * i);
+
+  // asking for one thread afterwards switches to serial work, even though the workers stay alive
+  pool.init(1, ThreadPool::ThreadingType::ThreadPool);
+  EXPECT_EQ(pool.getThreadingType(), ThreadPool::ThreadingType::Serial);
+  EXPECT_EQ(pool.getThreadCount(), 0uz);
+  EXPECT_EQ(pool.enqueue([] { return 5; }).get(), 5);
+
+  pool.init(3, ThreadPool::ThreadingType::ThreadPool);
+  EXPECT_EQ(pool.getThreadingType(), ThreadPool::ThreadingType::ThreadPool);
+  EXPECT_EQ(pool.getThreadCount(), 2uz);
 }
