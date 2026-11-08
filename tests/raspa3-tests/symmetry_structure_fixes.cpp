@@ -15,6 +15,7 @@ import skseitzmatrix;
 import sksymmetryoperationset;
 import skintegersymmetryoperationset;
 import skspacegroupsetting;
+import sktransformationmatrix;
 import skasymmetricunit;
 import skrotationalchangeofbasis;
 import skspacegroupdatabase;
@@ -410,5 +411,60 @@ TEST(SYMMETRY_STRUCTURE_FIXES, stored_inversion_centres_match_the_inversion_oper
     }
     EXPECT_TRUE(found) << "Hall " << hallNumber << " " << setting.HMString() << ": centre (" << centre.x << ", "
                        << centre.y << ", " << centre.z << ")";
+  }
+}
+
+TEST(SYMMETRY_STRUCTURE_FIXES, database_flags_agree_with_the_operations_and_settings_are_consistent)
+{
+  const SKRotationMatrix inversion(int3(-1, 0, 0), int3(0, -1, 0), int3(0, 0, -1));
+  std::map<std::size_t, std::string> schoenfliesOfGroup;
+  for (std::size_t hallNumber = 1; hallNumber <= 530; ++hallNumber)
+  {
+    const SKSpaceGroupSetting& setting = SKSpaceGroupDataBase::spaceGroupData[hallNumber];
+    const auto operations = setting.fullSeitzMatrices().operations;
+    const std::vector<int3> lattice = setting.latticeTranslations();
+    const auto isLatticeTranslation = [&](const SKSeitzIntegerMatrix& m)
+    {
+      return std::any_of(lattice.begin(), lattice.end(),
+                         [&](const int3& t) { return SKSeitzIntegerMatrix(m.rotation, t) == m; });
+    };
+
+    // inversion at the origin: the operation (-1, 0) is listed (P -1 and P m m m said false, three
+    // non-centrosymmetric groups said true)
+    const bool inversionAtOrigin = std::any_of(operations.begin(), operations.end(), [&](const SKSeitzIntegerMatrix& m)
+                                               { return m.rotation == inversion && isLatticeTranslation(m); });
+    EXPECT_EQ(setting.inversionAtOrigin(), inversionAtOrigin) << "Hall " << hallNumber << " " << setting.HMString();
+
+    // symmorphic: every operation's translation is a lattice translation (P -3 1 c and P -3 m 1 were swapped)
+    const bool symmorphic = std::all_of(operations.begin(), operations.end(), isLatticeTranslation);
+    EXPECT_EQ(setting.symmorphicity() == Symmorphicity::symmorphic, symmorphic)
+        << "Hall " << hallNumber << " " << setting.HMString();
+
+    // the settings of one group share the Schoenflies symbol, which is never empty
+    EXPECT_FALSE(setting.schoenflies().empty()) << "Hall " << hallNumber;
+    const auto [it, inserted] = schoenfliesOfGroup.emplace(setting.number(), setting.schoenflies());
+    EXPECT_EQ(it->second, setting.schoenflies()) << "Hall " << hallNumber << " " << setting.HMString();
+
+    // a change of basis has a non-zero determinant (seven rhombohedral-axes settings had a zero column)
+    EXPECT_NE(setting.transformationMatrix().determinant(), 0) << "Hall " << hallNumber;
+
+    // the asymmetric unit lies within the cell and its images: no bound beyond 1 + 1/4 (three said 2)
+    const SKAsymmetricUnit unit = setting.asymmetricUnit();
+    for (const std::pair<int, int>& range : {unit.a, unit.b, unit.c})
+    {
+      EXPECT_LE(range.second, 60) << "Hall " << hallNumber;
+      EXPECT_GE(range.first, -48) << "Hall " << hallNumber;
+    }
+  }
+  EXPECT_EQ(SKSpaceGroupDataBase::spaceGroupData[1].schoenflies(), "C1^1");
+  EXPECT_EQ(SKSpaceGroupDataBase::spaceGroupData[2].schoenflies(), "Ci^1");
+  EXPECT_EQ(SKSpaceGroupDataBase::spaceGroupData[3].schoenflies(), "C2^1");
+
+  // the first Hall number listed for a group is its standard setting (group 228 listed origin choice 1 first)
+  for (std::size_t number = 1; number <= 230; ++number)
+  {
+    const std::vector<std::size_t>& hallNumbers = SKSpaceGroupDataBase::spaceGroupHallData[number];
+    ASSERT_FALSE(hallNumbers.empty()) << number;
+    EXPECT_TRUE(SKSpaceGroupDataBase::spaceGroupData[hallNumbers.front()].standardSetting()) << "group " << number;
   }
 }

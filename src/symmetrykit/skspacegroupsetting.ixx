@@ -51,6 +51,8 @@ export class SKSpaceGroupSetting
 
   // check
   SKAsymmetricUnit asymmetricUnit() const { return _asymmetricUnit; }
+  std::string schoenflies() const { return _schoenflies; }
+  SKTransformationMatrix transformationMatrix() const { return _transformationMatrix; }
 
   friend std::ostream& operator<<(std::ostream& os, const SKSpaceGroupSetting& setting);
 
