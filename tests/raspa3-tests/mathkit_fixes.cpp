@@ -122,6 +122,46 @@ TEST(MATHKIT_FIXES, hermite_and_smith_normal_forms_transform_the_matrix)
   }
 }
 
+TEST(MATHKIT_FIXES, random_ring_matrix_spans_both_signs)
+{
+  std::srand(7);
+  const RingMatrix m = RingMatrix::createRandomRingMatrix(20, 20, 3);
+  bool negative = false;
+  bool positive = false;
+  for (std::size_t i = 0; i < m.rows(); ++i)
+  {
+    for (std::size_t j = 0; j < m.columns(); ++j)
+    {
+      EXPECT_GE(m(i, j), -3);
+      EXPECT_LE(m(i, j), 3);
+      negative = negative || m(i, j) < 0;
+      positive = positive || m(i, j) > 0;
+    }
+  }
+  EXPECT_TRUE(negative);
+  EXPECT_TRUE(positive);
+}
+
+TEST(MATHKIT_FIXES, smith_normal_form_of_random_matrices)
+{
+  std::srand(11);
+  for (std::size_t trial = 0; trial < 50; ++trial)
+  {
+    const RingMatrix input = RingMatrix::createRandomRingMatrix(3, 3, 4);
+    RingMatrix B = input;
+    const auto [U, V, S] = B.SmithNormalForm();
+    const RingMatrix UAV = U * input * V;
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+      for (std::size_t j = 0; j < 3; ++j)
+      {
+        EXPECT_EQ(UAV(i, j), S(i, j)) << "trial " << trial << ": U A V != S at " << i << " " << j;
+        if (i != j) EXPECT_EQ(S(i, j), 0) << "trial " << trial << ": Smith form not diagonal at " << i << " " << j;
+      }
+    }
+  }
+}
+
 TEST(MATHKIT_FIXES, bool3_indices_are_its_components)
 {
   const bool3 flags(true, false, true);

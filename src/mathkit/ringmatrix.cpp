@@ -27,7 +27,7 @@ RingMatrix RingMatrix::createRandomRingMatrix(std::size_t rows, std::size_t colu
   {
     for (std::size_t j = 0; j < columns; j++)
     {
-      m(i, j) = (std::rand() % limit) - limit;
+      m(i, j) = (std::rand() % (2 * limit + 1)) - limit;
     }
   }
   return m;
@@ -810,22 +810,6 @@ void RingMatrix::Smith_Theorem8(RingMatrix& A, RingMatrix& U, RingMatrix& V, std
         V(i, j) = ss * temp + tt * V(i, j);
       }
 
-      // Reduce column row
-      for (std::size_t i = (row + 1); i < n; i++)
-      {
-        int d = Ring::floorDivision(A(i, row), A(row, row));
-        if (d != 0)
-        {
-          for (std::size_t jj = 0; jj < m; jj++)
-          {
-            A(i, jj) = A(i, jj) - d * A(row, jj);
-          }
-          for (std::size_t jj = 0; jj < n; jj++)
-          {
-            U(i, jj) = U(i, jj) - d * U(row, jj);
-          }
-        }
-      }
       // Reduce column row
       for (std::size_t i = (row + 1); i < n; i++)
       {
