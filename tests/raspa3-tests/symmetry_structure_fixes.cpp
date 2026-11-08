@@ -7,6 +7,7 @@ import double3;
 import double3x3;
 import skdefinitions;
 import skcell;
+import sksymmetrycell;
 import skrotationmatrix;
 import skseitzintegermatrix;
 import skspacegroupdatabase;
@@ -100,4 +101,25 @@ TEST(SYMMETRY_STRUCTURE_FIXES, a_backend_with_blocked_pockets_is_another_backend
   EXPECT_FALSE(blocked.blocking.empty());
   EXPECT_NE(blocked.blocking, otherBlocked.blocking);
   EXPECT_EQ(blocked.name, backend.name);
+}
+
+TEST(SYMMETRY_STRUCTURE_FIXES, overlap_test_keeps_the_signs_of_the_fractional_difference)
+{
+  // a sheared cell (symmetric matrix, so the row/column convention does not matter): the Cartesian distance of a
+  // fractional difference depends on the relative signs of its components
+  const double3x3 lattice(double3(10.0, -10.0, 0.0), double3(-10.0, 20.0, 0.0), double3(0.0, 0.0, 10.0));
+  const double precision = 0.15;
+
+  // the difference (0.01, -0.99, 0) wraps to (0.01, 0.01, 0), at 0.1 from each other; the absolute value before
+  // the wrap gave (0.01, -0.01, 0), at 0.36, and missed the overlap
+  const double3 a(0.5, 0.005, 0.5), b(0.49, 0.995, 0.5);
+  EXPECT_TRUE(SKSymmetryCell::isOverlap(a, b, lattice, precision));
+  // the difference (0.01, -0.01, 0) is at 0.36; the absolute value made it (0.01, 0.01, 0), a false overlap
+  const double3 c(0.5, 0.5, 0.5), d(0.49, 0.51, 0.5);
+  EXPECT_FALSE(SKSymmetryCell::isOverlap(c, d, lattice, precision));
+
+  // trim merges the first pair and keeps the second
+  using Atom = std::tuple<double3, std::size_t, double>;
+  EXPECT_EQ(SKSymmetryCell::trim({Atom{a, 1, 1.0}, Atom{b, 1, 1.0}}, lattice, lattice, false, precision).size(), 1uz);
+  EXPECT_EQ(SKSymmetryCell::trim({Atom{c, 1, 1.0}, Atom{d, 1, 1.0}}, lattice, lattice, false, precision).size(), 2uz);
 }

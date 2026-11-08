@@ -152,7 +152,10 @@ double SKSymmetryCell::volume()
 
 bool SKSymmetryCell::isOverlap(double3 a, double3 b, double3x3 lattice, double symmetryPrecision = 1e-2)
 {
-  double3 dr = double3::abs(a - b);
+  // the signed fractional difference: a component-wise absolute value before the wrap flips the relative signs of
+  // the components (0.01, -0.99 wraps to 0.01, 0.01 but |.| gives 0.01, 0.99 and then 0.01, -0.01), which in a
+  // non-orthogonal cell changes the Cartesian distance
+  double3 dr = a - b;
   dr.x -= std::rint(dr.x);
   dr.y -= std::rint(dr.y);
   dr.z -= std::rint(dr.z);
@@ -603,7 +606,8 @@ std::vector<std::tuple<double3, std::size_t, double>> SKSymmetryCell::trim(
     {
       if (std::get<1>(trimmedAtoms[i]) == std::get<1>(trimmedAtoms[j]))
       {
-        double3 dr = double3::abs(std::get<0>(trimmedAtoms[i]) - std::get<0>(trimmedAtoms[j]));
+        // signed difference, see isOverlap: an absolute value here changes the distance in a non-orthogonal cell
+        double3 dr = std::get<0>(trimmedAtoms[i]) - std::get<0>(trimmedAtoms[j]);
         dr.x -= std::rint(dr.x);
         dr.y -= std::rint(dr.y);
         dr.z -= std::rint(dr.z);
