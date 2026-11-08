@@ -19,6 +19,9 @@ import sktransformationmatrix;
 import skasymmetricunit;
 import skrotationalchangeofbasis;
 import skspacegroupdatabase;
+import stringutils;
+import skelement;
+import skpointgroup;
 import skspacegroup;
 import skstructure;
 import skparser;
@@ -467,4 +470,27 @@ TEST(SYMMETRY_STRUCTURE_FIXES, database_flags_agree_with_the_operations_and_sett
     ASSERT_FALSE(hallNumbers.empty()) << number;
     EXPECT_TRUE(SKSpaceGroupDataBase::spaceGroupData[hallNumbers.front()].standardSetting()) << "group " << number;
   }
+}
+
+TEST(SYMMETRY_STRUCTURE_FIXES, point_group_symbol_element_periods_and_residue_tables)
+{
+  // D3h is -6m2, not -6m
+  EXPECT_EQ(SKPointGroup::pointGroupData[26].symbol(), "-6m2");
+
+  // beryllium is in period 2 and selenium in period 4 (both said 3)
+  EXPECT_EQ(PredefinedElements::predefinedElements[4]._chemicalSymbol, "Be");
+  EXPECT_EQ(PredefinedElements::predefinedElements[4]._period, 2uz);
+  EXPECT_EQ(PredefinedElements::predefinedElements[34]._chemicalSymbol, "Se");
+  EXPECT_EQ(PredefinedElements::predefinedElements[34]._period, 4uz);
+
+  // the oxygen of water is oxygen
+  EXPECT_EQ(PredefinedElements::residueDefinitionsElement.at("HOH+O"), "O");
+
+  // PDB atom names in the bonded-atom table carry no padding, so exact lookups find them
+  for (const auto& [key, bonded] : PredefinedElements::residueDefinitionsBondedAtoms)
+  {
+    EXPECT_EQ(key, trim(key));
+    for (const std::string& name : bonded) EXPECT_EQ(name, trim(name)) << key;
+  }
+  EXPECT_EQ(PredefinedElements::residueDefinitionsBondedAtoms.at("ALA+CA"), (std::vector<std::string>{"N", "CB", "C"}));
 }

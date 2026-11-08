@@ -472,7 +472,7 @@ std::vector<SKPointGroup> SKPointGroup::pointGroupData =
                                            Holohedry::hexagonal, Laue::laue_6mmm, false, true),
                               SKPointGroup(SKRotationalOccurrenceTable(0, 0, 0, 6, 0, 1, 1, 2, 0, 2), 25, "6mm", "C6v",
                                            Holohedry::hexagonal, Laue::laue_6mmm, false, false),
-                              SKPointGroup(SKRotationalOccurrenceTable(2, 0, 0, 4, 0, 1, 3, 2, 0, 0), 26, "-6m", "D3h",
+                              SKPointGroup(SKRotationalOccurrenceTable(2, 0, 0, 4, 0, 1, 3, 2, 0, 0), 26, "-6m2", "D3h",
                                            Holohedry::hexagonal, Laue::laue_6mmm, false, false),
                               SKPointGroup(SKRotationalOccurrenceTable(2, 0, 2, 7, 1, 1, 7, 2, 0, 2), 27, "6/mmm", "D6h",
                                            Holohedry::hexagonal, Laue::laue_6mmm, true, false),
