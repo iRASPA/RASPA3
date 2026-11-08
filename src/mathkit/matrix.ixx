@@ -74,6 +74,12 @@ export class Matrix
 
 export inline Matrix operator*(const RingMatrix& a, const Matrix& b)
 {
+  if (a.columns() != b.rows())
+  {
+    throw std::invalid_argument(
+        std::format("Matrix product: {} columns of the left factor do not match {} rows of the right factor",
+                    a.columns(), b.rows()));
+  }
   Matrix results = Matrix(a.rows(), b.columns(), 0);
   for (std::size_t i = 0; i < a.rows(); i++)
   {
@@ -92,6 +98,12 @@ export inline Matrix operator*(const RingMatrix& a, const Matrix& b)
 
 export inline Matrix operator*(const Matrix& a, const RingMatrix& b)
 {
+  if (a.columns() != b.rows())
+  {
+    throw std::invalid_argument(
+        std::format("Matrix product: {} columns of the left factor do not match {} rows of the right factor",
+                    a.columns(), b.rows()));
+  }
   Matrix results = Matrix(a.rows(), b.columns(), 0);
   for (std::size_t i = 0; i < a.rows(); i++)
   {

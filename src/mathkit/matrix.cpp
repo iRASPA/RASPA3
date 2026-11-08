@@ -12,6 +12,13 @@ Matrix::Matrix(std::size_t rows, std::size_t columns, double initialValue)
 
 Matrix operator*(const Matrix& lhs, const Matrix& rhs)
 {
+  // the inner sum reads rhs(k, j) for k below the columns of lhs: past its storage when the shapes do not match
+  if (lhs._columns != rhs._rows)
+  {
+    throw std::invalid_argument(
+        std::format("Matrix product: {} columns of the left factor do not match {} rows of the right factor",
+                    lhs._columns, rhs._rows));
+  }
   Matrix results = Matrix(lhs._rows, rhs._columns, 0);
   for (std::size_t i = 0; i < lhs._rows; i++)
   {

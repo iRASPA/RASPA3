@@ -70,6 +70,13 @@ export class RingMatrix
 
 export inline RingMatrix operator*(const RingMatrix& a, const RingMatrix& b)
 {
+  // the inner sum reads b(k, j) for k below the columns of a: past its storage when the shapes do not match
+  if (a.columns() != b.rows())
+  {
+    throw std::invalid_argument(
+        std::format("RingMatrix product: {} columns of the left factor do not match {} rows of the right factor",
+                    a.columns(), b.rows()));
+  }
   RingMatrix results = RingMatrix(a.rows(), b.columns(), 0);
   for (std::size_t i = 0; i < a.rows(); i++)
   {

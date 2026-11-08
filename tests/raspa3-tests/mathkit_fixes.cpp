@@ -404,6 +404,31 @@ TEST(MATHKIT_FIXES, hermite_and_smith_normal_forms_of_large_entries_keep_the_ran
   EXPECT_EQ(D, input);
 }
 
+TEST(MATHKIT_FIXES, matrix_products_refuse_mismatched_shapes)
+{
+  // a 2 x 3 times a 2 x 2 used to read the right factor past its storage
+  const Matrix wide(2, 3, 1.0);
+  const Matrix square(2, 2, 1.0);
+  const RingMatrix ringWide(2, 3, 1);
+  const RingMatrix ringSquare(2, 2, 1);
+  EXPECT_THROW(wide * square, std::invalid_argument);
+  EXPECT_THROW(ringWide * ringSquare, std::invalid_argument);
+  EXPECT_THROW(ringWide * square, std::invalid_argument);
+  EXPECT_THROW(wide * ringSquare, std::invalid_argument);
+
+  // matching shapes multiply: a 2 x 3 of ones times a 3 x 2 of twos is a 2 x 2 of sixes
+  const Matrix tall(3, 2, 2.0);
+  const RingMatrix ringTall(3, 2, 2);
+  for (const Matrix& product : {wide * tall, ringWide * tall, wide * ringTall})
+  {
+    ASSERT_EQ(product.rows(), 2uz);
+    ASSERT_EQ(product.columns(), 2uz);
+    for (std::size_t i = 0; i < 2; ++i)
+      for (std::size_t j = 0; j < 2; ++j) EXPECT_EQ(product(i, j), 6.0) << i << " " << j;
+  }
+  EXPECT_EQ(ringWide * ringTall, RingMatrix(2, 2, 6));
+}
+
 TEST(MATHKIT_FIXES, bool3_indices_are_its_components)
 {
   const bool3 flags(true, false, true);
