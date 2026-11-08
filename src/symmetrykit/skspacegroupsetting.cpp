@@ -106,40 +106,9 @@ SKIntegerSymmetryOperationSet SKSpaceGroupSetting::fullSeitzMatrices() const
 
 std::vector<SKSeitzIntegerMatrix> SKSpaceGroupSetting::SeitzMatricesWithoutTranslation() const
 {
-  // assert(_encodedSeitz.size() % 3 == 0);
-  // assert(_encodedSeitz.size() > 0);
-
-  bool centrosymmetric = SKPointGroup::pointGroupData[static_cast<std::size_t>(_pointGroupNumber)].centrosymmetric();
-  std::size_t m = _encodedSeitz.size() / 3;
-
-  std::size_t size = centrosymmetric ? 2 * m : m;
-  std::vector<int3> translationVectors = _latticeTranslations;
-  std::vector<SKSeitzIntegerMatrix> matrices = std::vector<SKSeitzIntegerMatrix>();
-  matrices.resize(size);
-
-  for (std::size_t i = 0; i < m; i++)
-  {
-    char x = _encodedSeitz[3 * i];
-    char y = _encodedSeitz[3 * i + 1];
-    char z = _encodedSeitz[3 * i + 2];
-
-    matrices[i] = SKSeitzIntegerMatrix(x, y, z);
-  }
-
-  if (centrosymmetric)
-  {
-    for (std::size_t i = 0; i < m; i++)
-    {
-      char x = _encodedSeitz[3 * i];
-      char y = _encodedSeitz[3 * i + 1];
-      char z = _encodedSeitz[3 * i + 2];
-
-      SKSeitzIntegerMatrix seitz = SKSeitzIntegerMatrix(x, y, z);
-
-      int3 translation = seitz.translation + seitz.rotation * _inversionCenter;
-      matrices[m + i] = SKSeitzIntegerMatrix(-seitz.rotation, translation);
-    }
-  }
-
-  return matrices;
+  // The encoding holds all 'order' operations of the setting, the inversions and the centring copies included (P -1
+  // encodes two, F d -3 m 192). Appending inverted copies for a centrosymmetric point group doubled the group with
+  // operations that were not even its own: inversion through c is (-I, 2c), and the appended translations lacked
+  // that factor of two.
+  return SKSeitzIntegerMatrix::SeitzMatrices(_encodedSeitz);
 }

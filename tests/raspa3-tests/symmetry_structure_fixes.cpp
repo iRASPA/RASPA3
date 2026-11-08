@@ -225,3 +225,23 @@ TEST(SYMMETRY_STRUCTURE_FIXES, monoclinic_change_of_basis_relabels_c_and_i_centr
   EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(iCentred, monoclinic, Centring::body, 5), 11uz);
   EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(cCentred, monoclinic, Centring::c_face, 5), 9uz);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, seitz_matrices_of_a_centrosymmetric_setting_are_not_doubled)
+{
+  // P -1 (Hall 2), C 1 2/c 1 (Hall 90) and F d -3 m with the inversion centre off the origin (Hall 525) and on it
+  // (Hall 526): the encoded operations are the whole group; appended inverted copies doubled it with operations
+  // that were not in the group
+  for (const std::size_t hallNumber : {2uz, 90uz, 525uz, 526uz})
+  {
+    const SKSpaceGroupSetting setting = SKSpaceGroup(hallNumber).spaceGroupSetting();
+    const std::vector<SKSeitzIntegerMatrix> matrices = setting.SeitzMatricesWithoutTranslation();
+    const std::unordered_set<SKSeitzIntegerMatrix, SKSeitzIntegerMatrix::hashFunction> full =
+        setting.fullSeitzMatrices().operations;
+    EXPECT_EQ(matrices.size(), setting.order()) << "Hall " << hallNumber;
+    EXPECT_EQ(full.size(), setting.order()) << "Hall " << hallNumber;
+    for (const SKSeitzIntegerMatrix& m : matrices)
+    {
+      EXPECT_TRUE(full.contains(m)) << "Hall " << hallNumber;
+    }
+  }
+}
