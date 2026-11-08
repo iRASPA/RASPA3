@@ -99,11 +99,6 @@ export inline bool operator<(const int3& lhs, const int3& rhs)
   return std::tie(lhs.x, lhs.y, lhs.z) < std::tie(rhs.x, rhs.y, rhs.z);
 }
 
-export inline bool operator<(const int3 lhs, const int3 rhs)
-{
-  return std::tie(lhs.x, lhs.y, lhs.z) < std::tie(rhs.x, rhs.y, rhs.z);
-}
-
 template <>
 struct std::formatter<int3> : std::formatter<std::string_view>
 {
