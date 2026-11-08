@@ -43,6 +43,28 @@ TEST(double3x3, Test_equality_is_exact)
   EXPECT_TRUE(c != n);
 }
 
+TEST(double3x3, Test_multiplication_with_row_based_array)
+{
+  // a non-symmetric std::array, indexed [row][column], and the same matrix as a double3x3 (indexed [column][row])
+  std::array<std::array<double, 3>, 3> array{{{1.0, 2.0, 3.0}, {4.0, 5.0, 6.0}, {7.0, 8.0, 10.0}}};
+  double3x3 b{};
+  for (std::size_t i = 0; i < 3; ++i)
+    for (std::size_t j = 0; j < 3; ++j) b[j][i] = array[i][j];
+
+  double3x3 a{double3{2.0, -1.0, 0.5}, double3{0.0, 3.0, 1.0}, double3{-2.0, 1.5, 4.0}};
+
+  double3x3 left = a * array;
+  double3x3 right = array * a;
+  double3x3 left_reference = a * b;
+  double3x3 right_reference = b * a;
+  for (std::size_t i = 0; i < 3; ++i)
+    for (std::size_t j = 0; j < 3; ++j)
+    {
+      EXPECT_NEAR(left[i][j], left_reference[i][j], 1e-12);
+      EXPECT_NEAR(right[i][j], right_reference[i][j], 1e-12);
+    }
+}
+
 TEST(double3x3, Test_inverse)
 {
   double3x3 m{double3{25.0, 2.5e-6, 0.0}, double3{0.0, 25.0, 0.0}, double3{0.0, 0.0, 25.0}};
