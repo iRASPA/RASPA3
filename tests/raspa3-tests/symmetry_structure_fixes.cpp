@@ -344,3 +344,26 @@ TEST(SYMMETRY_STRUCTURE_FIXES, lattice_symmetry_counts_follow_the_metric)
   EXPECT_EQ(SKSymmetryCell::findLatticeSymmetry(orthorhombic, 1e-2).rotations().size(), 8uz);
   EXPECT_EQ(SKSymmetryCell::findLatticeSymmetry(triclinic, 1e-2).rotations().size(), 2uz);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, smallest_primitive_cell_of_left_handed_and_small_cells)
+{
+  // a 2 x 1 x 1 supercell of a simple cubic lattice: two atoms, the primitive cell has half the volume
+  using Atom = std::tuple<double3, std::size_t, double>;
+  const std::vector<Atom> atoms{Atom{double3(0.0, 0.0, 0.0), 1, 1.0}, Atom{double3(0.5, 0.0, 0.0), 1, 1.0}};
+
+  // left-handed basis (negative determinant): the signed volume made every candidate "larger" than the minimum
+  const double3x3 leftHanded(double3(20.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, -10.0));
+  const double3x3 primitiveOfLeftHanded =
+      SKSymmetryCell::findSmallestPrimitiveCell(atoms, atoms, leftHanded, false, 1e-2);
+  EXPECT_NEAR(std::fabs(primitiveOfLeftHanded.determinant()), 1000.0, 1e-6);
+
+  // a cell of two cubic Angstrom: the primitive cell of one cubic Angstrom fell under the absolute threshold of one
+  const double3x3 small(double3(2.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, 1.0));
+  const double3x3 primitiveOfSmall = SKSymmetryCell::findSmallestPrimitiveCell(atoms, atoms, small, false, 1e-2);
+  EXPECT_NEAR(std::fabs(primitiveOfSmall.determinant()), 1.0, 1e-9);
+
+  // the ordinary case is unchanged
+  const double3x3 cell(double3(20.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 10.0));
+  EXPECT_NEAR(std::fabs(SKSymmetryCell::findSmallestPrimitiveCell(atoms, atoms, cell, false, 1e-2).determinant()),
+              1000.0, 1e-6);
+}

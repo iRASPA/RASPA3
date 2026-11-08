@@ -208,8 +208,13 @@ double3x3 SKSymmetryCell::findSmallestPrimitiveCell(std::vector<std::tuple<doubl
   std::size_t size = translationVectors.size();
 
   double3x3 smallestCell = unitCell;
-  double initialVolume = unitCell.determinant();
+  // the volume, not the signed determinant: a left-handed cell gave a negative minimum that no candidate undercut
+  double initialVolume = std::fabs(unitCell.determinant());
   double minimumVolume = initialVolume;
+  // a cell of lattice translations holds at least one atom, so anything smaller than half of that volume is a
+  // (nearly) coplanar triple rather than a cell; the former absolute threshold of 1 Angstrom^3 rejected the
+  // primitive cell of small or reduced-unit cells
+  const double smallestPossibleVolume = initialVolume / static_cast<double>(std::max(std::size_t{1}, atoms.size()));
 
   for (std::size_t i = 0; i < size; i++)
   {
@@ -223,7 +228,7 @@ double3x3 SKSymmetryCell::findSmallestPrimitiveCell(std::vector<std::tuple<doubl
         double3x3 cell = double3x3(tmpv1, tmpv2, tmpv3);
         double volume = std::fabs(cell.determinant());
 
-        if ((volume > 1.0) && (volume < minimumVolume))
+        if ((volume > 0.5 * smallestPossibleVolume) && (volume < minimumVolume))
         {
           minimumVolume = volume;
           smallestCell = double3x3(tmpv1, tmpv2, tmpv3);
