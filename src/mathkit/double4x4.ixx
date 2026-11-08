@@ -145,6 +145,8 @@ export union double4x4
   static double4x4 AffinityMatrixToTransformationAroundArbitraryPoint(double4x4 m, double3 p);
   static double4x4 AffinityMatrixToTransformationAroundArbitraryPointWithTranslation(double4x4 m, double3 p, double3 t);
   static double4x4 Rotationdouble4x4FromQuaternion(simd_quatd q);
+
+  friend std::ostream& operator<<(std::ostream& out, const double4x4& vec);
 };
 
 export inline double4x4 operator*(const double4x4& a, const double4x4& b)

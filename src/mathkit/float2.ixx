@@ -1,5 +1,7 @@
 export module float2;
 
+import std;
+
 export union float2
 {
   float v[2];
@@ -27,6 +29,9 @@ export union float2
   }
 
   inline static float dot(const float2& v1, const float2& v2) { return v1.x * v2.x + v1.y * v2.y; }
+
+  friend std::ostream& operator<<(std::ostream& stream, const float2& vec);
+  friend std::istream& operator>>(std::istream& stream, float2& vec);
 };
 
 export inline float2 operator+(const float2& a, const float2& b) { return float2(a.x + b.x, a.y + b.y); }

@@ -3,6 +3,7 @@ add_executable(unit_tests_mathkit
   double3.cpp
   float3x3.cpp
   float4x4.cpp
+  free_operators.cpp
   int3.cpp
   symmetric_eigensolver.cpp
   symmetric_matrix_layout.cpp

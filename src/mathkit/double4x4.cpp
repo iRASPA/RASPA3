@@ -318,9 +318,8 @@ double4x4 double4x4::Rotationdouble4x4FromQuaternion(simd_quatd q)
 
 std::ostream& operator<<(std::ostream& out, const double4x4& vec)  // output
 {
-  out << vec.m11 << vec.m21 << vec.m31 << vec.m41;
-  out << vec.m12 << vec.m22 << vec.m32 << vec.m42;
-  out << vec.m13 << vec.m23 << vec.m33 << vec.m43;
-  out << vec.m14 << vec.m24 << vec.m34 << vec.m44;
+  out << vec.m11 << "," << vec.m21 << "," << vec.m31 << "," << vec.m41 << "," << vec.m12 << "," << vec.m22 << ","
+      << vec.m32 << "," << vec.m42 << "," << vec.m13 << "," << vec.m23 << "," << vec.m33 << "," << vec.m43 << ","
+      << vec.m14 << "," << vec.m24 << "," << vec.m34 << "," << vec.m44;
   return out;
 }

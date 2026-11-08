@@ -83,6 +83,8 @@ export union float4x4
   static float4x4 Identity(void);
   static float4x4 AffinityMatrixToTransformationAroundArbitraryPoint(float4x4 m, float3 p);
   static float4x4 Rotationfloat4x4FromQuaternion(simd_quatd q);
+
+  friend std::ostream& operator<<(std::ostream& stream, const float4x4& v);
 };
 
 export inline float4x4 operator*(const float4x4& a, const float4x4& b)

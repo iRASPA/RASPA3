@@ -1,5 +1,7 @@
 export module double2;
 
+import std;
+
 export union double2
 {
   double v[2];
@@ -26,6 +28,9 @@ export union double2
   }
 
   inline static double dot(const double2& v1, const double2& v2) { return v1.x * v2.x + v1.y * v2.y; }
+
+  friend std::ostream& operator<<(std::ostream& stream, const double2& vec);
+  friend std::istream& operator>>(std::istream& stream, double2& vec);
 };
 
 export inline double2 operator+(const double2& a, const double2& b) { return double2(a.x + b.x, a.y + b.y); }

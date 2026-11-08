@@ -57,7 +57,10 @@ export inline float4 operator+(const float4& a, const float4& b)
   return float4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
 }
 
-inline float4 operator-(const float4& a, const float4& b) { return float4(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w); }
+export inline float4 operator-(const float4& a, const float4& b)
+{
+  return float4(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w);
+}
 
 export inline float4 operator*(const float4& a, const float4& b)
 {
@@ -70,7 +73,7 @@ export inline float4 operator*(const float4& a, const double& b)
                 a.w * static_cast<float>(b));
 }
 
-inline float4 operator*(const double& a, float4 const& b)
+export inline float4 operator*(const double& a, float4 const& b)
 {
   return float4(static_cast<float>(a) * b.x, static_cast<float>(a) * b.y, static_cast<float>(a) * b.z,
                 static_cast<float>(a) * b.w);
