@@ -600,3 +600,16 @@ TEST(SYMMETRY_STRUCTURE_FIXES, delaunay_reduction_sorts_near_equal_lengths_safel
   ASSERT_TRUE(reduced2D.has_value());
   EXPECT_NEAR(std::fabs(reduced2D->determinant()), 1000.0, 1e-9);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, orthogonal_axis_directions_of_low_rotation_orders_terminate)
+{
+  // an order of zero wrapped the loop bound around to the largest std::size_t; orders zero and one sum no further
+  // powers of the rotation, so the identity alone annihilates no axis
+  EXPECT_TRUE(SKRotationMatrix::r_2_100.orthogonalToAxisDirection(0).empty());
+  EXPECT_TRUE(SKRotationMatrix::r_2_100.orthogonalToAxisDirection(1).empty());
+
+  // for the two-fold rotation about x the axes annihilated by 1 + R are the directions perpendicular to x
+  const std::vector<int3> perpendicular = SKRotationMatrix::r_2_100.orthogonalToAxisDirection(2);
+  ASSERT_FALSE(perpendicular.empty());
+  for (const int3& axis : perpendicular) EXPECT_EQ(axis.x, 0) << axis.x << " " << axis.y << " " << axis.z;
+}

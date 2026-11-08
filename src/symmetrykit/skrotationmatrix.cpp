@@ -120,7 +120,9 @@ std::vector<int3> SKRotationMatrix::orthogonalToAxisDirection(std::size_t rotati
   SKRotationMatrix sumRot = SKRotationMatrix::identity;
   SKRotationMatrix rot = SKRotationMatrix::identity;
 
-  for (std::size_t i = 0; i < rotationOrder - 1; i++)
+  // the sum of the first rotationOrder powers (the identity included): rotationOrder - 1 further terms, and none
+  // for an order of zero or one (the former "i < rotationOrder - 1" wrapped around for zero)
+  for (std::size_t i = 1; i < rotationOrder; i++)
   {
     rot = rot * properRotation;
     sumRot = sumRot + rot;

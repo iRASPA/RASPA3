@@ -283,10 +283,8 @@ const std::optional<SKTransformationMatrix> SKPointGroup::constructAxes(
       std::sort(orthogonalAxes.begin(), orthogonalAxes.end(),
                 [](const int3& a, const int3& b) -> bool { return a.length_squared() < b.length_squared(); });
 
-      // assert(!orthogonalAxes.empty());
-      if (orthogonalAxes.empty()) return std::nullopt;
-
-      // the second and thirs axis are the shortest orthogonal axes
+      // the second and third axis are the two shortest orthogonal axes, so there have to be two
+      if (orthogonalAxes.size() < 2) return std::nullopt;
       axes[0] = orthogonalAxes[0];
       axes[2] = orthogonalAxes[1];
 
