@@ -83,10 +83,15 @@ void MarchingCubes::run(real iso)
 void MarchingCubes::init_temps()
 //-----------------------------------------------------------------------------
 {
-  _data.resize(static_cast<std::size_t>(_size_x * _size_y * _size_z));
-  _x_verts.resize(static_cast<std::size_t>(_size_x * _size_y * _size_z));
-  _y_verts.resize(static_cast<std::size_t>(_size_x * _size_y * _size_z));
-  _z_verts.resize(static_cast<std::size_t>(_size_x * _size_y * _size_z));
+  // the products are formed in std::size_t: in int they overflow from about 1290^3 grid points on
+  _data.resize(static_cast<std::size_t>(_size_x) * static_cast<std::size_t>(_size_y) *
+               static_cast<std::size_t>(_size_z));
+  _x_verts.resize(static_cast<std::size_t>(_size_x) * static_cast<std::size_t>(_size_y) *
+                  static_cast<std::size_t>(_size_z));
+  _y_verts.resize(static_cast<std::size_t>(_size_x) * static_cast<std::size_t>(_size_y) *
+                  static_cast<std::size_t>(_size_z));
+  _z_verts.resize(static_cast<std::size_t>(_size_x) * static_cast<std::size_t>(_size_y) *
+                  static_cast<std::size_t>(_size_z));
 
   std::memset(_x_verts.data(), -1, _x_verts.size() * sizeof(int));
   std::memset(_y_verts.data(), -1, _y_verts.size() * sizeof(int));
@@ -206,7 +211,9 @@ bool MarchingCubes::test_interior(schar s, double *cube)
       b = cube[2] * (cube[4] - cube[0]) + cube[0] * (cube[6] - cube[2]) - cube[1] * (cube[7] - cube[3]) -
           cube[3] * (cube[5] - cube[1]);
       t = -b / (2 * a);
-      if (t < 0 || t > 1) return s > 0;
+      // a == 0: the quadratic has no interior extremum (t is infinite, or NaN when b == 0 too, which would make
+      // At..Dt NaN and skip every comparison below); the components are then not connected through the interior
+      if (a == 0.0 || t < 0 || t > 1) return s > 0;
 
       At = cube[0] + (cube[4] - cube[0]) * t;
       Bt = cube[3] + (cube[7] - cube[3]) * t;
@@ -835,6 +842,8 @@ void MarchingCubes::add_triangle(const schar *trig, char n, int v12)
 real MarchingCubes::get_x_grad(const int i, const int j, const int k) const
 //-----------------------------------------------------------------------------
 {
+  // a single plane has no neighbour to difference with (and a periodic one would have period zero)
+  if (_size_x < 2) return 0.0;
   if (_periodic)
   {
     // The last plane repeats the first, so the period is one less than the size and both ends read round.
@@ -864,6 +873,8 @@ real MarchingCubes::get_x_grad(const int i, const int j, const int k) const
 real MarchingCubes::get_y_grad(const int i, const int j, const int k) const
 //-----------------------------------------------------------------------------
 {
+  // a single plane has no neighbour to difference with (and a periodic one would have period zero)
+  if (_size_y < 2) return 0.0;
   if (_periodic)
   {
     const int period = _size_y - 1;
@@ -892,6 +903,8 @@ real MarchingCubes::get_y_grad(const int i, const int j, const int k) const
 real MarchingCubes::get_z_grad(const int i, const int j, const int k) const
 //-----------------------------------------------------------------------------
 {
+  // a single plane has no neighbour to difference with (and a periodic one would have period zero)
+  if (_size_z < 2) return 0.0;
   if (_periodic)
   {
     const int period = _size_z - 1;
@@ -1030,6 +1043,13 @@ int MarchingCubes::add_c_vertex()
     }
   }
 
+  if (u == 0.0)
+  {
+    // no edge of the cube carries an intersection point, which a case that needs a centre vertex does not
+    // produce; guard the division and place the vertex at the cube's centre with a zero gradient
+    pos = double3(_i + 0.5, _j + 0.5, _k + 0.5);
+    u = 1.0;
+  }
   pos.x *= 1.0 / u;
   pos.y *= 1.0 / u;
   pos.z *= 1.0 / u;

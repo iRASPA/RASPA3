@@ -14,6 +14,7 @@ import simd_quatd;
 import ringmatrix;
 import cubic;
 import randomnumbers;
+import marching_cubes;
 
 TEST(MATHKIT_FIXES, normalise_divides_by_the_four_dimensional_length)
 {
@@ -164,6 +165,48 @@ TEST(MATHKIT_FIXES, random_vector_on_cone_redraws_a_direction_parallel_to_the_ax
     const double3 w = random.randomVectorOnCone(axis, angle);
     EXPECT_NEAR(double3::angle(axis, w), angle, 1e-10) << "sign " << sign;
     EXPECT_NEAR(w.length(), 1.0, 1e-12) << "sign " << sign;
+  }
+}
+
+TEST(MATHKIT_FIXES, marching_cubes_degenerate_interior_test_keeps_the_vertices_finite)
+{
+  // a single cube with opposite corners 0 and 6 positive (case 4) whose interior-test quadratic has a == b == 0,
+  // so the stationary point -b / (2a) is NaN; the components stay separated: two triangles
+  MarchingCubes cubes(2, 2, 2);
+  cubes.init_all();
+  const double corner[8] = {1.0, -1.0, -1.0, -3.0, -1.0, -3.0, 1.0, -1.0};
+  for (std::size_t p = 0; p < 8; ++p)
+  {
+    cubes.set_data(corner[p], (p ^ (p >> 1)) & 1, (p >> 1) & 1, p >> 2);
+  }
+  cubes.run(0.0);
+  EXPECT_EQ(cubes.ntrigs(), 2uz);
+  ASSERT_GT(cubes.nverts(), 0uz);
+  for (std::size_t v = 0; v < cubes.nverts(); ++v)
+  {
+    const Vertex& vertex = cubes.vertices()[v];
+    EXPECT_TRUE(std::isfinite(vertex.x) && std::isfinite(vertex.y) && std::isfinite(vertex.z)) << "vertex " << v;
+    EXPECT_TRUE(std::isfinite(vertex.nx) && std::isfinite(vertex.ny) && std::isfinite(vertex.nz)) << "vertex " << v;
+  }
+}
+
+TEST(MATHKIT_FIXES, marching_cubes_periodic_single_plane_has_a_finite_gradient)
+{
+  // a periodic grid of one plane along x: its gradient along x used to take a remainder modulo zero; the field
+  // changes sign along y, so the intersection pass evaluates gradients at every point of the plane
+  MarchingCubes cubes(1, 4, 4);
+  cubes.init_all();
+  cubes.set_periodic(true);
+  for (std::size_t k = 0; k < 4; ++k)
+    for (std::size_t j = 0; j < 4; ++j) cubes.set_data(static_cast<double>(j) - 1.5, 0, j, k);
+  cubes.run(0.0);
+  ASSERT_GT(cubes.nverts(), 0uz);
+  for (std::size_t v = 0; v < cubes.nverts(); ++v)
+  {
+    const Vertex& vertex = cubes.vertices()[v];
+    EXPECT_TRUE(std::isfinite(vertex.x) && std::isfinite(vertex.y) && std::isfinite(vertex.z)) << "vertex " << v;
+    EXPECT_TRUE(std::isfinite(vertex.nx) && std::isfinite(vertex.ny) && std::isfinite(vertex.nz)) << "vertex " << v;
+    EXPECT_NEAR(vertex.ny, 1.0, 1e-12) << "vertex " << v;
   }
 }
 

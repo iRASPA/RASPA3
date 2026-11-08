@@ -143,7 +143,10 @@ export class MarchingCubes
    */
   inline double get_data(const int3 &coord) const
   {
-    return _data[static_cast<std::size_t>(coord.x + coord.y * _size_x + coord.z * _size_x * _size_y)];
+    return _data[static_cast<std::size_t>(coord.x) +
+                 static_cast<std::size_t>(coord.y) * static_cast<std::size_t>(_size_x) +
+                 static_cast<std::size_t>(coord.z) * static_cast<std::size_t>(_size_x) *
+                     static_cast<std::size_t>(_size_y)];
   }
 
   /**
@@ -231,7 +234,9 @@ export class MarchingCubes
    */
   inline int get_x_vert(const int i, const int j, const int k) const
   {
-    return _x_verts[static_cast<std::size_t>(i + j * _size_x + k * _size_x * _size_y)];
+    return _x_verts[static_cast<std::size_t>(i) + static_cast<std::size_t>(j) * static_cast<std::size_t>(_size_x) +
+                    static_cast<std::size_t>(k) * static_cast<std::size_t>(_size_x) *
+                        static_cast<std::size_t>(_size_y)];
   }
   /**
    * accesses the pre-computed vertex index on the lower longitudinal edge of a specific cube
@@ -241,7 +246,9 @@ export class MarchingCubes
    */
   inline int get_y_vert(const int i, const int j, const int k) const
   {
-    return _y_verts[static_cast<std::size_t>(i + j * _size_x + k * _size_x * _size_y)];
+    return _y_verts[static_cast<std::size_t>(i) + static_cast<std::size_t>(j) * static_cast<std::size_t>(_size_x) +
+                    static_cast<std::size_t>(k) * static_cast<std::size_t>(_size_x) *
+                        static_cast<std::size_t>(_size_y)];
   }
   /**
    * accesses the pre-computed vertex index on the lower vertical edge of a specific cube
@@ -251,7 +258,9 @@ export class MarchingCubes
    */
   inline int get_z_vert(const int i, const int j, const int k) const
   {
-    return _z_verts[static_cast<std::size_t>(i + j * _size_x + k * _size_x * _size_y)];
+    return _z_verts[static_cast<std::size_t>(i) + static_cast<std::size_t>(j) * static_cast<std::size_t>(_size_x) +
+                    static_cast<std::size_t>(k) * static_cast<std::size_t>(_size_x) *
+                        static_cast<std::size_t>(_size_y)];
   }
 
   /**
@@ -263,7 +272,8 @@ export class MarchingCubes
    */
   inline void set_x_vert(const int val, const int i, const int j, const int k)
   {
-    _x_verts[static_cast<std::size_t>(i + j * _size_x + k * _size_x * _size_y)] = val;
+    _x_verts[static_cast<std::size_t>(i) + static_cast<std::size_t>(j) * static_cast<std::size_t>(_size_x) +
+             static_cast<std::size_t>(k) * static_cast<std::size_t>(_size_x) * static_cast<std::size_t>(_size_y)] = val;
   }
   /**
    * sets the pre-computed vertex index on the lower longitudinal edge of a specific cube
@@ -274,7 +284,8 @@ export class MarchingCubes
    */
   inline void set_y_vert(const int val, const int i, const int j, const int k)
   {
-    _y_verts[static_cast<std::size_t>(i + j * _size_x + k * _size_x * _size_y)] = val;
+    _y_verts[static_cast<std::size_t>(i) + static_cast<std::size_t>(j) * static_cast<std::size_t>(_size_x) +
+             static_cast<std::size_t>(k) * static_cast<std::size_t>(_size_x) * static_cast<std::size_t>(_size_y)] = val;
   }
   /**
    * sets the pre-computed vertex index on the lower vertical edge of a specific cube
@@ -285,7 +296,8 @@ export class MarchingCubes
    */
   inline void set_z_vert(const int val, const int i, const int j, const int k)
   {
-    _z_verts[static_cast<std::size_t>(i + j * _size_x + k * _size_x * _size_y)] = val;
+    _z_verts[static_cast<std::size_t>(i) + static_cast<std::size_t>(j) * static_cast<std::size_t>(_size_x) +
+             static_cast<std::size_t>(k) * static_cast<std::size_t>(_size_x) * static_cast<std::size_t>(_size_y)] = val;
   }
 
   //-----------------------------------------------------------------------------
