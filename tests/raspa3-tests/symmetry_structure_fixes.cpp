@@ -47,6 +47,15 @@ TEST(SYMMETRY_STRUCTURE_FIXES, equal_seitz_matrices_hash_equally)
   const SKSeitzIntegerMatrix b(SKRotationMatrix::identity, int3(25, 26, 27));
   ASSERT_TRUE(a == b);
   EXPECT_EQ(SKSeitzIntegerMatrix::hashFunction{}(a), SKSeitzIntegerMatrix::hashFunction{}(b));
+
+  // a negative translation (a product with -1 rotation entries) is the same operation as its positive image: the
+  // signed remainder left -6 as -6 instead of 18, so these compared unequal and hashed apart
+  const SKSeitzIntegerMatrix negative(SKRotationMatrix::identity, int3(-6, -1, 23));
+  const SKSeitzIntegerMatrix positive(SKRotationMatrix::identity, int3(18, 23, -1));
+  EXPECT_TRUE(negative == positive);
+  EXPECT_EQ(SKSeitzIntegerMatrix::hashFunction{}(negative), SKSeitzIntegerMatrix::hashFunction{}(positive));
+  EXPECT_EQ(negative.normalizedTranslation(), int3(18, 23, 23));
+  EXPECT_FALSE(negative == SKSeitzIntegerMatrix(SKRotationMatrix::identity, int3(6, 1, 23)));
 }
 
 TEST(SYMMETRY_STRUCTURE_FIXES, b_centred_settings_are_b_face_centred)

@@ -23,13 +23,17 @@ export struct SKSeitzIntegerMatrix
   static std::vector<SKSeitzIntegerMatrix> SeitzMatrices(std::string encoding);
   static std::vector<SKSeitzIntegerMatrix> SeitzMatricesFromGenerators(std::string encoding);
 
-  int3 normalizedTranslation() const { return int3(translation.x % 24, translation.y % 24, translation.z % 24); }
+  // the translation in units of 1/24 wrapped into [0, 24): the signed remainder of C++ would leave a negative
+  // component negative (-6 % 24 is -6, not 18), so that the products of operations with -1 rotation entries compared
+  // unequal to, and hashed apart from, the same operation written with a positive translation
+  int3 normalizedTranslation() const
+  {
+    return int3(((translation.x % 24) + 24) % 24, ((translation.y % 24) + 24) % 24, ((translation.z % 24) + 24) % 24);
+  }
 
   bool operator==(SKSeitzIntegerMatrix const& rhs) const
   {
-    return (this->rotation == rhs.rotation) && ((this->translation.x % 24) == (rhs.translation.x % 24)) &&
-           ((this->translation.y % 24) == (rhs.translation.y % 24)) &&
-           ((this->translation.z % 24) == (rhs.translation.z % 24));
+    return (this->rotation == rhs.rotation) && (this->normalizedTranslation() == rhs.normalizedTranslation());
   }
 
   struct hashFunction
@@ -46,10 +50,11 @@ export struct SKSeitzIntegerMatrix
       hash_combine(h, k.rotation.int3x3_m.m31);
       hash_combine(h, k.rotation.int3x3_m.m32);
       hash_combine(h, k.rotation.int3x3_m.m33);
-      // the translation as operator== compares it (modulo 24), so that equal matrices hash equally
-      hash_combine(h, k.translation.x % 24);
-      hash_combine(h, k.translation.y % 24);
-      hash_combine(h, k.translation.z % 24);
+      // the translation as operator== compares it (wrapped into [0, 24)), so that equal matrices hash equally
+      const int3 translation = k.normalizedTranslation();
+      hash_combine(h, translation.x);
+      hash_combine(h, translation.y);
+      hash_combine(h, translation.z);
       return h;
     }
   };
