@@ -1,5 +1,12 @@
 module;
 
+// the LAPACK integer: 64 bits for an ILP64 build of BLAS/LAPACK, 32 bits otherwise (as in double3x3.cpp)
+#ifdef BLAS_ILP64
+typedef long long blas_int;
+#else
+typedef int blas_int;
+#endif
+
 export module matrix;
 
 import std;
@@ -9,10 +16,10 @@ import ringmatrix;
 extern "C"
 {
   // LU decomoposition of a general matrix
-  void dgetrf_(std::size_t* M, std::size_t* N, double* A, std::size_t* lda, int* IPIV, int* INFO);
+  void dgetrf_(blas_int* M, blas_int* N, double* A, blas_int* lda, blas_int* IPIV, blas_int* INFO);
 
   // generate inverse of a matrix given its LU decomposition
-  void dgetri_(std::size_t* N, double* A, std::size_t* lda, int* IPIV, double* WORK, std::size_t* lwork, int* INFO);
+  void dgetri_(blas_int* N, double* A, blas_int* lda, blas_int* IPIV, double* WORK, blas_int* lwork, blas_int* INFO);
 }
 
 export class Matrix
@@ -37,28 +44,24 @@ export class Matrix
   //     arrays.
   /// Inverts the matrix in place. Returns false when the matrix is singular (a zero pivot in the LU
   /// factorization): the contents are then not an inverse (the LU factors, or a zero for a 1 x 1 matrix)
-  /// and must not be used.
+  /// and must not be used. A matrix that is not square has no inverse either.
   [[nodiscard]] inline bool inverse()
   {
-    std::size_t N = _rows;
-    bool invertible = true;
-    if (N > 0)
+    if (_rows != _columns) return false;
+    if (_rows == 0) return true;
+
+    blas_int N = static_cast<blas_int>(_rows);
+    blas_int LWORK = N * N;
+    std::vector<blas_int> IPIV(_rows);
+    std::vector<double> WORK(_rows * _rows);
+    blas_int INFO = 0;
+
+    dgetrf_(&N, &N, _grid.data(), &N, IPIV.data(), &INFO);
+    bool invertible = (INFO == 0);
+    if (invertible)
     {
-      int* IPIV = new int[N];
-      std::size_t LWORK = N * N;
-      double* WORK = new double[LWORK];
-      int INFO = 0;
-
-      dgetrf_(&N, &N, _grid.data(), &N, IPIV, &INFO);
+      dgetri_(&N, _grid.data(), &N, IPIV.data(), WORK.data(), &LWORK, &INFO);
       invertible = (INFO == 0);
-      if (invertible)
-      {
-        dgetri_(&N, _grid.data(), &N, IPIV, WORK, &LWORK, &INFO);
-        invertible = (INFO == 0);
-      }
-
-      delete[] IPIV;
-      delete[] WORK;
     }
     return invertible;
   }

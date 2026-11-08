@@ -9,6 +9,7 @@ import float4;
 import double3x3;
 import double4x4;
 import int3x3;
+import matrix;
 import simd_quatd;
 import ringmatrix;
 import cubic;
@@ -130,4 +131,23 @@ TEST(MATHKIT_FIXES, bool3_indices_are_its_components)
   const bool3 cleared;
   EXPECT_FALSE(cleared.x || cleared.y || cleared.z);
   EXPECT_EQ(sizeof(bool3), 3uz);
+}
+
+TEST(MATHKIT_FIXES, matrix_inverse_inverts_and_refuses_singular_and_non_square_matrices)
+{
+  Matrix a(3, 3, 0.0);
+  const double values[3][3] = {{4.0, 1.0, 2.0}, {1.0, 3.0, 0.5}, {2.0, 0.5, 5.0}};
+  for (std::size_t i = 0; i < 3; ++i)
+    for (std::size_t j = 0; j < 3; ++j) a(i, j) = values[i][j];
+  Matrix inverse = a;
+  ASSERT_TRUE(inverse.inverse());
+  const Matrix product = a * inverse;
+  for (std::size_t i = 0; i < 3; ++i)
+    for (std::size_t j = 0; j < 3; ++j) EXPECT_NEAR(product(i, j), i == j ? 1.0 : 0.0, 1e-12);
+
+  Matrix singular(2, 2, 1.0);
+  EXPECT_FALSE(singular.inverse());
+
+  Matrix nonSquare(2, 3, 1.0);
+  EXPECT_FALSE(nonSquare.inverse());
 }
