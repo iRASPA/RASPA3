@@ -8,6 +8,7 @@ import double3x3;
 import skdefinitions;
 import skcell;
 import sksymmetrycell;
+import skpointsymmetryset;
 import skrotationmatrix;
 import skseitzintegermatrix;
 import skseitzmatrix;
@@ -328,4 +329,18 @@ TEST(SYMMETRY_STRUCTURE_FIXES, found_space_group_carries_its_change_of_basis_and
           << number << " " << p.x << " " << p.y << " " << p.z;
     }
   }
+}
+
+TEST(SYMMETRY_STRUCTURE_FIXES, lattice_symmetry_counts_follow_the_metric)
+{
+  // the holohedry of each lattice at a precision of 1e-2: cubic 48, tetragonal 16, orthorhombic 8, triclinic 2.
+  // A precision of 3 or more would have passed every angle test, and lengths differing by less than 3
+  const double3x3 cubic(double3(10.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 10.0));
+  const double3x3 tetragonal(double3(10.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 12.0));
+  const double3x3 orthorhombic(double3(10.0, 0.0, 0.0), double3(0.0, 11.0, 0.0), double3(0.0, 0.0, 12.0));
+  const double3x3 triclinic(double3(10.0, 0.0, 0.0), double3(1.0, 11.0, 0.0), double3(0.5, 1.5, 12.0));
+  EXPECT_EQ(SKSymmetryCell::findLatticeSymmetry(cubic, 1e-2).rotations().size(), 48uz);
+  EXPECT_EQ(SKSymmetryCell::findLatticeSymmetry(tetragonal, 1e-2).rotations().size(), 16uz);
+  EXPECT_EQ(SKSymmetryCell::findLatticeSymmetry(orthorhombic, 1e-2).rotations().size(), 8uz);
+  EXPECT_EQ(SKSymmetryCell::findLatticeSymmetry(triclinic, 1e-2).rotations().size(), 2uz);
 }

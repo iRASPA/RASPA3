@@ -493,7 +493,10 @@ std::optional<double3x3> SKSymmetryCell::computeDelaunayReducedCell2D(double3x3 
 }
 
 // Determining the lattice symmetry is equivalent to determining the Bravais type.
-SKPointSymmetrySet SKSymmetryCell::findLatticeSymmetry(double3x3 reducedLattice, double symmetryPrecision = 3.0)
+// Note: no default precision here. The definition carried '= 3.0', which no caller could see (the declaration has
+// none), and which would have made checkMetricSimilarity's angle test, sin(|angle difference|) > precision, impossible
+// to fail.
+SKPointSymmetrySet SKSymmetryCell::findLatticeSymmetry(double3x3 reducedLattice, double symmetryPrecision)
 {
   const std::vector<int3> latticeAxes = {
       int3(1, 0, 0),   int3(0, 1, 0),    int3(0, 0, 1),  int3(-1, 0, 0),  int3(0, -1, 0),  int3(0, 0, -1),
@@ -535,21 +538,9 @@ SKPointSymmetrySet SKSymmetryCell::findLatticeSymmetry(double3x3 reducedLattice,
     }
   }
 
-  double3x3 transform = (reducedLattice.inverse() * reducedLattice);
-  std::vector<SKRotationMatrix> newpointSymmetries{};
-  for (const SKRotationMatrix& pointSymmetry : pointSymmetries)
-  {
-    double3x3 temp = transform.inverse() * double3x3(pointSymmetry.int3x3_m) * transform;
-    SKRotationMatrix mat = SKRotationMatrix(temp.toInt3x3());
-
-    // avoid duplicate rotation matrices
-    if (!(std::find(newpointSymmetries.begin(), newpointSymmetries.end(), mat) != newpointSymmetries.end()))
-    {
-      newpointSymmetries.push_back(mat);
-    }
-  }
-
-  return SKPointSymmetrySet(newpointSymmetries);
+  // distinct axis triples are distinct matrices; the former conjugation by lattice^-1 * lattice was the identity
+  // up to inversion noise, rounded back to the same integers
+  return SKPointSymmetrySet(pointSymmetries);
 }
 
 bool SKSymmetryCell::checkMetricSimilarity(double3x3 transformedMetricTensor, double3x3 metricTensor,
