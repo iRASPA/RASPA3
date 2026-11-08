@@ -5,6 +5,7 @@ add_executable(unit_tests_mathkit
   float4x4.cpp
   free_operators.cpp
   int3.cpp
+  polint.cpp
   symmetric_eigensolver.cpp
   symmetric_matrix_layout.cpp
   random.cpp
