@@ -97,6 +97,8 @@ bool SKSpaceGroup::matchSpacegroup(std::string spaceSearchGroupString, std::stri
 std::optional<std::size_t> SKSpaceGroup::HallNumber(std::string string)
 {
   std::string spaceSearchGroupString = toLower(simplified(string));
+  std::string spaceStrippedSearchString = spaceSearchGroupString;
+  std::erase(spaceStrippedSearchString, ' ');
 
   for (std::size_t i = 0; i <= 530; i++)
   {
@@ -107,9 +109,10 @@ std::optional<std::size_t> SKSpaceGroup::HallNumber(std::string string)
       return i;
     }
 
-    storedSpaceGroupString =
-        toLower(simplified(SKSpaceGroupDataBase::spaceGroupData[i].HallString()));  // .remove(' ');
-    if (SKSpaceGroup::matchSpacegroup(spaceSearchGroupString, storedSpaceGroupString))
+    // the symbol with its spaces removed, as "P21/c" is written ("remove(' ')" of the QString original was lost
+    // in the move to std::string, which left this a repeat of the comparison above)
+    std::erase(storedSpaceGroupString, ' ');
+    if (SKSpaceGroup::matchSpacegroup(spaceStrippedSearchString, storedSpaceGroupString))
     {
       return i;
     }
@@ -121,6 +124,8 @@ std::optional<std::size_t> SKSpaceGroup::HallNumber(std::string string)
 std::optional<std::size_t> SKSpaceGroup::HallNumberFromHMString(std::string string)
 {
   std::string spaceSearchGroupString = toLower(simplified(string));
+  std::string spaceStrippedSearchString = spaceSearchGroupString;
+  std::erase(spaceStrippedSearchString, ' ');
 
   for (std::size_t i = 0; i <= 530; i++)
   {
@@ -140,8 +145,10 @@ std::optional<std::size_t> SKSpaceGroup::HallNumberFromHMString(std::string stri
       }
     }
 
-    storedSpaceGroupString = toLower(simplified(SKSpaceGroupDataBase::spaceGroupData[i].HMString()));  //.remove(' ');
-    if (SKSpaceGroup::matchSpacegroup(spaceSearchGroupString, storedSpaceGroupString))
+    // the symbol with its spaces removed, as "Fm-3m" is written (see HallNumber)
+    storedSpaceGroupString = toLower(simplified(SKSpaceGroupDataBase::spaceGroupData[i].HMString()));
+    std::erase(storedSpaceGroupString, ' ');
+    if (SKSpaceGroup::matchSpacegroup(spaceStrippedSearchString, storedSpaceGroupString))
     {
       return i;
     }

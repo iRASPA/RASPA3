@@ -637,3 +637,25 @@ TEST(SYMMETRY_STRUCTURE_FIXES, default_constructed_symmetry_objects_have_defined
   SKAtomCopy atomCopy;
   EXPECT_EQ(atomCopy.asymmetricIndex(), -1);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, space_group_symbols_match_with_their_spaces_removed)
+{
+  // the comparison against the stored symbol without its spaces was lost, so a symbol written like "P121/c1" or
+  // "Fm-3m" found nothing; several settings share a Hermann-Mauguin symbol, so the two spellings are compared with
+  // each other rather than with a fixed Hall number
+  for (const std::size_t hallNumber : {9uz, 81uz, 526uz})
+  {
+    const SKSpaceGroupSetting& setting = SKSpaceGroupDataBase::spaceGroupData[hallNumber];
+    for (const auto& [symbol, lookup] : {std::pair{setting.HMString(), &SKSpaceGroup::HallNumberFromHMString},
+                                         std::pair{setting.HallString(), &SKSpaceGroup::HallNumber}})
+    {
+      std::string stripped = symbol;
+      std::erase(stripped, ' ');
+      ASSERT_NE(stripped, symbol) << symbol;
+      const std::optional<std::size_t> found = lookup(symbol);
+      ASSERT_TRUE(found.has_value()) << symbol;
+      EXPECT_EQ(lookup(stripped), found) << stripped;
+    }
+  }
+  EXPECT_FALSE(SKSpaceGroup::HallNumberFromHMString("not a symbol").has_value());
+}
