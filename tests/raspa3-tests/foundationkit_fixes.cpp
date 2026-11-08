@@ -182,3 +182,52 @@ TEST(FOUNDATIONKIT_FIXES, thread_pool_completes_tasks_queued_faster_than_its_wor
   EXPECT_EQ(pool.getThreadingType(), ThreadPool::ThreadingType::ThreadPool);
   EXPECT_EQ(pool.getThreadCount(), 2uz);
 }
+
+TEST(FOUNDATIONKIT_FIXES, archive_chains_optional_and_variant_and_rejects_a_bad_variant_index)
+{
+  TemporaryDirectory workspace;
+  const std::filesystem::path file = workspace.path() / "chain.bin";
+  {
+    // the optional and variant insertions returned a const archive, which ended the chain
+    std::ofstream stream(file, std::ios::binary);
+    Archive<std::ofstream> archive(stream);
+    archive << std::optional<int>{3} << std::variant<int, double>{2.5} << std::optional<int>{} << 7;
+    archive << std::size_t{2};  // not a valid variant index
+  }
+  std::ifstream stream(file, std::ios::binary);
+  Archive<std::ifstream> archive(stream);
+  std::optional<int> first, third;
+  std::variant<int, double> second;
+  int fourth = 0;
+  archive >> first >> second >> third >> fourth;
+  EXPECT_EQ(first, std::optional<int>{3});
+  EXPECT_EQ(second, (std::variant<int, double>{2.5}));
+  EXPECT_FALSE(third.has_value());
+  EXPECT_EQ(fourth, 7);
+  std::variant<int, double> bad{1};
+  EXPECT_THROW(archive >> bad, std::runtime_error);
+}
+
+TEST(FOUNDATIONKIT_FIXES, a_restart_file_shorter_than_its_header_is_reported_as_truncated)
+{
+  TemporaryDirectory workspace;
+  const std::filesystem::path file = workspace.path() / "restart_data.bin";
+  {
+    std::ofstream stream(file, std::ios::binary);
+    const std::uint32_t marker = 0x01020304;
+    stream.write(reinterpret_cast<const char*>(&marker), sizeof(marker));
+    stream.write("abcdef", 6);  // 10 bytes: past the marker but short of the 20-byte header
+  }
+  int object = 0;
+  try
+  {
+    readBinaryRestartFile(object, file.string());
+    FAIL() << "a 10-byte restart file was accepted";
+  }
+  catch (const std::runtime_error& error)
+  {
+    const std::string message = error.what();
+    EXPECT_NE(message.find(file.string()), std::string::npos) << message;
+    EXPECT_NE(message.find("truncated"), std::string::npos) << message;
+  }
+}

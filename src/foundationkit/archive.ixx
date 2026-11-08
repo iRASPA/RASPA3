@@ -133,7 +133,7 @@ class Archive
   }
 
   template <class T>
-  const Archive& operator<<(const std::optional<T>& v)
+  Archive& operator<<(const std::optional<T>& v)
   {
     bool has_value = v.has_value();
     *this << has_value;
@@ -161,11 +161,13 @@ class Archive
       *this >> value;
       v = std::move(value);
     }
+    // any other index is not a variant written by operator<<: the stream is out of step with the data
+    if (index > 1) throw std::runtime_error("malformed data");
     return *this;
   }
 
   template <class T1, class T2>
-  const Archive& operator<<(const std::variant<T1, T2>& v)
+  Archive& operator<<(const std::variant<T1, T2>& v)
   {
     std::size_t index = v.index();
     *this << index;
@@ -566,6 +568,16 @@ void readValidatedBinaryRestartFile(T& object, const std::string& fileName)
     throw std::runtime_error(std::format("Binary restart file '{}' doesn't exist\n", fileName));
   }
 
+  // a file shorter than the header cannot hold the sizes read below (and the payload size would underflow)
+  const std::uint64_t fileSize = static_cast<std::uint64_t>(std::filesystem::file_size(fileName));
+  if (fileSize < restartFileHeaderSize)
+  {
+    throw std::runtime_error(
+        std::format("Binary restart file '{}' is truncated ({} bytes, shorter than the "
+                    "{}-byte header)\n",
+                    fileName, fileSize, restartFileHeaderSize));
+  }
+
   Archive<std::ifstream> archive(ifile);
   std::uint32_t byteOrderMarker;
   archive >> byteOrderMarker;
@@ -581,8 +593,7 @@ void readValidatedBinaryRestartFile(T& object, const std::string& fileName)
   archive >> storedPayloadSize;
   archive >> storedChecksum;
 
-  const std::uint64_t actualPayloadSize =
-      static_cast<std::uint64_t>(std::filesystem::file_size(fileName)) - restartFileHeaderSize;
+  const std::uint64_t actualPayloadSize = fileSize - restartFileHeaderSize;
   if (actualPayloadSize != storedPayloadSize)
   {
     throw std::runtime_error(std::format("Binary restart file '{}' is truncated or padded ({} payload "
