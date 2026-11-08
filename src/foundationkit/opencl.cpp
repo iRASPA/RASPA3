@@ -181,7 +181,7 @@ std::string OpenCL::printBestOpenCLDevice()
     if (err == CL_SUCCESS) stream << "CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS:" << workitem_dims << "\n";
 
     // CL_DEVICE_MAX_WORK_ITEM_SIZES
-    size_t workitem_size[3];
+    size_t workitem_size[3] = {0, 0, 0};
     err =
         clGetDeviceInfo(clDeviceId.value(), CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(workitem_size), &workitem_size, NULL);
     if (err == CL_SUCCESS)
@@ -264,9 +264,10 @@ std::string OpenCL::printBestOpenCLDevice()
 
     // CL_DEVICE_IMAGE2D_MAX_WIDTH, CL_DEVICE_IMAGE2D_MAX_HEIGHT, CL_DEVICE_IMAGE3D_MAX_WIDTH,
     // CL_DEVICE_IMAGE3D_MAX_HEIGHT, CL_DEVICE_IMAGE3D_MAX_DEPTH
-    size_t szMaxDims[5];
-    if (err == CL_SUCCESS) stream << "CL_DEVICE_IMAGE <dim>\n";
+    size_t szMaxDims[5] = {0, 0, 0, 0, 0};
+    // the heading follows the first image-dimension query, not the leftover result of the write-image-args query
     err = clGetDeviceInfo(clDeviceId.value(), CL_DEVICE_IMAGE2D_MAX_WIDTH, sizeof(size_t), &szMaxDims[0], NULL);
+    if (err == CL_SUCCESS) stream << "CL_DEVICE_IMAGE <dim>\n";
     if (err == CL_SUCCESS) stream << std::format("2D_MAX_WIDTH {}\n", szMaxDims[0]);
     err = clGetDeviceInfo(clDeviceId.value(), CL_DEVICE_IMAGE2D_MAX_HEIGHT, sizeof(size_t), &szMaxDims[1], NULL);
     if (err == CL_SUCCESS) stream << std::format("2D_MAX_HEIGHT {}\n", szMaxDims[1]);
@@ -313,11 +314,11 @@ std::optional<cl_device_id> OpenCL::bestOpenCLDevice(cl_device_type device_type)
 {
   cl_int err;
 
-  // get the number of platforms
-  cl_uint platformCount;
+  // get the number of platforms; without an OpenCL runtime the call fails (CL_PLATFORM_NOT_FOUND_KHR) and leaves
+  // the count untouched, so it starts at zero and the error is checked
+  cl_uint platformCount = 0;
   err = clGetPlatformIDs(0, nullptr, &platformCount);
-
-  if (platformCount <= 0)
+  if (err != CL_SUCCESS || platformCount == 0)
   {
     return std::nullopt;
   }
@@ -336,10 +337,10 @@ std::optional<cl_device_id> OpenCL::bestOpenCLDevice(cl_device_type device_type)
   // loop over all platforms and devices of type 'device_type'
   for (cl_uint i = 0; i < platformCount; ++i)
   {
-    // get the number of devices of type 'device_type' in the platform
-    cl_uint deviceCount;
+    // get the number of devices of type 'device_type' in the platform (CL_DEVICE_NOT_FOUND leaves it untouched)
+    cl_uint deviceCount = 0;
     err = clGetDeviceIDs(platforms[i], device_type, 0, nullptr, &deviceCount);
-    if (err != CL_SUCCESS)
+    if (err != CL_SUCCESS || deviceCount == 0)
     {
       continue;
     }

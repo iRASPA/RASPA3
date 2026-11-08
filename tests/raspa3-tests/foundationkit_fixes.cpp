@@ -1,5 +1,13 @@
 #include <H5Cpp.h>
 #include <gtest/gtest.h>
+#define CL_TARGET_OPENCL_VERSION 120
+#ifdef __APPLE__
+#include <OpenCL/cl.h>
+#elif _WIN32
+#include <CL/cl.h>
+#else
+#include <CL/opencl.h>
+#endif
 
 #include "../test_support.hpp"
 
@@ -13,6 +21,7 @@ import scanner;
 import stringutils;
 import threadpool;
 import hdf5;
+import opencl;
 import units;
 import json;
 
@@ -269,4 +278,16 @@ TEST(FOUNDATIONKIT_FIXES, hdf5_writer_refuses_short_buffers_and_writes_bools_as_
   std::vector<int> m(4);
   reader.openDataSet("/g/m").read(m.data(), H5::PredType::NATIVE_INT);
   EXPECT_EQ(m, (std::vector<int>{0, 0, 5, 0}));
+}
+
+TEST(FOUNDATIONKIT_FIXES, opencl_device_queries_tolerate_absent_devices)
+{
+  // the counts start at zero and the errors are checked, so a device type that no platform offers (or no
+  // platform at all) yields no device instead of sizing a vector from an uninitialized count
+  EXPECT_FALSE(OpenCL::bestOpenCLDevice(CL_DEVICE_TYPE_ACCELERATOR).has_value());
+
+  // the status report prints zero-initialized work-item and image sizes when a query is not answered
+  OpenCL::initialize();
+  const std::string status = OpenCL::printBestOpenCLDevice();
+  EXPECT_FALSE(status.empty());
 }
