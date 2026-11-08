@@ -32,7 +32,7 @@ import archive;
 double dlambda_limit = 1.0E-3;
 double iszero_limit = 1.0E-20;
 
-double3x3::double3x3(simd_quatd q)
+double3x3::double3x3(simd_quatd q) : m{}
 {
   double sqw = q.r * q.r;
   double sqx = q.ix * q.ix;
@@ -60,7 +60,7 @@ double3x3::double3x3(simd_quatd q)
   m23 = 2.0 * (tmp1 - tmp2) * invs;
 }
 
-double3x3::double3x3(const int3x3& m)
+double3x3::double3x3(const int3x3& m) : m{}
 {
   m11 = m.m11;
   m21 = m.m21;
@@ -79,7 +79,7 @@ double double3x3::determinant(void) const
   return determinant;
 }
 
-double3x3::double3x3(double lattice[3][3])
+double3x3::double3x3(double lattice[3][3]) : m{}
 {
   m11 = lattice[0][0];
   m21 = lattice[1][0];

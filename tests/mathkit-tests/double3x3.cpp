@@ -7,6 +7,7 @@ import double4;
 import double3x3;
 import double4x4;
 import simd_quatd;
+import int3x3;
 import randomnumbers;
 
 TEST(double3x3, Test_multiplication)
@@ -89,6 +90,36 @@ TEST(double3x3, Test_quaternion_is_the_inverse_of_the_quaternion_constructor)
     EXPECT_NEAR(w.x, u.x, 1e-10);
     EXPECT_NEAR(w.y, u.y, 1e-10);
     EXPECT_NEAR(w.z, u.z, 1e-10);
+  }
+}
+
+TEST(double3x3, Test_constructors_zero_the_fourth_row_and_column)
+{
+  // construct over garbage, so that entries a constructor leaves unset do not happen to be zero
+  alignas(double3x3) std::array<unsigned char, sizeof(double3x3)> buffer;
+  double lattice[3][3] = {{1.0, 2.0, 3.0}, {4.0, 5.0, 6.0}, {7.0, 8.0, 9.0}};
+
+  for (std::size_t k = 0; k < 3; ++k)
+  {
+    buffer.fill(0x7f);
+    double3x3* matrix = nullptr;
+    switch (k)
+    {
+      case 0:
+        matrix = new (buffer.data()) double3x3(simd_quatd(0.1, 0.2, 0.3, 0.9));
+        break;
+      case 1:
+        matrix = new (buffer.data()) double3x3(int3x3(2));
+        break;
+      default:
+        matrix = new (buffer.data()) double3x3(lattice);
+        break;
+    }
+
+    for (double padding : {matrix->m41, matrix->m42, matrix->m43, matrix->m14, matrix->m24, matrix->m34, matrix->m44})
+    {
+      EXPECT_EQ(padding, 0.0) << k;
+    }
   }
 }
 
