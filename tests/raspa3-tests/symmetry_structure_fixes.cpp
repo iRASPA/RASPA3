@@ -245,3 +245,14 @@ TEST(SYMMETRY_STRUCTURE_FIXES, seitz_matrices_of_a_centrosymmetric_setting_are_n
     }
   }
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, lattice_translation_and_inversion_centre_strings_are_in_twenty_fourths)
+{
+  // the stored components are in units of 1/24; dividing by 12 printed (1/2, 1/2, 0) as (1/1, 1/1, 0)
+  EXPECT_EQ(SKSpaceGroup::latticeTranslationStrings(526),
+            (std::vector<std::string>{"(0,0,0)", "(0,1/2,1/2)", "(1/2,0,1/2)", "(1/2,1/2,0)"}));
+  EXPECT_EQ(SKSpaceGroup::latticeTranslationStrings(436),
+            (std::vector<std::string>{"(0,0,0)", "(2/3,1/3,1/3)", "(1/3,2/3,2/3)", ""}));
+  EXPECT_EQ(SKSpaceGroup::inversionCenterString(525), "(1/8,1/8,1/8)");
+  EXPECT_EQ(SKSpaceGroup::inversionCenterString(526), "(0,0,0)");
+}

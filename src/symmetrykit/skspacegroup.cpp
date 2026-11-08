@@ -445,18 +445,19 @@ std::vector<std::string> SKSpaceGroup::latticeTranslationStrings(std::size_t Hal
   std::vector<std::string> latticeStrings{"", "", "", ""};
 
   SKSpaceGroupSetting setting = SKSpaceGroupDataBase::spaceGroupData[HallNumber];
+  // the translations and the inversion centre are stored in units of 1/24 of the cell
   std::vector<int3> latticeVectors = setting.latticeTranslations();
 
   std::size_t index = 0;
   for (int3 latticeVector : latticeVectors)
   {
-    int3 gcd = int3::greatestCommonDivisor(latticeVector, 12);
+    int3 gcd = int3::greatestCommonDivisor(latticeVector, 24);
     std::string latticeStringX =
-        latticeVector.x == 0 ? "0" : std::to_string(latticeVector.x / gcd.x) + "/" + std::to_string(12 / gcd.x);
+        latticeVector.x == 0 ? "0" : std::to_string(latticeVector.x / gcd.x) + "/" + std::to_string(24 / gcd.x);
     std::string latticeStringY =
-        latticeVector.y == 0 ? "0" : std::to_string(latticeVector.y / gcd.y) + "/" + std::to_string(12 / gcd.y);
+        latticeVector.y == 0 ? "0" : std::to_string(latticeVector.y / gcd.y) + "/" + std::to_string(24 / gcd.y);
     std::string latticeStringZ =
-        latticeVector.z == 0 ? "0" : std::to_string(latticeVector.z / gcd.z) + "/" + std::to_string(12 / gcd.z);
+        latticeVector.z == 0 ? "0" : std::to_string(latticeVector.z / gcd.z) + "/" + std::to_string(24 / gcd.z);
     latticeStrings[index] = "(" + latticeStringX + "," + latticeStringY + "," + latticeStringZ + ")";
     index++;
   }
@@ -468,13 +469,13 @@ std::string SKSpaceGroup::inversionCenterString(std::size_t HallNumber)
 {
   SKSpaceGroupSetting setting = SKSpaceGroupDataBase::spaceGroupData[HallNumber];
   int3 inversionCenter = setting.inversionCenter();
-  int3 gcd = int3::greatestCommonDivisor(inversionCenter, 12);
+  int3 gcd = int3::greatestCommonDivisor(inversionCenter, 24);
   std::string latticeStringX =
-      inversionCenter.x == 0 ? "0" : std::to_string(inversionCenter.x / gcd.x) + "/" + std::to_string(12 / gcd.x);
+      inversionCenter.x == 0 ? "0" : std::to_string(inversionCenter.x / gcd.x) + "/" + std::to_string(24 / gcd.x);
   std::string latticeStringY =
-      inversionCenter.y == 0 ? "0" : std::to_string(inversionCenter.y / gcd.y) + "/" + std::to_string(12 / gcd.y);
+      inversionCenter.y == 0 ? "0" : std::to_string(inversionCenter.y / gcd.y) + "/" + std::to_string(24 / gcd.y);
   std::string latticeStringZ =
-      inversionCenter.z == 0 ? "0" : std::to_string(inversionCenter.z / gcd.z) + "/" + std::to_string(12 / gcd.z);
+      inversionCenter.z == 0 ? "0" : std::to_string(inversionCenter.z / gcd.z) + "/" + std::to_string(24 / gcd.z);
   return "(" + latticeStringX + "," + latticeStringY + "," + latticeStringZ + ")";
 }
 
