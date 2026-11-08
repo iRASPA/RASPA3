@@ -50,7 +50,8 @@ int cubic(double A[4], double X[3], int* L)
     P = std::pow((A[1] / A[3] * THIRD - std::pow(W, 2)), 3);
     Q = -.5 * (2.0 * std::pow(W, 3) - (A[1] * W - A[0]) / A[3]);
     DIS = std::pow(Q, 2) + P;
-    if (DIS < 0.0)
+    // DIS == 0 with P < 0: a double root, which the trigonometric form gives as two equal solutions
+    if (DIS < 0.0 || (DIS == 0.0 && P < 0.0))
     {
       // three real solutions!
       // Confine the argument of ACOS to the interval [-1;1]!
@@ -105,8 +106,10 @@ int cubic(double A[4], double X[3], int* L)
    */
   for (i = 0; i < *L; i++)
   {
-    X[i] =
-        X[i] - (A[0] + X[i] * (A[1] + X[i] * (A[2] + X[i] * A[3]))) / (A[1] + X[i] * (2.0 * A[2] + X[i] * 3.0 * A[3]));
+    // at a multiple root the derivative vanishes: no correction there
+    const double derivative = A[1] + X[i] * (2.0 * A[2] + X[i] * 3.0 * A[3]);
+    if (derivative == 0.0) continue;
+    X[i] = X[i] - (A[0] + X[i] * (A[1] + X[i] * (A[2] + X[i] * A[3]))) / derivative;
     //  printf("\n X inside cubic %.15e\n", X[i]);
   }
 

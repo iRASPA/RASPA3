@@ -7,7 +7,7 @@ import std;
 export struct layout_symmetric_matrix
 {
   template <class Extents>
-    requires(Extents::rank() = 2)
+    requires(Extents::rank() == 2)
 
   struct mapping
   {

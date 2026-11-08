@@ -20,7 +20,7 @@ export struct layout_entity_hessian
 
     constexpr mapping() noexcept = default;
 
-    constexpr mapping(const extents_type &extents) noexcept : nDofs(extents.extent(0))
+    constexpr mapping(const extents_type& extents) noexcept : nDofs(extents.extent(0)), _extents(extents)
     {
       if constexpr (extents_type::rank_dynamic() == 0)
       {

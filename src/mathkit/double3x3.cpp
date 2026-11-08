@@ -236,14 +236,17 @@ void double3x3::EigenSystemSymmetric(double3& eigenvalues, double3x3& eigenvecto
 
   dsyev_(&decompositionJobV, &upload, &M, matrix.data(), &N, e.data(), work.data(), &lwork, &error);
 
-  eigenvalues = double3(e[2], e[1], e[0]);
+  // the eigenvalues in ascending order, each with the eigenvector in the same column; swapping two columns turns an
+  // improper orthogonal matrix into a rotation, and the eigenvalues are swapped with them
   double3 v1, v2, v3;
   v1 = double3(matrix[0], matrix[1], matrix[2]);
   v2 = double3(matrix[3], matrix[4], matrix[5]);
   v3 = double3(matrix[6], matrix[7], matrix[8]);
+  eigenvalues = double3(e[0], e[1], e[2]);
   eigenvectors = double3x3(v1, v2, v3);
   if (eigenvectors.determinant() < 0)
   {
+    eigenvalues = double3(e[0], e[2], e[1]);
     eigenvectors = double3x3(v1, v3, v2);
   }
 }

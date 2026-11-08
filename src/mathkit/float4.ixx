@@ -47,7 +47,7 @@ export union float4
   float4& operator-=(const float4& b)
   {
     this->x -= b.x, this->y -= b.y, this->z -= b.z;
-    this->w += b.w;
+    this->w -= b.w;
     return *this;
   }
 };

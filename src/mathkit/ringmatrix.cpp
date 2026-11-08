@@ -243,10 +243,15 @@ std::tuple<RingMatrix, RingMatrix, std::vector<std::size_t>> RingMatrix::Hermite
   // Extract the necessary matrices
   RingMatrix TT = RingMatrix(_rows, _rows, 0);
 
+  // The rows of the padded matrix are the top border (0), the r - 1 pivot rows of A (1 .. r-1), the bottom border
+  // pivot (r), and the remaining rows of A (r+1 .. rows+1): TT holds the rows of A, without the border pivot.
   if (r > 1)
   {
-    TT.assignSubmatrix(0, 0, T.submatrix(1, 1, r - 2, _rows));
-    TT.assignSubmatrix(r - 2, 0, T.submatrix(r - 1, 1, _rows - r + 2, _rows));
+    TT.assignSubmatrix(0, 0, T.submatrix(1, 1, r - 1, _rows));
+  }
+  if (_rows + 1 > r)
+  {
+    TT.assignSubmatrix(r - 1, 0, T.submatrix(r + 1, 1, _rows + 1 - r, _rows));
   }
   RingMatrix AA = Apad.submatrix(1, 1, _rows, _columns);
 
@@ -637,8 +642,7 @@ std::tuple<RingMatrix, RingMatrix, RingMatrix> RingMatrix::SmithNormalForm()
       Smith_Theorem5(AA, UU, VV, i);
     }
 
-    // Insert AA
-    AA = AA.transposed();
+    // Insert AA (transposed back)
     A.assignSubmatrix(beg, beg, AA.transposed());
 
     // Insert transformations

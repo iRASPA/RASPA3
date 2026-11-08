@@ -9,7 +9,7 @@ import int3;
 
 int3x3::int3x3() {}
 
-int3x3::int3x3(int value)
+int3x3::int3x3(int value) : m{}
 {
   m11 = value;
   m22 = value;

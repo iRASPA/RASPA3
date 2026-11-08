@@ -68,6 +68,7 @@ add_executable(unit_tests_raspa3
   tmmc_property_output.cpp
   property_output_fixes.cpp
   foundationkit_fixes.cpp
+  mathkit_fixes.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

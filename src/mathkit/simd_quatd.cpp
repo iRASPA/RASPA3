@@ -90,7 +90,7 @@ double3 simd_quatd::EulerAngles()
   }
 
   // return heading, attitude, bank
-  return double3(std::atan2(2.0 * iy * r - 2.0 * ix * iz, sqx - sqy - sqz + sqw), std::sin(2.0 * test / unit),
+  return double3(std::atan2(2.0 * iy * r - 2.0 * ix * iz, sqx - sqy - sqz + sqw), std::asin(2.0 * test / unit),
                  std::atan2(2.0 * ix * r - 2.0 * iy * iz, -sqx + sqy - sqz + sqw));
 }
 
