@@ -47,6 +47,14 @@ MarchingCubes::MarchingCubes(const int size_x /*= -1*/, const int size_y /*= -1*
 void MarchingCubes::run(real iso)
 //-----------------------------------------------------------------------------
 {
+  // start from an empty mesh and edge caches, so that a second run does not append to the first
+  _vertices.clear();
+  _gradients.clear();
+  _triangles.clear();
+  std::fill(_x_verts.begin(), _x_verts.end(), -1);
+  std::fill(_y_verts.begin(), _y_verts.end(), -1);
+  std::fill(_z_verts.begin(), _z_verts.end(), -1);
+
   compute_intersection_points(iso);
 
   for (_k = 0; _k < _size_z - 1; _k++)
