@@ -55,7 +55,9 @@ TEST(FindSmallestPrimitiveCell, Triclinic)
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5);
     }
     else
     {
@@ -212,7 +214,9 @@ TEST(FindSmallestPrimitiveCell, Monoclinic)
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5);
     }
     else
     {
@@ -745,7 +749,9 @@ TEST(FindSmallestPrimitiveCell, Orthogonal)
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5);
     }
     else
     {
@@ -1370,7 +1376,9 @@ TEST(FindSmallestPrimitiveCell, Tetragonal)
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5);
     }
     else
     {
@@ -1619,7 +1627,9 @@ TEST(FindSmallestPrimitiveCell, Trigonal)
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5);
     }
     else
     {
@@ -1860,7 +1870,9 @@ TEST(FindSmallestPrimitiveCell, Hexagonal)
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5);
     }
     else
     {
@@ -2035,7 +2047,9 @@ symmetryPrecision);
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue) << fileName;
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5) << fileName;
     }
     else
     {
@@ -3340,7 +3354,9 @@ TEST(FindSmallestPrimitiveCell, Virtual)
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5);
     }
     else
     {

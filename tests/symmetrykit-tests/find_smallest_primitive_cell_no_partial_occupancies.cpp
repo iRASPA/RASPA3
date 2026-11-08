@@ -68,7 +68,9 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Triclinic)
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5);
     }
     else
     {
@@ -238,7 +240,9 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Monoclinic)
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5);
     }
     else
     {
@@ -784,7 +788,9 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Orthorhombic)
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5);
     }
     else
     {
@@ -1422,7 +1428,9 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Tetragonal)
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5);
     }
     else
     {
@@ -1684,7 +1692,9 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Trigonal)
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5);
     }
     else
     {
@@ -1938,7 +1948,9 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Hexagonal)
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5);
     }
     else
     {
@@ -2208,7 +2220,9 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Cubic)
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5);
     }
     else
     {
@@ -2978,7 +2992,9 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Virtual)
 
     if (DelaunayCell)
     {
-      EXPECT_EQ(*DelaunayCell, unitCellTargetValue);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j)
+          EXPECT_NEAR((*DelaunayCell)[i][j], unitCellTargetValue[i][j], 1e-5);
     }
     else
     {

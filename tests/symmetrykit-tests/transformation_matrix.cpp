@@ -49,7 +49,8 @@ TEST(TransformationMatrix, Triclinic)
 
       double3x3 originalUnitCell = rotationMatrix * cell.unitCell() * transformationMatrix;
 
-      EXPECT_EQ(originalUnitCell, unitCell);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j) EXPECT_NEAR(originalUnitCell[i][j], unitCell[i][j], 1e-5);
     }
     else
     {
@@ -110,7 +111,8 @@ TEST(TransformationMatrix, Monoclinic)
 
       double3x3 originalUnitCell = rotationMatrix * cell.unitCell() * transformationMatrix;
 
-      EXPECT_EQ(originalUnitCell, unitCell);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j) EXPECT_NEAR(originalUnitCell[i][j], unitCell[i][j], 1e-5);
     }
     else
     {
@@ -218,7 +220,8 @@ TEST(TransformationMatrix, Orthorhombic)
 
       double3x3 originalUnitCell = rotationMatrix * cell.unitCell() * transformationMatrix;
 
-      EXPECT_EQ(originalUnitCell, unitCell);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j) EXPECT_NEAR(originalUnitCell[i][j], unitCell[i][j], 1e-5);
     }
     else
     {
@@ -338,7 +341,8 @@ TEST(TransformationMatrix, Tetragonal)
 
       double3x3 originalUnitCell = rotationMatrix * cell.unitCell() * transformationMatrix;
 
-      EXPECT_EQ(originalUnitCell, unitCell);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j) EXPECT_NEAR(originalUnitCell[i][j], unitCell[i][j], 1e-5);
     }
     else
     {
@@ -411,7 +415,8 @@ TEST(TransformationMatrix, Trigonal)
 
       double3x3 originalUnitCell = rotationMatrix * cell.unitCell() * transformationMatrix;
 
-      EXPECT_EQ(originalUnitCell, unitCell);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j) EXPECT_NEAR(originalUnitCell[i][j], unitCell[i][j], 1e-5);
     }
     else
     {
@@ -483,7 +488,8 @@ TEST(TransformationMatrix, Hexagonal)
 
       double3x3 originalUnitCell = rotationMatrix * cell.unitCell() * transformationMatrix;
 
-      EXPECT_EQ(originalUnitCell, unitCell);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j) EXPECT_NEAR(originalUnitCell[i][j], unitCell[i][j], 1e-5);
     }
     else
     {
@@ -551,7 +557,8 @@ TEST(TransformationMatrix, Cubic)
 
       double3x3 originalUnitCell = rotationMatrix * cell.unitCell() * transformationMatrix;
 
-      EXPECT_EQ(originalUnitCell, unitCell);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j) EXPECT_NEAR(originalUnitCell[i][j], unitCell[i][j], 1e-5);
     }
     else
     {
@@ -912,7 +919,8 @@ TEST(TransformationMatrix, Virtual)
 
       double3x3 originalUnitCell = rotationMatrix * cell.unitCell() * transformationMatrix;
 
-      EXPECT_EQ(originalUnitCell, unitCell);
+      for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t j = 0; j < 3; ++j) EXPECT_NEAR(originalUnitCell[i][j], unitCell[i][j], 1e-5);
     }
     else
     {

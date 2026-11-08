@@ -26,6 +26,23 @@ TEST(double3x3, Test_multiplication)
   EXPECT_NEAR(identity.cz, 1.0, 1e-10) << "wrong cz";
 }
 
+TEST(double3x3, Test_equality_is_exact)
+{
+  double3x3 m{double3{25.0, 0.0, 0.0}, double3{0.0, 25.0, 0.0}, double3{0.0, 0.0, 25.0}};
+  const double3x3 c = m;
+  double3x3 n = m;
+  n.by += 1e-7;
+  const double3x3 d = n;
+
+  // const and non-const operands compare the same way, and a difference below 1e-5 is not equal
+  EXPECT_TRUE(m == c);
+  EXPECT_TRUE(c == m);
+  EXPECT_FALSE(m == n);
+  EXPECT_FALSE(c == d);
+  EXPECT_FALSE(c == n);
+  EXPECT_TRUE(c != n);
+}
+
 TEST(double3x3, Test_inverse)
 {
   double3x3 m{double3{25.0, 2.5e-6, 0.0}, double3{0.0, 25.0, 0.0}, double3{0.0, 0.0, 25.0}};
