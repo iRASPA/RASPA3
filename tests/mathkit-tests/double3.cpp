@@ -106,3 +106,18 @@ TEST(float3, Test_fract_stays_below_one)
   }
   EXPECT_EQ(float3(-1e-9f, 0.0f, 0.0f).fract().x, 0.0f);
 }
+
+TEST(double3, Test_normalized_returns_a_copy)
+{
+  double3 v(3.0, 0.0, 4.0);
+  double3 n = v.normalized();
+
+  EXPECT_EQ(v.x, 3.0);
+  EXPECT_EQ(v.z, 4.0);
+  EXPECT_NEAR(n.x, 0.6, 1e-15);
+  EXPECT_NEAR(n.z, 0.8, 1e-15);
+
+  const double3 c(0.0, 2.0, 0.0);
+  EXPECT_EQ(c.normalized().y, 1.0);
+  EXPECT_EQ(double3(0.0, 0.0, 0.0).normalized().x, 0.0);
+}

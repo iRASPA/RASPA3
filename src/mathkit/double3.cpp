@@ -6,15 +6,13 @@ import std;
 
 import archive;
 
-double3 double3::normalized()
+double3 double3::normalized() const
 {
   double magnitude = std::sqrt((x * x) + (y * y) + (z * z));
 
   if (magnitude != 0)
   {
-    x /= magnitude;
-    y /= magnitude;
-    z /= magnitude;
+    return double3(x / magnitude, y / magnitude, z / magnitude);
   }
   return *this;
 }
