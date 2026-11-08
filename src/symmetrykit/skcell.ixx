@@ -104,6 +104,7 @@ export class SKCell
   void setContentFlipZ(bool value) { _contentFlip.z = value; }
 
  private:
+  void updateFullCell();
   std::int64_t _versionNumber{2};
 
   int _zValue{1};

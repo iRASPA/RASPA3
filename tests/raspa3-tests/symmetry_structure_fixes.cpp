@@ -5,8 +5,10 @@ import std;
 import int3;
 import double3;
 import double3x3;
+import float4;
 import skdefinitions;
 import skcell;
+import skboundingbox;
 import sksymmetrycell;
 import skpointsymmetryset;
 import skrotationmatrix;
@@ -534,4 +536,43 @@ TEST(SYMMETRY_STRUCTURE_FIXES, largest_empty_sphere_radius_and_position_describe
   const SKApolloniusDiagram empty;
   EXPECT_DOUBLE_EQ(empty.largestEmptySphereRadius(), 0.0);
   EXPECT_EQ(empty.largestEmptySpherePosition(), double3(0.0, 0.0, 0.0));
+}
+
+TEST(SYMMETRY_STRUCTURE_FIXES, cell_setters_constructors_and_replica_indices_stay_consistent)
+{
+  // the a/b/c and angle setters left the full cell (unit cell times replicas) at its old value
+  SKCell cell(10.0, 10.0, 10.0, std::numbers::pi / 2.0, std::numbers::pi / 2.0, std::numbers::pi / 2.0);
+  cell.setMaximumReplicas(int3(1, 2, 0));  // 2 x 3 x 1 replicas
+  cell.a(20.0);
+  EXPECT_NEAR(cell.box().ax, 40.0, 1e-12);
+  cell.alpha(std::numbers::pi / 3.0);
+  // the b vector is scaled by 3 replicas, the c vector (one replica along z) is the unit cell's
+  EXPECT_NEAR(cell.box().by, 3.0 * cell.unitCell().by, 1e-12);
+  EXPECT_NEAR(cell.box().cy, cell.unitCell().cy, 1e-12);
+  EXPECT_NEAR(cell.box().cz, cell.unitCell().cz, 1e-12);
+  EXPECT_NEAR((cell.box() * cell.box().inverse()).ax, 1.0, 1e-12);
+
+  // the bounding-box and super-cell constructors left the bounding box at its default
+  const SKBoundingBox box(double3(0.0, 0.0, 0.0), double3(5.0, 6.0, 7.0));
+  SKCell fromBox(box);
+  EXPECT_EQ(fromBox.boundingBox().maximum(), fromBox.enclosingBoundingBox().maximum());
+  EXPECT_EQ(fromBox.boundingBox().minimum(), fromBox.enclosingBoundingBox().minimum());
+  SKCell superCell(cell, int3(0, 0, 0), int3(1, 1, 1));
+  EXPECT_EQ(superCell.boundingBox().maximum(), superCell.enclosingBoundingBox().maximum());
+  EXPECT_EQ(superCell.boundingBox().minimum(), superCell.enclosingBoundingBox().minimum());
+
+  // the replica of an index is the one at that position of the render translation list (x fastest)
+  SKCell replicas(10.0, 10.0, 10.0, std::numbers::pi / 2.0, std::numbers::pi / 2.0, std::numbers::pi / 2.0);
+  replicas.setMinimumReplicas(int3(-1, 0, 0));
+  replicas.setMaximumReplicas(int3(0, 2, 3));  // 2 x 3 x 4
+  const std::vector<float4> translations = replicas.renderTranslationVectors();
+  ASSERT_EQ(translations.size(), 24uz);
+  for (int index = 0; index < 24; ++index)
+  {
+    const int3 replica = replicas.replicaFromIndex(index);
+    EXPECT_EQ(replica, int3(static_cast<int>(translations[static_cast<std::size_t>(index)].x),
+                            static_cast<int>(translations[static_cast<std::size_t>(index)].y),
+                            static_cast<int>(translations[static_cast<std::size_t>(index)].z)))
+        << index;
+  }
 }

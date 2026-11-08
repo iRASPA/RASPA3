@@ -113,6 +113,7 @@ SKCell::SKCell(SKBoundingBox boundingBox)
   _inverseUnitCell = _unitCell.inverse();
   _fullCell = _unitCell;
   _inverseFullCell = _fullCell.inverse();
+  _boundingBox = enclosingBoundingBox();
 }
 
 SKCell::SKCell(SKCell superCell, int3 minimumReplica, int3 maximumReplica)
@@ -127,6 +128,7 @@ SKCell::SKCell(SKCell superCell, int3 minimumReplica, int3 maximumReplica)
 
   _minimumReplica = int3(0, 0, 0);
   _maximumReplica = int3(0, 0, 0);
+  _boundingBox = enclosingBoundingBox();
 }
 
 std::shared_ptr<SKCell> SKCell::superCell() const
@@ -256,9 +258,10 @@ int3 SKCell::replicaFromIndex(int index)
   int dz = _maximumReplica.z - _minimumReplica.z + 1;
   int n = dx * dy * dz;
 
-  int k1 = ((index % n) / (dz * dy)) + _minimumReplica.x;
-  int k2 = ((index % n) / dz) % dy + _minimumReplica.y;
-  int k3 = (index % n) % dz + _minimumReplica.z;
+  // the order of renderTranslationVectors: x fastest, z slowest (it used to be decoded the other way round)
+  int k1 = (index % n) % dx + _minimumReplica.x;
+  int k2 = ((index % n) / dx) % dy + _minimumReplica.y;
+  int k3 = ((index % n) / (dx * dy)) + _minimumReplica.z;
 
   return int3(k1, k2, k3);
 }
@@ -397,11 +400,23 @@ int3 SKCell::numberOfReplicas()
 
 double SKCell::a() const { return _unitCell[0].length(); }
 
+// The full cell is the unit cell scaled by the replica counts; every change of the unit cell has to carry it
+// along, which the a/b/c and alpha/beta/gamma setters failed to do.
+void SKCell::updateFullCell()
+{
+  int dx = _maximumReplica.x - _minimumReplica.x + 1;
+  int dy = _maximumReplica.y - _minimumReplica.y + 1;
+  int dz = _maximumReplica.z - _minimumReplica.z + 1;
+  _fullCell = double3x3(double(dx) * _unitCell[0], double(dy) * _unitCell[1], double(dz) * _unitCell[2]);
+  _inverseFullCell = _fullCell.inverse();
+}
+
 void SKCell::a(const double& newValue)
 {
   double multiplier = newValue / a();
   _unitCell = double3x3(multiplier * _unitCell[0], _unitCell[1], _unitCell[2]);
   _inverseUnitCell = _unitCell.inverse();
+  updateFullCell();
 }
 
 void SKCell::setLengthA(double value)
@@ -435,6 +450,7 @@ void SKCell::b(const double& newValue)
   double multiplier = newValue / b();
   _unitCell = double3x3(_unitCell[0], multiplier * _unitCell[1], _unitCell[2]);
   _inverseUnitCell = _unitCell.inverse();
+  updateFullCell();
 }
 
 void SKCell::setLengthB(double value)
@@ -494,6 +510,7 @@ void SKCell::c(const double& newValue)
   double multiplier = newValue / c();
   _unitCell = double3x3(_unitCell[0], _unitCell[1], multiplier * _unitCell[2]);
   _inverseUnitCell = _unitCell.inverse();
+  updateFullCell();
 }
 double SKCell::alpha() const
 {
@@ -515,6 +532,7 @@ void SKCell::alpha(const double& newValue)
                                  std::sqrt(1.0 - cosAngle(betaAngle) * cosAngle(betaAngle) - temp * temp));
   _unitCell = double3x3(_unitCell[0], _unitCell[1], v3);
   _inverseUnitCell = _unitCell.inverse();
+  updateFullCell();
 }
 
 void SKCell::setAlphaAngle(double value)
@@ -600,6 +618,7 @@ void SKCell::beta(const double& newValue)
                                  std::sqrt(1.0 - cosAngle(newValue) * cosAngle(newValue) - temp * temp));
   _unitCell = double3x3(_unitCell[0], _unitCell[1], v3);
   _inverseUnitCell = _unitCell.inverse();
+  updateFullCell();
 }
 double SKCell::gamma() const
 {
@@ -657,6 +676,7 @@ void SKCell::gamma(const double& newValue)
                                  std::sqrt(1.0 - cosAngle(betaAngle) * cosAngle(betaAngle) - temp * temp));
   _unitCell = double3x3(_unitCell[0], v2, v3);
   _inverseUnitCell = _unitCell.inverse();
+  updateFullCell();
 }
 
 bool SKCell::orthorhombic() const
