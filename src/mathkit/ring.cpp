@@ -6,9 +6,17 @@ import std;
 
 Ring::Ring() {}
 
-int Ring::floorDivision(int a, int b) { return int(std::floor(double(a) / double(b))); }
+// division rounding towards minus infinity, in integer arithmetic (the quotient of two doubles cast to int is
+// undefined for b == 0, where it is infinite or NaN); b == 0 gives 0, as 'divisionModulo' does
+int Ring::floorDivision(int a, int b)
+{
+  if (b == 0) return 0;
+  int quotient = a / b;
+  if ((a % b != 0) && ((a < 0) != (b < 0))) quotient -= 1;
+  return quotient;
+}
 
-int Ring::modulo(int a, int b) { return a - b * int(std::floor(double(a) / double(b))); }
+int Ring::modulo(int a, int b) { return divisionModulo(a, b).second; }
 
 int Ring::greatestCommonDivisor(int arg1, int arg2)
 {
@@ -85,6 +93,6 @@ std::pair<int, int> Ring::divisionModulo(int a, int b)
   {
     return std::make_pair(0, 0);
   }
-  int temp = int(std::floor(double(a) / double(b)));
+  int temp = floorDivision(a, b);
   return std::make_pair(temp, a - b * temp);
 }

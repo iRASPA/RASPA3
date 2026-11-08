@@ -11,6 +11,7 @@ import double4x4;
 import int3x3;
 import matrix;
 import simd_quatd;
+import ring;
 import ringmatrix;
 import cubic;
 import randomnumbers;
@@ -285,6 +286,50 @@ TEST(MATHKIT_FIXES, smith_normal_form_of_random_matrices)
       }
     }
   }
+}
+
+TEST(MATHKIT_FIXES, ring_floor_division_and_modulo_round_down_and_accept_a_zero_divisor)
+{
+  EXPECT_EQ(Ring::floorDivision(7, 2), 3);
+  EXPECT_EQ(Ring::floorDivision(-7, 2), -4);
+  EXPECT_EQ(Ring::floorDivision(7, -2), -4);
+  EXPECT_EQ(Ring::floorDivision(-7, -2), 3);
+  EXPECT_EQ(Ring::floorDivision(-8, 2), -4);
+  EXPECT_EQ(Ring::modulo(7, 2), 1);
+  EXPECT_EQ(Ring::modulo(-7, 2), 1);
+  EXPECT_EQ(Ring::modulo(7, -2), -1);
+  EXPECT_EQ(Ring::modulo(-7, -2), -1);
+  EXPECT_EQ(Ring::modulo(-8, 2), 0);
+
+  // a zero divisor used to cast an infinite double to int; it gives 0, as divisionModulo does
+  EXPECT_EQ(Ring::floorDivision(5, 0), 0);
+  EXPECT_EQ(Ring::modulo(5, 0), 0);
+  EXPECT_EQ(Ring::divisionModulo(5, 0), std::make_pair(0, 0));
+}
+
+TEST(MATHKIT_FIXES, ring_matrix_from_nested_data_drops_entries_beyond_its_size)
+{
+  // an extra column in the last row, and an extra row, used to index past the storage
+  const RingMatrix extraColumn(2, 2, {{1, 2}, {3, 4, 5}});
+  EXPECT_EQ(extraColumn, RingMatrix(2, 2, {{1, 2}, {3, 4}}));
+  const RingMatrix extraRow(2, 2, {{1, 2}, {3, 4}, {5, 6}});
+  EXPECT_EQ(extraRow, RingMatrix(2, 2, {{1, 2}, {3, 4}}));
+}
+
+TEST(MATHKIT_FIXES, hermite_and_smith_normal_forms_of_large_entries_keep_the_rank)
+{
+  // 65536 * 65536 wraps to 0 in int, so the rank test of the second column used to see a dependent column
+  const RingMatrix input(2, 2, {{65536, 0}, {0, 65536}});
+  RingMatrix A = input;
+  const auto [T, H, rankProfile] = A.HermiteNormalForm();
+  EXPECT_EQ(rankProfile, (std::vector<std::size_t>{0, 1}));
+  EXPECT_EQ(T * input, H);
+  EXPECT_EQ(H, input);
+
+  RingMatrix B = input;
+  const auto [U, V, D] = B.SmithNormalForm();
+  EXPECT_EQ(U * input * V, D);
+  EXPECT_EQ(D, input);
 }
 
 TEST(MATHKIT_FIXES, bool3_indices_are_its_components)

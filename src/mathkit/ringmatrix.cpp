@@ -37,9 +37,10 @@ RingMatrix::RingMatrix(std::size_t rows, std::size_t columns, std::vector<std::v
     : _rows(rows), _columns(columns), _grid(rows * columns)
 {
   std::fill(_grid.begin(), _grid.end(), 0);
-  for (std::size_t i = 0; i < data.size(); i++)
+  // entries beyond the matrix are dropped: an extra column would otherwise wrap into the next row
+  for (std::size_t i = 0; i < std::min(rows, data.size()); i++)
   {
-    for (std::size_t j = 0; j < data[i].size(); j++)
+    for (std::size_t j = 0; j < std::min(columns, data[i].size()); j++)
     {
       (*this)(i, j) = data[i][j];
     }
@@ -166,7 +167,10 @@ std::tuple<RingMatrix, RingMatrix, std::vector<std::size_t>> RingMatrix::Hermite
     bool found = false;
     for (std::size_t k = (r + 1); k < Apad._rows; k++)
     {
-      if (Apad(r, rp[r]) * Apad(k, j) != Apad(r, j) * Apad(k, rp[r]))
+      // the products are formed in 64 bits: in int they wrap for entries above 46340, and a wrapped product
+      // that happens to agree (65536 * 65536 wraps to 0) hides a rank increase
+      if (static_cast<std::int64_t>(Apad(r, rp[r])) * Apad(k, j) !=
+          static_cast<std::int64_t>(Apad(r, j)) * Apad(k, rp[r]))
       {
         found = true;
       }
@@ -300,7 +304,8 @@ std::tuple<RingMatrix, RingMatrix, RingMatrix> RingMatrix::ColumnReduction(RingM
   std::tuple<int, int, int> extendedGCD =
       Ring::extendedGreatestCommonDivisor(A(row_start, col_1), A(row_start + 1, col_1));
 
-  int s = sign(A(row_start, col_1) * A(row_start + 1, col_2) - A(row_start, col_2) * A(row_start + 1, col_1));
+  int s = sign(static_cast<std::int64_t>(A(row_start, col_1)) * A(row_start + 1, col_2) -
+               static_cast<std::int64_t>(A(row_start, col_2)) * A(row_start + 1, col_1));
   RingMatrix Q = RingMatrix::identity(n);
   int q1 = -s * A(row_start + 1, col_1) / std::get<0>(extendedGCD);
   int q2 = s * A(row_start, col_1) / std::get<0>(extendedGCD);
@@ -379,11 +384,11 @@ std::pair<std::vector<int>, std::vector<int>> RingMatrix::Conditioning(RingMatri
   int d21 = A(row_start + 1, col_1);
   int d22 = A(row_start + 1, col_2);
   std::vector<int> ci = std::vector<int>(k, 0);  //[Int](repeating: 0, count : k)
-  if (d11 * d22 == d12 * d21)
+  if (static_cast<std::int64_t>(d11) * d22 == static_cast<std::int64_t>(d12) * d21)
   {
     for (std::size_t s = (row_start + 2); s < A._rows; s++)
     {
-      if (d11 * A(s, col_2) != d12 * A(s, col_1))
+      if (static_cast<std::int64_t>(d11) * A(s, col_2) != static_cast<std::int64_t>(d12) * A(s, col_1))
       {
         ci[s - row_start - 2] = 1;
         d21 += A(s, col_1);
@@ -422,7 +427,8 @@ std::pair<std::vector<int>, std::vector<int>> RingMatrix::Conditioning(RingMatri
         ahatprime = Ring::modulo(ahat / gi, d11);
         biprime = Ring::modulo(bi / gi, d11);
         neg = false;
-        if (sign(d11 * d22 - d12 * d21) != sign(d11 * bip - d12 * bi))
+        if (sign(static_cast<std::int64_t>(d11) * d22 - static_cast<std::int64_t>(d12) * d21) !=
+            sign(static_cast<std::int64_t>(d11) * bip - static_cast<std::int64_t>(d12) * bi))
         {
           biprime = -biprime;
           neg = true;
@@ -473,9 +479,9 @@ std::variant<std::vector<int>, int> RingMatrix::Algorithm_6_14(int a, int b, int
 
   if (N <= 1)
   {
-    // qDebug() << "STOP ERROR";
-    // assert(false);
-    return {};
+    // every c works modulo 1: the int alternative (a braced empty return would be the vector alternative, an
+    // empty factorization that the caller adopts, after which no column is ever found)
+    return int{0};
   }
 
   while (true)
@@ -832,7 +838,9 @@ void RingMatrix::Smith_Theorem8(RingMatrix& A, RingMatrix& U, RingMatrix& V, std
 
 std::vector<int> RingMatrix::Algorithm_6_15(int a, std::vector<int> bi, int N)
 {
-  if (N == 1)
+  // the gcd with N depends on |N| only; modulo 0 or 1 every ci works, and the remainders below need N > 1
+  N = std::abs(N);
+  if (N <= 1)
   {
     return std::vector<int>(bi.size(), 0);
   }
