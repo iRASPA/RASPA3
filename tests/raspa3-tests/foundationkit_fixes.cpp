@@ -291,3 +291,39 @@ TEST(FOUNDATIONKIT_FIXES, opencl_device_queries_tolerate_absent_devices)
   const std::string status = OpenCL::printBestOpenCLDevice();
   EXPECT_FALSE(status.empty());
 }
+
+TEST(FOUNDATIONKIT_FIXES, simplified_trims_and_collapses_whitespace)
+{
+  // it used to return its argument unchanged
+  EXPECT_EQ(simplified("  P 21/c   "), "P 21/c");
+  EXPECT_EQ(simplified("\tF\n m  -3   m\t"), "F m -3 m");
+  EXPECT_EQ(simplified("   "), "");
+  EXPECT_EQ(simplified(""), "");
+  EXPECT_EQ(simplified("single"), "single");
+}
+
+TEST(FOUNDATIONKIT_FIXES, case_insensitive_compare_accepts_bytes_above_ascii)
+{
+  // bytes above 0x7f are negative as char and were passed to std::tolower as such
+  const std::string angstrom = "\xC3\x85ngstr\xC3\xB6m";
+  EXPECT_TRUE(caseInSensStringCompare(angstrom, angstrom));
+  EXPECT_TRUE(caseInSensStringCompare("\xC3\x85NGSTR\xC3\xB6M", angstrom));
+  EXPECT_FALSE(caseInSensStringCompare("\xC3\x85ngstr\xC3\xB6m", "\xC3\x85ngstr\xC3\xB6n"));
+  EXPECT_TRUE(caseInSensStringCompare("Methane", "mEtHaNe"));
+  EXPECT_FALSE(caseInSensStringCompare("Methane", "Methan"));
+}
+
+TEST(FOUNDATIONKIT_FIXES, read_file_content_rejects_a_directory)
+{
+  TemporaryDirectory workspace;
+  const std::filesystem::path file = workspace.path() / "content.txt";
+  {
+    std::ofstream stream(file);
+    stream << "hello\n";
+  }
+  EXPECT_EQ(readFileContent(file.string(), ""), "hello\n");
+  EXPECT_EQ(readFileContent((workspace.path() / "content").string(), ".txt"), "hello\n");
+  // a directory exists, and reading it as a stream used to return an empty string silently
+  EXPECT_THROW(readFileContent(workspace.path().string(), ""), std::runtime_error);
+  EXPECT_THROW(readFileContent((workspace.path() / "missing").string(), ".txt"), std::runtime_error);
+}

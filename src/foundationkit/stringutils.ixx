@@ -5,7 +5,28 @@ export module stringutils;
 import std;
 import std.compat;
 
-export inline std::string simplified(std::string a) { return a; };
+/// The string without leading and trailing whitespace and with every run of internal whitespace collapsed to one
+/// space (the semantics of Qt's QString::simplified); it used to return its argument unchanged.
+export inline std::string simplified(const std::string &a)
+{
+  std::string result;
+  result.reserve(a.size());
+  bool pendingSpace = false;
+  for (unsigned char c : a)
+  {
+    if (std::isspace(c))
+    {
+      pendingSpace = !result.empty();
+    }
+    else
+    {
+      if (pendingSpace) result.push_back(' ');
+      pendingSpace = false;
+      result.push_back(static_cast<char>(c));
+    }
+  }
+  return result;
+}
 
 export inline std::string toLower(const std::string &a)
 {
@@ -19,8 +40,11 @@ export inline std::string toLower(const std::string &a)
 
 export inline bool caseInSensStringCompare(const std::string& lhs, const std::string& rhs)
 {
-  return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin(),
-                                                [](auto a, auto b) { return std::tolower(a) == std::tolower(b); });
+  // std::tolower takes an int that must be representable as unsigned char: a plain (signed) char above 0x7f,
+  // as in UTF-8 text, would be negative
+  return lhs.size() == rhs.size() &&
+         std::equal(lhs.begin(), lhs.end(), rhs.begin(),
+                    [](unsigned char a, unsigned char b) { return std::tolower(a) == std::tolower(b); });
 }
 
 export struct caseInsensitiveComparator
@@ -152,8 +176,18 @@ export std::string readFileContent(const std::string &fileName, const std::strin
     throw std::runtime_error(
         std::format("File '{}' not found (also not in 'RASPA_DIR')\n", file_name_string));
   }
+  // a directory exists too (an empty name with RASPA_DIR set resolves to that directory), and a stream over it
+  // reads as empty
+  if (!std::filesystem::is_regular_file(path))
+  {
+    throw std::runtime_error(std::format("'{}' is not a file\n", path.string()));
+  }
 
   std::ifstream t(path);
+  if (!t.is_open())
+  {
+    throw std::runtime_error(std::format("File '{}' cannot be opened for reading\n", path.string()));
+  }
   std::string file_content((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
   return file_content;
