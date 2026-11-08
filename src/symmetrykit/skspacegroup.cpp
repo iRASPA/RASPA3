@@ -178,12 +178,28 @@ struct CifCoordinateExpression
   double translation = 0.0;
 };
 
+// A number in a CIF symmetry operation: an integer, a fraction "1/2", or a decimal "0.5" or ".5" (decimal
+// translations such as "0.25+y" or "0.33333+x" used to be rejected).
 std::optional<double> parseCifRational(std::string_view expression, std::size_t& position)
 {
   const std::size_t start = position;
   while (position < expression.size() && std::isdigit(expression[position]))
   {
     ++position;
+  }
+  if (position < expression.size() && expression[position] == '.')
+  {
+    ++position;
+    const std::size_t fractionStart = position;
+    while (position < expression.size() && std::isdigit(expression[position]))
+    {
+      ++position;
+    }
+    if (position == start + 1 && position == fractionStart)
+    {
+      return std::nullopt;  // a lone '.'
+    }
+    return std::stod(std::string(expression.substr(start, position - start)));
   }
   if (position == start)
   {
@@ -244,7 +260,7 @@ std::optional<CifCoordinateExpression> parseCifCoordinateExpression(std::string 
       return std::nullopt;
     }
 
-    if (std::isdigit(expression[position]))
+    if (std::isdigit(expression[position]) || expression[position] == '.')
     {
       const std::optional<double> value = parseCifRational(expression, position);
       if (!value)

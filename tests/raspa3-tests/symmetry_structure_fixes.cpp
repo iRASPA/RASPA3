@@ -659,3 +659,26 @@ TEST(SYMMETRY_STRUCTURE_FIXES, space_group_symbols_match_with_their_spaces_remov
   }
   EXPECT_FALSE(SKSpaceGroup::HallNumberFromHMString("not a symbol").has_value());
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, cif_symmetry_operations_accept_decimal_translations)
+{
+  // only integers and fractions were parsed; decimal translations made the whole operation unreadable
+  const std::optional<SKSeitzMatrix> decimal = SKSpaceGroup::parseCifSymmetryOperation("0.5+x, 0.25+y, -z+0.75");
+  ASSERT_TRUE(decimal.has_value());
+  EXPECT_DOUBLE_EQ(decimal->translation.x, 0.5);
+  EXPECT_DOUBLE_EQ(decimal->translation.y, 0.25);
+  EXPECT_DOUBLE_EQ(decimal->translation.z, 0.75);
+  EXPECT_EQ(decimal->rotation.int3x3_m.m33, -1);
+
+  const std::optional<SKSeitzMatrix> third = SKSpaceGroup::parseCifSymmetryOperation("0.33333+x, .5+y, z");
+  ASSERT_TRUE(third.has_value());
+  EXPECT_NEAR(third->translation.x, 1.0 / 3.0, 1e-5);
+  EXPECT_DOUBLE_EQ(third->translation.y, 0.5);
+
+  // fractions and integers still parse, and a lone '.' does not
+  const std::optional<SKSeitzMatrix> fraction = SKSpaceGroup::parseCifSymmetryOperation("x+1/2, y-1, z");
+  ASSERT_TRUE(fraction.has_value());
+  EXPECT_DOUBLE_EQ(fraction->translation.x, 0.5);
+  EXPECT_DOUBLE_EQ(fraction->translation.y, -1.0);
+  EXPECT_FALSE(SKSpaceGroup::parseCifSymmetryOperation("x+., y, z").has_value());
+}
