@@ -73,7 +73,7 @@ export union float4x4
 
     return equal;
   };
-  inline bool operator!=(const double4x4& b) const { return !(*this == b); }
+  inline bool operator!=(const float4x4& b) const { return !(*this == b); }
 
   float4x4 const transpose(void);
   static float4x4 const inverse(const float4x4& right);
