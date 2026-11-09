@@ -693,7 +693,8 @@ double SKCell::volume() const
 
   double3 v2 = double3::cross(column2, column3);
 
-  return double3::dot(column1, v2);
+  // the triple product is signed: a left-handed cell has a negative determinant but the same volume
+  return std::fabs(double3::dot(column1, v2));
 }
 
 double3 SKCell::perpendicularWidths() const
@@ -706,7 +707,9 @@ double3 SKCell::perpendicularWidths() const
   double3 v2 = double3::cross(column2, column3);
   double3 v3 = double3::cross(column3, column1);
 
-  double volume = double3::dot(column1, v2);
+  // the widths are distances between opposite faces, so the signed triple product of a left-handed cell is not
+  // taken as it is (the widths came out negative)
+  double volume = std::fabs(double3::dot(column1, v2));
 
   return double3(volume / v2.length(), volume / v3.length(), volume / v1.length());
 }
@@ -749,7 +752,8 @@ int3 SKCell::numberOfReplicas(double cutoff)
   double3 v2 = double3::cross(column2, column3);
   double3 v3 = double3::cross(column3, column1);
 
-  double volume = double3::dot(column1, v2);
+  // as in perpendicularWidths: a left-handed cell gave negative widths and so zero or negative replica counts
+  double volume = std::fabs(double3::dot(column1, v2));
 
   double3 perpendicularWith = double3(volume / v2.length(), volume / v3.length(), volume / v1.length());
 

@@ -54,6 +54,34 @@ TEST(SYMMETRY_STRUCTURE_FIXES, angle_setters_keep_the_inverse_unit_cell)
   EXPECT_NEAR(product.cz, 1.0, 1e-12);
 }
 
+TEST(SYMMETRY_STRUCTURE_FIXES, left_handed_cells_have_positive_volume_widths_and_replicas)
+{
+  // the same box with c reversed: a negative determinant, but the volume, the distances between opposite faces
+  // and the number of replicas needed for a cutoff are those of the right-handed box (they came out negative)
+  const double3x3 right(double3(10.0, 0.0, 0.0), double3(2.0, 12.0, 0.0), double3(1.0, 3.0, 14.0));
+  const double3x3 left(double3(10.0, 0.0, 0.0), double3(2.0, 12.0, 0.0), double3(-1.0, -3.0, -14.0));
+  ASSERT_LT(left.determinant(), 0.0);
+  SKCell rightCell(right);
+  SKCell leftCell(left);
+
+  EXPECT_NEAR(rightCell.volume(), 10.0 * 12.0 * 14.0, 1e-9);
+  EXPECT_NEAR(leftCell.volume(), rightCell.volume(), 1e-9);
+
+  const double3 rightWidths = rightCell.perpendicularWidths();
+  const double3 leftWidths = leftCell.perpendicularWidths();
+  EXPECT_GT(rightWidths.x, 0.0);
+  EXPECT_NEAR(leftWidths.x, rightWidths.x, 1e-9);
+  EXPECT_NEAR(leftWidths.y, rightWidths.y, 1e-9);
+  EXPECT_NEAR(leftWidths.z, rightWidths.z, 1e-9);
+
+  const int3 rightReplicas = rightCell.numberOfReplicas(12.0);
+  const int3 leftReplicas = leftCell.numberOfReplicas(12.0);
+  EXPECT_EQ(rightReplicas.x, 3);  // the width along a is 10, twice the cutoff is 24
+  EXPECT_EQ(leftReplicas.x, rightReplicas.x);
+  EXPECT_EQ(leftReplicas.y, rightReplicas.y);
+  EXPECT_EQ(leftReplicas.z, rightReplicas.z);
+}
+
 TEST(SYMMETRY_STRUCTURE_FIXES, equal_seitz_matrices_hash_equally)
 {
   const SKSeitzIntegerMatrix a(SKRotationMatrix::identity, int3(1, 2, 3));
