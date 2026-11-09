@@ -739,3 +739,27 @@ TEST(SYMMETRY_STRUCTURE_FIXES, hermann_mauguin_lookup_honours_setting_qualifiers
   EXPECT_EQ(SKSpaceGroup::HallNumberFromHMString("P b n m :cab"), 294uz);
   EXPECT_EQ(SKSpaceGroup::HallNumberFromHMString("P b n m"), 294uz);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, centring_from_symbol_follows_the_database_for_rhombohedral_settings)
+{
+  // on rhombohedral axes the lattice is primitive in the database, and an H-prefixed symbol is the hexagonal-axes
+  // setting stored as an R lattice; "R ..." used to give R always and "H ..." an H centring no setting has
+  EXPECT_EQ(SKSpaceGroup::centringFromHMString("R -3 m"), Centring::r);
+  EXPECT_EQ(SKSpaceGroup::centringFromHMString("R -3 m :H"), Centring::r);
+  EXPECT_EQ(SKSpaceGroup::centringFromHMString("'R -3 m :R'"), Centring::primitive);
+  EXPECT_EQ(SKSpaceGroup::centringFromHMString("H -3 m"), Centring::r);
+  EXPECT_EQ(SKSpaceGroup::centringFromHMString("F d -3 m :2"), Centring::face);
+  for (const std::size_t hallNumber : {434uz, 437uz, 445uz, 451uz, 453uz, 459uz, 461uz})
+  {
+    const SKSpaceGroupSetting& setting = SKSpaceGroupDataBase::spaceGroupData[hallNumber];
+    EXPECT_EQ(SKSpaceGroup::centringFromHMString(setting.HMString() + " :" + setting.qualifier()), setting.centring())
+        << hallNumber;
+  }
+
+  // so that the operations of R -3 m on rhombohedral axes are identified with the centring the symbol gives
+  const double3x3 rhombohedral(double3(10.0, 0.0, 0.0), double3(-5.0, 8.66, 0.0), double3(0.0, 0.0, 10.0));
+  const std::vector<SKSeitzMatrix> operations = operationsOfSetting(459);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(operations, rhombohedral,
+                                                           SKSpaceGroup::centringFromHMString("R -3 m :R"), 166),
+            459uz);
+}

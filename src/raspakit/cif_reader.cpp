@@ -315,14 +315,16 @@ void CIFReader::resolveSpaceGroupHallNumber(const SimulationBox& simulation_box)
     return;
   }
 
+  // the centring of the setting named by the file, from the Hall or Hermann-Mauguin symbol (a setting found by
+  // the latter knows its own centring, which also covers the rhombohedral axes and H-prefixed spellings)
   Centring centering = Centring::primitive;
-  if (!hmSymbol.empty())
-  {
-    centering = SKSpaceGroup::centringFromHMString(hmSymbol);
-  }
-  else if (spaceGroupHallNumber)
+  if (spaceGroupHallNumber)
   {
     centering = SKSpaceGroup(spaceGroupHallNumber.value()).spaceGroupSetting().centring();
+  }
+  else if (!hmSymbol.empty())
+  {
+    centering = SKSpaceGroup::centringFromHMString(hmSymbol);
   }
 
   // The setting that reproduces the listed operations, when there is one.

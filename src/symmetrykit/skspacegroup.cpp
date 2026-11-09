@@ -363,6 +363,20 @@ Centring SKSpaceGroup::centringFromHMString(std::string hmString)
     return Centring::primitive;
   }
 
+  // the centring as the database stores it for the setting the symbol names: a rhombohedral group on rhombohedral
+  // axes ("R -3 m :R") is a primitive lattice there, and an H-prefixed symbol is its hexagonal-axes setting (as
+  // HallNumberFromHMString reads it), which the database stores as an R lattice; no setting is H-centred
+  std::string qualifier{};
+  if (const std::size_t colon = hmString.rfind(':'); colon != std::string::npos)
+  {
+    qualifier = toLower(hmString.substr(colon + 1));
+    hmString = hmString.substr(0, colon);
+  }
+  if (hmString.empty())
+  {
+    return Centring::primitive;
+  }
+
   switch (std::toupper(hmString.front()))
   {
     case 'P':
@@ -378,9 +392,9 @@ Centring SKSpaceGroup::centringFromHMString(std::string hmString)
     case 'C':
       return Centring::c_face;
     case 'R':
-      return Centring::r;
+      return qualifier == "r" ? Centring::primitive : Centring::r;
     case 'H':
-      return Centring::h;
+      return Centring::r;
     default:
       return Centring::primitive;
   }
