@@ -266,6 +266,10 @@ static double orbitalOverlapLatticeSum(const SimulationBox& simulationBox, const
 void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceField, const SimulationBox& simulationBox,
                                                      std::span<Atom> frameworkAtoms, ChargeEquilibration::Type type)
 {
+  // nothing to equilibrate: the assembly below writes the total-charge row into b[0] and runs its loops from 1 up to
+  // size with !=, which for no atoms is a write past an empty vector and a loop towards SIZE_MAX
+  if (frameworkAtoms.empty()) return;
+
   const double k = 14.4;      // [Angstroms * electron volts]
   const double gamma2 = 0.5;  // Global atomic radii scaling parameter
   std::vector<std::size_t> hydrogen_list{};
@@ -394,15 +398,15 @@ void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceFiel
 
   // Rest of elements in b are the differences in electronegativity
   // Use lattice potential. If it hasn't been calculated yet, it will just default to zero.
-  for (std::size_t i = 1; i != size; ++i)
+  for (std::size_t i = 1; i < size; ++i)
   {
     b[i] = (X[i] - Xc[i]) - (X[i - 1] - Xc[i - 1]);
   }
 
   // Fill in 2nd to Nth rows of A
-  for (std::size_t i = 1; i != size; ++i)
+  for (std::size_t i = 1; i < size; ++i)
   {
-    for (std::size_t j = 0; j != size; ++j)
+    for (std::size_t j = 0; j < size; ++j)
     {
       element(i, j) = Jab[(i - 1) * size + j] - Jab[i * size + j];
     }

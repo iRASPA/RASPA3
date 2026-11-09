@@ -332,6 +332,21 @@ O2  O2- 0.4 0.5 0.1
   EXPECT_EQ(static_cast<std::size_t>(definedAtoms[3].type), *forceField.findPseudoAtom("O"));
 }
 
+TEST(UNINITIALIZED_MEMBERS, charge_equilibration_of_no_atoms_does_nothing)
+{
+  // an empty framework used to write the total-charge row past an empty vector and loop from 1 towards SIZE_MAX
+  const ForceField forceField = ForceField::makeMetalOrganicFrameworkForceField(12.0, true, false, false);
+  std::vector<Atom> none;
+  for (ChargeEquilibration::Type type :
+       {ChargeEquilibration::Type::PeriodicEwaldSum, ChargeEquilibration::Type::NonPeriodic,
+        ChargeEquilibration::Type::PeriodicDirectSum})
+  {
+    EXPECT_NO_THROW(
+        ChargeEquilibration::computeChargeEquilibration(forceField, SimulationBox(10.0, 10.0, 10.0), none, type));
+    EXPECT_TRUE(none.empty());
+  }
+}
+
 TEST(UNINITIALIZED_MEMBERS, charge_equilibration_rejects_elements_beyond_the_reference_table)
 {
   ForceField forceField({{"U", true, 238.0, 0.0, 0.0, 92, false}, {"O", true, 16.0, 0.0, 0.0, 8, false}},
