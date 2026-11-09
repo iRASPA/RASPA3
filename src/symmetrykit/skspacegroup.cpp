@@ -997,10 +997,6 @@ std::optional<std::pair<double3, SKRotationalChangeOfBasis>> SKSpaceGroup::match
     case Holohedry::none:
       break;
     case Holohedry::triclinic:
-    case Holohedry::tetragonal:
-    case Holohedry::trigonal:
-    case Holohedry::hexagonal:
-    case Holohedry::cubic:
     {
       std::optional<double3> originShift =
           getOriginShift(HallNumber, centering, SKRotationalChangeOfBasis(SKRotationMatrix::identity), seitzMatrices,
@@ -1008,6 +1004,35 @@ std::optional<std::pair<double3, SKRotationalChangeOfBasis>> SKSpaceGroup::match
       if (originShift)
       {
         return std::make_pair(*originShift, SKRotationalChangeOfBasis(SKRotationMatrix::identity));
+      }
+      return std::nullopt;
+    }
+    case Holohedry::trigonal:
+    case Holohedry::hexagonal:
+    {
+      // the identity, and the rotation by 180 degrees about c that takes the obverse rhombohedral setting into the
+      // reverse one (operations listed in a reverse setting used to match nothing)
+      static const std::vector<SKRotationalChangeOfBasis> changesOfHexagonalSetting{
+          SKRotationalChangeOfBasis(SKRotationMatrix::identity),
+          SKRotationalChangeOfBasis(SKRotationMatrix(int3(-1, 0, 0), int3(0, -1, 0), int3(0, 0, 1)))};
+      for (const SKRotationalChangeOfBasis& changeOfBasis : changesOfHexagonalSetting)
+      {
+        std::optional<double3> originShift =
+            getOriginShift(HallNumber, centering, changeOfBasis, seitzMatrices, symmetryPrecision);
+        if (originShift) return std::make_pair(*originShift, changeOfBasis);
+      }
+      return std::nullopt;
+    }
+    case Holohedry::tetragonal:
+    case Holohedry::cubic:
+    {
+      // the identity first, then the permutations of the axes, for operations listed with the principal axis along
+      // a or b (which used to match nothing)
+      for (const SKRotationalChangeOfBasis& changeOfBasis : SKRotationalChangeOfBasis::changeOfOrthorhombicCentering)
+      {
+        std::optional<double3> originShift =
+            getOriginShift(HallNumber, centering, changeOfBasis, seitzMatrices, symmetryPrecision);
+        if (originShift) return std::make_pair(*originShift, changeOfBasis);
       }
       return std::nullopt;
     }
@@ -1207,6 +1232,15 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
       break;
     default:
       break;
+  }
+
+  if (dataBaseSpaceGroupCentering == Centring::r || dataBaseSpaceGroupCentering == Centring::h)
+  {
+    // the primitive cell of the setting's rhombohedral lattice, in the given basis: a rotation by 180 degrees about
+    // c turns the obverse lattice into the reverse one, a different lattice, so the primitive cell has to follow the
+    // change of basis (the face and body centrings are the same lattice in every permutation, so theirs need not).
+    // The matrix holds the conventional basis in primitive coordinates, so the rotation multiplies from the right.
+    transformation = SKTransformationMatrix(transformation.transformation * changeOfBasis.rotationMatrix.int3x3_m);
   }
 
   // SKIntegerChangeOfBasis changeToPrimitive = SKIntegerChangeOfBasis(inversionTransformation: transformation)

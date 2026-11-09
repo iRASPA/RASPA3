@@ -815,3 +815,28 @@ TEST(SYMMETRY_STRUCTURE_FIXES, niggli_cell_search_identifies_centred_groups_and_
   EXPECT_EQ(SKSpaceGroup(primitive->HallNumber).spaceGroupSetting().number(), 123uz);
   EXPECT_NEAR(primitive->cell.c(), 6.0, 1e-9);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, symmetry_operations_in_a_reverse_or_permuted_setting_are_identified)
+{
+  // R -3 m on hexagonal axes (Hall 458) with its operations rewritten in the reverse setting, a rotation by 180
+  // degrees about c; the matcher tried the identity basis only for trigonal groups and found nothing
+  const std::vector<SKSeitzMatrix> obverse = operationsOfSetting(458);
+  const std::vector<SKSeitzMatrix> reverse =
+      SKSymmetryOperationSet(obverse)
+          .changedBasis(SKTransformationMatrix(int3(-1, 0, 0), int3(0, -1, 0), int3(0, 0, 1)))
+          .operations;
+  const double3x3 hexagonal(double3(10.0, 0.0, 0.0), double3(-5.0, 8.6602540378, 0.0), double3(0.0, 0.0, 12.0));
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(obverse, hexagonal, Centring::r, 166), 458uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(reverse, hexagonal, Centring::r, 166), 458uz);
+
+  // P 4/m m m with its four-fold axis along a instead of c
+  const std::size_t p4mmm = SKSpaceGroupDataBase::spaceGroupHallData[123].front();
+  const std::vector<SKSeitzMatrix> permuted =
+      SKSymmetryOperationSet(operationsOfSetting(p4mmm))
+          .changedBasis(SKTransformationMatrix(int3(0, 1, 0), int3(0, 0, 1), int3(1, 0, 0)))
+          .operations;
+  const double3x3 tetragonal(double3(6.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 10.0));
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(permuted, tetragonal, Centring::primitive, 123), p4mmm);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(permuted, tetragonal, Centring::primitive, std::nullopt),
+            p4mmm);
+}
