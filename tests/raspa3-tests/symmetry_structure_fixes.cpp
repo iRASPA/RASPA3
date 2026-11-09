@@ -779,3 +779,39 @@ TEST(SYMMETRY_STRUCTURE_FIXES, hexagonal_centring_transformations_keep_the_c_axi
     for (std::size_t j = 0; j < 3; ++j) EXPECT_NEAR(product[i][j], i == j ? 1.0 : 0.0, 1e-12) << i << " " << j;
   EXPECT_NEAR(SKTransformationMatrix::hexagonalToPrimitive.determinant(), 1.0 / 3.0, 1e-12);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, niggli_cell_search_identifies_centred_groups_and_a_short_principal_axis)
+{
+  // F d -3 m from its 8a site (origin choice 2): a centred group, which the former direct match of the primitive
+  // Niggli cell against primitive settings could not reach
+  const double3x3 cubic(double3(10.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 10.0));
+  std::vector<std::tuple<double3, std::size_t, double>> diamond;
+  for (const SKSeitzIntegerMatrix& m : SKSpaceGroup(526).spaceGroupSetting().fullSeitzMatrices().operations)
+  {
+    const double3 position = double3::fract(m * double3(0.125, 0.125, 0.125));
+    if (std::none_of(diamond.begin(), diamond.end(),
+                     [&](const auto& atom)
+                     {
+                       const double3 d = std::get<0>(atom) - position;
+                       return (d - double3(std::rint(d.x), std::rint(d.y), std::rint(d.z))).length_squared() < 1e-12;
+                     }))
+    {
+      diamond.emplace_back(position, 1, 1.0);
+    }
+  }
+  ASSERT_EQ(diamond.size(), 8uz);
+  const std::optional<SKSpaceGroup::FoundNiggliCellInfo> fcc =
+      SKSpaceGroup::findNiggliCell(cubic, diamond, false, 1e-2);
+  ASSERT_TRUE(fcc.has_value());
+  EXPECT_EQ(SKSpaceGroup(fcc->HallNumber).spaceGroupSetting().number(), 227uz);
+  EXPECT_EQ(fcc->atoms.size(), 1uz);
+
+  // one atom in a tetragonal cell whose c axis is the shortest: P 4/m m m, with the Niggli order putting the
+  // four-fold axis first rather than third
+  const double3x3 tetragonal(double3(10.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 6.0));
+  const std::optional<SKSpaceGroup::FoundNiggliCellInfo> primitive = SKSpaceGroup::findNiggliCell(
+      tetragonal, {std::tuple<double3, std::size_t, double>{double3(0.0, 0.0, 0.0), 1, 1.0}}, false, 1e-2);
+  ASSERT_TRUE(primitive.has_value());
+  EXPECT_EQ(SKSpaceGroup(primitive->HallNumber).spaceGroupSetting().number(), 123uz);
+  EXPECT_NEAR(primitive->cell.c(), 6.0, 1e-9);
+}

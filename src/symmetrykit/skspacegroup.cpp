@@ -919,68 +919,15 @@ std::optional<SKSpaceGroup::FoundNiggliCellInfo> SKSpaceGroup::findNiggliCell(
                                               std::get<1>(tuple), std::get<2>(tuple));
                      });
 
-      std::vector<std::tuple<double3, std::size_t, double>> reducedPositionsInNiggliCell{};
-      if (allowPartialOccupancies)
+      // Identify the space group of the Niggli cell with the procedure of findSpaceGroup: point group, conventional
+      // basis, centring translations, origin shift. Matching the operations of the primitive Niggli cell directly
+      // against the settings, with the identity basis and a primitive centring, could reach none of the 112 centred
+      // groups and missed a primitive group whenever the Niggli order put its principal axis along a or b.
+      const std::optional<FoundSpaceGroupInfo> found =
+          findSpaceGroup(NiggliUnitCell, positionInNiggliCell, allowPartialOccupancies, symmetryPrecision);
+      if (found)
       {
-        std::copy(positionInNiggliCell.begin(), positionInNiggliCell.end(),
-                  std::back_inserter(reducedPositionsInNiggliCell));
-      }
-      else
-      {
-        std::copy_if(positionInNiggliCell.begin(), positionInNiggliCell.end(),
-                     std::back_inserter(reducedPositionsInNiggliCell),
-                     [leastOccurringAtomType](const std::tuple<double3, std::size_t, double>& atom)
-                     { return std::get<1>(atom) == leastOccurringAtomType; });
-      }
-
-      SKPointSymmetrySet latticeSymmetries = SKSymmetryCell::findLatticeSymmetry(NiggliUnitCell, symmetryPrecision);
-
-      SKSymmetryOperationSet spaceGroupSymmetries =
-          SKSpaceGroup::findSpaceGroupSymmetry(NiggliUnitCell, reducedPositionsInNiggliCell, positionInNiggliCell,
-                                               latticeSymmetries, allowPartialOccupancies, symmetryPrecision);
-
-      for (std::size_t i = 230; i >= 1; i--)
-      {
-        std::size_t HallNumber = SKSpaceGroupDataBase::spaceGroupHallData[i].front();
-
-        std::optional<std::pair<double3, SKRotationalChangeOfBasis>> foundSpaceGroup = SKSpaceGroup::matchSpaceGroup(
-            HallNumber, NiggliUnitCell, Centring::primitive, spaceGroupSymmetries.operations, symmetryPrecision);
-        if (foundSpaceGroup)
-        {
-          double3 origin = std::get<0>(*foundSpaceGroup);
-
-          double3x3 conventionalBravaisLattice = NiggliUnitCell * std::get<1>(*foundSpaceGroup).inverseRotationMatrix;
-
-          SKSpaceGroup spaceGroup = SKSpaceGroup(HallNumber);
-
-          SKIntegerSymmetryOperationSet dataBaseSpaceGroupSymmetries =
-              spaceGroup.spaceGroupSetting().fullSeitzMatrices();
-
-          double3x3 transform = conventionalBravaisLattice.inverse() * NiggliUnitCell;
-
-          std::vector<std::tuple<double3, std::size_t, double>> atomsInConventionalCell{};
-          std::transform(positionInNiggliCell.begin(), positionInNiggliCell.end(),
-                         std::back_inserter(atomsInConventionalCell),
-                         [transform, origin](const std::tuple<double3, std::size_t, double>& tuple)
-                         {
-                           return std::make_tuple(double3::fract(transform * std::get<0>(tuple) + origin),
-                                                  std::get<1>(tuple), std::get<2>(tuple));
-                         });
-
-          std::vector<std::tuple<double3, std::size_t, double>> symmetrizedAtomsInConventionalCell =
-              dataBaseSpaceGroupSymmetries.symmetrize(conventionalBravaisLattice, atomsInConventionalCell,
-                                                      symmetryPrecision);
-
-          std::vector<std::tuple<double3, std::size_t, double>> asymmetricAtoms =
-              dataBaseSpaceGroupSymmetries.asymmetricAtoms(
-                  spaceGroup.spaceGroupSetting().asymmetricUnit(), symmetrizedAtomsInConventionalCell,
-                  conventionalBravaisLattice, allowPartialOccupancies, symmetryPrecision);
-
-          SKSymmetryCell temp = SKSymmetryCell::createFromUnitCell(conventionalBravaisLattice);
-          SKSymmetryCell cell = temp.idealized(spaceGroup.spaceGroupSetting().pointGroupNumber(),
-                                               spaceGroup.spaceGroupSetting().qualifier());
-          return SKSpaceGroup::FoundNiggliCellInfo{HallNumber, cell, asymmetricAtoms};
-        }
+        return SKSpaceGroup::FoundNiggliCellInfo{found->HallNumber, found->cell, found->asymmetricAtoms};
       }
     }
   }
