@@ -74,7 +74,6 @@ export struct SKTransformationMatrix
   static SKTransformationMatrix primitiveToHexagonal;            // P -> H
   static SKTransformationMatrix rhombohedralObverseHexagonal;    // Robv -> Rh
   static SKTransformationMatrix rhombohedralHexagonalToReverse;  // Rh -> Rrev
-  static SKTransformationMatrix rhombohedralReverseToHexagonal;  // Rrev -> Rh
 
   static SKTransformationMatrix monoclinicAtoC;
   static SKTransformationMatrix AtoC;
@@ -90,8 +89,7 @@ export struct SKTransformationMatrix
   static double3x3 CCenteredToPrimitive;     // C -> P
   static double3x3 rhombohedralToPrimitive;  // R -> P
 
-  // CHECK
-  static double3x3 rhombohedralReverseToPrimitive;  // R -> P
+  static double3x3 rhombohedralReverseToPrimitive;  // Rrev -> P
 
   static double3x3 hexagonalToPrimitive;            // H -> P
   static double3x3 rhombohedralHexagonalToObverse;  // Rh -> Robv

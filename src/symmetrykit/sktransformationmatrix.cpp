@@ -56,10 +56,12 @@ SKTransformationMatrix SKTransformationMatrix::primitiveToHexagonal =
     SKTransformationMatrix(int3(1, -1, 0), int3(1, 2, 0), int3(0, 0, 1));  // P -> H
 SKTransformationMatrix SKTransformationMatrix::rhombohedralObverseHexagonal =
     SKTransformationMatrix(int3(1, 0, 1), int3(-1, 1, 1), int3(0, -1, 1));  // Robv -> Rh
+// the reverse hexagonal cell on rhombohedral axes: a_H = -b_R + c_R, b_H = a_R - c_R, c_H = a_R + b_R + c_R, three
+// rhombohedral cells (determinant 3), the inverse of rhombohedralReverseToPrimitive. The former entry (and its
+// integer "inverse" rhombohedralReverseToHexagonal) had determinant 1, so it was no rhombohedral-hexagonal
+// transformation at all; the way back has thirds and is the double3x3 rhombohedralReverseToPrimitive
 SKTransformationMatrix SKTransformationMatrix::rhombohedralHexagonalToReverse =
-    SKTransformationMatrix(int3(1, 1, -2), int3(-1, 0, 1), int3(1, 1, -1));  // Rh -> Rrev
-SKTransformationMatrix SKTransformationMatrix::rhombohedralReverseToHexagonal =
-    SKTransformationMatrix(int3(-1, -1, 1), int3(0, 1, 1), int3(-1, 0, 1));  // Rrev -> Rh
+    SKTransformationMatrix(int3(0, -1, 1), int3(1, 0, -1), int3(1, 1, 1));  // Rh -> Rrev
 
 SKTransformationMatrix SKTransformationMatrix::monoclinicAtoC =
     SKTransformationMatrix(int3(0, 0, 1), int3(0, -1, 0), int3(1, 0, 0));
@@ -88,10 +90,10 @@ double3x3 SKTransformationMatrix::rhombohedralToPrimitive =
     double3x3(double3(2.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0), double3(-1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0),
               double3(-1.0 / 3.0, -2.0 / 3.0, 1.0 / 3.0));  // R -> P
 
-// CHECK
+// the rhombohedral axes of the reverse setting, lattice points (1/3, 2/3, 1/3) and (2/3, 1/3, 2/3)
 double3x3 SKTransformationMatrix::rhombohedralReverseToPrimitive =
     double3x3(double3(1.0 / 3.0, 2.0 / 3.0, 1.0 / 3.0), double3(-2.0 / 3.0, -1.0 / 3.0, 1.0 / 3.0),
-              double3(1.0 / 3.0, -1.0 / 3.0, 1.0 / 3.0));  // R -> P
+              double3(1.0 / 3.0, -1.0 / 3.0, 1.0 / 3.0));  // Rrev -> P
 
 double3x3 SKTransformationMatrix::hexagonalToPrimitive =
     double3x3(double3(2.0 / 3.0, 1.0 / 3.0, 0), double3(-1.0 / 3.0, 1.0 / 3.0, 0), double3(0, 0, 1.0));  // H -> P

@@ -780,6 +780,40 @@ TEST(SYMMETRY_STRUCTURE_FIXES, hexagonal_centring_transformations_keep_the_c_axi
   EXPECT_NEAR(SKTransformationMatrix::hexagonalToPrimitive.determinant(), 1.0 / 3.0, 1e-12);
 }
 
+TEST(SYMMETRY_STRUCTURE_FIXES, reverse_hexagonal_cell_is_three_rhombohedral_cells)
+{
+  // the matrix had determinant 1 (its columns were not a hexagonal cell on rhombohedral axes at all)
+  EXPECT_EQ(SKTransformationMatrix::rhombohedralHexagonalToReverse.determinant(), 3);
+  EXPECT_NEAR(SKTransformationMatrix::rhombohedralReverseToPrimitive.determinant(), 1.0 / 3.0, 1e-12);
+  const double3x3 product = SKTransformationMatrix::rhombohedralReverseToPrimitive *
+                            double3x3(SKTransformationMatrix::rhombohedralHexagonalToReverse.transformation);
+  for (std::size_t i = 0; i < 3; ++i)
+    for (std::size_t j = 0; j < 3; ++j) EXPECT_NEAR(product[i][j], i == j ? 1.0 : 0.0, 1e-12) << i << " " << j;
+
+  // a rhombohedral cell (a = 5, alpha = 70 degrees) taken to the hexagonal cell: a_H = b_H at 120 degrees, c_H
+  // perpendicular to both, three times the volume
+  const double alpha = 70.0 * std::numbers::pi / 180.0;
+  const double a = 5.0;
+  const double3 aR(a, 0.0, 0.0);
+  const double3 bR(a * std::cos(alpha), a * std::sin(alpha), 0.0);
+  const double cx = a * std::cos(alpha);
+  const double cy = a * (std::cos(alpha) - std::cos(alpha) * std::cos(alpha)) / std::sin(alpha);
+  const double3 cR(cx, cy, std::sqrt(a * a - cx * cx - cy * cy));
+  const double3x3 rhombohedral(aR, bR, cR);
+  const double3x3 hexagonal = rhombohedral * SKTransformationMatrix::rhombohedralHexagonalToReverse;
+  EXPECT_NEAR(hexagonal[0].length(), hexagonal[1].length(), 1e-12);
+  EXPECT_NEAR(double3::dot(hexagonal[0], hexagonal[1]), -0.5 * hexagonal[0].length_squared(), 1e-10);
+  EXPECT_NEAR(double3::dot(hexagonal[0], hexagonal[2]), 0.0, 1e-10);
+  EXPECT_NEAR(double3::dot(hexagonal[1], hexagonal[2]), 0.0, 1e-10);
+  EXPECT_NEAR(hexagonal.determinant(), 3.0 * rhombohedral.determinant(), 1e-10);
+
+  // and it is the reverse setting: a_R sits at (1/3, 2/3, 1/3) of the hexagonal cell, not the obverse (2/3, 1/3, 1/3)
+  const double3 aRInHexagonal = hexagonal.inverse() * aR;
+  EXPECT_NEAR(aRInHexagonal.x, 1.0 / 3.0, 1e-12);
+  EXPECT_NEAR(aRInHexagonal.y, 2.0 / 3.0, 1e-12);
+  EXPECT_NEAR(aRInHexagonal.z, 1.0 / 3.0, 1e-12);
+}
+
 TEST(SYMMETRY_STRUCTURE_FIXES, niggli_cell_search_identifies_centred_groups_and_a_short_principal_axis)
 {
   // F d -3 m from its 8a site (origin choice 2): a centred group, which the former direct match of the primitive
