@@ -32,6 +32,7 @@ export class SKSpaceGroup
     double3x3 rotationMatrix;
     std::vector<std::tuple<double3, std::size_t, double>> atoms;
     std::vector<std::tuple<double3, std::size_t, double>> asymmetricAtoms;
+    double symmetryPrecision;  // the precision the group was found at: the requested one, or a shrunken one
   };
 
   struct FoundNiggliCellInfo
@@ -67,6 +68,12 @@ export class SKSpaceGroup
   static std::optional<FoundNiggliCellInfo> findNiggliCell(double3x3 unitCell,
                                                            std::vector<std::tuple<double3, std::size_t, double>> atoms,
                                                            bool allowPartialOccupancies, double symmetryPrecision);
+  static std::optional<SKPointGroup> findPointGroupAtPrecision(
+      double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
+      double symmetryPrecision);
+  static std::optional<FoundSpaceGroupInfo> findSpaceGroupAtPrecision(
+      double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
+      double symmetryPrecision);
   static std::optional<SKPointGroup> findPointGroup(double3x3 unitCell,
                                                     std::vector<std::tuple<double3, std::size_t, double>> atoms,
                                                     bool allowPartialOccupancies, double symmetryPrecision);

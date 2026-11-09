@@ -396,6 +396,44 @@ void checkArbitraryBases(std::size_t first, std::size_t last)
     }
   }
 }
+
+// the order of the point group of a Hall setting
+std::size_t pointGroupOrder(std::size_t hallNumber)
+{
+  const SKSpaceGroupSetting& setting = SKSpaceGroupDataBase::spaceGroupData[hallNumber];
+  return setting.fullSeitzMatrices().operations.size() / setting.latticeTranslations().size();
+}
+
+// at a precision below the noise of a noisy structure some operations are found and others not; the search then
+// shrinks the precision until the operations it finds form a group, and returns that group (a subgroup of the true
+// one, at worst P 1) with the precision it was found at, rather than nothing
+void checkShrinkingFallback(std::size_t first, std::size_t last)
+{
+  std::mt19937 rng(89012);
+  std::size_t checked = 0;
+  for (const GeneratedStructure& structure : generatedStructures(first, last))
+  {
+    if (structure.precision < 1.0e-4) continue;  // exact structures are found at any precision
+    const auto atoms = shifted(structure, rng);
+    for (const double requested : {structure.precision / 2.5, structure.precision / 5.0})
+    {
+      const std::optional<SKSpaceGroup::FoundSpaceGroupInfo> found =
+          SKSpaceGroup::findSpaceGroup(structure.cell, atoms, false, requested);
+      ASSERT_TRUE(found.has_value()) << structure.file << " at " << requested;
+      EXPECT_LE(found->symmetryPrecision, requested * (1.0 + 1.0e-12)) << structure.file << " at " << requested;
+      EXPECT_GE(found->symmetryPrecision, requested * std::pow(0.95, 30)) << structure.file << " at " << requested;
+      EXPECT_EQ(pointGroupOrder(structure.hallNumber) % pointGroupOrder(found->HallNumber), 0uz)
+          << structure.file << " at " << requested << " found group "
+          << SKSpaceGroupDataBase::spaceGroupData[found->HallNumber].number();
+
+      const std::optional<SKPointGroup> pointGroup =
+          SKSpaceGroup::findPointGroup(structure.cell, atoms, false, requested);
+      ASSERT_TRUE(pointGroup.has_value()) << structure.file << " at " << requested;
+    }
+    ++checked;
+  }
+  EXPECT_GT(checked, 0uz);
+}
 }  // namespace
 
 TEST(GeneratedSpaceGroups, Triclinic) { checkGroups(1, 2); }
@@ -431,6 +469,16 @@ TEST(GeneratedArbitraryBases, Orthorhombic) { checkArbitraryBases(16, 74); }
 TEST(GeneratedArbitraryBases, Tetragonal) { checkArbitraryBases(75, 142); }
 TEST(GeneratedArbitraryBases, TrigonalAndHexagonal) { checkArbitraryBases(143, 194); }
 TEST(GeneratedArbitraryBases, Cubic) { checkArbitraryBases(195, 230); }
+
+TEST(GeneratedShrinkingFallback, TriclinicAndMonoclinic) { checkShrinkingFallback(1, 15); }
+TEST(GeneratedShrinkingFallback, Orthorhombic) { checkShrinkingFallback(16, 74); }
+TEST(GeneratedShrinkingFallback, Tetragonal) { checkShrinkingFallback(75, 142); }
+TEST(GeneratedShrinkingFallback, TrigonalAndHexagonal) { checkShrinkingFallback(143, 194); }
+// the cubic groups in four parts: the fallback retries the search up to thirty times on their hundreds of atoms
+TEST(GeneratedShrinkingFallback, CubicLow) { checkShrinkingFallback(195, 214); }
+TEST(GeneratedShrinkingFallback, CubicMiddle) { checkShrinkingFallback(215, 224); }
+TEST(GeneratedShrinkingFallback, CubicFaceCentred) { checkShrinkingFallback(225, 227); }
+TEST(GeneratedShrinkingFallback, CubicHigh) { checkShrinkingFallback(228, 230); }
 
 TEST(GeneratedTransformationMatrix, TriclinicAndMonoclinic) { checkTransformations(1, 15); }
 TEST(GeneratedTransformationMatrix, Orthorhombic) { checkTransformations(16, 74); }

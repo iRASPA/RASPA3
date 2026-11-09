@@ -612,8 +612,8 @@ std::optional<SKSpaceGroup::FoundPrimitiveCellInfo> SKSpaceGroup::SKFindPrimitiv
       findSpaceGroup(unitCell, atoms, allowPartialOccupancies, symmetryPrecision);
   if (foundSpaceGroup)
   {
-    const auto& [HallNumber, origin, cell, changeOfBasis, transformationMatrix, rotationMatrix, atoms1,
-                 asymemtricAtoms] = *foundSpaceGroup;
+    const auto& [HallNumber, origin, cell, changeOfBasis, transformationMatrix, rotationMatrix, atoms1, asymemtricAtoms,
+                 foundPrecision] = *foundSpaceGroup;
 
     SKSpaceGroup spaceGroup = SKSpaceGroup(HallNumber);
     Centring centring = spaceGroup.spaceGroupSetting().centring();
@@ -663,9 +663,30 @@ std::optional<SKSpaceGroup::FoundPrimitiveCellInfo> SKSpaceGroup::SKFindPrimitiv
   return std::nullopt;
 }
 
+// The search at the requested precision and, when that finds no consistent group, at a precision shrunk by five
+// percent at a time, up to thirty times, as spglib does. Coordinates whose errors are around the precision give some
+// rotations a translation and others none; the operations then do not close into a group, match no setting, and the
+// search came back with nothing. At a smaller precision the doubtful operations drop out and the group the structure
+// does support is found, at worst P 1. The result carries the precision it was found at.
 std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
     double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
     double symmetryPrecision = 1e-2)
+{
+  double precision = symmetryPrecision;
+  for (int attempt = 0; attempt < 30; ++attempt, precision *= 0.95)
+  {
+    if (std::optional<FoundSpaceGroupInfo> found =
+            findSpaceGroupAtPrecision(unitCell, atoms, allowPartialOccupancies, precision))
+    {
+      return found;
+    }
+  }
+  return std::nullopt;
+}
+
+std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroupAtPrecision(
+    double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
+    double symmetryPrecision)
 {
   // without atoms there is no least-occurring atom type to start from
   if (atoms.empty()) return std::nullopt;
@@ -824,7 +845,8 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
                                                        transformationMatrix,
                                                        rotationMatrix,
                                                        symmetrizedAtomsInConventionalCell,
-                                                       asymmetricAtoms};
+                                                       asymmetricAtoms,
+                                                       symmetryPrecision};
             }
           }
         }
@@ -887,7 +909,8 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
                                                      transformationMatrix,
                                                      rotationMatrix,
                                                      symmetrizedAtomsInConventionalCell,
-                                                     asymmetricAtoms};
+                                                     asymmetricAtoms,
+                                                     symmetryPrecision};
           }
         }
       }
@@ -969,9 +992,27 @@ std::optional<SKSpaceGroup::FoundNiggliCellInfo> SKSpaceGroup::findNiggliCell(
   return std::nullopt;
 }
 
+// the point group at the requested precision, or at a shrunken one when the rotations found match no point group
+// (see findSpaceGroup)
 std::optional<SKPointGroup> SKSpaceGroup::findPointGroup(double3x3 unitCell,
                                                          std::vector<std::tuple<double3, std::size_t, double>> atoms,
                                                          bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
+{
+  double precision = symmetryPrecision;
+  for (int attempt = 0; attempt < 30; ++attempt, precision *= 0.95)
+  {
+    if (std::optional<SKPointGroup> found =
+            findPointGroupAtPrecision(unitCell, atoms, allowPartialOccupancies, precision))
+    {
+      return found;
+    }
+  }
+  return std::nullopt;
+}
+
+std::optional<SKPointGroup> SKSpaceGroup::findPointGroupAtPrecision(
+    double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
+    double symmetryPrecision)
 {
   // without atoms there is no least-occurring atom type to start from
   if (atoms.empty()) return std::nullopt;
