@@ -407,6 +407,32 @@ TEST(SYMMETRY_STRUCTURE_FIXES, apollonius_curve_test_and_cyclic_order_survive_de
   EXPECT_EQ(cyclicOrder(unitToSite, {2, 0, 1}, double3(1.0, 0.0, 0.0)), (std::vector<std::size_t>{2, 0, 1}));
 }
 
+TEST(SYMMETRY_STRUCTURE_FIXES, triclinic_structures_are_found_in_their_niggli_cell)
+{
+  using Atom = std::tuple<double3, std::size_t, double>;
+  // a P 1 structure given in a basis that is not reduced (b has a large component along a): the found cell is the
+  // Niggli cell of the lattice, the one the triclinic branch changes the basis to
+  const double3x3 unreduced(double3(10.0, 0.0, 0.0), double3(12.0, 11.0, 0.0), double3(0.5, 1.5, 12.0));
+  const std::vector<Atom> atoms{Atom{double3(0.1, 0.2, 0.3), 1, 1.0}, Atom{double3(0.4, 0.7, 0.9), 2, 1.0},
+                                Atom{double3(0.8, 0.1, 0.6), 3, 1.0}};
+  const std::optional<SKSpaceGroup::FoundSpaceGroupInfo> found =
+      SKSpaceGroup::findSpaceGroup(unreduced, atoms, false, 1e-2);
+  ASSERT_TRUE(found.has_value());
+  EXPECT_EQ(found->HallNumber, 1uz);
+
+  const std::optional<std::pair<SKSymmetryCell, SKTransformationMatrix>> niggli =
+      SKSymmetryCell::createFromUnitCell(unreduced).computeReducedNiggliCellAndChangeOfBasisMatrix();
+  ASSERT_TRUE(niggli.has_value());
+  std::array<double, 3> foundLengths{found->cell.a(), found->cell.b(), found->cell.c()};
+  std::array<double, 3> niggliLengths{niggli->first.a(), niggli->first.b(), niggli->first.c()};
+  std::sort(foundLengths.begin(), foundLengths.end());
+  std::sort(niggliLengths.begin(), niggliLengths.end());
+  for (std::size_t i = 0; i < 3; ++i) EXPECT_NEAR(foundLengths[i], niggliLengths[i], 1e-6) << i;
+  EXPECT_NEAR(std::fabs(found->cell.unitCell().determinant()), std::fabs(unreduced.determinant()), 1e-6);
+  EXPECT_LT(found->cell.b(), unreduced[1].length());  // reduced: shorter than the b it was given
+  EXPECT_EQ(found->atoms.size(), 3uz);
+}
+
 TEST(SYMMETRY_STRUCTURE_FIXES, a_backend_with_blocked_pockets_is_another_backend_for_the_field_cache)
 {
   EnergyBackend backend;

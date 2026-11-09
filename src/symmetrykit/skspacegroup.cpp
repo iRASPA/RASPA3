@@ -749,7 +749,9 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroupAtP
         {
           case Laue::laue_1:
           {
-            SKSymmetryCell::createFromUnitCell(primitiveDelaunayUnitCell.value() * (*Mprime));
+            // change the basis to the Niggli cell. The reduction's change of basis is relative to the cell it was
+            // given, M', so it composes with M' (which is the identity for this Laue class, so the assignment that
+            // replaced M' happened to be right)
             std::optional<std::pair<SKSymmetryCell, SKTransformationMatrix>> symmetryCell =
                 SKSymmetryCell::createFromUnitCell(primitiveDelaunayUnitCell.value() * Mprime.value())
                     .computeReducedNiggliCellAndChangeOfBasisMatrix();
@@ -757,7 +759,7 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroupAtP
             {
               return std::nullopt;
             }
-            Mprime = std::get<1>(*symmetryCell);
+            Mprime = *Mprime * std::get<1>(*symmetryCell);
             break;
           }
           case Laue::laue_2m:
