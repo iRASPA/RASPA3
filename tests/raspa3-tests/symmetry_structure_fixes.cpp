@@ -364,6 +364,49 @@ TEST(SYMMETRY_STRUCTURE_FIXES, poscar_skips_comment_lines_strips_bang_comments_a
   EXPECT_THROW(SKPOSCARParser(flatCellByVolume).startParsing(), std::runtime_error);
 }
 
+TEST(SYMMETRY_STRUCTURE_FIXES, apollonius_curve_test_and_cyclic_order_survive_dependent_sites)
+{
+  // a regular triple: a site whose row is the sum of the two others lies on their curve, one off the plane does not
+  std::vector<double3> centres{double3(0.0, 0.0, 0.0), double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0),
+                               double3(1.0, 1.0, 0.0), double3(0.0, 0.0, 1.0)};
+  std::vector<double> radii{0.0, 0.0, 0.0, 0.0, 0.0};
+  EXPECT_TRUE(onCurveOf(centres, radii, 0, 1, 2, 3));
+  EXPECT_FALSE(onCurveOf(centres, radii, 0, 1, 2, 4));
+
+  // sites j and i coincide: the first row is zero and the projection onto it divided 0 by 0
+  centres = {double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(1.0, 0.0, 0.0), double3(2.0, 0.0, 0.0),
+             double3(0.0, 1.0, 0.0)};
+  radii = {1.0, 1.0, 1.0, 1.0, 1.0};
+  EXPECT_TRUE(onCurveOf(centres, radii, 0, 1, 2, 3));
+  EXPECT_FALSE(onCurveOf(centres, radii, 0, 1, 2, 4));
+
+  // three sites in line with radii changing linearly: the second row is a multiple of the first and nothing is
+  // left of it to project onto
+  centres = {double3(0.0, 0.0, 0.0), double3(1.0, 0.0, 0.0), double3(2.0, 0.0, 0.0), double3(3.0, 0.0, 0.0),
+             double3(0.0, 0.0, 1.0)};
+  radii = {0.0, 0.5, 1.0, 1.5, 0.0};
+  EXPECT_TRUE(onCurveOf(centres, radii, 0, 1, 2, 3));
+  EXPECT_FALSE(onCurveOf(centres, radii, 0, 1, 2, 4));
+
+  // three directions round z at 0, 240 and 120 degrees, ordered by their angle in (-180, 180] from the first: round
+  // +z that is 240 (= -120), 0, 120, and round -z the reverse
+  const double third = 2.0 * std::numbers::pi / 3.0;
+  std::vector<double3> unitToSite{double3(1.0, 0.0, 0.0), double3(std::cos(2.0 * third), std::sin(2.0 * third), 0.0),
+                                  double3(std::cos(third), std::sin(third), 0.0)};
+  EXPECT_EQ(cyclicOrder(unitToSite, {0, 1, 2}, double3(0.0, 0.0, 1.0)), (std::vector<std::size_t>{1, 0, 2}));
+  EXPECT_EQ(cyclicOrder(unitToSite, {0, 1, 2}, double3(0.0, 0.0, -1.0)), (std::vector<std::size_t>{2, 0, 1}));
+
+  // the first site at the middle of all of them: the reference direction had length zero and was divided by it
+  unitToSite = {double3(1.0, 0.0, 0.0), double3(2.0, 0.0, 0.0), double3(0.0, 0.0, 0.0)};
+  std::vector<std::size_t> order = cyclicOrder(unitToSite, {0, 1, 2}, double3(0.0, 0.0, 1.0));
+  std::sort(order.begin(), order.end());
+  EXPECT_EQ(order, (std::vector<std::size_t>{0, 1, 2}));
+
+  // all directions the same: nothing to order, the sites come back as given
+  unitToSite = {double3(0.0, 0.0, 1.0), double3(0.0, 0.0, 1.0), double3(0.0, 0.0, 1.0)};
+  EXPECT_EQ(cyclicOrder(unitToSite, {2, 0, 1}, double3(1.0, 0.0, 0.0)), (std::vector<std::size_t>{2, 0, 1}));
+}
+
 TEST(SYMMETRY_STRUCTURE_FIXES, a_backend_with_blocked_pockets_is_another_backend_for_the_field_cache)
 {
   EnergyBackend backend;

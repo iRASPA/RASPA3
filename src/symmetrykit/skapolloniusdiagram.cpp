@@ -465,6 +465,9 @@ SiteTuple canonicalTuple(const std::size_t* indices, const int3* images, std::si
   return key;
 }
 
+}  // namespace
+
+// Exported for testing (see the interface); the two below are used by vertexBranches and the ring walk.
 // Whether site m, tangent where sites i, j and k are, lies on their curve all along it. The curve is what the two
 // equations of the trisector cut out, and every one of them is a row (c_m - c_i, r_m - r_i, K_m - K_i). A site
 // tangent at a point of the curve has its K settled by its other two entries, so it adds no equation exactly when
@@ -480,9 +483,13 @@ bool onCurveOf(const std::vector<double3>& centres, const std::vector<double>& r
   };
   auto inner = [](const std::array<double, 4>& lhs, const std::array<double, 4>& rhs)
   { return lhs[0] * rhs[0] + lhs[1] * rhs[1] + lhs[2] * rhs[2] + lhs[3] * rhs[3]; };
+  // Gram-Schmidt. A zero row (a site coinciding with site i) has no direction to remove along; the division by its
+  // norm gave 0/0, which -ffast-math leaves undefined.
   auto remove = [&](std::array<double, 4>& from, const std::array<double, 4>& along)
   {
-    const double share = inner(from, along) / inner(along, along);
+    const double norm = inner(along, along);
+    if (norm == 0.0) return;
+    const double share = inner(from, along) / norm;
     for (std::size_t c = 0; c < 4; ++c) from[c] -= share * along[c];
   };
 
@@ -490,7 +497,12 @@ bool onCurveOf(const std::vector<double3>& centres, const std::vector<double>& r
   std::array<double, 4> second = row(k);
   std::array<double, 4> candidate = row(m);
   const double size = inner(candidate, candidate);
+  const double secondSize = inner(second, second);
   remove(second, first);
+  // a second row that is a multiple of the first (three sites in line with radii changing linearly) leaves only
+  // round-off, along which the candidate would be divided by nearly nothing: the rows then span one direction and
+  // the candidate is tested against that
+  if (inner(second, second) <= sameCurveTolerance * sameCurveTolerance * secondSize) second = {0.0, 0.0, 0.0, 0.0};
   remove(candidate, first);
   remove(candidate, second);
   return inner(candidate, candidate) <= sameCurveTolerance * sameCurveTolerance * size;
@@ -503,7 +515,15 @@ std::vector<std::size_t> cyclicOrder(const std::vector<double3>& unitToSite, std
   double3 middle(0.0, 0.0, 0.0);
   for (std::size_t s : sites) middle = middle + unitToSite[s];
   middle = (1.0 / static_cast<double>(sites.size())) * middle;
-  double3 across = unitToSite[sites[0]] - middle;
+  // the angles are measured from the first site that does not sit at the middle; when every site does (all their
+  // directions coincide) there is no order to decide, and the normalisation divided by zero
+  double3 across(0.0, 0.0, 0.0);
+  for (std::size_t s : sites)
+  {
+    across = unitToSite[s] - middle;
+    if (across.length_squared() > 0.0) break;
+  }
+  if (!(across.length_squared() > 0.0)) return sites;
   across = (1.0 / across.length()) * across;
   double3 round = double3::cross(direction, across);
   std::vector<std::pair<double, std::size_t>> byAngle;
@@ -516,6 +536,9 @@ std::vector<std::size_t> cyclicOrder(const std::vector<double3>& unitToSite, std
   for (std::size_t s = 0; s < sites.size(); ++s) sites[s] = byAngle[s].second;
   return sites;
 }
+
+namespace
+{
 
 // The edges leaving a vertex: which triples of its sites carry one, and in which direction.
 //

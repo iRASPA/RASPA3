@@ -252,6 +252,16 @@ export std::vector<std::size_t> coincidentGroups(const double3x3& unitCell, cons
                                                  const double3& perpendicularWidths,
                                                  const std::vector<double3>& positions, double tolerance);
 
+/// Whether site m, tangent where sites i, j and k are, lies on their trisector curve all along it. Exposed for
+/// testing.
+export bool onCurveOf(const std::vector<double3>& centres, const std::vector<double>& radii, std::size_t i,
+                      std::size_t j, std::size_t k, std::size_t m);
+
+/// The sites on one curve in cyclic order round 'direction', from their unit directions at a point of it. Exposed
+/// for testing.
+export std::vector<std::size_t> cyclicOrder(const std::vector<double3>& unitToSite, std::vector<std::size_t> sites,
+                                            const double3& direction);
+
 export struct SKApolloniusDiagram
 {
   // Whether the complex came out combinatorially consistent. In the diagram over `EntireSpace` every
