@@ -5,6 +5,7 @@ add_executable(unit_tests_symmetrykit
   find_pointgroup.cpp
   find_pointgroup_no_partial_occupancies.cpp
   find_spacegroup.cpp
+  find_spacegroup_no_partial_occupancies.cpp
   find_spacegroup_symmetry_metric.cpp
   band_path.cpp
   niggli_reduction.cpp

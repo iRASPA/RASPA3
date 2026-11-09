@@ -39,10 +39,6 @@ TEST(FindPointgroup, Triclinic)
                    [randomShift](const std::tuple<double3, size_t, double>& atom)
                    { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
 
-    std::transform(atoms.begin(), atoms.end(), std::back_inserter(randomlyShiftedAtoms),
-                   [randomShift](const std::tuple<double3, size_t, double>& atom)
-                   { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
-
     std::optional<SKPointGroup> pointGroup =
         SKSpaceGroup::findPointGroup(unitCell, randomlyShiftedAtoms, allowPartialOccupancies, symmetryPrecision);
 
@@ -108,10 +104,6 @@ TEST(FindPointgroup, Monoclinic)
 
     double3 randomShift = double3(dist(mt), dist(mt), dist(mt));
     std::vector<std::tuple<double3, size_t, double>> randomlyShiftedAtoms{};
-    std::transform(atoms.begin(), atoms.end(), std::back_inserter(randomlyShiftedAtoms),
-                   [randomShift](const std::tuple<double3, size_t, double>& atom)
-                   { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
-
     std::transform(atoms.begin(), atoms.end(), std::back_inserter(randomlyShiftedAtoms),
                    [randomShift](const std::tuple<double3, size_t, double>& atom)
                    { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
@@ -275,10 +267,6 @@ TEST(FindPointgroup, Orthorhombic)
 
     double3 randomShift = double3(dist(mt), dist(mt), dist(mt));
     std::vector<std::tuple<double3, size_t, double>> randomlyShiftedAtoms{};
-    std::transform(atoms.begin(), atoms.end(), std::back_inserter(randomlyShiftedAtoms),
-                   [randomShift](const std::tuple<double3, size_t, double>& atom)
-                   { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
-
     std::transform(atoms.begin(), atoms.end(), std::back_inserter(randomlyShiftedAtoms),
                    [randomShift](const std::tuple<double3, size_t, double>& atom)
                    { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
@@ -469,10 +457,6 @@ TEST(FindPointgroup, Tetragonal)
                    [randomShift](const std::tuple<double3, size_t, double>& atom)
                    { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
 
-    std::transform(atoms.begin(), atoms.end(), std::back_inserter(randomlyShiftedAtoms),
-                   [randomShift](const std::tuple<double3, size_t, double>& atom)
-                   { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
-
     std::optional<SKPointGroup> pointGroup =
         SKSpaceGroup::findPointGroup(unitCell, randomlyShiftedAtoms, allowPartialOccupancies, symmetryPrecision);
 
@@ -561,10 +545,6 @@ TEST(FindPointgroup, Trigonal)
 
     double3 randomShift = double3(dist(mt), dist(mt), dist(mt));
     std::vector<std::tuple<double3, size_t, double>> randomlyShiftedAtoms{};
-    std::transform(atoms.begin(), atoms.end(), std::back_inserter(randomlyShiftedAtoms),
-                   [randomShift](const std::tuple<double3, size_t, double>& atom)
-                   { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
-
     std::transform(atoms.begin(), atoms.end(), std::back_inserter(randomlyShiftedAtoms),
                    [randomShift](const std::tuple<double3, size_t, double>& atom)
                    { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
@@ -659,10 +639,6 @@ TEST(FindPointgroup, Hexagonal)
                    [randomShift](const std::tuple<double3, size_t, double>& atom)
                    { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
 
-    std::transform(atoms.begin(), atoms.end(), std::back_inserter(randomlyShiftedAtoms),
-                   [randomShift](const std::tuple<double3, size_t, double>& atom)
-                   { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
-
     std::optional<SKPointGroup> pointGroup =
         SKSpaceGroup::findPointGroup(unitCell, randomlyShiftedAtoms, allowPartialOccupancies, symmetryPrecision);
 
@@ -733,10 +709,6 @@ TEST(FindPointgroup, Cubic)
 
     double3 randomShift = double3(dist(mt), dist(mt), dist(mt));
     std::vector<std::tuple<double3, size_t, double>> randomlyShiftedAtoms{};
-    std::transform(atoms.begin(), atoms.end(), std::back_inserter(randomlyShiftedAtoms),
-                   [randomShift](const std::tuple<double3, size_t, double>& atom)
-                   { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
-
     std::transform(atoms.begin(), atoms.end(), std::back_inserter(randomlyShiftedAtoms),
                    [randomShift](const std::tuple<double3, size_t, double>& atom)
                    { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
@@ -1094,10 +1066,6 @@ TEST(FindPointgroup, Virtual)
 
     double3 randomShift = double3(dist(mt), dist(mt), dist(mt));
     std::vector<std::tuple<double3, size_t, double>> randomlyShiftedAtoms{};
-    std::transform(atoms.begin(), atoms.end(), std::back_inserter(randomlyShiftedAtoms),
-                   [randomShift](const std::tuple<double3, size_t, double>& atom)
-                   { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
-
     std::transform(atoms.begin(), atoms.end(), std::back_inserter(randomlyShiftedAtoms),
                    [randomShift](const std::tuple<double3, size_t, double>& atom)
                    { return std::make_tuple(std::get<0>(atom) + randomShift, std::get<1>(atom), std::get<2>(atom)); });
