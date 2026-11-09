@@ -228,6 +228,41 @@ static double getJ(const SimulationBox& simulationBox, std::span<Atom> framework
   return 0.0;
 }
 
+// The orbital-overlap correction exp(-a^2 r^2)(2a - a^2 r - 1/r) summed over the lattice images of a separation, as
+// Wilmer and Snurr add it to the Coulomb term of every image (for a site and its own images the origin is left out).
+// It decays as a Gaussian, so only the images within 6/a, where the Gaussian is below 1e-15, are visited; a cell of a
+// few Angstrom has several of them. The refactoring to the Ewald routine had kept the minimum image alone for a pair
+// and no image at all for a site's own, which is what EQeq's charges for small cells rest on.
+static double orbitalOverlapLatticeSum(const SimulationBox& simulationBox, const double3& separation, double a,
+                                       bool skipOrigin)
+{
+  const double cutoff = 6.0 / a;
+  const double3 widths = simulationBox.perpendicularWidths();
+  const double reach = cutoff + separation.length();
+  const long long nu = static_cast<long long>(std::ceil(reach / widths.x));
+  const long long nv = static_cast<long long>(std::ceil(reach / widths.y));
+  const long long nw = static_cast<long long>(std::ceil(reach / widths.z));
+
+  double sum = 0.0;
+  for (long long u = -nu; u <= nu; ++u)
+  {
+    for (long long v = -nv; v <= nv; ++v)
+    {
+      for (long long w = -nw; w <= nw; ++w)
+      {
+        if (skipOrigin && u == 0 && v == 0 && w == 0) continue;
+        const double3 dr = separation + simulationBox.cell * double3(static_cast<double>(u), static_cast<double>(v),
+                                                                     static_cast<double>(w));
+        const double r2 = double3::dot(dr, dr);
+        if (r2 > cutoff * cutoff) continue;
+        const double r = std::sqrt(r2);
+        sum += std::exp(-(a * a * r2)) * (2.0 * a - a * a * r - 1.0 / r);
+      }
+    }
+  }
+  return sum;
+}
+
 void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceField, const SimulationBox& simulationBox,
                                                      std::span<Atom> frameworkAtoms, ChargeEquilibration::Type type)
 {
@@ -310,23 +345,20 @@ void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceFiel
     {
       for (std::size_t j = i; j != size; ++j)
       {
+        // the Ewald routine gives the Coulomb lattice sum; the orbital-overlap correction of every image is added
+        // here (see orbitalOverlapLatticeSum), for a site's own images as well as for a pair's
         if (i == j)
         {
-          Jab[i * size + i] = J[i] + lambda * (k / 2.0) * Jab[i * size + i];
+          const double orbital = orbitalOverlapLatticeSum(simulationBox, double3(0.0, 0.0, 0.0), J[i] / k, true);
+          Jab[i * size + i] = J[i] + lambda * (k / 2.0) * (Jab[i * size + i] + orbital);
         }
         else
         {
-          // Short-ranged orbital-overlap correction; it decays as exp(-a^2 r^2),
-          // so the minimum image is the only image that contributes
-          double3 dr = frameworkAtoms[i].position - frameworkAtoms[j].position;
-          dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-          double r2 = double3::dot(dr, dr);
-          double r = std::sqrt(r2);
+          const double3 dr =
+              simulationBox.applyPeriodicBoundaryConditions(frameworkAtoms[i].position - frameworkAtoms[j].position);
+          const double orbital = orbitalOverlapLatticeSum(simulationBox, dr, std::sqrt(J[i] * J[j]) / k, false);
 
-          double a = std::sqrt(J[i] * J[j]) / k;
-          double orbital_overlap_term = std::exp(-(a * a * r2)) * (2.0 * a - a * a * r - 1.0 / r);
-
-          double value = lambda * (k / 2.0) * (Jab[i * size + j] + orbital_overlap_term);
+          double value = lambda * (k / 2.0) * (Jab[i * size + j] + orbital);
           Jab[i * size + j] = value;
           Jab[j * size + i] = value;
         }

@@ -171,6 +171,41 @@ TEST(UNINITIALIZED_MEMBERS, charge_equilibration_rejects_unmeasured_ionization_e
   }
 }
 
+TEST(UNINITIALIZED_MEMBERS, periodic_charge_equilibration_gives_a_small_cell_the_charges_of_its_supercell)
+{
+  // CsCl in a 4 A cubic cell. Caesium's hardness is small (3.4 eV), so its orbital-overlap correction reaches
+  // beyond the cell: with the sites' own images and the pairs' further images left out of the sum (only the
+  // minimum image was kept), the 1x1x1 cell got other charges than its 2x2x2 supercell, in which those images are
+  // atoms of their own. The same crystal must give the same charges whatever cell describes it.
+  const ForceField forceField({{"Cs", true, 132.9, 0.0, 0.0, 55, false}, {"Cl", true, 35.45, 0.0, 0.0, 17, false}},
+                              {{20.0, 3.0}, {50.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0,
+                              false, false, true);
+  const double a = 4.0;
+  std::vector<Atom> cell{Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false),
+                         Atom({0.5 * a, 0.5 * a, 0.5 * a}, 0.0, 1.0, 0, 1, 0, false, false)};
+  ChargeEquilibration::computeChargeEquilibration(forceField, SimulationBox(a, a, a), cell,
+                                                  ChargeEquilibration::Type::PeriodicEwaldSum);
+  EXPECT_GT(cell[0].charge, 0.0);
+  EXPECT_NEAR(cell[0].charge + cell[1].charge, 0.0, 1e-9);
+
+  std::vector<Atom> supercell;
+  for (int u = 0; u < 2; ++u)
+    for (int v = 0; v < 2; ++v)
+      for (int w = 0; w < 2; ++w)
+      {
+        const double3 shift(a * u, a * v, a * w);
+        supercell.emplace_back(double3(0.0, 0.0, 0.0) + shift, 0.0, 1.0, 0, 0, 0, false, false);
+        supercell.emplace_back(double3(0.5 * a, 0.5 * a, 0.5 * a) + shift, 0.0, 1.0, 0, 1, 0, false, false);
+      }
+  ChargeEquilibration::computeChargeEquilibration(forceField, SimulationBox(2.0 * a, 2.0 * a, 2.0 * a), supercell,
+                                                  ChargeEquilibration::Type::PeriodicEwaldSum);
+  // the two agree to the Ewald sum's convergence (6e-6 here); the minimum-image version was 0.18 e apart
+  for (const Atom& atom : supercell)
+  {
+    EXPECT_NEAR(atom.charge, cell[static_cast<std::size_t>(atom.type)].charge, 1e-4) << atom.type;
+  }
+}
+
 TEST(UNINITIALIZED_MEMBERS, charge_equilibration_rejects_elements_beyond_the_reference_table)
 {
   ForceField forceField({{"U", true, 238.0, 0.0, 0.0, 92, false}, {"O", true, 16.0, 0.0, 0.0, 8, false}},
