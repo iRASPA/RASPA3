@@ -58,6 +58,14 @@ std::vector<std::tuple<double3, std::size_t, double>> SKIntegerSymmetryOperation
       }
     }
 
+    // no operation maps the atom onto itself (an empty set: a group holds the identity, which always does), so
+    // there is nothing to average and the atom stays as it is; the division gave NaN coordinates
+    if (count == 0)
+    {
+      symmetrizedAtoms.push_back(atoms[i]);
+      continue;
+    }
+
     double3x3 averagedRotation = double3x3(averageRotation.int3x3_m) / double(count);
     double3 averagedTranslation =
         double3(double(averageTranslation.x), double(averageTranslation.y), double(averageTranslation.z)) /

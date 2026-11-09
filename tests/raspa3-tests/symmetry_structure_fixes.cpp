@@ -223,6 +223,35 @@ TEST(SYMMETRY_STRUCTURE_FIXES, angle_setters_keep_a_rotated_cell_oriented_and_se
   EXPECT_NEAR(box.boundingBox().minimum().y, -4.0, 1e-12);
 }
 
+TEST(SYMMETRY_STRUCTURE_FIXES, symmetrize_without_operations_leaves_the_atoms_alone)
+{
+  using Atom = std::tuple<double3, std::size_t, double>;
+  const double3x3 cubic(double3(10.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 10.0));
+  const std::vector<Atom> atoms{Atom{double3(0.1, 0.2, 0.3), 1, 1.0}, Atom{double3(0.6, 0.7, 0.8), 2, 0.5}};
+
+  // an empty set has no operation that maps an atom onto itself; the average over none was 0/0 (NaN coordinates,
+  // which -ffast-math hides from std::isnan, hence the text check)
+  const std::vector<Atom> unchanged = SKIntegerSymmetryOperationSet().symmetrize(cubic, atoms, 1e-2);
+  ASSERT_EQ(unchanged.size(), atoms.size());
+  for (std::size_t i = 0; i < atoms.size(); ++i)
+  {
+    const double3 position = std::get<0>(unchanged[i]);
+    EXPECT_EQ(std::to_string(position.x).find("nan"), std::string::npos);
+    EXPECT_EQ(position, std::get<0>(atoms[i]));
+    EXPECT_EQ(std::get<1>(unchanged[i]), std::get<1>(atoms[i]));
+    EXPECT_EQ(std::get<2>(unchanged[i]), std::get<2>(atoms[i]));
+  }
+
+  // with a group the identity always matches, so a general position is returned as it is and a position just off a
+  // mirror of P m -3 m is put onto it
+  SKIntegerSymmetryOperationSet operations = SKSpaceGroup(517).spaceGroupSetting().fullSeitzMatrices();
+  const std::vector<Atom> general = operations.symmetrize(cubic, {Atom{double3(0.1, 0.2, 0.3), 1, 1.0}}, 1e-2);
+  EXPECT_NEAR((std::get<0>(general.front()) - double3(0.1, 0.2, 0.3)).length(), 0.0, 1e-12);
+  const std::vector<Atom> onMirror = operations.symmetrize(cubic, {Atom{double3(0.5004, 0.2, 0.3), 1, 1.0}}, 1e-2);
+  EXPECT_NEAR(std::get<0>(onMirror.front()).x, 0.5, 1e-12);
+  EXPECT_NEAR(std::get<0>(onMirror.front()).y, 0.2, 1e-12);
+}
+
 TEST(SYMMETRY_STRUCTURE_FIXES, equal_seitz_matrices_hash_equally)
 {
   const SKSeitzIntegerMatrix a(SKRotationMatrix::identity, int3(1, 2, 3));
