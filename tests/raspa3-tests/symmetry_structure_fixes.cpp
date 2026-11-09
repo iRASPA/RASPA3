@@ -82,6 +82,49 @@ TEST(SYMMETRY_STRUCTURE_FIXES, left_handed_cells_have_positive_volume_widths_and
   EXPECT_EQ(leftReplicas.z, rightReplicas.z);
 }
 
+TEST(SYMMETRY_STRUCTURE_FIXES, find_primitive_trims_at_the_precision_the_group_was_found_at)
+{
+  using Atom = std::tuple<double3, std::size_t, double>;
+  const double3x3 cubic(double3(10.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 10.0));
+  const double requested = 0.02;
+
+  // a P m -3 m orbit with noise of a quarter of the requested precision, which makes the search shrink its precision
+  // (to about 0.017 here) and settle on P 1, and a second orbit of the same type displaced from the first by 0.018
+  // with the same noise, so that every pair is exactly 0.018 apart: distinct at the precision the group was found
+  // at, coincident at the requested one. The trim into the primitive cell used the requested precision and merged
+  // each pair, returning 48 atoms for a 96-atom cell. Seeds are tried until the shrink lands below the displacement.
+  const double displacement = 0.9 * requested;
+  std::vector<Atom> atoms;
+  std::optional<SKSpaceGroup::FoundSpaceGroupInfo> found;
+  for (std::uint32_t seed = 1; seed <= 50 && !found; ++seed)
+  {
+    std::mt19937 rng(seed);
+    std::normal_distribution<double> noise(0.0, 0.25 * requested / 10.0);
+    atoms.clear();
+    for (const SKSeitzIntegerMatrix& m : SKSpaceGroup(517).spaceGroupSetting().fullSeitzMatrices().operations)
+    {
+      const double3 position =
+          double3::fract(m * double3(0.12, 0.23, 0.31) + double3(noise(rng), noise(rng), noise(rng)));
+      atoms.emplace_back(position, 1, 1.0);
+      atoms.emplace_back(double3::fract(position + double3(displacement / 10.0, 0.0, 0.0)), 1, 1.0);
+    }
+    found = SKSpaceGroup::findSpaceGroup(cubic, atoms, false, requested);
+    if (found && !(found->symmetryPrecision < displacement && found->atoms.size() == atoms.size()))
+    {
+      found = std::nullopt;
+    }
+  }
+  ASSERT_TRUE(found.has_value()) << "no seed made the search shrink its precision below the displacement";
+  EXPECT_EQ(found->HallNumber, 1uz);
+
+  const std::optional<SKSpaceGroup::FoundPrimitiveCellInfo> primitive =
+      SKSpaceGroup::SKFindPrimitive(cubic, atoms, false, requested);
+  ASSERT_TRUE(primitive.has_value());
+  // P 1: the primitive cell is the cell itself and holds all 96 atoms
+  EXPECT_NEAR(std::fabs(primitive->cell.unitCell().determinant()), std::fabs(cubic.determinant()), 1e-6);
+  EXPECT_EQ(primitive->atoms.size(), atoms.size()) << "found precision " << found->symmetryPrecision;
+}
+
 TEST(SYMMETRY_STRUCTURE_FIXES, equal_seitz_matrices_hash_equally)
 {
   const SKSeitzIntegerMatrix a(SKRotationMatrix::identity, int3(1, 2, 3));

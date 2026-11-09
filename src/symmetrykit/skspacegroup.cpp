@@ -654,8 +654,10 @@ std::optional<SKSpaceGroup::FoundPrimitiveCellInfo> SKSpaceGroup::SKFindPrimitiv
 
     SKSymmetryCell primitiveCell = SKSymmetryCell::createFromUnitCell(primitiveUnitCell);
 
+    // at the precision the group was found at: the requested one merged atoms that the shrunken search had kept
+    // apart
     std::vector<std::tuple<double3, std::size_t, double>> positionInPrimitiveCell =
-        SKSymmetryCell::trim(atoms1, cell.unitCell(), primitiveUnitCell, allowPartialOccupancies, symmetryPrecision);
+        SKSymmetryCell::trim(atoms1, cell.unitCell(), primitiveUnitCell, allowPartialOccupancies, foundPrecision);
 
     return SKSpaceGroup::FoundPrimitiveCellInfo{primitiveCell, positionInPrimitiveCell};
   }
