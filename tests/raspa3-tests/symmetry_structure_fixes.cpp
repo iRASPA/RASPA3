@@ -720,3 +720,22 @@ TEST(SYMMETRY_STRUCTURE_FIXES, operation_sets_return_themselves_and_asymmetric_a
   EXPECT_NEAR(std::get<0>(asymmetric.front()).y, 0.1, 1e-12);
   EXPECT_NEAR(std::get<0>(asymmetric.front()).z, 0.1, 1e-12);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, hermann_mauguin_lookup_honours_setting_qualifiers)
+{
+  // F d -3 m: Hall 525 is origin choice 1, 526 origin choice 2 (standard); R -3 m: Hall 458 hexagonal axes
+  // (standard), 459 rhombohedral axes. A qualifier after a colon used to make the symbol unreadable, and without
+  // one the first setting in the table was returned, so the second origin and the rhombohedral axes were unreachable
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromHMString("F d -3 m :2"), 526uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromHMString("F d -3 m :1"), 525uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromHMString("Fd-3m:1"), 525uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromHMString("'F d -3 m :1'"), 525uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromHMString("F d -3 m"), 526uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromHMString("R -3 m :R"), 459uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromHMString("R -3 m :H"), 458uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromHMString("R -3 m"), 458uz);
+  EXPECT_FALSE(SKSpaceGroup::HallNumberFromHMString("F d -3 m :3").has_value());
+  // an axis-setting qualifier selects that setting: P b n m is P n m a in the "cab" setting (Hall 294)
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromHMString("P b n m :cab"), 294uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumberFromHMString("P b n m"), 294uz);
+}

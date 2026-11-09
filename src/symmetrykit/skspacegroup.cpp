@@ -123,38 +123,65 @@ std::optional<std::size_t> SKSpaceGroup::HallNumber(std::string string)
 
 std::optional<std::size_t> SKSpaceGroup::HallNumberFromHMString(std::string string)
 {
+  // The symbol may carry a setting qualifier after a colon, as in "F d -3 m :2" or "R -3 m :R"; several settings
+  // share a bare symbol (the two origin choices, the hexagonal and rhombohedral axes, the axis permutations), so
+  // the qualifier selects among them and, without one, the standard setting is preferred. The qualifier used to be
+  // ignored, which made such symbols unreadable and left the alternative settings unreachable.
   std::string spaceSearchGroupString = toLower(simplified(string));
+  std::string qualifier{};
+  if (const std::size_t colon = spaceSearchGroupString.rfind(':'); colon != std::string::npos)
+  {
+    qualifier = simplified(spaceSearchGroupString.substr(colon + 1));
+    spaceSearchGroupString = simplified(spaceSearchGroupString.substr(0, colon));
+    // a quoted symbol closes after the qualifier: move the closing quote back onto the symbol
+    if (!qualifier.empty() && (qualifier.back() == '\'' || qualifier.back() == '"') &&
+        !spaceSearchGroupString.empty() && spaceSearchGroupString.front() == qualifier.back())
+    {
+      spaceSearchGroupString.push_back(qualifier.back());
+      qualifier.pop_back();
+      qualifier = simplified(qualifier);
+    }
+  }
   std::string spaceStrippedSearchString = spaceSearchGroupString;
   std::erase(spaceStrippedSearchString, ' ');
 
+  std::optional<std::size_t> firstMatch{};
   for (std::size_t i = 0; i <= 530; i++)
   {
-    std::string storedSpaceGroupString = toLower(simplified(SKSpaceGroupDataBase::spaceGroupData[i].HMString()));
+    const SKSpaceGroupSetting& setting = SKSpaceGroupDataBase::spaceGroupData[i];
+    std::string storedSpaceGroupString = toLower(simplified(setting.HMString()));
 
-    if (SKSpaceGroup::matchSpacegroup(spaceSearchGroupString, storedSpaceGroupString))
+    bool matches = SKSpaceGroup::matchSpacegroup(spaceSearchGroupString, storedSpaceGroupString);
+    if (!matches && setting.qualifier() == "H")
     {
-      return i;
+      matches = SKSpaceGroup::matchSpacegroup(spaceSearchGroupString, storedSpaceGroupString.replace(0, 1, "h"));
     }
+    if (!matches)
+    {
+      // the symbol with its spaces removed, as "Fm-3m" is written (see HallNumber)
+      storedSpaceGroupString = toLower(simplified(setting.HMString()));
+      std::erase(storedSpaceGroupString, ' ');
+      matches = SKSpaceGroup::matchSpacegroup(spaceStrippedSearchString, storedSpaceGroupString);
+    }
+    if (!matches) continue;
 
-    if (SKSpaceGroupDataBase::spaceGroupData[i].qualifier() == "H")
+    if (!qualifier.empty())
     {
-      storedSpaceGroupString = storedSpaceGroupString.replace(0, 1, "h");
-      if (SKSpaceGroup::matchSpacegroup(spaceSearchGroupString, storedSpaceGroupString))
-      {
-        return i;
-      }
+      // the origin choice is stored as the number 1 or 2 (not the character), the axes as 'H' or 'R'
+      const char ext = setting.ext();
+      const std::string extQualifier =
+          (ext > 0 && ext < 10) ? std::to_string(static_cast<int>(ext))
+                                : std::string(1, static_cast<char>(std::tolower(static_cast<unsigned char>(ext))));
+      const bool qualifierMatches =
+          toLower(setting.qualifier()) == qualifier || (ext != 0 && extQualifier == qualifier);
+      if (qualifierMatches) return i;
+      continue;
     }
-
-    // the symbol with its spaces removed, as "Fm-3m" is written (see HallNumber)
-    storedSpaceGroupString = toLower(simplified(SKSpaceGroupDataBase::spaceGroupData[i].HMString()));
-    std::erase(storedSpaceGroupString, ' ');
-    if (SKSpaceGroup::matchSpacegroup(spaceStrippedSearchString, storedSpaceGroupString))
-    {
-      return i;
-    }
+    if (setting.standardSetting()) return i;
+    if (!firstMatch) firstMatch = i;
   }
 
-  return std::nullopt;
+  return firstMatch;
 }
 
 std::optional<std::size_t> SKSpaceGroup::HallNumberFromSpaceGroupNumber([[maybe_unused]] std::size_t number)

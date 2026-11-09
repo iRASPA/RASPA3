@@ -35,6 +35,7 @@ export class SKSpaceGroupSetting
   std::string HMString() const { return _HMString; }
   std::size_t pointGroupNumber() const { return _pointGroupNumber; }
   std::string qualifier() const { return _qualifier; }
+  char ext() const { return _ext; }  // the number 1 or 2 for an origin choice, 'H' or 'R' for axes, else 0
   Symmorphicity symmorphicity() const { return _symmorphicity; }
   std::string symmorphicityString() const;
   std::string centringString() const;
@@ -60,7 +61,7 @@ export class SKSpaceGroupSetting
   std::size_t _HallNumber = 1;
   std::size_t _spaceGroupNumber = 1;  // space group number (1-230)
   std::size_t _order;
-  char _ext;                       // '1', '2', 'H', 'R' or '\0'
+  char _ext;                       // the number 1 or 2 (origin choice), 'H', 'R' or 0
   std::string _qualifier;          // e.g. "-cba" or "b1"
   std::string _HMString;           // H-M symbol; nul-terminated string
   std::string _HallString;         // Hall symbol; nul-terminated string
