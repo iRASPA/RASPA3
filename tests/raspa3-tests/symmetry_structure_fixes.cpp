@@ -326,6 +326,44 @@ TEST(SYMMETRY_STRUCTURE_FIXES, poscar_blank_comment_negative_volume_and_scaled_c
   EXPECT_NEAR(std::get<0>(atoms[0]).z, 0.75, 1e-12);
 }
 
+TEST(SYMMETRY_STRUCTURE_FIXES, poscar_skips_comment_lines_strips_bang_comments_and_rejects_cells_without_volume)
+{
+  // comment-only lines between the sections (they used to read as the end of the file), '!' comments (only '#'
+  // was recognised), and the title line itself starting with '#'
+  const std::string content =
+      "# title\n"
+      "1.0  ! the scaling factor\n"
+      "# the lattice\n"
+      "4.0 0.0 0.0\n"
+      "0.0 5.0 0.0 # b\n"
+      "0.0 0.0 6.0 ! c\n"
+      "! two species\n"
+      "Si O\n"
+      "1 1\n"
+      "Direct\n"
+      "# the atoms\n"
+      "0.1 0.2 0.3 ! Si\n"
+      "   # indented comment\n"
+      "0.4 0.5 0.6 # O\n";
+  SKPOSCARParser parser(content);
+  parser.startParsing();
+  EXPECT_NEAR(parser.movies().front().front()->cell->unitCell().by, 5.0, 1e-12);
+  const std::vector<std::tuple<double3, std::size_t, double>> atoms = parser.firstTestFrame();
+  ASSERT_EQ(atoms.size(), 2uz);
+  EXPECT_EQ(std::get<1>(atoms[0]), 14uz);
+  EXPECT_EQ(std::get<1>(atoms[1]), 8uz);
+  EXPECT_NEAR(std::get<0>(atoms[1]).z, 0.6, 1e-12);
+
+  // a zero scaling factor and linearly dependent lattice vectors gave infinite or NaN coordinates
+  const std::string zeroScale = "cell\n0.0\n4.0 0.0 0.0\n0.0 5.0 0.0\n0.0 0.0 6.0\nSi\n1\nDirect\n0.1 0.2 0.3\n";
+  EXPECT_THROW(SKPOSCARParser(zeroScale).startParsing(), std::runtime_error);
+  const std::string flatCell = "cell\n1.0\n4.0 0.0 0.0\n8.0 0.0 0.0\n0.0 0.0 6.0\nSi\n1\nCartesian\n1.0 2.0 3.0\n";
+  EXPECT_THROW(SKPOSCARParser(flatCell).startParsing(), std::runtime_error);
+  const std::string flatCellByVolume =
+      "cell\n-100.0\n4.0 0.0 0.0\n8.0 0.0 0.0\n0.0 0.0 6.0\nSi\n1\nDirect\n0.1 0.2 0.3\n";
+  EXPECT_THROW(SKPOSCARParser(flatCellByVolume).startParsing(), std::runtime_error);
+}
+
 TEST(SYMMETRY_STRUCTURE_FIXES, a_backend_with_blocked_pockets_is_another_backend_for_the_field_cache)
 {
   EnergyBackend backend;

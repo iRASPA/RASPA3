@@ -43,9 +43,10 @@ std::vector<std::string> splitTokens(const std::string& line)
   return tokens;
 }
 
+// '#' and '!' both start a comment (VASP input uses either)
 void stripInlineComment(std::string& line)
 {
-  const std::size_t commentPosition = line.find('#');
+  const std::size_t commentPosition = line.find_first_of("#!");
   if (commentPosition != std::string::npos)
   {
     line.erase(commentPosition);
@@ -117,16 +118,18 @@ bool isAllIntegerTokens(const std::vector<std::string>& tokens)
                      [](const std::string& token) { return isIntegerToken(token); });
 }
 
+// The next line with content; blank lines are skipped by the scanner, and a line holding only a comment is skipped
+// here (it used to come back empty, which the callers take for the end of the file).
 std::string readLine(Scanner& scanner)
 {
   std::string line;
-  if (!scanner.scanUpToCharacters(CharacterSet::newlineCharacterSet(), line))
+  while (scanner.scanUpToCharacters(CharacterSet::newlineCharacterSet(), line))
   {
-    return {};
+    stripInlineComment(line);
+    line = trim(line);
+    if (!line.empty()) return line;
   }
-
-  stripInlineComment(line);
-  return trim(line);
+  return {};
 }
 
 std::string readRequiredLine(Scanner& scanner, const std::string& context)
@@ -339,7 +342,17 @@ void SKPOSCARParser::startParsing() noexcept(false)
   const double scaleFactor = readScaleFactor(_scanner);
   // a negative scaling factor is the volume of the cell: the lattice vectors are scaled to it
   const double3x3 rawUnitCell = readLatticeVectors(_scanner, 1.0);
-  const double scale = scaleFactor < 0.0 ? std::cbrt(-scaleFactor / std::abs(rawUnitCell.determinant())) : scaleFactor;
+  // a zero scaling factor or a cell without volume gave infinite or NaN coordinates instead of an error
+  if (scaleFactor == 0.0)
+  {
+    throw std::runtime_error("POSCAR parse error: the universal scaling factor is zero");
+  }
+  const double rawVolume = std::abs(rawUnitCell.determinant());
+  if (!(rawVolume > 0.0))
+  {
+    throw std::runtime_error("POSCAR parse error: the lattice vectors do not span a cell (zero volume)");
+  }
+  const double scale = scaleFactor < 0.0 ? std::cbrt(-scaleFactor / rawVolume) : scaleFactor;
   const double3x3 unitCell = scale * rawUnitCell;
   const auto [elementLabels, speciesCounts] = readSpeciesLines(_scanner);
 
