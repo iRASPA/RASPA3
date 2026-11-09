@@ -2673,14 +2673,20 @@ void Interactions::computeEwaldFourierChargeEquilibrationPotentialMatrix(
   const double alpha = std::sqrt(std::abs(std::log(eps * cutOff * tol))) / cutOff;
   const double tol1 = std::sqrt(-std::log(eps * cutOff * (2.0 * tol * alpha) * (2.0 * tol * alpha)));
 
+  // The wave vectors kept are those inside the sphere |k| <= 2 alpha tol1, where the Gaussian factor has fallen to
+  // eps. The index of a wave vector along axis i is k.a_i / 2 pi, so the indices to visit run up to
+  // |a_i| alpha tol1 / pi: the length of the lattice vector, not the perpendicular width (dual to real space, where
+  // the width bounds the images). The widths, and a sphere in index space in place of the physical one, left out
+  // wave vectors along the skewed directions of non-orthorhombic cells (a hexagonal cell lost those beyond 78% of
+  // the cutoff) and visited needless ones in elongated orthorhombic cells.
+  const double reciprocalCutOffSquared = (2.0 * alpha * tol1) * (2.0 * alpha * tol1);
+  const double3x3 box = simulationBox.cell;
   const std::size_t kx_max_unsigned =
-      static_cast<std::size_t>(std::rint(0.25 + perpendicularWidths.x * alpha * tol1 / std::numbers::pi));
+      static_cast<std::size_t>(std::rint(0.25 + box[0].length() * alpha * tol1 / std::numbers::pi));
   const std::size_t ky_max_unsigned =
-      static_cast<std::size_t>(std::rint(0.25 + perpendicularWidths.y * alpha * tol1 / std::numbers::pi));
+      static_cast<std::size_t>(std::rint(0.25 + box[1].length() * alpha * tol1 / std::numbers::pi));
   const std::size_t kz_max_unsigned =
-      static_cast<std::size_t>(std::rint(0.25 + perpendicularWidths.z * alpha * tol1 / std::numbers::pi));
-  const std::size_t recip_integer_cutoff_squared = std::max({kx_max_unsigned, ky_max_unsigned, kz_max_unsigned}) *
-                                                   std::max({kx_max_unsigned, ky_max_unsigned, kz_max_unsigned});
+      static_cast<std::size_t>(std::rint(0.25 + box[2].length() * alpha * tol1 / std::numbers::pi));
 
   const std::make_signed_t<std::size_t> kx_max = static_cast<std::make_signed_t<std::size_t>>(kx_max_unsigned);
   const std::make_signed_t<std::size_t> ky_max = static_cast<std::make_signed_t<std::size_t>>(ky_max_unsigned);
@@ -2726,9 +2732,8 @@ void Interactions::computeEwaldFourierChargeEquilibrationPotentialMatrix(
         double3 kvec_z = 2.0 * std::numbers::pi * static_cast<double>(kz) * az;
         double rksq = (kvec_x + kvec_y + kvec_z).length_squared();
 
-        // Ommit kvec==0
-        std::size_t ksq = static_cast<std::size_t>(kx * kx + ky * ky + kz * kz);
-        if ((ksq != 0uz) && (ksq <= recip_integer_cutoff_squared))
+        // omit k = 0 and the wave vectors beyond the physical cutoff
+        if ((kx != 0 || ky != 0 || kz != 0) && (rksq <= reciprocalCutOffSquared))
         {
           for (std::size_t i = 0; i != numberOfAtoms; ++i)
           {

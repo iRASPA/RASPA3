@@ -212,8 +212,8 @@ TEST(UNINITIALIZED_MEMBERS, periodic_charge_equilibration_is_exact_for_a_skewed_
   // a skewed triclinic cell (75, 110 and 80 degrees, perpendicular widths of about 5 A). The Ewald matrix picks
   // the real-space image by rounding fractional coordinates, which is the nearest image for every separation
   // below half the smallest perpendicular width (its fractional components are then all below one half), and
-  // admits every wave vector inside an index sphere, a superset of the physical sphere. Either going wrong would
-  // give the 1x1x1 cell another potential matrix, and other charges, than its 2x2x2 supercell.
+  // sums the wave vectors inside the physical cutoff sphere. Either going wrong gives the 1x1x1 cell another
+  // potential matrix, and other charges, than its 2x2x2 supercell.
   const double degree = std::numbers::pi / 180.0;
   const SimulationBox box(5.5, 6.0, 6.5, 75.0 * degree, 110.0 * degree, 80.0 * degree);
   const SimulationBox superBox(11.0, 12.0, 13.0, 75.0 * degree, 110.0 * degree, 80.0 * degree);
@@ -238,8 +238,11 @@ TEST(UNINITIALIZED_MEMBERS, periodic_charge_equilibration_is_exact_for_a_skewed_
   Interactions::computeEwaldFourierChargeEquilibrationPotentialMatrix(ex, ey, ez, exy, superBox, supercell, W);
   double W00 = 0.0, W01 = 0.0;
   for (std::size_t j = 0; j < 16; ++j) (j % 2 == 0 ? W00 : W01) += W[j];
-  EXPECT_NEAR(V[0], W00, 2e-5);
-  EXPECT_NEAR(V[1], W01, 2e-5);
+  // to 1e-6, the truncation of the Ewald sums at a tolerance of 1e-8 per term, now that the wave vectors along
+  // the skewed directions are all summed (bounded by the perpendicular widths and an index sphere, they left the
+  // two cells 6e-6 apart)
+  EXPECT_NEAR(V[0], W00, 2e-6);
+  EXPECT_NEAR(V[1], W01, 2e-6);
 
   // and the charges
   const ForceField forceField({{"Cs", true, 132.9, 0.0, 0.0, 55, false}, {"Cl", true, 35.45, 0.0, 0.0, 17, false}},
