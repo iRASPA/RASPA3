@@ -33,6 +33,16 @@ export struct SKAsymmetricUnit
     return *this;
   }
 
-  bool contains(double3 point) const;
-  bool isInsideRange(double point, double leftBoundary, int equalLeft, double rightBoundary, int equalRight) const;
+  // The image of 'point' (shifted by whole cells along each axis) that lies in the unit, if there is one. The unit
+  // may extend outside [0, 1) (141 settings do, e.g. z in [-1/2, 0]), so this image, not the point wrapped into the
+  // cell, is the representative. Closed bounds are widened by 'tolerance' so that round-off at a special position
+  // (-1e-17 for 0) does not put a whole orbit outside; open bounds stay exact.
+  std::optional<double3> imageInside(double3 point, double tolerance = 1e-8) const;
+  bool contains(double3 point, double tolerance = 1e-8) const { return imageInside(point, tolerance).has_value(); }
+
+  // Note: the unit is stored as an axis-aligned box in 1/48ths. For settings whose asymmetric unit is bounded by
+  // diagonal planes this box encloses the unit, so a point inside the box need not be the unique representative.
+
+ private:
+  std::optional<double> coordinateInside(double point, std::pair<int, int> range, double tolerance) const;
 };

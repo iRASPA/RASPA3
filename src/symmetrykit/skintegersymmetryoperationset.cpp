@@ -136,9 +136,11 @@ loop:
       double3 position = operation.rotation * std::get<0>(asymmetricAtoms[i]) +
                          double3(double(operation.translation.x) / 24.0, double(operation.translation.y) / 24.0,
                                  double(operation.translation.z) / 24.0);
-      if (asymmetricUnit.contains(position))
+      // the image inside the unit itself: wrapping it into [0, 1) moved it back out for the units that extend
+      // beyond the cell
+      if (const std::optional<double3> image = asymmetricUnit.imageInside(position))
       {
-        std::get<0>(asymmetricAtoms[i]) = double3::fract(position);
+        std::get<0>(asymmetricAtoms[i]) = *image;
         break;
       }
     }

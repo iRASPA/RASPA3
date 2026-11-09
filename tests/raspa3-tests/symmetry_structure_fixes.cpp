@@ -860,3 +860,49 @@ TEST(SYMMETRY_STRUCTURE_FIXES, partial_occupancies_merge_sites_of_different_type
   EXPECT_EQ(operations.asymmetricAtoms(unit, related, cubic, true, 1e-2).size(), 1uz);
   EXPECT_EQ(operations.asymmetricAtoms(unit, related, cubic, false, 1e-2).size(), 2uz);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, asymmetric_unit_images_keep_their_shift_and_tolerate_round_off)
+{
+  // {12, 60} is [1/4, 5/4]: the image of 0.1 inside it is 1.1, not 0.1 wrapped into the cell
+  const SKAsymmetricUnit shifted({12, 60}, {0, 24}, {0, 24});
+  const std::optional<double3> image = shifted.imageInside(double3(0.1, 0.1, 0.1));
+  ASSERT_TRUE(image.has_value());
+  EXPECT_NEAR(image->x, 1.1, 1e-12);
+  EXPECT_NEAR(image->y, 0.1, 1e-12);
+
+  // round-off below a closed bound at 0 used to expel the point from [0, 1/2]
+  const SKAsymmetricUnit half({0, 24}, {0, 24}, {0, 24});
+  EXPECT_TRUE(half.contains(double3(-1e-17, 0.1, 0.1)));
+  EXPECT_TRUE(half.contains(double3(0.5 + 1e-12, 0.1, 0.1)));
+  EXPECT_FALSE(half.contains(double3(0.51, 0.1, 0.1)));
+  // an open bound stays exact: [1/2, 1) excludes 1.0 (whose image 0.0 is below 1/2) but holds 1.0 - 1e-9
+  const SKAsymmetricUnit open({24, 49}, {0, 24}, {0, 24});
+  EXPECT_FALSE(open.contains(double3(1.0, 0.1, 0.1)));
+  EXPECT_TRUE(open.contains(double3(1.0 - 1e-9, 0.1, 0.1)));
+
+  // A 1 2 1 (Hall 10) has an asymmetric unit with z in [-1/2, 0]: the representative keeps a z in that range
+  const SKSpaceGroupSetting setting = SKSpaceGroup(10).spaceGroupSetting();
+  ASSERT_EQ(setting.asymmetricUnit().c, (std::pair<int, int>{-24, 0}));
+  const double3x3 cell(double3(10.0, 0.0, 0.0), double3(0.0, 11.0, 0.0), double3(0.0, 0.0, 12.0));
+  std::vector<std::tuple<double3, std::size_t, double>> atoms;
+  for (const SKSeitzIntegerMatrix& m : setting.fullSeitzMatrices().operations)
+  {
+    const double3 position = double3::fract(m * double3(0.3, 0.2, 0.1));
+    if (std::none_of(atoms.begin(), atoms.end(),
+                     [&](const auto& atom)
+                     {
+                       const double3 d = std::get<0>(atom) - position;
+                       return (d - double3(std::rint(d.x), std::rint(d.y), std::rint(d.z))).length_squared() < 1e-12;
+                     }))
+    {
+      atoms.emplace_back(position, 1, 1.0);
+    }
+  }
+  SKIntegerSymmetryOperationSet operations = setting.fullSeitzMatrices();
+  const auto asymmetric = operations.asymmetricAtoms(setting.asymmetricUnit(), atoms, cell, false, 1e-2);
+  ASSERT_EQ(asymmetric.size(), 1uz);
+  const double3 representative = std::get<0>(asymmetric.front());
+  EXPECT_TRUE(setting.asymmetricUnit().contains(representative));
+  EXPECT_LE(representative.z, 0.0 + 1e-8);
+  EXPECT_GE(representative.z, -0.5 - 1e-8);
+}
