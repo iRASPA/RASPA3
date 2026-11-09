@@ -1,0 +1,35 @@
+data_hall_431_007
+# generated test structure: space group 144 (P 31), Hall setting 431
+# hard candidate: metric gap 9.735e-02, closest atoms 2.099 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 431
+_raspa_point_group_number 16
+_space_group_IT_number 144
+_symmetry_Int_Tables_number 144
+_symmetry_space_group_name_H-M 'P 31'
+_symmetry_space_group_name_Hall ' P 31'
+_cell_length_a 7.03311864
+_cell_length_b 7.03311864
+_cell_length_c 6.34844270
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 120.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Fe1 Fe 0.19217052 0.70463767 0.30580363 1.0000
+Fe2 Fe 0.51246715 0.80782948 0.97247030 1.0000
+Fe3 Fe 0.29536233 0.48753285 0.63913697 1.0000
+Co4 Co 0.93232131 0.71138720 0.89728022 1.0000
+Co5 Co 0.77906589 0.06767869 0.56394689 1.0000
+Co6 Co 0.28861280 0.22093411 0.23061356 1.0000
+Rb7 Rb 0.57695157 0.22127151 0.14456736 1.0000
+Rb8 Rb 0.64431993 0.42304843 0.81123402 1.0000
+Rb9 Rb 0.77872849 0.35568007 0.47790069 1.0000
+Cl10 Cl 0.94891361 0.97598009 0.34252327 1.0000
+Cl11 Cl 0.02706648 0.05108639 0.00918993 1.0000
+Cl12 Cl 0.02401991 0.97293352 0.67585660 1.0000

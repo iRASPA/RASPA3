@@ -1,0 +1,35 @@
+data_hall_010_008
+# generated test structure: space group 5 (A 1 2 1), Hall setting 10
+# hard candidate: metric gap 1.122e-03, closest atoms 1.565 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 10
+_raspa_point_group_number 3
+_space_group_IT_number 5
+_symmetry_Int_Tables_number 5
+_symmetry_space_group_name_H-M 'A 1 2 1'
+_symmetry_space_group_name_Hall ' A 2y'
+_cell_length_a 13.70790015
+_cell_length_b 13.51976776
+_cell_length_c 13.53494783
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 88.08352175
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ti1 Ti 0.82601541 0.14164237 0.90501906 1.0000
+Ti2 Ti 0.82601541 0.64164237 0.40501906 1.0000
+Ti3 Ti 0.17398459 0.14164237 0.09498094 1.0000
+Ti4 Ti 0.17398459 0.64164237 0.59498094 1.0000
+V5 V 0.29753015 0.77350580 0.45025779 1.0000
+V6 V 0.29753015 0.27350580 0.95025779 1.0000
+V7 V 0.70246985 0.77350580 0.54974221 1.0000
+V8 V 0.70246985 0.27350580 0.04974221 1.0000
+N9 N 0.85523448 0.73303797 0.33957066 1.0000
+N10 N 0.85523448 0.23303797 0.83957066 1.0000
+N11 N 0.14476552 0.73303797 0.66042934 1.0000
+N12 N 0.14476552 0.23303797 0.16042934 1.0000

@@ -1,0 +1,39 @@
+data_hall_034_000
+# generated test structure: space group 8 (B 1 1 m), Hall setting 34
+# hard candidate: metric gap 7.202e-04, closest atoms 0.618 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 34
+_raspa_point_group_number 4
+_space_group_IT_number 8
+_symmetry_Int_Tables_number 8
+_symmetry_space_group_name_H-M 'B 1 1 m'
+_symmetry_space_group_name_Hall ' B -2'
+_cell_length_a 16.28439665
+_cell_length_b 16.16434668
+_cell_length_c 16.15270543
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.50147119
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Na1 Na 0.53765106 0.31944649 0.01914202 1.0000
+Na2 Na 0.03765106 0.31944649 0.51914202 1.0000
+Na3 Na 0.53765106 0.31944649 0.98085798 1.0000
+Na4 Na 0.03765106 0.31944649 0.48085798 1.0000
+Cr5 Cr 0.70436665 0.71057399 0.24282406 1.0000
+Cr6 Cr 0.20436665 0.71057399 0.74282406 1.0000
+Cr7 Cr 0.70436665 0.71057399 0.75717594 1.0000
+Cr8 Cr 0.20436665 0.71057399 0.25717594 1.0000
+Li9 Li 0.47385500 0.71857745 0.25988809 1.0000
+Li10 Li 0.97385500 0.71857745 0.75988809 1.0000
+Li11 Li 0.47385500 0.71857745 0.74011191 1.0000
+Li12 Li 0.97385500 0.71857745 0.24011191 1.0000
+Au13 Au 0.11127603 0.66014442 0.68042432 1.0000
+Au14 Au 0.61127603 0.66014442 0.18042432 1.0000
+Au15 Au 0.11127603 0.66014442 0.31957568 1.0000
+Au16 Au 0.61127603 0.66014442 0.81957568 1.0000

@@ -1,0 +1,35 @@
+data_hall_085_007
+# generated test structure: space group 14 (P 1 1 21/n), Hall setting 85
+# hard candidate: metric gap 2.652e-03, closest atoms 1.146 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 85
+_raspa_point_group_number 5
+_space_group_IT_number 14
+_symmetry_Int_Tables_number 14
+_symmetry_space_group_name_H-M 'P 1 1 21/n'
+_symmetry_space_group_name_Hall '-P 2n'
+_cell_length_a 18.53579708
+_cell_length_b 18.58509177
+_cell_length_c 18.17050306
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 91.29323254
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Se1 Se 0.70295281 0.30294189 0.92448218 1.0000
+Se2 Se 0.20295281 0.80294189 0.57551782 1.0000
+Se3 Se 0.79704719 0.19705811 0.42448218 1.0000
+Se4 Se 0.29704719 0.69705811 0.07551782 1.0000
+Ni5 Ni 0.82761901 0.73128201 0.31882343 1.0000
+Ni6 Ni 0.32761901 0.23128201 0.18117657 1.0000
+Ni7 Ni 0.67238099 0.76871799 0.81882343 1.0000
+Ni8 Ni 0.17238099 0.26871799 0.68117657 1.0000
+Li9 Li 0.21789566 0.26411859 0.63886732 1.0000
+Li10 Li 0.71789566 0.76411859 0.86113268 1.0000
+Li11 Li 0.28210434 0.23588141 0.13886732 1.0000
+Li12 Li 0.78210434 0.73588141 0.36113268 1.0000

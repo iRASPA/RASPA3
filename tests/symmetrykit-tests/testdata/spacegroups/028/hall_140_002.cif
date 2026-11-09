@@ -1,0 +1,39 @@
+data_hall_140_002
+# generated test structure: space group 28 (P 2 c m), Hall setting 140
+# hard candidate: metric gap 6.161e-04, closest atoms 1.096 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 140
+_raspa_point_group_number 7
+_space_group_IT_number 28
+_symmetry_Int_Tables_number 28
+_symmetry_space_group_name_H-M 'P 2 c m'
+_symmetry_space_group_name_Hall ' P -2c 2'
+_cell_length_a 14.77169065
+_cell_length_b 14.56124038
+_cell_length_c 14.55226910
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cu1 Cu 0.02189982 0.76972111 0.84682119 1.0000
+Cu2 Cu 0.02189982 0.76972111 0.65317881 1.0000
+Cu3 Cu 0.02189982 0.23027889 0.34682119 1.0000
+Cu4 Cu 0.02189982 0.23027889 0.15317881 1.0000
+Pt5 Pt 0.29333391 0.82857967 0.67821053 1.0000
+Pt6 Pt 0.29333391 0.82857967 0.82178947 1.0000
+Pt7 Pt 0.29333391 0.17142033 0.17821053 1.0000
+Pt8 Pt 0.29333391 0.17142033 0.32178947 1.0000
+Ba9 Ba 0.75884574 0.28717356 0.63439123 1.0000
+Ba10 Ba 0.75884574 0.28717356 0.86560877 1.0000
+Ba11 Ba 0.75884574 0.71282644 0.13439123 1.0000
+Ba12 Ba 0.75884574 0.71282644 0.36560877 1.0000
+Zn13 Zn 0.34455624 0.53854415 0.71232879 1.0000
+Zn14 Zn 0.34455624 0.53854415 0.78767121 1.0000
+Zn15 Zn 0.34455624 0.46145585 0.21232879 1.0000
+Zn16 Zn 0.34455624 0.46145585 0.28767121 1.0000

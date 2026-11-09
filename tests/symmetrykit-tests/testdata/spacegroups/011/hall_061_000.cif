@@ -1,0 +1,35 @@
+data_hall_061_000
+# generated test structure: space group 11 (P 1 1 21/m), Hall setting 61
+# hard candidate: metric gap 6.648e-04, closest atoms 0.603 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 61
+_raspa_point_group_number 5
+_space_group_IT_number 11
+_symmetry_Int_Tables_number 11
+_symmetry_space_group_name_H-M 'P 1 1 21/m'
+_symmetry_space_group_name_Hall '-P 2c'
+_cell_length_a 22.17623383
+_cell_length_b 21.85479434
+_cell_length_c 21.84026440
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.71000212
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+H1 H 0.28722720 0.64310128 0.46662594 1.0000
+H2 H 0.28722720 0.64310128 0.03337406 1.0000
+H3 H 0.71277280 0.35689872 0.96662594 1.0000
+H4 H 0.71277280 0.35689872 0.53337406 1.0000
+Cl5 Cl 0.20145655 0.97117176 0.79576056 1.0000
+Cl6 Cl 0.20145655 0.97117176 0.70423944 1.0000
+Cl7 Cl 0.79854345 0.02882824 0.29576056 1.0000
+Cl8 Cl 0.79854345 0.02882824 0.20423944 1.0000
+Co9 Co 0.78761036 0.70150767 0.76379485 1.0000
+Co10 Co 0.78761036 0.70150767 0.73620515 1.0000
+Co11 Co 0.21238964 0.29849233 0.26379485 1.0000
+Co12 Co 0.21238964 0.29849233 0.23620515 1.0000

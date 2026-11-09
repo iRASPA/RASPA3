@@ -1,0 +1,35 @@
+data_hall_163_008
+# generated test structure: space group 32 (P c 2 a), Hall setting 163
+# hard candidate: metric gap 4.912e-03, closest atoms 1.680 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 163
+_raspa_point_group_number 7
+_space_group_IT_number 32
+_symmetry_Int_Tables_number 32
+_symmetry_space_group_name_H-M 'P c 2 a'
+_symmetry_space_group_name_Hall ' P -2ac -2ac'
+_cell_length_a 6.51727192
+_cell_length_b 6.48525785
+_cell_length_c 6.81341068
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+O1 O 0.97234066 0.00517260 0.86277552 1.0000
+O2 O 0.47234066 0.00517260 0.63722448 1.0000
+O3 O 0.52765934 0.00517260 0.36277552 1.0000
+O4 O 0.02765934 0.00517260 0.13722448 1.0000
+F5 F 0.71651362 0.16606750 0.29414131 1.0000
+F6 F 0.21651362 0.16606750 0.20585869 1.0000
+F7 F 0.78348638 0.16606750 0.79414131 1.0000
+F8 F 0.28348638 0.16606750 0.70585869 1.0000
+P9 P 0.68627095 0.46973638 0.62748628 1.0000
+P10 P 0.18627095 0.46973638 0.87251372 1.0000
+P11 P 0.81372905 0.46973638 0.12748628 1.0000
+P12 P 0.31372905 0.46973638 0.37251372 1.0000

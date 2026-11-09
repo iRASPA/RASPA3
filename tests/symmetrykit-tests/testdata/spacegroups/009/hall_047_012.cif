@@ -1,0 +1,35 @@
+data_hall_047_012
+# generated test structure: space group 9 (I 1 1 b), Hall setting 47
+# noisy candidate: metric gap 7.713e-06, closest atoms 2.191 Angstrom, 12 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 47
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'I 1 1 b'
+_symmetry_space_group_name_Hall ' I -2b'
+_cell_length_a 15.90670261
+_cell_length_b 13.53504319
+_cell_length_c 10.33959473
+_cell_angle_alpha 89.99930583
+_cell_angle_beta 90.01956440
+_cell_angle_gamma 113.88830774
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+I1 I 0.53164435 0.39546087 0.80916037 1.0000
+I2 I 0.03120579 0.89488985 0.30901028 1.0000
+I3 I 0.53189302 0.89564198 0.19121378 1.0000
+I4 I 0.03171418 0.39566806 0.69079046 1.0000
+Se5 Se 0.76262283 0.68626577 0.06002687 1.0000
+Se6 Se 0.26240867 0.18697046 0.56035580 1.0000
+Se7 Se 0.76260920 0.18629280 0.93976506 1.0000
+Se8 Se 0.26240849 0.68691117 0.43992003 1.0000
+Bi9 Bi 0.37140995 0.20337926 0.69963022 1.0000
+Bi10 Bi 0.87181370 0.70334140 0.19874437 1.0000
+Bi11 Bi 0.37190461 0.70374760 0.30126043 1.0000
+Bi12 Bi 0.87172344 0.20376777 0.80038556 1.0000

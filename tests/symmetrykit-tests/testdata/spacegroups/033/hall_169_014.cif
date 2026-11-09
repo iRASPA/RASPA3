@@ -1,0 +1,39 @@
+data_hall_169_014
+# generated test structure: space group 33 (P n 21 a), Hall setting 169
+# noisy candidate: metric gap 1.517e-05, closest atoms 2.675 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 169
+_raspa_point_group_number 7
+_space_group_IT_number 33
+_symmetry_Int_Tables_number 33
+_symmetry_space_group_name_H-M 'P n 21 a'
+_symmetry_space_group_name_Hall ' P -2ac -2n'
+_cell_length_a 11.21399242
+_cell_length_b 23.68524175
+_cell_length_c 17.03019945
+_cell_angle_alpha 89.97706359
+_cell_angle_beta 89.99863494
+_cell_angle_gamma 89.98780736
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Sn1 Sn 0.04592786 0.88457023 0.49493483 1.0000
+Sn2 Sn 0.54570809 0.88426782 0.00532414 1.0000
+Sn3 Sn 0.45423098 0.38455068 0.99468227 1.0000
+Sn4 Sn 0.95424239 0.38446684 0.50516955 1.0000
+Au5 Au 0.12581636 0.23784441 0.19300947 1.0000
+Au6 Au 0.62609822 0.23775222 0.30706798 1.0000
+Au7 Au 0.37395185 0.73806812 0.69268322 1.0000
+Au8 Au 0.87457241 0.73773405 0.80706304 1.0000
+Li9 Li 0.10706155 0.58936523 0.31244410 1.0000
+Li10 Li 0.60778509 0.58927273 0.18769034 1.0000
+Li11 Li 0.39217310 0.08932687 0.81233664 1.0000
+Li12 Li 0.89250472 0.08908117 0.68804658 1.0000
+Ga13 Ga 0.93578734 0.97827276 0.69833287 1.0000
+Ga14 Ga 0.43530996 0.97798921 0.80121593 1.0000
+Ga15 Ga 0.56485716 0.47805477 0.19849746 1.0000
+Ga16 Ga 0.06408860 0.47823602 0.30147098 1.0000

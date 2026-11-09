@@ -1,0 +1,41 @@
+data_hall_440_019
+# generated test structure: space group 151 (P 31 1 2), Hall setting 440
+# noisy candidate: metric gap 1.239e-06, closest atoms 1.432 Angstrom, 18 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 440
+_raspa_point_group_number 18
+_space_group_IT_number 151
+_symmetry_Int_Tables_number 151
+_symmetry_space_group_name_H-M 'P 31 1 2'
+_symmetry_space_group_name_Hall ' P 31 2 (0 0 4)'
+_cell_length_a 19.42976388
+_cell_length_b 19.43301204
+_cell_length_c 15.07326324
+_cell_angle_alpha 89.99988847
+_cell_angle_beta 89.99298919
+_cell_angle_gamma 120.00342447
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cr1 Cr 0.78967412 0.48951779 0.48225308 1.0000
+Cr2 Cr 0.78979169 0.30012333 0.51785034 1.0000
+Cr3 Cr 0.70025293 0.48971903 0.85116662 1.0000
+Cr4 Cr 0.69985013 0.21021552 0.14897310 1.0000
+Cr5 Cr 0.51042637 0.30000769 0.81535182 1.0000
+Cr6 Cr 0.51045017 0.21055998 0.18460370 1.0000
+Fe7 Fe 0.55537423 0.08445372 0.39012814 1.0000
+Fe8 Fe 0.55547819 0.47081727 0.60993140 1.0000
+Fe9 Fe 0.52942451 0.08445411 0.94344032 1.0000
+Fe10 Fe 0.52926427 0.44453468 0.05703045 1.0000
+Fe11 Fe 0.91526606 0.47058317 0.72342031 1.0000
+Fe12 Fe 0.91555655 0.44489190 0.27666802 1.0000
+Nb13 Nb 0.05418865 0.53667688 0.04613918 1.0000
+Nb14 Nb 0.05362832 0.51711274 0.95418239 1.0000
+Nb15 Nb 0.48252361 0.53660800 0.28730566 1.0000
+Nb16 Nb 0.48272273 0.94586360 0.71268752 1.0000
+Nb17 Nb 0.46345210 0.51716699 0.37904339 1.0000
+Nb18 Nb 0.46337960 0.94617044 0.62052803 1.0000

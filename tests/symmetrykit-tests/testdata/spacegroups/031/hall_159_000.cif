@@ -1,0 +1,39 @@
+data_hall_159_000
+# generated test structure: space group 31 (P n 21 m), Hall setting 159
+# hard candidate: metric gap 4.763e-03, closest atoms 0.508 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 159
+_raspa_point_group_number 7
+_space_group_IT_number 31
+_symmetry_Int_Tables_number 31
+_symmetry_space_group_name_H-M 'P n 21 m'
+_symmetry_space_group_name_Hall ' P -2 -2bc'
+_cell_length_a 16.57123629
+_cell_length_b 16.49230146
+_cell_length_c 16.08126417
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cs1 Cs 0.96848016 0.13455564 0.01789934 1.0000
+Cs2 Cs 0.96848016 0.13455564 0.98210066 1.0000
+Cs3 Cs 0.03151984 0.63455564 0.51789934 1.0000
+Cs4 Cs 0.03151984 0.63455564 0.48210066 1.0000
+Pb5 Pb 0.53870730 0.49292279 0.52535655 1.0000
+Pb6 Pb 0.53870730 0.49292279 0.47464345 1.0000
+Pb7 Pb 0.46129270 0.99292279 0.02535655 1.0000
+Pb8 Pb 0.46129270 0.99292279 0.97464345 1.0000
+Ni9 Ni 0.68624031 0.82227902 0.48421298 1.0000
+Ni10 Ni 0.68624031 0.82227902 0.51578702 1.0000
+Ni11 Ni 0.31375969 0.32227902 0.98421298 1.0000
+Ni12 Ni 0.31375969 0.32227902 0.01578702 1.0000
+H13 H 0.69633669 0.86964620 0.40067059 1.0000
+H14 H 0.69633669 0.86964620 0.59932941 1.0000
+H15 H 0.30366331 0.36964620 0.90067059 1.0000
+H16 H 0.30366331 0.36964620 0.09932941 1.0000

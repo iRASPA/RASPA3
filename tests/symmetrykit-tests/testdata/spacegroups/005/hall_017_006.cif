@@ -1,0 +1,35 @@
+data_hall_017_006
+# generated test structure: space group 5 (I 2 1 1), Hall setting 17
+# hard candidate: metric gap 3.823e-03, closest atoms 1.255 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 17
+_raspa_point_group_number 3
+_space_group_IT_number 5
+_symmetry_Int_Tables_number 5
+_symmetry_space_group_name_H-M 'I 2 1 1'
+_symmetry_space_group_name_Hall ' I 2x'
+_cell_length_a 10.65167931
+_cell_length_b 10.91464238
+_cell_length_c 10.69256152
+_cell_angle_alpha 89.36744750
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Sr1 Sr 0.35693574 0.95623699 0.96241841 1.0000
+Sr2 Sr 0.85693574 0.45623699 0.46241841 1.0000
+Sr3 Sr 0.35693574 0.04376301 0.03758159 1.0000
+Sr4 Sr 0.85693574 0.54376301 0.53758159 1.0000
+Ti5 Ti 0.46063661 0.32804761 0.92101776 1.0000
+Ti6 Ti 0.96063661 0.82804761 0.42101776 1.0000
+Ti7 Ti 0.46063661 0.67195239 0.07898224 1.0000
+Ti8 Ti 0.96063661 0.17195239 0.57898224 1.0000
+Rb9 Rb 0.14385469 0.45630375 0.26177836 1.0000
+Rb10 Rb 0.64385469 0.95630375 0.76177836 1.0000
+Rb11 Rb 0.14385469 0.54369625 0.73822164 1.0000
+Rb12 Rb 0.64385469 0.04369625 0.23822164 1.0000

@@ -28,13 +28,13 @@ std::size_t uniqueTypeCount(const std::vector<std::tuple<double3, std::size_t, d
 
 TEST(POSCARParser, ParsesVasp4SpeciesCounts)
 {
-  SKPOSCARParser parser = SKPOSCARParser::fromFile("spglibtestdata/cubic/POSCAR-225");
+  SKPOSCARParser parser = SKPOSCARParser::fromFile("testdata/poscar/vasp4_counts.poscar");
   parser.startParsing();
 
   const auto atoms = parser.firstTestFrame();
-  EXPECT_EQ(totalAtomCount(atoms), 36U);
+  EXPECT_EQ(totalAtomCount(atoms), 6U);
   EXPECT_EQ(uniqueTypeCount(atoms), 3U);
-  EXPECT_DOUBLE_EQ(parser.movies().front().front()->cell->unitCell().ax, 9.9899952992877097);
+  EXPECT_DOUBLE_EQ(parser.movies().front().front()->cell->unitCell().ax, 10.0);
 }
 
 TEST(POSCARParser, ParsesVasp5ElementSymbols)
@@ -67,13 +67,12 @@ Direct
 
 TEST(POSCARParser, ParsesSpglibVasp4WithCommentLineContainingElementLikeText)
 {
-  SKPOSCARParser parser =
-      SKPOSCARParser::fromFile("spglibtestdata/virtual_structure/POSCAR-230-230-conv-62");
+  SKPOSCARParser parser = SKPOSCARParser::fromFile("testdata/poscar/vasp4_element_like_comment.poscar");
   parser.startParsing();
 
   const auto atoms = parser.firstTestFrame();
-  EXPECT_EQ(totalAtomCount(atoms), 208U);
-  EXPECT_EQ(uniqueTypeCount(atoms), 208U);
+  EXPECT_EQ(totalAtomCount(atoms), 4U);
+  EXPECT_EQ(uniqueTypeCount(atoms), 4U);
 }
 
 TEST(POSCARParser, AppliesScaleFactor)
@@ -122,9 +121,9 @@ Cartesian
 
 TEST(POSCARParser, StripsInlineCommentsOnAtomLines)
 {
-  SKPOSCARParser parser = SKPOSCARParser::fromFile("spglibtestdata/cubic/POSCAR-225");
+  SKPOSCARParser parser = SKPOSCARParser::fromFile("testdata/poscar/vasp4_counts.poscar");
   parser.startParsing();
-  EXPECT_EQ(totalAtomCount(parser.firstTestFrame()), 36U);
+  EXPECT_EQ(totalAtomCount(parser.firstTestFrame()), 6U);
 }
 
 TEST(POSCARParser, RejectsMismatchedVasp5SpeciesLines)

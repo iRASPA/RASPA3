@@ -1,0 +1,39 @@
+data_hall_059_003
+# generated test structure: space group 10 (P 2/m 1 1), Hall setting 59
+# hard candidate: metric gap 4.780e-03, closest atoms 0.729 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 59
+_raspa_point_group_number 5
+_space_group_IT_number 10
+_symmetry_Int_Tables_number 10
+_symmetry_space_group_name_H-M 'P 2/m 1 1'
+_symmetry_space_group_name_Hall '-P 2x'
+_cell_length_a 9.36610618
+_cell_length_b 9.66076441
+_cell_length_c 9.26737262
+_cell_angle_alpha 89.56983837
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Li1 Li 0.38001993 0.65704603 0.98290550 1.0000
+Li2 Li 0.38001993 0.34295397 0.01709450 1.0000
+Li3 Li 0.61998007 0.65704603 0.98290550 1.0000
+Li4 Li 0.61998007 0.34295397 0.01709450 1.0000
+Sr5 Sr 0.03891552 0.62440117 0.03753178 1.0000
+Sr6 Sr 0.03891552 0.37559883 0.96246822 1.0000
+Sr7 Sr 0.96108448 0.62440117 0.03753178 1.0000
+Sr8 Sr 0.96108448 0.37559883 0.96246822 1.0000
+Al9 Al 0.27315784 0.77993265 0.31087894 1.0000
+Al10 Al 0.27315784 0.22006735 0.68912106 1.0000
+Al11 Al 0.72684216 0.77993265 0.31087894 1.0000
+Al12 Al 0.72684216 0.22006735 0.68912106 1.0000
+Mo13 Mo 0.26866594 0.70535827 0.97275237 1.0000
+Mo14 Mo 0.26866594 0.29464173 0.02724763 1.0000
+Mo15 Mo 0.73133406 0.70535827 0.97275237 1.0000
+Mo16 Mo 0.73133406 0.29464173 0.02724763 1.0000

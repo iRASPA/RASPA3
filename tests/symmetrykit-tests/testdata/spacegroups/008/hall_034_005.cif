@@ -1,0 +1,39 @@
+data_hall_034_005
+# generated test structure: space group 8 (B 1 1 m), Hall setting 34
+# hard candidate: metric gap 6.322e-03, closest atoms 1.334 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 34
+_raspa_point_group_number 4
+_space_group_IT_number 8
+_symmetry_Int_Tables_number 8
+_symmetry_space_group_name_H-M 'B 1 1 m'
+_symmetry_space_group_name_Hall ' B -2'
+_cell_length_a 23.16656404
+_cell_length_b 22.99216237
+_cell_length_c 22.84680764
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 91.57979934
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Fe1 Fe 0.77488525 0.21998366 0.24493354 1.0000
+Fe2 Fe 0.27488525 0.21998366 0.74493354 1.0000
+Fe3 Fe 0.77488525 0.21998366 0.75506646 1.0000
+Fe4 Fe 0.27488525 0.21998366 0.25506646 1.0000
+N5 N 0.17252570 0.29149204 0.52920072 1.0000
+N6 N 0.67252570 0.29149204 0.02920072 1.0000
+N7 N 0.17252570 0.29149204 0.47079928 1.0000
+N8 N 0.67252570 0.29149204 0.97079928 1.0000
+P9 P 0.00667275 0.31672253 0.21871502 1.0000
+P10 P 0.50667275 0.31672253 0.71871502 1.0000
+P11 P 0.00667275 0.31672253 0.78128498 1.0000
+P12 P 0.50667275 0.31672253 0.28128498 1.0000
+Mn13 Mn 0.68428481 0.54494591 0.76760901 1.0000
+Mn14 Mn 0.18428481 0.54494591 0.26760901 1.0000
+Mn15 Mn 0.68428481 0.54494591 0.23239099 1.0000
+Mn16 Mn 0.18428481 0.54494591 0.73239099 1.0000

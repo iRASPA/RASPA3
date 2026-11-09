@@ -1,0 +1,32 @@
+data_hall_432_012
+# generated test structure: space group 145 (P 32), Hall setting 432
+# noisy candidate: metric gap 1.095e-05, closest atoms 2.415 Angstrom, 9 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 432
+_raspa_point_group_number 16
+_space_group_IT_number 145
+_symmetry_Int_Tables_number 145
+_symmetry_space_group_name_H-M 'P 32'
+_symmetry_space_group_name_Hall ' P 32'
+_cell_length_a 12.66594301
+_cell_length_b 12.66608168
+_cell_length_c 7.61706152
+_cell_angle_alpha 90.00681065
+_cell_angle_beta 90.00153612
+_cell_angle_gamma 119.96291257
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ag1 Ag 0.58203086 0.58011773 0.73244433 1.0000
+Ag2 Ag 0.99814073 0.41806509 0.06593682 1.0000
+Ag3 Ag 0.41951392 0.00137967 0.39970885 1.0000
+Ga4 Ga 0.61519395 0.07919797 0.54091117 1.0000
+Ga5 Ga 0.46383045 0.38457109 0.87520742 1.0000
+Ga6 Ga 0.92108044 0.53635064 0.20838578 1.0000
+K7 K 0.43749883 0.87816137 0.09711532 1.0000
+K8 K 0.44058823 0.56240073 0.43139863 1.0000
+K9 K 0.12155941 0.55910709 0.76432209 1.0000

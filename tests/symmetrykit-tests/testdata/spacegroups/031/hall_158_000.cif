@@ -1,0 +1,39 @@
+data_hall_158_000
+# generated test structure: space group 31 (P 21 n m), Hall setting 158
+# hard candidate: metric gap 3.564e-03, closest atoms 0.761 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 158
+_raspa_point_group_number 7
+_space_group_IT_number 31
+_symmetry_Int_Tables_number 31
+_symmetry_space_group_name_H-M 'P 21 n m'
+_symmetry_space_group_name_Hall ' P -2 2ac'
+_cell_length_a 17.80648117
+_cell_length_b 18.06118521
+_cell_length_c 18.12578524
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ca1 Ca 0.77165746 0.92177978 0.97901859 1.0000
+Ca2 Ca 0.77165746 0.92177978 0.02098141 1.0000
+Ca3 Ca 0.27165746 0.07822022 0.47901859 1.0000
+Ca4 Ca 0.27165746 0.07822022 0.52098141 1.0000
+Mg5 Mg 0.57859794 0.24243557 0.29373178 1.0000
+Mg6 Mg 0.57859794 0.24243557 0.70626822 1.0000
+Mg7 Mg 0.07859794 0.75756443 0.79373178 1.0000
+Mg8 Mg 0.07859794 0.75756443 0.20626822 1.0000
+Ba9 Ba 0.86130319 0.29936432 0.74318104 1.0000
+Ba10 Ba 0.86130319 0.29936432 0.25681896 1.0000
+Ba11 Ba 0.36130319 0.70063568 0.24318104 1.0000
+Ba12 Ba 0.36130319 0.70063568 0.75681896 1.0000
+U13 U 0.12361177 0.48454762 0.80942656 1.0000
+U14 U 0.12361177 0.48454762 0.19057344 1.0000
+U15 U 0.62361177 0.51545238 0.30942656 1.0000
+U16 U 0.62361177 0.51545238 0.69057344 1.0000

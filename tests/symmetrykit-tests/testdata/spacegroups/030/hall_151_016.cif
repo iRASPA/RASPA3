@@ -1,0 +1,39 @@
+data_hall_151_016
+# generated test structure: space group 30 (P 2 n a), Hall setting 151
+# noisy candidate: metric gap 2.268e-05, closest atoms 1.076 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 151
+_raspa_point_group_number 7
+_space_group_IT_number 30
+_symmetry_Int_Tables_number 30
+_symmetry_space_group_name_H-M 'P 2 n a'
+_symmetry_space_group_name_Hall ' P -2ac 2'
+_cell_length_a 21.03180189
+_cell_length_b 9.65691669
+_cell_length_c 13.84701253
+_cell_angle_alpha 89.99795891
+_cell_angle_beta 90.01383672
+_cell_angle_gamma 89.98691258
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Sr1 Sr 0.15170468 0.99981300 0.00032609 1.0000
+Sr2 Sr 0.65133450 0.00005309 0.50006577 1.0000
+Al3 Al 0.27750134 0.00033303 0.99984492 1.0000
+Al4 Al 0.77728262 0.00029302 0.49986852 1.0000
+Ag5 Ag 0.18568907 0.09639291 0.07963346 1.0000
+Ag6 Ag 0.68576912 0.09687258 0.42015550 1.0000
+Ag7 Ag 0.68577963 0.90325117 0.57958630 1.0000
+Ag8 Ag 0.18571746 0.90362531 0.91983351 1.0000
+Na9 Na 0.97119139 0.75902927 0.15402487 1.0000
+Na10 Na 0.47112666 0.75972856 0.34627369 1.0000
+Na11 Na 0.47144033 0.24109833 0.65377898 1.0000
+Na12 Na 0.97144107 0.24113941 0.84585068 1.0000
+La13 La 0.90198454 0.04302254 0.47521582 1.0000
+La14 La 0.40174341 0.04341286 0.02450524 1.0000
+La15 La 0.40189602 0.95726286 0.97524680 1.0000
+La16 La 0.90199802 0.95660890 0.52495159 1.0000

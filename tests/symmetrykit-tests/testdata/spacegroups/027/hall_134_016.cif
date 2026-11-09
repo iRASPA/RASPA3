@@ -1,0 +1,39 @@
+data_hall_134_016
+# generated test structure: space group 27 (P c c 2), Hall setting 134
+# noisy candidate: metric gap 7.032e-06, closest atoms 1.079 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 134
+_raspa_point_group_number 7
+_space_group_IT_number 27
+_symmetry_Int_Tables_number 27
+_symmetry_space_group_name_H-M 'P c c 2'
+_symmetry_space_group_name_Hall ' P 2 -2c'
+_cell_length_a 5.77787186
+_cell_length_b 8.38609133
+_cell_length_c 17.18500841
+_cell_angle_alpha 89.96098470
+_cell_angle_beta 89.98050837
+_cell_angle_gamma 90.00063286
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Na1 Na 0.71530532 0.14594555 0.03597242 1.0000
+Na2 Na 0.71402077 0.85471765 0.53610971 1.0000
+Na3 Na 0.28618650 0.14530768 0.53632020 1.0000
+Na4 Na 0.28468390 0.85490606 0.03612078 1.0000
+Br5 Br 0.19797967 0.20678143 0.58320021 1.0000
+Br6 Br 0.19804754 0.79362563 0.08342439 1.0000
+Br7 Br 0.80140068 0.20659900 0.08314015 1.0000
+Br8 Br 0.80271498 0.79352899 0.58309575 1.0000
+Sb9 Sb 0.32121630 0.57110777 0.91692430 1.0000
+Sb10 Sb 0.32025889 0.42998012 0.41688425 1.0000
+Sb11 Sb 0.67956768 0.57005716 0.41687998 1.0000
+Sb12 Sb 0.67910287 0.42926296 0.91650269 1.0000
+In13 In 0.33318572 0.71137970 0.78752574 1.0000
+In14 In 0.33347842 0.28927008 0.28780290 1.0000
+In15 In 0.66715046 0.71154035 0.28790163 1.0000
+In16 In 0.66716399 0.28897520 0.78764857 1.0000

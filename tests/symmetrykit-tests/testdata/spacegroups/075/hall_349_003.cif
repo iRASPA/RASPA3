@@ -1,0 +1,39 @@
+data_hall_349_003
+# generated test structure: space group 75 (P 4), Hall setting 349
+# plain candidate: metric gap 3.495e-02, closest atoms 0.801 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 349
+_raspa_point_group_number 9
+_space_group_IT_number 75
+_symmetry_Int_Tables_number 75
+_symmetry_space_group_name_H-M 'P 4'
+_symmetry_space_group_name_Hall ' P 4'
+_cell_length_a 21.01141640
+_cell_length_b 21.01141640
+_cell_length_c 20.27712535
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Mn1 Mn 0.69805342 0.38824766 0.50177733 1.0000
+Mn2 Mn 0.38824766 0.30194658 0.50177733 1.0000
+Mn3 Mn 0.61175234 0.69805342 0.50177733 1.0000
+Mn4 Mn 0.30194658 0.61175234 0.50177733 1.0000
+Ni5 Ni 0.84111650 0.01533087 0.58854502 1.0000
+Ni6 Ni 0.01533087 0.15888350 0.58854502 1.0000
+Ni7 Ni 0.98466913 0.84111650 0.58854502 1.0000
+Ni8 Ni 0.15888350 0.98466913 0.58854502 1.0000
+Cl9 Cl 0.76132892 0.33005637 0.44171370 1.0000
+Cl10 Cl 0.33005637 0.23867108 0.44171370 1.0000
+Cl11 Cl 0.66994363 0.76132892 0.44171370 1.0000
+Cl12 Cl 0.23867108 0.66994363 0.44171370 1.0000
+In13 In 0.62607605 0.72703073 0.48083217 1.0000
+In14 In 0.72703073 0.37392395 0.48083217 1.0000
+In15 In 0.27296927 0.62607605 0.48083217 1.0000
+In16 In 0.37392395 0.27296927 0.48083217 1.0000

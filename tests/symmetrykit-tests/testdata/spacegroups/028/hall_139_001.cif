@@ -1,0 +1,39 @@
+data_hall_139_001
+# generated test structure: space group 28 (P 2 m b), Hall setting 139
+# hard candidate: metric gap 5.228e-03, closest atoms 0.650 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 139
+_raspa_point_group_number 7
+_space_group_IT_number 28
+_symmetry_Int_Tables_number 28
+_symmetry_space_group_name_H-M 'P 2 m b'
+_symmetry_space_group_name_Hall ' P -2b 2'
+_cell_length_a 9.90928167
+_cell_length_b 9.47370241
+_cell_length_c 9.52349066
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Zn1 Zn 0.35493450 0.86583707 0.29303108 1.0000
+Zn2 Zn 0.35493450 0.36583707 0.70696892 1.0000
+Zn3 Zn 0.35493450 0.63416293 0.29303108 1.0000
+Zn4 Zn 0.35493450 0.13416293 0.70696892 1.0000
+B5 B 0.67416895 0.49455396 0.53368916 1.0000
+B6 B 0.67416895 0.99455396 0.46631084 1.0000
+B7 B 0.67416895 0.00544604 0.53368916 1.0000
+B8 B 0.67416895 0.50544604 0.46631084 1.0000
+Al9 Al 0.04794455 0.30449796 0.27439551 1.0000
+Al10 Al 0.04794455 0.80449796 0.72560449 1.0000
+Al11 Al 0.04794455 0.19550204 0.27439551 1.0000
+Al12 Al 0.04794455 0.69550204 0.72560449 1.0000
+Na13 Na 0.37466141 0.20395405 0.70571365 1.0000
+Na14 Na 0.37466141 0.70395405 0.29428635 1.0000
+Na15 Na 0.37466141 0.29604595 0.70571365 1.0000
+Na16 Na 0.37466141 0.79604595 0.29428635 1.0000

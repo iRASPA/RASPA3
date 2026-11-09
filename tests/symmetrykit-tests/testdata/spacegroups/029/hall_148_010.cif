@@ -1,0 +1,39 @@
+data_hall_148_010
+# generated test structure: space group 29 (P b 21 a), Hall setting 148
+# noisy candidate: metric gap 1.145e-06, closest atoms 2.056 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 148
+_raspa_point_group_number 7
+_space_group_IT_number 29
+_symmetry_Int_Tables_number 29
+_symmetry_space_group_name_H-M 'P b 21 a'
+_symmetry_space_group_name_Hall ' P -2a -2ab'
+_cell_length_a 17.80482062
+_cell_length_b 8.15797232
+_cell_length_c 5.13755206
+_cell_angle_alpha 89.98407591
+_cell_angle_beta 90.00010305
+_cell_angle_gamma 89.96380155
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Zn1 Zn 0.67816658 0.71783837 0.05750443 1.0000
+Zn2 Zn 0.17833444 0.71769810 0.94230380 1.0000
+Zn3 Zn 0.82164424 0.21776163 0.05764270 1.0000
+Zn4 Zn 0.32188475 0.21879055 0.94228463 1.0000
+Ag5 Ag 0.07120640 0.42367082 0.32151381 1.0000
+Ag6 Ag 0.57146262 0.42390588 0.67892189 1.0000
+Ag7 Ag 0.42825727 0.92470613 0.32176104 1.0000
+Ag8 Ag 0.92848749 0.92444517 0.67855008 1.0000
+Ca9 Ca 0.97137651 0.47554159 0.93315941 1.0000
+Ca10 Ca 0.47130120 0.47552534 0.06632322 1.0000
+Ca11 Ca 0.52882489 0.97548761 0.93298758 1.0000
+Ca12 Ca 0.02852408 0.97550637 0.06600052 1.0000
+Fe13 Fe 0.87738950 0.61649414 0.86376518 1.0000
+Fe14 Fe 0.37750156 0.61706970 0.13663970 1.0000
+Fe15 Fe 0.62223025 0.11699373 0.86364778 1.0000
+Fe16 Fe 0.12218943 0.11747203 0.13742045 1.0000

@@ -1,0 +1,35 @@
+data_hall_167_005
+# generated test structure: space group 33 (P 21 c n), Hall setting 167
+# hard candidate: metric gap 5.002e-03, closest atoms 2.128 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 167
+_raspa_point_group_number 7
+_space_group_IT_number 33
+_symmetry_Int_Tables_number 33
+_symmetry_space_group_name_H-M 'P 21 c n'
+_symmetry_space_group_name_Hall ' P -2n 2a'
+_cell_length_a 22.24921567
+_cell_length_b 21.81952896
+_cell_length_c 22.13792443
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Mo1 Mo 0.64115949 0.65208802 0.53687863 1.0000
+Mo2 Mo 0.14115949 0.15208802 0.96312137 1.0000
+Mo3 Mo 0.64115949 0.84791198 0.03687863 1.0000
+Mo4 Mo 0.14115949 0.34791198 0.46312137 1.0000
+F5 F 0.59687716 0.01926913 0.85881524 1.0000
+F6 F 0.09687716 0.51926913 0.64118476 1.0000
+F7 F 0.59687716 0.48073087 0.35881524 1.0000
+F8 F 0.09687716 0.98073087 0.14118476 1.0000
+Si9 Si 0.63694671 0.70156392 0.61962420 1.0000
+Si10 Si 0.13694671 0.20156392 0.88037580 1.0000
+Si11 Si 0.63694671 0.79843608 0.11962420 1.0000
+Si12 Si 0.13694671 0.29843608 0.38037580 1.0000

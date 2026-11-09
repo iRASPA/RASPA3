@@ -1,0 +1,37 @@
+data_hall_037_019
+# generated test structure: space group 8 (C m 1 1), Hall setting 37
+# noisy candidate: metric gap 1.505e-05, closest atoms 1.076 Angstrom, 14 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 37
+_raspa_point_group_number 4
+_space_group_IT_number 8
+_symmetry_Int_Tables_number 8
+_symmetry_space_group_name_H-M 'C m 1 1'
+_symmetry_space_group_name_Hall ' C -2x'
+_cell_length_a 9.43775581
+_cell_length_b 20.56510683
+_cell_length_c 10.84321306
+_cell_angle_alpha 71.40525854
+_cell_angle_beta 90.00402408
+_cell_angle_gamma 89.99864577
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Li1 Li 0.00040954 0.45126823 0.87551360 1.0000
+Li2 Li 0.49976381 0.95137694 0.87573484 1.0000
+Br3 Br 0.05740498 0.62240297 0.03279025 1.0000
+Br4 Br 0.55725079 0.12216447 0.03222775 1.0000
+Br5 Br 0.94340777 0.62213299 0.03234479 1.0000
+Br6 Br 0.44316161 0.12225267 0.03261627 1.0000
+Ge7 Ge 0.70870425 0.84496444 0.62433816 1.0000
+Ge8 Ge 0.20857570 0.34520903 0.62494467 1.0000
+Ge9 Ge 0.29115806 0.84519363 0.62471203 1.0000
+Ge10 Ge 0.79116835 0.34501675 0.62403387 1.0000
+Ti11 Ti 0.11309565 0.14710952 0.65867907 1.0000
+Ti12 Ti 0.61344410 0.64730373 0.65796782 1.0000
+Ti13 Ti 0.88722139 0.14718629 0.65875250 1.0000
+Ti14 Ti 0.38675670 0.64742683 0.65843114 1.0000

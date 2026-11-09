@@ -1,0 +1,35 @@
+data_hall_430_000
+# generated test structure: space group 143 (P 3), Hall setting 430
+# hard candidate: metric gap 1.318e-01, closest atoms 1.285 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 430
+_raspa_point_group_number 16
+_space_group_IT_number 143
+_symmetry_Int_Tables_number 143
+_symmetry_space_group_name_H-M 'P 3'
+_symmetry_space_group_name_Hall ' P 3'
+_cell_length_a 24.28310650
+_cell_length_b 24.28310650
+_cell_length_c 21.08195237
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 120.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cu1 Cu 0.76000515 0.29255945 0.63544727 1.0000
+Cu2 Cu 0.53255429 0.23999485 0.63544727 1.0000
+Cu3 Cu 0.70744055 0.46744571 0.63544727 1.0000
+Bi4 Bi 0.97909187 0.96495196 0.25872261 1.0000
+Bi5 Bi 0.98586009 0.02090813 0.25872261 1.0000
+Bi6 Bi 0.03504804 0.01413991 0.25872261 1.0000
+Na7 Na 0.03489220 0.51125032 0.34390554 1.0000
+Na8 Na 0.47635813 0.96510780 0.34390554 1.0000
+Na9 Na 0.48874968 0.52364187 0.34390554 1.0000
+U10 U 0.81072087 0.28264100 0.73650086 1.0000
+U11 U 0.47192014 0.18927913 0.73650086 1.0000
+U12 U 0.71735900 0.52807986 0.73650086 1.0000

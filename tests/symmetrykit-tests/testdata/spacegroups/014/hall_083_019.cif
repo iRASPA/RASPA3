@@ -1,0 +1,33 @@
+data_hall_083_019
+# generated test structure: space group 14 (P 1 21/a 1), Hall setting 83
+# noisy candidate: metric gap 2.364e-05, closest atoms 1.258 Angstrom, 10 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 83
+_raspa_point_group_number 5
+_space_group_IT_number 14
+_symmetry_Int_Tables_number 14
+_symmetry_space_group_name_H-M 'P 1 21/a 1'
+_symmetry_space_group_name_Hall '-P 2yab'
+_cell_length_a 20.32814400
+_cell_length_b 7.06733357
+_cell_length_c 11.22931701
+_cell_angle_alpha 89.99787238
+_cell_angle_beta 113.28816235
+_cell_angle_gamma 89.98483061
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ni1 Ni 0.99999421 0.00030349 0.00011188 1.0000
+Ni2 Ni 0.50013554 0.49982359 0.99998696 1.0000
+Li3 Li 0.68830109 0.45096109 0.59462570 1.0000
+Li4 Li 0.18818735 0.04969946 0.59453804 1.0000
+Li5 Li 0.81138271 0.95088105 0.40550008 1.0000
+Li6 Li 0.31149535 0.54937256 0.40567455 1.0000
+Ga7 Ga 0.46708683 0.98093869 0.97531000 1.0000
+Ga8 Ga 0.96713174 0.51831031 0.97594142 1.0000
+Ga9 Ga 0.03295214 0.48051190 0.02453827 1.0000
+Ga10 Ga 0.53316951 0.01935208 0.02388131 1.0000

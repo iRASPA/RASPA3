@@ -1,0 +1,39 @@
+data_hall_048_005
+# generated test structure: space group 9 (B 1 1 b), Hall setting 48
+# hard candidate: metric gap 3.583e-03, closest atoms 1.474 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 48
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'B 1 1 b'
+_symmetry_space_group_name_Hall ' B -2b'
+_cell_length_a 15.32502922
+_cell_length_b 15.27011261
+_cell_length_c 14.88067920
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 91.31843721
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ca1 Ca 0.71853305 0.59938364 0.32268425 1.0000
+Ca2 Ca 0.21853305 0.59938364 0.82268425 1.0000
+Ca3 Ca 0.71853305 0.09938364 0.67731575 1.0000
+Ca4 Ca 0.21853305 0.09938364 0.17731575 1.0000
+Ni5 Ni 0.02787287 0.02698842 0.77205165 1.0000
+Ni6 Ni 0.52787287 0.02698842 0.27205165 1.0000
+Ni7 Ni 0.02787287 0.52698842 0.22794835 1.0000
+Ni8 Ni 0.52787287 0.52698842 0.72794835 1.0000
+Au9 Au 0.65902132 0.12365652 0.91854240 1.0000
+Au10 Au 0.15902132 0.12365652 0.41854240 1.0000
+Au11 Au 0.65902132 0.62365652 0.08145760 1.0000
+Au12 Au 0.15902132 0.62365652 0.58145760 1.0000
+Al13 Al 0.96767549 0.04645592 0.69780792 1.0000
+Al14 Al 0.46767549 0.04645592 0.19780792 1.0000
+Al15 Al 0.96767549 0.54645592 0.30219208 1.0000
+Al16 Al 0.46767549 0.54645592 0.80219208 1.0000

@@ -1,0 +1,39 @@
+data_hall_046_008
+# generated test structure: space group 9 (B 1 1 n), Hall setting 46
+# hard candidate: metric gap 1.419e-02, closest atoms 1.193 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 46
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'B 1 1 n'
+_symmetry_space_group_name_Hall ' B -2ab'
+_cell_length_a 24.53108485
+_cell_length_b 24.96101729
+_cell_length_c 24.07653346
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 91.27705339
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+S1 S 0.25911168 0.85138689 0.79727945 1.0000
+S2 S 0.75911168 0.85138689 0.29727945 1.0000
+S3 S 0.25911168 0.35138689 0.70272055 1.0000
+S4 S 0.75911168 0.35138689 0.20272055 1.0000
+Cu5 Cu 0.98273768 0.29195353 0.46759894 1.0000
+Cu6 Cu 0.48273768 0.29195353 0.96759894 1.0000
+Cu7 Cu 0.98273768 0.79195353 0.03240106 1.0000
+Cu8 Cu 0.48273768 0.79195353 0.53240106 1.0000
+Au9 Au 0.52846762 0.98114531 0.53227058 1.0000
+Au10 Au 0.02846762 0.98114531 0.03227058 1.0000
+Au11 Au 0.52846762 0.48114531 0.96772942 1.0000
+Au12 Au 0.02846762 0.48114531 0.46772942 1.0000
+Cd13 Cd 0.48081185 0.48765080 0.97374938 1.0000
+Cd14 Cd 0.98081185 0.48765080 0.47374938 1.0000
+Cd15 Cd 0.48081185 0.98765080 0.52625062 1.0000
+Cd16 Cd 0.98081185 0.98765080 0.02625062 1.0000

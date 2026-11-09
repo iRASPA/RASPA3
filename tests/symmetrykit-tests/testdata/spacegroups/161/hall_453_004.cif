@@ -1,0 +1,41 @@
+data_hall_453_004
+# generated test structure: space group 161 (R 3 c), Hall setting 453
+# hard candidate: metric gap 1.406e-03, closest atoms 1.766 Angstrom, 18 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 453
+_raspa_point_group_number 19
+_space_group_IT_number 161
+_symmetry_Int_Tables_number 161
+_symmetry_space_group_name_H-M 'R 3 c'
+_symmetry_space_group_name_Hall ' P 3* -2n'
+_cell_length_a 12.06763559
+_cell_length_b 12.06763559
+_cell_length_c 12.06763559
+_cell_angle_alpha 89.87341981
+_cell_angle_beta 89.87341981
+_cell_angle_gamma 89.87341981
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Zr1 Zr 0.65677152 0.23728936 0.78843542 1.0000
+Zr2 Zr 0.15677152 0.28843542 0.73728936 1.0000
+Zr3 Zr 0.73728936 0.15677152 0.28843542 1.0000
+Zr4 Zr 0.23728936 0.78843542 0.65677152 1.0000
+Zr5 Zr 0.78843542 0.65677152 0.23728936 1.0000
+Zr6 Zr 0.28843542 0.73728936 0.15677152 1.0000
+Fe7 Fe 0.70035064 0.01594991 0.27477244 1.0000
+Fe8 Fe 0.20035064 0.77477244 0.51594991 1.0000
+Fe9 Fe 0.51594991 0.20035064 0.77477244 1.0000
+Fe10 Fe 0.01594991 0.27477244 0.70035064 1.0000
+Fe11 Fe 0.27477244 0.70035064 0.01594991 1.0000
+Fe12 Fe 0.77477244 0.51594991 0.20035064 1.0000
+Ti13 Ti 0.95344158 0.77680791 0.19386074 1.0000
+Ti14 Ti 0.45344158 0.69386074 0.27680791 1.0000
+Ti15 Ti 0.27680791 0.45344158 0.69386074 1.0000
+Ti16 Ti 0.77680791 0.19386074 0.95344158 1.0000
+Ti17 Ti 0.19386074 0.95344158 0.77680791 1.0000
+Ti18 Ti 0.69386074 0.27680791 0.45344158 1.0000

@@ -1,0 +1,39 @@
+data_hall_157_003
+# generated test structure: space group 31 (P 21 m n), Hall setting 157
+# hard candidate: metric gap 7.643e-03, closest atoms 1.443 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 157
+_raspa_point_group_number 7
+_space_group_IT_number 31
+_symmetry_Int_Tables_number 31
+_symmetry_space_group_name_H-M 'P 21 m n'
+_symmetry_space_group_name_Hall ' P -2ab 2ab'
+_cell_length_a 17.67959329
+_cell_length_b 17.81576601
+_cell_length_c 17.53038311
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ni1 Ni 0.48121034 0.36810815 0.28504706 1.0000
+Ni2 Ni 0.98121034 0.86810815 0.71495294 1.0000
+Ni3 Ni 0.48121034 0.63189185 0.28504706 1.0000
+Ni4 Ni 0.98121034 0.13189185 0.71495294 1.0000
+Pb5 Pb 0.97301243 0.13297093 0.63308728 1.0000
+Pb6 Pb 0.47301243 0.63297093 0.36691272 1.0000
+Pb7 Pb 0.97301243 0.86702907 0.63308728 1.0000
+Pb8 Pb 0.47301243 0.36702907 0.36691272 1.0000
+Cl9 Cl 0.45734540 0.54473576 0.53988138 1.0000
+Cl10 Cl 0.95734540 0.04473576 0.46011862 1.0000
+Cl11 Cl 0.45734540 0.45526424 0.53988138 1.0000
+Cl12 Cl 0.95734540 0.95526424 0.46011862 1.0000
+V13 V 0.87380942 0.24328478 0.45211721 1.0000
+V14 V 0.37380942 0.74328478 0.54788279 1.0000
+V15 V 0.87380942 0.75671522 0.45211721 1.0000
+V16 V 0.37380942 0.25671522 0.54788279 1.0000

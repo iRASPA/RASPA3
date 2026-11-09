@@ -1,0 +1,39 @@
+data_hall_052_008
+# generated test structure: space group 9 (C n 1 1), Hall setting 52
+# hard candidate: metric gap 2.908e-03, closest atoms 2.942 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 52
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'C n 1 1'
+_symmetry_space_group_name_Hall ' C -2xac'
+_cell_length_a 13.56963044
+_cell_length_b 13.18175710
+_cell_length_c 13.84164767
+_cell_angle_alpha 89.73825559
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ba1 Ba 0.95727317 0.21145902 0.96003410 1.0000
+Ba2 Ba 0.45727317 0.71145902 0.96003410 1.0000
+Ba3 Ba 0.04272683 0.71145902 0.46003410 1.0000
+Ba4 Ba 0.54272683 0.21145902 0.46003410 1.0000
+Sn5 Sn 0.70273181 0.23839495 0.74164316 1.0000
+Sn6 Sn 0.20273181 0.73839495 0.74164316 1.0000
+Sn7 Sn 0.29726819 0.73839495 0.24164316 1.0000
+Sn8 Sn 0.79726819 0.23839495 0.24164316 1.0000
+Ca9 Ca 0.64352485 0.86186125 0.47485804 1.0000
+Ca10 Ca 0.14352485 0.36186125 0.47485804 1.0000
+Ca11 Ca 0.35647515 0.36186125 0.97485804 1.0000
+Ca12 Ca 0.85647515 0.86186125 0.97485804 1.0000
+La13 La 0.71253066 0.04052405 0.18984948 1.0000
+La14 La 0.21253066 0.54052405 0.18984948 1.0000
+La15 La 0.28746934 0.54052405 0.68984948 1.0000
+La16 La 0.78746934 0.04052405 0.68984948 1.0000

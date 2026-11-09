@@ -1,0 +1,41 @@
+data_hall_453_009
+# generated test structure: space group 161 (R 3 c), Hall setting 453
+# hard candidate: metric gap 3.011e-03, closest atoms 0.942 Angstrom, 18 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 453
+_raspa_point_group_number 19
+_space_group_IT_number 161
+_symmetry_Int_Tables_number 161
+_symmetry_space_group_name_H-M 'R 3 c'
+_symmetry_space_group_name_Hall ' P 3* -2n'
+_cell_length_a 7.27075648
+_cell_length_b 7.27075648
+_cell_length_c 7.27075648
+_cell_angle_alpha 90.27102140
+_cell_angle_beta 90.27102140
+_cell_angle_gamma 90.27102140
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Si1 Si 0.53744909 0.79537919 0.77596068 1.0000
+Si2 Si 0.03744909 0.27596068 0.29537919 1.0000
+Si3 Si 0.29537919 0.03744909 0.27596068 1.0000
+Si4 Si 0.79537919 0.77596068 0.53744909 1.0000
+Si5 Si 0.77596068 0.53744909 0.79537919 1.0000
+Si6 Si 0.27596068 0.29537919 0.03744909 1.0000
+Cu7 Cu 0.81999676 0.64934459 0.54797363 1.0000
+Cu8 Cu 0.31999676 0.04797363 0.14934459 1.0000
+Cu9 Cu 0.14934459 0.31999676 0.04797363 1.0000
+Cu10 Cu 0.64934459 0.54797363 0.81999676 1.0000
+Cu11 Cu 0.54797363 0.81999676 0.64934459 1.0000
+Cu12 Cu 0.04797363 0.14934459 0.31999676 1.0000
+Ag13 Ag 0.97892313 0.63502648 0.86809171 1.0000
+Ag14 Ag 0.47892313 0.36809171 0.13502648 1.0000
+Ag15 Ag 0.13502648 0.47892313 0.36809171 1.0000
+Ag16 Ag 0.63502648 0.86809171 0.97892313 1.0000
+Ag17 Ag 0.86809171 0.97892313 0.63502648 1.0000
+Ag18 Ag 0.36809171 0.13502648 0.47892313 1.0000

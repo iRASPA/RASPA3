@@ -1,0 +1,31 @@
+data_hall_006_010
+# generated test structure: space group 4 (P 1 21 1), Hall setting 6
+# noisy candidate: metric gap 1.713e-06, closest atoms 1.897 Angstrom, 8 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 6
+_raspa_point_group_number 3
+_space_group_IT_number 4
+_symmetry_Int_Tables_number 4
+_symmetry_space_group_name_H-M 'P 1 21 1'
+_symmetry_space_group_name_Hall ' P 2yb'
+_cell_length_a 10.96357394
+_cell_length_b 9.17622406
+_cell_length_c 21.94587807
+_cell_angle_alpha 90.00015416
+_cell_angle_beta 99.70244313
+_cell_angle_gamma 90.00159345
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+O1 O 0.15439176 0.55710902 0.59428590 1.0000
+O2 O 0.84502356 0.05752275 0.40537689 1.0000
+P3 P 0.46541939 0.12954874 0.59832249 1.0000
+P4 P 0.53503882 0.62986882 0.40204482 1.0000
+Co5 Co 0.23735425 0.31355108 0.03285767 1.0000
+Co6 Co 0.76265297 0.81370766 0.96689595 1.0000
+Pt7 Pt 0.32008924 0.24272838 0.59659514 1.0000
+Pt8 Pt 0.68024357 0.74291030 0.40316336 1.0000

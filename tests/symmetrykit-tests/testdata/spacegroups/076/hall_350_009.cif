@@ -1,0 +1,39 @@
+data_hall_350_009
+# generated test structure: space group 76 (P 41), Hall setting 350
+# hard candidate: metric gap 8.273e-03, closest atoms 4.593 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 350
+_raspa_point_group_number 9
+_space_group_IT_number 76
+_symmetry_Int_Tables_number 76
+_symmetry_space_group_name_H-M 'P 41'
+_symmetry_space_group_name_Hall ' P 4w'
+_cell_length_a 22.14156946
+_cell_length_b 22.14156946
+_cell_length_c 21.95838265
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Br1 Br 0.32492188 0.63115409 0.78917808 1.0000
+Br2 Br 0.63115409 0.67507812 0.53917808 1.0000
+Br3 Br 0.36884591 0.32492188 0.03917808 1.0000
+Br4 Br 0.67507812 0.36884591 0.28917808 1.0000
+Be5 Be 0.70320299 0.96300472 0.81246712 1.0000
+Be6 Be 0.96300472 0.29679701 0.56246712 1.0000
+Be7 Be 0.03699528 0.70320299 0.06246712 1.0000
+Be8 Be 0.29679701 0.03699528 0.31246712 1.0000
+Al9 Al 0.77471456 0.86064352 0.23925601 1.0000
+Al10 Al 0.86064352 0.22528544 0.98925601 1.0000
+Al11 Al 0.13935648 0.77471456 0.48925601 1.0000
+Al12 Al 0.22528544 0.13935648 0.73925601 1.0000
+Ba13 Ba 0.54238610 0.83197363 0.80995801 1.0000
+Ba14 Ba 0.83197363 0.45761390 0.55995801 1.0000
+Ba15 Ba 0.16802637 0.54238610 0.05995801 1.0000
+Ba16 Ba 0.45761390 0.16802637 0.30995801 1.0000

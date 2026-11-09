@@ -1,0 +1,39 @@
+data_hall_056_010
+# generated test structure: space group 9 (I b 1 1), Hall setting 56
+# noisy candidate: metric gap 5.594e-06, closest atoms 2.214 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 56
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'I b 1 1'
+_symmetry_space_group_name_Hall ' I -2xb'
+_cell_length_a 18.63036747
+_cell_length_b 7.11386056
+_cell_length_c 23.23519171
+_cell_angle_alpha 83.78024645
+_cell_angle_beta 89.97971788
+_cell_angle_gamma 89.99949654
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Sr1 Sr 0.25083473 0.24462021 0.11930366 1.0000
+Sr2 Sr 0.75077674 0.74455750 0.61940923 1.0000
+Sr3 Sr 0.74948770 0.74565961 0.11925224 1.0000
+Sr4 Sr 0.24934914 0.24570028 0.61908489 1.0000
+Ca5 Ca 0.24809097 0.94001405 0.60708757 1.0000
+Ca6 Ca 0.74830258 0.43987063 0.10739471 1.0000
+Ca7 Ca 0.75180712 0.44023054 0.60708479 1.0000
+Ca8 Ca 0.25173509 0.93965311 0.10736835 1.0000
+Fe9 Fe 0.53780169 0.78126791 0.72116579 1.0000
+Fe10 Fe 0.03772494 0.28135578 0.22136571 1.0000
+Fe11 Fe 0.46258722 0.28202004 0.72108031 1.0000
+Fe12 Fe 0.96228237 0.78200257 0.22124404 1.0000
+Ba13 Ba 0.11957108 0.24688675 0.90179502 1.0000
+Ba14 Ba 0.61969904 0.74763455 0.40201939 1.0000
+Ba15 Ba 0.88055145 0.74676926 0.90174287 1.0000
+Ba16 Ba 0.38054737 0.24710707 0.40176753 1.0000

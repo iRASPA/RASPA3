@@ -1,0 +1,39 @@
+data_hall_111_004
+# generated test structure: space group 17 (P 2 21 2), Hall setting 111
+# hard candidate: metric gap 1.245e-02, closest atoms 0.980 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 111
+_raspa_point_group_number 6
+_space_group_IT_number 17
+_symmetry_Int_Tables_number 17
+_symmetry_space_group_name_H-M 'P 2 21 2'
+_symmetry_space_group_name_Hall ' P 2 2b'
+_cell_length_a 7.17281154
+_cell_length_b 7.63471078
+_cell_length_c 7.26322748
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Li1 Li 0.71145508 0.36416378 0.54616318 1.0000
+Li2 Li 0.71145508 0.13583622 0.45383682 1.0000
+Li3 Li 0.28854492 0.86416378 0.45383682 1.0000
+Li4 Li 0.28854492 0.63583622 0.54616318 1.0000
+Be5 Be 0.70286982 0.72591330 0.29318134 1.0000
+Be6 Be 0.70286982 0.77408670 0.70681866 1.0000
+Be7 Be 0.29713018 0.22591330 0.70681866 1.0000
+Be8 Be 0.29713018 0.27408670 0.29318134 1.0000
+Ge9 Ge 0.86506513 0.79433344 0.65712266 1.0000
+Ge10 Ge 0.86506513 0.70566656 0.34287734 1.0000
+Ge11 Ge 0.13493487 0.29433344 0.34287734 1.0000
+Ge12 Ge 0.13493487 0.20566656 0.65712266 1.0000
+Na13 Na 0.28494507 0.53391808 0.62820316 1.0000
+Na14 Na 0.28494507 0.96608192 0.37179684 1.0000
+Na15 Na 0.71505493 0.03391808 0.37179684 1.0000
+Na16 Na 0.71505493 0.46608192 0.62820316 1.0000

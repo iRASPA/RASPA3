@@ -1,0 +1,35 @@
+data_hall_052_006
+# generated test structure: space group 9 (C n 1 1), Hall setting 52
+# hard candidate: metric gap 3.474e-03, closest atoms 0.651 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 52
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'C n 1 1'
+_symmetry_space_group_name_Hall ' C -2xac'
+_cell_length_a 12.14141318
+_cell_length_b 12.00631703
+_cell_length_c 12.09856446
+_cell_angle_alpha 89.68734358
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Mo1 Mo 0.68806230 0.47456023 0.54072177 1.0000
+Mo2 Mo 0.18806230 0.97456023 0.54072177 1.0000
+Mo3 Mo 0.31193770 0.97456023 0.04072177 1.0000
+Mo4 Mo 0.81193770 0.47456023 0.04072177 1.0000
+Ca5 Ca 0.32653876 0.01375847 0.00638534 1.0000
+Ca6 Ca 0.82653876 0.51375847 0.00638534 1.0000
+Ca7 Ca 0.67346124 0.51375847 0.50638534 1.0000
+Ca8 Ca 0.17346124 0.01375847 0.50638534 1.0000
+K9 K 0.72723422 0.96561138 0.88042734 1.0000
+K10 K 0.22723422 0.46561138 0.88042734 1.0000
+K11 K 0.27276578 0.46561138 0.38042734 1.0000
+K12 K 0.77276578 0.96561138 0.38042734 1.0000

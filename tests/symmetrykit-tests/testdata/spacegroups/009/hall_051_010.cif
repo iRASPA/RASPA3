@@ -1,0 +1,39 @@
+data_hall_051_010
+# generated test structure: space group 9 (B b 1 1), Hall setting 51
+# noisy candidate: metric gap 1.793e-05, closest atoms 1.480 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 51
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'B b 1 1'
+_symmetry_space_group_name_Hall ' B -2xb'
+_cell_length_a 18.66254939
+_cell_length_b 19.67581207
+_cell_length_c 8.13420611
+_cell_angle_alpha 78.61027285
+_cell_angle_beta 90.00161344
+_cell_angle_gamma 90.03278370
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Mo1 Mo 0.08253797 0.85396763 0.00623226 1.0000
+Mo2 Mo 0.58249614 0.85375618 0.50726343 1.0000
+Mo3 Mo 0.91726475 0.35382674 0.00672648 1.0000
+Mo4 Mo 0.41720885 0.35349705 0.50698382 1.0000
+Ca5 Ca 0.05600934 0.55414693 0.82897431 1.0000
+Ca6 Ca 0.55566500 0.55413221 0.32961931 1.0000
+Ca7 Ca 0.94449146 0.05425225 0.82916247 1.0000
+Ca8 Ca 0.44441567 0.05395133 0.32889196 1.0000
+Ge9 Ge 0.94469319 0.78149936 0.92542082 1.0000
+Ge10 Ge 0.44483939 0.78164184 0.42498420 1.0000
+Ge11 Ge 0.05531129 0.28188738 0.92510071 1.0000
+Ge12 Ge 0.55528887 0.28191475 0.42518474 1.0000
+Ga13 Ga 0.99518589 0.50767146 0.89360662 1.0000
+Ga14 Ga 0.49535587 0.50752548 0.39378848 1.0000
+Ga15 Ga 0.00457733 0.00757960 0.89471400 1.0000
+Ga16 Ga 0.50460897 0.00721830 0.39447385 1.0000

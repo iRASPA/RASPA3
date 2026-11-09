@@ -1,0 +1,35 @@
+data_hall_040_001
+# generated test structure: space group 9 (A 1 n 1), Hall setting 40
+# hard candidate: metric gap 8.490e-04, closest atoms 0.833 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 40
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'A 1 n 1'
+_symmetry_space_group_name_Hall ' A -2yab'
+_cell_length_a 5.07894023
+_cell_length_b 5.35274640
+_cell_length_c 4.79120815
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.07641201
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Al1 Al 0.22062357 0.71339106 0.54017049 1.0000
+Al2 Al 0.22062357 0.21339106 0.04017049 1.0000
+Al3 Al 0.72062357 0.28660894 0.04017049 1.0000
+Al4 Al 0.72062357 0.78660894 0.54017049 1.0000
+Zr5 Zr 0.15552325 0.83335307 0.45338687 1.0000
+Zr6 Zr 0.15552325 0.33335307 0.95338687 1.0000
+Zr7 Zr 0.65552325 0.16664693 0.95338687 1.0000
+Zr8 Zr 0.65552325 0.66664693 0.45338687 1.0000
+Be9 Be 0.97827546 0.86292335 0.97378059 1.0000
+Be10 Be 0.97827546 0.36292335 0.47378059 1.0000
+Be11 Be 0.47827546 0.13707665 0.47378059 1.0000
+Be12 Be 0.47827546 0.63707665 0.97378059 1.0000

@@ -1,0 +1,31 @@
+data_hall_026_009
+# generated test structure: space group 7 (P 1 1 b), Hall setting 26
+# hard candidate: metric gap 1.761e-03, closest atoms 2.513 Angstrom, 8 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 26
+_raspa_point_group_number 4
+_space_group_IT_number 7
+_symmetry_Int_Tables_number 7
+_symmetry_space_group_name_H-M 'P 1 1 b'
+_symmetry_space_group_name_Hall ' P -2b'
+_cell_length_a 9.74603726
+_cell_length_b 9.92028935
+_cell_length_c 10.08314342
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 89.84147230
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ca1 Ca 0.15925608 0.81928960 0.72633895 1.0000
+Ca2 Ca 0.15925608 0.31928960 0.27366105 1.0000
+In3 In 0.79258323 0.73023009 0.70906858 1.0000
+In4 In 0.79258323 0.23023009 0.29093142 1.0000
+W5 W 0.54286198 0.28561029 0.95052168 1.0000
+W6 W 0.54286198 0.78561029 0.04947832 1.0000
+Cs7 Cs 0.30325320 0.79237003 0.52120733 1.0000
+Cs8 Cs 0.30325320 0.29237003 0.47879267 1.0000

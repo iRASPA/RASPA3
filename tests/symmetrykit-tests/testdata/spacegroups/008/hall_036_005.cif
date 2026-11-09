@@ -1,0 +1,39 @@
+data_hall_036_005
+# generated test structure: space group 8 (B m 1 1), Hall setting 36
+# hard candidate: metric gap 8.195e-03, closest atoms 1.181 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 36
+_raspa_point_group_number 4
+_space_group_IT_number 8
+_symmetry_Int_Tables_number 8
+_symmetry_space_group_name_H-M 'B m 1 1'
+_symmetry_space_group_name_Hall ' B -2x'
+_cell_length_a 17.75521658
+_cell_length_b 17.99630053
+_cell_length_c 17.60971559
+_cell_angle_alpha 88.59787415
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+As1 As 0.70932730 0.79397439 0.27791372 1.0000
+As2 As 0.20932730 0.79397439 0.77791372 1.0000
+As3 As 0.29067270 0.79397439 0.27791372 1.0000
+As4 As 0.79067270 0.79397439 0.77791372 1.0000
+Co5 Co 0.62776376 0.47331453 0.10721817 1.0000
+Co6 Co 0.12776376 0.47331453 0.60721817 1.0000
+Co7 Co 0.37223624 0.47331453 0.10721817 1.0000
+Co8 Co 0.87223624 0.47331453 0.60721817 1.0000
+B9 B 0.31104907 0.22340755 0.20197087 1.0000
+B10 B 0.81104907 0.22340755 0.70197087 1.0000
+B11 B 0.68895093 0.22340755 0.20197087 1.0000
+B12 B 0.18895093 0.22340755 0.70197087 1.0000
+F13 F 0.73702306 0.24377194 0.24290817 1.0000
+F14 F 0.23702306 0.24377194 0.74290817 1.0000
+F15 F 0.26297694 0.24377194 0.24290817 1.0000
+F16 F 0.76297694 0.24377194 0.74290817 1.0000

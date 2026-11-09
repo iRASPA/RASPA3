@@ -1,0 +1,39 @@
+data_hall_164_011
+# generated test structure: space group 33 (P n a 21), Hall setting 164
+# noisy candidate: metric gap 9.456e-06, closest atoms 2.259 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 164
+_raspa_point_group_number 7
+_space_group_IT_number 33
+_symmetry_Int_Tables_number 33
+_symmetry_space_group_name_H-M 'P n a 21'
+_symmetry_space_group_name_Hall ' P 2c -2n'
+_cell_length_a 12.23324703
+_cell_length_b 7.53168072
+_cell_length_c 24.10176961
+_cell_angle_alpha 89.99914893
+_cell_angle_beta 89.97026369
+_cell_angle_gamma 89.99758857
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+O1 O 0.33273362 0.97527388 0.93904868 1.0000
+O2 O 0.83279787 0.52462480 0.93900511 1.0000
+O3 O 0.16749504 0.47486144 0.43911361 1.0000
+O4 O 0.66738783 0.02501124 0.43898430 1.0000
+Ge5 Ge 0.29304369 0.05445440 0.02717507 1.0000
+Ge6 Ge 0.79356666 0.44529904 0.02731799 1.0000
+Ge7 Ge 0.20717355 0.55464499 0.52739399 1.0000
+Ge8 Ge 0.70701252 0.94536924 0.52741692 1.0000
+Au9 Au 0.79918864 0.83612895 0.08835463 1.0000
+Au10 Au 0.29963321 0.66365242 0.08828251 1.0000
+Au11 Au 0.70070828 0.33641832 0.58830969 1.0000
+Au12 Au 0.20073457 0.16309378 0.58839706 1.0000
+Co13 Co 0.87537011 0.48583604 0.32414176 1.0000
+Co14 Co 0.37547454 0.01482677 0.32420125 1.0000
+Co15 Co 0.62480217 0.98515800 0.82426764 1.0000
+Co16 Co 0.12439568 0.51539029 0.82402984 1.0000

@@ -1,0 +1,38 @@
+data_hall_127_018
+# generated test structure: space group 25 (P m 2 m), Hall setting 127
+# noisy candidate: metric gap 3.752e-05, closest atoms 0.829 Angstrom, 15 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 127
+_raspa_point_group_number 7
+_space_group_IT_number 25
+_symmetry_Int_Tables_number 25
+_symmetry_space_group_name_H-M 'P m 2 m'
+_symmetry_space_group_name_Hall ' P -2 -2'
+_cell_length_a 16.67999495
+_cell_length_b 6.74172618
+_cell_length_c 10.09549932
+_cell_angle_alpha 89.98919522
+_cell_angle_beta 90.00337705
+_cell_angle_gamma 90.02229584
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ti1 Ti 0.99982100 0.71681347 0.81218548 1.0000
+Ti2 Ti 0.00025796 0.71683288 0.18782896 1.0000
+Ga3 Ga 0.99986973 0.28566675 0.00025344 1.0000
+P4 P 0.86495717 0.93138753 0.43473664 1.0000
+P5 P 0.86525300 0.93127147 0.56565596 1.0000
+P6 P 0.13503521 0.93102169 0.43493046 1.0000
+P7 P 0.13476295 0.93125670 0.56511468 1.0000
+Bi8 Bi 0.94626509 0.50083792 0.94668624 1.0000
+Bi9 Bi 0.94617477 0.49997440 0.05339137 1.0000
+Bi10 Bi 0.05362310 0.49964580 0.94708617 1.0000
+Bi11 Bi 0.05368494 0.50001558 0.05299213 1.0000
+Se12 Se 0.30129174 0.05911303 0.04139066 1.0000
+Se13 Se 0.30144797 0.05999374 0.95845593 1.0000
+Se14 Se 0.69867618 0.05915697 0.04116759 1.0000
+Se15 Se 0.69894839 0.05885382 0.95906719 1.0000

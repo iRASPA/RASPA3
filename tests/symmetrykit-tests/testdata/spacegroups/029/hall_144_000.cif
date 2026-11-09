@@ -1,0 +1,39 @@
+data_hall_144_000
+# generated test structure: space group 29 (P b c 21), Hall setting 144
+# hard candidate: metric gap 2.053e-03, closest atoms 2.387 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 144
+_raspa_point_group_number 7
+_space_group_IT_number 29
+_symmetry_Int_Tables_number 29
+_symmetry_space_group_name_H-M 'P b c 21'
+_symmetry_space_group_name_Hall ' P 2c -2b'
+_cell_length_a 12.76891633
+_cell_length_b 13.22784843
+_cell_length_c 12.74270655
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+La1 La 0.74195985 0.89000088 0.76973560 1.0000
+La2 La 0.74195985 0.60999912 0.26973560 1.0000
+La3 La 0.25804015 0.39000088 0.76973560 1.0000
+La4 La 0.25804015 0.10999912 0.26973560 1.0000
+Nb5 Nb 0.62021713 0.27843086 0.79102650 1.0000
+Nb6 Nb 0.62021713 0.22156914 0.29102650 1.0000
+Nb7 Nb 0.37978287 0.77843086 0.79102650 1.0000
+Nb8 Nb 0.37978287 0.72156914 0.29102650 1.0000
+W9 W 0.33921315 0.27001983 0.29916742 1.0000
+W10 W 0.33921315 0.22998017 0.79916742 1.0000
+W11 W 0.66078685 0.77001983 0.29916742 1.0000
+W12 W 0.66078685 0.72998017 0.79916742 1.0000
+As13 As 0.46075448 0.52990666 0.17464448 1.0000
+As14 As 0.46075448 0.97009334 0.67464448 1.0000
+As15 As 0.53924552 0.02990666 0.17464448 1.0000
+As16 As 0.53924552 0.47009334 0.67464448 1.0000

@@ -33,15 +33,8 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
-    <ClCompile Include="find_conventional_cell.cpp" />
-    <ClCompile Include="find_pointgroup_no_partial_occupancies.cpp" />
-    <ClCompile Include="find_smallest_primitive_cell.cpp" />
-    <ClCompile Include="find_smallest_primitive_cell_no_partial_occupancies.cpp" />
-    <ClCompile Include="find_spacegroup.cpp" />
-    <ClCompile Include="find_spacegroup_no_partial_occupancies.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="find_pointgroup.cpp" />
-    <ClCompile Include="transformation_matrix.cpp" />
+    <ClCompile Include="generated_spacegroups.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\foundationkit\foundationkit.vcxproj">

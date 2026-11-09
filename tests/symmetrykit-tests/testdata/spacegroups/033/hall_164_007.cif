@@ -1,0 +1,39 @@
+data_hall_164_007
+# generated test structure: space group 33 (P n a 21), Hall setting 164
+# hard candidate: metric gap 3.094e-03, closest atoms 4.603 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 164
+_raspa_point_group_number 7
+_space_group_IT_number 33
+_symmetry_Int_Tables_number 33
+_symmetry_space_group_name_H-M 'P n a 21'
+_symmetry_space_group_name_Hall ' P 2c -2n'
+_cell_length_a 22.92208460
+_cell_length_b 22.49606507
+_cell_length_c 22.85116737
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cu1 Cu 0.54921849 0.63545628 0.14064388 1.0000
+Cu2 Cu 0.04921849 0.86454372 0.14064388 1.0000
+Cu3 Cu 0.95078151 0.13545628 0.64064388 1.0000
+Cu4 Cu 0.45078151 0.36454372 0.64064388 1.0000
+Au5 Au 0.47126414 0.91110112 0.86589075 1.0000
+Au6 Au 0.97126414 0.58889888 0.86589075 1.0000
+Au7 Au 0.02873586 0.41110112 0.36589075 1.0000
+Au8 Au 0.52873586 0.08889888 0.36589075 1.0000
+Na9 Na 0.67559215 0.31696781 0.03083232 1.0000
+Na10 Na 0.17559215 0.18303219 0.03083232 1.0000
+Na11 Na 0.82440785 0.81696781 0.53083232 1.0000
+Na12 Na 0.32440785 0.68303219 0.53083232 1.0000
+Zr13 Zr 0.47584962 0.30036595 0.01782044 1.0000
+Zr14 Zr 0.97584962 0.19963405 0.01782044 1.0000
+Zr15 Zr 0.02415038 0.80036595 0.51782044 1.0000
+Zr16 Zr 0.52415038 0.69963405 0.51782044 1.0000

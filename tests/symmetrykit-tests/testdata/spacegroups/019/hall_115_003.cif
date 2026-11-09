@@ -1,0 +1,39 @@
+data_hall_115_003
+# generated test structure: space group 19 (P 21 21 21), Hall setting 115
+# hard candidate: metric gap 3.528e-02, closest atoms 1.393 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 115
+_raspa_point_group_number 6
+_space_group_IT_number 19
+_symmetry_Int_Tables_number 19
+_symmetry_space_group_name_H-M 'P 21 21 21'
+_symmetry_space_group_name_Hall ' P 2ac 2ab'
+_cell_length_a 6.21437765
+_cell_length_b 6.67333405
+_cell_length_c 5.99511989
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+V1 V 0.38718222 0.64851835 0.71798609 1.0000
+V2 V 0.88718222 0.85148165 0.28201391 1.0000
+V3 V 0.61281778 0.14851835 0.78201391 1.0000
+V4 V 0.11281778 0.35148165 0.21798609 1.0000
+Ti5 Ti 0.33350467 0.00502732 0.21004447 1.0000
+Ti6 Ti 0.83350467 0.49497268 0.78995553 1.0000
+Ti7 Ti 0.66649533 0.50502732 0.28995553 1.0000
+Ti8 Ti 0.16649533 0.99497268 0.71004447 1.0000
+Sr9 Sr 0.27168587 0.54910096 0.13426391 1.0000
+Sr10 Sr 0.77168587 0.95089904 0.86573609 1.0000
+Sr11 Sr 0.72831413 0.04910096 0.36573609 1.0000
+Sr12 Sr 0.22831413 0.45089904 0.63426391 1.0000
+Co13 Co 0.72431324 0.53165778 0.98869034 1.0000
+Co14 Co 0.22431324 0.96834222 0.01130966 1.0000
+Co15 Co 0.27568676 0.03165778 0.51130966 1.0000
+Co16 Co 0.77568676 0.46834222 0.48869034 1.0000

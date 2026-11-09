@@ -1,0 +1,39 @@
+data_hall_038_019
+# generated test structure: space group 8 (I m 1 1), Hall setting 38
+# noisy candidate: metric gap 5.964e-06, closest atoms 1.703 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 38
+_raspa_point_group_number 4
+_space_group_IT_number 8
+_symmetry_Int_Tables_number 8
+_symmetry_space_group_name_H-M 'I m 1 1'
+_symmetry_space_group_name_Hall ' I -2x'
+_cell_length_a 5.67971964
+_cell_length_b 20.57512816
+_cell_length_c 16.75917646
+_cell_angle_alpha 75.26288844
+_cell_angle_beta 89.99946327
+_cell_angle_gamma 90.00253856
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Br1 Br 0.99950223 0.57372647 0.09668754 1.0000
+Br2 Br 0.49941822 0.07384576 0.59631886 1.0000
+Ni3 Ni 0.00055303 0.62244350 0.19005089 1.0000
+Ni4 Ni 0.50053959 0.12224679 0.69020467 1.0000
+Fe5 Fe 0.14940402 0.19191531 0.67857630 1.0000
+Fe6 Fe 0.65077623 0.69180673 0.17868957 1.0000
+Fe7 Fe 0.84961010 0.19183617 0.67863507 1.0000
+Fe8 Fe 0.35018582 0.69169250 0.17911903 1.0000
+Mn9 Mn 0.74367766 0.29297231 0.91298298 1.0000
+Mn10 Mn 0.24445450 0.79286721 0.41311852 1.0000
+Mn11 Mn 0.25629513 0.29277126 0.91319666 1.0000
+Mn12 Mn 0.75607929 0.79277594 0.41322205 1.0000
+Bi13 Bi 0.81708687 0.25819442 0.23389423 1.0000
+Bi14 Bi 0.31684048 0.75836720 0.73380937 1.0000
+Bi15 Bi 0.18306258 0.25808654 0.23416622 1.0000
+Bi16 Bi 0.68327861 0.75838826 0.73388769 1.0000

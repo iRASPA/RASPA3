@@ -1,0 +1,39 @@
+data_hall_039_002
+# generated test structure: space group 9 (C 1 c 1), Hall setting 39
+# hard candidate: metric gap 3.398e-03, closest atoms 1.724 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 39
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'C 1 c 1'
+_symmetry_space_group_name_Hall ' C -2yc'
+_cell_length_a 10.15229736
+_cell_length_b 10.07292019
+_cell_length_c 10.52598008
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 89.69416242
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+F1 F 0.52861666 0.36108218 0.21141741 1.0000
+F2 F 0.02861666 0.86108218 0.21141741 1.0000
+F3 F 0.52861666 0.63891782 0.71141741 1.0000
+F4 F 0.02861666 0.13891782 0.71141741 1.0000
+Ni5 Ni 0.72006611 0.54338949 0.76868759 1.0000
+Ni6 Ni 0.22006611 0.04338949 0.76868759 1.0000
+Ni7 Ni 0.72006611 0.45661051 0.26868759 1.0000
+Ni8 Ni 0.22006611 0.95661051 0.26868759 1.0000
+B9 B 0.20134365 0.73330991 0.20505436 1.0000
+B10 B 0.70134365 0.23330991 0.20505436 1.0000
+B11 B 0.20134365 0.26669009 0.70505436 1.0000
+B12 B 0.70134365 0.76669009 0.70505436 1.0000
+Cs13 Cs 0.99053429 0.01922913 0.26224067 1.0000
+Cs14 Cs 0.49053429 0.51922913 0.26224067 1.0000
+Cs15 Cs 0.99053429 0.98077087 0.76224067 1.0000
+Cs16 Cs 0.49053429 0.48077087 0.76224067 1.0000

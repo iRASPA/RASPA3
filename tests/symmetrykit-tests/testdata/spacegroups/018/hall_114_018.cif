@@ -1,0 +1,37 @@
+data_hall_114_018
+# generated test structure: space group 18 (P 21 2 21), Hall setting 114
+# noisy candidate: metric gap 4.810e-06, closest atoms 1.237 Angstrom, 14 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 114
+_raspa_point_group_number 6
+_space_group_IT_number 18
+_symmetry_Int_Tables_number 18
+_symmetry_space_group_name_H-M 'P 21 2 21'
+_symmetry_space_group_name_Hall ' P 2ac 2ac'
+_cell_length_a 5.25722786
+_cell_length_b 14.90156662
+_cell_length_c 13.75331954
+_cell_angle_alpha 89.96677920
+_cell_angle_beta 90.00043294
+_cell_angle_gamma 90.00436929
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Fe1 Fe 0.49905381 0.98710615 0.50016720 1.0000
+Fe2 Fe 0.99959450 0.01270793 0.99972922 1.0000
+Cl3 Cl 0.54162676 0.75698282 0.95782987 1.0000
+Cl4 Cl 0.04042580 0.24293763 0.54216062 1.0000
+Cl5 Cl 0.45836823 0.75669772 0.04257203 1.0000
+Cl6 Cl 0.95857929 0.24287651 0.45779944 1.0000
+O7 O 0.65895914 0.12322145 0.76101726 1.0000
+O8 O 0.16012513 0.87697577 0.73870017 1.0000
+O9 O 0.33954896 0.12260762 0.23857230 1.0000
+O10 O 0.83990003 0.87683261 0.26118879 1.0000
+Ti11 Ti 0.38322876 0.81022741 0.44084612 1.0000
+Ti12 Ti 0.88291906 0.18969766 0.05914709 1.0000
+Ti13 Ti 0.61740712 0.81043372 0.55923294 1.0000
+Ti14 Ti 0.11684918 0.18965100 0.94050068 1.0000

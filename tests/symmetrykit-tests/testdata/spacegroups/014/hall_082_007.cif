@@ -1,0 +1,39 @@
+data_hall_082_007
+# generated test structure: space group 14 (P 1 21/n 1), Hall setting 82
+# hard candidate: metric gap 1.801e-02, closest atoms 0.931 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 82
+_raspa_point_group_number 5
+_space_group_IT_number 14
+_symmetry_Int_Tables_number 14
+_symmetry_space_group_name_H-M 'P 1 21/n 1'
+_symmetry_space_group_name_Hall '-P 2yn'
+_cell_length_a 5.84443689
+_cell_length_b 5.65830082
+_cell_length_c 6.28034567
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 88.37927031
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+As1 As 0.36988555 0.32544957 0.63057261 1.0000
+As2 As 0.86988555 0.17455043 0.13057261 1.0000
+As3 As 0.13011445 0.82544957 0.86942739 1.0000
+As4 As 0.63011445 0.67455043 0.36942739 1.0000
+Cu5 Cu 0.46031076 0.34441419 0.97378690 1.0000
+Cu6 Cu 0.96031076 0.15558581 0.47378690 1.0000
+Cu7 Cu 0.03968924 0.84441419 0.52621310 1.0000
+Cu8 Cu 0.53968924 0.65558581 0.02621310 1.0000
+In9 In 0.21102403 0.36059725 0.02246478 1.0000
+In10 In 0.71102403 0.13940275 0.52246478 1.0000
+In11 In 0.28897597 0.86059725 0.47753522 1.0000
+In12 In 0.78897597 0.63940275 0.97753522 1.0000
+Ce13 Ce 0.67384092 0.71417535 0.90318519 1.0000
+Ce14 Ce 0.17384092 0.78582465 0.40318519 1.0000
+Ce15 Ce 0.82615908 0.21417535 0.59681481 1.0000
+Ce16 Ce 0.32615908 0.28582465 0.09681481 1.0000

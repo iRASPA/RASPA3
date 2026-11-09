@@ -1,0 +1,39 @@
+data_hall_088_015
+# generated test structure: space group 14 (P 21/n 1 1), Hall setting 88
+# noisy candidate: metric gap 2.690e-06, closest atoms 0.982 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 88
+_raspa_point_group_number 5
+_space_group_IT_number 14
+_symmetry_Int_Tables_number 14
+_symmetry_space_group_name_H-M 'P 21/n 1 1'
+_symmetry_space_group_name_Hall '-P 2xn'
+_cell_length_a 6.09462445
+_cell_length_b 22.57808189
+_cell_length_c 10.96227144
+_cell_angle_alpha 98.47684751
+_cell_angle_beta 90.00024213
+_cell_angle_gamma 90.02326158
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Mg1 Mg 0.75617156 0.34709260 0.49966082 1.0000
+Mg2 Mg 0.25693049 0.15296812 0.00003377 1.0000
+Mg3 Mg 0.74399904 0.84709319 0.99974633 1.0000
+Mg4 Mg 0.24314565 0.65326987 0.49986600 1.0000
+Au5 Au 0.51600265 0.67664263 0.65728972 1.0000
+Au6 Au 0.01622124 0.82362568 0.84276600 1.0000
+Au7 Au 0.98486898 0.17656605 0.15710746 1.0000
+Au8 Au 0.48513627 0.32339321 0.34326646 1.0000
+Cs9 Cs 0.19469125 0.96837632 0.70977940 1.0000
+Cs10 Cs 0.69417036 0.53183422 0.79035317 1.0000
+Cs11 Cs 0.30541076 0.46838459 0.20936966 1.0000
+Cs12 Cs 0.80521708 0.03171260 0.28972413 1.0000
+Ba13 Ba 0.68585907 0.05104835 0.24955678 1.0000
+Ba14 Ba 0.18714344 0.44882116 0.25012744 1.0000
+Ba15 Ba 0.81277767 0.55108796 0.74986602 1.0000
+Ba16 Ba 0.31417956 0.94914525 0.75036445 1.0000

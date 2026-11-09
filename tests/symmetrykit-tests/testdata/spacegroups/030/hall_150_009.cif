@@ -1,0 +1,39 @@
+data_hall_150_009
+# generated test structure: space group 30 (P c n 2), Hall setting 150
+# hard candidate: metric gap 3.499e-03, closest atoms 2.754 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 150
+_raspa_point_group_number 7
+_space_group_IT_number 30
+_symmetry_Int_Tables_number 30
+_symmetry_space_group_name_H-M 'P c n 2'
+_symmetry_space_group_name_Hall ' P 2 -2ac'
+_cell_length_a 23.73022169
+_cell_length_b 23.92564946
+_cell_length_c 23.84194072
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+As1 As 0.99324433 0.33946087 0.23809021 1.0000
+As2 As 0.49324433 0.66053913 0.73809021 1.0000
+As3 As 0.50675567 0.33946087 0.73809021 1.0000
+As4 As 0.00675567 0.66053913 0.23809021 1.0000
+Ti5 Ti 0.62500927 0.29361349 0.48893154 1.0000
+Ti6 Ti 0.12500927 0.70638651 0.98893154 1.0000
+Ti7 Ti 0.87499073 0.29361349 0.98893154 1.0000
+Ti8 Ti 0.37499073 0.70638651 0.48893154 1.0000
+Ca9 Ca 0.91196006 0.27626514 0.29077807 1.0000
+Ca10 Ca 0.41196006 0.72373486 0.79077807 1.0000
+Ca11 Ca 0.58803994 0.27626514 0.79077807 1.0000
+Ca12 Ca 0.08803994 0.72373486 0.29077807 1.0000
+Be13 Be 0.68243139 0.97992812 0.46584130 1.0000
+Be14 Be 0.18243139 0.02007188 0.96584130 1.0000
+Be15 Be 0.81756861 0.97992812 0.96584130 1.0000
+Be16 Be 0.31756861 0.02007188 0.46584130 1.0000

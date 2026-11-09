@@ -1,0 +1,33 @@
+data_hall_003_013
+# generated test structure: space group 3 (P 1 2 1), Hall setting 3
+# special candidate: metric gap 4.203e-02, closest atoms 1.868 Angstrom, 10 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 3
+_raspa_point_group_number 3
+_space_group_IT_number 3
+_symmetry_Int_Tables_number 3
+_symmetry_space_group_name_H-M 'P 1 2 1'
+_symmetry_space_group_name_Hall ' P 2y'
+_cell_length_a 17.34452417
+_cell_length_b 15.44115137
+_cell_length_c 16.11856888
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 66.61546933
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Sn1 Sn 0.00000000 0.38672160 0.00000000 1.0000
+Al2 Al 0.00000000 0.26574618 0.00000000 1.0000
+Ti3 Ti 0.67856717 0.93938039 0.20275502 1.0000
+Ti4 Ti 0.32143283 0.93938039 0.79724498 1.0000
+Na5 Na 0.57529012 0.57994074 0.99603272 1.0000
+Na6 Na 0.42470988 0.57994074 0.00396728 1.0000
+Pt7 Pt 0.31446809 0.76829754 0.73229354 1.0000
+Pt8 Pt 0.68553191 0.76829754 0.26770646 1.0000
+Pb9 Pb 0.12853076 0.85744880 0.09341170 1.0000
+Pb10 Pb 0.87146924 0.85744880 0.90658830 1.0000

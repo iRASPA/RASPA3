@@ -1,0 +1,35 @@
+data_hall_351_006
+# generated test structure: space group 77 (P 42), Hall setting 351
+# hard candidate: metric gap 5.408e-03, closest atoms 1.551 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 351
+_raspa_point_group_number 9
+_space_group_IT_number 77
+_symmetry_Int_Tables_number 77
+_symmetry_space_group_name_H-M 'P 42'
+_symmetry_space_group_name_Hall ' P 4c'
+_cell_length_a 15.66769308
+_cell_length_b 15.66769308
+_cell_length_c 15.58296037
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ba1 Ba 0.45104648 0.49278991 0.10401135 1.0000
+Ba2 Ba 0.49278991 0.54895352 0.60401135 1.0000
+Ba3 Ba 0.50721009 0.45104648 0.60401135 1.0000
+Ba4 Ba 0.54895352 0.50721009 0.10401135 1.0000
+Cs5 Cs 0.90968439 0.30188644 0.45627358 1.0000
+Cs6 Cs 0.30188644 0.09031561 0.95627358 1.0000
+Cs7 Cs 0.69811356 0.90968439 0.95627358 1.0000
+Cs8 Cs 0.09031561 0.69811356 0.45627358 1.0000
+Cl9 Cl 0.73929848 0.45560107 0.76611926 1.0000
+Cl10 Cl 0.45560107 0.26070152 0.26611926 1.0000
+Cl11 Cl 0.54439893 0.73929848 0.26611926 1.0000
+Cl12 Cl 0.26070152 0.54439893 0.76611926 1.0000

@@ -1,0 +1,39 @@
+data_hall_078_001
+# generated test structure: space group 13 (P 2/b 1 1), Hall setting 78
+# hard candidate: metric gap 2.063e-03, closest atoms 1.912 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 78
+_raspa_point_group_number 5
+_space_group_IT_number 13
+_symmetry_Int_Tables_number 13
+_symmetry_space_group_name_H-M 'P 2/b 1 1'
+_symmetry_space_group_name_Hall '-P 2xb'
+_cell_length_a 22.04883927
+_cell_length_b 21.95467232
+_cell_length_c 22.00334872
+_cell_angle_alpha 89.07369823
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+S1 S 0.53111548 0.97072133 0.00841196 1.0000
+S2 S 0.53111548 0.52927867 0.99158804 1.0000
+S3 S 0.46888452 0.47072133 0.00841196 1.0000
+S4 S 0.46888452 0.02927867 0.99158804 1.0000
+Mo5 Mo 0.84264433 0.50647092 0.62565532 1.0000
+Mo6 Mo 0.84264433 0.99352908 0.37434468 1.0000
+Mo7 Mo 0.15735567 0.00647092 0.62565532 1.0000
+Mo8 Mo 0.15735567 0.49352908 0.37434468 1.0000
+Sr9 Sr 0.90496348 0.75630369 0.73687631 1.0000
+Sr10 Sr 0.90496348 0.74369631 0.26312369 1.0000
+Sr11 Sr 0.09503652 0.25630369 0.73687631 1.0000
+Sr12 Sr 0.09503652 0.24369631 0.26312369 1.0000
+Cu13 Cu 0.76049989 0.03091448 0.50569837 1.0000
+Cu14 Cu 0.76049989 0.46908552 0.49430163 1.0000
+Cu15 Cu 0.23950011 0.53091448 0.50569837 1.0000
+Cu16 Cu 0.23950011 0.96908552 0.49430163 1.0000

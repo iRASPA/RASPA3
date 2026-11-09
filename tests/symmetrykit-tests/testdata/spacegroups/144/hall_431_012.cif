@@ -1,0 +1,35 @@
+data_hall_431_012
+# generated test structure: space group 144 (P 31), Hall setting 431
+# noisy candidate: metric gap 2.760e-05, closest atoms 1.604 Angstrom, 12 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 431
+_raspa_point_group_number 16
+_space_group_IT_number 144
+_symmetry_Int_Tables_number 144
+_symmetry_space_group_name_H-M 'P 31'
+_symmetry_space_group_name_Hall ' P 31'
+_cell_length_a 10.21968730
+_cell_length_b 10.21809416
+_cell_length_c 7.44511649
+_cell_angle_alpha 90.00248393
+_cell_angle_beta 89.99727475
+_cell_angle_gamma 119.96938620
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Nb1 Nb 0.64038688 0.68573620 0.66370522 1.0000
+Nb2 Nb 0.04578202 0.35948898 0.33057521 1.0000
+Nb3 Nb 0.31433947 0.95418995 0.99622504 1.0000
+P4 P 0.28964619 0.27433512 0.27548842 1.0000
+P5 P 0.98428225 0.71022434 0.94230328 1.0000
+P6 P 0.72559987 0.01539678 0.61008034 1.0000
+Cu7 Cu 0.04525108 0.85745190 0.54189232 1.0000
+Cu8 Cu 0.81170188 0.95438166 0.20872899 1.0000
+Cu9 Cu 0.14270788 0.18770725 0.87481256 1.0000
+In10 In 0.32318567 0.26182152 0.85808616 1.0000
+In11 In 0.93942975 0.67776824 0.52467975 1.0000
+In12 In 0.73843910 0.06147719 0.19210856 1.0000

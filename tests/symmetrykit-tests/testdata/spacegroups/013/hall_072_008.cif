@@ -1,0 +1,39 @@
+data_hall_072_008
+# generated test structure: space group 13 (P 1 2/c 1), Hall setting 72
+# hard candidate: metric gap 1.251e-03, closest atoms 2.497 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 72
+_raspa_point_group_number 5
+_space_group_IT_number 13
+_symmetry_Int_Tables_number 13
+_symmetry_space_group_name_H-M 'P 1 2/c 1'
+_symmetry_space_group_name_Hall '-P 2yc'
+_cell_length_a 20.45981707
+_cell_length_b 20.02664394
+_cell_length_c 20.00158690
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 91.60754913
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ti1 Ti 0.20450469 0.74326532 0.79899028 1.0000
+Ti2 Ti 0.20450469 0.25673468 0.29899028 1.0000
+Ti3 Ti 0.79549531 0.74326532 0.70100972 1.0000
+Ti4 Ti 0.79549531 0.25673468 0.20100972 1.0000
+Ni5 Ni 0.89635246 0.26373407 0.30289994 1.0000
+Ni6 Ni 0.89635246 0.73626593 0.80289994 1.0000
+Ni7 Ni 0.10364754 0.26373407 0.19710006 1.0000
+Ni8 Ni 0.10364754 0.73626593 0.69710006 1.0000
+Na9 Na 0.28610490 0.26484230 0.20884186 1.0000
+Na10 Na 0.28610490 0.73515770 0.70884186 1.0000
+Na11 Na 0.71389510 0.26484230 0.29115814 1.0000
+Na12 Na 0.71389510 0.73515770 0.79115814 1.0000
+Ba13 Ba 0.26226214 0.91802203 0.54252269 1.0000
+Ba14 Ba 0.26226214 0.08197797 0.04252269 1.0000
+Ba15 Ba 0.73773786 0.91802203 0.95747731 1.0000
+Ba16 Ba 0.73773786 0.08197797 0.45747731 1.0000

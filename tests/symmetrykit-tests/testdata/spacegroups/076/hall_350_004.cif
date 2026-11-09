@@ -1,0 +1,39 @@
+data_hall_350_004
+# generated test structure: space group 76 (P 41), Hall setting 350
+# hard candidate: metric gap 2.290e-02, closest atoms 0.839 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 350
+_raspa_point_group_number 9
+_space_group_IT_number 76
+_symmetry_Int_Tables_number 76
+_symmetry_space_group_name_H-M 'P 41'
+_symmetry_space_group_name_Hall ' P 4w'
+_cell_length_a 9.97566203
+_cell_length_b 9.97566203
+_cell_length_c 10.20943474
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ga1 Ga 0.52730173 0.83010625 0.58675754 1.0000
+Ga2 Ga 0.83010625 0.47269827 0.33675754 1.0000
+Ga3 Ga 0.16989375 0.52730173 0.83675754 1.0000
+Ga4 Ga 0.47269827 0.16989375 0.08675754 1.0000
+Fe5 Fe 0.30553189 0.85823326 0.86151174 1.0000
+Fe6 Fe 0.85823326 0.69446811 0.61151174 1.0000
+Fe7 Fe 0.14176674 0.30553189 0.11151174 1.0000
+Fe8 Fe 0.69446811 0.14176674 0.36151174 1.0000
+Bi9 Bi 0.46177434 0.85133670 0.53959953 1.0000
+Bi10 Bi 0.85133670 0.53822566 0.28959953 1.0000
+Bi11 Bi 0.14866330 0.46177434 0.78959953 1.0000
+Bi12 Bi 0.53822566 0.14866330 0.03959953 1.0000
+Se13 Se 0.79276486 0.77080235 0.66891948 1.0000
+Se14 Se 0.77080235 0.20723514 0.41891948 1.0000
+Se15 Se 0.22919765 0.79276486 0.91891948 1.0000
+Se16 Se 0.20723514 0.22919765 0.16891948 1.0000

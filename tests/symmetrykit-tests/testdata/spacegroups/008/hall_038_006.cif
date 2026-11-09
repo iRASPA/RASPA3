@@ -1,0 +1,39 @@
+data_hall_038_006
+# generated test structure: space group 8 (I m 1 1), Hall setting 38
+# hard candidate: metric gap 5.896e-03, closest atoms 1.199 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 38
+_raspa_point_group_number 4
+_space_group_IT_number 8
+_symmetry_Int_Tables_number 8
+_symmetry_space_group_name_H-M 'I m 1 1'
+_symmetry_space_group_name_Hall ' I -2x'
+_cell_length_a 7.98769803
+_cell_length_b 8.18015559
+_cell_length_c 7.51592283
+_cell_angle_alpha 89.46936100
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cr1 Cr 0.22372606 0.26453362 0.76733061 1.0000
+Cr2 Cr 0.72372606 0.76453362 0.26733061 1.0000
+Cr3 Cr 0.77627394 0.26453362 0.76733061 1.0000
+Cr4 Cr 0.27627394 0.76453362 0.26733061 1.0000
+Sb5 Sb 0.88056251 0.46434814 0.07886234 1.0000
+Sb6 Sb 0.38056251 0.96434814 0.57886234 1.0000
+Sb7 Sb 0.11943749 0.46434814 0.07886234 1.0000
+Sb8 Sb 0.61943749 0.96434814 0.57886234 1.0000
+Ti9 Ti 0.22415626 0.95868785 0.75841752 1.0000
+Ti10 Ti 0.72415626 0.45868785 0.25841752 1.0000
+Ti11 Ti 0.77584374 0.95868785 0.75841752 1.0000
+Ti12 Ti 0.27584374 0.45868785 0.25841752 1.0000
+W13 W 0.67901209 0.36059590 0.70429191 1.0000
+W14 W 0.17901209 0.86059590 0.20429191 1.0000
+W15 W 0.32098791 0.36059590 0.70429191 1.0000
+W16 W 0.82098791 0.86059590 0.20429191 1.0000

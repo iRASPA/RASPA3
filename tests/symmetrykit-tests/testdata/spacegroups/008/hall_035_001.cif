@@ -1,0 +1,39 @@
+data_hall_035_001
+# generated test structure: space group 8 (I 1 1 m), Hall setting 35
+# hard candidate: metric gap 4.038e-03, closest atoms 0.550 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 35
+_raspa_point_group_number 4
+_space_group_IT_number 8
+_symmetry_Int_Tables_number 8
+_symmetry_space_group_name_H-M 'I 1 1 m'
+_symmetry_space_group_name_Hall ' I -2'
+_cell_length_a 12.21412200
+_cell_length_b 12.16480257
+_cell_length_c 11.78100213
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 91.99839129
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ti1 Ti 0.95282282 0.79105782 0.23977774 1.0000
+Ti2 Ti 0.45282282 0.29105782 0.73977774 1.0000
+Ti3 Ti 0.95282282 0.79105782 0.76022226 1.0000
+Ti4 Ti 0.45282282 0.29105782 0.26022226 1.0000
+V5 V 0.08009331 0.78067588 0.47665104 1.0000
+V6 V 0.58009331 0.28067588 0.97665104 1.0000
+V7 V 0.08009331 0.78067588 0.52334896 1.0000
+V8 V 0.58009331 0.28067588 0.02334896 1.0000
+Ge9 Ge 0.70333849 0.48095496 0.35327911 1.0000
+Ge10 Ge 0.20333849 0.98095496 0.85327911 1.0000
+Ge11 Ge 0.70333849 0.48095496 0.64672089 1.0000
+Ge12 Ge 0.20333849 0.98095496 0.14672089 1.0000
+B13 B 0.29853026 0.49169776 0.79364159 1.0000
+B14 B 0.79853026 0.99169776 0.29364159 1.0000
+B15 B 0.29853026 0.49169776 0.20635841 1.0000
+B16 B 0.79853026 0.99169776 0.70635841 1.0000

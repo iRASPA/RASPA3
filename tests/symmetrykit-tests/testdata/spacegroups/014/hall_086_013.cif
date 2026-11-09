@@ -1,0 +1,41 @@
+data_hall_086_013
+# generated test structure: space group 14 (P 1 1 21/b), Hall setting 86
+# special candidate: metric gap 6.070e-02, closest atoms 1.616 Angstrom, 18 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 86
+_raspa_point_group_number 5
+_space_group_IT_number 14
+_symmetry_Int_Tables_number 14
+_symmetry_space_group_name_H-M 'P 1 1 21/b'
+_symmetry_space_group_name_Hall '-P 2bc'
+_cell_length_a 16.30925345
+_cell_length_b 11.80020598
+_cell_length_c 19.73164872
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 95.46292812
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Fe1 Fe 0.00000000 0.00000000 0.00000000 1.0000
+Fe2 Fe 0.00000000 0.50000000 0.50000000 1.0000
+Mn3 Mn 0.96532069 0.20305956 0.89921896 1.0000
+Mn4 Mn 0.96532069 0.70305956 0.60078104 1.0000
+Mn5 Mn 0.03467931 0.29694044 0.39921896 1.0000
+Mn6 Mn 0.03467931 0.79694044 0.10078104 1.0000
+Mo7 Mo 0.91631616 0.80609811 0.62903900 1.0000
+Mo8 Mo 0.91631616 0.30609811 0.87096100 1.0000
+Mo9 Mo 0.08368384 0.69390189 0.12903900 1.0000
+Mo10 Mo 0.08368384 0.19390189 0.37096100 1.0000
+P11 P 0.29406436 0.76817433 0.56442022 1.0000
+P12 P 0.29406436 0.26817433 0.93557978 1.0000
+P13 P 0.70593564 0.73182567 0.06442022 1.0000
+P14 P 0.70593564 0.23182567 0.43557978 1.0000
+Si15 Si 0.55359925 0.40434070 0.02129210 1.0000
+Si16 Si 0.55359925 0.90434070 0.47870790 1.0000
+Si17 Si 0.44640075 0.09565930 0.52129210 1.0000
+Si18 Si 0.44640075 0.59565930 0.97870790 1.0000

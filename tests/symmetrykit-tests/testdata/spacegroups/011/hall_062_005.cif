@@ -1,0 +1,39 @@
+data_hall_062_005
+# generated test structure: space group 11 (P 21/m 1 1), Hall setting 62
+# hard candidate: metric gap 3.901e-03, closest atoms 0.837 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 62
+_raspa_point_group_number 5
+_space_group_IT_number 11
+_symmetry_Int_Tables_number 11
+_symmetry_space_group_name_H-M 'P 21/m 1 1'
+_symmetry_space_group_name_Hall '-P 2xa'
+_cell_length_a 11.66377348
+_cell_length_b 11.86665887
+_cell_length_c 11.61826994
+_cell_angle_alpha 88.93406077
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ag1 Ag 0.45795535 0.26363902 0.48540661 1.0000
+Ag2 Ag 0.95795535 0.73636098 0.51459339 1.0000
+Ag3 Ag 0.04204465 0.26363902 0.48540661 1.0000
+Ag4 Ag 0.54204465 0.73636098 0.51459339 1.0000
+Cs5 Cs 0.03714759 0.35756467 0.69572231 1.0000
+Cs6 Cs 0.53714759 0.64243533 0.30427769 1.0000
+Cs7 Cs 0.46285241 0.35756467 0.69572231 1.0000
+Cs8 Cs 0.96285241 0.64243533 0.30427769 1.0000
+Cu9 Cu 0.71410973 0.35576466 0.35395344 1.0000
+Cu10 Cu 0.21410973 0.64423534 0.64604656 1.0000
+Cu11 Cu 0.78589027 0.35576466 0.35395344 1.0000
+Cu12 Cu 0.28589027 0.64423534 0.64604656 1.0000
+U13 U 0.63968154 0.62963372 0.31706100 1.0000
+U14 U 0.13968154 0.37036628 0.68293900 1.0000
+U15 U 0.86031846 0.62963372 0.31706100 1.0000
+U16 U 0.36031846 0.37036628 0.68293900 1.0000

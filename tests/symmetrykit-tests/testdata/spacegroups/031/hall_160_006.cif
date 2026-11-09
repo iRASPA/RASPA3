@@ -1,0 +1,39 @@
+data_hall_160_006
+# generated test structure: space group 31 (P m 21 n), Hall setting 160
+# hard candidate: metric gap 5.349e-03, closest atoms 1.101 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 160
+_raspa_point_group_number 7
+_space_group_IT_number 31
+_symmetry_Int_Tables_number 31
+_symmetry_space_group_name_H-M 'P m 21 n'
+_symmetry_space_group_name_Hall ' P -2ab -2'
+_cell_length_a 14.30833797
+_cell_length_b 14.72249808
+_cell_length_c 14.23180021
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cu1 Cu 0.26535628 0.78256263 0.45770305 1.0000
+Cu2 Cu 0.76535628 0.28256263 0.54229695 1.0000
+Cu3 Cu 0.73464372 0.78256263 0.45770305 1.0000
+Cu4 Cu 0.23464372 0.28256263 0.54229695 1.0000
+Cd5 Cd 0.96153984 0.28995328 0.26534835 1.0000
+Cd6 Cd 0.46153984 0.78995328 0.73465165 1.0000
+Cd7 Cd 0.03846016 0.28995328 0.26534835 1.0000
+Cd8 Cd 0.53846016 0.78995328 0.73465165 1.0000
+Ti9 Ti 0.78753017 0.29578203 0.70332005 1.0000
+Ti10 Ti 0.28753017 0.79578203 0.29667995 1.0000
+Ti11 Ti 0.21246983 0.29578203 0.70332005 1.0000
+Ti12 Ti 0.71246983 0.79578203 0.29667995 1.0000
+Zn13 Zn 0.17481441 0.12196843 0.21482248 1.0000
+Zn14 Zn 0.67481441 0.62196843 0.78517752 1.0000
+Zn15 Zn 0.82518559 0.12196843 0.21482248 1.0000
+Zn16 Zn 0.32518559 0.62196843 0.78517752 1.0000

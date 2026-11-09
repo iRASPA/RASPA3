@@ -1,0 +1,35 @@
+data_hall_082_008
+# generated test structure: space group 14 (P 1 21/n 1), Hall setting 82
+# hard candidate: metric gap 5.889e-03, closest atoms 1.330 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 82
+_raspa_point_group_number 5
+_space_group_IT_number 14
+_symmetry_Int_Tables_number 14
+_symmetry_space_group_name_H-M 'P 1 21/n 1'
+_symmetry_space_group_name_Hall '-P 2yn'
+_cell_length_a 16.62896020
+_cell_length_b 16.33105149
+_cell_length_c 16.72747074
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 91.09639429
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+P1 P 0.78051831 0.22655702 0.27731404 1.0000
+P2 P 0.28051831 0.27344298 0.77731404 1.0000
+P3 P 0.71948169 0.72655702 0.22268596 1.0000
+P4 P 0.21948169 0.77344298 0.72268596 1.0000
+Pt5 Pt 0.21422081 0.30581484 0.74470090 1.0000
+Pt6 Pt 0.71422081 0.19418516 0.24470090 1.0000
+Pt7 Pt 0.28577919 0.80581484 0.75529910 1.0000
+Pt8 Pt 0.78577919 0.69418516 0.25529910 1.0000
+Sr9 Sr 0.48976778 0.89206706 0.65060190 1.0000
+Sr10 Sr 0.98976778 0.60793294 0.15060190 1.0000
+Sr11 Sr 0.01023222 0.39206706 0.84939810 1.0000
+Sr12 Sr 0.51023222 0.10793294 0.34939810 1.0000

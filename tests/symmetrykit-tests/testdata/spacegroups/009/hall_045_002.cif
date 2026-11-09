@@ -1,0 +1,39 @@
+data_hall_045_002
+# generated test structure: space group 9 (A 1 1 a), Hall setting 45
+# hard candidate: metric gap 8.475e-03, closest atoms 0.982 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 45
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'A 1 1 a'
+_symmetry_space_group_name_Hall ' A -2a'
+_cell_length_a 12.28199337
+_cell_length_b 12.15365813
+_cell_length_c 12.05065666
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 88.02332762
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ce1 Ce 0.13452197 0.13634321 0.24037728 1.0000
+Ce2 Ce 0.13452197 0.63634321 0.74037728 1.0000
+Ce3 Ce 0.63452197 0.13634321 0.75962272 1.0000
+Ce4 Ce 0.63452197 0.63634321 0.25962272 1.0000
+Mo5 Mo 0.64781843 0.08017138 0.70215012 1.0000
+Mo6 Mo 0.64781843 0.58017138 0.20215012 1.0000
+Mo7 Mo 0.14781843 0.08017138 0.29784988 1.0000
+Mo8 Mo 0.14781843 0.58017138 0.79784988 1.0000
+Co9 Co 0.78353880 0.69044678 0.71295042 1.0000
+Co10 Co 0.78353880 0.19044678 0.21295042 1.0000
+Co11 Co 0.28353880 0.69044678 0.28704958 1.0000
+Co12 Co 0.28353880 0.19044678 0.78704958 1.0000
+Ag13 Ag 0.04663754 0.29600801 0.76658198 1.0000
+Ag14 Ag 0.04663754 0.79600801 0.26658198 1.0000
+Ag15 Ag 0.54663754 0.29600801 0.23341802 1.0000
+Ag16 Ag 0.54663754 0.79600801 0.73341802 1.0000

@@ -1,0 +1,35 @@
+data_hall_431_009
+# generated test structure: space group 144 (P 31), Hall setting 431
+# plain candidate: metric gap 1.350e-02, closest atoms 3.012 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 431
+_raspa_point_group_number 16
+_space_group_IT_number 144
+_symmetry_Int_Tables_number 144
+_symmetry_space_group_name_H-M 'P 31'
+_symmetry_space_group_name_Hall ' P 31'
+_cell_length_a 18.79785547
+_cell_length_b 18.79785547
+_cell_length_c 19.05503899
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 120.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Mg1 Mg 0.15373386 0.26735417 0.74523017 1.0000
+Mg2 Mg 0.11362030 0.84626614 0.41189683 1.0000
+Mg3 Mg 0.73264583 0.88637970 0.07856350 1.0000
+V4 V 0.30833072 0.23430257 0.30123539 1.0000
+V5 V 0.92597185 0.69166928 0.96790205 1.0000
+V6 V 0.76569743 0.07402815 0.63456872 1.0000
+K7 K 0.23220336 0.93121071 0.53054437 1.0000
+K8 K 0.69900735 0.76779664 0.19721104 1.0000
+K9 K 0.06878929 0.30099265 0.86387770 1.0000
+Na10 Na 0.46494162 0.47275105 0.32645705 1.0000
+Na11 Na 0.00780944 0.53505838 0.99312372 1.0000
+Na12 Na 0.52724895 0.99219056 0.65979038 1.0000

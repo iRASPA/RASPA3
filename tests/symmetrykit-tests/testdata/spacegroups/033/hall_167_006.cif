@@ -1,0 +1,39 @@
+data_hall_167_006
+# generated test structure: space group 33 (P 21 c n), Hall setting 167
+# hard candidate: metric gap 4.409e-03, closest atoms 2.983 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 167
+_raspa_point_group_number 7
+_space_group_IT_number 33
+_symmetry_Int_Tables_number 33
+_symmetry_space_group_name_H-M 'P 21 c n'
+_symmetry_space_group_name_Hall ' P -2n 2a'
+_cell_length_a 24.51558744
+_cell_length_b 24.20478852
+_cell_length_c 24.09808136
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Be1 Be 0.03226472 0.78514705 0.90413040 1.0000
+Be2 Be 0.53226472 0.28514705 0.59586960 1.0000
+Be3 Be 0.03226472 0.71485295 0.40413040 1.0000
+Be4 Be 0.53226472 0.21485295 0.09586960 1.0000
+H5 H 0.13120595 0.85638180 0.91265683 1.0000
+H6 H 0.63120595 0.35638180 0.58734317 1.0000
+H7 H 0.13120595 0.64361820 0.41265683 1.0000
+H8 H 0.63120595 0.14361820 0.08734317 1.0000
+Pb9 Pb 0.70938966 0.53667909 0.02099306 1.0000
+Pb10 Pb 0.20938966 0.03667909 0.47900694 1.0000
+Pb11 Pb 0.70938966 0.96332091 0.52099306 1.0000
+Pb12 Pb 0.20938966 0.46332091 0.97900694 1.0000
+Na13 Na 0.12612846 0.47241825 0.70568451 1.0000
+Na14 Na 0.62612846 0.97241825 0.79431549 1.0000
+Na15 Na 0.12612846 0.02758175 0.20568451 1.0000
+Na16 Na 0.62612846 0.52758175 0.29431549 1.0000

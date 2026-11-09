@@ -1,0 +1,39 @@
+data_hall_058_000
+# generated test structure: space group 10 (P 1 1 2/m), Hall setting 58
+# hard candidate: metric gap 1.570e-03, closest atoms 0.608 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 58
+_raspa_point_group_number 5
+_space_group_IT_number 10
+_symmetry_Int_Tables_number 10
+_symmetry_space_group_name_H-M 'P 1 1 2/m'
+_symmetry_space_group_name_Hall '-P 2'
+_cell_length_a 18.52713637
+_cell_length_b 18.81088826
+_cell_length_c 18.84046379
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.74539137
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ce1 Ce 0.71281260 0.67975108 0.51614148 1.0000
+Ce2 Ce 0.71281260 0.67975108 0.48385852 1.0000
+Ce3 Ce 0.28718740 0.32024892 0.51614148 1.0000
+Ce4 Ce 0.28718740 0.32024892 0.48385852 1.0000
+Be5 Be 0.26775462 0.61774772 0.84695153 1.0000
+Be6 Be 0.26775462 0.61774772 0.15304847 1.0000
+Be7 Be 0.73224538 0.38225228 0.84695153 1.0000
+Be8 Be 0.73224538 0.38225228 0.15304847 1.0000
+Au9 Au 0.35741492 0.48827047 0.52164937 1.0000
+Au10 Au 0.35741492 0.48827047 0.47835063 1.0000
+Au11 Au 0.64258508 0.51172953 0.52164937 1.0000
+Au12 Au 0.64258508 0.51172953 0.47835063 1.0000
+Cl13 Cl 0.26983743 0.48285306 0.88313209 1.0000
+Cl14 Cl 0.26983743 0.48285306 0.11686791 1.0000
+Cl15 Cl 0.73016257 0.51714694 0.88313209 1.0000
+Cl16 Cl 0.73016257 0.51714694 0.11686791 1.0000

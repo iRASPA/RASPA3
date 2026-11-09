@@ -1,0 +1,39 @@
+data_hall_054_000
+# generated test structure: space group 9 (C c 1 1), Hall setting 54
+# hard candidate: metric gap 1.560e-03, closest atoms 1.215 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 54
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'C c 1 1'
+_symmetry_space_group_name_Hall ' C -2xc'
+_cell_length_a 19.24323022
+_cell_length_b 19.60950532
+_cell_length_c 19.57892077
+_cell_angle_alpha 89.44831888
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ni1 Ni 0.64206143 0.23490299 0.51782773 1.0000
+Ni2 Ni 0.14206143 0.73490299 0.51782773 1.0000
+Ni3 Ni 0.35793857 0.23490299 0.01782773 1.0000
+Ni4 Ni 0.85793857 0.73490299 0.01782773 1.0000
+Zn5 Zn 0.72301073 0.09987511 0.53023780 1.0000
+Zn6 Zn 0.22301073 0.59987511 0.53023780 1.0000
+Zn7 Zn 0.27698927 0.09987511 0.03023780 1.0000
+Zn8 Zn 0.77698927 0.59987511 0.03023780 1.0000
+Be9 Be 0.29402260 0.09920860 0.97050015 1.0000
+Be10 Be 0.79402260 0.59920860 0.97050015 1.0000
+Be11 Be 0.70597740 0.09920860 0.47050015 1.0000
+Be12 Be 0.20597740 0.59920860 0.47050015 1.0000
+V13 V 0.31995271 0.73839411 0.60656990 1.0000
+V14 V 0.81995271 0.23839411 0.60656990 1.0000
+V15 V 0.68004729 0.73839411 0.10656990 1.0000
+V16 V 0.18004729 0.23839411 0.10656990 1.0000

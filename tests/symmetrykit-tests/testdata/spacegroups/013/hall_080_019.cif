@@ -1,0 +1,39 @@
+data_hall_080_019
+# generated test structure: space group 13 (P 2/c 1 1), Hall setting 80
+# noisy candidate: metric gap 2.446e-05, closest atoms 2.489 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 80
+_raspa_point_group_number 5
+_space_group_IT_number 13
+_symmetry_Int_Tables_number 13
+_symmetry_space_group_name_H-M 'P 2/c 1 1'
+_symmetry_space_group_name_Hall '-P 2xc'
+_cell_length_a 7.53335882
+_cell_length_b 21.41313407
+_cell_length_c 22.78927132
+_cell_angle_alpha 79.33209507
+_cell_angle_beta 89.99027046
+_cell_angle_gamma 90.00220101
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Zn1 Zn 0.92925351 0.05924407 0.24006280 1.0000
+Zn2 Zn 0.92906173 0.94099140 0.25956936 1.0000
+Zn3 Zn 0.07060786 0.05922941 0.74006830 1.0000
+Zn4 Zn 0.07146240 0.94092456 0.75954320 1.0000
+Ti5 Ti 0.67566826 0.53471407 0.12016936 1.0000
+Ti6 Ti 0.67527757 0.46536385 0.37999682 1.0000
+Ti7 Ti 0.32486909 0.53488876 0.61995860 1.0000
+Ti8 Ti 0.32510235 0.46540799 0.87982988 1.0000
+V9 V 0.47155591 0.20527685 0.67994069 1.0000
+V10 V 0.47159999 0.79475889 0.82017679 1.0000
+V11 V 0.52795287 0.20493658 0.17991416 1.0000
+V12 V 0.52864450 0.79492804 0.32000459 1.0000
+Ba13 Ba 0.96711069 0.00078749 0.56010542 1.0000
+Ba14 Ba 0.96700365 0.99910726 0.94016867 1.0000
+Ba15 Ba 0.03297489 0.00055958 0.06009295 1.0000
+Ba16 Ba 0.03342429 0.99897287 0.44005682 1.0000

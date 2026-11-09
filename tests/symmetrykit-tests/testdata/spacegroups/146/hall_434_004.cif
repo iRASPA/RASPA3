@@ -1,0 +1,35 @@
+data_hall_434_004
+# generated test structure: space group 146 (R 3), Hall setting 434
+# hard candidate: metric gap 5.361e-04, closest atoms 2.638 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 434
+_raspa_point_group_number 16
+_space_group_IT_number 146
+_symmetry_Int_Tables_number 146
+_symmetry_space_group_name_H-M 'R 3'
+_symmetry_space_group_name_Hall ' P 3*'
+_cell_length_a 13.21402141
+_cell_length_b 13.21402141
+_cell_length_c 13.21402141
+_cell_angle_alpha 89.95175231
+_cell_angle_beta 89.95175231
+_cell_angle_gamma 89.95175231
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+W1 W 0.70858384 0.54043647 0.97631993 1.0000
+W2 W 0.97631993 0.70858384 0.54043647 1.0000
+W3 W 0.54043647 0.97631993 0.70858384 1.0000
+Rb4 Rb 0.52816544 0.47686157 0.03336974 1.0000
+Rb5 Rb 0.03336974 0.52816544 0.47686157 1.0000
+Rb6 Rb 0.47686157 0.03336974 0.52816544 1.0000
+Mo7 Mo 0.37390897 0.70681947 0.68885976 1.0000
+Mo8 Mo 0.68885976 0.37390897 0.70681947 1.0000
+Mo9 Mo 0.70681947 0.68885976 0.37390897 1.0000
+C10 C 0.70236287 0.02865105 0.03709367 1.0000
+C11 C 0.03709367 0.70236287 0.02865105 1.0000
+C12 C 0.02865105 0.03709367 0.70236287 1.0000

@@ -1,0 +1,39 @@
+data_hall_171_002
+# generated test structure: space group 34 (P 2 n n), Hall setting 171
+# hard candidate: metric gap 5.217e-03, closest atoms 1.016 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 171
+_raspa_point_group_number 7
+_space_group_IT_number 34
+_symmetry_Int_Tables_number 34
+_symmetry_space_group_name_H-M 'P 2 n n'
+_symmetry_space_group_name_Hall ' P -2n 2'
+_cell_length_a 10.38460918
+_cell_length_b 10.49833630
+_cell_length_c 10.33043770
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Mo1 Mo 0.02227357 0.98094407 0.62422078 1.0000
+Mo2 Mo 0.52227357 0.48094407 0.87577922 1.0000
+Mo3 Mo 0.52227357 0.51905593 0.12422078 1.0000
+Mo4 Mo 0.02227357 0.01905593 0.37577922 1.0000
+Li5 Li 0.71005448 0.96444791 0.03337487 1.0000
+Li6 Li 0.21005448 0.46444791 0.46662513 1.0000
+Li7 Li 0.21005448 0.53555209 0.53337487 1.0000
+Li8 Li 0.71005448 0.03555209 0.96662513 1.0000
+Be9 Be 0.95716032 0.79127508 0.65841963 1.0000
+Be10 Be 0.45716032 0.29127508 0.84158037 1.0000
+Be11 Be 0.45716032 0.70872492 0.15841963 1.0000
+Be12 Be 0.95716032 0.20872492 0.34158037 1.0000
+Cs13 Cs 0.66024060 0.27871062 0.84507335 1.0000
+Cs14 Cs 0.16024060 0.77871062 0.65492665 1.0000
+Cs15 Cs 0.16024060 0.22128938 0.34507335 1.0000
+Cs16 Cs 0.66024060 0.72128938 0.15492665 1.0000

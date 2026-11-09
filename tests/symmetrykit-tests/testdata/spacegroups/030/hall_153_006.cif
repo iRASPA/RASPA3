@@ -1,0 +1,35 @@
+data_hall_153_006
+# generated test structure: space group 30 (P b 2 n), Hall setting 153
+# hard candidate: metric gap 4.285e-03, closest atoms 0.634 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 153
+_raspa_point_group_number 7
+_space_group_IT_number 30
+_symmetry_Int_Tables_number 30
+_symmetry_space_group_name_H-M 'P b 2 n'
+_symmetry_space_group_name_Hall ' P -2ab -2ab'
+_cell_length_a 16.55644744
+_cell_length_b 16.92298499
+_cell_length_c 16.85047164
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Be1 Be 0.66028486 0.70850807 0.28095242 1.0000
+Be2 Be 0.16028486 0.20850807 0.71904758 1.0000
+Be3 Be 0.83971514 0.20850807 0.28095242 1.0000
+Be4 Be 0.33971514 0.70850807 0.71904758 1.0000
+C5 C 0.82697641 0.35139606 0.89617605 1.0000
+C6 C 0.32697641 0.85139606 0.10382395 1.0000
+C7 C 0.67302359 0.85139606 0.89617605 1.0000
+C8 C 0.17302359 0.35139606 0.10382395 1.0000
+Ga9 Ga 0.34040770 0.67240959 0.70911636 1.0000
+Ga10 Ga 0.84040770 0.17240959 0.29088364 1.0000
+Ga11 Ga 0.15959230 0.17240959 0.70911636 1.0000
+Ga12 Ga 0.65959230 0.67240959 0.29088364 1.0000

@@ -1,0 +1,41 @@
+data_hall_125_015
+# generated test structure: space group 25 (P m m 2), Hall setting 125
+# noisy candidate: metric gap 1.211e-05, closest atoms 1.158 Angstrom, 18 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 125
+_raspa_point_group_number 7
+_space_group_IT_number 25
+_symmetry_Int_Tables_number 25
+_symmetry_space_group_name_H-M 'P m m 2'
+_symmetry_space_group_name_Hall ' P 2 -2'
+_cell_length_a 23.98591563
+_cell_length_b 16.38518415
+_cell_length_c 24.97357619
+_cell_angle_alpha 90.00572600
+_cell_angle_beta 90.00109024
+_cell_angle_gamma 90.00123049
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cu1 Cu 0.00018692 0.99976042 0.40191487 1.0000
+Bi2 Bi 0.99990281 0.00007833 0.65708174 1.0000
+N3 N 0.07079852 0.73512499 0.28468314 1.0000
+N4 N 0.07073382 0.26489299 0.28499773 1.0000
+N5 N 0.92923437 0.73536684 0.28473999 1.0000
+N6 N 0.92907107 0.26450821 0.28484762 1.0000
+La7 La 0.42864747 0.35902093 0.60966984 1.0000
+La8 La 0.42856345 0.64121559 0.60969607 1.0000
+La9 La 0.57130697 0.35869307 0.60949230 1.0000
+La10 La 0.57110638 0.64143012 0.60944665 1.0000
+Cr11 Cr 0.66050226 0.34395642 0.27125902 1.0000
+Cr12 Cr 0.66029275 0.65628605 0.27114645 1.0000
+Cr13 Cr 0.33962242 0.34375838 0.27110609 1.0000
+Cr14 Cr 0.33975411 0.65639800 0.27100982 1.0000
+Na15 Na 0.47587788 0.23538065 0.05943684 1.0000
+Na16 Na 0.47592009 0.76505075 0.05932051 1.0000
+Na17 Na 0.52414753 0.23508750 0.05921545 1.0000
+Na18 Na 0.52427753 0.76495525 0.05924783 1.0000

@@ -1,0 +1,39 @@
+data_hall_112_008
+# generated test structure: space group 18 (P 21 21 2), Hall setting 112
+# hard candidate: metric gap 6.314e-03, closest atoms 1.004 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 112
+_raspa_point_group_number 6
+_space_group_IT_number 18
+_symmetry_Int_Tables_number 18
+_symmetry_space_group_name_H-M 'P 21 21 2'
+_symmetry_space_group_name_Hall ' P 2 2ab'
+_cell_length_a 5.10952000
+_cell_length_b 5.14198636
+_cell_length_c 5.30184765
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Li1 Li 0.67268634 0.69947307 0.32430824 1.0000
+Li2 Li 0.17268634 0.80052693 0.67569176 1.0000
+Li3 Li 0.82731366 0.19947307 0.67569176 1.0000
+Li4 Li 0.32731366 0.30052693 0.32430824 1.0000
+H5 H 0.95400550 0.65014880 0.54741670 1.0000
+H6 H 0.45400550 0.84985120 0.45258330 1.0000
+H7 H 0.54599450 0.15014880 0.45258330 1.0000
+H8 H 0.04599450 0.34985120 0.54741670 1.0000
+O9 O 0.02120173 0.73446299 0.77785543 1.0000
+O10 O 0.52120173 0.76553701 0.22214457 1.0000
+O11 O 0.47879827 0.23446299 0.22214457 1.0000
+O12 O 0.97879827 0.26553701 0.77785543 1.0000
+Cd13 Cd 0.67316201 0.90276474 0.54420944 1.0000
+Cd14 Cd 0.17316201 0.59723526 0.45579056 1.0000
+Cd15 Cd 0.82683799 0.40276474 0.45579056 1.0000
+Cd16 Cd 0.32683799 0.09723526 0.54420944 1.0000

@@ -1,0 +1,35 @@
+data_hall_076_008
+# generated test structure: space group 13 (P 1 1 2/n), Hall setting 76
+# hard candidate: metric gap 2.553e-03, closest atoms 0.557 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 76
+_raspa_point_group_number 5
+_space_group_IT_number 13
+_symmetry_Int_Tables_number 13
+_symmetry_space_group_name_H-M 'P 1 1 2/n'
+_symmetry_space_group_name_Hall '-P 2ab'
+_cell_length_a 19.66425375
+_cell_length_b 19.74364504
+_cell_length_c 19.61405958
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 89.53500842
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Al1 Al 0.23787280 0.24280753 0.46880054 1.0000
+Al2 Al 0.73787280 0.74280753 0.53119946 1.0000
+Al3 Al 0.26212720 0.25719247 0.46880054 1.0000
+Al4 Al 0.76212720 0.75719247 0.53119946 1.0000
+Cr5 Cr 0.84740221 0.32664667 0.79885767 1.0000
+Cr6 Cr 0.34740221 0.82664667 0.20114233 1.0000
+Cr7 Cr 0.65259779 0.17335333 0.79885767 1.0000
+Cr8 Cr 0.15259779 0.67335333 0.20114233 1.0000
+Ga9 Ga 0.90674213 0.03366672 0.00533290 1.0000
+Ga10 Ga 0.40674213 0.53366672 0.99466710 1.0000
+Ga11 Ga 0.59325787 0.46633328 0.00533290 1.0000
+Ga12 Ga 0.09325787 0.96633328 0.99466710 1.0000

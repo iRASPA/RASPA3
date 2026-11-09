@@ -1,0 +1,35 @@
+data_hall_111_006
+# generated test structure: space group 17 (P 2 21 2), Hall setting 111
+# hard candidate: metric gap 1.022e-03, closest atoms 1.336 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 111
+_raspa_point_group_number 6
+_space_group_IT_number 17
+_symmetry_Int_Tables_number 17
+_symmetry_space_group_name_H-M 'P 2 21 2'
+_symmetry_space_group_name_Hall ' P 2 2b'
+_cell_length_a 20.03668848
+_cell_length_b 19.84277055
+_cell_length_c 19.86307977
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ca1 Ca 0.98771540 0.29449337 0.72083826 1.0000
+Ca2 Ca 0.98771540 0.20550663 0.27916174 1.0000
+Ca3 Ca 0.01228460 0.79449337 0.27916174 1.0000
+Ca4 Ca 0.01228460 0.70550663 0.72083826 1.0000
+Bi5 Bi 0.45711420 0.21823851 0.01115823 1.0000
+Bi6 Bi 0.45711420 0.28176149 0.98884177 1.0000
+Bi7 Bi 0.54288580 0.71823851 0.98884177 1.0000
+Bi8 Bi 0.54288580 0.78176149 0.01115823 1.0000
+C9 C 0.86518299 0.01535362 0.97258371 1.0000
+C10 C 0.86518299 0.48464638 0.02741629 1.0000
+C11 C 0.13481701 0.51535362 0.02741629 1.0000
+C12 C 0.13481701 0.98464638 0.97258371 1.0000

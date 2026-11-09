@@ -1,0 +1,41 @@
+data_hall_171_016
+# generated test structure: space group 34 (P 2 n n), Hall setting 171
+# noisy candidate: metric gap 3.033e-05, closest atoms 1.191 Angstrom, 18 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 171
+_raspa_point_group_number 7
+_space_group_IT_number 34
+_symmetry_Int_Tables_number 34
+_symmetry_space_group_name_H-M 'P 2 n n'
+_symmetry_space_group_name_Hall ' P -2n 2'
+_cell_length_a 23.75454190
+_cell_length_b 14.88460714
+_cell_length_c 7.88570986
+_cell_angle_alpha 89.99727002
+_cell_angle_beta 90.00940252
+_cell_angle_gamma 90.02600830
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+H1 H 0.41129025 0.00013871 0.00057295 1.0000
+H2 H 0.91153927 0.49992565 0.49967998 1.0000
+Cd3 Cd 0.53725385 0.52349458 0.06119215 1.0000
+Cd4 Cd 0.03742098 0.02393391 0.43901805 1.0000
+Cd5 Cd 0.03722345 0.97622071 0.56028811 1.0000
+Cd6 Cd 0.53742463 0.47609385 0.93860253 1.0000
+As7 As 0.13318059 0.78306031 0.55071094 1.0000
+As8 As 0.63320651 0.28356329 0.94882106 1.0000
+As9 As 0.63325756 0.71641003 0.05037205 1.0000
+As10 As 0.13325805 0.21649997 0.44889364 1.0000
+Ge11 Ge 0.84775886 0.32229670 0.84923739 1.0000
+Ge12 Ge 0.34806277 0.82268036 0.65058735 1.0000
+Ge13 Ge 0.34793256 0.17788606 0.34892625 1.0000
+Ge14 Ge 0.84800197 0.67783906 0.15029659 1.0000
+Rb15 Rb 0.33106066 0.95997416 0.06032007 1.0000
+Rb16 Rb 0.83085903 0.45988931 0.44002944 1.0000
+Rb17 Rb 0.83091551 0.54024576 0.56086771 1.0000
+Rb18 Rb 0.33105625 0.04024528 0.94014638 1.0000

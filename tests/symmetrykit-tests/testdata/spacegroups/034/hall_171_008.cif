@@ -1,0 +1,39 @@
+data_hall_171_008
+# generated test structure: space group 34 (P 2 n n), Hall setting 171
+# hard candidate: metric gap 2.546e-02, closest atoms 1.051 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 171
+_raspa_point_group_number 7
+_space_group_IT_number 34
+_symmetry_Int_Tables_number 34
+_symmetry_space_group_name_H-M 'P 2 n n'
+_symmetry_space_group_name_Hall ' P -2n 2'
+_cell_length_a 9.71267975
+_cell_length_b 9.96647406
+_cell_length_c 9.41103549
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ni1 Ni 0.75827376 0.53110320 0.24170567 1.0000
+Ni2 Ni 0.25827376 0.03110320 0.25829433 1.0000
+Ni3 Ni 0.25827376 0.96889680 0.74170567 1.0000
+Ni4 Ni 0.75827376 0.46889680 0.75829433 1.0000
+Ba5 Ba 0.09641225 0.75681517 0.01119091 1.0000
+Ba6 Ba 0.59641225 0.25681517 0.48880909 1.0000
+Ba7 Ba 0.59641225 0.74318483 0.51119091 1.0000
+Ba8 Ba 0.09641225 0.24318483 0.98880909 1.0000
+Bi9 Bi 0.29217210 0.75586421 0.54521686 1.0000
+Bi10 Bi 0.79217210 0.25586421 0.95478314 1.0000
+Bi11 Bi 0.79217210 0.74413579 0.04521686 1.0000
+Bi12 Bi 0.29217210 0.24413579 0.45478314 1.0000
+Zr13 Zr 0.76924534 0.31471890 0.86516160 1.0000
+Zr14 Zr 0.26924534 0.81471890 0.63483840 1.0000
+Zr15 Zr 0.26924534 0.18528110 0.36516160 1.0000
+Zr16 Zr 0.76924534 0.68528110 0.13483840 1.0000

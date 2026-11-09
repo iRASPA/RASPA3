@@ -1,0 +1,39 @@
+data_hall_154_008
+# generated test structure: space group 30 (P n 2 b), Hall setting 154
+# hard candidate: metric gap 7.849e-03, closest atoms 1.859 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 154
+_raspa_point_group_number 7
+_space_group_IT_number 30
+_symmetry_Int_Tables_number 30
+_symmetry_space_group_name_H-M 'P n 2 b'
+_symmetry_space_group_name_Hall ' P -2bc -2bc'
+_cell_length_a 19.44167984
+_cell_length_b 19.85473595
+_cell_length_c 19.59548336
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ag1 Ag 0.98101986 0.70374274 0.45647638 1.0000
+Ag2 Ag 0.98101986 0.20374274 0.04352362 1.0000
+Ag3 Ag 0.01898014 0.20374274 0.95647638 1.0000
+Ag4 Ag 0.01898014 0.70374274 0.54352362 1.0000
+Al5 Al 0.68776163 0.47369602 0.84045282 1.0000
+Al6 Al 0.68776163 0.97369602 0.65954718 1.0000
+Al7 Al 0.31223837 0.97369602 0.34045282 1.0000
+Al8 Al 0.31223837 0.47369602 0.15954718 1.0000
+Na9 Na 0.03820623 0.97074904 0.73880791 1.0000
+Na10 Na 0.03820623 0.47074904 0.76119209 1.0000
+Na11 Na 0.96179377 0.47074904 0.23880791 1.0000
+Na12 Na 0.96179377 0.97074904 0.26119209 1.0000
+Mn13 Mn 0.77672446 0.48550040 0.53206836 1.0000
+Mn14 Mn 0.77672446 0.98550040 0.96793164 1.0000
+Mn15 Mn 0.22327554 0.98550040 0.03206836 1.0000
+Mn16 Mn 0.22327554 0.48550040 0.46793164 1.0000

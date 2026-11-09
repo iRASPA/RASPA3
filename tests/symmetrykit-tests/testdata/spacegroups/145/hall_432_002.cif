@@ -1,0 +1,35 @@
+data_hall_432_002
+# generated test structure: space group 145 (P 32), Hall setting 432
+# hard candidate: metric gap 7.919e-02, closest atoms 2.614 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 432
+_raspa_point_group_number 16
+_space_group_IT_number 145
+_symmetry_Int_Tables_number 145
+_symmetry_space_group_name_H-M 'P 32'
+_symmetry_space_group_name_Hall ' P 32'
+_cell_length_a 11.87605440
+_cell_length_b 11.87605440
+_cell_length_c 10.93558095
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 120.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ti1 Ti 0.44975287 0.73600789 0.43799138 1.0000
+Ti2 Ti 0.28625501 0.55024713 0.77132471 1.0000
+Ti3 Ti 0.26399211 0.71374499 0.10465805 1.0000
+Be4 Be 0.20333623 0.84471706 0.63956657 1.0000
+Be5 Be 0.64138083 0.79666377 0.97289991 1.0000
+Be6 Be 0.15528294 0.35861917 0.30623324 1.0000
+Pb7 Pb 0.76774645 0.77287184 0.65845174 1.0000
+Pb8 Pb 0.00512539 0.23225355 0.99178507 1.0000
+Pb9 Pb 0.22712816 0.99487461 0.32511840 1.0000
+K10 K 0.23890817 0.96364745 0.84924888 1.0000
+K11 K 0.72473928 0.76109183 0.18258221 1.0000
+K12 K 0.03635255 0.27526072 0.51591555 1.0000

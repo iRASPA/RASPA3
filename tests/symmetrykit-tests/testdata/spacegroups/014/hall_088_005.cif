@@ -1,0 +1,39 @@
+data_hall_088_005
+# generated test structure: space group 14 (P 21/n 1 1), Hall setting 88
+# hard candidate: metric gap 9.233e-03, closest atoms 1.151 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 88
+_raspa_point_group_number 5
+_space_group_IT_number 14
+_symmetry_Int_Tables_number 14
+_symmetry_space_group_name_H-M 'P 21/n 1 1'
+_symmetry_space_group_name_Hall '-P 2xn'
+_cell_length_a 11.57274854
+_cell_length_b 11.09173302
+_cell_length_c 11.39615095
+_cell_angle_alpha 90.83099421
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Sb1 Sb 0.96161653 0.78984117 0.90326884 1.0000
+Sb2 Sb 0.46161653 0.71015883 0.59673116 1.0000
+Sb3 Sb 0.53838347 0.28984117 0.40326884 1.0000
+Sb4 Sb 0.03838347 0.21015883 0.09673116 1.0000
+Cu5 Cu 0.97208881 0.69552840 0.46234502 1.0000
+Cu6 Cu 0.47208881 0.80447160 0.03765498 1.0000
+Cu7 Cu 0.52791119 0.19552840 0.96234502 1.0000
+Cu8 Cu 0.02791119 0.30447160 0.53765498 1.0000
+Si9 Si 0.63297884 0.04272115 0.29558019 1.0000
+Si10 Si 0.13297884 0.45727885 0.20441981 1.0000
+Si11 Si 0.86702116 0.54272115 0.79558019 1.0000
+Si12 Si 0.36702116 0.95727885 0.70441981 1.0000
+Ga13 Ga 0.63146409 0.29841359 0.36874965 1.0000
+Ga14 Ga 0.13146409 0.20158641 0.13125035 1.0000
+Ga15 Ga 0.86853591 0.79841359 0.86874965 1.0000
+Ga16 Ga 0.36853591 0.70158641 0.63125035 1.0000

@@ -1,0 +1,39 @@
+data_hall_079_009
+# generated test structure: space group 13 (P 2/n 1 1), Hall setting 79
+# hard candidate: metric gap 9.285e-03, closest atoms 0.588 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 79
+_raspa_point_group_number 5
+_space_group_IT_number 13
+_symmetry_Int_Tables_number 13
+_symmetry_space_group_name_H-M 'P 2/n 1 1'
+_symmetry_space_group_name_Hall '-P 2xbc'
+_cell_length_a 6.17909890
+_cell_length_b 6.12172895
+_cell_length_c 6.34791848
+_cell_angle_alpha 89.00335525
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ti1 Ti 0.83228275 0.23624700 0.79464178 1.0000
+Ti2 Ti 0.83228275 0.26375300 0.70535822 1.0000
+Ti3 Ti 0.16771725 0.73624700 0.29464178 1.0000
+Ti4 Ti 0.16771725 0.76375300 0.20535822 1.0000
+Ge5 Ge 0.76888800 0.85841785 0.70807719 1.0000
+Ge6 Ge 0.76888800 0.64158215 0.79192281 1.0000
+Ge7 Ge 0.23111200 0.35841785 0.20807719 1.0000
+Ge8 Ge 0.23111200 0.14158215 0.29192281 1.0000
+W9 W 0.47619172 0.89264540 0.70720910 1.0000
+W10 W 0.47619172 0.60735460 0.79279090 1.0000
+W11 W 0.52380828 0.39264540 0.20720910 1.0000
+W12 W 0.52380828 0.10735460 0.29279090 1.0000
+Cu13 Cu 0.02601442 0.89381723 0.38212416 1.0000
+Cu14 Cu 0.02601442 0.60618277 0.11787584 1.0000
+Cu15 Cu 0.97398558 0.39381723 0.88212416 1.0000
+Cu16 Cu 0.97398558 0.10618277 0.61787584 1.0000

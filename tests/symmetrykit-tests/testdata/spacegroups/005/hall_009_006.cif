@@ -1,0 +1,39 @@
+data_hall_009_006
+# generated test structure: space group 5 (C 1 2 1), Hall setting 9
+# hard candidate: metric gap 6.843e-03, closest atoms 0.911 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 9
+_raspa_point_group_number 3
+_space_group_IT_number 5
+_symmetry_Int_Tables_number 5
+_symmetry_space_group_name_H-M 'C 1 2 1'
+_symmetry_space_group_name_Hall ' C 2y'
+_cell_length_a 6.96831240
+_cell_length_b 6.83522374
+_cell_length_c 7.01632395
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 91.43001712
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Si1 Si 0.28780432 0.98541226 0.76707449 1.0000
+Si2 Si 0.78780432 0.48541226 0.76707449 1.0000
+Si3 Si 0.71219568 0.98541226 0.23292551 1.0000
+Si4 Si 0.21219568 0.48541226 0.23292551 1.0000
+Mg5 Mg 0.45675966 0.62097434 0.95025037 1.0000
+Mg6 Mg 0.95675966 0.12097434 0.95025037 1.0000
+Mg7 Mg 0.54324034 0.62097434 0.04974963 1.0000
+Mg8 Mg 0.04324034 0.12097434 0.04974963 1.0000
+Co9 Co 0.68677735 0.35779140 0.62858154 1.0000
+Co10 Co 0.18677735 0.85779140 0.62858154 1.0000
+Co11 Co 0.31322265 0.35779140 0.37141846 1.0000
+Co12 Co 0.81322265 0.85779140 0.37141846 1.0000
+Ce13 Ce 0.03378715 0.47560688 0.70947526 1.0000
+Ce14 Ce 0.53378715 0.97560688 0.70947526 1.0000
+Ce15 Ce 0.96621285 0.47560688 0.29052474 1.0000
+Ce16 Ce 0.46621285 0.97560688 0.29052474 1.0000

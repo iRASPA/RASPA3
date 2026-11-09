@@ -1,0 +1,39 @@
+data_hall_153_005
+# generated test structure: space group 30 (P b 2 n), Hall setting 153
+# hard candidate: metric gap 4.987e-03, closest atoms 1.656 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 153
+_raspa_point_group_number 7
+_space_group_IT_number 30
+_symmetry_Int_Tables_number 30
+_symmetry_space_group_name_H-M 'P b 2 n'
+_symmetry_space_group_name_Hall ' P -2ab -2ab'
+_cell_length_a 15.75102515
+_cell_length_b 15.67246971
+_cell_length_c 15.34193347
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Pb1 Pb 0.68254233 0.47307682 0.85816632 1.0000
+Pb2 Pb 0.18254233 0.97307682 0.14183368 1.0000
+Pb3 Pb 0.81745767 0.97307682 0.85816632 1.0000
+Pb4 Pb 0.31745767 0.47307682 0.14183368 1.0000
+Ti5 Ti 0.83445416 0.45367555 0.46854054 1.0000
+Ti6 Ti 0.33445416 0.95367555 0.53145946 1.0000
+Ti7 Ti 0.66554584 0.95367555 0.46854054 1.0000
+Ti8 Ti 0.16554584 0.45367555 0.53145946 1.0000
+Ba9 Ba 0.72440189 0.23450733 0.54616725 1.0000
+Ba10 Ba 0.22440189 0.73450733 0.45383275 1.0000
+Ba11 Ba 0.77559811 0.73450733 0.54616725 1.0000
+Ba12 Ba 0.27559811 0.23450733 0.45383275 1.0000
+Al13 Al 0.03233033 0.68454005 0.95742532 1.0000
+Al14 Al 0.53233033 0.18454005 0.04257468 1.0000
+Al15 Al 0.46766967 0.18454005 0.95742532 1.0000
+Al16 Al 0.96766967 0.68454005 0.04257468 1.0000

@@ -1,0 +1,39 @@
+data_hall_146_005
+# generated test structure: space group 29 (P 21 c a), Hall setting 146
+# hard candidate: metric gap 6.094e-03, closest atoms 2.247 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 146
+_raspa_point_group_number 7
+_space_group_IT_number 29
+_symmetry_Int_Tables_number 29
+_symmetry_space_group_name_H-M 'P 21 c a'
+_symmetry_space_group_name_Hall ' P -2ac 2a'
+_cell_length_a 14.27920704
+_cell_length_b 14.04508881
+_cell_length_c 14.19219191
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ce1 Ce 0.22957611 0.95106051 0.20763803 1.0000
+Ce2 Ce 0.72957611 0.95106051 0.29236197 1.0000
+Ce3 Ce 0.22957611 0.04893949 0.70763803 1.0000
+Ce4 Ce 0.72957611 0.04893949 0.79236197 1.0000
+Bi5 Bi 0.45202017 0.71493476 0.88516365 1.0000
+Bi6 Bi 0.95202017 0.71493476 0.61483635 1.0000
+Bi7 Bi 0.45202017 0.28506524 0.38516365 1.0000
+Bi8 Bi 0.95202017 0.28506524 0.11483635 1.0000
+Zn9 Zn 0.77428597 0.95471754 0.48178365 1.0000
+Zn10 Zn 0.27428597 0.95471754 0.01821635 1.0000
+Zn11 Zn 0.77428597 0.04528246 0.98178365 1.0000
+Zn12 Zn 0.27428597 0.04528246 0.51821635 1.0000
+Cl13 Cl 0.87808592 0.90081033 0.30843724 1.0000
+Cl14 Cl 0.37808592 0.90081033 0.19156276 1.0000
+Cl15 Cl 0.87808592 0.09918967 0.80843724 1.0000
+Cl16 Cl 0.37808592 0.09918967 0.69156276 1.0000

@@ -1,0 +1,39 @@
+data_hall_110_005
+# generated test structure: space group 17 (P 21 2 2), Hall setting 110
+# hard candidate: metric gap 8.750e-03, closest atoms 1.037 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 110
+_raspa_point_group_number 6
+_space_group_IT_number 17
+_symmetry_Int_Tables_number 17
+_symmetry_space_group_name_H-M 'P 21 2 2'
+_symmetry_space_group_name_Hall ' P 2a 2a'
+_cell_length_a 24.73501742
+_cell_length_b 24.51857775
+_cell_length_c 25.06045042
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+N1 N 0.14899291 0.29277299 0.97922860 1.0000
+N2 N 0.64899291 0.70722701 0.02077140 1.0000
+N3 N 0.85100709 0.29277299 0.02077140 1.0000
+N4 N 0.35100709 0.70722701 0.97922860 1.0000
+Ga5 Ga 0.81155217 0.30090770 0.03222751 1.0000
+Ga6 Ga 0.31155217 0.69909230 0.96777249 1.0000
+Ga7 Ga 0.18844783 0.30090770 0.96777249 1.0000
+Ga8 Ga 0.68844783 0.69909230 0.03222751 1.0000
+Ni9 Ni 0.86201583 0.48372434 0.95575108 1.0000
+Ni10 Ni 0.36201583 0.51627566 0.04424892 1.0000
+Ni11 Ni 0.13798417 0.48372434 0.04424892 1.0000
+Ni12 Ni 0.63798417 0.51627566 0.95575108 1.0000
+Mg13 Mg 0.19071611 0.84258186 0.20737092 1.0000
+Mg14 Mg 0.69071611 0.15741814 0.79262908 1.0000
+Mg15 Mg 0.80928389 0.84258186 0.79262908 1.0000
+Mg16 Mg 0.30928389 0.15741814 0.20737092 1.0000

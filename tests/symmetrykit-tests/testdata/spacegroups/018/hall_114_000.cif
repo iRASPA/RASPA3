@@ -1,0 +1,39 @@
+data_hall_114_000
+# generated test structure: space group 18 (P 21 2 21), Hall setting 114
+# hard candidate: metric gap 3.773e-03, closest atoms 1.404 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 114
+_raspa_point_group_number 6
+_space_group_IT_number 18
+_symmetry_Int_Tables_number 18
+_symmetry_space_group_name_H-M 'P 21 2 21'
+_symmetry_space_group_name_Hall ' P 2ac 2ac'
+_cell_length_a 12.06596273
+_cell_length_b 12.34399541
+_cell_length_c 12.39074539
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ni1 Ni 0.79217053 0.77361304 0.59848210 1.0000
+Ni2 Ni 0.29217053 0.22638696 0.90151790 1.0000
+Ni3 Ni 0.20782947 0.77361304 0.40151790 1.0000
+Ni4 Ni 0.70782947 0.22638696 0.09848210 1.0000
+C5 C 0.51935208 0.64086838 0.86061326 1.0000
+C6 C 0.01935208 0.35913162 0.63938674 1.0000
+C7 C 0.48064792 0.64086838 0.13938674 1.0000
+C8 C 0.98064792 0.35913162 0.36061326 1.0000
+In9 In 0.19897266 0.25862098 0.71586102 1.0000
+In10 In 0.69897266 0.74137902 0.78413898 1.0000
+In11 In 0.80102734 0.25862098 0.28413898 1.0000
+In12 In 0.30102734 0.74137902 0.21586102 1.0000
+Sn13 Sn 0.38062916 0.70762966 0.14034136 1.0000
+Sn14 Sn 0.88062916 0.29237034 0.35965864 1.0000
+Sn15 Sn 0.61937084 0.70762966 0.85965864 1.0000
+Sn16 Sn 0.11937084 0.29237034 0.64034136 1.0000

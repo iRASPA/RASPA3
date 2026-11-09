@@ -1,0 +1,39 @@
+data_hall_352_001
+# generated test structure: space group 78 (P 43), Hall setting 352
+# hard candidate: metric gap 3.811e-03, closest atoms 1.652 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 352
+_raspa_point_group_number 9
+_space_group_IT_number 78
+_symmetry_Int_Tables_number 78
+_symmetry_space_group_name_H-M 'P 43'
+_symmetry_space_group_name_Hall ' P 4cw'
+_cell_length_a 5.42907120
+_cell_length_b 5.42907120
+_cell_length_c 5.40838022
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ca1 Ca 0.28793014 0.83999991 0.79707788 1.0000
+Ca2 Ca 0.83999991 0.71206986 0.04707788 1.0000
+Ca3 Ca 0.16000009 0.28793014 0.54707788 1.0000
+Ca4 Ca 0.71206986 0.16000009 0.29707788 1.0000
+Ge5 Ge 0.21073030 0.26677479 0.20537088 1.0000
+Ge6 Ge 0.26677479 0.78926970 0.45537088 1.0000
+Ge7 Ge 0.73322521 0.21073030 0.95537088 1.0000
+Ge8 Ge 0.78926970 0.73322521 0.70537088 1.0000
+Sn9 Sn 0.64668778 0.48499314 0.45469180 1.0000
+Sn10 Sn 0.48499314 0.35331222 0.70469180 1.0000
+Sn11 Sn 0.51500686 0.64668778 0.20469180 1.0000
+Sn12 Sn 0.35331222 0.51500686 0.95469180 1.0000
+Be13 Be 0.04931080 0.85998446 0.21172318 1.0000
+Be14 Be 0.85998446 0.95068920 0.46172318 1.0000
+Be15 Be 0.14001554 0.04931080 0.96172318 1.0000
+Be16 Be 0.95068920 0.14001554 0.71172318 1.0000

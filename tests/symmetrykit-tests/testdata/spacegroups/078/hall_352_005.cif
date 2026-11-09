@@ -1,0 +1,35 @@
+data_hall_352_005
+# generated test structure: space group 78 (P 43), Hall setting 352
+# hard candidate: metric gap 5.600e-03, closest atoms 0.976 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 352
+_raspa_point_group_number 9
+_space_group_IT_number 78
+_symmetry_Int_Tables_number 78
+_symmetry_space_group_name_H-M 'P 43'
+_symmetry_space_group_name_Hall ' P 4cw'
+_cell_length_a 6.72626477
+_cell_length_b 6.72626477
+_cell_length_c 6.68859678
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+P1 P 0.64553975 0.61946999 0.12495994 1.0000
+P2 P 0.61946999 0.35446025 0.37495994 1.0000
+P3 P 0.38053001 0.64553975 0.87495994 1.0000
+P4 P 0.35446025 0.38053001 0.62495994 1.0000
+Li5 Li 0.26830324 0.46402649 0.54295576 1.0000
+Li6 Li 0.46402649 0.73169676 0.79295576 1.0000
+Li7 Li 0.53597351 0.26830324 0.29295576 1.0000
+Li8 Li 0.73169676 0.53597351 0.04295576 1.0000
+Au9 Au 0.20448607 0.90066490 0.66961281 1.0000
+Au10 Au 0.90066490 0.79551393 0.91961281 1.0000
+Au11 Au 0.09933510 0.20448607 0.41961281 1.0000
+Au12 Au 0.79551393 0.09933510 0.16961281 1.0000

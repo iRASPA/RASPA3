@@ -1,0 +1,39 @@
+data_hall_011_001
+# generated test structure: space group 5 (I 1 2 1), Hall setting 11
+# hard candidate: metric gap 4.700e-03, closest atoms 1.279 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 11
+_raspa_point_group_number 3
+_space_group_IT_number 5
+_symmetry_Int_Tables_number 5
+_symmetry_space_group_name_H-M 'I 1 2 1'
+_symmetry_space_group_name_Hall ' I 2y'
+_cell_length_a 22.21179170
+_cell_length_b 22.32292059
+_cell_length_c 22.05382414
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.42298555
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Zn1 Zn 0.97358391 0.64638785 0.51132140 1.0000
+Zn2 Zn 0.47358391 0.14638785 0.01132140 1.0000
+Zn3 Zn 0.02641609 0.64638785 0.48867860 1.0000
+Zn4 Zn 0.52641609 0.14638785 0.98867860 1.0000
+F5 F 0.88193828 0.63854104 0.69406233 1.0000
+F6 F 0.38193828 0.13854104 0.19406233 1.0000
+F7 F 0.11806172 0.63854104 0.30593767 1.0000
+F8 F 0.61806172 0.13854104 0.80593767 1.0000
+Mn9 Mn 0.71206279 0.36600934 0.76261447 1.0000
+Mn10 Mn 0.21206279 0.86600934 0.26261447 1.0000
+Mn11 Mn 0.28793721 0.36600934 0.23738553 1.0000
+Mn12 Mn 0.78793721 0.86600934 0.73738553 1.0000
+Ag13 Ag 0.31705088 0.10528783 0.53015291 1.0000
+Ag14 Ag 0.81705088 0.60528783 0.03015291 1.0000
+Ag15 Ag 0.68294912 0.10528783 0.46984709 1.0000
+Ag16 Ag 0.18294912 0.60528783 0.96984709 1.0000

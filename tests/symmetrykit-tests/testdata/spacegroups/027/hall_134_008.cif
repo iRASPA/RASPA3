@@ -1,0 +1,39 @@
+data_hall_134_008
+# generated test structure: space group 27 (P c c 2), Hall setting 134
+# hard candidate: metric gap 4.715e-03, closest atoms 2.010 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 134
+_raspa_point_group_number 7
+_space_group_IT_number 27
+_symmetry_Int_Tables_number 27
+_symmetry_space_group_name_H-M 'P c c 2'
+_symmetry_space_group_name_Hall ' P 2 -2c'
+_cell_length_a 14.39566539
+_cell_length_b 14.84663258
+_cell_length_c 14.46386096
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+K1 K 0.76150779 0.33924408 0.36862849 1.0000
+K2 K 0.76150779 0.66075592 0.86862849 1.0000
+K3 K 0.23849221 0.33924408 0.86862849 1.0000
+K4 K 0.23849221 0.66075592 0.36862849 1.0000
+Si5 Si 0.52715293 0.91378124 0.25776400 1.0000
+Si6 Si 0.52715293 0.08621876 0.75776400 1.0000
+Si7 Si 0.47284707 0.91378124 0.75776400 1.0000
+Si8 Si 0.47284707 0.08621876 0.25776400 1.0000
+Ca9 Ca 0.24088914 0.70761870 0.76574951 1.0000
+Ca10 Ca 0.24088914 0.29238130 0.26574951 1.0000
+Ca11 Ca 0.75911086 0.70761870 0.26574951 1.0000
+Ca12 Ca 0.75911086 0.29238130 0.76574951 1.0000
+Ag13 Ag 0.64825449 0.64008369 0.31410645 1.0000
+Ag14 Ag 0.64825449 0.35991631 0.81410645 1.0000
+Ag15 Ag 0.35174551 0.64008369 0.81410645 1.0000
+Ag16 Ag 0.35174551 0.35991631 0.31410645 1.0000

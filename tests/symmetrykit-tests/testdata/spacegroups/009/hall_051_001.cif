@@ -1,0 +1,39 @@
+data_hall_051_001
+# generated test structure: space group 9 (B b 1 1), Hall setting 51
+# hard candidate: metric gap 2.090e-03, closest atoms 2.337 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 51
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'B b 1 1'
+_symmetry_space_group_name_Hall ' B -2xb'
+_cell_length_a 12.70944021
+_cell_length_b 12.73606070
+_cell_length_c 12.94632824
+_cell_angle_alpha 91.22492957
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cr1 Cr 0.22488513 0.22516889 0.02623695 1.0000
+Cr2 Cr 0.72488513 0.22516889 0.52623695 1.0000
+Cr3 Cr 0.77511487 0.72516889 0.02623695 1.0000
+Cr4 Cr 0.27511487 0.72516889 0.52623695 1.0000
+Au5 Au 0.02040602 0.64555681 0.21045586 1.0000
+Au6 Au 0.52040602 0.64555681 0.71045586 1.0000
+Au7 Au 0.97959398 0.14555681 0.21045586 1.0000
+Au8 Au 0.47959398 0.14555681 0.71045586 1.0000
+Be9 Be 0.89073787 0.70761738 0.45997080 1.0000
+Be10 Be 0.39073787 0.70761738 0.95997080 1.0000
+Be11 Be 0.10926213 0.20761738 0.45997080 1.0000
+Be12 Be 0.60926213 0.20761738 0.95997080 1.0000
+Ge13 Ge 0.76735673 0.14887040 0.03051644 1.0000
+Ge14 Ge 0.26735673 0.14887040 0.53051644 1.0000
+Ge15 Ge 0.23264327 0.64887040 0.03051644 1.0000
+Ge16 Ge 0.73264327 0.64887040 0.53051644 1.0000

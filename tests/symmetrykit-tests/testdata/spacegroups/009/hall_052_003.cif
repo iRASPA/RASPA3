@@ -1,0 +1,39 @@
+data_hall_052_003
+# generated test structure: space group 9 (C n 1 1), Hall setting 52
+# hard candidate: metric gap 3.381e-03, closest atoms 1.750 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 52
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'C n 1 1'
+_symmetry_space_group_name_Hall ' C -2xac'
+_cell_length_a 6.95083052
+_cell_length_b 6.92657820
+_cell_length_c 7.13968265
+_cell_angle_alpha 90.30427333
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Zn1 Zn 0.64269601 0.73367047 0.45014472 1.0000
+Zn2 Zn 0.14269601 0.23367047 0.45014472 1.0000
+Zn3 Zn 0.35730399 0.23367047 0.95014472 1.0000
+Zn4 Zn 0.85730399 0.73367047 0.95014472 1.0000
+Ni5 Ni 0.76314049 0.02981646 0.77626470 1.0000
+Ni6 Ni 0.26314049 0.52981646 0.77626470 1.0000
+Ni7 Ni 0.23685951 0.52981646 0.27626470 1.0000
+Ni8 Ni 0.73685951 0.02981646 0.27626470 1.0000
+Ti9 Ti 0.76626830 0.97320109 0.53710436 1.0000
+Ti10 Ti 0.26626830 0.47320109 0.53710436 1.0000
+Ti11 Ti 0.23373170 0.47320109 0.03710436 1.0000
+Ti12 Ti 0.73373170 0.97320109 0.03710436 1.0000
+Au13 Au 0.30356074 0.15044027 0.26126677 1.0000
+Au14 Au 0.80356074 0.65044027 0.26126677 1.0000
+Au15 Au 0.69643926 0.65044027 0.76126677 1.0000
+Au16 Au 0.19643926 0.15044027 0.76126677 1.0000

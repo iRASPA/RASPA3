@@ -1,0 +1,39 @@
+data_hall_073_003
+# generated test structure: space group 13 (P 1 2/n 1), Hall setting 73
+# hard candidate: metric gap 1.422e-03, closest atoms 1.411 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 73
+_raspa_point_group_number 5
+_space_group_IT_number 13
+_symmetry_Int_Tables_number 13
+_symmetry_space_group_name_H-M 'P 1 2/n 1'
+_symmetry_space_group_name_Hall '-P 2yac'
+_cell_length_a 12.40240145
+_cell_length_b 12.12218385
+_cell_length_c 12.03855675
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.12795909
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ni1 Ni 0.23085991 0.32520336 0.92237639 1.0000
+Ni2 Ni 0.73085991 0.67479664 0.42237639 1.0000
+Ni3 Ni 0.26914009 0.32520336 0.57762361 1.0000
+Ni4 Ni 0.76914009 0.67479664 0.07762361 1.0000
+W5 W 0.29991616 0.45684166 0.71458295 1.0000
+W6 W 0.79991616 0.54315834 0.21458295 1.0000
+W7 W 0.20008384 0.45684166 0.78541705 1.0000
+W8 W 0.70008384 0.54315834 0.28541705 1.0000
+Ga9 Ga 0.36196673 0.71817552 0.21038714 1.0000
+Ga10 Ga 0.86196673 0.28182448 0.71038714 1.0000
+Ga11 Ga 0.13803327 0.71817552 0.28961286 1.0000
+Ga12 Ga 0.63803327 0.28182448 0.78961286 1.0000
+Si13 Si 0.29267962 0.26585225 0.67549454 1.0000
+Si14 Si 0.79267962 0.73414775 0.17549454 1.0000
+Si15 Si 0.20732038 0.26585225 0.82450546 1.0000
+Si16 Si 0.70732038 0.73414775 0.32450546 1.0000

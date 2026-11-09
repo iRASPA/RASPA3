@@ -1,0 +1,39 @@
+data_hall_013_002
+# generated test structure: space group 5 (B 1 1 2), Hall setting 13
+# hard candidate: metric gap 7.723e-03, closest atoms 0.504 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 13
+_raspa_point_group_number 3
+_space_group_IT_number 5
+_symmetry_Int_Tables_number 5
+_symmetry_space_group_name_H-M 'B 1 1 2'
+_symmetry_space_group_name_Hall ' B 2'
+_cell_length_a 21.51287619
+_cell_length_b 21.34674112
+_cell_length_c 21.08373114
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 89.30079916
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ni1 Ni 0.71566125 0.96799321 0.14203501 1.0000
+Ni2 Ni 0.21566125 0.96799321 0.64203501 1.0000
+Ni3 Ni 0.28433875 0.03200679 0.14203501 1.0000
+Ni4 Ni 0.78433875 0.03200679 0.64203501 1.0000
+In5 In 0.99182290 0.50855706 0.99414784 1.0000
+In6 In 0.49182290 0.50855706 0.49414784 1.0000
+In7 In 0.00817710 0.49144294 0.99414784 1.0000
+In8 In 0.50817710 0.49144294 0.49414784 1.0000
+Ca9 Ca 0.76493835 0.76823907 0.01899873 1.0000
+Ca10 Ca 0.26493835 0.76823907 0.51899873 1.0000
+Ca11 Ca 0.23506165 0.23176093 0.01899873 1.0000
+Ca12 Ca 0.73506165 0.23176093 0.51899873 1.0000
+Si13 Si 0.31653457 0.62725254 0.28982171 1.0000
+Si14 Si 0.81653457 0.62725254 0.78982171 1.0000
+Si15 Si 0.68346543 0.37274746 0.28982171 1.0000
+Si16 Si 0.18346543 0.37274746 0.78982171 1.0000

@@ -1,0 +1,39 @@
+data_hall_130_001
+# generated test structure: space group 26 (P 21 m a), Hall setting 130
+# hard candidate: metric gap 2.053e-03, closest atoms 0.558 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 130
+_raspa_point_group_number 7
+_space_group_IT_number 26
+_symmetry_Int_Tables_number 26
+_symmetry_space_group_name_H-M 'P 21 m a'
+_symmetry_space_group_name_Hall ' P -2a 2a'
+_cell_length_a 22.46830658
+_cell_length_b 22.34157701
+_cell_length_c 22.42217130
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Sr1 Sr 0.64762528 0.32404061 0.47815816 1.0000
+Sr2 Sr 0.14762528 0.32404061 0.52184184 1.0000
+Sr3 Sr 0.64762528 0.67595939 0.47815816 1.0000
+Sr4 Sr 0.14762528 0.67595939 0.52184184 1.0000
+Ni5 Ni 0.88117797 0.88055327 0.70897835 1.0000
+Ni6 Ni 0.38117797 0.88055327 0.29102165 1.0000
+Ni7 Ni 0.88117797 0.11944673 0.70897835 1.0000
+Ni8 Ni 0.38117797 0.11944673 0.29102165 1.0000
+Cr9 Cr 0.66967567 0.70990425 0.26033178 1.0000
+Cr10 Cr 0.16967567 0.70990425 0.73966822 1.0000
+Cr11 Cr 0.66967567 0.29009575 0.26033178 1.0000
+Cr12 Cr 0.16967567 0.29009575 0.73966822 1.0000
+Ca13 Ca 0.23800191 0.51248725 0.75525131 1.0000
+Ca14 Ca 0.73800191 0.51248725 0.24474869 1.0000
+Ca15 Ca 0.23800191 0.48751275 0.75525131 1.0000
+Ca16 Ca 0.73800191 0.48751275 0.24474869 1.0000

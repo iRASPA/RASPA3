@@ -1,0 +1,39 @@
+data_hall_080_007
+# generated test structure: space group 13 (P 2/c 1 1), Hall setting 80
+# plain candidate: metric gap 1.290e-02, closest atoms 1.543 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 80
+_raspa_point_group_number 5
+_space_group_IT_number 13
+_symmetry_Int_Tables_number 13
+_symmetry_space_group_name_H-M 'P 2/c 1 1'
+_symmetry_space_group_name_Hall '-P 2xc'
+_cell_length_a 10.32294895
+_cell_length_b 12.71843855
+_cell_length_c 6.80340118
+_cell_angle_alpha 118.83882459
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ga1 Ga 0.43990431 0.40723191 0.88018657 1.0000
+Ga2 Ga 0.43990431 0.59276809 0.61981343 1.0000
+Ga3 Ga 0.56009569 0.40723191 0.38018657 1.0000
+Ga4 Ga 0.56009569 0.59276809 0.11981343 1.0000
+I5 I 0.26648504 0.10341125 0.95486383 1.0000
+I6 I 0.26648504 0.89658875 0.54513617 1.0000
+I7 I 0.73351496 0.10341125 0.45486383 1.0000
+I8 I 0.73351496 0.89658875 0.04513617 1.0000
+Ca9 Ca 0.33146230 0.65757175 0.79283030 1.0000
+Ca10 Ca 0.33146230 0.34242825 0.70716970 1.0000
+Ca11 Ca 0.66853770 0.65757175 0.29283030 1.0000
+Ca12 Ca 0.66853770 0.34242825 0.20716970 1.0000
+Mg13 Mg 0.92537258 0.72249133 0.69746747 1.0000
+Mg14 Mg 0.92537258 0.27750867 0.80253253 1.0000
+Mg15 Mg 0.07462742 0.72249133 0.19746747 1.0000
+Mg16 Mg 0.07462742 0.27750867 0.30253253 1.0000

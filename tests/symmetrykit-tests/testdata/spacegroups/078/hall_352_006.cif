@@ -1,0 +1,39 @@
+data_hall_352_006
+# generated test structure: space group 78 (P 43), Hall setting 352
+# hard candidate: metric gap 1.168e-02, closest atoms 1.633 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 352
+_raspa_point_group_number 9
+_space_group_IT_number 78
+_symmetry_Int_Tables_number 78
+_symmetry_space_group_name_H-M 'P 43'
+_symmetry_space_group_name_Hall ' P 4cw'
+_cell_length_a 10.09780410
+_cell_length_b 10.09780410
+_cell_length_c 10.21710874
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+F1 F 0.76783895 0.54905589 0.85253822 1.0000
+F2 F 0.54905589 0.23216105 0.10253822 1.0000
+F3 F 0.45094411 0.76783895 0.60253822 1.0000
+F4 F 0.23216105 0.45094411 0.35253822 1.0000
+Fe5 Fe 0.79260143 0.70261660 0.80870059 1.0000
+Fe6 Fe 0.70261660 0.20739857 0.05870059 1.0000
+Fe7 Fe 0.29738340 0.79260143 0.55870059 1.0000
+Fe8 Fe 0.20739857 0.29738340 0.30870059 1.0000
+Cl9 Cl 0.78009324 0.99237312 0.02982933 1.0000
+Cl10 Cl 0.99237312 0.21990676 0.27982933 1.0000
+Cl11 Cl 0.00762688 0.78009324 0.77982933 1.0000
+Cl12 Cl 0.21990676 0.00762688 0.52982933 1.0000
+Sn13 Sn 0.62418521 0.04814193 0.66998266 1.0000
+Sn14 Sn 0.04814193 0.37581479 0.91998266 1.0000
+Sn15 Sn 0.95185807 0.62418521 0.41998266 1.0000
+Sn16 Sn 0.37581479 0.95185807 0.16998266 1.0000

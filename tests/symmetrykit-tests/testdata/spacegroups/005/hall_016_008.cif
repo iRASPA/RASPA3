@@ -1,0 +1,39 @@
+data_hall_016_008
+# generated test structure: space group 5 (C 2 1 1), Hall setting 16
+# hard candidate: metric gap 1.590e-02, closest atoms 1.194 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 16
+_raspa_point_group_number 3
+_space_group_IT_number 5
+_symmetry_Int_Tables_number 5
+_symmetry_space_group_name_H-M 'C 2 1 1'
+_symmetry_space_group_name_Hall ' C 2x'
+_cell_length_a 12.09621102
+_cell_length_b 12.33260456
+_cell_length_c 11.90386134
+_cell_angle_alpha 88.55810701
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cu1 Cu 0.45059926 0.88429849 0.77121268 1.0000
+Cu2 Cu 0.95059926 0.38429849 0.77121268 1.0000
+Cu3 Cu 0.45059926 0.11570151 0.22878732 1.0000
+Cu4 Cu 0.95059926 0.61570151 0.22878732 1.0000
+Ti5 Ti 0.37089315 0.77012509 0.23490566 1.0000
+Ti6 Ti 0.87089315 0.27012509 0.23490566 1.0000
+Ti7 Ti 0.37089315 0.22987491 0.76509434 1.0000
+Ti8 Ti 0.87089315 0.72987491 0.76509434 1.0000
+Mo9 Mo 0.20265858 0.54680363 0.48589189 1.0000
+Mo10 Mo 0.70265858 0.04680363 0.48589189 1.0000
+Mo11 Mo 0.20265858 0.45319637 0.51410811 1.0000
+Mo12 Mo 0.70265858 0.95319637 0.51410811 1.0000
+Pb13 Pb 0.29266340 0.71862622 0.76020652 1.0000
+Pb14 Pb 0.79266340 0.21862622 0.76020652 1.0000
+Pb15 Pb 0.29266340 0.28137378 0.23979348 1.0000
+Pb16 Pb 0.79266340 0.78137378 0.23979348 1.0000

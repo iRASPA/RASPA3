@@ -1,0 +1,39 @@
+data_hall_017_018
+# generated test structure: space group 5 (I 2 1 1), Hall setting 17
+# noisy candidate: metric gap 4.188e-05, closest atoms 1.076 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 17
+_raspa_point_group_number 3
+_space_group_IT_number 5
+_symmetry_Int_Tables_number 5
+_symmetry_space_group_name_H-M 'I 2 1 1'
+_symmetry_space_group_name_Hall ' I 2x'
+_cell_length_a 17.82599884
+_cell_length_b 11.48271293
+_cell_length_c 16.45786505
+_cell_angle_alpha 64.80499895
+_cell_angle_beta 90.00928783
+_cell_angle_gamma 90.00376897
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+O1 O 0.89227071 0.00032196 0.99980263 1.0000
+O2 O 0.39198647 0.50000463 0.49990360 1.0000
+Al3 Al 0.81930965 0.99981880 0.00021680 1.0000
+Al4 Al 0.31968317 0.50045484 0.49995072 1.0000
+Li5 Li 0.99848984 0.64651912 0.00655869 1.0000
+Li6 Li 0.49811958 0.14716095 0.50635466 1.0000
+Li7 Li 0.99811612 0.35338712 0.99358945 1.0000
+Li8 Li 0.49840521 0.85340981 0.49344290 1.0000
+Ba9 Ba 0.04853863 0.52073859 0.96414420 1.0000
+Ba10 Ba 0.54853080 0.02108330 0.46381332 1.0000
+Ba11 Ba 0.04853661 0.47940855 0.03636468 1.0000
+Ba12 Ba 0.54816843 0.97917830 0.53621070 1.0000
+Mo13 Mo 0.79852389 0.45759674 0.24047450 1.0000
+Mo14 Mo 0.29836187 0.95795858 0.74039912 1.0000
+Mo15 Mo 0.79833914 0.54235162 0.75989640 1.0000
+Mo16 Mo 0.29834849 0.04199222 0.25989848 1.0000

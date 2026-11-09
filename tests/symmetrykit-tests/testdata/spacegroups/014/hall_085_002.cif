@@ -1,0 +1,39 @@
+data_hall_085_002
+# generated test structure: space group 14 (P 1 1 21/n), Hall setting 85
+# hard candidate: metric gap 3.439e-03, closest atoms 1.244 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 85
+_raspa_point_group_number 5
+_space_group_IT_number 14
+_symmetry_Int_Tables_number 14
+_symmetry_space_group_name_H-M 'P 1 1 21/n'
+_symmetry_space_group_name_Hall '-P 2n'
+_cell_length_a 5.22592976
+_cell_length_b 4.80084249
+_cell_length_c 5.68565301
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.30953170
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ni1 Ni 0.37559664 0.75607241 0.45089716 1.0000
+Ni2 Ni 0.87559664 0.25607241 0.04910284 1.0000
+Ni3 Ni 0.12440336 0.74392759 0.95089716 1.0000
+Ni4 Ni 0.62440336 0.24392759 0.54910284 1.0000
+Be5 Be 0.79783708 0.64641692 0.04970782 1.0000
+Be6 Be 0.29783708 0.14641692 0.45029218 1.0000
+Be7 Be 0.70216292 0.85358308 0.54970782 1.0000
+Be8 Be 0.20216292 0.35358308 0.95029218 1.0000
+Na9 Na 0.84403291 0.47229209 0.22118067 1.0000
+Na10 Na 0.34403291 0.97229209 0.27881933 1.0000
+Na11 Na 0.65596709 0.02770791 0.72118067 1.0000
+Na12 Na 0.15596709 0.52770791 0.77881933 1.0000
+In13 In 0.69680856 0.66119127 0.28355169 1.0000
+In14 In 0.19680856 0.16119127 0.21644831 1.0000
+In15 In 0.80319144 0.83880873 0.78355169 1.0000
+In16 In 0.30319144 0.33880873 0.71644831 1.0000

@@ -1,0 +1,39 @@
+data_hall_050_013
+# generated test structure: space group 9 (I 1 1 a), Hall setting 50
+# noisy candidate: metric gap 8.490e-06, closest atoms 2.800 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 50
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'I 1 1 a'
+_symmetry_space_group_name_Hall ' I -2a'
+_cell_length_a 19.14719330
+_cell_length_b 24.90312196
+_cell_length_c 19.71223010
+_cell_angle_alpha 89.99923586
+_cell_angle_beta 89.99119552
+_cell_angle_gamma 65.19578999
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ce1 Ce 0.15826690 0.34933394 0.56621950 1.0000
+Ce2 Ce 0.65883357 0.84922380 0.06594729 1.0000
+Ce3 Ce 0.15850947 0.84903545 0.93395990 1.0000
+Ce4 Ce 0.65860530 0.34928723 0.43389707 1.0000
+Sr5 Sr 0.75747766 0.40870827 0.91193880 1.0000
+Sr6 Sr 0.25772733 0.90845484 0.41203470 1.0000
+Sr7 Sr 0.75768363 0.90869357 0.58822552 1.0000
+Sr8 Sr 0.25801516 0.40842462 0.08809467 1.0000
+Ag9 Ag 0.65924816 0.82563688 0.20538275 1.0000
+Ag10 Ag 0.15901704 0.32567684 0.70515886 1.0000
+Ag11 Ag 0.65939251 0.32557876 0.29449652 1.0000
+Ag12 Ag 0.15906443 0.82568381 0.79478179 1.0000
+Ni13 Ni 0.95999679 0.46787524 0.77438802 1.0000
+Ni14 Ni 0.46001870 0.96790419 0.27450576 1.0000
+Ni15 Ni 0.96023969 0.96780667 0.72555446 1.0000
+Ni16 Ni 0.46002576 0.46794193 0.22582836 1.0000

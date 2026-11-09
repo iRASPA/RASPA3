@@ -228,6 +228,14 @@ double3x3 SKSymmetryCell::findSmallestPrimitiveCell(std::vector<std::tuple<doubl
         double3x3 cell = double3x3(tmpv1, tmpv2, tmpv3);
         double volume = std::fabs(cell.determinant());
 
+        // a translation, another and (nearly) their sum, read off noisy coordinates, span a sliver whose volume
+        // passed the threshold below when the given basis was long and skewed: its smallest height, the volume over
+        // the largest face, is within the precision, where no cell of a structure resolved at that precision is
+        const double largestFaceArea =
+            std::max({double3::cross(tmpv1, tmpv2).length(), double3::cross(tmpv2, tmpv3).length(),
+                      double3::cross(tmpv1, tmpv3).length()});
+        if (volume < 2.0 * symmetryPrecision * largestFaceArea) continue;
+
         if ((volume > 0.5 * smallestPossibleVolume) && (volume < minimumVolume))
         {
           minimumVolume = volume;
@@ -342,16 +350,71 @@ std::vector<double3> SKSymmetryCell::primitiveTranslationVectors(
 
     for (std::size_t i = 0; i < reducedAtoms.size(); i++)
     {
+      // the translation read off one pair of atoms carries the positional errors of both; averaged over every atom
+      // it carries a fraction of them, which keeps the found operations, and the origin derived from them,
+      // within the precision for noisy coordinates. A pair whose translation misses the precision by its own error
+      // is refined at twice the precision first and then held to the precision.
       double3 vec = std::get<0>(reducedAtoms[i]) - origin;
-
+      std::optional<double3> refined;
       if (SKSymmetryCell::testSymmetry(vec, rotationMatrix, atoms, unitCell, allowPartialOccupancies,
                                        symmetryPrecision))
       {
-        translationVectors.push_back(vec);
+        refined = SKSymmetryCell::refinedTranslation(vec, rotationMatrix, atoms, unitCell, allowPartialOccupancies,
+                                                     symmetryPrecision);
+      }
+      else
+      {
+        refined = SKSymmetryCell::refinedTranslation(vec, rotationMatrix, atoms, unitCell, allowPartialOccupancies,
+                                                     2.0 * symmetryPrecision);
+        if (refined && !SKSymmetryCell::testSymmetry(*refined, rotationMatrix, atoms, unitCell, allowPartialOccupancies,
+                                                     symmetryPrecision))
+        {
+          refined = std::nullopt;
+        }
+      }
+      if (refined)
+      {
+        translationVectors.push_back(*refined);
       }
     }
   }
   return translationVectors;
+}
+
+/// The translation of a symmetry operation averaged over all atoms: each atom's image under the rotation and the
+/// given translation is matched to the nearest atom of its type within the tolerance, and the mean of the remaining
+/// offsets is added to the translation. Without a match for every atom there is no refinement.
+std::optional<double3> SKSymmetryCell::refinedTranslation(
+    double3 translationVector, SKRotationMatrix rotationMatrix,
+    const std::vector<std::tuple<double3, std::size_t, double>>& atoms, double3x3 unitCell,
+    bool allowPartialOccupancies, double tolerance)
+{
+  double3 offsetSum(0.0, 0.0, 0.0);
+  for (std::size_t i = 0; i < atoms.size(); i++)
+  {
+    double3 rotatedAndTranslatedPosition = rotationMatrix * std::get<0>(atoms[i]) + translationVector;
+    std::optional<double3> closest;
+    double closestDistanceSquared = tolerance * tolerance;
+    for (std::size_t j = 0; j < atoms.size(); j++)
+    {
+      if (allowPartialOccupancies || std::get<1>(atoms[i]) == std::get<1>(atoms[j]))
+      {
+        double3 dr = std::get<0>(atoms[j]) - rotatedAndTranslatedPosition;
+        dr.x -= std::rint(dr.x);
+        dr.y -= std::rint(dr.y);
+        dr.z -= std::rint(dr.z);
+        double distanceSquared = (unitCell * dr).length_squared();
+        if (distanceSquared < closestDistanceSquared)
+        {
+          closestDistanceSquared = distanceSquared;
+          closest = dr;
+        }
+      }
+    }
+    if (!closest) return std::nullopt;
+    offsetSum += *closest;
+  }
+  return translationVector + offsetSum / double(atoms.size());
 }
 
 /// Compute the Delaunay reduced cell

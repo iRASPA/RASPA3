@@ -1,0 +1,35 @@
+data_hall_171_009
+# generated test structure: space group 34 (P 2 n n), Hall setting 171
+# hard candidate: metric gap 2.110e-03, closest atoms 1.895 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 171
+_raspa_point_group_number 7
+_space_group_IT_number 34
+_symmetry_Int_Tables_number 34
+_symmetry_space_group_name_H-M 'P 2 n n'
+_symmetry_space_group_name_Hall ' P -2n 2'
+_cell_length_a 18.49725526
+_cell_length_b 18.45822095
+_cell_length_c 18.31516146
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Se1 Se 0.63369338 0.68909228 0.54873339 1.0000
+Se2 Se 0.13369338 0.18909228 0.95126661 1.0000
+Se3 Se 0.13369338 0.81090772 0.04873339 1.0000
+Se4 Se 0.63369338 0.31090772 0.45126661 1.0000
+Zn5 Zn 0.08885363 0.86029932 0.97015065 1.0000
+Zn6 Zn 0.58885363 0.36029932 0.52984935 1.0000
+Zn7 Zn 0.58885363 0.63970068 0.47015065 1.0000
+Zn8 Zn 0.08885363 0.13970068 0.02984935 1.0000
+S9 S 0.29137512 0.36384658 0.63337998 1.0000
+S10 S 0.79137512 0.86384658 0.86662002 1.0000
+S11 S 0.79137512 0.13615342 0.13337998 1.0000
+S12 S 0.29137512 0.63615342 0.36662002 1.0000

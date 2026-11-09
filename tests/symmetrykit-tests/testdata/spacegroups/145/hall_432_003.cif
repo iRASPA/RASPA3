@@ -1,0 +1,35 @@
+data_hall_432_003
+# generated test structure: space group 145 (P 32), Hall setting 432
+# plain candidate: metric gap 1.090e-01, closest atoms 3.419 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 432
+_raspa_point_group_number 16
+_space_group_IT_number 145
+_symmetry_Int_Tables_number 145
+_symmetry_space_group_name_H-M 'P 32'
+_symmetry_space_group_name_Hall ' P 32'
+_cell_length_a 17.39106714
+_cell_length_b 17.39106714
+_cell_length_c 19.51821613
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 120.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+C1 C 0.66353176 0.67938033 0.60368912 1.0000
+C2 C 0.01584858 0.33646824 0.93702246 1.0000
+C3 C 0.32061967 0.98415142 0.27035579 1.0000
+Si4 Si 0.91208207 0.72900924 0.81037474 1.0000
+Si5 Si 0.81692718 0.08791793 0.14370808 1.0000
+Si6 Si 0.27099076 0.18307282 0.47704141 1.0000
+Pb7 Pb 0.75148536 0.73751220 0.44268162 1.0000
+Pb8 Pb 0.98602685 0.24851464 0.77601495 1.0000
+Pb9 Pb 0.26248780 0.01397315 0.10934828 1.0000
+Nb10 Nb 0.32722977 0.79769825 0.66498806 1.0000
+Nb11 Nb 0.47046848 0.67277023 0.99832140 1.0000
+Nb12 Nb 0.20230175 0.52953152 0.33165473 1.0000

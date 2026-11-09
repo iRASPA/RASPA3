@@ -1,0 +1,39 @@
+data_hall_013_019
+# generated test structure: space group 5 (B 1 1 2), Hall setting 13
+# noisy candidate: metric gap 5.654e-05, closest atoms 1.159 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 13
+_raspa_point_group_number 3
+_space_group_IT_number 5
+_symmetry_Int_Tables_number 5
+_symmetry_space_group_name_H-M 'B 1 1 2'
+_symmetry_space_group_name_Hall ' B 2'
+_cell_length_a 6.96046582
+_cell_length_b 20.96586181
+_cell_length_c 7.98540370
+_cell_angle_alpha 90.03428360
+_cell_angle_beta 89.99491113
+_cell_angle_gamma 66.86644694
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ti1 Ti 0.05915739 0.83049551 0.35092041 1.0000
+Ti2 Ti 0.55939479 0.83062597 0.85085918 1.0000
+Ti3 Ti 0.94119878 0.16962136 0.35126421 1.0000
+Ti4 Ti 0.44077422 0.16932783 0.85169227 1.0000
+Na5 Na 0.82981015 0.90939003 0.94106173 1.0000
+Na6 Na 0.33013523 0.90932162 0.44042748 1.0000
+Na7 Na 0.16975621 0.09042515 0.94071145 1.0000
+Na8 Na 0.66964795 0.09062455 0.44126154 1.0000
+Ag9 Ag 0.39284345 0.94152191 0.35407696 1.0000
+Ag10 Ag 0.89303335 0.94154632 0.85418837 1.0000
+Ag11 Ag 0.60729505 0.05846126 0.35447173 1.0000
+Ag12 Ag 0.10659288 0.05874549 0.85402500 1.0000
+C13 C 0.45015886 0.74804266 0.65569623 1.0000
+C14 C 0.95009056 0.74807028 0.15550350 1.0000
+C15 C 0.54986855 0.25204709 0.65575314 1.0000
+C16 C 0.04987508 0.25176536 0.15652861 1.0000

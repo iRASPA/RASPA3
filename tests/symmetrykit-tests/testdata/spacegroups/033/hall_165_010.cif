@@ -1,0 +1,39 @@
+data_hall_165_010
+# generated test structure: space group 33 (P b n 21), Hall setting 165
+# noisy candidate: metric gap 4.566e-06, closest atoms 2.052 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 165
+_raspa_point_group_number 7
+_space_group_IT_number 33
+_symmetry_Int_Tables_number 33
+_symmetry_space_group_name_H-M 'P b n 21'
+_symmetry_space_group_name_Hall ' P 2c -2ab'
+_cell_length_a 24.77667289
+_cell_length_b 5.01795762
+_cell_length_c 11.25988004
+_cell_angle_alpha 90.00041097
+_cell_angle_beta 90.04931588
+_cell_angle_gamma 89.99243658
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+S1 S 0.00793009 0.11593824 0.94815159 1.0000
+S2 S 0.50762635 0.38395363 0.44736888 1.0000
+S3 S 0.49213072 0.61460497 0.94795315 1.0000
+S4 S 0.99235447 0.88468228 0.44779750 1.0000
+Ni5 Ni 0.06487031 0.13610808 0.81598700 1.0000
+Ni6 Ni 0.56481332 0.36462030 0.31589518 1.0000
+Ni7 Ni 0.43508960 0.63708653 0.81559355 1.0000
+Ni8 Ni 0.93497897 0.86368497 0.31567649 1.0000
+Si9 Si 0.41950996 0.17099125 0.26141804 1.0000
+Si10 Si 0.91979858 0.32853554 0.76074891 1.0000
+Si11 Si 0.08050473 0.66970798 0.26129097 1.0000
+Si12 Si 0.58046020 0.82915435 0.76096114 1.0000
+Zr13 Zr 0.83727671 0.72610240 0.90928398 1.0000
+Zr14 Zr 0.33702529 0.77452288 0.40951900 1.0000
+Zr15 Zr 0.66305381 0.22551827 0.90900397 1.0000
+Zr16 Zr 0.16303359 0.27419526 0.40882094 1.0000

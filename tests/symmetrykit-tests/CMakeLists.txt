@@ -1,16 +1,9 @@
 add_executable(unit_tests_symmetrykit
-  transformation_matrix.cpp
-  find_smallest_primitive_cell.cpp
-  find_smallest_primitive_cell_no_partial_occupancies.cpp
-  find_pointgroup.cpp
-  find_pointgroup_no_partial_occupancies.cpp
-  find_spacegroup.cpp
-  find_spacegroup_no_partial_occupancies.cpp
-  find_spacegroup_symmetry_metric.cpp
   band_path.cpp
   niggli_reduction.cpp
   poscar_parser.cpp
   cif_symmetry.cpp
+  generated_spacegroups.cpp
   space_group_database.cpp
   main.cpp)
 
@@ -22,7 +15,11 @@ target_link_libraries(unit_tests_symmetrykit PUBLIC
                       GTest::gmock
                       GTest::gmock_main)
 
-file(COPY spglibtestdata DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+# the generator of testdata/spacegroups (run it from this directory to regenerate the structures)
+add_executable(generate_symmetrykit_testdata generate_testdata.cpp)
+raspa_target_link_libraries(generate_symmetrykit_testdata)
+target_link_libraries(generate_symmetrykit_testdata PUBLIC symmetrykit)
+
 file(COPY testdata DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 gtest_add_tests(TARGET unit_tests_symmetrykit TEST_LIST noArgsTests)

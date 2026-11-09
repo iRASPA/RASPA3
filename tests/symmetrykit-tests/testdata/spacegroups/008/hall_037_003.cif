@@ -1,0 +1,39 @@
+data_hall_037_003
+# generated test structure: space group 8 (C m 1 1), Hall setting 37
+# hard candidate: metric gap 1.939e-03, closest atoms 0.983 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 37
+_raspa_point_group_number 4
+_space_group_IT_number 8
+_symmetry_Int_Tables_number 8
+_symmetry_space_group_name_H-M 'C m 1 1'
+_symmetry_space_group_name_Hall ' C -2x'
+_cell_length_a 20.93897932
+_cell_length_b 20.84885365
+_cell_length_c 20.89837874
+_cell_angle_alpha 88.73514627
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cu1 Cu 0.70050532 0.10469404 0.50522836 1.0000
+Cu2 Cu 0.20050532 0.60469404 0.50522836 1.0000
+Cu3 Cu 0.29949468 0.10469404 0.50522836 1.0000
+Cu4 Cu 0.79949468 0.60469404 0.50522836 1.0000
+Ca5 Ca 0.32597033 0.54222346 0.03973466 1.0000
+Ca6 Ca 0.82597033 0.04222346 0.03973466 1.0000
+Ca7 Ca 0.67402967 0.54222346 0.03973466 1.0000
+Ca8 Ca 0.17402967 0.04222346 0.03973466 1.0000
+Zn9 Zn 0.52346164 0.65362238 0.28088366 1.0000
+Zn10 Zn 0.02346164 0.15362238 0.28088366 1.0000
+Zn11 Zn 0.47653836 0.65362238 0.28088366 1.0000
+Zn12 Zn 0.97653836 0.15362238 0.28088366 1.0000
+Li13 Li 0.86620327 0.17108213 0.68317099 1.0000
+Li14 Li 0.36620327 0.67108213 0.68317099 1.0000
+Li15 Li 0.13379673 0.17108213 0.68317099 1.0000
+Li16 Li 0.63379673 0.67108213 0.68317099 1.0000

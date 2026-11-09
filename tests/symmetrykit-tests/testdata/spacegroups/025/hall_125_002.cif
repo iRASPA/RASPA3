@@ -1,0 +1,39 @@
+data_hall_125_002
+# generated test structure: space group 25 (P m m 2), Hall setting 125
+# hard candidate: metric gap 3.471e-03, closest atoms 0.558 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 125
+_raspa_point_group_number 7
+_space_group_IT_number 25
+_symmetry_Int_Tables_number 25
+_symmetry_space_group_name_H-M 'P m m 2'
+_symmetry_space_group_name_Hall ' P 2 -2'
+_cell_length_a 24.03566384
+_cell_length_b 24.11937818
+_cell_length_c 23.71407526
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Fe1 Fe 0.97245841 0.98844276 0.79732362 1.0000
+Fe2 Fe 0.97245841 0.01155724 0.79732362 1.0000
+Fe3 Fe 0.02754159 0.98844276 0.79732362 1.0000
+Fe4 Fe 0.02754159 0.01155724 0.79732362 1.0000
+Au5 Au 0.71359547 0.66042562 0.71441694 1.0000
+Au6 Au 0.71359547 0.33957438 0.71441694 1.0000
+Au7 Au 0.28640453 0.66042562 0.71441694 1.0000
+Au8 Au 0.28640453 0.33957438 0.71441694 1.0000
+Ni9 Ni 0.97958795 0.01715241 0.47766464 1.0000
+Ni10 Ni 0.97958795 0.98284759 0.47766464 1.0000
+Ni11 Ni 0.02041205 0.01715241 0.47766464 1.0000
+Ni12 Ni 0.02041205 0.98284759 0.47766464 1.0000
+Br13 Br 0.34168964 0.37428385 0.02645435 1.0000
+Br14 Br 0.34168964 0.62571615 0.02645435 1.0000
+Br15 Br 0.65831036 0.37428385 0.02645435 1.0000
+Br16 Br 0.65831036 0.62571615 0.02645435 1.0000

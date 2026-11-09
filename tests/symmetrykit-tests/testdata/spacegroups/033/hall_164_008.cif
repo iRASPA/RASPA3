@@ -1,0 +1,35 @@
+data_hall_164_008
+# generated test structure: space group 33 (P n a 21), Hall setting 164
+# hard candidate: metric gap 3.675e-03, closest atoms 2.507 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 164
+_raspa_point_group_number 7
+_space_group_IT_number 33
+_symmetry_Int_Tables_number 33
+_symmetry_space_group_name_H-M 'P n a 21'
+_symmetry_space_group_name_Hall ' P 2c -2n'
+_cell_length_a 23.97187248
+_cell_length_b 23.70853584
+_cell_length_c 24.06029344
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cs1 Cs 0.69845507 0.52101151 0.23614754 1.0000
+Cs2 Cs 0.19845507 0.97898849 0.23614754 1.0000
+Cs3 Cs 0.80154493 0.02101151 0.73614754 1.0000
+Cs4 Cs 0.30154493 0.47898849 0.73614754 1.0000
+Cu5 Cu 0.74322087 0.03262340 0.65040775 1.0000
+Cu6 Cu 0.24322087 0.46737660 0.65040775 1.0000
+Cu7 Cu 0.75677913 0.53262340 0.15040775 1.0000
+Cu8 Cu 0.25677913 0.96737660 0.15040775 1.0000
+Ce9 Ce 0.68357258 0.30858136 0.01614047 1.0000
+Ce10 Ce 0.18357258 0.19141864 0.01614047 1.0000
+Ce11 Ce 0.81642742 0.80858136 0.51614047 1.0000
+Ce12 Ce 0.31642742 0.69141864 0.51614047 1.0000

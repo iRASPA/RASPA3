@@ -1,0 +1,37 @@
+data_hall_081_014
+# generated test structure: space group 14 (P 1 21/c 1), Hall setting 81
+# special candidate: metric gap 5.286e-02, closest atoms 1.070 Angstrom, 14 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 81
+_raspa_point_group_number 5
+_space_group_IT_number 14
+_symmetry_Int_Tables_number 14
+_symmetry_space_group_name_H-M 'P 1 21/c 1'
+_symmetry_space_group_name_Hall '-P 2ybc'
+_cell_length_a 14.12575916
+_cell_length_b 8.46372374
+_cell_length_c 5.18705383
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 115.24227819
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Na1 Na 0.00000000 0.00000000 0.00000000 1.0000
+Na2 Na 0.00000000 0.50000000 0.50000000 1.0000
+Zn3 Zn 0.10529863 0.14091987 0.36914978 1.0000
+Zn4 Zn 0.10529863 0.35908013 0.86914978 1.0000
+Zn5 Zn 0.89470137 0.64091987 0.13085022 1.0000
+Zn6 Zn 0.89470137 0.85908013 0.63085022 1.0000
+Ce7 Ce 0.73805072 0.05982197 0.54372489 1.0000
+Ce8 Ce 0.73805072 0.44017803 0.04372489 1.0000
+Ce9 Ce 0.26194928 0.55982197 0.95627511 1.0000
+Ce10 Ce 0.26194928 0.94017803 0.45627511 1.0000
+W11 W 0.86179498 0.52585347 0.11915385 1.0000
+W12 W 0.86179498 0.97414653 0.61915385 1.0000
+W13 W 0.13820502 0.02585347 0.38084615 1.0000
+W14 W 0.13820502 0.47414653 0.88084615 1.0000

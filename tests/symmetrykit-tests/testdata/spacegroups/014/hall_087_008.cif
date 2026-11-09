@@ -1,0 +1,39 @@
+data_hall_087_008
+# generated test structure: space group 14 (P 21/b 1 1), Hall setting 87
+# hard candidate: metric gap 7.719e-03, closest atoms 0.887 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 87
+_raspa_point_group_number 5
+_space_group_IT_number 14
+_symmetry_Int_Tables_number 14
+_symmetry_space_group_name_H-M 'P 21/b 1 1'
+_symmetry_space_group_name_Hall '-P 2xab'
+_cell_length_a 5.62848858
+_cell_length_b 5.50757214
+_cell_length_c 5.37005859
+_cell_angle_alpha 89.30528976
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Au1 Au 0.26621835 0.45545530 0.48684214 1.0000
+Au2 Au 0.76621835 0.04454470 0.51315786 1.0000
+Au3 Au 0.23378165 0.95545530 0.48684214 1.0000
+Au4 Au 0.73378165 0.54454470 0.51315786 1.0000
+Ti5 Ti 0.62083789 0.02365525 0.45359194 1.0000
+Ti6 Ti 0.12083789 0.47634475 0.54640806 1.0000
+Ti7 Ti 0.87916211 0.52365525 0.45359194 1.0000
+Ti8 Ti 0.37916211 0.97634475 0.54640806 1.0000
+Ca9 Ca 0.67177384 0.03723615 0.97840909 1.0000
+Ca10 Ca 0.17177384 0.46276385 0.02159091 1.0000
+Ca11 Ca 0.82822616 0.53723615 0.97840909 1.0000
+Ca12 Ca 0.32822616 0.96276385 0.02159091 1.0000
+Al13 Al 0.70949635 0.46299071 0.85197548 1.0000
+Al14 Al 0.20949635 0.03700929 0.14802452 1.0000
+Al15 Al 0.79050365 0.96299071 0.85197548 1.0000
+Al16 Al 0.29050365 0.53700929 0.14802452 1.0000

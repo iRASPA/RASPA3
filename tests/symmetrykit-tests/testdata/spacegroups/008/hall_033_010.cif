@@ -1,0 +1,41 @@
+data_hall_033_010
+# generated test structure: space group 8 (A 1 1 m), Hall setting 33
+# special candidate: metric gap 3.304e-02, closest atoms 0.817 Angstrom, 18 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 33
+_raspa_point_group_number 4
+_space_group_IT_number 8
+_symmetry_Int_Tables_number 8
+_symmetry_space_group_name_H-M 'A 1 1 m'
+_symmetry_space_group_name_Hall ' A -2'
+_cell_length_a 8.21838777
+_cell_length_b 5.76681497
+_cell_length_c 20.55627814
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 117.02635070
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Be1 Be 0.44178463 0.48169076 0.00000000 1.0000
+Be2 Be 0.44178463 0.98169076 0.50000000 1.0000
+Bi3 Bi 0.07128458 0.85560064 0.72762021 1.0000
+Bi4 Bi 0.07128458 0.35560064 0.22762021 1.0000
+Bi5 Bi 0.07128458 0.85560064 0.27237979 1.0000
+Bi6 Bi 0.07128458 0.35560064 0.77237979 1.0000
+Ga7 Ga 0.04990684 0.04309290 0.44139761 1.0000
+Ga8 Ga 0.04990684 0.54309290 0.94139761 1.0000
+Ga9 Ga 0.04990684 0.04309290 0.55860239 1.0000
+Ga10 Ga 0.04990684 0.54309290 0.05860239 1.0000
+Ag11 Ag 0.16184141 0.24880470 0.64741694 1.0000
+Ag12 Ag 0.16184141 0.74880470 0.14741694 1.0000
+Ag13 Ag 0.16184141 0.24880470 0.35258306 1.0000
+Ag14 Ag 0.16184141 0.74880470 0.85258306 1.0000
+S15 S 0.26492220 0.77908785 0.84135423 1.0000
+S16 S 0.26492220 0.27908785 0.34135423 1.0000
+S17 S 0.26492220 0.77908785 0.15864577 1.0000
+S18 S 0.26492220 0.27908785 0.65864577 1.0000

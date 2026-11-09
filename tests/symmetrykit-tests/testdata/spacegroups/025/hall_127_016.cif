@@ -1,0 +1,35 @@
+data_hall_127_016
+# generated test structure: space group 25 (P m 2 m), Hall setting 127
+# noisy candidate: metric gap 1.127e-06, closest atoms 0.871 Angstrom, 12 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 127
+_raspa_point_group_number 7
+_space_group_IT_number 25
+_symmetry_Int_Tables_number 25
+_symmetry_space_group_name_H-M 'P m 2 m'
+_symmetry_space_group_name_Hall ' P -2 -2'
+_cell_length_a 23.30736234
+_cell_length_b 17.04590940
+_cell_length_c 10.48867376
+_cell_angle_alpha 89.99144804
+_cell_angle_beta 90.00010145
+_cell_angle_gamma 89.99130549
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Nb1 Nb 0.27108917 0.18003511 0.71817844 1.0000
+Nb2 Nb 0.27088531 0.18017156 0.28168929 1.0000
+Nb3 Nb 0.72875562 0.18000496 0.71862740 1.0000
+Nb4 Nb 0.72875899 0.17985257 0.28184088 1.0000
+B5 B 0.51874776 0.82496196 0.95163175 1.0000
+B6 B 0.51878901 0.82459984 0.04900037 1.0000
+B7 B 0.48126775 0.82451607 0.95097360 1.0000
+B8 B 0.48143489 0.82443195 0.04864438 1.0000
+Cd9 Cd 0.34262394 0.03317163 0.38891468 1.0000
+Cd10 Cd 0.34264806 0.03352142 0.61120876 1.0000
+Cd11 Cd 0.65735330 0.03318792 0.38848415 1.0000
+Cd12 Cd 0.65770744 0.03364275 0.61128925 1.0000

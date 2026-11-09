@@ -1,0 +1,39 @@
+data_hall_115_009
+# generated test structure: space group 19 (P 21 21 21), Hall setting 115
+# hard candidate: metric gap 1.363e-02, closest atoms 2.446 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 115
+_raspa_point_group_number 6
+_space_group_IT_number 19
+_symmetry_Int_Tables_number 19
+_symmetry_space_group_name_H-M 'P 21 21 21'
+_symmetry_space_group_name_Hall ' P 2ac 2ab'
+_cell_length_a 13.82481132
+_cell_length_b 13.63643558
+_cell_length_c 13.43079678
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Fe1 Fe 0.99410322 0.26698862 0.04493751 1.0000
+Fe2 Fe 0.49410322 0.23301138 0.95506249 1.0000
+Fe3 Fe 0.00589678 0.76698862 0.45506249 1.0000
+Fe4 Fe 0.50589678 0.73301138 0.54493751 1.0000
+Pt5 Pt 0.39698023 0.48714098 0.97710873 1.0000
+Pt6 Pt 0.89698023 0.01285902 0.02289127 1.0000
+Pt7 Pt 0.60301977 0.98714098 0.52289127 1.0000
+Pt8 Pt 0.10301977 0.51285902 0.47710873 1.0000
+La9 La 0.96806599 0.35078511 0.20374924 1.0000
+La10 La 0.46806599 0.14921489 0.79625076 1.0000
+La11 La 0.03193401 0.85078511 0.29625076 1.0000
+La12 La 0.53193401 0.64921489 0.70374924 1.0000
+S13 S 0.50549831 0.92460119 0.03668292 1.0000
+S14 S 0.00549831 0.57539881 0.96331708 1.0000
+S15 S 0.49450169 0.42460119 0.46331708 1.0000
+S16 S 0.99450169 0.07539881 0.53668292 1.0000

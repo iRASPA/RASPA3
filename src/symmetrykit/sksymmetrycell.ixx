@@ -34,6 +34,9 @@ export class SKSymmetryCell
   static bool testSymmetry(double3 translationVector, SKRotationMatrix rotationMatrix,
                            std::vector<std::tuple<double3, std::size_t, double>> atoms, double3x3 unitCell,
                            bool allowPartialOccupancies, double precision);
+  static std::optional<double3> refinedTranslation(double3 translationVector, SKRotationMatrix rotationMatrix,
+                                                   const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+                                                   double3x3 unitCell, bool allowPartialOccupancies, double tolerance);
   static std::vector<double3> primitiveTranslationVectors(
       double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> reducedAtoms,
       std::vector<std::tuple<double3, std::size_t, double>> atoms, SKRotationMatrix rotationMatrix,

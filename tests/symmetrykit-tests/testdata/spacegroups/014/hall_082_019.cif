@@ -1,0 +1,39 @@
+data_hall_082_019
+# generated test structure: space group 14 (P 1 21/n 1), Hall setting 82
+# noisy candidate: metric gap 4.402e-05, closest atoms 2.536 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 82
+_raspa_point_group_number 5
+_space_group_IT_number 14
+_symmetry_Int_Tables_number 14
+_symmetry_space_group_name_H-M 'P 1 21/n 1'
+_symmetry_space_group_name_Hall '-P 2yn'
+_cell_length_a 9.25203492
+_cell_length_b 14.36669035
+_cell_length_c 12.70758226
+_cell_angle_alpha 89.96948975
+_cell_angle_beta 81.47574759
+_cell_angle_gamma 89.99603861
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Li1 Li 0.90998435 0.38156617 0.52824327 1.0000
+Li2 Li 0.40979416 0.11872613 0.02800864 1.0000
+Li3 Li 0.59083911 0.88165071 0.97226027 1.0000
+Li4 Li 0.08996908 0.61875800 0.47231894 1.0000
+Ti5 Ti 0.67273235 0.73253227 0.11687124 1.0000
+Ti6 Ti 0.17256050 0.76765529 0.61725025 1.0000
+Ti7 Ti 0.82709519 0.23265347 0.38303566 1.0000
+Ti8 Ti 0.32754749 0.26735580 0.88248562 1.0000
+Cd9 Cd 0.50377746 0.78168615 0.39049673 1.0000
+Cd10 Cd 0.00297704 0.71795941 0.89030749 1.0000
+Cd11 Cd 0.99641715 0.28167936 0.10961753 1.0000
+Cd12 Cd 0.49710148 0.21855376 0.60940774 1.0000
+Br13 Br 0.26349579 0.67029555 0.90780284 1.0000
+Br14 Br 0.76337577 0.82960692 0.40812307 1.0000
+Br15 Br 0.23658234 0.17038929 0.59197502 1.0000
+Br16 Br 0.73729552 0.32965958 0.09217983 1.0000

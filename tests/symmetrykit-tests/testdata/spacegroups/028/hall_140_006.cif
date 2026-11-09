@@ -1,0 +1,39 @@
+data_hall_140_006
+# generated test structure: space group 28 (P 2 c m), Hall setting 140
+# hard candidate: metric gap 1.518e-03, closest atoms 1.369 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 140
+_raspa_point_group_number 7
+_space_group_IT_number 28
+_symmetry_Int_Tables_number 28
+_symmetry_space_group_name_H-M 'P 2 c m'
+_symmetry_space_group_name_Hall ' P -2c 2'
+_cell_length_a 19.60350849
+_cell_length_b 19.94788149
+_cell_length_c 19.57375538
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ca1 Ca 0.65424717 0.70262660 0.98625868 1.0000
+Ca2 Ca 0.65424717 0.70262660 0.51374132 1.0000
+Ca3 Ca 0.65424717 0.29737340 0.48625868 1.0000
+Ca4 Ca 0.65424717 0.29737340 0.01374132 1.0000
+N5 N 0.53827741 0.79451403 0.54739046 1.0000
+N6 N 0.53827741 0.79451403 0.95260954 1.0000
+N7 N 0.53827741 0.20548597 0.04739046 1.0000
+N8 N 0.53827741 0.20548597 0.45260954 1.0000
+Cr9 Cr 0.74280122 0.04699439 0.96679788 1.0000
+Cr10 Cr 0.74280122 0.04699439 0.53320212 1.0000
+Cr11 Cr 0.74280122 0.95300561 0.46679788 1.0000
+Cr12 Cr 0.74280122 0.95300561 0.03320212 1.0000
+Cu13 Cu 0.95259308 0.92315037 0.78496900 1.0000
+Cu14 Cu 0.95259308 0.92315037 0.71503100 1.0000
+Cu15 Cu 0.95259308 0.07684963 0.28496900 1.0000
+Cu16 Cu 0.95259308 0.07684963 0.21503100 1.0000

@@ -1,0 +1,35 @@
+data_hall_037_006
+# generated test structure: space group 8 (C m 1 1), Hall setting 37
+# hard candidate: metric gap 4.971e-03, closest atoms 0.861 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 37
+_raspa_point_group_number 4
+_space_group_IT_number 8
+_symmetry_Int_Tables_number 8
+_symmetry_space_group_name_H-M 'C m 1 1'
+_symmetry_space_group_name_Hall ' C -2x'
+_cell_length_a 6.68061074
+_cell_length_b 7.17489771
+_cell_length_c 7.00957950
+_cell_angle_alpha 90.44741176
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Co1 Co 0.77474828 0.71973470 0.09547439 1.0000
+Co2 Co 0.27474828 0.21973470 0.09547439 1.0000
+Co3 Co 0.22525172 0.71973470 0.09547439 1.0000
+Co4 Co 0.72525172 0.21973470 0.09547439 1.0000
+Ti5 Ti 0.34013941 0.08939199 0.79761483 1.0000
+Ti6 Ti 0.84013941 0.58939199 0.79761483 1.0000
+Ti7 Ti 0.65986059 0.08939199 0.79761483 1.0000
+Ti8 Ti 0.15986059 0.58939199 0.79761483 1.0000
+Mn9 Mn 0.69075811 0.16763309 0.98934287 1.0000
+Mn10 Mn 0.19075811 0.66763309 0.98934287 1.0000
+Mn11 Mn 0.30924189 0.16763309 0.98934287 1.0000
+Mn12 Mn 0.80924189 0.66763309 0.98934287 1.0000

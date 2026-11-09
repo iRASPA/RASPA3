@@ -1,0 +1,39 @@
+data_hall_053_006
+# generated test structure: space group 9 (I c 1 1), Hall setting 53
+# hard candidate: metric gap 5.658e-03, closest atoms 2.267 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 53
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'I c 1 1'
+_symmetry_space_group_name_Hall ' I -2xc'
+_cell_length_a 23.95572837
+_cell_length_b 23.66840144
+_cell_length_c 23.80308127
+_cell_angle_alpha 91.87311374
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+W1 W 0.91433813 0.51063051 0.75696223 1.0000
+W2 W 0.41433813 0.01063051 0.25696223 1.0000
+W3 W 0.08566187 0.51063051 0.25696223 1.0000
+W4 W 0.58566187 0.01063051 0.75696223 1.0000
+Si5 Si 0.71217852 0.22443426 0.98171054 1.0000
+Si6 Si 0.21217852 0.72443426 0.48171054 1.0000
+Si7 Si 0.28782148 0.22443426 0.48171054 1.0000
+Si8 Si 0.78782148 0.72443426 0.98171054 1.0000
+Se9 Se 0.48197394 0.21301031 0.24246583 1.0000
+Se10 Se 0.98197394 0.71301031 0.74246583 1.0000
+Se11 Se 0.51802606 0.21301031 0.74246583 1.0000
+Se12 Se 0.01802606 0.71301031 0.24246583 1.0000
+Ti13 Ti 0.53434201 0.26142864 0.82455356 1.0000
+Ti14 Ti 0.03434201 0.76142864 0.32455356 1.0000
+Ti15 Ti 0.46565799 0.26142864 0.32455356 1.0000
+Ti16 Ti 0.96565799 0.76142864 0.82455356 1.0000

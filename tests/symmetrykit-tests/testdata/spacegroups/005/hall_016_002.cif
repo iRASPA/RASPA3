@@ -1,0 +1,39 @@
+data_hall_016_002
+# generated test structure: space group 5 (C 2 1 1), Hall setting 16
+# hard candidate: metric gap 2.169e-03, closest atoms 1.339 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 16
+_raspa_point_group_number 3
+_space_group_IT_number 5
+_symmetry_Int_Tables_number 5
+_symmetry_space_group_name_H-M 'C 2 1 1'
+_symmetry_space_group_name_Hall ' C 2x'
+_cell_length_a 7.40728545
+_cell_length_b 7.64241700
+_cell_length_c 7.65903018
+_cell_angle_alpha 91.70781737
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Na1 Na 0.70631962 0.95734886 0.78339059 1.0000
+Na2 Na 0.20631962 0.45734886 0.78339059 1.0000
+Na3 Na 0.70631962 0.04265114 0.21660941 1.0000
+Na4 Na 0.20631962 0.54265114 0.21660941 1.0000
+Ge5 Ge 0.13231029 0.31634765 0.85458034 1.0000
+Ge6 Ge 0.63231029 0.81634765 0.85458034 1.0000
+Ge7 Ge 0.13231029 0.68365235 0.14541966 1.0000
+Ge8 Ge 0.63231029 0.18365235 0.14541966 1.0000
+Se9 Se 0.47612221 0.62401223 0.90571059 1.0000
+Se10 Se 0.97612221 0.12401223 0.90571059 1.0000
+Se11 Se 0.47612221 0.37598777 0.09428941 1.0000
+Se12 Se 0.97612221 0.87598777 0.09428941 1.0000
+U13 U 0.22338866 0.83083717 0.84542265 1.0000
+U14 U 0.72338866 0.33083717 0.84542265 1.0000
+U15 U 0.22338866 0.16916283 0.15457735 1.0000
+U16 U 0.72338866 0.66916283 0.15457735 1.0000

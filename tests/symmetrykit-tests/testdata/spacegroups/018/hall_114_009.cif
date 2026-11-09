@@ -1,0 +1,39 @@
+data_hall_114_009
+# generated test structure: space group 18 (P 21 2 21), Hall setting 114
+# plain candidate: metric gap 1.185e-01, closest atoms 0.881 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 114
+_raspa_point_group_number 6
+_space_group_IT_number 18
+_symmetry_Int_Tables_number 18
+_symmetry_space_group_name_H-M 'P 21 2 21'
+_symmetry_space_group_name_Hall ' P 2ac 2ac'
+_cell_length_a 6.06712765
+_cell_length_b 17.29449007
+_cell_length_c 5.34845317
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Li1 Li 0.26094326 0.91179029 0.39296005 1.0000
+Li2 Li 0.76094326 0.08820971 0.10703995 1.0000
+Li3 Li 0.73905674 0.91179029 0.60703995 1.0000
+Li4 Li 0.23905674 0.08820971 0.89296005 1.0000
+Zn5 Zn 0.20937528 0.98268847 0.61091839 1.0000
+Zn6 Zn 0.70937528 0.01731153 0.88908161 1.0000
+Zn7 Zn 0.79062472 0.98268847 0.38908161 1.0000
+Zn8 Zn 0.29062472 0.01731153 0.11091839 1.0000
+W9 W 0.28282764 0.12452426 0.28164459 1.0000
+W10 W 0.78282764 0.87547574 0.21835541 1.0000
+W11 W 0.71717236 0.12452426 0.71835541 1.0000
+W12 W 0.21717236 0.87547574 0.78164459 1.0000
+Ti13 Ti 0.29839888 0.91377750 0.55196315 1.0000
+Ti14 Ti 0.79839888 0.08622250 0.94803685 1.0000
+Ti15 Ti 0.70160112 0.91377750 0.44803685 1.0000
+Ti16 Ti 0.20160112 0.08622250 0.05196315 1.0000

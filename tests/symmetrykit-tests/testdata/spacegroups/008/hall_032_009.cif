@@ -1,0 +1,39 @@
+data_hall_032_009
+# generated test structure: space group 8 (I 1 m 1), Hall setting 32
+# hard candidate: metric gap 8.580e-03, closest atoms 0.586 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 32
+_raspa_point_group_number 4
+_space_group_IT_number 8
+_symmetry_Int_Tables_number 8
+_symmetry_space_group_name_H-M 'I 1 m 1'
+_symmetry_space_group_name_Hall ' I -2y'
+_cell_length_a 12.79798040
+_cell_length_b 13.13159247
+_cell_length_c 12.31480905
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.77220905
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Na1 Na 0.21404388 0.77594751 0.69733474 1.0000
+Na2 Na 0.71404388 0.27594751 0.19733474 1.0000
+Na3 Na 0.21404388 0.22405249 0.69733474 1.0000
+Na4 Na 0.71404388 0.72405249 0.19733474 1.0000
+Ge5 Ge 0.96627322 0.20609212 0.28951661 1.0000
+Ge6 Ge 0.46627322 0.70609212 0.78951661 1.0000
+Ge7 Ge 0.96627322 0.79390788 0.28951661 1.0000
+Ge8 Ge 0.46627322 0.29390788 0.78951661 1.0000
+Cl9 Cl 0.03474850 0.47770139 0.78283211 1.0000
+Cl10 Cl 0.53474850 0.97770139 0.28283211 1.0000
+Cl11 Cl 0.03474850 0.52229861 0.78283211 1.0000
+Cl12 Cl 0.53474850 0.02229861 0.28283211 1.0000
+Ti13 Ti 0.23127992 0.67916322 0.69095005 1.0000
+Ti14 Ti 0.73127992 0.17916322 0.19095005 1.0000
+Ti15 Ti 0.23127992 0.32083678 0.69095005 1.0000
+Ti16 Ti 0.73127992 0.82083678 0.19095005 1.0000

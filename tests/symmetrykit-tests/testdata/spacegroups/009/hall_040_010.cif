@@ -1,0 +1,39 @@
+data_hall_040_010
+# generated test structure: space group 9 (A 1 n 1), Hall setting 40
+# noisy candidate: metric gap 4.595e-05, closest atoms 1.780 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 40
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'A 1 n 1'
+_symmetry_space_group_name_Hall ' A -2yab'
+_cell_length_a 14.41411296
+_cell_length_b 5.91467320
+_cell_length_c 7.25284290
+_cell_angle_alpha 90.00413548
+_cell_angle_beta 67.41733416
+_cell_angle_gamma 90.01302970
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ge1 Ge 0.05489291 0.11629533 0.48223765 1.0000
+Ge2 Ge 0.05485899 0.61696015 0.98195020 1.0000
+Ge3 Ge 0.55456248 0.88374679 0.98276897 1.0000
+Ge4 Ge 0.55503374 0.38295538 0.48266592 1.0000
+Cu5 Cu 0.10932704 0.13644535 0.89266834 1.0000
+Cu6 Cu 0.10949223 0.63681224 0.39299535 1.0000
+Cu7 Cu 0.60937986 0.86416623 0.39331344 1.0000
+Cu8 Cu 0.60949816 0.36345404 0.89247877 1.0000
+Li9 Li 0.58987618 0.28370114 0.14252167 1.0000
+Li10 Li 0.59038882 0.78390437 0.64171409 1.0000
+Li11 Li 0.08975296 0.71749196 0.64228537 1.0000
+Li12 Li 0.09047931 0.21605655 0.14148947 1.0000
+Mn13 Mn 0.82660175 0.47036004 0.04380278 1.0000
+Mn14 Mn 0.82665794 0.96979555 0.54412207 1.0000
+Mn15 Mn 0.32646707 0.53014274 0.54426792 1.0000
+Mn16 Mn 0.32689256 0.02884729 0.04345400 1.0000

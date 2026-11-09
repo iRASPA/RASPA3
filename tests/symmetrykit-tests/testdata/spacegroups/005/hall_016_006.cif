@@ -1,0 +1,35 @@
+data_hall_016_006
+# generated test structure: space group 5 (C 2 1 1), Hall setting 16
+# hard candidate: metric gap 7.751e-03, closest atoms 1.122 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 16
+_raspa_point_group_number 3
+_space_group_IT_number 5
+_symmetry_Int_Tables_number 5
+_symmetry_space_group_name_H-M 'C 2 1 1'
+_symmetry_space_group_name_Hall ' C 2x'
+_cell_length_a 6.64996487
+_cell_length_b 7.01094383
+_cell_length_c 6.59841943
+_cell_angle_alpha 88.07649672
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ag1 Ag 0.34116232 0.51092338 0.91537271 1.0000
+Ag2 Ag 0.84116232 0.01092338 0.91537271 1.0000
+Ag3 Ag 0.34116232 0.48907662 0.08462729 1.0000
+Ag4 Ag 0.84116232 0.98907662 0.08462729 1.0000
+N5 N 0.98686398 0.76151116 0.70355578 1.0000
+N6 N 0.48686398 0.26151116 0.70355578 1.0000
+N7 N 0.98686398 0.23848884 0.29644422 1.0000
+N8 N 0.48686398 0.73848884 0.29644422 1.0000
+Cd9 Cd 0.63487199 0.96801919 0.67534149 1.0000
+Cd10 Cd 0.13487199 0.46801919 0.67534149 1.0000
+Cd11 Cd 0.63487199 0.03198081 0.32465851 1.0000
+Cd12 Cd 0.13487199 0.53198081 0.32465851 1.0000

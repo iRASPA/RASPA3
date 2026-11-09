@@ -1,0 +1,39 @@
+data_hall_050_005
+# generated test structure: space group 9 (I 1 1 a), Hall setting 50
+# plain candidate: metric gap 6.056e-03, closest atoms 1.175 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 50
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'I 1 1 a'
+_symmetry_space_group_name_Hall ' I -2a'
+_cell_length_a 7.46059769
+_cell_length_b 24.85923036
+_cell_length_c 19.85035896
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 60.54508399
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+K1 K 0.48542400 0.30562814 0.81915306 1.0000
+K2 K 0.98542400 0.80562814 0.31915306 1.0000
+K3 K 0.48542400 0.80562814 0.68084694 1.0000
+K4 K 0.98542400 0.30562814 0.18084694 1.0000
+F5 F 0.57423280 0.66391779 0.32268592 1.0000
+F6 F 0.07423280 0.16391779 0.82268592 1.0000
+F7 F 0.57423280 0.16391779 0.17731408 1.0000
+F8 F 0.07423280 0.66391779 0.67731408 1.0000
+Cl9 Cl 0.72849001 0.77396164 0.37917215 1.0000
+Cl10 Cl 0.22849001 0.27396164 0.87917215 1.0000
+Cl11 Cl 0.72849001 0.27396164 0.12082785 1.0000
+Cl12 Cl 0.22849001 0.77396164 0.62082785 1.0000
+Al13 Al 0.88185994 0.24090779 0.14936752 1.0000
+Al14 Al 0.38185994 0.74090779 0.64936752 1.0000
+Al15 Al 0.88185994 0.74090779 0.35063248 1.0000
+Al16 Al 0.38185994 0.24090779 0.85063248 1.0000

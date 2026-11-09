@@ -1,0 +1,39 @@
+data_hall_010_000
+# generated test structure: space group 5 (A 1 2 1), Hall setting 10
+# hard candidate: metric gap 3.741e-03, closest atoms 0.547 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 10
+_raspa_point_group_number 3
+_space_group_IT_number 5
+_symmetry_Int_Tables_number 5
+_symmetry_space_group_name_H-M 'A 1 2 1'
+_symmetry_space_group_name_Hall ' A 2y'
+_cell_length_a 5.57941506
+_cell_length_b 5.19049327
+_cell_length_c 5.47554911
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.33670606
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+B1 B 0.79395654 0.48869376 0.49252459 1.0000
+B2 B 0.79395654 0.98869376 0.99252459 1.0000
+B3 B 0.20604346 0.48869376 0.50747541 1.0000
+B4 B 0.20604346 0.98869376 0.00747541 1.0000
+Cs5 Cs 0.45562846 0.16186639 0.96569123 1.0000
+Cs6 Cs 0.45562846 0.66186639 0.46569123 1.0000
+Cs7 Cs 0.54437154 0.16186639 0.03430877 1.0000
+Cs8 Cs 0.54437154 0.66186639 0.53430877 1.0000
+Si9 Si 0.01328053 0.35762488 0.54819161 1.0000
+Si10 Si 0.01328053 0.85762488 0.04819161 1.0000
+Si11 Si 0.98671947 0.35762488 0.45180839 1.0000
+Si12 Si 0.98671947 0.85762488 0.95180839 1.0000
+Se13 Se 0.95700103 0.31764135 0.71550418 1.0000
+Se14 Se 0.95700103 0.81764135 0.21550418 1.0000
+Se15 Se 0.04299897 0.31764135 0.28449582 1.0000
+Se16 Se 0.04299897 0.81764135 0.78449582 1.0000

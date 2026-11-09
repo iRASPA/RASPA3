@@ -1,0 +1,39 @@
+data_hall_084_005
+# generated test structure: space group 14 (P 1 1 21/a), Hall setting 84
+# plain candidate: metric gap 4.930e-02, closest atoms 1.166 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 84
+_raspa_point_group_number 5
+_space_group_IT_number 14
+_symmetry_Int_Tables_number 14
+_symmetry_space_group_name_H-M 'P 1 1 21/a'
+_symmetry_space_group_name_Hall '-P 2ac'
+_cell_length_a 13.22299776
+_cell_length_b 12.57114287
+_cell_length_c 6.08459991
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 67.97602258
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cs1 Cs 0.09942009 0.98256171 0.64082447 1.0000
+Cs2 Cs 0.59942009 0.98256171 0.85917553 1.0000
+Cs3 Cs 0.40057991 0.01743829 0.14082447 1.0000
+Cs4 Cs 0.90057991 0.01743829 0.35917553 1.0000
+Ni5 Ni 0.08545635 0.34138197 0.06551426 1.0000
+Ni6 Ni 0.58545635 0.34138197 0.43448574 1.0000
+Ni7 Ni 0.41454365 0.65861803 0.56551426 1.0000
+Ni8 Ni 0.91454365 0.65861803 0.93448574 1.0000
+U9 U 0.05062944 0.51616615 0.83613729 1.0000
+U10 U 0.55062944 0.51616615 0.66386271 1.0000
+U11 U 0.44937056 0.48383385 0.33613729 1.0000
+U12 U 0.94937056 0.48383385 0.16386271 1.0000
+Al13 Al 0.89758550 0.58240516 0.85571303 1.0000
+Al14 Al 0.39758550 0.58240516 0.64428697 1.0000
+Al15 Al 0.60241450 0.41759484 0.35571303 1.0000
+Al16 Al 0.10241450 0.41759484 0.14428697 1.0000

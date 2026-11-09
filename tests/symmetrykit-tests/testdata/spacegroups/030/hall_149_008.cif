@@ -1,0 +1,39 @@
+data_hall_149_008
+# generated test structure: space group 30 (P n c 2), Hall setting 149
+# hard candidate: metric gap 1.903e-02, closest atoms 1.583 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 149
+_raspa_point_group_number 7
+_space_group_IT_number 30
+_symmetry_Int_Tables_number 30
+_symmetry_space_group_name_H-M 'P n c 2'
+_symmetry_space_group_name_Hall ' P 2 -2bc'
+_cell_length_a 11.76794501
+_cell_length_b 12.02002919
+_cell_length_c 12.25319367
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Al1 Al 0.21648587 0.84519681 0.95881887 1.0000
+Al2 Al 0.21648587 0.65480319 0.45881887 1.0000
+Al3 Al 0.78351413 0.34519681 0.45881887 1.0000
+Al4 Al 0.78351413 0.15480319 0.95881887 1.0000
+Au5 Au 0.01059378 0.23602291 0.30501362 1.0000
+Au6 Au 0.01059378 0.26397709 0.80501362 1.0000
+Au7 Au 0.98940622 0.73602291 0.80501362 1.0000
+Au8 Au 0.98940622 0.76397709 0.30501362 1.0000
+N9 N 0.76674814 0.95333303 0.46580786 1.0000
+N10 N 0.76674814 0.54666697 0.96580786 1.0000
+N11 N 0.23325186 0.45333303 0.96580786 1.0000
+N12 N 0.23325186 0.04666697 0.46580786 1.0000
+S13 S 0.02133260 0.35994000 0.26259120 1.0000
+S14 S 0.02133260 0.14006000 0.76259120 1.0000
+S15 S 0.97866740 0.85994000 0.76259120 1.0000
+S16 S 0.97866740 0.64006000 0.26259120 1.0000

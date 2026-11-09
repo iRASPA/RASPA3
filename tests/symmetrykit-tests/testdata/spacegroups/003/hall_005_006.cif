@@ -1,0 +1,31 @@
+data_hall_005_006
+# generated test structure: space group 3 (P 2 1 1), Hall setting 5
+# hard candidate: metric gap 1.058e-02, closest atoms 0.962 Angstrom, 8 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 5
+_raspa_point_group_number 3
+_space_group_IT_number 3
+_symmetry_Int_Tables_number 3
+_symmetry_space_group_name_H-M 'P 2 1 1'
+_symmetry_space_group_name_Hall ' P 2x'
+_cell_length_a 6.06005842
+_cell_length_b 6.22836850
+_cell_length_c 6.40595967
+_cell_angle_alpha 89.04769851
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Zr1 Zr 0.97156072 0.21220849 0.64603185 1.0000
+Zr2 Zr 0.97156072 0.78779151 0.35396815 1.0000
+Cr3 Cr 0.33899867 0.48197023 0.33881014 1.0000
+Cr4 Cr 0.33899867 0.51802977 0.66118986 1.0000
+Ge5 Ge 0.34880146 0.78653830 0.36704867 1.0000
+Ge6 Ge 0.34880146 0.21346170 0.63295133 1.0000
+Fe7 Fe 0.02761460 0.64328016 0.35937445 1.0000
+Fe8 Fe 0.02761460 0.35671984 0.64062555 1.0000

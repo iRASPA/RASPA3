@@ -1,0 +1,39 @@
+data_hall_145_010
+# generated test structure: space group 29 (P 21 a b), Hall setting 145
+# noisy candidate: metric gap 1.750e-06, closest atoms 2.330 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 145
+_raspa_point_group_number 7
+_space_group_IT_number 29
+_symmetry_Int_Tables_number 29
+_symmetry_space_group_name_H-M 'P 21 a b'
+_symmetry_space_group_name_Hall ' P -2b 2a'
+_cell_length_a 5.36163961
+_cell_length_b 15.91741877
+_cell_length_c 14.16739701
+_cell_angle_alpha 89.97017037
+_cell_angle_beta 90.00336288
+_cell_angle_gamma 90.00015747
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Br1 Br 0.72698835 0.55793497 0.88333517 1.0000
+Br2 Br 0.72591861 0.05851466 0.11648973 1.0000
+Br3 Br 0.22545958 0.94159400 0.88383084 1.0000
+Br4 Br 0.22714870 0.44148249 0.11668705 1.0000
+Nb5 Nb 0.83946944 0.00389827 0.91222130 1.0000
+Nb6 Nb 0.83881784 0.50417042 0.08775802 1.0000
+Nb7 Nb 0.33990245 0.49611315 0.91191267 1.0000
+Nb8 Nb 0.33840218 0.99605359 0.08779027 1.0000
+Li9 Li 0.21243635 0.16032609 0.36117224 1.0000
+Li10 Li 0.21286828 0.66029683 0.63943832 1.0000
+Li11 Li 0.71343084 0.34023058 0.36054123 1.0000
+Li12 Li 0.71315408 0.84012028 0.63906499 1.0000
+Al13 Al 0.93790103 0.53233954 0.70856711 1.0000
+Al14 Al 0.93710539 0.03267340 0.29110790 1.0000
+Al15 Al 0.43640136 0.96728993 0.70876413 1.0000
+Al16 Al 0.43732533 0.46772585 0.29086599 1.0000

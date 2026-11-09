@@ -1,0 +1,35 @@
+data_hall_148_014
+# generated test structure: space group 29 (P b 21 a), Hall setting 148
+# noisy candidate: metric gap 5.509e-06, closest atoms 2.018 Angstrom, 12 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 148
+_raspa_point_group_number 7
+_space_group_IT_number 29
+_symmetry_Int_Tables_number 29
+_symmetry_space_group_name_H-M 'P b 21 a'
+_symmetry_space_group_name_Hall ' P -2a -2ab'
+_cell_length_a 22.97182360
+_cell_length_b 8.48128947
+_cell_length_c 10.07132021
+_cell_angle_alpha 89.99185521
+_cell_angle_beta 89.99950419
+_cell_angle_gamma 90.00533982
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Na1 Na 0.92014591 0.65245088 0.11417734 1.0000
+Na2 Na 0.42040561 0.65202275 0.88583490 1.0000
+Na3 Na 0.57950601 0.15190049 0.11414885 1.0000
+Na4 Na 0.07962698 0.15158902 0.88587360 1.0000
+Cs5 Cs 0.79358209 0.97702195 0.55923597 1.0000
+Cs6 Cs 0.29360163 0.97691976 0.44074022 1.0000
+Cs7 Cs 0.70644691 0.47659205 0.55910349 1.0000
+Cs8 Cs 0.20644018 0.47738296 0.44092331 1.0000
+Zr9 Zr 0.23543210 0.68733490 0.37360652 1.0000
+Zr10 Zr 0.73534341 0.68769705 0.62629080 1.0000
+Zr11 Zr 0.26471443 0.18811879 0.37401265 1.0000
+Zr12 Zr 0.76487173 0.18712903 0.62666384 1.0000

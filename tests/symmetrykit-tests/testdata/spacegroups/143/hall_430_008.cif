@@ -1,0 +1,35 @@
+data_hall_430_008
+# generated test structure: space group 143 (P 3), Hall setting 430
+# plain candidate: metric gap 5.569e-02, closest atoms 1.961 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 430
+_raspa_point_group_number 16
+_space_group_IT_number 143
+_symmetry_Int_Tables_number 143
+_symmetry_space_group_name_H-M 'P 3'
+_symmetry_space_group_name_Hall ' P 3'
+_cell_length_a 13.42421928
+_cell_length_b 13.42421928
+_cell_length_c 14.21595415
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 120.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Fe1 Fe 0.21571399 0.16620977 0.31089537 1.0000
+Fe2 Fe 0.95049577 0.78428601 0.31089537 1.0000
+Fe3 Fe 0.83379023 0.04950423 0.31089537 1.0000
+N4 N 0.47335185 0.75213537 0.87203615 1.0000
+N5 N 0.27878352 0.52664815 0.87203615 1.0000
+N6 N 0.24786463 0.72121648 0.87203615 1.0000
+Zn7 Zn 0.10616943 0.69772946 0.81199453 1.0000
+Zn8 Zn 0.59156003 0.89383057 0.81199453 1.0000
+Zn9 Zn 0.30227054 0.40843997 0.81199453 1.0000
+Ag10 Ag 0.34156581 0.83014159 0.24058528 1.0000
+Ag11 Ag 0.48857578 0.65843419 0.24058528 1.0000
+Ag12 Ag 0.16985841 0.51142422 0.24058528 1.0000

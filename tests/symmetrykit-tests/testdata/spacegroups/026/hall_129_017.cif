@@ -1,0 +1,41 @@
+data_hall_129_017
+# generated test structure: space group 26 (P c m 21), Hall setting 129
+# noisy candidate: metric gap 8.863e-06, closest atoms 1.442 Angstrom, 18 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 129
+_raspa_point_group_number 7
+_space_group_IT_number 26
+_symmetry_Int_Tables_number 26
+_symmetry_space_group_name_H-M 'P c m 21'
+_symmetry_space_group_name_Hall ' P 2c -2c'
+_cell_length_a 13.79310381
+_cell_length_b 12.71717459
+_cell_length_c 6.36817807
+_cell_angle_alpha 89.98966770
+_cell_angle_beta 90.00079768
+_cell_angle_gamma 90.01608077
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cu1 Cu 0.80210340 0.99987683 0.61592131 1.0000
+Cu2 Cu 0.19783379 0.99971589 0.11487261 1.0000
+Bi3 Bi 0.76564695 0.39381330 0.36001149 1.0000
+Bi4 Bi 0.76538111 0.60613407 0.36000813 1.0000
+Bi5 Bi 0.23430581 0.39382883 0.85998360 1.0000
+Bi6 Bi 0.23460223 0.60573501 0.86122847 1.0000
+Cs7 Cs 0.68536638 0.94319023 0.07819863 1.0000
+Cs8 Cs 0.68531591 0.05663105 0.07718950 1.0000
+Cs9 Cs 0.31483023 0.94317754 0.57711233 1.0000
+Cs10 Cs 0.31519734 0.05660261 0.57831340 1.0000
+H11 H 0.75345382 0.63563075 0.93281569 1.0000
+H12 H 0.75344158 0.36416313 0.93229245 1.0000
+H13 H 0.24656482 0.63581400 0.43131957 1.0000
+H14 H 0.24609864 0.36424738 0.43238889 1.0000
+K15 K 0.81360212 0.76722431 0.26642353 1.0000
+K16 K 0.81376678 0.23277607 0.26644280 1.0000
+K17 K 0.18629562 0.76663841 0.76673894 1.0000
+K18 K 0.18612691 0.23279866 0.76676770 1.0000

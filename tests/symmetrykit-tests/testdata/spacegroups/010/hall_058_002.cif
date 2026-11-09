@@ -1,0 +1,39 @@
+data_hall_058_002
+# generated test structure: space group 10 (P 1 1 2/m), Hall setting 58
+# hard candidate: metric gap 6.583e-03, closest atoms 0.568 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 58
+_raspa_point_group_number 5
+_space_group_IT_number 10
+_symmetry_Int_Tables_number 10
+_symmetry_space_group_name_H-M 'P 1 1 2/m'
+_symmetry_space_group_name_Hall '-P 2'
+_cell_length_a 6.40418454
+_cell_length_b 6.56972514
+_cell_length_c 6.17778601
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 89.40756295
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ge1 Ge 0.73740518 0.73546498 0.95401512 1.0000
+Ge2 Ge 0.73740518 0.73546498 0.04598488 1.0000
+Ge3 Ge 0.26259482 0.26453502 0.95401512 1.0000
+Ge4 Ge 0.26259482 0.26453502 0.04598488 1.0000
+Cr5 Cr 0.71508003 0.71574297 0.37810085 1.0000
+Cr6 Cr 0.71508003 0.71574297 0.62189915 1.0000
+Cr7 Cr 0.28491997 0.28425703 0.37810085 1.0000
+Cr8 Cr 0.28491997 0.28425703 0.62189915 1.0000
+Mn9 Mn 0.37860399 0.74095164 0.63907058 1.0000
+Mn10 Mn 0.37860399 0.74095164 0.36092942 1.0000
+Mn11 Mn 0.62139601 0.25904836 0.63907058 1.0000
+Mn12 Mn 0.62139601 0.25904836 0.36092942 1.0000
+Mg13 Mg 0.37471518 0.45297595 0.73507571 1.0000
+Mg14 Mg 0.37471518 0.45297595 0.26492429 1.0000
+Mg15 Mg 0.62528482 0.54702405 0.73507571 1.0000
+Mg16 Mg 0.62528482 0.54702405 0.26492429 1.0000

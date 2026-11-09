@@ -1,0 +1,39 @@
+data_hall_045_013
+# generated test structure: space group 9 (A 1 1 a), Hall setting 45
+# noisy candidate: metric gap 6.458e-05, closest atoms 1.873 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 45
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'A 1 1 a'
+_symmetry_space_group_name_Hall ' A -2a'
+_cell_length_a 8.32587300
+_cell_length_b 21.03088213
+_cell_length_c 15.77916327
+_cell_angle_alpha 90.00581239
+_cell_angle_beta 89.98837314
+_cell_angle_gamma 63.88723354
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+H1 H 0.30801524 0.85823639 0.02135953 1.0000
+H2 H 0.30755537 0.35802189 0.52145250 1.0000
+H3 H 0.80710319 0.85832974 0.97867472 1.0000
+H4 H 0.80741465 0.35830308 0.47839775 1.0000
+Cu5 Cu 0.12813179 0.30401477 0.00359007 1.0000
+Cu6 Cu 0.12815828 0.80416787 0.50315909 1.0000
+Cu7 Cu 0.62724181 0.30421393 0.99694675 1.0000
+Cu8 Cu 0.62788229 0.80427175 0.49646530 1.0000
+Sn9 Sn 0.64348056 0.42811359 0.40741608 1.0000
+Sn10 Sn 0.64342113 0.92809650 0.90736947 1.0000
+Sn11 Sn 0.14214410 0.42837955 0.59244668 1.0000
+Sn12 Sn 0.14242140 0.92829780 0.09253295 1.0000
+F13 F 0.22463786 0.28416489 0.73254878 1.0000
+F14 F 0.22462741 0.78423324 0.23247866 1.0000
+F15 F 0.72508242 0.28382794 0.26744916 1.0000
+F16 F 0.72456219 0.78407516 0.76786303 1.0000

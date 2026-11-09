@@ -1,0 +1,39 @@
+data_hall_074_007
+# generated test structure: space group 13 (P 1 2/a 1), Hall setting 74
+# hard candidate: metric gap 1.024e-03, closest atoms 2.554 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 74
+_raspa_point_group_number 5
+_space_group_IT_number 13
+_symmetry_Int_Tables_number 13
+_symmetry_space_group_name_H-M 'P 1 2/a 1'
+_symmetry_space_group_name_Hall '-P 2ya'
+_cell_length_a 16.47233396
+_cell_length_b 16.73503683
+_cell_length_c 16.71790673
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 89.82458292
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ca1 Ca 0.90282416 0.62975613 0.45119311 1.0000
+Ca2 Ca 0.40282416 0.37024387 0.45119311 1.0000
+Ca3 Ca 0.59717584 0.62975613 0.54880689 1.0000
+Ca4 Ca 0.09717584 0.37024387 0.54880689 1.0000
+Ga5 Ga 0.66073178 0.03023504 0.91612478 1.0000
+Ga6 Ga 0.16073178 0.96976496 0.91612478 1.0000
+Ga7 Ga 0.83926822 0.03023504 0.08387522 1.0000
+Ga8 Ga 0.33926822 0.96976496 0.08387522 1.0000
+B9 B 0.62625704 0.64452713 0.69801778 1.0000
+B10 B 0.12625704 0.35547287 0.69801778 1.0000
+B11 B 0.87374296 0.64452713 0.30198222 1.0000
+B12 B 0.37374296 0.35547287 0.30198222 1.0000
+Li13 Li 0.67659462 0.82728985 0.30937297 1.0000
+Li14 Li 0.17659462 0.17271015 0.30937297 1.0000
+Li15 Li 0.82340538 0.82728985 0.69062703 1.0000
+Li16 Li 0.32340538 0.17271015 0.69062703 1.0000

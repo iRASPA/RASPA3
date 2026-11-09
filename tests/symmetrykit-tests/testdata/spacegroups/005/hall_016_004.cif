@@ -1,0 +1,39 @@
+data_hall_016_004
+# generated test structure: space group 5 (C 2 1 1), Hall setting 16
+# hard candidate: metric gap 7.944e-03, closest atoms 0.613 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 16
+_raspa_point_group_number 3
+_space_group_IT_number 5
+_symmetry_Int_Tables_number 5
+_symmetry_space_group_name_H-M 'C 2 1 1'
+_symmetry_space_group_name_Hall ' C 2x'
+_cell_length_a 16.88478960
+_cell_length_b 16.73125978
+_cell_length_c 17.02000142
+_cell_angle_alpha 90.73147651
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ge1 Ge 0.03685081 0.79093710 0.65092672 1.0000
+Ge2 Ge 0.53685081 0.29093710 0.65092672 1.0000
+Ge3 Ge 0.03685081 0.20906290 0.34907328 1.0000
+Ge4 Ge 0.53685081 0.70906290 0.34907328 1.0000
+In5 In 0.21362017 0.48377125 0.49144449 1.0000
+In6 In 0.71362017 0.98377125 0.49144449 1.0000
+In7 In 0.21362017 0.51622875 0.50855551 1.0000
+In8 In 0.71362017 0.01622875 0.50855551 1.0000
+Cl9 Cl 0.31825512 0.03459210 0.29794481 1.0000
+Cl10 Cl 0.81825512 0.53459210 0.29794481 1.0000
+Cl11 Cl 0.31825512 0.96540790 0.70205519 1.0000
+Cl12 Cl 0.81825512 0.46540790 0.70205519 1.0000
+B13 B 0.10050347 0.66091894 0.00719789 1.0000
+B14 B 0.60050347 0.16091894 0.00719789 1.0000
+B15 B 0.10050347 0.33908106 0.99280211 1.0000
+B16 B 0.60050347 0.83908106 0.99280211 1.0000

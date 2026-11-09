@@ -1,0 +1,35 @@
+data_hall_430_003
+# generated test structure: space group 143 (P 3), Hall setting 430
+# plain candidate: metric gap 2.236e-03, closest atoms 2.768 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 430
+_raspa_point_group_number 16
+_space_group_IT_number 143
+_symmetry_Int_Tables_number 143
+_symmetry_space_group_name_H-M 'P 3'
+_symmetry_space_group_name_Hall ' P 3'
+_cell_length_a 21.46217732
+_cell_length_b 21.46217732
+_cell_length_c 21.41417986
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 120.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ba1 Ba 0.06480860 0.16434741 0.57428011 1.0000
+Ba2 Ba 0.09953881 0.93519140 0.57428011 1.0000
+Ba3 Ba 0.83565259 0.90046119 0.57428011 1.0000
+Ge4 Ge 0.39459221 0.51627559 0.04115874 1.0000
+Ge5 Ge 0.12168338 0.60540779 0.04115874 1.0000
+Ge6 Ge 0.48372441 0.87831662 0.04115874 1.0000
+Sb7 Sb 0.03435323 0.55792655 0.24011259 1.0000
+Sb8 Sb 0.52357332 0.96564677 0.24011259 1.0000
+Sb9 Sb 0.44207345 0.47642668 0.24011259 1.0000
+B10 B 0.63105818 0.09649648 0.28522942 1.0000
+B11 B 0.46543830 0.36894182 0.28522942 1.0000
+B12 B 0.90350352 0.53456170 0.28522942 1.0000

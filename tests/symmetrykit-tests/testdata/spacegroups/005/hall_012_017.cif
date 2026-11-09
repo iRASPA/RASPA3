@@ -1,0 +1,41 @@
+data_hall_012_017
+# generated test structure: space group 5 (A 1 1 2), Hall setting 12
+# noisy candidate: metric gap 1.437e-05, closest atoms 1.939 Angstrom, 18 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 12
+_raspa_point_group_number 3
+_space_group_IT_number 5
+_symmetry_Int_Tables_number 5
+_symmetry_space_group_name_H-M 'A 1 1 2'
+_symmetry_space_group_name_Hall ' A 2'
+_cell_length_a 22.19016628
+_cell_length_b 10.26788505
+_cell_length_c 6.42815516
+_cell_angle_alpha 90.01027145
+_cell_angle_beta 89.99870628
+_cell_angle_gamma 65.53104086
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Li1 Li 0.99998355 0.00001521 0.68048852 1.0000
+Li2 Li 0.00007291 0.50042915 0.17939142 1.0000
+Se3 Se 0.71492898 0.05633589 0.69732668 1.0000
+Se4 Se 0.71522036 0.55547885 0.19686021 1.0000
+Se5 Se 0.28497335 0.94373823 0.69679986 1.0000
+Se6 Se 0.28454373 0.44466465 0.19775001 1.0000
+U7 U 0.03623526 0.67629181 0.90857839 1.0000
+U8 U 0.03629570 0.17554012 0.40727964 1.0000
+U9 U 0.96387517 0.32382832 0.90763751 1.0000
+U10 U 0.96378845 0.82394824 0.40753399 1.0000
+Fe11 Fe 0.49018844 0.91626700 0.14033008 1.0000
+Fe12 Fe 0.49021452 0.41600162 0.63920298 1.0000
+Fe13 Fe 0.50999331 0.08326885 0.14019251 1.0000
+Fe14 Fe 0.50981302 0.58343068 0.63944518 1.0000
+Ni15 Ni 0.90064043 0.56597899 0.96001671 1.0000
+Ni16 Ni 0.90115532 0.06545428 0.46039594 1.0000
+Ni17 Ni 0.09894613 0.43400776 0.96063092 1.0000
+Ni18 Ni 0.09913616 0.93444108 0.45941394 1.0000

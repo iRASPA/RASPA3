@@ -1,0 +1,39 @@
+data_hall_146_000
+# generated test structure: space group 29 (P 21 c a), Hall setting 146
+# hard candidate: metric gap 2.502e-03, closest atoms 2.156 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 146
+_raspa_point_group_number 7
+_space_group_IT_number 29
+_symmetry_Int_Tables_number 29
+_symmetry_space_group_name_H-M 'P 21 c a'
+_symmetry_space_group_name_Hall ' P -2ac 2a'
+_cell_length_a 13.27946675
+_cell_length_b 13.31276980
+_cell_length_c 12.90355825
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ti1 Ti 0.98782113 0.29346135 0.32205930 1.0000
+Ti2 Ti 0.48782113 0.29346135 0.17794070 1.0000
+Ti3 Ti 0.98782113 0.70653865 0.82205930 1.0000
+Ti4 Ti 0.48782113 0.70653865 0.67794070 1.0000
+Cu5 Cu 0.23889391 0.50939394 0.91482389 1.0000
+Cu6 Cu 0.73889391 0.50939394 0.58517611 1.0000
+Cu7 Cu 0.23889391 0.49060606 0.41482389 1.0000
+Cu8 Cu 0.73889391 0.49060606 0.08517611 1.0000
+As9 As 0.86406303 0.20106946 0.37324981 1.0000
+As10 As 0.36406303 0.20106946 0.12675019 1.0000
+As11 As 0.86406303 0.79893054 0.87324981 1.0000
+As12 As 0.36406303 0.79893054 0.62675019 1.0000
+K13 K 0.48659932 0.73640927 0.22738174 1.0000
+K14 K 0.98659932 0.73640927 0.27261826 1.0000
+K15 K 0.48659932 0.26359073 0.72738174 1.0000
+K16 K 0.98659932 0.26359073 0.77261826 1.0000

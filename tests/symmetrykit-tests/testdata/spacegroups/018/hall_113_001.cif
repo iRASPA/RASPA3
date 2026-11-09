@@ -1,0 +1,39 @@
+data_hall_113_001
+# generated test structure: space group 18 (P 2 21 21), Hall setting 113
+# hard candidate: metric gap 7.940e-03, closest atoms 0.617 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 113
+_raspa_point_group_number 6
+_space_group_IT_number 18
+_symmetry_Int_Tables_number 18
+_symmetry_space_group_name_H-M 'P 2 21 21'
+_symmetry_space_group_name_Hall ' P 2bc 2'
+_cell_length_a 8.51118288
+_cell_length_b 8.57930145
+_cell_length_c 8.80621709
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ge1 Ge 0.68686021 0.97106318 0.53355725 1.0000
+Ge2 Ge 0.68686021 0.02893682 0.46644275 1.0000
+Ge3 Ge 0.31313979 0.47106318 0.96644275 1.0000
+Ge4 Ge 0.31313979 0.52893682 0.03355725 1.0000
+Ti5 Ti 0.70262987 0.36056867 0.20227902 1.0000
+Ti6 Ti 0.70262987 0.63943133 0.79772098 1.0000
+Ti7 Ti 0.29737013 0.86056867 0.29772098 1.0000
+Ti8 Ti 0.29737013 0.13943133 0.70227902 1.0000
+S9 S 0.65752448 0.03002478 0.01924698 1.0000
+S10 S 0.65752448 0.96997522 0.98075302 1.0000
+S11 S 0.34247552 0.53002478 0.48075302 1.0000
+S12 S 0.34247552 0.46997522 0.51924698 1.0000
+Zn13 Zn 0.03924407 0.00536638 0.61927433 1.0000
+Zn14 Zn 0.03924407 0.99463362 0.38072567 1.0000
+Zn15 Zn 0.96075593 0.50536638 0.88072567 1.0000
+Zn16 Zn 0.96075593 0.49463362 0.11927433 1.0000

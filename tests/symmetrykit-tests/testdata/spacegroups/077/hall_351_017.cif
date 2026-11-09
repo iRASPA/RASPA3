@@ -1,0 +1,39 @@
+data_hall_351_017
+# generated test structure: space group 77 (P 42), Hall setting 351
+# noisy candidate: metric gap 1.104e-08, closest atoms 0.951 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 351
+_raspa_point_group_number 9
+_space_group_IT_number 77
+_symmetry_Int_Tables_number 77
+_symmetry_space_group_name_H-M 'P 42'
+_symmetry_space_group_name_Hall ' P 4c'
+_cell_length_a 15.55830182
+_cell_length_b 15.55809184
+_cell_length_c 14.70638035
+_cell_angle_alpha 89.98327070
+_cell_angle_beta 89.99373134
+_cell_angle_gamma 90.00000099
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Li1 Li 0.13582369 0.26416108 0.06713476 1.0000
+Li2 Li 0.26430639 0.86390913 0.56681346 1.0000
+Li3 Li 0.73550756 0.13548724 0.56706072 1.0000
+Li4 Li 0.86416583 0.73582102 0.06723490 1.0000
+Sr5 Sr 0.15883027 0.83987439 0.54571694 1.0000
+Sr6 Sr 0.83987377 0.84122055 0.04586992 1.0000
+Sr7 Sr 0.16000350 0.15885110 0.04544620 1.0000
+Sr8 Sr 0.84072827 0.15985570 0.54586834 1.0000
+Al9 Al 0.97116388 0.01039967 0.22255270 1.0000
+Al10 Al 0.01016526 0.02869316 0.72259618 1.0000
+Al11 Al 0.99000629 0.97098699 0.72281527 1.0000
+Al12 Al 0.02882516 0.98957331 0.22239345 1.0000
+Ag13 Ag 0.09733690 0.59624212 0.74347940 1.0000
+Ag14 Ag 0.59664478 0.90275752 0.24331773 1.0000
+Ag15 Ag 0.40347832 0.09725512 0.24309096 1.0000
+Ag16 Ag 0.90263870 0.40363503 0.74312385 1.0000

@@ -1,0 +1,39 @@
+data_hall_045_005
+# generated test structure: space group 9 (A 1 1 a), Hall setting 45
+# hard candidate: metric gap 2.951e-03, closest atoms 3.153 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 45
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'A 1 1 a'
+_symmetry_space_group_name_Hall ' A -2a'
+_cell_length_a 14.78291887
+_cell_length_b 15.02906403
+_cell_length_c 15.07354662
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 89.68720000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+O1 O 0.50692979 0.64293519 0.99347795 1.0000
+O2 O 0.50692979 0.14293519 0.49347795 1.0000
+O3 O 0.00692979 0.64293519 0.00652205 1.0000
+O4 O 0.00692979 0.14293519 0.50652205 1.0000
+Ag5 Ag 0.76136745 0.63241228 0.69858217 1.0000
+Ag6 Ag 0.76136745 0.13241228 0.19858217 1.0000
+Ag7 Ag 0.26136745 0.63241228 0.30141783 1.0000
+Ag8 Ag 0.26136745 0.13241228 0.80141783 1.0000
+Si9 Si 0.46797443 0.08306914 0.78182252 1.0000
+Si10 Si 0.46797443 0.58306914 0.28182252 1.0000
+Si11 Si 0.96797443 0.08306914 0.21817748 1.0000
+Si12 Si 0.96797443 0.58306914 0.71817748 1.0000
+Pb13 Pb 0.63993494 0.48886902 0.37276803 1.0000
+Pb14 Pb 0.63993494 0.98886902 0.87276803 1.0000
+Pb15 Pb 0.13993494 0.48886902 0.62723197 1.0000
+Pb16 Pb 0.13993494 0.98886902 0.12723197 1.0000

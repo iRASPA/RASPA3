@@ -1,0 +1,39 @@
+data_hall_159_008
+# generated test structure: space group 31 (P n 21 m), Hall setting 159
+# hard candidate: metric gap 1.202e-03, closest atoms 1.729 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 159
+_raspa_point_group_number 7
+_space_group_IT_number 31
+_symmetry_Int_Tables_number 31
+_symmetry_space_group_name_H-M 'P n 21 m'
+_symmetry_space_group_name_Hall ' P -2 -2bc'
+_cell_length_a 22.39089775
+_cell_length_b 22.78276778
+_cell_length_c 22.81018300
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+W1 W 0.52841070 0.87270757 0.42166012 1.0000
+W2 W 0.52841070 0.87270757 0.57833988 1.0000
+W3 W 0.47158930 0.37270757 0.92166012 1.0000
+W4 W 0.47158930 0.37270757 0.07833988 1.0000
+F5 F 0.50561819 0.67320473 0.04069139 1.0000
+F6 F 0.50561819 0.67320473 0.95930861 1.0000
+F7 F 0.49438181 0.17320473 0.54069139 1.0000
+F8 F 0.49438181 0.17320473 0.45930861 1.0000
+S9 S 0.28805914 0.78468825 0.28397081 1.0000
+S10 S 0.28805914 0.78468825 0.71602919 1.0000
+S11 S 0.71194086 0.28468825 0.78397081 1.0000
+S12 S 0.71194086 0.28468825 0.21602919 1.0000
+Cl13 Cl 0.95514455 0.18477671 0.96210666 1.0000
+Cl14 Cl 0.95514455 0.18477671 0.03789334 1.0000
+Cl15 Cl 0.04485545 0.68477671 0.46210666 1.0000
+Cl16 Cl 0.04485545 0.68477671 0.53789334 1.0000

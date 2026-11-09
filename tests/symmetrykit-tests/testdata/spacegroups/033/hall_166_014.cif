@@ -1,0 +1,39 @@
+data_hall_166_014
+# generated test structure: space group 33 (P 21 n b), Hall setting 166
+# noisy candidate: metric gap 2.783e-05, closest atoms 2.777 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 166
+_raspa_point_group_number 7
+_space_group_IT_number 33
+_symmetry_Int_Tables_number 33
+_symmetry_space_group_name_H-M 'P 21 n b'
+_symmetry_space_group_name_Hall ' P -2bc 2a'
+_cell_length_a 20.41457988
+_cell_length_b 7.58987599
+_cell_length_c 11.86206970
+_cell_angle_alpha 90.00250510
+_cell_angle_beta 89.99290907
+_cell_angle_gamma 89.99378586
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ga1 Ga 0.28251316 0.67455833 0.35330055 1.0000
+Ga2 Ga 0.28260111 0.17544620 0.14640060 1.0000
+Ga3 Ga 0.78254160 0.82468900 0.85348610 1.0000
+Ga4 Ga 0.78259283 0.32498175 0.64646366 1.0000
+Mg5 Mg 0.93072788 0.02475819 0.94446583 1.0000
+Mg6 Mg 0.93095159 0.52463254 0.55617840 1.0000
+Mg7 Mg 0.43057289 0.47513897 0.44443758 1.0000
+Mg8 Mg 0.43077428 0.97622534 0.05559206 1.0000
+Li9 Li 0.15116384 0.98363992 0.04744032 1.0000
+Li10 Li 0.15125200 0.48330553 0.45232447 1.0000
+Li11 Li 0.65122118 0.51674598 0.54782124 1.0000
+Li12 Li 0.65151089 0.01678683 0.95208958 1.0000
+Si13 Si 0.51902917 0.73148341 0.14188447 1.0000
+Si14 Si 0.51928680 0.23129018 0.35785313 1.0000
+Si15 Si 0.01917536 0.76898258 0.64155643 1.0000
+Si16 Si 0.01889764 0.26914581 0.85789139 1.0000

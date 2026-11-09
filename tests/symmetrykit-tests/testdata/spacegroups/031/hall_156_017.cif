@@ -1,0 +1,39 @@
+data_hall_156_017
+# generated test structure: space group 31 (P n m 21), Hall setting 156
+# noisy candidate: metric gap 2.577e-05, closest atoms 0.850 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 156
+_raspa_point_group_number 7
+_space_group_IT_number 31
+_symmetry_Int_Tables_number 31
+_symmetry_space_group_name_H-M 'P n m 21'
+_symmetry_space_group_name_Hall ' P 2bc -2bc'
+_cell_length_a 23.60705726
+_cell_length_b 7.87424770
+_cell_length_c 5.81447293
+_cell_angle_alpha 89.99768104
+_cell_angle_beta 89.96543623
+_cell_angle_gamma 89.95163904
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+La1 La 0.70419069 0.16246422 0.11020268 1.0000
+La2 La 0.70450694 0.83814661 0.10924904 1.0000
+La3 La 0.29568648 0.66194191 0.60916238 1.0000
+La4 La 0.29559993 0.33801241 0.61039264 1.0000
+Zn5 Zn 0.32417041 0.30773823 0.85452096 1.0000
+Zn6 Zn 0.32422371 0.69275990 0.85453271 1.0000
+Zn7 Zn 0.67574706 0.80754679 0.35397118 1.0000
+Zn8 Zn 0.67554083 0.19215234 0.35464154 1.0000
+Cr9 Cr 0.73700084 0.61766277 0.36695948 1.0000
+Cr10 Cr 0.73707227 0.38153656 0.36665970 1.0000
+Cr11 Cr 0.26308883 0.11769899 0.86751168 1.0000
+Cr12 Cr 0.26329133 0.88136464 0.86739174 1.0000
+Al13 Al 0.44466507 0.55407822 0.31803904 1.0000
+Al14 Al 0.44454799 0.44552341 0.31827373 1.0000
+Al15 Al 0.55553927 0.05418091 0.81775709 1.0000
+Al16 Al 0.55569771 0.94618873 0.81867867 1.0000

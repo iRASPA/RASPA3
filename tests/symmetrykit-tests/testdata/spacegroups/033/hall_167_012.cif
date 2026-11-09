@@ -1,0 +1,39 @@
+data_hall_167_012
+# generated test structure: space group 33 (P 21 c n), Hall setting 167
+# noisy candidate: metric gap 7.971e-06, closest atoms 3.119 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 167
+_raspa_point_group_number 7
+_space_group_IT_number 33
+_symmetry_Int_Tables_number 33
+_symmetry_space_group_name_H-M 'P 21 c n'
+_symmetry_space_group_name_Hall ' P -2n 2a'
+_cell_length_a 17.81103931
+_cell_length_b 5.55865451
+_cell_length_c 20.29982074
+_cell_angle_alpha 90.00836282
+_cell_angle_beta 89.98691804
+_cell_angle_gamma 90.00071735
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cl1 Cl 0.47327888 0.33184356 0.25515720 1.0000
+Cl2 Cl 0.97351328 0.83319876 0.24504225 1.0000
+Cl3 Cl 0.47324368 0.16800753 0.75481972 1.0000
+Cl4 Cl 0.97344614 0.66737785 0.74525730 1.0000
+Zn5 Zn 0.48261223 0.77372530 0.62611635 1.0000
+Zn6 Zn 0.98242563 0.27519839 0.87375393 1.0000
+Zn7 Zn 0.48253784 0.72615203 0.12598897 1.0000
+Zn8 Zn 0.98279979 0.22553875 0.37402520 1.0000
+Nb9 Nb 0.94889949 0.98757430 0.51020357 1.0000
+Nb10 Nb 0.44857302 0.48841024 0.99003031 1.0000
+Nb11 Nb 0.94852461 0.51083933 0.01027180 1.0000
+Nb12 Nb 0.44844846 0.01249312 0.48971836 1.0000
+Zr13 Zr 0.73268362 0.41669529 0.12857334 1.0000
+Zr14 Zr 0.23250767 0.91760871 0.37172640 1.0000
+Zr15 Zr 0.73255795 0.08369430 0.62871952 1.0000
+Zr16 Zr 0.23242751 0.58224431 0.87146116 1.0000

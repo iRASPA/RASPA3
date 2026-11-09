@@ -1,0 +1,35 @@
+data_hall_142_001
+# generated test structure: space group 28 (P m 2 a), Hall setting 142
+# hard candidate: metric gap 2.421e-03, closest atoms 0.600 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 142
+_raspa_point_group_number 7
+_space_group_IT_number 28
+_symmetry_Int_Tables_number 28
+_symmetry_space_group_name_H-M 'P m 2 a'
+_symmetry_space_group_name_Hall ' P -2a -2a'
+_cell_length_a 15.50373185
+_cell_length_b 15.46619869
+_cell_length_c 15.91881440
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+U1 U 0.36620723 0.68654500 0.85553895 1.0000
+U2 U 0.86620723 0.68654500 0.14446105 1.0000
+U3 U 0.13379277 0.68654500 0.85553895 1.0000
+U4 U 0.63379277 0.68654500 0.14446105 1.0000
+Bi5 Bi 0.90655991 0.70582235 0.72256637 1.0000
+Bi6 Bi 0.40655991 0.70582235 0.27743363 1.0000
+Bi7 Bi 0.59344009 0.70582235 0.72256637 1.0000
+Bi8 Bi 0.09344009 0.70582235 0.27743363 1.0000
+Al9 Al 0.26935510 0.65197708 0.65642023 1.0000
+Al10 Al 0.76935510 0.65197708 0.34357977 1.0000
+Al11 Al 0.23064490 0.65197708 0.65642023 1.0000
+Al12 Al 0.73064490 0.65197708 0.34357977 1.0000

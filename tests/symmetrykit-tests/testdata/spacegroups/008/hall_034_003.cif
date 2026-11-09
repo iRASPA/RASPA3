@@ -1,0 +1,39 @@
+data_hall_034_003
+# generated test structure: space group 8 (B 1 1 m), Hall setting 34
+# hard candidate: metric gap 2.118e-03, closest atoms 0.783 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 34
+_raspa_point_group_number 4
+_space_group_IT_number 8
+_symmetry_Int_Tables_number 8
+_symmetry_space_group_name_H-M 'B 1 1 m'
+_symmetry_space_group_name_Hall ' B -2'
+_cell_length_a 21.93942300
+_cell_length_b 22.19784174
+_cell_length_c 22.00223318
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.19060298
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cu1 Cu 0.02405506 0.77517850 0.34425454 1.0000
+Cu2 Cu 0.52405506 0.77517850 0.84425454 1.0000
+Cu3 Cu 0.02405506 0.77517850 0.65574546 1.0000
+Cu4 Cu 0.52405506 0.77517850 0.15574546 1.0000
+Sr5 Sr 0.09616448 0.02595566 0.47015053 1.0000
+Sr6 Sr 0.59616448 0.02595566 0.97015053 1.0000
+Sr7 Sr 0.09616448 0.02595566 0.52984947 1.0000
+Sr8 Sr 0.59616448 0.02595566 0.02984947 1.0000
+I9 I 0.21378537 0.27546218 0.48220699 1.0000
+I10 I 0.71378537 0.27546218 0.98220699 1.0000
+I11 I 0.21378537 0.27546218 0.51779301 1.0000
+I12 I 0.71378537 0.27546218 0.01779301 1.0000
+Ca13 Ca 0.45661391 0.73932055 0.28887333 1.0000
+Ca14 Ca 0.95661391 0.73932055 0.78887333 1.0000
+Ca15 Ca 0.45661391 0.73932055 0.71112667 1.0000
+Ca16 Ca 0.95661391 0.73932055 0.21112667 1.0000

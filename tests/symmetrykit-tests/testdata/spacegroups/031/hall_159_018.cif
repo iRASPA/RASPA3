@@ -1,0 +1,35 @@
+data_hall_159_018
+# generated test structure: space group 31 (P n 21 m), Hall setting 159
+# noisy candidate: metric gap 2.783e-05, closest atoms 0.848 Angstrom, 12 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 159
+_raspa_point_group_number 7
+_space_group_IT_number 31
+_symmetry_Int_Tables_number 31
+_symmetry_space_group_name_H-M 'P n 21 m'
+_symmetry_space_group_name_Hall ' P -2 -2bc'
+_cell_length_a 24.37023763
+_cell_length_b 18.83136908
+_cell_length_c 23.66719786
+_cell_angle_alpha 90.00250470
+_cell_angle_beta 89.99569510
+_cell_angle_gamma 90.01160674
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cl1 Cl 0.10949280 0.97460796 0.49979038 1.0000
+Cl2 Cl 0.89084672 0.47444755 0.99992027 1.0000
+W3 W 0.31871109 0.24918791 0.49988218 1.0000
+W4 W 0.68128736 0.74959848 0.00011005 1.0000
+Cu5 Cu 0.46022957 0.47490405 0.12689559 1.0000
+Cu6 Cu 0.46015524 0.47499622 0.87316169 1.0000
+Cu7 Cu 0.53984558 0.97495360 0.62689507 1.0000
+Cu8 Cu 0.53998789 0.97499203 0.37317075 1.0000
+Al9 Al 0.44551318 0.87719509 0.01809598 1.0000
+Al10 Al 0.44554225 0.87734605 0.98169832 1.0000
+Al11 Al 0.55445053 0.37722512 0.51789939 1.0000
+Al12 Al 0.55448009 0.37716441 0.48208024 1.0000

@@ -1,0 +1,39 @@
+data_hall_062_007
+# generated test structure: space group 11 (P 21/m 1 1), Hall setting 62
+# hard candidate: metric gap 5.726e-03, closest atoms 0.788 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 62
+_raspa_point_group_number 5
+_space_group_IT_number 11
+_symmetry_Int_Tables_number 11
+_symmetry_space_group_name_H-M 'P 21/m 1 1'
+_symmetry_space_group_name_Hall '-P 2xa'
+_cell_length_a 19.51051284
+_cell_length_b 19.27965309
+_cell_length_c 19.62286830
+_cell_angle_alpha 91.29415260
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+B1 B 0.71271552 0.70968041 0.71166970 1.0000
+B2 B 0.21271552 0.29031959 0.28833030 1.0000
+B3 B 0.78728448 0.70968041 0.71166970 1.0000
+B4 B 0.28728448 0.29031959 0.28833030 1.0000
+C5 C 0.27019566 0.84919469 0.21350040 1.0000
+C6 C 0.77019566 0.15080531 0.78649960 1.0000
+C7 C 0.22980434 0.84919469 0.21350040 1.0000
+C8 C 0.72980434 0.15080531 0.78649960 1.0000
+Ce9 Ce 0.37318305 0.67685531 0.71135783 1.0000
+Ce10 Ce 0.87318305 0.32314469 0.28864217 1.0000
+Ce11 Ce 0.12681695 0.67685531 0.71135783 1.0000
+Ce12 Ce 0.62681695 0.32314469 0.28864217 1.0000
+Na13 Na 0.86299464 0.67262082 0.84806305 1.0000
+Na14 Na 0.36299464 0.32737918 0.15193695 1.0000
+Na15 Na 0.63700536 0.67262082 0.84806305 1.0000
+Na16 Na 0.13700536 0.32737918 0.15193695 1.0000

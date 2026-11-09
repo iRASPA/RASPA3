@@ -1,0 +1,39 @@
+data_hall_040_012
+# generated test structure: space group 9 (A 1 n 1), Hall setting 40
+# noisy candidate: metric gap 5.842e-05, closest atoms 2.513 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 40
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'A 1 n 1'
+_symmetry_space_group_name_Hall ' A -2yab'
+_cell_length_a 14.30419545
+_cell_length_b 22.22612375
+_cell_length_c 7.48797864
+_cell_angle_alpha 89.99474228
+_cell_angle_beta 118.28070898
+_cell_angle_gamma 90.00739401
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Li1 Li 0.12171372 0.94694340 0.86332175 1.0000
+Li2 Li 0.12192434 0.44698156 0.36316880 1.0000
+Li3 Li 0.62148533 0.05302523 0.36253681 1.0000
+Li4 Li 0.62195220 0.55278692 0.86291316 1.0000
+Ga5 Ga 0.78521972 0.32309852 0.43486608 1.0000
+Ga6 Ga 0.78543544 0.82314589 0.93612027 1.0000
+Ga7 Ga 0.28534608 0.67667314 0.93517693 1.0000
+Ga8 Ga 0.28562431 0.17675374 0.43580597 1.0000
+Ni9 Ni 0.29658189 0.69332854 0.27699859 1.0000
+Ni10 Ni 0.29675837 0.19330814 0.77737241 1.0000
+Ni11 Ni 0.79718840 0.30637098 0.77779938 1.0000
+Ni12 Ni 0.79705122 0.80649421 0.27800891 1.0000
+Cr13 Cr 0.73533756 0.59678475 0.51167244 1.0000
+Cr14 Cr 0.73587351 0.09688138 0.01204627 1.0000
+Cr15 Cr 0.23554953 0.40294317 0.01193427 1.0000
+Cr16 Cr 0.23570928 0.90298511 0.51206662 1.0000

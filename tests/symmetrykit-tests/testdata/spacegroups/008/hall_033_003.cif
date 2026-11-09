@@ -1,0 +1,35 @@
+data_hall_033_003
+# generated test structure: space group 8 (A 1 1 m), Hall setting 33
+# hard candidate: metric gap 3.371e-03, closest atoms 0.534 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 33
+_raspa_point_group_number 4
+_space_group_IT_number 8
+_symmetry_Int_Tables_number 8
+_symmetry_space_group_name_H-M 'A 1 1 m'
+_symmetry_space_group_name_Hall ' A -2'
+_cell_length_a 19.89925647
+_cell_length_b 20.32293949
+_cell_length_c 19.96655717
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 91.35046560
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+F1 F 0.13194904 0.27880295 0.29092666 1.0000
+F2 F 0.13194904 0.77880295 0.79092666 1.0000
+F3 F 0.13194904 0.27880295 0.70907334 1.0000
+F4 F 0.13194904 0.77880295 0.20907334 1.0000
+Al5 Al 0.67264766 0.72669845 0.51337033 1.0000
+Al6 Al 0.67264766 0.22669845 0.01337033 1.0000
+Al7 Al 0.67264766 0.72669845 0.48662967 1.0000
+Al8 Al 0.67264766 0.22669845 0.98662967 1.0000
+Sn9 Sn 0.01652671 0.46922500 0.97903253 1.0000
+Sn10 Sn 0.01652671 0.96922500 0.47903253 1.0000
+Sn11 Sn 0.01652671 0.46922500 0.02096747 1.0000
+Sn12 Sn 0.01652671 0.96922500 0.52096747 1.0000

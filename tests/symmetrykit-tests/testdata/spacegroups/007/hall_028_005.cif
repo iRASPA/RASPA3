@@ -1,0 +1,31 @@
+data_hall_028_005
+# generated test structure: space group 7 (P n 1 1), Hall setting 28
+# hard candidate: metric gap 9.375e-04, closest atoms 3.382 Angstrom, 8 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 28
+_raspa_point_group_number 4
+_space_group_IT_number 7
+_symmetry_Int_Tables_number 7
+_symmetry_space_group_name_H-M 'P n 1 1'
+_symmetry_space_group_name_Hall ' P -2xbc'
+_cell_length_a 12.00913558
+_cell_length_b 11.62410331
+_cell_length_c 12.46054829
+_cell_angle_alpha 89.91562518
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Br1 Br 0.45637895 0.48273769 0.53015046 1.0000
+Br2 Br 0.54362105 0.98273769 0.03015046 1.0000
+P3 P 0.71598854 0.53447050 0.21412908 1.0000
+P4 P 0.28401146 0.03447050 0.71412908 1.0000
+Ag5 Ag 0.73332450 0.18419208 0.14514472 1.0000
+Ag6 Ag 0.26667550 0.68419208 0.64514472 1.0000
+Al7 Al 0.92247031 0.73182662 0.20151333 1.0000
+Al8 Al 0.07752969 0.23182662 0.70151333 1.0000

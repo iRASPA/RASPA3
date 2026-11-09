@@ -1,0 +1,39 @@
+data_hall_166_001
+# generated test structure: space group 33 (P 21 n b), Hall setting 166
+# hard candidate: metric gap 2.055e-03, closest atoms 2.595 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 166
+_raspa_point_group_number 7
+_space_group_IT_number 33
+_symmetry_Int_Tables_number 33
+_symmetry_space_group_name_H-M 'P 21 n b'
+_symmetry_space_group_name_Hall ' P -2bc 2a'
+_cell_length_a 15.03101138
+_cell_length_b 15.00012854
+_cell_length_c 14.76739359
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Pb1 Pb 0.53287024 0.86026768 0.23374384 1.0000
+Pb2 Pb 0.53287024 0.36026768 0.26625616 1.0000
+Pb3 Pb 0.03287024 0.63973232 0.73374384 1.0000
+Pb4 Pb 0.03287024 0.13973232 0.76625616 1.0000
+In5 In 0.78072472 0.00644182 0.65424149 1.0000
+In6 In 0.78072472 0.50644182 0.84575851 1.0000
+In7 In 0.28072472 0.49355818 0.15424149 1.0000
+In8 In 0.28072472 0.99355818 0.34575851 1.0000
+Zn9 Zn 0.48908787 0.69296240 0.23723247 1.0000
+Zn10 Zn 0.48908787 0.19296240 0.26276753 1.0000
+Zn11 Zn 0.98908787 0.80703760 0.73723247 1.0000
+Zn12 Zn 0.98908787 0.30703760 0.76276753 1.0000
+Fe13 Fe 0.21556225 0.68166348 0.83323989 1.0000
+Fe14 Fe 0.21556225 0.18166348 0.66676011 1.0000
+Fe15 Fe 0.71556225 0.81833652 0.33323989 1.0000
+Fe16 Fe 0.71556225 0.31833652 0.16676011 1.0000

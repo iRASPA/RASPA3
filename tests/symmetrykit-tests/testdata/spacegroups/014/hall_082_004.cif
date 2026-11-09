@@ -1,0 +1,39 @@
+data_hall_082_004
+# generated test structure: space group 14 (P 1 21/n 1), Hall setting 82
+# hard candidate: metric gap 2.448e-03, closest atoms 2.137 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 82
+_raspa_point_group_number 5
+_space_group_IT_number 14
+_symmetry_Int_Tables_number 14
+_symmetry_space_group_name_H-M 'P 1 21/n 1'
+_symmetry_space_group_name_Hall '-P 2yn'
+_cell_length_a 9.85766420
+_cell_length_b 9.36482096
+_cell_length_c 9.40884691
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.22030152
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ni1 Ni 0.27029769 0.48129641 0.31847932 1.0000
+Ni2 Ni 0.77029769 0.01870359 0.81847932 1.0000
+Ni3 Ni 0.22970231 0.98129641 0.18152068 1.0000
+Ni4 Ni 0.72970231 0.51870359 0.68152068 1.0000
+Ge5 Ge 0.48942284 0.04251389 0.72811495 1.0000
+Ge6 Ge 0.98942284 0.45748611 0.22811495 1.0000
+Ge7 Ge 0.01057716 0.54251389 0.77188505 1.0000
+Ge8 Ge 0.51057716 0.95748611 0.27188505 1.0000
+Co9 Co 0.70174125 0.45925772 0.92407081 1.0000
+Co10 Co 0.20174125 0.04074228 0.42407081 1.0000
+Co11 Co 0.79825875 0.95925772 0.57592919 1.0000
+Co12 Co 0.29825875 0.54074228 0.07592919 1.0000
+W13 W 0.46025303 0.37317346 0.29927390 1.0000
+W14 W 0.96025303 0.12682654 0.79927390 1.0000
+W15 W 0.03974697 0.87317346 0.20072610 1.0000
+W16 W 0.53974697 0.62682654 0.70072610 1.0000

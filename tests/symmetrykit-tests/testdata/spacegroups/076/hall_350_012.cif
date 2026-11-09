@@ -1,0 +1,39 @@
+data_hall_350_012
+# generated test structure: space group 76 (P 41), Hall setting 350
+# noisy candidate: metric gap 2.045e-05, closest atoms 2.263 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 350
+_raspa_point_group_number 9
+_space_group_IT_number 76
+_symmetry_Int_Tables_number 76
+_symmetry_space_group_name_H-M 'P 41'
+_symmetry_space_group_name_Hall ' P 4w'
+_cell_length_a 18.91729984
+_cell_length_b 18.91768676
+_cell_length_c 7.96336789
+_cell_angle_alpha 90.00726589
+_cell_angle_beta 90.01341098
+_cell_angle_gamma 90.00830651
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Se1 Se 0.65728224 0.19043466 0.88168661 1.0000
+Se2 Se 0.19015532 0.34280991 0.63203568 1.0000
+Se3 Se 0.80992387 0.65726211 0.13112875 1.0000
+Se4 Se 0.34287689 0.80961330 0.38142089 1.0000
+Ag5 Ag 0.34377789 0.89302343 0.91849021 1.0000
+Ag6 Ag 0.89262648 0.65655725 0.66885008 1.0000
+Ag7 Ag 0.10718666 0.34348863 0.16874347 1.0000
+Ag8 Ag 0.65627052 0.10738544 0.41857956 1.0000
+Au9 Au 0.25531347 0.35813097 0.20731499 1.0000
+Au10 Au 0.35818339 0.74473174 0.95834939 1.0000
+Au11 Au 0.64223451 0.25547578 0.45756422 1.0000
+Au12 Au 0.74482921 0.64229590 0.70773434 1.0000
+Mo13 Mo 0.71868417 0.17116458 0.12180228 1.0000
+Mo14 Mo 0.17093552 0.28122440 0.87134036 1.0000
+Mo15 Mo 0.82909201 0.71868263 0.37140702 1.0000
+Mo16 Mo 0.28130781 0.82877943 0.62132927 1.0000

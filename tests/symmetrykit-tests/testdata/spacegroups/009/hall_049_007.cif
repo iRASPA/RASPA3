@@ -1,0 +1,39 @@
+data_hall_049_007
+# generated test structure: space group 9 (A 1 1 n), Hall setting 49
+# hard candidate: metric gap 2.048e-03, closest atoms 2.685 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 49
+_raspa_point_group_number 4
+_space_group_IT_number 9
+_symmetry_Int_Tables_number 9
+_symmetry_space_group_name_H-M 'A 1 1 n'
+_symmetry_space_group_name_Hall ' A -2ab'
+_cell_length_a 24.21253530
+_cell_length_b 24.16295740
+_cell_length_c 24.54302371
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 88.97103102
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+K1 K 0.72446539 0.63588210 0.71452480 1.0000
+K2 K 0.72446539 0.13588210 0.21452480 1.0000
+K3 K 0.22446539 0.63588210 0.78547520 1.0000
+K4 K 0.22446539 0.13588210 0.28547520 1.0000
+Ni5 Ni 0.61454010 0.08723141 0.72706032 1.0000
+Ni6 Ni 0.61454010 0.58723141 0.22706032 1.0000
+Ni7 Ni 0.11454010 0.08723141 0.77293968 1.0000
+Ni8 Ni 0.11454010 0.58723141 0.27293968 1.0000
+Mo9 Mo 0.12647408 0.20499640 0.88066487 1.0000
+Mo10 Mo 0.12647408 0.70499640 0.38066487 1.0000
+Mo11 Mo 0.62647408 0.20499640 0.61933513 1.0000
+Mo12 Mo 0.62647408 0.70499640 0.11933513 1.0000
+Sr13 Sr 0.61346894 0.51552446 0.14351710 1.0000
+Sr14 Sr 0.61346894 0.01552446 0.64351710 1.0000
+Sr15 Sr 0.11346894 0.51552446 0.35648290 1.0000
+Sr16 Sr 0.11346894 0.01552446 0.85648290 1.0000

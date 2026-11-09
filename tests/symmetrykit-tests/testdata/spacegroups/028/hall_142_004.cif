@@ -1,0 +1,35 @@
+data_hall_142_004
+# generated test structure: space group 28 (P m 2 a), Hall setting 142
+# hard candidate: metric gap 1.308e-03, closest atoms 1.082 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 142
+_raspa_point_group_number 7
+_space_group_IT_number 28
+_symmetry_Int_Tables_number 28
+_symmetry_space_group_name_H-M 'P m 2 a'
+_symmetry_space_group_name_Hall ' P -2a -2a'
+_cell_length_a 19.06269218
+_cell_length_b 19.51208454
+_cell_length_c 19.03776649
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+As1 As 0.90763877 0.22705411 0.54635538 1.0000
+As2 As 0.40763877 0.22705411 0.45364462 1.0000
+As3 As 0.59236123 0.22705411 0.54635538 1.0000
+As4 As 0.09236123 0.22705411 0.45364462 1.0000
+In5 In 0.51098238 0.48169566 0.70067227 1.0000
+In6 In 0.01098238 0.48169566 0.29932773 1.0000
+In7 In 0.98901762 0.48169566 0.70067227 1.0000
+In8 In 0.48901762 0.48169566 0.29932773 1.0000
+Bi9 Bi 0.27837282 0.13199170 0.54140952 1.0000
+Bi10 Bi 0.77837282 0.13199170 0.45859048 1.0000
+Bi11 Bi 0.22162718 0.13199170 0.54140952 1.0000
+Bi12 Bi 0.72162718 0.13199170 0.45859048 1.0000

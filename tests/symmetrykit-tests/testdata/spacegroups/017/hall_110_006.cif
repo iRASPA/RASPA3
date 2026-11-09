@@ -1,0 +1,39 @@
+data_hall_110_006
+# generated test structure: space group 17 (P 21 2 2), Hall setting 110
+# hard candidate: metric gap 4.481e-03, closest atoms 1.364 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 110
+_raspa_point_group_number 6
+_space_group_IT_number 17
+_symmetry_Int_Tables_number 17
+_symmetry_space_group_name_H-M 'P 21 2 2'
+_symmetry_space_group_name_Hall ' P 2a 2a'
+_cell_length_a 7.31989461
+_cell_length_b 7.28709495
+_cell_length_c 7.73575636
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Fe1 Fe 0.04621055 0.83204603 0.79720140 1.0000
+Fe2 Fe 0.54621055 0.16795397 0.20279860 1.0000
+Fe3 Fe 0.95378945 0.83204603 0.20279860 1.0000
+Fe4 Fe 0.45378945 0.16795397 0.79720140 1.0000
+I5 I 0.40575815 0.28555143 0.24307607 1.0000
+I6 I 0.90575815 0.71444857 0.75692393 1.0000
+I7 I 0.59424185 0.28555143 0.75692393 1.0000
+I8 I 0.09424185 0.71444857 0.24307607 1.0000
+Ga9 Ga 0.28849464 0.91476570 0.69471565 1.0000
+Ga10 Ga 0.78849464 0.08523430 0.30528435 1.0000
+Ga11 Ga 0.71150536 0.91476570 0.30528435 1.0000
+Ga12 Ga 0.21150536 0.08523430 0.69471565 1.0000
+Al13 Al 0.29231244 0.78764250 0.28160998 1.0000
+Al14 Al 0.79231244 0.21235750 0.71839002 1.0000
+Al15 Al 0.70768756 0.78764250 0.71839002 1.0000
+Al16 Al 0.20768756 0.21235750 0.28160998 1.0000

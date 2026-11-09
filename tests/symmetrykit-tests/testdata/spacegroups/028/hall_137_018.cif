@@ -1,0 +1,39 @@
+data_hall_137_018
+# generated test structure: space group 28 (P m a 2), Hall setting 137
+# noisy candidate: metric gap 1.668e-05, closest atoms 1.002 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 137
+_raspa_point_group_number 7
+_space_group_IT_number 28
+_symmetry_Int_Tables_number 28
+_symmetry_space_group_name_H-M 'P m a 2'
+_symmetry_space_group_name_Hall ' P 2 -2a'
+_cell_length_a 15.44943002
+_cell_length_b 18.01351726
+_cell_length_c 12.31198642
+_cell_angle_alpha 89.99184617
+_cell_angle_beta 89.99849861
+_cell_angle_gamma 90.00932230
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ni1 Ni 0.74978319 0.85421822 0.51052201 1.0000
+Ni2 Ni 0.24976318 0.14570439 0.50976603 1.0000
+Ca3 Ca 0.99997062 0.00019584 0.74250577 1.0000
+Ca4 Ca 0.50003473 0.00002775 0.74235393 1.0000
+F5 F 0.87551635 0.74804676 0.63191853 1.0000
+F6 F 0.37590378 0.25215237 0.63186075 1.0000
+F7 F 0.62400077 0.74825664 0.63210487 1.0000
+F8 F 0.12448933 0.25215140 0.63238777 1.0000
+Rb9 Rb 0.54170079 0.55701654 0.56757142 1.0000
+Rb10 Rb 0.04187203 0.44303514 0.56768639 1.0000
+Rb11 Rb 0.95815543 0.55707398 0.56745543 1.0000
+Rb12 Rb 0.45811816 0.44328140 0.56733235 1.0000
+Mo13 Mo 0.78228703 0.09647211 0.16302480 1.0000
+Mo14 Mo 0.28237897 0.90326070 0.16298460 1.0000
+Mo15 Mo 0.71741724 0.09660035 0.16365654 1.0000
+Mo16 Mo 0.21720954 0.90327224 0.16308338 1.0000

@@ -1,0 +1,35 @@
+data_hall_108_006
+# generated test structure: space group 16 (P 2 2 2), Hall setting 108
+# hard candidate: metric gap 4.592e-03, closest atoms 1.412 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 108
+_raspa_point_group_number 6
+_space_group_IT_number 16
+_symmetry_Int_Tables_number 16
+_symmetry_space_group_name_H-M 'P 2 2 2'
+_symmetry_space_group_name_Hall ' P 2 2'
+_cell_length_a 8.65418201
+_cell_length_b 8.76803866
+_cell_length_c 8.72777851
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Sn1 Sn 0.86245444 0.26816829 0.16924218 1.0000
+Sn2 Sn 0.86245444 0.73183171 0.83075782 1.0000
+Sn3 Sn 0.13754556 0.26816829 0.83075782 1.0000
+Sn4 Sn 0.13754556 0.73183171 0.16924218 1.0000
+Ga5 Ga 0.03957855 0.70895738 0.29652607 1.0000
+Ga6 Ga 0.03957855 0.29104262 0.70347393 1.0000
+Ga7 Ga 0.96042145 0.70895738 0.70347393 1.0000
+Ga8 Ga 0.96042145 0.29104262 0.29652607 1.0000
+Ni9 Ni 0.68935055 0.23473185 0.27124736 1.0000
+Ni10 Ni 0.68935055 0.76526815 0.72875264 1.0000
+Ni11 Ni 0.31064945 0.23473185 0.72875264 1.0000
+Ni12 Ni 0.31064945 0.76526815 0.27124736 1.0000

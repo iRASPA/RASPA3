@@ -1,0 +1,35 @@
+data_hall_430_007
+# generated test structure: space group 143 (P 3), Hall setting 430
+# plain candidate: metric gap 3.967e-02, closest atoms 2.491 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 430
+_raspa_point_group_number 16
+_space_group_IT_number 143
+_symmetry_Int_Tables_number 143
+_symmetry_space_group_name_H-M 'P 3'
+_symmetry_space_group_name_Hall ' P 3'
+_cell_length_a 13.43832808
+_cell_length_b 13.43832808
+_cell_length_c 12.90524701
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 120.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+K1 K 0.56427346 0.78828999 0.82822887 1.0000
+K2 K 0.22401653 0.43572654 0.82822887 1.0000
+K3 K 0.21171001 0.77598347 0.82822887 1.0000
+Zn4 Zn 0.18312755 0.26018714 0.69784148 1.0000
+Zn5 Zn 0.07705959 0.81687245 0.69784148 1.0000
+Zn6 Zn 0.73981286 0.92294041 0.69784148 1.0000
+Ce7 Ce 0.28104928 0.50468076 0.00941768 1.0000
+Ce8 Ce 0.22363148 0.71895072 0.00941768 1.0000
+Ce9 Ce 0.49531924 0.77636852 0.00941768 1.0000
+Pb10 Pb 0.74883541 0.07572645 0.93333629 1.0000
+Pb11 Pb 0.32689104 0.25116459 0.93333629 1.0000
+Pb12 Pb 0.92427355 0.67310896 0.93333629 1.0000

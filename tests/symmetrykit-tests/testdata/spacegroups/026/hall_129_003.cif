@@ -1,0 +1,39 @@
+data_hall_129_003
+# generated test structure: space group 26 (P c m 21), Hall setting 129
+# hard candidate: metric gap 7.450e-03, closest atoms 0.825 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 129
+_raspa_point_group_number 7
+_space_group_IT_number 26
+_symmetry_Int_Tables_number 26
+_symmetry_space_group_name_H-M 'P c m 21'
+_symmetry_space_group_name_Hall ' P 2c -2c'
+_cell_length_a 24.61642271
+_cell_length_b 24.28454194
+_cell_length_c 24.80119180
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Si1 Si 0.62554991 0.98301906 0.82453386 1.0000
+Si2 Si 0.62554991 0.01698094 0.82453386 1.0000
+Si3 Si 0.37445009 0.98301906 0.32453386 1.0000
+Si4 Si 0.37445009 0.01698094 0.32453386 1.0000
+Cr5 Cr 0.25857194 0.71631556 0.78596656 1.0000
+Cr6 Cr 0.25857194 0.28368444 0.78596656 1.0000
+Cr7 Cr 0.74142806 0.71631556 0.28596656 1.0000
+Cr8 Cr 0.74142806 0.28368444 0.28596656 1.0000
+F9 F 0.36768362 0.72111803 0.14693542 1.0000
+F10 F 0.36768362 0.27888197 0.14693542 1.0000
+F11 F 0.63231638 0.72111803 0.64693542 1.0000
+F12 F 0.63231638 0.27888197 0.64693542 1.0000
+Ni13 Ni 0.69530695 0.90216551 0.45349631 1.0000
+Ni14 Ni 0.69530695 0.09783449 0.45349631 1.0000
+Ni15 Ni 0.30469305 0.90216551 0.95349631 1.0000
+Ni16 Ni 0.30469305 0.09783449 0.95349631 1.0000

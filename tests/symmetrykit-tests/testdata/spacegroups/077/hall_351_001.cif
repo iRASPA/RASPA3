@@ -1,0 +1,39 @@
+data_hall_351_001
+# generated test structure: space group 77 (P 42), Hall setting 351
+# hard candidate: metric gap 1.718e-02, closest atoms 0.736 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 351
+_raspa_point_group_number 9
+_space_group_IT_number 77
+_symmetry_Int_Tables_number 77
+_symmetry_space_group_name_H-M 'P 42'
+_symmetry_space_group_name_Hall ' P 4c'
+_cell_length_a 7.37586483
+_cell_length_b 7.37586483
+_cell_length_c 7.50480306
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Pb1 Pb 0.98985886 0.34463143 0.64044795 1.0000
+Pb2 Pb 0.34463143 0.01014114 0.14044795 1.0000
+Pb3 Pb 0.65536857 0.98985886 0.14044795 1.0000
+Pb4 Pb 0.01014114 0.65536857 0.64044795 1.0000
+F5 F 0.20970738 0.03503399 0.21917425 1.0000
+F6 F 0.03503399 0.79029262 0.71917425 1.0000
+F7 F 0.96496601 0.20970738 0.71917425 1.0000
+F8 F 0.79029262 0.96496601 0.21917425 1.0000
+Si9 Si 0.24015459 0.30441611 0.03723725 1.0000
+Si10 Si 0.30441611 0.75984541 0.53723725 1.0000
+Si11 Si 0.69558389 0.24015459 0.53723725 1.0000
+Si12 Si 0.75984541 0.69558389 0.03723725 1.0000
+Al13 Al 0.84804032 0.64969848 0.04511755 1.0000
+Al14 Al 0.64969848 0.15195968 0.54511755 1.0000
+Al15 Al 0.35030152 0.84804032 0.54511755 1.0000
+Al16 Al 0.15195968 0.35030152 0.04511755 1.0000

@@ -1,0 +1,39 @@
+data_hall_079_016
+# generated test structure: space group 13 (P 2/n 1 1), Hall setting 79
+# noisy candidate: metric gap 7.571e-05, closest atoms 0.981 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 79
+_raspa_point_group_number 5
+_space_group_IT_number 13
+_symmetry_Int_Tables_number 13
+_symmetry_space_group_name_H-M 'P 2/n 1 1'
+_symmetry_space_group_name_Hall '-P 2xbc'
+_cell_length_a 9.06603047
+_cell_length_b 8.30356457
+_cell_length_c 21.74281767
+_cell_angle_alpha 70.70201490
+_cell_angle_beta 90.03308929
+_cell_angle_gamma 89.99318594
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Br1 Br 0.80783305 0.11458997 0.13991178 1.0000
+Br2 Br 0.80790479 0.38604904 0.35969812 1.0000
+Br3 Br 0.19226620 0.61418841 0.64021355 1.0000
+Br4 Br 0.19222506 0.88514486 0.85994689 1.0000
+Fe5 Fe 0.44986016 0.29098483 0.93942567 1.0000
+Fe6 Fe 0.44945812 0.20960627 0.56030738 1.0000
+Fe7 Fe 0.55062559 0.79050934 0.43959656 1.0000
+Fe8 Fe 0.55032569 0.70985508 0.06043503 1.0000
+Co9 Co 0.75331274 0.66496156 0.53691079 1.0000
+Co10 Co 0.75378902 0.83577222 0.96289978 1.0000
+Co11 Co 0.24651631 0.16485818 0.03674676 1.0000
+Co12 Co 0.24716334 0.33530660 0.46316613 1.0000
+Zn13 Zn 0.52939356 0.81823220 0.06796044 1.0000
+Zn14 Zn 0.52944957 0.68231415 0.43230373 1.0000
+Zn15 Zn 0.47037879 0.31851097 0.56783691 1.0000
+Zn16 Zn 0.47123574 0.18188593 0.93215257 1.0000

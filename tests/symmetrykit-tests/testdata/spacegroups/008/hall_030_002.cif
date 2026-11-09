@@ -1,0 +1,35 @@
+data_hall_030_002
+# generated test structure: space group 8 (C 1 m 1), Hall setting 30
+# hard candidate: metric gap 3.107e-03, closest atoms 0.602 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 30
+_raspa_point_group_number 4
+_space_group_IT_number 8
+_symmetry_Int_Tables_number 8
+_symmetry_space_group_name_H-M 'C 1 m 1'
+_symmetry_space_group_name_Hall ' C -2y'
+_cell_length_a 20.71959980
+_cell_length_b 20.58882856
+_cell_length_c 20.78418524
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 88.65850560
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Li1 Li 0.71024386 0.96739994 0.47494968 1.0000
+Li2 Li 0.21024386 0.46739994 0.47494968 1.0000
+Li3 Li 0.71024386 0.03260006 0.47494968 1.0000
+Li4 Li 0.21024386 0.53260006 0.47494968 1.0000
+Na5 Na 0.73372307 0.91451015 0.07984328 1.0000
+Na6 Na 0.23372307 0.41451015 0.07984328 1.0000
+Na7 Na 0.73372307 0.08548985 0.07984328 1.0000
+Na8 Na 0.23372307 0.58548985 0.07984328 1.0000
+Nb9 Nb 0.28201070 0.51461871 0.37991793 1.0000
+Nb10 Nb 0.78201070 0.01461871 0.37991793 1.0000
+Nb11 Nb 0.28201070 0.48538129 0.37991793 1.0000
+Nb12 Nb 0.78201070 0.98538129 0.37991793 1.0000

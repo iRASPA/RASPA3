@@ -1,0 +1,41 @@
+data_hall_464_005
+# generated test structure: space group 170 (P 65), Hall setting 464
+# plain candidate: metric gap 6.451e-02, closest atoms 1.516 Angstrom, 18 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 464
+_raspa_point_group_number 21
+_space_group_IT_number 170
+_symmetry_Int_Tables_number 170
+_symmetry_space_group_name_H-M 'P 65'
+_symmetry_space_group_name_Hall ' P 65'
+_cell_length_a 11.38759235
+_cell_length_b 11.38759235
+_cell_length_c 12.17290580
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 120.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cu1 Cu 0.10720351 0.36632265 0.92682095 1.0000
+Cu2 Cu 0.74088086 0.10720351 0.76015429 1.0000
+Cu3 Cu 0.36632265 0.25911914 0.09348762 1.0000
+Cu4 Cu 0.63367735 0.74088086 0.59348762 1.0000
+Cu5 Cu 0.25911914 0.89279649 0.26015429 1.0000
+Cu6 Cu 0.89279649 0.63367735 0.42682095 1.0000
+Cr7 Cr 0.60471189 0.81879228 0.47094307 1.0000
+Cr8 Cr 0.78591960 0.60471189 0.30427640 1.0000
+Cr9 Cr 0.81879228 0.21408040 0.63760974 1.0000
+Cr10 Cr 0.18120772 0.78591960 0.13760974 1.0000
+Cr11 Cr 0.21408040 0.39528811 0.80427640 1.0000
+Cr12 Cr 0.39528811 0.18120772 0.97094307 1.0000
+Mo13 Mo 0.29439238 0.98648514 0.35827993 1.0000
+Mo14 Mo 0.30790723 0.29439238 0.19161326 1.0000
+Mo15 Mo 0.98648514 0.69209277 0.52494659 1.0000
+Mo16 Mo 0.01351486 0.30790723 0.02494659 1.0000
+Mo17 Mo 0.69209277 0.70560762 0.69161326 1.0000
+Mo18 Mo 0.70560762 0.01351486 0.85827993 1.0000

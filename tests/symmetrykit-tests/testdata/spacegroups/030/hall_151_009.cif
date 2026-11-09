@@ -1,0 +1,39 @@
+data_hall_151_009
+# generated test structure: space group 30 (P 2 n a), Hall setting 151
+# hard candidate: metric gap 9.512e-03, closest atoms 1.582 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 151
+_raspa_point_group_number 7
+_space_group_IT_number 30
+_symmetry_Int_Tables_number 30
+_symmetry_space_group_name_H-M 'P 2 n a'
+_symmetry_space_group_name_Hall ' P -2ac 2'
+_cell_length_a 22.57335404
+_cell_length_b 23.02328682
+_cell_length_c 22.35864645
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Zn1 Zn 0.15232791 0.01766272 0.53035303 1.0000
+Zn2 Zn 0.65232791 0.01766272 0.96964697 1.0000
+Zn3 Zn 0.65232791 0.98233728 0.03035303 1.0000
+Zn4 Zn 0.15232791 0.98233728 0.46964697 1.0000
+Sr5 Sr 0.27457472 0.96787184 0.82600342 1.0000
+Sr6 Sr 0.77457472 0.96787184 0.67399658 1.0000
+Sr7 Sr 0.77457472 0.03212816 0.32600342 1.0000
+Sr8 Sr 0.27457472 0.03212816 0.17399658 1.0000
+Ca9 Ca 0.26263148 0.91529320 0.35397873 1.0000
+Ca10 Ca 0.76263148 0.91529320 0.14602127 1.0000
+Ca11 Ca 0.76263148 0.08470680 0.85397873 1.0000
+Ca12 Ca 0.26263148 0.08470680 0.64602127 1.0000
+Ga13 Ga 0.22431290 0.26378162 0.20769132 1.0000
+Ga14 Ga 0.72431290 0.26378162 0.29230868 1.0000
+Ga15 Ga 0.72431290 0.73621838 0.70769132 1.0000
+Ga16 Ga 0.22431290 0.73621838 0.79230868 1.0000

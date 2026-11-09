@@ -1,0 +1,39 @@
+data_hall_087_001
+# generated test structure: space group 14 (P 21/b 1 1), Hall setting 87
+# hard candidate: metric gap 3.545e-03, closest atoms 1.446 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 87
+_raspa_point_group_number 5
+_space_group_IT_number 14
+_symmetry_Int_Tables_number 14
+_symmetry_space_group_name_H-M 'P 21/b 1 1'
+_symmetry_space_group_name_Hall '-P 2xab'
+_cell_length_a 17.15893113
+_cell_length_b 17.64289718
+_cell_length_c 17.01654308
+_cell_angle_alpha 89.68095199
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ni1 Ni 0.01252435 0.36881168 0.76485983 1.0000
+Ni2 Ni 0.51252435 0.13118832 0.23514017 1.0000
+Ni3 Ni 0.48747565 0.86881168 0.76485983 1.0000
+Ni4 Ni 0.98747565 0.63118832 0.23514017 1.0000
+N5 N 0.83611376 0.28680104 0.69895545 1.0000
+N6 N 0.33611376 0.21319896 0.30104455 1.0000
+N7 N 0.66388624 0.78680104 0.69895545 1.0000
+N8 N 0.16388624 0.71319896 0.30104455 1.0000
+Ti9 Ti 0.90173402 0.86547646 0.22219061 1.0000
+Ti10 Ti 0.40173402 0.63452354 0.77780939 1.0000
+Ti11 Ti 0.59826598 0.36547646 0.22219061 1.0000
+Ti12 Ti 0.09826598 0.13452354 0.77780939 1.0000
+Be13 Be 0.47983751 0.52757615 0.97587457 1.0000
+Be14 Be 0.97983751 0.97242385 0.02412543 1.0000
+Be15 Be 0.02016249 0.02757615 0.97587457 1.0000
+Be16 Be 0.52016249 0.47242385 0.02412543 1.0000

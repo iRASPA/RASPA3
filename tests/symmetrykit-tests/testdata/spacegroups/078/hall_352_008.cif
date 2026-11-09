@@ -1,0 +1,39 @@
+data_hall_352_008
+# generated test structure: space group 78 (P 43), Hall setting 352
+# hard candidate: metric gap 2.127e-02, closest atoms 1.226 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 352
+_raspa_point_group_number 9
+_space_group_IT_number 78
+_symmetry_Int_Tables_number 78
+_symmetry_space_group_name_H-M 'P 43'
+_symmetry_space_group_name_Hall ' P 4cw'
+_cell_length_a 7.22983776
+_cell_length_b 7.22983776
+_cell_length_c 7.07607561
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ba1 Ba 0.21551071 0.89919445 0.15791373 1.0000
+Ba2 Ba 0.89919445 0.78448929 0.40791373 1.0000
+Ba3 Ba 0.10080555 0.21551071 0.90791373 1.0000
+Ba4 Ba 0.78448929 0.10080555 0.65791373 1.0000
+Na5 Na 0.98067281 0.98908907 0.76754277 1.0000
+Na6 Na 0.98908907 0.01932719 0.01754277 1.0000
+Na7 Na 0.01091093 0.98067281 0.51754277 1.0000
+Na8 Na 0.01932719 0.01091093 0.26754277 1.0000
+Si9 Si 0.99051740 0.28734186 0.79867108 1.0000
+Si10 Si 0.28734186 0.00948260 0.04867108 1.0000
+Si11 Si 0.71265814 0.99051740 0.54867108 1.0000
+Si12 Si 0.00948260 0.71265814 0.29867108 1.0000
+F13 F 0.76620621 0.77563761 0.79797668 1.0000
+F14 F 0.77563761 0.23379379 0.04797668 1.0000
+F15 F 0.22436239 0.76620621 0.54797668 1.0000
+F16 F 0.23379379 0.22436239 0.29797668 1.0000

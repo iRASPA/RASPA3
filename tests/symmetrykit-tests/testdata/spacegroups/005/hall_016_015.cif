@@ -1,0 +1,41 @@
+data_hall_016_015
+# generated test structure: space group 5 (C 2 1 1), Hall setting 16
+# noisy candidate: metric gap 2.309e-05, closest atoms 2.230 Angstrom, 18 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 16
+_raspa_point_group_number 3
+_space_group_IT_number 5
+_symmetry_Int_Tables_number 5
+_symmetry_space_group_name_H-M 'C 2 1 1'
+_symmetry_space_group_name_Hall ' C 2x'
+_cell_length_a 6.42399492
+_cell_length_b 7.68968803
+_cell_length_c 23.82842630
+_cell_angle_alpha 115.74016262
+_cell_angle_beta 89.99792173
+_cell_angle_gamma 89.99382290
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ti1 Ti 0.30737594 0.00016944 0.00021711 1.0000
+Ti2 Ti 0.80775853 0.49988322 0.99981832 1.0000
+Fe3 Fe 0.14565934 0.35257153 0.15483044 1.0000
+Fe4 Fe 0.64551358 0.85291919 0.15469056 1.0000
+Fe5 Fe 0.14547202 0.64772733 0.84517126 1.0000
+Fe6 Fe 0.64576840 0.14662398 0.84500270 1.0000
+Mo7 Mo 0.68144841 0.10103366 0.65620990 1.0000
+Mo8 Mo 0.18198037 0.60104437 0.65623062 1.0000
+Mo9 Mo 0.68110106 0.89948594 0.34358366 1.0000
+Mo10 Mo 0.18099003 0.39971215 0.34365484 1.0000
+Na11 Na 0.67463551 0.44588278 0.17538844 1.0000
+Na12 Na 0.17553650 0.94553100 0.17553572 1.0000
+Na13 Na 0.67548545 0.55497430 0.82441268 1.0000
+Na14 Na 0.17554312 0.05514551 0.82456528 1.0000
+Zn15 Zn 0.33462739 0.65124348 0.42050336 1.0000
+Zn16 Zn 0.83428620 0.15026063 0.42044800 1.0000
+Zn17 Zn 0.33474355 0.34877868 0.57939259 1.0000
+Zn18 Zn 0.83422955 0.84938383 0.57958245 1.0000

@@ -1,0 +1,35 @@
+data_hall_077_005
+# generated test structure: space group 13 (P 1 1 2/b), Hall setting 77
+# hard candidate: metric gap 4.044e-03, closest atoms 0.929 Angstrom, 12 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 77
+_raspa_point_group_number 5
+_space_group_IT_number 13
+_symmetry_Int_Tables_number 13
+_symmetry_space_group_name_H-M 'P 1 1 2/b'
+_symmetry_space_group_name_Hall '-P 2b'
+_cell_length_a 6.68424802
+_cell_length_b 6.77028264
+_cell_length_c 6.79777022
+_cell_angle_alpha 90.00000000
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 88.37762519
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Ba1 Ba 0.22488034 0.68501729 0.64702713 1.0000
+Ba2 Ba 0.22488034 0.18501729 0.35297287 1.0000
+Ba3 Ba 0.77511966 0.81498271 0.64702713 1.0000
+Ba4 Ba 0.77511966 0.31498271 0.35297287 1.0000
+Cu5 Cu 0.70398230 0.29454851 0.46826451 1.0000
+Cu6 Cu 0.70398230 0.79454851 0.53173549 1.0000
+Cu7 Cu 0.29601770 0.20545149 0.46826451 1.0000
+Cu8 Cu 0.29601770 0.70545149 0.53173549 1.0000
+Zr9 Zr 0.52267344 0.46820305 0.32080773 1.0000
+Zr10 Zr 0.52267344 0.96820305 0.67919227 1.0000
+Zr11 Zr 0.47732656 0.03179695 0.32080773 1.0000
+Zr12 Zr 0.47732656 0.53179695 0.67919227 1.0000

@@ -1,0 +1,39 @@
+data_hall_079_017
+# generated test structure: space group 13 (P 2/n 1 1), Hall setting 79
+# noisy candidate: metric gap 1.239e-05, closest atoms 2.112 Angstrom, 16 atoms
+_raspa_symmetry_precision 0.05
+_raspa_hall_number 79
+_raspa_point_group_number 5
+_space_group_IT_number 13
+_symmetry_Int_Tables_number 13
+_symmetry_space_group_name_H-M 'P 2/n 1 1'
+_symmetry_space_group_name_Hall '-P 2xbc'
+_cell_length_a 15.13731428
+_cell_length_b 19.80573589
+_cell_length_c 20.58506812
+_cell_angle_alpha 74.14842292
+_cell_angle_beta 90.00111537
+_cell_angle_gamma 90.00584724
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Si1 Si 0.20053666 0.92912236 0.46471253 1.0000
+Si2 Si 0.20015434 0.57045556 0.03537227 1.0000
+Si3 Si 0.79949017 0.42935970 0.96474655 1.0000
+Si4 Si 0.79937571 0.07087533 0.53496749 1.0000
+P5 P 0.61058872 0.72376954 0.30188139 1.0000
+P6 P 0.61075277 0.77622195 0.19772861 1.0000
+P7 P 0.38931676 0.22345373 0.80220647 1.0000
+P8 P 0.38958337 0.27644281 0.69764468 1.0000
+Be9 Be 0.19812124 0.82639719 0.34561030 1.0000
+Be10 Be 0.19815498 0.67344187 0.15424470 1.0000
+Be11 Be 0.80198903 0.32637303 0.84548935 1.0000
+Be12 Be 0.80153145 0.17364145 0.65435312 1.0000
+Cl13 Cl 0.95011386 0.80622773 0.87833808 1.0000
+Cl14 Cl 0.94976390 0.69392102 0.62178550 1.0000
+Cl15 Cl 0.04969025 0.30630773 0.37802849 1.0000
+Cl16 Cl 0.05008760 0.19368828 0.12173939 1.0000

@@ -1,0 +1,39 @@
+data_hall_017_008
+# generated test structure: space group 5 (I 2 1 1), Hall setting 17
+# hard candidate: metric gap 4.951e-03, closest atoms 1.698 Angstrom, 16 atoms
+_raspa_symmetry_precision 1e-05
+_raspa_hall_number 17
+_raspa_point_group_number 3
+_space_group_IT_number 5
+_symmetry_Int_Tables_number 5
+_symmetry_space_group_name_H-M 'I 2 1 1'
+_symmetry_space_group_name_Hall ' I 2x'
+_cell_length_a 19.03125045
+_cell_length_b 19.20084763
+_cell_length_c 19.39649348
+_cell_angle_alpha 89.55436905
+_cell_angle_beta 90.00000000
+_cell_angle_gamma 90.00000000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Cr1 Cr 0.68516030 0.65810239 0.29758471 1.0000
+Cr2 Cr 0.18516030 0.15810239 0.79758471 1.0000
+Cr3 Cr 0.68516030 0.34189761 0.70241529 1.0000
+Cr4 Cr 0.18516030 0.84189761 0.20241529 1.0000
+Pb5 Pb 0.22376003 0.23633067 0.74191091 1.0000
+Pb6 Pb 0.72376003 0.73633067 0.24191091 1.0000
+Pb7 Pb 0.22376003 0.76366933 0.25808909 1.0000
+Pb8 Pb 0.72376003 0.26366933 0.75808909 1.0000
+Sr9 Sr 0.16540501 0.02561791 0.71062400 1.0000
+Sr10 Sr 0.66540501 0.52561791 0.21062400 1.0000
+Sr11 Sr 0.16540501 0.97438209 0.28937600 1.0000
+Sr12 Sr 0.66540501 0.47438209 0.78937600 1.0000
+N13 N 0.23312347 0.03197578 0.28905044 1.0000
+N14 N 0.73312347 0.53197578 0.78905044 1.0000
+N15 N 0.23312347 0.96802422 0.71094956 1.0000
+N16 N 0.73312347 0.46802422 0.21094956 1.0000
