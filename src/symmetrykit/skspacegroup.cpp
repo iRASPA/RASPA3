@@ -100,22 +100,20 @@ std::optional<std::size_t> SKSpaceGroup::HallNumber(std::string string)
   std::string spaceStrippedSearchString = spaceSearchGroupString;
   std::erase(spaceStrippedSearchString, ' ');
 
+  // Every symbol is compared as written before any is compared with its spaces removed: the stripped forms collide
+  // (" P 3 2" of P 3 1 2 and " P 32" of P 3_2 both become "p32"), so a stripped match of an earlier setting must not
+  // pre-empt an exact match of a later one. The stripped pass serves symbols written like "P21/c".
+  for (std::size_t i = 0; i <= 530; i++)
+  {
+    const std::string storedSpaceGroupString =
+        toLower(simplified(SKSpaceGroupDataBase::spaceGroupData[i].HallString()));
+    if (SKSpaceGroup::matchSpacegroup(spaceSearchGroupString, storedSpaceGroupString)) return i;
+  }
   for (std::size_t i = 0; i <= 530; i++)
   {
     std::string storedSpaceGroupString = toLower(simplified(SKSpaceGroupDataBase::spaceGroupData[i].HallString()));
-
-    if (SKSpaceGroup::matchSpacegroup(spaceSearchGroupString, storedSpaceGroupString))
-    {
-      return i;
-    }
-
-    // the symbol with its spaces removed, as "P21/c" is written ("remove(' ')" of the QString original was lost
-    // in the move to std::string, which left this a repeat of the comparison above)
     std::erase(storedSpaceGroupString, ' ');
-    if (SKSpaceGroup::matchSpacegroup(spaceStrippedSearchString, storedSpaceGroupString))
-    {
-      return i;
-    }
+    if (SKSpaceGroup::matchSpacegroup(spaceStrippedSearchString, storedSpaceGroupString)) return i;
   }
 
   return std::nullopt;
@@ -145,43 +143,52 @@ std::optional<std::size_t> SKSpaceGroup::HallNumberFromHMString(std::string stri
   std::string spaceStrippedSearchString = spaceSearchGroupString;
   std::erase(spaceStrippedSearchString, ' ');
 
-  std::optional<std::size_t> firstMatch{};
-  for (std::size_t i = 0; i <= 530; i++)
+  // Two passes, as in HallNumber: the symbols as written first, and only when none matches, with the spaces removed
+  // (the stripped forms collide, "P 3 1 2" and "P 31 1 2" both becoming "p312")
+  for (const bool stripped : {false, true})
   {
-    const SKSpaceGroupSetting& setting = SKSpaceGroupDataBase::spaceGroupData[i];
-    std::string storedSpaceGroupString = toLower(simplified(setting.HMString()));
+    std::optional<std::size_t> firstMatch{};
+    for (std::size_t i = 0; i <= 530; i++)
+    {
+      const SKSpaceGroupSetting& setting = SKSpaceGroupDataBase::spaceGroupData[i];
+      std::string storedSpaceGroupString = toLower(simplified(setting.HMString()));
 
-    bool matches = SKSpaceGroup::matchSpacegroup(spaceSearchGroupString, storedSpaceGroupString);
-    if (!matches && setting.qualifier() == "H")
-    {
-      matches = SKSpaceGroup::matchSpacegroup(spaceSearchGroupString, storedSpaceGroupString.replace(0, 1, "h"));
-    }
-    if (!matches)
-    {
-      // the symbol with its spaces removed, as "Fm-3m" is written (see HallNumber)
-      storedSpaceGroupString = toLower(simplified(setting.HMString()));
-      std::erase(storedSpaceGroupString, ' ');
-      matches = SKSpaceGroup::matchSpacegroup(spaceStrippedSearchString, storedSpaceGroupString);
-    }
-    if (!matches) continue;
+      bool matches = false;
+      if (!stripped)
+      {
+        matches = SKSpaceGroup::matchSpacegroup(spaceSearchGroupString, storedSpaceGroupString);
+        if (!matches && setting.qualifier() == "H")
+        {
+          matches = SKSpaceGroup::matchSpacegroup(spaceSearchGroupString, storedSpaceGroupString.replace(0, 1, "h"));
+        }
+      }
+      else
+      {
+        // the symbol with its spaces removed, as "Fm-3m" is written (see HallNumber)
+        std::erase(storedSpaceGroupString, ' ');
+        matches = SKSpaceGroup::matchSpacegroup(spaceStrippedSearchString, storedSpaceGroupString);
+      }
+      if (!matches) continue;
 
-    if (!qualifier.empty())
-    {
-      // the origin choice is stored as the number 1 or 2 (not the character), the axes as 'H' or 'R'
-      const char ext = setting.ext();
-      const std::string extQualifier =
-          (ext > 0 && ext < 10) ? std::to_string(static_cast<int>(ext))
-                                : std::string(1, static_cast<char>(std::tolower(static_cast<unsigned char>(ext))));
-      const bool qualifierMatches =
-          toLower(setting.qualifier()) == qualifier || (ext != 0 && extQualifier == qualifier);
-      if (qualifierMatches) return i;
-      continue;
+      if (!qualifier.empty())
+      {
+        // the origin choice is stored as the number 1 or 2 (not the character), the axes as 'H' or 'R'
+        const char ext = setting.ext();
+        const std::string extQualifier =
+            (ext > 0 && ext < 10) ? std::to_string(static_cast<int>(ext))
+                                  : std::string(1, static_cast<char>(std::tolower(static_cast<unsigned char>(ext))));
+        const bool qualifierMatches =
+            toLower(setting.qualifier()) == qualifier || (ext != 0 && extQualifier == qualifier);
+        if (qualifierMatches) return i;
+        continue;
+      }
+      if (setting.standardSetting()) return i;
+      if (!firstMatch) firstMatch = i;
     }
-    if (setting.standardSetting()) return i;
-    if (!firstMatch) firstMatch = i;
+    if (firstMatch) return firstMatch;
   }
 
-  return firstMatch;
+  return std::nullopt;
 }
 
 std::optional<std::size_t> SKSpaceGroup::HallNumberFromSpaceGroupNumber([[maybe_unused]] std::size_t number)

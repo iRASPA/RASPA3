@@ -906,3 +906,19 @@ TEST(SYMMETRY_STRUCTURE_FIXES, asymmetric_unit_images_keep_their_shift_and_toler
   EXPECT_LE(representative.z, 0.0 + 1e-8);
   EXPECT_GE(representative.z, -0.5 - 1e-8);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, exact_symbol_matches_take_precedence_over_space_stripped_ones)
+{
+  // " P 3 2" (Hall 438, P 3 1 2) and " P 32" (Hall 432, P 3_2) strip to the same "p32"; the exact match used to
+  // lose to the stripped match of the earlier entry. Likewise " P 6 2" (Hall 471) and " P 62" (Hall 465).
+  EXPECT_EQ(SKSpaceGroup::HallNumber(" P 3 2"), 438uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumber(" P 32"), 432uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumber(" P 6 2"), 471uz);
+  EXPECT_EQ(SKSpaceGroup::HallNumber(" P 62"), 465uz);
+  // Hermann-Mauguin: "P 3 1 2" (group 149) and "P 31 1 2" (group 151) strip to the same "p3112"
+  const std::optional<std::size_t> p312 = SKSpaceGroup::HallNumberFromHMString("P 3 1 2");
+  const std::optional<std::size_t> p3112 = SKSpaceGroup::HallNumberFromHMString("P 31 1 2");
+  ASSERT_TRUE(p312.has_value() && p3112.has_value());
+  EXPECT_EQ(SKSpaceGroup(*p312).spaceGroupSetting().number(), 149uz);
+  EXPECT_EQ(SKSpaceGroup(*p3112).spaceGroupSetting().number(), 151uz);
+}
