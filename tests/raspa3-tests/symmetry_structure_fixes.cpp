@@ -841,24 +841,43 @@ TEST(SYMMETRY_STRUCTURE_FIXES, symmetry_operations_in_a_reverse_or_permuted_sett
             p4mmm);
 }
 
-TEST(SYMMETRY_STRUCTURE_FIXES, partial_occupancies_merge_sites_of_different_types)
+TEST(SYMMETRY_STRUCTURE_FIXES, partial_occupancies_keep_every_element_on_a_shared_site)
 {
   using Atom = std::tuple<double3, std::size_t, double>;
   const double3x3 cubic(double3(10.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 10.0));
 
-  // two atoms of different types on one site: one site with partial occupancies, two without (the flag was ignored)
+  // two elements sharing one site (substitutional disorder): the primitive cell keeps both, with or without partial
+  // occupancies (the flag used to merge them into the first element, dropping the second)
   const std::vector<Atom> shared{Atom{double3(0.25, 0.25, 0.25), 1, 0.5}, Atom{double3(0.25, 0.25, 0.25), 2, 0.5}};
-  EXPECT_EQ(SKSymmetryCell::trim(shared, cubic, cubic, true, 1e-2).size(), 1uz);
+  EXPECT_EQ(SKSymmetryCell::trim(shared, cubic, cubic, true, 1e-2).size(), 2uz);
   EXPECT_EQ(SKSymmetryCell::trim(shared, cubic, cubic, false, 1e-2).size(), 2uz);
+  // a lattice translation copy of the same type is still trimmed away
+  const std::vector<Atom> copies{Atom{double3(0.25, 0.25, 0.25), 1, 1.0}, Atom{double3(0.75, 0.25, 0.25), 1, 1.0}};
+  const double3x3 halved(double3(5.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 10.0));
+  EXPECT_EQ(SKSymmetryCell::trim(copies, cubic, halved, true, 1e-2).size(), 1uz);
 
-  // two atoms of different types related by the inversion of P m -3 m: one orbit with partial occupancies
+  // two elements related by the inversion of P m -3 m: one asymmetric atom per element, so that expanding the
+  // asymmetric unit puts both elements back on every site of the orbit
   SKIntegerSymmetryOperationSet operations =
       SKSpaceGroup(SKSpaceGroupDataBase::spaceGroupHallData[221].front()).spaceGroupSetting().fullSeitzMatrices();
   const SKAsymmetricUnit unit =
       SKSpaceGroup(SKSpaceGroupDataBase::spaceGroupHallData[221].front()).spaceGroupSetting().asymmetricUnit();
   std::vector<Atom> related{Atom{double3(0.1, 0.1, 0.1), 1, 0.5}, Atom{double3(0.9, 0.9, 0.9), 2, 0.5}};
-  EXPECT_EQ(operations.asymmetricAtoms(unit, related, cubic, true, 1e-2).size(), 1uz);
-  EXPECT_EQ(operations.asymmetricAtoms(unit, related, cubic, false, 1e-2).size(), 2uz);
+  for (bool allowPartialOccupancies : {true, false})
+  {
+    const auto asymmetric = operations.asymmetricAtoms(unit, related, cubic, allowPartialOccupancies, 1e-2);
+    ASSERT_EQ(asymmetric.size(), 2uz) << allowPartialOccupancies;
+    EXPECT_EQ(std::get<1>(asymmetric[0]), 1uz);
+    EXPECT_EQ(std::get<1>(asymmetric[1]), 2uz);
+  }
+  // the same element on both sites is one orbit
+  std::vector<Atom> sameType{Atom{double3(0.1, 0.1, 0.1), 1, 1.0}, Atom{double3(0.9, 0.9, 0.9), 1, 1.0}};
+  EXPECT_EQ(operations.asymmetricAtoms(unit, sameType, cubic, true, 1e-2).size(), 1uz);
+
+  // the symmetry search itself still merges the elements of a shared site when partial occupancies are allowed
+  EXPECT_TRUE(SKSymmetryCell::testTranslationalSymmetry(
+      double3(0.5, 0.0, 0.0), {Atom{double3(0.25, 0.25, 0.25), 1, 0.5}, Atom{double3(0.75, 0.25, 0.25), 2, 0.5}}, cubic,
+      true, 1e-2));
 }
 
 TEST(SYMMETRY_STRUCTURE_FIXES, asymmetric_unit_images_keep_their_shift_and_tolerate_round_off)

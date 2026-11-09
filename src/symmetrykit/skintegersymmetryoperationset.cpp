@@ -73,7 +73,7 @@ std::vector<std::tuple<double3, std::size_t, double>> SKIntegerSymmetryOperation
 
 std::vector<std::tuple<double3, std::size_t, double>> SKIntegerSymmetryOperationSet::asymmetricAtoms(
     const SKAsymmetricUnit& asymmetricUnit, std::vector<std::tuple<double3, std::size_t, double>>& atoms,
-    double3x3 lattice, bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
+    double3x3 lattice, [[maybe_unused]] bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
   std::vector<std::tuple<double3, std::size_t, double, std::make_signed_t<std::size_t>>> atomData{};
   std::transform(atoms.begin(), atoms.end(), std::back_inserter(atomData),
@@ -96,8 +96,10 @@ loop:
       // atom
       for (std::size_t j = 0; j < asymmetricAtoms.size(); j++)
       {
-        // with partial occupancies the types of a shared site may differ (the comparison used to apply regardless)
-        if (allowPartialOccupancies || std::get<1>(atomData[i]) == std::get<1>(asymmetricAtoms[j]))
+        // an atom is a copy of an asymmetric atom only when the types agree. Partial occupancies let the symmetry
+        // search treat a site shared by several elements as one site, but each element on it still needs its own
+        // representative, or the others vanish from the asymmetric unit
+        if (std::get<1>(atomData[i]) == std::get<1>(asymmetricAtoms[j]))
         {
           for (const SKSeitzIntegerMatrix& operation : this->operations)
           {
@@ -112,6 +114,8 @@ loop:
             }
           }
         }
+        // tagged: the remaining asymmetric atoms are not to retag it
+        if (std::get<3>(atomData[i]) != -1) break;
       }
 
       // not typed yet
