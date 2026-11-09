@@ -519,7 +519,8 @@ double SKCell::alpha() const
   double length2 = column2.length();
   double length3 = column3.length();
 
-  return std::acos(double3::dot(column2, column3) / (length2 * length3));
+  // clamped: round-off puts the cosine of (nearly) collinear axes a little beyond +-1, where acos gives NaN
+  return std::acos(std::clamp(double3::dot(column2, column3) / (length2 * length3), -1.0, 1.0));
 }
 void SKCell::alpha(const double& newValue)
 {
@@ -573,7 +574,8 @@ double SKCell::beta() const
   double length1 = column1.length();
   double length3 = column3.length();
 
-  return std::acos(double3::dot(column1, column3) / (length1 * length3));
+  // clamped: round-off puts the cosine of (nearly) collinear axes a little beyond +-1, where acos gives NaN
+  return std::acos(std::clamp(double3::dot(column1, column3) / (length1 * length3), -1.0, 1.0));
 }
 
 void SKCell::setBetaAngle(double value)
@@ -627,7 +629,8 @@ double SKCell::gamma() const
   double length1 = column1.length();
   double length2 = column2.length();
 
-  return std::acos(double3::dot(column1, column2) / (length1 * length2));
+  // clamped: round-off puts the cosine of (nearly) collinear axes a little beyond +-1, where acos gives NaN
+  return std::acos(std::clamp(double3::dot(column1, column2) / (length1 * length2), -1.0, 1.0));
 }
 
 void SKCell::setGammaAngle(double value)

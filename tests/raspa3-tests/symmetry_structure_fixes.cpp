@@ -125,6 +125,40 @@ TEST(SYMMETRY_STRUCTURE_FIXES, find_primitive_trims_at_the_precision_the_group_w
   EXPECT_EQ(primitive->atoms.size(), atoms.size()) << "found precision " << found->symmetryPrecision;
 }
 
+TEST(SYMMETRY_STRUCTURE_FIXES, cell_angles_of_collinear_axes_are_not_nan)
+{
+  // the build uses -ffast-math, under which std::isnan folds to false, a NaN passes EXPECT_NEAR, and even a test of
+  // the bit pattern is folded away; the text the C library prints for the value is beyond the optimizer's reach
+  const auto isNaN = [](double value) { return std::to_string(value).find("nan") != std::string::npos; };
+
+  // a metric tensor whose off-diagonal elements exceed the product of the two lengths by one ulp: the cosine is
+  // 1 + 2e-16 (and -1 - 2e-16 for the antiparallel pair), of which acos is NaN unless clamped
+  const double overOne = std::nextafter(1.0, 2.0);
+  const SKSymmetryCell fromTensor = SKSymmetryCell::createFromMetricTensor(
+      double3x3(double3(1.0, -overOne, 0.0), double3(-overOne, 1.0, overOne), double3(0.0, overOne, 1.0)));
+  EXPECT_FALSE(isNaN(fromTensor.alpha()));
+  EXPECT_NEAR(fromTensor.alpha(), 0.0, 1e-7);
+  EXPECT_FALSE(isNaN(fromTensor.gamma()));
+  EXPECT_NEAR(fromTensor.gamma(), std::numbers::pi, 1e-7);
+
+  // parallel and antiparallel axes from their vectors: the cosine rounds to within an ulp of +-1 either way
+  const double3 b(0.1 * 3.0, 0.2 * 3.0, 0.3 * 3.0);
+  const double3 c(0.1 * 3.0 * 10.0 * 0.37, 0.2 * 3.0 * 10.0 * 0.37, 0.3 * 3.0 * 10.0 * 0.37);
+  for (const double3x3& axes : {double3x3(double3(10.0, 0.0, 0.0), b, c), double3x3(double3(10.0, 0.0, 0.0), b, -c),
+                                double3x3(double3(10.0, 0.0, 0.0), -overOne * b, b)})
+  {
+    const SKCell cell(axes);
+    EXPECT_FALSE(isNaN(cell.alpha()));
+    EXPECT_FALSE(isNaN(cell.beta()));
+    EXPECT_FALSE(isNaN(cell.gamma()));
+    const SKSymmetryCell fromCell = SKSymmetryCell::createFromUnitCell(axes);
+    EXPECT_FALSE(isNaN(fromCell.alpha()));
+    EXPECT_FALSE(isNaN(fromCell.beta()));
+    EXPECT_FALSE(isNaN(fromCell.gamma()));
+    EXPECT_NEAR(fromCell.alpha(), cell.alpha(), 1e-12);
+  }
+}
+
 TEST(SYMMETRY_STRUCTURE_FIXES, equal_seitz_matrices_hash_equally)
 {
   const SKSeitzIntegerMatrix a(SKRotationMatrix::identity, int3(1, 2, 3));

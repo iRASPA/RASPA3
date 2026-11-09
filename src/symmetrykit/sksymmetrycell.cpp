@@ -38,9 +38,10 @@ SKSymmetryCell SKSymmetryCell::createFromMetricTensor(double3x3 metricTensor)
   cell._a = std::sqrt(A);
   cell._b = std::sqrt(B);
   cell._c = std::sqrt(C);
-  cell._alpha = std::acos(metricTensor[1][2] / (std::sqrt(B) * std::sqrt(C)));
-  cell._beta = std::acos(metricTensor[0][2] / (std::sqrt(A) * std::sqrt(C)));
-  cell._gamma = std::acos(metricTensor[0][1] / (std::sqrt(A) * std::sqrt(B)));
+  // round-off can put the cosine a little beyond +-1 for (nearly) collinear axes, where acos gives NaN
+  cell._alpha = std::acos(std::clamp(metricTensor[1][2] / (std::sqrt(B) * std::sqrt(C)), -1.0, 1.0));
+  cell._beta = std::acos(std::clamp(metricTensor[0][2] / (std::sqrt(A) * std::sqrt(C)), -1.0, 1.0));
+  cell._gamma = std::acos(std::clamp(metricTensor[0][1] / (std::sqrt(A) * std::sqrt(B)), -1.0, 1.0));
   return cell;
 }
 
@@ -57,9 +58,9 @@ SKSymmetryCell SKSymmetryCell::createFromUnitCell(double3x3 unitCell)
   cell._a = length1;
   cell._b = length2;
   cell._c = length3;
-  cell._alpha = std::acos(double3::dot(column2, column3) / (length2 * length3));
-  cell._beta = std::acos(double3::dot(column1, column3) / (length1 * length3));
-  cell._gamma = std::acos(double3::dot(column1, column2) / (length1 * length2));
+  cell._alpha = std::acos(std::clamp(double3::dot(column2, column3) / (length2 * length3), -1.0, 1.0));
+  cell._beta = std::acos(std::clamp(double3::dot(column1, column3) / (length1 * length3), -1.0, 1.0));
+  cell._gamma = std::acos(std::clamp(double3::dot(column1, column2) / (length1 * length2), -1.0, 1.0));
   return cell;
 }
 
@@ -95,7 +96,7 @@ SKSymmetryCell SKSymmetryCell::idealized(std::size_t pointGroupNumber, std::stri
       // if (spaceGroup.spaceGroupSetting().qualifier() == "R")
       {
         double avg = (_a + _b + _c) / 3.0;
-        double angle = std::acos((std::cos(_gamma) + std::cos(_beta) + std::cos(_alpha)) / 3.0);
+        double angle = std::acos(std::clamp((std::cos(_gamma) + std::cos(_beta) + std::cos(_alpha)) / 3.0, -1.0, 1.0));
         // Reference, https://homepage.univie.ac.at/michael.leitner/lattice/struk/rgr.html
         double ahex = 2.0 * avg * std::sin(0.5 * angle);
         double chex = (_a + _b + _c) / 3.0 * std::sqrt(3.0 * (1.0 + 2.0 * std::cos(angle)));
