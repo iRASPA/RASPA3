@@ -50,8 +50,10 @@ SKTransformationMatrix SKTransformationMatrix::primitiveToCCentered =
     SKTransformationMatrix(int3(1, 1, 0), int3(1, -1, 0), int3(0, 0, -1));  // P -> C
 SKTransformationMatrix SKTransformationMatrix::primitiveToRhombohedral =
     SKTransformationMatrix(int3(1, -1, 0), int3(0, 1, -1), int3(1, 1, 1));  // P -> R
+// the H centring triples the cell in the ab-plane only ((2/3, 1/3, 0) and (1/3, 2/3, 0)), so c is unchanged and
+// the determinant is 3; the third column used to be (0, 0, 3), a determinant of 9
 SKTransformationMatrix SKTransformationMatrix::primitiveToHexagonal =
-    SKTransformationMatrix(int3(1, -1, 0), int3(1, 2, 0), int3(0, 0, 3));  // P -> H
+    SKTransformationMatrix(int3(1, -1, 0), int3(1, 2, 0), int3(0, 0, 1));  // P -> H
 SKTransformationMatrix SKTransformationMatrix::rhombohedralObverseHexagonal =
     SKTransformationMatrix(int3(1, 0, 1), int3(-1, 1, 1), int3(0, -1, 1));  // Robv -> Rh
 SKTransformationMatrix SKTransformationMatrix::rhombohedralHexagonalToReverse =
@@ -92,7 +94,7 @@ double3x3 SKTransformationMatrix::rhombohedralReverseToPrimitive =
               double3(1.0 / 3.0, -1.0 / 3.0, 1.0 / 3.0));  // R -> P
 
 double3x3 SKTransformationMatrix::hexagonalToPrimitive =
-    double3x3(double3(2.0 / 3.0, 1.0 / 3.0, 0), double3(-1.0 / 3.0, 1.0 / 3.0, 0), double3(0, 0, 1.0 / 3.0));  // H -> P
+    double3x3(double3(2.0 / 3.0, 1.0 / 3.0, 0), double3(-1.0 / 3.0, 1.0 / 3.0, 0), double3(0, 0, 1.0));  // H -> P
 double3x3 SKTransformationMatrix::rhombohedralHexagonalToObverse =
     double3x3(double3(2.0 / 3.0, -1.0 / 3.0, -1.0 / 3.0), double3(1.0 / 3.0, 1.0 / 3.0, -2.0 / 3.0),
               double3(1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0));  // Rh -> Robv

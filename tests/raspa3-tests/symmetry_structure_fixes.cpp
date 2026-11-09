@@ -763,3 +763,15 @@ TEST(SYMMETRY_STRUCTURE_FIXES, centring_from_symbol_follows_the_database_for_rho
                                                            SKSpaceGroup::centringFromHMString("R -3 m :R"), 166),
             459uz);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, hexagonal_centring_transformations_keep_the_c_axis)
+{
+  // the H cell is three primitive cells side by side in the ab-plane: determinant 3 (it was 9) and the inverse
+  // leaves c alone (it divided it by 3)
+  EXPECT_EQ(SKTransformationMatrix::primitiveToHexagonal.determinant(), 3);
+  const double3x3 product = SKTransformationMatrix::hexagonalToPrimitive *
+                            double3x3(SKTransformationMatrix::primitiveToHexagonal.transformation);
+  for (std::size_t i = 0; i < 3; ++i)
+    for (std::size_t j = 0; j < 3; ++j) EXPECT_NEAR(product[i][j], i == j ? 1.0 : 0.0, 1e-12) << i << " " << j;
+  EXPECT_NEAR(SKTransformationMatrix::hexagonalToPrimitive.determinant(), 1.0 / 3.0, 1e-12);
+}
