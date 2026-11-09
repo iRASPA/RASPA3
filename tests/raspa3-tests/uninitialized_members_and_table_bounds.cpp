@@ -15,6 +15,7 @@ import system;
 import averages;
 import cif_reader;
 import charge_equilibration_wilmer_snurr;
+import interactions_ewald;
 
 TEST(UNINITIALIZED_MEMBERS, default_constructed_atom_has_zero_charge_group_and_fractional_flag)
 {
@@ -200,6 +201,55 @@ TEST(UNINITIALIZED_MEMBERS, periodic_charge_equilibration_gives_a_small_cell_the
   ChargeEquilibration::computeChargeEquilibration(forceField, SimulationBox(2.0 * a, 2.0 * a, 2.0 * a), supercell,
                                                   ChargeEquilibration::Type::PeriodicEwaldSum);
   // the two agree to the Ewald sum's convergence (6e-6 here); the minimum-image version was 0.18 e apart
+  for (const Atom& atom : supercell)
+  {
+    EXPECT_NEAR(atom.charge, cell[static_cast<std::size_t>(atom.type)].charge, 1e-4) << atom.type;
+  }
+}
+
+TEST(UNINITIALIZED_MEMBERS, periodic_charge_equilibration_is_exact_for_a_skewed_triclinic_cell)
+{
+  // a skewed triclinic cell (75, 110 and 80 degrees, perpendicular widths of about 5 A). The Ewald matrix picks
+  // the real-space image by rounding fractional coordinates, which is the nearest image for every separation
+  // below half the smallest perpendicular width (its fractional components are then all below one half), and
+  // admits every wave vector inside an index sphere, a superset of the physical sphere. Either going wrong would
+  // give the 1x1x1 cell another potential matrix, and other charges, than its 2x2x2 supercell.
+  const double degree = std::numbers::pi / 180.0;
+  const SimulationBox box(5.5, 6.0, 6.5, 75.0 * degree, 110.0 * degree, 80.0 * degree);
+  const SimulationBox superBox(11.0, 12.0, 13.0, 75.0 * degree, 110.0 * degree, 80.0 * degree);
+  const std::array<double3, 2> fractional{double3(0.0, 0.0, 0.0), double3(0.25, 0.5, 0.625)};  // 4 A apart
+
+  std::vector<Atom> cell;
+  for (std::uint16_t type = 0; type < 2; ++type)
+    cell.emplace_back(box.cell * fractional[type], 0.0, 1.0, 0, type, 0, false, false);
+  std::vector<Atom> supercell;
+  for (int u = 0; u < 2; ++u)
+    for (int v = 0; v < 2; ++v)
+      for (int w = 0; w < 2; ++w)
+        for (std::uint16_t type = 0; type < 2; ++type)
+          supercell.emplace_back(box.cell * (fractional[type] + double3(u, v, w)), 0.0, 1.0, 0, type, 0, false, false);
+
+  // the Coulomb potential matrix: the potential at atom 0 from all images of atom 0 and of atom 1 is, in the
+  // supercell, the sum over the eight copies of each
+  std::vector<std::complex<double>> ex, ey, ez, exy;
+  std::vector<double> V(4);
+  Interactions::computeEwaldFourierChargeEquilibrationPotentialMatrix(ex, ey, ez, exy, box, cell, V);
+  std::vector<double> W(16 * 16);
+  Interactions::computeEwaldFourierChargeEquilibrationPotentialMatrix(ex, ey, ez, exy, superBox, supercell, W);
+  double W00 = 0.0, W01 = 0.0;
+  for (std::size_t j = 0; j < 16; ++j) (j % 2 == 0 ? W00 : W01) += W[j];
+  EXPECT_NEAR(V[0], W00, 2e-5);
+  EXPECT_NEAR(V[1], W01, 2e-5);
+
+  // and the charges
+  const ForceField forceField({{"Cs", true, 132.9, 0.0, 0.0, 55, false}, {"Cl", true, 35.45, 0.0, 0.0, 17, false}},
+                              {{20.0, 3.0}, {50.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0,
+                              false, false, true);
+  ChargeEquilibration::computeChargeEquilibration(forceField, box, cell, ChargeEquilibration::Type::PeriodicEwaldSum);
+  EXPECT_GT(cell[0].charge, 0.0);
+  EXPECT_NEAR(cell[0].charge + cell[1].charge, 0.0, 1e-9);
+  ChargeEquilibration::computeChargeEquilibration(forceField, superBox, supercell,
+                                                  ChargeEquilibration::Type::PeriodicEwaldSum);
   for (const Atom& atom : supercell)
   {
     EXPECT_NEAR(atom.charge, cell[static_cast<std::size_t>(atom.type)].charge, 1e-4) << atom.type;
