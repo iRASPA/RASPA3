@@ -72,6 +72,12 @@ inline std::string toLower(const std::string &a)
 
 SKSpaceGroup::SKSpaceGroup(std::size_t HallNumber)
 {
+  // the table holds the settings 1..530 (and a placeholder at 0); anything beyond used to be read past its end
+  if (HallNumber >= SKSpaceGroupDataBase::spaceGroupData.size())
+  {
+    throw std::out_of_range(std::format("Hall number {} is out of range (the settings are numbered 1 to {})",
+                                        HallNumber, SKSpaceGroupDataBase::spaceGroupData.size() - 1));
+  }
   _spaceGroupSetting = SKSpaceGroupDataBase::spaceGroupData[HallNumber];
 }
 
@@ -537,7 +543,7 @@ std::vector<std::string> SKSpaceGroup::latticeTranslationStrings(std::size_t Hal
 {
   std::vector<std::string> latticeStrings{"", "", "", ""};
 
-  SKSpaceGroupSetting setting = SKSpaceGroupDataBase::spaceGroupData[HallNumber];
+  SKSpaceGroupSetting setting = SKSpaceGroup(HallNumber).spaceGroupSetting();  // range-checked
   // the translations and the inversion centre are stored in units of 1/24 of the cell
   std::vector<int3> latticeVectors = setting.latticeTranslations();
 
@@ -560,7 +566,7 @@ std::vector<std::string> SKSpaceGroup::latticeTranslationStrings(std::size_t Hal
 
 std::string SKSpaceGroup::inversionCenterString(std::size_t HallNumber)
 {
-  SKSpaceGroupSetting setting = SKSpaceGroupDataBase::spaceGroupData[HallNumber];
+  SKSpaceGroupSetting setting = SKSpaceGroup(HallNumber).spaceGroupSetting();  // range-checked
   int3 inversionCenter = setting.inversionCenter();
   int3 gcd = int3::greatestCommonDivisor(inversionCenter, 24);
   std::string latticeStringX =

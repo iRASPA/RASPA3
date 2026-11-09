@@ -957,3 +957,13 @@ TEST(SYMMETRY_STRUCTURE_FIXES, rotations_matching_no_point_group_give_no_point_g
   ASSERT_TRUE(pointGroup.has_value());
   EXPECT_EQ(pointGroup->number(), 2uz);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, hall_numbers_beyond_the_table_are_rejected)
+{
+  // the table has 531 entries; index 531 used to be read past its end
+  EXPECT_NO_THROW(SKSpaceGroup(530));
+  EXPECT_THROW(SKSpaceGroup(531), std::out_of_range);
+  EXPECT_THROW(SKSpaceGroup::latticeTranslationStrings(531), std::out_of_range);
+  EXPECT_THROW(SKSpaceGroup::inversionCenterString(10000), std::out_of_range);
+  EXPECT_EQ(SKSpaceGroup::latticeTranslationStrings(530).size(), 4uz);
+}
