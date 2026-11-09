@@ -159,6 +159,70 @@ TEST(SYMMETRY_STRUCTURE_FIXES, cell_angles_of_collinear_axes_are_not_nan)
   }
 }
 
+TEST(SYMMETRY_STRUCTURE_FIXES, angle_setters_keep_a_rotated_cell_oriented_and_setters_update_the_bounding_box)
+{
+  const double degree = std::numbers::pi / 180.0;
+  // a monoclinic cell rotated by 30 degrees about z and then 40 degrees about x
+  const double3x3 canonical =
+      double3x3::fromCellParameters(10.0, 11.0, 12.0, 80.0 * degree, 90.0 * degree, 90.0 * degree);
+  const double cz = std::cos(30.0 * degree), sz = std::sin(30.0 * degree);
+  const double cx = std::cos(40.0 * degree), sx = std::sin(40.0 * degree);
+  const double3x3 aboutZ(double3(cz, sz, 0.0), double3(-sz, cz, 0.0), double3(0.0, 0.0, 1.0));
+  const double3x3 aboutX(double3(1.0, 0.0, 0.0), double3(0.0, cx, sx), double3(0.0, -sx, cx));
+  const double3x3 rotation = aboutX * aboutZ;
+  const double3x3 rotated = rotation * canonical;
+  SKCell cell(rotated);
+
+  // setting alpha used to put the new c axis in the canonical frame (a along x) while a and b stayed rotated, which
+  // changed beta and gamma as well; now only alpha changes and the a and b axes stay where they were
+  cell.setAlphaAngle(70.0 * degree);
+  EXPECT_NEAR(cell.a(), 10.0, 1e-10);
+  EXPECT_NEAR(cell.b(), 11.0, 1e-10);
+  EXPECT_NEAR(cell.c(), 12.0, 1e-10);
+  EXPECT_NEAR(cell.alpha(), 70.0 * degree, 1e-10);
+  EXPECT_NEAR(cell.beta(), 90.0 * degree, 1e-10);
+  EXPECT_NEAR(cell.gamma(), 90.0 * degree, 1e-10);
+  EXPECT_NEAR((cell.unitCell()[0] - rotated[0]).length(), 0.0, 1e-10);
+  EXPECT_NEAR((cell.unitCell()[1] - rotated[1]).length(), 0.0, 1e-10);
+
+  // setting gamma rebuilds b and c; the cell is the rotated image of the cell with the new parameters
+  cell.gamma(100.0 * degree);
+  cell.setBetaAngle(85.0 * degree);
+  const double3x3 expected =
+      rotation * double3x3::fromCellParameters(10.0, 11.0, 12.0, 70.0 * degree, 85.0 * degree, 100.0 * degree);
+  for (std::size_t i = 0; i < 3; ++i)
+    for (std::size_t j = 0; j < 3; ++j) EXPECT_NEAR(cell.unitCell()[i][j], expected[i][j], 1e-9) << i << " " << j;
+  EXPECT_NEAR((cell.unitCell()[0] - rotated[0]).length(), 0.0, 1e-10);
+
+  // a cell in the canonical frame stays in it, with exact zeros
+  SKCell canonicalCell(10.0, 11.0, 12.0, 90.0 * degree, 90.0 * degree, 90.0 * degree);
+  canonicalCell.setAlphaAngle(80.0 * degree);
+  EXPECT_EQ(canonicalCell.unitCell().ay, 0.0);
+  EXPECT_EQ(canonicalCell.unitCell().az, 0.0);
+  EXPECT_EQ(canonicalCell.unitCell().bz, 0.0);
+  EXPECT_NEAR(canonicalCell.alpha(), 80.0 * degree, 1e-12);
+
+  // the bounding box followed no setter: it encloses the full cell after each of them
+  SKCell box(10.0, 10.0, 10.0, 90.0 * degree, 90.0 * degree, 90.0 * degree);
+  box.setMaximumReplicas(int3(1, 0, 0));
+  EXPECT_NEAR(box.boundingBox().maximum().x, 20.0, 1e-12);
+  box.setMinimumReplicaY(-1);
+  EXPECT_NEAR(box.boundingBox().minimum().y, -10.0, 1e-12);
+  box.setLengthA(5.0);
+  EXPECT_NEAR(box.boundingBox().maximum().x, 10.0, 1e-12);
+  box.c(7.0);
+  EXPECT_NEAR(box.boundingBox().maximum().z, 7.0, 1e-12);
+  box.setGammaAngle(60.0 * degree);
+  EXPECT_EQ(box.boundingBox().maximum(), box.enclosingBoundingBox().maximum());
+  EXPECT_EQ(box.boundingBox().minimum(), box.enclosingBoundingBox().minimum());
+  box.setUnitCell(double3x3(double3(3.0, 0.0, 0.0), double3(0.0, 4.0, 0.0), double3(0.0, 0.0, 5.0)));
+  EXPECT_NEAR(box.boundingBox().maximum().x, 6.0, 1e-12);
+  EXPECT_NEAR(box.boundingBox().minimum().y, -4.0, 1e-12);
+  box.setBox(double3x3(double3(8.0, 0.0, 0.0), double3(0.0, 8.0, 0.0), double3(0.0, 0.0, 8.0)));
+  EXPECT_NEAR(box.boundingBox().maximum().x, 8.0, 1e-12);
+  EXPECT_NEAR(box.boundingBox().minimum().y, -4.0, 1e-12);
+}
+
 TEST(SYMMETRY_STRUCTURE_FIXES, equal_seitz_matrices_hash_equally)
 {
   const SKSeitzIntegerMatrix a(SKRotationMatrix::identity, int3(1, 2, 3));
