@@ -36,6 +36,9 @@ export class SKPointGroup
   SKPointGroup(SKRotationalOccurrenceTable table, std::size_t number, std::string symbol, std::string schoenflies,
                Holohedry holohedry, Laue laue, bool centrosymmetric, bool enantiomorphic);
   SKPointGroup(SKPointSymmetrySet set);
+  /// The point group whose rotation types occur as in 'set', or nothing when no point group does (the constructor
+  /// from a set leaves the number at 0 then, which callers took for a point group).
+  static std::optional<SKPointGroup> fromPointSymmetry(const SKPointSymmetrySet& set);
   static std::vector<SKPointGroup> pointGroupData;
 
   std::size_t number() { return _number; }

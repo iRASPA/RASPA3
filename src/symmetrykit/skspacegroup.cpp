@@ -706,7 +706,7 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
 
     SKPointSymmetrySet pointSymmetry = SKPointSymmetrySet(spaceGroupSymmetries.rotations());
 
-    std::optional<SKPointGroup> pointGroup = SKPointGroup(pointSymmetry);
+    std::optional<SKPointGroup> pointGroup = SKPointGroup::fromPointSymmetry(pointSymmetry);
 
     if (pointGroup)
     {
@@ -1011,7 +1011,8 @@ std::optional<SKPointGroup> SKSpaceGroup::findPointGroup(double3x3 unitCell,
 
     SKPointSymmetrySet pointSymmetry = SKPointSymmetrySet(spaceGroupSymmetries.rotations());
 
-    return SKPointGroup(pointSymmetry);
+    // nothing when the rotations match no point group, rather than a point group numbered 0
+    return SKPointGroup::fromPointSymmetry(pointSymmetry);
   }
   return std::nullopt;
 }

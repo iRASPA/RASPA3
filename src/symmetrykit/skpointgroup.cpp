@@ -52,6 +52,13 @@ SKPointGroup::SKPointGroup(SKPointSymmetrySet pointSymmetry) : _table(0, 0, 0, 0
   }
 }
 
+std::optional<SKPointGroup> SKPointGroup::fromPointSymmetry(const SKPointSymmetrySet& set)
+{
+  const SKPointGroup pointGroup(set);
+  if (pointGroup.number() == 0) return std::nullopt;
+  return pointGroup;
+}
+
 std::string SKPointGroup::holohedryString() const
 {
   switch (_holohedry)

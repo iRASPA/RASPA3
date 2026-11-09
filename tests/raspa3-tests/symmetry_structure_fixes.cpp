@@ -943,3 +943,17 @@ TEST(SYMMETRY_STRUCTURE_FIXES, shared_hall_symbols_of_group_68_are_reached_throu
   EXPECT_EQ(SKSpaceGroup::HallNumber("-F 4vw 2vw 3 :2"), 526uz);
   EXPECT_FALSE(SKSpaceGroup::HallNumber("-F 4vw 2vw 3 :1").has_value());
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, rotations_matching_no_point_group_give_no_point_group)
+{
+  // the identity with a four-fold rotation but without its square is no group: nothing, not point group number 0
+  const SKPointSymmetrySet broken({SKRotationMatrix::identity, SKRotationMatrix::r_4_001});
+  EXPECT_FALSE(SKPointGroup::fromPointSymmetry(broken).has_value());
+  EXPECT_EQ(SKPointGroup(broken).number(), 0uz);
+
+  // the identity and the inversion form point group -1 (number 2)
+  const SKPointSymmetrySet ci({SKRotationMatrix::identity, SKRotationMatrix::inversionIdentity});
+  const std::optional<SKPointGroup> pointGroup = SKPointGroup::fromPointSymmetry(ci);
+  ASSERT_TRUE(pointGroup.has_value());
+  EXPECT_EQ(pointGroup->number(), 2uz);
+}
