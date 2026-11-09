@@ -246,11 +246,25 @@ void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceFiel
     std::size_t pseudo_atom_type = static_cast<std::size_t>(atom.type);
     std::size_t element_index = forceField.pseudoAtoms[pseudo_atom_type].atomicNumber;
 
-    // the reference table holds the elements up to polonium (Z = 84) and ten ionization energies per element
-    const std::size_t oxidationState =
-        static_cast<std::size_t>(std::abs(forceField.pseudoAtoms[pseudo_atom_type].oxidationState));
-    if (element_index >= chargeEquilibrationElementData.size() ||
-        oxidationState >= chargeEquilibrationElementData[element_index].ionizationEnergy.size())
+    // the reference table holds ionization energies, so it has nothing for an anion (the sign used to be dropped,
+    // which read a cation's data for it)
+    const std::int64_t signedOxidationState = forceField.pseudoAtoms[pseudo_atom_type].oxidationState;
+    if (signedOxidationState < 0)
+    {
+      throw std::runtime_error(std::format(
+          "[charge equilibration]: negative oxidation state {} for pseudo-atom '{}' (atomic number {}); the "
+          "reference table holds ionization energies only\n",
+          signedOxidationState, forceField.pseudoAtoms[pseudo_atom_type].name, element_index));
+    }
+    const std::size_t oxidationState = static_cast<std::size_t>(signedOxidationState);
+
+    // the reference table holds the elements up to polonium (Z = 84), with a blank entry at index 0, and room for
+    // ten ionization energies per element of which only the measured ones are filled in; the rest are zero. The
+    // check on the array size alone let an unmeasured (zero) energy through, which made J negative and the charges
+    // NaN (e.g. Ba2+, Hf4+, Ta5+, W6+, Pt2+, Au+, Ir3+).
+    if (element_index == 0 || element_index >= chargeEquilibrationElementData.size() ||
+        oxidationState >= chargeEquilibrationElementData[element_index].ionizationEnergy.size() ||
+        chargeEquilibrationElementData[element_index].ionizationEnergy[oxidationState] == 0.0)
     {
       throw std::runtime_error(std::format(
           "[charge equilibration]: no reference data for pseudo-atom '{}' (atomic number {}, oxidation state {})\n",

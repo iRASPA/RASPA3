@@ -124,6 +124,53 @@ TEST(UNINITIALIZED_MEMBERS, automatic_coulomb_cutoff_follows_the_box_with_explic
       << forceField.printCutOffAutoStatus();
 }
 
+TEST(UNINITIALIZED_MEMBERS, charge_equilibration_rejects_unmeasured_ionization_energies_and_anions)
+{
+  // the table has room for ten ionization energies per element but only the measured ones are filled in: Ba has
+  // two, so Ba2+ needs the (unmeasured, zero) third and used to get a negative hardness and NaN charges; Ta has
+  // one, Hf four and Au two; index 0 of the table is the blank entry
+  const auto forceFieldFor = [](std::string name, std::size_t atomicNumber, std::int64_t oxidationState)
+  {
+    ForceField forceField({{name, true, 100.0, 0.0, 0.0, atomicNumber, false}, {"O", true, 16.0, 0.0, 0.0, 8, false}},
+                          {{20.0, 3.0}, {50.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0,
+                          false, false, true);
+    forceField.pseudoAtoms[0].oxidationState = oxidationState;
+    return forceField;
+  };
+  std::vector<Atom> atoms{Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false),
+                          Atom({2.0, 0.0, 0.0}, 0.0, 1.0, 0, 1, 0, false, false)};
+  const SimulationBox box(20.0, 20.0, 20.0);
+  for (const auto& [name, atomicNumber, oxidationState] :
+       {std::tuple<std::string, std::size_t, std::int64_t>{"Ba", 56, 2},
+        {"Ta", 73, 5},
+        {"Hf", 72, 4},
+        {"Au", 79, 3},
+        {"", 0, 0}})
+  {
+    EXPECT_THROW(ChargeEquilibration::computeChargeEquilibration(forceFieldFor(name, atomicNumber, oxidationState), box,
+                                                                 atoms, ChargeEquilibration::Type::PeriodicEwaldSum),
+                 std::runtime_error)
+        << name << " " << oxidationState;
+  }
+
+  // an anion: the table holds ionization energies only (the sign used to be dropped, reading the cation's data)
+  EXPECT_THROW(ChargeEquilibration::computeChargeEquilibration(forceFieldFor("O", 8, -2), box, atoms,
+                                                               ChargeEquilibration::Type::PeriodicEwaldSum),
+               std::runtime_error);
+
+  // measured data (Zn has eight ionization energies; Ba+ uses its second) gives finite charges that sum to zero
+  for (const auto& [name, atomicNumber, oxidationState] :
+       {std::tuple<std::string, std::size_t, std::int64_t>{"Zn", 30, 2}, {"Ba", 56, 1}})
+  {
+    std::vector<Atom> pair = atoms;
+    ChargeEquilibration::computeChargeEquilibration(forceFieldFor(name, atomicNumber, oxidationState), box, pair,
+                                                    ChargeEquilibration::Type::PeriodicEwaldSum);
+    EXPECT_EQ(std::to_string(pair[0].charge).find("nan"), std::string::npos) << name;
+    EXPECT_GT(pair[0].charge, 0.0) << name;
+    EXPECT_NEAR(pair[0].charge + pair[1].charge, 0.0, 1e-9) << name;
+  }
+}
+
 TEST(UNINITIALIZED_MEMBERS, charge_equilibration_rejects_elements_beyond_the_reference_table)
 {
   ForceField forceField({{"U", true, 238.0, 0.0, 0.0, 92, false}, {"O", true, 16.0, 0.0, 0.0, 8, false}},
