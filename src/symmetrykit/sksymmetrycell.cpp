@@ -603,7 +603,7 @@ bool SKSymmetryCell::checkMetricSimilarity(double3x3 transformedMetricTensor, do
 
 std::vector<std::tuple<double3, std::size_t, double>> SKSymmetryCell::trim(
     std::vector<std::tuple<double3, std::size_t, double>> atoms, double3x3 from, double3x3 to,
-    [[maybe_unused]] bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
+    bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
   double3x3 changeOfBasis = to.inverse() * from;
 
@@ -625,7 +625,9 @@ std::vector<std::tuple<double3, std::size_t, double>> SKSymmetryCell::trim(
     overlapTable[i] = i;
     for (std::size_t j = 0; j < trimmedAtoms.size(); j++)
     {
-      if (std::get<1>(trimmedAtoms[i]) == std::get<1>(trimmedAtoms[j]))
+      // with partial occupancies a site may carry atoms of several types: they coincide as one site then, as in
+      // testTranslationalSymmetry and testSymmetry (the type comparison used to apply regardless)
+      if (allowPartialOccupancies || std::get<1>(trimmedAtoms[i]) == std::get<1>(trimmedAtoms[j]))
       {
         // signed difference, see isOverlap: an absolute value here changes the distance in a non-orthogonal cell
         double3 dr = std::get<0>(trimmedAtoms[i]) - std::get<0>(trimmedAtoms[j]);

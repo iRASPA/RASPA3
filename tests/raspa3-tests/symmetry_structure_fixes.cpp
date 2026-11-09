@@ -840,3 +840,23 @@ TEST(SYMMETRY_STRUCTURE_FIXES, symmetry_operations_in_a_reverse_or_permuted_sett
   EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(permuted, tetragonal, Centring::primitive, std::nullopt),
             p4mmm);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, partial_occupancies_merge_sites_of_different_types)
+{
+  using Atom = std::tuple<double3, std::size_t, double>;
+  const double3x3 cubic(double3(10.0, 0.0, 0.0), double3(0.0, 10.0, 0.0), double3(0.0, 0.0, 10.0));
+
+  // two atoms of different types on one site: one site with partial occupancies, two without (the flag was ignored)
+  const std::vector<Atom> shared{Atom{double3(0.25, 0.25, 0.25), 1, 0.5}, Atom{double3(0.25, 0.25, 0.25), 2, 0.5}};
+  EXPECT_EQ(SKSymmetryCell::trim(shared, cubic, cubic, true, 1e-2).size(), 1uz);
+  EXPECT_EQ(SKSymmetryCell::trim(shared, cubic, cubic, false, 1e-2).size(), 2uz);
+
+  // two atoms of different types related by the inversion of P m -3 m: one orbit with partial occupancies
+  SKIntegerSymmetryOperationSet operations =
+      SKSpaceGroup(SKSpaceGroupDataBase::spaceGroupHallData[221].front()).spaceGroupSetting().fullSeitzMatrices();
+  const SKAsymmetricUnit unit =
+      SKSpaceGroup(SKSpaceGroupDataBase::spaceGroupHallData[221].front()).spaceGroupSetting().asymmetricUnit();
+  std::vector<Atom> related{Atom{double3(0.1, 0.1, 0.1), 1, 0.5}, Atom{double3(0.9, 0.9, 0.9), 2, 0.5}};
+  EXPECT_EQ(operations.asymmetricAtoms(unit, related, cubic, true, 1e-2).size(), 1uz);
+  EXPECT_EQ(operations.asymmetricAtoms(unit, related, cubic, false, 1e-2).size(), 2uz);
+}
