@@ -21,14 +21,23 @@ std::optional<double> SKAsymmetricUnit::coordinateInside(double point, std::pair
   const double left = double(range.first - std::abs(range.first % 2)) / 48.0;
   const double right = double(range.second - std::abs(range.second % 2)) / 48.0;
 
-  // the range may lie anywhere within [-1, 1], so the point is tested in all three of its images that can fall there
-  const double centred = point - std::rint(point);
-  for (const double shift : {-1.0, 0.0, 1.0})
+  const auto inside = [&](double x)
   {
-    const double x = centred + shift;
     const bool aboveLeft = openLeft ? left < x : left - tolerance <= x;
     const bool belowRight = openRight ? x < right : x <= right + tolerance;
-    if (aboveLeft && belowRight) return x;
+    return aboveLeft && belowRight;
+  };
+
+  // a point already in the range is its own image: a unit wider than one cell (e.g. [-1/2, 1)) holds two images of
+  // a point, and testing the shifted ones first moved points that needed no move
+  if (inside(point)) return point;
+
+  // the range may lie anywhere within [-1, 1], so the point is tested in all three of its images that can fall there
+  const double centred = point - std::rint(point);
+  for (const double shift : {0.0, 1.0, -1.0})
+  {
+    const double x = centred + shift;
+    if (inside(x)) return x;
   }
   return std::nullopt;
 }

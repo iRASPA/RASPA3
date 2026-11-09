@@ -907,6 +907,57 @@ TEST(SYMMETRY_STRUCTURE_FIXES, asymmetric_unit_images_keep_their_shift_and_toler
   EXPECT_GE(representative.z, -0.5 - 1e-8);
 }
 
+TEST(SYMMETRY_STRUCTURE_FIXES, asymmetric_unit_keeps_a_point_that_is_already_inside)
+{
+  // a unit one cell wide holds both images of a point on its boundary; the image below used to win over the point
+  const SKAsymmetricUnit symmetric({-24, 24}, {0, 24}, {0, 24});
+  std::optional<double3> image = symmetric.imageInside(double3(0.5, 0.1, 0.1));
+  ASSERT_TRUE(image.has_value());
+  EXPECT_NEAR(image->x, 0.5, 1e-12);
+  image = symmetric.imageInside(double3(-0.5, 0.1, 0.1));
+  ASSERT_TRUE(image.has_value());
+  EXPECT_NEAR(image->x, -0.5, 1e-12);
+
+  const SKAsymmetricUnit wholeCell({-48, 0}, {0, 24}, {0, 24});
+  image = wholeCell.imageInside(double3(0.0, 0.1, 0.1));
+  ASSERT_TRUE(image.has_value());
+  EXPECT_NEAR(image->x, 0.0, 1e-12);
+
+  // [-1/2, 1) (Hall 14, 17, ...) holds 0.75 itself; it used to come back as its centred image -0.25
+  const SKAsymmetricUnit wide({-24, 49}, {0, 24}, {0, 24});
+  image = wide.imageInside(double3(0.75, 0.1, 0.1));
+  ASSERT_TRUE(image.has_value());
+  EXPECT_NEAR(image->x, 0.75, 1e-12);
+  image = wide.imageInside(double3(0.3, 0.1, 0.1));
+  ASSERT_TRUE(image.has_value());
+  EXPECT_NEAR(image->x, 0.3, 1e-12);
+  // [-1, 1) (Hall 22, 25, ...): points in [0, 1) stay where they are
+  const SKAsymmetricUnit twoCells({-48, 49}, {0, 24}, {0, 24});
+  image = twoCells.imageInside(double3(0.9, 0.1, 0.1));
+  ASSERT_TRUE(image.has_value());
+  EXPECT_NEAR(image->x, 0.9, 1e-12);
+
+  // a point outside the unit still comes back as the image that is inside
+  image = wide.imageInside(double3(1.25, 0.1, 0.1));
+  ASSERT_TRUE(image.has_value());
+  EXPECT_NEAR(image->x, 0.25, 1e-12);
+  image = wide.imageInside(double3(-0.75, 0.1, 0.1));
+  ASSERT_TRUE(image.has_value());
+  EXPECT_NEAR(image->x, 0.25, 1e-12);
+
+  // the representative of an atom already in a one-cell-wide unit is not moved by asymmetricAtoms (I 1 2 1, Hall 14)
+  const SKSpaceGroupSetting setting = SKSpaceGroup(14).spaceGroupSetting();
+  ASSERT_EQ(setting.asymmetricUnit().a, (std::pair<int, int>{-24, 49}));
+  const double3x3 cell(double3(10.0, 0.0, 0.0), double3(0.0, 11.0, 0.0), double3(0.0, 0.0, 12.0));
+  const double3 start(0.75, 0.1, 0.2);
+  ASSERT_TRUE(setting.asymmetricUnit().contains(start));
+  std::vector<std::tuple<double3, std::size_t, double>> atoms{{start, 1, 1.0}};
+  SKIntegerSymmetryOperationSet operations = setting.fullSeitzMatrices();
+  const auto asymmetric = operations.asymmetricAtoms(setting.asymmetricUnit(), atoms, cell, false, 1e-2);
+  ASSERT_EQ(asymmetric.size(), 1uz);
+  EXPECT_NEAR(std::get<0>(asymmetric.front()).x, 0.75, 1e-12);
+}
+
 TEST(SYMMETRY_STRUCTURE_FIXES, exact_symbol_matches_take_precedence_over_space_stripped_ones)
 {
   // " P 3 2" (Hall 438, P 3 1 2) and " P 32" (Hall 432, P 3_2) strip to the same "p32"; the exact match used to
