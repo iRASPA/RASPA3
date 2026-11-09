@@ -94,26 +94,68 @@ bool SKSpaceGroup::matchSpacegroup(std::string spaceSearchGroupString, std::stri
   return false;
 }
 
+namespace
+{
+// whether 'qualifier' (lower case, as "ba-c", "2" or "r") names this setting: its axis qualifier, or its origin
+// choice (stored as the number 1 or 2) or axes ('H' or 'R')
+bool settingHasQualifier(const SKSpaceGroupSetting& setting, const std::string& qualifier)
+{
+  if (toLower(setting.qualifier()) == qualifier) return true;
+  const char ext = setting.ext();
+  if (ext == 0) return false;
+  const std::string extQualifier =
+      (ext > 0 && ext < 10) ? std::to_string(static_cast<int>(ext))
+                            : std::string(1, static_cast<char>(std::tolower(static_cast<unsigned char>(ext))));
+  return extQualifier == qualifier;
+}
+
+// splits a trailing ":qualifier" off a (lower-case, simplified) symbol; a quoted symbol closes after the qualifier
+std::string splitQualifier(std::string& symbol)
+{
+  std::string qualifier{};
+  if (const std::size_t colon = symbol.rfind(':'); colon != std::string::npos)
+  {
+    qualifier = simplified(symbol.substr(colon + 1));
+    symbol = simplified(symbol.substr(0, colon));
+    if (!qualifier.empty() && (qualifier.back() == '\'' || qualifier.back() == '"') && !symbol.empty() &&
+        symbol.front() == qualifier.back())
+    {
+      symbol.push_back(qualifier.back());
+      qualifier.pop_back();
+      qualifier = simplified(qualifier);
+    }
+  }
+  return qualifier;
+}
+}  // namespace
+
 std::optional<std::size_t> SKSpaceGroup::HallNumber(std::string string)
 {
+  // Three pairs of origin-choice-1 settings of group 68 (C c c a / C c c b, A b a a / A c a a, B b c b / B b a b)
+  // share a Hall symbol, their operations being identical; the bare symbol gives the first of a pair, and a
+  // setting qualifier after a colon ("C 2 2 -1ac :ba-c") selects the other, as for the Hermann-Mauguin symbols.
   std::string spaceSearchGroupString = toLower(simplified(string));
+  const std::string qualifier = splitQualifier(spaceSearchGroupString);
   std::string spaceStrippedSearchString = spaceSearchGroupString;
   std::erase(spaceStrippedSearchString, ' ');
 
   // Every symbol is compared as written before any is compared with its spaces removed: the stripped forms collide
   // (" P 3 2" of P 3 1 2 and " P 32" of P 3_2 both become "p32"), so a stripped match of an earlier setting must not
   // pre-empt an exact match of a later one. The stripped pass serves symbols written like "P21/c".
-  for (std::size_t i = 0; i <= 530; i++)
+  for (const bool stripped : {false, true})
   {
-    const std::string storedSpaceGroupString =
-        toLower(simplified(SKSpaceGroupDataBase::spaceGroupData[i].HallString()));
-    if (SKSpaceGroup::matchSpacegroup(spaceSearchGroupString, storedSpaceGroupString)) return i;
-  }
-  for (std::size_t i = 0; i <= 530; i++)
-  {
-    std::string storedSpaceGroupString = toLower(simplified(SKSpaceGroupDataBase::spaceGroupData[i].HallString()));
-    std::erase(storedSpaceGroupString, ' ');
-    if (SKSpaceGroup::matchSpacegroup(spaceStrippedSearchString, storedSpaceGroupString)) return i;
+    for (std::size_t i = 0; i <= 530; i++)
+    {
+      const SKSpaceGroupSetting& setting = SKSpaceGroupDataBase::spaceGroupData[i];
+      if (!qualifier.empty() && !settingHasQualifier(setting, qualifier)) continue;
+      std::string storedSpaceGroupString = toLower(simplified(setting.HallString()));
+      if (stripped) std::erase(storedSpaceGroupString, ' ');
+      if (SKSpaceGroup::matchSpacegroup(stripped ? spaceStrippedSearchString : spaceSearchGroupString,
+                                        storedSpaceGroupString))
+      {
+        return i;
+      }
+    }
   }
 
   return std::nullopt;
@@ -126,20 +168,7 @@ std::optional<std::size_t> SKSpaceGroup::HallNumberFromHMString(std::string stri
   // the qualifier selects among them and, without one, the standard setting is preferred. The qualifier used to be
   // ignored, which made such symbols unreadable and left the alternative settings unreachable.
   std::string spaceSearchGroupString = toLower(simplified(string));
-  std::string qualifier{};
-  if (const std::size_t colon = spaceSearchGroupString.rfind(':'); colon != std::string::npos)
-  {
-    qualifier = simplified(spaceSearchGroupString.substr(colon + 1));
-    spaceSearchGroupString = simplified(spaceSearchGroupString.substr(0, colon));
-    // a quoted symbol closes after the qualifier: move the closing quote back onto the symbol
-    if (!qualifier.empty() && (qualifier.back() == '\'' || qualifier.back() == '"') &&
-        !spaceSearchGroupString.empty() && spaceSearchGroupString.front() == qualifier.back())
-    {
-      spaceSearchGroupString.push_back(qualifier.back());
-      qualifier.pop_back();
-      qualifier = simplified(qualifier);
-    }
-  }
+  const std::string qualifier = splitQualifier(spaceSearchGroupString);
   std::string spaceStrippedSearchString = spaceSearchGroupString;
   std::erase(spaceStrippedSearchString, ' ');
 
@@ -172,14 +201,7 @@ std::optional<std::size_t> SKSpaceGroup::HallNumberFromHMString(std::string stri
 
       if (!qualifier.empty())
       {
-        // the origin choice is stored as the number 1 or 2 (not the character), the axes as 'H' or 'R'
-        const char ext = setting.ext();
-        const std::string extQualifier =
-            (ext > 0 && ext < 10) ? std::to_string(static_cast<int>(ext))
-                                  : std::string(1, static_cast<char>(std::tolower(static_cast<unsigned char>(ext))));
-        const bool qualifierMatches =
-            toLower(setting.qualifier()) == qualifier || (ext != 0 && extQualifier == qualifier);
-        if (qualifierMatches) return i;
+        if (settingHasQualifier(setting, qualifier)) return i;
         continue;
       }
       if (setting.standardSetting()) return i;

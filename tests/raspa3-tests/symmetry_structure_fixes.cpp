@@ -922,3 +922,24 @@ TEST(SYMMETRY_STRUCTURE_FIXES, exact_symbol_matches_take_precedence_over_space_s
   EXPECT_EQ(SKSpaceGroup(*p312).spaceGroupSetting().number(), 149uz);
   EXPECT_EQ(SKSpaceGroup(*p3112).spaceGroupSetting().number(), 151uz);
 }
+
+TEST(SYMMETRY_STRUCTURE_FIXES, shared_hall_symbols_of_group_68_are_reached_through_the_setting_qualifier)
+{
+  // the two origin-choice-1 settings of each pair have the same Hall symbol and the same operations (the Hall
+  // notation does not distinguish them); the bare symbol gives the first, the axis qualifier selects the second
+  for (const auto& [first, second, symbol, qualifier] :
+       {std::tuple{322uz, 324uz, " C 2 2 -1ac", "ba-c"}, std::tuple{326uz, 328uz, " A 2 2 -1ab", "-cba"},
+        std::tuple{330uz, 332uz, " B 2 2 -1ab", "a-cb"}})
+  {
+    const SKSpaceGroupSetting& one = SKSpaceGroupDataBase::spaceGroupData[first];
+    const SKSpaceGroupSetting& other = SKSpaceGroupDataBase::spaceGroupData[second];
+    EXPECT_EQ(one.HallString(), other.HallString());
+    EXPECT_EQ(one.encodedSeitz(), other.encodedSeitz());
+    EXPECT_EQ(SKSpaceGroup::HallNumber(symbol), first);
+    EXPECT_EQ(SKSpaceGroup::HallNumber(std::string(symbol) + " :" + qualifier), second);
+    EXPECT_EQ(SKSpaceGroup::HallNumber(std::string(symbol) + " :" + one.qualifier()), first);
+  }
+  // an origin choice as qualifier works for Hall symbols too
+  EXPECT_EQ(SKSpaceGroup::HallNumber("-F 4vw 2vw 3 :2"), 526uz);
+  EXPECT_FALSE(SKSpaceGroup::HallNumber("-F 4vw 2vw 3 :1").has_value());
+}
