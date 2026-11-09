@@ -104,11 +104,16 @@ SKIntegerSymmetryOperationSet SKSpaceGroupSetting::fullSeitzMatrices() const
   return SKIntegerSymmetryOperationSet(SKSeitzIntegerMatrix::SeitzMatrices(_encodedSeitz));
 }
 
+// The rotation parts of the setting's operations, each once and with a zero translation: the point-group
+// operations in the setting's basis (48 for F d -3 m, whose 192 operations are these times the 4 centring
+// translations). It used to return the full operations, translations included, under this name.
 std::vector<SKSeitzIntegerMatrix> SKSpaceGroupSetting::SeitzMatricesWithoutTranslation() const
 {
-  // The encoding holds all 'order' operations of the setting, the inversions and the centring copies included (P -1
-  // encodes two, F d -3 m 192). Appending inverted copies for a centrosymmetric point group doubled the group with
-  // operations that were not even its own: inversion through c is (-I, 2c), and the appended translations lacked
-  // that factor of two.
-  return SKSeitzIntegerMatrix::SeitzMatrices(_encodedSeitz);
+  std::vector<SKSeitzIntegerMatrix> rotations{};
+  for (const SKSeitzIntegerMatrix& operation : SKSeitzIntegerMatrix::SeitzMatrices(_encodedSeitz))
+  {
+    const SKSeitzIntegerMatrix rotation(operation.rotation, int3(0, 0, 0));
+    if (std::find(rotations.begin(), rotations.end(), rotation) == rotations.end()) rotations.push_back(rotation);
+  }
+  return rotations;
 }

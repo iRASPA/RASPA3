@@ -251,22 +251,26 @@ TEST(SYMMETRY_STRUCTURE_FIXES, monoclinic_change_of_basis_relabels_c_and_i_centr
   EXPECT_EQ(SKSpaceGroup::HallNumberFromSymmetryOperations(cCentred, monoclinic, Centring::c_face, 5), 9uz);
 }
 
-TEST(SYMMETRY_STRUCTURE_FIXES, seitz_matrices_of_a_centrosymmetric_setting_are_not_doubled)
+TEST(SYMMETRY_STRUCTURE_FIXES, seitz_matrices_without_translation_are_the_distinct_rotations)
 {
-  // P -1 (Hall 2), C 1 2/c 1 (Hall 90) and F d -3 m with the inversion centre off the origin (Hall 525) and on it
-  // (Hall 526): the encoded operations are the whole group; appended inverted copies doubled it with operations
-  // that were not in the group
+  // P -1 (Hall 2), C 1 2/c 1 (Hall 90) and F d -3 m in both origin choices (Hall 525, 526): the rotation parts,
+  // each once and without translation, as many as the order divided by the centring translations. The function
+  // used to return the full operations, translations and centring copies included (and before that twice them).
   for (const std::size_t hallNumber : {2uz, 90uz, 525uz, 526uz})
   {
     const SKSpaceGroupSetting setting = SKSpaceGroup(hallNumber).spaceGroupSetting();
-    const std::vector<SKSeitzIntegerMatrix> matrices = setting.SeitzMatricesWithoutTranslation();
-    const std::unordered_set<SKSeitzIntegerMatrix, SKSeitzIntegerMatrix::hashFunction> full =
-        setting.fullSeitzMatrices().operations;
-    EXPECT_EQ(matrices.size(), setting.order()) << "Hall " << hallNumber;
+    const std::vector<SKSeitzIntegerMatrix> rotations = setting.SeitzMatricesWithoutTranslation();
+    const auto full = setting.fullSeitzMatrices().operations;
     EXPECT_EQ(full.size(), setting.order()) << "Hall " << hallNumber;
-    for (const SKSeitzIntegerMatrix& m : matrices)
+    EXPECT_EQ(rotations.size(), setting.order() / setting.latticeTranslations().size()) << "Hall " << hallNumber;
+    for (std::size_t i = 0; i < rotations.size(); ++i)
     {
-      EXPECT_TRUE(full.contains(m)) << "Hall " << hallNumber;
+      EXPECT_EQ(rotations[i].translation, int3(0, 0, 0)) << "Hall " << hallNumber;
+      for (std::size_t j = i + 1; j < rotations.size(); ++j)
+        EXPECT_FALSE(rotations[i].rotation == rotations[j].rotation) << "Hall " << hallNumber;
+      EXPECT_TRUE(std::any_of(full.begin(), full.end(),
+                              [&](const SKSeitzIntegerMatrix& m) { return m.rotation == rotations[i].rotation; }))
+          << "Hall " << hallNumber;
     }
   }
 }
