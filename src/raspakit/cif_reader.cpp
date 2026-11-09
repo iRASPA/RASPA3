@@ -118,7 +118,27 @@ auto CIFReader::readCIFString(const std::string& content, const ForceField& forc
     }
     for (std::size_t i = 0; i < cif_reader.fractionalAtoms.size(); ++i)
     {
-      cif_reader.fractionalAtoms[i].charge = sum_charge[i] / static_cast<double>(count_charge[i]);
+      if (count_charge[i] > 0)
+      {
+        cif_reader.fractionalAtoms[i].charge = sum_charge[i] / static_cast<double>(count_charge[i]);
+      }
+    }
+    // a defined atom whose whole orbit was removed as duplicates of a later atom's (a redundant symmetry-equivalent
+    // site, or disorder) has no atom of its own in the unit cell: its charge is that of the site it coincides with
+    // (the average over none used to be 0/0, NaN); an atom that coincides with nothing keeps the charge it had
+    for (std::size_t i = 0; i < cif_reader.fractionalAtoms.size(); ++i)
+    {
+      if (count_charge[i] > 0) continue;
+      const double3 position = simulation_box.cell * cif_reader.fractionalAtoms[i].position;
+      for (const Atom& atom : unit_cell_atoms_cartesian)
+      {
+        const double3 dr = simulation_box.applyPeriodicBoundaryConditions(position - atom.position);
+        if (double3::dot(dr, dr) < 0.1 * 0.1)
+        {
+          cif_reader.fractionalAtoms[i].charge = cif_reader.fractionalAtoms[atom.moleculeId].charge;
+          break;
+        }
+      }
     }
     for (Atom& atom : atoms)
     {

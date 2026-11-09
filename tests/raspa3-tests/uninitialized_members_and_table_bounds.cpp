@@ -347,6 +347,54 @@ TEST(UNINITIALIZED_MEMBERS, charge_equilibration_of_no_atoms_does_nothing)
   }
 }
 
+TEST(UNINITIALIZED_MEMBERS, cif_charge_equilibration_gives_a_redundant_site_the_charge_of_the_site_it_duplicates)
+{
+  // P -1 with the oxygen listed twice, as O1 at x and O2 at -x: the orbits coincide, the expansion keeps the later
+  // atom's copies, and the earlier atom averaged its charge over no atoms (0/0, NaN; -ffast-math hides a NaN from
+  // std::isnan, hence the text check)
+  const ForceField forceField = ForceField::makeMetalOrganicFrameworkForceField(12.0, true, false, false);
+  constexpr std::string_view cif = R"(
+data_test
+_cell_length_a 10.0
+_cell_length_b 10.0
+_cell_length_c 10.0
+_cell_angle_alpha 90.0
+_cell_angle_beta 90.0
+_cell_angle_gamma 90.0
+_symmetry_space_group_name_H-M 'P -1'
+_symmetry_Int_Tables_number 2
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+O1 O 0.1 0.2 0.3
+O2 O 0.9 0.8 0.7
+Zn1 Zn 0.5 0.5 0.0
+)";
+  const auto parsed =
+      CIFReader::readCIFString(std::string(cif), forceField, CIFReader::UseChargesFrom::ChargeEquilibration);
+  ASSERT_TRUE(parsed.has_value());
+  const auto& [simulationBox, spaceGroupHallNumber, definedAtoms, unitCellAtoms] = parsed.value();
+  ASSERT_EQ(definedAtoms.size(), 3uz);
+  ASSERT_EQ(unitCellAtoms.size(), 3uz);  // two oxygens and the zinc on the inversion centre
+  for (const Atom& atom : definedAtoms)
+  {
+    EXPECT_EQ(std::to_string(atom.charge).find("nan"), std::string::npos) << atom.moleculeId;
+  }
+  EXPECT_LT(definedAtoms[0].charge, 0.0);
+  EXPECT_NEAR(definedAtoms[0].charge, definedAtoms[1].charge, 1e-12);
+  EXPECT_GT(definedAtoms[2].charge, 0.0);
+  double total = 0.0;
+  for (const Atom& atom : unitCellAtoms)
+  {
+    EXPECT_EQ(std::to_string(atom.charge).find("nan"), std::string::npos);
+    total += atom.charge;
+  }
+  EXPECT_NEAR(total, 0.0, 1e-9);
+}
+
 TEST(UNINITIALIZED_MEMBERS, charge_equilibration_rejects_elements_beyond_the_reference_table)
 {
   ForceField forceField({{"U", true, 238.0, 0.0, 0.0, 92, false}, {"O", true, 16.0, 0.0, 0.0, 8, false}},
