@@ -493,6 +493,10 @@ inline int SGA_stricmp(const char *a, const char *b) const {
   static const std::set<std::string, InsensitiveCompare> options;
 
   static ForceField makeZeoliteForceField(double rc = 12.0, bool shifted = true, bool tailCorrections = false, bool useEwald = false);
+  /// The oxidation state the charge equilibration starts an element from: Wilmer and Snurr's default charge centres
+  /// (chargecenters.dat), zero for elements they do not list.
+  static std::int64_t defaultOxidationState(const std::string& element);
+
   static ForceField makeMetalOrganicFrameworkForceField(double rc = 12.0, bool shifted = true, bool tailCorrections = false, bool useEwald = false);
   static ForceField makeZeoPlusPlusForceField(double rc = 12.0, bool shifted = true, bool tailCorrections = false, bool useEwald = false);
 };

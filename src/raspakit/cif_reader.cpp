@@ -447,14 +447,10 @@ std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]]
 
         Atom atom = Atom();
 
-        auto lookUpPseudoAtom = [&](std::string name) -> std::optional<std::size_t>
+        auto lookUpExact = [&](const std::string& name) -> std::optional<std::size_t>
+        { return name.empty() ? std::nullopt : forceField.findPseudoAtom(name); };
+        auto lookUpStripped = [&](std::string name) -> std::optional<std::size_t>
         {
-          if (name.empty()) return std::nullopt;
-          if (std::optional<std::size_t> found = forceField.findPseudoAtom(name); found.has_value())
-          {
-            return found;
-          }
-
           std::replace_if(name.begin(), name.end(), [](char c) { return std::isdigit(c); }, ' ');
           std::istringstream stripped(name);
           std::string token;
@@ -462,18 +458,22 @@ std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]]
           return forceField.findPseudoAtom(token);
         };
 
-        // The element is _atom_site_type_symbol. The site label is only a name (T1, O1, C_co2),
-        // so it is tried afterwards, for a force-field type that is not the element.
-        std::optional<std::size_t> index1 = lookUpPseudoAtom(chemicalElement);
-        if (!index1.has_value())
+        // The site label names the pseudo-atom when the force field has one of that name (Zn1 with its own
+        // oxidation state next to a generic Zn, as in RASPA2 force fields); the element, _atom_site_type_symbol,
+        // used to be tried first and took the generic type for the site. A label that is only a name (T1, O1 in
+        // the IZA files) is not a pseudo-atom, and the element is used, as before. Digits are stripped last, so
+        // that an exact type never loses to a stripped label or element.
+        std::string siteLabel;
+        if (std::map<std::string, std::string>::iterator atomSiteIndex =
+                dictionary.find(std::string("_atom_site_label"));
+            (atomSiteIndex != dictionary.end()))
         {
-          if (std::map<std::string, std::string>::iterator atomSiteIndex =
-                  dictionary.find(std::string("_atom_site_label"));
-              (atomSiteIndex != dictionary.end()))
-          {
-            index1 = lookUpPseudoAtom(atomSiteIndex->second);
-          }
+          siteLabel = atomSiteIndex->second;
         }
+        std::optional<std::size_t> index1 = lookUpExact(siteLabel);
+        if (!index1.has_value()) index1 = lookUpExact(chemicalElement);
+        if (!index1.has_value()) index1 = lookUpStripped(siteLabel);
+        if (!index1.has_value()) index1 = lookUpStripped(chemicalElement);
         if (!index1.has_value())
         {
           return std::unexpected(CIFReader::ParseError::invalidForceField);

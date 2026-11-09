@@ -1972,7 +1972,25 @@ ForceField ForceField::makeZeoliteForceField(double rc, bool shifted, bool tailC
                     ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
 }
 
-ForceField ForceField::makeMetalOrganicFrameworkForceField(double rc, bool shifted, bool tailCorrections, bool useEwald)
+// The default charge centres of Wilmer and Snurr's EQeq (chargecenters.dat), by element symbol; elements not
+// listed start from a neutral atom. They stay within the measured ionization energies of each element (Ba 1, Hf 3,
+// Pt 1, Au 1, none for Ta to Ir).
+std::int64_t ForceField::defaultOxidationState(const std::string& element)
+{
+  static const std::map<std::string, std::int64_t> chargeCentres{
+      {"Li", 1}, {"Be", 2}, {"Na", 1}, {"Mg", 2}, {"Al", 3}, {"K", 1},  {"Ca", 2}, {"Sc", 3}, {"Ti", 4}, {"V", 4},
+      {"Cr", 3}, {"Mn", 2}, {"Fe", 2}, {"Co", 2}, {"Ni", 2}, {"Cu", 2}, {"Zn", 2}, {"Ga", 3}, {"Rb", 1}, {"Sr", 2},
+      {"Y", 3},  {"Zr", 4}, {"Nb", 4}, {"Mo", 4}, {"Tc", 2}, {"Ru", 2}, {"Rh", 2}, {"Pd", 2}, {"Ag", 1}, {"Cd", 2},
+      {"In", 3}, {"Sn", 2}, {"Cs", 1}, {"Ba", 1}, {"La", 2}, {"Ce", 3}, {"Pr", 3}, {"Nd", 1}, {"Pm", 1}, {"Sm", 1},
+      {"Eu", 1}, {"Gd", 1}, {"Tb", 1}, {"Dy", 1}, {"Ho", 1}, {"Er", 1}, {"Tm", 2}, {"Yb", 2}, {"Lu", 1}, {"Hf", 3},
+      {"Pt", 1}, {"Au", 1}, {"Hg", 1}, {"Tl", 1}, {"Pb", 2}, {"Bi", 3}};
+  const auto it = chargeCentres.find(element);
+  return it == chargeCentres.end() ? 0 : it->second;
+}
+
+// The pseudo-atoms of the metal-organic framework force field, one per element, before the charge centres are set.
+static ForceField metalOrganicFrameworkForceFieldWithoutChargeCentres(double rc, bool shifted, bool tailCorrections,
+                                                                      bool useEwald)
 {
   return ForceField({{"-", false, 0.0, 0.0, 0.0, 0, false},
                      {"H", true, 1.00794, 0.0, 0.0, 1, false},        //   1
@@ -2226,6 +2244,19 @@ ForceField ForceField::makeMetalOrganicFrameworkForceField(double rc, bool shift
                      {38.298, 3.306},  // N_n2, A. Martin-Calvo et al., Phys. Chem. Chem. Phys. 2011, 13, 11165
                      {0.0, 1.0}},      // N_com, a charge and nothing else
                     ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
+}
+
+ForceField ForceField::makeMetalOrganicFrameworkForceField(double rc, bool shifted, bool tailCorrections, bool useEwald)
+{
+  ForceField forceField = metalOrganicFrameworkForceFieldWithoutChargeCentres(rc, shifted, tailCorrections, useEwald);
+  // the default charge centres of Wilmer and Snurr's EQeq (chargecenters.dat): the oxidation state the charge
+  // equilibration starts a metal from. They used to be left at zero for every element, which makes a Zn or Cu
+  // centre as hard as a neutral atom and gives other charges than EQeq.
+  for (PseudoAtom& pseudoAtom : forceField.pseudoAtoms)
+  {
+    pseudoAtom.oxidationState = ForceField::defaultOxidationState(pseudoAtom.name);
+  }
+  return forceField;
 }
 
 ForceField ForceField::makeZeoPlusPlusForceField(double rc, bool shifted, bool tailCorrections, bool useEwald)

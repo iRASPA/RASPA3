@@ -256,6 +256,79 @@ TEST(UNINITIALIZED_MEMBERS, periodic_charge_equilibration_is_exact_for_a_skewed_
   }
 }
 
+TEST(UNINITIALIZED_MEMBERS, metal_organic_framework_force_field_starts_metals_from_eqeq_charge_centres)
+{
+  // Wilmer and Snurr's chargecenters.dat: metals start the charge equilibration from their usual oxidation state
+  // (all elements used to start from zero)
+  const ForceField forceField = ForceField::makeMetalOrganicFrameworkForceField(12.0, true, false, false);
+  const auto oxidationState = [&](const std::string& name)
+  { return forceField.pseudoAtoms[*forceField.findPseudoAtom(name)].oxidationState; };
+  EXPECT_EQ(oxidationState("Zn"), 2);
+  EXPECT_EQ(oxidationState("Cu"), 2);
+  EXPECT_EQ(oxidationState("Zr"), 4);
+  EXPECT_EQ(oxidationState("Al"), 3);
+  EXPECT_EQ(oxidationState("Mg"), 2);
+  EXPECT_EQ(oxidationState("Fe"), 2);
+  EXPECT_EQ(oxidationState("Ba"), 1);  // Ba has two measured ionization energies, so EQeq stops at 1
+  EXPECT_EQ(oxidationState("H"), 0);
+  EXPECT_EQ(oxidationState("C"), 0);
+  EXPECT_EQ(oxidationState("O"), 0);
+  EXPECT_EQ(oxidationState("Ta"), 0);
+  EXPECT_EQ(ForceField::defaultOxidationState("Xx"), 0);
+
+  // every default lies within the measured ionization energies, so the charge equilibration accepts it
+  std::vector<Atom> atoms{Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false),
+                          Atom({2.0, 0.0, 0.0}, 0.0, 1.0, 0, *forceField.findPseudoAtom("O"), 0, false, false)};
+  for (const std::string& metal : {"Zn", "Cu", "Zr", "Al", "Mg", "Fe", "Ba", "Hf", "Pt", "Au"})
+  {
+    atoms[0].type = static_cast<std::uint16_t>(*forceField.findPseudoAtom(metal));
+    EXPECT_NO_THROW(ChargeEquilibration::computeChargeEquilibration(forceField, SimulationBox(10.0, 10.0, 10.0), atoms,
+                                                                    ChargeEquilibration::Type::PeriodicEwaldSum))
+        << metal;
+  }
+}
+
+TEST(UNINITIALIZED_MEMBERS, cif_site_label_names_the_pseudo_atom_before_the_element_does)
+{
+  // a force field with a generic Zn and a Zn1 with an oxidation state, as RASPA2 force fields have: a site labelled
+  // Zn1 with element Zn is the Zn1 pseudo-atom (the element used to be looked up first and took the generic Zn)
+  ForceField forceField({{"Zn", true, 65.38, 0.0, 0.0, 30, false},
+                         {"Zn1", true, 65.38, 0.0, 0.0, 30, false},
+                         {"O", true, 15.9994, 0.0, 0.0, 8, false}},
+                        {{20.0, 3.0}, {20.0, 3.0}, {50.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0,
+                        12.0, false, false, true);
+  forceField.pseudoAtoms[1].oxidationState = 2;
+  constexpr std::string_view cif = R"(
+data_test
+_cell_length_a 10.0
+_cell_length_b 10.0
+_cell_length_c 10.0
+_cell_angle_alpha 90.0
+_cell_angle_beta 90.0
+_cell_angle_gamma 90.0
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Zn1 Zn 0.1 0.2 0.3
+Zn2 Zn 0.6 0.2 0.3
+O1  O  0.4 0.5 0.6
+O2  O2- 0.4 0.5 0.1
+)";
+  const auto parsed = CIFReader::readCIFString(std::string(cif), forceField, CIFReader::UseChargesFrom::PseudoAtoms);
+  ASSERT_TRUE(parsed.has_value());
+  const auto& definedAtoms = std::get<2>(parsed.value());
+  ASSERT_EQ(definedAtoms.size(), 4uz);
+  EXPECT_EQ(static_cast<std::size_t>(definedAtoms[0].type), *forceField.findPseudoAtom("Zn1"));
+  // Zn2 is no pseudo-atom: the element is used, not Zn1 with its digits stripped to Zn either way
+  EXPECT_EQ(static_cast<std::size_t>(definedAtoms[1].type), *forceField.findPseudoAtom("Zn"));
+  // a label that is only a name falls back to the element, also when the element carries a charge suffix
+  EXPECT_EQ(static_cast<std::size_t>(definedAtoms[2].type), *forceField.findPseudoAtom("O"));
+  EXPECT_EQ(static_cast<std::size_t>(definedAtoms[3].type), *forceField.findPseudoAtom("O"));
+}
+
 TEST(UNINITIALIZED_MEMBERS, charge_equilibration_rejects_elements_beyond_the_reference_table)
 {
   ForceField forceField({{"U", true, 238.0, 0.0, 0.0, 92, false}, {"O", true, 16.0, 0.0, 0.0, 8, false}},

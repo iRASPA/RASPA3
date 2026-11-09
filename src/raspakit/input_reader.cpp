@@ -3199,7 +3199,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       {
         std::string useChargesFromString = value["UseChargesFrom"].get<std::string>();
 
-        if (caseInSensStringCompare(useChargesFromString, "PsuedoAtoms"))
+        // the misspelt form is kept, since it was the only one accepted for a while
+        if (caseInSensStringCompare(useChargesFromString, "PseudoAtoms") ||
+            caseInSensStringCompare(useChargesFromString, "PsuedoAtoms"))
         {
           useChargesFrom = CIFReader::UseChargesFrom::PseudoAtoms;
         }
