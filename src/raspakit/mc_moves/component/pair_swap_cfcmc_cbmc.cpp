@@ -136,6 +136,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
+  // a partner that is the TMMC component moves the macrostate on a move the matrix does not see: refused and not
+  // recorded (the input reader refuses such a pair up front)
+  if (!system.pairSwapFitsTMMC(selectedComponent))
+  {
+    return {std::nullopt, double3(0.0, 0.0, 0.0)};
+  }
   Component& componentBRef = system.components[componentB];
 
   if (!componentA.maximumPairDistance.has_value())
@@ -151,6 +157,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
   // both fractional molecules of the pair are coupled to the lambda histogram of component A
   PropertyLambdaProbabilityHistogram& lambda = componentA.lambdaPairSwapCB;
+  // on an N chain only a direct crossing (a single bin) is a step of the matrix (System::cfcmcSwapFitsTMMC)
+  if (!system.cfcmcSwapFitsTMMC(selectedComponent, lambda))
+  {
+    return {std::nullopt, double3(0.0, 0.0, 0.0)};
+  }
   const std::size_t oldBin = lambda.currentBin;
   const double deltaLambda = lambda.delta;
   const double maxChange = componentA.mc_moves_statistics.getMaxChange(move, 2);

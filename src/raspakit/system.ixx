@@ -648,6 +648,24 @@ export struct System
   {
     return !tmmc.doTMMC || groupSwapFitsTMMC(centralComponent, tmmcComponent());
   }
+  /// Whether a pair swap driven by 'centralComponent' fits the matrix: its partner must not be the tracked
+  /// component, whose count would then move on a move the matrix neither biases nor records (a pair driven by
+  /// the tracked component changes that count by its own molecule, the ordinary step). True when TMMC is off.
+  [[nodiscard]] bool pairSwapFitsTMMC(std::size_t centralComponent) const
+  {
+    const std::optional<std::size_t>& partner = components[centralComponent].pairComponentId;
+    return !tmmc.doTMMC || !partner.has_value() || partner.value() != tmmcComponent();
+  }
+  /// Whether a CFCMC pair or group swap of 'componentId' walking the histogram 'lambda' is a step of the
+  /// matrix: only on a plain N chain with a single bin, where the swap is a direct crossing. With more bins the
+  /// walk moves inside one macrostate of the N chain, biased by the histogram's own Wang-Landau factors, which
+  /// the matrix cannot see, and the acceptance of the endpoint crossing would stand in for the whole
+  /// N -> N +/- 1 transition: refused and not recorded (the input reader refuses the mix up front). True when
+  /// the matrix does not track the component.
+  [[nodiscard]] bool cfcmcSwapFitsTMMC(std::size_t componentId, const PropertyLambdaProbabilityHistogram& lambda) const
+  {
+    return !tmmcTracks(componentId) || lambda.numberOfSamplePoints <= 1uz;
+  }
   std::size_t randomMoleculeOfComponent(RandomNumber& random, std::size_t selectedComponent);
   std::size_t randomIntegerMoleculeOfComponent(RandomNumber& random, std::size_t selectedComponent);
 

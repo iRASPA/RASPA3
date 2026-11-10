@@ -110,6 +110,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
+  // a partner that is the TMMC component moves the macrostate on a move the matrix does not see: refused and not
+  // recorded (the input reader refuses such a pair up front)
+  if (!system.pairSwapFitsTMMC(selectedComponent))
+  {
+    return {std::nullopt, double3(0.0, 0.0, 0.0)};
+  }
 
   Component& componentBRef = system.components[componentB];
   const double R_max = componentA.maximumPairDistance.value();
@@ -350,6 +356,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   if (selectedComponent >= componentB)
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
+  }
+  // a partner that is the TMMC component moves the macrostate on a move the matrix does not see: refused and not
+  // recorded (the input reader refuses such a pair up front)
+  if (!system.pairSwapFitsTMMC(selectedComponent))
+  {
+    return {std::nullopt, double3(0.0, 0.0, 0.0)};
   }
 
   Component& componentBRef = system.components[componentB];

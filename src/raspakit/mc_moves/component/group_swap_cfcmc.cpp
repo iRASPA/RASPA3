@@ -199,6 +199,11 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
 
   // all group fractional molecules are coupled to the lambda histogram of the central component
   PropertyLambdaProbabilityHistogram& lambda = useCBMC ? central.lambdaGroupSwapCB : central.lambdaGroupSwap;
+  // on an N chain only a direct crossing (a single bin) is a step of the matrix (System::cfcmcSwapFitsTMMC)
+  if (!system.cfcmcSwapFitsTMMC(selectedComponent, lambda))
+  {
+    return {std::nullopt, double3(0.0, 0.0, 0.0)};
+  }
   const std::uint8_t dUdlambdaGroupId = lambda.dUdlambdaGroupId;
   const std::size_t oldBin = lambda.currentBin;
   const double deltaLambda = lambda.delta;

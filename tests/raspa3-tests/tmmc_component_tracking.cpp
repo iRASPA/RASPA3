@@ -29,10 +29,11 @@ ForceField makeForceField()
                     ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
 }
 
-Component makeMethane(const ForceField& forceField, const MCMoveProbabilities& probabilities)
+Component makeMethane(const ForceField& forceField, const MCMoveProbabilities& probabilities,
+                      std::size_t lambdaBins = 21)
 {
   return Component(forceField, "methane", 190.564, 4599200, 0.01142, {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 0, false, false)},
-                   {}, {}, 5, 21, probabilities, std::nullopt, false);
+                   {}, {}, 5, lambdaBins, probabilities, std::nullopt, false);
 }
 
 Component makeCation(const ForceField& forceField, const MCMoveProbabilities& probabilities)
@@ -159,6 +160,50 @@ TEST(TMMC_COMPONENT_TRACKING, a_group_with_tracked_satellites_does_not_fit_the_m
   system.tmmc.doTMMC = false;
   adsorbate.groupComponentIds = {1, 1};
   EXPECT_TRUE(system.groupSwapFitsTMMC(1));
+}
+
+// A pair swap changes the count of its partner too: driven by a cation with the adsorbate as partner, it moves
+// the tracked count on a move the matrix neither biases nor records, so it does not fit; driven by the adsorbate
+// it is the ordinary step.
+TEST(TMMC_COMPONENT_TRACKING, a_pair_swap_with_the_tracked_partner_does_not_fit_the_matrix)
+{
+  System system = makeCationAdsorbateSystem(translating(), translating(), 4, 2, 1e4);
+  enableTMMC(system, 0, 10);
+  system.components[0].pairComponentId = 1;
+  EXPECT_FALSE(system.pairSwapFitsTMMC(0));
+  system.components[0].pairComponentId = std::nullopt;
+  system.components[1].pairComponentId = 0;
+  EXPECT_TRUE(system.pairSwapFitsTMMC(1));
+  EXPECT_TRUE(system.pairSwapFitsTMMC(0));
+  system.tmmc.doTMMC = false;
+  system.components[0].pairComponentId = 1;
+  EXPECT_TRUE(system.pairSwapFitsTMMC(0));
+}
+
+// The CFCMC pair and group swaps walk their lambda inside one macrostate of the N chain, biased by their own
+// Wang-Landau factors: only as a direct crossing, with a single bin, are they steps of the matrix.
+TEST(TMMC_COMPONENT_TRACKING, cfcmc_pair_and_group_swaps_are_steps_of_the_matrix_only_as_direct_crossings)
+{
+  System walking = makeAdsorbateSystem(translating(), 10, 1e4);
+  enableTMMC(walking, 0, 40, 1);
+  ASSERT_FALSE(walking.tmmc.lambdaChain());
+  ASSERT_EQ(walking.components[0].lambdaPairSwap.numberOfSamplePoints, 21uz);
+  EXPECT_FALSE(walking.cfcmcSwapFitsTMMC(0, walking.components[0].lambdaPairSwap));
+  EXPECT_FALSE(walking.cfcmcSwapFitsTMMC(0, walking.components[0].lambdaGroupSwap));
+  walking.tmmc.doTMMC = false;
+  EXPECT_TRUE(walking.cfcmcSwapFitsTMMC(0, walking.components[0].lambdaPairSwap));
+
+  const ForceField forceField = makeForceField();
+  System crossing = System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {},
+                           {makeMethane(forceField, translating(), 1)}, {}, {10}, 5);
+  enableTMMC(crossing, 0, 40, 1);
+  EXPECT_TRUE(crossing.cfcmcSwapFitsTMMC(0, crossing.components[0].lambdaPairSwap));
+  EXPECT_TRUE(crossing.cfcmcSwapFitsTMMC(0, crossing.components[0].lambdaGroupSwapCB));
+
+  // a cation is never the matrix's business
+  System mixed = makeCationAdsorbateSystem(translating(), translating(), 4, 2, 1e4);
+  enableTMMC(mixed, 0, 10);
+  EXPECT_TRUE(mixed.cfcmcSwapFitsTMMC(0, mixed.components[0].lambdaPairSwap));
 }
 
 // Nine cations beside an adsorbate whose window is 0--2: the cations swap at a pressure where insertions are

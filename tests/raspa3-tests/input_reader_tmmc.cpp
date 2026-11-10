@@ -339,6 +339,38 @@ TEST(INPUT_READER_TMMC, rejects_integer_swaps_beside_a_cfcmc_swap_on_a_lambda_ch
   }
 }
 
+// A CFCMC pair swap under TMMC walks its lambda inside one macrostate of the N chain: refused on several bins,
+// accepted as a direct crossing on a single bin.
+TEST(INPUT_READER_TMMC, rejects_cfcmc_pair_and_group_swaps_on_several_lambda_bins)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  {
+    nlohmann::json input = readTMMCExample();
+    input["NumberOfLambdaBins"] = 7;
+    input["Components"][0]["CFCMC_PairSwapProbability"] = 1.0;
+    TemporaryInput temporary(std::move(input), "cfcmc_pair_bins", workspace.path());
+    ScopedCurrentPath currentPath(workspace.path());
+
+    EXPECT_THROW(
+        {
+          InputReader reader(temporary.path().filename().string());
+          static_cast<void>(reader);
+        },
+        std::runtime_error);
+  }
+  {
+    nlohmann::json input = readTMMCExample();
+    input["NumberOfLambdaBins"] = 1;
+    input["Components"][0]["CFCMC_PairSwapProbability"] = 1.0;
+    TemporaryInput temporary(std::move(input), "cfcmc_pair_crossing", workspace.path());
+    ScopedCurrentPath currentPath(workspace.path());
+
+    InputReader reader(temporary.path().filename().string());
+    ASSERT_EQ(reader.systems.size(), 1uz);
+    EXPECT_FALSE(reader.systems[0].tmmc.lambdaChain());
+  }
+}
+
 TEST(INPUT_READER_TMMC, accepts_elastic_constant_minimization_options)
 {
   TemporaryDirectory workspace = makeTmmcWorkspace();

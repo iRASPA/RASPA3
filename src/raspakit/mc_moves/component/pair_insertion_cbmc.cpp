@@ -65,6 +65,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
+  // a partner that is the TMMC component moves the macrostate on a move the matrix does not see: refused and not
+  // recorded (the input reader refuses such a pair up front)
+  if (!system.pairSwapFitsTMMC(selectedComponent))
+  {
+    return {std::nullopt, double3(0.0, 0.0, 0.0)};
+  }
 
   // Only the strictly lower-index component performs pair moves (avoids double counting and
   // ill-defined self-pairing).
@@ -309,6 +315,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   if (componentB >= system.components.size())
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
+  }
+  // a partner that is the TMMC component moves the macrostate on a move the matrix does not see: refused and not
+  // recorded (the input reader refuses such a pair up front)
+  if (!system.pairSwapFitsTMMC(selectedComponent))
+  {
+    return {std::nullopt, double3(0.0, 0.0, 0.0)};
   }
 
   // Only the strictly lower-index component performs pair moves (avoids double counting and

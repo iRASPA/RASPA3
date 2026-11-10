@@ -5296,6 +5296,27 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (trackedComponent < systems[i].components.size())
       {
         const Component& tracked = systems[i].components[trackedComponent];
+        // The CFCMC pair and group swaps walk their lambda inside one macrostate of the N chain, biased by their
+        // own Wang-Landau factors, which the matrix cannot see; only as a direct crossing (a single bin) are they
+        // its steps (System::cfcmcSwapFitsTMMC).
+        const std::array cfcmcPairGroupMoves{
+            std::pair{Move::Types::PairSwapCFCMC, "CFCMC_PairSwapProbability"},
+            std::pair{Move::Types::PairSwapCBCFCMC, "CFCMC_CBMC_PairSwapProbability"},
+            std::pair{Move::Types::GroupSwapCFCMC, "CFCMC_GroupSwapProbability"},
+            std::pair{Move::Types::GroupSwapCBCFCMC, "CFCMC_CBMC_GroupSwapProbability"}};
+        for (const auto& [move, keyword] : cfcmcPairGroupMoves)
+        {
+          if (tracked.mc_moves_probabilities.getProbability(move) != 0.0 && tracked.lambdaGC.numberOfSamplePoints > 1uz)
+          {
+            throw std::runtime_error(std::format(
+                "Error [TMMC, system {}, component {} ('{}')]: '{}' needs 'NumberOfLambdaBins' 1 under TMMC; move '{}' "
+                "walks its lambda inside one macrostate of the N chain, biased by its own Wang-Landau factors, which "
+                "the transition matrix cannot see (the acceptance of its endpoint crossing would stand in for the "
+                "whole N -> N +/- 1 transition). Use a single lambda bin, or the CFCMC swap for an (N, lambda) "
+                "chain.\n",
+                i, trackedComponent, tracked.name, keyword, Move::moveNames[std::to_underlying(move)]));
+          }
+        }
         const bool lambdaChain = (tracked.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
                                   tracked.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0) &&
                                  tracked.lambdaGC.numberOfSamplePoints > 1uz;
