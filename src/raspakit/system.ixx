@@ -1099,7 +1099,7 @@ export struct System
   void eraseAtomTags(std::size_t offset, std::size_t count);
   /// Numbers the atoms afresh in storage order.
   void resetAtomTags();
-  /// Rebuilds 'atomIndexOfTag' from 'atomTags' (a restart).
+  /// Rebuilds 'atomIndexOfTag' from 'atomTags' (a restart); throws when a tag is the free-tag marker.
   void rebuildAtomIndexOfTag();
   /// Throws when the tags are not distinct with 'atomIndexOfTag' their exact inverse.
   void checkAtomTags() const;

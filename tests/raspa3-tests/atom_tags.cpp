@@ -362,6 +362,19 @@ TEST(ATOM_TAGS, restart_rebuilds_the_inverse_table_with_its_free_tags)
   EXPECT_NO_THROW(restored.checkAtomTags());
 }
 
+// The free-tag marker is the largest unsigned value: a restart file holding it as a tag would size the inverse
+// table past the end of the integers. It is refused before the table is written.
+TEST(ATOM_TAGS, a_restart_holding_the_free_tag_marker_as_a_tag_is_refused)
+{
+  System system = makePropaneButaneSystem();
+  system.atomTags[3] = System::noAtom;
+  EXPECT_THROW(system.rebuildAtomIndexOfTag(), std::runtime_error);
+
+  system.atomTags[3] = 3;
+  EXPECT_NO_THROW(system.rebuildAtomIndexOfTag());
+  EXPECT_NO_THROW(system.checkAtomTags());
+}
+
 TEST(ATOM_TAGS, short_run_with_insertions_and_deletions_keeps_the_tags_consistent)
 {
   MCMoveProbabilities componentProbabilities = MCMoveProbabilities();

@@ -536,7 +536,17 @@ void System::resetAtomTags()
 
 void System::rebuildAtomIndexOfTag()
 {
-  const std::uint32_t highest = atomTags.empty() ? 0 : *std::max_element(atomTags.begin(), atomTags.end()) + 1;
+  // the free-tag marker is no tag: a table sized past it would overflow, so a restart that holds it is refused
+  // before anything is written
+  for (std::size_t i = 0; i < atomTags.size(); ++i)
+  {
+    if (atomTags[i] == noAtom)
+    {
+      throw std::runtime_error(std::format("Atom tags: atom {} holds the free-tag marker as its tag\n", i));
+    }
+  }
+  const std::size_t highest =
+      atomTags.empty() ? 0 : static_cast<std::size_t>(*std::max_element(atomTags.begin(), atomTags.end())) + 1;
   atomIndexOfTag.assign(highest, noAtom);
   for (std::size_t i = 0; i < atomTags.size(); ++i)
   {
