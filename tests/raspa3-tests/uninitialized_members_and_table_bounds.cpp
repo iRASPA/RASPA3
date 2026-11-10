@@ -501,3 +501,33 @@ TEST(UNINITIALIZED_MEMBERS, charge_equilibration_rejects_coincident_atoms_instea
                                                                   ChargeEquilibration::Type::PeriodicEwaldSum));
   EXPECT_GT(apart[0].charge, 0.0);
 }
+
+TEST(UNINITIALIZED_MEMBERS, reference_table_functions_are_checked_and_give_hydrogen_the_equilibration_values)
+{
+  // the exported table functions read the table unchecked, with the sign of the oxidation state dropped, and gave
+  // hydrogen the table's Rappe-Goddard pair (X = 4.528, J = 13.8904 eV) while computeChargeEquilibration wrote
+  // EQeq's values (5.799 and 15.598 eV) over them afterwards. The lookup is now one checked function, and hydrogen's
+  // EQeq values are in the table
+  ForceField forceField({{"H", true, 1.0, 0.0, 0.0, 1, false}, {"O", true, 16.0, 0.0, 0.0, 8, false}},
+                        {{20.0, 3.0}, {50.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false,
+                        false, true);
+  EXPECT_NEAR(ChargeEquilibration::referenceTableX(forceField, 0, 1), 0.5 * (13.598 - 2.0), 1e-12);
+  EXPECT_NEAR(ChargeEquilibration::referenceTableJ(forceField, 0, 1), 13.598 + 2.0, 1e-12);
+  EXPECT_NEAR(ChargeEquilibration::referenceTableXc(forceField, 0, 1), 0.0, 1e-12);
+  EXPECT_NEAR(ChargeEquilibration::referenceTableX(forceField, 1, 8), 0.5 * (13.618 + 1.46111), 1e-12);
+
+  // an anion used to read the cation's data
+  forceField.pseudoAtoms[1].oxidationState = -2;
+  EXPECT_THROW(ChargeEquilibration::referenceTableX(forceField, 1, 8), std::runtime_error);
+  EXPECT_THROW(ChargeEquilibration::referenceTableJ(forceField, 1, 8), std::runtime_error);
+  EXPECT_THROW(ChargeEquilibration::referenceTableXc(forceField, 1, 8), std::runtime_error);
+  // an oxidation state beyond the measured ionization energies (oxygen has eight)
+  forceField.pseudoAtoms[1].oxidationState = 9;
+  EXPECT_THROW(ChargeEquilibration::referenceTableJ(forceField, 1, 8), std::runtime_error);
+  forceField.pseudoAtoms[1].oxidationState = 2;
+  EXPECT_NEAR(ChargeEquilibration::referenceTableXc(forceField, 1, 8), 2.0 * (54.934 - 35.116), 1e-12);
+  // a pseudo-atom or an element that is not there
+  EXPECT_THROW(ChargeEquilibration::referenceTableX(forceField, 2, 8), std::runtime_error);
+  EXPECT_THROW(ChargeEquilibration::referenceTableX(forceField, 1, 0), std::runtime_error);
+  EXPECT_THROW(ChargeEquilibration::referenceTableX(forceField, 1, 85), std::runtime_error);
+}

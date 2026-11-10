@@ -269,6 +269,71 @@ static double orbitalOverlapLatticeSum(const SimulationBox& simulationBox, const
   return sum;
 }
 
+ChargeEquilibration::ReferenceTableEntry ChargeEquilibration::referenceTableEntry(const ForceField& forceField,
+                                                                                  std::size_t pseudo_atom_type,
+                                                                                  std::size_t index)
+{
+  if (pseudo_atom_type >= forceField.pseudoAtoms.size())
+  {
+    throw std::runtime_error(
+        std::format("[charge equilibration]: pseudo-atom type {} is not in the force field\n", pseudo_atom_type));
+  }
+  const std::string& name = forceField.pseudoAtoms[pseudo_atom_type].name;
+
+  // the reference table holds ionization energies, so it has nothing for an anion (the sign used to be dropped,
+  // which read a cation's data for it)
+  const std::int64_t signedOxidationState = forceField.pseudoAtoms[pseudo_atom_type].oxidationState;
+  if (signedOxidationState < 0)
+  {
+    throw std::runtime_error(
+        std::format("[charge equilibration]: negative oxidation state {} for pseudo-atom '{}' (atomic number {}); the "
+                    "reference table holds ionization energies only\n",
+                    signedOxidationState, name, index));
+  }
+  const std::size_t oxidationState = static_cast<std::size_t>(signedOxidationState);
+
+  // the reference table holds the elements up to polonium (Z = 84), with a blank entry at index 0, and room for
+  // ten ionization energies per element of which only the measured ones are filled in; the rest are zero. The
+  // check on the array size alone let an unmeasured (zero) energy through, which made J negative and the charges
+  // NaN (e.g. Ba2+, Hf4+, Ta5+, W6+, Pt2+, Au+, Ir3+).
+  if (index == 0 || index >= chargeEquilibrationElementData.size() ||
+      oxidationState >= chargeEquilibrationElementData[index].ionizationEnergy.size() ||
+      chargeEquilibrationElementData[index].ionizationEnergy[oxidationState] == 0.0)
+  {
+    throw std::runtime_error(std::format(
+        "[charge equilibration]: no reference data for pseudo-atom '{}' (atomic number {}, oxidation state {})\n", name,
+        index, oxidationState));
+  }
+
+  const ChargeEquilibrationElementData& element = chargeEquilibrationElementData[index];
+  if (oxidationState == 0)
+  {
+    return {element.electronAffinity, element.ionizationEnergy[0], 0};
+  }
+  return {element.ionizationEnergy[oxidationState - 1], element.ionizationEnergy[oxidationState], oxidationState};
+}
+
+double ChargeEquilibration::referenceTableX(const ForceField& forceField, std::size_t pseudo_atom_type,
+                                            std::size_t index)
+{
+  const ReferenceTableEntry entry = referenceTableEntry(forceField, pseudo_atom_type, index);
+  return 0.5 * (entry.ionizationPotential + entry.electronAffinity);
+}
+
+double ChargeEquilibration::referenceTableJ(const ForceField& forceField, std::size_t pseudo_atom_type,
+                                            std::size_t index)
+{
+  const ReferenceTableEntry entry = referenceTableEntry(forceField, pseudo_atom_type, index);
+  return entry.ionizationPotential - entry.electronAffinity;
+}
+
+double ChargeEquilibration::referenceTableXc(const ForceField& forceField, std::size_t pseudo_atom_type,
+                                             std::size_t index)
+{
+  const ReferenceTableEntry entry = referenceTableEntry(forceField, pseudo_atom_type, index);
+  return (entry.ionizationPotential - entry.electronAffinity) * static_cast<double>(entry.oxidationState);
+}
+
 void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceField, const SimulationBox& simulationBox,
                                                      std::span<Atom> frameworkAtoms, ChargeEquilibration::Type type)
 {
@@ -276,64 +341,24 @@ void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceFiel
   // size with !=, which for no atoms is a write past an empty vector and a loop towards SIZE_MAX
   if (frameworkAtoms.empty()) return;
 
-  const double k = 14.4;      // [Angstroms * electron volts]
-  const double gamma2 = 0.5;  // Global atomic radii scaling parameter
-  std::vector<std::size_t> hydrogen_list{};
+  const double k = 14.4;  // [Angstroms * electron volts]
 
   std::size_t size = frameworkAtoms.size();
   std::vector<double> J(size);
   std::vector<double> X(size);
   std::vector<double> Xc(size);
-  std::vector<double> R(size);
 
+  // the table lookup checks the pseudo-atom, the element and the oxidation state; hydrogen's values are in the table
   for (std::size_t index = 0; const Atom& atom : frameworkAtoms)
   {
     std::size_t pseudo_atom_type = static_cast<std::size_t>(atom.type);
     std::size_t element_index = forceField.pseudoAtoms[pseudo_atom_type].atomicNumber;
 
-    // the reference table holds ionization energies, so it has nothing for an anion (the sign used to be dropped,
-    // which read a cation's data for it)
-    const std::int64_t signedOxidationState = forceField.pseudoAtoms[pseudo_atom_type].oxidationState;
-    if (signedOxidationState < 0)
-    {
-      throw std::runtime_error(std::format(
-          "[charge equilibration]: negative oxidation state {} for pseudo-atom '{}' (atomic number {}); the "
-          "reference table holds ionization energies only\n",
-          signedOxidationState, forceField.pseudoAtoms[pseudo_atom_type].name, element_index));
-    }
-    const std::size_t oxidationState = static_cast<std::size_t>(signedOxidationState);
-
-    // the reference table holds the elements up to polonium (Z = 84), with a blank entry at index 0, and room for
-    // ten ionization energies per element of which only the measured ones are filled in; the rest are zero. The
-    // check on the array size alone let an unmeasured (zero) energy through, which made J negative and the charges
-    // NaN (e.g. Ba2+, Hf4+, Ta5+, W6+, Pt2+, Au+, Ir3+).
-    if (element_index == 0 || element_index >= chargeEquilibrationElementData.size() ||
-        oxidationState >= chargeEquilibrationElementData[element_index].ionizationEnergy.size() ||
-        chargeEquilibrationElementData[element_index].ionizationEnergy[oxidationState] == 0.0)
-    {
-      throw std::runtime_error(std::format(
-          "[charge equilibration]: no reference data for pseudo-atom '{}' (atomic number {}, oxidation state {})\n",
-          forceField.pseudoAtoms[pseudo_atom_type].name, element_index, oxidationState));
-    }
-
-    if (element_index == 1)
-    {
-      hydrogen_list.push_back(index);
-    }
-
     J[index] = referenceTableJ(forceField, pseudo_atom_type, element_index);
     X[index] = referenceTableX(forceField, pseudo_atom_type, element_index);
     Xc[index] = referenceTableXc(forceField, pseudo_atom_type, element_index);
 
-    R[index] = gamma2 * k * (1.0 / J[index]);
-
     ++index;
-  }
-
-  for (std::size_t i : hydrogen_list)
-  {
-    X[i] = 0.5 * (13.598 - 2.0);
-    J[i] = 13.598 + 2.0;
   }
 
   // two atoms on one site (or on each other's periodic images) have no Coulomb interaction to speak of: every branch

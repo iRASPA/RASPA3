@@ -46,7 +46,10 @@ struct ChargeEquilibrationElementData
 
 constexpr std::array<ChargeEquilibrationElementData, 85> chargeEquilibrationElementData = {
     ChargeEquilibrationElementData{""sv, 0.0, {}},
-    ChargeEquilibrationElementData{"H"sv, -2.4172, {11.4732}},
+    // hydrogen takes the values EQeq equilibrates with (its hI0 of -2.0 eV and the measured 13.598 eV), which gave
+    // X = 5.799 and J = 15.598 eV. They used to be written over the table's Rappe-Goddard pair (-2.4172, 11.4732)
+    // inside computeChargeEquilibration alone, so the exported table functions gave hydrogen other values
+    ChargeEquilibrationElementData{"H"sv, -2.0, {13.598}},
     ChargeEquilibrationElementData{"He"sv, 0.00000, {24.587387, 54.417760}},
     ChargeEquilibrationElementData{"Li"sv, 0.618049, {5.391719, 75.6400, 122.45429}},
     ChargeEquilibrationElementData{"Be"sv, 0.00000, {9.32270, 18.21114, 153.89661, 217.71865}},
@@ -132,75 +135,33 @@ constexpr std::array<ChargeEquilibrationElementData, 85> chargeEquilibrationElem
     ChargeEquilibrationElementData{"Po"sv, 1.9, {8.414}}
 };
 
+// the electron affinity and ionization potential of a pseudo-atom's element at its oxidation state (the electron
+// affinity can be thought of as the "zero-th" ionization energy, and at oxidation state n the pair is the n-th and
+// (n+1)-th ionization energies). The lookup is checked: the pseudo-atom and the element must exist, the table holds
+// ionization energies only, so an anion has no data, and the table has room for ten ionization energies per element
+// of which only the measured ones are filled in, the rest being zero. The three functions below used to read the
+// table unchecked, with the sign of the oxidation state dropped (an anion read a cation's data), and the checks
+// lived in computeChargeEquilibration alone
+struct ReferenceTableEntry
+{
+  double electronAffinity;     // in units of [eV]
+  double ionizationPotential;  // in units of [eV]
+  std::size_t oxidationState;
+};
+
+ReferenceTableEntry referenceTableEntry(const ForceField& forceField, std::size_t pseudo_atom_type, std::size_t index);
+
 // X is the 'electronegativity' or 'Mulliken electronegativity'
 // "Towards rapid computational screening of metal-organic frameworks for carbon
 //   dioxide capture: Calculation of framework charges via charge equilibration"
 // Chemical Engineering Journal, 171(3), 775-781
 // C.E. Wilmer and R.Q. Snurr
 // X_0 = (\partial dE/\partial Q)_{Q=0}  = 0.5 * (IP + EA)
-// the electron affinity can be thought of as the "zero-th" ionization energy
-inline double referenceTableX(const ForceField &forceField, std::size_t pseudo_atom_type, std::size_t index)
-{
-  double electron_affinity, ionization_potential;
-
-  std::size_t oxidationState =
-      static_cast<std::size_t>(std::abs(forceField.pseudoAtoms[pseudo_atom_type].oxidationState));
-  if (oxidationState == 0)
-  {
-    ionization_potential = chargeEquilibrationElementData[index].ionizationEnergy[0];
-    electron_affinity = chargeEquilibrationElementData[index].electronAffinity;
-  }
-  else
-  {
-    ionization_potential = chargeEquilibrationElementData[index].ionizationEnergy[oxidationState];
-    electron_affinity = chargeEquilibrationElementData[index].ionizationEnergy[oxidationState - 1];
-  }
-
-  return 0.5 * (ionization_potential + electron_affinity);
-}
+double referenceTableX(const ForceField& forceField, std::size_t pseudo_atom_type, std::size_t index);
 
 // J is the 'idempotential' of the 'chemical hardness' parameter of the atom
 // J_0 = \partial d^2E/\partial Q^2  = IP - EA
-// the electron affinity can be thought of as the "zero-th" ionization energy
-inline double referenceTableJ(const ForceField &forceField, std::size_t pseudo_atom_type, std::size_t index)
-{
-  double electron_affinity, ionization_potential;
+double referenceTableJ(const ForceField& forceField, std::size_t pseudo_atom_type, std::size_t index);
 
-  std::size_t oxidationState =
-      static_cast<std::size_t>(std::abs(forceField.pseudoAtoms[pseudo_atom_type].oxidationState));
-  if (oxidationState == 0)
-  {
-    ionization_potential = chargeEquilibrationElementData[index].ionizationEnergy[0];
-    electron_affinity = chargeEquilibrationElementData[index].electronAffinity;
-  }
-  else
-  {
-    // TODO: check index and vector-size
-
-    ionization_potential = chargeEquilibrationElementData[index].ionizationEnergy[oxidationState];
-    electron_affinity = chargeEquilibrationElementData[index].ionizationEnergy[oxidationState - 1];
-  }
-
-  return (ionization_potential - electron_affinity);
-}
-
-inline double referenceTableXc(const ForceField &forceField, std::size_t pseudo_atom_type, std::size_t index)
-{
-  double electron_affinity, ionization_potential;
-
-  std::size_t oxidationState =
-      static_cast<std::size_t>(std::abs(forceField.pseudoAtoms[pseudo_atom_type].oxidationState));
-  if (oxidationState == 0)
-  {
-    electron_affinity = chargeEquilibrationElementData[index].electronAffinity;
-    ionization_potential = chargeEquilibrationElementData[index].ionizationEnergy[0];
-  }
-  else
-  {
-    electron_affinity = chargeEquilibrationElementData[index].ionizationEnergy[oxidationState - 1];
-    ionization_potential = chargeEquilibrationElementData[index].ionizationEnergy[oxidationState];
-  }
-
-  return (ionization_potential - electron_affinity) * static_cast<double>(oxidationState);
-}
+double referenceTableXc(const ForceField& forceField, std::size_t pseudo_atom_type, std::size_t index);
 }  // namespace ChargeEquilibration
