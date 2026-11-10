@@ -93,12 +93,26 @@ std::optional<RunningEnergy> computeFractionalMoleculesEnergyDifference(
     return std::nullopt;
   }
 
+  // The molecules of the batch change together: their pairs with the other molecules against a background
+  // without the batch (the difference kernel would meet a pair inside the batch from both sides, each against
+  // the stored state of the other), and the pairs inside the batch exact, new against new and old against old.
+  std::unordered_set<std::uint32_t> batchMoleculeIds;
+  for (const Atom& atom : oldAtomsCombined) batchMoleculeIds.insert(atom.moleculeId);
+  std::vector<Atom> background;
+  background.reserve(system.spanOfMoleculeAtoms().size());
+  for (const Atom& atom : system.spanOfMoleculeAtoms())
+  {
+    if (!batchMoleculeIds.contains(atom.moleculeId)) background.push_back(atom);
+  }
   std::optional<RunningEnergy> moleculeDifference = Interactions::computeInterMolecularEnergyDifference(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), newAtomsCombined, oldAtomsCombined);
+      system.forceField, system.simulationBox, background, newAtomsCombined, oldAtomsCombined);
   if (!moleculeDifference.has_value())
   {
     return std::nullopt;
   }
+  moleculeDifference.value() +=
+      Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, newAtomsCombined) -
+      Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, oldAtomsCombined);
 
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, chainedOnTrialEik ? system.trialEik : system.storedEik,

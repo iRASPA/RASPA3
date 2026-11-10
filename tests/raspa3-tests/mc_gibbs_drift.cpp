@@ -801,7 +801,9 @@ TEST(MC_GIBBS_DRIFT, gibbs_cbcfcmc_keeps_both_cell_lists_current)
 // swaps (molecule ids must be restored per system) and the chained Ewald sub-steps of the swap/shuffle moves.
 namespace
 {
-void runMixtureGibbsSwapDrift(Move::Types gibbsSwapMove)
+// 'withArgon': a third swappable component, so that a flag swap switches two fractional molecules besides the
+// selected one and the pair term between those two enters the batched energy difference.
+void runMixtureGibbsSwapDrift(Move::Types gibbsSwapMove, bool withArgon = false)
 {
   const ForceField forceField = makeZeoliteAlkaneForceField();
   MCMoveProbabilities probabilities = MCMoveProbabilities();
@@ -817,14 +819,27 @@ void runMixtureGibbsSwapDrift(Move::Types gibbsSwapMove)
   co2.mc_moves_probabilities = probabilities;
   enableThermodynamicIntegration(co2);
 
+  std::vector<Component> components{methane, co2};
+  std::vector<std::size_t> vaporCounts{30, 20};
+  std::vector<std::size_t> liquidCounts{45, 20};
+  if (withArgon)
+  {
+    Component argon = Component::makeSphericalProbe(forceField, 2, "probe-Ar");
+    argon.mc_moves_probabilities = probabilities;
+    enableThermodynamicIntegration(argon);
+    components.push_back(argon);
+    vaporCounts.push_back(15);
+    liquidCounts.push_back(15);
+  }
+
   SimulationBox box = SimulationBox(30.0, 30.0, 30.0);
 
   MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
 
   System systemVapor =
-      System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane, co2}, {}, {30, 20}, 5, systemProbabilities);
+      System(forceField, box, false, 300.0, 1e4, 1.0, {}, components, {}, vaporCounts, 5, systemProbabilities);
   System systemLiquid =
-      System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane, co2}, {}, {45, 20}, 5, systemProbabilities);
+      System(forceField, box, false, 300.0, 1e4, 1.0, {}, components, {}, liquidCounts, 5, systemProbabilities);
 
   std::vector<System> systems{systemVapor, systemLiquid};
   size_t numberOfProductionCycles{500};
@@ -877,6 +892,19 @@ void runMixtureGibbsSwapDrift(Move::Types gibbsSwapMove)
 TEST(MC_GIBBS_DRIFT, mixture_gibbs_cfcmc_unequal_molecule_counts)
 {
   runMixtureGibbsSwapDrift(Move::Types::GibbsSwapCFCMC);
+}
+
+// With three swappable components the flag swap switches two fractional molecules besides the selected one:
+// their mutual pair energy must be counted once in the batched difference (not from both sides against the
+// stored state of the other, nor not at all when both are switched on).
+TEST(MC_GIBBS_DRIFT, ternary_mixture_gibbs_cfcmc_pair_term_of_the_other_fractional_molecules)
+{
+  runMixtureGibbsSwapDrift(Move::Types::GibbsSwapCFCMC, true);
+}
+
+TEST(MC_GIBBS_DRIFT, ternary_mixture_gibbs_cbcfcmc_pair_term_of_the_other_fractional_molecules)
+{
+  runMixtureGibbsSwapDrift(Move::Types::GibbsSwapCBCFCMC, true);
 }
 
 TEST(MC_GIBBS_DRIFT, mixture_gibbs_cbcfcmc_unequal_molecule_counts)
