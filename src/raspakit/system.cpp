@@ -265,6 +265,7 @@ void System::createFrameworks()
     netChargeFramework += framework->netCharge;
     netCharge += framework->netCharge;
   }
+  resetAtomTags();
 }
 
 void System::rebuildForFramework(const Framework& newFramework, const SimulationBox& newSimulationBox)
@@ -307,6 +308,7 @@ void System::rebuildForFramework(const Framework& newFramework, const Simulation
   electricPotential.assign(atomData.size(), 0.0);
   electricField.assign(atomData.size(), double3(0.0, 0.0, 0.0));
   electricFieldNew.assign(atomData.size(), double3(0.0, 0.0, 0.0));
+  resetAtomTags();
 
   // Swap the old framework net-charge contribution for the new one (adsorbate contribution is unchanged).
   netCharge -= netChargeFramework;
@@ -1812,6 +1814,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   // version 2
   archive << s.referenceSimulationBox;
 
+  // version 3
+  archive << s.atomTags;
+
   // 'interpolationGrids' and 'externalFieldInterpolationGrid' are intentionally not serialized:
   // they are derived data that can dominate the checkpoint size and are rebuilt deterministically
   // on restart (MonteCarlo/MolecularDynamics::createInterpolationGrids).
@@ -1997,6 +2002,23 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   {
     // an older restart: the constant-stress reference cell is the box at the restart point
     s.referenceSimulationBox = s.simulationBox;
+  }
+
+  if (versionNumber >= 3)
+  {
+    archive >> s.atomTags;
+    s.atomIndexOfTag.resize(s.atomTags.size());
+    for (std::size_t i = 0; i < s.atomTags.size(); ++i)
+    {
+      s.atomIndexOfTag[s.atomTags[i]] = static_cast<std::uint32_t>(i);
+    }
+    s.retaggedAtoms.clear();
+    s.checkAtomTags();
+  }
+  else
+  {
+    // an older restart carries no tags: the atoms are numbered in storage order
+    s.resetAtomTags();
   }
 
   // archive >> s.columnNumberOfGridPoints;

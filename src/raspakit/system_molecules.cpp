@@ -50,6 +50,7 @@ void System::insertFractionalMoleculeAtIndex(std::size_t selectedComponent, std:
   std::vector<Atom>::difference_type atomOffset = iterator - atomData.cbegin();
   atomData.insert(iterator, atoms.begin(), atoms.end());
   atomDynamics.insert(atomDynamics.cbegin() + atomOffset, atoms.size(), AtomDynamics{});
+  insertAtomTags(static_cast<std::size_t>(atomOffset), atoms.size());
 
   std::vector<Molecule>::iterator moleculeIterator = indexForMolecule(selectedComponent, moleculeIndex);
   moleculeData.insert(moleculeIterator, molecule);
@@ -128,6 +129,7 @@ void System::insertMolecule(std::size_t selectedComponent, [[maybe_unused]] cons
   std::vector<Atom>::difference_type atomOffset = iterator - atomData.cbegin();
   atomData.insert(iterator, atoms.begin(), atoms.end());
   atomDynamics.insert(atomDynamics.cbegin() + atomOffset, atoms.size(), AtomDynamics{});
+  insertAtomTags(static_cast<std::size_t>(atomOffset), atoms.size());
 
   std::vector<Molecule>::iterator moleculeIterator =
       indexForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
@@ -173,6 +175,7 @@ void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_u
   std::vector<Atom>::difference_type atomOffset = iterator - atomData.cbegin();
   atomData.insert(iterator, atoms.begin(), atoms.end());
   atomDynamics.insert(atomDynamics.cbegin() + atomOffset, atoms.size(), AtomDynamics{});
+  insertAtomTags(static_cast<std::size_t>(atomOffset), atoms.size());
 
   std::vector<double3>::const_iterator iterator_electric_field =
       iteratorForElectricField(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
@@ -240,6 +243,7 @@ void System::deleteFractionalMolecule(std::size_t selectedComponent, std::size_t
 
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, selectedMolecule);
   std::vector<Atom>::difference_type atomOffset = iterator - atomData.cbegin();
+  eraseAtomTags(static_cast<std::size_t>(atomOffset), molecule.size());
   atomData.erase(iterator, iterator + static_cast<std::vector<Atom>::difference_type>(molecule.size()));
   atomDynamics.erase(atomDynamics.cbegin() + atomOffset,
                      atomDynamics.cbegin() + atomOffset +
@@ -287,6 +291,7 @@ void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedM
 
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, selectedMolecule);
   std::vector<Atom>::difference_type atomOffset = iterator - atomData.cbegin();
+  eraseAtomTags(static_cast<std::size_t>(atomOffset), molecule.size());
   atomData.erase(iterator, iterator + static_cast<std::vector<Atom>::difference_type>(molecule.size()));
   atomDynamics.erase(atomDynamics.cbegin() + atomOffset,
                      atomDynamics.cbegin() + atomOffset +
@@ -337,6 +342,18 @@ void System::exchangeMolecule(System& other, std::size_t selectedComponent, std:
   std::swap_ranges(electricField.begin() + offset, electricField.begin() + offset + count,
                    other.electricField.begin() + otherOffset);
 
+  // A tag names an atom within its system: it follows the atom in an exchange within the system and stays with
+  // the slot in an exchange between systems.
+  if (&other == this)
+  {
+    std::swap_ranges(atomTags.begin() + offset, atomTags.begin() + offset + count, atomTags.begin() + otherOffset);
+    for (std::ptrdiff_t i = 0; i < count; ++i)
+    {
+      atomIndexOfTag[atomTags[static_cast<std::size_t>(offset + i)]] = static_cast<std::uint32_t>(offset + i);
+      atomIndexOfTag[atomTags[static_cast<std::size_t>(otherOffset + i)]] = static_cast<std::uint32_t>(otherOffset + i);
+    }
+  }
+
   // The molecule id of an atom and the atom index of a record name the slot, so they stay behind (the component
   // id is the same on both sides).
   const std::size_t index = moleculeIndexOfComponent(selectedComponent, molecule);
@@ -368,6 +385,25 @@ void System::exchangeConfiguration(System& other)
 {
   swapMobileTail(atomData, numberOfFrameworkAtoms, other.atomData, other.numberOfFrameworkAtoms);
   swapMobileTail(atomDynamics, numberOfFrameworkAtoms, other.atomDynamics, other.numberOfFrameworkAtoms);
+  // the tags travel with their atoms; both ranges stay dense because the counts travel too (replicas share the
+  // framework, so its tags coincide; should they not, the atoms are numbered afresh)
+  if (numberOfFrameworkAtoms == other.numberOfFrameworkAtoms)
+  {
+    swapMobileTail(atomTags, numberOfFrameworkAtoms, other.atomTags, other.numberOfFrameworkAtoms);
+    for (System* system : {this, &other})
+    {
+      system->atomIndexOfTag.resize(system->atomTags.size());
+      for (std::size_t i = 0; i < system->atomTags.size(); ++i)
+      {
+        system->atomIndexOfTag[system->atomTags[i]] = static_cast<std::uint32_t>(i);
+      }
+    }
+  }
+  else
+  {
+    resetAtomTags();
+    other.resetAtomTags();
+  }
   std::swap(moleculeData, other.moleculeData);
   // rigid-body state of semi-flexible molecules: derived from the positions, so it moves with them
   std::swap(groupData, other.groupData);
@@ -394,6 +430,83 @@ void System::exchangeConfiguration(System& other)
   for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
   {
     std::swap(components[componentId].lambdaGC.currentBin, other.components[componentId].lambdaGC.currentBin);
+  }
+}
+
+void System::insertAtomTags(std::size_t offset, std::size_t count)
+{
+  const std::uint32_t first = static_cast<std::uint32_t>(atomTags.size());
+  atomTags.insert(atomTags.begin() + static_cast<std::ptrdiff_t>(offset), count, first);
+  std::iota(atomTags.begin() + static_cast<std::ptrdiff_t>(offset),
+            atomTags.begin() + static_cast<std::ptrdiff_t>(offset + count), first);
+  atomIndexOfTag.resize(atomTags.size());
+  for (std::size_t i = offset; i < atomTags.size(); ++i)
+  {
+    atomIndexOfTag[atomTags[i]] = static_cast<std::uint32_t>(i);
+  }
+}
+
+void System::eraseAtomTags(std::size_t offset, std::size_t count)
+{
+  const std::size_t newSize = atomTags.size() - count;
+
+  // the freed tags that stay in range, ascending
+  std::vector<std::uint32_t> freedTags;
+  for (std::size_t i = offset; i < offset + count; ++i)
+  {
+    if (atomTags[i] < newSize) freedTags.push_back(atomTags[i]);
+  }
+  std::sort(freedTags.begin(), freedTags.end());
+  atomTags.erase(atomTags.begin() + static_cast<std::ptrdiff_t>(offset),
+                 atomTags.begin() + static_cast<std::ptrdiff_t>(offset + count));
+
+  // The surviving atoms with a tag at or above the new count take the freed tags, in the order of their old
+  // tags; there are exactly as many of each. 'atomIndexOfTag' still holds the indices before the erase.
+  std::size_t next = 0;
+  for (std::size_t tag = newSize; tag < newSize + count; ++tag)
+  {
+    std::size_t index = atomIndexOfTag[tag];
+    if (index >= offset && index < offset + count) continue;
+    if (index >= offset + count) index -= count;
+    if (next == freedTags.size())
+    {
+      throw std::runtime_error("eraseAtomTags: more atoms to retag than freed tags\n");
+    }
+    atomTags[index] = freedTags[next];
+    atomIndexOfTag[freedTags[next]] = static_cast<std::uint32_t>(index);
+    retaggedAtoms.emplace_back(static_cast<std::uint32_t>(tag), freedTags[next]);
+    ++next;
+  }
+  atomIndexOfTag.resize(newSize);
+  for (std::size_t i = offset; i < newSize; ++i)
+  {
+    atomIndexOfTag[atomTags[i]] = static_cast<std::uint32_t>(i);
+  }
+}
+
+void System::resetAtomTags()
+{
+  atomTags.resize(atomData.size());
+  std::iota(atomTags.begin(), atomTags.end(), std::uint32_t{0});
+  atomIndexOfTag = atomTags;
+  retaggedAtoms.clear();
+}
+
+void System::checkAtomTags() const
+{
+  if (atomTags.size() != atomData.size() || atomIndexOfTag.size() != atomData.size())
+  {
+    throw std::runtime_error(std::format("Atom tags: {} tags and {} inverse entries for {} atoms\n", atomTags.size(),
+                                         atomIndexOfTag.size(), atomData.size()));
+  }
+  for (std::size_t i = 0; i < atomTags.size(); ++i)
+  {
+    if (atomTags[i] >= atomTags.size() || atomIndexOfTag[atomTags[i]] != i)
+    {
+      throw std::runtime_error(std::format("Atom tags: atom {} holds tag {} whose inverse entry is {}\n", i,
+                                           atomTags[i],
+                                           atomTags[i] < atomTags.size() ? atomIndexOfTag[atomTags[i]] : 0));
+    }
   }
 }
 
@@ -452,6 +565,7 @@ void System::checkMoleculeIds()
       ++molecule_index;
     }
   }
+  checkAtomTags();
 
   for (std::size_t componentId = 0; componentId < components.size(); componentId++)
   {
