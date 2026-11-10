@@ -724,8 +724,8 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
 
   if (writeLammpsData.has_value())
   {
-    writeLammpsData->update(currentCycle, components, atomData, atomDynamics, moleculeData, simulationBox, forceField,
-                            numberOfIntegerMoleculesPerComponent, framework);
+    writeLammpsData->update(currentCycle, components, atomData, atomTags, atomDynamics, moleculeData, simulationBox,
+                            forceField, numberOfIntegerMoleculesPerComponent, framework);
   }
 
   if (propertyConventionalRadialDistributionFunction.has_value())

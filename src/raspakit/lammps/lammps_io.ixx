@@ -43,11 +43,12 @@ std::string writePairListFile(const Topology &topology);
 
 /// 'polymerLinks': the polymer overlay of a polymerization to merge into the topology (see buildTopology).
 ExportFiles exportSystem(std::span<const Component> components, std::span<const Atom> atomData,
-                         std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,
-                         const SimulationBox &simulationBox, const ForceField &forceField,
+                         std::span<const std::uint32_t> atomTags, std::span<const AtomDynamics> atomDynamics,
+                         std::span<const Molecule> moleculeData, const SimulationBox& simulationBox,
+                         const ForceField& forceField,
                          std::span<const std::size_t> numberOfIntegerMoleculesPerComponent,
-                         const std::optional<Framework> &framework, ExportOptions options = {},
-                         const PolymerLinkTable *polymerLinks = nullptr);
+                         const std::optional<Framework>& framework, ExportOptions options = {},
+                         const PolymerLinkTable* polymerLinks = nullptr);
 }  // namespace LAMMPS
 
 export namespace IO
@@ -59,8 +60,9 @@ export namespace IO
  * next to it.
  */
 std::string WriteLAMMPSDataFile(std::span<const Component> components, std::span<const Atom> atomData,
-                                std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,
-                                const SimulationBox simulationBox, const ForceField forceField,
+                                std::span<const std::uint32_t> atomTags, std::span<const AtomDynamics> atomDynamics,
+                                std::span<const Molecule> moleculeData, const SimulationBox simulationBox,
+                                const ForceField forceField,
                                 std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
                                 std::optional<Framework> framework);
 }  // namespace IO

@@ -927,9 +927,10 @@ void Polymerization::writeEventFrame(std::size_t systemId, std::span<const React
         "output/polymerization_events.s{}.jsonl)",
         table.currentStep, static_cast<double>(table.currentStep) * system.timeStep, md.currentCycle, summary,
         table.numberOfBonds(), systemId);
-    const LAMMPS::ExportFiles files = LAMMPS::exportSystem(
-        system.components, system.atomData, system.atomDynamics, system.moleculeData, system.simulationBox,
-        system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options, &table);
+    const LAMMPS::ExportFiles files =
+        LAMMPS::exportSystem(system.components, system.atomData, system.atomTags, system.atomDynamics,
+                             system.moleculeData, system.simulationBox, system.forceField,
+                             system.numberOfIntegerMoleculesPerComponent, system.framework, options, &table);
     std::ofstream(directory / options.dataFile) << files.data;
     std::ofstream(directory / (stem + ".in")) << files.input;
     if (!files.table.empty()) std::ofstream(directory / options.tableFile) << files.table;
@@ -951,14 +952,17 @@ nlohmann::json Polymerization::eventRecord(std::size_t systemId, std::span<const
   const System& system = md.systems[systemId];
   const PolymerLinkTable& table = system.polymerLinks;
   const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
-  // the LAMMPS atom id of the global atom g of the molecule span: the framework atoms come first, ids are 1-based
-  const std::size_t idOffset = system.spanOfFrameworkAtoms().size() + 1;
+  // the LAMMPS atom id of the global atom g of the molecule span: its persistent tag (the framework atoms come
+  // first in the tag array), one-based
+  const std::span<const std::uint32_t> tags =
+      std::span<const std::uint32_t>(system.atomTags).subspan(system.spanOfFrameworkAtoms().size());
+  auto lammpsId = [&](std::size_t g) { return static_cast<std::size_t>(tags[g]) + 1; };
   auto typeName = [&](std::uint16_t type) { return system.forceField.pseudoAtoms[type].name; };
   auto atomJson = [&](std::uint32_t g)
   {
     const PolymerAtomRef r = table.layout.ref(g);
     return nlohmann::json{{"id", g},
-                          {"lammpsId", idOffset + g},
+                          {"lammpsId", lammpsId(g)},
                           {"component", r.componentId},
                           {"molecule", r.moleculeIndex},
                           {"atom", r.atomIndex},
@@ -1031,12 +1035,12 @@ nlohmann::json Polymerization::eventRecord(std::size_t systemId, std::span<const
       bondJson["bond"] = bondIndex;
       bondJson["reaction"] = table.scheme.rules[bond.reaction].name;
       bondJson["atoms"] = {a, b};
-      bondJson["lammpsIds"] = {idOffset + a, idOffset + b};
+      bondJson["lammpsIds"] = {lammpsId(a), lammpsId(b)};
       brokenBonds.push_back(bondJson);
     }
     for (const auto& [g, before, after] : event.retyped)
     {
-      retyped.push_back({{"id", g}, {"lammpsId", idOffset + g}, {"from", typeName(before)}, {"to", typeName(after)}});
+      retyped.push_back({{"id", g}, {"lammpsId", lammpsId(g)}, {"from", typeName(before)}, {"to", typeName(after)}});
     }
     for (std::size_t bondIndex : event.bonds)
     {

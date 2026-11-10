@@ -714,12 +714,19 @@ bool Topology::pairCoefficientsInDataFile() const
 }
 
 Topology buildTopology(std::span<const Component> components, std::span<const Atom> atomData,
-                       std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,
-                       const SimulationBox &simulationBox, const ForceField &forceField,
-                       std::span<const std::size_t> numberOfIntegerMoleculesPerComponent,
-                       const std::optional<Framework> &framework, ExportOptions options,
-                       const PolymerLinkTable *polymerLinks)
+                       std::span<const std::uint32_t> atomTags, std::span<const AtomDynamics> atomDynamics,
+                       std::span<const Molecule> moleculeData, const SimulationBox& simulationBox,
+                       const ForceField& forceField, std::span<const std::size_t> numberOfIntegerMoleculesPerComponent,
+                       const std::optional<Framework>& framework, ExportOptions options,
+                       const PolymerLinkTable* polymerLinks)
 {
+  if (atomTags.size() != atomData.size())
+  {
+    throw std::runtime_error(std::format("LAMMPS export: {} tags for {} atoms\n", atomTags.size(), atomData.size()));
+  }
+  // the LAMMPS atom id of the atom at storage index 'a': its persistent tag, one-based
+  auto lammpsId = [&](std::size_t a) { return static_cast<std::size_t>(atomTags[a]) + 1; };
+
   Topology topology{};
   topology.options = std::move(options);
   TableRegistry tables{};
@@ -823,7 +830,6 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
     return entry;
   };
 
-  std::size_t atomId = 0;
   std::size_t moleculeId = 0;
 
   // ---- framework --------------------------------------------------------------------------------------
@@ -831,7 +837,6 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
   if (framework.has_value() && numberOfFrameworkAtoms > 0)
   {
     ++moleculeId;
-    const std::size_t firstId = atomId + 1;
     std::vector<std::size_t> fragmentOfAtom(numberOfFrameworkAtoms, 0);
     std::vector<bool> fixedAtom(numberOfFrameworkAtoms, framework->rigid);
     if (!framework->groups.empty())
@@ -853,7 +858,7 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
     for (std::size_t a = 0; a < numberOfFrameworkAtoms && a < atomData.size(); ++a)
     {
       const double3 velocity = (a < atomDynamics.size()) ? atomDynamics[a].velocity : double3{};
-      AtomEntry entry = makeAtom(atomData[a], ++atomId, moleculeId, velocity);
+      AtomEntry entry = makeAtom(atomData[a], lammpsId(a), moleculeId, velocity);
       entry.fragment = fragmentOfAtom[a];
       entry.fixed = fixedAtom[a];
       if (entry.fixed) topology.hasFixedAtoms = true;
@@ -862,7 +867,7 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
     if (!framework->rigid || !framework->intraMolecularPotentials.bonds.empty())
     {
       addBondedTerms(
-          topology, tables, framework->intraMolecularPotentials, [&](std::size_t local) { return firstId + local; },
+          topology, tables, framework->intraMolecularPotentials, [&](std::size_t local) { return lammpsId(local); },
           "framework", true);
     }
     topology.groups.push_back({"framework", moleculeId, moleculeId, false,
@@ -874,7 +879,7 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
   std::size_t cursor = numberOfFrameworkAtoms;
   std::size_t moleculeDataOffset = 0;
   std::vector<ComponentSpecial> specials{};
-  std::vector<std::pair<std::size_t, std::size_t>> exportedMolecules{};  // component index, first LAMMPS atom id
+  std::vector<std::pair<std::size_t, std::size_t>> exportedMolecules{};  // component index, first storage index
   // the LAMMPS atom id of every atom of the molecule span (0: not exported); the polymer overlay refers to these
   std::vector<std::size_t> lammpsIdOfMoleculeAtom(atomData.size() - std::min(numberOfFrameworkAtoms, atomData.size()), 0);
   for (std::size_t c = 0; c < components.size(); ++c)
@@ -921,8 +926,7 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
       if (localMolecule < integerMolecules && (end - cursor) == atomsPerMolecule)
       {
         ++moleculeId;
-        const std::size_t firstId = atomId + 1;
-        exportedMolecules.emplace_back(c, firstId);
+        exportedMolecules.emplace_back(c, cursor);
         const std::size_t fragmentBase = topology.numberOfFragments;
         topology.numberOfFragments += fragmentsPerMolecule;
         const std::size_t moleculeIndex = moleculeDataOffset + localMolecule;
@@ -949,8 +953,8 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
           {
             velocity = atomDynamics[a].velocity;
           }
-          AtomEntry entry = makeAtom(atomData[a], ++atomId, moleculeId, velocity);
-          lammpsIdOfMoleculeAtom[a - numberOfFrameworkAtoms] = atomId;
+          AtomEntry entry = makeAtom(atomData[a], lammpsId(a), moleculeId, velocity);
+          lammpsIdOfMoleculeAtom[a - numberOfFrameworkAtoms] = lammpsId(a);
           if (fragmentIndexOfAtom[local] != std::numeric_limits<std::size_t>::max())
           {
             entry.fragment = fragmentBase + fragmentIndexOfAtom[local] + 1;
@@ -961,7 +965,7 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
         {
           addBondedTerms(
               topology, tables, component.intraMolecularPotentials,
-              [&](std::size_t local) { return firstId + local; }, component.name, localMolecule == 0);
+              [&](std::size_t local) { return lammpsId(cursor + local); }, component.name, localMolecule == 0);
         }
       }
       else if (localMolecule >= integerMolecules)
@@ -1024,7 +1028,7 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
       // 1-4 VDW pairs go into a 'pair_style list' file with their own scaling; special_bonds lj becomes 0
       topology.special.vdw14 = 0.0;
       std::set<std::string> reported{};
-      for (const auto &[c, firstId] : exportedMolecules)
+      for (const auto &[c, firstAtom] : exportedMolecules)
       {
         const Component &component = components[c];
         for (const IntraMolecularExclusions::ScaledPair &pair : specials[c].nonStandard14)
@@ -1042,10 +1046,10 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
             }
             continue;
           }
-          topology.pairList.push_back(std::format(
-              "{} {} lj126 {} {} {}", firstId + pair.atomA, firstId + pair.atomB,
-              formatValue(pair.scalingVDW * vdw.parameters.x * Units::EnergyToKCalPerMol),
-              formatValue(vdw.parameters.y), formatValue(forceField.cutOffMoleculeVDW)));
+          topology.pairList.push_back(
+              std::format("{} {} lj126 {} {} {}", lammpsId(firstAtom + pair.atomA), lammpsId(firstAtom + pair.atomB),
+                          formatValue(pair.scalingVDW * vdw.parameters.x * Units::EnergyToKCalPerMol),
+                          formatValue(vdw.parameters.y), formatValue(forceField.cutOffMoleculeVDW)));
         }
       }
     }

@@ -24,8 +24,8 @@ WriteLammpsData::WriteLammpsData(std::size_t systemId, std::size_t sampleEvery)
 }
 
 void WriteLammpsData::update(std::size_t currentCycle, std::span<const Component> components,
-                             std::span<const Atom> atomData, std::span<const AtomDynamics> atomDynamics,
-                             std::span<const Molecule> moleculeData,
+                             std::span<const Atom> atomData, std::span<const std::uint32_t> atomTags,
+                             std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,
                              const SimulationBox simulationBox, const ForceField forceField,
                              std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
                              std::optional<Framework> framework)
@@ -37,7 +37,7 @@ void WriteLammpsData::update(std::size_t currentCycle, std::span<const Component
   options.tableFile = std::format("s{}.table", systemId);
   options.pairListFile = std::format("s{}.pairs", systemId);
   LAMMPS::ExportFiles files =
-      LAMMPS::exportSystem(components, atomData, atomDynamics, moleculeData, simulationBox, forceField,
+      LAMMPS::exportSystem(components, atomData, atomTags, atomDynamics, moleculeData, simulationBox, forceField,
                            numberOfIntegerMoleculesPerComponent, framework, options);
 
   std::ofstream(std::format("lammps/{}", options.dataFile), std::ios_base::out) << files.data;

@@ -33,8 +33,8 @@ export struct WriteLammpsData
    * \brief Write data to LAMMPS file.
    */
   void update(std::size_t currentCycle, std::span<const Component> components, std::span<const Atom> atomData,
-              std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,
-              const SimulationBox simulationBox, const ForceField forceField,
+              std::span<const std::uint32_t> atomTags, std::span<const AtomDynamics> atomDynamics,
+              std::span<const Molecule> moleculeData, const SimulationBox simulationBox, const ForceField forceField,
               std::vector<std::size_t> numberOfIntegerMoleculesPerComponent, std::optional<Framework> framework);
 
   std::size_t sampleEvery{10};  ///< Writing frequency.

@@ -78,9 +78,11 @@ TEST(PROPERTY_OUTPUT_FIXES, lammps_velocities_of_a_rigid_molecule_include_its_ro
   molecule.orientationMomentum.r = 2.0 * (-q.ix * (I.x * w.x) - q.iy * (I.y * w.y) - q.iz * (I.z * w.z));
   Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
 
-  const LAMMPS::Topology topology = LAMMPS::buildTopology(
-      system.components, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.moleculeData,
-      system.simulationBox, system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework);
+  const LAMMPS::Topology topology =
+      LAMMPS::buildTopology(system.components, system.spanOfMoleculeAtoms(),
+                            std::span<const std::uint32_t>(system.atomTags).subspan(system.numberOfFrameworkAtoms),
+                            system.spanOfMoleculeDynamics(), system.moleculeData, system.simulationBox,
+                            system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework);
   ASSERT_EQ(topology.atoms.size(), 3uz);
 
   constexpr double dt = 1.0e-7;

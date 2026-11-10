@@ -460,6 +460,63 @@ TEST(lammps_export, reader_inverses_recover_raspa_parameters)
   EXPECT_NEAR(trappe->parameters[1], 1.0 * Units::KCalPerMolToEnergy * Units::EnergyToKelvin, 1e-6);
 }
 
+// The LAMMPS atom id is the persistent tag plus one: an atom keeps its id across frames whatever is deleted or
+// inserted around it, and the bonded terms name the atoms by those ids.
+TEST(lammps_export, atom_ids_are_the_persistent_tags)
+{
+  ForceField forceField = chainForceField();
+  Component chain = readComponent(forceField, chainDefinition(), "chain");
+  const SimulationBox box(20.0, 20.0, 20.0);
+  System system(forceField, box, false, 300.0, 1e5, 1.0, {}, {chain}, {}, {3}, 5);
+  ASSERT_EQ(system.atomData.size(), 15u);
+
+  auto expectIdsAreTags = [&](const LAMMPS::Topology& topology)
+  {
+    ASSERT_EQ(topology.atoms.size(), system.atomData.size());
+    for (std::size_t i = 0; i < topology.atoms.size(); ++i)
+    {
+      EXPECT_EQ(topology.atoms[i].id, static_cast<std::size_t>(system.atomTags[i]) + 1) << "atom " << i;
+    }
+    // every bonded term names exported atoms
+    std::set<std::size_t> ids{};
+    for (const LAMMPS::AtomEntry& atom : topology.atoms) ids.insert(atom.id);
+    for (const LAMMPS::BondedEntry& bond : topology.bondList)
+    {
+      EXPECT_TRUE(ids.contains(bond.atoms[0]) && ids.contains(bond.atoms[1]));
+    }
+  };
+
+  // the first molecule leaves: the others keep their ids (6..15), the first bond is between 6 and 7
+  system.deleteMolecule(0, 0, system.spanOfMolecule(0, 0));
+  const LAMMPS::Topology afterDeletion = LAMMPS::buildTopology(
+      system.components, system.atomData, system.atomTags, system.atomDynamics, system.moleculeData,
+      system.simulationBox, system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework);
+  expectIdsAreTags(afterDeletion);
+  EXPECT_EQ(afterDeletion.atoms.front().id, 6u);
+  EXPECT_EQ(afterDeletion.atoms.back().id, 15u);
+  ASSERT_FALSE(afterDeletion.bondList.empty());
+  EXPECT_EQ(afterDeletion.bondList.front().atoms[0], 6u);
+  EXPECT_EQ(afterDeletion.bondList.front().atoms[1], 7u);
+
+  // a new molecule takes the freed tags: it is last in storage but has the ids 1..5
+  std::vector<Atom> atoms(system.spanOfMolecule(0, 0).begin(), system.spanOfMolecule(0, 0).end());
+  for (Atom& atom : atoms) atom.position += double3(0.0, 0.0, 6.0);
+  system.insertMolecule(0, Molecule{}, atoms);
+  const LAMMPS::Topology afterInsertion = LAMMPS::buildTopology(
+      system.components, system.atomData, system.atomTags, system.atomDynamics, system.moleculeData,
+      system.simulationBox, system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework);
+  expectIdsAreTags(afterInsertion);
+  EXPECT_EQ(afterInsertion.atoms.back().id, 5u);
+  EXPECT_EQ(afterInsertion.atoms[afterInsertion.atoms.size() - 5].id, 1u);
+
+  // mismatched tags are refused
+  EXPECT_THROW(LAMMPS::buildTopology(system.components, system.atomData,
+                                     std::span<const std::uint32_t>(system.atomTags).subspan(1), system.atomDynamics,
+                                     system.moleculeData, system.simulationBox, system.forceField,
+                                     system.numberOfIntegerMoleculesPerComponent, system.framework),
+               std::runtime_error);
+}
+
 // ---------------------------------------------------------------------------------------------------
 // Topology, writer and reader on a small chain system
 // ---------------------------------------------------------------------------------------------------
@@ -487,10 +544,9 @@ TEST(lammps_export, chain_system_export_and_read_back)
 
   LAMMPS::ExportOptions options{};
   options.dataFile = "chain.data";
-  LAMMPS::ExportFiles files =
-      LAMMPS::exportSystem(system.components, system.atomData, system.atomDynamics, system.moleculeData,
-                           system.simulationBox, system.forceField, system.numberOfIntegerMoleculesPerComponent,
-                           system.framework, options);
+  LAMMPS::ExportFiles files = LAMMPS::exportSystem(
+      system.components, system.atomData, system.atomTags, system.atomDynamics, system.moleculeData,
+      system.simulationBox, system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options);
 
   // header and deduplicated types
   EXPECT_NE(files.data.find("10 atoms\n"), std::string::npos);
@@ -811,10 +867,9 @@ TEST(lammps_export, rigid_molecule_gets_fragment_ids_and_rigid_small)
     for (std::size_t i = 0; i < 3; ++i)
       atoms[m * 3 + i].position = double3(3.0 + 4.0 * static_cast<double>(m), 7.0, 7.0) + rigid.atoms[i].position;
 
-  LAMMPS::Topology topology =
-      LAMMPS::buildTopology(system.components, system.atomData, system.atomDynamics, system.moleculeData,
-                            system.simulationBox, system.forceField, system.numberOfIntegerMoleculesPerComponent,
-                            system.framework);
+  LAMMPS::Topology topology = LAMMPS::buildTopology(
+      system.components, system.atomData, system.atomTags, system.atomDynamics, system.moleculeData,
+      system.simulationBox, system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework);
   EXPECT_EQ(topology.numberOfFragments, 3u);
   EXPECT_EQ(topology.atoms.size(), 9u);
   EXPECT_EQ(topology.atoms[0].fragment, 1u);
@@ -1122,11 +1177,12 @@ TEST(lammps_export, polymer_overlay_is_merged_into_the_topology)
   LAMMPS::ExportOptions options{};
   options.comment = "event frame test";
   const LAMMPS::Topology plain = LAMMPS::buildTopology(
-      system.components, system.atomData, system.atomDynamics, system.moleculeData, system.simulationBox,
+      system.components, system.atomData, system.atomTags, system.atomDynamics, system.moleculeData, system.simulationBox,
       system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options);
-  const LAMMPS::Topology merged = LAMMPS::buildTopology(
-      system.components, system.atomData, system.atomDynamics, system.moleculeData, system.simulationBox,
-      system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options, &table);
+  const LAMMPS::Topology merged =
+      LAMMPS::buildTopology(system.components, system.atomData, system.atomTags, system.atomDynamics,
+                            system.moleculeData, system.simulationBox, system.forceField,
+                            system.numberOfIntegerMoleculesPerComponent, system.framework, options, &table);
 
   // the component topology is unchanged without the overlay; the overlay appends the link terms
   EXPECT_EQ(plain.bondList.size(), 8u);
@@ -1183,9 +1239,10 @@ TEST(lammps_export, polymer_overlay_is_merged_into_the_topology)
 
   // with the ramp in progress the input script says so
   system.polymerLinks.currentStep = 50;
-  const LAMMPS::Topology ramping = LAMMPS::buildTopology(
-      system.components, system.atomData, system.atomDynamics, system.moleculeData, system.simulationBox,
-      system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options, &table);
+  const LAMMPS::Topology ramping =
+      LAMMPS::buildTopology(system.components, system.atomData, system.atomTags, system.atomDynamics,
+                            system.moleculeData, system.simulationBox, system.forceField,
+                            system.numberOfIntegerMoleculesPerComponent, system.framework, options, &table);
   EXPECT_NE(LAMMPS::writeInputScript(ramping).find("still ramped in"), std::string::npos);
 }
 
@@ -1202,11 +1259,12 @@ TEST(lammps_export, polymer_broken_bonds_are_removed_from_the_topology)
 
   LAMMPS::ExportOptions options{};
   const LAMMPS::Topology plain = LAMMPS::buildTopology(
-      system.components, system.atomData, system.atomDynamics, system.moleculeData, system.simulationBox,
-      system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options);
-  const LAMMPS::Topology merged = LAMMPS::buildTopology(
-      system.components, system.atomData, system.atomDynamics, system.moleculeData, system.simulationBox,
-      system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options, &table);
+      system.components, system.atomData, system.atomTags, system.atomDynamics, system.moleculeData,
+      system.simulationBox, system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options);
+  const LAMMPS::Topology merged =
+      LAMMPS::buildTopology(system.components, system.atomData, system.atomTags, system.atomDynamics,
+                            system.moleculeData, system.simulationBox, system.forceField,
+                            system.numberOfIntegerMoleculesPerComponent, system.framework, options, &table);
 
   // two monomers: 5 bonds, 6 angles, 4 dihedrals each; the ring opening removes the bond 0-2, the angles 1-2-0,
   // 2-0-1, 3-0-2 and the dihedrals 3-0-2-1, 4-3-0-2 of the first

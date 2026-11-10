@@ -521,14 +521,16 @@ std::string writeInputScript(const Topology &topology)
 }
 
 ExportFiles exportSystem(std::span<const Component> components, std::span<const Atom> atomData,
-                         std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,
-                         const SimulationBox &simulationBox, const ForceField &forceField,
+                         std::span<const std::uint32_t> atomTags, std::span<const AtomDynamics> atomDynamics,
+                         std::span<const Molecule> moleculeData, const SimulationBox& simulationBox,
+                         const ForceField& forceField,
                          std::span<const std::size_t> numberOfIntegerMoleculesPerComponent,
-                         const std::optional<Framework> &framework, ExportOptions options,
-                         const PolymerLinkTable *polymerLinks)
+                         const std::optional<Framework>& framework, ExportOptions options,
+                         const PolymerLinkTable* polymerLinks)
 {
-  Topology topology = buildTopology(components, atomData, atomDynamics, moleculeData, simulationBox, forceField,
-                                    numberOfIntegerMoleculesPerComponent, framework, std::move(options), polymerLinks);
+  Topology topology =
+      buildTopology(components, atomData, atomTags, atomDynamics, moleculeData, simulationBox, forceField,
+                    numberOfIntegerMoleculesPerComponent, framework, std::move(options), polymerLinks);
   ExportFiles files{};
   files.data = writeDataFile(topology);
   files.input = writeInputScript(topology);
@@ -540,13 +542,13 @@ ExportFiles exportSystem(std::span<const Component> components, std::span<const 
 }  // namespace LAMMPS
 
 std::string IO::WriteLAMMPSDataFile(std::span<const Component> components, std::span<const Atom> atomData,
-                                    std::span<const AtomDynamics> atomDynamics,
+                                    std::span<const std::uint32_t> atomTags, std::span<const AtomDynamics> atomDynamics,
                                     std::span<const Molecule> moleculeData, const SimulationBox simulationBox,
                                     const ForceField forceField,
                                     std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
                                     std::optional<Framework> framework)
 {
-  return LAMMPS::exportSystem(components, atomData, atomDynamics, moleculeData, simulationBox, forceField,
+  return LAMMPS::exportSystem(components, atomData, atomTags, atomDynamics, moleculeData, simulationBox, forceField,
                               numberOfIntegerMoleculesPerComponent, framework)
       .data;
 }

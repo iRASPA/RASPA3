@@ -148,12 +148,14 @@ struct Topology
   bool pairCoefficientsInDataFile() const;  ///< single analytic VDW style: PairIJ Coeffs can live in the data file
 };
 
+/// 'atomTags': the persistent tag of every atom of 'atomData' (System::atomTags): the LAMMPS atom id is the tag
+/// plus one, so an atom keeps its id across frames whatever is inserted or deleted around it.
 /// 'polymerLinks': the polymer overlay to merge (its derived term lists must be current, see
 /// PolymerLinkTable::rebuild); none to export the component topology only.
 Topology buildTopology(std::span<const Component> components, std::span<const Atom> atomData,
-                       std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,
-                       const SimulationBox &simulationBox, const ForceField &forceField,
-                       std::span<const std::size_t> numberOfIntegerMoleculesPerComponent,
-                       const std::optional<Framework> &framework, ExportOptions options = {},
-                       const PolymerLinkTable *polymerLinks = nullptr);
+                       std::span<const std::uint32_t> atomTags, std::span<const AtomDynamics> atomDynamics,
+                       std::span<const Molecule> moleculeData, const SimulationBox& simulationBox,
+                       const ForceField& forceField, std::span<const std::size_t> numberOfIntegerMoleculesPerComponent,
+                       const std::optional<Framework>& framework, ExportOptions options = {},
+                       const PolymerLinkTable* polymerLinks = nullptr);
 }  // namespace LAMMPS
