@@ -71,6 +71,43 @@ static simd_quatd quaternionFromAngularDisplacement(double3 deltaPhi)
   return simd_quatd::fromAxisAngle(angle, deltaPhi * (1.0 / angle));
 }
 
+double MC_Moves::logRotationProposalRatio(double3 angularDisplacement, double3 driftOld, double3 driftNew, double sigma)
+{
+  const double twoSigmaSquared = 2.0 * sigma * sigma;
+  const double angle = angularDisplacement.length();
+  if (angle < 1.0e-14)
+  {
+    // the identity rotation: the principal term alone (its aliases have no axis)
+    return (driftOld.length_squared() - driftNew.length_squared()) / twoSigmaSquared;
+  }
+  const double3 axis = angularDisplacement * (1.0 / angle);
+
+  // The principal term first, then the aliases theta + 2 pi k of the drawn angle added in log space (four either
+  // side: at a step size of 1.5 radians the fifth lies more than twenty standard deviations out). No infinite
+  // sentinel: the fast-math flags of the build fold comparisons with infinity.
+  auto logTerm = [&](double theta, const double3& drift, double sign)
+  {
+    const double3 vector = axis * (sign * theta);
+    return 2.0 * std::log(std::abs(theta)) - (vector - drift).length_squared() / twoSigmaSquared;
+  };
+  auto logAdd = [](double a, double b)
+  {
+    const double high = std::max(a, b);
+    return high + std::log(std::exp(a - high) + std::exp(b - high));
+  };
+  double logForward = logTerm(angle, driftOld, 1.0);
+  double logReverse = logTerm(angle, driftNew, -1.0);
+  for (int k = -4; k <= 4; ++k)
+  {
+    if (k == 0) continue;
+    const double theta = angle + 2.0 * std::numbers::pi * static_cast<double>(k);
+    if (std::abs(theta) < 1.0e-12) continue;  // a vanishing weight theta^2
+    logForward = logAdd(logForward, logTerm(theta, driftOld, 1.0));
+    logReverse = logAdd(logReverse, logTerm(theta, driftNew, -1.0));
+  }
+  return logReverse - logForward;
+}
+
 std::optional<RunningEnergy> MC_Moves::rotationSmartMCMove(RandomNumber &random, System &system,
                                                            std::size_t selectedComponent,
                                                            std::size_t selectedMolecule)
@@ -212,10 +249,8 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMove(RandomNumber &random,
 
   component.mc_moves_statistics.addConstructed(move);
 
-  // Metropolis-Hastings correction for the asymmetric quaternion proposal generated from Delta phi.
-  double3 forwardDeviation = angularDisplacement - b * torqueOld;
-  double3 reverseDeviation = angularDisplacement + b * torqueNew;
-  double logBias = (forwardDeviation.length_squared() - reverseDeviation.length_squared()) / (2.0 * sigma * sigma);
+  // Metropolis-Hastings correction for the asymmetric rotation proposal (the aliased rotation vectors included)
+  const double logBias = logRotationProposalRatio(angularDisplacement, b * torqueOld, b * torqueNew, sigma);
 
   if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() + logBias))
   {

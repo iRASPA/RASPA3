@@ -3,6 +3,7 @@ module;
 export module mc_moves_rotation_smart_mc;
 
 import std;
+import double3;
 
 import randomnumbers;
 import running_energy;
@@ -10,6 +11,20 @@ import system;
 
 export namespace MC_Moves
 {
+/**
+ * \brief The logarithm of the ratio of the reverse to the forward proposal density of a torque-biased rotation.
+ *
+ * The trial rotation vector 'angularDisplacement' is drawn as the drift 'driftOld' plus a Gaussian of width 'sigma'
+ * per component, and the reverse step draws its negative with the drift 'driftNew'. Every rotation vector along the
+ * same axis whose angle differs by a multiple of 2 pi is the same rotation, and the Haar measure of a rotation in
+ * exponential coordinates goes as (1 - cos theta) / theta^2, so the density of the rotation is the sum over those
+ * aliases of the Gaussian times theta^2; the (1 - cos theta) is common to both directions and drops out, as the
+ * whole Jacobian would for the principal term alone, whose angle is the same both ways. The aliases matter once
+ * sigma reaches the order of pi (the step size may grow to 1.5 radians); for small steps the principal term alone
+ * is the familiar ratio of the two Gaussians.
+ */
+double logRotationProposalRatio(double3 angularDisplacement, double3 driftOld, double3 driftNew, double sigma);
+
 /**
  * \brief Attempts a torque-biased (rotation smart Monte Carlo) move of a single molecule.
  *

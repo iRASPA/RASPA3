@@ -22,6 +22,7 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_rotation_smart_mc;
 
 // Fills per-atom energy gradients on the selected molecule (framework + inter + Ewald). A single
 // gradient evaluation provides both the net force (for the translational drift) and the torque (for
@@ -258,10 +259,9 @@ std::optional<RunningEnergy> MC_Moves::translationRotationSmartMCMove(RandomNumb
       (forwardDeviationTranslation.length_squared() - reverseDeviationTranslation.length_squared()) /
       (2.0 * sigmaTranslation * sigmaTranslation);
 
-  double3 forwardDeviationRotation = angularDisplacement - bRotation * torqueOld;
-  double3 reverseDeviationRotation = angularDisplacement + bRotation * torqueNew;
-  double logBiasRotation = (forwardDeviationRotation.length_squared() - reverseDeviationRotation.length_squared()) /
-                           (2.0 * sigmaRotation * sigmaRotation);
+  // the rotation: the asymmetric proposal on SO(3), its aliased rotation vectors included
+  const double logBiasRotation =
+      logRotationProposalRatio(angularDisplacement, bRotation * torqueOld, bRotation * torqueNew, sigmaRotation);
 
   double logBias = logBiasTranslation + logBiasRotation;
 

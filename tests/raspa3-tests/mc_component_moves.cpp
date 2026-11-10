@@ -15,6 +15,7 @@ import mc_moves_pair_deletion_cbmc;
 import mc_moves_pair_insertion_cbmc;
 import mc_moves_probabilities;
 import mc_moves_random_rotation;
+import mc_moves_rotation_smart_mc;
 import mc_moves_statistics;
 import move_statistics;
 import molecule;
@@ -746,4 +747,54 @@ TEST(MC_COMPONENT_MOVES, neutral_trial_leaves_tmmc_matrix_untouched)
     EXPECT_DOUBLE_EQ(row.y, 0.0);
     EXPECT_DOUBLE_EQ(row.z, 0.0);
   }
+}
+
+// The torque-biased rotation draws a rotation vector from a Gaussian about the drift. Every vector along the same
+// axis whose angle differs by a multiple of 2 pi is the same rotation, so the proposal density of the rotation is
+// the sum over those aliases, each weighted by theta^2 (the Haar measure in exponential coordinates). For a small
+// step the principal term is all there is and the ratio is that of the two Gaussians.
+TEST(MC_COMPONENT_MOVES, smart_rotation_proposal_ratio_is_the_gaussian_ratio_for_a_small_step)
+{
+  const double3 step(0.05, 0.02, -0.01);
+  const double3 driftOld(0.01, -0.02, 0.03);
+  const double3 driftNew(-0.02, 0.01, 0.0);
+  const double sigma = 0.1;
+  const double gaussian =
+      ((step - driftOld).length_squared() - (step + driftNew).length_squared()) / (2.0 * sigma * sigma);
+  EXPECT_NEAR(MC_Moves::logRotationProposalRatio(step, driftOld, driftNew, sigma), gaussian, 1e-12);
+}
+
+// A step and its reverse: the ratio of the reverse step is the inverse of the ratio of the step, for any step size.
+TEST(MC_COMPONENT_MOVES, smart_rotation_proposal_ratio_of_the_reverse_step_is_the_inverse)
+{
+  const double3 step(1.9, -1.2, 0.8);  // 2.4 radians: beyond pi with its aliases in reach
+  const double3 driftOld(0.4, 0.1, -0.2);
+  const double3 driftNew(-0.3, 0.5, 0.2);
+  const double sigma = 1.5;
+  EXPECT_NEAR(MC_Moves::logRotationProposalRatio(step, driftOld, driftNew, sigma),
+              -MC_Moves::logRotationProposalRatio(-step, driftNew, driftOld, sigma), 1e-12);
+}
+
+// At the largest step size the aliased rotation vectors carry weight: the ratio differs from the principal
+// Gaussian ratio, and equals the sum carried out over many more aliases.
+TEST(MC_COMPONENT_MOVES, smart_rotation_proposal_ratio_counts_the_aliased_rotation_vectors)
+{
+  const double3 step(2.6, 0.0, 0.0);
+  const double3 driftOld(0.4, 0.0, 0.0);
+  const double3 driftNew(0.9, 0.3, 0.0);  // the reverse step's alias at -3.7 radians lies close to its drift
+  const double sigma = 1.5;
+  const double gaussian =
+      ((step - driftOld).length_squared() - (step + driftNew).length_squared()) / (2.0 * sigma * sigma);
+  const double ratio = MC_Moves::logRotationProposalRatio(step, driftOld, driftNew, sigma);
+  EXPECT_GT(std::abs(ratio - gaussian), 0.05);
+
+  double forward = 0.0, reverse = 0.0;
+  for (int k = -40; k <= 40; ++k)
+  {
+    const double theta = 2.6 + 2.0 * std::numbers::pi * static_cast<double>(k);
+    const double3 vector(theta, 0.0, 0.0);
+    forward += theta * theta * std::exp(-(vector - driftOld).length_squared() / (2.0 * sigma * sigma));
+    reverse += theta * theta * std::exp(-(-vector - driftNew).length_squared() / (2.0 * sigma * sigma));
+  }
+  EXPECT_NEAR(ratio, std::log(reverse / forward), 1e-12);
 }
