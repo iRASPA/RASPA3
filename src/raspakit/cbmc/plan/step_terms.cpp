@@ -502,8 +502,8 @@ void routeNonBondedTerms(CBMC::GrowStep &step, const ConnectivityTable &connecti
 
 // Fills the derived (temperature-independent) sampler data of a step from its topology and filtered
 // potentials; see the field documentation of 'GrowStep'.
-void CBMC::prepareStep(GrowStep &step, const ConnectivityTable &connectivity, const FragmentGraph &fragmentGraph,
-                       const std::vector<ChiralCenter> &chiralCenters)
+void CBMC::prepareStep(GrowStep& step, const ConnectivityTable& connectivity, const FragmentGraph& fragmentGraph,
+                       const std::vector<bool>& placed, const std::vector<ChiralCenter>& chiralCenters)
 {
   const std::size_t currentBead = step.currentBead;
   const std::vector<std::size_t> &nextBeads = step.nextBeads;
@@ -595,18 +595,39 @@ void CBMC::prepareStep(GrowStep &step, const ConnectivityTable &connectivity, co
   spinPotentials.cmaps = std::move(split.spinTerms.cmaps);
   step.spin.hasUnsampledTerms = hasUnsampledTerms(spinPotentials);
 
-  // Declared chiral centres fully determined by this step: centred on the current bead, with every
-  // neighbour either the previous bead or grown here.
+  // Declared chiral centres centred on the current bead. One whose neighbours are all the previous bead
+  // or grown here has its parity decided by the base conformation (the previous bead lies on the spin
+  // axis, so the spin leaves the parity alone): parity rejection in the base sampler. One with a
+  // neighbour placed before the step (off the axis: a side group the regrowth kept, as at the junction
+  // of a reptation or a partial regrowth) has its parity decided by the spin: the spin trials are drawn
+  // from the allowed half of the circle, or barred by a hard wall where the parity does not halve it (see
+  // 'GrowStep::SpinSelectionData'). A centre with no neighbour grown here is settled already.
   for (const ChiralCenter &center : chiralCenters)
   {
     if (center.ids[0] != currentBead) continue;
-    bool determined = true;
+    bool allGrownHere = true;
+    bool settled = true;
+    std::size_t grownHere = 0, placedBefore = 0, previous = 0;
     for (std::size_t k = 1; k != 4; ++k)
     {
       const std::size_t id = center.ids[k];
-      determined = determined && (id == previousBead || contains(nextBeads, id));
+      const bool next = contains(nextBeads, id);
+      const bool before = !next && id != previousBead && id < placed.size() && placed[id];
+      grownHere += next ? 1 : 0;
+      placedBefore += before ? 1 : 0;
+      previous += (id == previousBead) ? 1 : 0;
+      allGrownHere = allGrownHere && (id == previousBead || next);
+      settled = settled && (id == previousBead || next || before);
     }
-    if (determined) step.base.determinedChiralCenters.push_back(center);
+    if (allGrownHere)
+    {
+      step.base.determinedChiralCenters.push_back(center);
+    }
+    else if (settled && grownHere > 0)
+    {
+      step.spin.determinedChiralCenters.push_back(center);
+      step.spin.parityIsHalfCircle = (previous == 1 && placedBefore == 1 && grownHere == 1);
+    }
   }
 
   if (step.base.hasCoupling) step.base.couplingSignature = baseCouplingSignature(step);

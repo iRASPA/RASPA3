@@ -3103,22 +3103,27 @@ std::vector<std::vector<std::size_t>> Component::readRepeatUnits(
   // interior periodicity and the equality of the head and tail connections at once. (Potential
   // parameters are generated from pseudo-atom type patterns, so identical types plus identical
   // index topology imply identical parameters.)
-  auto checkPeriodicTerms = [&](const auto &identifierLists, std::string_view name)
+  // 'reversible': a term and its reverse are the same term (bonds, bends, torsions); the others are read
+  // in their declared order. Entries of an identifier list beyond the atoms (a handedness) shift along.
+  auto checkPeriodicTerms = [&](const auto& identifierLists, std::string_view name, bool reversible,
+                                std::size_t numberOfAtomEntries = std::numeric_limits<std::size_t>::max())
   {
     std::set<std::vector<std::size_t>> lowTerms;
     std::set<std::vector<std::size_t>> shiftedTerms;
     for (const auto &identifiers : identifierLists)
     {
       std::vector<std::size_t> ids(identifiers.begin(), identifiers.end());
-      if (std::ranges::all_of(ids, [&](std::size_t atom) { return unitOf[atom] <= numberOfUnits - 2; }))
+      const std::size_t atomEntries = std::min(ids.size(), numberOfAtomEntries);
+      const std::span<const std::size_t> atoms(ids.data(), atomEntries);
+      if (std::ranges::all_of(atoms, [&](std::size_t atom) { return unitOf[atom] <= numberOfUnits - 2; }))
       {
-        lowTerms.insert(normalized(ids));
+        lowTerms.insert(reversible ? normalized(ids) : ids);
       }
-      if (std::ranges::all_of(ids, [&](std::size_t atom) { return unitOf[atom] >= 1; }))
+      if (std::ranges::all_of(atoms, [&](std::size_t atom) { return unitOf[atom] >= 1; }))
       {
-        std::vector<std::size_t> shifted(ids.size());
-        std::ranges::transform(ids, shifted.begin(), shiftDown);
-        shiftedTerms.insert(normalized(shifted));
+        std::vector<std::size_t> shifted = ids;
+        std::transform(atoms.begin(), atoms.end(), shifted.begin(), shiftDown);
+        shiftedTerms.insert(reversible ? normalized(shifted) : shifted);
       }
     }
     if (lowTerms != shiftedTerms)
@@ -3130,16 +3135,40 @@ std::vector<std::vector<std::size_t>> Component::readRepeatUnits(
     }
   };
 
-  checkPeriodicTerms(connectivityTable.findAllBonds(), "connectivity");
-  checkPeriodicTerms(intraMolecularPotentials.bonds |
-                         std::views::transform([](const BondPotential &p) { return p.identifiers; }),
-                     "bond");
-  checkPeriodicTerms(intraMolecularPotentials.bends |
-                         std::views::transform([](const BendPotential &p) { return p.identifiers; }),
-                     "bend");
+  checkPeriodicTerms(connectivityTable.findAllBonds(), "connectivity", true);
+  checkPeriodicTerms(
+      intraMolecularPotentials.bonds | std::views::transform([](const BondPotential& p) { return p.identifiers; }),
+      "bond", true);
+  checkPeriodicTerms(intraMolecularPotentials.ureyBradleys |
+                         std::views::transform([](const UreyBradleyPotential& p) { return p.identifiers; }),
+                     "Urey-Bradley", true);
+  checkPeriodicTerms(
+      intraMolecularPotentials.bends | std::views::transform([](const BendPotential& p) { return p.identifiers; }),
+      "bend", true);
+  checkPeriodicTerms(intraMolecularPotentials.inversionBends |
+                         std::views::transform([](const InversionBendPotential& p) { return p.identifiers; }),
+                     "inversion-bend", false);
+  checkPeriodicTerms(intraMolecularPotentials.outOfPlaneBends |
+                         std::views::transform([](const OutOfPlaneBendPotential& p) { return p.identifiers; }),
+                     "out-of-plane-bend", false);
   checkPeriodicTerms(intraMolecularPotentials.torsions |
-                         std::views::transform([](const TorsionPotential &p) { return p.identifiers; }),
-                     "torsion");
+                         std::views::transform([](const TorsionPotential& p) { return p.identifiers; }),
+                     "torsion", true);
+  checkPeriodicTerms(intraMolecularPotentials.improperTorsions |
+                         std::views::transform([](const TorsionPotential& p) { return p.identifiers; }),
+                     "improper-torsion", false);
+  checkPeriodicTerms(
+      intraMolecularPotentials.cmaps | std::views::transform([](const CMAPPotential& p) { return p.identifiers; }),
+      "CMAP", false);
+  // a stereocentre shifts with its handedness: a syndiotactic chain is not shift-periodic
+  checkPeriodicTerms(intraMolecularPotentials.chiralCenters | std::views::transform(
+                                                                  [](const ChiralCenter& c)
+                                                                  {
+                                                                    return std::array<std::size_t, 5>{
+                                                                        c.ids[0], c.ids[1], c.ids[2], c.ids[3],
+                                                                        static_cast<std::size_t>(c.type)};
+                                                                  }),
+                     "chiral-centre", false, 4);
   // (the non-bonded pairs follow from the connectivity and the rigid fragments, checked above and below)
 
   // Rigid fragments must lie inside a single repeat unit, map onto rigid fragments under the shift,

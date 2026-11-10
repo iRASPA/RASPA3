@@ -26,5 +26,6 @@ export namespace CBMC
  * plan is built ('buildGrowthPlan'); the operator engine then only does lookups.
  */
 void prepareStep(GrowStep &step, const ConnectivityTable &connectivity, const FragmentGraph &fragmentGraph,
+                 const std::vector<bool> &placed,
                  const std::vector<ChiralCenter> &chiralCenters);
 }  // namespace CBMC

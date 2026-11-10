@@ -637,10 +637,10 @@ std::vector<CBMC::GrowStep> CBMC::buildGrowthPlan(
   while (placed.size() < numberOfBeads)
   {
     GrowStep step = nextGrowthStep(connectivity, fragmentGraph, intraMolecularPotentials, placed);
-    CBMC::prepareStep(step, connectivity, fragmentGraph, intraMolecularPotentials.chiralCenters);
-
     std::vector<bool> placedFlags(numberOfBeads, false);
     for (std::size_t bead : placed) placedFlags[bead] = true;
+    CBMC::prepareStep(step, connectivity, fragmentGraph, placedFlags, intraMolecularPotentials.chiralCenters);
+
     attachLookaheadGuide(step, connectivity, fragmentGraph, placedFlags, intraMolecularPotentials);
 
     placed.insert(placed.end(), step.nextBeads.begin(), step.nextBeads.end());

@@ -157,6 +157,15 @@ struct GrowStep
     /// previous bead); weighted alongside the torsions.
     std::vector<BendPotential> variantBends{};
 
+    /// Declared chiral centres centred on the current bead whose parity the spin decides: a neighbour
+    /// placed before the step lies off the spin axis, the others are the previous bead or grown here.
+    std::vector<ChiralCenter> determinedChiralCenters{};
+    /// True when that parity cuts the spin circle in exact halves (the centre lists the previous bead, one
+    /// placed neighbour and one grown bead: the dividing plane holds the axis): the spin trials are then drawn
+    /// from the allowed half and the spin weight carries the factor one half, as the base sampler does for its
+    /// centres. Otherwise a trial of the other parity has weight zero.
+    bool parityIsHalfCircle{false};
+
     /// Closure guides of an attach step of a fixed-endpoint regrowth (see cbmc_closure_guide): per
     /// guided next bead, the placed bead it must eventually reach and the tabulated bias g(D) of
     /// their distance. The bias steers the spin selection and is divided out of its weight again.

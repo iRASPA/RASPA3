@@ -17,6 +17,7 @@ import mc_moves_probabilities;
 import mc_moves_pivot;
 import mc_moves_crankshaft;
 import mc_moves_reptation;
+import intra_molecular_potentials;
 
 // 'U = 0' sanity test for the conformational Monte-Carlo moves (Vitalis & Pappu, Methods 46
 // (2009)): with every conformation-dependent potential switched off, the exact answers are known.
@@ -191,6 +192,68 @@ R"({
   ]
 }
 )";
+
+// A chain of CH2-CH(CH3) repeat units with a declared stereocentre on every CH that has a next unit. The
+// zigzag backbone lies in the xy-plane and the methyl groups point out of it: all to the same side for the
+// isotactic chain (one handedness, shift-periodic), alternating for the syndiotactic one (the handedness
+// alternates, so the chain is not shift-periodic under the one-unit shift).
+std::string chiralChainJson(bool isotactic)
+{
+  constexpr std::size_t units = 4;
+  std::string atoms{}, connectivity{}, repeatUnits{}, centres{};
+  for (std::size_t k = 0; k != units; ++k)
+  {
+    const double x = 2.52 * static_cast<double>(k);
+    const double z = (isotactic || k % 2 == 0) ? 1.45 : -1.45;
+    atoms +=
+        std::format("{}[\"CH2\", [{:.2f}, 0.0, 0.0]], [\"CH\", [{:.2f}, 0.89, 0.0]], [\"CH3\", [{:.2f}, 1.39, {:.2f}]]",
+                    k == 0 ? "" : ",\n      ", x, x + 1.26, x + 1.26, z);
+    connectivity += std::format("{}[{}, {}], [{}, {}]", k == 0 ? "" : ", ", 3 * k, 3 * k + 1, 3 * k + 1, 3 * k + 2);
+    if (k + 1 != units)
+    {
+      connectivity += std::format(", [{}, {}]", 3 * k + 1, 3 * k + 3);
+      centres += std::format("{}[{}, {}, {}, {}]", k == 0 ? "" : ", ", 3 * k + 1, 3 * k, 3 * k + 2, 3 * k + 3);
+    }
+    repeatUnits += std::format("{}[{}, {}, {}]", k == 0 ? "" : ", ", 3 * k, 3 * k + 1, 3 * k + 2);
+  }
+  return std::format(R"({{
+  "CriticalTemperature" : 600.0,
+  "CriticalPressure" : 3000000.0,
+  "AcentricFactor" : 0.3,
+  "pseudoAtoms" :
+    [
+      {}
+    ],
+  "Connectivity" : [{}],
+  "Bonds" : [
+    [["CH2", "CH"], "HARMONIC", [96500.0, 1.54]],
+    [["CH", "CH3"], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH2", "CH", "CH3"], "HARMONIC", [0.0, 112.0]],
+    [["CH2", "CH", "CH2"], "HARMONIC", [0.0, 112.0]],
+    [["CH", "CH2", "CH"], "HARMONIC", [0.0, 112.0]]
+  ],
+  "Torsions" : [
+    [["CH2", "CH", "CH2", "CH"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]],
+    [["CH3", "CH", "CH2", "CH"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]]
+  ],
+  "VanDerWaals" : "auto",
+  "ChiralCenters" : [{}],
+  "RepeatUnits" : [{}]
+}}
+)",
+                     atoms, connectivity, centres, repeatUnits);
+}
+
+ForceField makeZeroForceFieldWithCH()
+{
+  return ForceField({{"CH2", false, 14.03, 0.0, 0.0, 6, false},
+                     {"CH3", false, 15.04, 0.0, 0.0, 6, false},
+                     {"CH", false, 13.02, 0.0, 0.0, 6, false}},
+                    {{0.0, 3.95}, {0.0, 3.75}, {0.0, 4.68}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0,
+                    12.0, true, true, false);
+}
 
 ForceField makeZeroForceField()
 {
@@ -417,6 +480,48 @@ TEST(MC_U0_SANITY, repeat_units_validation)
 // reptation resamples the bond lengths of the regrown unit (from the bond potential), the bend
 // angles (uniform in the cosine at zero bend strength) and the torsions (uniform), so the ideal
 // distributions must emerge from reptation alone.
+// The stereocentre at the junction of a reptation (the CH whose methyl the growth kept and whose next CH2 it
+// grows) has its parity decided by the spin of the grown bead about the backbone bond: the spin trials of the
+// other parity are forbidden, so the grown chain keeps every declared handedness, move after move.
+TEST(MC_U0_SANITY, reptation_keeps_the_declared_stereocentres)
+{
+  const ForceField forceField = makeZeroForceFieldWithCH();
+  TemporaryFile file("isotactic-chain-u0.json", chiralChainJson(true));
+  Component chain = Component(Component::Type::Adsorbate, 0, forceField, "isotactic-chain-u0", file.stemPath().string(),
+                              5, 21, MCMoveProbabilities(), std::nullopt, false);
+  ASSERT_EQ(chain.intraMolecularPotentials.chiralCenters.size(), 3uz);
+  System system =
+      System(forceField, SimulationBox(200.0, 200.0, 200.0), false, 300.0, 1e4, 1.0, {}, {chain}, {}, {1}, 5);
+  system.runningEnergies = system.computeTotalEnergies();
+  ASSERT_TRUE(system.components[0].intraMolecularPotentials.preservesChiralCenters(system.spanOfMolecule(0, 0)));
+
+  RandomNumber random(2718);
+  std::size_t accepted = 0;
+  for (std::size_t i = 0; i != 600; ++i)
+  {
+    if (!MC_Moves::reptationMove(random, system, 0, 0).has_value()) continue;
+    ++accepted;
+    ASSERT_TRUE(system.components[0].intraMolecularPotentials.preservesChiralCenters(system.spanOfMolecule(0, 0)))
+        << "move " << i << " inverted a stereocentre";
+  }
+  // at zero potential every move is accepted (the half-circle spin sampling carries its exact factor)
+  EXPECT_GT(accepted, 540uz);
+}
+
+// The one-unit shift of a reptation must carry every declared stereocentre onto one of the same handedness:
+// an isotactic chain is shift-periodic, a syndiotactic one is refused at parse time.
+TEST(MC_U0_SANITY, repeat_units_require_shift_periodic_stereocentres)
+{
+  const ForceField forceField = makeZeroForceFieldWithCH();
+  TemporaryFile isotactic("isotactic-chain-periodic.json", chiralChainJson(true));
+  EXPECT_NO_THROW(Component(Component::Type::Adsorbate, 0, forceField, "isotactic-chain-periodic",
+                            isotactic.stemPath().string(), 5, 21, MCMoveProbabilities(), std::nullopt, false));
+  TemporaryFile syndiotactic("syndiotactic-chain-periodic.json", chiralChainJson(false));
+  EXPECT_THROW(Component(Component::Type::Adsorbate, 0, forceField, "syndiotactic-chain-periodic",
+                         syndiotactic.stemPath().string(), 5, 21, MCMoveProbabilities(), std::nullopt, false),
+               std::runtime_error);
+}
+
 TEST(MC_U0_SANITY, reptation_accepts_all_and_samples_ideal_distributions)
 {
   const ForceField forceField = makeZeroForceField();

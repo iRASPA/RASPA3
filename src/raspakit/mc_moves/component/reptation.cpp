@@ -118,6 +118,9 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
             });
 
   if (!growData) return std::nullopt;
+  // the growth keeps every declared stereocentre (a junction's parity is a hard constraint on its spin); a
+  // conformation that lost one is refused all the same
+  if (!component.intraMolecularPotentials.preservesChiralCenters(growData->atoms)) return std::nullopt;
 
   std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
 

@@ -3,6 +3,7 @@ module;
 module cbmc_torsion_selection;
 
 import std;
+import chiral_center;
 
 import atom;
 import double3;
@@ -98,10 +99,35 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
   std::vector<double> logTorsionBoltzmannFactors(numberOfTorsionTrials);
   std::vector<double> logGuides(hasGuides ? numberOfTorsionTrials : 0, 0.0);
 
+  // A declared chiral centre whose parity this spin decides (see 'GrowStep::SpinSelectionData').
+  const std::vector<ChiralCenter>& spinCentres = step.spin.determinedChiralCenters;
+  auto parityOk = [&]()
+  {
+    for (const ChiralCenter& center : spinCentres)
+    {
+      const double referenceSign = center.type == ChiralCenter::Chirality::R_Chiral ? 1.0 : -1.0;
+      if (!(referenceSign * chiralSignedVolume(center.ids, chainAtoms) > 0.0)) return false;
+    }
+    return true;
+  };
+
   for (std::size_t j = 0; j != numberOfTorsionTrials; ++j)
   {
-    const double angle = (pinFirstToBase && j == 0) ? 0.0 : (2.0 * random.uniform() - 1.0) * std::numbers::pi;
+    double angle = (pinFirstToBase && j == 0) ? 0.0 : (2.0 * random.uniform() - 1.0) * std::numbers::pi;
     placeSpin(angle);
+    if (step.spin.parityIsHalfCircle && !(pinFirstToBase && j == 0))
+    {
+      // the allowed spins are one half of the circle: draw from it (the weight carries the half below)
+      for (std::size_t attempt = 0; !parityOk(); ++attempt)
+      {
+        if (attempt == 1000)
+        {
+          throw std::runtime_error("CBMC: no spin of the declared parity found at a chiral junction\n");
+        }
+        angle = (2.0 * random.uniform() - 1.0) * std::numbers::pi;
+        placeSpin(angle);
+      }
+    }
 
     double torsion_energy = intra.calculateTorsionEnergies(chainAtoms);
     for (const BendPotential &bend : step.spin.variantBends)
@@ -126,11 +152,25 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
 
     angles[j] = angle;
     logTorsionBoltzmannFactors[j] = -beta * torsion_energy;
+    // a parity that does not cut the circle in halves: the other parity is a hard wall
+    if (!spinCentres.empty() && !step.spin.parityIsHalfCircle && !parityOk())
+    {
+      logTorsionBoltzmannFactors[j] = -std::numeric_limits<double>::infinity();
+    }
     if (hasGuides)
     {
       logGuides[j] = logGuideOfPlacedSpin();
       logTorsionBoltzmannFactors[j] += logGuides[j];
     }
+  }
+
+  // every trial behind the wall (a grow; the retrace pins the old spin, which satisfies it): a dead spin
+  if (!std::isfinite(*std::max_element(logTorsionBoltzmannFactors.begin(), logTorsionBoltzmannFactors.end())))
+  {
+    placeSpin(angles[0]);
+    std::vector<Atom> dead(nextBeads.size());
+    for (std::size_t k = 0; k != nextBeads.size(); ++k) dead[k] = chainAtoms[nextBeads[k]];
+    return {std::move(dead), 0.0};
   }
 
   const std::size_t selected_torsion =
@@ -159,6 +199,9 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
                                                 { return acc + std::exp(logFactor - maxLogFactor); }));
     rosenbluth_weight_torsion = std::exp(logRosenbluthSum - logGuides[selected_torsion]);
   }
+
+  // trials drawn from the allowed half of the circle estimate twice the constrained spin integral
+  if (step.spin.parityIsHalfCircle) rosenbluth_weight_torsion *= 0.5;
 
   return {std::move(positions), rosenbluth_weight_torsion / static_cast<double>(numberOfTorsionTrials)};
 }
