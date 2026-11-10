@@ -1370,7 +1370,7 @@ const Component::BridgingTopology &Component::bridgingTopology() const
   // the centres disagree can never keep the pattern and is dropped.
   auto declaredSign = [](const ChiralCenter &center)
   { return center.type == ChiralCenter::Chirality::R_Chiral ? 1.0 : -1.0; };
-  auto sideGroupReprojection = [&](std::size_t a, std::size_t b) -> std::optional<bool>
+  auto sideGroupReprojection = [&](std::size_t a, std::size_t b, bool& decided) -> std::optional<bool>
   {
     std::optional<bool> decision{};
     for (const ChiralCenter &center : intraMolecularPotentials.chiralCenters)
@@ -1425,7 +1425,47 @@ const Component::BridgingTopology &Component::bridgingTopology() const
       if (decision.has_value() && decision.value() != reproject) return std::nullopt;
       decision = reproject;
     }
+    decided = decision.has_value();
     return decision.value_or(true);
+  };
+
+  // A re-projected side group keeps its bends to the neighbour the local frame is built on (slot k - 1) and, to
+  // the other neighbour, only when the backbone bend at the slot is what it was at the unit the side group comes
+  // from. The closures keep every backbone bend at its old value by slot, so at the boundary slot a + 4, whose
+  // side group comes from unit b, a FIXED or RIGID bend from a side atom to a + 5 holds only when the backbone
+  // bends at a + 4 and at b are holonomic with the same value. (At the slot b the bend in question reaches the
+  // moving a3 and is refused with the site.) Such a pair copies its side groups in place when no declared centre
+  // asks for the re-projection, and is dropped otherwise.
+  auto holonomicBendBetween = [&](std::size_t x, std::size_t center, std::size_t y) -> const BendPotential*
+  {
+    for (const BendPotential& bend : intraMolecularPotentials.bends)
+    {
+      if (bend.type != BendType::Fixed && bend.type != BendType::Rigid) continue;
+      if (bend.identifiers[1] != center) continue;
+      if ((bend.identifiers[0] == x && bend.identifiers[2] == y) ||
+          (bend.identifiers[0] == y && bend.identifiers[2] == x))
+      {
+        return &bend;
+      }
+    }
+    return nullptr;
+  };
+  auto reprojectionBreaksBend = [&](std::size_t a, std::size_t b)
+  {
+    const std::size_t k = a + 4;
+    const BendPotential* slotBend = holonomicBendBetween(backboneAtom(k - 1), backboneAtom(k), backboneAtom(k + 1));
+    const BendPotential* sourceBend = holonomicBendBetween(backboneAtom(b - 1), backboneAtom(b), backboneAtom(b + 1));
+    // (a FIXED or RIGID bend has the one parameter, its angle; the rest of the array is not set)
+    if (slotBend != nullptr && sourceBend != nullptr && slotBend->type == sourceBend->type &&
+        slotBend->parameters[0] == sourceBend->parameters[0])
+    {
+      return false;
+    }
+    for (std::size_t side : result.units[k].sideAtoms)
+    {
+      if (holonomicBendBetween(side, backboneAtom(k), backboneAtom(k + 1)) != nullptr) return true;
+    }
+    return false;
   };
 
   for (std::size_t a : result.sites)
@@ -1439,10 +1479,17 @@ const Component::BridgingTopology &Component::bridgingTopology() const
         congruent = unitsCongruent(k, a + 4 + b - k);
       }
       if (!congruent) continue;
-      const std::optional<bool> reproject = sideGroupReprojection(a, b);
-      if (!reproject.has_value()) continue;
+      bool decided = false;
+      const std::optional<bool> decision = sideGroupReprojection(a, b, decided);
+      if (!decision.has_value()) continue;
+      bool reproject = decision.value();
+      if (reproject && reprojectionBreaksBend(a, b))
+      {
+        if (decided) continue;
+        reproject = false;
+      }
       result.sitePairs.push_back({a, b});
-      result.sitePairReprojectsSideGroups.push_back(reproject.value());
+      result.sitePairReprojectsSideGroups.push_back(reproject);
     }
   }
 

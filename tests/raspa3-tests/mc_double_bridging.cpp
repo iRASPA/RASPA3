@@ -919,6 +919,102 @@ TEST(MC_DOUBLE_BRIDGING, idr_side_group_map_follows_the_declared_stereo_pattern)
   EXPECT_FALSE(chain.intraMolecularPotentials.preservesChiralCenters(mirrored));
 }
 
+// A backbone A A A A A C B B B C A A A A A (a zigzag) with a methyl on the two C beads: the segment of the pair
+// (1, 9) runs C B B B C, a palindrome, so the pair is congruent, and the two C beads have neighbours of different
+// types. The side bend to the B neighbour is FIXED, the one to the A neighbour harmonic. 'backboneBends' is the
+// type of every backbone bend; 'declareCentres' declares a chiral centre on both C beads (the zigzag puts them
+// in the pattern that asks the pair (1, 9) to re-project).
+std::string heteropolymerJson(std::string_view backboneBends, bool declareCentres)
+{
+  constexpr std::array<std::string_view, 15> types{"A", "A", "A", "A", "A", "C", "B", "B",
+                                                   "B", "C", "A", "A", "A", "A", "A"};
+  constexpr double dx = 1.2916, dy = 0.8387;  // 1.54 A bonds, 114 degree bends
+  std::string pseudoAtoms{}, connectivity{};
+  for (std::size_t i = 0; i != types.size(); ++i)
+  {
+    pseudoAtoms += std::format("{}[\"{}\", [{}, {}, 0.0]]", i == 0 ? "" : ", ", types[i], dx * static_cast<double>(i),
+                               (i % 2 == 1) ? dy : 0.0);
+    if (i + 1 != types.size()) connectivity += std::format("{}[{}, {}]", i == 0 ? "" : ", ", i, i + 1);
+  }
+  std::string centres{};
+  for (std::size_t p = 0; p != 2; ++p)
+  {
+    const std::size_t i = (p == 0) ? 5 : 9;
+    const double y = ((i % 2 == 1) ? dy : 0.0) + ((i % 2 == 1) ? 1.059 : -1.059);
+    pseudoAtoms += std::format(", [\"CH3\", [{}, {}, 1.118]]", dx * static_cast<double>(i), y);
+    connectivity += std::format(", [{}, {}]", i, 15 + p);
+    centres += std::format("{}[{}, {}, {}, {}]", p == 0 ? "" : ", ", i, i - 1, i + 1, 15 + p);
+  }
+  const std::string backbone = backboneBends == "FIXED" ? "\"FIXED\", [114.0]" : "\"HARMONIC\", [62500.0, 114.0]";
+  return std::format(R"({{
+  "CriticalTemperature" : 617.7,
+  "CriticalPressure" : 2110000.0,
+  "AcentricFactor" : 0.492,
+  "pseudoAtoms" : [{}],
+  "Connectivity" : [{}],
+  "ChiralCenters" : [{}],
+  "Bonds" : [
+    [["A", "A"], "FIXED", [1.54]], [["A", "C"], "FIXED", [1.54]], [["C", "B"], "FIXED", [1.54]],
+    [["B", "B"], "FIXED", [1.54]], [["C", "CH3"], "FIXED", [1.54]]
+  ],
+  "Bends" : [
+    [["A", "A", "A"], {}], [["A", "A", "C"], {}], [["A", "C", "B"], {}], [["C", "B", "B"], {}], [["B", "B", "B"], {}],
+    [["A", "C", "CH3"], "HARMONIC", [62500.0, 112.0]],
+    [["B", "C", "CH3"], "FIXED", [112.0]]
+  ],
+  "Torsions" : [
+    [["A", "A", "A", "A"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]], [["A", "A", "A", "C"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]],
+    [["A", "A", "C", "B"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]], [["A", "C", "B", "B"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]],
+    [["C", "B", "B", "B"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]], [["CH3", "C", "A", "A"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]],
+    [["CH3", "C", "B", "B"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]]
+  ],
+  "VanDerWaals" : "auto"
+}}
+)",
+                     pseudoAtoms, connectivity, declareCentres ? centres : std::string{}, backbone, backbone, backbone,
+                     backbone, backbone);
+}
+
+ForceField makeHeteropolymerForceField()
+{
+  return ForceField({{"A", false, 14.03, 0.0, 0.0, 6, false},
+                     {"B", false, 14.03, 0.0, 0.0, 6, false},
+                     {"C", false, 13.02, 0.0, 0.0, 6, false},
+                     {"CH3", false, 15.04, 0.0, 0.0, 6, false}},
+                    {{0.0, 3.95}, {0.0, 3.95}, {0.0, 4.68}, {0.0, 3.75}}, ForceField::MixingRule::Lorentz_Berthelot,
+                    12.0, 12.0, 12.0, true, false, false);
+}
+
+// A re-projected side group keeps its bend to the neighbour its local frame is built on and its bend to the
+// other neighbour only when the backbone bend at the slot is what it was at the source unit. At the boundary
+// slot a + 4 the side group arrives from unit b, so a FIXED bend to a + 5 holds only when the backbone bends at
+// a + 4 and at b are holonomic with the same value: on flexible backbone bends the pair (1, 9) copies its side
+// groups in place when nothing asks for the re-projection, and is dropped when its declared centres do; on
+// FIXED backbone bends it re-projects as asked.
+TEST(MC_DOUBLE_BRIDGING, idr_reprojection_that_would_break_a_fixed_side_bend_is_not_proposed)
+{
+  const ForceField forceField = makeHeteropolymerForceField();
+  const std::array<std::size_t, 2> pair{1, 9};
+  auto reprojectionOf = [&](const Component::BridgingTopology& topology) -> std::optional<bool>
+  {
+    for (std::size_t p = 0; p != topology.sitePairs.size(); ++p)
+    {
+      if (topology.sitePairs[p] == pair) return topology.sitePairReprojectsSideGroups[p];
+    }
+    return std::nullopt;
+  };
+
+  const Component undecided = makeComponent(forceField, "idr-hetero-undecided", heteropolymerJson("HARMONIC", false));
+  EXPECT_EQ(reprojectionOf(undecided.bridgingTopology()), std::optional<bool>(false));
+
+  const Component decided = makeComponent(forceField, "idr-hetero-decided", heteropolymerJson("HARMONIC", true));
+  ASSERT_EQ(decided.intraMolecularPotentials.chiralCenters.size(), 2uz);
+  EXPECT_EQ(reprojectionOf(decided.bridgingTopology()), std::nullopt);
+
+  const Component holonomic = makeComponent(forceField, "idr-hetero-holonomic", heteropolymerJson("FIXED", true));
+  EXPECT_EQ(reprojectionOf(holonomic.bridgingTopology()), std::optional<bool>(true));
+}
+
 // Rebridging of chains with side groups and declared chiral centres in a Lennard-Jones melt: every accepted
 // move keeps the declared handedness of every centre (with the segment side groups copied in place on every
 // pair, as before, every unit of a re-projected segment would be inverted), the move stays productive, and the
