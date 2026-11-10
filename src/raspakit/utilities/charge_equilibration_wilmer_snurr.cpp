@@ -192,6 +192,12 @@ static double getJ(const SimulationBox& simulationBox, std::span<Atom> framework
       }
       else
       {
+        // the window of images is centred on the minimum image of the pair: centred on the raw separation it shifted
+        // by whole cells with the side of the cell boundary the two atoms happened to lie on, so a pair at +0.04a and
+        // its symmetry-equivalent at -0.96a summed different images (the truncated sum is not shift-invariant) and
+        // got different J_ij, and the charges changed when the structure was merely translated
+        const double3 separation =
+            simulationBox.applyPeriodicBoundaryConditions(frameworkAtoms[i].position - frameworkAtoms[j].position);
         double sigma = 0;
         for (long long u = -aVnum; u <= aVnum; u++)
         {
@@ -199,12 +205,12 @@ static double getJ(const SimulationBox& simulationBox, std::span<Atom> framework
           {
             for (long long w = -cVnum; w <= cVnum; w++)
             {
-              dr.x = (frameworkAtoms[i].position.x - frameworkAtoms[j].position.x) + static_cast<double>(u) * box.ax +
-                     static_cast<double>(v) * box.bx + static_cast<double>(w) * box.cx;
-              dr.y = (frameworkAtoms[i].position.y - frameworkAtoms[j].position.y) + static_cast<double>(u) * box.ay +
-                     static_cast<double>(v) * box.by + static_cast<double>(w) * box.cy;
-              dr.z = (frameworkAtoms[i].position.z - frameworkAtoms[j].position.z) + static_cast<double>(u) * box.az +
-                     static_cast<double>(v) * box.bz + static_cast<double>(w) * box.cz;
+              dr.x = separation.x + static_cast<double>(u) * box.ax + static_cast<double>(v) * box.bx +
+                     static_cast<double>(w) * box.cx;
+              dr.y = separation.y + static_cast<double>(u) * box.ay + static_cast<double>(v) * box.by +
+                     static_cast<double>(w) * box.cy;
+              dr.z = separation.z + static_cast<double>(u) * box.az + static_cast<double>(v) * box.bz +
+                     static_cast<double>(w) * box.cz;
               double r2 = double3::dot(dr, dr);
               double r = std::sqrt(r2);
 
@@ -371,11 +377,14 @@ void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceFiel
   }
   else
   {
+    // J_ij = J_ji, so each pair is summed once (the direct sum visits a quarter of a million images per pair)
     for (std::size_t i = 0; i != size; ++i)
     {
-      for (std::size_t j = 0; j != size; ++j)
+      for (std::size_t j = i; j != size; ++j)
       {
-        Jab[i * size + j] = getJ(simulationBox, frameworkAtoms, J, i, j, type);
+        const double value = getJ(simulationBox, frameworkAtoms, J, i, j, type);
+        Jab[i * size + j] = value;
+        Jab[j * size + i] = value;
       }
     }
   }

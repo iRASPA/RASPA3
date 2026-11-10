@@ -406,3 +406,39 @@ TEST(UNINITIALIZED_MEMBERS, charge_equilibration_rejects_elements_beyond_the_ref
                                                                ChargeEquilibration::Type::PeriodicEwaldSum),
                std::runtime_error);
 }
+
+TEST(UNINITIALIZED_MEMBERS, direct_sum_charge_equilibration_does_not_change_when_the_structure_is_translated)
+{
+  // the direct sum adds the images of a pair in a window of cells centred on the pair's separation. Centred on the
+  // raw separation, the window moved by a whole cell when the structure was translated so that the pair's raw
+  // separation changed from -0.4a to +0.6a (it is the same minimum image, 0.4a); the truncated lattice sum is not
+  // shift-invariant, so the same crystal got other charges after a translation. The window is now centred on the
+  // minimum image. The matrix is also filled from its upper triangle, which the symmetry of the result checks.
+  const ForceField forceField({{"Cs", true, 132.9, 0.0, 0.0, 55, false}, {"Cl", true, 35.45, 0.0, 0.0, 17, false}},
+                              {{20.0, 3.0}, {50.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0,
+                              false, false, true);
+  const double a = 4.0;
+  const SimulationBox box(a, a, a);
+
+  std::vector<Atom> cell{Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false),
+                         Atom({0.4 * a, 0.4 * a, 0.4 * a}, 0.0, 1.0, 0, 1, 0, false, false)};
+  ChargeEquilibration::computeChargeEquilibration(forceField, box, cell, ChargeEquilibration::Type::PeriodicDirectSum);
+  EXPECT_GT(cell[0].charge, 0.0);
+  EXPECT_NEAR(cell[0].charge + cell[1].charge, 0.0, 1e-9);
+
+  // the same crystal translated by 0.7a along every axis and wrapped into the cell
+  std::vector<Atom> translated{Atom({0.7 * a, 0.7 * a, 0.7 * a}, 0.0, 1.0, 0, 0, 0, false, false),
+                               Atom({0.1 * a, 0.1 * a, 0.1 * a}, 0.0, 1.0, 0, 1, 0, false, false)};
+  ChargeEquilibration::computeChargeEquilibration(forceField, box, translated,
+                                                  ChargeEquilibration::Type::PeriodicDirectSum);
+  EXPECT_NEAR(translated[0].charge, cell[0].charge, 1e-9);
+  EXPECT_NEAR(translated[1].charge, cell[1].charge, 1e-9);
+
+  // and with the two atoms listed the other way round
+  std::vector<Atom> reordered{Atom({0.1 * a, 0.1 * a, 0.1 * a}, 0.0, 1.0, 0, 1, 0, false, false),
+                              Atom({0.7 * a, 0.7 * a, 0.7 * a}, 0.0, 1.0, 0, 0, 0, false, false)};
+  ChargeEquilibration::computeChargeEquilibration(forceField, box, reordered,
+                                                  ChargeEquilibration::Type::PeriodicDirectSum);
+  EXPECT_NEAR(reordered[0].charge, cell[1].charge, 1e-9);
+  EXPECT_NEAR(reordered[1].charge, cell[0].charge, 1e-9);
+}
