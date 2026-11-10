@@ -43,6 +43,7 @@ std::optional<double> System::frameworkMass() const
 void System::insertFractionalMoleculeAtIndex(std::size_t selectedComponent, std::size_t moleculeIndex,
                                              [[maybe_unused]] const Molecule& molecule, std::vector<Atom> atoms)
 {
+  checkPolymerLayoutIsFixed("a molecule was inserted, deleted or moved");
   // Keep the cross-link sites of the molecules that shift up by one index consistent.
   crossLinks.moleculeInserted(selectedComponent, moleculeIndex);
 
@@ -124,6 +125,7 @@ void System::insertReactionFractionalMolecule(std::size_t selectedComponent, std
 void System::insertMolecule(std::size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
                             std::vector<Atom> atoms)
 {
+  checkPolymerLayoutIsFixed("a molecule was inserted, deleted or moved");
   std::vector<Atom>::const_iterator iterator =
       iteratorForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
   std::vector<Atom>::difference_type atomOffset = iterator - atomData.cbegin();
@@ -170,6 +172,7 @@ void System::insertMolecule(std::size_t selectedComponent, [[maybe_unused]] cons
 void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
                                         std::vector<Atom> atoms, std::span<double3> electric_field)
 {
+  checkPolymerLayoutIsFixed("a molecule was inserted, deleted or moved");
   std::vector<Atom>::const_iterator iterator =
       iteratorForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
   std::vector<Atom>::difference_type atomOffset = iterator - atomData.cbegin();
@@ -228,6 +231,7 @@ void System::insertSerialReactionFractionalMolecule(std::size_t selectedComponen
 void System::deleteFractionalMolecule(std::size_t selectedComponent, std::size_t selectedMolecule,
                                       const std::span<Atom> molecule)
 {
+  checkPolymerLayoutIsFixed("a molecule was inserted, deleted or moved");
   for (const Atom& atom : molecule)
   {
     numberOfPseudoAtoms[selectedComponent][static_cast<std::size_t>(atom.type)] -= 1;
@@ -275,6 +279,7 @@ void System::deleteFractionalMolecule(std::size_t selectedComponent, std::size_t
 
 void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedMolecule, const std::span<Atom> molecule)
 {
+  checkPolymerLayoutIsFixed("a molecule was inserted, deleted or moved");
   // Update the number of pseudo atoms per type (used for tail-corrections)
   for (const Atom& atom : molecule)
   {
@@ -341,8 +346,20 @@ void System::makeWholeMoleculeFractional(std::size_t selectedComponent, std::siz
   numberOfIntegerMoleculesPerComponent[selectedComponent] -= 1;
 }
 
+void System::checkPolymerLayoutIsFixed(std::string_view operation) const
+{
+  if (polymerLinks.activated)
+  {
+    throw std::runtime_error(std::format(
+        "[Polymerization]: {} after the polymerization was activated; its group bookkeeping is laid out over the "
+        "molecules at activation and follows no insertion, deletion or move\n",
+        operation));
+  }
+}
+
 void System::moveMolecule(std::size_t selectedComponent, std::size_t moleculeIndex, std::size_t newIndex)
 {
+  checkPolymerLayoutIsFixed("a molecule was inserted, deleted or moved");
   if (moleculeIndex == newIndex) return;
 
   // the per-atom arrays and the records of the molecules from the lower to the higher index rotate by one
@@ -379,6 +396,8 @@ void System::moveMolecule(std::size_t selectedComponent, std::size_t moleculeInd
 void System::exchangeMolecule(System& other, std::size_t selectedComponent, std::size_t molecule,
                               std::size_t otherMolecule)
 {
+  checkPolymerLayoutIsFixed("two molecules were exchanged");
+  other.checkPolymerLayoutIsFixed("two molecules were exchanged");
   std::span<Atom> atoms = spanOfMolecule(selectedComponent, molecule);
   std::span<Atom> otherAtoms = other.spanOfMolecule(selectedComponent, otherMolecule);
   const std::ptrdiff_t offset = atoms.data() - atomData.data();
@@ -449,6 +468,8 @@ void swapMobileTail(std::vector<T>& dataA, std::size_t fixedSizeA, std::vector<T
 
 void System::exchangeConfiguration(System& other)
 {
+  checkPolymerLayoutIsFixed("the configurations of two systems were exchanged");
+  other.checkPolymerLayoutIsFixed("the configurations of two systems were exchanged");
   swapMobileTail(atomData, numberOfFrameworkAtoms, other.atomData, other.numberOfFrameworkAtoms);
   swapMobileTail(atomDynamics, numberOfFrameworkAtoms, other.atomDynamics, other.numberOfFrameworkAtoms);
   // the tags travel with their atoms; replicas share the framework and so its tags, and then each inverse table

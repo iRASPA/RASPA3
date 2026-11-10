@@ -144,6 +144,33 @@ System reactiveSystem(const ForceField& forceField)
 }
 }  // namespace
 
+// The group bookkeeping of the polymer table is laid out over the molecules at activation. The System refuses to
+// insert, delete, move or exchange a molecule while a table is active, instead of leaving the table's references
+// pointing at other molecules.
+TEST(Polymer_links, an_active_table_fixes_the_molecules_of_the_system)
+{
+  const ForceField forceField = twoTypeForceField();
+  System system = reactiveSystem(forceField);
+  ASSERT_TRUE(system.polymerLinks.activated);
+  const std::vector<Atom> copy(system.spanOfMolecule(0, 2).begin(), system.spanOfMolecule(0, 2).end());
+
+  EXPECT_THROW(system.swapMolecules(0, 0, 2), std::runtime_error);
+  EXPECT_THROW(system.deleteMolecule(0, 2, system.spanOfMolecule(0, 2)), std::runtime_error);
+  EXPECT_THROW(system.insertMolecule(0, Molecule{}, copy), std::runtime_error);
+  EXPECT_THROW(system.makeFractionalMoleculeWhole(0, 0), std::runtime_error);
+  System other = reactiveSystem(forceField);
+  EXPECT_THROW(system.exchangeMolecule(other, 0, 1, 1), std::runtime_error);
+  EXPECT_THROW(system.exchangeConfiguration(other), std::runtime_error);
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 3uz);
+
+  // without an active table the same system takes every one of them
+  System plain = System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {},
+                        {dimer(forceField, "dimer", true)}, {}, {3}, 5);
+  EXPECT_NO_THROW(plain.swapMolecules(0, 0, 2));
+  EXPECT_NO_THROW(plain.insertMolecule(0, Molecule{}, copy));
+  EXPECT_NO_THROW(plain.deleteMolecule(0, 3, plain.spanOfMolecule(0, 3)));
+}
+
 TEST(Polymer_links, adjacency_follows_a_reaction_before_the_rebuild)
 {
   const ForceField forceField = twoTypeForceField();

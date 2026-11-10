@@ -1093,6 +1093,11 @@ export struct System
    */
   void exchangeConfiguration(System& other);
 
+  /// Throws when the polymer link table is activated: its group bookkeeping is laid out over the molecules at
+  /// activation, so no molecule may be inserted, deleted, moved or exchanged afterwards ('operation' names the
+  /// attempt). Called by every primitive above that changes the molecule layout.
+  void checkPolymerLayoutIsFixed(std::string_view operation) const;
+
   /// Hands the lowest free tags, or new ones, to 'count' atoms just inserted at 'offset' of 'atomData'.
   void insertAtomTags(std::size_t offset, std::size_t count);
   /// Frees the tags of the 'count' atoms at 'offset' of 'atomData' (before their erase) and erases them.
