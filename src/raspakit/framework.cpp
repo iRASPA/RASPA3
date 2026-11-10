@@ -302,12 +302,22 @@ Framework::Framework(const ForceField& forceField, std::string structureName, Si
       definedAtoms(definedAtoms),
       fractionalUnitCellAtoms(fractionalUnitCellAtoms)
 {
-  for (std::size_t i = 0; i < definedAtoms.size(); ++i)
+  // a framework atom belongs to no molecule and no component. The CIF reader tags the atoms with the index of the
+  // asymmetric-unit atom they come from, to average the equilibrated charges per site; the tags are cleared here,
+  // on every list, before the supercell is copied from the unit cell (they used to be cleared on the unit-cell
+  // atoms only, and after the copy, so the supercell and the fractional atoms kept them)
+  for (Atom& atom : this->definedAtoms)
   {
-    this->definedAtoms[i].moleculeId = 0;
+    atom.componentId = 0;
+    atom.moleculeId = 0;
+  }
+  for (Atom& atom : this->fractionalUnitCellAtoms)
+  {
+    atom.componentId = 0;
+    atom.moleculeId = 0;
   }
 
-  unitCellAtoms = fractionalUnitCellAtoms;
+  unitCellAtoms = this->fractionalUnitCellAtoms;
   for (std::size_t i = 0; i < fractionalUnitCellAtoms.size(); ++i)
   {
     unitCellAtoms[i].position = simulationBox.cell * fractionalUnitCellAtoms[i].position;
@@ -339,12 +349,6 @@ Framework::Framework(const ForceField& forceField, std::string structureName, Si
       if (atom.charge > largestCharge) largestCharge = atom.charge;
       if (atom.charge < smallestCharge) smallestCharge = atom.charge;
     }
-  }
-
-  for (std::size_t i = 0; i < unitCellAtoms.size(); ++i)
-  {
-    unitCellAtoms[i].componentId = static_cast<std::uint8_t>(0);
-    unitCellAtoms[i].moleculeId = 0;
   }
 
   determineUniqueAtomTypes();

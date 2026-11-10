@@ -14,6 +14,7 @@ import simulationbox;
 import system;
 import averages;
 import cif_reader;
+import framework;
 import charge_equilibration_wilmer_snurr;
 import interactions_ewald;
 
@@ -530,4 +531,28 @@ TEST(UNINITIALIZED_MEMBERS, reference_table_functions_are_checked_and_give_hydro
   EXPECT_THROW(ChargeEquilibration::referenceTableX(forceField, 2, 8), std::runtime_error);
   EXPECT_THROW(ChargeEquilibration::referenceTableX(forceField, 1, 0), std::runtime_error);
   EXPECT_THROW(ChargeEquilibration::referenceTableX(forceField, 1, 85), std::runtime_error);
+}
+
+TEST(UNINITIALIZED_MEMBERS, framework_atoms_of_every_list_belong_to_no_molecule_and_no_component)
+{
+  // the CIF reader tags each atom with the index of its asymmetric-unit atom in moleculeId. The constructor cleared
+  // the tag on the unit-cell atoms only, and after the supercell had been copied from them, so the supercell atoms
+  // and the fractional unit-cell atoms kept the tags
+  const ForceField forceField({{"Si", true, 28.0, 0.0, 0.0, 14, false}, {"O", true, 16.0, 0.0, 0.0, 8, false}},
+                              {{20.0, 3.0}, {50.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0,
+                              false, false, true);
+  const std::vector<Atom> tagged{Atom({0.1, 0.2, 0.3}, 0.0, 1.0, 7, 0, 3, false, true),
+                                 Atom({0.6, 0.7, 0.8}, 0.0, 1.0, 8, 1, 3, false, true)};
+  const Framework framework(forceField, "tagged", SimulationBox(10.0, 10.0, 10.0), 1, tagged, tagged, int3(2, 1, 1));
+
+  EXPECT_EQ(framework.atoms.size(), 4);
+  for (const std::vector<Atom>* list :
+       {&framework.definedAtoms, &framework.fractionalUnitCellAtoms, &framework.unitCellAtoms, &framework.atoms})
+  {
+    for (const Atom& atom : *list)
+    {
+      EXPECT_EQ(atom.moleculeId, 0u);
+      EXPECT_EQ(atom.componentId, 0);
+    }
+  }
 }
