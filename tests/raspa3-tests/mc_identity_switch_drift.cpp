@@ -20,6 +20,7 @@ import move_statistics;
 import mc_moves_statistics;
 import mc_moves_move_types;
 import mc_moves_probabilities;
+import mc_moves_identity_switch;
 
 // The identity-switch move exchanges the identities of one molecule of component A and one
 // molecule of component B in the same box (the MCCCS-MN "swatch"). Because a pair is exchanged,
@@ -100,6 +101,51 @@ TEST(MC_IDENTITY_SWITCH_DRIFT, identical_components_are_always_accepted)
 
     EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
   }
+}
+
+// The pair is grown and retraced in a nested background whose order is the component index, not the role
+// ("selected" or "partner"): the reverse move then reproduces the weights of the forward move whichever
+// component triggered it. With one CO2 and one N2 molecule within reach of each other, the move started from
+// either component consumes the same random numbers in the same order and so ends in the same state.
+TEST(MC_IDENTITY_SWITCH_DRIFT, the_move_does_not_depend_on_which_component_triggered_it)
+{
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
+  Component co2 = Component::makeCO2(forceField, 0, true);
+  co2.identitySwitches = {1};
+  Component n2 = Component::makeN2(forceField, 1, true);
+  n2.identitySwitches = {0};
+  System base = System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {co2, n2}, {}, {1, 1},
+                       5, MCMoveProbabilities());
+  // the two molecules next to each other, so that each grow and retrace sees the other molecule
+  const double3 shift =
+      double3(4.0, 0.0, 0.0) + base.spanOfMolecule(0, 0)[0].position - base.spanOfMolecule(1, 0)[0].position;
+  for (Atom& atom : base.spanOfMolecule(1, 0)) atom.position += shift;
+  base.moleculeData[base.moleculeIndexOfComponent(1, 0)].centerOfMassPosition += shift;
+  base.runningEnergies = base.computeTotalEnergies();
+
+  std::size_t accepted = 0;
+  for (std::size_t seed = 1; seed <= 20; ++seed)
+  {
+    System fromCO2 = base;
+    System fromN2 = base;
+    RandomNumber randomCO2(seed);
+    RandomNumber randomN2(seed);
+    const std::optional<RunningEnergy> deltaCO2 = MC_Moves::identitySwitchMove(randomCO2, fromCO2, 0);
+    const std::optional<RunningEnergy> deltaN2 = MC_Moves::identitySwitchMove(randomN2, fromN2, 1);
+
+    ASSERT_EQ(deltaCO2.has_value(), deltaN2.has_value()) << "seed " << seed;
+    if (deltaCO2.has_value())
+    {
+      ++accepted;
+      EXPECT_NEAR(deltaCO2->potentialEnergy(), deltaN2->potentialEnergy(), 1e-10) << "seed " << seed;
+    }
+    ASSERT_EQ(fromCO2.atomData.size(), fromN2.atomData.size());
+    for (std::size_t i = 0; i < fromCO2.atomData.size(); ++i)
+    {
+      EXPECT_EQ(fromCO2.atomData[i].position, fromN2.atomData[i].position) << "seed " << seed << " atom " << i;
+    }
+  }
+  EXPECT_GT(accepted, 0uz);
 }
 
 // Runs a box of CO2 and water molecules that switch identities with each other and checks that the
