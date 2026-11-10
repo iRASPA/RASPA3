@@ -1049,21 +1049,34 @@ nlohmann::json Polymerization::eventRecord(std::size_t systemId, std::span<const
       nlohmann::json bondJson{};
       bondJson["bond"] = bondIndex;
       bondJson["reaction"] = table.scheme.rules[bond.reaction].name;
-      bondJson["atoms"] = {table.layout.index(bond.a), table.layout.index(bond.b)};
+      const std::size_t a = table.layout.index(bond.a);
+      const std::size_t b = table.layout.index(bond.b);
+      bondJson["atoms"] = {a, b};
+      bondJson["lammpsIds"] = {lammpsId(a), lammpsId(b)};
       bondJson["formationDistance"] = bond.formationDistance;
-      // the bonded terms the bond created (global atoms; valid after the rebuild of the table)
+      // the bonded terms the bond created (global atoms, and the same atoms by their LAMMPS ids; valid after the
+      // rebuild of the table)
       nlohmann::json bends = nlohmann::json::array();
+      nlohmann::json bendsLammpsIds = nlohmann::json::array();
       nlohmann::json torsions = nlohmann::json::array();
+      nlohmann::json torsionsLammpsIds = nlohmann::json::array();
       for (const PolymerLinkTable::LinkBendTerm& term : table.linkBends)
       {
-        if (term.bondId == bondIndex) bends.push_back(term.atoms);
+        if (term.bondId != bondIndex) continue;
+        bends.push_back(term.atoms);
+        bendsLammpsIds.push_back({lammpsId(term.atoms[0]), lammpsId(term.atoms[1]), lammpsId(term.atoms[2])});
       }
       for (const PolymerLinkTable::LinkTorsionTerm& term : table.linkTorsions)
       {
-        if (term.bondId == bondIndex) torsions.push_back(term.atoms);
+        if (term.bondId != bondIndex) continue;
+        torsions.push_back(term.atoms);
+        torsionsLammpsIds.push_back(
+            {lammpsId(term.atoms[0]), lammpsId(term.atoms[1]), lammpsId(term.atoms[2]), lammpsId(term.atoms[3])});
       }
       bondJson["bends"] = bends;
+      bondJson["bendsLammpsIds"] = bendsLammpsIds;
       bondJson["torsions"] = torsions;
+      bondJson["torsionsLammpsIds"] = torsionsLammpsIds;
       newBonds.push_back(bondJson);
     }
   }
