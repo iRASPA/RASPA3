@@ -4053,14 +4053,19 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
       readPolymerization(value, systems[systemId], polymerizationSettings);
 
-      // The multiple-try moves fold the long-range terms into every trial weight; the induced-dipole energy
-      // is not among the terms they evaluate.
+      // The moves that leave the induced-dipole energy and the stored electric field out: the multiple-try moves
+      // fold the long-range terms into every trial weight, the Gibbs transfers and the reactions move molecules
+      // between boxes or change their identity without the polarization terms, and the bridging moves refuse the
+      // combination. Named here rather than run with wrong energies or silently refused.
       if (systems[systemId].forceField.computePolarization)
       {
         for (const Component& component : systems[systemId].components)
         {
           for (const Move::Types moveType : {Move::Types::SwapMultiTrialCBMC, Move::Types::ReinsertionMultiTrialCBMC,
-                                             Move::Types::GibbsSwapMultiTrialCBMC})
+                                             Move::Types::GibbsSwapMultiTrialCBMC, Move::Types::GibbsSwapCBMC,
+                                             Move::Types::GibbsSwapCFCMC, Move::Types::GibbsSwapCBCFCMC,
+                                             Move::Types::GibbsConventionalCFCMC, Move::Types::GibbsConventionalCBCFCMC,
+                                             Move::Types::DoubleBridging, Move::Types::IntramolecularDoubleRebridging})
           {
             if (component.mc_moves_probabilities.getProbability(moveType) > 0.0)
             {
@@ -4068,6 +4073,17 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                   "[Input reader]: component '{}' enables the '{}' move, which does not support polarization\n",
                   component.name, Move::moveNames[std::to_underlying(moveType)]));
             }
+          }
+        }
+        for (const Move::Types moveType :
+             {Move::Types::ReactionCBMC, Move::Types::ReactionCFCMC, Move::Types::ReactionCBCFCMC,
+              Move::Types::ReactionConventionalCFCMC, Move::Types::ReactionConventionalCBCFCMC})
+        {
+          if (systems[systemId].mc_moves_probabilities.getProbability(moveType) > 0.0)
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: system {} enables the '{}' move, which does not support polarization\n",
+                            systemId, Move::moveNames[std::to_underlying(moveType)]));
           }
         }
       }

@@ -1013,6 +1013,40 @@ TEST(INPUT_READER, cross_links_and_polymerization_reject_polarization)
   }
 }
 
+// The Gibbs transfers, the reactions and the bridging moves carry no polarization terms: with
+// 'ComputePolarization' they are refused by name, for a component move and for a system move alike.
+TEST(INPUT_READER, moves_without_polarization_terms_are_refused_with_polarization)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  for (const bool systemMove : {false, true})
+  {
+    nlohmann::json input = readTMMCExample();
+    input["Systems"][0]["ComputePolarization"] = true;
+    if (systemMove)
+    {
+      input["Systems"][0]["ReactionCBMCProbability"] = 1.0;
+    }
+    else
+    {
+      input["Components"][0]["GibbsSwapCBMCProbability"] = 1.0;
+    }
+    TemporaryInput temporary(std::move(input), systemMove ? "reaction_polarization" : "gibbs_polarization",
+                             workspace.path());
+    ScopedCurrentPath currentPath(workspace.path());
+    try
+    {
+      InputReader reader(temporary.path().filename().string());
+      FAIL() << "expected the reader to refuse the move with polarization";
+    }
+    catch (const std::runtime_error& error)
+    {
+      const std::string message = error.what();
+      EXPECT_NE(message.find("does not support polarization"), std::string::npos) << message;
+      EXPECT_NE(message.find(systemMove ? "Reaction" : "Gibbs"), std::string::npos) << message;
+    }
+  }
+}
+
 TEST(INPUT_READER, rejects_an_unknown_or_non_string_use_charges_from)
 {
   // a 'UseChargesFrom' that matched none of the three values, or was not a string, fell back to the pseudo-atom
