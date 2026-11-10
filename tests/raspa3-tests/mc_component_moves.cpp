@@ -16,6 +16,8 @@ import mc_moves_pair_insertion_cbmc;
 import mc_moves_probabilities;
 import mc_moves_random_rotation;
 import mc_moves_rotation_smart_mc;
+import mc_moves_translation_smart_mc_all;
+import mc_moves_rotation_smart_mc_all;
 import mc_moves_statistics;
 import move_statistics;
 import molecule;
@@ -797,4 +799,46 @@ TEST(MC_COMPONENT_MOVES, smart_rotation_proposal_ratio_counts_the_aliased_rotati
     reverse += theta * theta * std::exp(-(-vector - driftNew).length_squared() / (2.0 * sigma * sigma));
   }
   EXPECT_NEAR(ratio, std::log(reverse / forward), 1e-12);
+}
+
+// The collective smart moves evaluate the gradients of the trial configuration in place. A refused trial must
+// leave the system as it was: the gradients of the old configuration (the next consumer may read them), the
+// velocities, and the positions. A box of rigid CO2 with a huge step is refused on overlaps.
+TEST(MC_COMPONENT_MOVES, refused_collective_smart_moves_leave_the_gradients_of_the_old_configuration)
+{
+  for (const bool rotation : {false, true})
+  {
+    const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
+    const Component co2 = Component::makeCO2(forceField, 0, false);
+    System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {co2}, {}, {60}, 5,
+                           MCMoveProbabilities());
+    system.runningEnergies = system.computeTotalEnergies();
+    const Move::Types move = rotation ? Move::Types::RotationSmartMCAll : Move::Types::TranslationSmartMCAll;
+    system.mc_moves_statistics.setMaxChange(move, rotation ? 3.0 : 10.0);
+    for (std::size_t i = 0; i < system.atomDynamics.size(); ++i)
+    {
+      system.atomDynamics[i].velocity = double3(static_cast<double>(i), 1.0, -1.0);
+    }
+
+    RandomNumber random(5);
+    std::optional<RunningEnergy> result = std::nullopt;
+    std::size_t refused = 0;
+    for (std::size_t attempt = 0; attempt < 50 && refused == 0; ++attempt)
+    {
+      result = rotation ? MC_Moves::rotationSmartMCMoveAll(random, system)
+                        : MC_Moves::translationSmartMCMoveAll(random, system);
+      if (!result.has_value()) ++refused;
+    }
+    ASSERT_EQ(refused, 1uz) << (rotation ? "rotation" : "translation");
+
+    // the gradients are those of the configuration the system is in
+    System reference = system;
+    reference.precomputeTotalGradients();
+    for (std::size_t i = 0; i < system.atomDynamics.size(); ++i)
+    {
+      EXPECT_LT((system.atomDynamics[i].gradient - reference.atomDynamics[i].gradient).length(), 1e-9)
+          << (rotation ? "rotation" : "translation") << " atom " << i;
+      EXPECT_EQ(system.atomDynamics[i].velocity, double3(static_cast<double>(i), 1.0, -1.0));
+    }
+  }
 }

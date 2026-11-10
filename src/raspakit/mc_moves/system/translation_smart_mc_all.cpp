@@ -71,9 +71,18 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMoveAll(RandomNumber &r
     savedElectricField.assign(electricField.begin(), electricField.end());
   }
 
-  // Forces on every molecule in the current configuration.
+  // Forces on every molecule in the current configuration (the group states of the semi-flexible molecules
+  // rebuilt first: the rigid-group torques are taken about their centres of mass).
+  system.initializeGroupData();
   system.precomputeTotalGradients();
   const std::vector<double3> forceOld = netForces();
+  // The gradients of the old configuration, the framework's and the group states (rebuilt above from the positions,
+  // which the Monte Carlo moves do not keep them in step with) go back on rejection: a refused trial leaves the
+  // system as it was, gradients and all.
+  const std::vector<AtomDynamics> savedDynamics(dynamics.begin(), dynamics.end());
+  const std::span<const AtomDynamics> frameworkDynamics = system.spanOfFrameworkDynamics();
+  const std::vector<AtomDynamics> savedFrameworkDynamics(frameworkDynamics.begin(), frameworkDynamics.end());
+  const std::vector<GroupState> savedGroupData(system.groupData);
 
   // Biased trial displacement of each molecule's center of mass.
   std::vector<double3> displacement(numberOfMolecules);
@@ -97,6 +106,9 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMoveAll(RandomNumber &r
       std::copy(savedElectricField.cbegin(), savedElectricField.cend(), system.spanOfMoleculeElectricField().begin());
     }
     system.runningEnergies = savedRunningEnergy;
+    std::copy(savedDynamics.cbegin(), savedDynamics.cend(), system.spanOfMoleculeDynamics().begin());
+    std::copy(savedFrameworkDynamics.cbegin(), savedFrameworkDynamics.cend(), system.spanOfFrameworkDynamics().begin());
+    system.groupData = savedGroupData;
     // the molecule cell list may have been rebuilt by 'computeTotalEnergies' for the rejected trial positions
     system.invalidateCellList();
   };
@@ -130,7 +142,9 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMoveAll(RandomNumber &r
     index += molecule.numberOfAtoms;
   }
 
-  // Forces on every molecule in the trial configuration, and its exact energy.
+  // Forces on every molecule in the trial configuration (group states from the trial positions), and its exact
+  // energy.
+  system.initializeGroupData();
   system.precomputeTotalGradients();
   const std::vector<double3> forceNew = netForces();
   const RunningEnergy newEnergy = system.computeTotalEnergies();
