@@ -141,6 +141,29 @@ void CrossLinkTable::moleculeDeleted(std::size_t componentId, std::size_t molecu
   if (changed) rebuildIndex();
 }
 
+void CrossLinkTable::moleculesExchanged(std::size_t componentId, std::size_t moleculeA, std::size_t moleculeB)
+{
+  if (links.empty() || moleculeA == moleculeB) return;
+  bool changed = false;
+  for (CrossLink& link : links)
+  {
+    for (CrossLinkSite* site : {&link.a, &link.b})
+    {
+      if (site->componentId != componentId) continue;
+      if (site->moleculeIndex == moleculeA)
+      {
+        site->moleculeIndex = static_cast<std::uint32_t>(moleculeB);
+        changed = true;
+      }
+      else if (site->moleculeIndex == moleculeB)
+      {
+        site->moleculeIndex = static_cast<std::uint32_t>(moleculeA);
+        changed = true;
+      }
+    }
+  }
+  if (changed) rebuildIndex();
+}
 void CrossLinkTable::moleculeInserted(std::size_t componentId, std::size_t moleculeIndex)
 {
   if (links.empty()) return;

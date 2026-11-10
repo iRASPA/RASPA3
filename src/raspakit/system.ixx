@@ -1042,8 +1042,9 @@ export struct System
    * \brief Exchanges two molecules of one component, slot for slot.
    *
    * The atoms with their dynamics and stored electric field, and the molecule record, change places; what
-   * names a slot stays behind: the molecule id of the atoms and the atom index of the record. The counts, the
-   * charges and the tail-correction bookkeeping are unchanged by construction. The cell list is kept current.
+   * names a slot stays behind: the molecule id of the atoms and the atom index of the record. The cross-link
+   * sites follow their molecules. The counts, the charges and the tail-correction bookkeeping are unchanged by
+   * construction. The cell list is kept current.
    */
   void swapMolecules(std::size_t selectedComponent, std::size_t moleculeA, std::size_t moleculeB);
 
@@ -1075,7 +1076,8 @@ export struct System
    *
    * The cell list of each system is refreshed for its slot; a caller that goes on editing the exchanged atoms (a
    * slot records the group id and scaling of its atom) applies the span again with 'cellListAtomsMoved'. Calling
-   * it a second time with the same arguments undoes the exchange.
+   * it a second time with the same arguments undoes the exchange. A molecule carrying a cross-link can not change
+   * system (the moves guarantee that): the call throws.
    */
   void exchangeMolecule(System& other, std::size_t selectedComponent, std::size_t molecule, std::size_t otherMolecule);
 

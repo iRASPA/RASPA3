@@ -412,6 +412,19 @@ void System::exchangeMolecule(System& other, std::size_t selectedComponent, std:
   std::swap(moleculeData[index], other.moleculeData[otherIndex]);
   std::swap(moleculeData[index].atomIndex, other.moleculeData[otherIndex].atomIndex);
 
+  // the cross-link sites follow their molecules; a link can not reach into another system
+  if (&other == this)
+  {
+    crossLinks.moleculesExchanged(selectedComponent, molecule, otherMolecule);
+  }
+  else if (crossLinks.moleculeIsLinked(selectedComponent, molecule) ||
+           other.crossLinks.moleculeIsLinked(selectedComponent, otherMolecule))
+  {
+    throw std::runtime_error(std::format(
+        "[System]: molecule {} of component {} was exchanged between systems while carrying a cross-link\n",
+        crossLinks.moleculeIsLinked(selectedComponent, molecule) ? molecule : otherMolecule, selectedComponent));
+  }
+
   // the cell lists describe the two slots as they are now
   cellListAtomsMoved(atoms);
   other.cellListAtomsMoved(otherAtoms);

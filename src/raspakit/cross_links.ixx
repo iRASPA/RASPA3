@@ -209,6 +209,9 @@ export struct CrossLinkTable
   void moleculeDeleted(std::size_t componentId, std::size_t moleculeIndex);
   /// Renumbering after System inserted a molecule at 'moleculeIndex' of 'componentId'.
   void moleculeInserted(std::size_t componentId, std::size_t moleculeIndex);
+  /// Renumbering after System exchanged molecules 'moleculeA' and 'moleculeB' of 'componentId': the links of each
+  /// follow it to the other index.
+  void moleculesExchanged(std::size_t componentId, std::size_t moleculeA, std::size_t moleculeB);
 
   /// Exchanges the links (not the bond types) with another table (parallel tempering).
   void swapTopology(CrossLinkTable &other);

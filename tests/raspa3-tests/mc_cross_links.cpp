@@ -718,6 +718,72 @@ TEST(MC_CROSS_LINKS, table_renumbering_on_deletion_and_insertion)
   EXPECT_EQ(table.linkCount(site(0, 4, 0)) + table.linkCount(site(1, 1, 1)), 1u);
 }
 
+TEST(MC_CROSS_LINKS, table_renumbering_on_exchange)
+{
+  CrossLinkTable table;
+  table.bondTypes.push_back(harmonicBondType("X", "X", 1.0, 1.0, 1.0));
+  table.addLink(CrossLink{site(0, 3, 0), site(0, 5, 0), 0});
+  table.addLink(CrossLink{site(1, 2, 1), site(0, 1, 0), 0});
+
+  // Exchanging molecules 1 and 5 of component 0 takes each molecule's links along.
+  table.moleculesExchanged(0, 1, 5);
+  EXPECT_TRUE(table.isLinked(site(0, 3, 0), site(0, 1, 0)));
+  EXPECT_TRUE(table.isLinked(site(1, 2, 1), site(0, 5, 0)));
+  EXPECT_FALSE(table.moleculeIsLinked(0, 4));
+  EXPECT_EQ(table.linkCount(site(0, 1, 0)), 1u);
+  EXPECT_EQ(table.linkCount(site(0, 5, 0)), 1u);
+
+  // An exchange with an unlinked molecule moves the links to its index; the other component is untouched.
+  table.moleculesExchanged(0, 3, 4);
+  EXPECT_TRUE(table.isLinked(site(0, 4, 0), site(0, 1, 0)));
+  EXPECT_FALSE(table.moleculeIsLinked(0, 3));
+  EXPECT_TRUE(table.moleculeIsLinked(1, 2));
+  table.moleculesExchanged(1, 0, 1);
+  EXPECT_TRUE(table.moleculeIsLinked(1, 2));
+}
+
+// The exchange of two molecules of a system takes the cross-links along with the molecules, so the linked pair
+// stays linked at its new indices and the cross-link energy is the same; a linked molecule can not leave for
+// another system.
+TEST(MC_CROSS_LINKS, swapping_molecules_takes_their_links_along)
+{
+  const ForceField forceField = makeForceField(80.0, 0.3, -0.3, true);
+  Component dimer = makeComponent(forceField, 0, "xl-dimer-ba-swap", dimerBAJson(kBondK, kBondLength));
+  const std::vector<std::vector<double3>> positions{{double3(10.0, 10.0, 10.0), double3(11.5, 10.2, 10.1),
+                                                     double3(12.9, 12.6, 11.5), double3(12.4, 11.4, 10.5),
+                                                     double3(4.0, 4.0, 4.0), double3(5.5, 4.0, 4.0)}};
+  System system = makeSystem(forceField, {dimer}, positions);
+  CrossLinkBondType type = harmonicBondType("X", "X", kBondK, kBondLength, 3.0);
+  type.junctionBend = BendPotential({0, 1, 2}, BendType::Harmonic, {kBendK, kBendAngle});
+  system.crossLinks.bondTypes.push_back(type);
+  system.crossLinks.addLink(CrossLink{site(0, 0, 1), site(0, 1, 1), 0});
+  const RunningEnergy before = system.computeCrossLinkEnergy(system.simulationBox, system.spanOfMoleculeAtoms());
+  const double3 linkedPosition = system.spanOfMolecule(0, 1)[1].position;
+
+  // the linked molecule 1 changes places with the free molecule 2
+  system.swapMolecules(0, 1, 2);
+  EXPECT_EQ(system.spanOfMolecule(0, 2)[1].position, linkedPosition);
+  EXPECT_TRUE(system.crossLinks.isLinked(site(0, 0, 1), site(0, 2, 1)));
+  EXPECT_FALSE(system.crossLinks.moleculeIsLinked(0, 1));
+  const RunningEnergy after = system.computeCrossLinkEnergy(system.simulationBox, system.spanOfMoleculeAtoms());
+  EXPECT_NEAR(after.potentialEnergy(), before.potentialEnergy(), 1e-9);
+  EXPECT_NEAR(after.crossLink, before.crossLink, 1e-9);
+  EXPECT_GT(std::abs(after.crossLink), 1e-6);
+
+  // both linked molecules change places with each other: the link is between the same two molecules
+  system.swapMolecules(0, 0, 2);
+  EXPECT_TRUE(system.crossLinks.isLinked(site(0, 2, 1), site(0, 0, 1)));
+  EXPECT_NEAR(system.computeCrossLinkEnergy(system.simulationBox, system.spanOfMoleculeAtoms()).potentialEnergy(),
+              before.potentialEnergy(), 1e-9);
+
+  // a linked molecule can not be exchanged with a molecule of another system
+  System other = makeSystem(forceField, {dimer}, positions);
+  other.crossLinks.bondTypes.push_back(type);
+  EXPECT_THROW(system.exchangeMolecule(other, 0, 0, 1), std::runtime_error);
+  EXPECT_THROW(other.exchangeMolecule(system, 0, 1, 2), std::runtime_error);
+  EXPECT_NO_THROW(system.exchangeMolecule(other, 0, 1, 1));
+}
+
 // A full Monte Carlo run of charged, flexible dimers with cross-links: the coordinate moves
 // (translation, rotation, bead displacement, CBMC reinsertion, grand-canonical swaps), the volume move
 // and the two topology moves together keep the running energy consistent with a full recompute,
