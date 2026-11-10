@@ -287,13 +287,16 @@ void CommandLine::run(int argc, char *argv[])
            "them than a barrier does",
            [&number_of_orientations](std::string const &arg) { number_of_orientations = std::stoul(arg); })
       .reg({"--charges-from"}, argparser::required_argument,
-           "Where framework charges come from: 'cif' (default) or 'pseudo-atoms'. A CIF without a charge "
-           "column leaves every atom neutral, so a charged guest needs 'pseudo-atoms' to feel anything",
+           "Where framework charges come from: 'cif' (default), 'pseudo-atoms' or 'charge-equilibration' (EQeq, "
+           "with the oxidation states of the force field; --mof gives the metals their charge centres). A CIF "
+           "without a charge column leaves every atom neutral, so a charged guest needs one of the other two to "
+           "feel anything",
            [&charges_from](std::string const &arg)
            {
              if (arg == "cif") charges_from = CIFReader::UseChargesFrom::CIF_File;
              else if (arg == "pseudo-atoms") charges_from = CIFReader::UseChargesFrom::PseudoAtoms;
-             else throw std::runtime_error(std::format("Unknown charge source '{}', expected 'cif' or 'pseudo-atoms'\n", arg));
+             else if (arg == "charge-equilibration" || arg == "eqeq") charges_from = CIFReader::UseChargesFrom::ChargeEquilibration;
+             else throw std::runtime_error(std::format("Unknown charge source '{}', expected 'cif', 'pseudo-atoms' or 'charge-equilibration'\n", arg));
            })
       .reg({"--voronoi"}, argparser::no_argument,
            "Use the Voronoi (radical) pore network for the geometric analyses",

@@ -3195,8 +3195,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
 
       CIFReader::UseChargesFrom useChargesFrom{CIFReader::UseChargesFrom::PseudoAtoms};
-      if (value.contains("UseChargesFrom") && value["UseChargesFrom"].is_string())
+      if (value.contains("UseChargesFrom"))
       {
+        // a value that is not one of the three used to fall back to the pseudo-atom charges without a word (as did
+        // a value that was not a string), which in a charge-equilibration set-up are all zero
+        if (!value["UseChargesFrom"].is_string())
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'UseChargesFrom' must be a string; expected 'PseudoAtoms', 'CIF_File' or "
+                          "'ChargeEquilibration'\n"));
+        }
         std::string useChargesFromString = value["UseChargesFrom"].get<std::string>();
 
         // the misspelt form is kept, since it was the only one accepted for a while
@@ -3205,13 +3213,20 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         {
           useChargesFrom = CIFReader::UseChargesFrom::PseudoAtoms;
         }
-        if (caseInSensStringCompare(useChargesFromString, "CIF_File"))
+        else if (caseInSensStringCompare(useChargesFromString, "CIF_File"))
         {
           useChargesFrom = CIFReader::UseChargesFrom::CIF_File;
         }
-        if (caseInSensStringCompare(useChargesFromString, "ChargeEquilibration"))
+        else if (caseInSensStringCompare(useChargesFromString, "ChargeEquilibration"))
         {
           useChargesFrom = CIFReader::UseChargesFrom::ChargeEquilibration;
+        }
+        else
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: unknown 'UseChargesFrom' '{}'; expected 'PseudoAtoms', 'CIF_File' or "
+                          "'ChargeEquilibration'\n",
+                          useChargesFromString));
         }
       }
 

@@ -17,6 +17,8 @@ import simulationbox;
 import running_energy;
 import mc_moves_move_types;
 import mc_moves_probabilities;
+import randomnumbers;
+import mc_moves_gibbs_swap_cfcmc;
 
 // The persistent per-atom tags: fixed for the life of an atom, handed out lowest-free-first by insertion, freed
 // by deletion, following the atoms through the exchanges within a system and between replicas, and staying with
@@ -283,4 +285,80 @@ TEST(ATOM_TAGS, short_run_with_insertions_and_deletions_keeps_the_tags_consisten
     EXPECT_GE(s.atomIndexOfTag.size(), s.atomData.size());
     EXPECT_LE(s.atomIndexOfTag.size(), 2 * s.atomData.size() + 100);
   }
+}
+
+// The lambda interchange of the serial Gibbs CFCMC move: the fractional molecule of A becomes a whole molecule
+// where it is, a whole molecule of B becomes the fractional molecule where it is, and the inactive placeholder
+// moves from B to A. Only the placeholder changes box, so every other atom keeps its tag and its position.
+TEST(ATOM_TAGS, gibbs_cfcmc_lambda_interchange_keeps_the_tags_of_the_atoms_that_stay)
+{
+  const ForceField forceField = makeAlkaneForceField();
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::GibbsSwapCFCMC, 1.0);
+  const Component propane = makeAlkaneFromExample(forceField, 0, "propane", probabilities);
+  const SimulationBox box = SimulationBox(40.0, 40.0, 40.0);
+  std::vector<System> systems{System(forceField, box, false, 500.0, 1e4, 1.0, {}, {propane}, {},
+                                     std::vector<std::size_t>{2}, 5, MCMoveProbabilities()),
+                              System(forceField, box, false, 500.0, 1e4, 1.0, {}, {propane}, {},
+                                     std::vector<std::size_t>{20}, 5, MCMoveProbabilities())};
+  MonteCarlo mc = MonteCarlo({0, 0, 0, 0, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
+  mc.setup();
+  systems = mc.systems;
+  for (System& system : systems)
+  {
+    system.runningEnergies = system.computeTotalEnergies();
+  }
+
+  RandomNumber random(42);
+  std::size_t fractionalMoleculeSystem = 0;
+  for (int attempt = 0; attempt < 5000; ++attempt)
+  {
+    System& systemA = systems[0].containsTheFractionalMolecule ? systems[0] : systems[1];
+    System& systemB = systems[0].containsTheFractionalMolecule ? systems[1] : systems[0];
+    const std::size_t countA = systemA.numberOfMoleculesPerComponent[0];
+    std::map<std::uint32_t, double3> positionOfTagA;
+    std::map<std::uint32_t, double3> positionOfTagB;
+    for (std::size_t i = 0; i < systemA.atomTags.size(); ++i)
+    {
+      positionOfTagA[systemA.atomTags[i]] = systemA.atomData[i].position;
+    }
+    for (std::size_t i = 0; i < systemB.atomTags.size(); ++i)
+    {
+      positionOfTagB[systemB.atomTags[i]] = systemB.atomData[i].position;
+    }
+    const std::vector<std::uint32_t> placeholderTags =
+        tagsOfMolecule(systemB, 0, systemB.indexOfFractionalMoleculeForMove(Move::Types::GibbsSwapCFCMC, 0));
+
+    MC_Moves::GibbsSwapMove_CFCMC(random, systemA, systemB, 0, fractionalMoleculeSystem);
+
+    // the other branches (shuffle, lambda change) leave the molecule counts alone
+    if (systemA.numberOfMoleculesPerComponent[0] != countA + 1)
+    {
+      continue;
+    }
+
+    ASSERT_NO_THROW(systemA.checkAtomTags());
+    ASSERT_NO_THROW(systemB.checkAtomTags());
+    ASSERT_EQ(systemA.atomTags.size(), positionOfTagA.size() + 3);
+    ASSERT_EQ(systemB.atomTags.size(), positionOfTagB.size() - 3);
+    for (const auto& [tag, position] : positionOfTagA)
+    {
+      const std::uint32_t index = systemA.atomIndexOfTag[tag];
+      ASSERT_NE(index, System::noAtom) << "tag " << tag << " of A was freed";
+      EXPECT_EQ(systemA.atomData[index].position, position) << "tag " << tag << " of A names another atom";
+    }
+    for (const std::uint32_t tag : placeholderTags)
+    {
+      EXPECT_EQ(systemB.atomIndexOfTag[tag], System::noAtom) << "placeholder tag " << tag << " is still in use";
+      positionOfTagB.erase(tag);
+    }
+    for (const auto& [tag, position] : positionOfTagB)
+    {
+      const std::uint32_t index = systemB.atomIndexOfTag[tag];
+      ASSERT_NE(index, System::noAtom) << "tag " << tag << " of B was freed";
+      EXPECT_EQ(systemB.atomData[index].position, position) << "tag " << tag << " of B names another atom";
+    }
+    return;
+  }
+  FAIL() << "No accepted lambda interchange in 5000 attempts";
 }

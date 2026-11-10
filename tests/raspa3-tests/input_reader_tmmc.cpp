@@ -980,3 +980,30 @@ TEST(INPUT_READER, cross_links_and_polymerization_reject_polarization)
     }
   }
 }
+
+TEST(INPUT_READER, rejects_an_unknown_or_non_string_use_charges_from)
+{
+  // a 'UseChargesFrom' that matched none of the three values, or was not a string, fell back to the pseudo-atom
+  // charges without a word, which in a charge-equilibration set-up are all zero
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  ScopedCurrentPath currentPath(workspace.path());
+
+  nlohmann::json misspelt = readTMMCExample();
+  misspelt["Systems"][0]["UseChargesFrom"] = "Charge_Equilibration";
+  const std::string misspeltMessage = refusalOf(std::move(misspelt), "charges_from_misspelt", workspace.path());
+  EXPECT_NE(misspeltMessage.find("unknown 'UseChargesFrom' 'Charge_Equilibration'"), std::string::npos)
+      << misspeltMessage;
+
+  nlohmann::json number = readTMMCExample();
+  number["Systems"][0]["UseChargesFrom"] = 2;
+  const std::string numberMessage = refusalOf(std::move(number), "charges_from_number", workspace.path());
+  EXPECT_NE(numberMessage.find("'UseChargesFrom' must be a string"), std::string::npos) << numberMessage;
+
+  // the three values, in any case, and the misspelling that was accepted for a while
+  for (const std::string_view accepted : {"CIF_File", "cif_file", "PseudoAtoms", "PsuedoAtoms"})
+  {
+    nlohmann::json input = readTMMCExample();
+    input["Systems"][0]["UseChargesFrom"] = accepted;
+    EXPECT_EQ(refusalOf(std::move(input), "charges_from_accepted", workspace.path()), "") << accepted;
+  }
+}

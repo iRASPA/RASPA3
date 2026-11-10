@@ -498,42 +498,26 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
       std::swap(componentA.lambdaGC.currentBin, componentB.lambdaGC.currentBin);
 
-      // copy the fractional molecule from B to A
-      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
+      // A: the fractional molecule becomes an integer molecule in place (its atoms keep their tags, dynamics and
+      // field); the placeholder of B enters as a new molecule and is swapped into the fractional slot
       for (Atom& atom : fractionalMoleculeA)
-      {
-        atom.moleculeId =
-            static_cast<std::uint32_t>(systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
-        atom.isFractional = true;
-      }
-
-      // make old fractional molecule integer
-      std::vector<Atom> addedMolecule = std::vector<Atom>(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end());
-      for (Atom& atom : addedMolecule)
       {
         atom.setScalingToInteger();
       }
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
       systemA.insertMolecule(
           selectedComponent,
-          systemA.moleculeData[systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA)],
-          addedMolecule);
-      systemA.moleculeData[systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA)] =
-          systemB.moleculeData[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)];
-
-      std::swap(
           systemB.moleculeData[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)],
-          systemB.moleculeData[systemB.moleculeIndexOfComponent(selectedComponent, indexSelectedIntegerMoleculeB)]);
-      Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.trialEik);
-      systemB.deleteMolecule(selectedComponent, indexSelectedIntegerMoleculeB, selectedIntegerMoleculeB);
+          oldFractionalMoleculeB);
+      systemA.swapMolecules(selectedComponent, indexFractionalMoleculeA,
+                            systemA.numberOfMoleculesPerComponent[selectedComponent] - 1);
 
-      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
-      for (Atom& atom : fractionalMoleculeB)
-      {
-        atom.moleculeId =
-            static_cast<std::uint32_t>(systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
-        atom.isFractional = true;
-      }
+      // B: the selected integer molecule becomes the fractional molecule in place and is swapped into the
+      // fractional slot; the placeholder leaves from the slot of the selected molecule (the scalings of both
+      // fractional slots are set below)
+      Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.trialEik);
+      systemB.swapMolecules(selectedComponent, indexSelectedIntegerMoleculeB, indexFractionalMoleculeB);
+      systemB.deleteMolecule(selectedComponent, indexSelectedIntegerMoleculeB, selectedIntegerMoleculeB);
 
       // all fractional molecules take the scaling of their box's new activity state
       const double activeLambda = componentB.lambdaGC.lambdaValue();
