@@ -375,6 +375,18 @@ TEST(ATOM_TAGS, a_restart_holding_the_free_tag_marker_as_a_tag_is_refused)
   EXPECT_NO_THROW(system.checkAtomTags());
 }
 
+// A tag is bounded only by the largest atom count the system ever held: an atom that survived from a much larger
+// system keeps its high tag through a restart, and the table is as long as that tag asks for.
+TEST(ATOM_TAGS, a_restart_keeps_a_high_tag_of_a_survivor)
+{
+  System system = makePropaneButaneSystem();
+  system.atomTags[0] = 4'999'999;
+  EXPECT_NO_THROW(system.rebuildAtomIndexOfTag());
+  EXPECT_EQ(system.atomIndexOfTag.size(), 5'000'000uz);
+  EXPECT_EQ(system.atomIndexOfTag[4'999'999], 0u);
+  EXPECT_NO_THROW(system.checkAtomTags());
+}
+
 TEST(ATOM_TAGS, short_run_with_insertions_and_deletions_keeps_the_tags_consistent)
 {
   MCMoveProbabilities componentProbabilities = MCMoveProbabilities();

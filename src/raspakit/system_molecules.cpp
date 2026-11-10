@@ -545,9 +545,20 @@ void System::rebuildAtomIndexOfTag()
       throw std::runtime_error(std::format("Atom tags: atom {} holds the free-tag marker as its tag\n", i));
     }
   }
+  // a tag names an atom that was alive at some time, so the table is as long as the largest atom count the system
+  // ever held; a corrupt tag can ask for a table the machine does not have, which is reported as such
   const std::size_t highest =
       atomTags.empty() ? 0 : static_cast<std::size_t>(*std::max_element(atomTags.begin(), atomTags.end())) + 1;
-  atomIndexOfTag.assign(highest, noAtom);
+  try
+  {
+    atomIndexOfTag.assign(highest, noAtom);
+  }
+  catch (const std::bad_alloc&)
+  {
+    throw std::runtime_error(
+        std::format("Atom tags: the highest tag {} needs a table of {} entries, which can not be allocated\n",
+                    highest - 1, highest));
+  }
   for (std::size_t i = 0; i < atomTags.size(); ++i)
   {
     atomIndexOfTag[atomTags[i]] = static_cast<std::uint32_t>(i);
