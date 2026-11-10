@@ -164,11 +164,10 @@ void MonteCarloTransitionMatrix::setup()
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
 
-    // switch the fractional molecule on in the first system, and off in all others (serial Gibbs CFCMC)
-    if (system.usesGibbsConventionalCFCMC() || system_id == 0uz)
-      system.containsTheFractionalMolecule = true;
-    else
-      system.containsTheFractionalMolecule = false;
+    // The serial Gibbs swap shares one active fractional molecule between its boxes: on in the first box, off in
+    // the others. Every other system (independent boxes with their own CFCMC moves, the conventional Gibbs swap
+    // with a fractional molecule in each box) owns its fractional molecules and keeps them active.
+    system.containsTheFractionalMolecule = !(system.usesGibbsSwapCFCMC() && system_id != 0uz);
 
     // inactive fractional molecules must not contribute dUdlambda: set their groupId to zero
     system.initializeGibbsSwapFractionalMoleculeGroupIds();

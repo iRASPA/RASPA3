@@ -872,7 +872,9 @@ export struct System
         continue;
       }
 
-      w *= component.lambdaGC.weight() * component.lambdaGibbs.weight();
+      // the GC lambda bias is the active box's: the inactive box of a serial Gibbs swap holds a switched-off
+      // placeholder and is not reweighted by it
+      w *= (containsTheFractionalMolecule ? component.lambdaGC.weight() : 1.0) * component.lambdaGibbs.weight();
 
       if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCFCMC))
       {
@@ -934,6 +936,9 @@ export struct System
   [[nodiscard]] bool usesSerialReactionCFCMC() const noexcept;
   [[nodiscard]] bool usesParallelReactionCFCMC() const noexcept;
   [[nodiscard]] bool usesGibbsConventionalCFCMC() const noexcept;
+  /// Whether a component moves by the serial Gibbs swap (GibbsSwapCFCMC or GibbsSwapCBCFCMC): one active
+  /// fractional molecule travels between the boxes, the other box holds a switched-off placeholder.
+  [[nodiscard]] bool usesGibbsSwapCFCMC() const noexcept;
   void initializeGibbsConventionalFractionalMolecules() noexcept;
   void initializeFixedLambdaFractionalMolecules();
   void initializeGibbsSwapFractionalMoleculeGroupIds() noexcept;

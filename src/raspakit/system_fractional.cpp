@@ -467,6 +467,19 @@ bool System::usesSerialReactionCFCMC() const noexcept
          mc_moves_probabilities.getProbability(Move::Types::ReactionCBCFCMC) > 0.0;
 }
 
+bool System::usesGibbsSwapCFCMC() const noexcept
+{
+  for (const Component& component : components)
+  {
+    if (component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCBCFCMC) > 0.0)
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool System::usesGibbsConventionalCFCMC() const noexcept
 {
   for (const Component& component : components)

@@ -26,14 +26,15 @@ import mc_moves_probabilities;
 namespace
 {
 
-// A single Lennard-Jones component with CFCMC swaps (so that lambda sampling is active) in an empty box.
-System makeMethaneCFCMCSystem(std::size_t numberOfMolecules)
+// A single Lennard-Jones component with CFCMC swaps (so that lambda sampling is active) in an empty box;
+// 'swapMove' selects the CFCMC move (the single-box swap, or the serial Gibbs swap for a pair of boxes).
+System makeMethaneCFCMCSystem(std::size_t numberOfMolecules, Move::Types swapMove = Move::Types::SwapCFCMC)
 {
   const ForceField forceField({{"CH4", false, 16.04246, 0.0, 0.0, 6, false}}, {{158.5, 3.72}},
                               ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
   MCMoveProbabilities probabilities;
   probabilities.setProbability(Move::Types::Translation, 1.0);
-  probabilities.setProbability(Move::Types::SwapCFCMC, 1.0);
+  probabilities.setProbability(swapMove, 1.0);
   Component methane(forceField, "methane", 190.564, 4599200, 0.01142,
                     {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt,
                     false);
@@ -74,6 +75,41 @@ TEST(MC_DRIVER_BOOKKEEPING, single_system_is_sampled_once_per_step)
   tmmc.simulationStage = MonteCarloTransitionMatrix::SimulationStage::Equilibration;
   tmmc.performCycle();
   EXPECT_EQ(tmmc.systems[0].components[0].lambdaGC.occupancyTotal, expectedTMMCSteps);
+}
+
+// Independent boxes with their own CFCMC swaps each own an active fractional molecule: the setup must leave the
+// flag on in every one of them (it was switched off beyond the first box as if they shared one, which froze the
+// Wang-Landau learning and the lambda sampling there). Only the serial Gibbs swap shares a fractional molecule,
+// and only its later boxes hold a switched-off placeholder.
+TEST(MC_DRIVER_BOOKKEEPING, independent_boxes_keep_their_fractional_molecules_active)
+{
+  std::vector<System> independent{makeMethaneCFCMCSystem(20), makeMethaneCFCMCSystem(10)};
+  MonteCarlo mc(makeSchedule(1, 0, 1), independent, 7uz, 5, false);
+  mc.setup();
+  for (const System& system : mc.systems)
+  {
+    EXPECT_TRUE(system.containsTheFractionalMolecule);
+    EXPECT_TRUE(system.lambdaWangLandauIsActive(0));
+  }
+  RandomNumber random(7);
+  std::vector<System> tmmcIndependent{makeMethaneCFCMCSystem(20), makeMethaneCFCMCSystem(10)};
+  MonteCarloTransitionMatrix tmmc(makeSchedule(1, 0, 1), tmmcIndependent, random, 5);
+  for (const System& system : tmmc.systems) EXPECT_TRUE(system.containsTheFractionalMolecule);
+
+  std::vector<System> gibbs{makeMethaneCFCMCSystem(20, Move::Types::GibbsSwapCFCMC),
+                            makeMethaneCFCMCSystem(10, Move::Types::GibbsSwapCFCMC)};
+  MonteCarlo serial(makeSchedule(1, 0, 1), gibbs, 7uz, 5, false);
+  serial.setup();
+  EXPECT_TRUE(serial.systems[0].containsTheFractionalMolecule);
+  EXPECT_FALSE(serial.systems[1].containsTheFractionalMolecule);
+
+  // the GC lambda bias reweights the box that holds the active fractional molecule, not the placeholder's box
+  for (System& system : serial.systems)
+  {
+    system.components[0].lambdaGC.biasFactor[system.components[0].lambdaGC.currentBin] = 2.0;
+  }
+  EXPECT_NEAR(serial.systems[0].weight(), std::exp(-2.0), 1e-12);
+  EXPECT_NEAR(serial.systems[1].weight(), 1.0, 1e-12);
 }
 
 // The (deprecated) system-level move probabilities are merged into the components before the constructor decides
