@@ -5,6 +5,7 @@
 
 import std;
 
+import archive;
 import double3;
 import atom;
 import molecule;
@@ -17,9 +18,10 @@ import running_energy;
 import mc_moves_move_types;
 import mc_moves_probabilities;
 
-// The persistent per-atom tags: always a permutation of 0 ... N-1, handed out by insertion, kept dense by
-// deletion (the atoms holding the top tags take the freed ones), following the atoms through the exchanges
-// within a system and between replicas, and staying with the slot in an exchange between systems.
+// The persistent per-atom tags: fixed for the life of an atom, handed out lowest-free-first by insertion, freed
+// by deletion, following the atoms through the exchanges within a system and between replicas, and staying with
+// the slot in an exchange between systems. 'atomIndexOfTag' is the inverse table, as long as the highest tag in
+// use plus one, 'System::noAtom' marking a free tag.
 
 namespace
 {
@@ -72,37 +74,36 @@ TEST(ATOM_TAGS, construction_numbers_the_atoms_in_storage_order)
     EXPECT_EQ(system.atomTags[i], static_cast<std::uint32_t>(i));
     EXPECT_EQ(system.atomIndexOfTag[i], static_cast<std::uint32_t>(i));
   }
-  EXPECT_TRUE(system.retaggedAtoms.empty());
+  EXPECT_EQ(system.atomIndexOfTag.size(), 100uz);
   EXPECT_NO_THROW(system.checkAtomTags());
 }
 
-TEST(ATOM_TAGS, deletion_hands_the_freed_tags_to_the_atoms_holding_the_top_ones)
+TEST(ATOM_TAGS, deletion_frees_the_tags_and_every_other_atom_keeps_its_own)
 {
   System system = makePropaneButaneSystem();
 
-  // propane 5 occupies atoms 15, 16, 17; the last butane holds the top tags 96 ... 99
+  // propane 5 occupies atoms 15, 16, 17 and holds the tags 15, 16, 17
   system.deleteMolecule(0, 5, system.spanOfMolecule(0, 5));
 
   ASSERT_EQ(system.atomTags.size(), 97uz);
   EXPECT_NO_THROW(system.checkAtomTags());
-  const std::vector<std::pair<std::uint32_t, std::uint32_t>> expectedFirst{{97, 15}, {98, 16}, {99, 17}};
-  EXPECT_EQ(system.retaggedAtoms, expectedFirst);
-  EXPECT_EQ(tagsOfMolecule(system, 1, 9), (std::vector<std::uint32_t>{96, 15, 16, 17}));
-  // every other atom keeps its tag: the propanes before the hole and the butanes before the last one
+  // the table keeps its length: the highest tag, 99, is still in use; the freed slots are marked free
+  EXPECT_EQ(system.atomIndexOfTag.size(), 100uz);
+  for (std::uint32_t tag : {15u, 16u, 17u}) EXPECT_EQ(system.atomIndexOfTag[tag], System::noAtom);
+  // every surviving atom keeps its tag: the propanes before the hole and everything after it, shifted down
   for (std::size_t i = 0; i < 15; ++i) EXPECT_EQ(system.atomTags[i], static_cast<std::uint32_t>(i));
-  for (std::size_t i = 15; i < 93; ++i) EXPECT_EQ(system.atomTags[i], static_cast<std::uint32_t>(i + 3));
+  for (std::size_t i = 15; i < 97; ++i) EXPECT_EQ(system.atomTags[i], static_cast<std::uint32_t>(i + 3));
+  EXPECT_EQ(tagsOfMolecule(system, 1, 9), (std::vector<std::uint32_t>{96, 97, 98, 99}));
 
-  // deleting that butane frees 96 (out of range, dropped) and 15, 16, 17, which go to the holders of 93, 94, 95
+  // deleting the last butane frees the top tags 96 ... 99, and the table shrinks to the highest tag in use
   system.deleteMolecule(1, 9, system.spanOfMolecule(1, 9));
 
   ASSERT_EQ(system.atomTags.size(), 93uz);
   EXPECT_NO_THROW(system.checkAtomTags());
-  const std::vector<std::pair<std::uint32_t, std::uint32_t>> expectedSecond{{97, 15}, {98, 16}, {99, 17},
-                                                                            {93, 15}, {94, 16}, {95, 17}};
-  EXPECT_EQ(system.retaggedAtoms, expectedSecond);
-  EXPECT_EQ(tagsOfMolecule(system, 1, 8), (std::vector<std::uint32_t>{92, 15, 16, 17}));
+  EXPECT_EQ(system.atomIndexOfTag.size(), 96uz);
+  EXPECT_EQ(tagsOfMolecule(system, 1, 8), (std::vector<std::uint32_t>{92, 93, 94, 95}));
 
-  // an insertion takes the next tags and shifts the butanes without renaming them
+  // an insertion takes the lowest free tags, 15, 16, 17, and shifts the butanes without renaming them
   const std::vector<std::uint32_t> butane0Before = tagsOfMolecule(system, 1, 0);
   std::vector<Atom> atoms(system.spanOfMolecule(0, 0).begin(), system.spanOfMolecule(0, 0).end());
   for (Atom& atom : atoms) atom.position += double3(1.0, 1.0, 1.0);
@@ -111,9 +112,51 @@ TEST(ATOM_TAGS, deletion_hands_the_freed_tags_to_the_atoms_holding_the_top_ones)
 
   ASSERT_EQ(system.atomTags.size(), 96uz);
   EXPECT_NO_THROW(system.checkAtomTags());
-  EXPECT_EQ(tagsOfMolecule(system, 0, 19), (std::vector<std::uint32_t>{93, 94, 95}));
+  EXPECT_EQ(system.atomIndexOfTag.size(), 96uz);
+  EXPECT_EQ(tagsOfMolecule(system, 0, 19), (std::vector<std::uint32_t>{15, 16, 17}));
   EXPECT_EQ(tagsOfMolecule(system, 1, 0), butane0Before);
-  EXPECT_EQ(system.retaggedAtoms.size(), 6uz);
+  EXPECT_EQ(system.atomIndexOfTag[15], 57u);
+
+  // with no free tag left, the next insertion extends the table
+  system.insertMolecule(0, molecule, atoms);
+
+  ASSERT_EQ(system.atomTags.size(), 99uz);
+  EXPECT_NO_THROW(system.checkAtomTags());
+  EXPECT_EQ(system.atomIndexOfTag.size(), 99uz);
+  EXPECT_EQ(tagsOfMolecule(system, 0, 20), (std::vector<std::uint32_t>{96, 97, 98}));
+}
+
+TEST(ATOM_TAGS, a_tag_follows_its_atom_through_a_history_of_deletions_and_insertions)
+{
+  System system = makePropaneButaneSystem();
+  // remember every atom by its tag
+  std::vector<double3> positionOfTag(system.atomData.size());
+  for (std::size_t i = 0; i < system.atomData.size(); ++i)
+    positionOfTag[system.atomTags[i]] = system.atomData[i].position;
+
+  std::vector<Atom> atoms(system.spanOfMolecule(1, 2).begin(), system.spanOfMolecule(1, 2).end());
+  const Molecule molecule = system.moleculeData[22];
+  system.deleteMolecule(0, 3, system.spanOfMolecule(0, 3));
+  system.deleteMolecule(1, 7, system.spanOfMolecule(1, 7));
+  system.insertMolecule(1, molecule, atoms);
+  system.deleteMolecule(0, 0, system.spanOfMolecule(0, 0));
+  system.insertMolecule(1, molecule, atoms);
+  system.insertMolecule(1, molecule, atoms);
+  ASSERT_EQ(system.atomData.size(), 102uz);
+  EXPECT_NO_THROW(system.checkAtomTags());
+
+  // the tags 0 ... 2 (propane 0), 9 ... 11 (propane 3) and 88 ... 91 (butane 7) were freed: 10 tags, 12 atoms
+  // inserted, so the table has grown by 2
+  EXPECT_EQ(system.atomIndexOfTag.size(), 102uz);
+  const std::set<std::uint32_t> freed{0, 1, 2, 9, 10, 11, 88, 89, 90, 91};
+  for (std::uint32_t tag = 0; tag < 100; ++tag)
+  {
+    if (freed.contains(tag)) continue;
+    const std::uint32_t index = system.atomIndexOfTag[tag];
+    ASSERT_LT(index, system.atomData.size());
+    EXPECT_EQ(system.atomTags[index], tag);
+    EXPECT_EQ(system.atomData[index].position, positionOfTag[tag]);
+  }
 }
 
 TEST(ATOM_TAGS, swap_within_a_system_moves_the_tags_with_the_atoms)
@@ -133,7 +176,6 @@ TEST(ATOM_TAGS, swap_within_a_system_moves_the_tags_with_the_atoms)
   EXPECT_EQ(system.atomIndexOfTag[tags2.front()], 21u);
   EXPECT_EQ(system.atomIndexOfTag[tags7.front()], 6u);
   EXPECT_NO_THROW(system.checkAtomTags());
-  EXPECT_TRUE(system.retaggedAtoms.empty());
 }
 
 TEST(ATOM_TAGS, exchange_between_systems_leaves_the_tags_with_the_slots)
@@ -184,6 +226,8 @@ TEST(ATOM_TAGS, replica_exchange_moves_the_tags_with_the_configuration)
   ASSERT_EQ(systemB.atomData.size(), atomsA.size());
   EXPECT_EQ(systemA.atomTags, tagsB);
   EXPECT_EQ(systemB.atomTags, tagsA);
+  EXPECT_EQ(systemA.atomIndexOfTag.size(), 100uz);
+  EXPECT_EQ(systemB.atomIndexOfTag.size(), 100uz);
   for (std::size_t i = 0; i < atomsB.size(); ++i) EXPECT_EQ(systemA.atomData[i].position, atomsB[i].position);
   EXPECT_NO_THROW(systemA.checkAtomTags());
   EXPECT_NO_THROW(systemB.checkAtomTags());
@@ -191,7 +235,34 @@ TEST(ATOM_TAGS, replica_exchange_moves_the_tags_with_the_configuration)
   EXPECT_EQ(systemB.numberOfMoleculesPerComponent, (std::vector<std::size_t>{20, 10}));
 }
 
-TEST(ATOM_TAGS, short_run_with_insertions_and_deletions_keeps_the_tags_dense)
+TEST(ATOM_TAGS, restart_rebuilds_the_inverse_table_with_its_free_tags)
+{
+  System original = makePropaneButaneSystem();
+  original.deleteMolecule(0, 3, original.spanOfMolecule(0, 3));
+  original.deleteMolecule(1, 1, original.spanOfMolecule(1, 1));
+  ASSERT_EQ(original.atomIndexOfTag.size(), 100uz);
+
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() / std::format("raspa3_atom_tags_{}.bin", test_support::uniqueSuffix());
+  {
+    std::ofstream stream(path, std::ios::binary);
+    Archive<std::ofstream> archive(stream);
+    archive << original;
+  }
+  System restored = makePropaneButaneSystem();
+  {
+    std::ifstream stream(path, std::ios::binary);
+    Archive<std::ifstream> archive(stream);
+    archive >> restored;
+  }
+  std::filesystem::remove(path);
+
+  EXPECT_EQ(restored.atomTags, original.atomTags);
+  EXPECT_EQ(restored.atomIndexOfTag, original.atomIndexOfTag);
+  EXPECT_NO_THROW(restored.checkAtomTags());
+}
+
+TEST(ATOM_TAGS, short_run_with_insertions_and_deletions_keeps_the_tags_consistent)
 {
   MCMoveProbabilities componentProbabilities = MCMoveProbabilities();
   componentProbabilities.setProbability(Move::Types::Translation, 1.0);
@@ -208,10 +279,8 @@ TEST(ATOM_TAGS, short_run_with_insertions_and_deletions_keeps_the_tags_dense)
   for (const System& s : mc.systems)
   {
     EXPECT_NO_THROW(s.checkAtomTags());
-    EXPECT_FALSE(s.retaggedAtoms.empty());
-    for (const auto& [oldTag, newTag] : s.retaggedAtoms)
-    {
-      EXPECT_LT(newTag, oldTag);
-    }
+    // the table is bounded by the largest atom count the system has held, never by the number of insertions
+    EXPECT_GE(s.atomIndexOfTag.size(), s.atomData.size());
+    EXPECT_LE(s.atomIndexOfTag.size(), 2 * s.atomData.size() + 100);
   }
 }

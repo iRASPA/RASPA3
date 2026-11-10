@@ -385,19 +385,14 @@ void System::exchangeConfiguration(System& other)
 {
   swapMobileTail(atomData, numberOfFrameworkAtoms, other.atomData, other.numberOfFrameworkAtoms);
   swapMobileTail(atomDynamics, numberOfFrameworkAtoms, other.atomDynamics, other.numberOfFrameworkAtoms);
-  // the tags travel with their atoms; both ranges stay dense because the counts travel too (replicas share the
-  // framework, so its tags coincide; should they not, the atoms are numbered afresh)
-  if (numberOfFrameworkAtoms == other.numberOfFrameworkAtoms)
+  // the tags travel with their atoms; replicas share the framework and so its tags, and then each inverse table
+  // describes the other's atoms (should the framework tags differ, the atoms are numbered afresh)
+  if (std::equal(atomTags.begin(), atomTags.begin() + static_cast<std::ptrdiff_t>(numberOfFrameworkAtoms),
+                 other.atomTags.begin(),
+                 other.atomTags.begin() + static_cast<std::ptrdiff_t>(other.numberOfFrameworkAtoms)))
   {
     swapMobileTail(atomTags, numberOfFrameworkAtoms, other.atomTags, other.numberOfFrameworkAtoms);
-    for (System* system : {this, &other})
-    {
-      system->atomIndexOfTag.resize(system->atomTags.size());
-      for (std::size_t i = 0; i < system->atomTags.size(); ++i)
-      {
-        system->atomIndexOfTag[system->atomTags[i]] = static_cast<std::uint32_t>(i);
-      }
-    }
+    std::swap(atomIndexOfTag, other.atomIndexOfTag);
   }
   else
   {
@@ -435,12 +430,17 @@ void System::exchangeConfiguration(System& other)
 
 void System::insertAtomTags(std::size_t offset, std::size_t count)
 {
-  const std::uint32_t first = static_cast<std::uint32_t>(atomTags.size());
-  atomTags.insert(atomTags.begin() + static_cast<std::ptrdiff_t>(offset), count, first);
-  std::iota(atomTags.begin() + static_cast<std::ptrdiff_t>(offset),
-            atomTags.begin() + static_cast<std::ptrdiff_t>(offset + count), first);
-  atomIndexOfTag.resize(atomTags.size());
-  for (std::size_t i = offset; i < atomTags.size(); ++i)
+  // free tags exist exactly when the table is longer than the atom count: the lowest ones go first
+  std::size_t freeTag = atomIndexOfTag.size() > atomTags.size() ? 0 : atomIndexOfTag.size();
+  atomTags.insert(atomTags.begin() + static_cast<std::ptrdiff_t>(offset), count, noAtom);
+  for (std::size_t i = offset; i < offset + count; ++i)
+  {
+    while (freeTag < atomIndexOfTag.size() && atomIndexOfTag[freeTag] != noAtom) ++freeTag;
+    if (freeTag == atomIndexOfTag.size()) atomIndexOfTag.push_back(noAtom);
+    atomTags[i] = static_cast<std::uint32_t>(freeTag);
+    atomIndexOfTag[freeTag] = static_cast<std::uint32_t>(i);
+  }
+  for (std::size_t i = offset + count; i < atomTags.size(); ++i)
   {
     atomIndexOfTag[atomTags[i]] = static_cast<std::uint32_t>(i);
   }
@@ -448,37 +448,14 @@ void System::insertAtomTags(std::size_t offset, std::size_t count)
 
 void System::eraseAtomTags(std::size_t offset, std::size_t count)
 {
-  const std::size_t newSize = atomTags.size() - count;
-
-  // the freed tags that stay in range, ascending
-  std::vector<std::uint32_t> freedTags;
   for (std::size_t i = offset; i < offset + count; ++i)
   {
-    if (atomTags[i] < newSize) freedTags.push_back(atomTags[i]);
+    atomIndexOfTag[atomTags[i]] = noAtom;
   }
-  std::sort(freedTags.begin(), freedTags.end());
   atomTags.erase(atomTags.begin() + static_cast<std::ptrdiff_t>(offset),
                  atomTags.begin() + static_cast<std::ptrdiff_t>(offset + count));
-
-  // The surviving atoms with a tag at or above the new count take the freed tags, in the order of their old
-  // tags; there are exactly as many of each. 'atomIndexOfTag' still holds the indices before the erase.
-  std::size_t next = 0;
-  for (std::size_t tag = newSize; tag < newSize + count; ++tag)
-  {
-    std::size_t index = atomIndexOfTag[tag];
-    if (index >= offset && index < offset + count) continue;
-    if (index >= offset + count) index -= count;
-    if (next == freedTags.size())
-    {
-      throw std::runtime_error("eraseAtomTags: more atoms to retag than freed tags\n");
-    }
-    atomTags[index] = freedTags[next];
-    atomIndexOfTag[freedTags[next]] = static_cast<std::uint32_t>(index);
-    retaggedAtoms.emplace_back(static_cast<std::uint32_t>(tag), freedTags[next]);
-    ++next;
-  }
-  atomIndexOfTag.resize(newSize);
-  for (std::size_t i = offset; i < newSize; ++i)
+  while (!atomIndexOfTag.empty() && atomIndexOfTag.back() == noAtom) atomIndexOfTag.pop_back();
+  for (std::size_t i = offset; i < atomTags.size(); ++i)
   {
     atomIndexOfTag[atomTags[i]] = static_cast<std::uint32_t>(i);
   }
@@ -489,24 +466,39 @@ void System::resetAtomTags()
   atomTags.resize(atomData.size());
   std::iota(atomTags.begin(), atomTags.end(), std::uint32_t{0});
   atomIndexOfTag = atomTags;
-  retaggedAtoms.clear();
+}
+
+void System::rebuildAtomIndexOfTag()
+{
+  const std::uint32_t highest = atomTags.empty() ? 0 : *std::max_element(atomTags.begin(), atomTags.end()) + 1;
+  atomIndexOfTag.assign(highest, noAtom);
+  for (std::size_t i = 0; i < atomTags.size(); ++i)
+  {
+    atomIndexOfTag[atomTags[i]] = static_cast<std::uint32_t>(i);
+  }
 }
 
 void System::checkAtomTags() const
 {
-  if (atomTags.size() != atomData.size() || atomIndexOfTag.size() != atomData.size())
+  if (atomTags.size() != atomData.size())
   {
-    throw std::runtime_error(std::format("Atom tags: {} tags and {} inverse entries for {} atoms\n", atomTags.size(),
-                                         atomIndexOfTag.size(), atomData.size()));
+    throw std::runtime_error(std::format("Atom tags: {} tags for {} atoms\n", atomTags.size(), atomData.size()));
   }
   for (std::size_t i = 0; i < atomTags.size(); ++i)
   {
-    if (atomTags[i] >= atomTags.size() || atomIndexOfTag[atomTags[i]] != i)
+    if (atomTags[i] >= atomIndexOfTag.size() || atomIndexOfTag[atomTags[i]] != i)
     {
       throw std::runtime_error(std::format("Atom tags: atom {} holds tag {} whose inverse entry is {}\n", i,
                                            atomTags[i],
-                                           atomTags[i] < atomTags.size() ? atomIndexOfTag[atomTags[i]] : 0));
+                                           atomTags[i] < atomIndexOfTag.size() ? atomIndexOfTag[atomTags[i]] : 0));
     }
+  }
+  const std::size_t live = static_cast<std::size_t>(
+      std::count_if(atomIndexOfTag.begin(), atomIndexOfTag.end(), [](std::uint32_t index) { return index != noAtom; }));
+  if (live != atomTags.size() || (!atomIndexOfTag.empty() && atomIndexOfTag.back() == noAtom))
+  {
+    throw std::runtime_error(std::format("Atom tags: {} live entries in a table of {} for {} atoms\n", live,
+                                         atomIndexOfTag.size(), atomTags.size()));
   }
 }
 

@@ -2007,12 +2007,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   if (versionNumber >= 3)
   {
     archive >> s.atomTags;
-    s.atomIndexOfTag.resize(s.atomTags.size());
-    for (std::size_t i = 0; i < s.atomTags.size(); ++i)
-    {
-      s.atomIndexOfTag[s.atomTags[i]] = static_cast<std::uint32_t>(i);
-    }
-    s.retaggedAtoms.clear();
+    s.rebuildAtomIndexOfTag();
     s.checkAtomTags();
   }
   else

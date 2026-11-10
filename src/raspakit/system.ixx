@@ -225,16 +225,16 @@ export struct System
   // energy inner loops touch only the bytes they need.
   std::vector<AtomDynamics> atomDynamics;
   // A persistent name for every atom of 'atomData', parallel to it, for clients that address atoms across the
-  // insertions and deletions of a run. The tags of a system are always exactly 0 ... atomData.size()-1: an
-  // insertion takes the next tags; a deletion hands the freed tags below the new count to the atoms that held
-  // the tags at or above it, and records those in 'retaggedAtoms'; an exchange within the system and a replica
-  // exchange move the tags with their atoms; an exchange with another system leaves them with the slot; a new
-  // framework or a restart file without tags numbers the atoms afresh in storage order. 'atomIndexOfTag' is
-  // the inverse. The framework atoms, never deleted, keep their tags for the whole run.
+  // insertions and deletions of a run. A tag never changes for the life of its atom: an insertion takes the lowest
+  // free tags, or new ones above the highest in use; a deletion frees the tags; an exchange within the system and
+  // a replica exchange move the tags with their atoms; an exchange with another system leaves them with the slot;
+  // a new framework or a restart file without tags numbers the atoms afresh in storage order. The framework
+  // atoms, never deleted, keep their tags for the whole run. Without deletions the tags are the storage indices.
   std::vector<std::uint32_t> atomTags;
+  // The storage index of the atom holding each tag, 'noAtom' for a free tag; exactly as long as the highest tag
+  // in use plus one, so it is bounded by the largest atom count the system has held.
   std::vector<std::uint32_t> atomIndexOfTag;
-  // The (old tag, new tag) pair of every retag since the vector was last cleared, in the order they happened.
-  std::vector<std::pair<std::uint32_t, std::uint32_t>> retaggedAtoms;
+  static constexpr std::uint32_t noAtom = std::numeric_limits<std::uint32_t>::max();
   std::vector<Molecule> moleculeData;
   // Rigid-body state of every rigid group of every semi-flexible molecule, in molecule order
   // (each molecule contributes 'component.numberOfRigidGroups()' consecutive entries). Empty when
@@ -1069,14 +1069,15 @@ export struct System
    */
   void exchangeConfiguration(System& other);
 
-  /// Hands the next tags to 'count' atoms just inserted at 'offset' of 'atomData'.
+  /// Hands the lowest free tags, or new ones, to 'count' atoms just inserted at 'offset' of 'atomData'.
   void insertAtomTags(std::size_t offset, std::size_t count);
-  /// Frees the tags of the 'count' atoms at 'offset' of 'atomData' (before or after their erase) and keeps the
-  /// range dense: the freed tags below the new count go to the atoms holding the tags at or above it.
+  /// Frees the tags of the 'count' atoms at 'offset' of 'atomData' (before their erase) and erases them.
   void eraseAtomTags(std::size_t offset, std::size_t count);
-  /// Numbers the atoms afresh in storage order and clears the retag log.
+  /// Numbers the atoms afresh in storage order.
   void resetAtomTags();
-  /// Throws when the tags are not a permutation of 0 ... N-1 with 'atomIndexOfTag' their inverse.
+  /// Rebuilds 'atomIndexOfTag' from 'atomTags' (a restart).
+  void rebuildAtomIndexOfTag();
+  /// Throws when the tags are not distinct with 'atomIndexOfTag' their exact inverse.
   void checkAtomTags() const;
 
   void updateMoleculeAtomInformation();
