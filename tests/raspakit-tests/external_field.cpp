@@ -301,8 +301,9 @@ TEST(external_field, grid_setup_without_framework_or_without_grid)
   EXPECT_FALSE(withoutGrid.externalFieldInterpolationGrid.has_value());
   EXPECT_FALSE(std::filesystem::exists(output));
 
-  // the grid dimensions are read from the cube file
-  std::ofstream(forceField.externalFieldGridFileName) << "comment\ncomment\n1 0 0 0\n-5 2 0 0\n-5 0 2 0\n-5 0 0 2\n";
+  // an analytic field is tabulated on the requested grid (a field read from a cube file takes the file's
+  // dimensions; this test used to expect the file's dimensions for the analytic field too)
+  forceField.settings.numberOfExternalFieldGridPoints = uint3{5, 5, 5};
   forceField.settings.useExternalFieldGrid = true;
   System withGrid = System(forceField, box, false, 300.0, 1e4, 1.0, {}, {}, {}, {}, 5);
   withGrid.hasExternalField = true;
