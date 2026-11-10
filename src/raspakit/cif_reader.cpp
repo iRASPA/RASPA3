@@ -454,16 +454,9 @@ std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]]
       if (std::map<std::string, std::string>::iterator index = dictionary.find(std::string("_atom_site_type_symbol"));
           (index != dictionary.end()))
       {
-        // at least _atom_site_type_symbol is present
-        std::string chemicalElement = index->second;
-
-        if (chemicalElement.size() > 0)
-        {
-          std::replace_if(chemicalElement.begin(), chemicalElement.end(), [](char c) { return std::isdigit(c); }, ' ');
-
-          // First character to uppercase
-          chemicalElement[0] = static_cast<char>(std::toupper(chemicalElement[0]));
-        }
+        // at least _atom_site_type_symbol is present; kept as written, so that a pseudo-atom named after the
+        // full symbol (O2-, Zn2+) is found before the symbol is stripped to its element
+        const std::string chemicalElement = index->second;
 
         Atom atom = Atom();
 
@@ -471,7 +464,11 @@ std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]]
         { return name.empty() ? std::nullopt : forceField.findPseudoAtom(name); };
         auto lookUpStripped = [&](std::string name) -> std::optional<std::size_t>
         {
-          std::replace_if(name.begin(), name.end(), [](char c) { return std::isdigit(c); }, ' ');
+          // the digits of a label (Zn1, O12) and the oxidation state of a type symbol in either notation (Zn2+,
+          // O2-, Na+, Cl-, Zn+2, O-2) go; what is left in front is the name
+          std::replace_if(
+              name.begin(), name.end(),
+              [](char c) { return std::isdigit(static_cast<unsigned char>(c)) || c == '+' || c == '-'; }, ' ');
           std::istringstream stripped(name);
           std::string token;
           if (!(stripped >> token) || token.empty()) return std::nullopt;
@@ -494,6 +491,16 @@ std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]]
         if (!index1.has_value()) index1 = lookUpExact(chemicalElement);
         if (!index1.has_value()) index1 = lookUpStripped(siteLabel);
         if (!index1.has_value()) index1 = lookUpStripped(chemicalElement);
+        if (!index1.has_value() && !chemicalElement.empty())
+        {
+          // an element symbol in the wrong case (ZN, CL, zn): a capital first letter and lower-case rest; only the
+          // type symbol is normalised, a label like CO1 must not turn into cobalt
+          std::string normalized = chemicalElement;
+          normalized[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(normalized[0])));
+          std::transform(normalized.begin() + 1, normalized.end(), normalized.begin() + 1,
+                         [](char c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
+          index1 = lookUpStripped(normalized);
+        }
         if (!index1.has_value())
         {
           return std::unexpected(CIFReader::ParseError::invalidForceField);

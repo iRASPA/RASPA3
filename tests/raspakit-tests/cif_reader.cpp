@@ -107,3 +107,52 @@ Zz1 Zz 0.0 0.0 0.0
   ASSERT_FALSE(parsed.has_value());
   EXPECT_EQ(parsed.error(), CIFReader::ParseError::invalidForceField);
 }
+
+TEST(cif_reader, type_symbol_oxidation_states_in_either_notation_and_case_strip_to_the_element)
+{
+  // a force field with the elements and one pseudo-atom named after a full type symbol
+  const ForceField forceField({{"Na", true, 22.99, 1.0, 0.0, 11, false},
+                               {"Cl", true, 35.45, -1.0, 0.0, 17, false},
+                               {"Zn", true, 65.38, 2.0, 0.0, 30, false},
+                               {"Fe", true, 55.85, 3.0, 0.0, 26, false},
+                               {"O", true, 15.999, -2.0, 0.0, 8, false},
+                               {"O2-", true, 15.999, -2.0, 0.0, 8, false}},
+                              {{10.0, 3.0}, {10.0, 3.0}, {10.0, 3.0}, {10.0, 3.0}, {10.0, 3.0}, {10.0, 3.0}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, true, false);
+  constexpr std::string_view cif = R"(
+data_test
+_cell_length_a 10.0
+_cell_length_b 10.0
+_cell_length_c 10.0
+_cell_angle_alpha 90.0
+_cell_angle_beta 90.0
+_cell_angle_gamma 90.0
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Na1 Na+  0.0 0.0 0.0
+Cl1 Cl-  0.1 0.0 0.0
+Zn1 Zn+2 0.2 0.0 0.0
+Fe1 Fe3+ 0.3 0.0 0.0
+X1  O-2  0.4 0.0 0.0
+X2  O2-  0.5 0.0 0.0
+X3  ZN   0.6 0.0 0.0
+X4  cl   0.7 0.0 0.0
+X5  O2   0.8 0.0 0.0
+)";
+
+  const auto parsed = CIFReader::readCIFString(std::string(cif), forceField, CIFReader::UseChargesFrom::PseudoAtoms);
+  ASSERT_TRUE(parsed.has_value());
+  auto [simulationBox, spaceGroupHallNumber, definedAtoms, unitCellAtoms] = parsed.value();
+  ASSERT_EQ(definedAtoms.size(), 9);
+
+  const std::vector<std::string> expected{"Na", "Cl", "Zn", "Fe", "O", "O2-", "Zn", "Cl", "O"};
+  for (std::size_t i = 0; i < expected.size(); ++i)
+  {
+    EXPECT_EQ(static_cast<std::size_t>(definedAtoms[i].type), forceField.findPseudoAtom(expected[i]).value())
+        << "site " << i << " should be " << expected[i];
+  }
+}
