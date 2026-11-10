@@ -911,19 +911,30 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
       }
     }
 
+    // The molecules of the component in storage order: the fractional (CFCMC) molecules come first, the whole
+    // ones after them; only the whole ones are exported. The molecule id of an atom is global (counted over all
+    // components), so a molecule is delimited by it but numbered here by its place in the component.
+    std::size_t moleculesOfComponent = 0;
+    for (std::size_t a = cursor; a < atomData.size() && atomData[a].componentId == c; ++a)
+    {
+      if (a == cursor || atomData[a].moleculeId != atomData[a - 1].moleculeId) ++moleculesOfComponent;
+    }
+    const std::size_t fractionalMolecules =
+        moleculesOfComponent > integerMolecules ? moleculesOfComponent - integerMolecules : 0uz;
+
     const std::size_t firstMolecule = moleculeId + 1;
     std::size_t moleculesSeen = 0;
     while (cursor < atomData.size() && atomData[cursor].componentId == c)
     {
-      // one molecule: consecutive atoms with the same moleculeId
-      const std::uint32_t localMolecule = atomData[cursor].moleculeId;
+      // one molecule: consecutive atoms with the same molecule id
+      const std::uint32_t globalMolecule = atomData[cursor].moleculeId;
       std::size_t end = cursor;
-      while (end < atomData.size() && atomData[end].componentId == c && atomData[end].moleculeId == localMolecule)
+      while (end < atomData.size() && atomData[end].componentId == c && atomData[end].moleculeId == globalMolecule)
       {
         ++end;
       }
-      ++moleculesSeen;
-      if (localMolecule < integerMolecules && (end - cursor) == atomsPerMolecule)
+      const std::size_t localMolecule = moleculesSeen++;
+      if (localMolecule >= fractionalMolecules && (end - cursor) == atomsPerMolecule)
       {
         ++moleculeId;
         exportedMolecules.emplace_back(c, cursor);
@@ -965,10 +976,10 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
         {
           addBondedTerms(
               topology, tables, component.intraMolecularPotentials,
-              [&](std::size_t local) { return lammpsId(cursor + local); }, component.name, localMolecule == 0);
+              [&](std::size_t local) { return lammpsId(cursor + local); }, component.name, moleculeId == firstMolecule);
         }
       }
-      else if (localMolecule >= integerMolecules)
+      else if (localMolecule < fractionalMolecules)
       {
         // fractional (CFCMC) molecule: not part of the exported system
       }

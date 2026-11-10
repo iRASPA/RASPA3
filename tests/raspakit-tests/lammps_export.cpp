@@ -17,6 +17,8 @@ import lammps_reader;
 import lammps_styles;
 import lammps_topology;
 import molecule;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 import simulationbox;
 import system;
 import torsion_potential;
@@ -515,6 +517,59 @@ TEST(lammps_export, atom_ids_are_the_persistent_tags)
                                      system.moleculeData, system.simulationBox, system.forceField,
                                      system.numberOfIntegerMoleculesPerComponent, system.framework),
                std::runtime_error);
+}
+
+// The molecule id of an atom counts over all components, and the fractional molecules of a component come first
+// in storage: every whole molecule of every component is exported, numbered by its place in its component, and
+// no fractional molecule is.
+TEST(lammps_export, whole_molecules_of_every_component_are_exported_and_fractional_ones_are_not)
+{
+  ForceField forceField = chainForceField();
+  Component first = readComponent(forceField, chainDefinition(), "chain");
+  Component second = readComponent(forceField, chainDefinition(), "chain-b");
+  const SimulationBox box(20.0, 20.0, 20.0);
+  {
+    // two components: the second one's molecule ids start where the first one's end
+    System system(forceField, box, false, 300.0, 1e5, 1.0, {}, {first, second}, {}, {2, 3}, 5);
+    ASSERT_EQ(system.atomData.size(), 25u);
+    ASSERT_EQ(system.atomData[10].moleculeId, 2u);
+    const LAMMPS::Topology topology = LAMMPS::buildTopology(
+        system.components, system.atomData, system.atomTags, system.atomDynamics, system.moleculeData,
+        system.simulationBox, system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework);
+    for (const std::string &warning : topology.warnings)
+    {
+      EXPECT_TRUE(warning.find("skipped") == std::string::npos && warning.find("not exported") == std::string::npos)
+          << warning;
+    }
+    ASSERT_EQ(topology.atoms.size(), 25u);
+    EXPECT_EQ(topology.atoms[10].molecule, 3u);
+    EXPECT_EQ(topology.atoms.back().molecule, 5u);
+    EXPECT_EQ(topology.bondList.size(), 5u * 4u);
+    ASSERT_EQ(topology.groups.size(), 2u);
+    EXPECT_EQ(topology.groups[1].firstMolecule, 3u);
+    EXPECT_EQ(topology.groups[1].lastMolecule, 5u);
+  }
+  {
+    // a grand-canonical fractional molecule: the first molecule of its component, not exported
+    first.mc_moves_probabilities.setProbability(Move::Types::SwapCFCMC, 1.0);
+    System system(forceField, box, false, 300.0, 1e5, 1.0, {}, {first}, {}, {3}, 5);
+    ASSERT_EQ(system.numberOfFractionalMoleculesPerComponent[0], 1u);
+    ASSERT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 3u);
+    ASSERT_TRUE(system.atomData[0].isFractional);
+    const LAMMPS::Topology topology = LAMMPS::buildTopology(
+        system.components, system.atomData, system.atomTags, system.atomDynamics, system.moleculeData,
+        system.simulationBox, system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework);
+    for (const std::string &warning : topology.warnings)
+    {
+      EXPECT_TRUE(warning.find("skipped") == std::string::npos && warning.find("not exported") == std::string::npos)
+          << warning;
+    }
+    ASSERT_EQ(topology.atoms.size(), 15u);
+    // the whole molecules hold the tags 5..19, so their ids are 6..20
+    EXPECT_EQ(topology.atoms.front().id, 6u);
+    EXPECT_EQ(topology.atoms.back().id, 20u);
+    EXPECT_EQ(topology.bondList.size(), 3u * 4u);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------
