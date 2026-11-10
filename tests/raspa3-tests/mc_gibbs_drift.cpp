@@ -1095,6 +1095,64 @@ TEST(MC_GIBBS_DRIFT, conventional_mixed_insert_and_lambda_boundary)
   expectNoEnergyDrift(systems[1]);
 }
 
+// The conventional Gibbs CFCMC move draws its lambda step from channel 2 of its statistics, which the
+// optimizer tunes on the acceptance counted there. The trials are therefore counted by kind, as in the CFCMC
+// swap moves: a pure lambda change on channel 2, a transfer of a whole molecule across a lambda boundary on
+// channel 0 (towards box A) or 1 (towards box B). Every move is refused by the bias, so the boxes stay at
+// the prepared lambdas and the kind of each trial is set by the sign and size of the drawn step alone.
+TEST(MC_GIBBS_DRIFT, conventional_counts_its_trials_on_the_channel_of_their_kind)
+{
+  const ForceField forceField = makeZeoliteAlkaneForceField();
+  Component methane = Component::makeMethane(forceField, 0);
+  methane.mc_moves_probabilities = makeGibbsConventionalCFCMCProbabilities();
+  methane.lambdaGibbs.computeDUdlambda = true;
+
+  const SimulationBox box(30.0, 30.0, 30.0);
+  std::vector<System> base{System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {12}, 5),
+                           System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {12}, 5)};
+  setupSerialGibbsCFCMC(base);
+
+  struct Scenario
+  {
+    std::size_t binA;
+    std::size_t binB;
+    bool towardsA;  // a boundary crossing moves a molecule towards A (channel 0) or towards B (channel 1)
+    bool crossings;
+  };
+  const std::vector<Scenario> scenarios{{10, 10, false, false},
+                                        {19, 10, true, true},
+                                        {1, 10, false, true},
+                                        {10, 1, true, true},
+                                        {10, 19, false, true}};
+  const std::size_t numberOfTrials = 200;
+  for (const Scenario &scenario : scenarios)
+  {
+    std::vector<System> systems = base;
+    setGibbsLambda(systems[0], 0, scenario.binA);
+    setGibbsLambda(systems[1], 0, scenario.binB);
+    rejectAllBinsExceptCurrent(systems[0].components[0]);
+    rejectAllBinsExceptCurrent(systems[1].components[0]);
+    const std::size_t integersA = systems[0].numberOfIntegerMoleculesPerComponent[0];
+    const std::size_t integersB = systems[1].numberOfIntegerMoleculesPerComponent[0];
+
+    RandomNumber random(42);
+    for (std::size_t i = 0; i != numberOfTrials; ++i)
+    {
+      MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(random, systems[0], systems[1], 0, false);
+    }
+    ASSERT_EQ(systems[0].numberOfIntegerMoleculesPerComponent[0], integersA);
+    ASSERT_EQ(systems[1].numberOfIntegerMoleculesPerComponent[0], integersB);
+
+    const double3 counts = std::get<MoveStatistics<double3>>(
+                               systems[0].components[0].mc_moves_statistics[Move::Types::GibbsConventionalCFCMC])
+                               .totalCounts;
+    EXPECT_EQ(counts.x + counts.y + counts.z, static_cast<double>(numberOfTrials));
+    EXPECT_GT(counts.z, 0.0);
+    EXPECT_EQ(counts.x > 0.0, scenario.crossings && scenario.towardsA);
+    EXPECT_EQ(counts.y > 0.0, scenario.crossings && !scenario.towardsA);
+  }
+}
+
 TEST(MC_GIBBS_DRIFT, cbmc_mixed_lambda_and_delete_boundary)
 {
   const ForceField forceField = makeZeoliteAlkaneForceField();

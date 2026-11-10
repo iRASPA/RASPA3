@@ -10,6 +10,7 @@ add_executable(unit_tests_raspakit
   cbmc_move_statistics.cpp
   replica_round_trips.cpp
   move_statistics_window.cpp
+  move_statistics_optimize.cpp
   energy_decomposition.cpp
   gradients.cpp
   spatial_decomposition.cpp

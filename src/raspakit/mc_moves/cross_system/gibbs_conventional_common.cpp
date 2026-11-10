@@ -318,8 +318,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   Component& componentB = systemB.components[selectedComponent];
   DualTMMCTrial tmmcTrial(systemA, systemB, selectedComponent);
 
-  componentA.mc_moves_statistics.addTrial(move);
-
   PropertyLambdaProbabilityHistogram& lambdaA = componentA.lambdaGibbs;
   PropertyLambdaProbabilityHistogram& lambdaB = componentB.lambdaGibbs;
 
@@ -359,6 +357,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     moveKindB = GibbsMoveKind::Delete;
     lambdaNewB += 1.0;
   }
+
+  // The statistics channels follow the CFCMC swap moves: 0 and 1 for the moves that carry a whole molecule
+  // across a lambda boundary (towards A, towards B), 2 for a pure lambda change. The step size is optimized
+  // on channel 2, so only the lambda changes may be counted there.
+  const std::size_t channel = (moveKindA == GibbsMoveKind::LambdaChange && moveKindB == GibbsMoveKind::LambdaChange)
+                                  ? 2uz
+                              : (vNew > 0.0) ? 0uz
+                                             : 1uz;
+  componentA.mc_moves_statistics.addTrial(move, channel);
 
   const auto macrostateDelta = [](GibbsMoveKind moveKind)
   {
@@ -638,7 +645,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     return std::nullopt;
   }
 
-  componentA.mc_moves_statistics.addConstructed(move);
+  componentA.mc_moves_statistics.addConstructed(move, channel);
 
   // The first-step factor of a box: the Boltzmann factor of rescaling its fractional molecule, except for a CBMC
   // deletion, where the retrace of the leaving molecule replaces the short-range part (the mirror image of the
@@ -678,7 +685,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     return std::nullopt;
   }
 
-  componentA.mc_moves_statistics.addAccepted(move);
+  componentA.mc_moves_statistics.addAccepted(move, channel);
   Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
   Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.trialEik);
 

@@ -96,8 +96,14 @@ struct MoveStatistics
       }
       else
       {
-        T scaling = clamp(ratio / targetAcceptance, T(0.5), T(1.5));
-        maxChange = clamp(maxChange * scaling, lowerLimit, upperLimit);
+        // Each channel is optimized on its own trials; a channel without trials in this window keeps its step,
+        // otherwise its zero acceptance would halve it at every optimization.
+        for (std::size_t d = 0; d != 3; ++d)
+        {
+          if (counts[d] == 0.0) continue;
+          double scaling = std::clamp(ratio[d] / targetAcceptance[d], 0.5, 1.5);
+          maxChange[d] = std::clamp(maxChange[d] * scaling, lowerLimit[d], upperLimit[d]);
+        }
       }
       counts = T{};
       constructed = T{};
