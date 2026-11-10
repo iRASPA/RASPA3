@@ -621,7 +621,12 @@ TEST(MC_DOUBLE_BRIDGING, db_tags_travel_with_the_exchanged_tails)
     {
       const std::uint32_t index = system.atomIndexOfTag[tag];
       ASSERT_NE(index, System::noAtom);
-      if ((system.atomData[index].position - position).length() > 1e-12) ++movedTags;
+      // an exchanged tail joins its new chain in that chain's image: the same atom up to a lattice vector
+      if (system.simulationBox.applyPeriodicBoundaryConditions(system.atomData[index].position - position).length() >
+          1e-9)
+      {
+        ++movedTags;
+      }
     }
     // the two trimers of three backbone atoms were placed anew; every other atom is where it was
     EXPECT_GT(movedTags, 0uz);
@@ -791,12 +796,13 @@ TEST(MC_DOUBLE_BRIDGING, energy_bookkeeping_with_lennard_jones_and_ewald)
   EXPECT_NEAR(running.potentialEnergy() * toKelvin, recomputed.potentialEnergy() * toKelvin, 1e-4);
 }
 
-// The partner chain is shifted by a lattice vector so that the two new chains are contiguous, and the shifted
-// head is committed with it. A non-periodic external field sees that shift: its energy change must be part of
-// the acceptance and of the returned difference, not only the trimer contribution. The polynomial test field
-// is non-periodic and sensitive to a 14 A shift; the temperature is very high so that the field does not
-// suppress the moves and the bookkeeping is checked over many accepted bridgings with wrapped-around chains.
-TEST(MC_DOUBLE_BRIDGING, db_external_field_sees_the_lattice_shift_of_the_partner)
+// An exchanged tail joins its new chain in that chain's image, so a tail crossing the box carries a lattice
+// vector while the heads never leave their images (the reverse move then restores both chains exactly). A
+// non-periodic external field sees the shift of the tails: its energy change must be part of the acceptance
+// and of the returned difference, not only the trimer contribution. The polynomial test field is non-periodic
+// and sensitive to a 14 A shift; the temperature is very high so that the field does not suppress the moves
+// and the bookkeeping is checked over many accepted bridgings with wrapped-around chains.
+TEST(MC_DOUBLE_BRIDGING, db_external_field_sees_the_lattice_shift_of_the_tails)
 {
   ForceField forceField = makeZeroForceField();
   forceField.potentialEnergySurfaceType = ForceField::PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction;
@@ -833,10 +839,22 @@ TEST(MC_DOUBLE_BRIDGING, db_external_field_sees_the_lattice_shift_of_the_partner
       if (energyDifference.has_value())
       {
         ++accepted;
-        // a head atom (unit 0 never belongs to a trimer or a tail) displaced by a lattice vector
         for (std::size_t m = 0; m != numberOfChains; ++m)
         {
-          if ((system.spanOfMolecule(0, m)[0].position - snapshot[m * 10].position).length() > 1.0) ++shifted;
+          // a head atom (unit 0 never belongs to a trimer or a tail) stays exactly where it was
+          EXPECT_LT((system.spanOfMolecule(0, m)[0].position - snapshot[m * 10].position).length(), 1e-12);
+          // a tail atom (the last unit is always a tail) comes from the chain that held it, up to a lattice
+          // vector; a tail that crossed the box carries one
+          const double3 tail = system.spanOfMolecule(0, m)[9].position;
+          for (std::size_t p = 0; p != numberOfChains; ++p)
+          {
+            const double3 difference = tail - snapshot[p * 10 + 9].position;
+            if (p != m && system.simulationBox.applyPeriodicBoundaryConditions(difference).length() < 1e-9 &&
+                difference.length() > 1.0)
+            {
+              ++shifted;
+            }
+          }
         }
       }
     }

@@ -107,8 +107,12 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
   const std::size_t candidatesI = candidates.size();
   const std::size_t candidatesJ = countCandidates(partnerMolecule, anchors);
 
-  // Molecules are stored unwrapped: shift the partner by the lattice vector that brings its a6 to the
-  // minimum image of the selected chain's a2, so that both new chains are contiguous in space.
+  // Molecules are stored unwrapped, and every chain keeps its image: the lattice vector that brings the
+  // partner's a6 to the minimum image of the selected chain's a2 travels with the partner's tail as it joins
+  // the selected chain, and its opposite with the selected chain's tail as it joins the partner. Both new
+  // chains are then contiguous in space, the two orderings of the pair propose the same state, and the
+  // reverse move (the same lattice vector again) restores both chains in their old images exactly, which a
+  // non-periodic external field can tell apart.
   const double3 separation = anchorsJ.a6 - anchorsI.a2;
   const double3 shift = box.applyPeriodicBoundaryConditions(separation) - separation;
   if ((anchorsJ.a2 + shift - anchorsI.a6).length() > maximumDistance) return std::nullopt;
@@ -116,8 +120,7 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
   std::span<Atom> atomsI = system.spanOfMolecule(selectedComponent, selectedMolecule);
   std::span<Atom> atomsJ = system.spanOfMolecule(selectedComponent, partnerMolecule);
   const std::vector<Atom> oldI(atomsI.begin(), atomsI.end());
-  std::vector<Atom> oldJ(atomsJ.begin(), atomsJ.end());
-  for (Atom& atom : oldJ) atom.position += shift;
+  const std::vector<Atom> oldJ(atomsJ.begin(), atomsJ.end());
 
   // The two closures: each chain's head dimer (a1, a2) bridges onto the other chain's tail (a6, a7,
   // a8) with the internal geometry of its own excised trimer.
@@ -141,25 +144,28 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
   const Bridging::Anchors oldAnchorsJ = anchorsOf(oldJ);
   const ConcertedRotation::Trimer oldTrimerI = trimerOf(oldI);
   const ConcertedRotation::Trimer oldTrimerJ = trimerOf(oldJ);
-  const Bridging::Anchors newAnchorsI{oldAnchorsI.a1, oldAnchorsI.a2, oldAnchorsJ.a6, oldAnchorsJ.a7, oldAnchorsJ.a8};
-  const Bridging::Anchors newAnchorsJ{oldAnchorsJ.a1, oldAnchorsJ.a2, oldAnchorsI.a6, oldAnchorsI.a7, oldAnchorsI.a8};
+  const Bridging::Anchors newAnchorsI{oldAnchorsI.a1, oldAnchorsI.a2, oldAnchorsJ.a6 + shift, oldAnchorsJ.a7 + shift,
+                                      oldAnchorsJ.a8.transform([&](const double3& a) { return a + shift; })};
+  const Bridging::Anchors newAnchorsJ{oldAnchorsJ.a1, oldAnchorsJ.a2, oldAnchorsI.a6 - shift, oldAnchorsI.a7 - shift,
+                                      oldAnchorsI.a8.transform([&](const double3& a) { return a - shift; })};
 
   const std::optional<Bridging::Closure> closureI = Bridging::rebridge(random, oldAnchorsI, oldTrimerI, newAnchorsI);
   if (!closureI.has_value()) return std::nullopt;
   const std::optional<Bridging::Closure> closureJ = Bridging::rebridge(random, oldAnchorsJ, oldTrimerJ, newAnchorsJ);
   if (!closureJ.has_value()) return std::nullopt;
 
-  // Trial chains: tails (units site + 4 and beyond) exchanged slot by slot, trimers re-bridged.
+  // Trial chains: tails (units site + 4 and beyond) exchanged slot by slot, each brought into the image of the
+  // chain it joins; trimers re-bridged.
   std::vector<Atom> trialI = oldI;
   std::vector<Atom> trialJ = oldJ;
   for (std::size_t k = site + 4; k != units.size(); ++k)
   {
-    trialI[units[k].backboneAtom].position = oldJ[units[k].backboneAtom].position;
-    trialJ[units[k].backboneAtom].position = oldI[units[k].backboneAtom].position;
+    trialI[units[k].backboneAtom].position = oldJ[units[k].backboneAtom].position + shift;
+    trialJ[units[k].backboneAtom].position = oldI[units[k].backboneAtom].position - shift;
     for (std::size_t atom : units[k].sideAtoms)
     {
-      trialI[atom].position = oldJ[atom].position;
-      trialJ[atom].position = oldI[atom].position;
+      trialI[atom].position = oldJ[atom].position + shift;
+      trialJ[atom].position = oldI[atom].position - shift;
     }
   }
   Bridging::placeTrimer(trialI, oldI, units, site, oldAnchorsI, oldTrimerI, newAnchorsI, closureI->trimer);
@@ -169,7 +175,7 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
   // (each keeps its a2 and takes the other's a6). Both remain candidates of each other.
   std::vector<AnchorPair> newAnchors = anchors;
   newAnchors[selectedMolecule] = AnchorPair{anchorsI.a2, anchorsJ.a6 + shift};
-  newAnchors[partnerMolecule] = AnchorPair{anchorsJ.a2 + shift, anchorsI.a6};
+  newAnchors[partnerMolecule] = AnchorPair{anchorsJ.a2, anchorsI.a6 - shift};
   const std::size_t newCandidatesI = countCandidates(selectedMolecule, newAnchors);
   const std::size_t newCandidatesJ = countCandidates(partnerMolecule, newAnchors);
   const double logSelection =
@@ -189,9 +195,9 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
   }
 
   // The atoms whose positions change up to a lattice vector: the two trimers with their side groups. Every
-  // other atom keeps its position (the partner's head is shifted by a lattice vector) and, for the framework
-  // and the other molecules, its identity does not matter, so the periodic non-bonded differences with the
-  // surroundings involve these atoms only.
+  // other atom keeps its position up to the lattice vector of its tail and, for the framework and the other
+  // molecules, its identity does not matter, so the periodic non-bonded differences with the surroundings
+  // involve these atoms only.
   std::vector<Atom> movedOld{}, movedNew{};
   auto collectTrimerAtoms = [&](std::vector<Atom>& destination, const std::vector<Atom>& source)
   {
@@ -208,8 +214,8 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
   collectTrimerAtoms(movedNew, trialJ);
 
   // The external field is a function of the unwrapped positions (it need not be periodic), so the lattice
-  // shift of the partner's head (units 0 .. site, shifted along with the rest of the chain) changes its
-  // energy as well. Both chains are therefore passed in full, against the stored (unshifted) atoms.
+  // shifts of the exchanged tails change its energy as well. Both chains are therefore passed in full, against
+  // the stored atoms.
   std::vector<Atom> allNew = trialI;
   allNew.insert(allNew.end(), trialJ.begin(), trialJ.end());
   std::vector<Atom> storedOld(atomsI.begin(), atomsI.end());
