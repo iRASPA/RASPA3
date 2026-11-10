@@ -590,6 +590,46 @@ TEST(MC_DOUBLE_BRIDGING, idr_torsion_potential_follows_boltzmann_distribution)
 // exactly two chains, all bonds and bends stay fixed, the torsions of every chain are uniform and
 // <R^2> is that of the freely rotating chain. Pivot and translation moves (exact at U = 0) provide
 // ergodicity of the chain ends and of the positions; the double bridging dominates.
+// The tails do not move in a double-bridging move: the two chains exchange them. The persistent tags of the tail
+// atoms go with them to the other chain, so after an accepted move only the two re-bridged trimers hold atoms
+// whose tags name another position.
+TEST(MC_DOUBLE_BRIDGING, db_tags_travel_with_the_exchanged_tails)
+{
+  const ForceField forceField = makeZeroForceField();
+  Component decane = makeComponent(forceField, "db-decane-tags", chainJson(10, "0.0, 0.0, 0.0, 0.0"));
+  constexpr std::size_t numberOfChains = 6;
+  System system = System(forceField, SimulationBox(14.0, 14.0, 14.0), false, 300.0, 1e4, 1.0, {}, {decane}, {},
+                         {numberOfChains}, 5);
+  system.runningEnergies = system.computeTotalEnergies();
+
+  RandomNumber random(4711);
+  std::size_t accepted = 0;
+  for (std::size_t attempt = 0; attempt != 20000 && accepted < 20; ++attempt)
+  {
+    std::map<std::uint32_t, double3> positionOfTag;
+    for (std::size_t i = 0; i < system.atomTags.size(); ++i)
+    {
+      positionOfTag[system.atomTags[i]] = system.atomData[i].position;
+    }
+    const std::size_t molecule = static_cast<std::size_t>(random.uniform() * static_cast<double>(numberOfChains));
+    if (!MC_Moves::doubleBridgingMove(random, system, 0, molecule).has_value()) continue;
+    ++accepted;
+
+    ASSERT_NO_THROW(system.checkAtomTags());
+    std::size_t movedTags = 0;
+    for (const auto& [tag, position] : positionOfTag)
+    {
+      const std::uint32_t index = system.atomIndexOfTag[tag];
+      ASSERT_NE(index, System::noAtom);
+      if ((system.atomData[index].position - position).length() > 1e-12) ++movedTags;
+    }
+    // the two trimers of three backbone atoms were placed anew; every other atom is where it was
+    EXPECT_GT(movedTags, 0uz);
+    EXPECT_LE(movedTags, 6uz) << "attempt " << attempt;
+  }
+  EXPECT_GE(accepted, 20uz);
+}
+
 TEST(MC_DOUBLE_BRIDGING, db_u0_torsions_uniform_and_tails_exchanged)
 {
   const ForceField forceField = makeZeroForceField();

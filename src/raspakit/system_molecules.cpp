@@ -346,6 +346,15 @@ void System::makeWholeMoleculeFractional(std::size_t selectedComponent, std::siz
   numberOfIntegerMoleculesPerComponent[selectedComponent] -= 1;
 }
 
+void System::exchangeAtomTags(std::size_t atomA, std::size_t atomB)
+{
+  std::swap(atomTags[atomA], atomTags[atomB]);
+  atomIndexOfTag[atomTags[atomA]] = static_cast<std::uint32_t>(atomA);
+  atomIndexOfTag[atomTags[atomB]] = static_cast<std::uint32_t>(atomB);
+  std::swap(atomDynamics[atomA], atomDynamics[atomB]);
+  std::swap(electricField[atomA], electricField[atomB]);
+}
+
 void System::checkPolymerLayoutIsFixed(std::string_view operation) const
 {
   if (polymerLinks.activated)

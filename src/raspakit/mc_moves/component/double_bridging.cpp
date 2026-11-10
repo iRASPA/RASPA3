@@ -300,6 +300,18 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
 
     std::copy(trialI.cbegin(), trialI.cend(), atomsI.begin());
     std::copy(trialJ.cbegin(), trialJ.cend(), atomsJ.begin());
+    // The tail atoms did not move: the chains exchanged them. Their tags (and dynamics) go with them to the other
+    // chain's slots; the re-bridged trimers were placed anew and keep theirs.
+    const std::size_t firstI = static_cast<std::size_t>(atomsI.data() - system.atomData.data());
+    const std::size_t firstJ = static_cast<std::size_t>(atomsJ.data() - system.atomData.data());
+    for (std::size_t k = site + 4; k != units.size(); ++k)
+    {
+      system.exchangeAtomTags(firstI + units[k].backboneAtom, firstJ + units[k].backboneAtom);
+      for (std::size_t atom : units[k].sideAtoms)
+      {
+        system.exchangeAtomTags(firstI + atom, firstJ + atom);
+      }
+    }
     // Both chains changed in place (the molecule atom storage order is unchanged): keep the molecule cell list
     // consistent here, like the other in-place moves, so that a following move does not see stale cells.
     system.cellListAtomsMoved(atomsI);

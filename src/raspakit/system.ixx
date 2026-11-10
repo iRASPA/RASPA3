@@ -1093,6 +1093,15 @@ export struct System
    */
   void exchangeConfiguration(System& other);
 
+  /**
+   * \brief Exchanges what names and accompanies the atoms at two storage indices, leaving the atoms themselves
+   * as they are: the tags (with their inverse entries), the dynamics and the stored electric field.
+   *
+   * For a move that has written exchanged coordinates into two slots, so that the physical atoms changed slots
+   * while the slots kept their chemistry (double bridging: two chains exchange their tails).
+   */
+  void exchangeAtomTags(std::size_t atomA, std::size_t atomB);
+
   /// Throws when the polymer link table is activated: its group bookkeeping is laid out over the molecules at
   /// activation, so no molecule may be inserted, deleted, moved or exchanged afterwards ('operation' names the
   /// attempt). Called by every primitive above that changes the molecule layout.
