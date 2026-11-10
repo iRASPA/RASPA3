@@ -195,26 +195,19 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
       return false;
     }
 
-    // A cross-linked molecule can not leave the system while it is bonded to another molecule.
-    std::vector<std::size_t> available;
-    const std::size_t fractionalOffset = system.numberOfFractionalMoleculesPerComponent[componentId];
-    for (std::size_t moleculeId = 0; moleculeId < system.numberOfIntegerMoleculesPerComponent[componentId];
-         ++moleculeId)
-    {
-      if (!system.crossLinks.moleculeIsLinked(componentId, fractionalOffset + moleculeId))
-      {
-        available.push_back(fractionalOffset + moleculeId);
-      }
-    }
-
-    if (count > available.size())
-    {
-      return false;
-    }
-
+    // Drawn uniformly without replacement from every whole molecule, so that the proposal probability of a
+    // tuple is (N - nu)! / N!, the factor the acceptance rules divide out. A cross-linked molecule can not
+    // leave the system while it is bonded to another molecule: a draw that meets one refuses the move (leaving
+    // the linked molecules out of the draw would raise the probability of every other tuple).
+    std::vector<std::size_t> available(system.numberOfIntegerMoleculesPerComponent[componentId]);
+    std::iota(available.begin(), available.end(), system.numberOfFractionalMoleculesPerComponent[componentId]);
     for (std::size_t k = 0; k < count; ++k)
     {
       const std::size_t pick = random.uniform_integer(0, available.size() - 1);
+      if (system.crossLinks.moleculeIsLinked(componentId, available[pick]))
+      {
+        return false;
+      }
       selected.emplace_back(componentId, available[pick]);
       available.erase(available.begin() + static_cast<std::ptrdiff_t>(pick));
     }

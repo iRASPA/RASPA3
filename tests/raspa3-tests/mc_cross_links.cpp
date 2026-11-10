@@ -28,6 +28,7 @@ import mc_moves_cross_link_exchange;
 import mc_moves_cross_link_formation;
 import mc_moves_reinsertion;
 import mc_moves_partial_reinsertion;
+import mc_moves_reaction_common;
 import monte_carlo;
 
 // Tests for the cross-links: inter-molecular bonds between reactive sites owned by the system
@@ -716,6 +717,49 @@ TEST(MC_CROSS_LINKS, table_renumbering_on_deletion_and_insertion)
   table.removeLink(0);
   EXPECT_EQ(table.links.size(), 1uz);
   EXPECT_EQ(table.linkCount(site(0, 4, 0)) + table.linkCount(site(1, 1, 1)), 1u);
+}
+
+// The reaction moves draw the whole molecules they demote uniformly from all of them and refuse a linked one,
+// so that every tuple of unlinked molecules keeps the proposal probability the acceptance rule divides out.
+// Leaving the linked molecules out of the draw would favour the others by N! (N - L)! / ((N - nu)! N - L)!.
+TEST(MC_CROSS_LINKS, reaction_moves_draw_from_every_whole_molecule_and_refuse_a_linked_one)
+{
+  const ForceField forceField = makeForceField(80.0, 0.0, 0.0, false);
+  Component dimer = makeComponent(forceField, 0, "xl-dimer-draw", dimerBAJson(kBondK, kBondLength));
+  std::vector<std::vector<double3>> positions(1);
+  for (std::size_t m = 0; m != 6; ++m)
+  {
+    positions[0].push_back(double3(4.0 * static_cast<double>(m) + 3.0, 5.0, 5.0));
+    positions[0].push_back(double3(4.0 * static_cast<double>(m) + 4.5, 5.0, 5.0));
+  }
+  System system = makeSystem(forceField, {dimer}, positions);
+  system.crossLinks.bondTypes.push_back(harmonicBondType("X", "X", kBondK, kBondLength, 3.0));
+  // molecules 0-1 and 2-3 linked: two of the six are available for a reaction that demotes one
+  system.crossLinks.addLink(CrossLink{site(0, 0, 1), site(0, 1, 0), 0});
+  system.crossLinks.addLink(CrossLink{site(0, 2, 1), site(0, 3, 0), 0});
+
+  RandomNumber random(99);
+  const std::vector<std::size_t> stoichiometry{1};
+  std::vector<std::pair<std::size_t, std::size_t>> selected;
+  std::array<std::size_t, 6> picked{};
+  std::size_t refused = 0;
+  constexpr std::size_t draws = 60000;
+  for (std::size_t i = 0; i != draws; ++i)
+  {
+    if (!MC_Moves::ReactionCommon::selectRandomIntegerMolecules(random, system, stoichiometry, selected))
+    {
+      ++refused;
+      continue;
+    }
+    ASSERT_EQ(selected.size(), 1uz);
+    ASSERT_FALSE(system.crossLinks.moleculeIsLinked(0, selected.front().second));
+    ++picked[selected.front().second];
+  }
+  // four of six draws meet a linked molecule and refuse; the two free molecules are drawn one sixth each
+  EXPECT_NEAR(static_cast<double>(refused) / draws, 4.0 / 6.0, 0.02);
+  EXPECT_NEAR(static_cast<double>(picked[4]) / draws, 1.0 / 6.0, 0.02);
+  EXPECT_NEAR(static_cast<double>(picked[5]) / draws, 1.0 / 6.0, 0.02);
+  EXPECT_EQ(picked[0] + picked[1] + picked[2] + picked[3], 0uz);
 }
 
 TEST(MC_CROSS_LINKS, table_renumbering_on_exchange)
