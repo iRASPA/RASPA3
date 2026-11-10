@@ -1048,6 +1048,28 @@ export struct System
   void swapMolecules(std::size_t selectedComponent, std::size_t moleculeA, std::size_t moleculeB);
 
   /**
+   * \brief Makes fractional molecule 'moleculeIndex' of the component a whole molecule in place: it moves to the
+   * end of the component with its atoms, dynamics, field, tags and record (the molecules after it shift down by
+   * one), and leaves the fractional count for the integer count.
+   *
+   * The scaling of its atoms is the caller's, and so are the net charge and the tail-correction counts that depend
+   * on it ('computeTailCorrectionCounts'). The cell list is invalidated.
+   */
+  void makeFractionalMoleculeWhole(std::size_t selectedComponent, std::size_t moleculeIndex);
+
+  /**
+   * \brief Makes whole molecule 'moleculeIndex' of the component the fractional molecule of slot 'slotIndex' in
+   * place: it moves to the slot with its atoms, dynamics, field, tags and record (the molecules from the slot up
+   * to its old position shift up by one), and leaves the integer count for the fractional count. The molecule must
+   * not carry cross-links. The scaling and the counts are the caller's, as in 'makeFractionalMoleculeWhole'.
+   */
+  void makeWholeMoleculeFractional(std::size_t selectedComponent, std::size_t moleculeIndex, std::size_t slotIndex);
+
+  /// Moves molecule 'moleculeIndex' of the component to 'newIndex' of the component, the molecules in between
+  /// shifting by one; the atoms with their dynamics, field and tags, the record and the cross-link sites follow.
+  void moveMolecule(std::size_t selectedComponent, std::size_t moleculeIndex, std::size_t newIndex);
+
+  /**
    * \brief The exchange of 'swapMolecules' between a molecule of this system and one of 'other', of the same
    * component index in both (the boxes of a Gibbs ensemble).
    *

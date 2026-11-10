@@ -327,6 +327,56 @@ void System::swapMolecules(std::size_t selectedComponent, std::size_t moleculeA,
   invalidateCellList();
 }
 
+void System::makeFractionalMoleculeWhole(std::size_t selectedComponent, std::size_t moleculeIndex)
+{
+  moveMolecule(selectedComponent, moleculeIndex, numberOfMoleculesPerComponent[selectedComponent] - 1);
+  numberOfFractionalMoleculesPerComponent[selectedComponent] -= 1;
+  numberOfIntegerMoleculesPerComponent[selectedComponent] += 1;
+}
+
+void System::makeWholeMoleculeFractional(std::size_t selectedComponent, std::size_t moleculeIndex,
+                                         std::size_t slotIndex)
+{
+  moveMolecule(selectedComponent, moleculeIndex, slotIndex);
+  numberOfFractionalMoleculesPerComponent[selectedComponent] += 1;
+  numberOfIntegerMoleculesPerComponent[selectedComponent] -= 1;
+}
+
+void System::moveMolecule(std::size_t selectedComponent, std::size_t moleculeIndex, std::size_t newIndex)
+{
+  if (moleculeIndex == newIndex) return;
+
+  // the per-atom arrays and the records of the molecules from the lower to the higher index rotate by one
+  // molecule: a molecule moving up takes the first block to the back, one moving down the last block to the front
+  const std::ptrdiff_t numberOfAtoms = static_cast<std::ptrdiff_t>(components[selectedComponent].atoms.size());
+  const std::size_t lowIndex = std::min(moleculeIndex, newIndex);
+  const std::size_t highIndex = std::max(moleculeIndex, newIndex);
+  const std::ptrdiff_t first = iteratorForMolecule(selectedComponent, lowIndex) - atomData.begin();
+  const std::ptrdiff_t last = first + static_cast<std::ptrdiff_t>(highIndex - lowIndex + 1) * numberOfAtoms;
+  const std::ptrdiff_t middle = (moleculeIndex < newIndex) ? first + numberOfAtoms : last - numberOfAtoms;
+  std::rotate(atomData.begin() + first, atomData.begin() + middle, atomData.begin() + last);
+  std::rotate(atomDynamics.begin() + first, atomDynamics.begin() + middle, atomDynamics.begin() + last);
+  std::rotate(electricField.begin() + first, electricField.begin() + middle, electricField.begin() + last);
+  std::rotate(atomTags.begin() + first, atomTags.begin() + middle, atomTags.begin() + last);
+  for (std::ptrdiff_t i = first; i < last; ++i)
+  {
+    atomIndexOfTag[atomTags[static_cast<std::size_t>(i)]] = static_cast<std::uint32_t>(i);
+  }
+
+  const std::ptrdiff_t firstRecord = indexForMolecule(selectedComponent, lowIndex) - moleculeData.begin();
+  const std::ptrdiff_t lastRecord = firstRecord + static_cast<std::ptrdiff_t>(highIndex - lowIndex + 1);
+  const std::ptrdiff_t middleRecord = (moleculeIndex < newIndex) ? firstRecord + 1 : lastRecord - 1;
+  std::rotate(moleculeData.begin() + firstRecord, moleculeData.begin() + middleRecord,
+              moleculeData.begin() + lastRecord);
+
+  // the sites of the molecules in between are renumbered as by a deletion followed by an insertion
+  crossLinks.moleculeDeleted(selectedComponent, moleculeIndex);
+  crossLinks.moleculeInserted(selectedComponent, newIndex);
+
+  // molecule ids, atom indices of the records and the cell list
+  updateMoleculeAtomInformation();
+}
+
 void System::exchangeMolecule(System& other, std::size_t selectedComponent, std::size_t molecule,
                               std::size_t otherMolecule)
 {

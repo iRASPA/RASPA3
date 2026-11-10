@@ -18,8 +18,10 @@ import running_energy;
 import mc_moves_move_types;
 import mc_moves_probabilities;
 import randomnumbers;
+import reaction;
 import mc_moves_gibbs_swap_cfcmc;
 import mc_moves_gibbs_swap_cbcfcmc;
+import mc_moves_reaction_common;
 
 // The persistent per-atom tags: fixed for the life of an atom, handed out lowest-free-first by insertion, freed
 // by deletion, following the atoms through the exchanges within a system and between replicas, and staying with
@@ -86,6 +88,60 @@ std::vector<System> makeGibbsPropaneSystems(Move::Types gibbsSwapMove)
     system.runningEnergies = system.computeTotalEnergies();
   }
   return systems;
+}
+
+// A box of propane and butane with the reaction 2 propane -> 2 butane driven by 'reactionMove', its fractional
+// molecules created, and every atom's velocity marked with its tag.
+System makeReactionSystem(Move::Types reactionMove, std::size_t propanes, std::size_t butanes)
+{
+  const ForceField forceField = makeAlkaneForceField();
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+  systemProbabilities.setProbability(reactionMove, 1.0);
+  Component propane = makeAlkaneFromExample(forceField, 0, "propane", MCMoveProbabilities());
+  Component butane = makeAlkaneFromExample(forceField, 1, "butane", MCMoveProbabilities());
+  propane.lnPartitionFunction = 1.0;
+  butane.lnPartitionFunction = 1.0;
+  System system(forceField, SimulationBox(40.0, 40.0, 40.0), false, 500.0, 1e4, 1.0, {}, {propane, butane}, {},
+                std::vector<std::size_t>{propanes, butanes}, 5, systemProbabilities);
+  Reaction reaction(0, {2, 0}, {0, 2});
+  reaction.reactionMove = reactionMove;
+  system.reactions.list.push_back(reaction);
+  system.createReactionFractionalMolecules();
+  system.runningEnergies = system.computeTotalEnergies();
+  for (std::size_t i = 0; i < system.atomTags.size(); ++i)
+  {
+    system.atomDynamics[i].velocity = double3(static_cast<double>(system.atomTags[i]), 0.0, 0.0);
+  }
+  return system;
+}
+
+// Every atom of 'before' (by tag: position and velocity) whose tag is not among 'leftTags' is still in the system
+// at its position with its velocity; the tags of 'leftTags' are free.
+void expectAtomsStayedInPlace(const System& system, std::map<std::uint32_t, std::pair<double3, double3>> before,
+                              std::span<const std::uint32_t> leftTags)
+{
+  for (const std::uint32_t tag : leftTags)
+  {
+    EXPECT_EQ(system.atomIndexOfTag[tag], System::noAtom) << "tag " << tag << " of a molecule that left is in use";
+    before.erase(tag);
+  }
+  for (const auto& [tag, atom] : before)
+  {
+    const std::uint32_t index = system.atomIndexOfTag[tag];
+    ASSERT_NE(index, System::noAtom) << "tag " << tag << " was freed";
+    EXPECT_EQ(system.atomData[index].position, atom.first) << "tag " << tag << " names another atom";
+    EXPECT_EQ(system.atomDynamics[index].velocity, atom.second) << "tag " << tag << " lost its velocity";
+  }
+}
+
+std::map<std::uint32_t, std::pair<double3, double3>> atomsByTag(const System& system)
+{
+  std::map<std::uint32_t, std::pair<double3, double3>> atoms;
+  for (std::size_t i = 0; i < system.atomTags.size(); ++i)
+  {
+    atoms[system.atomTags[i]] = {system.atomData[i].position, system.atomDynamics[i].velocity};
+  }
+  return atoms;
 }
 
 // The molecule ids and component ids of the atoms, and the atom index of every molecule record, name the slots in
@@ -472,4 +528,116 @@ TEST(ATOM_TAGS, gibbs_cbcfcmc_lambda_interchange_keeps_the_tags_of_the_regrown_m
     return;
   }
   FAIL() << "No accepted lambda interchange in 5000 attempts";
+}
+
+// The in-place moves of a molecule across the fractional / integer boundary of its component: the molecule, with
+// its atoms, dynamics and tags, changes position in the component and the counts follow; nothing else moves.
+TEST(ATOM_TAGS, a_molecule_made_whole_or_fractional_in_place_keeps_its_tags)
+{
+  System system = makeReactionSystem(Move::Types::ReactionCFCMC, 5, 5);
+  ASSERT_EQ(system.numberOfFractionalMoleculesPerComponent[0], 2uz);
+  const std::map<std::uint32_t, std::pair<double3, double3>> before = atomsByTag(system);
+  const std::vector<std::uint32_t> tags1 = tagsOfMolecule(system, 0, 1);
+  const std::vector<std::uint32_t> tags4 = tagsOfMolecule(system, 0, 4);
+
+  system.makeFractionalMoleculeWhole(0, 1);
+  EXPECT_EQ(system.numberOfFractionalMoleculesPerComponent[0], 1uz);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 6uz);
+  EXPECT_EQ(tagsOfMolecule(system, 0, 6), tags1);
+  EXPECT_EQ(tagsOfMolecule(system, 0, 3), tags4);
+  expectAtomsStayedInPlace(system, before, {});
+  expectRecordsNameTheirSlots(system);
+
+  system.makeWholeMoleculeFractional(0, 3, 1);
+  EXPECT_EQ(system.numberOfFractionalMoleculesPerComponent[0], 2uz);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 5uz);
+  EXPECT_EQ(tagsOfMolecule(system, 0, 1), tags4);
+  EXPECT_EQ(tagsOfMolecule(system, 0, 6), tags1);
+  expectAtomsStayedInPlace(system, before, {});
+  expectRecordsNameTheirSlots(system);
+}
+
+// The whole-molecule reaction of the serial reaction move: the fractional molecules of one side become whole
+// molecules where they are and whole molecules of the other side become the fractional molecules where they are.
+// No molecule is created, destroyed or moved, so every atom keeps its tag, position and velocity.
+TEST(ATOM_TAGS, serial_whole_molecule_reaction_keeps_every_tag_in_place)
+{
+  // few whole propane molecules beside the two fractional ones, many whole butane ones: the reaction is favoured
+  System system = makeReactionSystem(Move::Types::ReactionCFCMC, 2, 20);
+  Reaction& reaction = system.reactions.list[0];
+  ASSERT_TRUE(reaction.fractionalSideIsReactants);
+
+  RandomNumber random(42);
+  for (int attempt = 0; attempt < 5000; ++attempt)
+  {
+    const std::map<std::uint32_t, std::pair<double3, double3>> before = atomsByTag(system);
+    const std::vector<std::size_t> counts = system.numberOfMoleculesPerComponent;
+
+    (void)MC_Moves::ReactionCommon::serialReactionMove(random, system, reaction, Move::Types::ReactionCFCMC, false,
+                                                       MC_Moves::ReactionCommon::SerialMoveKind::WholeMoleculeReaction);
+
+    expectRecordsNameTheirSlots(system);
+    if (reaction.fractionalSideIsReactants)
+    {
+      continue;
+    }
+
+    EXPECT_EQ(system.numberOfMoleculesPerComponent, counts);
+    EXPECT_EQ(system.numberOfFractionalMoleculesPerComponent, (std::vector<std::size_t>{0, 2}));
+    EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent, (std::vector<std::size_t>{4, 18}));
+    expectAtomsStayedInPlace(system, before, {});
+    return;
+  }
+  FAIL() << "No accepted whole-molecule reaction in 5000 attempts";
+}
+
+// The boundary crossing of the parallel reaction move: the fractional molecules of the promoted side become whole
+// molecules where they are, whole molecules of the demoted side become its fractional molecules where they are,
+// the nearly decoupled fractional molecules of the demoted side leave, and new ones of the promoted side enter.
+// Every atom but those of the leaving molecules keeps its tag, position and velocity.
+TEST(ATOM_TAGS, parallel_reaction_boundary_crossing_keeps_the_tags_of_the_molecules_that_stay)
+{
+  // many whole propane molecules, few whole butane ones: the forward crossing (lambda past one) is favoured
+  System system = makeReactionSystem(Move::Types::ReactionConventionalCFCMC, 20, 2);
+  Reaction& reaction = system.reactions.list[0];
+  reaction.currentLambda = 0.9;
+  MC_Moves::ReactionCommon::setReactionFractionalScaling(system, reaction, reaction.currentLambda);
+  system.runningEnergies = system.computeTotalEnergies();
+
+  RandomNumber random(42);
+  for (int attempt = 0; attempt < 5000; ++attempt)
+  {
+    const std::map<std::uint32_t, std::pair<double3, double3>> before = atomsByTag(system);
+    const std::vector<std::size_t> wholeCounts = system.numberOfIntegerMoleculesPerComponent;
+    std::vector<std::uint32_t> reactantSlotTags;
+    std::vector<std::uint32_t> productSlotTags;
+    for (std::size_t component = 0; component < 2; ++component)
+    {
+      for (const std::size_t molecule : reaction.reactantFractionalMoleculeIds[component])
+      {
+        reactantSlotTags.append_range(tagsOfMolecule(system, component, molecule));
+      }
+      for (const std::size_t molecule : reaction.productFractionalMoleculeIds[component])
+      {
+        productSlotTags.append_range(tagsOfMolecule(system, component, molecule));
+      }
+    }
+
+    (void)MC_Moves::ReactionCommon::parallelReactionMove(random, system, Move::Types::ReactionConventionalCFCMC, false);
+
+    expectRecordsNameTheirSlots(system);
+    if (system.numberOfIntegerMoleculesPerComponent == wholeCounts)
+    {
+      continue;
+    }
+
+    // the demoted side lost whole molecules; its nearly decoupled fractional molecules are the ones that left
+    const bool forward = system.numberOfIntegerMoleculesPerComponent[0] < wholeCounts[0];
+    EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], forward ? wholeCounts[0] - 2 : wholeCounts[0] + 2);
+    EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], forward ? wholeCounts[1] + 2 : wholeCounts[1] - 2);
+    EXPECT_EQ(system.numberOfFractionalMoleculesPerComponent, (std::vector<std::size_t>{2, 2}));
+    expectAtomsStayedInPlace(system, before, forward ? reactantSlotTags : productSlotTags);
+    return;
+  }
+  FAIL() << "No accepted boundary crossing in 5000 attempts";
 }

@@ -1141,54 +1141,58 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 
   system.mc_moves_statistics.addAccepted(move);
 
-  // capture the promoted (fractional -> whole) molecules before any bookkeeping changes the indices
-  struct TransformedMolecule
-  {
-    std::size_t componentId;
-    Molecule molecule;
-    std::vector<Atom> atoms;
-  };
-  std::vector<TransformedMolecule> promotedMolecules;
-  const std::vector<std::vector<std::size_t>>& activeIds =
+  // Nothing is created, destroyed or moved: every molecule keeps its atoms, dynamics, field and tags. The fractional
+  // molecules of the old side become whole molecules in place, each leaving its slot for the end of its component
+  // (descending slots per component, so that the remaining slots stay valid).
+  std::vector<std::vector<std::size_t>>& activeIds =
       fractionalsAreReactants ? reaction.reactantFractionalMoleculeIds : reaction.productFractionalMoleculeIds;
+  std::vector<std::size_t> promotedCount(system.components.size(), 0);
   for (std::size_t componentId = 0; componentId < activeIds.size(); ++componentId)
   {
-    for (const std::size_t moleculeId : activeIds[componentId])
+    std::vector<std::size_t> slots = activeIds[componentId];
+    std::ranges::sort(slots, std::ranges::greater());
+    for (const std::size_t moleculeId : slots)
     {
-      std::span<Atom> molecule = system.spanOfMolecule(componentId, moleculeId);
-      std::vector<Atom> atoms(molecule.begin(), molecule.end());
-      for (Atom& atom : atoms)
+      for (Atom& atom : system.spanOfMolecule(componentId, moleculeId))
       {
         atom.setScalingToInteger();
       }
-      promotedMolecules.push_back({componentId, *system.indexForMolecule(componentId, moleculeId), std::move(atoms)});
+      system.makeFractionalMoleculeWhole(componentId, moleculeId);
+      shiftStoredFractionalIds(system, componentId, moleculeId);
     }
+    promotedCount[componentId] = slots.size();
+    activeIds[componentId].clear();
   }
 
-  // capture the demoted (whole -> fractional) molecules, ordered by component to match the slot layout
-  std::vector<CBMC::GrowResult> demotedMolecules;
-  for (const auto& [componentId, moleculeId] : selectedMolecules)
+  // the selected whole molecules sat above the slots their component lost
+  for (auto& [componentId, moleculeId] : selectedMolecules)
   {
-    std::span<Atom> molecule = system.spanOfMolecule(componentId, moleculeId);
-    demotedMolecules.emplace_back(*system.indexForMolecule(componentId, moleculeId),
-                                  std::vector<Atom>(molecule.begin(), molecule.end()), RunningEnergy{}, 1.0, 0.0);
+    moleculeId -= promotedCount[componentId];
   }
 
-  // remove the selected whole molecules and re-insert the promoted molecules as whole molecules
-  deleteSelectedMolecules(system, selectedMolecules);
-  for (TransformedMolecule& promotedMolecule : promotedMolecules)
-  {
-    system.insertMolecule(promotedMolecule.componentId, promotedMolecule.molecule, std::move(promotedMolecule.atoms));
-  }
-
-  // replace the fractional molecules of the old side by the demoted molecules on the new side
-  deleteReactionSideFractionalMolecules(system, reaction, fractionalsAreReactants);
-  // flip delta before inserting so that syncReactionFractionalMoleculeIndices assigns the ids of the new side
+  // The selected whole molecules become the fractional molecules of the new side in place, each moving from its
+  // position to a slot of that side (ascending positions per component, so that the remaining positions stay
+  // valid). Delta flips first, so that the slots are those of the new side.
   reaction.fractionalSideIsReactants = !reaction.fractionalSideIsReactants;
   std::vector<std::vector<std::size_t>>& targetIds =
       fractionalsAreReactants ? reaction.productFractionalMoleculeIds : reaction.reactantFractionalMoleculeIds;
-  insertSerialSideFractionalMolecules(system, reaction, demotedMolecules, demoteStoichiometry, reaction.currentLambda,
-                                      targetIds);
+  std::ranges::sort(selectedMolecules);
+  std::size_t selectedIndex = 0;
+  for (std::size_t componentId = 0; componentId < demoteStoichiometry.size(); ++componentId)
+  {
+    for (std::size_t n = 0; n < demoteStoichiometry[componentId]; ++n)
+    {
+      const std::size_t moleculeId = selectedMolecules[selectedIndex++].second;
+      const std::size_t slotIndex = system.serialReactionFractionalMoleculeIndex(reaction.id, componentId, n);
+      applySerialFractionalScaling(system.spanOfMolecule(componentId, moleculeId), reaction.currentLambda,
+                                   reaction.lambda.dUdlambdaGroupId);
+      system.makeWholeMoleculeFractional(componentId, moleculeId, slotIndex);
+      targetIds[componentId].push_back(slotIndex);
+    }
+  }
+  system.syncReactionFractionalMoleculeIndices();
+  // the scalings changed in place: the effective pseudo-atom counts and the net charge follow
+  system.computeTailCorrectionCounts();
   system.syncReactionLambdaBin(reaction);
   acceptChargedEwaldMove(system);
 
@@ -1413,114 +1417,45 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 
   system.mc_moves_statistics.addAccepted(move);
 
-  // capture the promoted (fractional -> whole) molecules before any bookkeeping changes the indices
-  struct TransformedMolecule
-  {
-    std::size_t componentId;
-    Molecule molecule;
-    std::vector<Atom> atoms;
-  };
-  std::vector<TransformedMolecule> promotedMolecules;
-  for (const auto& [componentId, moleculeId] : promotedMoleculeIds)
-  {
-    std::span<Atom> molecule = system.spanOfMolecule(componentId, moleculeId);
-    promotedMolecules.push_back({componentId, *system.indexForMolecule(componentId, moleculeId),
-                                 std::vector<Atom>(molecule.begin(), molecule.end())});
-  }
-
-  // capture the demoted (whole -> fractional) molecules, ordered by component to match the slot layout
-  std::vector<TransformedMolecule> demotedMolecules;
-  for (const auto& [componentId, moleculeId] : selectedMolecules)
-  {
-    std::span<Atom> molecule = system.spanOfMolecule(componentId, moleculeId);
-    demotedMolecules.push_back({componentId, *system.indexForMolecule(componentId, moleculeId),
-                                std::vector<Atom>(molecule.begin(), molecule.end())});
-  }
-
-  // remove the demoted whole molecules from the integer region
-  deleteSelectedMolecules(system, selectedMolecules);
-
-  // remove the fractional molecules of this reaction on both sides (descending ids per component)
-  {
-    std::vector<std::pair<std::size_t, std::size_t>> toDelete;
-    for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
-    {
-      for (const std::size_t moleculeId : reaction.reactantFractionalMoleculeIds[componentId])
-      {
-        toDelete.emplace_back(componentId, moleculeId);
-      }
-      for (const std::size_t moleculeId : reaction.productFractionalMoleculeIds[componentId])
-      {
-        toDelete.emplace_back(componentId, moleculeId);
-      }
-    }
-    std::ranges::sort(toDelete,
-                      [](const auto& a, const auto& b)
-                      {
-                        if (a.first != b.first)
-                        {
-                          return a.first < b.first;
-                        }
-                        return a.second > b.second;
-                      });
-    for (const auto& [componentId, moleculeId] : toDelete)
-    {
-      std::span<Atom> molecule = system.spanOfMolecule(componentId, moleculeId);
-      system.deleteFractionalMolecule(componentId, moleculeId, molecule);
-      shiftStoredFractionalIds(system, componentId, moleculeId);
-    }
-    for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
-    {
-      reaction.reactantFractionalMoleculeIds[componentId].clear();
-      reaction.productFractionalMoleculeIds[componentId].clear();
-    }
-  }
-
-  // insert the promoted molecules as whole molecules
-  for (TransformedMolecule& promoted : promotedMolecules)
-  {
-    system.insertMolecule(promoted.componentId, promoted.molecule, std::move(promoted.atoms));
-  }
-
-  // refill the fractional slots in ascending slot order: for a forward reaction the reactant slots
-  // receive the demoted whole molecules and the product slots the freshly grown molecules (backward:
-  // the mirror image)
-  std::size_t demotedIndex = 0;
+  // The promoted and the demoted molecules were transformed in place above and keep their atoms, dynamics, field
+  // and tags; only the ghost molecules leave and only the grown ones enter. The slots of the promoted side: the
+  // promoted molecule leaves its slot for the end of its component and the grown ghost molecule (in slot order)
+  // takes the slot, through an insertion and an exchange of the two.
+  const double grownLambda = forward ? lambdaNew : (1.0 - lambdaNew);
   std::size_t grownIndex = 0;
-  for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
+  for (const auto& [componentId, slotIndex] : promotedMoleculeIds)
   {
-    for (std::size_t k = 0; k < reaction.reactantStoichiometry[componentId]; ++k)
+    const CBMC::GrowResult& grown = growData->molecules[grownIndex++];
+    std::vector<Atom> slotAtoms(grown.atoms.begin(), grown.atoms.end());
+    for (Atom& atom : slotAtoms)
     {
-      const std::size_t slotIndex = system.parallelReactionFractionalMoleculeIndex(reaction.id, componentId, false, k);
-      if (forward)
-      {
-        TransformedMolecule& demoted = demotedMolecules[demotedIndex++];
-        system.insertReactionFractionalMolecule(componentId, slotIndex, demoted.molecule, std::move(demoted.atoms),
-                                                true, lambdaNew, reaction.dUdlambdaGroup(true));
-      }
-      else
-      {
-        const CBMC::GrowResult& grown = growData->molecules[grownIndex++];
-        system.insertReactionFractionalMolecule(componentId, slotIndex, grown.molecule, grown.atoms, true, lambdaNew,
-                                                reaction.dUdlambdaGroup(true));
-      }
+      atom.setScalingToFractional(grownLambda, reaction.dUdlambdaGroup(!forward));
     }
-    for (std::size_t k = 0; k < reaction.productStoichiometry[componentId]; ++k)
-    {
-      const std::size_t slotIndex = system.parallelReactionFractionalMoleculeIndex(reaction.id, componentId, true, k);
-      if (forward)
-      {
-        const CBMC::GrowResult& grown = growData->molecules[grownIndex++];
-        system.insertReactionFractionalMolecule(componentId, slotIndex, grown.molecule, grown.atoms, false, lambdaNew,
-                                                reaction.dUdlambdaGroup(false));
-      }
-      else
-      {
-        TransformedMolecule& demoted = demotedMolecules[demotedIndex++];
-        system.insertReactionFractionalMolecule(componentId, slotIndex, demoted.molecule, std::move(demoted.atoms),
-                                                false, lambdaNew, reaction.dUdlambdaGroup(false));
-      }
-    }
+    system.insertMolecule(componentId, grown.molecule, std::move(slotAtoms));
+    system.swapMolecules(componentId, slotIndex, system.numberOfMoleculesPerComponent[componentId] - 1);
+  }
+
+  // The slots of the demoted side: the demoted molecule takes the slot of the ghost molecule (in slot order)
+  // and the ghost is deleted from the demoted molecule's position, through an exchange of the two and a deletion
+  // (descending positions per component, so that the remaining positions stay valid).
+  std::vector<std::tuple<std::size_t, std::size_t, std::size_t>> demotions;  // component, position, slot
+  for (std::size_t k = 0; k < selectedMolecules.size(); ++k)
+  {
+    demotions.emplace_back(selectedMolecules[k].first, selectedMolecules[k].second, ghostMolecules[k].second);
+  }
+  std::ranges::sort(demotions,
+                    [](const auto& a, const auto& b)
+                    {
+                      if (std::get<0>(a) != std::get<0>(b))
+                      {
+                        return std::get<0>(a) < std::get<0>(b);
+                      }
+                      return std::get<1>(a) > std::get<1>(b);
+                    });
+  for (const auto& [componentId, moleculeId, slotIndex] : demotions)
+  {
+    system.swapMolecules(componentId, moleculeId, slotIndex);
+    system.deleteMolecule(componentId, moleculeId, system.spanOfMolecule(componentId, moleculeId));
   }
 
   system.syncReactionFractionalMoleculeIndices();
