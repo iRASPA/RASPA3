@@ -233,9 +233,13 @@ TEST(MC_CFCMC_FLEXIBLE_CHARGED_DRIFT, group_swap_cbcfcmc) { runTwoComponentDrift
 
 // a serial Rx/CFC reaction between two charged butane components: the lambda changes rescale the fractional
 // molecules of the active side in place
-TEST(MC_CFCMC_FLEXIBLE_CHARGED_DRIFT, serial_reactions)
+// The lambda moves of the serial and the parallel reactions rescale the fractional molecules in place, and the
+// boundary crossings of the parallel reactions turn molecules whole or fractional in place: the intramolecular
+// Coulomb kernel of a charged flexible molecule changes with its Fourier term in every one of them.
+TEST(MC_CFCMC_FLEXIBLE_CHARGED_DRIFT, serial_and_parallel_reactions)
 {
-  for (Move::Types move : {Move::Types::ReactionCFCMC, Move::Types::ReactionCBCFCMC})
+  for (Move::Types move : {Move::Types::ReactionCFCMC, Move::Types::ReactionCBCFCMC,
+                           Move::Types::ReactionConventionalCFCMC, Move::Types::ReactionConventionalCBCFCMC})
   {
     const ForceField forceField = makeChargedAlkaneForceField();
     MCMoveProbabilities componentProbabilities;

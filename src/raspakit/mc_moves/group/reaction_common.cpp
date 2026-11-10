@@ -1298,6 +1298,10 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   {
     return std::nullopt;
   }
+  // the promoted and the demoted molecules are rescaled in place: the Ewald compensation kernels of their
+  // intramolecular pairs follow the scaled Fourier term (their internal energies themselves are unscaled)
+  const RunningEnergy rescaleIntraCoulomb = system.intraCoulombRescaleDifference(rescaleNewAtoms, rescaleOldAtoms);
+  *rescaleDifference += rescaleIntraCoulomb;
 
   auto writeAtomsToSpans =
       [&system](const std::vector<std::pair<std::size_t, std::size_t>>& molecules, std::span<const Atom> source)
@@ -1347,9 +1351,12 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   RunningEnergy fourierDifference{};
   RunningEnergy energyDifference{};
   // Non-CBMC path: the grown ghost molecules are drawn from the ideal-gas Boltzmann distribution (and the
-  // deleted ones were generated the same way), so the intra-molecular energy difference cancels against the
-  // generation probabilities and is kept out of the acceptance rule; it only updates the running energies.
-  RunningEnergy internalDifference{};
+  // deleted ones were generated the same way), so their intra-molecular energy difference cancels against the
+  // generation probabilities and is kept out of the acceptance rule; it only updates the running energies. The
+  // promoted and demoted molecules keep their internal energies (the scaling is of the external energies), but
+  // the Ewald compensation kernel of their intramolecular pairs follows the scaled Fourier term: that part
+  // stays in the acceptance.
+  RunningEnergy ghostInternalDifference{};
   if (useCBMC)
   {
     tailDifference = computeGroupSwapTailEnergyDifference(system, fullNewAtoms, fullOldAtoms);
@@ -1369,9 +1376,9 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
       restoreOldScalings();
       return std::nullopt;
     }
-    internalDifference =
-        internalEnergyFromAtomGroups(system, fullNewAtoms) - internalEnergyFromAtomGroups(system, fullOldAtoms);
-    energyDifference = completeDifference.value() + internalDifference;
+    ghostInternalDifference =
+        internalEnergyFromAtomGroups(system, grownAtoms) - internalEnergyFromAtomGroups(system, ghostOldAtoms);
+    energyDifference = completeDifference.value() + ghostInternalDifference + rescaleIntraCoulomb;
     if (system.forceField.useCharge)
     {
       energyDifference += computeChargedGroupEwaldDifference(system, fullNewAtoms, fullOldAtoms);
@@ -1403,7 +1410,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   {
     acceptanceProbability =
         std::exp(equilibriumTerm + biasNew - biasOld -
-                 system.beta * (energyDifference.potentialEnergy() - internalDifference.potentialEnergy()));
+                 system.beta * (energyDifference.potentialEnergy() - ghostInternalDifference.potentialEnergy()));
   }
 
   // the trial configuration has been constructed; counted before the Metropolis test
@@ -1552,6 +1559,9 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
       {
         return std::nullopt;
       }
+      // the fractional molecules are rescaled in place: their intramolecular Coulomb kernels change with the
+      // Fourier term
+      *scalingDifference += system.intraCoulombRescaleDifference(newAtoms, oldAtoms);
     }
   }
 
