@@ -336,6 +336,28 @@ void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceFiel
     J[i] = 13.598 + 2.0;
   }
 
+  // two atoms on one site (or on each other's periodic images) have no Coulomb interaction to speak of: every branch
+  // divides by their distance, and the infinities and NaNs that gave went through solveMatrix unnoticed (its checks
+  // compare against zero, which a NaN never equals, and under -ffast-math no test for NaN survives), so every charge
+  // came out NaN without a word. The distances are checked here, before any is inverted.
+  for (std::size_t i = 0; i < size; ++i)
+  {
+    for (std::size_t j = i + 1; j < size; ++j)
+    {
+      double3 dr = frameworkAtoms[i].position - frameworkAtoms[j].position;
+      if (type != ChargeEquilibration::Type::NonPeriodic) dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+      if (double3::dot(dr, dr) < 1e-3 * 1e-3)
+      {
+        throw std::runtime_error(std::format(
+            "[charge equilibration]: atoms {} ('{}') and {} ('{}') are less than 0.001 A apart at ({}, {}, {}); "
+            "coincident atoms have no finite interaction\n",
+            i, forceField.pseudoAtoms[static_cast<std::size_t>(frameworkAtoms[i].type)].name, j,
+            forceField.pseudoAtoms[static_cast<std::size_t>(frameworkAtoms[j].type)].name, frameworkAtoms[i].position.x,
+            frameworkAtoms[i].position.y, frameworkAtoms[i].position.z));
+      }
+    }
+  }
+
   // Build the full matrix of hardness/interaction elements J_ab
   std::vector<double> Jab(size * size);
 

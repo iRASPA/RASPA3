@@ -442,3 +442,62 @@ TEST(UNINITIALIZED_MEMBERS, direct_sum_charge_equilibration_does_not_change_when
   EXPECT_NEAR(reordered[0].charge, cell[1].charge, 1e-9);
   EXPECT_NEAR(reordered[1].charge, cell[0].charge, 1e-9);
 }
+
+TEST(UNINITIALIZED_MEMBERS, charge_equilibration_rejects_coincident_atoms_instead_of_giving_nan_charges)
+{
+  // two atoms on one site, or on each other's periodic images, made every branch divide by a zero distance. The
+  // infinities and NaNs went into solveMatrix, whose singularity checks compare against zero, which a NaN never
+  // equals; that it threw "apparent singularity" anyway rests on the comparison predicate clang picks under
+  // -ffast-math, and a pair a fraction of a thousandth of an Angstrom apart gave finite garbage without a word. The
+  // distances are now checked before any is inverted, and the error names the atoms.
+  const ForceField forceField({{"Cs", true, 132.9, 0.0, 0.0, 55, false}, {"Cl", true, 35.45, 0.0, 0.0, 17, false}},
+                              {{20.0, 3.0}, {50.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0,
+                              false, false, true);
+  const double a = 4.0;
+  const SimulationBox box(a, a, a);
+  auto message = [&](std::vector<Atom> atoms, ChargeEquilibration::Type type) -> std::string
+  {
+    try
+    {
+      ChargeEquilibration::computeChargeEquilibration(forceField, box, atoms, type);
+    }
+    catch (const std::runtime_error& e)
+    {
+      return e.what();
+    }
+    return "no error";
+  };
+
+  for (ChargeEquilibration::Type type :
+       {ChargeEquilibration::Type::NonPeriodic, ChargeEquilibration::Type::Periodic,
+        ChargeEquilibration::Type::PeriodicDirectSum, ChargeEquilibration::Type::PeriodicEwaldSum})
+  {
+    const std::string sameSite = message({Atom({1.0, 1.0, 1.0}, 0.0, 1.0, 0, 0, 0, false, false),
+                                          Atom({1.0, 1.0, 1.0}, 0.0, 1.0, 0, 1, 0, false, false)},
+                                         type);
+    EXPECT_NE(sameSite.find("atoms 0 ('Cs') and 1 ('Cl') are less than 0.001 A apart"), std::string::npos)
+        << static_cast<std::size_t>(type) << ": " << sameSite;
+
+    const std::string nearlySameSite = message({Atom({1.0, 1.0, 1.0}, 0.0, 1.0, 0, 0, 0, false, false),
+                                                Atom({1.0, 1.0, 1.0 + 1e-4}, 0.0, 1.0, 0, 1, 0, false, false)},
+                                               type);
+    EXPECT_NE(nearlySameSite.find("less than 0.001 A apart"), std::string::npos)
+        << static_cast<std::size_t>(type) << ": " << nearlySameSite;
+  }
+
+  // a periodic image of the other atom (one cell along x); fine in a non-periodic calculation
+  std::vector<Atom> image{Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false),
+                          Atom({a, 0.0, 0.0}, 0.0, 1.0, 0, 1, 0, false, false)};
+  EXPECT_NE(message(image, ChargeEquilibration::Type::PeriodicEwaldSum).find("less than 0.001 A apart"),
+            std::string::npos);
+  EXPECT_NO_THROW(
+      ChargeEquilibration::computeChargeEquilibration(forceField, box, image, ChargeEquilibration::Type::NonPeriodic));
+  EXPECT_EQ(std::to_string(image[0].charge).find("nan"), std::string::npos);
+
+  // separated atoms are still equilibrated
+  std::vector<Atom> apart{Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false),
+                          Atom({0.5 * a, 0.5 * a, 0.5 * a}, 0.0, 1.0, 0, 1, 0, false, false)};
+  EXPECT_NO_THROW(ChargeEquilibration::computeChargeEquilibration(forceField, box, apart,
+                                                                  ChargeEquilibration::Type::PeriodicEwaldSum));
+  EXPECT_GT(apart[0].charge, 0.0);
+}
