@@ -1043,7 +1043,7 @@ export struct System
    *
    * The atoms with their dynamics and stored electric field, and the molecule record, change places; what
    * names a slot stays behind: the molecule id of the atoms and the atom index of the record. The counts, the
-   * charges and the tail-correction bookkeeping are unchanged by construction. The cell list is invalidated.
+   * charges and the tail-correction bookkeeping are unchanged by construction. The cell list is kept current.
    */
   void swapMolecules(std::size_t selectedComponent, std::size_t moleculeA, std::size_t moleculeB);
 
@@ -1073,9 +1073,9 @@ export struct System
    * \brief The exchange of 'swapMolecules' between a molecule of this system and one of 'other', of the same
    * component index in both (the boxes of a Gibbs ensemble).
    *
-   * The cell lists are not touched: the caller applies the two spans with 'cellListAtomsMoved' once it is done
-   * editing them (a slot records the group id and scaling of its atom), or invalidates the lists. Calling it a
-   * second time with the same arguments undoes the exchange.
+   * The cell list of each system is refreshed for its slot; a caller that goes on editing the exchanged atoms (a
+   * slot records the group id and scaling of its atom) applies the span again with 'cellListAtomsMoved'. Calling
+   * it a second time with the same arguments undoes the exchange.
    */
   void exchangeMolecule(System& other, std::size_t selectedComponent, std::size_t molecule, std::size_t otherMolecule);
 

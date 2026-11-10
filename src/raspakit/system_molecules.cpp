@@ -324,7 +324,6 @@ void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedM
 void System::swapMolecules(std::size_t selectedComponent, std::size_t moleculeA, std::size_t moleculeB)
 {
   exchangeMolecule(*this, selectedComponent, moleculeA, moleculeB);
-  invalidateCellList();
 }
 
 void System::makeFractionalMoleculeWhole(std::size_t selectedComponent, std::size_t moleculeIndex)
@@ -412,6 +411,10 @@ void System::exchangeMolecule(System& other, std::size_t selectedComponent, std:
   for (Atom& atom : otherAtoms) atom.moleculeId = static_cast<std::uint32_t>(otherIndex);
   std::swap(moleculeData[index], other.moleculeData[otherIndex]);
   std::swap(moleculeData[index].atomIndex, other.moleculeData[otherIndex].atomIndex);
+
+  // the cell lists describe the two slots as they are now
+  cellListAtomsMoved(atoms);
+  other.cellListAtomsMoved(otherAtoms);
 }
 
 namespace

@@ -721,6 +721,80 @@ TEST(MC_GIBBS_DRIFT, methane_gibbs_cfcbmc)
   }
 }
 
+// The serial Gibbs swap moves edit the fractional slots of both boxes in place (the exchange of the active and the
+// inactive fractional molecule between the boxes, scalings, restored atoms): after every attempt, accepted or
+// rejected, the cell list of each box must still describe its atoms, and a move that leaves the molecule counts
+// alone must have kept it current rather than left it for a rebuild.
+namespace
+{
+void runGibbsSwapCellListCheck(Move::Types gibbsSwapMove)
+{
+  const ForceField forceField = makeAlkaneForceField();
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(gibbsSwapMove, 1.0);
+  Component propane = makeAlkaneFromExample(forceField, 0, "propane", probabilities, true);
+  Component butane = makeAlkaneFromExample(forceField, 1, "butane", probabilities, true);
+  // boxes large enough for the lists to be enabled (several cells of the cut-off per direction)
+  SimulationBox box = SimulationBox(60.0, 60.0, 60.0);
+  std::vector<System> systems{
+      System(forceField, box, false, 500.0, 1e4, 1.0, {}, {propane, butane}, {}, {40, 40}, 5, MCMoveProbabilities()),
+      System(forceField, box, false, 500.0, 1e4, 1.0, {}, {propane, butane}, {}, {40, 40}, 5, MCMoveProbabilities())};
+  setupSerialGibbsCFCMC(systems);
+  ASSERT_TRUE(systems[0].cellList().enabled);
+  ASSERT_TRUE(systems[1].cellList().enabled);
+
+  RandomNumber random(42);
+  std::size_t fractionalMoleculeSystem = 0;
+  std::size_t accepted = 0;
+  for (int attempt = 0; attempt < 400; ++attempt)
+  {
+    for (std::size_t component = 0; component < 2; ++component)
+    {
+      System& systemA = systems[0].containsTheFractionalMolecule ? systems[0] : systems[1];
+      System& systemB = systems[0].containsTheFractionalMolecule ? systems[1] : systems[0];
+      // current lists before the attempt, so that the move maintains them instead of starting from none
+      (void)systemA.cellList();
+      (void)systemB.cellList();
+      const std::vector<std::size_t> countsA = systemA.numberOfMoleculesPerComponent;
+      const std::vector<std::size_t> countsB = systemB.numberOfMoleculesPerComponent;
+
+      const std::optional<std::pair<RunningEnergy, RunningEnergy>> delta =
+          (gibbsSwapMove == Move::Types::GibbsSwapCFCMC)
+              ? MC_Moves::GibbsSwapMove_CFCMC(random, systemA, systemB, component, fractionalMoleculeSystem)
+              : MC_Moves::GibbsSwapMove_CBCFCMC(random, systemA, systemB, component, fractionalMoleculeSystem);
+      accepted += delta.has_value() ? 1 : 0;
+
+      // a changed molecule count rebuilds the list (an insertion or deletion); anything else kept it current
+      if (systemA.numberOfMoleculesPerComponent == countsA)
+      {
+        EXPECT_TRUE(systemA.moleculeCellList.isCurrent(systemA.spanOfMoleculeAtoms(), systemA.simulationBox,
+                                                       systemA.cellListCutOff()))
+            << "attempt " << attempt << " component " << component << " left the list of A for a rebuild";
+      }
+      if (systemB.numberOfMoleculesPerComponent == countsB)
+      {
+        EXPECT_TRUE(systemB.moleculeCellList.isCurrent(systemB.spanOfMoleculeAtoms(), systemB.simulationBox,
+                                                       systemB.cellListCutOff()))
+            << "attempt " << attempt << " component " << component << " left the list of B for a rebuild";
+      }
+      EXPECT_TRUE(systemA.verifyCellList()) << "attempt " << attempt << " component " << component << " box A";
+      EXPECT_TRUE(systemB.verifyCellList()) << "attempt " << attempt << " component " << component << " box B";
+    }
+  }
+  EXPECT_GT(accepted, 0uz);
+}
+}  // namespace
+
+TEST(MC_GIBBS_DRIFT, gibbs_cfcmc_keeps_both_cell_lists_current)
+{
+  runGibbsSwapCellListCheck(Move::Types::GibbsSwapCFCMC);
+}
+
+TEST(MC_GIBBS_DRIFT, gibbs_cbcfcmc_keeps_both_cell_lists_current)
+{
+  runGibbsSwapCellListCheck(Move::Types::GibbsSwapCBCFCMC);
+}
+
 // Serial Gibbs CFCMC in a methane/CO2 mixture whose first component holds a different number of molecules in each
 // box: the fractional CO2 molecule then has a different global molecule index in A and B, and the second component
 // adds a charged fractional molecule that follows the flag swap of the first. Exercises the cross-system atom
