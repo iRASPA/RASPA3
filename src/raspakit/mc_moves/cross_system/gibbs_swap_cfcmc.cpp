@@ -524,9 +524,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       applyFlagSwapScaling(systemA, selectedComponent, false, activeLambda, systemA);
       applyFlagSwapScaling(systemB, selectedComponent, true, activeLambda, systemA);
 
-      systemA.updateMoleculeAtomInformation();
-      systemB.updateMoleculeAtomInformation();
-
       systemA.computeTailCorrectionCounts();
       systemB.computeTailCorrectionCounts();
 
@@ -739,8 +736,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
       Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.trialEik);
 
-      systemB.moleculeData[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)] =
-          trialMolecule.first;
+      // the trial record carries the new center of mass and orientation; the slot keeps its atom index
+      Molecule& fractionalRecordB =
+          systemB.moleculeData[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)];
+      trialMolecule.first.atomIndex = fractionalRecordB.atomIndex;
+      fractionalRecordB = trialMolecule.first;
 
       syncOtherComponentLambdaBins(systemA, systemB, selectedComponent);
       std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
@@ -750,9 +750,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       const double activeLambda = componentB.lambdaGC.lambdaValue();
       applyFlagSwapScaling(systemA, selectedComponent, false, activeLambda, systemA);
       applyFlagSwapScaling(systemB, selectedComponent, true, activeLambda, systemA);
-
-      systemA.updateMoleculeAtomInformation();
-      systemB.updateMoleculeAtomInformation();
 
       systemA.computeTailCorrectionCounts();
       systemB.computeTailCorrectionCounts();

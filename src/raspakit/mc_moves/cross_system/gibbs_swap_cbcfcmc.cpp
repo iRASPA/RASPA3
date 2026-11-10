@@ -431,28 +431,37 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
       std::swap(componentA.lambdaGC.currentBin, componentB.lambdaGC.currentBin);
 
-      // System A: the placeholder record of B moves into the fractional slot (its atoms are already in place), the
-      // grown integer molecule is appended.
+      // System A: the grown integer molecule takes the fractional slot (the atoms of the retraced fractional
+      // molecule keep their tags, dynamics and field, as in a reinsertion; the slot's record keeps its atom index),
+      // the placeholder of B enters as a new molecule, and the two change slots.
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
-      systemA.moleculeData[systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA)] =
-          systemB.moleculeData[globalFractionalMoleculeIndexB];
-      systemA.insertMolecule(selectedComponent, growDataA->molecule, growDataA->atoms);
+      std::copy(growDataA->atoms.begin(), growDataA->atoms.end(), fractionalMoleculeA.begin());
+      Molecule& integerRecordA =
+          systemA.moleculeData[systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA)];
+      growDataA->molecule.atomIndex = integerRecordA.atomIndex;
+      integerRecordA = growDataA->molecule;
+      systemA.insertMolecule(selectedComponent, systemB.moleculeData[globalFractionalMoleculeIndexB],
+                             oldFractionalMoleculeB);
+      systemA.swapMolecules(selectedComponent, indexFractionalMoleculeA,
+                            systemA.numberOfMoleculesPerComponent[selectedComponent] - 1);
 
-      // System B: the grown fractional molecule takes the slot (its atoms are already in place), the retraced
-      // integer molecule is deleted.
-      systemB.moleculeData[globalFractionalMoleculeIndexB] = growDataB->molecule;
+      // System B: the grown fractional molecule takes the slot of the retraced integer molecule (whose atoms keep
+      // their tags), the placeholder returns to the fractional slot, the two change slots, and the placeholder is
+      // deleted.
       Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.trialEik);
-      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(),
-                selectedIntegerMoleculeB.begin());
+      std::copy(fractionalMoleculeB.begin(), fractionalMoleculeB.end(), selectedIntegerMoleculeB.begin());
+      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      Molecule& fractionalRecordB =
+          systemB.moleculeData[systemB.moleculeIndexOfComponent(selectedComponent, indexSelectedIntegerMoleculeB)];
+      growDataB->molecule.atomIndex = fractionalRecordB.atomIndex;
+      fractionalRecordB = growDataB->molecule;
+      systemB.swapMolecules(selectedComponent, indexSelectedIntegerMoleculeB, indexFractionalMoleculeB);
       systemB.deleteMolecule(selectedComponent, indexSelectedIntegerMoleculeB, selectedIntegerMoleculeB);
 
       // all fractional molecules take the scaling of their box's new activity state
       const double activeLambda = componentB.lambdaGC.lambdaValue();
       applyFlagSwapScaling(systemA, selectedComponent, false, activeLambda, systemA);
       applyFlagSwapScaling(systemB, selectedComponent, true, activeLambda, systemA);
-
-      systemA.updateMoleculeAtomInformation();
-      systemB.updateMoleculeAtomInformation();
 
       systemA.computeTailCorrectionCounts();
       systemB.computeTailCorrectionCounts();
@@ -669,8 +678,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
       Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.trialEik);
 
-      systemB.moleculeData[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)] =
-          growData->molecule;
+      // the grown record carries the new center of mass and orientation; the slot keeps its atom index
+      Molecule& fractionalRecordB = systemB.moleculeData[globalFractionalMoleculeIndexB];
+      growData->molecule.atomIndex = fractionalRecordB.atomIndex;
+      fractionalRecordB = growData->molecule;
       std::copy(growData->atoms.begin(), growData->atoms.end(), fractionalMoleculeB.begin());
 
       syncOtherComponentLambdaBins(systemA, systemB, selectedComponent);
@@ -680,9 +691,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       const double activeLambda = componentB.lambdaGC.lambdaValue();
       applyFlagSwapScaling(systemA, selectedComponent, false, activeLambda, systemA);
       applyFlagSwapScaling(systemB, selectedComponent, true, activeLambda, systemA);
-
-      systemA.updateMoleculeAtomInformation();
-      systemB.updateMoleculeAtomInformation();
 
       systemA.computeTailCorrectionCounts();
       systemB.computeTailCorrectionCounts();
