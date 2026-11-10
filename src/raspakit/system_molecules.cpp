@@ -316,6 +316,87 @@ void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedM
   updateMoleculeAtomInformation();
 }
 
+void System::swapMolecules(std::size_t selectedComponent, std::size_t moleculeA, std::size_t moleculeB)
+{
+  exchangeMolecule(*this, selectedComponent, moleculeA, moleculeB);
+  invalidateCellList();
+}
+
+void System::exchangeMolecule(System& other, std::size_t selectedComponent, std::size_t molecule,
+                              std::size_t otherMolecule)
+{
+  std::span<Atom> atoms = spanOfMolecule(selectedComponent, molecule);
+  std::span<Atom> otherAtoms = other.spanOfMolecule(selectedComponent, otherMolecule);
+  const std::ptrdiff_t offset = atoms.data() - atomData.data();
+  const std::ptrdiff_t otherOffset = otherAtoms.data() - other.atomData.data();
+  const std::ptrdiff_t count = static_cast<std::ptrdiff_t>(atoms.size());
+
+  std::swap_ranges(atoms.begin(), atoms.end(), otherAtoms.begin());
+  std::swap_ranges(atomDynamics.begin() + offset, atomDynamics.begin() + offset + count,
+                   other.atomDynamics.begin() + otherOffset);
+  std::swap_ranges(electricField.begin() + offset, electricField.begin() + offset + count,
+                   other.electricField.begin() + otherOffset);
+
+  // The molecule id of an atom and the atom index of a record name the slot, so they stay behind (the component
+  // id is the same on both sides).
+  const std::size_t index = moleculeIndexOfComponent(selectedComponent, molecule);
+  const std::size_t otherIndex = other.moleculeIndexOfComponent(selectedComponent, otherMolecule);
+  for (Atom& atom : atoms) atom.moleculeId = static_cast<std::uint32_t>(index);
+  for (Atom& atom : otherAtoms) atom.moleculeId = static_cast<std::uint32_t>(otherIndex);
+  std::swap(moleculeData[index], other.moleculeData[otherIndex]);
+  std::swap(moleculeData[index].atomIndex, other.moleculeData[otherIndex].atomIndex);
+}
+
+namespace
+{
+// Exchanges the parts of two per-atom arrays beyond their framework atoms.
+template <typename T>
+void swapMobileTail(std::vector<T>& dataA, std::size_t fixedSizeA, std::vector<T>& dataB, std::size_t fixedSizeB)
+{
+  std::vector<T> mobileA(std::make_move_iterator(dataA.begin() + static_cast<std::ptrdiff_t>(fixedSizeA)),
+                         std::make_move_iterator(dataA.end()));
+  std::vector<T> mobileB(std::make_move_iterator(dataB.begin() + static_cast<std::ptrdiff_t>(fixedSizeB)),
+                         std::make_move_iterator(dataB.end()));
+  dataA.erase(dataA.begin() + static_cast<std::ptrdiff_t>(fixedSizeA), dataA.end());
+  dataB.erase(dataB.begin() + static_cast<std::ptrdiff_t>(fixedSizeB), dataB.end());
+  dataA.insert(dataA.end(), std::make_move_iterator(mobileB.begin()), std::make_move_iterator(mobileB.end()));
+  dataB.insert(dataB.end(), std::make_move_iterator(mobileA.begin()), std::make_move_iterator(mobileA.end()));
+}
+}  // namespace
+
+void System::exchangeConfiguration(System& other)
+{
+  swapMobileTail(atomData, numberOfFrameworkAtoms, other.atomData, other.numberOfFrameworkAtoms);
+  swapMobileTail(atomDynamics, numberOfFrameworkAtoms, other.atomDynamics, other.numberOfFrameworkAtoms);
+  std::swap(moleculeData, other.moleculeData);
+  // rigid-body state of semi-flexible molecules: derived from the positions, so it moves with them
+  std::swap(groupData, other.groupData);
+  // the Monte Carlo cell lists describe the previous configurations; rebuilt lazily on first use
+  invalidateCellList();
+  other.invalidateCellList();
+  if (!framework.has_value())
+  {
+    std::swap(simulationBox, other.simulationBox);
+  }
+  std::swap(numberOfMoleculesPerComponent, other.numberOfMoleculesPerComponent);
+  std::swap(numberOfIntegerMoleculesPerComponent, other.numberOfIntegerMoleculesPerComponent);
+  swapMobileTail(electricPotential, numberOfFrameworkAtoms, other.electricPotential, other.numberOfFrameworkAtoms);
+  swapMobileTail(electricField, numberOfFrameworkAtoms, other.electricField, other.numberOfFrameworkAtoms);
+  swapMobileTail(electricFieldNew, numberOfFrameworkAtoms, other.electricFieldNew, other.numberOfFrameworkAtoms);
+  std::swap(netChargeAdsorbates, other.netChargeAdsorbates);
+  std::swap(netChargePerComponent, other.netChargePerComponent);
+  std::swap(translationalCenterOfMassConstraint, other.translationalCenterOfMassConstraint);
+  std::swap(translationalDegreesOfFreedom, other.translationalDegreesOfFreedom);
+  std::swap(rotationalDegreesOfFreedom, other.rotationalDegreesOfFreedom);
+  std::swap(containsTheFractionalMolecule, other.containsTheFractionalMolecule);
+  // The cross-link topology belongs to the configuration; the bond types (Hamiltonian) stay.
+  crossLinks.swapTopology(other.crossLinks);
+  for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+  {
+    std::swap(components[componentId].lambdaGC.currentBin, other.components[componentId].lambdaGC.currentBin);
+  }
+}
+
 void System::updateMoleculeAtomInformation()
 {
   // The atom array changed size or order: the cell list indices and molecule ids are stale.

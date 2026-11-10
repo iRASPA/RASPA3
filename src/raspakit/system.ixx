@@ -1026,6 +1026,38 @@ export struct System
   void deleteMolecule(std::size_t selectedComponent, std::size_t selectedMolecule, const std::span<Atom> atoms);
   void deleteFractionalMolecule(std::size_t selectedComponent, std::size_t selectedMolecule,
                                 const std::span<Atom> atoms);
+
+  /**
+   * \brief Exchanges two molecules of one component, slot for slot.
+   *
+   * The atoms with their dynamics and stored electric field, and the molecule record, change places; what
+   * names a slot stays behind: the molecule id of the atoms and the atom index of the record. The counts, the
+   * charges and the tail-correction bookkeeping are unchanged by construction. The cell list is invalidated.
+   */
+  void swapMolecules(std::size_t selectedComponent, std::size_t moleculeA, std::size_t moleculeB);
+
+  /**
+   * \brief The exchange of 'swapMolecules' between a molecule of this system and one of 'other', of the same
+   * component index in both (the boxes of a Gibbs ensemble).
+   *
+   * The cell lists are not touched: the caller applies the two spans with 'cellListAtomsMoved' once it is done
+   * editing them (a slot records the group id and scaling of its atom), or invalidates the lists. Calling it a
+   * second time with the same arguments undoes the exchange.
+   */
+  void exchangeMolecule(System& other, std::size_t selectedComponent, std::size_t molecule, std::size_t otherMolecule);
+
+  /**
+   * \brief Exchanges the configuration with 'other' (replica exchange).
+   *
+   * Everything that belongs to the positions changes systems: the adsorbate atoms with their dynamics, electric
+   * fields and potentials, the molecule and rigid-group records, the molecule counts, the adsorbate charges and
+   * degrees of freedom, the cross-link topology, the fractional-molecule state with its lambda bins, and the box
+   * when there is no framework. The thermodynamic state, the force field, the learned biases, the move controls
+   * and the statistics stay. The cell lists are invalidated; both systems need 'rebuildConfigurationDerivedState'
+   * afterwards.
+   */
+  void exchangeConfiguration(System& other);
+
   void updateMoleculeAtomInformation();
   void checkMoleculeIds();
 

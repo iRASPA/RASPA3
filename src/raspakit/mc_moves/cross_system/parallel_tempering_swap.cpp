@@ -257,19 +257,6 @@ std::optional<double> tmmcLogBias(const System& replica, const System& configura
   return replica.tmmc.bias[index];
 }
 
-template <typename T>
-void swapMobileTail(std::vector<T>& dataA, std::size_t fixedSizeA, std::vector<T>& dataB, std::size_t fixedSizeB)
-{
-  std::vector<T> mobileA(std::make_move_iterator(dataA.begin() + static_cast<std::ptrdiff_t>(fixedSizeA)),
-                         std::make_move_iterator(dataA.end()));
-  std::vector<T> mobileB(std::make_move_iterator(dataB.begin() + static_cast<std::ptrdiff_t>(fixedSizeB)),
-                         std::make_move_iterator(dataB.end()));
-  dataA.erase(dataA.begin() + static_cast<std::ptrdiff_t>(fixedSizeA), dataA.end());
-  dataB.erase(dataB.begin() + static_cast<std::ptrdiff_t>(fixedSizeB), dataB.end());
-  dataA.insert(dataA.end(), std::make_move_iterator(mobileB.begin()), std::make_move_iterator(mobileB.end()));
-  dataB.insert(dataB.end(), std::make_move_iterator(mobileA.begin()), std::make_move_iterator(mobileA.end()));
-}
-
 // Solute tempering: E_target(X) - E_holder(X) for the configuration X held by 'holder', i.e. the energy
 // change of switching the solute's pair parameters, charges and intramolecular potentials from the
 // Hamiltonian of 'holder' to that of 'target' at fixed positions. Only the solute-involving terms
@@ -582,40 +569,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
 
     // Swap configuration-owned state. Thermodynamic state, force fields, learned λ/TMMC
     // biases, move controls, accumulated statistics, and property samplers stay put.
-    swapMobileTail(systemA.atomData, systemA.numberOfFrameworkAtoms, systemB.atomData, systemB.numberOfFrameworkAtoms);
-    swapMobileTail(systemA.atomDynamics, systemA.numberOfFrameworkAtoms, systemB.atomDynamics,
-                   systemB.numberOfFrameworkAtoms);
-    std::swap(systemA.moleculeData, systemB.moleculeData);
-    // rigid-body state of semi-flexible molecules: derived from the positions, so it moves with them
-    std::swap(systemA.groupData, systemB.groupData);
-    // the Monte Carlo cell lists describe the previous configurations; rebuilt lazily on first use
-    systemA.invalidateCellList();
-    systemB.invalidateCellList();
-    if (!systemA.framework.has_value())
-    {
-      std::swap(systemA.simulationBox, systemB.simulationBox);
-    }
-    std::swap(systemA.numberOfMoleculesPerComponent, systemB.numberOfMoleculesPerComponent);
-    std::swap(systemA.numberOfIntegerMoleculesPerComponent, systemB.numberOfIntegerMoleculesPerComponent);
-    swapMobileTail(systemA.electricPotential, systemA.numberOfFrameworkAtoms, systemB.electricPotential,
-                   systemB.numberOfFrameworkAtoms);
-    swapMobileTail(systemA.electricField, systemA.numberOfFrameworkAtoms, systemB.electricField,
-                   systemB.numberOfFrameworkAtoms);
-    swapMobileTail(systemA.electricFieldNew, systemA.numberOfFrameworkAtoms, systemB.electricFieldNew,
-                   systemB.numberOfFrameworkAtoms);
-    std::swap(systemA.netChargeAdsorbates, systemB.netChargeAdsorbates);
-    std::swap(systemA.netChargePerComponent, systemB.netChargePerComponent);
-    std::swap(systemA.translationalCenterOfMassConstraint, systemB.translationalCenterOfMassConstraint);
-    std::swap(systemA.translationalDegreesOfFreedom, systemB.translationalDegreesOfFreedom);
-    std::swap(systemA.rotationalDegreesOfFreedom, systemB.rotationalDegreesOfFreedom);
-    std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
-    // The cross-link topology belongs to the configuration; the bond types (Hamiltonian) stay.
-    systemA.crossLinks.swapTopology(systemB.crossLinks);
-    for (std::size_t componentId = 0; componentId < systemA.components.size(); ++componentId)
-    {
-      std::swap(systemA.components[componentId].lambdaGC.currentBin,
-                systemB.components[componentId].lambdaGC.currentBin);
-    }
+    systemA.exchangeConfiguration(systemB);
 
     // the atoms travelled with their charges; with solute tempering the charges belong to the Hamiltonian
     // of the replica (lambda), so the solute charges are rescaled to the receiving replica

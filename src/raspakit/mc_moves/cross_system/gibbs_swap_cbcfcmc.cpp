@@ -531,28 +531,32 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       return std::nullopt;
     }
 
-    std::swap_ranges(fractionalMoleculeA.begin(), fractionalMoleculeA.end(), fractionalMoleculeB.begin());
+    // swap the active and the inactive fractional molecule
+    systemA.exchangeMolecule(systemB, selectedComponent, indexFractionalMoleculeA, indexFractionalMoleculeB);
 
-    // swap_ranges copies moleculeId across systems; restore the ids valid in each system so that
-    // self-exclusion in the span-based energy differences and the CBMC grow works correctly.
     // System A becomes inactive: its fractional must not contribute dUdlambda (groupId 0).
     for (Atom& atom : fractionalMoleculeA)
     {
       atom.isFractional = true;
       atom.groupId = std::uint8_t{0};
-      atom.moleculeId =
-          static_cast<std::uint32_t>(systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA));
     }
     for (Atom& atom : fractionalMoleculeB)
     {
       atom.isFractional = true;
       atom.groupId = componentB.lambdaGC.dUdlambdaGroupId;
-      atom.moleculeId =
-          static_cast<std::uint32_t>(systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
     }
     // keep the cell lists (used by the CBMC retrace and grow below) in step with the edited slots
     systemA.cellListAtomsMoved(fractionalMoleculeA);
     systemB.cellListAtomsMoved(fractionalMoleculeB);
+
+    // Rejection: the molecules back to their systems, then the pre-move state of every fractional molecule.
+    auto undoExchange = [&]()
+    {
+      systemA.exchangeMolecule(systemB, selectedComponent, indexFractionalMoleculeA, indexFractionalMoleculeB);
+      restoreFractionalMolecules(systemA, snapshotA);
+      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      systemB.cellListAtomsMoved(fractionalMoleculeB);
+    };
 
     // Intra-molecular bookkeeping (zero for rigid molecules): the placeholder conformation of B enters A; the old
     // fractional conformation leaves A through the retrace energies. Not part of the acceptance rule.
@@ -593,9 +597,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     if (!growData)
     {
-      restoreFractionalMolecules(systemA, snapshotA);
-      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-      systemB.cellListAtomsMoved(fractionalMoleculeB);
+      undoExchange();
       return std::nullopt;
     }
 
@@ -638,9 +640,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
         systemB, tailEffB, tailGroupB, netChargeB, snapshotB, selectedComponent, true, systemA);
     if (!flagSwapOtherComponentsDifferenceB.has_value())
     {
-      restoreFractionalMolecules(systemA, snapshotA);
-      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-      systemB.cellListAtomsMoved(fractionalMoleculeB);
+      undoExchange();
       return std::nullopt;
     }
 
@@ -669,8 +669,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
       Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.trialEik);
 
-      std::swap(systemA.moleculeData[systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA)],
-                systemB.moleculeData[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)]);
       systemB.moleculeData[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)] =
           growData->molecule;
       std::copy(growData->atoms.begin(), growData->atoms.end(), fractionalMoleculeB.begin());
@@ -692,9 +690,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       return std::make_pair(energyDifferenceA, energyDifferenceB);
     }
 
-    restoreFractionalMolecules(systemA, snapshotA);
-    std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-    systemB.cellListAtomsMoved(fractionalMoleculeB);
+    undoExchange();
 
     return std::nullopt;
   }

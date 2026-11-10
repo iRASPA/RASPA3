@@ -626,23 +626,10 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         {
           system.insertMolecule(componentId, trialMolecules[i], trialAtoms[i]);
         }
-        const std::size_t lastMoleculeId = system.numberOfMoleculesPerComponent[componentId] - 1;
-        std::span<Atom> lastMolecule = system.spanOfMolecule(componentId, lastMoleculeId);
-        std::span<Atom> fractionalMolecule =
-            system.spanOfMolecule(componentId, members[i].fractionalMoleculeIndex);
-        std::swap_ranges(fractionalMolecule.begin(), fractionalMolecule.end(), lastMolecule.begin());
-        if (system.forceField.computePolarization)
-        {
-          std::span<double3> fieldFractional =
-              system.spanElectricFieldOld(componentId, members[i].fractionalMoleculeIndex);
-          std::span<double3> fieldLast = system.spanElectricFieldOld(componentId, lastMoleculeId);
-          std::swap_ranges(fieldFractional.begin(), fieldFractional.end(), fieldLast.begin());
-        }
-        std::swap(system.moleculeData[system.moleculeIndexOfComponent(componentId, members[i].fractionalMoleculeIndex)],
-                  system.moleculeData[system.moleculeIndexOfComponent(componentId, lastMoleculeId)]);
+        system.swapMolecules(componentId, members[i].fractionalMoleculeIndex,
+                             system.numberOfMoleculesPerComponent[componentId] - 1);
       }
 
-      system.updateMoleculeAtomInformation();
       system.computeTailCorrectionCounts();
 
       central.mc_moves_statistics.addAccepted(move, 0);
@@ -1057,19 +1044,8 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         const std::size_t componentId = members[i].componentId;
         const std::size_t selectedMolecule = pendingSelected[i];
 
-        std::span<Atom> fractionalMolecule =
-            system.spanOfMolecule(componentId, members[i].fractionalMoleculeIndex);
         std::span<Atom> newFractionalMolecule = system.spanOfMolecule(componentId, selectedMolecule);
-        std::swap_ranges(newFractionalMolecule.begin(), newFractionalMolecule.end(), fractionalMolecule.begin());
-        if (system.forceField.computePolarization)
-        {
-          std::span<double3> storedFieldFractional =
-              system.spanElectricFieldOld(componentId, members[i].fractionalMoleculeIndex);
-          std::span<double3> storedFieldSelected = system.spanElectricFieldOld(componentId, selectedMolecule);
-          std::swap_ranges(storedFieldFractional.begin(), storedFieldFractional.end(), storedFieldSelected.begin());
-        }
-        std::swap(system.moleculeData[system.moleculeIndexOfComponent(componentId, selectedMolecule)],
-                  system.moleculeData[system.moleculeIndexOfComponent(componentId, members[i].fractionalMoleculeIndex)]);
+        system.swapMolecules(componentId, selectedMolecule, members[i].fractionalMoleculeIndex);
         system.deleteMolecule(componentId, selectedMolecule, newFractionalMolecule);
 
         for (std::size_t j = i + 1; j < groupSize; ++j)

@@ -395,20 +395,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       }
 
       // Swap molecules to keep the fractional molecule at a fixed index
-      std::size_t lastMoleculeId = system.numberOfMoleculesPerComponent[selectedComponent] - 1;
-      std::span<Atom> lastMolecule = system.spanOfMolecule(selectedComponent, lastMoleculeId);
-      fractionalMolecule = system.spanOfMolecule(selectedComponent, indexFractionalMolecule);
-      std::swap_ranges(fractionalMolecule.begin(), fractionalMolecule.end(), lastMolecule.begin());
-      if (system.forceField.computePolarization)
-      {
-        std::span<double3> fieldFractional = system.spanElectricFieldOld(selectedComponent, indexFractionalMolecule);
-        std::span<double3> fieldLast = system.spanElectricFieldOld(selectedComponent, lastMoleculeId);
-        std::swap_ranges(fieldFractional.begin(), fieldFractional.end(), fieldLast.begin());
-      }
-      std::swap(system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, indexFractionalMolecule)],
-                system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, lastMoleculeId)]);
-
-      system.updateMoleculeAtomInformation();
+      system.swapMolecules(selectedComponent, indexFractionalMolecule,
+                           system.numberOfMoleculesPerComponent[selectedComponent] - 1);
       system.computeTailCorrectionCounts();
 
       component.mc_moves_statistics.addAccepted(move, 0);
@@ -734,15 +722,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
         }
 
         // Swap molecules (and their fields) to keep the fractional molecule at a fixed index
-        std::swap_ranges(newFractionalMolecule.begin(), newFractionalMolecule.end(), fractionalMolecule.begin());
-        if (system.forceField.computePolarization)
-        {
-          std::span<double3> fieldNewFractional = system.spanElectricFieldOld(selectedComponent, selectedMolecule);
-          std::span<double3> fieldFractional = system.spanElectricFieldOld(selectedComponent, indexFractionalMolecule);
-          std::swap_ranges(fieldNewFractional.begin(), fieldNewFractional.end(), fieldFractional.begin());
-        }
-        std::swap(system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)],
-                  system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, indexFractionalMolecule)]);
+        system.swapMolecules(selectedComponent, selectedMolecule, indexFractionalMolecule);
 
         // Delete the selected molecule
         system.deleteMolecule(selectedComponent, selectedMolecule, newFractionalMolecule);

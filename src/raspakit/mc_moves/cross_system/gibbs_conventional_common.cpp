@@ -248,16 +248,10 @@ void acceptInsertStep(System& system, std::size_t selectedComponent, std::size_t
 
   system.insertMolecule(selectedComponent, molecule, atoms);
 
-  // Re-fetch spans: insertMolecule may reallocate atom storage.
-  const std::size_t lastMoleculeId = system.numberOfMoleculesPerComponent[selectedComponent] - 1;
-  std::span<Atom> fractionalMoleculeAfterInsert = system.spanOfMolecule(selectedComponent, fractionalMoleculeIndex);
-  std::span<Atom> lastMolecule = system.spanOfMolecule(selectedComponent, lastMoleculeId);
-  std::swap_ranges(fractionalMoleculeAfterInsert.begin(), fractionalMoleculeAfterInsert.end(), lastMolecule.begin());
-  std::swap(system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, fractionalMoleculeIndex)],
-            system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, lastMoleculeId)]);
+  system.swapMolecules(selectedComponent, fractionalMoleculeIndex,
+                       system.numberOfMoleculesPerComponent[selectedComponent] - 1);
 
   component.lambdaGibbs.setCurrentBin(lambdaBinFromValue(component.lambdaGibbs, remainderLambda));
-  system.updateMoleculeAtomInformation();
 }
 
 void acceptDeleteStep(System& system, std::size_t selectedComponent, std::size_t fractionalMoleculeIndex,
@@ -273,9 +267,7 @@ void acceptDeleteStep(System& system, std::size_t selectedComponent, std::size_t
   }
 
   std::vector<Atom> savedFractional(fractionalMolecule.begin(), fractionalMolecule.end());
-  std::swap_ranges(selectedMolecule.begin(), selectedMolecule.end(), fractionalMolecule.begin());
-  std::swap(system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedIntegerMoleculeIndex)],
-            system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, fractionalMoleculeIndex)]);
+  system.swapMolecules(selectedComponent, selectedIntegerMoleculeIndex, fractionalMoleculeIndex);
 
   std::span<Atom> newFractionalMolecule = system.spanOfMolecule(selectedComponent, fractionalMoleculeIndex);
   const std::uint8_t groupId = component.lambdaGibbs.dUdlambdaGroupId;
@@ -287,7 +279,6 @@ void acceptDeleteStep(System& system, std::size_t selectedComponent, std::size_t
   system.deleteMolecule(selectedComponent, selectedIntegerMoleculeIndex, savedFractional);
 
   component.lambdaGibbs.setCurrentBin(lambdaBinFromValue(component.lambdaGibbs, remainderLambda));
-  system.updateMoleculeAtomInformation();
 }
 
 // Non-committing probe variants (see probeTailEnergyDifference): 'runningNetCharge' is the net charge of the

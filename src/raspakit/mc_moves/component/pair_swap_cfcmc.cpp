@@ -546,18 +546,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
       {
         system.insertMolecule(selectedComponent, trialMoleculeA.first, trialMoleculeA.second);
       }
-      std::size_t lastMoleculeIdA = system.numberOfMoleculesPerComponent[selectedComponent] - 1;
-      std::span<Atom> lastMoleculeA = system.spanOfMolecule(selectedComponent, lastMoleculeIdA);
-      fractionalMoleculeA = system.spanOfMolecule(selectedComponent, indexFractionalA);
-      std::swap_ranges(fractionalMoleculeA.begin(), fractionalMoleculeA.end(), lastMoleculeA.begin());
-      if (system.forceField.computePolarization)
-      {
-        std::span<double3> fieldFractionalA = system.spanElectricFieldOld(selectedComponent, indexFractionalA);
-        std::span<double3> fieldLastA = system.spanElectricFieldOld(selectedComponent, lastMoleculeIdA);
-        std::swap_ranges(fieldFractionalA.begin(), fieldFractionalA.end(), fieldLastA.begin());
-      }
-      std::swap(system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, indexFractionalA)],
-                system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, lastMoleculeIdA)]);
+      system.swapMolecules(selectedComponent, indexFractionalA,
+                           system.numberOfMoleculesPerComponent[selectedComponent] - 1);
 
       if (system.forceField.computePolarization)
       {
@@ -567,20 +557,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
       {
         system.insertMolecule(componentB, trialMoleculeB.first, trialMoleculeB.second);
       }
-      std::size_t lastMoleculeIdB = system.numberOfMoleculesPerComponent[componentB] - 1;
-      std::span<Atom> lastMoleculeB = system.spanOfMolecule(componentB, lastMoleculeIdB);
-      fractionalMoleculeB = system.spanOfMolecule(componentB, indexFractionalB);
-      std::swap_ranges(fractionalMoleculeB.begin(), fractionalMoleculeB.end(), lastMoleculeB.begin());
-      if (system.forceField.computePolarization)
-      {
-        std::span<double3> fieldFractionalB = system.spanElectricFieldOld(componentB, indexFractionalB);
-        std::span<double3> fieldLastB = system.spanElectricFieldOld(componentB, lastMoleculeIdB);
-        std::swap_ranges(fieldFractionalB.begin(), fieldFractionalB.end(), fieldLastB.begin());
-      }
-      std::swap(system.moleculeData[system.moleculeIndexOfComponent(componentB, indexFractionalB)],
-                system.moleculeData[system.moleculeIndexOfComponent(componentB, lastMoleculeIdB)]);
-
-      system.updateMoleculeAtomInformation();
+      system.swapMolecules(componentB, indexFractionalB, system.numberOfMoleculesPerComponent[componentB] - 1);
       system.computeTailCorrectionCounts();
 
       componentA.mc_moves_statistics.addAccepted(move, 0);
@@ -914,29 +891,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
       }
 
       // component A: swap the new fractional molecule into the fractional slot and delete the old one
-      std::swap_ranges(newFractionalMoleculeA.begin(), newFractionalMoleculeA.end(), fractionalMoleculeA.begin());
-      if (system.forceField.computePolarization)
-      {
-        std::span<double3> storedFieldFractionalA = system.spanElectricFieldOld(selectedComponent, indexFractionalA);
-        std::span<double3> storedFieldSelectedA = system.spanElectricFieldOld(selectedComponent, selectedMoleculeA);
-        std::swap_ranges(storedFieldFractionalA.begin(), storedFieldFractionalA.end(), storedFieldSelectedA.begin());
-      }
-      std::swap(system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMoleculeA)],
-                system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, indexFractionalA)]);
+      system.swapMolecules(selectedComponent, selectedMoleculeA, indexFractionalA);
       system.deleteMolecule(selectedComponent, selectedMoleculeA, newFractionalMoleculeA);
 
-      // component B: re-acquire the spans (deletion invalidates them) and do the same
-      fractionalMoleculeB = system.spanOfMolecule(componentB, indexFractionalB);
+      // component B: re-acquire the span (deletion invalidates it) and do the same
       newFractionalMoleculeB = system.spanOfMolecule(componentB, selectedMoleculeB);
-      std::swap_ranges(newFractionalMoleculeB.begin(), newFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-      if (system.forceField.computePolarization)
-      {
-        std::span<double3> storedFieldFractionalB = system.spanElectricFieldOld(componentB, indexFractionalB);
-        std::span<double3> storedFieldSelectedB = system.spanElectricFieldOld(componentB, selectedMoleculeB);
-        std::swap_ranges(storedFieldFractionalB.begin(), storedFieldFractionalB.end(), storedFieldSelectedB.begin());
-      }
-      std::swap(system.moleculeData[system.moleculeIndexOfComponent(componentB, selectedMoleculeB)],
-                system.moleculeData[system.moleculeIndexOfComponent(componentB, indexFractionalB)]);
+      system.swapMolecules(componentB, selectedMoleculeB, indexFractionalB);
       system.deleteMolecule(componentB, selectedMoleculeB, newFractionalMoleculeB);
       system.computeTailCorrectionCounts();
 
