@@ -635,6 +635,44 @@ TEST(MC_DOUBLE_BRIDGING, db_tags_travel_with_the_exchanged_tails)
   EXPECT_GE(accepted, 20uz);
 }
 
+// The reversed segment of a double rebridging does not move: the chain runs through it the other way. The
+// persistent tags of its atoms go with them to the mirrored slots, so after an accepted move only the two
+// re-bridged trimers hold atoms whose tags name another position.
+TEST(MC_DOUBLE_BRIDGING, idr_tags_stay_with_the_reversed_segment)
+{
+  const ForceField forceField = makeZeroForceField();
+  Component chain = makeComponent(forceField, "idr-c16-tags", chainJson(16, "0.0, 0.0, 0.0, 0.0"));
+  System system =
+      System(forceField, SimulationBox(200.0, 200.0, 200.0), false, 300.0, 1e4, 1.0, {}, {chain}, {}, {1}, 5);
+  system.runningEnergies = system.computeTotalEnergies();
+
+  RandomNumber random(1234);
+  std::size_t accepted = 0;
+  for (std::size_t attempt = 0; attempt != 20000 && accepted < 20; ++attempt)
+  {
+    std::map<std::uint32_t, double3> positionOfTag;
+    for (std::size_t i = 0; i < system.atomTags.size(); ++i)
+    {
+      positionOfTag[system.atomTags[i]] = system.atomData[i].position;
+    }
+    if (!MC_Moves::intramolecularDoubleRebridgingMove(random, system, 0, 0).has_value()) continue;
+    ++accepted;
+
+    ASSERT_NO_THROW(system.checkAtomTags());
+    std::size_t movedTags = 0;
+    for (const auto& [tag, position] : positionOfTag)
+    {
+      const std::uint32_t index = system.atomIndexOfTag[tag];
+      ASSERT_NE(index, System::noAtom);
+      if ((system.atomData[index].position - position).length() > 1e-9) ++movedTags;
+    }
+    // the two trimers of three backbone atoms were placed anew; every other atom is where it was
+    EXPECT_GT(movedTags, 0uz);
+    EXPECT_LE(movedTags, 6uz) << "attempt " << attempt;
+  }
+  EXPECT_GE(accepted, 20uz);
+}
+
 TEST(MC_DOUBLE_BRIDGING, db_u0_torsions_uniform_and_tails_exchanged)
 {
   const ForceField forceField = makeZeroForceField();

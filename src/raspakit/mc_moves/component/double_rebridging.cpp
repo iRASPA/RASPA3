@@ -240,6 +240,20 @@ std::optional<RunningEnergy> MC_Moves::intramolecularDoubleRebridgingMove(Random
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
     std::copy(trialAtoms.cbegin(), trialAtoms.cend(), molecule_atoms.begin());
+    // The atoms of the reversed segment did not move: the chain runs through them the other way, so each unit's
+    // atoms now sit in the mirrored slots. Their persistent tags (and dynamics) go with them, as the exchanged
+    // tails of the double bridging do; the re-bridged trimers were placed anew and keep theirs.
+    const std::size_t first = static_cast<std::size_t>(molecule_atoms.data() - system.atomData.data());
+    for (std::size_t k = a + 4; k < a + 4 + b - k; ++k)
+    {
+      const Component::BridgingTopology::Unit& unit = units[k];
+      const Component::BridgingTopology::Unit& mirror = units[a + 4 + b - k];
+      system.exchangeAtomTags(first + unit.backboneAtom, first + mirror.backboneAtom);
+      for (std::size_t p = 0; p != unit.sideAtoms.size(); ++p)
+      {
+        system.exchangeAtomTags(first + unit.sideAtoms[p], first + mirror.sideAtoms[p]);
+      }
+    }
     // in-place change of one molecule: keep the molecule cell list consistent, like the other in-place moves
     system.cellListAtomsMoved(molecule_atoms);
     molecule.centerOfMassPosition = component.computeCenterOfMass(molecule_atoms);

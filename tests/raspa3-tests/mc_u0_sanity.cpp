@@ -483,6 +483,47 @@ TEST(MC_U0_SANITY, repeat_units_validation)
 // The stereocentre at the junction of a reptation (the CH whose methyl the growth kept and whose next CH2 it
 // grows) has its parity decided by the spin of the grown bead about the backbone bond: the spin trials of the
 // other parity are forbidden, so the grown chain keeps every declared handedness, move after move.
+// A reptation relabels the chain: the surviving units stay where they are and become the units one closer to
+// the vacated end, and the atoms of the vacated unit are placed anew in the slots of the arriving unit. The
+// persistent tags name the atoms, not the slots, so after an accepted move only the regrown unit's tags are at
+// a new position.
+TEST(MC_U0_SANITY, reptation_tags_stay_with_the_surviving_units)
+{
+  const ForceField forceField = makeZeroForceField();
+  TemporaryFile file("periodic-hexane-u0.json", kPeriodicHexaneJson);
+  Component chain = Component(Component::Type::Adsorbate, 0, forceField, "periodic-hexane-u0", file.stemPath().string(),
+                              5, 21, MCMoveProbabilities(), std::nullopt, false);
+  ASSERT_EQ(chain.repeatUnits.size(), 2uz);
+  System system =
+      System(forceField, SimulationBox(200.0, 200.0, 200.0), false, 300.0, 1e4, 1.0, {}, {chain}, {}, {1}, 5);
+  system.runningEnergies = system.computeTotalEnergies();
+
+  RandomNumber random(31);
+  std::size_t accepted = 0;
+  for (std::size_t i = 0; i != 100 && accepted < 20; ++i)
+  {
+    std::map<std::uint32_t, double3> positionOfTag;
+    for (std::size_t k = 0; k < system.atomTags.size(); ++k)
+    {
+      positionOfTag[system.atomTags[k]] = system.atomData[k].position;
+    }
+    if (!MC_Moves::reptationMove(random, system, 0, 0).has_value()) continue;
+    ++accepted;
+
+    ASSERT_NO_THROW(system.checkAtomTags());
+    std::size_t movedTags = 0;
+    for (const auto& [tag, position] : positionOfTag)
+    {
+      const std::uint32_t index = system.atomIndexOfTag[tag];
+      ASSERT_NE(index, System::noAtom);
+      if ((system.atomData[index].position - position).length() > 0.0) ++movedTags;
+    }
+    // the three atoms of the regrown unit; the other three are where they were
+    EXPECT_EQ(movedTags, 3uz) << "move " << i;
+  }
+  EXPECT_GE(accepted, 20uz);
+}
+
 TEST(MC_U0_SANITY, reptation_keeps_the_declared_stereocentres)
 {
   const ForceField forceField = makeZeroForceFieldWithCH();

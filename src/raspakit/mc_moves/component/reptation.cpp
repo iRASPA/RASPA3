@@ -212,6 +212,27 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     std::copy(newMolecule.begin(), newMolecule.end(), molecule_atoms.begin());
+    // The surviving units did not move: the chain was relabelled around them, so their atoms now sit one unit
+    // closer to the vacated end, and the atoms of the vacated unit were placed anew in the slots of the arriving
+    // unit. The persistent tags (and dynamics) follow the atoms through this rotation of the slots.
+    const std::size_t first = static_cast<std::size_t>(molecule_atoms.data() - system.atomData.data());
+    for (std::size_t j = 0; j != units.front().size(); ++j)
+    {
+      if (forward)
+      {
+        for (std::size_t k = 0; k + 1 != numberOfUnits; ++k)
+        {
+          system.exchangeAtomTags(first + units[k][j], first + units[k + 1][j]);
+        }
+      }
+      else
+      {
+        for (std::size_t k = numberOfUnits - 1; k != 0; --k)
+        {
+          system.exchangeAtomTags(first + units[k][j], first + units[k - 1][j]);
+        }
+      }
+    }
     system.cellListAtomsMoved(molecule_atoms);
 
     if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
