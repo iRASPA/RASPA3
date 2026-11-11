@@ -22,7 +22,7 @@ std::vector<Atom> CBMC::stepBeadPositions(std::span<const Atom> chainAtoms, cons
 }
 
 // logBoltzmannFactors are (-beta U)
-std::size_t CBMC::selectTrialPosition(RandomNumber &random, std::span<const double> logBoltzmannFactors)
+CBMC::TrialSelection CBMC::selectTrialPosition(RandomNumber &random, std::span<const double> logBoltzmannFactors)
 {
   // Energies are always bounded from below [-U_max, infinity>
   // Find the lowest energy value, i.e. the largest value of (-beta U)
@@ -52,7 +52,7 @@ std::size_t CBMC::selectTrialPosition(RandomNumber &random, std::span<const doub
     cumw += std::exp(logBoltzmannFactors[++selected] - largest_value);
   }
 
-  return selected;
+  return {selected, largest_value + std::log(sumShiftedBoltzmannFactors)};
 }
 
 double CBMC::chiralSignedVolume(const std::array<std::size_t, 4> &ids, std::span<const Atom> atoms)

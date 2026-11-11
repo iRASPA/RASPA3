@@ -111,6 +111,18 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
     return true;
   };
 
+  // No term of the step depends on the spin (no torsion, no variant bend, no routed unsampled or non-bonded
+  // term, no guide, no declared centre): every spin carries the same factor, so the selection is a uniform
+  // angle and the weight of the spin is one, without the trial spins.
+  if (intra.torsions.empty() && step.spin.variantBends.empty() && !step.spin.hasUnsampledTerms &&
+      !step.spin.hasNonBondedTerms && !hasGuides && !lookahead.has_value() && spinCentres.empty())
+  {
+    placeSpin(pinFirstToBase ? 0.0 : (2.0 * random.uniform() - 1.0) * std::numbers::pi);
+    std::vector<Atom> positions(nextBeads.size());
+    for (std::size_t k = 0; k != nextBeads.size(); ++k) positions[k] = chainAtoms[nextBeads[k]];
+    return {std::move(positions), 1.0};
+  }
+
   for (std::size_t j = 0; j != numberOfTorsionTrials; ++j)
   {
     double angle = (pinFirstToBase && j == 0) ? 0.0 : (2.0 * random.uniform() - 1.0) * std::numbers::pi;
@@ -173,32 +185,33 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
     return {std::move(dead), 0.0};
   }
 
-  const std::size_t selected_torsion =
-      pinFirstToBase ? 0 : CBMC::selectTrialPosition(random, logTorsionBoltzmannFactors);
+  // the retrace pins the old spin (index 0) and only needs the sum; the grow draws and gets the sum with it
+  std::size_t selected_torsion = 0;
+  double logRosenbluthSum;
+  if (pinFirstToBase)
+  {
+    const double maxLogFactor =
+        *std::max_element(logTorsionBoltzmannFactors.begin(), logTorsionBoltzmannFactors.end());
+    logRosenbluthSum =
+        maxLogFactor + std::log(std::accumulate(logTorsionBoltzmannFactors.begin(), logTorsionBoltzmannFactors.end(),
+                                                0.0, [&](const double &acc, const double &logFactor)
+                                                { return acc + std::exp(logFactor - maxLogFactor); }));
+  }
+  else
+  {
+    const CBMC::TrialSelection selection = CBMC::selectTrialPosition(random, logTorsionBoltzmannFactors);
+    selected_torsion = selection.index;
+    logRosenbluthSum = selection.logSum;
+  }
 
   placeSpin(angles[selected_torsion]);
   std::vector<Atom> positions(nextBeads.size());
   for (std::size_t k = 0; k != nextBeads.size(); ++k) positions[k] = chainAtoms[nextBeads[k]];
 
-  double rosenbluth_weight_torsion;
-  if (!hasGuides)
-  {
-    rosenbluth_weight_torsion =
-        std::accumulate(logTorsionBoltzmannFactors.begin(), logTorsionBoltzmannFactors.end(), 0.0,
-                        [](const double &acc, const double &logFactor) { return acc + std::exp(logFactor); });
-  }
-  else
-  {
-    // Guided: log-sum-exp (a guide can shift the log factors by tens of units), and the guide of the
-    // selected spin divided out (see above).
-    const double maxLogFactor =
-        *std::max_element(logTorsionBoltzmannFactors.begin(), logTorsionBoltzmannFactors.end());
-    const double logRosenbluthSum =
-        maxLogFactor + std::log(std::accumulate(logTorsionBoltzmannFactors.begin(), logTorsionBoltzmannFactors.end(),
-                                                0.0, [&](const double &acc, const double &logFactor)
-                                                { return acc + std::exp(logFactor - maxLogFactor); }));
-    rosenbluth_weight_torsion = std::exp(logRosenbluthSum - logGuides[selected_torsion]);
-  }
+  // Guided: the guide of the selected spin divided out again (see above); the log-sum-exp form holds the
+  // shifts of tens of units a guide can add.
+  double rosenbluth_weight_torsion =
+      hasGuides ? std::exp(logRosenbluthSum - logGuides[selected_torsion]) : std::exp(logRosenbluthSum);
 
   // trials drawn from the allowed half of the circle estimate twice the constrained spin integral
   if (step.spin.parityIsHalfCircle) rosenbluth_weight_torsion *= 0.5;

@@ -147,6 +147,7 @@ std::string BondPotential::print() const
 
 double BondPotential::generateBondLength(RandomNumber &random, double beta) const
 {
+  const Potentials::PotentialTag tag(0, static_cast<int>(type), parameters);
   double bond_length, sigma, envelope;
 
   switch (type)
@@ -168,8 +169,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       sigma = std::sqrt(1.0 / (beta * parameters[0]));
       if (!(sigma < 0.5 * std::max(parameters[1], 1.0)))
       {
-        return sampleBondLengthRejection(
-            random, 0.0, parameters[1] + 3.0, beta,
+        return sampleBondLengthRejection(tag, random, 0.0, parameters[1] + 3.0, beta,
             [&](double r) { return 0.5 * parameters[0] * (r - parameters[1]) * (r - parameters[1]); });
       }
       envelope = (parameters[1] + 6.0 * sigma) * (parameters[1] + 6.0 * sigma);
@@ -181,7 +181,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // ===============================================
       // p_0/k_B [K/A^2]   force constant
       sigma = std::sqrt(1.0 / (beta * parameters[0]));
-      return sampleBondLengthRejection(random, 0.0, 6.0 * sigma, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, 6.0 * sigma, beta,
                                        [&](double r) { return 0.5 * parameters[0] * r * r; });
     case BondType::Morse:
       // p_0*[(1.0-{exp(-p_1*(r-p_2))})^2-1.0]
@@ -189,7 +189,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // p_0/k_B [K]       force constant
       // p_1     [A^-1]    parameter
       // p_2     [A]       reference bond distance
-      return sampleBondLengthRejection(random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
                                        [&](double r)
                                        {
                                          return parameters[0] *
@@ -201,7 +201,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // ===============================================
       // p_0/k_B [K A^12]
       // p_1/k_B [K A^6]
-      return sampleBondLengthRejection(random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
                                        [&](double r)
                                        {
                                          double temp = std::pow(1.0 / (r * r), 3);
@@ -212,7 +212,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // ===============================================
       // p_0/k_B [K]
       // p_1     [A]
-      return sampleBondLengthRejection(random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
                                        [&](double r)
                                        {
                                          double temp = std::pow((parameters[1] * parameters[1]) / (r * r), 3);
@@ -224,7 +224,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // p_0/k_B [K]
       // p_1     [A^-1]
       // p_2/k_B [K A^6]
-      return sampleBondLengthRejection(random, 0.8, 3.8, beta,
+      return sampleBondLengthRejection(tag, random, 0.8, 3.8, beta,
                                        [&](double r)
                                        {
                                          return parameters[0] * std::exp(-parameters[1] * r) -
@@ -237,7 +237,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // p_0/k_B [K/A^2]
       // p_1     [A]
       // p_2     [A]
-      return sampleBondLengthRejection(random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
                                        [&](double r)
                                        {
                                          double r1 = r - parameters[1];
@@ -253,7 +253,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // p_1     [A]
       // p_2/k_B [K/A^3]
       // p_3/k_B [K/A^4]
-      return sampleBondLengthRejection(random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
                                        [&](double r)
                                        {
                                          double temp = r - parameters[1];
@@ -269,7 +269,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // p_1     [A]
       // p_2/k_B [K/A^3]
       // p_3/k_B [K/A^4]
-      return sampleBondLengthRejection(random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
                                        [&](double r)
                                        {
                                          double temp = r - parameters[1];
@@ -282,7 +282,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // =================================================================
       // p_0     [mdyne/A molecule]
       // p_1     [A]
-      return sampleBondLengthRejection(random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
                                        [&](double r)
                                        {
                                          double temp = r - parameters[1];

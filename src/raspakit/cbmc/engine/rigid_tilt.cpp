@@ -126,7 +126,7 @@ class RigidTiltSampler
       logRollBoltzmannFactors[r] = -beta_ * bendEnergy();
     }
 
-    const std::size_t selected = CBMC::selectTrialPosition(random_, logRollBoltzmannFactors);
+    const std::size_t selected = CBMC::selectTrialPosition(random_, logRollBoltzmannFactors).index;
     placeRoll(coneDirection, rollAngleOf(selected));
     currentEnergy_ = bendEnergy();
   }

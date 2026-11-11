@@ -10,9 +10,17 @@ import cbmc_grow_step;
 
 export namespace CBMC
 {
-/// Rosenbluth selection among trial directions given their log Boltzmann factors (-beta U): returns
-/// the index of the selected trial, drawn with probability proportional to exp(logBoltzmannFactor).
-std::size_t selectTrialPosition(RandomNumber &random, std::span<const double> logBoltzmannFactors);
+/// The outcome of a Rosenbluth selection: the index of the selected trial and the logarithm of the sum of the
+/// Boltzmann factors it was drawn from (the callers need both; the sum falls out of the selection).
+struct TrialSelection
+{
+  std::size_t index{};
+  double logSum{};
+};
+
+/// Rosenbluth selection among trial directions given their log Boltzmann factors (-beta U): the index of the
+/// selected trial, drawn with probability proportional to exp(logBoltzmannFactor), and the log of their sum.
+TrialSelection selectTrialPosition(RandomNumber &random, std::span<const double> logBoltzmannFactors);
 
 /// Signed volume of the tetrahedron spanned by the four atoms of a chiral center; its sign is the
 /// center's parity.
@@ -40,8 +48,9 @@ class ScratchBeads
  public:
   ScratchBeads(std::vector<Atom> &chain, std::span<const std::size_t> beads) : chain_(chain), beads_(beads)
   {
-    saved_.reserve(beads.size());
-    for (std::size_t bead : beads) saved_.push_back(chain[bead]);
+    // a step grows a few beads: they fit the inline buffer, and no allocation is made per trial
+    if (beads.size() > inlineCapacity) overflow_.resize(beads.size() - inlineCapacity);
+    for (std::size_t k = 0; k != beads.size(); ++k) saved(k) = chain[beads[k]];
   }
   ScratchBeads(std::vector<Atom> &chain, const GrowStep &step) : ScratchBeads(chain, step.nextBeads) {}
   ~ScratchBeads()
@@ -54,16 +63,21 @@ class ScratchBeads
   /// Puts the saved beads back (also done by the destructor unless kept).
   void restore() const
   {
-    for (std::size_t k = 0; k != beads_.size(); ++k) chain_[beads_[k]] = saved_[k];
+    for (std::size_t k = 0; k != beads_.size(); ++k) chain_[beads_[k]] = saved(k);
   }
 
   /// Leaves the beads as they are now on destruction.
   void keep() noexcept { kept_ = true; }
 
  private:
+  static constexpr std::size_t inlineCapacity = 8;
+  Atom &saved(std::size_t k) { return k < inlineCapacity ? inline_[k] : overflow_[k - inlineCapacity]; }
+  const Atom &saved(std::size_t k) const { return k < inlineCapacity ? inline_[k] : overflow_[k - inlineCapacity]; }
+
   std::vector<Atom> &chain_;
   std::span<const std::size_t> beads_;
-  std::vector<Atom> saved_{};
+  std::array<Atom, inlineCapacity> inline_{};
+  std::vector<Atom> overflow_{};
   bool kept_{false};
 };
 }  // namespace CBMC

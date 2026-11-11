@@ -76,9 +76,8 @@ std::optional<MultipleFirstBeadSelection> selectAmongRandomPositions(RandomNumbe
 
   const std::vector<double> logBoltzmannFactors = logBoltzmannFactorsOf(context, trials);
 
-  const std::size_t selected = selectTrialPosition(random, logBoltzmannFactors);
+  const auto [selected, logRosenbluthSum] = selectTrialPosition(random, logBoltzmannFactors);
 
-  const double logRosenbluthSum = logSumExp(logBoltzmannFactors);
   // (the exponential of a very negative log-sum is zero, below any positive minimum, as before)
   if (std::exp(logRosenbluthSum) < context.settings.minimumRosenbluthFactor) return std::nullopt;
 

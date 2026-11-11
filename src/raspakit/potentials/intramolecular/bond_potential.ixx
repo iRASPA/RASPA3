@@ -7,6 +7,7 @@ import std;
 import stringutils;
 import archive;
 import randomnumbers;
+import rejection_envelope;
 import double3;
 import double3x3;
 import units;
@@ -18,16 +19,23 @@ import units;
 // accepted with r^2 exp(-beta u) directly, which exceeds one for r > 1 or u < 0 and silently
 // truncates -- not a valid rejection scheme for the anharmonic bond types.
 export template <typename EnergyFunction>
-double sampleBondLengthRejection(RandomNumber& random, double lo, double hi, double beta, EnergyFunction energy)
+double sampleBondLengthRejection(const Potentials::PotentialTag& tag, RandomNumber& random, double lo, double hi,
+                                 double beta, EnergyFunction energy)
 {
-  constexpr std::size_t numberOfGridPoints = 1024;
-  double envelope = 0.0;
-  for (std::size_t i = 0; i != numberOfGridPoints; ++i)
-  {
-    double r = lo + (hi - lo) * (static_cast<double>(i) + 0.5) / static_cast<double>(numberOfGridPoints);
-    envelope = std::max(envelope, r * r * std::exp(-beta * energy(r)));
-  }
-  envelope *= 1.1;
+  // the envelope depends on the potential, the temperature and the interval only: estimated once per thread
+  const double envelope = Potentials::cachedEnvelope(tag, beta, lo, hi,
+                                                     [&]
+                                                     {
+                                                       constexpr std::size_t numberOfGridPoints = 1024;
+                                                       double maximum = 0.0;
+                                                       for (std::size_t i = 0; i != numberOfGridPoints; ++i)
+                                                       {
+                                                         double r = lo + (hi - lo) * (static_cast<double>(i) + 0.5) /
+                                                                             static_cast<double>(numberOfGridPoints);
+                                                         maximum = std::max(maximum, r * r * std::exp(-beta * energy(r)));
+                                                       }
+                                                       return 1.1 * maximum;
+                                                     });
 
   double bond_length, density;
   do

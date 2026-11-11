@@ -126,11 +126,21 @@ CBMC::StepTrial guidedFlexibleSeedTrial(RandomNumber &random, const CBMC::Growth
     }
   }
 
-  const std::size_t selected = pinnedOld.has_value() ? 0 : CBMC::selectTrialPosition(random, logGuides);
-  const double maxLogGuide = *std::max_element(logGuides.begin(), logGuides.end());
-  const double logSum = maxLogGuide + std::log(std::accumulate(logGuides.begin(), logGuides.end(), 0.0,
-                                                               [&](const double &acc, const double &logGuide)
-                                                               { return acc + std::exp(logGuide - maxLogGuide); }));
+  std::size_t selected = 0;
+  double logSum;
+  if (pinnedOld.has_value())
+  {
+    const double maxLogGuide = *std::max_element(logGuides.begin(), logGuides.end());
+    logSum = maxLogGuide + std::log(std::accumulate(logGuides.begin(), logGuides.end(), 0.0,
+                                                    [&](const double& acc, const double& logGuide)
+                                                    { return acc + std::exp(logGuide - maxLogGuide); }));
+  }
+  else
+  {
+    const CBMC::TrialSelection selection = CBMC::selectTrialPosition(random, logGuides);
+    selected = selection.index;
+    logSum = selection.logSum;
+  }
   return {{candidates[selected]}, std::exp(logSum - logGuides[selected]) / static_cast<double>(m)};
 }
 

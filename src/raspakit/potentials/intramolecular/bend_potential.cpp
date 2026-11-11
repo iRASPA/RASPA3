@@ -6,6 +6,7 @@ import std;
 
 import archive;
 import randomnumbers;
+import rejection_envelope;
 import double3;
 import units;
 
@@ -227,16 +228,23 @@ std::string BendPotential::print() const
 // solid-angle Jacobian is a single power of sin(theta) -- a direction placed on the cone with a
 // uniform azimuth -- where the former samplers accepted with sin^2(theta).
 template <typename EnergyFunction>
-static double sampleBendAngleRejection(RandomNumber &random, double beta, EnergyFunction energy)
+static double sampleBendAngleRejection(const Potentials::PotentialTag &tag, RandomNumber &random, double beta,
+                                       EnergyFunction energy)
 {
-  constexpr std::size_t numberOfGridPoints = 1024;
-  double envelope = 0.0;
-  for (std::size_t i = 0; i != numberOfGridPoints; ++i)
-  {
-    double t = std::numbers::pi * (static_cast<double>(i) + 0.5) / static_cast<double>(numberOfGridPoints);
-    envelope = std::max(envelope, std::sin(t) * std::exp(-beta * energy(t)));
-  }
-  envelope *= 1.1;
+  // the envelope depends on the potential and the temperature only: estimated once per thread
+  const double envelope = Potentials::cachedEnvelope(
+      tag, beta, 0.0, std::numbers::pi,
+      [&]
+      {
+        constexpr std::size_t numberOfGridPoints = 1024;
+        double maximum = 0.0;
+        for (std::size_t i = 0; i != numberOfGridPoints; ++i)
+        {
+          double t = std::numbers::pi * (static_cast<double>(i) + 0.5) / static_cast<double>(numberOfGridPoints);
+          maximum = std::max(maximum, std::sin(t) * std::exp(-beta * energy(t)));
+        }
+        return 1.1 * maximum;
+      });
 
   double theta, density;
   do
@@ -249,6 +257,7 @@ static double sampleBendAngleRejection(RandomNumber &random, double beta, Energy
 
 double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
 {
+  const Potentials::PotentialTag tag(2, static_cast<int>(type), parameters);
   double theta, sigma;
 
   switch (type)
@@ -271,8 +280,7 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
       sigma = std::sqrt(1.0 / (beta * parameters[0]));
       if (!(sigma < 1.0))
       {
-        return sampleBendAngleRejection(
-            random, beta,
+        return sampleBendAngleRejection(tag, random, beta,
             [&](double t) { return 0.5 * parameters[0] * (t - parameters[1]) * (t - parameters[1]); });
       }
       do theta = random.Gaussian(parameters[1], sigma);
@@ -285,7 +293,7 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
       // p_1     [radians]
       // p_2/k_B [K/rad^3]
       // p_3/k_B [K/rad^4]
-      return sampleBendAngleRejection(random, beta,
+      return sampleBendAngleRejection(tag, random, beta,
                                       [&](double t)
                                       {
                                         return 0.5 * parameters[0] * std::pow(t - parameters[1], 2) +
@@ -299,7 +307,7 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
       // p_1     [radians]
       // p_2/k_B [K/rad^3]
       // p_3/k_B [K/rad^4]
-      return sampleBendAngleRejection(random, beta,
+      return sampleBendAngleRejection(tag, random, beta,
                                       [&](double t)
                                       {
                                         return parameters[0] * std::pow(t - parameters[1], 2) +
@@ -311,7 +319,7 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
       // ===============================================
       // p_0/k_B [K]
       // p_1     [radians]
-      return sampleBendAngleRejection(random, beta,
+      return sampleBendAngleRejection(tag, random, beta,
                                       [&](double t)
                                       { return 0.5 * parameters[0] * std::pow(std::cos(t) - parameters[1], 2); });
     case BendType::Cosine:
@@ -320,14 +328,14 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
       // p_0/k_B [K]
       // p_1     [-]
       // p_2     [radians]
-      return sampleBendAngleRejection(random, beta,
+      return sampleBendAngleRejection(tag, random, beta,
                                       [&](double t)
                                       { return parameters[0] * (1.0 + std::cos(parameters[1] * t - parameters[2])); });
     case BendType::Tafipolsky:
       // 0.5*p_0*(1+cos(theta))*(1+cos(2*theta))
       // ===============================================
       // p_0/k_B [K]
-      return sampleBendAngleRejection(random, beta,
+      return sampleBendAngleRejection(tag, random, beta,
                                       [&](double t)
                                       { return 0.5 * parameters[0] * (1.0 + std::cos(t)) * (1.0 + std::cos(2.0 * t)); });
     case BendType::MM3:
@@ -336,7 +344,7 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
       // =================================================================================================
       // p_0/k_B [mdyne A/rad^2]
       // p_1     [radians]
-      return sampleBendAngleRejection(random, beta,
+      return sampleBendAngleRejection(tag, random, beta,
                                       [&](double t)
                                       {
                                         double temp = (t - parameters[1]) * Units::RadiansToDegrees;
@@ -413,7 +421,6 @@ double BendPotential::calculateEnergy(const double3 &posA, const double3 &posB, 
 
     cos_theta = double3::dot(ap, cp) / std::sqrt(rap2 * rcp2);
     cos_theta = std::clamp(cos_theta, -1.0, 1.0);
-    theta = std::acos(cos_theta);
   }
   else
   {
@@ -427,7 +434,25 @@ double BendPotential::calculateEnergy(const double3 &posA, const double3 &posB, 
 
     cos_theta = double3::dot(dr_ab, dr_cb);
     cos_theta = std::clamp(cos_theta, -1.0, 1.0);
-    theta = std::acos(cos_theta);
+  }
+
+  // the angle itself (an arc cosine) only for the types written in the angle; the cosine forms use cos_theta
+  switch (type)
+  {
+    case BendType::Harmonic:
+    case BendType::CoreShell:
+    case BendType::Quartic:
+    case BendType::CFF_Quartic:
+    case BendType::HarmonicCosine:
+    case BendType::Cosine:
+    case BendType::Tafipolsky:
+    case BendType::MM3:
+    case BendType::MM3_inplane:
+      theta = std::acos(cos_theta);
+      break;
+    default:
+      theta = 0.0;
+      break;
   }
 
   switch (type)

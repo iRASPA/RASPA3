@@ -112,16 +112,26 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
                                   (coupled ? std::log(trial.torsionWeight) : 0.0));
   }
 
-  const std::size_t selected = retrace ? 0 : CBMC::selectTrialPosition(random, logBoltzmannFactors);
+  // the retrace keeps the old trial (index 0) and only needs the sum; the grow draws and gets the sum with it
+  std::size_t selected = 0;
+  double logRosenbluthSum;
+  if (retrace)
+  {
+    const double maxLogBoltzmannFactor = *std::max_element(logBoltzmannFactors.begin(), logBoltzmannFactors.end());
+    logRosenbluthSum =
+        maxLogBoltzmannFactor +
+        std::log(std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
+                                 [&](const double& acc, const double& logBoltzmannFactor)
+                                 { return acc + std::exp(logBoltzmannFactor - maxLogBoltzmannFactor); }));
+  }
+  else
+  {
+    const CBMC::TrialSelection selection = CBMC::selectTrialPosition(random, logBoltzmannFactors);
+    selected = selection.index;
+    logRosenbluthSum = selection.logSum;
+  }
   const EvaluatedTrial &selectedTrial = trials[selected];
   CBMC::placeStepBeads(chainAtoms, step, selectedTrial.positions);
-
-  const double maxLogBoltzmannFactor = *std::max_element(logBoltzmannFactors.begin(), logBoltzmannFactors.end());
-  const double logRosenbluthSum =
-      maxLogBoltzmannFactor +
-      std::log(std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
-                               [&](const double &acc, const double &logBoltzmannFactor)
-                               { return acc + std::exp(logBoltzmannFactor - maxLogBoltzmannFactor); }));
 
   return {selected, (coupled ? 0.0 : std::log(selectedTrial.torsionWeight)) + logRosenbluthSum -
                         std::log(static_cast<double>(numberOfTrialDirections)) +
