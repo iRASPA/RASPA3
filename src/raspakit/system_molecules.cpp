@@ -84,7 +84,7 @@ void System::insertFractionalMoleculeAtIndex(std::size_t selectedComponent, std:
     addAtomToTailCorrectionCounts(atom);
   }
 
-  updateMoleculeAtomInformation();
+  updateMoleculeAtomInformation(selectedComponent);
 }
 
 void System::insertFractionalMolecule(std::size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
@@ -166,7 +166,7 @@ void System::insertMolecule(std::size_t selectedComponent, [[maybe_unused]] cons
     addAtomToTailCorrectionCounts(atom);
   }
 
-  updateMoleculeAtomInformation();
+  updateMoleculeAtomInformation(selectedComponent);
 }
 
 void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
@@ -212,7 +212,7 @@ void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_u
     addAtomToTailCorrectionCounts(atom);
   }
 
-  updateMoleculeAtomInformation();
+  updateMoleculeAtomInformation(selectedComponent);
 }
 
 void System::insertSerialReactionFractionalMolecule(std::size_t selectedComponent, std::size_t moleculeIndex,
@@ -274,7 +274,7 @@ void System::deleteFractionalMolecule(std::size_t selectedComponent, std::size_t
   netChargeAdsorbates -= removedCharge;
   netChargePerComponent[selectedComponent] -= removedCharge;
 
-  updateMoleculeAtomInformation();
+  updateMoleculeAtomInformation(selectedComponent);
 }
 
 void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedMolecule, const std::span<Atom> molecule)
@@ -323,7 +323,7 @@ void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedM
   translationalDegreesOfFreedom -= components[selectedComponent].translationalDegreesOfFreedom;
   rotationalDegreesOfFreedom -= components[selectedComponent].rotationalDegreesOfFreedom;
 
-  updateMoleculeAtomInformation();
+  updateMoleculeAtomInformation(selectedComponent);
 }
 
 void System::swapMolecules(std::size_t selectedComponent, std::size_t moleculeA, std::size_t moleculeB)
@@ -399,7 +399,7 @@ void System::moveMolecule(std::size_t selectedComponent, std::size_t moleculeInd
   crossLinks.moleculeInserted(selectedComponent, newIndex);
 
   // molecule ids, atom indices of the records and the cell list
-  updateMoleculeAtomInformation();
+  updateMoleculeAtomInformation(selectedComponent);
 }
 
 void System::exchangeMolecule(System& other, std::size_t selectedComponent, std::size_t molecule,
@@ -489,6 +489,7 @@ void System::exchangeConfiguration(System& other)
   {
     swapMobileTail(atomTags, numberOfFrameworkAtoms, other.atomTags, other.numberOfFrameworkAtoms);
     std::swap(atomIndexOfTag, other.atomIndexOfTag);
+    std::swap(lowestFreeTagBound, other.lowestFreeTagBound);
   }
   else
   {
@@ -526,8 +527,10 @@ void System::exchangeConfiguration(System& other)
 
 void System::insertAtomTags(std::size_t offset, std::size_t count)
 {
-  // free tags exist exactly when the table is longer than the atom count: the lowest ones go first
-  std::size_t freeTag = atomIndexOfTag.size() > atomTags.size() ? 0 : atomIndexOfTag.size();
+  // free tags exist exactly when the table is longer than the atom count: the lowest ones go first, searched
+  // from the lower bound of the lowest free tag (every slot below it is in use)
+  std::size_t freeTag = atomIndexOfTag.size() > atomTags.size() ? std::min(lowestFreeTagBound, atomIndexOfTag.size())
+                                                                : atomIndexOfTag.size();
   atomTags.insert(atomTags.begin() + static_cast<std::ptrdiff_t>(offset), count, noAtom);
   for (std::size_t i = offset; i < offset + count; ++i)
   {
@@ -536,6 +539,7 @@ void System::insertAtomTags(std::size_t offset, std::size_t count)
     atomTags[i] = static_cast<std::uint32_t>(freeTag);
     atomIndexOfTag[freeTag] = static_cast<std::uint32_t>(i);
   }
+  lowestFreeTagBound = freeTag;
   for (std::size_t i = offset + count; i < atomTags.size(); ++i)
   {
     atomIndexOfTag[atomTags[i]] = static_cast<std::uint32_t>(i);
@@ -547,6 +551,7 @@ void System::eraseAtomTags(std::size_t offset, std::size_t count)
   for (std::size_t i = offset; i < offset + count; ++i)
   {
     atomIndexOfTag[atomTags[i]] = noAtom;
+    lowestFreeTagBound = std::min<std::size_t>(lowestFreeTagBound, atomTags[i]);
   }
   atomTags.erase(atomTags.begin() + static_cast<std::ptrdiff_t>(offset),
                  atomTags.begin() + static_cast<std::ptrdiff_t>(offset + count));
@@ -562,6 +567,7 @@ void System::resetAtomTags()
   atomTags.resize(atomData.size());
   std::iota(atomTags.begin(), atomTags.end(), std::uint32_t{0});
   atomIndexOfTag = atomTags;
+  lowestFreeTagBound = 0;
 }
 
 void System::rebuildAtomIndexOfTag()
@@ -582,6 +588,7 @@ void System::rebuildAtomIndexOfTag()
   try
   {
     atomIndexOfTag.assign(highest, noAtom);
+    lowestFreeTagBound = 0;
   }
   catch (const std::bad_alloc&)
   {
@@ -619,15 +626,20 @@ void System::checkAtomTags() const
   }
 }
 
-void System::updateMoleculeAtomInformation()
+void System::updateMoleculeAtomInformation(std::size_t firstComponent)
 {
   // The atom array changed size or order: the cell list indices and molecule ids are stale.
   moleculeCellList.invalidate();
 
   std::size_t atom_index = numberOfFrameworkAtoms;
   std::size_t molecule_index{};
+  for (std::size_t k = 0; k < firstComponent; k++)
+  {
+    atom_index += numberOfMoleculesPerComponent[k] * components[k].atoms.size();
+    molecule_index += numberOfMoleculesPerComponent[k];
+  }
 
-  for (std::size_t k = 0; k < components.size(); k++)
+  for (std::size_t k = firstComponent; k < components.size(); k++)
   {
     std::size_t numberOfAtoms = components[k].atoms.size();
 

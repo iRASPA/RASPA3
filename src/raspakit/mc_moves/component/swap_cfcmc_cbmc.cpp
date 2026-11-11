@@ -171,8 +171,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
         timed(system, component, move, Move::Timing::InsertionMolecule,
               [&]
               {
-                return Interactions::computeInterMolecularEnergyDifference(system.forceField, system.simulationBox,
-                                                                           system.spanOfMoleculeAtoms(),
+                return Interactions::computeInterMolecularEnergyDifference(system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(),
                                                                            fractionalMolecule, oldFractionalMolecule);
               });
     if (!moleculeDifference.has_value())
@@ -570,7 +569,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                 [&]
                 {
                   return Interactions::computeInterMolecularEnergyDifference(
-                      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), newFractionalMolecule,
+                      system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), newFractionalMolecule,
                       savedFractionalMolecule);
                 });
       if (!moleculeDifference.has_value())
@@ -819,7 +818,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     // Compute molecule-molecule energy difference
     time_begin = std::chrono::steady_clock::now();
     std::optional<RunningEnergy> interEnergyDifference = Interactions::computeInterMolecularEnergyDifference(
-        system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialPositions, molecule);
+        system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), trialPositions, molecule);
     time_end = std::chrono::steady_clock::now();
     if (insertionDisabled || deletionDisabled)
     {

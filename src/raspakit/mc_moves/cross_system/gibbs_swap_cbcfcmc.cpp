@@ -753,9 +753,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
         timed(systemA, componentA, move, Move::Timing::LambdaChangeNonEwald,
               [&]
               {
-                return Interactions::computeInterMolecularEnergyDifference(systemA.forceField, systemA.simulationBox,
-                                                                           systemA.spanOfMoleculeAtoms(),
-                                                                           trialPositions, fractionalMoleculeA);
+                return Interactions::computeInterMolecularEnergyDifference(
+                    systemA.forceField, systemA.simulationBox, systemA.cellList(), systemA.spanOfMoleculeAtoms(),
+                    trialPositions, fractionalMoleculeA);
               });
 
     if (!interEnergyDifference.has_value()) return std::nullopt;

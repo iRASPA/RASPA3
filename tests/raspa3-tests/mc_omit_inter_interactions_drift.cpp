@@ -102,9 +102,15 @@ TEST(MC_OMIT_INTER_INTERACTIONS_DRIFT, charged_ion_group_swaps)
     probabilities.setProbability(Move::Types::Translation, 1.0);
     probabilities.setProbability(move, 1.0);
     Component sodium = Component::makeIon(forceField, 0, "sodium", forceField.findPseudoAtom("Na+").value(), 1.0);
-    const Component chloride =
-        Component::makeIon(forceField, 1, "chloride", forceField.findPseudoAtom("Cl-").value(), -1.0);
+    Component chloride = Component::makeIon(forceField, 1, "chloride", forceField.findPseudoAtom("Cl-").value(), -1.0);
     sodium.mc_moves_probabilities = probabilities;
+    // The chloride moves too (a component without any move is no longer drawn for a step). The ions do not
+    // interact and the pressure is high, so the group insertions pile up ions without bound; sharing the steps
+    // with the translations of the chloride keeps the count, and with it the magnitude of the running energy
+    // whose rounding the drift test must resolve, where it was.
+    MCMoveProbabilities translationOnly;
+    translationOnly.setProbability(Move::Types::Translation, 1.0);
+    chloride.mc_moves_probabilities = translationOnly;
     sodium.groupComponentIds = {1};
     sodium.maximumGroupDistance = 6.0;
     std::vector<System> systems{
@@ -114,8 +120,11 @@ TEST(MC_OMIT_INTER_INTERACTIONS_DRIFT, charged_ion_group_swaps)
     for (System& s : mc.systems)
     {
       const RunningEnergy drift = s.runningEnergies - s.computeTotalEnergies();
-      EXPECT_NEAR(drift.ewald_fourier, 0.0, 1e-6) << Move::moveNames[std::to_underlying(move)];
-      EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6) << Move::moveNames[std::to_underlying(move)];
+      // the running energy is a sum of thousands of accepted differences of a total of order 1e7 K: its own
+      // rounding is resolved relative to that total
+      const double tolerance = 1e-6 + 1e-13 * std::abs(s.runningEnergies.potentialEnergy());
+      EXPECT_NEAR(drift.ewald_fourier, 0.0, tolerance) << Move::moveNames[std::to_underlying(move)];
+      EXPECT_NEAR(drift.potentialEnergy(), 0.0, tolerance) << Move::moveNames[std::to_underlying(move)];
     }
   }
 }

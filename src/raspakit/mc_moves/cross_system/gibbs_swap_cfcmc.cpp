@@ -238,7 +238,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               [&]
               {
                 return Interactions::computeInterMolecularEnergyDifference(
-                    systemA.forceField, systemA.simulationBox, systemA.spanOfMoleculeAtoms(), newMolecule, {});
+                    systemA.forceField, systemA.simulationBox, systemA.cellList(), systemA.spanOfMoleculeAtoms(), newMolecule, {});
               });
 
     if (!moleculeDifferenceA2.has_value())
@@ -336,7 +336,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               [&]
               {
                 return Interactions::computeInterMolecularEnergyDifference(
-                    systemB.forceField, systemB.simulationBox, systemB.spanOfMoleculeAtoms(), selectedIntegerMoleculeB,
+                    systemB.forceField, systemB.simulationBox, systemB.cellList(), systemB.spanOfMoleculeAtoms(), selectedIntegerMoleculeB,
                     oldSelectedIntegerMoleculeB);
               });
     if (!moleculeDifferenceB.has_value())
@@ -414,8 +414,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
               [&]
               {
-                return Interactions::computeInterMolecularEnergyDifference(systemB.forceField, systemB.simulationBox,
-                                                                           systemB.spanOfMoleculeAtoms(),
+                return Interactions::computeInterMolecularEnergyDifference(systemB.forceField, systemB.simulationBox, systemB.cellList(), systemB.spanOfMoleculeAtoms(),
                                                                            fractionalMoleculeB, oldFractionalMoleculeB);
               });
     if (!moleculeDifferenceB2.has_value())
@@ -674,8 +673,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
         timed(systemA, componentA, move, Move::Timing::LambdaShuffleNonEwald,
               [&]
               {
-                return Interactions::computeInterMolecularEnergyDifference(systemB.forceField, systemB.simulationBox,
-                                                                           systemB.spanOfMoleculeAtoms(),
+                return Interactions::computeInterMolecularEnergyDifference(systemB.forceField, systemB.simulationBox, systemB.cellList(), systemB.spanOfMoleculeAtoms(),
                                                                            fractionalMoleculeB, oldFractionalMoleculeB);
               });
 
@@ -811,8 +809,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
         timed(systemA, componentA, move, Move::Timing::LambdaChangeNonEwald,
               [&]
               {
-                return Interactions::computeInterMolecularEnergyDifference(systemA.forceField, systemA.simulationBox,
-                                                                           systemA.spanOfMoleculeAtoms(),
+                return Interactions::computeInterMolecularEnergyDifference(systemA.forceField, systemA.simulationBox, systemA.cellList(), systemA.spanOfMoleculeAtoms(),
                                                                            trialPositions, fractionalMoleculeA);
               });
 

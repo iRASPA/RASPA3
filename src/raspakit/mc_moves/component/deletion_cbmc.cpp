@@ -50,8 +50,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
 
     // Get a reference to the molecule being deleted
     std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
-    std::copy(system.electricField.begin(), system.electricField.end(), system.electricFieldNew.begin());
-    // std::span<double3> electricFieldMoleculeNew = system.spanElectricFieldNew(selectedComponent, selectedMolecule);
 
     const CBMC::GrowContext retraceContext = system.makeGrowContext();
 

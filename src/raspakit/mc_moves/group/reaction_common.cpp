@@ -65,52 +65,24 @@ namespace MC_Moves::ReactionCommon
   return false;
 }
 
+// The trial structure factor of 'computeChargedGroupEwaldDifference' holds the accepted state: the exchange with
+// the stored one is the whole update (no recomputation over every atom of the system).
 void acceptChargedEwaldMove(System& system) noexcept
 {
-  if (!system.forceField.usesEwaldFourier())
-  {
-    return;
-  }
-
-  (void)Interactions::computeEwaldFourierEnergy(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-      system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
-      system.spanOfMoleculeAtoms(), system.netChargeFramework, system.framework, system.spanOfFrameworkAtoms());
+  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 }
 
+// The Ewald Fourier, self and net-charge difference of replacing the molecules 'oldAtoms' by 'newAtoms', with
+// the trial structure factor left as the state after the replacement. The combined difference matches the
+// exclusion pairs on moleculeId, so multi-molecule spans yield the intra-molecular exclusion terms directly, and
+// its trial sums are the stored ones plus the change of every moved atom: no molecule-by-molecule replay is
+// needed to arrive at them.
 [[nodiscard]] RunningEnergy computeChargedGroupEwaldDifference(System& system, std::span<const Atom> newAtoms,
                                                                std::span<const Atom> oldAtoms) noexcept
 {
-  const std::vector<std::vector<Atom>> newMolecules = splitAtomsByMoleculeId(newAtoms);
-  const std::vector<std::vector<Atom>> oldMolecules = splitAtomsByMoleculeId(oldAtoms);
-
-  RunningEnergy ewaldCombined = Interactions::energyDifferenceEwaldFourier(
+  return Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, system.components, newAtoms, oldAtoms, system.ewaldMoveNetCharge());
-
-  // The combined difference matches exclusion pairs on moleculeId, so multi-molecule spans yield
-  // the intra-molecular exclusion terms directly and need no correction here.
-
-  // rebuild trialEik by replacing the molecules one at a time, keeping storedEik untouched
-  const EwaldStructureFactor storedEikSnapshot = system.storedEik;
-  EwaldStructureFactor workingStoredEik = storedEikSnapshot;
-  for (const std::vector<Atom>& oldMolecule : oldMolecules)
-  {
-    (void)Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                     workingStoredEik, system.trialEik, system.forceField,
-                                                     system.simulationBox, system.components, std::span<const Atom>{}, oldMolecule);
-    workingStoredEik = system.trialEik;
-  }
-  for (const std::vector<Atom>& newMolecule : newMolecules)
-  {
-    (void)Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                     workingStoredEik, system.trialEik, system.forceField,
-                                                     system.simulationBox, system.components, newMolecule, std::span<const Atom>{});
-    workingStoredEik = system.trialEik;
-  }
-  system.storedEik = storedEikSnapshot;
-
-  return ewaldCombined;
 }
 
 // Molecule-molecule tail-correction change of replacing 'oldAtoms' by 'newAtoms' against the background of the

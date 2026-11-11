@@ -198,7 +198,7 @@ std::optional<RunningEnergy> computeMoleculeEnergyDifference(
   }
 
   std::optional<RunningEnergy> moleculeDifference = Interactions::computeInterMolecularEnergyDifference(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialAtoms, oldAtoms);
+      system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), trialAtoms, oldAtoms);
   if (!moleculeDifference.has_value())
   {
     return std::nullopt;

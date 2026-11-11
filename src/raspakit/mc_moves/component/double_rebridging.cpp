@@ -211,13 +211,13 @@ std::optional<RunningEnergy> MC_Moves::intramolecularDoubleRebridgingMove(Random
             });
   if (!frameworkMolecule.has_value()) return std::nullopt;
 
-  std::optional<RunningEnergy> interMolecule =
-      timed(system, component, move, Move::Timing::MoleculeMolecule,
-            [&]
-            {
-              return Interactions::computeInterMolecularEnergyDifference(
-                  system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), movedNew, movedOld);
-            });
+  std::optional<RunningEnergy> interMolecule = timed(system, component, move, Move::Timing::MoleculeMolecule,
+                                                     [&]
+                                                     {
+                                                       return Interactions::computeInterMolecularEnergyDifference(
+                                                           system.forceField, system.simulationBox, system.cellList(),
+                                                           system.spanOfMoleculeAtoms(), movedNew, movedOld);
+                                                     });
   if (!interMolecule.has_value()) return std::nullopt;
 
   // Ewald: the full chain is passed so that the intramolecular exclusion terms of the trimers with the

@@ -234,6 +234,9 @@ export struct System
   // The storage index of the atom holding each tag, 'noAtom' for a free tag; exactly as long as the highest tag
   // in use plus one, so it is bounded by the largest atom count the system has held.
   std::vector<std::uint32_t> atomIndexOfTag;
+  /// A lower bound of the lowest free tag of 'atomIndexOfTag' (every slot below it is in use): the search of an
+  /// insertion starts here instead of at zero. Not persisted; zero is always a valid bound.
+  std::size_t lowestFreeTagBound{0};
   static constexpr std::uint32_t noAtom = std::numeric_limits<std::uint32_t>::max();
   std::vector<Molecule> moleculeData;
   // Rigid-body state of every rigid group of every semi-flexible molecule, in molecule order
@@ -1152,7 +1155,10 @@ export struct System
   /// Throws when the tags are not distinct with 'atomIndexOfTag' their exact inverse.
   void checkAtomTags() const;
 
-  void updateMoleculeAtomInformation();
+  /// Rewrites the molecule records and the per-atom molecule and component ids after the atom array changed size
+  /// or order. The layout of the components before 'firstComponent' is unchanged by an insertion into or a
+  /// deletion from a later one and is left alone.
+  void updateMoleculeAtomInformation(std::size_t firstComponent = 0);
   void checkMoleculeIds();
 
   std::vector<Atom> randomConfiguration(RandomNumber& random, std::size_t selectedComponent,

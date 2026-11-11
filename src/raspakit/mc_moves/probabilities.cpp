@@ -108,7 +108,23 @@ Move::Types MCMoveProbabilities::sample(RandomNumber &random)
   {
     return Move::Types::Count;
   }
-  return static_cast<Move::Types>(random.categoricalDistribution(probabilities));
+  // The draw of 'std::discrete_distribution' (one uniform double, the upper bound in the cumulative normalized
+  // weights) without its per-call allocation of the cumulative table: the same arithmetic in the same order, so
+  // the sequence of moves of a seeded run is unchanged. The table lives on the stack.
+  constexpr std::size_t count = std::to_underlying(Move::Types::Count);
+  std::array<double, count> normalized{};
+  double total = 0.0;
+  for (std::size_t i = 0; i != count; ++i) total += probabilities[i];
+  for (std::size_t i = 0; i != count; ++i) normalized[i] = probabilities[i] / total;
+  std::array<double, count - 1> cumulative{};
+  double running = 0.0;
+  for (std::size_t i = 0; i != count - 1; ++i)
+  {
+    running = (i == 0) ? normalized[0] : running + normalized[i];
+    cumulative[i] = running;
+  }
+  const double draw = random.uniform();
+  return static_cast<Move::Types>(std::upper_bound(cumulative.begin(), cumulative.end(), draw) - cumulative.begin());
 }
 
 std::string MCMoveProbabilities::repr()

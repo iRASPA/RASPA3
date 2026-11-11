@@ -146,8 +146,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
         timed(system, component, move, Move::Timing::InsertionMolecule,
               [&]
               {
-                return Interactions::computeInterMolecularEnergyDifference(system.forceField, system.simulationBox,
-                                                                           system.spanOfMoleculeAtoms(),
+                return Interactions::computeInterMolecularEnergyDifference(system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(),
                                                                            fractionalMolecule, oldFractionalMolecule);
               });
     if (!moleculeDifferenceStep1.has_value())
@@ -261,7 +260,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
               [&]
               {
                 return Interactions::computeInterMolecularEnergyDifference(
-                    system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, {});
+                    system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), trialMolecule.second, {});
               });
 
     if (!moleculeDifferenceStep2.has_value())
@@ -503,8 +502,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
           timed(system, component, move, Move::Timing::DeletionMolecule,
                 [&]
                 {
-                  return Interactions::computeInterMolecularEnergyDifference(system.forceField, system.simulationBox,
-                                                                             system.spanOfMoleculeAtoms(),
+                  return Interactions::computeInterMolecularEnergyDifference(system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(),
                                                                              fractionalMolecule, oldFractionalMolecule);
                 });
       if (!moleculeDifferenceStep1.has_value())
@@ -624,7 +622,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                 [&]
                 {
                   return Interactions::computeInterMolecularEnergyDifference(
-                      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), newFractionalMolecule,
+                      system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), newFractionalMolecule,
                       savedFractionalMolecule);
                 });
       if (!moleculeDifferenceStep2.has_value())
@@ -861,7 +859,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     // Compute molecule-molecule energy contribution
     time_begin = std::chrono::steady_clock::now();
     std::optional<RunningEnergy> interEnergyDifference = Interactions::computeInterMolecularEnergyDifference(
-        system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialPositions, molecule);
+        system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), trialPositions, molecule);
     time_end = std::chrono::steady_clock::now();
     if (insertionDisabled || deletionDisabled)
     {
