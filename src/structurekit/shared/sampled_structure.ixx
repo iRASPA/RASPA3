@@ -18,9 +18,10 @@ export struct SegmentBottleneck
 // Periodic cell list over the atoms of one unit cell. Built on demand for the overlap and clearance
 // queries; leave it as it starts and the first query builds it.
 //
-// It is built again by itself when the number of atoms or the largest radius is no longer what it was built
-// for. Any other change to `positions` or `radii` after a query has to be followed by putting a fresh grid in
-// its place, `neighborGrid = {}`, before the next one, there being nothing cheap that would show it. Either
+// It is built again by itself when the number of atoms is no longer what it was built for. Any other change
+// to `positions` or `radii` after a query, a changed radius among them, has to be followed by putting a fresh
+// grid in its place, `neighborGrid = {}`, before the next one, there being nothing cheap that would show it
+// (the largest radius is read from the build on the way of a query, not found again from every atom). Either
 // way the change is made while no query is running: the queries may be asked from many threads at once, and
 // what they share is a structure that is standing still.
 export struct SampledNeighborGrid
@@ -95,6 +96,9 @@ export struct SampledStructure
   // is inside one. What that buys over `freeRadius` is a value to compare when there is nothing to measure
   // yet, so that a walk that starts inside an atom can still be told which way is out.
   double clearance(const double3 &position) const;
+  // The clearance when it is at least `floor`, and nothing otherwise: the search ends at the first atom that
+  // shows the clearance to be below the floor, which is most of them for a floor that is already a size.
+  std::optional<double> clearanceAtLeast(const double3 &position, double floor) const;
 
   // The largest sphere that can travel in a straight line from `position` to `position + displacement`, and
   // where along the way it is hemmed in most closely. The radius is negative when no sphere can pass.

@@ -40,16 +40,16 @@ void MC_PoreSizeDistribution::run(const SampledStructure &structure, std::option
       double3 sB = double3(random.uniform(), random.uniform(), random.uniform());
       double3 posB = structure.unitCell.cell * sB;
 
-      std::optional<double> radius = structure.freeRadius(posB);
-
-      if (!radius.has_value()) continue;
-
+      // The sphere about posB raises the size of posA only when it covers posA (its radius at least their
+      // distance) and is larger than the size so far: the clearance is asked for at least that, and the search
+      // ends at the first atom that rules it out (what the sphere's radius is otherwise does not matter).
       double3 dr = structure.unitCell.applyPeriodicBoundaryConditions(posA - posB);
       double rr = double3::dot(dr, dr);
 
-      if (rr > radius.value() * radius.value()) continue;
+      std::optional<double> radius = structure.clearanceAtLeast(posB, std::max(largest_radius, std::sqrt(rr)));
+      if (!radius.has_value()) continue;
 
-      largest_radius = std::max(largest_radius, radius.value());
+      largest_radius = radius.value();
     }
 
     if (!(delta_r > 0.0)) continue;

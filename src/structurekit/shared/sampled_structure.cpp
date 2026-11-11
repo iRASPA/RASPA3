@@ -65,19 +65,21 @@ int3 binOfUnwrappedFractional(const double3 &fractional, const int3 &gridSize)
 double ensureNeighborGrid(const SampledStructure &structure)
 {
   SampledNeighborGrid &grid = structure.neighborGrid;
-  const double maxRadius = maximumRadiusOf(structure.radii);
   const std::size_t atomCount = structure.positions.size();
 
   std::atomic_ref<std::uint32_t> published{grid.published};
   std::atomic_ref<std::size_t> builtForAtoms{grid.atomCount};
   std::atomic_ref<double> builtForRadius{grid.maximumRadius};
 
+  // The way of every query: the bins are there and were built for this many atoms. The largest radius is read
+  // from the build, not worked out again: finding it is a pass over every atom, which on this way would be
+  // made for every point asked about (see the header: a change of the radii at the same atom count is one the
+  // structure's owner announces by putting a fresh grid in place).
   const std::uint32_t build = published.load(std::memory_order_acquire);
-  if (build != 0 && builtForAtoms.load(std::memory_order_acquire) == atomCount &&
-      builtForRadius.load(std::memory_order_acquire) == maxRadius &&
-      published.load(std::memory_order_acquire) == build)
+  if (build != 0 && builtForAtoms.load(std::memory_order_acquire) == atomCount)
   {
-    return maxRadius;
+    const double builtRadius = builtForRadius.load(std::memory_order_acquire);
+    if (published.load(std::memory_order_acquire) == build) return builtRadius;
   }
 
   // Building is serialized, and so is finding out under the lock that another thread has built meanwhile.
@@ -85,6 +87,7 @@ double ensureNeighborGrid(const SampledStructure &structure)
   // not share this mutex.
   static std::mutex buildMutex;
   std::lock_guard<std::mutex> lock(buildMutex);
+  const double maxRadius = maximumRadiusOf(structure.radii);
   if (published.load(std::memory_order_acquire) != 0 &&
       builtForAtoms.load(std::memory_order_acquire) == atomCount &&
       builtForRadius.load(std::memory_order_acquire) == maxRadius)
@@ -215,16 +218,20 @@ std::optional<double> SampledStructure::freeRadius(const double3 &position) cons
   return value;
 }
 
-double SampledStructure::clearance(const double3 &position) const
+// The clearance of 'position', walked shell by shell outward from its bin until no further shell can hold a
+// nearer atom. With a 'floor' the walk ends as soon as an atom shows the clearance to be below it: the value
+// then returned is below the floor (what it is exactly is not worked out), and a value at or above the floor
+// is the exact clearance.
+static double clearanceWalk(const SampledStructure &structure, const double3 &position, double floor)
 {
-  if (this->positions.empty()) return std::numeric_limits<double>::max();
+  if (structure.positions.empty()) return std::numeric_limits<double>::max();
 
-  const double maximumRadius = ensureNeighborGrid(*this);
-  const SampledNeighborGrid &grid = this->neighborGrid;
+  const double maximumRadius = ensureNeighborGrid(structure);
+  const SampledNeighborGrid &grid = structure.neighborGrid;
   const int3 gridSize = grid.gridSize;
-  const double3x3 &cell = this->unitCell.cell;
+  const double3x3 &cell = structure.unitCell.cell;
 
-  const double3 fractional = this->unitCell.inverseCell * position;
+  const double3 fractional = structure.unitCell.inverseCell * position;
   const int3 pointBin = binOfUnwrappedFractional(fractional, gridSize);
 
   double smallest = std::numeric_limits<double>::max();
@@ -233,6 +240,7 @@ double SampledStructure::clearance(const double3 &position) const
     double lowerBound = static_cast<double>(k - 1) * grid.minimumBinWidth;
     // Clearance to any atom in this shell is at least lowerBound - maxRadius.
     if (k > 0 && lowerBound - maximumRadius > smallest) break;
+    if (smallest < floor) break;
 
     for (int ox = -k; ox <= k; ++ox)
     {
@@ -251,13 +259,25 @@ double SampledStructure::clearance(const double3 &position) const
           for (std::size_t j : grid.bins[static_cast<std::size_t>((bz * gridSize.y + by) * gridSize.x + bx)])
           {
             double3 delta = position - (grid.wrappedPositions[j] + translation);
-            smallest = std::min(smallest, std::sqrt(double3::dot(delta, delta)) - this->radii[j]);
+            smallest = std::min(smallest, std::sqrt(double3::dot(delta, delta)) - structure.radii[j]);
           }
         }
       }
     }
   }
   return smallest;
+}
+
+double SampledStructure::clearance(const double3 &position) const
+{
+  return clearanceWalk(*this, position, std::numeric_limits<double>::lowest());
+}
+
+std::optional<double> SampledStructure::clearanceAtLeast(const double3 &position, double floor) const
+{
+  const double value = clearanceWalk(*this, position, floor);
+  if (value < floor) return std::nullopt;
+  return value;
 }
 
 SegmentBottleneck SampledStructure::segmentBottleneck(const double3 &position, const double3 &displacement) const
