@@ -32,8 +32,7 @@ export namespace MC_Moves
  *
  * \param random Reference to the random number generator.
  * \param system Reference to the simulation system.
- * \param selectedComponent Index of the selected component.
- * \param selectedMolecule Index of the selected molecule.
+ * \param selectedComponent Index of the selected component (the molecule of a deletion is drawn inside).
  * \param insertionDisabled If true, insertion moves are disabled.
  * \param deletionDisabled If true, deletion moves are disabled.
  * \return A pair containing:
@@ -43,7 +42,6 @@ export namespace MC_Moves
  */
 std::pair<std::optional<RunningEnergy>, double3> swapMove_CFCMC(RandomNumber& random, System& system,
                                                                 std::size_t selectedComponent,
-                                                                std::size_t selectedMolecule,
                                                                 bool insertionDisabled = false,
                                                                 bool deletionDisabled = false);
 }  // namespace MC_Moves

@@ -33,6 +33,7 @@ export struct MCMoveProbabilities
 
   const std::vector<double> normalizedMap() const;
   void removeRedundantMoves();
+  /// Draws a move type with probability proportional to its weight; 'Move::Types::Count' when no move has a weight.
   Move::Types sample(RandomNumber &random);
 
   void join(const MCMoveProbabilities &other);

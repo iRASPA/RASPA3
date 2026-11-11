@@ -1994,7 +1994,7 @@ TEST(mc_cell_list, swap_cfcmc_lambda_change_refreshes_cached_scaling)
   bool accepted = false;
   for (std::size_t attempt = 0; attempt < 200 && !accepted; ++attempt)
   {
-    const auto [energy, unused] = MC_Moves::swapMove_CFCMC(random, system, 0, 0, true, true);
+    const auto [energy, unused] = MC_Moves::swapMove_CFCMC(random, system, 0, true, true);
     (void)unused;
     if (energy.has_value() && system.components[0].lambdaGC.currentBin != binBefore)
     {

@@ -675,7 +675,7 @@ TEST(MC_COMPONENT_MOVES, cfcmc_cbmc_restores_atoms_after_upper_tmmc_window_rejec
   {
     system.atomData = before;
     component.lambdaGC.setCurrentBin(component.lambdaGC.numberOfSamplePoints - 1uz);
-    const auto [energy, pacc] = MC_Moves::swapMove_CFCMC_CBMC(random, system, 0, fractionalIndex);
+    const auto [energy, pacc] = MC_Moves::swapMove_CFCMC_CBMC(random, system, 0);
     if (pacc.z > 0.0)
     {
       EXPECT_FALSE(energy.has_value());
@@ -714,7 +714,7 @@ TEST(MC_COMPONENT_MOVES, cfcmc_cbmc_restores_atoms_after_lower_tmmc_window_rejec
   {
     system.atomData = before;
     component.lambdaGC.setCurrentBin(0uz);
-    const auto [energy, pacc] = MC_Moves::swapMove_CFCMC_CBMC(random, system, 0, fractionalIndex);
+    const auto [energy, pacc] = MC_Moves::swapMove_CFCMC_CBMC(random, system, 0);
     if (pacc.x > 0.0)
     {
       EXPECT_FALSE(energy.has_value());
@@ -889,4 +889,57 @@ TEST(MC_COMPONENT_MOVES, collective_smart_rotation_without_a_rigid_polyatomic_mo
   const MoveStatistics<double>& statistics =
       std::get<MoveStatistics<double>>(system.mc_moves_statistics[Move::Types::RotationSmartMCAll]);
   EXPECT_EQ(statistics.counts, 0.0);
+}
+
+// A component without any move (an immobile species in a system without system moves) has no distribution to
+// draw a move from: 'std::discrete_distribution' over all-zero weights draws one fixed index, the last move type,
+// so the species was subjected to Gibbs multi-trial swaps. Such a component draws no move, the dispatcher does
+// nothing for it, and the component selection of a step passes over it.
+TEST(MC_COMPONENT_MOVES, a_component_without_moves_draws_no_move_and_is_not_selected)
+{
+  const ForceField forceField = makeNonInteractingForceField();
+  MCMoveProbabilities translation;
+  translation.setProbability(Move::Types::Translation, 1.0);
+  const Component mobile = makeIonComponent(forceField, 0, "A", 0, translation);
+  const Component immobile = makeIonComponent(forceField, 1, "B", 1, {});
+  System system = System(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {mobile, immobile},
+                         {}, {5, 5}, 5, MCMoveProbabilities());
+  system.runningEnergies = system.computeTotalEnergies();
+
+  RandomNumber random(17);
+  EXPECT_EQ(system.components[1].mc_moves_probabilities.sample(random), Move::Types::Count);
+
+  std::vector<double3> positionsBefore;
+  for (const Atom& atom : system.atomData) positionsBefore.push_back(atom.position);
+  std::size_t fractionalMoleculeSystem = 0;
+  for (std::size_t i = 0; i != 50; ++i)
+  {
+    EXPECT_EQ(MC_Moves::performRandomMoveProduction(random, system, system, 1, fractionalMoleculeSystem, 0),
+              Move::Types::Count);
+  }
+  for (std::size_t i = 0; i != positionsBefore.size(); ++i)
+  {
+    EXPECT_EQ(system.atomData[i].position, positionsBefore[i]) << "atom " << i;
+  }
+  for (const auto& statistics : system.components[1].mc_moves_statistics.stats)
+  {
+    std::visit([](const auto& s) { EXPECT_EQ(s.allCounts, 0uz); }, statistics);
+  }
+
+  for (std::size_t i = 0; i != 200; ++i)
+  {
+    EXPECT_EQ(system.randomComponent(random), 0uz);
+  }
+}
+
+// The text form of the move probabilities (the Python representation) lists every move type.
+TEST(MC_COMPONENT_MOVES, move_probabilities_repr_lists_every_move_type)
+{
+  MCMoveProbabilities probabilities;
+  for (std::size_t i = 0; i != std::to_underlying(Move::Types::Count); ++i)
+  {
+    probabilities.setProbability(static_cast<Move::Types>(i), 1.0);
+  }
+  const std::string text = probabilities.repr();
+  EXPECT_EQ(static_cast<std::size_t>(std::ranges::count(text, '\n')), std::to_underlying(Move::Types::Count));
 }

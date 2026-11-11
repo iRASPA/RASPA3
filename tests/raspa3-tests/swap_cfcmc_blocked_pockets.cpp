@@ -59,8 +59,7 @@ std::size_t lowestIntegerCountOverSwaps(System& system, std::size_t attempts, st
   std::size_t lowest = system.numberOfIntegerMoleculesPerComponent[0];
   for (std::size_t attempt = 0; attempt < attempts; ++attempt)
   {
-    const std::size_t selectedMolecule = system.randomMoleculeOfComponent(random, 0);
-    const auto [energy, acceptance] = MC_Moves::swapMove_CFCMC(random, system, 0, selectedMolecule, false, false);
+    const auto [energy, acceptance] = MC_Moves::swapMove_CFCMC(random, system, 0, false, false);
     if (energy.has_value()) system.runningEnergies += energy.value();
     lowest = std::min(lowest, system.numberOfIntegerMoleculesPerComponent[0]);
   }

@@ -226,6 +226,8 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
 {
   // pick move type from probabilities object
   Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
+  // a component without any move: nothing to do
+  if (moveType == Move::Types::Count) return moveType;
 
   // save old number of molecules for reference
   std::size_t oldN = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
@@ -483,6 +485,8 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
 {
   // pick move type from probabilities object
   Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
+  // a component without any move: nothing to do
+  if (moveType == Move::Types::Count) return moveType;
 
   // save old number of molecules for reference
   std::size_t oldN = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
@@ -954,10 +958,8 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
     }
     case Move::Types::SwapCFCMC:
     {
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       const auto [energyDifference, Pacc] =
-          MC_Moves::swapMove_CFCMC(random, selectedSystem, selectedComponent, selectedMolecule);
+          MC_Moves::swapMove_CFCMC(random, selectedSystem, selectedComponent);
       if (energyDifference)
       {
         selectedSystem.runningEnergies += energyDifference.value();
@@ -967,10 +969,8 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
     }
     case Move::Types::SwapCBCFCMC:
     {
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       const auto [energyDifference, Pacc] =
-          MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent, selectedMolecule);
+          MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent);
       if (energyDifference)
       {
         selectedSystem.runningEnergies += energyDifference.value();
@@ -1296,7 +1296,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
       // Lambda moves only (insertion and deletion disabled), like WidomCBCFCMC below: this is what equilibrates
       // the Wang-Landau lambda bias before production.
       const auto [energyDifference, Pacc] =
-          MC_Moves::swapMove_CFCMC(random, selectedSystem, selectedComponent, 0, true, true);
+          MC_Moves::swapMove_CFCMC(random, selectedSystem, selectedComponent, true, true);
       if (energyDifference)
       {
         selectedSystem.runningEnergies += energyDifference.value();
@@ -1306,7 +1306,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
     case Move::Types::WidomCBCFCMC:
     {
       const auto [energyDifference, Pacc] =
-          MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent, 0, true, true);
+          MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent, true, true);
       if (energyDifference)
       {
         selectedSystem.runningEnergies += energyDifference.value();
@@ -1459,6 +1459,8 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
 {
   // pick move type from probabilities object
   Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
+  // a component without any move: nothing to do
+  if (moveType == Move::Types::Count) return moveType;
 
   // save old number of molecules for reference
   std::size_t oldN = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
@@ -1930,10 +1932,8 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
     }
     case Move::Types::SwapCFCMC:
     {
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       const auto [energyDifference, Pacc] =
-          MC_Moves::swapMove_CFCMC(random, selectedSystem, selectedComponent, selectedMolecule);
+          MC_Moves::swapMove_CFCMC(random, selectedSystem, selectedComponent);
       if (energyDifference)
       {
         selectedSystem.runningEnergies += energyDifference.value();
@@ -1943,10 +1943,8 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
     }
     case Move::Types::SwapCBCFCMC:
     {
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       const auto [energyDifference, Pacc] =
-          MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent, selectedMolecule);
+          MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent);
       if (energyDifference)
       {
         selectedSystem.runningEnergies += energyDifference.value();
@@ -2272,7 +2270,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       // Lambda moves only (insertion and deletion disabled), like WidomCBCFCMC below: this is what equilibrates
       // the Wang-Landau lambda bias before production.
       const auto [energyDifference, Pacc] =
-          MC_Moves::swapMove_CFCMC(random, selectedSystem, selectedComponent, 0, true, true);
+          MC_Moves::swapMove_CFCMC(random, selectedSystem, selectedComponent, true, true);
       if (energyDifference)
       {
         selectedSystem.runningEnergies += energyDifference.value();
@@ -2282,7 +2280,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
     case Move::Types::WidomCBCFCMC:
     {
       const auto [energyDifference, Pacc] =
-          MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent, 0, true, true);
+          MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent, true, true);
       if (energyDifference)
       {
         selectedSystem.runningEnergies += energyDifference.value();
@@ -2435,6 +2433,8 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
 {
   // pick move type from probabilities object
   Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
+  // a component without any move: nothing to do
+  if (moveType == Move::Types::Count) return moveType;
 
   // save old number of molecules for reference
   std::size_t oldN = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
@@ -2916,10 +2916,8 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
     }
     case Move::Types::SwapCFCMC:
     {
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
-
       const auto [energyDifference, Pacc] =
-          MC_Moves::swapMove_CFCMC(random, selectedSystem, selectedComponent, selectedMolecule);
+          MC_Moves::swapMove_CFCMC(random, selectedSystem, selectedComponent);
       if (energyDifference)
       {
         selectedSystem.runningEnergies += energyDifference.value();
@@ -2929,9 +2927,8 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
     }
     case Move::Types::SwapCBCFCMC:
     {
-      std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
       const auto [energyDifference, Pacc] =
-          MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent, selectedMolecule);
+          MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent);
       if (energyDifference)
       {
         selectedSystem.runningEnergies += energyDifference.value();
@@ -3317,7 +3314,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
     case Move::Types::WidomCFCMC:
     {
       const auto [energyDifference, Pacc] =
-          MC_Moves::swapMove_CFCMC(random, selectedSystem, selectedComponent, 0, true, true);
+          MC_Moves::swapMove_CFCMC(random, selectedSystem, selectedComponent, true, true);
       if (energyDifference)
       {
         selectedSystem.runningEnergies += energyDifference.value();
@@ -3327,7 +3324,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
     case Move::Types::WidomCBCFCMC:
     {
       const auto [energyDifference, Pacc] =
-          MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent, 0, true, true);
+          MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent, true, true);
       if (energyDifference)
       {
         selectedSystem.runningEnergies += energyDifference.value();

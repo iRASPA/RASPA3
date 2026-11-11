@@ -512,9 +512,20 @@ export struct System
   {
     return std::size_t(random.uniform() * static_cast<double>(numberOfFrameworks));
   }
+  /// A component for the next Monte Carlo step, uniform over the components that have at least one move (a step
+  /// spent on an immobile species, one without any move, would be a no-op). Uniform over all when none has a move.
   std::size_t randomComponent(RandomNumber& random)
   {
-    return std::size_t(random.uniform() * static_cast<double>(components.size()));
+    const auto hasMoves = [](const Component& component)
+    { return std::ranges::any_of(component.mc_moves_probabilities.probabilities, [](double p) { return p > 0.0; }); };
+    const std::size_t numberOfMovable = static_cast<std::size_t>(std::ranges::count_if(components, hasMoves));
+    if (numberOfMovable == 0) return std::size_t(random.uniform() * static_cast<double>(components.size()));
+    std::size_t draw = std::size_t(random.uniform() * static_cast<double>(numberOfMovable));
+    for (std::size_t i = 0; i != components.size(); ++i)
+    {
+      if (hasMoves(components[i]) && draw-- == 0) return i;
+    }
+    return components.size() - 1;
   }
   std::size_t numerOfAdsorbateComponents() { return components.size(); }
   /// The number of components of type Adsorbate (the cations are not counted).

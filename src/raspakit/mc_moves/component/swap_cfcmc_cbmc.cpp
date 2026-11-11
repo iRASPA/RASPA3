@@ -50,7 +50,6 @@ double3 lambdaHopTMMCPacc(const System& system, std::size_t selectedComponent, b
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(RandomNumber& random, System& system,
                                                                                std::size_t selectedComponent,
-                                                                               std::size_t selectedMolecule,
                                                                                bool insertionDisabled,
                                                                                bool deletionDisabled)
 {
@@ -429,7 +428,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     if (system.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
     {
       // Select a random integer molecule to be fractional
-      selectedMolecule = system.randomIntegerMoleculeOfComponent(random, selectedComponent);
+      std::size_t selectedMolecule = system.randomIntegerMoleculeOfComponent(random, selectedComponent);
 
       // A cross-linked molecule can not become the fractional molecule (the fractional molecule leaves the system
       // when lambda reaches zero, and only integer molecules carry links).

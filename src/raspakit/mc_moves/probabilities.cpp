@@ -102,6 +102,12 @@ void MCMoveProbabilities::join(const MCMoveProbabilities &other)
 
 Move::Types MCMoveProbabilities::sample(RandomNumber &random)
 {
+  // A table without any move (an immobile species in a system without system moves) has no distribution to draw
+  // from: 'std::discrete_distribution' over all-zero weights draws one fixed, meaningless index. No move.
+  if (std::ranges::none_of(probabilities, [](double probability) { return probability > 0.0; }))
+  {
+    return Move::Types::Count;
+  }
   return static_cast<Move::Types>(random.categoricalDistribution(probabilities));
 }
 
@@ -154,6 +160,44 @@ std::string MCMoveProbabilities::repr()
              normalized_probabilities[std::to_underlying(Move::Types::ReactionCFCMC)]);
   std::print(stream, "reactionCBCFCMCProbability: {}\n",
              normalized_probabilities[std::to_underlying(Move::Types::ReactionCBCFCMC)]);
+  std::print(stream, "anisotropicVolumeChangeProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::AnisotropicVolumeChange)]);
+  std::print(stream, "gibbsConventionalCFCMCProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::GibbsConventionalCFCMC)]);
+  std::print(stream, "gibbsConventionalCBCFCMCProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::GibbsConventionalCBCFCMC)]);
+  std::print(stream, "gibbsSwapCBCFCMCProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::GibbsSwapCBCFCMC)]);
+  std::print(stream, "pairSwapProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::PairSwap)]);
+  std::print(stream, "pairSwapCBMCProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::PairSwapCBMC)]);
+  std::print(stream, "pairSwapCFCMCProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::PairSwapCFCMC)]);
+  std::print(stream, "pairSwapCBCFCMCProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::PairSwapCBCFCMC)]);
+  std::print(stream, "groupSwapProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::GroupSwap)]);
+  std::print(stream, "groupSwapCBMCProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::GroupSwapCBMC)]);
+  std::print(stream, "groupSwapCFCMCProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::GroupSwapCFCMC)]);
+  std::print(stream, "groupSwapCBCFCMCProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::GroupSwapCBCFCMC)]);
+  std::print(stream, "tetheredProtonHopProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::TetheredProtonHop)]);
+  std::print(stream, "pivotProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::Pivot)]);
+  std::print(stream, "crankshaftProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::Crankshaft)]);
+  std::print(stream, "reptationProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::Reptation)]);
+  std::print(stream, "concertedRotationProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::ConcertedRotation)]);
+  std::print(stream, "beadDisplacementProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::BeadDisplacement)]);
+  std::print(stream, "beadFlipProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::BeadFlip)]);
+  std::print(stream, "doubleBridgingProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::DoubleBridging)]);
+  std::print(stream, "intramolecularDoubleRebridgingProbability: {}\n",
+             normalized_probabilities[std::to_underlying(Move::Types::IntramolecularDoubleRebridging)]);
+  std::print(stream, "pivotCBMCProbability: {}\n", normalized_probabilities[std::to_underlying(Move::Types::PivotCBMC)]);
 
   return stream.str();
 }
