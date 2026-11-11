@@ -119,13 +119,15 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMove(RandomNumber &random,
   Move::Types move = Move::Types::RotationSmartMC;
   Component &component = system.components[selectedComponent];
 
-  component.mc_moves_statistics.addTrial(move);
-
-  // Monoatomic species have no rotational degrees of freedom.
+  // Restriction: monoatomic species have no rotational degrees of freedom. This does not change during a
+  // simulation, so the attempts are not counted as trials (counted, they would report a vanishing acceptance
+  // and shrink the step for nothing).
   if (molecule.numberOfAtoms < 2)
   {
     return std::nullopt;
   }
+
+  component.mc_moves_statistics.addTrial(move);
 
   // 'sigma' is the angular standard deviation (radians) of the Gaussian part; the drift follows
   // the smart-MC relation b = beta * sigma^2 / 2.

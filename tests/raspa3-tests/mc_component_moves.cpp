@@ -16,6 +16,7 @@ import mc_moves_pair_insertion_cbmc;
 import mc_moves_probabilities;
 import mc_moves_random_rotation;
 import mc_moves_rotation_smart_mc;
+import mc_moves_translation_rotation_smart_mc;
 import mc_moves_translation_smart_mc_all;
 import mc_moves_rotation_smart_mc_all;
 import mc_moves_statistics;
@@ -841,4 +842,51 @@ TEST(MC_COMPONENT_MOVES, refused_collective_smart_moves_leave_the_gradients_of_t
       EXPECT_EQ(system.atomDynamics[i].velocity, double3(static_cast<double>(i), 1.0, -1.0));
     }
   }
+}
+
+// A monoatomic species has no rotational degree of freedom, and the smart rotations refuse it. That does not
+// change during a simulation, so the attempts are not trials: counted as such, the moves would report a vanishing
+// acceptance and the optimizer would shrink their step for nothing.
+TEST(MC_COMPONENT_MOVES, smart_rotations_of_a_monoatomic_species_are_not_counted_as_trials)
+{
+  const ForceField forceField = makeNonInteractingForceField();
+  const Component ion = makeIonComponent(forceField, 0, "A", 0, {});
+  System system = System(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {ion}, {}, {5}, 5,
+                         MCMoveProbabilities());
+  system.runningEnergies = system.computeTotalEnergies();
+
+  RandomNumber random(11);
+  for (std::size_t i = 0; i != 20; ++i)
+  {
+    EXPECT_FALSE(MC_Moves::rotationSmartMCMove(random, system, 0, 0).has_value());
+    EXPECT_FALSE(MC_Moves::translationRotationSmartMCMove(random, system, 0, 0).has_value());
+  }
+  const MoveStatistics<double>& rotation =
+      std::get<MoveStatistics<double>>(system.components[0].mc_moves_statistics[Move::Types::RotationSmartMC]);
+  EXPECT_EQ(rotation.counts, 0.0);
+  const MoveStatistics<double3>& translationRotation = std::get<MoveStatistics<double3>>(
+      system.components[0].mc_moves_statistics[Move::Types::TranslationRotationSmartMC]);
+  EXPECT_EQ(translationRotation.counts.x, 0.0);
+  EXPECT_EQ(translationRotation.counts.y, 0.0);
+}
+
+// The collective smart rotation turns only the rigid multi-atomic molecules. Without one it has nothing to propose
+// and is refused before it counts as a trial, instead of a no-op trial with two gradient evaluations and a total
+// energy that is accepted every time and drives the step size to its upper limit.
+TEST(MC_COMPONENT_MOVES, collective_smart_rotation_without_a_rigid_polyatomic_molecule_is_not_a_trial)
+{
+  const ForceField forceField = makeNonInteractingForceField();
+  const Component ion = makeIonComponent(forceField, 0, "A", 0, {});
+  System system = System(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {ion}, {}, {5}, 5,
+                         MCMoveProbabilities());
+  system.runningEnergies = system.computeTotalEnergies();
+
+  RandomNumber random(13);
+  for (std::size_t i = 0; i != 20; ++i)
+  {
+    EXPECT_FALSE(MC_Moves::rotationSmartMCMoveAll(random, system).has_value());
+  }
+  const MoveStatistics<double>& statistics =
+      std::get<MoveStatistics<double>>(system.mc_moves_statistics[Move::Types::RotationSmartMCAll]);
+  EXPECT_EQ(statistics.counts, 0.0);
 }

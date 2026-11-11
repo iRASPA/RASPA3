@@ -49,13 +49,19 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMoveAll(RandomNumber &rand
   std::chrono::steady_clock::time_point time_begin, time_end;
   Move::Types move = Move::Types::RotationSmartMCAll;
 
-  system.mc_moves_statistics.addTrial(move);
-
-  std::size_t numberOfMolecules = system.moleculeData.size();
-  if (numberOfMolecules == 0)
+  // Restriction: only rigid multi-atomic molecules take part (the others keep Delta phi = 0). Without one there
+  // is nothing to propose, and the attempt is not counted as a trial: a no-op trial costs two gradient
+  // evaluations and a total energy, is accepted every time, and drives the step size to its upper limit.
+  const std::size_t numberOfMolecules = system.moleculeData.size();
+  const bool anyMoleculeRotates = std::ranges::any_of(
+      system.moleculeData, [&](const Molecule &molecule)
+      { return molecule.numberOfAtoms >= 2 && system.components[molecule.componentId].rigid; });
+  if (!anyMoleculeRotates)
   {
     return std::nullopt;
   }
+
+  system.mc_moves_statistics.addTrial(move);
 
   // Angular step size 'sigma' (radians); drift coefficient b = beta * sigma^2 / 2.
   double sigma = system.mc_moves_statistics.getMaxChange(move);

@@ -93,14 +93,15 @@ std::optional<RunningEnergy> MC_Moves::translationRotationSmartMCMove(RandomNumb
   Move::Types move = Move::Types::TranslationRotationSmartMC;
   Component &component = system.components[selectedComponent];
 
-  component.mc_moves_statistics.addTrial(move, 0);
-  component.mc_moves_statistics.addTrial(move, 1);
-
-  // Monoatomic species have no rotational degrees of freedom; use translation smart MC instead.
+  // Restriction: monoatomic species have no rotational degrees of freedom; use translation smart MC instead. This
+  // does not change during a simulation, so the attempts are not counted as trials.
   if (molecule.numberOfAtoms < 2)
   {
     return std::nullopt;
   }
+
+  component.mc_moves_statistics.addTrial(move, 0);
+  component.mc_moves_statistics.addTrial(move, 1);
 
   // Two independent step sizes: 'sigmaTranslation' (Angstrom) for the Gaussian part of the trial
   // displacement, 'sigmaRotation' (radians) for the Gaussian part of the trial rotation vector.
