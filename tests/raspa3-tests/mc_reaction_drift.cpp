@@ -1719,3 +1719,33 @@ TEST(MC_REACTION_DRIFT, reaction_serial_dudlambda_finite_difference)
     MC_Moves::ReactionCommon::setSerialReactionFractionalScaling(system, reaction, lambda);
   }
 }
+
+// The molecules of a group change together, so the pairs inside the group are summed on their own, outside the
+// difference kernel that refuses an overlap with the background. The conventional (non-CBMC) group insertion
+// places each molecule of the group at random, so two of them can land on top of each other; such a group must
+// be refused like an overlap with the background instead of being priced at the value of the pair.
+TEST(MC_REACTION_DRIFT, group_swap_refuses_an_overlap_inside_the_new_group)
+{
+  MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+  systemProbabilities.setProbability(Move::Types::ReactionConventionalCFCMC, 1.0);
+  System system = makePropaneButaneReactionSystem(systemProbabilities);
+
+  // replacing a butane by itself is a valid, free swap: the fixture is not in overlap with the background
+  std::span<const Atom> butane = system.spanOfMolecule(1, 0);
+  std::vector<Atom> oldAtoms(butane.begin(), butane.end());
+  const std::optional<RunningEnergy> unchanged =
+      MC_Moves::ReactionCommon::computeGroupSwapEnergyDifference(system, oldAtoms, oldAtoms);
+  ASSERT_TRUE(unchanged.has_value());
+  EXPECT_NEAR(unchanged->potentialEnergy(), 0.0, 1e-8);
+
+  // the new group: that butane and a second one, 0.1 Angstrom beside it, which does not exist in the system
+  std::vector<Atom> newAtoms = oldAtoms;
+  for (const Atom& atom : oldAtoms)
+  {
+    Atom copy = atom;
+    copy.moleculeId = static_cast<std::uint32_t>(system.numberOfMolecules());
+    copy.position += double3(0.1, 0.0, 0.0);
+    newAtoms.push_back(copy);
+  }
+  EXPECT_FALSE(MC_Moves::ReactionCommon::computeGroupSwapEnergyDifference(system, newAtoms, oldAtoms).has_value());
+}

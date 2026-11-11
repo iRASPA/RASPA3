@@ -41,6 +41,16 @@ RunningEnergy computeInterMolecularEnergyScalar(const ForceField& forceField, co
                                                 std::span<const Atom> moleculeAtoms) noexcept;
 
 /**
+ * \brief The pair sum of 'computeInterMolecularEnergy' with the overlap test of the difference kernels.
+ *
+ * For a trial state that is evaluated outside a difference kernel (the pairs inside a group of molecules that
+ * change together), so that an overlap refuses the move instead of being priced: empty when a van der Waals
+ * pair exceeds 'ForceField::energyOverlapCriteria', as 'computeInterMolecularEnergyDifference' is.
+ */
+[[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyWithOverlapCheck(
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> moleculeAtoms) noexcept;
+
+/**
  * \brief Cell-list variant of 'computeInterMolecularEnergy' (same result to the summation order).
  *
  * Each pair is visited once straight out of the cells of \p cellList, which must have been built over exactly

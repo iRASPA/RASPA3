@@ -110,8 +110,15 @@ std::optional<RunningEnergy> computeFractionalMoleculesEnergyDifference(
   {
     return std::nullopt;
   }
+  // an overlap inside the new batch refuses the move like an overlap with the background
+  std::optional<RunningEnergy> newBatchEnergy = Interactions::computeInterMolecularEnergyWithOverlapCheck(
+      system.forceField, system.simulationBox, newAtomsCombined);
+  if (!newBatchEnergy.has_value())
+  {
+    return std::nullopt;
+  }
   moleculeDifference.value() +=
-      Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, newAtomsCombined) -
+      newBatchEnergy.value() -
       Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, oldAtomsCombined);
 
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(

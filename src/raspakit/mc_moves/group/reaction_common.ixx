@@ -68,6 +68,14 @@ struct MoleculeGroupRetraceData
 [[nodiscard]] double idealGasRosenbluthWeightProduct(const System& system,
                                                      std::span<const std::size_t> stoichiometry) noexcept;
 
+// Energy change of replacing the molecules 'oldAtoms' by 'newAtoms' (external field, framework, molecule-molecule
+// against the background of the molecules not in 'oldAtoms' or 'excludeFromBackground', the pairs inside each
+// group, and optionally the Ewald Fourier and the tail terms). Empty on an overlap, with the background or
+// inside the new group.
+[[nodiscard]] std::optional<RunningEnergy> computeGroupSwapEnergyDifference(
+    System& system, std::span<const Atom> newAtoms, std::span<const Atom> oldAtoms, bool includeTailCorrections = true,
+    bool includeEwaldCorrections = true, std::span<const Atom> excludeFromBackground = {}) noexcept;
+
 // Tail-correction change (molecule-molecule and framework-molecule) of replacing the molecules 'oldAtoms' by
 // 'newAtoms', pairwise over the present molecules with their scalings (and therefore with the dU/dlambda of the
 // fractional molecules they interact with).

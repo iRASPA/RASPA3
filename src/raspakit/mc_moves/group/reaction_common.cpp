@@ -113,10 +113,6 @@ void acceptChargedEwaldMove(System& system) noexcept
   return ewaldCombined;
 }
 
-[[nodiscard]] std::optional<RunningEnergy> computeGroupSwapEnergyDifference(
-    System& system, std::span<const Atom> newAtoms, std::span<const Atom> oldAtoms, bool includeTailCorrections = true,
-    bool includeEwaldCorrections = true, std::span<const Atom> excludeFromBackground = {}) noexcept;
-
 // Molecule-molecule tail-correction change of replacing 'oldAtoms' by 'newAtoms' against the background of the
 // present molecules not in 'excludedMoleculeIds': U(background + newAtoms) - U(background + oldAtoms), evaluated
 // from the scaled (scalingVDW) per-type composition (Brick-CFCMC-style aggregated accounting). Identical to the
@@ -518,7 +514,17 @@ void setReactionFractionalScaling(System& system, Reaction& reaction, double lam
     return std::nullopt;
   }
   energyDifference += moleculeDifference.value();
-  energyDifference += Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, newAtoms) -
+  // the pairs inside the group, new against new and old against old: the difference kernel sees only the pairs
+  // with the background, and an overlap between two molecules of the trial group (two randomly placed molecules
+  // of a conventional insertion, or two ghosts that drifted onto each other and are coupled) refuses the move
+  // like an overlap with the background
+  std::optional<RunningEnergy> newGroupEnergy =
+      Interactions::computeInterMolecularEnergyWithOverlapCheck(system.forceField, system.simulationBox, newAtoms);
+  if (!newGroupEnergy)
+  {
+    return std::nullopt;
+  }
+  energyDifference += newGroupEnergy.value() -
                       Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, oldAtoms);
 
   if (includeEwaldCorrections)

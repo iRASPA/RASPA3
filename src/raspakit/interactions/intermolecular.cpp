@@ -65,6 +65,36 @@ RunningEnergy Interactions::computeInterMolecularEnergyScalar(const ForceField& 
   return energySum;
 }
 
+std::optional<RunningEnergy> Interactions::computeInterMolecularEnergyWithOverlapCheck(
+    const ForceField& forceField, const SimulationBox& box, std::span<const Atom> moleculeAtoms) noexcept
+{
+  RunningEnergy energySum{};
+
+  if (forceField.omitInterInteractions) return energySum;
+
+  const double overlapCriteria = forceField.energyOverlapCriteria;
+  bool overlap = false;
+  forEachMoleculeMoleculePair<0>(
+      forceField, box, moleculeAtoms,
+      [&](std::size_t, std::size_t, const Atom& atomA, const Atom& atomB, const Potentials::PairDerivatives<0>& factors,
+          const double3&)
+      {
+        if (factors.energy > overlapCriteria) overlap = true;
+        energySum.moleculeMoleculeVDW += factors.energy;
+        energySum.addDudlambdaVDW(atomA.groupId, atomB.groupId, atomA.scalingVDW, atomB.scalingVDW, factors.dUdlambda);
+      },
+      [&](std::size_t, std::size_t, const Atom& atomA, const Atom& atomB, const Potentials::PairDerivatives<0>& factors,
+          const double3&)
+      {
+        energySum.moleculeMoleculeCharge += factors.energy;
+        energySum.addDudlambdaCharge(atomA.groupId, atomB.groupId, atomA.scalingCoulomb, atomB.scalingCoulomb,
+                                     factors.dUdlambda);
+      });
+
+  if (overlap) return std::nullopt;
+  return energySum;
+}
+
 RunningEnergy Interactions::computeInterMolecularEnergy(const ForceField& forceField, const SimulationBox& box,
                                                         const MCCellList& cellList,
                                                         std::span<const Atom> moleculeAtoms) noexcept
