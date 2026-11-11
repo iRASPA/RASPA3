@@ -108,18 +108,13 @@ export struct EwaldRealSpaceTable
     const double position = (rr - rrMin) * inverseSpacing;
     const std::size_t k = static_cast<std::size_t>(position);
     const double t = position - static_cast<double>(k);
-    const double p0 = value[k];
-    const double p1 = value[k + 1];
-    const double m0 = derivative[k] * spacing;
-    const double m1 = derivative[k + 1] * spacing;
-    const double t2 = t * t;
-    const double t3 = t2 * t;
-    // Hermite basis: h00 = 2t^3 - 3t^2 + 1, h10 = t^3 - 2t^2 + t, h01 = -2t^3 + 3t^2, h11 = t^3 - t^2
-    u = (2.0 * t3 - 3.0 * t2 + 1.0) * p0 + (t3 - 2.0 * t2 + t) * m0 + (-2.0 * t3 + 3.0 * t2) * p1 + (t3 - t2) * m1;
-    // d/dt of the basis, divided by the spacing
-    dudrr = ((6.0 * t2 - 6.0 * t) * p0 + (3.0 * t2 - 4.0 * t + 1.0) * m0 + (-6.0 * t2 + 6.0 * t) * p1 +
-             (3.0 * t2 - 2.0 * t) * m1) *
-            inverseSpacing;
+    // The Hermite cubic of the interval in Horner form from its stored coefficients (a, b, c, d): one contiguous
+    // load, instead of the node values and derivatives of two arrays and the evaluation of the four basis
+    // polynomials. The node arrays stay the exact data the coefficients were built from.
+    const double* c = &coefficients[4 * k];
+    u = ((c[0] * t + c[1]) * t + c[2]) * t + c[3];
+    // du/d(r^2) = (du/dt) / spacing
+    dudrr = ((3.0 * c[0] * t + 2.0 * c[1]) * t + c[2]) * inverseSpacing;
   }
 
   /// u(r^2) and du/d(r^2) by cubic Hermite interpolation (exact fallback below rrMin; rr must be below rrMax).

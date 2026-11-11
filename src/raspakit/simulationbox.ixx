@@ -134,24 +134,20 @@ export struct SimulationBox
     {
       case SimulationBox::Type::Rectangular:
       {
+        // the nearest image: the offset-and-truncate idiom rounds half away from zero, as 'std::round' does in a
+        // single instruction
         double3 s;
-        s.x = dr.x - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.x * inverseCell.ax +
-                                                                                      ((dr.x >= 0.0) ? 0.5 : -0.5))) *
-                         cell.ax;
-        s.y = dr.y - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.y * inverseCell.by +
-                                                                                      ((dr.y >= 0.0) ? 0.5 : -0.5))) *
-                         cell.by;
-        s.z = dr.z - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.z * inverseCell.cz +
-                                                                                      ((dr.z >= 0.0) ? 0.5 : -0.5))) *
-                         cell.cz;
+        s.x = dr.x - std::round(dr.x * inverseCell.ax) * cell.ax;
+        s.y = dr.y - std::round(dr.y * inverseCell.by) * cell.by;
+        s.z = dr.z - std::round(dr.z * inverseCell.cz) * cell.cz;
         return s;
       }
       default:
       {
         double3 s = inverseCell * dr;
-        s.x -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.x + ((s.x >= 0.0) ? 0.5 : -0.5)));
-        s.y -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.y + ((s.y >= 0.0) ? 0.5 : -0.5)));
-        s.z -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.z + ((s.z >= 0.0) ? 0.5 : -0.5)));
+        s.x -= std::round(s.x);
+        s.y -= std::round(s.y);
+        s.z -= std::round(s.z);
 
         // compute value in variable first to avoid microsoft compiler bug
         double3 r = cell * s;
@@ -162,14 +158,11 @@ export struct SimulationBox
 
   ALWAYS_INLINE inline double3 mapToBox(const double3& dr) const
   {
+    // the fractional coordinate in [-1/2, 1/2) (the earlier second rounding of that value was a no-op), then in [0, 1)
     double3 s = inverseCell * dr;
-    s.x -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.x + ((s.x >= 0.0) ? 0.5 : -0.5)));
-    s.y -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.y + ((s.y >= 0.0) ? 0.5 : -0.5)));
-    s.z -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.z + ((s.z >= 0.0) ? 0.5 : -0.5)));
-
-    s.x -= std::rint(s.x);
-    s.y -= std::rint(s.y);
-    s.z -= std::rint(s.z);
+    s.x -= std::round(s.x);
+    s.y -= std::round(s.y);
+    s.z -= std::round(s.z);
     if (s.x < 0.0) s.x += 1.0;
     if (s.y < 0.0) s.y += 1.0;
     if (s.z < 0.0) s.z += 1.0;

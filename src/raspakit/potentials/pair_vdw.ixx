@@ -195,6 +195,29 @@ export template <std::size_t Order>
     double arg1 = 4.0 * p.parameters.x;
     double arg2 = p.parameters.y * p.parameters.y;
     double arg3 = p.shift;
+    if constexpr (Order <= 1)
+    {
+      // Fully coupled pair: the soft core vanishes, and (sigma/r)^6 follows from one division instead of the two
+      // of the soft-core form (r^2/sigma^2 and the inverse of the softened sixth power). The derivative with
+      // respect to the coupling at lambda = 1 is the plain pair energy (the soft-core term carries a factor
+      // 1 - lambda), and (1/r) dU/dr = 12 eps4 (sigma/r)^6 (1/2 - (sigma/r)^6) / r^2.
+      if (scaling == 1.0) [[likely]]
+      {
+        const double invRR = 1.0 / rr;
+        const double rri = arg2 * invRR;      // (sigma/r)^2
+        const double rri3 = rri * rri * rri;  // (sigma/r)^6
+        const double rri6 = rri3 * rri3;
+        const double term = arg1 * (rri6 - rri3) - arg3;
+        if constexpr (Order == 0)
+        {
+          return {term, term};
+        }
+        else
+        {
+          return {term, term, 12.0 * arg1 * rri3 * (0.5 - rri3) * invRR};
+        }
+      }
+    }
     double temp = (rr / arg2);          // (r/sigma)^2
     double temp3 = temp * temp * temp;  // (r/sigma)^6
     double inv_scaling = 1.0 - scaling;

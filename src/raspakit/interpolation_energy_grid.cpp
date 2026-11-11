@@ -121,41 +121,123 @@ struct Result
   double3x3 hessian{};
 };
 
+// The quantity index of the derivative pattern (dx, dy, dz) of a node (the inverse of the tables above), at
+// (dx Order + dy) Order + dz.
+template <std::size_t Order, std::size_t N>
+constexpr std::array<std::uint8_t, Order * Order * Order> quantityIndex(
+    const std::array<std::array<std::uint8_t, 3>, N>& derivatives)
+{
+  std::array<std::uint8_t, Order * Order * Order> index{};
+  for (std::size_t i = 0; i < N; ++i)
+  {
+    index[(derivatives[i][0] * Order + derivatives[i][1]) * Order + derivatives[i][2]] = static_cast<std::uint8_t>(i);
+  }
+  return index;
+}
+constexpr std::array<std::uint8_t, 8> tricubicQuantity = quantityIndex<2>(tricubicDerivatives);
+constexpr std::array<std::uint8_t, 27> triquinticQuantity = quantityIndex<3>(triquinticDerivatives);
+
 // The tensor-product Hermite interpolant of the corner data X at the cell coordinate whose one-dimensional bases
 // are bx, by, bz. Level 0: the value; 1: also the gradient; 2: also the Hessian (both with respect to the cell
 // coordinate t in [0, 1]^3).
-template <int Level, std::size_t Order, std::size_t N>
-[[clang::always_inline]] inline Result evaluate(const std::array<double, 8 * N>& X,
-                                                const std::array<std::array<std::uint8_t, 3>, N>& derivatives,
+//
+// With a = (dx, cx), b = (dy, cy), c = (dz, cz) the corner data form the tensor C[a][b][c] =
+// X[8 quantity(dx, dy, dz) + cx + 2 cy + 4 cz] and the interpolant is sum_abc C[a][b][c] Bx[a] By[b] Bz[c]. It is
+// contracted one axis at a time, x then y then z: M^3 + M^2 + M products per basis combination (M = 2 Order)
+// instead of 3 M^3 for the flat sum over all terms, and the derivative bases reuse the partial contractions.
+template <int Level, std::size_t Order>
+[[clang::always_inline]] inline Result evaluate(const std::array<double, 8 * Order * Order * Order>& X,
+                                                const std::array<std::uint8_t, Order * Order * Order>& quantity,
                                                 const Basis1D<Order>& bx, const Basis1D<Order>& by,
                                                 const Basis1D<Order>& bz)
 {
-  Result r{};
-  for (std::size_t i = 0; i < N; ++i)
+  constexpr std::size_t M = 2 * Order;
+
+  // contraction over x with Bx, Bx' and Bx'': every entry a short reduction over a = (dx, cx) held in registers
+  // (the trip counts are compile-time constants: fully unrolled, every index is a constant and every partial sum a
+  // register)
+  std::array<std::array<double, M>, M> cv{}, cx{}, cxx{};
+#pragma clang loop unroll(full)
+  for (std::size_t oy = 0; oy < Order; ++oy)
   {
-    const std::uint8_t dx = derivatives[i][0], dy = derivatives[i][1], dz = derivatives[i][2];
-    for (std::size_t c = 0; c < 8; ++c)
+#pragma clang loop unroll(full)
+    for (std::size_t cornerY = 0; cornerY < 2; ++cornerY)
     {
-      const std::size_t cx = c & 1, cy = (c >> 1) & 1, cz = (c >> 2) & 1;
-      const double v = X[8 * i + c];
-      const double hx = bx.value[dx][cx], hy = by.value[dy][cy], hz = bz.value[dz][cz];
-      r.value += v * hx * hy * hz;
-      if constexpr (Level >= 1)
+#pragma clang loop unroll(full)
+      for (std::size_t oz = 0; oz < Order; ++oz)
       {
-        const double gx = bx.first[dx][cx], gy = by.first[dy][cy], gz = bz.first[dz][cz];
-        r.gradient.x += v * gx * hy * hz;
-        r.gradient.y += v * hx * gy * hz;
-        r.gradient.z += v * hx * hy * gz;
-        if constexpr (Level >= 2)
+#pragma clang loop unroll(full)
+        for (std::size_t cornerZ = 0; cornerZ < 2; ++cornerZ)
         {
-          r.hessian.ax += v * bx.second[dx][cx] * hy * hz;
-          r.hessian.ay += v * gx * gy * hz;
-          r.hessian.az += v * gx * hy * gz;
-          r.hessian.by += v * hx * by.second[dy][cy] * hz;
-          r.hessian.bz += v * hx * gy * gz;
-          r.hessian.cz += v * hx * hy * bz.second[dz][cz];
+          const std::size_t offset = 2 * cornerY + 4 * cornerZ;
+          double sv = 0.0, sx = 0.0, sxx = 0.0;
+#pragma clang loop unroll(full)
+          for (std::size_t ox = 0; ox < Order; ++ox)
+          {
+            const std::size_t base = 8 * quantity[(ox * Order + oy) * Order + oz] + offset;
+            const double v0 = X[base], v1 = X[base + 1];
+            sv += v0 * bx.value[ox][0] + v1 * bx.value[ox][1];
+            if constexpr (Level >= 1) sx += v0 * bx.first[ox][0] + v1 * bx.first[ox][1];
+            if constexpr (Level >= 2) sxx += v0 * bx.second[ox][0] + v1 * bx.second[ox][1];
+          }
+          const std::size_t b = 2 * oy + cornerY, cc = 2 * oz + cornerZ;
+          cv[b][cc] = sv;
+          if constexpr (Level >= 1) cx[b][cc] = sx;
+          if constexpr (Level >= 2) cxx[b][cc] = sxx;
         }
       }
+    }
+  }
+
+  // contraction over y: the value, the x and y derivatives, and the xx, xy and yy second derivatives
+  std::array<double, M> v{}, gx{}, gy{}, hxx{}, hxy{}, hyy{};
+#pragma clang loop unroll(full)
+  for (std::size_t b = 0; b < M; ++b)
+  {
+    const double hy = by.value[b / 2][b % 2];
+    const double dy = by.first[b / 2][b % 2];
+    const double ddy = by.second[b / 2][b % 2];
+#pragma clang loop unroll(full)
+    for (std::size_t cc = 0; cc < M; ++cc)
+    {
+      v[cc] += cv[b][cc] * hy;
+      if constexpr (Level >= 1)
+      {
+        gx[cc] += cx[b][cc] * hy;
+        gy[cc] += cv[b][cc] * dy;
+      }
+      if constexpr (Level >= 2)
+      {
+        hxx[cc] += cxx[b][cc] * hy;
+        hxy[cc] += cx[b][cc] * dy;
+        hyy[cc] += cv[b][cc] * ddy;
+      }
+    }
+  }
+
+  // contraction over z
+  Result r{};
+#pragma clang loop unroll(full)
+  for (std::size_t cc = 0; cc < M; ++cc)
+  {
+    const double hz = bz.value[cc / 2][cc % 2];
+    const double dz = bz.first[cc / 2][cc % 2];
+    const double ddz = bz.second[cc / 2][cc % 2];
+    r.value += v[cc] * hz;
+    if constexpr (Level >= 1)
+    {
+      r.gradient.x += gx[cc] * hz;
+      r.gradient.y += gy[cc] * hz;
+      r.gradient.z += v[cc] * dz;
+    }
+    if constexpr (Level >= 2)
+    {
+      r.hessian.ax += hxx[cc] * hz;
+      r.hessian.ay += hxy[cc] * hz;
+      r.hessian.az += gx[cc] * dz;
+      r.hessian.by += hyy[cc] * hz;
+      r.hessian.bz += gy[cc] * dz;
+      r.hessian.cz += v[cc] * ddz;
     }
   }
   return r;
@@ -869,7 +951,7 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
       const Cell cell = locateCell(pos);
       std::array<double, 64> X;
       gatherCorners<8>(data.data(), numberOfGridPoints, cell.x0, cell.y0, cell.z0, X);
-      return Hermite::evaluate<0>(X, Hermite::tricubicDerivatives, Hermite::cubic(cell.t.x), Hermite::cubic(cell.t.y),
+      return Hermite::evaluate<0>(X, Hermite::tricubicQuantity, Hermite::cubic(cell.t.x), Hermite::cubic(cell.t.y),
                                   Hermite::cubic(cell.t.z))
           .value;
     }
@@ -878,7 +960,7 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
       const Cell cell = locateCell(pos);
       std::array<double, 216> X;
       gatherCorners<27>(data.data(), numberOfGridPoints, cell.x0, cell.y0, cell.z0, X);
-      return Hermite::evaluate<0>(X, Hermite::triquinticDerivatives, Hermite::quintic(cell.t.x),
+      return Hermite::evaluate<0>(X, Hermite::triquinticQuantity, Hermite::quintic(cell.t.x),
                                   Hermite::quintic(cell.t.y), Hermite::quintic(cell.t.z))
           .value;
     }
@@ -900,7 +982,7 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
       const Cell cell = locateCell(pos);
       std::array<double, 64> X;
       gatherCorners<8>(data.data(), numberOfGridPoints, cell.x0, cell.y0, cell.z0, X);
-      const Hermite::Result r = Hermite::evaluate<1>(X, Hermite::tricubicDerivatives, Hermite::cubic(cell.t.x),
+      const Hermite::Result r = Hermite::evaluate<1>(X, Hermite::tricubicQuantity, Hermite::cubic(cell.t.x),
                                                      Hermite::cubic(cell.t.y), Hermite::cubic(cell.t.z));
       return {r.value, cartesianGradient(r.gradient)};
     }
@@ -909,7 +991,7 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
       const Cell cell = locateCell(pos);
       std::array<double, 216> X;
       gatherCorners<27>(data.data(), numberOfGridPoints, cell.x0, cell.y0, cell.z0, X);
-      const Hermite::Result r = Hermite::evaluate<1>(X, Hermite::triquinticDerivatives, Hermite::quintic(cell.t.x),
+      const Hermite::Result r = Hermite::evaluate<1>(X, Hermite::triquinticQuantity, Hermite::quintic(cell.t.x),
                                                      Hermite::quintic(cell.t.y), Hermite::quintic(cell.t.z));
       return {r.value, cartesianGradient(r.gradient)};
     }
@@ -932,7 +1014,7 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
       const Cell cell = locateCell(pos);
       std::array<double, 64> X;
       gatherCorners<8>(data.data(), numberOfGridPoints, cell.x0, cell.y0, cell.z0, X);
-      const Hermite::Result r = Hermite::evaluate<1>(X, Hermite::tricubicDerivatives, Hermite::cubic(cell.t.x),
+      const Hermite::Result r = Hermite::evaluate<1>(X, Hermite::tricubicQuantity, Hermite::cubic(cell.t.x),
                                                      Hermite::cubic(cell.t.y), Hermite::cubic(cell.t.z));
       return {r.value, cartesianGradient(r.gradient), double3x3{}};
     }
@@ -941,7 +1023,7 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
       const Cell cell = locateCell(pos);
       std::array<double, 216> X;
       gatherCorners<27>(data.data(), numberOfGridPoints, cell.x0, cell.y0, cell.z0, X);
-      const Hermite::Result r = Hermite::evaluate<2>(X, Hermite::triquinticDerivatives, Hermite::quintic(cell.t.x),
+      const Hermite::Result r = Hermite::evaluate<2>(X, Hermite::triquinticQuantity, Hermite::quintic(cell.t.x),
                                                      Hermite::quintic(cell.t.y), Hermite::quintic(cell.t.z));
       return {r.value, cartesianGradient(r.gradient), cartesianHessian(r.hessian)};
     }
@@ -971,8 +1053,8 @@ std::pair<double, double> InterpolationEnergyGrid::interpolate(const Interpolati
       gatherCorners<8>(other.data.data(), numberOfGridPoints, cell.x0, cell.y0, cell.z0, Y);
       const Hermite::Basis1D<2> bx = Hermite::cubic(cell.t.x), by = Hermite::cubic(cell.t.y),
                                 bz = Hermite::cubic(cell.t.z);
-      return {Hermite::evaluate<0>(X, Hermite::tricubicDerivatives, bx, by, bz).value,
-              Hermite::evaluate<0>(Y, Hermite::tricubicDerivatives, bx, by, bz).value};
+      return {Hermite::evaluate<0>(X, Hermite::tricubicQuantity, bx, by, bz).value,
+              Hermite::evaluate<0>(Y, Hermite::tricubicQuantity, bx, by, bz).value};
     }
     case ForceFieldSettings::InterpolationScheme::Triquintic:
     {
@@ -982,8 +1064,8 @@ std::pair<double, double> InterpolationEnergyGrid::interpolate(const Interpolati
       gatherCorners<27>(other.data.data(), numberOfGridPoints, cell.x0, cell.y0, cell.z0, Y);
       const Hermite::Basis1D<3> bx = Hermite::quintic(cell.t.x), by = Hermite::quintic(cell.t.y),
                                 bz = Hermite::quintic(cell.t.z);
-      return {Hermite::evaluate<0>(X, Hermite::triquinticDerivatives, bx, by, bz).value,
-              Hermite::evaluate<0>(Y, Hermite::triquinticDerivatives, bx, by, bz).value};
+      return {Hermite::evaluate<0>(X, Hermite::triquinticQuantity, bx, by, bz).value,
+              Hermite::evaluate<0>(Y, Hermite::triquinticQuantity, bx, by, bz).value};
     }
     default:
       std::unreachable();
@@ -1011,8 +1093,8 @@ std::pair<std::pair<double, double3>, std::pair<double, double3>> InterpolationE
       gatherCorners<8>(other.data.data(), numberOfGridPoints, cell.x0, cell.y0, cell.z0, Y);
       const Hermite::Basis1D<2> bx = Hermite::cubic(cell.t.x), by = Hermite::cubic(cell.t.y),
                                 bz = Hermite::cubic(cell.t.z);
-      const Hermite::Result rx = Hermite::evaluate<1>(X, Hermite::tricubicDerivatives, bx, by, bz);
-      const Hermite::Result ry = Hermite::evaluate<1>(Y, Hermite::tricubicDerivatives, bx, by, bz);
+      const Hermite::Result rx = Hermite::evaluate<1>(X, Hermite::tricubicQuantity, bx, by, bz);
+      const Hermite::Result ry = Hermite::evaluate<1>(Y, Hermite::tricubicQuantity, bx, by, bz);
       return {{rx.value, cartesianGradient(rx.gradient)}, {ry.value, cartesianGradient(ry.gradient)}};
     }
     case ForceFieldSettings::InterpolationScheme::Triquintic:
@@ -1023,8 +1105,8 @@ std::pair<std::pair<double, double3>, std::pair<double, double3>> InterpolationE
       gatherCorners<27>(other.data.data(), numberOfGridPoints, cell.x0, cell.y0, cell.z0, Y);
       const Hermite::Basis1D<3> bx = Hermite::quintic(cell.t.x), by = Hermite::quintic(cell.t.y),
                                 bz = Hermite::quintic(cell.t.z);
-      const Hermite::Result rx = Hermite::evaluate<1>(X, Hermite::triquinticDerivatives, bx, by, bz);
-      const Hermite::Result ry = Hermite::evaluate<1>(Y, Hermite::triquinticDerivatives, bx, by, bz);
+      const Hermite::Result rx = Hermite::evaluate<1>(X, Hermite::triquinticQuantity, bx, by, bz);
+      const Hermite::Result ry = Hermite::evaluate<1>(Y, Hermite::triquinticQuantity, bx, by, bz);
       return {{rx.value, cartesianGradient(rx.gradient)}, {ry.value, cartesianGradient(ry.gradient)}};
     }
     default:
