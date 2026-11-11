@@ -62,8 +62,16 @@ RunningEnergy applyTrialVolume(System& system, const SimulationBox& newBox);
 
 void restoreVolumeState(System& system, const SavedVolumeState& saved);
 
-/// Whether the inter-molecular part of a trial energy marks an overlap (the move is then rejected outright).
+/// Whether a trial total energy marks an overlap (the move is then refused outright): a pair family of the
+/// trial above 'ForceField::energyOverlapCriteria', molecule-molecule, framework-molecule or external field
+/// (the external-field total carries the sentinel 10 x criterion for a position outside the confining geometry).
 bool volumeTrialOverlaps(const System& system, const RunningEnergy& trialEnergy);
+
+/// Whether every user-fixed cut-off still fits the minimum-image convention of the trial box (at most half of
+/// its smallest perpendicular width); the automatic cut-offs follow the box. A trial box that does not fit is
+/// refused before its energy is evaluated, as a compression or shear of the cell would otherwise sample pair
+/// energies beyond the minimum image.
+bool volumeTrialBoxFitsCutOffs(const System& system, const SimulationBox& newBox);
 
 /**
  * \brief Performs a volume move in a Monte Carlo simulation.

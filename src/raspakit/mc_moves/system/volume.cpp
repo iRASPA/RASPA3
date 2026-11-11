@@ -106,7 +106,31 @@ void MC_Moves::restoreVolumeState(System& system, const SavedVolumeState& saved)
 
 bool MC_Moves::volumeTrialOverlaps(const System& system, const RunningEnergy& trialEnergy)
 {
-  return trialEnergy.moleculeMoleculeVDW + trialEnergy.moleculeMoleculeCharge > system.forceField.energyOverlapCriteria;
+  // The rigid translation of the molecules keeps their internal geometry, so only the pairs with the other
+  // molecules, with the framework (which does not move with the box) and with the external field can overlap.
+  const double overlapCriteria = system.forceField.energyOverlapCriteria;
+  return trialEnergy.moleculeMoleculeVDW + trialEnergy.moleculeMoleculeCharge > overlapCriteria ||
+         trialEnergy.frameworkMoleculeVDW + trialEnergy.frameworkMoleculeCharge > overlapCriteria ||
+         trialEnergy.externalFieldVDW + trialEnergy.externalFieldCharge > overlapCriteria;
+}
+
+bool MC_Moves::volumeTrialBoxFitsCutOffs(const System& system, const SimulationBox& newBox)
+{
+  const ForceField& forceField = system.forceField;
+  const double3 widths = newBox.perpendicularWidths();
+  const double halfSmallestWidth = 0.5 * std::min({widths.x, widths.y, widths.z});
+
+  if (!forceField.cutOffMoleculeVDWAutomatic && forceField.cutOffMoleculeVDW > halfSmallestWidth) return false;
+  if (!forceField.cutOffFrameworkVDWAutomatic && !system.spanOfFrameworkAtoms().empty() &&
+      forceField.cutOffFrameworkVDW > halfSmallestWidth)
+  {
+    return false;
+  }
+  if (forceField.useCharge && !forceField.cutOffCoulombAutomatic && forceField.cutOffCoulomb > halfSmallestWidth)
+  {
+    return false;
+  }
+  return true;
 }
 
 std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber& random, System& system)
@@ -130,6 +154,9 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber& random, System& 
   double scale = std::pow(newVolume / oldVolume, 1.0 / 3.0);
 
   SimulationBox newBox = system.simulationBox.scaled(scale);
+
+  // a user-fixed cut-off must keep fitting the minimum-image convention of the trial box
+  if (!volumeTrialBoxFitsCutOffs(system, newBox)) return std::nullopt;
 
   // The trial box is applied to the live system and its exact total energy computed; every non-accepting exit
   // restores the saved state.
@@ -198,6 +225,10 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
                       std::exp(maxVolumeChange.z * (2.0 * random.uniform() - 1.0)));
 
   SimulationBox newBox = system.simulationBox.scaled(scale);
+
+  // a user-fixed cut-off must keep fitting the minimum-image convention of the trial box (a single axis can
+  // be compressed well below the others)
+  if (!volumeTrialBoxFitsCutOffs(system, newBox)) return std::nullopt;
 
   const SavedVolumeState saved = saveVolumeState(system);
   RunningEnergy newTotalEnergy =

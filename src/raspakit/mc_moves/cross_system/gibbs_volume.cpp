@@ -55,6 +55,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   const double numberOfMoleculesA = numberOfScaledMolecules(systemA);
   double scaleA = std::pow(newVolumeA / oldVolumeA, 1.0 / 3.0);
   SimulationBox newBoxA = systemA.simulationBox.scaled(scaleA);
+  double scaleB = std::pow(newVolumeB / oldVolumeB, 1.0 / 3.0);
+  SimulationBox newBoxB = systemB.simulationBox.scaled(scaleB);
+
+  // a user-fixed cut-off must keep fitting the minimum-image convention of both trial boxes
+  if (!volumeTrialBoxFitsCutOffs(systemA, newBoxA) || !volumeTrialBoxFitsCutOffs(systemB, newBoxB))
+  {
+    return std::nullopt;
+  }
 
   const SavedVolumeState savedA = saveVolumeState(systemA);
   RunningEnergy newTotalEnergyA =
@@ -71,8 +79,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   // Scale systemB to the new volume
   RunningEnergy oldTotalEnergyB = systemB.runningEnergies;
   const double numberOfMoleculesB = numberOfScaledMolecules(systemB);
-  double scaleB = std::pow(newVolumeB / oldVolumeB, 1.0 / 3.0);
-  SimulationBox newBoxB = systemB.simulationBox.scaled(scaleB);
 
   const SavedVolumeState savedB = saveVolumeState(systemB);
   RunningEnergy newTotalEnergyB =

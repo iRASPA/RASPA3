@@ -550,9 +550,10 @@ TEST(MC_NPT_DRIFT, volume_jacobian_counts_scaled_fractional_molecules)
 {
   // Ideal-gas NPT: <V> = (n + 1) / (βP) with n the number of centres of mass the move scales. A reserved
   // CFCMC slot is such a centre of mass, so n includes it; counting only integer molecules would sample
-  // half this volume (empty-box NPT).
+  // half this volume (empty-box NPT). The cut-offs are far below half the box: the volume moves refuse a box
+  // smaller than twice a fixed cut-off, which must not truncate the sampled volume distribution here.
   const ForceField forceField({{"A", false, 16.0, 0.0, 0.0, 8, false}}, {{0.0, 3.0}},
-                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, false, false);
+                              ForceField::MixingRule::Lorentz_Berthelot, 2.0, 2.0, 2.0, false, false, false);
   MCMoveProbabilities componentProbabilities{};
   componentProbabilities.setProbability(Move::Types::SwapCFCMC, 1.0);
   Component atomic(forceField, "atomic", 64.0, 1.0e6, 0.02, {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)},
@@ -581,4 +582,74 @@ TEST(MC_NPT_DRIFT, volume_jacobian_counts_scaled_fractional_molecules)
   }
   const double expected = 2.0 / (system.beta * system.pressure);
   EXPECT_NEAR(sumV / static_cast<double>(samples), expected, 0.2 * expected);
+}
+
+// The volume moves refuse a trial outright when a pair term of its total energy marks an overlap. The molecules
+// translate rigidly, so besides the pairs between molecules a compression can push a molecule into the framework
+// (which does not move with the box) or out of the confining geometry of an external field, whose total carries
+// the sentinel 10 x criterion for such a position; those terms must count as overlaps as well.
+TEST(MC_NPT_DRIFT, volume_trial_overlap_test_covers_every_pair_family)
+{
+  System system = makeDiluteCO2System();
+  const double criterion = system.forceField.energyOverlapCriteria;
+
+  RunningEnergy energy{};
+  EXPECT_FALSE(MC_Moves::volumeTrialOverlaps(system, energy));
+
+  energy.moleculeMoleculeVDW = 2.0 * criterion;
+  EXPECT_TRUE(MC_Moves::volumeTrialOverlaps(system, energy));
+  energy.moleculeMoleculeVDW = 0.0;
+
+  energy.frameworkMoleculeVDW = 2.0 * criterion;
+  EXPECT_TRUE(MC_Moves::volumeTrialOverlaps(system, energy));
+  energy.frameworkMoleculeVDW = 0.0;
+
+  energy.externalFieldVDW = 10.0 * criterion;
+  EXPECT_TRUE(MC_Moves::volumeTrialOverlaps(system, energy));
+}
+
+// With user-fixed cut-offs the box must keep every cut-off within half of its smallest perpendicular width, or
+// the pair sums leave the minimum-image convention. A single molecule at a pressure that holds the box near its
+// start (beta p V = N + 1) and large steps in ln V (or ln L_a) propose many boxes below that limit; none may be
+// accepted, by the isotropic move or by the anisotropic move that compresses one axis on its own.
+TEST(MC_NPT_DRIFT, volume_moves_keep_the_fixed_cut_offs_inside_the_minimum_image)
+{
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component co2 = Component(forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
+                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
+                            {}, {}, 5, 21, {}, std::nullopt, false);
+  const double limit = 2.0 * std::max({forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb});
+
+  for (const bool anisotropic : {false, true})
+  {
+    System system(forceField, SimulationBox(26.0, 26.0, 26.0), false, 300.0, 1e4, 1.0, {}, {co2}, {}, {1}, 5);
+    ASSERT_FALSE(system.forceField.cutOffMoleculeVDWAutomatic);
+    ASSERT_FALSE(system.forceField.cutOffCoulombAutomatic);
+    system.runningEnergies = system.computeTotalEnergies();
+    system.pressure = 2.0 / (system.beta * system.simulationBox.volume);
+    system.pressureTensorDiagonal = double3(system.pressure, system.pressure, system.pressure);
+    system.mc_moves_statistics.setMaxChange(Move::Types::VolumeChange, 0.6);
+    std::get<MoveStatistics<double3>>(
+        system.mc_moves_statistics.stats[std::to_underlying(Move::Types::AnisotropicVolumeChange)])
+        .maxChange = double3(0.6, 0.6, 0.6);
+
+    RandomNumber random(anisotropic ? 3 : 5);
+    std::size_t accepted = 0;
+    for (std::size_t i = 0; i != 300; ++i)
+    {
+      const std::optional<RunningEnergy> result =
+          anisotropic ? MC_Moves::anisotropicVolumeMove(random, system) : MC_Moves::volumeMove(random, system);
+      if (result.has_value())
+      {
+        ++accepted;
+        system.runningEnergies += result.value();
+      }
+      const double3 widths = system.simulationBox.perpendicularWidths();
+      ASSERT_GE(std::min({widths.x, widths.y, widths.z}), limit - 1e-9)
+          << (anisotropic ? "anisotropic" : "isotropic") << " move " << i << " left a box below twice the cut-off";
+    }
+    EXPECT_GT(accepted, 0uz) << (anisotropic ? "anisotropic" : "isotropic");
+  }
 }
