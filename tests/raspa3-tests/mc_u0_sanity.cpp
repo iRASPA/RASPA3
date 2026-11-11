@@ -15,6 +15,7 @@ import randomnumbers;
 import mc_moves_move_types;
 import mc_moves_probabilities;
 import mc_moves_pivot;
+import mc_moves_pivot_cbmc;
 import mc_moves_crankshaft;
 import mc_moves_reptation;
 import mc_moves_hybridmc;
@@ -699,4 +700,90 @@ TEST(MC_U0_SANITY, reptation_accepts_all_and_samples_ideal_distributions)
   // Standard bookkeeping check: the running energies must match a full recomputation.
   RunningEnergy drift = system.runningEnergies - system.computeTotalEnergies();
   EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
+}
+
+// A declared chiral centre is a tetrahedral atom with three of its bonded neighbours: the growth decides its
+// parity at the step that places those neighbours, and a pivot rotates it as a whole or not at all. A quadruple
+// that reaches past the bonded neighbours would be enforced by neither, so the reader refuses it.
+TEST(MC_U0_SANITY, chiral_centers_must_name_bonded_neighbours)
+{
+  const ForceField forceField = makeZeroForceFieldWithCH();
+  // a CH with the three bonded neighbours 0, 2 and 3; atom 4 hangs off atom 3 and is not bonded to the centre
+  const auto branchedJson = [](std::string_view centre)
+  {
+    return std::format(R"({{
+  "CriticalTemperature" : 600.0,
+  "CriticalPressure" : 3000000.0,
+  "AcentricFactor" : 0.3,
+  "pseudoAtoms" :
+    [
+      ["CH3", [1.54, 0.0, 0.0]], ["CH", [0.0, 0.0, 0.0]], ["CH3", [-0.5, 1.45, 0.0]], ["CH2", [-0.5, -0.7, 1.2]],
+      ["CH3", [-1.0, -1.4, 2.6]]
+    ],
+  "Connectivity" : [[0, 1], [1, 2], [1, 3], [3, 4]],
+  "Bonds" : [
+    [["CH3", "CH"], "HARMONIC", [96500.0, 1.54]],
+    [["CH", "CH2"], "HARMONIC", [96500.0, 1.54]],
+    [["CH2", "CH3"], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH3", "CH", "CH3"], "HARMONIC", [0.0, 112.0]],
+    [["CH3", "CH", "CH2"], "HARMONIC", [0.0, 112.0]],
+    [["CH", "CH2", "CH3"], "HARMONIC", [0.0, 112.0]]
+  ],
+  "Torsions" : [
+    [["CH3", "CH", "CH2", "CH3"], "TRAPPE", [0.0, 0.0, 0.0, 0.0]]
+  ],
+  "VanDerWaals" : "auto",
+  "ChiralCenters" : [{}]
+}}
+)",
+                       centre);
+  };
+
+  {
+    TemporaryFile file("bonded-centre.json", branchedJson("[1, 0, 2, 3]"));
+    Component component(Component::Type::Adsorbate, 0, forceField, "bonded-centre", file.stemPath().string(), 5, 21,
+                        MCMoveProbabilities(), std::nullopt, false);
+    EXPECT_EQ(component.intraMolecularPotentials.chiralCenters.size(), 1uz);
+  }
+  {
+    TemporaryFile file("unbonded-centre.json", branchedJson("[1, 0, 2, 4]"));
+    EXPECT_THROW(Component(Component::Type::Adsorbate, 0, forceField, "unbonded-centre", file.stemPath().string(), 5,
+                           21, MCMoveProbabilities(), std::nullopt, false),
+                 std::runtime_error);
+  }
+}
+
+// The pivot moves rotate one side of a bond rigidly. Every declared centre lies with its three bonded neighbours
+// either entirely on one side (and moves rigidly) or has the bond's far atom as a neighbour on the axis (and
+// does not move at all), so no pivot can invert a centre and the moves carry no chirality check.
+TEST(MC_U0_SANITY, pivot_moves_keep_the_declared_stereocentres)
+{
+  const ForceField forceField = makeZeroForceFieldWithCH();
+  TemporaryFile file("isotactic-chain-pivot.json", chiralChainJson(true));
+  Component chain = Component(Component::Type::Adsorbate, 0, forceField, "isotactic-chain-pivot",
+                              file.stemPath().string(), 5, 21, MCMoveProbabilities(), std::nullopt, false);
+  ASSERT_EQ(chain.intraMolecularPotentials.chiralCenters.size(), 3uz);
+  System system = System(forceField, SimulationBox(40.0, 40.0, 40.0), false, 300.0, 1e4, 1.0, {}, {chain}, {}, {2}, 5);
+  system.runningEnergies = system.computeTotalEnergies();
+
+  RandomNumber random(31);
+  std::size_t acceptedPivot = 0, acceptedPivotCBMC = 0;
+  for (std::size_t i = 0; i != 200; ++i)
+  {
+    const std::size_t m = i % 2;
+    const bool useCBMC = (i / 2) % 2 == 1;
+    const std::optional<RunningEnergy> energy =
+        useCBMC ? MC_Moves::pivotCBMCMove(random, system, 0, m) : MC_Moves::pivotMove(random, system, 0, m);
+    if (energy.has_value())
+    {
+      (useCBMC ? acceptedPivotCBMC : acceptedPivot) += 1;
+      system.runningEnergies += energy.value();
+    }
+    ASSERT_TRUE(system.components[0].intraMolecularPotentials.preservesChiralCenters(system.spanOfMolecule(0, m)))
+        << (useCBMC ? "pivot CBMC" : "pivot") << " move " << i << " inverted a stereocentre of chain " << m;
+  }
+  EXPECT_GT(acceptedPivot, 0uz);
+  EXPECT_GT(acceptedPivotCBMC, 0uz);
 }

@@ -3533,7 +3533,11 @@ molecules; do not combine it with insertion/deletion moves.
     displacement, bead flip, crankshaft, concerted rotation, double bridging
     and double rebridging) treat the declared `"ChiralCenters"` as a hard
     constraint: a trial configuration that inverts the sign of a declared
-    centre is rejected, as in CBMC growth.
+    centre is rejected, as in CBMC growth. A centre is a tetrahedral atom
+    with three of its bonded neighbours (the molecule reader rejects any
+    other quadruple); the pivot moves rotate one side of a bond rigidly,
+    which moves such a centre as a whole or not at all, so they preserve
+    every declared centre without a check.
 
 -   `"ReptationProbability" : floating-point-number`\
     The relative probability of a reptation (slithering-snake) move for chain

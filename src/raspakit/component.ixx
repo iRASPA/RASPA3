@@ -773,7 +773,9 @@ export struct Component
    * volume of the tetrahedron (neighbor1 - center, neighbor2 - center, neighbor3 - center). CBMC
    * growth preserves this parity: branch swaps and ring-conformation moves that would invert a
    * declared center are rejected. Throws when an index is out of range, the four indices are not
-   * distinct, or the reference geometry of the center is (near-)planar so its parity is undefined.
+   * distinct, a neighbor is not bonded to the center (the growth and the rigid-rotation moves rely on
+   * the centers being local), or the reference geometry of the center is (near-)planar so its parity
+   * is undefined.
    */
   std::vector<ChiralCenter> readChiralCenters(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 

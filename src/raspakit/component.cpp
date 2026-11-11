@@ -3693,6 +3693,21 @@ std::vector<ChiralCenter> Component::readChiralCenters(const nlohmann::basic_jso
           "[Component reader]: the four atom indices of a chiral center must be distinct ({})\n", item.dump()));
     }
 
+    // A centre is a tetrahedral atom with three of its bonded neighbours: the CBMC growth decides a centre's
+    // parity at the step that places its neighbours around it, and the moves that rotate a part of the molecule
+    // rigidly about a bond (the pivots) move such a centre as a whole or not at all. A quadruple that reaches
+    // past the bonded neighbours would be enforced by neither.
+    for (std::size_t k = 1; k != 4; ++k)
+    {
+      if (!connectivityTable[ids[0], ids[k]])
+      {
+        throw std::runtime_error(std::format(
+            "[Component reader]: chiral center ({}): atom {} is not bonded to the center atom {}; a chiral center is "
+            "a tetrahedral atom with three of its bonded neighbors\n",
+            item.dump(), ids[k], ids[0]));
+      }
+    }
+
     // The handedness follows from the reference geometry: the signed volume of the tetrahedron
     // spanned by the three neighbors relative to the center. A (near-)planar center carries no
     // handedness and cannot be preserved during growth.
