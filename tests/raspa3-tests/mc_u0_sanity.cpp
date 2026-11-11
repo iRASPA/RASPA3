@@ -17,6 +17,7 @@ import mc_moves_probabilities;
 import mc_moves_pivot;
 import mc_moves_crankshaft;
 import mc_moves_reptation;
+import mc_moves_hybridmc;
 import intra_molecular_potentials;
 
 // 'U = 0' sanity test for the conformational Monte-Carlo moves (Vitalis & Pappu, Methods 46
@@ -522,6 +523,47 @@ TEST(MC_U0_SANITY, reptation_tags_stay_with_the_surviving_units)
     EXPECT_EQ(movedTags, 3uz) << "move " << i;
   }
   EXPECT_GE(accepted, 20uz);
+}
+
+// A declared stereocentre is a hard constraint of the model, which every move that changes the internal geometry
+// enforces. The hybrid MC trajectory of a chain with zero bend and torsion potentials inverts a centre now and
+// then; such a trajectory is refused, like one that ends in a blocking pocket.
+TEST(MC_U0_SANITY, hybrid_mc_keeps_the_declared_stereocentres)
+{
+  const ForceField forceField = makeZeroForceFieldWithCH();
+  TemporaryFile file("isotactic-chain-hmc.json", chiralChainJson(true));
+  Component chain = Component(Component::Type::Adsorbate, 0, forceField, "isotactic-chain-hmc", file.stemPath().string(),
+                              5, 21, MCMoveProbabilities(), std::nullopt, false);
+  ASSERT_EQ(chain.intraMolecularPotentials.chiralCenters.size(), 3uz);
+  System system =
+      System(forceField, SimulationBox(200.0, 200.0, 200.0), false, 300.0, 1e4, 1.0, {}, {chain}, {}, {2}, 5);
+  system.runningEnergies = system.computeTotalEnergies();
+  system.hybridMCUseForceEngine = false;
+  system.numberOfHybridMCSteps = 25;
+  system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 0.004);
+
+  RandomNumber random(97);
+  std::size_t accepted = 0, refused = 0;
+  for (std::size_t i = 0; i != 3000 && (accepted < 200 || refused < 1); ++i)
+  {
+    const std::optional<RunningEnergy> energy = MC_Moves::hybridMCMove(random, system);
+    if (energy.has_value())
+    {
+      ++accepted;
+      system.runningEnergies += energy.value();
+    }
+    else
+    {
+      ++refused;
+    }
+    for (std::size_t m = 0; m != 2; ++m)
+    {
+      ASSERT_TRUE(system.components[0].intraMolecularPotentials.preservesChiralCenters(system.spanOfMolecule(0, m)))
+          << "move " << i << " inverted a stereocentre of chain " << m;
+    }
+  }
+  EXPECT_GE(accepted, 200uz);
+  EXPECT_GE(refused, 1uz);
 }
 
 TEST(MC_U0_SANITY, reptation_keeps_the_declared_stereocentres)

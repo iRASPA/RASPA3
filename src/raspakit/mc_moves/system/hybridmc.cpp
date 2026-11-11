@@ -102,14 +102,19 @@ HybridMCEngine* hybridMCEngine(System& system)
   return holder.get();
 }
 
-bool moleculeEnteredBlockedPocket(const System& system, std::span<const Molecule> molecules,
-                                  std::span<const Atom> atoms)
+/// The configurations a trajectory may not end in: a molecule inside a blocking pocket of its component, or a
+/// declared chiral centre that the trajectory inverted (a hard constraint, which every move that changes a
+/// molecule's internal geometry enforces).
+bool trajectoryEndsInRefusedConfiguration(const System& system, std::span<const Molecule> molecules,
+                                          std::span<const Atom> atoms)
 {
   std::size_t offset = 0;
   for (const Molecule& molecule : molecules)
   {
-    if (system.insideBlockedPockets(system.components[molecule.componentId],
-                                    atoms.subspan(offset, molecule.numberOfAtoms)))
+    const Component& component = system.components[molecule.componentId];
+    const std::span<const Atom> moleculeAtoms = atoms.subspan(offset, molecule.numberOfAtoms);
+    if (system.insideBlockedPockets(component, moleculeAtoms) ||
+        !component.intraMolecularPotentials.preservesChiralCenters(moleculeAtoms))
     {
       return true;
     }
@@ -196,7 +201,7 @@ std::optional<RunningEnergy> hybridMCMoveWithEngine(RandomNumber& random, System
   system.mc_moves_statistics.addConstructed(move);
   system.thermostat = std::move(savedThermostat);
 
-  if (moleculeEnteredBlockedPocket(system, system.moleculeData, atomData))
+  if (trajectoryEndsInRefusedConfiguration(system, system.moleculeData, atomData))
   {
     std::copy(savedAtoms.begin(), savedAtoms.end(), atomData.begin());
     std::copy(savedDynamics.begin(), savedDynamics.end(), dynamicsData.begin());
@@ -257,11 +262,25 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
 
   const bool flexibleFramework = system.framework && !system.framework->rigid;
   const bool hasMovableFramework = flexibleFramework && system.framework->hasMobileAtoms();
-  // Reject when there is nothing to propagate. For a flexible framework the atoms themselves
-  // are degrees of freedom, so a framework-only (or single-molecule) system is allowed; Fixed groups are not.
-  if (system.moleculeData.size() <= 1 && !hasMovableFramework)
+
+  // The total momentum is conserved along the trajectory of a bulk fluid or of a flexible framework without Fixed
+  // atoms (the lab frame is free), and the centre-of-mass velocity is then removed from the drawn velocities. A
+  // rigid framework, the Fixed atoms of a mixed one, or an external field pin the lab frame: the momentum is not
+  // conserved and is left intact.
+  const bool momentumIsConserved =
+      (system.numberOfFrameworkAtoms == 0 || (flexibleFramework && system.framework->numberOfFixedAtoms() == 0)) &&
+      !system.hasExternalField;
+
+  // Reject when there is nothing to propagate: no molecules without mobile framework atoms, or one single-atom
+  // molecule whose only velocity is the centre-of-mass drift that is removed. A single polyatomic molecule has
+  // rotational or internal degrees of freedom, and a single atom moves when the lab frame is pinned.
+  if (!hasMovableFramework)
   {
-    return std::nullopt;
+    if (system.moleculeData.empty()) return std::nullopt;
+    if (system.moleculeData.size() == 1 && momentumIsConserved && system.moleculeData.front().numberOfAtoms == 1)
+    {
+      return std::nullopt;
+    }
   }
 
   if (HybridMCEngine* engineHolder = hybridMCEngine(system))
@@ -362,14 +381,8 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
                                     system.temperature, system.framework, trialFrameworkAtoms, trialFrameworkDynamics,
                                     &system.forceField, groupDataSpan, frameworkGroupDataSpan);
 
-  // Remove COM drift for bulk fluids and for flexible frameworks (lab frame is free). The total momentum is then
-  // conserved along the trajectory, so the P = 0 hyperplane the velocities are drawn on is invariant and the
-  // reversed final momenta can be drawn by the reverse move. A rigid framework or the Fixed atoms of a mixed one pin
-  // the lab frame, and an external field exerts a net force on the molecules: in these cases the momentum is not
-  // conserved and must be left intact.
-  const bool momentumIsConserved =
-      (system.numberOfFrameworkAtoms == 0 || (flexibleFramework && system.framework->numberOfFixedAtoms() == 0)) &&
-      !system.hasExternalField;
+  // Remove the centre-of-mass drift when the momentum is conserved: the P = 0 hyperplane the velocities are drawn
+  // on is then invariant along the trajectory, so the reversed final momenta can be drawn by the reverse move.
   if (momentumIsConserved)
   {
     Integrators::removeCenterOfMassVelocityDrift(
@@ -409,7 +422,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
   system.mc_moves_statistics.addConstructed(move);
 
-  if (moleculeEnteredBlockedPocket(system, moleculeData, moleculeAtomPositions))
+  if (trajectoryEndsInRefusedConfiguration(system, moleculeData, moleculeAtomPositions))
   {
     return std::nullopt;
   }

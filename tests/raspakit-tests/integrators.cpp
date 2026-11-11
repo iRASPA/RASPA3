@@ -1103,6 +1103,53 @@ TEST(hybrid_mc, mixed_framework_rigid_group_does_not_throw)
   }
 }
 
+// A single molecule has degrees of freedom to propagate: in a rigid framework the lab frame is pinned, so even a
+// single atom translates; in a free lab frame a polyatomic molecule still rotates (and flexes). Only a single
+// atom in a free lab frame has nothing left once its centre-of-mass velocity is removed.
+TEST(hybrid_mc, single_molecules_are_propagated)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework framework = Framework::makeITQ29(forceField, int3(1, 1, 1));
+  Component methane = Component::makeMethane(forceField, 0);
+  Component co2 = Component::makeCO2(forceField, 0, false);
+
+  std::vector<System> systems{
+      System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, framework, {methane}, {}, {1}, 5),
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {co2}, {}, {1}, 5)};
+  for (System& system : systems)
+  {
+    system.runningEnergies = system.computeTotalEnergies();
+    system.numberOfHybridMCSteps = 5;
+    system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 1.0e-3);
+    const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+    const std::vector<Atom> before(atoms.begin(), atoms.end());
+
+    RandomNumber random(3);
+    std::size_t accepted = 0;
+    for (std::size_t i = 0; i != 20; ++i)
+    {
+      const std::optional<RunningEnergy> energy = MC_Moves::hybridMCMove(random, system);
+      if (!energy.has_value()) continue;
+      ++accepted;
+      system.runningEnergies += energy.value();
+    }
+    EXPECT_GT(accepted, 0uz);
+    double displacement = 0.0;
+    for (std::size_t k = 0; k != atoms.size(); ++k)
+    {
+      displacement = std::max(displacement, (atoms[k].position - before[k].position).length());
+    }
+    EXPECT_GT(displacement, 1.0e-6);
+  }
+
+  // a single atom in a free lab frame: nothing to propagate
+  System lone(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {1}, 5);
+  lone.runningEnergies = lone.computeTotalEnergies();
+  lone.numberOfHybridMCSteps = 5;
+  RandomNumber random(3);
+  EXPECT_FALSE(MC_Moves::hybridMCMove(random, lone).has_value());
+}
+
 TEST(hybrid_mc, rejects_when_molecule_is_inside_blocked_pocket)
 {
   // Pocket is attached after construction: System::createInitialMolecules refuses pockets, so a
