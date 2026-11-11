@@ -168,8 +168,14 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
       trialJ[atom].position = oldI[atom].position - shift;
     }
   }
-  Bridging::placeTrimer(trialI, oldI, units, site, oldAnchorsI, oldTrimerI, newAnchorsI, closureI->trimer);
-  Bridging::placeTrimer(trialJ, oldJ, units, site, oldAnchorsJ, oldTrimerJ, newAnchorsJ, closureJ->trimer);
+  if (!Bridging::placeTrimer(trialI, oldI, units, site, oldAnchorsI, oldTrimerI, newAnchorsI, closureI->trimer))
+  {
+    return std::nullopt;
+  }
+  if (!Bridging::placeTrimer(trialJ, oldJ, units, site, oldAnchorsJ, oldTrimerJ, newAnchorsJ, closureJ->trimer))
+  {
+    return std::nullopt;
+  }
 
   // Partner-selection probabilities in the new state: only the anchor pairs of the two chains change
   // (each keeps its a2 and takes the other's a6). Both remain candidates of each other.

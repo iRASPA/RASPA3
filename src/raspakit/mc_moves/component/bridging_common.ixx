@@ -65,9 +65,10 @@ double chartVolumeElement(const double3& a6, const double3& a7, const std::optio
 /// Writes a re-bridged trimer into 'trialAtoms': the backbone atoms of units site+1 ... site+3 take
 /// the positions of 'newTrimer', and the side atoms of each of these units (read from 'sourceAtoms')
 /// are carried rigidly with the local frame (previous backbone atom, atom, next backbone atom) of
-/// their backbone atom, which the closure maps congruently.
-void placeTrimer(std::span<Atom> trialAtoms, std::span<const Atom> sourceAtoms,
-                 const std::vector<Component::BridgingTopology::Unit>& units, std::size_t site,
-                 const Anchors& oldAnchors, const ConcertedRotation::Trimer& oldTrimer, const Anchors& newAnchors,
-                 const ConcertedRotation::Trimer& newTrimer);
+/// their backbone atom, which the closure maps congruently. False when a side group sits on a backbone atom
+/// whose triplet is collinear in the old or the new state (no frame to carry it with): the move is refused.
+[[nodiscard]] bool placeTrimer(std::span<Atom> trialAtoms, std::span<const Atom> sourceAtoms,
+                               const std::vector<Component::BridgingTopology::Unit>& units, std::size_t site,
+                               const Anchors& oldAnchors, const ConcertedRotation::Trimer& oldTrimer,
+                               const Anchors& newAnchors, const ConcertedRotation::Trimer& newTrimer);
 }  // namespace Bridging

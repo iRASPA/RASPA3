@@ -124,14 +124,16 @@ std::optional<RunningEnergy> MC_Moves::concertedRotationMove(RandomNumber &rando
     trialAtoms[backbone[i]].position = newPositions[i];
     const std::vector<std::size_t> &substituent = window.substituents[i - 2];
     if (substituent.empty()) continue;
-    const double3x3 oldFrame =
+    const std::optional<double3x3> oldFrame =
         ConcertedRotation::localFrame(oldPositions[i], oldPositions[i - 1], oldPositions[i + 1]);
-    const double3x3 newFrame =
+    const std::optional<double3x3> newFrame =
         ConcertedRotation::localFrame(newPositions[i], newPositions[i - 1], newPositions[i + 1]);
+    // a collinear triplet has no frame to carry the side group with: refuse, as for a degenerate chart
+    if (!oldFrame.has_value() || !newFrame.has_value()) return std::nullopt;
     for (std::size_t atom : substituent)
     {
-      trialAtoms[atom].position = ConcertedRotation::transformRigidly(oldPositions[i], oldFrame, newPositions[i],
-                                                                      newFrame, molecule_atoms[atom].position);
+      trialAtoms[atom].position = ConcertedRotation::transformRigidly(oldPositions[i], *oldFrame, newPositions[i],
+                                                                      *newFrame, molecule_atoms[atom].position);
     }
   }
 

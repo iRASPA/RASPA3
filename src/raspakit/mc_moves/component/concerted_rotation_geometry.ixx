@@ -72,8 +72,9 @@ double closureJacobian(std::span<const double3, 7> a1_to_a7, const std::optional
 double3 rotateAboutAxis(const double3 &origin, const double3 &axis, double angle, const double3 &point);
 
 /// The orthonormal local frame of a backbone atom: columns e1 along (previous - atom), e2 the
-/// perpendicular part of (next - atom), e3 = e1 x e2.
-double3x3 localFrame(const double3 &atom, const double3 &previous, const double3 &next);
+/// perpendicular part of (next - atom), e3 = e1 x e2. Empty for a degenerate triplet (coincident
+/// atoms, or previous, atom and next collinear), where the frame is not defined.
+std::optional<double3x3> localFrame(const double3 &atom, const double3 &previous, const double3 &next);
 
 /// Maps 'point', given in the old frame at 'oldOrigin', rigidly to the new frame at 'newOrigin'.
 double3 transformRigidly(const double3 &oldOrigin, const double3x3 &oldFrame, const double3 &newOrigin,

@@ -475,11 +475,21 @@ double3 ConcertedRotation::rotateAboutAxis(const double3 &origin, const double3 
   return origin + r * c + double3::cross(axis, r) * s + axis * (double3::dot(axis, r) * (1.0 - c));
 }
 
-double3x3 ConcertedRotation::localFrame(const double3 &atom, const double3 &previous, const double3 &next)
+std::optional<double3x3> ConcertedRotation::localFrame(const double3 &atom, const double3 &previous,
+                                                       const double3 &next)
 {
-  const double3 e1 = (previous - atom).normalized();
+  const double3 toPrevious = previous - atom;
+  const double bondLength = toPrevious.length();
+  if (bondLength < 1e-12) return std::nullopt;  // coincident atoms: no bond direction
+  const double3 e1 = toPrevious / bondLength;
   const double3 toNext = next - atom;
-  const double3 e2 = (toNext - double3::dot(toNext, e1) * e1).normalized();
+  const double3 inPlane = toNext - double3::dot(toNext, e1) * e1;
+  const double inPlaneLength = inPlane.length();
+  // collinear previous, atom, next (bend of 0 or pi): the frame is defined only up to a rotation about the
+  // bond, so there is no congruent map for the side group ('normalized()' would return the zero vector here,
+  // and the rank-one "frame" would project the side group onto the backbone axis)
+  if (inPlaneLength < 1e-12) return std::nullopt;
+  const double3 e2 = inPlane / inPlaneLength;
   const double3 e3 = double3::cross(e1, e2);
   return double3x3(e1, e2, e3);
 }

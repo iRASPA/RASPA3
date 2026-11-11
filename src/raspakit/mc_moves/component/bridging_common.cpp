@@ -73,7 +73,7 @@ double Bridging::chartVolumeElement(const double3& a6, const double3& a7, const 
   return lengthSquared * double3::cross(u.normalized(), a8.value() - a7).length();
 }
 
-void Bridging::placeTrimer(std::span<Atom> trialAtoms, std::span<const Atom> sourceAtoms,
+bool Bridging::placeTrimer(std::span<Atom> trialAtoms, std::span<const Atom> sourceAtoms,
                            const std::vector<Component::BridgingTopology::Unit>& units, std::size_t site,
                            const Anchors& oldAnchors, const ConcertedRotation::Trimer& oldTrimer,
                            const Anchors& newAnchors, const ConcertedRotation::Trimer& newTrimer)
@@ -85,12 +85,16 @@ void Bridging::placeTrimer(std::span<Atom> trialAtoms, std::span<const Atom> sou
     const Component::BridgingTopology::Unit& unit = units[site + m];
     trialAtoms[unit.backboneAtom].position = newPositions[m];
     if (unit.sideAtoms.empty()) continue;
-    const double3x3 oldFrame = ConcertedRotation::localFrame(oldPositions[m], oldPositions[m - 1], oldPositions[m + 1]);
-    const double3x3 newFrame = ConcertedRotation::localFrame(newPositions[m], newPositions[m - 1], newPositions[m + 1]);
+    const std::optional<double3x3> oldFrame =
+        ConcertedRotation::localFrame(oldPositions[m], oldPositions[m - 1], oldPositions[m + 1]);
+    const std::optional<double3x3> newFrame =
+        ConcertedRotation::localFrame(newPositions[m], newPositions[m - 1], newPositions[m + 1]);
+    if (!oldFrame.has_value() || !newFrame.has_value()) return false;
     for (std::size_t atom : unit.sideAtoms)
     {
-      trialAtoms[atom].position = ConcertedRotation::transformRigidly(oldPositions[m], oldFrame, newPositions[m],
-                                                                      newFrame, sourceAtoms[atom].position);
+      trialAtoms[atom].position = ConcertedRotation::transformRigidly(oldPositions[m], *oldFrame, newPositions[m],
+                                                                      *newFrame, sourceAtoms[atom].position);
     }
   }
+  return true;
 }

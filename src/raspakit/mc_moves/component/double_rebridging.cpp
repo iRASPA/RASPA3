@@ -110,8 +110,14 @@ std::optional<RunningEnergy> MC_Moves::intramolecularDoubleRebridgingMove(Random
     const Component::BridgingTopology::Unit& source = units[a + 4 + b - k];
     trialAtoms[target.backboneAtom].position = oldAtoms[source.backboneAtom].position;
   }
-  Bridging::placeTrimer(trialAtoms, oldAtoms, units, a, oldAnchors1, oldTrimer1, newAnchors1, closure1->trimer);
-  Bridging::placeTrimer(trialAtoms, oldAtoms, units, b, oldAnchors2, oldTrimer2, newAnchors2, closure2->trimer);
+  if (!Bridging::placeTrimer(trialAtoms, oldAtoms, units, a, oldAnchors1, oldTrimer1, newAnchors1, closure1->trimer))
+  {
+    return std::nullopt;
+  }
+  if (!Bridging::placeTrimer(trialAtoms, oldAtoms, units, b, oldAnchors2, oldTrimer2, newAnchors2, closure2->trimer))
+  {
+    return std::nullopt;
+  }
 
   // The side groups of the reversed segment. The chain now runs through every unit in the opposite direction
   // (its previous and next backbone neighbours are interchanged). Carrying the side atoms rigidly from the local
@@ -136,14 +142,18 @@ std::optional<RunningEnergy> MC_Moves::intramolecularDoubleRebridgingMove(Random
       continue;
     }
     const double3 oldCenter = position(s);
-    const double3x3 oldFrame = ConcertedRotation::localFrame(oldCenter, position(s - 1), position(s + 1));
+    const std::optional<double3x3> oldFrame =
+        ConcertedRotation::localFrame(oldCenter, position(s - 1), position(s + 1));
     const double3 newCenter = trialAtoms[target.backboneAtom].position;
-    const double3x3 newFrame = ConcertedRotation::localFrame(newCenter, trialAtoms[units[k - 1].backboneAtom].position,
-                                                             trialAtoms[units[k + 1].backboneAtom].position);
+    const std::optional<double3x3> newFrame =
+        ConcertedRotation::localFrame(newCenter, trialAtoms[units[k - 1].backboneAtom].position,
+                                      trialAtoms[units[k + 1].backboneAtom].position);
+    // a collinear unit of the segment has no frame to carry its side group with: refuse the move
+    if (!oldFrame.has_value() || !newFrame.has_value()) return std::nullopt;
     for (std::size_t p = 0; p != target.sideAtoms.size(); ++p)
     {
       trialAtoms[target.sideAtoms[p]].position = ConcertedRotation::transformRigidly(
-          oldCenter, oldFrame, newCenter, newFrame, oldAtoms[source.sideAtoms[p]].position);
+          oldCenter, *oldFrame, newCenter, *newFrame, oldAtoms[source.sideAtoms[p]].position);
     }
   }
 

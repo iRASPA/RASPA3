@@ -274,6 +274,41 @@ TEST(MC_CONCERTED_ROTATION, rebridge_reproduces_original_trimer_and_satisfies_co
   EXPECT_LT(maxConstraintViolation, 1e-8);
 }
 
+// The local frame that carries a side group with its backbone atom is orthonormal and right-handed for a
+// bent triplet, and does not exist for a collinear one (bend of pi or 0): there the perpendicular part of the
+// next bond vanishes, and a frame built from it would project the side group onto the backbone axis instead
+// of moving it rigidly. Such a triplet must be reported as degenerate so that the move is refused.
+TEST(MC_CONCERTED_ROTATION, local_frame_is_orthonormal_or_refused_for_collinear_triplets)
+{
+  const double3 atom(1.0, 2.0, 3.0);
+  const double3 previous = atom + double3(1.54, 0.0, 0.0);
+  const double3 bent = atom + 1.54 * double3(std::cos(114.0 * std::numbers::pi / 180.0),
+                                             std::sin(114.0 * std::numbers::pi / 180.0), 0.0);
+
+  const std::optional<double3x3> frame = ConcertedRotation::localFrame(atom, previous, bent);
+  ASSERT_TRUE(frame.has_value());
+  const double3 e1(frame->ax, frame->ay, frame->az);
+  const double3 e2(frame->bx, frame->by, frame->bz);
+  const double3 e3(frame->cx, frame->cy, frame->cz);
+  EXPECT_NEAR(e1.length(), 1.0, 1e-12);
+  EXPECT_NEAR(e2.length(), 1.0, 1e-12);
+  EXPECT_NEAR(e3.length(), 1.0, 1e-12);
+  EXPECT_NEAR(double3::dot(e1, e2), 0.0, 1e-12);
+  EXPECT_NEAR(double3::dot(e1, e3), 0.0, 1e-12);
+  EXPECT_NEAR(double3::dot(e2, e3), 0.0, 1e-12);
+  EXPECT_NEAR(double3::dot(double3::cross(e1, e2), e3), 1.0, 1e-12);
+  // a side atom carried from the frame to itself does not move
+  const double3 side = atom + double3(-0.5, -0.3, 1.2);
+  const double3 carried = ConcertedRotation::transformRigidly(atom, *frame, atom, *frame, side);
+  EXPECT_NEAR((carried - side).length(), 0.0, 1e-12);
+
+  // a straight triplet (bend of pi) and a folded one (bend of 0) have no frame
+  EXPECT_FALSE(ConcertedRotation::localFrame(atom, previous, atom - double3(1.54, 0.0, 0.0)).has_value());
+  EXPECT_FALSE(ConcertedRotation::localFrame(atom, previous, atom + double3(0.77, 0.0, 0.0)).has_value());
+  // coincident atoms have no bond direction either
+  EXPECT_FALSE(ConcertedRotation::localFrame(atom, atom, bent).has_value());
+}
+
 // The analytic closure Jacobian must agree with a central finite difference of the chart
 // (a6, the two perpendicular components of a7, the out-of-plane component of a8) with respect to
 // the six torsion-like rotations about the bonds a1a2 ... a6a7.
