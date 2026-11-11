@@ -26,7 +26,8 @@ struct SavedVolumeState
   std::vector<Molecule> molecules;
   std::vector<Atom> atoms;
   EwaldStructureFactor storedEik;
-  std::vector<double3> electricField;  ///< Only when the force field computes polarization.
+  EwaldStructureFactor fixedFrameworkStoredEik;  ///< The rigid framework's sums belong to the old reciprocal mesh.
+  std::vector<double3> electricField;            ///< Only when the force field computes polarization.
   double cutOffFrameworkVDW;
   double cutOffMoleculeVDW;
   double cutOffCoulomb;

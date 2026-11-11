@@ -6,6 +6,7 @@ import double3;
 import units;
 import atom;
 import forcefield;
+import framework;
 import component;
 import system;
 import monte_carlo;
@@ -443,6 +444,59 @@ TEST(MC_NPT_DRIFT, volume_move_rederives_the_ewald_wave_vectors_for_the_new_box)
         EXPECT_EQ(atoms[k].position.y, atomsBefore[k].position.y);
         EXPECT_EQ(atoms[k].position.z, atomsBefore[k].position.z);
       }
+    }
+  }
+  EXPECT_GE(accepted, 1uz);
+  EXPECT_GE(rejected, 1uz);
+}
+
+// A rigid framework keeps its atoms where they are while the box changes, but its stored Fourier sums belong to
+// the reciprocal vectors, Ewald alpha and wave-vector count of the old box. A volume trial rebuilds them for the
+// trial box, so that the accepted energy is the exact energy of the new box, and a refused trial restores them.
+TEST(MC_NPT_DRIFT, volume_move_rebuilds_the_rigid_framework_fourier_sums_for_the_new_box)
+{
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  const Framework framework = Framework::makeFAU(forceField, int3(1, 1, 1));
+  Component co2 = Component(forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
+                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
+                            {}, {}, 5, 21, {}, std::nullopt, false);
+
+  std::size_t accepted = 0;
+  std::size_t rejected = 0;
+  for (std::size_t seed = 0; seed < 24 && (accepted < 2 || rejected < 2); ++seed)
+  {
+    System system(forceField, std::nullopt, false, 300.0, 1e4, 1.0, framework, {co2}, {}, {8}, 5);
+    system.runningEnergies = system.computeTotalEnergies();
+    ASSERT_FALSE(system.fixedFrameworkStoredEik.empty());
+    system.mc_moves_statistics.setMaxChange(Move::Types::VolumeChange, 0.3);
+    system.pressure = (seed % 2 == 0) ? 0.0 : 1.0e3;
+
+    const EwaldStructureFactor frameworkEikBefore(system.fixedFrameworkStoredEik);
+    const RunningEnergy energyBefore = system.runningEnergies;
+
+    RandomNumber random(seed);
+    const std::optional<RunningEnergy> result = MC_Moves::volumeMove(random, system);
+    if (result.has_value())
+    {
+      ++accepted;
+      system.runningEnergies += result.value();
+
+      // the exact energy of the new box, with the framework sums computed afresh for it
+      System fresh = system;
+      fresh.fixedFrameworkStoredEik.clear();
+      const RunningEnergy exact = fresh.computeTotalEnergies();
+      const double scale = std::max(1.0, std::abs(exact.potentialEnergy()));
+      EXPECT_NEAR(system.runningEnergies.ewald_fourier, exact.ewald_fourier, 1.0e-8 * scale);
+      EXPECT_NEAR(system.runningEnergies.potentialEnergy(), exact.potentialEnergy(), 1.0e-8 * scale);
+      EXPECT_FALSE(system.fixedFrameworkStoredEik == frameworkEikBefore);
+    }
+    else
+    {
+      ++rejected;
+      EXPECT_EQ(system.runningEnergies.potentialEnergy(), energyBefore.potentialEnergy());
+      EXPECT_TRUE(system.fixedFrameworkStoredEik == frameworkEikBefore);
     }
   }
   EXPECT_GE(accepted, 1uz);

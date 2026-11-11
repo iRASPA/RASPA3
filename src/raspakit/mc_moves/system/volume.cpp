@@ -36,6 +36,7 @@ MC_Moves::SavedVolumeState MC_Moves::saveVolumeState(const System& system)
                          .molecules = system.moleculeData,
                          .atoms = std::vector<Atom>(atoms.begin(), atoms.end()),
                          .storedEik = system.storedEik,
+                         .fixedFrameworkStoredEik = system.fixedFrameworkStoredEik,
                          .electricField = {},
                          .cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW,
                          .cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW,
@@ -65,6 +66,10 @@ RunningEnergy MC_Moves::applyTrialVolume(System& system, const SimulationBox& ne
 
   system.forceField.initializeAutomaticCutOff(newBox);
   system.forceField.initializeEwaldParameters(newBox);
+  // The stored structure factor of the rigid framework belongs to the old box: its reciprocal vectors, Ewald
+  // alpha and wave-vector count all change with the cell (the atoms stay where they are). The total energy
+  // only computes it when it is absent, so it is rebuilt here for the trial box.
+  if (!system.spanOfRigidFrameworkAtoms().empty()) system.precomputeTotalRigidEnergy();
 
   return system.computeTotalEnergies();
 }
@@ -75,6 +80,7 @@ void MC_Moves::restoreVolumeState(System& system, const SavedVolumeState& saved)
   system.moleculeData = saved.molecules;
   std::copy(saved.atoms.begin(), saved.atoms.end(), system.spanOfMoleculeAtoms().begin());
   system.storedEik = saved.storedEik;
+  system.fixedFrameworkStoredEik = saved.fixedFrameworkStoredEik;
   if (system.forceField.computePolarization)
   {
     std::copy(saved.electricField.begin(), saved.electricField.end(), system.spanOfMoleculeElectricField().begin());
