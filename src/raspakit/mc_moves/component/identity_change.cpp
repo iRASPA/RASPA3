@@ -73,7 +73,9 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
     return std::nullopt;
   }
 
-  oldComponentData.mc_moves_statistics.addTrial(move);
+  // The statistics and timings are those of the component the move was drawn for, as the dispatcher's overall
+  // count and total time are: after the coin flip the molecule that changes may belong to the partner.
+  startComponent.mc_moves_statistics.addTrial(move);
 
   const std::size_t selectedMoleculeOld = system.randomIntegerMoleculeOfComponent(random, oldComponent);
 
@@ -91,7 +93,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   const CBMC::GrowContext growContext = system.makeGrowContext().withSkippedMolecule(oldGlobalMoleculeId);
 
   std::optional<CBMC::GrowResult> growData =
-      timed(system, oldComponentData, move, Move::Timing::NonEwald,
+      timed(system, startComponent, move, Move::Timing::NonEwald,
             [&]
             {
               return CBMC::growNewMolecule(
@@ -109,10 +111,10 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   std::vector<double3> old_electric_field(old_molecule.size());
   std::vector<double3> new_electric_field(newMolecule.size());
 
-  oldComponentData.mc_moves_statistics.addConstructed(move);
+  startComponent.mc_moves_statistics.addConstructed(move);
 
   CBMC::RetraceResult retraceData =
-      timed(system, oldComponentData, move, Move::Timing::NonEwald,
+      timed(system, startComponent, move, Move::Timing::NonEwald,
             [&]
             {
               return CBMC::retraceMolecule(random, growContext, oldComponentData, oldMoleculeAtoms,
@@ -120,7 +122,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
             });
 
   RunningEnergy energyFourierDifference =
-      timed(system, oldComponentData, move, Move::Timing::Ewald,
+      timed(system, startComponent, move, Move::Timing::Ewald,
             [&]
             {
               return Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
@@ -132,7 +134,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   // Tail correction from the scaled (scalingVDW) pseudo-atom composition of the box, so that coexisting
   // fractional molecules count with their coupling and their dU/dlambda is carried along.
   RunningEnergy tailEnergyDifference =
-      timed(system, oldComponentData, move, Move::Timing::Tail,
+      timed(system, startComponent, move, Move::Timing::Tail,
             [&]
             {
               return Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
@@ -212,7 +214,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
   if (random.uniform() < acceptanceProbability)
   {
-    oldComponentData.mc_moves_statistics.addAccepted(move);
+    startComponent.mc_moves_statistics.addAccepted(move);
 
     const RunningEnergy energyDifference = (growData->energies - retraceData.energies) + energyFourierDifference +
                                            tailEnergyDifference + polarizationDifference;

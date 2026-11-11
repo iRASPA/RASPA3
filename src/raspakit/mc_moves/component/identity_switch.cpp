@@ -57,8 +57,10 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
     return std::nullopt;
   }
 
+  // The statistics are those of the component the move was drawn for (the partner is a parameter of the move),
+  // as the dispatcher's overall count and total time are; counting the partner too would double the trials in
+  // the sum over the components.
   componentAData.mc_moves_statistics.addTrial(move);
-  componentBData.mc_moves_statistics.addTrial(move);
 
   const std::size_t moleculeA = system.randomIntegerMoleculeOfComponent(random, componentA);
   const std::size_t moleculeB = system.randomIntegerMoleculeOfComponent(random, componentB);
@@ -208,7 +210,6 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
   }
 
   componentAData.mc_moves_statistics.addConstructed(move);
-  componentBData.mc_moves_statistics.addConstructed(move);
 
   // Combined Ewald Fourier difference for the simultaneous change of both molecules
   // (single call so the cross terms between the two exchanged molecules are handled exactly).
@@ -330,7 +331,6 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
   if (random.uniform() < acceptanceProbability)
   {
     componentAData.mc_moves_statistics.addAccepted(move);
-    componentBData.mc_moves_statistics.addAccepted(move);
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 

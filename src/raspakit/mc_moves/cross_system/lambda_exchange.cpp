@@ -317,6 +317,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::LambdaExchange(
   std::optional<LambdaRescaleTrial> trialA = rescaleToLambda(systemA, tiComponentA.value(), lambdaValueB);
   if (!trialA.has_value())
   {
+    std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
+    systemA.mc_moves_cputime[move][Move::Timing::Total] += (time_end - time_begin);
+    systemB.mc_moves_cputime[move][Move::Timing::Total] += (time_end - time_begin);
     return std::nullopt;
   }
 
@@ -325,6 +328,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::LambdaExchange(
   if (!trialB.has_value())
   {
     restoreLambdaRescale(systemA, trialA.value());
+    std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
+    systemA.mc_moves_cputime[move][Move::Timing::Total] += (time_end - time_begin);
+    systemB.mc_moves_cputime[move][Move::Timing::Total] += (time_end - time_begin);
     return std::nullopt;
   }
 

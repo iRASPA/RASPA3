@@ -4,6 +4,7 @@ add_executable(unit_tests_raspa3
   mc_fractional_molecule_order.cpp
   mc_gibbs_drift.cpp
   mc_identity_switch_drift.cpp
+  mc_identity_move_statistics.cpp
   mc_thermodynamic_integration_drift.cpp
   mc_muvt_drift.cpp
   mc_multi_trial_cbmc.cpp
