@@ -78,6 +78,18 @@ void DeviceBonded::setParameters(double alpha, double factor, bool useCharge, bo
   parametersChanged = true;
 }
 
+void DeviceBonded::setSwitching(const LennardJonesSwitching& switching)
+{
+  parameters.switchMode = switching.mode;
+  parameters.switchDistanceSquared = static_cast<float>(switching.distanceSquared);
+  parameters.switchDistance = static_cast<float>(switching.distance);
+  parameters.switchInverseWidth = static_cast<float>(switching.inverseWidth);
+  parameters.switchInverseCutOff3 = static_cast<float>(switching.inverseCutOff3);
+  parameters.switchA12 = static_cast<float>(switching.a12);
+  parameters.switchA6 = static_cast<float>(switching.a6);
+  parametersChanged = true;
+}
+
 void DeviceBonded::setAlpha(double alpha)
 {
   alphaValue = alpha;

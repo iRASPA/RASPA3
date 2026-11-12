@@ -270,6 +270,7 @@ void DeviceStep::enableBonded(const System& system, double alpha, double convers
   bonded.setTopology(bondedTopology);
   bonded.setParameters(alpha, conversionFactor, useCharge, fourier, system.forceField.cutOffMoleculeVDW,
                        system.forceField.cutOffCoulomb);
+  bonded.setSwitching(pairSwitching);
   bondedUseCharge = useCharge;
   bondedFourier = fourier;
   useBonded = true;
@@ -441,6 +442,8 @@ void DeviceStep::setSwitching(const LennardJonesSwitching& switching)
   parameters.switchA12 = static_cast<float>(switching.a12);
   parameters.switchA6 = static_cast<float>(switching.a6);
   parametersChanged = true;
+  pairSwitching = switching;
+  if (useBonded) bonded.setSwitching(switching);
 }
 
 void DeviceStep::beginBuild(const CellList& cells, const SimulationBox& box, std::size_t parts)

@@ -1890,6 +1890,45 @@ TEST_P(SpatialDecompositionDevice, engine_device_bonded_terms_without_the_fourie
   EXPECT_LT(rmsDifference(gradient, hostGradient), 1e-5 * rmsNorm(hostGradient));
 }
 
+// A scaled 1-4 pair beyond the switching distance follows the switch of the force field on the host. The device
+// bonded terms evaluated it as plain shifted Lennard-Jones up to the cutoff, on the assumption that a 1-4 pair never
+// reaches the switching distance, which a short one breaks.
+TEST_P(SpatialDecompositionDevice, engine_device_bonded_terms_switch_the_scaled_pairs_as_the_host)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  for (const ForceField::TruncationMethod method :
+       {ForceField::TruncationMethod::Switched, ForceField::TruncationMethod::ForceSwitched})
+  {
+    SCOPED_TRACE(method == ForceField::TruncationMethod::Switched ? "potential switch" : "force switch");
+    RandomNumber random(13);
+    System system = makeChainSystem(false, random, 6);
+    // the switch starts at 3 A: the 1-4 pairs of the chain (about 2.5 to 3.9 A) reach into it
+    system.forceField.setTruncationMethod(method, 3.0);
+
+    SpatialDecompositionSettings hostSettings = settingsFor(4, 1.5, 0.5);
+    hostSettings.pairDevice = pairDevice;
+    hostSettings.deviceBonded = false;
+    SpatialDecompositionForceEngine host(hostSettings);
+    host.initialize(system);
+    const RunningEnergy hostEnergy = host.computeGradients(system, true);
+    const std::vector<double3> hostGradient = gradientsOf(system);
+
+    SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+    settings.pairDevice = pairDevice;
+    SpatialDecompositionForceEngine device(settings);
+    device.initialize(system);
+    ASSERT_TRUE(device.usesDeviceBonded());
+    const RunningEnergy energy = device.computeGradients(system, true);
+    const std::vector<double3> gradient = gradientsOf(system);
+
+    EXPECT_NE(hostEnergy.intraVDW, 0.0);
+    EXPECT_NEAR(energy.intraVDW, hostEnergy.intraVDW, 1e-5 * std::abs(hostEnergy.intraVDW));
+    EXPECT_NEAR(energy.potentialEnergy(), hostEnergy.potentialEnergy(), 1e-5 * std::abs(hostEnergy.potentialEnergy()));
+    EXPECT_LT(rmsDifference(gradient, hostGradient), 1e-5 * rmsNorm(hostGradient));
+  }
+}
+
 TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_long_chain)
 {
   // six beads: the device exclusion lists (1-2, 1-3), a scaled 1-4 pair, excluded 1-4 pairs (scaling 0) and
@@ -3533,6 +3572,17 @@ TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_without_the_fou
   ASSERT_TRUE(system.forceField.useCharge);
   ASSERT_FALSE(system.forceField.usesEwaldFourier());
   expectPolymerOverlayMatchesHost(pairDevice, system, "no Fourier sum");
+}
+
+// The overlay's scaled pairs beyond the switching distance follow the switch as well; the device overlay evaluated
+// them as plain shifted Lennard-Jones.
+TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_switches_the_scaled_pairs_as_the_host)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  System system = makePolymerSystem(7, 20, 6, 1000, 100, 2000.0);
+  system.forceField.setTruncationMethod(ForceField::TruncationMethod::Switched, 3.0);
+  expectPolymerOverlayMatchesHost(pairDevice, system, "switched scaled pairs");
 }
 
 // A retyping that charges an atom which is uncharged in the monomer: the scaled (1-4) pair (side, 3) has no Coulomb

@@ -319,6 +319,7 @@ export class DeviceStep
   bool useBonded{false};
   bool bondedUseCharge{false};  ///< the charge flag the bonded terms were enabled with (kept across setParameters)
   bool bondedFourier{false};    ///< whether the Fourier sum is evaluated (its corrections apply on the device)
+  LennardJonesSwitching pairSwitching{};  ///< the switching the pair kernel was given (handed to the bonded terms)
   BondedTopology bondedTopology{};
   std::vector<std::uint32_t> referenceOfSorted{};
 

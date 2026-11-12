@@ -3,6 +3,7 @@ module;
 export module spatial_decomposition_device_bonded;
 
 import std;
+import spatial_decomposition_pair_kernel;
 
 import double3;
 import double3x3;
@@ -56,6 +57,9 @@ export class DeviceBonded
   /// and the cutoffs of the scaled intramolecular pairs.
   void setParameters(double alpha, double conversionFactor, bool useCharge, bool fourier, double cutOffVDW,
                      double cutOffCharge);
+  /// The Lennard-Jones switching of the force field, applied to the 1-4 pairs beyond the switching distance as the
+  /// pair kernel applies it to the full pairs.
+  void setSwitching(const LennardJonesSwitching& switching);
   /// Follows a change of the Ewald alpha.
   void setAlpha(double alpha);
 
@@ -94,9 +98,16 @@ export class DeviceBonded
     float cutOffVDWSquared{0.0f};
     float cutOffChargeSquared{0.0f};
     std::uint32_t fourier{0};
-    std::uint32_t padding{0};
+    std::uint32_t switchMode{0};
+    float switchDistanceSquared{0.0f};
+    float switchDistance{0.0f};
+    float switchInverseWidth{0.0f};
+    float switchInverseCutOff3{0.0f};
+    float switchA12{1.0f};
+    float switchA6{1.0f};
+    std::uint32_t padding[2]{};
   };
-  static_assert(sizeof(Parameters) == 48);
+  static_assert(sizeof(Parameters) == 80);
 
   DeviceContext* context{nullptr};
   DeviceKernel termKernel{}, centerKernel{}, atomKernel{};

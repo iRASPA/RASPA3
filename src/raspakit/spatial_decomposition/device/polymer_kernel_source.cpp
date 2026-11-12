@@ -102,6 +102,46 @@ DEVICE_FUNCTION float3 polymerMinimumImage(float3 dr, CONSTANT const PolymerPara
 //               the Coulomb cutoff the bare f_c C qq / r minus the long-range part C qq erf(alpha r) / r the
 //               Fourier sum counted (P[3] = f_c)
 //   2 excluded: the long-range part the Fourier sum counted is removed, -C qq erf(alpha r) / r (no cutoff)
+// The Lennard-Jones of a pair with P = (4 eps, sigma^6, shift) inside the VDW cutoff: plain and shifted below the
+// switching distance, the force field's potential or force switch beyond it (as the pair kernel).
+DEVICE_FUNCTION void polymerLennardJones(PRIVATE const float* P, float rr, float r, float invR, float invRR,
+                                         CONSTANT const PolymerParameters* p, PRIVATE float* uVDW,
+                                         PRIVATE float* factor)
+{
+  const float invRR3 = invRR * invRR * invRR;
+  const float rri3 = P[1] * invRR3;
+  const float rri6 = rri3 * rri3;
+  float u = P[0] * (rri6 - rri3) - P[2];
+  float f = 12.0f * P[0] * rri3 * (0.5f - rri3) * invRR;
+  if (p->switchMode != 0u && rr > p->switchDistanceSquared)
+  {
+    if (p->switchMode == 1u)
+    {
+      const float x = (r - p->switchDistance) * p->switchInverseWidth;
+      const float x2 = x * x;
+      const float oneMinusX = 1.0f - x;
+      const float sw = 1.0f + x2 * x * (-10.0f + x * (15.0f - 6.0f * x));
+      const float dsw = -30.0f * p->switchInverseWidth * x2 * oneMinusX * oneMinusX;
+      const float uPlain = P[0] * (rri6 - rri3);
+      f = f * sw + uPlain * dsw * invR;
+      u = uPlain * sw;
+    }
+    else
+    {
+      const float c6 = P[0] * P[1];
+      const float c12 = c6 * P[1];
+      const float invR3 = invR * invRR;
+      const float invR4 = invR3 * invR;
+      const float d3 = invR3 - p->switchInverseCutOff3;
+      const float d6 = invR3 * invR3 - p->switchInverseCutOff3 * p->switchInverseCutOff3;
+      u = p->switchA12 * c12 * d6 * d6 - p->switchA6 * c6 * d3 * d3;
+      f = (-12.0f * p->switchA12 * c12 * d6 * invR3 * invR4 + 6.0f * p->switchA6 * c6 * d3 * invR4) * invR;
+    }
+  }
+  *uVDW = u;
+  *factor += f;
+}
+
 DEVICE_FUNCTION void polymerPairState(uint state, PRIVATE const float* P, float rr, float qq,
                                       CONSTANT const PolymerParameters* p, PRIVATE float* uVDW,
                                       PRIVATE float* uCoulomb, PRIVATE float* uExclusion, PRIVATE float* factor)
@@ -119,38 +159,7 @@ DEVICE_FUNCTION void polymerPairState(uint state, PRIVATE const float* P, float 
   {
     if (rr < p->cutOffVDWSquared && P[0] != 0.0f)
     {
-      const float invRR3 = invRR * invRR * invRR;
-      const float rri3 = P[1] * invRR3;
-      const float rri6 = rri3 * rri3;
-      float u = P[0] * (rri6 - rri3) - P[2];
-      float f = 12.0f * P[0] * rri3 * (0.5f - rri3) * invRR;
-      if (p->switchMode != 0u && rr > p->switchDistanceSquared)
-      {
-        if (p->switchMode == 1u)
-        {
-          const float x = (r - p->switchDistance) * p->switchInverseWidth;
-          const float x2 = x * x;
-          const float oneMinusX = 1.0f - x;
-          const float sw = 1.0f + x2 * x * (-10.0f + x * (15.0f - 6.0f * x));
-          const float dsw = -30.0f * p->switchInverseWidth * x2 * oneMinusX * oneMinusX;
-          const float uPlain = P[0] * (rri6 - rri3);
-          f = f * sw + uPlain * dsw * invR;
-          u = uPlain * sw;
-        }
-        else
-        {
-          const float c6 = P[0] * P[1];
-          const float c12 = c6 * P[1];
-          const float invR3 = invR * invRR;
-          const float invR4 = invR3 * invR;
-          const float d3 = invR3 - p->switchInverseCutOff3;
-          const float d6 = invR3 * invR3 - p->switchInverseCutOff3 * p->switchInverseCutOff3;
-          u = p->switchA12 * c12 * d6 * d6 - p->switchA6 * c6 * d3 * d3;
-          f = (-12.0f * p->switchA12 * c12 * d6 * invR3 * invR4 + 6.0f * p->switchA6 * c6 * d3 * invR4) * invR;
-        }
-      }
-      *uVDW = u;
-      *factor += f;
+      polymerLennardJones(P, rr, r, invR, invRR, p, uVDW, factor);
     }
     if (charged && rr < p->cutOffChargeSquared)
     {
@@ -166,9 +175,8 @@ DEVICE_FUNCTION void polymerPairState(uint state, PRIVATE const float* P, float 
   {
     if (rr < p->cutOffVDWSquared && P[0] != 0.0f)
     {
-      const float t = P[1] * invRR * invRR * invRR;
-      *uVDW = P[0] * (t * (t - 1.0f)) - P[2];
-      *factor += 6.0f * P[0] * (t * (1.0f - 2.0f * t)) * invRR;
+      // the scaled pair is f times the full pair's Lennard-Jones, switched as it is
+      polymerLennardJones(P, rr, r, invR, invRR, p, uVDW, factor);
     }
     if (charged && rr < p->cutOffChargeSquared)
     {

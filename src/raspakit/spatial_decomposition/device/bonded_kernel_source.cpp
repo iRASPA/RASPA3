@@ -55,7 +55,14 @@ typedef struct
   float cutOffChargeSquared;  // cutoff of the intramolecular Coulomb pairs (cutOffCoulomb)
   uint fourier;               // the Fourier sum is evaluated: the self and exclusion corrections and the long-range
                               // part removed from the 1-4 pairs apply; without it a 1-4 pair is its real-space term
-  uint padding;
+  uint switchMode;            // Lennard-Jones switching of the 1-4 pairs (as the pair kernel): 0 none, 1 potential, 2 force
+  float switchDistanceSquared;
+  float switchDistance;
+  float switchInverseWidth;
+  float switchInverseCutOff3;
+  float switchA12;
+  float switchA6;
+  uint padding[2];
 } BondedParameters;
 
 typedef struct
@@ -394,10 +401,44 @@ DEVICE_FUNCTION float pairTerm(uint kind, PRIVATE const float* P, float4 posA, f
   {
     if (rr < p->cutOffVDWSquared)
     {
-      const float s = P[1] / rr;
-      const float t = s * s * s;
-      U = P[0] * (t * (t - 1.0f)) - P[2];
-      DF = 6.0f * P[0] * (t * (1.0f - 2.0f * t)) / rr;
+      const float invRR = 1.0f / rr;
+      const float r = sqrt(rr);
+      const float invR = 1.0f / r;
+      // P[1] is sigma^2 here (the polymer overlay carries sigma^6)
+      const float s = P[1] * invRR;
+      const float rri3 = s * s * s;
+      const float rri6 = rri3 * rri3;
+      float u = P[0] * (rri6 - rri3) - P[2];
+      float f = 12.0f * P[0] * rri3 * (0.5f - rri3) * invRR;
+      // beyond the switching distance the pair follows the switch of the force field, as the host and the pair kernel
+      if (p->switchMode != 0u && rr > p->switchDistanceSquared)
+      {
+        if (p->switchMode == 1u)
+        {
+          const float x = (r - p->switchDistance) * p->switchInverseWidth;
+          const float x2 = x * x;
+          const float oneMinusX = 1.0f - x;
+          const float sw = 1.0f + x2 * x * (-10.0f + x * (15.0f - 6.0f * x));
+          const float dsw = -30.0f * p->switchInverseWidth * x2 * oneMinusX * oneMinusX;
+          const float uPlain = P[0] * (rri6 - rri3);
+          f = f * sw + uPlain * dsw * invR;
+          u = uPlain * sw;
+        }
+        else
+        {
+          const float sigma6 = P[1] * P[1] * P[1];
+          const float c6 = P[0] * sigma6;
+          const float c12 = c6 * sigma6;
+          const float invR3 = invR * invRR;
+          const float invR4 = invR3 * invR;
+          const float d3 = invR3 - p->switchInverseCutOff3;
+          const float d6 = invR3 * invR3 - p->switchInverseCutOff3 * p->switchInverseCutOff3;
+          u = p->switchA12 * c12 * d6 * d6 - p->switchA6 * c6 * d3 * d3;
+          f = (-12.0f * p->switchA12 * c12 * d6 * invR3 * invR4 + 6.0f * p->switchA6 * c6 * d3 * invR4) * invR;
+        }
+      }
+      U = u;
+      DF = f;
     }
   }
   else if (p->useCharge != 0 && rr < p->cutOffChargeSquared)
