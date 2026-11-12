@@ -95,17 +95,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
 
     // Make copy of old fractional molecule for reference and restoring
     std::vector<Atom> oldFractionalMolecule(fractionalMolecule.begin(), fractionalMolecule.end());
+    auto restore = [&]()
+    {
+      std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      system.cellListAtomsMoved(fractionalMolecule);
+    };
 
-    // Fractional particle becomes integer (lambda=1.0)
+    // Fractional particle becomes integer (lambda=1.0). The cell list caches the scaling of every atom: the molecule
+    // is refreshed in it, or the new fractional molecule of step 2 meets this one at its old lambda.
     for (Atom& atom : fractionalMolecule)
     {
       atom.setScalingToInteger();
     }
+    system.cellListAtomsMoved(fractionalMolecule);
 
     if ((system.insideBlockedPockets(component, fractionalMolecule)))
     {
       // Reject, set fractional molecule back to old state
-      std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      restore();
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
@@ -121,7 +128,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     if (!externalFieldDifferenceStep1.has_value())
     {
       // Reject, set fractional molecule back to old state
-      std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      restore();
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
@@ -137,7 +144,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     if (!frameworkDifferenceStep1.has_value())
     {
       // Reject, set fractional molecule back to old state
-      std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      restore();
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
@@ -152,7 +159,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     if (!moleculeDifferenceStep1.has_value())
     {
       // Reject, set fractional molecule back to old state
-      std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      restore();
 
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
@@ -218,7 +225,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     if ((system.insideBlockedPockets(component, trialMolecule.second)))
     {
       // Reject, set fractional molecule back to old state
-      std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      restore();
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
@@ -234,7 +241,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     if (!externalFieldDifferenceStep2.has_value())
     {
       // Reject, set fractional molecule back to old state
-      std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      restore();
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
@@ -250,7 +257,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     if (!frameworkDifferenceStep2.has_value())
     {
       // Reject, set fractional molecule back to old state
-      std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      restore();
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
@@ -266,7 +273,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     if (!moleculeDifferenceStep2.has_value())
     {
       // Reject, set fractional molecule back to old state
-      std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      restore();
 
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
@@ -376,7 +383,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     {
       // Evaluating the boundary transition temporarily made the fractional slot integer.
       // Keep the physical probability for C, but leave the sampled configuration untouched.
-      std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+      restore();
       return {std::nullopt, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
     }
 
@@ -424,7 +431,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     };
 
     // Restore old lambda
-    std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+    restore();
 
     return {std::nullopt, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
   }
@@ -458,12 +465,21 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       // Make copies of molecules for restoring if needed
       std::vector<Atom> oldFractionalMolecule(fractionalMolecule.begin(), fractionalMolecule.end());
       std::vector<Atom> oldNewFractionalMolecule(newFractionalMolecule.begin(), newFractionalMolecule.end());
+      auto restore = [&]()
+      {
+        std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+        std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
+        system.cellListAtomsMoved(fractionalMolecule);
+        system.cellListAtomsMoved(newFractionalMolecule);
+      };
 
-      // Set scaling to zero for deletion; the molecule remains the (parked) fractional slot
+      // Set scaling to zero for deletion; the molecule remains the (parked) fractional slot. The cell list caches
+      // the scaling of every atom: the molecule is refreshed in it, or the demoted molecule of step 2 still meets it.
       for (Atom& atom : fractionalMolecule)
       {
         atom.setScalingToInactiveFractional();
       }
+      system.cellListAtomsMoved(fractionalMolecule);
 
       // Compute external field energy contribution
       std::optional<RunningEnergy> externalFieldDifferenceStep1 =
@@ -477,7 +493,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       if (!externalFieldDifferenceStep1.has_value())
       {
         // Reject, set fractional molecule back to old state
-        std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+        restore();
         return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
 
@@ -493,7 +509,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       if (!frameworkDifferenceStep1.has_value())
       {
         // Reject, set fractional molecule back to old state
-        std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+        restore();
         return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
 
@@ -508,7 +524,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       if (!moleculeDifferenceStep1.has_value())
       {
         // Reject, set fractional molecule back to old state
-        std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
+        restore();
 
         return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
@@ -566,6 +582,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       {
         atom.setScalingToFractional(newLambda, groupId);
       }
+      system.cellListAtomsMoved(newFractionalMolecule);
 
       // The demoted molecule at its new coupling is what the reverse crossing (an insertion at newLambda)
       // tests against the pockets; testing the deleted molecule at scaling zero, as was done, tested nothing
@@ -573,8 +590,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       if ((system.insideBlockedPockets(component, newFractionalMolecule)))
       {
         // Restore molecules and reject
-        std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-        std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
+        restore();
 
         return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
@@ -591,8 +607,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       if (!externalFieldDifferenceStep2.has_value())
       {
         // Restore molecules and reject
-        std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-        std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
+        restore();
 
         return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
@@ -610,8 +625,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       if (!frameworkDifferenceStep2.has_value())
       {
         // Restore molecules and reject
-        std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-        std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
+        restore();
 
         return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
@@ -628,8 +642,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       if (!moleculeDifferenceStep2.has_value())
       {
         // Restore molecules and reject
-        std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-        std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
+        restore();
 
         return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
@@ -746,8 +759,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
       {
         // Restore both molecules modified while evaluating the forbidden deletion.
-        std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-        std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
+        restore();
         return {std::nullopt, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
       }
 
@@ -783,8 +795,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       };
 
       // Restore the old and the newly chosen fractional molecule
-      std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-      std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
+      restore();
 
       return {std::nullopt, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
     }

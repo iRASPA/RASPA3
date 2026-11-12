@@ -2011,6 +2011,50 @@ TEST(mc_cell_list, swap_cfcmc_lambda_change_refreshes_cached_scaling)
   EXPECT_EQ(system.moleculeCellList.numberOfBuilds, buildsBefore);
 }
 
+// The insertion and the deletion of SwapCFCMC rewrite the scaling of the fractional molecule in place (to one for an
+// insertion, to zero for a deletion) and then evaluate a second molecule against the cell list: the new fractional
+// molecule for an insertion, the demoted integer molecule for a deletion. The list caches the scalings, so without a
+// refresh the second step sees the first molecule at its old lambda, and a list built during the first step keeps
+// the rewritten scaling after a rejection. Every accepted move must return the recomputed energy difference and the
+// list must describe the atoms after every attempt, whether or not it was current on entry.
+TEST(mc_cell_list, swap_cfcmc_insertion_and_deletion_refresh_cached_scaling)
+{
+  ForceField forceField = makeWaterForceField();
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::SwapCFCMC, 1.0);
+  Component water = makeWater(forceField, probabilities);
+  // the pressure puts the insertion prefactor beta f V / (N + 1) near one, so that both crossings get accepted
+  System system =
+      System(forceField, SimulationBox(40.0, 40.0, 40.0), false, 1.0e6, 1e10, 1.0, {}, {water}, {}, {40}, 5);
+  RandomNumber random(11);
+  randomizeConfiguration(system, random);
+  prepareForMonteCarlo(system);
+  ASSERT_TRUE(system.cellList().enabled);
+
+  for (std::size_t attempt = 0; attempt < 400; ++attempt)
+  {
+    // the recomputation builds the list; every other pair of attempts then drops it, so that the move builds it in
+    // the middle of its first step
+    const RunningEnergy before = system.computeTotalEnergies();
+    if (attempt % 4 >= 2) system.moleculeCellList.invalidate();
+
+    const auto [energy, unused] = MC_Moves::swapMove_CFCMC(random, system, 0, false, false);
+    (void)unused;
+    SCOPED_TRACE("attempt " + std::to_string(attempt));
+    EXPECT_TRUE(system.verifyCellList());
+    if (!energy.has_value()) continue;
+
+    system.runningEnergies += energy.value();
+    ASSERT_NEAR(energy->potentialEnergy(), (system.computeTotalEnergies() - before).potentialEnergy(), 1e-6);
+  }
+
+  // both crossings got accepted (x counts insertions, y deletions)
+  const double3 accepted =
+      std::get<MoveStatistics<double3>>(system.components[0].mc_moves_statistics[Move::Types::SwapCFCMC]).totalAccepted;
+  EXPECT_GT(accepted.x, 0.0);
+  EXPECT_GT(accepted.y, 0.0);
+}
+
 // setReactionFractionalScaling is the accept path of a parallel Rx/CFC lambda hop: it rewrites every
 // fractional molecule in place and must refresh the cached scalings the same way.
 TEST(mc_cell_list, reaction_lambda_scaling_refreshes_cached_scaling)
