@@ -62,7 +62,8 @@ void DeviceBonded::setTopology(const BondedTopology& topology)
   termGradientBuffer.allocate(*context, topology.numberOfGradients * 4 * sizeof(float), DeviceMemory::Device);
 }
 
-void DeviceBonded::setParameters(double alpha, double factor, bool useCharge, double cutOffVDW, double cutOffCharge)
+void DeviceBonded::setParameters(double alpha, double factor, bool useCharge, bool fourier, double cutOffVDW,
+                                 double cutOffCharge)
 {
   alphaValue = alpha;
   conversionFactor = factor;
@@ -73,6 +74,7 @@ void DeviceBonded::setParameters(double alpha, double factor, bool useCharge, do
   parameters.selfPrefactor = static_cast<float>(conversionFactor * alpha * std::numbers::inv_sqrtpi);
   parameters.coulombFactor = static_cast<float>(conversionFactor);
   parameters.useCharge = useCharge ? 1u : 0u;
+  parameters.fourier = fourier ? 1u : 0u;
   parametersChanged = true;
 }
 
@@ -190,7 +192,7 @@ DeviceBondedResults DeviceBonded::collect() const
     return t;
   };
   DeviceBondedResults results{};
-  if (parameters.useCharge != 0)
+  if (parameters.useCharge != 0 && parameters.fourier != 0)
   {
     results.self = -conversionFactor * alphaValue * std::numbers::inv_sqrtpi * chargeSquaredSum;
     // the reduced pair sum of the kernel plus the constant it leaves out (see bondedAtoms)

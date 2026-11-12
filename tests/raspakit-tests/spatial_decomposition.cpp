@@ -1853,6 +1853,43 @@ TEST_P(SpatialDecompositionDevice, engine_device_bonded_terms_follow_a_cutoff_ch
   EXPECT_LT(rmsDifference(changedGradient, expectedGradient), 1e-5 * rmsNorm(expectedGradient));
 }
 
+// Without the Fourier sum (Ewald real space only) a scaled 1-4 Coulomb pair is its scaled real-space term and there
+// are no self or exclusion corrections, on the host. The device bonded terms must agree: they used to switch their
+// Coulomb part off altogether, which dropped the 1-4 pairs.
+TEST_P(SpatialDecompositionDevice, engine_device_bonded_terms_without_the_fourier_sum_match_host)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  RandomNumber random(13);
+  System system = makeChainSystem(false, random, 6);
+  system.forceField.omitEwaldFourier = true;
+  ASSERT_TRUE(system.forceField.useCharge);
+  ASSERT_FALSE(system.forceField.usesEwaldFourier());
+
+  SpatialDecompositionSettings hostSettings = settingsFor(4, 1.5, 0.5);
+  hostSettings.pairDevice = pairDevice;
+  hostSettings.deviceBonded = false;
+  SpatialDecompositionForceEngine host(hostSettings);
+  host.initialize(system);
+  const RunningEnergy hostEnergy = host.computeGradients(system, true);
+  const std::vector<double3> hostGradient = gradientsOf(system);
+
+  SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+  settings.pairDevice = pairDevice;
+  SpatialDecompositionForceEngine device(settings);
+  device.initialize(system);
+  ASSERT_TRUE(device.usesDeviceBonded());
+  const RunningEnergy energy = device.computeGradients(system, true);
+  const std::vector<double3> gradient = gradientsOf(system);
+
+  EXPECT_NE(hostEnergy.intraCoul, 0.0);
+  EXPECT_EQ(hostEnergy.ewald_self + hostEnergy.ewald_exclusion, 0.0);
+  EXPECT_NEAR(energy.intraCoul, hostEnergy.intraCoul, 1e-5 * std::abs(hostEnergy.intraCoul));
+  EXPECT_NEAR(energy.ewald_self + energy.ewald_exclusion, 0.0, 1e-8);
+  EXPECT_NEAR(energy.potentialEnergy(), hostEnergy.potentialEnergy(), 1e-5 * std::abs(hostEnergy.potentialEnergy()));
+  EXPECT_LT(rmsDifference(gradient, hostGradient), 1e-5 * rmsNorm(hostGradient));
+}
+
 TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_long_chain)
 {
   // six beads: the device exclusion lists (1-2, 1-3), a scaled 1-4 pair, excluded 1-4 pairs (scaling 0) and
@@ -3483,6 +3520,19 @@ TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_matches_host)
     EXPECT_EQ(system.polymerLinks.chiralForceConstant, 0.0);
     expectPolymerOverlayMatchesHost(pairDevice, system, "no ramp");
   }
+}
+
+// The overlay without the Fourier sum: its scaled pairs are their scaled real-space term and its excluded pairs carry
+// no correction, on the host. The device overlay used to remove a long-range part that no sum had counted.
+TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_without_the_fourier_sum_matches_host)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  System system = makePolymerSystem(7, 20, 6, 1000, 100, 2000.0, 1.6, true);
+  system.forceField.omitEwaldFourier = true;
+  ASSERT_TRUE(system.forceField.useCharge);
+  ASSERT_FALSE(system.forceField.usesEwaldFourier());
+  expectPolymerOverlayMatchesHost(pairDevice, system, "no Fourier sum");
 }
 
 // A retyping that charges an atom which is uncharged in the monomer: the scaled (1-4) pair (side, 3) has no Coulomb

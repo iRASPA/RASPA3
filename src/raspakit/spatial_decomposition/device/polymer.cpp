@@ -101,6 +101,7 @@ void DevicePolymerOverlay::setPairSetup(const DevicePolymerPairSetup& pairSetup)
   parameters.twoAlphaOverSqrtPi = static_cast<float>(2.0 * static_cast<double>(setup.alpha) * std::numbers::inv_sqrtpi);
   parameters.coulombFactor = setup.coulombFactor;
   parameters.useCharge = setup.useCharge;
+  parameters.fourier = setup.fourier;
   parameters.orthorhombic = setup.orthorhombic;
   parameters.switchMode = setup.switchMode;
   parameters.switchDistanceSquared = setup.switchDistanceSquared;

@@ -481,8 +481,8 @@ void SpatialDecompositionForceEngine::initialize(System& system)
   {
     if (DeviceStep::supportsBonded(system, deviceBondedFallback))
     {
-      devicePairs.enableBonded(system, forceField.EwaldAlpha, Units::CoulombicConversionFactor,
-                               forceField.useCharge && useMesh);
+      devicePairs.enableBonded(system, forceField.EwaldAlpha, Units::CoulombicConversionFactor, forceField.useCharge,
+                               useMesh);
       deviceBonded = true;
     }
   }

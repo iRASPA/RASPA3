@@ -69,6 +69,8 @@ typedef struct
   float switchInverseCutOff3;
   float switchA12;
   float switchA6;
+  uint fourier;  // the Fourier sum is evaluated: its long-range part is removed from the scaled and excluded pairs
+  uint padding[3];
 } PolymerParameters;
 
 DEVICE_FUNCTION float3 polymerMinimumImage(float3 dr, CONSTANT const PolymerParameters* p)
@@ -171,14 +173,24 @@ DEVICE_FUNCTION void polymerPairState(uint state, PRIVATE const float* P, float 
     if (charged && rr < p->cutOffChargeSquared)
     {
       const float x = p->alpha * r;
-      const float potential = erf(x) * invR;
       const float gaussian = p->twoAlphaOverSqrtPi * exp(-x * x);
       const float prefactor = p->coulombFactor * qq;
-      *uCoulomb = prefactor * (P[3] * invR - potential);
-      *factor -= prefactor * (P[3] * invR * invRR + (gaussian - potential) * invRR);
+      if (p->fourier != 0u)
+      {
+        const float potential = erf(x) * invR;
+        *uCoulomb = prefactor * (P[3] * invR - potential);
+        *factor -= prefactor * (P[3] * invR * invRR + (gaussian - potential) * invRR);
+      }
+      else
+      {
+        // no Fourier sum counted the pair: the scaled real-space term f_c C qq erfc(alpha r)/r, as the host
+        const float erfcValue = erfc(x);
+        *uCoulomb = prefactor * P[3] * erfcValue * invR;
+        *factor -= prefactor * P[3] * (p->twoAlphaOverSqrtPi * exp(-x * x) * invR + erfcValue * invRR) * invR;
+      }
     }
   }
-  else if (charged)
+  else if (charged && p->fourier != 0u)
   {
     const float x = p->alpha * r;
     const float potential = erf(x) * invR;

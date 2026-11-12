@@ -98,11 +98,12 @@ TEST(cbmc_interactions, torsion_selection_with_every_spin_behind_the_chiral_wall
   ForceField forceField({{"C", false, 12.0, 0.0, 0.0, 6, false}}, {{80.0, 3.0}},
                         ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, false, false);
   const SimulationBox box(30.0, 30.0, 30.0);
-  auto atom = [](double3 position) { return Atom(position, 0.0, 1.0, 0, std::uint16_t{0}, std::uint8_t{0}, false, false); };
+  auto atom = [](double3 position)
+  { return Atom(position, 0.0, 1.0, 0, std::uint16_t{0}, std::uint8_t{0}, false, false); };
   // previous (0) to current (1) along z, the placed neighbour (4) further along the axis, the grown beads (2, 3)
   // off it
-  std::vector<Atom> chain{atom({0.0, 0.0, 0.0}), atom({0.0, 0.0, 1.5}), atom({1.0, 0.0, 2.0}),
-                          atom({0.0, 1.0, 2.0}), atom({0.0, 0.0, 3.0})};
+  std::vector<Atom> chain{atom({0.0, 0.0, 0.0}), atom({0.0, 0.0, 1.5}), atom({1.0, 0.0, 2.0}), atom({0.0, 1.0, 2.0}),
+                          atom({0.0, 0.0, 3.0})};
   const std::vector<Atom> base{chain[2], chain[3]};
 
   CBMC::GrowStep step{};

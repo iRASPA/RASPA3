@@ -263,14 +263,15 @@ void DeviceStep::enableMesh(int3 meshSize, std::size_t interpolationOrder, doubl
   useMesh = true;
 }
 
-void DeviceStep::enableBonded(const System& system, double alpha, double conversionFactor, bool useCharge)
+void DeviceStep::enableBonded(const System& system, double alpha, double conversionFactor, bool useCharge, bool fourier)
 {
   bondedTopology.build(system);
   if (!bonded.initialized()) bonded.initialize(*context);
   bonded.setTopology(bondedTopology);
-  bonded.setParameters(alpha, conversionFactor, useCharge, system.forceField.cutOffMoleculeVDW,
+  bonded.setParameters(alpha, conversionFactor, useCharge, fourier, system.forceField.cutOffMoleculeVDW,
                        system.forceField.cutOffCoulomb);
   bondedUseCharge = useCharge;
+  bondedFourier = fourier;
   useBonded = true;
 }
 
@@ -408,7 +409,7 @@ void DeviceStep::setParameters(std::span<const LennardJonesPair> lennardJones, s
   parameters.innerCutoffSquared = static_cast<float>(inner * inner);
   parametersChanged = true;
   // the bonded kernel holds the cutoffs of its 1-4 pairs too (the automatic cutoffs change with the box)
-  if (useBonded) bonded.setParameters(alpha, conversionFactor, bondedUseCharge, cutOffVDW, cutOffCharge);
+  if (useBonded) bonded.setParameters(alpha, conversionFactor, bondedUseCharge, bondedFourier, cutOffVDW, cutOffCharge);
 
   parameters.switchMode = 0;
   parameters.switchDistanceSquared = 0.0f;
@@ -781,6 +782,7 @@ void DeviceStep::enqueuePolymer()
   setup.alpha = parameters.alpha;
   setup.coulombFactor = parameters.coulombFactor;
   setup.useCharge = parameters.useCharge;
+  setup.fourier = bondedFourier ? 1u : 0u;
   setup.orthorhombic = parameters.orthorhombic;
   setup.switchMode = parameters.switchMode;
   setup.switchDistanceSquared = parameters.switchDistanceSquared;

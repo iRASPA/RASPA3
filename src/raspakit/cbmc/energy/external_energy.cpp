@@ -202,8 +202,8 @@ bool accumulateFrameworkPair(const ForceField &forceField, const SimulationBox &
 /// the Coulomb grid tabulates. The same rule as the full evaluation and the moves
 /// (Interactions::computeFrameworkMoleculeEnergy), which read no grid under another charge method although the
 /// grids are built all the same.
-inline bool readsGrid(const ForceField &forceField,
-                      const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids, const Atom &atom)
+inline bool readsGrid(const ForceField& forceField,
+                      const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids, const Atom& atom)
 {
   const std::size_t type = static_cast<std::size_t>(atom.type);
   return type < interpolationGrids.size() && interpolationGrids[type].has_value() && atom.isFullyCoupled() &&
@@ -359,9 +359,8 @@ void prefetchGridEnergies(const ForceField& forceField,
       // grid (one exists for its type and the atom is fully coupled) has to get the grid value, as in the full
       // evaluation and in the moves; dispatching it to the pair kernel, as was done, gave CBMC a different
       // framework energy than the rest of the code under the thread pool, and the running energies drifted.
-      const bool anyGridAtom = std::ranges::any_of(
-          atoms,
-          [&](const Atom& atom) { return readsGrid(forceField, interpolationGrids, atom); });
+      const bool anyGridAtom =
+          std::ranges::any_of(atoms, [&](const Atom& atom) { return readsGrid(forceField, interpolationGrids, atom); });
       if (anyGridAtom)
       {
         return computeFrameworkSerial(forceField, simulationBox, interpolationGrids, frameworkAtoms, cutOffVDW,

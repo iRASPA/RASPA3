@@ -54,7 +54,8 @@ export class DeviceBonded
   void setTopology(const BondedTopology& topology);
   /// The Ewald parameters (`useCharge`: self and exclusion corrections and the intramolecular Coulomb pairs on)
   /// and the cutoffs of the scaled intramolecular pairs.
-  void setParameters(double alpha, double conversionFactor, bool useCharge, double cutOffVDW, double cutOffCharge);
+  void setParameters(double alpha, double conversionFactor, bool useCharge, bool fourier, double cutOffVDW,
+                     double cutOffCharge);
   /// Follows a change of the Ewald alpha.
   void setAlpha(double alpha);
 
@@ -92,7 +93,8 @@ export class DeviceBonded
     std::uint32_t atomPartialOffset{0};
     float cutOffVDWSquared{0.0f};
     float cutOffChargeSquared{0.0f};
-    std::uint32_t padding[2]{};
+    std::uint32_t fourier{0};
+    std::uint32_t padding{0};
   };
   static_assert(sizeof(Parameters) == 48);
 

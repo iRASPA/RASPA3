@@ -174,7 +174,7 @@ export class DeviceStep
   /// Adds the particle-mesh Ewald sum to the device step (mesh of PPPM::chooseMesh, B-spline order 3..7).
   void enableMesh(int3 meshSize, std::size_t order, double alpha, double conversionFactor);
   /// Adds the per-molecule terms to the device step (supportsBonded must hold for the system).
-  void enableBonded(const System& system, double alpha, double conversionFactor, bool useCharge);
+  void enableBonded(const System& system, double alpha, double conversionFactor, bool useCharge, bool fourier);
   bool meshEnabled() const { return useMesh; }
   bool bondedEnabled() const { return useBonded; }
   /// Rebuilds and re-uploads the bonded topology after the atom types or charges of the system changed (the
@@ -318,6 +318,7 @@ export class DeviceStep
   bool meshProfiled{false};  ///< the stage profile of the mesh ran (once, at the first timing sample)
   bool useBonded{false};
   bool bondedUseCharge{false};  ///< the charge flag the bonded terms were enabled with (kept across setParameters)
+  bool bondedFourier{false};    ///< whether the Fourier sum is evaluated (its corrections apply on the device)
   BondedTopology bondedTopology{};
   std::vector<std::uint32_t> referenceOfSorted{};
 

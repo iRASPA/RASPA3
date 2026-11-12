@@ -105,9 +105,9 @@ TEST(CBMC_THREAD_POOL_GRIDS, no_grid_is_read_under_a_charge_method_other_than_ew
   {
     SCOPED_TRACE(method == ForceField::ChargeMethod::Ewald ? "Ewald" : "Wolf");
     system.forceField.chargeMethod = method;
-    const RunningEnergy expected = Interactions::computeFrameworkMoleculeEnergy(
-        system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-        system.spanOfFrameworkAtoms(), probeSpan);
+    const RunningEnergy expected =
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, system.spanOfFrameworkAtoms(), probeSpan);
     EXPECT_NE(expected.frameworkMoleculeCharge, 0.0);
     for (const bool withCellList : {true, false})
     {

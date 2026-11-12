@@ -36,6 +36,7 @@ export struct DevicePolymerPairSetup
   float switchInverseCutOff3{0.0f};
   float switchA12{1.0f};
   float switchA6{1.0f};
+  std::uint32_t fourier{0};  ///< the Fourier sum is evaluated (its long-range part is removed from the pairs)
   bool operator==(const DevicePolymerPairSetup&) const = default;
 };
 
@@ -108,8 +109,10 @@ export class DevicePolymerOverlay
     float switchInverseCutOff3{0.0f};
     float switchA12{1.0f};
     float switchA6{1.0f};
+    std::uint32_t fourier{0};
+    std::uint32_t padding[3]{};
   };
-  static_assert(sizeof(Parameters) == 144);
+  static_assert(sizeof(Parameters) == 160);
 
   DeviceContext* context{nullptr};
   DeviceKernel termKernel{}, atomKernel{};

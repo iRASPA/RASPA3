@@ -900,7 +900,7 @@ namespace
 // A centre with four neighbours of which three are declared: grown with the undeclared one as the torsion
 // reference and one declared neighbour placed, the spin decides the parity behind a hard wall.
 constexpr std::string_view kChiralQuaternaryJson =
-R"({
+    R"({
   "CriticalTemperature" : 507.6,
   "CriticalPressure" : 3025000.0,
   "AcentricFactor" : 0.301,
@@ -942,15 +942,15 @@ TEST(CBMC_BASE_SAMPLER, dead_spin_directions_are_no_part_of_the_chain_weight)
   forceField.settings.numberOfTrialDirections = 2;
   forceField.settings.numberOfTorsionTrialDirections = 1;
   TemporaryFile file("chiral-quaternary-sampler.json", kChiralQuaternaryJson);
-  Component component(Component::Type::Adsorbate, 0, forceField, "chiral-quaternary-sampler",
-                      file.stemPath().string(), 5, 21, MCMoveProbabilities(), std::nullopt, false);
+  Component component(Component::Type::Adsorbate, 0, forceField, "chiral-quaternary-sampler", file.stemPath().string(),
+                      5, 21, MCMoveProbabilities(), std::nullopt, false);
   ASSERT_TRUE(component.intraMolecularPotentials.preservesChiralCenters(component.atoms));
 
   System system(forceField, kBox, false, kTemperature, 1e4, 1.0, {}, {component}, {}, {0}, 5);
-  Component &grown = system.components[0];
+  Component& grown = system.components[0];
   grown.prepareGrowthPlans(system.beta);
   const std::vector<std::size_t> placed{0, 1, 4};
-  const std::vector<CBMC::GrowStep> &plan = grown.growthPlan(placed);
+  const std::vector<CBMC::GrowStep>& plan = grown.growthPlan(placed);
   ASSERT_EQ(plan.size(), 1uz);
   ASSERT_EQ(plan.front().previousBead, std::optional<std::size_t>{0});
   ASSERT_EQ(plan.front().spin.determinedChiralCenters.size(), 1uz);
@@ -962,8 +962,7 @@ TEST(CBMC_BASE_SAMPLER, dead_spin_directions_are_no_part_of_the_chain_weight)
   std::size_t returned = 0, halfGrow = 0, wholeGrow = 0, halfRetrace = 0;
   for (std::size_t attempt = 0; attempt != 400; ++attempt)
   {
-    const std::optional<CBMC::GrowResult> result =
-        CBMC::growChainCBMC(random, context, grown, component.atoms, placed);
+    const std::optional<CBMC::GrowResult> result = CBMC::growChainCBMC(random, context, grown, component.atoms, placed);
     if (!result.has_value()) continue;  // both directions dead
     ++returned;
     SCOPED_TRACE("attempt " + std::to_string(attempt));
@@ -988,7 +987,7 @@ namespace
 // branch points sample the same bonds, anchor bends and sibling bend, with bead 0 the previous bead of the first
 // and no part of the second.
 constexpr std::string_view kTwoBranchPointsJson =
-R"({
+    R"({
   "CriticalTemperature" : 507.6,
   "CriticalPressure" : 3025000.0,
   "AcentricFactor" : 0.301,
@@ -1042,10 +1041,10 @@ TEST(CBMC_BASE_SAMPLER, congruent_steps_with_a_bond_bend_term_share_the_coupling
         BondBendPotential(ids, BondBendType::CVFF, {114.0, 800.0, 1.54, 800.0, 1.54}));
   }
 
-  const std::vector<CBMC::GrowStep> &plan = component.growthPlan({0});
+  const std::vector<CBMC::GrowStep>& plan = component.growthPlan({0});
   ASSERT_EQ(plan.size(), 4uz);
-  const CBMC::GrowStep &first = plan[1];
-  const CBMC::GrowStep &second = plan[3];
+  const CBMC::GrowStep& first = plan[1];
+  const CBMC::GrowStep& second = plan[3];
   ASSERT_EQ(first.currentBead, 1uz);
   ASSERT_EQ(second.currentBead, 4uz);
   ASSERT_EQ(first.nextBeads.size(), 2uz);

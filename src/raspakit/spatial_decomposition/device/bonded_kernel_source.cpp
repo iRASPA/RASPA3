@@ -53,7 +53,9 @@ typedef struct
   uint atomPartialOffset;  // first float of the per-atom partials in the partial buffer (after the term partials)
   float cutOffVDWSquared;     // cutoff of the intramolecular Lennard-Jones pairs (cutOffMoleculeVDW)
   float cutOffChargeSquared;  // cutoff of the intramolecular Coulomb pairs (cutOffCoulomb)
-  uint padding[2];
+  uint fourier;               // the Fourier sum is evaluated: the self and exclusion corrections and the long-range
+                              // part removed from the 1-4 pairs apply; without it a 1-4 pair is its real-space term
+  uint padding;
 } BondedParameters;
 
 typedef struct
@@ -402,11 +404,21 @@ DEVICE_FUNCTION float pairTerm(uint kind, PRIVATE const float* P, float4 posA, f
   {
     const float r = sqrt(rr);
     const float x = p->alpha * r;
-    const float potential = erf(x) / r;
     const float gaussian = p->twoAlphaOverSqrtPi * exp(-x * x);
     const float prefactor = p->coulombFactor * posA.w * posB.w;
-    U = prefactor * (P[0] / r - potential);
-    DF = -prefactor * (P[0] / (rr * r) + (gaussian - potential) / rr);
+    if (p->fourier != 0)
+    {
+      const float potential = erf(x) / r;
+      U = prefactor * (P[0] / r - potential);
+      DF = -prefactor * (P[0] / (rr * r) + (gaussian - potential) / rr);
+    }
+    else
+    {
+      // no Fourier sum counted the pair: the scaled real-space term f C qA qB erfc(alpha r)/r, as the host
+      const float erfcValue = erfc(x);
+      U = prefactor * P[0] * erfcValue / r;
+      DF = -prefactor * P[0] * (gaussian / r + erfcValue / rr) / r;
+    }
   }
   *gA = DF * dr;
   *gB = -DF * dr;
@@ -543,7 +555,7 @@ void bondedAtoms(GLOBAL const float4* RESTRICT relative,          // per atom (s
     const float4 pa = pos[a];
     const float3 ra = pa.xyz;
     const float qa = pa.w;
-    const bool charged = p->useCharge != 0;
+    const bool charged = p->useCharge != 0 && p->fourier != 0;  // corrections of the Fourier sum only
     const float3 com = moleculeCenter[m].xyz;
 
     // Exclusion pairs with the excluded partners of the atom: -C qa qb erf(alpha r)/r. The sum is evaluated
