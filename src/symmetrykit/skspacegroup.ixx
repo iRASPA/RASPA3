@@ -63,34 +63,35 @@ export class SKSpaceGroup
       const std::vector<SKSeitzMatrix>& operations, double3x3 lattice, Centring centering,
       std::optional<std::size_t> internationalNumber = std::nullopt, double symmetryPrecision = 1e-2);
   static std::optional<FoundPrimitiveCellInfo> SKFindPrimitive(
-      double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
-      double symmetryPrecision);
-  static std::optional<FoundNiggliCellInfo> findNiggliCell(double3x3 unitCell,
-                                                           std::vector<std::tuple<double3, std::size_t, double>> atoms,
-                                                           bool allowPartialOccupancies, double symmetryPrecision);
+      double3x3 unitCell, const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+      bool allowPartialOccupancies, double symmetryPrecision);
+  static std::optional<FoundNiggliCellInfo> findNiggliCell(
+      double3x3 unitCell, const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+      bool allowPartialOccupancies, double symmetryPrecision);
   static std::optional<SKPointGroup> findPointGroupAtPrecision(
-      double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
-      double symmetryPrecision);
+      double3x3 unitCell, const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+      bool allowPartialOccupancies, double symmetryPrecision);
   static std::optional<FoundSpaceGroupInfo> findSpaceGroupAtPrecision(
-      double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
-      double symmetryPrecision);
+      double3x3 unitCell, const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+      bool allowPartialOccupancies, double symmetryPrecision);
   static std::optional<SKPointGroup> findPointGroup(double3x3 unitCell,
-                                                    std::vector<std::tuple<double3, std::size_t, double>> atoms,
+                                                    const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
                                                     bool allowPartialOccupancies, double symmetryPrecision);
-  static std::optional<FoundSpaceGroupInfo> findSpaceGroup(double3x3 unitCell,
-                                                           std::vector<std::tuple<double3, std::size_t, double>> atoms,
-                                                           bool allowPartialOccupancies, double symmetryPrecision);
+  static std::optional<FoundSpaceGroupInfo> findSpaceGroup(
+      double3x3 unitCell, const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+      bool allowPartialOccupancies, double symmetryPrecision);
 
   static SKSymmetryOperationSet findSpaceGroupSymmetry(
-      double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> reducedAtoms,
-      std::vector<std::tuple<double3, std::size_t, double>> atoms, SKPointSymmetrySet latticeSymmetries,
+      double3x3 unitCell, const std::vector<std::tuple<double3, std::size_t, double>>& reducedAtoms,
+      const std::vector<std::tuple<double3, std::size_t, double>>& atoms, SKPointSymmetrySet latticeSymmetries,
       bool allowPartialOccupancies, double symmetryPrecision);
   static std::optional<std::pair<double3, SKRotationalChangeOfBasis>> matchSpaceGroup(
-      std::size_t HallNumber, double3x3 lattice, Centring centering, std::vector<SKSeitzMatrix> seitzMatrices,
+      std::size_t HallNumber, double3x3 lattice, Centring centering, const std::vector<SKSeitzMatrix>& seitzMatrices,
       double symmetryPrecision);
   static std::optional<double3> getOriginShift(std::size_t HallNumber, Centring centering,
                                                SKRotationalChangeOfBasis changeOfBasis,
-                                               std::vector<SKSeitzMatrix> seitzMatrices, double symmetryPrecision);
+                                               const std::vector<SKSeitzMatrix>& seitzMatrices,
+                                               double symmetryPrecision);
 
  private:
   SKSpaceGroupSetting _spaceGroupSetting = SKSpaceGroupDataBase::spaceGroupData[1];

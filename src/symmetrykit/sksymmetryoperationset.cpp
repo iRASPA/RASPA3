@@ -42,15 +42,17 @@ const std::vector<SKRotationMatrix> SKSymmetryOperationSet::properRotations() co
 const SKSymmetryOperationSet SKSymmetryOperationSet::changedBasis(SKTransformationMatrix transformationMatrix) const
 {
   std::vector<SKSeitzMatrix> newSet{};
+  newSet.reserve(this->operations.size());
 
+  const SKTransformationMatrix inverseTransformation = transformationMatrix.adjugate();
+  const int determinant = transformationMatrix.determinant();
   for (const SKSeitzMatrix& seitzMatrix : this->operations)
   {
-    SKTransformationMatrix inverseTransformation = transformationMatrix.adjugate();
     SKTransformationMatrix rotation =
-        (inverseTransformation * seitzMatrix.rotation * transformationMatrix) / transformationMatrix.determinant();
+        (inverseTransformation * seitzMatrix.rotation * transformationMatrix) / determinant;
     double3 translation = inverseTransformation * seitzMatrix.translation;
-    SKSeitzMatrix transformedSeitzMatrix = SKSeitzMatrix(SKRotationMatrix(rotation.transformation),
-                                                         translation / double(transformationMatrix.determinant()));
+    SKSeitzMatrix transformedSeitzMatrix =
+        SKSeitzMatrix(SKRotationMatrix(rotation.transformation), translation / double(determinant));
     newSet.push_back(transformedSeitzMatrix);
   }
   return SKSymmetryOperationSet(newSet);

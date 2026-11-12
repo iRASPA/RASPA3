@@ -579,8 +579,8 @@ std::string SKSpaceGroup::inversionCenterString(std::size_t HallNumber)
 }
 
 SKSymmetryOperationSet SKSpaceGroup::findSpaceGroupSymmetry(
-    double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> reducedAtoms,
-    std::vector<std::tuple<double3, std::size_t, double>> atoms, SKPointSymmetrySet latticeSymmetries,
+    double3x3 unitCell, const std::vector<std::tuple<double3, std::size_t, double>>& reducedAtoms,
+    const std::vector<std::tuple<double3, std::size_t, double>>& atoms, SKPointSymmetrySet latticeSymmetries,
     bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
   std::vector<SKSeitzMatrix> spaceGroupSymmetries{};
@@ -605,8 +605,8 @@ SKSymmetryOperationSet SKSpaceGroup::findSpaceGroupSymmetry(
 }
 
 std::optional<SKSpaceGroup::FoundPrimitiveCellInfo> SKSpaceGroup::SKFindPrimitive(
-    double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
-    double symmetryPrecision = 1e-2)
+    double3x3 unitCell, const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+    bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
   std::optional<FoundSpaceGroupInfo> foundSpaceGroup =
       findSpaceGroup(unitCell, atoms, allowPartialOccupancies, symmetryPrecision);
@@ -671,8 +671,8 @@ std::optional<SKSpaceGroup::FoundPrimitiveCellInfo> SKSpaceGroup::SKFindPrimitiv
 // search came back with nothing. At a smaller precision the doubtful operations drop out and the group the structure
 // does support is found, at worst P 1. The result carries the precision it was found at.
 std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
-    double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
-    double symmetryPrecision = 1e-2)
+    double3x3 unitCell, const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+    bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
   double precision = symmetryPrecision;
   for (int attempt = 0; attempt < 30; ++attempt, precision *= 0.95)
@@ -687,8 +687,8 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
 }
 
 std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroupAtPrecision(
-    double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
-    double symmetryPrecision)
+    double3x3 unitCell, const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+    bool allowPartialOccupancies, double symmetryPrecision)
 {
   // without atoms there is no least-occurring atom type to start from
   if (atoms.empty()) return std::nullopt;
@@ -924,8 +924,8 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroupAtP
 }
 
 std::optional<SKSpaceGroup::FoundNiggliCellInfo> SKSpaceGroup::findNiggliCell(
-    double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
-    double symmetryPrecision = 1e-2)
+    double3x3 unitCell, const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+    bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
   // without atoms there is no least-occurring atom type to start from
   if (atoms.empty()) return std::nullopt;
@@ -998,9 +998,9 @@ std::optional<SKSpaceGroup::FoundNiggliCellInfo> SKSpaceGroup::findNiggliCell(
 
 // the point group at the requested precision, or at a shrunken one when the rotations found match no point group
 // (see findSpaceGroup)
-std::optional<SKPointGroup> SKSpaceGroup::findPointGroup(double3x3 unitCell,
-                                                         std::vector<std::tuple<double3, std::size_t, double>> atoms,
-                                                         bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
+std::optional<SKPointGroup> SKSpaceGroup::findPointGroup(
+    double3x3 unitCell, const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+    bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
   double precision = symmetryPrecision;
   for (int attempt = 0; attempt < 30; ++attempt, precision *= 0.95)
@@ -1015,8 +1015,8 @@ std::optional<SKPointGroup> SKSpaceGroup::findPointGroup(double3x3 unitCell,
 }
 
 std::optional<SKPointGroup> SKSpaceGroup::findPointGroupAtPrecision(
-    double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
-    double symmetryPrecision)
+    double3x3 unitCell, const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+    bool allowPartialOccupancies, double symmetryPrecision)
 {
   // without atoms there is no least-occurring atom type to start from
   if (atoms.empty()) return std::nullopt;
@@ -1069,7 +1069,7 @@ std::optional<SKPointGroup> SKSpaceGroup::findPointGroupAtPrecision(
 }
 
 std::optional<std::pair<double3, SKRotationalChangeOfBasis>> SKSpaceGroup::matchSpaceGroup(
-    std::size_t HallNumber, double3x3 lattice, Centring centering, std::vector<SKSeitzMatrix> seitzMatrices,
+    std::size_t HallNumber, double3x3 lattice, Centring centering, const std::vector<SKSeitzMatrix>& seitzMatrices,
     double symmetryPrecision = 1e-2)
 {
   std::size_t pointGroupNumber = SKSpaceGroupDataBase::spaceGroupData[HallNumber].pointGroupNumber();
@@ -1182,28 +1182,27 @@ std::optional<std::pair<double3, SKRotationalChangeOfBasis>> SKSpaceGroup::match
 
 std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Centring centering,
                                                     SKRotationalChangeOfBasis changeOfBasis,
-                                                    std::vector<SKSeitzMatrix> seitzMatrices,
+                                                    const std::vector<SKSeitzMatrix>& seitzMatrices,
                                                     double symmetryPrecision = 1e-2)
 {
   double3x3 translationsnew = double3x3();
 
-  SKSpaceGroup dataBaseSpaceGroup = SKSpaceGroup(HallNumber);
+  const SKSpaceGroupSetting& setting = SKSpaceGroupDataBase::spaceGroupData[HallNumber];
 
   // the operations must have the order of the candidate: its generators are found in every supergroup as well, and
   // the empty generator list of P 1 in every group; the operations may be listed with the centring translations
   // (the full order) or without them
-  const std::size_t order = dataBaseSpaceGroup.spaceGroupSetting().order();
-  const std::size_t centringTranslations =
-      std::max(std::size_t{1}, dataBaseSpaceGroup.spaceGroupSetting().latticeTranslations().size());
+  const std::size_t order = setting.order();
+  const std::size_t centringTranslations = std::max(std::size_t{1}, setting.latticeTranslations().size());
   if (seitzMatrices.size() != order && seitzMatrices.size() * centringTranslations != order)
   {
     return std::nullopt;
   }
 
-  const std::string& encodedGenerators = dataBaseSpaceGroup.spaceGroupSetting().encodedGenerators();
+  const std::string& encodedGenerators = setting.encodedGenerators();
   if (encodedGenerators.empty())
   {
-    if (centering != dataBaseSpaceGroup.spaceGroupSetting().centring())
+    if (centering != setting.centring())
     {
       return std::nullopt;
     }
@@ -1220,7 +1219,7 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
   }
 
   // apply change-of-basis to lattice translations
-  std::vector<int3> spaceGroupLatticeTranslations = dataBaseSpaceGroup.spaceGroupSetting().latticeTranslations();
+  std::vector<int3> spaceGroupLatticeTranslations = setting.latticeTranslations();
   for (std::size_t i = 0; i < spaceGroupLatticeTranslations.size(); i++)
   {
     spaceGroupLatticeTranslations[i] = changeOfBasis * spaceGroupLatticeTranslations[i];
@@ -1229,7 +1228,7 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
   // apply change-of-basis to centring: the transformed second lattice translation names it. A zero component is
   // the face the translation lies in, and three non-zero components are a body centring: the monoclinic changes of
   // basis turn a C centring into an I centring and back, which used to be left labelled as C (and I as I)
-  Centring dataBaseSpaceGroupCentering = dataBaseSpaceGroup.spaceGroupSetting().centring();
+  Centring dataBaseSpaceGroupCentering = setting.centring();
   switch (dataBaseSpaceGroupCentering)
   {
     case Centring::a_face:
@@ -1409,7 +1408,7 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
   // x -> m(x + s) - s with the origin shift s.
   const double3 probe(0.1234, 0.2345, 0.3456);
   std::vector<std::pair<SKRotationMatrix, double3>> candidateOperations{};
-  for (const SKSeitzIntegerMatrix& operation : dataBaseSpaceGroup.spaceGroupSetting().fullSeitzMatrices().operations)
+  for (const SKSeitzIntegerMatrix& operation : SKSeitzIntegerMatrix::SeitzMatrices(setting.encodedSeitz()))
   {
     const SKSeitzIntegerMatrix transformed = changeOfBasis * operation;
     candidateOperations.emplace_back(transformed.rotation, transformed * (probe + shift) - shift);

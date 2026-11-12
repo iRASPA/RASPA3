@@ -13,24 +13,6 @@ SKRotationalOccurrenceTable::SKRotationalOccurrenceTable(
     std::make_signed_t<std::size_t> axis_2, std::make_signed_t<std::size_t> axis_3,
     std::make_signed_t<std::size_t> axis_4, std::make_signed_t<std::size_t> axis_6)
 {
-  occurrence[static_cast<typename std::underlying_type<SKRotationMatrix::RotationType>::type>(
-      SKRotationMatrix::RotationType::axis_6m)] = axis_6m;
-  occurrence[static_cast<typename std::underlying_type<SKRotationMatrix::RotationType>::type>(
-      SKRotationMatrix::RotationType::axis_4m)] = axis_4m;
-  occurrence[static_cast<typename std::underlying_type<SKRotationMatrix::RotationType>::type>(
-      SKRotationMatrix::RotationType::axis_3m)] = axis_3m;
-  occurrence[static_cast<typename std::underlying_type<SKRotationMatrix::RotationType>::type>(
-      SKRotationMatrix::RotationType::axis_2m)] = axis_2m;
-  occurrence[static_cast<typename std::underlying_type<SKRotationMatrix::RotationType>::type>(
-      SKRotationMatrix::RotationType::axis_1m)] = axis_1m;
-  occurrence[static_cast<typename std::underlying_type<SKRotationMatrix::RotationType>::type>(
-      SKRotationMatrix::RotationType::axis_1)] = axis_1;
-  occurrence[static_cast<typename std::underlying_type<SKRotationMatrix::RotationType>::type>(
-      SKRotationMatrix::RotationType::axis_2)] = axis_2;
-  occurrence[static_cast<typename std::underlying_type<SKRotationMatrix::RotationType>::type>(
-      SKRotationMatrix::RotationType::axis_3)] = axis_3;
-  occurrence[static_cast<typename std::underlying_type<SKRotationMatrix::RotationType>::type>(
-      SKRotationMatrix::RotationType::axis_4)] = axis_4;
-  occurrence[static_cast<typename std::underlying_type<SKRotationMatrix::RotationType>::type>(
-      SKRotationMatrix::RotationType::axis_6)] = axis_6;
+  // the slots of the types -6, -4, -3, -2, -1, 1, 2, 3, 4 and 6; the slots of -5, 0 and 5 stay zero
+  occurrence = {axis_6m, 0, axis_4m, axis_3m, axis_2m, axis_1m, 0, axis_1, axis_2, axis_3, axis_4, 0, axis_6};
 }

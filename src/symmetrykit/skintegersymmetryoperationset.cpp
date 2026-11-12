@@ -33,7 +33,8 @@ SKIntegerSymmetryOperationSet::SKIntegerSymmetryOperationSet(std::vector<SKSeitz
 SKIntegerSymmetryOperationSet SKIntegerSymmetryOperationSet::fullSeitzMatrices() { return *this; }
 
 std::vector<std::tuple<double3, std::size_t, double>> SKIntegerSymmetryOperationSet::symmetrize(
-    double3x3 lattice, std::vector<std::tuple<double3, std::size_t, double>> atoms, double symmetryPrecision = 1e-2)
+    double3x3 lattice, const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+    double symmetryPrecision = 1e-2)
 {
   std::vector<std::tuple<double3, std::size_t, double>> symmetrizedAtoms{};
   symmetrizedAtoms.reserve(atoms.size());
@@ -80,7 +81,7 @@ std::vector<std::tuple<double3, std::size_t, double>> SKIntegerSymmetryOperation
 }
 
 std::vector<std::tuple<double3, std::size_t, double>> SKIntegerSymmetryOperationSet::asymmetricAtoms(
-    const SKAsymmetricUnit& asymmetricUnit, std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+    const SKAsymmetricUnit& asymmetricUnit, const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
     double3x3 lattice, [[maybe_unused]] bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
   std::vector<std::tuple<double3, std::size_t, double, std::make_signed_t<std::size_t>>> atomData{};
@@ -91,49 +92,52 @@ std::vector<std::tuple<double3, std::size_t, double>> SKIntegerSymmetryOperation
   if (atoms.empty()) return {};
 
   std::vector<std::tuple<double3, std::size_t, double>> asymmetricAtoms = {};
-// std::get<3>(atomData[0]) = 0;
 
-// loop over all atoms
-loop:
+  // the images of an atom under the operations, the same whichever asymmetric atom they are compared with
+  std::vector<double3> orbit;
+  orbit.reserve(this->operations.size());
+
+  // loop over all atoms. An atom is tagged when it is reached and never before, so the loop runs on from a new
+  // asymmetric atom; it used to start over from the first atom, to skip past all the tagged ones again.
   for (std::size_t i = 0; i < atoms.size(); i++)
   {
-    // skip if already tagged
-    if (std::get<3>(atomData[i]) == -1)
+    orbit.clear();
+    for (const SKSeitzIntegerMatrix& operation : this->operations)
     {
-      // loop over all current asymmetric atoms, and see if one of the symmetry-copies matches with an asymmetric
-      // atom
-      for (std::size_t j = 0; j < asymmetricAtoms.size(); j++)
+      orbit.push_back(operation.rotation * std::get<0>(atomData[i]) + double3(double(operation.translation.x) / 24.0,
+                                                                              double(operation.translation.y) / 24.0,
+                                                                              double(operation.translation.z) / 24.0));
+    }
+
+    // loop over all current asymmetric atoms, and see if one of the symmetry-copies matches with an asymmetric
+    // atom
+    for (std::size_t j = 0; j < asymmetricAtoms.size(); j++)
+    {
+      // an atom is a copy of an asymmetric atom only when the types agree. Partial occupancies let the symmetry
+      // search treat a site shared by several elements as one site, but each element on it still needs its own
+      // representative, or the others vanish from the asymmetric unit
+      if (std::get<1>(atomData[i]) == std::get<1>(asymmetricAtoms[j]))
       {
-        // an atom is a copy of an asymmetric atom only when the types agree. Partial occupancies let the symmetry
-        // search treat a site shared by several elements as one site, but each element on it still needs its own
-        // representative, or the others vanish from the asymmetric unit
-        if (std::get<1>(atomData[i]) == std::get<1>(asymmetricAtoms[j]))
+        for (const double3& position : orbit)
         {
-          for (const SKSeitzIntegerMatrix& operation : this->operations)
+          if (SKSymmetryCell::isOverlap(position, std::get<0>(asymmetricAtoms[j]), lattice, symmetryPrecision))
           {
-            double3 position = operation.rotation * std::get<0>(atomData[i]) +
-                               double3(double(operation.translation.x) / 24.0, double(operation.translation.y) / 24.0,
-                                       double(operation.translation.z) / 24.0);
-            if (SKSymmetryCell::isOverlap(position, std::get<0>(asymmetricAtoms[j]), lattice, symmetryPrecision))
-            {
-              // overlap and of the same type: the atom is therefore a copy of the asymmetric atom 'j'
-              std::get<3>(atomData[i]) = static_cast<std::make_signed_t<std::size_t>>(j);
-              break;
-            }
+            // overlap and of the same type: the atom is therefore a copy of the asymmetric atom 'j'
+            std::get<3>(atomData[i]) = static_cast<std::make_signed_t<std::size_t>>(j);
+            break;
           }
         }
-        // tagged: the remaining asymmetric atoms are not to retag it
-        if (std::get<3>(atomData[i]) != -1) break;
       }
+      // tagged: the remaining asymmetric atoms are not to retag it
+      if (std::get<3>(atomData[i]) != -1) break;
+    }
 
-      // not typed yet
-      if (std::get<3>(atomData[i]) == -1)
-      {
-        asymmetricAtoms.push_back(
-            std::make_tuple(std::get<0>(atomData[i]), std::get<1>(atomData[i]), std::get<2>(atomData[i])));
-        std::get<3>(atomData[i]) = static_cast<std::make_signed_t<std::size_t>>(asymmetricAtoms.size() - 1);
-        goto loop;
-      }
+    // not typed yet
+    if (std::get<3>(atomData[i]) == -1)
+    {
+      asymmetricAtoms.push_back(
+          std::make_tuple(std::get<0>(atomData[i]), std::get<1>(atomData[i]), std::get<2>(atomData[i])));
+      std::get<3>(atomData[i]) = static_cast<std::make_signed_t<std::size_t>>(asymmetricAtoms.size() - 1);
     }
   }
 

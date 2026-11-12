@@ -31,28 +31,28 @@ export class SKSpaceGroupSetting
   std::size_t number() const { return _spaceGroupNumber; }
   std::size_t order() const { return _order; }
   std::size_t HallNumber() const { return _HallNumber; }
-  std::string HallString() const { return _HallString; }
-  std::string HMString() const { return _HMString; }
+  const std::string& HallString() const { return _HallString; }
+  const std::string& HMString() const { return _HMString; }
   std::size_t pointGroupNumber() const { return _pointGroupNumber; }
-  std::string qualifier() const { return _qualifier; }
+  const std::string& qualifier() const { return _qualifier; }
   char ext() const { return _ext; }  // the number 1 or 2 for an origin choice, 'H' or 'R' for axes, else 0
   Symmorphicity symmorphicity() const { return _symmorphicity; }
   std::string symmorphicityString() const;
   std::string centringString() const;
 
-  const std::string encodedGenerators() const { return _encodedGenerators; }
-  const std::string encodedSeitz() const { return _encodedSeitz; }
+  const std::string& encodedGenerators() const { return _encodedGenerators; }
+  const std::string& encodedSeitz() const { return _encodedSeitz; }
 
   bool inversionAtOrigin() const { return _inversionAtOrigin; }
   int3 inversionCenter() const { return _inversionCenter; }
 
-  const std::vector<int3> latticeTranslations() const { return _latticeTranslations; }
+  const std::vector<int3>& latticeTranslations() const { return _latticeTranslations; }
   Centring centring() const { return _centring; }
   bool standardSetting() const { return _standard; }
 
   // check
   SKAsymmetricUnit asymmetricUnit() const { return _asymmetricUnit; }
-  std::string schoenflies() const { return _schoenflies; }
+  const std::string& schoenflies() const { return _schoenflies; }
   SKTransformationMatrix transformationMatrix() const { return _transformationMatrix; }
 
   friend std::ostream& operator<<(std::ostream& os, const SKSpaceGroupSetting& setting);

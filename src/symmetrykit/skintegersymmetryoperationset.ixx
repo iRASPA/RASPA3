@@ -25,8 +25,8 @@ export struct SKIntegerSymmetryOperationSet
   SKIntegerSymmetryOperationSet fullSeitzMatrices();
 
   std::vector<std::tuple<double3, std::size_t, double>> symmetrize(
-      double3x3 lattice, std::vector<std::tuple<double3, std::size_t, double>> atoms, double symmetryPrecision);
+      double3x3 lattice, const std::vector<std::tuple<double3, std::size_t, double>>& atoms, double symmetryPrecision);
   std::vector<std::tuple<double3, std::size_t, double>> asymmetricAtoms(
-      const SKAsymmetricUnit& asymmetricUnit, std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+      const SKAsymmetricUnit& asymmetricUnit, const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
       double3x3 lattice, bool allowPartialOccupancies, double symmetryPrecision);
 };

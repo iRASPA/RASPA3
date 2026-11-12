@@ -24,22 +24,22 @@ export class SKSymmetryCell
   double3x3 unitCell() const;
   double3x3 metricTensor();
   double volume();
-  static double3x3 findSmallestPrimitiveCell(std::vector<std::tuple<double3, std::size_t, double>> reducedAtoms,
-                                             std::vector<std::tuple<double3, std::size_t, double>> atoms,
+  static double3x3 findSmallestPrimitiveCell(const std::vector<std::tuple<double3, std::size_t, double>>& reducedAtoms,
+                                             const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
                                              double3x3 unitCell, bool allowPartialOccupancies,
                                              double symmetryPrecision);
   static bool testTranslationalSymmetry(double3 translationVector,
-                                        std::vector<std::tuple<double3, std::size_t, double>> atoms, double3x3 unitCell,
-                                        bool allowPartialOccupancies, double precision);
+                                        const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+                                        double3x3 unitCell, bool allowPartialOccupancies, double precision);
   static bool testSymmetry(double3 translationVector, SKRotationMatrix rotationMatrix,
-                           std::vector<std::tuple<double3, std::size_t, double>> atoms, double3x3 unitCell,
+                           const std::vector<std::tuple<double3, std::size_t, double>>& atoms, double3x3 unitCell,
                            bool allowPartialOccupancies, double precision);
   static std::optional<double3> refinedTranslation(double3 translationVector, SKRotationMatrix rotationMatrix,
                                                    const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
                                                    double3x3 unitCell, bool allowPartialOccupancies, double tolerance);
   static std::vector<double3> primitiveTranslationVectors(
-      double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> reducedAtoms,
-      std::vector<std::tuple<double3, std::size_t, double>> atoms, SKRotationMatrix rotationMatrix,
+      double3x3 unitCell, const std::vector<std::tuple<double3, std::size_t, double>>& reducedAtoms,
+      const std::vector<std::tuple<double3, std::size_t, double>>& atoms, SKRotationMatrix rotationMatrix,
       bool allowPartialOccupancies, double symmetryPrecision);
   static std::optional<double3x3> computeDelaunayReducedCell(double3x3 unitCell, double symmetryPrecision);
   static std::optional<double3x3> computeDelaunayReducedCell2D(double3x3 unitCell, double symmetryPrecision);
@@ -47,7 +47,7 @@ export class SKSymmetryCell
   static bool checkMetricSimilarity(double3x3 transformedMetricTensor, double3x3 metricTensor,
                                     double symmetryPrecision);
   static std::vector<std::tuple<double3, std::size_t, double>> trim(
-      std::vector<std::tuple<double3, std::size_t, double>> atoms, double3x3 from, double3x3 to,
+      const std::vector<std::tuple<double3, std::size_t, double>>& atoms, double3x3 from, double3x3 to,
       bool allowPartialOccupancies, double symmetryPrecision);
   std::optional<std::pair<SKSymmetryCell, SKTransformationMatrix>> computeReducedNiggliCellAndChangeOfBasisMatrix();
   static bool isOverlap(double3 a, double3 b, double3x3 lattice, double symmetryPrecision);

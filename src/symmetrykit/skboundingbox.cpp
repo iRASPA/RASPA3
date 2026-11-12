@@ -101,24 +101,8 @@ double3 SKBoundingBox::aspectRatio()
 
 double SKBoundingBox::boundingSphereRadius()
 {
-  std::array<double3, 8> corners = {
-      {double3(_minimum.x, _minimum.y, _minimum.z), double3(_maximum.x, _minimum.y, _minimum.z),
-       double3(_maximum.x, _maximum.y, _minimum.z), double3(_minimum.x, _maximum.y, _minimum.z),
-       double3(_minimum.x, _minimum.y, _maximum.z), double3(_maximum.x, _minimum.y, _maximum.z),
-       double3(_maximum.x, _maximum.y, _maximum.z), double3(_minimum.x, _maximum.y, _maximum.z)}};
-
-  double3 centerOfScene = _minimum + (_maximum - _minimum) * 0.5;
-  double radius = 0.0;
-  for (double3 corner : corners)
-  {
-    double3 distanceVector = centerOfScene - corner;
-    double cornerRadius = distanceVector.length();
-    if (cornerRadius > radius)
-    {
-      radius = cornerRadius;
-    }
-  }
-  return radius;
+  // every corner of the box is half a diagonal from its centre
+  return 0.5 * (_maximum - _minimum).length();
 }
 
 SKBoundingBox SKBoundingBox::adjustForTransformation(double4x4 transformation)

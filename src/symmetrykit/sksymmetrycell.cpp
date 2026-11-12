@@ -16,6 +16,183 @@ import skpointgroup;
 import skpointsymmetryset;
 import sktransformationmatrix;
 
+namespace
+{
+using Atom = std::tuple<double3, std::size_t, double>;
+
+// The atoms binned by their wrapped fractional position. The tests of a candidate symmetry operation ask, for every
+// atom, whether an atom of its type lies within the precision of the atom's image, and read that from the bin of
+// the image and the bins around it instead of from a pass over every atom, which made each test cost the square of
+// the atom count. A bin is at least the grid's tolerance wide measured across the cell (the perpendicular width of
+// the cell along an axis over the number of bins along it), so that two points within that tolerance of each other,
+// by the component-wise wrapped difference the tests take, are in the same or in adjacent bins; and about an atom's
+// share of the volume wide, so that few atoms are looked at. A query may ask for any tolerance up to the grid's.
+struct AtomGrid
+{
+  const std::vector<Atom>& atoms;
+  double3x3 unitCell;
+  std::array<std::int32_t, 3> bins{1, 1, 1};
+  // how near a bin's face, in bins, a point has to be for a match of it to lie in the bin beyond that face
+  std::array<double, 3> margin{0.0, 0.0, 0.0};
+  std::vector<std::size_t> first;    // where each bin's atoms start in 'ordered', with one entry past the last bin
+  std::vector<std::size_t> ordered;  // the atom indices, bin by bin
+
+  AtomGrid(const std::vector<Atom>& atoms, const double3x3& unitCell, double tolerance)
+      : atoms(atoms), unitCell(unitCell)
+  {
+    const double volume = std::fabs(unitCell.determinant());
+    if (volume > 0.0 && !atoms.empty())
+    {
+      const double3x3 inverse = unitCell.inverse();
+      const double width = std::max(tolerance, std::cbrt(volume / double(atoms.size())));
+      for (std::size_t k = 0; k < 3; ++k)
+      {
+        // the perpendicular width of the cell along axis k is one over the length of row k of the inverse
+        const double rowLength =
+            std::sqrt(inverse[0][k] * inverse[0][k] + inverse[1][k] * inverse[1][k] + inverse[2][k] * inverse[2][k]);
+        // at most 64 along an axis, a quarter of a million bins in all; beyond that the bins hold more than an atom
+        bins[k] = static_cast<std::int32_t>(std::clamp(std::floor(1.0 / (rowLength * width)), 1.0, 64.0));
+        // the tolerance across the cell in bins, with a little to spare for the rounding of the comparisons
+        margin[k] = (1.01 * tolerance * rowLength + 1.0e-12) * bins[k];
+      }
+    }
+
+    first.assign(
+        static_cast<std::size_t>(bins[0]) * static_cast<std::size_t>(bins[1]) * static_cast<std::size_t>(bins[2]) + 1,
+        0);
+    for (const Atom& atom : atoms) ++first[binOf(cellOf(std::get<0>(atom))) + 1];
+    for (std::size_t b = 1; b < first.size(); ++b) first[b] += first[b - 1];
+    std::vector<std::size_t> next(first.begin(), first.end() - 1);
+    ordered.resize(atoms.size());
+    for (std::size_t i = 0; i < atoms.size(); ++i) ordered[next[binOf(cellOf(std::get<0>(atoms[i])))]++] = i;
+  }
+
+  std::array<std::int32_t, 3> cellOf(const double3& position) const
+  {
+    const double3 wrapped = double3::fract(position);
+    return {std::min(bins[0] - 1, static_cast<std::int32_t>(wrapped.x * bins[0])),
+            std::min(bins[1] - 1, static_cast<std::int32_t>(wrapped.y * bins[1])),
+            std::min(bins[2] - 1, static_cast<std::int32_t>(wrapped.z * bins[2]))};
+  }
+
+  std::size_t binOf(const std::array<std::int32_t, 3>& cell) const
+  {
+    return static_cast<std::size_t>((cell[2] * bins[1] + cell[1]) * bins[0] + cell[0]);
+  }
+
+  // The offset, atom minus position wrapped component-wise, to the nearest atom within the tolerance, of the type
+  // unless any type will do.
+  std::optional<double3> nearest(const double3& position, std::size_t type, bool anyType, double tolerance) const
+  {
+    // the bins to look in along each axis: the point's own, and the one beyond each face of it that the point is
+    // within the margin of. A match is within the tolerance of the point on every axis, so a point further than
+    // that from a face has its matches on its own side of it; the bins are wider than the tolerance, so for most
+    // points that is one bin, where visiting all twenty-seven around the point cost more than the atoms in them.
+    const double3 wrapped = double3::fract(position);
+    std::array<std::array<std::int32_t, 3>, 3> around;
+    std::array<std::size_t, 3> counts;
+    for (std::size_t k = 0; k < 3; ++k)
+    {
+      const std::int32_t n = bins[k];
+      const double scaled = wrapped[k] * n;
+      const std::int32_t centre = std::min(n - 1, static_cast<std::int32_t>(scaled));
+      const std::int32_t lower = (centre + n - 1) % n;
+      const std::int32_t upper = (centre + 1) % n;
+      around[k][0] = centre;
+      counts[k] = 1;
+      if (lower != centre && scaled - centre < margin[k]) around[k][counts[k]++] = lower;
+      if (upper != centre && (upper != lower || counts[k] == 1) && 1.0 - (scaled - centre) < margin[k])
+      {
+        around[k][counts[k]++] = upper;
+      }
+    }
+
+    double closestDistanceSquared = tolerance * tolerance;
+    std::optional<double3> closest;
+    for (std::size_t iz = 0; iz < counts[2]; ++iz)
+    {
+      for (std::size_t iy = 0; iy < counts[1]; ++iy)
+      {
+        for (std::size_t ix = 0; ix < counts[0]; ++ix)
+        {
+          const std::size_t bin = binOf({around[0][ix], around[1][iy], around[2][iz]});
+          for (std::size_t slot = first[bin]; slot < first[bin + 1]; ++slot)
+          {
+            const Atom& atom = atoms[ordered[slot]];
+            if (!anyType && std::get<1>(atom) != type) continue;
+            double3 dr = std::get<0>(atom) - position;
+            dr.x -= std::rint(dr.x);
+            dr.y -= std::rint(dr.y);
+            dr.z -= std::rint(dr.z);
+            const double distanceSquared = (unitCell * dr).length_squared();
+            if (distanceSquared < closestDistanceSquared)
+            {
+              closestDistanceSquared = distanceSquared;
+              closest = dr;
+            }
+          }
+        }
+      }
+    }
+    return closest;
+  }
+};
+
+// Whether the image of every atom under an operation lies within the precision of an atom of its type (of any atom,
+// when partial occupancies are allowed).
+template <typename Image>
+bool everyImageOnAnAtom(const AtomGrid& grid, Image&& image, bool allowPartialOccupancies, double precision)
+{
+  for (const Atom& atom : grid.atoms)
+  {
+    if (!grid.nearest(image(std::get<0>(atom)), std::get<1>(atom), allowPartialOccupancies, precision)) return false;
+  }
+  return true;
+}
+
+// The translation of a symmetry operation averaged over all atoms: each atom's image under the rotation and the
+// given translation is matched to the nearest atom of its type within the tolerance, and the mean of the remaining
+// offsets is added to the translation. Without a match for every atom there is no refinement.
+std::optional<double3> refinedTranslationOn(const AtomGrid& grid, const double3& translationVector,
+                                            const SKRotationMatrix& rotationMatrix, bool allowPartialOccupancies,
+                                            double tolerance)
+{
+  double3 offsetSum(0.0, 0.0, 0.0);
+  for (const Atom& atom : grid.atoms)
+  {
+    const std::optional<double3> closest = grid.nearest(rotationMatrix * std::get<0>(atom) + translationVector,
+                                                        std::get<1>(atom), allowPartialOccupancies, tolerance);
+    if (!closest) return std::nullopt;
+    offsetSum += *closest;
+  }
+  return translationVector + offsetSum / double(grid.atoms.size());
+}
+
+// Whether a transformed metric describes the cell within the precision: the lengths first, since most candidates
+// fail on them, and the angles, which take arc-cosines, only for the ones that pass.
+bool metricsSimilar(const SKSymmetryCell& metricCell, const double3x3& transformedMetricTensor,
+                    double symmetryPrecision)
+{
+  const double3 lengthDifference(std::fabs(metricCell.a() - std::sqrt(transformedMetricTensor[0][0])),
+                                 std::fabs(metricCell.b() - std::sqrt(transformedMetricTensor[1][1])),
+                                 std::fabs(metricCell.c() - std::sqrt(transformedMetricTensor[2][2])));
+  if (lengthDifference.length() > symmetryPrecision)
+  {
+    return false;
+  }
+
+  const SKSymmetryCell transformedMetricCell = SKSymmetryCell::createFromMetricTensor(transformedMetricTensor);
+  const double3 angleDifference(std::sin(std::fabs(metricCell.alpha() - transformedMetricCell.alpha())),
+                                std::sin(std::fabs(metricCell.beta() - transformedMetricCell.beta())),
+                                std::sin(std::fabs(metricCell.gamma() - transformedMetricCell.gamma())));
+  if (std::fabs(std::max({angleDifference.x, angleDifference.y, angleDifference.z})) > symmetryPrecision)
+  {
+    return false;
+  }
+  return true;
+}
+}  // namespace
+
 SKSymmetryCell::SKSymmetryCell() {}
 
 SKSymmetryCell::SKSymmetryCell(double a, double b, double c, double alpha, double beta, double gamma)
@@ -39,9 +216,9 @@ SKSymmetryCell SKSymmetryCell::createFromMetricTensor(double3x3 metricTensor)
   cell._b = std::sqrt(B);
   cell._c = std::sqrt(C);
   // round-off can put the cosine a little beyond +-1 for (nearly) collinear axes, where acos gives NaN
-  cell._alpha = std::acos(std::clamp(metricTensor[1][2] / (std::sqrt(B) * std::sqrt(C)), -1.0, 1.0));
-  cell._beta = std::acos(std::clamp(metricTensor[0][2] / (std::sqrt(A) * std::sqrt(C)), -1.0, 1.0));
-  cell._gamma = std::acos(std::clamp(metricTensor[0][1] / (std::sqrt(A) * std::sqrt(B)), -1.0, 1.0));
+  cell._alpha = std::acos(std::clamp(metricTensor[1][2] / (cell._b * cell._c), -1.0, 1.0));
+  cell._beta = std::acos(std::clamp(metricTensor[0][2] / (cell._a * cell._c), -1.0, 1.0));
+  cell._gamma = std::acos(std::clamp(metricTensor[0][1] / (cell._a * cell._b), -1.0, 1.0));
   return cell;
 }
 
@@ -167,22 +344,25 @@ bool SKSymmetryCell::isOverlap(double3 a, double3 b, double3x3 lattice, double s
   return false;
 }
 
-double3x3 SKSymmetryCell::findSmallestPrimitiveCell(std::vector<std::tuple<double3, std::size_t, double>> reducedAtoms,
-                                                    std::vector<std::tuple<double3, std::size_t, double>> atoms,
-                                                    double3x3 unitCell, bool allowPartialOccupancies,
-                                                    double symmetryPrecision = 1e-2)
+double3x3 SKSymmetryCell::findSmallestPrimitiveCell(
+    const std::vector<std::tuple<double3, std::size_t, double>>& reducedAtoms,
+    const std::vector<std::tuple<double3, std::size_t, double>>& atoms, double3x3 unitCell,
+    bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
   std::vector<double3> translationVectors{};
 
   if (reducedAtoms.size() > 0)
   {
+    const AtomGrid grid(atoms, unitCell, symmetryPrecision);
     double3 origin = std::get<0>(reducedAtoms[0]);
 
     for (std::size_t i = 1; i < reducedAtoms.size(); i++)
     {
       double3 vec = std::get<0>(reducedAtoms[i]) - origin;
 
-      if (SKSymmetryCell::testTranslationalSymmetry(vec, atoms, unitCell, allowPartialOccupancies, symmetryPrecision))
+      if (everyImageOnAnAtom(
+              grid, [&vec](const double3& position) { return position + vec; }, allowPartialOccupancies,
+              symmetryPrecision))
       {
         double3 a = double3(vec.x - std::rint(vec.x), vec.y - std::rint(vec.y), vec.z - std::rint(vec.z));
         if (a.x < 0.0 - 1e-10)
@@ -219,12 +399,13 @@ double3x3 SKSymmetryCell::findSmallestPrimitiveCell(std::vector<std::tuple<doubl
 
   for (std::size_t i = 0; i < size; i++)
   {
+    const double3 tmpv1 = unitCell * translationVectors[i];
     for (std::size_t j = i + 1; j < size; j++)
     {
+      const double3 tmpv2 = unitCell * translationVectors[j];
+      const double faceArea12 = double3::cross(tmpv1, tmpv2).length();
       for (std::size_t k = j + 1; k < size; k++)
       {
-        double3 tmpv1 = unitCell * translationVectors[i];
-        double3 tmpv2 = unitCell * translationVectors[j];
         double3 tmpv3 = unitCell * translationVectors[k];
         double3x3 cell = double3x3(tmpv1, tmpv2, tmpv3);
         double volume = std::fabs(cell.determinant());
@@ -233,8 +414,7 @@ double3x3 SKSymmetryCell::findSmallestPrimitiveCell(std::vector<std::tuple<doubl
         // passed the threshold below when the given basis was long and skewed: its smallest height, the volume over
         // the largest face, is within the precision, where no cell of a structure resolved at that precision is
         const double largestFaceArea =
-            std::max({double3::cross(tmpv1, tmpv2).length(), double3::cross(tmpv2, tmpv3).length(),
-                      double3::cross(tmpv1, tmpv3).length()});
+            std::max({faceArea12, double3::cross(tmpv2, tmpv3).length(), double3::cross(tmpv1, tmpv3).length()});
         if (volume < 2.0 * symmetryPrecision * largestFaceArea) continue;
 
         if ((volume > 0.5 * smallestPossibleVolume) && (volume < minimumVolume))
@@ -260,74 +440,24 @@ double3x3 SKSymmetryCell::findSmallestPrimitiveCell(std::vector<std::tuple<doubl
 }
 
 bool SKSymmetryCell::testTranslationalSymmetry(double3 translationVector,
-                                               std::vector<std::tuple<double3, std::size_t, double>> atoms,
+                                               const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
                                                double3x3 unitCell, bool allowPartialOccupancies,
                                                double precision = 1e-2)
 {
-  double squared_precision = precision * precision;
-
-  for (std::size_t i = 0; i < atoms.size(); i++)
-  {
-    double3 translatedPosition = std::get<0>(atoms[i]) + translationVector;
-
-    bool isFound = false;
-    for (std::size_t j = 0; j < atoms.size(); j++)
-    {
-      if (allowPartialOccupancies || std::get<1>(atoms[i]) == std::get<1>(atoms[j]))
-      {
-        double3 dr = translatedPosition - std::get<0>(atoms[j]);
-        dr.x -= std::rint(dr.x);
-        dr.y -= std::rint(dr.y);
-        dr.z -= std::rint(dr.z);
-        if ((unitCell * dr).length_squared() < squared_precision)
-        {
-          isFound = true;
-          break;
-        }
-      }
-    }
-
-    // if no overlap is found then we can immediately return 'false'
-    if (!isFound)
-    {
-      return false;
-    }
-  }
-  return true;
+  const AtomGrid grid(atoms, unitCell, precision);
+  return everyImageOnAnAtom(
+      grid, [&translationVector](const double3& position) { return position + translationVector; },
+      allowPartialOccupancies, precision);
 }
 
 bool SKSymmetryCell::testSymmetry(double3 translationVector, SKRotationMatrix rotationMatrix,
-                                  std::vector<std::tuple<double3, std::size_t, double>> atoms, double3x3 unitCell,
-                                  bool allowPartialOccupancies, double precision = 1e-2)
+                                  const std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+                                  double3x3 unitCell, bool allowPartialOccupancies, double precision = 1e-2)
 {
-  for (std::size_t i = 0; i < atoms.size(); i++)
-  {
-    double3 rotatedAndTranslatedPosition = rotationMatrix * std::get<0>(atoms[i]) + translationVector;
-
-    bool isFound = false;
-    for (std::size_t j = 0; j < atoms.size(); j++)
-    {
-      if (allowPartialOccupancies || std::get<1>(atoms[i]) == std::get<1>(atoms[j]))
-      {
-        double3 dr = rotatedAndTranslatedPosition - std::get<0>(atoms[j]);
-        dr.x -= std::rint(dr.x);
-        dr.y -= std::rint(dr.y);
-        dr.z -= std::rint(dr.z);
-        if ((unitCell * dr).length_squared() < precision * precision)
-        {
-          isFound = true;
-          break;
-        }
-      }
-    }
-
-    // if no overlap is found then we can immediately return 'false'
-    if (!isFound)
-    {
-      return false;
-    }
-  }
-  return true;
+  const AtomGrid grid(atoms, unitCell, precision);
+  return everyImageOnAnAtom(
+      grid, [&](const double3& position) { return rotationMatrix * position + translationVector; },
+      allowPartialOccupancies, precision);
 }
 
 /// Computes translation vectors for symmetry operations
@@ -339,14 +469,16 @@ bool SKSymmetryCell::testSymmetry(double3 translationVector, SKRotationMatrix ro
 ///
 /// - returns: the list of translation vectors, including (0,0,0)
 std::vector<double3> SKSymmetryCell::primitiveTranslationVectors(
-    double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> reducedAtoms,
-    std::vector<std::tuple<double3, std::size_t, double>> atoms, SKRotationMatrix rotationMatrix,
+    double3x3 unitCell, const std::vector<std::tuple<double3, std::size_t, double>>& reducedAtoms,
+    const std::vector<std::tuple<double3, std::size_t, double>>& atoms, SKRotationMatrix rotationMatrix,
     bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
   std::vector<double3> translationVectors{};
 
   if (reducedAtoms.size() > 0)
   {
+    // wide enough for the refinement at twice the precision below
+    const AtomGrid grid(atoms, unitCell, 2.0 * symmetryPrecision);
     double3 origin = rotationMatrix * std::get<0>(reducedAtoms[0]);
 
     for (std::size_t i = 0; i < reducedAtoms.size(); i++)
@@ -355,20 +487,18 @@ std::vector<double3> SKSymmetryCell::primitiveTranslationVectors(
       // it carries a fraction of them, which keeps the found operations, and the origin derived from them,
       // within the precision for noisy coordinates. A pair whose translation misses the precision by its own error
       // is refined at twice the precision first and then held to the precision.
+      //
+      // The refinement at the precision has a value exactly when every atom's image has an atom of its type within
+      // the precision, which is the test of the operation; a separate test used to run the same search once more.
       double3 vec = std::get<0>(reducedAtoms[i]) - origin;
-      std::optional<double3> refined;
-      if (SKSymmetryCell::testSymmetry(vec, rotationMatrix, atoms, unitCell, allowPartialOccupancies,
-                                       symmetryPrecision))
+      std::optional<double3> refined =
+          refinedTranslationOn(grid, vec, rotationMatrix, allowPartialOccupancies, symmetryPrecision);
+      if (!refined)
       {
-        refined = SKSymmetryCell::refinedTranslation(vec, rotationMatrix, atoms, unitCell, allowPartialOccupancies,
-                                                     symmetryPrecision);
-      }
-      else
-      {
-        refined = SKSymmetryCell::refinedTranslation(vec, rotationMatrix, atoms, unitCell, allowPartialOccupancies,
-                                                     2.0 * symmetryPrecision);
-        if (refined && !SKSymmetryCell::testSymmetry(*refined, rotationMatrix, atoms, unitCell, allowPartialOccupancies,
-                                                     symmetryPrecision))
+        refined = refinedTranslationOn(grid, vec, rotationMatrix, allowPartialOccupancies, 2.0 * symmetryPrecision);
+        if (refined && !everyImageOnAnAtom(
+                           grid, [&](const double3& position) { return rotationMatrix * position + *refined; },
+                           allowPartialOccupancies, symmetryPrecision))
         {
           refined = std::nullopt;
         }
@@ -382,40 +512,13 @@ std::vector<double3> SKSymmetryCell::primitiveTranslationVectors(
   return translationVectors;
 }
 
-/// The translation of a symmetry operation averaged over all atoms: each atom's image under the rotation and the
-/// given translation is matched to the nearest atom of its type within the tolerance, and the mean of the remaining
-/// offsets is added to the translation. Without a match for every atom there is no refinement.
 std::optional<double3> SKSymmetryCell::refinedTranslation(
     double3 translationVector, SKRotationMatrix rotationMatrix,
     const std::vector<std::tuple<double3, std::size_t, double>>& atoms, double3x3 unitCell,
     bool allowPartialOccupancies, double tolerance)
 {
-  double3 offsetSum(0.0, 0.0, 0.0);
-  for (std::size_t i = 0; i < atoms.size(); i++)
-  {
-    double3 rotatedAndTranslatedPosition = rotationMatrix * std::get<0>(atoms[i]) + translationVector;
-    std::optional<double3> closest;
-    double closestDistanceSquared = tolerance * tolerance;
-    for (std::size_t j = 0; j < atoms.size(); j++)
-    {
-      if (allowPartialOccupancies || std::get<1>(atoms[i]) == std::get<1>(atoms[j]))
-      {
-        double3 dr = std::get<0>(atoms[j]) - rotatedAndTranslatedPosition;
-        dr.x -= std::rint(dr.x);
-        dr.y -= std::rint(dr.y);
-        dr.z -= std::rint(dr.z);
-        double distanceSquared = (unitCell * dr).length_squared();
-        if (distanceSquared < closestDistanceSquared)
-        {
-          closestDistanceSquared = distanceSquared;
-          closest = dr;
-        }
-      }
-    }
-    if (!closest) return std::nullopt;
-    offsetSum += *closest;
-  }
-  return translationVector + offsetSum / double(atoms.size());
+  return refinedTranslationOn(AtomGrid(atoms, unitCell, tolerance), translationVector, rotationMatrix,
+                              allowPartialOccupancies, tolerance);
 }
 
 /// Compute the Delaunay reduced cell
@@ -602,6 +705,9 @@ SKPointSymmetrySet SKSymmetryCell::findLatticeSymmetry(double3x3 reducedLattice,
   std::vector<SKRotationMatrix> pointSymmetries{};
 
   double3x3 latticeMetricMatrix = reducedLattice.transpose() * reducedLattice;
+  // the cell of the lattice's metric, which every candidate is compared with, derived once: it used to be derived
+  // again, with its square roots and arc-cosines, for each of the 6960 candidates
+  const SKSymmetryCell metricCell = SKSymmetryCell::createFromMetricTensor(latticeMetricMatrix);
 
   // uses a stored list of all possible lattice vectors and loop over all possible permutations
   for (const int3& firstAxis : latticeAxes)
@@ -622,8 +728,7 @@ SKPointSymmetrySet SKSymmetryCell::findLatticeSymmetry(double3x3 reducedLattice,
           double3x3 newLattice = reducedLattice * transformationMatrix;
           double3x3 transformedLatticeMetricMatrix = newLattice.transpose() * newLattice;
 
-          if (SKSymmetryCell::checkMetricSimilarity(transformedLatticeMetricMatrix, latticeMetricMatrix,
-                                                    symmetryPrecision))
+          if (metricsSimilar(metricCell, transformedLatticeMetricMatrix, symmetryPrecision))
           {
             pointSymmetries.push_back(axes);
           }
@@ -640,33 +745,12 @@ SKPointSymmetrySet SKSymmetryCell::findLatticeSymmetry(double3x3 reducedLattice,
 bool SKSymmetryCell::checkMetricSimilarity(double3x3 transformedMetricTensor, double3x3 metricTensor,
                                            double symmetryPrecision = 1e-2)
 {
-  SKSymmetryCell metricCell = SKSymmetryCell::createFromMetricTensor(metricTensor);
-  SKSymmetryCell transformedMetricCell = SKSymmetryCell::createFromMetricTensor(transformedMetricTensor);
-
-  double3 lengthDifference =
-      double3(std::fabs(metricCell._a - transformedMetricCell._a), std::fabs(metricCell._b - transformedMetricCell._b),
-              std::fabs(metricCell._c - transformedMetricCell._c));
-  double3 angleDifference = double3(std::sin(std::fabs(metricCell._alpha - transformedMetricCell._alpha)),
-                                    std::sin(std::fabs(metricCell._beta - transformedMetricCell._beta)),
-                                    std::sin(std::fabs(metricCell._gamma - transformedMetricCell._gamma)));
-
-  // check on lengths
-  if (lengthDifference.length() > symmetryPrecision)
-  {
-    return false;
-  }
-
-  // check on angles
-  if (std::fabs(std::max({angleDifference.x, angleDifference.y, angleDifference.z})) > symmetryPrecision)
-  {
-    return false;
-  }
-
-  return true;
+  return metricsSimilar(SKSymmetryCell::createFromMetricTensor(metricTensor), transformedMetricTensor,
+                        symmetryPrecision);
 }
 
 std::vector<std::tuple<double3, std::size_t, double>> SKSymmetryCell::trim(
-    std::vector<std::tuple<double3, std::size_t, double>> atoms, double3x3 from, double3x3 to,
+    const std::vector<std::tuple<double3, std::size_t, double>>& atoms, double3x3 from, double3x3 to,
     [[maybe_unused]] bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
   double3x3 changeOfBasis = to.inverse() * from;

@@ -39,7 +39,7 @@ SKPointGroup::SKPointGroup(SKPointSymmetrySet pointSymmetry) : _table(0, 0, 0, 0
   {
     std::make_signed_t<std::size_t> type =
         static_cast<typename std::underlying_type<SKRotationMatrix::RotationType>::type>(rotation.type());
-    table.occurrence[type] += 1;
+    table.occurrence[static_cast<std::size_t>(type + 6)] += 1;
   }
 
   for (const SKPointGroup& pointGroup : pointGroupData)
