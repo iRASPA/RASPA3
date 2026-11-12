@@ -17,6 +17,10 @@ import system;
 import simulationbox;
 import running_energy;
 import cbmc_external_energy;
+import cbmc_torsion_selection;
+import cbmc_grow_step;
+import chiral_center;
+import randomnumbers;
 import interactions_intermolecular;
 import interactions_framework_molecule;
 import interactions_ewald;
@@ -83,4 +87,48 @@ TEST(cbmc_interactions, framework_molecule_2)
   EXPECT_NEAR(interMoleculeEnergy1->moleculeMoleculeVDW * Units::EnergyToKelvin, 2352.42793591, 1e-6);
   EXPECT_NEAR(interMoleculeEnergy2->moleculeMoleculeVDW * Units::EnergyToKelvin, 2352.42793591, 1e-6);
   EXPECT_NEAR(interMoleculeEnergy3->moleculeMoleculeVDW * Units::EnergyToKelvin / 2.0, 2352.42793591, 1e-6);
+}
+
+// A declared chiral centre whose parity the spin decides, with its placed neighbour on the spin axis: the parity is
+// then the same for every spin, and declared the other way round every trial is behind the wall. That spin is dead
+// (weight zero), not a selection among trials of zero weight, whose shifted sum would be NaN. The guard cannot rest
+// on a log factor of minus infinity: the project's fast-math flags fold the finiteness test away.
+TEST(cbmc_interactions, torsion_selection_with_every_spin_behind_the_chiral_wall_is_a_dead_spin)
+{
+  ForceField forceField({{"C", false, 12.0, 0.0, 0.0, 6, false}}, {{80.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, false, false);
+  const SimulationBox box(30.0, 30.0, 30.0);
+  auto atom = [](double3 position) { return Atom(position, 0.0, 1.0, 0, std::uint16_t{0}, std::uint8_t{0}, false, false); };
+  // previous (0) to current (1) along z, the placed neighbour (4) further along the axis, the grown beads (2, 3)
+  // off it
+  std::vector<Atom> chain{atom({0.0, 0.0, 0.0}), atom({0.0, 0.0, 1.5}), atom({1.0, 0.0, 2.0}),
+                          atom({0.0, 1.0, 2.0}), atom({0.0, 0.0, 3.0})};
+  const std::vector<Atom> base{chain[2], chain[3]};
+
+  CBMC::GrowStep step{};
+  step.previousBead = 0;
+  step.currentBead = 1;
+  step.nextBeads = {2, 3};
+  ChiralCenter centre{};
+  centre.ids = {1, 2, 4, 3};
+  // the signed volume of this geometry is negative for every spin: the declaration of the other hand
+  centre.type = ChiralCenter::Chirality::R_Chiral;
+  step.spin.determinedChiralCenters = {centre};
+  const double3 axis(0.0, 0.0, 1.0);
+
+  RandomNumber random(7);
+  const CBMC::TorsionOrientation dead =
+      CBMC::selectTorsionOrientation(random, 4, 1.0, forceField, box, chain, base, step, axis, false);
+  // a NaN weight compares false against anything, which the fast-math flags let the compiler fold; its text does not
+  EXPECT_EQ(std::to_string(dead.rosenbluthWeight), std::to_string(0.0));
+  EXPECT_EQ(dead.positions.size(), 2uz);
+  EXPECT_EQ(chain[2].position.x, 1.0);
+  EXPECT_EQ(chain[3].position.y, 1.0);
+
+  // the declaration of this hand passes every spin: a live selection among four equal trials, weight one
+  centre.type = ChiralCenter::Chirality::S_Chiral;
+  step.spin.determinedChiralCenters = {centre};
+  const CBMC::TorsionOrientation live =
+      CBMC::selectTorsionOrientation(random, 4, 1.0, forceField, box, chain, base, step, axis, false);
+  EXPECT_NEAR(live.rosenbluthWeight, 1.0, 1e-12);
 }

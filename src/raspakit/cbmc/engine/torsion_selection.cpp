@@ -97,6 +97,10 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
   // are regenerated afterwards (one placement instead of one vector per trial).
   std::vector<double> angles(numberOfTorsionTrials);
   std::vector<double> logTorsionBoltzmannFactors(numberOfTorsionTrials);
+  // A trial behind the chiral wall gets a finite log factor far below any live one (its shifted factor is exactly
+  // zero) and is counted: with the project's fast-math flags a test for minus infinity folds to a constant.
+  constexpr double deadLogFactor = -1.0e300;
+  std::size_t deadTrials = 0;
   std::vector<double> logGuides(hasGuides ? numberOfTorsionTrials : 0, 0.0);
 
   // A declared chiral centre whose parity this spin decides (see 'GrowStep::SpinSelectionData').
@@ -167,7 +171,8 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
     // a parity that does not cut the circle in halves: the other parity is a hard wall
     if (!spinCentres.empty() && !step.spin.parityIsHalfCircle && !parityOk())
     {
-      logTorsionBoltzmannFactors[j] = -std::numeric_limits<double>::infinity();
+      logTorsionBoltzmannFactors[j] = deadLogFactor;
+      ++deadTrials;
     }
     if (hasGuides)
     {
@@ -177,7 +182,7 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
   }
 
   // every trial behind the wall (a grow; the retrace pins the old spin, which satisfies it): a dead spin
-  if (!std::isfinite(*std::max_element(logTorsionBoltzmannFactors.begin(), logTorsionBoltzmannFactors.end())))
+  if (deadTrials == numberOfTorsionTrials)
   {
     placeSpin(angles[0]);
     std::vector<Atom> dead(nextBeads.size());
