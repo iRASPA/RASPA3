@@ -44,6 +44,9 @@ import spatial_decomposition_force_engine;
 import molecular_dynamics_spatial_decomposition;
 import force_engine;
 import spatial_decomposition_device_step;
+import spatial_decomposition_device_resident;
+import thermobarostat;
+import minimization_cell_layout;
 import mc_moves_hybridmc;
 import mc_moves_move_types;
 import polymer_links;
@@ -4106,4 +4109,32 @@ TEST(spatial_decomposition, hybrid_mc_trajectory_follows_the_polymer_links)
     }
   }
   EXPECT_GE(accepted, trials - 3);
+}
+
+// With a barostat the automatic cutoffs follow the cell every step, which the resident integrator does not do: the
+// support test refuses them. An automatic Coulomb cutoff is one of them whether the Ewald parameters are automatic
+// or not, and automatic Ewald parameters with a fixed Coulomb cutoff change nothing, since they are re-derived only
+// when that cutoff is.
+TEST(spatial_decomposition, resident_support_refuses_an_automatic_coulomb_cutoff_with_a_barostat)
+{
+  System system = makeWaterSystem(3);
+  system.thermobarostat =
+      Thermobarostat(MolecularDynamicsEnsemble::NPT, CellMinimizationType::Isotropic, MonoclinicAngleType::Beta, 300.0,
+                     system.pressure, system.timeStep, system.translationalDegreesOfFreedom, 3, 1, 1.0);
+  std::string reason;
+
+  system.forceField.cutOffCoulombAutomatic = false;
+  system.forceField.automaticEwald = false;
+  EXPECT_TRUE(DeviceResident::supports(system, reason)) << reason;
+
+  // an automatic Coulomb cutoff with manual Ewald parameters still follows the cell
+  system.forceField.cutOffCoulombAutomatic = true;
+  system.forceField.automaticEwald = false;
+  EXPECT_FALSE(DeviceResident::supports(system, reason));
+  EXPECT_NE(reason.find("automatic cutoffs"), std::string::npos) << reason;
+
+  // automatic Ewald parameters with a fixed Coulomb cutoff never change
+  system.forceField.cutOffCoulombAutomatic = false;
+  system.forceField.automaticEwald = true;
+  EXPECT_TRUE(DeviceResident::supports(system, reason)) << reason;
 }

@@ -99,8 +99,10 @@ bool DeviceResident::supports(const System& system, std::string& reason)
       return false;
     }
     const ForceField& forceField = system.forceField;
+    // an automatic Coulomb cutoff follows the cell every step whether the Ewald parameters are automatic or not
+    // (automatic Ewald parameters alone change only when that cutoff does)
     if (forceField.cutOffMoleculeVDWAutomatic || forceField.cutOffFrameworkVDWAutomatic ||
-        (forceField.useCharge && forceField.cutOffCoulombAutomatic && forceField.automaticEwald))
+        (forceField.useCharge && forceField.cutOffCoulombAutomatic))
     {
       reason = "automatic cutoffs with a barostat (the cutoffs would follow the cell every step)";
       return false;
