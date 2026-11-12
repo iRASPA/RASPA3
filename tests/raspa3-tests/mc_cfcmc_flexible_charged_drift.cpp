@@ -67,6 +67,29 @@ void runAndCheckDrift(const MCMoveProbabilities& probabilities)
 
 }  // namespace
 
+// The reference geometry of a flexible component is a topology with placeholder coordinates (the butane fixture
+// has every bead at the origin). The ideal-gas conformation must be grown from it, never retraced: a retrace of
+// coincident charged beads has no weight, and a chain started on it never leaves it, so every inserted molecule
+// would be the collapsed template.
+TEST(MC_CFCMC_FLEXIBLE_CHARGED_DRIFT, ideal_gas_conformation_is_grown_from_the_placeholder_geometry)
+{
+  const ForceField forceField = makeChargedAlkaneForceField();
+  System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {},
+                {makeChargedButane(forceField, MCMoveProbabilities())}, {}, {0}, 5);
+  RandomNumber random(5);
+  for (int draw = 0; draw < 5; ++draw)
+  {
+    const auto [molecule, atoms] = system.equilibratedIdealGasMoleculeRandomInBox(random, 0);
+    ASSERT_EQ(atoms.size(), 4uz);
+    for (std::size_t bond = 0; bond + 1 < atoms.size(); ++bond)
+    {
+      EXPECT_NEAR((atoms[bond + 1].position - atoms[bond].position).length(), 1.54, 1e-3)
+          << "draw " << draw << " bond " << bond;
+    }
+    EXPECT_GT((atoms[3].position - atoms[0].position).length(), 2.0) << "draw " << draw;
+  }
+}
+
 TEST(MC_CFCMC_FLEXIBLE_CHARGED_DRIFT, swap_cfcmc)
 {
   MCMoveProbabilities probabilities;

@@ -64,6 +64,8 @@ EvaluatedTrials evaluateTrials(const CBMC::GrowContext &context, const Component
 
   for (std::size_t i = 0; i != stepTrials.size(); ++i)
   {
+    // a dead direction (every spin behind a chiral wall, see the torsion selection) is no trial at all
+    if (!(stepTrials[i].torsionWeight > 0.0)) continue;
     std::optional<CBMC::StepTrialEnergy> energy =
         CBMC::evaluateStepTrial(batchContext, component, step, chainAtoms, stepTrials[i].positions, tethersOfStep);
     if (!energy.has_value()) continue;

@@ -15,6 +15,8 @@ import mc_moves_probabilities;
 import bend_bend_potential;
 import bond_bend_potential;
 import cbmc;
+import cbmc_chain_cbmc;
+import system;
 import cbmc_growth_plan;
 import cbmc_grow_context;
 import cbmc_operators;
@@ -891,4 +893,91 @@ TEST(CBMC_BASE_SAMPLER, declared_chirality_preserved)
     double signedVolume = double3::dot(d1, double3::cross(d2, d3));
     ASSERT_LT(signedVolume, 0.0) << "sample " << i << " flipped the declared stereocenter";
   }
+}
+
+namespace
+{
+// A centre with four neighbours of which three are declared: grown with the undeclared one as the torsion
+// reference and one declared neighbour placed, the spin decides the parity behind a hard wall.
+constexpr std::string_view kChiralQuaternaryJson =
+R"({
+  "CriticalTemperature" : 507.6,
+  "CriticalPressure" : 3025000.0,
+  "AcentricFactor" : 0.301,
+  "pseudoAtoms" :
+    [
+      ["CH3", [1.54, 0.0, 0.0]],
+      ["CH", [0.0, 0.0, 0.0]],
+      ["CH3", [-0.51, 1.45, 0.0]],
+      ["CH3", [-0.51, -0.72, -1.26]],
+      ["CH2", [-0.51, -0.72, 1.26]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [1, 3],
+    [1, 4]
+  ],
+  "Bonds" : [
+    [["CH", "CH3"], "HARMONIC", [96500.0, 1.54]],
+    [["CH", "CH2"], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH3", "CH", "CH3"], "HARMONIC", [700.0, 114.0]],
+    [["CH3", "CH", "CH2"], "HARMONIC", [0.0, 114.0]]
+  ],
+  "VanDerWaals" : "auto",
+  "ChiralCenters" : [[1, 2, 3, 4]]
+}
+)";
+}  // namespace
+
+// A trial direction whose single spin lands behind the chiral wall is dead (spin weight zero). Such a direction is
+// no trial at all: it must not add to the Rosenbluth sum of the step, on the grow or on the retrace, and it can
+// never be the selected one. Without external energies and with two directions, the weight of the step is one with
+// both directions alive and one half with one of them dead.
+TEST(CBMC_BASE_SAMPLER, dead_spin_directions_are_no_part_of_the_chain_weight)
+{
+  ForceField forceField = makeZeroForceField();
+  forceField.settings.numberOfTrialDirections = 2;
+  forceField.settings.numberOfTorsionTrialDirections = 1;
+  TemporaryFile file("chiral-quaternary-sampler.json", kChiralQuaternaryJson);
+  Component component(Component::Type::Adsorbate, 0, forceField, "chiral-quaternary-sampler",
+                      file.stemPath().string(), 5, 21, MCMoveProbabilities(), std::nullopt, false);
+  ASSERT_TRUE(component.intraMolecularPotentials.preservesChiralCenters(component.atoms));
+
+  System system(forceField, kBox, false, kTemperature, 1e4, 1.0, {}, {component}, {}, {0}, 5);
+  Component &grown = system.components[0];
+  grown.prepareGrowthPlans(system.beta);
+  const std::vector<std::size_t> placed{0, 1, 4};
+  const std::vector<CBMC::GrowStep> &plan = grown.growthPlan(placed);
+  ASSERT_EQ(plan.size(), 1uz);
+  ASSERT_EQ(plan.front().previousBead, std::optional<std::size_t>{0});
+  ASSERT_EQ(plan.front().spin.determinedChiralCenters.size(), 1uz);
+  ASSERT_FALSE(plan.front().spin.parityIsHalfCircle);
+  const CBMC::GrowContext context = system.makeGrowContext();
+  ASSERT_EQ(context.settings.numberOfTrialDirections, 2uz);
+
+  RandomNumber random(97);
+  std::size_t returned = 0, halfGrow = 0, wholeGrow = 0, halfRetrace = 0;
+  for (std::size_t attempt = 0; attempt != 400; ++attempt)
+  {
+    const std::optional<CBMC::GrowResult> result =
+        CBMC::growChainCBMC(random, context, grown, component.atoms, placed);
+    if (!result.has_value()) continue;  // both directions dead
+    ++returned;
+    SCOPED_TRACE("attempt " + std::to_string(attempt));
+    EXPECT_TRUE(grown.intraMolecularPotentials.preservesChiralCenters(result->atoms));
+    const double weight = std::exp(result->logRosenbluthWeight);
+    EXPECT_EQ(std::to_string(weight).find("nan"), std::string::npos);
+    (weight < 0.75 ? halfGrow : wholeGrow) += 1;
+
+    const CBMC::RetraceResult retrace = CBMC::retraceChainCBMC(random, context, grown, result->atoms, placed);
+    if (std::exp(retrace.logRosenbluthWeight) < 0.75) ++halfRetrace;
+  }
+  EXPECT_GT(returned, 100uz);
+  EXPECT_GT(wholeGrow, 0uz);
+  // a dead second direction halves the weight, on the grow and on the retrace of the grown configuration
+  EXPECT_GT(halfGrow, returned / 10);
+  EXPECT_GT(halfRetrace, returned / 10);
 }

@@ -260,6 +260,7 @@ std::vector<CBMC::StepTrial> bridgeTrials(RandomNumber &random, const CBMC::Grow
     CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
         random, settings.numberOfTorsionTrialDirections, beta, forceField, simulationBox, chainAtoms, {base->atom}, step,
         axis, false);
+    if (!(torsion.rosenbluthWeight > 0.0)) continue;  // every spin behind a chiral wall: a dead direction
     trials.push_back({std::move(torsion.positions), torsion.rosenbluthWeight * base->weight});
   }
   return trials;

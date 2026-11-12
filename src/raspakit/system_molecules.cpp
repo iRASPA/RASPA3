@@ -1020,7 +1020,8 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
   // Persistent scratch conformation stored on the Component: initialised once to the reference geometry,
   // then advanced in place so the reinsertion Markov chain stays warm between calls.
   std::vector<Atom>& scratchAtoms = component.grownIdealGasAtoms;
-  if (scratchAtoms.size() != component.atoms.size()) scratchAtoms = component.atoms;
+  const bool fresh = scratchAtoms.size() != component.atoms.size();
+  if (fresh) scratchAtoms = component.atoms;
 
   Molecule scratchMolecule(double3(0.0, 0.0, 0.0), simd_quatd(0.0, 0.0, 0.0, 1.0), component.totalMass,
                            selectedComponent, component.atoms.size());
@@ -1032,6 +1033,22 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
   // conformations seed the conformation reservoir and define the recoil-growth openness reference, and
   // recoil growth can not run before its own reference exists.
   const CBMC::GrowContext context = makeIdealGasGrowContext();
+
+  // The reference geometry is a topology with placeholder coordinates (its atoms may coincide), not a
+  // conformation: a retrace of it has no weight. The chain starts from a grown conformation instead; the
+  // reinsertion moves below turn the Rosenbluth-weighted growth into the Boltzmann distribution.
+  if (fresh)
+  {
+    for (std::size_t attempt = 0; attempt != 100; ++attempt)
+    {
+      std::optional<CBMC::GrowResult> growData = CBMC::regrowMolecule(
+          random, context, component, scratchMolecule, scratchAtoms, {.firstBead = CBMC::FirstBeadScheme::Reinsertion});
+      if (!growData) continue;
+      std::copy(growData->atoms.begin(), growData->atoms.end(), scratchAtoms.begin());
+      scratchMolecule = growData->molecule;
+      break;
+    }
+  }
 
   // A handful of full-molecule reinsertion moves decorrelates the conformation from the starting geometry;
   // each accepted move regrows the whole chain from the ideal-gas Boltzmann distribution.
