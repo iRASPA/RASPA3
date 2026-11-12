@@ -555,6 +555,34 @@ TEST(MC_MULTI_TRIAL_CBMC, device_environment_evaluates_an_empty_background)
   EXPECT_EQ(grown->selected.atoms.size(), n);
 }
 
+// A regrown molecule keeps its record in the system: the host regrow (and so the CPU grower) carries the atom index
+// and the atom count of the molecule it was given into the result. The device grower must do the same, or a caller
+// that takes the record from the result loses the molecule's place in the atom array.
+TEST(MC_MULTI_TRIAL_CBMC, device_regrow_keeps_the_record_of_the_molecule)
+{
+  const std::optional<PairDevice> device = availableCBMCDevice();
+  if (!device.has_value()) GTEST_SKIP() << "no CBMC device available";
+
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component co2 = makeCO2(forceField, MCMoveProbabilities(), 0);
+  System system = System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {co2}, {}, {1}, 5);
+  const CBMC::GrowContext context = system.makeGrowContext(CBMC::CutOffMode::Full);
+  std::string reason;
+  ASSERT_TRUE(CBMC::DeviceMultiTrialGrower::supports(context, system.components[0], reason)) << reason;
+
+  Molecule record = system.moleculeData[0];
+  record.atomIndex = 5;
+  record.numberOfAtoms = co2.atoms.size();
+  const CBMC::MultiTrialGrower& grower = CBMC::deviceMultiTrialGrower(device.value());
+  const CBMC::LongRangeCorrection zero = [](std::span<const Atom>) { return 0.0; };
+  RandomNumber random(11);
+  const std::optional<CBMC::MultiTrialGrowResult> grown =
+      grower.regrow(random, context, system.components[0], record, system.spanOfMolecule(0, 0), 8, zero);
+  ASSERT_TRUE(grown.has_value());
+  EXPECT_EQ(grown->selected.molecule.atomIndex, 5uz);
+  EXPECT_EQ(grown->selected.molecule.numberOfAtoms, co2.atoms.size());
+}
+
 // The device grower reproduces the CPU grower's bookkeeping: with the system's CBMC device set, the multiple-try
 // swap and reinsertion of rigid Ewald molecules in FAU leave no energy drift and are accepted.
 TEST(MC_MULTI_TRIAL_CBMC, device_swap_and_reinsertion_drift_rigid_ewald_fau)

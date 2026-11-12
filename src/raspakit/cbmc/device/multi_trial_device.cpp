@@ -391,7 +391,15 @@ std::optional<CBMC::MultiTrialGrowResult> CBMC::DeviceMultiTrialGrower::regrow(
     return cpuMultiTrialGrower().regrow(random, context, component, molecule, moleculeAtoms, numberOfTrials,
                                         longRange);
   }
-  return growBatch(random, context, component, moleculeAtoms, numberOfTrials, longRange);
+  std::optional<MultiTrialGrowResult> result =
+      growBatch(random, context, component, moleculeAtoms, numberOfTrials, longRange);
+  // the same molecule is reinserted: it keeps its record in the system (as CBMC::regrowMolecule)
+  if (result.has_value())
+  {
+    result->selected.molecule.atomIndex = molecule.atomIndex;
+    result->selected.molecule.numberOfAtoms = molecule.numberOfAtoms;
+  }
+  return result;
 }
 
 CBMC::MultiTrialRetraceResult CBMC::DeviceMultiTrialGrower::retraceRegrow(
