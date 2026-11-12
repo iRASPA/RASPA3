@@ -1182,6 +1182,62 @@ TEST_P(SpatialDecompositionDevice, engine_device_kernel_follows_a_cutoff_change)
   }
 }
 
+// The device mesh in a triclinic cell with an even, coarse mesh (the Nyquist modes carry weight): the device backward
+// real transform folds any imaginary part of the self-conjugate planes into the potential, so the influence function
+// must keep those planes Hermitian for the device forces to match the host mesh.
+TEST_P(SpatialDecompositionDevice, engine_device_mesh_matches_host_in_a_triclinic_cell_with_an_even_mesh)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  ForceField forceField = ForceField(
+      {{"CH2", false, 14.02658, 0.0, 0.0, 8, false}, {"O", false, 15.9994, 0.0, 0.0, 8, false}},
+      {{56.0, 3.96}, {80.0, 3.1}}, ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0, 9.0, false, false, true);
+  forceField.automaticEwald = false;
+  forceField.EwaldAlpha = 0.32;
+  ConnectivityTable connectivityTable(3);
+  connectivityTable[0, 1] = true;
+  connectivityTable[1, 0] = true;
+  connectivityTable[1, 2] = true;
+  connectivityTable[2, 1] = true;
+  Potentials::IntraMolecularPotentials intraMolecularPotentials{};
+  intraMolecularPotentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {96500.0, 1.54}),
+                                    BondPotential({1, 2}, BondType::Harmonic, {96500.0, 1.43})};
+  intraMolecularPotentials.bends = {BendPotential({0, 1, 2}, BendType::Harmonic, {62500.0, 114.0})};
+  Component chain = Component(
+      forceField, "chain", 500.0, 4871800.0, 0.0993,
+      {Atom({0.0, 0.0, 0.0}, 0.3, 1.0, 0, 0, 0, false, false), Atom({1.54, 0.0, 0.0}, 0.2, 1.0, 0, 0, 0, false, false),
+       Atom({2.1, 1.3, 0.0}, -0.5, 1.0, 0, 1, 0, false, false)},
+      connectivityTable, intraMolecularPotentials, 5, 21);
+  const SimulationBox box(30.0, 31.0, 29.0, 100.0 * (std::numbers::pi / 180.0), 95.0 * (std::numbers::pi / 180.0),
+                          75.0 * (std::numbers::pi / 180.0));
+  System system = System(forceField, box, false, 300.0, 1e5, 1.0, {}, {chain}, {}, {300}, 5);
+  RandomNumber random(3);
+  randomizeConfiguration(system, random);
+
+  SpatialDecompositionSettings hostSettings = settingsFor(4, 1.5, 0.5);
+  hostSettings.pairDevice = pairDevice;
+  hostSettings.meshSpacing = 1.875;
+  hostSettings.deviceMesh = false;
+  SpatialDecompositionForceEngine host(hostSettings);
+  host.initialize(system);
+  EXPECT_FALSE(host.usesDeviceMesh());
+  const RunningEnergy hostEnergy = host.computeGradients(system, true);
+  const std::vector<double3> hostGradient = gradientsOf(system);
+
+  SpatialDecompositionSettings settings = hostSettings;
+  settings.deviceMesh = true;
+  SpatialDecompositionForceEngine device(settings);
+  device.initialize(system);
+  ASSERT_TRUE(device.usesDeviceMesh());
+  const RunningEnergy energy = device.computeGradients(system, true);
+  const std::vector<double3> gradient = gradientsOf(system);
+
+  EXPECT_NEAR(energy.ewald_fourier, hostEnergy.ewald_fourier, 1e-5 * std::abs(hostEnergy.ewald_fourier));
+  EXPECT_LT(rmsDifference(gradient, hostGradient), 1e-5 * rmsNorm(hostGradient));
+  EXPECT_LT(maxAbsDifference(device.molecularPressureTensor(), host.molecularPressureTensor()),
+            1e-5 * maxAbs(host.molecularPressureTensor()));
+}
+
 TEST_P(SpatialDecompositionDevice, engine_device_pair_kernel_without_pruning_rigid_water)
 {
   const PairDevice pairDevice = GetParam();
@@ -1230,6 +1286,44 @@ TEST_P(SpatialDecompositionDevice, engine_device_pair_kernel_small_grid_rigid_wa
                                           .pressure = 1e-5,
                                           .fourier = 1e-5,
                                           .correction = 1e-5});
+}
+
+// A Nyquist component of an even mesh stands for +K/2 and -K/2 alike. In a triclinic cell the two wave vectors
+// differ in length, and the conjugate pairs on the self-conjugate planes of the half spectrum (m_z = 0 and
+// m_z = K_z / 2, with (m_x, m_y) against (-m_x, -m_y)) would get two values of the influence function, so that the
+// spectrum is no longer Hermitian after the multiplication. The influence function must be the same on both members.
+TEST(spatial_decomposition, pppm_influence_function_is_hermitian_on_the_nyquist_planes_of_a_triclinic_cell)
+{
+  const SimulationBox box(30.0, 31.0, 29.0, 100.0 * (std::numbers::pi / 180.0), 95.0 * (std::numbers::pi / 180.0),
+                          75.0 * (std::numbers::pi / 180.0));
+  PPPM pppm;
+  pppm.initialize(box, 0.32, 1.875, 5, 1, Units::CoulombicConversionFactor);
+  const int3 mesh = pppm.meshSize();
+  ASSERT_EQ(mesh.x % 2, 0);
+  ASSERT_EQ(mesh.y % 2, 0);
+  ASSERT_EQ(mesh.z % 2, 0);
+  const std::size_t Kx = static_cast<std::size_t>(mesh.x), Ky = static_cast<std::size_t>(mesh.y),
+                    Kz = static_cast<std::size_t>(mesh.z);
+  std::size_t checked = 0;
+  for (std::size_t mx = 0; mx < Kx; ++mx)
+  {
+    for (std::size_t my = 0; my < Ky; ++my)
+    {
+      const std::size_t cx = (Kx - mx) % Kx, cy = (Ky - my) % Ky;
+      // the Nyquist plane of the halved axis
+      // equal up to the rounding of the B-spline moduli at m and K - m
+      const double a = pppm.influenceAt(mx, my, Kz / 2), b = pppm.influenceAt(cx, cy, Kz / 2);
+      EXPECT_NEAR(a, b, 1e-12 * std::abs(a)) << mx << " " << my;
+      // the Nyquist lines of the other two axes on the plane m_z = 0
+      if (mx == Kx / 2 || my == Ky / 2)
+      {
+        const double c = pppm.influenceAt(mx, my, 0), d = pppm.influenceAt(cx, cy, 0);
+        EXPECT_NEAR(c, d, 1e-12 * std::abs(c)) << mx << " " << my;
+        ++checked;
+      }
+    }
+  }
+  EXPECT_GT(checked, 0uz);
 }
 
 TEST(spatial_decomposition, engine_matches_exact_ewald_flexible_chains_triclinic)

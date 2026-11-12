@@ -253,26 +253,52 @@ void PPPM::computeInfluenceSlab(std::size_t thread, std::size_t numberOfThreads)
           influence[index] = 0.0;
           continue;
         }
-        const double3 k = kxy + 2.0 * std::numbers::pi * static_cast<double>(mz) * rowZ;
-        const double ksq = double3::dot(k, k);
-        const double bare = prefactor * std::exp(alphaFactor * ksq) / ksq;
-        const double weight = (mz == 0 || (mesh.z % 2 == 0 && mz == mesh.z / 2)) ? 1.0 : 2.0;
+        // A Nyquist component (m = K/2 of an even axis) stands for +K/2 and -K/2 alike. In a triclinic cell the two
+        // give different |k|, and a conjugate pair on a self-conjugate plane of the half spectrum would get two
+        // values of G: the spectrum would no longer be Hermitian after the multiplication. The mean over the sign
+        // choices of every Nyquist component is Hermitian, and is what a full complex transform with its real part
+        // taken computes; in an orthogonal cell the choices coincide.
+        const bool nyquistX = (mesh.x % 2 == 0) && mx == mesh.x / 2;
+        const bool nyquistY = (mesh.y % 2 == 0) && my == mesh.y / 2;
+        const bool nyquistZ = (mesh.z % 2 == 0) && mz == mesh.z / 2;
+        const double weight = (mz == 0 || nyquistZ) ? 1.0 : 2.0;
+        double bare = 0.0;
+        double3x3 strain{};
+        std::size_t variants = 0;
+        for (std::size_t vx = 0; vx != (nyquistX ? 2uz : 1uz); ++vx)
+        {
+          for (std::size_t vy = 0; vy != (nyquistY ? 2uz : 1uz); ++vy)
+          {
+            for (std::size_t vz = 0; vz != (nyquistZ ? 2uz : 1uz); ++vz)
+            {
+              const double3 k = 2.0 * std::numbers::pi *
+                                ((vx == 0 ? 1.0 : -1.0) * static_cast<double>(sx) * rowX +
+                                 (vy == 0 ? 1.0 : -1.0) * static_cast<double>(sy) * rowY +
+                                 (vz == 0 ? 1.0 : -1.0) * static_cast<double>(mz) * rowZ);
+              const double ksq = double3::dot(k, k);
+              const double bareVariant = prefactor * std::exp(alphaFactor * ksq) / ksq;
+              // strain response of one wave vector: bare [I - 2 (1/k^2 + 1/(4 alpha^2)) k k^T]
+              const double fac = 2.0 * (1.0 / ksq + 0.25 / (alpha * alpha)) * bareVariant;
+              bare += bareVariant;
+              strain.ax += bareVariant - fac * k.x * k.x;
+              strain.bx += -fac * k.x * k.y;
+              strain.cx += -fac * k.x * k.z;
+              strain.ay += -fac * k.y * k.x;
+              strain.by += bareVariant - fac * k.y * k.y;
+              strain.cy += -fac * k.y * k.z;
+              strain.az += -fac * k.z * k.x;
+              strain.bz += -fac * k.z * k.y;
+              strain.cz += bareVariant - fac * k.z * k.z;
+              ++variants;
+            }
+          }
+        }
+        bare /= static_cast<double>(variants);
         ionSum += weight * bare;
         influence[index] = bare * bsplineModulusX[static_cast<std::size_t>(mx)] *
                            bsplineModulusY[static_cast<std::size_t>(my)] *
                            bsplineModulusZ[static_cast<std::size_t>(mz)];
-
-        // strain response of one wave vector: bare [I - 2 (1/k^2 + 1/(4 alpha^2)) k k^T]
-        const double fac = 2.0 * (1.0 / ksq + 0.25 / (alpha * alpha)) * weight * bare;
-        ionTensor.ax += weight * bare - fac * k.x * k.x;
-        ionTensor.bx += -fac * k.x * k.y;
-        ionTensor.cx += -fac * k.x * k.z;
-        ionTensor.ay += -fac * k.y * k.x;
-        ionTensor.by += weight * bare - fac * k.y * k.y;
-        ionTensor.cy += -fac * k.y * k.z;
-        ionTensor.az += -fac * k.z * k.x;
-        ionTensor.bz += -fac * k.z * k.y;
-        ionTensor.cz += weight * bare - fac * k.z * k.z;
+        ionTensor += (weight / static_cast<double>(variants)) * strain;
       }
     }
   }
@@ -577,18 +603,64 @@ void PPPM::applyInfluence(std::size_t thread, std::size_t numberOfThreads, bool 
           const double weight = (mz == 0 || mz == nyquistZ) ? 1.0 : 2.0;
           const double e = weight * g * (re * re + im * im);
           energy += e;
-          const double3 k = kxy + 2.0 * std::numbers::pi * static_cast<double>(mz) * rowZ;
-          const double ksq = double3::dot(k, k);
-          const double fac = 2.0 * (1.0 / ksq + inverseFourAlphaSquared) * e;
-          tensor.ax += e - fac * k.x * k.x;
-          tensor.bx += -fac * k.x * k.y;
-          tensor.cx += -fac * k.x * k.z;
-          tensor.ay += -fac * k.y * k.x;
-          tensor.by += e - fac * k.y * k.y;
-          tensor.cy += -fac * k.y * k.z;
-          tensor.az += -fac * k.z * k.x;
-          tensor.bz += -fac * k.z * k.y;
-          tensor.cz += e - fac * k.z * k.z;
+          const bool nyquistX = (mesh.x % 2 == 0) && mx == mesh.x / 2;
+          const bool nyquistY = (mesh.y % 2 == 0) && my == mesh.y / 2;
+          if (!nyquistX && !nyquistY && mz != nyquistZ)
+          {
+            const double3 k = kxy + 2.0 * std::numbers::pi * static_cast<double>(mz) * rowZ;
+            const double ksq = double3::dot(k, k);
+            const double fac = 2.0 * (1.0 / ksq + inverseFourAlphaSquared) * e;
+            tensor.ax += e - fac * k.x * k.x;
+            tensor.bx += -fac * k.x * k.y;
+            tensor.cx += -fac * k.x * k.z;
+            tensor.ay += -fac * k.y * k.x;
+            tensor.by += e - fac * k.y * k.y;
+            tensor.cy += -fac * k.y * k.z;
+            tensor.az += -fac * k.z * k.x;
+            tensor.bz += -fac * k.z * k.y;
+            tensor.cz += e - fac * k.z * k.z;
+            continue;
+          }
+          // a Nyquist mode: G is the mean over the sign choices of its Nyquist components (computeInfluenceSlab);
+          // its strain response is the mean of theirs, each weighted by its share of the bare Green's function
+          std::array<double3, 8> ks{};
+          std::array<double, 8> bares{};
+          std::size_t variants = 0;
+          double bareSum = 0.0;
+          for (std::size_t vx = 0; vx != (nyquistX ? 2uz : 1uz); ++vx)
+          {
+            for (std::size_t vy = 0; vy != (nyquistY ? 2uz : 1uz); ++vy)
+            {
+              for (std::size_t vz = 0; vz != (mz == nyquistZ ? 2uz : 1uz); ++vz)
+              {
+                const double3 k = 2.0 * std::numbers::pi *
+                                  ((vx == 0 ? 1.0 : -1.0) * static_cast<double>(sx) * rowX +
+                                   (vy == 0 ? 1.0 : -1.0) * static_cast<double>(sy) * rowY +
+                                   (vz == 0 ? 1.0 : -1.0) * static_cast<double>(mz) * rowZ);
+                const double ksq = double3::dot(k, k);
+                ks[variants] = k;
+                bares[variants] = std::exp(-inverseFourAlphaSquared * ksq) / ksq;
+                bareSum += bares[variants];
+                ++variants;
+              }
+            }
+          }
+          for (std::size_t v = 0; v != variants && bareSum > 0.0; ++v)
+          {
+            const double3& k = ks[v];
+            const double ksq = double3::dot(k, k);
+            const double share = e * bares[v] / bareSum;
+            const double fac = 2.0 * (1.0 / ksq + inverseFourAlphaSquared) * share;
+            tensor.ax += share - fac * k.x * k.x;
+            tensor.bx += -fac * k.x * k.y;
+            tensor.cx += -fac * k.x * k.z;
+            tensor.ay += -fac * k.y * k.x;
+            tensor.by += share - fac * k.y * k.y;
+            tensor.cy += -fac * k.y * k.z;
+            tensor.az += -fac * k.z * k.x;
+            tensor.bz += -fac * k.z * k.y;
+            tensor.cz += share - fac * k.z * k.z;
+          }
         }
       }
     }

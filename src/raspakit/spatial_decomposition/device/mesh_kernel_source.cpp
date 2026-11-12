@@ -505,36 +505,69 @@ void applyInfluence(GLOBAL float2* RESTRICT data, GLOBAL const float* RESTRICT m
     const float sx = (float)((px > Kx / 2) ? (int)px - (int)Kx : (int)px);
     const float sy = (float)((py > Ky / 2) ? (int)py - (int)Ky : (int)py);
     const float sz = (float)pz;  // pz <= Kz / 2
-    // k = 2 pi (sx rowX + sy rowY + sz rowZ) with the rows (ax bx cx), (ay by cy), (az bz cz) of the inverse cell
-    float3 k;
-    k.x = TWO_PI * (sx * ic[0] + sy * ic[1] + sz * ic[2]);
-    k.y = TWO_PI * (sx * ic[3] + sy * ic[4] + sz * ic[5]);
-    k.z = TWO_PI * (sx * ic[6] + sy * ic[7] + sz * ic[8]);
-    const float ksq = dot(k, k);
-    const float weight = (pz == 0 || 2 * pz == Kz) ? 1.0f : 2.0f;
-    const float g0 = p->prefactor * exp(p->alphaFactor * ksq) / ksq;
+    // A Nyquist component (K/2 of an even axis) stands for +K/2 and -K/2 alike; G and the strain response are the
+    // means over the sign choices of the Nyquist components (as the host), which keeps the spectrum Hermitian on
+    // the self-conjugate planes of a triclinic cell (the choices coincide in an orthogonal cell).
+    const uint nyquistX = ((Kx & 1u) == 0u && 2 * px == Kx) ? 1u : 0u;
+    const uint nyquistY = ((Ky & 1u) == 0u && 2 * py == Ky) ? 1u : 0u;
+    const uint nyquistZ = ((Kz & 1u) == 0u && 2 * pz == Kz) ? 1u : 0u;
+    const float weight = (pz == 0 || nyquistZ != 0u) ? 1.0f : 2.0f;
+    const uint variants = (1u << nyquistX) * (1u << nyquistY) * (1u << nyquistZ);
+    const float share = 1.0f / (float)variants;
+    float3 ks[8];
+    float bares[8];
+    float g0 = 0.0f;
+    uint v = 0;
+    for (uint vx = 0; vx <= nyquistX; ++vx)
+    {
+      for (uint vy = 0; vy <= nyquistY; ++vy)
+      {
+        for (uint vz = 0; vz <= nyquistZ; ++vz, ++v)
+        {
+          const float ax = (vx == 0u) ? sx : -sx;
+          const float ay = (vy == 0u) ? sy : -sy;
+          const float az = (vz == 0u) ? sz : -sz;
+          // k = 2 pi (ax rowX + ay rowY + az rowZ) with the rows (ax bx cx), (ay by cy), (az bz cz) of the inverse cell
+          float3 k;
+          k.x = TWO_PI * (ax * ic[0] + ay * ic[1] + az * ic[2]);
+          k.y = TWO_PI * (ax * ic[3] + ay * ic[4] + az * ic[5]);
+          k.z = TWO_PI * (ax * ic[6] + ay * ic[7] + az * ic[8]);
+          const float ksq = dot(k, k);
+          ks[v] = k;
+          bares[v] = p->prefactor * exp(p->alphaFactor * ksq) / ksq;
+          g0 += share * bares[v];
+        }
+      }
+    }
     const float g = g0 * moduliX[px] * moduliY[py] * moduliZ[pz];
     const float2 F = data[i];
     data[i] = g * F;
     const float e = weight * g * (F.x * F.x + F.y * F.y);
-    const float bare = weight * g0;
-    const float shape = 2.0f * (1.0f / ksq + p->inverseFourAlphaSquared);
-    const float fac = shape * e;
-    const float ionFac = shape * bare;
     acc[0] += e;
-    acc[1] += e - fac * k.x * k.x;
-    acc[2] -= fac * k.x * k.y;
-    acc[3] -= fac * k.x * k.z;
-    acc[4] += e - fac * k.y * k.y;
-    acc[5] -= fac * k.y * k.z;
-    acc[6] += e - fac * k.z * k.z;
-    acc[7] += bare;
-    acc[8] += bare - ionFac * k.x * k.x;
-    acc[9] -= ionFac * k.x * k.y;
-    acc[10] -= ionFac * k.x * k.z;
-    acc[11] += bare - ionFac * k.y * k.y;
-    acc[12] -= ionFac * k.y * k.z;
-    acc[13] += bare - ionFac * k.z * k.z;
+    acc[7] += weight * g0;
+    // the highest modes flush to zero on the device: their strain response is zero, not a share of nothing
+    for (uint w = 0; w < variants && g0 > 0.0f; ++w)
+    {
+      const float3 k = ks[w];
+      const float ksq = dot(k, k);
+      const float shape = 2.0f * (1.0f / ksq + p->inverseFourAlphaSquared);
+      const float eShare = e * bares[w] / (g0 * (float)variants);
+      const float bare = weight * share * bares[w];
+      const float fac = shape * eShare;
+      const float ionFac = shape * bare;
+      acc[1] += eShare - fac * k.x * k.x;
+      acc[2] -= fac * k.x * k.y;
+      acc[3] -= fac * k.x * k.z;
+      acc[4] += eShare - fac * k.y * k.y;
+      acc[5] -= fac * k.y * k.z;
+      acc[6] += eShare - fac * k.z * k.z;
+      acc[8] += bare - ionFac * k.x * k.x;
+      acc[9] -= ionFac * k.x * k.y;
+      acc[10] -= ionFac * k.x * k.z;
+      acc[11] += bare - ionFac * k.y * k.y;
+      acc[12] -= ionFac * k.y * k.z;
+      acc[13] += bare - ionFac * k.z * k.z;
+    }
   }
   for (uint q = 0; q < INFLUENCE_PARTIALS; ++q) scratch[q * INFLUENCE_GROUP + lid] = acc[q];
   reducePartials(scratch, INFLUENCE_PARTIALS, partials, lid, INFLUENCE_GROUP, GROUP_ID());

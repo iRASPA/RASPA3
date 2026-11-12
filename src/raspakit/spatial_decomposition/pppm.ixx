@@ -53,6 +53,11 @@ export class PPPM
 
   bool initialized() const { return fft.forwardPlan != nullptr; }
   int3 meshSize() const { return mesh; }
+  /// G at a point of the half spectrum (mz <= K_z / 2).
+  double influenceAt(std::size_t mx, std::size_t my, std::size_t mz) const
+  {
+    return influence[(mx * static_cast<std::size_t>(mesh.y) + my) * (static_cast<std::size_t>(mesh.z) / 2 + 1) + mz];
+  }
   std::size_t interpolationOrder() const { return order; }
   std::size_t numberOfThreads() const { return threadBuffers.size(); }
 
