@@ -197,6 +197,19 @@ bool accumulateFrameworkPair(const ForceField &forceField, const SimulationBox &
   return !overlap;
 }
 
+/// Whether a trial atom reads its framework energy from an interpolation grid: one exists for its type, the atom
+/// is fully coupled (the grids hold the unscaled energies), and the charge method is Ewald, whose real-space part
+/// the Coulomb grid tabulates. The same rule as the full evaluation and the moves
+/// (Interactions::computeFrameworkMoleculeEnergy), which read no grid under another charge method although the
+/// grids are built all the same.
+inline bool readsGrid(const ForceField &forceField,
+                      const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids, const Atom &atom)
+{
+  const std::size_t type = static_cast<std::size_t>(atom.type);
+  return type < interpolationGrids.size() && interpolationGrids[type].has_value() && atom.isFullyCoupled() &&
+         forceField.chargeMethod == ForceField::ChargeMethod::Ewald;
+}
+
 /// The energy of one trial atom from its interpolation grid (VDW, and the Coulomb grid when charges
 /// are on); false when the grid energy signals an overlap.
 bool accumulateGridEnergy(const ForceField &forceField,
@@ -228,9 +241,8 @@ void prefetchGridEnergies(const ForceField& forceField,
 {
   for (const Atom& atom : atoms)
   {
-    const std::optional<InterpolationEnergyGrid>& grid = interpolationGrids[static_cast<std::size_t>(atom.type)];
-    if (!grid.has_value() || !atom.isFullyCoupled()) continue;
-    grid->prefetch(atom.position);
+    if (!readsGrid(forceField, interpolationGrids, atom)) continue;
+    interpolationGrids[static_cast<std::size_t>(atom.type)]->prefetch(atom.position);
     if (forceField.useCharge) interpolationGrids.back()->prefetch(atom.position);
   }
 }
@@ -247,8 +259,7 @@ void prefetchGridEnergies(const ForceField& forceField,
   prefetchGridEnergies(forceField, interpolationGrids, atoms);
   for (const Atom &atom : atoms)
   {
-    // A grid exists only for a framework; only a fully coupled atom is read from the grid.
-    if (interpolationGrids[static_cast<std::size_t>(atom.type)].has_value() && atom.isFullyCoupled())
+    if (readsGrid(forceField, interpolationGrids, atom))
     {
       if (!accumulateGridEnergy(forceField, interpolationGrids, atom, energySum)) return std::nullopt;
       continue;
@@ -350,11 +361,7 @@ void prefetchGridEnergies(const ForceField& forceField,
       // framework energy than the rest of the code under the thread pool, and the running energies drifted.
       const bool anyGridAtom = std::ranges::any_of(
           atoms,
-          [&](const Atom& atom)
-          {
-            const std::size_t type = static_cast<std::size_t>(atom.type);
-            return type < interpolationGrids.size() && interpolationGrids[type].has_value() && atom.isFullyCoupled();
-          });
+          [&](const Atom& atom) { return readsGrid(forceField, interpolationGrids, atom); });
       if (anyGridAtom)
       {
         return computeFrameworkSerial(forceField, simulationBox, interpolationGrids, frameworkAtoms, cutOffVDW,
@@ -367,11 +374,9 @@ void prefetchGridEnergies(const ForceField& forceField,
 
 namespace
 {
-/// Whether a trial atom reads its framework energy from an interpolation grid (one exists for its type and the
-/// atom is fully coupled; the grids hold the unscaled energies).
 inline bool readsFrameworkGrid(const CBMC::GrowContext& context, const Atom& atom)
 {
-  return context.interpolationGrids[static_cast<std::size_t>(atom.type)].has_value() && atom.isFullyCoupled();
+  return readsGrid(context.forceField, context.interpolationGrids, atom);
 }
 
 /// The trial atoms of the sets that are evaluated by framework pairs (not from a grid), in 'pairAtoms'; false
