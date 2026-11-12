@@ -341,6 +341,13 @@ TEST(sampled_surface_area, the_device_routes_leave_nothing_on_the_device)
   ReportCleanup cleanup;
 
   const SampledStructure pair = twoSpheres();
+
+  // The runtime takes a holder of its own at the first launch of a kernel in the process and keeps it, so the
+  // count to come back to is taken after one.
+  {
+    Integration_OpenCL_SurfaceArea warmup;
+    warmup.run(pair, SampledProbe{}, 16);
+  }
   const cl_uint before = holdersOfTheContext();
 
   {
