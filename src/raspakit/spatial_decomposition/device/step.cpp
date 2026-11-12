@@ -270,6 +270,7 @@ void DeviceStep::enableBonded(const System& system, double alpha, double convers
   bonded.setTopology(bondedTopology);
   bonded.setParameters(alpha, conversionFactor, useCharge, system.forceField.cutOffMoleculeVDW,
                        system.forceField.cutOffCoulomb);
+  bondedUseCharge = useCharge;
   useBonded = true;
 }
 
@@ -406,6 +407,8 @@ void DeviceStep::setParameters(std::span<const LennardJonesPair> lennardJones, s
   const double inner = innerCutoff + 1e-4;
   parameters.innerCutoffSquared = static_cast<float>(inner * inner);
   parametersChanged = true;
+  // the bonded kernel holds the cutoffs of its 1-4 pairs too (the automatic cutoffs change with the box)
+  if (useBonded) bonded.setParameters(alpha, conversionFactor, bondedUseCharge, cutOffVDW, cutOffCharge);
 
   parameters.switchMode = 0;
   parameters.switchDistanceSquared = 0.0f;

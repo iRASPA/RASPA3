@@ -583,6 +583,8 @@ void SpatialDecompositionForceEngine::refreshCutoffs(System& system)
   {
     prepareKernel(system);
     cellList.numberOfBuilds = 0;
+    // the device bonded topology bakes the shift of every 1-4 pair at the cutoff: built again at the new one
+    if (deviceBonded) devicePairs.refreshBondedTopology(system);
   }
 }
 

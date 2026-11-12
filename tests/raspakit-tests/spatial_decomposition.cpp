@@ -1814,6 +1814,42 @@ TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_every_bond_bend
   }
 }
 
+// The device bonded kernel holds the cutoffs of its 1-4 pairs and bakes the shift of every pair at the cutoff into
+// its topology. A lowered Lennard-Jones cutoff (an automatic cutoff following the box, which re-derives the shifts)
+// must reach both, as it reaches the pair kernel: compared with an engine prepared at the lower cutoff.
+TEST_P(SpatialDecompositionDevice, engine_device_bonded_terms_follow_a_cutoff_change)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  RandomNumber random(13);
+  System system = makeChainSystem(false, random, 6);
+  system.forceField.setTruncationMethod(ForceField::TruncationMethod::Shifted, 9.0);
+  SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+  settings.pairDevice = pairDevice;
+  SpatialDecompositionForceEngine engine(settings);
+  engine.initialize(system);
+  ASSERT_TRUE(engine.usesDeviceBonded());
+  const RunningEnergy before = engine.computeGradients(system, true);
+
+  // the cutoff drops from 9 to 7 A and the shifts follow it, as on a barostat step with automatic cutoffs
+  system.forceField.cutOffMoleculeVDW = 7.0;
+  system.forceField.preComputePotentialShift();
+  const RunningEnergy changed = engine.computeGradients(system, true);
+  const std::vector<double3> changedGradient = gradientsOf(system);
+
+  SpatialDecompositionForceEngine fresh(settings);
+  fresh.initialize(system);
+  ASSERT_TRUE(fresh.usesDeviceBonded());
+  const RunningEnergy expected = fresh.computeGradients(system, true);
+  const std::vector<double3> expectedGradient = gradientsOf(system);
+
+  // the shifted 1-4 pairs change with the cutoff by far more than the tolerance
+  EXPECT_GT(std::abs(expected.intraVDW - before.intraVDW), 1e-4 * std::abs(expected.intraVDW));
+  EXPECT_NEAR(changed.intraVDW, expected.intraVDW, 1e-5 * std::abs(expected.intraVDW));
+  EXPECT_NEAR(changed.potentialEnergy(), expected.potentialEnergy(), 1e-5 * std::abs(expected.potentialEnergy()));
+  EXPECT_LT(rmsDifference(changedGradient, expectedGradient), 1e-5 * rmsNorm(expectedGradient));
+}
+
 TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_long_chain)
 {
   // six beads: the device exclusion lists (1-2, 1-3), a scaled 1-4 pair, excluded 1-4 pairs (scaling 0) and

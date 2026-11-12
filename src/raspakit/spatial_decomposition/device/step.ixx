@@ -317,6 +317,7 @@ export class DeviceStep
   bool useMesh{false};
   bool meshProfiled{false};  ///< the stage profile of the mesh ran (once, at the first timing sample)
   bool useBonded{false};
+  bool bondedUseCharge{false};  ///< the charge flag the bonded terms were enabled with (kept across setParameters)
   BondedTopology bondedTopology{};
   std::vector<std::uint32_t> referenceOfSorted{};
 
