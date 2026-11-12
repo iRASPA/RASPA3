@@ -343,6 +343,7 @@ export class SpatialDecompositionForceEngine
   void refreshStaticSums(const System& system);
 
   void prepareBondedWork(const System& system);
+  void followComposition(System& system);
   void refreshCutoffs(System& system);
   RunningEnergy finishStep(const System& system, RunningEnergy total, double3x3 strain, double3x3 correction);
   void residentRebuild(System& system);

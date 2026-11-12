@@ -542,6 +542,28 @@ void SpatialDecompositionForceEngine::initialize(System& system)
   initializedFlag = true;
 }
 
+// A changed composition (insertions and deletions of MC initialization or a grow, an identity change that keeps
+// the atom count) leaves every per-atom and per-molecule copy of the engine behind: the force arrays, the type
+// copies of the cell lists and the device lists, the exclusions, the specialised kernels prepared from the present
+// types and scalings, the static sums, the bonded partition and the device bonded topology (which holds the
+// molecules, masses and charge sums as they were, and reads past its buffers for added atoms), and a resident state.
+void SpatialDecompositionForceEngine::followComposition(System& system)
+{
+  const std::size_t numberOfAtoms = system.spanOfMoleculeAtoms().size();
+  if (numberOfAtoms == fx.size() && !bondedWorkOutdated(system)) return;
+  fx.assign(numberOfAtoms, 0.0);
+  fy.assign(numberOfAtoms, 0.0);
+  fz.assign(numberOfAtoms, 0.0);
+  cellList.numberOfBuilds = 0;
+  pairExclusionsOutdated = true;
+  prepareKernel(system);
+  refreshStaticSums(system);
+  prepareBondedWork(system);
+  if (deviceBonded) devicePairs.refreshBondedTopology(system);
+  residentValid = false;
+  residentHostCurrent = true;
+}
+
 void SpatialDecompositionForceEngine::refreshCutoffs(System& system)
 {
   // the cutoffs may have been re-derived (automatic cutoffs after a cell change): the lists follow them
@@ -654,20 +676,8 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
 
   refreshCutoffs(system);
 
-  const std::size_t numberOfAtoms = system.spanOfMoleculeAtoms().size();
-  if (numberOfAtoms != fx.size())
-  {
-    fx.assign(numberOfAtoms, 0.0);
-    fy.assign(numberOfAtoms, 0.0);
-    fz.assign(numberOfAtoms, 0.0);
-    cellList.numberOfBuilds = 0;  // forces a rebuild
-    pairExclusionsOutdated = true;
-    // insertions (MC initialization, a grow) change the set of present types and can introduce a non-unit
-    // scaling: the specialised kernels were prepared from the previous composition
-    prepareKernel(system);
-  }
+  followComposition(system);
   preparePairListExclusions(system);
-  if (bondedWorkOutdated(system)) prepareBondedWork(system);
   preparePolymerOverlay(system);
   team->resetWork();
 
@@ -836,17 +846,8 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
   refreshCutoffs(system);
 
   const std::size_t numberOfAtoms = system.spanOfMoleculeAtoms().size();
-  if (numberOfAtoms != fx.size())
-  {
-    fx.assign(numberOfAtoms, 0.0);
-    fy.assign(numberOfAtoms, 0.0);
-    fz.assign(numberOfAtoms, 0.0);
-    cellList.numberOfBuilds = 0;
-    pairExclusionsOutdated = true;
-    prepareKernel(system);
-  }
+  followComposition(system);
   preparePairListExclusions(system);
-  if (bondedWorkOutdated(system)) prepareBondedWork(system);
   bool rebuild = cellList.numberOfBuilds == 0 || cellList.numberOfAtoms != numberOfAtoms;
 
   // the host state becomes the device state after a host-side evaluation (stage start, restart)

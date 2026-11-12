@@ -914,6 +914,62 @@ TEST(spatial_decomposition, engine_follows_molecules_inserted_after_initialize)
             1e-3 * std::abs(expected.moleculeMoleculeVDW));
 }
 
+// A composition change that keeps the atom count (an identity change: one molecule replaced by one of another
+// component at the same position) changes types, static sums and the bonded partition without any atom moving. The
+// engine must follow it as it follows an insertion: the type copies of its lists and its sums are rebuilt, not kept
+// until some displacement happens to force a rebuild.
+TEST(spatial_decomposition, engine_follows_an_identity_change_that_keeps_the_atom_count)
+{
+  ForceField forceField({{"Ar", false, 39.948, 0.0, 0.0, 18, false}, {"Kr", false, 83.798, 0.0, 0.0, 36, false}},
+                        {{119.8, 3.405}, {164.0, 3.65}}, ForceField::MixingRule::Lorentz_Berthelot, 10.0, 10.0, 10.0,
+                        false, false, false);
+  forceField.setTruncationMethod(ForceField::TruncationMethod::Switched, 8.0);
+  Component argon = Component(forceField, "Ar", 150.0, 4.8e6, 0.0,
+                              {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21);
+  Component krypton = Component(forceField, "Kr", 209.0, 5.5e6, 0.0,
+                                {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 1, 1, false, false)}, {}, {}, 5, 21);
+
+  System system(forceField, SimulationBox(26.0, 26.0, 26.0), false, 300.0, 1e4, 1.0, {}, {argon, krypton}, {}, {0, 0},
+                5);
+  RandomNumber random(11);
+  for (std::size_t ix = 0; ix < 4; ++ix)
+    for (std::size_t iy = 0; iy < 4; ++iy)
+      for (std::size_t iz = 0; iz < 4; ++iz)
+      {
+        const double3 position =
+            6.5 * double3(static_cast<double>(ix) + 0.5, static_cast<double>(iy) + 0.5, static_cast<double>(iz) + 0.5) +
+            1.5 * double3(random.uniform() - 0.5, random.uniform() - 0.5, random.uniform() - 0.5);
+        Atom atom = argon.atoms[0];
+        atom.position = position;
+        system.insertMolecule(0, Molecule(position, simd_quatd(), argon.totalMass, 0, 1), {atom});
+      }
+  SpatialDecompositionForceEngine engine(settingsFor(2));
+  engine.initialize(system);
+  ASSERT_TRUE(engine.usesFastKernel());
+  const RunningEnergy before = engine.computeGradients(system, true);
+
+  // the last argon becomes a krypton in place: the same atom count, the same slot, the same position
+  const double3 position = system.spanOfMoleculeAtoms().back().position;
+  system.deleteMolecule(0, 63, system.spanOfMolecule(0, 63));
+  Atom atom = krypton.atoms[0];
+  atom.position = position;
+  system.insertMolecule(1, Molecule(position, simd_quatd(), krypton.totalMass, 1, 1), {atom});
+  ASSERT_EQ(system.spanOfMoleculeAtoms().size(), 64uz);
+  ASSERT_EQ(system.numberOfMoleculesPerComponent[1], 1uz);
+
+  const RunningEnergy changed = engine.computeGradients(system, true);
+  const std::vector<double3> changedGradient = gradientsOf(system);
+
+  SpatialDecompositionForceEngine fresh(settingsFor(2));
+  fresh.initialize(system);
+  const RunningEnergy expected = fresh.computeGradients(system, true);
+  EXPECT_GT(std::abs(expected.moleculeMoleculeVDW - before.moleculeMoleculeVDW),
+            1e-6 * std::abs(before.moleculeMoleculeVDW));
+  EXPECT_NEAR(changed.moleculeMoleculeVDW, expected.moleculeMoleculeVDW,
+              1e-10 * std::abs(expected.moleculeMoleculeVDW));
+  EXPECT_LT(rmsDifference(changedGradient, gradientsOf(system)), 1e-10 * rmsNorm(gradientsOf(system)));
+}
+
 // A polymerization retyping can introduce a type that no component template carried. The pair kernel must
 // drop the specialised path when that type is not plain Lennard-Jones of the same truncation.
 TEST(spatial_decomposition, engine_reprepares_the_kernel_when_a_new_type_appears)
