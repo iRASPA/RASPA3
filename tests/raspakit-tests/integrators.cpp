@@ -1165,6 +1165,37 @@ TEST(hybrid_mc, rejects_when_molecule_is_inside_blocked_pocket)
   DOUBLE3_EXPECT_NEAR(system.spanOfMoleculeAtoms()[0].position, initialMolecule, 1.0e-14);
 }
 
+// A trajectory that ends inside a blocking pocket is refused before the exact energy of its end point is taken. The
+// trajectory ran on copies, and the recomputation of the old energy refreshed the Ewald factors, the electric field
+// and the molecule cell list for the configuration that stays: nothing has moved, the list describes the atoms, and
+// the energy is that of the configuration before the move.
+TEST(hybrid_mc, refused_trajectory_leaves_the_atoms_the_cell_list_and_the_energy)
+{
+  System system = makeMixedFrameworkHybridMCSystem();
+  system.components[0].blockingPockets.push_back(double4(0.5, 0.5, 0.5, 40.0));
+  system.numberOfHybridMCSteps = 2;
+  system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 1.0e-4);
+  system.runningEnergies = system.computeTotalEnergies();
+  ASSERT_TRUE(system.cellList().enabled);
+
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  const std::vector<Atom> before(atoms.begin(), atoms.end());
+  RandomNumber random(5);
+  for (int attempt = 0; attempt < 3; ++attempt)
+  {
+    SCOPED_TRACE("attempt " + std::to_string(attempt));
+    EXPECT_FALSE(MC_Moves::hybridMCMove(random, system).has_value());
+    EXPECT_TRUE(system.verifyCellList());
+    for (std::size_t k = 0; k != atoms.size(); ++k)
+    {
+      EXPECT_EQ(atoms[k].position.x, before[k].position.x);
+      EXPECT_EQ(atoms[k].position.y, before[k].position.y);
+      EXPECT_EQ(atoms[k].position.z, before[k].position.z);
+    }
+    EXPECT_NEAR((system.computeTotalEnergies() - system.runningEnergies).potentialEnergy(), 0.0, 1e-8);
+  }
+}
+
 // The MD gradient routines carry no external field, so the trajectory is a surrogate proposal; the acceptance and
 // the returned energy must nevertheless be the exact ones (external field and tail corrections included), and a
 // rejected move must leave the configuration and its energy untouched.
