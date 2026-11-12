@@ -1054,3 +1054,36 @@ TEST(CBMC_BASE_SAMPLER, congruent_steps_with_a_bond_bend_term_share_the_coupling
   ASSERT_EQ(second.base.couplingTerms.bondBends.size(), 1uz);
   EXPECT_EQ(first.base.couplingSignature, second.base.couplingSignature);
 }
+
+// A centre whose parity the spin decides is drawn from the allowed half of the circle, with the spin weight
+// carrying one half, only when that half is the whole allowed set. Two declarations on one atom, each with another
+// placed neighbour, cut the circle into less than a half: such a step must fall back to the hard wall, not take the
+// half of whichever declaration came last.
+TEST(CBMC_BASE_SAMPLER, two_spin_decided_centres_on_one_atom_are_no_half_circle)
+{
+  ForceField forceField = makeZeroForceField();
+  auto plannedStep = [&](std::string_view centres, std::string_view name)
+  {
+    std::string json(kChiralQuaternaryJson);
+    const std::string declared = "[[1, 2, 3, 4]]";
+    json.replace(json.find(declared), declared.size(), centres);
+    TemporaryFile file(std::string(name) + ".json", json);
+    Component component(Component::Type::Adsorbate, 0, forceField, std::string(name), file.stemPath().string(), 5, 21,
+                        MCMoveProbabilities(), std::nullopt, false);
+    // beads 0, 2 and 3 placed around the centre 1: bead 4 is grown with bead 0 as the torsion reference
+    const std::vector<CBMC::GrowStep>& plan = component.growthPlan({0, 1, 2, 3});
+    EXPECT_EQ(plan.size(), 1uz);
+    EXPECT_EQ(plan.front().previousBead, std::optional<std::size_t>{0});
+    return plan.front().spin;
+  };
+
+  // one declaration with one placed neighbour off the axis: the parity halves the circle
+  const CBMC::GrowStep::SpinSelectionData single = plannedStep("[[1, 0, 2, 4]]", "quaternary-one-centre");
+  EXPECT_EQ(single.determinedChiralCenters.size(), 1uz);
+  EXPECT_TRUE(single.parityIsHalfCircle);
+
+  // two declarations with different placed neighbours: each halves the circle, their intersection does not
+  const CBMC::GrowStep::SpinSelectionData two = plannedStep("[[1, 0, 2, 4], [1, 0, 3, 4]]", "quaternary-two-centres");
+  EXPECT_EQ(two.determinedChiralCenters.size(), 2uz);
+  EXPECT_FALSE(two.parityIsHalfCircle);
+}

@@ -634,6 +634,9 @@ void CBMC::prepareStep(GrowStep& step, const ConnectivityTable& connectivity, co
       step.spin.parityIsHalfCircle = (previous == 1 && placedBefore == 1 && grownHere == 1);
     }
   }
+  // Two or more centres decided by the spin (declarations on one atom with different placed neighbours) cut the
+  // circle into less than a half: only a single one is drawn from its half, any other set is a hard wall.
+  if (step.spin.determinedChiralCenters.size() != 1) step.spin.parityIsHalfCircle = false;
 
   if (step.base.hasCoupling) step.base.couplingSignature = baseCouplingSignature(step);
 }
