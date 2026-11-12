@@ -345,7 +345,8 @@ export class DeviceStep
   /// Per atom (system order): CSR start of its excluded + scaled same-molecule partners (bit 31: every pair of
   /// its molecule is excluded, rigid molecule), and the partner atoms (system order).
   std::vector<std::uint32_t> atomExclusionStart{}, atomExclusionPartner{};
-  std::vector<std::uint32_t> sortKey{}, order{}, cellCount{};  ///< Layout scratch.
+  std::vector<std::uint64_t> sortKey{};             ///< Layout scratch: cell index above the Morton bits.
+  std::vector<std::uint32_t> order{}, cellCount{};  ///< Layout scratch.
   std::vector<std::uint32_t> outerCount{}, laneCount{};
   std::size_t outerBlocks{0}, listedPairs{0}, maximumRow{0};
 

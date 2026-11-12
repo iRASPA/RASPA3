@@ -485,7 +485,8 @@ void DeviceStep::beginBuild(const CellList& cells, const SimulationBox& box, std
         std::clamp(static_cast<std::int32_t>((fy - static_cast<double>(cy)) * subdivisions), 0, 7));
     const std::uint32_t uz = static_cast<std::uint32_t>(
         std::clamp(static_cast<std::int32_t>((fz - static_cast<double>(cz)) * subdivisions), 0, 7));
-    const std::uint32_t c = static_cast<std::uint32_t>((cz * grid.y + cy) * grid.x + cx);
+    // a 64-bit key: the grid allows 2^30 cells, more than a 32-bit key holds above the Morton bits
+    const std::uint64_t c = static_cast<std::uint64_t>((cz * grid.y + cy) * grid.x + cx);
     sortKey[k] = (c << (3 * mortonBits)) | mortonKey(ux, uy, uz);
     ++cellCount[c + 1];
   }
@@ -494,7 +495,7 @@ void DeviceStep::beginBuild(const CellList& cells, const SimulationBox& box, std
   order.resize(numberOfAtoms);
   for (std::size_t k = 0; k < numberOfAtoms; ++k)
   {
-    const std::uint32_t c = sortKey[k] >> (3 * mortonBits);
+    const std::size_t c = static_cast<std::size_t>(sortKey[k] >> (3 * mortonBits));
     order[cellCount[c]++] = static_cast<std::uint32_t>(k);
   }
   cellSlotStart.resize(numberOfCells + 1);

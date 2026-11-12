@@ -393,6 +393,20 @@ void checkCellListAgainstBruteForce(const SimulationBox& box, std::size_t number
 }
 }  // namespace
 
+// The cell index (cz ny + cy) nx + cx is formed in 32-bit arithmetic, on the host and in the device sort key: the
+// grid holds at most 1024 cells per axis, whatever the box and the cutoff.
+TEST(spatial_decomposition, cell_grid_is_capped_per_axis)
+{
+  CellList cells;
+  cells.setup(SimulationBox(40.0, 40.0, 40.0), 10.0, 1.0, 1, int3(1, 1, 1));
+  const int3 huge = cells.cellGridFor(SimulationBox(100000.0, 50000.0, 20000.0), 3);
+  EXPECT_EQ(huge.x, 1024);
+  EXPECT_EQ(huge.y, 1024);
+  EXPECT_EQ(huge.z, 1024);
+  const int3 small = cells.cellGridFor(SimulationBox(40.0, 40.0, 40.0), 1);
+  EXPECT_EQ(small.x, 3);
+}
+
 TEST(spatial_decomposition, cell_list_matches_brute_force_pairs_triclinic)
 {
   const SimulationBox box(28.0, 31.0, 26.0, 100.0 * (std::numbers::pi / 180.0), 95.0 * (std::numbers::pi / 180.0),

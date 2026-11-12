@@ -130,7 +130,8 @@ int3 CellList::cellGridFor(const SimulationBox& box, int cellsPerCutoff) const
   auto count = [&](double width) -> std::int32_t
   {
     const double n = std::floor(width * static_cast<double>(cellsPerCutoff) / listCutoff);
-    return static_cast<std::int32_t>(std::clamp(n, 1.0, 4096.0));
+    // at most 1024 per axis: the cell index (cz ny + cy) nx + cx is formed in 32-bit arithmetic
+    return static_cast<std::int32_t>(std::clamp(n, 1.0, 1024.0));
   };
   return int3(count(widths.x), count(widths.y), count(widths.z));
 }
