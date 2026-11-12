@@ -11,25 +11,6 @@ import double3x3;
 import double4x4;
 import simd_quatd;
 
-float4x4::float4x4(const float4x4& a)  // copy constructor
-{
-  m11 = a.m11;
-  m21 = a.m21;
-  m31 = a.m31;
-  m41 = a.m41;
-  m12 = a.m12;
-  m22 = a.m22;
-  m32 = a.m32;
-  m42 = a.m42;
-  m13 = a.m13;
-  m23 = a.m23;
-  m33 = a.m33;
-  m43 = a.m43;
-  m14 = a.m14;
-  m24 = a.m24;
-  m34 = a.m34;
-  m44 = a.m44;
-}
 
 float4x4::float4x4(const float* v)
 {
@@ -39,29 +20,6 @@ float4x4::float4x4(const float* v)
   }
 }
 
-float4x4& float4x4::operator=(const float4x4& a)  // assignment operator
-{
-  if (this != &a)  // protect against self-assingment
-  {
-    m11 = a.m11;
-    m21 = a.m21;
-    m31 = a.m31;
-    m41 = a.m41;
-    m12 = a.m12;
-    m22 = a.m22;
-    m32 = a.m32;
-    m42 = a.m42;
-    m13 = a.m13;
-    m23 = a.m23;
-    m33 = a.m33;
-    m43 = a.m43;
-    m14 = a.m14;
-    m24 = a.m24;
-    m34 = a.m34;
-    m44 = a.m44;
-  }
-  return *this;
-}
 
 float4x4::float4x4(const float3x3& a)
 {

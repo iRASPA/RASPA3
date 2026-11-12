@@ -41,7 +41,7 @@ export union float3x4
 
         };
 
-  float3x4(const float3x4&);             // copy constructor
-  float3x4& operator=(const float3x4&);  // assignment operator
+  float3x4(const float3x4&) = default;
+  float3x4& operator=(const float3x4&) = default;
   float3x4(float4 v1, float4 v2, float4 v3) : v{v1, v2, v3} {}
 };

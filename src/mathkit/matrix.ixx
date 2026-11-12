@@ -81,16 +81,17 @@ export inline Matrix operator*(const RingMatrix& a, const Matrix& b)
                     a.columns(), b.rows()));
   }
   Matrix results = Matrix(a.rows(), b.columns(), 0);
+  // i, k, j: the inner loop runs along a row of b and the same row of the result at stride one (the sum over k
+  // of every entry is still taken in ascending k, so the values are the ones of the i, j, k order)
   for (std::size_t i = 0; i < a.rows(); i++)
   {
-    for (std::size_t j = 0; j < b.columns(); j++)
+    for (std::size_t k = 0; k < a.columns(); k++)
     {
-      double v = 0;
-      for (std::size_t k = 0; k < a.columns(); k++)
+      const double aik = a(i, k);
+      for (std::size_t j = 0; j < b.columns(); j++)
       {
-        v += a(i, k) * b(k, j);
+        results(i, j) += aik * b(k, j);
       }
-      results(i, j) = v;
     }
   }
   return results;
@@ -105,16 +106,17 @@ export inline Matrix operator*(const Matrix& a, const RingMatrix& b)
                     a.columns(), b.rows()));
   }
   Matrix results = Matrix(a.rows(), b.columns(), 0);
+  // i, k, j: the inner loop runs along a row of b and the same row of the result at stride one (the sum over k
+  // of every entry is still taken in ascending k, so the values are the ones of the i, j, k order)
   for (std::size_t i = 0; i < a.rows(); i++)
   {
-    for (std::size_t j = 0; j < b.columns(); j++)
+    for (std::size_t k = 0; k < a.columns(); k++)
     {
-      double v = 0;
-      for (std::size_t k = 0; k < a.columns(); k++)
+      const double aik = a(i, k);
+      for (std::size_t j = 0; j < b.columns(); j++)
       {
-        v += a(i, k) * b(k, j);
+        results(i, j) += aik * b(k, j);
       }
-      results(i, j) = v;
     }
   }
   return results;

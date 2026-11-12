@@ -35,9 +35,11 @@ SymmetricEigenSystem diagonalizeSymmetric(std::span<const double> matrix, std::s
                               .eigenvectors = std::vector<double>(size * size)};
   // A symmetric matrix has the same values under row-major/column-major reinterpretation.
   // Copy explicitly while symmetrizing to avoid propagating small assembly asymmetries.
-  for (std::size_t row = 0; row < size; ++row)
+  // LAPACK reads the upper triangle (row <= column) of the column-major array: only that half is filled, column
+  // by column at stride one; the symmetrized value takes both triangles of the input in.
+  for (std::size_t column = 0; column < size; ++column)
   {
-    for (std::size_t column = 0; column < size; ++column)
+    for (std::size_t row = 0; row <= column; ++row)
     {
       const double value = 0.5 * (matrix[row * size + column] + matrix[column * size + row]);
       if (!std::isfinite(value))

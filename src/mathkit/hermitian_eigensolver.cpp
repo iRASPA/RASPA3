@@ -48,9 +48,10 @@ HermitianEigenSystem diagonalizeHermitian(std::span<const std::complex<double>> 
   }
 
   // Hermitize into column-major storage: a[row + size*column] = 0.5 (M[row][column] + conj(M[column][row])).
-  for (std::size_t row = 0; row < size; ++row)
+  // LAPACK reads the upper triangle (row <= column): only that half is filled, column by column at stride one.
+  for (std::size_t column = 0; column < size; ++column)
   {
-    for (std::size_t column = 0; column < size; ++column)
+    for (std::size_t row = 0; row <= column; ++row)
     {
       const std::complex<double> value = 0.5 * (matrix[row * size + column] + std::conj(matrix[column * size + row]));
       if (!std::isfinite(value.real()) || !std::isfinite(value.imag()))

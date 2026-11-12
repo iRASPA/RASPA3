@@ -73,6 +73,8 @@ void MarchingCubes::run(real iso)
           if (cube[p] > 0) _lut_entry += 1 << p;
         }
 
+        // a voxel wholly inside or wholly outside the surface draws nothing (the case tables are empty for it)
+        if (_lut_entry == 0 || _lut_entry == 255) continue;
         process_cube(cube);
       }
 }

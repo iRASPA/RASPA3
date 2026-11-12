@@ -5,9 +5,8 @@ module matrix;
 import std;
 
 Matrix::Matrix(std::size_t rows, std::size_t columns, double initialValue)
-    : _rows(rows), _columns(columns), _grid(rows * columns)
+    : _rows(rows), _columns(columns), _grid(rows * columns, initialValue)
 {
-  std::fill(_grid.begin(), _grid.end(), initialValue);
 }
 
 Matrix operator*(const Matrix& lhs, const Matrix& rhs)
@@ -20,16 +19,17 @@ Matrix operator*(const Matrix& lhs, const Matrix& rhs)
                     lhs._columns, rhs._rows));
   }
   Matrix results = Matrix(lhs._rows, rhs._columns, 0);
+  // i, k, j: the inner loop runs along a row of rhs and the same row of the result at stride one (the sum over k
+  // of every entry is still taken in ascending k, so the values are the ones of the i, j, k order)
   for (std::size_t i = 0; i < lhs._rows; i++)
   {
-    for (std::size_t j = 0; j < rhs._columns; j++)
+    for (std::size_t k = 0; k < lhs.columns(); k++)
     {
-      double v = 0;
-      for (std::size_t k = 0; k < lhs.columns(); k++)
+      const double aik = lhs(i, k);
+      for (std::size_t j = 0; j < rhs._columns; j++)
       {
-        v += lhs(i, k) * rhs(k, j);
+        results(i, j) += aik * rhs(k, j);
       }
-      results(i, j) = v;
     }
   }
   return results;

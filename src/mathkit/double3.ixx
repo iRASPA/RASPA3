@@ -198,10 +198,10 @@ export union double3
   {
     std::size_t operator()(const double3& k) const
     {
-      std::size_t h1 = std::hash<double>()(k.x);
-      std::size_t h2 = std::hash<double>()(k.y);
-      std::size_t h3 = std::hash<double>()(k.z);
-      return (h1 ^ (h2 << 1)) ^ h3;
+      // combined in order: the earlier form, h1 ^ (h2 << 1) ^ h3, gave (a, b, c) and (c, b, a) the same hash
+      std::size_t seed = 0;
+      hash_combine(seed, k.x, k.y, k.z);
+      return seed;
     }
   };
 

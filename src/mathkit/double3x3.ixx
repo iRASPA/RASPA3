@@ -12,22 +12,22 @@ import json;
 
 export union double3x3
 {
-  double m[16];
-  double mm[4][4];
-  double3 v[4];
+  // Three columns, each a 32-byte double3 (the fourth entry of a column is its padding): 96 bytes. The former
+  // fourth column (a translation that nothing used) made it 128, two cache lines copied on every value pass.
+  double m[12];
+  double mm[3][4];
+  double3 v[3];
   struct
   {
     double m11, m21, m31, m41,  // 1st column
         m12, m22, m32, m42,     // 2nd column
-        m13, m23, m33, m43,     // 3rd column
-        m14, m24, m34, m44;     // 4th column, {tx,ty,tz,1}
+        m13, m23, m33, m43;     // 3rd column
   };
   struct
   {
     double ax, ay, az, aw,  // 1st column
         bx, by, bz, bw,     // 2nd column
-        cx, cy, cz, cw,     // 3rd column
-        wx, wy, wz, ww;     // 4th column, {tx,ty,tz,1}
+        cx, cy, cz, cw;     // 3rd column
   };
 
   double3x3()
@@ -42,11 +42,7 @@ export union double3x3
         m13(0.0),
         m23(0.0),
         m33(0.0),
-        m43(0.0),
-        m14(0.0),
-        m24(0.0),
-        m34(0.0),
-        m44(0.0) {};
+        m43(0.0) {};
 
   explicit double3x3(double m11, double m22, double m33)
       : m11(m11),
@@ -60,11 +56,7 @@ export union double3x3
         m13(0.0),
         m23(0.0),
         m33(m33),
-        m43(0.0),
-        m14(0.0),
-        m24(0.0),
-        m34(0.0),
-        m44(0.0) {};
+        m43(0.0) {};
 
   explicit double3x3(double3 v)
       : m11(v.x),
@@ -78,11 +70,7 @@ export union double3x3
         m13(0.0),
         m23(0.0),
         m33(v.z),
-        m43(0.0),
-        m14(0.0),
-        m24(0.0),
-        m34(0.0),
-        m44(0.0) {};
+        m43(0.0) {};
 
   explicit double3x3(double m11, double m21, double m31, double m12, double m22, double m32, double m13, double m23,
                      double m33)
@@ -97,11 +85,7 @@ export union double3x3
         m13(m13),
         m23(m23),
         m33(m33),
-        m43(0.0),
-        m14(0.0),
-        m24(0.0),
-        m34(0.0),
-        m44(0.0) {
+        m43(0.0) {
 
         };
 
@@ -117,11 +101,7 @@ export union double3x3
         m13(v3.x),
         m23(v3.y),
         m33(v3.z),
-        m43(0.0),
-        m14(0.0),
-        m24(0.0),
-        m34(0.0),
-        m44(0.0) {
+        m43(0.0) {
 
         };
   double3x3(simd_quatd q);

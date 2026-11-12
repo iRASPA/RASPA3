@@ -14,9 +14,8 @@ int sign(T val)
 }
 
 RingMatrix::RingMatrix(std::size_t rows, std::size_t columns, int initialValue)
-    : _rows(rows), _columns(columns), _grid(rows * columns)
+    : _rows(rows), _columns(columns), _grid(rows * columns, initialValue)
 {
-  std::fill(_grid.begin(), _grid.end(), initialValue);
 }
 
 RingMatrix RingMatrix::createRandomRingMatrix(std::size_t rows, std::size_t columns, int limit)
@@ -34,9 +33,8 @@ RingMatrix RingMatrix::createRandomRingMatrix(std::size_t rows, std::size_t colu
 }
 
 RingMatrix::RingMatrix(std::size_t rows, std::size_t columns, std::vector<std::vector<int>> data)
-    : _rows(rows), _columns(columns), _grid(rows * columns)
+    : _rows(rows), _columns(columns), _grid(rows * columns, 0)
 {
-  std::fill(_grid.begin(), _grid.end(), 0);
   // entries beyond the matrix are dropped: an extra column would otherwise wrap into the next row
   for (std::size_t i = 0; i < std::min(rows, data.size()); i++)
   {

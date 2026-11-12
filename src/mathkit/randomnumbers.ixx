@@ -16,8 +16,8 @@ export struct RandomNumber
 
   RandomNumber(std::optional<std::size_t> s)
   {
-    std::random_device rd;
-    seed = s.has_value() ? s.value() : rd();
+    // the device is opened only when no seed is given (it is a system call)
+    seed = s.has_value() ? s.value() : std::random_device{}();
     mt = std::mt19937_64(seed);
     uniformDistribution = std::uniform_real_distribution<double>(0.0, 1.0);
     normalDistribution = std::normal_distribution<double>();
@@ -99,11 +99,29 @@ export struct RandomNumber
   simd_quatd randomSimdQuatd();
   simd_quatd smallRandomQuaternion(double angleRange);
 
-  std::size_t categoricalDistribution(const std::vector<double> &probabilities)
+  /// Draws an index with probability proportional to its weight: the draw of 'std::discrete_distribution' step
+  /// for step (the weights normalized, their cumulative sums, the upper bound of one uniform double), so that a
+  /// seeded sequence is the one that distribution gave, without its allocation of the cumulative table on every
+  /// call: the table is a per-thread scratch vector that is only ever grown.
+  std::size_t categoricalDistribution(std::span<const double> weights)
   {
     ++count;
-    std::discrete_distribution<std::size_t> d(probabilities.begin(), probabilities.end());
-    return d(mt);
+    thread_local std::vector<double> cumulative{};
+    const std::size_t n = weights.size();
+    cumulative.resize(n > 1 ? n - 1 : 0);
+    if (n > 1)
+    {
+      double total = 0.0;
+      for (double weight : weights) total += weight;
+      double running = 0.0;
+      for (std::size_t i = 0; i + 1 < n; ++i)
+      {
+        running = (i == 0) ? weights[0] / total : running + weights[i] / total;
+        cumulative[i] = running;
+      }
+    }
+    const double draw = uniformDistribution(mt);
+    return static_cast<std::size_t>(std::upper_bound(cumulative.begin(), cumulative.end(), draw) - cumulative.begin());
   }
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RandomNumber &r);

@@ -119,17 +119,18 @@ double double3x3::trace(void) const { return m11 + m22 + m33; }
 const double3x3 double3x3::inverse() const
 {
   double determinant = m11 * (m22 * m33 - m23 * m32) - m12 * (m21 * m33 - m23 * m31) + m13 * (m21 * m32 - m22 * m31);
+  const double inverseDeterminant = 1.0 / determinant;
 
   double3x3 inverse;
-  inverse.m11 = (m22 * m33 - m32 * m23) / determinant;
-  inverse.m21 = -(m21 * m33 - m31 * m23) / determinant;
-  inverse.m31 = (m21 * m32 - m31 * m22) / determinant;
-  inverse.m12 = -(m12 * m33 - m32 * m13) / determinant;
-  inverse.m22 = (m11 * m33 - m31 * m13) / determinant;
-  inverse.m32 = -(m11 * m32 - m31 * m12) / determinant;
-  inverse.m13 = (m12 * m23 - m22 * m13) / determinant;
-  inverse.m23 = -(m11 * m23 - m21 * m13) / determinant;
-  inverse.m33 = (m11 * m22 - m21 * m12) / determinant;
+  inverse.m11 = (m22 * m33 - m32 * m23) * inverseDeterminant;
+  inverse.m21 = -(m21 * m33 - m31 * m23) * inverseDeterminant;
+  inverse.m31 = (m21 * m32 - m31 * m22) * inverseDeterminant;
+  inverse.m12 = -(m12 * m33 - m32 * m13) * inverseDeterminant;
+  inverse.m22 = (m11 * m33 - m31 * m13) * inverseDeterminant;
+  inverse.m32 = -(m11 * m32 - m31 * m12) * inverseDeterminant;
+  inverse.m13 = (m12 * m23 - m22 * m13) * inverseDeterminant;
+  inverse.m23 = -(m11 * m23 - m21 * m13) * inverseDeterminant;
+  inverse.m33 = (m11 * m22 - m21 * m12) * inverseDeterminant;
 
   return inverse;
 }
@@ -190,17 +191,18 @@ double3x3 const double3x3::transpose(void) const
 double3x3 double3x3::inversetranpose()
 {
   double determinant = +m11 * (m22 * m33 - m23 * m32) - m12 * (m21 * m33 - m23 * m31) + m13 * (m21 * m32 - m22 * m31);
+  const double inverseDeterminant = 1.0 / determinant;
 
   double3x3 inverse;
-  inverse.m11 = +(m22 * m33 - m32 * m23) / determinant;
-  inverse.m12 = -(m21 * m33 - m31 * m23) / determinant;
-  inverse.m13 = +(m21 * m32 - m31 * m22) / determinant;
-  inverse.m21 = -(m12 * m33 - m32 * m13) / determinant;
-  inverse.m22 = +(m11 * m33 - m31 * m13) / determinant;
-  inverse.m23 = -(m11 * m32 - m31 * m12) / determinant;
-  inverse.m31 = +(m12 * m23 - m22 * m13) / determinant;
-  inverse.m32 = -(m11 * m23 - m21 * m13) / determinant;
-  inverse.m33 = +(m11 * m22 - m21 * m12) / determinant;
+  inverse.m11 = +(m22 * m33 - m32 * m23) * inverseDeterminant;
+  inverse.m12 = -(m21 * m33 - m31 * m23) * inverseDeterminant;
+  inverse.m13 = +(m21 * m32 - m31 * m22) * inverseDeterminant;
+  inverse.m21 = -(m12 * m33 - m32 * m13) * inverseDeterminant;
+  inverse.m22 = +(m11 * m33 - m31 * m13) * inverseDeterminant;
+  inverse.m23 = -(m11 * m32 - m31 * m12) * inverseDeterminant;
+  inverse.m31 = +(m12 * m23 - m22 * m13) * inverseDeterminant;
+  inverse.m32 = -(m11 * m23 - m21 * m13) * inverseDeterminant;
+  inverse.m33 = +(m11 * m22 - m21 * m12) * inverseDeterminant;
 
   return inverse;
 }
@@ -226,10 +228,10 @@ void double3x3::EigenSystemSymmetric(double3& eigenvalues, double3x3& eigenvecto
 {
   char decompositionJobV = 'V';
   char upload = 'U';
-  std::vector<double> matrix = std::vector<double>{ax, ay, az, bx, by, bz, cx, cy, cz};
-  std::vector<double> work(9 * 3);
+  std::array<double, 9> matrix{ax, ay, az, bx, by, bz, cx, cy, cz};
+  std::array<double, 9 * 3> work{};
   blas_int lwork = 9 * 3;
-  std::vector<double> e = std::vector<double>(3);
+  std::array<double, 3> e{};
   blas_int error = 0;
   blas_int N = 3;
   blas_int M = 3;
@@ -362,17 +364,13 @@ std::tuple<double3x3, double3, double3x3> double3x3::singularValueDecomposition(
 
   char jobU = 'A';
   char jobVT = 'A';
-  double wkopt;
 
   double s[3], u[9], vt[9];
-  std::vector<double> matrix =
-      std::vector<double>{this->ax, this->ay, this->az, this->bx, this->by, this->bz, this->cx, this->cy, this->cz};
+  std::array<double, 9> matrix{this->ax, this->ay, this->az, this->bx, this->by, this->bz, this->cx, this->cy, this->cz};
 
-  lwork = -1;
-  dgesvd_(&jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info);
-
-  lwork = static_cast<blas_int>(wkopt);
-  std::vector<double> work(static_cast<std::size_t>(lwork));
+  // a 3 x 3 needs a workspace of 15 doubles; a fixed one, instead of asking LAPACK for the size on every call
+  std::array<double, 128> work{{}};
+  lwork = static_cast<blas_int>(work.size());
   dgesvd_(&jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork, &info);
 
   if (info > 0)
@@ -416,16 +414,13 @@ double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<d
 
   char jobU = 'A';
   char jobVT = 'A';
-  double wkopt;
 
   double s[3], u[9], vt[9];
-  std::vector<double> matrix = std::vector<double>{H.ax, H.ay, H.az, H.bx, H.by, H.bz, H.cx, H.cy, H.cz};
+  std::array<double, 9> matrix{H.ax, H.ay, H.az, H.bx, H.by, H.bz, H.cx, H.cy, H.cz};
 
-  lwork = -1;
-  dgesvd_(&jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info);
-
-  lwork = static_cast<blas_int>(wkopt);
-  std::vector<double> work(static_cast<std::size_t>(lwork));
+  // a 3 x 3 needs a workspace of 15 doubles; a fixed one, instead of asking LAPACK for the size on every call
+  std::array<double, 128> work{{}};
+  lwork = static_cast<blas_int>(work.size());
   dgesvd_(&jobU, &jobVT, &m1, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork, &info);
 
   if (info != 0)
@@ -437,16 +432,14 @@ double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<d
   double3x3 matrix_u = double3x3(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], u[8]);
   double3x3 matrix_vt = double3x3(vt[0], vt[1], vt[2], vt[3], vt[4], vt[5], vt[6], vt[7], vt[8]);
 
-  double3x3 result = matrix_vt.transpose() * matrix_u.transpose();
-
-  double determinant = result.determinant();
-  if (determinant < 0.0)
+  // a reflection (the determinant of V U^T is that of V times that of U) is turned into a rotation by flipping the
+  // last singular direction: decided from the factors, so that only the one product that is returned is formed
+  if (matrix_vt.determinant() * matrix_u.determinant() < 0.0)
   {
     return matrix_vt.transpose() * double3x3(double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, -1.0)) *
            matrix_u.transpose();
   }
-
-  return result;
+  return matrix_vt.transpose() * matrix_u.transpose();
 }
 
 double3x3 double3x3::computeRotationMatrix(double3 a, double3 b)
@@ -475,16 +468,13 @@ double3x3 double3x3::computeRotationMatrixSVD(double3 vec_i, double3 vec_j)
 
   char jobU = 'A';
   char jobVT = 'A';
-  double wkopt;
 
   double s[3], u[9], vt[9];
-  std::vector<double> matrix = std::vector<double>{H.ax, H.ay, H.az, H.bx, H.by, H.bz, H.cx, H.cy, H.cz};
+  std::array<double, 9> matrix{H.ax, H.ay, H.az, H.bx, H.by, H.bz, H.cx, H.cy, H.cz};
 
-  lwork = -1;
-  dgesvd_(&jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info);
-
-  lwork = static_cast<blas_int>(wkopt);
-  std::vector<double> work(static_cast<std::size_t>(lwork));
+  // a 3 x 3 needs a workspace of 15 doubles; a fixed one, instead of asking LAPACK for the size on every call
+  std::array<double, 128> work{{}};
+  lwork = static_cast<blas_int>(work.size());
   dgesvd_(&jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork, &info);
 
   if (info != 0)
@@ -496,16 +486,14 @@ double3x3 double3x3::computeRotationMatrixSVD(double3 vec_i, double3 vec_j)
   double3x3 matrix_u = double3x3(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], u[8]);
   double3x3 matrix_vt = double3x3(vt[0], vt[1], vt[2], vt[3], vt[4], vt[5], vt[6], vt[7], vt[8]);
 
-  double3x3 result = matrix_vt.transpose() * matrix_u.transpose();
-
-  double determinant = result.determinant();
-  if (determinant < 0.0)
+  // a reflection (the determinant of V U^T is that of V times that of U) is turned into a rotation by flipping the
+  // last singular direction: decided from the factors, so that only the one product that is returned is formed
+  if (matrix_vt.determinant() * matrix_u.determinant() < 0.0)
   {
     return matrix_vt.transpose() * double3x3(double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, -1.0)) *
            matrix_u.transpose();
   }
-
-  return result;
+  return matrix_vt.transpose() * matrix_u.transpose();
 }
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const double3x3& vec)

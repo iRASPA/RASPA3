@@ -20,8 +20,8 @@ export class RingMatrix
 
   RingMatrix transposed();
 
-  int& operator()(std::size_t row, std::size_t col) { return _grid.at(row * _columns + col); }
-  int operator()(std::size_t row, std::size_t col) const { return _grid.at(row * _columns + col); }
+  int& operator()(std::size_t row, std::size_t col) { return _grid[row * _columns + col]; }
+  int operator()(std::size_t row, std::size_t col) const { return _grid[row * _columns + col]; }
   static RingMatrix identity(std::size_t size);
   static RingMatrix zeros(std::size_t rows, std::size_t columns);
   static RingMatrix ones(std::size_t rows, std::size_t columns);
@@ -78,16 +78,17 @@ export inline RingMatrix operator*(const RingMatrix& a, const RingMatrix& b)
                     a.columns(), b.rows()));
   }
   RingMatrix results = RingMatrix(a.rows(), b.columns(), 0);
+  // i, k, j: the inner loop runs along a row of b and the same row of the result at stride one (the sum over k
+  // of every entry is still taken in ascending k, so the values are the ones of the i, j, k order)
   for (std::size_t i = 0; i < a.rows(); i++)
   {
-    for (std::size_t j = 0; j < b.columns(); j++)
+    for (std::size_t k = 0; k < a.columns(); k++)
     {
-      int v = 0;
-      for (std::size_t k = 0; k < a.columns(); k++)
+      const int aik = a(i, k);
+      for (std::size_t j = 0; j < b.columns(); j++)
       {
-        v += a(i, k) * b(k, j);
+        results(i, j) += aik * b(k, j);
       }
-      results(i, j) = v;
     }
   }
   return results;

@@ -55,17 +55,18 @@ float float3x3::trace(void) { return m11 + m22 + m33; }
 float3x3 const float3x3::inverse()
 {
   float determinant = +m11 * (m22 * m33 - m23 * m32) - m12 * (m21 * m33 - m23 * m31) + m13 * (m21 * m32 - m22 * m31);
+  const float inverseDeterminant = 1.0f / determinant;
 
   float3x3 inverse;
-  inverse.m11 = +(m22 * m33 - m32 * m23) / determinant;
-  inverse.m21 = -(m21 * m33 - m31 * m23) / determinant;
-  inverse.m31 = +(m21 * m32 - m31 * m22) / determinant;
-  inverse.m12 = -(m12 * m33 - m32 * m13) / determinant;
-  inverse.m22 = +(m11 * m33 - m31 * m13) / determinant;
-  inverse.m32 = -(m11 * m32 - m31 * m12) / determinant;
-  inverse.m13 = +(m12 * m23 - m22 * m13) / determinant;
-  inverse.m23 = -(m11 * m23 - m21 * m13) / determinant;
-  inverse.m33 = +(m11 * m22 - m21 * m12) / determinant;
+  inverse.m11 = +(m22 * m33 - m32 * m23) * inverseDeterminant;
+  inverse.m21 = -(m21 * m33 - m31 * m23) * inverseDeterminant;
+  inverse.m31 = +(m21 * m32 - m31 * m22) * inverseDeterminant;
+  inverse.m12 = -(m12 * m33 - m32 * m13) * inverseDeterminant;
+  inverse.m22 = +(m11 * m33 - m31 * m13) * inverseDeterminant;
+  inverse.m32 = -(m11 * m32 - m31 * m12) * inverseDeterminant;
+  inverse.m13 = +(m12 * m23 - m22 * m13) * inverseDeterminant;
+  inverse.m23 = -(m11 * m23 - m21 * m13) * inverseDeterminant;
+  inverse.m33 = +(m11 * m22 - m21 * m12) * inverseDeterminant;
 
   return inverse;
 }

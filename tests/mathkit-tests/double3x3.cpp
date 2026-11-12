@@ -116,7 +116,8 @@ TEST(double3x3, Test_constructors_zero_the_fourth_row_and_column)
         break;
     }
 
-    for (double padding : {matrix->m41, matrix->m42, matrix->m43, matrix->m14, matrix->m24, matrix->m34, matrix->m44})
+    // the fourth entry of each of the three columns (the padding of a 32-byte double3)
+    for (double padding : {matrix->m41, matrix->m42, matrix->m43})
     {
       EXPECT_EQ(padding, 0.0) << k;
     }
