@@ -600,3 +600,35 @@ TEST(framework_intramolecular_reader, archive_round_trip_preserves_topology_and_
   EXPECT_EQ(restored.intraMolecularPotentials.bonds[0].type, framework.intraMolecularPotentials.bonds[0].type);
   EXPECT_EQ(restored.intraMolecularImageShifts.bonds, framework.intraMolecularImageShifts.bonds);
 }
+
+// The table of parameter counts per bend type had slipped one place against the enumeration from 'Fixed' on, so the
+// framework reader refused a FIXED, CORE_SHELL, CFF_QUARTIC or HARMONIC_COSINE bend with its true number of
+// parameters and let a CFF_QUARTIC bend through with two. Every type takes the count its constructor reads.
+TEST(framework_intramolecular_reader, bend_parameter_counts_follow_the_bend_types)
+{
+  ForceField forceField = makeTestForceField();
+  const SimulationBox box(12.0, 12.0, 12.0);
+  std::vector<Atom> fractionalAtoms{
+      fractionalAtom({9.5 / 12.0, 4.8 / 12.0, 5.0 / 12.0}, *forceField.findPseudoAtom("C1")),
+      fractionalAtom({10.8 / 12.0, 5.1 / 12.0, 5.0 / 12.0}, *forceField.findPseudoAtom("C2")),
+      fractionalAtom({0.1 / 12.0, 4.9 / 12.0, 5.2 / 12.0}, *forceField.findPseudoAtom("C3"))};
+  auto read = [&](std::string_view bend)
+  {
+    Framework framework(forceField, "periodic-bend", box, 1, fractionalAtoms, fractionalAtoms, {1, 1, 1});
+    TemporaryFile definition("raspa3-framework-bend-count.json", std::format(R"({{"Type": "Flexible",
+          "Bonds": [[["C1", "C2"], "HARMONIC", [200.0, 1.3]], [["C2", "C3"], "HARMONIC", [200.0, 1.3]]],
+          "Bends": [[["C1", "C2", "C3"], {}]]}})",
+                                                                             bend));
+    framework.readFrameworkDefinition(forceField, definition.path().string());
+    return framework.intraMolecularPotentials.bends.size();
+  };
+  EXPECT_EQ(read(R"("FIXED", [150.0])"), 1uz);
+  EXPECT_EQ(read(R"("CORE_SHELL", [100.0, 150.0])"), 1uz);
+  EXPECT_EQ(read(R"("CFF_QUARTIC", [100.0, 150.0, 10.0, 5.0])"), 1uz);
+  EXPECT_EQ(read(R"("HARMONIC_COSINE", [100.0, 150.0])"), 1uz);
+  EXPECT_EQ(read(R"("HARMONIC", [100.0, 150.0])"), 1uz);
+  EXPECT_EQ(read(R"("COSINE", [100.0, 1.0, 0.0])"), 1uz);
+  // a count that belongs to no form of the type is still refused
+  EXPECT_THROW(read(R"("CFF_QUARTIC", [100.0, 150.0])"), std::runtime_error);
+  EXPECT_THROW(read(R"("HARMONIC", [100.0, 150.0, 1.0])"), std::runtime_error);
+}

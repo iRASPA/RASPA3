@@ -83,7 +83,9 @@ export struct BendPotential
    *
    * A static vector indicating the number of parameters needed for each bend type.
    */
-  static inline std::array<std::size_t, 11> numberOfBendParameters{1, 2, 2, 4, 4, 2, 3, 3, 1, 2, 2};
+  // in the order of BendType: Rigid, Fixed, Harmonic, CoreShell, Quartic, CFF_Quartic, HarmonicCosine, Cosine,
+  // Tafipolsky, MM3, MM3_inplane (the counts the constructor reads)
+  static inline std::array<std::size_t, 11> numberOfBendParameters{1, 1, 2, 2, 4, 4, 2, 3, 1, 2, 2};
 
   /**
    * \brief Mapping of bend type strings to BendType enums.
