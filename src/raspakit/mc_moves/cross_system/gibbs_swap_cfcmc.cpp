@@ -292,14 +292,19 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     auto restoreB = [&]()
     {
       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      systemB.cellListAtomsMoved(fractionalMoleculeB);
       std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(),
                 selectedIntegerMoleculeB.begin());
+      systemB.cellListAtomsMoved(selectedIntegerMoleculeB);
     };
 
+    // The cell list of B caches the scaling of every atom: the switched-off molecule and the fractional slot below
+    // are refreshed in it, or the copy in the slot meets its own original at zero distance as a coupled molecule.
     for (Atom& atom : selectedIntegerMoleculeB)
     {
       atom.setScalingOff();
     }
+    systemB.cellListAtomsMoved(selectedIntegerMoleculeB);
 
     std::optional<RunningEnergy> externalFieldDifferenceB =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
@@ -373,12 +378,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
           static_cast<std::uint32_t>(systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB));
       atom.setScalingToFractional(oldLambda, componentB.lambdaGC.dUdlambdaGroupId);
     }
-
-    for (Atom& atom : selectedIntegerMoleculeB)
-    {
-      atom.setScalingOff();
-      atom.position = systemB.simulationBox.randomPosition(random);
-    }
+    systemB.cellListAtomsMoved(fractionalMoleculeB);
 
     // Intra-molecular bookkeeping (zero for rigid molecules): the placeholder conformation leaves B, the selected
     // conformation stays in B as the new fractional molecule.

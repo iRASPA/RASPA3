@@ -795,6 +795,67 @@ TEST(MC_GIBBS_DRIFT, gibbs_cbcfcmc_keeps_both_cell_lists_current)
   runGibbsSwapCellListCheck(Move::Types::GibbsSwapCBCFCMC);
 }
 
+// The transfer sub-move of the serial Gibbs CFCMC swap switches the selected integer molecule of B off and copies it
+// into the fractional slot of B, where the copy is evaluated against the cell list of B. The list caches the scaling
+// of every atom: unless both molecules are refreshed in it, the copy meets its switched-off original at its own
+// position as a fully coupled molecule, and a list built during the move keeps the original switched off after a
+// rejection. So every accepted transfer must return the recomputed energy difference, the list must describe the
+// atoms after every attempt, whether or not it was current on entry, and transfers must get accepted at all.
+TEST(MC_GIBBS_DRIFT, gibbs_cfcmc_transfer_with_cell_lists_returns_the_recomputed_energy_difference)
+{
+  const ForceField forceField = makeAlkaneForceField();
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::GibbsSwapCFCMC, 1.0);
+  Component propane = makeAlkaneFromExample(forceField, 0, "propane", probabilities, true);
+  Component butane = makeAlkaneFromExample(forceField, 1, "butane", probabilities, true);
+  SimulationBox box = SimulationBox(60.0, 60.0, 60.0);
+  std::vector<System> systems{
+      System(forceField, box, false, 500.0, 1e4, 1.0, {}, {propane, butane}, {}, {40, 40}, 5, MCMoveProbabilities()),
+      System(forceField, box, false, 500.0, 1e4, 1.0, {}, {propane, butane}, {}, {40, 40}, 5, MCMoveProbabilities())};
+  setupSerialGibbsCFCMC(systems);
+  ASSERT_TRUE(systems[0].cellList().enabled);
+  ASSERT_TRUE(systems[1].cellList().enabled);
+
+  RandomNumber random(42);
+  std::size_t fractionalMoleculeSystem = 0;
+  for (int attempt = 0; attempt < 1500; ++attempt)
+  {
+    System& systemA = systems[0].containsTheFractionalMolecule ? systems[0] : systems[1];
+    System& systemB = systems[0].containsTheFractionalMolecule ? systems[1] : systems[0];
+    const std::size_t component = static_cast<std::size_t>(attempt % 2);
+
+    // the recomputation rebuilds both lists; every other pair of attempts then drops the list of B, so that the move
+    // builds it in the middle of the transfer
+    const RunningEnergy beforeA = systemA.computeTotalEnergies();
+    const RunningEnergy beforeB = systemB.computeTotalEnergies();
+    if (attempt % 4 >= 2) systemB.moleculeCellList.invalidate();
+
+    const std::optional<std::pair<RunningEnergy, RunningEnergy>> delta =
+        MC_Moves::GibbsSwapMove_CFCMC(random, systemA, systemB, component, fractionalMoleculeSystem);
+    SCOPED_TRACE("attempt " + std::to_string(attempt) + " component " + std::to_string(component));
+    EXPECT_TRUE(systemA.verifyCellList());
+    EXPECT_TRUE(systemB.verifyCellList());
+    if (!delta.has_value()) continue;
+
+    systemA.runningEnergies += delta->first;
+    systemB.runningEnergies += delta->second;
+    ASSERT_NEAR(delta->first.potentialEnergy(), (systemA.computeTotalEnergies() - beforeA).potentialEnergy(), 1e-6);
+    ASSERT_NEAR(delta->second.potentialEnergy(), (systemB.computeTotalEnergies() - beforeB).potentialEnergy(), 1e-6);
+  }
+
+  // the transfer (x) sub-move got accepted (statistics live on the box holding the fractional molecule at the time)
+  double3 accepted{};
+  for (const System& system : systems)
+  {
+    for (const Component& component : system.components)
+    {
+      accepted +=
+          std::get<MoveStatistics<double3>>(component.mc_moves_statistics[Move::Types::GibbsSwapCFCMC]).totalAccepted;
+    }
+  }
+  EXPECT_GT(accepted.x, 0.0);
+}
+
 // Serial Gibbs CFCMC in a methane/CO2 mixture whose first component holds a different number of molecules in each
 // box: the fractional CO2 molecule then has a different global molecule index in A and B, and the second component
 // adds a charged fractional molecule that follows the flag swap of the first. Exercises the cross-system atom
