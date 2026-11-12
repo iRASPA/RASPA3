@@ -9,13 +9,13 @@ import characterset;
 export class Scanner
 {
  public:
-  Scanner(const std::string& content, CharacterSet charactersToBeSkipped);
-  std::string string() const { return _string; }
+  Scanner(const std::string& content, const CharacterSet& charactersToBeSkipped);
+  const std::string& string() const { return _string; }
   std::string::const_iterator scanLocation() const { return _scanLocation; }
   void setScanLocation(std::string::const_iterator location) { _scanLocation = location; }
-  bool scanCharacters(CharacterSet set, std::string& into);
+  bool scanCharacters(const CharacterSet& set, std::string& into);
   bool scanLine(std::string& into);
-  bool scanUpToCharacters(CharacterSet set, std::string& into);
+  bool scanUpToCharacters(const CharacterSet& set, std::string& into);
   bool isAtEnd();
   bool scanDouble(double& value);
   bool scanInt(int& value);

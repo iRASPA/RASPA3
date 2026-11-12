@@ -10,6 +10,8 @@ import archive;
 export union uint3
 {
   std::size_t v[3];
+  /// The archive form of this type is its memory image: containers of it are streamed in bulk.
+  static constexpr bool archiveIsMemoryImage = true;
   struct
   {
     std::size_t x, y, z;

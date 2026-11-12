@@ -11,6 +11,8 @@ import json;
 export union simd_quatd
 {
   double v[4];
+  /// The archive form of this type is its memory image: containers of it are streamed in bulk.
+  static constexpr bool archiveIsMemoryImage = true;
   struct
   {
     double ix, iy, iz, r;

@@ -61,7 +61,7 @@ export struct caseInsensitiveComparator
 
 export inline bool startsWith(const std::string& str, const std::string& prefix)
 {
-  return str.size() >= prefix.size() && str.substr(0, prefix.size()) == prefix;
+  return str.size() >= prefix.size() && str.compare(0, prefix.size(), prefix) == 0;
 }
 
 export inline std::string trim(const std::string& s)
@@ -183,12 +183,15 @@ export std::string readFileContent(const std::string &fileName, const std::strin
     throw std::runtime_error(std::format("'{}' is not a file\n", path.string()));
   }
 
-  std::ifstream t(path);
+  std::ifstream t(path, std::ios::binary);
   if (!t.is_open())
   {
     throw std::runtime_error(std::format("File '{}' cannot be opened for reading\n", path.string()));
   }
-  std::string file_content((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
+  // sized from the file and read in one call, instead of appended byte by byte through a stream iterator
+  std::string file_content(static_cast<std::size_t>(std::filesystem::file_size(path)), '\0');
+  t.read(file_content.data(), static_cast<std::streamsize>(file_content.size()));
+  file_content.resize(static_cast<std::size_t>(t.gcount()));
 
   return file_content;
 }

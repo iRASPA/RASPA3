@@ -25,9 +25,16 @@ import std;
 // excluded (they are serialized widened to int64), bool is excluded (std::vector<bool> is packed
 // and bool has no guaranteed representation), std::complex<double> is guaranteed to be laid out
 // as {real, imag}.
+// A type may declare that its archive form is its memory image ('static constexpr bool archiveIsMemoryImage'):
+// contiguous containers of it are then streamed in bulk as well.
 template <typename T>
-constexpr bool is_bulk_serializable_v =
-    (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>) || std::is_same_v<T, std::complex<double>>;
+concept ArchivedAsMemoryImage = requires {
+  { T::archiveIsMemoryImage } -> std::convertible_to<bool>;
+} && T::archiveIsMemoryImage;
+
+template <typename T>
+constexpr bool is_bulk_serializable_v = (std::is_arithmetic_v<T> && !std::is_same_v<T, bool>) ||
+                                        std::is_same_v<T, std::complex<double>> || ArchivedAsMemoryImage<T>;
 
 export template <class STREAM>
 class Archive
@@ -281,8 +288,7 @@ class Archive
     {
       std::pair<T1, T2> value;
       *this >> value;
-      v[value.first] = value.second;
-      // v.push_back(value);
+      v[std::move(value.first)] = std::move(value.second);
     }
     return *this;
   }
@@ -306,12 +312,12 @@ class Archive
     *this >> len;
     // the archive holds the whole map: what was in it before is replaced, not merged
     v.clear();
+    v.reserve(len);
     for (std::size_t i = 0; i < len; ++i)
     {
       std::pair<T1, T2> value;
       *this >> value;
-      v[value.first] = value.second;
-      // v.push_back(value);
+      v[std::move(value.first)] = std::move(value.second);
     }
     return *this;
   }
@@ -375,17 +381,10 @@ class Archive
   {
     std::size_t len;
     *this >> len;
-    v.clear();
-    char buffer[256];
-    std::size_t toRead = len;
-    while (toRead != 0)
-    {
-      std::size_t l = std::min(toRead, sizeof(buffer));
-      stream.read(buffer, static_cast<std::streamsize>(l));
-      if (!stream) throw std::runtime_error("malformed data");
-      v += std::string(buffer, l);
-      toRead -= l;
-    }
+    // sized once and read in one call (it was appended in 256-byte pieces through a temporary string each)
+    v.resize(len);
+    if (len != 0) stream.read(v.data(), static_cast<std::streamsize>(len));
+    if (!stream) throw std::runtime_error("malformed data");
     return *this;
   }
 
@@ -412,9 +411,15 @@ constexpr std::uint64_t restartFileHeaderSize = sizeof(std::uint32_t) + 2uz * si
 // Streaming 64-bit hash over the payload (8-byte words with splitmix64-style mixing, seeded with
 // the payload size). Not cryptographic; detects truncation and bit corruption. Throws when the
 // stream ends before 'payloadSize' bytes.
-inline std::uint64_t hashRestartFilePayload(std::istream& stream, std::uint64_t payloadSize)
+// The checksum of a restart payload, taken over the bytes as a stream: eight-byte words in file order (the last
+// one zero-padded), each folded into the running value, and the payload size folded in last. Fed by the writer
+// as the payload goes out (through 'HashingStreambuf') and by the reader as it comes in, so a file is written
+// once and never read back to be summed. (The size used to seed the hash, which made a single pass over an
+// outgoing payload impossible; a checkpoint from before this change fails its checksum and is rejected, as a
+// corrupt one is.)
+struct RestartPayloadHash
 {
-  constexpr auto mixBits = [](std::uint64_t h)
+  static constexpr std::uint64_t mixBits(std::uint64_t h)
   {
     h ^= h >> 30;
     h *= 0xbf58476d1ce4e5b9;
@@ -422,10 +427,88 @@ inline std::uint64_t hashRestartFilePayload(std::istream& stream, std::uint64_t 
     h *= 0x94d049bb133111eb;
     h ^= h >> 31;
     return h;
-  };
+  }
 
-  std::uint64_t hash = 0xcbf29ce484222325 ^ payloadSize;
-  std::vector<char> buffer(1uz << 20uz);  // multiple of 8: partial words only in the last chunk
+  std::uint64_t hash{0xcbf29ce484222325};
+  std::uint64_t size{0};
+  std::array<char, 8> pending{};  // the bytes of a word not yet complete across calls
+  std::size_t pendingBytes{0};
+
+  void update(const char* data, std::size_t count)
+  {
+    size += count;
+    // complete a word left pending by the previous call
+    while (count != 0 && pendingBytes != 0)
+    {
+      pending[pendingBytes++] = *data++;
+      --count;
+      if (pendingBytes == 8)
+      {
+        std::uint64_t word{0};
+        std::memcpy(&word, pending.data(), 8);
+        hash = mixBits(hash ^ word);
+        pendingBytes = 0;
+      }
+    }
+    for (; count >= 8; data += 8, count -= 8)
+    {
+      std::uint64_t word{0};
+      std::memcpy(&word, data, 8);
+      hash = mixBits(hash ^ word);
+    }
+    for (; count != 0; --count) pending[pendingBytes++] = *data++;
+  }
+
+  [[nodiscard]] std::uint64_t finish() const
+  {
+    std::uint64_t h = hash;
+    if (pendingBytes != 0)
+    {
+      std::uint64_t word{0};
+      std::memcpy(&word, pending.data(), pendingBytes);
+      h = mixBits(h ^ word);
+    }
+    return mixBits(mixBits(h) ^ size);
+  }
+};
+
+// A stream buffer that hands every byte to a RestartPayloadHash on its way to the underlying buffer.
+class HashingStreambuf : public std::streambuf
+{
+ public:
+  HashingStreambuf(std::streambuf* sink, RestartPayloadHash& hash) : sink_(sink), hash_(hash) {}
+
+ protected:
+  std::streamsize xsputn(const char* data, std::streamsize count) override
+  {
+    const std::streamsize written = sink_->sputn(data, count);
+    if (written > 0) hash_.update(data, static_cast<std::size_t>(written));
+    return written;
+  }
+  int overflow(int character) override
+  {
+    if (character == traits_type::eof())
+    {
+      return sink_->pubsync() == 0 ? traits_type::not_eof(character) : traits_type::eof();
+    }
+    const char byte = traits_type::to_char_type(character);
+    if (sink_->sputc(byte) == traits_type::eof()) return traits_type::eof();
+    hash_.update(&byte, 1);
+    return character;
+  }
+  int sync() override { return sink_->pubsync(); }
+
+ private:
+  std::streambuf* sink_;
+  RestartPayloadHash& hash_;
+};
+
+// The checksum of the 'payloadSize' bytes that follow in 'stream' (the reader's side). Throws when the stream
+// ends before 'payloadSize' bytes.
+inline std::uint64_t hashRestartFilePayload(std::istream& stream, std::uint64_t payloadSize)
+{
+  RestartPayloadHash hash{};
+  std::vector<char> buffer(1uz << 20uz);
   std::uint64_t remaining = payloadSize;
   while (remaining != 0uz)
   {
@@ -435,24 +518,10 @@ inline std::uint64_t hashRestartFilePayload(std::istream& stream, std::uint64_t 
     {
       throw std::runtime_error("truncated restart file payload");
     }
-
-    std::size_t position = 0uz;
-    for (; position + sizeof(std::uint64_t) <= chunk; position += sizeof(std::uint64_t))
-    {
-      std::uint64_t word;
-      std::memcpy(&word, buffer.data() + position, sizeof(std::uint64_t));
-      hash = mixBits(hash ^ word);
-    }
-    if (position != chunk)
-    {
-      std::uint64_t word{0};
-      std::memcpy(&word, buffer.data() + position, chunk - position);
-      hash = mixBits(hash ^ word);
-    }
-
+    hash.update(buffer.data(), chunk);
     remaining -= chunk;
   }
-  return mixBits(hash);
+  return hash.finish();
 }
 
 // Durability: flush the written file contents to stable storage before the rename, so a power
@@ -506,7 +575,7 @@ void writeBinaryRestartFile(const T& object, const std::string& fileName = "rest
   {
     const std::string temporaryFileName = fileName + "_temp";
 
-    // serialize with a placeholder header
+    // one pass: the header with placeholders, the payload summed as it is written, the header patched in place
     {
       std::vector<char> buffer(1uz << 20uz);
       std::ofstream ofile;
@@ -517,27 +586,23 @@ void writeBinaryRestartFile(const T& object, const std::string& fileName = "rest
       archive << restartFileByteOrderMarker;
       archive << std::uint64_t{0};  // payload size, patched below
       archive << std::uint64_t{0};  // payload checksum, patched below
+
+      // the payload goes out through a buffer that sums it on the way
+      std::filebuf* fileBuffer = ofile.rdbuf();
+      RestartPayloadHash hash{};
+      HashingStreambuf hashingBuffer(fileBuffer, hash);
+      ofile.std::ios::rdbuf(&hashingBuffer);
       archive << object;
+      ofile.flush();
+      ofile.std::ios::rdbuf(fileBuffer);
+
+      const std::uint64_t payloadSize = hash.size;
+      const std::uint64_t checksum = hash.finish();
+      ofile.seekp(static_cast<std::streamoff>(sizeof(std::uint32_t)));
+      ofile.write(std::bit_cast<const char*>(&payloadSize), sizeof(std::uint64_t));
+      ofile.write(std::bit_cast<const char*>(&checksum), sizeof(std::uint64_t));
       ofile.close();
       if (!ofile) return;
-    }
-
-    // compute the payload size and checksum, and patch them into the header
-    {
-      const std::uint64_t payloadSize =
-          static_cast<std::uint64_t>(std::filesystem::file_size(temporaryFileName)) - restartFileHeaderSize;
-
-      std::ifstream ifile(temporaryFileName, std::ios::binary);
-      ifile.seekg(static_cast<std::streamoff>(restartFileHeaderSize));
-      const std::uint64_t checksum = hashRestartFilePayload(ifile, payloadSize);
-      ifile.close();
-
-      std::fstream patch(temporaryFileName, std::ios::in | std::ios::out | std::ios::binary);
-      patch.seekp(static_cast<std::streamoff>(sizeof(std::uint32_t)));
-      patch.write(std::bit_cast<const char*>(&payloadSize), sizeof(std::uint64_t));
-      patch.write(std::bit_cast<const char*>(&checksum), sizeof(std::uint64_t));
-      patch.close();
-      if (!patch) return;
     }
 
     syncFileToStableStorage(temporaryFileName);

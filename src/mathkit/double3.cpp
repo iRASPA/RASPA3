@@ -40,9 +40,11 @@ std::ostream &operator<<(std::ostream &out, const double3 &vec)  // output
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const double3 &vec)
 {
+  // the four words of the memory image (the padding word among them), so that a vector of these streams in bulk
   archive << vec.x;
   archive << vec.y;
   archive << vec.z;
+  archive << vec.w;
   return archive;
 }
 
@@ -51,5 +53,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, double3 &vec
   archive >> vec.x;
   archive >> vec.y;
   archive >> vec.z;
+  archive >> vec.w;
   return archive;
 }

@@ -9,7 +9,7 @@ export class CharacterSet
  public:
   CharacterSet();
   CharacterSet(std::string chars);
-  std::string string() { return _string; }
+  const std::string& string() const { return _string; }
   static CharacterSet newlineCharacter();
   static CharacterSet newlineCharacterSet();
   static CharacterSet whitespaceAndNewlineCharacterSet();

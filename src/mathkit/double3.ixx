@@ -16,6 +16,8 @@ export union double3
   //      __m256d vec;
   //    #endif
   double v[4];
+  /// The archive form of this type is its memory image: containers of it are streamed in bulk.
+  static constexpr bool archiveIsMemoryImage = true;
   struct
   {
     double x, y, z, w;

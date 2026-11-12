@@ -4,7 +4,7 @@ module indexpath;
 
 import std;
 
-IndexPath::IndexPath() { _path.reserve(10); }
+IndexPath::IndexPath() {}
 
 IndexPath::IndexPath(const std::size_t index)
 {
@@ -71,84 +71,15 @@ const IndexPath IndexPath::operator+(const IndexPath& rhs) const
 
 bool IndexPath::operator<(const IndexPath& otherObject) const
 {
-  std::size_t l1 = _path.size();
-  std::size_t l2 = otherObject._path.size();
-  for (std::size_t pos = 0; pos < std::min(l1, l2); pos++)
-  {
-    std::size_t i1 = _path[pos];
-    std::size_t i2 = otherObject._path[pos];
-    if (i1 < i2)
-    {
-      return true;
-    }
-    else if (i1 > i2)
-    {
-      return false;
-    }
-  }
-  if (l1 < l2)
-  {
-    return true;
-  }
-  else if (l1 > l2)
-  {
-    return false;
-  }
-  return false;
+  return std::lexicographical_compare(_path.begin(), _path.end(), otherObject._path.begin(), otherObject._path.end());
 }
 
 bool IndexPath::operator>(const IndexPath& otherObject) const
 {
-  std::size_t l1 = _path.size();
-  std::size_t l2 = otherObject._path.size();
-  for (std::size_t pos = 0; pos < std::min(l1, l2); pos++)
-  {
-    std::size_t i1 = _path[pos];
-    std::size_t i2 = otherObject._path[pos];
-    if (i1 < i2)
-    {
-      return false;
-    }
-    else if (i1 > i2)
-    {
-      return true;
-    }
-  }
-  if (l1 < l2)
-  {
-    return false;
-  }
-  else if (l1 > l2)
-  {
-    return true;
-  }
-  return false;
+  return std::lexicographical_compare(otherObject._path.begin(), otherObject._path.end(), _path.begin(), _path.end());
 }
 
 bool IndexPath::operator==(const IndexPath& otherObject) const
 {
-  std::size_t l1 = _path.size();
-  std::size_t l2 = otherObject._path.size();
-  for (std::size_t pos = 0; pos < std::min(l1, l2); pos++)
-  {
-    std::size_t i1 = _path[pos];
-    std::size_t i2 = otherObject._path[pos];
-    if (i1 < i2)
-    {
-      return false;
-    }
-    else if (i1 > i2)
-    {
-      return false;
-    }
-  }
-  if (l1 < l2)
-  {
-    return false;
-  }
-  else if (l1 > l2)
-  {
-    return false;
-  }
-  return true;
+  return _path == otherObject._path;
 }

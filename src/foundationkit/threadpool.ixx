@@ -429,7 +429,9 @@ class ThreadPool
     tasks_[i].signal.release();
   }
 
-  struct task_item
+  // one per worker, each on its own cache lines: a worker's queue and semaphore are not falsely shared with its
+  // neighbour's
+  struct alignas(128) task_item
   {
     thread_safe_queue<FunctionType> tasks{};
     // one permit per enqueued task (and one for the shutdown): a binary semaphore may not be released again
@@ -440,7 +442,9 @@ class ThreadPool
   std::vector<ThreadType> threads_;
   std::deque<task_item> tasks_;
   thread_safe_queue<std::size_t> priority_queue_;
-  std::atomic_int_fast64_t unassigned_tasks_{}, in_flight_tasks_{};
+  // modified on every enqueue and every completion from different threads: kept on separate cache lines
+  alignas(128) std::atomic_int_fast64_t unassigned_tasks_{};
+  alignas(128) std::atomic_int_fast64_t in_flight_tasks_{};
 };
 
 /**

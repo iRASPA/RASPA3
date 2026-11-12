@@ -6,7 +6,7 @@ import std;
 
 import characterset;
 
-Scanner::Scanner(const std::string& content, CharacterSet charactersToBeSkipped)
+Scanner::Scanner(const std::string& content, const CharacterSet& charactersToBeSkipped)
     : _charactersToBeSkipped(charactersToBeSkipped)
 {
   _string = content;
@@ -41,7 +41,7 @@ std::string::const_iterator Scanner::find_first_of(const std::string& chars, con
   return text.cend();
 }
 
-bool Scanner::scanCharacters(CharacterSet set, std::string& into)
+bool Scanner::scanCharacters(const CharacterSet& set, std::string& into)
 {
   std::string::const_iterator found = find_first_not_of(set.string(), _string, _scanLocation);
 
@@ -58,8 +58,10 @@ bool Scanner::scanCharacters(CharacterSet set, std::string& into)
 
 bool Scanner::scanLine(std::string& into)
 {
+  // the set is the same for every line: made once
+  static const CharacterSet newline = CharacterSet::newlineCharacter();
   std::string::const_iterator newlineLocation =
-      find_first_of(CharacterSet::newlineCharacter().string(), _string, _scanLocation);
+      find_first_of(newline.string(), _string, _scanLocation);
 
   // nothing left
   if (_scanLocation >= _string.cend())
@@ -81,7 +83,7 @@ bool Scanner::scanLine(std::string& into)
   return true;
 }
 
-bool Scanner::scanUpToCharacters(CharacterSet set, std::string& into)
+bool Scanner::scanUpToCharacters(const CharacterSet& set, std::string& into)
 {
   std::string::const_iterator found = find_first_not_of(_charactersToBeSkipped.string(), _string, _scanLocation);
 
@@ -118,8 +120,17 @@ bool Scanner::scanDouble(double& value)
 
   // the token runs up to the next skipped character or to the end of the string
   found = find_first_of(_charactersToBeSkipped.string(), _string, _scanLocation);
-  std::string into = std::string(_scanLocation, found);
+  // parsed in place; the library parser is the fallback for the forms 'from_chars' does not take (a leading plus,
+  // a leading space), so what was accepted before is accepted still
+  const char* first = std::to_address(_scanLocation);
+  const char* last = std::to_address(found);
   _scanLocation = found;
+  if (const std::from_chars_result result = std::from_chars(first, last, value);
+      result.ec == std::errc{} && result.ptr == last)
+  {
+    return true;
+  }
+  std::string into = std::string(first, last);
   try
   {
     value = std::stod(into);
@@ -149,8 +160,17 @@ bool Scanner::scanInt(int& value)
 
   // the token runs up to the next skipped character or to the end of the string
   found = find_first_of(_charactersToBeSkipped.string(), _string, _scanLocation);
-  std::string into = std::string(_scanLocation, found);
+  // parsed in place; the library parser is the fallback for the forms 'from_chars' does not take (a leading plus,
+  // a leading space), so what was accepted before is accepted still
+  const char* first = std::to_address(_scanLocation);
+  const char* last = std::to_address(found);
   _scanLocation = found;
+  if (const std::from_chars_result result = std::from_chars(first, last, value);
+      result.ec == std::errc{} && result.ptr == last)
+  {
+    return true;
+  }
+  std::string into = std::string(first, last);
   try
   {
     value = std::stoi(into);

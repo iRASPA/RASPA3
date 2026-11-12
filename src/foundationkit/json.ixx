@@ -34,7 +34,9 @@ import stringutils;
 //// ADDED: David Dubbeldam
 struct RASPAComparator
 {
-  bool operator()(const std::string& str1, const std::string& str2) const
+  // transparent: a lookup by a literal or a string view compares without building a std::string first
+  using is_transparent = void;
+  bool operator()(std::string_view str1, std::string_view str2) const
   {
     return str1.size() == str2.size() && std::equal(str1.begin(), str1.end(), str2.begin(),
                                                     [](auto a, auto b) { return std::tolower(a) == std::tolower(b); });

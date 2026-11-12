@@ -9,6 +9,8 @@ import archive;
 export union double4
 {
   double v[4];
+  /// The archive form of this type is its memory image: containers of it are streamed in bulk.
+  static constexpr bool archiveIsMemoryImage = true;
   struct
   {
     double x, y, z, w;
