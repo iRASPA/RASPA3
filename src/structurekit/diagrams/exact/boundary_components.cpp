@@ -421,7 +421,9 @@ std::int32_t BoundaryComponents::patchOfCirclePoint(std::size_t atomIndex, const
   // Which circle the point is on. Several may pass through it, so they are tried nearest first: the point
   // comes from the sweep's own arithmetic rather than from the circle's, and agrees with it only to
   // rounding.
-  std::vector<std::pair<double, std::size_t>> onCircle;
+  // (one circle, two at a corner; a per-thread buffer, cleared, so the many calls of a sweep allocate nothing)
+  thread_local std::vector<std::pair<double, std::size_t>> onCircle;
+  onCircle.clear();
   for (std::size_t c = 0; c < boundary.circles.size(); ++c)
   {
     double residual = std::abs(double3::dot(unitDirection, boundary.circles[c].axis) -

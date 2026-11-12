@@ -87,7 +87,8 @@ export struct BruteForceStructure
 
   // The smallest sphere about `position` that reaches no atom is zero when the position is inside one, so
   // this says which of the two it is without the caller having to compare against a tolerance.
-  bool insideAnAtom(const double3 &position) const { return this->clearance(position) < 0.0; }
+  // (the room check stops at the first atom in the way; the clearance would measure every one)
+  bool insideAnAtom(const double3& position) const { return !this->hasRoomFor(position, 0.0); }
 
   // Along the ray from `origin` in unit direction `direction`, the first distance at which the ray is
   // outside every atom, or nothing when it never is within `limit`. Every atom of every image contributes

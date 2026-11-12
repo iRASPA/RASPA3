@@ -70,7 +70,7 @@ BruteForceSurfaceArea BruteForceSurfaceArea::compute(const BruteForceStructure &
                    // there and the minimum over all of them is zero when nothing else reaches it and negative when
                    // something does. No separate occlusion test is needed, and none of the bookkeeping about which atom
                    // to skip: the point is exposed when the clearance has not gone negative.
-                   if (structure.clearance(point) < -1.0e-9) continue;
+                   if (!structure.hasRoomFor(point, -1.0e-9)) continue;
                    ++exposed;
 
                    if (keepExposedPoints) pointsOfAtom[atom].push_back(point);

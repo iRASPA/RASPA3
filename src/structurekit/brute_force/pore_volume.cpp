@@ -40,7 +40,7 @@ BruteForcePoreVolume BruteForcePoreVolume::compute(const BruteForceStructure &st
                    double3 fractional(random.uniform(), random.uniform(), random.uniform());
                    double3 position = structure.unitCell.cell * fractional;
 
-                   if (structure.clearance(position) < 0.0) continue;
+                   if (!structure.hasRoomFor(position, 0.0)) continue;
                    ++inVoid[lane];
 
                    // Which piece of the void the point is in comes from the flood, which is the only thing here that

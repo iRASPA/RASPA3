@@ -299,6 +299,13 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
     }
   }
 
+  // The classifier of the void probe, the structure inflated by it and that structure's voxels serve the three
+  // phases below alike: built once here instead of once per phase.
+  ApolloniusAccessibility voidClassifier =
+      ApolloniusAccessibility::create(framework.unitCell, fractionalPositions, bareRadii, voidProbeRadius);
+  BruteForceStructure voidInflated = structureWith(framework, inflatedBy(bareRadii, voidProbeRadius));
+  BruteForceVoxels voidVoxels = BruteForceVoxels::build(voidInflated, settings.spacing);
+
   // ---- the accessible surface area, against the exact sweep -----------------------------------------
   // Geometry and total area use the surface probe (nitrogen). Reachable vs sealed is labeled by the
   // void probe (helium): N₂ area of walls that He can reach from outside. The exact walk already
@@ -307,26 +314,22 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
   {
     ApolloniusAccessibility surfaceClassifier = ApolloniusAccessibility::create(
         framework.unitCell, fractionalPositions, bareRadii, surfaceProbeRadius);
-    ApolloniusAccessibility reachClassifier = ApolloniusAccessibility::create(
-        framework.unitCell, fractionalPositions, bareRadii, voidProbeRadius);
 
     BoundaryComponents components = boundaryComponents(surfaceClassifier.accessibility);
     std::vector<ComponentVerdict> verdicts =
-        boundaryComponentVerdicts(surfaceClassifier.accessibility, components, &reachClassifier.accessibility);
+        boundaryComponentVerdicts(surfaceClassifier.accessibility, components, &voidClassifier.accessibility);
     MeasuredPatches measured = exactAccessibleSurfaceAreaByComponent(
         surfaceClassifier.accessibility, components, verdicts, panels, SurfaceMoments::volume,
         SurfaceSidePolicy::network);
 
     BruteForceStructure surfaceInflated =
         structureWith(framework, inflatedBy(bareRadii, surfaceProbeRadius));
-    BruteForceStructure reachInflated = structureWith(framework, inflatedBy(bareRadii, voidProbeRadius));
-    BruteForceVoxels reachVoxels = BruteForceVoxels::build(reachInflated, settings.spacing);
 
-    this->surfaceNecksProved = reachVoxels.necksProved;
-    this->surfaceNecksTried = reachVoxels.necksTried;
+    this->surfaceNecksProved = voidVoxels.necksProved;
+    this->surfaceNecksTried = voidVoxels.necksTried;
 
     this->surfaceArea =
-        BruteForceSurfaceArea::compute(surfaceInflated, reachVoxels, settings.samplesPerAtom, false);
+        BruteForceSurfaceArea::compute(surfaceInflated, voidVoxels, settings.samplesPerAtom, false);
 
     // Four standard errors is a one-in-sixteen-thousand coincidence, which is the point at which a
     // disagreement is worth looking at rather than worth repeating with more points.
@@ -367,25 +370,21 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
 
   // ---- the solvent-excluded surface and the blocking spheres (void probe) ---------------------------
   {
-    ApolloniusAccessibility classifier =
-        ApolloniusAccessibility::create(framework.unitCell, fractionalPositions, bareRadii, voidProbeRadius);
 
-    BoundaryComponents components = boundaryComponents(classifier.accessibility);
-    std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(classifier.accessibility, components);
+    BoundaryComponents components = boundaryComponents(voidClassifier.accessibility);
+    std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(voidClassifier.accessibility, components);
     MeasuredPatches measured =
-        exactAccessibleSurfaceAreaByComponent(classifier.accessibility, components, verdicts, panels);
+        exactAccessibleSurfaceAreaByComponent(voidClassifier.accessibility, components, verdicts, panels);
 
     BruteForceStructure bare = structureWith(framework, bareRadii);
-    BruteForceStructure inflated = structureWith(framework, inflatedBy(bareRadii, voidProbeRadius));
-    BruteForceVoxels voxels = BruteForceVoxels::build(inflated, settings.spacing);
 
     if (!settings.skipSolventExcluded)
     {
       // The accessible-surface sample is needed only to seed the burial cloud for the excluded patches.
       BruteForceSurfaceArea surfaceForExcluded =
-          BruteForceSurfaceArea::compute(inflated, voxels, settings.samplesPerAtom, true);
+          BruteForceSurfaceArea::compute(voidInflated, voidVoxels, settings.samplesPerAtom, true);
 
-      SolventExcludedGeometry excluded = solventExcludedGeometry(classifier.accessibility, voidProbeRadius,
+      SolventExcludedGeometry excluded = solventExcludedGeometry(voidClassifier.accessibility, voidProbeRadius,
                                                                  components, verdicts, measured, panels);
 
       this->exactVertices = excluded.diagnostics.numberOfVertices;
@@ -395,7 +394,7 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
       this->exactDiscardedCorners = excluded.diagnostics.discardedCorners;
 
       this->solventExcluded =
-          BruteForceSolventExcluded::compute(bare, inflated, surfaceForExcluded, voidProbeRadius,
+          BruteForceSolventExcluded::compute(bare, voidInflated, surfaceForExcluded, voidProbeRadius,
                                              settings.samplesPerAtom, settings.creaseSteps,
                                              settings.cornerSamples);
 
@@ -406,7 +405,7 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
                           .bruteForce = this->solventExcluded.convexArea,
                           .tolerance = 4.0 * this->solventExcluded.convexAreaError,
                           .basis = "four standard errors; the same directions as the surface area, weighted "
-                                   "by the atom's own radius instead of the inflated one"});
+                                   "by the atom's own radius instead of the voidInflated one"});
 
       // The saddle sweep is a quadrature rather than a sample, so what limits it is the step in the two
       // angles rather than a count of points, and its error falls off as the square of the step.
@@ -442,13 +441,13 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
 
     // ---- the blocking spheres, held against the flood ------------------------------------------------
     {
-      ExactVoidSplit split = exactVoidSplitByComponents(classifier.accessibility, volume, panels);
+      ExactVoidSplit split = exactVoidSplitByComponents(voidClassifier.accessibility, volume, panels);
 
-      this->blockingPockets = BruteForceBlockingPockets::compute(inflated, voxels);
+      this->blockingPockets = BruteForceBlockingPockets::compute(voidInflated, voidVoxels);
 
       // Reported and not judged. How many pieces the void falls into is the one thing a grid is entitled to
       // disagree about: a neck it cannot resolve splits one pocket into two, and a neck it can resolve but
-      // the classifier cannot joins two into one. What the spheres have to get right is not the count but
+      // the voidClassifier cannot joins two into one. What the spheres have to get right is not the count but
       // the cover, and that is the check below.
       this->checks.push_back(BruteForceCheck{
           .property = "Sealed pockets, how many",
@@ -472,7 +471,7 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
           asPairs.emplace_back(sphere.centerFractional, sphere.radius);
         }
 
-        this->blockingAudit = auditBlockingSpheres(inflated, voxels, asPairs);
+        this->blockingAudit = auditBlockingSpheres(voidInflated, voidVoxels, asPairs);
 
         // Not a comparison of two numbers but a property the spheres either have or do not: they must cover
         // every scrap of void a molecule cannot reach and none of the void it can. A sphere that fails the
@@ -483,7 +482,7 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
             .units = "Å³",
             .exact = 0.0,
             .bruteForce = this->blockingAudit.volumeLeftOpen,
-            .tolerance = 4.0 * voxels.voxelVolume,
+            .tolerance = 4.0 * voidVoxels.voxelVolume,
             .basis = "sealed void outside every sphere, which a simulation would insert into"});
 
         this->checks.push_back(BruteForceCheck{
@@ -491,7 +490,7 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
             .units = "Å³",
             .exact = 0.0,
             .bruteForce = this->blockingAudit.volumeCoveredUp,
-            .tolerance = 4.0 * voxels.voxelVolume,
+            .tolerance = 4.0 * voidVoxels.voxelVolume,
             .basis = "void in a channel that the spheres refuse, which a simulation would then never fill"});
       }
     }
@@ -499,15 +498,11 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
 
   // ---- the void fraction and its split, against the exact one ---------------------------------------
   {
-    ApolloniusAccessibility classifier =
-        ApolloniusAccessibility::create(framework.unitCell, fractionalPositions, bareRadii, voidProbeRadius);
 
-    ExactVoidSplit split = exactVoidSplitByComponents(classifier.accessibility, volume, panels);
+    ExactVoidSplit split = exactVoidSplitByComponents(voidClassifier.accessibility, volume, panels);
 
-    BruteForceStructure inflated = structureWith(framework, inflatedBy(bareRadii, voidProbeRadius));
-    BruteForceVoxels voxels = BruteForceVoxels::build(inflated, settings.spacing);
 
-    this->poreVolume = BruteForcePoreVolume::compute(inflated, voxels, settings.volumePoints);
+    this->poreVolume = BruteForcePoreVolume::compute(voidInflated, voidVoxels, settings.volumePoints);
 
     double volumeTolerance = 4.0 * this->poreVolume.voidFractionError * volume;
 
@@ -554,7 +549,7 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
   std::print(report, "# Every number on the left is what the exact geometry says. Every number on the right\n");
   std::print(report, "# was worked out again from the atom positions and radii alone, on a grid and with a\n");
   std::print(report, "# great many random points, by code that shares no diagram, no network and no pore\n");
-  std::print(report, "# classifier with the left-hand side. The allowance under each pair is what the\n");
+  std::print(report, "# voidClassifier with the left-hand side. The allowance under each pair is what the\n");
   std::print(report, "# right-hand side can resolve, not what the left-hand side is hoped to be worth.\n");
   std::print(report, "#\n");
   std::print(report, "# Crystal: {}\n", framework.name);
@@ -581,11 +576,11 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
   for (const BruteForceCheck &check : this->checks) writeCheck(report, check);
 
   std::print(report, "\n# What the brute force found on its own\n");
-  std::print(report, "Void voxels flooded into {} channel(s) and {} pocket(s)\n", this->poreVolume.numberOfChannels,
+  std::print(report, "Void voidVoxels flooded into {} channel(s) and {} pocket(s)\n", this->poreVolume.numberOfChannels,
              this->poreVolume.numberOfPockets);
   std::print(report, "Void fraction from the points: {} ± {}\n", this->poreVolume.voidFraction,
              this->poreVolume.voidFractionError);
-  std::print(report, "Void fraction from the voxels: {}\n", this->poreVolume.voidFractionFromVoxels);
+  std::print(report, "Void fraction from the voidVoxels: {}\n", this->poreVolume.voidFractionFromVoxels);
   std::print(report,
              "Necks too narrow for the grid to see, proved passable by a straight line: {} of {} tried on "
              "the void grid, {} of {} on the probe's\n",

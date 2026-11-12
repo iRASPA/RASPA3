@@ -285,7 +285,7 @@ BruteForceSolventExcluded BruteForceSolventExcluded::compute(const BruteForceStr
 
   // A probe centre is free when it is clear of every inflated atom. Generated centres sit exactly on one
   // inflated sphere, so the test is against rounding rather than against zero.
-  auto freeProbeCentre = [&](const double3 &centre) { return inflated.clearance(centre) >= -1.0e-9; };
+  auto freeProbeCentre = [&](const double3& centre) { return inflated.hasRoomFor(centre, -1.0e-9); };
 
   // Who is near enough to whom for a probe to touch both, and for three of them to meet. Everything that
   // follows is local, so this is what keeps the sweeps below from being over every pair and triple there
