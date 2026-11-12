@@ -7,6 +7,7 @@ import units;
 import bond_potential;
 import urey_bradley_potential;
 import bend_potential;
+import bend_potential_gradient_hessian_strain;
 import inversion_bend_potential;
 import torsion_potential;
 import bond_bond_potential;
@@ -718,4 +719,46 @@ TEST(internal_potentials, harmonic_cosine_torsion_prints_the_reference_angle_in_
   const std::string line = torsion.print();
   EXPECT_NE(line.find("p_0/k_B=5000"), std::string::npos) << line;
   EXPECT_NE(line.find("p_1=120 [degrees]"), std::string::npos) << line;
+}
+
+// A linear bend (sin theta = 0) leaves dtheta/dcos undefined. At its own equilibrium of 180 degrees the derivative
+// factor was 0 times -inf: NaN in the gradient, the strain derivative and the Hessian of a linear molecule or a
+// linear metal-linker angle. Bounded as the bond-bend and bend-bend terms are, the derivatives are finite and zero.
+TEST(internal_potentials, linear_bend_at_its_equilibrium_has_finite_derivatives)
+{
+  const double3 a(0.0, 0.0, 0.0), b(1.5, 0.0, 0.0), c(3.0, 0.0, 0.0);
+  auto finite = [](double x)
+  { return std::to_string(x).find("nan") == std::string::npos && std::to_string(x).find("inf") == std::string::npos; };
+  for (const BendType type : {BendType::Harmonic, BendType::Quartic, BendType::Cosine})
+  {
+    SCOPED_TRACE(static_cast<int>(type));
+    const std::vector<double> parameters =
+        type == BendType::Harmonic ? std::vector<double>{62500.0, 180.0}
+        : type == BendType::Quartic
+            ? std::vector<double>{62500.0, 180.0, 10.0, 5.0}
+            : std::vector<double>{100.0, 1.0, 0.0};  // p0 (1 + cos(theta)): its minimum at 180 degrees
+    const BendPotential bend({0, 1, 2}, type, parameters);
+    const auto [energy, gradient, strain] = bend.potentialEnergyGradientStrain(a, b, c);
+    EXPECT_TRUE(finite(energy));
+    EXPECT_NEAR(energy, 0.0, 1e-12);
+    for (const double3& g : gradient)
+    {
+      EXPECT_TRUE(finite(g.x) && finite(g.y) && finite(g.z)) << g.x << " " << g.y << " " << g.z;
+      EXPECT_NEAR(g.length(), 0.0, 1e-9);
+    }
+    EXPECT_TRUE(finite(strain.ax) && finite(strain.by) && finite(strain.cz) && finite(strain.bx));
+
+    const auto [energyH, gradientH, strainH, geometry] =
+        Potentials::Internal::bendPotentialEnergyGradientHessianStrain(type, bend.parameters, a, b, c);
+    EXPECT_TRUE(finite(energyH));
+    for (const double3& g : gradientH) EXPECT_TRUE(finite(g.x) && finite(g.y) && finite(g.z));
+    EXPECT_TRUE(finite(strainH.ax) && finite(strainH.by) && finite(strainH.cz) && finite(strainH.bx));
+  }
+
+  // bent by a millionth of a radian: finite derivatives that stay close to the linear limit
+  const double3 cTilted(3.0, 1.5e-6, 0.0);
+  const BendPotential harmonic({0, 1, 2}, BendType::Harmonic, {62500.0, 180.0});
+  const auto [energyNear, gradientNear, strainNear] = harmonic.potentialEnergyGradientStrain(a, b, cTilted);
+  EXPECT_TRUE(finite(energyNear) && finite(gradientNear[0].y) && finite(gradientNear[2].y));
+  EXPECT_LT(gradientNear[2].length(), 1.0);
 }

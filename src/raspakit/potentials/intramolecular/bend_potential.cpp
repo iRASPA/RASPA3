@@ -552,7 +552,10 @@ std::tuple<double, std::array<double3, 3>, double3x3> BendPotential::potentialEn
 
   theta = std::acos(cos_theta);
 
-  double DTDX = -1.0 / std::sqrt(1.0 - cos_theta * cos_theta);
+  // a linear geometry (sin theta = 0) leaves dtheta/dcos undefined; the bounded value keeps the product with the
+  // vanishing (theta - theta_0) finite, as the bond-bend and bend-bend terms do
+  const double sin_theta = std::max(1.0e-8, std::sqrt(std::max(0.0, 1.0 - cos_theta * cos_theta)));
+  const double DTDX = -1.0 / sin_theta;
 
   switch (type)
   {

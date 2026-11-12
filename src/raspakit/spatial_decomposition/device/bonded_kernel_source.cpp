@@ -178,7 +178,8 @@ DEVICE_FUNCTION float bendTerm(uint type, PRIVATE const float* P, float3 posA, f
   dr_cb /= r_cb;
   const float cos_theta = clamp(dot(dr_ab, dr_cb), -1.0f, 1.0f);
   const float theta = acos(cos_theta);
-  const float DTDX = -1.0f / sqrt(1.0f - cos_theta * cos_theta);
+  // bounded at a linear geometry, as the host (BendPotential::potentialEnergyGradientStrain)
+  const float DTDX = -1.0f / fmax(1.0e-8f, sqrt(fmax(0.0f, 1.0f - cos_theta * cos_theta)));
   float U = 0.0f;
   float DF = 0.0f;
   float temp, temp2;

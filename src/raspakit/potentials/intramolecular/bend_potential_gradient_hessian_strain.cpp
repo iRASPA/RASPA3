@@ -30,7 +30,9 @@ Potentials::Internal::bendPotentialEnergyGradientHessianStrain(
   cos_theta = std::clamp(cos_theta, -1.0, 1.0);
 
   const double theta = std::acos(cos_theta);
-  const double DTDX = -1.0 / std::sqrt(1.0 - cos_theta * cos_theta);
+  // bounded at a linear geometry (see BendPotential::potentialEnergyGradientStrain)
+  const double sin_theta = std::max(1.0e-8, std::sqrt(std::max(0.0, 1.0 - cos_theta * cos_theta)));
+  const double DTDX = -1.0 / sin_theta;
 
   double U{};
   double DF{};
