@@ -981,3 +981,76 @@ TEST(CBMC_BASE_SAMPLER, dead_spin_directions_are_no_part_of_the_chain_weight)
   EXPECT_GT(halfGrow, returned / 10);
   EXPECT_GT(halfRetrace, returned / 10);
 }
+
+namespace
+{
+// Two congruent branch points (beads 1 and 4), every bead of one type: grown from bead 0, the steps at the two
+// branch points sample the same bonds, anchor bends and sibling bend, with bead 0 the previous bead of the first
+// and no part of the second.
+constexpr std::string_view kTwoBranchPointsJson =
+R"({
+  "CriticalTemperature" : 507.6,
+  "CriticalPressure" : 3025000.0,
+  "AcentricFactor" : 0.301,
+  "pseudoAtoms" :
+    [
+      ["CH2", [0.0, 0.0, 0.0]],
+      ["CH2", [1.54, 0.0, 0.0]],
+      ["CH2", [2.17, 1.41, 0.0]],
+      ["CH2", [2.17, -0.70, 1.22]],
+      ["CH2", [3.71, -0.70, 1.22]],
+      ["CH2", [4.34, 0.70, 1.22]],
+      ["CH2", [4.34, -1.40, 2.44]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [1, 3],
+    [3, 4],
+    [4, 5],
+    [4, 6]
+  ],
+  "Bonds" : [
+    [["CH2", "CH2"], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH2", "CH2", "CH2"], "HARMONIC", [700.0, 114.0]]
+  ],
+  "Torsions" : [
+    [["CH2", "CH2", "CH2", "CH2"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
+  ],
+  "VanDerWaals" : "auto"
+}
+)";
+}  // namespace
+
+// The base-coupling signature maps the atoms of every coupling term to their step-local roles, so that congruent
+// steps share one frozen normalization and their factors cancel between a grow and a retrace. A bond-bend is a
+// three-body term whose fourth identifier is unused; read as an atom it is bead 0, whose role differs between
+// otherwise congruent steps, which then stopped sharing a signature.
+TEST(CBMC_BASE_SAMPLER, congruent_steps_with_a_bond_bend_term_share_the_coupling_signature)
+{
+  ForceField forceField = makeZeroForceField();
+  TemporaryFile file("two-branch-points-signature.json", kTwoBranchPointsJson);
+  Component component(Component::Type::Adsorbate, 0, forceField, "two-branch-points-signature",
+                      file.stemPath().string(), 5, 21, MCMoveProbabilities(), std::nullopt, false);
+  // the bond-bend of the sibling bend at each branch point: all three atoms grown by the step, so a base coupling
+  for (const std::array<std::size_t, 4> ids :
+       {std::array<std::size_t, 4>{2, 1, 3, 0}, std::array<std::size_t, 4>{5, 4, 6, 0}})
+  {
+    component.intraMolecularPotentials.bondBends.push_back(
+        BondBendPotential(ids, BondBendType::CVFF, {114.0, 800.0, 1.54, 800.0, 1.54}));
+  }
+
+  const std::vector<CBMC::GrowStep> &plan = component.growthPlan({0});
+  ASSERT_EQ(plan.size(), 4uz);
+  const CBMC::GrowStep &first = plan[1];
+  const CBMC::GrowStep &second = plan[3];
+  ASSERT_EQ(first.currentBead, 1uz);
+  ASSERT_EQ(second.currentBead, 4uz);
+  ASSERT_EQ(first.nextBeads.size(), 2uz);
+  ASSERT_EQ(second.nextBeads.size(), 2uz);
+  ASSERT_EQ(first.base.couplingTerms.bondBends.size(), 1uz);
+  ASSERT_EQ(second.base.couplingTerms.bondBends.size(), 1uz);
+  EXPECT_EQ(first.base.couplingSignature, second.base.couplingSignature);
+}

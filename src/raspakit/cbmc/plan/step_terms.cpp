@@ -316,7 +316,12 @@ std::string baseCouplingSignature(const CBMC::GrowStep &step)
   for (const auto &t : terms.improperTorsions)
     appendTerm("imp", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
   for (const auto &t : terms.bondBonds) appendTerm("bb", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
-  for (const auto &t : terms.bondBends) appendTerm("bB", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
+  // a bond-bend is a three-body term; its fourth identifier is unused and would map bead 0 to whatever role it has
+  for (const auto& t : terms.bondBends)
+  {
+    appendTerm("bB", static_cast<std::size_t>(t.type), std::span<const std::size_t>(t.identifiers.data(), 3),
+               t.parameters);
+  }
   for (const auto &t : terms.bondTorsions)
     appendTerm("bt", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
   for (const auto &t : terms.bendBends) appendTerm("BB", static_cast<std::size_t>(t.type), t.identifiers, t.parameters);
