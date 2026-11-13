@@ -233,6 +233,10 @@ struct GrowStep
   {
     std::size_t innerBead{};
     std::optional<BendPotential> junctionBend{};
+    /// The bends the tilt samples: the step's spin-invariant bends. The spin-variant ones (to a placed atom off the
+    /// spin axis) are weighted by the torsion spin selection; in the tilt as well they were counted twice, and the
+    /// orientation drawn with a weight the Rosenbluth factor does not carry.
+    std::vector<BendPotential> bends{};
   };
   RigidTiltData rigidTilt{};
 

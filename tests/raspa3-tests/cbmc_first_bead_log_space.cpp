@@ -61,6 +61,40 @@ TEST(CBMC_FIRST_BEAD_LOG_SPACE, a_strongly_repulsive_existing_bead_retraces_to_a
   // the reinsertion scheme with no retained partial weight: the same single term
   const CBMC::RetraceResult reinsertion =
       CBMC::retraceMolecule(random, context, system.components[0], system.spanOfMolecule(0, 0),
-                            {.firstBead = CBMC::FirstBeadScheme::Reinsertion, .storedR = 0.0});
+                            {.firstBead = CBMC::FirstBeadScheme::Reinsertion, .logStoredR = std::nullopt});
   EXPECT_NEAR(reinsertion.logRosenbluthWeight, logBoltzmann, 1e-6);
+}
+
+// The retained partial weight of the multiple-first-bead reinsertion (Esselink et al., r) is kept as its logarithm,
+// summed over the other trials themselves: formed as exp(log-sum) (1 - share of the selected trial), it overflowed for
+// a strongly attractive site and cancelled to zero when the selected trial dominated. The grow's weight is the
+// selected trial's Boltzmann factor plus r; a single position leaves no r at all; and a retrace with an r of e^800
+// (inf in linear space) stays finite.
+TEST(CBMC_FIRST_BEAD_LOG_SPACE, reinsertion_retains_the_partial_weight_in_log_space)
+{
+  System system = makeRepulsivePair();
+  CBMC::GrowContext context = system.makeGrowContext();
+  RandomNumber random(11);
+
+  context.settings.numberOfFirstBeadPositions = 8;
+  const std::optional<CBMC::GrowResult> grown =
+      CBMC::regrowMolecule(random, context, system.components[0], system.moleculeData[0], system.spanOfMolecule(0, 0));
+  ASSERT_TRUE(grown.has_value());
+  ASSERT_TRUE(grown->firstBeadLogStoredR.has_value());
+  const double logSelected = -system.beta * grown->energies.potentialEnergy();
+  const double logStored = grown->firstBeadLogStoredR.value();
+  const double maximum = std::max(logSelected, logStored);
+  const double logTotal = maximum + std::log(std::exp(logSelected - maximum) + std::exp(logStored - maximum));
+  EXPECT_NEAR(logTotal - std::log(8.0), grown->logRosenbluthWeight, 1e-9 * std::max(1.0, std::abs(logTotal)));
+
+  context.settings.numberOfFirstBeadPositions = 1;
+  const std::optional<CBMC::GrowResult> single =
+      CBMC::regrowMolecule(random, context, system.components[0], system.moleculeData[0], system.spanOfMolecule(0, 0));
+  ASSERT_TRUE(single.has_value());
+  EXPECT_FALSE(single->firstBeadLogStoredR.has_value());
+
+  const CBMC::RetraceResult retrace =
+      CBMC::retraceMolecule(random, context, system.components[0], system.spanOfMolecule(0, 0),
+                            {.firstBead = CBMC::FirstBeadScheme::Reinsertion, .logStoredR = 800.0});
+  EXPECT_NEAR(retrace.logRosenbluthWeight, 800.0, 1e-9);
 }

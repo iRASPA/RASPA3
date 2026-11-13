@@ -89,7 +89,7 @@ GrowResult combine(const FirstBeadData &firstBeadData, GrowResult chainResult)
 {
   chainResult.energies += firstBeadData.energies;
   chainResult.logRosenbluthWeight += firstBeadData.logRosenbluthWeight;
-  chainResult.firstBeadStoredR = firstBeadData.storedR;
+  chainResult.firstBeadLogStoredR = firstBeadData.logStoredR;
   return chainResult;
 }
 
@@ -105,7 +105,7 @@ std::optional<GrowResult> growAfterFirstBead(RandomNumber &random, const GrowCon
   {
     const std::vector<Atom> atoms{firstBeadData.atom};
     return GrowResult(component.createMoleculeRecord(atoms), atoms, firstBeadData.energies,
-                      firstBeadData.logRosenbluthWeight, firstBeadData.storedR);
+                      firstBeadData.logRosenbluthWeight, firstBeadData.logStoredR);
   }
 
   const double3 shift = firstBeadData.atom.position - component.atoms[component.startingBead].position;
@@ -293,9 +293,8 @@ CBMC::RetraceResult CBMC::retraceMolecule(RandomNumber &random, const GrowContex
   }
   else
   {
-    const FirstBeadData firstBeadData = retraceFirstBead(random, context, component,
-                                                         moleculeAtoms[component.startingBead], request.firstBead,
-                                                         request.storedR);
+    const FirstBeadData firstBeadData = retraceFirstBead(
+        random, context, component, moleculeAtoms[component.startingBead], request.firstBead, request.logStoredR);
     result = retraceAfterFirstBead(random, context, component, moleculeAtoms, firstBeadData);
   }
 

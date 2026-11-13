@@ -403,18 +403,18 @@ std::optional<CBMC::MultiTrialGrowResult> CBMC::DeviceMultiTrialGrower::regrow(
 }
 
 CBMC::MultiTrialRetraceResult CBMC::DeviceMultiTrialGrower::retraceRegrow(
-    RandomNumber &random, const GrowContext &context, const Component &component, const Molecule &molecule,
-    std::span<const Atom> moleculeAtoms, double storedR, std::size_t numberOfTrials,
-    const LongRangeCorrection &longRange) const
+    RandomNumber& random, const GrowContext& context, const Component& component, const Molecule& molecule,
+    std::span<const Atom> moleculeAtoms, std::optional<double> logStoredR, std::size_t numberOfTrials,
+    const LongRangeCorrection& longRange) const
 {
   std::string reason;
   if (!unitScaling(moleculeAtoms) || moleculeAtoms.size() != component.atoms.size() ||
       !supports(context, component, reason))
   {
-    return cpuMultiTrialGrower().retraceRegrow(random, context, component, molecule, moleculeAtoms, storedR,
+    return cpuMultiTrialGrower().retraceRegrow(random, context, component, molecule, moleculeAtoms, logStoredR,
                                                numberOfTrials, longRange);
   }
-  // the one-stage rigid scheme has no retained first-bead weight: 'storedR' is not used
+  // the one-stage rigid scheme has no retained first-bead weight: 'logStoredR' is not used
   return retraceBatch(random, context, component, moleculeAtoms, moleculeAtoms, numberOfTrials, longRange);
 }
 

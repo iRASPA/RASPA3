@@ -217,12 +217,15 @@ std::size_t countAvailableDirections(RandomNumber &random, const RecoilContext &
 }
 
 // Log of the per-step recoil factor m_i / k * exp(-beta u_i) / p_open * w_torsion * exp(-beta u_unsampled),
-// evaluated with the step's beads in place in 'atoms' for the not-sampled internal terms.
+// evaluated with the step's beads in place in 'atoms' for the not-sampled internal terms. With
+// p_open = min(1, exp(-beta (u_i - u_ref))) the first two factors are exactly exp(-beta min(u_i, u_ref)), finite for
+// every finite energy: formed as -beta u_i - log(p_open), the open probability underflowed to zero for a bead high
+// up a repulsive shoulder and its logarithm made the weight infinite (and the retrace's log-sum NaN).
 double stepLogWeight(const RecoilContext& ctx, std::size_t seg, std::size_t available, double potentialEnergy,
-                     double openProbabilityOfSelected, double logTorsionWeight, const std::vector<Atom>& atoms)
+                     double logTorsionWeight, const std::vector<Atom>& atoms)
 {
   return std::log(static_cast<double>(available) / static_cast<double>(ctx.numberOfTrialDirections())) -
-         ctx.env.beta * potentialEnergy - std::log(openProbabilityOfSelected) + logTorsionWeight +
+         ctx.env.beta * std::min(potentialEnergy, ctx.referenceStepEnergies[seg]) + logTorsionWeight +
          unsampledInternalLogFactor(ctx.env.beta, ctx.steps[seg], atoms);
 }
 
@@ -239,7 +242,6 @@ struct GrowRecord
 {
   StepTrial selected{};
   StepTrialEnergy energy{};
-  double openProbability{1.0};
   std::size_t triedCount{0};
 };
 
@@ -271,7 +273,7 @@ GrowOutcome growRecursive(RandomNumber &random, const RecoilContext &ctx, std::s
     if (result == GrowOutcome::Complete)
     {
       scratch.keep();
-      records[seg] = {std::move(trial), energy.value(), open, j + 1};
+      records[seg] = {std::move(trial), energy.value(), j + 1};
       return GrowOutcome::Complete;
     }
 
@@ -352,7 +354,7 @@ RecoilContext makeRecoilContext(const GrowContext &context, const Component &com
     statistics.availableDirectionsSum += static_cast<double>(available);
     statistics.growSteps += 1.0;
 
-    const double logWeight = stepLogWeight(ctx, seg, available, record.energy.potentialEnergy(), record.openProbability,
+    const double logWeight = stepLogWeight(ctx, seg, available, record.energy.potentialEnergy(),
                                            record.selected.logTorsionWeight, chainAtoms);
     if (!chain.addGrownStep(logWeight, record.energy.external, context.settings.minimumRosenbluthFactor))
     {
@@ -391,8 +393,7 @@ RecoilContext makeRecoilContext(const GrowContext &context, const Component &com
     // directions are generated and probed exactly as on the grow. No per-step guard on the retrace.
     const std::size_t available = countAvailableDirections(random, ctx, seg, oldAtoms, 1);
 
-    chain.addRetracedStep(stepLogWeight(ctx, seg, available, oldPotential, openProbability(ctx, seg, oldPotential),
-                                        logTorsionWeight, oldAtoms),
+    chain.addRetracedStep(stepLogWeight(ctx, seg, available, oldPotential, logTorsionWeight, oldAtoms),
                           oldEnergy->external);
   }
 

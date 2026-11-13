@@ -110,18 +110,18 @@ std::optional<CBMC::MultiTrialGrowResult> CBMC::CPUMultiTrialGrower::regrow(
 }
 
 CBMC::MultiTrialRetraceResult CBMC::CPUMultiTrialGrower::retraceRegrow(
-    RandomNumber &random, const GrowContext &context, const Component &component, const Molecule &molecule,
-    std::span<const Atom> moleculeAtoms, double storedR, std::size_t numberOfTrials,
-    const LongRangeCorrection &longRange) const
+    RandomNumber& random, const GrowContext& context, const Component& component, const Molecule& molecule,
+    std::span<const Atom> moleculeAtoms, std::optional<double> logStoredR, std::size_t numberOfTrials,
+    const LongRangeCorrection& longRange) const
 {
   return retraceWithReference(
       random, context.beta, moleculeAtoms, numberOfTrials, longRange,
-      [&](RandomNumber &rng)
+      [&](RandomNumber& rng)
       {
         return CBMC::retraceMolecule(rng, context, component, moleculeAtoms,
-                                     {.firstBead = FirstBeadScheme::Reinsertion, .storedR = storedR});
+                                     {.firstBead = FirstBeadScheme::Reinsertion, .logStoredR = logStoredR});
       },
-      [&](RandomNumber &rng)
+      [&](RandomNumber& rng)
       {
         return CBMC::regrowMolecule(rng, context, component, molecule, moleculeAtoms,
                                     {.firstBead = FirstBeadScheme::Reinsertion});

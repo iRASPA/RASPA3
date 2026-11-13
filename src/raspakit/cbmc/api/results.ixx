@@ -30,8 +30,8 @@ enum class FirstBeadScheme : std::size_t
   /// factors / number of positions. Insertion and deletion.
   MultipleFirstBead = 0,
   /// The multiple-first-bead reinsertion of Esselink et al.: as above against a background without
-  /// the molecule itself; the grow retains the partial weight 'GrowResult::firstBeadStoredR', which
-  /// the retrace of the old configuration needs ('RetraceRequest::storedR').
+  /// the molecule itself; the grow retains the log of the partial weight 'GrowResult::firstBeadLogStoredR',
+  /// which the retrace of the old configuration needs ('RetraceRequest::logStoredR').
   Reinsertion = 1,
   /// A single trial at 'GrowRequest::firstBeadPosition', its Boltzmann factor as weight. Identity
   /// change: the new molecule takes the position of the old one.
@@ -78,16 +78,17 @@ struct FirstBeadData
   RunningEnergy energies;
   /// Natural logarithm of the first-bead Rosenbluth weight.
   double logRosenbluthWeight;
-  /// Retained partial weight of the multiple-first-bead reinsertion scheme (Esselink et al., 'r' in
-  /// Eq. 16-18): the Rosenbluth sum minus the Boltzmann factor of the selected trial. Deliberately
-  /// linear -- the retrace adds it to a Boltzmann factor, w(o) = exp(-beta u(o)) + r; the first-bead
-  /// weight is a single-bead average of Boltzmann factors, order one, so no underflow is possible.
-  /// Zero for the other schemes.
-  double storedR;
+  /// Natural logarithm of the retained partial weight of the multiple-first-bead reinsertion scheme
+  /// (Esselink et al., 'r' in Eq. 16-18): the log-sum of the Boltzmann factors of the trials other than the
+  /// selected one. In log space, as the retrace adds it to a Boltzmann factor, w(o) = exp(-beta u(o)) + r: formed
+  /// linearly, r overflowed for a strongly attractive site and cancelled to zero when the selected trial dominated.
+  /// Empty when there is no other trial, and for the other schemes.
+  std::optional<double> logStoredR;
 
   FirstBeadData() noexcept = delete;
-  FirstBeadData(Atom atom, RunningEnergy energies, double logRosenbluthWeight, double storedR) noexcept
-      : atom(atom), energies(energies), logRosenbluthWeight(logRosenbluthWeight), storedR(storedR)
+  FirstBeadData(Atom atom, RunningEnergy energies, double logRosenbluthWeight,
+                std::optional<double> logStoredR = std::nullopt) noexcept
+      : atom(atom), energies(energies), logRosenbluthWeight(logRosenbluthWeight), logStoredR(logStoredR)
   {
   }
 
@@ -103,21 +104,21 @@ struct GrowResult
   RunningEnergy energies;
   /// Natural logarithm of the Rosenbluth weight; the single stored representation (see above).
   double logRosenbluthWeight;
-  /// Retained partial first-bead weight of the multiple-first-bead reinsertion scheme
-  /// ('FirstBeadScheme::Reinsertion'; Esselink et al., 'r' in Eq. 16-18). The caller hands it to the
-  /// retrace of the old configuration through 'RetraceRequest::storedR'. Zero for every other
-  /// first-bead scheme.
-  double firstBeadStoredR;
+  /// Log of the retained partial first-bead weight of the multiple-first-bead reinsertion scheme
+  /// ('FirstBeadScheme::Reinsertion'; Esselink et al., 'r' in Eq. 16-18, see 'FirstBeadData::logStoredR'). The
+  /// caller hands it to the retrace of the old configuration through 'RetraceRequest::logStoredR'. Empty for every
+  /// other first-bead scheme.
+  std::optional<double> firstBeadLogStoredR;
 
-  GrowResult() : molecule(), atoms(), energies(), logRosenbluthWeight(), firstBeadStoredR() {}
+  GrowResult() : molecule(), atoms(), energies(), logRosenbluthWeight(), firstBeadLogStoredR() {}
 
   GrowResult(const Molecule &molecule, std::vector<Atom> atoms, RunningEnergy energies, double logRosenbluthWeight,
-             double firstBeadStoredR = 0.0) noexcept
+             std::optional<double> firstBeadLogStoredR = std::nullopt) noexcept
       : molecule(molecule),
         atoms(std::move(atoms)),
         energies(energies),
         logRosenbluthWeight(logRosenbluthWeight),
-        firstBeadStoredR(firstBeadStoredR)
+        firstBeadLogStoredR(firstBeadLogStoredR)
   {
   }
 

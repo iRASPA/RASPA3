@@ -64,7 +64,10 @@ CBMC::FlexibleBase sampleBase(RandomNumber &random, const CBMC::GrowthSettings &
 {
   if (step.kind == CBMC::GrowStep::Kind::CloseRing)
   {
-    return {CBMC::generateRingConformation(random, settings, beta, component, chainAtoms, step), 1.0};
+    std::optional<std::vector<Atom>> ring =
+        CBMC::generateRingConformation(random, settings, beta, component, chainAtoms, step);
+    if (!ring.has_value()) return {CBMC::stepBeadPositions(chainAtoms, step), 1.0, true};
+    return {std::move(ring.value()), 1.0};
   }
   if (step.rigidBody)
   {
@@ -171,9 +174,17 @@ std::vector<CBMC::StepTrial> seedTrials(RandomNumber &random, const CBMC::Growth
 
   if (step.kind == CBMC::GrowStep::Kind::CloseRing)
   {
-    std::vector<Atom> base = pinnedOld.has_value()
-                                 ? std::move(pinnedOld.value())
-                                 : CBMC::generateRingConformation(random, settings, beta, component, chainAtoms, step);
+    std::optional<std::vector<Atom>> generated =
+        pinnedOld.has_value() ? std::move(pinnedOld)
+                              : CBMC::generateRingConformation(random, settings, beta, component, chainAtoms, step);
+    if (!generated.has_value())
+    {
+      // no seed with the declared chirality: every direction is dead
+      for (std::size_t i = 0; i != numberOfTrialDirections; ++i)
+        trials[i] = {CBMC::stepBeadPositions(chainAtoms, step), 0.0, true};
+      return trials;
+    }
+    std::vector<Atom> base = std::move(generated.value());
     const double3 anchor = chainAtoms[step.currentBead].position;
     for (std::size_t i = 1; i != numberOfTrialDirections; ++i)
     {
@@ -217,6 +228,11 @@ std::vector<CBMC::StepTrial> spinTrials(RandomNumber &random, const CBMC::Growth
   for (std::size_t i = 0; i != numberOfTrialDirections; ++i)
   {
     const bool pinned = pinOld && i == 0;
+    if (base.dead && !pinned)
+    {
+      trials[i] = {base.nextBeadAtoms, 0.0, true};
+      continue;
+    }
     CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
         random, settings.numberOfTorsionTrialDirections, beta, forceField, simulationBox, chainAtoms, base.nextBeadAtoms,
         step, axis, pinned);

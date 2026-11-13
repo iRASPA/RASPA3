@@ -53,6 +53,7 @@ add_executable(unit_tests_raspa3
   enthalpy_of_adsorption.cpp
   lambda_histogram_free_energy.cpp
   cbmc_first_bead_log_space.cpp
+  cbmc_plan_fixes.cpp
   mc_cfcmc_flexible_charged_drift.cpp
   parallel_tempering_unsupported.cpp
   cbmc_thread_pool_grids.cpp

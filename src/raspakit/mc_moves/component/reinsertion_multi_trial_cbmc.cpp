@@ -62,7 +62,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMoveMultiTrialCBMC(RandomNumbe
             [&]
             {
               return grower.retraceRegrow(random, context, component, molecule, oldMolecule,
-                                          growData->selected.firstBeadStoredR, numberOfTrials, longRange);
+                                          growData->selected.firstBeadLogStoredR, numberOfTrials, longRange);
             });
 
   // Re-evaluate the selected trial so that 'trialEik' holds its structure factor.

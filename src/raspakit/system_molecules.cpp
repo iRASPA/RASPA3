@@ -1079,9 +1079,9 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
         random, context, component, scratchMolecule, scratchAtoms, {.firstBead = CBMC::FirstBeadScheme::Reinsertion});
     if (!growData) continue;
 
-    const CBMC::RetraceResult retraceData =
-        CBMC::retraceMolecule(random, context, component, scratchAtoms,
-                              {.firstBead = CBMC::FirstBeadScheme::Reinsertion, .storedR = growData->firstBeadStoredR});
+    const CBMC::RetraceResult retraceData = CBMC::retraceMolecule(
+        random, context, component, scratchAtoms,
+        {.firstBead = CBMC::FirstBeadScheme::Reinsertion, .logStoredR = growData->firstBeadLogStoredR});
 
     // Metropolis acceptance for the reinsertion move in the isolated system (no Ewald/polarization/tail
     // corrections apply): accept with min(1, W_new / W_old), with the ratio evaluated in log space so it

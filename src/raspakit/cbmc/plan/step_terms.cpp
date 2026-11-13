@@ -357,6 +357,10 @@ void prepareRigidTilt(CBMC::GrowStep &step, const ConnectivityTable &connectivit
     }
   }
   step.rigidTilt.junctionBend = findAnchorBend(step.intra, previousBead, currentBead, step.rigidTilt.innerBead);
+  for (const BendPotential& bend : step.intra.bends)
+  {
+    if (!isSpinVariantBend(bend, step.previousBead, currentBead, step.nextBeads)) step.rigidTilt.bends.push_back(bend);
+  }
 }
 
 // Move units, fixed-bond pivots, crankshaft candidates and monitored chiral centres of a ring step.
@@ -572,41 +576,16 @@ void CBMC::prepareStep(GrowStep& step, const ConnectivityTable& connectivity, co
     step.base.anchorBends[i] = findAnchorBend(step.intra, previousBead, currentBead, nextBeads[i]);
   }
 
-  if (!step.flexibleAttach) return;
-
-  // Flexible attach: the base sampler imposes the sibling bends and the base-routed unsampled terms;
-  // the spin-routed unsampled terms join the torsion selection.
-  for (const BendPotential &bend : step.intra.bends)
-  {
-    if (isSiblingBend(bend, currentBead, nextBeads)) step.base.siblingBends.push_back(bend);
-  }
-
-  UnsampledStepTerms split = splitUnsampledStepTerms(step);
-  step.base.couplingTerms = std::move(split.baseCoupling);
-  step.base.hasCouplingTerms = hasUnsampledTerms(step.base.couplingTerms);
-  step.base.hasCoupling = !step.base.siblingBends.empty() || step.base.hasCouplingTerms;
-
-  Potentials::IntraMolecularPotentials &spinPotentials = step.spin.potentials;
-  spinPotentials.ureyBradleys = std::move(split.spinTerms.ureyBradleys);
-  spinPotentials.inversionBends = std::move(split.spinTerms.inversionBends);
-  spinPotentials.outOfPlaneBends = std::move(split.spinTerms.outOfPlaneBends);
-  spinPotentials.improperTorsions = std::move(split.spinTerms.improperTorsions);
-  spinPotentials.bondBonds = std::move(split.spinTerms.bondBonds);
-  spinPotentials.bondBends = std::move(split.spinTerms.bondBends);
-  spinPotentials.bondTorsions = std::move(split.spinTerms.bondTorsions);
-  spinPotentials.bendBends = std::move(split.spinTerms.bendBends);
-  spinPotentials.bendTorsions = std::move(split.spinTerms.bendTorsions);
-  spinPotentials.cmapMaps = std::move(split.spinTerms.cmapMaps);
-  spinPotentials.cmaps = std::move(split.spinTerms.cmaps);
-  step.spin.hasUnsampledTerms = hasUnsampledTerms(spinPotentials);
-
   // Declared chiral centres centred on the current bead. One whose neighbours are all the previous bead
   // or grown here has its parity decided by the base conformation (the previous bead lies on the spin
   // axis, so the spin leaves the parity alone): parity rejection in the base sampler. One with a
   // neighbour placed before the step (off the axis: a side group the regrowth kept, as at the junction
   // of a reptation or a partial regrowth) has its parity decided by the spin: the spin trials are drawn
   // from the allowed half of the circle, or barred by a hard wall where the parity does not halve it (see
-  // 'GrowStep::SpinSelectionData'). A centre with no neighbour grown here is settled already.
+  // 'GrowStep::SpinSelectionData'). A centre with no neighbour grown here is settled already. The spin is drawn the
+  // same way for every step with a junction -- a flexible attach, a rigid body hinged on the anchor and a ring
+  // closure -- so the spin-decided centres are classified for all of them (they were for the flexible attach only,
+  // and a rigid body or a ring grown at a centre with a kept side group took either parity).
   for (const ChiralCenter &center : chiralCenters)
   {
     if (center.ids[0] != currentBead) continue;
@@ -626,7 +605,9 @@ void CBMC::prepareStep(GrowStep& step, const ConnectivityTable& connectivity, co
     }
     if (allGrownHere)
     {
-      step.base.determinedChiralCenters.push_back(center);
+      // the base sampler of a flexible attach rejects the wrong parity; a ring closure monitors these centres in
+      // its own sampler (all four atoms are in the step)
+      if (step.flexibleAttach) step.base.determinedChiralCenters.push_back(center);
     }
     else if (settled && grownHere > 0)
     {
@@ -637,6 +618,34 @@ void CBMC::prepareStep(GrowStep& step, const ConnectivityTable& connectivity, co
   // Two or more centres decided by the spin (declarations on one atom with different placed neighbours) cut the
   // circle into less than a half: only a single one is drawn from its half, any other set is a hard wall.
   if (step.spin.determinedChiralCenters.size() != 1) step.spin.parityIsHalfCircle = false;
+
+  if (!step.flexibleAttach) return;
+
+  // Flexible attach: the base sampler imposes the sibling bends and the base-routed unsampled terms;
+  // the spin-routed unsampled terms join the torsion selection.
+  for (const BendPotential& bend : step.intra.bends)
+  {
+    if (isSiblingBend(bend, currentBead, nextBeads)) step.base.siblingBends.push_back(bend);
+  }
+
+  UnsampledStepTerms split = splitUnsampledStepTerms(step);
+  step.base.couplingTerms = std::move(split.baseCoupling);
+  step.base.hasCouplingTerms = hasUnsampledTerms(step.base.couplingTerms);
+  step.base.hasCoupling = !step.base.siblingBends.empty() || step.base.hasCouplingTerms;
+
+  Potentials::IntraMolecularPotentials& spinPotentials = step.spin.potentials;
+  spinPotentials.ureyBradleys = std::move(split.spinTerms.ureyBradleys);
+  spinPotentials.inversionBends = std::move(split.spinTerms.inversionBends);
+  spinPotentials.outOfPlaneBends = std::move(split.spinTerms.outOfPlaneBends);
+  spinPotentials.improperTorsions = std::move(split.spinTerms.improperTorsions);
+  spinPotentials.bondBonds = std::move(split.spinTerms.bondBonds);
+  spinPotentials.bondBends = std::move(split.spinTerms.bondBends);
+  spinPotentials.bondTorsions = std::move(split.spinTerms.bondTorsions);
+  spinPotentials.bendBends = std::move(split.spinTerms.bendBends);
+  spinPotentials.bendTorsions = std::move(split.spinTerms.bendTorsions);
+  spinPotentials.cmapMaps = std::move(split.spinTerms.cmapMaps);
+  spinPotentials.cmaps = std::move(split.spinTerms.cmaps);
+  step.spin.hasUnsampledTerms = hasUnsampledTerms(spinPotentials);
 
   if (step.base.hasCoupling) step.base.couplingSignature = baseCouplingSignature(step);
 }

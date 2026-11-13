@@ -54,7 +54,7 @@ class RigidTiltSampler
 
   std::vector<Atom> sample()
   {
-    if (!step_.previousBead.has_value() || step_.intra.bends.empty())
+    if (!step_.previousBead.has_value() || step_.rigidTilt.bends.empty())
     {
       uniformOrientation();
     }
@@ -109,7 +109,17 @@ class RigidTiltSampler
     }
   }
 
-  double bendEnergy() { return step_.intra.calculateBendSmallMCEnergies(chain_); }
+  // the spin-invariant bends of the step (see 'GrowStep::RigidTiltData::bends')
+  double bendEnergy()
+  {
+    double energy = 0.0;
+    for (const BendPotential& bend : step_.rigidTilt.bends)
+    {
+      energy += bend.calculateEnergy(chain_[bend.identifiers[0]].position, chain_[bend.identifiers[1]].position,
+                                     chain_[bend.identifiers[2]].position, std::nullopt);
+    }
+    return energy;
+  }
 
   // Rosenbluth selection of the roll about the cone direction on a randomly offset grid.
   void selectRoll(const double3 &coneDirection)

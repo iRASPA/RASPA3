@@ -76,9 +76,9 @@ struct GrowRequest
 struct RetraceRequest
 {
   FirstBeadScheme firstBead{FirstBeadScheme::MultipleFirstBead};
-  /// The retained partial first-bead weight of the matching grow ('GrowResult::firstBeadStoredR');
+  /// The log of the retained partial first-bead weight of the matching grow ('GrowResult::firstBeadLogStoredR');
   /// 'Reinsertion' only.
-  double storedR{0.0};
+  std::optional<double> logStoredR{};
   /// See 'GrowRequest::beadsAlreadyPlaced'; 'AlreadyPlaced' only.
   const std::vector<std::size_t> &beadsAlreadyPlaced{noBeadsAlreadyPlaced};
 };

@@ -22,6 +22,8 @@ struct FlexibleBase
 {
   std::vector<Atom> nextBeadAtoms;
   double clampWeight;
+  /// No base could be drawn (a ring seed without the declared chirality): every direction of the step is dead.
+  bool dead{false};
 };
 
 /**

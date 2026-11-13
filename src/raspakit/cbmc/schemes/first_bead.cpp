@@ -62,7 +62,8 @@ struct MultipleFirstBeadSelection
 {
   FirstBeadTrial selected;
   double logRosenbluthSum;
-  double logSelectedBoltzmannFactor;
+  /// Log-sum of the Boltzmann factors of the trials other than the selected one; empty when there is none.
+  std::optional<double> logRemainingSum;
 };
 
 std::optional<MultipleFirstBeadSelection> selectAmongRandomPositions(RandomNumber &random, const GrowContext &context,
@@ -78,10 +79,25 @@ std::optional<MultipleFirstBeadSelection> selectAmongRandomPositions(RandomNumbe
 
   const auto [selected, logRosenbluthSum] = selectTrialPosition(random, logBoltzmannFactors);
 
-  // (the exponential of a very negative log-sum is zero, below any positive minimum, as before)
-  if (std::exp(logRosenbluthSum) < context.settings.minimumRosenbluthFactor) return std::nullopt;
+  // compared as logarithms: the exponential of the log-sum of a strongly attractive site overflows
+  if (context.settings.minimumRosenbluthFactor > 0.0 &&
+      logRosenbluthSum < std::log(context.settings.minimumRosenbluthFactor))
+  {
+    return std::nullopt;
+  }
 
-  return MultipleFirstBeadSelection{trials[selected], logRosenbluthSum, logBoltzmannFactors[selected]};
+  // summed in log space over the other trials themselves: the sum minus the selected factor cancelled to zero when
+  // the selected trial dominated, and the sum itself overflowed for a strongly attractive site
+  std::vector<double> remaining{};
+  remaining.reserve(logBoltzmannFactors.size());
+  for (std::size_t i = 0; i != logBoltzmannFactors.size(); ++i)
+  {
+    if (i != selected) remaining.push_back(logBoltzmannFactors[i]);
+  }
+  std::optional<double> logRemainingSum{};
+  if (!remaining.empty()) logRemainingSum = logSumExp(remaining);
+
+  return MultipleFirstBeadSelection{trials[selected], logRosenbluthSum, logRemainingSum};
 }
 
 // --- Multiple first bead: 'numberOfFirstBeadPositions' random positions, weight = sum / number ------
@@ -94,7 +110,7 @@ std::optional<FirstBeadData> growMultipleFirstBead(RandomNumber &random, const G
 
   return FirstBeadData(selection->selected.position, selection->selected.energy,
                        selection->logRosenbluthSum - std::log(double(context.settings.numberOfFirstBeadPositions)),
-                       0.0);
+                       std::nullopt);
 }
 
 FirstBeadData retraceMultipleFirstBead(RandomNumber &random, const GrowContext &context, const Component &component,
@@ -115,7 +131,7 @@ FirstBeadData retraceMultipleFirstBead(RandomNumber &random, const GrowContext &
 
   return FirstBeadData(atom, oldEnergy,
                        logSumExp(logBoltzmannFactors) - std::log(double(context.settings.numberOfFirstBeadPositions)),
-                       0.0);
+                       std::nullopt);
 }
 
 // --- Multiple-first-bead reinsertion (Esselink et al.): retains the partial weight r ----------------
@@ -126,29 +142,25 @@ std::optional<FirstBeadData> growMultipleFirstBeadReinsertion(RandomNumber &rand
   const std::optional<MultipleFirstBeadSelection> selection = selectAmongRandomPositions(random, context, component, atom);
   if (!selection) return std::nullopt;
 
-  // r = w(n) - exp(-beta U[h_n]), Eq. 16 of Esselink et al. (kept linear, see FirstBeadData::storedR; the
-  // sum of the trials other than the selected one is formed by the shift, so it does not underflow when all
-  // of them are strongly repulsive, and is zero when there are none)
-  const double storedR = std::exp(selection->logRosenbluthSum) *
-                         (1.0 - std::exp(selection->logSelectedBoltzmannFactor - selection->logRosenbluthSum));
-
+  // r = w(n) - exp(-beta U[h_n]), Eq. 16 of Esselink et al.: the sum over the trials other than the selected one,
+  // kept as its logarithm (see FirstBeadData::logStoredR), empty when there are none
   return FirstBeadData(selection->selected.position, selection->selected.energy,
                        selection->logRosenbluthSum - std::log(double(context.settings.numberOfFirstBeadPositions)),
-                       storedR);
+                       selection->logRemainingSum);
 }
 
-FirstBeadData retraceMultipleFirstBeadReinsertion(const GrowContext &context, const Component &component,
-                                                  const Atom &atom, double storedR)
+FirstBeadData retraceMultipleFirstBeadReinsertion(const GrowContext& context, const Component& component,
+                                                  const Atom& atom, std::optional<double> logStoredR)
 {
   const RunningEnergy oldEnergy = existingFirstBeadEnergy(context, component, atom);
 
   // w(o) = exp(-beta u(o)) + r, Eq. 18 of Esselink et al., in log space: the Boltzmann factor of a strongly
   // repulsive existing bead is zero in double precision, and with r = 0 (no other trial) the sum was log(0)
   std::vector<double> logTerms{-context.beta * oldEnergy.potentialEnergy()};
-  if (storedR > 0.0) logTerms.push_back(std::log(storedR));
+  if (logStoredR.has_value()) logTerms.push_back(logStoredR.value());
 
   return FirstBeadData(atom, oldEnergy,
-                       logSumExp(logTerms) - std::log(double(context.settings.numberOfFirstBeadPositions)), 0.0);
+                       logSumExp(logTerms) - std::log(double(context.settings.numberOfFirstBeadPositions)));
 }
 
 // --- Pinned first bead: a single trial at the given position, its Boltzmann factor as weight --------
@@ -162,15 +174,19 @@ std::optional<FirstBeadData> growPinnedFirstBead(const GrowContext &context, con
 
   // A single trial: the weight is the Boltzmann factor itself, already available as its logarithm.
   const double logBoltzmannFactor = -context.beta * energy->potentialEnergy();
-  if (std::exp(logBoltzmannFactor) < context.settings.minimumRosenbluthFactor) return std::nullopt;
+  if (context.settings.minimumRosenbluthFactor > 0.0 &&
+      logBoltzmannFactor < std::log(context.settings.minimumRosenbluthFactor))
+  {
+    return std::nullopt;
+  }
 
-  return FirstBeadData(atom, energy.value(), logBoltzmannFactor, 0.0);
+  return FirstBeadData(atom, energy.value(), logBoltzmannFactor);
 }
 
 FirstBeadData retracePinnedFirstBead(const GrowContext &context, const Component &component, const Atom &atom)
 {
   const RunningEnergy oldEnergy = existingFirstBeadEnergy(context, component, atom);
-  return FirstBeadData(atom, oldEnergy, -context.beta * oldEnergy.potentialEnergy(), 0.0);
+  return FirstBeadData(atom, oldEnergy, -context.beta * oldEnergy.potentialEnergy());
 }
 
 // --- Fixed first bead: a single trial at the given position with weight one -------------------------
@@ -182,13 +198,13 @@ std::optional<FirstBeadData> growFixedFirstBead(const GrowContext &context, cons
       computeExternalNonOverlappingEnergy(context, component, std::span<const Atom>(&atom, 1));
   if (!energy) return std::nullopt;
 
-  return FirstBeadData(atom, energy.value(), 0.0, 0.0);
+  return FirstBeadData(atom, energy.value(), 0.0);
 }
 
 FirstBeadData retraceFixedFirstBead(const GrowContext &context, const Component &component, const Atom &atom)
 {
   const RunningEnergy oldEnergy = existingFirstBeadEnergy(context, component, atom);
-  return FirstBeadData(atom, oldEnergy, 0.0, 0.0);
+  return FirstBeadData(atom, oldEnergy, 0.0);
 }
 }  // namespace
 
@@ -212,16 +228,16 @@ std::optional<CBMC::FirstBeadData> CBMC::growFirstBead(RandomNumber &random, con
   throw std::invalid_argument("CBMC: no first-bead stage for FirstBeadScheme::AlreadyPlaced");
 }
 
-CBMC::FirstBeadData CBMC::retraceFirstBead(RandomNumber &random, const GrowContext &context,
-                                           const Component &component, const Atom &firstBead,
-                                           FirstBeadScheme scheme, double storedR)
+CBMC::FirstBeadData CBMC::retraceFirstBead(RandomNumber& random, const GrowContext& context, const Component& component,
+                                           const Atom& firstBead, FirstBeadScheme scheme,
+                                           std::optional<double> logStoredR)
 {
   switch (scheme)
   {
     case FirstBeadScheme::MultipleFirstBead:
       return retraceMultipleFirstBead(random, context, component, firstBead);
     case FirstBeadScheme::Reinsertion:
-      return retraceMultipleFirstBeadReinsertion(context, component, firstBead, storedR);
+      return retraceMultipleFirstBeadReinsertion(context, component, firstBead, logStoredR);
     case FirstBeadScheme::Pinned:
       return retracePinnedFirstBead(context, component, firstBead);
     case FirstBeadScheme::Fixed:

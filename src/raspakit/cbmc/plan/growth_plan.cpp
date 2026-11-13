@@ -54,18 +54,36 @@ static std::vector<std::size_t> placedNeighborsExcept(const ConnectivityTable &c
 // single-atom beads (the closing bead gets a CloseBridge step, the beads before it closure guides). A
 // rigid body or a cyclic cluster that is grown INTO a second placed bead has no exact sampler here and
 // is rejected at plan-building time (i.e. when the component file is read), with the offending bond.
-static void rejectExternalClosure(const ConnectivityTable &connectivity, const std::vector<bool> &placed,
+//
+// 'rigidWithAnchor' are the atoms rigidly attached to the anchor (its rigid fragment, when a ring is closed from a
+// rigid unit it contains): placed together with the anchor, they count as the anchor itself. Any other placed atom of
+// the unit, or bonded to it, fixes the unit at a second point: the step places the unplaced atoms from the anchor
+// alone, and the second placed atom keeps its old position, off the unit's geometry (a rigid body need not even bond
+// its atoms, so the placed atoms of the unit are checked apart from the bonds).
+static void rejectExternalClosure(const ConnectivityTable& connectivity, const std::vector<bool>& placed,
                                   std::size_t currentBead, std::span<const std::size_t> unitAtoms,
-                                  std::string_view unitName)
+                                  std::string_view unitName, std::span<const std::size_t> rigidWithAnchor = {})
 {
-  std::vector<bool> inUnit(connectivity.numberOfBeads, false);
-  for (std::size_t atom : unitAtoms) inUnit[atom] = true;
+  const auto actsAsAnchor = [&](std::size_t atom)
+  { return atom == currentBead || std::ranges::find(rigidWithAnchor, atom) != rigidWithAnchor.end(); };
+  const bool unitIncomplete = std::ranges::any_of(unitAtoms, [&](std::size_t atom) { return !placed[atom]; });
+  if (unitIncomplete)
+  {
+    for (std::size_t atom : unitAtoms)
+    {
+      if (!placed[atom] || actsAsAnchor(atom)) continue;
+      throw std::runtime_error(std::format(
+          "CBMC growth plan: atom {} of a {} is placed while the {} is grown from atom {}. A {} can only be regrown "
+          "from a single placed atom; regrow the whole {} or keep it fixed.\n",
+          atom, unitName, unitName, currentBead, unitName, unitName));
+    }
+  }
   for (std::size_t atom : unitAtoms)
   {
     if (placed[atom]) continue;
     for (std::size_t p : placedNeighborsExcept(connectivity, atom, placed, currentBead))
     {
-      if (inUnit[p]) continue;
+      if (actsAsAnchor(p)) continue;
       throw std::runtime_error(std::format(
           "CBMC growth plan: atom {} of a {} is bonded to the placed atom {} while the {} is grown from atom {}. "
           "Fixed-endpoint regrowth (a partial reinsertion whose fixed atoms enclose the regrown part) is only "
@@ -488,7 +506,13 @@ static CBMC::GrowStep nextGrowthStep(const ConnectivityTable &connectivity, cons
   // The frontier bond leads into a cyclic cluster.
   if (std::optional<std::size_t> cluster = clusterOf(nextBead); cluster.has_value())
   {
-    rejectExternalClosure(connectivity, placed, currentBead, graph.cyclicClusters[*cluster], "flexible ring");
+    // a ring closed from a rigid unit it contains is anchored on the whole (placed) unit
+    const Fragment& anchorFragment = graph.fragments[graph.atomFragmentIds[currentBead]];
+    const std::span<const std::size_t> rigidWithAnchor = anchorFragment.isRigidBody()
+                                                             ? std::span<const std::size_t>(anchorFragment.atoms)
+                                                             : std::span<const std::size_t>{};
+    rejectExternalClosure(connectivity, placed, currentBead, graph.cyclicClusters[*cluster], "flexible ring",
+                          rigidWithAnchor);
 
     if (clusterOf(currentBead) == cluster)
     {
@@ -683,7 +707,7 @@ std::vector<std::string> CBMC::growthPlanDefaultGeometryWarnings(const std::vect
     {
       // Mirrors the rigid tilt: a junction with bends but without the previous-current-inner bend
       // draws the tilt at the default angle.
-      if (step.previousBead.has_value() && !step.intra.bends.empty() && !step.rigidTilt.junctionBend.has_value())
+      if (step.previousBead.has_value() && !step.rigidTilt.bends.empty() && !step.rigidTilt.junctionBend.has_value())
       {
         warnings.push_back(std::format(
             "rigid body hinged on atom {} has no bend potential {}-{}-{} for its junction; CBMC tilts it to the "

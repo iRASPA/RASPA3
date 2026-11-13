@@ -68,9 +68,11 @@ class RingSampler
     }
   }
 
-  std::vector<Atom> sample()
+  // Empty when no orientation of the seed gives every monitored centre its declared parity: the relaxation rejects
+  // every move that breaks a parity, so a wrong seed came back unrelaxed and with the wrong chirality.
+  std::optional<std::vector<Atom>> sample()
   {
-    seed();
+    if (!seed()) return std::nullopt;
     relax();
 
     std::vector<Atom> result(nextBeads_.size());
@@ -125,7 +127,8 @@ class RingSampler
     }
   }
 
-  void seed()
+  // Returns whether the seed has the declared parity of every monitored centre.
+  bool seed()
   {
     const std::vector<Atom> &seedAtoms = seedGeometry();
 
@@ -141,6 +144,7 @@ class RingSampler
     {
       placeSeedWithRotation(seedAtoms, random_.randomRotationMatrix());
     }
+    return parityPreserved();
   }
 
   // ----------------------------------------------------------------------------------------------
@@ -386,9 +390,9 @@ std::vector<Atom> CBMC::randomlyOrientRing(RandomNumber &random, const std::vect
   return result;
 }
 
-std::vector<Atom> CBMC::generateRingConformation(RandomNumber &random, const GrowthSettings &settings, double beta,
-                                                 const Component &component, std::vector<Atom> &chainAtoms,
-                                                 const GrowStep &step)
+std::optional<std::vector<Atom>> CBMC::generateRingConformation(RandomNumber& random, const GrowthSettings& settings,
+                                                                double beta, const Component& component,
+                                                                std::vector<Atom>& chainAtoms, const GrowStep& step)
 {
   return RingSampler(random, settings, beta, component, chainAtoms, step).sample();
 }

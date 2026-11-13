@@ -30,12 +30,12 @@ export namespace CBMC
                                                          FirstBeadScheme scheme);
 
 /**
- * \brief Weighs the existing first bead with 'scheme'. 'storedR' is the retained partial weight of the
+ * \brief Weighs the existing first bead with 'scheme'. 'logStoredR' is the log of the retained partial weight of the
  * matching grow ('Reinsertion' only, ignored otherwise).
  *
  * Throws std::invalid_argument for 'AlreadyPlaced', std::runtime_error when the bead overlaps.
  */
 [[nodiscard]] FirstBeadData retraceFirstBead(RandomNumber &random, const GrowContext &context,
                                              const Component &component, const Atom &firstBead,
-                                             FirstBeadScheme scheme, double storedR);
+                                             FirstBeadScheme scheme, std::optional<double> logStoredR);
 }  // namespace CBMC

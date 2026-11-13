@@ -89,15 +89,14 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   component.mc_moves_statistics.addConstructed(move);
 
   // Retrace the old molecule configuration using CBMC retracing.
-  CBMC::RetraceResult retraceData =
-      timed(system, component, move, Move::Timing::NonEwald,
-            [&]
-            {
-              return CBMC::retraceMolecule(random, context, component, molecule_atoms,
-                                           {.firstBead = scheme,
-                                            .storedR = growData->firstBeadStoredR,
-                                            .beadsAlreadyPlaced = beadsAlreadyPlaced});
-            });
+  CBMC::RetraceResult retraceData = timed(system, component, move, Move::Timing::NonEwald,
+                                          [&]
+                                          {
+                                            return CBMC::retraceMolecule(random, context, component, molecule_atoms,
+                                                                         {.firstBead = scheme,
+                                                                          .logStoredR = growData->firstBeadLogStoredR,
+                                                                          .beadsAlreadyPlaced = beadsAlreadyPlaced});
+                                          });
 
   // Compute the energy difference in the Fourier space due to Ewald summation.
   RunningEnergy energyFourierDifference =

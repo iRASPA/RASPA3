@@ -40,7 +40,7 @@ class CPUMultiTrialGrower final : public MultiTrialGrower
 
   [[nodiscard]] MultiTrialRetraceResult retraceRegrow(RandomNumber &random, const GrowContext &context,
                                                       const Component &component, const Molecule &molecule,
-                                                      std::span<const Atom> moleculeAtoms, double storedR,
+                                                      std::span<const Atom> moleculeAtoms, std::optional<double> logStoredR,
                                                       std::size_t numberOfTrials,
                                                       const LongRangeCorrection &longRange) const override;
 };

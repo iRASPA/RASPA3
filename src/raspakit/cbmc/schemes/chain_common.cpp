@@ -97,7 +97,8 @@ double CBMC::unsampledInternalLogFactor(double beta, const GrowStep &step, const
 bool CBMC::ChainAccumulator::addGrownStep(double stepLogWeight, const RunningEnergy &stepExternalEnergy,
                                           double minimumRosenbluthFactor)
 {
-  if (std::exp(stepLogWeight) < minimumRosenbluthFactor) return false;
+  // compared as logarithms: the exponential of a large step weight overflows
+  if (minimumRosenbluthFactor > 0.0 && stepLogWeight < std::log(minimumRosenbluthFactor)) return false;
   logRosenbluthWeight += stepLogWeight;
   externalEnergies += stepExternalEnergy;
   return true;

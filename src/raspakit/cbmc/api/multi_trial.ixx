@@ -123,12 +123,12 @@ class MultiTrialGrower
                                                                    std::size_t numberOfTrials,
                                                                    const LongRangeCorrection &longRange) const = 0;
 
-  /// Retraces the existing molecule with the reinsertion scheme ('storedR' is the retained partial weight
+  /// Retraces the existing molecule with the reinsertion scheme ('logStoredR' is the log of the retained partial weight
   /// of the selected trial of the matching 'regrow') and regrows M-1 reference trials.
   [[nodiscard]] virtual MultiTrialRetraceResult retraceRegrow(RandomNumber &random, const GrowContext &context,
                                                               const Component &component,
                                                               const Molecule &molecule,
-                                                              std::span<const Atom> moleculeAtoms, double storedR,
+                                                              std::span<const Atom> moleculeAtoms, std::optional<double> logStoredR,
                                                               std::size_t numberOfTrials,
                                                               const LongRangeCorrection &longRange) const = 0;
 };

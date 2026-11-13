@@ -26,12 +26,13 @@ export namespace CBMC
  * no Rosenbluth weight: the spin about the junction bond and the junction-crossing terms are weighted
  * afterwards in the torsion selection.
  *
- * Returns the positions of the step's next-beads (in 'step.nextBeads' order). 'chainAtoms' is the chain
+ * Returns the positions of the step's next-beads (in 'step.nextBeads' order), or nothing when no orientation of the
+ * seed geometry gives every monitored chiral centre its declared parity (a dead trial). 'chainAtoms' is the chain
  * the step grows in; its next-beads are used as scratch and restored on return (see CBMC::ScratchBeads).
  */
-std::vector<Atom> generateRingConformation(RandomNumber &random, const GrowthSettings &settings, double beta,
-                                           const Component &component, std::vector<Atom> &chainAtoms,
-                                           const GrowStep &step);
+std::optional<std::vector<Atom>> generateRingConformation(RandomNumber &random, const GrowthSettings &settings,
+                                                          double beta, const Component &component,
+                                                          std::vector<Atom> &chainAtoms, const GrowStep &step);
 
 /// A uniformly random rigid rotation of 'ringAtoms' about 'anchorPosition' (the other trial
 /// directions of a ring seed, which has no orientational reference).
