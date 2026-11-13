@@ -2247,3 +2247,50 @@ TEST(mixed_framework, a_rigid_group_across_the_boundary_is_made_whole)
   const double x = state.centerOfMassPosition.x;
   EXPECT_TRUE(std::abs(x - 0.0) < 1.0 || std::abs(x - 14.0) < 1.0) << "centre of mass at x = " << x;
 }
+
+// A fully rigid multi-atom component has one rigid fragment (the whole molecule) but no group state: its rigid-body
+// state is the Molecule record. With such a component ahead of a semi-flexible one, groupData was sized for it and
+// the offset of the semi-flexible molecule pointed past the entries that were filled.
+TEST(integrators, group_data_holds_only_the_semi_flexible_molecules)
+{
+  ForceField forceField({{"O", false, 16.0, 0.0, 0.0, 8, false}}, {{80.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 8.0, 8.0, 8.0, false, false, false);
+  const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("O"));
+  Component dimer(forceField, "rigid-dimer", 64.0, 1.0e6, 0.02,
+                  {Atom({-0.6, 0.0, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                   Atom({0.6, 0.0, 0.0}, 0.0, 1.0, 0, type, 0, false, false)},
+                  ConnectivityTable(2), Potentials::IntraMolecularPotentials{}, 0, 0);
+  ASSERT_TRUE(dimer.rigid);
+  ASSERT_EQ(dimer.numberOfRigidFragments(), 1uz);
+  ASSERT_FALSE(dimer.isSemiFlexible());
+
+  ConnectivityTable connectivityTable(4);
+  for (std::size_t i = 0; i < 3; ++i)
+  {
+    connectivityTable[i, i + 1] = true;
+    connectivityTable[i + 1, i] = true;
+  }
+  Potentials::IntraMolecularPotentials potentials;
+  potentials.bonds.emplace_back(std::array<std::size_t, 2>{2, 3}, BondType::Harmonic,
+                                std::vector<double>{1500.0, 0.85});
+  Component chain(forceField, "semi-flexible", 64.0, 1.0e6, 0.02,
+                  {Atom({-0.6, 0.25, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                   Atom({0.0, -0.35, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                   Atom({0.6, 0.25, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                   Atom({1.2, -0.25, 0.35}, 0.0, 1.0, 0, type, 0, false, false)},
+                  connectivityTable, potentials, 0, 0);
+  chain.buildFragmentGraph({{0, 1, 2}});
+  ASSERT_TRUE(chain.isSemiFlexible());
+
+  System system(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {dimer, chain},
+                {{double3(2.0, 2.0, 2.0), double3(3.2, 2.0, 2.0), double3(9.0, 9.0, 9.0), double3(10.2, 9.0, 9.0)},
+                 {double3(5.0, 5.0, 5.0), double3(5.6, 4.4, 5.0), double3(6.2, 5.0, 5.0), double3(6.8, 4.5, 5.35)}},
+                {0, 0}, 5);
+  system.initializeGroupData();
+
+  ASSERT_EQ(system.groupData.size(), 1uz);
+  EXPECT_EQ(system.groupDataOffsetOfMolecule(1, 0), 0uz);
+  const double3 expected = (double3(5.0, 5.0, 5.0) + double3(5.6, 4.4, 5.0) + double3(6.2, 5.0, 5.0)) / 3.0;
+  const double3 com = system.groupData[system.groupDataOffsetOfMolecule(1, 0)].centerOfMassPosition;
+  EXPECT_NEAR((com - expected).length(), 0.0, 1e-12);
+}

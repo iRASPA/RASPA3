@@ -34,6 +34,7 @@ import integrators_update;
 import integrators_cputime;
 import molecular_dynamics;
 import thermobarostat;
+import elastic_constants;
 import json;
 
 // The analysis-property writers (RDFs, density grid, MSD, VACF, histograms, molecule properties)
@@ -393,6 +394,18 @@ void ParallelTemperingMolecularDynamics::prepareReplicaMolecularDynamicsStage(st
     if (system.thermostat.has_value())
     {
       system.thermostat->initialize(rng);
+    }
+    // the barostat of the replica, as in MolecularDynamics: its masses follow the replica temperature and the
+    // coupled degrees of freedom, and its chain is drawn at that temperature (left uninitialized, its zero chain
+    // masses give 0 / 0 in the first barostat step). The input reader allows NVE and NVT only today; this keeps a
+    // replica given a barostat in any other way consistent.
+    if (system.thermobarostat.has_value())
+    {
+      system.thermobarostat->temperature = system.temperature;
+      system.thermobarostat->translationalDegreesOfFreedom =
+          barostatTranslationalDegreesOfFreedom(system, system.thermobarostat->coupling);
+      system.thermobarostat->logVolumePosition = std::log(system.simulationBox.volume);
+      system.thermobarostat->initialize(rng);
     }
   }
 

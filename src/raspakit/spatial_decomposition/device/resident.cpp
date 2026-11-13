@@ -779,6 +779,6 @@ void DeviceResident::download(System& system, const DeviceStep& step, const Cell
     Integrators::syncNonRigidMoleculeCenterOfMass(
         molecule, atomData.subspan(molecule.atomIndex, molecule.numberOfAtoms),
         dynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms), component, system.spanOfGroupData(), groupIndex);
-    groupIndex += component.numberOfRigidFragments();
+    if (component.isSemiFlexible()) groupIndex += component.numberOfRigidFragments();
   }
 }

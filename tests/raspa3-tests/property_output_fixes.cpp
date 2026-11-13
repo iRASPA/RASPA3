@@ -256,3 +256,43 @@ TEST(PROPERTY_OUTPUT_FIXES, loading_data_resize_sets_the_component_count)
   EXPECT_EQ(loading.size, 3uz);
   EXPECT_EQ(loading.numberOfMolecules.size(), 3uz);
 }
+
+// The block of a sample is the number of block boundaries at or below it: a resumed run that starts past a boundary,
+// and a short run whose boundaries coincide, land in the right block (the bin advanced only on an exact match with
+// the next boundary, so both stranded it), and nothing goes past the last block.
+TEST(PROPERTY_OUTPUT_FIXES, block_of_a_sample_follows_from_the_sample_alone)
+{
+  // in order, the same blocks as before: boundaries at 20, 40, 60, 80, 100
+  BlockErrorEstimation sequential(5, 100);
+  std::vector<std::size_t> blocks;
+  for (std::size_t sample = 0; sample < 100; ++sample)
+  {
+    sequential.setCurrentSample(sample);
+    blocks.push_back(sequential.currentBin);
+  }
+  EXPECT_EQ(blocks[0], 0uz);
+  EXPECT_EQ(blocks[19], 0uz);
+  EXPECT_EQ(blocks[20], 1uz);
+  EXPECT_EQ(blocks[99], 4uz);
+
+  // resumed at sample 45 with a fresh estimator (a restart)
+  BlockErrorEstimation resumed(5, 100);
+  resumed.setCurrentSample(45);
+  EXPECT_EQ(resumed.currentBin, 2uz);
+  resumed.setCurrentSample(85);
+  EXPECT_EQ(resumed.currentBin, 4uz);
+  resumed.setCurrentSample(1000);
+  EXPECT_EQ(resumed.currentBin, 4uz);
+
+  // three samples over five blocks: the boundaries 0, 1, 1, 2, 3 put the samples in distinct, increasing blocks
+  BlockErrorEstimation shortRun(5, 3);
+  std::vector<std::size_t> shortBlocks;
+  for (std::size_t sample = 0; sample < 3; ++sample)
+  {
+    shortRun.setCurrentSample(sample);
+    shortBlocks.push_back(shortRun.currentBin);
+  }
+  EXPECT_LT(shortBlocks[0], shortBlocks[1]);
+  EXPECT_LT(shortBlocks[1], shortBlocks[2]);
+  EXPECT_LE(shortBlocks[2], 4uz);
+}

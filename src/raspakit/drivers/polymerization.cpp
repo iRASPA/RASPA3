@@ -838,7 +838,7 @@ void Polymerization::topologyChanged(std::size_t systemId)
       Integrators::syncNonRigidMoleculeCenterOfMass(molecule, atoms.subspan(molecule.atomIndex, molecule.numberOfAtoms),
                                                     dynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms),
                                                     component, system.spanOfGroupData(), groupIndex);
-      groupIndex += component.numberOfRigidFragments();
+      if (component.isSemiFlexible()) groupIndex += component.numberOfRigidFragments();
     }
   }
   system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(

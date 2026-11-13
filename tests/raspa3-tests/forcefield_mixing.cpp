@@ -109,3 +109,14 @@ TEST(FORCEFIELD_MIXING, pseudo_atom_without_self_interaction_has_no_interaction)
   expectFiniteScaledPair(forceField, 0, 1);
   expectFiniteScaledPair(forceField, 1, 1);
 }
+
+// The Feynman-Hibbs prefactor is hbar^2 / (24 u k_B) = 2.0212 K A^2 per (amu K): hbar^2 is h^2 / (2 pi)^2, and
+// dividing h^2 by 2 pi alone made it 2 pi times too large.
+TEST(FORCEFIELD_MIXING, feynman_hibbs_prefactor_is_hbar_squared_over_24_u_kb)
+{
+  const double hbar = Units::PlanckConstant / (2.0 * std::numbers::pi);
+  const double expected =
+      hbar * hbar / (24.0 * Units::AtomicMassUnit * Units::BoltzmannConstant * Units::Angstrom * Units::Angstrom);
+  EXPECT_NEAR(Units::FeymannHibbsConversionFactor, expected, 1e-12 * expected);
+  EXPECT_NEAR(Units::FeymannHibbsConversionFactor, 2.0212, 1e-4);
+}

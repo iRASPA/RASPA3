@@ -349,7 +349,8 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
 
   const Component& component = system.components[selectedComponent];
 
-  if (result == MC_Moves::ParticleExchangeResult::Deleted && component.numberOfRigidFragments() > 0)
+  // only semi-flexible molecules have group states: a fully rigid one (one rigid fragment) has none to drop
+  if (result == MC_Moves::ParticleExchangeResult::Deleted && component.isSemiFlexible())
   {
     // drop the rigid-group states of the deleted molecule; the entries of the molecules behind it
     // shift down so that groupData stays aligned with the molecule layout

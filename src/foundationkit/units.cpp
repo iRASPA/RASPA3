@@ -89,9 +89,10 @@ double Units::IsothermalCompressibilityConversionFactor = 1.0 / Units::PressureC
 double Units::HeatCapacityConversionFactor = (Units::EnergyConversionFactor * Units::AvogadroConstant);  // J/mol/K
 /// Conversion factor for volumetric expansion coefficient from simulation units to SI units.
 double Units::VolumetricExpansionCoefficientConversionFactor = 1.0;  // 1/K
-/// Conversion factor for Feynman-Hibbs correction from simulation units to SI units.
+/// Conversion factor for Feynman-Hibbs correction from simulation units to SI units: hbar^2 / (24 u k_B), in K A^2,
+/// with hbar^2 = h^2 / (2 pi)^2.
 double Units::FeymannHibbsConversionFactor =
-    (Units::PlanckConstant * Units::PlanckConstant / (2.0 * std::numbers::pi)) /
+    (Units::PlanckConstant * Units::PlanckConstant / (4.0 * std::numbers::pi * std::numbers::pi)) /
     (24.0 * Units::AtomicMassUnit * Units::BoltzmannConstant * Units::LengthUnit * Units::LengthUnit);
 
 /// Conversion factor from simulation energy units to kelvin.
@@ -186,7 +187,7 @@ void Units::setUnits(Units::System unit_system)
       IsothermalCompressibilityConversionFactor = 1.0 / PressureConversionFactor;      // Pa^-1
       HeatCapacityConversionFactor = (EnergyConversionFactor * AvogadroConstant);      // J/mol/K
       VolumetricExpansionCoefficientConversionFactor = 1.0;                            // 1/K
-      FeymannHibbsConversionFactor = (PlanckConstant * PlanckConstant / (2.0 * std::numbers::pi)) /
+      FeymannHibbsConversionFactor = (PlanckConstant * PlanckConstant / (4.0 * std::numbers::pi * std::numbers::pi)) /
                                      (24.0 * AtomicMassUnit * BoltzmannConstant * LengthUnit * LengthUnit);
 
       EnergyToKelvin = EnergyConversionFactor * AvogadroConstant / MolarGasConstant;

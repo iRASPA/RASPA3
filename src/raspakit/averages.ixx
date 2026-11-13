@@ -315,14 +315,20 @@ export struct BlockErrorEstimation
   /**
    * \brief Updates the current sample and bin index.
    *
-   * Sets the current sample index and updates the current bin index if the sample reaches the next bin boundary.
+   * Sets the current sample index and the bin it falls in: the number of bin boundaries at or below it, at most the
+   * last bin. Derived from the sample alone, so a run resumed past a boundary (a restart), boundaries that coincide
+   * (fewer samples than bins) and samples in any order all land in the right bin; stepping to the next boundary only on
+   * equality stranded the bin in all three cases, and could step past the last bin.
    *
    * \param sample The current sample index.
    */
   void setCurrentSample(std::size_t sample)
   {
     currentSample = sample;
-    if (currentSample == nextBin[currentBin]) ++currentBin;
+    if (numberOfBins == 0) return;
+    const std::size_t boundariesPassed =
+        static_cast<std::size_t>(std::upper_bound(nextBin.begin(), nextBin.end(), sample) - nextBin.begin());
+    currentBin = std::min(boundariesPassed, numberOfBins - 1);
   }
 
   bool operator==(BlockErrorEstimation const &) const = default;

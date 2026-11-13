@@ -230,10 +230,13 @@ std::span<AtomDynamics> System::spanOfMoleculeDynamics()
 
 void System::initializeGroupData()
 {
+  // groupData holds the rigid groups of the semi-flexible molecules only: a fully rigid molecule has one rigid
+  // fragment (the whole molecule) but keeps its rigid-body state in its Molecule record
   std::size_t totalRigidGroups{};
   for (const Molecule& molecule : moleculeData)
   {
-    totalRigidGroups += components[molecule.componentId].numberOfRigidFragments();
+    const Component& component = components[molecule.componentId];
+    if (component.isSemiFlexible()) totalRigidGroups += component.numberOfRigidFragments();
   }
   // When the layout is unchanged (e.g. entering production after equilibration, where the group states
   // are kept aligned across particle exchanges) the velocities and orientation momenta are preserved;
@@ -300,12 +303,15 @@ std::span<const GroupState> System::spanOfGroupData() const { return std::span(g
 
 std::size_t System::groupDataOffsetOfMolecule(std::size_t componentId, std::size_t moleculeId) const
 {
+  // only semi-flexible molecules have entries (see 'initializeGroupData')
+  const auto groupsPerMolecule = [&](std::size_t c)
+  { return components[c].isSemiFlexible() ? components[c].numberOfRigidFragments() : 0uz; };
   std::size_t offset{};
   for (std::size_t c = 0; c < componentId; ++c)
   {
-    offset += numberOfMoleculesPerComponent[c] * components[c].numberOfRigidFragments();
+    offset += numberOfMoleculesPerComponent[c] * groupsPerMolecule(c);
   }
-  return offset + moleculeId * components[componentId].numberOfRigidFragments();
+  return offset + moleculeId * groupsPerMolecule(componentId);
 }
 
 void System::initializeFrameworkGroupData()
