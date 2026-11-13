@@ -205,16 +205,17 @@ std::string BendPotential::print() const
       // =================================================================================================
       // p_0/k_B [mdyne A/rad^2]
       // p_1     [degrees]
-      return std::format("{} - {} - {} : MM3 p_0/k_B={:g} [mdyne A/rad^2], p_1={:g} [degrees]]\n", identifiers[0],
-                         identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKCalPerMol,
+      return std::format("{} - {} - {} : MM3 p_0/k_B={:g} [mdyne A/rad^2], p_1={:g} [degrees]\n", identifiers[0],
+                         identifiers[1], identifiers[2], parameters[0] / (0.021914 * Units::KCalPerMolToEnergy),
                          parameters[1] * Units::RadiansToDegrees);
     case BendType::MM3_inplane:
       // p_0*(theta-p_1)^2(1-0.014*(theta-p_1)+5.6e-5*(theta-p_1)^2-7e-7*(theta-p_1)^3+2.2e-8(theta-p_1)^4)
       // =================================================================================================
       // p_0/k_B [mdyne A/rad^2]
       // p_1     [degrees]
-      return std::format("{} - {} - {} : MM3 p_0/k_B={:g} [mdyne A/rad^2], p_1={:g} [degrees]]\n", identifiers[0],
-                         identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKCalPerMol,
+      return std::format("{} - {} - {} : MM3_INPLANE p_0/k_B={:g} [mdyne A/rad^2], p_1={:g} [degrees]\n",
+                         identifiers[0], identifiers[1], identifiers[2],
+                         parameters[0] / (0.021914 * Units::KCalPerMolToEnergy),
                          parameters[1] * Units::RadiansToDegrees);
     default:
       std::unreachable();

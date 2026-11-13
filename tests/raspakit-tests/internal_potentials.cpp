@@ -721,6 +721,19 @@ TEST(internal_potentials, harmonic_cosine_torsion_prints_the_reference_angle_in_
   EXPECT_NE(line.find("p_1=120 [degrees]"), std::string::npos) << line;
 }
 
+// The MM3 bends store p_0 in internal energy units after the mdyne A/rad^2 -> kcal/mol -> energy conversion of the
+// constructor; the status line must undo both factors and report the force constant as it was given.
+TEST(internal_potentials, mm3_bends_print_their_force_constant_in_mdyne_per_angstrom)
+{
+  const std::string bend = BendPotential({0, 1, 2}, BendType::MM3, {0.8, 109.5}).print();
+  EXPECT_NE(bend.find("MM3 p_0/k_B=0.8 [mdyne A/rad^2], p_1=109.5 [degrees]\n"), std::string::npos) << bend;
+  const std::string inplane = BendPotential({0, 1, 2}, BendType::MM3_inplane, {0.8, 109.5}).print();
+  EXPECT_NE(inplane.find("MM3_INPLANE p_0/k_B=0.8 [mdyne A/rad^2], p_1=109.5 [degrees]\n"), std::string::npos)
+      << inplane;
+  const std::string inversion = InversionBendPotential({0, 1, 2, 3}, InversionBendType::MM3, {0.05, 0.0}).print();
+  EXPECT_NE(inversion.find("MM3 p_0/k_B=0.05 [mdyne A/rad^2], p_1=0 [degrees]\n"), std::string::npos) << inversion;
+}
+
 // A linear bend (sin theta = 0) leaves dtheta/dcos undefined. At its own equilibrium of 180 degrees the derivative
 // factor was 0 times -inf: NaN in the gradient, the strain derivative and the Hessian of a linear molecule or a
 // linear metal-linker angle. Bounded as the bond-bend and bend-bend terms are, the derivatives are finite and zero.

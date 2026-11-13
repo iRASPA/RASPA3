@@ -128,7 +128,8 @@ std::string InversionBendPotential::print() const
       // p_0/k_B [mdyne A/rad^2]
       // p_1     [degrees]
       return std::format("{} - {} - {} - {} : MM3 p_0/k_B={:g} [mdyne A/rad^2], p_1={:g} [degrees]\n", identifiers[0],
-                         identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
+                         identifiers[1], identifiers[2], identifiers[3],
+                         parameters[0] / (0.02191418 * Units::KCalPerMolToEnergy),
                          parameters[1] * Units::RadiansToDegrees);
     default:
       std::unreachable();
