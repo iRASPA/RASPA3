@@ -2204,3 +2204,18 @@ TEST(molecular_dynamics, particle_exchange_keeps_the_constrained_momentum_at_zer
   EXPECT_GT(momentum(notConserved), 1e-6);
   EXPECT_EQ(notConserved.translationalCenterOfMassConstraint, 0uz);
 }
+
+// The integrator evaluates no external-field or polarization forces: a driver built with such a system refuses to
+// set up rather than integrate trajectories without those forces.
+TEST(molecular_dynamics, setup_refuses_external_fields_and_polarization)
+{
+  System withField = makeDriftSystem(DriftHost::None, 4);
+  withField.hasExternalField = true;
+  MolecularDynamics fieldDriver({0, 0, 0, 0, 1000, 10000, 5000, 5000}, {withField}, 17uz, 5, false);
+  EXPECT_THROW(fieldDriver.setup(), std::runtime_error);
+
+  System withPolarization = makeDriftSystem(DriftHost::None, 4);
+  withPolarization.forceField.computePolarization = true;
+  MolecularDynamics polarizationDriver({0, 0, 0, 0, 1000, 10000, 5000, 5000}, {withPolarization}, 17uz, 5, false);
+  EXPECT_THROW(polarizationDriver.setup(), std::runtime_error);
+}

@@ -201,6 +201,15 @@ void ParallelTemperingMolecularDynamics::setup()
 {
   for (System& system : systems)
   {
+    // the integrator evaluates the pair, Ewald and intramolecular forces only
+    if (system.hasExternalField)
+      throw std::runtime_error(
+          "ParallelTemperingMolecularDynamics does not support an external field: the "
+          "integrator evaluates no external-field forces");
+    if (system.forceField.computePolarization)
+      throw std::runtime_error(
+          "ParallelTemperingMolecularDynamics does not support polarization: the integrator "
+          "evaluates no polarization forces");
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
 

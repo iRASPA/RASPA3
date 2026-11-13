@@ -774,6 +774,15 @@ void MolecularDynamics::setup()
       if (system.hasExternalField || system.forceField.computePolarization)
         throw std::runtime_error("Stress-fluctuation elastic constants do not support external fields or polarization");
     }
+    // the integrator evaluates the pair, Ewald and intramolecular forces only
+    if (system.hasExternalField)
+      throw std::runtime_error(
+          "MolecularDynamics does not support an external field: the integrator evaluates no "
+          "external-field forces");
+    if (system.forceField.computePolarization)
+      throw std::runtime_error(
+          "MolecularDynamics does not support polarization: the integrator evaluates no "
+          "polarization forces");
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
 

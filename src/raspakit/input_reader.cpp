@@ -5557,6 +5557,29 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
   }
 
+  // The molecular-dynamics integrator evaluates the pair, Ewald and intramolecular forces only: a system with an
+  // external field or with polarization would be integrated without those forces (and without their energies in the
+  // running energies), so the Monte Carlo simulation types are the ones that support them.
+  if (simulationType == SimulationType::MolecularDynamics ||
+      simulationType == SimulationType::ParallelTemperingMolecularDynamics)
+  {
+    const std::string driverName = simulationType == SimulationType::MolecularDynamics
+                                       ? "MolecularDynamics"
+                                       : "ParallelTemperingMolecularDynamics";
+    for (std::size_t systemId = 0; systemId < systems.size(); ++systemId)
+    {
+      auto reject = [&](std::string_view feature)
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: '{}' does not support {} (system {}): the integrator evaluates no such forces; use a "
+            "Monte Carlo simulation type\n",
+            driverName, feature, systemId));
+      };
+      if (systems[systemId].hasExternalField) reject("an external field");
+      if (systems[systemId].forceField.computePolarization) reject("polarization");
+    }
+  }
+
   // dcTST: a single declared system (replicated into independent replicas by the driver), a rigid
   // framework (the trajectories propagate the molecules only), a tagged component with molecules, and a
   // rigid or fully flexible tagged molecule (the reaction-bead velocity of a semi-flexible molecule is not

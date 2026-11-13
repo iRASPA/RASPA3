@@ -274,3 +274,32 @@ TEST(minimization_driver, flexible_methane_pair_reaches_local_minimum)
   EXPECT_LT(minimization.results[0].finalEnergy, minimization.results[0].initialEnergy);
   EXPECT_EQ(minimization.results[0].negativeModes, 0u);
 }
+
+// The derivative evaluation has no external-field term, so a minimization with an external field is refused for a
+// fixed cell as it was for a variable cell.
+TEST(minimization_driver, minimization_refuses_an_external_field_for_a_fixed_cell)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component methane = Component::makeMethane(forceField, 0);
+  System system =
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {2}, 5);
+  system.moleculeData[0].centerOfMassPosition = double3(10.0, 12.5, 12.5);
+  system.moleculeData[1].centerOfMassPosition = double3(13.0, 12.5, 12.5);
+  setRigidMoleculePositions(system, 0);
+  setRigidMoleculePositions(system, 1);
+  system.hasExternalField = true;
+
+  MinimizationOptions options{};
+  options.maximumNumberOfSteps = 5;
+  options.printEvery = 5;
+  Minimization minimization(options, {system}, false);
+  try
+  {
+    minimization.run();
+    ADD_FAILURE() << "the minimization ran";
+  }
+  catch (const std::runtime_error& error)
+  {
+    EXPECT_NE(std::string(error.what()).find("external field"), std::string::npos) << error.what();
+  }
+}

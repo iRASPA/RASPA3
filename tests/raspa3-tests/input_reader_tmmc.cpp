@@ -1178,3 +1178,40 @@ TEST(INPUT_READER, an_empty_per_system_list_is_rejected)
 
   EXPECT_THROW(InputReader reader(temporary.path().filename().string()), std::runtime_error);
 }
+
+// The molecular-dynamics integrator evaluates no external-field or polarization forces: an input that asks for
+// either with a molecular-dynamics simulation type is refused by name instead of running without those forces.
+TEST(INPUT_READER, molecular_dynamics_refuses_external_fields_and_polarization)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  ScopedCurrentPath currentPath(workspace.path());
+  struct Case
+  {
+    std::string simulationType;
+    std::string key;
+    std::string feature;
+  };
+  for (const Case& testCase : {Case{"MolecularDynamics", "ExternalField", "external field"},
+                               Case{"MolecularDynamics", "ComputePolarization", "polarization"},
+                               Case{"ParallelTemperingMolecularDynamics", "ExternalField", "external field"}})
+  {
+    SCOPED_TRACE(testCase.simulationType + " " + testCase.key);
+    nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kNvtSimulationJson);
+    input["SimulationType"] = testCase.simulationType;
+    input["Systems"][0][testCase.key] = true;
+    if (testCase.simulationType == "ParallelTemperingMolecularDynamics")
+    {
+      input["Systems"][0]["ExternalTemperatures"] = {300.0, 330.0};
+    }
+    TemporaryInput temporary(std::move(input), "md_refuses_" + testCase.key, workspace.path());
+    try
+    {
+      InputReader reader(temporary.path().filename().string());
+      ADD_FAILURE() << "the input was accepted";
+    }
+    catch (const std::runtime_error& error)
+    {
+      EXPECT_NE(std::string(error.what()).find(testCase.feature), std::string::npos) << error.what();
+    }
+  }
+}

@@ -584,9 +584,12 @@ void Minimization::runPhase()
     const Framework* frameworkPtr = system.framework ? &*system.framework : nullptr;
     const CellMinimizationLayout cellLayout =
         makeCellMinimizationLayout(system.cellMinimizationType, system.monoclinicAngleType);
-    if (!cellLayout.empty() && system.hasExternalField)
+    // the derivative evaluation (and the force constants of the phonons) has no external-field term
+    if (system.hasExternalField)
     {
-      throw std::runtime_error("Variable-cell minimization does not support an external field");
+      throw std::runtime_error(
+          "Minimization does not support an external field: the derivative evaluation has no "
+          "external-field term");
     }
     if (options.computeElasticConstants) throwIfMixedFramework(system);
     const MinimizationDofLayout layout = buildMinimizationDofLayout(
