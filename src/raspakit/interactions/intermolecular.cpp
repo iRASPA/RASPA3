@@ -1022,10 +1022,11 @@ RunningEnergy Interactions::computeInterMolecularElectricField(const ForceField&
   const double cutOffMoleculeVDWSquared = forceField.cutOffMoleculeVDW * forceField.cutOffMoleculeVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
-  if (!useCharge) return energySum;
   if (forceField.omitInterInteractions) return energySum;
-  if (forceField.omitInterPolarization) return energySum;
   if (moleculeAtoms.empty()) return energySum;
+  // the van der Waals sum is part of this evaluation (the total energies take it from here with polarization on):
+  // the Coulomb energy depends on the charges, the field on the charges and the intermolecular polarization
+  const bool accumulateField = useCharge && !forceField.omitInterPolarization;
 
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
   {
@@ -1080,15 +1081,19 @@ RunningEnergy Interactions::computeInterMolecularElectricField(const ForceField&
                                          energyFactor.dUdlambda);
           }
 
-          Potentials::PairDerivatives<1> gradient = Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
+          if (accumulateField)
+          {
+            Potentials::PairDerivatives<1> gradient =
+                Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
 
-          double gradientFactorA = scalingCoulombB * chargeB * gradient.firstDerivativeFactor;
-          std::size_t indexA = static_cast<std::size_t>(std::distance(moleculeAtoms.begin(), it1));
-          electricFieldMolecules[indexA] -= gradientFactorA * dr;
+            double gradientFactorA = scalingCoulombB * chargeB * gradient.firstDerivativeFactor;
+            std::size_t indexA = static_cast<std::size_t>(std::distance(moleculeAtoms.begin(), it1));
+            electricFieldMolecules[indexA] -= gradientFactorA * dr;
 
-          double gradientFactorB = scalingCoulombA * chargeA * gradient.firstDerivativeFactor;
-          std::size_t indexB = static_cast<std::size_t>(std::distance(moleculeAtoms.begin(), it2));
-          electricFieldMolecules[indexB] += gradientFactorB * dr;
+            double gradientFactorB = scalingCoulombA * chargeA * gradient.firstDerivativeFactor;
+            std::size_t indexB = static_cast<std::size_t>(std::distance(moleculeAtoms.begin(), it2));
+            electricFieldMolecules[indexB] += gradientFactorB * dr;
+          }
         }
       }
     }

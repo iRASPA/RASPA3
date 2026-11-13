@@ -272,3 +272,50 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2)
   }
 }
 */
+
+// With polarization on, the total energies take the framework-molecule and the intermolecular van der Waals sums from
+// the electric-field evaluations. Those returned early without charges, which left a polarizable but uncharged system
+// without any van der Waals energy. The van der Waals energies do not depend on the polarization setting.
+TEST(electrostatic_field, van_der_waals_energies_survive_polarization_without_charges)
+{
+  // methane in a box
+  {
+    auto energies = [](bool polarization)
+    {
+      ForceField forceField({{"CH4", false, 16.04246, 0.0, 0.0, 6, false}}, {{158.5, 3.72}},
+                            ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, false, false);
+      forceField.computePolarization = polarization;
+      // intermolecular polarization on: the total energies then take the intermolecular sum from the field routine
+      forceField.omitInterPolarization = false;
+      Component methane = Component::makeMethane(forceField, 0);
+      System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {methane}, {}, {60}, 5);
+      return system.computeTotalEnergies();
+    };
+    const RunningEnergy plain = energies(false);
+    const RunningEnergy polarizable = energies(true);
+    ASSERT_NE(plain.moleculeMoleculeVDW, 0.0);
+    EXPECT_NEAR(polarizable.moleculeMoleculeVDW, plain.moleculeMoleculeVDW,
+                1e-10 * std::abs(plain.moleculeMoleculeVDW));
+    EXPECT_NEAR(polarizable.potentialEnergy(), plain.potentialEnergy(), 1e-10 * std::abs(plain.potentialEnergy()));
+  }
+  // methane in FAU, charges off
+  {
+    auto energies = [](bool polarization)
+    {
+      ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
+      forceField.useCharge = false;
+      forceField.computePolarization = polarization;
+      const Framework framework = Framework::makeFAU(forceField, int3(1, 1, 1));
+      Component methane = Component::makeMethane(forceField, 0);
+      System system(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {framework}, {methane}, {}, {20}, 5);
+      return system.computeTotalEnergies();
+    };
+    const RunningEnergy plain = energies(false);
+    const RunningEnergy polarizable = energies(true);
+    ASSERT_NE(plain.frameworkMoleculeVDW, 0.0);
+    EXPECT_NEAR(polarizable.frameworkMoleculeVDW, plain.frameworkMoleculeVDW,
+                1e-10 * std::abs(plain.frameworkMoleculeVDW));
+    EXPECT_NEAR(polarizable.moleculeMoleculeVDW, plain.moleculeMoleculeVDW,
+                1e-10 * std::abs(plain.moleculeMoleculeVDW));
+  }
+}

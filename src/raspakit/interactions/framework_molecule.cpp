@@ -924,7 +924,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeElectricField(const ForceFie
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
-  if (!useCharge) return energySum;
+  // the van der Waals sum is part of this evaluation (the total energies take it from here with polarization on):
+  // only the Coulomb energy and the field below depend on the charges
   if (moleculeAtoms.empty()) return energySum;
 
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
