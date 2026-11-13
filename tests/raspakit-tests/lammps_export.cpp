@@ -1400,3 +1400,67 @@ TEST(lammps_export, non_uniform_14_scalings_put_every_14_pair_into_the_pair_list
   EXPECT_EQ(pairLines, 4uz) << files.pairList;
   EXPECT_EQ(halfScaledLines, 2uz) << files.pairList;
 }
+
+// A data file of one bonded pair that straddles the periodic boundary without image flags, with a Wolf pair style:
+// the pair is joined across the boundary (it was left 19 Angstrom apart), the damping alpha that comes first in
+// 'lj/cut/coul/wolf alpha rvdw rc' is the damping parameter and not the VDW cut-off, and unit systems whose lengths
+// are not Angstrom are refused rather than converted in their energies only.
+TEST(lammps_export, reader_joins_unflagged_molecules_and_reads_wolf_alpha)
+{
+  constexpr std::string_view data = R"(LAMMPS data
+
+2 atoms
+1 bonds
+2 atom types
+1 bond types
+
+0.0 20.0 xlo xhi
+0.0 20.0 ylo yhi
+0.0 20.0 zlo zhi
+
+Masses
+
+1 12.0
+2 16.0
+
+Atoms # full
+
+1 1 1 0.4 0.5 5.0 5.0 0 0 0
+2 1 2 -0.4 19.5 5.0 5.0 0 0 0
+
+Bonds
+
+1 1 1 2
+)";
+  auto script = [](std::string_view units)
+  {
+    return std::format(R"(units {}
+atom_style full
+pair_style lj/cut/coul/wolf 0.2 10.0 12.0
+pair_coeff 1 1 0.1 3.0
+pair_coeff 2 2 0.2 3.1
+pair_modify mix arithmetic
+bond_style harmonic
+bond_coeff 1 300.0 1.0
+read_data pair.data
+)",
+                       units);
+  };
+  TemporaryDirectory directory;
+  const std::filesystem::path dataPath = directory.path / "pair.data";
+  const std::filesystem::path inputPath = directory.path / "pair.in";
+  std::ofstream(dataPath) << data;
+  std::ofstream(inputPath) << script("real");
+
+  const LAMMPS::ReadResult read = LAMMPS::readDataFile(dataPath, inputPath);
+  ASSERT_EQ(read.positions.size(), 2u);
+  const double dx = read.positions[1][0] - read.positions[0][0];
+  EXPECT_NEAR(std::abs(dx), 1.0, 1e-9);
+  EXPECT_NEAR(read.forceField["CutOffVDW"].get<double>(), 10.0, 1e-12);
+  EXPECT_NEAR(read.forceField["CutOffCoulomb"].get<double>(), 12.0, 1e-12);
+  EXPECT_EQ(read.simulation["Systems"][0]["ChargeMethod"], "Wolf");
+  EXPECT_NEAR(read.forceField["EwaldParameters"][0].get<double>(), 0.2, 1e-12);
+
+  std::ofstream(inputPath) << script("si");
+  EXPECT_THROW(static_cast<void>(LAMMPS::readDataFile(dataPath, inputPath)), std::runtime_error);
+}

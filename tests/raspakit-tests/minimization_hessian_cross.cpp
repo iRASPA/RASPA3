@@ -239,7 +239,7 @@ TEST(minimization_hessian_cross, bond_bond_cvff)
 TEST(minimization_hessian_cross, bond_bend_cvff)
 {
   Potentials::IntraMolecularPotentials potentials{};
-  potentials.bondBends = {BondBendPotential({0, 1, 2, 3}, BondBendType::CVFF, {109.5, 40000.0, 1.5, 40000.0, 1.5})};
+  potentials.bondBends = {BondBendPotential({0, 1, 2}, BondBendType::CVFF, {109.5, 40000.0, 1.5, 40000.0, 1.5})};
 
   runCrossTest(
       potentials, &Interactions::computeIntraMolecularBondBendHessian,
@@ -248,7 +248,7 @@ TEST(minimization_hessian_cross, bond_bend_cvff)
         double energy = 0.0;
         for (const BondBendPotential &t : p.bondBends)
           energy += t.calculateEnergy(atoms[t.identifiers[0]].position, atoms[t.identifiers[1]].position,
-                                      atoms[t.identifiers[2]].position, atoms[t.identifiers[3]].position);
+                                      atoms[t.identifiers[2]].position);
         return energy;
       });
 }
@@ -256,7 +256,7 @@ TEST(minimization_hessian_cross, bond_bend_cvff)
 TEST(minimization_hessian_cross, bond_bend_mm3)
 {
   Potentials::IntraMolecularPotentials potentials{};
-  potentials.bondBends = {BondBendPotential({0, 1, 2, 3}, BondBendType::MM3, {1.2, 1.5, 1.5, 109.5})};
+  potentials.bondBends = {BondBendPotential({0, 1, 2}, BondBendType::MM3, {1.2, 1.5, 1.5, 109.5})};
 
   runCrossTest(
       potentials, &Interactions::computeIntraMolecularBondBendHessian,
@@ -265,7 +265,7 @@ TEST(minimization_hessian_cross, bond_bend_mm3)
         double energy = 0.0;
         for (const BondBendPotential &t : p.bondBends)
           energy += t.calculateEnergy(atoms[t.identifiers[0]].position, atoms[t.identifiers[1]].position,
-                                      atoms[t.identifiers[2]].position, atoms[t.identifiers[3]].position);
+                                      atoms[t.identifiers[2]].position);
         return energy;
       });
 }
@@ -273,7 +273,7 @@ TEST(minimization_hessian_cross, bond_bend_mm3)
 TEST(minimization_hessian_cross, bond_bend_truncated_harmonic)
 {
   Potentials::IntraMolecularPotentials potentials{};
-  potentials.bondBends = {BondBendPotential({0, 1, 2, 3}, BondBendType::TruncatedHarmonic, {60000.0, 109.5, 2.6})};
+  potentials.bondBends = {BondBendPotential({0, 1, 2}, BondBendType::TruncatedHarmonic, {60000.0, 109.5, 2.6})};
 
   runCrossTest(
       potentials, &Interactions::computeIntraMolecularBondBendHessian,
@@ -282,7 +282,7 @@ TEST(minimization_hessian_cross, bond_bend_truncated_harmonic)
         double energy = 0.0;
         for (const BondBendPotential &t : p.bondBends)
           energy += t.calculateEnergy(atoms[t.identifiers[0]].position, atoms[t.identifiers[1]].position,
-                                      atoms[t.identifiers[2]].position, atoms[t.identifiers[3]].position);
+                                      atoms[t.identifiers[2]].position);
         return energy;
       });
 }
@@ -290,7 +290,7 @@ TEST(minimization_hessian_cross, bond_bend_truncated_harmonic)
 TEST(minimization_hessian_cross, bond_bend_screened_harmonic)
 {
   Potentials::IntraMolecularPotentials potentials{};
-  potentials.bondBends = {BondBendPotential({0, 1, 2, 3}, BondBendType::ScreenedHarmonic, {60000.0, 109.5, 1.2, 1.2})};
+  potentials.bondBends = {BondBendPotential({0, 1, 2}, BondBendType::ScreenedHarmonic, {60000.0, 109.5, 1.2, 1.2})};
 
   runCrossTest(
       potentials, &Interactions::computeIntraMolecularBondBendHessian,
@@ -299,7 +299,7 @@ TEST(minimization_hessian_cross, bond_bend_screened_harmonic)
         double energy = 0.0;
         for (const BondBendPotential &t : p.bondBends)
           energy += t.calculateEnergy(atoms[t.identifiers[0]].position, atoms[t.identifiers[1]].position,
-                                      atoms[t.identifiers[2]].position, atoms[t.identifiers[3]].position);
+                                      atoms[t.identifiers[2]].position);
         return energy;
       });
 }
@@ -307,7 +307,7 @@ TEST(minimization_hessian_cross, bond_bend_screened_harmonic)
 TEST(minimization_hessian_cross, bond_bend_screened_vessal)
 {
   Potentials::IntraMolecularPotentials potentials{};
-  potentials.bondBends = {BondBendPotential({0, 1, 2, 3}, BondBendType::ScreenedVessal, {60000.0, 109.5, 1.2, 1.2})};
+  potentials.bondBends = {BondBendPotential({0, 1, 2}, BondBendType::ScreenedVessal, {60000.0, 109.5, 1.2, 1.2})};
 
   runCrossTest(
       potentials, &Interactions::computeIntraMolecularBondBendHessian,
@@ -316,7 +316,7 @@ TEST(minimization_hessian_cross, bond_bend_screened_vessal)
         double energy = 0.0;
         for (const BondBendPotential &t : p.bondBends)
           energy += t.calculateEnergy(atoms[t.identifiers[0]].position, atoms[t.identifiers[1]].position,
-                                      atoms[t.identifiers[2]].position, atoms[t.identifiers[3]].position);
+                                      atoms[t.identifiers[2]].position);
         return energy;
       });
 }
@@ -324,7 +324,7 @@ TEST(minimization_hessian_cross, bond_bend_screened_vessal)
 TEST(minimization_hessian_cross, bond_bend_truncated_vessal)
 {
   Potentials::IntraMolecularPotentials potentials{};
-  potentials.bondBends = {BondBendPotential({0, 1, 2, 3}, BondBendType::TruncatedVessal, {60000.0, 109.5, 4.0, 2.6})};
+  potentials.bondBends = {BondBendPotential({0, 1, 2}, BondBendType::TruncatedVessal, {60000.0, 109.5, 4.0, 2.6})};
 
   runCrossTest(
       potentials, &Interactions::computeIntraMolecularBondBendHessian,
@@ -333,7 +333,7 @@ TEST(minimization_hessian_cross, bond_bend_truncated_vessal)
         double energy = 0.0;
         for (const BondBendPotential &t : p.bondBends)
           energy += t.calculateEnergy(atoms[t.identifiers[0]].position, atoms[t.identifiers[1]].position,
-                                      atoms[t.identifiers[2]].position, atoms[t.identifiers[3]].position);
+                                      atoms[t.identifiers[2]].position);
         return energy;
       });
 }

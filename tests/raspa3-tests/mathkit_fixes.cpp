@@ -530,3 +530,25 @@ TEST(MATHKIT_FIXES, cubic_linear_and_repeated_quadratic_roots)
   EXPECT_DOUBLE_EQ(roots[0], 1.0);
   EXPECT_DOUBLE_EQ(roots[1], 1.0);
 }
+
+// The categorical draw never picks a category without weight (a trailing zero-weight move was picked whenever the
+// draw exceeded the rounded sum of the normalised weights), and weights without a positive sum have no
+// distribution: they used to fill the table with NaN and hand std::upper_bound an unordered range.
+TEST(MATHKIT_FIXES, categorical_distribution_skips_zero_weights_and_refuses_an_empty_total)
+{
+  RandomNumber random(std::size_t{17});
+  const std::array<double, 9> weights{0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0};
+  std::array<std::size_t, 9> counts{};
+  for (std::size_t draw = 0; draw != 200000; ++draw) ++counts[random.categoricalDistribution(weights)];
+  for (std::size_t i = 0; i != weights.size(); ++i)
+  {
+    if (weights[i] == 0.0)
+      EXPECT_EQ(counts[i], 0uz) << "category " << i;
+    else
+      EXPECT_NEAR(static_cast<double>(counts[i]) / 200000.0, 1.0 / 6.0, 0.01) << "category " << i;
+  }
+
+  const std::array<double, 3> none{0.0, 0.0, 0.0};
+  EXPECT_THROW(static_cast<void>(random.categoricalDistribution(none)), std::invalid_argument);
+  EXPECT_THROW(static_cast<void>(random.categoricalDistribution(std::span<const double>{})), std::invalid_argument);
+}

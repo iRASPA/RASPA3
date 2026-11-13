@@ -256,7 +256,9 @@ DEVICE_FUNCTION float torsionTerm(uint type, PRIVATE const float* P, float3 posA
   const float cos_phi2 = cos_phi * cos_phi;
   const float3 Pb = cross(Dab, Dcb_unit);
   const float3 Pc = cross(Dcb_unit, Ddc);
-  const float orientation = dot(Dcb_unit, cross(Pb, Pc));
+  // IUPAC sign: positive when, looking from B to C, A turns clockwise onto D (sign of b1 . (b2 x b3), with
+  // b1 = B - A, b2 = C - B, b3 = D - C); as AMBER, CHARMM and LAMMPS. The dot product below is minus that.
+  const float orientation = -dot(Dcb_unit, cross(Pb, Pc));
   float phi = copysign(acos(cos_phi), orientation);
   const float sin_phi = copysign(max(1.0e-8f, fabs(sin(phi))), sin(phi));
   float U = 0.0f;

@@ -4151,6 +4151,17 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       // combination. Named here rather than run with wrong energies or silently refused.
       if (systems[systemId].forceField.computePolarization)
       {
+        // The polarization field of the framework is taken from the structure factor of the lab-fixed framework
+        // atoms in the Monte Carlo differences, the electrostatic potential and the analytic derivatives and
+        // pressure: the charges of mobile (flexible or rigid-group) framework atoms would be missing from it, and
+        // the Monte Carlo energies would drift.
+        if (systems[systemId].framework.has_value() && systems[systemId].framework->hasMobileAtoms())
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: system {}: 'ComputePolarization' is not supported with a flexible or mixed framework "
+              "(its mobile atoms are not part of the framework field)\n",
+              systemId));
+        }
         for (const Component& component : systems[systemId].components)
         {
           for (const Move::Types moveType : {Move::Types::SwapMultiTrialCBMC, Move::Types::ReinsertionMultiTrialCBMC,
@@ -5218,6 +5229,99 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
   // Checks
   // ========================================================
+
+  // The Monte Carlo moves are drawn from the move tables of the components, into which the system moves (volume,
+  // hybrid MC, Gibbs volume, ...) are merged: a system without components draws no move at all, and its system
+  // moves never ran (the number of steps per cycle was zero) without a word.
+  for (std::size_t i = 0uz; i < systems.size(); ++i)
+  {
+    if (systems[i].components.empty() &&
+        std::ranges::any_of(systems[i].mc_moves_probabilities.probabilities, [](double p) { return p > 0.0; }))
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: system {} enables system Monte Carlo moves but has no components, and the Monte Carlo "
+          "moves are drawn per component\n",
+          i));
+    }
+  }
+
+  // The time-correlation properties (MSD, VACF, end-to-end ACF) follow each molecule of a continuous trajectory by
+  // its index within its component (a replica-exchange swap carries them along with the configuration). An identity
+  // change moves a molecule from one component to another, so the per-component indices (and the end-to-end buffers
+  // sized by the initial counts) no longer match.
+  for (std::size_t i = 0uz; i < systems.size(); ++i)
+  {
+    const bool timeCorrelation = systems[i].propertyMSD.has_value() || systems[i].propertyVACF.has_value() ||
+                                 systems[i].propertyEndToEndACF.has_value();
+    if (!timeCorrelation) continue;
+    for (const Component& component : systems[i].components)
+    {
+      if (component.mc_moves_probabilities.getProbability(Move::Types::IdentityChangeCBMC) > 0.0 ||
+          component.mc_moves_probabilities.getProbability(Move::Types::GibbsIdentityChangeCBMC) > 0.0)
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: system {}: MSD, VACF and end-to-end ACF are not supported with identity-change moves "
+            "(component '{}'): they track molecules by their index within a component\n",
+            i, component.name));
+      }
+    }
+  }
+
+  // The in-cycle replica exchange swaps the molecule configurations only: a framework with mobile atoms would keep
+  // its own deformed coordinates and rigid-group state, paired with the molecules of the other replica. The
+  // parallel-tempering drivers refuse it up front; so is the swap move here (it was refused at every attempt
+  // without a word).
+  for (std::size_t i = 0uz; i < systems.size(); ++i)
+  {
+    if (systems[i].mc_moves_probabilities.getProbability(Move::Types::ParallelTempering) > 0.0 &&
+        systems[i].framework.has_value() && systems[i].framework->hasMobileAtoms())
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: system {}: 'ParallelTemperingSwapProbability' is not supported with a flexible or mixed "
+          "framework\n",
+          i));
+    }
+  }
+
+  // The Gibbs moves pair a system with a neighbour in the list of systems (see randomPairAdjacentIntegers): with a
+  // single system the pair is that system twice, and the volume exchange then scaled it before saving it as the
+  // second system, so a rejection restored the trial box. Both boxes are at one temperature, and the volume
+  // exchange scales molecules, which a framework is not.
+  for (std::size_t i = 0uz; i < systems.size(); ++i)
+  {
+    const bool volumeExchange = systems[i].mc_moves_probabilities.getProbability(Move::Types::GibbsVolume) > 0.0;
+    const bool transfer = std::ranges::any_of(
+        systems[i].components,
+        [](const Component& component)
+        {
+          return std::ranges::any_of(
+              std::array{Move::Types::GibbsSwapCBMC, Move::Types::GibbsSwapMultiTrialCBMC, Move::Types::GibbsSwapCFCMC,
+                         Move::Types::GibbsSwapCBCFCMC, Move::Types::GibbsConventionalCFCMC,
+                         Move::Types::GibbsConventionalCBCFCMC, Move::Types::GibbsIdentityChangeCBMC},
+              [&](Move::Types move) { return component.mc_moves_probabilities.getProbability(move) > 0.0; });
+        });
+    if (!volumeExchange && !transfer) continue;
+    if (systems.size() < 2)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: system {} enables a Gibbs move, which needs a second system\n", i));
+    }
+    for (std::size_t j : {i - 1uz, i + 1uz})
+    {
+      if (j >= systems.size()) continue;
+      if (std::fabs(systems[i].temperature - systems[j].temperature) > 1.0e-10 * systems[i].temperature)
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: systems {} and {} are paired by the Gibbs moves but have different temperatures\n", i, j));
+      }
+      if (volumeExchange && (systems[i].framework.has_value() || systems[j].framework.has_value()))
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: the Gibbs volume move of system {} would scale a framework (systems {} and {})\n", i, i,
+            j));
+      }
+    }
+  }
 
   for (std::size_t i = 0uz; i < systems.size(); ++i)
   {

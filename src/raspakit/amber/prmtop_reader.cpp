@@ -118,13 +118,15 @@ std::map<std::string, Section> readSections(const std::filesystem::path& file)
     if (section.width == 0) continue;
     if (section.kind == 'a')
     {
-      // fixed-width strings, kept untrimmed (a title keeps its blanks; names are trimmed on use)
+      // fixed-width strings, kept untrimmed (a title keeps its blanks; names are trimmed on use). The blank slots
+      // after the last name of a line are padding, however many there are (only the very last one was taken for
+      // padding, and the others were read as blank names); a blank slot before a name is a name.
+      const std::size_t first = section.fields.size();
       for (std::size_t offset = 0; offset < line.size(); offset += section.width)
       {
-        std::string field = line.substr(offset, section.width);
-        if (trim(field).empty() && offset + section.width >= line.size()) break;  // trailing padding
-        section.fields.push_back(field);
+        section.fields.push_back(line.substr(offset, section.width));
       }
+      while (section.fields.size() > first && trim(section.fields.back()).empty()) section.fields.pop_back();
     }
     else
     {
@@ -522,7 +524,14 @@ Coordinates readCoordinates(const std::filesystem::path& file, std::size_t numbe
 
   std::size_t remaining = values.size() - coordinateCount;
   std::size_t offset = coordinateCount;
-  if (remaining == coordinateCount || remaining == coordinateCount + 6)
+  // With two atoms the velocities and the box are both six numbers: they are a box when they can be one (three
+  // positive lengths and three angles strictly between 0 and 180 degrees), as a coordinate file of a periodic
+  // system carries its box; they were always taken for velocities, and the box was lost.
+  const bool sixNumbersAreABox = remaining == 6 && coordinateCount == 6 && values[offset] > 0.0 &&
+                                 values[offset + 1] > 0.0 && values[offset + 2] > 0.0 && values[offset + 3] > 0.0 &&
+                                 values[offset + 3] < 180.0 && values[offset + 4] > 0.0 && values[offset + 4] < 180.0 &&
+                                 values[offset + 5] > 0.0 && values[offset + 5] < 180.0;
+  if (!sixNumbersAreABox && (remaining == coordinateCount || remaining == coordinateCount + 6))
   {
     coordinates.velocities.resize(fileAtoms);
     for (std::size_t i = 0; i < fileAtoms; ++i)

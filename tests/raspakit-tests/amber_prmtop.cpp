@@ -309,12 +309,12 @@ double3 toDouble3(const std::array<double, 3> &p) { return double3(p[0], p[1], p
 
 double dihedralAngle(const double3 &a, const double3 &b, const double3 &c, const double3 &d)
 {
-  // IUPAC convention (AMBER): trans = 180 degrees, sign by the right-hand rule about b -> c
+  // IUPAC convention (AMBER): trans = 180 degrees, atan2(|b2| b1 . (b2 x b3), (b1 x b2) . (b2 x b3)). (The form
+  // atan2(m . n2, n1 . n2) with m = n1 x b2/|b2| used here before is the negative of it, the old RASPA sign.)
   double3 b1 = b - a, b2 = c - b, b3 = d - c;
   double3 n1 = double3::cross(b1, b2);
   double3 n2 = double3::cross(b2, b3);
-  double3 m = double3::cross(n1, b2.normalized());
-  return std::atan2(double3::dot(m, n2), double3::dot(n1, n2));
+  return std::atan2(b2.length() * double3::dot(b1, n2), double3::dot(n1, n2));
 }
 
 double bendAngle(const double3 &a, const double3 &b, const double3 &c)
@@ -645,4 +645,47 @@ TEST(amber_prmtop, periodic_coordinates_select_ewald)
   EXPECT_TRUE(std::filesystem::exists(output.path / "restart.json"));
   EXPECT_TRUE(std::filesystem::exists(output.path / "WAT.json"));
   EXPECT_TRUE(std::filesystem::exists(output.path / "conversion_warnings.txt"));
+}
+
+// A short last line of a string section padded out with blanks to the full 80 columns: every blank slot after the
+// last name is padding (only the last slot was taken for padding, the other 16 for blank atom names, and the atom
+// count no longer matched).
+TEST(amber_prmtop, padded_string_lines_add_no_blank_names)
+{
+  std::string padded(prmtopText);
+  const std::string lastNames = "H2  Na+ Cl- \n";
+  const std::size_t at = padded.find(lastNames);
+  ASSERT_NE(at, std::string::npos);
+  padded.replace(at, lastNames.size(), "H2  Na+ Cl- " + std::string(68, ' ') + "\n");
+  TestFiles files;
+  writeText(files.prmtop, padded.c_str());
+
+  AMBER::Prmtop prmtop = AMBER::parsePrmtop(files.prmtop);
+  ASSERT_EQ(prmtop.atomNames.size(), 23uz);
+  EXPECT_EQ(prmtop.atomNames[22], "Cl-");
+}
+
+// Two atoms: three coordinates each, and then six numbers that are either the velocities or the box. A box
+// (positive lengths, angles between 0 and 180) is read as the box; it was always taken for velocities.
+TEST(amber_prmtop, two_atom_coordinates_with_a_box_keep_the_box)
+{
+  TestFiles files;
+  const char* withBox =
+      "two atoms\n    2\n   1.0000000   2.0000000   3.0000000   4.0000000   5.0000000   6.0000000\n"
+      "  25.0000000  26.0000000  27.0000000  90.0000000  90.0000000 120.0000000\n";
+  writeText(files.inpcrd, withBox);
+  AMBER::Coordinates coordinates = AMBER::readCoordinates(files.inpcrd, 2);
+  ASSERT_TRUE(coordinates.box.has_value());
+  EXPECT_NEAR((*coordinates.box)[0], 25.0, 1e-9);
+  EXPECT_NEAR((*coordinates.box)[5], 120.0, 1e-9);
+  EXPECT_TRUE(coordinates.velocities.empty());
+
+  const char* withVelocities =
+      "two atoms\n    2\n   1.0000000   2.0000000   3.0000000   4.0000000   5.0000000   6.0000000\n"
+      "  -0.1000000   0.2000000   0.3000000  -0.4000000   0.5000000   0.6000000\n";
+  writeText(files.inpcrd, withVelocities);
+  coordinates = AMBER::readCoordinates(files.inpcrd, 2);
+  EXPECT_FALSE(coordinates.box.has_value());
+  ASSERT_EQ(coordinates.velocities.size(), 2uz);
+  EXPECT_NEAR(coordinates.velocities[0][0], -0.1, 1e-9);
 }

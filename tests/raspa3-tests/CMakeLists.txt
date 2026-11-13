@@ -73,6 +73,8 @@ add_executable(unit_tests_raspa3
   mathkit_fixes.cpp
   symmetry_structure_fixes.cpp
   forcefield_mixing.cpp
+  component_reader_fixes.cpp
+  system_property_setters.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_raspa3)

@@ -358,11 +358,15 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
           std::format("[Component reader]: item {} must be an integer\n", parsed_data["StartingBead"].dump()));
     }
 
+    // zero-based: CBMC grows the molecule from this atom, and an index past the atoms read past the molecule
     std::int64_t starting_bead = parsed_data["StartingBead"].get<std::int64_t>();
-    if (starting_bead >= 0)
+    if (starting_bead < 0 || static_cast<std::size_t>(starting_bead) >= definedAtoms.size())
     {
-      startingBead = static_cast<std::size_t>(starting_bead);
+      throw std::runtime_error(std::format(
+          "[Component reader]: 'StartingBead' {} is outside the molecule of {} atoms (atoms are counted from 0)\n",
+          starting_bead, definedAtoms.size()));
     }
+    startingBead = static_cast<std::size_t>(starting_bead);
   }
 
   totalMass = 0.0;
@@ -2744,8 +2748,8 @@ std::vector<TorsionPotential> Component::readTorsionPotentials(
 // entry has the form [[id_0, ..., id_{N-1}], "TYPE", [p_0, p_1, ...]].
 template <typename PotentialType, std::size_t N, typename TypeEnum>
 static std::vector<PotentialType> readExplicitInternalPotentials(
-    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data, const std::string &key,
-    const std::map<std::string, TypeEnum, caseInsensitiveComparator> &definitionForString)
+    const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data, const std::string& key,
+    const std::map<std::string, TypeEnum, caseInsensitiveComparator>& definitionForString, std::size_t numberOfAtoms)
 {
   std::vector<PotentialType> potentials{};
 
@@ -2774,6 +2778,16 @@ static std::vector<PotentialType> readExplicitInternalPotentials(
       {
         throw std::runtime_error(std::format("expected {} identifiers, got {}", N, identifiers.size()));
       }
+      for (std::size_t identifier : identifiers)
+      {
+        if (identifier >= numberOfAtoms)
+        {
+          throw std::runtime_error(
+              std::format("identifier {} is outside the molecule of {} atoms (atoms are "
+                          "counted from 0)",
+                          identifier, numberOfAtoms));
+        }
+      }
 
       std::string potential_name = item[1].get<std::string>();
       if (!definitionForString.contains(potential_name))
@@ -2801,64 +2815,64 @@ static std::vector<PotentialType> readExplicitInternalPotentials(
 std::vector<UreyBradleyPotential> Component::readUreyBradleyPotentials(
     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
-  return readExplicitInternalPotentials<UreyBradleyPotential, 2>(parsed_data, "UreyBradleys",
-                                                                 UreyBradleyPotential::definitionForString);
+  return readExplicitInternalPotentials<UreyBradleyPotential, 2>(
+      parsed_data, "UreyBradleys", UreyBradleyPotential::definitionForString, definedAtoms.size());
 }
 
 std::vector<InversionBendPotential> Component::readInversionBendPotentials(
     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
-  return readExplicitInternalPotentials<InversionBendPotential, 4>(parsed_data, "InversionBends",
-                                                                   InversionBendPotential::definitionForString);
+  return readExplicitInternalPotentials<InversionBendPotential, 4>(
+      parsed_data, "InversionBends", InversionBendPotential::definitionForString, definedAtoms.size());
 }
 
 std::vector<OutOfPlaneBendPotential> Component::readOutOfPlaneBendPotentials(
     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
-  return readExplicitInternalPotentials<OutOfPlaneBendPotential, 4>(parsed_data, "OutOfPlaneBends",
-                                                                    OutOfPlaneBendPotential::definitionForString);
+  return readExplicitInternalPotentials<OutOfPlaneBendPotential, 4>(
+      parsed_data, "OutOfPlaneBends", OutOfPlaneBendPotential::definitionForString, definedAtoms.size());
 }
 
 std::vector<TorsionPotential> Component::readImproperTorsionPotentials(
     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
-  return readExplicitInternalPotentials<TorsionPotential, 4>(parsed_data, "ImproperTorsions",
-                                                             TorsionPotential::definitionForString);
+  return readExplicitInternalPotentials<TorsionPotential, 4>(
+      parsed_data, "ImproperTorsions", TorsionPotential::definitionForString, definedAtoms.size());
 }
 
 std::vector<BondBondPotential> Component::readBondBondPotentials(
     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
-  return readExplicitInternalPotentials<BondBondPotential, 3>(parsed_data, "BondBonds",
-                                                              BondBondPotential::definitionForString);
+  return readExplicitInternalPotentials<BondBondPotential, 3>(
+      parsed_data, "BondBonds", BondBondPotential::definitionForString, definedAtoms.size());
 }
 
 std::vector<BondBendPotential> Component::readBondBendPotentials(
     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
-  return readExplicitInternalPotentials<BondBendPotential, 4>(parsed_data, "BondBends",
-                                                              BondBendPotential::definitionForString);
+  return readExplicitInternalPotentials<BondBendPotential, 3>(
+      parsed_data, "BondBends", BondBendPotential::definitionForString, definedAtoms.size());
 }
 
 std::vector<BondTorsionPotential> Component::readBondTorsionPotentials(
     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
-  return readExplicitInternalPotentials<BondTorsionPotential, 4>(parsed_data, "BondTorsions",
-                                                                 BondTorsionPotential::definitionForString);
+  return readExplicitInternalPotentials<BondTorsionPotential, 4>(
+      parsed_data, "BondTorsions", BondTorsionPotential::definitionForString, definedAtoms.size());
 }
 
 std::vector<BendBendPotential> Component::readBendBendPotentials(
     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
-  return readExplicitInternalPotentials<BendBendPotential, 4>(parsed_data, "BendBends",
-                                                              BendBendPotential::definitionForString);
+  return readExplicitInternalPotentials<BendBendPotential, 4>(
+      parsed_data, "BendBends", BendBendPotential::definitionForString, definedAtoms.size());
 }
 
 std::vector<BendTorsionPotential> Component::readBendTorsionPotentials(
     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
-  return readExplicitInternalPotentials<BendTorsionPotential, 4>(parsed_data, "BendTorsions",
-                                                                 BendTorsionPotential::definitionForString);
+  return readExplicitInternalPotentials<BendTorsionPotential, 4>(
+      parsed_data, "BendTorsions", BendTorsionPotential::definitionForString, definedAtoms.size());
 }
 
 void Component::readCMAPPotentials(const ForceField &forceField,

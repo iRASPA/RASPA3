@@ -498,7 +498,8 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       // ===============================================
       // p_0/k_B [K/rad^2]
       // p_1     [degrees]
-      sign = double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
+      // IUPAC sign (as AMBER, CHARMM and LAMMPS): minus this dot product
+      sign = -double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
       phi = std::copysign(std::acos(cos_phi), sign);
       temp = phi - parameters[1];
       temp -= std::rint(temp / (2.0 * std::numbers::pi)) * 2.0 * std::numbers::pi;
@@ -559,7 +560,8 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       add phase in cos function:
       p_0+p_1*(1+cos(phi-p_4))+p_2*(1-cos(2*(phi-p_4)))+p_3*(1+cos(3*(phi-p_4)))
      */
-      sign = double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
+      // IUPAC sign (as AMBER, CHARMM and LAMMPS): minus this dot product
+      sign = -double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
       phi = std::copysign(std::acos(cos_phi), sign);
       phi -= parameters[4];  // shift Phi as Phi+parameters[4]
       phi -= std::rint(phi / (2.0 * std::numbers::pi)) * 2.0 * std::numbers::pi;
@@ -574,9 +576,9 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       // p_1     [-]
       // p_2     [degrees]
       // potential defined in terms of 'phi' and therefore contains a singularity
-      // the sign of the angle-phi is positive if (Rab x Rbc) x (Rbc x Rcd) is in the
-      // same direction as Rbc, and negative otherwise
-      sign = double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
+      // the sign of the angle-phi is the IUPAC one (as AMBER, CHARMM and LAMMPS): positive if (Rab x Rbc) x
+      // (Rbc x Rcd) points against Rbc, negative otherwise
+      sign = -double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
       phi = std::copysign(std::acos(cos_phi), sign);
       return parameters[0] * (1.0 + std::cos(parameters[1] * phi - parameters[2]));
     case TorsionType::CFF:
@@ -696,7 +698,9 @@ std::tuple<double, std::array<double3, 4>, double3x3> TorsionPotential::potentia
   {
     double3 Pb = double3::cross(Dab, Dcb_unit);
     double3 Pc = double3::cross(Dcb_unit, Ddc);
-    sign = double3::dot(Dcb_unit, double3::cross(Pb, Pc));
+    // IUPAC sign: positive when, looking from B to C, A turns clockwise onto D (sign of b1 . (b2 x b3), with
+    // b1 = B - A, b2 = C - B, b3 = D - C); as AMBER, CHARMM and LAMMPS. The dot product below is minus that.
+    sign = -double3::dot(Dcb_unit, double3::cross(Pb, Pc));
     return std::copysign(std::acos(cos_phi), sign);
   };
 

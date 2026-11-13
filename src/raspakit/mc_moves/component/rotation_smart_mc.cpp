@@ -82,9 +82,12 @@ double MC_Moves::logRotationProposalRatio(double3 angularDisplacement, double3 d
   }
   const double3 axis = angularDisplacement * (1.0 / angle);
 
-  // The principal term first, then the aliases theta + 2 pi k of the drawn angle added in log space (four either
-  // side: at a step size of 1.5 radians the fifth lies more than twenty standard deviations out). No infinite
-  // sentinel: the fast-math flags of the build fold comparisons with infinity.
+  // The rotation is reached by every alias sign * axis * (theta + 2 pi k) of the drawn angle, and the density sums
+  // them in log space. The alias nearest the drift dominates, k ~ (sign axis . drift - theta) / 2 pi, and that is
+  // where each sum is centred, four aliases either side (at a step size of 1.5 radians the fifth lies more than
+  // twenty standard deviations out). Centring both on the drawn angle missed the dominant alias of the reverse move
+  // whenever |theta + axis . driftNew| exceeded nine pi, as a large (repulsive) torque gives. No infinite sentinel:
+  // the fast-math flags of the build fold comparisons with infinity.
   auto logTerm = [&](double theta, const double3& drift, double sign)
   {
     const double3 vector = axis * (sign * theta);
@@ -95,17 +98,23 @@ double MC_Moves::logRotationProposalRatio(double3 angularDisplacement, double3 d
     const double high = std::max(a, b);
     return high + std::log(std::exp(a - high) + std::exp(b - high));
   };
-  double logForward = logTerm(angle, driftOld, 1.0);
-  double logReverse = logTerm(angle, driftNew, -1.0);
-  for (int k = -4; k <= 4; ++k)
+  auto logSum = [&](const double3& drift, double sign)
   {
-    if (k == 0) continue;
-    const double theta = angle + 2.0 * std::numbers::pi * static_cast<double>(k);
-    if (std::abs(theta) < 1.0e-12) continue;  // a vanishing weight theta^2
-    logForward = logAdd(logForward, logTerm(theta, driftOld, 1.0));
-    logReverse = logAdd(logReverse, logTerm(theta, driftNew, -1.0));
-  }
-  return logReverse - logForward;
+    const double twoPi = 2.0 * std::numbers::pi;
+    const double centre = std::round((sign * double3::dot(axis, drift) - angle) / twoPi);
+    double sum = 0.0;
+    bool first = true;
+    for (int j = -4; j <= 4; ++j)
+    {
+      const double theta = angle + twoPi * (centre + static_cast<double>(j));
+      if (std::abs(theta) < 1.0e-12) continue;  // a vanishing weight theta^2
+      const double term = logTerm(theta, drift, sign);
+      sum = first ? term : logAdd(sum, term);
+      first = false;
+    }
+    return sum;
+  };
+  return logSum(driftNew, -1.0) - logSum(driftOld, 1.0);
 }
 
 std::optional<RunningEnergy> MC_Moves::rotationSmartMCMove(RandomNumber &random, System &system,

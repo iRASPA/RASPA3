@@ -59,9 +59,17 @@ SimulationBox::SimulationBox(double3x3 m) : type(Type::Triclinic)
   angleBeta = std::acos(double3::dot(column1, column3) / (this->lengthA * this->lengthC));
   angleGamma = std::acos(double3::dot(column1, column2) / (this->lengthA * this->lengthB));
 
-  if (((std::fabs(angleAlpha - 0.5 * std::numbers::pi)) < 1e-5) &&
-      ((std::fabs(angleBeta - 0.5 * std::numbers::pi)) < 1e-5) &&
-      ((std::fabs(angleGamma - 0.5 * std::numbers::pi)) < 1e-5))
+  // The rectangular minimum image reads only the diagonal of the cell, so right angles are not enough: the cell
+  // vectors have to lie along the positive axes. A rotated orthogonal cell (after a symmetric strain, or under a
+  // flexible barostat) keeps right angles with non-zero off-diagonal elements, and is triclinic here.
+  const bool rightAngles = std::fabs(angleAlpha - 0.5 * std::numbers::pi) < 1e-5 &&
+                           std::fabs(angleBeta - 0.5 * std::numbers::pi) < 1e-5 &&
+                           std::fabs(angleGamma - 0.5 * std::numbers::pi) < 1e-5;
+  const bool alongTheAxes = cell.ax > 0.0 && cell.by > 0.0 && cell.cz > 0.0 && std::fabs(cell.ay) <= 1e-10 * cell.ax &&
+                            std::fabs(cell.az) <= 1e-10 * cell.ax && std::fabs(cell.bx) <= 1e-10 * cell.by &&
+                            std::fabs(cell.bz) <= 1e-10 * cell.by && std::fabs(cell.cx) <= 1e-10 * cell.cz &&
+                            std::fabs(cell.cy) <= 1e-10 * cell.cz;
+  if (rightAngles && alongTheAxes)
   {
     type = Type::Rectangular;
   }

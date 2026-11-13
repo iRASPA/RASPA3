@@ -129,29 +129,31 @@ void NLDFTIsotherm::run(const EnergyBackend &backend, const PairInteractions &in
     }
   }
 
-  // The exact grid Henry limit on the unclipped U(r, ω). This is the GCMC ⟨e^{-βU}⟩ on the same grid.
-  double boltzmann = 0.0;
-  if (molecular && !orientationKelvin.empty())
+  // The exact grid Henry limit on the unclipped U(r, ω). This is the GCMC ⟨e^{-βU}⟩ on the same grid, taken in log
+  // space, shifted by the deepest pose: one unshielded Coulomb well (a charged atom without dispersion, U/k_B below
+  // -54,600 K at 77 K) overflowed e^{-βU} to infinity, and with it the Henry occupancy and the pressure window
+  // of the whole isotherm. The occupancy is kept finite.
+  const std::span<const float> poses = (molecular && !orientationKelvin.empty())
+                                           ? std::span<const float>(orientationKelvin)
+                                           : std::span<const float>(energyKelvin);
+  double logBoltzmann = -std::numeric_limits<double>::max();
+  double logShift = 0.0;  // the largest -U/kT of a pose: every Boltzmann weight below is taken relative to it
+  if (!poses.empty())
   {
-    const std::size_t nVoxels = energyKelvin.size();
-    const std::size_t M = this->numberOfOrientations;
-    for (std::size_t i = 0; i < nVoxels; ++i)
-    {
-      double sum = 0.0;
-      for (std::size_t o = 0; o < M; ++o)
-        sum += std::exp(-static_cast<double>(orientationKelvin[i * M + o]) / temperature);
-      boltzmann += sum / static_cast<double>(M);
-    }
-    boltzmann /= static_cast<double>(nVoxels);
-  }
-  else if (!energyKelvin.empty())
-  {
-    for (float energy : energyKelvin) boltzmann += std::exp(-static_cast<double>(energy) / temperature);
-    boltzmann /= static_cast<double>(energyKelvin.size());
+    logShift = -std::numeric_limits<double>::max();
+    for (float energy : poses) logShift = std::max(logShift, -static_cast<double>(energy) / temperature);
+    double shifted = 0.0;
+    for (float energy : poses) shifted += std::exp(-static_cast<double>(energy) / temperature - logShift);
+    // every voxel has the same number of orientations, so the mean over poses is the mean over voxels of the
+    // orientational means
+    logBoltzmann = logShift + std::log(shifted / static_cast<double>(poses.size()));
   }
   const double volumeSI = framework.unitCell.volume * Units::Angstrom * Units::Angstrom * Units::Angstrom;
   const double kT = Units::BoltzmannConstant * temperature;
-  this->henryMoleculesPerCell = (kT > 0.0) ? nitrogenSaturationPressure * volumeSI / kT * boltzmann : 0.0;
+  this->henryMoleculesPerCell =
+      (kT > 0.0 && !poses.empty())
+          ? std::exp(std::min(std::log(nitrogenSaturationPressure * volumeSI / kT) + logBoltzmann, 690.0))
+          : 0.0;
 
   struct DeepPose
   {
@@ -179,7 +181,7 @@ void NLDFTIsotherm::run(const EnergyBackend &backend, const PairInteractions &in
       for (std::size_t o = 0; o < M; ++o)
       {
         const double u = static_cast<double>(orientationKelvin[i * M + o]);
-        const double w = std::exp(-u / kTkelvin);
+        const double w = std::exp(-u / kTkelvin - logShift);  // relative to the deepest pose
         voxelCap12 += std::exp(-std::max(u, -cap12) / kTkelvin);
         if (u >= halfCeiling)
         {
@@ -407,16 +409,20 @@ void NLDFTIsotherm::run(const EnergyBackend &backend, const PairInteractions &in
   {
     const double henryCapped12 =
         (kT > 0.0) ? nitrogenSaturationPressure * volumeSI / kT * boltzmannCapped12 : 0.0;
+    // the deep-state weights are relative to the deepest pose (see logShift)
     const double henryFromHoles =
-        (kT > 0.0) ? nitrogenSaturationPressure * volumeSI / kT * boltzmannBelow40 : 0.0;
+        (kT > 0.0 && boltzmannBelow40 > 0.0)
+            ? std::exp(std::min(
+                  std::log(nitrogenSaturationPressure * volumeSI / kT) + logShift + std::log(boltzmannBelow40), 690.0))
+            : 0.0;
     const std::size_t nStates = energyKelvin.size() * this->numberOfOrientations;
     std::print(myfile, "# U(r, ω): {} / {} states at the overlap ceiling, {} voxels with a free orientation,\n",
                nCeiling, nStates, voxelsOpen);
     std::print(myfile, "# {} voxels with any attractive ω, {} / {} / {} / {} states below −12 / −20 / −40 / −80 kT\n",
                voxelsAttractive, nBelow12, nBelow20, nBelow40, nBelow80);
     std::print(myfile, "# Henry if wells deeper than 12 kT are clipped: {:.6g} / cell\n", henryCapped12);
-    std::print(myfile, "# Henry from states below −40 kT alone: {:.6g} / cell ({:.3g} of the total)\n",
-               henryFromHoles, (boltzmann > 0.0) ? boltzmannBelow40 / boltzmann : 0.0);
+    std::print(myfile, "# Henry from states below −40 kT alone: {:.6g} / cell ({:.3g} of the total)\n", henryFromHoles,
+               (boltzmannBelow40 > 0.0) ? std::exp(logShift + std::log(boltzmannBelow40) - logBoltzmann) : 0.0);
     auto describePose = [&](const DeepPose &pose)
     {
       if (!(pose.kelvin < 0.0)) return;

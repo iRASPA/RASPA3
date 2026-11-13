@@ -10,7 +10,7 @@ import double3;
 import double3x3;
 import units;
 
-BondBendPotential::BondBendPotential(std::array<std::size_t, 4> identifiers, BondBendType type,
+BondBendPotential::BondBendPotential(std::array<std::size_t, 3> identifiers, BondBendType type,
                                      std::vector<double> vector_parameters)
     : identifiers(identifiers), type(type)
 {
@@ -196,8 +196,7 @@ std::string BondBendPotential::print() const
   }
 }
 
-double BondBendPotential::calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posC,
-                                          [[maybe_unused]] const double3 &posD) const
+double BondBendPotential::calculateEnergy(const double3& posA, const double3& posB, const double3& posC) const
 {
   double temp, temp2;
 
@@ -427,7 +426,17 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BondBendPote
   }
 
   archive >> b.type;
-  archive >> b.identifiers;
+  if (versionNumber < 2)
+  {
+    // version 1 stored a fourth identifier that the three-body term never used
+    std::array<std::size_t, 4> identifiers{};
+    archive >> identifiers;
+    b.identifiers = {identifiers[0], identifiers[1], identifiers[2]};
+  }
+  else
+  {
+    archive >> b.identifiers;
+  }
   archive >> b.parameters;
 
 #if DEBUG_ARCHIVE

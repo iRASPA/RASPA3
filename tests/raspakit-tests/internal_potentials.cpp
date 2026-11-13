@@ -47,7 +47,7 @@ double bendAngle(const double3 &a, const double3 &b, const double3 &c)
   return std::acos(cos_theta);
 }
 
-// Dihedral angle A-B-C-D (protein convention), sign included, as in RASPA2 CalculateTorsionEnergy.
+// Dihedral angle A-B-C-D (protein convention), sign included in the IUPAC convention.
 double dihedralAngle(const double3 &a, const double3 &b, const double3 &c, const double3 &d)
 {
   double3 Dab = a - b;
@@ -64,8 +64,9 @@ double dihedralAngle(const double3 &a, const double3 &b, const double3 &c, const
 
   double3 Pb = double3::cross(Dab, Dbc);
   double3 Pc = double3::cross(Dbc, Dcd);
-  // RASPA2 sign, written component-wise, equals Dbc . (Pb x Pc)
-  double sign = double3::dot(Dbc, double3::cross(Pb, Pc));
+  // The IUPAC sign (RASPA2 used the opposite one, Dbc . (Pb x Pc)): the phase-dependent forms are compared in the
+  // convention RASPA now uses, that of AMBER, CHARMM and LAMMPS.
+  double sign = -double3::dot(Dbc, double3::cross(Pb, Pc));
   return std::copysign(std::acos(cos_phi), sign);
 }
 
@@ -538,50 +539,50 @@ TEST(internal_potentials, bond_bend_forms_match_RASPA2)
 
   // CVFF/CFF: (theta-p0)*(p1*(rab-p2)+p3*(rbc-p4))
   {
-    BondBendPotential bondBend({0, 1, 2, 3}, BondBendType::CVFF, {110.0, 5000.0, 1.1, 6000.0, 1.5});
+    BondBendPotential bondBend({0, 1, 2}, BondBendType::CVFF, {110.0, 5000.0, 1.1, 6000.0, 1.5});
     double ref = (theta - 110.0 * DEG2RAD) * (K2E(5000.0) * (r_ab - 1.1) + K2E(6000.0) * (r_cb - 1.5));
-    EXPECT_NEAR(bondBend.calculateEnergy(posA, posB, posC, posD), ref, tol * std::abs(ref));
+    EXPECT_NEAR(bondBend.calculateEnergy(posA, posB, posC), ref, tol * std::abs(ref));
   }
 
   // MM3: p0*((rab-p1)+(rbc-p2))*(theta-p3), with theta difference in degrees, p0 in mdyne/rad
   {
-    BondBendPotential bondBend({0, 1, 2, 3}, BondBendType::MM3, {0.1, 1.1, 1.5, 110.0});
+    BondBendPotential bondBend({0, 1, 2}, BondBendType::MM3, {0.1, 1.1, 1.5, 110.0});
     double p0 = 0.1 * 2.51118 * Units::KCalPerMolToEnergy;
     double ref = p0 * ((r_ab - 1.1) + (r_cb - 1.5)) * RAD2DEG * (theta - 110.0 * DEG2RAD);
-    EXPECT_NEAR(bondBend.calculateEnergy(posA, posB, posC, posD), ref, tol * std::abs(ref));
+    EXPECT_NEAR(bondBend.calculateEnergy(posA, posB, posC), ref, tol * std::abs(ref));
   }
 
   // TRUNCATED_HARMONIC
   {
-    BondBendPotential bondBend({0, 1, 2, 3}, BondBendType::TruncatedHarmonic, {40000.0, 110.0, 2.0});
+    BondBendPotential bondBend({0, 1, 2}, BondBendType::TruncatedHarmonic, {40000.0, 110.0, 2.0});
     double dt = theta - 110.0 * DEG2RAD;
     double ref = 0.5 * K2E(40000.0) * dt * dt *
                  std::exp(-(std::pow(r_ab, 8) + std::pow(r_cb, 8)) / std::pow(2.0, 8));
-    EXPECT_NEAR(bondBend.calculateEnergy(posA, posB, posC, posD), ref, tol * std::abs(ref));
+    EXPECT_NEAR(bondBend.calculateEnergy(posA, posB, posC), ref, tol * std::abs(ref));
   }
 
   // SCREENED_HARMONIC
   {
-    BondBendPotential bondBend({0, 1, 2, 3}, BondBendType::ScreenedHarmonic, {40000.0, 110.0, 2.0, 2.5});
+    BondBendPotential bondBend({0, 1, 2}, BondBendType::ScreenedHarmonic, {40000.0, 110.0, 2.0, 2.5});
     double dt = theta - 110.0 * DEG2RAD;
     double ref = 0.5 * K2E(40000.0) * dt * dt * std::exp(-(r_ab / 2.0 + r_cb / 2.5));
-    EXPECT_NEAR(bondBend.calculateEnergy(posA, posB, posC, posD), ref, tol * std::abs(ref));
+    EXPECT_NEAR(bondBend.calculateEnergy(posA, posB, posC), ref, tol * std::abs(ref));
   }
 
   // SCREENED_VESSAL
   {
-    BondBendPotential bondBend({0, 1, 2, 3}, BondBendType::ScreenedVessal, {40000.0, 110.0, 2.0, 2.5});
+    BondBendPotential bondBend({0, 1, 2}, BondBendType::ScreenedVessal, {40000.0, 110.0, 2.0, 2.5});
     double p1 = 110.0 * DEG2RAD;
     double t1 = (p1 - std::numbers::pi) * (p1 - std::numbers::pi) -
                 (theta - std::numbers::pi) * (theta - std::numbers::pi);
     double ref = (K2E(40000.0) / (8.0 * (theta - std::numbers::pi) * (theta - std::numbers::pi))) * t1 * t1 *
                  std::exp(-(r_ab / 2.0 + r_cb / 2.5));
-    EXPECT_NEAR(bondBend.calculateEnergy(posA, posB, posC, posD), ref, tol * std::abs(ref));
+    EXPECT_NEAR(bondBend.calculateEnergy(posA, posB, posC), ref, tol * std::abs(ref));
   }
 
   // TRUNCATED_VESSAL
   {
-    BondBendPotential bondBend({0, 1, 2, 3}, BondBendType::TruncatedVessal, {40000.0, 110.0, 2.0, 2.5});
+    BondBendPotential bondBend({0, 1, 2}, BondBendType::TruncatedVessal, {40000.0, 110.0, 2.0, 2.5});
     double p1 = 110.0 * DEG2RAD;
     double p2 = 2.0;
     double ref = K2E(40000.0) *
@@ -589,7 +590,7 @@ TEST(internal_potentials, bond_bend_forms_match_RASPA2)
                   0.5 * p2 * std::pow(std::numbers::pi, p2 - 1.0) * std::pow(theta - p1, 2) *
                       std::pow(std::numbers::pi - p1, 3.0)) *
                  std::exp(-(std::pow(r_ab, 8) + std::pow(r_cb, 8)) / std::pow(2.5, 8));
-    EXPECT_NEAR(bondBend.calculateEnergy(posA, posB, posC, posD), ref, tol * std::abs(ref));
+    EXPECT_NEAR(bondBend.calculateEnergy(posA, posB, posC), ref, tol * std::abs(ref));
   }
 }
 
@@ -774,4 +775,27 @@ TEST(internal_potentials, linear_bend_at_its_equilibrium_has_finite_derivatives)
   const auto [energyNear, gradientNear, strainNear] = harmonic.potentialEnergyGradientStrain(a, b, cTilted);
   EXPECT_TRUE(finite(energyNear) && finite(gradientNear[0].y) && finite(gradientNear[2].y));
   EXPECT_LT(gradientNear[2].length(), 1.0);
+}
+
+// The dihedral angle follows the IUPAC sign convention of AMBER, CHARMM and LAMMPS: positive when, looking from B to
+// C, A turns clockwise onto D. The geometry below has an IUPAC dihedral of +60 degrees; the phase-dependent forms
+// reach their minimum (harmonic) and maximum (CVFF) there, and not at -60 degrees as with the opposite sign.
+TEST(internal_potentials, torsion_angle_follows_the_iupac_sign_convention)
+{
+  const double angle = 60.0 * std::numbers::pi / 180.0;
+  const double3 A(1.0, 0.0, 0.0);
+  const double3 B(0.0, 0.0, 0.0);
+  const double3 C(0.0, 0.0, 1.5);
+  const double3 D(std::cos(angle), std::sin(angle), 1.5);
+  const double3 mirroredD(std::cos(angle), -std::sin(angle), 1.5);
+
+  const TorsionPotential harmonic({0, 1, 2, 3}, TorsionType::Harmonic, {1000.0, 60.0});
+  EXPECT_NEAR(harmonic.calculateEnergy(A, B, C, D), 0.0, 1e-9);
+  EXPECT_GT(harmonic.calculateEnergy(A, B, C, mirroredD), 1.0);
+  EXPECT_NEAR(std::get<0>(harmonic.potentialEnergyGradientStrain(A, B, C, D)), 0.0, 1e-9);
+
+  const TorsionPotential cvff({0, 1, 2, 3}, TorsionType::CVFF, {100.0, 1.0, 60.0});
+  const double top = cvff.calculateEnergy(A, B, C, D);
+  EXPECT_GT(top, cvff.calculateEnergy(A, B, C, mirroredD));
+  EXPECT_NEAR(std::get<0>(cvff.potentialEnergyGradientStrain(A, B, C, D)), top, 1e-9 * std::abs(top));
 }

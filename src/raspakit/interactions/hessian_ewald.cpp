@@ -466,6 +466,14 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
   const std::size_t frameworkOffset =
       flexibleFramework ? frameworkAtoms.size() : (mixed ? framework->numberOfMobileAtoms() : 0);
   const bool liveFramework = frameworkOffset > 0;
+  // as in computeEwaldFourierEnergy: 'omitInterInteractions' would subtract the mobile framework atoms with the
+  // molecules
+  if (liveFramework && forceField.omitInterInteractions)
+  {
+    throw std::logic_error(
+        "'omitInterInteractions' is not supported with mobile (flexible or rigid-group) framework "
+        "atoms in the Ewald sum");
+  }
   // The Fourier sums run over the live framework and molecule atoms as one indexed array;
   // assemble that view locally so the spans need not be contiguous in memory.
   std::vector<Atom> combinedAtoms{};

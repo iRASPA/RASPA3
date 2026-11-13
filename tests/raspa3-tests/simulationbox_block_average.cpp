@@ -2,6 +2,7 @@
 
 import std;
 
+import double3;
 import double3x3;
 import simulationbox;
 import property_simulationbox;
@@ -40,4 +41,27 @@ TEST(SIMULATIONBOX_BLOCK_AVERAGE, cell_error_is_element_wise_for_a_triclinic_cel
     const double expected = elementAverages[i].average().second;
     EXPECT_NEAR(cellErrors[i], expected, 1.0e-10 * std::max(1.0, expected)) << "cell element " << i;
   }
+}
+
+// A cell with right angles that is rotated away from the axes is not rectangular: the rectangular minimum image
+// reads only the diagonal of the cell, and with a rotated cell it moved a lattice vector to somewhere else than zero.
+TEST(SIMULATIONBOX_FIXES, rotated_orthogonal_cell_is_triclinic_and_wraps_lattice_vectors_to_zero)
+{
+  const double angle = 0.3;
+  const double c = std::cos(angle);
+  const double s = std::sin(angle);
+  const double3 a(20.0 * c, 20.0 * s, 0.0);
+  const double3 b(-22.0 * s, 22.0 * c, 0.0);
+  const double3 cVector(0.0, 0.0, 24.0);
+  const SimulationBox rotated(double3x3(a, b, cVector));
+  EXPECT_EQ(rotated.type, SimulationBox::Type::Triclinic);
+  for (const double3& lattice : {a, b, cVector, a + b, a - b + cVector})
+  {
+    const double3 wrapped = rotated.applyPeriodicBoundaryConditions(lattice);
+    EXPECT_NEAR(wrapped.length(), 0.0, 1.0e-9);
+  }
+
+  const SimulationBox alongTheAxes(
+      double3x3(double3(20.0, 0.0, 0.0), double3(0.0, 22.0, 0.0), double3(0.0, 0.0, 24.0)));
+  EXPECT_EQ(alongTheAxes.type, SimulationBox::Type::Rectangular);
 }

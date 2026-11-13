@@ -3298,8 +3298,8 @@ Potentials::potentialTriquinticMullerBrown(const double3& pos)
   // coefficients of h^m k^n (m + n <= maxOrder)
   using Series = std::array<std::array<double, maxOrder + 1>, maxOrder + 1>;
 
-  constexpr std::array<double, 4> A{-200.0, -100.0, -170.0, -15.0};
-  constexpr std::array<double, 4> a{-1.0, -1.0, -6.5, -0.7};
+  constexpr std::array<double, 4> A{-200.0, -100.0, -170.0, 15.0};
+  constexpr std::array<double, 4> a{-1.0, -1.0, -6.5, 0.7};
   constexpr std::array<double, 4> x0{1.0, 0.0, -0.5, -1.0};
   constexpr std::array<double, 4> b{0.0, 0.0, 11.0, 0.6};
   constexpr std::array<double, 4> y0{0.0, 0.5, 1.5, 1.0};

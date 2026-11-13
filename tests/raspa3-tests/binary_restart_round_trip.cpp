@@ -118,3 +118,41 @@ TEST(BINARY_RESTART_ROUND_TRIP, system_rebuilds_its_conformation_reservoirs)
     EXPECT_EQ(restoredReservoir.front()[atom].position, reservoir.front()[atom].position) << "atom " << atom;
   }
 }
+
+// The options a flexible framework regenerates its van der Waals pair list and intramolecular topology from: they
+// were not stored, so a restart regenerated the pair list with the default exclusions and 1-4 scalings.
+TEST(BINARY_RESTART_ROUND_TRIP, framework_keeps_its_intramolecular_generation_options)
+{
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Framework original = Framework::makeFAU(forceField, int3(1, 1, 1));
+  original.excludeIntra12Interactions = false;
+  original.excludeIntra13Interactions = false;
+  original.excludeIntraBondInteractions = true;
+  original.excludeIntraBendInteractions = true;
+  original.intra14VanDerWaalsScaling = 0.5;
+  original.intra14ChargeChargeScaling = 0.8333;
+  original.frameworkDefinitionName = "fau_flexible";
+  original.bondDefinitions = {FrameworkPotentialDefinition<2>{{0, 1}, "HARMONIC", {1000.0, 1.6}}};
+  original.bendDefinitions = {FrameworkPotentialDefinition<3>{{1, 0, 1}, "HARMONIC", {500.0, 109.5}}};
+  original.torsionDefinitions = {FrameworkPotentialDefinition<4>{{1, 0, 1, 0}, "SIX_TERM_DIHEDRAL", {1.0, 2.0}}};
+  original.improperTorsionDefinitions = {};
+
+  Framework restored;
+  roundTrip(original, restored, "framework_generation_options");
+  EXPECT_FALSE(restored.excludeIntra12Interactions);
+  EXPECT_FALSE(restored.excludeIntra13Interactions);
+  EXPECT_TRUE(restored.excludeIntraBondInteractions);
+  EXPECT_TRUE(restored.excludeIntraBendInteractions);
+  EXPECT_EQ(restored.intra14VanDerWaalsScaling, 0.5);
+  EXPECT_EQ(restored.intra14ChargeChargeScaling, 0.8333);
+  EXPECT_EQ(restored.frameworkDefinitionName, "fau_flexible");
+  ASSERT_EQ(restored.bondDefinitions.size(), 1uz);
+  EXPECT_EQ(restored.bondDefinitions[0].atomTypes, (std::array<std::size_t, 2>{0, 1}));
+  EXPECT_EQ(restored.bondDefinitions[0].potentialType, "HARMONIC");
+  EXPECT_EQ(restored.bondDefinitions[0].parameters, (std::vector<double>{1000.0, 1.6}));
+  ASSERT_EQ(restored.bendDefinitions.size(), 1uz);
+  EXPECT_EQ(restored.bendDefinitions[0].atomTypes, (std::array<std::size_t, 3>{1, 0, 1}));
+  ASSERT_EQ(restored.torsionDefinitions.size(), 1uz);
+  EXPECT_EQ(restored.torsionDefinitions[0].parameters, (std::vector<double>{1.0, 2.0}));
+  EXPECT_TRUE(restored.improperTorsionDefinitions.empty());
+}

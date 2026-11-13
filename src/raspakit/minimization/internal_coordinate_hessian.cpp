@@ -189,7 +189,9 @@ Minimization::InternalCoordinate Minimization::dihedralInternalCoordinate(const 
 
   const double3 Pb = double3::cross(Dab, Dcb);
   const double3 Pc = double3::cross(Dcb, Ddc);
-  const double sign = double3::dot(Dcb, double3::cross(Pb, Pc));
+  // IUPAC sign: positive when, looking from B to C, A turns clockwise onto D (sign of b1 . (b2 x b3), with
+  // b1 = B - A, b2 = C - B, b3 = D - C); as AMBER, CHARMM and LAMMPS. The dot product below is minus that.
+  const double sign = -double3::dot(Dcb, double3::cross(Pb, Pc));
   coordinate.phi = std::copysign(std::acos(cosPhi), sign);
   const double sinPhiRaw = std::sin(coordinate.phi);
   coordinate.sinPhi = std::copysign(std::max(1.0e-8, std::fabs(sinPhiRaw)), sinPhiRaw);

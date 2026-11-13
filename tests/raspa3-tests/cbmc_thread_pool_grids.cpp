@@ -9,6 +9,7 @@ import uint3;
 import double3;
 import atom;
 import forcefield;
+import vdwparameters;
 import framework;
 import interpolation_energy_grid;
 import component;
@@ -182,4 +183,25 @@ TEST(CBMC_THREAD_POOL_GRIDS, no_grid_is_read_for_a_framework_with_mobile_atoms)
   const std::optional<RunningEnergy> grown = CBMC::computeFrameworkMoleculeEnergy(context, probeSpan);
   ASSERT_TRUE(grown.has_value());
   EXPECT_NEAR(grown->frameworkMoleculeVDW, moved, 1e-10 * std::abs(moved));
+}
+
+// The VDW interpolation grid tabulates the 12-6 Lennard-Jones form: a framework pair of another form was gridded as
+// the Lennard-Jones potential of its first two parameters, while the pairwise routes evaluated the real potential.
+TEST(CBMC_THREAD_POOL_GRIDS, a_non_lennard_jones_framework_pair_is_not_gridded)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  forceField.settings.gridPseudoAtomIndices = {2};  // methane
+  forceField.settings.numberOfVDWGridPoints = uint3(8, 8, 8);
+  forceField.settings.numberOfCoulombGridPoints = uint3(8, 8, 8);
+  forceField.settings.numberOfGridTestPoints = 0;
+  const std::size_t oxygen = forceField.findPseudoAtom("O").value();
+  const VDWParameters buckingham(VDWParameters::Type::BuckingHam, {1.0e5, 3.5, 1.0e3});
+  forceField(2, oxygen) = buckingham;
+  forceField(oxygen, 2) = buckingham;
+  const Framework framework = Framework::makeFAU(forceField, int3(1, 1, 1));
+  const Component methane = Component(forceField, "methane", 190.564, 4599200, 0.01142,
+                                      {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 0, false, false)}, {}, {}, 5, 21);
+  System system(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {framework}, {methane}, {}, {0}, 5);
+  std::ostringstream log;
+  EXPECT_THROW(system.createFrameworkInterpolationGrids(log), std::runtime_error);
 }

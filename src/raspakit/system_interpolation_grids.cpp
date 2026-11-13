@@ -12,6 +12,7 @@ import double3x3;
 import atom;
 import framework;
 import forcefield;
+import vdwparameters;
 import simulationbox;
 import units;
 import interpolation_energy_grid;
@@ -241,6 +242,25 @@ void System::createFrameworkInterpolationGrids(std::ostream& stream)
       numberOfVDWGridPoints.x = static_cast<std::size_t>(perpendicular_widths.x / forceField.settings.spacingVDWGrid + 0.5);
       numberOfVDWGridPoints.y = static_cast<std::size_t>(perpendicular_widths.y / forceField.settings.spacingVDWGrid + 0.5);
       numberOfVDWGridPoints.z = static_cast<std::size_t>(perpendicular_widths.z / forceField.settings.spacingVDWGrid + 0.5);
+    }
+
+    // The VDW grid tabulates the 12-6 Lennard-Jones form of every framework-guest pair (and nothing for a pair
+    // without interaction): a pair of any other form (Buckingham, Mie, Feynman-Hibbs, the switched and
+    // shifted-force forms, ...) would be interpolated as a Lennard-Jones potential it is not.
+    for (const std::size_t& index : forceField.settings.gridPseudoAtomIndices)
+    {
+      for (const Atom& atom : framework->unitCellAtoms)
+      {
+        const VDWParameters::Type type = forceField(index, static_cast<std::size_t>(atom.type)).type;
+        if (type != VDWParameters::Type::LennardJones && type != VDWParameters::Type::None)
+        {
+          throw std::runtime_error(std::format(
+              "[Interpolation grids]: the framework-{} interaction of '{}' is of the form '{}', and the VDW "
+              "interpolation grid only tabulates Lennard-Jones; switch off 'UseInterpolationGrids' for it\n",
+              forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].name, forceField.pseudoAtoms[index].name,
+              VDWParameters::nameOfType(type)));
+        }
+      }
     }
 
     for (const std::size_t& index : forceField.settings.gridPseudoAtomIndices)

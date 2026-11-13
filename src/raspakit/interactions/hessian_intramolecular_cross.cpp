@@ -828,24 +828,11 @@ RunningEnergy Interactions::computeIntraMolecularCMAPHessian(
       for (std::size_t k = 0; k < 5; ++k) dynamics_span[ids[k]].gradient += gradient[k];
       hessian.strainGradient() += strain;
 
-      // The signed dihedral coordinates of the minimizer follow the opposite sign convention of the
-      // IUPAC angles the map is defined on: phi_IUPAC = -phi_RASPA (gradient and Hessian flip sign).
-      const auto negated = [](InternalCoordinate coordinate)
-      {
-        coordinate.value = -coordinate.value;
-        for (std::size_t i = 0; i < 4; ++i)
-        {
-          coordinate.gradient[i] = -1.0 * coordinate.gradient[i];
-          for (std::size_t j = 0; j < 4; ++j)
-            for (std::size_t a = 0; a < 3; ++a)
-              for (std::size_t b = 0; b < 3; ++b) coordinate.hessian[i][j][a][b] = -coordinate.hessian[i][j][a][b];
-        }
-        return coordinate;
-      };
-      const InternalCoordinate phi = negated(
-          Minimization::dihedralAngleInternalCoordinate(positions[0], positions[1], positions[2], positions[3]));
-      const InternalCoordinate psi = negated(
-          Minimization::dihedralAngleInternalCoordinate(positions[1], positions[2], positions[3], positions[4]));
+      // the signed dihedral coordinates of the minimizer are the IUPAC angles the map is defined on
+      const InternalCoordinate phi =
+          Minimization::dihedralAngleInternalCoordinate(positions[0], positions[1], positions[2], positions[3]);
+      const InternalCoordinate psi =
+          Minimization::dihedralAngleInternalCoordinate(positions[1], positions[2], positions[3], positions[4]);
 
       const CMAPMap::Evaluation value = map.evaluate(phi.value, psi.value);
       const std::array<double, 3> dUdq{value.dPhi, value.dPsi, 0.0};

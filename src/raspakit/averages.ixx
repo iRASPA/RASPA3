@@ -102,8 +102,13 @@ std::pair<A, B> pairSum(const std::pair<A, B> &lhs, const std::pair<A, B> &rhs)
  */
 export inline std::pair<double, double> meanConfidence(std::vector<double> &data)
 {
+  // No data has no mean, and fewer than three blocks give no error estimate (as in blockErrorEstimate): both are
+  // reported as zero rather than as the 0/0 of the formulas, a not-a-number that the fast-math build cannot test
+  // for and that the JSON writer then printed as a bare 'nan' token.
+  if (data.empty()) return {0.0, 0.0};
   double size = static_cast<double>(data.size());
   double mean = std::accumulate(data.begin(), data.end(), 0.0) / size;
+  if (data.size() < 3) return {mean, 0.0};
   double sumOfSquaresDiff = std::accumulate(data.begin(), data.end(), 0.0,
                                             [mean](double acc, double x) { return acc + (x - mean) * (x - mean); });
 

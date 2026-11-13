@@ -151,14 +151,18 @@ TEST(vdw_switching, tail_corrections_cover_the_switching_region)
        {VDWParameters::Type::LennardJonesSwitched, VDWParameters::Type::LennardJonesForceSwitched})
   {
     const VDWParameters parameters = makeParameters(type);
-    // the energy correction: Integrate[(U_LJ - U_switched) r^2, {r, rs, Infinity}] = the switched-away part on
-    // [rs, rc] plus the plain tail beyond the cutoff (U_switched is zero there)
-    // (numerically up to 400 Angstrom, the remaining -C6 / r^6 tail in closed form)
+    // the energy correction: Integrate[(U_LJ - U_switched) r^2, {r, 0, Infinity}] = the constant offset of the
+    // force switch inside rs (none for the potential switch), the switched-away part on [rs, rc], and the plain
+    // tail beyond the cutoff (U_switched is zero there). The difference is integrated numerically from 2 Angstrom,
+    // where it is still constant, and in closed form below that; numerically up to 400 Angstrom, the remaining
+    // -C6 / r^6 tail in closed form.
     const double farAway = 400.0;
     const double c6 = 4.0 * epsilonKelvin * Units::KelvinToEnergy * std::pow(sigma, 6);
+    auto difference = [&](double r) { return lennardJones(r) - parameters.potentialEnergyAtFullCoupling(r * r); };
     const double expectedEnergy =
-        integrate([&](double r) { return (lennardJones(r) - parameters.potentialEnergyAtFullCoupling(r * r)) * r * r; },
-                  switchingDistance, cutOff) +
+        difference(2.0) * 8.0 / 3.0 +
+        integrate([&](double r) { return difference(r) * r * r; }, 2.0, switchingDistance) +
+        integrate([&](double r) { return difference(r) * r * r; }, switchingDistance, cutOff) +
         integrate([&](double r) { return lennardJones(r) * r * r; }, cutOff, farAway) -
         c6 / (3.0 * std::pow(farAway, 3));
     const double energy = Potentials::potentialCorrectionVDW(parameters, cutOff);

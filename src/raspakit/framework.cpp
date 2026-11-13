@@ -1392,6 +1392,34 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, FrameworkGro
   return archive;
 }
 
+// The type-based potential definitions of a flexible framework, element by element (the archive has no operator
+// for the definition struct).
+template <std::size_t N>
+static void writeDefinitions(Archive<std::ofstream>& archive, const std::vector<FrameworkPotentialDefinition<N>>& list)
+{
+  archive << static_cast<std::uint64_t>(list.size());
+  for (const FrameworkPotentialDefinition<N>& definition : list)
+  {
+    archive << definition.atomTypes;
+    archive << definition.potentialType;
+    archive << definition.parameters;
+  }
+}
+
+template <std::size_t N>
+static void readDefinitions(Archive<std::ifstream>& archive, std::vector<FrameworkPotentialDefinition<N>>& list)
+{
+  std::uint64_t size{};
+  archive >> size;
+  list.assign(static_cast<std::size_t>(size), FrameworkPotentialDefinition<N>{});
+  for (FrameworkPotentialDefinition<N>& definition : list)
+  {
+    archive >> definition.atomTypes;
+    archive >> definition.potentialType;
+    archive >> definition.parameters;
+  }
+}
+
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framework& c)
 {
   archive << c.versionNumber;
@@ -1435,6 +1463,20 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framew
   archive << c.unitCellMass;
   archive << c.fractionalUnitCellAtoms;
   archive << std::vector<std::size_t>(c.uniqueAtomTypes.begin(), c.uniqueAtomTypes.end());
+  // version 3: the generation options and definitions the van der Waals image list and the intramolecular topology
+  // are regenerated from (without them a restart regenerated the pair list with the default exclusions and 1-4
+  // scalings)
+  archive << c.excludeIntra12Interactions;
+  archive << c.excludeIntra13Interactions;
+  archive << c.excludeIntraBondInteractions;
+  archive << c.excludeIntraBendInteractions;
+  archive << c.intra14VanDerWaalsScaling;
+  archive << c.intra14ChargeChargeScaling;
+  archive << c.frameworkDefinitionName;
+  writeDefinitions(archive, c.bondDefinitions);
+  writeDefinitions(archive, c.bendDefinitions);
+  writeDefinitions(archive, c.torsionDefinitions);
+  writeDefinitions(archive, c.improperTorsionDefinitions);
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -1496,6 +1538,20 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c
     std::vector<std::size_t> uniqueAtomTypes;
     archive >> uniqueAtomTypes;
     c.uniqueAtomTypes = std::unordered_set<std::size_t>(uniqueAtomTypes.begin(), uniqueAtomTypes.end());
+  }
+  if (versionNumber >= 3)
+  {
+    archive >> c.excludeIntra12Interactions;
+    archive >> c.excludeIntra13Interactions;
+    archive >> c.excludeIntraBondInteractions;
+    archive >> c.excludeIntraBendInteractions;
+    archive >> c.intra14VanDerWaalsScaling;
+    archive >> c.intra14ChargeChargeScaling;
+    archive >> c.frameworkDefinitionName;
+    readDefinitions(archive, c.bondDefinitions);
+    readDefinitions(archive, c.bendDefinitions);
+    readDefinitions(archive, c.torsionDefinitions);
+    readDefinitions(archive, c.improperTorsionDefinitions);
   }
 
 #if DEBUG_ARCHIVE

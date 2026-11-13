@@ -867,8 +867,7 @@ __kernel void MolecularEnergyField(__global const float4 *position,
 }
 )foo";
 
-
-const char *MolecularEnergyGridOpenCL::tessellationKernelSource = R"foo(
+const char* MolecularEnergyGridOpenCL::tessellationKernelSource = R"foo(
 static float smoothPotentialAt(__global const float *smoothPotential, float3 s, int3 gridSize)
 {
   s -= floor(s);
@@ -983,7 +982,10 @@ static float contributionOfAtom(__global const float4 *position,
           }
           else if(useCharges != 0 && charges != 0.0f && rr < 1.0f)
           {
+            // and keeps no Coulomb term either: the unshielded -1/r at the core made a buried ion the atom that
+            // pulls hardest on every voxel round it (the orientation is excluded, so no energy needs it)
             *excluded = 1;
+            overlapping = 1;
           }
 
           if(useCharges != 0 && !overlapping && rr < coulombCutOffSquared && charges != 0.0f)

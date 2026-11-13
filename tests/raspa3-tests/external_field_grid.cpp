@@ -13,6 +13,7 @@ import simulationbox;
 import system;
 import interpolation_energy_grid;
 import interactions_external_field;
+import triquintic_derivatives_external_field;
 
 namespace
 {
@@ -111,4 +112,31 @@ TEST(EXTERNAL_FIELD_GRID, cube_file_skips_the_atom_lines_and_stores_x_fastest)
   EXPECT_THROW(tricubic.makeExternalFieldInterpolationGrid(stream, forceField, box), std::runtime_error);
 
   std::filesystem::remove(filename);
+}
+
+// The Muller-Brown surface has its three minima at the published points and values (Muller and Brown, Theor.
+// Chim. Acta 53, 75 (1979)), and its fourth term is a confining +15 exp(0.7 dx^2 + 0.6 dx dy + 0.7 dy^2): with
+// A_4 = -15 and a_4 = -0.7 the minima were off by up to 73 and the surface fell to minus infinity along y.
+TEST(EXTERNAL_FIELD_GRID, muller_brown_has_the_published_minima_and_is_bounded_below)
+{
+  ForceField forceField = makeForceField();
+  forceField.potentialEnergySurfaceType = ForceField::PotentialEnergySurfaceType::MullerBrown;
+  forceField.potentialEnergySurfaceOrigin = double3(0.0, 0.0, 0.0);
+
+  const std::array<std::pair<double3, double>, 3> minima{{{double3(-0.558224, 1.441726, 0.0), -146.6995},
+                                                          {double3(0.623499, 0.028038, 0.0), -108.1667},
+                                                          {double3(-0.050011, 0.466694, 0.0), -80.7678}}};
+  for (const auto& [position, energy] : minima)
+  {
+    EXPECT_NEAR(Interactions::analyticExternalFieldEnergy(forceField, position), energy, 1.0e-3);
+    const auto derivatives = Potentials::potentialTriquinticMullerBrown(position);
+    EXPECT_NEAR(std::get<0>(derivatives), energy, 1.0e-3);
+    EXPECT_NEAR(std::get<1>(derivatives)[0], 0.0, 1.0e-2);
+    EXPECT_NEAR(std::get<1>(derivatives)[1], 0.0, 1.0e-2);
+  }
+
+  for (double3 far : {double3(0.0, 5.0, 0.0), double3(0.0, -5.0, 0.0), double3(5.0, 5.0, 0.0), double3(-5.0, 0.0, 0.0)})
+  {
+    EXPECT_GT(Interactions::analyticExternalFieldEnergy(forceField, far), -150.0);
+  }
 }

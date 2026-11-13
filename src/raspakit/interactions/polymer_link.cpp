@@ -47,6 +47,8 @@ PairValue pairValue(const ForceField &forceField, const Atom &a, const Atom &b, 
   {
     case PairState::Full:
     {
+      // under 'omitInterInteractions' the inter-molecular sum does not count the pair: it has no full value
+      if (forceField.omitInterInteractions) break;
       const double cutOffVDWSquared = forceField.cutOffMoleculeVDW * forceField.cutOffMoleculeVDW;
       const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
       Interactions::evaluatePairAtSeparation<Order>(
@@ -85,6 +87,9 @@ PairValue pairValue(const ForceField &forceField, const Atom &a, const Atom &b, 
       const double prefactor = Units::CoulombicConversionFactor * a.charge * b.charge;
       if (prefactor == 0.0) break;
       const double scalingTotal = a.scalingCoulomb * b.scalingCoulomb;
+      // under 'omitInterInteractions' the reciprocal sum leaves the molecule charges out and the inter-molecular
+      // sum the pair: there is nothing to exclude or complete (as for a cross-link)
+      if (forceField.omitInterInteractions) break;
       if (forceField.usesEwaldFourier())
       {
         // the reciprocal sum counted the pair: remove it the way the intramolecular exclusion does (no cutoff)

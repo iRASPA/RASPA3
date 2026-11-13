@@ -591,7 +591,10 @@ __kernel void ComputeVoidFraction (__global const float *input,
 
    // Copy from global memory to local memory. The range is padded out to whole groups; a point past the
    // end of the grid is padding and weighs nothing.
-   localSums[local_id] = global_id < (size_t)numberOfPoints ? exp(-beta * input[global_id]) : 0.0f;
+   // The weight is held below e^80 (5.5e34): in single precision exp overflows past 88.7, and one voxel in an
+   // unshielded Coulomb well (a charged framework atom without dispersion) turned the whole void fraction into
+   // infinity; a group's sum of such weights stays within the float range.
+   localSums[local_id] = global_id < (size_t)numberOfPoints ? exp(fmin(-beta * input[global_id], 80.0f)) : 0.0f;
 
    // Fold the upper part of what is left onto the lower, until one sum is left. A group may be of any size,
    // so the part kept is the larger half, and the one in the middle of an odd count stays where it is to be

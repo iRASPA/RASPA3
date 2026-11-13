@@ -35,6 +35,13 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 {
   Move::Types move = Move::Types::GibbsVolume;
 
+  // a system paired with itself is scaled before it is saved as the second system, and a rejection then restores
+  // the trial box over the old one
+  if (&systemA == &systemB)
+  {
+    throw std::logic_error("MC_Moves::GibbsVolumeMove: the volume exchange needs two different systems");
+  }
+
   // Volume moves do not change either particle-number macrostate and leave the
   // TMMC collection matrices untouched.
   systemA.mc_moves_statistics.addTrial(move);
@@ -93,14 +100,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
   systemB.mc_moves_statistics.addConstructed(move);
 
-  // Calculate total energy change deltaU
-  double deltaU = (newTotalEnergyA.potentialEnergy() - oldTotalEnergyA.potentialEnergy()) +
-                  (newTotalEnergyB.potentialEnergy() - oldTotalEnergyB.potentialEnergy());
+  // each box's energy change weighted by its own beta (the input reader pairs only boxes at one temperature)
+  const double deltaUA = newTotalEnergyA.potentialEnergy() - oldTotalEnergyA.potentialEnergy();
+  const double deltaUB = newTotalEnergyB.potentialEnergy() - oldTotalEnergyB.potentialEnergy();
 
   // apply acceptance/rejection rule
-  if (random.uniform() <
-      std::exp(-systemA.beta * deltaU + ((numberOfMoleculesA + 1.0) * std::log(newVolumeA / oldVolumeA)) +
-               ((numberOfMoleculesB + 1.0) * std::log(newVolumeB / oldVolumeB))))
+  if (random.uniform() < std::exp(-systemA.beta * deltaUA - systemB.beta * deltaUB +
+                                  ((numberOfMoleculesA + 1.0) * std::log(newVolumeA / oldVolumeA)) +
+                                  ((numberOfMoleculesB + 1.0) * std::log(newVolumeB / oldVolumeB))))
   {
     // Accept the move: both systems already hold their new boxes, positions, structure factors and electric fields.
     systemA.mc_moves_statistics.addAccepted(move);

@@ -288,17 +288,34 @@ class RingSampler
     acceptOrReject(rotationStats_, restore);
   }
 
-  // Rigid sub-fragment: a symmetric whole-unit translation or rotation about the unit centre, so its
-  // internal geometry stays exact.
+  // Rigid sub-fragment: a symmetric whole-unit move that keeps its internal geometry exact. A Fixed bond from the
+  // unit to an atom outside it is a holonomic constraint without energy, kept as in 'singleAtomMove': with no such
+  // bond the unit is translated or rotated about its centre; bonded to one outside atom it is rotated about a
+  // random axis through that atom, to two about the line through both, and to three or more it moves only through
+  // the whole-cluster rotation or a concerted move. (The free moves stretched the Fixed bonds that join the rigid
+  // rings of a macrocycle at no energy cost.)
   void rigidUnitMove(const std::vector<std::size_t> &unit)
   {
+    std::vector<std::size_t> outside{};
+    for (std::size_t atom : unit)
+    {
+      for (std::size_t neighbour : ring_.fixedNeighbors[atom])
+      {
+        if (std::ranges::find(unit, neighbour) == unit.end() && std::ranges::find(outside, neighbour) == outside.end())
+        {
+          outside.push_back(neighbour);
+        }
+      }
+    }
+    if (outside.size() > 2) return;
+
     for (std::size_t k = 0; k != unit.size(); ++k) saved_[k] = chain_[unit[k]].position;
     auto restore = [&]
     {
       for (std::size_t k = 0; k != unit.size(); ++k) chain_[unit[k]].position = saved_[k];
     };
 
-    if (random_.uniform() < 0.5)
+    if (outside.empty() && random_.uniform() < 0.5)
     {
       const double3 displacement = randomDisplacement(displacementStats_.maxChange);
       for (std::size_t atom : unit) chain_[atom].position += displacement;
@@ -307,9 +324,19 @@ class RingSampler
     }
 
     double3 center{};
-    for (std::size_t atom : unit) center += chain_[atom].position;
-    center = center / static_cast<double>(unit.size());
-    const double3 axis = random_.randomVectorOnUnitSphere();
+    double3 axis{};
+    if (outside.empty())
+    {
+      for (std::size_t atom : unit) center += chain_[atom].position;
+      center = center / static_cast<double>(unit.size());
+      axis = random_.randomVectorOnUnitSphere();
+    }
+    else
+    {
+      center = chain_[outside[0]].position;
+      axis = outside.size() == 1 ? random_.randomVectorOnUnitSphere()
+                                 : (chain_[outside[1]].position - center).normalized();
+    }
     const double angle = randomAngle(rotationStats_.maxChange);
     for (std::size_t atom : unit)
     {

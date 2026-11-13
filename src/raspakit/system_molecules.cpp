@@ -519,6 +519,12 @@ void System::exchangeConfiguration(System& other)
   std::swap(containsTheFractionalMolecule, other.containsTheFractionalMolecule);
   // The cross-link topology belongs to the configuration; the bond types (Hamiltonian) stay.
   crossLinks.swapTopology(other.crossLinks);
+  // the time-correlation properties belong to the trajectory: their time origins and sums follow the walker, so
+  // every correlation is taken over one continuous trajectory (a replica writes those of the walker it holds)
+  using std::swap;
+  swap(propertyMSD, other.propertyMSD);
+  swap(propertyVACF, other.propertyVACF);
+  swap(propertyEndToEndACF, other.propertyEndToEndACF);
   // the lambda coordinates describe the fractional molecules of the configuration: every one of them moves along
   for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
   {

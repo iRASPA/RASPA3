@@ -366,6 +366,13 @@ std::vector<std::int32_t> MolecularEnergyGridCPU::strongestAtoms(const PairInter
   if (fractionalPositions.empty()) return labels;
 
   const bool useCharges = probe.isCharged() && potential != nullptr && potential->numberOfVoxels() > 0;
+  // the potential is read voxel by voxel with this grid's dimensions (as in compute: a potential of another grid
+  // was indexed past its end)
+  if (useCharges && (potential->gridSize.x != gridSize.x || potential->gridSize.y != gridSize.y ||
+                     potential->gridSize.z != gridSize.z))
+  {
+    throw std::runtime_error("MolecularEnergyGridCPU: the potential is on a different grid than this one\n");
+  }
 
   std::vector<double3> directions = orientationSet(numberOfOrientations, probe.headTailSymmetric);
 
@@ -485,7 +492,10 @@ std::vector<std::int32_t> MolecularEnergyGridCPU::strongestAtoms(const PairInter
             }
             else if (useCharges && charges != 0.0 && rr < dummyCoreSquared)
             {
+              // and keeps no Coulomb term: the unshielded -1/r at the core made a buried ion the atom that pulls
+              // hardest on every voxel round it (the orientation is excluded, so no energy needs it)
               excluded = true;
+              overlapping = true;
             }
 
             if (useCharges && !overlapping && rr < coulombCutOffSquared && charges != 0.0)

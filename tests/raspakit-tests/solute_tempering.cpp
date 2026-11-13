@@ -167,12 +167,12 @@ TEST(solute_tempering, cross_term_potentials_are_homogeneous)
   }
   for (std::size_t t = 0; t < BondBendPotential::numberOfBondBendParameters.size(); ++t)
   {
-    BondBendPotential potential({0, 1, 2, 3}, static_cast<BondBendType>(t),
+    BondBendPotential potential({0, 1, 2}, static_cast<BondBendType>(t),
                                 genericParameters(BondBendPotential::numberOfBondBendParameters[t]));
     BondBendPotential scaled = potential;
     scaled.scaleEnergy(lambda);
-    expectScaledEnergy(scaled.calculateEnergy(posA, posB, posC, posD), potential.calculateEnergy(posA, posB, posC, posD),
-                       lambda, std::format("bond-bend type {}", t));
+    expectScaledEnergy(scaled.calculateEnergy(posA, posB, posC), potential.calculateEnergy(posA, posB, posC), lambda,
+                       std::format("bond-bend type {}", t));
   }
   for (std::size_t t = 0; t < BondTorsionPotential::numberOfBondTorsionParameters.size(); ++t)
   {

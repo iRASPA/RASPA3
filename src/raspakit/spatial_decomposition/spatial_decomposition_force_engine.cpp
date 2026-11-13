@@ -929,6 +929,11 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
   {
     coupling = residentBarostatFirstHalf(system, pressureTensor.trace());
     resident.setBox(box);
+    // the first half re-derived the automatic cut-offs and the Ewald parameters for the new box: the kernels and
+    // the lists follow them before the forces of this step (refreshed only at the start of the step, they were
+    // evaluated with the cut-offs and alpha of the previous box, and combined with the corrections of the new one)
+    refreshCutoffs(system);
+    if (cellList.numberOfBuilds == 0) rebuild = true;
   }
   std::chrono::steady_clock::time_point waitStart = std::chrono::steady_clock::now();
   context.wait(resident.enqueueFirstHalf(scaling, dt, coupling));

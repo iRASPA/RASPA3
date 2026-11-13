@@ -839,28 +839,32 @@ EXPAND_MODULE(MODULE_NAME)
             pybind11::arg("write_every") = std::nullopt)
       .def_readonly("result", &PropertyVolumeEvolution::result);
 
-
   pybind11::class_<System>(m, "System")
       .def(pybind11::init<ForceField, std::optional<SimulationBox>, bool, double, std::optional<double>, double,
                           std::optional<Framework>, std::vector<Component>, std::vector<std::vector<double3>>,
                           std::vector<std::size_t>, std::size_t, MCMoveProbabilities>(),
-           pybind11::arg("force_field"), 
-           pybind11::arg("simulation_box") = std::nullopt,
-           pybind11::arg("has_external_field") = false, 
-           pybind11::arg("external_temperature") = 298.0, 
-           pybind11::arg("external_pressure") = std::nullopt, 
-           pybind11::arg("helium_void_fraction") = 0.0,
-           pybind11::arg("framework_components") = std::nullopt,
-           pybind11::arg("components") = std::vector<Component>(), 
+           pybind11::arg("force_field"), pybind11::arg("simulation_box") = std::nullopt,
+           pybind11::arg("has_external_field") = false, pybind11::arg("external_temperature") = 298.0,
+           pybind11::arg("external_pressure") = std::nullopt, pybind11::arg("helium_void_fraction") = 0.0,
+           pybind11::arg("framework_components") = std::nullopt, pybind11::arg("components") = std::vector<Component>(),
            pybind11::arg("initial_positions") = std::vector<std::vector<double3>>(),
            pybind11::arg("initial_number_of_molecules") = std::vector<std::size_t>(),
-           pybind11::arg("number_of_blocks") = 5,
-           pybind11::arg("system_probabilities") = MCMoveProbabilities())
+           pybind11::arg("number_of_blocks") = 5, pybind11::arg("system_probabilities") = MCMoveProbabilities())
       .def("compute_total_energies", &System::computeTotalEnergies)
       .def("framework_mass", &System::frameworkMass)
       .def_readonly("simulation_box", &System::simulationBox)
       .def_readonly("input_pressure", &System::input_pressure)
-      .def_readonly("components", &System::components)
+      .def_property_readonly(
+          "components",
+          [](pybind11::object self)
+          {
+            // the live objects, each held by the parent: a copied vector lost every change
+            // made through it
+            pybind11::list list;
+            for (Component& item : self.cast<System&>().components)
+              list.append(pybind11::cast(&item, pybind11::return_value_policy::reference_internal, self));
+            return list;
+          })
       .def_readonly("number_of_molecules_per_component", &System::numberOfMoleculesPerComponent)
       .def_readonly("mc_moves_statistics", &System::mc_moves_statistics)
       .def_readonly("loadings", &System::loadings)
@@ -868,41 +872,34 @@ EXPAND_MODULE(MODULE_NAME)
       .def_readonly("average_energies", &System::averageEnergies)
       .def_readonly("average_pressure", &System::averagePressure)
       .def_readonly("thermostat", &System::thermostat)
-      .def("set_thermostat", &System::setThermostat,
-         pybind11::arg("thermostat") = std::nullopt)
+      .def("set_thermostat", &System::setThermostat, pybind11::arg("thermostat") = std::nullopt)
       .def_readonly("property_density_grid", &System::propertyDensityGrid)
-      .def("set_property_density_grid", &System::setPropertyDensityGrid,
-         pybind11::arg("property:") = std::nullopt)
+      .def("set_property_density_grid", &System::setPropertyDensityGrid, pybind11::arg("property") = std::nullopt)
       .def_readonly("average_energy_histogram", &System::averageEnergyHistogram)
-      .def("set_average_energy_histogram", &System::setAverageEnergyHistogram,
-         pybind11::arg("property:") = std::nullopt)
+      .def("set_average_energy_histogram", &System::setAverageEnergyHistogram, pybind11::arg("property") = std::nullopt)
       .def_readonly("property_number_of_molecules_histogram", &System::averageNumberOfMoleculesHistogram)
       .def("set_number_of_molecules_histogram", &System::setNumberOfMoleculesHistogram,
-         pybind11::arg("property:") = std::nullopt)
+           pybind11::arg("property") = std::nullopt)
       .def_readonly("sample_pdb_movie", &System::samplePDBMovie)
-      .def("set_sample_pdb_movie", &System::setSamplePDBMovie,
-         pybind11::arg("property:") = std::nullopt)
+      .def("set_sample_pdb_movie", &System::setSamplePDBMovie, pybind11::arg("property") = std::nullopt)
       .def_readonly("property_conventional_rdf", &System::propertyConventionalRadialDistributionFunction)
       .def("set_property_conventional_rdf", &System::setPropertyConventionalRDF,
-         pybind11::arg("property") = std::nullopt)
+           pybind11::arg("property") = std::nullopt)
       .def_readonly("property_msd", &System::propertyMSD)
-      .def("set_property_msd", &System::setPropertyMSD,
-         pybind11::arg("property") = std::nullopt)
+      .def("set_property_msd", &System::setPropertyMSD, pybind11::arg("property") = std::nullopt)
       .def_readonly("property_vacf", &System::propertyVACF)
-      .def("set_property_vacf", &System::setPropertyVACF,
-         pybind11::arg("property") = std::nullopt)
+      .def("set_property_vacf", &System::setPropertyVACF, pybind11::arg("property") = std::nullopt)
       .def_readonly("property_rdf", &System::propertyRadialDistributionFunction)
-      .def("set_property_rdf", &System::setPropertyRDF,
-         pybind11::arg("property") = std::nullopt)
+      .def("set_property_rdf", &System::setPropertyRDF, pybind11::arg("property") = std::nullopt)
       .def_readonly("property_number_of_molecules_evolution", &System::propertyNumberOfMoleculesEvolution)
       .def("set_property_number_of_molecules_evolution", &System::setPropertyNumberOfMoleculesEvolution,
-         pybind11::arg("property") = std::nullopt)
+           pybind11::arg("property") = std::nullopt)
       .def_readonly("property_volume_evolution", &System::propertyVolumeEvolution)
       .def("set_property_volume_evolution", &System::setPropertyVolumeEvolution,
-         pybind11::arg("property") = std::nullopt)
+           pybind11::arg("property") = std::nullopt)
       .def_readonly("property_conserved_energy_evolution", &System::propertyConservedEnergyEvolution)
       .def("set_property_conserved_energy_evolution", &System::setPropertyConservedEnergyEvolution,
-         pybind11::arg("property") = std::nullopt)
+           pybind11::arg("property") = std::nullopt)
       .def_readwrite("average_enthalpies_of_adsorption", &System::averageEnthalpiesOfAdsorption)
       .def_readwrite("average_partial_molar_properties", &System::averagePartialMolarProperties)
       .def_readwrite("atom_data", &System::atomData)
@@ -912,14 +909,14 @@ EXPAND_MODULE(MODULE_NAME)
       .def("write_mc_move_statistics", &System::writeMCMoveStatistics)
       .def("__repr__", &System::repr);
 
-
   pybind11::class_<MonteCarlo>(m, "MonteCarlo")
       .def(pybind11::init(
                [](std::size_t number_of_production_cycles, std::size_t number_of_pre_initialization_cycles,
                   std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
-                  std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
-                  std::size_t optimize_mc_moves_every, const std::vector<System> &systems,
-                  std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
+                  std::size_t print_every, std::size_t write_binary_restart_every,
+                  std::size_t rescale_wang_landau_every, std::size_t optimize_mc_moves_every,
+                  const std::vector<System>& systems, std::optional<std::size_t> random_seed,
+                  std::size_t number_of_blocks, bool output_to_files)
                {
                  return std::make_unique<MonteCarlo>(
                      SimulationSchedule{number_of_production_cycles, number_of_pre_initialization_cycles,
@@ -927,69 +924,79 @@ EXPAND_MODULE(MODULE_NAME)
                                         write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
                      systems, random_seed, number_of_blocks, output_to_files);
                }),
-         pybind11::arg("number_of_production_cycles"),
-         pybind11::arg("number_of_pre_initialization_cycles") = 0,
-         pybind11::arg("number_of_initialization_cycles") = 0,
-         pybind11::arg("number_of_equilibration_cycles") = 0, 
-         pybind11::arg("print_every") = 5000,
-         pybind11::arg("write_binary_restart_every") = 5000, 
-         pybind11::arg("rescale_wang_landau_every") = 1000,
-         pybind11::arg("optimize_mc_moves_every") = 100, 
-         pybind11::arg("systems") = std::vector<System>(),
-         pybind11::arg("random_seed") = std::nullopt, 
-         pybind11::arg("number_of_blocks") = 5,
-         pybind11::arg("output_to_files") = false)
+           pybind11::arg("number_of_production_cycles"), pybind11::arg("number_of_pre_initialization_cycles") = 0,
+           pybind11::arg("number_of_initialization_cycles") = 0, pybind11::arg("number_of_equilibration_cycles") = 0,
+           pybind11::arg("print_every") = 5000, pybind11::arg("write_binary_restart_every") = 5000,
+           pybind11::arg("rescale_wang_landau_every") = 1000, pybind11::arg("optimize_mc_moves_every") = 100,
+           pybind11::arg("systems") = std::vector<System>(), pybind11::arg("random_seed") = std::nullopt,
+           pybind11::arg("number_of_blocks") = 5, pybind11::arg("output_to_files") = false)
       .def("run", &MonteCarlo::run)
       .def("setup", &MonteCarlo::setup)
-      .def("tear_down", &MonteCarlo::tearDown) 	
-      .def("pre_initialize", &MonteCarlo::preInitialize, pybind11::arg("call_back_function") = std::function<void()>([](){}), pybind11::arg("call_back_every") = 100)
-      .def("initialize", &MonteCarlo::initialize, pybind11::arg("call_back_function") = std::function<void()>([](){}), pybind11::arg("call_back_every") = 100)
-      .def("equilibrate", &MonteCarlo::equilibrate, pybind11::arg("call_back_function") = std::function<void()>([](){}), pybind11::arg("call_back_every") = 100)
-      .def("production", &MonteCarlo::production, pybind11::arg("call_back_function") = std::function<void()>([](){}), pybind11::arg("call_back_every") = 100)
+      .def("tear_down", &MonteCarlo::tearDown)
+      .def("pre_initialize", &MonteCarlo::preInitialize,
+           pybind11::arg("call_back_function") = std::function<void()>([]() {}), pybind11::arg("call_back_every") = 100)
+      .def("initialize", &MonteCarlo::initialize, pybind11::arg("call_back_function") = std::function<void()>([]() {}),
+           pybind11::arg("call_back_every") = 100)
+      .def("equilibrate", &MonteCarlo::equilibrate,
+           pybind11::arg("call_back_function") = std::function<void()>([]() {}), pybind11::arg("call_back_every") = 100)
+      .def("production", &MonteCarlo::production, pybind11::arg("call_back_function") = std::function<void()>([]() {}),
+           pybind11::arg("call_back_every") = 100)
       .def("cycle", &MonteCarlo::performCycle)
-      .def_readonly("systems", &MonteCarlo::systems);
-
-
-
+      .def_property_readonly(
+          "systems",
+          [](pybind11::object self)
+          {
+            // the live objects, each held by the parent: a copied vector lost every change
+            // made through it
+            pybind11::list list;
+            for (System& item : self.cast<MonteCarlo&>().systems)
+              list.append(pybind11::cast(&item, pybind11::return_value_policy::reference_internal, self));
+            return list;
+          });
 
   pybind11::class_<MolecularDynamics>(m, "MolecularDynamics")
-    .def(pybind11::init(
-             [](std::size_t number_of_production_cycles, std::size_t number_of_pre_initialization_cycles,
-                std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
-                std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
-                std::size_t optimize_mc_moves_every, const std::vector<System> &systems,
-                std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
-             {
-               return std::make_unique<MolecularDynamics>(
-                   SimulationSchedule{number_of_production_cycles, number_of_pre_initialization_cycles,
-                                      number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
-                                      write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
-                   systems, random_seed, number_of_blocks, output_to_files);
-             }),
-         pybind11::arg("number_of_production_cycles"), 
-         pybind11::arg("number_of_pre_initialization_cycles") = 0,
-         pybind11::arg("number_of_initialization_cycles") = 0,
-         pybind11::arg("number_of_equilibration_cycles") = 0, 
-         pybind11::arg("print_every") = 5000,
-         pybind11::arg("write_binary_restart_every") = 5000, 
-         pybind11::arg("rescale_wang_landau_every") = 1000,
-         pybind11::arg("optimize_mc_moves_every") = 100, 
-         pybind11::arg("systems") = std::vector<System>(),
-         pybind11::arg("random_seed") = std::nullopt, 
-         pybind11::arg("number_of_blocks") = 5,
-         pybind11::arg("output_to_files") = false)
+      .def(
+          pybind11::init(
+              [](std::size_t number_of_production_cycles, std::size_t number_of_pre_initialization_cycles,
+                 std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
+                 std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
+                 std::size_t optimize_mc_moves_every, const std::vector<System>& systems,
+                 std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
+              {
+                return std::make_unique<MolecularDynamics>(
+                    SimulationSchedule{number_of_production_cycles, number_of_pre_initialization_cycles,
+                                       number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
+                                       write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
+                    systems, random_seed, number_of_blocks, output_to_files);
+              }),
+          pybind11::arg("number_of_production_cycles"), pybind11::arg("number_of_pre_initialization_cycles") = 0,
+          pybind11::arg("number_of_initialization_cycles") = 0, pybind11::arg("number_of_equilibration_cycles") = 0,
+          pybind11::arg("print_every") = 5000, pybind11::arg("write_binary_restart_every") = 5000,
+          pybind11::arg("rescale_wang_landau_every") = 1000, pybind11::arg("optimize_mc_moves_every") = 100,
+          pybind11::arg("systems") = std::vector<System>(), pybind11::arg("random_seed") = std::nullopt,
+          pybind11::arg("number_of_blocks") = 5, pybind11::arg("output_to_files") = false)
       .def("run", &MolecularDynamics::run)
       .def("setup", &MolecularDynamics::setup)
       .def("tear_down", &MolecularDynamics::tearDown)
-      .def("pre_initialize", &MolecularDynamics::preInitialize, pybind11::arg("call_back_function") = 
-                      std::function<void()>([](){}), pybind11::arg("call_back_every") = 100)
-      .def("initialize", &MolecularDynamics::initialize, pybind11::arg("call_back_function") = 
-                      std::function<void()>([](){}), pybind11::arg("call_back_every") = 100)
-      .def("equilibrate", &MolecularDynamics::equilibrate, pybind11::arg("call_back_function") = 
-                      std::function<void()>([](){}), pybind11::arg("call_back_every") = 100)
-      .def("production", &MolecularDynamics::production, pybind11::arg("call_back_function") = 
-                      std::function<void()>([](){}), pybind11::arg("call_back_every") = 100)
-      .def_readonly("systems", &MolecularDynamics::systems);
+      .def("pre_initialize", &MolecularDynamics::preInitialize,
+           pybind11::arg("call_back_function") = std::function<void()>([]() {}), pybind11::arg("call_back_every") = 100)
+      .def("initialize", &MolecularDynamics::initialize,
+           pybind11::arg("call_back_function") = std::function<void()>([]() {}), pybind11::arg("call_back_every") = 100)
+      .def("equilibrate", &MolecularDynamics::equilibrate,
+           pybind11::arg("call_back_function") = std::function<void()>([]() {}), pybind11::arg("call_back_every") = 100)
+      .def("production", &MolecularDynamics::production,
+           pybind11::arg("call_back_function") = std::function<void()>([]() {}), pybind11::arg("call_back_every") = 100)
+      .def_property_readonly(
+          "systems",
+          [](pybind11::object self)
+          {
+            // the live objects, each held by the parent: a copied vector lost every change
+            // made through it
+            pybind11::list list;
+            for (System& item : self.cast<MolecularDynamics&>().systems)
+              list.append(pybind11::cast(&item, pybind11::return_value_policy::reference_internal, self));
+            return list;
+          });
 
   pybind11::class_<RunningEnergy>(m, "RunningEnergy")
       .def("conserved_energy", &RunningEnergy::conservedEnergy)

@@ -61,7 +61,9 @@ double raspaDihedral(const double3 &A, const double3 &B, const double3 &C, const
   double3 dr = (Dab - dot_ab * Dcb).normalized();
   double3 ds = (Ddc - dot_dc * Dcb).normalized();
   double cos_phi = std::clamp(double3::dot(dr, ds), -1.0, 1.0);
-  double sign = double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
+  // IUPAC sign: positive when, looking from B to C, A turns clockwise onto D (sign of b1 . (b2 x b3), with
+  // b1 = B - A, b2 = C - B, b3 = D - C); as AMBER, CHARMM and LAMMPS. The dot product below is minus that.
+  double sign = -double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
   return std::copysign(std::acos(cos_phi), sign);
 }
 }  // namespace
@@ -386,7 +388,7 @@ Term torsionTerm(const TorsionPotential &torsion)
   }
 
   // phase-shifted or otherwise non-polynomial forms: tabulate
-  return table("D", "tabulated; assumes LAMMPS and RASPA share the sign convention of phi");
+  return table("D", "tabulated; LAMMPS and RASPA share the IUPAC sign convention of phi");
 }
 
 std::optional<std::string> torsionClass2(const TorsionPotential &torsion)

@@ -105,6 +105,16 @@ export struct PropertyVelocityAutoCorrelationFunction
 
   void writeOutput(std::size_t systemId, const std::vector<Component> &components, std::size_t currentCycle);
 
+  /// The whole bookkeeping (time origins, block buffers and accumulated sums) belongs to the trajectory it was
+  /// sampled from: a replica-exchange swap exchanges it together with the configurations (see
+  /// System::exchangeConfiguration), so that every correlation follows one continuous walker.
+  friend void swap(PropertyVelocityAutoCorrelationFunction &a, PropertyVelocityAutoCorrelationFunction &b) noexcept
+  {
+    PropertyVelocityAutoCorrelationFunction temporary = std::move(a);
+    a = std::move(b);
+    b = std::move(temporary);
+  }
+
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
                                             const PropertyVelocityAutoCorrelationFunction &vacf);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive,

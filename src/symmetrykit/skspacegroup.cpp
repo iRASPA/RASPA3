@@ -150,7 +150,8 @@ std::optional<std::size_t> SKSpaceGroup::HallNumber(std::string string)
   // pre-empt an exact match of a later one. The stripped pass serves symbols written like "P21/c".
   for (const bool stripped : {false, true})
   {
-    for (std::size_t i = 0; i <= 530; i++)
+    // entry 0 is the placeholder "unknown", which has no operations: matched, it expanded every atom to none
+    for (std::size_t i = 1; i <= 530; i++)
     {
       const SKSpaceGroupSetting& setting = SKSpaceGroupDataBase::spaceGroupData[i];
       if (!qualifier.empty() && !settingHasQualifier(setting, qualifier)) continue;
@@ -183,7 +184,8 @@ std::optional<std::size_t> SKSpaceGroup::HallNumberFromHMString(std::string stri
   for (const bool stripped : {false, true})
   {
     std::optional<std::size_t> firstMatch{};
-    for (std::size_t i = 0; i <= 530; i++)
+    // entry 0 is the placeholder "unknown", which has no operations: matched, it expanded every atom to none
+    for (std::size_t i = 1; i <= 530; i++)
     {
       const SKSpaceGroupSetting& setting = SKSpaceGroupDataBase::spaceGroupData[i];
       std::string storedSpaceGroupString = toLower(simplified(setting.HMString()));

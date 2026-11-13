@@ -238,7 +238,9 @@ void PropertyMoleculeProperties::sample(const std::vector<Component> &components
         double3 ds = (Ddc - dot_dc * Dcb).normalized();
 
         double cos_phi = std::clamp(double3::dot(dr, ds), -1.0, 1.0);
-        double sign = double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
+        // IUPAC sign: positive when, looking from B to C, A turns clockwise onto D (sign of b1 . (b2 x b3), with
+        // b1 = B - A, b2 = C - B, b3 = D - C); as AMBER, CHARMM and LAMMPS. The dot product below is minus that.
+        double sign = -double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
         double phi = std::copysign(std::acos(cos_phi), sign) * (180.0 / std::numbers::pi);
 
         std::size_t bin = static_cast<std::size_t>((phi + 0.5 * torsionRange) / deltaTorsion);

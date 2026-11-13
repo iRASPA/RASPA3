@@ -155,8 +155,8 @@ double Interactions::analyticExternalFieldEnergy(const ForceField& forceField, c
       return std::get<0>(Potentials::potentialTricubicExponentialNonPolynomialTestFunction(pos));
     case ForceField::PotentialEnergySurfaceType::MullerBrown:
     {
-      const double4 A{-200.0, -100.0, -170.0, -15.0};
-      const double4 a{-1.0, -1.0, -6.5, -0.7};
+      const double4 A{-200.0, -100.0, -170.0, 15.0};
+      const double4 a{-1.0, -1.0, -6.5, 0.7};
       const double4 x0{1.0, 0.0, -0.5, -1.0};
       const double4 b{0.0, 0.0, 11.0, 0.6};
       const double4 y0{0.0, 0.5, 1.5, 1.0};

@@ -1321,14 +1321,21 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
         const auto molecularPressure = samplingSystem.computeMolecularPressure();
         system.currentEnergyStatus = molecularPressure.first;
         system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
+        // The Born term is the affine stiffness of the atoms (with the bonded terms of flexible molecules in it), so
+        // the stress it is paired with is the atomic one, as is the kinetic stress: the molecular centre-of-mass
+        // virial leaves the intramolecular stress out, and its fluctuations then cannot cancel the stiff bonded
+        // modes of the Born term. (The gradients of the step just taken are those at the current positions.)
+        const double3x3 atomicStress =
+            computeBarostatVirial(system, molecularPressure.second, BarostatCoupling::Atomic) /
+            system.simulationBox.volume;
         const double3x3 kineticPressure =
             computeMolecularKineticVirial(system, BarostatCoupling::Atomic) / system.simulationBox.volume;
         const double effectiveKineticEntities =
             static_cast<double>(system.translationalDegreesOfFreedom - system.translationalCenterOfMassConstraint) /
             3.0;
-        const ElasticFluctuationTerms terms(stressVoigt(system.currentExcessPressureTensor),
-                                            stressVoigt(kineticPressure), computeAffineBornTensor(system), system.beta,
-                                            system.simulationBox.volume, effectiveKineticEntities);
+        const ElasticFluctuationTerms terms(stressVoigt(atomicStress), stressVoigt(kineticPressure),
+                                            computeAffineBornTensor(system), system.beta, system.simulationBox.volume,
+                                            effectiveKineticEntities);
         system.propertyElasticConstantsFluctuation->addSample(estimation.currentBin, terms, 1.0);
       }
     }

@@ -226,9 +226,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalEnergies(cons
     std::size_t A = bondBend.identifiers[0];
     std::size_t B = bondBend.identifiers[1];
     std::size_t C = bondBend.identifiers[2];
-    std::size_t D = bondBend.identifiers[3];
-    energies.bondBend +=
-        bondBend.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
+    energies.bondBend += bondBend.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position);
   }
 
   for (const BondTorsionPotential &bondTorsion : bondTorsions)
@@ -338,9 +336,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalEnergiesNotSa
     std::size_t A = bondBend.identifiers[0];
     std::size_t B = bondBend.identifiers[1];
     std::size_t C = bondBend.identifiers[2];
-    std::size_t D = bondBend.identifiers[3];
-    energies.bondBend +=
-        bondBend.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
+    energies.bondBend += bondBend.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position);
   }
 
   for (const BondTorsionPotential &bondTorsion : bondTorsions)
@@ -543,9 +539,7 @@ RunningEnergy Potentials::IntraMolecularPotentials::computeInternalBondBendEnerg
     std::size_t A = bondBend.identifiers[0];
     std::size_t B = bondBend.identifiers[1];
     std::size_t C = bondBend.identifiers[2];
-    std::size_t D = bondBend.identifiers[3];
-    energies.bondBend +=
-        bondBend.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
+    energies.bondBend += bondBend.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position);
   }
 
   return energies;

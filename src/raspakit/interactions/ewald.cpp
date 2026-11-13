@@ -852,6 +852,15 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
   // through fixedFrameworkStoredEik. The stored structure factor then holds every charge, so that the incremental
   // moves see the mobile framework.
   const bool liveFramework = framework && framework->hasMobileAtoms() && !frameworkAtoms.empty();
+  // 'omitInterInteractions' takes the molecule-molecule terms out by subtracting the whole live structure factor,
+  // which with mobile framework atoms in it also took out their reciprocal host-guest and framework-framework terms
+  // (and skipped their self and exclusion terms): the combination is refused rather than computed wrongly.
+  if (liveFramework && forceField.omitInterInteractions)
+  {
+    throw std::logic_error(
+        "'omitInterInteractions' is not supported with mobile (flexible or rigid-group) framework "
+        "atoms in the Ewald sum");
+  }
   const std::size_t fixedFrameworkAtomCount = liveFramework ? framework->numberOfFixedAtoms() : 0;
   std::vector<Atom> liveAtoms;
   double rigidFrameworkCharge = netChargeFramework;
@@ -1115,6 +1124,15 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
   // When no Framework is passed (legacy callers), treat the host as fixed and use the precomputed eik.
   // When the framework is fully flexible, fixedFrameworkAtomCount is zero and the eik is omitted.
   const bool liveFramework = framework && framework->hasMobileAtoms() && !frameworkAtoms.empty();
+  // 'omitInterInteractions' takes the molecule-molecule terms out by subtracting the whole live structure factor,
+  // which with mobile framework atoms in it also took out their reciprocal host-guest and framework-framework terms
+  // (and skipped their self and exclusion terms): the combination is refused rather than computed wrongly.
+  if (liveFramework && forceField.omitInterInteractions)
+  {
+    throw std::logic_error(
+        "'omitInterInteractions' is not supported with mobile (flexible or rigid-group) framework "
+        "atoms in the Ewald sum");
+  }
   const std::size_t fixedFrameworkAtomCount = framework ? framework->numberOfFixedAtoms() : 0;
   const std::size_t mobileFrameworkAtomCount = framework ? framework->numberOfMobileAtoms() : 0;
   const bool useFixedFrameworkEik = !liveFramework || fixedFrameworkAtomCount > 0;

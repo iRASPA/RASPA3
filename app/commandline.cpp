@@ -615,6 +615,8 @@ void CommandLine::run(int argc, char *argv[])
   // start running
   std::vector<std::string> filenames =
       std::ranges::to<std::vector<std::string>>(std::string_view(input_files) | std::ranges::views::split(' '));
+  // a force field chosen on the command line holds for every file; one detected from a file holds for that file
+  const std::optional<ForceField> selectedForceField = forceField;
   for (const std::string &filename : filenames)
   {
     std::cout << "computing structure " << filename << std::endl;
@@ -627,54 +629,45 @@ void CommandLine::run(int argc, char *argv[])
 
     std::string stem = std::filesystem::path(filename).stem().string();
 
-    const std::string file_content = readFileContent(stem, ".cif");
+    // the file as given, directory and extension included (the stem alone was looked up in the working directory
+    // and in RASPA_DIR, which could be another file of the same name)
+    const std::string file_content = readFileContent(filename, "");
 
-    if(forceField.has_value())
+    // reads the CIF with 'candidate' into 'framework', or says why it could not
+    auto readWith = [&](const ForceField& candidate) -> std::optional<CIFReader::ParseError>
     {
-      // Case: force field has been manually selected
-      if(const auto cif = CIFReader::readCIFString(file_content, forceField.value(),
-                                                   charges_from); cif.has_value())
+      const auto cif = CIFReader::readCIFString(file_content, candidate, charges_from);
+      if (!cif.has_value()) return cif.error();
+      auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = cif.value();
+      framework = Framework(candidate, stem, simulation_box, space_group_hall_symbol, defined_atoms,
+                            fractional_atoms_unit_cell, {1, 1, 1});
+      return std::nullopt;
+    };
+    auto invalidInput = [&]()
+    { return std::runtime_error(std::format("'{}' could not be read as a CIF file\n", filename)); };
+
+    forceField = selectedForceField;
+    if (forceField.has_value())
+    {
+      if (const auto error = readWith(forceField.value()); error.has_value())
       {
-        auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = cif.value();
-        framework = Framework(forceField.value(), stem, simulation_box, space_group_hall_symbol,
-                              defined_atoms, fractional_atoms_unit_cell, {1, 1, 1});
-      }
-      else if (cif.error() == CIFReader::ParseError::invalidForceField)
-      {
-        std::print("invalid forcefield\n");
-        std::exit(-1);
+        if (error.value() == CIFReader::ParseError::invalidInput) throw invalidInput();
+        throw std::runtime_error(std::format("The atom types of '{}' are not in the selected force field\n", filename));
       }
     }
     else
     {
-      // Case: auto-detect force field
-      // First: try with zeolite force field
-      ForceField trial_zeolite_force_field = ForceField::makeZeoliteForceField(12.0, true, false, false);
-      if(const auto zeolite_cif = CIFReader::readCIFString(file_content, trial_zeolite_force_field,
-                                                           charges_from);
-         zeolite_cif.has_value())
+      // auto-detect: the zeolite force field first, then the general MOF force field
+      for (ForceField candidate : {ForceField::makeZeoliteForceField(12.0, true, false, false),
+                                   ForceField::makeMetalOrganicFrameworkForceField(12.0, true, false, false)})
       {
-        forceField = trial_zeolite_force_field;
-        auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = zeolite_cif.value();
-        framework = Framework(forceField.value(), stem, simulation_box, space_group_hall_symbol,
-                              defined_atoms, fractional_atoms_unit_cell, {1, 1, 1});
-      }
-      else if (zeolite_cif.error() == CIFReader::ParseError::invalidForceField)
-      {
-        // Second: try with general MOF force field
-        ForceField trial_mof_force_field =
-            ForceField::makeMetalOrganicFrameworkForceField(12.0, true, false, false);
-        if(const auto mof_cif = CIFReader::readCIFString(file_content, trial_mof_force_field,
-                                                        charges_from); mof_cif.has_value())
+        const auto error = readWith(candidate);
+        if (!error.has_value())
         {
-          forceField = trial_mof_force_field;
-          auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = mof_cif.value();
-          framework = Framework(forceField.value(), stem, simulation_box, space_group_hall_symbol,
-                                defined_atoms, fractional_atoms_unit_cell, {1, 1, 1});
+          forceField = std::move(candidate);
+          break;
         }
-        else if (mof_cif.error() == CIFReader::ParseError::invalidForceField)
-        {
-        }
+        if (error.value() == CIFReader::ParseError::invalidInput) throw invalidInput();
       }
     }
 

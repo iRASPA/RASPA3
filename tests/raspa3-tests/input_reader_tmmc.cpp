@@ -1314,3 +1314,73 @@ TEST(INPUT_READER, chemical_potential_is_not_a_system_option)
       },
       std::runtime_error);
 }
+
+// The Gibbs moves pair a box with a neighbouring box: a single system has none (the volume exchange then scaled the
+// one box twice and a rejection restored the trial box), the two boxes share one temperature, and the volume
+// exchange scales molecules and not a framework.
+TEST(INPUT_READER, gibbs_moves_need_a_second_box_at_the_same_temperature)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  auto gibbsInput = [](std::size_t numberOfSystems, double secondTemperature)
+  {
+    nlohmann::json input = readNVTExample();
+    input["SimulationType"] = "MonteCarlo";
+    input["Systems"][0].erase("Ensemble");
+    input["Systems"][0]["GibbsVolumeMoveProbability"] = 0.1;
+    if (numberOfSystems == 2)
+    {
+      input["Systems"][1] = input["Systems"][0];
+      input["Systems"][1]["ExternalTemperature"] = secondTemperature;
+      input["Components"][0]["CreateNumberOfMolecules"] = nlohmann::json::array({10, 10});
+    }
+    return input;
+  };
+  auto read = [&](nlohmann::json input, std::string_view suffix)
+  {
+    TemporaryInput temporary(std::move(input), suffix, workspace.path());
+    ScopedCurrentPath currentPath(workspace.path());
+    InputReader reader(temporary.path().filename().string());
+    return reader.systems.size();
+  };
+
+  auto expectRefusal = [&](nlohmann::json input, std::string_view suffix, std::string_view message)
+  {
+    try
+    {
+      static_cast<void>(read(std::move(input), suffix));
+      ADD_FAILURE() << "accepted, expected '" << message << "'";
+    }
+    catch (const std::runtime_error& error)
+    {
+      EXPECT_NE(std::string(error.what()).find(message), std::string::npos) << error.what();
+    }
+  };
+  expectRefusal(gibbsInput(1, 300.0), "gibbs_single", "needs a second system");
+  expectRefusal(gibbsInput(2, 350.0), "gibbs_temperatures", "different temperatures");
+  EXPECT_EQ(read(gibbsInput(2, 300.0), "gibbs_pair"), 2uz);
+}
+
+// The Monte Carlo moves are drawn per component, with the system moves merged into the component tables: a system
+// without components ran zero steps per cycle, so its volume moves never happened. It is refused instead.
+TEST(INPUT_READER, system_moves_without_components_are_refused)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  nlohmann::json input = readNVTExample();
+  input["SimulationType"] = "MonteCarlo";
+  input["Systems"][0].erase("Ensemble");
+  input["Systems"][0]["ExternalPressure"] = 1.0e5;
+  input["Systems"][0]["VolumeMoveProbability"] = 1.0;
+  input["Components"] = nlohmann::json::array();
+  TemporaryInput temporary(std::move(input), "no_components", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  try
+  {
+    InputReader reader(temporary.path().filename().string());
+    ADD_FAILURE() << "a system with volume moves and no components was accepted";
+  }
+  catch (const std::runtime_error& error)
+  {
+    EXPECT_NE(std::string(error.what()).find("no components"), std::string::npos) << error.what();
+  }
+}

@@ -184,7 +184,8 @@ double BendTorsionPotential::calculateEnergy(const double3 &posA, const double3 
       // p_0/k_B [K/rad^2]
       // p_1     [-]
       // p_2     [degrees]
-      sign = double3::dot(Dbc, double3::cross(double3::cross(Dab, Dbc), double3::cross(Dbc, Dcd)));
+      // IUPAC sign (as AMBER, CHARMM and LAMMPS): minus this dot product
+      sign = -double3::dot(Dbc, double3::cross(double3::cross(Dab, Dbc), double3::cross(Dbc, Dcd)));
       phi = std::copysign(std::acos(cos_phi), sign);
       return parameters[0] * (1.0 + std::cos(parameters[1] * phi - parameters[2])) * smoothing(theta1) *
              smoothing(theta2);
@@ -295,7 +296,8 @@ std::tuple<double, std::array<double3, 4>, double3x3> BendTorsionPotential::pote
       DTheta2 = parameters[0] * (theta1 - parameters[1]) * cos_phi / sin_theta2;
       break;
     case BendTorsionType::Smoothed:
-      sign = double3::dot(Dbc, double3::cross(double3::cross(Dab_vec, Dbc), double3::cross(Dbc, Dcd_vec)));
+      // IUPAC sign (as AMBER, CHARMM and LAMMPS): minus this dot product
+      sign = -double3::dot(Dbc, double3::cross(double3::cross(Dab_vec, Dbc), double3::cross(Dbc, Dcd_vec)));
       phi = std::copysign(std::acos(cos_phi), sign);
       U = parameters[0] * (1.0 + std::cos(parameters[1] * phi - parameters[2])) * s1 * s2;
       DCos = (parameters[0] * parameters[1] * std::sin(parameters[1] * phi - parameters[2]) * s1 * s2) /

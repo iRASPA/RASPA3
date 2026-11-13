@@ -538,15 +538,18 @@ DataFile readData(const std::filesystem::path &path, std::vector<std::string> &w
 // ---------------------------------------------------------------------------------------------------
 // Conversion
 // ---------------------------------------------------------------------------------------------------
-double energyToKelvinFactor(const std::string &units, std::vector<std::string> &warnings)
+double energyToKelvinFactor(const std::string& units, [[maybe_unused]] std::vector<std::string>& warnings)
 {
-  // The lammps_styles converters assume kcal/mol ('real'); scale their output for other unit systems.
+  // The lammps_styles converters assume kcal/mol ('real'); 'metal' differs from it only in the energy (eV), with
+  // lengths in Angstrom, masses in g/mol and charges in e. The other unit systems (si, cgs, lj, electron, micro,
+  // nano) have lengths, masses and charges in other units as well, which the reader does not convert: scaling the
+  // energies alone gave positions in metres and masses in kilograms read as Angstrom and g/mol.
   if (units == "real") return 1.0;
   if (units == "metal") return 23.060548;  // eV -> kcal/mol
-  if (units == "si") return 6.02214076e23 / 4184.0;  // J -> kcal/mol
-  if (units == "cgs") return 6.02214076e23 / 4184.0 * 1.0e-7;
-  warnings.push_back(std::format("[LAMMPS reader] units '{}' are not supported; coefficients treated as 'real'", units));
-  return 1.0;
+  throw std::runtime_error(std::format(
+      "[LAMMPS reader] units '{}' are not supported (only 'real' and 'metal'): its lengths, masses and charges would "
+      "not be converted\n",
+      units));
 }
 
 void scaleEnergies(RaspaTerm &term, std::span<const std::size_t> energyIndices, double factor)
@@ -653,6 +656,79 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
     }
   }
 
+  // A molecule without image flags (all zero) that straddles a periodic boundary is broken in two by the wrap of
+  // the data file, and its centre of mass and internal geometry come out wrong. Its atoms are joined along the
+  // bonds, each bonded atom put at the nearest image of the atom it is bonded to (a bond is far shorter than half
+  // the box), which holds for a molecule of any size; an atom without bonds is put nearest the first atom.
+  {
+    // the cell vectors a = (lx, 0, 0), b = (xy, ly, 0), c = (xz, yz, lz) of the LAMMPS box
+    const double lx = data.high[0] - data.low[0];
+    const double ly = data.high[1] - data.low[1];
+    const double lz = data.high[2] - data.low[2];
+    auto nearestImage = [&](std::array<double, 3> d)
+    {
+      const double sz = std::round(d[2] / lz);
+      d[0] -= sz * data.xz;
+      d[1] -= sz * data.yz;
+      d[2] -= sz * lz;
+      const double sy = std::round(d[1] / ly);
+      d[0] -= sy * data.xy;
+      d[1] -= sy * ly;
+      d[0] -= std::round(d[0] / lx) * lx;
+      return d;
+    };
+
+    std::map<std::size_t, std::vector<std::size_t>> moleculeAtoms;
+    for (std::size_t i = 0; i < data.atoms.size(); ++i) moleculeAtoms[data.atoms[i].molecule].push_back(i);
+    std::vector<std::vector<std::size_t>> neighbours(data.atoms.size());
+    for (const DataBonded& bond : data.bonds)
+    {
+      if (bond.atoms.size() != 2 || !indexOfId.contains(bond.atoms[0]) || !indexOfId.contains(bond.atoms[1])) continue;
+      const std::size_t a = indexOfId.at(bond.atoms[0]);
+      const std::size_t b = indexOfId.at(bond.atoms[1]);
+      neighbours[a].push_back(b);
+      neighbours[b].push_back(a);
+    }
+    std::vector<bool> placed(data.atoms.size(), false);
+    for (const auto& [molecule, members] : moleculeAtoms)
+    {
+      if (members.size() < 2) continue;
+      const bool unflagged = std::ranges::all_of(
+          members, [&](std::size_t i) { return data.atoms[i].image == std::array<int, 3>{0, 0, 0}; });
+      if (!unflagged) continue;
+      const std::size_t first = members.front();
+      for (std::size_t start : members)
+      {
+        if (placed[start]) continue;
+        if (start != first)
+        {
+          // a new bonded piece (or a lone atom): nearest the first atom of the molecule
+          std::array<double, 3> d{};
+          for (std::size_t k = 0; k < 3; ++k) d[k] = result.positions[start][k] - result.positions[first][k];
+          d = nearestImage(d);
+          for (std::size_t k = 0; k < 3; ++k) result.positions[start][k] = result.positions[first][k] + d[k];
+        }
+        placed[start] = true;
+        std::vector<std::size_t> stack{start};
+        while (!stack.empty())
+        {
+          const std::size_t i = stack.back();
+          stack.pop_back();
+          for (std::size_t j : neighbours[i])
+          {
+            if (placed[j] || data.atoms[j].molecule != molecule) continue;
+            std::array<double, 3> d{};
+            for (std::size_t k = 0; k < 3; ++k) d[k] = result.positions[j][k] - result.positions[i][k];
+            d = nearestImage(d);
+            for (std::size_t k = 0; k < 3; ++k) result.positions[j][k] = result.positions[i][k] + d[k];
+            placed[j] = true;
+            stack.push_back(j);
+          }
+        }
+      }
+    }
+  }
+
   // pseudo-atoms: one per LAMMPS atom type. The charge of the pseudo-atom is the charge shared by all atoms
   // of the type; when the atoms of a type carry different charges the pseudo-atom gets charge zero and the
   // charges are written per atom in the component definitions (RASPA's per-atom charge overrides the
@@ -728,10 +804,20 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
   forceField["TruncationMethod"] = script.shift ? "shifted" : "truncated";
   forceField["TailCorrections"] = script.tail;
   double cutOffVDW = 12.0, cutOffCoulomb = 12.0;
+  // the damped Coulomb styles (coul/wolf, coul/dsf, lj/cut/coul/wolf, lj/cut/coul/dsf) take the damping alpha
+  // first and the cut-offs after it (as LAMMPS::writeInputScript writes them); alpha was read as the VDW cut-off
+  const bool wolf = !script.pair.hybrid() && script.pair.name.contains("coul/wolf");
+  const bool dampedShiftedForce = !script.pair.hybrid() && script.pair.name.contains("coul/dsf");
+  std::optional<double> dampingAlpha{};
   {
     std::vector<double> numbers;
     for (const std::string &argument : script.pair.arguments)
       if (isNumber(argument)) numbers.push_back(toDouble(argument));
+    if ((wolf || dampedShiftedForce) && !numbers.empty())
+    {
+      dampingAlpha = numbers.front();
+      numbers.erase(numbers.begin());
+    }
     if (!numbers.empty()) cutOffVDW = numbers[0];
     cutOffCoulomb = numbers.size() > 1 ? numbers[1] : cutOffVDW;
     if (script.pair.hybrid() && !numbers.empty())
@@ -1067,7 +1153,15 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
   system["BoxLengths"] = result.boxLengths;
   if (data.triclinic) system["BoxAngles"] = result.boxAngles;
   system["ExternalTemperature"] = 300.0;
-  system["ChargeMethod"] = (coulomb && anyCharge) ? "Ewald" : "None";
+  system["ChargeMethod"] = !(coulomb && anyCharge) ? "None"
+                           : wolf                  ? "Wolf"
+                           : dampedShiftedForce    ? "DampedShiftedForce"
+                                                   : "Ewald";
+  if (dampingAlpha && coulomb && anyCharge)
+  {
+    // the damping parameter of Wolf and DSF is the Ewald alpha of the force field
+    result.forceField["EwaldParameters"] = nlohmann::json::array({*dampingAlpha, 1, 1, 1});
+  }
   if (script.kspaceAccuracy && coulomb && anyCharge) result.forceField["EwaldPrecision"] = *script.kspaceAccuracy;
   simulation["Systems"] = nlohmann::json::array({system});
   simulation["Components"] = nlohmann::json::array();

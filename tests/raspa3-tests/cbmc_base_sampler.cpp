@@ -658,7 +658,7 @@ TEST(CBMC_BASE_SAMPLER, chain_step_bond_bend_spin_promotion)
   constexpr double kBondBendP = 1500.0;  // [K/A/rad]
   constexpr double kPlacedBond = 1.60;   // [A] (stretched: the placed-bond part of the term is active)
   component.intraMolecularPotentials.bondBends.push_back(
-      BondBendPotential({0, 1, 2, 0}, BondBendType::CVFF, {114.0, kBondBendP, kBondR0, kBondBendP, kBondR0}));
+      BondBendPotential({0, 1, 2}, BondBendType::CVFF, {114.0, kBondBendP, kBondR0, kBondBendP, kBondR0}));
 
   std::vector<Atom> chainAtoms = component.atoms;
   chainAtoms[0].position = double3(0.0, 0.0, 0.0);
@@ -741,7 +741,7 @@ TEST(CBMC_BASE_SAMPLER, mini_mc_detailed_balance_with_cross_terms)
   component.intraMolecularPotentials.bendBends.push_back(
       BendBendPotential({0, 1, 2, 3}, BendBendType::CVFF, {kBendBendK, 114.0, 114.0}));
   component.intraMolecularPotentials.bondBends.push_back(
-      BondBendPotential({0, 1, 2, 0}, BondBendType::CVFF, {114.0, kBondBendP, kBondR0, kBondBendP, kBondR0}));
+      BondBendPotential({0, 1, 2}, BondBendType::CVFF, {114.0, kBondBendP, kBondR0, kBondBendP, kBondR0}));
 
   std::vector<Atom> chainAtoms = component.atoms;
   chainAtoms[0].position = double3(kPlacedBond, 0.0, 0.0);
@@ -1034,8 +1034,8 @@ TEST(CBMC_BASE_SAMPLER, congruent_steps_with_a_bond_bend_term_share_the_coupling
   Component component(Component::Type::Adsorbate, 0, forceField, "two-branch-points-signature",
                       file.stemPath().string(), 5, 21, MCMoveProbabilities(), std::nullopt, false);
   // the bond-bend of the sibling bend at each branch point: all three atoms grown by the step, so a base coupling
-  for (const std::array<std::size_t, 4> ids :
-       {std::array<std::size_t, 4>{2, 1, 3, 0}, std::array<std::size_t, 4>{5, 4, 6, 0}})
+  for (const std::array<std::size_t, 3> ids :
+       {std::array<std::size_t, 3>{2, 1, 3}, std::array<std::size_t, 3>{5, 4, 6}})
   {
     component.intraMolecularPotentials.bondBends.push_back(
         BondBendPotential(ids, BondBendType::CVFF, {114.0, 800.0, 1.54, 800.0, 1.54}));

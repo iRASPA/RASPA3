@@ -53,6 +53,18 @@ void EnergyVoidFraction::run(const PairInteractions &interactions, const Crystal
 
   time_begin = std::chrono::steady_clock::now();
 
+  // the fractional positions of the atoms, from the Cartesian ones when the crystal does not carry them (one built
+  // by hand: indexing its empty 'fractionalPositions' by the atoms read past it)
+  std::vector<double3> fractionalPositions = framework.fractionalPositions;
+  if (fractionalPositions.size() != framework.size())
+  {
+    fractionalPositions.resize(framework.size());
+    for (std::size_t i = 0; i < framework.size(); ++i)
+    {
+      fractionalPositions[i] = double3::fract(framework.unitCell.inverseCell * framework.atoms[i].position);
+    }
+  }
+
   double cutoff = interactions.cutOffVDW;
   int3 numberOfReplicas = framework.unitCell.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
   UnitCell simulation_box = framework.unitCell.scaled(numberOfReplicas);
@@ -81,7 +93,7 @@ void EnergyVoidFraction::run(const PairInteractions &interactions, const Crystal
       double energy = 0.0;
       for (std::size_t atomIndex = 0; atomIndex < framework.size(); ++atomIndex)
       {
-        double3 atomPosition = framework.fractionalPositions[atomIndex];
+        double3 atomPosition = fractionalPositions[atomIndex];
         std::size_t typeB = framework.atoms[atomIndex].type;
         const PairParameters &pair = interactions(probe_type.value(), typeB);
         double epsilonTimesFour = 4.0 * pair.strengthParameter;

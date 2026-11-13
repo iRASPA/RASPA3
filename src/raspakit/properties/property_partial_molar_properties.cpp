@@ -47,12 +47,19 @@ std::string PropertyPartialMolarProperties::writeAveragesStatistics(std::vector<
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, Units::EnergyToKelvin * average.partialMolarEnergy[k]);
       }
       std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
-      std::print(stream, "    Partial molar energy:   {: .6e} +/- {: .6e} [K]\n",
-                 Units::EnergyToKelvin * properties.first.partialMolarEnergy[k],
-                 Units::EnergyToKelvin * properties.second.partialMolarEnergy[k]);
-      std::print(stream, "                            {: .6e} +/- {: .6e} [kJ/mol]\n",
-                 Units::EnergyToKJPerMol * properties.first.partialMolarEnergy[k],
-                 Units::EnergyToKJPerMol * properties.second.partialMolarEnergy[k]);
+      if (!properties.first.defined)
+      {
+        std::print(stream, "    Partial molar energy:   undefined (no block with a defined value)\n");
+      }
+      else
+      {
+        std::print(stream, "    Partial molar energy:   {: .6e} +/- {: .6e} [K]\n",
+                   Units::EnergyToKelvin * properties.first.partialMolarEnergy[k],
+                   Units::EnergyToKelvin * properties.second.partialMolarEnergy[k]);
+        std::print(stream, "                            {: .6e} +/- {: .6e} [kJ/mol]\n",
+                   Units::EnergyToKJPerMol * properties.first.partialMolarEnergy[k],
+                   Units::EnergyToKJPerMol * properties.second.partialMolarEnergy[k]);
+      }
 
       std::print(stream, "  Partial molar volume:\n");
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
@@ -66,11 +73,18 @@ std::string PropertyPartialMolarProperties::writeAveragesStatistics(std::vector<
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, average.partialMolarVolume[k]);
       }
       std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
-      std::print(stream, "    Partial molar volume:   {: .6e} +/- {: .6e} [A^3]\n",
-                 properties.first.partialMolarVolume[k], properties.second.partialMolarVolume[k]);
-      std::print(stream, "                            {: .6e} +/- {: .6e} [cm^3/mol]\n",
-                 volumeToCm3PerMol * properties.first.partialMolarVolume[k],
-                 volumeToCm3PerMol * properties.second.partialMolarVolume[k]);
+      if (!properties.first.defined)
+      {
+        std::print(stream, "    Partial molar volume:   undefined (no block with a defined value)\n");
+      }
+      else
+      {
+        std::print(stream, "    Partial molar volume:   {: .6e} +/- {: .6e} [A^3]\n",
+                   properties.first.partialMolarVolume[k], properties.second.partialMolarVolume[k]);
+        std::print(stream, "                            {: .6e} +/- {: .6e} [cm^3/mol]\n",
+                   volumeToCm3PerMol * properties.first.partialMolarVolume[k],
+                   volumeToCm3PerMol * properties.second.partialMolarVolume[k]);
+      }
       std::print(stream, "\n");
     }
   }
@@ -130,6 +144,15 @@ nlohmann::json PropertyPartialMolarProperties::jsonAveragesStatistics(std::vecto
           volumeToCm3PerMol * properties.first.partialMolarVolume[k];
       status[components[index].name]["partialMolarVolume"]["confidence"]["[cm^3/mol]"] =
           volumeToCm3PerMol * properties.second.partialMolarVolume[k];
+      if (!properties.first.defined)
+      {
+        // no block with defined partial molar properties: null, not the zero the average started from
+        for (const char* property : {"partialMolarEnergy", "partialMolarVolume"})
+        {
+          status[components[index].name][property]["mean"] = nullptr;
+          status[components[index].name][property]["confidence"] = nullptr;
+        }
+      }
     }
   }
 

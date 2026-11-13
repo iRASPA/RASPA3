@@ -860,7 +860,9 @@ LinearSipsFit fitLinearSips(std::span<const SimulatedIsothermPoint> probes, doub
     fit.exponent = (n * sumXY - sumX * sumY) / det;
     fit.intercept = (sumY * sumXX - sumX * sumXY) / det;
   }
-  if (!(std::isfinite(fit.exponent) && std::isfinite(fit.intercept)))
+  // bounds rather than std::isfinite, which the fast-math build compiles away (an overflow to infinity compares
+  // greater than any bound at run time)
+  if (!(std::abs(fit.exponent) < 1.0e300 && std::abs(fit.intercept) < 1.0e300))
   {
     fit.numberOfPoints = 0;
     return fit;
@@ -1172,7 +1174,8 @@ std::vector<double> placePressuresByPreIsothermFisher(double lowestPressure, dou
   {
     const double theta = coverageOfFisher(coordinate);
     double pressure = modelPressureFromCoverage(fit, theta);
-    if (!(pressure > 0.0) || !std::isfinite(pressure))
+    // the inverse overflows to infinity close to saturation; a bound, as std::isfinite is compiled away
+    if (!(pressure > 0.0 && pressure < 1.0e300))
     {
       pressure = lowestPressure;
     }

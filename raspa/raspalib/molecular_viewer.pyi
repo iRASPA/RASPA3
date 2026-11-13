@@ -13,7 +13,7 @@ def create_molecular_movie(
     view: py3Dmol.view, 
     pdb_path: str, 
     framework: Optional[str] = None,
-    interval: int
+    interval: int = 200
 ) -> None:
     """
     Visualizes a molecular trajectory and an optional zeolite framework.

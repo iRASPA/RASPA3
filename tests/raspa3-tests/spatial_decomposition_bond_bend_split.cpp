@@ -39,7 +39,7 @@ TEST(SPATIAL_DECOMPOSITION_BOND_BEND_SPLIT, split_molecule_bond_bend_gradients_m
   for (std::size_t i = 0; i + 2 < numberOfBeads; ++i)
   {
     potentials.bondBends.push_back(
-        BondBendPotential({i, i + 1, i + 2, 0}, BondBendType::CVFF, {100.0, 2000.0, 3.8, 1500.0, 3.7}));
+        BondBendPotential({i, i + 1, i + 2}, BondBendType::CVFF, {100.0, 2000.0, 3.8, 1500.0, 3.7}));
   }
 
   // a snake through a 7x7x7 lattice, perturbed so that the bond lengths and angles are off their reference values

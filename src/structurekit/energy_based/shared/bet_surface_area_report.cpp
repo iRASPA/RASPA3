@@ -171,17 +171,28 @@ void BETSurfaceArea::run(const EnergyBackend &backend, const PairInteractions &i
                                      potentialOrNothing, Units::CoulombicConversionFactor);
 
   const double beta = 1.0 / (Units::KB * temperature);
-  double boltzmann = 0.0;
+  // <exp(-U/kT)> in log space, every weight taken relative to the deepest voxel: one unshielded Coulomb well (a
+  // charged atom without dispersion) overflowed exp(-U/kT) to infinity, and the Henry occupancy with it. The
+  // occupancy is kept finite.
+  double logShift = 0.0;
+  double logBoltzmann = -std::numeric_limits<double>::max();
   if (!this->field.energy.empty())
   {
-    for (float energy : this->field.energy) boltzmann += std::exp(-beta * static_cast<double>(energy));
-    boltzmann /= static_cast<double>(this->field.energy.size());
+    logShift = -std::numeric_limits<double>::max();
+    for (float energy : this->field.energy) logShift = std::max(logShift, -beta * static_cast<double>(energy));
+    double shifted = 0.0;
+    for (float energy : this->field.energy) shifted += std::exp(-beta * static_cast<double>(energy) - logShift);
+    logBoltzmann = logShift + std::log(shifted / static_cast<double>(this->field.energy.size()));
   }
+  const double boltzmann = std::exp(std::min(logBoltzmann, 690.0));
 
   // n = (P0 V / kT) <exp(-U/kT)>, the Henry occupancy of the cell at saturation pressure, in molecules.
   const double volumeSI = framework.unitCell.volume * Units::Angstrom * Units::Angstrom * Units::Angstrom;
   const double kT = Units::BoltzmannConstant * temperature;
-  const double henryMoleculesPerCell = (kT > 0.0) ? nitrogenSaturationPressure * volumeSI / kT * boltzmann : 0.0;
+  const double henryMoleculesPerCell =
+      (kT > 0.0 && !this->field.energy.empty())
+          ? std::exp(std::min(std::log(nitrogenSaturationPressure * volumeSI / kT) + logBoltzmann, 690.0))
+          : 0.0;
 
   const double heatOfLiquefaction = nitrogenHeatOfLiquefactionKJMol / Units::EnergyToKJPerMol;
 
@@ -319,7 +330,8 @@ void BETSurfaceArea::run(const EnergyBackend &backend, const PairInteractions &i
   if (!this->field.energy.empty())
   {
     const std::size_t numberOfVoxels = this->field.energy.size();
-    const double totalWeight = boltzmann * static_cast<double>(numberOfVoxels);
+    // the weights relative to the deepest voxel (see logShift), so that the fractions are ratios of finite sums
+    const double totalWeight = std::exp(logBoltzmann - logShift) * static_cast<double>(numberOfVoxels);
 
     std::print(myfile, "#\n");
     std::print(myfile, "# Depth profile of the Henry average:\n");
@@ -335,10 +347,14 @@ void BETSurfaceArea::run(const EnergyBackend &backend, const PairInteractions &i
         if (betaU < -threshold)
         {
           ++count;
-          weight += std::exp(-betaU);
+          weight += std::exp(-betaU - logShift);
         }
       }
-      const double remaining = (totalWeight - weight) / static_cast<double>(numberOfVoxels);
+      const double remaining =
+          (totalWeight > weight)
+              ? std::exp(
+                    std::min(logShift + std::log((totalWeight - weight) / static_cast<double>(numberOfVoxels)), 690.0))
+              : 0.0;
       std::print(myfile, "# {:>10.0f}  {:>12d}  {:>14.6g}  {:>12.6g}\n", threshold, count,
                  (totalWeight > 0.0) ? weight / totalWeight : 0.0, remaining);
     }
@@ -384,7 +400,9 @@ void BETSurfaceArea::run(const EnergyBackend &backend, const PairInteractions &i
       const double energyKelvin = static_cast<double>(this->field.energy[voxel]) * Units::EnergyToKelvin;
       std::print(myfile, "# {:>8.5f} {:>8.5f} {:>8.5f}  {:>14.6g}  {:>10.4g}  {:>8d}  {:>10.4f}\n", point.x, point.y,
                  point.z, energyKelvin, beta * static_cast<double>(this->field.energy[voxel]),
-                 framework.atoms[nearestAtom].type, std::sqrt(nearestSquared));
+                 // a cell without atoms has no nearest atom (atoms[0] was read past an empty list)
+                 framework.atoms.empty() ? std::size_t{0} : framework.atoms[nearestAtom].type,
+                 framework.atoms.empty() ? 0.0 : std::sqrt(nearestSquared));
     }
   }
 

@@ -221,7 +221,12 @@ inline double potentialCorrectionVDW(const VDWParameters &parameters, double cut
       {
         sum += (i % 2 == 1 ? 4.0 : 2.0) * removed(rs + static_cast<double>(i) * h);
       }
-      return tail + sum * h / 3.0;
+      // Inside r_s the force-switched form is the plain potential plus a constant (the offset that makes the
+      // energy continuous with the switching region), so its difference with Lennard-Jones is constant there and
+      // integrates to (U_LJ - U)(r_s) r_s^3 / 3 (as the constant shift in the dispersion correction of GROMACS).
+      // The potential-switched form equals Lennard-Jones inside r_s and adds nothing.
+      double inner = removed(rs) * rs / 3.0;
+      return tail + sum * h / 3.0 + inner;
     }
     case VDWParameters::Type::LennardJonesShiftedForce:
     case VDWParameters::Type::LennardJonesSecondOrderTaylorShifted:

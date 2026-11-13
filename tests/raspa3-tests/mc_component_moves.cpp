@@ -802,6 +802,36 @@ TEST(MC_COMPONENT_MOVES, smart_rotation_proposal_ratio_counts_the_aliased_rotati
   EXPECT_NEAR(ratio, std::log(reverse / forward), 1e-12);
 }
 
+// A large torque on the trial configuration (an overlap) drifts the reverse step far from the drawn angle: the
+// reverse alias that dominates lies near -(axis . driftNew), here sixty radians away, which the nine aliases around
+// the drawn angle did not reach. Each sum is centred on its own dominant alias, and the ratio equals the sum over
+// many aliases.
+TEST(MC_COMPONENT_MOVES, smart_rotation_proposal_ratio_finds_the_dominant_alias_of_a_large_drift)
+{
+  const double3 step(2.6, 0.0, 0.0);
+  const double3 driftOld(2.4, 0.1, 0.0);
+  const double3 driftNew(60.0, 0.2, 0.0);
+  const double sigma = 1.5;
+  const double ratio = MC_Moves::logRotationProposalRatio(step, driftOld, driftNew, sigma);
+
+  // the sums in log space over k in [-200, 200], each term relative to the largest
+  auto logSum = [&](const double3& drift, double sign)
+  {
+    std::vector<double> terms;
+    for (int k = -200; k <= 200; ++k)
+    {
+      const double theta = 2.6 + 2.0 * std::numbers::pi * static_cast<double>(k);
+      const double3 vector(sign * theta, 0.0, 0.0);
+      terms.push_back(2.0 * std::log(std::abs(theta)) - (vector - drift).length_squared() / (2.0 * sigma * sigma));
+    }
+    const double high = *std::ranges::max_element(terms);
+    double sum = 0.0;
+    for (double term : terms) sum += std::exp(term - high);
+    return high + std::log(sum);
+  };
+  EXPECT_NEAR(ratio, logSum(driftNew, -1.0) - logSum(driftOld, 1.0), 1e-9);
+}
+
 // The collective smart moves evaluate the gradients of the trial configuration in place. A refused trial must
 // leave the system as it was: the gradients of the old configuration (the next consumer may read them), the
 // velocities, and the positions. A box of rigid CO2 with a huge step is refused on overlaps.

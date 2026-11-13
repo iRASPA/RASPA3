@@ -175,6 +175,10 @@ bool reduceSystemToPrimitiveFramework(System& system, double symmetryPrecision)
   if (!system.framework.has_value() || system.framework->rigid) return false;
   const Framework& framework = *system.framework;
   if (framework.frameworkDefinitionName.empty()) return false;
+  // The reduction rebuilds the framework only: the molecules of a host-guest system would stay as they are, packed
+  // into the primitive cell, and the groups, fixed atoms and group ids of a mixed framework would be lost. Both keep
+  // the simulation cell.
+  if (!system.moleculeData.empty() || framework.isMixed()) return false;
 
   const SimulationBox& box = system.simulationBox;
   const std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -231,12 +235,21 @@ bool reduceSystemToPrimitiveFramework(System& system, double symmetryPrecision)
     // so the force constants are computed at the same range; periodic-image replicas satisfy the minimum-image
     // convention on the small primitive cell. Only the real-space Coulomb cutoff is clamped to the primitive
     // half-box (Ewald is exact for any box at a half-box real-space cutoff).
-    system.forceField.cutOffFrameworkVDWAutomatic = false;
-    system.forceField.cutOffMoleculeVDWAutomatic = false;
     const double3 primitiveWidths = primitiveBox.perpendicularWidths();
     const double halfSmallestWidth =
         0.5 * std::min({primitiveWidths.x, primitiveWidths.y, primitiveWidths.z}) - std::numeric_limits<double>::epsilon();
+    // A shorter Coulomb cutoff leaves the Hamiltonian as it is only for Ewald with automatic parameters, which are
+    // re-derived for the primitive box below: an explicit alpha would lose accuracy at the shorter cutoff, and the
+    // Wolf, DSF and shifted methods are a different potential at another cutoff. Those keep the simulation cell.
+    if (system.forceField.useCharge && halfSmallestWidth < system.forceField.cutOffCoulomb &&
+        !(system.forceField.chargeMethod == ForceField::ChargeMethod::Ewald && system.forceField.automaticEwald))
+    {
+      return false;
+    }
+    system.forceField.cutOffFrameworkVDWAutomatic = false;
+    system.forceField.cutOffMoleculeVDWAutomatic = false;
     system.forceField.cutOffCoulomb = std::min(system.forceField.cutOffCoulomb, halfSmallestWidth);
+    system.forceField.initializeEwaldParameters(primitiveBox);
 
     system.rebuildForFramework(primitiveFramework, primitiveBox);
     system.framework->regenerateVanDerWaalsImageList(system.forceField, primitiveBox,
@@ -336,6 +349,14 @@ void Minimization::performCycle()
       [](const System& system) { return system.numberOfMolecules(); });
   totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
 
+  // a step addresses the component of the two paired systems by one index: they must hold the same components
+  if (std::ranges::any_of(
+          systems, [&](const System& system) { return system.components.size() != systems.front().components.size(); }))
+  {
+    throw std::runtime_error(
+        "the systems of a Monte Carlo simulation must have the same components: a step pairs two systems and "
+        "addresses the component of both by one index\n");
+  }
   numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
 
   for (std::size_t j = 0uz; j != numberOfStepsPerCycle; j++)

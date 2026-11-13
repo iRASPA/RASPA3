@@ -464,8 +464,11 @@ void nldftApplyHenryPressureWindow(NLDFTOptions &options, double henryMoleculesP
   double lowestPressure = nldftPressureWindowFloorPa;
   if (henryCoefficient > 0.0 && packingCapacity > 0.0)
   {
-    lowestPressure =
-        std::min(nldftPressureWindowFloorPa, nldftPressureWindowFillFraction * packingCapacity / henryCoefficient);
+    // never zero: the window is spaced logarithmically, and an enormous (or infinite) Henry coefficient of an
+    // unshielded well took the lower end to nought and the whole isotherm with its logarithm
+    lowestPressure = std::max(
+        std::min(nldftPressureWindowFloorPa, nldftPressureWindowFillFraction * packingCapacity / henryCoefficient),
+        1.0e-30);
   }
 
   const double p0 =

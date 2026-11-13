@@ -156,3 +156,44 @@ X5  O2   0.8 0.0 0.0
         << "site " << i << " should be " << expected[i];
   }
 }
+
+// A file that names its space group 'unknown', lists its operations under the current IUCr tag with a comment among
+// the loop tags, quotes operations that contain spaces, and quotes an atom label. The name 'unknown' matched the
+// placeholder entry of the space-group table, which has no operations and expanded every atom to none; the comment
+// ended the loop header; and the words of a quoted value were read as values of their own.
+TEST(cif_reader, unknown_space_group_quoted_operations_and_modern_tags)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
+  constexpr std::string_view cif = R"(
+data_test
+_cell_length_a 10.0
+_cell_length_b 10.0
+_cell_length_c 10.0
+_cell_angle_alpha 90.0
+_cell_angle_beta 90.0
+_cell_angle_gamma 90.0
+_symmetry_space_group_name_H-M 'unknown'
+loop_
+_space_group_symop_id
+# the operations of P -1, quoted, with spaces
+_space_group_symop_operation_xyz
+1 'x, y, z'
+2 '-x, -y, -z'
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+'Si 1' Si 0.1 0.2 0.3
+O1 O  0.4 0.5 0.6
+)";
+  const auto read = CIFReader::readCIFString(std::string(cif), forceField, CIFReader::UseChargesFrom::CIF_File);
+  ASSERT_TRUE(read.has_value());
+  auto [simulationBox, spaceGroupHallNumber, definedAtoms, unitCellAtoms] = read.value();
+  ASSERT_EQ(definedAtoms.size(), 2uz);
+  EXPECT_NEAR(definedAtoms[0].position.x, 0.1, 1e-12);
+  EXPECT_NEAR(definedAtoms[1].position.z, 0.6, 1e-12);
+  // the inversion doubles both atoms
+  EXPECT_EQ(unitCellAtoms.size(), 4uz);
+}

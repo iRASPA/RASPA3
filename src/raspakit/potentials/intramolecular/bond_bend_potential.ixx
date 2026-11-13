@@ -42,9 +42,10 @@ export enum class BondBendType : std::size_t {
  */
 export struct BondBendPotential
 {
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization.
 
-  std::array<std::size_t, 4> identifiers;  ///< Identifiers of the two particles forming the bond_bend.
+  // a three-body term A-B-C, with B the vertex (version 1 stored a fourth identifier that nothing used)
+  std::array<std::size_t, 3> identifiers;  ///< Identifiers of the three particles of the bond-bend.
   BondBendType type;                       ///< The type of bond_bend potential.
   std::array<double, maximumNumberOfBondBendParameters>
       parameters{};  ///< Parameters associated with the bond_bend potential.
@@ -54,9 +55,9 @@ export struct BondBendPotential
    *
    * Initializes a BondBendPotential object with Undefined bond_bend type and zeroed bond_bend IDs.
    */
-  BondBendPotential() : identifiers({0, 0, 0, 0}), type(BondBendType::CVFF) {}
+  BondBendPotential() : identifiers({0, 0, 0}), type(BondBendType::CVFF) {}
 
-  BondBendPotential(std::array<std::size_t, 4> identifiers, BondBendType type, std::vector<double> vector_parameters);
+  BondBendPotential(std::array<std::size_t, 3> identifiers, BondBendType type, std::vector<double> vector_parameters);
 
   /**
    * \brief Constructs a BondBendPotential with specified type and bond_bend IDs.
@@ -64,7 +65,7 @@ export struct BondBendPotential
    * \param type The type of bond_bend potential.
    * \param identifiers A pair of particle identifiers forming the bond_bend.
    */
-  BondBendPotential(std::array<std::size_t, 4> identifiers, const BondBendType type)
+  BondBendPotential(std::array<std::size_t, 3> identifiers, const BondBendType type)
       : identifiers(identifiers), type(type)
   {
   }
@@ -110,7 +111,7 @@ export struct BondBendPotential
       {"SCREENED_VESSAL", BondBendType::ScreenedVessal},
       {"TRUNCATED_VESSAL", BondBendType::TruncatedVessal}};
 
-  double calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posc, const double3 &posD) const;
+  double calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posC) const;
 
   std::tuple<double, std::array<double3, 3>, double3x3> potentialEnergyGradientStrain(const double3 &posA,
                                                                                         const double3 &posB,

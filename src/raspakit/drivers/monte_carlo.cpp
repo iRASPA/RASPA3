@@ -301,6 +301,14 @@ void MonteCarlo::performCycle()
       [](const System& system) { return system.numberOfMolecules(); });
   totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
 
+  // a step addresses the component of the two paired systems by one index: they must hold the same components
+  if (std::ranges::any_of(
+          systems, [&](const System& system) { return system.components.size() != systems.front().components.size(); }))
+  {
+    throw std::runtime_error(
+        "the systems of a Monte Carlo simulation must have the same components: a step pairs two systems and "
+        "addresses the component of both by one index\n");
+  }
   numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
 
   for (std::size_t j = 0uz; j != numberOfStepsPerCycle; j++)

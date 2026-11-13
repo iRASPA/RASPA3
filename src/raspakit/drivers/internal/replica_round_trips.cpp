@@ -154,11 +154,15 @@ nlohmann::json ReplicaRoundTrips::jsonStatistics() const
   j["roundTripsPerWalker"] = roundTripsPerWalker;
   j["walkerAtReplica"] = walkerAtReplica;
 
-  std::vector<double> upFractions;
-  upFractions.reserve(numberOfReplicas);
+  // a replica no walker has visited yet has no up-fraction: null (a NaN went out as a bare 'nan', which is no JSON)
+  nlohmann::json upFractions = nlohmann::json::array();
   for (std::size_t replica = 0; replica < numberOfReplicas; ++replica)
   {
-    upFractions.push_back(upFraction(replica).value_or(std::numeric_limits<double>::quiet_NaN()));
+    const std::optional<double> fraction = upFraction(replica);
+    if (fraction.has_value())
+      upFractions.push_back(fraction.value());
+    else
+      upFractions.push_back(nullptr);
   }
   j["upFraction"] = upFractions;
   j["upVisitsPerReplica"] = upVisitsPerReplica;

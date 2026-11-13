@@ -139,7 +139,14 @@ struct BlockAverage
           ++numberOfSamples;
         }
       }
-      return (1.0 / static_cast<double>(std::max<std::size_t>(1, numberOfSamples))) * accumulated;
+      Data mean = (1.0 / static_cast<double>(std::max<std::size_t>(1, numberOfSamples))) * accumulated;
+      // without a single usable block there is no average: a type that can say so is marked undefined (it reported
+      // the zero it started from as the average)
+      if constexpr (requires { mean.defined; })
+      {
+        mean.defined = numberOfSamples > 0;
+      }
+      return mean;
     }
     else
     {

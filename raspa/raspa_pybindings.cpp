@@ -337,29 +337,27 @@ EXPAND_MODULE(MODULE_NAME)
         .def_rw("mol_fraction", &EquationOfState::FluidInput::molFraction)
         .def_rw("swappable", &EquationOfState::FluidInput::swappable);
 
-    nanobind::enum_<EquationOfState::Type>(eos, "EquationOfStateType", nanobind::is_arithmetic(), nanobind::is_flag())
+    nanobind::enum_<EquationOfState::Type>(eos, "EquationOfStateType", nanobind::is_arithmetic())
         .value("PENG_ROBINSON", EquationOfState::Type::PengRobinson)
         .value("PENG_ROBINSON_GASEM", EquationOfState::Type::PengRobinsonGasem)
         .value("SOAVE_REDLICH_KWONG", EquationOfState::Type::SoaveRedlichKwong);
 
-    nanobind::enum_<EquationOfState::MixingRules>(eos, "MixingRules", nanobind::is_arithmetic(), nanobind::is_flag())
+    nanobind::enum_<EquationOfState::MixingRules>(eos, "MixingRules", nanobind::is_arithmetic())
         .value("VAN_DER_WAALS", EquationOfState::MixingRules::VanDerWaals);
 
-    nanobind::enum_<EquationOfState::FluidState>(eos, "FluidState", nanobind::is_arithmetic(), nanobind::is_flag())
+    nanobind::enum_<EquationOfState::FluidState>(eos, "FluidState", nanobind::is_arithmetic())
         .value("UNKNOWN", EquationOfState::FluidState::Unknown)
         .value("SUPER_CRITICAL_FLUID", EquationOfState::FluidState::SuperCriticalFluid)
         .value("VAPOR", EquationOfState::FluidState::Vapor)
         .value("LIQUID", EquationOfState::FluidState::Liquid)
         .value("VAPOR_LIQUID", EquationOfState::FluidState::VaporLiquid);
 
-  nanobind::class_<EquationOfState::FluidResult>(eos, "FluidResult")
-      .def(nanobind::init<double, std::optional<double>, EquationOfState::FluidState>(), 
-          nanobind::arg("compressibility"), 
-          nanobind::arg("fugacity_coefficient"),
-          nanobind::arg("fluid_state"))
-      .def_rw("compressibility", &EquationOfState::FluidResult::compressibility)
-      .def_rw("fugacity_coefficient", &EquationOfState::FluidResult::fugacityCoefficient)
-      .def_rw("fluid_state", &EquationOfState::FluidResult::fluidState);
+    nanobind::class_<EquationOfState::FluidResult>(eos, "FluidResult")
+        .def(nanobind::init<double, std::optional<double>, EquationOfState::FluidState>(),
+             nanobind::arg("compressibility"), nanobind::arg("fugacity_coefficient"), nanobind::arg("fluid_state"))
+        .def_rw("compressibility", &EquationOfState::FluidResult::compressibility)
+        .def_rw("fugacity_coefficient", &EquationOfState::FluidResult::fugacityCoefficient)
+        .def_rw("fluid_state", &EquationOfState::FluidResult::fluidState);
 
     eos.def(nanobind::init<EquationOfState::Type, EquationOfState::MixingRules,
                   double, double, const SimulationBox &, double,
@@ -392,7 +390,7 @@ EXPAND_MODULE(MODULE_NAME)
       .def("__repr__", &Atom::repr);
 
   nanobind::class_<SimulationBox> simulationBox(m, "SimulationBox");
-  nanobind::enum_<SimulationBox::Type>(simulationBox, "SimulationBoxType", nanobind::is_arithmetic(), nanobind::is_flag())
+  nanobind::enum_<SimulationBox::Type>(simulationBox, "SimulationBoxType", nanobind::is_arithmetic())
       .value("RECTANGULAR", SimulationBox::Type::Rectangular)
       .value("TRICLINIC", SimulationBox::Type::Triclinic);
 
@@ -438,7 +436,7 @@ EXPAND_MODULE(MODULE_NAME)
            nanobind::arg("source") = "");
 
   nanobind::class_<ForceField> forceField(m, "ForceField");
-  nanobind::enum_<ForceField::MixingRule>(forceField, "MixingRule", nanobind::is_arithmetic(), nanobind::is_flag())
+  nanobind::enum_<ForceField::MixingRule>(forceField, "MixingRule", nanobind::is_arithmetic())
       .value("LORENTZ_BERTHELOT", ForceField::MixingRule::Lorentz_Berthelot)
       .value("JORGENSEN", ForceField::MixingRule::Jorgensen);
 
@@ -468,7 +466,7 @@ EXPAND_MODULE(MODULE_NAME)
 
   nanobind::class_<Framework> framework(m, "Framework");
 
-  nanobind::enum_<CIFReader::UseChargesFrom>(framework, "UseChargesFrom", nanobind::is_arithmetic(), nanobind::is_flag())
+  nanobind::enum_<CIFReader::UseChargesFrom>(framework, "UseChargesFrom", nanobind::is_arithmetic())
       .value("PSEUDO_ATOMS", CIFReader::UseChargesFrom::PseudoAtoms)
       .value("CIF_FILE", CIFReader::UseChargesFrom::CIF_File)
       .value("CHARGE_EQUILIBRATION", CIFReader::UseChargesFrom::ChargeEquilibration);
@@ -564,181 +562,178 @@ EXPAND_MODULE(MODULE_NAME)
 
   nanobind::class_<Move> move(m, "Move");
     move.def(nanobind::init());
-  nanobind::enum_<Move::Types>(move, "Types", nanobind::is_arithmetic(), nanobind::is_flag())
-      .value("TRANSLATION", Move::Types::Translation)
-      .value("RANDOM_TRANSLATION", Move::Types::RandomTranslation)
-      .value("ROTATION", Move::Types::Rotation)
-      .value("RANDOM_ROTATION", Move::Types::RandomRotation)
-      .value("VOLUME_CHANGE", Move::Types::VolumeChange)
-      .value("ANISOTROPIC_VOLUME_CHANGE", Move::Types::AnisotropicVolumeChange)
-      .value("REINSERTION_CBMC", Move::Types::ReinsertionCBMC)
-      .value("PARTIAL_REINSERTION_CBMC", Move::Types::PartialReinsertionCBMC)
-      .value("IDENTITY_CHANGE_CBMC", Move::Types::IdentityChangeCBMC)
-      .value("SWAP", Move::Types::Swap)
-      .value("SWAP_CBMC", Move::Types::SwapCBMC)
-      .value("SWAP_CFCMC", Move::Types::SwapCFCMC)
-      .value("SWAP_CBCFCMC", Move::Types::SwapCBCFCMC)
-      .value("GIBBS_VOLUME", Move::Types::GibbsVolume)
-      .value("GIBBS_SWAP_CBMC", Move::Types::GibbsSwapCBMC)
-      .value("GIBBS_CONVENTIONAL_CFCMC", Move::Types::GibbsConventionalCFCMC)
-      .value("GIBBS_CONVENTIONAL_CBCFCMC", Move::Types::GibbsConventionalCBCFCMC)
-      .value("GIBBS_SWAP_CFCMC", Move::Types::GibbsSwapCFCMC)
-      .value("GIBBS_SWAP_CBCFCMC", Move::Types::GibbsSwapCBCFCMC)
-      .value("GIBBS_IDENTITY_CHANGE_CBMC", Move::Types::GibbsIdentityChangeCBMC)
-      .value("WIDOM", Move::Types::Widom)
-      .value("WIDOM_CFCMC", Move::Types::WidomCFCMC)
-      .value("WIDOM_CBCFCMC", Move::Types::WidomCBCFCMC)
-      .value("PARALLEL_TEMPERING", Move::Types::ParallelTempering)
-      .value("HYBRID_MC", Move::Types::HybridMC)
-      .value("REACTION_CBMC", Move::Types::ReactionCBMC)
-      .value("REACTION_CONVENTIONAL_CFCMC", Move::Types::ReactionConventionalCFCMC)
-      .value("REACTION_CONVENTIONAL_CBCFCMC", Move::Types::ReactionConventionalCBCFCMC)
-      .value("REACTION_CFCMC", Move::Types::ReactionCFCMC)
-      .value("REACTION_CBCFCMC", Move::Types::ReactionCBCFCMC)
-      .value("PAIR_SWAP", Move::Types::PairSwap)
-      .value("PAIR_SWAP_CBMC", Move::Types::PairSwapCBMC)
-      .value("PAIR_SWAP_CFCMC", Move::Types::PairSwapCFCMC)
-      .value("PAIR_SWAP_CBCFCMC", Move::Types::PairSwapCBCFCMC);
+    nanobind::enum_<Move::Types>(move, "Types", nanobind::is_arithmetic())
+        .value("TRANSLATION", Move::Types::Translation)
+        .value("RANDOM_TRANSLATION", Move::Types::RandomTranslation)
+        .value("ROTATION", Move::Types::Rotation)
+        .value("RANDOM_ROTATION", Move::Types::RandomRotation)
+        .value("VOLUME_CHANGE", Move::Types::VolumeChange)
+        .value("ANISOTROPIC_VOLUME_CHANGE", Move::Types::AnisotropicVolumeChange)
+        .value("REINSERTION_CBMC", Move::Types::ReinsertionCBMC)
+        .value("PARTIAL_REINSERTION_CBMC", Move::Types::PartialReinsertionCBMC)
+        .value("IDENTITY_CHANGE_CBMC", Move::Types::IdentityChangeCBMC)
+        .value("SWAP", Move::Types::Swap)
+        .value("SWAP_CBMC", Move::Types::SwapCBMC)
+        .value("SWAP_CFCMC", Move::Types::SwapCFCMC)
+        .value("SWAP_CBCFCMC", Move::Types::SwapCBCFCMC)
+        .value("GIBBS_VOLUME", Move::Types::GibbsVolume)
+        .value("GIBBS_SWAP_CBMC", Move::Types::GibbsSwapCBMC)
+        .value("GIBBS_CONVENTIONAL_CFCMC", Move::Types::GibbsConventionalCFCMC)
+        .value("GIBBS_CONVENTIONAL_CBCFCMC", Move::Types::GibbsConventionalCBCFCMC)
+        .value("GIBBS_SWAP_CFCMC", Move::Types::GibbsSwapCFCMC)
+        .value("GIBBS_SWAP_CBCFCMC", Move::Types::GibbsSwapCBCFCMC)
+        .value("GIBBS_IDENTITY_CHANGE_CBMC", Move::Types::GibbsIdentityChangeCBMC)
+        .value("WIDOM", Move::Types::Widom)
+        .value("WIDOM_CFCMC", Move::Types::WidomCFCMC)
+        .value("WIDOM_CBCFCMC", Move::Types::WidomCBCFCMC)
+        .value("PARALLEL_TEMPERING", Move::Types::ParallelTempering)
+        .value("HYBRID_MC", Move::Types::HybridMC)
+        .value("REACTION_CBMC", Move::Types::ReactionCBMC)
+        .value("REACTION_CONVENTIONAL_CFCMC", Move::Types::ReactionConventionalCFCMC)
+        .value("REACTION_CONVENTIONAL_CBCFCMC", Move::Types::ReactionConventionalCBCFCMC)
+        .value("REACTION_CFCMC", Move::Types::ReactionCFCMC)
+        .value("REACTION_CBCFCMC", Move::Types::ReactionCBCFCMC)
+        .value("PAIR_SWAP", Move::Types::PairSwap)
+        .value("PAIR_SWAP_CBMC", Move::Types::PairSwapCBMC)
+        .value("PAIR_SWAP_CFCMC", Move::Types::PairSwapCFCMC)
+        .value("PAIR_SWAP_CBCFCMC", Move::Types::PairSwapCBCFCMC);
 
-  nanobind::class_<MCMoveStatistics>(m, "MCMoveStatistics")
-      .def("__getitem__", [](MCMoveStatistics &self, Move::Types i) { return self[i]; })
-      .def("__repr__", &MCMoveStatistics::repr);
+    nanobind::class_<MCMoveStatistics>(m, "MCMoveStatistics")
+        .def("__getitem__", [](MCMoveStatistics& self, Move::Types i) { return self[i]; })
+        .def("__repr__", &MCMoveStatistics::repr);
 
-  nanobind::class_<WidomData>(m, "WidomData")
-      .def_ro("total", &WidomData::total)
-      .def_ro("excess", &WidomData::excess)
-      .def_ro("ideal_gas", &WidomData::idealGas);
+    nanobind::class_<WidomData>(m, "WidomData")
+        .def_ro("total", &WidomData::total)
+        .def_ro("excess", &WidomData::excess)
+        .def_ro("ideal_gas", &WidomData::idealGas);
 
-  nanobind::class_<PropertyWidom>(m, "PropertyWidom")
-      .def("result", &PropertyWidom::result)
-       // convert result to units of Kelvin
-      .def("chemical_potential_result", [](PropertyWidom& p, double T) 
-          { return Units::EnergyToKelvin * p.chemicalPotentialResult(1.0 / (Units::KB * T));}, nanobind::arg("temperature"))
-       // convert result to units of Pascal
-      .def("fugacity_result", [](PropertyWidom& p, double T) 
-          { return Units::PressureConversionFactor * p.fugacityResult(1.0 / (Units::KB * T));}, nanobind::arg("temperature"));
+    nanobind::class_<PropertyWidom>(m, "PropertyWidom")
+        .def("result", &PropertyWidom::result)
+        // convert result to units of Kelvin
+        .def(
+            "chemical_potential_result", [](PropertyWidom& p, double T)
+            { return Units::EnergyToKelvin * p.chemicalPotentialResult(1.0 / (Units::KB * T)); },
+            nanobind::arg("temperature"))
+        // convert result to units of Pascal
+        .def(
+            "fugacity_result", [](PropertyWidom& p, double T)
+            { return Units::PressureConversionFactor * p.fugacityResult(1.0 / (Units::KB * T)); },
+            nanobind::arg("temperature"));
 
-  nanobind::class_<PropertyGibbsWidom>(m, "PropertyGibbsWidom")
-      .def("result", &PropertyGibbsWidom::result)
-       // convert result to units of Kelvin
-      .def("chemical_potential_result", [](PropertyGibbsWidom& p, double T) 
-          { return Units::EnergyToKelvin * p.chemicalPotentialResult(1.0 / (Units::KB * T));}, nanobind::arg("temperature"))
-       // convert result to units of Pascal
-      .def("fugacity_result", [](PropertyGibbsWidom& p, double T) 
-          { return Units::PressureConversionFactor * p.fugacityResult(1.0 / (Units::KB * T));}, nanobind::arg("temperature"));
+    nanobind::class_<PropertyGibbsWidom>(m, "PropertyGibbsWidom")
+        .def("result", &PropertyGibbsWidom::result)
+        // convert result to units of Kelvin
+        .def(
+            "chemical_potential_result", [](PropertyGibbsWidom& p, double T)
+            { return Units::EnergyToKelvin * p.chemicalPotentialResult(1.0 / (Units::KB * T)); },
+            nanobind::arg("temperature"))
+        // convert result to units of Pascal
+        .def(
+            "fugacity_result", [](PropertyGibbsWidom& p, double T)
+            { return Units::PressureConversionFactor * p.fugacityResult(1.0 / (Units::KB * T)); },
+            nanobind::arg("temperature"));
 
-  nanobind::class_<Component> component(m, "Component");
-  nanobind::enum_<Component::Type>(component, "Type", nanobind::is_arithmetic(), nanobind::is_flag())
-      .value("ADSORBATE", Component::Type::Adsorbate)
-      .value("CATION", Component::Type::Cation);
+    nanobind::class_<Component> component(m, "Component");
+    nanobind::enum_<Component::Type>(component, "Type", nanobind::is_arithmetic())
+        .value("ADSORBATE", Component::Type::Adsorbate)
+        .value("CATION", Component::Type::Cation);
 
-  component
-      .def(nanobind::init<const ForceField &, std::string, double, double, double, std::vector<Atom>,
-                          const ConnectivityTable &, const Potentials::IntraMolecularPotentials &, std::size_t,
-                          std::size_t, const MCMoveProbabilities &, std::optional<double>, bool, std::vector<double4>>(),
-           nanobind::arg("force_field"), 
-           nanobind::arg("component_name"),
-           nanobind::arg("critical_temperature"), 
-           nanobind::arg("critical_pressure"), 
-           nanobind::arg("acentric_factor"),
-           nanobind::arg("defined_atoms") = std::vector<Atom>(), 
-           nanobind::arg("connectivity_table") = ConnectivityTable(),
-           nanobind::arg("intra_molecular_potentials") = Potentials::IntraMolecularPotentials(),
-           nanobind::arg("number_of_blocks") = 5,
-           nanobind::arg("number_of_lambda_bins") = 41,
-           nanobind::arg("particle_probabilities") = MCMoveProbabilities(), 
-           nanobind::arg("fugacity_coefficient") = nanobind::none(),
-           nanobind::arg("thermodynamic_integration") = false,
-           nanobind::arg("blocking_pockets") = std::vector<double4>())
-      .def_ro("name", &Component::name)
-      .def_rw("lambda_histogram", &Component::lambdaGC)
-      .def_ro("mc_moves_probabilities", &Component::mc_moves_probabilities)
-      .def_ro("mc_moves_statistics", &Component::mc_moves_statistics)
-      .def_rw("blocking_pockets", &Component::blockingPockets)
-      .def_rw("average_rosenbluth_weights", &Component::averageRosenbluthWeights)
-      .def_rw("average_gibbs_rosenbluth_weights", &Component::averageGibbsRosenbluthWeights)
-      .def("print_status", &Component::printStatus)
-      .def("__repr__", &Component::repr);
+    component
+        .def(nanobind::init<const ForceField&, std::string, double, double, double, std::vector<Atom>,
+                            const ConnectivityTable&, const Potentials::IntraMolecularPotentials&, std::size_t,
+                            std::size_t, const MCMoveProbabilities&, std::optional<double>, bool,
+                            std::vector<double4>>(),
+             nanobind::arg("force_field"), nanobind::arg("component_name"), nanobind::arg("critical_temperature"),
+             nanobind::arg("critical_pressure"), nanobind::arg("acentric_factor"),
+             nanobind::arg("defined_atoms") = std::vector<Atom>(),
+             nanobind::arg("connectivity_table") = ConnectivityTable(),
+             nanobind::arg("intra_molecular_potentials") = Potentials::IntraMolecularPotentials(),
+             nanobind::arg("number_of_blocks") = 5, nanobind::arg("number_of_lambda_bins") = 41,
+             nanobind::arg("particle_probabilities") = MCMoveProbabilities(),
+             nanobind::arg("fugacity_coefficient") = nanobind::none(),
+             nanobind::arg("thermodynamic_integration") = false,
+             nanobind::arg("blocking_pockets") = std::vector<double4>())
+        .def_ro("name", &Component::name)
+        .def_rw("lambda_histogram", &Component::lambdaGC)
+        .def_ro("mc_moves_probabilities", &Component::mc_moves_probabilities)
+        .def_ro("mc_moves_statistics", &Component::mc_moves_statistics)
+        .def_rw("blocking_pockets", &Component::blockingPockets)
+        .def_rw("average_rosenbluth_weights", &Component::averageRosenbluthWeights)
+        .def_rw("average_gibbs_rosenbluth_weights", &Component::averageGibbsRosenbluthWeights)
+        .def("print_status", &Component::printStatus)
+        .def("__repr__", &Component::repr);
 
-  nanobind::class_<LoadingData>(m, "LoadingData")
-      .def(nanobind::init<std::size_t>())
-      .def_ro("number_of_molecules", &LoadingData::numberOfMolecules)
-      .def_ro("number_densities", &LoadingData::numberDensities)
-      .def_ro("inverse_number_densities", &LoadingData::inverseNumberDensities);
+    nanobind::class_<LoadingData>(m, "LoadingData")
+        .def(nanobind::init<std::size_t>())
+        .def_ro("number_of_molecules", &LoadingData::numberOfMolecules)
+        .def_ro("number_densities", &LoadingData::numberDensities)
+        .def_ro("inverse_number_densities", &LoadingData::inverseNumberDensities);
 
-  nanobind::class_<SampleMovie>(m, "SampleMovie")
-      .def(nanobind::init<std::size_t, std::size_t, bool, std::optional<std::string>>(),
-           nanobind::arg("system_id"), 
-           nanobind::arg("sample_every"), 
-           nanobind::arg("restrict_to_box") = true,
-           nanobind::arg("tag") = std::nullopt);
+    nanobind::class_<SampleMovie>(m, "SampleMovie")
+        .def(nanobind::init<std::size_t, std::size_t, bool, std::optional<std::string>>(), nanobind::arg("system_id"),
+             nanobind::arg("sample_every"), nanobind::arg("restrict_to_box") = true,
+             nanobind::arg("tag") = std::nullopt);
 
-  nanobind::class_<PropertyLoading>(m, "PropertyLoading")
-      .def(nanobind::init<std::size_t, std::size_t>())
-      .def("result", &PropertyLoading::average)
-      .def("average_loading_number_of_molecules", &PropertyLoading::averageLoadingNumberOfMolecules)
-      .def("write_averages_statistics", &PropertyLoading::writeAveragesStatistics)
-      .def("__repr__", &PropertyLoading::repr);
+    nanobind::class_<PropertyLoading>(m, "PropertyLoading")
+        .def(nanobind::init<std::size_t, std::size_t>())
+        .def("result", &PropertyLoading::average)
+        .def("average_loading_number_of_molecules", &PropertyLoading::averageLoadingNumberOfMolecules)
+        .def("write_averages_statistics", &PropertyLoading::writeAveragesStatistics)
+        .def("__repr__", &PropertyLoading::repr);
 
-  nanobind::class_<EnergyDuDlambda>(m, "EnergyDuDlambda")
-      .def_ro("energy", &EnergyDuDlambda::energy)
-      .def_ro("dudlambda", &EnergyDuDlambda::dUdlambda);
+    nanobind::class_<EnergyDuDlambda>(m, "EnergyDuDlambda")
+        .def_ro("energy", &EnergyDuDlambda::energy)
+        .def_ro("dudlambda", &EnergyDuDlambda::dUdlambda);
 
-  nanobind::class_<EnergyStatus>(m, "EnergyStatus")
-      .def_rw("total_energy", &EnergyStatus::totalEnergy)
-      .def("__repr__", &EnergyStatus::repr);
+    nanobind::class_<EnergyStatus>(m, "EnergyStatus")
+        .def_rw("total_energy", &EnergyStatus::totalEnergy)
+        .def("__repr__", &EnergyStatus::repr);
 
-  nanobind::class_<PropertyEnergy>(m, "PropertyEnergy")
-       // convert result to units of Kelvin
-      .def("result", [](PropertyEnergy& p) { return Units::EnergyToKelvin * p.average();})
-      .def("__repr__", &PropertyEnergy::repr);
+    nanobind::class_<PropertyEnergy>(m, "PropertyEnergy")
+        // convert result to units of Kelvin
+        .def("result", [](PropertyEnergy& p) { return Units::EnergyToKelvin * p.average(); })
+        .def("__repr__", &PropertyEnergy::repr);
 
-  nanobind::class_<PressureData>(m, "PressureData")
-      .def(nanobind::init<>())
-      .def_ro("total_pressure", &PressureData::totalPressure)
-      .def_ro("excess_pressure", &PressureData::excessPressure)
-      .def_ro("ideal_gas_pressure", &PressureData::idealGasPressure);
+    nanobind::class_<PressureData>(m, "PressureData")
+        .def(nanobind::init<>())
+        .def_ro("total_pressure", &PressureData::totalPressure)
+        .def_ro("excess_pressure", &PressureData::excessPressure)
+        .def_ro("ideal_gas_pressure", &PressureData::idealGasPressure);
 
-  nanobind::class_<PropertyPressure>(m, "PropertyPressure")
-      .def("result", [](PropertyPressure& p) { return Units::PressureConversionFactor * p.average();});
-      //.def("__repr__", &Pressures::repr);
+    nanobind::class_<PropertyPressure>(m, "PropertyPressure")
+        .def("result", [](PropertyPressure& p) { return Units::PressureConversionFactor * p.average(); });
+    //.def("__repr__", &Pressures::repr);
 
-  nanobind::class_<AverageEnergyType>(m, "AverageEnergyType")
-      .def(nanobind::init<double, double, double, double>(), 
-           nanobind::arg("total_energy") = 0.0, 
-           nanobind::arg("van_der_waals_energy") = 0.0,
-           nanobind::arg("coulomb_energy") = 0.0, 
-           nanobind::arg("polarization_energy") = 0.0)
-      .def_rw("total_energy", &AverageEnergyType::totalEnergy)
-      .def_rw("van_der_waals_energy", &AverageEnergyType::VanDerWaalsEnergy)
-      .def_rw("coulomb_energy", &AverageEnergyType::CoulombEnergy)
-      .def_rw("polarization_energy", &AverageEnergyType::polarizationEnergy);
+    nanobind::class_<AverageEnergyType>(m, "AverageEnergyType")
+        .def(nanobind::init<double, double, double, double>(), nanobind::arg("total_energy") = 0.0,
+             nanobind::arg("van_der_waals_energy") = 0.0, nanobind::arg("coulomb_energy") = 0.0,
+             nanobind::arg("polarization_energy") = 0.0)
+        .def_rw("total_energy", &AverageEnergyType::totalEnergy)
+        .def_rw("van_der_waals_energy", &AverageEnergyType::VanDerWaalsEnergy)
+        .def_rw("coulomb_energy", &AverageEnergyType::CoulombEnergy)
+        .def_rw("polarization_energy", &AverageEnergyType::polarizationEnergy);
 
+    nanobind::class_<PropertyDensityGrid> property_energy_grid(m, "PropertyDensityGrid");
 
-  nanobind::class_<PropertyDensityGrid> property_energy_grid(m, "PropertyDensityGrid");
+    nanobind::enum_<PropertyDensityGrid::Normalization>(property_energy_grid, "Normalization",
+                                                        nanobind::is_arithmetic())
+        .value("MAX", PropertyDensityGrid::Normalization::Max)
+        .value("NUMBER_DENSITY", PropertyDensityGrid::Normalization::NumberDensity);
 
-  nanobind::enum_<PropertyDensityGrid::Normalization>(property_energy_grid, "Normalization", nanobind::is_arithmetic(), nanobind::is_flag())
-      .value("MAX", PropertyDensityGrid::Normalization::Max)
-      .value("NUMBER_DENSITY", PropertyDensityGrid::Normalization::NumberDensity);
+    nanobind::enum_<PropertyDensityGrid::Binning>(property_energy_grid, "Binning", nanobind::is_arithmetic())
+        .value("STANDARD", PropertyDensityGrid::Binning::Standard)
+        .value("EQUITABLE", PropertyDensityGrid::Binning::Equitable);
 
-  nanobind::enum_<PropertyDensityGrid::Binning>(property_energy_grid, "Binning", nanobind::is_arithmetic(), nanobind::is_flag())
-      .value("STANDARD", PropertyDensityGrid::Binning::Standard)
-      .value("EQUITABLE", PropertyDensityGrid::Binning::Equitable);
+    property_energy_grid.def(
+        nanobind::init<std::size_t, std::size_t, int3, std::size_t, std::size_t, std::vector<std::size_t>,
+                       PropertyDensityGrid::Normalization, PropertyDensityGrid::Binning>(),
+        nanobind::arg("number_of_frameworks"), nanobind::arg("number_of_components"),
+        nanobind::arg("number_of_grid_points"), nanobind::arg("sample_every"), nanobind::arg("write_every"),
+        nanobind::arg("density_grid_pseudo_atoms_list"),
+        nanobind::arg("normalization_type") = PropertyDensityGrid::Normalization::Max,
+        nanobind::arg("binningMode") = PropertyDensityGrid::Binning::Standard);
 
-  property_energy_grid.def(nanobind::init<std::size_t, std::size_t, int3, std::size_t, 
-                                          std::size_t, std::vector<std::size_t>,
-                                          PropertyDensityGrid::Normalization, PropertyDensityGrid::Binning>(),
-           nanobind::arg("number_of_frameworks"), 
-           nanobind::arg("number_of_components"),
-           nanobind::arg("number_of_grid_points"), 
-           nanobind::arg("sample_every"), 
-           nanobind::arg("write_every"), 
-           nanobind::arg("density_grid_pseudo_atoms_list"),
-           nanobind::arg("normalization_type") = PropertyDensityGrid::Normalization::Max,
-           nanobind::arg("binningMode") = PropertyDensityGrid::Binning::Standard);
-
-
-  nanobind::class_<PropertyEnergyHistogram> energy_histogram(m, "PropertyEnergyHistogram");
+    nanobind::class_<PropertyEnergyHistogram> energy_histogram(m, "PropertyEnergyHistogram");
     energy_histogram
       .def(nanobind::init<std::size_t, std::size_t, std::pair<double, double>, std::size_t, std::optional<std::size_t>>(),
                  nanobind::arg("number_of_blocks"), 
@@ -842,23 +837,27 @@ EXPAND_MODULE(MODULE_NAME)
       .def(nanobind::init<ForceField, std::optional<SimulationBox>, bool, double, std::optional<double>, double,
                           std::optional<Framework>, std::vector<Component>, std::vector<std::vector<double3>>,
                           std::vector<std::size_t>, std::size_t, MCMoveProbabilities>(),
-           nanobind::arg("force_field"), 
-           nanobind::arg("simulation_box") = nanobind::none(),
-           nanobind::arg("has_external_field") = false, 
-           nanobind::arg("external_temperature") = 298.0, 
-           nanobind::arg("external_pressure") = nanobind::none(), 
-           nanobind::arg("helium_void_fraction") = 0.0,
+           nanobind::arg("force_field"), nanobind::arg("simulation_box") = nanobind::none(),
+           nanobind::arg("has_external_field") = false, nanobind::arg("external_temperature") = 298.0,
+           nanobind::arg("external_pressure") = nanobind::none(), nanobind::arg("helium_void_fraction") = 0.0,
            nanobind::arg("framework_components") = nanobind::none(),
-           nanobind::arg("components") = std::vector<Component>(), 
+           nanobind::arg("components") = std::vector<Component>(),
            nanobind::arg("initial_positions") = std::vector<std::vector<double3>>(),
            nanobind::arg("initial_number_of_molecules") = std::vector<std::size_t>(),
-           nanobind::arg("number_of_blocks") = 5,
-           nanobind::arg("system_probabilities") = MCMoveProbabilities())
+           nanobind::arg("number_of_blocks") = 5, nanobind::arg("system_probabilities") = MCMoveProbabilities())
       .def("compute_total_energies", &System::computeTotalEnergies)
       .def("framework_mass", &System::frameworkMass)
       .def_ro("simulation_box", &System::simulationBox)
       .def_ro("input_pressure", &System::input_pressure)
-      .def_ro("components", &System::components)
+      .def_prop_ro("components",
+                   [](nanobind::handle self)
+                   {
+                     // the live objects, each held by the parent: a copied vector lost every change made through it
+                     nanobind::list list;
+                     for (Component& item : nanobind::cast<System&>(self).components)
+                       list.append(nanobind::cast(&item, nanobind::rv_policy::reference_internal, self));
+                     return list;
+                   })
       .def_ro("number_of_molecules_per_component", &System::numberOfMoleculesPerComponent)
       .def_ro("mc_moves_statistics", &System::mc_moves_statistics)
       .def_ro("loadings", &System::loadings)
@@ -866,41 +865,35 @@ EXPAND_MODULE(MODULE_NAME)
       .def_ro("average_energies", &System::averageEnergies)
       .def_ro("average_pressure", &System::averagePressure)
       .def_ro("thermostat", &System::thermostat)
-      .def("set_thermostat", &System::setThermostat,
-         nanobind::arg("thermostat") = nanobind::none())
+      .def("set_thermostat", &System::setThermostat, nanobind::arg("thermostat") = nanobind::none())
       .def_ro("property_density_grid", &System::propertyDensityGrid)
-      .def("set_property_density_grid", &System::setPropertyDensityGrid,
-         nanobind::arg("property:") = nanobind::none())
+      .def("set_property_density_grid", &System::setPropertyDensityGrid, nanobind::arg("property") = nanobind::none())
       .def_ro("average_energy_histogram", &System::averageEnergyHistogram)
       .def("set_average_energy_histogram", &System::setAverageEnergyHistogram,
-         nanobind::arg("property:") = nanobind::none())
+           nanobind::arg("property") = nanobind::none())
       .def_ro("property_number_of_molecules_histogram", &System::averageNumberOfMoleculesHistogram)
       .def("set_number_of_molecules_histogram", &System::setNumberOfMoleculesHistogram,
-         nanobind::arg("property:") = nanobind::none())
+           nanobind::arg("property") = nanobind::none())
       .def_ro("sample_pdb_movie", &System::samplePDBMovie)
-      .def("set_sample_pdb_movie", &System::setSamplePDBMovie,
-         nanobind::arg("property:") = nanobind::none())
+      .def("set_sample_pdb_movie", &System::setSamplePDBMovie, nanobind::arg("property") = nanobind::none())
       .def_ro("property_conventional_rdf", &System::propertyConventionalRadialDistributionFunction)
       .def("set_property_conventional_rdf", &System::setPropertyConventionalRDF,
-         nanobind::arg("property") = nanobind::none())
+           nanobind::arg("property") = nanobind::none())
       .def_ro("property_msd", &System::propertyMSD)
-      .def("set_property_msd", &System::setPropertyMSD,
-         nanobind::arg("property") = nanobind::none())
+      .def("set_property_msd", &System::setPropertyMSD, nanobind::arg("property") = nanobind::none())
       .def_ro("property_vacf", &System::propertyVACF)
-      .def("set_property_vacf", &System::setPropertyVACF,
-         nanobind::arg("property") = nanobind::none())
+      .def("set_property_vacf", &System::setPropertyVACF, nanobind::arg("property") = nanobind::none())
       .def_ro("property_rdf", &System::propertyRadialDistributionFunction)
-      .def("set_property_rdf", &System::setPropertyRDF,
-         nanobind::arg("property") = nanobind::none())
+      .def("set_property_rdf", &System::setPropertyRDF, nanobind::arg("property") = nanobind::none())
       .def_ro("property_number_of_molecules_evolution", &System::propertyNumberOfMoleculesEvolution)
       .def("set_property_number_of_molecules_evolution", &System::setPropertyNumberOfMoleculesEvolution,
-         nanobind::arg("property") = nanobind::none())
+           nanobind::arg("property") = nanobind::none())
       .def_ro("property_volume_evolution", &System::propertyVolumeEvolution)
       .def("set_property_volume_evolution", &System::setPropertyVolumeEvolution,
-         nanobind::arg("property") = nanobind::none())
+           nanobind::arg("property") = nanobind::none())
       .def_ro("property_conserved_energy_evolution", &System::propertyConservedEnergyEvolution)
       .def("set_property_conserved_energy_evolution", &System::setPropertyConservedEnergyEvolution,
-         nanobind::arg("property") = nanobind::none())
+           nanobind::arg("property") = nanobind::none())
       .def_rw("average_enthalpies_of_adsorption", &System::averageEnthalpiesOfAdsorption)
       .def_rw("average_partial_molar_properties", &System::averagePartialMolarProperties)
       .def_rw("atom_data", &System::atomData)
@@ -910,82 +903,95 @@ EXPAND_MODULE(MODULE_NAME)
       .def("write_mc_move_statistics", &System::writeMCMoveStatistics)
       .def("__repr__", &System::repr);
 
-    nanobind::class_<MonteCarlo>(m, "MonteCarlo")
-      .def("__init__",
-         [](MonteCarlo *mc, std::size_t number_of_production_cycles, std::size_t number_of_pre_initialization_cycles,
-            std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
-            std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
-            std::size_t optimize_mc_moves_every, const std::vector<System> &systems,
-            std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
-         {
-           new (mc) MonteCarlo(
-               SimulationSchedule{number_of_production_cycles, number_of_pre_initialization_cycles,
-                                  number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
-                                  write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
-               systems, random_seed, number_of_blocks, output_to_files);
-         },
-         nanobind::arg("number_of_production_cycles"),
-         nanobind::arg("number_of_pre_initialization_cycles") = 0,
-         nanobind::arg("number_of_initialization_cycles") = 0,
-         nanobind::arg("number_of_equilibration_cycles") = 0,
-         nanobind::arg("print_every") = 5000,
-         nanobind::arg("write_binary_restart_every") = 5000,
-         nanobind::arg("rescale_wang_landau_every") = 1000,
-         nanobind::arg("optimize_mc_moves_every") = 100,
-         nanobind::arg("systems") = std::vector<System>(),
-         nanobind::arg("random_seed") = nanobind::none(),
-         nanobind::arg("number_of_blocks") = 5,
-         nanobind::arg("output_to_files") = false)
+  nanobind::class_<MonteCarlo>(m, "MonteCarlo")
+      .def(
+          "__init__",
+          [](MonteCarlo* mc, std::size_t number_of_production_cycles, std::size_t number_of_pre_initialization_cycles,
+             std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
+             std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
+             std::size_t optimize_mc_moves_every, const std::vector<System>& systems,
+             std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
+          {
+            new (mc) MonteCarlo(
+                SimulationSchedule{number_of_production_cycles, number_of_pre_initialization_cycles,
+                                   number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
+                                   write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
+                systems, random_seed, number_of_blocks, output_to_files);
+          },
+          nanobind::arg("number_of_production_cycles"), nanobind::arg("number_of_pre_initialization_cycles") = 0,
+          nanobind::arg("number_of_initialization_cycles") = 0, nanobind::arg("number_of_equilibration_cycles") = 0,
+          nanobind::arg("print_every") = 5000, nanobind::arg("write_binary_restart_every") = 5000,
+          nanobind::arg("rescale_wang_landau_every") = 1000, nanobind::arg("optimize_mc_moves_every") = 100,
+          nanobind::arg("systems") = std::vector<System>(), nanobind::arg("random_seed") = nanobind::none(),
+          nanobind::arg("number_of_blocks") = 5, nanobind::arg("output_to_files") = false)
       .def("run", &MonteCarlo::run)
       .def("setup", &MonteCarlo::setup)
       .def("tear_down", &MonteCarlo::tearDown)
-      .def("pre_initialize", &MonteCarlo::preInitialize, nanobind::arg("call_back_function") = std::function<void()>([](){}), nanobind::arg("call_back_every") = 100)
-      .def("initialize", &MonteCarlo::initialize, nanobind::arg("call_back_function") = std::function<void()>([](){}), nanobind::arg("call_back_every") = 100)
-      .def("equilibrate", &MonteCarlo::equilibrate, nanobind::arg("call_back_function") = std::function<void()>([](){}), nanobind::arg("call_back_every") = 100)
-      .def("production", &MonteCarlo::production, nanobind::arg("call_back_function") = std::function<void()>([](){}), nanobind::arg("call_back_every") = 100)
+      .def("pre_initialize", &MonteCarlo::preInitialize,
+           nanobind::arg("call_back_function") = std::function<void()>([]() {}), nanobind::arg("call_back_every") = 100)
+      .def("initialize", &MonteCarlo::initialize, nanobind::arg("call_back_function") = std::function<void()>([]() {}),
+           nanobind::arg("call_back_every") = 100)
+      .def("equilibrate", &MonteCarlo::equilibrate,
+           nanobind::arg("call_back_function") = std::function<void()>([]() {}), nanobind::arg("call_back_every") = 100)
+      .def("production", &MonteCarlo::production, nanobind::arg("call_back_function") = std::function<void()>([]() {}),
+           nanobind::arg("call_back_every") = 100)
       .def("cycle", &MonteCarlo::performCycle)
-      .def_ro("systems", &MonteCarlo::systems);
-
+      .def_prop_ro("systems",
+                   [](nanobind::handle self)
+                   {
+                     // the live objects, each held by the parent: a copied vector lost every change made through it
+                     nanobind::list list;
+                     for (System& item : nanobind::cast<MonteCarlo&>(self).systems)
+                       list.append(nanobind::cast(&item, nanobind::rv_policy::reference_internal, self));
+                     return list;
+                   });
 
   nanobind::class_<MolecularDynamics>(m, "MolecularDynamics")
-    .def("__init__",
-         [](MolecularDynamics *md, std::size_t number_of_production_cycles, std::size_t number_of_pre_initialization_cycles,
-            std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
-            std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
-            std::size_t optimize_mc_moves_every, const std::vector<System> &systems,
-            std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
-         {
-           new (md) MolecularDynamics(
-               SimulationSchedule{number_of_production_cycles, number_of_pre_initialization_cycles,
-                                  number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
-                                  write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
-               systems, random_seed, number_of_blocks, output_to_files);
-         },
-         nanobind::arg("number_of_production_cycles"), 
-         nanobind::arg("number_of_pre_initialization_cycles") = 0,
-         nanobind::arg("number_of_initialization_cycles") = 0,
-         nanobind::arg("number_of_equilibration_cycles") = 0, 
-         nanobind::arg("print_every") = 5000,
-         nanobind::arg("write_binary_restart_every") = 5000, 
-         nanobind::arg("rescale_wang_landau_every") = 1000,
-         nanobind::arg("optimize_mc_moves_every") = 100, 
-         nanobind::arg("systems") = std::vector<System>(),
-         nanobind::arg("random_seed") = nanobind::none(), 
-         nanobind::arg("number_of_blocks") = 5,
-         nanobind::arg("output_to_files") = false)
+      .def(
+          "__init__",
+          [](MolecularDynamics* md, std::size_t number_of_production_cycles,
+             std::size_t number_of_pre_initialization_cycles, std::size_t number_of_initialization_cycles,
+             std::size_t number_of_equilibration_cycles, std::size_t print_every,
+             std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
+             std::size_t optimize_mc_moves_every, const std::vector<System>& systems,
+             std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
+          {
+            new (md) MolecularDynamics(
+                SimulationSchedule{number_of_production_cycles, number_of_pre_initialization_cycles,
+                                   number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
+                                   write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
+                systems, random_seed, number_of_blocks, output_to_files);
+          },
+          nanobind::arg("number_of_production_cycles"), nanobind::arg("number_of_pre_initialization_cycles") = 0,
+          nanobind::arg("number_of_initialization_cycles") = 0, nanobind::arg("number_of_equilibration_cycles") = 0,
+          nanobind::arg("print_every") = 5000, nanobind::arg("write_binary_restart_every") = 5000,
+          nanobind::arg("rescale_wang_landau_every") = 1000, nanobind::arg("optimize_mc_moves_every") = 100,
+          nanobind::arg("systems") = std::vector<System>(), nanobind::arg("random_seed") = nanobind::none(),
+          nanobind::arg("number_of_blocks") = 5, nanobind::arg("output_to_files") = false)
       .def("run", &MolecularDynamics::run)
       .def("setup", &MolecularDynamics::setup)
       .def("tear_down", &MolecularDynamics::tearDown)
-      .def("pre_initialize", &MolecularDynamics::preInitialize, nanobind::arg("call_back_function") = 
-                      nanobind::cpp_function([](void){}), nanobind::arg("call_back_every") = 100)
-      .def("initialize", &MolecularDynamics::initialize, nanobind::arg("call_back_function") = 
-                      nanobind::cpp_function([](void){}), nanobind::arg("call_back_every") = 100)
-      .def("equilibrate", &MolecularDynamics::equilibrate, nanobind::arg("call_back_function") = 
-                      nanobind::cpp_function([](void){}), nanobind::arg("call_back_every") = 100)
-      .def("production", &MolecularDynamics::production, nanobind::arg("call_back_function") = 
-                      nanobind::cpp_function([](void){}), nanobind::arg("call_back_every") = 100)
-      .def_ro("systems", &MolecularDynamics::systems);
-
+      .def("pre_initialize", &MolecularDynamics::preInitialize,
+           nanobind::arg("call_back_function") = nanobind::cpp_function([](void) {}),
+           nanobind::arg("call_back_every") = 100)
+      .def("initialize", &MolecularDynamics::initialize,
+           nanobind::arg("call_back_function") = nanobind::cpp_function([](void) {}),
+           nanobind::arg("call_back_every") = 100)
+      .def("equilibrate", &MolecularDynamics::equilibrate,
+           nanobind::arg("call_back_function") = nanobind::cpp_function([](void) {}),
+           nanobind::arg("call_back_every") = 100)
+      .def("production", &MolecularDynamics::production,
+           nanobind::arg("call_back_function") = nanobind::cpp_function([](void) {}),
+           nanobind::arg("call_back_every") = 100)
+      .def_prop_ro("systems",
+                   [](nanobind::handle self)
+                   {
+                     // the live objects, each held by the parent: a copied vector lost every change made through it
+                     nanobind::list list;
+                     for (System& item : nanobind::cast<MolecularDynamics&>(self).systems)
+                       list.append(nanobind::cast(&item, nanobind::rv_policy::reference_internal, self));
+                     return list;
+                   });
 
   nanobind::class_<PropertyConservedEnergyEvolution>(m, "PropertyConservedEnergyEvolution")
       .def(nanobind::init<std::size_t, std::size_t, std::optional<std::size_t>>(),

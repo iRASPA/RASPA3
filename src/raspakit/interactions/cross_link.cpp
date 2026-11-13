@@ -83,9 +83,11 @@ void excludePair(const ForceField &forceField, const SimulationBox &simulationBo
   if (!forceField.useCharge || r <= 0.0) return;
   const double prefactor = Units::CoulombicConversionFactor * x.charge * y.charge;
 
-  if (forceField.usesEwaldFourier())
+  if (forceField.usesEwaldFourier() && !forceField.omitInterInteractions)
   {
-    // The reciprocal sum counted this pair: remove it the way the intramolecular exclusion does.
+    // The reciprocal sum counted this pair: remove it the way the intramolecular exclusion does. (Under
+    // 'omitInterInteractions' the reciprocal sum leaves the molecule charges out altogether, this pair included,
+    // and the exclusion would remove it a second time.)
     const Potentials::EwaldExclusionFactors exclusion =
         Potentials::ewaldExclusionFactors(forceField.EwaldAlpha, scaling, r);
     energy.ewald_exclusion -= scaling * prefactor * exclusion.potential;

@@ -1475,7 +1475,7 @@ void runSemiFlexibleCrossTermTest(const Potentials::IntraMolecularPotentials& ex
 TEST(MC_SEMI_FLEXIBLE_CBMC, semi_flexible_bond_bend_cross_hessian_matches_finite_difference)
 {
   Potentials::IntraMolecularPotentials extra{};
-  extra.bondBends = {BondBendPotential({0, 1, 2, 3}, BondBendType::CVFF, {109.5, 40000.0, 1.5, 40000.0, 1.5})};
+  extra.bondBends = {BondBendPotential({0, 1, 2}, BondBendType::CVFF, {109.5, 40000.0, 1.5, 40000.0, 1.5})};
   runSemiFlexibleCrossTermTest(extra);
 }
 

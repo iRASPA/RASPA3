@@ -1512,6 +1512,7 @@ void System::updateSamplePDBMovie(std::size_t systemId, std::size_t currentCycle
 
 void System::setNumberOfMoleculesHistogram(const std::optional<PropertyNumberOfMoleculesHistogram>& hist)
 {
+  averageNumberOfMoleculesHistogram.reset();  // None clears the property
   if (hist.has_value())
   {
     averageNumberOfMoleculesHistogram = PropertyNumberOfMoleculesHistogram(
@@ -1521,59 +1522,56 @@ void System::setNumberOfMoleculesHistogram(const std::optional<PropertyNumberOfM
 
 void System::setAverageEnergyHistogram(const std::optional<PropertyEnergyHistogram>& hist)
 {
-  if (hist.has_value())
-  {
-    averageEnergyHistogram = hist;
-  }
+  // None clears the property
+  averageEnergyHistogram = hist;
 }
 
 void System::setPropertyDensityGrid(const std::optional<PropertyDensityGrid>& grid)
 {
-  if (grid.has_value())
-  {
-    propertyDensityGrid = grid;
-  }
+  // None clears the property
+  propertyDensityGrid = grid;
 }
 
 void System::setPropertyNumberOfMoleculesEvolution(std::optional<PropertyNumberOfMoleculesEvolution> property)
 {
-  if (property.has_value())
-  {
-    propertyNumberOfMoleculesEvolution = property;
-  }
+  // None clears the property
+  propertyNumberOfMoleculesEvolution = property;
 }
 
 void System::setPropertyVolumeEvolution(std::optional<PropertyVolumeEvolution> property)
 {
-  if (property.has_value())
-  {
-    propertyVolumeEvolution = property;
-  }
+  // None clears the property
+  propertyVolumeEvolution = property;
 }
 
 void System::setPropertyConservedEnergyEvolution(std::optional<PropertyConservedEnergyEvolution> property)
 {
-  if (property.has_value())
-  {
-    propertyConservedEnergyEvolution = property;
-  }
+  // None clears the property
+  propertyConservedEnergyEvolution = property;
 }
 
 void System::setPropertyConventionalRDF(const std::optional<PropertyConventionalRadialDistributionFunction>& rdf)
 {
+  // sized for the blocks of this system and with the range asked for (five blocks and a range of 12 were fixed
+  // here, and a simulation of more blocks wrote past the block sums); None clears the property
+  propertyConventionalRadialDistributionFunction.reset();
   if (rdf.has_value())
   {
     propertyConventionalRadialDistributionFunction = PropertyConventionalRadialDistributionFunction(
-        5, forceField.pseudoAtoms.size(), rdf->numberOfBins, 12.0, rdf->sampleEvery, rdf->writeEvery);
+        averageEnergies.numberOfBlocks, forceField.pseudoAtoms.size(), rdf->numberOfBins, rdf->range, rdf->sampleEvery,
+        rdf->writeEvery);
   }
 }
 
 void System::setPropertyRDF(const std::optional<PropertyRadialDistributionFunction>& rdf)
 {
+  // sized for the blocks of this system (five were fixed here); None clears the property
+  propertyRadialDistributionFunction.reset();
   if (rdf.has_value())
   {
-    propertyRadialDistributionFunction = PropertyRadialDistributionFunction(
-        5, forceField.pseudoAtoms.size(), rdf->numberOfBins, rdf->range, rdf->sampleEvery, rdf->writeEvery);
+    propertyRadialDistributionFunction =
+        PropertyRadialDistributionFunction(averageEnergies.numberOfBlocks, forceField.pseudoAtoms.size(),
+                                           rdf->numberOfBins, rdf->range, rdf->sampleEvery, rdf->writeEvery);
   }
 }
 
@@ -1608,6 +1606,7 @@ void System::sampleForceBasedRDFWithFullGradients(std::size_t currentCycle, std:
 
 void System::setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement>& msd)
 {
+  propertyMSD.reset();  // None clears the property
   if (msd.has_value())
   {
     propertyMSD = PropertyMeanSquaredDisplacement(numberOfMoleculesPerComponent, moleculeData.size(), timeStep,
@@ -1617,6 +1616,7 @@ void System::setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement>
 
 void System::setPropertyRadicalWaitingTimes(const std::optional<PropertyRadicalWaitingTimes>& property)
 {
+  propertyRadicalWaitingTimes.reset();  // None clears the property
   if (property.has_value())
   {
     propertyRadicalWaitingTimes = PropertyRadicalWaitingTimes(property->binsPerDecade, property->writeEvery);
@@ -1625,6 +1625,7 @@ void System::setPropertyRadicalWaitingTimes(const std::optional<PropertyRadicalW
 
 void System::setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelationFunction>& vacf)
 {
+  propertyVACF.reset();  // None clears the property
   if (vacf.has_value())
   {
     propertyVACF = PropertyVelocityAutoCorrelationFunction(numberOfMoleculesPerComponent, moleculeData.size(), timeStep,

@@ -391,17 +391,26 @@ std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]]
       tags.push_back(tag);
       previousScanLocation = scanner.scanLocation();
     }
+    else
+    {
+      // a comment among the tags runs to the end of its line: its words are not tags, and reading them as the
+      // first value ended the header there
+      skipComment();
+      previousScanLocation = scanner.scanLocation();
+    }
   }
 
   // set scanner back to the first <value>
   scanner.setScanLocation(previousScanLocation);
 
-  const bool isSymmetryLoop = std::ranges::any_of(
-      tags,
-      [](const std::string& tag)
-      {
-        return tag == std::string("_symmetry_equiv_pos_as_xyz") || tag == std::string("_symmetry.equiv_pos_as_xyz");
-      });
+  // the operations under their DDL1 and DDL2 names, and under the current IUCr names of the space-group dictionary
+  const auto isSymmetryOperationTag = [](const std::string& tag)
+  {
+    return tag == std::string("_symmetry_equiv_pos_as_xyz") || tag == std::string("_symmetry.equiv_pos_as_xyz") ||
+           tag == std::string("_space_group_symop_operation_xyz") ||
+           tag == std::string("_space_group_symop.operation_xyz");
+  };
+  const bool isSymmetryLoop = std::ranges::any_of(tags, isSymmetryOperationTag);
 
   if (isSymmetryLoop)
   {
@@ -410,7 +419,7 @@ std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]]
     {
       for (const std::string& tag : tags)
       {
-        if (tag == std::string("_symmetry_equiv_pos_as_xyz") || tag == std::string("_symmetry.equiv_pos_as_xyz"))
+        if (isSymmetryOperationTag(tag))
         {
           symmetryValue = parseValue();
           if (symmetryValue)
@@ -592,10 +601,22 @@ std::optional<std::string> CIFReader::parseValue()
 
     return std::nullopt;
   }
-  else
+
+  // A quoted value ('P 1', '-x, y+1/2, -z') holds whitespace: it runs on to the word that ends with its quote. The
+  // words were each taken for a value of their own, which shifted every later column of the row.
+  if (!tempString.empty() && (tempString.front() == '\'' || tempString.front() == '"'))
   {
-    return tempString;
+    const char quote = tempString.front();
+    std::string word;
+    while ((tempString.size() < 2 || tempString.back() != quote) &&
+           scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), word))
+    {
+      tempString += ' ';
+      tempString += word;
+    }
+    if (tempString.size() >= 2 && tempString.back() == quote) tempString = tempString.substr(1, tempString.size() - 2);
   }
+  return tempString;
 }
 
 std::size_t CIFReader::scanInt()

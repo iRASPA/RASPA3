@@ -9,9 +9,9 @@ class SampleMovie():
     def __init__(
         self,
         system_id: int,
-        sample_every: int = 1,
+        sample_every: int,
         restrict_to_box: bool = True,
-        tag: str | None
+        tag: str | None = None
     ) -> None:
         ...
         """

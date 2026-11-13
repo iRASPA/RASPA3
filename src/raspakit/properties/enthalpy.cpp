@@ -80,12 +80,19 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
                    Units::EnergyToKelvin * (average.values[k] - idealGasTerm));
       }
       std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
-      std::print(stream, "    Enthalpy of adsorption: {: .6e} +/- {: .6e} [K]\n",
-                 Units::EnergyToKelvin * (enthalpy.first.values[k] - idealGasTerm),
-                 Units::EnergyToKelvin * enthalpy.second.values[k]);
-      std::print(stream, "                            {: .6e} +/- {: .6e} [kJ/mol]\n",
-                 Units::EnergyToKJPerMol * (enthalpy.first.values[k] - idealGasTerm),
-                 Units::EnergyToKJPerMol * enthalpy.second.values[k]);
+      if (!enthalpy.first.defined)
+      {
+        std::print(stream, "    Enthalpy of adsorption: undefined (no block with a defined value)\n");
+      }
+      else
+      {
+        std::print(stream, "    Enthalpy of adsorption: {: .6e} +/- {: .6e} [K]\n",
+                   Units::EnergyToKelvin * (enthalpy.first.values[k] - idealGasTerm),
+                   Units::EnergyToKelvin * enthalpy.second.values[k]);
+        std::print(stream, "                            {: .6e} +/- {: .6e} [kJ/mol]\n",
+                   Units::EnergyToKJPerMol * (enthalpy.first.values[k] - idealGasTerm),
+                   Units::EnergyToKJPerMol * enthalpy.second.values[k]);
+      }
       if (!components[index].idealGasEnergy)
       {
         std::print(stream, "    Note: need to subtract the ideal-gas energy.\n");
@@ -110,10 +117,17 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
       std::vector<double> definedBlocks = definedTotals(totalEnthalpyBlocks);
       std::pair<double, double> totalEnthalpy = meanConfidence(definedBlocks);
       std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
-      std::print(stream, "    Enthalpy of adsorption: {: .6e} +/- {: .6e} [K]\n",
-                 Units::EnergyToKelvin * totalEnthalpy.first, Units::EnergyToKelvin * totalEnthalpy.second);
-      std::print(stream, "                            {: .6e} +/- {: .6e} [kJ/mol]\n",
-                 Units::EnergyToKJPerMol * totalEnthalpy.first, Units::EnergyToKJPerMol * totalEnthalpy.second);
+      if (definedBlocks.empty())
+      {
+        std::print(stream, "    Enthalpy of adsorption: undefined (no block with a defined value)\n");
+      }
+      else
+      {
+        std::print(stream, "    Enthalpy of adsorption: {: .6e} +/- {: .6e} [K]\n",
+                   Units::EnergyToKelvin * totalEnthalpy.first, Units::EnergyToKelvin * totalEnthalpy.second);
+        std::print(stream, "                            {: .6e} +/- {: .6e} [kJ/mol]\n",
+                   Units::EnergyToKJPerMol * totalEnthalpy.first, Units::EnergyToKJPerMol * totalEnthalpy.second);
+      }
       for (std::size_t k = 0; k < swappableComponents.size(); k++)
       {
         std::size_t index = swappableComponents[k];
@@ -156,11 +170,21 @@ nlohmann::json PropertyEnthalpy::jsonAveragesStatistics(std::vector<std::size_t>
           blockEnthalpy.push_back(nullptr);
       }
       status[components[index].name]["block"] = blockEnthalpy;
-      status[components[index].name]["mean"]["[K]"] = Units::EnergyToKelvin * (enthalpy.first.values[k] - idealGasTerm);
-      status[components[index].name]["confidence"]["[K]"] = Units::EnergyToKelvin * enthalpy.second.values[k];
-      status[components[index].name]["mean"]["[kJ/mol]"] =
-          Units::EnergyToKJPerMol * (enthalpy.first.values[k] - idealGasTerm);
-      status[components[index].name]["confidence"]["[kJ/mol]"] = Units::EnergyToKJPerMol * enthalpy.second.values[k];
+      if (enthalpy.first.defined)
+      {
+        status[components[index].name]["mean"]["[K]"] =
+            Units::EnergyToKelvin * (enthalpy.first.values[k] - idealGasTerm);
+        status[components[index].name]["confidence"]["[K]"] = Units::EnergyToKelvin * enthalpy.second.values[k];
+        status[components[index].name]["mean"]["[kJ/mol]"] =
+            Units::EnergyToKJPerMol * (enthalpy.first.values[k] - idealGasTerm);
+        status[components[index].name]["confidence"]["[kJ/mol]"] = Units::EnergyToKJPerMol * enthalpy.second.values[k];
+      }
+      else
+      {
+        // no block with a defined enthalpy: null, not the zero the average started from
+        status[components[index].name]["mean"] = nullptr;
+        status[components[index].name]["confidence"] = nullptr;
+      }
 
       if (!components[index].idealGasEnergy)
       {
@@ -187,10 +211,18 @@ nlohmann::json PropertyEnthalpy::jsonAveragesStatistics(std::vector<std::size_t>
       std::vector<double> definedBlocks = definedTotals(blockTotalEnthalpy);
       std::pair<double, double> totalEnthalpy = meanConfidence(definedBlocks);
       status["total"]["block"] = blockTotalEnthalpyInKelvin;
-      status["total"]["mean"]["[K]"] = Units::EnergyToKelvin * totalEnthalpy.first;
-      status["total"]["confidence"]["[K]"] = Units::EnergyToKelvin * totalEnthalpy.second;
-      status["total"]["mean"]["[kJ/mol]"] = Units::EnergyToKJPerMol * totalEnthalpy.first;
-      status["total"]["confidence"]["[kJ/mol]"] = Units::EnergyToKJPerMol * totalEnthalpy.second;
+      if (definedBlocks.empty())
+      {
+        status["total"]["mean"] = nullptr;
+        status["total"]["confidence"] = nullptr;
+      }
+      else
+      {
+        status["total"]["mean"]["[K]"] = Units::EnergyToKelvin * totalEnthalpy.first;
+        status["total"]["confidence"]["[K]"] = Units::EnergyToKelvin * totalEnthalpy.second;
+        status["total"]["mean"]["[kJ/mol]"] = Units::EnergyToKJPerMol * totalEnthalpy.first;
+        status["total"]["confidence"]["[kJ/mol]"] = Units::EnergyToKJPerMol * totalEnthalpy.second;
+      }
     }
   }
 

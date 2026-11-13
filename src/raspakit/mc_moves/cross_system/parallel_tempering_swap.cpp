@@ -448,6 +448,18 @@ std::optional<std::string> MC_Moves::parallelTemperingUnsupportedReason(const Sy
           "energy of each configuration under the potential of the other temperature");
     }
   }
+  if (std::ranges::any_of(system.components,
+                          [](const Component& component)
+                          {
+                            return component.idealGasRosenbluthWeight.has_value() &&
+                                   component.idealGasRosenbluthWeight.value() != 1.0;
+                          }))
+  {
+    return std::string(
+        "an 'IdealGasRosenbluthWeight' is the intramolecular partition function at one temperature and one "
+        "Hamiltonian: copied to every replica of a temperature or solute-tempering ladder it is wrong at the "
+        "others, and the insertions and the swaps then sample the wrong chemical potentials");
+  }
   if (soluteTempering && system.forceField.computePolarization)
   {
     return std::string(
@@ -510,8 +522,10 @@ std::optional<double> MC_Moves::ParallelTemperingLogAcceptance(const System& sys
     const Component& componentB = systemB.components[componentId];
     const double fugacityA = componentA.molFraction * componentA.fugacityCoefficient.value_or(1.0) * systemA.pressure;
     const double fugacityB = componentB.molFraction * componentB.fugacityCoefficient.value_or(1.0) * systemB.pressure;
-    const double activityA = systemA.beta * fugacityA;
-    const double activityB = systemB.beta * fugacityB;
+    // the activity the insertions sample: beta f over the ideal-gas Rosenbluth weight <W_IG>(beta) of the
+    // component (its intramolecular partition function), with which the insertions and deletions normalise
+    const double activityA = systemA.beta * fugacityA / componentA.idealGasRosenbluthWeight.value_or(1.0);
+    const double activityB = systemB.beta * fugacityB / componentB.idealGasRosenbluthWeight.value_or(1.0);
     if (!(activityA > 0.0) || !(activityB > 0.0))
     {
       return std::nullopt;

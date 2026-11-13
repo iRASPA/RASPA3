@@ -106,22 +106,29 @@ export struct RandomNumber
   std::size_t categoricalDistribution(std::span<const double> weights)
   {
     ++count;
+    // Running sums of the weights themselves, and the draw scaled to their total: dividing each weight by the total
+    // first left the last sum a rounding short of one, and a draw above it fell through to the last category even
+    // when that had no weight at all. A zero weight adds a zero-width interval, which upper_bound never lands in;
+    // a draw that rounds up to the total steps back to the last category that has weight.
     thread_local std::vector<double> cumulative{};
     const std::size_t n = weights.size();
-    cumulative.resize(n > 1 ? n - 1 : 0);
-    if (n > 1)
+    cumulative.resize(n);
+    double total = 0.0;
+    for (std::size_t i = 0; i < n; ++i)
     {
-      double total = 0.0;
-      for (double weight : weights) total += weight;
-      double running = 0.0;
-      for (std::size_t i = 0; i + 1 < n; ++i)
-      {
-        running = (i == 0) ? weights[0] / total : running + weights[i] / total;
-        cumulative[i] = running;
-      }
+      total += weights[i];
+      cumulative[i] = total;
     }
-    const double draw = uniformDistribution(mt);
-    return static_cast<std::size_t>(std::upper_bound(cumulative.begin(), cumulative.end(), draw) - cumulative.begin());
+    if (!(total > 0.0))
+    {
+      throw std::invalid_argument("RandomNumber::categoricalDistribution: the weights must have a positive sum");
+    }
+    const double draw = uniformDistribution(mt) * total;
+    std::size_t index =
+        static_cast<std::size_t>(std::upper_bound(cumulative.begin(), cumulative.end(), draw) - cumulative.begin());
+    if (index >= n) index = n - 1;
+    while (!(weights[index] > 0.0)) --index;
+    return index;
   }
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RandomNumber &r);

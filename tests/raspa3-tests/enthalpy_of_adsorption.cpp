@@ -8,6 +8,7 @@ import component;
 import units;
 import json;
 import property_enthalpy;
+import averages;
 import mc_moves_move_types;
 import mc_moves_probabilities;
 
@@ -153,4 +154,37 @@ TEST(ENTHALPY_OF_ADSORPTION, undefined_blocks_are_reported_as_such_per_component
   ASSERT_EQ(status["a"]["block"].size(), 5uz);
   EXPECT_TRUE(status["a"]["block"][2].is_null());
   EXPECT_FALSE(status["a"]["block"][1].is_null());
+}
+
+// When no block has a defined enthalpy there is no average: it was the zero the average started from, flagged as
+// defined, and the total came out of meanConfidence over no blocks as 0/0, a not-a-number that the fast-math
+// build cannot test for and that the JSON writer printed as a bare 'nan'.
+TEST(ENTHALPY_OF_ADSORPTION, no_defined_block_gives_an_undefined_average_and_valid_json)
+{
+  const ForceField forceField({{"X", false, 16.0, 0.0, 0.0, 1, false}}, {{150.0, 3.7}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  std::vector<Component> components{makeComponent(forceField, "a"), makeComponent(forceField, "b")};
+  std::vector<std::size_t> swappable{0, 1};
+
+  PropertyEnthalpy property(5, 2);
+  for (std::size_t block = 0; block < 5; ++block)
+  {
+    addSample(property, block, 2, 3, -100.0);
+    addSample(property, block, 2, 3, -101.0);
+  }
+  EXPECT_FALSE(property.average().first.defined);
+
+  const std::string dumped = property.jsonAveragesStatistics(swappable, components).dump();
+  EXPECT_EQ(dumped.find("nan"), std::string::npos) << dumped;
+  EXPECT_NO_THROW(static_cast<void>(nlohmann::json::parse(dumped)));
+  EXPECT_TRUE(nlohmann::json::parse(dumped)["total"]["mean"].is_null());
+  EXPECT_TRUE(nlohmann::json::parse(dumped)["a"]["mean"].is_null());
+
+  // one or two blocks have a mean but no error estimate: zero, not 0/0
+  for (std::vector<double> data : {std::vector<double>{}, std::vector<double>{1.5}, std::vector<double>{1.0, 2.0}})
+  {
+    const auto [mean, error] = meanConfidence(data);
+    EXPECT_EQ(std::to_string(mean).find("nan"), std::string::npos);
+    EXPECT_EQ(std::to_string(error), std::to_string(0.0));
+  }
 }
