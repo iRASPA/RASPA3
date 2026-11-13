@@ -308,8 +308,42 @@ void Minimization::setup()
   for (std::size_t systemIndex = 0; systemIndex < systems.size(); ++systemIndex)
   {
     System& system = systems[systemIndex];
-    system.forceField.initializeAutomaticCutOff(system.simulationBox);
-    system.forceField.initializeEwaldParameters(system.simulationBox);
+    // A variable-cell minimization keeps the cut-offs and Ewald parameters of the starting cell while the cell
+    // changes (the energy surface stays one surface); on a resume they are those of the checkpoint, and deriving
+    // them again from the partly minimized cell changed the Hamiltonian in the middle of the minimization.
+    if (!resumedFromBinaryRestart)
+    {
+      system.forceField.initializeAutomaticCutOff(system.simulationBox);
+      system.forceField.initializeEwaldParameters(system.simulationBox);
+    }
+    else
+    {
+      // the tabulated erfc(alpha r)/r is not stored in a restart: built for the checkpointed alpha and cutoff
+      system.forceField.updateEwaldRealSpaceTable();
+    }
+    // The Monte Carlo stages before the minimization run the moves of MonteCarlo, which set up their fractional
+    // molecules as in MonteCarlo::setup (the state comes from the restart on a resume).
+    if (!resumedFromBinaryRestart)
+    {
+      system.containsTheFractionalMolecule = !(system.usesGibbsSwapCFCMC() && systemIndex != 0uz);
+      system.initializeGibbsSwapFractionalMoleculeGroupIds();
+      if (system.usesGibbsConventionalCFCMC())
+      {
+        system.initializeGibbsConventionalFractionalMolecules(systemIndex != 0uz);
+        system.precomputeTotalRigidEnergy();
+        system.runningEnergies = system.computeTotalEnergies();
+      }
+    }
+    // An external field read from a grid file exists only as the interpolation grid (there is no analytic form to
+    // fall back on), so it is built here as in MonteCarlo, also on a resume (grids are not stored in a restart). The
+    // framework grids are left out: the moves and the analytic derivatives of the minimizer then both use the exact
+    // pair energies.
+    {
+      std::ostringstream discarded;
+      std::ostream log(outputToFiles ? static_cast<std::streambuf*>(streams[systemIndex].rdbuf())
+                                     : static_cast<std::streambuf*>(discarded.rdbuf()));
+      system.createExternalFieldInterpolationGrid(log, systemIndex);
+    }
     // For cells smaller than twice the van der Waals cutoff a single minimum image is insufficient;
     // regenerate the framework van der Waals pair list with periodic-image replicas so the minimization
     // energy, gradient and Hessian (and the downstream phonon force constants) remain exact.
@@ -364,6 +398,8 @@ void Minimization::performCycle()
     std::pair<std::size_t, std::size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
     System& selectedSystem = systems[selectedSystemPair.first];
     System& selectedSecondSystem = systems[selectedSystemPair.second];
+    // with a single system both references alias the same system: sample it once, not twice
+    const bool hasSecondSystem = &selectedSecondSystem != &selectedSystem;
 
     std::size_t selectedComponent = selectedSystem.randomComponent(random);
 
@@ -386,42 +422,52 @@ void Minimization::performCycle()
         selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
             selectedSystem.lambdaWangLandauIsActive(selectedComponent));
-        selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
-            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
-            selectedSecondSystem.lambdaWangLandauIsActive(selectedComponent));
+        if (hasSecondSystem)
+          selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
+              selectedSecondSystem.lambdaWangLandauIsActive(selectedComponent));
 
         if (selectedSystem.usesGibbsConventionalCFCMC())
         {
           selectedSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
               PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
-          selectedSecondSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
-              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
+          if (hasSecondSystem)
+            selectedSecondSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
+                PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
         }
 
         selectedSystem.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
-        selectedSecondSystem.pairSwapLambdaWangLandauIteration(
-            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        if (hasSecondSystem)
+          selectedSecondSystem.pairSwapLambdaWangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
 
         selectedSystem.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
-        selectedSecondSystem.reactionLambdaWangLandauIteration(
-            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        if (hasSecondSystem)
+          selectedSecondSystem.reactionLambdaWangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         break;
       case SimulationStage::Run:
         break;
     }
 
     selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
-    selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
-        selectedSecondSystem.containsTheFractionalMolecule);
     if (selectedSystem.usesGibbsConventionalCFCMC())
     {
       selectedSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
-      selectedSecondSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
     }
     selectedSystem.pairSwapLambdaSampleOccupancy();
-    selectedSecondSystem.pairSwapLambdaSampleOccupancy();
     selectedSystem.reactionLambdaSampleOccupancy();
-    selectedSecondSystem.reactionLambdaSampleOccupancy();
+    if (hasSecondSystem)
+    {
+      selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
+          selectedSecondSystem.containsTheFractionalMolecule);
+      if (selectedSecondSystem.usesGibbsConventionalCFCMC())
+      {
+        selectedSecondSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
+      }
+      selectedSecondSystem.pairSwapLambdaSampleOccupancy();
+      selectedSecondSystem.reactionLambdaSampleOccupancy();
+    }
   }
 }
 

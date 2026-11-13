@@ -25,11 +25,15 @@ import cbmc_grow_step;
 export namespace CBMC
 {
 /// One generated trial direction of a growth step: candidate positions of the step's next-beads plus
-/// the torsion Rosenbluth weight accumulated while selecting the torsion rotation about the junction.
+/// the logarithm of the torsion Rosenbluth weight accumulated while selecting the torsion rotation about the
+/// junction. Kept as a logarithm: at a torsion barrier of beta U > 745 the weight itself underflows to zero, which
+/// read as a dead direction (and every direction dead ended the selection with an exception). A dead direction (a
+/// bridge draw that cannot close, every spin behind a chiral wall) says so with 'dead'.
 struct StepTrial
 {
   std::vector<Atom> positions{};
-  double torsionWeight{1.0};
+  double logTorsionWeight{0.0};
+  bool dead{false};
 };
 
 /**
@@ -78,7 +82,7 @@ std::vector<StepTrial> generateRetraceTrials(RandomNumber &random, const GrowthS
  *
  * Bond lengths and bend angles are drawn once from their Boltzmann distributions and the spin about
  * the preceding bond is chosen with the usual torsion Rosenbluth selection; the returned
- * 'torsionWeight' is that selection's weight.
+ * 'logTorsionWeight' is the logarithm of that selection's weight.
  *
  * Recoil growth uses this one generator for every trial it ever draws: the directions of the growth
  * itself, the alternatives counted after the chain is complete, and every bead of a feeler. That is a
@@ -95,14 +99,15 @@ StepTrial generateRecoilTrial(RandomNumber &random, const GrowthSettings &settin
                               const Component &component, std::vector<Atom> &contextAtoms, const GrowStep &step);
 
 /**
- * \brief Torsion Rosenbluth weight of the existing (old) orientation of a step (recoil retrace).
+ * \brief Logarithm of the torsion Rosenbluth weight of the existing (old) orientation of a step (recoil retrace).
  *
  * Mirrors the CBMC deletion scheme: the real orientation is trial 0 and the remaining torsion trials
  * are random rotations around the last bond vector.
  */
-double oldConfigurationTorsionWeight(RandomNumber &random, const GrowthSettings &settings, double beta,
-                                     const ForceField &forceField, const SimulationBox &simulationBox,
-                                     const Component &component, std::vector<Atom> &oldAtoms, const GrowStep &step);
+double oldConfigurationLogTorsionWeight(RandomNumber &random, const GrowthSettings &settings, double beta,
+                                        const ForceField &forceField, const SimulationBox &simulationBox,
+                                        const Component &component, std::vector<Atom> &oldAtoms,
+                                        const GrowStep &step);
 
 /**
  * \brief Whether a step's growth machinery samples/weights the classically unsampled internal terms

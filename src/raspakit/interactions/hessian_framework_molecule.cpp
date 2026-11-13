@@ -175,6 +175,17 @@ RunningEnergy Interactions::computeFrameworkMoleculeHessian(
           Minimization::scatterSitePositionStrainIsotropic(hessian, layout, rigidCache, moleculeIndex, localAtom, rigid,
                                                            1.0, factors.firstDerivativeFactor,
                                                            factors.secondDerivativeFactor, dr, drStrainDerivative);
+          if (flexibleFramework)
+          {
+            // the framework atom is the partner site (gradient -f1 dr) and has no rigid offset
+            const double3 positionStrain = factors.firstDerivativeFactor * (dr + drStrainDerivative) +
+                                           (factors.secondDerivativeFactor * double3::dot(dr, drStrainDerivative)) * dr;
+            const std::size_t frameworkBase = *layout.frameworkAtomDof(frameworkAtom, MinimizationDofAxis::X);
+            for (std::size_t axis = 0; axis < 3; ++axis)
+            {
+              hessian.addPositionStrain(frameworkBase + axis, 0, -(&positionStrain.x)[axis]);
+            }
+          }
           Minimization::scatterAtomicStrainStrainIsotropic(hessian, factors.firstDerivativeFactor,
                                                            factors.secondDerivativeFactor, dr, it1->position, comA,
                                                            it2->position, it2->position, rigid, false);

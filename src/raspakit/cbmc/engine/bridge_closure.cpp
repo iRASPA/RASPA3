@@ -28,19 +28,20 @@ double midBendEnergy(const CBMC::GrowStep &step, const double3 &anchor, const do
   return step.bridge.midBend->calculateEnergy(anchor, next, closure, std::nullopt);
 }
 
-// The bipolar base weight exp(-beta u_mid) / (r1 r2 D) of a closing-bead position; see the module
-// description. A degenerate geometry (coincident beads) has no defined weight and returns zero.
-double baseWeight(double beta, const CBMC::GrowStep &step, const double3 &anchor, const double3 &next,
-                  const double3 &closure)
+// The logarithm of the bipolar base weight exp(-beta u_mid) / (r1 r2 D) of a closing-bead position; see the module
+// description (the weight itself underflows for a stiff mid bend far from its minimum). A degenerate geometry
+// (coincident beads) has no defined weight.
+std::optional<double> logBaseWeight(double beta, const CBMC::GrowStep& step, const double3& anchor, const double3& next,
+                                    const double3& closure)
 {
   const double r1 = (next - anchor).length();
   const double r2 = (next - closure).length();
   const double D = (closure - anchor).length();
   if (r1 < Constants::degenerateAxisLength || r2 < Constants::degenerateAxisLength || D < Constants::degenerateAxisLength)
   {
-    return 0.0;
+    return std::nullopt;
   }
-  return std::exp(-beta * midBendEnergy(step, anchor, next, closure)) / (r1 * r2 * D);
+  return -beta * midBendEnergy(step, anchor, next, closure) - std::log(r1 * r2 * D);
 }
 }  // namespace
 
@@ -72,13 +73,16 @@ std::optional<CBMC::BridgeClosureBase> CBMC::sampleBridgeClosureBase(RandomNumbe
   Atom atom = chainAtoms[nextBead];
   atom.position = anchor + r1 * random.randomVectorOnCone(axis, std::acos(cosPsi));
 
-  return BridgeClosureBase{atom, baseWeight(beta, step, anchor, atom.position, closure)};
+  const std::optional<double> logWeight = logBaseWeight(beta, step, anchor, atom.position, closure);
+  if (!logWeight.has_value()) return std::nullopt;
+  return BridgeClosureBase{atom, logWeight.value()};
 }
 
-double CBMC::bridgeClosureBaseWeight(double beta, std::span<const Atom> chainAtoms, const GrowStep &step)
+std::optional<double> CBMC::bridgeClosureLogBaseWeight(double beta, std::span<const Atom> chainAtoms,
+                                                       const GrowStep& step)
 {
-  return baseWeight(beta, step, chainAtoms[step.currentBead].position, chainAtoms[step.nextBeads.front()].position,
-                    chainAtoms[step.closureBead.value()].position);
+  return logBaseWeight(beta, step, chainAtoms[step.currentBead].position, chainAtoms[step.nextBeads.front()].position,
+                       chainAtoms[step.closureBead.value()].position);
 }
 
 void CBMC::prepareClosureGuides(double beta, std::span<GrowStep> plan,

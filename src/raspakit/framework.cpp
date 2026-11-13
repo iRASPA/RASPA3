@@ -606,6 +606,21 @@ void Framework::computeGroupRigidProperties(const ForceField& forceField)
 {
   finalizeGroupCache();
 
+  // A rigid group (a linker, a rotor) is one body, and its atoms are made whole here, each at the nearest image of
+  // the first atom of the group: the cell builder wraps every atom into the cell, so a group across a periodic
+  // boundary had its atoms on both sides, and its centre of mass, inertia, quaternion and virial came out of the
+  // torn coordinates. (A rigid group is far smaller than half the cell.)
+  const SimulationBox superCellBox = simulationBox.scaled(numberOfUnitCells);
+  for (const FrameworkGroup& group : groups)
+  {
+    if (!group.isRigidBody() || group.atoms.size() < 2) continue;
+    const double3 first = atoms[group.atoms.front()].position;
+    for (const std::size_t atom : group.atoms)
+    {
+      atoms[atom].position = first + superCellBox.applyPeriodicBoundaryConditions(atoms[atom].position - first);
+    }
+  }
+
   std::vector<double3> referencePositions(atoms.size());
   std::vector<double> masses(atoms.size());
   for (std::size_t i = 0; i != atoms.size(); ++i)

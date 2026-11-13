@@ -325,7 +325,7 @@ TEST(CBMC_BASE_SAMPLER, branch_step_sibling_bend_coupling)
                                  kBox, component, chainAtoms, plan.front(), 1);
     const double3 &grownA = trials.front().positions[0].position;
     const double3 &grownB = trials.front().positions[1].position;
-    ASSERT_NEAR(trials.front().torsionWeight, 1.0, 1e-12);
+    ASSERT_NEAR(std::exp(trials.front().logTorsionWeight), 1.0, 1e-12);
     siblingCounts[binOf(std::cos(angleBetween(grownA, chainAtoms[1].position, grownB)))] += 1;
     anchorCounts[binOf(std::cos(angleBetween(chainAtoms[0].position, chainAtoms[1].position, grownA)))] += 1;
   }
@@ -390,7 +390,7 @@ TEST(CBMC_BASE_SAMPLER, three_branch_step_three_sibling_bends)
                                  kBox, component, chainAtoms, plan.front(), 1);
     const double3 &grownA = trials.front().positions[0].position;
     const double3 &grownB = trials.front().positions[1].position;
-    ASSERT_NEAR(trials.front().torsionWeight, 1.0, 1e-12);
+    ASSERT_NEAR(std::exp(trials.front().logTorsionWeight), 1.0, 1e-12);
     siblingCounts[binOf(std::cos(angleBetween(grownA, chainAtoms[1].position, grownB)))] += 1;
     anchorCounts[binOf(std::cos(angleBetween(chainAtoms[0].position, chainAtoms[1].position, grownA)))] += 1;
   }
@@ -559,7 +559,7 @@ TEST(CBMC_BASE_SAMPLER, branch_step_bend_bend_base_coupling)
                                  kBox, component, chainAtoms, plan.front(), 1);
     const double3 &grownA = trials.front().positions[0].position;
     const double3 &grownB = trials.front().positions[1].position;
-    double weight = trials.front().torsionWeight;
+    double weight = std::exp(trials.front().logTorsionWeight);
     ASSERT_GE(weight, 1.0 - 1e-12) << "trial weight below the clamp-excess floor";
     siblingCounts[binOf(std::cos(angleBetween(grownA, chainAtoms[1].position, grownB)))] += weight;
     anchorCounts[binOf(std::cos(angleBetween(chainAtoms[0].position, chainAtoms[1].position, grownA)))] += weight;
@@ -695,9 +695,9 @@ TEST(CBMC_BASE_SAMPLER, chain_step_bond_bend_spin_promotion)
     // squares or cancels it). Converted through the internal energy units (Units::KelvinToEnergy and
     // Units::KB are not exact inverses).
     double expectedWeight = std::exp(-beta * Units::KelvinToEnergy * bondBendEnergy(r, theta));
-    ASSERT_NEAR(trials.front().torsionWeight, expectedWeight, 1e-9 * std::max(1.0, expectedWeight));
+    ASSERT_NEAR(std::exp(trials.front().logTorsionWeight), expectedWeight, 1e-9 * std::max(1.0, expectedWeight));
 
-    cosThetaCounts[binOf(std::cos(theta))] += trials.front().torsionWeight;
+    cosThetaCounts[binOf(std::cos(theta))] += std::exp(trials.front().logTorsionWeight);
   }
 
   // The weighted bend marginal must follow the FULL bonded density,
@@ -793,7 +793,7 @@ TEST(CBMC_BASE_SAMPLER, mini_mc_detailed_balance_with_cross_terms)
     std::vector<CBMC::StepTrial> retrace =
         CBMC::generateRetraceTrials(random, CBMC::GrowthSettings::fromForceField(forceField), beta, forceField,
                                  kBox, component, chainAtoms, step, 1);
-    if (random.uniform() < grow.front().torsionWeight / retrace.front().torsionWeight)
+    if (random.uniform() < std::exp(grow.front().logTorsionWeight - retrace.front().logTorsionWeight))
     {
       chainAtoms[2] = grow.front().positions[0];
       chainAtoms[3] = grow.front().positions[1];

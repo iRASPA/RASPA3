@@ -303,3 +303,19 @@ TEST(minimization_driver, minimization_refuses_an_external_field_for_a_fixed_cel
     EXPECT_NE(std::string(error.what()).find("external field"), std::string::npos) << error.what();
   }
 }
+
+// A soft positive mode under a large gradient (|g_1| / e_1 = 10^4): the shift is the root of the secular equation
+// below the lowest eigenvalue, as for a negative one. The fixed-point iteration used for positive eigenvalues settled
+// into a two-cycle here and returned whichever iterate it stopped on.
+TEST(minimization_driver, baker_shift_solves_the_secular_equation_on_a_soft_positive_mode)
+{
+  MinimizationOptions options{};
+  options.maximumStepLength = 1.0e6;
+  const std::array<double, 4> hessian = {0.01, 0.0, 0.0, 2.0};
+  const std::array<double, 2> gradient = {100.0, 1.0};
+  const BakerStep step = computeBakerStep(hessian, gradient, options);
+  EXPECT_LT(step.shift, 0.01);
+  const double residual =
+      gradient[0] * gradient[0] / (step.shift - 0.01) + gradient[1] * gradient[1] / (step.shift - 2.0) - step.shift;
+  EXPECT_NEAR(residual, 0.0, 1e-8 * std::max(1.0, std::abs(step.shift)));
+}

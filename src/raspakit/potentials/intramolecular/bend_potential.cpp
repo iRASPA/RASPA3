@@ -88,8 +88,13 @@ BendPotential::BendPotential(std::array<std::size_t, 3> identifiers, BendType ty
       // p_0/k_B [K]
       parameters[0] *= Units::KelvinToEnergy;
       break;
-    case BendType::MM3:
     case BendType::MM3_inplane:
+      // the in-plane angle is that of B projected onto the plane of A, C and the fourth atom D, and a bend holds
+      // three atoms: every caller passed no D, and the term was evaluated as the ordinary MM3 bend
+      throw std::runtime_error(
+          "BendPotential: 'MM3_INPLANE' is not supported (the in-plane angle needs a fourth atom, which a bend does "
+          "not carry); use 'MM3' or an inversion bend\n");
+    case BendType::MM3:
       // p_0*(theta-p_1)^2(1-0.014*(theta-p_1)+5.6e-5*(theta-p_1)^2-7e-7*(theta-p_1)^3+2.2e-8(theta-p_1)^4)
       // =================================================================================================
       // p_0/k_B [mdyne A/rad^2]

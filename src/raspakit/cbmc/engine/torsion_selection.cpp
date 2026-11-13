@@ -124,7 +124,7 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
     placeSpin(pinFirstToBase ? 0.0 : (2.0 * random.uniform() - 1.0) * std::numbers::pi);
     std::vector<Atom> positions(nextBeads.size());
     for (std::size_t k = 0; k != nextBeads.size(); ++k) positions[k] = chainAtoms[nextBeads[k]];
-    return {std::move(positions), 1.0};
+    return {std::move(positions), 0.0, false};  // weight one
   }
 
   for (std::size_t j = 0; j != numberOfTorsionTrials; ++j)
@@ -187,7 +187,7 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
     placeSpin(angles[0]);
     std::vector<Atom> dead(nextBeads.size());
     for (std::size_t k = 0; k != nextBeads.size(); ++k) dead[k] = chainAtoms[nextBeads[k]];
-    return {std::move(dead), 0.0};
+    return {std::move(dead), 0.0, true};
   }
 
   // the retrace pins the old spin (index 0) and only needs the sum; the grow draws and gets the sum with it
@@ -215,13 +215,12 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
 
   // Guided: the guide of the selected spin divided out again (see above); the log-sum-exp form holds the
   // shifts of tens of units a guide can add.
-  double rosenbluth_weight_torsion =
-      hasGuides ? std::exp(logRosenbluthSum - logGuides[selected_torsion]) : std::exp(logRosenbluthSum);
+  double logRosenbluthWeight = hasGuides ? logRosenbluthSum - logGuides[selected_torsion] : logRosenbluthSum;
 
   // trials drawn from the allowed half of the circle estimate twice the constrained spin integral
-  if (step.spin.parityIsHalfCircle) rosenbluth_weight_torsion *= 0.5;
+  if (step.spin.parityIsHalfCircle) logRosenbluthWeight += std::log(0.5);
 
-  return {std::move(positions), rosenbluth_weight_torsion / static_cast<double>(numberOfTorsionTrials)};
+  return {std::move(positions), logRosenbluthWeight - std::log(static_cast<double>(numberOfTorsionTrials)), false};
 }
 
 void CBMC::prepareLookaheadGuides(double beta, std::span<GrowStep> plan,

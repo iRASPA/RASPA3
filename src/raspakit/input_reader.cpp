@@ -1055,6 +1055,18 @@ void readCrossLinks(const nlohmann::basic_json<nlohmann::raspa_map>& value, Syst
 }
 }  // namespace
 
+// A count or an index given as an integer: a negative one is an error (read as std::size_t it wrapped round to an
+// enormous value)
+static std::size_t nonNegativeInteger(const nlohmann::basic_json<nlohmann::raspa_map>& item, const std::string& key)
+{
+  const std::int64_t value = item[key].get<std::int64_t>();
+  if (value < 0)
+  {
+    throw std::runtime_error(std::format("[Input reader]: '{}' must not be negative (got {})\n", key, value));
+  }
+  return static_cast<std::size_t>(value);
+}
+
 InputReader::InputReader(const std::string inputFile)
 {
   if (!std::filesystem::exists(inputFile))
@@ -2508,7 +2520,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
       if (item.contains("CreateNumberOfMolecules") && item["CreateNumberOfMolecules"].is_number_integer())
       {
-        std::size_t n = item["CreateNumberOfMolecules"].get<std::size_t>();
+        std::size_t n = nonNegativeInteger(item, "CreateNumberOfMolecules");
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonCreateNumberOfMolecules[i][componentId] = n;
@@ -2530,7 +2542,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
       if (item.contains("StartingBead") && item["StartingBead"].is_number_integer())
       {
-        std::size_t n = item["StartingBead"].get<std::size_t>();
+        std::size_t n = nonNegativeInteger(item, "StartingBead");
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           // reroots the growth graph of the component at the new bead
@@ -2634,7 +2646,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
       if (item.contains("CrankshaftMaxSegmentSize") && item["CrankshaftMaxSegmentSize"].is_number_integer())
       {
-        std::size_t crankshaftMaxSegmentSize = item["CrankshaftMaxSegmentSize"].get<std::size_t>();
+        std::size_t crankshaftMaxSegmentSize = nonNegativeInteger(item, "CrankshaftMaxSegmentSize");
         if (crankshaftMaxSegmentSize == 0)
         {
           throw std::runtime_error(std::format("[Input reader]: CrankshaftMaxSegmentSize must be at least 1\n"));
@@ -2710,7 +2722,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
       if (item.contains("PairComponent") && item["PairComponent"].is_number_integer())
       {
-        std::size_t pair_component = item["PairComponent"].get<std::size_t>();
+        std::size_t pair_component = nonNegativeInteger(item, "PairComponent");
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].pairComponentId = pair_component;
@@ -2893,7 +2905,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       std::optional<std::size_t> fixed_lambda_bin{std::nullopt};
       if (item.contains("LambdaBinIndex") && item["LambdaBinIndex"].is_number_integer())
       {
-        fixed_lambda_bin = item["LambdaBinIndex"].get<std::size_t>();
+        fixed_lambda_bin = nonNegativeInteger(item, "LambdaBinIndex");
       }
       else if (simulationType == SimulationType::ParallelThermodynamicIntegration &&
                item.contains("ThermodynamicIntegration") && item["ThermodynamicIntegration"].is_boolean() &&
@@ -6514,13 +6526,21 @@ void InputReader::validateInput(const nlohmann::basic_json<nlohmann::raspa_map>&
 
 void InputReader::parseUnits(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {
-  if (parsed_data.contains("Units") && parsed_data["Units"].is_string())
+  // The unit system is global: it is set for every input, also back to the default, or a run after one in reduced
+  // units (a second input read in the same process, the Python interface) kept the reduced units of the first.
+  Units::System system = Units::System::RASPA;
+  if (parsed_data.contains("Units"))
   {
-    std::string unitsString = parsed_data["Units"].get<std::string>();
-
+    const std::string unitsString = parsed_data["Units"].is_string() ? parsed_data["Units"].get<std::string>() : "";
     if (caseInSensStringCompare(unitsString, "Reduced"))
     {
-      Units::setUnits(Units::System::ReducedUnits);
+      system = Units::System::ReducedUnits;
+    }
+    else if (!caseInSensStringCompare(unitsString, "RASPA"))
+    {
+      throw std::runtime_error(std::format("[Input reader]: unknown 'Units' {}; use \"RASPA\" or \"Reduced\"\n",
+                                           parsed_data["Units"].dump()));
     }
   }
+  Units::setUnits(system);
 }

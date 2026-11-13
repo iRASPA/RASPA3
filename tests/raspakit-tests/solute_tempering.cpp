@@ -102,6 +102,8 @@ TEST(solute_tempering, bend_potentials_are_homogeneous)
   const double lambda = 0.37;
   for (std::size_t t = 0; t < BendPotential::numberOfBendParameters.size(); ++t)
   {
+    // MM3_INPLANE is refused (it needs a fourth atom a bend does not carry)
+    if (static_cast<BendType>(t) == BendType::MM3_inplane) continue;
     BendPotential potential({0, 1, 2}, static_cast<BendType>(t),
                             genericParameters(BendPotential::numberOfBendParameters[t]));
     BendPotential scaled = potential;

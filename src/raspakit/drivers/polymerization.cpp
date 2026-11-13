@@ -25,6 +25,9 @@ import molecular_dynamics_spatial_decomposition;
 import force_engine;
 import lammps_io;
 import lammps_topology;
+import atom_dynamics;
+import integrators_update;
+import integrators_compute;
 
 namespace
 {
@@ -821,7 +824,27 @@ void Polymerization::topologyChanged(std::size_t systemId)
   // ramp work, so that the drift report keeps measuring the integration error across the reactions
   const RunningEnergy previous = system.runningEnergies;
   md.recomputeGradients(systemId);
-  system.runningEnergies.translationalKineticEnergy = previous.translationalKineticEnergy;
+  // A reaction that retypes an atom changes its mass: the molecules' centre-of-mass records (position and velocity,
+  // read by the MSD, the VACF and the centre-of-mass routines) are rebuilt with the new masses, and the translational
+  // kinetic energy of the unchanged atom velocities is that of the new masses (the jump, 1/2 dm v^2, is booked with
+  // the potential jump below instead of showing up as integration drift)
+  {
+    const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+    const std::span<const AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
+    std::size_t groupIndex = 0;
+    for (Molecule& molecule : system.moleculeData)
+    {
+      const Component& component = system.components[molecule.componentId];
+      Integrators::syncNonRigidMoleculeCenterOfMass(molecule, atoms.subspan(molecule.atomIndex, molecule.numberOfAtoms),
+                                                    dynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms),
+                                                    component, system.spanOfGroupData(), groupIndex);
+      groupIndex += component.numberOfRigidFragments();
+    }
+  }
+  system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+      system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
+      system.spanOfGroupData(), system.spanOfFrameworkGroupData());
   system.runningEnergies.rotationalKineticEnergy = previous.rotationalKineticEnergy;
   system.runningEnergies.NoseHooverEnergy = previous.NoseHooverEnergy;
   system.runningEnergies.thermobarostatEnergy = previous.thermobarostatEnergy;

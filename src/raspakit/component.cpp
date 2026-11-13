@@ -2829,8 +2829,14 @@ std::vector<InversionBendPotential> Component::readInversionBendPotentials(
 std::vector<OutOfPlaneBendPotential> Component::readOutOfPlaneBendPotentials(
     const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
 {
-  return readExplicitInternalPotentials<OutOfPlaneBendPotential, 4>(
-      parsed_data, "OutOfPlaneBends", OutOfPlaneBendPotential::definitionForString, definedAtoms.size());
+  // the out-of-plane bend has no energy yet (it was evaluated as zero, silently): a molecule that lists one is refused
+  if (parsed_data.contains("OutOfPlaneBends") && !parsed_data["OutOfPlaneBends"].empty())
+  {
+    throw std::runtime_error(
+        "[Component reader]: 'OutOfPlaneBends' are not implemented (their energy would be zero); use "
+        "'InversionBends' or 'ImproperTorsions'\n");
+  }
+  return {};
 }
 
 std::vector<TorsionPotential> Component::readImproperTorsionPotentials(

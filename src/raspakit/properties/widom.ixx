@@ -226,6 +226,9 @@ export struct PropertyWidom
 
   static double fugacityTransform(const WidomData &terms, double beta)
   {
+    // no molecules, no fugacity: the ideal-gas chemical potential of an empty box is minus infinity (with the
+    // ideal-gas term left at zero, the excess term alone made an empty box report a fugacity of 1 / (beta W))
+    if (!(terms.idealGas > 0.0)) return 0.0;
     return std::exp(beta * chemicalPotentialTransform(terms, beta).total) / beta;
   }
 

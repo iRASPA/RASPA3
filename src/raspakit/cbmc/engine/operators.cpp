@@ -31,7 +31,7 @@ import cbmc_bridge_closure;
 //   bridgeTrials(pinOld)    -- a bridge-closure step: one independently drawn bipolar base per trial
 //                              direction (an infeasible draw is a dead direction), each spun about the
 //                              anchor-closure axis by a torsion selection; on the retrace the old
-//                              position is trial 0. The direction's 'torsionWeight' carries the base
+//                              position is trial 0. The direction's 'logTorsionWeight' carries the base
 //                              weight times the spin weight.
 //
 // grow    = seedTrials(none)      | spinTrials(sampleBase(),   pin = false) | bridgeTrials(false)
@@ -141,7 +141,7 @@ CBMC::StepTrial guidedFlexibleSeedTrial(RandomNumber &random, const CBMC::Growth
     selected = selection.index;
     logSum = selection.logSum;
   }
-  return {{candidates[selected]}, std::exp(logSum - logGuides[selected]) / static_cast<double>(m)};
+  return {{candidates[selected]}, logSum - logGuides[selected] - std::log(static_cast<double>(m))};
 }
 
 // Seed step: no orientational reference exists yet, every orientation is equally likely and every
@@ -161,11 +161,11 @@ std::vector<CBMC::StepTrial> seedTrials(RandomNumber &random, const CBMC::Growth
   {
     for (std::size_t i = first; i != numberOfTrialDirections; ++i)
     {
-      trials[i] = {CBMC::generateRigidTilt(random, settings.numberOfTrialMovesPerOpenBead, beta, component,
-                                           chainAtoms, step),
-                   1.0};
+      trials[i] = {
+          CBMC::generateRigidTilt(random, settings.numberOfTrialMovesPerOpenBead, beta, component, chainAtoms, step),
+          0.0};
     }
-    if (pinnedOld.has_value()) trials[0] = {std::move(pinnedOld.value()), 1.0};
+    if (pinnedOld.has_value()) trials[0] = {std::move(pinnedOld.value()), 0.0};
     return trials;
   }
 
@@ -177,9 +177,9 @@ std::vector<CBMC::StepTrial> seedTrials(RandomNumber &random, const CBMC::Growth
     const double3 anchor = chainAtoms[step.currentBead].position;
     for (std::size_t i = 1; i != numberOfTrialDirections; ++i)
     {
-      trials[i] = {CBMC::randomlyOrientRing(random, base, anchor), 1.0};
+      trials[i] = {CBMC::randomlyOrientRing(random, base, anchor), 0.0};
     }
-    trials[0] = {std::move(base), 1.0};
+    trials[0] = {std::move(base), 0.0};
     return trials;
   }
 
@@ -196,9 +196,9 @@ std::vector<CBMC::StepTrial> seedTrials(RandomNumber &random, const CBMC::Growth
 
   for (std::size_t i = first; i != numberOfTrialDirections; ++i)
   {
-    trials[i] = {{placeFlexibleSeedBead(random, beta, chainAtoms, step)}, 1.0};
+    trials[i] = {{placeFlexibleSeedBead(random, beta, chainAtoms, step)}, 0.0};
   }
-  if (pinnedOld.has_value()) trials[0] = {std::move(pinnedOld.value()), 1.0};
+  if (pinnedOld.has_value()) trials[0] = {std::move(pinnedOld.value()), 0.0};
   return trials;
 }
 
@@ -221,7 +221,7 @@ std::vector<CBMC::StepTrial> spinTrials(RandomNumber &random, const CBMC::Growth
         random, settings.numberOfTorsionTrialDirections, beta, forceField, simulationBox, chainAtoms, base.nextBeadAtoms,
         step, axis, pinned);
     trials[i] = {pinned ? base.nextBeadAtoms : std::move(torsion.positions),
-                 torsion.rosenbluthWeight * base.clampWeight};
+                 torsion.logRosenbluthWeight + std::log(base.clampWeight), torsion.dead};
   }
   return trials;
 }
@@ -246,22 +246,23 @@ std::vector<CBMC::StepTrial> bridgeTrials(RandomNumber &random, const CBMC::Grow
   if (pinOld)
   {
     const std::vector<Atom> old = CBMC::stepBeadPositions(chainAtoms, step);
-    const double baseWeight = CBMC::bridgeClosureBaseWeight(beta, chainAtoms, step);
+    const std::optional<double> logBaseWeight = CBMC::bridgeClosureLogBaseWeight(beta, chainAtoms, step);
     CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
         random, settings.numberOfTorsionTrialDirections, beta, forceField, simulationBox, chainAtoms, old, step, axis, true);
-    trials.push_back({old, torsion.rosenbluthWeight * baseWeight});
+    trials.push_back(
+        {old, torsion.logRosenbluthWeight + logBaseWeight.value_or(0.0), torsion.dead || !logBaseWeight.has_value()});
     first = 1;
   }
 
   for (std::size_t i = first; i != numberOfTrialDirections; ++i)
   {
     const std::optional<CBMC::BridgeClosureBase> base = CBMC::sampleBridgeClosureBase(random, beta, chainAtoms, step);
-    if (!base.has_value() || !(base->weight > 0.0)) continue;
+    if (!base.has_value()) continue;
     CBMC::TorsionOrientation torsion = CBMC::selectTorsionOrientation(
         random, settings.numberOfTorsionTrialDirections, beta, forceField, simulationBox, chainAtoms, {base->atom}, step,
         axis, false);
-    if (!(torsion.rosenbluthWeight > 0.0)) continue;  // every spin behind a chiral wall: a dead direction
-    trials.push_back({std::move(torsion.positions), torsion.rosenbluthWeight * base->weight});
+    if (torsion.dead) continue;  // every spin behind a chiral wall: a dead direction
+    trials.push_back({std::move(torsion.positions), torsion.logRosenbluthWeight + base->logWeight});
   }
   return trials;
 }
@@ -321,16 +322,16 @@ CBMC::StepTrial CBMC::generateRecoilTrial(RandomNumber &random, const GrowthSett
       generateGrowTrials(random, settings, beta, forceField, simulationBox, component, contextAtoms, step, 1);
   // A bridge closure whose single base draw was infeasible has no direction: report a dead trial (zero
   // weight, the current positions), which recoil growth treats as closed.
-  if (trials.empty()) return {stepBeadPositions(contextAtoms, step), 0.0};
+  if (trials.empty()) return {stepBeadPositions(contextAtoms, step), 0.0, true};
   return std::move(trials.front());
 }
 
-double CBMC::oldConfigurationTorsionWeight(RandomNumber &random, const GrowthSettings &settings, double beta,
-                                           const ForceField &forceField, const SimulationBox &simulationBox,
-                                           const Component &component, std::vector<Atom> &oldAtoms,
-                                           const GrowStep &step)
+double CBMC::oldConfigurationLogTorsionWeight(RandomNumber& random, const GrowthSettings& settings, double beta,
+                                              const ForceField& forceField, const SimulationBox& simulationBox,
+                                              const Component& component, std::vector<Atom>& oldAtoms,
+                                              const GrowStep& step)
 {
   return generateRetraceTrials(random, settings, beta, forceField, simulationBox, component, oldAtoms, step, 1)
       .front()
-      .torsionWeight;
+      .logTorsionWeight;
 }

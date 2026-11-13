@@ -786,11 +786,10 @@ void MolecularDynamics::setup()
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
 
-    // switch the fractional molecule on in the first system, and off in all others
-    if (system_id == 0uz)
-      system.containsTheFractionalMolecule = true;
-    else
-      system.containsTheFractionalMolecule = false;
+    // as in MonteCarlo::setup: the serial Gibbs swap shares one active fractional molecule between its boxes (on in
+    // the first, off in the others); every other system owns its fractional molecules and keeps them active (they
+    // were switched off in every system after the first, which stopped their dU/dlambda sampling)
+    system.containsTheFractionalMolecule = !(system.usesGibbsSwapCFCMC() && system_id != 0uz);
 
     // inactive fractional molecules must not contribute dUdlambda: set their groupId to zero
     system.initializeGibbsSwapFractionalMoleculeGroupIds();

@@ -291,21 +291,29 @@ ForceField::ForceField(std::string filePath)
 
   for (const auto& [index, parameters] : selfInteractions14) setPair14SelfInteraction(index, parameters);
 
-  // Set mixing rule and cut-off values
-  if (parsed_data.value("MixingRule", "") == "Lorentz-Berthelot")
+  // Set mixing rule and cut-off values; an unknown rule is an error (it was ignored, leaving Lorentz-Berthelot)
+  if (parsed_data.contains("MixingRule"))
   {
-    mixingRule = MixingRule::Lorentz_Berthelot;
-  }
-  if (parsed_data.value("MixingRule", "") == "Jorgensen")
-  {
-    mixingRule = MixingRule::Jorgensen;
-  }
-  if (parsed_data.value("MixingRule", "") == "SixthPower" ||
-      parsed_data.value("MixingRule", "") == "Waldman-Hagler" ||
-      parsed_data.value("MixingRule", "") == "sixthpower" ||
-      parsed_data.value("MixingRule", "") == "waldman-hagler")
-  {
-    mixingRule = MixingRule::SixthPower;
+    const std::string rule = parsed_data["MixingRule"].is_string() ? parsed_data["MixingRule"].get<std::string>() : "";
+    if (caseInSensStringCompare(rule, "Lorentz-Berthelot"))
+    {
+      mixingRule = MixingRule::Lorentz_Berthelot;
+    }
+    else if (caseInSensStringCompare(rule, "Jorgensen"))
+    {
+      mixingRule = MixingRule::Jorgensen;
+    }
+    else if (caseInSensStringCompare(rule, "SixthPower") || caseInSensStringCompare(rule, "Waldman-Hagler"))
+    {
+      mixingRule = MixingRule::SixthPower;
+    }
+    else
+    {
+      throw std::runtime_error(
+          std::format("[Forcefield reader]: unknown 'MixingRule' {}; use \"Lorentz-Berthelot\", \"Jorgensen\" or "
+                      "\"SixthPower\"\n",
+                      parsed_data["MixingRule"].dump()));
+    }
   }
 
   // Apply mixing rule and precompute potentials
@@ -453,6 +461,9 @@ ForceField::ForceField(std::string filePath)
       }
       else
       {
+        throw std::runtime_error(std::format(
+            "[Forcefield reader]: unknown 'EwaldPrecision' '{}'; use \"High\", \"Medium\", \"Low\" or a number\n",
+            ewaldPrecisionString));
       }
     }
     else if (parsed_data["EwaldPrecision"].is_number())
@@ -782,70 +793,33 @@ ForceField::ForceField(std::string filePath)
   {
     std::string potentialEnergySurfaceString = parsed_data["ExternalFieldPotentialEnergySurface"].get<std::string>();
 
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "GridFile"))
+    // an unknown name is an error (it was ignored, leaving the default surface); Eckhardt and Gonzalez-Schlegel are
+    // named in the enumeration but have no energy, which was silently zero
+    const std::array<std::pair<std::string_view, PotentialEnergySurfaceType>, 14> surfaces{
+        {{"GridFile", PotentialEnergySurfaceType::GridFile},
+         {"SecondOrderPolynomialTestFunction", PotentialEnergySurfaceType::SecondOrderPolynomialTestFunction},
+         {"ThirdOrderPolynomialTestFunction", PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction},
+         {"FourthOrderPolynomialTestFunction", PotentialEnergySurfaceType::FourthOrderPolynomialTestFunction},
+         {"FifthOrderPolynomialTestFunction", PotentialEnergySurfaceType::FifthOrderPolynomialTestFunction},
+         {"SixthOrderPolynomialTestFunction", PotentialEnergySurfaceType::SixthOrderPolynomialTestFunction},
+         {"ExponentialNonPolynomialTestFunction", PotentialEnergySurfaceType::ExponentialNonPolynomialTestFunction},
+         {"MullerBrown", PotentialEnergySurfaceType::MullerBrown},
+         {"CylinderX", PotentialEnergySurfaceType::CylinderX},
+         {"CylinderY", PotentialEnergySurfaceType::CylinderY},
+         {"CylinderZ", PotentialEnergySurfaceType::CylinderZ},
+         {"RectangleX", PotentialEnergySurfaceType::RectangleX},
+         {"RectangleY", PotentialEnergySurfaceType::RectangleY},
+         {"RectangleZ", PotentialEnergySurfaceType::RectangleZ}}};
+    const auto match = std::ranges::find_if(
+        surfaces, [&](const auto& entry)
+        { return caseInSensStringCompare(potentialEnergySurfaceString, std::string(entry.first)); });
+    if (match == surfaces.end())
     {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::GridFile;
+      throw std::runtime_error(
+          std::format("[Forcefield reader]: unknown or unimplemented 'ExternalFieldPotentialEnergySurface' '{}'\n",
+                      potentialEnergySurfaceString));
     }
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "SecondOrderPolynomialTestFunction"))
-    {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::SecondOrderPolynomialTestFunction;
-    }
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "ThirdOrderPolynomialTestFunction"))
-    {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::ThirdOrderPolynomialTestFunction;
-    }
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "FourthOrderPolynomialTestFunction"))
-    {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::FourthOrderPolynomialTestFunction;
-    }
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "FifthOrderPolynomialTestFunction"))
-    {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::FifthOrderPolynomialTestFunction;
-    }
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "SixthOrderPolynomialTestFunction"))
-    {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::SixthOrderPolynomialTestFunction;
-    }
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "ExponentialNonPolynomialTestFunction"))
-    {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::ExponentialNonPolynomialTestFunction;
-    }
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "MullerBrown"))
-    {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::MullerBrown;
-    }
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "Eckhardt"))
-    {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::Eckhardt;
-    }
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "GonzalezSchlegel"))
-    {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::GonzalezSchlegel;
-    }
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "CylinderX"))
-    {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::CylinderX;
-    }
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "CylinderY"))
-    {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::CylinderY;
-    }
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "CylinderZ"))
-    {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::CylinderZ;
-    }
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "RectangleX"))
-    {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::RectangleX;
-    }
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "RectangleY"))
-    {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::RectangleY;
-    }
-    if (caseInSensStringCompare(potentialEnergySurfaceString, "RectangleZ"))
-    {
-      potentialEnergySurfaceType = PotentialEnergySurfaceType::RectangleZ;
-    }
+    potentialEnergySurfaceType = match->second;
   }
 
   if (parsed_data.contains("ExternalFieldCylinderRadius"))
@@ -1786,15 +1760,23 @@ bool ForceField::operator==(const ForceField& other) const
 {
   // first the cheap ones
   if (cutOffFrameworkVDW != other.cutOffFrameworkVDW || cutOffMoleculeVDW != other.cutOffMoleculeVDW ||
-      cutOffCoulomb != other.cutOffCoulomb ||
-      numberOfPseudoAtoms != other.numberOfPseudoAtoms || energyOverlapCriteria != other.energyOverlapCriteria ||
-      EwaldPrecision != other.EwaldPrecision || EwaldAlpha != other.EwaldAlpha ||
-      modifiedShiftedForceBeta != other.modifiedShiftedForceBeta ||
+      cutOffCoulomb != other.cutOffCoulomb || numberOfPseudoAtoms != other.numberOfPseudoAtoms ||
+      energyOverlapCriteria != other.energyOverlapCriteria || EwaldPrecision != other.EwaldPrecision ||
+      EwaldAlpha != other.EwaldAlpha || modifiedShiftedForceBeta != other.modifiedShiftedForceBeta ||
       numberOfWaveVectors != other.numberOfWaveVectors || automaticEwald != other.automaticEwald ||
       useCharge != other.useCharge || omitEwaldFourier != other.omitEwaldFourier ||
       chargeMethod != other.chargeMethod || !(settings == other.settings) || data14.size() != other.data14.size() ||
       truncationMethod != other.truncationMethod || switchingDistance != other.switchingDistance ||
-      cmapMaps != other.cmapMaps)
+      cmapMaps != other.cmapMaps || mixingRule != other.mixingRule ||
+      reciprocalIntegerCutOffSquared != other.reciprocalIntegerCutOffSquared ||
+      reciprocalCutOffSquared != other.reciprocalCutOffSquared ||
+      // what else changes the energy: the polarization terms, the omitted interactions and the external field
+      computePolarization != other.computePolarization || omitInterPolarization != other.omitInterPolarization ||
+      omitInterInteractions != other.omitInterInteractions ||
+      potentialEnergySurfaceType != other.potentialEnergySurfaceType ||
+      potentialEnergySurfaceOrigin != other.potentialEnergySurfaceOrigin ||
+      externalFieldGridFileName != other.externalFieldGridFileName ||
+      externalFieldGeometryParameters != other.externalFieldGeometryParameters || temperature != other.temperature)
   {
     return false;
   }
@@ -1840,8 +1822,6 @@ const std::set<std::string, ForceField::InsensitiveCompare> ForceField::options 
     "BinaryInteractions",
     "EwaldPrecision",
     "EwaldParameters",
-    "ReciprocalCutOff",
-    "ReciprocalIntegerCutOff",
     "ExternalFieldGridFileName",
     "ExternalFieldPotentialEnergySurface",
     "ExternalFieldCylinderRadius",

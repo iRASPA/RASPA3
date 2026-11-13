@@ -3,6 +3,7 @@ module;
 module spatial_decomposition_device_resident;
 
 import std;
+import integrators_update;
 
 import int3;
 import double3;
@@ -768,5 +769,16 @@ void DeviceResident::download(System& system, const DeviceStep& step, const Cell
         dynamics[i].velocity = get3(hi2, lo2, i);
       }
     }
+  }
+  // The device integrates the centre-of-mass velocity of a flexible molecule on its own, and its rounding drifts
+  // away from sum m_i v_i / M of the atoms: the record the host reads (and uploads again) is rebuilt from the atoms.
+  std::size_t groupIndex = 0;
+  for (Molecule& molecule : system.moleculeData)
+  {
+    const Component& component = system.components[molecule.componentId];
+    Integrators::syncNonRigidMoleculeCenterOfMass(
+        molecule, atomData.subspan(molecule.atomIndex, molecule.numberOfAtoms),
+        dynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms), component, system.spanOfGroupData(), groupIndex);
+    groupIndex += component.numberOfRigidFragments();
   }
 }

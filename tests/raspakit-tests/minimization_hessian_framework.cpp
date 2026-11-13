@@ -15,6 +15,9 @@ import framework;
 import component;
 import connectivity_table;
 import intra_molecular_potentials;
+import bond_potential;
+import bend_potential;
+import torsion_potential;
 import system;
 import simulationbox;
 import running_energy;
@@ -61,7 +64,189 @@ void useSecondOrderTaylorShiftedLennardJones(ForceField& forceField)
   forceField.preComputeDerivedParameters();
   forceField.preComputePotentialShift();
 }
+
+// Checks the single isotropic strain blocks of 'evaluateDerivatives' against central differences of the energy of the
+// state 'apply(epsilon, dof, delta)' puts the system in: every coordinate scaled with exp(epsilon) (the box as well)
+// and the degree of freedom 'dof' displaced by 'delta'.
+void expectIsotropicStrainBlocksMatchFiniteDifference(
+    System& system, const MinimizationDofLayout& layout,
+    const std::function<void(double, std::optional<std::size_t>, double)>& apply)
+{
+  const SimulationBox baseBox = system.simulationBox;
+  const auto energyAt = [&](double epsilon, std::optional<std::size_t> dof, double delta)
+  {
+    apply(epsilon, dof, delta);
+    const double scale = std::exp(epsilon);
+    system.simulationBox = SimulationBox(scale * baseBox.cell.ax, scale * baseBox.cell.by, scale * baseBox.cell.cz);
+    GeneralizedHessian scratch(layout.numDofs(), 0);
+    DerivativeResults results{.gradient = {}, .hessian = scratch};
+    evaluateDerivatives(system, layout, DerivativeCapabilities{.energy = true}, results);
+    return results.energy;
+  };
+
+  apply(0.0, std::nullopt, 0.0);
+  system.simulationBox = baseBox;
+  GeneralizedHessian hessian(layout.numDofs(), 1);
+  DerivativeResults analytic{.gradient = {}, .hessian = hessian};
+  evaluateDerivatives(
+      system, layout,
+      DerivativeCapabilities{.energy = true, .hessianPositionStrain = true, .hessianStrainStrain = true}, analytic);
+
+  constexpr double strainStep = 1.0e-4;
+  constexpr double positionStep = 1.0e-4;
+  constexpr double tolerance = 1.0e-4;
+  const double numericalStrainStrain =
+      (energyAt(strainStep, std::nullopt, 0.0) - 2.0 * energyAt(0.0, std::nullopt, 0.0) +
+       energyAt(-strainStep, std::nullopt, 0.0)) /
+      (strainStep * strainStep);
+  EXPECT_NEAR(numericalStrainStrain, hessian.strainStrain()[0],
+              tolerance * std::max({1.0, std::abs(numericalStrainStrain), std::abs(hessian.strainStrain()[0])}))
+      << "strain-strain";
+
+  for (std::size_t dof = 0; dof < layout.numDofs(); ++dof)
+  {
+    const double numerical = (energyAt(strainStep, dof, positionStep) - energyAt(-strainStep, dof, positionStep) -
+                              energyAt(strainStep, dof, -positionStep) + energyAt(-strainStep, dof, -positionStep)) /
+                             (4.0 * strainStep * positionStep);
+    const double value = hessian.positionStrain()[dof];
+    EXPECT_NEAR(numerical, value, tolerance * std::max({1.0, std::abs(numerical), std::abs(value)}))
+        << "position-strain dof=" << dof;
+  }
+
+  apply(0.0, std::nullopt, 0.0);
+  system.simulationBox = baseBox;
+}
 }  // namespace
+
+// A bonded pair of flexible framework atoms and a flexible single-site molecule; charged, the bonded framework pair
+// is an Ewald exclusion pair.
+void expectFlexibleFrameworkIsotropicStrainBlocksMatchFiniteDifference(bool charged)
+{
+  ForceField forceField({{"A", false, 12.0, 0.0, 0.0, 6, false}}, {{120.0, 3.4}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 10.0, 10.0, 10.0, true, false, charged);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
+  const SimulationBox box(30.0, 30.0, 30.0);
+  const Atom positiveAtom({0.25, 0.25, 0.25}, charged ? 0.6 : 0.0, 1.0, 0, 0, 0, 0, true);
+  const Atom negativeAtom({0.25, 0.25, 0.25}, charged ? -0.6 : 0.0, 1.0, 0, 0, 0, 0, true);
+  Framework framework(forceField, "flexible-framework", box, 1, {positiveAtom, negativeAtom},
+                      {positiveAtom, negativeAtom}, {1, 1, 1});
+  framework.rigid = false;
+  framework.intraMolecularPotentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {2000.0, 1.5})};
+  framework.intraMolecularImageShifts.bonds = {{{int3(0, 0, 0), int3(0, 0, 0)}}};
+  framework.connectivityTable = ConnectivityTable(2);
+  framework.connectivityTable[0, 1] = true;
+  framework.connectivityTable[1, 0] = true;
+
+  ConnectivityTable connectivity(1);
+  Component component(forceField, "single-site", 100.0, 1.0e6, 0.1,
+                      {Atom({0.0, 0.0, 0.0}, charged ? 0.4 : 0.0, 1.0, 0, 0, 0, false, false)}, connectivity,
+                      Potentials::IntraMolecularPotentials{}, 0, 0);
+  component.rigid = false;
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, {framework}, {component}, {}, {1}, 5);
+
+  const std::array<double3, 3> basePositions = {double3(10.0, 10.0, 10.0), double3(11.6, 10.3, 9.8),
+                                                double3(13.4, 11.1, 10.4)};
+  std::array<Atom*, 3> atoms = {&system.spanOfFrameworkAtoms()[0], &system.spanOfFrameworkAtoms()[1],
+                                &system.spanOfMoleculeAtoms()[0]};
+  const MinimizationDofLayout layout =
+      buildMinimizationDofLayout(system.moleculeData, system.components, system.spanOfFrameworkAtoms().size());
+  ASSERT_EQ(layout.numDofs(), 9u);
+  std::array<std::size_t, 9> dofOf{};
+  for (std::size_t axis = 0; axis < 3; ++axis)
+  {
+    const MinimizationDofAxis dofAxis = static_cast<MinimizationDofAxis>(axis);
+    dofOf[*layout.frameworkAtomDof(0, dofAxis)] = 0 * 3 + axis;
+    dofOf[*layout.frameworkAtomDof(1, dofAxis)] = 1 * 3 + axis;
+    dofOf[*layout.flexibleAtomDof(0, 0, dofAxis)] = 2 * 3 + axis;
+  }
+
+  const auto apply = [&](double epsilon, std::optional<std::size_t> dof, double delta)
+  {
+    for (std::size_t i = 0; i < atoms.size(); ++i)
+    {
+      double3 position = basePositions[i];
+      if (dof && dofOf[*dof] / 3 == i) (&position.x)[dofOf[*dof] % 3] += delta;
+      atoms[i]->position = std::exp(epsilon) * position;
+    }
+  };
+  expectIsotropicStrainBlocksMatchFiniteDifference(system, layout, apply);
+}
+
+TEST(minimization_hessian_framework, flexible_framework_isotropic_strain_blocks_match_finite_difference)
+{
+  expectFlexibleFrameworkIsotropicStrainBlocksMatchFiniteDifference(false);
+}
+
+TEST(minimization_hessian_framework, charged_flexible_framework_isotropic_strain_blocks_match_finite_difference)
+{
+  expectFlexibleFrameworkIsotropicStrainBlocksMatchFiniteDifference(true);
+}
+
+TEST(minimization_hessian_framework, semi_flexible_molecule_isotropic_strain_blocks_match_finite_difference)
+{
+  ForceField forceField({{"O", false, 16.0, 0.0, 0.0, 8, false}}, {{80.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 8.0, 8.0, 8.0, false, false, false);
+  ConnectivityTable connectivityTable(4);
+  for (std::size_t i = 0; i < 3; ++i)
+  {
+    connectivityTable[i, i + 1] = true;
+    connectivityTable[i + 1, i] = true;
+  }
+  // every term couples the rigid group {0, 1, 2} to the flexible atom 3, whose rigid offsets do not scale
+  Potentials::IntraMolecularPotentials potentials;
+  potentials.bonds = {BondPotential({2, 3}, BondType::Harmonic, {1500.0, 1.1})};
+  potentials.bends = {BendPotential({1, 2, 3}, BendType::Harmonic, {800.0, 110.0})};
+  potentials.torsions = {TorsionPotential({0, 1, 2, 3}, TorsionType::TraPPE, {0.0, 120.0, -30.0, 200.0})};
+  const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("O"));
+  Component component(forceField, "semi-flexible", 64.0, 1.0e6, 0.02,
+                      {Atom({-0.6, 0.25, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                       Atom({0.0, -0.35, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                       Atom({0.6, 0.25, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                       Atom({1.2, -0.25, 0.35}, 0.0, 1.0, 0, type, 0, false, false)},
+                      connectivityTable, potentials, 0, 0);
+  component.buildFragmentGraph({{0, 1, 2}});
+  const std::array<double3, 4> basePositions = {double3(5.0, 5.0, 5.0), double3(5.6, 4.4, 5.0), double3(6.2, 5.0, 5.0),
+                                                double3(7.0, 4.3, 5.6)};
+  System system(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {component},
+                {{basePositions[0], basePositions[1], basePositions[2], basePositions[3]}}, {0}, 5);
+  ASSERT_TRUE(system.components[0].isSemiFlexible());
+  system.initializeGroupData();
+
+  const MinimizationDofLayout layout = buildMinimizationDofLayout(system.moleculeData, system.components);
+  ASSERT_EQ(layout.numDofs(), 9u);
+  const std::size_t comBase = *layout.atomRigidComDof(0, 0);
+  const std::size_t orientationBase = *layout.atomRigidOrientationDof(0, 0);
+  const std::size_t flexibleBase = *layout.flexibleAtomDof(0, 3, MinimizationDofAxis::X);
+  const double3 baseCom = (basePositions[0] + basePositions[1] + basePositions[2]) / 3.0;
+
+  // The rigid group moves its center of mass with the strain and rotates its offsets about lab axes
+  // (Rodrigues); the flexible atom scales.
+  const auto apply = [&](double epsilon, std::optional<std::size_t> dof, double delta)
+  {
+    double3 comShift{};
+    double3 omega{};
+    double3 flexibleShift{};
+    if (dof && *dof >= comBase && *dof < comBase + 3) (&comShift.x)[*dof - comBase] = delta;
+    if (dof && *dof >= orientationBase && *dof < orientationBase + 3) (&omega.x)[*dof - orientationBase] = delta;
+    if (dof && *dof >= flexibleBase && *dof < flexibleBase + 3) (&flexibleShift.x)[*dof - flexibleBase] = delta;
+    const double scale = std::exp(epsilon);
+    const double angle = std::sqrt(double3::dot(omega, omega));
+    std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+      double3 offset = basePositions[i] - baseCom;
+      if (angle > 0.0)
+      {
+        const double3 axis = omega / angle;
+        offset = offset * std::cos(angle) + double3::cross(axis, offset) * std::sin(angle) +
+                 axis * (double3::dot(axis, offset) * (1.0 - std::cos(angle)));
+      }
+      atoms[i].position = scale * (baseCom + comShift) + offset;
+    }
+    atoms[3].position = scale * (basePositions[3] + flexibleShift);
+  };
+  expectIsotropicStrainBlocksMatchFiniteDifference(system, layout, apply);
+}
 
 TEST(minimization_hessian_framework, flexible_framework_molecule_cross_block_matches_finite_difference)
 {

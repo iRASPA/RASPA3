@@ -51,9 +51,20 @@ export struct PropertyRadialDistributionFunction
   {
     return histogram.averaged(channel(atomTypeA, atomTypeB));
   }
+  /// g(r) and its error. Each bin holds the force sum S(r) of the pairs beyond r (Borgis et al.), which vanishes at
+  /// the end of the range and is largest at contact: anchored by g(0) = 0, g(r) = 1 - S(r) / S(0) whatever the sign
+  /// of S (the raw sums were returned, and the output divided by |S(0)|, which put g(0) at 2 when S(0) > 0).
+  /// Without a force signal (every bin zero) g(r) = 1.
   std::pair<std::vector<double>, std::vector<double>> result(std::size_t atomTypeA, std::size_t atomTypeB) const
   {
-    return histogram.average(channel(atomTypeA, atomTypeB));
+    auto [average, error] = histogram.average(channel(atomTypeA, atomTypeB));
+    const double anchor = average.empty() ? 0.0 : average[0];
+    for (std::size_t bin = 0; bin < average.size(); ++bin)
+    {
+      average[bin] = anchor != 0.0 ? 1.0 - average[bin] / anchor : 1.0;
+      error[bin] = anchor != 0.0 ? error[bin] / std::abs(anchor) : 0.0;
+    }
+    return {average, error};
   }
 
   std::size_t numberOfPseudoAtoms{};

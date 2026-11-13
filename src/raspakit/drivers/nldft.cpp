@@ -111,7 +111,17 @@ LinearProbe makeProbe(const PairInteractions& interactions, const ForceField& fo
         throw std::runtime_error(std::format("[NLDFT]: component '{}' has an out-of-range pseudo-atom type {}\n",
                                              component.name, atom.type));
       }
-      const double offset = double3::dot(atom.position - centreOfMass, axis);
+      const double3 delta = atom.position - centreOfMass;
+      const double offset = double3::dot(delta, axis);
+      // the probe is a line of sites: a bent or three-dimensional molecule (water, methane) was projected onto its
+      // longest axis without a word, which is another molecule
+      if ((delta - offset * axis).length() > 1.0e-3)
+      {
+        throw std::runtime_error(std::format(
+            "[NLDFT]: component '{}' is not linear (site {} lies {:.4f} Å off its axis); the NLDFT probe is a line of "
+            "sites\n",
+            component.name, forceField.pseudoAtoms[atom.type].name, (delta - offset * axis).length()));
+      }
       probe.sites.push_back(
           LinearProbe::Site{atom.type, offset, atom.charge, forceField.pseudoAtoms[atom.type].name});
     }

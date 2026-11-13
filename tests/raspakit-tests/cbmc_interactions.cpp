@@ -120,8 +120,7 @@ TEST(cbmc_interactions, torsion_selection_with_every_spin_behind_the_chiral_wall
   RandomNumber random(7);
   const CBMC::TorsionOrientation dead =
       CBMC::selectTorsionOrientation(random, 4, 1.0, forceField, box, chain, base, step, axis, false);
-  // a NaN weight compares false against anything, which the fast-math flags let the compiler fold; its text does not
-  EXPECT_EQ(std::to_string(dead.rosenbluthWeight), std::to_string(0.0));
+  EXPECT_TRUE(dead.dead);
   EXPECT_EQ(dead.positions.size(), 2uz);
   EXPECT_EQ(chain[2].position.x, 1.0);
   EXPECT_EQ(chain[3].position.y, 1.0);
@@ -131,5 +130,6 @@ TEST(cbmc_interactions, torsion_selection_with_every_spin_behind_the_chiral_wall
   step.spin.determinedChiralCenters = {centre};
   const CBMC::TorsionOrientation live =
       CBMC::selectTorsionOrientation(random, 4, 1.0, forceField, box, chain, base, step, axis, false);
-  EXPECT_NEAR(live.rosenbluthWeight, 1.0, 1e-12);
+  EXPECT_FALSE(live.dead);
+  EXPECT_NEAR(live.logRosenbluthWeight, 0.0, 1e-12);
 }

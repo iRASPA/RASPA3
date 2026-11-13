@@ -96,6 +96,93 @@ void removeFrameworkRigidOffsetStrainGradient(GeneralizedHessian& hessian, const
   }
 }
 
+// The single isotropic strain (numStrain 1) of a term of a semi-flexible molecule. Under exp(epsilon) scaling an atom
+// of a rigid group follows the group's center of mass and keeps its internal offset, so the strain direction of term
+// site i is c_i = x_i - offset_i (c_i = x_i for a flexible atom, x_i the site position the term was evaluated at,
+// periodic image included). With the term's Cartesian Hessian H and gradients g:
+//
+//   d2U/dEpsilon2         = sum_ij c_i.H_ij c_j + sum_i g_i.c_i
+//   d2U/d(x_i, com) dEps  = sum_j H_ij c_j + g_i
+//   d2U/d(omega) dEps     = dVec.(sum_j H_ij c_j)
+template <std::size_t N>
+void addSemiFlexibleIsotropicStrain(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                    const Minimization::RigidDerivativeCache& rigidCache, std::size_t moleculeIndex,
+                                    std::span<const Atom> moleculeAtoms, const std::array<std::size_t, N>& atomIds,
+                                    const std::array<double3, N>& positions, const std::array<double3, N>& gradients,
+                                    const GeneralizedHessian& localHessian)
+{
+  if (hessian.numStrain() != 1) return;
+
+  std::array<double3, N> directions = positions;
+  for (std::size_t i = 0; i < N; ++i)
+  {
+    if (layout.atomRigidComDof(moleculeIndex, atomIds[i]).has_value())
+    {
+      directions[i] -= moleculeAtoms[atomIds[i]].position - rigidCache.bodyCenterOfMass(moleculeIndex, atomIds[i]);
+    }
+  }
+
+  constexpr std::array<MinimizationDofAxis, 3> axes = {MinimizationDofAxis::X, MinimizationDofAxis::Y,
+                                                       MinimizationDofAxis::Z};
+  double strainStrain = 0.0;
+  for (std::size_t i = 0; i < N; ++i)
+  {
+    double3 hessianTimesDirections{};
+    for (std::size_t j = 0; j < N; ++j)
+    {
+      for (std::size_t a = 0; a < 3; ++a)
+      {
+        for (std::size_t b = 0; b < 3; ++b)
+        {
+          (&hessianTimesDirections.x)[a] += localHessian(3 * i + a, 3 * j + b) * (&directions[j].x)[b];
+        }
+      }
+    }
+    strainStrain += double3::dot(directions[i], hessianTimesDirections) + double3::dot(gradients[i], directions[i]);
+
+    const double3 translational = hessianTimesDirections + gradients[i];
+    if (const auto comBase = layout.atomRigidComDof(moleculeIndex, atomIds[i]))
+    {
+      for (std::size_t axis = 0; axis < 3; ++axis)
+      {
+        hessian.addPositionStrain(*comBase + axis, 0, (&translational.x)[axis]);
+      }
+      if (const auto orientationBase = layout.atomRigidOrientationDof(moleculeIndex, atomIds[i]))
+      {
+        const Minimization::RigidAtomDerivatives& derivatives = rigidCache.atom(moleculeIndex, atomIds[i]);
+        const std::array<double3, 3> dVec = {derivatives.dVecX, derivatives.dVecY, derivatives.dVecZ};
+        for (std::size_t axis = 0; axis < 3; ++axis)
+        {
+          hessian.addPositionStrain(*orientationBase + axis, 0, double3::dot(dVec[axis], hessianTimesDirections));
+        }
+      }
+      continue;
+    }
+    for (std::size_t axis = 0; axis < 3; ++axis)
+    {
+      if (const auto dof = layout.flexibleAtomDof(moleculeIndex, atomIds[i], axes[axis]))
+      {
+        hessian.addPositionStrain(*dof, 0, (&translational.x)[axis]);
+      }
+    }
+  }
+  hessian.addStrainStrain(0, 0, strainStrain);
+}
+
+// The radial form of the above for a pair with separation dr = x_A - x_B.
+void addSemiFlexibleIsotropicPairStrain(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                        const Minimization::RigidDerivativeCache& rigidCache, std::size_t moleculeIndex,
+                                        std::span<const Atom> moleculeAtoms, std::size_t A, std::size_t B, double f1,
+                                        double f2, const double3& dr)
+{
+  if (hessian.numStrain() != 1) return;
+  GeneralizedHessian localHessian(6, 0);
+  Minimization::scatterAtomicPositionPositionByDof(localHessian, 0, 3, f1, f2, dr);
+  const double3 positionA = moleculeAtoms[A].position;
+  addSemiFlexibleIsotropicStrain<2>(hessian, layout, rigidCache, moleculeIndex, moleculeAtoms, {A, B},
+                                    {positionA, positionA - dr}, {f1 * dr, -f1 * dr}, localHessian);
+}
+
 template <std::size_t N>
 bool hasPeriodicShift(const std::array<int3, N>& shifts)
 {
@@ -205,6 +292,19 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
                                                                static_cast<double>(shift.z));
   };
   const auto dofBase = [&](std::size_t atom) { return *layout.frameworkAtomDof(atom, MinimizationDofAxis::X); };
+  // The single isotropic strain: every flexible framework atom and every periodic image scales with exp(epsilon),
+  // so a radial term couples as a flexible pair (bends and torsions are scale invariant).
+  const auto addRadialIsotropicStrain = [&](std::size_t A, std::size_t B, double f1, double f2, const double3& dr)
+  {
+    if (hessian.numStrain() != 1) return;
+    const double3 positionStrain = (f2 * double3::dot(dr, dr)) * dr + 2.0 * f1 * dr;
+    for (std::size_t axis = 0; axis < 3; ++axis)
+    {
+      hessian.addPositionStrain(dofBase(A) + axis, 0, (&positionStrain.x)[axis]);
+      hessian.addPositionStrain(dofBase(B) + axis, 0, -(&positionStrain.x)[axis]);
+    }
+    Minimization::scatterAtomicStrainStrainIsotropic(hessian, f1, f2, dr, dr, dr, double3{}, double3{}, false, false);
+  };
 
   const auto accumulateRadial = [&](std::size_t A, std::size_t B, const std::array<int3, 2>& shifts, double energy,
                                     double f1, double f2, double& energyAccumulator)
@@ -233,6 +333,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
       return;
     }
     Minimization::scatterAtomicPositionPositionByDof(hessian, dofBase(A), dofBase(B), f1, f2, dr);
+    addRadialIsotropicStrain(A, B, f1, f2, dr);
     if (!cellLayout.empty() && hasPeriodicShift(shifts))
     {
       GeneralizedHessian localHessian(6, 0);
@@ -285,6 +386,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
       continue;
     }
     Minimization::scatterAtomicPositionPositionByDof(hessian, dofBase(A), dofBase(B), f1, f2, positionA - positionB);
+    addRadialIsotropicStrain(A, B, f1, f2, positionA - positionB);
     if (!cellLayout.empty() && hasPeriodicShift(images.bonds[index]))
     {
       GeneralizedHessian localHessian(6, 0);
@@ -461,6 +563,8 @@ RunningEnergy Interactions::computeIntraMolecularBondHessian(
             hessian, {Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, A),
                       Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, B)},
             {gradient[0], gradient[1]}, f1, f2, dr);
+        addSemiFlexibleIsotropicPairStrain(hessian, layout, rigidCache, moleculeIndex, atom_molecule_span, A, B, f1, f2,
+                                           dr);
         continue;
       }
       Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, A, moleculeIndex, B, f1, f2, dr);
@@ -523,6 +627,15 @@ RunningEnergy Interactions::computeIntraMolecularBendHessian(
              Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, B),
              Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, C)},
             {gradient[0], gradient[1], gradient[2]}, geometry);
+        if (hessian.numStrain() == 1)
+        {
+          GeneralizedHessian localHessian(9, 0);
+          Minimization::scatterBendHessianByDof(localHessian, {0, 3, 6}, geometry);
+          addSemiFlexibleIsotropicStrain<3>(
+              hessian, layout, rigidCache, moleculeIndex, atom_molecule_span, {A, B, C},
+              {atom_molecule_span[A].position, atom_molecule_span[B].position, atom_molecule_span[C].position},
+              {gradient[0], gradient[1], gradient[2]}, localHessian);
+        }
         continue;
       }
       Minimization::scatterBendHessian(hessian, layout, moleculeIndex, A, B, C, geometry);
@@ -575,6 +688,8 @@ RunningEnergy Interactions::computeIntraMolecularUreyBradleyHessian(
             hessian, {Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, A),
                       Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, B)},
             {gradient[0], gradient[1]}, f1, f2, dr);
+        addSemiFlexibleIsotropicPairStrain(hessian, layout, rigidCache, moleculeIndex, atom_molecule_span, A, B, f1, f2,
+                                           dr);
         continue;
       }
       Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, A, moleculeIndex, B, f1, f2, dr);
@@ -654,6 +769,8 @@ RunningEnergy Interactions::computeIntraMolecularVanDerWaalsHessian(
             hessian, {Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, A),
                       Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, B)},
             {gradientA, -1.0 * gradientA}, f1, f2, dr);
+        addSemiFlexibleIsotropicPairStrain(hessian, layout, rigidCache, moleculeIndex, atom_molecule_span, A, B, f1, f2,
+                                           dr);
         return;
       }
       Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, A, moleculeIndex, B, f1, f2, dr);
@@ -734,6 +851,8 @@ RunningEnergy Interactions::computeIntraMolecularCoulombHessian(
             hessian, {Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, A),
                       Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, B)},
             {gradientA, -1.0 * gradientA}, f1, f2, dr);
+        addSemiFlexibleIsotropicPairStrain(hessian, layout, rigidCache, moleculeIndex, atom_molecule_span, A, B, f1, f2,
+                                           dr);
         return;
       }
       Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, A, moleculeIndex, B, f1, f2, dr);
@@ -799,6 +918,16 @@ RunningEnergy Interactions::computeIntraMolecularTorsionHessian(
              Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, C),
              Minimization::makeHessianSite(layout, rigidCache, moleculeIndex, D)},
             {gradient[0], gradient[1], gradient[2], gradient[3]}, geometry);
+        if (hessian.numStrain() == 1)
+        {
+          GeneralizedHessian localHessian(12, 0);
+          Minimization::scatterTorsionHessianByDof(localHessian, {0, 3, 6, 9}, geometry);
+          addSemiFlexibleIsotropicStrain<4>(hessian, layout, rigidCache, moleculeIndex, atom_molecule_span,
+                                            {A, B, C, D},
+                                            {atom_molecule_span[A].position, atom_molecule_span[B].position,
+                                             atom_molecule_span[C].position, atom_molecule_span[D].position},
+                                            {gradient[0], gradient[1], gradient[2], gradient[3]}, localHessian);
+        }
         return;
       }
       Minimization::scatterTorsionHessian(hessian, layout, moleculeIndex, A, B, C, D, geometry);

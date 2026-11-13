@@ -1384,3 +1384,35 @@ TEST(INPUT_READER, system_moves_without_components_are_refused)
     EXPECT_NE(std::string(error.what()).find("no components"), std::string::npos) << error.what();
   }
 }
+
+// A negative count no longer wraps to a huge unsigned value, an unknown unit system no longer silently keeps the
+// default, and an unknown force-field mixing rule no longer falls back to Lorentz-Berthelot: each is refused.
+TEST(INPUT_READER_MD, rejects_negative_counts_unknown_units_and_unknown_mixing_rules)
+{
+  const auto expectRejected = [](nlohmann::json input, std::string_view forceField, std::string_view suffix)
+  {
+    TemporaryDirectory workspace = makeBoxMdWorkspace();
+    workspace.write("force_field.json", forceField);
+    TemporaryInput temporary(std::move(input), suffix, workspace.path());
+    ScopedCurrentPath currentPath(workspace.path());
+    EXPECT_THROW(
+        {
+          InputReader reader(temporary.path().filename().string());
+          static_cast<void>(reader);
+        },
+        std::runtime_error)
+        << suffix;
+  };
+
+  nlohmann::json negativeCount = readNVTExample();
+  negativeCount["Components"][0]["CreateNumberOfMolecules"] = -1;
+  expectRejected(std::move(negativeCount), input_reader_fixtures::kBoxForceFieldJson, "negative_count");
+
+  nlohmann::json unknownUnits = readNVTExample();
+  unknownUnits["Units"] = "SI";
+  expectRejected(std::move(unknownUnits), input_reader_fixtures::kBoxForceFieldJson, "unknown_units");
+
+  nlohmann::json forceField = nlohmann::json::parse(input_reader_fixtures::kBoxForceFieldJson);
+  forceField["MixingRule"] = "Geometric-Average";
+  expectRejected(readNVTExample(), forceField.dump(2), "unknown_mixing_rule");
+}

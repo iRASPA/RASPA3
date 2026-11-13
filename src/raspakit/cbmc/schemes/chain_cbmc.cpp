@@ -20,13 +20,13 @@ import cbmc_chain_common;
 
 namespace
 {
-/// A non-overlapping trial direction of a step: its positions, its energies, and the torsion Rosenbluth
-/// weight accumulated while generating it.
+/// A non-overlapping trial direction of a step: its positions, its energies, and the logarithm of the torsion
+/// Rosenbluth weight accumulated while generating it.
 struct EvaluatedTrial
 {
   std::vector<Atom> positions;
   CBMC::StepTrialEnergy energy;
-  double torsionWeight;
+  double logTorsionWeight;
 };
 
 // The trial directions of a step: the operator engine's trials, filtered to the non-overlapping ones
@@ -65,12 +65,12 @@ EvaluatedTrials evaluateTrials(const CBMC::GrowContext &context, const Component
   for (std::size_t i = 0; i != stepTrials.size(); ++i)
   {
     // a dead direction (every spin behind a chiral wall, see the torsion selection) is no trial at all
-    if (!(stepTrials[i].torsionWeight > 0.0)) continue;
+    if (stepTrials[i].dead) continue;
     std::optional<CBMC::StepTrialEnergy> energy =
         CBMC::evaluateStepTrial(batchContext, component, step, chainAtoms, stepTrials[i].positions, tethersOfStep);
     if (!energy.has_value()) continue;
     if (i == 0) evaluated.firstSurvived = true;
-    evaluated.trials.push_back({std::move(stepTrials[i].positions), energy.value(), stepTrials[i].torsionWeight});
+    evaluated.trials.push_back({std::move(stepTrials[i].positions), energy.value(), stepTrials[i].logTorsionWeight});
   }
   return evaluated;
 }
@@ -110,8 +110,7 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
   logBoltzmannFactors.reserve(trials.size());
   for (const EvaluatedTrial &trial : trials)
   {
-    logBoltzmannFactors.push_back(-beta * trial.energy.potentialEnergy() +
-                                  (coupled ? std::log(trial.torsionWeight) : 0.0));
+    logBoltzmannFactors.push_back(-beta * trial.energy.potentialEnergy() + (coupled ? trial.logTorsionWeight : 0.0));
   }
 
   // the retrace keeps the old trial (index 0) and only needs the sum; the grow draws and gets the sum with it
@@ -135,7 +134,7 @@ StepWeight stepWeight(RandomNumber &random, double beta, std::size_t numberOfTri
   const EvaluatedTrial &selectedTrial = trials[selected];
   CBMC::placeStepBeads(chainAtoms, step, selectedTrial.positions);
 
-  return {selected, (coupled ? 0.0 : std::log(selectedTrial.torsionWeight)) + logRosenbluthSum -
+  return {selected, (coupled ? 0.0 : selectedTrial.logTorsionWeight) + logRosenbluthSum -
                         std::log(static_cast<double>(numberOfTrialDirections)) +
                         CBMC::unsampledInternalLogFactor(beta, step, chainAtoms)};
 }

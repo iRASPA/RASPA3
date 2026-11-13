@@ -296,29 +296,9 @@ TEST(internal_potentials, bend_forms_match_RASPA2)
     EXPECT_NEAR(bend.calculateEnergy(posA, posB, posC, std::nullopt), ref, tol * std::abs(ref));
   }
 
-  // MM3_IN_PLANE: the angle is computed after projecting B onto the A-C-D plane
-  {
-    BendPotential bend({0, 1, 2}, BendType::MM3_inplane, {0.59, 114.0});
-
-    double3 Rad = posA - posD;
-    double3 Rbd = posB - posD;
-    double3 Rcd = posC - posD;
-    double3 t = double3::cross(Rad, Rcd);
-    double rt2 = double3::dot(t, t);
-    double delta = -double3::dot(t, Rbd) / rt2;
-    double3 ip = posB + delta * t;
-    double3 ap = posA - ip;
-    double3 cp = posC - ip;
-    double cos_in_plane =
-        std::clamp(double3::dot(ap, cp) / std::sqrt(double3::dot(ap, ap) * double3::dot(cp, cp)), -1.0, 1.0);
-    double theta_in_plane = std::acos(cos_in_plane);
-
-    double dt = RAD2DEG * (theta_in_plane - 114.0 * DEG2RAD);
-    double p0 = 0.59 * 0.021914 * Units::KCalPerMolToEnergy;
-    double ref =
-        p0 * dt * dt * (1.0 - 0.014 * dt + 5.6e-5 * dt * dt - 7.0e-7 * dt * dt * dt + 2.2e-8 * dt * dt * dt * dt);
-    EXPECT_NEAR(bend.calculateEnergy(posA, posB, posC, posD), ref, tol * std::abs(ref));
-  }
+  // MM3_IN_PLANE needs the fourth atom D of the projection, which a bend does not carry: refused (it was evaluated as
+  // the ordinary MM3 bend)
+  EXPECT_THROW(static_cast<void>(BendPotential({0, 1, 2}, BendType::MM3_inplane, {0.59, 114.0})), std::runtime_error);
 }
 
 TEST(internal_potentials, inversion_bend_forms_match_RASPA2)
@@ -440,9 +420,9 @@ TEST(internal_potentials, torsion_forms_match_RASPA2)
     TorsionPotential torsion({0, 1, 2, 3}, TorsionType::ModifiedTraPPE, {0.0, 355.03, -68.19, 791.32, 15.0});
     double shifted = phi - 15.0 * DEG2RAD;
     shifted -= std::rint(shifted / (2.0 * std::numbers::pi)) * 2.0 * std::numbers::pi;
-    // Note: RASPA2's MOD_TRAPPE polynomial implements the 2nd harmonic as -p2*(1+cos(2*phi))
-    // (i.e. -2*p2*cos^2(phi)), even though the comment in internal_energy.c writes p2*(1-cos(2*phi)).
-    double ref = K2E(0.0) + K2E(355.03) * (1.0 + std::cos(shifted)) - K2E(-68.19) * (1.0 + std::cos(2.0 * shifted)) +
+    // p0 + p1 (1 + cos phi) + p2 (1 - cos 2 phi) + p3 (1 + cos 3 phi) in the shifted angle, as TRAPPE. (RASPA2's
+    // polynomial dropped the constant 2 p2 of the second harmonic, implementing -p2 (1 + cos 2 phi).)
+    double ref = K2E(0.0) + K2E(355.03) * (1.0 + std::cos(shifted)) + K2E(-68.19) * (1.0 - std::cos(2.0 * shifted)) +
                  K2E(791.32) * (1.0 + std::cos(3.0 * shifted));
     EXPECT_NEAR(torsion.calculateEnergy(posA, posB, posC, posD), ref, 1e-6 * std::abs(ref));
   }
@@ -728,9 +708,6 @@ TEST(internal_potentials, mm3_bends_print_their_force_constant_in_mdyne_per_angs
 {
   const std::string bend = BendPotential({0, 1, 2}, BendType::MM3, {0.8, 109.5}).print();
   EXPECT_NE(bend.find("MM3 p_0/k_B=0.8 [mdyne A/rad^2], p_1=109.5 [degrees]\n"), std::string::npos) << bend;
-  const std::string inplane = BendPotential({0, 1, 2}, BendType::MM3_inplane, {0.8, 109.5}).print();
-  EXPECT_NE(inplane.find("MM3_INPLANE p_0/k_B=0.8 [mdyne A/rad^2], p_1=109.5 [degrees]\n"), std::string::npos)
-      << inplane;
   const std::string inversion = InversionBendPotential({0, 1, 2, 3}, InversionBendType::MM3, {0.05, 0.0}).print();
   EXPECT_NE(inversion.find("MM3 p_0/k_B=0.05 [mdyne A/rad^2], p_1=0 [degrees]\n"), std::string::npos) << inversion;
 }
@@ -798,4 +775,16 @@ TEST(internal_potentials, torsion_angle_follows_the_iupac_sign_convention)
   const double top = cvff.calculateEnergy(A, B, C, D);
   EXPECT_GT(top, cvff.calculateEnergy(A, B, C, mirroredD));
   EXPECT_NEAR(std::get<0>(cvff.potentialEnergyGradientStrain(A, B, C, D)), top, 1e-9 * std::abs(top));
+}
+
+// The modified TraPPE torsion without a phase is the TraPPE torsion: the constant 2 p2 of p2 (1 - cos 2 phi) was
+// missing, which shifted every energy by -2 p2.
+TEST(internal_potentials, modified_trappe_without_a_phase_equals_trappe)
+{
+  const double3 A(1.2, 0.3, -0.1), B(0.0, 0.0, 0.0), C(0.0, 0.0, 1.5), D(-0.7, 1.1, 1.9);
+  const TorsionPotential trappe({0, 1, 2, 3}, TorsionType::TraPPE, {12.0, 355.03, -68.19, 791.32});
+  const TorsionPotential modified({0, 1, 2, 3}, TorsionType::ModifiedTraPPE, {12.0, 355.03, -68.19, 791.32, 0.0});
+  const double expected = trappe.calculateEnergy(A, B, C, D);
+  EXPECT_NEAR(modified.calculateEnergy(A, B, C, D), expected, 1e-9 * std::abs(expected));
+  EXPECT_NEAR(std::get<0>(modified.potentialEnergyGradientStrain(A, B, C, D)), expected, 1e-9 * std::abs(expected));
 }

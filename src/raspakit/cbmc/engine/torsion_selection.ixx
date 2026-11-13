@@ -20,7 +20,8 @@ export namespace CBMC
 struct TorsionOrientation
 {
   std::vector<Atom> positions;
-  double rosenbluthWeight;
+  double logRosenbluthWeight{0.0};  ///< the logarithm (the weight underflows at high torsion barriers)
+  bool dead{false};                 ///< every spin behind the wall of a chiral junction
 };
 
 /**

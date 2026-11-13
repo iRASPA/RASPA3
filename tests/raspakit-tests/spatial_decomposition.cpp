@@ -1860,7 +1860,6 @@ TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_every_bond_bend
   bendCase("Cosine", BendType::Cosine, {5000.0, 3.0, 30.0});
   bendCase("Tafipolsky", BendType::Tafipolsky, {5000.0});
   bendCase("MM3", BendType::MM3, {2.0, 110.0});
-  bendCase("MM3_inplane", BendType::MM3_inplane, {2.0, 110.0});
 
   // torsions: phi about 70 +/- a few degrees
   torsionCase("Harmonic", TorsionType::Harmonic, {5000.0, 60.0});

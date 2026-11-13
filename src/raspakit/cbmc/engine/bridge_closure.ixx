@@ -44,7 +44,7 @@ export namespace CBMC
 struct BridgeClosureBase
 {
   Atom atom;
-  double weight;
+  double logWeight;  ///< the logarithm of the base weight
 };
 
 /// Draws the two bond lengths and places the closing bead; std::nullopt when the draw cannot span the
@@ -54,7 +54,9 @@ struct BridgeClosureBase
                                                                        const GrowStep &step);
 
 /// The base weight of an existing closing-bead position (the retrace's pinned old configuration).
-[[nodiscard]] double bridgeClosureBaseWeight(double beta, std::span<const Atom> chainAtoms, const GrowStep &step);
+/// The logarithm of the weight, or std::nullopt for a degenerate geometry (coincident beads), which has none.
+[[nodiscard]] std::optional<double> bridgeClosureLogBaseWeight(double beta, std::span<const Atom> chainAtoms,
+                                                               const GrowStep &step);
 
 /// The spin axis of a closure step: the unit vector from the anchor to the closure bead (a degenerate
 /// axis falls back to z, like the junction axis of an attach step).

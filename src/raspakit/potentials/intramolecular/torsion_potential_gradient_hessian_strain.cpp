@@ -118,8 +118,9 @@ Potentials::Internal::torsionPotentialEnergyGradientHessianStrain(
       const double shifted_cos_phi = std::cos(phi);
       const double shifted_sin_phi = std::sin(phi);
       const double shifted_cos_phi2 = shifted_cos_phi * shifted_cos_phi;
-      U = parameters[0] + parameters[1] + parameters[3] + (parameters[1] - 3.0 * parameters[3]) * shifted_cos_phi -
-          2.0 * parameters[2] * shifted_cos_phi2 + 4.0 * parameters[3] * shifted_cos_phi * shifted_cos_phi2;
+      U = parameters[0] + parameters[1] + 2.0 * parameters[2] + parameters[3] +
+          (parameters[1] - 3.0 * parameters[3]) * shifted_cos_phi - 2.0 * parameters[2] * shifted_cos_phi2 +
+          4.0 * parameters[3] * shifted_cos_phi * shifted_cos_phi2;
       DF = ((parameters[1] - 3.0 * parameters[3]) * shifted_sin_phi -
             4.0 * parameters[2] * shifted_cos_phi * shifted_sin_phi +
             12.0 * parameters[3] * shifted_cos_phi2 * shifted_sin_phi) /

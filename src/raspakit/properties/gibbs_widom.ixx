@@ -42,9 +42,11 @@ export struct PropertyGibbsWidom
   {
     // Volume per molecule of the molecules already in the box. Counting the test particle as N + 1
     // shifts the ideal-gas term and the fugacity by ln((N + 1) / N), which corrupts the Henry
-    // coefficient at low loading. An empty box has no density; one molecule keeps the ratio finite.
-    double volumePerMolecule = V / static_cast<double>(std::max(N, 1uz));
+    // coefficient at low loading. An empty box has no volume per molecule: it gives no chemical-potential sample
+    // (counted as one molecule, it gave V W, a finite fugacity for a box without molecules).
     rosenbluthWeight.addSample(blockIndex, RosenbluthValue, weight);
+    if (N == 0uz) return;
+    const double volumePerMolecule = V / static_cast<double>(N);
     chemicalPotentialTerms.addSample(
         blockIndex, WidomData(volumePerMolecule * RosenbluthValue, RosenbluthValue, volumePerMolecule), weight);
   }

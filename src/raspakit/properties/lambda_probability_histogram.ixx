@@ -243,6 +243,17 @@ export struct PropertyLambdaProbabilityHistogram
   /// The probability histogram pooled over all blocks.
   std::vector<double> averagedProbabilityHistogram() const { return normalizedHistogram(summedLambdaBins()); }
 
+  /// The blocks that hold samples (and, for the chemical potentials, samples at both ends of the lambda path): a
+  /// block that was never reached has no estimate, and taking it as zero pulled the averages and errors towards it.
+  bool blockSampled(std::size_t blockIndex) const
+  {
+    return std::ranges::any_of(bookKeepingLambda[blockIndex], [](double count) { return count > 0.0; });
+  }
+  bool blockSampledAtBothEnds(std::size_t blockIndex) const
+  {
+    return bookKeepingLambda[blockIndex].front() > 0.0 && bookKeepingLambda[blockIndex].back() > 0.0;
+  }
+
   std::pair<std::vector<double>, std::vector<double>> averageProbabilityHistogram() const
   {
     std::vector<double> average = averagedProbabilityHistogram();
@@ -250,7 +261,7 @@ export struct PropertyLambdaProbabilityHistogram
     std::vector<std::vector<double>> blockAverages;
     blockAverages.reserve(numberOfBlocks);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-      blockAverages.push_back(averagedProbabilityHistogram(blockIndex));
+      if (blockSampled(blockIndex)) blockAverages.push_back(averagedProbabilityHistogram(blockIndex));
 
     std::vector<double> confidenceIntervalError = blockErrorEstimate(blockAverages, average);
 
@@ -293,7 +304,7 @@ export struct PropertyLambdaProbabilityHistogram
     std::vector<std::vector<double>> blockAverages;
     blockAverages.reserve(numberOfBlocks);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-      blockAverages.push_back(averagedLandauFreeEnergyHistogram(blockIndex, beta));
+      if (blockSampled(blockIndex)) blockAverages.push_back(averagedLandauFreeEnergyHistogram(blockIndex, beta));
 
     std::vector<double> confidenceIntervalError = blockErrorEstimate(blockAverages, average);
 
@@ -325,9 +336,9 @@ export struct PropertyLambdaProbabilityHistogram
   {
     double average = averagedExcessChemicalPotential(beta);
 
-    std::vector<double> blockAverages(numberOfBlocks);
+    std::vector<double> blockAverages;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-      blockAverages[blockIndex] = averagedExcessChemicalPotential(blockIndex, beta);
+      if (blockSampledAtBothEnds(blockIndex)) blockAverages.push_back(averagedExcessChemicalPotential(blockIndex, beta));
 
     double confidenceIntervalError = blockErrorEstimate<double>(blockAverages, average);
 
@@ -340,10 +351,11 @@ export struct PropertyLambdaProbabilityHistogram
   {
     double average = averagedExcessChemicalPotential(beta) + averagedIdealGasChemicalPotential(beta) + bias;
 
-    std::vector<double> blockAverages(numberOfBlocks);
+    std::vector<double> blockAverages;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-      blockAverages[blockIndex] = averagedExcessChemicalPotential(blockIndex, beta) +
-                                  averagedIdealGasChemicalPotential(blockIndex, beta) + bias;
+      if (blockSampledAtBothEnds(blockIndex))
+        blockAverages.push_back(averagedExcessChemicalPotential(blockIndex, beta) +
+                                averagedIdealGasChemicalPotential(blockIndex, beta) + bias);
 
     double confidenceIntervalError = blockErrorEstimate<double>(blockAverages, average);
 
@@ -356,11 +368,12 @@ export struct PropertyLambdaProbabilityHistogram
         std::exp(beta * (averagedExcessChemicalPotential(beta) + averagedIdealGasChemicalPotential(beta) + bias)) /
         beta;
 
-    std::vector<double> blockAverages(numberOfBlocks);
+    std::vector<double> blockAverages;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-      blockAverages[blockIndex] = std::exp(beta * (averagedExcessChemicalPotential(blockIndex, beta) +
-                                                   averagedIdealGasChemicalPotential(blockIndex, beta) + bias)) /
-                                  beta;
+      if (blockSampledAtBothEnds(blockIndex))
+        blockAverages.push_back(std::exp(beta * (averagedExcessChemicalPotential(blockIndex, beta) +
+                                                 averagedIdealGasChemicalPotential(blockIndex, beta) + bias)) /
+                                beta);
 
     double confidenceIntervalError = blockErrorEstimate<double>(blockAverages, average);
 
@@ -405,7 +418,7 @@ export struct PropertyLambdaProbabilityHistogram
     std::vector<std::vector<double>> blockAverages;
     blockAverages.reserve(numberOfBlocks);
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-      blockAverages.push_back(averagedDUdlambda(blockIndex));
+      if (blockSampled(blockIndex)) blockAverages.push_back(averagedDUdlambda(blockIndex));
 
     std::vector<double> confidenceIntervalError = blockErrorEstimate(blockAverages, average);
 
@@ -458,9 +471,9 @@ export struct PropertyLambdaProbabilityHistogram
   {
     double average = averagedExcessChemicalPotentialDUdlambda();
 
-    std::vector<double> blockAverages(numberOfBlocks);
+    std::vector<double> blockAverages;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-      blockAverages[blockIndex] = averagedExcessChemicalPotentialDUdlambda(blockIndex);
+      if (blockSampled(blockIndex)) blockAverages.push_back(averagedExcessChemicalPotentialDUdlambda(blockIndex));
 
     double confidenceIntervalError = blockErrorEstimate<double>(blockAverages, average);
 

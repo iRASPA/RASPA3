@@ -160,7 +160,7 @@ bool feelerExists(RandomNumber &random, const RecoilContext &ctx, std::size_t se
   for (std::size_t j = 0; j != ctx.numberOfTrialDirections(); ++j)
   {
     StepTrial trial = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.env.forceField, ctx.env.simulationBox, ctx.component, atoms, step);
-    if (!(trial.torsionWeight > 0.0)) continue;  // a dead bridge-closure draw: closed
+    if (trial.dead) continue;  // a dead bridge-closure draw: closed
 
     std::optional<StepTrialEnergy> energy = evaluateRecoilTrial(ctx, seg, atoms, trial.positions);
     if (!energy.has_value()) continue;
@@ -204,7 +204,7 @@ std::size_t countAvailableDirections(RandomNumber &random, const RecoilContext &
   for (std::size_t j = firstAlternative; j < ctx.numberOfTrialDirections(); ++j)
   {
     StepTrial alternative = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.env.forceField, ctx.env.simulationBox, ctx.component, atoms, step);
-    if (!(alternative.torsionWeight > 0.0)) continue;  // a dead bridge-closure draw: closed
+    if (alternative.dead) continue;  // a dead bridge-closure draw: closed
 
     std::optional<StepTrialEnergy> energy = evaluateRecoilTrial(ctx, seg, atoms, alternative.positions);
     if (!energy.has_value()) continue;
@@ -218,11 +218,11 @@ std::size_t countAvailableDirections(RandomNumber &random, const RecoilContext &
 
 // Log of the per-step recoil factor m_i / k * exp(-beta u_i) / p_open * w_torsion * exp(-beta u_unsampled),
 // evaluated with the step's beads in place in 'atoms' for the not-sampled internal terms.
-double stepLogWeight(const RecoilContext &ctx, std::size_t seg, std::size_t available, double potentialEnergy,
-                     double openProbabilityOfSelected, double torsionWeight, const std::vector<Atom> &atoms)
+double stepLogWeight(const RecoilContext& ctx, std::size_t seg, std::size_t available, double potentialEnergy,
+                     double openProbabilityOfSelected, double logTorsionWeight, const std::vector<Atom>& atoms)
 {
   return std::log(static_cast<double>(available) / static_cast<double>(ctx.numberOfTrialDirections())) -
-         ctx.env.beta * potentialEnergy - std::log(openProbabilityOfSelected) + std::log(torsionWeight) +
+         ctx.env.beta * potentialEnergy - std::log(openProbabilityOfSelected) + logTorsionWeight +
          unsampledInternalLogFactor(ctx.env.beta, ctx.steps[seg], atoms);
 }
 
@@ -253,7 +253,7 @@ GrowOutcome growRecursive(RandomNumber &random, const RecoilContext &ctx, std::s
   for (std::size_t j = 0; j != ctx.numberOfTrialDirections(); ++j)
   {
     StepTrial trial = generateRecoilTrial(random, ctx.env.settings, ctx.env.beta, ctx.env.forceField, ctx.env.simulationBox, ctx.component, atoms, step);
-    if (!(trial.torsionWeight > 0.0)) continue;  // a dead bridge-closure draw: closed
+    if (trial.dead) continue;  // a dead bridge-closure draw: closed
 
     std::optional<StepTrialEnergy> energy = evaluateRecoilTrial(ctx, seg, atoms, trial.positions);
     if (!energy.has_value()) continue;
@@ -352,8 +352,8 @@ RecoilContext makeRecoilContext(const GrowContext &context, const Component &com
     statistics.availableDirectionsSum += static_cast<double>(available);
     statistics.growSteps += 1.0;
 
-    const double logWeight = stepLogWeight(ctx, seg, available, record.energy.potentialEnergy(),
-                                           record.openProbability, record.selected.torsionWeight, chainAtoms);
+    const double logWeight = stepLogWeight(ctx, seg, available, record.energy.potentialEnergy(), record.openProbability,
+                                           record.selected.logTorsionWeight, chainAtoms);
     if (!chain.addGrownStep(logWeight, record.energy.external, context.settings.minimumRosenbluthFactor))
     {
       return std::nullopt;
@@ -384,15 +384,15 @@ RecoilContext makeRecoilContext(const GrowContext &context, const Component &com
     if (!oldEnergy.has_value()) throwExistingConfigurationOverlaps("Recoil growth", component, seg, step);
     const double oldPotential = oldEnergy->potentialEnergy();
 
-    const double torsionWeight =
-        oldConfigurationTorsionWeight(random, ctx.env.settings, ctx.env.beta, ctx.env.forceField, ctx.env.simulationBox, component, oldAtoms, step);
+    const double logTorsionWeight = oldConfigurationLogTorsionWeight(
+        random, ctx.env.settings, ctx.env.beta, ctx.env.forceField, ctx.env.simulationBox, component, oldAtoms, step);
 
     // The old configuration is trial direction 0 (always counted available); the remaining k - 1
     // directions are generated and probed exactly as on the grow. No per-step guard on the retrace.
     const std::size_t available = countAvailableDirections(random, ctx, seg, oldAtoms, 1);
 
     chain.addRetracedStep(stepLogWeight(ctx, seg, available, oldPotential, openProbability(ctx, seg, oldPotential),
-                                        torsionWeight, oldAtoms),
+                                        logTorsionWeight, oldAtoms),
                           oldEnergy->external);
   }
 

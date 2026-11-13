@@ -33,12 +33,14 @@ double solveLambdaMethod2(std::span<const double> eigenvalues, std::span<const d
     return sum;
   };
 
-  if (lowest < 0.0)
   {
     // The residual sum_i g_i^2/(lambda - e_i) - lambda falls monotonically on (-inf, lowest), from +inf down to
-    // -inf: its root sits arbitrarily close below 'lowest' for a small gradient along the lowest mode and far below
-    // it for a large one. Bracket the root before bisecting: shrink the upper offset until the residual there is
-    // no longer positive, grow the lower offset until the residual there is no longer negative.
+    // -inf, whatever the sign of 'lowest': its root sits arbitrarily close below 'lowest' for a small gradient
+    // along the lowest mode and far below it for a large one. Bracket the root before bisecting: shrink the upper
+    // offset until the residual there is no longer positive, grow the lower offset until the residual there is no
+    // longer negative. (For a positive lowest eigenvalue the plain fixed-point iteration lambda <- sum g^2/(lambda -
+    // e) was used, which settles into a two-cycle on a soft mode, |g_1| / e_1 of a few thousand, and never
+    // converges.)
     const double scale = std::max(1.0, std::abs(lowest));
     const double smallestOffset = 1.0e-12 * scale;
     double upperOffset = 1.0e-3 * scale;
@@ -78,17 +80,6 @@ double solveLambdaMethod2(std::span<const double> eigenvalues, std::span<const d
     }
     return lambda;
   }
-
-  for (std::size_t iteration = 0; iteration < maximumIterations; ++iteration)
-  {
-    const double next = secularSum(lambda);
-    if (std::abs(next - lambda) <= convergenceTolerance * std::max(1.0, std::abs(lambda)))
-    {
-      return next;
-    }
-    lambda = next;
-  }
-  return lambda;
 }
 }  // namespace
 

@@ -2219,3 +2219,31 @@ TEST(molecular_dynamics, setup_refuses_external_fields_and_polarization)
   MolecularDynamics polarizationDriver({0, 0, 0, 0, 1000, 10000, 5000, 5000}, {withPolarization}, 17uz, 5, false);
   EXPECT_THROW(polarizationDriver.setup(), std::runtime_error);
 }
+
+// A rigid framework group across the periodic boundary is one body: its atoms are made whole when the groups are set
+// up, so its centre of mass lies between them and not in the middle of the cell (the cell builder wraps every atom,
+// and the group's centre of mass, inertia and orientation came out of the torn coordinates).
+TEST(mixed_framework, a_rigid_group_across_the_boundary_is_made_whole)
+{
+  ForceField forceField({{"C", true, 12.0, 0.0, 0.0, 6, true}}, {{80.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 5.0, 5.0, 5.0, false, false, false);
+  const SimulationBox box(14.0, 14.0, 14.0);
+  auto frameworkAtom = [&](double3 fractionalPosition) { return Atom(fractionalPosition, 0.0, 1.0, 0, 0, 0, 0, true); };
+  // atoms 1 and 2 are bonded across x = 0 (13.6 and 0.6 Angstrom: 1.0 Angstrom apart through the boundary)
+  std::vector<Atom> atoms{frameworkAtom({7.0 / 14.0, 7.0 / 14.0, 7.0 / 14.0}),
+                          frameworkAtom({13.6 / 14.0, 7.0 / 14.0, 7.0 / 14.0}),
+                          frameworkAtom({0.6 / 14.0, 7.5 / 14.0, 7.0 / 14.0})};
+  Framework framework(forceField, "straddling", box, 1, atoms, atoms, int3(1, 1, 1));
+  TemporaryFile definition("raspa3-straddling-rigid-group.json",
+                           R"({"Type": "Flexible",
+                               "Groups": [
+                                 {"Type": "Fixed", "Atoms": [0]},
+                                 {"Type": "Rigid", "Atoms": [1, 2]}
+                               ]})");
+  framework.readFrameworkDefinition(forceField, definition.path().string());
+
+  EXPECT_LT((framework.atoms[1].position - framework.atoms[2].position).length(), 1.5);
+  const GroupState state = framework.deriveGroupState(1, framework.atoms);
+  const double x = state.centerOfMassPosition.x;
+  EXPECT_TRUE(std::abs(x - 0.0) < 1.0 || std::abs(x - 14.0) < 1.0) << "centre of mass at x = " << x;
+}

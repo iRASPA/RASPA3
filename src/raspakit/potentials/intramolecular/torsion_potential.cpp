@@ -567,8 +567,9 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       phi -= std::rint(phi / (2.0 * std::numbers::pi)) * 2.0 * std::numbers::pi;
       shifted_cos_phi = std::cos(phi);
       shifted_cos_phi2 = shifted_cos_phi * shifted_cos_phi;
-      return parameters[0] + parameters[1] + parameters[3] + (parameters[1] - 3.0 * parameters[3]) * shifted_cos_phi -
-             2.0 * parameters[2] * shifted_cos_phi2 + 4.0 * parameters[3] * shifted_cos_phi * shifted_cos_phi2;
+      return parameters[0] + parameters[1] + 2.0 * parameters[2] + parameters[3] +
+             (parameters[1] - 3.0 * parameters[3]) * shifted_cos_phi - 2.0 * parameters[2] * shifted_cos_phi2 +
+             4.0 * parameters[3] * shifted_cos_phi * shifted_cos_phi2;
     case TorsionType::CVFF:
       // p_0*(1+cos(p_1*phi-p_2))
       // ========================
@@ -757,8 +758,9 @@ std::tuple<double, std::array<double3, 4>, double3x3> TorsionPotential::potentia
       shifted_cos_phi = std::cos(phi);
       const double shifted_sin_phi = std::sin(phi);
       shifted_cos_phi2 = shifted_cos_phi * shifted_cos_phi;
-      U = parameters[0] + parameters[1] + parameters[3] + (parameters[1] - 3.0 * parameters[3]) * shifted_cos_phi -
-          2.0 * parameters[2] * shifted_cos_phi2 + 4.0 * parameters[3] * shifted_cos_phi * shifted_cos_phi2;
+      U = parameters[0] + parameters[1] + 2.0 * parameters[2] + parameters[3] +
+          (parameters[1] - 3.0 * parameters[3]) * shifted_cos_phi - 2.0 * parameters[2] * shifted_cos_phi2 +
+          4.0 * parameters[3] * shifted_cos_phi * shifted_cos_phi2;
       DF = ((parameters[1] - 3.0 * parameters[3]) * shifted_sin_phi -
             4.0 * parameters[2] * shifted_cos_phi * shifted_sin_phi +
             12.0 * parameters[3] * shifted_cos_phi2 * shifted_sin_phi) /

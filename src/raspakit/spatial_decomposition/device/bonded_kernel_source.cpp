@@ -304,7 +304,7 @@ DEVICE_FUNCTION float torsionTerm(uint type, PRIVATE const float* P, float3 posA
       shifted_cos_phi = cos(phi);
       shifted_sin_phi = sin(phi);
       shifted_cos_phi2 = shifted_cos_phi * shifted_cos_phi;
-      U = P[0] + P[1] + P[3] + (P[1] - 3.0f * P[3]) * shifted_cos_phi - 2.0f * P[2] * shifted_cos_phi2 +
+      U = P[0] + P[1] + 2.0f * P[2] + P[3] + (P[1] - 3.0f * P[3]) * shifted_cos_phi - 2.0f * P[2] * shifted_cos_phi2 +
           4.0f * P[3] * shifted_cos_phi * shifted_cos_phi2;
       DF = ((P[1] - 3.0f * P[3]) * shifted_sin_phi - 4.0f * P[2] * shifted_cos_phi * shifted_sin_phi +
             12.0f * P[3] * shifted_cos_phi2 * shifted_sin_phi) /
