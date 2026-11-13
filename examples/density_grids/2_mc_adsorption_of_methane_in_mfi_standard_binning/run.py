@@ -19,7 +19,7 @@ mfi = raspalib.Framework(
     forceField=ff,
     componentName="MFI_SI",
     fileName="MFI_SI.cif",
-    numberOfUnitCells=raspalib.int3(2, 2, 2),
+    numberOfUnitCells=[2, 2, 2],
 )
 
 system = raspalib.System(

@@ -23,7 +23,7 @@ cubtc = raspalib.Framework(
     forceField=ff,
     componentName="Cu-BTC",
     fileName="Cu-BTC.cif",
-    numberOfUnitCells=raspalib.int3(1, 1, 1),
+    numberOfUnitCells=[1, 1, 1],
 )
 
 system = raspalib.System(

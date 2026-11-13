@@ -119,33 +119,218 @@ std::pair<T, T> operator*(const double2& a, const std::pair<T, T>& b)
   return std::make_pair(a.x * b.first, a.y * b.second);
 }
 
+// int3, double3 and double4 cross the boundary as Python sequences and tuples, as in the nanobind bindings, and
+// are not registered as classes: pybind11 does not allow a class_<T> next to a custom type_caster<T>, and the
+// specializations have to be declared before the module body instantiates type_caster for these types.
+namespace pybind11 {
+namespace detail {
+
+template <>
+struct type_caster<int3> 
+{
+  // This macro inserts a lot of boilerplate code and sets the type hint.
+  // `io_name` is used to specify different type hints for arguments and return values.
+  // The signature of our negate function would then look like:
+  // `negate(Sequence[float]) -> tuple[float, float]`
+  PYBIND11_TYPE_CASTER(int3, io_name("Sequence[int]", "tuple[int, int, int]"));
+
+  // C++ -> Python: convert `Point2D` to `tuple[float, float]`. The second and third arguments
+  // are used to indicate the return value policy and parent object (for
+  // return_value_policy::reference_internal) and are often ignored by custom casters.
+  // The return value should reflect the type hint specified by the second argument of `io_name`.
+  static handle
+  cast(const int3 &number, return_value_policy /*policy*/, handle /*parent*/) 
+  {
+      return pybind11::make_tuple(number.x, number.y, number.z).release();
+  }
+
+  // Python -> C++: convert a `PyObject` into a `int3` and return false upon failure. The
+  // second argument indicates whether implicit conversions should be allowed.
+  // The accepted types should reflect the type hint specified by the first argument of
+  // `io_name`.
+  bool load(handle src, bool /*convert*/)
+  {
+    // Check if handle is a Sequence
+    if (!pybind11::isinstance<pybind11::sequence>(src)) 
+    {
+      return false;
+    }
+    auto seq = pybind11::reinterpret_borrow<pybind11::sequence>(src);
+    // Check if exactly two values are in the Sequence
+    if (seq.size() != 3) 
+    {
+      return false;
+    }
+    // Check if each element is either an int
+    for (auto item : seq)
+    {
+      if (!pybind11::isinstance<pybind11::int_>(item))
+      {
+        return false;
+      }
+    }
+    value.x = seq[0].cast<std::int32_t>();
+    value.y = seq[1].cast<std::int32_t>();
+    value.z = seq[2].cast<std::int32_t>();
+    return true;
+  }
+};
+
+template <>
+struct type_caster<double3> 
+{
+  // This macro inserts a lot of boilerplate code and sets the type hint.
+  // `io_name` is used to specify different type hints for arguments and return values.
+  // The signature of our negate function would then look like:
+  // `negate(Sequence[float]) -> tuple[float, float]`
+  PYBIND11_TYPE_CASTER(double3, io_name("Sequence[float] | float", "tuple[float, float, float]"));
+
+  // C++ -> Python: convert `Point2D` to `tuple[float, float]`. The second and third arguments
+  // are used to indicate the return value policy and parent object (for
+  // return_value_policy::reference_internal) and are often ignored by custom casters.
+  // The return value should reflect the type hint specified by the second argument of `io_name`.
+  static handle
+  cast(const double3 &number, return_value_policy /*policy*/, handle /*parent*/) {
+      return pybind11::make_tuple(number.x, number.y, number.z).release();
+  }
+
+  // Python -> C++: convert a `PyObject` into a `double3` and return false upon failure. The
+  // second argument indicates whether implicit conversions should be allowed.
+  // The accepted types should reflect the type hint specified by the first argument of
+  // `io_name`.
+  bool load(handle src, bool /*convert*/) 
+  {
+    if (pybind11::isinstance<pybind11::float_>(src) || pybind11::isinstance<pybind11::int_>(src))
+    {
+      value.x = src.cast<double>();
+      value.y = src.cast<double>();
+      value.z = src.cast<double>();
+      return true;
+    }
+
+    // Check if handle is a Sequence
+    if (pybind11::isinstance<pybind11::sequence>(src)) 
+    {
+      auto seq = pybind11::reinterpret_borrow<pybind11::sequence>(src);
+
+      // Check if exactly one value are in the Sequence
+      if (seq.size() == 1)
+      {
+        if (!pybind11::isinstance<pybind11::float_>(seq[0]) && !pybind11::isinstance<pybind11::int_>(seq[0]))
+        {
+          return false;
+        }
+
+        value.x = seq[0].cast<double>();
+        value.y = seq[0].cast<double>();
+        value.z = seq[0].cast<double>();
+        return true;
+      }
+
+      // Check if exactly three values are in the Sequence
+      if (seq.size() == 3)
+      {
+        // Check if each element is either a float or an int
+        for (auto item : seq) 
+        {
+          if (!pybind11::isinstance<pybind11::float_>(item) && !pybind11::isinstance<pybind11::int_>(item))
+          {
+            return false;
+          }
+        }
+        value.x = seq[0].cast<double>();
+        value.y = seq[1].cast<double>();
+        value.z = seq[2].cast<double>();
+        return true;
+      }
+    }
+
+    return false;
+  }
+};
+
+template <>
+struct type_caster<double4> 
+{
+  // This macro inserts a lot of boilerplate code and sets the type hint.
+  // `io_name` is used to specify different type hints for arguments and return values.
+  // The signature of our negate function would then look like:
+  // `negate(Sequence[float]) -> tuple[float, float]`
+  PYBIND11_TYPE_CASTER(double4, io_name("Sequence[float] | float", "tuple[float, float, float, float]"));
+
+  // C++ -> Python: convert `Point2D` to `tuple[float, float]`. The second and third arguments
+  // are used to indicate the return value policy and parent object (for
+  // return_value_policy::reference_internal) and are often ignored by custom casters.
+  // The return value should reflect the type hint specified by the second argument of `io_name`.
+  static handle
+  cast(const double4 &number, return_value_policy /*policy*/, handle /*parent*/) {
+      return pybind11::make_tuple(number.x, number.y, number.z, number.w).release();
+  }
+
+  // Python -> C++: convert a `PyObject` into a `double4` and return false upon failure. The
+  // second argument indicates whether implicit conversions should be allowed.
+  // The accepted types should reflect the type hint specified by the first argument of
+  // `io_name`.
+  bool load(handle src, bool /*convert*/) 
+  {
+    if (pybind11::isinstance<pybind11::float_>(src) || pybind11::isinstance<pybind11::int_>(src))
+    {
+      value.x = src.cast<double>();
+      value.y = src.cast<double>();
+      value.z = src.cast<double>();
+      value.w = src.cast<double>();
+      return true;
+    }
+
+    // Check if handle is a Sequence
+    if (pybind11::isinstance<pybind11::sequence>(src)) 
+    {
+      auto seq = pybind11::reinterpret_borrow<pybind11::sequence>(src);
+
+      // Check if exactly one value are in the Sequence
+      if (seq.size() == 1)
+      {
+        if (!pybind11::isinstance<pybind11::float_>(seq[0]) && !pybind11::isinstance<pybind11::int_>(seq[0]))
+        {
+          return false;
+        }
+
+        value.x = seq[0].cast<double>();
+        value.y = seq[0].cast<double>();
+        value.z = seq[0].cast<double>();
+        value.w = seq[0].cast<double>();
+        return true;
+      }
+
+      // Check if exactly three values are in the Sequence
+      if (seq.size() == 4)
+      {
+        // Check if each element is either a float or an int
+        for (auto item : seq) 
+        {
+          if (!pybind11::isinstance<pybind11::float_>(item) && !pybind11::isinstance<pybind11::int_>(item))
+          {
+            return false;
+          }
+        }
+        value.x = seq[0].cast<double>();
+        value.y = seq[1].cast<double>();
+        value.z = seq[2].cast<double>();
+        value.w = seq[3].cast<double>();
+        return true;
+      }
+    }
+
+    return false;
+  }
+};
+
+} // namespace detail
+} // namespace pybind11
+
 #define EXPAND_MODULE(name) PYBIND11_MODULE(name, m)
 EXPAND_MODULE(MODULE_NAME)
 {
-  pybind11::class_<int3>(m, "int3")
-      .def(pybind11::init<int32_t, int32_t, int32_t>(), pybind11::arg("x") = 0, pybind11::arg("y") = 0,
-           pybind11::arg("z") = 0)
-      .def_readwrite("x", &int3::x)
-      .def_readwrite("y", &int3::y)
-      .def_readwrite("z", &int3::z)
-      .def("__repr__", &int3::repr);
-
-  pybind11::class_<double3>(m, "double3")
-      .def(pybind11::init<double, double, double>(), pybind11::arg("x") = 0.0, pybind11::arg("y") = 0.0,
-           pybind11::arg("z") = 0.0)
-      .def_readwrite("x", &double3::x)
-      .def_readwrite("y", &double3::y)
-      .def_readwrite("z", &double3::z)
-      .def("__repr__", &double3::repr);
-
-  pybind11::class_<double4>(m, "double4")
-      .def(pybind11::init<double, double, double, double>(), pybind11::arg("x") = 0.0, pybind11::arg("y") = 0.0,
-           pybind11::arg("z") = 0.0, pybind11::arg("w") = 0.0)
-      .def_readwrite("x", &double4::x)
-      .def_readwrite("y", &double4::y)
-      .def_readwrite("z", &double4::z)
-      .def_readwrite("w", &double4::w);
-
   pybind11::class_<EquationOfState> eos(m, "EquationOfState");
 
     pybind11::class_<EquationOfState::FluidInput>(eos, "FluidInput")
@@ -858,209 +1043,3 @@ EXPAND_MODULE(MODULE_NAME)
       .def("average_properties", [](const PropertyPartialMolarProperties& p) { return p.average(); });
 
 }
-
-namespace pybind11 {
-namespace detail {
-
-template <>
-struct type_caster<int3> 
-{
-  // This macro inserts a lot of boilerplate code and sets the type hint.
-  // `io_name` is used to specify different type hints for arguments and return values.
-  // The signature of our negate function would then look like:
-  // `negate(Sequence[float]) -> tuple[float, float]`
-  PYBIND11_TYPE_CASTER(int3, io_name("Sequence[int]", "tuple[int, int, int]"));
-
-  // C++ -> Python: convert `Point2D` to `tuple[float, float]`. The second and third arguments
-  // are used to indicate the return value policy and parent object (for
-  // return_value_policy::reference_internal) and are often ignored by custom casters.
-  // The return value should reflect the type hint specified by the second argument of `io_name`.
-  static handle
-  cast(const int3 &number, return_value_policy /*policy*/, handle /*parent*/) 
-  {
-      return pybind11::make_tuple(number.x, number.y, number.z).release();
-  }
-
-  // Python -> C++: convert a `PyObject` into a `int3` and return false upon failure. The
-  // second argument indicates whether implicit conversions should be allowed.
-  // The accepted types should reflect the type hint specified by the first argument of
-  // `io_name`.
-  bool load(handle src, bool /*convert*/)
-  {
-    // Check if handle is a Sequence
-    if (!pybind11::isinstance<pybind11::sequence>(src)) 
-    {
-      return false;
-    }
-    auto seq = pybind11::reinterpret_borrow<pybind11::sequence>(src);
-    // Check if exactly two values are in the Sequence
-    if (seq.size() != 3) 
-    {
-      return false;
-    }
-    // Check if each element is either an int
-    for (auto item : seq)
-    {
-      if (!pybind11::isinstance<pybind11::int_>(item))
-      {
-        return false;
-      }
-    }
-    value.x = seq[0].cast<std::int32_t>();
-    value.y = seq[1].cast<std::int32_t>();
-    value.z = seq[2].cast<std::int32_t>();
-    return true;
-  }
-};
-
-template <>
-struct type_caster<double3> 
-{
-  // This macro inserts a lot of boilerplate code and sets the type hint.
-  // `io_name` is used to specify different type hints for arguments and return values.
-  // The signature of our negate function would then look like:
-  // `negate(Sequence[float]) -> tuple[float, float]`
-  PYBIND11_TYPE_CASTER(double3, io_name("Sequence[float]", "tuple[float, float, float]"));
-
-  // C++ -> Python: convert `Point2D` to `tuple[float, float]`. The second and third arguments
-  // are used to indicate the return value policy and parent object (for
-  // return_value_policy::reference_internal) and are often ignored by custom casters.
-  // The return value should reflect the type hint specified by the second argument of `io_name`.
-  static handle
-  cast(const double3 &number, return_value_policy /*policy*/, handle /*parent*/) {
-      return pybind11::make_tuple(number.x, number.y, number.z).release();
-  }
-
-  // Python -> C++: convert a `PyObject` into a `double3` and return false upon failure. The
-  // second argument indicates whether implicit conversions should be allowed.
-  // The accepted types should reflect the type hint specified by the first argument of
-  // `io_name`.
-  bool load(handle src, bool /*convert*/) 
-  {
-    if (pybind11::isinstance<pybind11::float_>(src) || pybind11::isinstance<pybind11::int_>(src))
-    {
-      value.x = src.cast<double>();
-      value.y = src.cast<double>();
-      value.z = src.cast<double>();
-      return true;
-    }
-
-    // Check if handle is a Sequence
-    if (pybind11::isinstance<pybind11::sequence>(src)) 
-    {
-      auto seq = pybind11::reinterpret_borrow<pybind11::sequence>(src);
-
-      // Check if exactly one value are in the Sequence
-      if (seq.size() == 1)
-      {
-        if (!pybind11::isinstance<pybind11::float_>(seq[0]) && !pybind11::isinstance<pybind11::int_>(seq[0]))
-        {
-          return false;
-        }
-
-        value.x = seq[0].cast<double>();
-        value.y = seq[0].cast<double>();
-        value.z = seq[0].cast<double>();
-        return true;
-      }
-
-      // Check if exactly three values are in the Sequence
-      if (seq.size() == 3)
-      {
-        // Check if each element is either a float or an int
-        for (auto item : seq) 
-        {
-          if (!pybind11::isinstance<pybind11::float_>(item) && !pybind11::isinstance<pybind11::int_>(item))
-          {
-            return false;
-          }
-        }
-        value.x = seq[0].cast<double>();
-        value.y = seq[1].cast<double>();
-        value.z = seq[2].cast<double>();
-        return true;
-      }
-    }
-
-    return false;
-  }
-};
-
-template <>
-struct type_caster<double4> 
-{
-  // This macro inserts a lot of boilerplate code and sets the type hint.
-  // `io_name` is used to specify different type hints for arguments and return values.
-  // The signature of our negate function would then look like:
-  // `negate(Sequence[float]) -> tuple[float, float]`
-  PYBIND11_TYPE_CASTER(double4, io_name("Sequence[float]", "tuple[float, float, float,float]"));
-
-  // C++ -> Python: convert `Point2D` to `tuple[float, float]`. The second and third arguments
-  // are used to indicate the return value policy and parent object (for
-  // return_value_policy::reference_internal) and are often ignored by custom casters.
-  // The return value should reflect the type hint specified by the second argument of `io_name`.
-  static handle
-  cast(const double4 &number, return_value_policy /*policy*/, handle /*parent*/) {
-      return pybind11::make_tuple(number.x, number.y, number.z, number.w).release();
-  }
-
-  // Python -> C++: convert a `PyObject` into a `double4` and return false upon failure. The
-  // second argument indicates whether implicit conversions should be allowed.
-  // The accepted types should reflect the type hint specified by the first argument of
-  // `io_name`.
-  bool load(handle src, bool /*convert*/) 
-  {
-    if (pybind11::isinstance<pybind11::float_>(src) || pybind11::isinstance<pybind11::int_>(src))
-    {
-      value.x = src.cast<double>();
-      value.y = src.cast<double>();
-      value.z = src.cast<double>();
-      value.w = src.cast<double>();
-      return true;
-    }
-
-    // Check if handle is a Sequence
-    if (pybind11::isinstance<pybind11::sequence>(src)) 
-    {
-      auto seq = pybind11::reinterpret_borrow<pybind11::sequence>(src);
-
-      // Check if exactly one value are in the Sequence
-      if (seq.size() == 1)
-      {
-        if (!pybind11::isinstance<pybind11::float_>(seq[0]) && !pybind11::isinstance<pybind11::int_>(seq[0]))
-        {
-          return false;
-        }
-
-        value.x = seq[0].cast<double>();
-        value.y = seq[0].cast<double>();
-        value.z = seq[0].cast<double>();
-        value.w = seq[0].cast<double>();
-        return true;
-      }
-
-      // Check if exactly three values are in the Sequence
-      if (seq.size() == 4)
-      {
-        // Check if each element is either a float or an int
-        for (auto item : seq) 
-        {
-          if (!pybind11::isinstance<pybind11::float_>(item) && !pybind11::isinstance<pybind11::int_>(item))
-          {
-            return false;
-          }
-        }
-        value.x = seq[0].cast<double>();
-        value.y = seq[1].cast<double>();
-        value.z = seq[2].cast<double>();
-        value.w = seq[3].cast<double>();
-        return true;
-      }
-    }
-
-    return false;
-  }
-};
-
-} // namespace detail
-} // namespace pybind11
