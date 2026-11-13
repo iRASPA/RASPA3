@@ -388,27 +388,31 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     }
   }
 
-  for (std::size_t index = 0; index < potentials.coulombs.size(); ++index)
+  if (forceField.useCharge)
   {
-    const CoulombPotential& potential = potentials.coulombs[index];
-    const std::size_t A = potential.identifiers[0];
-    const std::size_t B = potential.identifiers[1];
-    const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
-    const double rr = double3::dot(dr, dr);
-    if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+    for (std::size_t index = 0; index < potentials.coulombs.size(); ++index)
     {
-      const double r = std::sqrt(rr);
-      const double k = potential.scaling * Units::CoulombicConversionFactor * potential.chargeA * potential.chargeB;
-      accumulateRadial(A, B, images.coulombs[index], k / r, -k / (r * rr), 3.0 * k / (r * rr * rr),
-                       energies.intraCoul);
-    }
-    else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
-    {
-      const double r = std::sqrt(rr);
-      const Potentials::PairDerivatives<2> factors =
-          Potentials::potentialCoulomb<2>(forceField, potential.scaling, 1.0, r, potential.chargeA, potential.chargeB);
-      accumulateRadial(A, B, images.coulombs[index], factors.energy, factors.firstDerivativeFactor,
-                       factors.secondDerivativeFactor, energies.intraCoul);
+      const CoulombPotential& potential = potentials.coulombs[index];
+      const std::size_t A = potential.identifiers[0];
+      const std::size_t B = potential.identifiers[1];
+      const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
+      const double rr = double3::dot(dr, dr);
+      if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+      {
+        const double r = std::sqrt(rr);
+        const double k = potential.scaling * Units::CoulombicConversionFactor * potential.chargeA * potential.chargeB;
+        accumulateRadial(A, B, images.coulombs[index], k / r, -k / (r * rr), 3.0 * k / (r * rr * rr),
+                         energies.intraCoul);
+      }
+      else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
+      {
+        const double r = std::sqrt(rr);
+        const Potentials::PairDerivatives<2> factors =
+            Potentials::potentialCoulomb<2>(forceField, 1.0, 1.0, r, potential.chargeA, potential.chargeB);
+        accumulateRadial(A, B, images.coulombs[index], potential.scaling * factors.energy,
+                         potential.scaling * factors.firstDerivativeFactor,
+                         potential.scaling * factors.secondDerivativeFactor, energies.intraCoul);
+      }
     }
   }
 

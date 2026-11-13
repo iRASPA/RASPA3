@@ -10,6 +10,7 @@ import atom;
 import atom_dynamics;
 import cif_reader;
 import double3;
+import double3x3;
 import forcefield;
 import framework;
 import generalized_hessian;
@@ -398,6 +399,59 @@ TEST(framework_intramolecular_reader, applies_independent_14_scaling_factors)
   ASSERT_NE(scaledCoulomb, framework.intraMolecularPotentials.coulombs.end());
   EXPECT_DOUBLE_EQ(scaledVDW->scaling, 0.5);
   EXPECT_DOUBLE_EQ(scaledCoulomb->scaling, 0.75);
+}
+
+// The Coulomb pair terms of a flexible framework follow the charge switch of the force field at evaluation time, as the
+// framework-molecule and intermolecular Coulomb sums do: with the switch off they contribute nothing to the energy,
+// the gradient, the strain derivative and the Hessian, whichever branch (scaled 1-4 or ordinary pair) they take.
+TEST(framework_intramolecular_reader, coulomb_terms_follow_the_charge_switch_of_the_force_field)
+{
+  ForceField forceField = makeFlexibleIrmofForceField();
+
+  const std::size_t carbon = *forceField.findPseudoAtom("C3");
+  const std::size_t hydrogen = *forceField.findPseudoAtom("H1");
+  // a bonded chain 0-1-2-3 (its 1-4 pair is the scaled Coulomb term) and a detached atom 4 (its pairs with the chain
+  // are ordinary Coulomb terms)
+  std::vector<Atom> atoms{fractionalAtom({0.100, 0.5, 0.5}, carbon), fractionalAtom({0.165, 0.5, 0.5}, hydrogen),
+                          fractionalAtom({0.230, 0.5, 0.5}, carbon), fractionalAtom({0.295, 0.5, 0.5}, hydrogen),
+                          fractionalAtom({0.500, 0.5, 0.5}, carbon)};
+  for (Atom& atom : atoms) atom.charge = forceField.pseudoAtoms[atom.type].charge;
+  const SimulationBox box(20.0, 20.0, 20.0);
+  Framework framework(forceField, "charged-chain", box, 1, atoms, atoms, {1, 1, 1});
+  TemporaryFile definition("raspa3-framework-charge-switch.json",
+                           R"({"Type": "Flexible",
+          "Intra14VanDerWaalsScalingValue": 0.5,
+          "Intra14ChargeChargeScalingValue": 0.75,
+          "Bonds": [[["C3", "H1"], "HARMONIC", [100.0, 1.3]]]})");
+  framework.readFrameworkDefinition(forceField, definition.path().string());
+  forceField.initializeEwaldParameters(box);
+  ASSERT_EQ(framework.intraMolecularPotentials.coulombs.size(), 5);
+
+  const MinimizationDofLayout layout = buildMinimizationDofLayout({}, {}, framework.atoms.size());
+  const auto evaluate = [&](const ForceField& field)
+  {
+    std::array<double, 4> intraCoul{};
+    intraCoul[0] = Interactions::computeFrameworkIntraMolecularEnergy(field, framework, box, framework.atoms).intraCoul;
+    std::vector<AtomDynamics> dynamics(framework.atoms.size());
+    intraCoul[1] =
+        Interactions::computeFrameworkIntraMolecularGradient(field, framework, box, framework.atoms, dynamics)
+            .intraCoul;
+    intraCoul[2] = Interactions::computeFrameworkIntraMolecularEnergyStrainDerivative(field, framework, box,
+                                                                                      framework.atoms, dynamics)
+                       .first.intraCoul;
+    GeneralizedHessian hessian(layout.numDofs(), 0);
+    intraCoul[3] = Interactions::computeFrameworkIntraMolecularHessian(field, framework, box, framework.atoms, layout,
+                                                                       hessian, dynamics)
+                       .intraCoul;
+    return intraCoul;
+  };
+
+  const std::array<double, 4> charged = evaluate(forceField);
+  for (double value : charged) EXPECT_NE(value, 0.0);
+
+  forceField.useCharge = false;
+  const std::array<double, 4> uncharged = evaluate(forceField);
+  for (double value : uncharged) EXPECT_EQ(value, 0.0);
 }
 
 TEST(framework_intramolecular_reader, controls_12_and_13_exclusions_independently)

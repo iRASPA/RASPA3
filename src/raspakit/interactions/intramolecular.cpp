@@ -114,23 +114,26 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularEnergy(const ForceFiel
       energy.intraVDW += potential.scaling * factor.energy;
     }
   }
-  for (std::size_t index = 0; index < potentials.coulombs.size(); ++index)
+  if (forceField.useCharge)
   {
-    const CoulombPotential& potential = potentials.coulombs[index];
-    const std::size_t A = potential.identifiers[0];
-    const std::size_t B = potential.identifiers[1];
-    const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
-    const double rr = double3::dot(dr, dr);
-    if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+    for (std::size_t index = 0; index < potentials.coulombs.size(); ++index)
     {
-      energy.intraCoul += potential.calculateEnergy(shiftedPosition(A, images.coulombs[index][0]),
-                                                    shiftedPosition(B, images.coulombs[index][1]));
-    }
-    else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
-    {
-      energy.intraCoul += Potentials::potentialCoulomb<0>(forceField, potential.scaling, 1.0, std::sqrt(rr),
-                                                          potential.chargeA, potential.chargeB)
-                              .energy;
+      const CoulombPotential& potential = potentials.coulombs[index];
+      const std::size_t A = potential.identifiers[0];
+      const std::size_t B = potential.identifiers[1];
+      const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
+      const double rr = double3::dot(dr, dr);
+      if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+      {
+        energy.intraCoul += potential.calculateEnergy(shiftedPosition(A, images.coulombs[index][0]),
+                                                      shiftedPosition(B, images.coulombs[index][1]));
+      }
+      else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
+      {
+        energy.intraCoul += potential.scaling * Potentials::potentialCoulomb<0>(forceField, 1.0, 1.0, std::sqrt(rr),
+                                                                                potential.chargeA, potential.chargeB)
+                                                    .energy;
+      }
     }
   }
   return energy;
@@ -246,30 +249,33 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
       accumulateRadial(A, B, dr, factor, potential.scaling, energy.intraVDW);
     }
   }
-  for (std::size_t index = 0; index < potentials.coulombs.size(); ++index)
+  if (forceField.useCharge)
   {
-    const CoulombPotential& potential = potentials.coulombs[index];
-    const std::size_t A = potential.identifiers[0];
-    const std::size_t B = potential.identifiers[1];
-    const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
-    const double rr = double3::dot(dr, dr);
-    const double r = std::sqrt(rr);
-    if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+    for (std::size_t index = 0; index < potentials.coulombs.size(); ++index)
     {
-      const double k = potential.scaling * Units::CoulombicConversionFactor * potential.chargeA * potential.chargeB;
-      energy.intraCoul += k / r;
-      const double3 gradient = (-k / (r * rr)) * dr;
-      addMobileGradient(A, gradient);
-      addMobileGradient(B, -gradient);
-    }
-    else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
-    {
-      const Potentials::PairDerivatives<1> factor = Potentials::potentialCoulomb<1>(
-          forceField, potential.scaling, 1.0, r, potential.chargeA, potential.chargeB);
-      energy.intraCoul += factor.energy;
-      const double3 gradient = factor.firstDerivativeFactor * dr;
-      addMobileGradient(A, gradient);
-      addMobileGradient(B, -gradient);
+      const CoulombPotential& potential = potentials.coulombs[index];
+      const std::size_t A = potential.identifiers[0];
+      const std::size_t B = potential.identifiers[1];
+      const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
+      const double rr = double3::dot(dr, dr);
+      const double r = std::sqrt(rr);
+      if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+      {
+        const double k = potential.scaling * Units::CoulombicConversionFactor * potential.chargeA * potential.chargeB;
+        energy.intraCoul += k / r;
+        const double3 gradient = (-k / (r * rr)) * dr;
+        addMobileGradient(A, gradient);
+        addMobileGradient(B, -gradient);
+      }
+      else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
+      {
+        const Potentials::PairDerivatives<1> factor =
+            Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, potential.chargeA, potential.chargeB);
+        energy.intraCoul += potential.scaling * factor.energy;
+        const double3 gradient = potential.scaling * factor.firstDerivativeFactor * dr;
+        addMobileGradient(A, gradient);
+        addMobileGradient(B, -gradient);
+      }
     }
   }
   return energy;
@@ -390,32 +396,35 @@ std::pair<RunningEnergy, double3x3> Interactions::computeFrameworkIntraMolecular
       addPairStrain(gradient, dr);
     }
   }
-  for (std::size_t index = 0; index < potentials.coulombs.size(); ++index)
+  if (forceField.useCharge)
   {
-    const CoulombPotential& potential = potentials.coulombs[index];
-    const std::size_t A = potential.identifiers[0];
-    const std::size_t B = potential.identifiers[1];
-    const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
-    const double rr = double3::dot(dr, dr);
-    const double r = std::sqrt(rr);
-    if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+    for (std::size_t index = 0; index < potentials.coulombs.size(); ++index)
     {
-      const double k = potential.scaling * Units::CoulombicConversionFactor * potential.chargeA * potential.chargeB;
-      energy.intraCoul += k / r;
-      const double3 gradient = (-k / (r * rr)) * dr;
-      addMobileGradient(A, gradient);
-      addMobileGradient(B, -gradient);
-      addPairStrain(gradient, dr);
-    }
-    else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
-    {
-      const Potentials::PairDerivatives<1> factor =
-          Potentials::potentialCoulomb<1>(forceField, potential.scaling, 1.0, r, potential.chargeA, potential.chargeB);
-      energy.intraCoul += factor.energy;
-      const double3 gradient = factor.firstDerivativeFactor * dr;
-      addMobileGradient(A, gradient);
-      addMobileGradient(B, -gradient);
-      addPairStrain(gradient, dr);
+      const CoulombPotential& potential = potentials.coulombs[index];
+      const std::size_t A = potential.identifiers[0];
+      const std::size_t B = potential.identifiers[1];
+      const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
+      const double rr = double3::dot(dr, dr);
+      const double r = std::sqrt(rr);
+      if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+      {
+        const double k = potential.scaling * Units::CoulombicConversionFactor * potential.chargeA * potential.chargeB;
+        energy.intraCoul += k / r;
+        const double3 gradient = (-k / (r * rr)) * dr;
+        addMobileGradient(A, gradient);
+        addMobileGradient(B, -gradient);
+        addPairStrain(gradient, dr);
+      }
+      else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
+      {
+        const Potentials::PairDerivatives<1> factor =
+            Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, potential.chargeA, potential.chargeB);
+        energy.intraCoul += potential.scaling * factor.energy;
+        const double3 gradient = potential.scaling * factor.firstDerivativeFactor * dr;
+        addMobileGradient(A, gradient);
+        addMobileGradient(B, -gradient);
+        addPairStrain(gradient, dr);
+      }
     }
   }
   return {energy, strain};
