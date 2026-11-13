@@ -496,3 +496,46 @@ TEST(electrostatic_potential, Test_2_CO2_in_ITQ_29_2x2x2)
               1e-5);
 }
 */
+
+// The electrostatic potential at the atoms is a property of the charges, not of the polarization model: the four
+// ions with the polarization flags at their defaults (no polarization, intermolecular polarization omitted) have the
+// same potentials as with polarization on. The real-space intermolecular part used to return early on the
+// polarization flag, while the Fourier part did not, so the default total was missing it.
+TEST(electrostatic_potential, four_ions_with_the_default_polarization_flags)
+{
+  ForceField forceField = ForceField(
+      {
+          PseudoAtom("t1", false, 1.0, 0.5, 0.0, 1, false),
+          PseudoAtom("t2", false, 1.0, 1.5, 0.0, 1, false),
+          PseudoAtom("t2", false, 1.0, -0.75, 0.0, 1, false),
+          PseudoAtom("t4", false, 1.0, -1.25, 0.0, 1, false),
+      },
+      {VDWParameters(0.0, 1.0), VDWParameters(0.0, 1.0), VDWParameters(0.0, 1.0), VDWParameters(0.0, 1.0)},
+      ForceField::MixingRule::Lorentz_Berthelot, 500.0, 500.0, 500.0, true, false, true);
+  ASSERT_FALSE(forceField.computePolarization);
+  ASSERT_TRUE(forceField.omitInterPolarization);
+  ASSERT_FALSE(forceField.omitInterInteractions);
+  Component c1 = Component(forceField, "t1", 0.0, 0.0, 0.0,
+                           {Atom(double3(0.0, 0.0, 0.0), 0.5, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21);
+  Component c2 = Component(forceField, "t2", 0.0, 0.0, 0.0,
+                           {Atom(double3(0.0, 0.0, 0.0), 1.5, 1.0, 1, 1, 1, false, false)}, {}, {}, 5, 21);
+  Component c3 = Component(forceField, "t3", 0.0, 0.0, 0.0,
+                           {Atom(double3(0.0, 0.0, 0.0), -0.75, 1.0, 2, 2, 2, false, false)}, {}, {}, 5, 21);
+  Component c4 = Component(forceField, "t4", 0.0, 0.0, 0.0,
+                           {Atom(double3(0.0, 0.0, 0.0), -1.25, 1.0, 3, 3, 3, false, false)}, {}, {}, 5, 21);
+  System system = System(forceField, SimulationBox(1000.0, 1000.0, 1000.0), false, 300.0, 1e4, 1.0, {},
+                         {c1, c2, c3, c4}, {}, {1, 1, 1, 1}, 5);
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  atoms[0].position = double3(-1.0, 0.0, 0.0);
+  atoms[1].position = double3(1.0, 0.0, 0.0);
+  atoms[2].position = double3(0.0, 1.0, 0.0);
+  atoms[3].position = double3(0.0, -1.0, 0.0);
+  system.precomputeTotalRigidEnergy();
+
+  system.computeTotalElectrostaticPotential();
+  const std::span<double> potential = system.spanOfMoleculeElectrostaticPotential();
+  EXPECT_NEAR(potential[0] / Units::CoulombicConversionFactor, -0.664214, 1e-5);
+  EXPECT_NEAR(potential[1] / Units::CoulombicConversionFactor, -1.16421, 1e-5);
+  EXPECT_NEAR(potential[2] / Units::CoulombicConversionFactor, 0.789214, 1e-5);
+  EXPECT_NEAR(potential[3] / Units::CoulombicConversionFactor, 1.03921, 1e-5);
+}

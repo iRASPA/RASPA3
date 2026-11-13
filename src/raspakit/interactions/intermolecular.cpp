@@ -966,7 +966,8 @@ void Interactions::computeInterMolecularElectrostaticPotential(const ForceField&
 
   if (!useCharge) return;
   if (forceField.omitInterInteractions) return;
-  if (forceField.omitInterPolarization) return;
+  // the potential is a property of the charges: the polarization flag gates the field, not the potential (the
+  // Fourier part of the potential knows no such flag either)
   if (moleculeAtoms.empty()) return;
 
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
