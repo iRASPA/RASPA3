@@ -923,3 +923,52 @@ TEST(BAROSTAT_VIRIAL, real_space_self_energy_counts_the_mobile_framework_atoms_o
   EXPECT_NEAR(system.computeTotalEnergies().ewald_self, expected, 1e-8 * std::abs(expected));
   EXPECT_NEAR(gradientEnergy(system).ewald_self, expected, 1e-8 * std::abs(expected));
 }
+
+// A caller without framework dynamics (dcTST hands an empty span) must still get the complete Ewald energies of a
+// framework with mobile atoms. The gradient and the strain-derivative routines used to drop every mobile framework
+// charge from the Fourier sum, the self term and the exclusion term in that case; only the framework forces may go.
+TEST(BAROSTAT_VIRIAL, ewald_energies_do_not_depend_on_the_framework_dynamics_being_passed)
+{
+  System system = makeChargedChainSystem(false, {0.3, -0.3, 0.2, -0.1, -0.1}, 0.4);
+  ASSERT_TRUE(system.framework->hasMobileAtoms());
+
+  auto gradientEnergies = [&](std::span<AtomDynamics> frameworkDynamics)
+  {
+    for (AtomDynamics& dynamics : system.spanOfMoleculeDynamics()) dynamics.gradient = double3(0.0, 0.0, 0.0);
+    return Interactions::computeEwaldFourierGradient(
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.fixedFrameworkStoredEik,
+        system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
+        system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.netChargeFramework, system.framework,
+        system.spanOfFrameworkAtoms(), frameworkDynamics);
+  };
+  const RunningEnergy with = gradientEnergies(system.spanOfFrameworkDynamics());
+  const RunningEnergy without = gradientEnergies({});
+  ASSERT_NE(with.ewald_fourier, 0.0);
+  EXPECT_NEAR(without.ewald_fourier, with.ewald_fourier, 1e-10 * std::abs(with.ewald_fourier));
+  EXPECT_NEAR(without.ewald_self, with.ewald_self, 1e-10 * std::abs(with.ewald_self));
+  EXPECT_NEAR(without.ewald_exclusion, with.ewald_exclusion, 1e-10 * std::max(1.0, std::abs(with.ewald_exclusion)));
+
+  auto strain = [&](std::span<AtomDynamics> frameworkDynamics)
+  {
+    return Interactions::computeEwaldFourierEnergyStrainDerivative(
+               system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik,
+               system.storedEik, system.forceField, system.simulationBox, system.framework, system.components,
+               system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
+               system.netChargeFramework, system.netChargePerComponent, system.spanOfFrameworkAtoms(),
+               frameworkDynamics)
+        .second;
+  };
+  const double3x3 strainWith = strain(system.spanOfFrameworkDynamics());
+  const double3x3 strainWithout = strain({});
+  auto near = [](double a, double b) { EXPECT_NEAR(a, b, 1e-10 * std::max(1.0, std::abs(b))); };
+  near(strainWithout.ax, strainWith.ax);
+  near(strainWithout.ay, strainWith.ay);
+  near(strainWithout.az, strainWith.az);
+  near(strainWithout.bx, strainWith.bx);
+  near(strainWithout.by, strainWith.by);
+  near(strainWithout.bz, strainWith.bz);
+  near(strainWithout.cx, strainWith.cx);
+  near(strainWithout.cy, strainWith.cy);
+  near(strainWithout.cz, strainWith.cz);
+  EXPECT_NE(strainWith.ax, 0.0);
+}

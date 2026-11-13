@@ -1054,6 +1054,15 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
 
   RunningEnergy energySum{};
   double singleIonFourierSum = 0.0;
+  // The framework forces land in 'frameworkDynamics' when the caller gives one entry per framework atom. Without
+  // (dcTST, legacy callers) the energies of a framework with mobile atoms are still complete: its forces go to a
+  // scratch and are dropped, instead of its charges leaving the Fourier sum, the self term and the exclusion term.
+  std::vector<AtomDynamics> scratchFrameworkDynamics;
+  if (framework && framework->hasMobileAtoms() && frameworkDynamics.size() != frameworkAtoms.size())
+  {
+    scratchFrameworkDynamics.assign(frameworkAtoms.size(), AtomDynamics{});
+    frameworkDynamics = scratchFrameworkDynamics;
+  }
 
   if (!forceField.useCharge) return energySum;
   if (!forceField.usesEwaldFourier())
@@ -1068,8 +1077,7 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
       // Flexible-framework counterpart: the framework charges carry a self term and the bonded (1-2, 1-3, 1-4)
       // framework pairs excluded from the real-space pair sum need the shifted completion q_i q_j (V(r) - 1/r),
       // with the resulting force on the framework atoms. Mirrors the erf-based Ewald framework exclusion block.
-      const bool liveFramework =
-          framework && framework->hasMobileAtoms() && frameworkDynamics.size() == frameworkAtoms.size();
+      const bool liveFramework = framework && framework->hasMobileAtoms() && !frameworkAtoms.empty();
       if (liveFramework)
       {
         // the mobile framework atoms only (the lab-fixed ones are a constant, as in the Ewald live atoms)
@@ -1106,8 +1114,7 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
   // Live Fourier hosts are mobile framework atoms only; lab-fixed atoms contribute via fixedFrameworkStoredEik.
   // When no Framework is passed (legacy callers), treat the host as fixed and use the precomputed eik.
   // When the framework is fully flexible, fixedFrameworkAtomCount is zero and the eik is omitted.
-  const bool liveFramework =
-      framework && framework->hasMobileAtoms() && frameworkDynamics.size() == frameworkAtoms.size();
+  const bool liveFramework = framework && framework->hasMobileAtoms() && !frameworkAtoms.empty();
   const std::size_t fixedFrameworkAtomCount = framework ? framework->numberOfFixedAtoms() : 0;
   const std::size_t mobileFrameworkAtomCount = framework ? framework->numberOfMobileAtoms() : 0;
   const bool useFixedFrameworkEik = !liveFramework || fixedFrameworkAtomCount > 0;
@@ -2085,6 +2092,15 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
   double singleIonFourierSum = 0.0;
+  // The framework forces land in 'frameworkDynamics' when the caller gives one entry per framework atom. Without
+  // (dcTST, legacy callers) the energies of a framework with mobile atoms are still complete: its forces go to a
+  // scratch and are dropped, instead of its charges leaving the Fourier sum, the self term and the exclusion term.
+  std::vector<AtomDynamics> scratchFrameworkDynamics;
+  if (framework && framework->hasMobileAtoms() && frameworkDynamics.size() != frameworkAtoms.size())
+  {
+    scratchFrameworkDynamics.assign(frameworkAtoms.size(), AtomDynamics{});
+    frameworkDynamics = scratchFrameworkDynamics;
+  }
 
   // Total net charge, used for the net-charge correction to the strain derivative. The framework charge is included
   // for its cross term with the other charges; the lab-fixed self term is removed again below.
@@ -2134,7 +2150,7 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
                                        atomDynamics);
 
     // The bonded pairs of a flexible framework are excluded as well (see computeEwaldFourierGradient).
-    if (framework && framework->hasMobileAtoms() && frameworkDynamics.size() == frameworkAtoms.size())
+    if (framework && framework->hasMobileAtoms() && !frameworkAtoms.empty())
     {
       addFrameworkChargeExclusionStrainDerivative(strainDerivative, forceField, simulationBox, *framework,
                                                   frameworkAtoms, frameworkDynamics);
@@ -2144,8 +2160,7 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
   }
 
   // Live Fourier hosts are mobile framework atoms; lab-fixed atoms stay in fixedFrameworkStoredEik.
-  const bool liveFramework =
-      framework && framework->hasMobileAtoms() && frameworkDynamics.size() == frameworkAtoms.size();
+  const bool liveFramework = framework && framework->hasMobileAtoms() && !frameworkAtoms.empty();
   const std::size_t fixedFrameworkAtomCount = framework ? framework->numberOfFixedAtoms() : 0;
   const std::size_t mobileFrameworkAtomCount = framework ? framework->numberOfMobileAtoms() : 0;
   const bool useFixedFrameworkEik = !liveFramework || fixedFrameworkAtomCount > 0;
