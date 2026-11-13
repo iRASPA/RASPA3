@@ -35,13 +35,14 @@ export struct IntegratorsCPUTime
   std::chrono::duration<double> velocityVerlet{0.0};
 
   // Total timing
+  /// The time spent in the timed routines. 'velocityVerlet' is an envelope around the routines of a step and is
+  /// left out, or the step would be counted twice.
   inline std::chrono::duration<double> total() const
   {
     return computeTranslationalKineticEnergy + computeRotationalKineticEnergy + computeCenterOfMass +
            computeCenterOfMassVelocity + computeLinearMomentum + scaleVelocities + removeCenterOfMassVelocity +
            updatePositions + updateVelocities + createCartesianPositions + noSquishFreeRotorOrderTwo + noSquishRotate +
-           updateCenterOfMassAndQuaternionVelocities + updateCenterOfMassAndQuaternionGradients + updateGradients +
-           velocityVerlet;
+           updateCenterOfMassAndQuaternionVelocities + updateCenterOfMassAndQuaternionGradients + updateGradients;
   }
 
   void clearTimingStatistics()
@@ -74,26 +75,7 @@ export struct IntegratorsCPUTime
   IntegratorsCPUTime(const IntegratorsCPUTime&) = default;
 
   // operator=
-  inline IntegratorsCPUTime& operator=(const IntegratorsCPUTime& b)
-  {
-    computeTranslationalKineticEnergy = b.computeTranslationalKineticEnergy;
-    computeRotationalKineticEnergy = b.computeRotationalKineticEnergy;
-    computeCenterOfMass = b.computeCenterOfMass;
-    computeCenterOfMassVelocity = b.computeCenterOfMassVelocity;
-    computeLinearMomentum = b.computeLinearMomentum;
-    scaleVelocities = b.scaleVelocities;
-    updatePositions = b.updatePositions;
-    updateVelocities = b.updateVelocities;
-    createCartesianPositions = b.createCartesianPositions;
-    noSquishFreeRotorOrderTwo = b.noSquishFreeRotorOrderTwo;
-    noSquishRotate = b.noSquishRotate;
-    updateCenterOfMassAndQuaternionVelocities = b.updateCenterOfMassAndQuaternionVelocities;
-    updateCenterOfMassAndQuaternionGradients = b.updateCenterOfMassAndQuaternionGradients;
-    updateGradients = b.updateGradients;
-    velocityVerlet = b.velocityVerlet;
-
-    return *this;
-  }
+  IntegratorsCPUTime& operator=(const IntegratorsCPUTime&) = default;
 
   // operator+=
   inline IntegratorsCPUTime& operator+=(const IntegratorsCPUTime& b)

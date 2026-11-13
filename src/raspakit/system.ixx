@@ -838,6 +838,8 @@ export struct System
   void initializeFrameworkGroupData();
   std::span<GroupState> spanOfGroupData();
   std::span<const GroupState> spanOfGroupData() const;
+  /// The index in 'groupData' of the first rigid-fragment state of molecule 'moleculeId' of component 'componentId'.
+  std::size_t groupDataOffsetOfMolecule(std::size_t componentId, std::size_t moleculeId) const;
   std::span<GroupState> spanOfFrameworkGroupData();
   std::span<const GroupState> spanOfFrameworkGroupData() const;
   std::span<double> spanOfMoleculeElectrostaticPotential();

@@ -116,7 +116,7 @@ namespace
 /// rotational part omega x r (omega from the orientation momentum, in the same convention as the kinetic
 /// energy of the integrators), for a flexible molecule the atomic velocity.
 double3 beadVelocity(const Component& component, const Molecule& molecule, std::span<const AtomDynamics> dynamics,
-                     std::size_t bead)
+                     std::span<const GroupState> groupData, std::size_t groupIndex, std::size_t bead)
 {
   if (component.rigid)
   {
@@ -128,6 +128,25 @@ double3 beadVelocity(const Component& component, const Molecule& molecule, std::
     const double3 omegaBody = 0.5 * double3(pq.ix, pq.iy, pq.iz) * component.inverseInertiaVector;
     const double3 rBody = component.atoms[bead].position;
     return molecule.velocity + molecule.orientation * double3::cross(omegaBody, rBody);
+  }
+  // a bead inside a rigid fragment of a semi-flexible molecule carries no velocity of its own: it moves with the
+  // fragment's rigid-body state (the states follow the rigid fragments in ascending fragment order)
+  if (const std::optional<std::size_t> fragmentIndex = component.rigidFragmentContaining(bead))
+  {
+    const Fragment& fragment = component.fragmentGraph.fragments[*fragmentIndex];
+    std::size_t rigidRank{};
+    for (std::size_t f = 0; f < *fragmentIndex; ++f)
+    {
+      if (component.fragmentGraph.fragments[f].isRigidBody()) ++rigidRank;
+    }
+    const GroupState& state = groupData[groupIndex + rigidRank];
+    const std::size_t k = static_cast<std::size_t>(std::ranges::find(fragment.atoms, bead) - fragment.atoms.begin());
+
+    simd_quatd p = state.orientationMomentum;
+    p.r = -p.r;
+    const simd_quatd pq = p * state.orientation;
+    const double3 omegaBody = 0.5 * double3(pq.ix, pq.iy, pq.iz) * fragment.inverseInertiaVector;
+    return state.velocity + state.orientation * double3::cross(omegaBody, fragment.bodyFixedPositions[k]);
   }
   return dynamics[molecule.atomIndex + bead].velocity;
 }
@@ -223,6 +242,8 @@ void applyBath(RandomNumber& rng, DcTSTSettings::TrajectoryThermostat type, doub
             if (component.rigidFragmentContaining(i).has_value()) continue;
             moleculeDynamics[i].velocity = gaussian3() * std::sqrt(kT / component.atomMass(i, moleculeAtoms[i]));
           }
+          Integrators::syncNonRigidMoleculeCenterOfMass(molecule, moleculeAtoms, moleculeDynamics, component, groupData,
+                                                        groupIndex);
         }
         else
         {
@@ -254,6 +275,8 @@ void applyBath(RandomNumber& rng, DcTSTSettings::TrajectoryThermostat type, doub
           moleculeDynamics[i].velocity = c1 * moleculeDynamics[i].velocity +
                                          c2 * std::sqrt(kT / component.atomMass(i, moleculeAtoms[i])) * gaussian3();
         }
+        Integrators::syncNonRigidMoleculeCenterOfMass(molecule, moleculeAtoms, moleculeDynamics, component, groupData,
+                                                      groupIndex);
       }
       else if (component.rigid)
       {
@@ -2681,7 +2704,8 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
 
     // orient the initial velocity of the reaction bead towards B
     const double3 velocity =
-        beadVelocity(taggedComponent, moleculeData[taggedIndex], dynamics, taggedComponent.startingBead);
+        beadVelocity(taggedComponent, moleculeData[taggedIndex], dynamics, groupSpan,
+                     system.groupDataOffsetOfMolecule(settings.taggedComponent, 0), taggedComponent.startingBead);
     double qdot = double3::dot(velocity, barrier.normal);
     if (qdot < 0.0)
     {

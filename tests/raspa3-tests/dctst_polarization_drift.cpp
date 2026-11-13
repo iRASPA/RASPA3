@@ -1,9 +1,18 @@
 #include <gtest/gtest.h>
 
+#include "molecule_fixtures.hpp"
+
 import std;
 
 import int3;
 import double3;
+import simd_quatd;
+import units;
+import json;
+import simulationbox;
+import molecule;
+import fragment;
+import mc_moves_probabilities;
 import forcefield;
 import framework;
 import component;
@@ -137,4 +146,68 @@ TEST(DCTST_POLARIZATION_DRIFT, tagged_translation_and_reinsertion_keep_the_polar
   }
   EXPECT_GT(translationsAccepted, 0uz);
   EXPECT_GT(reinsertionsAccepted, 0uz);
+}
+
+// The reaction bead of a semi-flexible molecule may sit inside a rigid fragment. Its thermal speed along the barrier
+// normal is then that of the fragment (translation plus the lever of the bead about the fragment's axes), as it is for
+// a bead of a rigid molecule, and not the speed of a free atom of the bead's mass.
+TEST(DCTST_FREE_ENERGY, the_pilot_bead_speed_of_a_rigid_fragment_bead_uses_the_fragment_effective_mass)
+{
+  ScopedCurrentPath workspace(
+      std::filesystem::temp_directory_path() /
+      std::format("raspa3_dctst_pilot_fragment_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
+
+  // semi-flexible pentane with the reaction bead on the middle atom of its rigid CH2-CH2-CH2 core
+  nlohmann::json definition = nlohmann::json::parse(molecule_fixtures::kSemiFlexiblePentaneJson);
+  definition["StartingBead"] = 2;
+  {
+    std::ofstream stream("pentane.json");
+    stream << definition.dump(2);
+  }
+  const ForceField forceField({{"CH3", false, 15.04, 0.0, 0.0, 6, false}, {"CH2", false, 14.03, 0.0, 0.0, 6, false}},
+                              {{98.0, 3.75}, {46.0, 3.95}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0,
+                              true, false, false);
+  const Component pentane(Component::Type::Adsorbate, 0, forceField, "pentane", "pentane", 5, 21, MCMoveProbabilities(),
+                          std::nullopt, false);
+  ASSERT_EQ(pentane.startingBead, 2uz);
+  ASSERT_TRUE(pentane.isSemiFlexible());
+  System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {pentane}, {}, {1}, 5);
+
+  DcTSTFreeEnergySettings settings;
+  settings.taggedComponentName = "pentane";
+  settings.taggedComponent = 0;
+  settings.barrierPosition = double3(0.5, 0.0, 0.0);
+  settings.barrierNormal = double3(1.0, 0.0, 0.0);
+  settings.latticeDistance = 30.0;
+  settings.numberOfWindows = 2;
+  settings.flatteningBias = false;
+  settings.numberOfPilotCycles = 0;
+  settings.numberOfReplicas = 1;
+  DcTSTFreeEnergyParameters parameters;
+  parameters.numberOfBlocks = 5;
+  parameters.randomSeed = 17;
+  DynamicallyCorrectedTSTFreeEnergy driver(system, settings, parameters);
+  driver.setup();
+
+  System& replica = driver.systems[0];
+  driver.samplePilot(0, 0);
+  ASSERT_EQ(driver.pilot[0].beadSpeedCount, 1.0);
+
+  // the effective mass of the bead along the normal, from the fragment's rigid-body state
+  const Component& component = replica.components[0];
+  const std::optional<std::size_t> fragmentIndex = component.rigidFragmentContaining(component.startingBead);
+  ASSERT_TRUE(fragmentIndex.has_value());
+  const Fragment& fragment = component.fragmentGraph.fragments[*fragmentIndex];
+  const GroupState state = component.deriveFragmentState(*fragmentIndex, replica.spanOfMolecule(0, 0));
+  const std::size_t k =
+      static_cast<std::size_t>(std::ranges::find(fragment.atoms, component.startingBead) - fragment.atoms.begin());
+  const double3 normalBody = state.orientation.inverse() * driver.barrier.normal;
+  const double3 lever = double3::cross(fragment.bodyFixedPositions[k], normalBody);
+  const double3 invI = fragment.inverseInertiaVector;
+  const double inverseMass =
+      1.0 / fragment.mass + lever.x * lever.x * invI.x + lever.y * lever.y * invI.y + lever.z * lever.z * invI.z;
+  const double expected = std::sqrt(2.0 * Units::KB * replica.temperature * inverseMass / std::numbers::pi);
+  EXPECT_NEAR(driver.pilot[0].beadSpeedSum, expected, 1e-9 * expected);
+  // (a free CH2 atom would be sqrt(42.08 / 14.03) faster than the fragment's translation alone)
+  EXPECT_LT(driver.pilot[0].beadSpeedSum, std::sqrt(2.0 * Units::KB * replica.temperature / 14.03 / std::numbers::pi));
 }

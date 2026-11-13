@@ -18,6 +18,7 @@ import forcefield;
 import running_energy;
 import atom;
 import molecule;
+import fragment;
 import int3;
 import double3;
 import double3x3;
@@ -117,17 +118,33 @@ constexpr double forbiddenBias = 1e30;
 double beadInverseEffectiveMass(const Component& component, const Molecule& molecule, std::span<const Atom> atoms,
                                 std::size_t bead, const double3& normal)
 {
-  if (!component.rigid) return 1.0 / component.atomMass(bead, atoms[bead]);
-  double inverseMass = 1.0 / molecule.mass;
-  if (molecule.numberOfAtoms > 1)
+  if (component.rigid)
   {
-    simd_quatd orientation = molecule.orientation;
-    const double3 normalBody = orientation.inverse() * normal;
-    const double3 lever = double3::cross(component.atoms[bead].position, normalBody);
-    const double3 invI = component.inverseInertiaVector;
-    inverseMass += lever.x * lever.x * invI.x + lever.y * lever.y * invI.y + lever.z * lever.z * invI.z;
+    double inverseMass = 1.0 / molecule.mass;
+    if (molecule.numberOfAtoms > 1)
+    {
+      simd_quatd orientation = molecule.orientation;
+      const double3 normalBody = orientation.inverse() * normal;
+      const double3 lever = double3::cross(component.atoms[bead].position, normalBody);
+      const double3 invI = component.inverseInertiaVector;
+      inverseMass += lever.x * lever.x * invI.x + lever.y * lever.y * invI.y + lever.z * lever.z * invI.z;
+    }
+    return inverseMass;
   }
-  return inverseMass;
+  // a bead inside a rigid fragment of a semi-flexible molecule moves with the fragment: its effective mass along the
+  // normal is the fragment's, with the lever of the bead about the fragment's principal axes (the fragment's
+  // orientation follows from the current atom positions)
+  if (const std::optional<std::size_t> fragmentIndex = component.rigidFragmentContaining(bead))
+  {
+    const Fragment& fragment = component.fragmentGraph.fragments[*fragmentIndex];
+    const GroupState state = component.deriveFragmentState(*fragmentIndex, atoms);
+    const std::size_t k = static_cast<std::size_t>(std::ranges::find(fragment.atoms, bead) - fragment.atoms.begin());
+    const double3 normalBody = state.orientation.inverse() * normal;
+    const double3 lever = double3::cross(fragment.bodyFixedPositions[k], normalBody);
+    const double3 invI = fragment.inverseInertiaVector;
+    return 1.0 / fragment.mass + lever.x * lever.x * invI.x + lever.y * lever.y * invI.y + lever.z * lever.z * invI.z;
+  }
+  return 1.0 / component.atomMass(bead, atoms[bead]);
 }
 
 // An accepted move of one molecule commits its new electric field and, with molecule-molecule polarization, the

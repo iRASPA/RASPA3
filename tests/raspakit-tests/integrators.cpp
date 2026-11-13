@@ -31,6 +31,7 @@ import energy_status;
 import integrators_update;
 import integrators;
 import integrators_compute;
+import integrators_cputime;
 import molecule;
 import interpolation_energy_grid;
 import thermostat;
@@ -1984,6 +1985,96 @@ DriftState enterEquilibration(const System& system)
   return {result.translationalCenterOfMassConstraint, momentum.length(), kinetic};
 }
 }  // namespace
+
+// The thermostat is built with the molecule counts of the input. The counts change in the Monte Carlo stages before
+// the dynamics start (a GCMC loading from an empty box, for one), and the thermostat has to see the new counts when it
+// is initialised, or it thermostats to the wrong temperature.
+TEST(molecular_dynamics, the_thermostat_follows_the_degrees_of_freedom_of_the_system)
+{
+  System system = makeDriftSystem(DriftHost::None, 4);
+  system.thermostat = Thermostat(300.0, system.timeStep, system.translationalDegreesOfFreedom,
+                                 system.rotationalDegreesOfFreedom, 3, 1, 0.15);
+
+  const std::size_t translational = system.translationalDegreesOfFreedom + 30;
+  const std::size_t rotational = system.rotationalDegreesOfFreedom + 20;
+  system.translationalDegreesOfFreedom = translational;
+  system.rotationalDegreesOfFreedom = rotational;
+  system.updateCenterOfMassConstraint();
+
+  EXPECT_EQ(system.thermostat->translationalDegreesOfFreedom, translational);
+  EXPECT_EQ(system.thermostat->rotationalDegreesOfFreedom, rotational);
+  EXPECT_EQ(system.thermostat->translationalCenterOfMassConstraint, system.translationalCenterOfMassConstraint);
+  const double expected =
+      static_cast<double>(translational - system.translationalCenterOfMassConstraint) * Units::KB * 300.0;
+  EXPECT_NEAR(system.thermostat->thermostatDegreesOfFreedomTranslation[0], expected, 1e-12 * expected);
+}
+
+// A driver built in memory (no output files) has no output streams; its setup must not reach for them.
+TEST(molecular_dynamics, setup_without_output_files_builds_the_grids_in_memory)
+{
+  MolecularDynamics md({0, 0, 0, 0, 1000, 10000, 5000, 5000}, {makeDriftSystem(DriftHost::None, 4)}, 17uz, 5, false);
+  md.setup();
+  EXPECT_TRUE(md.streams.empty());
+  EXPECT_EQ(md.systems.size(), 1uz);
+}
+
+// The binary restart carries the step count and the elapsed simulation time, so the timing statistics of a resumed
+// run are those of the whole run.
+TEST(molecular_dynamics, binary_restart_keeps_the_step_count_and_the_simulation_time)
+{
+  MolecularDynamics md({0, 0, 0, 0, 1000, 10000, 5000, 5000}, {makeDriftSystem(DriftHost::None, 4)}, 17uz, 5, false);
+  md.numberOfSteps = 7;
+  md.totalSimulationTime = std::chrono::duration<double>(12.5);
+
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() / std::format("raspa3_molecular_dynamics_round_trip_{}.bin", ::getpid());
+  {
+    std::ofstream stream(path, std::ios::binary);
+    Archive<std::ofstream> archive(stream);
+    archive << md;
+  }
+  MolecularDynamics restored;
+  {
+    std::ifstream stream(path, std::ios::binary);
+    Archive<std::ifstream> archive(stream);
+    archive >> restored;
+  }
+  std::filesystem::remove(path);
+
+  EXPECT_EQ(restored.numberOfSteps, 7uz);
+  EXPECT_DOUBLE_EQ(restored.totalSimulationTime.count(), 12.5);
+}
+
+// 'velocityVerlet' is an envelope around the other timers of a step: the total must not count the step twice, every
+// timer survives an assignment, and each timer has its own label in the report.
+TEST(integrators_cputime, the_total_counts_the_step_once_and_the_assignment_copies_every_timer)
+{
+  IntegratorsCPUTime timers;
+  timers.updatePositions = std::chrono::duration<double>(1.0);
+  timers.updateVelocities = std::chrono::duration<double>(2.0);
+  timers.velocityVerlet = std::chrono::duration<double>(3.5);
+  timers.removeCenterOfMassVelocity = std::chrono::duration<double>(0.25);
+  EXPECT_DOUBLE_EQ(timers.total().count(), 3.25);
+
+  IntegratorsCPUTime copy;
+  copy = timers;
+  EXPECT_DOUBLE_EQ(copy.removeCenterOfMassVelocity.count(), 0.25);
+  EXPECT_DOUBLE_EQ(copy.velocityVerlet.count(), 3.5);
+
+  const std::string report = timers.writeIntegratorsCPUTimeStatistics(std::chrono::duration<double>(10.0));
+  EXPECT_NE(report.find("Remove COM velocity:"), std::string::npos) << report;
+  EXPECT_EQ(report.find("Scale Velocities:"), report.rfind("Scale Velocities:")) << report;
+}
+
+// An empty system has no centre of mass; the helpers return zero rather than 0/0.
+TEST(integrators, centre_of_mass_of_an_empty_system_is_zero)
+{
+  const double3 com = Integrators::computeCenterOfMass({});
+  const double3 velocity = Integrators::computeCenterOfMassVelocity({});
+  // (the NaN of 0/0 prints as "nan"; isnan folds away under the fast-math flags of the project)
+  EXPECT_EQ(std::to_string(com.x), "0.000000");
+  EXPECT_EQ(std::to_string(velocity.x), "0.000000");
+}
 
 // Bulk fluid without a thermostat: the centre-of-mass momentum is removed, so its three degrees of freedom are gone
 // from the temperature as well.

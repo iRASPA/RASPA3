@@ -60,6 +60,15 @@ void removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeData, std::span
                                      std::span<AtomDynamics> frameworkDynamics = {},
                                      const ForceField* forceField = nullptr, std::span<GroupState> groupData = {},
                                      std::span<GroupState> frameworkGroupData = {});
+
+/**
+ * \brief Rebuilds the centre-of-mass position and velocity record of a flexible or semi-flexible molecule from its
+ *        integration variables (rigid fragments and flexible atoms); the record is what the VACF, MSD and
+ *        centre-of-mass routines read. A rigid molecule is left alone, its record is the integration variable.
+ */
+void syncNonRigidMoleculeCenterOfMass(Molecule& molecule, std::span<const Atom> atoms,
+                                      std::span<const AtomDynamics> dynamics, const Component& component,
+                                      std::span<const GroupState> groupData, std::size_t groupIndex);
 /**
  * \brief Updates the positions of molecules based on their velocities.
  *

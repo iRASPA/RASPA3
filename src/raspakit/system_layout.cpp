@@ -298,6 +298,16 @@ std::span<GroupState> System::spanOfGroupData() { return std::span(groupData); }
 
 std::span<const GroupState> System::spanOfGroupData() const { return std::span(groupData); }
 
+std::size_t System::groupDataOffsetOfMolecule(std::size_t componentId, std::size_t moleculeId) const
+{
+  std::size_t offset{};
+  for (std::size_t c = 0; c < componentId; ++c)
+  {
+    offset += numberOfMoleculesPerComponent[c] * components[c].numberOfRigidFragments();
+  }
+  return offset + moleculeId * components[componentId].numberOfRigidFragments();
+}
+
 void System::initializeFrameworkGroupData()
 {
   if (!framework.has_value() || framework->numberOfRigidGroups() == 0)

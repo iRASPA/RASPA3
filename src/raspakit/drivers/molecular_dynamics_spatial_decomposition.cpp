@@ -710,6 +710,21 @@ void MolecularDynamicsSpatialDecomposition::setup()
       std::print(stream, "{}", system.writeComponentStatus());
       std::print(stream, "{}", system.reactions.printStatus());
 
+#ifdef VERSION
+#define QUOTE(str) #str
+#define EXPAND_AND_QUOTE(str) QUOTE(str)
+      outputJsons[system_id]["version"] = EXPAND_AND_QUOTE(VERSION);
+#endif
+
+      outputJsons[system_id]["seed"] = random.seed;
+      outputJsons[system_id]["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
+      outputJsons[system_id]["initialization"]["units"] = Units::jsonStatus();
+      outputJsons[system_id]["initialization"]["initialConditions"] = system.jsonSystemStatus();
+      outputJsons[system_id]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
+      outputJsons[system_id]["initialization"]["forceField"]["pseudoAtoms"] = system.forceField.jsonPseudoAtomStatus();
+      outputJsons[system_id]["initialization"]["components"] = system.jsonComponentStatus();
+      outputJsons[system_id]["initialization"]["reactions"] = system.reactions.jsonStatus();
+
       std::print(stream, "Spatial-decomposition settings\n");
       std::print(stream, "========================================================================================================================\n");
       std::print(stream, "    number of threads (sub-domains): {}\n", engineSettings.numberOfThreads);
@@ -1332,6 +1347,7 @@ void MolecularDynamicsSpatialDecomposition::production()
     for (std::size_t system_id{0}; System& system : systems)
     {
       system.runningEnergies = molecularDynamicsStep(system_id);
+      ++numberOfSteps;
 
       system.accountConservedEnergy();
       refreshHostState(system_id, true);
@@ -1602,6 +1618,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Molecu
   archive << md.engineSettings;
 
   archive << md.estimation;
+  archive << md.totalSimulationTime;
+  archive << integratorsCPUTime;
 
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 
@@ -1648,6 +1666,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MolecularDyn
   archive >> archivedSettings;
 
   archive >> md.estimation;
+  archive >> md.totalSimulationTime;
+  archive >> integratorsCPUTime;
 
   std::uint64_t magicNumber;
   archive >> magicNumber;

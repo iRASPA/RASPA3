@@ -36,9 +36,9 @@ import interactions_polymer_link;
 // molecule.velocity / centerOfMassPosition are what VACF and MSD read. Rigid molecules integrate
 // those fields directly. Semi-flexible and flexible molecules integrate groups and atoms; the
 // molecule record has to be the mass-weighted centre of mass of those degrees of freedom.
-void syncNonRigidMoleculeCenterOfMass(Molecule& molecule, std::span<const Atom> atoms,
-                                      std::span<const AtomDynamics> dynamics, const Component& component,
-                                      std::span<const GroupState> groupData, std::size_t groupIndex)
+void Integrators::syncNonRigidMoleculeCenterOfMass(Molecule& molecule, std::span<const Atom> atoms,
+                                                   std::span<const AtomDynamics> dynamics, const Component& component,
+                                                   std::span<const GroupState> groupData, std::size_t groupIndex)
 {
   if (component.rigid) return;
 
@@ -230,7 +230,7 @@ void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculeDa
         totalMomentum += mass * frameworkDynamics[i].velocity;
       }
     }
-    totalVelocity = totalMomentum / totalMass;
+    totalVelocity = totalMass > 0.0 ? totalMomentum / totalMass : double3{};
   }
   else
   {

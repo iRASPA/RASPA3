@@ -342,16 +342,6 @@ void propagateCell(System& system, const double3x3& cellVelocity, BarostatCoupli
 
 // Offset of a molecule's rigid-group states inside System::groupData: the entries are ordered like
 // the molecules (component-major), with one GroupState per rigid group of the component.
-std::size_t groupDataOffsetOfMolecule(const System& system, std::size_t componentId, std::size_t moleculeId)
-{
-  std::size_t offset{};
-  for (std::size_t c = 0; c < componentId; ++c)
-  {
-    offset += system.numberOfMoleculesPerComponent[c] * system.components[c].numberOfRigidFragments();
-  }
-  return offset + moleculeId * system.components[componentId].numberOfRigidFragments();
-}
-
 void refreshParticleNumberDependentState(RandomNumber& random, System& system, std::size_t selectedComponent,
                                          MC_Moves::ParticleExchangeResult result, std::size_t exchangedMolecule)
 {
@@ -363,7 +353,7 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
   {
     // drop the rigid-group states of the deleted molecule; the entries of the molecules behind it
     // shift down so that groupData stays aligned with the molecule layout
-    const std::size_t offset = groupDataOffsetOfMolecule(system, selectedComponent, exchangedMolecule);
+    const std::size_t offset = system.groupDataOffsetOfMolecule(selectedComponent, exchangedMolecule);
     const auto first = system.groupData.begin() + static_cast<std::ptrdiff_t>(offset);
     system.groupData.erase(first, first + static_cast<std::ptrdiff_t>(component.numberOfRigidFragments()));
   }
@@ -393,7 +383,7 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
           states.push_back(state);
         }
       }
-      const std::size_t offset = groupDataOffsetOfMolecule(system, selectedComponent, selectedMolecule);
+      const std::size_t offset = system.groupDataOffsetOfMolecule(selectedComponent, selectedMolecule);
       system.groupData.insert(system.groupData.begin() + static_cast<std::ptrdiff_t>(offset), states.begin(),
                               states.end());
 
@@ -408,6 +398,9 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
         dynamics[i].velocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
                                std::sqrt(Units::KB * system.temperature / mass);
       }
+      // the molecule record (what the drift removal below and the VACF read) follows the fragments and atoms
+      Integrators::syncNonRigidMoleculeCenterOfMass(molecule, atoms, dynamics, component, system.spanOfGroupData(),
+                                                    offset);
     }
     else
     {
@@ -426,10 +419,6 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
   }
   system.updateCenterOfMassConstraint();
 
-  if (system.thermostat)
-    system.thermostat->refreshDegreesOfFreedom(system.translationalDegreesOfFreedom,
-                                                system.rotationalDegreesOfFreedom,
-                                                system.translationalCenterOfMassConstraint);
   if (system.thermobarostat)
   {
     // the barostat couples to molecules (or rigid groups / flexible atoms), not to the thermostat's atomic
@@ -754,10 +743,18 @@ void MolecularDynamics::createInterpolationGrids()
 {
   for (std::size_t system_id{0}; System& system : systems)
   {
-    std::ostream stream(streams[system_id].rdbuf());
-
-    system.createExternalFieldInterpolationGrid(stream, system_id);
-    system.createFrameworkInterpolationGrids(stream);
+    if (outputToFiles)
+    {
+      std::ostream stream(streams[system_id].rdbuf());
+      system.createExternalFieldInterpolationGrid(stream, system_id);
+      system.createFrameworkInterpolationGrids(stream);
+    }
+    else
+    {
+      std::ostringstream local;
+      system.createExternalFieldInterpolationGrid(local, system_id);
+      system.createFrameworkInterpolationGrids(local);
+    }
 
     ++system_id;
   }
@@ -816,6 +813,22 @@ void MolecularDynamics::setup()
       std::print(stream, "{}", system.writeComponentStatus());
       std::print(stream, "{}", system.reactions.printStatus());
       std::print(stream, "{}", system.crossLinks.printStatus());
+
+#ifdef VERSION
+#define QUOTE(str) #str
+#define EXPAND_AND_QUOTE(str) QUOTE(str)
+      outputJsons[system_id]["version"] = EXPAND_AND_QUOTE(VERSION);
+#endif
+
+      outputJsons[system_id]["seed"] = random.seed;
+      outputJsons[system_id]["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
+      outputJsons[system_id]["initialization"]["units"] = Units::jsonStatus();
+      outputJsons[system_id]["initialization"]["initialConditions"] = system.jsonSystemStatus();
+      outputJsons[system_id]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
+      outputJsons[system_id]["initialization"]["forceField"]["pseudoAtoms"] = system.forceField.jsonPseudoAtomStatus();
+      outputJsons[system_id]["initialization"]["components"] = system.jsonComponentStatus();
+      outputJsons[system_id]["initialization"]["reactions"] = system.reactions.jsonStatus();
+      outputJsons[system_id]["initialization"]["crossLinks"] = system.crossLinks.jsonStatus();
 
       ++system_id;
     }
@@ -1287,6 +1300,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     {
       if (currentCycle % 3uz == 0uz) attemptParticleExchange(random, system);
       system.runningEnergies = molecularDynamicsStep(system);
+      ++numberOfSteps;
 
       system.accountConservedEnergy();
 
@@ -1505,7 +1519,7 @@ void MolecularDynamics::output()
     std::print(stream, "========================================================================================================================\n");
     std::print(stream, "\n");
 
-    std::string status_line{std::format("Final state after {} cycles\n\n", numberOfProductionCycles)};
+    std::print(stream, "Final state after {} cycles\n\n", numberOfProductionCycles);
 
     std::print(stream, "Production run CPU timings of the MD simulation\n");
     std::print(stream, "========================================================================================================================\n\n");
@@ -1593,6 +1607,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Molecu
   archive << mc.fractionalMoleculeSystem;
 
   archive << mc.estimation;
+  archive << mc.totalSimulationTime;
+  archive << integratorsCPUTime;
 
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 
@@ -1633,6 +1649,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MolecularDyn
   archive >> mc.fractionalMoleculeSystem;
 
   archive >> mc.estimation;
+  archive >> mc.totalSimulationTime;
+  archive >> integratorsCPUTime;
 
   std::uint64_t magicNumber;
   archive >> magicNumber;

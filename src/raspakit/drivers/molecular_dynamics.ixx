@@ -90,7 +90,7 @@ export struct MolecularDynamics
   RandomNumber random;             ///< Random number generator.
 
   std::size_t numberOfProductionCycles;                   ///< Total number of production cycles.
-  std::size_t numberOfSteps;                    ///< Total number of steps performed.
+  std::size_t numberOfSteps{0};                           ///< Total number of steps performed.
   std::size_t numberOfPreInitializationCycles;  ///< Number of pre-initialization cycles.
   std::size_t numberOfInitializationCycles;     ///< Number of initialization cycles.
   std::size_t numberOfEquilibrationCycles;      ///< Number of equilibration cycles.

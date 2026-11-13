@@ -873,7 +873,12 @@ void System::updateCenterOfMassConstraint() noexcept
 {
   translationalCenterOfMassConstraint =
       conservesCenterOfMassMomentum() ? std::min<std::size_t>(3, translationalDegreesOfFreedom) : 0;
-  if (thermostat.has_value()) thermostat->translationalCenterOfMassConstraint = translationalCenterOfMassConstraint;
+  if (thermostat.has_value())
+  {
+    // the molecule counts may have changed since the thermostat was built (Monte Carlo stages, particle exchanges)
+    thermostat->refreshDegreesOfFreedom(translationalDegreesOfFreedom, rotationalDegreesOfFreedom,
+                                        translationalCenterOfMassConstraint);
+  }
 }
 
 RunningEnergy System::computeTailCorrectionEnergies() const noexcept

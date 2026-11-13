@@ -114,7 +114,7 @@ const std::string IntegratorsCPUTime::writeIntegratorsCPUTimeStatistics(
   std::print(stream, "Compute Center of Mass Velocity:      {:14f} [s]\n", computeCenterOfMassVelocity.count());
   std::print(stream, "Compute Linear Momentum:              {:14f} [s]\n", computeLinearMomentum.count());
   std::print(stream, "Scale Velocities:                     {:14f} [s]\n", scaleVelocities.count());
-  std::print(stream, "Scale Velocities:                     {:14f} [s]\n", removeCenterOfMassVelocity.count());
+  std::print(stream, "Remove COM velocity:                  {:14f} [s]\n", removeCenterOfMassVelocity.count());
   std::print(stream, "Update Positions:                     {:14f} [s]\n", updatePositions.count());
   std::print(stream, "Update Velocities:                    {:14f} [s]\n", updateVelocities.count());
   std::print(stream, "Create Cartesian Positions:           {:14f} [s]\n", createCartesianPositions.count());

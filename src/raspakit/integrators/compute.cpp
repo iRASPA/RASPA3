@@ -200,8 +200,8 @@ double3 Integrators::computeCenterOfMass(std::span<const Molecule> moleculeData)
   // Update CPU time tracking for this function
   integratorsCPUTime.computeCenterOfMass += end - begin;
 
-  // Return the center of mass position
-  return com / totalMass;
+  // Return the center of mass position (zero for an empty system rather than 0/0)
+  return totalMass > 0.0 ? com / totalMass : double3{};
 }
 
 // The velocity of the center of mass is the average velocity of all objects in the system weighted by their masses
@@ -220,8 +220,8 @@ double3 Integrators::computeCenterOfMassVelocity(std::span<const Molecule> molec
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   // Update CPU time tracking for this function
   integratorsCPUTime.computeCenterOfMassVelocity += end - begin;
-  // Return the center of mass velocity
-  return com_velocity / totalMass;
+  // Return the center of mass velocity (zero for an empty system rather than 0/0)
+  return totalMass > 0.0 ? com_velocity / totalMass : double3{};
 }
 
 double3 Integrators::computeLinearMomentum(std::span<const Molecule> moleculeData)
