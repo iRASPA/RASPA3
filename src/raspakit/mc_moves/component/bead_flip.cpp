@@ -126,7 +126,7 @@ std::optional<RunningEnergy> MC_Moves::beadFlipMove(RandomNumber &random, System
             {
               return Interactions::computeInterMolecularEnergyDifference(
                   system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), movedNew,
-                  movedOld);
+                  movedOld, !system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule));
             });
   if (!interMolecule.has_value()) return std::nullopt;
 

@@ -118,8 +118,8 @@ std::optional<RunningEnergy> MC_Moves::pivotCBMCMove(RandomNumber &random, Syste
               [&]
               {
                 return Interactions::computeInterMolecularEnergyDifference(
-                    system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(),
-                    movedNew, movedOld);
+                    system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), movedNew,
+                    movedOld, !system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule));
               });
     if (!interMolecule.has_value()) return std::nullopt;
 

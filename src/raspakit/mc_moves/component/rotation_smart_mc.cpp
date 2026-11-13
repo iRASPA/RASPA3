@@ -193,13 +193,14 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMove(RandomNumber &random,
     electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
     interMolecule = Interactions::computeInterMolecularPolarizationElectricFieldDifference(
         system.forceField, system.simulationBox, electricFieldNeighborDelta, electricFieldMoleculeNew,
-        electricFieldMoleculeOld, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
+        electricFieldMoleculeOld, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms,
+        !system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule));
   }
   else
   {
     interMolecule = Interactions::computeInterMolecularEnergyDifference(
         system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), trialMolecule.second,
-        molecule_atoms);
+        molecule_atoms, !system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule));
   }
   time_end = std::chrono::steady_clock::now();
   component.mc_moves_cputime[move][Move::Timing::MoleculeMolecule] += (time_end - time_begin);

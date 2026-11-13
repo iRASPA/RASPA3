@@ -27,6 +27,7 @@ import mc_moves_cross_link_swap;
 import mc_moves_cross_link_exchange;
 import mc_moves_cross_link_formation;
 import mc_moves_reinsertion;
+import mc_moves_translation;
 import mc_moves_partial_reinsertion;
 import mc_moves_reaction_common;
 import monte_carlo;
@@ -1747,4 +1748,44 @@ TEST(MC_CROSS_LINKS, topology_moves_with_two_links_at_one_site_sample_exact_dist
   }
   EXPECT_LT(largest, 0.8);
   EXPECT_GT(weights[3] / normalization, 0.05);
+}
+
+// The pair of atoms joined by a covalent cross-link sits at bond distance, where its unexcluded Lennard-Jones energy
+// is far above the overlap criterion. The inter-molecular difference of a displacement move must not reject the move
+// as a hard-core overlap on that pair: the cross-link term removes the pair again, and the move goes to the
+// Metropolis test with the bond energy.
+TEST(MC_CROSS_LINKS, displacing_a_linked_monomer_is_not_rejected_as_an_overlap)
+{
+  const ForceField forceField = makeForceField(100.0, 0.0, 0.0, false);
+  const double3 posA(10.0, 10.0, 10.0);
+  const double3 posB(10.0 + kBondLength, 10.0, 10.0);
+  Component monomerA = makeComponent(forceField, 0, "xl-monomer-a-move", monomerJson("A", "X"));
+  Component monomerB = makeComponent(forceField, 1, "xl-monomer-b-move", monomerJson("B", "Y"));
+  System system = makeSystem(forceField, {monomerA, monomerB}, {{posA}, {posB}});
+  system.crossLinks.bondTypes.push_back(harmonicBondType("X", "Y", kBondK, kBondLength, 3.0));
+  system.crossLinks.addLink(CrossLink{site(0, 0, 0), site(1, 0, 0), 0});
+  system.runningEnergies = system.computeTotalEnergies();
+
+  // the bare pair energy at the bond distance is far above the overlap criterion
+  const double sigma = 0.5 * (3.4 + 3.6);
+  const double bareLennardJones = 4.0 * 100.0 * (std::pow(sigma / kBondLength, 12) - std::pow(sigma / kBondLength, 6));
+  ASSERT_GT(bareLennardJones, forceField.energyOverlapCriteria);
+
+  // tiny displacements: the bond energy changes by less than a kelvin, so nearly every attempt is accepted
+  system.components[0].mc_moves_statistics.setMaxChange(Move::Types::Translation, double3(0.001, 0.001, 0.001));
+  RandomNumber random(11);
+  std::size_t accepted = 0;
+  for (std::size_t attempt = 0; attempt < 200; ++attempt)
+  {
+    const std::optional<RunningEnergy> difference = MC_Moves::translationMove(random, system, 0, 0);
+    if (difference.has_value())
+    {
+      ++accepted;
+      system.runningEnergies += difference.value();
+    }
+  }
+  EXPECT_GT(accepted, 150uz);
+  // the running energy follows the accepted moves exactly
+  const RunningEnergy drift = system.runningEnergies - system.computeTotalEnergies();
+  EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6 * std::max(1.0, std::abs(system.runningEnergies.potentialEnergy())));
 }

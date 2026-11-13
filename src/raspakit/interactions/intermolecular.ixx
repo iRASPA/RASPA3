@@ -45,7 +45,10 @@ RunningEnergy computeInterMolecularEnergyScalar(const ForceField& forceField, co
  *
  * For a trial state that is evaluated outside a difference kernel (the pairs inside a group of molecules that
  * change together), so that an overlap refuses the move instead of being priced: empty when a van der Waals
- * pair exceeds 'ForceField::energyOverlapCriteria', as 'computeInterMolecularEnergyDifference' is.
+ * pair exceeds 'ForceField::energyOverlapCriteria', as 'computeInterMolecularEnergyDifference' is. The difference
+ * routines take 'checkOverlap': a move of a cross-linked molecule turns it off, since the atoms joined by a link sit at
+ * bond distance (an unexcluded pair far above the criterion that the cross-link term removes again); a genuine
+ * overlap is then left to the Metropolis test.
  */
 [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyWithOverlapCheck(
     const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> moleculeAtoms) noexcept;
@@ -136,7 +139,7 @@ void updateEffectiveTypeCounts(std::vector<double>& effectiveTypeCounts,
  */
 [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyDifference(
     const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> moleculeAtoms,
-    std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
+    std::span<const Atom> newatoms, std::span<const Atom> oldatoms, bool checkOverlap = true) noexcept;
 
 /**
  * \brief Cell-list variant of 'computeInterMolecularEnergyDifference'.
@@ -149,7 +152,8 @@ void updateEffectiveTypeCounts(std::vector<double>& effectiveTypeCounts,
  */
 [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyDifference(
     const ForceField& forceField, const SimulationBox& simulationBox, const MCCellList& cellList,
-    std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
+    std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms,
+    bool checkOverlap = true) noexcept;
 
 /**
  * \brief Computes the difference in inter-molecular tail energy due to atom changes.
@@ -324,7 +328,7 @@ RunningEnergy computeInterMolecularElectricField(const ForceField& forceField, c
 std::optional<RunningEnergy> computeInterMolecularElectricFieldDifference(
     const ForceField& forceField, const SimulationBox& box, std::span<double3> electricFieldMolecules,
     std::span<double3> electricFieldMolecule, std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms,
-    std::span<const Atom> oldatoms) noexcept;
+    std::span<const Atom> oldatoms, bool checkOverlap = true) noexcept;
 
 /**
  * \brief Computes the inter-molecular energy and electric-field difference for a single-molecule move.
@@ -348,5 +352,6 @@ std::optional<RunningEnergy> computeInterMolecularElectricFieldDifference(
 [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularPolarizationElectricFieldDifference(
     const ForceField& forceField, const SimulationBox& box, std::span<double3> electricFieldNeighborDelta,
     std::span<double3> electricFieldMoleculeNew, std::span<double3> electricFieldMoleculeOld,
-    std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
+    std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms,
+    bool checkOverlap = true) noexcept;
 };  // namespace Interactions

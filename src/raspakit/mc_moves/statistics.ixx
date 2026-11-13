@@ -244,9 +244,15 @@ export struct MCMoveStatistics
     return std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).maxChange[direction];
   }
 
-  void setMaxChange(const Move::Types& move, double value) 
+  void setMaxChange(const Move::Types& move, double value)
   {
     std::get<MoveStatistics<double>>(stats[std::to_underlying(move)]).maxChange = value;
+  };
+
+  /// The per-axis maximum change of a move with one per direction (translations).
+  void setMaxChange(const Move::Types& move, const double3& value)
+  {
+    std::get<MoveStatistics<double3>>(stats[std::to_underlying(move)]).maxChange = value;
   };
 
   const std::string writeMCMoveStatistics() const;

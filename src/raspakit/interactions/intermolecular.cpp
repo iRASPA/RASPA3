@@ -260,7 +260,7 @@ RunningEnergy Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
 //         mc_moves_swap_cfcmc.cpp, mc_moves_swap_cfcmc_cbmc.cpp, mc_moves_gibbs_swap_cfcmc.cpp
 [[nodiscard]] std::optional<RunningEnergy> Interactions::computeInterMolecularEnergyDifference(
     const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> moleculeAtoms,
-    std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
+    std::span<const Atom> newatoms, std::span<const Atom> oldatoms, bool checkOverlap) noexcept
 {
   double3 dr, s, t;
   double rr;
@@ -305,7 +305,7 @@ RunningEnergy Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
         {
           Potentials::PairDerivatives<0> energyFactor =
               Potentials::potentialVDW<0>(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
-          if (energyFactor.energy > overlapCriteria) return std::nullopt;
+          if (checkOverlap && energyFactor.energy > overlapCriteria) return std::nullopt;
 
           energySum.moleculeMoleculeVDW += energyFactor.energy;
           energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
@@ -367,7 +367,8 @@ RunningEnergy Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
 
 [[nodiscard]] std::optional<RunningEnergy> Interactions::computeInterMolecularEnergyDifference(
     const ForceField& forceField, const SimulationBox& simulationBox, const MCCellList& cellList,
-    std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
+    std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms,
+    bool checkOverlap) noexcept
 {
   if (forceField.omitInterInteractions) return RunningEnergy{};
   if (newatoms.empty() && oldatoms.empty()) return RunningEnergy{};
@@ -384,8 +385,9 @@ RunningEnergy Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
   const double cutOff = std::max(forceField.cutOffMoleculeVDW, forceField.useCharge ? forceField.cutOffCoulomb : 0.0);
   scratch.gather(simulationBox, usableList ? &cellList : nullptr, moleculeAtoms, centre, radius, cutOff);
 
-  std::optional<RunningEnergy> energyNew = computeNeighbourhoodEnergy(
-      forceField, simulationBox, scratch, newatoms, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, 1.0, true);
+  std::optional<RunningEnergy> energyNew =
+      computeNeighbourhoodEnergy(forceField, simulationBox, scratch, newatoms, forceField.cutOffMoleculeVDW,
+                                 forceField.cutOffCoulomb, 1.0, checkOverlap);
   if (!energyNew.has_value()) return std::nullopt;
   std::optional<RunningEnergy> energyOld =
       computeNeighbourhoodEnergy(forceField, simulationBox, scratch, oldatoms, forceField.cutOffMoleculeVDW,
@@ -1105,7 +1107,7 @@ RunningEnergy Interactions::computeInterMolecularElectricField(const ForceField&
 std::optional<RunningEnergy> Interactions::computeInterMolecularElectricFieldDifference(
     const ForceField& forceField, const SimulationBox& simulationBox, std::span<double3> electricFieldMolecules,
     std::span<double3> electricFieldMolecule, std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms,
-    std::span<const Atom> oldatoms) noexcept
+    std::span<const Atom> oldatoms, bool checkOverlap) noexcept
 {
   double3 dr, s, t;
   double rr;
@@ -1153,7 +1155,7 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularElectricFieldDif
         {
           Potentials::PairDerivatives<0> energyFactor =
               Potentials::potentialVDW<0>(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
-          if (energyFactor.energy > overlapCriteria) return std::nullopt;
+          if (checkOverlap && energyFactor.energy > overlapCriteria) return std::nullopt;
 
           energySum.moleculeMoleculeVDW += energyFactor.energy;
           energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
@@ -1242,7 +1244,8 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularElectricFieldDif
 std::optional<RunningEnergy> Interactions::computeInterMolecularPolarizationElectricFieldDifference(
     const ForceField& forceField, const SimulationBox& simulationBox, std::span<double3> electricFieldNeighborDelta,
     std::span<double3> electricFieldMoleculeNew, std::span<double3> electricFieldMoleculeOld,
-    std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
+    std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms,
+    bool checkOverlap) noexcept
 {
   double3 dr;
   double rr;
@@ -1292,7 +1295,7 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularPolarizationElec
         {
           Potentials::PairDerivatives<0> energyFactor =
               Potentials::potentialVDW<0>(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
-          if (energyFactor.energy > overlapCriteria) return std::nullopt;
+          if (checkOverlap && energyFactor.energy > overlapCriteria) return std::nullopt;
 
           energySum.moleculeMoleculeVDW += energyFactor.energy;
           energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
