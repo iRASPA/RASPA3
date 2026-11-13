@@ -21,7 +21,13 @@ namespace
 double3x3 orientation(const SKCell& cell)
 {
   const double3x3 unitCell = cell.unitCell();
-  if (unitCell.ay == 0.0 && unitCell.az == 0.0 && unitCell.bz == 0.0) return double3x3::identity();
+  // only a triangular cell with a positive diagonal is the canonical form: a triangular one with a negative diagonal
+  // entry is rotated (by 180 degrees about an axis) or left-handed, and keeps that orientation through the product
+  if (unitCell.ay == 0.0 && unitCell.az == 0.0 && unitCell.bz == 0.0 && unitCell.ax > 0.0 && unitCell.by > 0.0 &&
+      unitCell.cz > 0.0)
+  {
+    return double3x3::identity();
+  }
   return unitCell *
          double3x3::fromCellParameters(cell.a(), cell.b(), cell.c(), cell.alpha(), cell.beta(), cell.gamma()).inverse();
 }

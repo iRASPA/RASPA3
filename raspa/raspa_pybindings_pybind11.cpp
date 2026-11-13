@@ -249,6 +249,49 @@ struct type_caster<double3>
   }
 };
 
+// A 3x3 matrix crosses as three sequences of three numbers, the box vectors a, b and c (the columns of the cell
+// matrix), and comes back as three tuples the same way. Without it the SimulationBox(double3x3) constructor could
+// not be called from Python at all.
+template <>
+struct type_caster<double3x3>
+{
+  PYBIND11_TYPE_CASTER(double3x3, io_name("Sequence[Sequence[float]]",
+                                          "tuple[tuple[float, float, float], "
+                                          "tuple[float, float, float], tuple[float, float, float]]"));
+
+  static handle cast(const double3x3& m, return_value_policy /*policy*/, handle /*parent*/)
+  {
+    return pybind11::make_tuple(pybind11::make_tuple(m.ax, m.ay, m.az), pybind11::make_tuple(m.bx, m.by, m.bz),
+                                pybind11::make_tuple(m.cx, m.cy, m.cz))
+        .release();
+  }
+
+  bool load(handle src, bool /*convert*/)
+  {
+    if (!pybind11::isinstance<pybind11::sequence>(src)) return false;
+    auto rows = pybind11::reinterpret_borrow<pybind11::sequence>(src);
+    if (rows.size() != 3) return false;
+    double entries[3][3];
+    for (std::size_t vector = 0; vector < 3; ++vector)
+    {
+      pybind11::object row = rows[vector];
+      if (!pybind11::isinstance<pybind11::sequence>(row)) return false;
+      auto items = pybind11::reinterpret_borrow<pybind11::sequence>(row);
+      if (items.size() != 3) return false;
+      for (std::size_t component = 0; component < 3; ++component)
+      {
+        pybind11::object item = items[component];
+        if (!pybind11::isinstance<pybind11::float_>(item) && !pybind11::isinstance<pybind11::int_>(item)) return false;
+        entries[vector][component] = item.cast<double>();
+      }
+    }
+    value = double3x3(double3(entries[0][0], entries[0][1], entries[0][2]),
+                      double3(entries[1][0], entries[1][1], entries[1][2]),
+                      double3(entries[2][0], entries[2][1], entries[2][2]));
+    return true;
+  }
+};
+
 template <>
 struct type_caster<double4> 
 {

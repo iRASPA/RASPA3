@@ -247,7 +247,7 @@ struct CifCoordinateExpression
 std::optional<double> parseCifRational(std::string_view expression, std::size_t& position)
 {
   const std::size_t start = position;
-  while (position < expression.size() && std::isdigit(expression[position]))
+  while (position < expression.size() && std::isdigit(static_cast<unsigned char>(expression[position])))
   {
     ++position;
   }
@@ -255,7 +255,7 @@ std::optional<double> parseCifRational(std::string_view expression, std::size_t&
   {
     ++position;
     const std::size_t fractionStart = position;
-    while (position < expression.size() && std::isdigit(expression[position]))
+    while (position < expression.size() && std::isdigit(static_cast<unsigned char>(expression[position])))
     {
       ++position;
     }
@@ -275,7 +275,7 @@ std::optional<double> parseCifRational(std::string_view expression, std::size_t&
   {
     ++position;
     const std::size_t denominatorStart = position;
-    while (position < expression.size() && std::isdigit(expression[position]))
+    while (position < expression.size() && std::isdigit(static_cast<unsigned char>(expression[position])))
     {
       ++position;
     }
@@ -324,7 +324,7 @@ std::optional<CifCoordinateExpression> parseCifCoordinateExpression(std::string 
       return std::nullopt;
     }
 
-    if (std::isdigit(expression[position]) || expression[position] == '.')
+    if (std::isdigit(static_cast<unsigned char>(expression[position])) || expression[position] == '.')
     {
       const std::optional<double> value = parseCifRational(expression, position);
       if (!value)
@@ -335,7 +335,7 @@ std::optional<CifCoordinateExpression> parseCifCoordinateExpression(std::string 
       continue;
     }
 
-    const char variable = static_cast<char>(std::tolower(expression[position]));
+    const char variable = static_cast<char>(std::tolower(static_cast<unsigned char>(expression[position])));
     if (variable != 'x' && variable != 'y' && variable != 'z')
     {
       return std::nullopt;
@@ -414,7 +414,7 @@ Centring SKSpaceGroup::centringFromHMString(std::string hmString)
     return Centring::primitive;
   }
 
-  switch (std::toupper(hmString.front()))
+  switch (std::toupper(static_cast<unsigned char>(hmString.front())))
   {
     case 'P':
       return Centring::primitive;

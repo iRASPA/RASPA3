@@ -84,10 +84,16 @@ export inline RingMatrix operator*(const RingMatrix& a, const RingMatrix& b)
   {
     for (std::size_t k = 0; k < a.columns(); k++)
     {
-      const int aik = a(i, k);
+      const std::int64_t aik = a(i, k);
       for (std::size_t j = 0; j < b.columns(); j++)
       {
-        results(i, j) += aik * b(k, j);
+        // formed in 64 bits and checked: an int product or sum that wrapped gave a wrong matrix without any sign
+        const std::int64_t value = results(i, j) + aik * b(k, j);
+        if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max())
+        {
+          throw std::overflow_error("RingMatrix product: an entry does not fit in an int\n");
+        }
+        results(i, j) = static_cast<int>(value);
       }
     }
   }

@@ -18,6 +18,7 @@ add_executable(unit_tests_structurekit
                        energy_well_surface.cpp
                        energy_bet_area.cpp
                        energy_nldft.cpp
+                       structurekit_edge_cases.cpp
                        energy_isosurface.cpp
                        energy_well_field.cpp
   structure_parallel.cpp

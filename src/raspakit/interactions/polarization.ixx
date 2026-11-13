@@ -16,12 +16,22 @@ import component;
 
 export namespace Interactions
 {
-RunningEnergy computePolarizationEnergyDifference(const ForceField &forceField, std::span<double3> electricField,
-                                                  std::span<double3> electricFieldNew,
+/**
+ * \brief Polarization energy change -1/2 sum_i alpha_i (|E_new,i|^2 - |E_old,i|^2) of the atoms
+ *        \p moleculeAtomPositions; the new field comes first. An empty \p electricField (an insertion) has no old
+ *        term.
+ */
+RunningEnergy computePolarizationEnergyDifference(const ForceField &forceField, std::span<double3> electricFieldNew,
+                                                  std::span<double3> electricField,
                                                   std::span<Atom> moleculeAtomPositions);
 
-RunningEnergy computePolarizationEnergyDifference(const ForceField &forceField, std::span<double3> electricField,
-                                                  std::span<double3> electricFieldNew,
+/**
+ * \brief The same with separate new and old atoms (a regrowth, an insertion with empty old atoms or a deletion with
+ *        empty new atoms); \p electricFieldNew belongs to \p moleculeAtomPositionsNew and \p electricField to
+ *        \p moleculeAtomPositionsOld.
+ */
+RunningEnergy computePolarizationEnergyDifference(const ForceField &forceField, std::span<double3> electricFieldNew,
+                                                  std::span<double3> electricField,
                                                   std::span<Atom> moleculeAtomPositionsNew,
                                                   std::span<Atom> moleculeAtomPositionsOld);
 

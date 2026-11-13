@@ -41,8 +41,11 @@ std::size_t PairInteractions::addSphericalProbe(std::string name, double strengt
   auto mix = [&](double strengthOther, double sizeOther) -> PairParameters
   {
     PairParameters pair;
-    pair.sizeParameter = 0.5 * (size + sizeOther);
     pair.strengthParameter = std::sqrt(std::max(0.0, strength * strengthOther));
+    // a pair without strength (a site with epsilon 0, or a probe of none) has no interaction, not an
+    // energy-less pair with a size the energy routes would read as a contact wall
+    if (!(pair.strengthParameter > 0.0)) return PairParameters{};
+    pair.sizeParameter = 0.5 * (size + sizeOther);
     if (shifted) pair.shift = lennardJonesShift(pair.strengthParameter, pair.sizeParameter, this->cutOffVDW);
     return pair;
   };

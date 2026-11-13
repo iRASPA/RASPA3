@@ -624,7 +624,7 @@ std::size_t CIFReader::scanInt()
   std::string tempString;
   if (scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString))
   {
-    std::replace_if(tempString.begin(), tempString.end(), [](char c) { return !std::isalnum(c); }, ' ');
+    std::replace_if(tempString.begin(), tempString.end(), [](unsigned char c) { return !std::isalnum(c); }, ' ');
 
     std::istringstream ss(tempString);
     std::size_t value;

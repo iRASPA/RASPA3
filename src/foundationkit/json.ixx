@@ -39,7 +39,7 @@ struct RASPAComparator
   bool operator()(std::string_view str1, std::string_view str2) const
   {
     return str1.size() == str2.size() && std::equal(str1.begin(), str1.end(), str2.begin(),
-                                                    [](auto a, auto b) { return std::tolower(a) == std::tolower(b); });
+                                                    [](unsigned char a, unsigned char b) { return std::tolower(a) == std::tolower(b); });
   }
 };
 

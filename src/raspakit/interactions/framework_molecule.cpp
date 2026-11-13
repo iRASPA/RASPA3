@@ -41,15 +41,26 @@ namespace
 // interpolation waits for memory. Loops over many atoms fetch the grid cells this many atoms ahead.
 constexpr std::size_t gridPrefetchDistance = 8;
 
+// An atom is read from the grids when it is fully coupled, the real-space charges are Ewald, and the grids it needs
+// exist: the Van der Waals grid of its type and, with charges on, the Coulomb grid (the last entry). A grid vector
+// shorter than the pseudo-atom table (a caller without grids) or a missing Coulomb grid falls back to the pairs.
+inline bool readsGrid(const ForceField& forceField,
+                      const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids, const Atom& atom)
+{
+  const std::size_t type = static_cast<std::size_t>(atom.type);
+  return atom.isFullyCoupled() && forceField.chargeMethod == ForceField::ChargeMethod::Ewald &&
+         type + 1 < interpolationGrids.size() && interpolationGrids[type].has_value() &&
+         (!forceField.useCharge || interpolationGrids.back().has_value());
+}
+
 inline void prefetchGridCell(const ForceField& forceField,
                              const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
                              std::span<const Atom> atoms, std::size_t index)
 {
   if (index >= atoms.size()) return;
   const Atom& atom = atoms[index];
-  const std::optional<InterpolationEnergyGrid>& grid = interpolationGrids[static_cast<std::size_t>(atom.type)];
-  if (!grid.has_value() || !atom.isFullyCoupled()) return;
-  grid->prefetch(atom.position);
+  if (!readsGrid(forceField, interpolationGrids, atom)) return;
+  interpolationGrids[static_cast<std::size_t>(atom.type)]->prefetch(atom.position);
   if (forceField.useCharge) interpolationGrids.back()->prefetch(atom.position);
 }
 
@@ -96,10 +107,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
   for (std::size_t index = 0; index < moleculeAtoms.size(); ++index)
   {
     const Atom& moleculeAtom = moleculeAtoms[index];
-    std::size_t typeB = static_cast<std::size_t>(moleculeAtom.type);
 
-    if (gridsApply && interpolationGrids[typeB].has_value() && moleculeAtom.isFullyCoupled() &&
-        forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
+    if (gridsApply && readsGrid(forceField, interpolationGrids, moleculeAtom))
     {
       prefetchGridCell(forceField, interpolationGrids, moleculeAtoms, index + gridPrefetchDistance);
       const auto [energyVDW, energyCoulomb] = gridEnergies(forceField, interpolationGrids, moleculeAtom);
@@ -308,8 +317,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
     double scalingCoulombB = atom.scalingCoulomb;
     double chargeB = atom.charge;
 
-    if (gridsApply && interpolationGrids[typeB].has_value() && atom.isFullyCoupled() &&
-        forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
+    if (gridsApply && readsGrid(forceField, interpolationGrids, atom))
     {
       const auto [energyVDW, energyCoulomb] = gridEnergies(forceField, interpolationGrids, atom);
       if (energyVDW > overlapCriteria)
@@ -366,8 +374,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
     double scalingCoulombB = atom.scalingCoulomb;
     double chargeB = atom.charge;
 
-    if (gridsApply && interpolationGrids[typeB].has_value() && atom.isFullyCoupled() &&
-        forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
+    if (gridsApply && readsGrid(forceField, interpolationGrids, atom))
     {
       const auto [energyVDW, energyCoulomb] = gridEnergies(forceField, interpolationGrids, atom);
       energySum.frameworkMoleculeVDW -= energyVDW;
@@ -428,11 +435,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
   // The atoms read from a grid are settled here; the others go through the gathered neighbourhood (same grid
   // rule as the brute-force loop above).
   const bool gridsApply = !(framework.has_value() && framework->hasMobileAtoms());
-  auto readsGrid = [&](const Atom& atom)
-  {
-    return gridsApply && interpolationGrids[static_cast<std::size_t>(atom.type)].has_value() && atom.isFullyCoupled() &&
-           forceField.chargeMethod == ForceField::ChargeMethod::Ewald;
-  };
+  auto atomReadsGrid = [&](const Atom& atom) { return gridsApply && readsGrid(forceField, interpolationGrids, atom); };
   thread_local std::vector<Atom> pairNew{};
   thread_local std::vector<Atom> pairOld{};
   pairNew.clear();
@@ -445,7 +448,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
   }
   for (const Atom& atom : newatoms)
   {
-    if (!readsGrid(atom))
+    if (!atomReadsGrid(atom))
     {
       pairNew.push_back(atom);
       continue;
@@ -457,7 +460,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
   }
   for (const Atom& atom : oldatoms)
   {
-    if (!readsGrid(atom))
+    if (!atomReadsGrid(atom))
     {
       pairOld.push_back(atom);
       continue;
@@ -705,8 +708,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
     const Atom& moleculeAtom = *it1;
     std::size_t typeA = static_cast<std::size_t>(moleculeAtom.type);
 
-    if (!mobileFramework && interpolationGrids[typeA].has_value() && moleculeAtom.isFullyCoupled() &&
-        forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
+    if (!mobileFramework && readsGrid(forceField, interpolationGrids, moleculeAtom))
     {
       prefetchGridCell(forceField, interpolationGrids, moleculeAtoms, indexA + gridPrefetchDistance);
       if (useCharge)

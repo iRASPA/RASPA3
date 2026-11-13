@@ -253,7 +253,8 @@ struct Neighbourhood
                           const double ratio = pair.sigma2 / clamped;
                           const double ratio3 = ratio * ratio * ratio;
                           energy += std::min(pair.epsilon4 * ratio3 * (ratio3 - 1.0) - pair.shift, this->ceiling);
-                          clearance = std::min(clearance, std::sqrt(clamped) - pair.contact);
+                          // a pair without dispersion has no wall: it sets no clearance
+                          if (pair.epsilon4 > 0.0) clearance = std::min(clearance, std::sqrt(clamped) - pair.contact);
                         });
 
     // Each pair is held to the ceiling, and so is their sum, as the molecular route and the device both do:
@@ -273,7 +274,7 @@ struct Neighbourhood
     {
       const SitePair &pair = this->pairs[image.atom];
       const double r = image.dr.length();
-      if (!(r > 1.0e-6)) continue;
+      if (!(r > 1.0e-6) || !(pair.epsilon4 > 0.0)) continue;
       const double weighted = r - pair.contact;
       if (weighted - clearance > 6.0 * wellSoftminTau) continue;
       const double w = std::exp(-(weighted - clearance) / wellSoftminTau);
@@ -353,7 +354,11 @@ struct Neighbourhood
         // that is sampled, and its electrostatics belong to it as much as its dispersion does.
         if (overlapHit != nullptr && pairEnergy >= this->ceiling) *overlapHit = 1;
 
-        if constexpr (WantClearance) nearest = std::min(nearest, std::sqrt(clamped) - pair.contact);
+        // a pair without dispersion (epsilon 0) has no wall: it sets no clearance
+        if constexpr (WantClearance)
+        {
+          if (pair.epsilon4 > 0.0) nearest = std::min(nearest, std::sqrt(clamped) - pair.contact);
+        }
       }
     }
 
@@ -613,7 +618,7 @@ struct Neighbourhood
       const SitePair *here = this->pairs.data() + image.atom * numberOfSites;
       for (std::size_t s = 0; s < numberOfSites; ++s)
       {
-        if (!this->sites[s].dispersion) continue;
+        if (!this->sites[s].dispersion || !(here[s].epsilon4 > 0.0)) continue;
         double3 d = image.dr + this->sites[s].offset * axis;
         double r = d.length();
         if (!(r > 1.0e-6)) continue;

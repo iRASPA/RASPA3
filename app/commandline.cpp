@@ -604,10 +604,18 @@ void CommandLine::run(int argc, char *argv[])
     use_apollonius = true;
   }
 
+  // A pore-size distribution asked for without a route takes the exact one (it ran nothing at all otherwise).
+  const bool poreSizeDistribution = state.test(State::PSD) || state.test(State::PSDPeaks);
+  if (poreSizeDistribution && !use_gridbased_methods && !use_apollonius && !use_voronoi && !use_monte_carlo_methods &&
+      !use_energy_methods)
+  {
+    use_apollonius = true;
+  }
+
   // A pore network is only of use to an analysis that reads one, so asking for the Apollonius diagram
-  // without saying what to do with it is asking for the pore analysis.
+  // without saying what to do with it is asking for the pore analysis; the pore-size distributions read it too.
   if ((use_apollonius || use_voronoi) && !state.test(State::SurfaceArea) && !state.test(State::VoidFraction) &&
-      !state.test(State::BlockingSpheres))
+      !state.test(State::BlockingSpheres) && !poreSizeDistribution && !state.test(State::PSD_BV))
   {
     state.set(State::PoreAnalysis);
   }
@@ -1705,6 +1713,11 @@ void CommandLine::run(int argc, char *argv[])
                       (gridType == ForceFieldSettings::InterpolationGridType::LennardJones) ? "LennardJones" : "Ewald"));
       for (std::size_t pseudoAtomIdx : pseudoAtomsGrid)
       {
+        if (pseudoAtomIdx >= forceField->pseudoAtoms.size())
+        {
+          throw std::runtime_error(std::format("-e: pseudo-atom index {} is out of range (the force field has {})\n",
+                                               pseudoAtomIdx, forceField->pseudoAtoms.size()));
+        }
         InterpolationEnergyGrid grid(framework.simulationBox, double3{},
                                      gridSize, order);
         std::ostream nullStream{nullptr};

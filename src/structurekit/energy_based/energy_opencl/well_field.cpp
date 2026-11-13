@@ -234,7 +234,10 @@ GpuPack packNeighbourhood(const PairInteractions &interactions, const Crystal &f
       const std::size_t index = s * numberOfAtoms + i;
       pack.epsilonTimesFour[index] = cl_float(4.0 * pair.strengthParameter);
       pack.sigmaSquared[index] = cl_float(pair.sizeParameter * pair.sizeParameter);
-      pack.contact[index] = cl_float(wellContactPrefactor * pair.sizeParameter);
+      // a pair without dispersion has no wall: a contact far below any distance keeps it out of the clearance (its
+      // r - contact is never the least) and out of the softmin (beyond the cut on it), as on the host
+      pack.contact[index] =
+          pair.strengthParameter > 0.0 ? cl_float(wellContactPrefactor * pair.sizeParameter) : cl_float(-1.0e30f);
       pack.shiftValue[index] = cl_float(pair.shift);
       pack.chargeProduct[index] = cl_float(coulombFactor * sites[s].charge * framework.atoms[i].charge);
     }

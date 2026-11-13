@@ -45,8 +45,9 @@ bool Scanner::scanCharacters(const CharacterSet& set, std::string& into)
 {
   std::string::const_iterator found = find_first_not_of(set.string(), _string, _scanLocation);
 
-  // the characters of the set up to the next other character, or up to the end of the string
-  if (found >= _string.cend() && _scanLocation >= _string.cend())
+  // the characters of the set up to the next other character, or up to the end of the string; none at all (the
+  // next character is not in the set, or the string is done) is no match, as for the other scans
+  if (found == _scanLocation || _scanLocation >= _string.cend())
   {
     into = std::string("");
     return false;

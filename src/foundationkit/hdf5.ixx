@@ -86,7 +86,16 @@ export class HDF5Writer
     const hsize_t oneElement = 1;
     H5::DataSpace memspace(1, &oneElement, NULL);
     dataspace.selectElements(H5S_SELECT_SET, 1, indices.data());
-    dataset.write(&value, getH5Type<T>(), memspace, dataspace);
+    if constexpr (std::is_same_v<T, bool>)
+    {
+      // the memory type is NATIVE_HBOOL: the buffer is an hbool_t, whatever its size in this HDF5 build
+      const hbool_t converted = static_cast<hbool_t>(value);
+      dataset.write(&converted, getH5Type<T>(), memspace, dataspace);
+    }
+    else
+    {
+      dataset.write(&value, getH5Type<T>(), memspace, dataspace);
+    }
   }
 
   void writeMetaInfo(const std::string& groupName, const std::string& infoName, const std::string& infoValue)

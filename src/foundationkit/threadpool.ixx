@@ -414,11 +414,13 @@ class ThreadPool
   template <typename Function>
   void enqueue_task(Function &&f)
   {
-    auto i_opt = priority_queue_.copy_front_and_rotate_to_back();
+    // a serial pool runs the task on the calling thread, so that it is not dropped and its promise is kept (a
+    // dropped task made the future throw broken_promise); the workers of a pool switched to serial afterwards
+    // (they cannot be stopped while running) receive no more work
+    std::optional<std::size_t> i_opt{};
+    if (threadingType == ThreadingType::ThreadPool) i_opt = priority_queue_.copy_front_and_rotate_to_back();
     if (!i_opt.has_value())
     {
-      // no worker thread (a serial pool): run the task on the calling thread, so that it is not dropped and its
-      // promise is kept (a dropped task made the future throw broken_promise)
       std::invoke(std::forward<Function>(f));
       return;
     }

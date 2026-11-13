@@ -59,8 +59,10 @@ void BruteForceStructure::prepare()
   auto along = [&](double width)
   {
     const double safeWidth = std::max(width, 1.0e-9);
-    return static_cast<std::int32_t>(std::max(std::clamp(std::ceil(reach / safeWidth), 1.0, 8.0),
-                                              std::ceil(contact / safeWidth) + 1.0));
+    // not capped: a cell thin along an axis needs that many steps along it before an image is surely farther than
+    // the nearest atom (a cap of eight missed nearer images and over-reported the clearance)
+    return static_cast<std::int32_t>(
+        std::max({std::ceil(reach / safeWidth), 1.0, std::ceil(contact / safeWidth) + 1.0}));
   };
 
   this->shell = int3(along(widths.x), along(widths.y), along(widths.z));
@@ -280,7 +282,8 @@ bool BruteForceStructure::hasRoomFor(const double3 &position, double bound) cons
       if (image.distance - reach >= bound) break;
 
       double3 dr = base + image.translation;
-      if (double3::dot(dr, dr) < limit * limit) return false;
+      // a zero-radius site with a negative bound has a negative limit: nothing is within it (squared, it was not)
+      if (limit > 0.0 && double3::dot(dr, dr) < limit * limit) return false;
     }
   }
 

@@ -767,11 +767,14 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
     const std::size_t tableSize = 8192;
     const std::size_t nr = 4000;  // even
     const double dr = options.cutoff / static_cast<double>(nr);
+    // a 1x1x1 grid has only k = 0 (kMax = 0): the table then spans an arbitrary finite range and every lattice
+    // point reads its first entry, instead of 0 / 0
+    const double kTable = kMax > 0.0 ? kMax : 1.0;
     std::vector<double> uTable(tableSize);
     uTable[0] = (nAtt > 0.0) ? model.a / (nAtt * nAtt) : model.a;
     for (std::size_t t = 1; t < tableSize; ++t)
     {
-      double k = kMax * static_cast<double>(t) / static_cast<double>(tableSize - 1);
+      double k = kTable * static_cast<double>(t) / static_cast<double>(tableSize - 1);
       double sum = 0.0;
       for (std::size_t i = 0; i <= nr; ++i)
       {
@@ -785,7 +788,7 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
     }
     for (std::size_t index = 0; index < nC; ++index)
     {
-      double position = kAbs[index] / kMax * static_cast<double>(tableSize - 1);
+      double position = kAbs[index] / kTable * static_cast<double>(tableSize - 1);
       std::size_t bin = std::min(static_cast<std::size_t>(position), tableSize - 2);
       double fraction = position - static_cast<double>(bin);
       uHat[index] = uTable[bin] * (1.0 - fraction) + uTable[bin + 1] * fraction;

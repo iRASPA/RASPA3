@@ -38,7 +38,8 @@ RunningEnergy Interactions::computePolarizationEnergyDifference(const ForceField
     energy.polarization -= 0.5 * polarizability * double3::dot(electricFieldNew[i], electricFieldNew[i]);
   }
 
-  for (std::size_t i = 0; i < moleculeAtomPositions.size(); ++i)
+  // an insertion passes no old field
+  for (std::size_t i = 0; i < std::min(moleculeAtomPositions.size(), electricField.size()); ++i)
   {
     std::size_t type = moleculeAtomPositions[i].type;
     double polarizability = moleculeAtomPositions[i].scalingCoulomb * forceField.pseudoAtoms[type].polarizability /

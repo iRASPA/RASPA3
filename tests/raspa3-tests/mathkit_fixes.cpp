@@ -552,3 +552,13 @@ TEST(MATHKIT_FIXES, categorical_distribution_skips_zero_weights_and_refuses_an_e
   EXPECT_THROW(static_cast<void>(random.categoricalDistribution(none)), std::invalid_argument);
   EXPECT_THROW(static_cast<void>(random.categoricalDistribution(std::span<const double>{})), std::invalid_argument);
 }
+
+// Products and sums of entries are formed in 64 bits and refused when they leave the int range: they wrapped
+// silently before, giving a wrong matrix.
+TEST(MATHKIT_FIXES, ring_matrix_products_refuse_to_overflow)
+{
+  const RingMatrix large(1, 1, {{70000}});
+  EXPECT_THROW(static_cast<void>(large * large), std::overflow_error);
+  const RingMatrix fits(1, 1, {{40000}});
+  EXPECT_EQ((fits * fits)(0, 0), 1600000000);
+}

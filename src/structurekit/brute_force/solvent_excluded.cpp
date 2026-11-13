@@ -284,8 +284,11 @@ BruteForceSolventExcluded BruteForceSolventExcluded::compute(const BruteForceStr
   const double3x3 &cell = structure.unitCell.cell;
 
   // A probe centre is free when it is clear of every inflated atom. Generated centres sit exactly on one
-  // inflated sphere, so the test is against rounding rather than against zero.
-  auto freeProbeCentre = [&](const double3& centre) { return inflated.hasRoomFor(centre, -1.0e-9); };
+  // inflated sphere, so the test is against rounding rather than against zero, and with the tolerance a sphere
+  // counts as touching with below: a fourth sphere tangent at a corner, reached up to the rounding of the
+  // trilateration, is a contact of that corner and not an overlap that drops it.
+  constexpr double contactTolerance = 1.0e-7;
+  auto freeProbeCentre = [&](const double3& centre) { return inflated.hasRoomFor(centre, -contactTolerance); };
 
   // Who is near enough to whom for a probe to touch both, and for three of them to meet. Everything that
   // follows is local, so this is what keeps the sweeps below from being over every pair and triple there
@@ -402,12 +405,12 @@ BruteForceSolventExcluded BruteForceSolventExcluded::compute(const BruteForceStr
             for (const Neighbour &touching : around)
             {
               double3 to = touching.centre - centre;
-              if (std::abs(to.length() - touching.radius) > 1.0e-7) continue;
+              if (std::abs(to.length() - touching.radius) > contactTolerance) continue;
               corner.contact.push_back((1.0 / touching.radius) * to);
             }
             {
               double3 to = first - centre;
-              if (std::abs(to.length() - firstRadius) <= 1.0e-7)
+              if (std::abs(to.length() - firstRadius) <= contactTolerance)
               {
                 corner.contact.push_back((1.0 / firstRadius) * to);
               }

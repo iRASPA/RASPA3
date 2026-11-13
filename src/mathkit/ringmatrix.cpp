@@ -7,6 +7,19 @@ import std;
 import ring;
 import int3x3;
 
+// The entries are ints, but every update of the Hermite normal form is formed in 64 bits and checked on the way
+// back: its entries can grow, and an int that wrapped gave a wrong transformation without any sign of it.
+int narrowed(std::int64_t value)
+{
+  if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max())
+  {
+    throw std::overflow_error("RingMatrix: an entry of the Hermite normal form does not fit in an int\n");
+  }
+  return static_cast<int>(value);
+}
+
+std::int64_t wide(int value) { return static_cast<std::int64_t>(value); }
+
 template <typename T>
 int sign(T val)
 {
@@ -198,7 +211,7 @@ std::tuple<RingMatrix, RingMatrix, std::vector<std::size_t>> RingMatrix::Hermite
         {
           for (std::size_t i = 0; i < QQ._rows; i++)
           {
-            QQ(i, l) -= std::get<1>(columnReduction)(r, l) * QQ(i, r);
+            QQ(i, l) = narrowed(wide(QQ(i, l)) - wide(std::get<1>(columnReduction)(r, l)) * QQ(i, r));
           }
         }
       }
@@ -209,7 +222,7 @@ std::tuple<RingMatrix, RingMatrix, std::vector<std::size_t>> RingMatrix::Hermite
         {
           for (std::size_t k = 0; k < QQ._rows; k++)
           {
-            QQ(r, k) += std::get<1>(columnReduction)(r, i) * QQ(i, k);
+            QQ(r, k) = narrowed(wide(QQ(r, k)) + wide(std::get<1>(columnReduction)(r, i)) * QQ(i, k));
           }
         }
       }
@@ -220,8 +233,8 @@ std::tuple<RingMatrix, RingMatrix, std::vector<std::size_t>> RingMatrix::Hermite
         {
           for (std::size_t l = 0; l < QQ._columns; l++)
           {
-            QQ(i, l) = QQ(i, l) + std::get<0>(columnReduction)(i, r - 1) * QQ(r - 1, l) +
-                       std::get<0>(columnReduction)(i, r) * QQ(r, l);
+            QQ(i, l) = narrowed(wide(QQ(i, l)) + wide(std::get<0>(columnReduction)(i, r - 1)) * QQ(r - 1, l) +
+                                wide(std::get<0>(columnReduction)(i, r)) * QQ(r, l));
           }
         }
       }
@@ -231,8 +244,8 @@ std::tuple<RingMatrix, RingMatrix, std::vector<std::size_t>> RingMatrix::Hermite
       int d = std::get<0>(columnReduction)(r, r);
       for (std::size_t l = 0; l < QQ._columns; l++)
       {
-        int temp1 = a * QQ(r - 1, l) + b * QQ(r, l);
-        int temp2 = c * QQ(r - 1, l) + d * QQ(r, l);
+        int temp1 = narrowed(wide(a) * QQ(r - 1, l) + wide(b) * QQ(r, l));
+        int temp2 = narrowed(wide(c) * QQ(r - 1, l) + wide(d) * QQ(r, l));
         QQ(r - 1, l) = temp1;
         QQ(r, l) = temp2;
       }
@@ -289,12 +302,12 @@ std::tuple<RingMatrix, RingMatrix, RingMatrix> RingMatrix::ColumnReduction(RingM
   // Transform A
   for (std::size_t j = col_1; j < m; j++)
   {
-    int v = A(row_start + 1, j);
+    std::int64_t v = A(row_start + 1, j);
     for (std::size_t i = 0; i < conditioning.second.size(); i++)
     {
-      v += conditioning.second[i] * A(row_start + 2 + i, j);
+      v += wide(conditioning.second[i]) * A(row_start + 2 + i, j);
     }
-    A(row_start + 1, j) = v;
+    A(row_start + 1, j) = narrowed(v);
   }
 
   // Compute Q transform
@@ -305,16 +318,17 @@ std::tuple<RingMatrix, RingMatrix, RingMatrix> RingMatrix::ColumnReduction(RingM
   int s = sign(static_cast<std::int64_t>(A(row_start, col_1)) * A(row_start + 1, col_2) -
                static_cast<std::int64_t>(A(row_start, col_2)) * A(row_start + 1, col_1));
   RingMatrix Q = RingMatrix::identity(n);
-  int q1 = -s * A(row_start + 1, col_1) / std::get<0>(extendedGCD);
-  int q2 = s * A(row_start, col_1) / std::get<0>(extendedGCD);
+  int q1 = narrowed(-wide(s) * A(row_start + 1, col_1) / std::get<0>(extendedGCD));
+  int q2 = narrowed(wide(s) * A(row_start, col_1) / std::get<0>(extendedGCD));
   Q(row_start, row_start) = std::get<1>(extendedGCD);
   Q(row_start, row_start + 1) = std::get<2>(extendedGCD);
   Q(row_start + 1, row_start) = q1;
   Q(row_start + 1, row_start + 1) = q2;
 
   // Transform A
-  int v = std::get<1>(extendedGCD) * A(row_start, col_2) + std::get<2>(extendedGCD) * A(row_start + 1, col_2);
-  int t2 = q1 * A(row_start, col_2) + q2 * A(row_start + 1, col_2);
+  int v = narrowed(wide(std::get<1>(extendedGCD)) * A(row_start, col_2) +
+                   wide(std::get<2>(extendedGCD)) * A(row_start + 1, col_2));
+  int t2 = narrowed(wide(q1) * A(row_start, col_2) + wide(q2) * A(row_start + 1, col_2));
   A(row_start, col_1) = std::get<0>(extendedGCD);
   A(row_start, col_2) = v;
   A(row_start + 1, col_1) = 0;
@@ -323,8 +337,9 @@ std::tuple<RingMatrix, RingMatrix, RingMatrix> RingMatrix::ColumnReduction(RingM
   {
     if (j != col_2)
     {
-      int v1 = std::get<1>(extendedGCD) * A(row_start, j) + std::get<2>(extendedGCD) * A(row_start + 1, j);
-      int v2 = q1 * A(row_start, j) + q2 * A(row_start + 1, j);
+      int v1 = narrowed(wide(std::get<1>(extendedGCD)) * A(row_start, j) +
+                        wide(std::get<2>(extendedGCD)) * A(row_start + 1, j));
+      int v2 = narrowed(wide(q1) * A(row_start, j) + wide(q2) * A(row_start + 1, j));
       A(row_start, j) = v1;
       A(row_start + 1, j) = v2;
     }
@@ -336,16 +351,16 @@ std::tuple<RingMatrix, RingMatrix, RingMatrix> RingMatrix::ColumnReduction(RingM
     int s1 = -Ring::floorDivision(A(i, col_1), std::get<0>(extendedGCD));
     for (std::size_t j = col_1; j < m; j++)
     {
-      A(i, j) = A(i, j) + s1 * A(row_start, j);
+      A(i, j) = narrowed(wide(A(i, j)) + wide(s1) * A(row_start, j));
     }
     int s2 = -Ring::floorDivision(A(i, col_2), t2);
     for (std::size_t j = col_1; j < m; j++)
     {
-      A(i, j) = A(i, j) + s2 * A(row_start + 1, j);
+      A(i, j) = narrowed(wide(A(i, j)) + wide(s2) * A(row_start + 1, j));
     }
     for (std::size_t j = 0; j < n; j++)
     {
-      int temp = Q(i, j) + s1 * Q(row_start, j) + s2 * Q(row_start + 1, j);
+      int temp = narrowed(wide(Q(i, j)) + wide(s1) * Q(row_start, j) + wide(s2) * Q(row_start + 1, j));
       Q(i, j) = temp;
     }
   }
@@ -357,16 +372,16 @@ std::tuple<RingMatrix, RingMatrix, RingMatrix> RingMatrix::ColumnReduction(RingM
     int s1 = -Ring::floorDivision(A(i, col_1), std::get<0>(extendedGCD));
     for (std::size_t j = col_1; j < m; j++)
     {
-      A(i, j) += s1 * A(row_start, j);
+      A(i, j) = narrowed(wide(A(i, j)) + wide(s1) * A(row_start, j));
     }
     int s2 = -Ring::floorDivision(A(i, col_2), t2);
     for (std::size_t j = col_1; j < m; j++)
     {
-      A(i, j) += s2 * A(row_start + 1, j);
+      A(i, j) = narrowed(wide(A(i, j)) + wide(s2) * A(row_start + 1, j));
     }
     for (std::size_t j = 0; j < n; j++)
     {
-      Q(i, j) += s1 * Q(row_start, j) + s2 * Q(row_start + 1, j);
+      Q(i, j) = narrowed(wide(Q(i, j)) + wide(s1) * Q(row_start, j) + wide(s2) * Q(row_start + 1, j));
     }
   }
 
@@ -389,8 +404,8 @@ std::pair<std::vector<int>, std::vector<int>> RingMatrix::Conditioning(RingMatri
       if (static_cast<std::int64_t>(d11) * A(s, col_2) != static_cast<std::int64_t>(d12) * A(s, col_1))
       {
         ci[s - row_start - 2] = 1;
-        d21 += A(s, col_1);
-        d22 += A(s, col_2);
+        d21 = narrowed(wide(d21) + A(s, col_1));
+        d22 = narrowed(wide(d22) + A(s, col_2));
         break;
       }
     }
@@ -448,16 +463,16 @@ std::pair<std::vector<int>, std::vector<int>> RingMatrix::Conditioning(RingMatri
         if (neg)
         {
           ci[i] -= convertedRes;
-          d21 -= convertedRes * bi;
-          d22 -= convertedRes * bip;
-          ahat = Ring::modulo((ahat - convertedRes * bi), d11);
+          d21 = narrowed(wide(d21) - wide(convertedRes) * bi);
+          d22 = narrowed(wide(d22) - wide(convertedRes) * bip);
+          ahat = Ring::modulo(narrowed(wide(ahat) - wide(convertedRes) * bi), d11);
         }
         else
         {
           ci[i] += convertedRes;
-          d21 += convertedRes * bi;
-          d22 += convertedRes * bip;
-          ahat = Ring::modulo((ahat + convertedRes * bi), d11);
+          d21 = narrowed(wide(d21) + wide(convertedRes) * bi);
+          d22 = narrowed(wide(d22) + wide(convertedRes) * bip);
+          ahat = Ring::modulo(narrowed(wide(ahat) + wide(convertedRes) * bi), d11);
         }
         has_gi = false;
         i += 1;
@@ -531,7 +546,7 @@ std::variant<std::vector<int>, int> RingMatrix::Algorithm_6_14(int a, int b, int
     {
       if (bi[i] != 0)
       {
-        int si = Ring::modulo(-ai[i] * xi[i], Nfact[i]);
+        int si = Ring::modulo(narrowed((-wide(ai[i]) * xi[i]) % Nfact[i]), Nfact[i]);
         std::size_t idx = static_cast<std::size_t>(si);
         while (idx <= k)
         {
@@ -548,7 +563,8 @@ std::variant<std::vector<int>, int> RingMatrix::Algorithm_6_14(int a, int b, int
       {
         for (std::size_t i = 0; i < t; i++)
         {
-          int gi = Ring::greatestCommonDivisor(ai[i] + static_cast<int>(c) * bi[i], Nfact[i]);
+          int gi = Ring::greatestCommonDivisor(
+              narrowed((wide(ai[i]) + static_cast<std::int64_t>(c) * bi[i]) % Nfact[i]), Nfact[i]);
 
           if (gi > 1)
           {
@@ -677,11 +693,11 @@ void RingMatrix::Smith_Theorem5(RingMatrix& A, RingMatrix& U, RingMatrix& V, std
     // Add ci[0] times the (i+1)-th row to the i-th row
     for (std::size_t j = 0; j < m; j++)
     {
-      A(i, j) = A(i, j) + ci[0] * A(i + 1, j);
+      A(i, j) = narrowed(wide(A(i, j)) + wide(ci[0]) * A(i + 1, j));
     }
     for (std::size_t j = 0; j < n; j++)
     {
-      U(i, j) = U(i, j) + ci[0] * U(i + 1, j);
+      U(i, j) = narrowed(wide(U(i, j)) + wide(ci[0]) * U(i + 1, j));
     }
 
     // Reduce i-th row modulo A[i, i]

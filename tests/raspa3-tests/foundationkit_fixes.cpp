@@ -409,3 +409,57 @@ TEST(FOUNDATIONKIT_FIXES, restart_checkpoint_that_runs_out_of_space_keeps_both_p
   readBinaryRestartFile(restored, fileName);
   EXPECT_TRUE(restored == payload(2.0));
 }
+
+// A pool switched to serial after its workers started keeps them alive, but runs every task on the calling thread:
+// the dispatch used to hand tasks to the workers whatever the threading type.
+TEST(FOUNDATIONKIT_FIXES, a_pool_switched_to_serial_runs_tasks_on_the_calling_thread)
+{
+  auto& pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
+  pool.init(3, ThreadPool::ThreadingType::ThreadPool);
+  ASSERT_EQ(pool.getThreadCount(), 2uz);
+
+  pool.init(3, ThreadPool::ThreadingType::Serial);
+  ASSERT_EQ(pool.getThreadingType(), ThreadPool::ThreadingType::Serial);
+  const std::thread::id caller = std::this_thread::get_id();
+  for (std::size_t i = 0; i < 64; ++i)
+  {
+    EXPECT_EQ(pool.enqueue([] { return std::this_thread::get_id(); }).get(), caller);
+  }
+
+  pool.init(3, ThreadPool::ThreadingType::ThreadPool);
+  EXPECT_EQ(pool.getThreadingType(), ThreadPool::ThreadingType::ThreadPool);
+}
+
+// No character of the set at the scan location is no match, as for the other scans (it was true with an empty
+// string, so a loop over tokens never ended).
+TEST(FOUNDATIONKIT_FIXES, scanning_characters_without_a_match_is_false)
+{
+  Scanner scanner("abc def", CharacterSet::newlineCharacterSet());
+  std::string into = "unchanged";
+  EXPECT_FALSE(scanner.scanCharacters(CharacterSet::whitespaceCharacterSet(), into));
+  EXPECT_TRUE(into.empty());
+  EXPECT_TRUE(scanner.scanUpToCharacters(CharacterSet::whitespaceCharacterSet(), into));
+  EXPECT_EQ(into, "abc");
+  EXPECT_TRUE(scanner.scanCharacters(CharacterSet::whitespaceCharacterSet(), into));
+  EXPECT_EQ(into, " ");
+}
+
+// A single bool is written through an hbool_t, the size of the memory type, and reads back as written.
+TEST(FOUNDATIONKIT_FIXES, hdf5_writer_writes_a_single_bool_as_hbool)
+{
+  TemporaryDirectory workspace;
+  const std::filesystem::path file = workspace.path() / "single.h5";
+  {
+    HDF5Writer writer(file.string());
+    writer.createGroup("/g");
+    writer.createDataset<bool>("/g", "b", {3}, {});
+    writer.writeVector<bool>("/g", "b", std::vector<bool>{false, false, false});
+    writer.writeSingleValue<bool>("/g", "b", std::vector<hsize_t>{1}, true);
+  }
+  H5::H5File reader(file.string(), H5F_ACC_RDONLY);
+  hbool_t b[3] = {true, false, true};
+  reader.openDataSet("/g/b").read(b, H5::PredType::NATIVE_HBOOL);
+  EXPECT_FALSE(b[0]);
+  EXPECT_TRUE(b[1]);
+  EXPECT_FALSE(b[2]);
+}

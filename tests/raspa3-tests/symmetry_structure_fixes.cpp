@@ -1376,3 +1376,29 @@ TEST(SYMMETRY_STRUCTURE_FIXES, hall_numbers_beyond_the_table_are_rejected)
   EXPECT_THROW(SKSpaceGroup::inversionCenterString(10000), std::out_of_range);
   EXPECT_EQ(SKSpaceGroup::latticeTranslationStrings(530).size(), 4uz);
 }
+
+// A negative species count is refused (it was summed into the atom count and cast to an unsigned size).
+TEST(SYMMETRY_STRUCTURE_FIXES, poscar_rejects_negative_species_counts)
+{
+  const std::string content = "cell\n1.0\n4.0 0.0 0.0\n0.0 5.0 0.0\n0.0 0.0 6.0\nSi O\n2 -1\nDirect\n0.1 0.2 0.3\n";
+  EXPECT_THROW(SKPOSCARParser(content).startParsing(), std::runtime_error);
+}
+
+// A triangular cell with a negative diagonal entry is not the canonical form: one turned 180 degrees about x, and a
+// left-handed one, keep their orientation and handedness when an angle is set (they were rebuilt in the canonical,
+// right-handed frame).
+TEST(SYMMETRY_STRUCTURE_FIXES, angle_setters_keep_flipped_and_left_handed_triangular_cells)
+{
+  const double degree = std::numbers::pi / 180.0;
+  for (const double3x3& frame : {double3x3(double3(1.0, 0.0, 0.0), double3(0.0, -1.0, 0.0), double3(0.0, 0.0, -1.0)),
+                                 double3x3(double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, -1.0))})
+  {
+    SKCell cell(frame * double3x3::fromCellParameters(10.0, 11.0, 12.0, 90.0 * degree, 90.0 * degree, 90.0 * degree));
+    cell.setAlphaAngle(70.0 * degree);
+    const double3x3 expected =
+        frame * double3x3::fromCellParameters(10.0, 11.0, 12.0, 70.0 * degree, 90.0 * degree, 90.0 * degree);
+    for (std::size_t i = 0; i < 3; ++i)
+      for (std::size_t j = 0; j < 3; ++j) EXPECT_NEAR(cell.unitCell()[i][j], expected[i][j], 1e-9) << i << " " << j;
+    EXPECT_NEAR(cell.alpha(), 70.0 * degree, 1e-10);
+  }
+}

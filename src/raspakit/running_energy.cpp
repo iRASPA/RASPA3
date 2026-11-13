@@ -236,6 +236,40 @@ std::string RunningEnergy::printMCDiff(RunningEnergy &other) const
   return stream.str();
 }
 
+// The potential-energy table of 'printMCDiff' followed by the kinetic, thermostat and thermobarostat rows and the
+// conserved energy (declared but never defined before).
+std::string RunningEnergy::printMDDiff(RunningEnergy& other) const
+{
+  std::ostringstream stream;
+  RunningEnergy drift = *this - other;
+  double conv = Units::EnergyToKelvin;
+
+  std::print(stream, "{}", printMCDiff(other));
+  std::print(stream, "Total kinetic energy{}       | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
+             Units::displayedUnitOfEnergyConversionString, conv * kineticEnergy(), conv * other.kineticEnergy(),
+             conv * drift.kineticEnergy());
+  std::print(stream, "    translational{}          | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
+             Units::displayedUnitOfEnergyConversionString, conv * translationalKineticEnergy,
+             conv * other.translationalKineticEnergy, conv * drift.translationalKineticEnergy);
+  std::print(stream, "    rotational{}             | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
+             Units::displayedUnitOfEnergyConversionString, conv * rotationalKineticEnergy,
+             conv * other.rotationalKineticEnergy, conv * drift.rotationalKineticEnergy);
+  std::print(stream, "Baro/thermostat energy{}     | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
+             Units::displayedUnitOfEnergyConversionString, conv * NoseHooverEnergy, conv * other.NoseHooverEnergy,
+             conv * drift.NoseHooverEnergy);
+  std::print(stream, "Thermobarostat enthalpy{}    | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
+             Units::displayedUnitOfEnergyConversionString, conv * thermobarostatEnergy,
+             conv * other.thermobarostatEnergy, conv * drift.thermobarostatEnergy);
+  std::print(stream, "Conserved energy{}           | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
+             Units::displayedUnitOfEnergyConversionString, conv * conservedEnergy(), conv * other.conservedEnergy(),
+             conv * drift.conservedEnergy());
+  std::print(stream,
+             "---------------------------------------------------------------------------------------------------------"
+             "---------------\n");
+
+  return stream.str();
+}
+
 std::string RunningEnergy::printMD() const
 {
   std::ostringstream stream;
@@ -312,6 +346,10 @@ std::string RunningEnergy::printMD() const
              conv * rotationalKineticEnergy, Units::displayedUnitOfEnergyString);
   std::print(stream, "Baro/Thermostat energy{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * NoseHooverEnergy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "Thermobarostat enthalpy{}      {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * thermobarostatEnergy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "Conserved energy{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * conservedEnergy(), Units::displayedUnitOfEnergyString);
   std::print(stream, "\n");
 
   return stream.str();
@@ -488,7 +526,7 @@ nlohmann::json RunningEnergy::jsonMC() const
   status["external field VDW [K]"] = conv * externalFieldVDW;
   status["external field Real [K]"] = conv * externalFieldCharge;
   status["framework-molecule VDW [K]"] = conv * frameworkMoleculeVDW;
-  status["framework-molecule Rea [K]"] = conv * frameworkMoleculeCharge;
+  status["framework-molecule Real [K]"] = conv * frameworkMoleculeCharge;
   status["molecule-molecule VDW [K]"] = conv * moleculeMoleculeVDW;
   status["molecule-molecule Real [K]"] = conv * moleculeMoleculeCharge;
   status["Van der Waals (Tail) [K]"] = conv * tail;
@@ -526,7 +564,9 @@ nlohmann::json RunningEnergy::jsonMD() const
   status["Total kinetic energy [K]"] = conv * kineticEnergy();
   status["translational [K]"] = conv * translationalKineticEnergy;
   status["rotational [K]"] = conv * rotationalKineticEnergy;
+  status["Baro/thermostat energy [K]"] = conv * NoseHooverEnergy;
   status["thermobarostat enthalpy [K]"] = conv * thermobarostatEnergy;
+  status["Conserved energy [K]"] = conv * conservedEnergy();
   return status;
 }
 
@@ -609,6 +649,8 @@ std::string RunningEnergy::repr() const
              conv * rotationalKineticEnergy, Units::displayedUnitOfEnergyString);
   std::print(stream, "Baro/thermostat energy{}     {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * NoseHooverEnergy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "Thermobarostat enthalpy{}    {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * thermobarostatEnergy, Units::displayedUnitOfEnergyString);
   std::print(stream, "\n");
 
   return stream.str();

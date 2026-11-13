@@ -1115,7 +1115,8 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularElectricFieldDif
   RunningEnergy energySum{};
 
   if (forceField.omitInterInteractions) return energySum;
-  if (forceField.omitInterPolarization) return energySum;
+  // the energy difference is computed regardless; only the field accumulation follows the polarization switch
+  const bool accumulateField = !forceField.omitInterPolarization;
 
   bool useCharge = forceField.useCharge;
   const double overlapCriteria = forceField.energyOverlapCriteria;
@@ -1175,6 +1176,7 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularElectricFieldDif
                                          energyFactor.dUdlambda);
           }
 
+          if (!accumulateField) continue;
           Potentials::PairDerivatives<1> gradient = Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
 
           double gradientFactorA = scalingCoulombB * chargeB * gradient.firstDerivativeFactor;
@@ -1226,6 +1228,7 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularElectricFieldDif
                                          -energyFactor.dUdlambda);
           }
 
+          if (!accumulateField) continue;
           Potentials::PairDerivatives<1> gradient = Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
 
           double gradientFactorA = scalingCoulombB * chargeB * gradient.firstDerivativeFactor;
@@ -1253,7 +1256,8 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularPolarizationElec
   RunningEnergy energySum{};
 
   if (forceField.omitInterInteractions) return energySum;
-  if (forceField.omitInterPolarization) return energySum;
+  // the energy difference is computed regardless; only the field accumulation follows the polarization switch
+  const bool accumulateField = !forceField.omitInterPolarization;
 
   bool useCharge = forceField.useCharge;
   const double overlapCriteria = forceField.energyOverlapCriteria;
@@ -1315,6 +1319,7 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularPolarizationElec
                                          energyFactor.dUdlambda);
           }
 
+          if (!accumulateField) continue;
           Potentials::PairDerivatives<1> gradient = Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
 
           // field on the neighbor atom due to the moved atom at its new position (added contribution)
@@ -1368,6 +1373,7 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularPolarizationElec
                                          -energyFactor.dUdlambda);
           }
 
+          if (!accumulateField) continue;
           Potentials::PairDerivatives<1> gradient = Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, r, 1.0, 1.0);
 
           // remove the contribution of the moved atom at its old position from the neighbor field

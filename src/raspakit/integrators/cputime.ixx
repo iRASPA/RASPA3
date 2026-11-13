@@ -36,12 +36,13 @@ export struct IntegratorsCPUTime
 
   // Total timing
   /// The time spent in the timed routines. 'velocityVerlet' is an envelope around the routines of a step and is
-  /// left out, or the step would be counted twice.
+  /// left out, or the step would be counted twice; so is 'noSquishRotate', the rotations inside the free rotor that
+  /// 'noSquishFreeRotorOrderTwo' already holds.
   inline std::chrono::duration<double> total() const
   {
     return computeTranslationalKineticEnergy + computeRotationalKineticEnergy + computeCenterOfMass +
            computeCenterOfMassVelocity + computeLinearMomentum + scaleVelocities + removeCenterOfMassVelocity +
-           updatePositions + updateVelocities + createCartesianPositions + noSquishFreeRotorOrderTwo + noSquishRotate +
+           updatePositions + updateVelocities + createCartesianPositions + noSquishFreeRotorOrderTwo +
            updateCenterOfMassAndQuaternionVelocities + updateCenterOfMassAndQuaternionGradients + updateGradients;
   }
 

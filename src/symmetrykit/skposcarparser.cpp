@@ -196,7 +196,13 @@ std::vector<int> parseSpeciesCounts(const std::vector<std::string>& tokens, cons
     {
       throw std::runtime_error(std::format("POSCAR parse error: expected species count in {}", context));
     }
-    counts.push_back(std::stoi(token));
+    const int count = std::stoi(token);
+    // a negative count would be summed into the number of atoms and cast to an unsigned size downstream
+    if (count < 0)
+    {
+      throw std::runtime_error(std::format("POSCAR parse error: negative species count {} in {}", count, context));
+    }
+    counts.push_back(count);
   }
 
   return counts;
