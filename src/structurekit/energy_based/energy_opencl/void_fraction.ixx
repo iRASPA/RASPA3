@@ -27,15 +27,15 @@ export struct EnergyOpenCLVoidFraction
   EnergyOpenCLVoidFraction();
   ~EnergyOpenCLVoidFraction();
 
-  cl_program energyGridProgram;
-  cl_kernel energyGridKernel;
+  cl_program energyGridProgram{};
+  cl_kernel energyGridKernel{};
   static const char* energyGridKernelSource;
-  size_t energyGridWorkGroupSize;
+  size_t energyGridWorkGroupSize{0};
 
-  cl_program energyVoidFractionProgram;
-  cl_kernel energyVoidFractionKernel;
+  cl_program energyVoidFractionProgram{};
+  cl_kernel energyVoidFractionKernel{};
   static const char* energyVoidFractionKernelSource;
-  size_t energyVoidFractionWorkGroupSize;
+  size_t energyVoidFractionWorkGroupSize{0};
 
   // The void fraction the probe named sees, at the temperature given. Both matter: a Boltzmann average is
   // meaningless without saying how hot, and a probe is what the average is over.

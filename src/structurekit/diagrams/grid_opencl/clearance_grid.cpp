@@ -184,7 +184,14 @@ ClearanceGrid ClearanceGrid::compute(const PairInteractions &interactions, const
     grid.atomRadii.push_back(0.5 * interactions(type, type).sizeParameter);
   }
 
-  std::size_t numberOfVoxels = gridSize.x * gridSize.y * gridSize.z;
+  std::size_t numberOfVoxels = static_cast<std::size_t>(gridSize.x) * gridSize.y * gridSize.z;
+  // the device kernels index the grid with a 32-bit int
+  if (numberOfVoxels > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))
+  {
+    throw std::runtime_error(
+        std::format("ClearanceGrid: a grid of {} voxels is more than the device kernels can index ({})\n",
+                    numberOfVoxels, std::numeric_limits<std::int32_t>::max()));
+  }
   grid.clearance.assign(numberOfVoxels, 0.0f);
   grid.closestAtom.assign(numberOfVoxels, -1);
 

@@ -59,7 +59,14 @@ ProbeEnergyGrid ProbeEnergyGridOpenCL::compute(const PairInteractions &interacti
 
   grid.ceiling = probeEnergyCeilingInKelvin * Units::KelvinToEnergy;
 
-  std::size_t numberOfVoxels = gridSize.x * gridSize.y * gridSize.z;
+  std::size_t numberOfVoxels = static_cast<std::size_t>(gridSize.x) * gridSize.y * gridSize.z;
+  // the device kernels index the grid with a 32-bit int
+  if (numberOfVoxels > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))
+  {
+    throw std::runtime_error(
+        std::format("ProbeEnergyGridOpenCL: a grid of {} voxels is more than the device kernels can index ({})\n",
+                    numberOfVoxels, std::numeric_limits<std::int32_t>::max()));
+  }
   grid.energy.assign(numberOfVoxels, 0.0f);
   grid.strongestAtom.assign(numberOfVoxels, -1);
 

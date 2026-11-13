@@ -34,6 +34,13 @@ std::vector<float> poreRadiusFieldOpenCL(uint3 gridSize, const UnitCell &unitCel
   const std::int32_t ny = static_cast<std::int32_t>(gridSize.y);
   const std::int32_t nz = static_cast<std::int32_t>(gridSize.z);
   const std::size_t numberOfVoxels = distance.size();
+  // the device kernels index the grid with a 32-bit int
+  if (numberOfVoxels > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))
+  {
+    throw std::runtime_error(
+        std::format("poreRadiusFieldOpenCL: a grid of {} voxels is more than the device kernels can index ({})\n",
+                    numberOfVoxels, std::numeric_limits<std::int32_t>::max()));
+  }
 
   std::vector<float> poreRadius(numberOfVoxels, 0.0f);
   if (numberOfVoxels == 0) return poreRadius;

@@ -7,6 +7,7 @@ add_executable(unit_tests_structurekit
   grid_surface_area.cpp
   grid_clearance.cpp
   opencl_handles.cpp
+  opencl_grid_limits.cpp
   sampling_backend_opencl.cpp
   sampled_roadmap.cpp
   sampled_structure.cpp

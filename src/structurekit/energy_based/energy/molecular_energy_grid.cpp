@@ -115,7 +115,7 @@ MolecularEnergyGrid MolecularEnergyGridCPU::compute(const PairInteractions &inte
   std::vector<double3> directions = orientationSet(numberOfOrientations, probe.headTailSymmetric);
   grid.numberOfOrientations = directions.size();
 
-  std::size_t numberOfVoxels = gridSize.x * gridSize.y * gridSize.z;
+  std::size_t numberOfVoxels = static_cast<std::size_t>(gridSize.x) * gridSize.y * gridSize.z;
   grid.freeEnergy.assign(numberOfVoxels, 0.0f);
   grid.minimumEnergy.assign(numberOfVoxels, 0.0f);
 
@@ -359,7 +359,7 @@ std::vector<std::int32_t> MolecularEnergyGridCPU::strongestAtoms(const PairInter
     throw std::runtime_error("MolecularEnergyGridCPU: the weighting over orientations needs a temperature\n");
   }
 
-  const std::size_t numberOfVoxels = gridSize.x * gridSize.y * gridSize.z;
+  const std::size_t numberOfVoxels = static_cast<std::size_t>(gridSize.x) * gridSize.y * gridSize.z;
   std::vector<std::int32_t> labels(numberOfVoxels, -1);
 
   std::vector<double3> fractionalPositions = framework.fractionalPositions;

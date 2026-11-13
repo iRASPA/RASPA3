@@ -749,6 +749,13 @@ std::vector<double3> trianglesOfLewinerIsosurface(std::span<const float> field, 
   const std::size_t ny = gridSize.y;
   const std::size_t nz = gridSize.z;
   const std::size_t nVoxels = nx * ny * nz;
+  // the device kernels index the grid with a 32-bit int
+  if (nVoxels > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))
+  {
+    throw std::runtime_error(
+        std::format("LewinerIsosurface: a grid of {} voxels is more than the device kernels can index ({})\n", nVoxels,
+                    std::numeric_limits<std::int32_t>::max()));
+  }
   if (field.size() < nVoxels)
   {
     throw std::runtime_error(std::format(

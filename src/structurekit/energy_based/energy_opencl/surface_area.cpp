@@ -87,6 +87,10 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
                                   std::span<const BlockingSphere> blockingSpheres, double blockedEnergyPerAngstrom,
                                   double ceiling)
 {
+  if (!OpenCL::clContext.has_value() || !OpenCL::clDeviceId.has_value() || !OpenCL::clCommandQueue.has_value())
+  {
+    throw std::runtime_error("EnergyOpenCLSurfaceArea: no OpenCL device found, the grid route needs a GPU\n");
+  }
   std::optional<std::size_t> probeType = interactions.findType(probePseudoAtom);
   if (!probeType.has_value())
   {
@@ -114,7 +118,14 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
   // ==================================================================================================================================================================
 
   std::size_t numberOfAtoms = positions.size();
-  std::size_t temp = static_cast<std::size_t>(grid_size.x * grid_size.y * grid_size.z);
+  std::size_t temp = static_cast<std::size_t>(grid_size.x) * grid_size.y * grid_size.z;
+  // the device kernels index the grid with a 32-bit int
+  if (temp > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))
+  {
+    throw std::runtime_error(
+        std::format("EnergyOpenCLSurfaceArea: a grid of {} voxels is more than the device kernels can index ({})\n",
+                    temp, std::numeric_limits<std::int32_t>::max()));
+  }
   cl_int err = 0;
 
   // make sure the the global work size is an multiple of the work group size

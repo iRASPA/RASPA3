@@ -53,6 +53,13 @@ ElectrostaticPotentialGrid ElectrostaticPotentialGridOpenCL::compute(const PairI
 
   std::size_t numberOfVoxels = static_cast<std::size_t>(gridSize.x) * static_cast<std::size_t>(gridSize.y) *
                               static_cast<std::size_t>(gridSize.z);
+  // the device kernels index the grid with a 32-bit int
+  if (numberOfVoxels > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))
+  {
+    throw std::runtime_error(std::format(
+        "ElectrostaticPotentialGridOpenCL: a grid of {} voxels is more than the device kernels can index ({})\n",
+        numberOfVoxels, std::numeric_limits<std::int32_t>::max()));
+  }
   grid.smoothPotential.assign(numberOfVoxels, 0.0f);
 
   std::vector<double3> fractionalPositions = framework.fractionalPositions;

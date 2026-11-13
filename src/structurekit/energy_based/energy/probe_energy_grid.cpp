@@ -43,7 +43,7 @@ ProbeEnergyGrid ProbeEnergyGridCPU::compute(const PairInteractions &interactions
   grid.cutOff = interactions.cutOffVDW;
   grid.ceiling = probeEnergyCeilingInKelvin * Units::KelvinToEnergy;
 
-  std::size_t numberOfVoxels = gridSize.x * gridSize.y * gridSize.z;
+  std::size_t numberOfVoxels = static_cast<std::size_t>(gridSize.x) * gridSize.y * gridSize.z;
   grid.energy.assign(numberOfVoxels, 0.0f);
   grid.strongestAtom.assign(numberOfVoxels, -1);
 

@@ -33,7 +33,7 @@ ElectrostaticPotentialGrid ElectrostaticPotentialGridCPU::compute(const PairInte
   grid.alpha = split.alpha;
   grid.largestWaveVector = split.largestWaveVector;
 
-  std::size_t numberOfVoxels = gridSize.x * gridSize.y * gridSize.z;
+  std::size_t numberOfVoxels = static_cast<std::size_t>(gridSize.x) * gridSize.y * gridSize.z;
   grid.smoothPotential.assign(numberOfVoxels, 0.0f);
 
   std::vector<double3> fractionalPositions = framework.fractionalPositions;

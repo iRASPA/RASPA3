@@ -356,8 +356,10 @@ __kernel void ComputeSurfaceArea(__global float4 *position,
                                  const float4 inverseWidths)
 {
   int iatom = get_global_id(0);
-  float counted = 0.0f;
-  float total = 0.0f;
+  // integer counts: a float stops at 2^24 (16777216.0f + 1.0f == 16777216.0f), which froze the total while the
+  // count went on, inflating the exposed fraction
+  ulong counted = 0;
+  ulong total = 0;
 
   if(iatom < numberOfAtoms)
   {
@@ -374,13 +376,13 @@ __kernel void ComputeSurfaceArea(__global float4 *position,
 
       if(!overlap)
       {
-        counted += 1.0f;
+        ++counted;
       }
 
-      total += 1.0f;
+      ++total;
     }
 
-    output[ iatom ] = (counted / total) * 4.0f * M_PI_F * radius_i * radius_i;
+    output[ iatom ] = ((float)counted / (float)total) * 4.0f * M_PI_F * radius_i * radius_i;
   }
 }
 )foo";

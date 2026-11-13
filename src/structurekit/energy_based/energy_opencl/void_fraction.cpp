@@ -102,11 +102,11 @@ EnergyOpenCLVoidFraction::~EnergyOpenCLVoidFraction()
 {
   if (OpenCL::clContext.has_value())
   {
-    clReleaseKernel(energyGridKernel);
-    clReleaseProgram(energyGridProgram);
+    if (energyGridKernel != nullptr) clReleaseKernel(energyGridKernel);
+    if (energyGridProgram != nullptr) clReleaseProgram(energyGridProgram);
 
-    clReleaseKernel(energyVoidFractionKernel);
-    clReleaseProgram(energyVoidFractionProgram);
+    if (energyVoidFractionKernel != nullptr) clReleaseKernel(energyVoidFractionKernel);
+    if (energyVoidFractionProgram != nullptr) clReleaseProgram(energyVoidFractionProgram);
   }
 }
 
@@ -115,6 +115,10 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
                                    std::span<const BlockingSphere> blockingSpheres, double blockedEnergyPerAngstrom,
                                    double ceiling)
 {
+  if (!OpenCL::clContext.has_value() || !OpenCL::clDeviceId.has_value() || !OpenCL::clCommandQueue.has_value())
+  {
+    throw std::runtime_error("EnergyOpenCLVoidFraction: no OpenCL device found, the grid route needs a GPU\n");
+  }
   std::optional<std::size_t> probeType = interactions.findType(probePseudoAtom);
   if (!probeType.has_value())
   {
@@ -145,7 +149,14 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
   // ==================================================================================================================================================================
 
   size_t numberOfAtoms = positions.size();
-  size_t temp = static_cast<size_t>(gridSize.x * gridSize.y * gridSize.z);
+  size_t temp = static_cast<std::size_t>(gridSize.x) * gridSize.y * gridSize.z;
+  // the device kernels index the grid with a 32-bit int
+  if (temp > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))
+  {
+    throw std::runtime_error(
+        std::format("EnergyOpenCLVoidFraction: a grid of {} voxels is more than the device kernels can index ({})\n",
+                    temp, std::numeric_limits<std::int32_t>::max()));
+  }
   cl_int err = 0;
 
   // The global work size has to be a multiple of the work-group size (detected on NVIDIA). Two kernels run

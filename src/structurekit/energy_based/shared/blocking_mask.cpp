@@ -39,7 +39,7 @@ void applyBlockingSpheresToEnergy(std::span<float> energy, uint3 gridSize, const
   if (spheres.empty() || energy.empty()) return;
   if (gridSize.x == 0 || gridSize.y == 0 || gridSize.z == 0) return;
 
-  const std::size_t numberOfVoxels = gridSize.x * gridSize.y * gridSize.z;
+  const std::size_t numberOfVoxels = static_cast<std::size_t>(gridSize.x) * gridSize.y * gridSize.z;
   if (energy.size() < numberOfVoxels) return;
 
   std::vector<BlockingSphere> held(spheres.begin(), spheres.end());

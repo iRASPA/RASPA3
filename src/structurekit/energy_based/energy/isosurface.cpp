@@ -17,7 +17,7 @@ import energy_shared_isosurface;
 std::vector<double3> EnergyIsosurface::trianglesOfIsosurface(std::span<const float> field, uint3 gridSize,
                                                              double isoValue, std::vector<double3> *gradients)
 {
-  std::size_t numberOfGridPoints = gridSize.x * gridSize.y * gridSize.z;
+  std::size_t numberOfGridPoints = static_cast<std::size_t>(gridSize.x) * gridSize.y * gridSize.z;
   if (field.size() < numberOfGridPoints)
   {
     throw std::runtime_error(std::format(

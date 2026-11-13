@@ -90,6 +90,22 @@ TEST(sampled_surface_area, the_grid_gives_every_point_an_equal_share_of_the_sphe
   if (OpenCL::clContext.has_value()) EXPECT_NEAR(integratedOnDevice(pair, 64), expected, 1.0e-3 * expected);
 }
 
+// The same pair on a grid of 4500 x 4500 points a sphere, which is more than a float can count one at a time: at
+// 2^24 = 16777216 adding one more changes nothing, so the count of every point stopped there while the count of
+// the exposed ones went on up to it, and the two spheres came out whole.
+TEST(sampled_surface_area, the_device_grid_counts_past_two_to_the_twenty_fourth_points)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+  ReportCleanup cleanup;
+  const double radius = 2.0;
+  SampledStructure pair =
+      structureOf(UnitCell(30.0, 30.0, 30.0), {double3(15.0, 15.0, 14.0), double3(15.0, 15.0, 16.0)}, radius);
+  const double expected = 2.0 * 4.0 * std::numbers::pi * radius * radius * 0.75;
+
+  EXPECT_NEAR(integratedOnDevice(pair, 4500), expected, 1.0e-3 * expected);
+}
+
 // A chain of spheres through the cell, each cut by its neighbours in two planes a repeat apart. What is left of each
 // is a band of area 2 pi r times the repeat, the same whether its nearest neighbours bury it or further ones do too,
 // and none of those neighbours is anything but an image of the sphere itself.

@@ -901,7 +901,7 @@ WellField WellFieldCPU::compute(const PairInteractions &interactions, const Crys
     field.numberOfWaveVectors = potential->numberOfWaveVectors;
   }
 
-  const std::size_t numberOfVoxels = gridSize.x * gridSize.y * gridSize.z;
+  const std::size_t numberOfVoxels = static_cast<std::size_t>(gridSize.x) * gridSize.y * gridSize.z;
   field.energy.assign(numberOfVoxels, 0.0f);
   field.distance.assign(numberOfVoxels, 1.0e10f);
   field.reliability.assign(numberOfVoxels, 1.0f);
