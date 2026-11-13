@@ -9,6 +9,9 @@
 #include <CL/opencl.h>
 #endif
 
+#include <signal.h>
+#include <sys/resource.h>
+
 #include "../test_support.hpp"
 
 import std;
@@ -361,4 +364,48 @@ TEST(FOUNDATIONKIT_FIXES, argparser_tolerates_a_negative_count_and_shows_help_fr
   EXPECT_THROW(copy(), argparser::help_requested_exception);
   const std::string shown = testing::internal::GetCapturedStdout();
   EXPECT_NE(shown.find("Usage:"), std::string::npos);
+}
+
+// A restart checkpoint that runs out of space mid-payload (simulated with a file-size limit, which fails the write
+// with EFBIG like ENOSPC or a quota) is dropped: the stream buffer swap after the payload cleared the failure, so
+// the truncated payload was sealed with a valid checksum and renamed over the latest checkpoint, and the next
+// checkpoint rotated it over the previous one as well.
+TEST(FOUNDATIONKIT_FIXES, restart_checkpoint_that_runs_out_of_space_keeps_both_previous_checkpoints)
+{
+  TemporaryDirectory directory;
+  const std::string fileName = (directory.path() / "restart_data.bin").string();
+  auto payload = [](double value) { return std::vector<double>(1uz << 18uz, value); };  // 2 MiB
+  auto contents = [](const std::string& name)
+  {
+    std::ifstream stream(name, std::ios::binary);
+    return std::string(std::istreambuf_iterator<char>(stream), {});
+  };
+
+  writeBinaryRestartFile(payload(1.0), fileName);
+  writeBinaryRestartFile(payload(2.0), fileName);
+  const std::string latest = contents(fileName);
+  const std::string previous = contents(fileName + ".prev");
+  ASSERT_GT(latest.size(), 1uz << 21uz);
+  ASSERT_GT(previous.size(), 1uz << 21uz);
+
+  {
+    rlimit original{};
+    ASSERT_EQ(::getrlimit(RLIMIT_FSIZE, &original), 0);
+    rlimit limited = original;
+    limited.rlim_cur = 1u << 20u;
+    // the limit signals SIGXFSZ on the write past it; ignored, the write fails with EFBIG instead
+    auto* const originalHandler = ::signal(SIGXFSZ, SIG_IGN);
+    ASSERT_EQ(::setrlimit(RLIMIT_FSIZE, &limited), 0);
+    writeBinaryRestartFile(payload(3.0), fileName);
+    ::setrlimit(RLIMIT_FSIZE, &original);
+    ::signal(SIGXFSZ, originalHandler);
+  }
+
+  EXPECT_TRUE(contents(fileName) == latest) << "the latest checkpoint was replaced";
+  EXPECT_TRUE(contents(fileName + ".prev") == previous) << "the previous checkpoint was replaced";
+  EXPECT_FALSE(std::filesystem::exists(fileName + "_temp"));
+
+  std::vector<double> restored;
+  readBinaryRestartFile(restored, fileName);
+  EXPECT_TRUE(restored == payload(2.0));
 }

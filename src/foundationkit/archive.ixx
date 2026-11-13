@@ -526,21 +526,23 @@ inline std::uint64_t hashRestartFilePayload(std::istream& stream, std::uint64_t 
 
 // Durability: flush the written file contents to stable storage before the rename, so a power
 // loss cannot leave a fully-renamed but partially-persisted restart file. On macOS fsync only
-// flushes to the drive cache; F_FULLFSYNC is the real storage barrier.
-inline void syncFileToStableStorage(const std::string& fileName) noexcept
+// flushes to the drive cache; F_FULLFSYNC is the real storage barrier. Returns false when the data
+// could not be persisted (a deferred write error such as ENOSPC or EIO surfaces here), so the file
+// must not be published.
+inline bool syncFileToStableStorage(const std::string& fileName) noexcept
 {
 #if !defined(_WIN32)
   int fileDescriptor = ::open(fileName.c_str(), O_RDONLY);
-  if (fileDescriptor < 0) return;
+  if (fileDescriptor < 0) return false;
 #if defined(__APPLE__) && defined(__MACH__)
-  if (::fcntl(fileDescriptor, F_FULLFSYNC) != 0)
-  {
-    ::fsync(fileDescriptor);
-  }
+  bool synced = ::fcntl(fileDescriptor, F_FULLFSYNC) == 0 || ::fsync(fileDescriptor) == 0;
 #else
-  ::fsync(fileDescriptor);
+  bool synced = ::fsync(fileDescriptor) == 0;
 #endif
-  ::close(fileDescriptor);
+  if (::close(fileDescriptor) != 0) synced = false;
+  return synced;
+#else
+  return true;
 #endif
 }
 
@@ -594,7 +596,18 @@ void writeBinaryRestartFile(const T& object, const std::string& fileName = "rest
       ofile.std::ios::rdbuf(&hashingBuffer);
       archive << object;
       ofile.flush();
+      // rdbuf(sb) clears the stream state: carry a failed payload write (ENOSPC, quota, EIO) across the swap, or
+      // the header below would seal the truncated payload with a valid checksum
+      const std::ios::iostate payloadState = ofile.rdstate();
       ofile.std::ios::rdbuf(fileBuffer);
+      ofile.setstate(payloadState);
+      if (!ofile)
+      {
+        ofile.close();
+        std::error_code error;
+        std::filesystem::remove(temporaryFileName, error);
+        return;
+      }
 
       const std::uint64_t payloadSize = hash.size;
       const std::uint64_t checksum = hash.finish();
@@ -602,10 +615,20 @@ void writeBinaryRestartFile(const T& object, const std::string& fileName = "rest
       ofile.write(std::bit_cast<const char*>(&payloadSize), sizeof(std::uint64_t));
       ofile.write(std::bit_cast<const char*>(&checksum), sizeof(std::uint64_t));
       ofile.close();
-      if (!ofile) return;
+      if (!ofile)
+      {
+        std::error_code error;
+        std::filesystem::remove(temporaryFileName, error);
+        return;
+      }
     }
 
-    syncFileToStableStorage(temporaryFileName);
+    if (!syncFileToStableStorage(temporaryFileName))
+    {
+      std::error_code error;
+      std::filesystem::remove(temporaryFileName, error);
+      return;
+    }
 
     // keep the previous checkpoint as fallback, then atomically publish the new one
     std::error_code error;
