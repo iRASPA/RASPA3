@@ -1996,6 +1996,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   std::vector<std::vector<Component>> jsonComponents(jsonNumberOfSystems,
                                                      std::vector<Component>(jsonNumberOfComponents));
 
+  // for each system, the imposed chemical potential of each component (internal energy units, thermal wavelength
+  // absorbed), if given
+  std::vector<std::vector<std::optional<double>>> jsonChemicalPotentials(
+      jsonNumberOfSystems, std::vector<std::optional<double>>(jsonNumberOfComponents));
+
   // for each system, a list of how many molecules to create for each component
   std::vector<std::vector<std::size_t>> jsonCreateNumberOfMolecules(jsonNumberOfSystems,
                                                                     std::vector<std::size_t>(jsonNumberOfComponents));
@@ -2685,6 +2690,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("ChemicalPotential") && item["ChemicalPotential"].is_number())
+      {
+        const double chemicalPotential = item["ChemicalPotential"].get<double>();
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonChemicalPotentials[i][componentId] = chemicalPotential;
+        }
+      }
+
       if (item.contains("MolFraction") && item["MolFraction"].is_number())
       {
         double mol_fraction = item["MolFraction"].get<double>();
@@ -3130,6 +3144,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].idealGasRosenbluthWeight = ideal_gas_rosenbluth_weight[i];
+        }
+      }
+
+      if (item.contains("ChemicalPotential") && item["ChemicalPotential"].is_array())
+      {
+        const std::vector<double> chemicalPotentials =
+            parseList<double>(jsonNumberOfSystems, "ChemicalPotential", item["ChemicalPotential"]);
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonChemicalPotentials[i][componentId] = chemicalPotentials[i];
         }
       }
 
@@ -3675,9 +3699,43 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         // replica to its own pressure (recomputing the fugacity coefficients)
         P = parallelTemperingPressures.front();
       }
-      if (value.contains("ChemicalPotential"))
+      // Per-component chemical potentials: the swap acceptance uses beta*f_i = beta*phi_i*y_i*P (thermal wavelength
+      // cancelled), so mu_i imposes the fugacity f_i = kT exp(mu_i/kT). The reservoir is the ideal-gas mixture of
+      // these fugacities: P = sum_i f_i, y_i = f_i / P, phi_i = 1 (an equation-of-state coefficient would shift mu_i).
+      const bool hasChemicalPotentials = std::ranges::any_of(
+          jsonChemicalPotentials[systemId], [](const std::optional<double>& mu) { return mu.has_value(); });
+      if (hasChemicalPotentials)
       {
-        P = std::exp(value["ChemicalPotential"].get<double>() / (Units::KB * T));
+        if (value.contains("ExternalPressure") || value.contains("ExternalPressures"))
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: system {}: a component 'ChemicalPotential' sets the reservoir pressure; remove "
+              "'ExternalPressure'/'ExternalPressures'\n",
+              systemId));
+        }
+        if (simulationType == SimulationType::HyperParallelTempering ||
+            simulationType == SimulationType::ReweightedHistogram || simulationType == SimulationType::ParallelTMMC)
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: system {}: a component 'ChemicalPotential' cannot be used with a simulation type "
+              "that converts pressures to fugacities per state point\n",
+              systemId));
+        }
+        double totalFugacity = 0.0;
+        for (std::size_t i = 0; i != jsonNumberOfComponents; ++i)
+        {
+          if (!jsonChemicalPotentials[systemId][i].has_value()) continue;
+          const double fugacity =
+              Units::KB * T * std::exp(jsonChemicalPotentials[systemId][i].value() / (Units::KB * T));
+          jsonComponents[systemId][i].molFraction = fugacity;
+          jsonComponents[systemId][i].fugacityCoefficient = 1.0;
+          totalFugacity += fugacity;
+        }
+        for (std::size_t i = 0; i != jsonNumberOfComponents; ++i)
+        {
+          if (jsonChemicalPotentials[systemId][i].has_value()) jsonComponents[systemId][i].molFraction /= totalFugacity;
+        }
+        P = totalFugacity * Units::PressureConversionFactor;
       }
 
       // resolve 'LnPartitionFunction' entries given as species names at this system's temperature
@@ -3951,6 +4009,24 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       {
         throw std::runtime_error(
             std::format("[Input reader]: system key 'Type' must have value 'Box' or 'Framework'\n"));
+      }
+
+      // the system renormalizes the mole fractions over its swappable components (and copies a pair driver's to
+      // its partner), so the imposed fugacities survive only when every such component has a chemical potential
+      for (std::size_t i = 0; hasChemicalPotentials && i != jsonNumberOfComponents; ++i)
+      {
+        if (!jsonChemicalPotentials[systemId][i].has_value()) continue;
+        const Component& component = systems[systemId].components[i];
+        const double betaFugacity = systems[systemId].beta * component.fugacityCoefficient.value_or(1.0) *
+                                    component.molFraction * systems[systemId].pressure;
+        const double betaMu = systems[systemId].beta * jsonChemicalPotentials[systemId][i].value();
+        if (!(std::abs(std::log(betaFugacity) - betaMu) <= 1e-8 * std::max(1.0, std::abs(betaMu))))
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: system {}: once a component has a 'ChemicalPotential', every swappable component "
+              "needs one (component {} would not be at its imposed chemical potential)\n",
+              systemId, i));
+        }
       }
 
       {
@@ -5014,8 +5090,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
         if (molecularDynamicsHasParticleExchange(ensemble.value()))
         {
-          if (!value.contains("ExternalPressure") || !value["ExternalPressure"].is_number())
-            throw std::runtime_error("[Input reader]: MuVT/MuPT/MuPTPR requires a numeric ExternalPressure");
+          const bool hasChemicalPotentials = std::ranges::any_of(
+              jsonChemicalPotentials[systemId], [](const std::optional<double>& mu) { return mu.has_value(); });
+          if (!hasChemicalPotentials && (!value.contains("ExternalPressure") || !value["ExternalPressure"].is_number()))
+            throw std::runtime_error(
+                "[Input reader]: MuVT/MuPT/MuPTPR requires a numeric ExternalPressure or component ChemicalPotentials");
           const bool hasSwapComponent = std::ranges::any_of(systems[systemId].components, [](const Component& component) {
             return component.mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) > 0.0;
           });
@@ -6073,7 +6152,6 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "ExternalPressureX",
     "ExternalPressureY",
     "ExternalPressureZ",
-    "ChemicalPotential",
     "UseChargesFrom",
     "Framework",
     "FrameworkDefinition",
@@ -6239,6 +6317,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "LiquidVolume",
     "SaturationPressure",
     "MolFraction",
+    "ChemicalPotential",
     "IdentityChanges",
     "IdentitySwitches",
     "GibbsIdentityChanges",

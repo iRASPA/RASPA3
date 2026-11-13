@@ -1544,10 +1544,6 @@ reported separately at the end of the simulation.
     a constant tension on each pair of box faces relative to the initial box
     (see the anisotropic volume change in the moves manual).
 
--   `"ChemicalPotential" : floating-point-number`\
-    Sets the imposed chemical potential (in internal units); the corresponding
-    fugacity is derived from it and the temperature.
-
 -   `"MacroStateMinimumNumberOfMolecules" / "MacroStateMaximumNumberOfMolecules" : integer or "auto"`\
     For `"SimulationType" : "MonteCarloTransitionMatrix"` and
     `"ParallelTMMC"`: the macrostate range (the total molecule count) the
@@ -2830,6 +2826,18 @@ not improved by it.
     relative to the other components, as the fractions are normalized afterwards.
     Per-component partial pressures follow from the total pressure and the mole
     fractions.
+
+-   `"ChemicalPotential" : floating-point-number or list (one per system)`\
+    The imposed chemical potential $\mu_i$ of the component, in internal
+    energy units with the thermal wavelength absorbed. It sets the fugacity
+    $f_i = kT\exp(\mu_i/kT)$. The reservoir is the ideal-gas mixture of
+    these fugacities: the pressure becomes $\sum_i f_i$, the mole fractions
+    $f_i/\sum_j f_j$ and the fugacity coefficients 1, so
+    `"MolFraction"` and `"FugacityCoefficient"` are overridden. Once one
+    component of a system has a chemical potential, every swappable component
+    needs one, and the system must not set `"ExternalPressure"` or
+    `"ExternalPressures"`. It cannot be combined with
+    `"HyperParallelTempering"`, `"ReweightedHistogram"` or `"ParallelTMMC"`.
 
 -   `"FugacityCoefficient" : floating-point-number`\
     The fugacity coefficient of the component. When set to 0 (or omitted), the

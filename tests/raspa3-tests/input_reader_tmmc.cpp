@@ -13,6 +13,7 @@ import forcefield;
 import int3;
 import json;
 import thermobarostat;
+import units;
 
 namespace
 {
@@ -1214,4 +1215,102 @@ TEST(INPUT_READER, molecular_dynamics_refuses_external_fields_and_polarization)
       EXPECT_NE(std::string(error.what()).find(testCase.feature), std::string::npos) << error.what();
     }
   }
+}
+
+// A Monte Carlo box with two swappable methane components (the second loaded under another name) at 250 K.
+nlohmann::json chemicalPotentialMixtureInput()
+{
+  nlohmann::json input = readNVTExample();
+  input["SimulationType"] = "MonteCarlo";
+  input["Systems"][0].erase("Ensemble");
+  input["Systems"][0]["ExternalTemperature"] = 250.0;
+  input["Components"][0]["SwapProbability"] = 1.0;
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  input["Components"][1] = input["Components"][0];
+  input["Components"][1]["Name"] = "methane-b";
+  input["Components"][1]["FileName"] = "methane.json";
+  return input;
+}
+
+// A component 'ChemicalPotential' mu_i imposes beta*f_i = exp(beta*mu_i) on the swap acceptance of that component:
+// the reservoir becomes the ideal-gas mixture P = sum_i f_i, y_i = f_i / P, with fugacity coefficients of 1 rather
+// than the Peng-Robinson value or a given 'MolFraction'.
+TEST(INPUT_READER, component_chemical_potentials_set_each_fugacity_to_exp_beta_mu)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  nlohmann::json input = chemicalPotentialMixtureInput();
+  const double temperature = 250.0;
+  const std::array<double, 2> betaMu{-15.0, -12.5};
+  input["Components"][0]["ChemicalPotential"] = betaMu[0] * Units::KB * temperature;
+  input["Components"][0]["MolFraction"] = 0.9;
+  input["Components"][1]["ChemicalPotential"] = nlohmann::json::array({betaMu[1] * Units::KB * temperature});
+  TemporaryInput temporary(std::move(input), "chemical_potential", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  const System& system = reader.systems[0];
+  ASSERT_EQ(system.components.size(), 2uz);
+  for (std::size_t i = 0; i != 2; ++i)
+  {
+    const Component& component = system.components[i];
+    ASSERT_TRUE(component.fugacityCoefficient.has_value());
+    EXPECT_DOUBLE_EQ(component.fugacityCoefficient.value(), 1.0);
+    const double betaFugacity =
+        system.beta * component.fugacityCoefficient.value() * component.molFraction * system.pressure;
+    EXPECT_NEAR(std::log(betaFugacity), betaMu[i], 1e-10) << "component " << i;
+  }
+  EXPECT_NEAR(system.beta * system.pressure, std::exp(betaMu[0]) + std::exp(betaMu[1]),
+              1e-12 * std::exp(betaMu[1]));
+}
+
+TEST(INPUT_READER, component_chemical_potential_refuses_an_external_pressure)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  nlohmann::json input = chemicalPotentialMixtureInput();
+  input["Systems"][0]["ExternalPressure"] = 1.0e5;
+  input["Components"][0]["ChemicalPotential"] = -3000.0;
+  input["Components"][1]["ChemicalPotential"] = -3000.0;
+  TemporaryInput temporary(std::move(input), "chemical_potential_pressure", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  EXPECT_THROW(
+      {
+        InputReader reader(temporary.path().filename().string());
+        static_cast<void>(reader);
+      },
+      std::runtime_error);
+}
+
+// the system renormalizes the mole fractions over all swappable components, so a swappable component without a
+// chemical potential would pull the others away from theirs
+TEST(INPUT_READER, component_chemical_potential_is_required_on_every_swappable_component)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  nlohmann::json input = chemicalPotentialMixtureInput();
+  input["Components"][0]["ChemicalPotential"] = -3000.0;
+  TemporaryInput temporary(std::move(input), "chemical_potential_partial", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  EXPECT_THROW(
+      {
+        InputReader reader(temporary.path().filename().string());
+        static_cast<void>(reader);
+      },
+      std::runtime_error);
+}
+
+TEST(INPUT_READER, chemical_potential_is_not_a_system_option)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  nlohmann::json input = chemicalPotentialMixtureInput();
+  input["Systems"][0]["ChemicalPotential"] = -3000.0;
+  TemporaryInput temporary(std::move(input), "chemical_potential_system", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  EXPECT_THROW(
+      {
+        InputReader reader(temporary.path().filename().string());
+        static_cast<void>(reader);
+      },
+      std::runtime_error);
 }
