@@ -2566,6 +2566,24 @@ system. `"ChargeMethod"` is set per system.
         \sigma_{ij}=\sqrt{\sigma_i \sigma_j}
         \end{equation}
 
+    -   `"SixthPower"` (or `"Waldman-Hagler"`)
+        The sixth-power mean of the size parameter, with the strength parameter
+        scaled to keep the dispersion coefficient:
+        \begin{equation}
+        \sigma_{ij}=\left(\frac{\sigma_i^6+\sigma_j^6}{2}\right)^{1/6}
+        \end{equation}
+        \begin{equation}
+        \varepsilon_{ij}=2\sqrt{\varepsilon_i \varepsilon_j}\,\frac{\sigma_i^3\sigma_j^3}{\sigma_i^6+\sigma_j^6}
+        \end{equation}
+
+    The rule applies when both pseudo-atoms use the same potential with a
+    strength and a size parameter: Lennard-Jones and its shifted, shifted-force
+    and switched forms, Weeks-Chandler-Andersen, MM3, CFF epsilon-sigma and
+    Feynman-Hibbs. For Feynman-Hibbs the reduced mass of the cross pair is
+    $2\mu_{ii}\mu_{jj}/(\mu_{ii}+\mu_{jj})$. Any other pair, such as two
+    different potentials or Buckingham, Morse or Mie, has no interaction unless
+    `"BinaryInteractions"` gives one.
+
 -   `"TruncationMethod" : string`
     -   `"truncated"`
         Truncates the potential at the cutoff.

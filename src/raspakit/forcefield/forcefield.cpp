@@ -51,7 +51,8 @@ double3 parseDouble3(const std::string& item, auto json)
 ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> selfInteractions,
                        MixingRule mixingRule, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
                        bool shifted, bool applyTailCorrections, bool useCharge) noexcept(false)
-    : data(pseudoAtoms.size() * pseudoAtoms.size(), VDWParameters(0.0, 0.0)),
+    : data(pseudoAtoms.size() * pseudoAtoms.size(),
+           VDWParameters(double4(0.0, 1.0, 0.0, 0.0), 0.0, 0.0, 0.0, VDWParameters::Type::None)),
       shiftPotentials(pseudoAtoms.size() * pseudoAtoms.size(), shifted),
       tailCorrections(pseudoAtoms.size() * pseudoAtoms.size(), applyTailCorrections),
       mixingRule(mixingRule),
@@ -224,7 +225,9 @@ ForceField::ForceField(std::string filePath)
     }
   }
 
-  data.resize(numberOfPseudoAtoms * numberOfPseudoAtoms, VDWParameters());
+  // a pair without self interactions or a mixing rule has no interaction until a binary interaction sets one
+  data.resize(numberOfPseudoAtoms * numberOfPseudoAtoms,
+              VDWParameters(double4(0.0, 1.0, 0.0, 0.0), 0.0, 0.0, 0.0, VDWParameters::Type::None));
   shiftPotentials.resize(numberOfPseudoAtoms * numberOfPseudoAtoms, shiftPotential);
   tailCorrections.resize(numberOfPseudoAtoms * numberOfPseudoAtoms, tailCorrection);
 
@@ -908,143 +911,81 @@ void ForceField::applyMixingRule()
 
 void ForceField::mixTable(std::vector<VDWParameters>& table) const
 {
-  switch (mixingRule)
+  // The potentials with an epsilon (p0) and a sigma (p1) mix with the mixing rule when both pseudo-atoms use the
+  // same form; the Feynman-Hibbs reduced mass (p2) of the cross pair follows from the self pairs as
+  // mu_ij = 2 mu_ii mu_jj / (mu_ii + mu_jj) (mu_ii = m_i / 2). Every other combination (different forms, or a form
+  // without a mixing rule such as Buckingham, Morse or Mie) keeps its entry: no interaction unless the
+  // 'BinaryInteractions' (read after mixing) give one.
+  auto isEpsilonSigmaForm = [](VDWParameters::Type type)
   {
-    case MixingRule::Lorentz_Berthelot:
-      for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
-      {
-        for (std::size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
-        {
-          if (table[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
-              table[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::LennardJones)
-          {
-            double mix0 = std::sqrt(table[i * numberOfPseudoAtoms + i].parameters.x *
-                                    table[j * numberOfPseudoAtoms + j].parameters.x);
-            double mix1 =
-                0.5 * (table[i * numberOfPseudoAtoms + i].parameters.y + table[j * numberOfPseudoAtoms + j].parameters.y);
+    return VDWParameters::isLennardJonesForm(type) || type == VDWParameters::Type::WeeksChandlerAndersen ||
+           type == VDWParameters::Type::MM3 || type == VDWParameters::Type::FeynmannHibbs ||
+           type == VDWParameters::Type::CFFEpsilonSigma;
+  };
 
-            table[i * numberOfPseudoAtoms + j].parameters.x = mix0;
-            table[i * numberOfPseudoAtoms + j].parameters.y = mix1;
-            table[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::LennardJones;
-            table[j * numberOfPseudoAtoms + i].parameters.x = mix0;
-            table[j * numberOfPseudoAtoms + i].parameters.y = mix1;
-            table[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::LennardJones;
-          }
-          if ((table[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::None) ||
-              (table[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::None))
-          {
-            table[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
-            table[i * numberOfPseudoAtoms + j].parameters.x = 0.0;
-            table[i * numberOfPseudoAtoms + j].parameters.y = 1.0;
-            table[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
-            table[j * numberOfPseudoAtoms + i].parameters.x = 0.0;
-            table[j * numberOfPseudoAtoms + i].parameters.y = 1.0;
-          }
-        }
-      }
-      break;
-    case MixingRule::Jorgensen:
-      for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
-      {
-        for (std::size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
-        {
-          if (table[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
-              table[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::LennardJones)
-          {
-            double mix0 = std::sqrt(table[i * numberOfPseudoAtoms + i].parameters.x *
-                                    table[j * numberOfPseudoAtoms + j].parameters.x);
-            double mix1 = std::sqrt(table[i * numberOfPseudoAtoms + i].parameters.y *
-                                    table[j * numberOfPseudoAtoms + j].parameters.y);
-
-            table[i * numberOfPseudoAtoms + j].parameters.x = mix0;
-            table[i * numberOfPseudoAtoms + j].parameters.y = mix1;
-            table[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::LennardJones;
-
-            table[j * numberOfPseudoAtoms + i].parameters.x = mix0;
-            table[j * numberOfPseudoAtoms + i].parameters.y = mix1;
-            table[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::LennardJones;
-          }
-          if ((table[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::None) ||
-              (table[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::None))
-          {
-            table[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
-            table[i * numberOfPseudoAtoms + j].parameters.x = 0.0;
-            table[i * numberOfPseudoAtoms + j].parameters.y = 1.0;
-            table[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
-            table[j * numberOfPseudoAtoms + i].parameters.x = 0.0;
-            table[j * numberOfPseudoAtoms + i].parameters.y = 1.0;
-          }
-        }
-      }
-      break;
-    case MixingRule::SixthPower:
-      for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
-      {
-        for (std::size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
-        {
-          VDWParameters::Type typeI = table[i * numberOfPseudoAtoms + i].type;
-          VDWParameters::Type typeJ = table[j * numberOfPseudoAtoms + j].type;
-
-          if ((typeI == VDWParameters::Type::CFFEpsilonSigma && typeJ == VDWParameters::Type::CFFEpsilonSigma) ||
-              (typeI == VDWParameters::Type::LennardJones && typeJ == VDWParameters::Type::LennardJones))
-          {
-            double epsI = table[i * numberOfPseudoAtoms + i].parameters.x;
-            double sigI = table[i * numberOfPseudoAtoms + i].parameters.y;
-            double epsJ = table[j * numberOfPseudoAtoms + j].parameters.x;
-            double sigJ = table[j * numberOfPseudoAtoms + j].parameters.y;
-
-            double s6I = std::pow(sigI, 6.0);
-            double s6J = std::pow(sigJ, 6.0);
-            double s6Sum = s6I + s6J;
-
-            double mixSigma = std::pow(0.5 * s6Sum, 1.0 / 6.0);
-            double mixEps = (s6Sum > 0.0)
-                                ? 2.0 * std::sqrt(epsI * epsJ) * (std::pow(sigI, 3.0) * std::pow(sigJ, 3.0)) / s6Sum
-                                : 0.0;
-
-            VDWParameters::Type crossType = (typeI == VDWParameters::Type::CFFEpsilonSigma)
-                                                ? VDWParameters::Type::CFFEpsilonSigma
-                                                : VDWParameters::Type::LennardJones;
-
-            table[i * numberOfPseudoAtoms + j].parameters.x = mixEps;
-            table[i * numberOfPseudoAtoms + j].parameters.y = mixSigma;
-            table[i * numberOfPseudoAtoms + j].type = crossType;
-
-            table[j * numberOfPseudoAtoms + i].parameters.x = mixEps;
-            table[j * numberOfPseudoAtoms + i].parameters.y = mixSigma;
-            table[j * numberOfPseudoAtoms + i].type = crossType;
-          }
-          if ((typeI == VDWParameters::Type::None) || (typeJ == VDWParameters::Type::None))
-          {
-            table[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
-            table[i * numberOfPseudoAtoms + j].parameters.x = 0.0;
-            table[i * numberOfPseudoAtoms + j].parameters.y = 1.0;
-            table[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
-            table[j * numberOfPseudoAtoms + i].parameters.x = 0.0;
-            table[j * numberOfPseudoAtoms + i].parameters.y = 1.0;
-          }
-        }
-      }
-      break;
-  }
-
-  // set all interactions without interaction energy or length to none interactions
   for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
-    for (std::size_t j = i; j < numberOfPseudoAtoms; ++j)
+    for (std::size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
     {
-      if (((table[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones ||
-            table[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::CFFEpsilonSigma) &&
-           (table[i * numberOfPseudoAtoms + i].parameters.x == 0.0 ||
-            table[i * numberOfPseudoAtoms + i].parameters.y == 0.0)) ||
-          ((table[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::LennardJones ||
-            table[j * numberOfPseudoAtoms + j].type == VDWParameters::Type::CFFEpsilonSigma) &&
-           (table[j * numberOfPseudoAtoms + j].parameters.x == 0.0 ||
-            table[j * numberOfPseudoAtoms + j].parameters.y == 0.0)))
+      const VDWParameters& selfI = table[i * numberOfPseudoAtoms + i];
+      const VDWParameters& selfJ = table[j * numberOfPseudoAtoms + j];
+
+      if (selfI.type == VDWParameters::Type::None || selfJ.type == VDWParameters::Type::None)
       {
-        table[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
-        table[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
+        const VDWParameters none(double4(0.0, 1.0, 0.0, 0.0), 0.0, 0.0, 0.0, VDWParameters::Type::None);
+        table[i * numberOfPseudoAtoms + j] = none;
+        table[j * numberOfPseudoAtoms + i] = none;
+        continue;
       }
+      if (selfI.type != selfJ.type || !isEpsilonSigmaForm(selfI.type)) continue;
+
+      const double epsI = selfI.parameters.x;
+      const double sigI = selfI.parameters.y;
+      const double epsJ = selfJ.parameters.x;
+      const double sigJ = selfJ.parameters.y;
+      double mixEps = 0.0;
+      double mixSigma = 0.0;
+      switch (mixingRule)
+      {
+        case MixingRule::Lorentz_Berthelot:
+          mixEps = std::sqrt(epsI * epsJ);
+          mixSigma = 0.5 * (sigI + sigJ);
+          break;
+        case MixingRule::Jorgensen:
+          mixEps = std::sqrt(epsI * epsJ);
+          mixSigma = std::sqrt(sigI * sigJ);
+          break;
+        case MixingRule::SixthPower:
+        {
+          const double s6Sum = std::pow(sigI, 6.0) + std::pow(sigJ, 6.0);
+          mixSigma = std::pow(0.5 * s6Sum, 1.0 / 6.0);
+          mixEps =
+              (s6Sum > 0.0) ? 2.0 * std::sqrt(epsI * epsJ) * (std::pow(sigI, 3.0) * std::pow(sigJ, 3.0)) / s6Sum : 0.0;
+          break;
+        }
+      }
+      double reducedMass = 0.0;
+      if (selfI.type == VDWParameters::Type::FeynmannHibbs && selfI.parameters.z > 0.0 && selfJ.parameters.z > 0.0)
+      {
+        reducedMass = 2.0 * selfI.parameters.z * selfJ.parameters.z / (selfI.parameters.z + selfJ.parameters.z);
+      }
+
+      const VDWParameters mixed(double4(mixEps, mixSigma, reducedMass, 0.0), 0.0, 0.0, 0.0, selfI.type);
+      table[i * numberOfPseudoAtoms + j] = mixed;
+      table[j * numberOfPseudoAtoms + i] = mixed;
+    }
+  }
+
+  // a pseudo-atom with a zero epsilon or sigma has no interaction (a zero sigma would also make the soft-core form
+  // of the scaled pairs divide by zero)
+  for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  {
+    const VDWParameters& self = table[i * numberOfPseudoAtoms + i];
+    if (!isEpsilonSigmaForm(self.type) || (self.parameters.x != 0.0 && self.parameters.y != 0.0)) continue;
+    for (std::size_t j = 0; j < numberOfPseudoAtoms; ++j)
+    {
+      table[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
+      table[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
     }
   }
 }
