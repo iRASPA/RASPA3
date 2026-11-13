@@ -60,6 +60,12 @@ bool sameHamiltonian(const ForceField& forceFieldA, const ForceField& forceField
     normalizedB.reciprocalIntegerCutOffSquared = forceFieldA.reciprocalIntegerCutOffSquared;
     normalizedB.reciprocalCutOffSquared = forceFieldA.reciprocalCutOffSquared;
   }
+  // An automatic Coulomb cut-off (half the box, the default) is a box-derived cache as well: replicas at different
+  // volumes (NPT replica exchange) would otherwise never compare equal and every swap would be refused.
+  if (forceFieldA.cutOffCoulombAutomatic && forceFieldB.cutOffCoulombAutomatic)
+  {
+    normalizedB.cutOffCoulomb = forceFieldA.cutOffCoulomb;
+  }
   return forceFieldA == normalizedB;
 }
 

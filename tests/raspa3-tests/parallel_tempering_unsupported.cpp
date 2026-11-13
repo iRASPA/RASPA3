@@ -4,6 +4,9 @@ import std;
 
 import int3;
 import forcefield;
+import simulationbox;
+import atom;
+import double3;
 import vdwparameters;
 import framework;
 import component;
@@ -68,4 +71,51 @@ TEST(PARALLEL_TEMPERING_UNSUPPORTED, solute_tempering_with_polarization_is_refus
   EXPECT_TRUE(MC_Moves::parallelTemperingUnsupportedReason(system, true).has_value());
   // plain temperature exchange with polarization stays supported (the energies are those of one Hamiltonian)
   EXPECT_FALSE(MC_Moves::parallelTemperingUnsupportedReason(system, false).has_value());
+}
+
+namespace
+{
+// a box of single-site Lennard-Jones particles, the cut-offs and Ewald parameters derived from its box as the
+// drivers do
+System makeParticleBox(double boxLength, double temperature)
+{
+  const ForceField forceField({{"X", false, 16.0, 0.0, 0.0, 6, false}}, {{120.0, 3.5}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0, 9.0, true, false, false);
+  const Component particle(forceField, "particle", 190.0, 4.6e6, 0.0,
+                           {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21);
+  System system(forceField, SimulationBox(boxLength, boxLength, boxLength), false, temperature, 1.0e5, 1.0, {},
+                {particle}, {}, {20}, 5);
+  // the Coulomb cut-off follows the box, as with the default input ('CutOffCoulomb' auto)
+  system.forceField.cutOffCoulombAutomatic = true;
+  system.forceField.initializeAutomaticCutOff(system.simulationBox);
+  system.forceField.initializeEwaldParameters(system.simulationBox);
+  system.runningEnergies = system.computeTotalEnergies();
+  return system;
+}
+}  // namespace
+
+// Replicas at different volumes (NPT replica exchange) share one Hamiltonian: the cut-offs the force field derives
+// from each box automatically are caches of that box, like the automatic Ewald parameters, and must not make the
+// swap refuse every attempt.
+TEST(PARALLEL_TEMPERING_UNSUPPORTED, replicas_at_different_volumes_with_automatic_cutoffs_share_the_hamiltonian)
+{
+  const System a = makeParticleBox(22.0, 300.0);
+  const System b = makeParticleBox(24.0, 330.0);
+  ASSERT_TRUE(a.forceField.cutOffCoulombAutomatic);
+  ASSERT_NE(a.forceField.cutOffCoulomb, b.forceField.cutOffCoulomb);
+  EXPECT_TRUE(MC_Moves::ParallelTemperingLogAcceptance(a, b).has_value());
+}
+
+// After the configurations (and boxes) of two replicas are exchanged, the automatic cut-offs of each force field
+// follow the box that arrived, so the minimum image holds in the smaller box.
+TEST(PARALLEL_TEMPERING_UNSUPPORTED, an_exchanged_box_reinitializes_the_automatic_cutoffs)
+{
+  System a = makeParticleBox(22.0, 300.0);
+  System b = makeParticleBox(24.0, 330.0);
+  a.exchangeConfiguration(b);
+  a.rebuildConfigurationDerivedState();
+  b.rebuildConfigurationDerivedState();
+  EXPECT_DOUBLE_EQ(a.simulationBox.lengthA, 24.0);
+  EXPECT_NEAR(a.forceField.cutOffCoulomb, 12.0, 1e-9);
+  EXPECT_NEAR(b.forceField.cutOffCoulomb, 11.0, 1e-9);
 }

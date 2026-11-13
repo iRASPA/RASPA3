@@ -141,6 +141,9 @@ void System::copyInterpolationGridsFrom(const System& reference)
 
 void System::rebuildConfigurationDerivedState()
 {
+  // the box may have travelled with the configuration: the cut-offs derived from it follow, then the Ewald
+  // parameters (which depend on the Coulomb cut-off)
+  forceField.initializeAutomaticCutOff(simulationBox);
   forceField.initializeEwaldParameters(simulationBox);
   eik_x.clear();
   eik_y.clear();
@@ -149,16 +152,17 @@ void System::rebuildConfigurationDerivedState()
   storedEik.clear();
   fixedFrameworkStoredEik.clear();
   trialEik.clear();
+  // the per-type counts and the net charge of the arrived configuration first, the energies from them after
+  updateMoleculeAtomInformation();
+  computeNumberOfPseudoAtoms();
+  computeTailCorrectionCounts();
+  netCharge = netChargeFramework + netChargeAdsorbates;
   precomputeTotalRigidEnergy();
   runningEnergies = computeTotalEnergies();
   trialEik = storedEik;
   CoulombicFourierEnergySingleIon = Interactions::computeEwaldFourierEnergySingleIon(
       eik_x, eik_y, eik_z, eik_xy, forceField, simulationBox, double3(0.0, 0.0, 0.0), 1.0);
   loadings = LoadingData(components.size(), numberOfIntegerMoleculesPerComponent, simulationBox);
-  updateMoleculeAtomInformation();
-  computeNumberOfPseudoAtoms();
-  computeTailCorrectionCounts();
-  netCharge = netChargeFramework + netChargeAdsorbates;
   checkMoleculeIds();
   if (tmmc.doTMMC && !components.empty())
   {
