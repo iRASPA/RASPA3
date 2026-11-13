@@ -217,6 +217,10 @@ void Interactions::Neighbourhood::gatherFromCells(const SimulationBox& simulatio
 
   // the minimum image along the whole axes only (a zero width leaves the axis alone: the shift is exact there)
   const bool perAxisImage = anyWhole && cellList.orthorhombic;
+  // In a skewed cell the fractional wrap is the nearest image only within half the smallest perpendicular width:
+  // beyond it an atom whose nearest image is within the radius may wrap to a farther one. Every record of the
+  // visited cells is kept then; the kernels take the minimum image per pair (the nearest image is not unique).
+  const bool keepAll = anyWhole && !cellList.orthorhombic && !nearestImageUnique;
   const double wrapX = whole[0] ? widths.x : 0.0, wrapY = whole[1] ? widths.y : 0.0, wrapZ = whole[2] ? widths.z : 0.0;
   const double unwrapX = whole[0] ? inverseWidths.x : 0.0, unwrapY = whole[1] ? inverseWidths.y : 0.0,
                unwrapZ = whole[2] ? inverseWidths.z : 0.0;
@@ -277,7 +281,7 @@ void Interactions::Neighbourhood::gatherFromCells(const SimulationBox& simulatio
                                // index
                                for (std::size_t k = 0; k < n; ++k)
                                {
-                                 const bool keep = (rrs[k] <= radiusSquared) & (ids[base + k] != skipped);
+                                 const bool keep = (keepAll || rrs[k] <= radiusSquared) & (ids[base + k] != skipped);
                                  slots[m] = static_cast<std::uint32_t>(base + k);
                                  kx[m] = dxs[k];
                                  ky[m] = dys[k];
@@ -372,6 +376,14 @@ void Interactions::Neighbourhood::gatherImpl(const SimulationBox& simulationBox,
   // falls back to the nearest image per atom with the minimum image taken per pair in the kernels)
   const bool allImages = !nearestImageUnique && cutOff <= halfWidth && radius < minimumWidth;
   imagesResolved = nearestImageUnique || allImages;
+  // In a skewed cell the fractional wrap is the nearest image only within half the smallest perpendicular width:
+  // with the radius at the box width or beyond, an atom whose nearest image is within the radius may wrap to a
+  // farther one, so every atom is a record there (the kernels take the minimum image per pair). An orthorhombic
+  // cell wraps to the nearest image exactly.
+  const double3x3& cell = simulationBox.cell;
+  const bool orthorhombic =
+      cell.ay == 0.0 && cell.az == 0.0 && cell.bx == 0.0 && cell.bz == 0.0 && cell.cx == 0.0 && cell.cy == 0.0;
+  const bool everyAtom = !imagesResolved && !orthorhombic;
   fullyCoupled = true;
   allAtoms = false;
 
@@ -403,6 +415,11 @@ void Interactions::Neighbourhood::gatherImpl(const SimulationBox& simulationBox,
     if (atom.moleculeId == skipped) continue;
     const std::uint32_t recorded = framework ? frameworkMoleculeId : atom.moleculeId;
     const double3 d = simulationBox.applyPeriodicBoundaryConditions(atom.position - centre);
+    if (everyAtom)
+    {
+      append(atom, centre + d, recorded);
+      continue;
+    }
     MCCellList::forEachImageWithin(simulationBox, widths, d, radius, allImages,
                                    [&](const double3& image) { append(atom, centre + image, recorded); });
   }

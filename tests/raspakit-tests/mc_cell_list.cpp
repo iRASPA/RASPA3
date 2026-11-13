@@ -2258,3 +2258,54 @@ TEST(mc_cell_list, rejected_gibbs_volume_move_invalidates_both_lists)
   }
   EXPECT_GE(rejected, 1uz);
 }
+
+// In a skewed cell the fractionally wrapped displacement is the nearest image only inside half the smallest
+// perpendicular width. A gather whose radius reaches beyond that must not drop an atom whose nearest image lies within
+// the radius although its wrapped displacement does not: with the cell list (radius beyond half the width) and without
+// it (radius beyond the width, where the gather hands the minimum image to the kernels).
+TEST(mc_cell_list, skewed_cell_gathers_keep_the_atoms_whose_nearest_image_lies_within_reach)
+{
+  const SimulationBox box(30.0, 30.0, 40.0, 0.5 * std::numbers::pi, 0.5 * std::numbers::pi, std::numbers::pi / 3.0);
+  const double cutOff = 12.0;
+  const double3 widths = box.perpendicularWidths();
+  const double halfWidth = 0.5 * std::min({widths.x, widths.y, widths.z});
+  ASSERT_LT(cutOff, halfWidth);
+  const double3 centre = box.cell * double3(0.25, 0.25, 0.5);
+
+  // atom 7: at the corner of the wrapped cell its wrapped displacement is 0.49 (a + b), 25.5 A long, while the image
+  // shifted by -a lies 15.0 A from the centre; atom 8: the same with a z offset, nearest image 24.7 A away
+  std::vector<Atom> atoms{Atom(centre + box.cell * double3(0.49, 0.49, 0.0), 0.0, 1.0, 7, 0, 0, 0, false),
+                          Atom(centre + box.cell * double3(0.49, 0.49, 0.49), 0.0, 1.0, 8, 0, 0, 0, false),
+                          Atom(centre + double3(3.0, 0.0, 0.0), 0.0, 1.0, 1, 0, 0, 0, false),
+                          Atom(centre + double3(0.0, 0.0, 17.0), 0.0, 1.0, 2, 0, 0, 0, false)};
+  const double3 wrappedCorner = box.applyPeriodicBoundaryConditions(atoms[0].position - centre);
+  const double3 nearestCorner = wrappedCorner - box.cell * double3(1.0, 0.0, 0.0);
+  ASSERT_GT(wrappedCorner.length(), 25.0);
+  ASSERT_NEAR(nearestCorner.length(), 15.0, 1e-2);
+
+  const auto holds = [](const Interactions::Neighbourhood& neighbourhood, std::uint32_t molecule)
+  {
+    for (std::size_t k = 0; k < neighbourhood.size(); ++k)
+    {
+      if (neighbourhood.moleculeId[k] == molecule) return true;
+    }
+    return false;
+  };
+
+  // the cell list: a batch of 3.5 A reaches 15.5 A, beyond half the width (13.0 A) and up to the nearest corner image
+  MCCellList list;
+  list.build(atoms, box, cutOff);
+  ASSERT_TRUE(list.enabled);
+  Interactions::Neighbourhood withCells;
+  withCells.gather(box, &list, atoms, centre, 3.5, cutOff);
+  EXPECT_FALSE(withCells.nearestImageUnique);
+  EXPECT_TRUE(holds(withCells, 7));
+  EXPECT_TRUE(holds(withCells, 1));
+
+  // no cell list: a batch of 14 A reaches 26 A, beyond the smallest width (26.0 A); atom 8's nearest image is 24.7 A
+  Interactions::Neighbourhood withoutCells;
+  withoutCells.gather(box, nullptr, atoms, centre, 14.0, cutOff);
+  EXPECT_FALSE(withoutCells.imagesResolved);
+  EXPECT_TRUE(holds(withoutCells, 8));
+  EXPECT_TRUE(holds(withoutCells, 7));
+}

@@ -264,8 +264,11 @@ export struct MCCellList
    * smallest perpendicular width of the box -- or, with 'allImages', as long as r_c is). The cells visited are
    * those within 'radius' of the centre; along an axis the stencil wraps around (or that is collapsed) the
    * records are placed with the minimum image to the centre (see 'forEachImageWithin' for the additional
-   * images). Any radius is allowed, also beyond the list's cut-off. A disabled or invalid list holds no records
-   * (the callers gather from the atom array instead).
+   * images). In a skewed cell, once the radius reaches half the smallest perpendicular width (and all images are
+   * not asked for), the wrapped image need not be the nearest one: every record of the visited cells is then
+   * handed out at its wrapped image and the caller takes the minimum image per pair. Any radius is allowed, also
+   * beyond the list's cut-off. A disabled or invalid list holds no records (the callers gather from the atom
+   * array instead).
    */
   template <typename Callback>
   inline void forEachRecordWithin(const SimulationBox& simulationBox, const double3& centre, double radius,
@@ -274,6 +277,10 @@ export struct MCCellList
     const std::array<bool, 3> whole = wholeAxes(radius);
     const bool ambiguous = whole[0] || whole[1] || whole[2];
     const double radiusSquared = radius * radius;
+    // in a skewed cell the fractional wrap is the nearest image only within half the smallest perpendicular width:
+    // beyond it (and without all images) every record of the visited cells is handed out, at its wrapped image
+    const double halfWidth = 0.5 * std::min({perpendicularWidths.x, perpendicularWidths.y, perpendicularWidths.z});
+    const bool everyRecord = ambiguous && !allImages && !orthorhombic && !(radius < halfWidth);
     forEachCellWithin(centre, radius,
                       [&](std::size_t cell, const double3& shift)
                       {
@@ -285,6 +292,11 @@ export struct MCCellList
                           {
                             const Record entry = record(base + k);
                             const double3 d = simulationBox.applyPeriodicBoundaryConditions(entry.position() - centre);
+                            if (everyRecord)
+                            {
+                              callback(entry, centre + d);
+                              continue;
+                            }
                             forEachImageWithin(simulationBox, perpendicularWidths, d, radius, allImages,
                                                [&](const double3& image) { callback(entry, centre + image); });
                           }
