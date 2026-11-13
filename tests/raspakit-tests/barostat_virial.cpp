@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 import std;
 
@@ -17,6 +18,7 @@ import system;
 import simulationbox;
 import energy_status;
 import running_energy;
+import potential_coulomb_real_space;
 import interactions_intermolecular;
 import bond_potential;
 import bend_potential;
@@ -587,8 +589,10 @@ class TemporaryDefinition
 {
  public:
   explicit TemporaryDefinition(std::string_view contents)
-      : path(std::filesystem::temp_directory_path() / "raspa3-barostat-mobile-framework-ewald.json")
+      : path(std::filesystem::temp_directory_path() /
+             std::format("raspa3-barostat-mobile-framework-ewald-{}.json", static_cast<long long>(::getpid())))
   {
+    // one file per process: the tests of this file run in parallel and used to overwrite and delete each other's
     std::ofstream(path) << contents;
   }
   ~TemporaryDefinition()
@@ -891,4 +895,31 @@ TEST(BAROSTAT_VIRIAL, tail_pressure_excludes_framework_framework_pairs)
   const double difference =
       withTail.computeMolecularPressure().second.trace() - withoutTail.computeMolecularPressure().second.trace();
   EXPECT_NEAR(difference, 3.0 * expected, 1e-9 * std::abs(expected));
+}
+
+// The lab-fixed atoms of a mixed framework are a constant of the framework: the Ewald path leaves them out of its
+// live atoms, so their self energy is no part of the system energy. The real-space charge methods summed the self
+// energy of every framework atom, in the total energy, the gradient and the Hessian.
+TEST(BAROSTAT_VIRIAL, real_space_self_energy_counts_the_mobile_framework_atoms_only)
+{
+  System system = makeChargedChainSystem(true, {0.3, -0.3, 0.2, -0.1, -0.1}, 0.4);
+  ASSERT_TRUE(system.framework->isMixed());
+  const std::size_t fixedAtoms = system.framework->numberOfFixedAtoms();
+  ASSERT_EQ(fixedAtoms, 2uz);
+  system.forceField.chargeMethod = ForceField::ChargeMethod::Wolf;
+
+  const double prefactor = Units::CoulombicConversionFactor * Potentials::coulombSelfEnergyPrefactor(system.forceField);
+  double expected = 0.0;
+  for (const Atom& atom : system.spanOfFrameworkAtoms().subspan(fixedAtoms))
+  {
+    expected += prefactor * atom.scalingCoulomb * atom.charge * atom.scalingCoulomb * atom.charge;
+  }
+  for (const Atom& atom : system.spanOfMoleculeAtoms())
+  {
+    expected += prefactor * atom.scalingCoulomb * atom.charge * atom.scalingCoulomb * atom.charge;
+  }
+  ASSERT_NE(expected, 0.0);
+
+  EXPECT_NEAR(system.computeTotalEnergies().ewald_self, expected, 1e-8 * std::abs(expected));
+  EXPECT_NEAR(gradientEnergy(system).ewald_self, expected, 1e-8 * std::abs(expected));
 }

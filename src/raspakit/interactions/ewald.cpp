@@ -839,7 +839,9 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
       addChargeExclusionEnergy(energySum, forceField, simulationBox, components, moleculeAtoms);
       if (framework && framework->hasMobileAtoms() && !frameworkAtoms.empty())
       {
-        addRealSpaceSelfEnergy(energySum, forceField, frameworkAtoms);
+        // the self term of the mobile framework atoms only: the lab-fixed ones are a constant of the framework, left
+        // out as the Ewald path leaves them out of its live atoms
+        addRealSpaceSelfEnergy(energySum, forceField, frameworkAtoms.subspan(framework->numberOfFixedAtoms()));
         addFrameworkChargeExclusionEnergy(energySum, forceField, simulationBox, *framework, frameworkAtoms);
       }
     }
@@ -1070,7 +1072,8 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
           framework && framework->hasMobileAtoms() && frameworkDynamics.size() == frameworkAtoms.size();
       if (liveFramework)
       {
-        addRealSpaceSelfEnergy(energySum, forceField, frameworkAtoms);
+        // the mobile framework atoms only (the lab-fixed ones are a constant, as in the Ewald live atoms)
+        addRealSpaceSelfEnergy(energySum, forceField, frameworkAtoms.subspan(framework->numberOfFixedAtoms()));
 
         const double cutOffSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
         for (const std::array<std::size_t, 2>& pair : frameworkExcludedChargePairs(*framework))

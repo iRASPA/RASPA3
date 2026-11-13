@@ -225,7 +225,8 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
   }
   if (liveFramework)
   {
-    for (const Atom& atom : frameworkAtoms)
+    // the mobile framework atoms only: the lab-fixed ones are left out of the Ewald live atoms as well
+    for (const Atom& atom : frameworkAtoms.subspan(framework->numberOfFixedAtoms()))
     {
       const double scaledCharge = atom.scalingCoulomb * atom.charge;
       energySum.ewald_self += selfPrefactor * scaledCharge * scaledCharge;
