@@ -987,7 +987,8 @@ RunningEnergy System::computeTotalEnergies() noexcept
 
     RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierElectricField(
         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
-        moleculeElectricField, components, numberOfMoleculesPerComponent, moleculeAtomPositions, netChargeFramework);
+        moleculeElectricField, components, numberOfMoleculesPerComponent, moleculeAtomPositions, netChargeFramework,
+        framework, frameworkAtomPositions);
 
     RunningEnergy polarizationEnergy = computePolarizationEnergy();
 
@@ -1138,9 +1139,10 @@ void System::computeTotalElectricField() noexcept
   Interactions::computeFrameworkMoleculeElectricField(forceField, simulationBox, moleculeElectricField,
                                                       frameworkAtomPositions, moleculeAtomPositions);
 
-  Interactions::computeEwaldFourierElectricField(
-      eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox, moleculeElectricField,
-      components, numberOfMoleculesPerComponent, moleculeAtomPositions, netChargeFramework);
+  Interactions::computeEwaldFourierElectricField(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik,
+                                                 forceField, simulationBox, moleculeElectricField, components,
+                                                 numberOfMoleculesPerComponent, moleculeAtomPositions,
+                                                 netChargeFramework, framework, frameworkAtomPositions);
 }
 
 std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept

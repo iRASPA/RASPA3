@@ -2520,7 +2520,8 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
     const SimulationBox& simulationBox, std::span<double3> electricFieldMolecules,
     const std::vector<Component>& components,
     [[maybe_unused]] const std::vector<std::size_t>& numberOfMoleculesPerComponent,
-    std::span<Atom> moleculeAtomPositions, double netChargeFramework)
+    std::span<Atom> moleculeAtomPositions, double netChargeFramework, const std::optional<Framework>& framework,
+    std::span<const Atom> frameworkAtoms)
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -2548,7 +2549,29 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
     return energySum;
   }
 
-  std::size_t numberOfAtoms = moleculeAtomPositions.size();
+  // Live Fourier hosts are the mobile framework atoms, as in computeEwaldFourierEnergy (which this function replaces
+  // when the field is needed); lab-fixed atoms contribute through fixedFrameworkStoredEik.
+  const bool liveFramework = framework && framework->hasMobileAtoms() && !frameworkAtoms.empty();
+  const std::size_t fixedFrameworkAtomCount = liveFramework ? framework->numberOfFixedAtoms() : 0;
+  const std::size_t frameworkOffset = liveFramework ? frameworkAtoms.size() - fixedFrameworkAtomCount : 0;
+  const bool useFixedFrameworkEik = !liveFramework || fixedFrameworkAtomCount > 0;
+  std::vector<Atom> liveAtoms;
+  double rigidFrameworkCharge = netChargeFramework;
+  if (liveFramework)
+  {
+    liveAtoms.reserve(frameworkOffset + moleculeAtomPositions.size());
+    liveAtoms.insert(liveAtoms.end(), frameworkAtoms.begin() + static_cast<std::ptrdiff_t>(fixedFrameworkAtomCount),
+                     frameworkAtoms.end());
+    liveAtoms.insert(liveAtoms.end(), moleculeAtomPositions.begin(), moleculeAtomPositions.end());
+    rigidFrameworkCharge = 0.0;
+    for (const Atom& atom : frameworkAtoms.first(fixedFrameworkAtomCount))
+    {
+      rigidFrameworkCharge += atom.scalingCoulomb * atom.charge;
+    }
+  }
+  const std::span<const Atom> atoms =
+      liveFramework ? std::span<const Atom>(liveAtoms) : std::span<const Atom>(moleculeAtomPositions);
+  std::size_t numberOfAtoms = atoms.size();
 
   std::size_t kx_max_unsigned = static_cast<std::size_t>(forceField.numberOfWaveVectors.x);
   std::size_t ky_max_unsigned = static_cast<std::size_t>(forceField.numberOfWaveVectors.y);
@@ -2562,8 +2585,7 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
   storedEik.beginFill(numberOfWaveVectors);
   fixedFrameworkStoredEik.reserveWaveVectors(numberOfWaveVectors);
 
-  Ewald::buildEikTables(eik_x, eik_y, eik_z, eik_xy, moleculeAtomPositions, kx_max_unsigned, ky_max_unsigned,
-                        kz_max_unsigned, inv_box);
+  Ewald::buildEikTables(eik_x, eik_y, eik_z, eik_xy, atoms, kx_max_unsigned, ky_max_unsigned, kz_max_unsigned, inv_box);
 
   std::size_t nvec = 0;
   double prefactor = Units::CoulombicConversionFactor * (2.0 * std::numbers::pi / simulationBox.volume);
@@ -2595,19 +2617,26 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
           singleIonFourierSum += temp;
 
           std::pair<std::complex<double>, std::array<std::complex<double>, 4>> cksum;
+          // the structure factor of the mobile framework atoms: a host of the field, like the lab-fixed ones
+          std::complex<double> mobileFrameworkSum{};
           for (std::size_t i = 0; i != numberOfAtoms; ++i)
           {
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<std::size_t>(std::abs(kz))];
             eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
-            double charge = moleculeAtomPositions[i].charge;
-            double scaling = moleculeAtomPositions[i].scalingCoulomb;
-            std::uint8_t groupIdA = moleculeAtomPositions[i].groupId;
-            cksum.first += scaling * charge * (eik_xy[i] * eikz_temp);
+            double charge = atoms[i].charge;
+            double scaling = atoms[i].scalingCoulomb;
+            std::uint8_t groupIdA = atoms[i].groupId;
+            const std::complex<double> term = scaling * charge * (eik_xy[i] * eikz_temp);
+            cksum.first += term;
+            if (i < frameworkOffset) mobileFrameworkSum += term;
             if (groupIdA != 0) cksum.second[groupIdA - 1] += charge * eik_xy[i] * eikz_temp;
           }
 
-          const std::pair<std::complex<double>, std::array<std::complex<double>, 4>> rigid{
-              fixedFrameworkStoredEik.sum[nvec], fixedFrameworkStoredEik.groups(nvec)};
+          std::pair<std::complex<double>, std::array<std::complex<double>, 4>> rigid{};
+          if (useFixedFrameworkEik)
+          {
+            rigid = {fixedFrameworkStoredEik.sum[nvec], fixedFrameworkStoredEik.groups(nvec)};
+          }
 
           std::pair<std::complex<double>, std::array<std::complex<double>, 4>> total = rigid;
           // if (!omitInterInteractions || !omitInterPolarization)
@@ -2632,14 +2661,17 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
           addFourierDUdlambda(energySum, -2.0 * temp, rigid.first, rigid.second);
           if (omitInterInteractions) addFourierDUdlambda(energySum, -2.0 * temp, cksum.first, cksum.second);
 
-          for (std::size_t i = 0; i != numberOfAtoms; ++i)
+          // the field at the molecule atoms from the framework hosts (lab-fixed through the stored factor, mobile
+          // through their live sum); the molecule atoms are the live atoms after the mobile framework atoms
+          const std::complex<double> hostSum = rigid.first + mobileFrameworkSum;
+          for (std::size_t i = frameworkOffset; i != numberOfAtoms; ++i)
           {
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<std::size_t>(std::abs(kz))];
             eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
             std::complex<double> cki = eik_xy[i] * eikz_temp;
 
-            electricFieldMolecules[i] +=
-                2.0 * temp * (cki.imag() * rigid.first.real() - cki.real() * rigid.first.imag()) * rk;
+            electricFieldMolecules[i - frameworkOffset] +=
+                2.0 * temp * (cki.imag() * hostSum.real() - cki.real() * hostSum.imag()) * rk;
           }
 
           // under 'omitInterInteractions' the stored structure factor holds the rigid framework only
@@ -2661,11 +2693,11 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
   {
     // Subtract self-energy
     double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
-    for (std::size_t i = 0; i != moleculeAtomPositions.size(); ++i)
+    for (std::size_t i = 0; i != atoms.size(); ++i)
     {
-      double charge = moleculeAtomPositions[i].charge;
-      double scaling = moleculeAtomPositions[i].scalingCoulomb;
-      std::uint8_t groupIdA = moleculeAtomPositions[i].groupId;
+      double charge = atoms[i].charge;
+      double scaling = atoms[i].scalingCoulomb;
+      std::uint8_t groupIdA = atoms[i].groupId;
       energySum.ewald_self -= prefactor_self * scaling * charge * scaling * charge;
       if (groupIdA != 0) energySum.dudlambdaEwald[groupIdA - 1] -= 2.0 * prefactor_self * scaling * charge * charge;
     }
@@ -2679,6 +2711,8 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
     // term here would make the stored field inconsistent with the incremental Monte-Carlo moves and introduce
     // energy drift. The exclusion energy itself is still accounted for here.
     addChargeExclusionEnergy(energySum, forceField, simulationBox, components, moleculeAtomPositions);
+    if (liveFramework)
+      addFrameworkChargeExclusionEnergy(energySum, forceField, simulationBox, *framework, frameworkAtoms);
   }
 
   // Net-charge correction: neutralizing background plus removal of the spurious interaction of the
@@ -2688,27 +2722,27 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
   {
     double netChargeAdsorbates = 0.0;
     std::array<double, maximumNumberOfDUDlambdaGroups> netChargeDerivative{};
-    for (std::size_t i = 0; i != moleculeAtomPositions.size(); ++i)
+    for (std::size_t i = 0; i != atoms.size(); ++i)
     {
-      netChargeAdsorbates += moleculeAtomPositions[i].scalingCoulomb * moleculeAtomPositions[i].charge;
-      if (moleculeAtomPositions[i].groupId != 0)
-        netChargeDerivative[moleculeAtomPositions[i].groupId - 1] += moleculeAtomPositions[i].charge;
+      netChargeAdsorbates += atoms[i].scalingCoulomb * atoms[i].charge;
+      if (atoms[i].groupId != 0) netChargeDerivative[atoms[i].groupId - 1] += atoms[i].charge;
     }
     double uIon = -(singleIonFourierSum - Units::CoulombicConversionFactor * alpha / std::sqrt(std::numbers::pi));
     if (omitInterInteractions)
     {
-      energySum.ewald_fourier += 2.0 * uIon * netChargeFramework * netChargeAdsorbates;
+      energySum.ewald_fourier += 2.0 * uIon * rigidFrameworkCharge * netChargeAdsorbates;
       for (std::size_t g = 0; g != maximumNumberOfDUDlambdaGroups; ++g)
       {
-        energySum.dudlambdaEwald[g] += 2.0 * uIon * netChargeFramework * netChargeDerivative[g];
+        energySum.dudlambdaEwald[g] += 2.0 * uIon * rigidFrameworkCharge * netChargeDerivative[g];
       }
     }
     else
     {
-      energySum.ewald_fourier += uIon * (2.0 * netChargeFramework + netChargeAdsorbates) * netChargeAdsorbates;
+      energySum.ewald_fourier += uIon * (2.0 * rigidFrameworkCharge + netChargeAdsorbates) * netChargeAdsorbates;
       for (std::size_t g = 0; g != maximumNumberOfDUDlambdaGroups; ++g)
       {
-        energySum.dudlambdaEwald[g] += 2.0 * uIon * (netChargeFramework + netChargeAdsorbates) * netChargeDerivative[g];
+        energySum.dudlambdaEwald[g] +=
+            2.0 * uIon * (rigidFrameworkCharge + netChargeAdsorbates) * netChargeDerivative[g];
       }
     }
   }

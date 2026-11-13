@@ -972,3 +972,24 @@ TEST(BAROSTAT_VIRIAL, ewald_energies_do_not_depend_on_the_framework_dynamics_bei
   near(strainWithout.cz, strainWith.cz);
   EXPECT_NE(strainWith.ax, 0.0);
 }
+
+// With polarization on, the total energies take the Fourier energy from the electric-field routine. That routine knew
+// no framework: for a framework with mobile atoms it summed the molecules alone, while the energy routine sums the
+// mobile framework atoms with them. The Ewald terms of the total energy must not depend on the polarization setting.
+TEST(BAROSTAT_VIRIAL, ewald_terms_of_a_mobile_framework_do_not_depend_on_polarization)
+{
+  auto totals = [](bool polarization)
+  {
+    System system = makeChargedChainSystem(false, {0.3, -0.3, 0.2, -0.1, -0.1}, 0.4);
+    system.forceField.computePolarization = polarization;
+    return system.computeTotalEnergies();
+  };
+  const RunningEnergy plain = totals(false);
+  const RunningEnergy polarizable = totals(true);
+  ASSERT_NE(plain.ewald_fourier, 0.0);
+  EXPECT_NEAR(polarizable.ewald_fourier, plain.ewald_fourier, 1e-10 * std::abs(plain.ewald_fourier));
+  EXPECT_NEAR(polarizable.ewald_self, plain.ewald_self, 1e-10 * std::abs(plain.ewald_self));
+  EXPECT_NEAR(polarizable.ewald_exclusion, plain.ewald_exclusion,
+              1e-10 * std::max(1.0, std::abs(plain.ewald_exclusion)));
+  EXPECT_NEAR(polarizable.potentialEnergy(), plain.potentialEnergy(), 1e-10 * std::abs(plain.potentialEnergy()));
+}

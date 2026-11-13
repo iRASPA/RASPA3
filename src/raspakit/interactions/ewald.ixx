@@ -432,7 +432,8 @@ RunningEnergy computeEwaldFourierElectricField(
     EwaldStructureFactor& fixedFrameworkStoredEik, EwaldStructureFactor& storedEik, const ForceField& forceField,
     const SimulationBox& simulationBox, std::span<double3> electricFieldMolecules,
     const std::vector<Component>& components, const std::vector<std::size_t>& numberOfMoleculesPerComponent,
-    std::span<Atom> atomData, double netChargeFramework = 0.0);
+    std::span<Atom> atomData, double netChargeFramework = 0.0, const std::optional<Framework>& framework = std::nullopt,
+    std::span<const Atom> frameworkAtoms = {});
 
 /**
  * \brief Computes the periodic Coulomb potential matrix used in charge equilibration.

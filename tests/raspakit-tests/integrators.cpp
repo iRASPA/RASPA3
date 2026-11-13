@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include "../test_support.hpp"
+
 import std;
 
 import archive;
@@ -64,23 +66,6 @@ Framework makeTwoAtomFramework(const ForceField& forceField, bool rigid)
   return framework;
 }
 
-class TemporaryFile
-{
- public:
-  TemporaryFile(std::string name, std::string_view contents)
-      : path(std::filesystem::temp_directory_path() / std::move(name))
-  {
-    std::ofstream stream(path);
-    stream << contents;
-  }
-  ~TemporaryFile()
-  {
-    std::error_code ignored;
-    std::filesystem::remove(path, ignored);
-  }
-  std::filesystem::path path;
-};
-
 // Fixed{0} | Rigid{1,2,3} (nonlinear) | Flexible{4,5}, plus one adsorbate. Hits the mixed-framework
 // Hybrid MC path that must pass frameworkGroupData into the integrator.
 System makeMixedFrameworkHybridMCSystem()
@@ -110,7 +95,7 @@ System makeMixedFrameworkHybridMCSystem()
                                  {"Type": "Rigid", "Atoms": [1, 2, 3]},
                                  {"Type": "Flexible", "Atoms": [4, 5]}
                                ]})");
-  framework.readFrameworkDefinition(forceField, definition.path.string());
+  framework.readFrameworkDefinition(forceField, definition.path().string());
 
   Component molecule(forceField, "single-site", 16.0, 1.0e6, 0.011,
                      {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, static_cast<std::uint16_t>(typeM), 0, false, false)},
@@ -1876,12 +1861,12 @@ System makeHybridFrameworkSystem(const std::string& groups)
     atoms.push_back(Atom(position / 14.0, 0.0, 1.0, 0, 0, 0, 0, true));
   }
   Framework framework(forceField, "hybrid-chain", box, 1, atoms, atoms, int3(1, 1, 1));
-  const std::filesystem::path definition = std::filesystem::temp_directory_path() / "raspa3-hybrid-framework.json";
-  std::ofstream(definition) << std::format(R"({{"Type": "Flexible", {} "Intra14VanDerWaalsScalingValue": 0.0,
+  // a unique file per fixture instance: the tests of this file run in parallel
+  const TemporaryFile definition("raspa3-hybrid-framework.json",
+                                 std::format(R"({{"Type": "Flexible", {} "Intra14VanDerWaalsScalingValue": 0.0,
                                                 "Intra14ChargeChargeScalingValue": 0.0}})",
-                                           groups);
-  framework.readFrameworkDefinition(forceField, definition.string());
-  std::filesystem::remove(definition);
+                                             groups));
+  framework.readFrameworkDefinition(forceField, definition.path().string());
   return System(forceField, box, false, 300.0, 1.0e4, 1.0, framework, {}, {}, {}, 5);
 }
 
@@ -1954,14 +1939,14 @@ System makeDriftSystem(DriftHost host, std::size_t numberOfMolecules, bool exter
     Framework framework(forceField, "drift-chain", box, 1, atoms, atoms, int3(1, 1, 1));
     if (host != DriftHost::Rigid)
     {
-      const std::filesystem::path definition = std::filesystem::temp_directory_path() / "raspa3-drift-framework.json";
-      std::ofstream(definition) << std::format(
-          R"({{"Type": "Flexible", {} "Intra14VanDerWaalsScalingValue": 0.0, "Intra14ChargeChargeScalingValue": 0.0}})",
-          host == DriftHost::FixedAndFlexible
-              ? R"("Groups": [{"Type": "Fixed", "Atoms": [0]}, {"Type": "Flexible", "Atoms": [1, 2]}],)"
-              : "");
-      framework.readFrameworkDefinition(forceField, definition.string());
-      std::filesystem::remove(definition);
+      const TemporaryFile definition(
+          "raspa3-drift-framework.json",
+          std::format(
+              R"({{"Type": "Flexible", {} "Intra14VanDerWaalsScalingValue": 0.0, "Intra14ChargeChargeScalingValue": 0.0}})",
+              host == DriftHost::FixedAndFlexible
+                  ? R"("Groups": [{"Type": "Fixed", "Atoms": [0]}, {"Type": "Flexible", "Atoms": [1, 2]}],)"
+                  : ""));
+      framework.readFrameworkDefinition(forceField, definition.path().string());
     }
     frameworks.push_back(framework);
   }
