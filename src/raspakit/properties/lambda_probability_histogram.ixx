@@ -39,7 +39,8 @@ export struct PropertyLambdaProbabilityHistogram
       : numberOfBlocks(numberOfBlocks),
         numberOfSamplePoints(numberOfSamplePoints),
         currentBin(0),
-        delta(1.0 / static_cast<double>(numberOfSamplePoints - 1)),
+        // a single point has no spacing: its lambda is zero (0 times infinity would be a NaN)
+        delta(numberOfSamplePoints > 1 ? 1.0 / static_cast<double>(numberOfSamplePoints - 1) : 0.0),
         histogram(numberOfSamplePoints),
         biasFactor(numberOfSamplePoints),
         bookKeepingLambda(std::vector<std::vector<double>>(numberOfBlocks, std::vector<double>(numberOfSamplePoints))),
@@ -112,6 +113,9 @@ export struct PropertyLambdaProbabilityHistogram
 
   inline int selectNewBin(RandomNumber &random, double scale) const
   {
+    // a single point: every step is a direct crossing of one end of the lambda path (a fraction of a bin would
+    // truncate to no step at all)
+    if (numberOfSamplePoints <= 1) return static_cast<int>(currentBin) + (random.uniform() < 0.5 ? -1 : 1);
     return static_cast<int>(currentBin) +
            static_cast<int>(scale * static_cast<double>(numberOfSamplePoints) * 2.0 * (random.uniform() - 0.5));
   }

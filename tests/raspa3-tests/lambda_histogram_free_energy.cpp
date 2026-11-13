@@ -4,6 +4,7 @@ import std;
 
 import units;
 import property_lambda_probability_histogram;
+import randomnumbers;
 
 // The Landau free-energy profile of a lambda histogram sampled under the Wang-Landau bias: the bias has to
 // be put back, or a flattened histogram reports a flat profile. The profile is reported relative to its
@@ -160,4 +161,30 @@ TEST(LAMBDA_HISTOGRAM_FREE_ENERGY, an_empty_bias_file_is_rejected)
   PropertyLambdaProbabilityHistogram histogram(1, bins);
   EXPECT_THROW(histogram.readBiasingFile(path), std::runtime_error);
   std::filesystem::remove(path);
+}
+
+// A histogram of a single lambda point (the TMMC chains of the pair and group swaps need one) has no spacing: its
+// lambda is zero, not 0 times infinity, and a step from it is a direct crossing of either end of the path.
+TEST(LAMBDA_HISTOGRAM_FREE_ENERGY, a_single_lambda_point_has_a_finite_lambda_and_steps_across_the_ends)
+{
+  PropertyLambdaProbabilityHistogram single(2, 1);
+  EXPECT_EQ(std::to_string(single.lambdaValue()).find("nan"), std::string::npos);
+  EXPECT_DOUBLE_EQ(single.lambdaValue(), 0.0);
+  EXPECT_EQ(single.binOfLambda(0.7), 0uz);
+
+  RandomNumber random(3);
+  std::size_t up = 0, down = 0, stay = 0;
+  for (std::size_t draw = 0; draw < 1000; ++draw)
+  {
+    const int step = single.selectNewBin(random, 0.5);
+    if (step > 0)
+      ++up;
+    else if (step < 0)
+      ++down;
+    else
+      ++stay;
+  }
+  EXPECT_GT(up, 300uz);
+  EXPECT_GT(down, 300uz);
+  EXPECT_EQ(stay, 0uz);
 }

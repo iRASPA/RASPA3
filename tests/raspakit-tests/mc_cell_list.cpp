@@ -28,6 +28,7 @@ import van_der_waals_potential;
 import coulomb_potential;
 import randomnumbers;
 import mc_cell_list;
+import property_lambda_probability_histogram;
 import mc_moves;
 import mc_moves_move_types;
 import mc_moves_probabilities;
@@ -2308,4 +2309,51 @@ TEST(mc_cell_list, skewed_cell_gathers_keep_the_atoms_whose_nearest_image_lies_w
   EXPECT_FALSE(withoutCells.imagesResolved);
   EXPECT_TRUE(holds(withoutCells, 8));
   EXPECT_TRUE(holds(withoutCells, 7));
+}
+
+// With a single lambda point the CFCMC swap is a direct insertion or deletion (the mode the transition-matrix chains
+// of the pair and group swaps require): the fractional molecule sits at lambda zero with finite scalings, and both
+// crossings are proposed and accepted.
+TEST(mc_cell_list, swap_cfcmc_with_a_single_lambda_point_inserts_and_deletes)
+{
+  ForceField forceField = makeWaterForceField();
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::SwapCFCMC, 1.0);
+  Component water = makeWater(forceField, probabilities);
+  System system =
+      System(forceField, SimulationBox(40.0, 40.0, 40.0), false, 1.0e6, 1e10, 1.0, {}, {water}, {}, {40}, 5);
+  RandomNumber random(11);
+  randomizeConfiguration(system, random);
+  prepareForMonteCarlo(system);
+
+  // one lambda point; the fractional molecule starts at its lambda
+  Component& component = system.components[0];
+  const std::uint8_t groupId = component.lambdaGC.dUdlambdaGroupId;
+  component.lambdaGC = PropertyLambdaProbabilityHistogram(5, 1);
+  component.lambdaGC.dUdlambdaGroupId = groupId;
+  const std::size_t fractionalIndex = system.indexOfFractionalMoleculeForMove(Move::Types::SwapCFCMC, 0);
+  for (Atom& atom : system.spanOfMolecule(0, fractionalIndex))
+  {
+    atom.setScalingToFractional(component.lambdaGC.lambdaValue(), groupId);
+  }
+  prepareForMonteCarlo(system);
+
+  for (std::size_t attempt = 0; attempt < 400; ++attempt)
+  {
+    const auto [energy, unused] = MC_Moves::swapMove_CFCMC(random, system, 0, false, false);
+    (void)unused;
+    if (energy.has_value()) system.runningEnergies += energy.value();
+  }
+  for (const Atom& atom : system.spanOfMoleculeAtoms())
+  {
+    // (a NaN scaling prints as "nan"; isnan folds away under the fast-math flags of the project)
+    ASSERT_EQ(std::to_string(atom.scalingVDW).find("nan"), std::string::npos);
+    ASSERT_EQ(std::to_string(atom.scalingCoulomb).find("nan"), std::string::npos);
+  }
+  const double3 accepted =
+      std::get<MoveStatistics<double3>>(system.components[0].mc_moves_statistics[Move::Types::SwapCFCMC]).totalAccepted;
+  EXPECT_GT(accepted.x, 0.0);
+  EXPECT_GT(accepted.y, 0.0);
+  const RunningEnergy drift = system.runningEnergies - system.computeTotalEnergies();
+  EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6 * std::max(1.0, std::abs(system.runningEnergies.potentialEnergy())));
 }

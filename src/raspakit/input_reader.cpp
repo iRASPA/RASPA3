@@ -1231,6 +1231,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   if (parsed_data.contains("NumberOfLambdaBins") && parsed_data["NumberOfLambdaBins"].is_number_unsigned())
   {
     jsonNumberOfLambdaBins = parsed_data["NumberOfLambdaBins"].get<std::size_t>();
+    if (jsonNumberOfLambdaBins == 0)
+    {
+      throw std::runtime_error("[Input reader]: 'NumberOfLambdaBins' must be at least 1\n");
+    }
   }
   numberOfLambdaBins = jsonNumberOfLambdaBins;
 
