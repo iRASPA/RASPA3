@@ -101,6 +101,15 @@ export struct PropertyLambdaProbabilityHistogram
 
   inline double lambdaValue() const { return static_cast<double>(currentBin) * delta; }
 
+  /// The grid point nearest to 'lambda': the inverse of 'lambdaValue' (exact for a lambda on the grid). The CFCMC
+  /// moves step along the grid, so the lambda of a fractional molecule is always that of a bin.
+  inline std::size_t binOfLambda(double lambda) const
+  {
+    if (numberOfSamplePoints < 2) return 0;
+    const double points = static_cast<double>(numberOfSamplePoints - 1);
+    return static_cast<std::size_t>(std::clamp(std::round(lambda * points), 0.0, points));
+  }
+
   inline int selectNewBin(RandomNumber &random, double scale) const
   {
     return static_cast<int>(currentBin) +

@@ -474,7 +474,8 @@ TEST(MC_REACTION_DRIFT, reaction_serial_move_filters_exact_reaction_type)
   for (Reaction& reaction : system.reactions.list)
   {
     reaction.currentLambda = 0.25;
-    reaction.maximumLambdaChange = 0.05;
+    // the lambda steps run along the grid of the bias histogram: a maximum change of several grid spacings
+    reaction.maximumLambdaChange = 0.2;
     reaction.lambdaSwitchPoint = 2.0;
     MC_Moves::ReactionCommon::setSerialReactionFractionalScaling(system, reaction, reaction.currentLambda);
   }
@@ -1748,4 +1749,41 @@ TEST(MC_REACTION_DRIFT, group_swap_refuses_an_overlap_inside_the_new_group)
     newAtoms.push_back(copy);
   }
   EXPECT_FALSE(MC_Moves::ReactionCommon::computeGroupSwapEnergyDifference(system, newAtoms, oldAtoms).has_value());
+}
+
+// The reaction CFCMC moves step lambda along the grid of the bias histogram, so that the lambda of the fractional
+// molecules is always the lambda of the histogram's current bin (the bias and the dU/dlambda samples then belong to
+// the bin the molecules are at): parallel and serial Rx/CFC alike.
+TEST(MC_REACTION_DRIFT, reaction_cfcmc_lambda_stays_on_the_histogram_grid)
+{
+  for (const bool serial : {false, true})
+  {
+    SCOPED_TRACE(serial ? "serial" : "parallel");
+    MCMoveProbabilities systemProbabilities = MCMoveProbabilities();
+    systemProbabilities.setProbability(serial ? Move::Types::ReactionCFCMC : Move::Types::ReactionConventionalCFCMC,
+                                       1.0);
+    System system = makePropaneButaneReactionSystem(systemProbabilities);
+    system.createReactionFractionalMolecules();
+    if (serial)
+    {
+      setupSerialLambdaOnlyReaction(system);
+      system.reactions.list[0].lambdaSwitchPoint = 0.5;
+    }
+    else
+    {
+      setupLambdaOnlyReaction(system);
+    }
+
+    MonteCarlo mc = MonteCarlo({200, 0, 5, 5, 1000, 10000, 5000, 5000}, {std::move(system)}, 42uz, 5, false);
+    mc.run();
+
+    for (const Reaction& reaction : mc.systems[0].reactions.list)
+    {
+      const PropertyLambdaProbabilityHistogram& histogram =
+          reaction.isSerialRxCFC() && !reaction.fractionalSideIsReactants ? reaction.lambdaProductSide
+                                                                          : reaction.lambda;
+      EXPECT_NEAR(histogram.lambdaValue(), reaction.currentLambda, 1e-12);
+    }
+    checkEnergyDrift(mc.systems[0]);
+  }
 }

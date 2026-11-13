@@ -955,7 +955,7 @@ export struct System
   /// Whether a component moves by the serial Gibbs swap (GibbsSwapCFCMC or GibbsSwapCBCFCMC): one active
   /// fractional molecule travels between the boxes, the other box holds a switched-off placeholder.
   [[nodiscard]] bool usesGibbsSwapCFCMC() const noexcept;
-  void initializeGibbsConventionalFractionalMolecules() noexcept;
+  void initializeGibbsConventionalFractionalMolecules(bool complementaryBox = false) noexcept;
   void initializeFixedLambdaFractionalMolecules();
   void initializeGibbsSwapFractionalMoleculeGroupIds() noexcept;
   [[nodiscard]] bool hasReactionFractionalMolecules() const noexcept;

@@ -717,10 +717,17 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 
 [[nodiscard]] double serialBiasFactor(const PropertyLambdaProbabilityHistogram& histogram, double lambda) noexcept
 {
-  const std::size_t bin =
-      std::min(static_cast<std::size_t>(static_cast<double>(histogram.numberOfSamplePoints) * lambda),
-               histogram.numberOfSamplePoints > 0 ? histogram.numberOfSamplePoints - 1 : 0uz);
-  return histogram.biasFactor[bin];
+  return histogram.biasFactor[histogram.binOfLambda(lambda)];
+}
+
+// The lambda step of a Rx/CFC move in grid points of the bias histogram (the lambda of the fractional molecules is
+// always that of a bin): 'maximumChange' is the maximum change of lambda, as for the other CFCMC moves.
+[[nodiscard]] int reactionLambdaStepInBins(RandomNumber& random, const PropertyLambdaProbabilityHistogram& histogram,
+                                           double maximumChange) noexcept
+{
+  const int lastBin = static_cast<int>(histogram.numberOfSamplePoints) - 1;
+  const int step = histogram.selectNewBin(random, maximumChange) - static_cast<int>(histogram.currentBin);
+  return std::clamp(step, -lastBin, lastBin);
 }
 
 // sum of intramolecular energies, one molecule per distinct moleculeId in 'atoms'
@@ -776,22 +783,21 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   {
     PropertyLambdaProbabilityHistogram& lambdaHistogram = activeSerialLambdaHistogram(reaction);
     const double lambdaOld = reaction.currentLambda;
-    const std::size_t oldBin =
-        std::min(static_cast<std::size_t>(static_cast<double>(lambdaHistogram.numberOfSamplePoints) * lambdaOld),
-                 lambdaHistogram.numberOfSamplePoints > 0 ? lambdaHistogram.numberOfSamplePoints - 1 : 0uz);
+    const std::size_t oldBin = lambdaHistogram.binOfLambda(lambdaOld);
     const double biasOld = lambdaHistogram.biasFactor[oldBin];
 
     const double maximumChange =
         reaction.fractionalSideIsReactants ? reaction.maximumLambdaChange : reaction.maximumLambdaChangeProducts;
-    const double lambdaNew = lambdaOld + (2.0 * random.uniform() - 1.0) * maximumChange;
-    if (lambdaNew < 0.0 || lambdaNew > 1.0)
+    // the step along the lambda grid; the serial move does not cross the ends of the path here
+    const int newBinSigned =
+        static_cast<int>(oldBin) + reactionLambdaStepInBins(random, lambdaHistogram, maximumChange);
+    if (newBinSigned < 0 || newBinSigned >= static_cast<int>(lambdaHistogram.numberOfSamplePoints))
     {
       return std::nullopt;
     }
 
-    const std::size_t newBin =
-        std::min(static_cast<std::size_t>(static_cast<double>(lambdaHistogram.numberOfSamplePoints) * lambdaNew),
-                 lambdaHistogram.numberOfSamplePoints > 0 ? lambdaHistogram.numberOfSamplePoints - 1 : 0uz);
+    const std::size_t newBin = static_cast<std::size_t>(newBinSigned);
+    const double lambdaNew = static_cast<double>(newBin) * lambdaHistogram.delta;
     const double biasNew = lambdaHistogram.biasFactor[newBin];
 
     // energy difference of rescaling the active fractional molecules to the new lambda
@@ -1475,17 +1481,25 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   Reaction& reaction = *parallelReactions[random.uniform_integer(0, parallelReactions.size() - 1)];
 
   const double lambdaOld = reaction.currentLambda;
-  double lambdaNew = lambdaOld + (2.0 * random.uniform() - 1.0) * reaction.maximumLambdaChange;
+  // the step along the lambda grid of the bias histogram
+  const int lastBin = static_cast<int>(reaction.lambda.numberOfSamplePoints) - 1;
+  const int newBinSigned = static_cast<int>(reaction.lambda.binOfLambda(lambdaOld)) +
+                           reactionLambdaStepInBins(random, reaction.lambda, reaction.maximumLambdaChange);
 
-  // boundary crossing: attempt a chemical reaction with the wrapped lambda (Rosch and Maginn)
-  if (lambdaNew > 1.0)
+  // boundary crossing: attempt a chemical reaction with the wrapped lambda (Rosch and Maginn), one lambda period on
+  if (newBinSigned > lastBin)
   {
-    return parallelReactionBoundaryMove(random, system, reaction, move, lambdaNew - 1.0, true, useCBMC);
+    return parallelReactionBoundaryMove(random, system, reaction, move,
+                                        static_cast<double>(newBinSigned - lastBin) * reaction.lambda.delta, true,
+                                        useCBMC);
   }
-  if (lambdaNew < 0.0)
+  if (newBinSigned < 0)
   {
-    return parallelReactionBoundaryMove(random, system, reaction, move, lambdaNew + 1.0, false, useCBMC);
+    return parallelReactionBoundaryMove(random, system, reaction, move,
+                                        static_cast<double>(newBinSigned + lastBin) * reaction.lambda.delta, false,
+                                        useCBMC);
   }
+  const double lambdaNew = static_cast<double>(newBinSigned) * reaction.lambda.delta;
 
   // lambda change within [0, 1] (Rosch and Maginn, eq. 26)
   const double biasOld = serialBiasFactor(reaction.lambda, lambdaOld);

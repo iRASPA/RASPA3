@@ -493,7 +493,7 @@ bool System::usesGibbsConventionalCFCMC() const noexcept
   return false;
 }
 
-void System::initializeGibbsConventionalFractionalMolecules() noexcept
+void System::initializeGibbsConventionalFractionalMolecules(bool complementaryBox) noexcept
 {
   if (!usesGibbsConventionalCFCMC())
   {
@@ -511,15 +511,23 @@ void System::initializeGibbsConventionalFractionalMolecules() noexcept
         indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(componentId);
     std::span<Atom> fractionalMolecule = spanOfMolecule(componentId, fractionalMoleculeIndex);
     const std::uint8_t groupId = components[componentId].lambdaGibbs.dUdlambdaGroupId;
+    PropertyLambdaProbabilityHistogram& lambdaGibbs = components[componentId].lambdaGibbs;
+
+    // The two fractional molecules of a conventional Gibbs transfer share one lambda: lambda_A + lambda_B = 1, in
+    // grid points bin_A + bin_B = points - 1. The first box starts at the middle grid point, the other box at the
+    // complementary one (they coincide at 1/2 for an odd number of points only); the atoms carry the lambda of the
+    // grid point, not a 1/2 that may lie between two points.
+    double lambda = 0.5;
+    if (lambdaGibbs.numberOfSamplePoints > 1)
+    {
+      const std::size_t lastBin = lambdaGibbs.numberOfSamplePoints - 1;
+      const std::size_t bin = complementaryBox ? lastBin - lastBin / 2 : lastBin / 2;
+      lambdaGibbs.setCurrentBin(bin);
+      lambda = lambdaGibbs.lambdaValue();
+    }
     for (Atom& atom : fractionalMolecule)
     {
-      atom.setScalingToFractional(0.5, groupId);
-    }
-
-    PropertyLambdaProbabilityHistogram& lambdaGibbs = components[componentId].lambdaGibbs;
-    if (lambdaGibbs.numberOfSamplePoints > 0)
-    {
-      lambdaGibbs.setCurrentBin(lambdaGibbs.numberOfSamplePoints / 2);
+      atom.setScalingToFractional(lambda, groupId);
     }
   }
 }
@@ -723,12 +731,7 @@ void System::initializeReactionLambdaHistograms(std::size_t numberOfBlocks, std:
 void System::syncReactionLambdaBin(Reaction& reaction) noexcept
 {
   auto setBinFromLambda = [](PropertyLambdaProbabilityHistogram& histogram, double lambda)
-  {
-    const std::size_t bin =
-        std::min(static_cast<std::size_t>(static_cast<double>(histogram.numberOfSamplePoints) * lambda),
-                 histogram.numberOfSamplePoints > 0 ? histogram.numberOfSamplePoints - 1 : 0uz);
-    histogram.setCurrentBin(bin);
-  };
+  { histogram.setCurrentBin(histogram.binOfLambda(lambda)); };
 
   if (!reaction.isSerialRxCFC())
   {

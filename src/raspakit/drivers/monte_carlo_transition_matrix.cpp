@@ -174,7 +174,8 @@ void MonteCarloTransitionMatrix::setup()
 
     if (system.usesGibbsConventionalCFCMC())
     {
-      system.initializeGibbsConventionalFractionalMolecules();
+      // the second box holds the complementary lambda (lambda_A + lambda_B = 1)
+      system.initializeGibbsConventionalFractionalMolecules(system_id != 0uz);
       system.precomputeTotalRigidEnergy();
       system.runningEnergies = system.computeTotalEnergies();
     }

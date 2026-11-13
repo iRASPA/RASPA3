@@ -29,6 +29,7 @@ import mc_moves_probabilities;
 import mc_moves_move_types;
 
 import randomnumbers;
+import scaling;
 import mc_moves_translation;
 import mc_moves_gibbs_swap_cfcmc;
 import mc_moves_gibbs_swap_cbcfcmc;
@@ -1823,4 +1824,68 @@ TEST(MC_GIBBS_DRIFT, parallel_tempering_rejects_mismatched_lambda_grids_before_r
   EXPECT_FALSE(MC_Moves::ParallelTemperingSwap(random, systemA, systemB).has_value());
   EXPECT_EQ(random.count, drawsBefore);
   EXPECT_FALSE(MC_Moves::ParallelTemperingLogAcceptance(systemA, systemB).has_value());
+}
+
+// The conventional Gibbs CFCMC move keeps one fractional molecule in each box with lambda_A + lambda_B = 1 and moves
+// both along the lambda grid of the histograms by the same step. The sum rule has to hold from the start (also for
+// an even number of lambda points, where 0.5 is not a grid point) and after every accepted move, and the number of
+// molecules in the two boxes together is a constant of the motion.
+TEST(MC_GIBBS_DRIFT, gibbs_conventional_cfcmc_conserves_the_molecules_and_the_lambda_sum_on_an_even_grid)
+{
+  const ForceField forceField = makeZeoliteAlkaneForceField();
+  MCMoveProbabilities probabilities = makeGibbsConventionalCFCMCProbabilities();
+  const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("CH4"));
+  Component methane(forceField, "methane", 190.564, 4599200.0, 0.01142,
+                    {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, type, 0, 0, false)}, {}, {}, 5, 20, probabilities, std::nullopt,
+                    true);
+  methane.lambdaGibbs.computeDUdlambda = true;
+  ASSERT_EQ(methane.lambdaGibbs.numberOfSamplePoints, 20uz);
+
+  const SimulationBox box(30.0, 30.0, 30.0);
+  std::vector<System> systems{System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {40}, 5),
+                              System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {40}, 5)};
+  ASSERT_TRUE(systems[0].usesGibbsConventionalCFCMC());
+  setupSerialGibbsCFCMC(systems);
+  for (System& system : systems)
+  {
+    system.components[0].mc_moves_statistics.setMaxChange(Move::Types::GibbsConventionalCFCMC,
+                                                          double3(0.25, 0.25, 0.25));
+  }
+
+  const auto lambdaSum = [&]()
+  { return systems[0].components[0].lambdaGibbs.lambdaValue() + systems[1].components[0].lambdaGibbs.lambdaValue(); };
+  const auto molecules = [&]()
+  { return systems[0].numberOfMoleculesPerComponent[0] + systems[1].numberOfMoleculesPerComponent[0]; };
+  const auto integerMolecules = [&]()
+  { return systems[0].numberOfIntegerMoleculesPerComponent[0] + systems[1].numberOfIntegerMoleculesPerComponent[0]; };
+  EXPECT_NEAR(lambdaSum(), 1.0, 1e-12);
+  const std::size_t initialMolecules = molecules();
+  const std::size_t initialIntegerMolecules = integerMolecules();
+
+  RandomNumber random(7);
+  std::size_t accepted = 0;
+  for (std::size_t attempt = 0; attempt < 3000; ++attempt)
+  {
+    const std::optional<std::pair<RunningEnergy, RunningEnergy>> delta =
+        MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(random, systems[0], systems[1], 0, false);
+    if (!delta.has_value()) continue;
+    ++accepted;
+    systems[0].runningEnergies += delta->first;
+    systems[1].runningEnergies += delta->second;
+    ASSERT_NEAR(lambdaSum(), 1.0, 1e-12) << "attempt " << attempt;
+    ASSERT_EQ(molecules(), initialMolecules) << "attempt " << attempt;
+    ASSERT_EQ(integerMolecules(), initialIntegerMolecules) << "attempt " << attempt;
+    // the stored scalings of both fractional molecules are those of the histogram bins
+    for (System& system : systems)
+    {
+      const Component& component = system.components[0];
+      const std::size_t fractionalIndex =
+          system.indexOfFractionalMoleculeForMove(Move::Types::GibbsConventionalCFCMC, 0);
+      const Atom& atom = system.spanOfMolecule(0, fractionalIndex)[0];
+      EXPECT_NEAR(atom.scalingVDW, Scaling::scalingVDW(component.lambdaGibbs.lambdaValue()), 1e-12)
+          << "attempt " << attempt;
+    }
+  }
+  EXPECT_GT(accepted, 100uz);
+  for (System& system : systems) expectNoEnergyDrift(system);
 }

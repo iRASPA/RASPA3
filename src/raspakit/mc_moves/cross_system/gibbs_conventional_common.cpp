@@ -117,20 +117,6 @@ class DualTMMCTrial
   bool recorded_{false};
 };
 
-std::size_t lambdaBinFromValue(const PropertyLambdaProbabilityHistogram& lambda, double lambdaValue)
-{
-  if (lambda.numberOfSamplePoints == 0)
-  {
-    return 0;
-  }
-  std::size_t bin = static_cast<std::size_t>(static_cast<double>(lambda.numberOfSamplePoints) * lambdaValue);
-  if (bin == lambda.numberOfSamplePoints)
-  {
-    --bin;
-  }
-  return bin;
-}
-
 void applyTargetScaling(std::span<Atom> atoms, GibbsMoveKind moveKind, double lambda)
 {
   for (Atom& atom : atoms)
@@ -251,7 +237,7 @@ void acceptInsertStep(System& system, std::size_t selectedComponent, std::size_t
   system.swapMolecules(selectedComponent, fractionalMoleculeIndex,
                        system.numberOfMoleculesPerComponent[selectedComponent] - 1);
 
-  component.lambdaGibbs.setCurrentBin(lambdaBinFromValue(component.lambdaGibbs, remainderLambda));
+  component.lambdaGibbs.setCurrentBin(component.lambdaGibbs.binOfLambda(remainderLambda));
 }
 
 void acceptDeleteStep(System& system, std::size_t selectedComponent, std::size_t fractionalMoleculeIndex,
@@ -278,7 +264,7 @@ void acceptDeleteStep(System& system, std::size_t selectedComponent, std::size_t
 
   system.deleteMolecule(selectedComponent, selectedIntegerMoleculeIndex, savedFractional);
 
-  component.lambdaGibbs.setCurrentBin(lambdaBinFromValue(component.lambdaGibbs, remainderLambda));
+  component.lambdaGibbs.setCurrentBin(component.lambdaGibbs.binOfLambda(remainderLambda));
 }
 
 // Non-committing probe variants (see probeTailEnergyDifference): 'runningNetCharge' is the net charge of the
@@ -321,42 +307,53 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   PropertyLambdaProbabilityHistogram& lambdaA = componentA.lambdaGibbs;
   PropertyLambdaProbabilityHistogram& lambdaB = componentB.lambdaGibbs;
 
+  // Both fractional molecules live on the lambda grid of the histograms (lambda = bin * delta, as the other CFCMC
+  // moves), with lambda_A + lambda_B = 1: bin_A + bin_B = points - 1. The move steps both bins by the same number
+  // of grid points in opposite directions, so the sum rule holds exactly; a lambda stored as a continuous value and
+  // read back from its bin would drift off it (and off the scalings of the atoms), creating or losing molecules.
+  const std::size_t oldBinA = lambdaA.currentBin;
+  const std::size_t oldBinB = lambdaB.currentBin;
   const double lambdaOldA = lambdaA.lambdaValue();
   const double lambdaOldB = lambdaB.lambdaValue();
-  const std::size_t oldBinA = lambdaBinFromValue(lambdaA, lambdaOldA);
-  const std::size_t oldBinB = lambdaBinFromValue(lambdaB, lambdaOldB);
   const double biasOldA = lambdaA.biasFactor[oldBinA];
   const double biasOldB = lambdaB.biasFactor[oldBinB];
 
+  const int lastBin = static_cast<int>(lambdaA.numberOfSamplePoints) - 1;
   const double maxChange = componentA.mc_moves_statistics.getMaxChange(move, 2);
-  const double vNew = (2.0 * random.uniform() - 1.0) * maxChange;
+  // the step in grid points (at most one lambda period, so a box crosses at most one boundary)
+  const int deltaBins =
+      std::clamp(lambdaA.selectNewBin(random, maxChange) - static_cast<int>(oldBinA), -lastBin, lastBin);
+  const double vNew = static_cast<double>(deltaBins) * lambdaA.delta;
 
-  double lambdaNewA = lambdaOldA + vNew;
-  double lambdaNewB = lambdaOldB - vNew;
+  int newBinSignedA = static_cast<int>(oldBinA) + deltaBins;
+  int newBinSignedB = static_cast<int>(oldBinB) - deltaBins;
 
+  // crossing lambda = 1 (insertion) or lambda = 0 (deletion) wraps the bin by one lambda period
   GibbsMoveKind moveKindA = GibbsMoveKind::LambdaChange;
-  if (lambdaNewA > 1.0)
+  if (newBinSignedA > lastBin)
   {
     moveKindA = GibbsMoveKind::Insert;
-    lambdaNewA -= 1.0;
+    newBinSignedA -= lastBin;
   }
-  else if (lambdaNewA < 0.0)
+  else if (newBinSignedA < 0)
   {
     moveKindA = GibbsMoveKind::Delete;
-    lambdaNewA += 1.0;
+    newBinSignedA += lastBin;
   }
 
   GibbsMoveKind moveKindB = GibbsMoveKind::LambdaChange;
-  if (lambdaNewB > 1.0)
+  if (newBinSignedB > lastBin)
   {
     moveKindB = GibbsMoveKind::Insert;
-    lambdaNewB -= 1.0;
+    newBinSignedB -= lastBin;
   }
-  else if (lambdaNewB < 0.0)
+  else if (newBinSignedB < 0)
   {
     moveKindB = GibbsMoveKind::Delete;
-    lambdaNewB += 1.0;
+    newBinSignedB += lastBin;
   }
+  const double lambdaNewA = static_cast<double>(newBinSignedA) * lambdaA.delta;
+  const double lambdaNewB = static_cast<double>(newBinSignedB) * lambdaB.delta;
 
   // The statistics channels follow the CFCMC swap moves: 0 and 1 for the moves that carry a whole molecule
   // across a lambda boundary (towards A, towards B), 2 for a pure lambda change. The step size is optimized
@@ -386,8 +383,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     return std::nullopt;
   }
 
-  const std::size_t newBinA = lambdaBinFromValue(lambdaA, lambdaNewA);
-  const std::size_t newBinB = lambdaBinFromValue(lambdaB, lambdaNewB);
+  const std::size_t newBinA = lambdaA.binOfLambda(lambdaNewA);
+  const std::size_t newBinB = lambdaB.binOfLambda(lambdaNewB);
   const double biasNewA = lambdaA.biasFactor[newBinA];
   const double biasNewB = lambdaB.biasFactor[newBinB];
 
@@ -700,7 +697,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
         atom.setScalingToFractional(lambdaNew, component.lambdaGibbs.dUdlambdaGroupId);
       }
       system.cellListAtomsMoved(fractional);
-      component.lambdaGibbs.setCurrentBin(lambdaBinFromValue(component.lambdaGibbs, lambdaNew));
+      component.lambdaGibbs.setCurrentBin(component.lambdaGibbs.binOfLambda(lambdaNew));
       return;
     }
 
