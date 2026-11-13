@@ -7,6 +7,9 @@
 import std;
 
 import input_reader;
+import component;
+import system;
+import forcefield;
 import int3;
 import json;
 import thermobarostat;
@@ -1072,4 +1075,106 @@ TEST(INPUT_READER, rejects_an_unknown_or_non_string_use_charges_from)
     input["Systems"][0]["UseChargesFrom"] = accepted;
     EXPECT_EQ(refusalOf(std::move(input), "charges_from_accepted", workspace.path()), "") << accepted;
   }
+}
+
+// A per-system 'ForceField' names the directory of that system's force field (there need not be a top-level one),
+// and the components are built with the force field of their system: a per-system 'ChargeMethod' of 'None' leaves
+// them without intramolecular Coulomb pairs.
+TEST(INPUT_READER, per_system_force_field_and_charge_method_reach_the_components)
+{
+  TemporaryDirectory workspace;
+  std::filesystem::create_directories(workspace.path() / "ff");
+  {
+    std::ofstream stream(workspace.path() / "ff" / "force_field.json");
+    stream << input_reader_fixtures::kBoxForceFieldJson;
+  }
+  workspace.write("methane.json", molecule_fixtures::kMethaneJson);
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kNvtSimulationJson);
+  input["Systems"][0]["ForceField"] = "ff";
+  input["Systems"][0]["ChargeMethod"] = "None";
+  TemporaryInput temporary(std::move(input), "per_system_force_field", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  ASSERT_EQ(reader.systems.size(), 1uz);
+  EXPECT_FALSE(reader.systems[0].forceField.useCharge);
+  ASSERT_EQ(reader.systems[0].components.size(), 1uz);
+  EXPECT_FALSE(reader.systems[0].components[0].intraMolecularPotentials.implicitParameters.useCharge);
+}
+
+// 'NumberOfTrialMolecules' survives the construction of the component, and an integer JSON number is a valid value
+// for a floating-point option such as 'TimeStep'.
+TEST(INPUT_READER, number_of_trial_molecules_and_integer_valued_floats_are_read)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kNvtSimulationJson);
+  input["Systems"][0]["TimeStep"] = 1;
+  input["Components"][0]["NumberOfTrialMolecules"] = 7;
+  TemporaryInput temporary(std::move(input), "trial_molecules", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  EXPECT_EQ(reader.systems[0].components[0].numberOfTrialMolecules, 7uz);
+  EXPECT_DOUBLE_EQ(reader.systems[0].timeStep, 1.0);
+}
+
+// A 'StartingBead' given in the input reroots the growth graph of the component at that bead.
+TEST(INPUT_READER, starting_bead_override_reroots_the_fragment_graph)
+{
+  TemporaryDirectory workspace;
+  nlohmann::json forceField = nlohmann::json::parse(input_reader_fixtures::kBoxForceFieldJson);
+  forceField["PseudoAtoms"][0]["name"] = "CH3";
+  forceField["PseudoAtoms"].push_back(forceField["PseudoAtoms"][0]);
+  forceField["PseudoAtoms"][1]["name"] = "CH2";
+  forceField["SelfInteractions"][0]["name"] = "CH3";
+  forceField["SelfInteractions"].push_back(forceField["SelfInteractions"][0]);
+  forceField["SelfInteractions"][1]["name"] = "CH2";
+  workspace.write("force_field.json", forceField.dump(2));
+  workspace.write("propane.json", molecule_fixtures::kPropaneJson);
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kNvtSimulationJson);
+  input["Components"][0]["Name"] = "propane";
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  input["Components"][0]["StartingBead"] = 2;
+  TemporaryInput temporary(std::move(input), "starting_bead", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  const Component& propane = reader.systems[0].components[0];
+  EXPECT_EQ(propane.startingBead, 2uz);
+  ASSERT_EQ(propane.fragmentGraph.atomFragmentIds.size(), 3uz);
+  EXPECT_EQ(propane.fragmentGraph.rootFragment, propane.fragmentGraph.atomFragmentIds[2]);
+}
+
+// The evolution and binary-restart options are known options, and 'WriteVolumeEvolutionEvery' is read.
+TEST(INPUT_READER, evolution_and_binary_restart_options_pass_validation)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kNvtSimulationJson);
+  input["BinaryRestartFileName"] = "restart_data.bin";
+  input["Systems"][0]["ComputeNumberOfMoleculesEvolution"] = true;
+  input["Systems"][0]["SampleNumberOfMoleculesEvolutionEvery"] = 7;
+  input["Systems"][0]["WriteNumberOfMoleculesEvolutionEvery"] = 9;
+  input["Systems"][0]["ComputeVolumeEvolution"] = true;
+  input["Systems"][0]["SampleVolumeEvolutionEvery"] = 3;
+  input["Systems"][0]["WriteVolumeEvolutionEvery"] = 11;
+  TemporaryInput temporary(std::move(input), "evolution_options", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  ASSERT_TRUE(reader.systems[0].propertyVolumeEvolution.has_value());
+  EXPECT_EQ(reader.systems[0].propertyVolumeEvolution->sampleEvery, 3uz);
+  ASSERT_TRUE(reader.systems[0].propertyVolumeEvolution->writeEvery.has_value());
+  EXPECT_EQ(*reader.systems[0].propertyVolumeEvolution->writeEvery, 11uz);
+}
+
+// An empty list where a per-system list is expected is an input error, not an out-of-bounds read.
+TEST(INPUT_READER, an_empty_per_system_list_is_rejected)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kNvtSimulationJson);
+  input["Components"][0]["MolFraction"] = nlohmann::json::array();
+  TemporaryInput temporary(std::move(input), "empty_list", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  EXPECT_THROW(InputReader reader(temporary.path().filename().string()), std::runtime_error);
 }

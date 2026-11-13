@@ -368,6 +368,17 @@ ForceField::ForceField(std::string filePath)
         VDWParameters binaryInteraction = VDWParameters(type, scannedJsonParameters);
         data[indexA.value() * numberOfPseudoAtoms + indexB.value()] = binaryInteraction;
         data[indexB.value() * numberOfPseudoAtoms + indexA.value()] = binaryInteraction;
+        // the 1-4 table was mixed from the regular pairs: an override of the regular pair is also the 1-4 pair,
+        // unless the item gives 'parameters14' of its own or one of the pseudo-atoms has explicit 1-4 parameters
+        // (then the mixed 1-4 pair was meant)
+        const bool explicit14 =
+            std::ranges::any_of(selfInteractions14, [&](const auto& self)
+                                { return self.first == indexA.value() || self.first == indexB.value(); });
+        if (!data14.empty() && !item.contains("parameters14") && !explicit14)
+        {
+          data14[indexA.value() * numberOfPseudoAtoms + indexB.value()] = binaryInteraction;
+          data14[indexB.value() * numberOfPseudoAtoms + indexA.value()] = binaryInteraction;
+        }
       }
     }
     catch (const std::exception& ex)
@@ -441,7 +452,7 @@ ForceField::ForceField(std::string filePath)
       {
       }
     }
-    else if (parsed_data["EwaldPrecision"].is_number_float())
+    else if (parsed_data["EwaldPrecision"].is_number())
     {
       EwaldPrecision = parsed_data["EwaldPrecision"].get<double>();
       automaticEwald = true;
@@ -495,7 +506,7 @@ ForceField::ForceField(std::string filePath)
       }
     }
 
-    if (parsed_data["CutOff"].is_number_float())
+    if (parsed_data["CutOff"].is_number())
     {
       cutOffFrameworkVDWAutomatic = false;
       cutOffMoleculeVDWAutomatic = false;
@@ -517,7 +528,7 @@ ForceField::ForceField(std::string filePath)
       }
     }
 
-    if (parsed_data["CutOffVDW"].is_number_float())
+    if (parsed_data["CutOffVDW"].is_number())
     {
       cutOffFrameworkVDWAutomatic = false;
       cutOffMoleculeVDWAutomatic = false;
@@ -538,7 +549,7 @@ ForceField::ForceField(std::string filePath)
       }
     }
 
-    if (parsed_data["CutOffFrameworkVDW"].is_number_float())
+    if (parsed_data["CutOffFrameworkVDW"].is_number())
     {
       cutOffFrameworkVDWAutomatic = false;
       cutOffFrameworkVDW = parsed_data["CutOffFrameworkVDW"].get<double>();
@@ -557,7 +568,7 @@ ForceField::ForceField(std::string filePath)
       }
     }
 
-    if (parsed_data["CutOffMoleculeVDW"].is_number_float())
+    if (parsed_data["CutOffMoleculeVDW"].is_number())
     {
       cutOffMoleculeVDWAutomatic = false;
       cutOffMoleculeVDW = parsed_data["CutOffMoleculeVDW"].get<double>();
@@ -576,7 +587,7 @@ ForceField::ForceField(std::string filePath)
       }
     }
 
-    if (parsed_data["CutOffCoulomb"].is_number_float())
+    if (parsed_data["CutOffCoulomb"].is_number())
     {
       cutOffCoulombAutomatic = false;
       cutOffCoulomb = parsed_data["CutOffCoulomb"].get<double>();
@@ -1140,6 +1151,12 @@ void ForceField::preComputePotentialShift()
         double cut_off_vdw = cutOffVDW(i, j);
         data[i * numberOfPseudoAtoms + j].computeShiftAtCutOff(cut_off_vdw);
         if (!data14.empty()) data14[i * numberOfPseudoAtoms + j].computeShiftAtCutOff(cut_off_vdw);
+      }
+      else
+      {
+        // a shift computed before the truncation method changed must not linger
+        data[i * numberOfPseudoAtoms + j].shift = 0.0;
+        if (!data14.empty()) data14[i * numberOfPseudoAtoms + j].shift = 0.0;
       }
     }
   }

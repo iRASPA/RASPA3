@@ -35,7 +35,17 @@ void Fragment::computeRigidProperties(std::span<const double3> referencePosition
     com += masses[atom] * referencePositions[atom];
     total_mass += masses[atom];
   }
-  com = com / total_mass;
+  if (total_mass > 0.0)
+  {
+    com = com / total_mass;
+  }
+  else
+  {
+    // massless atoms (a probe): the geometric centre stands in for the centre of mass
+    com = double3{};
+    for (std::size_t atom : atoms) com += referencePositions[atom];
+    com = com / static_cast<double>(atoms.size());
+  }
   mass = total_mass;
   centerOfMassReferencePosition = com;
 
@@ -119,7 +129,16 @@ GroupState Fragment::deriveState(std::span<const Atom> moleculeAtoms) const
   {
     com += atomMasses[k] * moleculeAtoms[atoms[k]].position;
   }
-  state.centerOfMassPosition = com / mass;
+  if (mass > 0.0)
+  {
+    state.centerOfMassPosition = com / mass;
+  }
+  else
+  {
+    // massless atoms: the geometric centre stands in for the centre of mass
+    for (const std::size_t atom : atoms) state.centerOfMassPosition += moleculeAtoms[atom].position;
+    state.centerOfMassPosition = state.centerOfMassPosition / static_cast<double>(atoms.size());
+  }
 
   if (atoms.size() == 1)
   {

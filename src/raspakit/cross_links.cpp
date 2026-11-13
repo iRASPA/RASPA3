@@ -183,6 +183,35 @@ void CrossLinkTable::moleculeInserted(std::size_t componentId, std::size_t molec
   if (changed) rebuildIndex();
 }
 
+void CrossLinkTable::moleculeMoved(std::size_t componentId, std::size_t moleculeIndex, std::size_t newIndex)
+{
+  if (links.empty() || moleculeIndex == newIndex) return;
+  bool changed = false;
+  for (CrossLink& link : links)
+  {
+    for (CrossLinkSite* site : {&link.a, &link.b})
+    {
+      if (site->componentId != componentId) continue;
+      if (site->moleculeIndex == moleculeIndex)
+      {
+        site->moleculeIndex = static_cast<std::uint32_t>(newIndex);
+        changed = true;
+      }
+      else if (moleculeIndex < newIndex && site->moleculeIndex > moleculeIndex && site->moleculeIndex <= newIndex)
+      {
+        --site->moleculeIndex;
+        changed = true;
+      }
+      else if (newIndex < moleculeIndex && site->moleculeIndex >= newIndex && site->moleculeIndex < moleculeIndex)
+      {
+        ++site->moleculeIndex;
+        changed = true;
+      }
+    }
+  }
+  if (changed) rebuildIndex();
+}
+
 void CrossLinkTable::swapTopology(CrossLinkTable &other)
 {
   std::swap(links, other.links);

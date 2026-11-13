@@ -1357,3 +1357,46 @@ TEST(lammps_export, polymer_broken_bonds_are_removed_from_the_topology)
   const std::string input = LAMMPS::writeInputScript(merged);
   EXPECT_NE(input.find("6 monomer bonds, angles and dihedrals through broken bonds removed"), std::string::npos);
 }
+
+// Two components whose 1-4 van der Waals scalings differ cannot share one special_bonds factor: the global factor
+// becomes zero and every 1-4 pair of every component goes into the pair list with its own scaling, the pairs of a
+// component with the plain scaling pattern included.
+TEST(lammps_export, non_uniform_14_scalings_put_every_14_pair_into_the_pair_list)
+{
+  ForceField forceField = chainForceField();
+  nlohmann::json halfScaled = chainDefinition();
+  halfScaled["Intra14VanDerWaalsScalingValue"] = 0.5;
+  nlohmann::json fullScaled = chainDefinition();
+  fullScaled["Intra14VanDerWaalsScalingValue"] = 1.0;
+  Component half = readComponent(forceField, halfScaled, "half-chain");
+  Component full = readComponent(forceField, fullScaled, "full-chain");
+
+  const SimulationBox box(30.0, 30.0, 30.0);
+  System system(forceField, box, false, 300.0, 1e5, 1.0, {}, {half, full}, {}, {1, 1}, 5);
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  for (std::size_t m = 0; m < 2; ++m)
+  {
+    const double3 offset = m == 0 ? double3(5.0, 5.0, 5.0) : double3(15.0, 15.0, 15.0);
+    for (std::size_t i = 0; i < 5; ++i) atoms[m * 5 + i].position = offset + half.atoms[i].position;
+  }
+
+  LAMMPS::ExportOptions options{};
+  options.dataFile = "mixture.data";
+  LAMMPS::ExportFiles files = LAMMPS::exportSystem(
+      system.components, system.atomData, system.atomTags, system.atomDynamics, system.moleculeData,
+      system.simulationBox, system.forceField, system.numberOfIntegerMoleculesPerComponent, system.framework, options);
+
+  EXPECT_NE(files.input.find("special_bonds lj 0.0 0.0 0"), std::string::npos) << files.input;
+  // a five-bead chain has two 1-4 pairs; both molecules list theirs
+  std::size_t pairLines = 0;
+  std::size_t halfScaledLines = 0;
+  std::istringstream stream(files.pairList);
+  for (std::string line; std::getline(stream, line);)
+  {
+    if (line.empty() || line.starts_with("#")) continue;
+    ++pairLines;
+    if (line.starts_with("1 4 ") || line.starts_with("2 5 ")) ++halfScaledLines;
+  }
+  EXPECT_EQ(pairLines, 4uz) << files.pairList;
+  EXPECT_EQ(halfScaledLines, 2uz) << files.pairList;
+}

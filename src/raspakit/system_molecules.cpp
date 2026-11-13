@@ -394,9 +394,8 @@ void System::moveMolecule(std::size_t selectedComponent, std::size_t moleculeInd
   std::rotate(moleculeData.begin() + firstRecord, moleculeData.begin() + middleRecord,
               moleculeData.begin() + lastRecord);
 
-  // the sites of the molecules in between are renumbered as by a deletion followed by an insertion
-  crossLinks.moleculeDeleted(selectedComponent, moleculeIndex);
-  crossLinks.moleculeInserted(selectedComponent, newIndex);
+  // the sites of the moved molecule and of the molecules in between are renumbered
+  crossLinks.moleculeMoved(selectedComponent, moleculeIndex, newIndex);
 
   // molecule ids, atom indices of the records and the cell list
   updateMoleculeAtomInformation(selectedComponent);
@@ -508,6 +507,7 @@ void System::exchangeConfiguration(System& other)
   }
   std::swap(numberOfMoleculesPerComponent, other.numberOfMoleculesPerComponent);
   std::swap(numberOfIntegerMoleculesPerComponent, other.numberOfIntegerMoleculesPerComponent);
+  std::swap(numberOfFractionalMoleculesPerComponent, other.numberOfFractionalMoleculesPerComponent);
   swapMobileTail(electricPotential, numberOfFrameworkAtoms, other.electricPotential, other.numberOfFrameworkAtoms);
   swapMobileTail(electricField, numberOfFrameworkAtoms, other.electricField, other.numberOfFrameworkAtoms);
   swapMobileTail(electricFieldNew, numberOfFrameworkAtoms, other.electricFieldNew, other.numberOfFrameworkAtoms);
@@ -519,9 +519,23 @@ void System::exchangeConfiguration(System& other)
   std::swap(containsTheFractionalMolecule, other.containsTheFractionalMolecule);
   // The cross-link topology belongs to the configuration; the bond types (Hamiltonian) stay.
   crossLinks.swapTopology(other.crossLinks);
+  // the lambda coordinates describe the fractional molecules of the configuration: every one of them moves along
   for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
   {
-    std::swap(components[componentId].lambdaGC.currentBin, other.components[componentId].lambdaGC.currentBin);
+    Component& mine = components[componentId];
+    Component& theirs = other.components[componentId];
+    std::swap(mine.lambdaGC.currentBin, theirs.lambdaGC.currentBin);
+    std::swap(mine.lambdaGibbs.currentBin, theirs.lambdaGibbs.currentBin);
+    std::swap(mine.lambdaPairSwap.currentBin, theirs.lambdaPairSwap.currentBin);
+    std::swap(mine.lambdaPairSwapCB.currentBin, theirs.lambdaPairSwapCB.currentBin);
+    std::swap(mine.lambdaGroupSwap.currentBin, theirs.lambdaGroupSwap.currentBin);
+    std::swap(mine.lambdaGroupSwapCB.currentBin, theirs.lambdaGroupSwapCB.currentBin);
+  }
+  for (std::size_t reaction = 0; reaction < std::min(reactions.list.size(), other.reactions.list.size()); ++reaction)
+  {
+    std::swap(reactions.list[reaction].lambda.currentBin, other.reactions.list[reaction].lambda.currentBin);
+    std::swap(reactions.list[reaction].lambdaProductSide.currentBin,
+              other.reactions.list[reaction].lambdaProductSide.currentBin);
   }
 }
 

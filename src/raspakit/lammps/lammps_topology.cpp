@@ -390,7 +390,7 @@ struct ComponentSpecial
   bool present{false};
   bool standard{true};
   double vdw14{0.0}, coul14{0.0};
-  std::vector<IntraMolecularExclusions::ScaledPair> nonStandard14{};  ///< 1-4 pairs with a non-uniform VDW scaling
+  std::vector<IntraMolecularExclusions::ScaledPair> pairs14{};  ///< every non-excluded 1-4 pair with its scaling
 };
 
 /// Compares a component's intramolecular non-bonded model with LAMMPS's special_bonds pattern.
@@ -475,12 +475,12 @@ ComponentSpecial analyseSpecial(const Component &component, std::vector<std::str
 
   result.vdw14 = vdw14;
   result.coul14 = coul14;
-  if (!result.standard)
+  // every 1-4 pair with its scaling (the plain pairs at full strength): when the mixture has no single 1-4 factor
+  // the pairs of every component, the standard ones included, are listed explicitly
+  for (const std::array<std::size_t, 2>& pair : pairs14)
   {
-    for (const IntraMolecularExclusions::ScaledPair &pair : intra.exclusions.scaledPairs)
-    {
-      if (separation[pair.atomA][pair.atomB] == 3) result.nonStandard14.push_back(pair);
-    }
+    if (intra.exclusions.isExcluded(pair[0], pair[1])) continue;
+    result.pairs14.push_back(intra.exclusions.scalingOf(pair[0], pair[1]));
   }
   return result;
 }
@@ -1042,8 +1042,9 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
       for (const auto &[c, firstAtom] : exportedMolecules)
       {
         const Component &component = components[c];
-        for (const IntraMolecularExclusions::ScaledPair &pair : specials[c].nonStandard14)
+        for (const IntraMolecularExclusions::ScaledPair& pair : specials[c].pairs14)
         {
+          if (pair.scalingVDW == 0.0) continue;
           const std::size_t typeA = component.atoms[pair.atomA].type;
           const std::size_t typeB = component.atoms[pair.atomB].type;
           const VDWParameters &vdw = forceField.pair(typeA, typeB, pair.pair14);

@@ -124,6 +124,11 @@ void SimulationBox::setBoxAngles(double3 angles)
   angleAlpha = angles.x;
   angleBeta = angles.y;
   angleGamma = angles.z;
+  // the minimum image of a rectangular box ignores the off-diagonal cell elements: the type follows the angles
+  const bool rightAngles = std::fabs(angleAlpha - 0.5 * std::numbers::pi) < 1e-5 &&
+                           std::fabs(angleBeta - 0.5 * std::numbers::pi) < 1e-5 &&
+                           std::fabs(angleGamma - 0.5 * std::numbers::pi) < 1e-5;
+  type = rightAngles ? Type::Rectangular : Type::Triclinic;
   const double3 edgeLengths = this->lengths();
   lengthA = edgeLengths.x;
   lengthB = edgeLengths.y;

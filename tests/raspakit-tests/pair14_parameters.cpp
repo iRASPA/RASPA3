@@ -307,3 +307,47 @@ TEST(pair14_parameters, spatial_decomposition_engine_uses_the_14_table)
     EXPECT_TRUE(check(settings, 1e-5, pairDeviceName(pairDevice)));
   }
 }
+
+// A binary override of the regular pair without its own 'parameters14' also sets the 1-4 pair, unless one of the two
+// pseudo-atoms carries explicit 1-4 parameters: then the mixed 1-4 pair was meant.
+TEST(pair14_parameters, binary_override_of_the_regular_pair_follows_into_the_14_table)
+{
+  const std::filesystem::path directory =
+      std::filesystem::temp_directory_path() / std::format("raspa_pair14_binary_{}", ::getpid());
+  std::filesystem::create_directories(directory);
+  {
+    std::ofstream file(directory / "force_field.json");
+    file << R"({
+  "MixingRule": "Lorentz-Berthelot",
+  "TruncationMethod": "truncated",
+  "TailCorrections": false,
+  "CutOff": 12.0,
+  "ChargeMethod": "None",
+  "PseudoAtoms": [
+    {"name": "A", "framework": false, "element": "C", "mass": 14.0, "charge": 0.0},
+    {"name": "B", "framework": false, "element": "O", "mass": 16.0, "charge": 0.0},
+    {"name": "C", "framework": false, "element": "N", "mass": 14.0, "charge": 0.0}
+  ],
+  "SelfInteractions": [
+    {"name": "A", "type": "lennard-jones", "parameters": [80.0, 3.5], "parameters14": [20.0, 3.0]},
+    {"name": "B", "type": "lennard-jones", "parameters": [50.0, 3.0]},
+    {"name": "C", "type": "lennard-jones", "parameters": [60.0, 3.2]}
+  ],
+  "BinaryInteractions": [
+    {"names": ["B", "C"], "type": "lennard-jones", "parameters": [70.0, 3.1]},
+    {"names": ["A", "C"], "type": "lennard-jones", "parameters": [90.0, 3.3]}
+  ]
+})";
+  }
+  const ForceField forceField((directory / "force_field.json").string());
+  std::filesystem::remove_all(directory);
+
+  ASSERT_TRUE(forceField.hasPair14Parameters());
+  // neither B nor C has 1-4 parameters of its own: the 1-4 pair is the overridden regular pair
+  EXPECT_NEAR(forceField(1, 2).parameters.x * Units::EnergyToKelvin, 70.0, 1e-10);
+  EXPECT_NEAR(forceField.pair14(1, 2).parameters.x * Units::EnergyToKelvin, 70.0, 1e-10);
+  EXPECT_NEAR(forceField.pair14(2, 1).parameters.y, 3.1, 1e-12);
+  // A has explicit 1-4 parameters: its 1-4 pair with C stays the mixed one
+  EXPECT_NEAR(forceField(0, 2).parameters.x * Units::EnergyToKelvin, 90.0, 1e-10);
+  EXPECT_NEAR(forceField.pair14(0, 2).parameters.x * Units::EnergyToKelvin, std::sqrt(20.0 * 60.0), 1e-10);
+}

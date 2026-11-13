@@ -122,3 +122,22 @@ TEST(forcefield_options, automatic_cutoff_recomputes_shifts_and_tail_corrections
   EXPECT_DOUBLE_EQ(explicitCutOff.cutOffMoleculeVDW, automaticCutOff);
   EXPECT_DOUBLE_EQ(explicitCutOff.data[0].shift, reference.data[0].shift);
 }
+
+// Switching a shifted force field to plain truncation has to drop the shifts it computed before.
+TEST(forcefield_options, truncating_a_shifted_force_field_clears_the_shifts)
+{
+  std::optional<ForceField> forceField = parse("");
+  ASSERT_TRUE(forceField.has_value());
+  ASSERT_NE(forceField->data[0].shift, 0.0);
+
+  forceField->setTruncationMethod(ForceField::TruncationMethod::Truncated);
+  EXPECT_DOUBLE_EQ(forceField->data[0].shift, 0.0);
+}
+
+// An integer JSON number is a valid value for a floating-point option.
+TEST(forcefield_options, integer_valued_floating_point_options_are_read)
+{
+  std::optional<ForceField> forceField = parse(R"("EwaldPrecision": 1)");
+  ASSERT_TRUE(forceField.has_value());
+  EXPECT_DOUBLE_EQ(forceField->EwaldPrecision, 1.0);
+}

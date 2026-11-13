@@ -801,6 +801,13 @@ export struct Component
   void buildFragmentGraph(const std::vector<std::vector<std::size_t>> &rigidBodies);
 
   /**
+   * \brief Moves the CBMC starting bead and reroots the growth graph (and drops the cached growth plans) at it.
+   *
+   * Throws when the bead is outside the molecule.
+   */
+  void setStartingBead(std::size_t bead);
+
+  /**
    * \brief Returns the (cached) deterministic CBMC growth plan starting from 'beadsAlreadyPlaced'.
    *
    * The plan is built once per distinct placed set and reused afterwards; grow and retrace of the

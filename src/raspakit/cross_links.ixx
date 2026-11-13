@@ -209,6 +209,9 @@ export struct CrossLinkTable
   void moleculeDeleted(std::size_t componentId, std::size_t moleculeIndex);
   /// Renumbering after System inserted a molecule at 'moleculeIndex' of 'componentId'.
   void moleculeInserted(std::size_t componentId, std::size_t moleculeIndex);
+  /// Molecule 'moleculeIndex' of the component moved to 'newIndex' (the molecules in between shift by one): the
+  /// sites follow their molecules, links of the moved molecule included.
+  void moleculeMoved(std::size_t componentId, std::size_t moleculeIndex, std::size_t newIndex);
   /// Renumbering after System exchanged molecules 'moleculeA' and 'moleculeB' of 'componentId': the links of each
   /// follow it to the other index.
   void moleculesExchanged(std::size_t componentId, std::size_t moleculeA, std::size_t moleculeB);

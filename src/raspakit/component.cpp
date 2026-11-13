@@ -600,6 +600,25 @@ std::vector<std::vector<std::size_t>> Component::readRigidBodies(
   return rigidBodies;
 }
 
+void Component::setStartingBead(std::size_t bead)
+{
+  if (bead >= definedAtoms.size())
+  {
+    throw std::runtime_error(std::format("[Component]: 'StartingBead' {} of '{}' is outside the molecule of {} atoms\n",
+                                         bead, name, definedAtoms.size()));
+  }
+  startingBead = bead;
+  if (rigid) return;
+
+  // the fragment graph is rooted at the starting bead: rebuild it from the rigid bodies it was built from
+  std::vector<std::vector<std::size_t>> rigidBodies;
+  for (const Fragment& fragment : fragmentGraph.fragments)
+  {
+    if (fragment.isRigidBody()) rigidBodies.push_back(fragment.atoms);
+  }
+  buildFragmentGraph(rigidBodies);
+}
+
 void Component::buildFragmentGraph(const std::vector<std::vector<std::size_t>> &rigidBodies)
 {
   // The topology changes, so any cached growth plans and the data derived from them are stale.
@@ -1561,7 +1580,17 @@ void Component::computeRigidProperties()
     com += mass * atom.position;
     total_mass += mass;
   }
-  com = com / total_mass;
+  if (total_mass > 0.0)
+  {
+    com = com / total_mass;
+  }
+  else
+  {
+    // massless pseudo-atoms (a probe): the geometric centre stands in for the centre of mass
+    com = double3{};
+    for (auto& [atom, mass] : definedAtoms) com += atom.position;
+    com = com / static_cast<double>(definedAtoms.size());
+  }
 
   double3x3 inertiaTensor{};
   for (auto &[atom, mass] : definedAtoms)
@@ -1735,7 +1764,7 @@ double3 Component::computeCenterOfMass(std::span<Atom> atom_list) const
     com += mass * atom.position;
     total_mass += mass;
   }
-  return com / total_mass;
+  return total_mass > 0.0 ? com / total_mass : double3{};
 }
 
 std::string Component::printStatus(std::size_t componentId, const ForceField &forceField, double inputPressure) const

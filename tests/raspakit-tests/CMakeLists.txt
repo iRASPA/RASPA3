@@ -19,6 +19,7 @@ add_executable(unit_tests_raspakit
   translation_smart_mc.cpp
   translation_rotation_smart_mc.cpp
   integrators.cpp
+  system_bookkeeping.cpp
   pbc.cpp
   pore_size_distribution_ban_vlugt.cpp
   spacegroup.cpp

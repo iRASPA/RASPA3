@@ -291,8 +291,8 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
     }
     else
     {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", componentId, c.name,
-                 c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", componentId, c.name, lambda,
+                 occupancy, averageOccupancy);
     }
     std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[componentId]);
     ++componentId;
@@ -370,9 +370,14 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
       moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), components, framework, spanOfFrameworkAtoms(),
       spanOfFrameworkDynamics(), &forceField, spanOfGroupData(), spanOfFrameworkGroupData());
+  const std::size_t freeTranslationalDegreesOfFreedom =
+      translationalDegreesOfFreedom > translationalCenterOfMassConstraint
+          ? translationalDegreesOfFreedom - translationalCenterOfMassConstraint
+          : 0uz;
   double translationalTemperature =
-      2.0 * translationalKineticEnergy /
-      (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
+      freeTranslationalDegreesOfFreedom > 0
+          ? 2.0 * translationalKineticEnergy / (Units::KB * static_cast<double>(freeTranslationalDegreesOfFreedom))
+          : 0.0;
   double rotationalKineticEnergy = Integrators::computeRotationalKineticEnergy(
       moleculeData, components, spanOfGroupData(), framework, spanOfFrameworkGroupData());
   double rotationalTemperature =
@@ -380,9 +385,10 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
           ? 2.0 * rotationalKineticEnergy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom))
           : 0.0;
   double overallTemperature =
-      2.0 * (translationalKineticEnergy + rotationalKineticEnergy) /
-      (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint +
-                                       rotationalDegreesOfFreedom));
+      freeTranslationalDegreesOfFreedom + rotationalDegreesOfFreedom > 0
+          ? 2.0 * (translationalKineticEnergy + rotationalKineticEnergy) /
+                (Units::KB * static_cast<double>(freeTranslationalDegreesOfFreedom + rotationalDegreesOfFreedom))
+          : 0.0;
   std::print(stream, "Temperature: {: .6e}\n", overallTemperature);
   std::print(stream, "Translational temperature: {: .6e}\n", translationalTemperature);
   std::print(stream, "Rotational temperature: {: .6e}\n\n", rotationalTemperature);
@@ -435,8 +441,8 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
     }
     else
     {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", componentId, c.name,
-                 c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", componentId, c.name, lambda,
+                 occupancy, averageOccupancy);
     }
     std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[componentId]);
     ++componentId;
@@ -757,8 +763,8 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine,
     }
     else
     {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", componentId, c.name,
-                 c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", componentId, c.name, lambda,
+                 occupancy, averageOccupancy);
     }
     std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[componentId]);
     ++componentId;
@@ -964,9 +970,14 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   double translational_kinetic_energy = Integrators::computeTranslationalKineticEnergy(
       moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), components, framework, spanOfFrameworkAtoms(),
       spanOfFrameworkDynamics(), &forceField, spanOfGroupData(), spanOfFrameworkGroupData());
-  double translational_temperature =
-      2.0 * translational_kinetic_energy /
-      (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
+  const std::size_t free_translational_degrees_of_freedom =
+      translationalDegreesOfFreedom > translationalCenterOfMassConstraint
+          ? translationalDegreesOfFreedom - translationalCenterOfMassConstraint
+          : 0uz;
+  double translational_temperature = free_translational_degrees_of_freedom > 0
+                                         ? 2.0 * translational_kinetic_energy /
+                                               (Units::KB * static_cast<double>(free_translational_degrees_of_freedom))
+                                         : 0.0;
   double rotational_kinetic_energy = Integrators::computeRotationalKineticEnergy(
       moleculeData, components, spanOfGroupData(), framework, spanOfFrameworkGroupData());
   double rotational_temperature =
@@ -974,9 +985,10 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
           ? 2.0 * rotational_kinetic_energy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom))
           : 0.0;
   double overall_temperature =
-      2.0 * (translational_kinetic_energy + rotational_kinetic_energy) /
-      (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint +
-                                       rotationalDegreesOfFreedom));
+      free_translational_degrees_of_freedom + rotationalDegreesOfFreedom > 0
+          ? 2.0 * (translational_kinetic_energy + rotational_kinetic_energy) /
+                (Units::KB * static_cast<double>(free_translational_degrees_of_freedom + rotationalDegreesOfFreedom))
+          : 0.0;
   std::pair<double, double> average_temperature = averageTemperature.average();
   std::pair<double, double> average_translational_temperature = averageTranslationalTemperature.average();
   std::pair<double, double> average_rotational_temperature = averageRotationalTemperature.average();
