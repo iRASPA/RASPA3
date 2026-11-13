@@ -284,17 +284,20 @@ void addMoleculeIntramolecular(const System& system, ForceConstants& forceConsta
   forceConstants.addToImage(int3(0, 0, 0), local.positionPosition());
 }
 
-// Ewald intramolecular exclusion correction. The reciprocal Fourier sum counts every intramolecular
-// charge pair; for the excluded pairs (IntraMolecularExclusions: 1-2, 1-3 and rigid-fragment pairs) that
-// spurious contribution is removed by the pairwise term U(r) = -C q_i q_j erf(alpha r) / r; the other
-// pairs carry their completion in the intramolecular Coulomb pair term. This mirrors the molecule branch
-// of Interactions::computeEwaldFourierHessian exactly, but records each pair's Cartesian block against
-// the lattice vector between the two atoms instead of folding to Gamma.
+// Intramolecular exclusion correction. The reciprocal Fourier sum counts every intramolecular charge pair; for the
+// excluded pairs (IntraMolecularExclusions: 1-2, 1-3 and rigid-fragment pairs) that spurious contribution is
+// removed by the pairwise term U(r) = -C q_i q_j erf(alpha r) / r; the other pairs carry their completion in the
+// intramolecular Coulomb pair term. The finite-cutoff shifted methods (Wolf, damped-shifted-force, ...) have no
+// reciprocal space; their excluded pairs carry the completion C q_i q_j (V(r) - 1/r) of the shifted pair sum
+// instead. This mirrors the molecule branches of Interactions::computeEwaldFourierHessian exactly, but records
+// each pair's Cartesian block against the lattice vector between the two atoms instead of folding to Gamma.
 void addMoleculeEwaldExclusion(const System& system, ForceConstants& forceConstants,
                                std::size_t numberOfFrameworkSites)
 {
   const ForceField& forceField = system.forceField;
-  if (!forceField.useCharge || !forceField.usesEwaldFourier()) return;
+  if (!forceField.usesEwaldFourier() && !forceField.usesRealSpaceChargeCorrections()) return;
+  const bool fourier = forceField.usesEwaldFourier();
+  const double cutOffSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
   const SimulationBox& box = system.simulationBox;
   const std::span<const Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
@@ -320,11 +323,22 @@ void addMoleculeEwaldExclusion(const System& system, ForceConstants& forceConsta
             Units::CoulombicConversionFactor * scalingTotal * atoms[i].charge * atoms[j].charge;
         if (chargeProduct == 0.0) continue;
 
-        // U(r) = -chargeProduct erf(alpha s)/s with s = r + Q (offset form);
-        // RASPA convention f1 = U'/r, f2 = (U'' - U'/r)/r^2.
-        const Potentials::EwaldExclusionFactors exclusion = Potentials::ewaldExclusionFactors(alpha, scalingTotal, r);
-        const double f1 = -chargeProduct * exclusion.firstDerivativeFactor;
-        const double f2 = -chargeProduct * exclusion.secondDerivativeFactor;
+        // Ewald: U(r) = -chargeProduct erf(alpha s)/s with s = r + Q (offset form); shifted methods:
+        // U(r) = chargeProduct (V(r) - 1/r) inside the cutoff. RASPA convention f1 = U'/r, f2 = (U'' - U'/r)/r^2.
+        double f1, f2;
+        if (fourier)
+        {
+          const Potentials::EwaldExclusionFactors exclusion = Potentials::ewaldExclusionFactors(alpha, scalingTotal, r);
+          f1 = -chargeProduct * exclusion.firstDerivativeFactor;
+          f2 = -chargeProduct * exclusion.secondDerivativeFactor;
+        }
+        else
+        {
+          if (rr >= cutOffSquared) continue;
+          const Potentials::CoulombRealSpaceFactors factors = Potentials::coulombRealSpaceFactors(forceField, r);
+          f1 = chargeProduct * (factors.firstDerivativeFactor + 1.0 / (rr * r));
+          f2 = chargeProduct * (factors.secondDerivativeFactor - 3.0 / (rr * rr * r));
+        }
 
         const std::array<double, 9> block = pairBlock(f1, f2, dr);
         std::array<double, 9> negativeBlock{};
@@ -342,17 +356,19 @@ void addMoleculeEwaldExclusion(const System& system, ForceConstants& forceConsta
   }
 }
 
-// Ewald intramolecular exclusion correction for a flexible framework. Unlike molecules, a framework
-// keeps its nonbonded intraframework Coulomb, so only the excluded pairs (Interactions::frameworkExcludedChargePairs:
-// bonds, 1-3 bends and 1-4 torsions that are absent from the Coulomb list or scaled away, and the pairs inside a
-// Rigid group) receive the -C q_i q_j erf/r correction. Mirrors the framework branch of
-// Interactions::computeEwaldFourierHessian; framework atoms are the leading force-constant sites, so their site
-// index equals the atom index.
+// Intramolecular exclusion correction for a flexible framework. Unlike molecules, a framework keeps its nonbonded
+// intraframework Coulomb, so only the excluded pairs (Interactions::frameworkExcludedChargePairs: bonds, 1-3 bends
+// and 1-4 torsions that are absent from the Coulomb list or scaled away, and the pairs inside a Rigid group) receive
+// the -C q_i q_j erf/r correction (Ewald) or the C q_i q_j (V(r) - 1/r) completion (shifted methods). Mirrors the
+// framework branches of Interactions::computeEwaldFourierHessian; framework atoms are the leading force-constant
+// sites, so their site index equals the atom index.
 void addFrameworkEwaldExclusion(const System& system, ForceConstants& forceConstants)
 {
   const ForceField& forceField = system.forceField;
-  if (!forceField.useCharge || !forceField.usesEwaldFourier()) return;
+  if (!forceField.usesEwaldFourier() && !forceField.usesRealSpaceChargeCorrections()) return;
   if (!system.framework.has_value() || system.framework->rigid) return;
+  const bool fourier = forceField.usesEwaldFourier();
+  const double cutOffSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
   const SimulationBox& box = system.simulationBox;
   const std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -372,11 +388,22 @@ void addFrameworkEwaldExclusion(const System& system, ForceConstants& forceConst
                                  frameworkAtoms[j].scalingCoulomb * frameworkAtoms[i].charge * frameworkAtoms[j].charge;
     if (chargeProduct == 0.0) continue;
 
-    const double erfTerm = std::erf(alpha * r);
-    const double gaussTerm = 2.0 * alpha * std::numbers::inv_sqrtpi * std::exp(-alphaSquared * rr);
-    const double f1 = -chargeProduct * (gaussTerm / rr - erfTerm / (r * rr));
-    const double f2 = chargeProduct * (2.0 * alphaSquared * gaussTerm / rr + 3.0 * gaussTerm / (rr * rr) -
-                                       3.0 * erfTerm / (r * rr * rr));
+    double f1, f2;
+    if (fourier)
+    {
+      const double erfTerm = std::erf(alpha * r);
+      const double gaussTerm = 2.0 * alpha * std::numbers::inv_sqrtpi * std::exp(-alphaSquared * rr);
+      f1 = -chargeProduct * (gaussTerm / rr - erfTerm / (r * rr));
+      f2 = chargeProduct *
+           (2.0 * alphaSquared * gaussTerm / rr + 3.0 * gaussTerm / (rr * rr) - 3.0 * erfTerm / (r * rr * rr));
+    }
+    else
+    {
+      if (rr >= cutOffSquared) continue;
+      const Potentials::CoulombRealSpaceFactors factors = Potentials::coulombRealSpaceFactors(forceField, r);
+      f1 = chargeProduct * (factors.firstDerivativeFactor + 1.0 / (rr * r));
+      f2 = chargeProduct * (factors.secondDerivativeFactor - 3.0 / (rr * rr * r));
+    }
 
     const std::array<double, 9> block = pairBlock(f1, f2, dr);
     std::array<double, 9> negativeBlock{};
@@ -431,21 +458,25 @@ std::vector<double> ForceConstants::foldToGamma() const
   return folded;
 }
 
+bool systemHasRigidBodies(const System& system)
+{
+  if (system.framework && system.framework->isMixed()) return true;
+  return std::ranges::any_of(system.moleculeData,
+                             [&](const Molecule& molecule)
+                             {
+                               const Component& component = system.components[molecule.componentId];
+                               return component.rigid || component.isSemiFlexible();
+                             });
+}
+
 ForceConstants computeRealSpaceForceConstants(const System& system)
 {
-  for (const Component& component : system.components)
+  if (systemHasRigidBodies(system))
   {
-    if (component.rigid)
-    {
-      throw std::runtime_error(
-          "computeRealSpaceForceConstants: rigid molecules are not supported in this increment (flexible atoms only)");
-    }
-    if (component.isSemiFlexible())
-    {
-      throw std::runtime_error(
-          "computeRealSpaceForceConstants: semi-flexible molecules (rigid groups) carry generalized degrees of "
-          "freedom; use computePhononDispersion, which projects a fully-flexible copy onto them");
-    }
+    throw std::runtime_error(
+        "computeRealSpaceForceConstants: rigid molecules, semi-flexible molecules (rigid groups) and mixed frameworks "
+        "carry generalized degrees of freedom; use computePhononDispersion, which projects a fully-flexible copy onto "
+        "them");
   }
   const bool flexibleFramework = system.framework.has_value() && !system.framework->rigid;
   const std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();

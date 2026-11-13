@@ -273,6 +273,73 @@ TEST(force_constants, image_resolved_fold_matches_molecule_intramolecular_hessia
   }
 }
 
+// The finite-cutoff shifted charge methods have no reciprocal space, but their excluded intramolecular pairs carry
+// the completion q_i q_j (V(r) - 1/r) that the analytic Hessian includes; the image-resolved force constants have
+// to fold the same term or the Gamma-point phonons disagree with the normal modes.
+TEST(force_constants, image_resolved_fold_includes_the_shifted_charge_exclusion_completion)
+{
+  for (const ForceField::ChargeMethod chargeMethod :
+       {ForceField::ChargeMethod::Wolf, ForceField::ChargeMethod::DampedShiftedForce})
+  {
+    SCOPED_TRACE(static_cast<int>(chargeMethod));
+    ForceField forceField({{"P", false, 15.0, 0.8, 0.0, 8, false}, {"N", false, 14.0, -0.4, 0.0, 8, false}},
+                          {{60.0, 3.0}, {40.0, 3.2}}, ForceField::MixingRule::Lorentz_Berthelot, 11.0, 11.0, 11.0, true,
+                          false, true);
+    forceField.chargeMethod = chargeMethod;
+    forceField.EwaldAlpha = 0.25;
+    const SimulationBox box(25.0, 25.0, 25.0);
+
+    ConnectivityTable connectivityTable(3);
+    connectivityTable[0, 1] = true;
+    connectivityTable[1, 0] = true;
+    connectivityTable[1, 2] = true;
+    connectivityTable[2, 1] = true;
+    Component component(forceField, "flexibleIon", 100.0, 1e6, 0.2,
+                        {Atom({-0.9, 0.4, 0.1}, -0.4, 1.0, 0, 1, 0, false, false),
+                         Atom({0.0, 0.0, 0.0}, 0.8, 1.0, 0, 0, 0, false, false),
+                         Atom({1.0, 0.3, -0.2}, -0.4, 1.0, 0, 1, 0, false, false)},
+                        connectivityTable, Potentials::IntraMolecularPotentials{}, 5, 21);
+    component.rigid = false;
+    ASSERT_FALSE(component.intraMolecularPotentials.exclusions.pairs.empty());
+
+    System system(forceField, box, false, 300.0, 1e4, 1.0, {}, {component}, {}, {2}, 5);
+    const std::array<double3, 6> positions = {double3(9.1, 10.4, 10.1),  double3(10.0, 10.0, 10.0),
+                                              double3(11.0, 10.3, 9.8),  double3(12.6, 11.9, 10.7),
+                                              double3(13.5, 11.5, 10.6), double3(14.4, 11.8, 11.3)};
+    std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+    for (std::size_t i = 0; i < positions.size(); ++i) atoms[i].position = positions[i];
+
+    const MinimizationDofLayout layout = buildMinimizationDofLayout(system.moleculeData, system.components);
+    GeneralizedHessian reference(layout.numDofs(), 0);
+    std::vector<double> gradient(layout.numDofs(), 0.0);
+    DerivativeCapabilities capabilities{.energy = true, .gradient = true, .hessianPositionPosition = true};
+    DerivativeResults results{.gradient = gradient, .hessian = reference};
+    evaluateDerivatives(system, layout, capabilities, results);
+
+    const std::vector<double> folded = computeRealSpaceForceConstants(system).foldToGamma();
+    ASSERT_EQ(folded.size(), layout.numDofs() * layout.numDofs());
+    double maxAbs = 0.0;
+    for (const double value : reference.positionPosition()) maxAbs = std::max(maxAbs, std::abs(value));
+    ASSERT_GT(maxAbs, 0.0);
+    for (std::size_t index = 0; index < folded.size(); ++index)
+    {
+      EXPECT_NEAR(folded[index], reference.positionPosition()[index], 1e-8 * maxAbs) << "index=" << index;
+    }
+  }
+}
+
+// A rigid component without molecules carries no degrees of freedom and is no reason to refuse the system.
+TEST(force_constants, accepts_a_rigid_component_without_molecules)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(6.0, false, false, false);
+  Component methane = Component::makeMethane(forceField, 0);  // rigid by default
+
+  System system =
+      System(forceField, SimulationBox(12.0, 12.0, 12.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {0}, 5);
+
+  EXPECT_NO_THROW(computeRealSpaceForceConstants(system));
+}
+
 TEST(force_constants, rejects_rigid_molecules)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(6.0, false, false, false);

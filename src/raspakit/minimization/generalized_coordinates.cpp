@@ -112,18 +112,23 @@ void applyCellDisplacement(System& system, const MinimizationDofLayout& layout, 
         frameworkAtoms[atom].position = deformation * frameworkAtoms[atom].position;
       }
     }
-    if (!system.frameworkGroupData.empty())
+    // the authoritative group states when the system keeps them, else states derived from the atoms (as for the
+    // rigid fragments of semi-flexible molecules below)
+    const bool authoritativeFrameworkGroups = !system.frameworkGroupData.empty();
+    std::span<GroupState> frameworkGroups = system.spanOfFrameworkGroupData();
+    std::size_t rigidRank{};
+    for (std::size_t groupIndex = 0; groupIndex < system.framework->groups.size(); ++groupIndex)
     {
-      std::span<GroupState> frameworkGroups = system.spanOfFrameworkGroupData();
-      std::size_t rigidRank{};
-      for (std::size_t groupIndex = 0; groupIndex < system.framework->groups.size(); ++groupIndex)
+      if (!system.framework->groups[groupIndex].isRigidBody()) continue;
+      GroupState localState;
+      if (!authoritativeFrameworkGroups)
       {
-        if (!system.framework->groups[groupIndex].isRigidBody()) continue;
-        frameworkGroups[rigidRank].centerOfMassPosition =
-            deformation * frameworkGroups[rigidRank].centerOfMassPosition;
-        system.framework->regenerateGroupAtoms(frameworkGroups[rigidRank], groupIndex, frameworkAtoms);
-        ++rigidRank;
+        localState = system.framework->deriveGroupState(groupIndex, frameworkAtoms);
       }
+      GroupState& state = authoritativeFrameworkGroups ? frameworkGroups[rigidRank] : localState;
+      state.centerOfMassPosition = deformation * state.centerOfMassPosition;
+      system.framework->regenerateGroupAtoms(state, groupIndex, frameworkAtoms);
+      ++rigidRank;
     }
   }
   else
@@ -208,9 +213,11 @@ void applyGeneralizedDisplacement(System& system, const MinimizationDofLayout& l
     }
   }
 
-  // Mixed-framework rigid groups: advance COM + orientation, then regenerate atom positions.
-  if (system.framework && system.framework->isMixed() && !system.frameworkGroupData.empty())
+  // Mixed-framework rigid groups: advance COM + orientation, then regenerate atom positions. The authoritative
+  // group states are used when the system keeps them, else the state is derived from the atoms.
+  if (system.framework && system.framework->isMixed())
   {
+    const bool authoritativeFrameworkGroups = !system.frameworkGroupData.empty();
     std::span<GroupState> frameworkGroups = system.spanOfFrameworkGroupData();
     std::size_t rigidRank{};
     for (std::size_t groupIndex = 0; groupIndex < system.framework->groups.size(); ++groupIndex)
@@ -223,7 +230,12 @@ void applyGeneralizedDisplacement(System& system, const MinimizationDofLayout& l
         ++rigidRank;
         continue;
       }
-      GroupState& state = frameworkGroups[rigidRank];
+      GroupState localState;
+      if (!authoritativeFrameworkGroups)
+      {
+        localState = system.framework->deriveGroupState(groupIndex, frameworkAtoms);
+      }
+      GroupState& state = authoritativeFrameworkGroups ? frameworkGroups[rigidRank] : localState;
       state.centerOfMassPosition +=
           double3(displacement[*comBase + 0], displacement[*comBase + 1], displacement[*comBase + 2]);
       const double3 omega(displacement[*comBase + 3], displacement[*comBase + 4], displacement[*comBase + 5]);

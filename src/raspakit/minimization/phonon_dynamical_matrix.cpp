@@ -171,20 +171,6 @@ std::vector<ChargedSite> gatherStaticFrameworkCharges(const System& system)
   return staticCharges;
 }
 
-// True when the system carries any generalized (non-Cartesian) degrees of freedom that require the
-// projected route: a fully rigid molecule, a semi-flexible molecule (rigid groups), or a mixed
-// Fixed/Rigid/Flexible framework (fixed atoms carry no DOFs, rigid groups carry six).
-bool systemHasRigidBodies(const System& system)
-{
-  if (system.framework && system.framework->isMixed()) return true;
-  return std::ranges::any_of(system.moleculeData,
-                             [&](const Molecule& molecule)
-                             {
-                               const Component& component = system.components[molecule.componentId];
-                               return component.rigid || component.isSemiFlexible();
-                             });
-}
-
 /**
  * Unweighted Cartesian reciprocal-space Ewald dynamical matrix D_recip(k), dimension 3 * (number of
  * charged sites), in force-constant site order (flexible framework atoms first, then molecule atoms). No

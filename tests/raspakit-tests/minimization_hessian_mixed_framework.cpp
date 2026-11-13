@@ -22,6 +22,8 @@ import minimization_dof_layout;
 import minimization_evaluate_derivatives;
 import normal_modes;
 import phonon_dynamical_matrix;
+import phonon_force_constants;
+import minimization_generalized_coordinates;
 import running_energy;
 import interactions_hessian_ewald;
 import interactions_hessian_intramolecular;
@@ -268,6 +270,45 @@ void expectHessianMatchesFiniteDifference(System& system, double absoluteToleran
   applyGeneralizedDisplacement(system, layout, base, displacement);
 }
 }  // namespace
+
+// The rigid groups of a mixed framework move with a generalized displacement whether or not the system keeps
+// authoritative group states: without them the state is derived from the atoms, as it is for semi-flexible molecules.
+TEST(minimization_hessian_mixed_framework, generalized_displacement_moves_the_rigid_groups_without_group_states)
+{
+  System withGroupStates = makeMixedFrameworkSystem(false);
+  withGroupStates.initializeFrameworkGroupData();
+  ASSERT_FALSE(withGroupStates.frameworkGroupData.empty());
+  System withoutGroupStates = makeMixedFrameworkSystem(false);
+  withoutGroupStates.frameworkGroupData.clear();
+  const std::vector<double3> original = captureBaseState(withoutGroupStates).frameworkPositions;
+
+  const MinimizationDofLayout layout = makeMixedLayout(withGroupStates);
+  std::vector<double> displacement(layout.numDofs(), 0.0);
+  const std::size_t comBase = *layout.frameworkAtomRigidComDof(1);
+  displacement[comBase + 0] = 0.10;
+  displacement[comBase + 1] = -0.05;
+  displacement[comBase + 4] = 0.20;
+  ::applyGeneralizedDisplacement(withGroupStates, layout, displacement);
+  ::applyGeneralizedDisplacement(withoutGroupStates, layout, displacement);
+
+  const std::span<const Atom> expected = withGroupStates.spanOfFrameworkAtoms();
+  const std::span<const Atom> actual = withoutGroupStates.spanOfFrameworkAtoms();
+  for (const std::size_t atom : {1uz, 2uz, 3uz})
+  {
+    EXPECT_GT((expected[atom].position - original[atom]).length(), 0.05) << "atom " << atom;
+    EXPECT_NEAR(actual[atom].position.x, expected[atom].position.x, 1e-10) << "atom " << atom;
+    EXPECT_NEAR(actual[atom].position.y, expected[atom].position.y, 1e-10) << "atom " << atom;
+    EXPECT_NEAR(actual[atom].position.z, expected[atom].position.z, 1e-10) << "atom " << atom;
+  }
+}
+
+// A mixed framework carries generalized degrees of freedom (none for its fixed atoms, six per rigid group), so the
+// Cartesian force constants refuse it like they refuse rigid molecules.
+TEST(minimization_hessian_mixed_framework, real_space_force_constants_refuse_a_mixed_framework)
+{
+  System system = makeMixedFrameworkSystem(false);
+  EXPECT_THROW(computeRealSpaceForceConstants(system), std::runtime_error);
+}
 
 TEST(minimization_hessian_mixed_framework, generalized_gradient_matches_finite_difference)
 {

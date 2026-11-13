@@ -35,8 +35,30 @@ double solveLambdaMethod2(std::span<const double> eigenvalues, std::span<const d
 
   if (lowest < 0.0)
   {
-    double upper = lowest - 1.0e-3;
-    double lower = lowest - 500.0;
+    // The residual sum_i g_i^2/(lambda - e_i) - lambda falls monotonically on (-inf, lowest), from +inf down to
+    // -inf: its root sits arbitrarily close below 'lowest' for a small gradient along the lowest mode and far below
+    // it for a large one. Bracket the root before bisecting: shrink the upper offset until the residual there is
+    // no longer positive, grow the lower offset until the residual there is no longer negative.
+    const double scale = std::max(1.0, std::abs(lowest));
+    const double smallestOffset = 1.0e-12 * scale;
+    double upperOffset = 1.0e-3 * scale;
+    while (upperOffset > smallestOffset && secularSum(lowest - upperOffset) - (lowest - upperOffset) > 0.0)
+    {
+      upperOffset *= 0.5;
+    }
+    if (upperOffset <= smallestOffset)
+    {
+      // no gradient along the lowest mode: no root below the eigenvalue, the shift sits at the eigenvalue
+      return lowest - upperOffset;
+    }
+    double lowerOffset = std::max(500.0 * scale, 2.0 * upperOffset);
+    for (std::size_t doubling = 0; doubling < 1024 && secularSum(lowest - lowerOffset) - (lowest - lowerOffset) < 0.0;
+         ++doubling)
+    {
+      lowerOffset *= 2.0;
+    }
+    double upper = lowest - upperOffset;
+    double lower = lowest - lowerOffset;
     for (std::size_t iteration = 0; iteration < maximumIterations; ++iteration)
     {
       lambda = 0.5 * (lower + upper);

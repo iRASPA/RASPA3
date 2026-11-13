@@ -81,6 +81,26 @@ TEST(minimization_driver, baker_step_filters_zero_modes_and_clips)
   EXPECT_NEAR(step.stepNorm, 0.25, 1e-12);
 }
 
+// Below a negative lowest eigenvalue the secular residual sum_i g_i^2/(lambda - e_i) - lambda falls monotonically,
+// with its root arbitrarily close below the eigenvalue for a small gradient along that mode and far below it for a
+// large one. The shift has to be the root, not an endpoint of a fixed bracket.
+TEST(minimization_driver, baker_shift_solves_the_secular_equation_for_small_and_large_gradients)
+{
+  MinimizationOptions options{};
+  options.maximumStepLength = 1.0e6;
+  options.convergenceFactor = 0.0;
+  const std::array<double, 4> hessian = {-1.0, 0.0, 0.0, 2.0};
+  for (const double gradientAlongTheNegativeMode : {0.01, 1000.0})
+  {
+    SCOPED_TRACE(gradientAlongTheNegativeMode);
+    const std::array<double, 2> gradient = {gradientAlongTheNegativeMode, 1.0};
+    const BakerStep step = computeBakerStep(hessian, gradient, options);
+    EXPECT_LT(step.shift, -1.0);
+    const double residual = gradient[0] * gradient[0] / (step.shift + 1.0) + 1.0 / (step.shift - 2.0) - step.shift;
+    EXPECT_NEAR(residual, 0.0, 1e-8 * std::max(1.0, std::abs(step.shift)));
+  }
+}
+
 TEST(minimization_driver, baker_positive_definite_step_and_convergence_classification)
 {
   MinimizationOptions options{};

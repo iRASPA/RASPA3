@@ -73,4 +73,11 @@ export class ForceConstants
  * Summed over images, the result reproduces the position-position block of the analytic generalized
  * Hessian for such a system (see the fold-consistency tests).
  */
+/**
+ * True when the system carries generalized (non-Cartesian) degrees of freedom: a rigid molecule, a semi-flexible
+ * molecule (rigid groups) or a mixed Fixed/Rigid/Flexible framework (fixed atoms carry no DOFs, rigid groups six).
+ * Such a system takes the projected route of computePhononDispersion; the Cartesian force constants refuse it.
+ */
+export bool systemHasRigidBodies(const System& system);
+
 export ForceConstants computeRealSpaceForceConstants(const System& system);
