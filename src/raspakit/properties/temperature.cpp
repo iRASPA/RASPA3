@@ -21,7 +21,7 @@ std::string PropertyTemperature::writeAveragesStatistics(const std::string tag)
   }
   std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
   std::print(stream, "    {} temperature  {: .6e} +/- {: .6e} [K]\n", tag, conv * temperatureAverages.first,
-             temperatureAverages.second);
+             conv * temperatureAverages.second);
   std::print(stream, "\n");
 
   return stream.str();

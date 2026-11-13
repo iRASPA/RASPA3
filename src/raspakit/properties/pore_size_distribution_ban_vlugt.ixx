@@ -42,13 +42,16 @@ export struct BanVlugtPoreSizeDistribution
   // The pore size at each grid point, in Ångström, with x varying fastest. Filled by `run`.
   std::vector<float> poreSizes;
 
-  cl_program PSDProgram;
-  cl_kernel PSDKernel;
+  cl_program PSDProgram{nullptr};
+  cl_kernel PSDKernel{nullptr};
   static const char* PSDKernelSource;
-  size_t PSDWorkGroupSize;
+  size_t PSDWorkGroupSize{};
 
   BanVlugtPoreSizeDistribution(uint3 grid_size);
   ~BanVlugtPoreSizeDistribution();
+  // the OpenCL handles are owned once
+  BanVlugtPoreSizeDistribution(const BanVlugtPoreSizeDistribution&) = delete;
+  BanVlugtPoreSizeDistribution& operator=(const BanVlugtPoreSizeDistribution&) = delete;
 
   void run(const ForceField &forceField, const Framework &framework);
 

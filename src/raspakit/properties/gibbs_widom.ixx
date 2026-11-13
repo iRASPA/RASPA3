@@ -60,7 +60,10 @@ export struct PropertyGibbsWidom
 
   static WidomData chemicalPotentialTransform(const WidomData &terms, double beta)
   {
-    return -(1.0 / beta) * log(terms);
+    // a term without samples (zero) has no estimate: left at zero rather than the infinity of log(0)
+    return WidomData(terms.total > 0.0 ? -(1.0 / beta) * std::log(terms.total) : 0.0,
+                     terms.excess > 0.0 ? -(1.0 / beta) * std::log(terms.excess) : 0.0,
+                     terms.idealGas > 0.0 ? -(1.0 / beta) * std::log(terms.idealGas) : 0.0);
   }
 
   WidomData averagedChemicalPotential(double beta) const
@@ -81,7 +84,10 @@ export struct PropertyGibbsWidom
 
   //====================================================================================================================
 
-  static double fugacityTransform(const WidomData &terms, double beta) { return 1.0 / (beta * terms.total); }
+  static double fugacityTransform(const WidomData& terms, double beta)
+  {
+    return terms.total > 0.0 ? 1.0 / (beta * terms.total) : 0.0;
+  }
 
   double averagedFugacity(double beta) const { return fugacityTransform(chemicalPotentialTerms.averaged(), beta); }
 

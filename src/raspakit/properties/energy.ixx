@@ -29,7 +29,7 @@ export struct PropertyEnergy : BlockAverage<EnergyStatus>
   {
     std::vector<EnergyStatus> blockEnergies(numberOfBlocks);
     std::transform(bookKeeping.begin(), bookKeeping.end(), blockEnergies.begin(),
-                   [](std::pair<EnergyStatus, double> block) { return block.first / block.second; });
+                   [](std::pair<EnergyStatus, double> block) { return block.first / std::max(1.0, block.second); });
     return blockEnergies;
   }
 

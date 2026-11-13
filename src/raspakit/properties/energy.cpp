@@ -886,7 +886,9 @@ nlohmann::json PropertyEnergy::jsonAveragesStatistics(bool externalField, std::o
       for (std::size_t l = 0; l < framework->numberOfComponents; l++)
       {
         double prefactor = Units::EnergyToKelvin;
-        std::string pair = std::format("{}", components[k].name);
+        // one entry per framework part: a framework of several parts keys them apart
+        std::string pair = framework->numberOfComponents > 1 ? std::format("{}-{}", l, components[k].name)
+                                                             : std::format("{}", components[k].name);
         std::vector<double> tmp(numberOfBlocks);
 
         std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)

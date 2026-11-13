@@ -39,6 +39,11 @@ std::string PropertyPartialMolarProperties::writeAveragesStatistics(std::vector<
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
         PartialMolarPropertiesData average = averaged(i);
+        if (!average.defined)
+        {
+          std::print(stream, "    Block[ {:2d}] undefined (singular particle-number covariance)\n", i);
+          continue;
+        }
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, Units::EnergyToKelvin * average.partialMolarEnergy[k]);
       }
       std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
@@ -53,6 +58,11 @@ std::string PropertyPartialMolarProperties::writeAveragesStatistics(std::vector<
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
         PartialMolarPropertiesData average = averaged(i);
+        if (!average.defined)
+        {
+          std::print(stream, "    Block[ {:2d}] undefined (singular particle-number covariance)\n", i);
+          continue;
+        }
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, average.partialMolarVolume[k]);
       }
       std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
@@ -84,13 +94,22 @@ nlohmann::json PropertyPartialMolarProperties::jsonAveragesStatistics(std::vecto
     {
       std::size_t index = swappableComponents[k];
 
-      std::vector<double> blockEnergy(numberOfBlocks);
-      std::vector<double> blockVolume(numberOfBlocks);
+      // an undefined block (singular particle-number covariance) is null, not a number from the failed inverse
+      nlohmann::json blockEnergy = nlohmann::json::array();
+      nlohmann::json blockVolume = nlohmann::json::array();
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
         PartialMolarPropertiesData average = averaged(i);
-        blockEnergy[i] = Units::EnergyToKelvin * average.partialMolarEnergy[k];
-        blockVolume[i] = average.partialMolarVolume[k];
+        if (average.defined)
+        {
+          blockEnergy.push_back(Units::EnergyToKelvin * average.partialMolarEnergy[k]);
+          blockVolume.push_back(average.partialMolarVolume[k]);
+        }
+        else
+        {
+          blockEnergy.push_back(nullptr);
+          blockVolume.push_back(nullptr);
+        }
       }
 
       status[components[index].name]["partialMolarEnergy"]["block"] = blockEnergy;
@@ -122,6 +141,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Partia
   archive << p.size;
   archive << p.partialMolarEnergy;
   archive << p.partialMolarVolume;
+  archive << p.defined;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -135,6 +155,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PartialMolar
   archive >> p.size;
   archive >> p.partialMolarEnergy;
   archive >> p.partialMolarVolume;
+  archive >> p.defined;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

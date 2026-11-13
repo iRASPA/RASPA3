@@ -199,9 +199,11 @@ export struct PropertyWidom
   /// Chemical potential as a non-linear function of the averaged raw terms.
   static WidomData chemicalPotentialTransform(const WidomData &terms, double beta)
   {
-    return WidomData(-(1.0 / beta) * std::log(terms.excess) + (1.0 / beta) * std::log(terms.idealGas),
-                     -(1.0 / beta) * std::log(terms.excess),
-                      (1.0 / beta) * std::log(terms.idealGas));
+    // without molecules (no ideal-gas density) or without an insertion weight there is no estimate: the term is
+    // left at zero rather than the infinity of log(0)
+    const double excess = terms.excess > 0.0 ? -(1.0 / beta) * std::log(terms.excess) : 0.0;
+    const double idealGas = terms.idealGas > 0.0 ? (1.0 / beta) * std::log(terms.idealGas) : 0.0;
+    return WidomData(excess + idealGas, excess, idealGas);
   }
 
   WidomData averagedChemicalPotential(double beta) const

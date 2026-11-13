@@ -330,19 +330,6 @@ export struct PropertyEnthalpy : BlockAverage<EnthalpyOfAdsorptionTerms>
     return fractions;
   }
 
-  std::vector<double> blockEnthalpies(std::size_t &k, double &idealGasTerm) const
-  {
-    std::vector<double> enthalpy(numberOfBlocks);
-
-    std::transform(bookKeeping.begin(), bookKeeping.end(), enthalpy.begin(),
-                   [&](const std::pair<EnthalpyOfAdsorptionTerms, double> &block)
-                   {
-                     return Units::EnergyToKelvin *
-                            ((block.first / std::max(1.0, block.second)).compositeProperty().values[k] - idealGasTerm);
-                   });
-    return enthalpy;
-  }
-
   /// The total enthalpy of adsorption per block, in internal energy units; nothing for a block whose
   /// enthalpies are undefined (see enthalpy.cpp).
   std::vector<std::optional<double>> blockTotalEnthalpies(const std::vector<std::size_t>& swappableComponents,

@@ -120,3 +120,37 @@ TEST(ENTHALPY_OF_ADSORPTION, the_total_is_weighted_by_the_adsorbed_fractions_and
   const std::string text = property.writeAveragesStatistics(swappable, components);
   EXPECT_NE(text.find(std::format("{: .6e}", meanOfBlocks)), std::string::npos);
 }
+
+// A block without an enthalpy is reported as undefined in the per-component tables, in text and in JSON, instead of
+// a number built from the failed inverse.
+TEST(ENTHALPY_OF_ADSORPTION, undefined_blocks_are_reported_as_such_per_component)
+{
+  const ForceField forceField({{"X", false, 16.0, 0.0, 0.0, 1, false}}, {{150.0, 3.7}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  std::vector<Component> components{makeComponent(forceField, "a"), makeComponent(forceField, "b")};
+  components[0].idealGasEnergy = 7.0;
+  std::vector<std::size_t> swappable{0, 1};
+
+  PropertyEnthalpy property(5, 2);
+  for (std::size_t block = 0; block < 5; ++block)
+  {
+    if (block == 2)
+    {
+      addSample(property, block, 2, 3, -100.0);
+      addSample(property, block, 2, 3, -101.0);
+      continue;
+    }
+    addFluctuatingBlock(property, block, 2, 3);
+  }
+  ASSERT_FALSE(property.averaged(2).defined);
+
+  const std::string report = property.writeAveragesStatistics(swappable, components);
+  EXPECT_NE(report.find("Block[  2] undefined"), std::string::npos) << report;
+  // the undefined block must not show up as minus the ideal-gas term
+  EXPECT_EQ(report.find(std::format("Block[  2] {: .6e}", -Units::EnergyToKelvin * 7.0)), std::string::npos) << report;
+
+  const nlohmann::json status = property.jsonAveragesStatistics(swappable, components);
+  ASSERT_EQ(status["a"]["block"].size(), 5uz);
+  EXPECT_TRUE(status["a"]["block"][2].is_null());
+  EXPECT_FALSE(status["a"]["block"][1].is_null());
+}

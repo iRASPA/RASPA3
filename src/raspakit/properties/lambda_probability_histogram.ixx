@@ -175,7 +175,8 @@ export struct PropertyLambdaProbabilityHistogram
 
   static double idealGasChemicalPotentialTransform(double fluidDensity, double beta)
   {
-    return std::log(fluidDensity) / beta;
+    // without molecules (no density) there is no ideal-gas term: zero rather than the infinity of log(0)
+    return fluidDensity > 0.0 ? std::log(fluidDensity) / beta : 0.0;
   }
 
   double averagedIdealGasChemicalPotential(std::size_t blockIndex, double beta) const
@@ -208,20 +209,26 @@ export struct PropertyLambdaProbabilityHistogram
     return summedBlocks;
   }
 
-  std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex) const
+  /// The visit counts normalised to a probability (unit sum); zero when nothing was sampled.
+  static std::vector<double> normalizedHistogram(std::vector<double> counts)
   {
-    return bookKeepingLambda[blockIndex];
+    const double total = std::accumulate(counts.begin(), counts.end(), 0.0);
+    if (total > 0.0)
+    {
+      for (double& value : counts) value /= total;
+    }
+    return counts;
   }
 
-  std::vector<double> averagedProbabilityHistogram() const
+  /// The probability histogram of one block: its own counts normalised, so blocks of different size compare bin by
+  /// bin (unnormalised counts shifted every block's free-energy profile by the logarithm of its size).
+  std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex) const
   {
-    std::vector<double> average = summedLambdaBins();
-    for (double &value : average)
-    {
-      value /= static_cast<double>(numberOfBlocks);
-    }
-    return average;
+    return normalizedHistogram(bookKeepingLambda[blockIndex]);
   }
+
+  /// The probability histogram pooled over all blocks.
+  std::vector<double> averagedProbabilityHistogram() const { return normalizedHistogram(summedLambdaBins()); }
 
   std::pair<std::vector<double>, std::vector<double>> averageProbabilityHistogram() const
   {
@@ -250,14 +257,15 @@ export struct PropertyLambdaProbabilityHistogram
     std::vector<double> freeEnergy(bins.size());
     for (std::size_t i = 0; i < bins.size(); ++i)
     {
-      freeEnergy[i] = (-std::log(bins[i]) + bias[i]) / beta;
+      // an unsampled bin has no estimate: left at zero rather than the infinity of log(0)
+      freeEnergy[i] = bins[i] > 0.0 ? (-std::log(bins[i]) + bias[i]) / beta : 0.0;
     }
     return freeEnergy;
   }
 
   std::vector<double> averagedLandauFreeEnergyHistogram(std::size_t blockIndex, double beta) const
   {
-    return landauFreeEnergyTransform(bookKeepingLambda[blockIndex], biasFactor, beta);
+    return landauFreeEnergyTransform(averagedProbabilityHistogram(blockIndex), biasFactor, beta);
   }
 
   std::vector<double> averagedLandauFreeEnergyHistogram(double beta) const
@@ -285,6 +293,8 @@ export struct PropertyLambdaProbabilityHistogram
 
   static double excessChemicalPotentialTransform(const std::vector<double> &bins, double beta)
   {
+    // no estimate without samples at both ends of the lambda path
+    if (!(bins.front() > 0.0) || !(bins.back() > 0.0)) return 0.0;
     return -std::log(bins.back() / bins.front()) / beta;
   }
 

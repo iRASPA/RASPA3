@@ -194,7 +194,9 @@ void PropertyVelocityAutoCorrelationFunction::writeOutput(std::size_t systemId,
 
   for (std::size_t i = 0; i < numberOfComponents; ++i)
   {
-    double fac = 1.0 / static_cast<double>(totalNumberOfMolecules * countAccumulatedVACF);
+    double fac = totalNumberOfMolecules > 0 && countAccumulatedVACF > 0
+                     ? 1.0 / static_cast<double>(totalNumberOfMolecules * countAccumulatedVACF)
+                     : 0.0;
     for (std::size_t j = 0; j < numberOfComponents; ++j)
     {
       std::ofstream stream_vacf_onsager_output(

@@ -275,7 +275,9 @@ void PropertyMeanSquaredDisplacement::writeOutput(std::size_t systemId, const st
         {
           if (msdOnsagerCount[currentBlock][i][k] > 0)
           {
-            double fac = 1.0 / static_cast<double>(totalNumberOfMolecules * msdOnsagerCount[currentBlock][i][k]);
+            double fac = totalNumberOfMolecules > 0
+                             ? 1.0 / static_cast<double>(totalNumberOfMolecules * msdOnsagerCount[currentBlock][i][k])
+                             : 0.0;
 
             stream_msd_collective_output << std::format(
                 "{} {} {} {} {} (count: {})\n", static_cast<double>(k) * dt, fac * msdOnsager[currentBlock][i][j][k].w,

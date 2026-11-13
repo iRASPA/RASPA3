@@ -71,6 +71,11 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
         EnthalpyOfAdsorptionData average = averaged(i);
+        if (!average.defined)
+        {
+          std::print(stream, "    Block[ {:2d}] undefined (singular particle-number covariance)\n", i);
+          continue;
+        }
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i,
                    Units::EnergyToKelvin * (average.values[k] - idealGasTerm));
       }
@@ -140,7 +145,16 @@ nlohmann::json PropertyEnthalpy::jsonAveragesStatistics(std::vector<std::size_t>
       std::size_t index = swappableComponents[k];
       double idealGasTerm = components[index].idealGasEnergy.value_or(0.0);
 
-      std::vector<double> blockEnthalpy = blockEnthalpies(k, idealGasTerm);
+      // an undefined block (singular particle-number covariance) is null, not a number from the failed inverse
+      nlohmann::json blockEnthalpy = nlohmann::json::array();
+      for (std::size_t i = 0; i < numberOfBlocks; ++i)
+      {
+        const EnthalpyOfAdsorptionData average = averaged(i);
+        if (average.defined)
+          blockEnthalpy.push_back(Units::EnergyToKelvin * (average.values[k] - idealGasTerm));
+        else
+          blockEnthalpy.push_back(nullptr);
+      }
       status[components[index].name]["block"] = blockEnthalpy;
       status[components[index].name]["mean"]["[K]"] = Units::EnergyToKelvin * (enthalpy.first.values[k] - idealGasTerm);
       status[components[index].name]["confidence"]["[K]"] = Units::EnergyToKelvin * enthalpy.second.values[k];
@@ -187,6 +201,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Enthal
 {
   archive << p.size;
   archive << p.values;
+  archive << p.defined;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -199,6 +214,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnthalpyOfAd
 {
   archive >> p.size;
   archive >> p.values;
+  archive >> p.defined;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

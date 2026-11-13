@@ -27,6 +27,7 @@ export struct LoadingData
 
   void resize(std::size_t numberOfComponents)
   {
+    size = numberOfComponents;
     numberOfMolecules.resize(numberOfComponents);
     numberDensities.resize(numberOfComponents);
     inverseNumberDensities.resize(numberOfComponents);

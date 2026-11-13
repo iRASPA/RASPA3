@@ -27,6 +27,7 @@ import forcefield;
 BanVlugtPoreSizeDistribution::BanVlugtPoreSizeDistribution(uint3 grid_size):
   grid_size(grid_size)
 {
+  OpenCL::initialize();
   if(OpenCL::clContext.has_value() && OpenCL::clDeviceId.has_value())
   {
     cl_int err;
@@ -55,11 +56,8 @@ BanVlugtPoreSizeDistribution::BanVlugtPoreSizeDistribution(uint3 grid_size):
 
 BanVlugtPoreSizeDistribution::~BanVlugtPoreSizeDistribution()
 {
-  if(OpenCL::clContext.has_value())
-  {
-    clReleaseKernel(PSDKernel);
-    clReleaseProgram(PSDProgram);
-  }
+  if (PSDKernel != nullptr) clReleaseKernel(PSDKernel);
+  if (PSDProgram != nullptr) clReleaseProgram(PSDProgram);
 }
 
 void BanVlugtPoreSizeDistribution::run(const ForceField &forceField, const Framework &framework)

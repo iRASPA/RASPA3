@@ -18,7 +18,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Veloci
   archive << l.numberOfSamples;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<std::int64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;

@@ -183,7 +183,7 @@ std::string PropertyWidom::writeAveragesChemicalPotentialStatistics(double beta,
       for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
       {
         double blockAverage = averagedFugacity(blockIndex, beta);
-        std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, blockAverage);
+        std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, Units::PressureConversionFactor * blockAverage);
       }
       std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
       std::print(stream, "    Total fugacity:           {: .6e} +/- {: .6e} [{}]\n",

@@ -24,6 +24,11 @@ import property_molecule_properties;
 import property_number_of_molecules_evolution;
 import property_conserved_energy_evolution;
 import property_energy;
+import property_temperature;
+import property_widom;
+import property_loading;
+import energy_status;
+import framework;
 
 namespace
 {
@@ -161,4 +166,93 @@ TEST(PROPERTY_OUTPUT_FIXES, energy_repr_returns_its_text)
 {
   const PropertyEnergy energy(5, 0, 0, 1);
   EXPECT_FALSE(energy.repr().empty());
+}
+
+// The error bar of the temperature is a temperature too: it carries the same unit conversion as the mean.
+TEST(PROPERTY_OUTPUT_FIXES, temperature_error_bar_is_converted_like_the_mean)
+{
+  const double previous = Units::TemperatureConversionFactor;
+  Units::TemperatureConversionFactor = 2.0;
+  PropertyTemperature temperature(3);
+  temperature.addSample(0, 300.0, 1.0);
+  temperature.addSample(1, 310.0, 1.0);
+  temperature.addSample(2, 290.0, 1.0);
+  const std::pair<double, double> average = temperature.average();
+  const std::string report = temperature.writeAveragesStatistics("Translational");
+  Units::TemperatureConversionFactor = previous;
+
+  ASSERT_GT(average.second, 0.0);
+  EXPECT_NE(report.find(std::format("{: .6e} +/- {: .6e} [K]", 2.0 * average.first, 2.0 * average.second)),
+            std::string::npos)
+      << report;
+}
+
+// A block without samples has no energy: its block value is zero, not 0/0, and the JSON report stays numeric.
+TEST(PROPERTY_OUTPUT_FIXES, energy_blocks_without_samples_are_finite)
+{
+  PropertyEnergy energy(2, 0, 0, 1);
+  EnergyStatus sample(0, 0, 1);
+  sample.componentEnergy(0, 0).VanDerWaals.energy = -100.0;
+  sample.sumTotal();
+  energy.addSample(0, sample, 1.0);
+
+  std::vector<EnergyStatus> blocks = energy.blockEnergy();
+  ASSERT_EQ(blocks.size(), 2uz);
+  EXPECT_DOUBLE_EQ(blocks[0].componentEnergy(0, 0).VanDerWaals.energy, -100.0);
+  // (the NaN of 0/0 prints as "nan"; isnan folds away under the fast-math flags of the project)
+  EXPECT_EQ(std::to_string(blocks[1].componentEnergy(0, 0).VanDerWaals.energy).find("nan"), std::string::npos);
+
+  const ForceField forceField({{"X", false, 16.0, 0.0, 0.0, 1, false}}, {{150.0, 3.7}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  std::vector<Component> components{Component(forceField, "x", 190.0, 4.6e6, 0.0,
+                                              {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21)};
+  std::optional<Framework> noFramework{};
+  const std::string json = energy.jsonAveragesStatistics(false, noFramework, components).dump();
+  EXPECT_EQ(json.find("null"), std::string::npos);
+}
+
+// The block fugacities of the Widom report are in the pressure unit of the report, as the mean below them is.
+TEST(PROPERTY_OUTPUT_FIXES, widom_block_fugacities_are_in_pressure_units)
+{
+  ASSERT_NE(Units::PressureConversionFactor, 1.0);
+  const double beta = 1.0 / (Units::KB * 300.0);
+  PropertyWidom widom(2);
+  widom.addWidomSample(0, 2.0, 10, 1000.0, 1.0);
+  widom.addWidomSample(1, 3.0, 10, 1000.0, 1.0);
+
+  const std::string report = widom.writeAveragesChemicalPotentialStatistics(beta, std::nullopt, std::nullopt);
+  // the first block line below the fugacity header
+  const std::size_t header = report.find("Widom insertion fugacity statistics");
+  ASSERT_NE(header, std::string::npos) << report;
+  const std::size_t blockLine = report.find("Block[  0] ", header);
+  ASSERT_NE(blockLine, std::string::npos) << report;
+  const double printed = std::stod(report.substr(blockLine + std::string("Block[  0] ").size()));
+  const double expected = Units::PressureConversionFactor * widom.averagedFugacity(0, beta);
+  EXPECT_NEAR(printed, expected, 1e-9 * expected) << report;
+}
+
+// Widom samples of an empty system (no molecules, no ideal-gas density) leave the chemical potential finite.
+TEST(PROPERTY_OUTPUT_FIXES, widom_statistics_of_an_empty_system_are_finite)
+{
+  const double beta = 1.0 / (Units::KB * 300.0);
+  PropertyWidom widom(2);
+  widom.addWidomSample(0, 2.0, 0, 1000.0, 1.0);
+  widom.addWidomSample(1, 3.0, 0, 1000.0, 1.0);
+
+  const std::pair<WidomData, WidomData> result = widom.chemicalPotentialResult(beta);
+  for (const double value : {result.first.total, result.first.excess, result.first.idealGas, result.second.total})
+  {
+    EXPECT_EQ(std::to_string(value).find("nan"), std::string::npos);
+    EXPECT_EQ(std::to_string(value).find("inf"), std::string::npos);
+  }
+  EXPECT_EQ(std::to_string(widom.averagedFugacity(beta)).find("nan"), std::string::npos);
+}
+
+// Resizing the loading record sets its component count.
+TEST(PROPERTY_OUTPUT_FIXES, loading_data_resize_sets_the_component_count)
+{
+  LoadingData loading;
+  loading.resize(3);
+  EXPECT_EQ(loading.size, 3uz);
+  EXPECT_EQ(loading.numberOfMolecules.size(), 3uz);
 }

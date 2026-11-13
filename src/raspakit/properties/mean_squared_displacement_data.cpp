@@ -18,7 +18,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MeanSq
   archive << l.numberOfSamples;
 
 #if DEBUG_ARCHIVE
-  archive << static_caststd::<int64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;

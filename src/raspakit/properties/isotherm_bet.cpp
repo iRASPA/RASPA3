@@ -1401,10 +1401,11 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
     const double blockMean = blockSum / static_cast<double>(scoutBlockCycles);
     const bool isFirstBlock = point.cycles == 0uz;
     point.cycles += scoutBlockCycles;
+    // the peak counts every block: a scout of a single block would otherwise report none
+    point.peakOccupancy = std::max(point.peakOccupancy, blockPeak);
 
     if (!isFirstBlock)
     {
-      point.peakOccupancy = std::max(point.peakOccupancy, blockPeak);
       const double growth = blockMean - previousBlockMean;
       if (growth <= scoutPlateauTolerance * std::max(1.0, previousBlockMean))
       {

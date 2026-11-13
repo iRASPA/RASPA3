@@ -71,7 +71,7 @@ PropertyLambdaProbabilityHistogram::result()
   std::pair<std::vector<double>, std::vector<double>> histogram_avg = averageProbabilityHistogram();
 
   double totalHistogram = std::accumulate(histogram_avg.first.begin(), histogram_avg.first.end(), 0.0);
-  double normalize = static_cast<double>(numberOfSamplePoints) / totalHistogram;
+  double normalize = totalHistogram > 0.0 ? static_cast<double>(numberOfSamplePoints) / totalHistogram : 0.0;
 
   for (double &value : histogram_avg.first)
   {
@@ -99,7 +99,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
   std::pair<std::vector<double>, std::vector<double>> histogram_avg = averageProbabilityHistogram();
 
   double totalHistogram = std::accumulate(histogram_avg.first.begin(), histogram_avg.first.end(), 0.0);
-  double normalize = static_cast<double>(numberOfSamplePoints) / totalHistogram;
+  double normalize = totalHistogram > 0.0 ? static_cast<double>(numberOfSamplePoints) / totalHistogram : 0.0;
   for (std::size_t i = 0; i < numberOfSamplePoints; ++i)
   {
     std::print(stream, "{}{:2d}-{:4f} (lambda) P: {: .5e} +/- {:.5e} bias: {: .5e} [-]\n", "    ", i,
@@ -353,13 +353,18 @@ void PropertyLambdaProbabilityHistogram::readBiasingFile(std::filesystem::path p
   if (parsed_lambda_bias_data.contains("bias") && parsed_lambda_bias_data["bias"].is_array())
   {
     std::vector<double> lambda_bias_data = parsed_lambda_bias_data["bias"].get<std::vector<double>>();
+    if (lambda_bias_data.empty())
+    {
+      throw std::runtime_error(std::format("[Lambda bias file]: '{}' holds no bias values\n", path.string()));
+    }
 
     // resample bias-factor to take different vector size into account
     for (std::size_t i = 0; i < biasFactor.size(); ++i)
     {
       double lambda = static_cast<double>(i) * delta;
 
-      std::size_t index = static_cast<std::size_t>(lambda * static_cast<double>(lambda_bias_data.size() - 1));
+      std::size_t index = std::min(static_cast<std::size_t>(lambda * static_cast<double>(lambda_bias_data.size() - 1)),
+                                   lambda_bias_data.size() - 1);
       biasFactor[i] = lambda_bias_data[index];
     }
   }

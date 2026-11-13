@@ -94,3 +94,70 @@ TEST(LAMBDA_HISTOGRAM_FREE_ENERGY, the_report_is_relative_to_the_minimum_in_both
     EXPECT_NEAR(profile[2], beta * (900.0 + 200.0), 1e-6);
   }
 }
+
+// Blocks with different numbers of samples describe the same probability distribution: each block is normalised by
+// its own count, so two flat blocks of different size agree bin by bin and leave no error on the profile.
+TEST(LAMBDA_HISTOGRAM_FREE_ENERGY, blocks_of_different_size_share_the_profile)
+{
+  PropertyLambdaProbabilityHistogram histogram(3, bins);
+  for (std::size_t i = 0; i < bins; ++i)
+  {
+    histogram.bookKeepingLambda[0][i] = 1000.0;
+    histogram.bookKeepingLambda[1][i] = 10.0;
+    histogram.bookKeepingLambda[2][i] = 100.0;
+  }
+  const auto [profile, error] = histogram.averageLandauFreeEnergyHistogram(beta);
+  ASSERT_EQ(error.size(), bins);
+  for (std::size_t i = 0; i < bins; ++i)
+  {
+    EXPECT_NEAR(error[i], 0.0, 1e-9 * std::max(1.0, std::abs(profile[i]))) << "bin " << i;
+  }
+  const auto [probability, probabilityError] = histogram.result();
+  for (std::size_t i = 0; i < bins; ++i)
+  {
+    EXPECT_NEAR(probability[i], 1.0, 1e-12) << "bin " << i;
+    EXPECT_NEAR(probabilityError[i], 0.0, 1e-12) << "bin " << i;
+  }
+}
+
+// A histogram without samples, or with an unsampled bin, reports finite numbers (no 0/0, no log of zero).
+TEST(LAMBDA_HISTOGRAM_FREE_ENERGY, empty_histograms_and_unsampled_bins_stay_finite)
+{
+  PropertyLambdaProbabilityHistogram empty(2, bins);
+  const auto [probability, probabilityError] = empty.result();
+  for (std::size_t i = 0; i < bins; ++i)
+  {
+    EXPECT_EQ(std::to_string(probability[i]).find("nan"), std::string::npos) << "bin " << i;
+    EXPECT_EQ(std::to_string(probabilityError[i]).find("nan"), std::string::npos) << "bin " << i;
+  }
+
+  PropertyLambdaProbabilityHistogram partial(2, bins);
+  for (std::size_t block = 0; block < 2; ++block)
+  {
+    for (std::size_t i = 0; i + 1 < bins; ++i) partial.bookKeepingLambda[block][i] = 100.0;
+  }
+  const auto [profile, profileError] = partial.averageLandauFreeEnergyHistogram(beta);
+  for (std::size_t i = 0; i < bins; ++i)
+  {
+    EXPECT_EQ(std::to_string(profile[i]).find("nan"), std::string::npos) << "bin " << i;
+    EXPECT_EQ(std::to_string(profile[i]).find("inf"), std::string::npos) << "bin " << i;
+    EXPECT_EQ(std::to_string(profileError[i]).find("nan"), std::string::npos) << "bin " << i;
+  }
+  const std::string report = partial.writeAveragesStatistics(beta, std::nullopt, std::nullopt);
+  EXPECT_EQ(report.find("nan"), std::string::npos) << report;
+  EXPECT_EQ(report.find("inf"), std::string::npos) << report;
+}
+
+// A bias file without values is an input error, not an out-of-range read.
+TEST(LAMBDA_HISTOGRAM_FREE_ENERGY, an_empty_bias_file_is_rejected)
+{
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() / std::format("raspa3_empty_bias_{}.json", ::getpid());
+  {
+    std::ofstream stream(path);
+    stream << R"({"bias": []})";
+  }
+  PropertyLambdaProbabilityHistogram histogram(1, bins);
+  EXPECT_THROW(histogram.readBiasingFile(path), std::runtime_error);
+  std::filesystem::remove(path);
+}
